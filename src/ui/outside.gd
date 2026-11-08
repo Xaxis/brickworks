@@ -23,14 +23,23 @@ static var opened: Array[String] = []
 ## tools/probe.sh or tools/check.sh, which set BRICKWORKS_OPEN_NOTHING; and
 ## the app started from a Claude Code session (CLAUDECODE), as appux3's MCP
 ## walk started it, whose render went into the owner's Downloads. The
-## person's app runs src/main.tscn on Godot's own SceneTree, from their
-## desktop, and never is. A held run writes its files into its own data
-## (Download.downloads).
+## person's app runs src/main.tscn on the project's own main loop, from
+## their desktop or a browser tab, and never is. A held run writes its files
+## into its own data (Download.downloads).
 static func held() -> bool:
 	if OS.has_environment("BRICKWORKS_OPEN_NOTHING") or OS.has_environment("CLAUDECODE"):
 		return true
 	var loop: MainLoop = Engine.get_main_loop()
-	return loop != null and loop.get_script() != null
+	return loop != null and a_script_run(loop.get_script())
+
+
+## Whether a main loop of [param script] is a script's run: any script but
+## the project's own main loop (BrickworksLoop, a script too), which the
+## person's app runs on. Counted as a script's run, it opened no link and
+## put no file in Downloads, on the web or the desktop (rel-m271's preview).
+static func a_script_run(script: Script) -> bool:
+	return script != null and script.get_global_name() \
+		!= StringName(str(ProjectSettings.get_setting("application/run/main_loop_type")))
 
 
 ## [param address] open in the browser (a new tab, on the web), or a

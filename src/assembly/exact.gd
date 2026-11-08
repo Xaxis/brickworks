@@ -214,10 +214,16 @@ static var _shapes: Dictionary = {}
 static var _shapes_lock := Mutex.new()
 ## Parts whose shape the main thread asked for while [member noting] and it
 ## was still on its way, so judged without it: part id -> true, until
-## [method missed_taken]. Main thread only: a motion's press notes what its
-## working out asks for (main.gd).
+## [method missed_taken]. [member noting] is the main thread's: a motion's
+## press notes what its working out asks for (main.gd).
 static var noting: bool = false
 static var _missed: Dictionary = {}
+## The worker whose asks are noted too, by its thread's caller id (-1 for
+## none): a link's motion worked out whole on a worker (MotionPlayer.
+## pace_off_frame). A worker in a browser reads no shape that is not here
+## yet and asks for none; the main thread asks for what it noted once it is
+## done. Written by that worker; [member _missed] under [member _shapes_lock].
+static var noting_worker: int = -1
 ## Shapes read from disk on the main thread, since start-up: by one that
 ## wanted it at once. Written there only; probes read it.
 static var read_here: int = 0
@@ -448,23 +454,25 @@ static func shape_for(library: PartLibrary, part_id: String) -> Shape:
 		return kept
 	var main: bool = OS.get_thread_caller_id() == OS.get_main_thread_id()
 	if not main and OS.has_feature("web"):
+		if noting_worker == OS.get_thread_caller_id():
+			_note_missed(info.id)
 		return null
 	# Already asked for: a look in the browser's pack for a file that is not
 	# there costs a couple of milliseconds, each time.
 	if main and library.is_exact_on_its_way(info.id):
 		if noting:
-			_missed[info.id] = true
+			_note_missed(info.id)
 		return null
 	var path: String = file_for(library, info.id)
 	var shape: Shape = null
-	if FileAccess.file_exists(path):
+	if (not OS.has_feature("web") or _carried(library)) and FileAccess.file_exists(path):
 		if main:
 			read_here += 1
 		shape = own(parse(FileAccess.get_file_as_bytes(path)), info.bounds)
 	elif OS.has_feature("web"):
 		# Fetched as the geometry is (PartLibrary.request_exact); null until then.
 		if library.request_exact(info.id) and main and noting:
-			_missed[info.id] = true
+			_note_missed(info.id)
 		return null
 	_shapes_lock.lock()
 	# Read by another thread meanwhile: one shape a part, as its id keys
@@ -475,6 +483,24 @@ static func shape_for(library: PartLibrary, part_id: String) -> Shape:
 		_shapes[info.mesh_hash] = shape
 	_shapes_lock.unlock()
 	return shape
+
+
+## Whether [param library]'s files carry exact shapes at all, looked once:
+## a browser's pack has none unless it was built with them (tools/
+## web_pack.py --with-exact, which no deployment is), and each look in it
+## for a file that is not there costs a couple of milliseconds of the page's
+## frame, where a reading of the joints asks for every part's shape on the
+## main thread (GrabDrag._read_off_thread): the house's 77 as its link's
+## joints were read (playweb, 2026-11-07). A browser's main thread only, the
+## one thread there that looks.
+static func _carried(library: PartLibrary) -> bool:
+	var root: String = library._resolve_root()
+	if not _carried_by.has(root):
+		_carried_by[root] = DirAccess.dir_exists_absolute(root + "exact")
+	return bool(_carried_by[root])
+
+
+static var _carried_by: Dictionary = {}
 
 
 ## Kept from a fetch: the web build's way in (PartLibrary._on_fetched_exact),
@@ -497,9 +523,17 @@ static func keep_shape(mesh_hash: String, shape: Shape, only_new: bool = false) 
 ## The parts asked for on the main thread since the last call while their
 ## shapes were on their way ([member _missed]), and forgotten.
 static func missed_taken() -> Array:
+	_shapes_lock.lock()
 	var out: Array = _missed.keys()
 	_missed.clear()
+	_shapes_lock.unlock()
 	return out
+
+
+static func _note_missed(part_id: String) -> void:
+	_shapes_lock.lock()
+	_missed[part_id] = true
+	_shapes_lock.unlock()
 
 
 ## Whether the shape for a part has been looked for (found or not).
@@ -1586,11 +1620,28 @@ static func _find(root: PackedInt32Array, i: int) -> int:
 
 
 ## For item [param i]: how far its connectors are from meeting another part's
-## exactly, as the move that would seat the nearest one, {move, mine, other,
-## item, residual}; {} when one already meets exactly (within [param exact])
-## or none comes within [param reach]. Only connectors that would meet once
-## moved: a stud and a hole pointing the same way, a hinge and its other
-## half, a clip and a bar along one line (whose move is across the line).
+## exactly, as a move that would seat them, {move, mine, other, item,
+## residual}; {} when none comes within [param reach], or when no move seats
+## more of them than staying puts (within [param exact]). Only connectors
+## that would meet once moved: a stud and a hole pointing the same way, a
+## hinge and its other half, a clip and a bar along one line (whose move is
+## across the line).
+##
+## Of the moves, the one that seats the most of its connectors at once, the
+## shortest of those. The nearest alone let a bar decide where a part goes,
+## and a bar slides in its clip: a saddle written an LDU low and an LDU along
+## on its horse (a horse's back is an odd number of LDU up, which a placement
+## in whole cells cannot say) was moved the LDU along that put its clip on the
+## sword's bar, and left the LDU low that its holes were short of the horse's
+## studs. Its lattice cover then ran into the horse's, and 18 of the 27 saddles
+## and bardings on horses in the library's sets were refused (animals_probe).
+## Seating its holes on the studs moves it up as well, and the clip stays on
+## the bar it slides along. Only a bar or an axle that slides lets a part go:
+## held where it is by a stud, a hole or a hinge, it stays, and it never goes
+## onto a part it already slides in.
+##
+## [param exact] 0 asks for the nearest miss instead, and {} only where one
+## meets already: a fault's advice says how far to move a part to join it.
 static func seat_move(items: Array, i: int, reach: float, exact: float = 0.05,
 		among: PackedInt32Array = PackedInt32Array()) -> Dictionary:
 	var item: Item = items[i]
@@ -1601,30 +1652,101 @@ static func seat_move(items: Array, i: int, reach: float, exact: float = 0.05,
 		return {}
 	var mine: Array = _world_connectors(items, PackedInt32Array([i]))
 	# Theirs by where they are, a cell of [param reach] each, so a connector
-	# of this part is set only against those within reach of it.
+	# of this part is set only against those within reach of it. Not a bar's
+	# or a clip's: one meets the other anywhere the two overlap along their
+	# line, and its point is its middle. 30374, a bar 80 LDU long, stands in
+	# 3062b's hollow stud 36 LDU from its middle; unpaired, it looked held by
+	# nothing, and the seat moved it off the stud onto a clip pressed into
+	# its side.
 	var grid: Dictionary = {}
+	var axles: Array = []
 	for entry: Array in _world_connectors(items, near):
+		if (items[entry[0]] as Item).shape.kind[entry[1]] == AXLE:
+			axles.append(entry)
+			continue
 		var cell := Vector3i(((entry[2] as Vector3) / reach).floor())
 		var list: Array = grid.get(cell, [])
 		list.append(entry)
 		grid[cell] = list
 	var best: Dictionary = {}
+	## Each pairing: [move, the line it may still slide along or zero, mine,
+	## other, item].
+	var pairs: Array = []
 	for one: Array in mine:
-		var cell := Vector3i(((one[2] as Vector3) / reach).floor())
-		for dx: int in range(-1, 2):
-			for dy: int in range(-1, 2):
-				for dz: int in range(-1, 2):
-					for other: Array in grid.get(cell + Vector3i(dx, dy, dz), []):
-						var move: Variant = _move_to_meet(items, one, other, reach)
-						if move == null:
-							continue
-						var residual: float = (move as Vector3).length()
-						if residual <= exact:
-							return {}
-						if best.is_empty() or residual < float(best["residual"]):
-							best = {"move": move, "mine": int(one[1]), "other": int(other[1]),
-								"item": int(other[0]), "residual": residual}
+		var slides: bool = item.shape.kind[one[1]] == AXLE
+		var theirs: Array = axles
+		if not slides:
+			theirs = []
+			var cell := Vector3i(((one[2] as Vector3) / reach).floor())
+			for dx: int in range(-1, 2):
+				for dy: int in range(-1, 2):
+					for dz: int in range(-1, 2):
+						theirs.append_array(grid.get(cell + Vector3i(dx, dy, dz), []))
+		for other: Array in theirs:
+			var move: Variant = _move_to_meet(items, one, other, reach)
+			if move == null:
+				continue
+			var residual: float = (move as Vector3).length()
+			if exact > 0.0:
+				pairs.append([move, (other[3] as Vector3) if slides else Vector3.ZERO,
+					int(one[1]), int(other[1]), int(other[0])])
+				continue
+			if residual <= exact:
+				return {}
+			if best.is_empty() or residual < float(best["residual"]):
+				best = {"move": move, "mine": int(one[1]), "other": int(other[1]),
+					"item": int(other[0]), "residual": residual}
+	return best if exact <= 0.0 else _seating_most(pairs, exact)
+
+
+## Of [param pairs] (as [method seat_move] gathers them), the move that seats
+## more of the part's connectors than staying does, the most and then the
+## shortest: {move, mine, other, item, residual}, or {}. None where a pairing
+## that does not slide is seated already, and none onto a part one that
+## slides is seated in: 10267-1's candle (37762) stands with its bar down a
+## flower plate's hollow stud, its hole 3 LDU off that stud, and seating the
+## hole lifted it 3 LDU into its flame.
+static func _seating_most(pairs: Array, exact: float) -> Dictionary:
+	var joined: Dictionary = {}
+	for pair: Array in pairs:
+		if _seated_by([pair], Vector3.ZERO, exact) == 1:
+			if pair[1] == Vector3.ZERO:
+				return {}
+			joined[pair[4]] = true
+	var most: int = _seated_by(pairs, Vector3.ZERO, exact)
+	var best: Dictionary = {}
+	var tried: Dictionary = {}
+	for pair: Array in pairs:
+		var move: Vector3 = pair[0]
+		var residual: float = move.length()
+		var key := Vector3i((move / exact).round())
+		if residual <= exact or tried.has(key) or joined.has(pair[4]):
+			continue
+		tried[key] = true
+		var seated: int = _seated_by(pairs, move, exact)
+		if seated > most or (seated == most and not best.is_empty()
+				and residual < float(best["residual"])):
+			most = seated
+			best = {"move": move, "mine": pair[2], "other": pair[3], "item": pair[4],
+				"residual": residual}
 	return best
+
+
+## How many of a part's connectors [param move] seats, of those [param
+## pairs] pair: a pairing is seated where what is left of its own move is
+## within [param exact], along the line it slides on not counted.
+static func _seated_by(pairs: Array, move: Vector3, exact: float) -> int:
+	var seated: Dictionary = {}
+	for pair: Array in pairs:
+		if seated.has(pair[2]):
+			continue
+		var left: Vector3 = (pair[0] as Vector3) - move
+		var line: Vector3 = pair[1]
+		if line != Vector3.ZERO:
+			left -= line * left.dot(line)
+		if left.length() <= exact:
+			seated[pair[2]] = true
+	return seated.size()
 
 
 ## The items of [param among] (every item when it is empty) whose boxes come
@@ -1648,7 +1770,8 @@ static func _near(items: Array, i: int, among: PackedInt32Array, reach: float,
 
 ## The move that would put connector [param one] where it meets [param
 ## other], or null when the two never meet that way or are further than
-## [param reach] apart.
+## [param reach] apart: a bar and a clip across their line, and along it
+## only as far as the two still overlap, by BrickNet's rule ([method meets]).
 static func _move_to_meet(items: Array, one: Array, other: Array, reach: float) -> Variant:
 	var a: Shape = (items[one[0]] as Item).shape
 	var b: Shape = (items[other[0]] as Item).shape
@@ -1659,6 +1782,16 @@ static func _move_to_meet(items: Array, one: Array, other: Array, reach: float) 
 	var xa: Vector3 = one[3]
 	var xb: Vector3 = other[3]
 	var delta: Vector3 = (other[2] as Vector3) - (one[2] as Vector3)
+	if ka == AXLE and kb == AXLE:
+		if not _mates(AXLE_MATES, sa, sb) or absf(xa.dot(xb)) < AXLE_AXIS_THR:
+			return null
+		# Along the line it may slide; only across it is it off.
+		var along: float = delta.dot(xb)
+		var across: Vector3 = delta - xb * along
+		if across.length() > reach or maxf(a.length[one[1]], AXLE_DEFAULT_RAD) \
+				+ maxf(b.length[other[1]], AXLE_DEFAULT_RAD) - absf(along) < AXLE_MIN_OVERLAP:
+			return null
+		return across
 	if delta.length() > reach:
 		return null
 	if (ka == STUD and kb == HOLE) or (ka == HOLE and kb == STUD):
@@ -1667,12 +1800,6 @@ static func _move_to_meet(items: Array, one: Array, other: Array, reach: float) 
 		return delta
 	if ka != kb or ka < HINGE:
 		return null
-	if ka == AXLE:
-		if not _mates(AXLE_MATES, sa, sb) or absf(xa.dot(xb)) < AXLE_AXIS_THR:
-			return null
-		# Along the line it may slide; only across it is it off.
-		var ref: Vector3 = xb
-		return delta - ref * delta.dot(ref)
 	var qa: int = a.pol[one[1]]
 	var qb: int = b.pol[other[1]]
 	if sa != sb or qa == NO_POLARITY or qb == NO_POLARITY or qa == qb:

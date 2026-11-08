@@ -397,6 +397,21 @@ static func _repeat(pattern: Dictionary, trouble: Array) -> Array:
 ##
 ## The whole point: a wing said once cannot be a stud out on one side,
 ## and most of what gets built has two sides.
+##
+## Each brick is laid here where its footprint's reflection is, as its other
+## hand where it has one (Mirror.counterpart), for what this and the patterns
+## after it read of where bricks stand; and marked with what it is the mirror
+## image of, "_mirror": {"of": that brick, "planes": [[axis, plane LDU], ...]},
+## for the read to make it that image as the window's Mirror makes it, turned
+## by the parts' shapes, or named as having none (Assistant._mirror_images).
+## Laid only by its footprint, with the turn it was written with, a design
+## mirrored by this was a wrong car said as done: across x a headlight brick
+## faced in and a slope fell the wrong way, across z a wing plate's other
+## hand pointed back (mirrorpattern, 2026-11-06). Made in the read, not here:
+## a design is expanded before its parts are fetched on the web, and on a
+## worker, which reads a shape only as the main thread has weighed it. A
+## brick a fill or a shape turns to face out (dress, panel), the read turns
+## to face the reflected way.
 static func _mirror(pattern: Dictionary, already: Array,
 		trouble: Array, library: PartLibrary) -> Array:
 	var axis: String = str(pattern.get("about", "x")).to_lower()
@@ -443,11 +458,40 @@ static func _mirror(pattern: Dictionary, already: Array,
 			brick["z"] = 2.0 * at - float(brick.get("z", 0.0)) - width
 		# A left-handed part has a right-handed twin, and reflecting one
 		# without swapping them gives two left wings.
-		var swap: String = _handed_twin(str(brick.get("part", "")))
-		if not swap.is_empty():
-			brick["part"] = swap
+		var part: String = str(brick.get("part", ""))
+		if library != null:
+			part = library.current(part)
+		var other: String = Mirror.counterpart(library, part) if library != null else ""
+		if not other.is_empty() and library.parts.has(other):
+			brick["part"] = other
+		if brick.has("dress") or brick.has("panel"):
+			for key: String in ["dress", "panel"]:
+				if brick.has(key):
+					brick[key] = _reflected_way(str(brick[key]), axis)
+		else:
+			# Of a brick another mirror made, the image of what that one is
+			# the image of, across both planes in turn.
+			var was: Variant = (raw as Dictionary).get("_mirror")
+			var of: Dictionary = raw
+			var planes: Array = []
+			if was is Dictionary and (was as Dictionary).get("of") is Dictionary \
+					and (was as Dictionary).get("planes") is Array:
+				of = (was as Dictionary)["of"]
+				planes = ((was as Dictionary)["planes"] as Array).duplicate()
+			planes.append([0 if axis == "x" else 2, at * BrickLattice.STUD])
+			brick["_mirror"] = {"of": of, "planes": planes}
+			# Its corner is the read's to say, from its source's line.
+			brick.erase("axis")
+			brick.erase("joint")
 		made.append(brick)
 	return made
+
+
+## A way out, "+x" or "-z", reflected across the plane square to [param axis].
+static func _reflected_way(way: String, axis: String) -> String:
+	if way.length() == 2 and way.ends_with(axis):
+		return ("-" if way.begins_with("+") else "+") + axis
+	return way
 
 
 ## How many studs a part covers along one axis, as placed.
@@ -518,11 +562,9 @@ static func grid_footprint(library: PartLibrary, part: String) -> Vector2i:
 		maxi(1, ceili((hi.z - lo.z - BrickLattice.CLEARANCE) / 20.0)))
 
 
-## The other hand of a part, where it has one.
-##
-## Wedge plates and wedges come in pairs and a mirror that keeps the same
-## number gives a model two left wings — which looks exactly like a model
-## with two right wings until somebody looks at it.
+## The wedge plates and wedges made in two hands, each with its other: what
+## the shapes probe counts as wedges. A mirror finds a part's other hand by
+## its name, whatever the part (Mirror.counterpart).
 const HANDED: Dictionary = {
 	"41769b": "41770b", "41770b": "41769b",
 	"41769a": "41770a", "41770a": "41769a",
@@ -534,10 +576,6 @@ const HANDED: Dictionary = {
 	"43710": "43711", "43711": "43710",
 	"29120": "29119", "29119": "29120",
 }
-
-
-static func _handed_twin(part: String) -> String:
-	return str(HANDED.get(part, ""))
 
 
 ## A footprint, tiled with the largest plates that fit.

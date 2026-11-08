@@ -19,7 +19,10 @@
 // it to be kept (?op=photo): the server reads the original, makes a new
 // JPEG from its pixels alone (api/_photo.js: no metadata survives, and
 // what is not a picture does not decode), keeps that as
-// build-photos/<id>.jpg, and deletes the original whatever came of it.
+// build-photos/<id>.jpg, and a copy at most 480 px wide beside it for the
+// cards (<id>.card.jpg, made from the kept photo the first time a card asks
+// for one kept before there were copies), and deletes the original
+// whatever came of it.
 //
 // Shown on the model's page as a strip of builds and on the builder's
 // profile, while it may be: not hidden by the model's owner, not taken out
@@ -32,8 +35,10 @@
 // counted, no photo is shown, and asking to add one says so.
 
 import { createHmac, randomBytes } from "node:crypto";
+import { sweepHeld } from "./_cron.js";
 import { db, orUnknown, reach } from "./_db.js";
-import { cleanPhoto, MAX_PHOTO_BYTES, PhotoTrouble, TYPES } from "./_photo.js";
+import { cardSize, photoUrls } from "./_card.js";
+import { cardPhoto, cleanPhoto, jpegSize, MAX_PHOTO_BYTES, PhotoTrouble, TYPES } from "./_photo.js";
 
 export const UPLOADS = "build-photo-uploads";
 export const PHOTOS = "build-photos";
@@ -41,6 +46,10 @@ export const MOST_ON_A_MODEL = 3;
 export const MAX_WORDS = 140;
 // How many photos a model's page and a profile show.
 export const PHOTOS_SHOWN = 24;
+/// A photo's files in PHOTOS: the kept photo, and its copy for the cards
+/// (api/account.js names both too, when an account is deleted).
+export const photoName = (id) => `${id}.jpg`;
+export const cardName = (id) => `${id}.card.jpg`;
 const ID = /^[A-Za-z0-9]{10}$/;
 const DEVICE = /^[0-9a-f]{32}$/;
 const TICKET = /^[0-9a-f]{32}\.(jpg|png|webp)$/;
@@ -161,6 +170,72 @@ async function signUpload(name) {
   return /^https?:\/\//.test(url) ? url : `${project()}/storage/v1${url.startsWith("/") ? "" : "/"}${url}`;
 }
 
+// ---------------------------------------------------------------------------
+// The daily sweep's share (api/share.js sweep): a photo's files outlive it
+// when a delete fails (keeping it, taking it out, a copy put as it went),
+// or when a deployment's code deleted only the photo and not its copy.
+
+/// A file of PHOTOS: a photo, or its copy for the cards.
+const PHOTO_FILE = /^([A-Za-z0-9]{10})\.(?:card\.)?jpg$/;
+
+/// Every file in PHOTOS: [{name, at}], a thousand a page.
+export async function photosLeft() {
+  const out = [];
+  for (let offset = 0; ; offset += 1000) {
+    const answer = await reach(`storage list ${PHOTOS}`, 20, `${project()}/storage/v1/object/list/${PHOTOS}`, {
+      method: "POST", headers: storageHeaders({ "content-type": "application/json" }),
+      body: JSON.stringify({ prefix: "", limit: 1000, offset, sortBy: { column: "name", order: "asc" } }) });
+    if (answer.status === 400 || answer.status === 404) return out;
+    if (!answer.ok) throw new Error(`storage list ${PHOTOS}: ${answer.status}`);
+    const page = await answer.json();
+    for (const file of page) if (file.id !== null) out.push({ name: file.name, at: file.updated_at || file.created_at });
+    if (page.length < 1000) return out;
+  }
+}
+
+/// Of [files] in PHOTOS ({name, at}), those to delete: a photo's or its
+/// copy's whose photo has no row in [rows] ({id, removed_at}) or was taken
+/// out. Never one younger than [age] ms at [now] (a photo's files are put a
+/// moment before its row), unless [only] names its photo; with [only],
+/// those photos' alone. Never a name no photo here has. Pure.
+export function photosGone(files, rows, { now, age, only = [] }) {
+  const live = new Set(rows.filter((row) => !row.removed_at).map((row) => row.id));
+  return files.filter((file) => {
+    const id = PHOTO_FILE.exec(file.name)?.[1];
+    if (!id || live.has(id)) return false;
+    return only.length ? only.includes(id) : now - Date.parse(file.at || 0) > age;
+  }).map((file) => file.name);
+}
+
+/// Delete the files photosGone names: {looked_at, removed}, and [held]
+/// (why) when an unscoped run would take more than api/_cron.js sweepHeld
+/// lets it, and took none. Before builds.sql there are no rows to go by,
+/// and nothing is deleted.
+export async function sweepPhotos({ now, age, only = [] }) {
+  const files = (await photosLeft()).filter((file) => {
+    const id = PHOTO_FILE.exec(file.name)?.[1];
+    return id && (!only.length || only.includes(id));
+  });
+  const ids = [...new Set(files.map((file) => PHOTO_FILE.exec(file.name)[1]))];
+  const rows = [];
+  try {
+    for (let at = 0; at < ids.length; at += 100) {
+      rows.push(...await db(`build_photos?id=in.(${ids.slice(at, at + 100).join(",")})&select=id,removed_at`));
+    }
+  } catch (trouble) {
+    if (notYet(trouble)) return { looked_at: files.length, removed: [] };
+    throw trouble;
+  }
+  const gone = photosGone(files, rows, { now, age, only });
+  const held = only.length ? "" : sweepHeld(files.length, gone.length);
+  if (held) {
+    console.error(`sweep: build photos ${held}`);
+    return { looked_at: files.length, removed: [], held };
+  }
+  for (let at = 0; at < gone.length; at += 100) await deleteFiles(PHOTOS, gone.slice(at, at + 100));
+  return { looked_at: files.length, removed: gone };
+}
+
 /// Every file in the uploads bucket, by account folder: [{name, at}].
 export async function uploadsLeft() {
   const out = [];
@@ -229,19 +304,73 @@ async function photosBy(account, model) {
 
 /// The photo's file, for whoever may see it: null when it may not be shown
 /// (hidden, taken out, its model down, its builder not shown) or is gone.
-export async function photoFile(id, shown, { owner = false } = {}) {
+/// With [card], its copy for the cards (web/card.js cardSize).
+export async function photoFile(id, shown, { owner = false, card = false } = {}) {
   const row = await photoRow(id);
   if (!row || row.removed_at || (row.hidden_at && !owner)) return null;
   const models = await db(`shared_models?id=eq.${row.model}&published=is.true&barred=is.false&select=id`);
   if (!models.length || !(await shown(row.account))) return null;
-  return getFile(PHOTOS, `${id}.jpg`);
+  return card ? cardFile(row) : getFile(PHOTOS, photoName(id));
+}
+
+/// Whether the JPEG [bytes] is [want] ({width, height}) in size.
+function sized(bytes, want) {
+  try {
+    const got = jpegSize(bytes);
+    return got.width === want.width && got.height === want.height;
+  } catch {
+    return false;
+  }
+}
+
+/// A photo's copy for the cards, of its [row]: kept beside it, or made from
+/// it and kept the first time it is asked for (a photo kept before there
+/// were copies, or one whose copy is not the size the pages describe it by,
+/// as a copy made before copies covered a 4:3 card). The whole photo when
+/// no copy can be made of it; null when it is gone.
+async function cardFile(row) {
+  const { id } = row;
+  const kept = await getFile(PHOTOS, cardName(id));
+  const want = cardSize(row.width, row.height);
+  if (kept && (!want.width || sized(kept, want))) return kept;
+  const whole = await getFile(PHOTOS, photoName(id));
+  if (!whole) return null;
+  let made;
+  try {
+    made = (await cardPhoto(whole)).bytes;
+  } catch (trouble) {
+    console.error(`builds: no card copy of ${id}: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    return whole;
+  }
+  await putFile(PHOTOS, cardName(id), made, "image/jpeg").catch((trouble) =>
+    console.error(`builds: the card copy of ${id} was not kept: ${String(trouble?.message || trouble).slice(0, 120)}`));
+  // Taken out, or its account deleted, while it was made: the copy goes
+  // with it, never left behind. Both delete the photo's files by name,
+  // the whole one with its copy, so a copy put after that finds the whole
+  // one gone (an account's rows go only after its files).
+  const now = await photoRow(id);
+  if (!now || now.removed_at || !(await stillThere(photoName(id)))) {
+    await deleteFiles(PHOTOS, [cardName(id)]).catch((trouble) => console.error(`builds: the card copy of ${id} outlived `
+      + `its photo and was not deleted (the daily sweep takes it): ${String(trouble?.message || trouble).slice(0, 120)}`));
+    return null;
+  }
+  return made;
+}
+
+/// Whether [name] is still in PHOTOS, asked without its bytes.
+async function stillThere(name) {
+  const answer = await reach(`storage HEAD ${PHOTOS}`, 30, `${project()}/storage/v1/object/${PHOTOS}/${name}`, {
+    method: "HEAD", headers: storageHeaders() });
+  if (answer.status === 400 || answer.status === 404) return false;
+  if (!answer.ok) throw new Error(`storage HEAD ${PHOTOS}: ${answer.status}`);
+  return true;
 }
 
 /// The file of any photo not taken out, for the site's owner only.
 export async function photoFileForAdmin(id) {
   const row = await photoRow(id);
   if (!row || row.removed_at) return null;
-  return getFile(PHOTOS, `${id}.jpg`);
+  return getFile(PHOTOS, photoName(id));
 }
 
 /// Step one of a photo: where the phone sends it. {upload, ticket, most}.
@@ -295,12 +424,16 @@ export async function keepPhoto(account, model, ticket, words, check) {
       throw trouble;
     }
     const id = newPhotoId();
-    await putFile(PHOTOS, `${id}.jpg`, made.bytes, "image/jpeg");
+    await putFile(PHOTOS, photoName(id), made.bytes, "image/jpeg");
+    // Its card's copy: if it does not go, the first card to ask makes it.
+    await putFile(PHOTOS, cardName(id), made.card.bytes, "image/jpeg").catch((trouble) =>
+      console.error(`builds: the card copy of ${id} was not kept: ${String(trouble?.message || trouble).slice(0, 120)}`));
     try {
       await db("build_photos", { method: "POST", body: { id, model, account, words, width: made.width,
         height: made.height, bytes: made.bytes.length, was: made.was } });
     } catch (trouble) {
-      await deleteFiles(PHOTOS, [`${id}.jpg`]).catch(() => {});
+      await deleteFiles(PHOTOS, [photoName(id), cardName(id)]).catch((gone) => console.error(`builds: the files of ${id}, `
+        + `not kept, were not deleted (the daily sweep takes them): ${String(gone?.message || gone).slice(0, 120)}`));
       if (/: 400$/.test(trouble.message)) {
         throw new BuildRefusal("that photo could not be kept: the most is three on a model, by accounts 13 or over", 422);
       }
@@ -323,9 +456,9 @@ export async function hidePhoto(account, id, on) {
   return { id, hidden: on };
 }
 
-/// The site's owner takes a photo out: its file deleted from storage, that
-/// one file and no other, and the row kept to say it was. What was
-/// reported about it is settled.
+/// The site's owner takes a photo out: its files deleted from storage, the
+/// photo and its card's copy and no other, and the row kept to say it was.
+/// What was reported about it is settled.
 export async function removePhoto(id, why) {
   const row = await photoRow(id);
   if (!row) throw new BuildRefusal("there is no photo at that id", 404);
@@ -333,14 +466,14 @@ export async function removePhoto(id, why) {
     await db(`build_photos?id=eq.${id}`, { method: "PATCH",
       body: { removed_at: new Date().toISOString(), removed_why: why || "Taken out by Brickworks" } });
   }
-  await deleteFiles(PHOTOS, [`${id}.jpg`]);
+  await deleteFiles(PHOTOS, [photoName(id), cardName(id)]);
   const reports = await db(`report_photos?photo=eq.${id}&select=report`);
   const ids = reports.map((one) => one.report);
   if (ids.length) {
     await db(`reports?id=in.(${ids.join(",")})&resolved_at=is.null`, { method: "PATCH",
       body: { resolved_at: new Date().toISOString(), resolution: "taken_out" } });
   }
-  return { id, removed: true, file: `${PHOTOS}/${id}.jpg`, reports: ids.length };
+  return { id, removed: true, file: `${PHOTOS}/${photoName(id)}`, card: `${PHOTOS}/${cardName(id)}`, reports: ids.length };
 }
 
 /// Which photo each of [reports] is about: report id -> photo row.
@@ -422,7 +555,7 @@ export function buildsPage(rows, { origin = "", people = {}, unshown = [] }) {
     photos: shown.map((row) => ({ id: row.id, model: row.model, model_name: String(row.shared_models?.name || ""),
       words: lineOf(row.words), width: Number(row.width) || null, height: Number(row.height) || null, at: row.at,
       by: people[row.account] ? { handle: people[row.account].handle, name: people[row.account].name } : null,
-      url: `${origin}/api/people?op=photo_file&id=${row.id}`, page: `${origin}/m/${row.model}#photo-${row.id}` })),
+      ...photoUrls(origin, row.id), page: `${origin}/m/${row.model}#photo-${row.id}` })),
     more: rows.length > BUILDS_PAGE,
   };
 }

@@ -211,7 +211,7 @@ class Yard:
                    GIT_COMMITTER_NAME="Xaxis", GIT_COMMITTER_EMAIL="william.neeley@gmail.com",
                    HOME=str(where / "home"), PATH="%s:%s" % (where / "bin", os.environ["PATH"]),
                    TRAIN_LIVE="https://brickworks.diy/app", STUB_LIVE=str(self.live),
-                   TRAIN_POLL="0.1", SHIP_POLL="0.1", SHIP_CDN_WAIT="0")
+                   TRAIN_POLL="0.1", SHIP_POLL="0.1", SHIP_CDN_WAIT="0", LIVE_DB_POLL="0.1")
         self.env = env
         self.git(where, "init", "-q", "--bare", "--initial-branch=main", str(where / "origin.git"))
         self.git(where, "init", "-q", "--initial-branch=main", str(self.r))

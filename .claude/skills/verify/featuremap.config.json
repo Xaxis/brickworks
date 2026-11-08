@@ -463,7 +463,7 @@
       "kind": "cli",
       "label": "download page check",
       "entry": "tools/web/download_check.mjs",
-      "reach": "node tools/web/download_check.mjs --manifest=FILE --shots=shots",
+      "reach": "node tools/web/download_check.mjs --shots=shots",
       "area": "release"
     },
     {
@@ -862,7 +862,7 @@
       "kind": "ui",
       "label": "model tree",
       "entry": "src/ui/outliner.gd",
-      "reach": "godot --path .  (under the parts bin in the left-hand column; its header, or View, Model tree)",
+      "reach": "godot --path .  (under the parts bin in the left-hand column; its header, or View, Panels, Model tree)",
       "area": "building"
     },
     {
@@ -1135,7 +1135,7 @@
       "kind": "api",
       "label": "/api/collection",
       "entry": "api/collection.js",
-      "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/collection   (401 signed out; GET, POST an import, PUT, DELETE with a session)",
+      "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/collection   (401 signed out; GET, POST an op or an import, DELETE with a session; PUT refused 409)",
       "area": "collection"
     },
     {
@@ -1178,6 +1178,13 @@
       "label": "stress view",
       "entry": "src/ui/stress_view.gd",
       "reach": "tools/probe.sh stress_probe && tools/probe.sh stress_view_probe   (by hand: View, Stress; point at a part; right-click a red one, Ask Claude to brace this)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "stud directions",
+      "entry": "src/ui/stud_map.gd",
+      "reach": "tools/probe.sh seeing2   (by hand: View, Stud directions; a session: view_board studs=true)",
       "area": "view"
     },
     {
@@ -2290,7 +2297,7 @@
       "kind": "lib",
       "label": "quitting cleanly",
       "entry": "src/render/worker_tasks.gd",
-      "reach": "godot --headless --path . --script src/dev/quit_probe.gd   (the app run twice, a 1,000-part model, a part taken off while its weigh is on a worker, quit by the close request and by File, Quit: exit 0 and the autosave has the part off; and quit with work going: Instructions or Save as with the Save dialog up, a booklet being drawn, a big model being read, the updater hashing: exit 0, no abort said; by hand: open a big file, close the window at once)",
+      "reach": "godot --headless --path . --script src/dev/quit_probe.gd   (the app run twice, a 1,000-part model, a part taken off while its weigh is on a worker, quit by the close request and by File, Quit: exit 0 and the autosave has the part off; and quit with work going: Instructions or Save as with the Save dialog up, a booklet being drawn, a big model being read, the updater hashing: exit 0, no abort said; by hand: open a big file, close the window at once)  /  tools/probe.sh dialog_close_probe  (windowed: the close button, sent as WM_DELETE_WINDOW, with nothing up, Import's file chooser, Save as, New's question and About up: each heard and quit within 2 s, the process out within 5 s, exit 0; the dialog still holds the window against a click and Ctrl+N beside it)",
       "area": "view"
     },
     {
@@ -4394,20 +4401,6 @@
       "area": "view"
     },
     {
-      "kind": "ui",
-      "label": "the booklet's page setup",
-      "entry": "src/ui/page_setup_dialog.gd",
-      "reach": "godot --path .  (B opens the timeline; Build, Booklet page, Page setup…: Paper (the booklet's own 269 x 199, A4, US Letter, A5), Orientation, Margins, Page colour, Picture behind, Step numbers, Parts pictures, Style and Keep as a style; then Instructions, Save as PDF; page_setup over MCP)",
-      "area": "view"
-    },
-    {
-      "kind": "cli",
-      "label": "pagesetup probe",
-      "entry": "src/dev/pagesetup_probe.gd",
-      "reach": "tools/probe.sh pagesetup -- --into=DIR [--against=DIR]   (windowed, on the GPU: booklet3's model printed on A4 upright over MCP and US Letter on its side by the dialog, every PDF page that size within 0.5 mm by pdfinfo, every step on a page inside the margins, the axle 4's 1:1 guide 32.0 mm, a page colour and a picture behind read off the PNG and PDF pages, kept over a save and an open, a style given to the gatehouse in 2 actions; --against=DIR the booklet's own page the same to the pixel as a run on the commit before; PROBE_SIZE=1400x900 with --dialog-only)",
-      "area": "view"
-    },
-    {
       "kind": "lib",
       "label": "path tracer",
       "entry": "src/render/path_tracer.gd",
@@ -4419,6 +4412,20 @@
       "label": "render queue",
       "entry": "src/ui/render_queue.gd",
       "reach": "godot --path .  (File, Render queue…, Add this view; render_queue over MCP)  /  tools/probe.sh pathtrace",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "saved views",
+      "entry": "src/ui/saved_views.gd",
+      "reach": "tools/probe.sh savedviews && PROBE_SIZE=1400x900 tools/probe.sh savedviews   (by hand: View, Viewpoint, Save this view… or Alt-V, a name; Alt-Shift-1 to 9 look from each again; save and open the model; Render's Camera lists them, its Preset keeps its choices; View, Viewpoint, Render each saved view, or the queue's Add each saved view; view_model and render_model view= over MCP)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "savedviews probe",
+      "entry": "src/dev/savedviews_probe.gd",
+      "reach": "tools/probe.sh savedviews [-- --keep=DIR]   (windowed, on the GPU, 1280 x 720 and PROBE_SIZE=1400x900: three views of the car saved by Alt-V, the model saved, closed and opened, each back by its Alt-Shift key within 0.1° and 0.1 LDU; a key each under every preset, none another command's; the queue's Add each saved view the same picture as the window turned there; view_model and render_model view= in one call; a Render preset saved and chosen again in 2 actions; then --older=DIR on an older checkout opens the file whole)",
       "area": "view"
     },
     {
@@ -4681,6 +4688,34 @@
       "area": "web"
     },
     {
+      "kind": "ui",
+      "label": "the booklet's page setup",
+      "entry": "src/ui/page_setup_dialog.gd",
+      "reach": "godot --path .  (B opens the timeline; Build, Booklet page, Page setup…: Paper (the booklet's own 269 x 199, A4, US Letter, A5), Orientation, Margins, Page colour, Picture behind (its kind and KB in the file, or Missing from the file), Step numbers, Parts pictures, Style with Remove… and Keep as a style; then Instructions, Save as PDF; page_setup over MCP, remove_style= too)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "pagesetup probe",
+      "entry": "src/dev/pagesetup_probe.gd",
+      "reach": "tools/probe.sh pagesetup -- --into=DIR [--against=DIR]   (windowed, on the GPU: booklet3's model printed on A4 upright over MCP and US Letter on its side by the dialog, every PDF page that size within 0.5 mm by pdfinfo, every step on a page inside the margins, the axle 4's 1:1 guide 32.0 mm, a page colour and a picture behind read off the PNG and PDF pages, kept over a save and an open, a style given to the gatehouse in 2 actions; the app's own model's page kept over a reopen, someone else's worked file's step notes kept byte for byte, a shared model saying its page, a picture the file lacks said missing, a big picture kept for every paper at 5 px a mm (a panorama to what a page shows), styles of one picture keeping it once, a replaced one's picture gone, a refused remove_style= call taking none, removed in the dialog and over MCP and gone in a new start, the old styles file untouched by looking, two windows on one user folder losing no picture; --against=DIR the booklet's own page the same to the pixel as a run on the commit before; PROBE_SIZE=1400x900 with --dialog-only)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "the booklet's own cover and colours",
+      "entry": "src/assembly/booklet_sheet.gd",
+      "reach": "godot --path .  (B opens the timeline; Build, Booklet page, Page setup…: Page tab Header, Footer; Cover tab Title, Under the title, Picture Choose… or The model, Line; Steps tab Step numbers, Number colour, Parts box frame, fill and corners, New parts outline, Usual colours; then Instructions, Save as PDF; page_setup title=, subtitle=, cover_line=, cover_picture_data=, header=, footer=, box_frame=, box_fill=, box_corners=, number_colour=, outline_colour= over MCP)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "booklook probe",
+      "entry": "src/dev/booklook_probe.gd",
+      "reach": "tools/probe.sh booklook -- --into=DIR [--against=DIR]   (windowed, on the GPU: the gatehouse's booklet with the designer's own cover (title, subtitle, picture, line) read back off the PNG and PDF pages, a header and footer on every page, the parts box in its frame colour with 0 px of the old frame or fill, the step numbers' and new parts' colours; kept over a save and an open, one undo; a style of the look given to booklet3's model in 2 actions, its own title and subtitle unchanged; blreview's save-path findings on tests/fixtures/booklook: Page setup… left open under MCP, an undo, another model and Clear; a sub-model's own PAGE_ lines; CRLF files with no end break; a later build's words; words cut and said; usual=true keeping the title; a CJK title on its page; the PDF naming letters it cannot print; a web title with <section; --against=DIR the booklet's own the same to the pixel as a run on the commit before; PROBE_SIZE=1400x900 with --dialog-only)",
+      "area": "view"
+    },
+    {
       "kind": "cli",
       "label": "booklet safe probe",
       "entry": "src/dev/booklet_safe_probe.gd",
@@ -4693,6 +4728,209 @@
       "entry": "tools/web/booklet_safe_flow.mjs",
       "reach": "node tools/web/booklet_safe_flow.mjs --url=http://127.0.0.1:PORT/index.html --out=DIR   (a local export served with --parts: a model whose page picture breaks out of its attribute opened, Instructions pressed; no flag set, the good picture shown, the policy first with script-src 'none', script put into the tab refused, Print prints)",
       "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "loose parts in my collection",
+      "entry": "src/ui/collection_dialog.gd",
+      "reach": "godot --path .  (Build, My collection…, What I own: the Loose parts row, a part by its number or words, a photo, Like this or the bin, its colour, how many, Add; each lot's count and Remove; Added by Claude with Keep them and Take back)",
+      "area": "collection"
+    },
+    {
+      "kind": "lib",
+      "label": "a session's loose parts over mcp",
+      "entry": "src/net/app_tools.gd",
+      "reach": "edit_collection over MCP: add= lots marked as the chat's (a desktop session naming none, its connection's), remove= its own, nothing to read back   (tools/relay_probe.sh mybricks)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
+      "label": "mybricks probe",
+      "entry": "src/dev/mybricks_probe.gd",
+      "reach": "tools/relay_probe.sh mybricks   (a window, 1280x720; PROBE_SIZE=1400x900; -- --shots=DIR: 12 lots by hand, What do I need? and What can I build?, the same 12 over MCP, a restart and another device, Take back, nothing lost in the window)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
+      "label": "mybricks api test",
+      "entry": "tools/web/mybricks_api.mjs",
+      "reach": "node tools/web/mybricks_api.mjs --url=http://127.0.0.1:8790   (relay_server running, .env sourced; BW_BYPASS for a preview: every change an op, sources kept, stale counts and a PUT refused 409, a session's apart, taken back lot for lot)",
+      "area": "collection"
+    },
+    {
+      "kind": "ui",
+      "label": "model size and weight",
+      "entry": "src/assembly/model_size.gd",
+      "reach": "tools/probe.sh modelinfo_probe   (the status bar beside the counts: \"4.5 × 10.8 studs, 15 plates high · 3.60 × 8.64 × 4.96 cm\", the plates without the top's studs, the centimetres with them; parts selected: theirs, after \"N selected\"; Properties with nothing selected: the size and \"About 52 g\", the status bar's grams; in_view over MCP: the size in centimetres and the weight. Windowed, pictures in shots/modelinfo/); tools/probe.sh weighsure_probe   (the weight after the counts, \"61 bricks · stands up · 52 g\", the model's in every frame, parts on their way counted; one style of number a line. Windowed, pictures in shots/weighsure/)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "build party",
+      "entry": "src/net/build_party.gd",
+      "reach": "https://brickworks.diy/app?view=<id> on two to four phones, Build together beside Build it: Start a build on one, the code typed and Join on the others, then Start building  (no account; api/together.js ?op=party_*)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "build party browser flow",
+      "entry": "tools/web/buildparty_flow.mjs",
+      "reach": "node tools/web/buildparty_flow.mjs --build=build/web --port=9921 --out=shots/buildparty_flow   (with .env sourced; or --url=<deployment> with BW_BYPASS)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "a model file's picture",
+      "entry": "src/render/model_thumbnail.gd",
+      "reach": "godot --headless --path . --thumbnail MODEL PICTURE [SIZE]   (the .deb's brickworks-thumbnailer MODEL PICTURE SIZE, as a file manager runs it)",
+      "area": "release"
+    },
+    {
+      "kind": "cli",
+      "label": "check the .deb's thumbnails",
+      "entry": "tools/release/thumbnail_check.py",
+      "reach": "tools/release/thumbnail_check.py dist/<version>/Brickworks-<version>-linux-amd64.deb --out=DIR --trace   (smoke of the .deb runs it)",
+      "area": "release"
+    },
+    {
+      "kind": "ui",
+      "label": "the model in your room",
+      "entry": "web/room.js",
+      "reach": "https://brickworks.diy/m/<id> (and /library/<id>, /library/set/<n> with an LDraw model) on a phone or tablet that can place a model in a room (AR Quick Look on an iPhone or iPad, WebXR immersive AR on Android): In your room on the picture's foot (web/model-page.js offerRoom) writes the model's GLB in the browser (web/glb.js, from /m/<id>/room.json, /m/<id>/v/<n>/room.json, /library/<id>/room.json: api/share.js ?op=room|set_room, api/_parts.js roomOf) and shows it in <model-viewer> (web/model-viewer-4.4.0, pinned, tools/web/vendor_model_viewer.sh) with Place it in your room; never offered on a computer",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "room GLB probe",
+      "entry": "src/dev/arview_probe.gd",
+      "reach": "tools/probe.sh arview_probe [-- FILE.mpd ...]   (headless; Export's GLB of the car, 6040-1, 10243-1, 42080-1 and 8880-1 against the page's, tools/web/arview_check.mjs, node by node)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "room browser flow",
+      "entry": "tools/web/arview_flow.mjs",
+      "reach": "node tools/web/arview_flow.mjs --out=DIR [--before=<checkout>]   (the stand-in's watchtower with the example car's file; with --url=<preview> and BW_BYPASS, preview_checks.sh arview: the deployment's first model)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "direct colour probe",
+      "entry": "src/dev/direct_colour_probe.gd",
+      "reach": "tools/probe.sh direct_colour_probe [-- --shots=DIR]   (headless; three bricks in 0x2FF0000, 0x200FF00, 0x20000FF through the 3D view, Export's GLB/glTF/OBJ, the site's GLB, the thumbnail, the shops' lists and the site's lists, tools/web/direct_colour_check.mjs)",
+      "area": "model-io"
+    },
+    {
+      "kind": "ui",
+      "label": "a link that opens playing",
+      "entry": "src/main.gd",
+      "reach": "https://brickworks.diy/m/<id>?motion=<name> of a model with motions of its own (Share, Opens: Playing ...): the viewer plays it over and over within 2 s of the model shown; its button stops it; an unknown name opens still and says so  (main._open_playing, Motions.for_link)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "playlink probe",
+      "entry": "src/dev/playlink_probe.gd",
+      "reach": "tools/probe.sh playlink_probe   (windowed: godot --path . --resolution 1280x720 --script src/dev/playlink_probe.gd; PROBE_SIZE=1400x900, 390x844, 1024x768)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "a session keeps a view over mcp",
+      "entry": "src/net/app_tools.gd",
+      "reach": "tools/probe.sh mcpsee3 && PROBE_SIZE=1280x720 tools/probe.sh mcpsee3   (save_view {\"name\": NAME} keeps the window's view as Save this view… does, answered with the model from there; in_view lists the views with their keys; its Alt-Shift key and render_model view= back within 0.1° and 0.1 LDU; remove=true; highlight=/xray= take 4070 quoted or not, on the MCP walk's Pods)",
+      "area": "mcp"
+    },
+    {
+      "kind": "cli",
+      "label": "a line placing a part at no size",
+      "entry": "src/dev/no_size_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/no_size_probe.gd   (a type-1 line whose matrix has no size, as Studio and LDCad write where a flexible part doubles back, places nothing (LdrModel.has_size): the 653 such lines of 7 OMR sets counted from their text and none read; 42125-1 opened with every part's place invertible, its gears read, its 4 such lines saved back byte for byte; a Build together state at no size refused)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "coming soon check",
+      "entry": "tools/web/coming_soon_check.mjs",
+      "reach": "node tools/web/coming_soon_check.mjs [--static] [--url=DEPLOYMENT] [--shots=DIR]",
+      "area": "release"
+    },
+    {
+      "kind": "ui",
+      "label": "compare two sets or models",
+      "entry": "src/ui/compare_view.gd",
+      "reach": "tools/probe.sh comparesets_probe -- --shots=DIR   (File, Compare two sets or models…: A and B each a set by its number, a saved model or the model open now; In both, Only in A and Only in B by part and colour, adding up to each side's pieces; Swap; the list to buy to build B from A to BrickLink, Rebrickable or LEGO® Pick a Brick)",
+      "area": "collection"
+    },
+    {
+      "kind": "lib",
+      "label": "parts compare",
+      "entry": "src/parts/parts_compare.gd",
+      "reach": "tools/probe.sh comparesets_probe   (PartsCompare.between: Collection.allocate's matching, own part and colour then another moulding; a set's spares and the open model's stickers and made parts not counted; a set under test refused)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
+      "label": "comparesets probe",
+      "entry": "src/dev/comparesets_probe.gd",
+      "reach": "tools/probe.sh comparesets_probe -- --shots=DIR",
+      "area": "collection"
+    },
+    {
+      "kind": "ui",
+      "label": "two fingers' twist",
+      "entry": "src/camera/cad_camera.gd",
+      "reach": "on a phone, a tablet or a touchscreen: two fingers turned about each other turn the view round the up by as much, about what is between them, once they have turned 10 degrees; a pinch and a slide as before  (CadCamera._twist, _two_fingers; tools/probe.sh twist_probe)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "twist probe",
+      "entry": "src/dev/twist_probe.gd",
+      "reach": "tools/probe.sh twist_probe; PROBE_SIZE=1024x768 tools/probe.sh twist_probe --tablet; PROBE_SIZE=1280x720 or 1400x900 tools/probe.sh twist_probe   (windowed, 390x844 by its header; pictures in shots/twist/)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "a set from a photo",
+      "entry": "src/ui/collection_dialog.gd",
+      "reach": "godot --path .  (Build, My collection…, What I own: Photo… beside Add sets, a photo of a box, a booklet's cover or a minifigure; asked of Brickognize's /predict/sets/ and /predict/figs/ at once, the top three offered, one pressed adds it; a minifigure kept among the sets by BrickLink's number and name, its parts not counted)",
+      "area": "collection"
+    },
+    {
+      "kind": "ui",
+      "label": "a set's missing parts",
+      "entry": "src/ui/collection_dialog.gd",
+      "reach": "godot --path .  (What I own: a set's Missing parts…, its lots each with how many are missing, All missing, None missing; Closest to whole, sets by how much is missing, What it needs; What do I need? for a set; the pool, What do I need? and What can I build? count only what is there, loose parts counting towards a set; op missing at /api/collection)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
+      "label": "mysets probe",
+      "entry": "src/dev/mysets_probe.gd",
+      "reach": "tools/relay_probe.sh mysets   (a window, 1280x720; PROBE_SIZE=1400x900; -- --shots=DIR: a box photo's set in 3 actions, 7140-1 with 12 missing, What do I need? for it, 5 found as loose parts, Closest to whole, a minifigure, the builds out there, the older collection lot for lot)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
+      "label": "mysets api test",
+      "entry": "tools/web/mysets_api.mjs",
+      "reach": "node tools/web/mysets_api.mjs --url=http://127.0.0.1:8790   (relay_server running, .env sourced: op missing from the counts shown, refusals changing nothing, marks kept through every other change and an older app's PUT, figs, the older collection lot for lot)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
+      "label": "print3mf probe",
+      "entry": "src/dev/print3mf_probe.gd",
+      "reach": "tools/probe.sh print3mf_probe [-- --hashes=FILE | --same-as=FILE]   (headless; the car as a 3MF from File, Export, 3D model… and export_model, read by tools/print3mf/check_3mf.py; a printed tile, a mirrored brick and a part with no BFC; the reader refusing a turned triangle, a colour that is none and a corner past its vertices; --hashes/--same-as compare the car's GLB and STL with another build's)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "3mf strict reader",
+      "entry": "tools/print3mf/check_3mf.py",
+      "reach": "uvx --with lib3mf==2.5.0 --with xmlschema==4.3.2 --with numpy==2.5.4 python3 -I tools/print3mf/check_3mf.py FILE.3mf [--json=OUT]   (the package, the core XSD tools/print3mf/3mf_core.xsd, the core's rules, lib3mf in strict mode; each object's name, colour, triangles and winding, and the build's box; exit 1 on any error)",
+      "area": "model-io"
     }
   ]
 }

@@ -89,3 +89,25 @@ html.view3d-full { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
 	:is(.model-page, .embed, .showcase) .view3d.shown, :is(.model-page, .embed, .showcase) .view3d-bar > span { transition: none; }
 }
+
+/* In your room (APP_UX5 #13, arview; web/model-page.js offerRoom,
+   web/room.js), offered only where the browser can place a model in a room
+   through the camera. Its button is on the picture's foot, on the left,
+   opposite View in 3D, on a layer the picture's own shape (.room-over), so
+   it sits on the picture whatever is under it, and under the 3D view
+   when that is open. The model in the room is web/room.css, asked for
+   with web/room.js on the tap. */
+.model-page .room-over {
+	position: absolute; top: 0; left: 0; width: 100%; aspect-ratio: 1200 / 630; z-index: 1; pointer-events: none;
+}
+.model-page .room-go {
+	position: absolute; left: var(--s-4); bottom: var(--s-4); display: inline-flex; align-items: center; gap: var(--s-2);
+	min-height: 40px; padding: 0 var(--s-4) 0 var(--s-3); border: 1px solid var(--line); border-radius: var(--r-pill);
+	background: var(--panel); color: var(--ink); font: inherit; font-weight: 650; font-size: var(--t-small);
+	box-shadow: 0 6px 18px -6px var(--shade); cursor: pointer; pointer-events: auto;
+}
+.model-page .room-go .icon { width: 18px; height: 18px; }
+.model-page .room-go:hover { background: var(--panel-hi); }
+.model-page .room-go:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+/* On a phone the picture is square (directory.css), and so is all of it. */
+@media (width < 600px) { .model-page .room-over { aspect-ratio: 1 / 1; } }

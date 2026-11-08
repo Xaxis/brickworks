@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe -->
 
 ## Sub-features
 
@@ -359,7 +359,7 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   shows its own. `V` is Select, `Q` Place; `Esc` closes whatever is up and goes
   back to Select with nothing in hand, in one press.
 - `properties panel` (`src/ui/inspector.gd`): in the right-hand column, under
-  the model tree (`docked panels`); View, Properties with the column folded,
+  the model tree (`docked panels`); View, Panels, Properties with the column folded,
   or showing the assistant, opens it on them (`SideDock.of`). Nothing
   selected, it is its header and the floor alone ("nothing selected",
   `Inspector.is_idle`) and the tree has the column. With a part selected it
@@ -480,7 +480,24 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   left holds the tree, the properties and the colours, and there is no right
   column. Each rail carries its icon and its name ("Parts", "Properties",
   "Assistant"), tinted with the accent down its edge while folded, and
-  switching is one click on it. Probe: `roomfit_probe` (1280 x 720,
+  switching is one click on it. The tools' column (Stress, Simulate, Motions,
+  the hose tool, Colour the hidden parts) takes its room out of the bin's, not
+  the model's (`Main._tool_room` in `_fit_bin`): beside Stress the bin is
+  four across at 1280 x 720, where it kept six and ran the row past the
+  window. And the model keeps its least room, 440 units (400 px at the
+  smallest the interface is drawn): where both columns show, one opened beside
+  the other and the tools' column that would leave it less folds the other
+  side's, as where they take turns (`Main.MODEL_LEAST`, `_room_beside`, in
+  `_column_opening`; at 1400 x 900 the bin, Stress and the assistant together
+  left it 393 px). On a tablet on its side the tools' column goes under the
+  model while, beside it, it would leave the model less than that, with a
+  drawer or the parts out, and back beside it when they go
+  (`Main._place_tool_column`, `_tool_crowds_model`): Stress and the
+  assistant's drawer left a 1024 x 768 tablet's model 233 px. Nothing the
+  person opened is put away for the room. `timelinefit_probe` (APP_UX6
+  timelinefit) opens them in two orders at 1280 x 720 and 1400 x 900, and
+  `timelinefit_tablet_probe` the tablet's own at 1024 x 768, and reads every
+  control along the window's edges inside it. Probe: `roomfit_probe` (1280 x 720,
   1400 x 900, 1600 x 900 and 1920 x 1080 in one window, made each size in
   turn: 24 parts in sight at the first and 40 at the rest, the selected
   part's boxes with the bin, the assistant beside the bin from 1400 px with
@@ -518,7 +535,7 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   points (`Phone.px`, about 1.85 units a point at 390): along the top the mark
   (`phone_app_menu`, published as `app_menu`: the desktop's app menu dropped
   under it, About to Back to brickworks.diy), the model's name, the
-  assistant's spark while it is on (`phone_assistant`, View, Assistant: its
+  assistant's spark while it is on (`phone_assistant`, View, Panels, Assistant: its
   drawer's rail shows only while it is open, so a phone that turned it on had
   no way to it), Undo and Redo (the name field gives way to them down to 80
   points, and past that Redo leaves the bar for More's Edit: at 150% a
@@ -559,7 +576,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   part (`Main._on_phone_hold`, `HOLD_MS`) brings its actions, the right-click
   menu's rows. Two fingers turn the view and pinch zooms
   (`CadCamera.phone`); a finger that lands on a part with Select moves it and
-  the view stays (`finger_taken`). The shared viewer keeps its own. The
+  the view stays (`finger_taken`). A second finger makes the gesture the
+  view's (`Main._second_finger`, touchfix): the first finger's press on a
+  part ends, a part it had begun to carry goes back with the selection as it
+  was, and its lifting is no click; on pre261 a twist or a pinch begun on a
+  part carried it off with the first finger and selected it (`twist_probe`
+  section 5). The shared viewer keeps its own. The
   notices strip is drawn for a finger (`Main._for_a_finger`). Proved by
   `tools/web/phone_flow.mjs` (preview check `phone`), at 390 x 844,
   430 x 932 and 844 x 390 at 3x with touch events: More, New; the parts sheet
@@ -684,7 +706,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   (`TouchSizing._grew`, on the panel's or the window's
   `minimum_size_changed`, fig257): Render's status line, told the picture's
   file name once it was downloaded, ran it and its Close off a 430-point
-  phone. A dialog already placed never moves under a finger
+  phone. A window or a panel freed while it shows never says it hid, so it
+  stays listed (a Save dialog cancelled is not one: Godot's Cancel hides it
+  before `SaveTo` frees it): every loop over the open dialogs takes each
+  untyped until it is checked, as a freed one put in a `Node` raised a script
+  error and laid out nothing after it (timelinefit's tablet; `twist_probe`
+  section 6). A dialog already placed never moves under a finger
   (`TouchSizing._place`, `finger_down`, press271): laid out again while a
   finger or a mouse button is down, it waits for the lift. Pressing Save or
   Rename takes the keys from the field, so the keyboard counted as gone and
@@ -940,7 +967,53 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   stability, how many are selected, the snap and turn step, and how big a
   stud is on screen. `whatsthis_probe` puts a brick at four places on the
   ground, one on another, a turned 1 x 2 plate, and two parts carried by
-  Ctrl+D, each read off the bar, clicked down and measured.
+  Ctrl+D, each read off the bar, clicked down and measured. Where the fields
+  would not all fit beside the line on the left, the zoom goes first, then
+  the snap and turn, then the size (`StatusBar._fit`), so none runs past the
+  window's edge.
+- `model size and weight` (`src/assembly/model_size.gd`, APP_UX5 modelinfo):
+  the model's size beside its counts on the status bar, the car's "4.5 ×
+  10.8 studs, 15 plates high · 3.60 × 8.64 × 4.96 cm" (the plates to the
+  highest part's body, an upright part's top studs left off, as a wall's
+  height is counted, so a tyre on its edge is 4½; the centimetres with
+  them, as a shelf needs), the baseplate left out; with parts selected, theirs, after "N
+  selected"; worked out again in the frame the model or the selection
+  changes, and only then. Properties with nothing selected says the same
+  size and "About 52 g", the status bar's grams; `in_view` says the size in
+  centimetres and the weight, and the selection's size. The weight is each
+  part's from its shape (`Stability.grams`): the catalogue lists no part's
+  weight. `tools/probe.sh modelinfo_probe` (windowed, 1400x900 by its
+  header, made 1280x720 too) judges every number within 0.1 mm of the box
+  round every vertex of the car's meshes, the bar the frame after Delete,
+  Ctrl+Z and Ctrl+Shift+Z, nothing on the bar cut with every column open
+  (nothing selected, a part selected, a brick in hand), Properties, in_view
+  over MCP, the words in de, fr and es, and Orthanc's 9,429 parts measured in
+  under a frame. By hand: open the car, read the foot of the window; click a
+  part; Properties with nothing selected.
+  - One weight, one style of number (APP_UX6 #4 weighsure). The weight after
+    the counts ("61 bricks · stands up · 52 g") is the status bar's own
+    label (`StatusBar._weight`), the model as it is in that frame
+    (`ModelSize.of_model`), not the stability check's sum, which was made at
+    most once a second on a worker and said an earlier model's. A part still
+    on its way (`ModelStore.awaited`, `ModelSize.coming`) is weighed and
+    measured from the catalogue, in the status bar, Properties and `in_view`
+    alike; while a model is laid the last weight stays, and one just opened
+    says none until it is down. `Stability.Report.summary` is the verdict
+    alone, and `Balance` weighs a part whose shape is not to hand from the
+    catalogue. A line of studs and plates is in quarters only when every
+    number on it is a whole quarter, else decimals (`StatusBar.amounts`, the
+    place in hand too); centimetres to two places. `tools/probe.sh
+    weighsure_probe` (windowed, 1280x720 by its header, PROBE_SIZE=1400x900
+    too) reads the bar in every frame as drawn: the car 52 g from the app's
+    start and from Open; the walk's wall of eight 1 x 4s built by the
+    search and clicks, its weight the same in every frame from the last
+    placed, through the ghost swept with the next part in hand and R on a
+    brick put down turned; every model `tested_models` opens weighed the
+    same with no shapes (a library of the catalogue alone: every part on its
+    way) and with all, and the balance's weight with half the shapes on a
+    worker; the car's size string, and every size and place said in one
+    style. By hand: build eight 1 x 4s quickly and watch the weight; it does
+    not move once the last is down.
 - `accessibility` (`src/ui/access.gd`, `src/ui/focus_guard.gd`, Settings,
   2026-10-24; docs/COMPETITIVE.md item 14). A screen reader hears every
   control by its name (Godot 4.7's AccessKit: `accessibility_name`, or a
@@ -1242,7 +1315,7 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   `user://shell.cfg`). Off, nothing of AI is anywhere in the window: no
   assistant column or rail (its key form, Sketch first and the connector's
   switch are in it), no Ask Claude in Edit or on a part and Ctrl+K does
-  nothing, no View, Assistant or Tools, Claude connector…, no brief or Design
+  nothing, no View, Panels, Assistant or Tools, Claude connector…, no brief or Design
   with Claude in Brick Art, no Claude in Account, the sign-in screen, My
   collection or About, and Build your first model without its last line about it. The connector is held
   off (`ClaudeConnector.hold`): nothing switches it on, a sign-in or a
@@ -1386,16 +1459,41 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   selection its mirror image left to right as the view sees it, in place, one
   step. A reflection is not something plastic can do, so each part goes where
   its reflection would and is turned to look reflected; a handed part (a
-  "Left"/"Right" in its name, a wing or wedge plate) becomes its other hand.
-  The plane is the selection's middle on that axis, on a half stud, so it
+  "Left"/"Right" in its name, a wing or wedge plate) becomes its other hand,
+  of several named so the one whose number is nearest, each of a pair the
+  other's (`Mirror.counterpart`: 3816b, a right leg, went to another mould's
+  3817 and came back as 3816). The plane is the selection's middle on that axis, on a half stud, so it
   lands on its own footprint. `tools/probe.sh mirror_probe` (headless, ~1
   min): all of Orthanc both ways, each of its figures, its first step on the
   timeline among its neighbours, the same two bricks built between theirs,
-  and a reflection onto a part not selected refused. The point a turn goes
+  and a reflection onto a part not selected refused; and a design's mirror
+  pattern making what Mirror makes (assistant.md, `shapes said as patterns`). The point a turn goes
   round (`Carry.pivot_of`) was the plane until 2026-10-19: chosen as much by
   the other axis, it put Orthanc's first step a stud over, onto the 2 x 8s
   beside it, and progress_check's mirror step said "no room to mirror it
-  there" on every build back to m87.
+  there" on every build back to m87. Which way a part is turned is read off
+  its shape, the corners of its surfaces (`Mirror.image`): the turn of its
+  own axes that lays it on its reflection, in its colours, connectors alike
+  (a bar or a hole through read from either end), about its corners' middle;
+  the other hand turned the way it lies on the reflection. The same is as a
+  person sees it: all but 2% of a part's corners in each colour (`Mirror.SAME`;
+  2401's cut 0.16 LDU off its diagonal, 1750's lip 0.5 LDU), so a print that
+  reads backwards or a hair parted on one side is not. Read off its connectors
+  alone, a headlight brick (4070) and a cheese slope (54200) faced the way they
+  were on a pod mirrored over MCP (seeing2, 2026-11-06). A part made in one hand
+  and the same no way round is turned as near as it goes, by a turn that is its
+  own undoing weighed both ways so it mirrors back where it was, and named,
+  never done in silence: the bar ("1 has no mirror image, turned as near as it goes: ...")
+  and mirror_parts' answer (`Builder.no_image`). A file's mirrored reference is
+  put down the same way (`Assemblies.unmirror`). `tools/probe.sh mirrorparts`
+  (windowed, `PROBE_SIZE=1280x720` too): the walk's pod by submit_design and
+  mirror_parts, every corner on its reflection to 0.01 LDU, the headlight's face
+  and the slope's fall out on both pods, one undo; the car's left half by Mirror
+  and by mirror_parts alike; a sample of the bin's shapes in three poses and
+  back, each 95% of its corners within an eighth of an LDU of its reflection
+  (`SEEN`, Mirror's cell: a file's two sides are often that far apart) or
+  named. `-- --library=DIR` (headless) does every shape the bin offers and
+  writes those with no mirror image.
 - `split and merge parts` (`src/assembly/split_merge.gd`, APP_UX2 gap 6): `Alt-S`
   splits the selection by Studio's rules (a plate, brick or tile into 1 x 1s, a
   1 x 1 brick into three plates, a slope into the 1-wide slope of its angle,
@@ -1478,7 +1576,7 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   lists the copies one step puts on in the order the booklet builds them,
   `LdrModel.write_tree` by each instance's `first`).
 - `model tree`: at the top of the right-hand column, over the properties
-  (View, Model tree, or its header) lists the
+  (View, Panels, Model tree, or its header) lists the
   model and its sub-assemblies inside one another with their part counts. A
   row selects its parts, a double-click edits inside it, `F2` renames it in
   place, its eye and lock hide and lock it whole, and dragging a row onto
@@ -2307,9 +2405,37 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   clear (`room_for`, as check_design clears them): a saddle on a horse's back
   had none where every set has it. `moulded_in_sets_probe -- all` by hand,
   upright animals that take a stud from underneath put where their sets have
-  them: 59 of 63 (7 before); the four left are the scorpion (30169), whose
+  them: 59 of 63 (7 before); the four left were the scorpion (30169), whose
   one receiver is a tube, and 10176-1's wolf, 4 LDU off its studs in the
-  file (the probe's `ACROSS`). `handbuild_probe -- only=build_from_a_booklet`
+  file (the probe's `ACROSS`). `animals_probe` (2026-11-06) is all 63 by
+  hand, 63 of 63: a creature whose every stud square stands in the wall of
+  an open tube it draws down to its underside takes its studs in the tube
+  (`occupancy.on_receivers`, in the mesh build: the scorpion, the Friends
+  foal, a spider; 53 parts' sockets moved, the rest already where the app
+  moved them, `Lbm.on_receivers`), and a set whose file stands an animal off
+  its studs (the wolf) counts the ghost on the studs it stands over. And every
+  saddle and barding on its horse, written as a session writes it (an LDU
+  low: a horse's back is an odd number of LDU up), is seated where its set
+  has it, 27 of 27 to 0.05 LDU (9 before), refused for nothing the check
+  does not refuse it for where its set has it: the seat takes the move that
+  seats the most of a part's connectors, not the nearest, which was the
+  sword's bar sliding in the saddle's clip (`Exact.seat_move`), a bar in its
+  clip alone is no seat while a stud or hole stands short of its mate
+  (`ExactCheck._meets_exactly`), and a seat may take a part as far into
+  another as it was into anything (a barding into its rider's leg, an LDU, as
+  it was into its horse). The seat leaves a part a bar holds where its set
+  has it: no seat onto a part one that slides is seated in, and none where
+  one that does not slide is seated already (`Exact._seating_most`); seating
+  10267-1's candle (37762), its bar down a flower plate's hollow stud, lifted
+  it 3 LDU into its flame and refused one of the 957 real sub-models, and the
+  probe builds it. The seat pairs a bar and a clip anywhere the two overlap
+  along their line, as BrickNet's `Exact.meets` does, not only within reach
+  of the bar's middle (`Exact._move_to_meet`, techfix 2026-11-07): 30374
+  stands in 3062b's hollow stud 36 LDU from its middle, and unpaired it was
+  moved off the stud onto a clip pressed 2 LDU into its side, which
+  `technic_hand_probe`'s "a clip on a bar" refuses by hand and by
+  check_design. Run it from a checkout whose catalogue was built
+  with on_receivers: on an older one the scorpion's three fail. `handbuild_probe -- only=build_from_a_booklet`
   99 of 140 across the grid, worse for none; `placing_probe` keeps 8643-1's
   bracket under its plate and 5762-1's clip plates on theirs.
 - `rests by its own shape` (`Builder._sinks_by`, 2026-10-17): a part

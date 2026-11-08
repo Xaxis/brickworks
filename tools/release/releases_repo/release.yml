@@ -22,7 +22,8 @@
 # over MCP, opens a model of each kind given as a double-click gives it, and
 # double-clicks two (Launch Services on a Mac, the shell on Windows, GIO on
 # Ubuntu), the second with the app open; on Windows it then uninstalls it.
-# On Ubuntu apt installs the .deb too, and removes it. macos-15-intel is a
+# On Ubuntu apt installs the .deb too, GNOME's thumbnail factory draws each
+# model through it in its real sandbox, and apt removes it. macos-15-intel is a
 # VM whose only GPU MoltenVK cannot draw on, so the app's launcher starts it
 # in the simpler graphics mode there, which its double-clicks check, with
 # the line said once; Apple silicon's stay in the full mode. The zips the
@@ -123,7 +124,7 @@ jobs:
       # The smoke unpacks the .deb into a clean home; this is apt's own
       # install on the whole system. A package's "./" entry once carried the
       # build's umask, which dpkg can give to /, so / is checked too.
-      - name: apt installs it, the system opens models with it, and apt removes it
+      - name: apt installs it, and the system opens models with it
         if: runner.os == 'Linux'
         run: |
           before=$(stat -c %a /)
@@ -138,6 +139,32 @@ jobs:
             [ "$(xdg-mime query default "$type")" = dev.brickworks.app.desktop ]
           done
           brickworks --headless -- --about | grep '^Brickworks '
+
+      # Files asks GNOME's thumbnail factory for a model's picture, and the
+      # factory runs the package's thumbnailer in bubblewrap: /usr, no
+      # home, no network, its seccomp filter. Ubuntu 24.04 refuses bwrap its
+      # user namespace, as on the machine that built the package, whose
+      # smoke ran a stand-in; here that is lifted and the real one runs it.
+      # /usr/bin/python3: setup-python's has no GObject bindings, and the
+      # check fails rather than check nothing.
+      - name: GNOME's thumbnailer draws each model in its own sandbox
+        if: runner.os == 'Linux'
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          sudo apt-get install -y -qq bubblewrap gir1.2-gnomedesktop-4.0 python3-gi >/dev/null
+          /usr/bin/python3 tools/release/thumbnail_check.py --installed --out=thumbnail-check
+
+      - uses: actions/upload-artifact@v4
+        if: always() && runner.os == 'Linux'
+        with:
+          name: thumbnails-${{ matrix.os }}
+          path: thumbnail-check/
+          if-no-files-found: warn
+
+      # Even when a picture failed: what apt leaves is checked all the same.
+      - name: apt removes it
+        if: ${{ !cancelled() && runner.os == 'Linux' }}
+        run: |
           sudo apt-get remove -y brickworks
           for left in /usr/lib/brickworks /usr/bin/brickworks \
                       /usr/share/applications/dev.brickworks.app.desktop; do

@@ -200,6 +200,8 @@ SAID_ALL = {"web/account.js": (), "web/first-steps.js": (), "web/set-page.js": (
             "web/start3d.js": (), "web/share-page.js": (), "web/share-sheet.js": (), "web/scroller.js": (),
             "web/report.js": (), "web/follow.js": (), "web/person.js": (), "web/designs.js": (), "web/pager.js": (),
             "web/embed.js": (), "tools/viewer/inline.js": (),
+            # In your room (APP_UX5 #13, arview).
+            "web/room.js": (),
             "web/challenge.js": (), "web/profile.js": (), "web/settings.js": (), "web/plan.js": (), "web/picture.js": (),
             "web/feedback.js": (), "web/follow.js": (), "web/kit.js": (),
             "web/feed.js": (), "web/notifications.js": (), "web/builds.js": (), "web/collections.js": (), "web/beta.js": (), "web/beta-hub.js": (),

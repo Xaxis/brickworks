@@ -370,9 +370,13 @@ try {
 
   // --- 5. Build with what I own -----------------------------------------------
   console.log("Bob keeps a collection, and the gallery says what he can build");
-  const kept = await api("/api/collection", { method: "PUT", token: bob.access_token, body: {
-    sets: [{ set: "10760-1", qty: 1, spares: false }, { set: "99999999-1", qty: 1, spares: false }],
-    parts: [{ part: "3001", colour: 4, qty: 3 }, { part: "3001", colour: 1, qty: 1 }, { part: "3001", colour: 14, qty: 1 },
+  // Kept as the app keeps it, one change at a time (mybricks2): the sets
+  // typed, then the loose lots counted.
+  await api("/api/collection", { method: "POST", token: bob.access_token, body: {
+    from: "sets", text: "10760-1 99999999-1", id: `disc-${rand}-sets` } });
+  const kept = await api("/api/collection", { method: "POST", token: bob.access_token, body: {
+    op: "lots", id: `disc-${rand}-lots`,
+    add: [{ part: "3001", colour: 4, qty: 3 }, { part: "3001", colour: 1, qty: 1 }, { part: "3001", colour: 14, qty: 1 },
       { part: "3001", colour: 15, qty: 1 }] } });
   check(`his collection kept: ${kept.status}, ${kept.body.sets?.length} sets and ${kept.body.parts?.length} lots of loose parts`,
     kept.status === 200 && kept.body.sets?.length === 2 && kept.body.parts?.length === 4);

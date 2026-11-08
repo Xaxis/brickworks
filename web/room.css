@@ -1,0 +1,29 @@
+/* In your room (APP_UX5 #13, arview): the model in a room, over a model's
+   picture, its shape (web/room.js, which asks for this on the tap; the
+   button that opens it is web/view3d.css .room-go). Until its GLB is
+   written, how far it has got along its foot (.room-bar) and in words
+   (.room-said, read out); then the model to turn, Place it in your room at
+   its foot on the right (.room-place, <model-viewer>'s ar-button), and back
+   to the picture at its head. */
+.model-page .room {
+	position: absolute; top: 0; left: 0; width: 100%; aspect-ratio: 1200 / 630; z-index: 3;
+	border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--picture-ground);
+}
+.model-page .room[hidden] { display: none; }
+.model-page .room-stage, .model-page .room-stage model-viewer { position: absolute; inset: 0; width: 100%; height: 100%; }
+.model-page .room-stage model-viewer { --poster-color: transparent; background: transparent; }
+.model-page .room-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; }
+.model-page .room-bar > span { display: block; width: 0; height: 100%; background: var(--accent); transition: width 160ms linear; }
+.model-page .room:not([data-state="loading"]) .room-bar { display: none; }
+.model-page .room-said {
+	position: absolute; left: var(--s-3); bottom: var(--s-3); max-width: calc(100% - 2 * var(--s-3)); margin: 0;
+	padding: 8px 14px; border-radius: var(--radius); background: var(--panel); color: var(--ink);
+	font-size: var(--t-small); box-shadow: var(--shadow-2);
+}
+.model-page .room[data-state="ready"] .room-said { bottom: auto; top: var(--s-3); max-width: calc(100% - 2 * var(--s-3) - 48px); }
+.model-page .room-said[hidden] { display: none; }
+.model-page .room [data-close] { position: absolute; top: var(--s-3); right: var(--s-3); background: var(--panel); box-shadow: 0 1px 3px var(--shade); }
+.model-page .room [data-close]:hover { background: var(--panel-hi); }
+.model-page .room .room-place { position: absolute; right: var(--s-3); bottom: var(--s-3); }
+/* On a phone the picture is square (directory.css), and so is this. */
+@media (width < 600px) { .model-page .room { aspect-ratio: 1 / 1; } }

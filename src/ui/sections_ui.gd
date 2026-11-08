@@ -472,8 +472,12 @@ func write_list(kind: String, asking: bool = false) -> String:
 		return ""
 	if kind == "bricklink":
 		var made: Dictionary = ShopLists.bricklink_xml(stock, shell.library)
-		return exports._give(str(made["text"]), to.get_file(), "application/xml",
+		var given: String = exports._give(str(made["text"]), to.get_file(), "application/xml",
 			to.get_base_dir())
+		if given.begins_with("wrote ") or given.begins_with("downloaded "):
+			if not ShopLists.stand_in_words(made).is_empty():
+				given += " — " + ShopLists.stand_in_words(made)
+		return given
 	return exports._give(stock.to_text(_evaluated_name), to.get_file(), "text/plain",
 		to.get_base_dir())
 

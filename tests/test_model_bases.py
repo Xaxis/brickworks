@@ -156,3 +156,26 @@ def test_the_pages_and_the_stand_in_ask_the_same_functions() -> None:
     assert 'call("/api/share?op=bases", { method: "POST", body: { model: id, bases } })' in model
     checks = (ROOT / "tools/release/preview_checks.sh").read_text()
     assert '[based_on]="tools/web/based_on_flow.mjs --url=$P --out=$S/${TAG}_based_on"' in checks
+
+
+def test_a_set_is_found_by_its_name() -> None:
+    # The dialog's box offers the sets a designer may mean as they type a
+    # set's name (socialtails): LEGO's 1999 X-wing Fighter, 7140-1, by its
+    # name, a set of that whole name before one that only has it in its own.
+    got = node("""
+import { FOUND_MOST, setsFound } from "./api/_bases.js";
+const of = (q) => setsFound(q).map((one) => one.set);
+console.log(JSON.stringify({ most: FOUND_MOST, xwing: setsFound("X-wing Fighter"), lower: of("x wing fighter"),
+  number: of("7140"), short: of("x"), none: of("  ")}));
+""")
+    xwing = [one["set"] for one in got["xwing"]]
+    assert got["most"] == 8 and 1 <= len(xwing) <= 8
+    assert "7140-1" in xwing and "7140-1" in got["lower"]
+    found = got["xwing"][xwing.index("7140-1")]
+    assert found == {"set": "7140-1", "name": "X-wing Fighter", "year": 1999, "parts": 285, "theme": "Star Wars",
+                     "picture": "/library/set/7140-1.webp"}
+    names = [one["name"].lower() for one in got["xwing"]]
+    whole = [name == "x-wing fighter" for name in names]
+    assert whole == sorted(whole, reverse=True), names
+    assert got["number"][0] == "7140-1"
+    assert got["short"] == [] and got["none"] == []

@@ -153,6 +153,11 @@ const COPY_META := "0 !BRICKWORKS COPY"
 ## written in the steps they are built in: every LDraw reader builds the
 ## order shown, and this app reads each copy back as it was (stepskeep).
 const IN_META := "0 !BRICKWORKS IN"
+## The unit step of such a copy (AuthorSteps reads it from here): kept here,
+## where the file is read, so reading one names no class of the app's and
+## compiles alone, which is what a file browser's picture of a model waits
+## for (ModelThumbnail).
+const IN_PARENT := -2
 ## Every FILE section's text but the model's own, by its FILE name in lower
 ## case: what a part drawn from the file's sections is built from
 ## (CustomParts.begin_skins), LDCad's donor sections among them.
@@ -325,7 +330,14 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 		if part_id.ends_with(".dat") or part_id.ends_with(".ldr"):
 			part_id = part_id.substr(0, part_id.length() - 4)
 
-		var read := Placement.new(part_id, color, to_transform(numbers), step)
+		var at: Transform3D = to_transform(numbers)
+		if not has_size(at.basis):
+			# It places nothing: left out as a line of no colour is, and the
+			# file keeps it (SourceFile writes back every line no part is
+			# read from). Its COPY_META was its own.
+			copy_next = 0
+			continue
+		var read := Placement.new(part_id, color, at, step)
 		read.line = index
 		read.copy = copy_next
 		read.within = within
@@ -351,6 +363,19 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 		model.embedded_parts[key.get_file()] = body
 		model.submodels.erase(_key(file_name))
 	return model
+
+
+## Whether a part turned by [param basis] has size: it goes some way along
+## each of its own axes. Studio and LDCad write a matrix with a row or a
+## column of zeros where a flexible part's path doubles back: a segment of
+## 42125-1's flexible axles and hoses, 639 of 42108-1's rope, 653 lines in 7
+## of the 1,576 sets in vendor/omr, each with nothing of the part drawn.
+## Read as parts, there was no inverse of where they stood: Mechanism asked
+## for one of every part to read what rests on studs, and grab_probe logged
+## 15 to 20 engine errors from 42125-1 alone. Those sets place every other
+## part at a thousandth of its volume or more; a millionth is between.
+static func has_size(basis: Basis) -> bool:
+	return absf(basis.determinant()) > 0.000001
 
 
 static func _is_file_line(line: String) -> bool:
@@ -409,9 +434,7 @@ static func _colour(token: String) -> int:
 		return text.to_int()
 	if text.to_lower().begins_with("0x2") and text.length() == 9:
 		# Kept as the number it is, so it survives being written out
-		# again. The palette has no entry for it and whatever draws it
-		# will fall back, which is a visible approximation rather than a
-		# silent one.
+		# again; whatever draws or writes it takes its RGB (direct_rgb).
 		return text.hex_to_int()
 	return UNREADABLE_COLOUR
 
@@ -420,6 +443,14 @@ static func _colour(token: String) -> int:
 ## than an index into the palette.
 static func is_direct_colour(code: int) -> bool:
 	return code >= 0x2000000
+
+
+## The colour a direct colour is: 0x2RRGGBB's RGB, opaque. Every drawing and
+## every writer takes it from here (PartLibrary.color, ModelThumbnail). It is
+## only ever opaque: LDraw 0.27's other direct forms (0x3RRGGBB see-through,
+## 0x4 to 0x7 dithered) are not read at all (_colour), so none is ever held.
+static func direct_rgb(code: int) -> Color:
+	return Color.hex((code & 0xFFFFFF) << 8 | 0xFF)
 
 
 ## The name a reference and a FILE line have in common: no directory, no
@@ -653,7 +684,7 @@ func _built_within(within: String, unit: String, copies: Dictionary, made: Dicti
 		copies[copy] = true
 		path = copy if path.is_empty() else "%s/%s" % [path, copy]
 		made[said] = path
-		unit_steps[path] = AuthorSteps.IN_PARENT
+		unit_steps[path] = IN_PARENT
 	return path
 
 
@@ -760,7 +791,7 @@ static func write_tree(
 	parts: Dictionary = {}
 ) -> String:
 	var in_parent := func(path: String) -> bool:
-		return int(unit_steps.get(path, -1)) == AuthorSteps.IN_PARENT
+		return int(unit_steps.get(path, -1)) == IN_PARENT
 	# The section a path's own parts are written in, and the path within it.
 	var home_of := func(path: String) -> String:
 		while not path.is_empty() and in_parent.call(path):

@@ -119,6 +119,23 @@ Ubuntu. Every one of them opens its own documents by double-click.
 - **With the app already open,** the model opens in a window of its own, as
   a second tab of the app does, so nothing open is replaced.
 
+### A model's picture in the file manager
+- **Gap, fixed on Linux (.deb).** A folder of models showed the type's icon
+  for each. The .deb now carries a GNOME thumbnailer entry
+  (`/usr/share/thumbnailers/dev.brickworks.app.thumbnailer`) for .ldr, .mpd
+  and .io, which Files reads, as do the file managers that read GNOME's
+  entries (Nemo, Caja, Thunar through tumbler), and
+  `/usr/bin/brickworks-thumbnailer`, which runs the app headless with
+  `--thumbnail MODEL PICTURE SIZE` in a data folder of its own. The picture
+  is the app's corner view, drawn on the CPU (a thumbnailer runs in a
+  sandbox with no display or graphics card), on a clear ground; parts the
+  library has not got are left out, and a file with none it knows keeps the
+  icon. .lxf is not drawn: LDD's own files are better pictured by LDD.
+  The release workflow's Ubuntu run proves it in GNOME's real sandbox,
+  which the machine that builds the package cannot make.
+- **Next:** Windows' thumbnail provider (an IThumbnailProvider the installer
+  registers); the Mac's Quick Look extension is parked.
+
 ### The icon
 - **Had already:** macOS's .icns at every size from 16 to 1024 (Godot makes
   it), and Windows's in the .exe.

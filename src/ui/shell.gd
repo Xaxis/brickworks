@@ -72,6 +72,16 @@ var _library_dialog: Control = null
 var see_inside: SeeInside
 ## View, Stress: src/ui/stress_view.gd.
 var stress: StressView
+## View, Stud directions: src/ui/stud_map.gd (APP_UX5 seeing2), made the
+## first time something asks (Later), as the dialogs below are: by the
+## command, or a session's view_board studs. Null in [member _stud_map]
+## until then, so the first screen never compiles it.
+var stud_map: Node:
+	get:
+		if _stud_map == null and model_area != null:
+			_make_stud_map()
+		return _stud_map
+var _stud_map: Node = null
 # The dialogs below are each made the first time something asks for it
 # (Later), and null in its _ field until then: their 0.1 MB of code was
 # compiled before a first visit's window was drawn (leaves2, 2026-11-05).
@@ -183,19 +193,24 @@ const ALT := KEY_MASK_ALT
 ## views and the model's turns to View's Viewpoint, the part in hand's turn
 ## and tip to Tools beside Place, Comments to File beside Share and Build
 ## together, My collection and What can I build? beside Library, and What
-## do I need? beside the parts list.
+## do I need? beside the parts list. Then Build › Booklet page reached 27
+## rows with Page setup…, and View 482 of 470 units with Stud map, so the
+## step's turns, tilts and zoom went into Booklet page's own Step's view,
+## and the five panels into View › Panels (menurows).
 const MENUS: Array = [
 	["File", ["new", "new_window", "open", "library", "collection", "collection_build", ">recent",
-		">import", "-", "save", "save_as", "versions", "compare", "-", "share", "together",
+		">import", "-", "save", "save_as", "versions", "compare",
+		# comparesets (APP_UX6 #7): any two of a set, a saved model or the open one.
+		"compare_sets",
+		"-", "share", "together",
 		"comments", ">export", "render", "render_queue", "-", "clear", "quit"]],
 	["Edit", ["undo", "redo", ">history", "-", "cut_parts", "copy", "paste", "duplicate",
 		"pattern", "delete", "-", "select_all", "select_none", ">select_by", "-", "hide",
 		"isolate", "show_all", "lock", "unlock", "-", "paint", "replace", "mirror"]],
 	["View", [">viewpoint", "mode_orbit", "mode_pan", "mode_zoom",
 		"fit", "fit_model", "fit_selection",
-		"ortho", "grid", ">floor", "-", "cut", ">cut_away", "xray", "stress", "-", "panel_parts",
-		"panel_assistant", "panel_properties", "panel_outliner", "panel_keys", "-",
-		"split_view", "full_screen"]],
+		"ortho", "grid", ">floor", "-", "cut", ">cut_away", "xray", "stress", "stud_map", "-",
+		">panels", "split_view", "full_screen"]],
 	["Build", ["timeline", "step_close", ">steps", "pose", "instructions", ">booklet", "parts_list",
 		"collection_need", "-", "make_submodel", "leave_submodel", "enter_assembly",
 		"leave_assembly", "rename_assembly", "make_unique", "-", "suggest_sections",
@@ -252,20 +267,33 @@ const SUBMENUS: Dictionary = {
 	"select_by": ["select_colour", "select_part", "select_alike", "select_find",
 		"select_connected", "select_submodel", "select_inverse"],
 	"viewpoint": ["view_default", "view_front", "view_back", "view_left", "view_right",
-		"view_top", "view_bottom", "view_iso", "-", "turn_left", "turn_right"],
+		"view_top", "view_bottom", "view_iso", "-", "turn_left", "turn_right",
+		# savedviews: the views kept with the model (SavedViews), each row
+		# its view's name once there is one.
+		"-", "save_view", "saved_view_1", "saved_view_2", "saved_view_3", "saved_view_4",
+		"saved_view_5", "saved_view_6", "saved_view_7", "saved_view_8", "saved_view_9",
+		"-", "render_views"],
 	"cut_away": ["cut_x", "cut_y", "cut_z", "-", "cut_box", "cut_sphere", "cut_cylinder",
 		"cut_grow", "cut_shrink", "-", "cut_flip", "cut_ghosts"],
 	# Next step (E) is in Build itself, over these.
 	"steps": ["step_prev", "step_next", "step_to", "step_new", "-", "step_earlier", "step_later",
 		"step_merge", "step_delete"],
-	"booklet": ["booklet_turn_left", "booklet_turn_right", "booklet_tilt_up",
-		"booklet_tilt_down", "booklet_this_view", "booklet_usual_view", "-", "booklet_zoom_in",
-		"booklet_zoom_out", "booklet_bigger", "booklet_smaller", "-", "booklet_new_page",
+	# The step's picture first: its view, folded (menurows), and its size on
+	# the page.
+	"booklet": [">booklet_view", "booklet_bigger", "booklet_smaller", "-", "booklet_new_page",
 		"booklet_alone", "booklet_parts", "booklet_callout", "booklet_per_page", "-",
 		"booklet_lay_out", "booklet_highlight",
 		"-", "booklet_pull", "booklet_colours", "booklet_actual_size", "booklet_preview",
 		# pagesetup: the booklet's page, the person's way (BookletSheet).
 		"-", "booklet_page_setup"],
+	# The window's panels, each shown or put away: set once a session, so
+	# folded beside Split view and Full screen (menurows).
+	"panels": ["panel_parts", "panel_assistant", "panel_properties", "panel_outliner",
+		"panel_keys"],
+	# Where the step's picture is seen from: its turns, its tilts and its zoom.
+	"booklet_view": ["booklet_turn_left", "booklet_turn_right", "booklet_tilt_up",
+		"booklet_tilt_down", "booklet_this_view", "booklet_usual_view", "-", "booklet_zoom_in",
+		"booklet_zoom_out"],
 	"floor": ["floor_16", "floor_32", "floor_48", "floor_custom", ">floor_colour", "-",
 		"floor_grid", "floor_none", "-", "floor_part", "floor_default"],
 	"floor_colour": ["floor_colour_2", "floor_colour_10", "floor_colour_288",
@@ -277,9 +305,9 @@ const SUBMENUS: Dictionary = {
 ## A submenu's own words, as its row in the menu above says them.
 const SUBMENU_WORDS: Dictionary = {"recent": "Open recent", "import": "Import",
 	"export": "Export", "history": "History", "select_by": "Select by",
-	"viewpoint": "Viewpoint", "cut_away": "Cut away by",
-	"steps": "Build steps", "booklet": "Booklet page", "floor": "Floor",
-	"floor_colour": "Baseplate colour"}
+	"viewpoint": "Viewpoint", "cut_away": "Cut away by", "panels": "Panels",
+	"steps": "Build steps", "booklet": "Booklet page", "booklet_view": "Step's view",
+	"floor": "Floor", "floor_colour": "Baseplate colour"}
 
 
 ## Everything put on screen: the menus into the bar, the toolbar under it,
@@ -382,6 +410,9 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	over_model.add_child(see_inside.bar)
 	see_inside.below.append(app.get("_hint"))
 	see_inside.below.append(app.get("_steps"))
+	# Inside the model's room, clear of the columns beside it.
+	if app.has_method("_model_rect"):
+		see_inside.room_of_model = func() -> Rect2: return app.call("_model_rect")
 	# View, Stress's legend, count and weakest joints: Main puts it in the
 	# column beside the model, with the tools' panels.
 
@@ -1038,12 +1069,17 @@ func _define() -> void:
 	_add("compare", "Compare with…", 0, func() -> void: versions.open(true),
 		func() -> bool: return not store.versions().is_empty(),
 		"What changed since one of this model's saves: added green, removed red, moved amber")
+	# comparesets (APP_UX6 #7): Compare's parts sheet (src/ui/compare_view.gd,
+	# src/parts/parts_compare.gd), as Rebrickable's set compare.
+	_add("compare_sets", "Compare two sets or models…", 0, func() -> void: compare.open_parts(),
+		Callable(), "The parts a set, a saved model or this one shares with another, the parts "
+		+ "in only one, and what to buy to build one from the other")
 	_add("export_ldraw", "LDraw model (.ldr, or .mpd with its sub-models)", 0,
 		func() -> void: await bar._on_export(), something)
 	_add("export_io", "BrickLink Studio model (.io)", 0,
 		func() -> void: await app.get("_exports").studio_io(true), something)
 	# src/ui/exports.gd, src/parts/mesh_export.gd.
-	_add("export_3d", "3D model (.glb, .gltf, .obj, .stl)…", 0,
+	_add("export_3d", "3D model (.glb, .gltf, .obj, .stl, .3mf)…", 0,
 		func() -> void: app.get("_exports").ask_model_3d(), something,
 		"The model as a 3D file for Blender, AR or a 3D printer")
 	_add("export_picture", "Picture of the model (.png)", 0,
@@ -1258,7 +1294,7 @@ func _define() -> void:
 	# pagesetup: the booklet's paper, margins, colour and sizes (BookletSheet,
 	# src/ui/page_setup_dialog.gd).
 	_add("booklet_page_setup", "Page setup…", 0, open_page_setup, Callable(),
-		"The booklet's paper (A4, US Letter, A5 or its own), either way up, its margins, a colour or a picture behind every page, the step numbers' and parts' sizes; kept with the model, and as a style by a name for another")
+		"The booklet's paper (A4, US Letter, A5 or its own), either way up, its margins, a colour or a picture behind every page, its cover, header and footer, the step numbers' and parts boxes' sizes and colours; kept with the model, and as a style by a name for another")
 	# src/ui/flex_tool.gd.
 	_add("flex", "Hose, tube or chain…", 0, func() -> void: app.call("open_flex"), Callable(),
 		"Lay a hose, a tube, a string or a chain from one connector to another, along a curve")
@@ -1352,11 +1388,34 @@ func _define() -> void:
 		"Every part tinted by how near its weakest joint is to letting go: red past its "
 		+ "studs' working load, amber within twice it")
 	_ticked("stress", func() -> bool: return stress.on)
+	# View, Stud directions (APP_UX5 seeing2). It and Stress draw with one
+	# layer, so turning it on turns Stress off, and Stress on turns it off.
+	_add("stud_map", "Stud directions", 0, func() -> void:
+		var map: Node = stud_map
+		if not map.on and stress.on:
+			stress.set_on(false)
+		map.set_on(not map.on),
+		func() -> bool: return _stud_map_on() or world.brick_count() > store.scenery.size(),
+		"Every part coloured by where its studs point: up, down, or to the front, back, left or right")
+	_ticked("stud_map", _stud_map_on)
 	# Shift: Q alone takes the last part back into hand (Tools, Place).
 	_add("turn_left", "Turn the model left", SHIFT | KEY_Q,
 		func() -> void: app.call("_turn_model", -1), something)
 	_add("turn_right", "Turn the model right", SHIFT | KEY_E,
 		func() -> void: app.call("_turn_model", 1), something)
+	# savedviews (APP_UX5 #8): views kept with the model (src/ui/saved_views.gd),
+	# their keys Keymap's.
+	_add("save_view", "Save this view…", 0, func() -> void: saved_views().ask(), something,
+		"Keep where you are looking from with the model, by a name, to look from again with a key and to render")
+	for place: int in SavedViews.KEYED:
+		var index: int = place
+		_add(SavedViews.COMMAND + str(place + 1), "Saved view %d" % (place + 1), 0,
+			func() -> void: saved_views().go(index),
+			func() -> bool: return index < world.saved_views.size(),
+			"Look from the model's saved view %d again, as it was saved" % (place + 1))
+	_add("render_views", "Render each saved view", 0, render_saved_views,
+		func() -> bool: return not world.saved_views.is_empty() and bool(something.call()),
+		"Queue a picture from each view saved with the model, with Render's settings")
 	_add("panel_parts", "Parts bin", 0, func() -> void:
 		(app.get("_bin_dock") as SideDock).toggle())
 	_ticked("panel_parts", func() -> bool: return (app.get("_bin_dock") as SideDock).is_open())
@@ -1828,6 +1887,8 @@ func _refresh(popup: PopupMenu) -> void:
 			continue
 		var name: String = _ids[id]
 		_show_key(popup, index, _commands[name])
+		if name.begins_with(SavedViews.COMMAND):
+			_name_saved_view(popup, index, name)
 		popup.set_item_disabled(index, not can(name))
 		var on: int = ticked(name)
 		if on >= 0:
@@ -1837,6 +1898,46 @@ func _refresh(popup: PopupMenu) -> void:
 func _on_id(id: int) -> void:
 	if id >= 0 and id < _ids.size():
 		run(_ids[id])
+
+
+# -- savedviews (APP_UX5 #8): the views kept with the model -----------------------
+
+## View › Viewpoint › Save this view…, and what looks from a saved view
+## (SavedViews), made the first time one is asked for.
+var _views: SavedViews = null
+
+
+func saved_views() -> SavedViews:
+	if _views == null:
+		_views = SavedViews.new()
+		_views.world = world
+		_views.camera = camera
+		_views.say = bar.say
+		_views.changed = func() -> void: store.touch()
+		add_child(_views)
+	return _views
+
+
+## A saved view's row: its view's name, drawn as the person wrote it, or
+## "Saved view 4" while the model keeps no view there.
+func _name_saved_view(popup: PopupMenu, index: int, name: String) -> void:
+	var place: int = int(name.trim_prefix(SavedViews.COMMAND)) - 1
+	var views: Array = world.saved_views if world != null else []
+	var named: bool = place >= 0 and place < views.size()
+	popup.set_item_text(index, str((views[place] as Dictionary)["name"]) if named
+		else (_commands[name] as Command).words)
+	popup.set_item_auto_translate_mode(index, Node.AUTO_TRANSLATE_MODE_DISABLED if named
+		else Node.AUTO_TRANSLATE_MODE_INHERIT)
+
+
+## View › Viewpoint › Render each saved view: a picture from each queued in
+## File › Render queue…, with Render's settings, and the queue opened.
+func render_saved_views() -> void:
+	var queue: Node = (load("res://src/ui/render_queue.gd") as GDScript).call("of", app)
+	var added: Array = queue.call("add_views")
+	queue.call("open")
+	bar.say(("queued a picture from each of the %d saved views" % added.size()) if not added.is_empty()
+		else str(queue.get("last_refusal")).to_lower().trim_suffix("."))
 
 
 var _recent: Array[ModelStore.Entry] = []
@@ -3127,32 +3228,62 @@ func open_page_setup() -> void:
 ## booklet's own page; "style" a style kept by that name, its page given
 ## whole; "picture_data" (base64) a picture behind every page, "picture"
 ## its name, or "picture" "" to take it off; "save_as" a name to keep the
-## page as a style for another model. One undo, saved with the model.
-## Returns what was done, or why nothing was.
+## page as a style for another model; "remove_style" a style's name, taken
+## away (the models given it keep their page). One undo, saved with the
+## model. Returns what was done, or why nothing was. (booklook) The cover's
+## picture of the person's own the same: "cover_picture_data", its name
+## "cover_picture", "" for the model drawn; and the words and colours
+## BookletSheet.change takes.
 func page_setup(fields: Dictionary) -> String:
 	if read_only:
 		return "this model is open to look at, not to change"
+	# The whole call is checked before anything is done: a style taken away
+	# by a call refused for another field stayed gone (ps2review).
+	var gone: String = str(fields.get("remove_style", "")).strip_edges()
+	if fields.has("remove_style") and not BookletSheet.styles().has(gone):
+		var left: Array = BookletSheet.styles().keys()
+		left.sort()
+		return "no page style is called \"%s\"" % gone \
+			+ ("; kept: %s" % ", ".join(left) if not left.is_empty() else "")
+	if fields.has("save_as") and str(fields["save_as"]).strip_edges().is_empty():
+		return "a style needs a name"
+	if fields.has("remove_style") and fields.size() == 1:
+		var failed: String = BookletSheet.remove_style(gone)
+		return failed if not failed.is_empty() else "the page style \"%s\" removed" % gone
 	var was: BookletSheet = BookletSheet.of(world)
 	var sheet: BookletSheet = BookletSheet.of(world)
 	var pictures: Dictionary = BookletLooks.images(world).duplicate()
 	var given: Dictionary = fields.duplicate()
 	var words: String = ""
 	if bool(given.get("usual", false)):
+		# The booklet's own look; the model's own title and the line under
+		# it stay, as they do when a style is given (BookletSheet.OWN).
 		sheet = BookletSheet.new()
+		for field: String in BookletSheet.OWN:
+			sheet.set(field, was.get(field))
 		words = "the booklet's own page"
+	var style_lost: bool = false
 	if given.has("style"):
-		var styles: Dictionary = BookletSheet.styles()
 		var name: String = str(given["style"])
-		if not styles.has(name):
-			return ("no page style is called \"%s\"; kept: %s" % [name, ", ".join(styles.keys())]) \
+		var style: Dictionary = BookletSheet.style(name)
+		if style.is_empty():
+			var styles: Array = BookletSheet.styles().keys()
+			styles.sort()
+			return ("no page style is called \"%s\"; kept: %s" % [name, ", ".join(styles)]) \
 				if not styles.is_empty() else "no page style is kept yet: save_as= keeps this page as one"
-		var style: Dictionary = (styles[name] as Dictionary).duplicate()
 		sheet = BookletSheet.new()
-		if style.has("picture_data") and style.has("picture"):
-			pictures[str(style["picture"])] = str(style["picture_data"])
-		else:
-			style.erase("picture")
-		style.erase("picture_data")
+		# A style is a look: the model's own title and the line under it stay.
+		for field: String in BookletSheet.OWN:
+			sheet.set(field, was.get(field))
+		style_lost = bool(style.get("picture_lost", false)) or bool(style.get("cover_lost", false))
+		for kept: Array in [["picture", "picture_data"], ["cover_picture", "cover_picture_data"]]:
+			if style.has(kept[1]) and style.has(kept[0]):
+				pictures[str(style[kept[0]])] = str(style[kept[1]])
+			else:
+				style.erase(kept[0])
+			style.erase(kept[1])
+		style.erase("picture_lost")
+		style.erase("cover_lost")
 		sheet.change(style)
 		words = "the page style \"%s\"" % name
 	if given.has("picture_data"):
@@ -3161,39 +3292,80 @@ func page_setup(fields: Dictionary) -> String:
 			named = BookletSheet.PICTURE_NAME + "." + named.get_extension()
 		pictures[named] = str(given["picture_data"])
 		given["picture"] = named
-	for field: String in ["usual", "style", "save_as", "picture_data"]:
+	# booklook: the cover's picture of the person's own, named as it is.
+	if given.has("cover_picture_data"):
+		var named: String = str(given.get("cover_picture", BookletSheet.COVER_NAME + ".jpg")).to_lower()
+		named = BookletSheet.COVER_NAME + "." + ("png" if named.get_extension() == "png" else "jpg")
+		pictures[named] = str(given["cover_picture_data"])
+		given["cover_picture"] = named
+	for field: String in ["usual", "style", "save_as", "picture_data", "remove_style",
+			"cover_picture_data"]:
 		given.erase(field)
 	var wrong: String = sheet.change(given)
 	if not wrong.is_empty():
 		return wrong
-	if not sheet.picture.is_empty() and not pictures.has(sheet.picture):
+	# The picture its file names and does not carry stays named, as the file
+	# had it, until another is chosen or it is taken off (BookletSheet.of).
+	var still_missing: bool = was.missing and sheet.picture == was.picture \
+		and not pictures.has(sheet.picture)
+	if not sheet.picture.is_empty() and not pictures.has(sheet.picture) and not still_missing:
 		return "there is no picture called %s: picture_data= gives one" % sheet.picture
 	# Behind every page of the booklet's HTML as it is: a PNG or a JPEG in base64 only.
-	if not sheet.picture.is_empty() \
-			and BookletLooks.picture_kind(str(pictures[sheet.picture])).is_empty():
+	if pictures.has(sheet.picture) and BookletLooks.picture_kind(str(pictures[sheet.picture])).is_empty():
 		return "the picture behind the pages is a PNG or a JPEG, in base64"
-	# The picture that was behind the pages, gone with them.
-	if not was.picture.is_empty() and was.picture != sheet.picture:
-		pictures.erase(was.picture)
-	for name: String in pictures.keys():
-		if name.begins_with(BookletSheet.PICTURE_NAME) and name != sheet.picture:
+	# The cover's the same (booklook).
+	var cover_missing: bool = was.cover_missing and sheet.cover_picture == was.cover_picture \
+		and not pictures.has(sheet.cover_picture)
+	if not sheet.cover_picture.is_empty() and not pictures.has(sheet.cover_picture) \
+			and not cover_missing:
+		return "there is no picture called %s: cover_picture_data= gives one" % sheet.cover_picture
+	if pictures.has(sheet.cover_picture) \
+			and BookletLooks.picture_kind(str(pictures[sheet.cover_picture])).is_empty():
+		return "the cover's picture is a PNG or a JPEG, in base64"
+	# The picture that was behind the pages, gone with them; the cover's too.
+	# One the page still names (a later build's words kept unread name it)
+	# stays: up to 2026-11-07 any but the page's own two went (blreview).
+	var named: Array[String] = BookletSheet.pictures_named(sheet.said())
+	for name: String in [was.picture, was.cover_picture]:
+		if not name.is_empty() and not name in named:
 			pictures.erase(name)
+	for name: String in pictures.keys():
+		if (name.begins_with(BookletSheet.PICTURE_NAME) or name.begins_with(BookletSheet.COVER_NAME)) \
+				and not name in named:
+			pictures.erase(name)
+	var also := PackedStringArray()
+	# Words longer than a line holds, said: cut in silence, a footer lost its
+	# end unseen (blreview, 2026-11-07).
+	for field: String in BookletSheet.TEXTS:
+		if given.has(field) and BookletSheet.cut(given[field]):
+			also.append("the %s cut to %d letters" % [field.replace("_", " "), BookletSheet.TEXT_MOST])
+	if fields.has("remove_style"):
+		var failed: String = BookletSheet.remove_style(gone)
+		if not failed.is_empty():
+			return failed
+		also.append("the page style \"%s\" removed" % gone)
 	var undo: Array = BookletLooks.set_images(world, pictures)
 	undo.append_array(BookletLooks.change(world, BookletLooks.BOOKLET, {"sheet": sheet.said()}))
 	undo = AuthorSteps.squash(undo)
-	var kept: String = ""
+	if style_lost:
+		also.append("the style's picture could not be read, so the page has none")
 	if fields.has("save_as"):
-		var failed: String = BookletSheet.save_style(str(fields["save_as"]), sheet,
-			str(pictures.get(sheet.picture, "")))
-		kept = failed if not failed.is_empty() \
-			else "kept as the page style \"%s\"" % str(fields["save_as"]).strip_edges()
+		var keeping: String = str(fields["save_as"]).strip_edges()
+		var replaced: bool = BookletSheet.styles().has(keeping)
+		var failed: String = BookletSheet.save_style(keeping, sheet, str(pictures.get(sheet.picture, "")),
+			str(pictures.get(sheet.cover_picture, "")))
+		also.append(failed if not failed.is_empty() else "kept as the page style \"%s\"%s"
+			% [keeping, " in place of the one kept by that name" if replaced else ""])
+	var tail: String = ("; " + "; ".join(also)) if not also.is_empty() else ""
 	if undo.is_empty():
-		return "the page is as it was: %s%s" % [sheet.words(), ("; " + kept) if not kept.is_empty() else ""]
+		return "the page is as it was: %s%s" % [BookletSheet.of(world).words(), tail]
 	var said: String = "page set up%s: %s" % [(" as " + words) if not words.is_empty() else "",
-		sheet.words()]
+		BookletSheet.of(world).words()]
 	builder.record(undo, said)
 	store.touch()
-	return said + (("; " + kept) if not kept.is_empty() else "")
+	if tail.contains(" cut to "):
+		bar.say(said + tail)
+	return said + tail
 
 
 ## Many steps' pages laid out at once, as one undo: the page editor's
@@ -3356,6 +3528,25 @@ func covers(point: Vector2) -> bool:
 	return false
 
 
+## View, Stud directions (StudMap), made the first time something asks for
+## it: the command, or a session's view_board studs. Its legend goes over
+## the model's top left corner ([member model_area]), shown while it is on.
+func _make_stud_map() -> void:
+	var map: Node = Later.make(&"StudMap")
+	map.world = world
+	map.library = library
+	map.scenery = store.scenery
+	map.say = bar.say
+	_stud_map = map
+	add_child(map)
+	model_area.add_child(map.legend)
+
+
+## Whether Stud directions is on, asked by the menu without making it.
+func _stud_map_on() -> bool:
+	return _stud_map != null and _stud_map.on
+
+
 ## Sections (SectionsUi over Sections), made the first time something asks
 ## for them: Suggest sections, Break out, Exploded view, the model tree's
 ## buttons, a session's suggest_sections. Their 0.1 MB of code was compiled
@@ -3417,6 +3608,11 @@ func _make_compare() -> void:
 	_compare.assemblies = assemblies
 	_compare.stress = stress
 	_compare.say = bar.say
+	# comparesets: its parts sheet's sets, pictures and shops.
+	_compare.inventories = collection_store.inventories if collection_store != null else null
+	_compare.thumbnails = app.get("_thumbnails") if app != null else null
+	_compare.write_list = func(shop: String, stock: Inventory, named: String) -> String:
+		return await app.get("_exports").stock_list(shop, stock, named, true)
 	_compare.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	_compare.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	_compare.offset_right = -14.0

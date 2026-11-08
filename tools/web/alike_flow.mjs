@@ -24,6 +24,9 @@
 //      whom she follows, not Fay); Follow on Cy follows him in place. Asked
 //      again, nobody is left: More like is hidden. Her answer is never kept
 //      by the CDN.
+//   4. At 1280 px, light, signed in as Ann, on her own page (socialtails,
+//      2026-11-06): it speaks to her, "Designers like you", Bo and Di then
+//      Cy, each with Follow; a visitor's answer says it is not theirs.
 // With supabase/designers_alike.sql applied the shared parts count as well
 // (the flow says which it saw); the order above holds either way. Pictures
 // in --out. Without the section (an older checkout) Ann's page has no More
@@ -126,7 +129,7 @@ async function alikeOn(page) {
   return page.evaluate(() => {
     const box = document.getElementById("alike");
     return { state: document.documentElement.dataset.alike, shown: Boolean(box && !box.hidden && box.offsetHeight > 0),
-      heading: box?.querySelector("h2")?.textContent.trim() || "",
+      heading: box?.querySelector("h2")?.textContent.trim() || "", note: box?.querySelector(".note")?.textContent.trim() || "",
       rows: [...(box?.querySelectorAll(".person-row") || [])].map((row) => ({ handle: row.dataset.handle,
         link: row.querySelector(".names a")?.getAttribute("href") || "", name: row.querySelector(".names b")?.textContent || "",
         said: row.querySelector(".names small")?.textContent || "", follow: row.querySelector("button[data-follow]")?.textContent.trim() || "",
@@ -188,6 +191,7 @@ try {
   check(`never Ann, never Fay (${order(asked.body.designers || []).join(", ")})`,
     !(asked.body.designers || []).some((one) => [handles.ann, handles.fay].includes(one.handle)));
   check(`six at most (${(asked.body.designers || []).length})`, (asked.body.designers || []).length <= 6);
+  check(`a visitor's answer is not theirs (yours ${asked.body.yours})`, asked.body.yours === false);
   {
     const made = await context();
     const page = await made.newPage();
@@ -235,6 +239,29 @@ try {
     const left = again.rows.filter((one) => Object.values(handles).includes(one.handle));
     check(`asked again, nobody of these is left (${order(left).join(", ") || "none"}), and with nobody More like is hidden`,
       left.length === 0 && (again.rows.length > 0 || (again.state === "none" && !again.shown)));
+    await made.close();
+  }
+
+  // --- 4. Ann on her own page, 1280, light ---------------------------------------
+  console.log("at 1280 px, light, Ann on her own page");
+  const own = await api(`/api/people?op=alike&handle=${handles.ann}&tests=1`, { token: sessions.ann.access_token });
+  const ownRows = (own.body.designers || []).filter((one) => Object.values(handles).includes(one.handle));
+  check(`her answer says it is hers (yours ${own.body.yours}), Bo and Di then Cy (${order(ownRows).join(", ")}), never kept (${own.cache})`,
+    own.status === 200 && own.body.yours === true && JSON.stringify(order(ownRows)) === JSON.stringify(order(ours))
+    && /no-store/.test(own.cache));
+  {
+    const made = await context({ as: sessions.ann });
+    const page = await made.newPage();
+    listen(page, "Ann");
+    const seen = await alikeOn(page);
+    const mine = seen.rows.filter((one) => Object.values(handles).includes(one.handle));
+    check(`"${seen.heading}": "${seen.note}"`, seen.state === "shown" && seen.shown && seen.heading === "Designers like you"
+      && seen.note === "Their models share the most with yours: themes, tags and parts. Follow them to see what they make next.");
+    check(`Bo and Di then Cy, each with Follow (${mine.map((one) => `${one.handle} ${one.follow}`).join(", ")})`,
+      JSON.stringify(order(mine)) === JSON.stringify(order(ours)) && mine.every((one) => one.follow === "Follow" && one.visible));
+    await page.evaluate(() => document.getElementById("alike")?.scrollIntoView({ block: "center" }));
+    await page.waitForTimeout(400);
+    await shot(page, "4_alike_own_1280_light.png");
     await made.close();
   }
 } catch (trouble) {

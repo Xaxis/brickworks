@@ -14,6 +14,9 @@
 //                                 as gallery cards, for its page
 //                                 (/library/set/N); with tests=1, test
 //                                 models too
+//   GET  ?op=set_find&q=WORDS     the sets a designer may mean as they type
+//                                 a set's name or number in the dialog, at
+//                                 most eight, best first (setsFound)
 //
 // A remix names the model it was copied from, when that was shared here;
 // this credits what a remix line cannot: a set built from or changed, and
@@ -30,10 +33,16 @@ import { TESTS_CACHE, Unacceptable, cardOf, testsAsked } from "./_directory.js";
 // The words of a line, drawn the same on the page and by its dialog.
 import { HOWS } from "./_card.js";
 import { namesTrouble } from "./_names.js";
-import { SET_NUMBER, catalogSet } from "./_sets.js";
+import { SET_NUMBER, askSets, catalogSet, pictureOf, searchCatalog, setCatalog } from "./_sets.js";
+import { wordsOf } from "./_search.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const MOST = 3;
+/// How many sets the dialog's list offers as a name is typed.
+export const FOUND_MOST = 8;
+/// What the list of sets found may be kept for: the catalogue changes once
+/// a day at most, and the answer is the same for everybody.
+const FIND_CACHE = "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400";
 /// What a set's list of models based on it may be kept for.
 const LIST_CACHE = "public, max-age=0, s-maxage=60, stale-while-revalidate=60";
 
@@ -103,6 +112,26 @@ export function basesAsked(given, setOf = catalogSet) {
   });
 }
 
+/// The sets a designer may mean by [q], words of a set's name or its number,
+/// for the dialog's list as they type (socialtails, 2026-11-06): the
+/// library's own search (api/_sets.js searchCatalog: misspelt, run
+/// together, a plural, a number or a year), and of those a set whose whole
+/// name was typed first, so "X-wing Fighter" offers the five sets of that
+/// name before Poe's X-Wing Fighter. At most FOUND_MOST, each {set, name,
+/// year, parts, theme (its top theme, as the catalogue names it), picture
+/// (its own card's, "" for one with none)}. Fewer than two letters or
+/// digits ask nothing.
+export function setsFound(q, given = setCatalog()) {
+  const asked = plain(q, 100);
+  const typed = wordsOf(asked).join(" ");
+  if (!given || typed.replace(/ /g, "").length < 2) return [];
+  const found = searchCatalog(given.sets, askSets({ q: asked })).sets;
+  const whole = (entry) => (wordsOf(entry.name).join(" ") === typed ? 0 : 1);
+  return found.map((entry, at) => ({ entry, at })).sort((a, b) => whole(a.entry) - whole(b.entry) || a.at - b.at)
+    .slice(0, FOUND_MOST).map(({ entry }) => ({ set: entry.set, name: entry.name, year: entry.year || null,
+      parts: entry.parts, theme: entry.theme[0] || "", picture: pictureOf(entry, null) }));
+}
+
 // ---------------------------------------------------------------------------
 // The database.
 
@@ -161,6 +190,13 @@ export async function basesPut(request, response) {
     throw new Unacceptable(words, status);
   }
   return response.status(200).json({ bases: (await basesOf(model)) || [] });
+}
+
+/// GET ?op=set_find&q=WORDS: {q, sets} (setsFound), kept by the CDN.
+export function setFind(request, response) {
+  const q = plain(request.query?.q, 100);
+  response.setHeader("Cache-Control", FIND_CACHE);
+  return response.status(200).json({ q, sets: setsFound(q) });
 }
 
 /// GET ?op=set_based&set=N: {models}, each a gallery card with [based].

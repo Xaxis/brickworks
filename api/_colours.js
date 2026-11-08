@@ -89,3 +89,14 @@ export const COLOUR_NAMES = {
   30089:"Modulex Foil Dark Red",30090:"Modulex Foil Yellow",30091:"Modulex Foil Orange",
   31000:"Modulex Dark Grey",31001:"Modulex Blue",31002:"Modulex Very Light Grey",
 };
+
+/// Whether a colour code is a direct colour, 0x2RRGGBB, an RGB written into
+/// the file rather than a palette index (LdrModel.is_direct_colour).
+export const isDirect = (code) => code >= 0x2000000;
+
+/// A direct colour as the app names and draws it (PartLibrary.direct_color):
+/// {name: "#FF0000", hex: "ff0000"}, opaque.
+export function directOf(code) {
+  const hex = (code & 0xffffff).toString(16).padStart(6, "0");
+  return { name: `#${hex.toUpperCase()}`, hex };
+}

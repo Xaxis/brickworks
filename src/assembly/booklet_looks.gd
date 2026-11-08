@@ -76,7 +76,8 @@
 ## [bx by ...]"; "... NOTE TURN 30 OPACITY 50" after the words or picture it
 ## turns and fades; "... TURN_SIGN OFF" on a step whose turn sign was taken
 ## off; "... GUIDE X 120" in the model, a guide each; "... PAGE_SETUP A4
-## PORTRAIT MARGIN 12 ..." in the model, its page (BookletSheet).
+## PORTRAIT MARGIN 12 ..." in the model, its page, and "... PAGE_TEXT TITLE
+## words" a line each of the designer's words on it (BookletSheet).
 ##
 ## A step's "section" is the booklet's chapter that starts on it: the name
 ## its banner prints ("island", "part 2"), in force on every step after it
@@ -98,7 +99,7 @@ const META := "0 !BRICKWORKS "
 ## The words of the app's own step lines, after META.
 const WORDS: Array[String] = ["PAGE", "ZOOM", "SIZE", "PARTS", "CALLOUT", "PER_PAGE",
 	"HIGHLIGHT", "PLACE", "TEXT", "IMAGE", "PANEL", "ARROW", "TURN_SIGN", "NOTE", "GUIDE",
-	"PULL", "COLOURS", "ACTUAL_SIZE", "PREVIEW", "SECTION", "PAGE_SETUP"]
+	"PULL", "COLOURS", "ACTUAL_SIZE", "PREVIEW", "SECTION", "PAGE_SETUP", "PAGE_TEXT"]
 ## How far a step's parts are pulled out by default, in studs (Studio's
 ## buffer exchange), and the most.
 const PULL_STUDS := 2.0
@@ -1033,6 +1034,41 @@ static func as_written(world: BrickWorld, skip: Dictionary = {}) -> Dictionary:
 	return out
 
 
+## Of [param looks] ([method read]'s), the booklet's own (BOOKLET: its page
+## set up, guides, steps a page and the like) and the picture behind its
+## pages: what holds for the whole booklet whoever's its steps are.
+static func booklet_wide(looks: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	if not looks.has(BOOKLET):
+		return out
+	out[BOOKLET] = looks[BOOKLET]
+	# Behind its pages, and on its cover (BookletSheet.pictures_named).
+	for behind: String in BookletSheet.pictures_named((looks[BOOKLET] as Dictionary).get("sheet")):
+		if (looks.get(DATA, {}) as Dictionary).has(behind):
+			if not out.has(DATA):
+				out[DATA] = {}
+			out[DATA][behind] = looks[DATA][behind]
+	return out
+
+
+## [param looks] ([method read]'s) with the whole booklet's of [param wide]
+## in place of its own: each step's, and the pictures they show, as they
+## were.
+static func with_booklet_wide(looks: Dictionary, wide: Dictionary) -> Dictionary:
+	var out: Dictionary = looks.duplicate()
+	out.erase(BOOKLET)
+	var pictures: Dictionary = (looks.get(DATA, {}) as Dictionary).duplicate()
+	for behind: String in BookletSheet.pictures_named((looks.get(BOOKLET, {}) as Dictionary).get("sheet")):
+		pictures.erase(behind)
+	pictures.merge(booklet_wide(wide).get(DATA, {}), true)
+	out.erase(DATA)
+	if not pictures.is_empty():
+		out[DATA] = pictures
+	if wide.has(BOOKLET):
+		out[BOOKLET] = wide[BOOKLET]
+	return out
+
+
 ## The looks a model's file gives its steps, keyed as BrickWorld keeps them
 ## ([param names]: sub-model key -> the name its assembly goes by,
 ## LdrModel._assembly_names; the model's own section is "").
@@ -1044,6 +1080,11 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 	var data_name: String = ""
 	var data := PackedStringArray()
 	var pictures: Dictionary = {}
+	# The first FILE is the model's own, as written_into reads it, whatever
+	# main_key says: _looks_into's check gives none. Up to 2026-11-07, read
+	# with none, someone else's page was not the file's, so the file was
+	# written again and its usual page left the old line in (pagesetup).
+	var first_file: bool = true
 	for raw: String in text.split("\n"):
 		var line: String = raw.strip_edges()
 		if not data_name.is_empty():
@@ -1066,7 +1107,9 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 			continue
 		if keyword == "FILE":
 			var file_key: String = LdrModel._key(" ".join(words.slice(2)))
-			definition = "" if file_key == main_key else str(names.get(file_key, file_key))
+			definition = "" if first_file or file_key == main_key \
+				else str(names.get(file_key, file_key))
+			first_file = false
 			step = 0
 			continue
 		if keyword == "ROTSTEP":
@@ -1197,8 +1240,14 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 					(kept[value.to_lower()] as Array).append(snappedf(clampf(words[4].to_float(),
 						0.0, BookletSheet.LONGEST), 0.1))
 					_put_in(out, BOOKLET, "guides", kept)
-			"PAGE_SETUP":
-				var sheet: Dictionary = BookletSheet.read_words(words.slice(3))
+			"PAGE_SETUP", "PAGE_TEXT":
+				# The booklet's page is the main model's: a sub-model's own
+				# lines are its, passed through as they are (written_into).
+				# Up to 2026-11-07 a pod's TITLE titled the booklet (blreview).
+				if not definition.is_empty():
+					continue
+				var sheet: Dictionary = BookletSheet.read_line(words[2], words.slice(3),
+					_rest_after(line, 4), (out.get(BOOKLET, {}) as Dictionary).get("sheet", {}))
 				if not sheet.is_empty():
 					_put_in(out, BOOKLET, "sheet", sheet)
 	if not data_name.is_empty():
@@ -1206,10 +1255,9 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 	pictures = kept_pictures(pictures)
 	# Only the pictures a page shows, and the one behind every page.
 	var shown: Dictionary = {}
-	var behind: String = str(((out.get(BOOKLET, {}) as Dictionary).get("sheet", {}) as Dictionary)
-		.get("picture", ""))
-	if pictures.has(behind):
-		shown[behind] = pictures[behind]
+	for behind: String in BookletSheet.pictures_named((out.get(BOOKLET, {}) as Dictionary).get("sheet")):
+		if pictures.has(behind):
+			shown[behind] = pictures[behind]
 	for name: String in out:
 		for note: Dictionary in (out[name] as Dictionary).get("notes", []):
 			if note.has("image") and pictures.has(str(note["image"])):
@@ -1366,7 +1414,8 @@ static func _typed_field(field: String, value: Variant) -> Variant:
 				return null
 			var fields: Dictionary = {}
 			for key: Variant in value:
-				if key is String and (key != "picture" or _typed_picture(value[key], null) != null):
+				if key is String and (not key in ["picture", "cover_picture"]
+						or _typed_picture(value[key], null) != null):
 					fields[key] = value[key]
 			return BookletSheet.from(fields).said()
 	return null
@@ -1470,6 +1519,16 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 		return text
 	var lines: PackedStringArray = text.split("\n")
 	var eol: String = "\r" if not lines.is_empty() and lines[0].ends_with("\r") else ""
+	# A file that ends without a line break: its last line given the file's
+	# break first, so every line put after it goes in as a line of its own
+	# in the file's breaks, and taken back off at the end when none was. Up
+	# to 2026-11-07, in a CRLF file, that line ended LF alone and the last of
+	# ours CR alone (blreview).
+	var last: String = lines[lines.size() - 1] if not lines.is_empty() else ""
+	var open_end: bool = not last.is_empty()
+	if open_end:
+		lines[lines.size() - 1] = last + eol
+		lines.append("")
 	var out := PackedStringArray()
 	var definition: String = ""
 	var step: int = 0
@@ -1482,10 +1541,15 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 	## Inside a page's picture as it was written (LDraw's !DATA): left out,
 	## and written again at the end from the looks.
 	var skipping: bool = false
+	## Each page's picture as the file has it, name -> its lines: one a line
+	## kept as it was names, and the looks do not hold, goes back as it was.
+	var as_written: Dictionary = {}
+	var block: Array = []
 	for raw: String in lines:
 		var line: String = raw.strip_edges()
 		if skipping:
 			if line.begins_with("0 !:"):
+				block.append(raw)
 				continue
 			skipping = false
 		var words: PackedStringArray = LdrModel._fields(line) if line.begins_with("0 ") \
@@ -1498,9 +1562,12 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 					# The model's own lines, in a file of no FILE lines, are done.
 					first_file = false
 			section_open = keyword == "FILE"
-			if keyword == "!DATA" and " ".join(words.slice(2)).get_file().to_lower() \
-					.begins_with(IMAGE_PREFIX):
+			var data_name: String = " ".join(words.slice(2)).get_file().to_lower()
+			if keyword == "!DATA" and data_name.begins_with(IMAGE_PREFIX):
 				skipping = true
+				# An Array, so the lines go into the one kept.
+				block = [raw]
+				as_written[data_name] = block
 				continue
 			if keyword == "FILE":
 				var file_key: String = LdrModel._key(" ".join(words.slice(2)))
@@ -1512,6 +1579,10 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 			out.append(raw)
 			continue
 		if keyword == "!BRICKWORKS" and words.size() >= 3 and words[2] in WORDS:
+			# The page's lines are the main model's, written again from the
+			# looks; a sub-model's are left where they are, as they are.
+			if not definition.is_empty() and words[2] in ["PAGE_SETUP", "PAGE_TEXT"]:
+				out.append(raw)
 			continue
 		if keyword == "STEP" or keyword == "ROTSTEP":
 			_step_lines(out, looks, definition, step, any_part, eol, wrote)
@@ -1545,39 +1616,70 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 				and not out[at].strip_edges().to_upper().begins_with("0 ROTSTEP") \
 				and at < 12:
 			at += 1
-		for n: int in head.size():
-			out.insert(at + n, head[n])
+		_put_lines(out, at, head)
 	# The pictures the pages show, each as LDraw's embedded file, at the end.
 	var pictures: Dictionary = looks.get(DATA, {})
 	var shown: Dictionary = {}
 	var whole: Variant = looks.get(BOOKLET, {})
-	var sheet: Variant = (whole as Dictionary).get("sheet", {}) if whole is Dictionary else {}
-	if sheet is Dictionary and pictures.has(str((sheet as Dictionary).get("picture", ""))):
-		shown[str(sheet["picture"])] = true
+	for behind: String in BookletSheet.pictures_named((whole as Dictionary).get("sheet")
+			if whole is Dictionary else null):
+		if pictures.has(behind):
+			shown[behind] = true
 	for name: String in looks:
 		for note: Variant in (looks[name] as Dictionary).get("notes", []) \
 				if looks[name] is Dictionary else []:
 			if note is Dictionary and (note as Dictionary).has("image") \
 					and pictures.has(str(note["image"])):
 				shown[str(note["image"])] = true
+	# A picture a line kept as it was names (a sub-model's own page, a later
+	# build's word): the looks' when they hold it, else as the file has it.
+	# Up to 2026-11-07 the line stayed and its picture went (blreview).
+	for said: String in out:
+		if not said.contains("!BRICKWORKS") or not said.to_lower().contains(IMAGE_PREFIX):
+			continue
+		var words: PackedStringArray = LdrModel._fields(said.strip_edges())
+		if words.size() < 3 or words[1].to_upper() != "!BRICKWORKS":
+			continue
+		for word: String in words.slice(2):
+			var named: String = word.get_file().to_lower()
+			if not named.begins_with(IMAGE_PREFIX) or shown.has(named):
+				continue
+			if pictures.has(named):
+				shown[named] = true
+			elif as_written.has(named):
+				shown[named] = false
 	if not shown.is_empty():
 		# Before the blank lines the file ends with, as they were.
 		var end: int = out.size()
 		while end > 0 and out[end - 1].strip_edges().is_empty():
 			end -= 1
-		var block := PackedStringArray()
+		var block_lines := PackedStringArray()
 		var kept: Array = shown.keys()
 		kept.sort()
 		for name: String in kept:
-			block.append("0 !DATA " + name + eol)
+			if not shown[name]:
+				block_lines.append_array(PackedStringArray(as_written[name]))
+				continue
+			block_lines.append("0 !DATA " + name + eol)
 			var encoded: String = str(pictures[name])
 			for at: int in range(0, encoded.length(), 76):
-				block.append("0 !: " + encoded.substr(at, 76) + eol)
-		for n: int in block.size():
-			out.insert(end + n, block[n])
-		if end + block.size() == out.size():
-			out.append("")
+				block_lines.append("0 !: " + encoded.substr(at, 76) + eol)
+		_put_lines(out, end, block_lines)
+	if open_end and out.size() >= 2 and out[out.size() - 1].is_empty() \
+			and out[out.size() - 2] == last + eol:
+		# Nothing went after it: the file ends as it did.
+		out.remove_at(out.size() - 1)
+		out[out.size() - 1] = last
 	return "\n".join(out)
+
+
+## [param block], lines each ending as the file's do, put into [param out]
+## (a file's lines split at "\n") at [param at]: the one way the lines
+## said in more than one place go in (a section's end, the model's head,
+## the pictures at the end), each before a line break of the file's own.
+static func _put_lines(out: PackedStringArray, at: int, block: PackedStringArray) -> void:
+	for n: int in block.size():
+		out.insert(at + n, block[n])
 
 
 ## The booklet's own lines, said once at the head of the model.
@@ -1593,9 +1695,12 @@ static func _booklet_lines(out: PackedStringArray, whole: Dictionary, eol: Strin
 		for at: Variant in kept.get(axis, []):
 			out.append(META + "GUIDE %s %s" % [axis.to_upper(), _number(snappedf(float(at), 0.1))] + eol)
 	if whole.get("sheet") is Dictionary and not (whole["sheet"] as Dictionary).is_empty():
-		var said: String = BookletSheet.from(whole["sheet"]).line_words()
+		var sheet: BookletSheet = BookletSheet.from(whole["sheet"])
+		var said: String = sheet.line_words()
 		if not said.is_empty():
 			out.append(META + "PAGE_SETUP " + said + eol)
+		for words: String in sheet.text_lines():
+			out.append(META + "PAGE_TEXT " + words + eol)
 
 
 ## The end of a section: the looks of its last step, which has no line
@@ -1616,8 +1721,7 @@ static func _close_section(out: PackedStringArray, looks: Dictionary, definition
 			and not wrote.has(definition + "|*"):
 		extra.append(META + "CALLOUT OFF" + eol)
 		wrote[definition + "|*"] = true
-	for n: int in extra.size():
-		out.insert(trailing + n, extra[n])
+	_put_lines(out, trailing, extra)
 
 
 ## The app's own lines for one step, before the line that ends it. A

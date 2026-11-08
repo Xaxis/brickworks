@@ -8,8 +8,12 @@
 # A check that only reports is not read; one that holds the release is.
 cd "$1" || exit 1
 # In a heavy slot, as the other gates; the timeout counts the run, not the queue.
+# 600 s held rel-m270 without a word: the suite had grown to 815 s at load 35
+# (2026-11-07), and timeout killed it before it could say what it was doing.
 if [ -z "${BOX_HEAVY_HELD:-}" ]; then
-  exec ~/.claude/claude-core/bin/heavy timeout 600 "$0" "$PWD"
+  ~/.claude/claude-core/bin/heavy timeout 1800 "$0" "$PWD"; code=$?
+  [ "$code" = 124 ] && echo "ci gate: timed out after 1800 s in its slot, before its verdict"
+  exit "$code"
 fi
 fail=0
 python3 tools/release.py version || fail=1

@@ -96,6 +96,11 @@ declare -A CMD=(
   # out; 1280 px light signed in, 390 px dark signed out; the empty tab
   # says what a build is. Throwaway accounts, deleted after with their model.
   [gallery_builds]="tools/web/gallery_builds_flow.mjs --url=$P --out=$S/${TAG}_gallery_builds"
+  # local only: photo_sizes_flow.mjs. How large each photo of a real build
+  # is drawn against the pixels of the picture the browser took, at 390 3x
+  # and 1280 2x and 1x, every place a photo is drawn: the checkout's pages
+  # with the stand-in's photos, each the size its row says. [gallery_builds]
+  # holds the copy on a deployment.
   # More like a designer on a profile (docs/SOCIAL.md section 7, item 9):
   # hidden with nobody close; signed out the closest by shared tags (and
   # parts once supabase/designers_alike.sql is applied) with Follow beside
@@ -151,7 +156,8 @@ declare -A CMD=(
   # by the mouse at 1280 px and a finger at 390, and Reset; the drag's own
   # frames held to 36 ms on average on a CPU; and 1484-1 with motions of its
   # own, each played by its button and taken back, Reset, and its page
-  # saying what it does.
+  # saying what it does; its link with ?motion= opening playing over and
+  # over within 2 s, stopped by its button, and an unknown name opening still.
   # Published from a throwaway account, deleted after; API routes only,
   # with the bypass (supabase/play.sql's and motions.sql's card when they
   # are applied).
@@ -195,7 +201,7 @@ declare -A CMD=(
   # checkbox): the gallery to a model, Like, Save, Share, a comment and a
   # reply, Report it's dialog, Follow, the account menu to Notifications
   # and Mark all read, Edit profile's dialog, Settings, Sign in's dialog and
-  # the download; each stop's focus shown, the focus never lost, dialogs
+  # Open Brickworks on the desktop app's page; each stop's focus shown, the focus never lost, dialogs
   # keeping it and giving it back. The deployment's pages and scripts, the
   # API and the stand-in's model answered here.
   [keyboard]="tools/web/keyboard_flow.mjs --url=$P --out=$S/${TAG}_keyboard"
@@ -242,6 +248,13 @@ declare -A CMD=(
   # its own; on a phone the blog scrolls until the model is taken hold of,
   # and a model past the phone's budget asks first. Signed out, reads only.
   [embed]="tools/web/embed_flow.mjs --url=$P --out=$S/${TAG}_embed"
+  # In your room (APP_UX5 #13, arview), the deployment's first model: not
+  # offered on a computer; on an Android phone (a WebXR stub), an iPhone (a
+  # Quick Look stub) and an iPad offered, nothing of it asked before the
+  # tap, then the model shown, its GLB byte for byte web/glb.js's of the
+  # store's geometry, under 32 MB; the session asked for, the USDZ handed
+  # over; a plan over the size refused before a shape. Signed out, reads only.
+  [arview]="tools/web/arview_flow.mjs --url=$P --out=$S/${TAG}_arview"
   # The LDraw library on the site (library333): /library at 390 and 1400 px,
   # light and dark, the whole shelf with every card's cover, number and
   # modeller; found by a set's number, 10179, and by a theme's pill; the
@@ -273,10 +286,16 @@ declare -A CMD=(
   # throwaway account with three of its lots, and its wanted list; Open its
   # parts in Brickworks landing in the app's bin; and the sets' sitemaps.
   [sets_flow]="tools/web/sets_flow.mjs --url=$P --out=$S/${TAG}_sets_flow"
-  # The download page: each system its own build, every link answering, and
-  # the Linux button asking its public address with no sign-in and nothing
-  # of /api/plans (the desktop is free, docs/PLANS.md, 2026-11-02).
+  # The download page: the desktop app is coming soon (the owner,
+  # 2026-11-07), to Linux, macOS, Windows and a phone alike: Open Brickworks
+  # its one button, no installer, no file, every link answering.
   [download]="tools/web/download_check.mjs --url=$P/download"
+  # Every page of the site, in its four languages, and every script each
+  # loads: no link, button or script offering an installer, the releases
+  # repository's files or /releases.json, nothing saying Download to the
+  # desktop app's page; and /download in each language saying it is coming
+  # soon with Open Brickworks into the app. Reads only.
+  [coming_soon]="tools/web/coming_soon_check.mjs --url=$P"
   # Plans, coming soon (web/plans.html, supabase/plan_interest.sql): the page
   # at 390 and 1400, light and dark; its form refusing a bad address, then a
   # Resend test address's entry kept, sent again and changed, not added, and
@@ -334,6 +353,12 @@ declare -A CMD=(
   # said so: "the API's database needs supabase/together_big.sql").
   [together_probe]="tools/web/together_probe.mjs --url=$P"
   [together]="tools/web/together_flow.mjs --url=$P --out=$S/${TAG}_together"
+  # A build party (APP_UX5 buildparty): two phones on one shared link and
+  # no account, joined by a code in 2 taps each, the car dealt in two (all
+  # 61 parts once), a part done on either on the other within 2 s, a phone
+  # leaving and joining again in its place, the joining step on both. Its
+  # tables are together.sql's.
+  [buildparty]="tools/web/buildparty_flow.mjs --url=$P --out=$S/${TAG}_buildparty"
   # local only: typed_flow.mjs. A number typed with a part in hand, in the
   # web build (hand371): it runs against tools/web/serve.py's local build,
   # as its header says, and has no way past a preview's protection yet.
@@ -582,7 +607,7 @@ declare -A CMD=(
   # the first step takes 9-12 s, so the times are said, not held to a bar.
   [share_steps]="tools/web/share_steps_flow.mjs --url=$P --publish --report-only --sizes=300,1000 --out=$S/${TAG}_share_steps"
 )
-ORDER="art io steps floor outline knowledge arrival idle cursor share_flow booklet booklet_edit flex_pose grab progress share_probe site design a11y keyboard theme model_page gallery download frames load"
+ORDER="art io steps floor outline knowledge arrival idle cursor share_flow booklet booklet_edit flex_pose grab progress share_probe site design a11y keyboard theme model_page gallery download coming_soon frames load"
 NAMES="${*:-$ORDER}"
 # The checks that write the live database, which every preview and the
 # relay share with production: each flow that makes a throwaway account and
@@ -669,8 +694,9 @@ run() {
 # orangecheck asked that popup checks not run side by side (2026-10-24).
 # together measures how fast a change crosses between two browsers: with
 # placing beside it its plain p95 read 1,123 ms against 516-864 alone
-# (2026-10-24).
-SOLO=" idle arrival progress cursor render_open render product_render grab share_steps frames play discovery oc together load "
+# (2026-10-24). buildparty times a part crossing between two phones the
+# same way, on the same relay.
+SOLO=" idle arrival progress cursor render_open render product_render grab share_steps frames play discovery oc together buildparty load "
 PAIRED=""; ALONE=""
 for n in $NAMES; do case "$SOLO" in *" $n "*) ALONE="$ALONE $n";; *) PAIRED="$PAIRED $n";; esac; done
 # PC_AT_ONCE at a time, a slot taking the next check as soon as it is

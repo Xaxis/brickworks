@@ -1583,12 +1583,20 @@ func mirror_selection(axis: int) -> int:
 	return made.size()
 
 
+## The parts the last mirror made that are no mirror image of what they were
+## made from: a part made in one hand only and the same no way round, turned
+## as near its reflection as it goes (Mirror.image). The person is told
+## which; empty when every part is its reflection.
+var no_image := PackedInt64Array()
+
+
 ## [method mirror_selection] on the bricks [param alive], across the plane at
 ## [param across] LDU when it is given (on a half stud), and with [param copy]
 ## a mirrored copy put down and the bricks left where they are: a session's
 ## mirror_parts (HandTools). The new bricks, or none.
 func mirror_bricks(alive: PackedInt64Array, axis: int, across: float = NAN,
 		copy: bool = false) -> PackedInt64Array:
+	no_image = PackedInt64Array()
 	if alive.is_empty():
 		return PackedInt64Array()
 	var bricks: Array = []
@@ -1605,16 +1613,10 @@ func mirror_bricks(alive: PackedInt64Array, axis: int, across: float = NAN,
 			BrickLattice.STUD * 0.5)
 	var plan: Array = []
 	for brick: BrickWorld.Brick in bricks:
-		var part: String = brick.part_id
-		var other: String = Later.script(&"Mirror").counterpart(library, part)
-		if not other.is_empty() and library.mesh_for(other) != null:
-			part = other
-		# A part not swapped for its other hand is turned to look reflected
-		# by its own shape.
-		var at: Transform3D = _tidy(Later.script(&"Mirror").reflected(brick.transform, axis, across,
-			library.mesh_for(part) if part == brick.part_id else null),
-			BrickLattice.is_square_to_grid(brick.transform.basis))
-		plan.append({"brick": brick, "part": part, "at": at})
+		var image: Dictionary = Later.script(&"Mirror").image(library, brick.part_id,
+			brick.transform, axis, across, true)
+		plan.append({"brick": brick, "part": str(image["part"]), "exact": bool(image["exact"]),
+			"at": _tidy(image["at"], BrickLattice.is_square_to_grid(brick.transform.basis))})
 	var picked: Dictionary = {}
 	for brick_id: int in alive:
 		picked[brick_id] = true
@@ -1658,6 +1660,8 @@ func mirror_bricks(alive: PackedInt64Array, axis: int, across: float = NAN,
 		lattice.occupy_boxes(new_id, item["boxes"])
 		steps.push_front({"undo": "remove", "brick": new_id})
 		made.append(new_id)
+		if not bool(item["exact"]):
+			no_image.append(new_id)
 	_history.append({"undo": "group", "steps": steps,
 		"words": ("mirrored a copy of %s" if copy else "mirrored %s") % _many(made.size())})
 	_redo.clear()
@@ -3324,7 +3328,7 @@ func _settle(
 
 	var rest_cell: int = lattice.surface_under(from.x, from.z, to.x, to.z, GROUND_CELL)
 	var y: float = rest_cell * BrickLattice.CELL - box.position.y \
-		- _sinks_by(part, basis, snapped, rest_cell) * BrickLattice.CELL
+		- _sinks_by(part, basis, snapped, rest_cell)
 	# Placing against a side face should not slide the part down onto the
 	# floor, so a sideways hit keeps the height the face implies, to the
 	# plate the pointer is on, as a carried group keeps it: two LDU off
@@ -3588,18 +3592,23 @@ func _held_below_ground(part: Lbm.PartMesh, basis: Basis, snapped: Vector3,
 	return at if at < y - 0.01 else null
 
 
-## How many cells lower a part rests by its own cover than by its box, at
+## How many LDU lower a part rests by its own cover than by its box, at
 ## [param snapped] across, where its box rests on [param rest_cell]: the
 ## cover's boxes each on what is under its own columns. A part that is not
 ## a box has room its box has not: 2420, a corner plate, goes round a wheel
 ## holder's arm with its missing corner, and by its box it stood on the
 ## arm, a plate up (8643-1's step 2, 2026-10-17). 0 for a part whose cover
-## fills its box across, which is every plain part.
-func _sinks_by(part: Lbm.PartMesh, basis: Basis, snapped: Vector3, rest_cell: int) -> int:
+## fills its box across, which is every plain part. Its origin then stands
+## where the cover's rise puts it. Taken as whole cells off its box's
+## height, a part whose box is not whole cells deep sank by what its cover
+## rounds out: a thick clip plate's ring hangs 1.448 LDU under it, its
+## cover 2, and a made 61252 went 0.552 LDU into the brick under it,
+## refused (makepart2, 2026-11-07).
+func _sinks_by(part: Lbm.PartMesh, basis: Basis, snapped: Vector3, rest_cell: int) -> float:
 	var cover: PackedInt32Array = boxes_for(part, Transform3D(basis,
 		Vector3(snapped.x, 0.0, snapped.z)))
 	if cover.size() <= 6:
-		return 0
+		return 0.0
 	var low: int = 1 << 30
 	var n: int = 1
 	while n < cover.size():
@@ -3608,7 +3617,7 @@ func _sinks_by(part: Lbm.PartMesh, basis: Basis, snapped: Vector3, rest_cell: in
 	var rise: int = lattice.rise_onto(cover, GROUND_CELL)
 	var sink: int = rest_cell - low - rise
 	if sink <= 0:
-		return 0
+		return 0.0
 	# Lower only where it is held by its sockets there: the boxes that take
 	# studs rest on what is under them. 5762-1's 4488 stands on a wedge
 	# plate by the block under half of it, where its sockets are, the other
@@ -3617,8 +3626,8 @@ func _sinks_by(part: Lbm.PartMesh, basis: Basis, snapped: Vector3, rest_cell: in
 	# into the wing (2026-10-17).
 	if not part.sockets.is_empty() and absf((basis * Vector3.UP).y) > 0.99 \
 			and not _seated_by_sockets(part, basis, snapped, cover, rise):
-		return 0
-	return sink
+		return 0.0
+	return maxf(0.0, (rest_cell - rise) * BrickLattice.CELL - _rotated_bounds(part, basis).position.y)
 
 
 ## Whether a socket of [param part] (turned by [param basis], across at
@@ -3722,23 +3731,25 @@ static func _on_half_stud(phase: float) -> bool:
 
 ## How far the part reaches below its plate, where it sits on the studs of
 ## what is under it: the bottom of its cover under its sockets less the
-## bottom of all of it. 0 for a plain part, which has nothing below its
-## plate, and for one with no sockets or not upright.
+## bottom of its box, which is what it was dropped by. 0 for a plain part,
+## which has nothing below its plate, and for one with no sockets or not
+## upright. Less the bottom of its cover, which is whole cells, it sank by
+## what those round out: a thick clip's ring hangs 1.448 LDU under its plate
+## (61252) and its cover 2, and a made one stood 0.552 LDU into the brick it
+## was put on, refused (makepart2, 2026-11-07).
 func _hangs_below(part: Lbm.PartMesh, basis: Basis) -> float:
 	if part.sockets.is_empty() or part.boxes.is_empty() \
 			or (basis * Vector3.UP).y < 0.99:
 		return 0.0
 	var seat: float = INF
-	var lowest: float = INF
 	for cells: AABB in part.boxes:
 		var low: Vector3 = cells.position * part.cell_ldu
 		var high: Vector3 = cells.end * part.cell_ldu
-		lowest = minf(lowest, low.y)
 		for socket: Vector2 in part.sockets:
 			if socket.x >= low.x - 0.01 and socket.x <= high.x + 0.01 \
 					and socket.y >= low.z - 0.01 and socket.y <= high.z + 0.01:
 				seat = minf(seat, low.y)
-	return seat - lowest if seat < INF else 0.0
+	return maxf(0.0, seat - part.bounds.position.y) if seat < INF else 0.0
 
 
 ## A part laid on its side, aimed at a face with studs on it — a brick

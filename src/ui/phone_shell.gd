@@ -701,6 +701,11 @@ func _lay_pill() -> void:
 	# sheet's last lines (Main._place_tool_column).
 	if tools_open and bool(app.get("_tool_sheet")):
 		at.y = minf(at.y, tools.get_global_rect().position.y - size_now.y - p(6))
+	# Above Cut away's strip, along the model's foot while a cut is on
+	# (SeeInside._place): over it, it hid the strip's slider and Grow.
+	var strip: Control = shell.see_inside.bar if shell != null and shell.see_inside != null else null
+	if strip != null and strip.is_visible_in_tree():
+		at.y = minf(at.y, strip.get_global_rect().position.y - size_now.y - p(6))
 	if _pill.position != at:
 		_pill.position = at
 	# A phone's sheets and drawers cover it; a tablet's panels stand beside
@@ -871,11 +876,7 @@ func _more_rows(items: Array, under: String) -> void:
 		if item.begins_with(">"):
 			var kind: String = item.substr(1)
 			if Shell.SUBMENUS.has(kind):
-				var words: String = {"import": "Import", "export": "Export",
-					"select_by": "Select by", "cut_away": "Cut away by", "steps": "Build steps",
-					"booklet": "Booklet page", "floor": "Floor",
-					"floor_colour": "Baseplate colour"}.get(kind, kind)
-				_more_rows(Shell.SUBMENUS[kind] as Array, words)
+				_more_rows(Shell.SUBMENUS[kind] as Array, str(Shell.SUBMENU_WORDS.get(kind, kind)))
 			continue
 		var command: Shell.Command = shell.command(item)
 		if command == null:

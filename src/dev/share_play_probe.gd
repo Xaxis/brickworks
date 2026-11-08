@@ -302,7 +302,9 @@ func _run() -> void:
 			_ok(absf(held.angle) >= 12.0, "turned %.1f° by the finger" % held.angle)
 			_ok(camera.global_transform.is_equal_approx(start_view), "the camera did not turn with the finger")
 			await _save("4_finger.png")
-			_touch(camera.unproject_position(_about(held.pivot, held.axis, -24.0) * held._hold), FINGER, false)
+		# Lifted whether it took hold or not: a finger left down made the
+		# next section's mouse drag move parts (its "and nothing moved").
+		_touch(_finger_at, FINGER, false)
 		for _n: int in 240:
 			await process_frame
 			if not grab_drag.is_settling():

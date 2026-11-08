@@ -32,7 +32,7 @@ static var show_with: Callable = Callable(Outside, "show_in_folder")
 const KINDS: Dictionary = {
 	"ldr": "LDraw model", "mpd": "LDraw model with its sub-models",
 	"io": "BrickLink Studio model", "glb": "glTF binary", "gltf": "glTF",
-	"obj": "OBJ with its colours", "stl": "STL", "png": "PNG picture",
+	"obj": "OBJ with its colours", "stl": "STL", "3mf": "3MF to 3D print", "png": "PNG picture",
 	"xml": "BrickLink wanted list", "csv": "Parts list (CSV)", "txt": "Parts list (text)",
 	"html": "Instructions (web page)", "pdf": "PDF document", "zip": "Zip archive",
 }

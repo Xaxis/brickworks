@@ -70,7 +70,10 @@ def test_a_signed_manifest_holds_and_a_changed_one_does_not() -> None:
         assert release.check_update_manifest(forged, {key_id: public}) == [
             "no signature by a key the app carries holds"]
         # A key the app does not carry signs nothing it believes.
-        other, other_id, other_public = _key(Path(scratch) / "..")
+        # In a folder of its own: "scratch/.." wrote /tmp/key.pem, a name
+        # every run on the machine shared, and suites now run side by side.
+        (Path(scratch) / "other").mkdir()
+        other, other_id, other_public = _key(Path(scratch) / "other")
         assert release.check_update_manifest(envelope, {other_id: other_public}) == [
             "no signature by a key the app carries holds"]
 
@@ -213,6 +216,8 @@ def test_a_new_copy_that_cannot_start_is_put_back(fault: str) -> None:
         launched = _wait_for(root / "launched", "1.0.0 ")
         # The old one, started again, told which version did not start.
         assert "1.0.0 -- --session=abcd --update-failed=2.0.0" in launched, launched
+        _wait_for(marker, "")  # its last write, before the folder goes
+        assert marker.exists(), "the old copy's window came up"
 
 
 @pytest.mark.skipif(os.name == "nt", reason="the POSIX helper")
@@ -261,6 +266,8 @@ def test_restart_starts_it_again_once_the_app_has_gone() -> None:
                        Path("-"), log, [str(program), "--", "--session=abcd"])
         assert code == 0
         assert "1.0.0 -- --session=abcd" in _wait_for(root / "launched", "--session=abcd")
+        _wait_for(root / "started-1.0.0", "")  # its last write, before the folder goes
+        assert (root / "started-1.0.0").exists(), "its window came up"
 
 
 def test_the_helpers_are_shipped_in_every_desktop_package() -> None:

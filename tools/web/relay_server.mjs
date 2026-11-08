@@ -168,6 +168,8 @@ const MAPPED = [
   // The model packed for its page's 3D view, newest or older.
   [/^\/m\/([A-Za-z0-9]{10})\/scene[.]json$/, "share", "scene"],
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/scene[.]json$/, "share", "scene"],
+  [/^\/m\/([A-Za-z0-9]{10})\/room[.]json$/, "share", "room"],
+  [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/room[.]json$/, "share", "room"],
   // A person's profile and a public collection (api/people.js).
   [/^\/u\/([a-z0-9-]{3,24})\/?$/, "people", "page"],
   [/^\/c\/([A-Za-z0-9]{10})\/?$/, "people", "list_page"],
@@ -191,6 +193,7 @@ const MAPPED = [
   [/^\/library\/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})[.]mpd$/, "share", "set_file"],
   [/^\/library\/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})()\/parts[.](json|xml|csv)$/, "share", "set_parts"],
   [/^\/library\/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})\/scene[.]json$/, "share", "set_scene"],
+  [/^\/library\/([a-z]{2,8}-[A-Za-z0-9_-]{1,120})\/room[.]json$/, "share", "set_room"],
   [/^\/sitemaps\/index[.]xml$/, "share", "sitemap_index"],
   [/^\/sitemaps\/sets-([1-9][0-9]{0,2})[.]xml$/, "share", "sitemap_sets"],
   [/^\/sitemaps\/sets-(de|fr|es)-([1-9][0-9]{0,2})[.]xml$/, "share", "sitemap_sets_lang"],

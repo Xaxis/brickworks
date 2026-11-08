@@ -311,8 +311,36 @@ func mirror() -> int:
 		return 0
 	edited.call()
 	aim_again.call()
-	say.call("mirrored %s" % _parts(count))
+	say.call("mirrored %s%s" % [_parts(count), _no_image_words()])
 	return count
+
+
+## What the last mirror made that is no mirror image, as the bar says it:
+## " — 2 have no mirror image, turned as near as they go: 2 x Torso ...";
+## "" when every part is its reflection (Builder.no_image).
+func _no_image_words() -> String:
+	var lone: PackedInt64Array = builder.no_image
+	if lone.is_empty():
+		return ""
+	var counts: Dictionary = {}
+	for brick_id: int in lone:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick == null:
+			continue
+		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if library != null \
+			else null
+		var name: String = Inventory._tidy(info.name) if info != null else brick.part_id
+		counts[name] = int(counts.get(name, 0)) + 1
+	var named := PackedStringArray()
+	for name: String in counts:
+		# The first few: the bar is one line.
+		if named.size() == 3:
+			named.append("…")
+			break
+		named.append(name if int(counts[name]) == 1 else "%d x %s" % [counts[name], name])
+	return " — %s no mirror image, turned as near as %s: %s" % [
+		"1 has" if lone.size() == 1 else "%d have" % lone.size(),
+		"it goes" if lone.size() == 1 else "they go", ", ".join(named)]
 
 
 ## The ruler (Measure, a Later class), once it has been taken out.

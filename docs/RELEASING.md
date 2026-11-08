@@ -65,7 +65,9 @@ tools/release.py build
 #    app over its own socket, as a Claude Code session does, for the car
 #    path traced at Best, and holds the picture to the editor's.
 #    The .deb is installed into the clean home and its models opened with
-#    gio, as a file manager opens a double-click, in windows of their own.
+#    gio, as a file manager opens a double-click, in windows of their own,
+#    and GNOME's own thumbnail factory asked for each one's picture
+#    (tools/release/thumbnail_check.py).
 tools/release.py smoke dist/0.2.0/Brickworks-0.2.0-linux-x86_64.tar.xz --window
 tools/release.py smoke dist/0.2.0/Brickworks-0.2.0-linux-x86_64.AppImage
 tools/release.py smoke dist/0.2.0/Brickworks-0.2.0-linux-amd64.deb
@@ -82,10 +84,12 @@ tools/release.py latest --check dist/0.2.0/latest.json
 #    Windows, and the .deb on a stock Ubuntu, each installed as a person
 #    installs it (the disk image's app copied to /Applications, the
 #    installer run silently, the .deb by apt) and run in a clean home,
-#    models double-clicked into it, and on Windows and Ubuntu removed again
-#    (the AppImage and the tar.xz were step 3). The Intel runner is a VM
-#    whose GPU MoltenVK cannot draw on: its double-clicks open the models in
-#    the simpler graphics mode, which the launcher chose, and say so once.
+#    models double-clicked into it (on Ubuntu, GNOME's thumbnailer draws
+#    each model in its real sandbox too), and on Windows and Ubuntu
+#    removed again (the AppImage and the tar.xz were step 3). The Intel
+#    runner is a VM whose GPU MoltenVK cannot draw on: its double-clicks
+#    open the models in the simpler graphics mode, which the launcher
+#    chose, and say so once.
 #    Wait for green. It runs once, here: publishing does not run it again.
 #    The workflow lives in the releases repository, where Actions are free.
 gh workflow run release.yml -R Xaxis/brickworks-releases -f tag=v0.2.0
@@ -105,20 +109,20 @@ tools/update_check.py lay --old PRE/0.1.99/Brickworks-0.1.99-macos-universal.dmg
 #    ... and laid-windows (setup.exe), laid-windows-zip, laid-ubuntu (.deb), then:
 tools/release/runner_check.sh 0.2.0 LAID OUT
 
-# 6. Publish the draft that was checked, then put it on the download page,
-#    with four short lines on what is new in it: web/download.html's
-#    <ul data-highlights="0.2.0">, in place of the last release's. Without
-#    them the page shows the first sentences of the summary. The lines go
-#    into German, French and Spanish too, in web/_lang/<code>.json's
-#    "pages" (tools/site_lang.py --missing=de lists what is new), and
-#    tools/site_lang.py writes the page's copies at /de/download...: the
-#    suite fails while one has no words for them. Publishing
+# 6. Publish the draft that was checked. Since 2026-11-07 the download page
+#    says the desktop app is coming soon and offers no release (the owner:
+#    "make the downloadable access 'Coming soon' ... since we can't properly
+#    support it yet"), so it takes no lines of what is new: commit
+#    web/releases.json, which the changelog reads for the release's date.
+#    The app already installed hears of the release from the signed feed
+#    as before. (Until then the page offered it, with four lines in
+#    web/download.html's <ul data-highlights="0.2.0"> and their words in
+#    web/_lang/<code>.json; git log -- web/download.html.) Publishing
 #    also pushes the tag v0.2.0 to origin, on the commit that was built:
 #    the tag in the releases repository is on its README.
 tools/release.py publish                       # writes web/releases.json
-python3 tools/site_lang.py                     # web/de/, web/fr/, web/es/ from it
 git -c user.name=Xaxis -c user.email=william.neeley@gmail.com \
-  commit -m "Brickworks 0.2.0 on the download page" web/releases.json web/download.html web/_lang web/de web/fr web/es
+  commit -m "Brickworks 0.2.0's date for the changelog" web/releases.json
 # Not pushed to main and not deployed by hand: the page is a web change,
 # and it ships on the next release train with its checks (download, site,
 # site_lang and what flows_for names) and every headless probe.
@@ -127,8 +131,10 @@ git -c user.name=Xaxis -c user.email=william.neeley@gmail.com \
 # by this step's old `git push && tools/deploy.sh --prod` with no check run
 # (2026-11-03).
 
-# 7. Check it live: the page, and every address in its manifest.
+# 7. Check it live: the page still says coming soon and no page offers an
+#    installer, and every address in the manifest answers for the updater.
 node tools/web/download_check.mjs --url=https://brickworks.diy/download
+node tools/web/coming_soon_check.mjs --url=https://brickworks.diy
 tools/release/release_links.sh
 ```
 
@@ -169,7 +175,7 @@ stale and shadows the keyring login. `tools/release.py` drops it itself.
 | File | What |
 |---|---|
 | `Brickworks-X-linux-x86_64.AppImage` | one file, runs as it is (FUSE, or `--appimage-extract-and-run`); carries its menu entry, icons and model types |
-| `Brickworks-X-linux-amd64.deb` | for Debian and Ubuntu: `/usr/lib/brickworks`, `brickworks` on the PATH, in the menu, opening models |
+| `Brickworks-X-linux-amd64.deb` | for Debian and Ubuntu: `/usr/lib/brickworks`, `brickworks` on the PATH, in the menu, opening models, and their pictures in the file manager (`brickworks-thumbnailer`) |
 | `Brickworks-X-linux-x86_64.tar.xz` | the same program, as a folder |
 | `Brickworks-X-macos-universal.dmg` | `Brickworks.app` (Apple silicon and Intel in one) and an Applications link, laid out to drag one onto the other |
 | `Brickworks-X-windows-x86_64-setup.exe` | the per-user installer: no admin, Start menu, Settings ▸ Apps, model types; `/VERYSILENT` for the updater |

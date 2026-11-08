@@ -289,11 +289,14 @@ func _place_after_layout(dialog: Node) -> void:
 
 
 func _place_all() -> void:
-	for dialog: Node in _open.duplicate():
-		if is_instance_valid(dialog):
-			_place(dialog)
+	# Untyped until checked: a window or a panel freed while it shows never
+	# says it hid, so it stays listed, and putting it in a Node raised a
+	# script error that left the rest unplaced (timelinefit's tablet).
+	for held: Variant in _open.duplicate():
+		if is_instance_valid(held):
+			_place(held)
 		else:
-			_open.erase(dialog)
+			_open.erase(held)
 
 
 func _place(dialog: Node) -> void:
@@ -328,9 +331,9 @@ func _process(_delta: float) -> void:
 	if not _after_lift.is_empty() and not finger_down():
 		var waited: Array = _after_lift
 		_after_lift = []
-		for dialog: Node in waited:
-			if is_instance_valid(dialog) and dialog in _open:
-				_place(dialog)
+		for held: Variant in waited:
+			if is_instance_valid(held) and held in _open:
+				_place(held)
 	if not OS.has_feature("web") or Time.get_ticks_msec() < _look_at:
 		return
 	_look_at = Time.get_ticks_msec() + 250
@@ -347,9 +350,11 @@ func _process(_delta: float) -> void:
 
 ## The field being typed in, in an open dialog, if there is one.
 func typing() -> Control:
-	for dialog: Node in _open:
-		if not is_instance_valid(dialog):
+	# Untyped until checked, as in _place_all.
+	for held: Variant in _open:
+		if not is_instance_valid(held):
 			continue
+		var dialog: Node = held
 		var view: Viewport = dialog as Window if dialog is Window else get_viewport()
 		var focus: Control = view.gui_get_focus_owner()
 		if focus == null or not (focus is LineEdit or focus is TextEdit):
@@ -679,9 +684,14 @@ static func _wrap_words(root: Node, across: float) -> bool:
 		if label.get_minimum_size().x <= across and not in_row:
 			continue
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		if in_row:
+		# A row, or a row that flows, lays a label at its least width, and a
+		# wrapped label's is one letter: My collection's hint under Loose
+		# parts ran down a 768 x 1024 tablet a letter a line. There it keeps
+		# a share of the width and takes what its row leaves it.
+		var shares: bool = in_row or label.get_parent() is FlowContainer
+		if shares:
 			label.size_flags_horizontal |= Control.SIZE_EXPAND
-		label.custom_minimum_size.x = across * 0.3 if in_row else minf(label.custom_minimum_size.x, across)
+		label.custom_minimum_size.x = across * 0.3 if shares else minf(label.custom_minimum_size.x, across)
 		wrapped = true
 	return wrapped
 

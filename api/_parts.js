@@ -23,10 +23,12 @@
 // BrickLink wanted list (BrickLink's XML: ITEMTYPE, ITEMID, COLOR, MINQTY in
 // <INVENTORY>) and a Rebrickable parts list (its CSV import: Part, Color,
 // Quantity), a lot left off where the shop has no number for its colour, and
-// a made part, which no shop sells.
+// a made part, which no shop sells; a part in a direct colour (0x2RRGGBB)
+// listed in the nearest colour still made, as the app lists it (standIn).
 
 import { existsSync, readFileSync } from "node:fs";
 import { deflateSync } from "node:zlib";
+import { directOf, isDirect } from "./_colours.js";
 
 let table = null;
 
@@ -152,7 +154,8 @@ export function deriveTable(catalogue, colours, elements = {}) {
       Number.isInteger(colour.rebrickable_id) ? colour.rebrickable_id : -1,
       Number.isInteger(colour.bricklink) ? colour.bricklink : -1,
       Number.isInteger(colour.plain_code) ? colour.plain_code : colour.code,
-      Number.isInteger(colour.alpha) ? colour.alpha : 255];
+      Number.isInteger(colour.alpha) ? colour.alpha : 255,
+      finishOf(String(colour.finish || "solid"), String(colour.name || ""), String(colour.material?.kind || ""))];
   }
   const flex = {};
   for (const [kind, spec] of Object.entries(KINDS)) {
@@ -169,7 +172,111 @@ export function deriveTable(catalogue, colours, elements = {}) {
     found.sort((a, b) => (Math.abs(a[1] - b[1]) > 1e-5 ? a[1] - b[1] : a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
     flex[kind] = found;
   }
-  return { categories, parts, colours: colourRows, elements: elements.pairs || {}, flex };
+  // The colours a direct colour stands in as on a shop's list
+  // (PartLibrary.stand_in_codes): solid, opaque, its own plain colour, with
+  // a BrickLink number, made now. In code order.
+  const standIns = (Array.isArray(colours) ? colours : [])
+    .filter((colour) => colour.group === "solid" && (colour.alpha ?? 255) === 255
+      && (colour.plain_code ?? colour.code) === colour.code && Number.isInteger(colour.bricklink)
+      && colour.bricklink >= 0 && colour.current === true)
+    .map((colour) => colour.code).sort((a, b) => a - b);
+  return { categories, parts, colours: colourRows, elements: elements.pairs || {}, flex, stand_ins: standIns };
+}
+
+/// CIE L*a*b* of "rrggbb" (D65), as HiddenColours.lab works it.
+function labOf(hex) {
+  const linear = [0, 2, 4].map((at) => {
+    const c = Number.parseInt(hex.slice(at, at + 2), 16) / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  const x = (0.4124 * linear[0] + 0.3576 * linear[1] + 0.1805 * linear[2]) / 0.95047;
+  const y = 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+  const z = (0.0193 * linear[0] + 0.1192 * linear[1] + 0.9505 * linear[2]) / 1.08883;
+  const f = (t) => (t > 0.008856 ? t ** (1 / 3) : 7.787 * t + 16 / 116);
+  return [116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))];
+}
+
+/// CIEDE2000 between two L*a*b* colours, as HiddenColours.de2000 works it.
+function de2000(one, two) {
+  const POW25_7 = 6103515625;
+  const rad = (deg) => (deg * Math.PI) / 180;
+  const deg = (r) => (r * 180) / Math.PI;
+  const posmod = (v, m) => ((v % m) + m) % m;
+  const c1 = Math.sqrt(one[1] * one[1] + one[2] * one[2]);
+  const c2 = Math.sqrt(two[1] * two[1] + two[2] * two[2]);
+  const cm = ((c1 + c2) / 2) ** 7;
+  const g = 0.5 * (1 - Math.sqrt(cm / (cm + POW25_7)));
+  const a1 = (1 + g) * one[1];
+  const a2 = (1 + g) * two[1];
+  const c1p = Math.sqrt(a1 * a1 + one[2] * one[2]);
+  const c2p = Math.sqrt(a2 * a2 + two[2] * two[2]);
+  const h1 = posmod(deg(Math.atan2(one[2], a1)), 360);
+  const h2 = posmod(deg(Math.atan2(two[2], a2)), 360);
+  const both = c1p * c2p !== 0;
+  let dh = 0;
+  if (both) {
+    dh = h2 - h1;
+    if (dh > 180) dh -= 360;
+    else if (dh < -180) dh += 360;
+  }
+  const dl = two[0] - one[0];
+  const dc = c2p - c1p;
+  const dhh = 2 * Math.sqrt(c1p * c2p) * Math.sin(rad(dh) / 2);
+  const lm = (one[0] + two[0]) / 2;
+  const cpm = (c1p + c2p) / 2;
+  let hm = h1 + h2;
+  if (both) {
+    if (Math.abs(h1 - h2) <= 180) hm = (h1 + h2) / 2;
+    else if (h1 + h2 < 360) hm = (h1 + h2 + 360) / 2;
+    else hm = (h1 + h2 - 360) / 2;
+  }
+  const t = 1 - 0.17 * Math.cos(rad(hm - 30)) + 0.24 * Math.cos(rad(2 * hm))
+    + 0.32 * Math.cos(rad(3 * hm + 6)) - 0.2 * Math.cos(rad(4 * hm - 63));
+  const theta = 30 * Math.exp(-(((hm - 275) / 25) ** 2));
+  const cp7 = cpm ** 7;
+  const rc = 2 * Math.sqrt(cp7 / (cp7 + POW25_7));
+  const l50 = (lm - 50) * (lm - 50);
+  const x = dl / (1 + 0.015 * l50 / Math.sqrt(20 + l50));
+  const y = dc / (1 + 0.045 * cpm);
+  const z = dhh / (1 + 0.015 * cpm * t);
+  return Math.sqrt(Math.max(0, x * x + y * y + z * z - Math.sin(rad(2 * theta)) * rc * y * z));
+}
+
+/// The catalogue colour a shop's list orders a part of direct colour [code]
+/// in, as the app chooses it (PartLibrary.catalogue_nearest): the nearest by
+/// CIEDE2000 of the table's stand_ins, the lowest code of two as near; -1
+/// for a palette code or a table with none.
+export function standIn(code, given = partsTable()) {
+  if (!isDirect(code) || !given) return -1;
+  const here = labOf(directOf(code).hex);
+  let best = -1;
+  let gap = Infinity;
+  for (const choice of given.stand_ins || []) {
+    const row = given.colours[choice];
+    if (!row) continue;
+    const apart = de2000(here, labOf(row[1]));
+    if (apart < gap) {
+      gap = apart;
+      best = choice;
+    }
+  }
+  return best;
+}
+
+/// How a colour's plastic is drawn, as the app's number for it
+/// (PartLibrary.finish_for, BrickColor.Finish): the GLB a model is placed in
+/// a room with gives each its finish as Export does (MeshExport.material_for).
+export const FINISH = { PLASTIC: 0, CHROME: 1, METAL: 2, PEARL: 3, SPECKLE: 4, GLITTER: 5, OPAL: 6, GLOW: 7,
+  FLUORESCENT: 8, RUBBER: 9, FABRIC: 10, MILKY: 11 };
+function finishOf(finish, name, materialKind) {
+  const named = { chrome: "CHROME", metal: "METAL", pearlescent: "PEARL", speckle: "SPECKLE", glitter: "GLITTER",
+    opalescent: "OPAL", glow: "GLOW", rubber: "RUBBER", fabric: "FABRIC" }[finish];
+  if (named) return FINISH[named];
+  if (materialKind === "glitter") return FINISH.GLITTER;
+  if (materialKind === "speckle") return FINISH.SPECKLE;
+  if (name.includes("Neon")) return FINISH.FLUORESCENT;
+  if (name.includes("Milky")) return FINISH.MILKY;
+  return FINISH.PLASTIC;
 }
 
 // ---------------------------------------------------------------------------
@@ -204,7 +311,11 @@ const declaresPart = (lines) => lines.slice(0, 16)
 
 /// [text] as its sub-models, the parts it carries and its LDCad-generated
 /// sections: {main, submodels: key -> {name, title, placements}, carried:
-/// file name -> text, sections: name -> text, generated: Set of keys}.
+/// file name -> text, sections: name -> text, generated: Set of keys}. Each
+/// placement {part, colour, m, copy, within}: [copy] the copy of a sub-model
+/// a reference is (`0 !BRICKWORKS COPY n` before it, 0 where none says),
+/// [within] the copy built in its sub-model's steps it is in (`0 !BRICKWORKS
+/// IN path`, to the next or the step's end), as LdrModel.parse reads them.
 function parse(text) {
   const submodels = new Map();
   const implicit = { name: "model", title: "", placements: [] };
@@ -217,6 +328,8 @@ function parse(text) {
   let inData = false;
   const generated = new Set();
   let author = "";
+  let copyNext = 0;
+  let within = "";
   for (const raw of text.split("\n")) {
     const line = raw.trim();
     if (inData) {
@@ -243,6 +356,7 @@ function parse(text) {
         sections.set(section, []);
         current = { name, title: "", placements: [] };
         submodels.set(keyOf(name), current);
+        within = "";
         if (firstFile) {
           main = current;
           submodels.delete("model");
@@ -250,7 +364,12 @@ function parse(text) {
           firstFile = false;
         }
       } else if (keyword === "STEP" || keyword === "ROTSTEP") {
-        // Steps say nothing of what is in it.
+        // Steps say nothing of what is in it, but end a copy built in them.
+        within = "";
+      } else if (keyword === "!BRICKWORKS" && tokens[2] === "COPY" && tokens.length > 3) {
+        copyNext = Math.max(Number.parseInt(tokens[3], 10) || 0, 0);
+      } else if (keyword === "!BRICKWORKS" && tokens[2] === "IN") {
+        within = line.slice(line.toUpperCase().indexOf(keyword) + keyword.length).trim().slice(2).trim();
       } else if (keyword === "!LDCAD" && tokens[2] === "GENERATED" && !generated.has(keyOf(current.name))) {
         generated.add(keyOf(current.name));
       } else if (keyword === "AUTHOR:" && !author) {
@@ -268,7 +387,8 @@ function parse(text) {
     const numbers = tokens.slice(2, 14).map(Number);
     let part = fileOf(tokens.slice(14).join(" ").trim().replace(/\\/g, "/").toLowerCase());
     if (part.endsWith(".dat") || part.endsWith(".ldr")) part = part.slice(0, -4);
-    current.placements.push({ part, colour, m: numbers });
+    current.placements.push({ part, colour, m: numbers, copy: copyNext, within });
+    copyNext = 0;
   }
   const carried = new Map();
   const texts = new Map();
@@ -280,7 +400,7 @@ function parse(text) {
     carried.set(fileOf(key.replace(/\\/g, "/")), texts.get(name));
     submodels.delete(keyOf(name));
   }
-  return { main, submodels, carried, sections: texts, generated };
+  return { main, submodels, carried, sections: texts, generated, author };
 }
 
 // ---------------------------------------------------------------------------
@@ -309,8 +429,10 @@ function makeLibrary(given) {
   };
   const colour = (code) => {
     const row = given.colours[code];
-    return row ? { name: row[0], hex: row[1], lego: row[2], rebrickable: row[3], bricklink: row[4], plain: row[5] }
-      : { name: `Unknown ${code}`, hex: "ff00ff", lego: "", rebrickable: -1, bricklink: -1, plain: code };
+    if (row) return { name: row[0], hex: row[1], lego: row[2], rebrickable: row[3], bricklink: row[4], plain: row[5] };
+    // A direct colour is its own RGB, in no shop's or palette's numbers.
+    if (isDirect(code)) return { ...directOf(code), lego: "", rebrickable: -1, bricklink: -1, plain: code };
+    return { name: `Unknown ${code}`, hex: "ff00ff", lego: "", rebrickable: -1, bricklink: -1, plain: code };
   };
   return { custom, info, has, resolve, colour };
 }
@@ -572,8 +694,15 @@ function lotMaker(library, given) {
         lego_colour: plain.lego, count: 0, element, custom: Boolean(info && info.custom), copy_of: (info && info.copy_of) || "",
         bricklink: shopPart(info, part, "bricklink"), bricklink_colour: plain.bricklink,
         rebrickable: shopPart(info, part, "rebrickable"), rebrickable_colour: plain.rebrickable,
-        mesh: (info && info.mesh) || "",
+        mesh: (info && info.mesh) || "", stand_in: null,
       };
+      // A direct colour no shop sells: the colour a shop's list orders the
+      // part in instead (Inventory.Lot.stand_in), and says so.
+      const instead = standIn(code, given);
+      if (instead >= 0) {
+        const stood = library.colour(instead);
+        lot.stand_in = { colour: instead, name: stood.name, bricklink: stood.bricklink, rebrickable: stood.rebrickable };
+      }
       byKey.set(key, lot);
       lots.push(lot);
     }
@@ -616,37 +745,57 @@ export function inventoryOfLots(rows, given = partsTable()) {
 
 const xml = (text) => String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
+/// A lot in a direct colour as a list names it: "#FF0000 as Reddish Orange"
+/// (ShopLists._note), each once.
+function noteStandIn(standIns, lot) {
+  const said = `${lot.colour_name} as ${lot.stand_in.name}`;
+  if (!standIns.includes(said)) standIns.push(said);
+}
+
 /// A BrickLink wanted list, to upload under Wanted › Upload: {text, lots,
-/// left_out}. A made part and a colour BrickLink has no number known for are
-/// left off, never guessed.
+/// left_out, stand_ins}. A made part and a colour BrickLink has no number
+/// known for are left off, never guessed. A part in a direct colour is listed
+/// in the colour it stands in as, with a REMARKS saying so (ShopLists.
+/// bricklink_xml), and named in stand_ins.
 export function wantedList(inventory) {
   const lines = ["<INVENTORY>"];
   let left = 0;
+  const standIns = [];
   for (const lot of inventory.lots) {
-    if (lot.custom || lot.bricklink_colour < 0) {
+    const colour = lot.stand_in ? lot.stand_in.bricklink : lot.bricklink_colour;
+    if (lot.custom || colour < 0) {
       left += 1;
       continue;
     }
     lines.push("  <ITEM>", "    <ITEMTYPE>P</ITEMTYPE>", `    <ITEMID>${xml(lot.bricklink)}</ITEMID>`,
-      `    <COLOR>${lot.bricklink_colour}</COLOR>`, `    <MINQTY>${lot.count}</MINQTY>`, "  </ITEM>");
+      `    <COLOR>${colour}</COLOR>`, `    <MINQTY>${lot.count}</MINQTY>`);
+    if (lot.stand_in) {
+      lines.push(`    <REMARKS>${xml(`Brickworks: drawn in ${lot.colour_name}, an LDraw direct colour no shop sells; listed in the nearest, ${lot.stand_in.name}`)}</REMARKS>`);
+      noteStandIn(standIns, lot);
+    }
+    lines.push("  </ITEM>");
   }
   lines.push("</INVENTORY>");
-  return { text: `${lines.join("\n")}\n`, lots: inventory.lots.length - left, left_out: left };
+  return { text: `${lines.join("\n")}\n`, lots: inventory.lots.length - left, left_out: left, stand_ins: standIns };
 }
 
-/// Rebrickable's parts-list import: Part, Color, Quantity, in its numbers.
+/// Rebrickable's parts-list import: Part, Color, Quantity, in its numbers; a
+/// part in a direct colour in the colour it stands in as, named in stand_ins.
 export function rebrickableCsv(inventory) {
   const rows = ["Part,Color,Quantity"];
   let left = 0;
+  const standIns = [];
   for (const lot of inventory.lots) {
-    if (lot.custom || lot.rebrickable_colour < 0) {
+    const colour = lot.stand_in ? lot.stand_in.rebrickable : lot.rebrickable_colour;
+    if (lot.custom || colour < 0) {
       left += 1;
       continue;
     }
+    if (lot.stand_in) noteStandIn(standIns, lot);
     const part = /[",\n]/.test(lot.rebrickable) ? `"${lot.rebrickable.replace(/"/g, '""')}"` : lot.rebrickable;
-    rows.push(`${part},${lot.rebrickable_colour},${lot.count}`);
+    rows.push(`${part},${colour},${lot.count}`);
   }
-  return { text: `${rows.join("\n")}\n`, lots: inventory.lots.length - left, left_out: left };
+  return { text: `${rows.join("\n")}\n`, lots: inventory.lots.length - left, left_out: left, stand_ins: standIns };
 }
 
 /// What a page needs to draw each lot's picture itself (web/part-pictures.js,
@@ -687,15 +836,24 @@ let shapes = null;
 /// Apart from the parts table, which every page of the share function
 /// reads, since only a 3D view asks for it.
 export function deriveSceneTable(catalogue) {
-  const round = (v) => Math.round(Number(v) * 10) / 10;
+  // To the thousandth the catalogue gives, as the app reads it
+  // (PartInfo.bounds): the room's GLB stands the model on the ground by
+  // them, as the app does (web/glb.js liftOf).
+  const round = (v) => Math.round(Number(v) * 1000) / 1000;
   const parts = {};
+  // Where a retired number's part goes for one placed at the identity
+  // (PartLibrary.moved_by's each hop): a stub that turns its part, LDraw's
+  // twelve numbers. A file's 3464 wheel centres stand turned as 3464b.
+  const moved = {};
   for (const part of catalogue.parts || []) {
     const low = part.bounds_min || [-10, -24, -10];
     const high = part.bounds_max || [10, 0, 10];
     parts[String(part.id)] = [...low.map(round), ...high.map(round), Number(part.triangles) || 0,
       ...(part.fixed_colors || []).map(Number).filter(Number.isInteger)];
+    const by = (part.moved_by || []).map(Number);
+    if (part.moved_to && by.length === 12 && by.some((v, k) => Math.abs(v - IDENTITY[k]) > 1e-9)) moved[String(part.id)] = by;
   }
-  return { parts };
+  return { parts, moved };
 }
 
 /// The scene table: _scene_table.json beside this file in a deployment
@@ -752,6 +910,33 @@ function placeOf(m) {
   return { place, turn: q.map((v) => v / n) };
 }
 
+/// The catalogue part [id] is drawn as, with its geometry in the store:
+/// {part, info}, or null for one with none (a part the file carries, one
+/// nobody knows). BrickLink Studio's name for a part, and a copy of a
+/// catalogue part carried in the file and named for it as LDraw's model
+/// repository names one ("42100 - 4185a"), are drawn as that part
+/// (CustomParts.read_as_copy), and a retired number as the one it became.
+function drawnAs(library, id, table = null) {
+  const copy = id.lastIndexOf(" - ");
+  const carried = library.custom.get(id);
+  const studio = carried?.copy_of && library.has(carried.copy_of) ? carried.copy_of
+    : library.has(id) ? id
+      : id.startsWith("bl_") && library.has(id.slice(3)) ? id.slice(3)
+        : copy > 0 && library.has(id.slice(copy + 3).trim()) ? id.slice(copy + 3).trim() : id;
+  const part = library.resolve(studio);
+  const info = library.info(part);
+  if (!info || !/^[0-9a-f]{8,64}$/.test(info.mesh)) return null;
+  // Turned as its stub turns it (PartLibrary.moved_by), on every hop.
+  let by = IDENTITY;
+  let at = studio;
+  for (let hop = 0; hop < 8 && at !== part; hop += 1) {
+    const turn = table?.moved?.[at];
+    if (turn) by = compose(by, turn);
+    at = library.info(at)?.moved || part;
+  }
+  return { part, info, by: by === IDENTITY ? null : by };
+}
+
 /// The model in [text] packed as ModelScene.packed packs one: {v, of, root,
 /// step, origin, meshes, colours, count, bricks, triangles}, [root] where
 /// each part's geometry is (root + hash + ".lbm"). Every part the catalogue
@@ -764,18 +949,8 @@ export function sceneOf(text, root, of = "", given = partsTable(), table = scene
   const library = makeLibrary(given);
   const placed = [];
   for (const one of flatten(model, library)) {
-    // BrickLink Studio's name for a part, and a copy of a catalogue part
-    // carried in the file and named for it as LDraw's model repository names
-    // one ("42100 - 4185a"), which the app draws as that part
-    // (CustomParts.read_as_copy).
-    const copy = one.part.lastIndexOf(" - ");
-    const studio = library.has(one.part) ? one.part
-      : one.part.startsWith("bl_") && library.has(one.part.slice(3)) ? one.part.slice(3)
-        : copy > 0 && library.has(one.part.slice(copy + 3).trim()) ? one.part.slice(copy + 3).trim() : one.part;
-    const part = library.resolve(studio);
-    const info = library.info(part);
-    if (!info || !/^[0-9a-f]{8,64}$/.test(info.mesh)) continue;
-    placed.push({ part, info, colour: one.colour, ...placeOf(one.m) });
+    const drawn = drawnAs(library, one.part, table);
+    if (drawn) placed.push({ ...drawn, colour: one.colour, ...placeOf(drawn.by ? compose(one.m, drawn.by) : one.m) });
   }
   const n = placed.length;
   const meshes = [];
@@ -785,10 +960,10 @@ export function sceneOf(text, root, of = "", given = partsTable(), table = scene
   const colourIndex = (code) => {
     if (colourOf.has(code)) return colourOf.get(code);
     const row = given.colours[code];
-    const direct = code >= 0x2000000;
-    const hex = direct ? (code & 0xffffff).toString(16).padStart(6, "0") : row ? row[1] : "ff00ff";
+    const direct = isDirect(code) ? directOf(code) : null;
+    const hex = direct ? direct.hex : row ? row[1] : "ff00ff";
     colourOf.set(code, colours.length);
-    colours.push([code, direct ? `#${hex.toUpperCase()}` : row ? String(row[0]).replace(/_/g, " ") : `Colour ${code}`,
+    colours.push([code, direct ? direct.name : row ? String(row[0]).replace(/_/g, " ") : `Colour ${code}`,
       hex, !direct && row && Number.isInteger(row[6]) ? row[6] : 255]);
     return colourOf.get(code);
   };
@@ -832,4 +1007,184 @@ export function sceneOf(text, root, of = "", given = partsTable(), table = scene
   });
   return { v: 1, of, root, step, origin, meshes, colours, count: n,
     bricks: deflateSync(raw).toString("base64"), triangles };
+}
+
+// ---------------------------------------------------------------------------
+// The model in a room (APP_UX5 #13, arview): what a model's page needs to
+// write the GLB the app's Export writes of it (src/parts/mesh_export.gd,
+// MeshExport._gltf), which web/glb.js writes in the visitor's browser from
+// each part's geometry in the store, and an AR viewer places at real size.
+
+/// What each sub-model's assembly is called (LdrModel._assembly_names): its
+/// title, or its file name where it has none, and the file name too where
+/// two share a title; never with a "/" or a "#", which a path uses.
+function assemblyNames(model) {
+  const byTitle = new Map();
+  for (const [key, sub] of model.submodels) {
+    const title = (sub.title || key).replace(/\//g, "-").replace(/#/g, "").trim();
+    if (!byTitle.has(title)) byTitle.set(title, []);
+    byTitle.get(title).push(key);
+  }
+  const out = new Map();
+  for (const [title, keys] of byTitle) {
+    for (const key of keys) out.set(key, keys.length === 1 ? title : `${title} (${key})`);
+  }
+  return out;
+}
+
+/// Every part placed, through the sub-models, with the assembly it is in,
+/// as the app's LdrModel.flatten paths it ("House#1/Window#3"): each copy
+/// of a sub-model its own, numbered as the file says (COPY) where that
+/// number is still free, else the next after the highest; a copy built in
+/// its parent's steps (IN) by the path the file gives it. {part, colour,
+/// m, unit}.
+function flattenUnits(model, library) {
+  const out = [];
+  const names = assemblyNames(model);
+  const copies = new Map();
+  const numbered = (kind, asked) => {
+    let number = (copies.get(kind) || 0) + 1;
+    if (asked > 0 && !copies.has(`${kind}#${asked}`)) number = asked;
+    copies.set(kind, Math.max(copies.get(kind) || 0, number));
+    copies.set(`${kind}#${number}`, true);
+    return `${kind}#${number}`;
+  };
+  // The path of the copy [within] names, in the steps of the copy at [unit]
+  // (LdrModel._built_within): the same for every line of one copy ([made]).
+  const builtWithin = (within, unit, made) => {
+    let path = unit;
+    let said = "";
+    for (const segment of within.split("/").filter(Boolean)) {
+      said = said ? `${said}/${segment}` : segment;
+      if (made.has(said)) {
+        path = made.get(said);
+        continue;
+      }
+      const kind = segment.split("#")[0].trim();
+      const asked = segment.includes("#") ? Number.parseInt(segment.split("#")[1], 10) || 0 : 0;
+      const copy = numbered(kind, asked);
+      path = path ? `${path}/${copy}` : copy;
+      made.set(said, path);
+    }
+    return path;
+  };
+  const inline = (sub, at, colour, visiting, depth, unit) => {
+    const key = keyOf(sub.name);
+    if (depth > 32 || visiting.has(key)) return;
+    const inside = new Set(visiting).add(key);
+    const made = new Map();
+    for (const one of sub.placements) {
+      const nested = model.submodels.get(keyOf(one.part));
+      const ownUnit = one.within ? builtWithin(one.within, unit, made) : unit;
+      const placedIn = one.colour === 16 ? colour : one.colour;
+      if (nested && !library.has(one.part)) {
+        const kind = names.get(keyOf(nested.name)) || keyOf(nested.name);
+        const copy = numbered(kind, one.copy || 0);
+        inline(nested, compose(at, one.m), placedIn, inside, depth + 1, ownUnit ? `${ownUnit}/${copy}` : copy);
+        continue;
+      }
+      out.push({ part: one.part, colour: placedIn, m: compose(at, one.m), unit: ownUnit });
+    }
+  };
+  if (model.main) inline(model.main, IDENTITY, 0, new Set(), 0, "");
+  return out;
+}
+
+/// An assembly's name in the tree (Assemblies.label): "Wing", or "Wing
+/// (copy 2)" for its second copy.
+function unitLabel(path) {
+  const leaf = path.slice(path.lastIndexOf("/") + 1);
+  const at = leaf.indexOf("#");
+  const copy = at < 0 ? 1 : Math.max(Number.parseInt(leaf.slice(at + 1), 10) || 0, 1);
+  const kind = at < 0 ? leaf : leaf.slice(0, at);
+  return copy === 1 ? kind : `${kind} (copy ${copy})`;
+}
+
+/// A row of LDraw's twelve numbers as the app places a part
+/// (LdrModel.to_transform, conjugated by diag(1, -1, -1)): its basis by
+/// columns, then its origin in LDU, each turn's noise put back to the 0 it
+/// was meant as (MeshExport._matrix).
+function appPlace(m) {
+  const [x, y, z, a, b, c, d, e, f, g, h, i] = m;
+  return [a, -d, -g, -b, e, h, -c, f, i, x, -y, -z]
+    .map((v) => (Math.abs(v) < 1e-9 ? 0 : Number(v.toPrecision(10))));
+}
+
+/// The model in [text] as the GLB Export writes takes it: {v, of, root,
+/// foreign, meshes: [[part, hash, name, min x y z, max x y z, baseplate]],
+/// colours: [[code, name, hex, alpha, finish]],
+/// units: [[name, parent]], parts: [[mesh, colour, unit, 12 numbers]],
+/// left_out: {part: count}, triangles, shape_triangles}. Each part placed, in the order the
+/// file places it (the app's brick ids), drawn as the catalogue part the
+/// app draws it as (drawnAs), in the assembly it is in (units[0] is the
+/// model; each other is [its name, its parent's index], made as a part in it
+/// first comes, as MeshExport._path_node makes its node); its place by the
+/// app's axes (appPlace). [root] is where each part's geometry is (root +
+/// hash + ".lbm"). A part with no geometry in the store (one the file
+/// carries, one nobody knows) is left out and counted, as the page's 3D view
+/// leaves it out. [triangles]: the parts' triangles, every copy's, as a
+/// viewer draws them (sceneTable's counts); [shape_triangles], each shape's
+/// once, which its GLB's size goes by (web/glb.js guessBytes). Each mesh's box (the
+/// catalogue's, in the app's axes) and whether it is a baseplate, and
+/// whether another tool wrote the file ([foreign]: its author is not
+/// Brickworks), are what the app stands a model on the ground by as it
+/// opens (ModelStore.lift_for), which web/glb.js does too. Null where there
+/// is no table.
+export function roomOf(text, root, of = "", given = partsTable(), table = sceneTable()) {
+  if (!given) return null;
+  const model = parse(String(text).replace(/^﻿/, ""));
+  const library = makeLibrary(given);
+  // The parts the file carries, each a copy of the catalogue's it is drawn
+  // as where it is one, and an LDCad hose its own part (CustomParts.take_into),
+  // left out as the 3D view leaves it, and counted.
+  takeInto(library, model);
+  const meshes = [];
+  const meshOf = new Map();
+  const colours = [];
+  const colourOf = new Map();
+  const units = [["", -1]];
+  const unitOf = new Map([["", 0]]);
+  const unitIndex = (path) => {
+    if (unitOf.has(path)) return unitOf.get(path);
+    const parent = unitIndex(path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "");
+    unitOf.set(path, units.length);
+    units.push([unitLabel(path), parent]);
+    return unitOf.get(path);
+  };
+  const colourIndex = (code) => {
+    if (colourOf.has(code)) return colourOf.get(code);
+    const row = given.colours[code];
+    const direct = isDirect(code) ? directOf(code) : null;
+    const hex = direct ? direct.hex : row ? row[1] : "ff00ff";
+    colourOf.set(code, colours.length);
+    colours.push([code, direct ? direct.name : row ? String(row[0]) : `Unknown ${code}`, hex,
+      !direct && row && Number.isInteger(row[6]) ? row[6] : 255, !direct && row && Number.isInteger(row[7]) ? row[7] : FINISH.PLASTIC]);
+    return colourOf.get(code);
+  };
+  const parts = [];
+  const leftOut = {};
+  let triangles = 0;
+  let shapeTriangles = 0;
+  for (const one of flattenUnits(model, library)) {
+    const drawn = drawnAs(library, one.part, table);
+    if (!drawn) {
+      leftOut[one.part] = (leftOut[one.part] || 0) + 1;
+      continue;
+    }
+    if (!meshOf.has(drawn.part)) {
+      meshOf.set(drawn.part, meshes.length);
+      const row = table?.parts?.[drawn.part] || [];
+      meshes.push([drawn.part, drawn.info.mesh, `${drawn.part} ${tidy(drawn.info.name)}`,
+        ...(row.length >= 6 ? row.slice(0, 6).map(Number) : [-10, -24, -10, 10, 0, 10]), drawn.info.category === "Baseplate" ? 1 : 0]);
+      // The colours it is moulded in besides the one it is placed in (a
+      // printed face, a tyre), which its own surfaces name.
+      for (const fixed of (table?.parts?.[drawn.part] || []).slice(7)) colourIndex(Number(fixed));
+      shapeTriangles += Number(row[6]) || 0;
+    }
+    triangles += Number(table?.parts?.[drawn.part]?.[6]) || 0;
+    parts.push([meshOf.get(drawn.part), colourIndex(one.colour), unitIndex(one.unit),
+      ...appPlace(drawn.by ? compose(one.m, drawn.by) : one.m)]);
+  }
+  return { v: 1, of, root, foreign: String(model.author || "").trim() !== "Brickworks", meshes, colours, units, parts,
+    left_out: leftOut, triangles, shape_triangles: shapeTriangles };
 }

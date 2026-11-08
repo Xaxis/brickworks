@@ -10,6 +10,7 @@ function that returns nothing) fails a test rather than a round.
 
 from __future__ import annotations
 
+import functools
 import json
 import os
 import random
@@ -161,11 +162,18 @@ def test_a_half_spreads_over_themes():
         assert len(set(others)) >= min(len(others), 6) - 1, others
 
 
+@functools.lru_cache(maxsize=None)
+def _real() -> tuple[list, dict]:
+    """The repository's eligible sets and their halves, read once a file: reading
+    1,235 models took 9 s, and two tests read them (2026-11-07)."""
+    pool = realset.eligible(realset.candidates())
+    return pool, realset.choose(pool)
+
+
 @needs_sets
 def test_the_real_halves_are_fixed_eligible_and_apart():
-    pool = realset.eligible(realset.candidates())
+    pool, halves = _real()
     assert len(pool) > 2 * realset.PER_HALF
-    halves = realset.choose(pool)
     for which, half in halves.items():
         assert len(half) == realset.PER_HALF, which
         assert {c.kind for c in half} >= set(realset.CHARACTERS), which
@@ -195,8 +203,7 @@ def test_a_grown_half_starts_with_the_half_it_was():
 
 @needs_sets
 def test_the_real_halves_start_with_the_ten_old_results_were_run_on():
-    pool = realset.eligible(realset.candidates())
-    halves = realset.choose(pool)
+    pool, halves = _real()
     for which, numbers in FIRST_TEN.items():
         assert [c.number for c in halves[which][:realset.FIRST]] == numbers, which
     # Every set but the characters past one of each kind a half is in a half.

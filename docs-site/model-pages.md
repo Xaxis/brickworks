@@ -25,6 +25,14 @@ ui:shared model page and card
 ui:shared model viewer
 -->
 
+### In your room {#in-your-room}
+
+On a phone or a tablet, **In your room** on the picture's other corner puts the model in the room you are in, at its real size, through the camera: AR Quick Look on an iPhone or iPad, the browser's own AR on Android. The page first shows the model to turn; **Place it in your room** opens the camera, and you set it on the floor or a table, where a pinch can still change its size. What it places is the 3D model **File › Export › 3D model…** writes in the app, every part in its colour. A model over 32 MB as a 3D model is too big for a phone, and the page says so before it fetches anything. A computer has no camera to place it with, so there it is not offered; use **View in 3D**.
+
+<!-- covers
+ui:the model in your room
+-->
+
 ### Build it {#build-it}
 
 **Build it** on the viewer's bar plays the steps as a booklet does, a step at a time, the new parts shown going on, on a phone, a tablet or a computer. A comment's step pill opens it at that step (`/app?view=<id>&step=<n>`).
@@ -34,12 +42,30 @@ ui:build it step player
 ui:open a shared model at a step
 -->
 
+### Build together {#build-together}
+
+Up to four people can build one model at once, each on their own phone, tablet or computer, with no account. On the model's viewer, **Build together** opens a card: one person presses **Start a build** and is given a four-letter code; the others open the same model, press **Build together**, type the code and press **Join**. Each can give a name, or be *Builder 2*. When everyone is in, the one who started presses **Start building**.
+
+Brickworks deals the model out: each sub-assembly whole to one person, and the main build cut into runs of its steps when there are more people than parts to build. Each person's Build it then has only their own steps, a part at a time, and along its top everyone's progress (*Mia 4 of 9*). Done first, you wait on your last step, built, with who is still building. When everyone is done, everyone is shown the last step, which puts the parts together: the others' parts outlined where they go on.
+
+**Close** mid-build puts the card back, with **Back to building** and **Leave the build**. Join again with the same code, kept on that device, and you are back on your own share where you left it. A build lasts a day.
+
+<!-- covers
+ui:build party
+-->
+
 ### Play with it {#play}
 
 A model with something that moves says so under the bar (*Moves: steering, boom*): drag a part that moves, with the mouse or a finger, and it moves on its real joints. **Reset** puts it back. Its own motions are buttons to play.
 
 <!-- covers
 ui:play in a shared model
+-->
+
+A link can open the model playing one of its motions: add `?motion=` and the motion's name, as the Share panel's **Opens** writes it (`brickworks.diy/m/<id>?motion=lift-the-boom`; a word only that motion's name has, such as `?motion=boom`, works too). It plays there and back over and over until you press its button, which puts it back as built. With **Reduce motion** on in your system or in Settings it plays once. A name the model has no motion for opens it still, and says so.
+
+<!-- covers
+ui:a link that opens playing
 -->
 
 ## Pictures and tabs {#tabs}

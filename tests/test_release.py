@@ -14,6 +14,7 @@ build` reads every one back, and `smoke` runs it.
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import struct
 import subprocess
@@ -725,8 +726,45 @@ def test_the_deb_installs_the_app_its_entry_icons_and_types(tmp_path):
     assert sorted(facts["icons"], key=lambda size: int(size.split("x")[0])) == [
         "%dx%d" % (n, n) for n in (16, 22, 24, 32, 48, 64, 128, 256, 512)]
     assert "usr/share/icons/hicolor/scalable/apps/%s.svg" % release.APP_ID in facts["contents"]
+    # A folder of models shows each model: the thumbnailer entry names the
+    # runner it carries, executable, for the model files the app draws.
+    assert facts["thumbnails"] == ["ldr", "mpd", "io"]
+    assert release.THUMBNAILER in facts["contents"]
     assert facts["loose"] == []
     assert facts["licences"]["lacking"] == []
+
+
+def test_the_thumbnailer_runs_the_app_headless_from_a_data_folder_of_its_own(tmp_path):
+    entry = release.thumbnailer_entry()
+    assert "TryExec=brickworks-thumbnailer\nExec=brickworks-thumbnailer %i %o %s\n" in entry
+    assert "MimeType=application/x-ldraw;application/x-multi-part-ldraw;" \
+        "application/x-bricklink-studio;\n" in entry
+    # Run as a file browser runs it, with the app swapped for a stand-in that
+    # says what it was given: the model, the picture and the size, headless,
+    # and a data folder that is not the person's and is gone afterwards.
+    (tmp_path / "bin").mkdir()
+    lib = tmp_path / "lib" / "brickworks"
+    lib.mkdir(parents=True)
+    runner = tmp_path / "bin" / "brickworks-thumbnailer"
+    runner.write_text(release.thumbnail_runner())
+    runner.chmod(0o755)
+    app = lib / "brickworks.x86_64"
+    app.write_text('#!/bin/sh\necho "$XDG_DATA_HOME" > "$4.data"\necho "$@" > "$4"\n'
+                   'touch "$XDG_DATA_HOME/godot.log"\n')
+    app.chmod(0o755)
+    env = {"PATH": "/usr/bin:/bin", "HOME": str(tmp_path / "home"),
+           "TMPDIR": str(tmp_path / "not-in-the-sandbox")}
+    done = subprocess.run([str(runner), "/tmp/model.ldr", str(tmp_path / "out.png"), "128"],
+                          env=env, capture_output=True, text=True)
+    assert done.returncode == 0, done.stderr
+    said = (tmp_path / "out.png").read_text().split()
+    assert said == ["--headless", "--thumbnail", "/tmp/model.ldr", str(tmp_path / "out.png"),
+                    "128"]
+    data = (tmp_path / "out.png.data").read_text().strip()
+    assert data.startswith("/tmp/brickworks-thumbnail.") and not os.path.exists(data)
+    # The app's own exit is the runner's.
+    app.write_text("#!/bin/sh\nexit 3\n")
+    assert subprocess.run([str(runner), "a", "b"], env=env).returncode == 3
 
 
 def test_the_disk_image_background_is_one_tiff_with_a_page_at_each_resolution(tmp_path):

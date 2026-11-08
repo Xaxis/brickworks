@@ -54,9 +54,21 @@ async function call(token, { method = "GET", body, raw, query = "", headers = {}
   return { status: reply.status, body: json, text };
 }
 
-const lot = (collection, part, colour) =>
-  (collection?.parts || []).find((p) => p.part === part && p.colour === colour);
-const set = (collection, number) => (collection?.sets || []).find((s) => s.set === number);
+// Each lot and set is kept with its source (mybricks2): what is owned of a
+// part and colour, or of a set, is every source's together.
+const lot = (collection, part, colour) => {
+  const all = (collection?.parts || []).filter((p) => p.part === part && p.colour === colour);
+  return all.length ? { ...all[0], qty: all.reduce((n, p) => n + p.qty, 0) } : undefined;
+};
+const set = (collection, number) => {
+  const all = (collection?.sets || []).filter((s) => s.set === number);
+  return all.length ? { ...all[0], qty: all.reduce((n, s) => n + s.qty, 0), spares: all.some((s) => s.spares) } : undefined;
+};
+const numbers = (collection) => new Set((collection?.sets || []).map((s) => s.set)).size;
+// The same JSON whatever order its keys are in: the database (jsonb) keeps
+// keys shortest first, not in the order they were written.
+const canon = (value) => JSON.stringify(value, (_, v) => (v && typeof v === "object" && !Array.isArray(v)
+  ? Object.fromEntries(Object.entries(v).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) : v));
 
 async function database(token, path, { method = "GET", body } = {}) {
   const headers = { apikey: process.env.SUPABASE_PUBLISHABLE_KEY || "", "content-type": "application/json" };
@@ -131,13 +143,21 @@ try {
     && (fetched.body.left_out || []).some((o) => o.count === 1),
     `what the app read from a Rebrickable account is mapped the same way (${fetched.status} ${JSON.stringify(fetched.body?.imported)})`);
   const back = await call(a.access_token);
-  check(back.status === 200 && back.body.sets.length === 3 && lot(back.body, "3001", 4)?.qty === 12
+  check(back.status === 200 && numbers(back.body) === 3 && lot(back.body, "3001", 4)?.qty === 12
     && set(back.body, "6020-1")?.qty === 4 && Boolean(back.body.updated_at),
     "read back: three sets (four Magic Shops), twelve red 2 x 4s, and when");
   const replaced = await call(a.access_token, { method: "POST", body: {
     from: "rebrickable_csv", mode: "replace", text: "Set Number,Quantity\n6020-1,1\n" } });
-  check(replaced.status === 200 && replaced.body.sets.length === 1 && lot(replaced.body, "3001", 4)?.qty === 12,
-    "replace with a sets list replaces the sets and keeps the loose parts");
+  // A Rebrickable export and a fetch are one list, the person's (mb2review
+  // finding 1): a replace from either replaces both's sets, and a set typed
+  // by hand that it lists is kept once, as Rebrickable's.
+  check(replaced.status === 200 && canon(replaced.body.sets.filter((s) => s.src === "rebrickable"))
+    === canon([{ set: "6020-1", qty: 1, spares: false, src: "rebrickable" }])
+    && canon(replaced.body.sets.filter((s) => s.src !== "rebrickable"))
+    === canon(back.body.sets.filter((s) => s.src !== "rebrickable" && s.set !== "6020-1"))
+    && canon(replaced.body.parts) === canon(back.body.parts),
+    "replace with Rebrickable's sets list replaces all its sets, exported or fetched, and keeps the 6020-1 typed by hand "
+    + "once, as Rebrickable's; 75192-1 typed and the loose parts kept");
 
   console.log("\nanother account");
   const theirs = await call(b.access_token);
@@ -150,7 +170,7 @@ try {
   const overwrite = await call(b.access_token, { method: "PUT", body: { owner: idA, sets: [], parts: [] } });
   check(overwrite.status === 403, `writing to it is refused (${overwrite.status})`);
   const stillThere = await call(a.access_token);
-  check(stillThere.body.sets.length === 1 && lot(stillThere.body, "3001", 4)?.qty === 12,
+  check(JSON.stringify(stillThere.body.sets) === JSON.stringify(replaced.body.sets) && lot(stillThere.body, "3001", 4)?.qty === 12,
     "...and the first account's collection is untouched");
   // The keys a page holds reach nothing in the database (2026-10-24,
   // supabase/no_client_access.sql): a collection is reached only through
@@ -173,8 +193,8 @@ try {
   const huge = await call(a.access_token, { method: "POST", body: {
     from: "rebrickable_csv", text: "Part,Color,Quantity\n" + "3001,4,1\n".repeat(130000) } });
   check(huge.status === 413, `a body over a megabyte is refused (${huge.status}: ${huge.body?.error})`);
-  const many = await call(a.access_token, { method: "PUT", body: { sets: [],
-    parts: Array.from({ length: 20001 }, (_, n) => ({ part: `p${n}`, colour: 4, qty: 1 })) } });
+  const many = await call(a.access_token, { method: "POST", body: { from: "rebrickable_csv",
+    text: "Part,Color,Quantity\n" + Array.from({ length: 20001 }, (_, n) => `p${n},4,1\n`).join("") } });
   check(many.status === 413, `a collection over 20,000 lots is refused (${many.status}: ${many.body?.error})`);
   const lots = await call(a.access_token, { method: "POST", body: { from: "sets",
     text: Array.from({ length: 5001 }, (_, n) => `${n + 1}-1`).join(" ") } });
@@ -202,7 +222,7 @@ try {
   const patch = await call(a.access_token, { method: "PATCH", body: {} });
   check(patch.status === 405, `PATCH is not a verb here (${patch.status})`);
   const after = await call(a.access_token);
-  check(after.body.sets.length === 1 && lot(after.body, "3001", 4)?.qty === 12,
+  check(JSON.stringify(after.body.sets) === JSON.stringify(replaced.body.sets) && lot(after.body, "3001", 4)?.qty === 12,
     "none of the refusals changed what was kept");
 
   console.log("\nforgetting");

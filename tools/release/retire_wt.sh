@@ -20,11 +20,12 @@ for w in "$@"; do
   if [ -n "$(git -C "$d" status --porcelain --untracked-files=no)" ]; then
     echo "kept $w: tracked files changed"; bad=1; continue
   fi
+  # Every process's folder read by one find: a readlink forked for each of
+  # the box's ~800 processes took 2.5-4 s a worktree (2026-11-07).
   busy=""
-  for p in /proc/[0-9]*; do
-    c=$(readlink "$p/cwd" 2>/dev/null) || continue
+  while read -r p c; do
     case "$c" in "$d"|"$d"/*) busy="$busy ${p#/proc/}" ;; esac
-  done
+  done < <(find /proc/[0-9]* -maxdepth 1 -name cwd -printf '%h %l\n' 2>/dev/null)
   [ -n "$busy" ] && { echo "kept $w: processes$busy work in it"; bad=1; continue; }
   kept=1
   for src in "$d"/bench/results/* "$d"/shots; do

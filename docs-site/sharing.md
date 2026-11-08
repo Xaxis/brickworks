@@ -17,7 +17,7 @@ Signed in, **File › Share…** (or **Share** on the toolbar) publishes the mod
 ui:share panel
 -->
 
-Its build steps, its booklet's layout, its motions and what moves in it go with it, so whoever opens the link can step through it, read its booklet and play it.
+Its build steps, its booklet's layout, its motions and what moves in it go with it, so whoever opens the link can step through it, read its booklet and play it. Once it is published, a model with motions of its own offers **Opens**: *Still*, or *Playing* one of its motions, and the link it copies then [opens with that motion playing](/docs/model-pages#play).
 
 <!-- covers
 lib:steps carried with a shared model

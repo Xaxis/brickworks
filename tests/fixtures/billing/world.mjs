@@ -6,7 +6,10 @@
 // Every request any of them is sent is in [calls], so a test can say none
 // was. And api/models.js's account_models (supabase/account_models.sql,
 // account_models_delete.sql, account_models_plan.sql), in [models], kept
-// as those functions keep it.
+// as those functions keep it. And photos of real builds (supabase/builds.sql)
+// in [photos], each {id, account, model}, read by an account's deletion,
+// whose files' deletions are kept in [storageDeletes], each request's
+// names.
 //
 //   const w = await world({ billing: "test" });
 //   const token = await w.signIn({ sub: "u1", email: "ada@example.com" });
@@ -127,6 +130,11 @@ export async function world({ billing = "", key = FAKE_KEY, master = "owner@exam
     ageAsk: false,
     /// Every request, "METHOD url" without its query.
     calls: [],
+    /// build_photos' rows, {id, account, model}; none, its table answers 404
+    /// as before builds.sql.
+    photos: null,
+    /// The names each storage DELETE of build-photos asked for.
+    storageDeletes: [],
     /// The models each account keeps, by owner, then by name.
     models: new Map(),
     /// Each save the database was asked, {fn, body}, as sent.
@@ -212,6 +220,18 @@ export async function world({ billing = "", key = FAKE_KEY, master = "owner@exam
     }
     // The count of codes asked for (api/otp.js), cleared for an answer under 13.
     if (url.pathname === "/rest/v1/otp_requests" && init.method === "DELETE") return json(200, []);
+    // Photos of real builds (supabase/builds.sql), when the test has some:
+    // an account's own, and those of its models (none here); their files
+    // deleted by name.
+    if (self.photos && url.pathname === "/rest/v1/shared_models") return json(200, []);
+    if (self.photos && url.pathname === "/rest/v1/build_photos") {
+      const account = /^eq\.(.+)$/.exec(url.searchParams.get("account") || "")?.[1];
+      return json(200, self.photos.filter((one) => one.account === account).map((one) => ({ id: one.id })));
+    }
+    if (url.pathname === "/storage/v1/object/build-photos" && init.method === "DELETE") {
+      self.storageDeletes.push(asked.prefixes || []);
+      return json(200, (asked.prefixes || []).map((name) => ({ name })));
+    }
     // No orangecheck account made by Connect (supabase/orangecheck_connect_leaving.sql).
     if (url.pathname === "/rest/v1/rpc/oc_connect_leaving") return json(200, false);
     if (url.pathname === "/rest/v1/rpc/plan_consent_note" && !self.noConsents) {

@@ -47,6 +47,18 @@
 ## which takes it back. Reset puts everything back. A drag still moves a
 ## part as before.
 ##
+## A link that plays one (2026-11-06, docs/APP_UX5.md playlink):
+## /m/<id>?motion=<name>, which the page sends on to the viewer
+## (web/share-page.js), or /app?view=<id>&motion=<name>, made by the share
+## panel's Opens. The motion named (by its name, as the panel writes it,
+## "open-the-gates", or a word only its name has, Motions.for_link) plays as
+## soon as the joints are read, over and over, there and back with a rest at
+## each end, its button lit and the pill saying how to stop it; pressed, it
+## goes back from where it is. A drag, Reset, another motion or Build it stop
+## it as they stop a press. Turning the view does not. A visitor who asked
+## for less motion (Settings, Reduce motion) sees it played once. A name the
+## model has no motion of opens it still, and the pill says so at once.
+##
 ## Everything that edits is out of reach from here; main.gd says how
 ## (_enter_view), and no sign-in is asked for. A visitor who wants the
 ## model for their own presses Open in Brickworks, which signs them in and
@@ -145,6 +157,11 @@ var play_motions: PackedStringArray = PackedStringArray()
 var motions_out: Dictionary = {}
 var _motion_row: HFlowContainer
 var _motion_buttons: Array[Button] = []
+## A link that plays a motion (?motion=, main.gd's _open_playing): the one
+## played over and over, "" for none; and the name a link asked for that the
+## model has no motion of, said in the pill until something else is.
+var looping: String = ""
+var missing: String = ""
 var _play_pt: float = 1.0
 var _play_narrow: bool = false
 
@@ -156,6 +173,7 @@ func _ready() -> void:
 	_build_card()
 	_build_place()
 	_build_play()
+	_build_party()
 	_hover = Label.new()
 	_hover.add_theme_font_size_override("font_size", 12)
 	_hover.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -573,6 +591,21 @@ func show_motion_out(name: String, out: bool) -> void:
 			button.tooltip_text = ("Play “%s” backwards: put it back" if out else "Play “%s”") % name
 
 
+## [param name] played over and over, from a link that plays it (""
+## when it has stopped): its button lit, and said how to stop it.
+func show_looping(name: String) -> void:
+	looping = name
+	_say_play()
+
+
+## The link asked to play [param asked], which the model has no motion by:
+## it opened still, and the pill says so, whatever else moves or not.
+func link_missing(asked: String) -> void:
+	missing = asked
+	_say_play()
+	_fit_big()
+
+
 ## Every motion back where it began: Reset.
 func motions_home() -> void:
 	for name: String in play_motions:
@@ -580,6 +613,17 @@ func motions_home() -> void:
 
 
 func _hint() -> String:
+	if not looping.is_empty():
+		return ("Playing “%s” over and over. Tap it to stop." if touch
+			else "Playing “%s” over and over. Press it to stop.") % looping
+	if not missing.is_empty():
+		var still: String = "There is no motion called “%s” in this model, so it opened still." % missing
+		return still if not play_ready else "%s %s" % [still, _ways()]
+	return _ways()
+
+
+## How to play with what moves, by its own motions or a drag.
+func _ways() -> String:
 	if not play_motions.is_empty():
 		if touch:
 			return "Tap one to play it, and again to put it back. Or touch a part that moves and drag it."
@@ -592,6 +636,8 @@ func _hint() -> String:
 func _say_play() -> void:
 	if not play_motions.is_empty():
 		_play_title.text = "Play its motions"
+	elif not missing.is_empty() and play_moves.is_empty() and not play_ready:
+		_play_title.text = "No such motion"
 	else:
 		_play_title.text = Playable.words(play_moves) if not play_moves.is_empty() else "Parts of it move"
 	_motion_row.visible = not play_motions.is_empty()
@@ -606,12 +652,22 @@ func _say_play() -> void:
 ## be taken hold of, but is not offered: the castle, whose card says nothing
 ## moves, said "Parts of it move" (walk180 W5).
 func _offers_play() -> bool:
-	return not play_moves.is_empty() or not play_motions.is_empty() or played or not _play_said.is_empty()
+	return not play_moves.is_empty() or not play_motions.is_empty() or played or not _play_said.is_empty() \
+		or not missing.is_empty()
+
+
+## Whether the pill is up: once what moves is read, or at once to say a
+## link's motion is not in the model.
+func _pill_wanted() -> bool:
+	return state == "ready" and _bar.visible and (play_ready or not missing.is_empty()) and _offers_play()
 
 
 ## What a drag is doing, said in the pill while it is ("" for the hint).
 func play_said(words: String) -> void:
 	_play_said = words
+	# A link's missing motion, said until anything else is.
+	if not words.is_empty():
+		missing = ""
 	if _play != null:
 		_say_play()
 		_show_pill()
@@ -627,7 +683,7 @@ func show_played(yes: bool) -> void:
 ## The pill shown or put away when what it offers changes, not every frame
 ## a drag says something.
 func _show_pill() -> void:
-	if _play != null and _play.visible != (state == "ready" and _bar.visible and play_ready and _offers_play()):
+	if _play != null and _play.visible != _pill_wanted():
 		_fit_big()
 
 
@@ -738,7 +794,7 @@ func show_tested(mark: Dictionary) -> void:
 func ready_to_look() -> void:
 	state = "ready"
 	_card.visible = false
-	for button: Button in [_build, _steps, _booklet, _parts, _copy]:
+	for button: Button in [_build, _steps, _booklet, _parts, _copy, _party_bar]:
 		button.disabled = false
 	_fit_big()
 
@@ -778,9 +834,13 @@ func _fit_big() -> void:
 	if not ready and comments.is_open():
 		comments.close()
 	comments.visible = ready
-	_play.visible = ready and play_ready and _offers_play()
+	_play.visible = _pill_wanted()
 	_fit_play(pt if _narrow else 1.0, _narrow)
-	set_process(_big.visible or (_place != null and _place.visible) or _pill_shown() or _play.visible)
+	_party_bar.visible = not _narrow and state != "gone"
+	_party_pill.visible = _big.visible
+	_fit_party()
+	set_process(_big.visible or (_place != null and _place.visible) or _pill_shown() or _play.visible
+		or _party_card.visible)
 	# Placed now, not next frame: shown, Build it was drawn and told to the
 	# page for a frame where it was last, the window's corner the first time.
 	_lay_out()
@@ -816,13 +876,15 @@ func _lay_out() -> void:
 		var at := Vector2(gap, bottom - comments.pill.size.y - gap)
 		if comments.pill.position != at:
 			comments.pill.position = at
+	_lay_party(bottom)
 	if not _big.visible:
-		if not _place.visible and not _pill_shown() and not _play.visible:
+		if not _place.visible and not _pill_shown() and not _play.visible and not _party_card.visible:
 			set_process(false)
 		return
 	var spot := Vector2((size.x - _big.size.x) * 0.5, bottom - _big.size.y - _big.size.y * 0.35)
 	if _big.position != spot:
 		_big.position = spot
+	_lay_party_pill()
 
 
 ## Whether the count is up: once the model is ready, and the bar with it.
@@ -836,7 +898,7 @@ func gone(title: String, words: String) -> void:
 	_name.text = title
 	_about.text = ""
 	# Nothing to step through, read or copy.
-	for button: Button in [_build, _steps, _booklet, _parts, _copy]:
+	for button: Button in [_build, _steps, _booklet, _parts, _copy, _party_bar]:
 		button.visible = false
 	comments.show_answer({})
 	_fit_big()
@@ -892,6 +954,8 @@ func covers(point: Vector2) -> bool:
 		or (_card.is_visible_in_tree() and _card.get_global_rect().has_point(point)) \
 		or (_big.is_visible_in_tree() and _big.get_global_rect().has_point(point)) \
 		or (_play.is_visible_in_tree() and _play.get_global_rect().has_point(point)) \
+		or (_party_card.visible and _party_card.get_global_rect().has_point(point)) \
+		or (_party_pill.is_visible_in_tree() and _party_pill.get_global_rect().has_point(point)) \
 		or (_pill_shown() and comments.covers(point))
 
 
@@ -916,6 +980,7 @@ func controls_by_name() -> Dictionary:
 			named["view_reset"] = _play_reset
 		for n: int in _motion_buttons.size():
 			named["view_motion_%d" % (n + 1)] = _motion_buttons[n]
+	_party_controls(named)
 	return named
 
 
@@ -933,8 +998,355 @@ func page_state() -> Dictionary:
 			"title": _play_title.text, "says": _play_words.text, "played": played,
 			"reset": _play_reset.is_visible_in_tree(), "touch": touch,
 			"motions": Array(play_motions), "motions_out": Array(play_motions).filter(
-				func(name: String) -> bool: return motions_out.has(name.to_lower()))}}.merged(
+				func(name: String) -> bool: return motions_out.has(name.to_lower())),
+			"looping": looping, "missing": missing},
+		"party": _party_state()}.merged(
 			comments.page_state() if _pill_shown()
 			else {"comments": 0, "comments_open": false, "comments_shown": [], "comments_where": [],
 				"comment_why_not": "",
 				"comment_can_write": false, "comment_said": "", "comment_pill": ""})
+
+
+# -- Build together: a build party (APP_UX5 buildparty, 2026-11-06) ----------
+#
+# Several phones build this model together (BuildParty): Build together
+# beside Build it (on a phone, a pill over the big one) opens a card over
+# the model. Start a build gives a four-letter code; on another phone, Build
+# together, the code and Join. Everyone's name is in the card, each in its
+# seat's colour, and the phone that started deals the model out with Start
+# building; each phone's Build it opens on its own share at once (main.gd).
+# A name is optional ("Builder 2"). Closed mid-build, the card offers the
+# way back and Leave; a phone that left joins again with the code kept.
+
+## Build together pressed: main.gd makes the party and shows it here.
+signal party_wanted
+signal party_start_wanted(as_name: String)
+signal party_join_wanted(with_code: String, as_name: String)
+signal party_deal_wanted
+signal party_leave_wanted
+## Back to building its share, after Build it was closed.
+signal party_back_wanted
+
+var _party_bar: Button
+var _party_pill: Button
+var _party_card: PanelContainer
+var _party_title: Label
+var _party_words: Label
+var _party_name: LineEdit
+var _party_start: Button
+var _party_join_row: HBoxContainer
+var _party_code: LineEdit
+var _party_join: Button
+var _party_seats: VBoxContainer
+var _party_deal: Button
+var _party_back: Button
+var _party_leave: Button
+var _party_close: Button
+var _party_trouble: Label
+## The party as last shown (BuildParty.page_state), and whether a request
+## is on its way (its buttons wait).
+var _party_said: Dictionary = {}
+var _party_busy: bool = false
+var _party_pt: float = 1.0
+
+
+func _build_party() -> void:
+	_party_bar = _button(_build.get_parent(), "Build together",
+		"Build it with others, each on their own phone: a code to join by, the model dealt out")
+	_build.get_parent().move_child(_party_bar, _build.get_index() + 1)
+	_party_bar.pressed.connect(func() -> void: party_wanted.emit())
+	_party_bar.disabled = true
+	_party_pill = Button.new()
+	_party_pill.text = "Build together"
+	_party_pill.tooltip_text = _party_bar.tooltip_text
+	_party_pill.focus_mode = Control.FOCUS_NONE
+	_party_pill.visible = false
+	_party_pill.pressed.connect(func() -> void: party_wanted.emit())
+	add_child(_party_pill)
+	_party_card = PanelContainer.new()
+	_party_card.visible = false
+	_party_card.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(_party_card)
+	var column := VBoxContainer.new()
+	column.name = "Column"
+	_party_card.add_child(column)
+	var head := HBoxContainer.new()
+	column.add_child(head)
+	_party_title = Label.new()
+	_party_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_party_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	head.add_child(_party_title)
+	_party_close = _party_button(head, "Close", "Put this away: the build goes on")
+	_party_close.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_party_close.pressed.connect(hide_party)
+	_party_words = Label.new()
+	_party_words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_party_words.modulate = Color(1, 1, 1, 0.78)
+	column.add_child(_party_words)
+	_party_name = LineEdit.new()
+	_party_name.placeholder_text = "Your name (you can leave it out)"
+	_party_name.max_length = 20
+	column.add_child(_party_name)
+	_party_start = _party_button(column, "Start a build", "Start one and get a code for the others")
+	_party_start.pressed.connect(func() -> void:
+		_party_busy = true
+		_fit_party()
+		party_start_wanted.emit(_party_name.text))
+	_party_join_row = HBoxContainer.new()
+	column.add_child(_party_join_row)
+	_party_code = LineEdit.new()
+	_party_code.placeholder_text = "Code"
+	_party_code.max_length = 9
+	_party_code.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_party_code.text_changed.connect(func(said: String) -> void:
+		var upper: String = said.to_upper()
+		if upper != said:
+			var at: int = _party_code.caret_column
+			_party_code.text = upper
+			_party_code.caret_column = at)
+	_party_code.text_submitted.connect(func(_said: String) -> void: _party_join_pressed())
+	_party_join_row.add_child(_party_code)
+	_party_join = _party_button(_party_join_row, "Join", "Join the build with the code another phone shows")
+	_party_join.pressed.connect(_party_join_pressed)
+	_party_seats = VBoxContainer.new()
+	column.add_child(_party_seats)
+	_party_deal = _party_button(column, "Start building", "Deal the model out to everyone in it now")
+	_party_deal.pressed.connect(func() -> void:
+		_party_busy = true
+		_fit_party()
+		party_deal_wanted.emit())
+	_party_back = _party_button(column, "Back to building", "Your share, where you were")
+	_party_back.pressed.connect(func() -> void: party_back_wanted.emit())
+	_party_leave = _party_button(column, "Leave the build", "The others are told; the code stays here to join again")
+	_party_leave.pressed.connect(func() -> void: party_leave_wanted.emit())
+	_party_trouble = Label.new()
+	_party_trouble.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_party_trouble.modulate = Color(1.0, 0.62, 0.55)
+	column.add_child(_party_trouble)
+
+
+func _party_button(row: Container, words: String, tip: String) -> Button:
+	var button := Button.new()
+	button.text = words
+	button.tooltip_text = tip
+	button.focus_mode = Control.FOCUS_NONE
+	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	_face(button)
+	row.add_child(button)
+	return button
+
+
+func _party_join_pressed() -> void:
+	if _party_code.text.strip_edges().is_empty():
+		return
+	_party_busy = true
+	_fit_party()
+	party_join_wanted.emit(_party_code.text, _party_name.text)
+
+
+## The party card up, saying [param said] (BuildParty.page_state); [param
+## building] whether this phone's share is dealt and Build it is closed.
+func show_party(said: Dictionary, code_wanted: String = "") -> void:
+	_party_said = said
+	_party_busy = false
+	if not code_wanted.is_empty() and not bool(said.get("live", false)):
+		_party_code.text = code_wanted.to_upper()
+	elif _party_code.text.is_empty() and not str(said.get("code", "")).is_empty():
+		_party_code.text = str(said["code"])
+	if _party_name.text.is_empty():
+		_party_name.text = str(said.get("name", ""))
+	_party_card.visible = true
+	_say_party()
+
+
+## The party as it is now, while the card is up.
+func party_changed(said: Dictionary) -> void:
+	_party_said = said
+	_party_busy = false
+	if _party_card.visible:
+		_say_party()
+
+
+func hide_party() -> void:
+	_party_card.visible = false
+	_fit_big()
+
+
+func party_shown() -> bool:
+	return _party_card != null and _party_card.visible
+
+
+func _say_party() -> void:
+	var live: bool = bool(_party_said.get("live", false))
+	var dealt: int = int(_party_said.get("dealt", 0))
+	var seat: int = int(_party_said.get("seat", 0))
+	var seats: Array = _party_said.get("seats", [])
+	var code: String = str(_party_said.get("code", ""))
+	if not live:
+		_party_title.text = "Build together"
+		_party_words.text = ("Up to four phones build this model at once, each its own part, and put "
+			+ "the parts together at the end. One phone starts; the others join with its code. "
+			+ "No account needed.")
+	elif dealt == 0:
+		_party_title.text = "Code: %s" % code
+		_party_words.text = ("On each other phone, open this model, press Build together and type %s. "
+			% code) + ("Press Start building when everyone is in." if seat == 1
+			else "The phone that started deals it out when everyone is in.")
+	else:
+		_party_title.text = "Building together · %s" % code
+		_party_words.text = ("Everyone is done: put the parts together." if bool(_party_said.get(
+			"all_finished", false)) else "Each phone builds its own part.")
+	_party_name.visible = not live
+	_party_start.visible = not live
+	_party_join_row.visible = not live
+	_party_deal.visible = live and dealt == 0 and seat == 1
+	_party_deal.text = "Start building: %d phones" % seats.size() if seats.size() != 1 else "Start building: 1 phone"
+	_party_deal.disabled = seats.size() < 2
+	_party_back.visible = live and dealt > 0
+	_party_leave.visible = live
+	for button: Button in [_party_start, _party_join, _party_deal, _party_leave, _party_back]:
+		if button != _party_deal:
+			button.disabled = _party_busy
+	if _party_busy:
+		_party_deal.disabled = true
+	_party_trouble.text = str(_party_said.get("trouble", ""))
+	_party_trouble.visible = not _party_trouble.text.is_empty()
+	for child: Node in _party_seats.get_children():
+		_party_seats.remove_child(child)
+		child.queue_free()
+	_party_seats.visible = live
+	for one: Variant in seats:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", roundi(8.0 * _party_pt))
+		var dot := ColorRect.new()
+		dot.color = Color.html(str(one.get("colour", "#f9c71f")))
+		dot.custom_minimum_size = Vector2.ONE * roundi(12.0 * _party_pt)
+		dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(dot)
+		var words := Label.new()
+		var who: String = ("%s (you)" % str(one.get("name", ""))) if bool(one.get("me", false)) \
+			else str(one.get("name", ""))
+		if bool(one.get("left", false)):
+			words.text = "%s has left" % who
+		elif dealt > 0 and bool(one.get("finished", false)):
+			words.text = "%s is done" % who
+		else:
+			words.text = ("%s %d of %d" % [who, int(one.get("done", 0)), int(one.get("of", 0))]) \
+				if dealt > 0 and int(one.get("of", 0)) > 0 else who
+		words.add_theme_font_size_override("font_size", roundi((15.0 if _narrow else 13.0) * _party_pt))
+		row.add_child(words)
+		_party_seats.add_child(row)
+	_fit_party()
+
+
+## The card and the pill at this window's size: in points on a phone.
+func _fit_party() -> void:
+	if _party_card == null or not is_inside_tree():
+		return
+	var across: float = Room.across()
+	var pt: float = get_viewport().get_visible_rect().size.x / across if across > 0.0 else 1.0
+	_party_pt = pt if _narrow else 1.0
+	var p: float = _party_pt
+	var backing := StyleBoxFlat.new()
+	backing.bg_color = Color(0.10, 0.11, 0.13, 0.97)
+	backing.border_color = Color(0.98, 0.78, 0.12, 0.5)
+	backing.set_border_width_all(maxi(1, roundi(p)))
+	backing.set_corner_radius_all(roundi(10.0 * p))
+	backing.set_content_margin_all(16.0 * p)
+	_party_card.add_theme_stylebox_override("panel", backing)
+	(_party_card.get_node("Column") as VBoxContainer).add_theme_constant_override("separation", roundi(10.0 * p))
+	_party_title.add_theme_font_size_override("font_size", roundi((22.0 if _narrow else 18.0) * p))
+	_party_words.add_theme_font_size_override("font_size", roundi((15.0 if _narrow else 13.0) * p))
+	_party_trouble.add_theme_font_size_override("font_size", roundi((15.0 if _narrow else 13.0) * p))
+	# A fingertip each on a phone (44 points), the bar's size on a wide window.
+	var tall: float = (44.0 if _narrow else 30.0) * p
+	for field: LineEdit in [_party_name, _party_code]:
+		field.add_theme_font_size_override("font_size", roundi((17.0 if _narrow else 14.0) * p))
+		field.custom_minimum_size = Vector2(0.0, tall)
+	for button: Button in [_party_start, _party_join, _party_deal, _party_back, _party_leave, _party_close]:
+		button.add_theme_font_size_override("font_size", roundi((17.0 if _narrow else 14.0) * p))
+		button.custom_minimum_size = Vector2(tall if button == _party_close else 0.0, tall)
+	_party_join_row.add_theme_constant_override("separation", roundi(8.0 * p))
+	_party_seats.add_theme_constant_override("separation", roundi(6.0 * p))
+	var room: float = size.x - 32.0 * p if size.x > 0.0 else 400.0
+	var wide: float = minf(room, 420.0 * p)
+	_party_title.custom_minimum_size = Vector2(wide - 32.0 * p - tall - 8.0 * p, 0.0)
+	_party_words.custom_minimum_size = Vector2(wide - 32.0 * p, 0.0)
+	_party_trouble.custom_minimum_size = _party_words.custom_minimum_size
+	_party_card.custom_minimum_size = Vector2(wide, 0.0)
+	_party_card.reset_size()
+	# The pill over the big Build it: a word smaller, outlined, not lit.
+	for face: String in ["normal", "hover", "pressed"]:
+		var outlined := StyleBoxFlat.new()
+		outlined.bg_color = Color(0.09, 0.10, 0.12, {"normal": 0.88, "hover": 0.95, "pressed": 1.0}[face])
+		outlined.border_color = Color(0.98, 0.78, 0.12)
+		outlined.set_border_width_all(maxi(1, roundi(2.0 * pt)))
+		outlined.set_corner_radius_all(roundi(26.0 * pt))
+		outlined.content_margin_left = 18.0 * pt
+		outlined.content_margin_right = 18.0 * pt
+		_party_pill.add_theme_stylebox_override(face, outlined)
+	for colour: String in ["font_color", "font_hover_color", "font_pressed_color"]:
+		_party_pill.add_theme_color_override(colour, Color(0.98, 0.78, 0.12))
+	_party_pill.add_theme_font_size_override("font_size", roundi(17.0 * pt))
+	_party_pill.custom_minimum_size = Vector2(0, 52.0 * pt)
+	_party_pill.reset_size()
+
+
+## Where the card goes, as the rest are placed (_lay_out): in the middle
+## of the model's part of the window, above the timeline.
+func _lay_party(bottom: float) -> void:
+	if not _party_card.visible:
+		return
+	var top: float = _bar.get_global_rect().end.y if _bar.is_visible_in_tree() else 0.0
+	var spot := Vector2(maxf((size.x - _party_card.size.x) * 0.5, 6.0),
+		maxf(top + (bottom - top - _party_card.size.y) * 0.5, top + 6.0))
+	if _party_card.position != spot:
+		_party_card.position = spot
+
+
+## The pill just right of the big Build it, its middle level with it.
+func _lay_party_pill() -> void:
+	if not _party_pill.visible:
+		return
+	# Over the big Build it, in the middle: beside it, the two reached over
+	# the comments' count at the left (390 points across).
+	var spot := Vector2((size.x - _party_pill.size.x) * 0.5,
+		_big.position.y - _party_pill.size.y - _big.size.y * 0.2)
+	if _party_pill.position != spot:
+		_party_pill.position = spot
+
+
+func _party_controls(named: Dictionary) -> void:
+	named["view_together"] = _party_pill if _party_pill.visible else _party_bar
+	if not _party_card.visible:
+		return
+	named["party_close"] = _party_close
+	for each: Array in [["party_name", _party_name], ["party_start", _party_start], ["party_code", _party_code],
+			["party_join", _party_join], ["party_deal", _party_deal], ["party_back", _party_back],
+			["party_leave", _party_leave]]:
+		if (each[1] as Control).is_visible_in_tree():
+			named[each[0]] = each[1]
+
+
+func _party_state() -> Dictionary:
+	var names: Array = []
+	for row: Node in _party_seats.get_children():
+		names.append((row.get_child(1) as Label).text)
+	return {"shown": _party_card.visible, "title": _party_title.text if _party_card.visible else "",
+		"says": _party_words.text if _party_card.visible else "", "seats": names,
+		"trouble": _party_trouble.text if _party_trouble.visible else "", "busy": _party_busy,
+		"code_typed": _party_code.text, "pill": _party_pill.visible,
+		"targets": _party_targets()}
+
+
+## Every target in the card and the pill, in points: a fingertip each.
+func _party_targets() -> Dictionary:
+	var out: Dictionary = {}
+	var named: Dictionary = {}
+	_party_controls(named)
+	var pt: float = _party_pt if _narrow else 1.0
+	for name: String in named:
+		var control: Control = named[name]
+		if control.is_visible_in_tree():
+			out[name] = [snappedf(control.size.x / pt, 0.1), snappedf(control.size.y / pt, 0.1)]
+	return out

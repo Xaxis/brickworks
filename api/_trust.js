@@ -136,6 +136,25 @@ export async function shownPublicly(account) {
   }
 }
 
+/// Whether [account] may be named in a comment, as
+/// supabase/comment_mentions.sql names nobody else: shown in public and
+/// said it is 13 or over; with [tests] false, not a test account (a Resend
+/// test address, api/_auth.js isTestAccount), which only a probe is
+/// offered. Before trust.sql, nobody.
+export async function mayBeNamed(account, { tests = false } = {}) {
+  const ask = async (what) => {
+    try {
+      return (await db(`rpc/${what}`, { method: "POST", body: { account } })) === true;
+    } catch (trouble) {
+      if (!missing(trouble)) throw trouble;
+      return null;
+    }
+  };
+  const [shown, grown, test] = await Promise.all([ask("shown_publicly"), ask("trust_may_go_public"),
+    tests ? false : ask("trust_is_test_account")]);
+  return shown === true && grown === true && test === false;
+}
+
 // ---------------------------------------------------------------------------
 // The reports, emailed.
 

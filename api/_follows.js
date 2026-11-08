@@ -42,7 +42,7 @@ import { bearer, verify } from "./_auth.js";
 import { db } from "./_db.js";
 import { withFaces } from "./_faces.js";
 import { SCORE, TESTS_CACHE, Unacceptable, cardOf, inLanguage, siteWords, testsAsked } from "./_directory.js";
-import { say } from "./_card.js";
+import { photoUrls, say } from "./_card.js";
 import { photosWhere } from "./_builds.js";
 import { shownPublicly } from "./_trust.js";
 
@@ -331,7 +331,7 @@ async function photosOf(ids, origin) {
   const wanted = [...new Set(ids.map(String))].filter((id) => ID.test(id));
   if (!wanted.length) return new Map();
   const rows = await db(`build_photos?id=in.(${wanted.join(",")})&select=id,width,height`);
-  return new Map(rows.map((row) => [row.id, { id: row.id, url: `${origin}/api/people?op=photo_file&id=${row.id}`,
+  return new Map(rows.map((row) => [row.id, { id: row.id, ...photoUrls(origin, row.id),
     width: Number(row.width) || null, height: Number(row.height) || null }]));
 }
 
@@ -384,7 +384,7 @@ async function newestPhotos(origin, tests, most) {
     model_name: quoted(names.get(one.model), 80), words: one.words ? quoted(one.words, 140) : null,
     width: Number(one.width) || null, height: Number(one.height) || null, at: one.at,
     by: one.by ? { handle: one.by.handle, name: quoted(one.by.name, 40) } : null,
-    url: `${origin}/api/people?op=photo_file&id=${one.id}`, page: `${origin}/m/${one.model}#photo-${one.id}` }));
+    ...photoUrls(origin, one.id), page: `${origin}/m/${one.model}#photo-${one.id}` }));
 }
 
 /// ?op=latest: {models, photos, designers}, the same for everybody, so

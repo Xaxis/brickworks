@@ -78,3 +78,15 @@ def test_what_a_session_hears_names_the_relays_flows() -> None:
         line = next((l for l in out.splitlines() if l.startswith("model_view ")), "")
         assert f"/api/mcp ({path})" in line, out
         assert relay <= _checks(out), (path, sorted(relay - _checks(out)))
+
+
+def test_a_changed_page_names_the_flow_that_crawls_every_page() -> None:
+    """coming_soon_check.mjs visits every page of the site and names none: a
+    change to any page, a script a page loads, or the docs names it, and an
+    API route does not (2026-11-07)."""
+    for path in ("web/plans.html", "web/download.html", "web/beta.js", "docs-site/plans.md"):
+        assert "coming_soon" in _checks(_run(path)), (path, _run(path))
+    assert "coming_soon" not in _checks(_run("api/_parts.js"))
+    flows_for = _flows_for()
+    assert flows_for.a_page("/plans") and flows_for.a_page("/") and flows_for.a_page("/docs")
+    assert not flows_for.a_page("/m/") and not flows_for.a_page("/api/share") and not flows_for.a_page("/no-such-page")

@@ -112,6 +112,7 @@ from __future__ import annotations
 
 import argparse
 import datetime
+import functools
 import hashlib
 import json
 import math
@@ -388,6 +389,9 @@ def _heads(name: str) -> list[str]:
     return [p.split()[-1] for p in parts if p.split()]
 
 
+# Remembered: choose() asks each set's kind for every place it fills, 8,321
+# times for 142 sets, which took 4.5 s of regular expressions (2026-11-07).
+@functools.lru_cache(maxsize=None)
 def character(name: str, theme: str) -> str | None:
     """"creature", "animal" or "person" when the set is a character built big, else None."""
     top = top_theme(theme)

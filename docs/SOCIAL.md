@@ -922,9 +922,9 @@ was said, at most three a comment however often it is edited, so an edit
 cannot spam. Never twice: the designer already hears of every comment, and
 someone in the conversation of each reply. Only profiles shown in public,
 13 or over, can be named, and only by someone 13 or over; hiding or
-deleting the comment takes the notice with it. Not built: offering anyone
-beyond the page's people (a search of every profile as one types), and an
-email for a mention.
+deleting the comment takes the notice with it. Since socialtails (pre261
+7d3b2ede), @ offers anyone who may be named, by a search of shown profiles as
+one types. Not built: an email for a mention.
 
 **8 as built**: Builds, a tab of the gallery beside Top, New and
 Collections, at `/builds` (its own page, as Collections and the LDraw
@@ -937,9 +937,9 @@ photo is left out once its model's owner hides it, while a report of it
 waits for the site's owner, and when its builder or the model's owner was
 taken out or is not shown in public (under 13); only a model in the
 gallery has its builds there. Empty, the tab says what a build is and how
-to add one: I built it on a model's page. No SQL. Not built: a smaller
-copy of each photo for the card (the card shows the kept photo, at most
-2048 px, as the model's page's strip does), and masonry (D4): the cards
+to add one: I built it on a model's page. No SQL. Since socialtails (pre261
+7d3b2ede), each card loads a picture its own size (480 px wide or less). Not
+built: masonry (D4): the cards
 are the gallery's, so Show more puts a page after the last without moving
 what was there.
 

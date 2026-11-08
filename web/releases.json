@@ -1,7 +1,103 @@
 {
  "$comment": "Written by tools/release.py publish; read by download.js. Every url is pinned to its release, so what the page says is exactly what it links to.",
- "latest": "0.18.0",
+ "latest": "0.19.0",
  "releases": [
+  {
+   "version": "0.19.0",
+   "tag": "v0.19.0",
+   "date": "2026-11-07",
+   "page": "https://github.com/Xaxis/brickworks-releases/releases/tag/v0.19.0",
+   "notes": "https://github.com/Xaxis/brickworks-releases/releases/tag/v0.19.0",
+   "summary": "A booklet made from someone else's file can no longer run anything in your browser, and someone you build with in Build together can send you only their words and parts, never anything that runs. You can print a booklet your way now: Build \u203a Booklet page \u203a Page setup\u2026 lays it out on the paper you have, the booklet's own, A4, US Letter or A5, either way up, with your margins, a page colour or a picture behind every page, and the sizes of its step numbers and parts, kept with the model and, by a name, for the next one. Train tracks join end to end: drag a curve to a straight and it meets the end, R puts its other end to the joint, and sixteen curves close a circle. Build it turns a page over when its booklet does, so parts going on from below are seen. A cone put on a stud sits at the stud's stop, and aiming a figure over a big model is as quick as over a small one. When you build with your own Claude, it can set the booklet's page up in one call and lay an oval of track in two.",
+   "files": [
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "deb",
+     "name": "Brickworks-0.19.0-linux-amd64.deb",
+     "size": 454018920,
+     "sha256": "3c9a34c97ce25df3c1e830affeaaa167451c757685546ff0b230171a3f96d9cc",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.19.0/Brickworks-0.19.0-linux-amd64.deb",
+     "unpacked": 1542466560,
+     "glibc": "2.28"
+    },
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "AppImage",
+     "name": "Brickworks-0.19.0-linux-x86_64.AppImage",
+     "size": 606112248,
+     "sha256": "597e09229c672c5d3fdcb29841dd0a6e3547c68ad1d68e56cb9502b49d9ee783",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.19.0/Brickworks-0.19.0-linux-x86_64.AppImage",
+     "unpacked": null
+    },
+    {
+     "os": "linux",
+     "arch": "x86_64",
+     "kind": "tar.xz",
+     "name": "Brickworks-0.19.0-linux-x86_64.tar.xz",
+     "size": 453968896,
+     "sha256": "8c872610c5784eb5caee4a4dde1432284fb41663f1c8612251632386d1fb6e21",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.19.0/Brickworks-0.19.0-linux-x86_64.tar.xz",
+     "unpacked": 1542452438,
+     "glibc": "2.28"
+    },
+    {
+     "os": "macos",
+     "arch": "universal",
+     "kind": "dmg",
+     "name": "Brickworks-0.19.0-macos-universal.dmg",
+     "size": 765600904,
+     "sha256": "15b4e082f3da9481e4a934c7c9a0575825c12c9dd87e74aacaf61e8f21031f58",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.19.0/Brickworks-0.19.0-macos-universal.dmg",
+     "unpacked": 1652379648,
+     "min_macos": {
+      "x86_64": "10.13",
+      "arm64": "11.0"
+     },
+     "signed": "ad-hoc",
+     "notarized": false
+    },
+    {
+     "os": "macos",
+     "arch": "universal",
+     "kind": "zip",
+     "name": "Brickworks-0.19.0-macos-universal.zip",
+     "size": 787992574,
+     "sha256": "920c5d1b7389ad72ed67e94023eb7c6c4508c2d4e3d63051d4d9bd0f189c6eea",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.19.0/Brickworks-0.19.0-macos-universal.zip",
+     "unpacked": 1639437393,
+     "min_macos": {
+      "x86_64": "10.13",
+      "arm64": "11.0"
+     },
+     "signed": "ad-hoc",
+     "notarized": false
+    },
+    {
+     "os": "windows",
+     "arch": "x86_64",
+     "kind": "installer",
+     "name": "Brickworks-0.19.0-windows-x86_64-setup.exe",
+     "size": 406686545,
+     "sha256": "c30db3c333fff1afdef752c76728ae3b275d22c3ea49b7ff0361cf723c37ebc2",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.19.0/Brickworks-0.19.0-windows-x86_64-setup.exe",
+     "unpacked": null,
+     "signed": false
+    },
+    {
+     "os": "windows",
+     "arch": "x86_64",
+     "kind": "zip",
+     "name": "Brickworks-0.19.0-windows-x86_64.zip",
+     "size": 766307323,
+     "sha256": "7f4c06d884b4eb8699817fea7802b9e7fbcd265bc8a08a8c6fa990da66f10601",
+     "url": "https://github.com/Xaxis/brickworks-releases/releases/download/v0.19.0/Brickworks-0.19.0-windows-x86_64.zip",
+     "unpacked": 1578150141,
+     "signed": false
+    }
+   ]
+  },
   {
    "version": "0.18.0",
    "tag": "v0.18.0",

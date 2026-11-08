@@ -64,10 +64,13 @@ class Item extends RefCounted:
 	## The finished picture, at most KEPT_WIDE across.
 	var picture: Image = null
 
-	## What it is, in a row's words: "car, 1280×720, Best".
+	## What it is, in a row's words: "car, 1280×720, Best", and the view
+	## saved with the model it is from: "car, “Cockpit”, 1280×720, Best".
 	func what() -> String:
 		var grade: String = ["Quick", "Good", "Best"][settings.quality]
-		return "%s, %d×%d, %s" % [named, settings.size.x, settings.size.y, grade]
+		var from: String = "" if settings.saved_view.is_empty() \
+			else ", “%s”" % settings.saved_view
+		return "%s%s, %d×%d, %s" % [named, from, settings.size.x, settings.size.y, grade]
 
 	func finished() -> bool:
 		return state in ["done", "failed", "cancelled"]
@@ -93,6 +96,7 @@ var _scroll: ScrollContainer
 var _note: Label
 var _status: Label
 var _add_button: Button
+var _add_views_button: Button
 var _pause_button: Button
 var _finish_button: Button
 var _clear_button: Button
@@ -151,7 +155,11 @@ func close() -> void:
 ## Add the window's view now, with Render's settings or [param chosen]'s,
 ## and begin drawing unless paused. Null when there is nothing to draw,
 ## with why in [member last_refusal].
-func add(chosen: RenderSettings = null) -> Item:
+##
+## From the view saved with the model as [param view_name] (SavedViews), or
+## the one the settings' camera names, it is drawn from exactly there,
+## wherever the window looks: what the window shows turned to that view.
+func add(chosen: RenderSettings = null, view_name: String = "") -> Item:
 	last_refusal = ""
 	var dialog: Node = _app.get("_render") if _app != null else null
 	var world: BrickWorld = _app.get("_world") if _app != null else null
@@ -163,18 +171,25 @@ func add(chosen: RenderSettings = null) -> Item:
 	if not StudioRender.possible():
 		last_refusal = "Rendering needs a window to draw in."
 		return null
-	var item := Item.new()
-	item.number = _next_number
-	_next_number += 1
 	var given: RenderSettings = chosen
 	if given == null:
 		given = dialog.get("settings") as RenderSettings if dialog != null else null
 	if given == null:
 		given = RenderSettings.new()
 		given.view = "current"
+	var from_view: String = view_name if not view_name.is_empty() else given.saved_view
+	var view_at: int = SavedViews.index_of(world.saved_views, from_view)
+	if not from_view.is_empty() and view_at < 0:
+		last_refusal = SavedViews.not_kept(world.saved_views, from_view)
+		return null
+	var item := Item.new()
+	item.number = _next_number
+	_next_number += 1
 	item.settings = given.copy()
 	var eye: Camera3D = _app.get("_camera") as Camera3D
-	if eye != null:
+	if view_at >= 0:
+		item.settings.keep_view(world.saved_views[view_at], eye)
+	elif eye != null:
 		item.settings.keep_eye(eye)
 	item.model = _model_now(world, scenery)
 	var bar: ModelBar = _app.get("_bar") as ModelBar
@@ -188,6 +203,26 @@ func add(chosen: RenderSettings = null) -> Item:
 
 ## Why the last [method add] added nothing.
 var last_refusal: String = ""
+
+
+## A picture from each view saved with the model (SavedViews), in order,
+## with Render's settings or [param chosen]'s: View › Viewpoint › Render each
+## saved view. Those added; none, with why in [member last_refusal], when the
+## model keeps no view or there is nothing to draw.
+func add_views(chosen: RenderSettings = null) -> Array[Item]:
+	var added: Array[Item] = []
+	var world: BrickWorld = _app.get("_world") if _app != null else null
+	var views: Array = world.saved_views if world != null else []
+	if views.is_empty():
+		last_refusal = ("The model keeps no views yet: %s keeps one."
+			% Keymap.menu_row("save_view"))
+		return added
+	for name: String in SavedViews.names(views):
+		var item: Item = add(chosen, name)
+		if item == null:
+			break
+		added.append(item)
+	return added
 
 
 ## The model as it stands, in a world of its own: what is hidden, and the
@@ -472,6 +507,10 @@ func _build() -> void:
 		if add() == null:
 			_status.text = last_refusal,
 		"Queue a picture of the model as you see it now, with Render's settings")
+	_add_views_button = _button(buttons, "Add each saved view", func() -> void:
+		if add_views().is_empty():
+			_status.text = last_refusal,
+		"Queue a picture from each view saved with the model, with Render's settings")
 	_pause_button = _button(buttons, "Pause", func() -> void: pause(not paused),
 		"Hold the rest after the one being drawn")
 	_finish_button = _button(buttons, "Finish now", func() -> void: finish_now(),
@@ -517,6 +556,8 @@ func _refresh() -> void:
 	_pause_button.text = "Go on" if paused else "Pause"
 	_pause_button.disabled = not paused and waiting() == 0
 	_finish_button.disabled = _current == null or not _current.settings.traced_here()
+	var world: BrickWorld = _app.get("_world") if _app != null else null
+	_add_views_button.disabled = world == null or world.saved_views.is_empty()
 	var finished: int = 0
 	for item: Item in items:
 		if item.finished():
@@ -641,6 +682,10 @@ func _process(_delta: float) -> void:
 	# The model's room changes as the side panels open and close, and a
 	# strip comes up along its foot.
 	if visible and _app != null:
+		# A view saved, or the last taken out, with the panel open.
+		var world: BrickWorld = _app.get("_world")
+		if world != null and _add_views_button.disabled != world.saved_views.is_empty():
+			_add_views_button.disabled = world.saved_views.is_empty()
 		var room: Rect2 = _room()
 		var at := Vector2(room.end.x - size.x - 12.0, room.end.y - size.y - 12.0)
 		# And as its words and buttons settle at a new width.
@@ -651,6 +696,7 @@ func _process(_delta: float) -> void:
 func controls_by_name() -> Dictionary:
 	if not visible:
 		return {}
-	return {"queue_add": _add_button, "queue_pause": _pause_button,
+	return {"queue_add": _add_button, "queue_add_views": _add_views_button,
+		"queue_pause": _pause_button,
 		"queue_finish": _finish_button, "queue_clear": _clear_button,
 		"queue_close": _close_button}

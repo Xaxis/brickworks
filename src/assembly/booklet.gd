@@ -1154,6 +1154,8 @@ static func parts_pages(lots: Array[Lot], first_page: int,
 	# The credits' lines past the first, where they wrap on a narrow page.
 	var over: float = (credit_lines(credits, sheet) - 1) * CREDIT_SIZE * 1.2 \
 		if sheet != null and not credits.is_empty() else 0.0
+	if sheet != null and not sheet.footer.is_empty():
+		over += FOOTER_ROOM
 	area = Rect2(area.position + Vector2(0.0, 10.0), area.size - Vector2(0.0, 10.0 + over))
 	const COLUMN := 24.5
 	var columns: int = int((area.size.x + 2.0) / COLUMN)
@@ -1263,6 +1265,10 @@ static func _head(document: Document, with_parts: bool = true) -> String:
 	if not behind.is_empty():
 		parts.insert(0, "section.page{background-image:url(%s);background-size:cover;background-position:center}"
 			% behind)
+	# The parts box's corners as its designer set them (booklook); its frame
+	# and fill are --box-line and --box.
+	if not is_equal_approx(sheet.box_corners, BookletSheet.BOX_CORNERS):
+		parts.insert(0, ".box{border-radius:calc(%s * var(--mm))}" % _n(sheet.box_corners))
 	return """<!doctype html>
 <html lang="en">
 <meta charset="utf-8">
@@ -1272,7 +1278,7 @@ static func _head(document: Document, with_parts: bool = true) -> String:
 <style>
 :root {
   --mm: 1mm;
-  --page: #%s; --box: #bcdaf1; --box-line: #3d6f97;
+  --page: #%s; --box: #%s; --box-line: #%s;
   --callout: #fff3c8; --callout-line: #34393f; --ink: #15191e;
 }
 @media screen {
@@ -1332,7 +1338,8 @@ svg.over { position: absolute; left: 0; top: 0; width: 100%%; height: 100%%; ove
 </style>
 <div class="bar"><span>%s</span><button>Print</button><button id="save-pdf" hidden>Save as PDF</button><button id="save-png" hidden>Save pages as PNG</button><span id="saved" role="status" hidden></span></div>
 %s
-<main>""" % [policy(), _escape(document.title), sheet.colour.to_html(false), _whole(size.x),
+<main>""" % [policy(), _escape(document.title), sheet.colour.to_html(false),
+		sheet.box_fill.to_html(false), sheet.box_frame.to_html(false), _whole(size.x),
 		("portrait" if sheet.portrait else "landscape") if own
 			else "%smm %smm" % [_whole(size.x), _whole(size.y)],
 		"5mm auto 0" if own else "0 auto", _whole(size.x), _whole(size.y), "\n".join(parts),
@@ -1412,7 +1419,7 @@ static func _page(page: Page, document: Document) -> String:
 				var picture: Array = page.pictures[index]
 				if index > 0:
 					out.append(_div(picture[1], "", "background:#fff;border-radius:calc(2.5 * var(--mm));"
-						+ "box-shadow:0 0 0 calc(.35 * var(--mm)) #3d6f97"))
+						+ "box-shadow:0 0 0 calc(.35 * var(--mm)) #" + sheet.box_frame.to_html(false)))
 				_image(out, picture[0], picture[1], "The finished model")
 			out.append(_text(Vector2(margin, margin), 8.0, "Finished", "n"))
 		"parts":
@@ -1472,6 +1479,19 @@ static func _page(page: Page, document: Document) -> String:
 		var x: float = margin if left else size.x - margin - 8.0
 		out.append(_text(Vector2(x, size.y - margin + 0.4), 3.6, str(page.number), "q",
 			"" if left else "text-align:right;width:calc(8 * var(--mm))"))
+		# The designer's words at the head of the page, in its top margin, and
+		# at its foot, over the bar, between the page numbers (booklook).
+		if not sheet.header.is_empty():
+			out.append(_line(sheet.header, Rect2(Vector2(margin, (margin - HEADER_SIZE) * 0.5),
+				Vector2(size.x - margin * 2.0, HEADER_SIZE)), "center"))
+		if not sheet.footer.is_empty():
+			out.append(_line(sheet.footer, footer_rect(sheet), "center"))
+	elif not sheet.footer.is_empty():
+		# The cover's foot: beside the line that says the booklet was made here.
+		var credit: float = Helvetica.text_width(COVER_CREDIT, 2.6, false)
+		var at := Rect2(Vector2(margin + credit + 6.0, size.y - margin),
+			Vector2(size.x - margin * 2.0 - credit - 6.0, FOOTER_SIZE))
+		out.append(_line(sheet.footer, at, "right"))
 	if not svg.is_empty():
 		out.append("<svg class=\"over\" viewBox=\"0 0 %s %s\" aria-hidden=\"true\">%s</svg>"
 			% [_n(size.x), _n(size.y), "".join(svg)])
@@ -1508,7 +1528,8 @@ static func _entry(entry: Entry, document: Document, out: PackedStringArray,
 					"%dx" % lot.count, "q"))
 				x += cell + PAD
 			y += tallest + QUANTITY + 1.0
-	out.append(_text(entry.number_at, entry.number_size, str(entry.number), "n"))
+	out.append(_text(entry.number_at, entry.number_size, str(entry.number), "n",
+		document.sheet.number_style()))
 	if entry.turned:
 		svg.append(_turn_sign(sign_rect(entry)))
 	for pointer: Array in entry.pointers:
@@ -1527,7 +1548,7 @@ static func _entry(entry: Entry, document: Document, out: PackedStringArray,
 					"%s, step %d" % [callout.name, index + 1])
 			if callout.inline and callout.steps.size() > 1:
 				out.append(_text(callout.cells[index].position + Vector2(0.6, 0.4),
-					CALLOUT_NUMBER, str(index + 1), "n"))
+					CALLOUT_NUMBER, str(index + 1), "n", document.sheet.number_style()))
 		if callout.times > 1:
 			out.append(_text(callout.box.end - Vector2(PAD + 7.0, PAD + QUANTITY + 0.6),
 				QUANTITY * 1.15, "%dx" % callout.times, "n"))
@@ -1618,22 +1639,93 @@ static func _mark_words(mark: Dictionary, with_label: bool = true) -> String:
 
 
 static func _cover(page: Page, document: Document, out: PackedStringArray) -> void:
-	var page_size: Vector2 = document.sheet.size()
-	var margin: float = document.sheet.margin
+	var sheet: BookletSheet = document.sheet
+	var page_size: Vector2 = sheet.size()
+	var margin: float = sheet.margin
 	out.append(_div(Rect2(Vector2.ZERO, Vector2(page_size.x, 30.0)), "", "background:#23527c"))
-	out.append(_div(Rect2(Vector2(margin, 7.0), Vector2(44.0, 16.0)), "",
-		"background:#d0312d;border-radius:calc(2 * var(--mm))"))
-	out.append(_text(Vector2(margin + 3.6, 12.4), 5.0, "BRICKWORKS", "n", "color:#fff"))
-	# As big as fits on one line: the example car is "Example Car for
-	# Demonstration of LDRAW Library", which at 10 mm ran off the page.
-	var room: float = page_size.x - margin * 2.0 - 52.0
-	var size: float = clampf(room / (0.58 * maxf(1.0, float(document.title.length()))), 4.0, 10.0)
-	out.append(_text(Vector2(margin + 52.0, 15.0 - size * 0.5), size, _escape(document.title),
-		"n", "color:#fff"))
+	if not sheet.own_cover():
+		out.append(_div(Rect2(Vector2(margin, 7.0), Vector2(44.0, 16.0)), "",
+			"background:#d0312d;border-radius:calc(2 * var(--mm))"))
+		out.append(_text(Vector2(margin + 3.6, 12.4), 5.0, "BRICKWORKS", "n", "color:#fff"))
+		# As big as fits on one line: the example car is "Example Car for
+		# Demonstration of LDRAW Library", which at 10 mm ran off the page.
+		var room: float = page_size.x - margin * 2.0 - 52.0
+		var size: float = clampf(room / (0.58 * maxf(1.0, float(document.title.length()))), 4.0, 10.0)
+		out.append(_text(Vector2(margin + 52.0, 15.0 - size * 0.5), size, _escape(document.title),
+			"n", "color:#fff"))
+	else:
+		_own_cover_head(document, out)
 	for picture: Array in page.pictures:
-		_image(out, picture[0], picture[1], "The finished model")
+		_image(out, picture[0], picture[1], "The finished model" if sheet.cover_uri.is_empty()
+			else "The cover")
+	if not sheet.cover_line.is_empty():
+		var line: Array = _fit_line(sheet.cover_line, COVER_LINE_SIZE, 2.6,
+			page_size.x - margin * 2.0, true)
+		out.append(_text(Vector2(margin, page_size.y - margin - 9.0 - float(line[1])), line[1],
+			_escape(line[0]), "q"))
 	out.append(_text(Vector2(margin, page_size.y - margin - 6.0), 4.0, "%d pieces · %d steps" % [document.pieces, document.steps], "q"))
-	out.append(_text(Vector2(margin, page_size.y - margin), 2.6, "Building instructions made with Brickworks — brickworks.diy", "e"))
+	out.append(_text(Vector2(margin, page_size.y - margin), 2.6, COVER_CREDIT, "e"))
+
+
+## The line at the foot of the cover.
+const COVER_CREDIT := "Building instructions made with Brickworks — brickworks.diy"
+## booklook: the sizes of the designer's words, in mm, at their largest: the
+## cover's title (with a line under it, and without), that line, the line
+## of their words on the cover, and those at the head and foot of a page.
+const TITLE_SIZE := 10.0
+const TITLE_UNDER := 8.5
+const SUBTITLE_SIZE := 4.6
+const COVER_LINE_SIZE := 5.0
+const HEADER_SIZE := 3.0
+const FOOTER_SIZE := 2.6
+## The room the parts list's credits keep over a footer.
+const FOOTER_ROOM := 2.6
+
+
+## A cover of the designer's own: their title across the band, as big as
+## fits, the line under it beneath, and no badge of the app's.
+static func _own_cover_head(document: Document, out: PackedStringArray) -> void:
+	var sheet: BookletSheet = document.sheet
+	var room: float = sheet.size().x - sheet.margin * 2.0
+	var title: Array = _fit_line(document.title, TITLE_SIZE if sheet.subtitle.is_empty()
+		else TITLE_UNDER, 4.0, room, true, -0.02)
+	var under: Array = _fit_line(sheet.subtitle, SUBTITLE_SIZE, 2.6, room, false) \
+		if not sheet.subtitle.is_empty() else ["", 0.0]
+	var tall: float = float(title[1]) + (1.6 + float(under[1]) if not sheet.subtitle.is_empty() else 0.0)
+	var top: float = 15.0 - tall * 0.5
+	out.append(_text(Vector2(sheet.margin, top), title[1], _escape(title[0]), "n", "color:#fff"))
+	if not sheet.subtitle.is_empty():
+		out.append(_text(Vector2(sheet.margin, top + float(title[1]) + 1.6), under[1],
+			_escape(under[0]), "", "color:#d7e5f2"))
+
+
+## A line of the designer's words, as big as [param most] mm where it fits
+## across [param room], smaller where it does not, down to [param least],
+## and cut short with "…" past that: [words, size].
+static func _fit_line(text: String, most: float, least: float, room: float, bold: bool,
+		spacing: float = 0.0) -> Array:
+	var wide: float = maxf(Helvetica.text_width(text, 1.0, bold, spacing), 0.01)
+	var size: float = clampf(snappedf(room / wide - 0.005, 0.01), least, most)
+	while text.length() > 1 and Helvetica.text_width(text, size, bold, spacing * size) > room:
+		text = text.left(text.length() - 2).strip_edges() + "…"
+	return [text, size]
+
+
+## A line of the designer's words in [param at], as tall as it is where it
+## fits, set [param align] ("center" or "right") across it, its foot on
+## its foot: in the booklet's grey.
+static func _line(text: String, at: Rect2, align: String) -> String:
+	var line: Array = _fit_line(text, at.size.y, 1.8, at.size.x, false)
+	return _text(Vector2(at.position.x, at.end.y - float(line[1])), line[1], _escape(line[0]), "e",
+		"width:calc(%s * var(--mm));text-align:%s" % [_n(at.size.x), align])
+
+
+## Where a page's footer goes: over the bar at its foot, between its page
+## numbers.
+static func footer_rect(sheet: BookletSheet) -> Rect2:
+	var size: Vector2 = sheet.size()
+	return Rect2(Vector2(sheet.margin + 12.0, size.y - sheet.margin + 1.0 - FOOTER_SIZE),
+		Vector2(size.x - sheet.margin * 2.0 - 24.0, FOOTER_SIZE))
 
 
 ## Where the cover's picture of the finished model goes, under its band.
@@ -1655,7 +1747,8 @@ static func _parts_page(page: Page, document: Document, out: PackedStringArray) 
 		out.append(_text(Vector2(at.position.x, at.end.y + 0.8), 3.0, "%dx" % lot.count, "q"))
 		var label: String = lot.element if not lot.element.is_empty() else lot.part_id
 		out.append(_text(Vector2(at.position.x, at.end.y + 4.4), 2.5, _escape(label), "e"))
-	var foot: float = document.sheet.size().y - margin - 4.0
+	var foot: float = document.sheet.size().y - margin - 4.0 \
+		- (FOOTER_ROOM if not document.sheet.footer.is_empty() else 0.0)
 	var lines: int = credit_lines(document.credits, document.sheet)
 	if lines <= 1:
 		out.append(_text(Vector2(margin, foot), CREDIT_SIZE, _escape(document.credits), "e"))

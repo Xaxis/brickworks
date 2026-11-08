@@ -2027,7 +2027,17 @@ fixing what it got wrong.
   cover their body's studs, a bracket and plain bricks as before; a shape and
   a sculpt raised beside a row of 87087s are said to float, the shape's foot
   in plates; one stood on a shape stands on one stud; mirrored, it lands
-  where its body reflects.
+  where its body reflects. The `mirror` pattern's parts are made by Mirror's
+  own code, in the read (`Assistant._mirror_images`, after `Patterns._mirror`
+  lays each where its footprint reflects and marks what it reflects): each
+  part its mirror image, turned off its shape, its other hand where it has
+  one, placed as the read places what it reflects (its turn, its joint line,
+  its section), and a part with no mirror image turned as near as it goes and
+  named in submit_design's reply, a small design's too. Until mirrorpattern
+  (2026-11-06) it kept each brick's rot: a headlight faced in, a right wedge
+  plate stayed right. `tools/probe.sh mirror_probe`: the walk's pod across x
+  and z equals mirror_parts' to 0.01 LDU; five kept real-set designs'
+  mirrored parts equal Builder.mirror_bricks' on the same half.
 - `a module said again`: `repeat_section`, on both `submit_design` and
   `edit_model`, over `Assistant._expand_repeats`. Build the repeating unit once
   as a section, then give `{from, times, dx, dy, dz, degrees, axis}` and get a

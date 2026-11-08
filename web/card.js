@@ -551,6 +551,121 @@ const posted = (at) => {
   return POSTED.get(locale).format(at);
 };
 
+/// A photo of a real build's address (api/people.js ?op=photo_file). With
+/// [card], its copy for the cards (cardSize); without, the whole kept photo.
+export const photoSrc = (id, { card = false } = {}) =>
+  `/api/people?op=photo_file&id=${encodeURIComponent(String(id))}${card ? "&size=card" : ""}`;
+
+/// A photo's addresses in an API's answer: url, the whole kept photo; card,
+/// its copy for the cards.
+export const photoUrls = (origin, id) => ({ url: `${origin}${photoSrc(id)}`, card: `${origin}${photoSrc(id, { card: true })}` });
+
+/// The box a photo's copy for the cards covers: a 4:3 card filled at 480 px.
+export const CARD_BOX = { width: 480, height: 360 };
+
+/// The size of the copy for the cards of a photo [width] x [height]: just
+/// large enough to cover CARD_BOX, its shape kept, never larger than the
+/// photo; {width: 0, height: 0} for a photo of no size. api/_photo.js
+/// cardOf makes the copy at this size. Pure.
+export function cardSize(width, height) {
+  const w = Math.floor(Number(width) || 0);
+  const h = Math.floor(Number(height) || 0);
+  if (w < 1 || h < 1) return { width: 0, height: 0 };
+  const scale = Math.min(1, Math.max(CARD_BOX.width / w, CARD_BOX.height / h));
+  return { width: Math.max(1, Math.round(w * scale)), height: Math.max(1, Math.round(h * scale)) };
+}
+
+/// Each place a photo is drawn: [sizes], how wide (CSS sizes, never
+/// narrower than web/site.css and web/directory.css draw it), and where the
+/// photo is cut to fill its box (object-fit: cover), [shape], the narrowest
+/// that box gets, its width over its height.
+export const PHOTO_PLACES = {
+  // The gallery's Builds tab (.models in .wrap.wide, a 4:3 frame): 2, 3,
+  // then 4 across.
+  card: { sizes: "(min-width: 900px) min(25vw, 382px), (min-width: 600px) 34vw, 50vw", shape: 4 / 3 },
+  // Under a model's picture (.media-strip .thumb): 96 by 72, 80 by 60 on a phone.
+  thumb: { sizes: "96px", shape: 4 / 3 },
+  // A model's builds (.build-strip): min(260px, 72vw) by 190.
+  strip: { sizes: "min(260px, 72vw)", shape: 1.2 },
+  // Who built it, on Designs (.design-builders): min(200px, 60vw) by 140.
+  builders: { sizes: "min(200px, 60vw)", shape: 4 / 3 },
+  // Columns of builds, each photo whole (.build-grid in .wrap.wide): a
+  // person's Builds, Latest.
+  columns: { sizes: "(min-width: 716px) min(34vw, 526px), (min-width: 484px) 50vw, 100vw", shape: 0 },
+  // The feed (.feed-photo): whole, at most 600 wide.
+  feed: { sizes: "min(600px, 100vw)", shape: 0 },
+};
+
+/// A photo as [place] draws it: its copy for the cards and the whole
+/// photo, each described by how wide it is once cut to the place's shape,
+/// so a browser takes the copy only where it is not drawn larger than it
+/// is. A [lazy] one's sizes begin "auto", the box itself, where a browser
+/// measures it; Chrome reads an eager one's "auto" as the whole window.
+/// {src, srcset, sizes, card ("WxH"), whole}: the whole alone for a photo
+/// of no size, the copy alone for one no larger than it. Pure.
+export function photoPicture(photo, place, { lazy = true } = {}) {
+  const { sizes, shape } = PHOTO_PLACES[place];
+  const card = photoSrc(photo.id, { card: true });
+  const whole = photoSrc(photo.id);
+  const width = Math.floor(Number(photo.width) || 0);
+  const height = Math.floor(Number(photo.height) || 0);
+  const small = cardSize(width, height);
+  if (!small.width) return { src: whole, srcset: "", sizes: "", card: "", whole: "" };
+  const across = (w, h) => Math.max(1, Math.floor(shape ? Math.min(w, h * shape) : w));
+  const near = across(small.width, small.height);
+  const far = across(width, height);
+  if (far <= near) return { src: card, srcset: "", sizes: "", card: "", whole: "" };
+  return { src: card, srcset: `${card} ${near}w, ${whole} ${far}w`, sizes: lazy ? `auto, ${sizes}` : sizes,
+    card: `${small.width}x${small.height}`, whole };
+}
+
+/// photoPicture's attributes for a page's <img>, escaped.
+export function photoAttrs(photo, place, options) {
+  const made = photoPicture(photo, place, options);
+  return `src="${escapeHtml(made.src)}"` + (made.srcset ? ` srcset="${escapeHtml(made.srcset)}" sizes="${escapeHtml(made.sizes)}" `
+    + `data-card="${escapeHtml(made.card)}" data-whole="${escapeHtml(made.whole)}"` : "");
+}
+
+/// photoPicture on an <img> made in a browser, after its loading is set.
+export function setPhoto(img, photo, place) {
+  const made = photoPicture(photo, place, { lazy: img.loading === "lazy" });
+  if (made.srcset) {
+    img.sizes = made.sizes;
+    img.srcset = made.srcset;
+    img.dataset.card = made.card;
+    img.dataset.whole = made.whole;
+  }
+  img.src = made.src;
+}
+
+// Chrome takes the smaller of two pictures until the screen's pixels pass
+// the geometric mean of theirs (Blink's srcset SelectionLogic), so a srcset
+// alone still drew a card's copy up to half again its size. Each photo
+// photoPicture made is watched as its box changes, and where its copy
+// would be drawn larger than it is, given the whole photo, which it keeps.
+let sharpening = null;
+
+/// Watch every photo under [root] (an element or the document) as sharpPhotos says.
+export function sharpPhotos(root) {
+  if (typeof ResizeObserver !== "function" || !root?.querySelectorAll) return;
+  sharpening ||= new ResizeObserver((seen) => {
+    const dpr = globalThis.devicePixelRatio || 1;
+    for (const { target, contentRect } of seen) {
+      const [w, h] = String(target.dataset.card || "").split("x").map(Number);
+      if (!w || !h || !target.dataset.whole || !contentRect.width) continue;
+      if (Math.max((contentRect.width * dpr) / w, (contentRect.height * dpr) / h) <= 1) continue;
+      sharpening.unobserve(target);
+      target.removeAttribute("srcset");
+      target.removeAttribute("sizes");
+      target.src = target.dataset.whole;
+      delete target.dataset.whole;
+    }
+  });
+  const photos = [...root.querySelectorAll("img[data-whole]")];
+  if (root.matches?.("img[data-whole]")) photos.push(root);
+  for (const img of photos) sharpening.observe(img);
+}
+
 /// A photo of a real build as a card (site.css .build-card), the gallery's
 /// Builds tab: the model card's shape, so the tab reads as the gallery
 /// does. The photo, cut to the card's 4:3 as a model's picture is and
@@ -572,7 +687,7 @@ export function buildCardHtml(photo, { eager = false } = {}) {
   const when = Number.isFinite(at)
     ? `<time class="when" datetime="${escapeHtml(new Date(at).toISOString())}">${escapeHtml(posted(at))}</time>` : "";
   return `<article class="model build-card" data-id="${id}" data-model="${model}">`
-    + `<div class="frame"><img src="/api/people?op=photo_file&amp;id=${id}" `
+    + `<div class="frame"><img ${photoAttrs(photo, "card", { lazy: !eager })} `
     + `alt="${escapeHtml(builder ? say("A build of {name} by {builder}", { name, builder }) : say("A build of {name}", { name }))}" `
     + `width="${Number(photo.width) || 4}" height="${Number(photo.height) || 3}" ${eager
       ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"'} decoding="async"></div>`
