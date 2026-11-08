@@ -87,7 +87,22 @@ const FAMILIES: Array = [
 	["round", "Round", "A round brick, plate or tile"],
 	["bracket", "Bracket", "A plate with an upright whose studs face forward"],
 	["technic", "Technic", "A Technic brick, one stud wide, with a hole between every two studs"],
+	["clip", "Clip", "A plate or tile with a clip on its front edge that grips a bar, upright or level"],
+	["bar", "Bar", "A bar 3.2 mm across, any number of studs long: a clip grips it, a hollow stud holds its end"],
+	["wedge", "Wedge", "A wedge plate (LDraw calls it a wing): one side straight, the other cut in to a tip one stud wide"],
 ]
+
+## The ways each family with a choice of [member ElementMaker.Spec.way] can
+## go, [the way, its words], and what the row is called.
+const WAY_WORDS: Dictionary = {
+	"bracket": [["down", "hangs down from the plate"], ["up", "stands up from the plate"]],
+	"clip": [["vertical", "vertical: it holds a bar standing up"],
+		["horizontal", "horizontal: it holds a bar along the edge"]],
+	"wedge": [["left", "left: the straight side on the left"],
+		["right", "right: the straight side on the right"]],
+}
+const WAY_TITLES: Dictionary = {"bracket": "The upright", "clip": "The clip",
+	"wedge": "Left or right"}
 
 ## The sides a brick's studs can go on, as the checkboxes name them.
 const SIDE_LABELS: Array = [["f", "Front"], ["b", "Back"], ["l", "Left"], ["r", "Right"]]
@@ -267,12 +282,12 @@ func _build() -> void:
 	var way_row := _row(grid, "The upright")
 	_rows["way"] = way_row.get_parent()
 	_way = OptionButton.new()
-	_way.add_item("hangs down from the plate")
-	_way.add_item("stands up from the plate")
+	_way.accessibility_name = "Which way"
+	_fill_way("bracket")
 	_way.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_way.item_selected.connect(func(index: int) -> void:
 		if not _filling:
-			_spec.way = "down" if index == 0 else "up"
+			_spec.way = str(_way.get_item_metadata(index))
 			_changed())
 	way_row.add_child(_way)
 
@@ -408,6 +423,24 @@ func _build() -> void:
 	_add.text = "Add to parts"
 	_add.pressed.connect(_make)
 	buttons.add_child(_add)
+
+
+## The way list as [param family] has it, its words and its row's title.
+func _fill_way(family: String) -> void:
+	var words: Array = WAY_WORDS.get(family, WAY_WORDS["bracket"])
+	_way.clear()
+	for entry: Array in words:
+		_way.add_item(entry[1])
+		_way.set_item_metadata(_way.item_count - 1, entry[0])
+	if _rows.has("way"):
+		(_rows["way"].get_child(0) as Label).text = WAY_TITLES.get(family, "The upright")
+
+
+## Select [param way] in the way list, if it is one of its items.
+func _select_way(way: String) -> void:
+	for index: int in _way.item_count:
+		if str(_way.get_item_metadata(index)) == way:
+			_way.select(index)
 
 
 func _row(column: Container, label: String) -> HBoxContainer:
@@ -572,7 +605,8 @@ func _show_spec() -> void:
 	_run.value = _spec.run
 	_diameter.value = _spec.diameter
 	_rise.value = _spec.rise
-	_way.select(0 if _spec.way == "down" else 1)
+	_fill_way(_spec.family)
+	_select_way(_spec.way)
 	_studs.button_pressed = _spec.studs
 	for letter: String in _sides:
 		(_sides[letter] as CheckBox).button_pressed = _spec.sides.contains(letter)
@@ -581,24 +615,32 @@ func _show_spec() -> void:
 	var is_round: bool = family == "round"
 	var sloped: bool = family == "slope" or family == "inverted" or family == "curved"
 	_rows["across"].visible = not is_round
-	_rows["deep"].visible = not is_round and family != "technic"
+	_rows["deep"].visible = not is_round and family != "technic" and family != "bar"
 	_rows["diameter"].visible = is_round
 	_rows["run"].visible = sloped
 	_rows["angles"].visible = family == "slope" or family == "inverted"
-	_rows["plates"].visible = family != "bracket" and family != "technic"
+	# A bracket, a clip plate and a wedge plate are plates, a Technic brick
+	# a brick, and a bar has no height in plates at all.
+	_rows["plates"].visible = not (family in ["bracket", "technic", "clip", "bar", "wedge"])
 	_rows["rise"].visible = family == "bracket"
-	_rows["way"].visible = family == "bracket"
+	_rows["way"].visible = WAY_WORDS.has(family)
 	_rows["sides"].visible = family == "brick"
+	_studs.visible = family != "bar"
 	# A brick is named "2 x 7", short side first, and its long side runs
 	# along X as the library's do; a slope is as wide as its face and as
 	# deep as its back is from its foot; a bracket's plate as wide as its
-	# upright.
-	(_rows["across"].get_child(0) as Label).text = \
-		"Width, studs (along the face)" if sloped \
-		else ("Width, studs (along the upright)" if family == "bracket" else "Length, studs")
-	(_rows["deep"].get_child(0) as Label).text = \
-		"Depth, studs (back to foot)" if sloped \
-		else ("Plate depth, studs" if family == "bracket" else "Width, studs")
+	# upright; a clip plate as wide as the edge its clip is on; a wedge
+	# plate as wide as its wide end and as long as from there to its tip.
+	(_rows["across"].get_child(0) as Label).text = {
+		"bracket": "Width, studs (along the upright)",
+		"clip": "Width, studs (the clip's edge)",
+		"wedge": "Width, studs (the wide end)",
+	}.get(family, "Width, studs (along the face)" if sloped else "Length, studs")
+	(_rows["deep"].get_child(0) as Label).text = {
+		"bracket": "Plate depth, studs",
+		"clip": "Depth, studs",
+		"wedge": "Length, studs (to the tip)",
+	}.get(family, "Depth, studs (back to foot)" if sloped else "Width, studs")
 	(_rows["run"].get_child(0) as Label).text = \
 		"Curve falls over, rows" if family == "curved" else "Slope falls over, rows"
 	_filling = false
@@ -643,11 +685,16 @@ func _show_edit() -> void:
 func _choose_family(index: int) -> void:
 	_mode = "family"
 	_waiting_for = ""
-	if FAMILIES[index][0] != _spec.family:
+	var family: String = FAMILIES[index][0]
+	if family != _spec.family:
 		# A 3001 made into a slope is not 3001 resized.
 		_spec.derived_from = ""
 		_from.text = ""
-	_spec.family = FAMILIES[index][0]
+		# Nor is a 4 x 2 brick a clip plate, a bar or a wedge plate worth
+		# starting from: each starts as the one LEGO makes most of.
+		for field: String in ElementMaker.STARTS.get(family, {}):
+			_spec.set(field, ElementMaker.STARTS[family][field])
+	_spec.family = family
 	_fit_family(_spec)
 	_show_spec()
 
@@ -672,6 +719,16 @@ static func _fit_family(spec: ElementMaker.Spec) -> void:
 		"technic":
 			spec.deep = 1
 			spec.plates = 3
+		"clip":
+			spec.plates = 1
+		"wedge":
+			spec.plates = 1
+			spec.across = maxi(spec.across, 2)
+			spec.deep = maxi(spec.deep, 2)
+	# A clip that was a bracket's "down" is the family's first way.
+	var ways: Array = ElementMaker.WAYS.get(spec.family, [])
+	if not ways.is_empty() and not ways.has(spec.way):
+		spec.way = ways[0]
 	if spec.family != "brick":
 		spec.sides = ""
 	elif not spec.sides.is_empty() and spec.plates < 3:
@@ -810,6 +867,11 @@ static func describe(spec: ElementMaker.Spec, built: RefCounted) -> String:
 	var size: Vector3 = Vector3(built.bounds_max[0] - built.bounds_min[0],
 		built.bounds_max[1] - built.bounds_min[1],
 		built.bounds_max[2] - built.bounds_min[2])
+	if spec.family == "bar":
+		# Drawn standing, as 87994 is: its length is its height.
+		return ("%s — %.1f mm long and %.1f mm across: a clip grips it anywhere along "
+			+ "it, and either end goes into a hollow stud.") % [
+			Inventory._tidy(ElementMaker.title_for(spec)), size.y * MM, size.x * MM]
 	var body: float = spec.plates * ElementMaker.PLATE
 	var on_top: int = 0
 	var aside: int = 0
@@ -845,6 +907,12 @@ static func describe(spec: ElementMaker.Spec, built: RefCounted) -> String:
 	elif spec.family == "curved":
 		words += " The curve leaves the top level and meets its foot at %.1f°." \
 			% ElementMaker.true_angle(spec)
+	elif spec.family == "clip":
+		words += (" Its clip grips a bar 3.2 mm across, standing up." if spec.way == "vertical"
+			else " Its clip grips a bar 3.2 mm across, lying along the edge.")
+	elif spec.family == "wedge":
+		words += " Its cut side runs at %.1f° to the straight side, to a tip one stud wide." \
+			% ElementMaker.wedge_angle(spec)
 	return words
 
 
@@ -969,7 +1037,7 @@ func set_field(field: String, value: Variant) -> void:
 			for letter: String in _sides:
 				(_sides[letter] as CheckBox).button_pressed = wanted.contains(letter)
 		"way":
-			_way.select(0 if str(value) == "down" else 1)
+			_select_way(str(value))
 			_way.item_selected.emit(_way.selected)
 		"cut":
 			# [x0, z0, x1, z1, p0, p1], as PartEditor.Edit.cut.

@@ -33,13 +33,20 @@ All part geometry derives from the LDraw Parts Library.
   > LDraw.org.
 
 - Source: https://library.ldraw.org/
-- Eleven of the library's primitives are copied unchanged into
-  `assets/ldraw/` and ship in every build — `stud`, `stud3`, `stud4`,
-  `box4`, `box5`, `4-4cyli`, `4-4disc`, `4-4edge`, `4-4ndis`, `4-4ring3` and
-  `peghole`, authored by
-  James Jessiman (each file names him), CC BY 4.0 — because the element
-  maker (`src/parts/element_maker.gd`) draws every part it makes from them
-  and the app has to build those parts where the library is not to hand.
+- Thirty-two of the library's primitives are copied unchanged into
+  `assets/ldraw/` and ship in every build, each CC BY 4.0 and each file
+  naming its author — because the element maker
+  (`src/parts/element_maker.gd`) draws every part it makes from them and the
+  app has to build those parts where the library is not to hand: `stud`,
+  `stud3`, `stud4`, `box4`, `box5`, `4-4cyli`, `4-4disc`, `4-4edge`,
+  `4-4ndis`, `4-4ring3`, `peghole`, `1-4cyli`, `1-4edge`, `1-4ndis` and
+  `rect` by James Jessiman; and for the clip plate, the bar and the wedge
+  plate, `clip5` by Philippe Hurbain, `clip6` and `3-16ndis` by Magnus
+  Forsberg, `3-16cyli`, `5-8cyli`, `5-8edge` and `rect3` by Mark Kennedy,
+  `1-16ndis` and `3-16chrd` by Niels Karsdorp, `3-16cylo` by J.C. Tchang,
+  `1-4chrd` and `1-4cylo` by Max Martin Richter, `1-16cyli` by Marc Klein,
+  `3-16edge` and `rect2p` by Donald Sutter, and `box2-5` and `box4o8a` by
+  Steffen.
   A part the maker writes is an unofficial part, not a library one: its
   header names the maker as its author, and LDraw's own `u` and `t`
   numbers are assigned by the Parts Library admin, so it uses none.

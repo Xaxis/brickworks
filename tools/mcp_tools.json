@@ -3101,12 +3101,12 @@
       "readOnlyHint": false,
       "title": "Make a new part"
     },
-    "description": "Make a part the LEGO Group has not made, when no real part will do: search_parts first, and use a real one if there is one. Either a new part of a family at any size — a 1 x 7 brick, a bracket with a 3 x 2 upright, a Technic brick 1 x 9, a brick with studs on two sides — or a real part changed: from=\"3700\" with across 6, from=\"3062b\" without its studs, from=\"3003\" with a corner cut out. It is checked as a person's part is (sizes the system has, walls 1.6 mm, studs on the grid) and refused with the reason if it cannot be made. Made, it is a part like any other: put its number in check_design, edit_model or submit_design, and a saved model carries it. Its studs, holes and pins are found as a real part's are, so it clutches and pins as they do.",
+    "description": "Make a part the LEGO Group has not made, when no real part will do: search_parts first, and use a real one if there is one. Either a new part of a family at any size — a 1 x 7 brick, a bracket with a 3 x 2 upright, a Technic brick 1 x 9, a brick with studs on two sides, a 1 x 2 plate with a clip, a bar 5 studs long, a 3 x 8 wedge plate — or a real part changed: from=\"3700\" with across 6, from=\"3062b\" without its studs, from=\"3003\" with a corner cut out. It is checked as a person's part is (sizes the system has, walls 1.6 mm, studs on the grid) and refused with the reason if it cannot be made. Made, it is a part like any other: put its number in check_design, edit_model or submit_design, and a saved model carries it. Its studs, holes and pins are found as a real part's are, so it clutches and pins as they do.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
         "across": {
-          "description": "studs along X: a brick's length; a slope's, bracket's or curved slope's width along its face or upright; a Technic brick's length. With from: the new length.",
+          "description": "studs along X: a brick's length; a slope's, bracket's or curved slope's width along its face or upright; a Technic brick's length; a clip plate's width along the edge its clip is on; a bar's length; a wedge plate's wide end. With from: the new length.",
           "type": "integer"
         },
         "angle": {
@@ -3153,7 +3153,7 @@
           "type": "object"
         },
         "deep": {
-          "description": "studs along Z: a brick's width; a slope's depth from back to foot; a bracket's plate depth. With from: the new width.",
+          "description": "studs along Z: a brick's width; a slope's depth from back to foot; a bracket's plate depth; a clip plate's depth; a wedge plate's length, wide end to tip. With from: the new width.",
           "type": "integer"
         },
         "diameter": {
@@ -3161,7 +3161,7 @@
           "type": "integer"
         },
         "family": {
-          "description": "for a new part: brick (also plates and tiles: plates 1, studs false), slope, curved (a curved slope), inverted (slope), round, bracket (a plate with an upright whose studs face forward), technic (a 1 x N brick with a hole between every two studs)",
+          "description": "for a new part: brick (also plates and tiles: plates 1, studs false), slope, curved (a curved slope), inverted (slope), round, bracket (a plate with an upright whose studs face forward), technic (a 1 x N brick with a hole between every two studs), clip (a plate with a clip on its front edge that grips a bar, as 60897 and 61252), bar (a bar any number of studs long, as 87994), wedge (a wedge plate, LDraw's wing: one side straight, the other cut to a one-stud tip, as 41770a)",
           "enum": [
             "brick",
             "slope",
@@ -3169,7 +3169,10 @@
             "round",
             "curved",
             "bracket",
-            "technic"
+            "technic",
+            "clip",
+            "bar",
+            "wedge"
           ],
           "type": "string"
         },
@@ -3201,10 +3204,14 @@
           "description": "a new part: true for studs on top (the default), false for a tile. With from: \"keep\", \"none\" to take them off, \"fill\" to put them on wherever the top is flat."
         },
         "way": {
-          "description": "bracket: whether the upright hangs down from the plate's front edge or stands up from it",
+          "description": "bracket: down or up, whether the upright hangs down from the plate's front edge or stands up from it. clip: vertical (holds a bar standing up, 60897) or horizontal (a bar lying along the edge, 61252). wedge: left or right, the side that is straight (41770a is left)",
           "enum": [
             "down",
-            "up"
+            "up",
+            "vertical",
+            "horizontal",
+            "left",
+            "right"
           ],
           "type": "string"
         }
