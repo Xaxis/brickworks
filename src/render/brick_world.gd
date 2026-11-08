@@ -1068,6 +1068,7 @@ func _rebuild_batch(batch: Batch, key: String) -> void:
 	if not batch.ranks.is_empty():
 		_stop_reveal()
 	var count: int = batch.brick_ids.size()
+	_studs_into(batch)
 	_fresh_slots(batch, count)
 	if count == 0:
 		batch.multimesh.visible_instance_count = 0
@@ -1149,8 +1150,6 @@ func _rebuild_batch(batch: Batch, key: String) -> void:
 ## costs no wait on the GPU. tools/web/redraw_check.mjs is the check.
 func _fresh_slots(batch: Batch, count: int) -> void:
 	batch.multimesh.instance_count = 0
-	# With no slot written, so the engine has nothing to read back for it.
-	_studs_into(batch)
 	batch.multimesh.instance_count = count
 
 
@@ -2454,6 +2453,7 @@ func _drawn_as_viewed(batch: Batch, part: Lbm.PartMesh, surface_index: int) -> v
 	batch.surface_index = surface_index
 	if not edges_shown:
 		_seam_into(batch.instance.material_override)
+	_studs_into(batch)
 
 
 func _seam_into(material: Material) -> void:
@@ -2472,16 +2472,17 @@ func _mesh_as_viewed(batch: Batch) -> Mesh:
 
 
 ## The batch's mesh, and its cut's, x-ray's and shadow's, made the one the
-## View draws, while the batch has no slot written (_fresh_slots): the engine
-## reads a MultiMesh's slots back off the card to measure it when its mesh
-## changes with slots in it. The batch's twins are written again by the same
-## rebuild, so their slots are let go of here too.
+## View draws: when the batch is made, and when it is written whole
+## (_rebuild_batch), which writes its twins again too. Its slots are let go
+## of first: the engine reads a MultiMesh's slots back off the card to
+## measure it when its mesh changes with slots in it.
 func _studs_into(batch: Batch) -> void:
 	if batch.part == null:
 		return
 	var mesh: Mesh = _mesh_as_viewed(batch)
 	if batch.multimesh.mesh == mesh:
 		return
+	batch.multimesh.instance_count = 0
 	batch.multimesh.mesh = mesh
 	batch.triangles = _triangles_of(mesh as ArrayMesh)
 	for twin: MultiMeshInstance3D in [batch.through, batch.xray, batch.shade]:

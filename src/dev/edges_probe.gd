@@ -210,7 +210,7 @@ func _edges() -> void:
 		for course: int in 6:
 			var at: float = left
 			var offset: bool = course % 2 == 1
-			var pieces: Array[String] = ["3005", "3004", "3004", "3004", "3004", "3005"] if offset \
+			var pieces: Array = ["3005", "3004", "3004", "3004", "3004", "3005"] if offset \
 				else ["3004", "3004", "3004", "3004", "3004"]
 			for part: String in pieces:
 				var wide: float = 20.0 if part == "3005" else 40.0
@@ -341,9 +341,10 @@ func _studs() -> void:
 		moved == 0 and _world.model_bounds().is_equal_approx(bounds_before))
 	var left_out: Array[PackedVector2Array] = rounds.duplicate()
 	left_out.append_array(facing)
-	var outside: Vector2i = _outside_rounds(drawn, off, left_out, 3.0)
-	_check("outside the studs' rounds and 3 px round them, %d px changed of %d (the bodies drawn where they were)"
-		% [outside.x, outside.y], outside.x == 0)
+	var outside: Vector3i = _outside_rounds(drawn, off, empty, left_out, 3.0,
+		"studs_outside_" + _size)
+	_check("outside the studs' rounds and 3 px round them, every part drawn where it was: %d px of %d covered by a part with the studs and not without, or the other way (%d px lit differently, the studs' own shadows and light)"
+		% [outside.x, outside.z, outside.y], outside.x == 0)
 	var ends: Vector3i = Vector3i.ZERO
 	for outline: PackedVector2Array in facing:
 		ends += _in_round(outline, drawn, off, drawn)
@@ -413,9 +414,14 @@ func _in_round(outline: PackedVector2Array, on: Image, off: Image, empty: Image)
 	return counts
 
 
-## Pixels unlike between [param a] and [param b], outside every outline
-## grown by [param margin]: [changed, looked at].
-func _outside_rounds(a: Image, b: Image, outlines: Array[PackedVector2Array], margin: float) -> Vector2i:
+## Outside every outline grown by [param margin], where [param a] and
+## [param b] draw a part: [pixels a part covers in one and not the other,
+## pixels lit differently, pixels looked at]. Whether a part covers a pixel
+## is whether it is unlike [param empty] there. What is lit differently is
+## the light the studs took: their shadows, their glow. A map of both is kept
+## as [param map] (magenta covered or not, cyan lit), to look at.
+func _outside_rounds(a: Image, b: Image, empty: Image, outlines: Array[PackedVector2Array],
+		margin: float, map: String) -> Vector3i:
 	var mask := Image.create(a.get_width(), a.get_height(), false, Image.FORMAT_L8)
 	for outline: PackedVector2Array in outlines:
 		var grown: Array[PackedVector2Array] = Geometry2D.offset_polygon(outline, margin)
@@ -427,20 +433,35 @@ func _outside_rounds(a: Image, b: Image, outlines: Array[PackedVector2Array], ma
 			for px: int in range(maxi(0, floori(box.position.x)), mini(a.get_width(), ceili(box.end.x))):
 				if Geometry2D.is_point_in_polygon(Vector2(px + 0.5, py + 0.5), shape):
 					mask.set_pixel(px, py, Color.WHITE)
-	var changed: int = 0
-	var looked: int = 0
+	var counts := Vector3i.ZERO
 	var da: PackedByteArray = a.get_data()
 	var db: PackedByteArray = b.get_data()
+	var de: PackedByteArray = empty.get_data()
 	var dm: PackedByteArray = mask.get_data()
+	var marked: Image = b.duplicate()
 	for n: int in dm.size():
 		if dm[n] > 0:
 			continue
-		looked += 1
+		counts.z += 1
 		var at: int = n * 3
-		if maxi(absi(da[at] - db[at]), maxi(absi(da[at + 1] - db[at + 1]),
-				absi(da[at + 2] - db[at + 2]))) > DRAWN_LEVELS:
-			changed += 1
-	return Vector2i(changed, looked)
+		var in_a: bool = _bytes_apart(da, de, at) > DRAWN_LEVELS
+		var in_b: bool = _bytes_apart(db, de, at) > DRAWN_LEVELS
+		if in_a != in_b:
+			counts.x += 1
+			marked.set_pixel(n % a.get_width(), n / a.get_width(), Color.MAGENTA)
+		elif _bytes_apart(da, db, at) > DRAWN_LEVELS:
+			counts.y += 1
+			marked.set_pixel(n % a.get_width(), n / a.get_width(), Color.CYAN)
+	for outline: PackedVector2Array in outlines:
+		_outline(marked, outline, Color(1.0, 0.85, 0.1))
+	var path: String = ProjectSettings.globalize_path(_out.path_join(map + ".png"))
+	marked.save_png(path)
+	print("    picture: %s" % path)
+	return counts
+
+
+func _bytes_apart(a: PackedByteArray, b: PackedByteArray, at: int) -> int:
+	return maxi(absi(a[at] - b[at]), maxi(absi(a[at + 1] - b[at + 1]), absi(a[at + 2] - b[at + 2])))
 
 
 # -- the car ------------------------------------------------------------------
