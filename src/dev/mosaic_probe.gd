@@ -1023,10 +1023,7 @@ func _check_one_piece(art: MosaicArt.Art, what: String) -> void:
 
 
 func _words(art: MosaicArt.Art) -> String:
-	var said := PackedStringArray()
-	for entry: Array in art.by_element():
-		said.append("%d %s" % [int(entry[1]), str(entry[0])])
-	return ", ".join(said)
+	return ", ".join(art.element_words())
 
 
 func _check(what: String, ok: bool) -> void:

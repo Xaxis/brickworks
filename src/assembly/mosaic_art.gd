@@ -305,42 +305,45 @@ class Art extends RefCounted:
 		return out
 
 	## How many of each kind of element, in words, most first: what a person
-	## wants to know before building.
-	func by_element() -> Array:
+	## wants to know before building, "1,152 round tiles", "1 star". The
+	## dialog's count and a session's (ArtPlan.said_of) are these.
+	func element_words() -> PackedStringArray:
 		var tally: Dictionary = {}
 		for index: int in placements.size():
-			var words: String = MosaicArt.kind_of(placements[index], panel_of[index])
-			tally[words] = int(tally.get(words, 0)) + 1
-		var out: Array = []
-		for words: String in tally:
-			out.append([words, int(tally[words])])
-		out.sort_custom(func(a: Array, b: Array) -> bool: return int(a[1]) > int(b[1]))
+			var kind: String = MosaicArt.kind_of(placements[index], panel_of[index])
+			tally[kind] = int(tally.get(kind, 0)) + 1
+		var kinds: Array = tally.keys()
+		kinds.sort_custom(func(a: String, b: String) -> bool: return int(tally[a]) > int(tally[b]))
+		var out := PackedStringArray()
+		for kind: String in kinds:
+			out.append(Counted.grouped(int(tally[kind]), kind))
 		return out
 
 
-## What a placement is, in the words a person would count it in.
+## What a placement is, in the words a person would count one in: each
+## takes an s for any other count (Counted).
 static func kind_of(placement: Assistant.Placement, panel: int) -> String:
 	if panel < 0:
-		return "joining plates"
+		return "joining plate"
 	match placement.part:
 		BASE:
-			return "16 × 16 panels"
+			return "16 × 16 panel"
 		ROUND:
-			return "stars" if ACCENTS.has(placement.color) else "round tiles"
+			return "star" if ACCENTS.has(placement.color) else "round tile"
 		BIG_ROUND:
-			return "large stars"
+			return "large star"
 		SQUARE:
-			return "square tiles"
+			return "square tile"
 		QUARTER:
-			return "quarter circles"
+			return "quarter circle"
 		SPECK:
-			return "round plates"
+			return "round plate"
 		SLOPE:
-			return "cheese slopes"
+			return "cheese slope"
 	for shape: Array in TILES:
 		if placement.part == str(shape[0]):
-			return "larger tiles"
-	return "relief plates"
+			return "larger tile"
+	return "relief plate"
 
 
 ## How many panels a picture comes to: down from the crop's proportions

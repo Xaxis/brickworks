@@ -215,18 +215,30 @@ func _nothing_of_ai(when: String) -> void:
 	await _shot("3_brick_art_%s" % when.replace(" ", "_"))
 	mosaic.visible = false
 
-	# Account, My collection, Help.
+	# Account, My collection, Help. Account while the session kept on the
+	# device is renewed, whose line names what waits on it; My collection
+	# with lots a session added, whose heading names who added them
+	# (smallwords: its Rebrickable note named the assistant, 2026-11-08).
 	var account: AccountPanel = _main.get("_account_panel")
+	var signing: Account = _main.get("_account")
+	signing.renewing = true
 	account.open()
 	await _frames(4)
 	found = _ai_in(account)
-	_ok(account.visible and found.is_empty(), "Account says nothing of Claude%s" % _listed(found))
+	_ok(account.visible and found.is_empty(), "Account says nothing of Claude, even while it is renewed%s"
+		% _listed(found))
+	signing.renewing = false
 	account.visible = false
+	var store: CollectionStore = shell.collection.get("store")
+	var kept: Collection = store.collection
+	store.collection = _added_by_a_session()
 	shell.collection.open("own")
 	await _frames(4)
 	found = _ai_in(shell.collection)
-	_ok(found.is_empty(), "nor My collection%s" % _listed(found))
+	_ok(found.is_empty(), "nor My collection, with lots a session added%s" % _listed(found))
+	await _shot("3_my_collection_%s" % when.replace(" ", "_"))
 	shell.collection.close()
+	store.collection = kept
 	var stops: Array = shell.first_build.cards()
 	var tour: String = "\n".join(stops.map(func(stop: Array) -> String:
 		return "%s %s" % [stop[0], stop[1]]))
@@ -354,6 +366,26 @@ func _all_of_it_back(how: String) -> void:
 	mosaic.visible = false
 	var account: AccountPanel = _main.get("_account_panel")
 	_ok(account.get("_claude_box").visible, "Account has its Claude section again")
+	# Account's line while renewed, and My collection's note and the heading
+	# of what a session added, as they were before it was off.
+	var signing: Account = _main.get("_account")
+	signing.renewing = true
+	account.call("_follow")
+	var renewing: String = (account.get("_state") as Label).text
+	signing.renewing = false
+	account.call("_follow")
+	var store: CollectionStore = shell.collection.get("store")
+	var kept: Collection = store.collection
+	store.collection = _added_by_a_session()
+	shell.collection.open("own")
+	await _frames(4)
+	var mine: String = _texts_in(shell.collection)
+	_ok(renewing.contains("Claude go on") and mine.contains("Ask the assistant for")
+		and mine.contains("Added by Claude — 1 lot, 3 pieces") and mine.contains("Take back what Claude added"),
+		"Account and My collection name the assistant again: \"%s\"" % renewing)
+	await _shot("6_my_collection_%s" % how)
+	shell.collection.close()
+	store.collection = kept
 	var stops: Array = shell.first_build.cards()
 	_ok(_ai.search(str(stops.back()[1])) != null,
 		"Build your first model ends on the assistant again: %s" % stops.back()[1])
@@ -432,6 +464,12 @@ func _build_by_hand() -> void:
 
 
 ## Every visible control's words, by where it is, that name AI.
+## A collection with one lot a session added, as its tools add one.
+static func _added_by_a_session() -> Collection:
+	return Collection.from_json({"parts": [{"part": "3001", "colour": 4, "qty": 3, "by": "Claude",
+		"chat": "noai"}]})
+
+
 func _ai_in_window() -> PackedStringArray:
 	var found := PackedStringArray()
 	for child: Node in root.get_children():
