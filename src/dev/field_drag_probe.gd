@@ -233,15 +233,20 @@ func _container(named: String, open: Callable) -> void:
 	fields = fields.filter(func(field: LineEdit) -> bool: return not _seen.has(field.get_instance_id()))
 	print("\n── %s: %d fields ──" % [named, fields.size()])
 	_picture(named)
-	for field: LineEdit in fields:
+	# Untyped until checked: a field or a list may go with what an earlier
+	# one did.
+	for item: Variant in fields:
+		if not is_instance_valid(item):
+			continue
+		var field: LineEdit = item
 		_seen[field.get_instance_id()] = true
-		if is_instance_valid(field) and field.is_visible_in_tree():
+		if field.is_visible_in_tree():
 			await _field(named, field)
 	var lists: Array[ScrollContainer] = []
 	_lists_in(root, lists)
-	for list: ScrollContainer in lists:
-		if is_instance_valid(list) and not _swept.has(list.get_instance_id()):
-			await _each_kind(named, list)
+	for item: Variant in lists:
+		if is_instance_valid(item) and not _swept.has((item as Object).get_instance_id()):
+			await _each_kind(named, item)
 	await _put_away(before)
 
 
@@ -469,10 +474,11 @@ func _each_kind(named: String, list: ScrollContainer) -> void:
 	_kinds_in(list, list, kinds)
 	var what: String = "%s, %s" % [named, _holding(list)]
 	for kind: String in kinds:
-		var control: Control = kinds[kind]["control"]
+		var item: Variant = kinds[kind]["control"]
 		var at: Vector2 = kinds[kind]["at"]
-		if not is_instance_valid(control) or not control.is_visible_in_tree():
+		if not is_instance_valid(item) or not (item as Control).is_visible_in_tree():
 			continue
+		var control: Control = item
 		if not _in_sight(list, control):
 			await _bring(control)
 		if not _in_sight(list, control) or _hit(list, control.get_global_transform() * at) != control:
