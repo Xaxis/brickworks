@@ -814,19 +814,22 @@ static func left_out_words(result: Dictionary, again: bool = true) -> String:
 			note += " — " + ModelStore.unbuilt_words(unbuilt)
 	if again and int(result.get("waiting", 0)) > 0:
 		note += " — %d are still arriving, open it again in a moment" % int(result["waiting"])
+	# Light lines this could not read, kept in the file (SceneLights.of_model).
+	if not str(result.get("lights_unread", "")).is_empty():
+		note += " — " + str(result["lights_unread"])
 	return note
 
 
-## What the open just made left off the baseplate (ModelStore.unshown), as
-## [method left_out_words] says a file's, and what of its booklet no step
-## shows ([method looks_words]); "" for nothing. Kept in the file either way:
-## the app's own writes them back (ModelStore._absent), someone else's
-## carries them (SourceFile).
+## What the open just made left off the baseplate (ModelStore.unshown), the
+## light lines it could not read, as [method left_out_words] says a file's,
+## and what of its booklet no step shows ([method looks_words]); "" for
+## nothing. Kept in the file either way: the app's own writes them back
+## (ModelStore._absent), someone else's carries them (SourceFile).
 static func unshown_words(store: ModelStore) -> String:
 	if not store.not_opened.is_empty():
 		return ""
 	return left_out_words({"missing": store.unshown.size(), "unshown": store.unshown,
-		"kept": true}, false) + looks_words(store)
+		"kept": true, "lights_unread": store.lights_unread_words}, false) + looks_words(store)
 
 
 ## What of the booklet as its designer set it the model just opened shows on

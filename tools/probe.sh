@@ -31,6 +31,9 @@
 # PROBE_DRY=1 prints the command and runs nothing. PROBE_SIZE=WxH runs
 # a windowed probe in a window of that size instead of its header's (Xvfb
 # has no window manager, so a probe cannot resize its own window).
+# PROBE_COMPAT=1 runs a windowed probe on Compatibility, the web's renderer,
+# on the card through Mesa's zink: Xvfb has no OpenGL of its own, and
+# without zink llvmpipe draws it in software (look_probe's header).
 set -u
 # Read whole before it runs: bash reads a script as it goes, and the
 # release's own edit to this file, made while a probe ran, cut that run off
@@ -131,9 +134,16 @@ case " $block " in
     size=$(grep -oE -- '--resolution [0-9]+x[0-9]+' <<<"$block" | head -1 | cut -d' ' -f2)
     size=${PROBE_SIZE:-${size:-1400x900}}
     how="in a ${size} window on the GPU"
+    compat=(); engine=()
+    if [ -n "${PROBE_COMPAT:-}" ]; then
+      how="$how, on Compatibility through zink"
+      compat=(GALLIUM_DRIVER=zink MESA_LOADER_DRIVER_OVERRIDE=zink MESA_VK_DEVICE_SELECT=1002:73df
+        MESA_VK_DEVICE_SELECT_FORCE_DEFAULT_DEVICE=1)
+      engine=(--rendering-method gl_compatibility)
+    fi
     cmd=("${heavy[@]}" "${gpu[@]}" "${held[@]}" XDG_DATA_HOME="$data" MESA_VK_WSI_DEBUG=sw
-      xvfb-run -a --server-args="-screen 0 ${size}x24"
-      godot --path . --resolution "$size" --script "$file" "${tail[@]}") ;;
+      "${compat[@]}" xvfb-run -a --server-args="-screen 0 ${size}x24"
+      godot --path . "${engine[@]}" --resolution "$size" --script "$file" "${tail[@]}") ;;
 esac
 echo "probe.sh: $how, as its header says"
 if [ -n "${PROBE_DRY:-}" ]; then echo "${cmd[*]}"; exit 0; fi
