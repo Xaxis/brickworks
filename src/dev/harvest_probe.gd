@@ -33,14 +33,6 @@
 ## studs 4 → 0, overlaps 33 → 31, collisions 9 → 8, not held 32 → 33 (a
 ## grille no longer floating, now said to be not held). The verdicts are in
 ## bench/results/realjoints2-2026-11-05.
-##
-## On pre261 (animals' catalogue, techfix), 958; then 963, none newly
-## refused (realjoints3). A dish on a round brick, a round brick on a
-## dish, a 4740 on a round plate and a figure's hair were known fits the
-## collisions forgave, but the covers refused them, the exact graph left
-## them not held and the seat moved them. One rule now reads all three
-## (ExactCheck.meet_as_sets). Overlaps 30 → 24, not held 33 → 34, floating
-## 27, collisions 8. The verdicts are in bench/results/realjoints3-2026-11-07.
 extends SceneTree
 
 

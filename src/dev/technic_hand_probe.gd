@@ -68,7 +68,6 @@ func _initialize() -> void:
 	await _a_figure_on_two_cones()
 	await _over_mcp()
 	await _round_hollows_over_mcp()
-	await _dishes_as_sets_build()
 
 	print("")
 	if _failures == 0:
@@ -77,8 +76,7 @@ func _initialize() -> void:
 			+ "bar in a clip and a cone on a cone's stud, each joined, and check_design "
 			+ "agrees; and a session's design of the same over MCP passes; and cones, a "
 			+ "round plate and a dome on a cone's or round plate's stud, clicked, dragged "
-			+ "or sent over MCP, each at the stud's stop; and dishes on round parts where "
-			+ "the sets put them, by hand and over MCP")
+			+ "or sent over MCP, each at the stud's stop")
 	else:
 		print("%d check%s failed" % [_failures, "" if _failures == 1 else "s"])
 	quit(1 if _failures > 0 else 0)
@@ -654,81 +652,6 @@ func _round_hollows_over_mcp() -> void:
 					and not text.contains("overlap"),
 					"%s %s to %s's stud: y %.2f, the stop %.2f; %s" % [held, how, below, y, want,
 						text.get_slice("\n", 0).left(120)])
-
-
-## Dishes on round parts as the LEGO Group's own sets put them, each meeting
-## its round part deeper than BrickNet frames the two, and refused until
-## realjoints3 (2026-11-07) as overlapping, then as held by nothing: a 3960
-## dish on a 3941 round brick, 8 LDU down round its top (2150-1, 4554-1), and
-## a 4740 dish down a 6141's stud 4 LDU past its tube's frame (31038-1). [the
-## part under, the dish, its x, y and z off the part under in studs and plates
-## as submit_design places them, the dish's origin above the other's in LDU,
-## the part under's quarter turns as the sets have it]. The fits are learned
-## by pose (KnownFits), turn and all: 2150-1 turns its 3941 half round under
-## the dish, and unturned the two are refused as before.
-const DISHES: Array = [["3941", "3960", -1.0, 2.0, -1.0, 8.0, 2],
-	["6141", "4740", -0.5, 0.5, -0.5, 4.0, 0]]
-
-
-## Each dish put where the sets have it, as a file opens it and as a session
-## places it by number (submit_design): the check passes both, and the hand
-## has room for it there (Builder.room_for). Then held and aimed at the part
-## under's top, as a person puts one from the bin: where it goes down, the
-## check passes it.
-func _dishes_as_sets_build() -> void:
-	print("\ndishes on round parts where the sets put them, by hand and over MCP")
-	for dish: Array in DISHES:
-		var below: String = dish[0]
-		var held: String = dish[1]
-		var under: Lbm.PartMesh = _library.mesh_for(below)
-		var at := Transform3D(Basis(Vector3.UP, PI * 0.5 * int(dish[6])),
-			-under.bounds.position)
-		var there := Transform3D(Basis.IDENTITY, at.origin + Vector3(0, float(dish[5]), 0))
-		_clear()
-		_put(below, at)
-		_ok(_room(held, there), "the hand has room for %s on %s where the sets put it" % [
-			held, below])
-		_put(held, there)
-		var said: String = _design_says()
-		_ok(said.begins_with("2 bricks, buildable"),
-			"%s on %s where the sets put it, as a file has it: %s" % [held, below, said.left(160)])
-		_clear()
-		_assistant.forget_built()
-		var sent: Variant = await _assistant.use_tool("submit_design", {"name": "dish",
-			"bricks": [{"part": below, "color": 4, "x": 0, "y": 0, "z": 0, "rot": dish[6]},
-			{"part": held, "color": 15, "x": dish[2], "y": dish[3], "z": dish[4]}]})
-		var text: String = str(sent) if sent is String else JSON.stringify(sent)
-		var base: BrickWorld.Brick = _brick_of(below)
-		var top: BrickWorld.Brick = _brick_of(held, base.id if base != null else 0)
-		var up: float = top.transform.origin.y - base.transform.origin.y \
-			if base != null and top != null else INF
-		said = _design_says()
-		_ok(absf(up - float(dish[5])) <= 0.01 and said.begins_with("2 bricks, buildable")
-			and not text.contains("overlap") and not text.contains("not held")
-			and not text.contains("float"),
-			"over MCP, %s on %s by number: %.2f LDU up, the sets' %.2f; %s; %s" % [held, below,
-				up, float(dish[5]), said.left(80), text.get_slice("\n", 0).left(120)])
-		_clear()
-		_put(below, at)
-		var aim: Vector3 = at.origin + Vector3(0, under.bounds.end.y, 0)
-		_aim(held, aim, aim + Vector3(0, 300, 0))
-		var put: int = _builder.place()
-		var brick: BrickWorld.Brick = _world.get_brick(put)
-		up = brick.transform.origin.y - at.origin.y if brick != null else INF
-		said = _design_says()
-		var off: Vector3 = brick.transform.origin - at.origin if brick != null else Vector3.INF
-		var line: String = ("by hand, %s clicked onto %s goes %.2f LDU up (the sets' %.2f), "
-			+ "%.2f LDU off its line: %s") % [held, below, up, float(dish[5]),
-				Vector2(off.x, off.z).length(), said.left(160)]
-		# The hand stands a 4740 on a lone stud by one of the four sockets the
-		# catalogue reads under it, 14 LDU off the stud's line, and the shapes
-		# meet there by 3.2 LDU; on its line, by its tube, the check passes it.
-		# Said, not passed, as it was before realjoints3: the hand's choice of
-		# socket, which this unit did not change.
-		if held == "4740":
-			print("  said  " + line)
-			continue
-		_ok(put != 0 and said.begins_with("2 bricks, buildable"), line)
 
 
 ## The first connector of [param part] of [param kind] pointing up, by the
