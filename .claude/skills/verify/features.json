@@ -100,6 +100,7 @@
       "area": "web",
       "tests": [
         "tests/test_billing_pay.py",
+        "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py"
       ]
@@ -127,6 +128,7 @@
       "reach": "curl -s 'https://brickworks.diy/api/share?id=<id>'   (and /m/<id>, /m/<id>.png, /m/<id>/embed; POST with a session publishes, ?op=unpublish takes down)",
       "area": "web",
       "tests": [
+        "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_gallery_crons.py",
         "tests/test_library_site.py",
@@ -195,6 +197,7 @@
       "area": "web",
       "tests": [
         "tests/test_billing_pay.py",
+        "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py"
       ]
@@ -234,6 +237,7 @@
         "tests/test_achievements.py",
         "tests/test_challenge_notices.py",
         "tests/test_feedback.py",
+        "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_library_site.py",
         "tests/test_model_bases.py",
@@ -251,6 +255,7 @@
         "tests/test_beta.py",
         "tests/test_billing_pay.py",
         "tests/test_feedback.py",
+        "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py"
       ]
@@ -264,6 +269,7 @@
       "tests": [
         "tests/test_billing.py",
         "tests/test_billing_pay.py",
+        "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py"
       ]
@@ -279,9 +285,18 @@
         "tests/test_account_erase.py",
         "tests/test_billing_pay.py",
         "tests/test_feedback.py",
+        "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py"
       ]
+    },
+    {
+      "id": "cli:3mf strict reader",
+      "kind": "cli",
+      "entry": "tools/print3mf/check_3mf.py",
+      "reach": "uvx --with lib3mf==2.5.0 --with xmlschema==4.3.2 --with numpy==2.5.4 python3 -I tools/print3mf/check_3mf.py FILE.3mf [--json=OUT]   (the package, the core XSD tools/print3mf/3mf_core.xsd, the core's rules, lib3mf in strict mode; each object's name, colour, triangles and winding, and the build's box; exit 1 on any error)",
+      "area": "model-io",
+      "tests": []
     },
     {
       "id": "cli:ChatGPT connector flow",
@@ -329,6 +344,14 @@
       "entry": "tools/keyring_session.sh",
       "reach": "tools/keyring_session.sh CMD...   (CMD in a fresh, unlocked GNOME Keyring on a D-Bus session of its own, removed after; fetches libsecret-tools into ~/.cache/brickworks/secret-tool where secret-tool is not installed)",
       "area": "assistant",
+      "tests": []
+    },
+    {
+      "id": "cli:a line placing a part at no size",
+      "kind": "cli",
+      "entry": "src/dev/no_size_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/no_size_probe.gd   (a type-1 line whose matrix has no size, as Studio and LDCad write where a flexible part doubles back, places nothing (LdrModel.has_size): the 653 such lines of 7 OMR sets counted from their text and none read; 42125-1 opened with every part's place invertible, its gears read, its 4 such lines saved back byte for byte; a Build together state at no size refused)",
+      "area": "model-io",
       "tests": []
     },
     {
@@ -538,6 +561,14 @@
       "kind": "cli",
       "entry": "src/dev/booklet3_probe.gd",
       "reach": "tools/probe.sh booklet3 -- --into=DIR   (windowed, on the GPU: edit_booklet's extras and the Booklet page rows, the axle 4's 1:1 guide measured at 32.0 mm on the 300 dpi PNG page and the PDF, the pulled-out axle and its arrow, the colour guide, the pod's preview; DIR keeps the booklet, its PDF and every page as PNG; --before writes the booklet with nothing set)",
+      "area": "view",
+      "tests": []
+    },
+    {
+      "id": "cli:booklook probe",
+      "kind": "cli",
+      "entry": "src/dev/booklook_probe.gd",
+      "reach": "tools/probe.sh booklook -- --into=DIR [--against=DIR]   (windowed, on the GPU: the gatehouse's booklet with the designer's own cover (title, subtitle, picture, line) read back off the PNG and PDF pages, a header and footer on every page, the parts box in its frame colour with 0 px of the old frame or fill, the step numbers' and new parts' colours; kept over a save and an open, one undo; a style of the look given to booklet3's model in 2 actions, its own title and subtitle unchanged; blreview's save-path findings on tests/fixtures/booklook: Page setup\u2026 left open under MCP, an undo, another model and Clear; a sub-model's own PAGE_ lines; CRLF files with no end break; a later build's words; words cut and said; usual=true keeping the title; a CJK title on its page; the PDF naming letters it cannot print; a web title with <section; --against=DIR the booklet's own the same to the pixel as a run on the commit before; PROBE_SIZE=1400x900 with --dialog-only)",
       "area": "view",
       "tests": []
     },
@@ -843,6 +874,14 @@
       "tests": []
     },
     {
+      "id": "cli:coming soon check",
+      "kind": "cli",
+      "entry": "tools/web/coming_soon_check.mjs",
+      "reach": "node tools/web/coming_soon_check.mjs [--static] [--url=DEPLOYMENT] [--shots=DIR]",
+      "area": "release",
+      "tests": []
+    },
+    {
       "id": "cli:comments browser flow",
       "kind": "cli",
       "entry": "tools/web/comments_flow.mjs",
@@ -858,6 +897,14 @@
       "entry": "tools/web/compare_media.mjs",
       "reach": "heavy xvfb-run -a --server-args=\"-screen 0 1600x1000x24\" node --env-file=.env tools/web/compare_media.mjs --out=shots/compare, then --encode",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:comparesets probe",
+      "kind": "cli",
+      "entry": "src/dev/comparesets_probe.gd",
+      "reach": "tools/probe.sh comparesets_probe -- --shots=DIR",
+      "area": "collection",
       "tests": []
     },
     {
@@ -1003,7 +1050,7 @@
       "id": "cli:download page check",
       "kind": "cli",
       "entry": "tools/web/download_check.mjs",
-      "reach": "node tools/web/download_check.mjs --manifest=FILE --shots=shots",
+      "reach": "node tools/web/download_check.mjs --shots=shots",
       "area": "release",
       "tests": []
     },
@@ -1611,6 +1658,22 @@
       "tests": []
     },
     {
+      "id": "cli:mysets api test",
+      "kind": "cli",
+      "entry": "tools/web/mysets_api.mjs",
+      "reach": "node tools/web/mysets_api.mjs --url=http://127.0.0.1:8790   (relay_server running, .env sourced: op missing from the counts shown, refusals changing nothing, marks kept through every other change and an older app's PUT, figs, the older collection lot for lot)",
+      "area": "collection",
+      "tests": []
+    },
+    {
+      "id": "cli:mysets probe",
+      "kind": "cli",
+      "entry": "src/dev/mysets_probe.gd",
+      "reach": "tools/relay_probe.sh mysets   (a window, 1280x720; PROBE_SIZE=1400x900; -- --shots=DIR: a box photo's set in 3 actions, 7140-1 with 12 missing, What do I need? for it, 5 found as loose parts, Closest to whole, a minifigure, the builds out there, the older collection lot for lot)",
+      "area": "collection",
+      "tests": []
+    },
+    {
       "id": "cli:needs backfill",
       "kind": "cli",
       "entry": "tools/web/needs_backfill.mjs",
@@ -1925,6 +1988,14 @@
       "tests": []
     },
     {
+      "id": "cli:print3mf probe",
+      "kind": "cli",
+      "entry": "src/dev/print3mf_probe.gd",
+      "reach": "tools/probe.sh print3mf_probe [-- --hashes=FILE | --same-as=FILE]   (headless; the car as a 3MF from File, Export, 3D model\u2026 and export_model, read by tools/print3mf/check_3mf.py; a printed tile, a mirrored brick and a part with no BFC; the reader refusing a turned triangle, a colour that is none and a corner past its vertices; --hashes/--same-as compare the car's GLB and STL with another build's)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "cli:prints and stickers in a browser",
       "kind": "cli",
       "entry": "tools/web/studio_flow.mjs",
@@ -2007,6 +2078,7 @@
       "area": "web",
       "tests": [
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/test_coming_soon.py",
         "tests/test_feedback.py",
         "tests/test_release_train.py"
       ]
@@ -2588,6 +2660,14 @@
       "tests": []
     },
     {
+      "id": "cli:twist probe",
+      "kind": "cli",
+      "entry": "src/dev/twist_probe.gd",
+      "reach": "tools/probe.sh twist_probe; PROBE_SIZE=1024x768 tools/probe.sh twist_probe --tablet; PROBE_SIZE=1280x720 or 1400x900 tools/probe.sh twist_probe   (windowed, 390x844 by its header; pictures in shots/twist/)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:two chats browser flow",
       "kind": "cli",
       "entry": "tools/web/tabpair_flow.mjs",
@@ -2873,6 +2953,16 @@
       "reach": "godot --headless --path . --script src/dev/collection_probe.gd   (against tests/fixtures/collection/fake_rebrickable.py)",
       "area": "collection",
       "tests": []
+    },
+    {
+      "id": "lib:a session keeps a view over mcp",
+      "kind": "lib",
+      "entry": "src/net/app_tools.gd",
+      "reach": "tools/probe.sh mcpsee3 && PROBE_SIZE=1280x720 tools/probe.sh mcpsee3   (save_view {\"name\": NAME} keeps the window's view as Save this view\u2026 does, answered with the model from there; in_view lists the views with their keys; its Alt-Shift key and render_model view= back within 0.1\u00b0 and 0.1 LDU; remove=true; highlight=/xray= take 4070 quoted or not, on the MCP walk's Pods)",
+      "area": "mcp",
+      "tests": [
+        "tests/test_docs_site.py"
+      ]
     },
     {
       "id": "lib:a session per tab",
@@ -3425,6 +3515,7 @@
       "reach": "https://brickworks.diy/m/<id>   (the end of the page: More by <designer>, their other listed models by Top builds; Similar models, by kind and shared tags; each row only with three cards, six at most; with neither, More in the gallery, its Top)",
       "area": "web",
       "tests": [
+        "tests/test_flows_for.py",
         "tests/test_gallery_builds.py",
         "tests/test_library_site.py",
         "tests/test_model_bases.py",
@@ -3501,6 +3592,14 @@
       "entry": "src/parts/part_library.gd",
       "reach": "godot --headless --path . --script src/dev/vocab_probe.gd",
       "area": "parts",
+      "tests": []
+    },
+    {
+      "id": "lib:parts compare",
+      "kind": "lib",
+      "entry": "src/parts/parts_compare.gd",
+      "reach": "tools/probe.sh comparesets_probe   (PartsCompare.between: Collection.allocate's matching, own part and colour then another moulding; a set's spares and the open model's stickers and made parts not counted; a set under test refused)",
+      "area": "collection",
       "tests": []
     },
     {
@@ -4150,6 +4249,22 @@
       "tests": []
     },
     {
+      "id": "ui:a set from a photo",
+      "kind": "ui",
+      "entry": "src/ui/collection_dialog.gd",
+      "reach": "godot --path .  (Build, My collection\u2026, What I own: Photo\u2026 beside Add sets, a photo of a box, a booklet's cover or a minifigure; asked of Brickognize's /predict/sets/ and /predict/figs/ at once, the top three offered, one pressed adds it; a minifigure kept among the sets by BrickLink's number and name, its parts not counted)",
+      "area": "collection",
+      "tests": []
+    },
+    {
+      "id": "ui:a set's missing parts",
+      "kind": "ui",
+      "entry": "src/ui/collection_dialog.gd",
+      "reach": "godot --path .  (What I own: a set's Missing parts\u2026, its lots each with how many are missing, All missing, None missing; Closest to whole, sets by how much is missing, What it needs; What do I need? for a set; the pool, What do I need? and What can I build? count only what is there, loose parts counting towards a set; op missing at /api/collection)",
+      "area": "collection",
+      "tests": []
+    },
+    {
       "id": "ui:about and the licences",
       "kind": "ui",
       "entry": "src/ui/credits.gd",
@@ -4441,6 +4556,14 @@
       "tests": []
     },
     {
+      "id": "ui:compare two sets or models",
+      "kind": "ui",
+      "entry": "src/ui/compare_view.gd",
+      "reach": "tools/probe.sh comparesets_probe -- --shots=DIR   (File, Compare two sets or models\u2026: A and B each a set by its number, a saved model or the model open now; In both, Only in A and Only in B by part and colour, adding up to each side's pieces; Swap; the list to buy to build B from A to BrickLink, Rebrickable or LEGO\u00ae Pick a Brick)",
+      "area": "collection",
+      "tests": []
+    },
+    {
       "id": "ui:compare with a save",
       "kind": "ui",
       "entry": "src/ui/compare_view.gd",
@@ -4540,6 +4663,7 @@
       "area": "web",
       "tests": [
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/test_coming_soon.py",
         "tests/test_feedback.py",
         "tests/test_release_train.py"
       ]
@@ -4573,6 +4697,7 @@
       "area": "release",
       "tests": [
         "tests/test_billing.py",
+        "tests/test_coming_soon.py",
         "tests/test_site_lang.py",
         "tests/test_site_shell.py"
       ]
@@ -4852,7 +4977,7 @@
       "id": "ui:model size and weight",
       "kind": "ui",
       "entry": "src/assembly/model_size.gd",
-      "reach": "tools/probe.sh modelinfo_probe   (the status bar beside the counts: \"4\u00bd \u00d7 10.8 studs, 15 plates high \u00b7 3.6 \u00d7 8.64 \u00d7 4.96 cm\", the plates without the top's studs, the centimetres with them; parts selected: theirs, after \"N selected\"; Properties with nothing selected: the size and \"About 52 g\", the status bar's grams; in_view over MCP: the size in centimetres and the weight. Windowed, pictures in shots/modelinfo/)",
+      "reach": "tools/probe.sh modelinfo_probe   (the status bar beside the counts: \"4.5 \u00d7 10.8 studs, 15 plates high \u00b7 3.60 \u00d7 8.64 \u00d7 4.96 cm\", the plates without the top's studs, the centimetres with them; parts selected: theirs, after \"N selected\"; Properties with nothing selected: the size and \"About 52 g\", the status bar's grams; in_view over MCP: the size in centimetres and the weight. Windowed, pictures in shots/modelinfo/); tools/probe.sh weighsure_probe   (the weight after the counts, \"61 bricks \u00b7 stands up \u00b7 52 g\", the model's in every frame, parts on their way counted; one style of number a line. Windowed, pictures in shots/weighsure/)",
       "area": "building",
       "tests": []
     },
@@ -5084,6 +5209,7 @@
       "area": "web",
       "tests": [
         "tests/test_billing_pay.py",
+        "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py"
       ]
@@ -5620,6 +5746,14 @@
       "tests": []
     },
     {
+      "id": "ui:the booklet's own cover and colours",
+      "kind": "ui",
+      "entry": "src/assembly/booklet_sheet.gd",
+      "reach": "godot --path .  (B opens the timeline; Build, Booklet page, Page setup\u2026: Page tab Header, Footer; Cover tab Title, Under the title, Picture Choose\u2026 or The model, Line; Steps tab Step numbers, Number colour, Parts box frame, fill and corners, New parts outline, Usual colours; then Instructions, Save as PDF; page_setup title=, subtitle=, cover_line=, cover_picture_data=, header=, footer=, box_frame=, box_fill=, box_corners=, number_colour=, outline_colour= over MCP)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "ui:the booklet's page setup",
       "kind": "ui",
       "entry": "src/ui/page_setup_dialog.gd",
@@ -5780,6 +5914,14 @@
       "entry": "src/assembly/track_snap.gd",
       "reach": "tools/probe.sh tracks_probe   (a 9V curve dragged near a straight's free end joins it in one drag; R puts its other end to the joint; two 12V curves get their sleeper, one undo takes both; sixteen curves by sixteen clicks close a circle; a session's oval of 16 curves and 4 straights in two calls, attach track[0] to track[1]. Windowed, pictures in shots/tracks/. By hand: a track in hand near a free end of one down sits on it; the status line says so and what R does)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:two fingers' twist",
+      "kind": "ui",
+      "entry": "src/camera/cad_camera.gd",
+      "reach": "on a phone, a tablet or a touchscreen: two fingers turned about each other turn the view round the up by as much, about what is between them, once they have turned 10 degrees; a pinch and a slide as before  (CadCamera._twist, _two_fingers; tools/probe.sh twist_probe)",
+      "area": "view",
       "tests": []
     },
     {

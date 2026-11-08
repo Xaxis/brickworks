@@ -217,6 +217,9 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 		_studio.library = library
 		# The parts each step adds outlined, unless its designer said not.
 		_studio.mark_new = BookletLooks.highlight_on(world)
+		# In the colour its designer chose (booklook).
+		if not BookletSheet.same_colour(_sheet.outline_colour, BookletSheet.OUTLINE_COLOUR):
+			_studio.new_colour = _sheet.outline_colour
 		add_child(_studio)
 		await get_tree().process_frame
 
@@ -234,7 +237,8 @@ func _make(world: BrickWorld, scenery: Dictionary, title: String) -> String:
 		await _studio.warm(world)
 
 	document = Booklet.Document.new()
-	document.title = title
+	# The cover's title its designer gave, which names the file's page too.
+	document.title = title if _sheet.title.is_empty() else _sheet.title
 	document.sheet = _sheet
 	# As the timeline and the model's page count them (Instructions.count):
 	# two sub-assemblies put on in one step are two entries of one number.
@@ -2058,6 +2062,15 @@ func _cover() -> Booklet.Page:
 	page.number = 1
 	page.sheet = _sheet
 	var area: Rect2 = Booklet.cover_area(_sheet)
+	# A picture of the designer's own (booklook), whole in the same room, or
+	# the finished model drawn.
+	var own: Image = PictureFile.decode(Marshalls.base64_to_raw(_sheet.cover_uri.substr(
+		_sheet.cover_uri.find(",") + 1))) if not _sheet.cover_uri.is_empty() else null
+	if own != null and own.get_width() > 0 and own.get_height() > 0:
+		var natural := Vector2(own.get_size())
+		var shown: Vector2 = natural * minf(area.size.x / natural.x, area.size.y / natural.y)
+		page.pictures.append([_sheet.cover_uri, Rect2(area.get_center() - shown * 0.5, shown)])
+		return page
 	page.pictures.append([await _whole(BookletStudio.FRONT, area, 0.96), area])
 	return page
 

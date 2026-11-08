@@ -112,7 +112,7 @@ static func why_not() -> String:
 	if available():
 		return ""
 	if OS.has_feature("web"):
-		return "Path tracing needs the desktop app: a browser cannot trace rays."
+		return "Path tracing needs the desktop app, coming soon: a browser cannot trace rays."
 	if RenderingServer.get_current_rendering_method() == "gl_compatibility":
 		return "Path tracing needs the full graphics mode, and this window draws in the simpler one."
 	return "Path tracing needs a graphics card that traces rays, and this one does not."

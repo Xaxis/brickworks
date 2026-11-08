@@ -480,7 +480,24 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   left holds the tree, the properties and the colours, and there is no right
   column. Each rail carries its icon and its name ("Parts", "Properties",
   "Assistant"), tinted with the accent down its edge while folded, and
-  switching is one click on it. Probe: `roomfit_probe` (1280 x 720,
+  switching is one click on it. The tools' column (Stress, Simulate, Motions,
+  the hose tool, Colour the hidden parts) takes its room out of the bin's, not
+  the model's (`Main._tool_room` in `_fit_bin`): beside Stress the bin is
+  four across at 1280 x 720, where it kept six and ran the row past the
+  window. And the model keeps its least room, 440 units (400 px at the
+  smallest the interface is drawn): where both columns show, one opened beside
+  the other and the tools' column that would leave it less folds the other
+  side's, as where they take turns (`Main.MODEL_LEAST`, `_room_beside`, in
+  `_column_opening`; at 1400 x 900 the bin, Stress and the assistant together
+  left it 393 px). On a tablet on its side the tools' column goes under the
+  model while, beside it, it would leave the model less than that, with a
+  drawer or the parts out, and back beside it when they go
+  (`Main._place_tool_column`, `_tool_crowds_model`): Stress and the
+  assistant's drawer left a 1024 x 768 tablet's model 233 px. Nothing the
+  person opened is put away for the room. `timelinefit_probe` (APP_UX6
+  timelinefit) opens them in two orders at 1280 x 720 and 1400 x 900, and
+  `timelinefit_tablet_probe` the tablet's own at 1024 x 768, and reads every
+  control along the window's edges inside it. Probe: `roomfit_probe` (1280 x 720,
   1400 x 900, 1600 x 900 and 1920 x 1080 in one window, made each size in
   turn: 24 parts in sight at the first and 40 at the rest, the selected
   part's boxes with the bin, the assistant beside the bin from 1400 px with
@@ -559,7 +576,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   part (`Main._on_phone_hold`, `HOLD_MS`) brings its actions, the right-click
   menu's rows. Two fingers turn the view and pinch zooms
   (`CadCamera.phone`); a finger that lands on a part with Select moves it and
-  the view stays (`finger_taken`). The shared viewer keeps its own. The
+  the view stays (`finger_taken`). A second finger makes the gesture the
+  view's (`Main._second_finger`, touchfix): the first finger's press on a
+  part ends, a part it had begun to carry goes back with the selection as it
+  was, and its lifting is no click; on pre261 a twist or a pinch begun on a
+  part carried it off with the first finger and selected it (`twist_probe`
+  section 5). The shared viewer keeps its own. The
   notices strip is drawn for a finger (`Main._for_a_finger`). Proved by
   `tools/web/phone_flow.mjs` (preview check `phone`), at 390 x 844,
   430 x 932 and 844 x 390 at 3x with touch events: More, New; the parts sheet
@@ -684,7 +706,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   (`TouchSizing._grew`, on the panel's or the window's
   `minimum_size_changed`, fig257): Render's status line, told the picture's
   file name once it was downloaded, ran it and its Close off a 430-point
-  phone. A dialog already placed never moves under a finger
+  phone. A window or a panel freed while it shows never says it hid, so it
+  stays listed (a Save dialog cancelled is not one: Godot's Cancel hides it
+  before `SaveTo` frees it): every loop over the open dialogs takes each
+  untyped until it is checked, as a freed one put in a `Node` raised a script
+  error and laid out nothing after it (timelinefit's tablet; `twist_probe`
+  section 6). A dialog already placed never moves under a finger
   (`TouchSizing._place`, `finger_down`, press271): laid out again while a
   finger or a mouse button is down, it waits for the lift. Pressing Save or
   Rename takes the keys from the field, so the keyboard counted as gone and
@@ -945,8 +972,8 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   the snap and turn, then the size (`StatusBar._fit`), so none runs past the
   window's edge.
 - `model size and weight` (`src/assembly/model_size.gd`, APP_UX5 modelinfo):
-  the model's size beside its counts on the status bar, the car's "4½ ×
-  10.8 studs, 15 plates high · 3.6 × 8.64 × 4.96 cm" (the plates to the
+  the model's size beside its counts on the status bar, the car's "4.5 ×
+  10.8 studs, 15 plates high · 3.60 × 8.64 × 4.96 cm" (the plates to the
   highest part's body, an upright part's top studs left off, as a wall's
   height is counted, so a tyre on its edge is 4½; the centimetres with
   them, as a shelf needs), the baseplate left out; with parts selected, theirs, after "N
@@ -963,6 +990,30 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   over MCP, the words in de, fr and es, and Orthanc's 9,429 parts measured in
   under a frame. By hand: open the car, read the foot of the window; click a
   part; Properties with nothing selected.
+  - One weight, one style of number (APP_UX6 #4 weighsure). The weight after
+    the counts ("61 bricks · stands up · 52 g") is the status bar's own
+    label (`StatusBar._weight`), the model as it is in that frame
+    (`ModelSize.of_model`), not the stability check's sum, which was made at
+    most once a second on a worker and said an earlier model's. A part still
+    on its way (`ModelStore.awaited`, `ModelSize.coming`) is weighed and
+    measured from the catalogue, in the status bar, Properties and `in_view`
+    alike; while a model is laid the last weight stays, and one just opened
+    says none until it is down. `Stability.Report.summary` is the verdict
+    alone, and `Balance` weighs a part whose shape is not to hand from the
+    catalogue. A line of studs and plates is in quarters only when every
+    number on it is a whole quarter, else decimals (`StatusBar.amounts`, the
+    place in hand too); centimetres to two places. `tools/probe.sh
+    weighsure_probe` (windowed, 1280x720 by its header, PROBE_SIZE=1400x900
+    too) reads the bar in every frame as drawn: the car 52 g from the app's
+    start and from Open; the walk's wall of eight 1 x 4s built by the
+    search and clicks, its weight the same in every frame from the last
+    placed, through the ghost swept with the next part in hand and R on a
+    brick put down turned; every model `tested_models` opens weighed the
+    same with no shapes (a library of the catalogue alone: every part on its
+    way) and with all, and the balance's weight with half the shapes on a
+    worker; the car's size string, and every size and place said in one
+    style. By hand: build eight 1 x 4s quickly and watch the weight; it does
+    not move once the last is down.
 - `accessibility` (`src/ui/access.gd`, `src/ui/focus_guard.gd`, Settings,
   2026-10-24; docs/COMPETITIVE.md item 14). A screen reader hears every
   control by its name (Godot 4.7's AccessKit: `accessibility_name`, or a
@@ -2377,7 +2428,13 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   one that does not slide is seated already (`Exact._seating_most`); seating
   10267-1's candle (37762), its bar down a flower plate's hollow stud, lifted
   it 3 LDU into its flame and refused one of the 957 real sub-models, and the
-  probe builds it. Run it from a checkout whose catalogue was built
+  probe builds it. The seat pairs a bar and a clip anywhere the two overlap
+  along their line, as BrickNet's `Exact.meets` does, not only within reach
+  of the bar's middle (`Exact._move_to_meet`, techfix 2026-11-07): 30374
+  stands in 3062b's hollow stud 36 LDU from its middle, and unpaired it was
+  moved off the stud onto a clip pressed 2 LDU into its side, which
+  `technic_hand_probe`'s "a clip on a bar" refuses by hand and by
+  check_design. Run it from a checkout whose catalogue was built
   with on_receivers: on an older one the scorpion's three fail. `handbuild_probe -- only=build_from_a_booklet`
   99 of 140 across the grid, worse for none; `placing_probe` keeps 8643-1's
   bracket under its plate and 5762-1's clip plates on theirs.

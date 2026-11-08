@@ -25,7 +25,9 @@
 class_name Collection
 extends RefCounted
 
-## [{"set": "10237-1", "qty": 1, "spares": false, "src": "hand"}, ...]
+## [{"set": "10237-1", "qty": 1, "spares": false, "src": "hand"}, ...]. A
+## set with parts missing says which ("missing", [method missing_lots]); a
+## minifigure is kept here by BrickLink's number ("fig", [method is_fig]).
 var sets: Array = []
 ## [{"part": "3001", "colour": 4, "qty": 12, "src": "hand"}, ...]. Each lot
 ## and set says where it came from ("src", [constant SOURCES]; none for one
@@ -69,6 +71,7 @@ static func from_json(data: Variant) -> Collection:
 			var from: String = _text(entry, "src")
 			if not from.is_empty():
 				kept["src"] = from
+			_read_set_marks(entry, kept)
 			made.sets.append(kept)
 	for entry: Variant in body.get("parts", []):
 		if typeof(entry) == TYPE_DICTIONARY and str((entry as Dictionary).get("part", "")) != "":
@@ -108,6 +111,9 @@ static func named(entry: Dictionary) -> Dictionary:
 	for field: String in ["src", "by", "chat"]:
 		if not str(entry.get(field, "")).is_empty():
 			out[field] = entry[field]
+	# A minifigure is named as one (mysets): its number is no set's.
+	if entry.has("set") and is_fig(entry):
+		out["fig"] = true
 	return out
 
 
@@ -202,6 +208,9 @@ func pool(inventories: Dictionary, library: PartLibrary = null) -> Dictionary:
 	for entry: Dictionary in parts:
 		_add(on_hand, key_of(str(entry["part"]), int(entry["colour"]), library), int(entry["qty"]))
 	for entry: Dictionary in sets:
+		# A minifigure adds nothing: no inventory of BrickLink's is here (mysets).
+		if is_fig(entry):
+			continue
 		var record: Variant = inventories.get(str(entry["set"]))
 		if typeof(record) != TYPE_DICTIONARY:
 			unknown_sets.append(str(entry["set"]))
@@ -210,9 +219,16 @@ func pool(inventories: Dictionary, library: PartLibrary = null) -> Dictionary:
 		var rows: Array = (record as Dictionary).get("p", [])
 		if bool(entry.get("spares", false)):
 			rows = rows + (record as Dictionary).get("s", [])
+		# Only what is really there: the parts marked missing are not (mysets).
+		var gone: Dictionary = missing_keys(entry, library)
 		for row: Variant in rows:
 			var lot: Array = row
-			_add(on_hand, key_of(str(lot[0]), int(lot[1]), library), int(lot[2]) * times)
+			var key: String = key_of(str(lot[0]), int(lot[1]), library)
+			var count: int = int(lot[2]) * times
+			var taken: int = mini(count, int(gone.get(key, 0)))
+			if taken > 0:
+				gone[key] = int(gone[key]) - taken
+			_add(on_hand, key, count - taken)
 	return on_hand
 
 
@@ -815,3 +831,146 @@ static func brief_note(on_hand: Dictionary, library: PartLibrary = null) -> Stri
 static func _colour_name(code: int, library: PartLibrary) -> String:
 	var found: PartLibrary.BrickColor = library.color(code) if library != null else null
 	return found.name.replace("_", " ") if found != null else "colour %d" % code
+
+
+# --- a set as it really is (mysets, APP_UX6 #6, 2026-11-07) ---------------
+#
+# Most people own old sets mixed in a tub (BrickBack, brick-tidy): a set
+# with parts missing. A set entry says which lots it is short of
+# ("missing": [{"part", "colour", "qty"}], in the numbers its inventory has
+# them, kept by api/collection.js's "missing" op), and the pool counts only
+# what is there. A set's own What do I need? is its inventory against what
+# is there towards it: its own lots less those missing, and every loose lot,
+# so a part found in the tub and added as a loose one counts towards it.
+# Another set's parts do not: they are that set's, and taking them breaks
+# it. A minifigure ("fig": true, BrickLink's number and "name") is kept and
+# listed, and adds no parts: no inventory of BrickLink's minifigures is here.
+
+## Whether a set entry is a minifigure.
+static func is_fig(entry: Dictionary) -> bool:
+	return entry.get("fig") == true
+
+
+## A set entry's missing lots as kept: [{"part", "colour", "qty"}].
+static func missing_lots(entry: Dictionary) -> Array:
+	return entry.get("missing", []) if entry.get("missing") is Array else []
+
+
+## A set entry's missing lots by [method key_of]: key -> count.
+static func missing_keys(entry: Dictionary, library: PartLibrary = null) -> Dictionary:
+	var out: Dictionary = {}
+	for lot: Dictionary in missing_lots(entry):
+		_add(out, key_of(str(lot["part"]), int(lot["colour"]), library), int(lot["qty"]))
+	return out
+
+
+## How many of [param part] in [param colour] a set entry is marked as missing.
+static func missing_count(entry: Dictionary, part: String, colour: int) -> int:
+	for lot: Dictionary in missing_lots(entry):
+		if str(lot["part"]) == part and int(lot["colour"]) == colour:
+			return int(lot["qty"])
+	return 0
+
+
+## The marks of a set entry as read ([method from_json]): its missing lots,
+## each a part, an LDraw colour and a count of one or more, and a
+## minifigure's mark and name. Anything else is left out.
+static func _read_set_marks(entry: Dictionary, kept: Dictionary) -> void:
+	if entry.get("fig") == true:
+		kept["fig"] = true
+		var name: String = _text(entry, "name")
+		if not name.is_empty():
+			kept["name"] = name
+		return
+	var missing: Array = []
+	var listed: Array = entry.get("missing") if entry.get("missing") is Array else []
+	for lot: Variant in listed:
+		if lot is Dictionary and not str((lot as Dictionary).get("part", "")).is_empty() \
+				and int((lot as Dictionary).get("qty", 0)) > 0:
+			missing.append({"part": str(lot["part"]), "colour": int(lot.get("colour", 0)),
+				"qty": int(lot["qty"])})
+	if not missing.is_empty():
+		kept["missing"] = missing
+
+
+## What a set needs to be whole: its inventory's lots (no spares) times its
+## copies, key -> count. [param record] is SetInventories'.
+static func set_needs(entry: Dictionary, record: Dictionary, library: PartLibrary = null) -> Dictionary:
+	var needs: Dictionary = {}
+	var times: int = maxi(1, int(entry.get("qty", 1)))
+	for row: Variant in record.get("p", []):
+		var lot: Array = row
+		_add(needs, key_of(str(lot[0]), int(lot[1]), library), int(lot[2]) * times)
+	return needs
+
+
+## What is there towards a set: its own lots less those marked missing, and
+## every loose lot (the person's, an import's, a session's).
+func toward_set(entry: Dictionary, record: Dictionary, library: PartLibrary = null) -> Dictionary:
+	var there: Dictionary = set_needs(entry, record, library)
+	var gone: Dictionary = missing_keys(entry, library)
+	for key: String in gone:
+		if there.has(key):
+			there[key] = maxi(0, int(there[key]) - int(gone[key]))
+	for lot: Dictionary in parts:
+		_add(there, key_of(str(lot["part"]), int(lot["colour"]), library), int(lot["qty"]))
+	return there
+
+
+## How whole a set is: {"pieces" its inventory holds, "marked" missing (no
+## more of a lot than it holds), "short" still once the loose parts are
+## counted towards it, "loose" the missing ones the loose parts make up}.
+func wholeness(entry: Dictionary, record: Dictionary, library: PartLibrary = null) -> Dictionary:
+	var needs: Dictionary = set_needs(entry, record, library)
+	var pieces: int = 0
+	for key: String in needs:
+		pieces += int(needs[key])
+	var gone: Dictionary = missing_keys(entry, library)
+	var marked: int = 0
+	for key: String in gone:
+		marked += mini(int(gone[key]), int(needs.get(key, 0)))
+	var short: int = 0
+	for row: Dictionary in shortfall(needs, toward_set(entry, record, library)):
+		short += int(row["short"])
+	return {"pieces": pieces, "marked": marked, "short": short, "loose": maxi(0, marked - short)}
+
+
+## The sets with parts marked missing, closest to whole first: fewest
+## pieces still short, then the smallest share of the set, then by number.
+## Each {"entry", "record", "pieces", "marked", "short", "loose"}; a set
+## with no inventory in [param records] is left out (nothing to count).
+func closest_to_whole(records: Dictionary, library: PartLibrary = null) -> Array:
+	var out: Array = []
+	for entry: Dictionary in sets:
+		if is_fig(entry) or missing_lots(entry).is_empty():
+			continue
+		var record: Variant = records.get(str(entry["set"]))
+		if not record is Dictionary:
+			continue
+		var whole: Dictionary = wholeness(entry, record, library)
+		whole["entry"] = entry
+		whole["record"] = record
+		out.append(whole)
+	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		if int(a["short"]) != int(b["short"]):
+			return int(a["short"]) < int(b["short"])
+		var x: float = float(a["short"]) / maxi(1, int(a["pieces"]))
+		var y: float = float(b["short"]) / maxi(1, int(b["pieces"]))
+		if not is_equal_approx(x, y):
+			return x < y
+		return str(a["entry"]["set"]) < str(b["entry"]["set"]))
+	return out
+
+
+## A set's inventory as a parts list, every lot named and numbered as the
+## app's own lists are, so its shortfall leaves through the same wanted-list
+## and Rebrickable writers a model's does ([method shortfall_stock]).
+static func set_stock(entry: Dictionary, record: Dictionary, library: PartLibrary) -> Inventory:
+	var stock := Inventory.new()
+	var by_key: Dictionary = {}
+	var times: int = maxi(1, int(entry.get("qty", 1)))
+	for row: Variant in record.get("p", []):
+		var lot: Array = row
+		for _n: int in int(lot[2]) * times:
+			stock._add(by_key, library, str(lot[0]), int(lot[1]))
+	return stock

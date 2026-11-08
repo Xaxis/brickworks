@@ -20,7 +20,10 @@ Three kinds of claim:
 - A standard size is the standard part: the maker's 2 x 4 brick is 3001
   triangle for triangle, and its 45 degree slope's face is where 3039's is;
   its brick with a stud on one side has 87087's studs, its bracket 99781's,
-  its Technic brick 3700's holes.
+  its Technic brick 3700's holes. And a part made to copy one LEGO makes
+  is that part, measured from the library: the clip plates 60897 and
+  61252, the bar 87994, the wedge plates 41770a and 41769a, each the same
+  bounds and every connector in the same place, facing the same way.
 """
 
 from __future__ import annotations
@@ -83,7 +86,10 @@ def spec_of(name: str) -> dict:
 def footprint(spec: dict) -> tuple[float, float]:
     """The stud grid's width on X and depth on Z, in LDU, centred, as the
     library lays a part out: the long side along X for a brick. A
-    bracket's is its plate's; its upright stands in front of it."""
+    bracket's is its plate's; its upright stands in front of it. A bar's
+    is its end, 8 LDU across."""
+    if spec["family"] == "bar":
+        return 8.0, 8.0
     if spec["family"] == "round":
         return spec["diameter"] * 20.0, spec["diameter"] * 20.0
     if spec["family"] == "brick":
@@ -104,11 +110,27 @@ def body(spec: dict) -> tuple[float, float, float, float]:
     return -width / 2, width / 2, -depth / 2, depth / 2
 
 
+# A clip plate's clip, as 60897 (vertical) and 61252 (horizontal) have it:
+# 14.03 LDU in front of the plate, and the horizontal one's ring 1.448 LDU
+# over the top's studs and under the bottom.
+CLIP_REACH = 14.03
+CLIP_RING = {"vertical": (-4.0, 8.0), "horizontal": (-5.448, 9.448)}
+
+
 def extent(spec: dict) -> tuple[tuple[float, float, float], tuple[float, float, float]]:
     """The bounds the part should have: its body, the studs on its top 4
-    LDU over it, and studs on a side or an upright 4 LDU out from it."""
+    LDU over it, and studs on a side or an upright 4 LDU out from it. A
+    bar's is a stud's length a stud, down from its top end; a clip plate's
+    reaches its clip."""
     x0, x1, z0, z1 = body(spec)
     family = spec["family"]
+    if family == "bar":
+        return (-4.0, 0.0, -4.0), (4.0, spec["across"] * 20.0, 4.0)
+    if family == "clip":
+        y0, y1 = CLIP_RING[spec["way"]]
+        if spec["studs"] == "no" and spec["way"] == "vertical":
+            y0 = 0.0
+        return (x0, y0, z0 - CLIP_REACH), (x1, y1, z1)
     h = spec["plates"] * 8.0
     flat_rows = spec.get("deep", 0) - spec.get("run", 0)
     studded_top = spec["studs"] == "yes" and not (family == "curved" and flat_rows <= 0)
@@ -213,14 +235,32 @@ def crossings(mesh: Mesh, x: float, z: float) -> list[tuple[float, int]]:
     return sorted(hits)
 
 
+def wedge_inside(spec: dict, x: float, z: float, margin: float) -> bool:
+    """Whether (x, z) is on a wedge plate, [margin] LDU in from its cut: a
+    plate the footprint's size, its tip one stud wide at the back (-Z) on
+    the straight side, cut straight from there to the far front corner. A
+    left one is straight on the left (-X), as 41770a; a right one mirrors
+    it."""
+    width, depth = footprint(spec)
+    m = -1.0 if spec["way"] == "right" else 1.0
+    bx, bz = (-width / 2 + 20.0) * m, -depth / 2
+    cx, cz = width / 2 * m, depth / 2
+    length = math.hypot(cx - bx, cz - bz)
+    # The cut's normal, out of the plate: away from the straight side and back.
+    nx, nz = abs(cz - bz) / length * m, -abs(cx - bx) / length
+    return nx * x + nz * z <= nx * bx + nz * bz - margin
+
+
 def top_at(spec: dict, x: float, z: float) -> float | None:
     """Where the part's top should be over (x, z), or None off the part."""
     width, depth = footprint(spec)
-    if spec["family"] == "round":
+    if spec["family"] in ("round", "bar"):
         r = width / 2
         return 0.0 if (x * x + z * z) ** 0.5 < r - 1.0 else None
     x0, x1, z0, z1 = body(spec)
     if not (x0 + 0.5 < x < x1 - 0.5 and z0 + 0.5 < z < z1 - 0.5):
+        return None
+    if spec["family"] == "wedge" and not wedge_inside(spec, x, z, 0.5):
         return None
     if spec["family"] == "bracket" and spec["way"] == "up":
         # The upright stands over the strip in front of the plate.
@@ -259,7 +299,8 @@ def test_header_is_an_unofficial_part(library: Library, name: str) -> None:
     assert part.description == lines[0][2:]
     assert part.part_type == "Unofficial_Part"
     assert part.bfc_certified and part.bfc_ccw
-    assert part.category in ("Brick", "Plate", "Tile", "Slope", "Bracket", "Technic")
+    assert part.category in ("Brick", "Plate", "Tile", "Slope", "Bracket", "Technic", "Bar",
+                             "Wing")
     assert part.path.parent == FIXTURES
 
 
@@ -338,7 +379,11 @@ def _top_studs(library: Library, name: str):
     return [c for c in _studs(library, name) if c.axis.y < -0.99]
 
 
-@pytest.mark.parametrize("name", FILES)
+# A bar has no studs and nothing under it.
+PLATED = [n for n in FILES if spec_of(n)["family"] != "bar"]
+
+
+@pytest.mark.parametrize("name", PLATED)
 def test_studs_sit_on_the_grid_and_point_up(library: Library, name: str) -> None:
     spec = spec_of(name)
     width, depth = footprint(spec)
@@ -356,8 +401,18 @@ def test_studs_sit_on_the_grid_and_point_up(library: Library, name: str) -> None
         assert abs(stud.position.x) < width / 2 and abs(stud.position.z) < depth / 2
     if spec["studs"] == "no":
         assert not studs
-    elif spec["family"] in ("brick", "inverted", "bracket", "technic"):
+    elif spec["family"] in ("brick", "inverted", "bracket", "technic", "clip"):
         assert len(studs) == spec["across"] * spec["deep"]
+    elif spec["family"] == "wedge":
+        # A stud wherever its whole square is on the plate, and nowhere
+        # else.
+        whole = [(-width / 2 + 10.0 + 20.0 * i, -depth / 2 + 10.0 + 20.0 * j)
+                 for i in range(spec["across"]) for j in range(spec["deep"])
+                 if all(wedge_inside(spec, -width / 2 + 20.0 * (i + a),
+                                     -depth / 2 + 20.0 * (j + b), -1e-6)
+                        for a in (0, 1) for b in (0, 1))]
+        assert sorted((round(s.position.x, 3) + 0.0, round(s.position.z, 3) + 0.0)
+                      for s in studs) == sorted(whole)
     elif spec["family"] in ("slope", "curved"):
         # Only the flat rows: the face falls over `run` of them.
         assert len(studs) == spec["across"] * (spec["deep"] - spec["run"])
@@ -418,7 +473,7 @@ def test_round_parts_carry_the_studs_that_fit(
     assert len(_studs(library, name)) == expected
 
 
-@pytest.mark.parametrize("name", FILES)
+@pytest.mark.parametrize("name", PLATED)
 def test_tubes_sit_between_studs_and_point_down(library: Library, name: str) -> None:
     """On the stud grid's corners, between four studs, never under one —
     or on a part one stud wide, a pin between two studs in the row."""
@@ -735,6 +790,32 @@ def test_a_standard_size_has_the_library_parts_shape(
         return {(round(c.position.x, 2), round(c.position.z + dz, 2))
                 for c in _gripping(library, name)}
     assert tubes(made, shift) == tubes(real)
+
+
+@pytest.mark.parametrize("made,real", [
+    ("bw-clip1x1v.dat", "60897.dat"),    # Plate 1 x 1 with Clip Vertical (Thick C-Clip)
+    ("bw-clip1x1h.dat", "61252.dat"),    # Plate 1 x 1 with Clip Horizontal (Thick C-Clip)
+    ("bw-bar3.dat", "87994.dat"),        # Bar 3L
+    ("bw-wedge2x4l.dat", "41770a.dat"),  # Wing 2 x 4 Left
+    ("bw-wedge2x4r.dat", "41769a.dat"),  # Wing 2 x 4 Right
+])
+def test_a_copy_is_the_part_it_copies(library: Library, made: str, real: str) -> None:
+    """The bounds to a hundredth of an LDU, and every connector the mesh
+    build finds in the real part found in the made one: the same kind,
+    the same place, facing the same way, a round as long and as wide."""
+    ours, theirs = flatten(library, made), flatten(library, real)
+    lo, hi = ours.bounds()
+    rlo, rhi = theirs.bounds()
+    assert (lo.x, lo.y, lo.z, hi.x, hi.y, hi.z) == pytest.approx(
+        (rlo.x, rlo.y, rlo.z, rhi.x, rhi.y, rhi.z), abs=0.01)
+
+    def connectors(name: str) -> list[tuple]:
+        return sorted((c.kind.value, round(c.position.x, 2) + 0.0, round(c.position.y, 2) + 0.0,
+                       round(c.position.z, 2) + 0.0, round(c.axis.x, 3) + 0.0,
+                       round(c.axis.y, 3) + 0.0, round(c.axis.z, 3) + 0.0,
+                       round(c.length, 2) + 0.0, round(c.radius, 2) + 0.0)
+                      for c in extract(library, name))
+    assert connectors(real) and connectors(made) == connectors(real)
 
 
 # -- a part changed from another's geometry -------------------------------------

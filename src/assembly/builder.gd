@@ -3146,6 +3146,11 @@ func room_for(part_id: String, at: Transform3D, grounded: bool = false,
 		# a saddle on a horse's back had no room where every set has it.
 		if _studded_clear(mine, at, theirs, there):
 			continue
+		# And two parts that meet as the LEGO Group's own sets meet them, where
+		# the sets put the one against the other, as check_design forgives them
+		# (ExactCheck.let_meet): a 3960 dish on a 3941 round brick.
+		if _fits_as_sets(mine, at, theirs, there):
+			continue
 		# And where one of the two has an exact shape and the other none, as
 		# check_design judges them (ExactCheck.drop_in_air): a pane put in its
 		# frame's groove, a drawer in its cupboard, meet only in covers a layer
@@ -3200,6 +3205,22 @@ func _studded_clear(mine: String, at: Transform3D, theirs: String, there: Transf
 		if kinds.has(Exact.STUD) and kinds.has(Exact.HOLE):
 			return Exact.clash(items[0], items[1], true).is_empty()
 	return false
+
+
+## Whether two parts with exact shapes meet no deeper than official sets meet
+## those two kinds of part in that pose (ExactCheck.meet_as_sets), and neither
+## is further down the other's stud than a stud reaches, as the check's
+## ExactCheck._fit_sunk allows one.
+func _fits_as_sets(mine: String, at: Transform3D, theirs: String, there: Transform3D) -> bool:
+	var one: Exact.Shape = Exact.shape_for(library, mine)
+	var other: Exact.Shape = Exact.shape_for(library, theirs)
+	if one == null or other == null or not one.has_pieces() or not other.has_pieces():
+		return false
+	var a := Exact.Item.new(one, at)
+	var b := Exact.Item.new(other, there)
+	if not ExactCheck.meet_as_sets(a, mine, b, theirs):
+		return false
+	return maxf(Exact.sunk(a, b), Exact.sunk(b, a)) <= Joints.STUD_REACH
 
 
 ## Whether two parts, one with an exact shape and the other with none, share
@@ -3328,7 +3349,7 @@ func _settle(
 
 	var rest_cell: int = lattice.surface_under(from.x, from.z, to.x, to.z, GROUND_CELL)
 	var y: float = rest_cell * BrickLattice.CELL - box.position.y \
-		- _sinks_by(part, basis, snapped, rest_cell) * BrickLattice.CELL
+		- _sinks_by(part, basis, snapped, rest_cell)
 	# Placing against a side face should not slide the part down onto the
 	# floor, so a sideways hit keeps the height the face implies, to the
 	# plate the pointer is on, as a carried group keeps it: two LDU off
@@ -3592,18 +3613,23 @@ func _held_below_ground(part: Lbm.PartMesh, basis: Basis, snapped: Vector3,
 	return at if at < y - 0.01 else null
 
 
-## How many cells lower a part rests by its own cover than by its box, at
+## How many LDU lower a part rests by its own cover than by its box, at
 ## [param snapped] across, where its box rests on [param rest_cell]: the
 ## cover's boxes each on what is under its own columns. A part that is not
 ## a box has room its box has not: 2420, a corner plate, goes round a wheel
 ## holder's arm with its missing corner, and by its box it stood on the
 ## arm, a plate up (8643-1's step 2, 2026-10-17). 0 for a part whose cover
-## fills its box across, which is every plain part.
-func _sinks_by(part: Lbm.PartMesh, basis: Basis, snapped: Vector3, rest_cell: int) -> int:
+## fills its box across, which is every plain part. Its origin then stands
+## where the cover's rise puts it. Taken as whole cells off its box's
+## height, a part whose box is not whole cells deep sank by what its cover
+## rounds out: a thick clip plate's ring hangs 1.448 LDU under it, its
+## cover 2, and a made 61252 went 0.552 LDU into the brick under it,
+## refused (makepart2, 2026-11-07).
+func _sinks_by(part: Lbm.PartMesh, basis: Basis, snapped: Vector3, rest_cell: int) -> float:
 	var cover: PackedInt32Array = boxes_for(part, Transform3D(basis,
 		Vector3(snapped.x, 0.0, snapped.z)))
 	if cover.size() <= 6:
-		return 0
+		return 0.0
 	var low: int = 1 << 30
 	var n: int = 1
 	while n < cover.size():
@@ -3612,7 +3638,7 @@ func _sinks_by(part: Lbm.PartMesh, basis: Basis, snapped: Vector3, rest_cell: in
 	var rise: int = lattice.rise_onto(cover, GROUND_CELL)
 	var sink: int = rest_cell - low - rise
 	if sink <= 0:
-		return 0
+		return 0.0
 	# Lower only where it is held by its sockets there: the boxes that take
 	# studs rest on what is under them. 5762-1's 4488 stands on a wedge
 	# plate by the block under half of it, where its sockets are, the other
@@ -3621,8 +3647,8 @@ func _sinks_by(part: Lbm.PartMesh, basis: Basis, snapped: Vector3, rest_cell: in
 	# into the wing (2026-10-17).
 	if not part.sockets.is_empty() and absf((basis * Vector3.UP).y) > 0.99 \
 			and not _seated_by_sockets(part, basis, snapped, cover, rise):
-		return 0
-	return sink
+		return 0.0
+	return maxf(0.0, (rest_cell - rise) * BrickLattice.CELL - _rotated_bounds(part, basis).position.y)
 
 
 ## Whether a socket of [param part] (turned by [param basis], across at
@@ -3726,23 +3752,25 @@ static func _on_half_stud(phase: float) -> bool:
 
 ## How far the part reaches below its plate, where it sits on the studs of
 ## what is under it: the bottom of its cover under its sockets less the
-## bottom of all of it. 0 for a plain part, which has nothing below its
-## plate, and for one with no sockets or not upright.
+## bottom of its box, which is what it was dropped by. 0 for a plain part,
+## which has nothing below its plate, and for one with no sockets or not
+## upright. Less the bottom of its cover, which is whole cells, it sank by
+## what those round out: a thick clip's ring hangs 1.448 LDU under its plate
+## (61252) and its cover 2, and a made one stood 0.552 LDU into the brick it
+## was put on, refused (makepart2, 2026-11-07).
 func _hangs_below(part: Lbm.PartMesh, basis: Basis) -> float:
 	if part.sockets.is_empty() or part.boxes.is_empty() \
 			or (basis * Vector3.UP).y < 0.99:
 		return 0.0
 	var seat: float = INF
-	var lowest: float = INF
 	for cells: AABB in part.boxes:
 		var low: Vector3 = cells.position * part.cell_ldu
 		var high: Vector3 = cells.end * part.cell_ldu
-		lowest = minf(lowest, low.y)
 		for socket: Vector2 in part.sockets:
 			if socket.x >= low.x - 0.01 and socket.x <= high.x + 0.01 \
 					and socket.y >= low.z - 0.01 and socket.y <= high.z + 0.01:
 				seat = minf(seat, low.y)
-	return seat - lowest if seat < INF else 0.0
+	return maxf(0.0, seat - part.bounds.position.y) if seat < INF else 0.0
 
 
 ## A part laid on its side, aimed at a face with studs on it — a brick

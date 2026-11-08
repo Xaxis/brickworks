@@ -291,17 +291,18 @@ func _open_over_a_weighing(weighed_path: String) -> void:
 		return
 	var result: Dictionary = _store.open_text(FileAccess.get_file_as_string(weighed_path), weighed)
 	(_main.get("_bar") as ModelBar).opened.emit(int(result["placed"]))
-	var counts: Label = _main.get("_counts")
+	# The counts and the weight after them, as one line is read (StatusBar).
+	var status: StatusBar = (_main.get("_shell") as Shell).status
 	var lines: Dictionary = {}
 	var began: int = Time.get_ticks_msec()
 	while Time.get_ticks_msec() - began < 300000:
 		await process_frame
-		lines[counts.text] = true
+		lines[str(status.fields()["counts"])] = true
 		if not bool(_main.get("_weighing")) and int(_main.get("_stability_revision")) \
 				== _world.revision and not str(_main.get("_stability_text")).is_empty():
 			break
 	await _frames(2)
-	var own: String = counts.text
+	var own: String = str(status.fields()["counts"])
 	lines[own] = true
 	var count: String = own.get_slice(" · ", 0)
 	var weight := RegEx.create_from_string("(-?\\d+) g$")
@@ -785,8 +786,11 @@ func _framed(count: int, each: Callable, nodes: Array = [], label: String = "orb
 		await process_frame
 		var now: int = _clock()
 		if not nodes.is_empty():
-			for node: Node in nodes:
-				if is_instance_valid(node) and node.is_inside_tree():
+			for item: Variant in nodes:
+				if not is_instance_valid(item):
+					continue
+				var node: Node = item
+				if node.is_inside_tree():
 					var t0: int = Time.get_ticks_usec()
 					node.call("_process", 1.0 / 60.0)
 					_add("_process " + _node_name(node), Time.get_ticks_usec() - t0)
@@ -1487,9 +1491,9 @@ func _processing_in(node: Node, found: Array) -> void:
 
 
 func _give_back(nodes: Array) -> void:
-	for node: Node in nodes:
-		if is_instance_valid(node):
-			node.set_process(true)
+	for item: Variant in nodes:
+		if is_instance_valid(item):
+			(item as Node).set_process(true)
 
 
 ## With everything selected: the pieces of a selection's handlers, and of

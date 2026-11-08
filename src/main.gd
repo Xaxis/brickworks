@@ -3009,6 +3009,32 @@ var _ahead_key: int = -1
 var _ahead_count: int = 0
 
 
+## The longest a frame took, ms (Performance.TIME_PROCESS, the most of the
+## last second's frames, their drawing too), from the frame after the one the
+## model's parts were all here in (which opened it again) until 3 s after a
+## link's motion moves, and the last phase before it: the phases' "longest".
+func _view_longest() -> void:
+	if not _view_phases.has("parts") or Engine.get_process_frames() <= int(_view_phases["frames"]["parts"][0]) + 1 \
+			or (_view_phases.has("moving") and Time.get_ticks_msec() - _view_began > int(_view_phases["moving"]) + 3000):
+		return
+	var took: float = Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0
+	var was: Array = _view_phases.get("longest", [0.0, ""])
+	if took > float(was[0]):
+		var last: String = ""
+		for phase: String in ["parts", "registered", "read", "shapes", "pressed", "moving"]:
+			if _view_phases.has(phase):
+				last = phase
+		_view_phases["longest"] = [snappedf(took, 0.1), last]
+
+
+## The frame a viewer's phase came in, and the frames drawn by then: its
+## phases' "frames", so a page can tell work paced a frame at a time.
+func _view_frame(phase: String) -> void:
+	if not _view_phases.has("frames"):
+		_view_phases["frames"] = {}
+	_view_phases["frames"][phase] = [Engine.get_process_frames(), Engine.get_frames_drawn()]
+
+
 ## Fetch the shared model and open it, read-only.
 func _view_shared() -> void:
 	_share_view.loading()
@@ -3079,6 +3105,9 @@ func _view_shared() -> void:
 	await get_tree().process_frame
 	_camera.frame(_built_bounds())
 	_view_phases["drawn"] = Time.get_ticks_msec() - began
+	# In the frame after: finding them makes the motion player, whose script
+	# a browser compiles then, and the first picture is not held for it.
+	get_tree().process_frame.connect(_ask_link_shapes, CONNECT_ONE_SHOT)
 	# On the web most parts are fetched as they are wanted; the steps are
 	# worked out from all of them, so they wait for the last.
 	var since: int = Time.get_ticks_msec()
@@ -3103,6 +3132,7 @@ func _view_shared() -> void:
 		await get_tree().process_frame
 		_camera.frame(_built_bounds())
 	_view_phases["parts"] = Time.get_ticks_msec() - began
+	_view_frame("parts")
 	_ask_shapes()
 	# The steps whoever shared it worked out, when they came with it and
 	# match what opened (SharedPages): a phone does not work them out. An
@@ -4031,9 +4061,38 @@ func _open_playing() -> void:
 		_share_view.link_missing(_viewing_motion)
 		return
 	_motion_link = motion.name
-	await _store.register_later()
+	var began: int = _view_began
+	# The shapes it is judged by (asked for as the model was first shown,
+	# _ask_link_shapes), found again for the model as it stands now.
+	_motion_needs_for = motion.name
+	_motion_needs = _motion_parts(motion)
+	_motion_again = 0
+	_library.prefer_exact(_motion_needs)
+	# How many of them were here as every part was, of how many.
+	_view_phases["shapes_here"] = [_motion_needs.filter(func(part_id: String) -> bool:
+		return Exact.known(_library, part_id)).size(), _motion_needs.size()]
+	# In a browser in one slice where it can be, not a slice a frame: the
+	# joints are read from them, and a frame given back was a frame of the
+	# house just opened again, 0.8 s and more drawn in software (playweb,
+	# 2026-11-07), as ModelStore.SHOWN_SLICE_US's are. A big model's still a
+	# slice at a time. Elsewhere a frame is a frame, as before.
+	await _store.register_later(LINK_REGISTER_US if OS.has_feature("web") else FramePace.LEAST_US)
+	_view_phases["registered"] = Time.get_ticks_msec() - _view_began
+	_view_frame("registered")
+	# The joints read once those shapes are here, or have been waited for as
+	# long as a press waits: read without them, they were read again for
+	# them at the press, which waited for that (playweb, 2026-11-07).
+	var since: int = Time.get_ticks_msec()
+	while _motion_link == motion.name and _shapes_coming(_motion_needs) \
+			and Time.get_ticks_msec() - since < SHAPES_WAIT_MS:
+		await get_tree().process_frame
+	if _view_began != began:
+		return
 	if _play_depth < 0 and not _play_reading:
 		_ready_play()
+		# At once: the model stands still, and nothing need wait for a paste
+		# to end (GrabDrag.READY_AFTER_MS).
+		_grab_drag.read_soon()
 
 
 ## What moves in the model as it stands, from the joints a drag uses
@@ -4079,12 +4138,21 @@ func _play_stop() -> void:
 func _play_frame() -> void:
 	if _grab_drag == null:
 		return
+	_view_longest()
 	if _finger != -1:
 		_touch_hold.saw()
+	# The joints read on a worker taken in here, as soon as they are, not at
+	# the grab's own turn after this in the frame: a frame later, most of a
+	# second in a browser drawing in software.
+	if _play_reading:
+		_grab_drag.take_reading()
 	if _play_reading and _grab_drag.is_ready():
 		_play_reading = false
 		if not _view_phases.has("read"):
 			_view_phases["read"] = Time.get_ticks_msec() - _view_began
+			_view_frame("read")
+			_view_phases["reading"] = {"began": _grab_drag.read_began - _view_began, "ms": _grab_drag.ready_ms,
+				"took": _grab_drag.ready_took, "unread": _grab_drag.unread_shapes.size()}
 		_play_found()
 	if _play_reset_due and not _grab_drag.is_settling() and not _grab_drag.is_grabbing():
 		_play_reset_due = false
@@ -4102,6 +4170,8 @@ func _play_frame() -> void:
 			and (not _shapes_coming(_motion_needs) or Time.get_ticks_msec() > _motion_due_at + SHAPES_WAIT_MS):
 		var name: String = _motion_due
 		_motion_due = ""
+		if not _view_phases.has("shapes"):
+			_view_phases["shapes"] = Time.get_ticks_msec() - _view_began
 		_play_motion(name, _motion_due_loop)
 	# The link's motion, once what moves is read: played over and over, drawn
 	# only, while the steps are worked out; or once, kept, after them, for a
@@ -4398,8 +4468,11 @@ func _play_motion(name: String, loop: bool = false) -> void:
 		return
 	if _grab_drag.is_swinging():
 		_grab_drag.cancel()
-	# The shapes it is judged by, fetched ahead of the rest.
-	if _motion_needs_for != motion.name:
+	var busy: bool = _grab_drag.is_grabbing() or _grab_drag.is_settling()
+	# The shapes it is judged by, fetched ahead of the rest. Found once the
+	# grab is at rest: a link's motion worked out on a worker meanwhile reads
+	# the joints that finding them sets (MotionPlayer.parts_of).
+	if _motion_needs_for != motion.name and not busy:
 		_motion_needs_for = motion.name
 		_motion_needs = _motion_parts(motion)
 		_motion_again = 0
@@ -4407,7 +4480,7 @@ func _play_motion(name: String, loop: bool = false) -> void:
 	# Played as soon as it can be, not dropped: once the grab is at rest and
 	# those shapes are here, or have been waited for long enough.
 	var now: int = Time.get_ticks_msec()
-	var waiting: bool = _grab_drag.is_grabbing() or _grab_drag.is_settling() or (_shapes_coming(_motion_needs)
+	var waiting: bool = busy or (_shapes_coming(_motion_needs)
 		and now < (_motion_due_at if _motion_due_at > 0 else now) + SHAPES_WAIT_MS)
 	if waiting:
 		if _motion_due_at == 0:
@@ -4421,6 +4494,9 @@ func _play_motion(name: String, loop: bool = false) -> void:
 	_motion_due_at = 0
 	if not _view_phases.has("pressed"):
 		_view_phases["pressed"] = now - _view_began
+		_view_frame("pressed")
+		_view_phases["reread"] = _read_without(_motion_needs)
+		_view_phases["needs"] = _motion_needs.size()
 	_motion_stop()
 	# Its joints read again where they were read without those shapes: the
 	# house's mailbox door, its hinge named only by its shape, was held
@@ -4453,8 +4529,10 @@ func _pace_motion() -> void:
 	if _grab_drag.is_grabbing():
 		_motion_drop()
 		return
+	# A link's motion, drawn only, on a worker; a press that keeps it, a
+	# slice a frame.
 	Exact.noting = true
-	var done: bool = _motions.pace_on(_motion_paced, MOTION_SLICE_MS)
+	var done: bool = _motions.pace_off_frame(_motion_paced, MOTION_SLICE_MS)
 	Exact.noting = false
 	if not done:
 		return
@@ -4466,8 +4544,12 @@ func _pace_motion() -> void:
 	# Worked out with a part judged by its cover, its shape still on its
 	# way: taken back before it is drawn, and pressed again once that shape
 	# is here too. A part beyond what _motion_parts reaches.
-	var missed: Array = Exact.missed_taken().filter(func(part_id: String) -> bool:
-		return _library.is_exact_on_its_way(part_id))
+	var missed: Array = Exact.missed_taken()
+	# Noted on a worker, which asks for none: asked for here.
+	for part_id: String in missed:
+		if not Exact.known(_library, part_id):
+			Exact.shape_for(_library, part_id)
+	missed = missed.filter(func(part_id: String) -> bool: return _library.is_exact_on_its_way(part_id))
 	var first: int = _motion_pressed["first"]
 	if not missed.is_empty() and Time.get_ticks_msec() < first + SHAPES_WAIT_MS:
 		if _builder.history_depth() > paced.depth:
@@ -4491,6 +4573,9 @@ func _pace_motion() -> void:
 		"ms": snappedf(float(paced.total_ms), 0.1), "longest_ms": snappedf(float(paced.longest_ms), 0.1),
 		"slices": paced.slices, "hold_ms": snappedf(float(paced.hold_ms), 0.1),
 		"frame_ms": snappedf(float(paced.frame_ms), 0.1), "keep_ms": snappedf(float(paced.keep_ms), 0.1), "stopped": run.stopped(), "waited_ms": int(_motion_pressed["waited"]),
+		# Worked out whole on a worker (MotionPlayer.pace_off_frame): its
+		# slices are not a frame's.
+		"off_frame": paced.off_frame,
 		"shapes_waited": _motion_needs.size(), "worked_again": _motion_again,
 		"motions": run.played.size(),
 		"joints": items.map(func(item: RefCounted) -> Array:
@@ -4518,6 +4603,7 @@ func _pace_motion() -> void:
 		_motion_loop_kept = paced.keep
 		if not _view_phases.has("moving"):
 			_view_phases["moving"] = Time.get_ticks_msec() - _view_began
+			_view_frame("moving")
 		_share_view.show_looping(motion.name)
 		_share_view.play_said("")
 	# The model stands where it ends already: its first frame drawn at once.
@@ -4528,6 +4614,8 @@ func _pace_motion() -> void:
 func _motion_drop() -> void:
 	if _motion_paced == null:
 		return
+	# One worked out on a worker, waited for: what it reads may change now.
+	_motions.drop(_motion_paced)
 	var depth: int = _motion_paced.depth
 	_motion_paced = null
 	if _builder.history_depth() > depth:
@@ -4536,9 +4624,14 @@ func _motion_drop() -> void:
 
 
 ## Whether the exact shape of any of [param parts] is still to be asked for
-## or on its way.
+## or on its way. One here already is not, though it is still in the list
+## to ask (asked from as the model was first shown, _ask_link_shapes): the
+## list goes 8 a frame, and the frames after a link's model opened again
+## are each most of a second in a browser drawing in software.
 func _shapes_coming(parts: Array) -> bool:
 	for part_id: String in parts:
+		if Exact.known(_library, part_id):
+			continue
 		if _shapes_to_ask.has(part_id) or _library.is_exact_on_its_way(part_id):
 			return true
 	return false
@@ -4593,30 +4686,58 @@ func _ask_shapes() -> void:
 	_shapes_to_ask = order.map(func(one: Array) -> String: return one[2])
 
 
+## The exact shapes a link's motion is judged by (?motion=), asked for as the
+## model is first shown, among the parts still on their way as well as those
+## here (the house's gates were not here yet). In a browser shapes are
+## fetched, and asked for only once every part was here (_ask_shapes) the
+## house's gates' came 4 to 8 s after it, and the joints were read again for
+## them before the gates could move (playweb, 2026-11-07). All asked at once:
+## a fetched shape is not looked for in the pack (Exact._carried). The
+## joints are read once they are here (_open_playing).
+func _ask_link_shapes() -> void:
+	# Not once every part is here: then all of them are asked (_ask_shapes).
+	if _viewing_motion.is_empty() or not OS.has_feature("web") or _world.motions == null \
+			or _view_phases.has("parts"):
+		return
+	var motion: Motions.Motion = _world.motions.for_link(_viewing_motion)
+	if motion == null:
+		return
+	var wanted: Array = _motion_parts(motion, true).filter(func(part_id: String) -> bool:
+		return not Exact.known(_library, part_id))
+	for part_id: String in wanted:
+		Exact.shape_for(_library, part_id)
+	_view_phases["asked"] = [Time.get_ticks_msec() - _view_began, wanted.size()]
+
+
 ## The parts whose exact shapes [param motion] is judged by, as far as can
 ## be told before it is played: each part on its joints, and every part
 ## within reach of them, as far again as they are long (a gate swung on its
 ## hinge sweeps its own length). A press waits for these; any further that
-## its working out asks for it waits for too (_pace_motion).
-func _motion_parts(motion: Motions.Motion) -> Array:
-	var boxes: Array = _motion_boxes(motion)
+## its working out asks for it waits for too (_pace_motion). With [param
+## coming], among the parts still on their way too (ModelStore.awaited).
+func _motion_parts(motion: Motions.Motion, coming: bool = false) -> Array:
+	var placed: Array = _placed(coming)
+	var boxes: Array = _motion_boxes(motion, placed if coming else [])
 	var out: Array = []
 	if boxes.is_empty():
 		return out
-	for brick: BrickWorld.Brick in _world.bricks():
-		if out.has(brick.part_id):
+	for one: Array in placed:
+		if out.has(one[0]):
 			continue
-		var box: AABB = _box_of(brick)
+		var box: AABB = _box_at(one[0], one[1])
 		for reach: AABB in boxes:
 			if reach.intersects(box):
-				out.append(brick.part_id)
+				out.append(one[0])
 				break
 	return out
 
 
 ## Where [param motion]'s joints' parts reach: for each joint, the box round
-## its parts grown by its longest side. A sequence, its motions'.
-func _motion_boxes(motion: Motions.Motion) -> Array:
+## its parts grown by its longest side. A sequence, its motions'. A joint's
+## part still on its way is found among [param coming] ([method _placed]) by
+## its number, colour and place, as MotionPlayer.parts_of finds one here; a
+## sub-assembly's only among those here.
+func _motion_boxes(motion: Motions.Motion, coming: Array = []) -> Array:
 	var out: Array = []
 	for one: Motions.Motion in _world.motions.played_by(motion):
 		for joint: Motions.Joint in one.joints():
@@ -4628,15 +4749,67 @@ func _motion_boxes(motion: Motions.Motion) -> Array:
 					continue
 				box = box.merge(_box_of(brick)) if any else _box_of(brick)
 				any = true
+			if not any and joint.by == "part" and not coming.is_empty():
+				var want: Vector3 = joint.place * LdrModel.FLIP + _store.lift()
+				var nearest: float = LINK_PLACE_SLACK
+				for placed: Array in coming:
+					var off: float = (placed[1] as Transform3D).origin.distance_to(want)
+					if placed[0] == joint.part and placed[2] == joint.colour and off < nearest:
+						nearest = off
+						box = _box_at(placed[0], placed[1])
+						any = true
 			if any:
-				out.append(box.grow(box.get_longest_axis_size()))
+				out.append(box.grow(box.get_longest_axis_size() + (EARLY_REACH if not coming.is_empty() else 0.0)))
 	return out
 
 
-## The box [param brick] takes where it stands, by its catalogue bounds.
+## The least slice a link's model's parts are told to its lattice in, in a
+## browser, us (_open_playing).
+const LINK_REGISTER_US := 200000
+
+
+## How much further, LDU, the parts a link's motion is judged by are looked
+## for as its model is first shown (_ask_link_shapes), by the catalogue's
+## boxes: a part that only touches the reach is in or out of it by a hair
+## (the gates' reach began at 99.99974 by their geometry, 100 by the
+## catalogue), and four of the house's 27 were asked only once every part
+## was here (playweb, 2026-11-07).
+const EARLY_REACH := 1.0
+
+
+## How far from where a joint's file says its part is a part on its way may
+## stand and be taken for it: MotionPlayer.PLACE_SLACK, LDU.
+const LINK_PLACE_SLACK := 4.0
+
+
+## Each part of the model as [part id, transform, colour]: those here, and
+## with [param coming] those still on their way (ModelStore.awaited).
+func _placed(coming: bool) -> Array:
+	var out: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		out.append([brick.part_id, brick.transform, brick.color_code])
+	if coming:
+		for placement: LdrModel.Placement in _store.awaited:
+			out.append([placement.part_id, placement.transform, placement.color_code])
+	return out
+
+
+## The box [param brick] takes where it stands ([method _box_at]).
 func _box_of(brick: BrickWorld.Brick) -> AABB:
-	var mesh: Lbm.PartMesh = _library.mesh_for(brick.part_id)
-	return brick.transform * mesh.bounds if mesh != null else AABB(brick.transform.origin, Vector3.ZERO)
+	return _box_at(brick.part_id, brick.transform)
+
+
+## The box part [param part_id] takes at [param where], by its geometry's
+## bounds, or the catalogue's while its geometry is on its way (a browser's,
+## as a link's model is first shown: _ask_link_shapes).
+func _box_at(part_id: String, where: Transform3D) -> AABB:
+	var mesh: Lbm.PartMesh = _library.mesh_here(part_id)
+	if mesh == null:
+		mesh = _library.mesh_for(part_id) if not OS.has_feature("web") else null
+	if mesh != null:
+		return where * mesh.bounds
+	var info: PartLibrary.PartInfo = _library.parts.get(part_id)
+	return where * info.bounds if info != null else AABB(where.origin, Vector3.ZERO)
 
 
 ## The playing motion's frame for now, drawn; its words said once it ends. A
@@ -6648,7 +6821,7 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 				if pages > 0:
 					pdf = beside
 					SaveTo.wrote(pdf)
-					note += ", and as a PDF in %s" % pdf
+					note += ", and as a PDF in %s%s" % [pdf, _pdf_missed]
 			if show:
 				note = _open_booklet(to, steps, _booklet_out, pdf)
 	elif _booklet_out.shown:
@@ -6709,6 +6882,7 @@ func save_booklet_as(kind: String, to: String = "") -> String:
 	# A frame for the window every few pages on the desktop; none on the
 	# web, where the app's tab is out of view (BookletRead.read_all).
 	var pace: int = 0 if web else 8
+	_pdf_missed = ""
 	if pdf and not web:
 		pages = await _pdf_file(_booklet_out.source(), written)
 		ok = pages > 0
@@ -6719,6 +6893,7 @@ func save_booklet_as(kind: String, to: String = "") -> String:
 			pages = await read.read_all(_booklet_out.source(), out.page, pace)
 			var bytes: PackedByteArray = out.finish(read.title)
 			ok = pages > 0 and out.ok()
+			_pdf_missed = out.missed_said()
 			if ok:
 				JavaScriptBridge.download_buffer(bytes, name, "application/pdf")
 	else:
@@ -6737,7 +6912,7 @@ func save_booklet_as(kind: String, to: String = "") -> String:
 	var seconds: float = (Time.get_ticks_msec() - started) / 1000.0
 	if web:
 		DirAccess.remove_absolute(part)
-		var said: String = ("downloaded %s, %d pages" % [name, pages]) if ok \
+		var said: String = ("downloaded %s, %d pages%s" % [name, pages, _pdf_missed]) if ok \
 			else "could not save the booklet"
 		_bar.say(said)
 		return said
@@ -6745,13 +6920,16 @@ func save_booklet_as(kind: String, to: String = "") -> String:
 		_bar.say("could not write %s" % written)
 		return "could not write %s" % written
 	SaveTo.wrote(written)
-	var line: String = "wrote %s, %d pages in %.1f s: %s" % [written.get_file(), pages, seconds,
-		written]
+	var line: String = "wrote %s, %d pages in %.1f s: %s%s" % [written.get_file(), pages, seconds,
+		written, _pdf_missed]
 	_bar.say(line)
 	return line
 
 
 var _booklet_writing: bool = false
+## What the last PDF written said of the letters its type could not print
+## (BookletPdf.missed_said), "" when none.
+var _pdf_missed: String = ""
 
 
 ## The booklet's file [param from] read again a page at a time into a PDF
@@ -6772,6 +6950,7 @@ func _pdf_file(from: String, to: String) -> int:
 		await get_tree().process_frame
 	WorkerTasks.collect(task)
 	var pages: int = out.pages
+	_pdf_missed = out.missed_said()
 	return pages if _into_place(part, to, pages > 0 and out.ok()) else -1
 
 
@@ -7260,8 +7439,11 @@ func _fit_bin(opening: SideDock = null) -> void:
 	var share: float = MODEL_SHARE
 	if _columns == "wide":
 		share = BOTH_SHARE if right_open else WIDE_SHARE
+	# And the tools' column's room out of the bin's, not the model's: beside
+	# Stress's panel the bin kept six across at 1280 x 720, and the row was
+	# wider than the window (APP_UX6 timelinefit).
 	var room: float = units * (1.0 - share) - SideDock.RAIL_WIDTH * rails \
-		- (SIDE_WIDE if _columns == "wide" and right_open else 0.0)
+		- (SIDE_WIDE if _columns == "wide" and right_open else 0.0) - _tool_room()
 	_bin_dock.set_open_width(_parts_wide(maxi(LEAST_ACROSS,
 		floori((room - BIN_EDGES) / TILE_PITCH))))
 	if _bin_props != null:
@@ -7272,6 +7454,36 @@ func _fit_bin(opening: SideDock = null) -> void:
 ## The bin's column wide enough for this many tiles across.
 static func _parts_wide(across: int) -> float:
 	return across * TILE_PITCH + BIN_EDGES
+
+
+## The least the model's room is left beside the columns, in the interface's
+## units: 400 px at the smallest the interface is drawn (MOST_SHRUNK). Where
+## both columns show, one opened beside the other and the tools' column that
+## would leave the model less folds the other, as where they take turns: at
+## 1400 x 900 the bin, Stress and the assistant together left it 393 px.
+const MODEL_LEAST := 440.0
+
+
+## How much of the row beside the model the tools' column takes: its width
+## while it stands beside the model, and none while it is folded or is a
+## sheet under the model (a touch screen held upright).
+func _tool_room() -> float:
+	if _tool_column == null or not _tool_column.visible or _tool_sheet:
+		return 0.0
+	return maxf(SIMULATE_WIDTH, _tool_column.get_combined_minimum_size().x)
+
+
+## The model's room, in units, were [param opening] open beside what is open
+## now: the bin at its narrowest, the right-hand column, the tools' column
+## and the rails.
+func _room_beside(opening: SideDock) -> float:
+	var units: float = get_viewport().get_visible_rect().size.x
+	var rails: float = 2.0 if _props_dock != null or _chat_dock.visible else 1.0
+	var bin: bool = opening == _bin_dock or _bin_dock.is_open()
+	var right: bool = opening != _bin_dock or _chat_dock.is_open() \
+		or _props_dock != null and _props_dock.is_open()
+	return units - SideDock.RAIL_WIDTH * rails - _tool_room() \
+		- (_parts_wide(LEAST_ACROSS) if bin else 0.0) - (SIDE_WIDE if right else 0.0)
 
 
 ## The part of the window the model is seen in, for the camera to centre
@@ -7325,6 +7537,8 @@ func _tool_column_shown() -> void:
 		return
 	var room: Rect2 = _model_rect()
 	_tool_column.visible = open
+	# The bin's width beside it, or back without it, before it is opened.
+	_fit_bin()
 	if open and _bin_dock.is_open() and _columns != "drawers":
 		_tool_folded_parts = true
 		_arranging = true
@@ -7421,13 +7635,18 @@ func _column_opening(dock: SideDock) -> void:
 	if _arranging:
 		return
 	# Where both show, the right-hand column opens beside the bin, which
-	# gives it the room (_fit_bin).
-	if _columns == "wide":
+	# gives it the room (_fit_bin), while the model keeps its least beside
+	# them and the tools' column; where it would not, the other side's
+	# folds, as where they take turns.
+	if _columns == "wide" and _room_beside(dock) >= MODEL_LEAST:
 		_fit_bin(dock)
 		return
 	for other: SideDock in _docks():
 		if (other == _bin_dock) != (dock == _bin_dock):
 			other.set_open(false)
+	# Fitted with the other side folded, before this one slides out.
+	if _columns == "wide":
+		_fit_bin(dock)
 
 
 ## A column opened or folded: kept as the person's layout for a window of
@@ -8803,6 +9022,10 @@ var _touch_hold := PressHold.new()
 var _press_brick: int = 0
 var _press_at: Vector2 = Vector2.ZERO
 var _press_copies: bool = false
+## The selection a drag from that press replaces, for a second finger to put
+## back (_second_finger): null when the part was in it, as the drag carries
+## the selection and putting it back selects it again.
+var _press_selection: Variant = null
 ## A part (with its selection) picked up by a drag and following it.
 var _dragging_part: bool = false
 ## A part grabbed by a drag and moved about its joint (GrabDrag).
@@ -9137,6 +9360,34 @@ func _drop_dragged(at: Vector2) -> void:
 	_refresh_preview(at)
 
 
+## A second finger down: the gesture is the view's (a pinch, a slide, a
+## twist), and nothing the first finger began on the model is done. Its
+## press on a part ends, so the part is neither carried nor selected; a part
+## it had already begun to carry, in the moment before the second came
+## down, goes back where it was with the selection as it was, as Esc puts
+## it back; and its lifting is no click, which on the ground lets go of the
+## selection and with a part in hand puts it down. A twist begun with a
+## finger on a small screen's model carried the part off and selected it.
+func _second_finger() -> void:
+	if _phone_hold != null:
+		_phone_hold.stop()
+	_pending_left = false
+	_left_spent = true
+	_press_brick = 0
+	if not _grabbing and not _dragging_part:
+		return
+	if _grabbing:
+		_grabbing = false
+		_grab_drag.cancel()
+	if _dragging_part:
+		_dragging_part = false
+		_verbs.put_away()
+	if _press_selection is Dictionary:
+		_builder.selection.clear()
+		_builder.selection.merge(_press_selection)
+		_builder.selection_changed.emit(_builder.selection.size())
+
+
 ## A part grabbed in the view and moved about its joint (GrabDrag): with
 ## the Select tool, a drag on a part that hangs on a hinge, a clip, a
 ## turntable, a pin, an axle, a ball or a round stud. False for a part held
@@ -9203,8 +9454,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				if _phone_hold != null:
 					_phone_hold_at = touch.position
 					_phone_hold.start()
-			elif _phone_hold != null:
-				_phone_hold.stop()
+			else:
+				_second_finger()
 			return
 
 		if touch.index != _touch_index:
@@ -9429,6 +9680,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			if under != 0:
 				_press_brick = under
 				_press_copies = button.ctrl_pressed or button.meta_pressed
+				_press_selection = null if _builder.selection.has(under) \
+					else _builder.selection.duplicate()
 				_press_hold.start()
 				return
 		_pending_left = true
@@ -9643,6 +9896,9 @@ func _dress_for_phone() -> void:
 	_gizmo.visible = false
 	_place_tool_column()
 	get_viewport().size_changed.connect(_place_tool_column)
+	# And as a drawer, the parts or the column itself comes and goes beside
+	# the model on a tablet: the room the column would leave the model.
+	(_over_model.get_parent() as Control).resized.connect(_place_tool_column, CONNECT_DEFERRED)
 	var rail: float = Phone.px(get_viewport(), Phone.TARGET)
 	_bin_dock.set_phone_rail(rail, float(_phone.foot_height()))
 	_chat_dock.set_phone_rail(rail, float(_phone.foot_height()))
@@ -9731,9 +9987,15 @@ func _size_for_a_finger() -> void:
 ## Simulate's took the model off a 390-point phone, and Colour the hidden
 ## parts' its own buttons off a 768-point tablet. Placed again as the
 ## screen turns.
+##
+## And under the model on a tablet on its side while, beside it, the column
+## would leave the model less than its least (MODEL_LEAST): with Stress
+## beside it and a drawer or the parts out, a 1024 x 768 tablet's model had
+## 233 px between them (APP_UX6 timelinefit). Back beside it when the
+## drawer goes. Nothing the person opened is put away for the room.
 func _place_tool_column() -> void:
 	var screen: Vector2 = get_viewport().get_visible_rect().size
-	var under: bool = screen.y > screen.x
+	var under: bool = screen.y > screen.x or Phone.wide() and _tool_crowds_model()
 	# Beside the model it ends above the foot's row of tools, as the drawers
 	# do (SideDock.set_phone_rail): behind it, the panel's last lines were.
 	(_tool_column.get_theme_stylebox("panel") as StyleBoxFlat).content_margin_bottom = \
@@ -9750,6 +10012,17 @@ func _place_tool_column() -> void:
 		beside.move_child(_tool_column, _bin_dock.get_index() + 1)
 	_tool_column.custom_minimum_size = Vector2(0.0 if under else SIMULATE_WIDTH, 0.0)
 	_tool_column.size_flags_stretch_ratio = PHONE_SHEET if under else 1.0
+
+
+## Whether the tools' column, shown beside the model, leaves it less than
+## its least room: as it stands beside it, or, from under it, as it would.
+func _tool_crowds_model() -> bool:
+	if _tool_column == null or not _tool_column.visible:
+		return false
+	var room: float = _model_rect().size.x
+	if _tool_sheet:
+		room -= SIMULATE_WIDTH
+	return room < MODEL_LEAST
 
 
 ## One of the tools' panels on a touch screen, wider than the column's

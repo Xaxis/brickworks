@@ -199,7 +199,10 @@ const ALT := KEY_MASK_ALT
 ## and the five panels into View › Panels (menurows).
 const MENUS: Array = [
 	["File", ["new", "new_window", "open", "library", "collection", "collection_build", ">recent",
-		">import", "-", "save", "save_as", "versions", "compare", "-", "share", "together",
+		">import", "-", "save", "save_as", "versions", "compare",
+		# comparesets (APP_UX6 #7): any two of a set, a saved model or the open one.
+		"compare_sets",
+		"-", "share", "together",
 		"comments", ">export", "render", "render_queue", "-", "clear", "quit"]],
 	["Edit", ["undo", "redo", ">history", "-", "cut_parts", "copy", "paste", "duplicate",
 		"pattern", "delete", "-", "select_all", "select_none", ">select_by", "-", "hide",
@@ -1066,12 +1069,17 @@ func _define() -> void:
 	_add("compare", "Compare with…", 0, func() -> void: versions.open(true),
 		func() -> bool: return not store.versions().is_empty(),
 		"What changed since one of this model's saves: added green, removed red, moved amber")
+	# comparesets (APP_UX6 #7): Compare's parts sheet (src/ui/compare_view.gd,
+	# src/parts/parts_compare.gd), as Rebrickable's set compare.
+	_add("compare_sets", "Compare two sets or models…", 0, func() -> void: compare.open_parts(),
+		Callable(), "The parts a set, a saved model or this one shares with another, the parts "
+		+ "in only one, and what to buy to build one from the other")
 	_add("export_ldraw", "LDraw model (.ldr, or .mpd with its sub-models)", 0,
 		func() -> void: await bar._on_export(), something)
 	_add("export_io", "BrickLink Studio model (.io)", 0,
 		func() -> void: await app.get("_exports").studio_io(true), something)
 	# src/ui/exports.gd, src/parts/mesh_export.gd.
-	_add("export_3d", "3D model (.glb, .gltf, .obj, .stl)…", 0,
+	_add("export_3d", "3D model (.glb, .gltf, .obj, .stl, .3mf)…", 0,
 		func() -> void: app.get("_exports").ask_model_3d(), something,
 		"The model as a 3D file for Blender, AR or a 3D printer")
 	_add("export_picture", "Picture of the model (.png)", 0,
@@ -1286,7 +1294,7 @@ func _define() -> void:
 	# pagesetup: the booklet's paper, margins, colour and sizes (BookletSheet,
 	# src/ui/page_setup_dialog.gd).
 	_add("booklet_page_setup", "Page setup…", 0, open_page_setup, Callable(),
-		"The booklet's paper (A4, US Letter, A5 or its own), either way up, its margins, a colour or a picture behind every page, the step numbers' and parts' sizes; kept with the model, and as a style by a name for another")
+		"The booklet's paper (A4, US Letter, A5 or its own), either way up, its margins, a colour or a picture behind every page, its cover, header and footer, the step numbers' and parts boxes' sizes and colours; kept with the model, and as a style by a name for another")
 	# src/ui/flex_tool.gd.
 	_add("flex", "Hose, tube or chain…", 0, func() -> void: app.call("open_flex"), Callable(),
 		"Lay a hose, a tube, a string or a chain from one connector to another, along a curve")
@@ -3222,7 +3230,10 @@ func open_page_setup() -> void:
 ## its name, or "picture" "" to take it off; "save_as" a name to keep the
 ## page as a style for another model; "remove_style" a style's name, taken
 ## away (the models given it keep their page). One undo, saved with the
-## model. Returns what was done, or why nothing was.
+## model. Returns what was done, or why nothing was. (booklook) The cover's
+## picture of the person's own the same: "cover_picture_data", its name
+## "cover_picture", "" for the model drawn; and the words and colours
+## BookletSheet.change takes.
 func page_setup(fields: Dictionary) -> String:
 	if read_only:
 		return "this model is open to look at, not to change"
@@ -3245,7 +3256,11 @@ func page_setup(fields: Dictionary) -> String:
 	var given: Dictionary = fields.duplicate()
 	var words: String = ""
 	if bool(given.get("usual", false)):
+		# The booklet's own look; the model's own title and the line under
+		# it stay, as they do when a style is given (BookletSheet.OWN).
 		sheet = BookletSheet.new()
+		for field: String in BookletSheet.OWN:
+			sheet.set(field, was.get(field))
 		words = "the booklet's own page"
 	var style_lost: bool = false
 	if given.has("style"):
@@ -3257,13 +3272,18 @@ func page_setup(fields: Dictionary) -> String:
 			return ("no page style is called \"%s\"; kept: %s" % [name, ", ".join(styles)]) \
 				if not styles.is_empty() else "no page style is kept yet: save_as= keeps this page as one"
 		sheet = BookletSheet.new()
-		style_lost = bool(style.get("picture_lost", false))
-		if style.has("picture_data") and style.has("picture"):
-			pictures[str(style["picture"])] = str(style["picture_data"])
-		else:
-			style.erase("picture")
-		style.erase("picture_data")
+		# A style is a look: the model's own title and the line under it stay.
+		for field: String in BookletSheet.OWN:
+			sheet.set(field, was.get(field))
+		style_lost = bool(style.get("picture_lost", false)) or bool(style.get("cover_lost", false))
+		for kept: Array in [["picture", "picture_data"], ["cover_picture", "cover_picture_data"]]:
+			if style.has(kept[1]) and style.has(kept[0]):
+				pictures[str(style[kept[0]])] = str(style[kept[1]])
+			else:
+				style.erase(kept[0])
+			style.erase(kept[1])
 		style.erase("picture_lost")
+		style.erase("cover_lost")
 		sheet.change(style)
 		words = "the page style \"%s\"" % name
 	if given.has("picture_data"):
@@ -3272,7 +3292,14 @@ func page_setup(fields: Dictionary) -> String:
 			named = BookletSheet.PICTURE_NAME + "." + named.get_extension()
 		pictures[named] = str(given["picture_data"])
 		given["picture"] = named
-	for field: String in ["usual", "style", "save_as", "picture_data", "remove_style"]:
+	# booklook: the cover's picture of the person's own, named as it is.
+	if given.has("cover_picture_data"):
+		var named: String = str(given.get("cover_picture", BookletSheet.COVER_NAME + ".jpg")).to_lower()
+		named = BookletSheet.COVER_NAME + "." + ("png" if named.get_extension() == "png" else "jpg")
+		pictures[named] = str(given["cover_picture_data"])
+		given["cover_picture"] = named
+	for field: String in ["usual", "style", "save_as", "picture_data", "remove_style",
+			"cover_picture_data"]:
 		given.erase(field)
 	var wrong: String = sheet.change(given)
 	if not wrong.is_empty():
@@ -3286,13 +3313,32 @@ func page_setup(fields: Dictionary) -> String:
 	# Behind every page of the booklet's HTML as it is: a PNG or a JPEG in base64 only.
 	if pictures.has(sheet.picture) and BookletLooks.picture_kind(str(pictures[sheet.picture])).is_empty():
 		return "the picture behind the pages is a PNG or a JPEG, in base64"
-	# The picture that was behind the pages, gone with them.
-	if not was.picture.is_empty() and was.picture != sheet.picture:
-		pictures.erase(was.picture)
+	# The cover's the same (booklook).
+	var cover_missing: bool = was.cover_missing and sheet.cover_picture == was.cover_picture \
+		and not pictures.has(sheet.cover_picture)
+	if not sheet.cover_picture.is_empty() and not pictures.has(sheet.cover_picture) \
+			and not cover_missing:
+		return "there is no picture called %s: cover_picture_data= gives one" % sheet.cover_picture
+	if pictures.has(sheet.cover_picture) \
+			and BookletLooks.picture_kind(str(pictures[sheet.cover_picture])).is_empty():
+		return "the cover's picture is a PNG or a JPEG, in base64"
+	# The picture that was behind the pages, gone with them; the cover's too.
+	# One the page still names (a later build's words kept unread name it)
+	# stays: up to 2026-11-07 any but the page's own two went (blreview).
+	var named: Array[String] = BookletSheet.pictures_named(sheet.said())
+	for name: String in [was.picture, was.cover_picture]:
+		if not name.is_empty() and not name in named:
+			pictures.erase(name)
 	for name: String in pictures.keys():
-		if name.begins_with(BookletSheet.PICTURE_NAME) and name != sheet.picture:
+		if (name.begins_with(BookletSheet.PICTURE_NAME) or name.begins_with(BookletSheet.COVER_NAME)) \
+				and not name in named:
 			pictures.erase(name)
 	var also := PackedStringArray()
+	# Words longer than a line holds, said: cut in silence, a footer lost its
+	# end unseen (blreview, 2026-11-07).
+	for field: String in BookletSheet.TEXTS:
+		if given.has(field) and BookletSheet.cut(given[field]):
+			also.append("the %s cut to %d letters" % [field.replace("_", " "), BookletSheet.TEXT_MOST])
 	if fields.has("remove_style"):
 		var failed: String = BookletSheet.remove_style(gone)
 		if not failed.is_empty():
@@ -3306,7 +3352,8 @@ func page_setup(fields: Dictionary) -> String:
 	if fields.has("save_as"):
 		var keeping: String = str(fields["save_as"]).strip_edges()
 		var replaced: bool = BookletSheet.styles().has(keeping)
-		var failed: String = BookletSheet.save_style(keeping, sheet, str(pictures.get(sheet.picture, "")))
+		var failed: String = BookletSheet.save_style(keeping, sheet, str(pictures.get(sheet.picture, "")),
+			str(pictures.get(sheet.cover_picture, "")))
 		also.append(failed if not failed.is_empty() else "kept as the page style \"%s\"%s"
 			% [keeping, " in place of the one kept by that name" if replaced else ""])
 	var tail: String = ("; " + "; ".join(also)) if not also.is_empty() else ""
@@ -3316,6 +3363,8 @@ func page_setup(fields: Dictionary) -> String:
 		BookletSheet.of(world).words()]
 	builder.record(undo, said)
 	store.touch()
+	if tail.contains(" cut to "):
+		bar.say(said + tail)
 	return said + tail
 
 
@@ -3559,6 +3608,11 @@ func _make_compare() -> void:
 	_compare.assemblies = assemblies
 	_compare.stress = stress
 	_compare.say = bar.say
+	# comparesets: its parts sheet's sets, pictures and shops.
+	_compare.inventories = collection_store.inventories if collection_store != null else null
+	_compare.thumbnails = app.get("_thumbnails") if app != null else null
+	_compare.write_list = func(shop: String, stock: Inventory, named: String) -> String:
+		return await app.get("_exports").stock_list(shop, stock, named, true)
 	_compare.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	_compare.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	_compare.offset_right = -14.0

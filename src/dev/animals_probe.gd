@@ -34,6 +34,11 @@
 ## the sword's bar in the saddle's clip, or would not take a barding as far
 ## into its rider's leg as it was into its horse.
 ##
+## realjoints3 (pre261 4aeb3a033) seated 22 of 27, each of the five left an
+## LDU or two off: the seat called a saddle seated where it met the sword in
+## its clip or its rider's leg as their sets put them. Only a stud says a
+## part is seated now, 27 of 27 (realjoints4, 2026-11-08).
+##
 ## And the seat moves no part a bar holds where its set has it: 10267-1's
 ## candle (37762), its bar down a flower plate's hollow stud and its hole 3 LDU
 ## off that stud, as harvest_probe writes it. The seat that took the move

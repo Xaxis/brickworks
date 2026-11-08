@@ -156,6 +156,27 @@ geometry in front of them.
   the plate first. `search_rank_probe`'s BUILDER list holds 26 such words,
   every one with a right part in the first three of the bin and
   search_parts (100% both), and four sizes alone with the brick first.
+  And a part named as asked is the kind asked for (words6, APP_UX6 14):
+  where some plain part's name is the words typed whole, in any order
+  (`PartSearch._names_a_part`, `_signature`: "plate 1 x 1" and "1x1 plate"
+  name 3024), of the parts whose name's head (`_head_of`, before "with",
+  "without", brackets or a comma) says nothing more than was asked, the one
+  sets use most comes first (`_meant`, a key bit under the tier) and the rest
+  keep their order: 3024, then 6141, Plate 1 x 1 Round, in more sets (lifting
+  the whole kind put 6141 22nd, after the petals and clips); "technic pin"
+  still 2780, Technic Pin with Friction and Slots, before 3673, Technic Pin.
+  Words that name no part whole rank as they did. A tile's
+  tooltip, its screen reader's words and its list row say the studs on top
+  (`PartsBin.top_studs`, `side_words`, `size_words`): where its name says it
+  has studs on its sides its box counted them in, so its name's size is read
+  and the sides said: 87087 "1 x 1, a stud on one side, 1 brick", 4733 "1 x
+  1, studs on four sides", 30414 "4 x 1, studs on one side" (were 1 x 2, 2 x
+  2, 4 x 2); and the height is its body's, less the stud on top: every brick
+  read "4 plates" and every plate "2 plates" (`_height_text`).
+  `words6_probe` (1400 x 900, PROBE_SIZE=1280x720 too): both words in the
+  bin and search_parts, the walk's 30 words each with pre261's first part
+  first in both, the tooltips of 87087, 4733, 30414, 3001 and 3024 and
+  87087's list row, and F1's sheet for "cut away" (see `keys sheet`).
 - `parts bin`: the panel that shows the results, with a category filter and the
   current colour applied to the thumbnails. It searches through `PartSearch`
   (every word, ranked as search_parts ranks; in German, French or Spanish its
@@ -355,8 +376,13 @@ geometry in front of them.
 - `mesh fetch`: a part whose mesh is not in the shipped pack is fetched from the
   storage bucket at run time. Several callers can ask for the same part at once,
   and every one of them has to hear that it arrived. Geometry and exact shapes
-  (and so the bin's previews) go through one fetch, `PartLibrary._ask`: a fault
-  that may pass (no answer, 408, 429, 5xx: `may_pass`) is asked again after
+  (and so the bin's previews) go through one fetch, `PartLibrary._ask`; in a
+  browser an exact shape is fetched by the page itself (`_ask_page`, handed
+  over as its bytes come, where an HTTPRequest took a frame for each of its
+  states: 7 frames, 1 to 4 s, playweb), and one asked for before the
+  deployment has said where the parts live waits for it as geometry does
+  (`_release_waiting`, `_next_exact`). A fault
+  that may pass (no answer, 408, 429, 5xx: `may_pass`, `_answered`) is asked again after
   `RETRY_AFTER` (2, 6, 12 s), a 404 or the bucket's 400 is final, and a part
   the web catalogue marks `"exact": false` has its shape kept as none unasked
   (`fetch_retry_probe`'s 3023); a part asked
@@ -454,8 +480,42 @@ geometry in front of them.
   model with G) goes to the front of Recent, 24 kept; right-click any part to
   keep it in Favourites, marked with a star. Kept in `user://part_shelf.cfg`,
   never under a probe (`PartShelf.keeps`), which points it at a file of its own.
+- `palettes` (`PartShelf` palettes, the bin's *Palettes*; APP_UX6 palettes):
+  Studio's custom palettes. *Palettes* sits after Favourites, its count on it;
+  chosen it lists the person's palettes (a row each: a picture of its first
+  entry, its name, "12 parts, 1 sub-assembly") under a line with *New
+  palette*. New palette makes "Palette" (in the reader's language) and opens
+  it with its name chosen in the line's field, so typing names it (Return or
+  leaving the field renames). An open palette's line: ‹ back to the list, the
+  name, *Add* (the part in hand in its colour; the selected parts each in its
+  colour; the selection as one sub-assembly, its name asked, the selection's
+  own assembly name first) and *More* (take the one chosen out, a
+  sub-assembly asked first; rename a sub-assembly; delete the palette,
+  asked). Its parts are tiles keyed part/colour as a set's are: a click takes
+  the part in hand in its own colour, a drag puts it on the model, a
+  double-click replaces, a right-click keeps it in Favourites (Favourites is
+  as it was). A sub-assembly's tile (`_assembly_cell`, the sub-model mark in
+  its corner, drawn whole by `PartThumbnails.offer_group`) holds it whole once
+  its shapes are here (`construction_chosen`, as a technique), and put down
+  it is one assembly of its own name, a number after it where the model has
+  that name at any depth (`_unused_assembly`), never another copy of one.
+  Opening Palettes starts from no words, as Fits and Like this do. Kept in
+  `user://palettes.cfg` (`PartShelf.palettes_file`), apart from the shelf so
+  choosing a part never rewrites them; written beside and renamed into place
+  on a computer. Two windows or tabs never lose a change: every palette and
+  entry has an id, what is taken out is remembered by id (`gone`), every
+  change reads the file again and merges (`_load_palettes(true)`,
+  `_merged`), and a window that finds its own additions missing (the web's
+  late copy of another tab's older write) writes them back; the bin looks at
+  the file once a second while Palettes shows (`_watch_palettes`). A tab
+  left open on an older build after an update keeps what a later build
+  wrote: words it put on a palette or an entry, and entries of kinds it does
+  not know (`_later`, never shown, written back whole). A file that cannot be
+  read is kept beside it (`palettes.cfg.unreadable`) before a change writes
+  over it. No MCP tool: a session copies parts with edit_model.
+  `palettes_probe` (1280 x 720, PROBE_SIZE=1400x900 too).
 - `techniques in the bin` (`src/ai/techniques.gd`, the bin's Techniques):
-  *Techniques* sits beside Recent and Favourites, the assistant's worked
+  *Techniques* sits after Recent, Favourites and Palettes, the assistant's worked
   constructions (`Techniques.all()`, 91 on 2026-10-24) under their
   `Techniques.GROUPS`, one a row with its picture (`PartThumbnails.offer_group`,
   drawn once a colour and cached as a part's is) and its one-line reason
@@ -588,6 +648,7 @@ godot --headless --path . --script src/dev/search_probe.gd          # what it re
 godot --headless --path . --script src/dev/search_probe.gd -- --catalogue=PATH  # a corrected catalogue, before it is swapped in
 godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd  # Recent, Favourites, 3023
 godot --path . --resolution 1280x860 --script src/dev/bin_techniques_probe.gd  # Techniques: window in a wall onto a wall, three more; shots/bin_techniques/
+tools/probe.sh palettes_probe                  # Palettes: Castle made by New palette and Add, 12 parts in their colours and Gatepost whole; in the file and in the app started again; another model opens it in 2 presses, a part in hand in its colour, Gatepost put down whole as one assembly, one undo; Favourites unchanged; two windows' changes merged; a later build's entries and words kept, a damaged file kept beside it; Techniques/Palettes never list a search's tiles; shots/palettes/ (PROBE_SIZE=1400x900 too)
 godot --headless --path . --script src/dev/technique_search_probe.gd  # 18 queries, each's construction in the first three rows; titles as words
 godot --headless --path . --script src/dev/photo_search_stub_probe.gd  # the camera with Brickognize stubbed on 9061: told first, nothing sent, every failure in words
 godot --path . --resolution 1280x860 --script src/dev/photo_search_probe.gd -- --keep  # Brickognize live: 5 parts drawn by ModelShot, at least 4 right in the first three
@@ -604,6 +665,7 @@ tools/probe.sh likethis_probe                 # Like this: ten parts each with i
 tools/probe.sh likethis_phone_probe           # the same with taps on a phone, the chip a fingertip
 tools/probe.sh likethis_tablet_probe          # and on a tablet
 tools/probe.sh likewords_probe                # Like this and Fits after a search start from no words, its list as on an empty one; "curved" narrows it, said; All gets its words back; shots/likewords/ (PROBE_SIZE=1400x900 too)
+tools/probe.sh words6_probe                   # "plate 1 x 1" and "1x1 plate" list 3024 first and 6141 next in the bin and search_parts; the walk's 30 words keep their first part in both; 87087, 4733, 30414 tooltips say the studs on top and on the sides; "cut away" on F1's sheet keeps the box, sphere and cylinder; shots/words6/ (PROBE_SIZE=1280x720 too)
 tools/probe.sh bin2_probe                     # only parts made in Sand Green; Prints off; List rows; a double-click replaces three bricks, and puts two pins in a beam from Fits; "1x4 brick" bricks first; 8841-1's Balance booklet, each step's parts first; the toggles kept over a restart; shots/bin2/
 PROBE_SIZE=1400x900 tools/probe.sh bin2_probe
 # the tiles on the web, on a slow network: drawn as the bin opens, and from the first frame of a search typed (local only)

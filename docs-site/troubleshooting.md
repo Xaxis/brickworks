@@ -47,7 +47,7 @@ On a slow computer the app draws a lighter look while you move and the full look
 
 ## What do I need to run it? {#requirements}
 
-A recent browser on a computer, a tablet or a phone, with WebGL 2 and WebAssembly threads. Or the [desktop app](/download) for Linux, macOS and Windows.
+A recent browser on a computer, a tablet or a phone, with WebGL 2 and WebAssembly threads: open [brickworks.diy/app](/app). A [desktop app](/download) for Linux, macOS and Windows is coming soon.
 
 ## Is Brickworks made by the LEGO Group? {#lego}
 

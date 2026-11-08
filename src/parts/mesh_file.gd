@@ -116,8 +116,8 @@ static func read(bytes: PackedByteArray, file_name: String,
 			# By name, since a build without the engine's FBX reader would not
 			# load this script at all if it were named outright.
 			if not ClassDB.class_exists("FBXDocument"):
-				out.error = ("%s is an FBX, which this build cannot read: open it in the "
-					+ "desktop app, or save it as glTF or OBJ") % file_name.get_file()
+				out.error = ("%s is an FBX, which this build cannot read: save it as glTF "
+					+ "or OBJ") % file_name.get_file()
 				return out
 			_scene(ClassDB.instantiate("FBXDocument"), ClassDB.instantiate("FBXState"), bytes,
 				file_name, extras, out)

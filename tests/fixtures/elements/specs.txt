@@ -49,3 +49,15 @@ family=brick across=3 deep=2 plates=6 sides=lr studs=no
 family=bracket across=3 deep=2 plates=1 rise=3 way=up studs=yes
 family=curved across=3 deep=4 plates=4 run=2 studs=yes
 family=technic across=7 deep=1 plates=3 studs=yes
+# Round six's families (APP_UX6 #15), each the size of the part it copies:
+# 60897, 61252 (clip plates), 87994 (a bar), 41770a, 41769a (wedge plates):
+family=clip across=1 deep=1 plates=1 way=vertical studs=yes
+family=clip across=1 deep=1 plates=1 way=horizontal studs=yes
+family=bar across=3
+family=wedge across=2 deep=4 plates=1 way=left studs=yes
+family=wedge across=2 deep=4 plates=1 way=right studs=yes
+# And sizes nothing in the library has:
+family=clip across=3 deep=2 plates=1 way=vertical studs=no
+family=clip across=1 deep=3 plates=1 way=horizontal studs=yes
+family=bar across=7
+family=wedge across=4 deep=10 plates=1 way=right studs=yes

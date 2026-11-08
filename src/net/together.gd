@@ -777,6 +777,10 @@ static func _as_state(given: Variant) -> Variant:
 	var numbers: Array = []
 	for value: Variant in s[2]:
 		numbers.append(float(value))
+	# A part at no size is no part (LdrModel.has_size): an older build that
+	# opened 42125-1 had five, and sent them on.
+	if not LdrModel.has_size(transform_of(numbers).basis):
+		return null
 	return [s[0], int(s[1]), numbers, s[3], s[4], int(s[5])]
 
 
