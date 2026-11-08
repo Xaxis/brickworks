@@ -652,10 +652,12 @@ whole model along the ground, its wheels turning as they roll.
   came; a link draws it only. A path played backwards is laid from where
   the model stands, as its end. Each wheel's turn is worked out by how far
   along the path it is (a table at every 2 LDU), not frame by frame, so
-  backwards brings every wheel back to the degree. The panel frames the
-  view on where it begins and ends before it plays, and a drive kept lays
-  the floor under both (Main, `MotionPlayer.driven`), so neither the drive
-  nor its undo leaves it hanging off the edge.
+  backwards brings every wheel back to the degree. All the path takes the
+  model over (`MotionPlayer.drive_box`, its parts at a dozen frames and its
+  last) is where the floor is laid, by the panel's Play (Main,
+  `MotionPlayer.driven`) and a link's alike, so neither the drive nor its
+  undo leaves it hanging off the edge; and the view is framed on it, in the
+  panel and on a link's page, where any of it would be out of sight.
 - **Suggested** as "Drive and turn left" when the model has a wheel or a
   tyre on a level axle on the ground: a 32-stud straight and a quarter turn
   left, at 10 studs a second.

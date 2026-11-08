@@ -32,7 +32,8 @@
 ##  7. Rendered: render_motion's WebP and its frames, the racer in another
 ##     place in the last frame than in the first.
 ##  8. A link that opens it playing (?motion=drive-and-turn-left): the viewer draws the
-##     racer driving off and its tyres turning.
+##     racer driving off and its tyres turning, all of it in the window and
+##     on its floor all the way.
 ##
 ## It loads on a build from before (what is new is asked for by name), so
 ## that build fails its checks rather than failing to load. Pictures in
@@ -692,6 +693,10 @@ func _link() -> void:
 	var turned: Dictionary = {}
 	var chassis: int = 0
 	var shot: bool = false
+	# Frames drawn with all of it in sight, or not; and off its floor.
+	var in_sight: int = 0
+	var out_of_sight: int = 0
+	var off_floor: int = 0
 	var since: int = Time.get_ticks_msec()
 	while Time.get_ticks_msec() - since < 120000:
 		await process_frame
@@ -712,6 +717,14 @@ func _link() -> void:
 			continue
 		far = maxf(far, _drawn_far(built))
 		var drawn: Dictionary = world.drawn_ids()
+		if not drawn.is_empty():
+			var whole: Array = _whole_in_sight(drawn)
+			if bool(whole[0]):
+				in_sight += 1
+			else:
+				out_of_sight += 1
+			if not bool(whole[1]):
+				off_floor += 1
 		if chassis == 0 and far > 5.0 * STUD:
 			var frame: Dictionary = built.duplicate()
 			frame.merge(drawn, true)
@@ -737,6 +750,10 @@ func _link() -> void:
 	_check("...and drives: drawn up to %.1f studs from where it was built, every one of its %d tyres turned against the chassis, %.0f° the least (12 s)"
 		% [far / STUD, turned.size(), least if not turned.is_empty() else 0.0],
 		far > 30.0 * STUD and not turned.is_empty() and least > 90.0)
+	_check("...all of it in the window all the way: in sight in %d frames drawn, out of it in %d" % [in_sight, out_of_sight],
+		in_sight > 10 and out_of_sight == 0)
+	_check("...and on its floor all the way: off it in %d frames drawn" % off_floor,
+		in_sight > 10 and off_floor == 0)
 	var builder: Builder = _main.get("_builder") if _main != null else null
 	_check("...drawn only: the store wrote nothing, no step kept", builder != null and builder.history_depth() == 0
 		and _off(built, 0.0)[0] == 0)
@@ -763,6 +780,26 @@ func _open(path: String) -> bool:
 	_builder.forget_history()
 	await _frames(20)
 	return _world.brick_count() > 0
+
+
+## Whether all of the model as [param drawn] puts it (the box round its
+## parts' middles) is in the window's sight, and on its floor: [in, on].
+func _whole_in_sight(drawn: Dictionary) -> Array:
+	var box := AABB()
+	var first: bool = true
+	for key: Variant in drawn:
+		var at: Vector3 = (drawn[key] as Transform3D).origin
+		box = AABB(at, Vector3.ZERO) if first else box.expand(at)
+		first = false
+	var eye: Camera3D = _main.get("_camera")
+	var inside: bool = eye != null
+	for n: int in 8:
+		var corner: Vector3 = box.get_endpoint(n)
+		if inside and (eye.is_position_behind(corner)
+				or not root.get_visible_rect().has_point(eye.unproject_position(corner))):
+			inside = false
+	var floor: Variant = _main.get("_floor")
+	return [inside, floor != null and bool(floor.call("covers", box))]
 
 
 ## Whether the model's floor, as the window lays it, covers the model.

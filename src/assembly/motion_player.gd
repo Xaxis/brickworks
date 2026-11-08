@@ -481,8 +481,8 @@ class Drive extends RefCounted:
 		return legs.size() - 1
 
 
-## Called with the model's bounds as it stood once a path has moved it,
-## kept: the window lays its floor under both (Main).
+## Called once a path has moved the model, kept, with all it went over
+## ([method drive_box]): the window lays its floor under it (Main).
 var driven: Callable = Callable()
 
 
@@ -633,11 +633,10 @@ func finish(played: Played, keep: bool = false, words: String = "") -> void:
 		var grabs: Array = played.order.map(func(item: Item) -> Grab: return item.grab)
 		played.kept = grabbing.keep_held(grabs, said_as) if not grabs.is_empty() else 0
 		if played.drive != null:
-			var before: AABB = _model_box()
 			played.kept += _keep_driven(played, said_as)
 			builder.fold_since(depth, said_as)
 			if driven.is_valid():
-				driven.call(before)
+				driven.call(drive_box(played))
 		for item: Item in played.items:
 			if item.driver and not reverse:
 				_driven[played.name.to_lower()] = item.to - item.from
@@ -1230,6 +1229,43 @@ static func _middle_of(items: Array) -> Vector3:
 ## Whether the steering turns [param wheel] (it carries its lead part).
 static func _steered(wheel: Item, steer: Item) -> bool:
 	return steer != null and steer.grab != null and steer.grab.moving.has(wheel.lead)
+
+
+## Whether every corner of [param box] is in [param camera]'s sight.
+static func box_in_view(camera: Camera3D, box: AABB) -> bool:
+	for n: int in 8:
+		if not camera.is_position_in_frustum(box.get_endpoint(n)):
+			return false
+	return true
+
+
+## All [param played]'s path takes the model over, from where it stands
+## to where it ends, its corners too: its parts' bounds at a dozen of its
+## frames and its last. An empty box where it has no path. What a view is
+## framed on, and a floor laid under, so the model never drives out of
+## either.
+func drive_box(played: Played) -> AABB:
+	var box := AABB()
+	if played == null or played.drive == null or played.frames.is_empty():
+		return box
+	var first: bool = true
+	var count: int = played.frames.size()
+	var stride: int = maxi(1, count / 12)
+	var at: int = 0
+	while true:
+		var frame: Dictionary = played.frames[at]
+		for key: Variant in frame:
+			var brick: BrickWorld.Brick = world.get_brick(int(key))
+			var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if brick != null else null
+			if info == null:
+				continue
+			var one: AABB = (frame[key] as Transform3D) * info.bounds
+			box = one if first else box.merge(one)
+			first = false
+		if at == count - 1:
+			break
+		at = mini(at + stride, count - 1)
+	return box
 
 
 func _model_box() -> AABB:

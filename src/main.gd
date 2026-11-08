@@ -4606,6 +4606,8 @@ func _pace_motion() -> void:
 			_view_frame("moving")
 		_share_view.show_looping(motion.name)
 		_share_view.play_said("")
+	# unit drive: a path's whole way in sight and on the floor.
+	_show_drive(run)
 	# The model stands where it ends already: its first frame drawn at once.
 	_world.set_drawn(_motion_frames[0])
 
@@ -6583,13 +6585,38 @@ func _make_motions() -> void:
 	motions.store = _store
 	motions.grabbing = _grab_drag
 	# unit drive: a path kept where it ends keeps the model on its floor,
-	# laid under where it stood and where it stands now, so neither the
-	# drive nor its undo leaves it hanging off the edge.
-	motions.driven = func(before: AABB) -> void:
-		var both: AABB = before.merge(_model_bounds())
-		if _floor != null and not _floor.covers(both):
-			_floor.lay(both)
+	# laid under all it went over, so neither the drive nor its undo
+	# leaves it hanging off the edge.
+	motions.driven = _floor_under
 	# end unit drive
+
+
+# unit drive
+## The floor laid under [param box] where it does not cover it already.
+func _floor_under(box: AABB) -> void:
+	if _floor != null and box.has_volume() and not _floor.covers(box):
+		_floor.lay(box)
+
+
+## A motion that drives the model along a path, about to be drawn on the
+## viewer: its floor laid under all the path goes over, and the view framed
+## on it where any of it is out of sight, so the model is seen driving all
+## the way rather than off the page.
+func _show_drive(run: RefCounted) -> void:
+	var box := AABB()
+	for played: RefCounted in run.played:
+		var one: AABB = _motions.drive_box(played)
+		if one.has_volume():
+			box = one if not box.has_volume() else box.merge(one)
+	if not box.has_volume():
+		return
+	_floor_under(box)
+	# Not MotionPlayer.box_in_view: main names no class it loads later.
+	for n: int in 8:
+		if not _camera.is_position_in_frustum(box.get_endpoint(n)):
+			_camera.frame(box)
+			return
+# end unit drive
 
 
 ## Tools, Colour the hidden parts…: the inside, cut open and coloured, in

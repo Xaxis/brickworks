@@ -446,25 +446,14 @@ func play(name: String, reverse: bool = false) -> void:
 	_begin_playing(played.frames, button)
 
 
-## The view framed on where a path takes the model, where it begins and
-## where it ends, so it is seen driving all the way rather than out of the
-## window (unit drive).
+## The view framed on all a path takes the model over, so it is seen
+## driving all the way rather than out of the window; left as it is when
+## all of it is in sight already (unit drive).
 func _frame_drive(played: MotionPlayer.Played) -> void:
-	if eye == null or not eye.has_method("frame") or played.frames.is_empty():
+	var box: AABB = player.drive_box(played)
+	if eye == null or not eye.has_method("frame") or not box.has_volume() or MotionPlayer.box_in_view(eye, box):
 		return
-	var box := AABB()
-	var first: bool = true
-	for frame: Dictionary in [played.frames[0], played.frames.back()]:
-		for key: Variant in frame:
-			var brick: BrickWorld.Brick = world.get_brick(int(key))
-			var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if brick != null else null
-			if info == null:
-				continue
-			var one: AABB = (frame[key] as Transform3D) * info.bounds
-			box = one if first else box.merge(one)
-			first = false
-	if not first:
-		eye.call("frame", box)
+	eye.call("frame", box)
 
 
 ## The sequence [param motion] played, each of its motions from where the
