@@ -183,7 +183,11 @@ class Step extends RefCounted:
 	func shortened_name(most: int) -> String:
 		if most <= 0 or name.length() <= most:
 			return name
-		return name.left(most - 1).strip_edges() + "…"
+		# Cut between words where it can, never after a comma: "sides,…".
+		var cut: String = name.left(most - 1)
+		if cut.rfind(" ") > most / 2:
+			cut = cut.left(cut.rfind(" "))
+		return cut.strip_edges().rstrip(",;:·-–—") + "…"
 
 
 ## Where a brick sits and what it rests on.

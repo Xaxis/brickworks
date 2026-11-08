@@ -1,8 +1,8 @@
-0 FILE model.ldr
 0 Model
 0 Name: model.ldr
 0 Author: Brickworks
 0 !BRICKWORKS AUTHORED_STEPS
+0 !BRICKWORKS FLOOR BASEPLATE 32 32 288
 
 1 4 0 0 0 1 0 0 0 1 0 0 0 1 3020.dat
 0 STEP
@@ -17,4 +17,3 @@
 0 STEP
 1 1 0 -56 0 1 0 0 0 1 0 0 0 1 3004.dat
 0
-0 NOFILE

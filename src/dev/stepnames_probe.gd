@@ -278,6 +278,9 @@ func _editor() -> void:
 	var brick: int = _id_of("3001")
 	_builder.clear_selection()
 	_builder.select_brick(brick, false)
+	# The keys given back to the model, as a click in it gives them: the
+	# Delete key is a field's while one has them.
+	root.gui_release_focus()
 	await _frames(4)
 	await _key(KEY_DELETE)
 	await _settled()
@@ -306,14 +309,16 @@ func _editor() -> void:
 	_check("...nothing of the timeline past the window (%s)" % (", ".join(past) if not past.is_empty()
 		else "nothing past it"), past.is_empty())
 	await _shot("8_long_name")
+	await _booklet(LONG, "8_booklet_long")
 	_main.queue_free()
 	await _frames(4)
 	_main = null
 
 
 ## The booklet made from the model open (sn_named.ldr): step 3's page, its
-## number and the name beside it, read back as the PDF and the PNG read it.
-func _booklet() -> void:
+## number and the name [param words] beside it, on lines of their own where
+## it is long, read back as the PDF and the PNG read it.
+func _booklet(words: String = COCKPIT, picture: String = "5_booklet") -> void:
 	var maker := BookletMaker.new()
 	maker.library = _library
 	maker.only = {3: true}
@@ -329,29 +334,35 @@ func _booklet() -> void:
 				printed = page
 	if not _check("the booklet has step 3's page", printed != null):
 		return
-	var html: String = ProjectSettings.globalize_path(_out + "booklet_step3.html")
+	var html: String = ProjectSettings.globalize_path(_out + picture + ".html")
 	var writing: FileAccess = FileAccess.open(html, FileAccess.WRITE)
 	writing.store_string("\n".join([Booklet.head(document), Booklet.page_html(printed, document),
 		Booklet.TAIL]))
 	writing.close()
 	var written: String = FileAccess.get_file_as_string(html)
-	_check("its HTML says \"%s\" (%s)" % [COCKPIT, "there" if written.contains(COCKPIT) else "not there"],
-		written.contains(COCKPIT))
+	var first_words: String = words.left(12)
+	_check("its HTML says \"%s\" (%s)" % [words, "there" if written.contains(first_words) else "not there"],
+		written.contains(first_words))
 	var read := BookletRead.new()
 	var pages: Array = []
 	await read.read_all(html, func(one: BookletRead.Page) -> void: pages.append(one))
 	var number: Dictionary = {}
-	var name: Dictionary = {}
+	var lines: Array[Dictionary] = []
 	for op: Dictionary in (pages[0] as BookletRead.Page).ops if not pages.is_empty() else []:
 		if op["k"] != "text":
 			continue
 		if str(op["text"]) == "3" and bool(op.get("bold", false)) \
 				and float(op["size"]) > float(number.get("size", 0.0)):
 			number = op
-		if str(op["text"]) == COCKPIT:
-			name = op
-	if not _check("read back: the number 3 (%s) and the name (%s)" % [_op_said(number), _op_said(name)],
-			not number.is_empty() and not name.is_empty()):
+		if not str(op["text"]).is_empty() and words.contains(str(op["text"]).strip_edges()) \
+				and str(op["text"]).length() > 3:
+			lines.append(op)
+	var name: Dictionary = lines[0] if not lines.is_empty() else {}
+	var joined: String = " ".join(lines.map(func(op: Dictionary) -> String:
+		return str(op["text"]).strip_edges()))
+	if not _check("read back: the number 3 (%s) and the name on %d line%s (%s)" % [_op_said(number),
+			lines.size(), "" if lines.size() == 1 else "s", " | ".join(lines.map(_op_said))],
+			not number.is_empty() and joined == words):
 		return
 	var number_at: Vector2 = number["at"]
 	var name_at: Vector2 = name["at"]
@@ -361,10 +372,21 @@ func _booklet() -> void:
 	var top: float = number_at.y - float(number["size"]) * 0.75
 	var beside: bool = gap >= 0.5 and gap <= 6.0 and name_at.y <= number_at.y + 0.5 \
 		and name_at.y - float(name["size"]) * 0.75 >= top - 0.5
-	_check("...beside the number, after it on its line: %.1f mm after it, its words' baseline %.1f mm to the number's %.1f"
-		% [gap, name_at.y, number_at.y], beside)
+	if lines.size() == 1:
+		_check("...beside the number, after it on its line: %.1f mm after it, its words' baseline %.1f mm to the number's %.1f"
+			% [gap, name_at.y, number_at.y], beside)
+	else:
+		var widest: float = 0.0
+		var lined: bool = true
+		for op: Dictionary in lines:
+			lined = lined and absf((op["at"] as Vector2).x - name_at.x) < 0.1
+			widest = maxf(widest, Helvetica.text_width(str(op["text"]), float(op["size"]), true,
+				float(op.get("spacing", 0.0))))
+		_check("...beside the number, %.1f mm after it, on %d lines from one edge, the widest %.1f mm (64 at most)"
+			% [gap, lines.size(), widest], gap >= 0.5 and gap <= 6.0 and lined
+			and lines.size() <= 3 and widest <= 64.5)
 	# The PNG, at 300 dots an inch: ink where the words are.
-	var zip: String = ProjectSettings.globalize_path(_out + "booklet_step3.zip")
+	var zip: String = ProjectSettings.globalize_path(_out + picture + ".zip")
 	var drawer := BookletPng.new()
 	root.add_child(drawer)
 	await drawer.write(html, zip, "stepnames")
@@ -379,20 +401,21 @@ func _booklet() -> void:
 		reader.close()
 	if not _check("the page's PNG (%dx%d)" % [image.get_width(), image.get_height()], not image.is_empty()):
 		return
-	image.save_png(ProjectSettings.globalize_path(_out + "5_booklet_page.png"))
-	var width: float = Helvetica.text_width(COCKPIT, float(name["size"]), true,
+	image.save_png(ProjectSettings.globalize_path(_out + picture + "_page.png"))
+	var width: float = Helvetica.text_width(str(name["text"]), float(name["size"]), true,
 		float(name.get("spacing", 0.0)))
-	var words := Rect2(name_at.x, name_at.y - float(name["size"]) * 0.75, width, float(name["size"]) * 0.75)
-	var inked: float = _ink(image, Rect2(words.position * px, words.size * px))
+	var box := Rect2(name_at.x, name_at.y - float(name["size"]) * 0.75, width, float(name["size"]) * 0.75)
+	var inked: float = _ink(image, Rect2(box.position * px, box.size * px))
 	_check("...in the 300 dpi PNG, ink where the name is (%.0f%% of its box dark)" % (inked * 100.0),
 		inked > 0.08)
 	# The number and its name, cut out, to look at.
+	var below: float = (lines[-1]["at"] as Vector2).y if not lines.is_empty() else number_at.y
 	var head := Rect2(Vector2(number_at.x - 4.0, top - 4.0),
-		Vector2(name_at.x + width - number_at.x + 8.0, float(number["size"]) + 8.0))
+		Vector2(name_at.x + 66.0 - number_at.x, maxf(float(number["size"]), below - top) + 8.0))
 	var cut: Rect2i = Rect2i(Rect2(head.position * px, head.size * px)).intersection(
 		Rect2i(Vector2i.ZERO, image.get_size()))
-	image.get_region(cut).save_png(ProjectSettings.globalize_path(_out + "5_booklet_number.png"))
-	print("    pictures: %s5_booklet_page.png, 5_booklet_number.png" % _out.trim_prefix("res://"))
+	image.get_region(cut).save_png(ProjectSettings.globalize_path(_out + picture + "_number.png"))
+	print("    pictures: %s%s_page.png, %s_number.png" % [_out.trim_prefix("res://"), picture, picture])
 
 
 func _ink(image: Image, rect: Rect2) -> float:
