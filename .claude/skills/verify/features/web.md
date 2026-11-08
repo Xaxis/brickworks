@@ -32,6 +32,18 @@ plan with Claude as the client.
   a catalogue of 2,376 rebuilt meshes once went live before they were up, so
   every long Technic beam failed to load. Proves it: the deploy log's "part
   meshes in object storage" line ends "to upload : 0".
+  `tools/export.sh web` mends the engine before anything is compressed
+  (`tools/web/wasm_proxy_fix.py`, househang 2026-11-07). Godot 4.7.2's web
+  template is built with Emscripten 4.0.20, whose main thread finishes a
+  worker's call by unlocking it and only then signalling it; the worker could
+  return in between, and the main thread signalled stack bytes it had
+  reused and spun at 100% for good, every worker asleep (play_flow's house
+  link froze 2 runs in 8 on rel-m271). Both places get Emscripten 5.0.5's
+  order, signal then unlock; a template laid out any other way fails the
+  export ("export FAILED: build/web/index.wasm not mended"), so a new engine
+  is read before it ships. Proves it: the export log's
+  `wasm_proxy_fix: build/web/index.wasm: mended 2 places` line, and
+  `python3 tools/minitest.py tests/test_wasm_proxy_fix.py` (5 passed).
   `--unit` (unit_preview.sh's) sets `OC_SIGNING_SECRET`, `OC_CONNECT_KEY`
   (orangecheck Connect's, 2026-10-24), `RESEND_API_KEY` and
   `ANTHROPIC_API_KEY` to nothing for that deployment alone, since it runs
