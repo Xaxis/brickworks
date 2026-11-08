@@ -42,6 +42,13 @@ const SENTENCE := "the quick brown fox jumps over the lazy dog 0123456789 XOIVPG
 const KEYS: Array = [[KEY_F1, "the keys sheet"], [KEY_F9, "Render"],
 	[CTRL | SHIFT | KEY_B, "Page setup"], [ALT | KEY_X, "a box"], [CTRL | KEY_S, "saved"]]
 const CUT_AWAY_ROWS := 11
+## A key for this visit only, never written anywhere (OwnKey._this_visit),
+## so the brief's box is there as it is for somebody with a key. Set by
+## hand with ChatPanel._show_for_key(true), the account's connections
+## arriving a moment after the sign-in put the key's form back in its
+## place, and a click meant for the brief landed on the form (Mecabricks's
+## and LDCad's turns, 1400x900, 2026-11-08).
+const PROBE_KEY := "sk-ant-probe-typingkeys-0000000000000000000000000000000000"
 
 var _failures: int = 0
 var _main: Node
@@ -58,6 +65,7 @@ var _email: String = ""
 var _password: String = ""
 var _saves: int = 0
 var _snapshots: int = 0
+var _key_was: String = ""
 
 
 func _initialize() -> void:
@@ -66,6 +74,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	ShellPrefs.kept_by_a_check = _own_data_folder()
+	_key_was = OwnKey._this_visit
 	if DisplayServer.get_name() == "headless":
 		print("  no window — this probe needs one")
 		quit(1)
@@ -303,13 +312,14 @@ func _open_field(field_name: String) -> Control:
 				return null
 			return list.get("_find") as Control
 		"the assistant's brief":
+			OwnKey._this_visit = PROBE_KEY
 			_main.call("set_assistant", true)
 			(_main.get("_chat_dock") as SideDock).set_open(true, false)
 			await _frames(10)
 			var chat: Control = _main.get("_chat")
-			# The brief's box as it is for somebody with a key to design
-			# with (ChatPanel._show_for_key, there for a check).
-			chat.call("_show_for_key", true)
+			# The brief's box, as it is for somebody with a key to design
+			# with: the panel asked again now the key is there.
+			chat.call("_show_for_key", OwnKey.has_key())
 			await _frames(10)
 			return chat.get("_input") as Control
 	return null
@@ -564,6 +574,7 @@ func _check(what: String, ok: bool) -> bool:
 
 
 func _finish() -> void:
+	OwnKey._this_visit = _key_was
 	if not _email.is_empty():
 		var gone: int = await SignInHelper.delete_accounts(_email, root)
 		print("    (removed %d throwaway account(s))" % gone)
