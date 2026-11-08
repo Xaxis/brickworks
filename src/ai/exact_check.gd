@@ -336,22 +336,23 @@ func drop_cleared(blockers: PackedInt64Array, index: int) -> PackedInt64Array:
 
 
 ## Whether items [param i] and [param j], both with exact shapes, may meet
-## where their covers overlap: clear of each other, or colliding only as the
-## check forgives a collision ([method forgiven]: a fit the sets build, a
-## joint's own parts, a wheel spun on its axle) and not down a stud past its
-## foot ([method _sunk_near]). Where both have a shape the shape decides, the
-## same way for the covers as for the collisions
-## (Assistant._exact_collisions): the covers had refused what the collisions
-## forgave, a 3960 dish on a 3941 round brick where 2150-1 and 4554-1 put it,
-## 3062b under a 3960 as 6770-1 has it, a figure's hair on its head
-## (realjoints3, 2026-11-07).
+## where their covers overlap: clear of each other, or meeting as the LEGO
+## Group's own sets meet those two parts, where they put the one against the
+## other ([method known_fit]), and not down a stud past its foot further than
+## the sets build it ([method _sunk_near]). The covers had refused what the
+## collisions forgave as a fit: a 3960 dish on a 3941 round brick where 2150-1
+## and 4554-1 put it, 3062b under a 3960 as 6770-1 has it, a figure's hair on
+## its head (realjoints3, 2026-11-07). Not a joint's own parts ([method
+## at_joint]): the covers judge those by the joint (Joints.rounds), more
+## tightly than the shapes' round, and a clip 2 LDU off its bar's line, its
+## jaws inside the bar's round, is pressed into the bar's side.
 func let_meet(i: int, j: int) -> bool:
 	var found: Variant = between(i, j)
 	if not found is Dictionary:
 		return false
 	if (found as Dictionary).is_empty():
 		return true
-	return forgiven(i, j) and not _sunk_near(i, PackedInt32Array([j]))
+	return known_fit(i, j) and not _sunk_near(i, PackedInt32Array([j]))
 
 
 ## [param blockers] without the ones that meet placement [param index] only
