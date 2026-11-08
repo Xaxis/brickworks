@@ -21,8 +21,11 @@ Four readers, each strict in its own way, and every error any of them has:
   a warning is an error.
 
 Then what lib3mf read, each object at its build item's place: its name, its
-colour (its base material's displaycolor), its triangles, which way each
-triangle faces, and the build's box. Three rays from a point just in front
+colour (its base material's displaycolor), its triangles, its edges by
+vertex index (how many are not shared by exactly two triangles, and how
+many are shared by two going the same way round: the core's manifold rules,
+4.1, beside lib3mf's own IsManifoldAndOriented), which way each triangle
+faces, and the build's box. Three rays from a point just in front
 of a triangle, each tilted from its normal a different way, count its
 shell's crossings by the core's positive fill rule (4.1.1: one out for a
 crossing from inside to out, one in for the other way); three more do the
@@ -265,11 +268,33 @@ def lib3mf_read(path: Path, errors: list[str]) -> dict:
                 "colour": colours.get((group, pid), "") if has else "",
                 "vertices": len(points), "triangles": len(corners), "painted": painted,
                 "manifold_and_oriented": bool(mesh.IsManifoldAndOriented()), **winding,
+                **edges(corners),
             })
     return {"version": ".".join(str(v) for v in version), "objects": objects,
             "unit": str(model.GetUnit()),
             "low": low.round(4).tolist(), "high": high.round(4).tolist(),
             "size": (high - low).round(4).tolist()}
+
+
+def edges(corners) -> dict:
+    """The core's manifold rules (4.1), counted by vertex index: edges not
+    shared by exactly two triangles, and edges whose two triangles go the
+    same way round along it."""
+    import numpy as np
+
+    if len(corners) == 0:
+        return {"edges": 0, "edges_not_two": 0, "edges_one_way": 0}
+    start = corners.reshape(-1)
+    end = corners[:, [1, 2, 0]].reshape(-1)
+    low = np.minimum(start, end)
+    high = np.maximum(start, end)
+    key = low.astype(np.int64) * (int(corners.max()) + 1) + high
+    way = np.where(start < end, 1, -1)
+    keys, inverse, uses = np.unique(key, return_inverse=True, return_counts=True)
+    net = np.zeros(len(keys), dtype=np.int64)
+    np.add.at(net, inverse, way)
+    return {"edges": int(len(keys)), "edges_not_two": int((uses != 2).sum()),
+            "edges_one_way": int(((uses == 2) & (net != 0)).sum())}
 
 
 def facing(points, corners) -> dict:
