@@ -304,6 +304,12 @@ func _editor() -> void:
 	_builder.clear_selection()
 	_builder.select_brick(brick, false)
 	var picked: int = _builder.selection.size()
+	# Counted as opened, its parts named: the check is the Delete's and the
+	# Undo's, one part each way, whatever else the open put in the model.
+	var opened: int = _world.brick_count()
+	var parts: PackedStringArray = []
+	for each: BrickWorld.Brick in _world.bricks():
+		parts.append(each.part_id)
 	# The keys given back to the model, as a click in it gives them: the
 	# Delete key is a field's while one has them.
 	root.gui_release_focus()
@@ -311,15 +317,17 @@ func _editor() -> void:
 	await _key(KEY_DELETE)
 	await _settled()
 	said = _builder.history_words(1)
-	_check("the 3001 picked (%d selected), deleted by the Delete key (%d parts left), Undo says \"%s\"" % [
-		picked, _world.brick_count(), said[0] if not said.is_empty() else ""],
-		_world.brick_count() == 3 and not said.is_empty() and said[0] == "removed 1 part")
+	_check("the 3001 picked (%d selected of %d parts: %s), deleted by the Delete key (%d left), Undo says \"%s\"" % [
+		picked, opened, ", ".join(parts), _world.brick_count(), said[0] if not said.is_empty() else ""],
+		picked == 1 and _world.brick_count() == opened - 1 and _id_of("3001") < 0
+		and not said.is_empty() and said[0] == "removed 1 part")
 	_shell.run("undo")
 	await _settled()
 	var looks: Dictionary = _world.step_looks.get("|1", {})
-	_check("...undone: 4 parts (%d) and step 2's zoom and words back (%s)" % [_world.brick_count(),
-		JSON.stringify(looks).left(120)], _world.brick_count() == 4
-		and is_equal_approx(float(looks.get("zoom", 0.0)), 1.5) and looks.has("notes"))
+	_check("...undone: %d parts again (%d), the 3001 back, and step 2's zoom and words back (%s)" % [
+		opened, _world.brick_count(), JSON.stringify(looks).left(120)], _world.brick_count() == opened
+		and _id_of("3001") >= 0 and is_equal_approx(float(looks.get("zoom", 0.0)), 1.5)
+		and looks.has("notes"))
 
 	print("\n8. a long name on the timeline")
 	_main.call("clear_model")
