@@ -1005,6 +1005,15 @@
 							"words": "Delete the step",
 							"key": "Alt+Delete",
 							"tip": "Take out the step the timeline is on; its parts join the step before"
+						},
+						{
+							"line": true
+						},
+						{
+							"name": "step_name",
+							"words": "Name the step…",
+							"key": "Shift+F2",
+							"tip": "What the step the timeline is on is called (\"Build the cockpit\"): said beside its number on the timeline, in Build it and in the booklet"
 						}
 					]
 				},
@@ -1787,6 +1796,7 @@
 		"step_merge": "alt-E",
 		"step_delete": "alt-Delete",
 		"step_to": "alt-T",
+		"step_name": "shift-F2",
 		"booklet_turn_left": "",
 		"booklet_turn_right": "",
 		"booklet_tilt_up": "",

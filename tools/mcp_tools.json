@@ -4167,7 +4167,7 @@
       "readOnlyHint": false,
       "title": "Edit the build steps"
     },
-    "description": "The model's build steps, the order the booklet and the timeline follow, as Edit, Build steps changes them. op \"list\" (the default) gives them with the part numbers in each; \"to\" puts bricks= in step=, however far, as the person drags them onto a step; \"next\" or \"prev\" moves bricks= a step later or earlier; \"new\" makes a new step of bricks=; \"earlier\", \"later\", \"merge\" (with the next) and \"delete\" act on step=, a number from the list. A model with no steps of its own is given the worked-out ones first, in the same undo step.",
+    "description": "The model's build steps, the order the booklet and the timeline follow, as Edit, Build steps changes them. op \"list\" (the default) gives them with the part numbers in each; \"to\" puts bricks= in step=, however far, as the person drags them onto a step; \"next\" or \"prev\" moves bricks= a step later or earlier; \"new\" makes a new step of bricks=; \"earlier\", \"later\", \"merge\" (with the next) and \"delete\" act on step=, a number from the list. A model with no steps of its own is given the worked-out ones first, in the same undo step. \"name\" gives step= a name= (\"Build the cockpit\"), said beside its number on the timeline, in Build it and in the booklet; name= \"\" takes it off.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -4182,6 +4182,10 @@
           "description": "list from this step; 1 when omitted",
           "type": "integer"
         },
+        "name": {
+          "description": "for name: what the step is called, up to 80 characters; \"\" takes it off",
+          "type": "string"
+        },
         "op": {
           "enum": [
             "list",
@@ -4192,12 +4196,13 @@
             "earlier",
             "later",
             "merge",
-            "delete"
+            "delete",
+            "name"
           ],
           "type": "string"
         },
         "step": {
-          "description": "a step's number, for to, earlier, later, merge and delete",
+          "description": "a step's number, for to, earlier, later, merge, delete and name",
           "type": "integer"
         }
       },

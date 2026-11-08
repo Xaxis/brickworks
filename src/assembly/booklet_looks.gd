@@ -85,8 +85,10 @@
 ## it and on its booklet page (Instructions.Step.name). It is the step's,
 ## and goes with its parts over a step edit, as its zoom does. In the file:
 ## "... STEP_NAME Build the cockpit" in the step, the words to the line's
-## end. A build from before it keeps the line where it is, as it keeps any
-## line it does not know (stepnames).
+## end. A build from before it opens the file whole; it keeps the line in
+## another author's file, which it writes back as it was, and drops it from
+## one of its own, which it writes whole from the model, as it drops every
+## app line it does not know (stepnames).
 ##
 ## A step's "section" is the booklet's chapter that starts on it: the name
 ## its banner prints ("island", "part 2"), in force on every step after it
