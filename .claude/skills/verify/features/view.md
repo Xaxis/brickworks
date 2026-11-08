@@ -2267,7 +2267,8 @@ picture the assistant is shown.
   sign-in screen first and a throwaway account signed in (needs .env), the car
   picked, Crop and a drag, A set's colours by the keys and 31197 typed,
   Classic, Build it, P and its Pick a Brick button, the dialog inside the
-  window at each; pictures in --out=DIR.
+  window at each; pictures in --shots=DIR (not --out, which the app reads
+  as an export).
 - `LEGO Art layout` (`src/assembly/mosaic_art.gd`): `analyse` reads a picture
   into a `Plan` — per stud a style, a relief and an accent flag — and `lay`
   turns any plan into parts, which is the entry point for the assistant
@@ -2820,7 +2821,7 @@ MESA_VK_WSI_DEBUG=sw xvfb-run -a --server-args="-screen 0 1400x900x24" \
 #   `-- --every-frame` runs it drawing every frame, as the app did
 godot --headless --path . --script src/dev/mosaic_probe.gd        # the picture still looks like the picture, classic and Art
 #   and as the person chose it (APP_UX6 #10): crop, colours, mixed plates, words
-tools/probe.sh mosaic_window_probe -- --out=DIR                     # the same in the app's window, signed in (.env); PROBE_SIZE=1400x900 too
+tools/probe.sh mosaic_window_probe -- --shots=DIR                   # the same in the app's window, signed in (.env); PROBE_SIZE=1400x900 too
 #   -- --ldr=shots/art/galaxy.ldr writes the galaxy, to render corner, front and close
 godot --headless --path . --script src/dev/art_plan_probe.gd      # an Art plan is laid as it says; a bad one is refused
 #   no network: a canned plan over a tilted galaxy (sky smooth and flat, disc

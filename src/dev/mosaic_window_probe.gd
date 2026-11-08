@@ -1,7 +1,7 @@
 ## A mosaic cropped and coloured the person's way, in the app's own window
 ## (APP_UX6 #10, mosaic2): what mosaic_probe checks stud for stud, seen.
 ##
-##   godot --path . --resolution 1280x720 --script src/dev/mosaic_window_probe.gd [-- --out=DIR]
+##   godot --path . --resolution 1280x720 --script src/dev/mosaic_window_probe.gd [-- --shots=DIR]
 ##
 ## Through the way in first, as a person comes: the sign-in screen up over
 ## the app (gate_for_probe), a throwaway account signed in (made with the
@@ -17,7 +17,7 @@
 ## writes adding up to every plate. At each, the dialog and every control a
 ## person needs inside the window, and a picture of the window. At 1280 x 720 the
 ## dialog is at its shortest (the window less its margins); PROBE_SIZE=
-## 1400x900 runs it at the size most of the probes have. --out=DIR keeps
+## 1400x900 runs it at the size most of the probes have. --shots=DIR keeps
 ## the pictures there (else user://mosaic_window).
 extends SceneTree
 
@@ -40,8 +40,8 @@ func _check(what: String, ok: bool) -> void:
 
 func _run() -> void:
 	for arg: String in OS.get_cmdline_user_args():
-		if arg.begins_with("--out="):
-			_out = arg.trim_prefix("--out=")
+		if arg.begins_with("--shots="):
+			_out = arg.trim_prefix("--shots=")
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(_out))
 	Account.where = "user://probe_session.json"
 	Account._clear()
