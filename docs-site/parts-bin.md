@@ -1,9 +1,10 @@
 ---
-tools: search_parts, find_parts_like
+tools: search_parts, find_parts_like, palettes, edit_palette
 ai: Finding parts by words, number, shape or a photo, and the colours they come in. An assistant finds real parts with search_parts, the parts like one (to swap it for) with search_parts like=, or by their look with find_parts_like, never by guessing a part number.
 rules:
   - Every part is from the LDraw library; printed parts are found with the word print, stickered ones with sticker.
   - Colours are LDraw colour codes, and a part comes only in colours it was really made in.
+  - The person's palettes are theirs, kept for every model: palettes reads them; edit_palette makes one of the open model's parts (bricks=, each in its colour) and sub-assemblies (assembly=, assembly_bricks=) in one call, and place puts a sub-assembly down whole. Ask the person before deleting a palette or taking a sub-assembly out (agreed=true).
 title: The parts bin
 nav: The parts bin
 description: Find any part by name, number, shape or a photo, keep the ones you use, and choose its colour.
@@ -40,6 +41,16 @@ ui:find a part from a photo
 ui:recent and favourite parts
 ui:techniques in the bin
 lib:worked constructions
+-->
+
+### Palettes {#palettes}
+
+**Palettes**, beside Favourites, keeps palettes of your own, as many as you like, each named: parts in their colours and whole sub-assemblies, there in every model you open. **New palette** makes one and its name is chosen, so typing names it. In an open palette, **Add** keeps the part in hand in its colour, the selected parts each in its colour, or the selection as one sub-assembly, named. A click on a part takes it in hand in its colour; a click on a sub-assembly takes it whole, and a click puts it down as a sub-assembly of its own. **More** takes one out, renames a sub-assembly or deletes the palette.
+
+Claude keeps them for you too: ask it to keep the parts of what you built as a palette, and it makes the one the bin then shows, in one step (`palettes`, `edit_palette`). It can put a kept sub-assembly down in any model whole, and asks you before it deletes a palette or takes a sub-assembly out.
+
+<!-- covers
+lib:a session keeps and uses palettes over mcp
 -->
 
 ## What fits {#fits}

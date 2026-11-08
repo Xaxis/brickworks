@@ -512,7 +512,8 @@ geometry in front of them.
   wrote: words it put on a palette or an entry, and entries of kinds it does
   not know (`_later`, never shown, written back whole). A file that cannot be
   read is kept beside it (`palettes.cfg.unreadable`) before a change writes
-  over it. No MCP tool: a session copies parts with edit_model.
+  over it. A session reads and changes the same palettes through the same
+  file (`palettes` and `edit_palette`, `PaletteTool`; see mcp.md).
   `palettes_probe` (1280 x 720, PROBE_SIZE=1400x900 too).
 - `techniques in the bin` (`src/ai/techniques.gd`, the bin's Techniques):
   *Techniques* sits after Recent, Favourites and Palettes, the assistant's worked

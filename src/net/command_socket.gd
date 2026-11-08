@@ -652,6 +652,11 @@ const HINTS := {
 	"booklet_page": ["See a booklet page", "look"],
 	# Edit, Pattern…'s grid (PatternTool): copies added, nothing taken off.
 	"pattern_parts": ["Lay copies in a grid", "add"],
+	# mcppalettes: the person's palettes (PaletteTool). Read, and changed: a
+	# palette deleted or an entry taken out (after the person's yes), or a
+	# sub-assembly put down in the model.
+	"palettes": ["List the person's palettes", "look"],
+	"edit_palette": ["Keep parts in a palette", "remove"],
 	# cancel=true stops only the session's own job.
 	"job": ["Follow a long job", "look"],
 	"fresh_eyes": ["Say what it reads as", "look"],
