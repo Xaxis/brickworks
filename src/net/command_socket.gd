@@ -657,6 +657,9 @@ const HINTS := {
 	# sub-assembly put down in the model.
 	"palettes": ["List the person's palettes", "look"],
 	"edit_palette": ["Keep parts in a palette", "remove"],
+	# lights (APP_UX5 #7): the lights kept with the model; one taken out is
+	# the person's own placing gone, and it is no undo step.
+	"light_model": ["Place the model's lights", "remove"],
 	# cancel=true stops only the session's own job.
 	"job": ["Follow a long job", "look"],
 	"fresh_eyes": ["Say what it reads as", "look"],
