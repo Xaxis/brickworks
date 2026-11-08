@@ -281,7 +281,19 @@ func _open_field(field_name: String) -> Control:
 	match field_name:
 		"the bin's search":
 			var bin: PartsBin = _main.get("_bin")
-			return bin.get("_search") as Control
+			var search: Control = bin.get("_search")
+			# At 1280 x 720 the bin gives way to the assistant's column (and
+			# to Properties, the walk found): its rail clicked brings it back,
+			# as a person brings it back.
+			var dock: SideDock = _main.get("_bin_dock")
+			if not search.is_visible_in_tree() and not dock.is_open():
+				await _click(dock.rail().get_global_rect().get_center())
+				for _n: int in 60:
+					if search.is_visible_in_tree():
+						break
+					await process_frame
+				await _frames(6)
+			return search
 		"Find's field":
 			await _press(Keymap.key_of("select_find"))
 			await _frames(10)
