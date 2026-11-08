@@ -35,7 +35,8 @@
 ##      as sent, said, offered to nobody; the answer lost after it was made;
 ##      Send again: made once, and the account has every lot and set of both
 ##      (each count the sum, 7140-1's two copies with both copies' marks)
-##  10. two devices put theirs together at the same moment: both kept
+##  10. two devices put theirs together at the same moment: both kept; two
+##      tabs of one device at once: made once
 ##  11. signed out again: none of the account's lots shown or changed here,
 ##      the account's copy on this device untouched; signed in, asked again,
 ##      Put them together, told what came of it
@@ -72,6 +73,7 @@ var _here: GDScript
 var _drawn: PackedStringArray = PackedStringArray()
 ## A set's or a part's number, kept in every language.
 var _number: RegEx = RegEx.create_from_string("^[0-9][0-9a-z]*(-[0-9]+)?$")
+var _named_set: RegEx = RegEx.create_from_string("^[0-9a-z]+-[0-9]+ \\S")
 
 
 func _initialize() -> void:
@@ -98,7 +100,7 @@ func _run() -> void:
 	Account._clear()
 	CollectionStore.where = "user://probe_collection.json"
 	for path: String in [_folder(), "user://probe_other_device.here", "user://probe_device_a.here",
-			"user://probe_device_b.here"]:
+			"user://probe_device_b.here", "user://probe_device_c.here"]:
 		_wipe(path)
 	DirAccess.remove_absolute(CollectionStore.where)
 	_here = load(HERE_SCRIPT) if ResourceLoader.exists(HERE_SCRIPT) else null
@@ -126,7 +128,7 @@ func _run() -> void:
 	var gone: int = await SignInHelper.delete_accounts(_email, root)
 	_check("the throwaway account deleted, its collection with it: %d" % gone, gone == 1)
 	for path: String in [_folder(), "user://probe_other_device.here", "user://probe_device_a.here",
-			"user://probe_device_b.here"]:
+			"user://probe_device_b.here", "user://probe_device_c.here"]:
 		_wipe(path)
 	print("\nlocalbricks probe: %s" % ("all good" if _failures == 0 else "%d FAILED" % _failures))
 	quit(1 if _failures > 0 else 0)
@@ -418,6 +420,30 @@ func _steps() -> void:
 		and str(answers[1]["kind"]) == CollectionStore.DONE and wrong_two.is_empty())
 	a.queue_free()
 	b.queue_free()
+	# Two tabs of one device, both pressing Put them together at once.
+	var dev_c: Dictionary = {"parts": [{"part": "3068b", "colour": 14, "qty": 5}], "sets": []}
+	var tab_x: CollectionStore = await _device_with("user://probe_device_c.here", dev_c)
+	var tab_y := CollectionStore.new()
+	tab_y.library = _library
+	tab_y.account = _account
+	tab_y.set("here_at", "user://probe_device_c.here")
+	tab_y.set("writer", "tab-y")
+	root.add_child(tab_y)
+	var tabs: Array = [null, null]
+	var run_x := func() -> void: tabs[0] = await tab_x.call("join")
+	var run_y := func() -> void: tabs[1] = await tab_y.call("join")
+	run_x.call()
+	run_y.call()
+	await _until(func() -> bool: return tabs[0] != null and tabs[1] != null, 30000)
+	var after_tabs: Dictionary = await _account_now(_account)
+	var c_left: Dictionary = _here.call("offerable", _here.call("read", "user://probe_device_c.here")) if _here != null else {}
+	_check("two tabs of one device pressing Put them together at once: made once (3068b ×%d, the device's left %s)"
+		% [int(_lot_in(after_tabs, "3068b", 14).get("qty", 0)), JSON.stringify(c_left)],
+		_holds(after_tabs, _summed(_summed_json(_summed_json(after_one, dev_a), dev_b), dev_c)).is_empty()
+		and _same_kept(c_left, {"sets": [], "parts": []}))
+	tab_x.queue_free()
+	tab_y.queue_free()
+	two = after_tabs
 	await _store.call("load_collection")
 
 	print("\n11. signed out again")
@@ -599,7 +625,8 @@ func _languages() -> void:
 			# A number, a set's or a part's, is kept as it is, and is no word.
 			var kept: Array = Language.left_in_english(english).filter(func(w: Variant) -> bool:
 				var word: String = str(w).strip_edges()
-				if _number.search(word) != null:
+				# A set's number and its name ("7140-1 X-wing Fighter").
+				if _number.search(word) != null or _named_set.search(word) != null:
 					return false
 				var rest: String = word
 				for mark: String in "0123456789½¼¾−-.,:×() ":

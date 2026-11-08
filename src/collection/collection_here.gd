@@ -78,7 +78,7 @@ static func _text(entry: Dictionary, field: String) -> String:
 ## collection as kept ({"sets", "parts"}, Collection.from_json's shape),
 ## "pending": the joins sent with no answer yet, "declined": account ->
 ## what was offered when it said Not now, "unread": files that could not
-## be read (never dropped: said)}.
+## be read (never dropped: said), "joins": every join's id, in order}.
 static func read(folder: String) -> Dictionary:
 	var raw: Dictionary = {"parts": {}, "sets": {}}
 	var joins: Dictionary = {}
@@ -113,7 +113,10 @@ static func read(folder: String) -> Dictionary:
 			_take_off(raw, joins[id])
 		elif not settled.has(id):
 			pending.append(joins[id])
-	return {"raw": raw, "shown": shown(raw), "pending": pending, "declined": declined, "unread": unread}
+	var seen: Array = joins.keys()
+	seen.sort()
+	return {"raw": raw, "shown": shown(raw), "pending": pending, "declined": declined, "unread": unread,
+		"joins": seen}
 
 
 ## The writers' names in [param folder]: each a tab's or window's.

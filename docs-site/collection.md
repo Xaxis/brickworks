@@ -1,7 +1,7 @@
 ---
 tools: parts_list, edit_collection
 panels: CollectionDialog#my-collection
-ai: The sets and parts a person owns, kept with their account: what a model needs that they lack, and what they can build now. parts_list which=need lists what is missing, which=buildable what the collection can build, which=compare a= b= what two sets or models share and what to buy to build b from a. edit_collection adds the loose parts a person shows in a photo of their pile, in one call, each lot marked as the session's for the person to keep or take back; it never changes their sets or their own lots.
+ai: The sets and parts a person owns, kept with their account: what a model needs that they lack, and what they can build now. parts_list which=need lists what is missing, which=buildable what the collection can build, which=compare a= b= what two sets or models share and what to buy to build b from a. edit_collection adds the loose parts a person shows in a photo of their pile, in one call, each lot marked as the session's for the person to keep or take back; it never changes their sets or their own lots. edit_collection missing= marks how many of each part a set they own is missing. Signed out, the collection is kept on the device and offered to their account when they sign in.
 rules:
   - The collection comes from Rebrickable (with the person's own key), a BrickLink or Rebrickable list, or typed in.
 title: My collection
@@ -23,6 +23,17 @@ lib:collection sums
 api:/api/collection
 -->
 
+## Before you sign in {#this-device}
+
+<!-- covers
+ui:your bricks with nobody signed in
+ui:your bricks put together at a sign-in
+-->
+
+With nobody signed in, *What I own* is this device's own: add sets by number and loose parts, count them, and mark a set's missing parts as you would with an account, and What do I need? and What can I build? use them. They are kept on this device, in every tab and window of Brickworks on it; a change made in two tabs at once is kept from both. Your Rebrickable account and a Rebrickable or BrickLink file come in once you sign in, since your account reads them into LDraw's numbers.
+
+When you sign in and this device keeps anything, Brickworks asks before it moves a brick: it shows what the device kept beside what your account has, and offers **Put them together** or **Not now**. Put together, every lot and set of both is kept: the counts of a part in the same colour are added, and a set kept in both becomes two copies, each with the parts it is missing. **Not now** leaves them on this device, apart from your account; *What I own* still offers them (**Put them in my collection…**), and you are asked again at a sign-in once they change. If the connection drops as they are sent, they stay on this device and are sent again, never added twice, when you next sign in or choose **Send again**. Signed out again, your account's collection is not shown on the device, and nothing there can be changed until you sign back in.
+
 ## Loose parts {#loose}
 
 <!-- covers
@@ -32,7 +43,7 @@ lib:a session's loose parts over mcp
 
 Most people own a tub of loose bricks as well as their sets. Under *What I own*, the **Loose parts** row adds them a lot at a time: type the part's number or a few words (*red 2x4 brick*, *3001*, or a BrickLink number), or choose **Photo…** to find it from a picture, or take a part in the parts bin; then pick its colour, say how many, and choose **Add**. **Like this** offers the parts that look like the one chosen. Each lot is listed under *Loose parts* (lots brought in from a list are listed under where they came from), where you can change its count or remove it. Adding more of a part and colour you already have adds to that lot.
 
-What do I need? and What can I build? count your loose parts with your sets', and they are kept with your account like the rest.
+What do I need? and What can I build? count your loose parts with your sets', and they are kept with your account like the rest (on this device, before you sign in).
 
 **From a photo, with Claude.** Show your own Claude a photo of your pile and ask it to add what it sees: it adds every lot in one go, each marked as that chat's. *What I own* then says what it added, so you can look the lots over: **Keep them** makes them your own, and **Take back what Claude added** takes exactly those lots off again. Claude never changes your sets or the lots you added yourself.
 
@@ -45,7 +56,7 @@ ui:a set's missing parts
 
 **A set from a photo.** Beside **Add sets**, choose **Photo…** and pick a photo of the set's box, the cover of its building instructions, or a minifigure. Brickworks asks Brickognize what it shows and offers the three it thinks most likely; choose the right one to add it. A photo of the box's front, on its own, works best. The photo goes to Brickognize, a third party, and Brickworks says so the first time. A minifigure is kept among your sets by its BrickLink number; its parts are not counted, as Brickworks has no list of what is in each.
 
-**Parts missing from a set.** Most sets that have been played with are short of a few pieces. Beside a set under *What I own*, choose **Missing parts…** and say how many of each part are missing; **All missing** marks every part, for counting back in what you find. What do I need? and What can I build? then count only what is there. **Closest to whole** lists your sets with parts missing, those nearest to complete first, and **What it needs** shows what do I need? for that set: its missing parts, less any loose parts you have added that make them up. Loose parts count towards any set; parts of your other sets do not, since taking them would break those sets.
+**Parts missing from a set.** Most sets that have been played with are short of a few pieces. Beside a set under *What I own*, choose **Missing parts…** and say how many of each part are missing; **All missing** marks every part, for counting back in what you find. What do I need? and What can I build? then count only what is there, and **Build from it** leaves the missing parts out of the bin. **Closest to whole** lists your sets with parts missing, those nearest to complete first, and **What it needs** shows what do I need? for that set: its missing parts, less any loose parts you have added that make them up. Loose parts count towards any set; parts of your other sets do not, since taking them would break those sets.
 
 ## What do I need? {#need}
 

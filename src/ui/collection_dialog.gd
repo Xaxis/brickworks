@@ -619,8 +619,9 @@ func _fill_own() -> void:
 			"" if mine.loose_pieces() == 1 else "s", _comma(store.pieces_on_hand()),
 			" (the copy on this device)" if store.offline
 			else (", kept on this device until you sign in" if store.here else ", kept with your account")]
+	# On a line of its own, so each is said whole in every language.
 	if store.here and not store.here_words().is_empty():
-		_summary.text += ". " + store.here_words()[0].to_upper() + store.here_words().substr(1)
+		_summary.text += "\n" + store.here_words()[0].to_upper() + store.here_words().substr(1)
 	_imports_for_here()
 	_clear_rows(_own_rows)
 	_controls.erase("collection_build_all")

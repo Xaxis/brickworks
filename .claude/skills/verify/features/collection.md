@@ -4,7 +4,7 @@ What a person owns, kept with their account: what the open model needs that
 they do not have, what could stand in, the shortfall as a shopping list, and
 which models they could build from what they have. Added 2026-10-12.
 
-<!-- covers: ui:my collection, lib:collection sums, lib:collection kept with the account, lib:a rebrickable account, cli:set inventories, cli:official models' parts lists, cli:part counts probe, cli:model library, cli:model library in storage, api:/api/collection, cli:collection api probe, cli:collection browser flow, cli:apply sql to the live project, ui:loose parts in my collection, lib:a session's loose parts over mcp, cli:mybricks probe, cli:mybricks api test, ui:compare two sets or models, lib:parts compare, cli:comparesets probe, ui:a set from a photo, ui:a set's missing parts, cli:mysets probe, cli:mysets api test -->
+<!-- covers: ui:my collection, lib:collection sums, lib:collection kept with the account, lib:a rebrickable account, cli:set inventories, cli:official models' parts lists, cli:part counts probe, cli:model library, cli:model library in storage, api:/api/collection, cli:collection api probe, cli:collection browser flow, cli:apply sql to the live project, ui:loose parts in my collection, lib:a session's loose parts over mcp, cli:mybricks probe, cli:mybricks api test, ui:compare two sets or models, lib:parts compare, cli:comparesets probe, ui:a set from a photo, ui:a set's missing parts, cli:mysets probe, cli:mysets api test, ui:your bricks with nobody signed in, ui:your bricks put together at a sign-in, cli:localbricks probe, cli:localbricks api test -->
 
 ## Sub-features
 
@@ -75,7 +75,7 @@ which models they could build from what they have. Added 2026-10-12.
   back, this chat's lots apart. My collection lists a session's lots first,
   under "Added by Claude", with Keep them (they join the person's own, by
   hand) and Take back what Claude added (exactly those lots out, at the
-  counts shown, any number of them). Needs the person signed in.
+  counts shown, any number of them). Signed out, kept on this device (below).
 - `a set from a photo` (`src/ui/collection_dialog.gd`, `src/net/brickognize.gd`,
   APP_UX6 #6 mysets, 2026-11-07): Photo… beside Add sets (said first, once,
   the bin's own notice, ShellPrefs `photo_told`) sends the photo to
@@ -106,7 +106,38 @@ which models they could build from what they have. Added 2026-10-12.
   count), each with What it needs: What do I need? for that set (its own
   chooser: the open model or a set), its missing lots less loose parts, the
   BrickLink and Rebrickable lists named for it. Older apps read a marked set
-  as a whole one.
+  as a whole one. Build from it, Build from them all and a model's own set
+  bin leave out what the person's copies are marked missing
+  (`CollectionStore.marks`, `SetBin.left_out`), their copies beyond the
+  bin's making up the marks first, and the bar says "less the N pieces
+  marked missing" (localbricks).
+- `your bricks with nobody signed in` (`src/collection/collection_here.gd`,
+  `src/collection/collection_store.gd`, APP_UX6 #8 localbricks, 2026-11-07):
+  signed out, My collection is this device's own: sets typed, loose lots,
+  counts, a set's missing parts, edit_collection (its read back says "kept on
+  this device"), Keep them and Take back, checked by the same ops as the
+  account's (`CollectionHere.apply` is applyOp's port). A Rebrickable account,
+  a Rebrickable CSV and a BrickLink XML are off, saying "Sign in to bring this
+  in" (the account reads them into LDraw's numbers). Kept beside the account's
+  copy, in `user://collection.here/`, a file a tab or window (TabSession's
+  id), each holding only how far it moved each count, so two tabs' changes
+  made at once both stay; the collection is every file's sums put together.
+  The account's copy on this device is never shown or changed signed out, and
+  signing out shows the device's own at once.
+- `your bricks put together at a sign-in` (`src/ui/collection_offer.gd`,
+  `api/collection.js` op `join`): when somebody signs in and this device
+  keeps anything, they are asked first ("Your bricks on this device": what
+  it kept beside what the account has), Put them together or Not now; nothing
+  is sent before the answer. Put them together sends one `join`: every lot and
+  set of both kept, a lot's counts of one part, colour and source (or one
+  session) added, a set in both one entry with both copies and both copies'
+  marks. Kept here as sent, with its id, before it is sent: with no answer it
+  stays, said, offered to nobody, and is sent again (Send again on My
+  collection, or the next sign-in) with that id, which the account answers as
+  it did and never makes twice (its ids kept past the last 100 changes, the
+  last 50 joins). Not now leaves both apart and is not asked again at a
+  sign-in until the device's collection changes; My collection's "On this
+  device only: …" row still offers it.
 - `build from a set's parts` (`src/collection/set_bin.gd`, `src/ui/parts_bin.gd`,
   docs/APP_UX.md B10, 2026-10-30): the parts bin as one set's parts, or
   several sets' added up, a tile for each part and colour in its own colour,
@@ -363,6 +394,9 @@ tools/relay_probe.sh mybricks                     # a window, 1280x720 (PROBE_SI
 # a set's missing parts and a set from a photo (mysets): the endpoint's op, then the app, on a relay
 node tools/web/mysets_api.mjs --url=http://127.0.0.1:8790
 tools/relay_probe.sh mysets -- --shots=DIR        # a window, 1280x720 (PROBE_SIZE=1400x900 too)
+# your bricks signed out, and put together at a sign-in (localbricks): the op, then the app, on a relay
+node tools/web/localbricks_api.mjs --url=http://127.0.0.1:8790
+tools/relay_probe.sh localbricks -- --shots=DIR   # a window, 1280x720 (PROBE_SIZE=1400x900 too)
 # rebuilding the data, after tools/fetch_data.sh or a catalogue change
 python3 tools/collection_data.py
 python3 tools/collection_data.py --bricklink   # only the index's BrickLink colours, after colors.json
@@ -469,6 +503,27 @@ Proves it when:
   reading every set and lot and their Remove keeping the marks; the older
   collection lot for lot at the end. Look at `mysets_photo`, `_marked`,
   `_need`, `_need_seven`, `_closest`, `_minifigure`.
+- `localbricks_api.mjs` ends `every check passed` (38 checks): the join op
+  pure (13 lots and 4 sets each the sum, a session's lot its session's,
+  7140-1's two copies with both marks, refusals with words, the ids kept the
+  last 100 and before them the last 50 joins), then against the database:
+  every lot and set of both summed and read back, the same id answered as it
+  was and made once, five refusals changing nothing, 105 changes later still
+  once, a count held at 100,000 and said.
+- `localbricks_probe` (tools/relay_probe.sh localbricks, with `-- --shots=DIR`)
+  ends `all good`: signed out, 2 sets typed and 12 of the car's lots by hand,
+  kept in the window's own file; a restart and another tab read them; What
+  do I need? for the car 12 lots less; edit_collection reads, adds 3 in 1
+  call, marks 3 of 7140-1's lots missing, Take back leaves it lot for lot;
+  Build from it 3 pieces less; two tabs' changes made from one read both kept,
+  a stale count refused; at the sign-in asked first, nothing sent, Not now
+  not asked again, the dialog's row; with no answer kept and said, the answer
+  lost after it was made, Send again made once; two devices at once both
+  kept; signed out again none of the account's shown or changeable, its copy
+  untouched; Put them together told; Build from both copies less both copies'
+  marks, one copy of two less none; every new line in de, fr and es. Look at
+  `localbricks_signed_out`, `_device`, `_need`, `_taken_back`, `_offer`,
+  `_on_this_device`, `_no_answer`, `_send_again`, `_joined`.
 - the live Brickognize (`bench/results/mysets-2026-11-07/live_photos.py`,
   ten Commons box photos, said, not gated): 7 of the 8 cropped to the box
   found, each first; whole scenes of box, bags and parts 2 of 10.

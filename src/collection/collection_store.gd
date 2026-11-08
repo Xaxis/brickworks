@@ -642,7 +642,12 @@ func join() -> Dictionary:
 	var what: Dictionary = CollectionHere.offerable(read)
 	if (what["sets"] as Array).is_empty() and (what["parts"] as Array).is_empty():
 		return {"kind": DONE, "said": "", "body": {"joined": {"sets": 0, "lots": 0}}}
-	var sent: Dictionary = {"id": "join-" + _fresh_id(), "to": who, "at": int(Time.get_unix_time_from_system() * 1000.0),
+	# Its id is what it sends, to whom, after which joins: two tabs that press
+	# Put them together at once, each before it saw the other's, send one
+	# join the account makes once; the same lots added again after a join
+	# are a join of their own.
+	var id: String = "join-" + JSON.stringify([who, what, read["joins"]]).md5_text()
+	var sent: Dictionary = {"id": id, "to": who, "at": int(Time.get_unix_time_from_system() * 1000.0),
 		"sets": what["sets"], "parts": what["parts"]}
 	var trouble: String = CollectionHere.write(folder, _writer(), read["raw"], null, {"joins": [sent]})
 	if not trouble.is_empty():
