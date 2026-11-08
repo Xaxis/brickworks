@@ -254,13 +254,15 @@ func _steps() -> void:
 	await _frames(10)
 	var take: Variant = (_dialog.call("controls_by_name") as Dictionary).get("collection_take_back")
 	var before_take: Dictionary = _kept()
-	if take is Button:
+	# The rows are drawn again once it is pressed, so the button is gone after.
+	var had_take: bool = take is Button
+	if had_take:
 		(take as Button).pressed.emit()
 		await _changed()
 		await _settled()
 	var after_take: Dictionary = _kept()
 	_check("Take back what Claude added takes exactly the 3 out: lot for lot as before, 7140-1's marks kept",
-		take is Button and _same(after_take["parts"], device["parts"]) and _same(after_take["sets"], before_take["sets"]))
+		had_take and _same(after_take["parts"], device["parts"]) and _same(after_take["sets"], before_take["sets"]))
 	await _shot("localbricks_taken_back")
 	# Build from it, signed out: one copy of 7140-1, its 3 marked parts out.
 	await _build_from(PackedStringArray(["7140-1"]), record, 3, "one copy of 7140-1 signed out")
@@ -280,12 +282,21 @@ func _steps() -> void:
 		_check("4 added in this tab and 3 in another, each before it saw the other's: 7 kept (%d)" % int(got.get("qty", 0)),
 			int(got.get("qty", 0)) == 7 and _same((both["parts"] as Array).slice(0, 12), device["parts"]))
 		await _store.call("load_collection")
-		var conflict: Dictionary = await tab_b.set_counts([{"part": "3666", "colour": 11, "qty": 4, "to": 1}])
-		_check("a count changed from 4 when it is 7 refused, nothing changed: %s" % conflict["kind"],
-			conflict["kind"] == CollectionStore.CONFLICT and int(_lot_in(_shown(_fold()), "3666", 11).get("qty", 0)) == 7)
-		var out: Dictionary = await tab_b.set_counts([{"part": "3666", "colour": 11, "qty": 7, "to": 0}])
+		# Named as a window names a lot it shows: the lot as kept, at a count.
+		var seen: Dictionary = got.duplicate()
+		seen["qty"] = 4
+		seen["to"] = 1
+		var conflict: Dictionary = await tab_b.set_counts([seen])
+		_check("a count changed from 4 when it is 7 refused, nothing changed: %s, “%s”" % [conflict["kind"],
+			str(conflict["said"]).left(90)], conflict["kind"] == CollectionStore.CONFLICT
+			and str(conflict["said"]).contains("is 7 now, not the 4 shown")
+			and int(_lot_in(_shown(_fold()), "3666", 11).get("qty", 0)) == 7)
+		seen["qty"] = 7
+		seen["to"] = 0
+		var out: Dictionary = await tab_b.set_counts([seen])
 		await _store.call("load_collection")
-		_check("...taken out from 7 in the other tab: gone in this one, the 12 and 2 as they were (%s)" % out["kind"],
+		_check("...taken out from 7 in the other tab: gone in this one, the 12 and 2 as they were (%s %s)"
+			% [out["kind"], str(out["said"]).left(90)],
 			out["kind"] == CollectionStore.DONE and _same_kept(_kept(), device))
 		_check("a mark made in another tab is in this one", Collection.missing_lots(_set_of(_kept(), "7140-1")).size() == 3)
 	else:
