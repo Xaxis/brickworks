@@ -222,6 +222,8 @@ func _build() -> void:
 	_palette_said.custom_minimum_size = Vector2(120, 0)
 	said.add_child(_palette_said)
 	_swatches = Control.new()
+	# Its tooltip is the colours' names, which are data, not the interface's.
+	_swatches.set_meta(&"names", true)
 	_swatches.custom_minimum_size = Vector2(0, 10)
 	_swatches.draw.connect(_draw_swatches)
 	_swatches.resized.connect(_swatches.queue_redraw)
@@ -643,8 +645,11 @@ func _crop_input(event: InputEvent) -> void:
 				Vector2.ONE - _drag_was.size)
 			_crop = Rect2(moved, _drag_was.size)
 		_whole.disabled = _crop.is_equal_approx(WHOLE)
+		# Only the frame while the drag is on: what it comes to is said once
+		# it ends. Said at each move, the lines under the picture changed in
+		# number, the picture grew and shrank under the pointer, and the crop
+		# ended 10 pixels of 300 short of where it was let go.
 		_frame.queue_redraw()
-		_describe()
 		_frame.accept_event()
 
 
@@ -843,6 +848,10 @@ func _describe() -> void:
 func _work_out() -> void:
 	if _image == null or library == null:
 		return
+	# Not under a drag on the picture, which its lines would move: after it.
+	if _drag != 0:
+		_later.start()
+		return
 	if not is_art():
 		var laid: Mosaic.Laid = Mosaic.make(_image, classic_options(), library)
 		last_classic = laid
@@ -850,10 +859,12 @@ func _work_out() -> void:
 		var sizes := PackedStringArray()
 		for entry: Array in laid.by_size().slice(0, 4):
 			sizes.append("%s %s" % [_comma(int(entry[1])), str(entry[0])])
-		_detail.text = "%d × %d studs, %.0f × %.0f cm — %s plates for its %s studs, in %d colours: %s%s%s" % [
+		_detail.text = "%d × %d studs, %.0f × %.0f cm — %s plates for its %s studs, in %d colours: %s%s%s%s" % [
 			laid.across, laid.down, laid.across * STUD_MM / 10.0, laid.down * STUD_MM / 10.0,
 			_comma(laid.plates.size()), _comma(laid.studs()), laid.colours(), ", ".join(sizes),
-			", …" if laid.by_size().size() > 4 else "", _have(laid.counts())]
+			", …" if laid.by_size().size() > 4 else "", _have(laid.counts()),
+			"" if laid.palette_kept else
+				" — no 1 × 1 plate is made in the colours chosen, so it is laid in all of them"]
 		return
 	var art: MosaicArt.Art = MosaicArt.make(_image, options(), library)
 	last_art = art
@@ -866,9 +877,11 @@ func _work_out() -> void:
 	for placement: Assistant.Placement in art.placements:
 		var key: String = "%s/%d" % [placement.part, placement.color]
 		needs[key] = int(needs.get(key, 0)) + 1
-	_detail.text = "%d × %d studs, %.0f × %.0f cm — %s parts: %s%s%s" % [
+	# The kinds joined by " · ", which the languages find one by one ("%s
+	# round tiles"); joined by commas, the list was one place no entry took.
+	_detail.text = "%d × %d studs, %.0f × %.0f cm — %s parts — %s%s%s" % [
 		studs.x, studs.y, studs.x * STUD_MM / 10.0, studs.y * STUD_MM / 10.0,
-		_comma(art.placements.size()), ", ".join(said), _have(needs),
+		_comma(art.placements.size()), " · ".join(said), _have(needs),
 		"" if art.palette_kept else
 			" — no round or square tile is made in the colours chosen, so it is laid in the Art's own"]
 

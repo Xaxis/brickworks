@@ -87,6 +87,9 @@ class Laid extends RefCounted:
 	var palette: PackedInt32Array = PackedInt32Array()
 	## The picture's own pixels it was laid from: the crop.
 	var source: Rect2i = Rect2i()
+	## False when the colours chosen had none a 1 x 1 plate is made in, and
+	## it was laid in all of them instead (said under the picture).
+	var palette_kept: bool = true
 
 	## Studs with a plate on them.
 	func studs() -> int:
@@ -146,6 +149,11 @@ static func make(image: Image, options: Options, library: PartLibrary) -> Laid:
 		return laid
 	laid.source = crop_rect(image.get_size(), options.crop)
 	laid.palette = palette_for(options.palette, library)
+	# Colours chosen that no stud can be (a set of trans parts alone): laid in
+	# all of them and said so, rather than nothing laid and nothing said.
+	if laid.palette.is_empty() and not options.palette.is_empty():
+		laid.palette = palette_for(PackedInt32Array(), library)
+		laid.palette_kept = false
 	var scaled: Image = _scaled(image.get_region(laid.source), options.across)
 	laid.across = scaled.get_width()
 	laid.down = scaled.get_height()
@@ -388,13 +396,24 @@ static func transform_of(plate: Plate, part: Lbm.PartMesh, builder: Builder) -> 
 ## Put a laid mosaic into the world, a brick a plate, through the ordinary
 ## placement path, so it is undone, saved, listed and walked by the booklet
 ## like anything built by hand. The world is not cleared first. The bricks
-## placed, by id; a plate whose part is not to hand is left out.
+## placed, by id. A larger plate whose part is not to hand (on the web, one
+## that did not come in time) is laid as 1 x 1s, so the picture is whole
+## either way.
 static func put_down(laid: Laid, world: BrickWorld, builder: Builder,
 		library: PartLibrary) -> PackedInt64Array:
 	var ids := PackedInt64Array()
 	# One shape read per part and size, not per plate: 1,300 of them.
 	var placed: Dictionary = {}
+	var plates: Array[Plate] = []
 	for plate: Plate in laid.plates:
+		if plate.part == PIXEL_PART or library.mesh_for(plate.part) != null:
+			plates.append(plate)
+			continue
+		for dz: int in plate.size.y:
+			for dx: int in plate.size.x:
+				plates.append(_plate(PIXEL_PART, plate.color_code, plate.x + dx, plate.z + dz,
+					Vector2i.ONE))
+	for plate: Plate in plates:
 		var part: Lbm.PartMesh = library.mesh_for(plate.part)
 		if part == null:
 			continue

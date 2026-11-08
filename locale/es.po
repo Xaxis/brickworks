@@ -12606,3 +12606,117 @@ msgstr "tienes %s de las %s"
 
 msgid "no round or square tile is made in the colours chosen, so it is laid in the Art's own"
 msgstr "no se fabrica ninguna baldosa redonda ni cuadrada en los colores elegidos, así que se coloca en los propios del Art"
+
+msgid "no 1 × 1 plate is made in the colours chosen, so it is laid in all of them"
+msgstr "no se fabrica ninguna placa 1 × 1 en los colores elegidos, así que se coloca en todos"
+
+# The picture dialog's own words, none of them translated until mosaic2's
+# check of the words it shows read them (APP_UX6 #10, mosaic3).
+
+msgid "Build this picture"
+msgstr "Construir esta imagen"
+
+msgid "Brick Art"
+msgstr "Brick Art"
+
+msgid "Panels of round tiles, quarter circles, smooth tiles and raised relief, in the style of LEGO® Art sets"
+msgstr "Paneles de baldosas redondas, cuartos de círculo, baldosas lisas y relieve elevado, al estilo de los sets LEGO® Art"
+
+msgid "Classic"
+msgstr "Clásico"
+
+msgid "Blend colours"
+msgstr "Mezclar colores"
+
+msgid "Mix nearby plates to suggest a colour the palette does not have. Off gives flat bands."
+msgstr "Mezcla placas cercanas para sugerir un color que la paleta no tiene. Desactivado da franjas planas."
+
+msgid "Panels across"
+msgstr "Paneles de ancho"
+
+msgid "Panels down"
+msgstr "Paneles de alto"
+
+msgid "Depth"
+msgstr "Profundidad"
+
+msgid "How many plates what stands out from the background is raised. 0 is flat."
+msgstr "Cuántas placas se eleva lo que destaca del fondo. 0 es plano."
+
+msgid "flat"
+msgstr "plano"
+
+msgid "%d plate"
+msgstr "%d placa"
+
+msgid "Round texture"
+msgstr "Textura redonda"
+
+msgid "1 × 1 round tiles, and round plates for points of light"
+msgstr "Baldosas redondas 1 × 1, y placas redondas para los puntos de luz"
+
+msgid "Contour quarters"
+msgstr "Cuartos de círculo en contornos"
+
+msgid "Quarter-circle tiles turned along a curved edge"
+msgstr "Baldosas de cuarto de círculo giradas a lo largo de un borde curvo"
+
+msgid "Smooth tiles"
+msgstr "Baldosas lisas"
+
+msgid "Square tiles where it is flat, merged up to 2 × 4"
+msgstr "Baldosas cuadradas donde es plano, unidas hasta 2 × 4"
+
+msgid "Accent stars"
+msgstr "Estrellas de acento"
+
+msgid "Stars in trans-clear, glow-in-the-dark and metallic where the part is made so"
+msgstr "Estrellas en transparente, fosforescente y metalizado donde la pieza se fabrica así"
+
+msgid "Mix nearby elements to suggest a colour the palette does not have"
+msgstr "Mezcla elementos cercanos para sugerir un color que la paleta no tiene"
+
+msgid "Tell %s: raise the core, make the stars glow…"
+msgstr "Dile a %s: eleva el núcleo, haz que brillen las estrellas…"
+
+msgid "Design with %s"
+msgstr "Diseñar con %s"
+
+msgid "%s looks at the picture and plans it as a designer of LEGO® Art sets would — what stands out, the textures, the stars — with your key or your own Claude, as the assistant designs"
+msgstr "%s mira la imagen y la planifica como lo haría un diseñador de sets LEGO® Art — lo que destaca, las texturas, las estrellas — con tu clave o tu propio Claude, como diseña el asistente"
+
+msgid "%s looks at the picture and plans it as a designer of LEGO® Art sets would — what stands out, the textures, the stars — on your own key, as the assistant designs"
+msgstr "%s mira la imagen y la planifica como lo haría un diseñador de sets LEGO® Art — lo que destaca, las texturas, las estrellas — con tu propia clave, como diseña el asistente"
+
+msgid "%s round tiles"
+msgstr "%s baldosas redondas"
+
+msgid "%s square tiles"
+msgstr "%s baldosas cuadradas"
+
+msgid "%s larger tiles"
+msgstr "%s baldosas más grandes"
+
+msgid "%s relief plates"
+msgstr "%s placas de relieve"
+
+msgid "%s cheese slopes"
+msgstr "%s tejas queso"
+
+msgid "%s joining plates"
+msgstr "%s placas de unión"
+
+msgid "%s quarter circles"
+msgstr "%s cuartos de círculo"
+
+msgid "%s round plates"
+msgstr "%s placas redondas"
+
+msgid "%s 16 × 16 panels"
+msgstr "%s paneles 16 × 16"
+
+msgid "%s stars"
+msgstr "%s estrellas"
+
+msgid "%s large stars"
+msgstr "%s estrellas grandes"

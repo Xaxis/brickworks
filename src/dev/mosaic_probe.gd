@@ -482,7 +482,7 @@ func _dialog_case() -> void:
 		chosen != null and chosen.depth == 0 and not chosen.round_texture
 		and chosen.panels_across == 2 and chosen.panels_down == 2)
 	var classic: Array = []
-	dialog.build_wanted.connect(func(across: int, _dither: bool) -> void: classic.append(across))
+	dialog.build_wanted.connect(func(options: Mosaic.Options) -> void: classic.append(options.across))
 	dialog.set_mode("classic")
 	dialog.build()
 	_check("and Classic still asks for plates %d wide" % (classic[0] if classic else 0),
@@ -503,6 +503,8 @@ func _mosaic2() -> void:
 	var mixed: Mosaic.Laid = await _mixed_case(dialog)
 	if mixed != null:
 		_bought_case(mixed)
+	await _none_paintable_case(dialog)
+	await _words_case()
 	dialog.queue_free()
 	await process_frame
 
@@ -529,6 +531,7 @@ func _crop_case(dialog: MosaicDialog) -> void:
 		dialog._cropping.button_pressed and dialog._preview.texture != null
 		and dialog._preview.texture.get_size() == Vector2(400, 300))
 	# From a quarter in and a fifth down to three quarters and four fifths.
+	_gather(dialog)
 	await _drag(dialog, Vector2(0.25, 0.2), [Vector2(0.5, 0.5), Vector2(0.75, 0.8)])
 	_check("dragged across the picture, the crop is the picture's pixels %s, as drawn (%s)"
 		% [str(dialog.crop_pixels()), str(inside)], dialog.crop_pixels() == inside)
@@ -570,6 +573,7 @@ func _crop_case(dialog: MosaicDialog) -> void:
 		dialog.crop_pixels() == Rect2i(0, 0, 400, 300) and dialog._whole.disabled)
 	await _click(_middle(dialog._cropping))
 	_check("Done shows the result again", not dialog._cropping.button_pressed)
+	_gather(dialog)
 	# Build it asks for what was chosen.
 	dialog.set_crop(Rect2(0.25, 0.2, 0.5, 0.6))
 	dialog.set_mode("classic")
@@ -585,6 +589,82 @@ func _crop_case(dialog: MosaicDialog) -> void:
 	dialog.visible = true
 	if _out().length() > 0:
 		dialog._preview.texture.get_image().save_png(_out().path_join("crop_classic.png"))
+
+
+## Colours chosen that no stud can be, a set of trans parts alone: laid in
+## all of them, and said so under the picture, rather than nothing laid.
+func _none_paintable_case(dialog: MosaicDialog) -> void:
+	print("\ncolours chosen that no plate is made in (APP_UX6 #10)")
+	dialog._set_found = "0000-1"
+	dialog._set_name = "Trans parts"
+	dialog._set_colours = PackedInt32Array([47, 36, 33])
+	dialog.set_mode("classic")
+	dialog.set_colours("set")
+	await _settled(dialog)
+	var laid: Mosaic.Laid = dialog.current_classic()
+	_check("laid whole in all colours, %d of %d studs, and said: \"%s\"" % [
+		laid.studs() if laid else 0, laid.cells.size() if laid else 0, dialog._detail.text],
+		laid != null and not laid.palette_kept and laid.studs() == laid.cells.size()
+		and dialog._detail.text.contains("no 1 × 1 plate is made in the colours chosen"))
+	_gather(dialog)
+	dialog.set_mode("art")
+	await _settled(dialog)
+	_gather(dialog)
+	dialog._set_found = ""
+	dialog._set_colours = PackedInt32Array()
+	dialog.set_colours("all")
+
+
+## Every word the dialog showed through the cases above, as languages_probe
+## reads a dialog's, in German, French and Spanish: each has its entry, and
+## none keeps a word of the interface in English (only names and numbers).
+var _shown_words: Dictionary = {}
+
+
+func _gather(node: Node) -> void:
+	if node is Control and not (node as Control).visible:
+		return
+	if node.has_meta(&"names"):
+		return
+	var texts := PackedStringArray()
+	if node is Label:
+		texts.append((node as Label).text)
+	elif node is OptionButton:
+		for n: int in (node as OptionButton).item_count:
+			texts.append((node as OptionButton).get_item_text(n))
+			texts.append((node as OptionButton).get_item_tooltip(n))
+	elif node is Button:
+		texts.append((node as Button).text)
+	elif node is LineEdit:
+		texts.append((node as LineEdit).placeholder_text)
+	if node is Control:
+		texts.append((node as Control).tooltip_text)
+	for text: String in texts:
+		if text.length() > 1 and RegEx.create_from_string(r"\p{L}").search(text) != null:
+			_shown_words[text] = true
+	for child: Node in node.get_children():
+		_gather(child)
+
+
+func _words_case() -> void:
+	print("\nits words in German, French and Spanish (APP_UX6 #10)")
+	for code: String in ["de", "fr", "es"]:
+		Language.apply(code)
+		var lacking := PackedStringArray()
+		for english: String in _shown_words:
+			var said: String = Language.says(english)
+			var left := PackedStringArray()
+			for kept: String in Language.left_in_english(english):
+				# A set's name and number, a count: names and numbers.
+				if RegEx.create_from_string(r"\p{L}").search(kept) != null \
+						and not kept in ["Andy Warhol's Marilyn Monroe", "Trans parts", "Claude"]:
+					left.append(kept)
+			if said.is_empty() or not left.is_empty():
+				lacking.append("%s%s" % [english, "" if left.is_empty() else " (%s)" % ", ".join(left)])
+		_check("%s: every one of the %d words it showed translated%s" % [code, _shown_words.size(),
+			"" if lacking.is_empty() else "; not: " + " | ".join(lacking)], lacking.is_empty()
+			and _shown_words.size() >= 30)
+	Language.apply("en")
 
 
 ## Studs whose wanted colour has any red in it.
@@ -638,6 +718,7 @@ func _colours_case(dialog: MosaicDialog) -> void:
 		await _settled(dialog)
 		_check("%s: the set found, \"%s\"" % [mode, dialog._palette_said.text],
 			dialog._palette_said.text.contains("Andy Warhol"))
+		_gather(dialog)
 		await _kept_to(dialog, mode, "31197's colours", set_colours)
 		dialog.set_colours("owned")
 		await _settled(dialog)
@@ -650,6 +731,7 @@ func _colours_case(dialog: MosaicDialog) -> void:
 		_check("%s: and says how many are owned: \"…%s\"" % [mode,
 			dialog._detail.text.get_slice("—", dialog._detail.text.count("—"))],
 			dialog._detail.text.contains("you have"))
+		_gather(dialog)
 		if _out().length() > 0:
 			dialog._preview.texture.get_image().save_png(_out().path_join("owned_%s.png" % mode))
 	dialog.set_colours("set")
@@ -751,6 +833,7 @@ func _mixed_case(dialog: MosaicDialog) -> Mosaic.Laid:
 		if plate.part != Mosaic.PIXEL_PART and _library.element_for(plate.part, plate.color_code).is_empty():
 			unsold += 1
 	_check("every larger plate is a LEGO element in its colour (%d not)" % unsold, unsold == 0)
+	_gather(dialog)
 	_check("the dialog says what it comes to: \"%s\"" % dialog._detail.text,
 		dialog._detail.text.contains("%s plates for its %s studs" % [MosaicDialog._comma(
 			mixed.plates.size()), MosaicDialog._comma(mixed.studs())]))
@@ -770,8 +853,15 @@ func _bought_case(mixed: Mosaic.Laid) -> void:
 	plate.z = 5
 	var at: Transform3D = Mosaic.transform_of(plate, one, _builder)
 	var was := Vector3(3 * 20 + 10, one.bounds.size.y, 5 * 20 + 10)
-	_check("a 1 × 1 lies where the classic mosaic laid it: %s (was %s)" % [at.origin, was],
-		at.origin.is_equal_approx(was) and at.basis.is_equal_approx(Basis.IDENTITY))
+	var under: Array = _builder._cell_span(one, at)
+	# Before, its origin went at the part's whole height, stud and all: the
+	# plate stood 4 LDU, half a plate, off the ground and off the lattice.
+	# Now on the ground, as the Art's and every other placed part are.
+	_check("a 1 × 1 lies on the stud the classic mosaic laid it on, %s (was %s), its underside on the ground (cell %d)"
+		% [at.origin, was, (under[0] as Vector3i).y if not under.is_empty() else -1],
+		Vector2(at.origin.x, at.origin.z).is_equal_approx(Vector2(was.x, was.z))
+		and at.basis.is_equal_approx(Basis.IDENTITY) and not under.is_empty()
+		and (under[0] as Vector3i).y == 0)
 	_world.clear()
 	_builder.lattice.clear()
 	var ids: PackedInt64Array = Mosaic.put_down(mixed, _world, _builder, _library)
@@ -835,7 +925,15 @@ func _middle(control: Control) -> Vector2:
 	return control.get_global_rect().get_center()
 
 
+## [param at] in the window's pixels: a headless run's root is 64 x 64
+## drawn at the project's size, so a point on a control is taken through
+## the root's own transform, as a pointer's would be.
+func _px(at: Vector2) -> Vector2:
+	return root.get_final_transform() * at
+
+
 func _click(at: Vector2) -> void:
+	at = _px(at)
 	for down: bool in [true, false]:
 		var press := InputEventMouseButton.new()
 		press.button_index = MOUSE_BUTTON_LEFT
@@ -855,7 +953,7 @@ func _drag(dialog: MosaicDialog, from: Vector2, through: Array) -> void:
 	var press := InputEventMouseButton.new()
 	press.button_index = MOUSE_BUTTON_LEFT
 	press.pressed = true
-	press.position = origin + from * shown.size
+	press.position = _px(origin + from * shown.size)
 	press.global_position = press.position
 	press.button_mask = MOUSE_BUTTON_MASK_LEFT
 	root.push_input(press)
@@ -863,7 +961,7 @@ func _drag(dialog: MosaicDialog, from: Vector2, through: Array) -> void:
 	var last: Vector2 = press.position
 	for step: Vector2 in through:
 		var move := InputEventMouseMotion.new()
-		move.position = origin + step * shown.size
+		move.position = _px(origin + step * shown.size)
 		move.global_position = move.position
 		move.relative = move.position - last
 		move.button_mask = MOUSE_BUTTON_MASK_LEFT
