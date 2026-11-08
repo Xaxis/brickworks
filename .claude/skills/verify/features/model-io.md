@@ -95,8 +95,11 @@ Whether what you built is still there tomorrow, and still means the same thing.
   with its JSON fields in another order (a hand-written VIEW). The share,
   set bin and trace lines `ModelStore._write` adds pass through the same.
   A part of a mirrored copy agrees with its line only as it was opened (an
-  edit to one is (B)); a step edit numbers the steps again as live does, so
-  later parts' lines move with their steps, and a part the app cannot show
+  edit to one is (B)); a step edit moves the lines of the parts it moved to
+  the end of their new steps, and one that leaves a step of the file with
+  no part (a merge, a step emptied: the steps numbered again) is (B), which
+  takes that step's line out, where a patch moved every later line up a
+  step and left a STEP after the last (booklet_edit); a part the app cannot show
   that would be left behind its step-mates makes the save (B); the
   read-back knows a copy by the lines placing it, not by its number.
   keeptext4 wrote every edit into the file and refused what its gate did not

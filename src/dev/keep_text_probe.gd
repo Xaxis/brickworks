@@ -764,7 +764,7 @@ func _do(edit: String, text: String) -> Dictionary:
 			var path: String = twice[1]
 			var placing: Array = _placing(text, path)
 			_select_assembly(path)
-			_shell.run("make_unique")
+			await _command("make_unique")
 			await _frames(2)
 			return {"said": "made %s unique" % path, "lines": placing}
 		"add a part":
@@ -789,7 +789,7 @@ func _do(edit: String, text: String) -> Dictionary:
 			var path: String = twice[1]
 			var placing: Array = _placing(text, path)
 			_select_assembly(path)
-			_shell.run("delete")
+			await _command("delete")
 			await _frames(2)
 			return {"said": "took %s off" % path, "lines": placing, "taken": path}
 		"take a part out of one copy":
@@ -802,7 +802,7 @@ func _do(edit: String, text: String) -> Dictionary:
 			var line: Array = _lines_of_parts(text, [part])
 			assemblies.enter(path)
 			_select_only([part])
-			_shell.run("delete")
+			await _command("delete")
 			await _frames(2)
 			return {"said": "took a %s out of %s" % [line[0] if not line.is_empty() else "?", path],
 				"lines": line.map(func(entry: String) -> String: return entry), "removed": true}
@@ -876,7 +876,7 @@ func _do(edit: String, text: String) -> Dictionary:
 			var placing: Array = _placing(text, path)
 			var lines: Array = _lines_of_parts(text, Array(_shell.assemblies.ids_under(path)))
 			_select_assembly(path)
-			_shell.run("leave_submodel")
+			await _command("leave_submodel")
 			await _frames(2)
 			return {"said": "ungrouped %s" % path, "lines": placing,
 				"moving": lines.map(func(entry: String) -> String:
@@ -890,7 +890,7 @@ func _do(edit: String, text: String) -> Dictionary:
 				return {"skip": "no part of the model's own"}
 			var line: Array = _lines_of_parts(text, [part])
 			_select_only([part])
-			_shell.run("delete")
+			await _command("delete")
 			await _frames(2)
 			return {"said": "took a %s off" % (line[0] if not line.is_empty() else "?"),
 				"lines": line, "removed": true}
@@ -903,7 +903,7 @@ func _do(edit: String, text: String) -> Dictionary:
 				return {"skip": "no sub-model placed once"}
 			var placing: Array = _placing(text, path) + _gone_with(text, path)
 			_select_assembly(path)
-			_shell.run("delete")
+			await _command("delete")
 			await _frames(2)
 			return {"said": "took %s off" % path, "lines": placing, "taken": path}
 	return {"skip": "no such edit"}
@@ -1021,7 +1021,7 @@ func _omr_pairs() -> void:
 		var part_id: String = _world.get_brick(part).part_id
 		var count: int = _world.brick_count()
 		_select_only([part])
-		_shell.run("delete")
+		await _command("delete")
 		await _frames(2)
 		_live_flow = false
 		var deleted: String = _store.to_text(own, true)
@@ -2222,4 +2222,17 @@ func _say(tool: String, arguments: Dictionary) -> String:
 
 func _frames(count: int) -> void:
 	for _n: int in count:
+		await process_frame
+
+
+## Command [param name] run as its menu runs it, and waited for: one the
+## app expects to be slow, from how long it took before, says so first and
+## runs a frame or more later (Working.attend). keep_text's delete of 8062-1
+## ran after the probe looked, once the deletes on its bigger models had
+## taught it that, and the part was counted not taken off.
+func _command(name: String) -> void:
+	_shell.run(name)
+	for _n: int in 600:
+		if not Working.is_busy():
+			break
 		await process_frame

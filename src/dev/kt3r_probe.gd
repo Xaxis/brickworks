@@ -332,7 +332,7 @@ func _case_leocad() -> void:
 		var line: String = _line_of(text, part)
 		if str(spec[0]) == "delete":
 			_select_only([part])
-			_shell.run("delete")
+			await _command("delete")
 		else:
 			_shell.change_steps("next", [part], _step_holding(part))
 		await _frames(4)
@@ -359,7 +359,7 @@ func _case_ungroup() -> void:
 	var depth: int = _builder.history_depth()
 	var paths: Array = _shell.assemblies.paths()
 	_select_assembly(str(paths[0]))
-	_shell.run("leave_submodel")
+	await _command("leave_submodel")
 	await _frames(4)
 	_shell.assemblies.leave_to("")
 	_check("ungrouped %s: copies now %s" % [paths[0], str(_shell.assemblies.paths())],
@@ -389,7 +389,7 @@ func _case_delete_unshown_copy() -> void:
 	var depth: int = _builder.history_depth()
 	var paths: Array = _shell.assemblies.paths()
 	_select_assembly(str(paths[0]))
-	_shell.run("delete")
+	await _command("delete")
 	await _frames(4)
 	_shell.assemblies.leave_to("")
 	var placing: String = "1 16 0 -8 0 1 0 0 0 1 0 0 0 1 sign.ldr"
@@ -459,7 +459,7 @@ func _case_unshown_edits() -> void:
 	await _open(text)
 	depth = _builder.history_depth()
 	_select_assembly(path)
-	_shell.run("leave_submodel")
+	await _command("leave_submodel")
 	await _frames(4)
 	_shell.assemblies.leave_to("")
 	_check("ungrouped %s: copies now %s" % [path, str(_shell.assemblies.paths())],
@@ -1020,4 +1020,17 @@ func _open(text: String) -> void:
 
 func _frames(count: int) -> void:
 	for _n: int in count:
+		await process_frame
+
+
+## Command [param name] run as its menu runs it, and waited for: one the
+## app expects to be slow, from how long it took before, says so first and
+## runs a frame or more later (Working.attend). keep_text's delete of 8062-1
+## ran after the probe looked, once the deletes on its bigger models had
+## taught it that, and the part was counted not taken off.
+func _command(name: String) -> void:
+	_shell.run(name)
+	for _n: int in 600:
+		if not Working.is_busy():
+			break
 		await process_frame
