@@ -511,7 +511,7 @@ geometry in front of them.
   tool: a session copies parts with edit_model.
   `palettes_probe` (1280 x 720, PROBE_SIZE=1400x900 too).
 - `techniques in the bin` (`src/ai/techniques.gd`, the bin's Techniques):
-  *Techniques* sits beside Recent and Favourites, the assistant's worked
+  *Techniques* sits after Recent, Favourites and Palettes, the assistant's worked
   constructions (`Techniques.all()`, 91 on 2026-10-24) under their
   `Techniques.GROUPS`, one a row with its picture (`PartThumbnails.offer_group`,
   drawn once a colour and cached as a part's is) and its one-line reason
