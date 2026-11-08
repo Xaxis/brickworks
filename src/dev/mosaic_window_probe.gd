@@ -237,7 +237,15 @@ func _middle(control: Control) -> Vector2:
 	return control.get_global_rect().get_center()
 
 
+## A point on the app's canvas in the window's pixels: the app draws its
+## interface scaled (1391 x 782 of canvas in a 1280 x 720 window), and a
+## pointer's events come in the window's.
+func _px(at: Vector2) -> Vector2:
+	return root.get_final_transform() * at
+
+
 func _click(at: Vector2) -> void:
+	at = _px(at)
 	var move := InputEventMouseMotion.new()
 	move.position = at
 	move.global_position = at
@@ -259,7 +267,7 @@ func _click(at: Vector2) -> void:
 func _drag(dialog: MosaicDialog, from: Vector2, to: Vector2) -> void:
 	var shown: Rect2 = dialog.shown_rect()
 	var origin: Vector2 = dialog._preview.get_global_rect().position + shown.position
-	var last: Vector2 = origin + from * shown.size
+	var last: Vector2 = _px(origin + from * shown.size)
 	var press := InputEventMouseButton.new()
 	press.button_index = MOUSE_BUTTON_LEFT
 	press.pressed = true
@@ -270,7 +278,7 @@ func _drag(dialog: MosaicDialog, from: Vector2, to: Vector2) -> void:
 	await process_frame
 	for step: int in range(1, 9):
 		var move := InputEventMouseMotion.new()
-		move.position = origin + from.lerp(to, step / 8.0) * shown.size
+		move.position = _px(origin + from.lerp(to, step / 8.0) * shown.size)
 		move.global_position = move.position
 		move.relative = move.position - last
 		move.button_mask = MOUSE_BUTTON_MASK_LEFT
