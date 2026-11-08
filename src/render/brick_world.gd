@@ -289,6 +289,11 @@ var cut_kept: Dictionary = {}
 ## them (ModelStore); none for a model with none, and none again when the
 ## model is cleared.
 var saved_views: Array = []
+## The lights placed in the model (SceneLights), in the window's coordinates:
+## Render's Lights in the model adds them and the model's file carries them
+## (ModelStore); none for a model with none, and none again when the model
+## is cleared.
+var scene_lights: Array = []
 ## The sections broken out of the model to be worked on (Sections.break_out):
 ## a sub-assembly's path -> {"offset": Vector3, how far it was moved, LDU;
 ## "home": brick id -> the Transform3D it stood at}. Changed only by the
@@ -531,6 +536,7 @@ func clear() -> void:
 	motions = null
 	cut_kept = {}
 	saved_views = []
+	scene_lights = []
 	broken_out.clear()
 	_note({"op": "clear"})
 	_generation += 1
