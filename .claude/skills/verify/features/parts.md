@@ -380,8 +380,9 @@ geometry in front of them.
   browser every part file, geometry and exact shape, is fetched by the page
   itself (`_ask_page`, `PAGE_FETCH`: handed over as its bytes come and taken
   in one copy, where an HTTPRequest took a frame for each of its states: 7
-  frames, 1 to 4 s, playweb; geometry too since fetchparts, 2026-11-08), and
-  HTTPRequest is the desktop's. `fetchparts browser flow`
+  frames, 1 to 4 s, playweb; geometry too since fetchparts, 2026-11-08),
+  `MAX_IN_FLIGHT_PAGE` (48) at once, where the desktop's HTTPRequest opens
+  `MAX_IN_FLIGHT` (16). `fetchparts browser flow`
   (`tools/web/fetchparts_flow.mjs`, local only, recipe below) counts the
   engine's fetches of part files (none) and times a Technic car's 47
   fetched shapes against the build before. One asked for before the

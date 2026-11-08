@@ -1376,7 +1376,7 @@ func request_mesh(part_id: String, urgent: bool = false) -> bool:
 		if not waiting.has(part_id):
 			waiting.append(part_id)
 		return true
-	if int(_open.get("lbm", 0)) >= MAX_IN_FLIGHT:
+	if int(_open.get("lbm", 0)) >= _most_in_flight:
 		if urgent:
 			_urgent[part_id] = true
 		if _queued_fetches.has(part_id):
@@ -1419,6 +1419,14 @@ func request_mesh(part_id: String, urgent: bool = false) -> bool:
 ## each is polled once a frame: a big set's own parts were most of its open
 ## (walk180, A8).
 const MAX_IN_FLIGHT := 16
+## On the web each is the page's own fetch, answered between frames rather
+## than polled in them, and the next is asked only once an answer has been
+## heard there: sixteen at a time came in waves a frame or more apart, the
+## Rally Racer's 47 geometries in three, 2 to 7 s at 0.5 to 2 s a frame
+## (fetchparts, 2026-11-08). The browser's one HTTP/2 connection carries
+## them all, so there a big set's parts are asked in one wave.
+const MAX_IN_FLIGHT_PAGE := 48
+var _most_in_flight: int = MAX_IN_FLIGHT_PAGE if OS.has_feature("web") else MAX_IN_FLIGHT
 
 
 ## Ask now for the geometry of each of [param part_ids] this build has not
@@ -1583,7 +1591,7 @@ var _page_asks: Dictionary = {}
 
 ## Start the next waiting fetch, if there is room.
 func _next_fetch() -> void:
-	while not _queued_fetches.is_empty() and int(_open.get("lbm", 0)) < MAX_IN_FLIGHT:
+	while not _queued_fetches.is_empty() and int(_open.get("lbm", 0)) < _most_in_flight:
 		var part_id: String = _queued_fetches[0]
 		_queued_fetches.remove_at(0)
 		_urgent.erase(part_id)
@@ -1691,11 +1699,11 @@ const READ_BUDGET_MS := 4.0
 ## the 47 geometries of the Rally Racer came in 8 frames, 5.5 s after the
 ## last had arrived (fetchparts, 2026-11-08). A worker now reads all that
 ## waits, the most wanted first as it comes, and each frame keeps what fits:
-## 4 ms of a quick frame, a tenth of a slow one. A frame that already takes
-## half a second is not held by 50 ms more, and the part is seen a frame
-## sooner.
+## 4 ms of a quick frame, a quarter of a slow one. A frame that already
+## takes half a second is not held by 125 ms more, and the part is seen
+## frames sooner; a quick one keeps going at 45 frames a second or more.
 const KEEP_BUDGET_MS := 4.0
-const KEEP_SHARE := 0.1
+const KEEP_SHARE := 0.25
 ## Whether what is read ahead is read on a worker: where there are threads. A
 ## probe turns it off to read in frames under the budget, as a browser without
 ## threads does.
@@ -1902,7 +1910,7 @@ func request_exact(part_id: String) -> bool:
 	# then, a link's motion's shapes asked as its model was first shown were
 	# asked again only once every part was here, and came 4 to 8 s after it
 	# (playweb, 2026-11-07).
-	if int(_open.get("bwx", 0)) >= MAX_IN_FLIGHT or (OS.has_feature("web") and remote_parts.is_empty()):
+	if int(_open.get("bwx", 0)) >= _most_in_flight or (OS.has_feature("web") and remote_parts.is_empty()):
 		_exact_waiting.append(part_id)
 		return true
 	_fetching_exact[info.mesh_hash] = true
@@ -1970,7 +1978,7 @@ func _on_fetched_exact(code: int, body: PackedByteArray, hash_name: String,
 
 ## Start the next exact shape waiting, if there is room.
 func _next_exact() -> void:
-	while not _exact_waiting.is_empty() and int(_open.get("bwx", 0)) < MAX_IN_FLIGHT \
+	while not _exact_waiting.is_empty() and int(_open.get("bwx", 0)) < _most_in_flight \
 			and not (OS.has_feature("web") and remote_parts.is_empty()):
 		var next: String = _exact_waiting[0]
 		_exact_waiting.remove_at(0)
