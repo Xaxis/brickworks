@@ -116,10 +116,18 @@ lib:product look
 
 ### Building {#building}
 
-**Building** renders the model going up: the steps the [timeline](/docs/instructions#timeline) shows, one after another, each step's parts coming down into place, while the camera turns slowly round and ends on the view you chose. Pick a length (10, 20, 30 or 60 seconds) and press [[Enter]], or **Render building**. It is kept like a turntable: an animated WebP, and on the desktop the frames and an MP4.
+**Building** renders the model going up: the steps the [timeline](/docs/instructions#timeline) shows, one after another, each step's parts coming down into place, while the camera turns slowly round and ends on the view you chose. The camera follows the build: the first step fills the picture, and it draws back as each step begins until the whole model is in view, as a picture of it frames it. Pick a length (10, 20, 30 or 60 seconds) and press [[Enter]], or **Render building**. It is kept like a turntable: an animated WebP, and on the desktop the frames and an MP4.
 
 <!-- covers
 ui:building video
+-->
+
+### GIF {#gif}
+
+**Kept as** chooses the file a turntable, an animation or a building is kept as: an animated **WebP**, which keeps every colour and is small, or a **GIF**, which plays anywhere a picture goes, chats, forums and mail included. A GIF has 256 colours, chosen once for the whole video so nothing flickers, is at most 640 pixels across, and is made to fit in 8 MB: a long video gets fewer frames a second, then a smaller picture. Claude can ask for one too (`render_model` with `format` gif).
+
+<!-- covers
+ui:moving renders kept as a GIF
 -->
 
 ## Booklets {#booklets}

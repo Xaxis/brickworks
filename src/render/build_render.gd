@@ -9,9 +9,14 @@
 ## down before the next step begins; then the finished model, the last part
 ## of the length. Every frame shows the first so many parts of that order
 ## and none after them, and the last frame is the whole model, where it
-## stands. The camera turns slowly round the whole of it, ending on the view
-## chosen, and is framed on the finished model throughout, so it stands
-## still while the model goes up in it.
+## stands. The camera turns slowly round, ending on the view chosen, and
+## follows the build (video2, APP_UX6 gap 12): each step is framed on what
+## is built by its end, so the first step's few parts fill the picture
+## rather than sitting small in a corner of the finished model's frame, and
+## as each step begins the camera draws back, eased, while its parts come
+## down, until the whole model fills it as the picture does. A session
+## watching the six frames of a build said "the single plate and the pods
+## look small, up in the top left corner"; a person saw the same.
 ##
 ## Drawn by StudioRender.animate, as a motion is (MotionRender): a part not
 ## yet arrived is drawn at no size, a part coming down a little above its
@@ -31,6 +36,9 @@ const FINISHED := 0.2
 const TURNING := 4.5
 ## The longest a part takes to come down into place, in seconds.
 const LANDING := 0.5
+## The shortest the camera takes to draw back to a step, in seconds: a
+## model of many small steps is followed smoothly, not a jolt a step.
+const EASING := 0.15
 ## How far above its place a part begins coming down: a share of the
 ## model's height, and at least two bricks (LDU).
 const DROP_SHARE := 0.25
@@ -55,6 +63,11 @@ var _starts := PackedFloat32Array()
 var _landing: float = 0.0
 var _drop: float = 0.0
 var _homes: Array[Transform3D] = []
+## Each part's box where it stands, and what each frame is framed on
+## (framed_at), as its least and greatest corners.
+var _boxes: Array[AABB] = []
+var _framed_low := PackedVector3Array()
+var _framed_high := PackedVector3Array()
 
 
 ## The parts of [param world] (less [param scenery] and what is hidden) in
@@ -77,6 +90,9 @@ static func planned(world: BrickWorld, library: PartLibrary, scenery: Dictionary
 			seen[brick_id] = true
 			out.order.append(brick_id)
 			out._homes.append(brick.transform)
+			var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
+			out._boxes.append(brick.transform * info.bounds if info != null
+				else AABB(brick.transform.origin, Vector3.ZERO))
 		if not out.order.is_empty() and (ends.is_empty() or ends[ends.size() - 1] < out.order.size()):
 			ends.append(out.order.size())
 	out.steps = int(Instructions.count(plan)["steps"])
@@ -110,6 +126,67 @@ func lay_out(seconds: float, fps: int, height: float) -> void:
 		while at < order.size() and _starts[at] <= float(n):
 			at += 1
 		shown[n] = at
+	_frame_steps(each, count, fps)
+
+
+## What each frame is framed on: from the frame a step begins, every part
+## of it and of the steps before it, where they stand; the camera eased
+## from one to the next over about the time a part takes to come down
+## (twice a running mean, so it starts and stops gently), and so never
+## framed on less than the parts that are down. Every frame of the last
+## step and the finished model is framed on the whole of it.
+func _frame_steps(each: float, count: int, fps: int) -> void:
+	var lows := PackedVector3Array()
+	var highs := PackedVector3Array()
+	var low := Vector3.INF
+	var high := -Vector3.INF
+	var from: int = 0
+	for step: int in count:
+		for k: int in range(from, int(_step_ends[step])):
+			low = low.min(_boxes[k].position)
+			high = high.max(_boxes[k].end)
+		from = int(_step_ends[step])
+		lows.append(low)
+		highs.append(high)
+	var low_at := PackedVector3Array()
+	var high_at := PackedVector3Array()
+	low_at.resize(frames)
+	high_at.resize(frames)
+	for n: int in frames:
+		var step: int = clampi(floori(float(n) / maxf(each, 0.001)), 0, maxi(count - 1, 0))
+		low_at[n] = lows[step] if count > 0 else Vector3.ZERO
+		high_at[n] = highs[step] if count > 0 else Vector3.ZERO
+	var width: int = maxi(roundi(_landing * 0.5) + 1, roundi(EASING * float(fps)) + 1)
+	_framed_low = _eased(_eased(low_at, width), width)
+	_framed_high = _eased(_eased(high_at, width), width)
+
+
+## The mean of the last [param width] of [param values] at each, the first
+## standing in for those before it. Where they are all the same it is that,
+## exactly: the last frames are the whole model's own box.
+static func _eased(values: PackedVector3Array, width: int) -> PackedVector3Array:
+	var out := PackedVector3Array()
+	out.resize(values.size())
+	for n: int in values.size():
+		var first: int = maxi(n - width + 1, 0)
+		# What is framed only grows, so the first and the last the same
+		# are all the same.
+		if values[first] == values[n]:
+			out[n] = values[n]
+			continue
+		var sum := Vector3.ZERO
+		for k: int in range(n - width + 1, n + 1):
+			sum += values[maxi(k, 0)]
+		out[n] = sum / float(width)
+	return out
+
+
+## What frame [param n] is framed on, where it stands in the model
+## (StudioRender.animate's framed_at).
+func framed_at(n: int) -> AABB:
+	if n < 0 or n >= _framed_low.size():
+		return AABB()
+	return AABB(_framed_low[n], _framed_high[n] - _framed_low[n])
 
 
 ## Frame [param n]'s parts that stand otherwise than in the frame before it
@@ -157,7 +234,7 @@ func draw(renderer: StudioRender, world: BrickWorld, chosen: RenderSettings,
 	var done: int = await renderer.animate(world, chosen, frames, poses_at, turn_at, AABB(),
 		func(n: int, image: Image) -> void:
 			await each.call(n, image)
-			await output.add_frame(n, image))
+			await output.add_frame(n, image), PackedVector3Array(), framed_at)
 	await output.settle()
 	return done
 

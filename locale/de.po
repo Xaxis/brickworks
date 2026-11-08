@@ -12861,3 +12861,52 @@ msgstr "%s Sterne"
 
 msgid "%s large stars"
 msgstr "%s große Sterne"
+
+# video2 (APP_UX6 #11): Render's Kept as, a WebP or a GIF.
+msgid "Kept as"
+msgstr "Gespeichert als"
+
+msgid "WebP"
+msgstr "WebP"
+
+msgid "GIF"
+msgstr "GIF"
+
+msgid "A GIF plays anywhere a picture goes, chats, forums and mail included: 256 colours, at most 640 pixels across, made to fit in 8 MB."
+msgstr "Ein GIF läuft überall, wo ein Bild hingeht, auch in Chats, Foren und E-Mails: 256 Farben, höchstens 640 Pixel breit, passend für 8 MB."
+
+msgid "An animated WebP keeps every colour and is small; every browser plays it."
+msgstr "Ein animiertes WebP behält jede Farbe und ist klein; jeder Browser spielt es ab."
+
+msgid "%d frames, %s s at %d a second, as a GIF."
+msgstr "%d Bilder, %s s bei %d pro Sekunde, als GIF."
+
+msgid "%d frames, %s s at %d a second, as a GIF, the frames, and an MP4 where ffmpeg is installed."
+msgstr "%d Bilder, %s s bei %d pro Sekunde, als GIF, die Einzelbilder und ein MP4, wo ffmpeg installiert ist."
+
+msgid "%s parts as the timeline builds them, step by step, over %d s at %d a second, the camera turning %d° round, as a GIF."
+msgstr "%s Teile, wie die Zeitleiste sie baut, Schritt für Schritt, über %d s bei %d pro Sekunde, die Kamera dreht sich um %d°, als GIF."
+
+msgid "%s parts as the timeline builds them, step by step, over %d s at %d a second, the camera turning %d° round, as a GIF, the frames, and an MP4 where ffmpeg is installed."
+msgstr "%s Teile, wie die Zeitleiste sie baut, Schritt für Schritt, über %d s bei %d pro Sekunde, die Kamera dreht sich um %d°, als GIF, die Einzelbilder und ein MP4, wo ffmpeg installiert ist."
+
+msgid "%s: %s s at %d a second, %s, as a GIF."
+msgstr "%s: %s s bei %d pro Sekunde, %s, als GIF."
+
+msgid "%s: %s s at %d a second, %s, as a GIF, the frames, and an MP4 where ffmpeg is installed."
+msgstr "%s: %s s bei %d pro Sekunde, %s, als GIF, die Einzelbilder und ein MP4, wo ffmpeg installiert ist."
+
+msgid "Making the GIF…"
+msgstr "GIF wird erstellt…"
+
+msgid "Making the GIF: frame %d of %d…"
+msgstr "GIF wird erstellt: Bild %d von %d…"
+
+msgid "a GIF of %d x %d, %d frames at %s a second, %s MB"
+msgstr "ein GIF mit %d × %d, %d Bilder bei %s pro Sekunde, %s MB"
+
+msgid "the GIF was not finished: %s"
+msgstr "das GIF wurde nicht fertig: %s"
+
+msgid "no GIF: its frames would not read back"
+msgstr "kein GIF: seine Bilder ließen sich nicht zurücklesen"
