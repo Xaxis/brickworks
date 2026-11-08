@@ -1283,10 +1283,14 @@ func _render(save: Save, target: Target) -> void:
 	# more than one step; in one, its text is as it was.
 	var lined: bool = save.stepped and steps_here.is_empty() and _steps_differ(target, incoming)
 	var numbered: Dictionary = {}    ## block -> true: a step the app numbers is in it
-	# The blocks a part or copy is still in, before a step edit takes any:
-	# one emptied by a delete keeps the STEP line ending it.
+	# The blocks a part or copy of the file was in: one a delete or a step
+	# edit emptied loses the STEP line ending it, unless the app still
+	# numbers a step there. Kept, an emptied step the app numbered no more
+	# opened again as a step of its own, and every page setting after it
+	# came out a step early (booklet_edit's row, its red and blue steps'
+	# parts taken off and the steps numbered again).
 	var had: Dictionary = {}
-	for line: int in target.inplace:
+	for line: int in mine:
 		if line >= a and line < b:
 			had[block[line]] = true
 	if save.stepped and not steps_here.is_empty():
