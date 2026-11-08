@@ -13296,6 +13296,16 @@ func _written_at(model: Model, placement: Placement, mesh: Lbm.PartMesh, at: Tra
 ## _check] itself, on their own thread, as before.
 func _checked(model: Model, alone: bool = false, weigh: bool = false,
 		advise: bool = true) -> Dictionary:
+	# In a browser the exact shapes are fetched, and one still on its way was
+	# judged as none: Brick Art's 768 parts, checked as they landed, came to 25
+	# pieces with some of their shapes come and 1 with all (rel-m274's
+	# art_flow). Waited for here, as _ready_to_check has them for a design:
+	# what is checked is what is built. The desktop reads them as asked.
+	if OS.has_feature("web") and library != null:
+		var wanted: Dictionary = {}
+		for part_id: String in _exact_ids(model, alone):
+			wanted[part_id] = true
+		await _ensure_exact_of(wanted)
 	# One worker at a time: a second check while one is out (the design
 	# loop and a connector both checking) is done here, as before.
 	if model.placements.size() < CHECK_OFF_THREAD_FROM or _standing_held \
