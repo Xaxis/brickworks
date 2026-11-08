@@ -128,6 +128,9 @@ const PATHS: Dictionary[StringName, String] = {
 	# seeing2: View, Stud directions, made on its first use (Shell.stud_map)
 	# or a session's view_board studs (SeeTools).
 	&"StudMap": "res://src/ui/stud_map.gd",
+	# localbricks: at a sign-in, what this device kept offered to the
+	# account (CollectionStore.show_offer), made only when there is some.
+	&"CollectionOffer": "res://src/ui/collection_offer.gd",
 }
 
 ## How long each one took to load, in ms, by name, from the first ask:

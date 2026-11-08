@@ -816,7 +816,12 @@ func definitions() -> Array:
 				+ "lots this chat added (count omitted: the whole lot). With neither, it reads "
 				+ "the collection back, this chat's lots apart. Their sets and their own lots "
 				+ "are theirs: this never changes them. parts_list which=\"need\" then measures "
-				+ "the model against it, and which=\"buildable\" ranks what they can build."),
+				+ "the model against it, and which=\"buildable\" ranks what they can build. "
+				# localbricks (APP_UX6 #8): signed out, kept on the device; a set's marks.
+				+ "Signed out, it is kept on this device and offered to their account when they sign in. "
+				+ "missing={set, lots: [{part, color, count}]} marks how many of each part a set they own "
+				+ "is missing (count 0 unmarks it; none=true marks the set whole), as its Missing parts… "
+				+ "page does: What do I need? and the pool then count only what is there."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"add": {"type": "array", "description": "loose lots to add", "items": {
 					"type": "object", "additionalProperties": false, "required": ["part", "color", "count"],
@@ -833,6 +838,18 @@ func definitions() -> Array:
 						"count": {"type": "integer", "description": "how many to take off; the whole lot when omitted"},
 					}}},
 				"limit": {"type": "integer", "description": "how many lots the read back lists; 60 when omitted"},
+				# localbricks (APP_UX6 #8): a set's missing lots marked and unmarked.
+				"missing": {"type": "object", "additionalProperties": false, "required": ["set"],
+					"description": "a set they own, and how many of each of its parts are missing", "properties": {
+						"set": {"type": "string", "description": "the set's number, like 7140-1"},
+						"lots": {"type": "array", "items": {"type": "object", "additionalProperties": false,
+							"required": ["part", "color", "count"], "properties": {
+								"part": {"type": "string", "description": "the part's LDraw number, as the set's inventory lists it"},
+								"color": {"type": "integer", "description": "LDraw colour code"},
+								"count": {"type": "integer", "description": "how many of it are missing, 0 for none"},
+							}}},
+						"none": {"type": "boolean", "description": "nothing missing: the set is whole"},
+					}},
 			}},
 		},
 		{
@@ -3467,10 +3484,10 @@ func _edit_collection(input: Dictionary) -> String:
 		return "This app has no collection."
 	var mine: CollectionStore = dialog.store
 	var library: PartLibrary = app.get("_library")
-	var account: Account = app.get("_account")
-	if account == null or not account.signed_in():
-		return ("The person is not signed in, and a collection is kept with their account: "
-			+ "they sign in (Account), then it can be read and added to.")
+	# Signed out, the device's own collection (localbricks): the same ops.
+	# localbricks (APP_UX6 #8): a set's missing lots marked and unmarked.
+	if input.get("missing") != null:
+		return await _collection_marks(mine, library, input["missing"])
 	var adding: Variant = input.get("add", [])
 	var removing: Variant = input.get("remove", [])
 	if not adding is Array or not removing is Array:
@@ -3650,10 +3667,16 @@ func _collection_said(mine: CollectionStore, library: PartLibrary, limit: int) -
 	var sets := PackedStringArray()
 	for entry: Dictionary in held.sets:
 		var record: Dictionary = mine.records.get(str(entry["set"]), {})
-		sets.append("%s%s%s" % [entry["set"], " " + str(record["n"]) if record.has("n") else "",
-			" x%d" % int(entry["qty"]) if int(entry["qty"]) > 1 else ""])
+		# localbricks: and what it is marked as missing.
+		var gone: int = 0
+		for lot: Dictionary in Collection.missing_lots(entry):
+			gone += int(lot["qty"])
+		sets.append("%s%s%s%s" % [entry["set"], " " + str(record["n"]) if record.has("n") else "",
+			" x%d" % int(entry["qty"]) if int(entry["qty"]) > 1 else "", ", %d missing" % gone if gone > 0 else ""])
 	said.append("The person's collection%s: %s%s, %s of their own, %s this chat added%s; %s on hand in all."
-		% [" (the copy on this device)" if mine.offline else "", Counted.of(held.sets.size(), "set"),
+		% [" (the copy on this device)" if mine.offline
+			else (" (kept on this device: nobody is signed in; offered to their account when they sign in)"
+				if mine.here else ""), Counted.of(held.sets.size(), "set"),
 			(" (" + ", ".join(sets.slice(0, 20)) + (", …" if sets.size() > 20 else "") + ")") if not sets.is_empty() else "",
 			Counted.of(own.size(), "loose lot"), Counted.of(ours.size(), "lot"),
 			", %s other chats added" % Counted.of(others.size(), "lot") if not others.is_empty() else "",
@@ -3674,6 +3697,119 @@ func _collection_said(mine: CollectionStore, library: PartLibrary, limit: int) -
 	if total > listed:
 		said.append("  and %d more lots: limit= for more." % (total - listed))
 	return "\n".join(said)
+
+
+# -- localbricks: a set's missing parts, for a session (APP_UX6 #8) --------------------
+
+
+## edit_collection missing=: how many of each part a set the person owns is
+## missing, marked as its Missing parts… page marks them (api/collection.js
+## op "missing", each from the count kept now), at the account or, signed
+## out, on this device; none=true marks it whole. A part is named by its
+## LDraw number (or BrickLink's) and matched to the set's inventory as the
+## pool matches it (Collection.key_of), and marked under the number the
+## inventory has, as the page marks it.
+func _collection_marks(mine: CollectionStore, library: PartLibrary, asked: Variant) -> String:
+	if not asked is Dictionary:
+		return "missing is {set, lots: [{part, color, count}]}, or {set, none: true}."
+	var number: String = SetInventories.normal(str((asked as Dictionary).get("set", "")).strip_edges())
+	if number.is_empty():
+		return "missing.set is a set's number, like 7140-1."
+	var trouble_read: String = await mine.load_collection()
+	var entry: Dictionary = {}
+	for one: Dictionary in mine.collection.sets:
+		if str(one["set"]) == number and not Collection.is_fig(one):
+			entry = one
+			break
+	if entry.is_empty():
+		return ("Nothing was changed: %s is not a set in the person's collection%s. edit_collection with nothing "
+			+ "reads back their sets.") % [number, "" if trouble_read.is_empty() else " (" + trouble_read + ")"]
+	var record: Dictionary = mine.records.get(number, {})
+	if record.is_empty():
+		record = (await mine.inventories.lookup(PackedStringArray([number]))).get(number, {})
+	if record.is_empty():
+		return "Nothing was changed: no inventory of %s is known here, so its parts cannot be marked." % number
+	# The set's lots in the pool's spelling: key -> [its part, its colour, how many, copies counted].
+	var times: int = maxi(1, int(entry.get("qty", 1)))
+	var lots: Dictionary = {}
+	for row: Variant in record.get("p", []):
+		var lot: Array = row
+		var key: String = Collection.key_of(str(lot[0]), int(lot[1]), library)
+		if lots.has(key):
+			lots[key][2] = int(lots[key][2]) + int(lot[2]) * times
+		else:
+			lots[key] = [str(lot[0]), int(lot[1]), int(lot[2]) * times]
+	var changes: Array = []
+	var refused := PackedStringArray()
+	if (asked as Dictionary).get("none") == true:
+		for lot: Dictionary in Collection.missing_lots(entry):
+			changes.append({"part": lot["part"], "colour": int(lot["colour"]), "was": int(lot["qty"]), "qty": 0})
+	else:
+		var given: Variant = (asked as Dictionary).get("lots", [])
+		if not given is Array or (given as Array).is_empty():
+			return "missing.lots is a list of {part, color, count}, or none=true marks the set whole."
+		if (given as Array).size() > MOST_LOTS:
+			return "At most %d lots a call; send the rest in another." % MOST_LOTS
+		var seen: Dictionary = {}
+		for n: int in (given as Array).size():
+			var lot: Variant = _collection_lot(given[n], library, false)
+			var key: String = ""
+			if lot is Dictionary:
+				key = Collection.key_of(str(lot["part"]), int(lot["colour"]), library)
+			elif given[n] is Dictionary:
+				# A part the library lacks, named as the inventory names it.
+				var raw: String = str((given[n] as Dictionary).get("part", "")).strip_edges().to_lower()
+				var code: int = int((given[n] as Dictionary).get("color", (given[n] as Dictionary).get("colour", -1)))
+				for at: String in lots:
+					if str(lots[at][0]) == raw and int(lots[at][1]) == code:
+						key = at
+						lot = {"part": raw, "colour": code,
+							"qty": int((given[n] as Dictionary).get("count", (given[n] as Dictionary).get("qty", -1)))}
+			if key.is_empty() or not lots.has(key):
+				refused.append("lot %d: %s" % [n + 1, lot if lot is String
+					else "%s in colour %d is not in %s's inventory" % [lot["part"], int(lot["colour"]), number]])
+				continue
+			if int(lot["qty"]) < 0 or int(lot["qty"]) > int(lots[key][2]):
+				refused.append("lot %d: %s has %d of %s in colour %d, so from 0 to %d of it can be missing"
+					% [n + 1, number, int(lots[key][2]), lots[key][0], int(lots[key][1]), int(lots[key][2])])
+				continue
+			if seen.has(key):
+				refused.append("lot %d: %s in colour %d is named twice" % [n + 1, lots[key][0], int(lots[key][1])])
+				continue
+			seen[key] = true
+			var was: int = Collection.missing_count(entry, str(lots[key][0]), int(lots[key][1]))
+			if was != int(lot["qty"]):
+				changes.append({"part": lots[key][0], "colour": int(lots[key][1]), "was": was, "qty": int(lot["qty"])})
+	if not refused.is_empty():
+		return ("Nothing was changed: " + "; ".join(refused)
+			+ ". Name each part as the set's inventory lists it (search_parts finds a number); colours are LDraw codes.")
+	if changes.is_empty():
+		return "Nothing to change: %s is marked so already." % number
+	var body: Dictionary = {"op": "missing", "set": number, "lots": changes}
+	if not str(entry.get("src", "")).is_empty():
+		body["src"] = str(entry["src"])
+	var done: Dictionary = await mine.change(body)
+	if done["kind"] == CollectionStore.UNREACHED:
+		return ("No answer came, so it may have been made (%s). edit_collection with nothing reads back what is "
+			+ "there: read it before sending this again.") % done["said"]
+	if done["kind"] != CollectionStore.DONE:
+		return "Nothing was changed: %s." % done["said"]
+	var now: Dictionary = {}
+	for one: Dictionary in mine.collection.sets:
+		if str(one["set"]) == number and str(one.get("src", "")) == str(entry.get("src", "")) and not Collection.is_fig(one):
+			now = one
+	var whole: Dictionary = mine.collection.wholeness(now, record, library) if not now.is_empty() \
+		else {"pieces": 0, "marked": 0, "short": 0, "loose": 0}
+	var named := PackedStringArray()
+	for change: Dictionary in changes.slice(0, 12):
+		named.append("%s in colour %d: %d missing" % [change["part"], int(change["colour"]), int(change["qty"])])
+	return ("Marked %s of %s %s%s: %s. %d of its %d pieces are marked missing now%s%s. What do I need? for it (My collection, "
+		+ "Closest to whole) lists what to find; the pool, What do I need? and What can I build? count only what is "
+		+ "there.") % [Counted.of(changes.size(), "lot"), number, str(record.get("n", "")),
+		" (kept on this device: nobody is signed in)" if mine.here else "", ", ".join(named)
+		+ (", …" if changes.size() > 12 else ""), int(whole["marked"]), int(whole["pieces"]),
+		"" if int(whole["loose"]) == 0 else ", %d of them made up by their loose parts" % int(whole["loose"]),
+		"" if int(whole["marked"]) > 0 else ": whole"]
 
 
 # -- rendering and exporting ---------------------------------------------------------

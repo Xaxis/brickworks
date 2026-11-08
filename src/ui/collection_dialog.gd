@@ -165,9 +165,9 @@ func open(page: String = "own") -> void:
 	_rb_note.text = _rebrickable_note()
 	_show(page)
 	# What another device or a session changed since is shown, not a copy
-	# read at sign-in (mbreview finding 1).
-	if store.account != null and store.account.signed_in():
-		store.load_collection()
+	# read at sign-in (mbreview finding 1); signed out, what another tab or
+	# window changed in the device's own (localbricks).
+	store.load_collection()
 
 
 ## What happens to a Rebrickable key and to what a fetch replaces, and,
@@ -430,8 +430,7 @@ func _loose_row(page: Container) -> void:
 		add_loose())
 	row.add_child(_loose_count)
 	_controls["collection_loose_count"] = _loose_count
-	_button(row, "Add", add_loose, "collection_loose_add",
-		"Add these to your loose parts, kept with your account")
+	_button(row, "Add", add_loose, "collection_loose_add", "Add these to your loose parts")
 
 	# Flowing, so the parts found go onto a second line rather than widen
 	# the page: in one row, six of them pushed Add, Add sets and every
@@ -607,18 +606,27 @@ func _fill_own() -> void:
 	for entry: Dictionary in mine.sets:
 		if not Collection.is_fig(entry):
 			sets += int(entry["qty"])
-	if mine.is_empty():
+	if mine.is_empty() and store.here:
+		_summary.text = ("Nothing here yet. Add sets by number and loose parts below: they are kept on this "
+			+ "device, and offered to your account when you sign in. A Rebrickable account or a file comes in "
+			+ "once you are signed in.")
+	elif mine.is_empty():
 		_summary.text = ("Nothing here yet. Bring in what you own: your Rebrickable account, "
 			+ "a Rebrickable or BrickLink export, or set numbers typed in.")
 	else:
 		_summary.text = "%d set%s and %s loose piece%s — %s pieces in all%s" % [
 			sets, "" if sets == 1 else "s", _comma(mine.loose_pieces()),
 			"" if mine.loose_pieces() == 1 else "s", _comma(store.pieces_on_hand()),
-			" (the copy on this device)" if store.offline else ", kept with your account"]
+			" (the copy on this device)" if store.offline
+			else (", kept on this device until you sign in" if store.here else ", kept with your account")]
+	if store.here and not store.here_words().is_empty():
+		_summary.text += ". " + store.here_words()[0].to_upper() + store.here_words().substr(1)
+	_imports_for_here()
 	_clear_rows(_own_rows)
 	_controls.erase("collection_build_all")
 	_controls.erase("collection_build_first")
 	_controls.erase("collection_mark_first")
+	_here_rows()
 	_closest_rows()
 	if sets > 0:
 		var heading := HBoxContainer.new()
@@ -743,7 +751,7 @@ func _lot_row(lot: Dictionary) -> HBoxContainer:
 	count.select_all_on_focus = true
 	count.custom_minimum_size = Vector2(64, 0)
 	count.get_line_edit().add_theme_font_size_override("font_size", 12)
-	count.tooltip_text = "How many you have; changed here, kept with your account"
+	count.tooltip_text = "How many you have; changed here"
 	# The count this row shows as kept: what a change typed here says it saw.
 	var kept: Dictionary = {"qty": int(lot["qty"])}
 	count.value_changed.connect(func(value: float) -> void: _count_typed(lot, kept, int(value)))
@@ -1074,8 +1082,13 @@ func _build_from(numbers: PackedStringArray) -> void:
 	if dock != null and not dock.is_open():
 		dock.set_open(true)
 	close()
+	# What the person's copies are marked as missing is not in the bin
+	# (SetBin.make, CollectionStore.marks): said, so the counts read right.
+	var made: Variant = bin.get("_set_bin")
+	var gone: int = int(made.get("left_out")) if made is Object and made.get("left_out") != null else 0
 	if bar != null:
-		bar.say("building from the parts of %s" % bin.set_showing())
+		bar.say("building from the parts of %s%s" % [bin.set_showing(),
+			"" if gone == 0 else ", less the %s marked missing" % Counted.of(gone, "piece")])
 
 
 # --- a loose part ---------------------------------------------------------
@@ -2274,3 +2287,76 @@ func need_listed() -> Dictionary:
 	for row: Dictionary in _need_plan:
 		rows.append({"part": str(row["part"]), "colour": int(row["colour"]), "short": int(row["short"])})
 	return {"set": str(_need_set.get("set", "")), "rows": rows}
+
+
+# --- your bricks, signed in or not (localbricks, APP_UX6 #8, 2026-11-07) ----
+#
+# With nobody signed in, What I own is this device's own collection
+# (CollectionStore, CollectionHere): sets typed or found by a photo, loose
+# lots, counts and a set's missing parts work as they do with an account.
+# Only what the account reads into LDraw's numbers waits for a sign-in: a
+# Rebrickable account, a Rebrickable CSV or a BrickLink XML. Signed in, what
+# this device kept is listed apart at the top, "on this device only", with
+# the offer to put it into the account's collection (CollectionOffer), and
+# a join that had no answer is said, with Send again.
+
+## The imports the account reads, off while nobody is signed in, and why.
+func _imports_for_here() -> void:
+	for named: String in ["collection_csv", "collection_xml", "collection_rb_go"]:
+		var button: Button = _controls.get(named)
+		if button == null:
+			continue
+		if not button.has_meta("tooltip"):
+			button.set_meta("tooltip", button.tooltip_text)
+		button.disabled = store.here
+		button.tooltip_text = ("Sign in to bring this in: your account reads it into LDraw's numbers. Sets "
+			+ "typed by number and loose parts are kept on this device until you do") if store.here \
+			else str(button.get_meta("tooltip"))
+
+
+## Signed in: what this device kept while nobody was, apart, with the offer;
+## and a join sent with no answer yet, with Send again.
+func _here_rows() -> void:
+	_controls.erase("collection_join")
+	_controls.erase("collection_join_again")
+	if store.here or store.account == null or not store.account.signed_in():
+		return
+	var who: String = store.account.user_id
+	var waiting: int = 0
+	for sent: Dictionary in store.pending:
+		if str(sent.get("to", "")) == who:
+			waiting += (sent.get("parts", []) as Array).size() + (sent.get("sets", []) as Array).size()
+	if waiting > 0:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		var said: Label = _label("%s sent to your collection had no answer yet: kept on this device until it comes"
+			% Counted.of(waiting, "lot or set", "lots and sets"), 12, 0.85)
+		said.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		said.tooltip_text = said.text
+		row.add_child(said)
+		_small(_button(row, "Send again", _join_again, "collection_join_again",
+			"Send them again: your account never adds the same ones twice"))
+		_own_rows.add_child(row)
+	var kept: Dictionary = store.offer_now()
+	if (kept["sets"] as Array).is_empty() and (kept["parts"] as Array).is_empty():
+		return
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	var said: Label = _label("On this device only: %s, kept while nobody was signed in" % CollectionOffer.amount(kept),
+		12, 0.85)
+	said.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	said.add_theme_color_override("font_color", Look.ACCENT)
+	said.tooltip_text = said.text
+	row.add_child(said)
+	_small(_button(row, "Put them in my collection…", store.show_offer, "collection_join",
+		"Put what this device kept into your account's collection: every lot and set of both is kept"))
+	_own_rows.add_child(row)
+
+
+func _join_again() -> void:
+	await _begin()
+	await store.resume_joins()
+	_end()
+	_say("sent again" if store.pending.filter(func(sent: Dictionary) -> bool:
+		return str(sent.get("to", "")) == store.account.user_id).is_empty()
+		else "still no answer: they stay on this device")

@@ -409,20 +409,50 @@ func _local_copy(library: PartLibrary) -> void:
 	var mine := Collection.new()
 	mine.sets = [{"set": "6020-1", "qty": 1, "spares": false}]
 	mine.parts = [{"part": "3001", "colour": 4, "qty": 3}]
-	CollectionStore._write_local(mine.to_json())
+	var copy: Dictionary = mine.to_json()
+	copy["owner"] = "probe-collection-owner"
+	CollectionStore._write_local(copy)
+	# Signed in from what this device kept, with nowhere to ask (as offline),
+	# given before the store is ready, as Shell gives the window's.
+	var account := Account.new()
+	account.keeps = false
+	account.set("_refresh", "probe")
+	account.set("_url", "")
+	account.user_id = "probe-collection-owner"
+	account.state = Account.State.SIGNED_IN
 	var store := CollectionStore.new()
 	store.library = library
+	store.account = account
 	root.add_child(store)
 	await process_frame
 	_ok(store.collection.set_numbers() == PackedStringArray(["6020-1"])
-		and store.collection.loose_pieces() == 3, "the copy is read back as it was kept")
+		and store.collection.loose_pieces() == 3, "the copy is read back as it was kept, for its own account")
 	var said: String = await store.load_collection()
 	_ok(store.offline and said.contains("copy on this device"),
-		"signed out, it works from the copy and says so (%s)" % said)
+		"with the account out of reach, it works from the copy and says so (%s)" % said)
 	_ok(store.pieces_on_hand() == SHOP_PIECES + 3, "...with the set expanded (%d)" % store.pieces_on_hand())
 	store.queue_free()
+	# Nobody signed in: the device's own collection (localbricks), never the
+	# account's copy, which stays as it was kept.
+	var nobody := CollectionStore.new()
+	nobody.library = library
+	root.add_child(nobody)
+	await process_frame
+	var said_here: String = await nobody.load_collection()
+	_ok(nobody.here and nobody.collection.is_empty() and not nobody.offline and said_here.is_empty(),
+		"signed out, the account's copy is not shown: the device's own, empty (%s)" % said_here)
+	var added: Dictionary = await nobody.change_lots([{"part": "3001", "colour": 1, "qty": 2}])
+	_ok(added["kind"] == CollectionStore.DONE and nobody.collection.loose_pieces() == 2
+		and JSON.parse_string(FileAccess.get_file_as_string(kept)) == JSON.parse_string(JSON.stringify(copy)),
+		"...a lot added there is the device's (%s), and the account's copy is unchanged" % str(added["said"]))
+	nobody.queue_free()
+	account.free()
+	for name: String in DirAccess.get_files_at(CollectionStore.here_folder()):
+		DirAccess.remove_absolute(CollectionStore.here_folder().path_join(name))
+	DirAccess.remove_absolute(CollectionStore.here_folder())
 	DirAccess.remove_absolute(kept)
-	_ok(not FileAccess.file_exists(kept), "and the probe's copy is gone")
+	_ok(not FileAccess.file_exists(kept) and not DirAccess.dir_exists_absolute(CollectionStore.here_folder()),
+		"and the probe's copy is gone")
 
 
 func _rebrickable() -> void:

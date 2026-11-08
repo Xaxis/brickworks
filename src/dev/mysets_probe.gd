@@ -449,8 +449,11 @@ func _steps() -> void:
 		and _store.pieces_on_hand() == pool_before)
 
 	print("\n8. kept over a restart")
+	# Given its account before it is ready, as Shell gives the window's:
+	# signed out, a store shows the device's own collection (localbricks).
 	var restarted := CollectionStore.new()
 	restarted.library = _library
+	restarted.account = _account
 	root.add_child(restarted)
 	await restarted.refresh_pool()
 	_check("a restart reads the copy on this device: 7140-1's 12 marks, the same pool (%d pieces)"
