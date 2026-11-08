@@ -546,7 +546,7 @@ func _edit(name: String, text: String, edit: String) -> bool:
 	# The only copy taken off leaves a file that opens as no part, kept as no
 	# one's file: its save is a new model's, as live writes one (kt4review
 	# LOW #5).
-	if _world.brick_count() == 0 and _store.call("_live_source") == null:
+	if _world_parts().is_empty() and _store.call("_live_source") == null:
 		print("  (opened again as no part: written as live writes an empty model)")
 		_live_flow = true
 	else:
