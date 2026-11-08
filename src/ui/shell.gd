@@ -3323,13 +3323,15 @@ func page_setup(fields: Dictionary) -> String:
 			and BookletLooks.picture_kind(str(pictures[sheet.cover_picture])).is_empty():
 		return "the cover's picture is a PNG or a JPEG, in base64"
 	# The picture that was behind the pages, gone with them; the cover's too.
-	if not was.picture.is_empty() and was.picture != sheet.picture:
-		pictures.erase(was.picture)
-	if not was.cover_picture.is_empty() and was.cover_picture != sheet.cover_picture:
-		pictures.erase(was.cover_picture)
+	# One the page still names (a later build's words kept unread name it)
+	# stays: up to 2026-11-07 any but the page's own two went (blreview).
+	var named: Array[String] = BookletSheet.pictures_named(sheet.said())
+	for name: String in [was.picture, was.cover_picture]:
+		if not name.is_empty() and not name in named:
+			pictures.erase(name)
 	for name: String in pictures.keys():
-		if name.begins_with(BookletSheet.PICTURE_NAME) and name != sheet.picture \
-				or name.begins_with(BookletSheet.COVER_NAME) and name != sheet.cover_picture:
+		if (name.begins_with(BookletSheet.PICTURE_NAME) or name.begins_with(BookletSheet.COVER_NAME)) \
+				and not name in named:
 			pictures.erase(name)
 	var also := PackedStringArray()
 	# Words longer than a line holds, said: cut in silence, a footer lost its

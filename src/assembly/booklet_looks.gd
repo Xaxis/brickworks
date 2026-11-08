@@ -1541,10 +1541,15 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 	## Inside a page's picture as it was written (LDraw's !DATA): left out,
 	## and written again at the end from the looks.
 	var skipping: bool = false
+	## Each page's picture as the file has it, name -> its lines: one a line
+	## kept as it was names, and the looks do not hold, goes back as it was.
+	var as_written: Dictionary = {}
+	var block: Array = []
 	for raw: String in lines:
 		var line: String = raw.strip_edges()
 		if skipping:
 			if line.begins_with("0 !:"):
+				block.append(raw)
 				continue
 			skipping = false
 		var words: PackedStringArray = LdrModel._fields(line) if line.begins_with("0 ") \
@@ -1557,9 +1562,12 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 					# The model's own lines, in a file of no FILE lines, are done.
 					first_file = false
 			section_open = keyword == "FILE"
-			if keyword == "!DATA" and " ".join(words.slice(2)).get_file().to_lower() \
-					.begins_with(IMAGE_PREFIX):
+			var data_name: String = " ".join(words.slice(2)).get_file().to_lower()
+			if keyword == "!DATA" and data_name.begins_with(IMAGE_PREFIX):
 				skipping = true
+				# An Array, so the lines go into the one kept.
+				block = [raw]
+				as_written[data_name] = block
 				continue
 			if keyword == "FILE":
 				var file_key: String = LdrModel._key(" ".join(words.slice(2)))
@@ -1623,20 +1631,40 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 			if note is Dictionary and (note as Dictionary).has("image") \
 					and pictures.has(str(note["image"])):
 				shown[str(note["image"])] = true
+	# A picture a line kept as it was names (a sub-model's own page, a later
+	# build's word): the looks' when they hold it, else as the file has it.
+	# Up to 2026-11-07 the line stayed and its picture went (blreview).
+	for said: String in out:
+		if not said.contains("!BRICKWORKS") or not said.to_lower().contains(IMAGE_PREFIX):
+			continue
+		var words: PackedStringArray = LdrModel._fields(said.strip_edges())
+		if words.size() < 3 or words[1].to_upper() != "!BRICKWORKS":
+			continue
+		for word: String in words.slice(2):
+			var named: String = word.get_file().to_lower()
+			if not named.begins_with(IMAGE_PREFIX) or shown.has(named):
+				continue
+			if pictures.has(named):
+				shown[named] = true
+			elif as_written.has(named):
+				shown[named] = false
 	if not shown.is_empty():
 		# Before the blank lines the file ends with, as they were.
 		var end: int = out.size()
 		while end > 0 and out[end - 1].strip_edges().is_empty():
 			end -= 1
-		var block := PackedStringArray()
+		var block_lines := PackedStringArray()
 		var kept: Array = shown.keys()
 		kept.sort()
 		for name: String in kept:
-			block.append("0 !DATA " + name + eol)
+			if not shown[name]:
+				block_lines.append_array(PackedStringArray(as_written[name]))
+				continue
+			block_lines.append("0 !DATA " + name + eol)
 			var encoded: String = str(pictures[name])
 			for at: int in range(0, encoded.length(), 76):
-				block.append("0 !: " + encoded.substr(at, 76) + eol)
-		_put_lines(out, end, block)
+				block_lines.append("0 !: " + encoded.substr(at, 76) + eol)
+		_put_lines(out, end, block_lines)
 	if open_end and out.size() >= 2 and out[out.size() - 1].is_empty() \
 			and out[out.size() - 2] == last + eol:
 		# Nothing went after it: the file ends as it did.
