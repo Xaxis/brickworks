@@ -2205,8 +2205,8 @@ picture the assistant is shown.
   line CRLF but FLOOR's; `later_build.ldr`'s SPINE_COLOUR and BACK_COVER
   kept through a footer and usual=true; a 121-letter footer cut and said;
   U+0085/U+2028/U+2029/U+009F made spaces; usual=true keeping the title
-  and subtitle; a 30-letter CJK title within its page at an em a letter;
-  Save as PDF naming the letters it cannot print; a title of "Gate
+  and subtitle; a 30-letter CJK title within its page at an em a letter and drawn
+  across the cover's PNG band; Save as PDF naming the letters it cannot print; a title of "Gate
   <section> Hill" read back from the web's tab with every page. Its
   pictures are kept in `--into=`.
   `--dialog-only` with `PROBE_SIZE=1400x900` checks the tabs alone.

@@ -1151,6 +1151,21 @@ func _wide_letters() -> void:
 				- 0.02 * size
 	_check("the CJK title fits across its page as a browser draws it, an em a letter: %.1f mm of %.1f"
 		% [wide, room], found != null and wide > 0.0 and wide <= room + 0.5)
+	# The cover's PNG: the title's letters drawn across its band, white on
+	# the band's colour, as far as the title reaches (draw_char drew none).
+	var cover: Image = Image.load_from_file(_out.path_join("wide-page-001.png"))
+	var across: Vector2 = Vector2(-1.0, -1.0)
+	if cover != null:
+		var per_mm: float = cover.get_width() / sheet.size().x
+		for x: int in range(0, cover.get_width(), 2):
+			for y: int in range(roundi(2.0 * per_mm), roundi(28.0 * per_mm), 2):
+				var colour: Color = cover.get_pixel(x, y)
+				if colour.r > 0.85 and colour.g > 0.85 and colour.b > 0.85:
+					across = Vector2(x / per_mm if across.x < 0.0 else across.x, x / per_mm)
+					break
+	_check("the cover's PNG draws the CJK title across its band: white from %.1f mm to %.1f mm (it reaches %.1f)"
+		% [across.x, across.y, sheet.margin + wide], across.x >= 0.0 and across.x <= sheet.margin + 3.0
+		and across.y >= sheet.margin + wide * 0.9)
 	var html: String = _out.path_join("wide_instructions.html")
 	await _main.call("_export_booklet", html)
 	var wrote: String = str(await _main.call("save_booklet_as", "pdf", _out.path_join("wide_export.pdf")))
