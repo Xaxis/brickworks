@@ -1,0 +1,9 @@
+u1|Look at the two pods from the front, the left and the top, and tell me whether they are true mirror images of each other.
+u2|Show me only the two headlight bricks picked out in the model, with everything else faded, and say where each one is.
+u3|Look at page 2 of this model's instructions as a person would see it, and tell me what is on it.
+u4|Away from the pods, lay a block of light grey 2x2 bricks on the baseplate: 4 columns, 3 rows and 2 levels, each brick touching its neighbours.
+u5|I want to buy these parts from LEGO's own Pick a Brick shop. Make me the file to upload there, and tell me which parts it could not include.
+u6|Save this model as Pods.
+u7|Clear the baseplate, put a green 16x16 plate on it, then bring my saved model Pods into this one, whole, standing on the plate.
+u8|How big is this model, in studs and in centimetres, and roughly how much would it weigh built?
+u9|Clear the baseplate and lay a closed oval of 9V train track on it: curves at both ends and straights along the sides.
