@@ -12358,3 +12358,100 @@ msgstr "espigas en tres lados"
 
 msgid "studs on four sides"
 msgstr "espigas en cuatro lados"
+
+# unit drive: a motion's path, where the whole model drives (pose_panel, motion_player)
+
+msgid "Where it drives"
+msgstr "Por dónde va"
+
+msgid "Drive along a path"
+msgstr "Conducir por un recorrido"
+
+msgid "The whole model driven along the ground, its wheels turning as it goes: 32 studs, then round a corner"
+msgstr "El modelo entero conducido por el suelo, sus ruedas girando a su paso: 32 espigas y luego una curva"
+
+msgid "Add a leg"
+msgstr "Añadir un tramo"
+
+msgid "Another leg at the path's end: straight on"
+msgstr "Otro tramo al final del recorrido: recto"
+
+msgid "No path"
+msgstr "Sin recorrido"
+
+msgid "The model stays where it stands; its joints still move"
+msgstr "El modelo se queda donde está; sus articulaciones siguen moviéndose"
+
+msgid "Over"
+msgstr "Duración"
+
+msgid "How long it takes, seconds"
+msgstr "Cuánto tarda, en segundos"
+
+msgid "It gathers speed at the start and slows to a stop at the end"
+msgstr "Gana velocidad al principio y frena hasta pararse al final"
+
+msgid "Straight"
+msgstr "Recto"
+
+msgid "Straight on, or a turn to the left or the right"
+msgstr "Recto, o una curva a la izquierda o a la derecha"
+
+msgid "How far, studs (less than 0 backwards)"
+msgstr "Qué distancia, en espigas (menos de 0, marcha atrás)"
+
+msgid "How far round, degrees"
+msgstr "Cuánto gira, en grados"
+
+msgid "How wide the turn is: its radius, studs, at the middle of the back axle"
+msgstr "Lo abierta que es la curva: su radio, en espigas, en el centro del eje trasero"
+
+msgid "Take this leg out of the path"
+msgstr "Quitar este tramo del recorrido"
+
+msgid "It moves nothing but the path: Remove takes the motion out."
+msgstr "No mueve nada más que el recorrido: «Quitar» saca el movimiento."
+
+msgid "It drives %s."
+msgstr "Recorre %s."
+
+msgid "It drives %s. %s Play plays it."
+msgstr "Recorre %s. %s «Reproducir» lo reproduce."
+
+msgid "%s studs straight"
+msgstr "%s espigas recto"
+
+msgid "%s studs backwards"
+msgstr "%s espigas marcha atrás"
+
+msgid "%s° left on a %s-stud radius"
+msgstr "%s° a la izquierda con un radio de %s espigas"
+
+msgid "%s° right on a %s-stud radius"
+msgstr "%s° a la derecha con un radio de %s espigas"
+
+msgid "%s, then %s"
+msgstr "%s y luego %s"
+
+msgid "1 wheel turns as it rolls (%s)"
+msgstr "1 rueda gira al rodar (%s)"
+
+msgid "1 wheel turns as it rolls (%s)."
+msgstr "1 rueda gira al rodar (%s)."
+
+msgid "%d wheels turn as it rolls (%s)"
+msgstr "%d ruedas giran al rodar (%s)"
+
+msgid "%d wheels turn as it rolls (%s)."
+msgstr "%d ruedas giran al rodar (%s)."
+
+msgid "%s, and %s steers it into the corners."
+msgstr "%s, y %s lo dirige en las curvas."
+
+msgid "No wheel turns as it rolls: none stands on the ground on a level axle"
+msgstr "Ninguna rueda gira al rodar: ninguna está en el suelo sobre un eje horizontal"
+
+msgid "No wheel turns as it rolls: none stands on the ground on a level axle."
+msgstr "Ninguna rueda gira al rodar: ninguna está en el suelo sobre un eje horizontal."
+
+# end unit drive

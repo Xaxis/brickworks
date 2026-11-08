@@ -12358,3 +12358,100 @@ msgstr "tenons sur trois côtés"
 
 msgid "studs on four sides"
 msgstr "tenons sur quatre côtés"
+
+# unit drive: a motion's path, where the whole model drives (pose_panel, motion_player)
+
+msgid "Where it drives"
+msgstr "Où il roule"
+
+msgid "Drive along a path"
+msgstr "Rouler le long d'un trajet"
+
+msgid "The whole model driven along the ground, its wheels turning as it goes: 32 studs, then round a corner"
+msgstr "Le modèle entier roule sur le sol, ses roues tournant en chemin : 32 tenons, puis un virage"
+
+msgid "Add a leg"
+msgstr "Ajouter un tronçon"
+
+msgid "Another leg at the path's end: straight on"
+msgstr "Un autre tronçon à la fin du trajet : tout droit"
+
+msgid "No path"
+msgstr "Aucun trajet"
+
+msgid "The model stays where it stands; its joints still move"
+msgstr "Le modèle reste où il est ; ses articulations bougent toujours"
+
+msgid "Over"
+msgstr "Durée"
+
+msgid "How long it takes, seconds"
+msgstr "Combien de temps cela prend, en secondes"
+
+msgid "It gathers speed at the start and slows to a stop at the end"
+msgstr "Il prend de la vitesse au départ et ralentit jusqu'à l'arrêt à la fin"
+
+msgid "Straight"
+msgstr "Tout droit"
+
+msgid "Straight on, or a turn to the left or the right"
+msgstr "Tout droit, ou un virage à gauche ou à droite"
+
+msgid "How far, studs (less than 0 backwards)"
+msgstr "Quelle distance, en tenons (moins de 0 en marche arrière)"
+
+msgid "How far round, degrees"
+msgstr "De combien il tourne, en degrés"
+
+msgid "How wide the turn is: its radius, studs, at the middle of the back axle"
+msgstr "La largeur du virage : son rayon, en tenons, au milieu de l'essieu arrière"
+
+msgid "Take this leg out of the path"
+msgstr "Retirer ce tronçon du trajet"
+
+msgid "It moves nothing but the path: Remove takes the motion out."
+msgstr "Il ne bouge rien d'autre que le trajet : « Retirer » enlève le mouvement."
+
+msgid "It drives %s."
+msgstr "Il roule %s."
+
+msgid "It drives %s. %s Play plays it."
+msgstr "Il roule %s. %s « Lire » le joue."
+
+msgid "%s studs straight"
+msgstr "%s tenons tout droit"
+
+msgid "%s studs backwards"
+msgstr "%s tenons en marche arrière"
+
+msgid "%s° left on a %s-stud radius"
+msgstr "%s° à gauche sur un rayon de %s tenons"
+
+msgid "%s° right on a %s-stud radius"
+msgstr "%s° à droite sur un rayon de %s tenons"
+
+msgid "%s, then %s"
+msgstr "%s, puis %s"
+
+msgid "1 wheel turns as it rolls (%s)"
+msgstr "1 roue tourne en roulant (%s)"
+
+msgid "1 wheel turns as it rolls (%s)."
+msgstr "1 roue tourne en roulant (%s)."
+
+msgid "%d wheels turn as it rolls (%s)"
+msgstr "%d roues tournent en roulant (%s)"
+
+msgid "%d wheels turn as it rolls (%s)."
+msgstr "%d roues tournent en roulant (%s)."
+
+msgid "%s, and %s steers it into the corners."
+msgstr "%s, et %s le dirige dans les virages."
+
+msgid "No wheel turns as it rolls: none stands on the ground on a level axle"
+msgstr "Aucune roue ne tourne en roulant : aucune ne repose au sol sur un essieu horizontal"
+
+msgid "No wheel turns as it rolls: none stands on the ground on a level axle."
+msgstr "Aucune roue ne tourne en roulant : aucune ne repose au sol sur un essieu horizontal."
+
+# end unit drive

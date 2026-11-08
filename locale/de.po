@@ -12358,3 +12358,100 @@ msgstr "Noppen an drei Seiten"
 
 msgid "studs on four sides"
 msgstr "Noppen an vier Seiten"
+
+# unit drive: a motion's path, where the whole model drives (pose_panel, motion_player)
+
+msgid "Where it drives"
+msgstr "Wohin es fährt"
+
+msgid "Drive along a path"
+msgstr "Einen Weg entlang fahren"
+
+msgid "The whole model driven along the ground, its wheels turning as it goes: 32 studs, then round a corner"
+msgstr "Das ganze Modell fährt über den Boden, seine Räder drehen sich dabei: 32 Noppen, dann um eine Kurve"
+
+msgid "Add a leg"
+msgstr "Abschnitt hinzufügen"
+
+msgid "Another leg at the path's end: straight on"
+msgstr "Ein weiterer Abschnitt am Ende des Wegs: geradeaus"
+
+msgid "No path"
+msgstr "Kein Weg"
+
+msgid "The model stays where it stands; its joints still move"
+msgstr "Das Modell bleibt, wo es steht; seine Gelenke bewegen sich weiter"
+
+msgid "Over"
+msgstr "Dauer"
+
+msgid "How long it takes, seconds"
+msgstr "Wie lange es dauert, in Sekunden"
+
+msgid "It gathers speed at the start and slows to a stop at the end"
+msgstr "Es beschleunigt am Anfang und bremst am Ende bis zum Halt"
+
+msgid "Straight"
+msgstr "Geradeaus"
+
+msgid "Straight on, or a turn to the left or the right"
+msgstr "Geradeaus oder eine Kurve nach links oder rechts"
+
+msgid "How far, studs (less than 0 backwards)"
+msgstr "Wie weit, in Noppen (unter 0 rückwärts)"
+
+msgid "How far round, degrees"
+msgstr "Wie weit herum, in Grad"
+
+msgid "How wide the turn is: its radius, studs, at the middle of the back axle"
+msgstr "Wie weit die Kurve ist: ihr Radius in Noppen, an der Mitte der Hinterachse"
+
+msgid "Take this leg out of the path"
+msgstr "Diesen Abschnitt aus dem Weg nehmen"
+
+msgid "It moves nothing but the path: Remove takes the motion out."
+msgstr "Es bewegt nichts außer dem Weg: „Entfernen“ nimmt die Bewegung heraus."
+
+msgid "It drives %s."
+msgstr "Es fährt %s."
+
+msgid "It drives %s. %s Play plays it."
+msgstr "Es fährt %s. %s „Abspielen“ spielt es ab."
+
+msgid "%s studs straight"
+msgstr "%s Noppen geradeaus"
+
+msgid "%s studs backwards"
+msgstr "%s Noppen rückwärts"
+
+msgid "%s° left on a %s-stud radius"
+msgstr "%s° nach links mit %s Noppen Radius"
+
+msgid "%s° right on a %s-stud radius"
+msgstr "%s° nach rechts mit %s Noppen Radius"
+
+msgid "%s, then %s"
+msgstr "%s, dann %s"
+
+msgid "1 wheel turns as it rolls (%s)"
+msgstr "1 Rad dreht sich beim Rollen (%s)"
+
+msgid "1 wheel turns as it rolls (%s)."
+msgstr "1 Rad dreht sich beim Rollen (%s)."
+
+msgid "%d wheels turn as it rolls (%s)"
+msgstr "%d Räder drehen sich beim Rollen (%s)"
+
+msgid "%d wheels turn as it rolls (%s)."
+msgstr "%d Räder drehen sich beim Rollen (%s)."
+
+msgid "%s, and %s steers it into the corners."
+msgstr "%s, und %s lenkt es in die Kurven."
+
+msgid "No wheel turns as it rolls: none stands on the ground on a level axle"
+msgstr "Kein Rad dreht sich beim Rollen: keines steht auf einer waagrechten Achse auf dem Boden"
+
+msgid "No wheel turns as it rolls: none stands on the ground on a level axle."
+msgstr "Kein Rad dreht sich beim Rollen: keines steht auf einer waagrechten Achse auf dem Boden."
+
+# end unit drive

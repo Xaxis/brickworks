@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:the booklet's own cover and colours, cli:booklook probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, lib:driving along a path, cli:drive probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:the booklet's own cover and colours, cli:booklook probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe -->
 
 ## Sub-features
 
@@ -2723,6 +2723,22 @@ picture the assistant is shown.
   nothing makes AFTER any more. play_motion's picture is from the view that
   sees most of what moves (`MotionRender.seen_from`, `best_view`: the
   lattice marched from each moving part toward each of StudioRender.VIEWS).
+- `driving along a path` (unit drive, APP_UX6 #12; `MotionPlayer.Drive`,
+  `drive_path`, `path_from`, `Motions.Path`): a motion's path, `0 !BRICKWORKS
+  MOTION_PATH "Drive and turn left" SECONDS 7 EASE STRAIGHT 32 LEFT 90 RADIUS 24`
+  with a `MOTION_WHEEL` line for each axle that rolls and a `MOTION_STEER`
+  line for the steering, written after the motion's other lines. The whole
+  model is driven along the ground, each leg straight so many studs (less
+  than 0 backwards) or left or right so many degrees on a radius measured at
+  the back axle's middle; each wheel's body is turned through Grab by the
+  distance its own middle travels over its tyre's radius, and the steering
+  is turned into each corner as far as its rack lets it, eased in and out.
+  Played as any motion: drawn only in the panel and on a link, kept by
+  play_motion as one step (Grab.commit of every part), backwards back to
+  where it began. Suggested as "Drive and turn left" when the model has a
+  wheel on a level axle on the ground. In the panel's editor, Where it
+  drives: Drive along a path, a row a leg, Add a leg, Over, Eased, No path.
+  Over MCP: define_motion path={legs:[{straight:32},{left:90}]}.
 - `render open check` (`tools/web/render_open_check.mjs`): the Render
   dialog's first open in a fresh browser, from the toolbar, every frame from
   the press to the first draft timed in the page (the engine's frame
@@ -3016,6 +3032,21 @@ tools/probe.sh pose_probe
 # Pictures of each state; and again in a 1280 x 720 window.
 tools/probe.sh motions_panel_probe -- bench/results/motions5-2026-10-20
 PROBE_SIZE=1280x720 tools/probe.sh motions_panel_probe -- bench/results/motions5-2026-10-20
+# The racer driven along a path (src/dev/drive_probe.gd): 8808-1's
+# suggested Drive and turn left kept from the Motions panel, Play driving it
+# in the window to where the path ends and Play backwards back, one step
+# each; its two legs in the editor and a corner made right written as RIGHT,
+# undone; define_motion path= a 32-stud
+# straight and a quarter turn left; read from its frames alone, the back
+# axle's middle goes 32 studs straight and round the file's radius within 0.1
+# stud, ending turned 90 ± 0.5°, and each axle turns once for each round of
+# its tyre (radius from the mesh) its middle travels, within 2%, rolling the
+# right way; the file's lines byte for byte and the same drive played from
+# it; play_motion kept on its floor, backwards back to the degree, two undos;
+# render_motion's frames draw it across the frame; a ?motion=drive-and-turn-left link drives it in the viewer, its
+# tyres turning. Pictures in OUT_DIR, named by the window's size.
+tools/probe.sh drive_probe -- bench/results/drive-2026-11-07
+PROBE_SIZE=1280x720 tools/probe.sh drive_probe -- bench/results/drive-2026-11-07
 # What the animation audit found broken, on real sets (docs/ANIMATION.md;
 # src/dev/animation_probe.gd):
 # 31070-1's back window posed out and back stands where it was built, Play

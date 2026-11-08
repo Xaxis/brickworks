@@ -10,6 +10,18 @@
 ##   0 !BRICKWORKS MOTION_TRACK "Open the doors" 2 TURN AT 0 JOINT ASSEMBLY "Door Right"
 ##   0 !BRICKWORKS MOTION_DRIVER "Turn the crank" TURNS 3 SECONDS 4 AT 0 JOINT PART 4185 71 0 -40 60
 ##   0 !BRICKWORKS MOTION "Show it all" SEQUENCE "Open the doors" "Turn the crank"
+##   0 !BRICKWORKS MOTION "Drive and turn left" AFTER "" SECONDS 7
+##   0 !BRICKWORKS MOTION_PATH "Drive and turn left" SECONDS 7 EASE STRAIGHT 32 LEFT 90 RADIUS 24
+##   0 !BRICKWORKS MOTION_WHEEL "Drive and turn left" AT 0 JOINT PART 3482 71 70 0 -70
+##   0 !BRICKWORKS MOTION_STEER "Drive and turn left" AT 0 JOINT PART 3829c01 0 0 -24 -60
+##
+## A path moves the whole model (unit drive, docs/APP_UX6.md #12): along its
+## legs, each a straight (studs; less than 0 backwards) or a turn left or right
+## (degrees, on a radius in studs, measured at the middle of its back axle),
+## from where it stands, over its seconds, eased at its start and its end or
+## not. Its wheels, each a joint, turn as they roll, each once round for every
+## round of its own tyre it goes along the ground; its steering, a joint, is
+## turned into each corner. What it moves is kept where it ends, as a track's.
 ##
 ## A track is one joint and its keys: a time, a place (degrees turned, or
 ## studs slid, from where the model was built) and how it gets there (EASE,
@@ -34,6 +46,16 @@ const HOWS: Array[String] = ["EASE", "LINEAR", "HOLD"]
 const MOST_SECONDS := 120.0
 ## The most of a link's ?motion= read, characters: a long name, and more.
 const MOST_LINK_WORDS := 120
+## A path's legs: a straight, or a turn either way.
+const LEGS: Array[String] = ["STRAIGHT", "LEFT", "RIGHT"]
+## The most legs a path has, and the longest a leg (studs) and the widest a
+## turn (degrees, studs round): a file of the wrong shape is not read.
+const MOST_LEGS := 32
+const MOST_LEG_STUDS := 1000.0
+const MOST_TURN_DEG := 360.0
+## A turn's least radius, studs: a car's turning circle, not a spin.
+const LEAST_RADIUS := 1.0
+const MOST_RADIUS := 1000.0
 
 
 class Joint extends RefCounted:
@@ -128,6 +150,87 @@ class Track extends RefCounted:
 		return eased.angle_at("x", t)
 
 
+## Where the whole model goes: its legs in order, over [member seconds],
+## [member how] it starts and stops, the wheels that turn as it rolls and the
+## steering turned into its corners.
+class Path extends RefCounted:
+	## [[kind, amount, radius]]: "STRAIGHT" studs (less than 0, backwards),
+	## or "LEFT"/"RIGHT" degrees on a radius of studs.
+	var legs: Array = []
+	var seconds: float = 0.0
+	## EASE: it gathers speed and slows to a stop; LINEAR: the same speed
+	## all the way.
+	var how: String = "EASE"
+	## Each wheel's joint (an axle and what turns with it), the front first.
+	var wheels: Array = []
+	## The steering's joint, or null.
+	var steer: Joint = null
+
+	## How far its middle goes, studs.
+	func studs() -> float:
+		var out: float = 0.0
+		for leg: Array in legs:
+			out += absf(float(leg[1])) if str(leg[0]) == "STRAIGHT" \
+				else deg_to_rad(absf(float(leg[1]))) * float(leg[2])
+		return out
+
+	func copy() -> Path:
+		var out := Path.new()
+		out.legs = legs.duplicate(true)
+		out.seconds = seconds
+		out.how = how
+		out.wheels = wheels.duplicate()
+		out.steer = steer
+		return out
+
+	## Its legs as the file writes them: "STRAIGHT 32 LEFT 90 RADIUS 24".
+	func leg_words() -> String:
+		var words := PackedStringArray()
+		for leg: Array in legs:
+			if str(leg[0]) == "STRAIGHT":
+				words.append("STRAIGHT %s" % Motions.num(float(leg[1]), 2))
+			else:
+				words.append("%s %s RADIUS %s" % [leg[0], Motions.num(float(leg[1]), 2),
+					Motions.num(float(leg[2]), 2)])
+		return " ".join(words)
+
+	## Its legs said: "32 studs straight, then 90° left on a 24-stud radius".
+	func said() -> String:
+		var words := PackedStringArray()
+		for leg: Array in legs:
+			if str(leg[0]) == "STRAIGHT":
+				var studs: float = float(leg[1])
+				words.append(("%s studs straight" if studs >= 0.0 else "%s studs backwards")
+					% Motions.num(absf(studs), 1))
+			else:
+				words.append(("%s° left on a %s-stud radius" if str(leg[0]) == "LEFT"
+					else "%s° right on a %s-stud radius") % [Motions.num(float(leg[1]), 1),
+					Motions.num(float(leg[2]), 1)])
+		# Each a pattern of the languages' own, ", then " between.
+		var out: String = words[words.size() - 1] if not words.is_empty() else ""
+		for n: int in range(words.size() - 2, -1, -1):
+			out = "%s, then %s" % [words[n], out]
+		return out
+
+
+## A path's leg read at the edge: [kind, amount, radius], or why not.
+static func leg_of(kind: String, amount: float, radius: float = 0.0) -> Variant:
+	kind = kind.strip_edges().to_upper()
+	if not kind in LEGS:
+		return "a leg is straight, left or right, not %s" % kind.to_lower()
+	if kind == "STRAIGHT":
+		if is_zero_approx(amount) or absf(amount) > MOST_LEG_STUDS:
+			return "a straight goes 0 to %d studs (less than 0 backwards), not %s" % [int(MOST_LEG_STUDS),
+				num(amount, 2)]
+		return [kind, snappedf(amount, 0.01), 0.0]
+	if amount <= 0.0 or amount > MOST_TURN_DEG:
+		return "a turn goes 0 to %d degrees, not %s" % [int(MOST_TURN_DEG), num(amount, 2)]
+	if radius < LEAST_RADIUS or radius > MOST_RADIUS:
+		return "a turn's radius is %s to %d studs, not %s" % [num(LEAST_RADIUS, 1), int(MOST_RADIUS),
+			num(radius, 2)]
+	return [kind, snappedf(amount, 0.01), snappedf(radius, 0.01)]
+
+
 class Motion extends RefCounted:
 	var name: String = ""
 	## The motion this one follows, "" for none. Kept for the files that
@@ -145,6 +248,8 @@ class Motion extends RefCounted:
 	var driver: Joint = null
 	var turns: float = 0.0
 	var driver_seconds: float = 0.0
+	## Where the whole model goes, or null (unit drive).
+	var path: Path = null
 
 	func length() -> float:
 		var most: float = seconds
@@ -152,6 +257,8 @@ class Motion extends RefCounted:
 			most = maxf(most, track.length())
 		if driver != null:
 			most = maxf(most, driver_seconds)
+		if path != null:
+			most = maxf(most, path.seconds)
 		return maxf(most, 0.0)
 
 	func is_sequence() -> bool:
@@ -165,6 +272,10 @@ class Motion extends RefCounted:
 				out.append(track.joint)
 		if driver != null and not out.has(driver):
 			out.append(driver)
+		if path != null:
+			for joint: Joint in path.wheels + ([path.steer] if path.steer != null else []):
+				if not out.has(joint):
+					out.append(joint)
 		return out
 
 
@@ -251,6 +362,10 @@ func put(motion: Motion) -> void:
 		track.joint = joint_for(track.joint)
 	if motion.driver != null:
 		motion.driver = joint_for(motion.driver)
+	if motion.path != null:
+		motion.path.wheels = motion.path.wheels.map(func(one: Joint) -> Joint: return joint_for(one))
+		if motion.path.steer != null:
+			motion.path.steer = joint_for(motion.path.steer)
 	for n: int in list.size():
 		if (list[n] as Motion).name.to_lower() == motion.name.to_lower():
 			list[n] = motion
@@ -298,6 +413,11 @@ func copy() -> Motions:
 		made.sequence = motion.sequence.duplicate()
 		if motion.driver != null:
 			made.driver = map.get(motion.driver, motion.driver.copy())
+		if motion.path != null:
+			made.path = motion.path.copy()
+			made.path.wheels = motion.path.wheels.map(func(one: Joint) -> Joint: return map.get(one, one.copy()))
+			if motion.path.steer != null:
+				made.path.steer = map.get(motion.path.steer, motion.path.steer.copy())
 		for track: Track in motion.tracks:
 			var kept := Track.new()
 			kept.joint = map.get(track.joint, track.joint.copy())
@@ -437,6 +557,15 @@ func lines() -> PackedStringArray:
 			out.append("%s_DRIVER %s TURNS %s SECONDS %s AT %s JOINT %s" % [META, quoted(motion.name),
 				num(motion.turns, 3), num(motion.driver_seconds, 3), num(motion.driver.at, 2),
 				motion.driver.ref_words()])
+		if motion.path != null:
+			out.append("%s_PATH %s SECONDS %s %s %s" % [META, quoted(motion.name), num(motion.path.seconds, 3),
+				motion.path.how, motion.path.leg_words()])
+			for wheel: Joint in motion.path.wheels:
+				out.append("%s_WHEEL %s AT %s JOINT %s" % [META, quoted(motion.name), num(wheel.at, 2),
+					wheel.ref_words()])
+			if motion.path.steer != null:
+				out.append("%s_STEER %s AT %s JOINT %s" % [META, quoted(motion.name),
+					num(motion.path.steer.at, 2), motion.path.steer.ref_words()])
 	return out
 
 
@@ -513,6 +642,21 @@ static func read(text: String) -> Motions:
 						clampf(rest[1].to_float(), 0.0, MOST_SECONDS), rest[2].to_float(), rest[3])
 			"MOTION_DRIVER":
 				ok = _read_driver(out, motion, rest)
+			"MOTION_PATH":
+				ok = motion.path == null and _read_path(motion, rest)
+			"MOTION_WHEEL", "MOTION_STEER":
+				# AT deg JOINT ref..., after its path's line.
+				var joint: Joint = _read_ref(rest.slice(3)) if rest.size() >= 4 and rest[0] == "AT" \
+					and rest[1].is_valid_float() and rest[2] == "JOINT" else null
+				ok = joint != null and motion.path != null \
+					and (words[2] == "MOTION_WHEEL" or motion.path.steer == null)
+				if ok:
+					joint.at = rest[1].to_float()
+					joint = out.joint_for(joint)
+					if words[2] == "MOTION_STEER":
+						motion.path.steer = joint
+					elif not motion.path.wheels.has(joint):
+						motion.path.wheels.append(joint)
 			_:
 				ok = false
 		if not ok:
@@ -520,11 +664,12 @@ static func read(text: String) -> Motions:
 	# A motion that moves nothing and plays nothing is nothing; a sequence
 	# has no tracks of its own.
 	for one: Motion in out.list:
-		if one.is_sequence() and (not one.tracks.is_empty() or one.driver != null):
+		if one.is_sequence() and (not one.tracks.is_empty() or one.driver != null or one.path != null):
 			one.tracks.clear()
 			one.driver = null
+			one.path = null
 	out.list = out.list.filter(func(one: Motion) -> bool:
-		return not one.tracks.is_empty() or one.driver != null or one.is_sequence())
+		return not one.tracks.is_empty() or one.driver != null or one.path != null or one.is_sequence())
 	out._tidy_joints()
 	return out
 
@@ -583,6 +728,31 @@ static func _read_driver(into: Motions, motion: Motion, rest: PackedStringArray)
 	motion.driver = into.joint_for(joint)
 	motion.turns = rest[1].to_float()
 	motion.driver_seconds = clampf(rest[3].to_float(), 0.1, MOST_SECONDS)
+	return true
+
+
+## SECONDS s EASE|LINEAR legs...: each leg STRAIGHT studs, or LEFT|RIGHT
+## degrees RADIUS studs.
+static func _read_path(motion: Motion, rest: PackedStringArray) -> bool:
+	if rest.size() < 5 or rest[0] != "SECONDS" or not rest[1].is_valid_float() or not rest[2] in ["EASE", "LINEAR"]:
+		return false
+	var path := Path.new()
+	path.seconds = clampf(rest[1].to_float(), 0.1, MOST_SECONDS)
+	path.how = rest[2]
+	var n: int = 3
+	while n < rest.size():
+		var leg: Variant = null
+		if rest[n] == "STRAIGHT" and n + 1 < rest.size() and rest[n + 1].is_valid_float():
+			leg = leg_of(rest[n], rest[n + 1].to_float())
+			n += 2
+		elif rest[n] in ["LEFT", "RIGHT"] and n + 3 < rest.size() and rest[n + 1].is_valid_float() \
+				and rest[n + 2] == "RADIUS" and rest[n + 3].is_valid_float():
+			leg = leg_of(rest[n], rest[n + 1].to_float(), rest[n + 3].to_float())
+			n += 4
+		if not (leg is Array) or path.legs.size() >= MOST_LEGS:
+			return false
+		path.legs.append(leg)
+	motion.path = path
 	return true
 
 

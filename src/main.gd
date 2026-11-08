@@ -6582,6 +6582,14 @@ func _make_motions() -> void:
 	motions.library = _library
 	motions.store = _store
 	motions.grabbing = _grab_drag
+	# unit drive: a path kept where it ends keeps the model on its floor,
+	# laid under where it stood and where it stands now, so neither the
+	# drive nor its undo leaves it hanging off the edge.
+	motions.driven = func(before: AABB) -> void:
+		var both: AABB = before.merge(_model_bounds())
+		if _floor != null and not _floor.covers(both):
+			_floor.lay(both)
+	# end unit drive
 
 
 ## Tools, Colour the hidden parts…: the inside, cut open and coloured, in

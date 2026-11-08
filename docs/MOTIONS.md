@@ -604,3 +604,64 @@ Left for later:
   order.
 - The suggestion list could offer "Show it all" once a model has two or
   more motions.
+
+## What unit drive built (drive, 2026-11-07)
+
+APP_UX6 #12: Kinebrick Studio's car drives; here a motion can drive the
+whole model along the ground, its wheels turning as they roll.
+
+- **A path** is a motion's: its legs, each straight so many studs (less
+  than 0 backwards) or left or right so many degrees on a radius, over so
+  many seconds, eased (gathering speed over its first fifth, slowing over
+  its last) or not; the axles that roll, and the steering:
+
+      0 !BRICKWORKS MOTION "Drive and turn left" AFTER "" SECONDS 8
+      0 !BRICKWORKS MOTION_PATH "Drive and turn left" SECONDS 8 EASE STRAIGHT 32 LEFT 90 RADIUS 30
+      0 !BRICKWORKS MOTION_WHEEL "Drive and turn left" AT 0 JOINT PART 3482 15 70 0 -70
+      0 !BRICKWORKS MOTION_WHEEL "Drive and turn left" AT 0 JOINT PART 3482 15 -70 0 -70
+      0 !BRICKWORKS MOTION_WHEEL "Drive and turn left" AT 0 JOINT PART 3482 15 70 0 160
+      0 !BRICKWORKS MOTION_STEER "Drive and turn left" AT 0 JOINT PART 2819 7 0 -48 24
+
+  read at the edge like the rest (`Motions._read_path`, `leg_of`): a leg
+  past its limits, a wheel or steering line with no path before it, or a
+  second steering, is a line of the wrong shape. A motion may have tracks
+  and a path both: its joints move as the model drives. An older app
+  leaves the three lines out.
+- **The radius is the back axle's middle's**, and the path starts there,
+  on the ground: what a person measures a car's turn by, and the one point
+  that goes round the corner on the radius asked whatever the steering
+  does. The way ahead is towards the wheels the steering turns.
+- **Each axle that rolls is one joint**, taken hold of through Grab as a
+  track's joint is, and turned by how far its own middle travels along the
+  way its tyre points over its tyre's radius (the biggest wheel or tyre it
+  turns, read off its box across the axle). 8808-1's back axle carries
+  four wheels on one Technic axle, so they turn as one at the rate of the
+  axle's middle; on the corner the outer two would slip, as the real set's
+  do. The front wheels are each on their own stub axle, steered.
+- **The steering** turns into each corner as far as points the steered
+  wheels through the corner's middle (each its own line, Ackermann's),
+  found by trying it on its own Grab, and eased in and out over up to 3
+  studs at each corner's ends; what it cannot reach is said. A corner left
+  without a radius is the tightest the steering takes well: where it
+  points the front wheels at three quarters of the most it turns (30 studs
+  on the racer).
+- **Played**, every part of the model moves along the path from where the
+  joints put it. The panel's Play and play_motion keep it where it ends,
+  one step (Grab.commit of every part, so each joint is still measured
+  from where the model was built), and backwards drive it back the way it
+  came; a link draws it only. A path played backwards is laid from where
+  the model stands, as its end. Each wheel's turn is worked out by how far
+  along the path it is (a table at every 2 LDU), not frame by frame, so
+  backwards brings every wheel back to the degree. The panel frames the
+  view on where it begins and ends before it plays, and a drive kept lays
+  the floor under both (Main, `MotionPlayer.driven`), so neither the drive
+  nor its undo leaves it hanging off the edge.
+- **Suggested** as "Drive and turn left" when the model has a wheel or a
+  tyre on a level axle on the ground: a 32-stud straight and a quarter turn
+  left, at 10 studs a second.
+- **In the panel's editor**, Where it drives: Drive along a path, a row a
+  leg (Straight, Left or Right, how far, its radius, Take out), Add a leg,
+  Over (seconds), Eased and No path; each change one step.
+- **Over MCP**: define_motion path={"legs": [{"straight": 32}, {"left":
+  90}], "seconds": 8, "eased": true}; list_motions says where it drives
+  and what turns as it rolls.
