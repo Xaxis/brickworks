@@ -8,6 +8,23 @@
 ## forget to press. A style chosen from Style gives the model that page
 ## whole: on another model, Page setup… and the style's name are two
 ## actions.
+##
+## In three tabs (booklook), as Studio's Page Setup has its own: the Page
+## (its paper, margins, what is behind it, and the designer's words at the
+## head and foot of every page), the Cover (its title, the line under it, a
+## picture of the model or of their own, a line of their words) and the
+## Steps (the step numbers' size and colour, the parts pictures, the parts
+## box's frame, fill and corners, the colour round the new parts). A word
+## typed is set as it is entered or left; a colour as its picker closes.
+##
+## It is the model's it opened on: what it sends is only what the person
+## changed from what it showed ([member _filled]), and it closes, sending
+## nothing, when another model is opened or the model cleared. What its
+## model's page becomes while it is open (an undo, a redo, page_setup over
+## MCP, a Together peer's) is shown at once in every field the person has
+## not touched. Up to 2026-11-07 closing it set every field it showed on
+## whatever model was open then: one model's title in another's file, an
+## undo undone again, a Claude's title put back (blreview).
 class_name PageSetupDialog
 extends AcceptDialog
 
@@ -33,6 +50,36 @@ var _said: Label
 var _picker: PickImage
 ## Filling the controls from the model: their signals change nothing.
 var _filling: bool = false
+## booklook: the tabs, and in them the designer's words, the cover's
+## picture, and the colours.
+var _tabs: TabContainer
+var _header: LineEdit
+var _footer: LineEdit
+var _title: LineEdit
+var _subtitle: LineEdit
+var _cover_line: LineEdit
+var _cover: Label
+var _cover_choose: Button
+var _cover_model: Button
+var _number_colour: ColorPickerButton
+var _box_frame: ColorPickerButton
+var _box_fill: ColorPickerButton
+var _box_corners: SpinBox
+var _outline: ColorPickerButton
+var _usual_colours: Button
+## Which picture the picker is choosing: "behind" or "cover".
+var _picking: String = "behind"
+## The words' fields by what each sets ([constant BookletSheet.TEXTS]).
+var _texts: Dictionary = {}
+## The words each field showed when it was last filled from the model: a
+## field whose words (as one line) are not these is one the person changed.
+var _filled: Dictionary = {}
+## The model it was opened on (BrickWorld.generation, which every open and
+## Clear moves on), and its page as last filled (_page_now).
+var _generation: int = -1
+var _shown_page: String = ""
+## The colours' buttons by what each sets ([constant BookletSheet.COLOURS]).
+var _colours: Dictionary = {}
 
 const WIDTH := 440
 const PAPERS: Array[String] = ["booklet", "a4", "letter", "a5"]
@@ -45,11 +92,13 @@ func _ready() -> void:
 	column.add_theme_constant_override("separation", 8)
 	column.custom_minimum_size = Vector2(WIDTH, 0)
 	add_child(column)
-	var grid := GridContainer.new()
-	grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 12)
-	grid.add_theme_constant_override("v_separation", 6)
-	column.add_child(grid)
+	_tabs = TabContainer.new()
+	# As wide and tall on every tab, so the dialog keeps its size as they turn.
+	_tabs.use_hidden_tabs_for_min_size = true
+	column.add_child(_tabs)
+	var grid: GridContainer = _tab("Page")
+	var cover: GridContainer = _tab("Cover")
+	var steps: GridContainer = _tab("Steps")
 
 	_paper = OptionButton.new()
 	for key: String in PAPERS:
@@ -71,6 +120,7 @@ func _ready() -> void:
 	_colour.edit_alpha = false
 	_colour.custom_minimum_size = Vector2(0, 28)
 	_colour.tooltip_text = "The colour of every page"
+	_framed(_colour)
 	# Set when the picker closes, not at every colour it passes through.
 	_colour.popup_closed.connect(func() -> void:
 		_apply({"colour": "#" + _colour.color.to_html(false)}))
@@ -84,7 +134,9 @@ func _ready() -> void:
 	_choose = Button.new()
 	_choose.text = "Choose…"
 	_choose.tooltip_text = "A picture behind every page, covering it"
-	_choose.pressed.connect(func() -> void: _picker.ask())
+	_choose.pressed.connect(func() -> void:
+		_picking = "behind"
+		_picker.ask())
 	behind.add_child(_choose)
 	_take_off = Button.new()
 	_take_off.text = "Take off"
@@ -92,13 +144,63 @@ func _ready() -> void:
 	_take_off.pressed.connect(func() -> void: _apply({"picture": ""}))
 	behind.add_child(_take_off)
 	_row(grid, "Picture behind", behind)
+	_header = _text_field("header", "None", "Your words at the head of every page but the cover")
+	_row(grid, "Header", _header)
+	_footer = _text_field("footer", "None", "Your words at the foot of every page, the cover too")
+	_row(grid, "Footer", _footer)
+
+	# The cover, as its designer makes it.
+	_title = _text_field("title", "The model's name", "The title across the top of the cover")
+	_row(cover, "Title", _title)
+	_subtitle = _text_field("subtitle", "None", "A line under the title")
+	_row(cover, "Under the title", _subtitle)
+	var picture := HBoxContainer.new()
+	picture.add_theme_constant_override("separation", 6)
+	_cover = Label.new()
+	_cover.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	picture.add_child(_cover)
+	_cover_choose = Button.new()
+	_cover_choose.text = "Choose…"
+	_cover_choose.tooltip_text = "A picture of your own on the cover, shown whole"
+	_cover_choose.pressed.connect(func() -> void:
+		_picking = "cover"
+		_picker.ask())
+	picture.add_child(_cover_choose)
+	_cover_model = Button.new()
+	_cover_model.text = "The model"
+	_cover_model.tooltip_text = "The finished model drawn on the cover again"
+	_cover_model.pressed.connect(func() -> void: _apply({"cover_picture": ""}))
+	picture.add_child(_cover_model)
+	_row(cover, "Picture", picture)
+	_cover_line = _text_field("cover_line", "None", "A line of your words on the cover, over its count of pieces")
+	_row(cover, "Line", _cover_line)
 
 	_number = _spin(BookletSheet.NUMBER_RANGE, 0.5, " mm", "How tall a step's number is printed",
 		"number")
-	_row(grid, "Step numbers", _number)
+	_row(steps, "Step numbers", _number)
+	# A bar as wide as the others: the booklet's own near-black, as a swatch
+	# beside the size, read as no control at all on the dark dialog.
+	_number_colour = _colour_field("number_colour", "The colour of every step's number")
+	_row(steps, "Number colour", _number_colour)
 	_parts = _spin(Vector2(BookletSheet.PARTS_RANGE.x * 100.0, BookletSheet.PARTS_RANGE.y * 100.0),
 		5.0, " %", "How big the parts are drawn in each step's parts box and the parts list", "parts")
-	_row(grid, "Parts pictures", _parts)
+	_row(steps, "Parts pictures", _parts)
+	_box_frame = _colour_field("box_frame", "The colour of the parts box's frame, and of the boxes beside it")
+	_row(steps, "Parts box frame", _box_frame)
+	_box_fill = _colour_field("box_fill", "The colour inside the parts box")
+	_row(steps, "Parts box fill", _box_fill)
+	_box_corners = _spin(BookletSheet.CORNERS_RANGE, 0.2, " mm",
+		"How round the parts box's corners are: 0 for square", "box_corners")
+	_row(steps, "Parts box corners", _box_corners)
+	_outline = _colour_field("outline_colour", "The colour round the parts each step adds")
+	_row(steps, "New parts outline", _outline)
+	_usual_colours = Button.new()
+	_usual_colours.text = "Usual colours"
+	_usual_colours.tooltip_text = "The booklet's own parts box, step numbers and outline again"
+	_usual_colours.pressed.connect(func() -> void:
+		_apply({"box_frame": "usual", "box_fill": "usual", "box_corners": BookletSheet.BOX_CORNERS,
+			"number_colour": "usual", "outline_colour": "usual"}))
+	_row(steps, "", _usual_colours)
 
 	column.add_child(HSeparator.new())
 	_style = OptionButton.new()
@@ -153,6 +255,121 @@ func _ready() -> void:
 	add_child(_picker)
 	_picker.picked.connect(_picture_picked)
 	_picker.failed.connect(func(why: String) -> void: _said.text = why)
+	# Words typed and not entered are set as the dialog closes.
+	visibility_changed.connect(func() -> void:
+		set_process(visible)
+		if not visible:
+			_set_texts())
+	set_process(false)
+
+
+## While open: closed when its model is gone, and filled again when its
+## model's page changes under it.
+func _process(_delta: float) -> void:
+	if shell == null or shell.world == null:
+		return
+	if _moved():
+		hide()
+	elif _page_now() != _shown_page:
+		_refill()
+
+
+## Whether the model it was opened on is no longer the one open.
+func _moved() -> bool:
+	return shell == null or shell.world == null or shell.world.generation() != _generation
+
+
+## The model's page as it is kept, and the size of each of its pictures:
+## what the fields show.
+func _page_now() -> String:
+	var kept: Variant = BookletLooks.booklet(shell.world).get("sheet", {})
+	var images: Dictionary = BookletLooks.images(shell.world)
+	var sizes := PackedStringArray()
+	for name: String in BookletSheet.pictures_named(kept):
+		sizes.append("%s %d" % [name, str(images.get(name, "")).length()])
+	return str(kept) + " " + " ".join(sizes)
+
+
+## The fields as the model's page is now, but each of words the person has
+## changed and not yet set, which keeps their words.
+func _refill() -> void:
+	var touched: Dictionary = {}
+	for field: String in _texts:
+		var text: String = (_texts[field] as LineEdit).text
+		if BookletSheet.one_line(text) != str(_filled.get(field, "")):
+			touched[field] = text
+	fill()
+	for field: String in touched:
+		if BookletSheet.one_line(touched[field]) != str(_filled.get(field, "")):
+			(_texts[field] as LineEdit).text = touched[field]
+
+
+## A tab of rows, titled [param words].
+func _tab(words: String) -> GridContainer:
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 12)
+	grid.add_theme_constant_override("v_separation", 6)
+	var margin := MarginContainer.new()
+	for side: String in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, 8)
+	margin.add_child(grid)
+	_tabs.add_child(margin)
+	_tabs.set_tab_title(_tabs.get_tab_count() - 1, words)
+	return grid
+
+
+## A line of the designer's words, set as it is entered or left.
+func _text_field(field: String, empty: String, tip: String) -> LineEdit:
+	var edit := LineEdit.new()
+	edit.max_length = BookletSheet.TEXT_MOST
+	edit.placeholder_text = empty
+	edit.tooltip_text = tip
+	edit.text_submitted.connect(func(_text: String) -> void: _set_texts())
+	edit.focus_exited.connect(_set_texts)
+	_texts[field] = edit
+	return edit
+
+
+## Each line of words the person changed from what it showed, set: one
+## undo for them. Nothing on a model it was not opened on.
+func _set_texts() -> void:
+	if _filling or _moved():
+		return
+	var changed: Dictionary = {}
+	for field: String in _texts:
+		if BookletSheet.one_line((_texts[field] as LineEdit).text) != str(_filled.get(field, "")):
+			changed[field] = (_texts[field] as LineEdit).text
+	if not changed.is_empty():
+		_apply(changed)
+
+
+## A colour of the booklet's, set as its picker closes.
+func _colour_field(field: String, tip: String) -> ColorPickerButton:
+	var button := ColorPickerButton.new()
+	button.edit_alpha = false
+	button.custom_minimum_size = Vector2(56, 28)
+	button.tooltip_text = tip
+	button.popup_closed.connect(func() -> void:
+		_apply({field: "#" + button.color.to_html(false)}))
+	_colours[field] = button
+	_framed(button)
+	return button
+
+
+## A colour button with an edge round its colour: the theme's buttons have
+## none, and the booklet's own near-black step numbers drew a bar the colour
+## of the dialog, read as an empty row (booklook, 1400x900).
+static func _framed(button: ColorPickerButton) -> void:
+	for state: String in ["normal", "hover", "pressed", "disabled", "focus"]:
+		var edge := StyleBoxFlat.new()
+		edge.draw_center = state != "focus"
+		edge.bg_color = Color(1, 1, 1, 0.06)
+		edge.border_color = Color(1, 1, 1, 0.55 if state in ["hover", "focus"] else 0.3)
+		edge.set_border_width_all(1)
+		edge.set_corner_radius_all(3)
+		edge.set_content_margin_all(3)
+		button.add_theme_stylebox_override(state, edge)
 
 
 func _row(grid: GridContainer, words: String, control: Control) -> void:
@@ -175,8 +392,9 @@ func _spin(bounds: Vector2, step: float, suffix: String, tip: String, field: Str
 	return spin
 
 
-## Open, showing the model's page as it is set up.
+## Open, showing the model's page as it is set up: the open model's.
 func open() -> void:
+	_generation = shell.world.generation()
 	fill()
 	_said.text = ""
 	popup_centered()
@@ -207,6 +425,29 @@ func fill() -> void:
 	_take_off.disabled = sheet.picture.is_empty()
 	_number.value = sheet.number
 	_parts.value = sheet.parts * 100.0
+	# booklook: the words, the cover's picture and the colours.
+	for field: String in _texts:
+		(_texts[field] as LineEdit).text = str(sheet.get(field))
+		_filled[field] = str(sheet.get(field))
+	_shown_page = _page_now()
+	var model: String = shell.bar.model_name() if shell.bar != null else ""
+	_title.placeholder_text = model if not model.is_empty() else "The model's name"
+	if sheet.cover_missing:
+		_cover.text = "Missing from the file"
+		_cover.tooltip_text = tr("The file names %s but does not carry it: another program saved it without it, or it was not a PNG or a JPEG. Choose it again, or take it off.") \
+			% sheet.cover_picture
+	elif not sheet.cover_uri.is_empty():
+		var data: String = sheet.cover_uri.substr(sheet.cover_uri.find(",") + 1)
+		_cover.text = tr("%s, %d KB in the file") % [tr("A PNG") if BookletLooks.picture_kind(data)
+			== "png" else tr("A JPEG"), BookletSheet.picture_kb(data)]
+		_cover.tooltip_text = ""
+	else:
+		_cover.text = "The model, drawn"
+		_cover.tooltip_text = ""
+	_cover_model.disabled = sheet.cover_picture.is_empty()
+	for field: String in _colours:
+		(_colours[field] as ColorPickerButton).color = sheet.get(field)
+	_box_corners.value = sheet.box_corners
 	_style.clear()
 	_style.add_item("Choose a style…")
 	var names: Array = BookletSheet.styles().keys()
@@ -226,13 +467,17 @@ func fill() -> void:
 func _apply(fields: Dictionary) -> void:
 	if _filling:
 		return
+	if _moved():
+		hide()
+		return
 	var said: String = shell.page_setup(fields)
 	shell.bar.say(said)
 	_said.text = said.left(1).to_upper() + said.substr(1)
-	fill()
+	_refill()
 
 
-## A style chosen: the model's page set up as it was kept, whole.
+## A style chosen: the model's page set up as it was kept, but for the
+## model's own title and the line under it (BookletSheet.OWN).
 func _pick_style(index: int) -> void:
 	if _filling or index <= 0:
 		return
@@ -258,6 +503,10 @@ func _keep_style() -> void:
 
 func _picture_picked(image: Image) -> void:
 	if image == null or image.get_width() < 1:
+		return
+	if _picking == "cover":
+		var cover: Array = BookletSheet.cover_of(image)
+		_apply({"cover_picture": cover[0], "cover_picture_data": cover[1]})
 		return
 	var kept: Array = BookletSheet.picture_of(image)
 	_apply({"picture": kept[0], "picture_data": kept[1]})
