@@ -1277,6 +1277,26 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 				stays = true
 		if not stays and to.size() == 1:
 			return _no(plan, "a part the app cannot show would be left out of its step (line %d)" % (own + 1))
+	# A step of the file every part went out of, and none came into: the
+	# steps numbered again (a merge, a step emptied), which moving lines
+	# cannot say. Each later part moved up a step left the file's STEP lines
+	# where no step ends: 106-1's merge took the car's first STEP out and put
+	# one after its last part. Live's write takes the emptied step's line out.
+	if not moves.is_empty():
+		var kept: Dictionary = {}       ## "section|step" -> a part line is in it
+		var left: Dictionary = {}       ## "section|step" -> a part line went out of it
+		for line: int in _stack_at:
+			if plan.gone.has(line):
+				continue
+			var key: String = "%s|%d" % [_sec[line], _step_at[line]]
+			if moves.has(line):
+				left[key] = true
+				kept["%s|%d" % [_sec[line], int(moves[line])]] = true
+			else:
+				kept[key] = true
+		for key: String in left:
+			if not kept.has(key):
+				return _no(plan, "a step's every part went to another step: the steps numbered again")
 
 	# Where each moved line goes: the end of its step, the pairs round it the
 	# same there.
