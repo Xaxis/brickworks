@@ -1461,18 +1461,10 @@
       "tests": []
     },
     {
-      "id": "cli:localbricks api test",
-      "kind": "cli",
-      "entry": "tools/web/localbricks_api.mjs",
-      "reach": "node tools/web/localbricks_api.mjs --url=http://127.0.0.1:8790   (relay_server running, .env sourced: op join pure and against the database, every lot and set of both summed, a resend made once even 105 changes later, refusals changing nothing, a count held at 100,000)",
-      "area": "collection",
-      "tests": []
-    },
-    {
       "id": "cli:localbricks probe",
       "kind": "cli",
       "entry": "src/dev/localbricks_probe.gd",
-      "reach": "tools/relay_probe.sh localbricks   (a window, 1280x720; PROBE_SIZE=1400x900; -- --shots=DIR: signed out 2 sets and 12 loose lots, a restart, another tab, What do I need?, edit_collection and Take back, two tabs at once, the offer at a sign-in, Not now, no answer and Send again, two devices at once, signed out again, Build from it less the marks, the words in de/fr/es)",
+      "reach": "tools/relay_probe.sh localbricks   (a window, 1280x720; PROBE_SIZE=1400x900; -- --shots=DIR: through the sign-in screen with a password, 7140-1's lots marked by edit_collection missing= and refused past its inventory, Build from it 282 of 285, a restart and another device, two tabs at once one refused, a tab a newer build followed leaving the copy on this device, two copies 566 of 570 and one of them 284 of 285, signed out nothing held, the words in de/fr/es)",
       "area": "collection",
       "tests": []
     },
@@ -6051,22 +6043,6 @@
         "tests/test_site_lang.py",
         "tests/test_site_shell.py"
       ]
-    },
-    {
-      "id": "ui:your bricks put together at a sign-in",
-      "kind": "ui",
-      "entry": "src/ui/collection_offer.gd",
-      "reach": "godot --path .  (sign in with bricks kept on this device: asked first, the two side by side, Put them together or Not now; My collection's On this device only row, and Send again for one with no answer; op join at /api/collection, every lot and set of both kept, never made twice)",
-      "area": "collection",
-      "tests": []
-    },
-    {
-      "id": "ui:your bricks with nobody signed in",
-      "kind": "ui",
-      "entry": "src/collection/collection_here.gd",
-      "reach": "godot --path .  (signed out, My collection is this device's own: sets typed, loose lots, counts, a set's missing parts, edit_collection and Take back, the same ops as the account's; kept a file a tab or window in user://collection.here/, two tabs' changes both kept; a Rebrickable account, a CSV or an XML waits for a sign-in, saying why)",
-      "area": "collection",
-      "tests": []
     },
     {
       "id": "ui:your feed page",

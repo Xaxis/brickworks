@@ -3,8 +3,8 @@
 ##   godot --path . --resolution 1400x900 --script src/dev/collection_ui_probe.gd
 ##
 ## Opens the app with the car on the baseplate and a collection of its own
-## (no account: kept on this device, as a person signed out keeps theirs,
-## in a temporary folder of the probe's own): half of the car's parts, a white
+## (no account: the panel works from what it is given, as it does from the
+## copy on a desktop that is offline): half of the car's parts, a white
 ## brick where a red one is short, four 1 x 2s where a 1 x 4 is, and one
 ## real set. The parts list's "What do I need?" opens the panel on the
 ## shortfall, which must agree with Collection's own sums; "What can I
@@ -70,8 +70,9 @@ func _run() -> void:
 	mine.parts.append({"part": "3001", "colour": 15, "qty": 2})
 	mine.parts.append({"part": "3004", "colour": 0, "qty": 4})
 	mine.sets = [{"set": "6020-1", "qty": 1, "spares": false}]
-	# Signed out, My collection is what this device keeps (localbricks).
-	await _keep_here(dialog.store, mine)
+	dialog.store.collection = mine
+	await dialog.store.refresh_pool()
+	dialog.store.changed.emit()
 	var expected: Array = Collection.plan(Collection.needs_of(stock, library), dialog.store.on_hand,
 		library)
 	var expected_short: int = 0
@@ -149,7 +150,6 @@ func _run() -> void:
 
 	if FileAccess.file_exists(CollectionStore.where):
 		DirAccess.remove_absolute(CollectionStore.where)
-	_wipe_here()
 	print("")
 	if _failures == 0:
 		print("collection ui probe: the shortfall, the ranking and the collection on screen")
@@ -183,25 +183,3 @@ func _shot(name: String) -> void:
 	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
 	image.save_png(path)
 	print("    picture: shots/%s.png" % name)
-
-
-## [param kept] as this device keeps a collection with nobody signed in
-## (localbricks): written to the device's own record, then read as My
-## collection reads it when opened. Every lot and set as added by hand.
-func _keep_here(store: CollectionStore, kept: Collection) -> void:
-	var json: Dictionary = kept.to_json()
-	for lot: Dictionary in json["parts"]:
-		lot["src"] = "hand"
-	for entry: Dictionary in json["sets"]:
-		entry["src"] = "hand"
-	var folder: String = CollectionStore.here_folder()
-	CollectionHere.write(folder, "probe", CollectionHere.read(folder)["raw"], json)
-	await store.load_collection()
-
-
-## The device's own record, gone with the probe.
-static func _wipe_here() -> void:
-	var folder: String = CollectionStore.here_folder()
-	for name: String in DirAccess.get_files_at(folder):
-		DirAccess.remove_absolute(folder.path_join(name))
-	DirAccess.remove_absolute(folder)

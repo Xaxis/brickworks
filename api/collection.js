@@ -72,18 +72,6 @@
 //       missing from the count the person saw ("was", 0 for none) to qty
 //       (0: none missing). Kept on the set as "missing": [{part, colour,
 //       qty}], in LDraw's numbers as the set's inventory has them.
-//   {"op": "join", "sets": [{set, qty, spares?, src?, fig?, name?,
-//                            missing?: [{part, colour, qty}]}],
-//                  "parts": [{part, colour, qty, src?, by?, chat?}]}
-//       what a device kept while nobody was signed in, put into the
-//       account's collection (localbricks, APP_UX6 #8), the person asked
-//       first in the app. Every lot and set of both is kept: a lot of the
-//       same part, colour and source (or the same session and chat) is one
-//       lot, its counts added; a set of the same number and source is one
-//       entry, its copies added and the parts each was marked missing
-//       kept together. Its id is remembered past the last MOST_REMEMBERED
-//       (the last MOST_JOINS joins), so a device that sends it again after
-//       a lost answer, however long after, is never joined twice.
 //
 // A set as it really is (mysets, 2026-11-07), additive: a set entry may
 // carry "missing", the lots it is short of, and a minifigure is kept among
@@ -160,8 +148,6 @@ const REQUEST = /^[A-Za-z0-9._:-]{8,64}$/;
 export const MOST_LOT_CHANGES = 2000;
 /// How many request ids a collection remembers.
 export const MOST_REMEMBERED = 100;
-/// How many joins' ids it remembers past those (localbricks).
-export const MOST_JOINS = 50;
 /// How many times a change is made again on what another write left.
 const TRIES = 12;
 
@@ -748,8 +734,6 @@ export function applyOp(have, body) {
     return { next: next(), done: { marked: ids.length, missing: missing.list.reduce((sum, p) => sum + p.qty, 0) } };
   }
 
-  if (op === "join") return joined(have, body, sets, parts, next);
-
   if (op === "start_over") {
     const seen = body?.rev === undefined || body?.rev === null ? null : Number(body.rev);
     const now = have.rev === undefined || have.rev === null ? null : Number(have.rev);
@@ -758,73 +742,8 @@ export function applyOp(have, body) {
     return { next: { sets: [], parts: [] }, done: { started_over: true } };
   }
 
-  throw new Refusal(400, "say what this is: op lots, set, keep, take_back, remove_set, missing, join or start_over, "
+  throw new Refusal(400, "say what this is: op lots, set, keep, take_back, remove_set, missing or start_over, "
     + "or from rebrickable_csv, bricklink_xml, rebrickable_api, sets or figs");
-}
-
-/// The join op (localbricks, APP_UX6 #8): a device's lots and sets, kept
-/// while nobody was signed in, added to [have]'s, every one of both kept.
-/// [sets], [parts] and [next] are applyOp's own. Pure, as applyOp is.
-function joined(have, body, sets, parts, next) {
-  const lots = listed(body, "parts", MAX_LOTS, "parts");
-  const given = listed(body, "sets", MAX_SETS, "sets");
-  if (lots.length + given.length === 0) throw new Refusal(400, "nothing to join: no sets and no lots");
-  const ids = lots.map((p, n) => lotId(p, `lot ${n + 1}`));
-  once(ids, "lot");
-  const counts = lots.map((p, n) => counted(p?.qty, `lot ${n + 1}`));
-  const entries = given.map((s, n) => {
-    const where = `set ${n + 1}`;
-    const fig = s?.fig === true;
-    const set = fig ? figNumber(s?.set) : setNumber(s?.set);
-    if (!set) throw new Refusal(400, `${where}: "${s?.set}" is not a ${fig ? "minifigure" : "set"} number`);
-    const src = s?.src === undefined || s?.src === null ? "" : String(s.src);
-    if (src && !SOURCES.has(src)) throw new Refusal(400, `${where}: "${src}" is not where a set comes from`);
-    const entry = { set, qty: counted(s?.qty, where), spares: s?.spares === true };
-    if (src) entry.src = src;
-    if (fig) {
-      entry.fig = true;
-      const name = figName(s?.name);
-      if (name) entry.name = name;
-    }
-    const marks = listed(s, "missing", MOST_MISSING, `${where}'s missing`);
-    if (marks.length && fig) throw new Refusal(400, `${where}: a minifigure has no parts marked missing`);
-    const missing = new Keyed(lotKey);
-    marks.forEach((p, m) => {
-      const part = partNumber(p?.part);
-      if (!part) throw new Refusal(400, `${where}, missing ${m + 1}: "${p?.part}" is not a part number`);
-      const lot = { part, colour: colourOf(p?.colour, `${where}, missing ${m + 1}`) };
-      if (missing.get(lot)) throw new Refusal(400, `${where}, missing ${m + 1}: ${part} in colour ${lot.colour} is named twice`);
-      missing.add(lot, counted(p?.qty, `${where}, missing ${m + 1}`));
-    });
-    if (missing.list.length) entry.missing = missing.list;
-    return entry;
-  });
-  const named = new Set();
-  entries.forEach((entry, n) => {
-    if (named.has(setKey(entry))) throw new Refusal(400, `set ${n + 1}: ${entry.set} is named twice`);
-    named.add(setKey(entry));
-  });
-  ids.forEach((id, n) => parts.add(id, counts[n]));
-  for (const entry of entries) {
-    const held = sets.get(entry);
-    if (!held) {
-      sets.keep({ ...entry });
-      continue;
-    }
-    // Two copies of one set, each with what it is missing: both kept.
-    held.qty = Math.min(MAX_QTY, held.qty + entry.qty);
-    if (entry.spares) held.spares = true;
-    if (entry.name && !held.name) held.name = entry.name;
-    if (entry.missing) {
-      const both = new Keyed(lotKey, Array.isArray(held.missing) ? held.missing : []);
-      for (const p of entry.missing) both.add({ ...p }, p.qty);
-      if (both.list.length > MOST_MISSING) {
-        throw new Refusal(413, `${entry.set} would be marked with ${both.list.length} lots missing; a set is at most ${MOST_MISSING}`);
-      }
-      held.missing = both.list;
-    }
-  }
-  return { next: next(), done: withClamped({ joined: { sets: entries.length, lots: ids.length } }, parts) };
 }
 
 /// An import, as a change: {next, done}. What it imported and left out is
@@ -933,16 +852,6 @@ function shown(row) {
 /// A remembered change's id: an entry is {id, done}.
 const idOf = (one) => (typeof one === "string" ? one : one?.id);
 
-/// The ids a collection remembers: the last MOST_REMEMBERED, and before
-/// them the last MOST_JOINS joins (localbricks), so a join sent again long
-/// after is still answered as it was, never made twice.
-export function remembered(list) {
-  const last = list.slice(-MOST_REMEMBERED);
-  const before = list.slice(0, Math.max(0, list.length - MOST_REMEMBERED))
-    .filter((one) => one && typeof one === "object" && one.done && one.done.joined);
-  return [...before.slice(-MOST_JOINS), ...last];
-}
-
 const pause = (attempt) => new Promise((done) => setTimeout(done, 15 + Math.random() * 40 * (attempt + 1)));
 
 /// [make] made on the row as kept and written only over that row: the rev
@@ -965,7 +874,7 @@ async function change(owner, make, id = "") {
     const kept = {
       sets: next.sets,
       parts: next.parts,
-      recent: id ? remembered([...have.recent.filter((one) => idOf(one) !== id), { id, done: made.done }])
+      recent: id ? [...have.recent.filter((one) => idOf(one) !== id), { id, done: made.done }].slice(-MOST_REMEMBERED)
         : have.recent,
       updated_at: new Date().toISOString(),
     };
@@ -1063,8 +972,7 @@ export default async function handler(request, response) {
       throw new Refusal(403, "a collection is only ever its owner's");
     }
     const size = JSON.stringify(body ?? null).length;
-    // A join names every lot a device kept, up to MAX_LOTS, as Keep them does.
-    const most = ["keep", "take_back", "join"].includes(body?.op) ? MAX_KEEP_BYTES : MAX_BYTES;
+    const most = ["keep", "take_back"].includes(body?.op) ? MAX_KEEP_BYTES : MAX_BYTES;
     if (size > most) {
       throw new Refusal(413, `that is ${size} bytes; ${body?.op ? "a change" : "an import"} is at most ${most}`);
     }
@@ -1085,7 +993,7 @@ export default async function handler(request, response) {
     }
     if (!Object.hasOwn(SOURCE_OF, String(body?.from || ""))) {
       throw new Refusal(400, "say what this is: from rebrickable_csv, bricklink_xml, rebrickable_api, sets or figs, "
-        + "or op lots, set, keep, take_back, remove_set, missing, join or start_over");
+        + "or op lots, set, keep, take_back, remove_set, missing or start_over");
     }
     const imported = parseImport(body);
     const { row, done } = await change(owner, (have) => importing(have, body, imported), id);

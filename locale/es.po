@@ -12261,132 +12261,6 @@ msgstr "%s: completo, tus piezas sueltas cubren las %d piezas marcadas como que 
 msgid "no such choice"
 msgstr "no existe esa opción"
 
-# localbricks (APP_UX6 8): your bricks kept on this device with nobody signed in, and at a sign-in
-# offered to the account, every lot and set of both kept.
-
-msgid "Your bricks on this device"
-msgstr "Tus piezas en este dispositivo"
-
-msgid "While nobody was signed in, this device kept %s. Your account's collection has %s. Put them together?"
-msgstr "Mientras nadie había iniciado sesión, este dispositivo guardó %s. La colección de tu cuenta tiene %s. ¿Juntarlas?"
-
-msgid "Every lot and set of both is kept: a part's counts in the same colour are added together, and a set kept in both is two copies, each with what it is missing. Not now leaves them on this device, apart from your account."
-msgstr "Se conserva cada lote y cada set de ambos: las cantidades de una pieza en el mismo color se suman, y un set que está en ambos son dos copias, cada una con lo que le falta. Ahora no las deja en este dispositivo, aparte de tu cuenta."
-
-msgid "Put them together"
-msgstr "Juntarlas"
-
-msgid "%s and %s of loose parts (%s)"
-msgstr "%s y %s de piezas sueltas (%s)"
-
-msgid "%s, %s and %s of loose parts (%s)"
-msgstr "%s, %s y %s de piezas sueltas (%s)"
-
-
-
-
-msgid "1 minifigure"
-msgstr "1 minifigura"
-
-msgid "%d minifigures"
-msgstr "%d minifiguras"
-
-msgid "nothing yet"
-msgstr "nada todavía"
-
-msgid "Putting them together…"
-msgstr "Juntándolas…"
-
-msgid "Put together: your account's collection has %s now, nothing of either left out."
-msgstr "Juntadas: la colección de tu cuenta tiene ahora %s, sin dejar fuera nada de ninguna."
-
-msgid "No answer came, so they may be in your collection already. They stay on this device, and are sent again, never added twice, when you next sign in or open My collection."
-msgstr "No llegó respuesta, así que quizá ya estén en tu colección. Se quedan en este dispositivo y se envían de nuevo, nunca añadidas dos veces, cuando vuelvas a iniciar sesión o abras Mi colección."
-
-msgid "%s. Nothing was lost: they are on this device still."
-msgstr "%s. No se perdió nada: siguen en este dispositivo."
-
-msgid "They stay on this device, apart from your account: My collection offers them again."
-msgstr "Se quedan en este dispositivo, aparte de tu cuenta: Mi colección te las ofrece de nuevo."
-
-msgid "Nothing here yet. Add sets by number and loose parts below: they are kept on this device, and offered to your account when you sign in. A Rebrickable account or a file comes in once you are signed in."
-msgstr "Aún no hay nada. Añade abajo sets por número y piezas sueltas: se guardan en este dispositivo y se ofrecen a tu cuenta cuando inicies sesión. Una cuenta de Rebrickable o un archivo se importa una vez que hayas iniciado sesión."
-
-msgid "%s and %s — %s pieces in all, kept on this device until you sign in"
-msgstr "%s y %s — %s piezas en total, guardadas en este dispositivo hasta que inicies sesión"
-
-msgid "%s of this collection on this device could not be read, and is kept as it is"
-msgstr "%s de esta colección en este dispositivo no se pudo leer, y se conserva tal cual"
-
-msgid "1 window's record"
-msgstr "El registro de una ventana"
-
-msgid "%d windows' records"
-msgstr "Los registros de %d ventanas"
-
-msgid "%s sent to an account had no answer yet: kept here, and sent again (never twice) when that account signs in"
-msgstr "%s enviados a una cuenta aún no tienen respuesta: se guardan aquí y se envían de nuevo (nunca dos veces) cuando esa cuenta inicie sesión"
-
-msgid "1 lot or set"
-msgstr "1 lote o set"
-
-msgid "%d lots and sets"
-msgstr "%d lotes y sets"
-
-msgid "Sign in to bring this in: your account reads it into LDraw's numbers. Sets typed by number and loose parts are kept on this device until you do"
-msgstr "Inicia sesión para importarlo: tu cuenta lo lee en los números de LDraw. Los sets escritos por número y las piezas sueltas se guardan en este dispositivo hasta entonces"
-
-msgid "Add these to your loose parts"
-msgstr "Añadirlas a tus piezas sueltas"
-
-msgid "How many you have; changed here"
-msgstr "Cuántas tienes; se cambia aquí"
-
-msgid "%s sent to your collection had no answer yet: kept on this device until it comes"
-msgstr "%s enviados a tu colección aún no tienen respuesta: se guardan en este dispositivo hasta que llegue"
-
-msgid "Send again"
-msgstr "Enviar de nuevo"
-
-msgid "Send them again: your account never adds the same ones twice"
-msgstr "Enviarlas de nuevo: tu cuenta nunca añade las mismas dos veces"
-
-msgid "On this device only: %s, kept while nobody was signed in"
-msgstr "Solo en este dispositivo: %s, guardados mientras nadie había iniciado sesión"
-
-msgid "Put them in my collection…"
-msgstr "Ponerlas en mi colección…"
-
-msgid "Put what this device kept into your account's collection: every lot and set of both is kept"
-msgstr "Poner lo que guardó este dispositivo en la colección de tu cuenta: se conserva cada lote y cada set de ambos"
-
-msgid "sent again"
-msgstr "enviado de nuevo"
-
-msgid "still no answer: they stay on this device"
-msgstr "aún sin respuesta: se quedan en este dispositivo"
-
-msgid "%s, less the %s marked missing"
-msgstr "%s, menos las %s marcadas como que faltan"
-
-msgid "sign in first: what this device keeps goes into your account's collection"
-msgstr "inicia sesión primero: lo que guarda este dispositivo va a la colección de tu cuenta"
-
-msgid "no answer came, so they may be in your collection already: they stay on this device, and are sent again (never added twice) when you next sign in or open My collection"
-msgstr "no llegó respuesta, así que quizá ya estén en tu colección: se quedan en este dispositivo y se envían de nuevo (nunca añadidas dos veces) cuando vuelvas a iniciar sesión o abras Mi colección"
-
-msgid "this window's own record of the collection on this device could not be read, so nothing was changed"
-msgstr "el registro propio de esta ventana de la colección en este dispositivo no se pudo leer, así que no se cambió nada"
-
-msgid "could not write the collection on this device (%s)"
-msgstr "no se pudo escribir la colección en este dispositivo (%s)"
-
-msgid "could not put the collection on this device in its place"
-msgstr "no se pudo poner la colección de este dispositivo en su sitio"
-
-msgid "sign in to bring in a file or your Rebrickable account: your account reads it into LDraw's numbers. Sets typed by number and loose parts are kept on this device until you do"
-msgstr "inicia sesión para importar un archivo o tu cuenta de Rebrickable: tu cuenta lo lee en los números de LDraw. Los sets escritos por número y las piezas sueltas se guardan en este dispositivo hasta entonces"
-
 # Make a part's clip plate, bar and wedge plate (makepart2, APP_UX6 #15): the families'
 # buttons, their ways, their rows and what the dialog says of each part.
 
@@ -12651,3 +12525,8 @@ msgstr "%s: una pieza se toma en la mano en su color, un subconjunto se sostiene
 
 msgid "Right-click a part to keep it in Favourites too"
 msgstr "Haz clic derecho en una pieza para guardarla también en Favoritas"
+
+# localbricks (APP_UX6 8): Build from it leaves out what a set is marked as missing.
+
+msgid "%s, less the %s marked missing"
+msgstr "%s, menos las %s marcadas como que faltan"

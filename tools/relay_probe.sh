@@ -21,8 +21,8 @@ case $name in
   # mysets: a set from a photo, a set's missing parts (its Brickognize is a
   # stand-in of its own on the first free port of 9960-9969).
   mysets) env=("BRICKWORKS_API=$api") ;;
-  # localbricks: a collection kept on this device signed out, offered to
-  # the account at a sign-in (APP_UX6 #8).
+  # localbricks: a set's missing parts kept with the account and left out
+  # of what is built from it, signed in through the sign-in screen (APP_UX6 #8).
   localbricks) env=("BRICKWORKS_API=$api") ;;
   together) hold=("--hold=together_sessions,together_ops,together_people,together_snapshot_parts"); args=("--api=$api") ;;
   *) echo "relay_probe: $name is not one of the relay's probes (account connector tabs tabpair together desktop_cloud mybricks mysets localbricks)" >&2; exit 2 ;;

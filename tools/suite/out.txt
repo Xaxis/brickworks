@@ -20,7 +20,7 @@ together          # needs the relay with .env's keys, and makes accounts in prod
 desktop_cloud     # needs the relay with .env's keys, and makes an account in production Supabase; cloud_library_flow holds the web half on a deployment
 mybricks          # needs the relay with .env's keys, and makes an account in production Supabase; tools/web/mybricks_api.mjs holds the endpoint's half
 mysets            # needs the relay with .env's keys, and makes an account in production Supabase; tools/web/mysets_api.mjs holds the endpoint's half
-localbricks       # needs the relay with .env's keys, and makes an account in production Supabase; tools/web/localbricks_api.mjs holds the endpoint's half
+localbricks       # needs the relay with .env's keys, and makes an account in production Supabase; tools/web/mysets_api.mjs holds the endpoint's half
 harvest           # a bench: real sub-models harvested by tools/omr.py first, verdicts written, nothing judged
 roundtrip         # a measure: writes what each file keeps, tools/bench/cadtask.py judges it
 candidate         # asks of one model whether it may go on the landing page, by hand or by tools/bench

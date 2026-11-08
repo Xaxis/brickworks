@@ -294,8 +294,9 @@ func _run() -> void:
 	var dialog: CollectionDialog = _shell.collection
 	var mine := Collection.new()
 	mine.sets = [{"set": SET, "qty": 2, "spares": false}, {"set": OTHER, "qty": 1, "spares": false}]
-	# Signed out, My collection is what this device keeps (localbricks).
-	await _keep_here(dialog.store, mine)
+	dialog.store.collection = mine
+	await dialog.store.refresh_pool()
+	dialog.store.changed.emit()
 	dialog.open("own")
 	await _frames(5)
 	var every: Button = dialog.controls_by_name().get("collection_build_all")
@@ -326,32 +327,9 @@ func _run() -> void:
 		not both.is_empty() and _count_on(both) == "×%d" % held)
 	await _shot("together")
 	DirAccess.remove_absolute(CollectionStore.where)
-	_wipe_here()
 
 	if _failures == 0:
 		print("setbin probe: a set's parts, counted down as they are used, kept with the model")
 	else:
 		print("setbin probe: %d failed" % _failures)
 	quit(1 if _failures else 0)
-
-
-## [param kept] as this device keeps a collection with nobody signed in
-## (localbricks): written to the device's own record, then read as My
-## collection reads it when opened. Every lot and set as added by hand.
-func _keep_here(store: CollectionStore, kept: Collection) -> void:
-	var json: Dictionary = kept.to_json()
-	for lot: Dictionary in json["parts"]:
-		lot["src"] = "hand"
-	for entry: Dictionary in json["sets"]:
-		entry["src"] = "hand"
-	var folder: String = CollectionStore.here_folder()
-	CollectionHere.write(folder, "probe", CollectionHere.read(folder)["raw"], json)
-	await store.load_collection()
-
-
-## The device's own record, gone with the probe.
-static func _wipe_here() -> void:
-	var folder: String = CollectionStore.here_folder()
-	for name: String in DirAccess.get_files_at(folder):
-		DirAccess.remove_absolute(folder.path_join(name))
-	DirAccess.remove_absolute(folder)

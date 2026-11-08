@@ -254,14 +254,12 @@ func _steps() -> void:
 	# As the app starts: the copy on this device first, then the account's
 	# with the session kept (the same session: a second renewal of one
 	# refresh token would end the first's).
-	# Given its account before it is ready, as Shell gives the window's:
-	# signed out, a store shows the device's own collection (localbricks).
 	var restarted := CollectionStore.new()
 	restarted.library = _library
-	restarted.account = _account
 	root.add_child(restarted)
 	_check("a restart reads the copy on this device: the 12 marked lots in it",
 		_same(_marks(restarted.collection.to_json()), _marks(kept_now)) and _marks(kept_now).size() == 12)
+	restarted.account = _account
 	var trouble_restart: String = await restarted.load_collection()
 	_check("...and the kept session fetches the account's, the same lot for lot%s"
 		% ("" if trouble_restart.is_empty() else ": " + trouble_restart),

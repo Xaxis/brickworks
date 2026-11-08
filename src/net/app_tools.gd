@@ -845,8 +845,7 @@ func definitions() -> Array:
 				+ "the collection back, this chat's lots apart. Their sets and their own lots "
 				+ "are theirs: this never changes them. parts_list which=\"need\" then measures "
 				+ "the model against it, and which=\"buildable\" ranks what they can build. "
-				# localbricks (APP_UX6 #8): signed out, kept on the device; a set's marks.
-				+ "Signed out, it is kept on this device and offered to their account when they sign in. "
+				# localbricks (APP_UX6 #8): a set's marks.
 				+ "missing={set, lots: [{part, color, count}]} marks how many of each part a set they own "
 				+ "is missing (count 0 unmarks it; none=true marks the set whole), as its Missing parts… "
 				+ "page does: What do I need? and the pool then count only what is there."),
@@ -3533,7 +3532,10 @@ func _edit_collection(input: Dictionary) -> String:
 		return "This app has no collection."
 	var mine: CollectionStore = dialog.store
 	var library: PartLibrary = app.get("_library")
-	# Signed out, the device's own collection (localbricks): the same ops.
+	var account: Account = app.get("_account")
+	if account == null or not account.signed_in():
+		return ("The person is not signed in, and a collection is kept with their account: "
+			+ "they sign in (Account), then it can be read and added to.")
 	# localbricks (APP_UX6 #8): a set's missing lots marked and unmarked.
 	if input.get("missing") != null:
 		return await _collection_marks(mine, library, input["missing"])
@@ -3723,9 +3725,7 @@ func _collection_said(mine: CollectionStore, library: PartLibrary, limit: int) -
 		sets.append("%s%s%s%s" % [entry["set"], " " + str(record["n"]) if record.has("n") else "",
 			" x%d" % int(entry["qty"]) if int(entry["qty"]) > 1 else "", ", %d missing" % gone if gone > 0 else ""])
 	said.append("The person's collection%s: %s%s, %s of their own, %s this chat added%s; %s on hand in all."
-		% [" (the copy on this device)" if mine.offline
-			else (" (kept on this device: nobody is signed in; offered to their account when they sign in)"
-				if mine.here else ""), Counted.of(held.sets.size(), "set"),
+		% [" (the copy on this device)" if mine.offline else "", Counted.of(held.sets.size(), "set"),
 			(" (" + ", ".join(sets.slice(0, 20)) + (", …" if sets.size() > 20 else "") + ")") if not sets.is_empty() else "",
 			Counted.of(own.size(), "loose lot"), Counted.of(ours.size(), "lot"),
 			", %s other chats added" % Counted.of(others.size(), "lot") if not others.is_empty() else "",
@@ -3753,8 +3753,8 @@ func _collection_said(mine: CollectionStore, library: PartLibrary, limit: int) -
 
 ## edit_collection missing=: how many of each part a set the person owns is
 ## missing, marked as its Missing parts… page marks them (api/collection.js
-## op "missing", each from the count kept now), at the account or, signed
-## out, on this device; none=true marks it whole. A part is named by its
+## op "missing", each from the count kept now), at the account; none=true
+## marks it whole. A part is named by its
 ## LDraw number (or BrickLink's) and matched to the set's inventory as the
 ## pool matches it (Collection.key_of), and marked under the number the
 ## inventory has, as the page marks it.
@@ -3852,10 +3852,10 @@ func _collection_marks(mine: CollectionStore, library: PartLibrary, asked: Varia
 	var named := PackedStringArray()
 	for change: Dictionary in changes.slice(0, 12):
 		named.append("%s in colour %d: %d missing" % [change["part"], int(change["colour"]), int(change["qty"])])
-	return ("Marked %s of %s %s%s: %s. %d of its %d pieces are marked missing now%s%s. What do I need? for it (My collection, "
+	return ("Marked %s of %s %s: %s. %d of its %d pieces are marked missing now%s%s. What do I need? for it (My collection, "
 		+ "Closest to whole) lists what to find; the pool, What do I need? and What can I build? count only what is "
 		+ "there.") % [Counted.of(changes.size(), "lot"), number, str(record.get("n", "")),
-		" (kept on this device: nobody is signed in)" if mine.here else "", ", ".join(named)
+		", ".join(named)
 		+ (", …" if changes.size() > 12 else ""), int(whole["marked"]), int(whole["pieces"]),
 		"" if int(whole["loose"]) == 0 else ", %d of them made up by their loose parts" % int(whole["loose"]),
 		"" if int(whole["marked"]) > 0 else ": whole"]
