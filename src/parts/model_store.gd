@@ -2049,6 +2049,12 @@ func _lift_now() -> Vector3:
 ## the edit is made, never as a refusal: the model saves all the same
 ## (main.gd puts it on the bar).
 signal lines_left_out(words: String)
+## How the last write of someone else's file was made: "" a patch of it,
+## else why it was written as live writes it (a probe's to read).
+var last_whole: String = ""
+## Whether someone else's file is patched at all: false writes it as live
+## does, for a probe to hold the two side by side.
+static var patch_files: bool = true
 ## The sources [signal lines_left_out] was said for, by instance id.
 var _left_out_said: Dictionary = {}
 
@@ -2173,8 +2179,8 @@ static func _source_written(asked: Dictionary) -> Variant:
 	var source: SourceFile = asked["source"]
 	var library: PartLibrary = asked["library"]
 	var plan: SourceFile.Plan = source.patch(asked["bricks"], asked["lift"], asked["waiting"],
-		library, asked["unit_steps"])
-	var why: String = plan.why
+		library, asked["unit_steps"]) if patch_files else null
+	var why: String = plan.why if plan != null else "patches are off"
 	if why.is_empty():
 		var patched: String = source.app_lines_placed(
 			_written_with(asked, _titled(asked, "\n".join(plan.out))))
@@ -2187,6 +2193,7 @@ static func _source_written(asked: Dictionary) -> Variant:
 	var written: Variant = source.write(asked["bricks"], asked["lift"], asked["waiting_lines"],
 		library, asked["unit_steps"])
 	if written == null:
+		asked["whole"] = why + " (the model written whole)"
 		return null
 	var kept: String = _written_with(asked, _titled(asked, str(written)))
 	if not asked.get("drops_said", false):
@@ -2507,6 +2514,7 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 		else:
 			kept = _source_written(asked)
 		_say_left_out(asked["source"], asked.get("drops", {}))
+		last_whole = str(asked.get("whole", ""))
 		if kept != null:
 			made.append(kept)
 			return
