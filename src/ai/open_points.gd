@@ -521,11 +521,11 @@ func _standing_item(brick: BrickWorld.Brick) -> int:
 	return _item_of[brick.id]
 
 
-## Whether items [param one] and [param other] may meet where their covers
-## do, by their exact shapes, as the check lets them (ExactCheck.let_meet):
-## false where either has none.
+## Whether items [param one] and [param other] are clear by their exact
+## shapes: false where either has none.
 func _clear(one: int, other: int) -> bool:
-	return _exact.let_meet(one, other)
+	var found: Variant = _exact.between(one, other)
+	return found is Dictionary and (found as Dictionary).is_empty()
 
 
 ## Whether the check refuses items [param one] and [param other] for their

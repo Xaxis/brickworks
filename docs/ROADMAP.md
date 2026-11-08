@@ -687,49 +687,6 @@ the right leg held in the car: both hips are on one line, so the hips turn
 and the car is not lifted. Each set's motions in motions_probe move the
 same parts as rel-m266 and stop where they did there.
 
-Round joints, the fourth pass, 2026-11-07 (realjoints3). On pre261 (animals'
-catalogue and techfix in), the same 1,056 sub-models: 958 build; floating
-27, overlaps 30, not held 33, collisions 8. Refused with an overlap, by the
-joint that met: round in round (hollow studs, dishes, round plates) 10, bars
-and axles through holes 8, panes 6, clips and hinges 1, others 11. The
-largest class was parts put together as the sets put them. Their exact
-shapes meet, and the exact collisions forgave that as a known fit
-(`KnownFits`, learned from official sets), but three other readings did not.
-The covers refused the pair first, since `ExactCheck.drop_cleared` dropped
-only pairs whose shapes do not meet. The exact graph joined nothing between
-them: a dish takes a round brick's stud 3.65 LDU deeper than BrickNet joins
-it (2150, 4554), and a 4740 a round plate's stud 4 past its tube's frame
-(31038). And the seat moved such a part off the sets' pose. Now one rule
-reads all three (`ExactCheck.meet_as_sets`): two parts whose shapes meet no
-deeper than the sets put them, and no further down a stud than its stop.
-The checker and where_to_attach drop the covers' overlap for them
-(`ExactCheck.let_meet`), and so does the hand's room test
-(`Builder._fits_as_sets`). The exact graph joins them (`ExactCheck.taken_whole`
-and known-fit studs), and the seat leaves them be (`_as_sets_build`).
-BrickBench's parts-only check stays strict. It is the known fit alone, not
-every joint the collisions forgive: tried with those, a clip 2 LDU off its
-bar's line, pressed into the bar's side, passed (`technic_hand_probe`). The
-stud check and the support walk read the lattice and were right for these
-already. **958 → 963, none newly refused**: overlaps 30 → 24, not held 33 →
-34 (5893's truck frame, its overlaps gone, is said to be not held), floating
-27, collisions 8. Refused with an overlap, by joint: round in round 10 → 6,
-bars through holes 8 → 7, others 11 → 10, panes 6, clips and hinges 1.
-Passing now: 6770's antenna (a round brick on an upturned 3960), 2150's
-and 4554's street lamps (3960 on 3941), 31038's table (4740 on 6141), 3316's
-dressing table (hair on a head). By hand and over MCP (`technic_hand_probe`), a 3960 on a 3941 and a
-4740 on a 6141 at the sets' pose fit the hand's room, open from a file and
-pass submit_design at the sets' height. On pre261 five of those checks
-failed: the room twice, the file's 3960, and over MCP the 3960 and the 4740,
-left 8 LDU up. By hand the 3960 goes 16 LDU up (the sets' 8) and passes. A
-4740 clicked onto a 6141 goes onto a corner socket about 14 LDU off the
-stud's line and is refused, as on pre261. Still refused: a known fit is
-keyed by its turn, so a 3941 turned otherwise under a 3960 is refused (2150's
-half turn passes); 6990's antenna, a 4740 on a 4285a, whose fit no set
-teaches; 10267's round plate by 54383's slanted edge; 3316's flower and
-8099's 32474, each on a 6141; the 57895, 60601 and 60608 panes; and bars
-in 18651, 59443 and 40344. No catalogue rebuild: the checker alone changed.
-The verdicts and pictures are in bench/results/realjoints3-2026-11-07.
-
 Rooms inside, as one call, 2026-10-10. Twelve runs built solid shells or
 bare open backs though the guidance asked for rooms in words, and variety
 (shapes, colours) moved least of all. `add_rooms` lays a floor at each
