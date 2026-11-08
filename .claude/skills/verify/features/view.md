@@ -2136,16 +2136,28 @@ picture the assistant is shown.
   steps (`AuthorSteps.IN_PARENT`, the file's `0 !BRICKWORKS IN` lines), as
   Make a sub-assembly keeps them, so the booklet seen before the save is
   the one after. A file (as Pods.ldr was saved by rel-m268) whose pull
-  names parts its step no longer puts in, with them in a copy that step
-  puts in, has the pull read onto the copy's step that puts in the most of
-  them (the first of two; only the pull moves, turns and the rest stay on
-  the file's step, where other LDraw readers put them), so the next save
-  writes it there. A pull whose parts are in no step, or a look on a step
-  the booklet shows none of, is kept in the file and named on open: "the
-  pull on step 1 of the model matches no step now, kept in the file", in
-  the MCP `open_model` reply and the status bar (de/fr/es in `locale/`).
-  `pullkept_probe` (headless; `PULLKEPT_ONLY=pods|session|named|lines|files`
-  for one): `src/dev/fixtures/mcp_walk_pods.ldr` opened by `open_model`, step 1's
+  names parts its step no longer puts in, with them in copies that step
+  puts in, has the pull read onto the steps of those copies that add them,
+  each with the parts it adds, as built (`_adding`); a step with a pull of
+  its own keeps it, and what no step takes stays on the file's step. When
+  the whole pull goes to one step and the file's step adds no part of its
+  own, the rest of that page goes too (zoom, page, size, parts list, turn
+  sign, 1:1 guide, panel, places, words, arrows) if the step has no look
+  yet; its turn, section mark and a sub-model preview set off stay. The
+  next save writes them there. `booklet_layout` says a step pulls out only
+  the parts it adds (`_pull_said`). A pull whose parts are in no step, or a
+  look on a step the booklet shows none of, is kept in the file and named
+  on open: "the pull on step 1 of the model matches no step now, kept in
+  the file", in the MCP `open_model` reply and the status bar (de/fr/es in
+  `locale/`); a whole write keeps a step whose parts are gone but which is
+  set up for the booklet as a 0 STEP of its own with its lines
+  (`as_written`'s EMPTY_STEPS, `with_empty_steps`), and the booklet shows
+  no page of it. Lines with tabs between their fields read and write as
+  with spaces (`_of_type`), and a model of one step marked
+  AUTHORED_STEPS keeps its steps and looks (`LdrModel.steps_are_authored`).
+  `pullkept_probe` (headless;
+  `PULLKEPT_ONLY=pods,session,named,review,lines,files` for some):
+  `src/dev/fixtures/mcp_walk_pods.ldr` opened by `open_model`, step 1's
   look pulling 41769a and 41770a 2 studs and `booklet_layout` saying
   "41770a, 41769a pulled out 2 studs", the PULL line in side_pod.ldr's step
   after a save, the same after a reopen and the second save byte for byte;
@@ -2153,6 +2165,15 @@ picture the assistant is shown.
   a reopen and with step 1's parts made a sub-assembly by hand; a file
   without the wing plates and one with a zoom on a step shown nowhere named
   on open (MCP and `ModelBar.unshown_words`) and kept over a save; the
+  review's files (`src/dev/fixtures/pullkept/`, from
+  bench/results/pkreview-2026-11-07) opened over MCP, saved, opened and
+  saved again with their looks, open words and booklet lines checked: tie
+  and three split, nested carried with its zoom, haspull named, twice,
+  empty_own and theirs_empty kept as an empty step with the booklet at 3
+  steps, pods_alllines' 11 lines carried to the side pod's first step, Pods
+  with CRLF and with tabs, theirs_tabs edited with its tab lines kept, a
+  one-step model as a file and made over MCP; on every step
+  `booklet_layout` pulls out only parts the step adds; the
   gatehouse given every kind of booklet line over MCP and `page_setup`, its
   looks and parts the same after a save and an open, its lines byte for
   byte on the second save; every file of LDraw's model repository with a

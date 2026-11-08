@@ -2569,8 +2569,14 @@ static func _looks_into(text: String, looks: Dictionary, authored: bool,
 	var main_key: String = LdrModel._key(parsed.main.name)
 	if not authored:
 		looks = BookletLooks.with_booklet_wide(BookletLooks.read(text, names, main_key), looks)
-	return BookletLooks.written_into(text, written.call() if written.is_valid() else looks,
-		names, main_key)
+	var given: Dictionary = written.call() if written.is_valid() else looks
+	# A step set up for the booklet whose parts are gone, written as a step
+	# of its own (pullkept).
+	if given.has(BookletLooks.EMPTY_STEPS):
+		text = BookletLooks.with_empty_steps(text, given[BookletLooks.EMPTY_STEPS], names, main_key)
+		given = given.duplicate()
+		given.erase(BookletLooks.EMPTY_STEPS)
+	return BookletLooks.written_into(text, given, names, main_key)
 
 
 ## [param text], written whole, under [param header] (SourceFile.header)

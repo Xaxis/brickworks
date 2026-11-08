@@ -34,6 +34,23 @@
 ##    parts another program took out of the file, and a step's look on a
 ##    step the booklet shows none of: named on open, and kept in the file
 ##    over a save.
+## 4. The review's files (bench/results/pkreview-2026-11-07, here in
+##    src/dev/fixtures/pullkept), each opened over MCP, saved, opened and
+##    saved again: a pull whose parts two or three sub-models put in split
+##    among the steps that add them (tie, three), followed two sub-models
+##    down with the rest of its page (nested), left where it is and named
+##    when the step it would go to has a pull (haspull), one sub-model put
+##    on twice (twice); a step another program took the parts out of,
+##    every kind of line on it, named on open and kept in the file as a step
+##    of its own, the booklet with no page for it, in the app's own file
+##    and in someone else's (empty_own, theirs_empty); the page rel-m268
+##    saved with eleven kinds of line on the step that puts the side pod on,
+##    all of them carried to the step that adds the wing plates
+##    (pods_alllines); Pods with CRLF ends and with tabs between the fields
+##    (pods_crlf, pods_tabs, pods_filetab); someone else's file with tabs
+##    edited, saved and opened (theirs_tabs); a model of one step, as a
+##    file and made over MCP (one_step, fresh). Of every step, booklet_layout
+##    says it pulls out only parts it adds.
 extends SceneTree
 
 const PODS := "res://src/dev/fixtures/mcp_walk_pods.ldr"
@@ -55,6 +72,7 @@ const PODS_PULL := "the model step 1: 0 !BRICKWORKS PULL 2 41770a 41769a"
 const PODS_PULL_MOVED := "side_pod.ldr step 1: 0 !BRICKWORKS PULL 2 41770a 41769a"
 const WINGS: Array = ["41769a", "41770a"]
 const MODELS := "user://models/"
+const REVIEW := "res://src/dev/fixtures/pullkept/"
 
 var _failures: int = 0
 var _main: Node
@@ -97,16 +115,18 @@ func _run() -> void:
 	_socket = (_main.get("_connector") as ClaudeConnector).rpc
 	DirAccess.make_dir_recursive_absolute(MODELS)
 	DirAccess.make_dir_recursive_absolute(_out)
-	var only: String = OS.get_environment("PULLKEPT_ONLY")
-	if only.is_empty() or only == "pods":
+	var only: PackedStringArray = OS.get_environment("PULLKEPT_ONLY").split(",", false)
+	if only.is_empty() or only.has("pods"):
 		await _pods()
-	if only.is_empty() or only == "session":
+	if only.is_empty() or only.has("session"):
 		await _session()
-	if only.is_empty() or only == "named":
+	if only.is_empty() or only.has("named"):
 		await _named()
-	if only.is_empty() or only == "lines":
+	if only.is_empty() or only.has("review"):
+		await _review()
+	if only.is_empty() or only.has("lines"):
 		await _every_line()
-	if only.is_empty() or only == "files":
+	if only.is_empty() or only.has("files"):
 		await _files()
 	print("")
 	if _failures == 0:
@@ -279,10 +299,14 @@ func _named() -> void:
 		"the pull on step 1 of the model matches no step now, kept in the file",
 		"0 !BRICKWORKS PULL 2 41770a 41769a")
 	# A zoom on the step that puts the side pod on, which the booklet builds
-	# where it stands.
+	# where it stands, and the side pod's first step set up already: the
+	# pull goes there, the zoom stays.
 	var zoomed: String = text.replace("0 !BRICKWORKS PULL 2 41770a 41769a\n",
 		"0 !BRICKWORKS ZOOM 1.5\n0 !BRICKWORKS PULL 2 41770a 41769a\n")
-	await _named_case("a zoom on the step that puts the side pod on", zoomed, "Zoomed",
+	var pod: int = zoomed.find("\n0 STEP\n", zoomed.find("0 FILE side_pod.ldr"))
+	zoomed = zoomed.insert(pod, "\n0 !BRICKWORKS SIZE 1.25")
+	await _named_case("a zoom on the step that puts the side pod on, the side pod's first step sized",
+		zoomed, "Zoomed",
 		"what the booklet sets on step 1 of the model matches no step now, kept in the file",
 		"0 !BRICKWORKS ZOOM 1.5")
 	await _step_one_pulls("...and its pull on step 1 still")
@@ -304,6 +328,223 @@ func _named_case(what: String, text: String, name: String, words: String, line: 
 	var saved: String = FileAccess.get_file_as_string(MODELS + name + "Saved.ldr")
 	_check("...saved: \"%s\" kept in the file, where it was (%s)" % [line, _where(saved, line)],
 		_where(saved, line) == _where(text, line) and not _where(text, line).is_empty())
+
+
+# -- 4. the review's files ------------------------------------------------------
+
+
+func _review() -> void:
+	print("\n4. the review's files (pkreview), each opened over MCP, saved, opened and saved again")
+	await _review_case("tie", _fixture("tie"), {"a|1": _pulled(["3003"]), "b|1": _pulled(["3004"])},
+		"", ["a.ldr step 2: 0 !BRICKWORKS PULL 2 3003", "b.ldr step 2: 0 !BRICKWORKS PULL 2 3004"])
+	await _review_case("three", _fixture("three"), {"a|1": _pulled(["3003"]),
+		"b|1": _pulled(["3004"]), "c|1": _pulled(["3010"])}, "",
+		["a.ldr step 2: 0 !BRICKWORKS PULL 2 3003", "b.ldr step 2: 0 !BRICKWORKS PULL 2 3004",
+		"c.ldr step 2: 0 !BRICKWORKS PULL 2 3010"])
+	var nested: Dictionary = _pulled(["41770a", "41769a"])
+	nested["zoom"] = 1.5
+	await _review_case("nested", _fixture("nested"), {"w|0": nested}, "",
+		["w.ldr step 1: 0 !BRICKWORKS ZOOM 1.5", "w.ldr step 1: 0 !BRICKWORKS PULL 2 41770a 41769a"])
+	await _review_case("haspull", _fixture("haspull"), {"|1": _pulled(["3003"]),
+		"a|1": _pulled(["3003"], 3.0)},
+		"the pull on step 2 of the model matches no step now, kept in the file", [])
+	await _review_case("twice", _fixture("twice"), {"a|1": _pulled(["3003"])}, "",
+		["a.ldr step 2: 0 !BRICKWORKS PULL 2 3003"])
+	var empty: Dictionary = {"page": "new", "zoom": 1.5, "size": 1.25, "parts": false,
+		"pull": {"studs": 3.0, "parts": ["3003"]}, "colours": true,
+		"notes": [{"text": "Mind the arch", "at": [20.0, 150.0, 80.0, 12.0], "size": 5.0}]}
+	for name: String in ["empty_own", "theirs_empty"]:
+		await _review_case(name, _fixture(name), {"|1": empty},
+			"what the booklet sets on step 2 of the model matches no step now, kept in the file",
+			[], 3)
+	var page: Dictionary = {"page": "new", "zoom": 1.5, "size": 1.25, "parts": false,
+		"sign": false, "pull": {"studs": 2.0, "parts": ["41770a", "41769a"]},
+		"actual_size": false, "panel": [9.0, 9.0, 122.5, 84.5],
+		"place": {"picture": [120.0, 30.0, 120.0, 90.0]},
+		"notes": [{"text": "Wings out", "at": [20.0, 150.0, 80.0, 12.0], "size": 5.0}],
+		"arrows": [{"at": [40.0, 40.0, 90.0, 70.0], "colour": "black", "width": 0.9}]}
+	var alllines: String = _fixture("pods_alllines")
+	var carried: Array = _booklet_lines(alllines).filter(func(line: String) -> bool:
+		return line.begins_with("the model step 1: ") and not line.ends_with("COLOURS ALL")) \
+		.map(func(line: String) -> String:
+			return line.replace("the model step 1: ", "side_pod.ldr step 1: "))
+	await _review_case("pods_alllines", alllines, {"side pod|0": page}, "", carried)
+	# Pods as the walk saved it, with CRLF ends, with tabs between the fields
+	# of every FILE, STEP and part line, and with a tab after FILE alone.
+	var pods: String = FileAccess.get_file_as_string(PODS)
+	var tabbed := PackedStringArray()
+	for line: String in pods.split("\n"):
+		if line.begins_with("0 FILE ") or line == "0 STEP" or line.begins_with("1 "):
+			line = line.replace(" ", "\t")
+		tabbed.append(line)
+	for each: Array in [["pods_crlf", pods.replace("\n", "\r\n")], ["pods_tabs", "\n".join(tabbed)],
+			["pods_filetab", pods.replace("0 FILE ", "0 FILE\t")]]:
+		await _review_case(str(each[0]), str(each[1]), {"side pod|0": _pulled(["41770a", "41769a"])},
+			"", [PODS_PULL_MOVED])
+	await _tabs_edited()
+	await _review_case("one_step", _fixture("one_step"), {"|0": _pulled(["3020"])}, "", [])
+	await _fresh()
+
+
+## [param name] of the review's files.
+static func _fixture(name: String) -> String:
+	return FileAccess.get_file_as_string(REVIEW + name + ".ldr")
+
+
+static func _pulled(parts: Array, studs: float = 2.0) -> Dictionary:
+	return {"pull": {"studs": studs, "parts": parts}}
+
+
+## [param text] opened over MCP as pk_NAME: each step's look [param looks],
+## the open saying [param words] ("" for nothing left off), and of every
+## step booklet_layout says it pulls out only parts it adds; saved (as
+## pk_NAME_s) with the booklet lines [param lines] ([] for the file's own,
+## where the file has them), opened again with the same looks and words,
+## and saved again byte for byte. [param steps], when given, the steps the
+## booklet has.
+func _review_case(name: String, text: String, looks: Dictionary, words: String,
+		lines: Array, steps: int = -1) -> void:
+	print("\n  -- %s" % name)
+	if not _check("%s: the file read (%d bytes)" % [name, text.length()], not text.is_empty()):
+		return
+	_write(MODELS + "pk_" + name + ".ldr", text)
+	_main.call("clear_model")
+	await _frames(4)
+	var opened: String = await _say("open_model", {"name": "pk_" + name})
+	await _settled()
+	await _looks_are(name + " opened", looks, words, opened, steps)
+	await _say("save_model", {"name": "pk_" + name + "_s.ldr"})
+	var first: String = FileAccess.get_file_as_string(MODELS + "pk_" + name + "_s.ldr")
+	var want: Array = lines if not lines.is_empty() else _booklet_lines(text)
+	var got: Array = _booklet_lines(first).filter(func(line: String) -> bool:
+		return not line.ends_with("COLOURS ALL"))
+	want = want.filter(func(line: String) -> bool: return not line.ends_with("COLOURS ALL"))
+	_check("...saved: its booklet lines %s" % ("as they should be (%d)" % got.size() if got == want
+		else _first_line_difference(want, got)), got == want)
+	_main.call("clear_model")
+	await _frames(4)
+	opened = await _say("open_model", {"name": "pk_" + name + "_s"})
+	await _settled()
+	await _looks_are("...opened again", looks, words, opened, steps)
+	await _say("save_model", {"name": "pk_" + name + "_s.ldr"})
+	var second: String = FileAccess.get_file_as_string(MODELS + "pk_" + name + "_s.ldr")
+	_check("...saved again: the file byte for byte (%s)" % ("the same" if second == first
+		else _first_difference(first, second)), second == first)
+
+
+## The model's step looks are [param looks], [param opened] says
+## [param words] or nothing left off, and booklet_layout says of no step it
+## pulls out a part it does not add.
+func _looks_are(when: String, looks: Dictionary, words: String, opened: String,
+		steps: int = -1) -> void:
+	var now: Dictionary = {}
+	for name: String in _world.step_looks:
+		if name.get_slice("|", 1).is_valid_int():
+			now[name] = _world.step_looks[name]
+	_check("%s: each step's look %s" % [when, "as it should be (%s)" % ", ".join(looks.keys())
+		if _plain(now) == _plain(looks) else _first_look_difference(_plain(looks), _plain(now))],
+		_plain(now) == _plain(looks))
+	var left: String = opened.get_slice("\n", 0)
+	if words.is_empty():
+		_check("...nothing said to be left off (%s)" % left.left(200), not left.contains("matches no step"))
+	else:
+		_check("...said: \"%s\" (%s)" % [words, left.left(260)], left.contains(words))
+	var layout: String = await _say("booklet_layout", {})
+	var wrong := PackedStringArray()
+	var told := PackedStringArray()
+	var regex := RegEx.create_from_string("its ([a-z0-9_.-]+(?:, [a-z0-9_.-]+)*) pulled out")
+	for step: Instructions.Step in Instructions.plan(_world, _library, _store.scenery, {}, true):
+		if step.authored_step < 0:
+			continue
+		var said: String = BookletLooks.said(_world, step.authored_in, step.authored_step)
+		var found: RegExMatch = regex.search(said)
+		if found == null:
+			continue
+		var adds: Dictionary = {}
+		for id: int in step.brick_ids:
+			if _world.get_brick(id) != null:
+				adds[_world.get_brick(id).part_id.to_lower()] = true
+		var named: String = found.get_string(1)
+		told.append("%d: %s" % [step.number, named])
+		if named != "parts" and not Array(named.split(", ")).all(func(part: String) -> bool:
+				return adds.has(part)):
+			wrong.append("step %d pulls %s, adds %s" % [step.number, named, ", ".join(adds.keys())])
+	_check("...booklet_layout says of no step that it pulls out a part it does not add (%s)"
+		% ("; ".join(wrong) if not wrong.is_empty() else ", ".join(told) if not told.is_empty()
+			else "no pulls drawn"), wrong.is_empty())
+	if steps >= 0:
+		var count: RegExMatch = RegEx.create_from_string("(\\d+) steps;").search(layout)
+		var has: int = count.get_string(1).to_int() if count != null else -1
+		_check("...the booklet has %d steps, none for the step with nothing in it (%s)" % [has,
+			layout.get_slice("\n", 0).left(90)], has == steps)
+
+
+## Someone else's file with tabs between its fields: a zoom and words on
+## step 3, a pull on step 4, saved and opened again.
+func _tabs_edited() -> void:
+	print("\n  -- theirs_tabs, edited")
+	var text: String = _fixture("theirs_tabs")
+	_write(MODELS + "pk_tabs.ldr", text)
+	_main.call("clear_model")
+	await _frames(4)
+	await _say("open_model", {"name": "pk_tabs"})
+	await _settled()
+	for edit: Dictionary in [{"step": 3, "zoom": 1.5},
+			{"step": 3, "text": {"words": "Step three", "x": 20, "y": 20, "w": 60, "h": 12, "size": 5}},
+			{"step": 4, "pull": {"studs": 2, "parts": ["3003"]}}]:
+		print("    edit_booklet %s: %s" % [JSON.stringify(edit).left(60),
+			(await _say("edit_booklet", edit)).get_slice("\n", 0).left(100)])
+	var looks: Dictionary = _plain(_world.step_looks)
+	_check("edited: step 3 zoomed with words, step 4 pulled (%s)" % ", ".join(looks.keys()),
+		(looks.get("|2", {}) as Dictionary).has("zoom") and (looks.get("|3", {}) as Dictionary).has("pull"))
+	await _say("save_model", {"name": "pk_tabs_s.ldr"})
+	var saved: String = FileAccess.get_file_as_string(MODELS + "pk_tabs_s.ldr")
+	var parts: Array = Array(text.split("\n")).filter(func(line: String) -> bool:
+		return line.begins_with("1\t") or line.begins_with("0\tSTEP"))
+	var kept: Array = Array(saved.split("\n")).filter(func(line: String) -> bool:
+		return line.begins_with("1\t") or line.begins_with("0\tSTEP"))
+	_check("saved: its part and STEP lines as they were, tabs and all (%d of %d)" % [kept.size(),
+		parts.size()], kept == parts)
+	_check("...and its booklet lines on steps 3 and 4 (%s)" % ", ".join(_booklet_lines(saved)),
+		_booklet_lines(saved).any(func(line: String) -> bool:
+			return line == "the model step 3: 0 !BRICKWORKS ZOOM 1.5")
+		and _booklet_lines(saved).any(func(line: String) -> bool:
+			return line == "the model step 4: 0 !BRICKWORKS PULL 2 3003"))
+	_main.call("clear_model")
+	await _frames(4)
+	await _say("open_model", {"name": "pk_tabs_s"})
+	await _settled()
+	_check("opened again: every look as it was set (%s)" % _first_look_difference(looks,
+		_plain(_world.step_looks)), _plain(_world.step_looks) == looks)
+
+
+## A model of one step made over MCP, a pull set on it, saved and opened.
+func _fresh() -> void:
+	print("\n  -- a model of one step made over MCP")
+	await _say("clear_model", {})
+	var said: String = await _say("submit_design", {"name": "Second", "description": "Another pod.",
+		"floor": "none", "bricks": [{"part": "3020", "color": 15, "x": 0, "y": 0, "z": 0},
+		{"part": "3003", "color": 4, "x": 0, "y": 1, "z": 0},
+		{"part": "3003", "color": 4, "x": 2, "y": 1, "z": 0},
+		{"part": "3022", "color": 1, "x": 0, "y": 4, "z": 0}],
+		"assemblies": [{"name": "side pod", "x_from": 0, "x_to": 2, "z_from": 0, "z_to": 2}],
+		"features": [], "brief": "another"})
+	print("    submit_design: %s" % said.get_slice("\n", 0).left(100))
+	await _say("edit_steps", {"op": "list"})
+	print("    edit_booklet: %s" % (await _say("edit_booklet", {"step": 1,
+		"pull": {"studs": 2, "parts": ["3020"]}})).get_slice("\n", 0).left(100))
+	var looks: Dictionary = _plain(_world.step_looks)
+	await _say("save_model", {"name": "PkFresh.ldr"})
+	var saved: String = FileAccess.get_file_as_string(MODELS + "PkFresh.ldr")
+	_check("saved: one step, marked the author's, its pull in it (%d STEP lines, %s)" % [
+		_lines_with(saved, "0 STEP"), _pull_lines(saved)], saved.contains(LdrModel.AUTHORED_META)
+		and _pull_lines(saved).contains("PULL 2 3020"))
+	_main.call("clear_model")
+	await _frames(4)
+	await _say("open_model", {"name": "PkFresh"})
+	await _settled()
+	_check("opened again: the pull on its step (%s)" % _first_look_difference(looks,
+		_plain(_world.step_looks)), _plain(_world.step_looks) == looks and looks.has("|0"))
 
 
 # -- 2. every kind of booklet line ----------------------------------------------
@@ -486,7 +727,8 @@ static func _booklet_lines(text: String) -> Array:
 	var step: int = 1
 	var in_data: bool = false
 	for raw: String in text.split("\n"):
-		var line: String = raw.strip_edges()
+		# Its fields as LdrModel reads them, tabs or spaces between.
+		var line: String = " ".join(LdrModel._fields(raw.strip_edges()))
 		var upper: String = line.to_upper()
 		if upper.begins_with("0 FILE "):
 			# The model's own section by what it is: a save names it after

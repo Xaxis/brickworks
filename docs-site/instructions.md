@@ -77,7 +77,7 @@ On **Build › Booklet page**, for the step the timeline is on:
 
 Press a command again to put the step back as it was. Each change is one Undo and is saved with the model. Claude can set each one with `edit_booklet`. With `booklet_page` it sees a page as Instructions draws it and its PDF prints it.
 
-Everything you set for a step comes back when the model is opened again, on that step, in a sub-model's steps too. If the file was changed since, so that a pull's parts or a step's settings match no step the booklet shows, the line stays in the file and the open says so: "the pull on step 1 of the model matches no step now, kept in the file".
+Everything you set for a step comes back when the model is opened again, on that step, in a sub-model's steps too. A pull follows its parts into the sub-models that build them. If the file was changed since, so that a pull's parts or a step's settings match no step the booklet shows, the line stays in the file and the open says so: "the pull on step 1 of the model matches no step now, kept in the file". A step left with no parts keeps its settings in the file, and the booklet shows no page for it.
 
 <!-- covers
 ui:the booklet's Studio extras

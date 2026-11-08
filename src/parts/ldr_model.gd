@@ -175,9 +175,12 @@ var skin_texts: Dictionary = {}
 ## and they are not ones Brickworks worked out and wrote itself. Every file
 ## it saved wrote its worked-out order as 0 STEP lines, so other tools see
 ## a build, and those are no one's steps: kept, a model saved yesterday
-## would have a new tower's hundred parts in its last step tomorrow.
+## would have a new tower's hundred parts in its last step tomorrow. A
+## model of one step has no 0 STEP line, and its mark says it is the
+## author's all the same: read as no one's, it lost its booklet looks on
+## open and its next save erased them (pkreview, pullkept).
 func steps_are_authored() -> bool:
-	return stepped and not marked_worked \
+	return (stepped or marked_authored) and not marked_worked \
 		and (marked_authored or author.strip_edges() != "Brickworks")
 
 
