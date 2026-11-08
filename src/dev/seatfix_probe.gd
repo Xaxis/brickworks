@@ -6,12 +6,14 @@
 ##
 ## By hand: a 4740 dish held at each quarter turn and clicked onto a lone 6141
 ## round plate's stud, as a person puts one from the bin (the pointer's line
-## aimed at the stud, Builder.update_preview, Builder.place). Said, not yet
-## a check ("open"): the hand takes a part's stud places from its shape's
-## holes pointing down (Builder._takes_studs), and the dish's only one is a
-## tube, so it goes by the catalogue's corner sockets, 14 LDU off the stud,
-## where the check refuses it. The line turns "ok" when the hand reads the
-## tube; that change is Builder's, and with it this line becomes a check.
+## aimed at the stud, Builder.update_preview, Builder.place): on the stud's
+## line to 0.005 LDU, and check_design passes the two. The hand took the
+## dish's stud places from the catalogue's corner sockets, 14 LDU off the
+## stud, where its dome comes down; now from its tube (Builder._takes_studs).
+## And a sample of parts, bricks, plates, tiles and round parts, each clicked
+## onto a stud of the part under it: one of its stud places on that stud to
+## 0.005 LDU, and passed. Those whose stud places the tube rule changes go by
+## their tube, the rest as before.
 ##
 ## Over MCP: the same dish sent at each quarter turn, by number where 31038-1,
 ## 41015-1 and 42022-1 put it (4 LDU over the plate), and attached by its
@@ -73,6 +75,7 @@ func _initialize() -> void:
 	_store.keeps = false
 	await process_frame
 	_dish_by_hand()
+	_sample_by_hand()
 	await _dish_over_mcp()
 	if not DirAccess.dir_exists_absolute(SETS):
 		print("no %s: tools/omr.py fetch brings the sets" % SETS)
@@ -137,11 +140,76 @@ func _dish_by_hand() -> void:
 		var off: Vector3 = dish.transform.origin - at.origin if dish != null else Vector3.INF
 		var across: float = Vector2(off.x, off.z).length()
 		var said: String = _design_says()
-		var seated: bool = dish != null and across <= AT_ITS_PLACE \
-			and said.begins_with("2 bricks, buildable")
-		print("  %s  turned %d: %s, %.2f LDU off the stud's line, %.2f LDU up: %s" % [
-			"ok  " if seated else "open", turn, "placed" if dish != null else "not placed",
-			across, off.y, said.left(140)])
+		_ok(dish != null and across <= AT_ITS_PLACE and said.begins_with("2 bricks, buildable"),
+			"turned %d: %s, %.2f LDU off the stud's line, %.2f LDU up: %s" % [turn,
+				"placed" if dish != null else "not placed", across, off.y, said.left(140)])
+
+
+## [part in hand, part under it, the stud of that one aimed at (its index
+## among its studs pointing up)]: bricks, plates and tiles on a plate, round
+## parts on a round plate's lone stud, and those the tube rule changes.
+const SAMPLE: Array = [
+	["4740", "6141", 0], ["4740p01", "6141", 0], ["11598", "3022", 0], ["11245", "6141", 0],
+	["3003", "3022", 0], ["3001", "3020", 2], ["3022", "3022", 1], ["3068b", "3022", 3],
+	["3941", "3022", 0], ["4032", "3022", 2], ["11002", "3022", 1], ["3960", "3022", 0],
+	["43898", "6141", 0], ["4589", "6141", 0], ["6141", "6141", 0], ["3062b", "6141", 0],
+]
+
+
+## Each of [constant SAMPLE] held upright and clicked straight down onto the
+## stud aimed at: placed with one of its stud places (its sockets, the holes
+## and tubes its shape takes a stud in from below, and where the hand takes
+## them) on a stud of the part under it to 0.005 LDU, and check_design
+## passes the two.
+func _sample_by_hand() -> void:
+	print("\na sample of parts clicked onto a stud of the part under each")
+	for one: Array in SAMPLE:
+		var id: String = one[0]
+		_clear()
+		var under: Lbm.PartMesh = _library.mesh_for(str(one[1]))
+		var at := Transform3D(Basis.IDENTITY, -under.bounds.position)
+		var base: int = _builder.put_part(str(one[1]), 4, at)
+		var studs := PackedVector3Array()
+		for connector: Lbm.Connector in under.connectors:
+			if connector.kind == "stud" and connector.axis.y > 0.99:
+				studs.append(at * connector.position)
+		if studs.is_empty() or base == 0:
+			_ok(false, "%s on %s: no stud to aim at" % [id, one[1]])
+			continue
+		var aim: Vector3 = studs[mini(int(one[2]), studs.size() - 1)]
+		var from: Vector3 = aim + Vector3(0, 300, 0)
+		_builder.held_part = id
+		_builder.held_color = 14
+		_builder.held_face = "up"
+		_builder.held_rotation = 0
+		_builder.update_preview(from, (aim - from).normalized())
+		var put: int = _builder.place()
+		var part: BrickWorld.Brick = _world.get_brick(put) if put != 0 else null
+		var said: String = _design_says()
+		var nearest: float = INF
+		var mesh: Lbm.PartMesh = _library.mesh_for(id)
+		if part != null and mesh != null:
+			for place: Vector2 in _stud_places(id, mesh):
+				var p: Vector3 = part.transform * Vector3(place.x, 0.0, place.y)
+				for stud: Vector3 in studs:
+					nearest = minf(nearest, Vector2(p.x - stud.x, p.z - stud.z).length())
+		_ok(part != null and nearest <= AT_ITS_PLACE and said.begins_with("2 bricks, buildable"),
+			"%s on %s: %s, a stud place %.2f LDU off a stud, its origin %s from the stud aimed at: %s"
+				% [id, one[1], "placed" if part != null else "not placed", nearest,
+					_ldu(part.transform.origin - aim) if part != null else "-", said.left(110)])
+
+
+## Where [param id] can take a stud from below, in its own LDU across: its
+## catalogue sockets, the holes and tubes its shape points down, and where
+## the hand takes one (Builder._takes_studs).
+func _stud_places(id: String, mesh: Lbm.PartMesh) -> PackedVector2Array:
+	var places: PackedVector2Array = mesh.sockets.duplicate()
+	places.append_array(_builder._takes_studs(id, mesh)[0] as PackedVector2Array)
+	var shape: Exact.Shape = Exact.shape_for(_library, id)
+	for k: int in shape.connector_count() if shape != null else 0:
+		if shape.kind[k] == Exact.HOLE and (-shape.frames[k].basis.y).y >= 0.99:
+			places.append(Vector2(shape.frames[k].origin.x, shape.frames[k].origin.z))
+	return places
 
 
 ## The dish sent by a session at each quarter turn: by number where the sets
