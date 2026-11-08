@@ -4929,14 +4929,14 @@
       "kind": "cli",
       "label": "print3mf probe",
       "entry": "src/dev/print3mf_probe.gd",
-      "reach": "tools/probe.sh print3mf_probe [-- --hashes=FILE | --same-as=FILE]   (headless; the car as a 3MF from File, Export, 3D model… and export_model, read by tools/print3mf/check_3mf.py; a printed tile, a mirrored brick and a part with no BFC; the reader refusing a turned triangle, a colour that is none and a corner past its vertices; --hashes/--same-as compare the car's GLB and STL with another build's)",
+      "reach": "tools/probe.sh print3mf_probe [-- --hashes=FILE | --same-as=FILE]   (headless; the car as a 3MF from File, Export, 3D model… and export_model, read by tools/print3mf/check_3mf.py; every object closed (lib3mf IsManifoldAndOriented, every edge two triangles going opposite ways; as drawn, with Mesh3mf.close_up off, none), its triangles at most twice its parts'; a printed tile, a mirrored brick and a part with no BFC; the reader refusing a turned triangle, a colour that is none and a corner past its vertices; --hashes/--same-as compare the car's GLB and STL with another build's)",
       "area": "model-io"
     },
     {
       "kind": "cli",
       "label": "3mf strict reader",
       "entry": "tools/print3mf/check_3mf.py",
-      "reach": "uvx --with lib3mf==2.5.0 --with xmlschema==4.3.2 --with numpy==2.5.4 python3 -I tools/print3mf/check_3mf.py FILE.3mf [--json=OUT]   (the package, the core XSD tools/print3mf/3mf_core.xsd, the core's rules, lib3mf in strict mode; each object's name, colour, triangles and winding, and the build's box; exit 1 on any error)",
+      "reach": "uvx --with lib3mf==2.5.0 --with xmlschema==4.3.2 --with numpy==2.5.4 python3 -I tools/print3mf/check_3mf.py FILE.3mf [--json=OUT]   (the package, the core XSD tools/print3mf/3mf_core.xsd, the core's rules, lib3mf in strict mode; each object's name, colour, triangles, closedness (lib3mf's manifold_and_oriented; edges_not_two and edges_one_way by vertex index) and winding, and the build's box; exit 1 on any error)",
       "area": "model-io"
     },
     {
