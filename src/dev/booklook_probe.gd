@@ -3,7 +3,7 @@
 ## fill and corners, the step numbers' colour and the colour round the new
 ## parts, by Build, Booklet page, Page setup… and page_setup over MCP.
 ##
-##   godot --path . --resolution 1280x720 --script src/dev/booklook_probe.gd -- [--into=DIR] [--against=DIR] [--dialog-only]
+##   godot --path . --resolution 1280x720 --script src/dev/booklook_probe.gd -- [--into=DIR] [--against=DIR] [--dialog-only] [--saves-only]
 ##
 ## Windowed, on the GPU: the booklet's pictures are drawn, and its pages as
 ## PNGs. On the gatehouse (tests/fixtures/steps/gatehouse.mpd), each booklet
@@ -129,6 +129,8 @@ func _run() -> void:
 		quit(1)
 		return
 	var dialog_only: bool = false
+	# blreview's files alone, saved and opened again (--saves-only).
+	var saves_only: bool = false
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with("--into="):
 			_out = arg.trim_prefix("--into=")
@@ -136,6 +138,8 @@ func _run() -> void:
 			_against = arg.trim_prefix("--against=")
 		elif arg == "--dialog-only":
 			dialog_only = true
+		elif arg == "--saves-only":
+			saves_only = true
 	if _out.is_empty():
 		_out = OS.get_user_data_dir().path_join("booklook_probe")
 	DirAccess.make_dir_recursive_absolute(_out)
@@ -161,6 +165,10 @@ func _run() -> void:
 	await _open(ProjectSettings.globalize_path(GATEHOUSE), 14)
 	if dialog_only:
 		await _dialog_fits()
+		_quit()
+		return
+	if saves_only:
+		await _save_path()
 		_quit()
 		return
 	await _usual()
@@ -902,6 +910,7 @@ func _save_path() -> void:
 	await _later_build()
 	await _words_said()
 	await _wide_letters()
+	await _kept_pictures()
 
 
 ## blreview's [param name], copied into the probe's folder: its path there.
@@ -1191,3 +1200,102 @@ func _wide_letters() -> void:
 	_check("the web's PDF of \"%s\": %d pages read of the file's %d, its title kept (%s)" % [title,
 		pages.size(), (gate["read"] as Dictionary).size(), read.title], read.has_method("title_line")
 		and pages.size() == (gate["read"] as Dictionary).size() and read.title == title)
+
+
+## The pictures that lines the app keeps as they were name (blreview's
+## second review): a later build's word's, with the steps the author's and
+## not, and a sub-model's own page's, each with its line through a save
+## with nothing changed, one with a footer set, and an open; the sub-model's
+## where the main model's page named it too and is given another; and the
+## app's own model's, which only the model's pictures carry, through Page
+## setup.
+func _kept_pictures() -> void:
+	print("")
+	print("pictures named by lines kept as they were")
+	for case: Array in [["later_pic_steps.ldr", "brickworks-page-back.jpg", 2],
+			["later_pic_nosteps.ldr", "brickworks-page-back.jpg", 2],
+			["sub_pic.mpd", "brickworks-page-behind.jpg", 3]]:
+		var name: String = case[0]
+		var picture: String = case[1]
+		var path: String = _fixture(name)
+		var data: String = _picture_in(FileAccess.get_file_as_string(path), picture)
+		await _open(path, case[2])
+		var plain: String = _saved()
+		_check("%s saved with nothing changed: the line naming %s kept (%s), its picture as it was (%s)"
+			% [name, picture, _named_in(plain, picture), _picture_in(plain, picture) == data],
+			not data.is_empty() and _named_in(plain, picture) and _picture_in(plain, picture) == data)
+		await _tools.run("page_setup", {"footer": "A footer"})
+		var saved: String = _saved()
+		_check("...a footer set: the line kept (%s), its picture as it was (%s)" % [_named_in(saved, picture),
+			_picture_in(saved, picture) == data], saved.contains("FOOTER A footer")
+			and _named_in(saved, picture) and _picture_in(saved, picture) == data)
+		var again: String = _out.path_join(name.get_basename() + "_kept." + name.get_extension())
+		_write(again, saved)
+		await _open(again, case[2])
+		var back: String = _saved()
+		_check("...opened again and saved: the line and its picture still (%s, %s)" % [
+			_named_in(back, picture), _picture_in(back, picture) == data],
+			_named_in(back, picture) and _picture_in(back, picture) == data)
+	# The main model's page names the sub-model's picture too, and is given
+	# another: the main model's goes, the sub-model's stays.
+	var shared: String = _out.path_join("sub_pic_shared.mpd")
+	var source: String = FileAccess.get_file_as_string(_fixture("sub_pic.mpd"))
+	_write(shared, source.replace("0 Name: extra main.ldr\n",
+		"0 Name: extra main.ldr\n0 !BRICKWORKS PAGE_SETUP A4 PICTURE brickworks-page-behind.jpg\n"))
+	var jpeg: String = _picture_in(source, "brickworks-page-behind.jpg")
+	await _open(shared, 3)
+	var red := Image.create(40, 30, false, Image.FORMAT_RGB8)
+	red.fill(Color8(200, 40, 40))
+	await _tools.run("page_setup", {"picture": "behind.png",
+		"picture_data": Marshalls.raw_to_base64(red.save_png_to_buffer())})
+	var given: String = _saved()
+	var lines: Dictionary = _page_lines(given)
+	_check("the main model's picture given anew (%s): the sub-model's line (%s) and its picture kept (%s), the new one written (%s)"
+		% [str(lines.get("extra main.ldr", [])), str(lines.get("my pod.ldr", [])),
+		_picture_in(given, "brickworks-page-behind.jpg") == jpeg,
+		not _picture_in(given, "brickworks-page-behind.png").is_empty()],
+		str(lines.get("my pod.ldr", [])).contains("PICTURE brickworks-page-behind.jpg")
+		and str(lines.get("extra main.ldr", [])).contains("PICTURE brickworks-page-behind.png")
+		and _picture_in(given, "brickworks-page-behind.jpg") == jpeg
+		and not _picture_in(given, "brickworks-page-behind.png").is_empty())
+	# The app's own model: written whole, its pictures only the model's, so
+	# a later build's picture named like the cover's must stay among them
+	# through Page setup.
+	var own: String = _out.path_join("later_pic_own.ldr")
+	var later: String = FileAccess.get_file_as_string(_fixture("later_pic_steps.ldr"))
+	_write(own, later.replace("0 Author: A. Builder", "0 Author: Brickworks")
+		.replace("brickworks-page-back.jpg", "brickworks-page-cover-back.jpg"))
+	var back_data: String = _picture_in(later, "brickworks-page-back.jpg")
+	await _open(own, 2)
+	await _tools.run("page_setup", {"footer": "A footer"})
+	var written: String = _saved()
+	_check("the app's own model, a footer set: a later build's brickworks-page-cover-back.jpg among its pictures (%s), its line and picture saved (%s, %s)"
+		% [BookletLooks.images(_world).has("brickworks-page-cover-back.jpg"),
+		_named_in(written, "brickworks-page-cover-back.jpg"),
+		_picture_in(written, "brickworks-page-cover-back.jpg") == back_data],
+		BookletLooks.images(_world).has("brickworks-page-cover-back.jpg")
+		and _named_in(written, "brickworks-page-cover-back.jpg")
+		and _picture_in(written, "brickworks-page-cover-back.jpg") == back_data)
+
+
+## Whether an app line (0 !BRICKWORKS) of [param text] names [param picture].
+static func _named_in(text: String, picture: String) -> bool:
+	for raw: String in text.split("\n"):
+		var line: String = raw.strip_edges()
+		if line.begins_with("0 !BRICKWORKS ") and picture in LdrModel._fields(line):
+			return true
+	return false
+
+
+## The base64 of [param text]'s picture [param picture] (0 !DATA), its lines
+## joined; "" when it carries none.
+static func _picture_in(text: String, picture: String) -> String:
+	var out := PackedStringArray()
+	var within: bool = false
+	for raw: String in text.split("\n"):
+		var line: String = raw.strip_edges()
+		if within and line.begins_with("0 !:"):
+			out.append(line.substr(4).strip_edges())
+			continue
+		within = line == "0 !DATA " + picture
+	return "".join(out)
