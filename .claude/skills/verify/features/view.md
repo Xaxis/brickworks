@@ -2183,11 +2183,13 @@ picture the assistant is shown.
   the walk's session replayed over MCP and saved, step 1 pulling both after
   a reopen and with step 1's parts made a sub-assembly by hand; a file
   without the wing plates and one with a zoom on a step shown nowhere kept
-  over a save and not named on open (MCP and `ModelBar.unshown_words`); the
+  over a save and not named on open (MCP and `ModelBar.unshown_words`), and
+  steps4 with a pull of 3003 on step 2 named and kept; the
   review's files (`src/dev/fixtures/pullkept/`, from
   bench/results/pkreview-2026-11-07) opened over MCP, saved, opened and
   saved again with their looks, open words and booklet lines checked: tie
-  and three split, nested carried with its zoom, haspull named, twice,
+  and three split, nested carried with its zoom, haspull kept and not
+  named (no page shows the step that puts `a` on), twice,
   spread and pods_pull3003 one pull on the first step adding 3003,
   absent_only's zoom on its step of a part the catalogue lacks, steps4,
   empty_own and theirs_empty kept as an empty step with the booklet at 3

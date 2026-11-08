@@ -33,13 +33,15 @@
 ##    hand (Make a sub-assembly): the pull stays with them. A pull whose
 ##    parts another program took out of the file, and a step's look on a
 ##    step the booklet shows none of: kept in the file over a save, and not
-##    named on open, as nothing in the app reaches either.
+##    named on open, as nothing in the app reaches either. A pull on a step
+##    the booklet shows, of a part it does not add: named and kept.
 ## 4. The review's files (bench/results/pkreview-2026-11-07, here in
 ##    src/dev/fixtures/pullkept), each opened over MCP, saved, opened and
 ##    saved again: a pull whose parts two or three sub-models put in split
 ##    among the steps that add them (tie, three), followed two sub-models
-##    down with the rest of its page (nested), left where it is and named
-##    when the step it would go to has a pull (haspull), one sub-model put
+##    down with the rest of its page (nested), left where it is when the
+##    step it would go to has a pull, and not named, as no page shows the
+##    step it is on (haspull), one sub-model put
 ##    on twice (twice), each part to the first step that adds it, one pull
 ##    however many steps add it (spread, pods_pull3003); a step another
 ##    program took the parts out of, every kind of line on it, kept in the
@@ -324,6 +326,13 @@ func _named() -> void:
 	await _named_case("a zoom on the step that puts the side pod on, the side pod's first step sized",
 		zoomed, "Zoomed", "", "0 !BRICKWORKS ZOOM 1.5")
 	await _step_one_pulls("...and its pull on step 1 still")
+	# A pull on a step the booklet shows, of a part it does not add: named,
+	# as the step's page is there to set another on.
+	var stepped: String = _fixture("steps4").replace("0 !BRICKWORKS ZOOM 1.5\n",
+		"0 !BRICKWORKS ZOOM 1.5\n0 !BRICKWORKS PULL 2 3003\n")
+	await _named_case("a pull on step 2 of a part step 2 does not add", stepped, "Misnamed",
+		"the pull on step 2 of the model matches no step now, kept in the file",
+		"0 !BRICKWORKS PULL 2 3003")
 
 
 ## [param text] opened as [param name] over MCP: the open says [param words]
@@ -367,9 +376,10 @@ func _review() -> void:
 	nested["zoom"] = 1.5
 	await _review_case("nested", _fixture("nested"), {"w|0": nested}, "",
 		["w.ldr step 1: 0 !BRICKWORKS ZOOM 1.5", "w.ldr step 1: 0 !BRICKWORKS PULL 2 41770a 41769a"])
+	# The pull left on the step that puts a on, which no page shows: kept,
+	# and not named.
 	await _review_case("haspull", _fixture("haspull"), {"|1": _pulled(["3003"]),
-		"a|1": _pulled(["3003"], 3.0)},
-		"the pull on step 2 of the model matches no step now, kept in the file", [])
+		"a|1": _pulled(["3003"], 3.0)}, "", [])
 	await _review_case("twice", _fixture("twice"), {"a|1": _pulled(["3003"])}, "",
 		["a.ldr step 2: 0 !BRICKWORKS PULL 2 3003"])
 	var empty: Dictionary = {"page": "new", "zoom": 1.5, "size": 1.25, "parts": false,
