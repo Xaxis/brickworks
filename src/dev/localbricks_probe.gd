@@ -410,8 +410,8 @@ func _steps() -> void:
 		int(both_seven.get("qty", 0)) == 2 and Collection.missing_lots(both_seven).size()
 		== _marks_union(_set_of(account_before, "7140-1"), _set_of(device, "7140-1")))
 	_check("...this device keeps nothing to offer now, and nothing waits (offered %s, %d waiting, kept %s, said “%s”, busy %s)"
-		% [CollectionOffer.amount(_offerable()), (_store.get("pending") as Array).size(),
-		CollectionOffer.amount(_shown(_fold())), again_said, str(_store.get("_changing"))],
+		% [_amount(_offerable()), (_store.get("pending") as Array).size(),
+		_amount(_shown(_fold())), again_said, str(_store.get("_changing"))],
 		_same_kept(_offerable(), {"sets": [], "parts": []}) and (_store.get("pending") as Array).is_empty()
 		and _same_kept(_shown(_fold()), {"sets": [], "parts": []}))
 	_check("...the window shows the account's, every lot of both", _same_kept(_kept(), joined))
@@ -684,6 +684,12 @@ func _folder() -> String:
 
 func _fold() -> Dictionary:
 	return _here.call("read", _folder()) if _here != null else {"shown": {"sets": [], "parts": []}, "raw": {}}
+
+
+## A collection's size in words, by the probe's own count (it names no class
+## pre261 lacks, so the probe runs there and says what is missing).
+static func _amount(kept: Dictionary) -> String:
+	return "%d sets, %d lots" % [(kept.get("sets", []) as Array).size(), (kept.get("parts", []) as Array).size()]
 
 
 static func _shown(read: Dictionary) -> Dictionary:

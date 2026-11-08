@@ -503,7 +503,7 @@ Proves it when:
   reading every set and lot and their Remove keeping the marks; the older
   collection lot for lot at the end. Look at `mysets_photo`, `_marked`,
   `_need`, `_need_seven`, `_closest`, `_minifigure`.
-- `localbricks_api.mjs` ends `every check passed` (38 checks): the join op
+- `localbricks_api.mjs` ends `every check passed` (35 checks): the join op
   pure (13 lots and 4 sets each the sum, a session's lot its session's,
   7140-1's two copies with both marks, refusals with words, the ids kept the
   last 100 and before them the last 50 joins), then against the database:
@@ -517,11 +517,13 @@ Proves it when:
   call, marks 3 of 7140-1's lots missing, Take back leaves it lot for lot;
   Build from it 3 pieces less; two tabs' changes made from one read both kept,
   a stale count refused; at the sign-in asked first, nothing sent, Not now
-  not asked again, the dialog's row; with no answer kept and said, the answer
+  not asked again, the dialog's row; with no answer kept and said (the offer
+  as tall as its answer), the answer
   lost after it was made, Send again made once; two devices at once both
   kept; signed out again none of the account's shown or changeable, its copy
   untouched; Put them together told; Build from both copies less both copies'
-  marks, one copy of two less none; every new line in de, fr and es. Look at
+  marks, one copy of two less only what both copies lack; every new line in
+  de, fr and es. Look at
   `localbricks_signed_out`, `_device`, `_need`, `_taken_back`, `_offer`,
   `_on_this_device`, `_no_answer`, `_send_again`, `_joined`.
 - the live Brickognize (`bench/results/mysets-2026-11-07/live_photos.py`,
