@@ -52,7 +52,10 @@ var backdrop: Color = Color(1, 1, 1)
 ## The sweep lit like a studio's, brightest under the model and falling
 ## away towards the edges of the picture, rather than one even colour.
 var backdrop_gradient: bool = false
-## "studio" for three lights, or one of StudioRender.HDRIS.
+## "studio" for three lights, or one of StudioRender.HDRIS, or "dark": the
+## studio put out, its ambient a glimmer, the model's own lights
+## (SceneLights) and its glowing plastics all that lights it (lights,
+## APP_UX5 #7).
 var lighting: String = "studio"
 ## Which way the light comes from, turned round the model, in degrees.
 var light_turn: float = 0.0
@@ -140,8 +143,8 @@ func use_backdrop(name: String) -> bool:
 
 ## Change these as a session asks for a render by name (render_queue): quality
 ## quick, good or best; size 720p, 1080p, 4k or square; samples; view; look;
-## backdrop, or none for nothing behind; depth_of_field. What was wrong with
-## [param asked], or "".
+## backdrop, or none for nothing behind; depth_of_field; light, studio, an
+## HDRI's name or dark. What was wrong with [param asked], or "".
 func take(asked: Dictionary) -> String:
 	var grades: Dictionary = {"quick": Quality.QUICK, "good": Quality.GOOD, "best": Quality.BEST}
 	var sizes: Dictionary = {"720p": Vector2i(1280, 720), "1080p": Vector2i(1920, 1080),
@@ -176,6 +179,12 @@ func take(asked: Dictionary) -> String:
 			transparent = true
 		elif not use_backdrop(backdrop_asked):
 			return "backdrop is white, gradient, grey, dark or none."
+	# lights (APP_UX5 #7): the light the set is in.
+	if asked.has("light"):
+		var light_asked: String = str(asked["light"])
+		if not light_asked in LIGHTINGS_BESIDE and not StudioRender.HDRIS.has(light_asked):
+			return "light is studio, %s or dark." % ", ".join(StudioRender.HDRIS.keys())
+		lighting = light_asked
 	if bool(asked.get("depth_of_field", false)):
 		# A lens wide enough to blur is many frames through it: Best's.
 		f_stop = 4.0
@@ -186,6 +195,10 @@ func take(asked: Dictionary) -> String:
 
 ## The most samples a render is asked for by name.
 const MOST_SAMPLES := 4096
+
+## The lights beside the photographed places: the studio's three, and the
+## Dark light (lights, APP_UX5 #7).
+const LIGHTINGS_BESIDE: Array[String] = ["studio", "dark"]
 
 
 # -- presets: Render's choices kept by a name, for any model ---------------------
@@ -250,7 +263,7 @@ func use_preset(said: Dictionary) -> String:
 					backdrop = Color.html(str(value))
 					continue
 			"lighting":
-				if str(value) == "studio" or StudioRender.HDRIS.has(str(value)):
+				if str(value) in LIGHTINGS_BESIDE or StudioRender.HDRIS.has(str(value)):
 					lighting = str(value)
 					continue
 			"light_turn":

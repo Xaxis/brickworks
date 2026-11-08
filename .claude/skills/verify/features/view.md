@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:the booklet's own cover and colours, cli:booklook probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe -->
 
 ## Sub-features
 
@@ -2750,6 +2750,87 @@ picture the assistant is shown.
   actions. `-- --keep=DIR` leaves the file; the probe copied into an older
   checkout with `-- --older=DIR` opens it whole. Pictures in
   `shots/savedviews/`: look at each view's window and the queue's pictures.
+- `lights in the model` (APP_UX5 #7; File, Render…, Lights in the model;
+  `src/assembly/scene_lights.gd`, `SceneLights`): bulbs, spots, suns and
+  panels of light kept with the model as `0 !BRICKWORKS LIGHT {json}` lines
+  after the first line (kind, at and aim in the file's coordinates, colour,
+  strength, a spot's cone, a bulb's radius or a panel's side, shadows), read
+  back through `ModelStore` (lifted as the parts are,
+  `BrickWorld.scene_lights`), carried by Build together as `~lights` (the
+  relay's `api/together.js` allows it); at most 8, 4 of them suns (the
+  studio's 3, the sky and 4 are the 8 a renderer draws), refused with why
+  on every way in (a file, light_model, Together, Render's Add buttons).
+  Only the main model's lines are read (to an MPD's second section: a
+  sub-model keeps its own lights and views); numbers are rounded to a
+  thousandth before they are checked; a line not read stays in the file
+  word for word and the open says how many and why. Strength 1 lights a face
+  100 LDU from a lamp, or any face turned to a sun, as the window's key does.
+  Render draws them over its studio in every quality (`StudioRender._place_lamps`:
+  Godot's OmniLight3D, SpotLight3D, DirectionalLight3D; a panel a wide spot)
+  and path traced (`path_tracer.glsl`'s `from_lamps`, the same fall and cone),
+  on the first surface the eye reaches and bounced by neither, the exposure
+  metered without them: nothing outside a spot's cone changes. The spot's
+  edge is the rim to the power `SceneLights.EDGE` (3) both ways: Godot takes
+  `spot_angle_attenuation` as the reciprocal, so the raster's is 1/3. Light's Dark
+  puts the studio out (ambient 0.025), and the plastics that glow (Glow In
+  Dark, the neons) give off light (`plastic_body.gdshaderinc`'s `glow`, a
+  light at each lump of them rasterised, emission traced). Add sets a light
+  over the selection, or the model; From where I look and Over the selection
+  move it; nothing changes on a model shared to look at. Over MCP,
+  `light_model` lists, adds (over= parts, or at=/aim=), changes and removes,
+  and `render_model`/`render_queue` take `light` studio, softbox, window,
+  daylight or dark. No undo step, as saved views.
+- `lights probe` (`src/dev/lights_probe.gd`, `tools/probe.sh lights`,
+  windowed on the GPU at 1400 x 900, `PROBE_SIZE=1280x720 ... -- --no-trace`):
+  Render's Spot over the car, its strength dragged, Dark chosen; kept over
+  save (into the file it came from and whole), Save as, the autosave and a
+  step edit, back after an open where it was over the car, Build together's
+  words word for word, a look-only tool writing nothing; light_model's ops
+  and refusals; nothing changeable on a model shared to look at. The bar: the
+  spot drawn without and with, Quick and Best path traced: 0 px changed
+  outside its cone (each pixel judged along its ray between the floor and
+  the top of the car; the renderer's own changes, the same drawn twice,
+  said beside it), on a grey sweep the floor it lights beside the car (out
+  of the car's shadow, on the camera's side) lighter by 15% and 10 levels,
+  the two drawings' rises within 35%; a Trans Neon Green 1 x 1 on a white plate
+  in the Dark light lights the plate round it 3 times as much as a Trans
+  Green one, and green, both ways. `-- --keep=DIR` leaves the files; the
+  probe copied into an older checkout with `-- --older=DIR` opens each
+  whole, its light line left alone. And lreview's findings (2026-11-07):
+  someone else's file and Brickworks' own of 11 light lines keep 11 (8 read,
+  3 carried word for word, the open's note; someone else's keeps the 8 in
+  their author's words too); an MPD's sub-model keeps its
+  light and view; a strength or panel 0.0004 refused, 2 lights back as 2; a
+  fifth sun refused over MCP, in Render (its Sun button off, why in the
+  tooltip) and from a file; eight light_model calls of the wrong JSON type
+  each answered "nothing changed"; Render's Which never changing a light it
+  no longer shows; op list let through the designer's gate, add not; a file
+  of 200,000 light lines that are no lights opening within 20% of one of
+  200,000 lines of another meta command (`0 !BRICKWORKS FOO x`), its time
+  against comments said beside it (every `0 !BRICKWORKS` line costs the
+  open's other readers more than a comment does), and saved within 1.5x of
+  200,000 comments (medians of 12, after a warm-up; against comments as
+  long and other metas said beside it). lreview's second review: a model
+  with a line it cannot read, cleared by Clear, then a part put down and
+  saved: no light line in the new file (the read and unread lines are the
+  model's, kept against the world's generation); a CRLF file whose last line
+  is a light, changed and saved, no lone CR; the app's own MPD saved, opened
+  and saved again with its sub-model's light in its sub-model and the
+  unread line once; an MPD whose `0 FILE` lines have a tab keeping its
+  sub-model's light (sections are `LdrModel.parse`'s, never a regex of
+  lights' own); a light added to a model with a comment before its `0 FILE`
+  inside its section. Then the car under 0 to 4 suns (each adding light)
+  and the neon and white grids under 8 bulbs in the Dark light (the white
+  grid's floor rising; the neon grid's mean and far floor within 10% of no
+  bulbs), on either renderer; `PROBE_COMPAT=1` runs it on Compatibility
+  through zink, and `-- --means=FILE` (Forward+ first) holds
+  Compatibility's Dark under 1 and 4 suns within 15% of Forward+'s and the
+  neon grid's (0 and 8 bulbs) within 10%. Pictures in `shots/lights/`: look at
+  Render's, the spot's pictures and maps (red would be a pixel changed
+  outside: on Compatibility a level apart is the bar, none lighter on the
+  whole, as it draws a shadowed light in passes of its own and that
+  rounds), the
+  glowing brick's, `suns_*` and `grid_*`.
 - `quiet probe` (`src/dev/quiet_probe.gd`, `tools/probe.sh quiet_probe`,
   windowed at 1280 x 720, `PROBE_SIZE=1400x900`): APP_UX4 unit 9's bar.
   The first build's offer on a first visit, gone at the third part put down
@@ -3074,6 +3155,11 @@ tools/probe.sh cutshapes_kept -- --keep=/tmp/cut_kept   # then, the probe copied
 # each the window's from there; view_model and render_model view= in one
 # call; a preset chosen again in 2 actions. Look at shots/savedviews/.
 tools/probe.sh savedviews -- --keep=/tmp/views_kept && PROBE_SIZE=1400x900 tools/probe.sh savedviews   # then, the probe copied into an older checkout: tools/probe.sh savedviews -- --older=/tmp/views_kept
+# Lights in the model (APP_UX5 #7): Render's Spot over the car, kept over
+# every save and back after an open; 0 px changed outside its cone, Quick and
+# path traced, the floor beside the car lighter by 15%; a neon 1 x 1 lighting the plate round
+# it in the Dark light; light_model over MCP. Look at shots/lights/.
+tools/probe.sh lights -- --keep=/tmp/lights_kept && PROBE_SIZE=1280x720 tools/probe.sh lights -- --no-trace   # then, the probe copied into an older checkout: tools/probe.sh lights -- --older=/tmp/lights_kept
 # Two fingers turned about each other (APP_UX6 twist): a quarter turn 90° ±5°
 # round the up about what is between them, the model going round as the
 # fingers went from above and below; a pinch, a slide and a drag as pre261's
