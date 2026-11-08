@@ -1267,8 +1267,8 @@ plan with Claude as the client.
   mirroring Bookwright's terms. The FAQ's "Is Brickworks free?" (`#free`),
   "Is AI limited on any plan?" (`#ai`: never, on any plan; people bring
   their own) and "I made my account before 29 October 2026" (`#had-account`)
-  and the download page's `#pro-note` say the same as /plans: downloads
-  free until Pro opens, every version kept. The terms, the privacy page,
+  say the same as /plans (the download page's `#pro-note` did, until it said
+  the desktop app is coming soon, 2026-11-07). The terms, the privacy page,
   the guidelines and /takedown share one row of `.tabs` in their head
   (site359, 2026-10-29).
 - `age question` (`web/account.js` `askAgeIfAsked`, `src/ui/sign_in_gate.gd`,
@@ -2643,7 +2643,20 @@ plan with Claude as the client.
   (`_looped`), drawn only with nothing kept, so it does not wait for the
   steps (`_link_draws_only`, `MotionPlayer.Paced.keep`; on the web the
   house's took 8 s after it was shown; a sequence, or Reduce motion's
-  once, is kept as a press is and waits for them), its button lit
+  once, is kept as a press is and waits for them). On the web the exact
+  shapes the motion is judged by are asked for as the model is first shown,
+  among the parts still on their way too (`_ask_link_shapes`,
+  `_motion_parts(motion, true)`, `EARLY_REACH`), fetched by the page itself
+  (`PartLibrary._ask_page`); once every part is here its parts are told to
+  the lattice in one slice in a browser (`register_later(LINK_REGISTER_US)`;
+  a frame at a time elsewhere, as before), the joints
+  read once those shapes are here, and the motion, nothing kept, worked out
+  whole on a worker at high priority (`MotionPlayer.pace_off_frame`,
+  `GrabDrag.hold_still`: a press waits for it) rather than a slice a frame
+  (playweb, 2026-11-07, four runs each way: the house's gates moved 2.9 to
+  6.5 s after its parts at a laptop's size and 4.4 to 7.4 at a phone's, now
+  0.9 to 1.6 and 1.4 to 1.9).
+  Its button lit
   and the pill saying "Playing “…” over and over. Press it to stop."; its
   button eases it back to as built from where it is (`_loop_home`), as do a
   drag, Reset, another motion or Build it; turning the view does not. Reduce
@@ -2651,9 +2664,13 @@ plan with Claude as the client.
   says "There is no motion called “wings” in this model, so it opened
   still." with the motions it has. `brickworksShare`: `looping`,
   `looping_at`; `view.play.looping`, `missing`; `opened` (the viewer's
-  phases, ms from the view starting: `parts`, the joints `read`, the
-  motion `pressed`, `moving` at the first frame drawn off); the panel's
-  `link`, `playing`, `opens`.
+  phases, ms from the view starting: `parts`, `registered`, the joints
+  `read` with their `reading`, the motion `pressed`, `moving` at the first
+  frame drawn off; `asked` [ms, how many] as the model was first shown,
+  `shapes_here` [here, of] once every part was, `frames` [frame, drawn] each
+  phase came in, `longest` [ms, phase] the app's longest frame, its drawing
+  too, from the parts to 3 s after it moves, `reread`, `needs`); the motion's own
+  `off_frame`; the panel's `link`, `playing`, `opens`.
 - `playlink probe` (`src/dev/playlink_probe.gd`): below.
 - `what a frame costs in a browser` (`tools/web/look_cost.mjs`): serves
   the export with `serve.py --share L00kM0del1=vendor/omr/files/6392-1.mpd
@@ -3582,12 +3599,15 @@ plan with Claude as the client.
   is 390 x 844 at 3x by a finger (Parts, the search, a tile, taps on the
   baseplate). Spinworker's numbers are in
   `bench/results/spinworker-2026-11-05` and docs/SLOW_DEVICES.md.
-- The desktop downloads page (`web/download.html`, `download.js`,
-  `releases.json`) ships with every deploy like the rest of `web/`; what it
-  does and how it is checked is in [release](release.md). The landing page
-  links to it from the nav and the footer. The deploy does not check it yet:
-  after a release, run `node tools/web/download_check.mjs
-  --url=https://brickworks.diy/download`.
+- The desktop app's page (`web/download.html`) ships with every deploy like
+  the rest of `web/`. Since 2026-11-07 it says the desktop app is coming soon
+  and offers Open Brickworks (the owner: "make the downloadable access
+  'Coming soon' ... since we can't properly support it yet"); what it does
+  and how it is checked is in [release](release.md). Menu and the footer
+  link to it as "Desktop app". The release's preview checks run
+  `download` (`tools/web/download_check.mjs`) and `coming_soon`
+  (`tools/web/coming_soon_check.mjs`, every page in four languages: no
+  installer offered anywhere).
 - `put the website together` (`tools/site.py OUT`): every file in `web/` (and
   `web/img/`) but working ones named `_…` and `img/manifest.json`, with
   `changelog.html` filled from `CHANGELOG.md` and `releases.json`. The deploy runs
@@ -3648,8 +3668,8 @@ plan with Claude as the client.
   brickworks is much more than an ai tool, its also a fully advanced expert cad
   system"). It shows rather than says: the hero is one line ("A complete CAD
   for LEGO® models", `h1.display`), one sub-line (in your browser, on a computer,
-  tablet or phone; nothing to install, free), one primary action (Open Brickworks) and a quiet link to the
-  desktop download, over the builder at work on the castle
+  tablet or phone; nothing to install, free), one primary action (Open Brickworks), and since
+  2026-11-07 "A desktop app is coming soon" where it offered the download, over the builder at work on the castle
   (`img/hero-*.webp`) under a window's bar with the app's address; `#features`,
   six pictures from the app of what a Studio or LDD user cannot do there, one
   line each (Will it stand?, gears at their real ratios on the orrery,
@@ -4342,8 +4362,9 @@ A browser asking for en, de, fr and es first (Accept-Language and
 `navigator.languages`) opens /, /download, /plans, /faq, /compare, /gallery
 and /library at 1280 and 390 and must land on the language's copy (/de,
 /de/download, /de/plans ...; English stays), `<html lang>` its language, the
-title, the heading and the header's Sign in in its words, the download
-offer's "Download for Linux" and "New in", the gallery's and the library's
+title, the heading and the header's Sign in in its words, the desktop
+app's page's Open Brickworks into the app in the language (it is coming
+soon, 2026-11-07), the gallery's and the library's
 count ("1.234 Sets") in them; no English word left in any text, alt,
 title or label but names, people's cards and the library's themes the app
 too keeps under the catalogue's names; nothing cut short sideways that the
@@ -5144,7 +5165,8 @@ and `4_missing`.
 
 In a browser, `tools/web/play_flow.mjs` with `--house=<id>` (the house's
 "Open the gates") opens `/m/<id>?motion=open-the-gates` and checks it loops
-within 2 s, its button stops it, and `?motion=wings` opens still
+within 2 s of its parts at a laptop's size and 3 s at a phone's, saying
+each phase, its button stops it, and `?motion=wings` opens still
 (`<size>_10_playing.png`, `<size>_11_missing.png`).
 
 Build it turned as its booklet turns the model (a window; a phone, then
@@ -6716,7 +6738,8 @@ named, 15 Tabs inside it, Escape back on More; Follow; the account menu,
 Escape, Notifications, Mark all read said with the focus on the title;
 Edit profile's dialog keeping 40 Tabs and saving back on Edit profile;
 Settings' theme and a checkbox said; Sign in's dialog named, the code
-sent, Escape back on Sign in; the download started; and every one of
+sent, Escape back on Sign in; Open Brickworks on the desktop app's page
+opening the app (the download started, until 2026-11-07); and every one of
 the 354 stops showing its focus ring, on the screen and clear of the
 sticky header, with nothing moving (reduced motion asked).
 

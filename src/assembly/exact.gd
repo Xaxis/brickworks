@@ -214,10 +214,16 @@ static var _shapes: Dictionary = {}
 static var _shapes_lock := Mutex.new()
 ## Parts whose shape the main thread asked for while [member noting] and it
 ## was still on its way, so judged without it: part id -> true, until
-## [method missed_taken]. Main thread only: a motion's press notes what its
-## working out asks for (main.gd).
+## [method missed_taken]. [member noting] is the main thread's: a motion's
+## press notes what its working out asks for (main.gd).
 static var noting: bool = false
 static var _missed: Dictionary = {}
+## The worker whose asks are noted too, by its thread's caller id (-1 for
+## none): a link's motion worked out whole on a worker (MotionPlayer.
+## pace_off_frame). A worker in a browser reads no shape that is not here
+## yet and asks for none; the main thread asks for what it noted once it is
+## done. Written by that worker; [member _missed] under [member _shapes_lock].
+static var noting_worker: int = -1
 ## Shapes read from disk on the main thread, since start-up: by one that
 ## wanted it at once. Written there only; probes read it.
 static var read_here: int = 0
@@ -448,23 +454,25 @@ static func shape_for(library: PartLibrary, part_id: String) -> Shape:
 		return kept
 	var main: bool = OS.get_thread_caller_id() == OS.get_main_thread_id()
 	if not main and OS.has_feature("web"):
+		if noting_worker == OS.get_thread_caller_id():
+			_note_missed(info.id)
 		return null
 	# Already asked for: a look in the browser's pack for a file that is not
 	# there costs a couple of milliseconds, each time.
 	if main and library.is_exact_on_its_way(info.id):
 		if noting:
-			_missed[info.id] = true
+			_note_missed(info.id)
 		return null
 	var path: String = file_for(library, info.id)
 	var shape: Shape = null
-	if FileAccess.file_exists(path):
+	if (not OS.has_feature("web") or _carried(library)) and FileAccess.file_exists(path):
 		if main:
 			read_here += 1
 		shape = own(parse(FileAccess.get_file_as_bytes(path)), info.bounds)
 	elif OS.has_feature("web"):
 		# Fetched as the geometry is (PartLibrary.request_exact); null until then.
 		if library.request_exact(info.id) and main and noting:
-			_missed[info.id] = true
+			_note_missed(info.id)
 		return null
 	_shapes_lock.lock()
 	# Read by another thread meanwhile: one shape a part, as its id keys
@@ -475,6 +483,24 @@ static func shape_for(library: PartLibrary, part_id: String) -> Shape:
 		_shapes[info.mesh_hash] = shape
 	_shapes_lock.unlock()
 	return shape
+
+
+## Whether [param library]'s files carry exact shapes at all, looked once:
+## a browser's pack has none unless it was built with them (tools/
+## web_pack.py --with-exact, which no deployment is), and each look in it
+## for a file that is not there costs a couple of milliseconds of the page's
+## frame, where a reading of the joints asks for every part's shape on the
+## main thread (GrabDrag._read_off_thread): the house's 77 as its link's
+## joints were read (playweb, 2026-11-07). A browser's main thread only, the
+## one thread there that looks.
+static func _carried(library: PartLibrary) -> bool:
+	var root: String = library._resolve_root()
+	if not _carried_by.has(root):
+		_carried_by[root] = DirAccess.dir_exists_absolute(root + "exact")
+	return bool(_carried_by[root])
+
+
+static var _carried_by: Dictionary = {}
 
 
 ## Kept from a fetch: the web build's way in (PartLibrary._on_fetched_exact),
@@ -497,9 +523,17 @@ static func keep_shape(mesh_hash: String, shape: Shape, only_new: bool = false) 
 ## The parts asked for on the main thread since the last call while their
 ## shapes were on their way ([member _missed]), and forgotten.
 static func missed_taken() -> Array:
+	_shapes_lock.lock()
 	var out: Array = _missed.keys()
 	_missed.clear()
+	_shapes_lock.unlock()
 	return out
+
+
+static func _note_missed(part_id: String) -> void:
+	_shapes_lock.lock()
+	_missed[part_id] = true
+	_shapes_lock.unlock()
 
 
 ## Whether the shape for a part has been looked for (found or not).

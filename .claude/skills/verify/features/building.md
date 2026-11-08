@@ -480,7 +480,24 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   left holds the tree, the properties and the colours, and there is no right
   column. Each rail carries its icon and its name ("Parts", "Properties",
   "Assistant"), tinted with the accent down its edge while folded, and
-  switching is one click on it. Probe: `roomfit_probe` (1280 x 720,
+  switching is one click on it. The tools' column (Stress, Simulate, Motions,
+  the hose tool, Colour the hidden parts) takes its room out of the bin's, not
+  the model's (`Main._tool_room` in `_fit_bin`): beside Stress the bin is
+  four across at 1280 x 720, where it kept six and ran the row past the
+  window. And the model keeps its least room, 440 units (400 px at the
+  smallest the interface is drawn): where both columns show, one opened beside
+  the other and the tools' column that would leave it less folds the other
+  side's, as where they take turns (`Main.MODEL_LEAST`, `_room_beside`, in
+  `_column_opening`; at 1400 x 900 the bin, Stress and the assistant together
+  left it 393 px). On a tablet on its side the tools' column goes under the
+  model while, beside it, it would leave the model less than that, with a
+  drawer or the parts out, and back beside it when they go
+  (`Main._place_tool_column`, `_tool_crowds_model`): Stress and the
+  assistant's drawer left a 1024 x 768 tablet's model 233 px. Nothing the
+  person opened is put away for the room. `timelinefit_probe` (APP_UX6
+  timelinefit) opens them in two orders at 1280 x 720 and 1400 x 900, and
+  `timelinefit_tablet_probe` the tablet's own at 1024 x 768, and reads every
+  control along the window's edges inside it. Probe: `roomfit_probe` (1280 x 720,
   1400 x 900, 1600 x 900 and 1920 x 1080 in one window, made each size in
   turn: 24 parts in sight at the first and 40 at the rest, the selected
   part's boxes with the bin, the assistant beside the bin from 1400 px with
@@ -559,7 +576,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   part (`Main._on_phone_hold`, `HOLD_MS`) brings its actions, the right-click
   menu's rows. Two fingers turn the view and pinch zooms
   (`CadCamera.phone`); a finger that lands on a part with Select moves it and
-  the view stays (`finger_taken`). The shared viewer keeps its own. The
+  the view stays (`finger_taken`). A second finger makes the gesture the
+  view's (`Main._second_finger`, touchfix): the first finger's press on a
+  part ends, a part it had begun to carry goes back with the selection as it
+  was, and its lifting is no click; on pre261 a twist or a pinch begun on a
+  part carried it off with the first finger and selected it (`twist_probe`
+  section 5). The shared viewer keeps its own. The
   notices strip is drawn for a finger (`Main._for_a_finger`). Proved by
   `tools/web/phone_flow.mjs` (preview check `phone`), at 390 x 844,
   430 x 932 and 844 x 390 at 3x with touch events: More, New; the parts sheet
@@ -684,7 +706,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   (`TouchSizing._grew`, on the panel's or the window's
   `minimum_size_changed`, fig257): Render's status line, told the picture's
   file name once it was downloaded, ran it and its Close off a 430-point
-  phone. A dialog already placed never moves under a finger
+  phone. A window or a panel freed while it shows never says it hid, so it
+  stays listed (a Save dialog cancelled is not one: Godot's Cancel hides it
+  before `SaveTo` frees it): every loop over the open dialogs takes each
+  untyped until it is checked, as a freed one put in a `Node` raised a script
+  error and laid out nothing after it (timelinefit's tablet; `twist_probe`
+  section 6). A dialog already placed never moves under a finger
   (`TouchSizing._place`, `finger_down`, press271): laid out again while a
   finger or a mouse button is down, it waits for the lift. Pressing Save or
   Rename takes the keys from the field, so the keyboard counted as gone and

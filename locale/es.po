@@ -117,8 +117,8 @@ msgstr "Modelo LDraw (.ldr, o .mpd con sus submodelos)"
 msgid "BrickLink Studio model (.io)"
 msgstr "Modelo de BrickLink Studio (.io)"
 
-msgid "3D model (.glb, .gltf, .obj, .stl)…"
-msgstr "Modelo 3D (.glb, .gltf, .obj, .stl)…"
+msgid "3D model (.glb, .gltf, .obj, .stl, .3mf)…"
+msgstr "Modelo 3D (.glb, .gltf, .obj, .stl, .3mf)…"
 
 msgid "Picture of the model (.png)"
 msgstr "Imagen del modelo (.png)"
@@ -2697,8 +2697,8 @@ msgstr "Pega una clave para guardar una aquí en su lugar"
 msgid "On a web page a server on your own computer answers only if it allows this site (Ollama: OLLAMA_ORIGINS), and the browser asks you first."
 msgstr "En una página web, un servidor de tu propio ordenador solo responde si permite este sitio (Ollama: OLLAMA_ORIGINS), y el navegador te pregunta antes."
 
-msgid "On a web page Brickworks reaches only the providers listed and servers on your own computer; for any other server, use the desktop app."
-msgstr "En una página web, Brickworks solo llega a los proveedores de la lista y a los servidores de tu propio ordenador; para cualquier otro servidor, usa la aplicación de escritorio."
+msgid "On a web page Brickworks reaches only the providers listed and servers on your own computer; any other server needs the desktop app, coming soon."
+msgstr "En una página web, Brickworks solo llega a los proveedores de la lista y a los servidores de tu propio ordenador; cualquier otro servidor necesita la aplicación de escritorio, que llega pronto."
 
 msgid "Sent only to Anthropic, never to us. Safest is a key just for this, in a Console workspace with a spend limit."
 msgstr "Se envía solo a Anthropic, nunca a nosotros. Lo más seguro es una clave solo para esto, en un espacio de trabajo de la Console con límite de gasto."
@@ -5571,8 +5571,8 @@ msgstr "El aspecto de la ventana, al tamaño que pidas. Un momento."
 msgid "Light bounced off the backdrop and between the parts, shading in every corner, and a soft shadow that widens with distance."
 msgstr "Luz que rebota en el fondo y entre las piezas, sombreado en cada rincón y una sombra suave que se ensancha con la distancia."
 
-msgid "Soft shadows and smooth edges, from 8 frames averaged. Light bouncing between the parts needs the desktop app."
-msgstr "Sombras suaves y bordes lisos, del promedio de 8 fotogramas. La luz que rebota entre las piezas necesita la aplicación de escritorio."
+msgid "Soft shadows and smooth edges, from 8 frames averaged. Light bouncing between the parts needs the desktop app, coming soon."
+msgstr "Sombras suaves y bordes lisos, del promedio de 8 fotogramas. La luz que rebota entre las piezas necesita la aplicación de escritorio, que llega pronto."
 
 msgid "Path traced, %d samples: soft shadows, light bounced off the floor and between the parts, glass that tints what is behind it, and depth of field if you want it."
 msgstr "Trazado de rutas, %d muestras: sombras suaves, luz que rebota en el suelo y entre las piezas, cristal que tiñe lo que hay detrás y profundidad de campo si la quieres."
@@ -5586,8 +5586,8 @@ msgstr "%d fotogramas promediados: sombras suaves de una luz de área, bordes li
 msgid "With nothing behind the model it is not path traced."
 msgstr "Sin nada detrás del modelo, no se renderiza con trazado de rutas."
 
-msgid "Path tracing needs the desktop app: a browser cannot trace rays."
-msgstr "El trazado de rutas necesita la aplicación de escritorio: un navegador no puede trazar rayos."
+msgid "Path tracing needs the desktop app, coming soon: a browser cannot trace rays."
+msgstr "El trazado de rutas necesita la aplicación de escritorio, que llega pronto: un navegador no puede trazar rayos."
 
 msgid "Path tracing needs the full graphics mode, and this window draws in the simpler one."
 msgstr "El trazado de rutas necesita el modo gráfico completo, y esta ventana dibuja en el más sencillo."
@@ -11882,7 +11882,358 @@ msgstr "Este modelo no tiene ningún movimiento llamado «%s», así que se abri
 msgid "No such motion"
 msgstr "No existe ese movimiento"
 
+# Compare two sets or models (comparesets, APP_UX6 #7): File's row, the sheet's
+# pickers, tabs, counts and shops, and what it says on the status line.
+
+msgid "Compare two sets or models…"
+msgstr "Comparar dos sets o modelos…"
+
+msgid "The parts a set, a saved model or this one shares with another, the parts in only one, and what to buy to build one from the other"
+msgstr "Las piezas que un set, un modelo guardado o este comparte con otro, las piezas de uno solo, y qué comprar para construir uno a partir del otro"
+
+msgid "Compare two sets or models"
+msgstr "Comparar dos sets o modelos"
+
+msgid "Swap"
+msgstr "Intercambiar"
+
+msgid "A in B's place and B in A's: what to buy to build the other"
+msgstr "A en lugar de B y B en lugar de A: qué comprar para construir el otro"
+
+msgid "Stop comparing (Esc)"
+msgstr "Dejar de comparar (Esc)"
+
+msgid "What you have: a set, a saved model or the model open now"
+msgstr "Lo que tienes: un set, un modelo guardado o el modelo abierto"
+
+msgid "What you want to build: a set, a saved model or the model open now"
+msgstr "Lo que quieres construir: un set, un modelo guardado o el modelo abierto"
+
+msgid "Set number, as 7140"
+msgstr "Número de set, como 7140"
+
+msgid "A set's number, as on its box: 7140 or 7140-1"
+msgstr "El número de un set, como en su caja: 7140 o 7140-1"
+
+msgid "The parts in both, in only one, and what to buy to build B from A"
+msgstr "Las piezas de ambos, las de uno solo, y qué comprar para construir B a partir de A"
+
+msgid "The model open now"
+msgstr "El modelo abierto"
+
+msgid "The model open now: %s"
+msgstr "El modelo abierto: %s"
+
+msgid "A set, by its number"
+msgstr "Un set, por su número"
+
+msgid "Saved: %s"
+msgstr "Guardado: %s"
+
+msgid "Example: %s"
+msgstr "Ejemplo: %s"
+
+msgid "In both"
+msgstr "En ambos"
+
+msgid "Only in %s"
+msgstr "Solo en %s"
+
+msgid "Choose A and B: a set by its number, a saved model or the model open now."
+msgstr "Elige A y B: un set por su número, un modelo guardado o el modelo abierto."
+
+msgid "Comparing…"
+msgstr "Comparando…"
+
+msgid "A: %s"
+msgstr "A: %s"
+
+msgid "B: %s"
+msgstr "B: %s"
+
+msgid "1 spare not counted"
+msgstr "1 pieza de repuesto sin contar"
+
+msgid "%d spares not counted"
+msgstr "%d piezas de repuesto sin contar"
+
+msgid "1 sticker or made part not counted"
+msgstr "1 pegatina o pieza hecha a mano sin contar"
+
+msgid "%d stickers and made parts not counted"
+msgstr "%d pegatinas y piezas hechas a mano sin contar"
+
+msgid "To build B from A, the parts to buy are listed here, for the shops."
+msgstr "Para construir B a partir de A, las piezas que comprar se listan aquí, para las tiendas."
+
+msgid "%s has every piece %s needs: nothing to buy."
+msgstr "%s tiene todas las piezas que %s necesita: nada que comprar."
+
+msgid "To build %s from %s, buy these %s in %s:"
+msgstr "Para construir %s a partir de %s, compra estas %s en %s:"
+
+msgid "Nothing in both."
+msgstr "Nada en ambos."
+
+msgid "Nothing only in %s."
+msgstr "Nada solo en %s."
+
+msgid "Compared %s with %s: %s in both; %d only in %s; %d only in %s"
+msgstr "%s comparado con %s: %s en ambos; %d solo en %s; %d solo en %s"
+
+msgid "No set %s is in the set inventories."
+msgstr "Ningún set %s está en los inventarios de los sets."
+
+msgid "Set %s is under test in this run, so its parts are not compared."
+msgstr "El set %s se está probando en esta ejecución, así que sus piezas no se comparan."
+
+msgid "%s could not be read."
+msgstr "No se pudo leer %s."
+
+msgid "%s has no parts anybody can own."
+msgstr "%s no tiene piezas que se puedan tener sueltas."
+
+msgid "This app has no set inventories."
+msgstr "Esta aplicación no tiene los inventarios de los sets."
+
+msgid "A BrickLink wanted list (.xml) of these, to upload under Wanted › Upload"
+msgstr "Una lista de deseos de BrickLink (.xml) con estas piezas, para subir en Wanted › Upload"
+
+msgid "A Rebrickable parts list (.csv) of these, to import into a list of your own"
+msgstr "Una lista de piezas de Rebrickable (.csv) con estas piezas, para importar en una lista propia"
+
+msgid "A list of LEGO® element numbers (.csv) of these, to upload at LEGO® Pick a Brick: the parts it has no number for are named"
+msgstr "Una lista de números de elemento LEGO® (.csv) con estas piezas, para subir a LEGO® Pick a Brick: se nombran las piezas sin número"
+
 # weighsure (APP_UX6 #4): the model's weight on the status bar, after its counts,
 # the model as it is in that frame (StatusBar._weight)
 msgid "What the model weighs, each part by its shape: within about 6% of real bricks on a scale. The baseplate is left out"
 msgstr "Lo que pesa el modelo, cada pieza según su forma: con un margen de un 6 % frente a ladrillos reales en una báscula. La placa base no se cuenta"
+
+# A model as a 3MF for a printer that prints in several colours (print3mf, APP_UX6 18): File,
+# Export, 3D model…'s format and what it says, the line it writes, and the save dialog's kind.
+
+msgid "3MF in its colours, to 3D print (.3mf)"
+msgstr "3MF en sus colores, para imprimir en 3D (.3mf)"
+
+msgid "An object for each colour, in its colour, for a slicer to give each its own filament, in millimetres on the bed."
+msgstr "Un objeto por color, en su color, para que un laminador dé a cada uno su propio filamento, en milímetros sobre la cama."
+
+msgid "one colour, one object"
+msgstr "un color, un objeto"
+
+msgid "%d colours, an object each"
+msgstr "%d colores, un objeto cada uno"
+
+msgid "3MF to 3D print"
+msgstr "3MF para imprimir en 3D"
+
+# mysets (APP_UX6 6): a set from a photo of its box, its booklet's cover or a minifigure; a set's missing parts,
+# Closest to whole, What do I need? for a set, and minifigures on What I own.
+
+msgid "Find the set from a photo of its box, its booklet's cover or a minifigure"
+msgstr "Encontrar el set a partir de una foto de su caja, de la portada de sus instrucciones o de una minifigura"
+
+msgid "Find a set from a photo"
+msgstr "Encontrar un set a partir de una foto"
+
+msgid "The photo you choose is sent to Brickognize (brickognize.com), a third party that identifies LEGO® sets, minifigures and parts. Under its terms it may keep the photo and use it to train its recognition, and it is for personal, non-commercial use: Pro’s licence for commercial use does not cover it.\n\nNothing is sent until you choose a photo."
+msgstr "La foto que elijas se envía a Brickognize (brickognize.com), un tercero que identifica sets, minifiguras y piezas LEGO®. Según sus condiciones puede guardar la foto y usarla para entrenar su reconocimiento, y es para uso personal y no comercial: la licencia de uso comercial de Pro no lo cubre.\n\nNo se envía nada hasta que eliges una foto."
+
+msgid "asking Brickognize what set or minifigure this is…"
+msgstr "preguntando a Brickognize qué set o minifigura es…"
+
+msgid "from your photo, most likely first, as Brickognize sees it: choose the one it is"
+msgstr "según tu foto, lo más probable primero, como lo ve Brickognize: elige el que es"
+
+msgid "Brickognize saw no set or minifigure it knows in that photo: try the box's front, or the figure alone on a plain background"
+msgstr "Brickognize no ha reconocido ningún set ni minifigura en esa foto: prueba con el frente de la caja, o la figura sola sobre un fondo liso"
+
+msgid "From your photo:"
+msgstr "Según tu foto:"
+
+msgid "Minifigure %s %s"
+msgstr "Minifigura %s %s"
+
+msgid "Add this minifigure; its parts are not counted"
+msgstr "Añadir esta minifigura; sus piezas no se cuentan"
+
+msgid "Add this set: %s pieces"
+msgstr "Añadir este set: %s piezas"
+
+msgid "Add this set; no inventory of it is here, so it adds no parts"
+msgstr "Añadir este set; aquí no está su inventario, así que no añade piezas"
+
+msgid "added %s %s"
+msgstr "%s %s añadido"
+
+msgid "Missing parts…"
+msgstr "Piezas que faltan…"
+
+msgid "%d missing…"
+msgstr "faltan %d…"
+
+msgid "Mark the parts this set is missing: only what is there is counted"
+msgstr "Marcar las piezas que le faltan a este set: solo se cuenta lo que está"
+
+msgid "Closest to whole"
+msgstr "Los más cerca de estar completos"
+
+msgid "%d of %d pieces missing"
+msgstr "faltan %d de %d piezas"
+
+msgid "your loose parts make up %d of the %d marked"
+msgstr "tus piezas sueltas cubren %d de las %d marcadas"
+
+msgid "What it needs"
+msgstr "Lo que necesita"
+
+msgid "What do I need? for this set: its missing parts, less what your loose parts make up"
+msgstr "¿Qué necesito? para este set: sus piezas que faltan, menos lo que cubren tus piezas sueltas"
+
+msgid "Minifigures"
+msgstr "Minifiguras"
+
+msgid "their parts are not counted: no list of what is in each is here"
+msgstr "sus piezas no se cuentan: aquí no está la lista de lo que lleva cada una"
+
+msgid "This minifigure on BrickLink"
+msgstr "Esta minifigura en BrickLink"
+
+msgid "‹ What I own"
+msgstr "‹ Lo que tengo"
+
+msgid "All missing"
+msgstr "Faltan todas"
+
+msgid "Every part missing, to count back in what you find"
+msgstr "Todas las piezas faltan, para volver a contar lo que encuentres"
+
+msgid "None missing"
+msgstr "No falta ninguna"
+
+msgid "Nothing missing: the set is whole"
+msgstr "No falta nada: el set está completo"
+
+msgid "How many of each part are missing. What do I need? and What can I build? count only what is there, and loose parts you add count towards the set."
+msgstr "Cuántas faltan de cada pieza. ¿Qué necesito? y ¿Qué puedo construir? cuentan solo lo que está, y las piezas sueltas que añadas cuentan para el set."
+
+msgid "Find a part in the set: its number, name or colour"
+msgstr "Buscar una pieza del set: su número, nombre o color"
+
+msgid "missing"
+msgstr "faltan"
+
+msgid "in the set"
+msgstr "en el set"
+
+msgid "That set is no longer in your collection."
+msgstr "Ese set ya no está en tu colección."
+
+msgid "that set is no longer in your collection"
+msgstr "ese set ya no está en tu colección"
+
+msgid "%s: %s of %s pieces missing"
+msgstr "%s: faltan %s de %s piezas"
+
+msgid "…and more lots: find them above"
+msgstr "…y más lotes: búscalos arriba"
+
+msgid "How many of this part are missing"
+msgstr "Cuántas faltan de esta pieza"
+
+msgid "%s is whole: nothing marked missing"
+msgstr "%s está completo: nada marcado como que falta"
+
+msgid "%s: %s marked missing"
+msgstr "%s: %s marcadas como que faltan"
+
+msgid "What to check: the open model, or a set you own with parts missing"
+msgstr "Qué comprobar: el modelo abierto, o un set tuyo al que le faltan piezas"
+
+msgid "The open model"
+msgstr "El modelo abierto"
+
+msgid "The open model: %s"
+msgstr "El modelo abierto: %s"
+
+msgid "%s: %d missing"
+msgstr "%s: faltan %d"
+
+msgid "%s: %s pieces, %s there"
+msgstr "%s: %s piezas, %s están"
+
+msgid "Missing: %s pieces in %d lots"
+msgstr "Faltan: %s piezas en %d lotes"
+
+msgid "Missing: %s pieces in %d lots."
+msgstr "Faltan: %s piezas en %d lotes."
+
+msgid "your loose parts make up %d of the %d marked."
+msgstr "tus piezas sueltas cubren %d de las %d marcadas."
+
+msgid "%s: whole, with your loose parts making up all %d pieces marked missing."
+msgstr "%s: completo, tus piezas sueltas cubren las %d piezas marcadas como que faltan."
+
+msgid "no such choice"
+msgstr "no existe esa opción"
+
+# Make a part's clip plate, bar and wedge plate (makepart2, APP_UX6 #15): the families'
+# buttons, their ways, their rows and what the dialog says of each part.
+
+msgid "Clip"
+msgstr "Clip"
+
+msgid "A plate or tile with a clip on its front edge that grips a bar, upright or level"
+msgstr "Una placa o baldosa con un clip en su borde delantero que sujeta una barra, vertical u horizontal"
+
+msgid "A bar 3.2 mm across, any number of studs long: a clip grips it, a hollow stud holds its end"
+msgstr "Una barra de 3,2 mm de grosor, tan larga en espigas como quieras: un clip la sujeta, una espiga hueca sujeta su extremo"
+
+msgid "A wedge plate (LDraw calls it a wing): one side straight, the other cut in to a tip one stud wide"
+msgstr "Una placa en cuña (LDraw la llama ala): un lado recto y el otro cortado hasta una punta de una espiga de ancho"
+
+msgid "vertical: it holds a bar standing up"
+msgstr "vertical: sujeta una barra de pie"
+
+msgid "horizontal: it holds a bar along the edge"
+msgstr "horizontal: sujeta una barra a lo largo del borde"
+
+msgid "left: the straight side on the left"
+msgstr "izquierda: el lado recto a la izquierda"
+
+msgid "right: the straight side on the right"
+msgstr "derecha: el lado recto a la derecha"
+
+msgid "The clip"
+msgstr "El clip"
+
+msgid "Left or right"
+msgstr "Izquierda o derecha"
+
+msgid "Which way"
+msgstr "Hacia dónde"
+
+msgid "Width, studs (the clip's edge)"
+msgstr "Ancho, espigas (el borde del clip)"
+
+msgid "Width, studs (the wide end)"
+msgstr "Ancho, espigas (el extremo ancho)"
+
+msgid "Depth, studs"
+msgstr "Fondo, espigas"
+
+msgid "Length, studs (to the tip)"
+msgstr "Largo, espigas (hasta la punta)"
+
+msgid "%s mm long and %s mm across: a clip grips it anywhere along it, and either end goes into a hollow stud."
+msgstr "%s mm de largo y %s mm de grosor: un clip la sujeta en cualquier punto, y cada extremo entra en una espiga hueca."
+
+msgid "Its clip grips a bar 3.2 mm across, standing up."
+msgstr "Su clip sujeta una barra de 3,2 mm, de pie."
+
+msgid "Its clip grips a bar 3.2 mm across, lying along the edge."
+msgstr "Su clip sujeta una barra de 3,2 mm, tumbada a lo largo del borde."
+
+msgid "Its cut side runs at %s° to the straight side, to a tip one stud wide."
+msgstr "Su lado cortado forma %s° con el lado recto, hasta una punta de una espiga de ancho."

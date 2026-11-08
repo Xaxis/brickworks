@@ -1,0 +1,52 @@
+0 Tile  2 x  3 with Clip Vertical on Side (Thick C-Clip)
+0 Name: bw-clip3x2vt.dat
+0 Author: Brickworks element maker
+0 !LDRAW_ORG Unofficial_Part
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+
+0 BFC CERTIFY CCW
+
+0 !CATEGORY Tile
+0 !KEYWORDS Brickworks, custom element
+
+0 // Made by Brickworks: family=clip across=3 deep=2 plates=1 way=vertical studs=no
+
+0 // Top, back, ends, and the front either side of the clip
+3 16 -30 0 20 -30 0 -20 -4.1909 0 -20
+4 16 -30 0 20 -4.1909 0 -20 4.1909 0 -20 30 0 20
+3 16 30 0 20 4.1909 0 -20 30 0 -20
+4 16 30 0 20 30 8 20 -30 8 20 -30 0 20
+4 16 30 8 -20 30 8 20 30 0 20 30 0 -20
+4 16 30 0 -20 4.1909 0 -20 4.1909 8 -20 30 8 -20
+4 16 -30 0 -20 -30 0 20 -30 8 20 -30 8 -20
+4 16 -30 8 -20 -4.1909 8 -20 -4.1909 0 -20 -30 0 -20
+2 24 30 0 20 -30 0 20
+2 24 30 0 20 30 0 -20
+2 24 -30 0 20 -30 0 -20
+2 24 30 0 -20 4.1909 0 -20
+2 24 -4.1909 0 -20 -30 0 -20
+2 24 30 8 20 -30 8 20
+2 24 30 8 20 30 8 -20
+2 24 -30 8 20 -30 8 -20
+2 24 30 8 -20 4.1909 8 -20
+2 24 -4.1909 8 -20 -30 8 -20
+2 24 30 0 20 30 8 20
+2 24 30 0 -20 30 8 -20
+2 24 -30 0 20 -30 8 20
+2 24 -30 0 -20 -30 8 -20
+0 // Underneath
+4 16 30 8 20 26 8 16 -26 8 16 -30 8 20
+4 16 -30 8 20 -26 8 16 -26 8 -16 -30 8 -20
+4 16 30 8 -20 26 8 -16 26 8 16 30 8 20
+3 16 30 8 -20 4.1909 8 -20 26 8 -16
+4 16 4.1909 8 -20 -4.1909 8 -20 -26 8 -16 26 8 -16
+3 16 -30 8 -20 -26 8 -16 -4.1909 8 -20
+0 // Cavity
+0 BFC INVERTNEXT
+1 16 0 8 0 26 0 0 0 -4 0 0 0 16 box5.dat
+0 // Underside
+1 16 -10 4 0 1 0 0 0 -1 0 0 0 1 stud4.dat
+1 16 10 4 0 1 0 0 0 -1 0 0 0 1 stud4.dat
+0 // The clip and its neck
+1 16 0 4 -30 1 0 0 0 1 0 0 0 1 clip5.dat
+0

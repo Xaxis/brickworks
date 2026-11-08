@@ -102,6 +102,9 @@ const COMMANDS: Dictionary = {
 	# savedviews: View › Viewpoint › Render each saved view is render_queue's
 	# add view=NAME, a view at a time.
 	"render_views": "render_queue",
+	# comparesets (APP_UX6 #7): File, Compare two sets or models… is
+	# parts_list which="compare".
+	"compare_sets": "parts_list",
 	# mcpsee3: View › Viewpoint › Save this view… (SavedViews.save_now).
 	"save_view": "save_view",
 }
@@ -238,6 +241,8 @@ library= opens LDraw's model of a real set (gallery library=true finds them).
  - parts_list: the model's parts by part and colour with element ids; \
 which="need" what the person's collection is short of; "buildable" What \
 can I build?: saved models, examples and real sets' models by how much is owned.
+which="compare" a= b=: any two of a set, a saved model or the open model, \
+the parts in both and in one only, and what to buy to build b from a.
  - edit_collection: the person's own loose bricks, as My collection's What \
 I own keeps them. add= lots seen in a photo of their pile (part, colour, \
 count), all in one call, each marked as the session's for the person to \
@@ -257,7 +262,7 @@ model, by a name, as View › Viewpoint › Save this view… does, with a key o
 its own; remove=true takes one out. in_view lists those kept, and \
 view_model, render_model and render_queue draw from one by its name (view=).
  - export_model: the model as LDraw, a BrickLink Studio .io, a 3D file \
-(GLB, glTF, OBJ, STL), a picture, a BrickLink wanted list, a Rebrickable \
+(GLB, glTF, OBJ, STL, 3MF), a picture, a BrickLink wanted list, a Rebrickable \
 parts list, a LEGO® Pick a Brick list, or the building instructions as a \
 booklet, written where Export writes; all_models is every saved model in one .zip.
  - brickify: a 3D model (OBJ, STL, glTF, PLY, 3MF, VOX, FBX) laid in LEGO® bricks at the size asked, \
@@ -779,10 +784,21 @@ func definitions() -> Array:
 				+ "against the person's collection (My collection): how much they own and "
 				+ "what they are short of; which=\"buildable\" is What can I build?: their "
 				+ "saved models, the examples and the official models of real sets, ranked by "
-				+ "how much of each they own."),
+				+ "how much of each they own. "
+				# comparesets (APP_UX6 #7): Rebrickable's set compare.
+				+ "which=\"compare\" is File, Compare two sets or models…: a= and b= each a "
+				+ "set number (\"7140\"), a saved model's or an example's name, or \"open\" for "
+				+ "the model open now; it says the parts in both and in only one, by part and "
+				+ "colour, each side's pieces counted once, and what to buy to build b from a. "
+				+ "shop= bricklink, rebrickable or pickabrick also writes that list to buy for "
+				+ "the shop, as export_model writes the model's."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
-				"which": {"type": "string", "enum": ["model", "need", "buildable"]},
-				"limit": {"type": "integer", "description": "how many rows; 60 when omitted"},
+				"which": {"type": "string", "enum": ["model", "need", "buildable", "compare"]},
+				"limit": {"type": "integer", "description": "how many rows; 60 when omitted (compare: 30 a list)"},
+				"a": {"type": "string", "description": "compare: what is had, a set number, a saved model's or example's name, or \"open\"; \"set 1234\" or \"model 1234\" where a name is a number"},
+				"b": {"type": "string", "description": "compare: what is to be built, as a="},
+				"shop": {"type": "string", "enum": ["bricklink", "rebrickable", "pickabrick"],
+					"description": "compare: write the list to buy to build b from a for this shop, where export_model writes"},
 			}},
 		},
 		# mybricks (APP_UX5 #2): the person's loose bricks, from a photo of
@@ -911,7 +927,8 @@ func definitions() -> Array:
 				+ "with its sub-models, with its build steps), studio (a BrickLink Studio .io), "
 				+ "a 3D file at real size — glb (one file: Blender, three.js, AR; any size of "
 				+ "model), gltf (the same as text), obj (with an .mtl of its colours) or stl "
-				+ "(one mesh in mm, Z up, to 3D print); obj and stl hold every triangle and are "
+				+ "(one mesh in mm, Z up, to 3D print) or 3mf (to 3D print in colour: an object a "
+				+ "colour, in mm on the bed); obj, stl and 3mf hold every triangle and are "
 				+ "capped — picture (.png), bricklink (a wanted list), rebrickable (a parts "
 				+ "list .csv), pickabrick (LEGO® Pick a Brick's list: element numbers and "
 				+ "quantities, 400 lines a file; the answer names the parts with no element "
@@ -925,7 +942,7 @@ func definitions() -> Array:
 			"input_schema": {"type": "object", "additionalProperties": false,
 				"required": ["format"], "properties": {
 				"format": {"type": "string", "enum": ["ldraw", "studio", "glb", "gltf", "obj",
-					"stl", "picture", "bricklink", "rebrickable", "instructions", "all_models",
+					"stl", "3mf", "picture", "bricklink", "rebrickable", "instructions", "all_models",
 					"pickabrick"]},
 				"condition": {"type": "string", "enum": ["new", "used", "any"],
 					"description": "bricklink: the condition wanted (CONDITION N or U; any leaves it out)"},
@@ -3305,6 +3322,8 @@ func _parts_list(input: Dictionary) -> String:
 	var library: PartLibrary = app.get("_library")
 	var store: ModelStore = app.get("_store")
 	var which: String = str(input.get("which", "model"))
+	if which == "compare":
+		return await _parts_compare(input)
 	var limit: int = clampi(int(input.get("limit", 60)), 1, 500)
 	var stock: Inventory = Inventory.of(world, library, store.scenery)
 	if which == "model":
@@ -3320,7 +3339,7 @@ func _parts_list(input: Dictionary) -> String:
 			said.append("  and %d more lots: limit= for more." % (stock.lots.size() - limit))
 		return "\n".join(said)
 	if not which in ["need", "buildable"]:
-		return "which is model, need or buildable."
+		return "which is model, need, buildable or compare."
 	var shell: Shell = app.get("_shell")
 	var mine: CollectionStore = shell.collection_store
 	if mine == null:
@@ -3389,6 +3408,44 @@ func _parts_list(input: Dictionary) -> String:
 	said.append("open_model name= opens a saved model or an example; an official model opens from My "
 		+ "collection, What can I build? in the window. limit= lists more.")
 	return "\n".join(said)
+
+
+# -- comparesets: two sets' or models' parts (APP_UX6 #7) ---------------------------
+
+
+## parts_list which="compare": a= against b=, as File, Compare two sets or
+## models… shows them (PartsCompare), and with shop= the list to buy to build
+## b from a written for that shop by the parts list's own writers.
+func _parts_compare(input: Dictionary) -> String:
+	var world: BrickWorld = app.get("_world")
+	var library: PartLibrary = app.get("_library")
+	var store: ModelStore = app.get("_store")
+	var shell: Shell = app.get("_shell")
+	if not input.has("a") or not input.has("b"):
+		return ("compare takes a= and b=: each a set number (\"7140\"), a saved model's or "
+			+ "an example's name, or \"open\" for the model open now.")
+	var shop: String = str(input.get("shop", ""))
+	if not shop in ["", "bricklink", "rebrickable", "pickabrick"]:
+		return "shop is bricklink, rebrickable or pickabrick."
+	var inventories: SetInventories = shell.collection_store.inventories \
+		if shell != null and shell.collection_store != null else null
+	var sides: Array = []
+	for name: String in ["a", "b"]:
+		var side: PartsCompare.Pile = await PartsCompare.side_for(str(input[name]), store, world,
+			library, inventories)
+		if not side.ok():
+			return "%s: %s." % [name, side.trouble]
+		sides.append(side)
+	var compared: PartsCompare = PartsCompare.between(sides[0], sides[1])
+	var said: String = compared.said(library, clampi(int(input.get("limit", 30)), 1, 2000))
+	if shop.is_empty() or compared.only_b.is_empty():
+		return said
+	var exports: Exports = app.get("_exports")
+	# BrickLink's condition, wanted list and email as the person chose them
+	# last (ShopLists.Wants.kept), as the parts list's button writes them.
+	var wrote: String = await exports.stock_list(shop, compared.to_buy(library),
+		compared.file_name())
+	return said + "\n" + wrote.left(1).to_upper() + wrote.substr(1) + "."
 
 
 # -- mybricks: the person's own loose bricks (APP_UX5 #2) ---------------------------
@@ -3936,7 +3993,7 @@ func _export(input: Dictionary, work: Working.Job = null) -> String:
 			said = await bar.export_now(exports.folder)
 		"studio":
 			said = await exports.studio_io()
-		"glb", "gltf", "obj", "stl":
+		"glb", "gltf", "obj", "stl", "3mf":
 			said = await exports.model_3d(str(input["format"]))
 		"picture":
 			if DisplayServer.get_name() == "headless":
@@ -3961,7 +4018,7 @@ func _export(input: Dictionary, work: Working.Job = null) -> String:
 			said = await app.call("_export_booklet", "" if OS.has_feature("web") else
 				to.path_join(bar.model_name().to_snake_case() + "_instructions.html"), work)
 		_:
-			return ("format is ldraw, studio, glb, gltf, obj, stl, picture, bricklink, rebrickable, "
+			return ("format is ldraw, studio, glb, gltf, obj, stl, 3mf, picture, bricklink, rebrickable, "
 				+ "pickabrick, instructions or all_models.")
 	return said.left(1).to_upper() + said.substr(1) + "." if not said.is_empty() else "Nothing written."
 

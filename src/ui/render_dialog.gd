@@ -896,7 +896,7 @@ func _describe() -> void:
 					+ "Light bouncing between the parts needs the full graphics mode.")
 			else:
 				_quality_note.text = ("Soft shadows and smooth edges, from 8 frames averaged. "
-					+ "Light bouncing between the parts needs the desktop app.")
+					+ "Light bouncing between the parts needs the desktop app, coming soon.")
 		_:
 			_quality_note.text = settings.best_words()
 	_look_note.text = ("Glossy plastic with rounded edges, clear parts that bend the light, "
