@@ -1679,7 +1679,7 @@ func _world_parts() -> Dictionary:
 			continue
 		out[brick.id] = [brick.part_id, brick.color_code,
 			Transform3D(brick.transform.basis, brick.transform.origin - lift),
-			_library.has_part(brick.part_id), Assemblies.path_of(brick)]
+			_library.parts.has(brick.part_id), Assemblies.path_of(brick)]
 	return out
 
 
