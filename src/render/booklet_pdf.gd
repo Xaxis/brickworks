@@ -45,6 +45,13 @@ var _parts: Dictionary = {}
 var _behind: Array = []
 var _read: BookletRead
 var _ok: bool = true
+## The letters its type cannot print (win_ansi's "?"), each once, in the
+## order met: said by the export ([method missed_said]), not left as "?" in
+## silence (blreview, 2026-11-07). Embedding a type that has them is its
+## own piece of work.
+var missed: PackedStringArray = []
+## The most of them [method missed_said] names.
+const MISSED_NAMED := 16
 
 const _CATALOG := 1
 const _PAGES := 2
@@ -433,6 +440,13 @@ func _rect(content: PackedStringArray, op: Dictionary) -> void:
 func _text(content: PackedStringArray, op: Dictionary) -> void:
 	var at: Vector2 = op["at"]
 	var spacing: float = op["spacing"]
+	var text: String = str(op["text"])
+	for index: int in text.length():
+		var code: int = text.unicode_at(index)
+		if code >= 0x80 and code < 0xA0 or code > 0xFF and not MORE.has(code):
+			var letter: String = text[index]
+			if not letter.strip_edges().is_empty() and not missed.has(letter):
+				missed.append(letter)
 	content.append("BT /%s %s Tf %s Tc 1 0 0 -1 %s %s Tm %s rg <%s> Tj ET" % [
 		"F2" if op["bold"] else "F1", _n(op["size"]), _n(spacing), _n(at.x), _n(at.y),
 		_rgb(op["colour"]), win_ansi(str(op["text"])).hex_encode()])
@@ -482,8 +496,21 @@ static func _rounded(at: Rect2, radius: float) -> String:
 		"%s %s %s %s %s %s c h" % [_n(x0), _n(y0 + c), _n(x0 + c), _n(y0), _n(x0 + r), _n(y0)]])
 
 
+## What the export says of the letters its type could not print, "" when
+## there were none: "; its type cannot print 城, 堡, … (31 letters), so they
+## are ? in the PDF: the booklet's page shows them".
+func missed_said() -> String:
+	if missed.is_empty():
+		return ""
+	var named: Array = Array(missed.slice(0, MISSED_NAMED))
+	return "; its type cannot print %s%s, so %s ? in the PDF: the booklet's page shows %s" % [
+		", ".join(named), (", … (%d letters)" % missed.size()) if missed.size() > MISSED_NAMED else "",
+		"it is" if missed.size() == 1 else "they are", "it" if missed.size() == 1 else "them"]
+
+
 ## Words in the font's encoding (WinAnsi): Latin-1, and the dashes,
-## quotes, ellipsis and trademark sign; "?" for anything else.
+## quotes, ellipsis and trademark sign; "?" for anything else (said:
+## [member missed]).
 static func win_ansi(text: String) -> PackedByteArray:
 	var out := PackedByteArray()
 	out.resize(text.length())

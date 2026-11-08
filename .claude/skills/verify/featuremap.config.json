@@ -4945,6 +4945,20 @@
       "entry": "tools/print3mf/check_3mf.py",
       "reach": "uvx --with lib3mf==2.5.0 --with xmlschema==4.3.2 --with numpy==2.5.4 python3 -I tools/print3mf/check_3mf.py FILE.3mf [--json=OUT]   (the package, the core XSD tools/print3mf/3mf_core.xsd, the core's rules, lib3mf in strict mode; each object's name, colour, triangles and winding, and the build's box; exit 1 on any error)",
       "area": "model-io"
+    },
+    {
+      "kind": "ui",
+      "label": "the booklet's own cover and colours",
+      "entry": "src/assembly/booklet_sheet.gd",
+      "reach": "godot --path .  (B opens the timeline; Build, Booklet page, Page setup…: Page tab Header, Footer; Cover tab Title, Under the title, Picture Choose… or The model, Line; Steps tab Step numbers, Number colour, Parts box frame, fill and corners, New parts outline, Usual colours; then Instructions, Save as PDF; page_setup title=, subtitle=, cover_line=, cover_picture_data=, header=, footer=, box_frame=, box_fill=, box_corners=, number_colour=, outline_colour= over MCP)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "booklook probe",
+      "entry": "src/dev/booklook_probe.gd",
+      "reach": "tools/probe.sh booklook -- --into=DIR [--against=DIR]   (windowed, on the GPU: the gatehouse's booklet with the designer's own cover (title, subtitle, picture, line) read back off the PNG and PDF pages, a header and footer on every page, the parts box in its frame colour with 0 px of the old frame or fill, the step numbers' and new parts' colours; kept over a save and an open, one undo; a style of the look given to booklet3's model in 2 actions, its own title and subtitle unchanged; blreview's save-path findings on tests/fixtures/booklook: Page setup… left open under MCP, an undo, another model and Clear; a sub-model's own PAGE_ lines; CRLF files with no end break; a later build's words; words cut and said; usual=true keeping the title; a CJK title on its page; the PDF naming letters it cannot print; a web title with <section; --against=DIR the booklet's own the same to the pixel as a run on the commit before; PROBE_SIZE=1400x900 with --dialog-only)",
+      "area": "view"
     }
   ]
 }

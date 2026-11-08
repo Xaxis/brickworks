@@ -257,10 +257,17 @@ func _text(op: Dictionary) -> void:
 	if absf(spacing) < 0.3:
 		font.draw_string(_canvas, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, colour)
 		return
-	# Letter by letter where the letters are set closer (a step number).
+	# Letter by letter where the letters are set closer (a step number, a
+	# title). A letter the type has none of (CJK, an emoji) is drawn as the
+	# rest of the page's words are, in the type the system has for it:
+	# draw_char draws nothing for it, and up to 2026-11-07 a CJK title left
+	# the cover's band empty.
 	for index: int in text.length():
 		var letter: String = text[index]
-		font.draw_char(_canvas, at, letter.unicode_at(0), size, colour)
+		if font.has_char(letter.unicode_at(0)):
+			font.draw_char(_canvas, at, letter.unicode_at(0), size, colour)
+		else:
+			font.draw_string(_canvas, at, letter, HORIZONTAL_ALIGNMENT_LEFT, -1, size, colour)
 		at.x += font.get_string_size(letter, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x + spacing
 
 
