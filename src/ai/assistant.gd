@@ -14578,10 +14578,17 @@ func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 	# The lattice's joins stand where the exact shapes cannot say: a part with
 	# none, and the prism pattern's turned walls, whose studs the lattice
 	# judges (_note_turned_studs) as it judges their meeting (_exact_collisions).
+	# And a stud in a part the LEGO Group's own sets put it in, the two meeting
+	# no deeper than the sets meet them (ExactCheck.known_fit): those two meet
+	# past where BrickNet frames them, so its labels join nothing there. A 3960
+	# dish takes a 3941 round brick's studs 3.65 LDU deeper (2150-1, 4554-1), a
+	# 4740 dish a 6141's stud 4 LDU past its tube's frame (31038-1), and each
+	# was refused as not held, once the covers let them meet (realjoints3).
 	var extra: Array = []
 	for pair: Array in clutched_pairs:
 		if exact.items[int(pair[0])] == null or exact.items[int(pair[1])] == null \
-				or _in_a_prism(model, int(pair[0])) or _in_a_prism(model, int(pair[1])):
+				or _in_a_prism(model, int(pair[0])) or _in_a_prism(model, int(pair[1])) \
+				or exact.known_fit(int(pair[0]), int(pair[1])):
 			extra.append([int(pair[0]), int(pair[1])])
 	for index: Variant in holds:
 		for other: Variant in holds[index]:
@@ -14604,6 +14611,13 @@ func _exact_unheld(model: Model, exact: ExactCheck, issues: Dictionary,
 			for other: Variant in jointed[index]:
 				if int(index) < count and int(other) < count:
 					extra.append([int(index), int(other)])
+		# And a stud taken whole by a tube or a socket, down it past where
+		# BrickNet joins the two as far as the sets build them so
+		# (ExactCheck.taken_whole): the stud is in it.
+		var mine: Dictionary = {}
+		for index: int in subjects:
+			mine[index] = true
+		extra.append_array(exact.taken_whole(mine))
 	# Only what is near this design's parts: anything else that stands is held
 	# already, so a piece of them is held exactly when it reaches the ground or
 	# something beside them that stands. An edit to a 9,000 part model asks
