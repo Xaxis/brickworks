@@ -2079,15 +2079,35 @@ picture the assistant is shown.
   checks the dialog alone at that size.
 - `mosaic` (Mosaic in the toolbar, then a picture; `src/ui/mosaic_dialog.gd`):
   a picture built two ways. **Brick Art**, the default, as a modern LEGO Art set
-  builds one (`MosaicArt`, below); **Classic**, one 1 × 1 plate a pixel, flat,
-  matched in Oklab with damped Floyd–Steinberg (`Mosaic`, unchanged). The
-  dialog has the mode, panels across and down (down follows the picture's
-  proportions until moved), Depth 0–6 plates (0 is flat), the element styles
-  (Round texture, Contour quarters, Smooth tiles, Accent stars, Blend colours)
-  and, live, the result drawn element by element (`MosaicArt.picture_of`) and
+  builds one (`MosaicArt`, below); **Classic**, plates, flat, matched in Oklab
+  with damped Floyd–Steinberg (`Mosaic`; `lay_out` with `PALETTE` lays the
+  probe's gradient exactly as it always has). The dialog has the mode, panels
+  across and down (down follows the crop's proportions until moved), Depth
+  0–6 plates (0 is flat), the element styles (Round texture, Contour
+  quarters, Smooth tiles, Accent stars, Blend colours) and, live, the result
+  drawn element by element (`MosaicArt.picture_of`, `Mosaic.picture_of`) and
   what it comes to by element. Build it replaces the model, each panel its own
   sub-assembly ("Panel 1"…, the plates under them "Frame"), so the booklet
-  builds a panel at a time and P lists the parts.
+  builds a panel at a time and P lists the parts (a classic one: its plates,
+  with a Pick a Brick file of them). Over the picture (APP_UX6 #10, mosaic2):
+  **Crop** shows the whole picture to drag a rectangle on (a drag inside it
+  moves it; Done shows the result again; Whole picture undoes it), and only
+  what is inside is built, in either mode; **Colours**: All colours (Classic:
+  every solid, pearl or metallic colour a 1 × 1 plate is sold in; Art: its
+  own), A set's colours (type a number: its Rebrickable inventory's colours,
+  through `SetInventories`), What I own (the colours the person owns this
+  mode's own parts in, from My collection, with "you have N of the M" under
+  it; not offered with nothing owned), every stud of the result one of them
+  (Art: base and risers may fall back where no plate is made in one; with no
+  round or square tile made in any it says so and keeps its own); Classic's
+  **Mixed plate sizes** (on) lays each run of one colour in the largest plate
+  it fills, up to 8 × 8, only plates LEGO sells in that colour
+  (`Mosaic.merge`), the same picture stud for stud. Design with Claude's
+  brief carries the crop and the colours. `mosaic_probe`'s mosaic2 part proves
+  each: a red-framed picture cropped by a drag on the dialog (every stud from
+  inside, 0 red), each choice of colours in each mode on the car photo (set
+  31197, a made-up collection), the car's plate count cut by 30% or more with
+  the same stud for stud, and Build it's plates against the Pick a Brick file.
 - `LEGO Art layout` (`src/assembly/mosaic_art.gd`): `analyse` reads a picture
   into a `Plan` — per stud a style, a relief and an accent flag — and `lay`
   turns any plan into parts, which is the entry point for the assistant

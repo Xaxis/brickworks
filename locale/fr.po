@@ -11881,3 +11881,84 @@ msgstr "Ce modèle n’a aucun mouvement nommé « %s », il s’est donc ouvert
 
 msgid "No such motion"
 msgstr "Mouvement introuvable"
+
+# A mosaic cropped and coloured the person's way (APP_UX6 #10, mosaic2): Crop and Whole
+# picture over the picture, Colours (all, a set's, what I own), Mixed plate sizes, and the line under it.
+
+msgid "Colours"
+msgstr "Couleurs"
+
+msgid "All colours"
+msgstr "Toutes les couleurs"
+
+msgid "A set's colours"
+msgstr "Les couleurs d'un set"
+
+msgid "Set number"
+msgstr "Numéro de set"
+
+msgid "Crop"
+msgstr "Recadrer"
+
+msgid "Whole picture"
+msgstr "Image entière"
+
+msgid "Mixed plate sizes"
+msgstr "Plaques de tailles mélangées"
+
+msgid "Drag on the picture to choose the part of it to build"
+msgstr "Faites glisser sur l'image pour choisir la partie à construire"
+
+msgid "Build all of the picture again"
+msgstr "Construire de nouveau toute l'image"
+
+msgid "The colours it is laid in: every stud is one of them"
+msgstr "Les couleurs dans lesquelles il est posé : chaque tenon est de l'une d'elles"
+
+msgid "Every colour the parts are made in"
+msgstr "Toutes les couleurs dans lesquelles les pièces sont fabriquées"
+
+msgid "The colours of a set's parts: type its number"
+msgstr "Les couleurs des pièces d'un set : tapez son numéro"
+
+msgid "The colours you own its parts in, from My collection"
+msgstr "Les couleurs dans lesquelles vous possédez ses pièces, d'après Ma collection"
+
+msgid "Add your parts or sets in My collection to build from what you own"
+msgstr "Ajoutez vos pièces ou vos sets dans Ma collection pour construire avec ce que vous possédez"
+
+msgid "Plates, flat: a 1 × 1 a stud, or each run of one colour in larger plates"
+msgstr "Des plaques, à plat : une 1 × 1 par tenon, ou chaque suite d'une même couleur en plaques plus grandes"
+
+msgid "Each run of one colour in the largest plate it fills, up to 8 × 8: the same picture stud for stud, in far fewer parts to buy and lay. Off is a 1 × 1 a stud."
+msgstr "Chaque suite d'une même couleur dans la plus grande plaque qu'elle remplit, jusqu'à 8 × 8 : la même image tenon pour tenon, avec bien moins de pièces à acheter et à poser. Désactivé, c'est une 1 × 1 par tenon."
+
+msgid "Type a set's number"
+msgstr "Tapez le numéro d'un set"
+
+msgid "looking up %s…"
+msgstr "recherche de %s…"
+
+msgid "no set %s is known"
+msgstr "aucun set %s n'est connu"
+
+msgid "%s “%s”: %d colours"
+msgstr "%s « %s » : %d couleurs"
+
+msgid "%d colours you own its parts in"
+msgstr "%d couleurs dans lesquelles vous possédez ses pièces"
+
+msgid "%d × %d studs, %d × %d cm"
+msgstr "%d × %d tenons, %d × %d cm"
+
+msgid "working it out…"
+msgstr "calcul en cours…"
+
+msgid "%s plates for its %s studs, in %d colours: %s"
+msgstr "%s plaques pour ses %s tenons, en %d couleurs : %s"
+
+msgid "you have %s of the %s"
+msgstr "vous en avez %s sur %s"
+
+msgid "no round or square tile is made in the colours chosen, so it is laid in the Art's own"
+msgstr "aucune plaque lisse ronde ou carrée n'est fabriquée dans les couleurs choisies, il est donc posé dans celles de l'Art"

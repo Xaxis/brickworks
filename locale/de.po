@@ -11881,3 +11881,84 @@ msgstr "Dieses Modell hat keine Bewegung namens „%s“, darum wurde es stillst
 
 msgid "No such motion"
 msgstr "Keine solche Bewegung"
+
+# A mosaic cropped and coloured the person's way (APP_UX6 #10, mosaic2): Crop and Whole
+# picture over the picture, Colours (all, a set's, what I own), Mixed plate sizes, and the line under it.
+
+msgid "Colours"
+msgstr "Farben"
+
+msgid "All colours"
+msgstr "Alle Farben"
+
+msgid "A set's colours"
+msgstr "Die Farben eines Sets"
+
+msgid "Set number"
+msgstr "Set-Nummer"
+
+msgid "Crop"
+msgstr "Zuschneiden"
+
+msgid "Whole picture"
+msgstr "Ganzes Bild"
+
+msgid "Mixed plate sizes"
+msgstr "Gemischte Plattengrößen"
+
+msgid "Drag on the picture to choose the part of it to build"
+msgstr "Ziehe auf dem Bild, um den Teil davon zu wählen, der gebaut wird"
+
+msgid "Build all of the picture again"
+msgstr "Wieder das ganze Bild bauen"
+
+msgid "The colours it is laid in: every stud is one of them"
+msgstr "Die Farben, in denen es gelegt wird: jede Noppe hat eine davon"
+
+msgid "Every colour the parts are made in"
+msgstr "Jede Farbe, in der die Teile hergestellt werden"
+
+msgid "The colours of a set's parts: type its number"
+msgstr "Die Farben der Teile eines Sets: gib seine Nummer ein"
+
+msgid "The colours you own its parts in, from My collection"
+msgstr "Die Farben, in denen du seine Teile hast, laut Meine Sammlung"
+
+msgid "Add your parts or sets in My collection to build from what you own"
+msgstr "Füge deine Teile oder Sets in Meine Sammlung hinzu, um aus dem zu bauen, was du hast"
+
+msgid "Plates, flat: a 1 × 1 a stud, or each run of one colour in larger plates"
+msgstr "Platten, flach: eine 1 × 1 je Noppe oder jede Strecke einer Farbe in größeren Platten"
+
+msgid "Each run of one colour in the largest plate it fills, up to 8 × 8: the same picture stud for stud, in far fewer parts to buy and lay. Off is a 1 × 1 a stud."
+msgstr "Jede Strecke einer Farbe in der größten Platte, die sie füllt, bis 8 × 8: dasselbe Bild Noppe für Noppe, mit weit weniger Teilen zum Kaufen und Legen. Aus ist es eine 1 × 1 je Noppe."
+
+msgid "Type a set's number"
+msgstr "Gib die Nummer eines Sets ein"
+
+msgid "looking up %s…"
+msgstr "suche %s…"
+
+msgid "no set %s is known"
+msgstr "kein Set %s ist bekannt"
+
+msgid "%s “%s”: %d colours"
+msgstr "%s „%s“: %d Farben"
+
+msgid "%d colours you own its parts in"
+msgstr "%d Farben, in denen du seine Teile hast"
+
+msgid "%d × %d studs, %d × %d cm"
+msgstr "%d × %d Noppen, %d × %d cm"
+
+msgid "working it out…"
+msgstr "wird ausgerechnet…"
+
+msgid "%s plates for its %s studs, in %d colours: %s"
+msgstr "%s Platten für seine %s Noppen, in %d Farben: %s"
+
+msgid "you have %s of the %s"
+msgstr "du hast %s der %s"
+
+msgid "no round or square tile is made in the colours chosen, so it is laid in the Art's own"
+msgstr "in den gewählten Farben wird keine runde oder eckige Fliese hergestellt, darum ist es in den eigenen Farben der Art gelegt"

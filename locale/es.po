@@ -11881,3 +11881,84 @@ msgstr "Este modelo no tiene ningún movimiento llamado «%s», así que se abri
 
 msgid "No such motion"
 msgstr "No existe ese movimiento"
+
+# A mosaic cropped and coloured the person's way (APP_UX6 #10, mosaic2): Crop and Whole
+# picture over the picture, Colours (all, a set's, what I own), Mixed plate sizes, and the line under it.
+
+msgid "Colours"
+msgstr "Colores"
+
+msgid "All colours"
+msgstr "Todos los colores"
+
+msgid "A set's colours"
+msgstr "Los colores de un set"
+
+msgid "Set number"
+msgstr "Número de set"
+
+msgid "Crop"
+msgstr "Recortar"
+
+msgid "Whole picture"
+msgstr "Imagen completa"
+
+msgid "Mixed plate sizes"
+msgstr "Placas de varios tamaños"
+
+msgid "Drag on the picture to choose the part of it to build"
+msgstr "Arrastra sobre la imagen para elegir la parte que se construye"
+
+msgid "Build all of the picture again"
+msgstr "Volver a construir toda la imagen"
+
+msgid "The colours it is laid in: every stud is one of them"
+msgstr "Los colores en que se coloca: cada espiga es de uno de ellos"
+
+msgid "Every colour the parts are made in"
+msgstr "Todos los colores en que se fabrican las piezas"
+
+msgid "The colours of a set's parts: type its number"
+msgstr "Los colores de las piezas de un set: escribe su número"
+
+msgid "The colours you own its parts in, from My collection"
+msgstr "Los colores en que tienes sus piezas, según Mi colección"
+
+msgid "Add your parts or sets in My collection to build from what you own"
+msgstr "Añade tus piezas o sets en Mi colección para construir con lo que tienes"
+
+msgid "Plates, flat: a 1 × 1 a stud, or each run of one colour in larger plates"
+msgstr "Placas, planas: una 1 × 1 por espiga, o cada tramo de un color en placas más grandes"
+
+msgid "Each run of one colour in the largest plate it fills, up to 8 × 8: the same picture stud for stud, in far fewer parts to buy and lay. Off is a 1 × 1 a stud."
+msgstr "Cada tramo de un color en la placa más grande que llena, hasta 8 × 8: la misma imagen espiga a espiga, con muchas menos piezas que comprar y colocar. Desactivado, es una 1 × 1 por espiga."
+
+msgid "Type a set's number"
+msgstr "Escribe el número de un set"
+
+msgid "looking up %s…"
+msgstr "buscando %s…"
+
+msgid "no set %s is known"
+msgstr "no se conoce ningún set %s"
+
+msgid "%s “%s”: %d colours"
+msgstr "%s «%s»: %d colores"
+
+msgid "%d colours you own its parts in"
+msgstr "%d colores en que tienes sus piezas"
+
+msgid "%d × %d studs, %d × %d cm"
+msgstr "%d × %d espigas, %d × %d cm"
+
+msgid "working it out…"
+msgstr "calculando…"
+
+msgid "%s plates for its %s studs, in %d colours: %s"
+msgstr "%s placas para sus %s espigas, en %d colores: %s"
+
+msgid "you have %s of the %s"
+msgstr "tienes %s de las %s"
+
+msgid "no round or square tile is made in the colours chosen, so it is laid in the Art's own"
+msgstr "no se fabrica ninguna baldosa redonda ni cuadrada en los colores elegidos, así que se coloca en los propios del Art"
