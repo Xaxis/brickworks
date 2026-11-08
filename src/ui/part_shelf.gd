@@ -363,12 +363,15 @@ static func _load_palettes(force: bool = false) -> void:
 		return
 	var read: Variant = _read_palettes(palettes_file)
 	# There, but not readable: another window halfway through writing it, or
-	# damaged. What is held stays and the file is read again next time; a
+	# damaged. What is held stays and the file is read again once it changes; a
 	# change about to write over it keeps a copy of it beside it first.
 	if read == null:
 		if force:
 			DirAccess.copy_absolute(ProjectSettings.globalize_path(palettes_file),
 				ProjectSettings.globalize_path(palettes_file + ".unreadable"))
+		else:
+			# Read again when it changes, not each second the bin asks.
+			_palettes_stamp = stamp
 		return
 	var theirs: Dictionary = read
 	var merged: Array = _merged(_palettes, _gone, theirs["palettes"], theirs["gone"])
