@@ -12539,3 +12539,198 @@ msgstr "%s : une pièce se prend en main dans sa couleur, un sous-ensemble se ti
 
 msgid "Right-click a part to keep it in Favourites too"
 msgstr "Un clic droit sur une pièce la garde aussi dans les Favorites"
+
+# A mosaic cropped and coloured the person's way (APP_UX6 #10, mosaic2): Crop and Whole
+# picture over the picture, Colours (all, a set's, what I own), Mixed plate sizes, and the line under it.
+
+msgid "Colours"
+msgstr "Couleurs"
+
+msgid "All colours"
+msgstr "Toutes les couleurs"
+
+msgid "A set's colours"
+msgstr "Les couleurs d'un set"
+
+msgid "Set number"
+msgstr "Numéro de set"
+
+msgid "Crop"
+msgstr "Recadrer"
+
+msgid "Whole picture"
+msgstr "Image entière"
+
+msgid "Mixed plate sizes"
+msgstr "Plaques de tailles mélangées"
+
+msgid "Drag on the picture to choose the part of it to build"
+msgstr "Faites glisser sur l'image pour choisir la partie à construire"
+
+msgid "Build all of the picture again"
+msgstr "Construire de nouveau toute l'image"
+
+msgid "The colours it is laid in: every stud is one of them"
+msgstr "Les couleurs dans lesquelles il est posé : chaque tenon est de l'une d'elles"
+
+msgid "Every colour the parts are made in"
+msgstr "Toutes les couleurs dans lesquelles les pièces sont fabriquées"
+
+msgid "The colours of a set's parts: type its number"
+msgstr "Les couleurs des pièces d'un set : tapez son numéro"
+
+msgid "The colours you own its parts in, from My collection"
+msgstr "Les couleurs dans lesquelles vous possédez ses pièces, d'après Ma collection"
+
+msgid "Add your parts or sets in My collection to build from what you own"
+msgstr "Ajoutez vos pièces ou vos sets dans Ma collection pour construire avec ce que vous possédez"
+
+msgid "Plates, flat: a 1 × 1 a stud, or each run of one colour in larger plates"
+msgstr "Des plaques, à plat : une 1 × 1 par tenon, ou chaque suite d'une même couleur en plaques plus grandes"
+
+msgid "Each run of one colour in the largest plate it fills, up to 8 × 8: the same picture stud for stud, in far fewer parts to buy and lay. Off is a 1 × 1 a stud."
+msgstr "Chaque suite d'une même couleur dans la plus grande plaque qu'elle remplit, jusqu'à 8 × 8 : la même image tenon pour tenon, avec bien moins de pièces à acheter et à poser. Désactivé, c'est une 1 × 1 par tenon."
+
+msgid "Type a set's number"
+msgstr "Tapez le numéro d'un set"
+
+msgid "looking up %s…"
+msgstr "recherche de %s…"
+
+msgid "no set %s is known"
+msgstr "aucun set %s n'est connu"
+
+msgid "%s “%s”: %d colours"
+msgstr "%s « %s » : %d couleurs"
+
+msgid "%d colours you own its parts in"
+msgstr "%d couleurs dans lesquelles vous possédez ses pièces"
+
+msgid "%d × %d studs, %d × %d cm"
+msgstr "%d × %d tenons, %d × %d cm"
+
+msgid "working it out…"
+msgstr "calcul en cours…"
+
+msgid "%s plates for its %s studs, in %d colours: %s"
+msgstr "%s plaques pour ses %s tenons, en %d couleurs : %s"
+
+msgid "you have %s of the %s"
+msgstr "vous en avez %s sur %s"
+
+msgid "no round or square tile is made in the colours chosen, so it is laid in the Art's own"
+msgstr "aucune plaque lisse ronde ou carrée n'est fabriquée dans les couleurs choisies, il est donc posé dans celles de l'Art"
+
+msgid "no 1 × 1 plate is made in the colours chosen, so it is laid in all of them"
+msgstr "aucune plaque 1 × 1 n'est fabriquée dans les couleurs choisies, elle est donc posée dans toutes"
+
+# The picture dialog's own words, none of them translated until mosaic2's
+# check of the words it shows read them (APP_UX6 #10, mosaic3).
+
+msgid "Build this picture"
+msgstr "Construire cette image"
+
+msgid "Brick Art"
+msgstr "Brick Art"
+
+msgid "Panels of round tiles, quarter circles, smooth tiles and raised relief, in the style of LEGO® Art sets"
+msgstr "Des panneaux de plaques lisses rondes, de quarts de cercle, de plaques lisses et de relief, dans le style des sets LEGO® Art"
+
+msgid "Classic"
+msgstr "Classique"
+
+msgid "Blend colours"
+msgstr "Mélanger les couleurs"
+
+msgid "Mix nearby plates to suggest a colour the palette does not have. Off gives flat bands."
+msgstr "Mélanger les plaques voisines pour suggérer une couleur que la palette n'a pas. Désactivé, on obtient des bandes unies."
+
+msgid "Panels across"
+msgstr "Panneaux en largeur"
+
+msgid "Panels down"
+msgstr "Panneaux en hauteur"
+
+msgid "Depth"
+msgstr "Profondeur"
+
+msgid "How many plates what stands out from the background is raised. 0 is flat."
+msgstr "De combien de plaques ce qui se détache du fond est surélevé. 0, c'est à plat."
+
+msgid "flat"
+msgstr "à plat"
+
+msgid "%d plate"
+msgstr "%d plaque"
+
+msgid "Round texture"
+msgstr "Texture ronde"
+
+msgid "1 × 1 round tiles, and round plates for points of light"
+msgstr "Des plaques lisses rondes 1 × 1, et des plaques rondes pour les points de lumière"
+
+msgid "Contour quarters"
+msgstr "Quarts de cercle aux contours"
+
+msgid "Quarter-circle tiles turned along a curved edge"
+msgstr "Des plaques lisses quart de cercle tournées le long d'un bord courbe"
+
+msgid "Smooth tiles"
+msgstr "Plaques lisses unies"
+
+msgid "Square tiles where it is flat, merged up to 2 × 4"
+msgstr "Des plaques lisses carrées là où c'est uni, regroupées jusqu'à 2 × 4"
+
+msgid "Accent stars"
+msgstr "Étoiles d'accent"
+
+msgid "Stars in trans-clear, glow-in-the-dark and metallic where the part is made so"
+msgstr "Des étoiles en transparent, phosphorescent et métallisé là où la pièce est fabriquée ainsi"
+
+msgid "Mix nearby elements to suggest a colour the palette does not have"
+msgstr "Mélanger les éléments voisins pour suggérer une couleur que la palette n'a pas"
+
+msgid "Tell %s: raise the core, make the stars glow…"
+msgstr "Dites à %s : surélevez le cœur, faites briller les étoiles…"
+
+msgid "Design with %s"
+msgstr "Concevoir avec %s"
+
+msgid "%s looks at the picture and plans it as a designer of LEGO® Art sets would — what stands out, the textures, the stars — with your key or your own Claude, as the assistant designs"
+msgstr "%s regarde l'image et la planifie comme le ferait un designer de sets LEGO® Art — ce qui ressort, les textures, les étoiles — avec votre clé ou votre propre Claude, comme l'assistant conçoit"
+
+msgid "%s looks at the picture and plans it as a designer of LEGO® Art sets would — what stands out, the textures, the stars — on your own key, as the assistant designs"
+msgstr "%s regarde l'image et la planifie comme le ferait un designer de sets LEGO® Art — ce qui ressort, les textures, les étoiles — avec votre propre clé, comme l'assistant conçoit"
+
+msgid "%s round tiles"
+msgstr "%s plaques lisses rondes"
+
+msgid "%s square tiles"
+msgstr "%s plaques lisses carrées"
+
+msgid "%s larger tiles"
+msgstr "%s plaques lisses plus grandes"
+
+msgid "%s relief plates"
+msgstr "%s plaques de relief"
+
+msgid "%s cheese slopes"
+msgstr "%s tuiles fromage"
+
+msgid "%s joining plates"
+msgstr "%s plaques de jonction"
+
+msgid "%s quarter circles"
+msgstr "%s quarts de cercle"
+
+msgid "%s round plates"
+msgstr "%s plaques rondes"
+
+msgid "%s 16 × 16 panels"
+msgstr "%s panneaux 16 × 16"
+
+msgid "%s stars"
+msgstr "%s étoiles"
+
+msgid "%s large stars"
+msgstr "%s grandes étoiles"

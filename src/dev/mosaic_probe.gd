@@ -15,6 +15,16 @@
 ## and the whole of it one piece; a flat picture in merged tiles, fewer
 ## parts than plates; every element in a colour it is made in; and the
 ## parts list and the booklet right. --ldr writes the galaxy for a render.
+##
+## Then the person's own choices (APP_UX6 #10, mosaic2), each through the
+## dialog as a person makes it: a crop dragged on the picture, every stud
+## from inside it and none from outside, in both modes; the colours chosen —
+## all, a set's (31197 typed), what is owned — kept to stud for stud, in both
+## modes; mixed plate sizes cutting the car photo's part count by 30% or more
+## with the picture the same stud for stud; and that mosaic put down, its
+## parts list part for part and colour for colour, and its LEGO® Pick a Brick
+## file adding up to it. --out=DIR keeps the pictures and the Pick a Brick
+## file there.
 extends SceneTree
 
 var _failures: int = 0
@@ -42,6 +52,7 @@ func _run() -> void:
 		return
 	_classic()
 	await _art()
+	await _mosaic2()
 	print("")
 	print("%d failed" % _failures if _failures else "the mosaic reads true")
 	quit(1 if _failures else 0)
@@ -471,12 +482,508 @@ func _dialog_case() -> void:
 		chosen != null and chosen.depth == 0 and not chosen.round_texture
 		and chosen.panels_across == 2 and chosen.panels_down == 2)
 	var classic: Array = []
-	dialog.build_wanted.connect(func(across: int, _dither: bool) -> void: classic.append(across))
+	dialog.build_wanted.connect(func(options: Mosaic.Options) -> void: classic.append(options.across))
 	dialog.set_mode("classic")
 	dialog.build()
 	_check("and Classic still asks for plates %d wide" % (classic[0] if classic else 0),
 		classic.size() == 1 and asked.size() == 1)
 	dialog.queue_free()
+
+
+## The person's own choices, through the dialog as they make them.
+func _mosaic2() -> void:
+	var dialog := MosaicDialog.new()
+	dialog.library = _library
+	root.add_child(dialog)
+	dialog.position = Vector2(20, 20)
+	dialog.size = Vector2(440, 760)
+	await process_frame
+	await _crop_case(dialog)
+	await _colours_case(dialog)
+	var mixed: Mosaic.Laid = await _mixed_case(dialog)
+	if mixed != null:
+		_bought_case(mixed)
+	await _none_paintable_case(dialog)
+	await _words_case()
+	dialog.queue_free()
+	await process_frame
+
+
+## The crop drawn on a picture whose every pixel outside it is pure red and
+## every pixel inside it has no red at all: one stud with any red in it came
+## from outside.
+func _crop_case(dialog: MosaicDialog) -> void:
+	print("\na crop drawn on the picture (APP_UX6 #10)")
+	var picture := Image.create_empty(400, 300, false, Image.FORMAT_RGBA8)
+	picture.fill(Color(1, 0, 0))
+	var inside := Rect2i(100, 60, 200, 180)
+	for y: int in inside.size.y:
+		for x: int in inside.size.x:
+			# Light enough that the Art's black point leaves it alone, and its
+			# green running left to right, its blue top to bottom.
+			picture.set_pixel(inside.position.x + x, inside.position.y + y, Color(0.0,
+				0.55 + 0.45 * x / (inside.size.x - 1.0), 0.4 + 0.6 * y / (inside.size.y - 1.0)))
+	dialog.set_mode("classic")
+	dialog.show_for(picture)
+	await _settled(dialog)
+	await _click(_middle(dialog._cropping))
+	_check("Crop shows the picture to draw on, its button now says %s" % dialog._cropping.text,
+		dialog._cropping.button_pressed and dialog._preview.texture != null
+		and dialog._preview.texture.get_size() == Vector2(400, 300))
+	# From a quarter in and a fifth down to three quarters and four fifths.
+	_gather(dialog)
+	await _drag(dialog, Vector2(0.25, 0.2), [Vector2(0.5, 0.5), Vector2(0.75, 0.8)])
+	_check("dragged across the picture, the crop is the picture's pixels %s, as drawn (%s)"
+		% [str(dialog.crop_pixels()), str(inside)], dialog.crop_pixels() == inside)
+	await _settled(dialog)
+	var laid: Mosaic.Laid = dialog.current_classic()
+	_check("Classic lays it from those pixels: %s" % (str(laid.source) if laid else "nothing"),
+		laid != null and laid.source == inside)
+	if laid != null:
+		var outside: int = _reddish(laid.want)
+		_check("%d × %d studs, every one from inside the crop, %d from outside"
+			% [laid.across, laid.down, outside], laid.studs() == laid.across * laid.down
+			and laid.studs() > 0 and outside == 0)
+		# And the whole crop, edge to edge: the first column as green as the
+		# crop's left edge, the last as its right (linear light).
+		var row: int = laid.down / 2
+		var left: float = laid.want[row * laid.across].g
+		var right: float = laid.want[row * laid.across + laid.across - 1].g
+		_check("the whole crop, edge to edge: its left column's green %.2f, its right's %.2f (the crop's edges %.2f and 1.00)"
+			% [left, right, Mosaic._linear(0.55)],
+			absf(left - Mosaic._linear(0.56)) < 0.05 and right > 0.93)
+		_check("its proportions the crop's: %d × %d studs for %d × %d pixels" % [laid.across,
+			laid.down, inside.size.x, inside.size.y],
+			laid.down == roundi(laid.across * float(inside.size.y) / inside.size.x))
+	dialog.set_mode("art")
+	await _settled(dialog)
+	var art: MosaicArt.Art = dialog.current_art()
+	_check("Brick Art lays the same crop: %s panels" % (str(art.panels) if art else "none"),
+		art != null and art.panels == Vector2i(3, 3))
+	if art != null:
+		var outside: int = _reddish(art.plan.want)
+		_check("%d studs, every one from inside the crop, %d from outside"
+			% [art.plan.cells(), outside], art.plan.cells() == 48 * 48 and outside == 0)
+	# A drag that starts inside the crop moves it, and Whole picture undoes it.
+	await _drag(dialog, Vector2(0.5, 0.5), [Vector2(0.55, 0.5), Vector2(0.6, 0.5)])
+	_check("dragged from inside, the crop moves: %s" % str(dialog.crop_pixels()),
+		dialog.crop_pixels() == Rect2i(140, 60, 200, 180))
+	await _click(_middle(dialog._whole))
+	_check("Whole picture takes it all again: %s" % str(dialog.crop_pixels()),
+		dialog.crop_pixels() == Rect2i(0, 0, 400, 300) and dialog._whole.disabled)
+	await _click(_middle(dialog._cropping))
+	_check("Done shows the result again", not dialog._cropping.button_pressed)
+	_gather(dialog)
+	# Build it asks for what was chosen.
+	dialog.set_crop(Rect2(0.25, 0.2, 0.5, 0.6))
+	dialog.set_mode("classic")
+	await _settled(dialog)
+	var asked: Array = []
+	var take := func(options: Mosaic.Options) -> void: asked.append(options)
+	dialog.build_wanted.connect(take)
+	dialog.build()
+	dialog.build_wanted.disconnect(take)
+	var chosen: Mosaic.Options = asked[0] if not asked.is_empty() else null
+	_check("Build it asks for the crop: %s" % (str(chosen.crop) if chosen else "nothing"),
+		chosen != null and chosen.crop.is_equal_approx(Rect2(0.25, 0.2, 0.5, 0.6)))
+	dialog.visible = true
+	if _out().length() > 0:
+		dialog._preview.texture.get_image().save_png(_out().path_join("crop_classic.png"))
+
+
+## Colours chosen that no stud can be, a set of trans parts alone: laid in
+## all of them, and said so under the picture, rather than nothing laid.
+func _none_paintable_case(dialog: MosaicDialog) -> void:
+	print("\ncolours chosen that no plate is made in (APP_UX6 #10)")
+	dialog._set_found = "0000-1"
+	dialog._set_name = "Trans parts"
+	dialog._set_colours = PackedInt32Array([47, 36, 33])
+	dialog.set_mode("classic")
+	dialog.set_colours("set")
+	await _settled(dialog)
+	var laid: Mosaic.Laid = dialog.current_classic()
+	_check("laid whole in all colours, %d of %d studs, and said: \"%s\"" % [
+		laid.studs() if laid else 0, laid.cells.size() if laid else 0, dialog._detail.text],
+		laid != null and not laid.palette_kept and laid.studs() == laid.cells.size()
+		and dialog._detail.text.contains("no 1 × 1 plate is made in the colours chosen"))
+	_gather(dialog)
+	dialog.set_mode("art")
+	await _settled(dialog)
+	_gather(dialog)
+	dialog._set_found = ""
+	dialog._set_colours = PackedInt32Array()
+	dialog.set_colours("all")
+
+
+## Every word the dialog showed through the cases above, as languages_probe
+## reads a dialog's, in German, French and Spanish: each has its entry, and
+## none keeps a word of the interface in English (only names and numbers).
+var _shown_words: Dictionary = {}
+
+
+func _gather(node: Node) -> void:
+	if node is Control and not (node as Control).visible:
+		return
+	if node.has_meta(&"names"):
+		return
+	var texts := PackedStringArray()
+	if node is Label:
+		texts.append((node as Label).text)
+	elif node is OptionButton:
+		for n: int in (node as OptionButton).item_count:
+			texts.append((node as OptionButton).get_item_text(n))
+			texts.append((node as OptionButton).get_item_tooltip(n))
+	elif node is Button:
+		texts.append((node as Button).text)
+	elif node is LineEdit:
+		texts.append((node as LineEdit).placeholder_text)
+	if node is Control:
+		texts.append((node as Control).tooltip_text)
+	for text: String in texts:
+		if text.length() > 1 and RegEx.create_from_string(r"\p{L}").search(text) != null:
+			_shown_words[text] = true
+	for child: Node in node.get_children():
+		_gather(child)
+
+
+func _words_case() -> void:
+	print("\nits words in German, French and Spanish (APP_UX6 #10)")
+	for code: String in ["de", "fr", "es"]:
+		Language.apply(code)
+		var lacking := PackedStringArray()
+		for english: String in _shown_words:
+			var said: String = Language.says(english)
+			var left := PackedStringArray()
+			for kept: String in Language.left_in_english(english):
+				# A set's name and number, a count: names and numbers.
+				if RegEx.create_from_string(r"\p{L}").search(kept) != null \
+						and not kept in ["Andy Warhol's Marilyn Monroe", "Trans parts", "Claude"]:
+					left.append(kept)
+			if said.is_empty() or not left.is_empty():
+				lacking.append("%s%s" % [english, "" if left.is_empty() else " (%s)" % ", ".join(left)])
+		_check("%s: every one of the %d words it showed translated%s" % [code, _shown_words.size(),
+			"" if lacking.is_empty() else "; not: " + " | ".join(lacking)], lacking.is_empty()
+			and _shown_words.size() >= 30)
+	Language.apply("en")
+
+
+## Studs whose wanted colour has any red in it.
+func _reddish(want: PackedColorArray) -> int:
+	var out: int = 0
+	for colour: Color in want:
+		if colour.r > 0.0001:
+			out += 1
+	return out
+
+
+## Each way of choosing the colours, in each mode, on the car photo.
+func _colours_case(dialog: MosaicDialog) -> void:
+	print("\nthe colours chosen, kept to stud for stud (APP_UX6 #10)")
+	var car: Image = _car()
+	dialog.set_crop(Rect2(0, 0, 1, 1))
+	dialog.show_for(car)
+	# What a set's inventory says, read here apart from the dialog.
+	var books := SetInventories.new()
+	root.add_child(books)
+	var found: Dictionary = await books.lookup(PackedStringArray(["31197-1"]))
+	books.queue_free()
+	var set_colours: Dictionary = {}
+	for row: Variant in (found.get("31197-1", {}) as Dictionary).get("p", []):
+		set_colours[_library.plain_code(int((row as Array)[1]))] = true
+	_check("31197-1's inventory has %d colours" % set_colours.size(), set_colours.size() >= 5)
+	const OWNED := {"3024/0": 50, "3024/15": 40, "3023b/4": 10, "3710/1": 4, "3001/14": 9,
+		"98138/2": 20, "98138/19": 12, "3070b/15": 30, "3070b/0": 8}
+	dialog.owned = func() -> Dictionary: return OWNED
+	dialog.tell_owned()
+	for mode: String in ["classic", "art"]:
+		dialog.set_mode(mode)
+		var all: Dictionary = {}
+		for code: int in (Array(Mosaic.palette_for(PackedInt32Array(), _library)) if mode == "classic"
+				else MosaicArt.SOLID + MosaicArt.ACCENTS):
+			all[code] = true
+		if mode == "classic":
+			var unsold: Array = []
+			for code: int in all:
+				if _library.element_for(Mosaic.PIXEL_PART, code).is_empty():
+					unsold.append(code)
+			_check("classic: all colours is every colour a 1 x 1 plate is sold in (%d), none it is not: %s"
+				% [all.size(), str(unsold)], all.size() >= 30 and unsold.is_empty()
+				and not all.has(383) and all.has(321))
+		dialog.set_colours("all")
+		await _settled(dialog)
+		await _kept_to(dialog, mode, "all colours", all)
+		dialog.set_colours("set")
+		dialog._set_number.text = "31197"
+		await dialog.find_set()
+		await _settled(dialog)
+		_check("%s: the set found, \"%s\"" % [mode, dialog._palette_said.text],
+			dialog._palette_said.text.contains("Andy Warhol"))
+		_gather(dialog)
+		await _kept_to(dialog, mode, "31197's colours", set_colours)
+		dialog.set_colours("owned")
+		await _settled(dialog)
+		var mine: Dictionary = {}
+		for code: int in ([0, 15, 4, 1] if mode == "classic" else [2, 19, 15, 0]):
+			mine[code] = true
+		_check("%s: what I own is the colours its own parts are owned in: %s" % [mode,
+			str(dialog.palette)], _same(dialog.palette, mine))
+		await _kept_to(dialog, mode, "what I own", mine)
+		_check("%s: and says how many are owned: \"…%s\"" % [mode,
+			dialog._detail.text.get_slice("—", dialog._detail.text.count("—"))],
+			dialog._detail.text.contains("you have"))
+		_gather(dialog)
+		if _out().length() > 0:
+			dialog._preview.texture.get_image().save_png(_out().path_join("owned_%s.png" % mode))
+	dialog.set_colours("set")
+	dialog.set_mode("classic")
+	await _settled(dialog)
+	if _out().length() > 0:
+		dialog._preview.texture.get_image().save_png(_out().path_join("set_classic.png"))
+	dialog.set_colours("all")
+	dialog.owned = func() -> Dictionary: return {}
+	dialog.tell_owned()
+	_check("with nothing owned, What I own is not offered",
+		dialog._colours.is_item_disabled(MosaicDialog.Colours.OWNED))
+
+
+## Every stud of what the dialog worked out is one of [param allowed]: a
+## Classic plate, or the Art's top element.
+func _kept_to(dialog: MosaicDialog, mode: String, said: String, allowed: Dictionary) -> void:
+	var studs: int = 0
+	var kept: int = 0
+	var used: Dictionary = {}
+	if mode == "classic":
+		var laid: Mosaic.Laid = dialog.current_classic()
+		if laid == null:
+			_check("%s: %s worked out" % [mode, said], false)
+			return
+		for code: int in laid.cells:
+			studs += 1
+			used[code] = true
+			if allowed.has(code):
+				kept += 1
+	else:
+		var art: MosaicArt.Art = dialog.current_art()
+		if art == null:
+			_check("%s: %s worked out" % [mode, said], false)
+			return
+		var tops: Dictionary = _tops(art)
+		for z: int in art.plan.down:
+			for x: int in art.plan.across:
+				studs += 1
+				var top: Assistant.Placement = tops.get(Vector2i(x, z))
+				if top != null:
+					used[top.color] = true
+					if allowed.has(top.color):
+						kept += 1
+	_check("%s, %s: %d of %d studs in them, in %d colours" % [mode, said, kept, studs,
+		used.size()], studs > 0 and kept == studs and used.size() >= mini(3, allowed.size()))
+
+
+func _same(codes: PackedInt32Array, wanted: Dictionary) -> bool:
+	if codes.size() != wanted.size():
+		return false
+	for code: int in codes:
+		if not wanted.has(code):
+			return false
+	return true
+
+
+## The car photo, Classic at its defaults, with and without mixed sizes.
+func _mixed_case(dialog: MosaicDialog) -> Mosaic.Laid:
+	print("\nmixed plate sizes: the car photo (APP_UX6 #10)")
+	dialog.set_crop(Rect2(0, 0, 1, 1))
+	dialog.set_colours("all")
+	dialog.set_mode("classic")
+	dialog._mixed.button_pressed = false
+	await _settled(dialog)
+	var single: Mosaic.Laid = dialog.current_classic()
+	dialog._mixed.button_pressed = true
+	await _settled(dialog)
+	var mixed: Mosaic.Laid = dialog.current_classic()
+	if single == null or mixed == null:
+		_check("the car worked out both ways", false)
+		return null
+	_check("a 1 × 1 a stud: %d plates for %d studs" % [single.plates.size(), single.studs()],
+		single.plates.size() == single.studs() and single.studs() == 48 * 27)
+	var cut: float = 1.0 - float(mixed.plates.size()) / single.plates.size()
+	_check("mixed sizes: %d plates, %.1f%% fewer — %s" % [mixed.plates.size(), cut * 100.0,
+		str(mixed.by_size().slice(0, 6))], cut >= 0.30)
+	# The picture the same stud for stud: each stud covered once, by a plate
+	# its own colour.
+	var shown := PackedInt32Array()
+	shown.resize(mixed.cells.size())
+	shown.fill(-1)
+	var twice: int = 0
+	for plate: Mosaic.Plate in mixed.plates:
+		for dz: int in plate.size.y:
+			for dx: int in plate.size.x:
+				var i: int = plate.x + dx + (plate.z + dz) * mixed.across
+				if shown[i] >= 0:
+					twice += 1
+				shown[i] = plate.color_code
+	var differ: int = 0
+	for i: int in shown.size():
+		if shown[i] != single.cells[i]:
+			differ += 1
+	_check("the picture the same stud for stud: %d of %d studs differ, %d covered twice"
+		% [differ, shown.size(), twice], differ == 0 and twice == 0 and mixed.cells == single.cells)
+	var unsold: int = 0
+	for plate: Mosaic.Plate in mixed.plates:
+		if plate.part != Mosaic.PIXEL_PART and _library.element_for(plate.part, plate.color_code).is_empty():
+			unsold += 1
+	_check("every larger plate is a LEGO element in its colour (%d not)" % unsold, unsold == 0)
+	_gather(dialog)
+	_check("the dialog says what it comes to: \"%s\"" % dialog._detail.text,
+		dialog._detail.text.contains("%s plates for its %s studs" % [MosaicDialog._comma(
+			mixed.plates.size()), MosaicDialog._comma(mixed.studs())]))
+	if _out().length() > 0:
+		dialog._preview.texture.get_image().save_png(_out().path_join("car_mixed.png"))
+	return mixed
+
+
+## The mixed mosaic put down as main puts it: where each plate lies, the
+## parts list, and the Pick a Brick file.
+func _bought_case(mixed: Mosaic.Laid) -> void:
+	print("\nits parts list and its Pick a Brick file (APP_UX6 #10)")
+	# A 1 x 1 lies where the classic mosaic always laid one.
+	var one: Lbm.PartMesh = _library.mesh_for(Mosaic.PIXEL_PART)
+	var plate := Mosaic.Plate.new()
+	plate.x = 3
+	plate.z = 5
+	var at: Transform3D = Mosaic.transform_of(plate, one, _builder)
+	var was := Vector3(3 * 20 + 10, one.bounds.size.y, 5 * 20 + 10)
+	var under: Array = _builder._cell_span(one, at)
+	# Before, its origin went at the part's whole height, stud and all: the
+	# plate stood 4 LDU, half a plate, off the ground and off the lattice.
+	# Now on the ground, as the Art's and every other placed part are.
+	_check("a 1 × 1 lies on the stud the classic mosaic laid it on, %s (was %s), its underside on the ground (cell %d)"
+		% [at.origin, was, (under[0] as Vector3i).y if not under.is_empty() else -1],
+		Vector2(at.origin.x, at.origin.z).is_equal_approx(Vector2(was.x, was.z))
+		and at.basis.is_equal_approx(Basis.IDENTITY) and not under.is_empty()
+		and (under[0] as Vector3i).y == 0)
+	_world.clear()
+	_builder.lattice.clear()
+	var ids: PackedInt64Array = Mosaic.put_down(mixed, _world, _builder, _library)
+	_check("every plate went into the world: %d of %d" % [ids.size(), mixed.plates.size()],
+		ids.size() == mixed.plates.size())
+	# Each brick on the studs its plate says, flat on the ground.
+	var off: int = 0
+	for index: int in ids.size():
+		var brick: BrickWorld.Brick = _world.get_brick(ids[index])
+		var span: Array = _builder._cell_span(_library.mesh_for(brick.part_id), brick.transform)
+		var want: Mosaic.Plate = mixed.plates[index]
+		var lo: Vector3i = span[0]
+		var hi: Vector3i = span[1]
+		var studs := Rect2i(lo.x / 10, lo.z / 10, (hi.x + 1 - lo.x) / 10, (hi.z + 1 - lo.z) / 10)
+		if studs != Rect2i(want.x, want.z, want.size.x, want.size.y) or lo.y != 0:
+			off += 1
+	_check("each on the studs its plate covers, flat on the ground (%d not)" % off, off == 0)
+	var stock: Inventory = Inventory.of(_world, _library, {})
+	var listed: Dictionary = {}
+	for lot: Inventory.Lot in stock.lots:
+		listed["%s/%d" % [lot.part_id, lot.color_code]] = lot.count
+	var counts: Dictionary = mixed.counts()
+	_check("the parts list: %d pieces in %d lots, part and colour for part and colour what was laid"
+		% [stock.pieces, stock.lots.size()], stock.pieces == mixed.plates.size() and listed == counts)
+	var shop: Dictionary = ShopLists.pick_a_brick(stock)
+	var lines: int = 0
+	var asked: int = 0
+	for file: String in shop["files"]:
+		for line: String in file.split("\r\n").slice(1):
+			lines += 1
+			asked += int(line.get_slice(",", 1))
+	var missing: int = 0
+	for lot: Inventory.Lot in shop["missing"]:
+		missing += lot.count
+	_check("the Pick a Brick file: %d lines asking for %d pieces, %d named as not on it (%s)"
+		% [lines, asked, missing, ", ".join(ShopLists.named_lots(shop["missing"]))],
+		lines > 0 and asked + missing == stock.pieces and missing * 20 <= stock.pieces)
+	if _out().length() > 0:
+		var file := FileAccess.open(_out().path_join("car_pickabrick.csv"), FileAccess.WRITE)
+		file.store_string(str(shop["files"][0]))
+		file.close()
+	_world.clear()
+	_builder.lattice.clear()
+
+
+## The car photo the plan's bar names.
+func _car() -> Image:
+	return Image.load_from_file(ProjectSettings.globalize_path("res://tools/release/best_car.png"))
+
+
+## Wait for what the dialog works out after a change.
+func _settled(dialog: MosaicDialog) -> void:
+	await process_frame
+	var until: int = Time.get_ticks_msec() + 20000
+	while not dialog._later.is_stopped() and Time.get_ticks_msec() < until:
+		await process_frame
+	await process_frame
+
+
+func _middle(control: Control) -> Vector2:
+	return control.get_global_rect().get_center()
+
+
+## [param at] in the window's pixels: a headless run's root is 64 x 64
+## drawn at the project's size, so a point on a control is taken through
+## the root's own transform, as a pointer's would be.
+func _px(at: Vector2) -> Vector2:
+	return root.get_final_transform() * at
+
+
+func _click(at: Vector2) -> void:
+	at = _px(at)
+	for down: bool in [true, false]:
+		var press := InputEventMouseButton.new()
+		press.button_index = MOUSE_BUTTON_LEFT
+		press.pressed = down
+		press.position = at
+		press.global_position = at
+		press.button_mask = MOUSE_BUTTON_MASK_LEFT if down else 0
+		root.push_input(press)
+		await process_frame
+
+
+## A drag on the dialog's picture, from [param from] through [param through],
+## each a fraction of the picture as it is drawn.
+func _drag(dialog: MosaicDialog, from: Vector2, through: Array) -> void:
+	var shown: Rect2 = dialog.shown_rect()
+	var origin: Vector2 = dialog._preview.get_global_rect().position + shown.position
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	press.position = _px(origin + from * shown.size)
+	press.global_position = press.position
+	press.button_mask = MOUSE_BUTTON_MASK_LEFT
+	root.push_input(press)
+	await process_frame
+	var last: Vector2 = press.position
+	for step: Vector2 in through:
+		var move := InputEventMouseMotion.new()
+		move.position = _px(origin + step * shown.size)
+		move.global_position = move.position
+		move.relative = move.position - last
+		move.button_mask = MOUSE_BUTTON_MASK_LEFT
+		last = move.position
+		root.push_input(move)
+		await process_frame
+	var release := InputEventMouseButton.new()
+	release.button_index = MOUSE_BUTTON_LEFT
+	release.pressed = false
+	release.position = last
+	release.global_position = last
+	root.push_input(release)
+	await process_frame
+
+
+## Where --out= says to keep the pictures, or "".
+func _out() -> String:
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with("--out="):
+			DirAccess.make_dir_recursive_absolute(arg.substr(6))
+			return arg.substr(6)
+	return ""
 
 
 ## What is on top of each stud: stud -> the highest placement covering it.

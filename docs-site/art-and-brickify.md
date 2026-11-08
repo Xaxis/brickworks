@@ -15,6 +15,8 @@ description: Turn a picture into a wall of plates, as LEGO® Art sets are, and t
 
 **Make › Mosaic from a picture…** turns a picture into a wall of plates and round tiles. Choose its size and its colours, and the panel lays it out as LEGO® Art sets are: in square sections with a plan for each, numbered colour by colour.
 
+To build only part of the picture, press **Crop** and drag a rectangle over it; drag inside the rectangle to move it, and **Whole picture** takes it all again. **Colours** chooses what it is laid in: every colour the parts come in, **A set's colours** (type the set's number, and the mosaic uses only the colours of that set's parts), or **What I own**, from [your collection](/docs/collection), when you want to build it from the parts you have. A **Classic** mosaic lays each run of one colour in the largest plate it fills, up to 8 × 8, so the same picture takes far fewer parts to buy; turn off **Mixed plate sizes** for a 1 × 1 plate on every stud. Build it, then the parts list ([[P]]) has what to buy, and a Pick a Brick file of it.
+
 <!-- covers
 ui:mosaic
 lib:LEGO Art layout

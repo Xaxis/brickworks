@@ -211,7 +211,7 @@
       "kind": "ui",
       "label": "mosaic",
       "entry": "src/ui/mosaic_dialog.gd",
-      "reach": "godot --headless --path . --script src/dev/mosaic_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/mosaic_probe.gd; in the app's window: tools/probe.sh mosaic_window_probe (1280x720; PROBE_SIZE=1400x900 too)",
       "area": "view"
     },
     {
@@ -4702,20 +4702,6 @@
       "area": "view"
     },
     {
-      "kind": "ui",
-      "label": "what is set in the booklet kept over an open",
-      "entry": "src/assembly/booklet_looks.gd",
-      "reach": "godot --path .  (a step's pull, colours, turn, zoom, notes, place and page read back on open to the step it was written for, a sub-model's own steps too; a pull whose parts the file now puts in a copy's own step follows them (BookletLooks._pulls_follow_parts); a line no step shows now kept in the file and named in the open's words, MCP open_model and the status bar (BookletLooks.unmatched_words, ModelBar.looks_words); the session's named assemblies made sub-models at a save stay built in their parent's steps (Assistant._tag_assemblies))",
-      "area": "view"
-    },
-    {
-      "kind": "cli",
-      "label": "pullkept probe",
-      "entry": "src/dev/pullkept_probe.gd",
-      "reach": "tools/probe.sh pullkept_probe   (headless: the MCP walk's Pods.ldr opened, step 1 pulling 41770a and 41769a and booklet_layout saying so, kept over a save and an open byte for byte; the walk's session replayed over MCP, saved, opened, and step 1's parts made a sub-assembly by hand, the pull with them; every booklet line of the 117 OMR files with one (the 44 turned among them), the gatehouse and a model given every kind of booklet line over MCP kept over an open, save and open byte for byte; a pull whose parts are gone and a look on a step the booklet shows none of named on open and kept; PULLKEPT_ONLY=pods|session|named|lines|files for one)",
-      "area": "view"
-    },
-    {
       "kind": "cli",
       "label": "booklet safe probe",
       "entry": "src/dev/booklet_safe_probe.gd",
@@ -4835,6 +4821,20 @@
       "area": "web"
     },
     {
+      "kind": "ui",
+      "label": "the booklet's own cover and colours",
+      "entry": "src/assembly/booklet_sheet.gd",
+      "reach": "godot --path .  (B opens the timeline; Build, Booklet page, Page setup…: Page tab Header, Footer; Cover tab Title, Under the title, Picture Choose… or The model, Line; Steps tab Step numbers, Number colour, Parts box frame, fill and corners, New parts outline, Usual colours; then Instructions, Save as PDF; page_setup title=, subtitle=, cover_line=, cover_picture_data=, header=, footer=, box_frame=, box_fill=, box_corners=, number_colour=, outline_colour= over MCP)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "booklook probe",
+      "entry": "src/dev/booklook_probe.gd",
+      "reach": "tools/probe.sh booklook -- --into=DIR [--against=DIR]   (windowed, on the GPU: the gatehouse's booklet with the designer's own cover (title, subtitle, picture, line) read back off the PNG and PDF pages, a header and footer on every page, the parts box in its frame colour with 0 px of the old frame or fill, the step numbers' and new parts' colours; kept over a save and an open, one undo; a style of the look given to booklet3's model in 2 actions, its own title and subtitle unchanged; blreview's save-path findings on tests/fixtures/booklook: Page setup… left open under MCP, an undo, another model and Clear; a sub-model's own PAGE_ lines; CRLF files with no end break; a later build's words; words cut and said; usual=true keeping the title; a CJK title on its page; the PDF naming letters it cannot print; a web title with <section; --against=DIR the booklet's own the same to the pixel as a run on the commit before; PROBE_SIZE=1400x900 with --dialog-only)",
+      "area": "view"
+    },
+    {
       "kind": "lib",
       "label": "a session keeps a view over mcp",
       "entry": "src/net/app_tools.gd",
@@ -4878,6 +4878,20 @@
     },
     {
       "kind": "ui",
+      "label": "two fingers' twist",
+      "entry": "src/camera/cad_camera.gd",
+      "reach": "on a phone, a tablet or a touchscreen: two fingers turned about each other turn the view round the up by as much, about what is between them, once they have turned 10 degrees; a pinch and a slide as before  (CadCamera._twist, _two_fingers; tools/probe.sh twist_probe)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "twist probe",
+      "entry": "src/dev/twist_probe.gd",
+      "reach": "tools/probe.sh twist_probe; PROBE_SIZE=1024x768 tools/probe.sh twist_probe --tablet; PROBE_SIZE=1280x720 or 1400x900 tools/probe.sh twist_probe   (windowed, 390x844 by its header; pictures in shots/twist/)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
       "label": "a set from a photo",
       "entry": "src/ui/collection_dialog.gd",
       "reach": "godot --path .  (Build, My collection…, What I own: Photo… beside Add sets, a photo of a box, a booklet's cover or a minifigure; asked of Brickognize's /predict/sets/ and /predict/figs/ at once, the top three offered, one pressed adds it; a minifigure kept among the sets by BrickLink's number and name, its parts not counted)",
@@ -4905,20 +4919,6 @@
       "area": "collection"
     },
     {
-      "kind": "ui",
-      "label": "two fingers' twist",
-      "entry": "src/camera/cad_camera.gd",
-      "reach": "on a phone, a tablet or a touchscreen: two fingers turned about each other turn the view round the up by as much, about what is between them, once they have turned 10 degrees; a pinch and a slide as before  (CadCamera._twist, _two_fingers; tools/probe.sh twist_probe)",
-      "area": "view"
-    },
-    {
-      "kind": "cli",
-      "label": "twist probe",
-      "entry": "src/dev/twist_probe.gd",
-      "reach": "tools/probe.sh twist_probe; PROBE_SIZE=1024x768 tools/probe.sh twist_probe --tablet; PROBE_SIZE=1280x720 or 1400x900 tools/probe.sh twist_probe   (windowed, 390x844 by its header; pictures in shots/twist/)",
-      "area": "view"
-    },
-    {
       "kind": "cli",
       "label": "print3mf probe",
       "entry": "src/dev/print3mf_probe.gd",
@@ -4934,16 +4934,16 @@
     },
     {
       "kind": "ui",
-      "label": "the booklet's own cover and colours",
-      "entry": "src/assembly/booklet_sheet.gd",
-      "reach": "godot --path .  (B opens the timeline; Build, Booklet page, Page setup…: Page tab Header, Footer; Cover tab Title, Under the title, Picture Choose… or The model, Line; Steps tab Step numbers, Number colour, Parts box frame, fill and corners, New parts outline, Usual colours; then Instructions, Save as PDF; page_setup title=, subtitle=, cover_line=, cover_picture_data=, header=, footer=, box_frame=, box_fill=, box_corners=, number_colour=, outline_colour= over MCP)",
+      "label": "what is set in the booklet kept over an open",
+      "entry": "src/assembly/booklet_looks.gd",
+      "reach": "godot --path .  (a step's pull, colours, turn, zoom, notes, place and page read back on open to the step it was written for, a sub-model's own steps too; a pull whose parts the file now puts in a copy's own step follows them (BookletLooks._pulls_follow_parts); a line no step shows now kept in the file and named in the open's words, MCP open_model and the status bar (BookletLooks.unmatched_words, ModelBar.looks_words); the session's named assemblies made sub-models at a save stay built in their parent's steps (Assistant._tag_assemblies))",
       "area": "view"
     },
     {
       "kind": "cli",
-      "label": "booklook probe",
-      "entry": "src/dev/booklook_probe.gd",
-      "reach": "tools/probe.sh booklook -- --into=DIR [--against=DIR]   (windowed, on the GPU: the gatehouse's booklet with the designer's own cover (title, subtitle, picture, line) read back off the PNG and PDF pages, a header and footer on every page, the parts box in its frame colour with 0 px of the old frame or fill, the step numbers' and new parts' colours; kept over a save and an open, one undo; a style of the look given to booklet3's model in 2 actions, its own title and subtitle unchanged; blreview's save-path findings on tests/fixtures/booklook: Page setup… left open under MCP, an undo, another model and Clear; a sub-model's own PAGE_ lines; CRLF files with no end break; a later build's words; words cut and said; usual=true keeping the title; a CJK title on its page; the PDF naming letters it cannot print; a web title with <section; --against=DIR the booklet's own the same to the pixel as a run on the commit before; PROBE_SIZE=1400x900 with --dialog-only)",
+      "label": "pullkept probe",
+      "entry": "src/dev/pullkept_probe.gd",
+      "reach": "tools/probe.sh pullkept_probe   (headless: the MCP walk's Pods.ldr opened, step 1 pulling 41770a and 41769a and booklet_layout saying so, kept over a save and an open byte for byte; the walk's session replayed over MCP, saved, opened, and step 1's parts made a sub-assembly by hand, the pull with them; every booklet line of the 117 OMR files with one (the 44 turned among them), the gatehouse and a model given every kind of booklet line over MCP kept over an open, save and open byte for byte; a pull whose parts are gone and a look on a step the booklet shows none of named on open and kept; PULLKEPT_ONLY=pods|session|named|lines|files for one)",
       "area": "view"
     }
   ]
