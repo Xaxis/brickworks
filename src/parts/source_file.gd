@@ -1025,6 +1025,15 @@ func _end_of_step(section: String, step: int) -> int:
 	return int(ends[step])
 
 
+## [param path] without its copies' numbers: what each copy round a part
+## is a copy of, outermost first.
+static func _copies_of(path: String) -> String:
+	var out := PackedStringArray()
+	for segment: String in Assemblies.segments(path):
+		out.append(Assemblies.definition(segment))
+	return "/".join(out)
+
+
 ## The patch of the file for the model as [param bricks] stand (see the
 ## class, (A)), or a [Plan] that says why there is none ([member Plan.why]).
 ## [param waiting] are the origins of parts still on their way, as they
@@ -1245,6 +1254,29 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 	for line: int in plan.gone:
 		if rewrites.has(line) or moves.has(line):
 			return _no(plan, "a line both taken out and kept")
+	# A part the app cannot show, or one still on its way, has no step in
+	# the model to follow: where every other part of its step goes to one
+	# other step (the steps numbered again), it would be left behind alone.
+	var behind: Array = []
+	for origin: String in unshown_origins:
+		behind.append(origin)
+	behind.append_array(waiting.keys())
+	for origin: Variant in behind:
+		var own: int = str(origin).get_slice("/", str(origin).get_slice_count("/") - 1).to_int()
+		if own < 0 or own >= _sec.size() or moves.has(own):
+			continue
+		var to: Dictionary = {}
+		var stays: bool = false
+		for other: int in by_line:
+			if other == own or plan.gone.has(other) or _sec[other] != _sec[own] \
+					or _step_at[other] != _step_at[own]:
+				continue
+			if moves.has(other):
+				to[int(moves[other])] = true
+			else:
+				stays = true
+		if not stays and to.size() == 1:
+			return _no(plan, "a part the app cannot show would be left out of its step (line %d)" % (own + 1))
 
 	# Where each moved line goes: the end of its step, the pairs round it the
 	# same there.
@@ -1890,7 +1922,10 @@ func _read_back_kept(plan: Plan, text: String, final: PackedStringArray,
 				placement.part_id, placement.color_code, brick.part_id, brick.color_code]
 		if not _close_to(held[1] as Transform3D, placement.transform):
 			return "read back, line %d is not where its part is" % (int(origin[origin.size() - 1]) + 1)
-		if placement.unit != brick.unit:
+		# Its copy by the lines placing it (the origin, matched above) and
+		# what each is a copy of: a copy taken off before it numbers it
+		# one less when the file is opened again, as live's write does.
+		if _copies_of(placement.unit) != _copies_of(brick.unit):
 			return "read back, line %d is in another copy" % (int(origin[origin.size() - 1]) + 1)
 		if authored and placement.step != brick.step:
 			return "read back, line %d is in step %d, not %d" % [int(origin[origin.size() - 1]) + 1,
