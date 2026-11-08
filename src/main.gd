@@ -9015,6 +9015,10 @@ var _touch_hold := PressHold.new()
 var _press_brick: int = 0
 var _press_at: Vector2 = Vector2.ZERO
 var _press_copies: bool = false
+## The selection a drag from that press replaces, for a second finger to put
+## back (_second_finger): null when the part was in it, as the drag carries
+## the selection and putting it back selects it again.
+var _press_selection: Variant = null
 ## A part (with its selection) picked up by a drag and following it.
 var _dragging_part: bool = false
 ## A part grabbed by a drag and moved about its joint (GrabDrag).
@@ -9349,6 +9353,34 @@ func _drop_dragged(at: Vector2) -> void:
 	_refresh_preview(at)
 
 
+## A second finger down: the gesture is the view's (a pinch, a slide, a
+## twist), and nothing the first finger began on the model is done. Its
+## press on a part ends, so the part is neither carried nor selected; a part
+## it had already begun to carry, in the moment before the second came
+## down, goes back where it was with the selection as it was, as Esc puts
+## it back; and its lifting is no click, which on the ground lets go of the
+## selection and with a part in hand puts it down. A twist begun with a
+## finger on a small screen's model carried the part off and selected it.
+func _second_finger() -> void:
+	if _phone_hold != null:
+		_phone_hold.stop()
+	_pending_left = false
+	_left_spent = true
+	_press_brick = 0
+	if not _grabbing and not _dragging_part:
+		return
+	if _grabbing:
+		_grabbing = false
+		_grab_drag.cancel()
+	if _dragging_part:
+		_dragging_part = false
+		_verbs.put_away()
+	if _press_selection is Dictionary:
+		_builder.selection.clear()
+		_builder.selection.merge(_press_selection)
+		_builder.selection_changed.emit(_builder.selection.size())
+
+
 ## A part grabbed in the view and moved about its joint (GrabDrag): with
 ## the Select tool, a drag on a part that hangs on a hinge, a clip, a
 ## turntable, a pin, an axle, a ball or a round stud. False for a part held
@@ -9415,8 +9447,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				if _phone_hold != null:
 					_phone_hold_at = touch.position
 					_phone_hold.start()
-			elif _phone_hold != null:
-				_phone_hold.stop()
+			else:
+				_second_finger()
 			return
 
 		if touch.index != _touch_index:
@@ -9641,6 +9673,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			if under != 0:
 				_press_brick = under
 				_press_copies = button.ctrl_pressed or button.meta_pressed
+				_press_selection = null if _builder.selection.has(under) \
+					else _builder.selection.duplicate()
 				_press_hold.start()
 				return
 		_pending_left = true

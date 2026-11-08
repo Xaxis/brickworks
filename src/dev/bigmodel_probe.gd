@@ -786,8 +786,11 @@ func _framed(count: int, each: Callable, nodes: Array = [], label: String = "orb
 		await process_frame
 		var now: int = _clock()
 		if not nodes.is_empty():
-			for node: Node in nodes:
-				if is_instance_valid(node) and node.is_inside_tree():
+			for item: Variant in nodes:
+				if not is_instance_valid(item):
+					continue
+				var node: Node = item
+				if node.is_inside_tree():
 					var t0: int = Time.get_ticks_usec()
 					node.call("_process", 1.0 / 60.0)
 					_add("_process " + _node_name(node), Time.get_ticks_usec() - t0)
@@ -1488,9 +1491,9 @@ func _processing_in(node: Node, found: Array) -> void:
 
 
 func _give_back(nodes: Array) -> void:
-	for node: Node in nodes:
-		if is_instance_valid(node):
-			node.set_process(true)
+	for item: Variant in nodes:
+		if is_instance_valid(item):
+			(item as Node).set_process(true)
 
 
 ## With everything selected: the pieces of a selection's handlers, and of

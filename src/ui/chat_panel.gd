@@ -1482,8 +1482,12 @@ func controls_by_name() -> Dictionary:
 	if designing_elsewhere():
 		named["ai_change"] = _out
 	# Each sketch's button, by its card: sketch_1 to sketch_3.
-	for button: Button in _sketch_buttons:
-		if is_instance_valid(button) and not button.disabled:
+	# Untyped until checked: sketches shown afresh have freed the old buttons.
+	for item: Variant in _sketch_buttons:
+		if not is_instance_valid(item):
+			continue
+		var button: Button = item
+		if not button.disabled:
 			var card: Node = button.get_parent()
 			while card != null and not str(card.name).begins_with("sketch_"):
 				card = card.get_parent()

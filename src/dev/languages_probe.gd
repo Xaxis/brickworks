@@ -782,14 +782,15 @@ func _open_sign_in(name: String) -> void:
 func _close(name: String, opened: Array[Node]) -> void:
 	if name == "timeline":
 		_main.call("_toggle_steps")
-	for node: Node in opened.duplicate():
-		if is_instance_valid(node) and not node is Window:
-			for window: Node in node.find_children("*", "Window", true, false):
+	for item: Variant in opened.duplicate():
+		if is_instance_valid(item) and not item is Window:
+			for window: Node in (item as Node).find_children("*", "Window", true, false):
 				if (window as Window).visible:
 					opened.append(window)
-	for node: Node in opened:
-		if not is_instance_valid(node):
+	for item: Variant in opened:
+		if not is_instance_valid(item):
 			continue
+		var node: Node = item
 		if node is Window:
 			(node as Window).hide()
 		elif node.has_method("close"):

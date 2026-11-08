@@ -121,8 +121,8 @@ func _made_where_they_were() -> void:
 		"_elements", "_render", "_share_panel", "_page_editor"]
 	var column: Array[String] = ["_pose", "_hidden_colours", "_simulate"]
 	var gates: Array[Node] = []
-	var found: Node = _main.get("_gate")
-	if is_instance_valid(found) and found.get_parent() == hud:
+	var found: Variant = _main.get("_gate")
+	if is_instance_valid(found) and (found as Node).get_parent() == hud:
 		gates.append(found)
 	# What another makes first: what plays motions (Render's, Motions'), and the
 	# assistant (its panel's).

@@ -1158,9 +1158,9 @@ func _row_can_drop(row: StepRow, at: Vector2, data: Variant) -> bool:
 	if row.over != index:
 		row.over = index
 		row.queue_redraw()
-		var tag: Label = data.get("tag")
+		var tag: Variant = data.get("tag")
 		if is_instance_valid(tag):
-			tag.text = "Move %s to %s" % [_parts_words((data["steps_to"] as Array).size()),
+			(tag as Label).text = "Move %s to %s" % [_parts_words((data["steps_to"] as Array).size()),
 				_step_words(_steps[index])]
 	return true
 
