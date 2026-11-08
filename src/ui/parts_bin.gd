@@ -353,6 +353,8 @@ func _build() -> void:
 	_category_row.add_theme_constant_override("h_separation", int(_z(4)))
 	_category_row.add_theme_constant_override("v_separation", int(_z(4)))
 	category_scroll.add_child(_category_row)
+	# An open palette's line: its name, Add and the rest (palettes).
+	_build_shelf_line(root)
 
 	_scroll = ScrollContainer.new()
 	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -393,7 +395,8 @@ func _build() -> void:
 		page.add_theme_constant_override("separation", int(_z(4)))
 		_scroll.remove_child(_grid)
 		_scroll.add_child(page)
-		for row: Control in [head, _set_line, _set_models, _step_line, _search, category_scroll]:
+		for row: Control in [head, _set_line, _set_models, _step_line, _search, category_scroll,
+				_shelf_line]:
 			root.remove_child(row)
 			page.add_child(row)
 		page.add_child(_grid)
@@ -588,7 +591,7 @@ func _build_categories() -> void:
 	# The parts reached for lately and the ones kept, beside All: the bin
 	# is searched once per part and then wanted again and again. And the
 	# assistant's worked constructions, each with why it works.
-	_categories = ["All", RECENT, FAVOURITES, TECHNIQUES, FITS, LIKE]
+	_categories = ["All", RECENT, FAVOURITES, PALETTES, TECHNIQUES, FITS, LIKE]
 	for category: String in LEADING:
 		if counts.has(category):
 			_categories.append(category)
@@ -605,12 +608,13 @@ func _build_categories() -> void:
 		button.tooltip_text = category
 		button.set_meta("category", category)
 		button.set_meta("count", total)
-		if category == RECENT or category == FAVOURITES:
+		if category == RECENT or category == FAVOURITES or category == PALETTES:
 			button.text = _shelf_label(category)
 			button.set_meta("shelf", category)
 			button.tooltip_text = ("The parts you chose lately, newest first"
 				if category == RECENT
-				else "The parts you keep: right-click any part to add it or take it out")
+				else "The parts you keep: right-click any part to add it or take it out"
+				if category == FAVOURITES else PALETTES_TIP)
 		if category == TECHNIQUES:
 			button.text = "%s %d" % [TECHNIQUES, TECHNIQUES_COUNT]
 			button.tooltip_text = Keymap.filled("Worked constructions, each with why it works: choose one "
@@ -1255,6 +1259,7 @@ func controls_by_name() -> Dictionary:
 		var cell: Node = _grid.get_child(n)
 		if cell.has_meta("tile"):
 			named["tile picture %d" % (n + 1)] = cell.get_meta("tile")
+	named.merge(_palette_controls())
 	named["colour find"] = _colour_find
 	named["all colours"] = _all_colours
 	named["only made in it"] = _only_made
@@ -1309,7 +1314,11 @@ func _on_category(name: String) -> void:
 		_like_of = _like_subject()
 		_swapped_in = ""
 	_words_for(name)
+	# Palettes, chosen, lists them, whichever was open (palettes).
+	if name == PALETTES:
+		_shelf_open = ""
 	_category = name
+	_show_shelf_line()
 	for child: Node in _category_row.get_children():
 		var button: Button = child
 		button.button_pressed = str(button.get_meta("category", "")) == name
@@ -1336,6 +1345,8 @@ func _words_for(name: String) -> void:
 
 ## What the search's empty box says typing in it does, in [param category].
 func _search_hint(category: String) -> String:
+	if category == PALETTES:
+		return "Narrow your palettes…"
 	if category in ABOUT_A_PART:
 		return "Narrow these parts…"
 	return "Search %s parts…" % _comma(_offerable) if _offerable > 0 else "Search parts…"
@@ -1343,7 +1354,7 @@ func _search_hint(category: String) -> String:
 
 ## The shelves about a part, which start from no words (_words_for), and what
 ## was typed for the rest of the bin meanwhile.
-const ABOUT_A_PART: Array[String] = [FITS, LIKE]
+const ABOUT_A_PART: Array[String] = [FITS, LIKE, PALETTES]
 var _typed_before: String = ""
 
 
@@ -1437,7 +1448,8 @@ func _process(_delta: float) -> void:
 	# And say what is in sight, for the same reason: a scroll, a resize,
 	# a page added and the dock folding all change it, and only the last
 	# has a signal.
-	if thumbnails != null and _category == TECHNIQUES:
+	_watch_palettes()
+	if thumbnails != null and (_category == TECHNIQUES or _category == PALETTES):
 		var count: int = _grid.get_child_count()
 		var now: Array = [_scroll.scroll_vertical, _scroll.size, _grid.size, count,
 			_grid.get_child(0).get_instance_id() if count > 0 else 0]
@@ -1456,7 +1468,7 @@ func _process(_delta: float) -> void:
 ## watched_frames_probe (bin_first_probe, 2026-11-05).
 func _search_soon(query: String) -> void:
 	if library != null and not query.strip_edges().is_empty() and _set_bin == null \
-			and _category != TECHNIQUES and not library.search_ready():
+			and _category != TECHNIQUES and _category != PALETTES and not library.search_ready():
 		_waiting = true
 		library.prepare_search(true)
 		return
@@ -1475,7 +1487,7 @@ var _waiting: bool = false
 func _seeks(query: String) -> bool:
 	return library != null and _set_bin == null and not OS.has_feature("nothreads") \
 		and not query.strip_edges().is_empty() \
-		and not _category in [TECHNIQUES, RECENT, FAVOURITES, FITS, LIKE]
+		and not _category in [TECHNIQUES, RECENT, FAVOURITES, PALETTES, FITS, LIKE]
 
 
 ## [param query] searched on a worker, the window drawing meanwhile and the
@@ -1695,6 +1707,12 @@ func _run_search(query: String) -> void:
 		_listing_set = false
 		_results = []
 		_fill_techniques(query.strip_edges())
+		return
+	# A palette is the person's own, set or none (palettes).
+	if _category == PALETTES:
+		_listing_set = false
+		_results = []
+		_fill_palettes(query.strip_edges())
 		return
 	# Building from a set: what is typed and the category chosen pick among
 	# its parts, and the bin asking again by itself (its catalogue arriving
@@ -2186,7 +2204,8 @@ func _from_shelf(shelf: String, needles: PackedStringArray) -> Array[PartLibrary
 
 
 func _shelf_label(shelf: String) -> String:
-	var count: int = (PartShelf.recent() if shelf == RECENT else PartShelf.favourites()).size()
+	var count: int = PartShelf.palettes().size() if shelf == PALETTES \
+		else (PartShelf.recent() if shelf == RECENT else PartShelf.favourites()).size()
 	return "%s %d" % [shelf, count]
 
 
@@ -3109,6 +3128,9 @@ func _update_status() -> void:
 			"" if _guessed_colour.is_empty() else ", in %s" % _guessed_colour)
 		_status.tooltip_text = _guessed_note
 		return
+	if _category == PALETTES:
+		_say_palettes()
+		return
 	if _category == TECHNIQUES:
 		_status.text = "nothing matches" if _techniques_shown == 0 else (
 			"%s: choose one to hold it whole" % Counted.of(_techniques_shown, "worked construction"))
@@ -3344,7 +3366,8 @@ func _bind_tile(button: Button, info: PartLibrary.PartInfo, key: String = "") ->
 		var ready_now: ImageTexture = thumbnails.peek(info.id, colour, made_print)
 		if ready_now:
 			image.show_picture(ready_now, false)
-	if not key.is_empty():
+	# A set's: a palette's tile is a part and colour too, and counts nothing.
+	if not key.is_empty() and _listing_set:
 		_show_count(button)
 
 
@@ -3449,7 +3472,8 @@ func _make_row(info: PartLibrary.PartInfo, key: String = "") -> Control:
 		var ready_now: ImageTexture = thumbnails.peek(info.id, colour, made_print)
 		if ready_now:
 			image.show_picture(ready_now, false)
-	if not key.is_empty():
+	# A set's: a palette's tile is a part and colour too, and counts nothing.
+	if not key.is_empty() and _listing_set:
 		_show_count(button)
 	return button
 
@@ -3543,7 +3567,7 @@ func _bind_part_button(button: Button, info: PartLibrary.PartInfo, key: String,
 	button.set_meta("after", "")
 	# What the part it showed before left on it: a set's key and count, a
 	# drag's tooltip put by.
-	for left: StringName in [&"key", &"plain_tip", &"left", &"tip"]:
+	for left: StringName in [&"key", &"plain_tip", &"left", &"tip", &"entry"]:
 		button.remove_meta(left)
 	if not key.is_empty():
 		var colour_named: PartLibrary.BrickColor = library.color(colour)
@@ -3553,7 +3577,8 @@ func _bind_part_button(button: Button, info: PartLibrary.PartInfo, key: String,
 			if colour_named != null else "colour %d" % colour]
 		button.set_meta("key", key)
 		button.set_meta("plain_tip", button.tooltip_text)
-		button.set_meta("after", "  " + count_words(_set_bin.left(key, _used) if _set_bin != null else 0))
+		if _listing_set:
+			button.set_meta("after", "  " + count_words(_set_bin.left(key, _used) if _set_bin != null else 0))
 	if _guesses.has(info.id):
 		button.set_meta("after", "  %d%%" % roundi(float(_guesses[info.id]) * 100.0))
 		button.tooltip_text = "Brickognize is %d%% sure of it\n%s" % [
@@ -3563,6 +3588,10 @@ func _bind_part_button(button: Button, info: PartLibrary.PartInfo, key: String,
 ## A tile or a row pressed: its part taken, a set's in its own colour.
 func _on_cell_pressed(button: Button) -> void:
 	var key: String = str(button.get_meta("key", ""))
+	# A palette's tile: the entry Take out and the rest act on (palettes).
+	_shelf_chosen = str(button.get_meta("entry", ""))
+	if not _shelf_chosen.is_empty():
+		_light_entry(_shelf_chosen)
 	_on_part(str(button.get_meta("part", "")), Collection.colour_of(key) if not key.is_empty() else -1)
 
 
@@ -4184,6 +4213,11 @@ func _fill_techniques(query: String) -> void:
 		child.queue_free()
 	_cells.clear()
 	_shown = 0
+	# What the last list showed is no list here: grown into as it scrolled
+	# (_process), a search's tiles came in among the rows, 192 of them
+	# after "brick" (palettes_probe, 2026-11-07).
+	_display = []
+	_folds = {}
 	_hold_page(0)
 	_to_list_top()
 	_grid.columns = 1
@@ -4596,7 +4630,7 @@ func _count_chips() -> void:
 			continue
 		var button: Button = child
 		var category: String = str(button.get_meta("category"))
-		if category in ["All", RECENT, FAVOURITES, TECHNIQUES, FITS, LIKE]:
+		if category in ["All", RECENT, FAVOURITES, PALETTES, TECHNIQUES, FITS, LIKE]:
 			continue
 		var count: int = int(kinds.get(category, 0)) if _set_bin != null else int(button.get_meta("count"))
 		button.text = "%s %d" % [category, count]
@@ -4652,7 +4686,7 @@ func _recount(relist: bool = true) -> void:
 	_counted_msec = Time.get_ticks_msec()
 	_used = SetBin.used_in(world, builder.scenery, library) if world != null else {}
 	for cell: Node in _grid.get_children():
-		if not str(cell.get_meta("key", "")).is_empty():
+		if not str(cell.get_meta("key", "")).is_empty() and _listing_set:
 			_show_count(cell as Button)
 	_say_set()
 	_follow_step(relist)
@@ -4945,3 +4979,768 @@ func show_guesses(guesses: Array) -> void:
 		if code != _selected_color:
 			_on_colour(code)
 	_fill_grid()
+
+
+# ── palettes (APP_UX6 palettes): the person's own, kept for every model ──────
+#
+# Studio's custom palettes: a palette is named, holds parts in their colours
+# and whole sub-assemblies, and is kept apart from any model (PartShelf), so
+# what was gathered in one model is two presses away in the next: Palettes,
+# then its name. Favourites stays as it was: right-click a part, one list.
+#
+# Filled from what the person already has in front of them: the part in
+# hand, the parts selected in the model each in its colour, or the selection
+# as one sub-assembly, named. A part chosen from a palette is taken in hand in
+# its own colour, as a set's tile is; a sub-assembly is held whole, as a
+# technique is, and put down as an assembly of its own name.
+
+## The person's palettes, as a category beside Favourites.
+const PALETTES := "Palettes"
+const PALETTES_TIP := ("Your own palettes: parts in their colours and sub-assemblies, "
+	+ "named and kept for every model")
+const SUBMODEL := "res://assets/ui/tools/submodel.svg"
+## Add's rows, and More's.
+enum { ADD_HELD, ADD_PARTS, ADD_ASSEMBLY }
+enum { MORE_TAKE_OUT, MORE_RENAME, MORE_DELETE }
+
+## The palette open, by its id; "" lists them all.
+var _shelf_open: String = ""
+## Its entry chosen last, by id: what Take out and Rename act on.
+var _shelf_chosen: String = ""
+var _shelf_line: HBoxContainer
+var _shelf_back: Button
+var _shelf_name: LineEdit
+var _shelf_new: Button
+var _shelf_add: MenuButton
+var _shelf_more: MenuButton
+## PartShelf.palettes_revision when the view was drawn, and when the file
+## was last looked at for another window's change.
+var _shelf_seen: int = -1
+var _shelf_looked: int = 0
+## A sub-assembly's name asked for, and a palette's or an entry's going asked.
+var _name_asker: ConfirmationDialog
+var _name_field: LineEdit
+var _name_then: Callable
+var _asking: ConfirmationDialog
+var _asking_then: Callable
+## A sub-assembly's parts read from its lines, by its entry's id.
+var _assembly_items: Dictionary = {}
+
+
+## The line under the chips while Palettes is chosen: New palette over the
+## list; an open one's way back, its name to type over, Add and More.
+func _build_shelf_line(root: Control) -> void:
+	_shelf_line = HBoxContainer.new()
+	_shelf_line.visible = false
+	_shelf_line.add_theme_constant_override("separation", int(_z(4)))
+	root.add_child(_shelf_line)
+	_shelf_back = Button.new()
+	_shelf_back.text = "‹"
+	_shelf_back.tooltip_text = "Every palette"
+	_shelf_back.accessibility_name = "Every palette"
+	_shelf_back.pressed.connect(func() -> void: _open_palette(""))
+	_shelf_line.add_child(_shelf_back)
+	_shelf_name = LineEdit.new()
+	_shelf_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_shelf_name.custom_minimum_size = Vector2(_z(64), least)
+	_shelf_name.max_length = PartShelf.NAME_MOST
+	_shelf_name.accessibility_name = "The palette's name"
+	_shelf_name.tooltip_text = "The palette's name: type over it to rename it"
+	# The person's own words, drawn as they are in every language.
+	_shelf_name.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	_shelf_name.add_theme_font_size_override("font_size", ceili(_z(12)))
+	_shelf_name.text_submitted.connect(func(_text: String) -> void:
+		_rename_palette()
+		_shelf_name.release_focus())
+	_shelf_name.focus_exited.connect(_rename_palette)
+	_shelf_line.add_child(_shelf_name)
+	_shelf_new = Button.new()
+	_shelf_new.text = "New palette"
+	_shelf_new.tooltip_text = ("A palette of your own, named: fill it with the part in hand or the "
+		+ "parts selected in the model, each in its colour or as one sub-assembly")
+	_shelf_new.pressed.connect(_new_palette)
+	_shelf_line.add_child(_shelf_new)
+	_shelf_add = MenuButton.new()
+	_shelf_add.text = "Add"
+	_shelf_add.flat = false
+	_shelf_add.tooltip_text = "Keep the part in hand, or the parts selected in the model, in this palette"
+	var adding: PopupMenu = _shelf_add.get_popup()
+	adding.add_item("The part in hand, in its colour", ADD_HELD)
+	adding.add_item("The selected parts, each in its colour", ADD_PARTS)
+	adding.add_item("The selection, as one sub-assembly…", ADD_ASSEMBLY)
+	adding.about_to_popup.connect(_ready_add_rows)
+	adding.id_pressed.connect(_on_add)
+	_shelf_line.add_child(_shelf_add)
+	_shelf_more = MenuButton.new()
+	_shelf_more.text = "More"
+	_shelf_more.flat = false
+	_shelf_more.tooltip_text = "Take the one chosen out, rename a sub-assembly, or delete the palette"
+	var more: PopupMenu = _shelf_more.get_popup()
+	more.add_item("Take the one chosen out", MORE_TAKE_OUT)
+	more.add_item("Rename the sub-assembly chosen…", MORE_RENAME)
+	more.add_separator()
+	more.add_item("Delete this palette…", MORE_DELETE)
+	more.about_to_popup.connect(_ready_more_rows)
+	more.id_pressed.connect(_on_more)
+	_shelf_line.add_child(_shelf_more)
+	for button: Button in [_shelf_back, _shelf_new, _shelf_add, _shelf_more]:
+		FocusGuard.by_keyboard(button)
+		button.add_theme_font_size_override("font_size", ceili(_z(12)))
+		button.custom_minimum_size = Vector2(maxf(least, _z(24)), least)
+
+
+## The line as the category and the palette open say.
+func _show_shelf_line() -> void:
+	if _shelf_line == null:
+		return
+	_shelf_line.visible = _category == PALETTES
+	var open: bool = not _shelf_open.is_empty()
+	for control: Control in [_shelf_back, _shelf_name, _shelf_add, _shelf_more]:
+		control.visible = open
+	_shelf_new.visible = not open
+	if open and not _shelf_name.has_focus():
+		_shelf_name.text = str(PartShelf.palette(_shelf_open).get("name", ""))
+
+
+## Every palette, or the one open, its entries narrowed by [param query].
+func _fill_palettes(query: String) -> void:
+	for child: Node in _grid.get_children():
+		_grid.remove_child(child)
+		child.queue_free()
+	_cells.clear()
+	_shown = 0
+	# What the last list showed is no list here: grown into as it scrolled
+	# (_process), its tiles came in under the palettes.
+	_display = []
+	_folds = {}
+	_hold_page(0)
+	_to_list_top()
+	_techniques_seen = []
+	_shelf_seen = PartShelf.palettes_revision
+	var open: Dictionary = PartShelf.palette(_shelf_open) if not _shelf_open.is_empty() else {}
+	if open.is_empty():
+		_shelf_open = ""
+	_show_shelf_line()
+	var needles: PackedStringArray = PartLibrary.in_ldraw_words(query).split(" ", false)
+	if open.is_empty():
+		_grid.columns = 1
+		_grid.add_theme_constant_override("v_separation", int(_z(4)))
+		for one: Dictionary in PartShelf.palettes():
+			if needles.is_empty() or _palette_answers(one, query, needles):
+				_grid.add_child(_palette_row(one))
+		_update_status()
+		return
+	_grid.columns = 1 if _list.button_pressed else _tiles_across()
+	_grid.add_theme_constant_override("v_separation", 0 if _list.button_pressed else int(_z(4)))
+	for entry: Dictionary in open["entries"]:
+		if entry.has("ldraw"):
+			if needles.is_empty() or str(entry["name"]).to_lower().contains(query.to_lower()):
+				_grid.add_child(_assembly_cell(entry))
+			continue
+		var info: PartLibrary.PartInfo = _entry_part(entry)
+		if info == null or not needles.is_empty() \
+				and PartLibrary.matched(info, needles) == PartLibrary.NOT_MATCHED:
+			continue
+		var key: String = "%s/%d" % [info.id, int(entry["colour"])]
+		var cell: Control = _make_row(info, key) if _list.button_pressed else _make_cell(info, key)
+		cell.set_meta("entry", str(entry["id"]))
+		_grid.add_child(cell)
+	_tell_apart()
+	if not _shelf_chosen.is_empty():
+		_light_entry(_shelf_chosen)
+	_update_status()
+
+
+## An entry's part as this build has it, or null: a part made on another
+## computer, or a build older than the part, has none.
+func _entry_part(entry: Dictionary) -> PartLibrary.PartInfo:
+	var info: PartLibrary.PartInfo = library.parts.get(library.resolve(str(entry["part"])))
+	return info if info != null and info.reachable else null
+
+
+## Whether a palette's name, or anything in it, answers what is typed.
+func _palette_answers(one: Dictionary, query: String, needles: PackedStringArray) -> bool:
+	if str(one["name"]).to_lower().contains(query.to_lower()):
+		return true
+	for entry: Dictionary in one["entries"]:
+		if entry.has("ldraw"):
+			if str(entry["name"]).to_lower().contains(query.to_lower()):
+				return true
+			continue
+		var info: PartLibrary.PartInfo = _entry_part(entry)
+		if info != null and PartLibrary.matched(info, needles) != PartLibrary.NOT_MATCHED:
+			return true
+	return false
+
+
+## "12 parts, 1 sub-assembly".
+static func palette_counts(one: Dictionary) -> String:
+	var parts: int = 0
+	var assemblies: int = 0
+	for entry: Dictionary in one.get("entries", []):
+		if entry.has("ldraw"):
+			assemblies += 1
+		else:
+			parts += 1
+	if assemblies == 0:
+		return Counted.of(parts, "part")
+	if parts == 0:
+		return Counted.of(assemblies, "sub-assembly", "sub-assemblies")
+	return "%s, %s" % [Counted.of(parts, "part"), Counted.of(assemblies, "sub-assembly", "sub-assemblies")]
+
+
+## A palette's row in the list: a picture of what it holds first, its name and
+## what it holds.
+func _palette_row(one: Dictionary) -> Control:
+	var name: String = str(one["name"])
+	var button := Button.new()
+	button.custom_minimum_size = Vector2(0, _z(52))
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	FocusGuard.by_keyboard(button)
+	button.add_theme_stylebox_override("focus", FocusGuard.ring())
+	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	button.set_meta("palette", str(one["id"]))
+	button.set_meta("palette_name", name)
+	button.accessibility_name = name
+	button.accessibility_description = palette_counts(one)
+	button.tooltip_text = "“%s”: %s\nChoose it to open it" % [name, palette_counts(one)]
+	button.pressed.connect(_open_palette.bind(str(one["id"])))
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.set_anchors_preset(Control.PRESET_FULL_RECT)
+	row.offset_left = _z(4)
+	row.offset_right = -_z(6)
+	row.add_theme_constant_override("separation", int(_z(8)))
+	button.add_child(row)
+	var image: ThumbTile = _entry_picture((one["entries"] as Array).front() if not (one["entries"] as Array).is_empty()
+		else {})
+	image.custom_minimum_size = Vector2(_z(44), _z(44))
+	image.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(image)
+	if not image.part_id.is_empty():
+		button.set_meta("tile", image)
+	var words := VBoxContainer.new()
+	words.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	words.alignment = BoxContainer.ALIGNMENT_CENTER
+	words.add_theme_constant_override("separation", 0)
+	row.add_child(words)
+	var title := Label.new()
+	title.text = name
+	title.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	title.clip_text = true
+	title.add_theme_font_size_override("font_size", ceili(_z(12)))
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	words.add_child(title)
+	var held := Label.new()
+	held.text = palette_counts(one)
+	held.add_theme_font_size_override("font_size", ceili(_z(11)))
+	held.modulate = Color(1, 1, 1, 0.75)
+	held.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	words.add_child(held)
+	return button
+
+
+## A picture of [param entry]: a part in its colour, or a sub-assembly drawn
+## whole; an empty one for none.
+func _entry_picture(entry: Dictionary) -> ThumbTile:
+	if entry.is_empty():
+		return ThumbTile.new()
+	if entry.has("ldraw"):
+		var id: String = _assembly_picture(entry)
+		var whole := ThumbTile.new(id, 16)
+		var ready_whole: ImageTexture = thumbnails.peek(id, 16) if thumbnails else null
+		if ready_whole:
+			whole.show_picture(ready_whole, false)
+		return whole
+	var info: PartLibrary.PartInfo = _entry_part(entry)
+	if info == null:
+		return ThumbTile.new()
+	var image := ThumbTile.new(info.id, int(entry["colour"]))
+	image.sketch = info
+	image.sketch_colour = _sketch_colour(int(entry["colour"]))
+	var ready_now: ImageTexture = thumbnails.peek(info.id, int(entry["colour"])) if thumbnails else null
+	if ready_now:
+		image.show_picture(ready_now, false)
+	return image
+
+
+## A sub-assembly's parts as Carry holds them, read from its lines once.
+func _assembly_parts(entry: Dictionary) -> Array:
+	var id: String = str(entry["id"])
+	if not _assembly_items.has(id):
+		_assembly_items[id] = Carry.from_ldraw(str(entry["ldraw"]), library)
+	return _assembly_items[id]
+
+
+## What a sub-assembly's picture is asked for by, offered to the pictures:
+## its lines' own, so a sub-assembly kept twice is drawn once.
+func _assembly_picture(entry: Dictionary) -> String:
+	var id: String = "palette:" + str(entry["ldraw"]).md5_text()
+	if thumbnails:
+		var ids := PackedStringArray()
+		for item: Dictionary in _assembly_parts(entry):
+			if not ids.has(str(item["part"])):
+				ids.append(str(item["part"]))
+		var ldraw: String = str(entry["ldraw"])
+		thumbnails.offer_group(id, ids, func(_colour: int) -> Array:
+			return Carry.from_ldraw(ldraw, library))
+	return id
+
+
+## A sub-assembly's tile (or row, under List): its picture whole, its name,
+## and the mark the model tree gives a sub-assembly.
+func _assembly_cell(entry: Dictionary) -> Control:
+	var name: String = str(entry["name"])
+	var count: int = int(entry["count"])
+	var button := Button.new()
+	button.toggle_mode = true
+	FocusGuard.by_keyboard(button)
+	button.add_theme_stylebox_override("focus", FocusGuard.ring())
+	button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	button.set_meta("entry", str(entry["id"]))
+	button.set_meta("assembly", name)
+	# Its own colours: the colour in hand never draws it again (_on_colour).
+	button.set_meta("key", "assembly:" + str(entry["id"]))
+	button.accessibility_name = "%s, a sub-assembly of %s" % [name, Counted.of(count, "part")]
+	button.tooltip_text = "“%s”: a sub-assembly of %s\nChoose it to hold it whole: a click puts it down" % [
+		name, Counted.of(count, "part")]
+	button.pressed.connect(_on_assembly.bind(str(entry["id"])))
+	var image: ThumbTile = _entry_picture(entry)
+	image.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button.set_meta("tile", image)
+	var label := Label.new()
+	label.text = name
+	label.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.add_theme_font_size_override("font_size", ceili(_z(11)))
+	label.modulate = Color(1, 1, 1, 0.86)
+	var mark: TextureRect = Icons.picture(SUBMODEL, _z(14.0), Icons.density(self))
+	mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if _list.button_pressed:
+		button.custom_minimum_size = Vector2(0, maxf(_z(ROW + 6.0), least))
+		var line := HBoxContainer.new()
+		line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		line.set_anchors_preset(Control.PRESET_FULL_RECT)
+		line.offset_left = _z(4)
+		line.offset_right = -_z(6)
+		line.add_theme_constant_override("separation", int(_z(6)))
+		button.add_child(line)
+		image.custom_minimum_size = Vector2(_z(ROW + 4.0), _z(ROW + 4.0))
+		line.add_child(image)
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		label.clip_text = true
+		label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		line.add_child(label)
+		mark.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		line.add_child(mark)
+		var many := Label.new()
+		many.text = Counted.of(count, "part")
+		many.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		many.add_theme_font_size_override("font_size", ceili(_z(11)))
+		many.modulate = Color(1, 1, 1, 0.7)
+		many.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		line.add_child(many)
+		return button
+	button.custom_minimum_size = Vector2(_z(74), _z(84))
+	var box := VBoxContainer.new()
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.set_anchors_preset(Control.PRESET_FULL_RECT)
+	box.add_theme_constant_override("separation", 0)
+	button.add_child(box)
+	image.custom_minimum_size = Vector2(0, _z(52))
+	image.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	box.add_child(image)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.max_lines_visible = NAME_LINES
+	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	var font: Font = label.get_theme_font("font")
+	label.custom_minimum_size.y = ceilf(font.get_height(ceili(_z(11))) * NAME_LINES
+		+ float(label.get_theme_constant("line_spacing")) * (NAME_LINES - 1))
+	box.add_child(label)
+	mark.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	mark.offset_left = _z(4.0)
+	mark.offset_right = _z(18.0)
+	mark.offset_top = _z(4.0)
+	mark.offset_bottom = _z(18.0)
+	button.add_child(mark)
+	return button
+
+
+## The tiles of a palette lit for [param entry_id] alone.
+func _light_entry(entry_id: String) -> void:
+	for child: Node in _grid.get_children():
+		if child is Button and child.has_meta("entry"):
+			(child as Button).button_pressed = str(child.get_meta("entry")) == entry_id
+
+
+## The open palette's entry with [param entry_id], or none.
+func _palette_entry(entry_id: String) -> Dictionary:
+	for entry: Dictionary in PartShelf.palette(_shelf_open).get("entries", []):
+		if str(entry["id"]) == entry_id:
+			return entry
+	return {}
+
+
+## A palette opened, or with "" every palette listed.
+func _open_palette(id: String) -> void:
+	if _category != PALETTES:
+		_on_category(PALETTES)
+	_shelf_open = id
+	_shelf_chosen = ""
+	_show_shelf_line()
+	_search_soon(_search.text)
+
+
+func _new_palette() -> void:
+	# In the reader's language: once made, the name is theirs, drawn as it is.
+	var id: String = PartShelf.make_palette(tr("Palette"))
+	_refresh_shelf()
+	_open_palette(id)
+	# Named at once, by typing: the name is chosen, so any key types over it.
+	_shelf_name.grab_focus()
+	_shelf_name.select_all()
+
+
+func _rename_palette() -> void:
+	if _shelf_open.is_empty():
+		return
+	var was: String = str(PartShelf.palette(_shelf_open).get("name", ""))
+	if _shelf_name.text.strip_edges().is_empty():
+		_shelf_name.text = was
+		return
+	if PartShelf.rename_palette(_shelf_open, _shelf_name.text):
+		_say("palette renamed “%s”" % str(PartShelf.palette(_shelf_open)["name"]))
+
+
+## A sub-assembly chosen: held whole once its parts' shapes are here, as an
+## assembly of its own name when it is put down.
+func _on_assembly(entry_id: String) -> void:
+	var by_keyboard: bool = FocusGuard.keys_with_a_control(get_viewport())
+	var entry: Dictionary = _palette_entry(entry_id)
+	_shelf_chosen = entry_id
+	_light_entry(entry_id)
+	if entry.is_empty():
+		return
+	var ids := PackedStringArray()
+	for item: Dictionary in _assembly_parts(entry):
+		if not ids.has(str(item["part"])):
+			ids.append(str(item["part"]))
+	if not await _all_here(ids):
+		_status.text = "“%s” could not be had: its parts did not load" % str(entry["name"])
+		return
+	# Read again now every shape is here: its frame is worked out from them.
+	var parts: Array = Carry.from_ldraw(str(entry["ldraw"]), library)
+	if parts.is_empty():
+		_status.text = "“%s” could not be had: its parts did not load" % str(entry["name"])
+		return
+	var group: String = _unused_assembly(str(entry["name"]))
+	for item: Dictionary in parts:
+		item["group"] = group
+		item["unit"] = ""
+	construction_chosen.emit(parts, str(entry["name"]))
+	_keys_to_model(by_keyboard)
+
+
+## Whether every one of [param ids]'s shapes is here, fetched first on the web.
+func _all_here(ids: PackedStringArray) -> bool:
+	var waiting: Array[String] = []
+	for id: String in ids:
+		if not library.is_resident(id) and library.mesh_for(id) == null:
+			library.request_mesh(id, true)
+			waiting.append(id)
+	var asked: int = Time.get_ticks_msec()
+	while not waiting.is_empty() and Time.get_ticks_msec() - asked < FETCH_WAIT_MS:
+		await get_tree().process_frame
+		waiting = waiting.filter(func(id: String) -> bool: return not library.is_resident(id))
+	for id: String in ids:
+		if library.mesh_for(id) == null:
+			return false
+	return true
+
+
+## [param wanted], or with a number after it, where the model has no
+## assembly of that name at any depth: put down, a sub-assembly from a
+## palette is one of its own, never another copy of one the model has.
+func _unused_assembly(wanted: String) -> String:
+	var taken: Dictionary = {}
+	if builder != null and builder.world != null:
+		for brick: BrickWorld.Brick in builder.world.bricks():
+			taken[brick.group] = true
+			for segment: String in brick.unit.split("/", false):
+				taken[segment.get_slice("#", 0)] = true
+		for path: Variant in builder.world.unit_steps.keys():
+			for segment: String in str(path).split("/", false):
+				taken[segment.get_slice("#", 0)] = true
+	var base: String = wanted.strip_edges() if not wanted.strip_edges().is_empty() else "Sub-assembly"
+	if not taken.has(base):
+		return base
+	var n: int = 2
+	while taken.has("%s %d" % [base, n]):
+		n += 1
+	return "%s %d" % [base, n]
+
+
+## The part in hand, or the part chosen last: [part, colour], or none.
+func _held_pair() -> Array:
+	var part: String = builder.held_part if builder != null and not builder.held_part.is_empty() \
+		else _selected_part
+	return [] if part.is_empty() else [part, _selected_color]
+
+
+## The bricks selected in the model, the model's own parts (not its floor).
+func _selected_bricks() -> Array[BrickWorld.Brick]:
+	var out: Array[BrickWorld.Brick] = []
+	if builder == null or builder.world == null:
+		return out
+	for brick_id: Variant in builder.selection.keys():
+		var brick: BrickWorld.Brick = builder.world.get_brick(int(brick_id))
+		if brick != null and not builder.scenery.has(brick.id):
+			out.append(brick)
+	return out
+
+
+## Add's rows greyed where they would keep nothing, each saying why.
+func _ready_add_rows() -> void:
+	var rows: PopupMenu = _shelf_add.get_popup()
+	var none: bool = _selected_bricks().is_empty()
+	rows.set_item_disabled(rows.get_item_index(ADD_HELD), _held_pair().is_empty())
+	rows.set_item_tooltip(rows.get_item_index(ADD_HELD),
+		"Choose a part in the bin first" if _held_pair().is_empty() else "")
+	for id: int in [ADD_PARTS, ADD_ASSEMBLY]:
+		rows.set_item_disabled(rows.get_item_index(id), none)
+		rows.set_item_tooltip(rows.get_item_index(id), "Select parts in the model first" if none else "")
+
+
+func _on_add(id: int) -> void:
+	if _shelf_open.is_empty():
+		return
+	var name: String = str(PartShelf.palette(_shelf_open).get("name", ""))
+	match id:
+		ADD_HELD:
+			var pair: Array = _held_pair()
+			if pair.is_empty():
+				_say("choose a part in the bin first")
+				return
+			var added: int = PartShelf.keep_parts(_shelf_open, [pair])
+			var info: PartLibrary.PartInfo = library.parts.get(str(pair[0]))
+			var what: String = tile_name(info) if info != null else str(pair[0])
+			_say(("kept %s in “%s”" if added > 0 else "%s is in “%s” already") % [what, name])
+		ADD_PARTS:
+			var pairs: Array = []
+			for brick: BrickWorld.Brick in _selected_bricks():
+				pairs.append([brick.part_id, brick.color_code])
+			if pairs.is_empty():
+				_say("select parts in the model first")
+				return
+			var added: int = PartShelf.keep_parts(_shelf_open, pairs)
+			_say("kept %s in “%s”, each in its colour" % [Counted.of(added, "part"), name] if added > 0
+				else "every part selected is in “%s” already" % name)
+		ADD_ASSEMBLY:
+			var bricks: Array[BrickWorld.Brick] = _selected_bricks()
+			if bricks.is_empty():
+				_say("select parts in the model first")
+				return
+			var ids: Array = bricks.map(func(brick: BrickWorld.Brick) -> int: return brick.id)
+			var held: Array = Carry.gather(builder.world, library, ids)
+			if held.is_empty():
+				return
+			var ldraw: String = Carry.as_ldraw(held)
+			var palette_id: String = _shelf_open
+			_ask_name("Keep as a sub-assembly", "Keep", _assembly_named(bricks),
+				func(given: String) -> void:
+					if PartShelf.keep_assembly(palette_id, given, ldraw, held.size()).is_empty():
+						return
+					_say("kept the sub-assembly “%s”, %s, in “%s”" % [PartShelf.clean_name(given)
+						if not PartShelf.clean_name(given).is_empty() else "Sub-assembly",
+						Counted.of(held.size(), "part"), name])
+					_redraw_palettes())
+			return
+	_redraw_palettes()
+
+
+## What a selection kept as a sub-assembly is called first: the assembly it
+## all is, when it is one, else "Sub-assembly".
+func _assembly_named(bricks: Array[BrickWorld.Brick]) -> String:
+	var group: String = bricks[0].group if not bricks.is_empty() else ""
+	for brick: BrickWorld.Brick in bricks:
+		if brick.group != group:
+			return tr("Sub-assembly")
+	return group if not group.is_empty() else tr("Sub-assembly")
+
+
+## More's rows greyed where they would do nothing.
+func _ready_more_rows() -> void:
+	var rows: PopupMenu = _shelf_more.get_popup()
+	var chosen: Dictionary = _palette_entry(_shelf_chosen)
+	rows.set_item_disabled(rows.get_item_index(MORE_TAKE_OUT), chosen.is_empty())
+	rows.set_item_tooltip(rows.get_item_index(MORE_TAKE_OUT),
+		"Choose a part or a sub-assembly in the palette first" if chosen.is_empty() else "")
+	rows.set_item_disabled(rows.get_item_index(MORE_RENAME), not chosen.has("ldraw"))
+	rows.set_item_tooltip(rows.get_item_index(MORE_RENAME),
+		"" if chosen.has("ldraw") else "Choose a sub-assembly in the palette first")
+
+
+func _on_more(id: int) -> void:
+	if _shelf_open.is_empty():
+		return
+	var palette_id: String = _shelf_open
+	var one: Dictionary = PartShelf.palette(palette_id)
+	var chosen: Dictionary = _palette_entry(_shelf_chosen)
+	match id:
+		MORE_TAKE_OUT:
+			if chosen.is_empty():
+				return
+			var entry_id: String = str(chosen["id"])
+			if not chosen.has("ldraw"):
+				PartShelf.take_out(palette_id, entry_id)
+				_shelf_chosen = ""
+				_say("took it out of “%s”" % str(one["name"]))
+				_redraw_palettes()
+				return
+			# A sub-assembly is kept nowhere else: asked first.
+			_ask("Take the sub-assembly out?", "“%s” goes from “%s”. Models built with it keep their parts." % [
+				str(chosen["name"]), str(one["name"])], "Take out", func() -> void:
+					PartShelf.take_out(palette_id, entry_id)
+					_shelf_chosen = ""
+					_redraw_palettes())
+		MORE_RENAME:
+			if not chosen.has("ldraw"):
+				return
+			var entry_id: String = str(chosen["id"])
+			_ask_name("Rename the sub-assembly", "Rename", str(chosen["name"]), func(given: String) -> void:
+				PartShelf.rename_entry(palette_id, entry_id, given)
+				_redraw_palettes())
+		MORE_DELETE:
+			_ask("Delete this palette?", "“%s” and the %s in it go. Models built with them keep their parts." % [
+				str(one["name"]), palette_counts(one)], "Delete", func() -> void:
+					PartShelf.delete_palette(palette_id)
+					_say("deleted the palette “%s”" % str(one["name"]))
+					_shelf_open = ""
+					_redraw_palettes())
+
+
+## A name asked for, [param given] first, and [param then] given it.
+func _ask_name(title: String, ok: String, given: String, then: Callable) -> void:
+	if _name_asker == null:
+		_name_asker = ConfirmationDialog.new()
+		var box := VBoxContainer.new()
+		box.add_theme_constant_override("separation", 6)
+		var said := Label.new()
+		said.text = "Its name in the palette"
+		box.add_child(said)
+		_name_field = LineEdit.new()
+		_name_field.max_length = PartShelf.NAME_MOST
+		_name_field.accessibility_name = "The sub-assembly's name"
+		_name_field.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+		_name_field.custom_minimum_size = Vector2(_z(260), least)
+		box.add_child(_name_field)
+		_name_asker.add_child(box)
+		_name_asker.register_text_enter(_name_field)
+		_name_asker.confirmed.connect(func() -> void: _name_then.call(_name_field.text))
+		add_child(_name_asker)
+	_name_asker.title = title
+	_name_asker.ok_button_text = ok
+	_name_then = then
+	_name_field.text = given
+	_name_asker.popup_centered(Vector2i(roundi(_z(320)), 0))
+	_name_field.grab_focus()
+	_name_field.select_all()
+
+
+## A question with [param ok] to go ahead, and [param then] if it is chosen.
+func _ask(title: String, words: String, ok: String, then: Callable) -> void:
+	if _asking == null:
+		_asking = ConfirmationDialog.new()
+		_asking.dialog_autowrap = true
+		_asking.confirmed.connect(func() -> void: _asking_then.call())
+		add_child(_asking)
+	_asking.title = title
+	_asking.dialog_text = words
+	_asking.ok_button_text = ok
+	_asking_then = then
+	_asking.popup_centered(Vector2i(roundi(_z(380)), 0))
+
+
+## What was done, on the window's status bar.
+func _say(words: String) -> void:
+	if verbs != null and verbs.say.is_valid():
+		verbs.say.call(words)
+	else:
+		_status.text = words
+
+
+## The palettes changed here or in another window: the chip's count, and
+## what shows of them.
+func _redraw_palettes() -> void:
+	_refresh_shelf()
+	if _category == PALETTES:
+		_search_soon(_search.text)
+
+
+## Each frame: the line kept to the category, and while a palette shows,
+## about once a second, another window's change to them read and shown.
+func _watch_palettes() -> void:
+	if _shelf_line == null:
+		return
+	if _shelf_line.visible != (_category == PALETTES):
+		_show_shelf_line()
+	if _category != PALETTES or not is_visible_in_tree():
+		return
+	var now: int = Time.get_ticks_msec()
+	if now - _shelf_looked < 1000:
+		return
+	_shelf_looked = now
+	if (PartShelf.palettes_changed() or PartShelf.palettes_revision != _shelf_seen) \
+			and not _shelf_name.has_focus():
+		_redraw_palettes()
+
+
+## The status line under a palette, or under the list of them.
+func _say_palettes() -> void:
+	_status.tooltip_text = ""
+	if _shelf_open.is_empty():
+		var count: int = PartShelf.palettes().size()
+		_status.text = ("No palettes yet: New palette makes one, and Add fills it from the model"
+			if count == 0 else "%s, for any model: choose one to open it" % Counted.of(count, "palette"))
+		return
+	var one: Dictionary = PartShelf.palette(_shelf_open)
+	if (one.get("entries", []) as Array).is_empty():
+		_status.text = "Empty: select parts in the model, or choose a part in the bin, then Add"
+		return
+	_status.text = "%s: a part is taken in hand in its colour, a sub-assembly held whole" % palette_counts(one)
+	_status.tooltip_text = "Right-click a part to keep it in Favourites too"
+
+
+## The palettes' controls by name, for a probe and a browser check.
+func _palette_controls() -> Dictionary:
+	var named: Dictionary = {}
+	for child: Node in _category_row.get_children():
+		if str(child.get_meta("category", "")) == PALETTES:
+			named["palettes"] = child
+	if _shelf_line == null:
+		return named
+	named["palette new"] = _shelf_new
+	named["palette back"] = _shelf_back
+	named["palette name"] = _shelf_name
+	named["palette add"] = _shelf_add
+	named["palette more"] = _shelf_more
+	for child: Node in _grid.get_children():
+		if child.has_meta("palette_name"):
+			named["palette row " + str(child.get_meta("palette_name"))] = child
+		elif child.has_meta("assembly"):
+			named["sub-assembly " + str(child.get_meta("assembly"))] = child
+	if _name_asker != null:
+		named["name field"] = _name_field
+		named["name ok"] = _name_asker.get_ok_button()
+	if _asking != null:
+		named["ask ok"] = _asking.get_ok_button()
+	return named
+
+
+## The palette open, by its id, or "" (for a probe).
+func palette_open() -> String:
+	return _shelf_open
