@@ -136,6 +136,11 @@ report_web() {
 build_web() {
   local preset="$1" dir="$2"
   export_one "$preset" "$dir/index.html" || return 1
+  # The engine's Emscripten 4.0.20 signals a worker that its call to the main
+  # thread is done after letting go of the call's lock, which can freeze the
+  # tab for good; signalled first, as Emscripten 5.0.5 does, before anything is
+  # compressed (tools/web/wasm_proxy_fix.py, househang).
+  python3 tools/web/wasm_proxy_fix.py "$dir/index.wasm" || { echo "export FAILED: $dir/index.wasm not mended"; return 1; }
   # The working set's geometry the first screen does not draw, in a file
   # of its own (tools/web_pack.py): the page fetches it once the engine has
   # its own files and writes it into them (src/boot/shell.html), so nobody

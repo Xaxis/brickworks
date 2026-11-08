@@ -47,16 +47,442 @@ class Pixel extends RefCounted:
 	var color_code: int = 0
 
 
+## A mosaic as the person chose it: how wide, which part of the picture, in
+## which colours, and whether a run of one colour goes in larger plates.
+class Options extends RefCounted:
+	var across: int = 48
+	var dither: bool = true
+	## The part of the picture laid, as fractions of it, 0 to 1 from its top
+	## left: what was drawn on it in the dialog. The whole of it by default.
+	var crop: Rect2 = Rect2(0, 0, 1, 1)
+	## The colours chosen (a set's, what the person owns); empty for
+	## [constant PALETTE].
+	var palette: PackedInt32Array = PackedInt32Array()
+	## Runs of a colour in the largest plates they fill ([method merge]).
+	var mixed: bool = true
+
+
+## One plate of a laid mosaic: its stud at the low corner, and its size in
+## studs along x and z as it lies.
+class Plate extends RefCounted:
+	var part: String = PIXEL_PART
+	var color_code: int = 0
+	var x: int = 0
+	var z: int = 0
+	var size: Vector2i = Vector2i.ONE
+
+
+## What a picture came to: a colour a stud, and the plates laid over them.
+class Laid extends RefCounted:
+	var across: int = 0
+	var down: int = 0
+	## Each stud's colour, x + z * across, the top of the picture at z = 0;
+	## -1 where the picture is clear.
+	var cells: PackedInt32Array = PackedInt32Array()
+	## The colour each stud was asked to be, in linear light, as the picture
+	## was sampled, before it was matched.
+	var want: PackedColorArray = PackedColorArray()
+	var plates: Array[Plate] = []
+	## The colours it was matched to.
+	var palette: PackedInt32Array = PackedInt32Array()
+	## The picture's own pixels it was laid from: the crop.
+	var source: Rect2i = Rect2i()
+	## False when the colours chosen had none a 1 x 1 plate is made in, and
+	## it was laid in all of them instead (said under the picture).
+	var palette_kept: bool = true
+
+	## Studs with a plate on them.
+	func studs() -> int:
+		return cells.size() - cells.count(-1)
+
+	## Part and colour, "3024/4", -> how many: the parts list it comes to.
+	func counts() -> Dictionary:
+		var out: Dictionary = {}
+		for plate: Plate in plates:
+			var key: String = "%s/%d" % [plate.part, plate.color_code]
+			out[key] = int(out.get(key, 0)) + 1
+		return out
+
+	## How many of each size, most first: [["1 × 1", 310], ...].
+	func by_size() -> Array:
+		var tally: Dictionary = {}
+		for plate: Plate in plates:
+			var words: String = "%d × %d" % [mini(plate.size.x, plate.size.y),
+				maxi(plate.size.x, plate.size.y)]
+			tally[words] = int(tally.get(words, 0)) + 1
+		var out: Array = []
+		for words: String in tally:
+			out.append([words, int(tally[words])])
+		out.sort_custom(func(a: Array, b: Array) -> bool: return int(a[1]) > int(b[1]))
+		return out
+
+	## The colours it is laid in.
+	func colours() -> int:
+		var seen: Dictionary = {}
+		for code: int in cells:
+			if code >= 0:
+				seen[code] = true
+		return seen.size()
+
+
+## The plates a run of one colour is laid in, the most studs first: the
+## part, and its studs one way and the other. Which way an LDraw plate is
+## drawn is read off its shape when it is put down ([method transform_of]),
+## so a table that has it the wrong way round still lays it right.
+const PLATES: Array = [
+	["41539", 8, 8], ["3036", 8, 6], ["3958", 6, 6], ["3035", 8, 4],
+	["3032", 6, 4], ["2445", 12, 2], ["3832", 10, 2], ["3034", 8, 2],
+	["3031", 4, 4], ["3795", 6, 2], ["60479", 12, 1], ["4477", 10, 1],
+	["3460", 8, 1], ["3020", 4, 2], ["3666", 6, 1], ["3021", 3, 2],
+	["3710", 4, 1], ["3022", 2, 2], ["3623", 3, 1], ["3023b", 2, 1],
+	[PIXEL_PART, 1, 1],
+]
+
+
+## A picture laid as the person chose: cut to the crop, matched to the
+## colours chosen, and each run of one colour in the largest plates it
+## fills when [member Options.mixed] — the picture the same stud for stud
+## either way, in fewer parts.
+static func make(image: Image, options: Options, library: PartLibrary) -> Laid:
+	var laid := Laid.new()
+	if image == null or image.is_empty():
+		return laid
+	laid.source = crop_rect(image.get_size(), options.crop)
+	laid.palette = palette_for(options.palette, library)
+	# Colours chosen that no stud can be (a set of trans parts alone): laid in
+	# all of them and said so, rather than nothing laid and nothing said.
+	if laid.palette.is_empty() and not options.palette.is_empty():
+		laid.palette = palette_for(PackedInt32Array(), library)
+		laid.palette_kept = false
+	var scaled: Image = _scaled(image.get_region(laid.source), options.across)
+	laid.across = scaled.get_width()
+	laid.down = scaled.get_height()
+	laid.want.resize(laid.across * laid.down)
+	for z: int in laid.down:
+		for x: int in laid.across:
+			laid.want[x + z * laid.across] = scaled.get_pixel(x, z)
+	laid.cells.resize(laid.across * laid.down)
+	laid.cells.fill(-1)
+	for pixel: Pixel in _matched(scaled, laid.palette, library, options.dither):
+		laid.cells[pixel.x + pixel.z * laid.across] = pixel.color_code
+	laid.plates = merge(laid.cells, laid.across, laid.down, library) if options.mixed \
+		else singles(laid.cells, laid.across, laid.down)
+	return laid
+
+
+## The pixels of a picture of [param size] that [param crop], fractions of
+## it, takes in: whole pixels, at least one each way.
+static func crop_rect(size: Vector2i, crop: Rect2) -> Rect2i:
+	var x0: int = clampi(roundi(crop.position.x * size.x), 0, maxi(0, size.x - 1))
+	var y0: int = clampi(roundi(crop.position.y * size.y), 0, maxi(0, size.y - 1))
+	var x1: int = clampi(roundi(crop.end.x * size.x), x0 + 1, size.x)
+	var y1: int = clampi(roundi(crop.end.y * size.y), y0 + 1, size.y)
+	return Rect2i(x0, y0, x1 - x0, y1 - y0)
+
+
+## The picture cut to [param crop], fractions of it; the picture itself when
+## that is the whole of it.
+static func cut(image: Image, crop: Rect2) -> Image:
+	if image == null or image.is_empty():
+		return image
+	var rect: Rect2i = crop_rect(image.get_size(), crop)
+	return image if rect.size == image.get_size() else image.get_region(rect)
+
+
+## The colours a classic mosaic's studs are matched to. Chosen (a set's,
+## what is owned): those a stud can be ([method paintable]) that a 1 x 1
+## plate is not known never to have been made in. None chosen, All colours:
+## LEGO's palette for the 1 x 1 plate now, every colour it has been in a
+## set in since PartLibrary.recent_since, so every stud can be bought; in a
+## build with no such data, [constant PALETTE]'s that can be. All of
+## PALETTE once laid the car photo's background in 415 Chrome Silver studs,
+## a colour no 1 x 1 plate is made in: a third of a Pick a Brick list that
+## could not be filled.
+static func palette_for(chosen: PackedInt32Array, library: PartLibrary) -> PackedInt32Array:
+	var plate: PartLibrary.PartInfo = library.parts.get(PIXEL_PART)
+	var now: bool = chosen.is_empty() and plate != null and not plate.colors_recent.is_empty()
+	var among: PackedInt32Array = chosen if not chosen.is_empty() \
+		else plate.colors_recent if now else PackedInt32Array(PALETTE)
+	var known: Dictionary = {}
+	var out := PackedInt32Array()
+	for code: int in among:
+		if out.has(code) or not paintable(code, library):
+			continue
+		if chosen.is_empty() and not now and not _sold(library, PIXEL_PART, code, known):
+			continue
+		if plate != null and plate.never_made_in(code):
+			continue
+		out.append(code)
+	return out
+
+
+## Whether [param code] is a colour a mosaic's stud can be: opaque plastic,
+## pearl or metallic paint, as a person's own pieces are.
+static func paintable(code: int, library: PartLibrary) -> bool:
+	var colour: PartLibrary.BrickColor = library.color(code)
+	return colour != null and colour.alpha >= 255 \
+		and colour.group in ["solid", "pearlescent plastic", "metallic paint"]
+
+
+## The colours of a set's parts, or of what is owned, as a palette: from
+## rows of [part, colour, ...] or keys "part/colour" -> count, each colour
+## once, in the order met. [param parts], when given, keeps to those parts
+## (by number, retired numbers as they are now).
+static func colours_in(rows: Variant, library: PartLibrary,
+		parts: PackedStringArray = PackedStringArray()) -> PackedInt32Array:
+	var wanted: Dictionary = {}
+	for part: String in parts:
+		wanted[library.resolve(part)] = true
+	var out := PackedInt32Array()
+	var pairs: Array = []
+	if rows is Dictionary:
+		for key: String in rows:
+			if int((rows as Dictionary)[key]) > 0:
+				pairs.append([key.get_slice("/", 0), int(key.get_slice("/", 1))])
+	elif rows is Array:
+		pairs = rows
+	for row: Variant in pairs:
+		var pair: Array = row
+		if not wanted.is_empty() and not wanted.has(library.resolve(str(pair[0]))):
+			continue
+		var code: int = library.plain_code(int(pair[1]))
+		if not out.has(code):
+			out.append(code)
+	return out
+
+
+## The part numbers a classic mosaic is laid in.
+static func plate_parts() -> PackedStringArray:
+	var out := PackedStringArray()
+	for shape: Array in PLATES:
+		out.append(str(shape[0]))
+	return out
+
+
+## One 1 x 1 plate a stud.
+static func singles(cells: PackedInt32Array, across: int, down: int) -> Array[Plate]:
+	var out: Array[Plate] = []
+	for z: int in down:
+		for x: int in across:
+			var code: int = cells[x + z * across]
+			if code >= 0:
+				out.append(_plate(PIXEL_PART, code, x, z, Vector2i.ONE))
+	return out
+
+
+## Runs of one colour in the largest plates they fill, row by row from the
+## top left: at each stud not yet covered, the plate with the most studs
+## (either way round) whose every stud is that colour and free, and that is
+## made in that colour as a LEGO element — so a shop can sell every lot of
+## it. Nothing changes colour: the picture is the same stud for stud, in
+## fewer parts.
+static func merge(cells: PackedInt32Array, across: int, down: int,
+		library: PartLibrary) -> Array[Plate]:
+	var out: Array[Plate] = []
+	# How far each stud's colour runs to the right, covered or not: a
+	# plate wider than that cannot start here, which rules most out at once.
+	var run := PackedInt32Array()
+	run.resize(cells.size())
+	for z: int in down:
+		for x: int in range(across - 1, -1, -1):
+			var i: int = x + z * across
+			if cells[i] < 0:
+				run[i] = 0
+			elif x + 1 < across and cells[i + 1] == cells[i]:
+				run[i] = run[i + 1] + 1
+			else:
+				run[i] = 1
+	var taken := PackedByteArray()
+	taken.resize(cells.size())
+	var sold: Dictionary = {}
+	for z: int in down:
+		for x: int in across:
+			var i: int = x + z * across
+			var code: int = cells[i]
+			if code < 0 or taken[i] == 1:
+				continue
+			var laid: bool = false
+			for shape: Array in PLATES:
+				var part: String = str(shape[0])
+				if part != PIXEL_PART and not _sold(library, part, code, sold):
+					continue
+				for turn: int in 2:
+					var size := Vector2i(int(shape[1]), int(shape[2]))
+					if turn == 1:
+						if size.x == size.y:
+							break
+						size = Vector2i(size.y, size.x)
+					if x + size.x > across or z + size.y > down \
+							or not _free(cells, run, taken, across, x, z, size, code):
+						continue
+					for dz: int in size.y:
+						for dx: int in size.x:
+							taken[i + dx + dz * across] = 1
+					out.append(_plate(part, code, x, z, size))
+					laid = true
+					break
+				if laid:
+					break
+	return out
+
+
+## Whether every stud of a plate of [param size] at [param x], [param z] is
+## [param code] and free.
+static func _free(cells: PackedInt32Array, run: PackedInt32Array, taken: PackedByteArray,
+		across: int, x: int, z: int, size: Vector2i, code: int) -> bool:
+	for dz: int in size.y:
+		var j: int = x + (z + dz) * across
+		if cells[j] != code or run[j] < size.x:
+			return false
+		for dx: int in size.x:
+			if taken[j + dx] == 1:
+				return false
+	return true
+
+
+## Whether LEGO sells [param part] in [param code] now: it has been in a
+## set in that colour since PartLibrary.recent_since, where the catalogue
+## knows; else an element number is known for it; in a build with neither,
+## it is not known never to have been made in it.
+static func _sold(library: PartLibrary, part: String, code: int, known: Dictionary) -> bool:
+	var key: String = "%s/%d" % [part, code]
+	if not known.has(key):
+		if not known.has(""):
+			known[""] = not library.element_for(PIXEL_PART, 0).is_empty()
+		var info: PartLibrary.PartInfo = library.parts.get(part)
+		if info != null and not info.colors_recent.is_empty():
+			known[key] = info.colors_recent.has(code)
+		elif bool(known[""]):
+			known[key] = not library.element_for(part, code).is_empty()
+		else:
+			known[key] = info != null and not info.never_made_in(code)
+	return bool(known[key])
+
+
+static func _plate(part: String, code: int, x: int, z: int, size: Vector2i) -> Plate:
+	var plate := Plate.new()
+	plate.part = part
+	plate.color_code = code
+	plate.x = x
+	plate.z = z
+	plate.size = size
+	return plate
+
+
+## Where a plate goes: flat on the ground, its low corner on stud
+## ([member Plate.x], [member Plate.z]), turned whichever way its shape
+## covers [member Plate.size]. Read off the part's own cells, as the
+## builder reads them, so the plate's corner is the stud's whatever the
+## part's origin.
+static func transform_of(plate: Plate, part: Lbm.PartMesh, builder: Builder) -> Transform3D:
+	var fallback := Transform3D()
+	for rot: int in 2:
+		var basis: Basis = BrickLattice.basis_for("up", rot)
+		var span: Array = builder._cell_span(part, Transform3D(basis, Vector3.ZERO))
+		if span.is_empty():
+			break
+		var lo: Vector3i = span[0]
+		var hi: Vector3i = span[1]
+		var want := Vector3i(plate.x * BrickLattice.CELLS_PER_STUD, 0,
+			plate.z * BrickLattice.CELLS_PER_STUD)
+		var at := Transform3D(basis, BrickLattice.to_ldu(want - lo))
+		if Vector2i(hi.x - lo.x + 1, hi.z - lo.z + 1) == plate.size * BrickLattice.CELLS_PER_STUD:
+			return at
+		if rot == 0:
+			fallback = at
+	return fallback
+
+
+## Put a laid mosaic into the world, a brick a plate, through the ordinary
+## placement path, so it is undone, saved, listed and walked by the booklet
+## like anything built by hand. The world is not cleared first. The bricks
+## placed, by id. A larger plate whose part is not to hand (on the web, one
+## that did not come in time) is laid as 1 x 1s, so the picture is whole
+## either way.
+static func put_down(laid: Laid, world: BrickWorld, builder: Builder,
+		library: PartLibrary) -> PackedInt64Array:
+	var ids := PackedInt64Array()
+	# One shape read per part and size, not per plate: 1,300 of them.
+	var placed: Dictionary = {}
+	var plates: Array[Plate] = []
+	for plate: Plate in laid.plates:
+		if plate.part == PIXEL_PART or library.mesh_for(plate.part) != null:
+			plates.append(plate)
+			continue
+		for dz: int in plate.size.y:
+			for dx: int in plate.size.x:
+				plates.append(_plate(PIXEL_PART, plate.color_code, plate.x + dx, plate.z + dz,
+					Vector2i.ONE))
+	for plate: Plate in plates:
+		var part: Lbm.PartMesh = library.mesh_for(plate.part)
+		if part == null:
+			continue
+		var key: String = "%s %s" % [plate.part, plate.size]
+		if not placed.has(key):
+			var at: Transform3D = transform_of(_plate(plate.part, 0, 0, 0, plate.size), part, builder)
+			placed[key] = at
+		var origin: Transform3D = placed[key]
+		var here := Transform3D(origin.basis, origin.origin + Vector3(
+			plate.x * BrickLattice.STUD, 0.0, plate.z * BrickLattice.STUD))
+		var brick_id: int = world.add_brick(plate.part, plate.color_code, here)
+		if brick_id != 0:
+			builder.register(brick_id, plate.part, here)
+			ids.append(brick_id)
+	return ids
+
+
+## Every part a laid mosaic uses to hand before it is put down: read from
+## disk where the build has it, and on the web fetched, each kind at once,
+## until each has come or is not coming, for twenty seconds at most.
+static func fetch(laid: Laid, library: PartLibrary) -> void:
+	var waiting: Array[String] = []
+	var kinds: Dictionary = {}
+	for plate: Plate in laid.plates:
+		kinds[plate.part] = true
+	for part: String in kinds:
+		if not library.is_resident(part):
+			library.mesh_for(part)
+		if not library.is_resident(part) and library.request_mesh(part, true):
+			waiting.append(part)
+	var deadline: int = Time.get_ticks_msec() + 20000
+	while not waiting.is_empty() and Time.get_ticks_msec() < deadline:
+		await Engine.get_main_loop().process_frame
+		waiting = waiting.filter(func(part: String) -> bool:
+			return not library.is_resident(part) and library.is_on_its_way(part))
+
+
+## A laid mosaic seen from the front, [param px] pixels a stud: each stud in
+## its colour and each plate's edge a shade darker, so the sizes it is laid
+## in show. What the dialog draws before anything is built.
+static func picture_of(laid: Laid, library: PartLibrary, px: int = 6) -> Image:
+	var image := Image.create_empty(maxi(1, laid.across * px), maxi(1, laid.down * px),
+		false, Image.FORMAT_RGBA8)
+	image.fill(Color(0, 0, 0, 0))
+	for plate: Plate in laid.plates:
+		var colour: PartLibrary.BrickColor = library.color(plate.color_code)
+		var tone: Color = colour.rgb if colour != null else Color.MAGENTA
+		var rect := Rect2i(plate.x * px, plate.z * px, plate.size.x * px, plate.size.y * px)
+		image.fill_rect(rect, tone.darkened(0.3))
+		if px >= 3:
+			image.fill_rect(rect.grow(-1), tone)
+	return image
+
+
 ## Work out the plates for an image.
 ##
 ## [param palette] is the colour codes to choose from — the standard
 ## moulded palette, not the whole library.
 static func lay_out(image: Image, across: int, palette: PackedInt32Array,
 		library: PartLibrary, dither: bool = true) -> Array[Pixel]:
-	var pixels: Array[Pixel] = []
 	if image == null or image.is_empty() or palette.is_empty():
-		return pixels
+		var none: Array[Pixel] = []
+		return none
+	return _matched(_scaled(image, across), palette, library, dither)
 
+
+## The picture a stud a pixel, [param across] wide and as tall as its
+## proportions make it, in linear light.
+static func _scaled(image: Image, across: int) -> Image:
 	across = clampi(across, MIN_WIDTH, MAX_WIDTH)
 	var down: int = maxi(1, int(round(
 		float(across) * float(image.get_height()) / float(image.get_width()))))
@@ -72,6 +498,18 @@ static func lay_out(image: Image, across: int, palette: PackedInt32Array,
 	scaled.srgb_to_linear()
 	scaled.convert(Image.FORMAT_RGBAF)
 	scaled.resize(across, down, Image.INTERPOLATE_LANCZOS)
+	return scaled
+
+
+## Each stud of [param scaled] matched to [param palette], the error carried
+## on when [param dither]. A hole for a clear pixel.
+static func _matched(scaled: Image, palette: PackedInt32Array, library: PartLibrary,
+		dither: bool) -> Array[Pixel]:
+	var pixels: Array[Pixel] = []
+	if palette.is_empty():
+		return pixels
+	var across: int = scaled.get_width()
+	var down: int = scaled.get_height()
 
 	# The palette in Oklab, once, rather than per pixel: a 96 x 96 image
 	# against 44 colours is 405,504 comparisons, and converting inside
