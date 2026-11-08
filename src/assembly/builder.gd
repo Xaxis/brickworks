@@ -3146,6 +3146,11 @@ func room_for(part_id: String, at: Transform3D, grounded: bool = false,
 		# a saddle on a horse's back had no room where every set has it.
 		if _studded_clear(mine, at, theirs, there):
 			continue
+		# And two parts that meet as the LEGO Group's own sets meet them, where
+		# the sets put the one against the other, as check_design forgives them
+		# (ExactCheck.let_meet): a 3960 dish on a 3941 round brick.
+		if _fits_as_sets(mine, at, theirs, there):
+			continue
 		# And where one of the two has an exact shape and the other none, as
 		# check_design judges them (ExactCheck.drop_in_air): a pane put in its
 		# frame's groove, a drawer in its cupboard, meet only in covers a layer
@@ -3200,6 +3205,22 @@ func _studded_clear(mine: String, at: Transform3D, theirs: String, there: Transf
 		if kinds.has(Exact.STUD) and kinds.has(Exact.HOLE):
 			return Exact.clash(items[0], items[1], true).is_empty()
 	return false
+
+
+## Whether two parts with exact shapes meet no deeper than official sets meet
+## those two kinds of part in that pose (ExactCheck.meet_as_sets), and neither
+## is further down the other's stud than a stud reaches, as the check's
+## ExactCheck._fit_sunk allows one.
+func _fits_as_sets(mine: String, at: Transform3D, theirs: String, there: Transform3D) -> bool:
+	var one: Exact.Shape = Exact.shape_for(library, mine)
+	var other: Exact.Shape = Exact.shape_for(library, theirs)
+	if one == null or other == null or not one.has_pieces() or not other.has_pieces():
+		return false
+	var a := Exact.Item.new(one, at)
+	var b := Exact.Item.new(other, there)
+	if not ExactCheck.meet_as_sets(a, mine, b, theirs):
+		return false
+	return maxf(Exact.sunk(a, b), Exact.sunk(b, a)) <= Joints.STUD_REACH
 
 
 ## Whether two parts, one with an exact shape and the other with none, share
