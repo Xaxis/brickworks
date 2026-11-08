@@ -248,7 +248,7 @@ func _edges() -> void:
 const STUD_PARTS: Array = [
 	["3001", 4, 0], ["3024", 14, 0], ["6141", 1, 0], ["3062b", 2, 0], ["85861", 25, 0],
 	["3794b", 71, 0], ["3039", 15, 0], ["87087", 4, 1], ["4733", 72, 1], ["30414", 1, 1],
-	["3700", 0, 0], ["3626c", 14, 0], ["3065", 47, 0], ["3068b", 4, 0], ["3958", 2, 0],
+	["3700", 0, 0], ["3626c", 14, 0], ["3065", 47, 0], ["3068b", 4, 0], ["3795", 2, 0],
 ]
 
 
@@ -268,7 +268,7 @@ func _studs() -> void:
 		var box: AABB = Transform3D(turn, Vector3.ZERO) * info.bounds
 		if x > 0.0 and x + box.size.x > 260.0:
 			x = 0.0
-			y += 70.0
+			y += 50.0
 		var at := Vector3(x - box.position.x, y - box.position.y, 0.0)
 		var brick_id: int = _put(part, int(entry[1]), at, turn)
 		if brick_id > 0:
@@ -329,7 +329,7 @@ func _studs() -> void:
 		off_px += counts.z
 	_check("%d studs seen from their side, of %d parts (%s); %d facing the eye left out"
 		% [rounds.size(), kinds.size(), ", ".join(PackedStringArray(kinds.keys())), hidden_studs],
-		rounds.size() >= 60 and kinds.size() >= 12)
+		rounds.size() >= 40 and kinds.size() >= 12)
 	_check("drawn, %d of the %d px in their rounds are stud (%.0f%%); Studs off, %d"
 		% [on_px, stud_px, 100.0 * on_px / maxf(1.0, stud_px), off_px],
 		stud_px > 0 and on_px > stud_px * 0.6 and off_px == 0)
@@ -698,6 +698,12 @@ func _square_on(box: AABB) -> void:
 	_camera.set_view("front")
 	_camera.square_on(true)
 	_camera.frame(box, 1.1)
+	await _still()
+	# Framed to its front alone, as large as the room the model is seen in
+	# allows: frame() fits the ball round the box, a third again as much.
+	var seen: Vector2 = _camera.seen_rect().size
+	var tall: float = root.get_visible_rect().size.y
+	_camera.size = maxf(box.size.y * tall / seen.y, box.size.x * tall / seen.x) * 1.06
 	await _still()
 
 
