@@ -202,6 +202,9 @@ func _check(what: String, ok: bool) -> bool:
 ## A check that holds whichever way the save was written: an unedited save
 ## and an undone one are the file, byte for byte.
 func _hard(what: String, ok: bool) -> bool:
+	if not ok and _own_flow:
+		print("  live  %s" % what)
+		return false
 	print("  %s  %s" % ["ok  " if ok else "FAIL", what])
 	if not ok:
 		_failures += 1
@@ -213,6 +216,10 @@ func _hard(what: String, ok: bool) -> bool:
 ## flow is live's, a check of what only a patch keeps says "live" and does
 ## not fail: live's write is live's, never worse than live.
 var _live_flow: bool = false
+## The flow's file is the app's own (0 Author: Brickworks): live writes it
+## whole on every save, its own header too (keeptext kept that header and
+## was taken out, never live), so no check of its text fails.
+var _own_flow: bool = false
 
 
 ## Whether the save just made was written as live writes it, said once.
@@ -293,6 +300,7 @@ func _step_edit(name: String, path: String, made: String = "") -> void:
 	var text: String = _made(FileAccess.get_file_as_string(path), made)
 	var anothers: bool = made == "another's"
 	_live_flow = false
+	_own_flow = _app_own(text)
 	if not _check("%s read (%d lines)" % [path, text.split("\n").size()], not text.is_empty()):
 		return
 	await _open(text, name)
@@ -471,6 +479,7 @@ func _edits(name: String, path: String, made: String, edits: Array) -> void:
 ## the file again; opened again, the same model, and saved again, itself.
 func _edit(name: String, text: String, edit: String) -> bool:
 	_live_flow = false
+	_own_flow = _app_own(text)
 	await _open(text, name)
 	var depth: int = _builder.history_depth()
 	var parts: Array = _parts_of(text)
@@ -534,6 +543,14 @@ func _edit(name: String, text: String, edit: String) -> bool:
 	_same_parts("...undone", parts, undone)
 	await _reopened("...opened again", saved, name, edited, true)
 	var again: String = _store.to_text(name, true)
+	# The only copy taken off leaves a file that opens as no part, kept as no
+	# one's file: its save is a new model's, as live writes one (kt4review
+	# LOW #5).
+	if _world.brick_count() == 0 and _store.call("_live_source") == null:
+		print("  (opened again as no part: written as live writes an empty model)")
+		_live_flow = true
+	else:
+		_live_flow = _is_live()
 	_same_parts("...saved again", expected, again)
 	_shape_kept("...saved again", text, again)
 	var lost_again: Array = _edit_lost(text, again, allowed, moving)
@@ -913,6 +930,7 @@ func _metas_crlf() -> void:
 	var pin_lines: PackedStringArray = pins.lines(_world, _store.lift())
 	var all: String = text
 	_live_flow = false
+	_own_flow = _app_own(text)
 	var source: SourceFile = _store.call("_live_source")
 	for kind: String in META_KINDS:
 		var one: String = source.app_lines_placed(_meta_written(kind, text, pin_lines))
@@ -972,6 +990,7 @@ func _omr_pairs() -> void:
 		if not _check("%s read (%d lines)" % [file, text.split("\n").size()], not text.is_empty()):
 			continue
 		_live_flow = false
+		_own_flow = _app_own(text)
 		await _open(text, file)
 		# Saved under the file's own title, as kt4review's probe saves:
 		# another is said in a line of the app's under the FILE line.
@@ -1617,7 +1636,7 @@ func _parts_of(text: String) -> Array:
 			placement.part_id = _library.current(placement.part_id)
 			placement.color_code = colour
 		out.append([placement.part_id, placement.color_code, placement.transform,
-			_library.has_part(placement.part_id), placement.unit])
+			_library.parts.has(placement.part_id), placement.unit])
 	return out
 
 
@@ -1988,6 +2007,7 @@ func _state() -> Dictionary:
 			rank[step] = step if step < 0 else next
 			next += 0 if step < 0 else 1
 		ranks[home] = rank
+	var canon: Dictionary = _numbered(tree)
 	var parts: Array = []
 	for item: Variant in bricks:
 		var brick: BrickWorld.Brick = item
@@ -1997,18 +2017,42 @@ func _state() -> Dictionary:
 			for n: float in [v.x, v.y, v.z]:
 				place.append("%.3f" % (snappedf(n, 0.001) + 0.0))
 		var path: String = Assemblies.path_of(brick)
-		parts.append("%s %d %s step %d at %s" % [brick.part_id, brick.color_code, path,
-			int(ranks[_home(path)][brick.step]), " ".join(place)])
+		parts.append("%s %d %s step %d at %s" % [brick.part_id, brick.color_code,
+			canon.get(path, path), int(ranks[_home(path)][brick.step]), " ".join(place)])
 	parts.sort()
-	var paths: Array = tree.keys()
+	var paths: Array = canon.values()
 	paths.sort()
 	var units: Dictionary = {}
 	for unit: String in _world.unit_steps:
 		if tree.has(unit):
 			var step: int = int(_world.unit_steps[unit])
-			units[unit] = step if step == AuthorSteps.IN_PARENT \
+			units[canon[unit]] = step if step == AuthorSteps.IN_PARENT \
 				else int((ranks[_home(Assemblies.parent_of(unit))] as Dictionary).get(step, step))
 	return {"parts": parts, "tree": paths, "units": units}
+
+
+## Each copy's path with its copies numbered in their order, 1 up: a copy
+## taken off numbers the next one less when the file opens again, as any
+## reader numbers them, so a copy is told by its place among its like.
+static func _numbered(tree: Dictionary) -> Dictionary:
+	var paths: Array = tree.keys()
+	paths.sort_custom(func(a: String, b: String) -> bool:
+		return Assemblies.segments(a).size() < Assemblies.segments(b).size())
+	var siblings: Dictionary = {}
+	for path: String in paths:
+		var key: String = Assemblies.parent_of(path) + "|" + Assemblies.definition(Assemblies.leaf(path))
+		if not siblings.has(key):
+			siblings[key] = []
+		(siblings[key] as Array).append(Assemblies.copy_of(Assemblies.leaf(path)))
+	for key: String in siblings:
+		(siblings[key] as Array).sort()
+	var out: Dictionary = {}
+	for path: String in paths:
+		var parent: String = Assemblies.parent_of(path)
+		var name: String = Assemblies.definition(Assemblies.leaf(path))
+		var rank: int = (siblings[parent + "|" + name] as Array).find(Assemblies.copy_of(Assemblies.leaf(path)))
+		out[path] = Assemblies.join(str(out.get(parent, "")), "%s#%d" % [name, rank + 1])
+	return out
 
 
 static func _step_in(spaces: Dictionary, home: String, step: int) -> void:
