@@ -73,7 +73,8 @@ var _here: GDScript
 var _drawn: PackedStringArray = PackedStringArray()
 ## A set's or a part's number, kept in every language.
 var _number: RegEx = RegEx.create_from_string("^[0-9][0-9a-z]*(-[0-9]+)?$")
-var _named_set: RegEx = RegEx.create_from_string("^[0-9a-z]+-[0-9]+ \\S")
+# A set's number and name, and copies of it ("2 × 7140-1 X-wing Fighter").
+var _named_set: RegEx = RegEx.create_from_string("^([0-9]+ × )?[0-9a-z]+-[0-9]+ \\S")
 
 
 func _initialize() -> void:
@@ -348,7 +349,8 @@ func _steps() -> void:
 	_in_the_dialog("What I own with the device's own row")
 
 	print("\n9. Put them together with no answer, then Send again")
-	if row != null:
+	row = (_dialog.call("controls_by_name") as Dictionary).get("collection_join")
+	if row != null and is_instance_valid(row):
 		row.pressed.emit()
 		await _frames(5)
 	_check("Put them in my collection… asks again", offer != null and offer.visible)
@@ -386,10 +388,15 @@ func _steps() -> void:
 	var want: Dictionary = _summed(account_before, device)
 	_check("the account made it as it came (its answer lost): %s" % JSON.stringify(reached.get("done", {})),
 		_holds(reached, want).is_empty())
-	if again != null:
+	var again_said: String = ""
+	# The button on the page now: the rows are drawn again whenever the
+	# collection is read, which frees the one found before.
+	again = (_dialog.call("controls_by_name") as Dictionary).get("collection_join_again")
+	if again != null and is_instance_valid(again):
 		again.pressed.emit()
 		await _until(func() -> bool: return (_store.get("pending") as Array).is_empty(), 20000)
 		await _settled()
+		again_said = str((_dialog.get("_status") as Label).text)
 	var joined: Dictionary = await _account_now(_account)
 	var wrong: PackedStringArray = _holds(joined, want)
 	_check("Send again: made once, every lot and set of both (%s)" % ("; ".join(wrong) if not wrong.is_empty()
@@ -398,7 +405,9 @@ func _steps() -> void:
 	_check("...7140-1 twice, both copies' marks kept: %s" % JSON.stringify(both_seven).left(160),
 		int(both_seven.get("qty", 0)) == 2 and Collection.missing_lots(both_seven).size()
 		== _marks_union(_set_of(account_before, "7140-1"), _set_of(device, "7140-1")))
-	_check("...this device keeps nothing to offer now, and nothing waits",
+	_check("...this device keeps nothing to offer now, and nothing waits (offered %s, %d waiting, kept %s, said “%s”, busy %s)"
+		% [CollectionOffer.amount(_offerable()), (_store.get("pending") as Array).size(),
+		CollectionOffer.amount(_shown(_fold())), again_said, str(_store.get("_changing"))],
 		_same_kept(_offerable(), {"sets": [], "parts": []}) and (_store.get("pending") as Array).is_empty()
 		and _same_kept(_shown(_fold()), {"sets": [], "parts": []}))
 	_check("...the window shows the account's, every lot of both", _same_kept(_kept(), joined))
@@ -471,7 +480,8 @@ func _steps() -> void:
 		and bad_set.begins_with("Nothing was changed"))
 	_dialog.call("open", "own")
 	await _settled()
-	var one: Dictionary = {"part": "3062b", "colour": 46, "qty": 2}
+	# As My collection keeps a lot added by hand.
+	var one: Dictionary = {"part": "3062b", "colour": 46, "qty": 2, "src": "hand"}
 	var lone: bool = await _by_hand(one)
 	_check("a lot added signed out goes to this device: %s" % JSON.stringify(_kept()["parts"]),
 		lone and _same_kept(_kept(), {"sets": [], "parts": [one]}))
@@ -506,8 +516,18 @@ func _steps() -> void:
 	for lot: Dictionary in Collection.missing_lots(seven_now):
 		gone += int(lot["qty"])
 	await _build_from(PackedStringArray(["7140-1", "7140-1"]), record, gone, "both copies of 7140-1")
-	# One copy of the two: the other copy makes up what is marked.
-	await _build_from(PackedStringArray(["7140-1"]), record, 0, "one copy of the two")
+	# One copy of the two: the other copy makes up what only one of them
+	# lacks, and a part both lack (more marked than one copy has) stays out.
+	var each: Dictionary = {}
+	for listed: Variant in record.get("p", []):
+		var key: String = "%s/%d" % [str(listed[0]), int(listed[1])]
+		each[key] = int(each.get(key, 0)) + int(listed[2])
+	var still: int = 0
+	for lot: Dictionary in Collection.missing_lots(seven_now):
+		var a_copy: int = int(each.get("%s/%d" % [str(lot["part"]), int(lot["colour"])], 0))
+		still += clampi(int(lot["qty"]) - a_copy, 0, a_copy)
+	await _build_from(PackedStringArray(["7140-1"]), record, still,
+		"one copy of the two, %d of the %d marked missing in both" % [still, gone])
 
 	print("\n13. the words in de, fr and es")
 	_languages()
@@ -888,6 +908,8 @@ func _by_hand(lot: Dictionary) -> bool:
 		_dialog.call("choose_loose", str(lot["part"]), -1, false)
 	if int((_dialog.call("loose_chosen") as Dictionary)["colour"]) != int(lot["colour"]):
 		_dialog.call("_pick_colour", int(lot["colour"]))
+	# Found again: a colour picked draws the row anew.
+	controls = _dialog.call("controls_by_name")
 	(controls["collection_loose_count"] as SpinBox).value = int(lot["qty"])
 	var before: int = int(_lot_in(_kept(), str(lot["part"]), int(lot["colour"])).get("qty", 0))
 	(controls["collection_loose_add"] as Button).pressed.emit()
@@ -984,6 +1006,9 @@ func _in_the_dialog(what: String) -> void:
 func _in_the_window(window: Window, what: String) -> void:
 	if window == null:
 		_check("%s is shown" % what, false)
+		return
+	if DisplayServer.get_name() == "headless":
+		print("  ..    %s: where it sits is checked in a window, not headless" % what)
 		return
 	var screen := Rect2i(Vector2i.ZERO, root.size)
 	var at := Rect2i(window.position, window.size)
