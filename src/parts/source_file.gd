@@ -2393,6 +2393,8 @@ func checked(text: String, bricks: Array, lift: Vector3, waiting: Dictionary,
 	var model: LdrModel = LdrModel.parse(text, "model")
 	if model == null:
 		return "it could not be read back"
+	if library != null:
+		CustomParts.put_skins(library, model)
 	var wanted: Dictionary = {}       ## part|colour -> [place]
 	for item: Variant in bricks:
 		var brick: BrickWorld.Brick = item

@@ -102,7 +102,9 @@ Whether what you built is still there tomorrow, and still means the same thing.
   was) is titled anew, "x 2" (`SourceFile._yield_titles`): two sections of
   one title open as neither. A file opened from text is never written whole.
   Before it goes over the file it is read back (`SourceFile.checked`): its
-  parts as an open reads them must be the model's, part, colour and place,
+  parts as an open reads them (a mirrored copy's turned to their other
+  hand, an LDCad skin as the flexible part the library built from it:
+  `CustomParts.put_skins`) must be the model's, part, colour and place,
   and every pair must open and close as in the file, with no END before its
   BEGIN. Where not, nothing is written: Save says why in the bar and the
   model is as it was (`ModelStore.kept_refused`, `_kept_refusal`), Export
