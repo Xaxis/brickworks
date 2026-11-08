@@ -1682,9 +1682,20 @@ const LBM := "lbm"
 const BWX := "bwx"
 ## What one frame reads where there are no threads, ms: at least one thing.
 const READ_BUDGET_MS := 4.0
-## The most one worker's task reads before the next frame keeps them and
-## starts another: what is wanted most since then goes first.
-const READ_AT_ONCE := 6
+## What one frame keeps of what a worker has read (meshes made, parts put
+## down), ms: at least one thing, and this share of the frame before it
+## where frames are long.
+##
+## A worker read six a task, and a frame kept what it had read and started
+## the next six. In a browser drawing on its CPU a frame is 0.5 to 2 s, so
+## the 47 geometries of the Rally Racer came in 8 frames, 5.5 s after the
+## last had arrived (fetchparts, 2026-11-08). A worker now reads all that
+## waits, the most wanted first as it comes, and each frame keeps what fits:
+## 4 ms of a quick frame, a tenth of a slow one. A frame that already takes
+## half a second is not held by 50 ms more, and the part is seen a frame
+## sooner.
+const KEEP_BUDGET_MS := 4.0
+const KEEP_SHARE := 0.1
 ## Whether what is read ahead is read on a worker: where there are threads. A
 ## probe turns it off to read in frames under the budget, as a browser without
 ## threads does.
@@ -1699,6 +1710,10 @@ var _to_read: Array = []
 var _was_read: Array = []
 var _read_lock := Mutex.new()
 var _reading: int = -1
+## Read and not kept yet, [that, what it made]: the main thread's alone.
+var _to_keep: Array = []
+## When [method _read_frame] last ran, µs, for the length of a frame.
+var _read_frame_at: int = 0
 ## Exact shapes being read from this build's files ahead (read_ahead): hash ->
 ## true. Not on their way as a fetch is: one wanted now is read there, as before.
 var _reading_shapes: Dictionary = {}
@@ -1733,12 +1748,19 @@ func _read_frame() -> void:
 		WorkerTasks.collect(_reading)
 		_reading = -1
 	_read_lock.lock()
-	var done: Array = _was_read
+	_to_keep.append_array(_was_read)
 	_was_read = []
 	var waiting: bool = not _to_read.is_empty()
 	_read_lock.unlock()
-	for one: Array in done:
+	var now: int = Time.get_ticks_usec()
+	var frame_us: int = now - _read_frame_at if _read_frame_at > 0 else 0
+	_read_frame_at = now
+	var budget_us: float = maxf(KEEP_BUDGET_MS * 1000.0, frame_us * KEEP_SHARE)
+	while not _to_keep.is_empty():
+		var one: Array = _to_keep.pop_front()
 		_kept_read(one[0], one[1])
+		if Time.get_ticks_usec() - now > budget_us:
+			break
 	if waiting and not read_on_a_worker and _reading < 0:
 		var began: int = Time.get_ticks_usec()
 		while true:
@@ -1753,17 +1775,19 @@ func _read_frame() -> void:
 	elif waiting and _reading < 0:
 		_reading = WorkerTasks.add(_read_some, false, "read parts' geometry and shapes")
 	_read_lock.lock()
-	var idle: bool = _to_read.is_empty() and _reading < 0
+	var idle: bool = _to_read.is_empty() and _reading < 0 and _to_keep.is_empty()
 	_read_lock.unlock()
 	var tree: SceneTree = _read_tree()
 	if idle and tree != null and tree.process_frame.is_connected(_read_frame):
 		tree.process_frame.disconnect(_read_frame)
+		_read_frame_at = 0
 
 
-## On a worker: up to [constant READ_AT_ONCE] of what waits, read. The first
-## of each kind the app reads is read alone (WorkerTasks.first_here).
+## On a worker: all that waits, read, the first waiting first, so what is
+## wanted most meanwhile goes next. The first of each kind the app reads is
+## read alone (WorkerTasks.first_here).
 func _read_some() -> void:
-	for _n: int in READ_AT_ONCE:
+	while true:
 		_read_lock.lock()
 		var item: Array = _to_read.pop_front() if not _to_read.is_empty() else []
 		_read_lock.unlock()

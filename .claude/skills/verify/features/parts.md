@@ -3,7 +3,7 @@
 Finding one of 28,000 parts by the words a builder would type, and getting its
 geometry in front of them.
 
-<!-- covers: lib:part search, ui:parts bin, ui:palette, lib:mesh fetch, ui:recent and favourite parts, ui:techniques in the bin, ui:find a part from a photo, cli:dialog look probe, cli:picker folder probe, ui:the app's dialogs and menus, ui:where a chooser opens, cli:contrast probe, ui:buttons seen and read -->
+<!-- covers: lib:part search, ui:parts bin, ui:palette, lib:mesh fetch, cli:fetchparts browser flow, ui:recent and favourite parts, ui:techniques in the bin, ui:find a part from a photo, cli:dialog look probe, cli:picker folder probe, ui:the app's dialogs and menus, ui:where a chooser opens, cli:contrast probe, ui:buttons seen and read -->
 
 ## Sub-features
 
@@ -377,9 +377,14 @@ geometry in front of them.
   storage bucket at run time. Several callers can ask for the same part at once,
   and every one of them has to hear that it arrived. Geometry and exact shapes
   (and so the bin's previews) go through one fetch, `PartLibrary._ask`; in a
-  browser an exact shape is fetched by the page itself (`_ask_page`, handed
-  over as its bytes come, where an HTTPRequest took a frame for each of its
-  states: 7 frames, 1 to 4 s, playweb), and one asked for before the
+  browser every part file, geometry and exact shape, is fetched by the page
+  itself (`_ask_page`, `PAGE_FETCH`: handed over as its bytes come and taken
+  in one copy, where an HTTPRequest took a frame for each of its states: 7
+  frames, 1 to 4 s, playweb; geometry too since fetchparts, 2026-11-08), and
+  HTTPRequest is the desktop's. `fetchparts browser flow`
+  (`tools/web/fetchparts_flow.mjs`, local only, recipe below) counts the
+  engine's fetches of part files (none) and times a Technic car's 47
+  fetched shapes against the build before. One asked for before the
   deployment has said where the parts live waits for it as geometry does
   (`_release_waiting`, `_next_exact`). A fault
   that may pass (no answer, 408, 429, 5xx: `may_pass`, `_answered`) is asked again after
@@ -397,9 +402,11 @@ geometry in front of them.
   `Exact.keep_shape`): a part's geometry and exact shape are read from their
   bytes in GDScript, 1 to 50 ms a part, so what is wanted ahead of the frame
   that shows it is read off that frame: on a worker where there are threads,
-  `READ_AT_ONCE` a task, or in frames under `READ_BUDGET_MS` where there are
-  none (`read_on_a_worker`); the meshes made and everything kept on the main
-  thread, and said as a fetch is (`fetched`, `exact_fetched`). Through it: a
+  all that waits, the most wanted first, or in frames under `READ_BUDGET_MS`
+  where there are none (`read_on_a_worker`); the meshes made and everything
+  kept on the main thread, each frame what fits in `KEEP_BUDGET_MS` or
+  `KEEP_SHARE` of the frame before it, whichever is more, and said as a fetch
+  is (`fetched`, `exact_fetched`). Through it: a
   tile's picture (`PartThumbnails._render` asks `request_mesh`, which reads a
   part on disk there and fetches one that is not), a fetch's answer
   (`_on_fetched`, `_on_fetched_exact`: still on its way until read), and the
@@ -685,6 +692,12 @@ godot --headless --path . --script src/dev/inventory_probe.gd       # parts list
 godot --headless --path . --script src/dev/fetch_probe.gd           # every caller hears it arrived
 godot --headless --path . --script src/dev/fetch_retry_probe.gd     # a failing host on 9191 (-- --port=N): asked again, said once, saved and autosaved whole; the deployment asked again where parts live
 node tools/web/fetch_retry_flow.mjs --url=http://127.0.0.1:9195/ --out=DIR   # the crane in a browser, its fetches cut then 503; a part 404s and the tab reloads with it still awaited (needs serve.py on 9195)
+# every part file through the page's own fetch, none by HTTPRequest: 42022 Rally Racer's link (47 of its 71 shapes fetched)
+# at a laptop's size on broadband and a phone's on a phone network, against the build before, ABBA (local only)
+node tools/web/play_flow.mjs --write-house=DIR/house.mpd   # playweb's house, the model the frame bar was measured on
+tools/web/serve.py build/web 9821 --parts assets/generated/parts --delay 0 --compressed --share F3tchP4rts=vendor/omr/files/42022-1_Rally-Racer.mpd --share H0useFl0w=DIR/house.mpd
+tools/web/serve.py BASE/build/web 9822 --parts assets/generated/parts --delay 0 --compressed --share F3tchP4rts=vendor/omr/files/42022-1_Rally-Racer.mpd --share H0useFl0w=DIR/house.mpd
+node tools/web/fetchparts_flow.mjs --url=http://127.0.0.1:9821 --base=http://127.0.0.1:9822 --house=H0useFl0w --rounds=2 --out=DIR   # 0 by the engine; whole; the house's longest frame <= 506 / 564 ms (mean); the car's shapes in half the base's time
 godot --headless --path . --script src/dev/availability_probe.gd    # what was really made, and silence otherwise
 godot --headless --path . --script src/dev/variety_probe.gd        # whether a model reads as a set
 godot --headless --path . --script src/dev/usage_probe.gd         # whether search leads with the part sets use
