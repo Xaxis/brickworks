@@ -2458,6 +2458,14 @@
       "tests": []
     },
     {
+      "id": "cli:stepnames probe",
+      "kind": "cli",
+      "entry": "src/dev/stepnames_probe.gd",
+      "reach": "tools/probe.sh stepnames_probe   (a window, 1400x900; PROBE_SIZE=1280x720 the same, 390x844 and 1024x768 Build it alone: through the sign-in screen, steps4's step 3 named by Name\u2026 and typing, Shift-F2, step 2 by edit_steps, saved with two STEP_NAME lines more, opened and saved byte for byte, the booklet page's name beside its number in the HTML and the PNG, named.ldr and another author's named file saved with their lines, a hand Delete undone as \"removed 1 part\", an 80-character name cut on the timeline, Build it on a shared link worked out and carried)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:steps3 probe",
       "kind": "cli",
       "entry": "src/dev/steps3_probe.gd",
@@ -4270,6 +4278,14 @@
       "entry": "src/ui/collection_dialog.gd",
       "reach": "godot --path .  (What I own: a set's Missing parts\u2026, its lots each with how many are missing, All missing, None missing; Closest to whole, sets by how much is missing, What it needs; What do I need? for a set; the pool, What do I need? and What can I build? count only what is there, loose parts counting towards a set; op missing at /api/collection)",
       "area": "collection",
+      "tests": []
+    },
+    {
+      "id": "ui:a step's name",
+      "kind": "ui",
+      "entry": "src/assembly/booklet_looks.gd",
+      "reach": "godot --path .  (Build \u203a Timeline, a step: the Booklet row's Name\u2026, Build \u203a Steps \u203a Name the step\u2026 or Shift-F2, a name typed, Return: \"Step 3 of 24 \u00b7 Build the cockpit\" on the timeline, cut at 40 characters; on its own line under \"Step 3 of 24\" in Build it; beside the step's number on the booklet page, wrapped at 64 mm; kept in the file as 0 !BRICKWORKS STEP_NAME in its step; edit_steps {\"op\": \"name\", \"step\": N, \"name\": \"...\"} over MCP, \"\" takes it off)",
+      "area": "view",
       "tests": []
     },
     {

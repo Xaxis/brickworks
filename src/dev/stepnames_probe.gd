@@ -27,8 +27,12 @@
 ##      dpi PNG (ink where the words are; pictured).
 ##   6. An older build: src/dev/fixtures/stepnames/named.ldr (the names as
 ##      this build writes them) opened whole, every part and step, and saved
-##      with each STEP_NAME line in its step. Run on the build before this
-##      one, it is how an older build treats the file.
+##      with each STEP_NAME line in its step, byte for byte; named_theirs.ldr,
+##      the same by another author, the same. Run on the build before this
+##      one, it is how an older build treats the files: both open whole;
+##      another author's file keeps its lines (every build writes it back as
+##      it was), while Brickworks' own is written whole from the model and
+##      loses the line, as every app line an older build does not know.
 ##   7. pkreview's finding: steps4, its 3001 selected and Delete pressed, so
 ##      step 2 and its look go: Undo says "removed 1 part" (it said "changed
 ##      2 parts"), and gives back the part and the look.
@@ -48,6 +52,7 @@ extends SceneTree
 const SHOTS := "res://shots/stepnames/"
 const STEPS4 := "res://src/dev/fixtures/pullkept/steps4.ldr"
 const NAMED := "res://src/dev/fixtures/stepnames/named.ldr"
+const NAMED_THEIRS := "res://src/dev/fixtures/stepnames/named_theirs.ldr"
 const MODELS := "user://models/"
 const COCKPIT := "Build the cockpit"
 const BRICK := "The first brick"
@@ -270,14 +275,35 @@ func _editor() -> void:
 			"step 3: 0 !BRICKWORKS STEP_NAME " + COCKPIT])
 	_check("...and the file byte for byte (%s)" % ("the same" if kept == fixture
 		else _first_difference(fixture, kept)), kept == fixture)
+	# Someone else's file (its author not Brickworks), which every build
+	# writes back as it was with what changed (ModelStore._source_written).
+	var theirs: String = FileAccess.get_file_as_string(NAMED_THEIRS)
+	_write(MODELS + "sn_theirs.ldr", theirs)
+	_main.call("clear_model")
+	await _frames(4)
+	await _open(MODELS + "sn_theirs.ldr")
+	plan = Instructions.plan(_world, _library, _store.scenery, {}, true)
+	await _say("save_model", {"name": "sn_theirs_saved.ldr"})
+	kept = FileAccess.get_file_as_string(MODELS + "sn_theirs_saved.ldr")
+	lines = _step_lines(kept, "0 !BRICKWORKS STEP_NAME")
+	_check("named_theirs.ldr (its author a designer's) opened whole, %d parts and %d steps, and saved with each STEP_NAME line in its step (%s), %s"
+		% [_world.brick_count(), plan.size(), ", ".join(lines), "byte for byte" if kept == theirs
+			else "not byte for byte: " + _first_difference(theirs, kept)],
+		_world.brick_count() == 4 and plan.size() == 4 and lines == [
+			"step 2: 0 !BRICKWORKS STEP_NAME " + BRICK, "step 3: 0 !BRICKWORKS STEP_NAME " + COCKPIT])
 
 	print("\n7. a hand Delete that empties a step with a look, undone")
 	_main.call("clear_model")
 	await _frames(4)
 	await _open(MODELS + "sn_steps4.ldr")
+	# The timeline put away (Done), the whole model in sight to pick from.
+	if _steps.visible:
+		_steps.stop()
+		await _frames(6)
 	var brick: int = _id_of("3001")
 	_builder.clear_selection()
 	_builder.select_brick(brick, false)
+	var picked: int = _builder.selection.size()
 	# The keys given back to the model, as a click in it gives them: the
 	# Delete key is a field's while one has them.
 	root.gui_release_focus()
@@ -285,8 +311,8 @@ func _editor() -> void:
 	await _key(KEY_DELETE)
 	await _settled()
 	said = _builder.history_words(1)
-	_check("the 3001 deleted by the Delete key (%d parts left), Undo says \"%s\"" % [
-		_world.brick_count(), said[0] if not said.is_empty() else ""],
+	_check("the 3001 picked (%d selected), deleted by the Delete key (%d parts left), Undo says \"%s\"" % [
+		picked, _world.brick_count(), said[0] if not said.is_empty() else ""],
 		_world.brick_count() == 3 and not said.is_empty() and said[0] == "removed 1 part")
 	_shell.run("undo")
 	await _settled()
