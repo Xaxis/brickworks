@@ -132,7 +132,9 @@ func _read_sections() -> void:
 	var first: int = 0
 	var any_file: bool = false
 	for n: int in lines.size():
-		var words: PackedStringArray = lines[n].strip_edges().split(" ", false)
+		# Split as LdrModel.parse splits a line (a tab is a space), so a
+		# section here is the one it read the parts of.
+		var words: PackedStringArray = LdrModel._fields(lines[n].strip_edges())
 		if words.size() < 2 or words[0] != "0":
 			continue
 		if words[1] == "!LDCAD" and words.size() > 2 \
