@@ -282,9 +282,11 @@ func _studs() -> void:
 	var bounds_before: AABB = _world.model_bounds()
 
 	var drawn: Image = await _picture("studs_drawn_" + _size)
+	var drawn_flat: Image = await _flat_picture("studs_drawn_flat_" + _size)
 	_world.show_only({-1: true})
 	await _frames(4)
 	var empty: Image = await _picture("studs_none_" + _size)
+	var empty_flat: Image = await _flat_picture("")
 	_world.show_only({})
 	await _frames(4)
 	await _choose("Studs")
@@ -292,6 +294,7 @@ func _studs() -> void:
 		% _ticked("studs"), not _shown(&"studs_shown") and not _ticked("studs"))
 	await _drawn()
 	var off: Image = await _picture("studs_off_" + _size)
+	var off_flat: Image = await _flat_picture("studs_off_flat_" + _size)
 
 	# Each stud seen from its side, its round on the screen.
 	var view: Vector3 = -_camera.global_transform.basis.z
@@ -341,9 +344,12 @@ func _studs() -> void:
 		moved == 0 and _world.model_bounds().is_equal_approx(bounds_before))
 	var left_out: Array[PackedVector2Array] = rounds.duplicate()
 	left_out.append_array(facing)
-	var outside: Vector3i = _outside_rounds(drawn, off, empty, left_out, 3.0,
+	# Where a part is drawn, read off pictures with no smoothing of edges and
+	# no glow (_flat_picture): a smoothed edge is blended along its length,
+	# so a stud standing on it changes the blend of pixels well away from it.
+	var outside: Vector3i = _outside_rounds(drawn_flat, off_flat, empty_flat, left_out, 3.0,
 		"studs_outside_" + _size)
-	_check("outside the studs' rounds and 3 px round them, every part drawn where it was: %d px of %d covered by a part with the studs and not without, or the other way (%d px lit differently, the studs' own shadows and light)"
+	_check("outside the studs' rounds and 3 px round them, every part drawn where it was: %d px of %d covered by a part with the studs and not without, or the other way (%d px lit differently, the studs' own shadows)"
 		% [outside.x, outside.z, outside.y], outside.x == 0)
 	var ends: Vector3i = Vector3i.ZERO
 	for outline: PackedVector2Array in facing:
@@ -417,7 +423,8 @@ func _in_round(outline: PackedVector2Array, on: Image, off: Image, empty: Image)
 ## Outside every outline grown by [param margin], where [param a] and
 ## [param b] draw a part: [pixels a part covers in one and not the other,
 ## pixels lit differently, pixels looked at]. Whether a part covers a pixel
-## is whether it is unlike [param empty] there. What is lit differently is
+## is whether it is unlike [param empty] there at all, so the three are
+## pictures drawn the same way with nothing that blends (_flat_picture). What is lit differently is
 ## the light the studs took: their shadows, their glow. A map of both is kept
 ## as [param map] (magenta covered or not, cyan lit), to look at.
 func _outside_rounds(a: Image, b: Image, empty: Image, outlines: Array[PackedVector2Array],
@@ -444,8 +451,8 @@ func _outside_rounds(a: Image, b: Image, empty: Image, outlines: Array[PackedVec
 			continue
 		counts.z += 1
 		var at: int = n * 3
-		var in_a: bool = _bytes_apart(da, de, at) > DRAWN_LEVELS
-		var in_b: bool = _bytes_apart(db, de, at) > DRAWN_LEVELS
+		var in_a: bool = _bytes_apart(da, de, at) > 0
+		var in_b: bool = _bytes_apart(db, de, at) > 0
 		if in_a != in_b:
 			counts.x += 1
 			marked.set_pixel(n % a.get_width(), n / a.get_width(), Color.MAGENTA)
@@ -789,6 +796,34 @@ func _picture(name: String) -> Image:
 		var path: String = ProjectSettings.globalize_path(_out.path_join(name + ".png"))
 		image.save_png(path)
 		print("    picture: %s" % path)
+	return image
+
+
+## The window's 3D as [method _picture] takes it, with nothing that blends
+## one pixel with its neighbours or with the light of another part: no
+## multisampling, no smoothed edges, no glow, no ambient occlusion. A pixel a
+## part covers is then its own, and one it does not is the sky's to the bit.
+func _flat_picture(name: String) -> Image:
+	var environment: Environment = (_main.get_node("WorldEnvironment") as WorldEnvironment).environment
+	var was: Array = [root.msaa_3d, root.screen_space_aa, root.use_taa, environment.glow_enabled,
+		environment.ssao_enabled, environment.ssil_enabled, environment.ssr_enabled]
+	root.msaa_3d = Viewport.MSAA_DISABLED
+	root.screen_space_aa = Viewport.SCREEN_SPACE_AA_DISABLED
+	root.use_taa = false
+	environment.glow_enabled = false
+	environment.ssao_enabled = false
+	environment.ssil_enabled = false
+	environment.ssr_enabled = false
+	await _frames(4)
+	var image: Image = await _picture(name)
+	root.msaa_3d = was[0]
+	root.screen_space_aa = was[1]
+	root.use_taa = was[2]
+	environment.glow_enabled = was[3]
+	environment.ssao_enabled = was[4]
+	environment.ssil_enabled = was[5]
+	environment.ssr_enabled = was[6]
+	await _frames(4)
 	return image
 
 
