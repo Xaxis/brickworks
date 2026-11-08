@@ -11499,7 +11499,6 @@ msgstr "Primero nombra la página"
 
 # Page setup… (pagesetup2): a style taken away, the picture's size, a picture the file lacks
 
-
 msgid "Remove…"
 msgstr "Quitar…"
 
@@ -12194,3 +12193,63 @@ msgstr "paso %d de %s"
 
 msgid "and %d more like it"
 msgstr "y %d más como este"
+
+# Make a part's clip plate, bar and wedge plate (makepart2, APP_UX6 #15): the families'
+# buttons, their ways, their rows and what the dialog says of each part.
+
+msgid "Clip"
+msgstr "Clip"
+
+msgid "A plate or tile with a clip on its front edge that grips a bar, upright or level"
+msgstr "Una placa o baldosa con un clip en su borde delantero que sujeta una barra, vertical u horizontal"
+
+msgid "A bar 3.2 mm across, any number of studs long: a clip grips it, a hollow stud holds its end"
+msgstr "Una barra de 3,2 mm de grosor, tan larga en espigas como quieras: un clip la sujeta, una espiga hueca sujeta su extremo"
+
+msgid "A wedge plate (LDraw calls it a wing): one side straight, the other cut in to a tip one stud wide"
+msgstr "Una placa en cuña (LDraw la llama ala): un lado recto y el otro cortado hasta una punta de una espiga de ancho"
+
+msgid "vertical: it holds a bar standing up"
+msgstr "vertical: sujeta una barra de pie"
+
+msgid "horizontal: it holds a bar along the edge"
+msgstr "horizontal: sujeta una barra a lo largo del borde"
+
+msgid "left: the straight side on the left"
+msgstr "izquierda: el lado recto a la izquierda"
+
+msgid "right: the straight side on the right"
+msgstr "derecha: el lado recto a la derecha"
+
+msgid "The clip"
+msgstr "El clip"
+
+msgid "Left or right"
+msgstr "Izquierda o derecha"
+
+msgid "Which way"
+msgstr "Hacia dónde"
+
+msgid "Width, studs (the clip's edge)"
+msgstr "Ancho, espigas (el borde del clip)"
+
+msgid "Width, studs (the wide end)"
+msgstr "Ancho, espigas (el extremo ancho)"
+
+msgid "Depth, studs"
+msgstr "Fondo, espigas"
+
+msgid "Length, studs (to the tip)"
+msgstr "Largo, espigas (hasta la punta)"
+
+msgid "%s mm long and %s mm across: a clip grips it anywhere along it, and either end goes into a hollow stud."
+msgstr "%s mm de largo y %s mm de grosor: un clip la sujeta en cualquier punto, y cada extremo entra en una espiga hueca."
+
+msgid "Its clip grips a bar 3.2 mm across, standing up."
+msgstr "Su clip sujeta una barra de 3,2 mm, de pie."
+
+msgid "Its clip grips a bar 3.2 mm across, lying along the edge."
+msgstr "Su clip sujeta una barra de 3,2 mm, tumbada a lo largo del borde."
+
+msgid "Its cut side runs at %s° to the straight side, to a tip one stud wide."
+msgstr "Su lado cortado forma %s° con el lado recto, hasta una punta de una espiga de ancho."

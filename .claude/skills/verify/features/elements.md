@@ -1,8 +1,8 @@
 # Elements
 
 Making a part LEGO has not made — a brick, plate, tile, slope, curved slope,
-inverted slope, round part, bracket or Technic brick of any size, or a brick
-with studs on its sides — or changing a part that exists, from its own
+inverted slope, round part, bracket or Technic brick of any size, a brick
+with studs on its sides, a clip plate, a bar or a wedge plate — or changing a part that exists, from its own
 geometry, as a real LDraw part, and building it into the same geometry,
 connectors and collision the library's own parts have.
 
@@ -34,6 +34,19 @@ connectors and collision the library's own parts have.
   library part's name ("Brick  2 x  4", "Brick  1 x  4 with Studs on Side",
   "Bracket  1 x  2 -  2 x  2 Down", "Slope Brick Curved  2 x  1", "Technic
   Brick  1 x  4 with Holes") into its spec: the resize path.
+  And three that copy a part LEGO makes (APP_UX6 #15), each the part it
+  copies at that part's size, bounds and connectors: a clip plate (`clip`,
+  `way=vertical|horizontal`; 60897, 61252, 11476) — a plate or tile with
+  the library's own thick C-clip (`clip5.dat` upright, `clip6.dat` level)
+  10 LDU in front of its front edge, where 60897 has it; a bar (`bar`,
+  `across` its length in studs; 87994, 30374) — 87994's cylinder 8 LDU
+  across, its origin its top end, with no plates and no studs; and a wedge
+  plate (`wedge`, `way=left|right`; 41770a, 41769a, 43722a, 43723a) — a
+  plate whose straight side is the left or the right, cut from a tip one
+  stud wide at the back to the far front corner, a stud on every whole
+  square, whole tubes where the cut leaves room and, where its wall comes
+  through one, the tube's arcs on the cavity's side in `1-16cyli`
+  sixteenths, which the walk reads as a shaft and a bore, as 41770a's are.
   Named `bw-<shape>`, never an LDraw `u`/`t` number (those are assigned by
   the Parts Library admin).
 - `build a part in the app` (`PartForge`): tools/build_meshes.py's
@@ -42,7 +55,8 @@ connectors and collision the library's own parts have.
   studs, fill cavities (clearing a Technic hole's bore), boxes, sockets, and
   a hole's two faces merged into one hole — ending in the same `.lbm` bytes.
   Needed because neither a desktop export nor a browser has Python.
-  Primitives: the eleven in `assets/ldraw/` (committed, in every export;
+  Primitives: the thirty-two in `assets/ldraw/` (committed, in every export;
+  the clips' and the wedge plate's came with them;
   `peghole` and `4-4ndis` came with the Technic brick), `vendor/ldraw`
   when present, and in an export every primitive (`assets/ldraw/p/`,
   `PartForge.SHIPPED`, copied there by tools/export.sh and ignored by git),
@@ -87,10 +101,11 @@ connectors and collision the library's own parts have.
   header the change (`0 // Modified by Brickworks: from=3700 length=6 …`) and
   the LDraw part it came from, CC BY 4.0.
 - `make a part` (`ElementDialog`): **Make a part…** in the parts bin. A
-  button for each of the seven families (all on show, one press each), sizes
+  button for each of the ten families (all on show, one press each), sizes
   (two to a row), LEGO's four named angles for a slope, studs on or off,
   Front/Back/Left/Right for studs on a brick's sides, a bracket's upright and
-  which way it goes, a name, and "Start from a part" — a part number, or the
+  which way it goes, a clip's way (vertical or horizontal) and a wedge
+  plate's hand (left or right) in the same list, a name, and "Start from a part" — a part number, or the
   part in hand when the dialog opens. "Start from it" resizes a part of the
   families as its family and changes any other (a printed part, a grille,
   32000) as itself; "Change it" changes any part as itself, a plain 3001 too.
@@ -102,7 +117,11 @@ connectors and collision the library's own parts have.
   offered in the box, not started on. The preview is the part built by
   `PartForge`, turning; a sentence under it gives the size in mm, the studs
   on top and on the sides, the places a stud goes in underneath, the Technic
-  holes, and a slope's true angle (a curved slope's at its foot). **Add to parts** makes it, keeps
+  holes, and a slope's true angle (a curved slope's at its foot), the bar a
+  clip grips and which way, a wedge plate's cut angle, a bar's length. A
+  clip, a bar or a wedge plate pressed from another family starts as the
+  part LEGO makes most of it (`ElementMaker.STARTS`: 1 x 1 vertical, 3L,
+  2 x 4 left). **Add to parts** makes it, keeps
   it, holds it, and shows the bin's Custom category.
 - `the assistant makes a part` (`PartTool`, `make_part`): a tool in the
   assistant's list, and so in every MCP session's, for a part no real one
@@ -199,12 +218,12 @@ env -u DISPLAY -u WAYLAND_DISPLAY MESA_VK_WSI_DEBUG=sw \
   godot --path . --resolution 1400x900 --script src/dev/element_shot_probe.gd
 ```
 
-Proves it when: the tests say `373 passed, 7 skipped` without numpy and
-`380 passed` with it (`uv venv` + `uv pip install numpy scipy pytest`; see
+Proves it when: the tests say `446 passed, 7 skipped` without numpy and
+`453 passed` with it (`uv venv` + `uv pip install numpy scipy pytest`; see
 pipeline.md), and the probe ends on "the maker makes the measured files, and
 the app builds them as the pipeline does" with every line `ok`: each of the
-36 fixtures "the same .lbm, byte for byte" built from only the shipped
-primitives, and the 28 library parts in `tests/fixtures/elements/library.txt`
+45 fixtures "the same .lbm, byte for byte" built from only the shipped
+primitives, and the 40 library parts in `tests/fixtures/elements/library.txt`
 the same from vendor/ldraw — among them 3700, 3701 and 6541, whose holes'
 two faces the app merges and whose bores it clears as the pipeline does —
 and each changed part in `tests/fixtures/elements/modified.txt`
@@ -251,20 +270,29 @@ then a 1 x 4 brick with studs on its side, a 1 x 2 - 1 x 2 bracket, a 3 x 3
 curved slope and a 1 x 2 Technic brick, and 98283 started from by number and
 made four long as itself — 15533's studs and tubes, each where 15533 has
 it — with 3062b three long refused in the dialog's words — and 3003 changed
-with "Change it" and its back-right corner cut out, three studs; each found
+with "Change it" and its back-right corner cut out, three studs; then the
+clip plates, the bar and the wedge plates, each made as the part it copies
+(60897, 61252, 87994, 41770a, 41769a): its bounds the catalogue's to 0.01
+LDU and its connectors the same in kind, place and axis; each found
 in the bin's Custom category; all but the bracket placed by the mouse's ray on a 2 x 4 on
 a baseplate with a 2 x 4 on top, the lower brick's studs reaching into it at
 its own sockets and its top studs into the upper one, a 1 x 1 plate fitting
 against each side of its plastic and refused one cell closer, the slope's
-cover following its face and the curve's its curve, the assistant's checker
-passing it and counting eight pieces (one per stack). Then each family used
+cover following its face and the curve's its curve. The made bar is put in
+a 3062b's hollow stud and the made upright clip onto the bar by the
+mouse's ray, on its joint, placed and joined to it; the level clip, aimed at
+a 2 x 4's front row with its clip out over the edge, goes where 61252 goes
+(y 32, on its stud at its socket); the wedge plates are stacked like the
+bricks and their cut is an edge (6 LDU out free, 6 in plastic); and each of
+the five is made by one `make_part` call. The assistant's checker passes it
+all and counts twelve pieces (one per stack). Then each family used
 as only it can be, asked of the checker: a 1 x 4 plate on the side studs and
 a 1 x 2 plate on the bracket's upright held, and each a stud further out
 floating; a Technic pin through the hole held and fitting (3700's place for
 it), turned across the hole an overlap; the hole left out of the cover. The
-parts list says "(custom element)", and the saved file carries eight parts,
-read strictly by `tools/build_custom.py --check`, and reopened into a fresh
-library 24 of 24 bricks where they were — the changed parts rebuilt from the
+parts list says "(custom element)", and the saved file carries thirteen
+parts, read strictly by `tools/build_custom.py --check`, and reopened into a
+fresh library 35 of 35 bricks where they were — the changed parts rebuilt from the
 connectors their own text states. `element_shot_probe` ends "the
 dialog makes parts in the window" and leaves `shots/element_dialog.png`,
 `shots/element_beside.png`, `shots/element_families.png` (made parts
@@ -273,7 +301,11 @@ what is put on them white) and `shots/element_changed.png` (98283 four long
 beside 98283 and 15533, 32000 and 2877 four long, 3062b without its stud,
 the printed tile 3068bp04 with studs put on round its print, 3003 with a
 corner cut out beside 3003 and 2357, 3001 notched under its middle, each
-beside what it came from) — look at them.
+beside what it came from), `shots/element_clip_dialog.png` (the Clip
+family's dialog, pressed by the pointer) and `shots/element_clip.png` (the
+five copies red beside 60897, 61252, 87994, 41770a and 41769a grey, the made
+bar in a 3062b and the made clip on the bar, each put there by a click) —
+look at them. `-- only=copies` makes only the last two.
 
 What the tests measure, each by stabbing the flattened geometry with a
 vertical line the way the voxeliser does: the header lines in order; every
@@ -295,6 +327,13 @@ comparison with 87087 and 30414), a Technic hole with no bore
 
 ## Gotchas
 
+- **A cover is whole cells; a box is not.** The builder drops a part by its
+  box and then lowers it to stand on its cover or its plate. Measured to the
+  cover's lowest cell, rounded out to 2 LDU, a thick clip plate (its ring
+  1.448 LDU under the plate) sank 0.552 LDU into the brick it was put on and
+  was refused. `Builder._sinks_by` and `_hangs_below` measure from the box;
+  `element_probe`'s level clip on a 2 x 4's edge checks it against 61252,
+  which its exact shape seats by another way.
 - **A packed array read out of a Dictionary is a copy.** `LdrModel.parse`
   collected each FILE section's lines with `(sections[x] as
   PackedStringArray).append(...)`, which appended to a temporary: every part

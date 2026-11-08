@@ -29,7 +29,8 @@ static func schema() -> Dictionary:
 		"description": ("Make a part the LEGO Group has not made, when no real part will do: "
 			+ "search_parts first, and use a real one if there is one. Either a new "
 			+ "part of a family at any size — a 1 x 7 brick, a bracket with a 3 x 2 "
-			+ "upright, a Technic brick 1 x 9, a brick with studs on two sides — or "
+			+ "upright, a Technic brick 1 x 9, a brick with studs on two sides, a 1 x 2 "
+			+ "plate with a clip, a bar 5 studs long, a 3 x 8 wedge plate — or "
 			+ "a real part changed: from=\"3700\" with across 6, from=\"3062b\" "
 			+ "without its studs, from=\"3003\" with a corner cut out. It is checked as a person's part is (sizes the "
 			+ "system has, walls 1.6 mm, studs on the grid) and refused with the "
@@ -45,7 +46,11 @@ static func schema() -> Dictionary:
 						+ "plates 1, studs false), slope, curved (a curved slope), "
 						+ "inverted (slope), round, bracket (a plate with an upright "
 						+ "whose studs face forward), technic (a 1 x N brick with a "
-						+ "hole between every two studs)")},
+						+ "hole between every two studs), clip (a plate with a clip on "
+						+ "its front edge that grips a bar, as 60897 and 61252), bar (a "
+						+ "bar any number of studs long, as 87994), wedge (a wedge plate, "
+						+ "LDraw's wing: one side straight, the other cut to a one-stud "
+						+ "tip, as 41770a)")},
 				"from": {"type": "string", "description": ("instead of a family: a "
 					+ "real part's number to change, keeping everything not changed "
 					+ "as the LEGO Group made it. Longer, wider and taller repeat a slice of "
@@ -53,10 +58,13 @@ static func schema() -> Dictionary:
 					+ "across) is refused.")},
 				"across": number.call("studs along X: a brick's length; a slope's, "
 					+ "bracket's or curved slope's width along its face or upright; "
-					+ "a Technic brick's length. With from: the new length."),
+					+ "a Technic brick's length; a clip plate's width along the edge "
+					+ "its clip is on; a bar's length; a wedge plate's wide end. With "
+					+ "from: the new length."),
 				"deep": number.call("studs along Z: a brick's width; a slope's depth "
-					+ "from back to foot; a bracket's plate depth. With from: the new "
-					+ "width."),
+					+ "from back to foot; a bracket's plate depth; a clip plate's "
+					+ "depth; a wedge plate's length, wide end to tip. With from: the "
+					+ "new width."),
 				"plates": number.call("height in plates, 3 to a brick (a bracket is "
 					+ "1, a Technic brick 3). With from: the new height."),
 				"run": number.call("slope, inverted, curved: the rows the face falls "
@@ -66,9 +74,12 @@ static func schema() -> Dictionary:
 					+ "plates as the real part has them"},
 				"diameter": number.call("round: studs across"),
 				"rise": number.call("bracket: the upright's height in studs"),
-				"way": {"type": "string", "enum": ["down", "up"], "description":
-					"bracket: whether the upright hangs down from the plate's front "
-					+ "edge or stands up from it"},
+				"way": {"type": "string", "enum": ["down", "up", "vertical", "horizontal",
+					"left", "right"], "description": ("bracket: down or up, whether the "
+					+ "upright hangs down from the plate's front edge or stands up "
+					+ "from it. clip: vertical (holds a bar standing up, 60897) or "
+					+ "horizontal (a bar lying along the edge, 61252). wedge: left or "
+					+ "right, the side that is straight (41770a is left)")},
 				"sides": {"type": "string", "description": ("brick: the sides with "
 					+ "studs on them, letters of fblr: f is the +z face (the front), "
 					+ "b -z, l -x, r +x; studs 10 LDU under the top and every stud "
@@ -132,6 +143,9 @@ static func _new(args: Dictionary, library: PartLibrary) -> String:
 		"technic":
 			spec.deep = 1
 			spec.plates = 3
+		_:
+			for field: String in ElementMaker.STARTS.get(spec.family, {}):
+				spec.set(field, ElementMaker.STARTS[spec.family][field])
 	for field: String in ["across", "deep", "plates", "run", "diameter", "rise"]:
 		if args.has(field):
 			spec.set(field, int(args[field]))
@@ -196,13 +210,28 @@ static func describe(library: PartLibrary, id: String) -> String:
 	var mesh: Lbm.PartMesh = library.mesh_for(id)
 	if info == null or mesh == null:
 		return "Made %s, but it is not in the library." % id
+	var made: ElementMaker.Spec = ElementMaker.parse_spec(library.custom_source(id)) \
+		if info.custom else null
+	if made != null and made.family == "bar":
+		# No footprint and no plates: "1 x 1 studs, 7.5 plates tall" would
+		# have a design stack on it.
+		return ("Made part \"%s\": %s. It is in the parts library now (Custom) — use \"%s\" "
+			+ "as the part in check_design, edit_model or submit_design like any other. "
+			+ "A bar %d LDU (%d stud%s) long and 8 across, drawn standing as 87994 is: its "
+			+ "origin is its top end and the rest of it below. A clip grips it anywhere "
+			+ "along it, and either end goes into a hollow stud (3062b's); turn it to lie "
+			+ "level.") % [id, Inventory._tidy(info.name), id, made.across * 20, made.across,
+			"" if made.across == 1 else "s"]
 	var size: Vector3i = PartEditor.size_of(mesh)
 	var top: int = 0
 	var sides: Dictionary = {}
 	var holes: int = 0
 	var under: int = 0
+	var clips: int = 0
 	for c: Lbm.Connector in mesh.connectors:
 		match c.kind:
+			"clip":
+				clips += 1
 			"stud":
 				if c.axis.y > 0.99:
 					top += 1
@@ -238,6 +267,9 @@ static func describe(library: PartLibrary, id: String) -> String:
 	if under > 0:
 		attach.append("%d tube%s or pin%s underneath" % [under, "" if under == 1 else "s",
 			"" if under == 1 else "s"])
+	if clips > 0:
+		attach.append("%d clip%s that grip%s a bar 3.2 mm across" % [clips,
+			"" if clips == 1 else "s", "s" if clips == 1 else ""])
 	said.append("It has " + ", ".join(attach) + ".")
 	if not sides.is_empty():
 		said.append("A part held by a side stud is placed with face set to that "
