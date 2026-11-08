@@ -101,6 +101,29 @@ To use the same page on another model, type a name and press **Keep as a style**
 ui:the booklet's page setup
 -->
 
+### The cover, header, footer and colours {#booklet-look}
+
+**Page setup…** has three tabs. **Page** holds the paper, margins and colour, and a **Header** and **Footer**: a line of your own words at the head of every page but the cover, and at the foot of every page, the cover too. Use the footer for a copyright line or your name.
+
+**Cover** makes the cover yours:
+
+- **Title**, across the top. Left empty, the cover says the model's name.
+- **Under the title**, a smaller line.
+- **Picture**: **Choose…** a picture of your own, shown whole on the cover, or **The model** to draw the finished model again.
+- **Line**, a line of your words over the count of pieces.
+
+**Steps** sets the colour and height of every step's number, the parts box's **frame**, **fill** and **corners** (0 for square), and the colour drawn round the parts each step adds. **Usual colours** puts the booklet's own back.
+
+All of it is saved with the model. A style kept by **Keep as a style** is the look: it carries the colours, the header and footer, and the cover's line and picture to another model. The title and the line under it stay each model's own, so a style never changes them, and neither does putting the booklet's own look back. Claude can set it with `page_setup`: `title`, `subtitle`, `cover_line`, `cover_picture_data`, `header`, `footer`, `box_frame`, `box_fill`, `box_corners`, `number_colour` and `outline_colour`.
+
+Each line of words holds 120 letters; longer words are cut, and Brickworks says so. If **Save as PDF** meets letters its type has no shapes for (Chinese, Japanese, Korean, Cyrillic, Greek, emoji), it names them. They print as **?** in the PDF. The booklet's own page and its PNG pages show them as typed.
+
+The cover, header, footer and colours are lines in the model's file. Brickworks before this release, and the desktop app up to 0.19.0, do not know them and leave them out when they save the model. Open and save a model you have set up this way only in this release or a later one. In a model made of sub-models, the page belongs to the main model. Words or a page set up inside a sub-model stay in that sub-model as they were.
+
+<!-- covers
+ui:the booklet's own cover and colours
+-->
+
 ### Lay a page out {#lay-out}
 
 **Lay out the page…** on the Booklet row puts the page in your hands: drag its picture, parts list, callout and step number where they go, and a corner to size each. **Add words**, **Add a picture…**, and **Draw an arrow**: drag it, drag its middle to bend it, and set its colour and width. A callout's own pages turn with **Previous** and **Next page**.
