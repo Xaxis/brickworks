@@ -705,7 +705,8 @@ deeper than the sets put them, and no further down a stud than its stop.
 The checker and where_to_attach drop the covers' overlap for them
 (`ExactCheck.let_meet`), and so does the hand's room test
 (`Builder._fits_as_sets`). The exact graph joins them (`ExactCheck.taken_whole`
-and known-fit studs), and the seat leaves them be (`_as_sets_build`).
+and known-fit studs), and the seat leaves a part down a stud past its foot
+as the sets build it (`ExactCheck._past_a_foot`, realjoints4 below).
 BrickBench's parts-only check stays strict. It is the known fit alone, not
 every joint the collisions forgive: tried with those, a clip 2 LDU off its
 bar's line, pressed into the bar's side, passed (`technic_hand_probe`). The
@@ -729,6 +730,25 @@ teaches; 10267's round plate by 54383's slanted edge; 3316's flower and
 8099's 32474, each on a 6141; the 57895, 60601 and 60608 panes; and bars
 in 18651, 59443 and 40344. No catalogue rebuild: the checker alone changed.
 The verdicts and pictures are in bench/results/realjoints3-2026-11-07.
+
+Round joints, the fifth pass, 2026-11-08 (realjoints4). realjoints3 held
+rel-m275 on animals_probe: of 27 saddles written as a session writes them,
+22 were seated where their sets have them, the worst 1.80 LDU off (6074-1's
+4491a). makepart2's merge had 27. Its seat called a part seated wherever it
+met any neighbour as the sets put the two. A 4491a written an LDU low meets
+the 3849 sword in its clip (6034-1, 6059-1, 6085-1) or its rider's 3817 leg
+(6074-1) that way, and a known fit's pose matches to an LDU each way, so the
+saddle stayed low. Now only a stud says a part is seated
+(`ExactCheck._past_a_foot`). A part down a stud past its foot further than
+BrickNet joins them (3 LDU) stays, whether the sets build it so or not. A
+part nearer than that is on the stud, low, and the seat puts it up. The seat
+of one part and the seat of a piece moved whole read the same rule.
+**Saddles 22 → 27 of 27; harvest 963 → 963 of the same 1,056, none newly
+refused**, every cause as it was (floating 27, collisions 8, overlaps 24, not
+held 34). Four sub-models that pass both ways are seated again as pre261 had
+them before realjoints3: 42088's and 42105's 6141s go 2 LDU up off a half
+pin's collar, 6542's 6141 2 LDU down, and 10297's 66909 2 LDU across. The
+verdicts are in bench/results/realjoints4-2026-11-08.
 
 Rooms inside, as one call, 2026-10-10. Twelve runs built solid shells or
 bare open backs though the guidance asked for rooms in words, and variety

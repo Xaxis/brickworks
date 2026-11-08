@@ -41,6 +41,12 @@
 ## them not held and the seat moved them. One rule now reads all three
 ## (ExactCheck.meet_as_sets). Overlaps 30 → 24, not held 33 → 34, floating
 ## 27, collisions 8. The verdicts are in bench/results/realjoints3-2026-11-07.
+##
+## Then the same 963, none newly refused, with every saddle animals_probe
+## writes seated again (realjoints4): the seat calls a part seated only where
+## it is down a stud past its foot (ExactCheck._past_a_foot), never where it
+## meets another part as the sets put the two. The verdicts are in
+## bench/results/realjoints4-2026-11-08.
 extends SceneTree
 
 
