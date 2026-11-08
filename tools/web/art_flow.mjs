@@ -4,6 +4,7 @@
 // piece. Then Design with Claude, which hands the picture to the assistant.
 //
 //   set -a; . ./.env; set +a
+//   python3 tools/web/serve.py build/web 8147 --parts assets/generated/parts --delay 0
 //   node tools/web/art_flow.mjs --url=http://127.0.0.1:8147/index.html --out=shots/art_web   (a local export)
 //   BW_BYPASS=$VERCEL_BYPASS node tools/web/art_flow.mjs --url=https://<a preview>/app --out=shots/art_web
 //
@@ -14,7 +15,11 @@
 // It fails if no chooser comes up, the dialog never shows, the Art does not
 // land with window.brickworksState.art saying its parts, every one of them on
 // the baseplate, in one piece, its panels in the model tree as Panel N#1, or
-// a script error reaches the console. Design with Claude cannot design here —
+// a script error reaches the console. Served with --parts, as a deployment
+// is, the parts' exact shapes are fetched, and the check reads them: served
+// without, it has none and judges by the lattice alone, which said one piece
+// while a preview, its shapes half come, said 25 (rel-m274).
+// Design with Claude cannot design here —
 // that is a network run on a key or a plan — so what is checked is that the
 // brief takes what is typed into it, and that it goes to the assistant: its
 // column opens, and with no key of its own the page says so rather than
