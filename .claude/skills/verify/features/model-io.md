@@ -90,7 +90,10 @@ Whether what you built is still there tomorrow, and still means the same thing.
   lines of the file the bar says so once, as the edit is made
   (`ModelStore.lines_left_out`, `left_out_words`: how many of which kind).
   In a patch the app's own lines end as the file's lines do and go above a
-  line saying what the next part is (`SourceFile.app_lines_placed`).
+  line saying what the next part is (`SourceFile.app_lines_placed`); one
+  the file already has stays where the file has it, its text kept even
+  with its JSON fields in another order (a hand-written VIEW). The share,
+  set bin and trace lines `ModelStore._write` adds pass through the same.
   A part of a mirrored copy agrees with its line only as it was opened (an
   edit to one is (B)); a step edit numbers the steps again as live does, so
   later parts' lines move with their steps, and a part the app cannot show
