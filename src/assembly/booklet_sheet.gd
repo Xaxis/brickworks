@@ -238,15 +238,24 @@ func number_style() -> String:
 	return "" if same_colour(number_colour, NUMBER_COLOUR) else "color:#" + number_colour.to_html(false)
 
 
-## The pictures a page set up as [param kept] ([method said]'s) shows, by
-## their names among the model's pictures: the one behind the pages and the
-## cover's.
+## The pictures a page set up as [param kept] ([method said]'s) names, by
+## their names among the model's pictures: the one behind the pages, the
+## cover's, and any a later build's words kept unread name (a BACK_PICTURE
+## of its own), so it is kept with the page as theirs are. Up to 2026-11-07
+## a save kept the later build's word and dropped its picture (blreview).
 static func pictures_named(kept: Variant) -> Array[String]:
 	var out: Array[String] = []
 	if kept is Dictionary:
 		for field: String in ["picture", "cover_picture"]:
 			if not str((kept as Dictionary).get(field, "")).is_empty():
 				out.append(str(kept[field]))
+		for field: String in ["unread", "unread_text"]:
+			for words: Variant in (kept as Dictionary).get(field, []) \
+					if (kept as Dictionary).get(field) is Array else []:
+				for word: String in str(words).split(" ", false):
+					var named: String = word.get_file().to_lower()
+					if named.begins_with(BookletLooks.IMAGE_PREFIX) and not named in out:
+						out.append(named)
 	return out
 
 

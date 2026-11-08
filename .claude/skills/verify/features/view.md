@@ -2161,7 +2161,11 @@ picture the assistant is shown.
   build before booklook and desktop 0.19.0 drop both lines on any save.
   A later build's words are kept and written back as they were
   (`BookletSheet.unread`: an unknown PAGE_SETUP word and the one after
-  it; `unread_text`: a PAGE_TEXT of an unknown kind). Words are one line
+  it; `unread_text`: a PAGE_TEXT of an unknown kind), and a picture they
+  name is among the page's (`BookletSheet.pictures_named`), so Page
+  setup keeps it. A `0 !DATA brickworks-page-*` block that a kept line
+  names and the looks do not hold (a sub-model's own PICTURE) is written
+  back as the file had it. Words are one line
   of at most 120 characters, cut said in the answer and the status, C0
   and C1 controls and U+2028/U+2029 made spaces. Every line these write
   goes in by `BookletLooks._put_lines`, which ends the line before with
@@ -2207,9 +2211,14 @@ picture the assistant is shown.
   U+0085/U+2028/U+2029/U+009F made spaces; usual=true keeping the title
   and subtitle; a 30-letter CJK title within its page at an em a letter and drawn
   across the cover's PNG band; Save as PDF naming the letters it cannot print; a title of "Gate
-  <section> Hill" read back from the web's tab with every page. Its
-  pictures are kept in `--into=`.
-  `--dialog-only` with `PROBE_SIZE=1400x900` checks the tabs alone.
+  <section> Hill" read back from the web's tab with every page; and the
+  pictures kept lines name (`later_pic_steps.ldr`, `later_pic_nosteps.ldr`,
+  `sub_pic.mpd`) with their lines, the same bytes, through a plain save, a
+  footer and an open, the sub-model's when the main model's page is given
+  another picture, and a later build's in the app's own model through Page
+  setup. Its pictures are kept in `--into=`.
+  `--dialog-only` with `PROBE_SIZE=1400x900` checks the tabs alone;
+  `--saves-only` runs blreview's files alone.
 - `mosaic` (Mosaic in the toolbar, then a picture; `src/ui/mosaic_dialog.gd`):
   a picture built two ways. **Brick Art**, the default, as a modern LEGO Art set
   builds one (`MosaicArt`, below); **Classic**, one 1 × 1 plate a pixel, flat,
