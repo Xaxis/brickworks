@@ -1512,6 +1512,16 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 		return text
 	var lines: PackedStringArray = text.split("\n")
 	var eol: String = "\r" if not lines.is_empty() and lines[0].ends_with("\r") else ""
+	# A file that ends without a line break: its last line given the file's
+	# break first, so every line put after it goes in as a line of its own
+	# in the file's breaks, and taken back off at the end when none was. Up
+	# to 2026-11-07, in a CRLF file, that line ended LF alone and the last of
+	# ours CR alone (blreview).
+	var last: String = lines[lines.size() - 1] if not lines.is_empty() else ""
+	var open_end: bool = not last.is_empty()
+	if open_end:
+		lines[lines.size() - 1] = last + eol
+		lines.append("")
 	var out := PackedStringArray()
 	var definition: String = ""
 	var step: int = 0
@@ -1591,7 +1601,7 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 				and not out[at].strip_edges().to_upper().begins_with("0 ROTSTEP") \
 				and at < 12:
 			at += 1
-		_put_lines(out, at, head, eol)
+		_put_lines(out, at, head)
 	# The pictures the pages show, each as LDraw's embedded file, at the end.
 	var pictures: Dictionary = looks.get(DATA, {})
 	var shown: Dictionary = {}
@@ -1619,29 +1629,22 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 			var encoded: String = str(pictures[name])
 			for at: int in range(0, encoded.length(), 76):
 				block.append("0 !: " + encoded.substr(at, 76) + eol)
-		_put_lines(out, end, block, eol)
+		_put_lines(out, end, block)
+	if open_end and out.size() >= 2 and out[out.size() - 1].is_empty() \
+			and out[out.size() - 2] == last + eol:
+		# Nothing went after it: the file ends as it did.
+		out.remove_at(out.size() - 1)
+		out[out.size() - 1] = last
 	return "\n".join(out)
 
 
-## [param block], lines each ending [param eol], put into [param out] (a
-## file's lines split at "\n") at [param at]: the one way every line of
-## these goes in. Past a last line with no break of its own (a file that
-## ends without one), that line is given the file's first, and the file
-## then ends with one: in a CRLF file the line before ours ended LF alone,
-## and the last of ours CR alone (blreview, 2026-11-07).
-static func _put_lines(out: PackedStringArray, at: int, block: PackedStringArray, eol: String) -> void:
-	if block.is_empty():
-		return
-	if at >= out.size() and at > 0 and out[at - 1].is_empty():
-		# After the break the file ends with: before the nothing after it.
-		at -= 1
-	var tail: bool = at >= out.size()
-	if tail and at > 0 and not out[at - 1].ends_with(eol):
-		out[at - 1] += eol
+## [param block], lines each ending as the file's do, put into [param out]
+## (a file's lines split at "\n") at [param at]: the one way the lines
+## said in more than one place go in (a section's end, the model's head,
+## the pictures at the end), each before a line break of the file's own.
+static func _put_lines(out: PackedStringArray, at: int, block: PackedStringArray) -> void:
 	for n: int in block.size():
 		out.insert(at + n, block[n])
-	if tail:
-		out.append("")
 
 
 ## The booklet's own lines, said once at the head of the model.
@@ -1683,7 +1686,7 @@ static func _close_section(out: PackedStringArray, looks: Dictionary, definition
 			and not wrote.has(definition + "|*"):
 		extra.append(META + "CALLOUT OFF" + eol)
 		wrote[definition + "|*"] = true
-	_put_lines(out, trailing, extra, eol)
+	_put_lines(out, trailing, extra)
 
 
 ## The app's own lines for one step, before the line that ends it. A

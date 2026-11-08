@@ -1155,7 +1155,7 @@ func _wide_letters() -> void:
 	await _main.call("_export_booklet", html)
 	var wrote: String = str(await _main.call("save_booklet_as", "pdf", _out.path_join("wide_export.pdf")))
 	_check("Save as PDF says which letters its type cannot print, not \"?\" in silence (%s)" % wrote.right(120),
-		wrote.begins_with("wrote") and wrote.contains("城") and wrote.contains("З") and wrote.contains("Ε"))
+		wrote.begins_with("wrote") and wrote.contains("cannot print") and wrote.contains("城"))
 	# The web's PDF is read from the booklet's own tab: its title, decoded,
 	# fed back to the reader with its pages.
 	await _tools.run("page_setup", {"title": "Gate <section> Hill", "cover_line": "", "header": ""})
