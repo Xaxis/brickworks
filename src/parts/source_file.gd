@@ -905,11 +905,18 @@ func _below(copy: Copy) -> Array[Copy]:
 
 
 ## The one motion every one of [param moves] is, where there are at least
-## [param least] of them; else [param fallback].
+## [param least] of them; else [param fallback]. Never a reflection: a copy
+## whose line reflects opens with every part in it turned to its other hand
+## (Assemblies.unmirror), not where the reflection puts it. A band whose
+## every segment the app laid again as its other hand (8257's, after a
+## delete in its other copy) read as the copy mirrored, and its line was
+## written so (kt4r sw_8257-1_del, refused by the read back).
 static func _common(moves: Array, fallback: Transform3D, least: int = 1) -> Transform3D:
 	if moves.is_empty() or moves.size() < least:
 		return fallback
 	var first: Transform3D = moves[0]
+	if first.basis.determinant() < 0.0:
+		return fallback
 	for item: Variant in moves:
 		if not _same(item as Transform3D, first):
 			return fallback

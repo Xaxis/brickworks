@@ -72,8 +72,10 @@ Whether what you built is still there tomorrow, and still means the same thing.
   own: one a step edit takes out of a LeoCAD group goes with its group's
   pair round it, as LeoCAD writes a group across two steps, and the pair it
   left goes once every part did (`GROUPED`, `_emit`); MLCad's group says
-  itself on each part's BTG line, which goes with it. A copy whose every part moved alike,
-  the line placing it written again (`_common`), never by a majority. A part
+  itself on each part's BTG line, which goes with it. A copy whose every
+  part moved alike, the line placing it written again (`_common`), never by
+  a majority and never as a reflection, which opens as every part's other
+  hand. A part
   or copy with no line, a line at the end of its step, with a section of its
   own for a sub-model it needs; copies of one sub-model that no longer agree,
   the changed one a section of its own ("x 2.ldr"), its placing line pointed
