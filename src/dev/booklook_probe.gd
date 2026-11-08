@@ -1237,17 +1237,20 @@ func _kept_pictures() -> void:
 			_named_in(back, picture), _picture_in(back, picture) == data],
 			_named_in(back, picture) and _picture_in(back, picture) == data)
 	# The main model's page names the sub-model's picture too, and is given
-	# another: the main model's goes, the sub-model's stays.
+	# another, one that shows through and so a PNG of another name: the
+	# main model's JPEG goes, the sub-model's stays. (One name in a file is
+	# one picture: given a JPEG, the main model's would take the name.)
 	var shared: String = _out.path_join("sub_pic_shared.mpd")
 	var source: String = FileAccess.get_file_as_string(_fixture("sub_pic.mpd"))
 	_write(shared, source.replace("0 Name: extra main.ldr\n",
 		"0 Name: extra main.ldr\n0 !BRICKWORKS PAGE_SETUP A4 PICTURE brickworks-page-behind.jpg\n"))
 	var jpeg: String = _picture_in(source, "brickworks-page-behind.jpg")
 	await _open(shared, 3)
-	var red := Image.create(40, 30, false, Image.FORMAT_RGB8)
-	red.fill(Color8(200, 40, 40))
-	await _tools.run("page_setup", {"picture": "behind.png",
-		"picture_data": Marshalls.raw_to_base64(red.save_png_to_buffer())})
+	var red := Image.create(40, 30, false, Image.FORMAT_RGBA8)
+	red.fill(Color(0.8, 0.15, 0.15, 0.5))
+	var answer: String = str(await _tools.run("page_setup",
+		{"picture_data": Marshalls.raw_to_base64(red.save_png_to_buffer())}))
+	print("    page_setup: %s" % answer.left(160))
 	var given: String = _saved()
 	var lines: Dictionary = _page_lines(given)
 	_check("the main model's picture given anew (%s): the sub-model's line (%s) and its picture kept (%s), the new one written (%s)"
