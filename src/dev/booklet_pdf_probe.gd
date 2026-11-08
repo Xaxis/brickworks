@@ -402,17 +402,25 @@ func _same_as_before(against: String, out: String) -> void:
 	writer.begin(now, read)
 	var pages: int = await read.read_all(html, writer.page)
 	writer.finish(read.title)
-	var hashes := func(pdf: String) -> PackedStringArray:
-		var said: Array = []
-		OS.execute("bash", ["-c", "for n in $(seq 1 \"$2\"); do pdftoppm -r 300 -f $n -l $n -singlefile \"$1\" | sha1sum; done",
-			"-", ProjectSettings.globalize_path(pdf), str(pages)], said)
-		return "".join(said).strip_edges().split("\n")
-	var was: PackedStringArray = hashes.call(before)
-	var is_now: PackedStringArray = hashes.call(now)
+	# Each page drawn by poppler and hashed, pdftoppm run itself: OS.execute
+	# asked for output goes through popen with every argument in double
+	# quotes, so a bash -c script's $1 and $(...) were the outer shell's,
+	# empty, and no page was hashed at all.
+	var ppm: String = ProjectSettings.globalize_path(out.path_join("page-at300"))
 	var differ: Array = []
-	for index: int in pages:
-		if index >= was.size() or index >= is_now.size() or was[index] != is_now[index]:
-			differ.append(index + 1)
+	var hashed: int = 0
+	for number: int in range(1, pages + 1):
+		var sums: Array = []
+		for pdf: String in [before, now]:
+			DirAccess.remove_absolute(ppm + ".ppm")
+			OS.execute("pdftoppm", ["-r", "300", "-f", str(number), "-l", str(number), "-singlefile",
+				ProjectSettings.globalize_path(pdf), ppm])
+			sums.append(FileAccess.get_sha256(ppm + ".ppm") if FileAccess.file_exists(ppm + ".ppm") else "")
+		if sums[0] != "" and sums[1] != "":
+			hashed += 1
+		if sums[0] == "" or sums[0] != sums[1]:
+			differ.append(number)
+	DirAccess.remove_absolute(ppm + ".ppm")
 	var pixels: int = 0
 	for number: int in differ.slice(0, 2):
 		for pdf: String in [before, now]:
@@ -425,9 +433,9 @@ func _same_as_before(against: String, out: String) -> void:
 				for x: int in a.get_width():
 					if a.get_pixel(x, y) != b.get_pixel(x, y):
 						pixels += 1
-	_check("each of its %d pages the same at 300 dots an inch to the pixel (%d differ%s)" % [pages,
-		differ.size(), (": pages %s, %d pixels on the first two" % [str(differ.slice(0, 8)), pixels])
-		if not differ.is_empty() else ""], pages > 0 and was.size() == pages and differ.is_empty())
+	_check("each of its %d pages the same at 300 dots an inch to the pixel (%d drawn both ways, %d differ%s)" % [
+		pages, hashed, differ.size(), (": pages %s, %d pixels on the first two" % [str(differ.slice(0, 8)),
+		pixels]) if not differ.is_empty() else ""], pages > 0 and hashed == pages and differ.is_empty())
 	var size_was: int = FileAccess.get_file_as_bytes(before).size()
 	var size_now: int = FileAccess.get_file_as_bytes(now).size()
 	_check("its file no more than 10%% bigger: %.1f KB against %.1f KB (%+.1f%%)" % [size_now / 1024.0,
