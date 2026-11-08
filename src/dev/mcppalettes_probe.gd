@@ -25,7 +25,9 @@
 ##   4. another model: Gatepost placed whole in 1 call at x 2, y 0, z 2, each
 ##      part where it stood beside the others to 0.01 LDU, its low corner
 ##      there, as one assembly called Gatepost; the same again where it stands
-##      refused with nothing changed; one undo takes it all back;
+##      refused with nothing changed; while the person's question is about one
+##      part, placing refused and a palette of it made; one undo takes it all
+##      back;
 ##   5. a part taken out, and the bin follows; the sub-assembly taken out and
 ##      the palette deleted only with agreed=true; a name taken, and parts the
 ##      model has not, refused with the file as it was.
@@ -317,6 +319,21 @@ func _placed(post_shape: Array) -> void:
 	_print(again)
 	_check("the same again where it stands is refused, nothing changed (%d parts)" % _count(),
 		again.begins_with("Not put down") and _count() == 4)
+	# The person asked about one part: a sub-assembly put down elsewhere is
+	# more than that part, refused as clear_model is; keeping a palette is not.
+	var assistant: Assistant = _main.get("_assistant")
+	var one: int = _world.bricks()[0].id
+	assistant.focus_on([one], true)
+	var asked: String = await _call("edit_palette", {"action": "place", "palette": "Castle",
+		"assembly": "Gatepost", "at": {"x": 8, "y": 0, "z": 8}, "picture": false})
+	var kept: String = await _call("edit_palette", {"action": "make", "palette": "Asked",
+		"bricks": [one]})
+	_check("with the person's question about one part, placing is refused (%d parts): \"%s\"" % [
+		_count(), asked.left(40)], asked.begins_with("Not now") and _count() == 4)
+	_check("...and a palette of that part is made: \"%s\"" % kept.left(40),
+		kept.begins_with("Made the palette “Asked”"))
+	assistant.unfocus()
+	await _call("edit_palette", {"action": "delete", "palette": "Asked", "agreed": true})
 	await _call("undo", {})
 	await _frames(6)
 	_check("one undo takes it all back (%d parts)" % _count(), _count() == 0)

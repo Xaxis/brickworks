@@ -1426,6 +1426,10 @@ const CHANGES: Array[String] = ["set_floor", "edit_steps", "edit_booklet", "lay_
 ## tool: light_model's list was refused while the designer built, as edit_steps'
 ## list and set_floor's question were (lreview, 2026-11-07).
 static func changes(tool: String, input: Dictionary) -> bool:
+	# mcppalettes: a palette's sub-assembly put down changes the model; the
+	# rest of edit_palette changes only the person's palettes.
+	if tool == "edit_palette":
+		return str(input.get("action", "")) == "place"
 	return tool in CHANGES and not _while_looking(tool, input)
 
 

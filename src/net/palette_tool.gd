@@ -442,9 +442,6 @@ func _placed(input: Dictionary, name: String) -> String:
 	var one: Dictionary = _palette_named(name)
 	if one.is_empty():
 		return _none_called(name)
-	var assistant: Assistant = app.get("_assistant")
-	if assistant != null and assistant.is_busy():
-		return "The app's own designer is building right now; wait for it to finish."
 	var asked: String = Quotes.off(str(input.get("assembly", "")))
 	var entry: Dictionary = _assembly_entry(one, asked) if not asked.is_empty() \
 		else _only_assembly(one)
