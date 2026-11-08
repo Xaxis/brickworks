@@ -1,0 +1,36 @@
+0 FILE model.ldr
+0 Model
+0 Name: model.ldr
+0 Author: Brickworks
+0 !BRICKWORKS AUTHORED_STEPS
+
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3020.dat
+0 STEP
+0 !BRICKWORKS COPY 1
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 a.ldr
+0 !BRICKWORKS PULL 2 41770a 41769a
+0 !BRICKWORKS ZOOM 1.5
+0
+0 NOFILE
+0 FILE a.ldr
+0 a
+0 Name: a.ldr
+0 Author: Brickworks
+
+1 1 100 -8 0 1 0 0 0 1 0 0 0 1 3022.dat
+0 STEP
+0 !BRICKWORKS COPY 1
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 w.ldr
+0
+0 NOFILE
+0 FILE w.ldr
+0 w
+0 Name: w.ldr
+0 Author: Brickworks
+
+1 71 100 -16 0 1 0 0 0 1 0 0 0 1 41770a.dat
+1 71 140 -16 0 1 0 0 0 1 0 0 0 1 41769a.dat
+0 STEP
+1 71 100 -24 0 1 0 0 0 1 0 0 0 1 3023.dat
+0
+0 NOFILE

@@ -532,7 +532,14 @@ geometry in front of them.
   into LDraw lines and back (`Carry.from_ldraw`, the path a paste takes), and
   held whole (`EditVerbs.hold`): R turns it, a click puts it down, one undo
   takes it all back. The colour in hand stands in for its main colour
-  (`Techniques.main_colour`, the colour most of its parts are in).
+  (`Techniques.main_colour`, the colour most of its parts are in). Typed,
+  the rows are the only thing listed: the grid's growth reads the list it
+  shows (`PartsBin._display`), let go for rows of the bin's own
+  (`PartsBin._empty_for_rows`, Techniques and Palettes); from rel-m267 to
+  rel-m276 the last search's parts came in above the rows and the window's
+  row stood 2,600 px down (bintech). On a phone the Parts sheet goes with
+  the pick, as it does for a part (`PhoneShell._held_whole`); a tablet's
+  stays beside the model.
 - `find a part from a photo` (`src/net/brickognize.gd`): the camera in the
   bin's search field. The first press says the photo goes to Brickognize, a
   third party that may keep it and train on it (their terms, read 2026-10-24),
@@ -655,7 +662,7 @@ godot --path . --resolution 1280x860 --script src/dev/photo_search_probe.gd -- -
 tools/probe.sh dialog_look_probe -- --shots=DIR  # every dialog, chooser and desktop menu in the app's look, read off the window's pixels (108 on 2026-10-26)
 tools/probe.sh picker_folder_probe                # every chooser in Pictures, Documents or Downloads first, then where its kind last came from
 tools/probe.sh contrast_probe -- --shots=DIR      # every button's edge 3:1, words 4.5:1, a question's default told apart (653 buttons on 2026-10-26); -- --main-only --every lists each
-node tools/web/bin_flow.mjs --url=http://127.0.0.1:9063/ --out=DIR   # both in a browser at 1280 and 390 (serve.py on 9063; Brickognize live)
+node tools/web/bin_flow.mjs --url=http://127.0.0.1:9063/ --out=DIR   # both in a browser at 1280 and 390 (serve.py on 9063 --parts assets/generated/parts --delay 0; Brickognize live): the window typed, its row first and in sight, held, put down (a tap on a phone, the sheet gone), undone
 godot --headless --path . --script src/dev/vocab_probe.gd           # the words a builder types
 tools/probe.sh search_rank_probe -- quality   # + 26 words builders type (snot, erling, macaroni, 2x4...) each in the first three; a size alone the brick first; "1x4 brick" and six more, that family on the first eight tiles
 tools/probe.sh bin_names_probe                # every tile in sight named in words and fitted, no two alike, its part drawn while it waits; shots/bin_names/
@@ -688,7 +695,9 @@ tools/check.sh --network    # adds remote_probe: geometry over the wire
 ```
 
 Techniques prove it when `bin_techniques_probe` exits 0: every construction
-listed under its group, "window in a wall" held whole (17 parts) with the
+listed under its group, "window in a wall" typed in the search key by key, its
+row first and in sight with no part tile among the rows, clicked where it is
+and held whole (17 parts) with the
 colour in hand where its red was, R turning it through four quarters, a click
 putting it on the wall's top in the wall's line, the model checking as a design
 does, and one undo taking all 17 back; then "smooth diagonal", "round tower"

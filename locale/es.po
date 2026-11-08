@@ -12261,6 +12261,20 @@ msgstr "%s: completo, tus piezas sueltas cubren las %d piezas marcadas como que 
 msgid "no such choice"
 msgstr "no existe esa opción"
 
+# pullkept: a pull no step shows now, said on open
+
+msgid "the pull on %s matches no step now, kept in the file"
+msgstr "la extracción del %s ya no corresponde a ningún paso, guardada en el archivo"
+
+msgid "step %d of the model"
+msgstr "paso %d del modelo"
+
+msgid "step %d of %s"
+msgstr "paso %d de %s"
+
+msgid "and %d more like it"
+msgstr "y %d más como este"
+
 # Make a part's clip plate, bar and wedge plate (makepart2, APP_UX6 #15): the families'
 # buttons, their ways, their rows and what the dialog says of each part.
 

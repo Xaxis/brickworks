@@ -265,8 +265,13 @@ func _build() -> void:
 	_parts.body.add_child(bin)
 	bin.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	# A part picked is in hand: the sheet goes, and the model is all there.
+	# So does a construction or a sub-assembly, held whole (Techniques,
+	# Palettes): held with the sheet up over the model, there was nowhere
+	# in sight to put it down (bintech, 2026-11-08).
 	if not bin.part_chosen.is_connected(_part_picked):
 		bin.part_chosen.connect(_part_picked)
+	if not bin.construction_chosen.is_connected(_held_whole):
+		bin.construction_chosen.connect(_held_whole)
 	_colours = _sheet("Colour", true)
 	_more = _sheet("More", true)
 	_context = _sheet("This part", true)
@@ -294,6 +299,10 @@ func _part_picked(_part_id: String) -> void:
 		return
 	if _parts != null and _parts.is_open() and not bin.is_dragging_part():
 		_parts.close()
+
+
+func _held_whole(_parts_held: Array, _name: String) -> void:
+	_part_picked("")
 
 
 ## A bar's backing, the desktop's own colour.
@@ -641,12 +650,15 @@ func hint() -> String:
 	if builder == null or verbs == null:
 		return ""
 	var library: PartLibrary = app.get("_library")
+	# Something carried whole (a construction, a paste, parts lifted) before
+	# the part in hand, which is only the last one taken: holding "window in
+	# a wall", the line said "Tap to put Brick 2 x 4 down" (bintech).
+	if builder.is_carrying():
+		return "Tap where it goes · Select puts it back"
 	if verbs.shows_ghost():
 		var info: PartLibrary.PartInfo = library.parts.get(builder.held_part)
 		var name: String = Inventory._tidy(info.name) if info != null else builder.held_part
 		return "Tap to put %s down · drag turns the view · two fingers turn and zoom" % name
-	if builder.is_carrying():
-		return "Tap where it goes · Select puts it back"
 	match verbs.mode:
 		"delete":
 			return "Tap a part to take it off · Select when done"
