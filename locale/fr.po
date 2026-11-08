@@ -12177,3 +12177,63 @@ msgstr "%s : complet, vos pièces en vrac remplaçant les %d pièces indiquées 
 
 msgid "no such choice"
 msgstr "ce choix n'existe pas"
+
+# Make a part's clip plate, bar and wedge plate (makepart2, APP_UX6 #15): the families'
+# buttons, their ways, their rows and what the dialog says of each part.
+
+msgid "Clip"
+msgstr "Clip"
+
+msgid "A plate or tile with a clip on its front edge that grips a bar, upright or level"
+msgstr "Une plaque ou une plaque lisse avec un clip sur son bord avant qui tient une barre, verticale ou horizontale"
+
+msgid "A bar 3.2 mm across, any number of studs long: a clip grips it, a hollow stud holds its end"
+msgstr "Une barre de 3,2 mm de diamètre, aussi longue que vous voulez en tenons : un clip la tient, un tenon creux tient son bout"
+
+msgid "A wedge plate (LDraw calls it a wing): one side straight, the other cut in to a tip one stud wide"
+msgstr "Une plaque biseautée (LDraw l'appelle une aile) : un côté rectiligne, l'autre coupé en biais jusqu'à une pointe d'un tenon de large"
+
+msgid "vertical: it holds a bar standing up"
+msgstr "vertical : il tient une barre debout"
+
+msgid "horizontal: it holds a bar along the edge"
+msgstr "horizontal : il tient une barre le long du bord"
+
+msgid "left: the straight side on the left"
+msgstr "gauche : le côté rectiligne à gauche"
+
+msgid "right: the straight side on the right"
+msgstr "droite : le côté rectiligne à droite"
+
+msgid "The clip"
+msgstr "Le clip"
+
+msgid "Left or right"
+msgstr "Gauche ou droite"
+
+msgid "Which way"
+msgstr "Dans quel sens"
+
+msgid "Width, studs (the clip's edge)"
+msgstr "Largeur, tenons (le bord du clip)"
+
+msgid "Width, studs (the wide end)"
+msgstr "Largeur, tenons (le bout large)"
+
+msgid "Depth, studs"
+msgstr "Profondeur, tenons"
+
+msgid "Length, studs (to the tip)"
+msgstr "Longueur, tenons (jusqu'à la pointe)"
+
+msgid "%s mm long and %s mm across: a clip grips it anywhere along it, and either end goes into a hollow stud."
+msgstr "%s mm de long et %s mm de diamètre : un clip la tient n'importe où, et chaque bout entre dans un tenon creux."
+
+msgid "Its clip grips a bar 3.2 mm across, standing up."
+msgstr "Son clip tient une barre de 3,2 mm, debout."
+
+msgid "Its clip grips a bar 3.2 mm across, lying along the edge."
+msgstr "Son clip tient une barre de 3,2 mm, couchée le long du bord."
+
+msgid "Its cut side runs at %s° to the straight side, to a tip one stud wide."
+msgstr "Son côté biseauté fait %s° avec le côté rectiligne, jusqu'à une pointe d'un tenon de large."
