@@ -1174,6 +1174,22 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 			return _no(plan, "a part was taken off one copy of a sub-model and not another (line %d)" % (line + 1))
 		if said.is_empty():
 			continue
+		# A part of a mirrored copy is in its other hand (Assemblies.unmirror):
+		# it agrees with the line only as it was opened.
+		var mirrored: bool = false
+		for item: Array in said:
+			var was: Read = item[4]
+			if not was.mirrored:
+				continue
+			mirrored = true
+			var opened: Transform3D = (unit_frames.get(was.unit, Transform3D.IDENTITY) as Transform3D) \
+				.affine_inverse() * was.at
+			if str(item[0]) != was.part_id or int(item[1]) != was.colour \
+					or authored and int(item[3]) != was.step or not _same(item[2] as Transform3D, opened):
+				return _no(plan, "a part of a mirrored copy changed")
+		said = said.filter(func(item: Array) -> bool: return not (item[4] as Read).mirrored)
+		if said.is_empty():
+			continue
 		# Its copies alike: one part, place and step, and one colour where
 		# any was painted (a colour of 16 is each copy's own until then).
 		var first: Array = said[0]
@@ -1208,10 +1224,9 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 				return _no(plan, "two flexible parts of one path painted apart")
 			recolour[giving] = int(first[1])
 			changed = false
+		if (changed or stepped) and mirrored:
+			return _no(plan, "a part of a mirrored copy changed")
 		if changed:
-			for item: Array in said:
-				if (item[4] as Read).mirrored:
-					return _no(plan, "a part of a mirrored copy changed")
 			var text: Variant = _line_for(line, str(first[0]), int(first[1]), painted, first[2], library)
 			if text == null:
 				return _no(plan, "a part's line could not be written (line %d)" % (line + 1))
