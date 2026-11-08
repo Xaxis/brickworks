@@ -2985,6 +2985,11 @@ godot --headless --path . --script src/dev/mosaic_probe.gd        # the picture 
 #   and as the person chose it (APP_UX6 #10): crop, colours, mixed plates, words
 tools/probe.sh mosaic_window_probe -- --shots=DIR                   # the same in the app's window, signed in (.env); PROBE_SIZE=1400x900 too
 #   -- --ldr=shots/art/galaxy.ldr writes the galaxy, to render corner, front and close
+godot --headless --path . --script src/dev/art_counts_probe.gd    # every count Brick Art says reads right for one and for many
+#   (smallwords): each element kind one and two as the dialog and a session
+#   count them, the dialog's plates, colours, panels, relief and palette on
+#   pictures that come to one and two, each in German, French and Spanish
+#   found whole with its one said apart from its many
 godot --headless --path . --script src/dev/art_plan_probe.gd      # an Art plan is laid as it says; a bad one is refused
 #   no network: a canned plan over a tilted galaxy (sky smooth and flat, disc
 #   round and one up, core three up, three stars by hand in glow, trans-clear
