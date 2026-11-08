@@ -1291,12 +1291,18 @@ func _render(save: Save, target: Target) -> void:
 			had[block[line]] = true
 	if save.stepped and not steps_here.is_empty():
 		var map: Dictionary = _blocks_of(target, incoming, steps_here.size())
+		# Steps made one: the STEP lines between them go, and no part moves.
+		var merged: Dictionary = _merged(target, map, steps_here)
+		for blk: int in merged:
+			drop[steps_here[blk]] = true
+			save.reshaped = true
 		for step: int in map:
 			numbered[map[step]] = true
 		# Over a copy of its keys: _take erases from it.
 		for line: int in target.inplace.keys():
 			var item: Item = target.inplace[line]
-			if _votes(item) and _leads(line) and int(map.get(item.step, -1)) != block[line]:
+			if _votes(item) and _leads(line) \
+					and int(map.get(item.step, -1)) != int(merged.get(block[line], block[line])):
 				_take(save, target, item, drop)
 				incoming.append(item)
 		for item: Item in incoming:
@@ -1304,7 +1310,7 @@ func _render(save: Save, target: Target) -> void:
 				_put(anchored if item.anchor >= 0 else null, item, tail)
 			elif map.has(item.step):
 				var to: int = map[item.step]
-				if item.anchor >= 0 and block[item.anchor] == to:
+				if item.anchor >= 0 and int(merged.get(block[item.anchor], block[item.anchor])) == to:
 					_put(anchored, item, tail)
 				else:
 					_add_to(at_end, to, item)
@@ -1661,6 +1667,44 @@ func _blocks_of(target: Target, incoming: Array[Item], ended: int) -> Dictionary
 		if int(above[0]) - int(below[0]) == int(above[1]) - int(below[1]):
 			map[step] = int(below[1]) + step - int(below[0])
 	return map
+
+
+## The blocks a step's parts are all in, each with no part of another
+## step, side by side with only a STEP line between each: each -> the last
+## of them, which [param map] then gives that step. The STEP lines between
+## go and no part moves: two steps made one, or the last part of a step
+## moved on into a step that ends up holding nothing else (Shift-] on
+## keep_text_notes' wing tip moved the root up, away from its note, as the
+## app numbered both steps one). Never over a ROTSTEP, which turns the
+## steps after it, or a block a part of no step or another step is in.
+func _merged(target: Target, map: Dictionary, steps_here: PackedInt32Array) -> Dictionary:
+	var only: Dictionary = {}       ## block -> the one step of its parts; -2 for several
+	for line: int in target.inplace:
+		var item: Item = target.inplace[line]
+		if not _votes(item):
+			continue
+		var blk: int = block[line]
+		only[blk] = item.step if not only.has(blk) or int(only[blk]) == item.step else -2
+	var given: Dictionary = {}
+	for step: int in map:
+		given[int(map[step])] = step
+	var out: Dictionary = {}
+	for step: int in map:
+		var at: int = map[step]
+		if int(only.get(at, -1)) != step:
+			continue
+		var first: int = at
+		while first > 0 and int(only.get(first - 1, -1)) == step and not given.has(first - 1) \
+				and _keyword(lines[steps_here[first - 1]]) == "STEP":
+			first -= 1
+		var last: int = at
+		while last < steps_here.size() and int(only.get(last + 1, -1)) == step \
+				and not given.has(last + 1) and _keyword(lines[steps_here[last]]) == "STEP":
+			last += 1
+		for blk: int in range(first, last):
+			out[blk] = last
+		map[step] = last
+	return out
 
 
 ## The lines of [param target]'s items that stay where they are in a

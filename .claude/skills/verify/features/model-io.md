@@ -84,8 +84,9 @@ Whether what you built is still there tomorrow, and still means the same thing.
   the end of the step they are in now (each step the block in its place where
   the steps and blocks agree in number, an author's empty page too; a step
   emptied loses its STEP line, or, ended by a ROTSTEP, the one before, unless
-  the app still numbers it, as after its parts were deleted; new steps in
-  order); a section of no STEP line gets them only where its parts are now in
+  the app still numbers it, as after its parts were deleted; steps made one,
+  each block next to the other with nothing else in it, lose the STEP line
+  between and move no part (`_merged`); new steps in order); a section of no STEP line gets them only where its parts are now in
   more than one step, so a reopen keeps the steps a person saw; a copy with no
   part in it stays where its line is (its step is no one's to see).
   `0 !BRICKWORKS IN <copy>` goes before the lines of a copy built in its

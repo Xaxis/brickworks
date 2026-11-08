@@ -935,9 +935,12 @@ func _omr_pairs() -> void:
 		if not _check("%s read (%d lines)" % [file, text.split("\n").size()], not text.is_empty()):
 			continue
 		await _open(text, file)
-		var unedited: String = _store.to_text(file, true)
-		_check("...saved unedited: the file byte for byte, the floor aside",
-			_unfloored(unedited) == _unfloored(text))
+		# Saved under the title it opened with, as a person's Save does:
+		# another would say a new one in the file's first line.
+		var unedited: String = _store.to_text(_store.title, true)
+		var plain: String = _unfloored(unedited)
+		_check("...saved unedited: the file byte for byte, the floor aside%s"
+			% _first(_first_change(_unfloored(text), plain)), plain == _unfloored(text))
 		var parts: Array = _parts_of(text)
 		var inside: Array = _inside_pair(text)
 		var part: int = int(inside[0]) if not inside.is_empty() else _chosen()
@@ -949,7 +952,7 @@ func _omr_pairs() -> void:
 		var depth: int = _builder.history_depth()
 		var said: String = _shell.change_steps("next", [part], _step_holding(part))
 		await _frames(4)
-		var stepped: String = _store.to_text(file, true)
+		var stepped: String = _store.to_text(_store.title, true)
 		_check("...a step edit (\"%s\"): written, not refused%s" % [
 			said.get_slice("\n", 0).left(80), _refusal()],
 			not stepped.is_empty() and str(_store.get("kept_refused")).is_empty())
@@ -961,7 +964,7 @@ func _omr_pairs() -> void:
 		_select_only([part])
 		_shell.run("delete")
 		await _frames(2)
-		var deleted: String = _store.to_text(file, true)
+		var deleted: String = _store.to_text(_store.title, true)
 		var taken: int = count - _world.brick_count()
 		_check("...#%d taken off (%d parts, its copies following): written, not refused%s"
 			% [part, taken, _refusal()], taken > 0 and not deleted.is_empty()
@@ -976,6 +979,19 @@ func _omr_pairs() -> void:
 			missing.size() == taken and extra.is_empty() and missing.all(
 				func(entry: Array) -> bool: return str(entry[0]) == part_id))
 		await _back_to(depth)
+
+
+## Where [param now] first differs from [param was], line by line: the
+## line's number and both texts; [] when they are the same.
+static func _first_change(was: String, now: String) -> Array:
+	var a: PackedStringArray = was.split("\n")
+	var b: PackedStringArray = now.split("\n")
+	for n: int in maxi(a.size(), b.size()):
+		var one: String = a[n] if n < a.size() else "<none>"
+		var two: String = b[n] if n < b.size() else "<none>"
+		if one != two:
+			return ["line %d: %s => %s" % [n + 1, one.c_escape(), two.c_escape()]]
+	return []
 
 
 static func _unfloored(text: String) -> String:
