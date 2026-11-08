@@ -90,8 +90,11 @@ func _run() -> void:
 	await _click(_middle(dialog._cropping))
 	if not dialog._cropping.button_pressed:
 		# Said, so a click that missed says where it went.
-		print("    Crop's click at %s went to %s; Crop at %s" % [_px(_middle(dialog._cropping)),
-			root.gui_get_hovered_control(), dialog._cropping.get_global_rect()])
+		var hit: Control = root.gui_get_hovered_control()
+		print("    Crop's click at %s went to %s at %s (%s); Crop at %s" % [
+			_px(_middle(dialog._cropping)), hit.get_path() if hit != null else "nothing",
+			hit.get_global_rect() if hit != null else Rect2(), hit.get_canvas_layer_node()
+			if hit != null else null, dialog._cropping.get_global_rect()])
 	_check("Crop shows the whole picture to drag on", dialog._cropping.button_pressed)
 	await _drag(dialog, Vector2(0.18, 0.25), Vector2(0.82, 0.9))
 	var crop: Rect2 = dialog.crop()
