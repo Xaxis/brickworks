@@ -116,7 +116,7 @@ lib:product look
 
 ### Building {#building}
 
-**Building** renders the model going up: the steps the [timeline](/docs/instructions#timeline) shows, one after another, each step's parts coming down into place, while the camera turns slowly round and ends on the view you chose. The camera follows the build: the first step fills the picture, and it draws back as each step begins until the whole model is in view, as a picture of it frames it. Pick a length (10, 20, 30 or 60 seconds) and press [[Enter]], or **Render building**. It is kept like a turntable: an animated WebP, and on the desktop the frames and an MP4.
+**Building** renders the model going up: the steps the [timeline](/docs/instructions#timeline) shows, one after another, each step's parts coming down into place, while the camera turns slowly round and ends on the view you chose. The camera follows the build: the first step fills the picture, it draws back as each step begins, and once the model is finished it settles into the view you chose, framed as a picture of it is. Pick a length (10, 20, 30 or 60 seconds) and press [[Enter]], or **Render building**. It is kept like a turntable: an animated WebP, and on the desktop the frames and an MP4.
 
 <!-- covers
 ui:building video

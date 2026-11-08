@@ -2491,14 +2491,15 @@ picture the assistant is shown.
   of the model's height above (at least 48 LDU), all down before the next
   step; the last fifth the finished model. The camera turns 4.5° a second
   and ends on the view chosen, and follows the build (video2, APP_UX6 gap
-  12): each frame is fitted to every part of the steps begun so far, where
-  they stand, as the model is turned then (`BuildRender.framed_at`,
+  12): each frame is fitted close to every part of the steps begun so far,
+  where they stand, as the model is turned then (`BuildRender.framed_at`,
   `StudioRender._follow`), eased over about the time a part takes to come
   down (twice a running mean, `BuildRender._eased`), so a first step of one
-  plate fills the picture and the last frames are the whole model, the
-  picture's own framing; a view not fitted (As I see it, a saved view)
-  keeps its framing of the whole beyond a fit, scaled down with the box, and
-  the lights' shadows reach as far as each frame's camera needs. Drawn through
+  plate fills the picture; once the model is finished the camera settles,
+  over about a second, into the view chosen as a picture frames it (a view
+  not fitted, As I see it or a saved view, is the person's own framing), so
+  the last frame is the picture's. The lights' shadows reach as far as each
+  frame's camera needs. Drawn through
   `StudioRender.animate` (a part not yet arrived drawn at no size,
   `BuildRender.AWAY`; only the parts that change a frame are moved), with
   the contact shadow off (it is the finished model's), kept as a turntable

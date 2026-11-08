@@ -39,6 +39,9 @@ const LANDING := 0.5
 ## The shortest the camera takes to draw back to a step, in seconds: a
 ## model of many small steps is followed smoothly, not a jolt a step.
 const EASING := 0.15
+## How long the camera takes to settle into the view chosen once the model
+## is finished, in seconds.
+const SETTLING := 1.0
 ## How far above its place a part begins coming down: a share of the
 ## model's height, and at least two bricks (LDU).
 const DROP_SHARE := 0.25
@@ -64,10 +67,12 @@ var _landing: float = 0.0
 var _drop: float = 0.0
 var _homes: Array[Transform3D] = []
 ## Each part's box where it stands, and what each frame is framed on
-## (framed_at), as its least and greatest corners.
+## (framed_at), as its least and greatest corners, and how far the view
+## chosen has its own framing back (x, 0 to 1).
 var _boxes: Array[AABB] = []
 var _framed_low := PackedVector3Array()
 var _framed_high := PackedVector3Array()
+var _settled := PackedVector3Array()
 
 
 ## The parts of [param world] (less [param scenery] and what is hidden) in
@@ -134,7 +139,10 @@ func lay_out(seconds: float, fps: int, height: float) -> void:
 ## from one to the next over about the time a part takes to come down
 ## (twice a running mean, so it starts and stops gently), and so never
 ## framed on less than the parts that are down. Every frame of the last
-## step and the finished model is framed on the whole of it.
+## step and the finished model is framed on the whole of it. While it goes
+## up the camera is fitted close; once it is finished it settles, over
+## about a second, into the view chosen as a picture frames it (As I see
+## it is the person's own framing, which a first step would sit small in).
 func _frame_steps(each: float, count: int, fps: int) -> void:
 	var lows := PackedVector3Array()
 	var highs := PackedVector3Array()
@@ -150,15 +158,21 @@ func _frame_steps(each: float, count: int, fps: int) -> void:
 		highs.append(high)
 	var low_at := PackedVector3Array()
 	var high_at := PackedVector3Array()
+	var finished_at := PackedVector3Array()
 	low_at.resize(frames)
 	high_at.resize(frames)
+	finished_at.resize(frames)
 	for n: int in frames:
-		var step: int = clampi(floori(float(n) / maxf(each, 0.001)), 0, maxi(count - 1, 0))
+		var at: int = floori(float(n) / maxf(each, 0.001))
+		var step: int = clampi(at, 0, maxi(count - 1, 0))
 		low_at[n] = lows[step] if count > 0 else Vector3.ZERO
 		high_at[n] = highs[step] if count > 0 else Vector3.ZERO
+		finished_at[n] = Vector3.ONE if at >= count else Vector3.ZERO
 	var width: int = maxi(roundi(_landing * 0.5) + 1, roundi(EASING * float(fps)) + 1)
 	_framed_low = _eased(_eased(low_at, width), width)
 	_framed_high = _eased(_eased(high_at, width), width)
+	var settling: int = maxi(width, roundi(SETTLING * 0.5 * float(fps)))
+	_settled = _eased(_eased(finished_at, settling), settling)
 
 
 ## The mean of the last [param width] of [param values] at each, the first
@@ -181,12 +195,13 @@ static func _eased(values: PackedVector3Array, width: int) -> PackedVector3Array
 	return out
 
 
-## What frame [param n] is framed on, where it stands in the model
-## (StudioRender.animate's framed_at).
-func framed_at(n: int) -> AABB:
+## What frame [param n] is framed on, where it stands in the model, and
+## how far it has settled into the view chosen, 0 to 1
+## (StudioRender.animate's framed_at): [AABB, float].
+func framed_at(n: int) -> Array:
 	if n < 0 or n >= _framed_low.size():
-		return AABB()
-	return AABB(_framed_low[n], _framed_high[n] - _framed_low[n])
+		return [AABB(), 1.0]
+	return [AABB(_framed_low[n], _framed_high[n] - _framed_low[n]), _settled[n].x]
 
 
 ## Frame [param n]'s parts that stand otherwise than in the frame before it

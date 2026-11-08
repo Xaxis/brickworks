@@ -445,9 +445,10 @@ func turntable(world: BrickWorld, settings: RenderSettings, each: Callable) -> i
 ## moving parts pass through (each one's corners, every frame): with
 ## [member RenderSettings.on_what_moves] the camera is fitted to them, which
 ## a box's corners far off the parts' own would leave small in the frame.
-## [param framed_at] (frame -> AABB, in the model's place) is what each
-## frame is framed on, the camera following it (_follow): a building video's
-## what is built so far.
+## [param framed_at] (frame -> [AABB in the model's place, float]) is what
+## each frame is framed on and how far it has settled into the view chosen,
+## the camera following it (_follow): a building video's what is built so
+## far.
 func animate(world: BrickWorld, settings: RenderSettings, frames: int, pose_at: Callable,
 		turn_at: Callable, reach: AABB, each: Callable,
 		swept: PackedVector3Array = PackedVector3Array(),
@@ -481,7 +482,8 @@ func animate(world: BrickWorld, settings: RenderSettings, frames: int, pose_at: 
 			_stage._flush()
 			_pivot.rotation = Vector3(0.0, TAU * float(turn_at.call(n)), 0.0)
 			if following:
-				_follow(whole, settings, framed_at.call(n))
+				var framed: Array = framed_at.call(n)
+				_follow(whole, settings, framed[0], float(framed[1]))
 			var from: float = 0.1 + 0.9 * float(n) / float(frames)
 			var image: Image = await _picture(settings, from, from + 0.9 / float(frames),
 				"frame %d of %d" % [n + 1, frames])
@@ -511,14 +513,16 @@ func animate(world: BrickWorld, settings: RenderSettings, frames: int, pose_at: 
 ## video's first step fills the picture, and the camera draws back as the
 ## model goes up, to [param whole], the picture's own, once the whole model
 ## is built and turned back. From [param whole]'s direction, through its
-## lens, fitted to the box as the model stands turned in this frame; a view
-## that is not fitted (As I see it, a saved view) keeps its own framing of
-## the whole beyond a fit, scaled down with the box. The shadows are drawn
-## as far as this frame's camera needs, so a step close up has the sharp
+## lens, fitted to the box as the model stands turned in this frame; then,
+## by [param settled] (0 to 1), as the view chosen frames the whole beyond
+## a fit (As I see it and a saved view are a person's own framing, not
+## fitted), so the last frames are the picture's. The shadows are drawn as
+## far as this frame's camera needs, so a step close up has the sharp
 ## shadows a picture of it would.
-func _follow(whole: Shot, settings: RenderSettings, box: AABB) -> void:
+func _follow(whole: Shot, settings: RenderSettings, box: AABB, settled: float) -> void:
 	var turned: float = _pivot.rotation.y
-	if box.size == Vector3.ZERO or (box.is_equal_approx(_bounds) and is_zero_approx(turned)):
+	if box.size == Vector3.ZERO or (box.is_equal_approx(_bounds) and is_zero_approx(turned)
+			and is_equal_approx(settled, 1.0)):
 		last_shot = whole
 		_shadow_reach(whole, _bounds)
 		return
@@ -533,8 +537,6 @@ func _follow(whole: Shot, settings: RenderSettings, box: AABB) -> void:
 	var centre: Vector3 = around + turn * (box.get_center() - around)
 	var fitted_whole: Vector3 = _fit_points(whole.basis, everything, whole.fov, aspect)
 	var fitted: Vector3 = _fit_points(whole.basis, points, whole.fov, aspect)
-	var back_whole: float = (fitted_whole - _bounds.get_center()).dot(whole.basis.z)
-	var back: float = (fitted - centre).dot(whole.basis.z)
 	var shot := Shot.new()
 	shot.basis = whole.basis
 	shot.fov = whole.fov
@@ -542,7 +544,7 @@ func _follow(whole: Shot, settings: RenderSettings, box: AABB) -> void:
 	shot.heading = whole.heading
 	shot.toward = whole.toward
 	shot.far = whole.far
-	shot.origin = fitted + (whole.origin - fitted_whole) * clampf(back / maxf(back_whole, 0.001), 0.0, 1.0)
+	shot.origin = fitted + (whole.origin - fitted_whole) * clampf(settled, 0.0, 1.0)
 	var nearest: float = INF
 	var farthest: float = 0.0
 	for point: Vector3 in points:

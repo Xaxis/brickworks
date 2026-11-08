@@ -194,6 +194,7 @@ func _over_mcp_build() -> void:
 			built != null and not gif.is_empty()):
 		return
 	var dir: String = gif.get_basename()
+	var made: Dictionary = _made()
 	_first_step(built, dir, "over MCP")
 	var picture_said: String = _text(await _finished(await _rpc("tools/call", {"name": "render_model",
 		"arguments": {"kind": "picture", "quality": "quick", "size": "720p", "view": "hero",
@@ -201,7 +202,7 @@ func _over_mcp_build() -> void:
 	var png: String = _found(picture_said, "wrote (\\S+\\.png)")
 	_last_is_whole(built, dir, Image.load_from_file(png) if not png.is_empty() else null,
 		"over MCP, render_model's picture from the same view: %s" % png.get_file())
-	await _gif_file(gif, -1, "the build's GIF, transparent", _made())
+	await _gif_file(gif, -1, "the build's GIF, transparent", made)
 
 
 # -- 3. a turntable as a GIF -------------------------------------------------------------
@@ -254,8 +255,8 @@ func _gif_over_mcp() -> void:
 	var gif: String = _found(answer, "wrote (\\S+\\.gif)")
 	if _check("in 1 call and its job, a GIF: %s" % gif.get_file(), not gif.is_empty()):
 		await _gif_file(gif, 36, "render_model's turntable GIF", _made())
-	var refused: String = _text(await _rpc("tools/call", {"name": "render_model",
-		"arguments": {"kind": "turntable", "format": "png"}}))
+	var refused: String = _text(await _finished(await _rpc("tools/call", {"name": "render_model",
+		"arguments": {"kind": "turntable", "format": "png"}})))
 	_check("a format it does not keep is refused, saying which it does: %s" % refused.left(120),
 		refused.contains("webp") and refused.contains("gif") and not refused.contains("wrote"))
 
