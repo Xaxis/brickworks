@@ -70,7 +70,7 @@ func _run() -> void:
 	await _frames(2)
 
 	var tab: Button = _tab()
-	_check("the parts bin has a Techniques tab beside Recent and Favourites (%s)"
+	_check("the parts bin has a Techniques tab after Recent, Favourites and Palettes (%s)"
 		% (tab.text if tab != null else "none"), tab != null and _beside_shelves(tab))
 	if tab == null:
 		_finish()
@@ -260,10 +260,12 @@ func _tab() -> Button:
 	return null
 
 
+## Straight after the person's own shelves: Recent, Favourites and, since
+## APP_UX6 palettes, Palettes.
 func _beside_shelves(tab: Button) -> bool:
 	var at: int = tab.get_index()
 	return at >= 2 and str(_bin._category_row.get_child(at - 1).get_meta("category", "")) \
-		== PartsBin.FAVOURITES
+		in [PartsBin.FAVOURITES, PartsBin.PALETTES]
 
 
 func _row(name: String) -> Button:
