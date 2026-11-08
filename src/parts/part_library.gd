@@ -1559,7 +1559,7 @@ const PAGE_FETCH := """(function () {
 		});
 	};
 	window.brickworksPartTake = function (id) {
-		const bytes = kept.get(id) || new Uint8Array(0);
+		const bytes = kept.get(id) || new Uint8Array();
 		kept.delete(id);
 		return bytes;
 	};
