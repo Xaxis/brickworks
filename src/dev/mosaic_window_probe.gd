@@ -265,8 +265,17 @@ func _px(at: Vector2) -> Vector2:
 	return root.get_final_transform() * at
 
 
+## On Xvfb the system's pointer too, before each event (tooltip_probe's _move
+## says why): the app replays a move where the system says the pointer is,
+## and Crop, which acts on the release, was let go of "outside" itself.
+func _warp(at: Vector2) -> void:
+	if OS.get_environment("XAUTHORITY").contains("xvfb-run"):
+		Input.warp_mouse(at)
+
+
 func _click(at: Vector2) -> void:
 	at = _px(at)
+	_warp(at)
 	var move := InputEventMouseMotion.new()
 	move.position = at
 	move.global_position = at
@@ -289,6 +298,7 @@ func _drag(dialog: MosaicDialog, from: Vector2, to: Vector2) -> void:
 	var shown: Rect2 = dialog.shown_rect()
 	var origin: Vector2 = dialog._preview.get_global_rect().position + shown.position
 	var last: Vector2 = _px(origin + from * shown.size)
+	_warp(last)
 	var press := InputEventMouseButton.new()
 	press.button_index = MOUSE_BUTTON_LEFT
 	press.pressed = true
@@ -300,6 +310,7 @@ func _drag(dialog: MosaicDialog, from: Vector2, to: Vector2) -> void:
 	for step: int in range(1, 9):
 		var move := InputEventMouseMotion.new()
 		move.position = _px(origin + from.lerp(to, step / 8.0) * shown.size)
+		_warp(move.position)
 		move.global_position = move.position
 		move.relative = move.position - last
 		move.button_mask = MOUSE_BUTTON_MASK_LEFT
