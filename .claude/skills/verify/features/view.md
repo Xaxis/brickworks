@@ -2800,7 +2800,11 @@ godot --headless --path . --script src/dev/art_plan_probe.gd      # an Art plan 
 #   under the same name revision 1 then revision 2 and told to stop); and
 #   the dialog's Design with Claude. Ends "an Art plan is laid as it says".
 # In a browser, on a local web export (tools/export.sh web, then
-# python3 tools/web/serve.py build/web PORT): Make > Mosaic from a picture
+# python3 tools/web/serve.py build/web PORT --parts assets/generated/parts
+# --delay 0, so the exact shapes are fetched as on a deployment; served
+# without --parts the check has none and passes on the lattice alone, where
+# rel-m274's preview, checked before its shapes had come, said 25 pieces;
+# Assistant._checked waits for them in a browser): Make > Mosaic from a picture
 # (typed, then Enter), a galaxy PNG it makes into the chooser, Build it, and
 # brickworksState.art read for its parts, every one on the baseplate, one
 # piece, Panel N#1 and Frame#1 in the tree; then a brief typed into the
