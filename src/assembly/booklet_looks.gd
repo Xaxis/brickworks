@@ -76,7 +76,8 @@
 ## [bx by ...]"; "... NOTE TURN 30 OPACITY 50" after the words or picture it
 ## turns and fades; "... TURN_SIGN OFF" on a step whose turn sign was taken
 ## off; "... GUIDE X 120" in the model, a guide each; "... PAGE_SETUP A4
-## PORTRAIT MARGIN 12 ..." in the model, its page (BookletSheet).
+## PORTRAIT MARGIN 12 ..." in the model, its page, and "... PAGE_TEXT TITLE
+## words" a line each of the designer's words on it (BookletSheet).
 ##
 ## A step's "section" is the booklet's chapter that starts on it: the name
 ## its banner prints ("island", "part 2"), in force on every step after it
@@ -98,7 +99,7 @@ const META := "0 !BRICKWORKS "
 ## The words of the app's own step lines, after META.
 const WORDS: Array[String] = ["PAGE", "ZOOM", "SIZE", "PARTS", "CALLOUT", "PER_PAGE",
 	"HIGHLIGHT", "PLACE", "TEXT", "IMAGE", "PANEL", "ARROW", "TURN_SIGN", "NOTE", "GUIDE",
-	"PULL", "COLOURS", "ACTUAL_SIZE", "PREVIEW", "SECTION", "PAGE_SETUP"]
+	"PULL", "COLOURS", "ACTUAL_SIZE", "PREVIEW", "SECTION", "PAGE_SETUP", "PAGE_TEXT"]
 ## How far a step's parts are pulled out by default, in studs (Studio's
 ## buffer exchange), and the most.
 const PULL_STUDS := 2.0
@@ -965,43 +966,44 @@ static func _turns_follow(looks: Dictionary, before: Dictionary, after: Dictiona
 
 
 ## The looks keyed as a file written whole numbers its steps (ModelStore's
-## LdrModel.write_tree and write_ldr): each section's steps one after
-## another, none empty. A step whose parts were all taken off the model is a
-## number with nothing in it here (BrickWorld.Brick.step) and no step
-## there; written as kept, each look after it went on the step after its
-## own, and the file opened again had them there. What was set on a step
-## that is gone goes with it, and each step is seen from what it is seen
-## from now. The looks themselves where no section has an empty step. A
-## file written back over (SourceFile) keeps the empty step, and its looks
-## as they are.
-static func as_written(world: BrickWorld, skip: Dictionary = {}) -> Dictionary:
+## LdrModel.write_tree and write_ldr): [param steps] is each section's steps
+## as written, by definition (LdrModel.steps_written's, with
+## [method with_kept_steps]'), and the file's step n is the n-th of them. A
+## step whose parts were all taken off the model is a number the writer
+## writes no step for (BrickWorld.Brick.step); written as kept, each look
+## after it went on the step after its own, and the file opened again had
+## them there. Each step is seen from what it is seen from now. The looks
+## themselves where no section's steps have a gap, as for a model with no
+## steps of its own ([param steps] empty). A file written back over
+## (SourceFile) keeps its own steps, and its looks as they are.
+##
+## A section mark on a step not written starts the next step there is.
+static func as_written(world: BrickWorld, steps: Dictionary) -> Dictionary:
 	var looks: Dictionary = world.step_looks
-	if looks.is_empty():
+	if looks.is_empty() or steps.is_empty():
 		return looks
-	var gapped: Dictionary = {}     ## definition -> [its first copy, its steps in order]
-	var sections: Array = first_copies(world, skip)
-	var items_in: Dictionary = AuthorSteps.items_in(world, sections, skip)
-	for section: String in sections:
-		var steps: Array = AuthorSteps.steps_of(items_in[section])
-		if not steps.is_empty() and int(steps[steps.size() - 1]) + 1 != steps.size():
-			gapped[definition_of(section)] = [section, steps]
+	var gapped: Dictionary = {}     ## definition -> its steps as written, in order
+	for definition: String in steps:
+		var order: Array = steps[definition]
+		if not order.is_empty() and int(order[order.size() - 1]) + 1 != order.size():
+			gapped[definition] = order
 	if gapped.is_empty():
 		return looks
 	var out: Dictionary = {}
-	var starts: Dictionary = {}     ## where a section on a gone step starts now
+	var starts: Dictionary = {}     ## where a section on a step not written starts now
 	for name: String in looks:
 		var definition: String = name.get_slice("|", 0)
 		var tail: String = name.get_slice("|", 1)
 		if not gapped.has(definition) or not tail.is_valid_int():
 			out[name] = looks[name]
 			continue
-		var at: int = (gapped[definition][1] as Array).find(tail.to_int())
+		var at: int = (gapped[definition] as Array).find(tail.to_int())
 		if at < 0:
 			# A section that started on a step that is gone starts on the
 			# next one there is.
 			if (looks[name] as Dictionary).has("section"):
-				at = (gapped[definition][1] as Array).bsearch(tail.to_int())
-				if at < (gapped[definition][1] as Array).size():
+				at = (gapped[definition] as Array).bsearch(tail.to_int())
+				if at < (gapped[definition] as Array).size():
 					starts[key(definition, at)] = looks[name]["section"]
 			continue
 		var look: Dictionary = (looks[name] as Dictionary).duplicate(true)
@@ -1015,11 +1017,11 @@ static func as_written(world: BrickWorld, skip: Dictionary = {}) -> Dictionary:
 			look["section"] = starts[name]
 			out[name] = look
 	for definition: String in gapped:
-		var section: String = gapped[definition][0]
-		var steps: Array = gapped[definition][1]
+		var order: Array = gapped[definition]
 		var state: Dictionary = {}
-		for at: int in steps.size():
-			var turn: Dictionary = turn_at(world, section, int(steps[at]))
+		for at: int in order.size():
+			# A definition names its own steps as a section does (turn_at).
+			var turn: Dictionary = turn_at(world, definition, int(order[at]))
 			if JSON.stringify(turn) == JSON.stringify(state):
 				continue
 			var look: Dictionary = out.get(key(definition, at), {})
@@ -1033,6 +1035,201 @@ static func as_written(world: BrickWorld, skip: Dictionary = {}) -> Dictionary:
 	return out
 
 
+## [param placed] (LdrModel.steps_written's: each written section's steps,
+## by definition) with each step that has nothing in it and that the booklet
+## is set up on (a look of more than its turn and section mark): written as
+## a 0 STEP of its own, which no page shows (Instructions plans no step with
+## nothing in it), so the file opened again has the look on its step; up to
+## 2026-11-07 the next save dropped it (pkreview's empty_own). A step an edit
+## empties takes its look with it ([method emptied]), so such a step is one
+## the model's file had empty. A look of a sub-model with no section written
+## is not.
+static func with_kept_steps(looks: Dictionary, placed: Dictionary) -> Dictionary:
+	var out: Dictionary = placed
+	for name: String in looks:
+		var definition: String = name.get_slice("|", 0)
+		var tail: String = name.get_slice("|", 1)
+		if not tail.is_valid_int() or tail.to_int() < 0 or not placed.has(definition) \
+				or not (looks[name] is Dictionary) or not _set_up(looks[name]) \
+				or (out[definition] as Array).has(tail.to_int()):
+			continue
+		if out == placed:
+			out = placed.duplicate(true)
+		(out[definition] as Array).append(tail.to_int())
+		(out[definition] as Array).sort()
+	return out
+
+
+## Whether [param look] sets up its step's page: anything but its turn and
+## the section it starts, which hold for the steps after it.
+static func _set_up(look: Dictionary) -> bool:
+	return look.keys().any(func(field: String) -> bool:
+		return not field in ["turn", "how", "line", "section"])
+
+
+## After an edit kept in the history, [param step] (Builder.last_step): the
+## look of each step it took the last thing off, dropped, as the step is gone
+## and its page with it. Returns the undo, the table as it was, or [] when
+## none. A step left holding anything keeps its look: a part, a copy put on,
+## or one of [param held] (ModelStore's parts on their way and those the
+## catalogue lacks, written in their steps). The turn of one dropped holds on
+## for the next step that has anything, and the chapter it began begins
+## there, where neither has its own. What it took off is in the step: each
+## part taken off ("add", which puts it back) from its step, and each copy
+## of a sub-model round it from the step that put that on, when nothing is
+## left of the copy. A step the model's file had empty keeps its look, as no
+## edit took a part off it ([method with_kept_steps] writes it). Up to
+## 2026-11-07 a step emptied kept its look out of sight: a save wrote it as a
+## step of its own and every open named it, with nothing in the app to reach
+## it by (pkreview).
+static func emptied(world: BrickWorld, step: Dictionary, skip: Dictionary = {},
+		held: Array = []) -> Array:
+	if not any_step_look(world):
+		return []
+	var taken: Dictionary = {}
+	_taken_from(world, step, taken)
+	var gone: Array = taken.keys().filter(func(name: String) -> bool:
+		return world.step_looks.get(name) is Dictionary)
+	if gone.is_empty():
+		return []
+	var holding: Dictionary = {}    ## definition -> {step: true}, those with anything in them
+	var sections: Array = first_copies(world, skip)
+	var items_in: Dictionary = AuthorSteps.items_in(world, sections, skip)
+	for section: String in sections:
+		for at: int in AuthorSteps.steps_of(items_in[section]):
+			(holding.get_or_add(definition_of(section), {}) as Dictionary)[at] = true
+	for item: Variant in held:
+		var placement: LdrModel.Placement = item
+		if placement.step >= 0:
+			(holding.get_or_add(definition_of(AuthorSteps.home(world, Assemblies.path_from(
+				placement.group, placement.unit))), {}) as Dictionary)[placement.step] = true
+	gone = gone.filter(func(name: String) -> bool:
+		return not (holding.get(name.get_slice("|", 0), {}) as Dictionary) \
+			.has(name.get_slice("|", 1).to_int()))
+	if gone.is_empty():
+		return []
+	var was: Dictionary = world.step_looks.duplicate(true)
+	# The latest first: a turn or a chapter of a later step is the one in
+	# force after both.
+	gone.sort_custom(func(a: String, b: String) -> bool:
+		return a.get_slice("|", 1).to_int() > b.get_slice("|", 1).to_int())
+	for name: String in gone:
+		var look: Dictionary = world.step_looks[name]
+		world.step_looks.erase(name)
+		var definition: String = name.get_slice("|", 0)
+		var after: Array = (holding.get(definition, {}) as Dictionary).keys().filter(
+			func(at: int) -> bool: return at > name.get_slice("|", 1).to_int())
+		if after.is_empty():
+			continue
+		var next: String = key(definition, int(after.min()))
+		var then: Dictionary = (world.step_looks.get(next, {}) as Dictionary).duplicate(true)
+		var carried: bool = false
+		if look.has("turn") and not then.has("turn"):
+			for field: String in ["turn", "how", "line"]:
+				if look.has(field):
+					then[field] = look[field]
+			carried = true
+		if look.has("section") and not then.has("section"):
+			then["section"] = look["section"]
+			carried = true
+		if carried:
+			world.step_looks[next] = then
+	return [{"undo": "steplooks", "looks": was}]
+
+
+## Into [param taken], the step look key of each step [param step] took
+## something off ([method emptied]).
+static func _taken_from(world: BrickWorld, step: Dictionary, taken: Dictionary) -> void:
+	if str(step.get("undo", "")) == "group":
+		for inner: Variant in step.get("steps", []):
+			if inner is Dictionary:
+				_taken_from(world, inner, taken)
+		return
+	if str(step.get("undo", "")) != "add":
+		return
+	var path: String = Assemblies.path_from(str(step.get("group", "")), str(step.get("unit", "")))
+	if int(step.get("step", -1)) >= 0:
+		taken[key(definition_of(AuthorSteps.home(world, path)), int(step["step"]))] = true
+	# The copies round it, each off the step that puts it on: a step that held
+	# only the copy is left with nothing when nothing is left of the copy.
+	var copy: String = path
+	while not copy.is_empty():
+		var on: int = int(world.unit_steps.get(copy, -1))
+		if on >= 0:
+			taken[key(definition_of(AuthorSteps.home(world, Assemblies.parent_of(copy))), on)] = true
+		copy = Assemblies.parent_of(copy)
+
+
+## What of the booklet as its designer set it no step shows now, said as a
+## model opens (ModelBar.unshown_words): " — the pull on step 1 of the
+## model matches no step now, kept in the file"; "" for nothing. A pull none
+## of whose parts is a part of its step ([method _pulls_follow_parts] moved
+## those it could), on a step the booklet shows, where another can be set.
+## It stays in the file as it is ([method written_into]), and was dropped
+## from sight without a word (pullkept). A look on a step the booklet shows
+## no page of (one the file has empty, one of parts the catalogue lacks or
+## still on their way, one that puts on only sub-models it builds where they
+## stand) is kept in the file too, and not said: nothing in the app reaches
+## it, and up to 2026-11-07 every open said it again (pkreview). Which steps
+## are shown is asked of the plan, only when a pull matches none.
+static func unmatched_words(world: BrickWorld, library: PartLibrary,
+		skip: Dictionary = {}) -> String:
+	if world == null or not any_step_look(world) or not AuthorSteps.any(world, skip):
+		return ""
+	if _said_for == [world.get_instance_id(), world.generation(), world.brick_count()]:
+		return _said
+	var own: Dictionary = {}      ## step look key -> {part: true}, its own parts
+	for brick: BrickWorld.Brick in world.bricks():
+		if not skip.has(brick.id) and brick.step >= 0:
+			var at: String = key(definition_of(AuthorSteps.home(world, Assemblies.path_of(brick))),
+				brick.step)
+			own.get_or_add(at, {})[LdrModel._key(brick.part_id)] = true
+	var names: Array = world.step_looks.keys().filter(func(name: String) -> bool:
+		var pull: Variant = (world.step_looks[name] as Dictionary).get("pull") \
+			if world.step_looks[name] is Dictionary else null
+		return name.get_slice("|", 1).is_valid_int() and pull is Dictionary \
+			and not (pull.get("parts", []) as Array).is_empty() \
+			and not (pull["parts"] as Array).any(func(part: String) -> bool:
+				return (own.get(name, {}) as Dictionary).has(part)))
+	names.sort_custom(func(a: String, b: String) -> bool:
+		return a.get_slice("|", 0) < b.get_slice("|", 0) or a.get_slice("|", 0) \
+			== b.get_slice("|", 0) and a.get_slice("|", 1).to_int() < b.get_slice("|", 1).to_int())
+	var shown: Dictionary = own
+	if not names.is_empty() and library != null:
+		shown = {}
+		for step: Instructions.Step in Instructions.plan(world, library, skip, {}, true):
+			if step.authored_step >= 0:
+				shown[key(definition_of(step.authored_in), step.authored_step)] = true
+	var said := PackedStringArray()
+	for name: String in names:
+		if shown.has(name):
+			said.append("the pull on %s matches no step now, kept in the file" % _step_named(name))
+	var out: String = ""
+	for n: int in mini(said.size(), 3):
+		out += " — " + said[n]
+	if said.size() > 3:
+		out += " — and %d more like it" % (said.size() - 3)
+	_said_for = [world.get_instance_id(), world.generation(), world.brick_count()]
+	_said = out
+	return out
+
+
+## [method unmatched_words] as last worked out, for the world, its
+## generation and how many parts it had (more come as they arrive): an open
+## says it more than once (Main._open).
+static var _said_for: Array = []
+static var _said: String = ""
+
+
+## A step look's step as an LDraw reader numbers it: "step 1 of the model",
+## "step 3 of Window".
+static func _step_named(name: String) -> String:
+	var definition: String = name.get_slice("|", 0)
+	var number: int = name.get_slice("|", 1).to_int() + 1
+	return "step %d of the model" % number if definition.is_empty() \
+		else "step %d of %s" % [number, definition]
+
+
 ## Of [param looks] ([method read]'s), the booklet's own (BOOKLET: its page
 ## set up, guides, steps a page and the like) and the picture behind its
 ## pages: what holds for the whole booklet whoever's its steps are.
@@ -1041,10 +1238,12 @@ static func booklet_wide(looks: Dictionary) -> Dictionary:
 	if not looks.has(BOOKLET):
 		return out
 	out[BOOKLET] = looks[BOOKLET]
-	var behind: String = str(((looks[BOOKLET] as Dictionary).get("sheet", {}) as Dictionary)
-		.get("picture", ""))
-	if (looks.get(DATA, {}) as Dictionary).has(behind):
-		out[DATA] = {behind: looks[DATA][behind]}
+	# Behind its pages, and on its cover (BookletSheet.pictures_named).
+	for behind: String in BookletSheet.pictures_named((looks[BOOKLET] as Dictionary).get("sheet")):
+		if (looks.get(DATA, {}) as Dictionary).has(behind):
+			if not out.has(DATA):
+				out[DATA] = {}
+			out[DATA][behind] = looks[DATA][behind]
 	return out
 
 
@@ -1055,9 +1254,8 @@ static func with_booklet_wide(looks: Dictionary, wide: Dictionary) -> Dictionary
 	var out: Dictionary = looks.duplicate()
 	out.erase(BOOKLET)
 	var pictures: Dictionary = (looks.get(DATA, {}) as Dictionary).duplicate()
-	var behind: String = str(((looks.get(BOOKLET, {}) as Dictionary).get("sheet", {}) as Dictionary)
-		.get("picture", ""))
-	pictures.erase(behind)
+	for behind: String in BookletSheet.pictures_named((looks.get(BOOKLET, {}) as Dictionary).get("sheet")):
+		pictures.erase(behind)
 	pictures.merge(booklet_wide(wide).get(DATA, {}), true)
 	out.erase(DATA)
 	if not pictures.is_empty():
@@ -1078,15 +1276,20 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 	var data_name: String = ""
 	var data := PackedStringArray()
 	var pictures: Dictionary = {}
+	# The first FILE is the model's own, as written_into reads it, whatever
+	# main_key says: _looks_into's check gives none. Up to 2026-11-07, read
+	# with none, someone else's page was not the file's, so the file was
+	# written again and its usual page left the old line in (pagesetup).
+	var first_file: bool = true
 	for raw: String in text.split("\n"):
 		var line: String = raw.strip_edges()
 		if not data_name.is_empty():
-			if line.begins_with("0 !:"):
-				data.append(line.substr(4).strip_edges())
+			if _is_data(line):
+				data.append(line.substr(line.find("!:") + 2).strip_edges())
 				continue
 			pictures[data_name] = "".join(data)
 			data_name = ""
-		if not line.begins_with("0 "):
+		if not _of_type(line, "0"):
 			continue
 		var words: PackedStringArray = LdrModel._fields(line)
 		if words.size() < 2:
@@ -1100,7 +1303,9 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 			continue
 		if keyword == "FILE":
 			var file_key: String = LdrModel._key(" ".join(words.slice(2)))
-			definition = "" if file_key == main_key else str(names.get(file_key, file_key))
+			definition = "" if first_file or file_key == main_key \
+				else str(names.get(file_key, file_key))
+			first_file = false
 			step = 0
 			continue
 		if keyword == "ROTSTEP":
@@ -1231,8 +1436,14 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 					(kept[value.to_lower()] as Array).append(snappedf(clampf(words[4].to_float(),
 						0.0, BookletSheet.LONGEST), 0.1))
 					_put_in(out, BOOKLET, "guides", kept)
-			"PAGE_SETUP":
-				var sheet: Dictionary = BookletSheet.read_words(words.slice(3))
+			"PAGE_SETUP", "PAGE_TEXT":
+				# The booklet's page is the main model's: a sub-model's own
+				# lines are its, passed through as they are (written_into).
+				# Up to 2026-11-07 a pod's TITLE titled the booklet (blreview).
+				if not definition.is_empty():
+					continue
+				var sheet: Dictionary = BookletSheet.read_line(words[2], words.slice(3),
+					_rest_after(line, 4), (out.get(BOOKLET, {}) as Dictionary).get("sheet", {}))
 				if not sheet.is_empty():
 					_put_in(out, BOOKLET, "sheet", sheet)
 	if not data_name.is_empty():
@@ -1240,17 +1451,180 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 	pictures = kept_pictures(pictures)
 	# Only the pictures a page shows, and the one behind every page.
 	var shown: Dictionary = {}
-	var behind: String = str(((out.get(BOOKLET, {}) as Dictionary).get("sheet", {}) as Dictionary)
-		.get("picture", ""))
-	if pictures.has(behind):
-		shown[behind] = pictures[behind]
+	for behind: String in BookletSheet.pictures_named((out.get(BOOKLET, {}) as Dictionary).get("sheet")):
+		if pictures.has(behind):
+			shown[behind] = pictures[behind]
 	for name: String in out:
 		for note: Dictionary in (out[name] as Dictionary).get("notes", []):
 			if note.has("image") and pictures.has(str(note["image"])):
 				shown[str(note["image"])] = pictures[str(note["image"])]
 	if not shown.is_empty():
 		out[DATA] = shown
+	_pulls_follow_parts(text, out, names, main_key)
 	return out
+
+
+## A pull that names parts its step does not put in, on a step that puts on
+## sub-models with steps of their own, followed in [param looks] to the
+## steps among theirs that put those parts in: a pull is drawn on the step
+## that adds its parts (BookletMaker._pull_out), and a booklet editor takes
+## only a step's own parts for one (AppTools._pulled_parts). Pods (the MCP
+## walk, APP_UX6) pulled both wing plates out in step 1, and the save then
+## made the pods a sub-model built in its own steps: its file kept the pull
+## on the step that puts the sub-model on, which no page shows, and opened
+## again the pull was gone (pullkept).
+##
+## Each part of it goes to the first step there, as they are built, that
+## adds it and has no pull of its own, so no part is pulled twice: given to
+## every step that added it, the 3003s a sub-model laid in three steps were
+## pulled out on all three, a pull the designer set once (pkreview's
+## spread). A step given parts gets a pull of those; what none takes stays
+## where the file has it, said on open (unmatched_words), never lost.
+## When the whole pull goes to one step, and its own step adds no part of
+## its own, the rest of what that step's page was set up with goes too, if
+## the step it goes to has none yet: the zoom, the page, the words and
+## arrows of the page that shows those parts (pkreview's pods_alllines,
+## saved by rel-m268, kept its pull and lost ten lines more). Its turn and
+## section mark stay, as they hold for the steps after it, and so does a
+## sub-model preview set off, which is said of the step that puts one on.
+static func _pulls_follow_parts(text: String, looks: Dictionary, names: Dictionary,
+		main_key: String) -> void:
+	var pulled: Array = []
+	for name: String in looks:
+		var look: Variant = looks[name]
+		if look is Dictionary and (look as Dictionary).get("pull") is Dictionary \
+				and not ((look as Dictionary)["pull"].get("parts", []) as Array).is_empty() \
+				and name.get_slice("|", 1).is_valid_int():
+			pulled.append(name)
+	if pulled.is_empty():
+		return
+	# Each section's steps as the file has them: every file each puts in,
+	# parts and sub-models alike, by its key ({file: true}), and in order.
+	var steps: Dictionary = {}       ## definition -> [{"put": {file: true}, "order": [file]}]
+	var definition_by: Dictionary = {}   ## file key -> definition
+	var definition: String = ""
+	var step: int = 0
+	for raw: String in text.split("\n"):
+		var line: String = raw.strip_edges()
+		if _of_type(line, "0"):
+			var words: PackedStringArray = LdrModel._fields(line)
+			var keyword: String = words[1].to_upper() if words.size() >= 2 else ""
+			if keyword == "FILE":
+				var file_key: String = LdrModel._key(" ".join(words.slice(2)))
+				definition = "" if file_key == main_key else str(names.get(file_key, file_key))
+				definition_by[file_key] = definition
+				step = 0
+			elif keyword == "STEP" or keyword == "ROTSTEP":
+				step += 1
+			continue
+		if not _of_type(line, "1"):
+			continue
+		var fields: PackedStringArray = LdrModel._fields(line)
+		if fields.size() < 15:
+			continue
+		var file: String = LdrModel._key(" ".join(fields.slice(14)))
+		var of: Array = steps.get(definition, [])
+		while of.size() <= step:
+			of.append({"put": {}, "order": []})
+		steps[definition] = of
+		(of[step]["put"] as Dictionary)[file] = true
+		(of[step]["order"] as Array).append(file)
+	for name: String in pulled:
+		var look: Dictionary = looks[name]
+		var named: Array = look["pull"]["parts"]
+		var at: Array = steps.get(name.get_slice("|", 0), [])
+		var here: int = name.get_slice("|", 1).to_int()
+		if here >= at.size() or named.any(func(part: String) -> bool:
+				return (at[here]["put"] as Dictionary).has(part)):
+			continue
+		# The sub-models it puts on: the files that are sections of this one.
+		var adding: Array = []      ## [step key, the parts of the pull it adds], as built
+		var seen: Dictionary = {}
+		for file: String in at[here]["order"]:
+			if definition_by.has(file):
+				_adding(file, named, steps, definition_by, adding, seen)
+		var taken: Dictionary = {}      ## part -> the step key it goes to
+		var order: Array = []           ## those step keys, as built
+		for each: Array in adding:
+			if (looks.get(each[0], {}) as Dictionary).has("pull"):
+				continue
+			for part: String in each[1]:
+				if not taken.has(part):
+					taken[part] = each[0]
+					if not order.has(each[0]):
+						order.append(each[0])
+		var given: Array = []       ## [step key, whether it had a look before]
+		for to_key: String in order:
+			var to: Dictionary = looks.get(to_key, {})
+			given.append([to_key, not to.is_empty()])
+			var pull: Dictionary = (look["pull"] as Dictionary).duplicate(true)
+			pull["parts"] = named.filter(func(part: String) -> bool:
+				return str(taken.get(part, "")) == to_key)
+			to["pull"] = pull
+			looks[to_key] = to
+		if given.is_empty():
+			continue
+		var left: Array = named.filter(func(part: String) -> bool: return not taken.has(part))
+		if not left.is_empty():
+			look["pull"]["parts"] = left
+			continue
+		look.erase("pull")
+		var own_parts: bool = (at[here]["order"] as Array).any(func(file: String) -> bool:
+			return not definition_by.has(file))
+		if given.size() == 1 and not bool(given[0][1]) and not own_parts:
+			var to: Dictionary = looks[given[0][0]]
+			for field: String in look.keys():
+				if not field in ["turn", "how", "line", "section", "preview"]:
+					to[field] = look[field]
+					look.erase(field)
+		if look.is_empty():
+			looks.erase(name)
+
+
+## Into [param adding], [step key, the parts of [param named] it adds] for
+## each step of the sub-model [param file] that adds any (and of those it
+## puts on, each before the step that puts it on, as they are built).
+static func _adding(file: String, named: Array, steps: Dictionary, definition_by: Dictionary,
+		adding: Array, seen: Dictionary) -> void:
+	if seen.has(file):
+		return
+	seen[file] = true
+	var definition: String = definition_by[file]
+	var at: Array = steps.get(definition, [])
+	for step: int in at.size():
+		for inner: String in at[step]["order"]:
+			if definition_by.has(inner):
+				_adding(inner, named, steps, definition_by, adding, seen)
+		var adds: Array = named.filter(func(part: String) -> bool:
+			return (at[step]["put"] as Dictionary).has(part))
+		if not adds.is_empty():
+			adding.append([key(definition, step), adds])
+
+
+## Whether [param line], stripped, is of LDraw's line type [param kind]:
+## its first field as LdrModel._fields reads it, a tab between fields as
+## good as a space ("0\tSTEP", "1\t16\t..."). A test of "0 " took such a
+## file's STEP and FILE lines for none, and every look went on the step
+## before (pkreview's pods_tabs and theirs_tabs).
+static func _of_type(line: String, kind: String) -> bool:
+	return line.begins_with(kind) and (line.length() == kind.length()
+		or " \t\r".contains(line[kind.length()]))
+
+
+## A line's meta command, upper case ("STEP", "FILE", "!BRICKWORKS"): its
+## second field, when its first is 0; "" for any other line.
+static func _keyword(line: String) -> String:
+	var stripped: String = line.strip_edges()
+	if not _of_type(stripped, "0"):
+		return ""
+	var words: PackedStringArray = LdrModel._fields(stripped)
+	return words[1].to_upper() if words.size() >= 2 else ""
+
+
+## Whether [param line], stripped, is a line of an embedded file's data
+## (LDraw's "0 !: ..."), tabs or spaces between.
+static func _is_data(line: String) -> bool:
+	return _of_type(line, "0") and line.substr(1).strip_edges(true, false).begins_with("!:")
 
 
 ## [param count] numbers from [param words] at [param from], each within
@@ -1400,7 +1774,8 @@ static func _typed_field(field: String, value: Variant) -> Variant:
 				return null
 			var fields: Dictionary = {}
 			for key: Variant in value:
-				if key is String and (key != "picture" or _typed_picture(value[key], null) != null):
+				if key is String and (not key in ["picture", "cover_picture"]
+						or _typed_picture(value[key], null) != null):
 					fields[key] = value[key]
 			return BookletSheet.from(fields).said()
 	return null
@@ -1489,6 +1864,16 @@ static func _written_in(text: String) -> bool:
 	for word: String in WORDS:
 		if text.contains(META + word):
 			return true
+	# A line with tabs between its fields says it as well (pullkept).
+	if text.contains("\t"):
+		for line: String in text.split("\n"):
+			if not line.contains("\t"):
+				continue
+			var words: PackedStringArray = LdrModel._fields(line)
+			if words.size() >= 3 and words[0] == "0" and (words[1].to_upper() == "!BRICKWORKS"
+					and words[2] in WORDS or words[1].to_upper() == "!DATA"
+					and words[2].to_lower().begins_with(IMAGE_PREFIX)):
+				return true
 	return false
 
 
@@ -1504,6 +1889,16 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 		return text
 	var lines: PackedStringArray = text.split("\n")
 	var eol: String = "\r" if not lines.is_empty() and lines[0].ends_with("\r") else ""
+	# A file that ends without a line break: its last line given the file's
+	# break first, so every line put after it goes in as a line of its own
+	# in the file's breaks, and taken back off at the end when none was. Up
+	# to 2026-11-07, in a CRLF file, that line ended LF alone and the last of
+	# ours CR alone (blreview).
+	var last: String = lines[lines.size() - 1] if not lines.is_empty() else ""
+	var open_end: bool = not last.is_empty()
+	if open_end:
+		lines[lines.size() - 1] = last + eol
+		lines.append("")
 	var out := PackedStringArray()
 	var definition: String = ""
 	var step: int = 0
@@ -1516,13 +1911,18 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 	## Inside a page's picture as it was written (LDraw's !DATA): left out,
 	## and written again at the end from the looks.
 	var skipping: bool = false
+	## Each page's picture as the file has it, name -> its lines: one a line
+	## kept as it was names, and the looks do not hold, goes back as it was.
+	var as_written: Dictionary = {}
+	var block: Array = []
 	for raw: String in lines:
 		var line: String = raw.strip_edges()
 		if skipping:
-			if line.begins_with("0 !:"):
+			if _is_data(line):
+				block.append(raw)
 				continue
 			skipping = false
-		var words: PackedStringArray = LdrModel._fields(line) if line.begins_with("0 ") \
+		var words: PackedStringArray = LdrModel._fields(line) if _of_type(line, "0") \
 			else PackedStringArray()
 		var keyword: String = words[1].to_upper() if words.size() >= 2 else ""
 		if keyword in ["FILE", "NOFILE", "!DATA"]:
@@ -1532,9 +1932,12 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 					# The model's own lines, in a file of no FILE lines, are done.
 					first_file = false
 			section_open = keyword == "FILE"
-			if keyword == "!DATA" and " ".join(words.slice(2)).get_file().to_lower() \
-					.begins_with(IMAGE_PREFIX):
+			var data_name: String = " ".join(words.slice(2)).get_file().to_lower()
+			if keyword == "!DATA" and data_name.begins_with(IMAGE_PREFIX):
 				skipping = true
+				# An Array, so the lines go into the one kept.
+				block = [raw]
+				as_written[data_name] = block
 				continue
 			if keyword == "FILE":
 				var file_key: String = LdrModel._key(" ".join(words.slice(2)))
@@ -1546,6 +1949,10 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 			out.append(raw)
 			continue
 		if keyword == "!BRICKWORKS" and words.size() >= 3 and words[2] in WORDS:
+			# The page's lines are the main model's, written again from the
+			# looks; a sub-model's are left where they are, as they are.
+			if not definition.is_empty() and words[2] in ["PAGE_SETUP", "PAGE_TEXT"]:
+				out.append(raw)
 			continue
 		if keyword == "STEP" or keyword == "ROTSTEP":
 			_step_lines(out, looks, definition, step, any_part, eol, wrote)
@@ -1553,7 +1960,7 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 			step += 1
 			any_part = false
 			continue
-		if line.begins_with("1 "):
+		if _of_type(line, "1"):
 			if step == 0 and not any_part:
 				var first: Dictionary = looks.get(key(definition, 0), {})
 				if first.has("turn") and str(first["turn"]) != "end":
@@ -1573,45 +1980,73 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 			_booklet_lines(head, look, eol)
 	if not head.is_empty():
 		var at: int = 1
-		while at < out.size() and out[at].strip_edges().begins_with("0 ") \
-				and not out[at].strip_edges().to_upper().begins_with("0 FILE") \
-				and not out[at].strip_edges().to_upper().begins_with("0 STEP") \
-				and not out[at].strip_edges().to_upper().begins_with("0 ROTSTEP") \
+		while at < out.size() and not _keyword(out[at]) in ["", "FILE", "STEP", "ROTSTEP"] \
 				and at < 12:
 			at += 1
-		for n: int in head.size():
-			out.insert(at + n, head[n])
+		_put_lines(out, at, head)
 	# The pictures the pages show, each as LDraw's embedded file, at the end.
 	var pictures: Dictionary = looks.get(DATA, {})
 	var shown: Dictionary = {}
 	var whole: Variant = looks.get(BOOKLET, {})
-	var sheet: Variant = (whole as Dictionary).get("sheet", {}) if whole is Dictionary else {}
-	if sheet is Dictionary and pictures.has(str((sheet as Dictionary).get("picture", ""))):
-		shown[str(sheet["picture"])] = true
+	for behind: String in BookletSheet.pictures_named((whole as Dictionary).get("sheet")
+			if whole is Dictionary else null):
+		if pictures.has(behind):
+			shown[behind] = true
 	for name: String in looks:
 		for note: Variant in (looks[name] as Dictionary).get("notes", []) \
 				if looks[name] is Dictionary else []:
 			if note is Dictionary and (note as Dictionary).has("image") \
 					and pictures.has(str(note["image"])):
 				shown[str(note["image"])] = true
+	# A picture a line kept as it was names (a sub-model's own page, a later
+	# build's word): the looks' when they hold it, else as the file has it.
+	# Up to 2026-11-07 the line stayed and its picture went (blreview).
+	for said: String in out:
+		if not said.contains("!BRICKWORKS") or not said.to_lower().contains(IMAGE_PREFIX):
+			continue
+		var words: PackedStringArray = LdrModel._fields(said.strip_edges())
+		if words.size() < 3 or words[1].to_upper() != "!BRICKWORKS":
+			continue
+		for word: String in words.slice(2):
+			var named: String = word.get_file().to_lower()
+			if not named.begins_with(IMAGE_PREFIX) or shown.has(named):
+				continue
+			if pictures.has(named):
+				shown[named] = true
+			elif as_written.has(named):
+				shown[named] = false
 	if not shown.is_empty():
 		# Before the blank lines the file ends with, as they were.
 		var end: int = out.size()
 		while end > 0 and out[end - 1].strip_edges().is_empty():
 			end -= 1
-		var block := PackedStringArray()
+		var block_lines := PackedStringArray()
 		var kept: Array = shown.keys()
 		kept.sort()
 		for name: String in kept:
-			block.append("0 !DATA " + name + eol)
+			if not shown[name]:
+				block_lines.append_array(PackedStringArray(as_written[name]))
+				continue
+			block_lines.append("0 !DATA " + name + eol)
 			var encoded: String = str(pictures[name])
 			for at: int in range(0, encoded.length(), 76):
-				block.append("0 !: " + encoded.substr(at, 76) + eol)
-		for n: int in block.size():
-			out.insert(end + n, block[n])
-		if end + block.size() == out.size():
-			out.append("")
+				block_lines.append("0 !: " + encoded.substr(at, 76) + eol)
+		_put_lines(out, end, block_lines)
+	if open_end and out.size() >= 2 and out[out.size() - 1].is_empty() \
+			and out[out.size() - 2] == last + eol:
+		# Nothing went after it: the file ends as it did.
+		out.remove_at(out.size() - 1)
+		out[out.size() - 1] = last
 	return "\n".join(out)
+
+
+## [param block], lines each ending as the file's do, put into [param out]
+## (a file's lines split at "\n") at [param at]: the one way the lines
+## said in more than one place go in (a section's end, the model's head,
+## the pictures at the end), each before a line break of the file's own.
+static func _put_lines(out: PackedStringArray, at: int, block: PackedStringArray) -> void:
+	for n: int in block.size():
+		out.insert(at + n, block[n])
 
 
 ## The booklet's own lines, said once at the head of the model.
@@ -1627,9 +2062,12 @@ static func _booklet_lines(out: PackedStringArray, whole: Dictionary, eol: Strin
 		for at: Variant in kept.get(axis, []):
 			out.append(META + "GUIDE %s %s" % [axis.to_upper(), _number(snappedf(float(at), 0.1))] + eol)
 	if whole.get("sheet") is Dictionary and not (whole["sheet"] as Dictionary).is_empty():
-		var said: String = BookletSheet.from(whole["sheet"]).line_words()
+		var sheet: BookletSheet = BookletSheet.from(whole["sheet"])
+		var said: String = sheet.line_words()
 		if not said.is_empty():
 			out.append(META + "PAGE_SETUP " + said + eol)
+		for words: String in sheet.text_lines():
+			out.append(META + "PAGE_TEXT " + words + eol)
 
 
 ## The end of a section: the looks of its last step, which has no line
@@ -1650,8 +2088,7 @@ static func _close_section(out: PackedStringArray, looks: Dictionary, definition
 			and not wrote.has(definition + "|*"):
 		extra.append(META + "CALLOUT OFF" + eol)
 		wrote[definition + "|*"] = true
-	for n: int in extra.size():
-		out.insert(trailing + n, extra[n])
+	_put_lines(out, trailing, extra)
 
 
 ## The app's own lines for one step, before the line that ends it. A
@@ -1736,7 +2173,7 @@ static func _ending(raw: String, looks: Dictionary, definition: String, step: in
 	var look: Dictionary = looks.get(key(definition, step), {})
 	var line: String = raw.strip_edges()
 	if not look.has("turn"):
-		return raw if line.to_upper().begins_with("0 STEP") else "0 STEP" + eol
+		return raw if _keyword(line) == "STEP" else "0 STEP" + eol
 	if look.has("line") and line == str(look["line"]):
 		return raw
 	if str(look["turn"]) == "end":
@@ -2103,11 +2540,7 @@ static func said(world: BrickWorld, section: String, step: int, placed_only: boo
 	if own.has("sign") and not bool(own["sign"]):
 		parts.append("no turn sign")
 	if own.get("pull") is Dictionary:
-		var pull: Dictionary = own["pull"]
-		var which: Array = pull.get("parts", [])
-		parts.append("%s pulled out %s studs with an arrow in" % [
-			"its parts" if which.is_empty() else "its " + ", ".join(which),
-			_number(float(pull.get("studs", PULL_STUDS)))])
+		parts.append(_pull_said(world, section, step, own["pull"]))
 	if own.has("colours"):
 		parts.append("its colours listed" if bool(own["colours"]) else "no colour guide")
 	if own.has("actual_size"):
@@ -2117,6 +2550,32 @@ static func said(world: BrickWorld, section: String, step: int, placed_only: boo
 	if own.has("preview") and not bool(own["preview"]):
 		parts.append("no sub-model preview")
 	return ", ".join(parts)
+
+
+## A step's pull as [method said] says it: only the parts of it the step
+## adds, as only those are drawn pulled out (BookletMaker._pull_out), and
+## the rest of the parts it names, kept in the file. A pull the file had on
+## a step that puts on a sub-model was said to pull out parts no page
+## showed pulled out (pullkept).
+static func _pull_said(world: BrickWorld, section: String, step: int, pull: Dictionary) -> String:
+	var which: Array = pull.get("parts", [])
+	var studs: String = _number(float(pull.get("studs", PULL_STUDS)))
+	if which.is_empty():
+		return "its parts pulled out %s studs with an arrow in" % studs
+	var definition: String = definition_of(section)
+	var added: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		if brick.step == step and definition_of(AuthorSteps.home(world,
+				Assemblies.path_of(brick))) == definition:
+			added[brick.part_id.to_lower()] = true
+	var adds: Array = which.filter(func(part: String) -> bool: return added.has(part))
+	var not_added: Array = which.filter(func(part: String) -> bool: return not added.has(part))
+	if adds.is_empty():
+		return "a pull of %s kept in the file, none of them added in this step" \
+			% ", ".join(not_added)
+	return "its %s pulled out %s studs with an arrow in%s" % [", ".join(adds), studs,
+		"" if not_added.is_empty() else " (%s in its pull kept in the file, not added in this step)"
+			% ", ".join(not_added)]
 
 
 ## How a step is turned, as the timeline and a session read it: "turned

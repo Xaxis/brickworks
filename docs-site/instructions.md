@@ -77,8 +77,11 @@ On **Build › Booklet page**, for the step the timeline is on:
 
 Press a command again to put the step back as it was. Each change is one Undo and is saved with the model. Claude can set each one with `edit_booklet`. With `booklet_page` it sees a page as Instructions draws it and its PDF prints it.
 
+Everything you set for a step comes back when the model is opened again, on that step, in a sub-model's steps too. A pull follows its parts into the sub-models that build them, each part to the first step that puts it in. If the file was changed since, so that a pull on a step the booklet shows matches none of its parts, the line stays in the file and the open says so: "the pull on step 1 of the model matches no step now, kept in the file". Taking a step's last part off takes its settings with it, and Undo brings both back. A step the file itself has empty keeps its settings in the file, and the booklet shows no page for it.
+
 <!-- covers
 ui:the booklet's Studio extras
+ui:what is set in the booklet kept over an open
 -->
 
 ### The page: paper, margins, colour {#page-setup}
@@ -96,6 +99,29 @@ To use the same page on another model, type a name and press **Keep as a style**
 
 <!-- covers
 ui:the booklet's page setup
+-->
+
+### The cover, header, footer and colours {#booklet-look}
+
+**Page setup…** has three tabs. **Page** holds the paper, margins and colour, and a **Header** and **Footer**: a line of your own words at the head of every page but the cover, and at the foot of every page, the cover too. Use the footer for a copyright line or your name.
+
+**Cover** makes the cover yours:
+
+- **Title**, across the top. Left empty, the cover says the model's name.
+- **Under the title**, a smaller line.
+- **Picture**: **Choose…** a picture of your own, shown whole on the cover, or **The model** to draw the finished model again.
+- **Line**, a line of your words over the count of pieces.
+
+**Steps** sets the colour and height of every step's number, the parts box's **frame**, **fill** and **corners** (0 for square), and the colour drawn round the parts each step adds. **Usual colours** puts the booklet's own back.
+
+All of it is saved with the model. A style kept by **Keep as a style** is the look: it carries the colours, the header and footer, and the cover's line and picture to another model. The title and the line under it stay each model's own, so a style never changes them, and neither does putting the booklet's own look back. Claude can set it with `page_setup`: `title`, `subtitle`, `cover_line`, `cover_picture_data`, `header`, `footer`, `box_frame`, `box_fill`, `box_corners`, `number_colour` and `outline_colour`.
+
+Each line of words holds 120 letters; longer words are cut, and Brickworks says so. If **Save as PDF** meets letters its type has no shapes for (Chinese, Japanese, Korean, Cyrillic, Greek, emoji), it names them. They print as **?** in the PDF. The booklet's own page and its PNG pages show them as typed.
+
+The cover, header, footer and colours are lines in the model's file. Brickworks before this release, and the desktop app up to 0.19.0, do not know them and leave them out when they save the model. Open and save a model you have set up this way only in this release or a later one. In a model made of sub-models, the page belongs to the main model. Words or a page set up inside a sub-model stay in that sub-model as they were, with the picture they name.
+
+<!-- covers
+ui:the booklet's own cover and colours
 -->
 
 ### Lay a page out {#lay-out}

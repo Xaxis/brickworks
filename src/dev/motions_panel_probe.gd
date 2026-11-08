@@ -537,8 +537,9 @@ func _observatory() -> void:
 func _fits(state: String) -> void:
 	await _frames(2)
 	for part: Dictionary in _panel._joint_parts:
-		var readout: Label = part["readout"]
-		if is_instance_valid(readout) and readout.is_visible_in_tree():
+		var item: Variant = part["readout"]
+		if is_instance_valid(item) and (item as Label).is_visible_in_tree():
+			var readout: Label = item
 			var called: Label = readout.get_parent().get_child(0)
 			var wide: float = readout.get_theme_font("font").get_string_size(readout.text,
 				HORIZONTAL_ALIGNMENT_LEFT, -1, readout.get_theme_font_size("font_size")).x

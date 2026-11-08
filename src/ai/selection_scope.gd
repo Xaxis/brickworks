@@ -110,14 +110,17 @@ func allow(more: AABB) -> void:
 
 
 ## Every part standing that is not scenery, as it is now: brick id ->
-## [part, colour, transform, group, unit].
+## [part, colour, transform, group, unit, step]. With its build step, so one
+## taken off is put back in it: undone, a session's edit put a part back in
+## no step, its step left empty and the part after the model's last
+## (pullkept).
 static func snapshot(world: BrickWorld, scenery: Dictionary) -> Dictionary:
 	var out: Dictionary = {}
 	for brick: BrickWorld.Brick in world.bricks():
 		if scenery.has(brick.id):
 			continue
 		out[brick.id] = [brick.part_id, brick.color_code, brick.transform,
-			brick.group, brick.unit]
+			brick.group, brick.unit, brick.step]
 	return out
 
 
@@ -145,7 +148,8 @@ static func steps_back(was: Dictionary, world: BrickWorld,
 			# it takes one off and puts one down. Said so, in case.
 			off.append({"undo": "remove", "brick": brick.id})
 			back_on.append({"undo": "add", "part": then[0], "color": then[1],
-				"transform": then[2], "group": then[3], "unit": then[4]})
+				"transform": then[2], "group": then[3], "unit": then[4],
+				"step": int(then[5]) if then.size() > 5 else -1})
 			continue
 		if not (then[2] as Transform3D).is_equal_approx(brick.transform):
 			moved.append({"undo": "move", "brick": brick.id, "transform": then[2]})
@@ -156,7 +160,8 @@ static func steps_back(was: Dictionary, world: BrickWorld,
 			continue
 		var then: Array = was[brick_id]
 		back_on.append({"undo": "add", "part": then[0], "color": then[1],
-			"transform": then[2], "group": then[3], "unit": then[4], "was": brick_id})
+			"transform": then[2], "group": then[3], "unit": then[4], "was": brick_id,
+			"step": int(then[5]) if then.size() > 5 else -1})
 	return off + moved + painted + back_on
 
 

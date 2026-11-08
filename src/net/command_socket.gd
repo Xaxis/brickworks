@@ -623,6 +623,9 @@ const HINTS := {
 	"render_model": ["Render a picture", "file"],
 	# Queued pictures, drawn in turn and written where Render writes.
 	"render_queue": ["Queue renders", "file"],
+	# mcpsee3: a view kept with the model, as View › Viewpoint › Save this
+	# view… keeps it; the same name again replaces it.
+	"save_view": ["Save the view", "add", "again"],
 	"export_model": ["Export the model", "file"],
 	"brickify": ["Brickify a 3D model", "add", "world"],
 	"print_part": ["Print on a part", "add", "world"],
@@ -986,6 +989,7 @@ func _one_step(name: String, before: Dictionary, chat: String = "", who: String 
 		builder.fold_since(int(before["depth"]))
 		_mark(builder, chat)
 		_laid(builder.last_step())
+		_looks_follow()
 		return
 	var last: Dictionary = builder.last_step()
 	if not last.is_empty() and is_same(last, before["last"]) \
@@ -998,6 +1002,15 @@ func _one_step(name: String, before: Dictionary, chat: String = "", who: String 
 			SelectionScope.words_for(steps)])
 		_mark(builder, chat)
 		_laid(builder.last_step())
+		_looks_follow()
+
+
+## A step the call took the last part off goes with its booklet look, in the
+## same undo, as one by hand does (ModelStore.looks_follow_edit).
+func _looks_follow() -> void:
+	var store: ModelStore = app.get("_store") if app != null else null
+	if store != null:
+		store.looks_follow_edit()
 
 
 ## A call that put parts down makes the model one made with the assistant

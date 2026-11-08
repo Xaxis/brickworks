@@ -65,8 +65,16 @@ func shop_list(shop: String, skip: Dictionary = {}, asking: bool = false,
 	if stock.lots.is_empty():
 		say.call("nothing to list yet")
 		return ""
+	return await stock_list(shop, stock, "", asking, wants)
+
+
+## A shop's list of [param stock], any parts list: the model's, or what
+## Compare says to buy to build one set or model from another (CompareView,
+## PartsCompare). [param named_as] names its file, the model's name when empty.
+func stock_list(shop: String, stock: Inventory, named_as: String = "", asking: bool = false,
+		wants: ShopLists.Wants = null) -> String:
 	if shop == "pickabrick":
-		return await _pick_a_brick(stock, asking)
+		return await _pick_a_brick(stock, asking, named_as)
 	var made: Dictionary
 	var file_name: String
 	var mime: String
@@ -74,11 +82,11 @@ func shop_list(shop: String, skip: Dictionary = {}, asking: bool = false,
 		if wants == null:
 			wants = ShopLists.Wants.kept()
 		made = ShopLists.bricklink_xml(stock, library, wants)
-		file_name = _file("xml", "_bricklink")
+		file_name = _file("xml", "_bricklink", named_as)
 		mime = "application/xml"
 	else:
 		made = ShopLists.rebrickable_csv(stock)
-		file_name = _file("csv", "_rebrickable")
+		file_name = _file("csv", "_rebrickable", named_as)
 		mime = "text/csv"
 	var to: String = await _where(file_name, asking)
 	if to.is_empty():
@@ -100,7 +108,7 @@ func shop_list(shop: String, skip: Dictionary = {}, asking: bool = false,
 ## file a 400, NAME_pickabrick_1.csv, _2.csv… beside the one chosen (in a
 ## browser, one .zip of them, as an OBJ and its colours come). What it says
 ## names the parts not on it, for the person to find elsewhere.
-func _pick_a_brick(stock: Inventory, asking: bool) -> String:
+func _pick_a_brick(stock: Inventory, asking: bool, named_as: String = "") -> String:
 	var made: Dictionary = ShopLists.pick_a_brick(stock)
 	var files: PackedStringArray = made["files"]
 	if files.is_empty():
@@ -108,7 +116,7 @@ func _pick_a_brick(stock: Inventory, asking: bool) -> String:
 			+ "so there is nothing for Pick a Brick")
 		say.call(none)
 		return none
-	var to: String = await _where(_file("csv", "_pickabrick"), asking)
+	var to: String = await _where(_file("csv", "_pickabrick", named_as), asking)
 	if to.is_empty():
 		return ""
 	var line: String
@@ -283,8 +291,8 @@ var _format: String = "glb"
 static var _writing: bool = false
 
 
-## What the chosen format is for, and whether this model fits in it: OBJ and
-## STL write every triangle and are capped (MeshExport.most_triangles).
+## What the chosen format is for, and whether this model fits in it: OBJ,
+## STL and 3MF write every triangle and are capped (MeshExport.most_triangles).
 func _describe_format() -> void:
 	var format: String = MeshExport.FORMATS[_format_choice.selected]
 	var maker: MeshExport = _mesh_export()
@@ -299,6 +307,7 @@ func _describe_format() -> void:
 		"gltf": "The same as GLB, written as text with its data inside.",
 		"obj": "Every part with its own triangles, and an .mtl of its colours. In metres." + cap,
 		"stl": "One mesh of every part, in millimetres, standing on Z, for a slicer." + cap,
+		"3mf": "An object for each colour, in its colour, for a slicer to give each its own filament, in millimetres on the bed." + cap,
 	}[format]
 	if not refused.is_empty():
 		note = refused.left(1).to_upper() + refused.substr(1) + "."
@@ -316,7 +325,7 @@ func _mesh_export() -> MeshExport:
 	return maker
 
 
-## The model as a 3D file (MeshExport): glb, gltf, obj or stl. Downloaded in a
+## The model as a 3D file (MeshExport): glb, gltf, obj, stl or 3mf. Downloaded in a
 ## browser, where an OBJ and its MTL come as one zip; on the desktop written
 ## where the person chose, an OBJ's MTL beside it, or to Downloads. What was
 ## written, or why not: the dialog, and a session over MCP (AppTools).
@@ -363,6 +372,10 @@ func model_3d(format: String, asking: bool = false) -> String:
 				Working.comma(made.triangles)]
 		else:
 			line += ", %s triangles" % Working.comma(made.triangles)
+		if made.colours == 1:
+			line += " — one colour, one object"
+		elif made.colours > 1:
+			line += " — %d colours, an object each" % made.colours
 		if not made.left_out.is_empty():
 			var count: int = 0
 			for id: String in made.left_out:
@@ -375,8 +388,8 @@ func model_3d(format: String, asking: bool = false) -> String:
 	return line
 
 
-func _file(extension: String, suffix: String = "") -> String:
-	var base: String = str(named.call()).to_snake_case()
+func _file(extension: String, suffix: String = "", named_as: String = "") -> String:
+	var base: String = (named_as if not named_as.is_empty() else str(named.call())).to_snake_case()
 	if base.is_empty():
 		base = "model"
 	return "%s%s.%s" % [base, suffix, extension]

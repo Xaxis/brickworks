@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:lights in the model, cli:lights probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe -->
 
 ## Sub-features
 
@@ -170,6 +170,54 @@ picture the assistant is shown.
   the page where one is drawn (`tooltip` in `window.brickworksControls`). A
   bin tile's reached 125 px over the view, and with another tile scrolled
   under the pointer read as the view moving on the grid's light floor (rel-m255).
+- `two fingers' twist` (`CadCamera._twist`, `_two_fingers`; APP_UX6 twist):
+  on a phone, a tablet or a touchscreen, two fingers turned about each other
+  turn the view round the up (the turntable's, Build it's turned one too) by
+  as much as the line between them turned, about what was between them as
+  they began to turn, which stays between them; the model goes round the way
+  the fingers did on the screen, seen from above or below (`_twist_way`). It
+  waits until the line has turned 10° and each finger has gone `TAP_SLOP`
+  round (`TWIST_START`), then takes the whole turn, so a pinch or a slide that
+  turns real fingers a few degrees turns nothing and a quarter turn is a
+  quarter. Read once a frame from where both fingers are, as is a phone's turn
+  by the point between two fingers (`TWO_FINGER_TURN`, 0.016 of the way):
+  applied a finger's event at a time, half of that turn was stopped at
+  straight down and the other half was not, so a twist seen from above tipped
+  the view. While two fingers are down the pointer the engine raises from the
+  first (`InputEvent.DEVICE_ID_EMULATION`) is not the camera's: it turned the
+  view as far as that finger went, so on pre261 a quarter twist swung a
+  phone's view 74° round and tipped it to look straight down, and a pinch
+  turned it as far as the first finger spread (59° for the probe's). The pair's slide keeps
+  its speed: 0.016 is the fingers' own 0.006 and the 0.01 that pointer added.
+  One finger is as it was, both shares. The pinch stays with the events (a
+  ratio, whichever finger comes first). Not over the second view, which is
+  square on. A trackpad's twist has no event in Godot 4.7
+  (`InputEventRotateGesture` does not exist), so it is fingers on glass only.
+- `twist probe` (`src/dev/twist_probe.gd`, `tools/probe.sh twist_probe`,
+  windowed on the GPU at 390 x 844 laid out for a phone; `PROBE_SIZE=1024x768
+  tools/probe.sh twist_probe --tablet` a tablet's, `PROBE_SIZE=1280x720` or
+  `1400x900` the desktop's with a touchscreen): an empty model with two
+  crossed 2 x 4s, fingers as the window hands them over, a frame at a time,
+  each starting and stopping at rest. Two fingers turned a quarter turn round
+  the model turn the view 90° ±5° round the up, the tilt within 0.5°, what
+  was between them within 2% of the room of where it was, and back again;
+  from above and from below a point beside the pivot goes 90° ±5° round on
+  the screen the way the fingers went, the view still straight down or up; a
+  pinch to three times as wide, two fingers slid 150 units and one finger
+  dragged 150 within 1% of what pre261 did (`SAME` in the probe, from its
+  `measure` lines there), a pinch and one turned 6° turning nothing; a
+  quarter turn with a spread to twice as wide does both; the model as it was
+  after each. With the first finger on a part (touchfix): a twist turns the
+  view 90° ±5° and a pinch zooms, neither moving a part nor changing the
+  selection (compared by part and place, as a part put back comes back as
+  another id); the first finger 12 units on before the second comes down,
+  the part back and the selection as it was; a pinch whose first finger
+  stays still on the ground keeps the selection; one finger dragged on a part
+  still carries it. On a phone's and a tablet's layout, a dialog freed while
+  open, then a dialog with a field: laid out for a finger (`touch_placed`)
+  and `TouchSizing.typing` its field. Pictures in
+  `shots/twist/`: the model before and after the quarter turn, and from above
+  after it.
 - `centred on the model's column` (`CadCamera.seen`, `Main._model_rect`): the
   3D draws across the whole window, behind the columns, and the view is
   centred on the model's part of it (`model_cover`'s "view": between the
@@ -690,7 +738,12 @@ picture the assistant is shown.
   whose keys, words or section say every word typed, and the letters typed run
   no tool; Escape in it closes the sheet. Besides the list it adds each key a
   menu shows that the list does not name (Open, Save as, the steps, the
-  cut-away, F2, Y), in the menu's words, from `Shell.key_text`.
+  cut-away, F2, Y), in the menu's words, from `Shell.key_text`. Its box reads
+  the words of the submenus a row's command is in as the row's own
+  (`ControlsDialog._says`, `_within`): "cut away" keeps A box, A sphere and
+  A cylinder, in View, Cut away by; and a row whose words finish its
+  submenu's ("A box" in "Cut away by") is said whole, "cut away by a box"
+  (`_said_whole`; words6, APP_UX6 14; `words6_probe`).
   `keysheet_probe` (1280 x 720; PROBE_SIZE=1400x900 too) counts the rows wholly
   in sight (36 of 85 at 1280 x 720, 51 at 1400 x 900; 20 needed), types "hinge" and "undo" with real
   keys, and checks `,` and Tools, Settings show the settings and no key. Settings'
@@ -1015,7 +1068,16 @@ picture the assistant is shown.
   forward and back, pauses, jumps to both ends, checks As made is placement
   order, and that History shows a removed brick before its removal, not after,
   that a save made with History open writes the model as it stands, and that it
-  leaves nothing behind.
+  leaves nothing behind. Every row of the bar wraps where the model's room is
+  narrower than the row, as its booklet row always did (`StepsBar._build`,
+  HFlowContainers): the buttons, with Instructions and Done together at the
+  right-hand end of whichever line they fall on; the step's words under the
+  slider (`SLIDER_LEAST`); the author's step edits. In one line each, the bar's
+  least width was its whole row of buttons, and with the bin, Stress and the
+  assistant beside the model it held the layout wider than a 1280 x 720 window,
+  Done, Instructions, Account and the status bar's right half past its edge
+  (APP_UX6 timelinefit). With room for one line it is one line, as it was.
+  Probe: `timelinefit_probe` and `timelinefit_tablet_probe`.
 - `build steps`: the model split into steps a person could follow in order,
   nothing placed before what holds it. On the timeline (B) a step, forwards or
   back, is a count raised or lowered in each batch (`StepsBar.reveal_upto`,
@@ -2077,6 +2139,172 @@ picture the assistant is shown.
   windows on one user folder (the probe again headless, `--race-remove`)
   losing no style's picture. `--dialog-only` with `PROBE_SIZE=1400x900`
   checks the dialog alone at that size.
+- `what is set in the booklet kept over an open` and `pullkept probe`
+  (APP_UX6 #1 pullkept; `BookletLooks.read`, `_pulls_follow_parts`,
+  `unmatched_words`, `ModelBar.looks_words`, `Assistant._tag_assemblies`):
+  every step line of the booklet (pull, colours, turn, zoom, notes, place,
+  page) is read back to the step it was written on, a sub-model's own steps
+  too. A save makes the session's named assemblies sub-models; where the
+  model's steps are its own those copies stay built in their parent's
+  steps (`AuthorSteps.IN_PARENT`, the file's `0 !BRICKWORKS IN` lines), as
+  Make a sub-assembly keeps them, so the booklet seen before the save is
+  the one after. A file (as Pods.ldr was saved by rel-m268) whose pull
+  names parts its step no longer puts in, with them in copies that step
+  puts in, has each of those parts read onto the first step of those copies
+  that adds it, as built (`_adding`), so no part is pulled twice; a step with
+  a pull of its own keeps it, and what no step takes stays on the file's
+  step. When
+  the whole pull goes to one step and the file's step adds no part of its
+  own, the rest of that page goes too (zoom, page, size, parts list, turn
+  sign, 1:1 guide, panel, places, words, arrows) if the step has no look
+  yet; its turn, section mark and a sub-model preview set off stay. The
+  next save writes them there. `booklet_layout` says a step pulls out only
+  the parts it adds (`_pull_said`). A pull none of whose parts is in its
+  step, on a step the booklet shows, is kept in the file and named on open:
+  "the pull on step 1 of the model matches no step now, kept in the file",
+  in the MCP `open_model` reply and the status bar (de/fr/es in `locale/`);
+  a look on a step the booklet shows no page of is kept and not named
+  (`unmatched_words`). A whole write numbers the looks by one list of
+  steps, each section's, worked out from the placements it writes, parts
+  still on their way and those the catalogue lacks among them
+  (`LdrModel.steps_written`, used by `write_tree`/`write_ldr` and
+  `BookletLooks.as_written`); a step the file had empty that the booklet is
+  set up on is in the list and written as a 0 STEP of its own
+  (`with_kept_steps`). An edit that takes a step's last part off (by hand,
+  over MCP, the assistant's change to a selection) drops that step's look
+  in the same undo (`ModelStore.looks_follow_edit`, `BookletLooks.emptied`;
+  its turn and chapter go on to the next step); undo brings both back, the
+  part in its step (`SelectionScope.snapshot` keeps the step). Lines with
+  tabs between their fields read and write as
+  with spaces (`_of_type`), and a model of one step marked
+  AUTHORED_STEPS keeps its steps and looks (`LdrModel.steps_are_authored`).
+  `pullkept_probe` (headless;
+  `PULLKEPT_ONLY=pods,session,named,review,lines,files,emptied,loop` for
+  some):
+  `src/dev/fixtures/mcp_walk_pods.ldr` opened by `open_model`, step 1's
+  look pulling 41769a and 41770a 2 studs and `booklet_layout` saying
+  "41770a, 41769a pulled out 2 studs", the PULL line in side_pod.ldr's step
+  after a save, the same after a reopen and the second save byte for byte;
+  the walk's session replayed over MCP and saved, step 1 pulling both after
+  a reopen and with step 1's parts made a sub-assembly by hand; a file
+  without the wing plates and one with a zoom on a step shown nowhere kept
+  over a save and not named on open (MCP and `ModelBar.unshown_words`), and
+  steps4 with a pull of 3003 on step 2 named and kept; the
+  review's files (`src/dev/fixtures/pullkept/`, from
+  bench/results/pkreview-2026-11-07) opened over MCP, saved, opened and
+  saved again with their looks, open words and booklet lines checked: tie
+  and three split, nested carried with its zoom, haspull kept and not
+  named (no page shows the step that puts `a` on), twice,
+  spread and pods_pull3003 one pull on the first step adding 3003,
+  absent_only's zoom on its step of a part the catalogue lacks, steps4,
+  empty_own and theirs_empty kept as an empty step with the booklet at 3
+  steps and nothing named, pods_alllines' 11 lines carried to the side
+  pod's first step, Pods
+  with CRLF and with tabs, theirs_tabs edited with its tab lines kept, a
+  one-step model as a file and made over MCP; on every step
+  `booklet_layout` pulls out only parts the step adds; the
+  gatehouse given every kind of booklet line over MCP and `page_setup`, its
+  looks and parts the same after a save and an open, its lines byte for
+  byte on the second save; every file of LDraw's model repository with a
+  booklet line (117, the 44 turned among them), the gatehouse, 346-2 and
+  Pods opened, saved, opened and saved: every booklet line in its file step
+  byte for byte and every part in its step. A shared model's carried pages
+  (`SharedPages`' PAGES and PAGE {...}) are the share's, not the booklet's:
+  a save takes them off and a share works them out again. steps4's step 2,
+  its one part taken off over MCP (`edit_model`) and by hand: the look gone
+  with it, `undo` bringing both back with the part in step 2, redo taking
+  both, saved with 2 STEP lines and opened naming nothing. Every file in
+  `src/dev/fixtures/pullkept/` and the walk's Pods (as given, CRLF, tabs)
+  opened, saved, opened, saved, opened and saved: the same STEP count each
+  save, each look with the same parts at each open, the second and third
+  saves byte for byte. A session saves only over files it wrote
+  (`save_model`), so each model opened over MCP is saved under a name of
+  its own first.
+- `the booklet's own cover and colours` and `booklook probe`
+  (APP_UX6 #5 booklook; `BookletSheet`'s title, subtitle, cover_line,
+  cover_picture, header, footer, box_frame, box_fill, box_corners,
+  number_colour, outline_colour; `PageSetupDialog`'s Page, Cover and Steps
+  tabs; `Shell.page_setup`, MCP `page_setup`): Page setup… in three tabs
+  so every row fits at 1280 x 720. A cover is the designer's own once any
+  of its title, line under it, picture or line of words is set: the title
+  fitted across the band (`Booklet._fit_line`, an ellipsis past the room),
+  the BRICKWORKS badge gone and the credit line kept, their picture shown
+  whole in `Booklet.cover_area` (kept as `brickworks-page-cover.jpg|png`,
+  its longest side at most 1485 px, by `BookletSheet.cover_of`), and the
+  title also the HTML's and the PDF's title. The header goes at the head
+  of every page but the cover, the footer at the foot of every page, the
+  cover's right-aligned beside the credit; parts-list pages keep room for
+  it. The parts box's frame, fill and corners are the CSS's `--box-line`,
+  `--box` and a `.box{border-radius:…}` rule `BookletRead` reads back for
+  `BookletPdf` and `BookletPng`; the frame also rings the white boxes and
+  a finished page. The step number's colour is an inline style on each
+  number (callouts' too); the new parts' outline is `BookletStudio`'s ink
+  `new_colour`. The file keeps them as `COVER_PICTURE`, `BOX_FRAME`,
+  `BOX_FILL`, `BOX_CORNERS`, `NUMBER_COLOUR` and `OUTLINE_COLOUR` words on
+  `0 !BRICKWORKS PAGE_SETUP` and one `0 !BRICKWORKS PAGE_TEXT TITLE|SUBTITLE|
+  COVER_LINE|HEADER|FOOTER words` line each, the main model's alone (a
+  sub-model's are read past and written back where they are). The live
+  build before booklook and desktop 0.19.0 drop both lines on any save.
+  A later build's words are kept and written back as they were
+  (`BookletSheet.unread`: an unknown PAGE_SETUP word and the one after
+  it; `unread_text`: a PAGE_TEXT of an unknown kind), and a picture they
+  name is among the page's (`BookletSheet.pictures_named`), so Page
+  setup keeps it. A `0 !DATA brickworks-page-*` block that a kept line
+  names and the looks do not hold (a sub-model's own PICTURE) is written
+  back as the file had it. Words are one line
+  of at most 120 characters, cut said in the answer and the status, C0
+  and C1 controls and U+2028/U+2029 made spaces. Every line these write
+  goes in by `BookletLooks._put_lines`, which ends the line before with
+  the file's break where the file had none at its end. Nothing set writes
+  nothing new: the booklet's own HTML is byte for byte what it was. A
+  style is the look: it carries every field and the cover's picture
+  (`cover_file` beside `picture_file`) but the model's own
+  (`BookletSheet.OWN`: title, subtitle and a later build's words), which
+  it never keeps and giving it (or usual=true) never changes. Page setup…
+  is the model's it opened on (`BrickWorld.generation`): it sends only the
+  fields the person changed from what it showed (`_filled`), closes
+  sending nothing when another model is opened or the model cleared, and
+  refills every untouched field when an undo, a redo, MCP or a peer
+  changes the page. `Helvetica.text_width` gives East Asian wide letters
+  and emoji a whole em; `BookletPdf.missed` names the letters its type
+  cannot print, said by Save as PDF; `BookletRead.title_line` escapes the
+  web tab's title.
+  `booklook_probe` (windowed, `gpu`): the gatehouse's booklet first as its
+  own (with `--against=` a run on the commit before: its HTML the same but
+  its pictures, every PNG page and every page of its PDF as `pdftoppm -r
+  300` draws it the same to the pixel); the dialog's three tabs each inside
+  the window; the cover by hand (title, subtitle, a four-colour picture,
+  a line), number colour and outline by hand, header, footer, frame, fill
+  and corners over MCP in 1 call; then off the PNG and PDF: the cover's
+  words by `pdftotext` and inked where they are, its picture's JPEG
+  byte-equal by `pdfimages` and its four colours where it is fitted, no
+  badge; the footer on every page and the header on every page but the
+  cover; every parts box's edge in the frame colour, its fill, a rounder
+  corner, 0 px of the old frame or fill; every number in its colour and
+  the new parts outlined in theirs with 0 px of the old orange;
+  `booklet_pdf_check.py` passing; a save and reopen and one undo; a style
+  kept with no title or subtitle, then given to booklet3's model (its own
+  title and subtitle set first) in 2 actions: every other field and the
+  picture's bytes the same, its title and subtitle unchanged and on its
+  cover, not the gatehouse's. Then blreview's findings on its own files
+  (`tests/fixtures/booklook`): Page setup… left open while MCP sets the
+  title (refilled, a typed header kept), while the person undoes, and
+  while another model is opened or the model cleared (it closes, nothing
+  sent); `sub_meta.mpd`'s sub-model lines kept in it and not the
+  booklet's; two CRLF files with no break at their end saved with every
+  line CRLF but FLOOR's; `later_build.ldr`'s SPINE_COLOUR and BACK_COVER
+  kept through a footer and usual=true; a 121-letter footer cut and said;
+  U+0085/U+2028/U+2029/U+009F made spaces; usual=true keeping the title
+  and subtitle; a 30-letter CJK title within its page at an em a letter and drawn
+  across the cover's PNG band; Save as PDF naming the letters it cannot print; a title of "Gate
+  <section> Hill" read back from the web's tab with every page; and the
+  pictures kept lines name (`later_pic_steps.ldr`, `later_pic_nosteps.ldr`,
+  `sub_pic.mpd`) with their lines, the same bytes, through a plain save, a
+  footer and an open, the sub-model's when the main model's page is given
+  another picture, and a later build's in the app's own model through Page
+  setup. Its pictures are kept in `--into=`.
+  `--dialog-only` with `PROBE_SIZE=1400x900` checks the tabs alone;
+  `--saves-only` runs blreview's files alone.
 - `mosaic` (Mosaic in the toolbar, then a picture; `src/ui/mosaic_dialog.gd`):
   a picture built two ways. **Brick Art**, the default, as a modern LEGO Art set
   builds one (`MosaicArt`, below); **Classic**, one 1 × 1 plate a pixel, flat,
@@ -2734,7 +2962,11 @@ godot --headless --path . --script src/dev/art_plan_probe.gd      # an Art plan 
 #   under the same name revision 1 then revision 2 and told to stop); and
 #   the dialog's Design with Claude. Ends "an Art plan is laid as it says".
 # In a browser, on a local web export (tools/export.sh web, then
-# python3 tools/web/serve.py build/web PORT): Make > Mosaic from a picture
+# python3 tools/web/serve.py build/web PORT --parts assets/generated/parts
+# --delay 0, so the exact shapes are fetched as on a deployment; served
+# without --parts the check has none and passes on the lattice alone, where
+# rel-m274's preview, checked before its shapes had come, said 25 pieces;
+# Assistant._checked waits for them in a browser): Make > Mosaic from a picture
 # (typed, then Enter), a galaxy PNG it makes into the chooser, Build it, and
 # brickworksState.art read for its parts, every one on the baseplate, one
 # piece, Panel N#1 and Frame#1 in the tree; then a brief typed into the
@@ -2747,6 +2979,7 @@ godot --path . --resolution 1200x800 --script src/dev/booklet_probe.gd  # the bo
 godot --path . --resolution 1280x800 --script src/dev/booklet_stream_probe.gd  # the castle's booklet read as it is drawn
 godot --path . --resolution 1280x800 --script src/dev/booklet_pdf_probe.gd -- --into=DIR  # the castle's booklet saved as a PDF and as PNG pages from its own Save buttons; --model=res://models/orthanc.ldr for the tower
 tools/probe.sh pagesetup -- --into=DIR --against=BEFORE_DIR   # the booklet's page set up: A4 upright over MCP, US Letter by the dialog, a colour, a picture behind, a style to the gatehouse; a picture the file lacks said missing, a big picture kept for every paper (a panorama to what a page shows), someone else's worked file's notes kept, styles removed (a refused call taking none, a replaced one's picture gone) and gone in a new start, the old styles file untouched by looking, two windows losing no picture; BEFORE_DIR a run on the commit before; PROBE_SIZE=1400x900 tools/probe.sh pagesetup -- --dialog-only
+tools/probe.sh booklook -- --into=DIR --against=BEFORE_DIR   # the booklet the designer's way: the gatehouse's own cover, header, footer, parts box frame, fill and corners, number and outline colours, read off the PNG and PDF; a style to booklet3's model in 2 actions; BEFORE_DIR a run on the commit before (the booklet's own the same to the pixel); PROBE_SIZE=1400x900 tools/probe.sh booklook -- --dialog-only
 #   every step pictured and framed on the model, new parts in frame, a parts box
 #   with a picture of every part, the shed's 2x callout with two arrows and its
 #   figure, the turn sign behind a wall (plates against its back), plates a hand's
@@ -2849,6 +3082,18 @@ tools/probe.sh cutshapes && PROBE_SIZE=1280x720 tools/probe.sh cutshapes
 # Pictures in shots/striproom/<size>[_phone|_tablet]/: look at the strip.
 tools/probe.sh striproom && PROBE_SIZE=1400x900 tools/probe.sh striproom
 tools/probe.sh striproom_phone && tools/probe.sh striproom_tablet
+# The timeline, the top bar and the status bar inside the window (APP_UX6
+# timelinefit): the car, a wheel rim picked out, the timeline, Stress, the
+# assistant and the bin opened in two orders at 1280 x 720 then 1400 x 900 (one
+# window, made each size): after each, every control of the timeline, the
+# menus, the toolbar and the status bar, and every column and rail, inside the
+# window, 0 px past its right edge; Instructions clicked opens its Save dialog,
+# Done clicked puts the timeline away; the model's room in the window 400 px or
+# more; the same in the author's steps; the timeline alone on one line. The
+# tablet's: the parts sheet, the tree and properties' drawer, Stress and the
+# assistant, by taps. Pictures in shots/timelinefit/<size>[_tablet]/: look at
+# the foot of the window and its right edge.
+tools/probe.sh timelinefit && tools/probe.sh timelinefit_tablet
 tools/probe.sh cutshapes_kept -- --keep=/tmp/cut_kept   # then, the probe copied into an older checkout: tools/probe.sh cutshapes_kept -- --older=/tmp/cut_kept
 # Saved views and Render presets (APP_UX5 #8): three views saved by Alt-V,
 # the model saved, closed and opened, each back by its Alt-Shift key within
@@ -2861,6 +3106,12 @@ tools/probe.sh savedviews -- --keep=/tmp/views_kept && PROBE_SIZE=1400x900 tools
 # path traced, the floor beside the car lighter by 15%; a neon 1 x 1 lighting the plate round
 # it in the Dark light; light_model over MCP. Look at shots/lights/.
 tools/probe.sh lights -- --keep=/tmp/lights_kept && PROBE_SIZE=1280x720 tools/probe.sh lights -- --no-trace   # then, the probe copied into an older checkout: tools/probe.sh lights -- --older=/tmp/lights_kept
+# Two fingers turned about each other (APP_UX6 twist): a quarter turn 90° ±5°
+# round the up about what is between them, the model going round as the
+# fingers went from above and below; a pinch, a slide and a drag as pre261's
+# within 1%. Phone by its header, then a tablet's and the desktop's layouts.
+# Look at shots/twist/.
+tools/probe.sh twist_probe && PROBE_SIZE=1024x768 tools/probe.sh twist_probe --tablet && PROBE_SIZE=1280x720 tools/probe.sh twist_probe && PROBE_SIZE=1400x900 tools/probe.sh twist_probe
 # View, Stress: a loaded 2x10 cantilever's root red on 1x1s, plain on 2x2s; a
 # bare one and a bonded wall not red; nothing painted; the shipped models none
 # red. Then in the window: the menu, the tint, what pointing says, Ask Claude

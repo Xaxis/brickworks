@@ -117,8 +117,8 @@ msgstr "Modèle LDraw (.ldr, ou .mpd avec ses sous-modèles)"
 msgid "BrickLink Studio model (.io)"
 msgstr "Modèle BrickLink Studio (.io)"
 
-msgid "3D model (.glb, .gltf, .obj, .stl)…"
-msgstr "Modèle 3D (.glb, .gltf, .obj, .stl)…"
+msgid "3D model (.glb, .gltf, .obj, .stl, .3mf)…"
+msgstr "Modèle 3D (.glb, .gltf, .obj, .stl, .3mf)…"
 
 msgid "Picture of the model (.png)"
 msgstr "Image du modèle (.png)"
@@ -2697,8 +2697,8 @@ msgstr "Collez une clé pour en garder une ici à la place"
 msgid "On a web page a server on your own computer answers only if it allows this site (Ollama: OLLAMA_ORIGINS), and the browser asks you first."
 msgstr "Sur une page web, un serveur de votre propre ordinateur ne répond que s'il autorise ce site (Ollama : OLLAMA_ORIGINS), et le navigateur vous le demande d'abord."
 
-msgid "On a web page Brickworks reaches only the providers listed and servers on your own computer; for any other server, use the desktop app."
-msgstr "Sur une page web, Brickworks n'atteint que les fournisseurs listés et les serveurs de votre propre ordinateur ; pour tout autre serveur, utilisez l'application de bureau."
+msgid "On a web page Brickworks reaches only the providers listed and servers on your own computer; any other server needs the desktop app, coming soon."
+msgstr "Sur une page web, Brickworks n'atteint que les fournisseurs listés et les serveurs de votre propre ordinateur ; tout autre serveur demande l'application de bureau, bientôt disponible."
 
 msgid "Sent only to Anthropic, never to us. Safest is a key just for this, in a Console workspace with a spend limit."
 msgstr "Envoyée seulement à Anthropic, jamais à nous. Le plus sûr est une clé rien que pour ça, dans un espace de travail de la Console avec une limite de dépenses."
@@ -5571,8 +5571,8 @@ msgstr "Le rendu de la fenêtre, à la taille demandée. Un instant."
 msgid "Light bounced off the backdrop and between the parts, shading in every corner, and a soft shadow that widens with distance."
 msgstr "La lumière renvoyée par le fond et entre les pièces, des ombres dans chaque recoin et une ombre douce qui s'élargit avec la distance."
 
-msgid "Soft shadows and smooth edges, from 8 frames averaged. Light bouncing between the parts needs the desktop app."
-msgstr "Des ombres douces et des bords lisses, issus de la moyenne de 8 images. La lumière qui rebondit entre les pièces demande l'application de bureau."
+msgid "Soft shadows and smooth edges, from 8 frames averaged. Light bouncing between the parts needs the desktop app, coming soon."
+msgstr "Des ombres douces et des bords lisses, issus de la moyenne de 8 images. La lumière qui rebondit entre les pièces demande l'application de bureau, bientôt disponible."
 
 msgid "Path traced, %d samples: soft shadows, light bounced off the floor and between the parts, glass that tints what is behind it, and depth of field if you want it."
 msgstr "Path tracing, %d échantillons : ombres douces, lumière renvoyée par le sol et entre les pièces, verre qui teinte ce qui se trouve derrière, et profondeur de champ si vous le souhaitez."
@@ -5586,8 +5586,8 @@ msgstr "Moyenne de %d images : ombres douces d'une source étendue, bords lisse
 msgid "With nothing behind the model it is not path traced."
 msgstr "Sans rien derrière le modèle, il n'est pas rendu en path tracing."
 
-msgid "Path tracing needs the desktop app: a browser cannot trace rays."
-msgstr "Le path tracing demande l'application de bureau : un navigateur ne peut pas tracer de rayons."
+msgid "Path tracing needs the desktop app, coming soon: a browser cannot trace rays."
+msgstr "Le path tracing demande l'application de bureau, bientôt disponible : un navigateur ne peut pas tracer de rayons."
 
 msgid "Path tracing needs the full graphics mode, and this window draws in the simpler one."
 msgstr "Le path tracing demande le mode graphique complet, et cette fenêtre dessine dans le mode simplifié."
@@ -11398,8 +11398,8 @@ msgstr "gardé : %d × %s"
 msgid "Page setup…"
 msgstr "Mise en page du livret…"
 
-msgid "The booklet's paper (A4, US Letter, A5 or its own), either way up, its margins, a colour or a picture behind every page, the step numbers' and parts' sizes; kept with the model, and as a style by a name for another"
-msgstr "Le papier du livret (A4, US Letter, A5 ou le sien), dans un sens ou dans l’autre, ses marges, une couleur ou une image derrière chaque page, la taille des numéros d’étape et des pièces ; gardé avec le modèle, et comme style sous un nom pour un autre"
+msgid "The booklet's paper (A4, US Letter, A5 or its own), either way up, its margins, a colour or a picture behind every page, its cover, header and footer, the step numbers' and parts boxes' sizes and colours; kept with the model, and as a style by a name for another"
+msgstr "Le papier du livret (A4, US Letter, A5 ou le sien), dans un sens ou dans l’autre, ses marges, une couleur ou une image derrière chaque page, sa couverture, son en-tête et son pied de page, la taille et les couleurs des numéros d’étape et des boîtes de pièces ; gardé avec le modèle, et comme style sous un nom pour un autre"
 
 msgid "Page setup"
 msgstr "Mise en page"
@@ -12008,3 +12008,661 @@ msgstr "Ce modèle n’a aucun mouvement nommé « %s », il s’est donc ouvert
 
 msgid "No such motion"
 msgstr "Mouvement introuvable"
+
+# Page setup… the designer's way (booklook, APP_UX6 5): the cover, the header and footer, the booklet's colours
+
+msgid "Page"
+msgstr "Page"
+
+msgid "Steps"
+msgstr "Étapes"
+
+msgid "Header"
+msgstr "En-tête"
+
+msgid "Footer"
+msgstr "Pied de page"
+
+msgid "Your words at the head of every page but the cover"
+msgstr "Vos mots en haut de chaque page sauf la couverture"
+
+msgid "Your words at the foot of every page, the cover too"
+msgstr "Vos mots en bas de chaque page, couverture comprise"
+
+msgid "Title"
+msgstr "Titre"
+
+msgid "The model's name"
+msgstr "Le nom du modèle"
+
+msgid "The title across the top of the cover"
+msgstr "Le titre en haut de la couverture"
+
+msgid "Under the title"
+msgstr "Sous le titre"
+
+msgid "A line under the title"
+msgstr "Une ligne sous le titre"
+
+msgid "A picture of your own on the cover, shown whole"
+msgstr "Une image à vous sur la couverture, montrée en entier"
+
+msgid "The finished model drawn on the cover again"
+msgstr "De nouveau le modèle fini sur la couverture"
+
+msgid "A line of your words on the cover, over its count of pieces"
+msgstr "Une ligne de vos mots sur la couverture, au-dessus du nombre de pièces"
+
+msgid "The model, drawn"
+msgstr "Le modèle, dessiné"
+
+msgid "The colour of every step's number"
+msgstr "La couleur du numéro de chaque étape"
+
+msgid "Number colour"
+msgstr "Couleur des numéros"
+
+msgid "Parts box frame"
+msgstr "Cadre de la boîte de pièces"
+
+msgid "The colour of the parts box's frame, and of the boxes beside it"
+msgstr "La couleur du cadre de la boîte de pièces, et des boîtes à côté"
+
+msgid "Parts box fill"
+msgstr "Fond de la boîte de pièces"
+
+msgid "The colour inside the parts box"
+msgstr "La couleur à l’intérieur de la boîte de pièces"
+
+msgid "Parts box corners"
+msgstr "Coins de la boîte de pièces"
+
+msgid "How round the parts box's corners are: 0 for square"
+msgstr "L’arrondi des coins de la boîte de pièces : 0 pour des coins droits"
+
+msgid "New parts outline"
+msgstr "Contour des nouvelles pièces"
+
+msgid "The colour round the parts each step adds"
+msgstr "La couleur autour des pièces que chaque étape ajoute"
+
+msgid "Usual colours"
+msgstr "Couleurs habituelles"
+
+msgid "The booklet's own parts box, step numbers and outline again"
+msgstr "De nouveau la boîte de pièces, les numéros d’étape et le contour propres au livret"
+
+# Compare two sets or models (comparesets, APP_UX6 #7): File's row, the sheet's
+# pickers, tabs, counts and shops, and what it says on the status line.
+
+msgid "Compare two sets or models…"
+msgstr "Comparer deux sets ou modèles…"
+
+msgid "The parts a set, a saved model or this one shares with another, the parts in only one, and what to buy to build one from the other"
+msgstr "Les pièces qu'un set, un modèle enregistré ou celui-ci a en commun avec un autre, les pièces d'un seul des deux, et ce qu'il faut acheter pour construire l'un à partir de l'autre"
+
+msgid "Compare two sets or models"
+msgstr "Comparer deux sets ou modèles"
+
+msgid "Swap"
+msgstr "Échanger"
+
+msgid "A in B's place and B in A's: what to buy to build the other"
+msgstr "A à la place de B et B à celle de A : ce qu'il faut acheter pour construire l'autre"
+
+msgid "Stop comparing (Esc)"
+msgstr "Arrêter de comparer (Esc)"
+
+msgid "What you have: a set, a saved model or the model open now"
+msgstr "Ce que vous avez : un set, un modèle enregistré ou le modèle ouvert"
+
+msgid "What you want to build: a set, a saved model or the model open now"
+msgstr "Ce que vous voulez construire : un set, un modèle enregistré ou le modèle ouvert"
+
+msgid "Set number, as 7140"
+msgstr "Numéro de set, comme 7140"
+
+msgid "A set's number, as on its box: 7140 or 7140-1"
+msgstr "Le numéro d'un set, comme sur sa boîte : 7140 ou 7140-1"
+
+msgid "The parts in both, in only one, and what to buy to build B from A"
+msgstr "Les pièces des deux, celles d'un seul, et ce qu'il faut acheter pour construire B à partir de A"
+
+msgid "The model open now"
+msgstr "Le modèle ouvert"
+
+msgid "The model open now: %s"
+msgstr "Le modèle ouvert : %s"
+
+msgid "A set, by its number"
+msgstr "Un set, par son numéro"
+
+msgid "Saved: %s"
+msgstr "Enregistré : %s"
+
+msgid "Example: %s"
+msgstr "Exemple : %s"
+
+msgid "In both"
+msgstr "Dans les deux"
+
+msgid "Only in %s"
+msgstr "Seulement dans %s"
+
+msgid "Choose A and B: a set by its number, a saved model or the model open now."
+msgstr "Choisissez A et B : un set par son numéro, un modèle enregistré ou le modèle ouvert."
+
+msgid "Comparing…"
+msgstr "Comparaison…"
+
+msgid "A: %s"
+msgstr "A : %s"
+
+msgid "B: %s"
+msgstr "B : %s"
+
+msgid "1 spare not counted"
+msgstr "1 pièce de rechange non comptée"
+
+msgid "%d spares not counted"
+msgstr "%d pièces de rechange non comptées"
+
+msgid "1 sticker or made part not counted"
+msgstr "1 autocollant ou pièce faite maison non compté"
+
+msgid "%d stickers and made parts not counted"
+msgstr "%d autocollants et pièces faites maison non comptés"
+
+msgid "To build B from A, the parts to buy are listed here, for the shops."
+msgstr "Pour construire B à partir de A, les pièces à acheter sont listées ici, pour les boutiques."
+
+msgid "%s has every piece %s needs: nothing to buy."
+msgstr "%s a toutes les pièces dont %s a besoin : rien à acheter."
+
+msgid "To build %s from %s, buy these %s in %s:"
+msgstr "Pour construire %s à partir de %s, achetez ces %s en %s :"
+
+msgid "Nothing in both."
+msgstr "Rien dans les deux."
+
+msgid "Nothing only in %s."
+msgstr "Rien seulement dans %s."
+
+msgid "Compared %s with %s: %s in both; %d only in %s; %d only in %s"
+msgstr "%s comparé avec %s : %s dans les deux ; %d seulement dans %s ; %d seulement dans %s"
+
+msgid "No set %s is in the set inventories."
+msgstr "Aucun set %s dans les inventaires des sets."
+
+msgid "Set %s is under test in this run, so its parts are not compared."
+msgstr "Le set %s est testé dans cette exécution, ses pièces ne sont donc pas comparées."
+
+msgid "%s could not be read."
+msgstr "%s n'a pas pu être lu."
+
+msgid "%s has no parts anybody can own."
+msgstr "%s n'a aucune pièce que l'on puisse posséder seule."
+
+msgid "This app has no set inventories."
+msgstr "Cette application n'a pas les inventaires des sets."
+
+msgid "A BrickLink wanted list (.xml) of these, to upload under Wanted › Upload"
+msgstr "Une liste de souhaits BrickLink (.xml) de ces pièces, à téléverser sous Wanted › Upload"
+
+msgid "A Rebrickable parts list (.csv) of these, to import into a list of your own"
+msgstr "Une liste de pièces Rebrickable (.csv) de ces pièces, à importer dans une liste à vous"
+
+msgid "A list of LEGO® element numbers (.csv) of these, to upload at LEGO® Pick a Brick: the parts it has no number for are named"
+msgstr "Une liste de numéros d'élément LEGO® (.csv) de ces pièces, à téléverser sur LEGO® Pick a Brick : les pièces sans numéro sont nommées"
+
+# weighsure (APP_UX6 #4): the model's weight on the status bar, after its counts,
+# the model as it is in that frame (StatusBar._weight)
+msgid "What the model weighs, each part by its shape: within about 6% of real bricks on a scale. The baseplate is left out"
+msgstr "Ce que pèse le modèle, chaque pièce d'après sa forme : à environ 6 % près des vraies briques sur une balance. La plaque de base n'est pas comptée"
+
+# A model as a 3MF for a printer that prints in several colours (print3mf, APP_UX6 18): File,
+# Export, 3D model…'s format and what it says, the line it writes, and the save dialog's kind.
+
+msgid "3MF in its colours, to 3D print (.3mf)"
+msgstr "3MF dans ses couleurs, pour l'impression 3D (.3mf)"
+
+msgid "An object for each colour, in its colour, for a slicer to give each its own filament, in millimetres on the bed."
+msgstr "Un objet par couleur, dans sa couleur, pour qu'un slicer donne à chacun son propre filament, en millimètres sur le plateau."
+
+msgid "one colour, one object"
+msgstr "une couleur, un objet"
+
+msgid "%d colours, an object each"
+msgstr "%d couleurs, un objet chacune"
+
+msgid "3MF to 3D print"
+msgstr "3MF pour l'impression 3D"
+
+# mysets (APP_UX6 6): a set from a photo of its box, its booklet's cover or a minifigure; a set's missing parts,
+# Closest to whole, What do I need? for a set, and minifigures on What I own.
+
+msgid "Find the set from a photo of its box, its booklet's cover or a minifigure"
+msgstr "Trouver le set à partir d'une photo de sa boîte, de la couverture de ses instructions ou d'une minifigurine"
+
+msgid "Find a set from a photo"
+msgstr "Trouver un set à partir d'une photo"
+
+msgid "The photo you choose is sent to Brickognize (brickognize.com), a third party that identifies LEGO® sets, minifigures and parts. Under its terms it may keep the photo and use it to train its recognition, and it is for personal, non-commercial use: Pro’s licence for commercial use does not cover it.\n\nNothing is sent until you choose a photo."
+msgstr "La photo que vous choisissez est envoyée à Brickognize (brickognize.com), un tiers qui identifie les sets, minifigurines et pièces LEGO®. Selon ses conditions, il peut garder la photo et s'en servir pour entraîner sa reconnaissance, et il est réservé à un usage personnel et non commercial : la licence commerciale de Pro ne le couvre pas.\n\nRien n'est envoyé avant que vous choisissiez une photo."
+
+msgid "asking Brickognize what set or minifigure this is…"
+msgstr "Brickognize cherche quel set ou quelle minifigurine c'est…"
+
+msgid "from your photo, most likely first, as Brickognize sees it: choose the one it is"
+msgstr "d'après votre photo, le plus probable d'abord, tel que Brickognize le voit : choisissez le bon"
+
+msgid "Brickognize saw no set or minifigure it knows in that photo: try the box's front, or the figure alone on a plain background"
+msgstr "Brickognize n'a reconnu aucun set ni aucune minifigurine sur cette photo : essayez le devant de la boîte, ou la figurine seule sur un fond uni"
+
+msgid "From your photo:"
+msgstr "D'après votre photo :"
+
+msgid "Minifigure %s %s"
+msgstr "Minifigurine %s %s"
+
+msgid "Add this minifigure; its parts are not counted"
+msgstr "Ajouter cette minifigurine ; ses pièces ne sont pas comptées"
+
+msgid "Add this set: %s pieces"
+msgstr "Ajouter ce set : %s pièces"
+
+msgid "Add this set; no inventory of it is here, so it adds no parts"
+msgstr "Ajouter ce set ; son inventaire n'est pas ici, il n'ajoute donc aucune pièce"
+
+msgid "added %s %s"
+msgstr "%s %s ajouté"
+
+msgid "Missing parts…"
+msgstr "Pièces manquantes…"
+
+msgid "%d missing…"
+msgstr "%d manquantes…"
+
+msgid "Mark the parts this set is missing: only what is there is counted"
+msgstr "Indiquer les pièces qui manquent à ce set : seul ce qui est là est compté"
+
+msgid "Closest to whole"
+msgstr "Les plus près d'être complets"
+
+msgid "%d of %d pieces missing"
+msgstr "%d pièces manquantes sur %d"
+
+msgid "your loose parts make up %d of the %d marked"
+msgstr "vos pièces en vrac en remplacent %d sur les %d indiquées"
+
+msgid "What it needs"
+msgstr "Ce qu'il lui faut"
+
+msgid "What do I need? for this set: its missing parts, less what your loose parts make up"
+msgstr "De quoi ai-je besoin ? pour ce set : ses pièces manquantes, moins ce que vos pièces en vrac remplacent"
+
+msgid "Minifigures"
+msgstr "Minifigurines"
+
+msgid "their parts are not counted: no list of what is in each is here"
+msgstr "leurs pièces ne sont pas comptées : la liste de ce que contient chacune n'est pas ici"
+
+msgid "This minifigure on BrickLink"
+msgstr "Cette minifigurine sur BrickLink"
+
+msgid "‹ What I own"
+msgstr "‹ Ce que je possède"
+
+msgid "All missing"
+msgstr "Tout manque"
+
+msgid "Every part missing, to count back in what you find"
+msgstr "Toutes les pièces manquantes, pour recompter ce que vous retrouvez"
+
+msgid "None missing"
+msgstr "Rien ne manque"
+
+msgid "Nothing missing: the set is whole"
+msgstr "Rien ne manque : le set est complet"
+
+msgid "How many of each part are missing. What do I need? and What can I build? count only what is there, and loose parts you add count towards the set."
+msgstr "Combien de chaque pièce manquent. De quoi ai-je besoin ? et Que puis-je construire ? ne comptent que ce qui est là, et les pièces en vrac que vous ajoutez comptent pour le set."
+
+msgid "Find a part in the set: its number, name or colour"
+msgstr "Trouver une pièce du set : son numéro, son nom ou sa couleur"
+
+msgid "missing"
+msgstr "manquantes"
+
+msgid "in the set"
+msgstr "dans le set"
+
+msgid "That set is no longer in your collection."
+msgstr "Ce set n'est plus dans votre collection."
+
+msgid "that set is no longer in your collection"
+msgstr "ce set n'est plus dans votre collection"
+
+msgid "%s: %s of %s pieces missing"
+msgstr "%s : %s pièces manquantes sur %s"
+
+msgid "…and more lots: find them above"
+msgstr "…et d'autres lots : cherchez-les plus haut"
+
+msgid "How many of this part are missing"
+msgstr "Combien de cette pièce manquent"
+
+msgid "%s is whole: nothing marked missing"
+msgstr "%s est complet : rien d'indiqué comme manquant"
+
+msgid "%s: %s marked missing"
+msgstr "%s : %s indiquées comme manquantes"
+
+msgid "What to check: the open model, or a set you own with parts missing"
+msgstr "Ce qu'il faut vérifier : le modèle ouvert, ou un de vos sets auquel il manque des pièces"
+
+msgid "The open model"
+msgstr "Le modèle ouvert"
+
+msgid "The open model: %s"
+msgstr "Le modèle ouvert : %s"
+
+msgid "%s: %d missing"
+msgstr "%s : %d manquantes"
+
+msgid "%s: %s pieces, %s there"
+msgstr "%s : %s pièces, %s présentes"
+
+msgid "Missing: %s pieces in %d lots"
+msgstr "Manquent : %s pièces en %d lots"
+
+msgid "Missing: %s pieces in %d lots."
+msgstr "Manquent : %s pièces en %d lots."
+
+msgid "your loose parts make up %d of the %d marked."
+msgstr "vos pièces en vrac en remplacent %d sur les %d indiquées."
+
+msgid "%s: whole, with your loose parts making up all %d pieces marked missing."
+msgstr "%s : complet, vos pièces en vrac remplaçant les %d pièces indiquées comme manquantes."
+
+msgid "no such choice"
+msgstr "ce choix n'existe pas"
+
+# pullkept: a pull no step shows now, said on open
+
+msgid "the pull on %s matches no step now, kept in the file"
+msgstr "l’extraction de %s ne correspond plus à aucune étape, conservée dans le fichier"
+
+msgid "step %d of the model"
+msgstr "l’étape %d du modèle"
+
+msgid "step %d of %s"
+msgstr "l’étape %d de %s"
+
+msgid "and %d more like it"
+msgstr "et %d autres de même"
+
+# Make a part's clip plate, bar and wedge plate (makepart2, APP_UX6 #15): the families'
+# buttons, their ways, their rows and what the dialog says of each part.
+
+msgid "Clip"
+msgstr "Clip"
+
+msgid "A plate or tile with a clip on its front edge that grips a bar, upright or level"
+msgstr "Une plaque ou une plaque lisse avec un clip sur son bord avant qui tient une barre, verticale ou horizontale"
+
+msgid "A bar 3.2 mm across, any number of studs long: a clip grips it, a hollow stud holds its end"
+msgstr "Une barre de 3,2 mm de diamètre, aussi longue que vous voulez en tenons : un clip la tient, un tenon creux tient son bout"
+
+msgid "A wedge plate (LDraw calls it a wing): one side straight, the other cut in to a tip one stud wide"
+msgstr "Une plaque biseautée (LDraw l'appelle une aile) : un côté rectiligne, l'autre coupé en biais jusqu'à une pointe d'un tenon de large"
+
+msgid "vertical: it holds a bar standing up"
+msgstr "vertical : il tient une barre debout"
+
+msgid "horizontal: it holds a bar along the edge"
+msgstr "horizontal : il tient une barre le long du bord"
+
+msgid "left: the straight side on the left"
+msgstr "gauche : le côté rectiligne à gauche"
+
+msgid "right: the straight side on the right"
+msgstr "droite : le côté rectiligne à droite"
+
+msgid "The clip"
+msgstr "Le clip"
+
+msgid "Left or right"
+msgstr "Gauche ou droite"
+
+msgid "Which way"
+msgstr "Dans quel sens"
+
+msgid "Width, studs (the clip's edge)"
+msgstr "Largeur, tenons (le bord du clip)"
+
+msgid "Width, studs (the wide end)"
+msgstr "Largeur, tenons (le bout large)"
+
+msgid "Depth, studs"
+msgstr "Profondeur, tenons"
+
+msgid "Length, studs (to the tip)"
+msgstr "Longueur, tenons (jusqu'à la pointe)"
+
+msgid "%s mm long and %s mm across: a clip grips it anywhere along it, and either end goes into a hollow stud."
+msgstr "%s mm de long et %s mm de diamètre : un clip la tient n'importe où, et chaque bout entre dans un tenon creux."
+
+msgid "Its clip grips a bar 3.2 mm across, standing up."
+msgstr "Son clip tient une barre de 3,2 mm, debout."
+
+msgid "Its clip grips a bar 3.2 mm across, lying along the edge."
+msgstr "Son clip tient une barre de 3,2 mm, couchée le long du bord."
+
+msgid "Its cut side runs at %s° to the straight side, to a tip one stud wide."
+msgstr "Son côté biseauté fait %s° avec le côté rectiligne, jusqu'à une pointe d'un tenon de large."
+# The words a person means find the part (words6, APP_UX6 14): the keys sheet's rows for the
+# cut shapes, said whole; and a part tile's size, the studs on top and then those on its sides.
+
+msgid "Cut away by a box"
+msgstr "Couper par une boîte"
+
+msgid "Cut away by a sphere"
+msgstr "Couper par une sphère"
+
+msgid "Cut away by a cylinder"
+msgstr "Couper par un cylindre"
+
+msgid "Cut away by a plane along X"
+msgstr "Couper par un plan selon X"
+
+msgid "Cut away by a plane along Y"
+msgstr "Couper par un plan selon Y"
+
+msgid "Cut away by a plane along Z"
+msgstr "Couper par un plan selon Z"
+
+msgid "%d x %d, %s, %s"
+msgstr "%d x %d, %s, %s"
+
+msgid "a stud on one side"
+msgstr "un tenon sur un côté"
+
+msgid "studs on one side"
+msgstr "tenons sur un côté"
+
+msgid "studs on two sides"
+msgstr "tenons sur deux côtés"
+
+msgid "studs on three sides"
+msgstr "tenons sur trois côtés"
+
+msgid "studs on four sides"
+msgstr "tenons sur quatre côtés"
+# A palette of the person's own, kept for every model (palettes, APP_UX6 21): the bin's
+# Palettes beside Favourites, an open palette's line, its menus and what they say.
+
+msgid "Palettes"
+msgstr "Palettes"
+
+msgid "Palette"
+msgstr "Palette"
+
+msgid "Sub-assembly"
+msgstr "Sous-ensemble"
+
+msgid "Your own palettes: parts in their colours and sub-assemblies, named and kept for every model"
+msgstr "Vos propres palettes : des pièces dans leurs couleurs et des sous-ensembles, nommées et gardées pour chaque modèle"
+
+msgid "Narrow your palettes…"
+msgstr "Affiner vos palettes…"
+
+msgid "Every palette"
+msgstr "Toutes les palettes"
+
+msgid "The palette's name"
+msgstr "Le nom de la palette"
+
+msgid "The palette's name: type over it to rename it"
+msgstr "Le nom de la palette : tapez par-dessus pour la renommer"
+
+msgid "New palette"
+msgstr "Nouvelle palette"
+
+msgid "A palette of your own, named: fill it with the part in hand or the parts selected in the model, each in its colour or as one sub-assembly"
+msgstr "Une palette à vous, nommée : remplissez-la avec la pièce en main ou les pièces sélectionnées dans le modèle, chacune dans sa couleur ou en un seul sous-ensemble"
+
+msgid "Keep the part in hand, or the parts selected in the model, in this palette"
+msgstr "Garder la pièce en main, ou les pièces sélectionnées dans le modèle, dans cette palette"
+
+msgid "The part in hand, in its colour"
+msgstr "La pièce en main, dans sa couleur"
+
+msgid "The selected parts, each in its colour"
+msgstr "Les pièces sélectionnées, chacune dans sa couleur"
+
+msgid "The selection, as one sub-assembly…"
+msgstr "La sélection, en un seul sous-ensemble…"
+
+msgid "Take the one chosen out, rename a sub-assembly, or delete the palette"
+msgstr "Retirer celle choisie, renommer un sous-ensemble ou supprimer la palette"
+
+msgid "Take the one chosen out"
+msgstr "Retirer celle choisie"
+
+msgid "Rename the sub-assembly chosen…"
+msgstr "Renommer le sous-ensemble choisi…"
+
+msgid "Delete this palette…"
+msgstr "Supprimer cette palette…"
+
+msgid "%d palette"
+msgstr "%d palette"
+
+msgid "%d palettes"
+msgstr "%d palettes"
+
+msgid "%d sub-assembly"
+msgstr "%d sous-ensemble"
+
+msgid "%d sub-assemblies"
+msgstr "%d sous-ensembles"
+
+msgid "“%s”: %s"
+msgstr "« %s » : %s"
+
+msgid "Choose it to open it"
+msgstr "Choisissez-la pour l'ouvrir"
+
+msgid "%s, a sub-assembly of %s"
+msgstr "%s, un sous-ensemble de %s"
+
+msgid "“%s”: a sub-assembly of %s"
+msgstr "« %s » : un sous-ensemble de %s"
+
+msgid "Choose it to hold it whole: a click puts it down"
+msgstr "Choisissez-le pour le tenir entier : un clic le pose"
+
+msgid "“%s” could not be had: its parts did not load"
+msgstr "« %s » n'a pas pu être pris : ses pièces ne se sont pas chargées"
+
+msgid "Choose a part in the bin first"
+msgstr "Choisissez d'abord une pièce dans le bac"
+
+msgid "Select parts in the model first"
+msgstr "Sélectionnez d'abord des pièces dans le modèle"
+
+msgid "choose a part in the bin first"
+msgstr "choisissez d'abord une pièce dans le bac"
+
+msgid "select parts in the model first"
+msgstr "sélectionnez d'abord des pièces dans le modèle"
+
+msgid "kept %s in “%s”"
+msgstr "%s gardée dans « %s »"
+
+msgid "%s is in “%s” already"
+msgstr "%s est déjà dans « %s »"
+
+msgid "kept %s in “%s”, each in its colour"
+msgstr "%s gardées dans « %s », chacune dans sa couleur"
+
+msgid "every part selected is in “%s” already"
+msgstr "chaque pièce sélectionnée est déjà dans « %s »"
+
+msgid "Keep as a sub-assembly"
+msgstr "Garder en sous-ensemble"
+
+msgid "kept the sub-assembly “%s”, %s, in “%s”"
+msgstr "sous-ensemble « %s », %s, gardé dans « %s »"
+
+msgid "Choose a part or a sub-assembly in the palette first"
+msgstr "Choisissez d'abord une pièce ou un sous-ensemble dans la palette"
+
+msgid "Choose a sub-assembly in the palette first"
+msgstr "Choisissez d'abord un sous-ensemble dans la palette"
+
+msgid "took it out of “%s”"
+msgstr "retirée de « %s »"
+
+msgid "Take the sub-assembly out?"
+msgstr "Retirer le sous-ensemble ?"
+
+msgid "“%s” goes from “%s”. Models built with it keep their parts."
+msgstr "« %s » quitte « %s ». Les modèles construits avec gardent leurs pièces."
+
+msgid "Rename the sub-assembly"
+msgstr "Renommer le sous-ensemble"
+
+msgid "Delete this palette?"
+msgstr "Supprimer cette palette ?"
+
+msgid "“%s” and the %s in it go. Models built with them keep their parts."
+msgstr "« %s » et les %s qu'elle contient partent. Les modèles construits avec gardent leurs pièces."
+
+msgid "deleted the palette “%s”"
+msgstr "palette « %s » supprimée"
+
+msgid "Its name in the palette"
+msgstr "Son nom dans la palette"
+
+msgid "The sub-assembly's name"
+msgstr "Le nom du sous-ensemble"
+
+msgid "palette renamed “%s”"
+msgstr "palette renommée « %s »"
+
+msgid "No palettes yet: New palette makes one, and Add fills it from the model"
+msgstr "Pas encore de palettes : Nouvelle palette en crée une, et Ajouter la remplit depuis le modèle"
+
+msgid "%s, for any model: choose one to open it"
+msgstr "%s, pour tout modèle : choisissez-en une pour l'ouvrir"
+
+msgid "Empty: select parts in the model, or choose a part in the bin, then Add"
+msgstr "Vide : sélectionnez des pièces dans le modèle, ou choisissez une pièce dans le bac, puis Ajouter"
+
+msgid "%s: a part is taken in hand in its colour, a sub-assembly held whole"
+msgstr "%s : une pièce se prend en main dans sa couleur, un sous-ensemble se tient entier"
+
+msgid "Right-click a part to keep it in Favourites too"
+msgstr "Un clic droit sur une pièce la garde aussi dans les Favorites"

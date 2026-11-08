@@ -1,33 +1,29 @@
-// Does the download page offer each system its own build, under the site's rules?
+// Does the download page say the desktop app is coming soon, to every system,
+// under the site's rules?
 //
-//   node tools/web/download_check.mjs                     web/ with its own releases.json
-//   node tools/web/download_check.mjs --manifest=FILE     ...serving FILE as releases.json
-//                                                         (tools/release.py manifest --local --out=FILE)
+//   node tools/web/download_check.mjs                     web/ as it is
 //   node tools/web/download_check.mjs --url=https://brickworks.diy/download
 //   VERCEL_BYPASS=… node tools/web/download_check.mjs --url=<a preview>/download
 //   --shots=DIR                                           a screenshot per system
 //   --port=N                                              serve web/ on N (default: any free)
 //
-// Each computer is offered its own build as the page's one primary button
-// (a Mac the disk image, Windows the installer, Linux the AppImage; a
-// release from before them its zips), with the manifest's url, version and
-// size; the first launch's steps and the checksums folded away until asked
-// for, then right for that build (the steps for that kind of file, the
-// Gatekeeper and SmartScreen ones only while it is unsigned), and every
-// file for the system there with its size and checksum; at most 150 words
-// before anything is opened. A phone is told the desktop app is
-// for a computer and offered the web app first, a desktop file only once it
-// chooses a system. From every view each other system is one click away,
-// and with everything opened nothing runs past the edge at 1280 or 390 px.
-// What is new is three or four lines, this release's own, and the page's
-// every link answers (the owner found the page broken and "way too
-// verbose", 2026-10-20).
+// The owner, 2026-11-07: "make the downloadable access 'Coming soon' or
+// something of that sort, since we can't properly support it yet." Linux,
+// macOS, Windows and an Android phone each open /download and see the same
+// page: its heading says the desktop app is coming soon, its one primary
+// button is Open Brickworks, into the app (/app); no installer, no file
+// name, no button for a system, nothing asked of /releases.json or GitHub,
+// and no more than 150 words. Nothing past the edge at the system's width
+// or at 390 px, no error in the console, and every link on the page
+// answers. Until 2026-11-07 this checked that each system was offered its
+// own build from /releases.json (git log -- tools/web/download_check.mjs);
+// tools/web/coming_soon_check.mjs holds every other page, in every
+// language, to offering none.
 //
 // Locally the page is served with a content security policy at least as
 // strict as the one tools/deploy.sh sends: scripts and connections to the
 // page's own origin only, no inline script. A page that works here works
-// there; one that reached for GitHub's API, or put its logic in an inline
-// script, fails here the way it would fail live.
+// there.
 //
 // And the gallery, /gallery (web/gallery.html), under the same policy: its
 // script draws the listed models from /api/share?op=list, a page at a time.
@@ -48,12 +44,6 @@
 // as the real one does, so the check also types in the search box, picks a
 // kind, finds nothing and clears it, and opens an address asking for a kind
 // there is not: the address says each question, and the page the answer.
-//
-// And no download is gated (the desktop app is free, docs/PLANS.md,
-// 2026-11-02), locally and on a deployment: a Linux visitor's click on the
-// button goes straight to the manifest's public address, signed out, and
-// the page asks /api/plans nothing first (until 2026-11-02 it asked
-// ?op=download whether a file needed Pro, and refused a Free account).
 //
 // Each system is a real browser told it is that system the way a browser
 // says so: the user agent, navigator.platform and the client hints, through
@@ -93,16 +83,6 @@ const SYSTEMS = [
   { label: "phone", width: 390, ua: `Mozilla/5.0 (Linux; Android 14; Pixel 8) ${CHROME} Mobile Safari/537.36`,
     platform: "Linux armv8l", hints: { platform: "Android", mobile: true }, want: "" },
 ];
-const NAMES = { linux: "Linux", macos: "macOS", windows: "Windows" };
-// Each system's file to offer, the first of these a release has: the disk image
-// and the installer, and before them the zips (docs/DISTRIBUTION.md).
-const ENDS = { linux: ["-linux-x86_64.AppImage"],
-  macos: ["-macos-universal.dmg", "-macos-universal.zip"],
-  windows: ["-windows-x86_64-setup.exe", "-windows-x86_64.zip"] };
-// As the page says a size.
-const megabytes = (bytes) => (bytes >= 1e9 ? (bytes / 1e9).toFixed(1) + " GB"
-  : (bytes / 1e6).toFixed(bytes >= 1e8 ? 0 : 1) + " MB");
-
 let server = null;
 let target = args.url;
 // A protected preview lets this check in with the bypass; production ignores
@@ -112,7 +92,6 @@ let target = args.url;
 // real site.
 const bypass = process.env.VERCEL_BYPASS
   ? { "x-vercel-protection-bypass": process.env.VERCEL_BYPASS, "x-vercel-skip-toolbar": "1" } : {};
-let manifest = null;
 // The gallery's made-up list, for a check with no deployment behind it.
 const HOSTILE = `<img src=x onerror="document.title='owned'">Hostile & "named"`;
 const LISTED = Array.from({ length: 26 }, (_, n) => ({
@@ -133,7 +112,6 @@ let laterAsked = 0;
 let laterOut = 0;
 if (!target) {
   const root = resolve("web");
-  const replacement = args.manifest ? resolve(args.manifest) : null;
   const picture = await readFile(join(root, "share.png"));
   server = createServer(async (request, response) => {
     const url = new URL(request.url, "http://x");
@@ -178,7 +156,7 @@ if (!target) {
     }
     // The host's clean addresses: /changelog is changelog.html.
     const clean = path === "/" ? "index.html" : extname(path) ? path.slice(1) : `${path.slice(1)}.html`;
-    const file = path === "/releases.json" && replacement ? replacement : join(root, clean);
+    const file = join(root, clean);
     try {
       const body = await readFile(file);
       response.writeHead(200, { "Content-Type": TYPES[extname(file)] || "application/octet-stream",
@@ -193,61 +171,35 @@ if (!target) {
   await new Promise((done) => server.listen(Number(args.port || 0), "127.0.0.1", done));
   target = `http://127.0.0.1:${server.address().port}/download.html`;
   galleryTarget = `http://127.0.0.1:${server.address().port}/gallery`;
-  manifest = JSON.parse(await readFile(replacement || join(root, "releases.json"), "utf8"));
-} else {
-  // The manifest the live page reads, so its offers are checked against it —
-  // asked past the CDN's cache. Read seconds after a release's deploy, the
-  // cache still handed this check 0.1.0 while the page had 0.2.0, and every
-  // offer failed for being right.
-  const response = await fetch(new URL(`releases.json?fresh=${Date.now()}`, target),
-    { cache: "no-store", headers: bypass });
-  if (!response.ok) {
-    console.log(`  FAIL  releases.json beside the page answered ${response.status}`);
-    process.exit(1);
-  }
-  manifest = await response.json();
 }
 
 const browser = await launch({ signedOut: true });  // a page of the site, not the app
 const problems = [];
 if (args.shots) await mkdir(args.shots, { recursive: true });
-const release = manifest ? (manifest.releases || []).find((r) => r.version === manifest.latest) : null;
-const primary = (os) => (release ? ENDS[os].map((end) => release.files.find((f) => f.os === os
-  && f.name.endsWith(end))).find(Boolean) : null);
 const links = new Set();
+// What offers an installer: a file a system installs from, by its name's end,
+// or the releases repository's releases (tools/web/coming_soon_check.mjs).
+const INSTALLER = /\.(?:dmg|deb|msi|exe|appimage|pkg|rpm)(?:$|[?#])|-(?:linux|macos|windows)-[\w.-]*\.(?:zip|tar\.xz)(?:$|[?#])/i;
+const RELEASES = /github\.com\/Xaxis\/brickworks(?:-releases)?\/releases(?:$|[/?#])|githubusercontent\.com|\/releases\.json(?:$|[?#])/i;
 
-// What a person sees of the offer, read off the page as drawn.
+// What a person sees, read off the page as drawn.
 const look = (page) => page.evaluate(() => {
   const shown = (e) => !!e && !e.hidden && e.getClientRects().length > 0;
-  const button = document.getElementById("offer-button");
-  const web = document.getElementById("web-app");
-  const pitch = [...document.querySelectorAll("[data-pitch]")].find(shown);
-  const steps = document.getElementById("steps");
-  const block = [...document.querySelectorAll("[data-steps]")].find((e) => !e.hidden);
-  const lists = [...document.querySelectorAll("#notes ul")].filter((u) => !u.hidden);
+  const main = document.querySelector("main");
+  const ctas = [...main.querySelectorAll("a.cta, button.cta")].filter(shown);
   return {
-    device: document.documentElement.dataset.device, os: document.documentElement.dataset.os,
-    offer: shown(button), ghost: !!button && button.classList.contains("ghost"),
-    button: button ? button.textContent : "", href: button ? button.getAttribute("href") : "",
-    web: shown(web), webHref: web ? web.getAttribute("href") : "", webPrimary: !!web && !web.classList.contains("ghost"),
-    pitch: pitch ? pitch.dataset.pitch : "", pitchText: pitch ? pitch.textContent : "",
-    meta: (document.getElementById("offer-meta") || {}).textContent || "",
-    others: [...document.querySelectorAll("#others a")].filter(shown).map((a) => a.dataset.os),
-    more: shown(document.getElementById("more")),
-    stepsOpen: !!steps && steps.open, verifyOpen: !!document.getElementById("verify")?.open,
-    stepsLine: (document.getElementById("steps-line") || {}).textContent || "",
-    stepsFor: block ? block.dataset.steps : "",
-    unsigned: block ? [...block.querySelectorAll("[data-unsigned]")].some(shown) : false,
-    kinds: block ? [...block.querySelectorAll("[data-kind]")].filter(shown).map((e) => e.dataset.kind) : [],
-    verify: (document.getElementById("sums") || {}).textContent || "",
-    notes: lists.map((u) => ({ version: u.dataset.highlights || "", items: u.children.length })),
-    notesLink: (document.getElementById("notes-link") || {}).getAttribute?.("href") || "",
-    broken: shown(document.getElementById("broken")), noneYet: shown(document.getElementById("none-yet")),
-    words: document.querySelector("main").innerText.split(/\s+/).filter(Boolean).length,
+    heading: main.querySelector("h1")?.textContent.replace(/\s+/g, " ").trim() || "",
+    primary: ctas.filter((e) => !e.classList.contains("ghost"))
+      .map((e) => ({ text: e.textContent.replace(/[→\s]+/g, " ").trim(), href: e.getAttribute("href") })),
+    buttons: ctas.map((e) => e.textContent.replace(/\s+/g, " ").trim()),
+    every: [...document.querySelectorAll("a[href], button")].map((e) => ({ href: e.href || "",
+      text: e.textContent.replace(/\s+/g, " ").trim() })),
+    text: main.innerText,
+    words: main.innerText.split(/\s+/).filter(Boolean).length,
   };
 });
-// Everything in main inside the window, folded parts opened: no box cut off
-// at the edge, no page that scrolls sideways.
+// Everything in main inside the window: no box cut off at the edge, no page
+// that scrolls sideways.
 const fits = (page) => page.evaluate(() => {
   const width = document.documentElement.clientWidth;
   const out = [...document.querySelectorAll("main *")].filter((e) => {
@@ -269,112 +221,45 @@ for (const system of SYSTEMS) {
     userAgentMetadata: { brands, fullVersion: "130.0.0.0", platformVersion: "", architecture: "x86",
       model: "", ...system.hints } });
   const said = [];
+  const asked = [];
   page.on("console", (m) => { if (m.type() === "error") said.push(m.text()); });
   page.on("pageerror", (e) => said.push(String(e)));
+  page.on("request", (r) => { if (RELEASES.test(r.url()) || /github\.com/.test(r.url())) asked.push(r.url()); });
   const fail = (text) => problems.push(`${system.label}: ${text}`);
-  // A press on what is not there is a failure said, not the check's end.
-  const press = (selector) => page.click(selector, { timeout: 5000 }).then(() => true,
-    () => { fail(`there is no ${selector} to press`); return false; });
   const response = await page.goto(target, { waitUntil: "load", timeout: 45000 });
   if (response && !response.ok()) {
     fail(`the page answered ${response.status()}`);
     await context.close();
     continue;
   }
-  await page.waitForFunction(() => !document.getElementById("notes").hidden
-    || !document.getElementById("broken").hidden || !document.getElementById("none-yet").hidden,
-  null, { timeout: 15000 }).catch(() => {});
-
-  let seen = await look(page);
-  const words = seen.words;
-  if (seen.broken) fail("the manifest did not load");
-  if (manifest && !release) {
-    if (!seen.noneYet) fail("no release in the manifest, and the page does not say so");
-  } else if (release && system.want) {
-    // A computer: its own build, one button, the rest folded away.
-    const file = primary(system.want);
-    if (seen.device !== system.want || seen.os !== system.want) fail(`took it for ${seen.device}, offers ${seen.os}`);
-    if (!seen.offer || seen.ghost) fail("its download is not the page's one primary button");
-    if (seen.web) fail("the web app is offered as well, on a computer with a build");
-    if (seen.button !== `Download for ${NAMES[system.want]}`) fail(`the button says "${seen.button}"`);
-    if (!file || seen.href !== file.url) fail(`the button fetches ${seen.href}, not the manifest's ${file && file.url}`);
-    if (!seen.meta.includes(release.version) || !seen.meta.includes(megabytes(file.size))) {
-      fail(`the small type under it says "${seen.meta}"`);
-    }
-    if (seen.stepsOpen || seen.verifyOpen) fail("the first launch's steps or the checksums are open before anyone asks");
-    const unsigned = system.want === "macos" ? !file.notarized : system.want === "windows" ? file.signed !== true : false;
-    const warns = system.want === "macos" ? /allow it once/ : system.want === "windows" ? /allow it once/ : null;
-    if (warns && warns.test(seen.stepsLine) !== unsigned) fail(`the first-launch line "${seen.stepsLine}" does not match whether it is signed`);
-    if (system.want === "linux" && !/AppImage/.test(seen.stepsLine)) fail(`the first-launch line says "${seen.stepsLine}"`);
-    if (seen.words > 150) fail(`${seen.words} words in the page before anything is opened (150 at most)`);
-    if (JSON.stringify(seen.others) !== JSON.stringify(Object.keys(NAMES).filter((o) => o !== system.want))) {
-      fail(`Other systems offers ${seen.others.join(", ")}`);
-    }
-    await press("#steps summary");
-    await press("#verify summary");
-    seen = await look(page);
-    if (seen.stepsFor !== system.want) fail(`its steps are ${seen.stepsFor}'s`);
-    if (seen.unsigned !== unsigned) fail(`the ${unsigned ? "unsigned build's" : "signed build's"} steps are ${seen.unsigned ? "shown" : "missing"}`);
-    if (seen.kinds.some((kind) => kind !== file.kind)) fail(`the steps shown are for ${seen.kinds.join(", ")}, not the ${file.kind}`);
-    for (const f of release.files.filter((f) => f.os === system.want)) {
-      if (!seen.verify.includes(f.sha256) || !seen.verify.includes(f.name)) fail(`Verify does not check ${f.name}`);
-      if (!seen.verify.includes(megabytes(f.size))) fail(`Verify does not say ${f.name}'s size`);
-    }
-  } else if (release) {
-    // A phone: the web app first; a desktop file only once a system is chosen.
-    if (seen.device !== "mobile") fail(`took a phone for ${seen.device}`);
-    if (seen.offer) fail(`a phone was offered "${seen.button}"`);
-    if (!seen.web || !seen.webPrimary || seen.webHref !== "/app") fail("the web app is not the phone's primary button");
-    if (!/for a computer/.test(seen.pitchText)) fail(`a phone is not told the desktop app is for a computer: "${seen.pitchText}"`);
-    if (seen.more) fail("a phone is shown first-launch steps before choosing a system");
-    if (seen.words > 150) fail(`${seen.words} words in the page before anything is opened (150 at most)`);
-    if (seen.others.length !== 3) fail(`Other systems offers ${seen.others.join(", ")}`);
+  await page.waitForLoadState("networkidle", { timeout: 5000 }).catch(() => {});
+  const seen = await look(page);
+  if (seen.heading !== "The desktop app is coming soon") fail(`the heading says "${seen.heading}"`);
+  if (seen.primary.length !== 1 || seen.primary[0].text !== "Open Brickworks" || seen.primary[0].href !== "/app") {
+    fail(`the primary buttons are ${JSON.stringify(seen.primary)}, not one Open Brickworks to /app`);
   }
-
-  if (release) {
-    // What is new: three or four lines, this release's, and its changelog.
-    const notes = seen.notes;
-    const written = notes.find((n) => n.version);
-    if (notes.length !== 1 || notes[0].items < 1 || notes[0].items > 4) fail(`What is new shows ${JSON.stringify(notes)}`);
-    if (written && written.version !== release.version) fail(`What is new shows ${written.version}'s lines under ${release.version}`);
-    if (seen.notesLink !== `/changelog#v${release.version}`) fail(`the changelog link goes to ${seen.notesLink}`);
-
-    // Each other system one click away, with its own steps and checksums.
-    for (const os of Object.keys(NAMES).filter((o) => o !== system.want)) {
-      if (!(await press(`#others a[data-os="${os}"]`))) continue;
-      await page.evaluate(() => { for (const d of document.querySelectorAll("main details")) d.open = true; });
-      const now = await look(page);
-      const file = primary(os);
-      if (!now.offer || now.href !== file.url || now.button !== `Download for ${NAMES[os]}`) {
-        fail(`one click on ${NAMES[os]} offers "${now.button}" -> ${now.href}`);
-      }
-      if (!system.want && (!now.ghost || !now.web)) fail(`having chosen ${NAMES[os]}, the web app is no longer first`);
-      if (now.stepsFor !== os || !now.verify.includes(file.sha256)) fail(`one click on ${NAMES[os]} leaves ${now.stepsFor}'s steps`);
-      if (!(await page.evaluate(() => location.search)).includes(`os=${os}`)) fail(`the address does not say ?os=${os}`);
-      for (const href of await hrefs(page)) links.add(href);
-      // Opened, at a phone's width: nothing cut off.
-      for (const width of [system.width, 390]) {
-        await page.setViewportSize({ width, height: 900 });
-        const fit = await fits(page);
-        if (fit.out.length || fit.scrollW > fit.width + 1) {
-          fail(`${NAMES[os]}'s steps opened at ${width} px: ${fit.out.join(", ") || "the page"} past the edge (${fit.scrollW} in ${fit.width})`);
-        }
-      }
-      await page.setViewportSize({ width: system.width, height: 900 });
-    }
+  for (const one of seen.every) {
+    if (INSTALLER.test(one.href) || RELEASES.test(one.href)) fail(`"${one.text}" links ${one.href}`);
+    if (/\bdownload\b/i.test(one.text) && /\/download\/?$|github/.test(one.href)) fail(`"${one.text}" offers a download (${one.href})`);
   }
+  const file = /[\w-]+\.(?:dmg|deb|msi|exe|AppImage|zip|tar\.xz)\b/i.exec(seen.text);
+  if (file) fail(`names a file, ${file[0]}`);
+  const forSystem = seen.buttons.find((b) => /\b(?:linux|macos|mac|windows)\b/i.test(b));
+  if (forSystem) fail(`a button for a system, "${forSystem}"`);
+  if (asked.length) fail(`asked ${asked.slice(0, 2).join(", ")}`);
+  if (seen.words > 150) fail(`${seen.words} words on the page (150 at most)`);
   for (const href of await hrefs(page)) links.add(href);
   if (said.length) fail(`the console said: ${said.slice(0, 3).join(" | ")}`);
-  const fit = await fits(page);
-  if (fit.scrollW > fit.width + 1) fail(`scrolls sideways, ${fit.scrollW}px in ${fit.width}px`);
-  if (fit.out.length) fail(`${fit.out.join(", ")} past the edge at ${fit.width} px`);
-
-  console.log(`  ${system.label.padEnd(8)} took it for ${seen.device || "?"}: `
-    + (seen.offer ? `"${seen.button}" -> ${seen.href.split("/").pop()}` : seen.web ? "the web app first" : "no offer")
-    + `, ${words} words before anything is opened` + (seen.offer ? `  (${seen.meta})` : ""));
+  for (const width of [system.width, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    const fit = await fits(page);
+    if (fit.scrollW > fit.width + 1) fail(`scrolls sideways at ${width} px, ${fit.scrollW}px in ${fit.width}px`);
+    if (fit.out.length) fail(`${fit.out.join(", ")} past the edge at ${fit.width} px`);
+  }
+  await page.setViewportSize({ width: system.width, height: 900 });
+  console.log(`  ${system.label.padEnd(8)} "${seen.heading}" · `
+    + `${seen.primary.map((p) => `"${p.text}" ${p.href}`).join(", ") || "no primary button"} · ${seen.words} words`);
   if (args.shots) {
-    await page.goto(target, { waitUntil: "load" });
-    await page.waitForFunction(() => !document.getElementById("notes").hidden, null, { timeout: 15000 }).catch(() => {});
     const path = join(args.shots, `download-${system.label}.png`);
     await page.screenshot({ path, fullPage: true });
     console.log(`           ${path}`);
@@ -382,54 +267,17 @@ for (const system of SYSTEMS) {
   await context.close();
 }
 
-// -- no download is gated ---------------------------------------------------------
-if (release) {
-  const context = await browser.newContext({ viewport: { width: 1280, height: 900 },
-    extraHTTPHeaders: args.url ? bypass : {} });
-  const page = await context.newPage();
-  const fail = (text) => problems.push(`free download: ${text}`);
-  const asked = [];
-  page.on("request", (r) => { if (new URL(r.url()).pathname.startsWith("/api/plans")) asked.push(r.url()); });
-  // The file itself is never fetched: its address is all that is checked.
-  await page.route("https://github.com/**", (route) => route.abort());
-  await page.goto(`${target}?os=linux`, { waitUntil: "load", timeout: 45000 });
-  const drawn = await page.waitForFunction(() => !document.getElementById("notes")?.hidden, null, { timeout: 15000 })
-    .then(() => true, () => false);
-  if (!drawn) {
-    fail("the page did not draw its offer");
-  } else {
-    const href = await page.getAttribute("#offer-button", "href");
-    if (href !== primary("linux").url) fail(`the button's link is ${href}, not the manifest's`);
-    const went = page.waitForRequest((r) => r.url() === primary("linux").url, { timeout: 8000 }).catch(() => null);
-    await page.click("#offer-button");
-    if (!(await went)) fail("a click did not go to the file's public address");
-    if (await page.$("#gate-said, dialog[open]")) fail("a click was answered with a refusal or a sign-in");
-    if (asked.length) fail(`the page asked ${asked.join(", ")} before the download`);
-    console.log(`  free     linux: a click goes to ${primary("linux").url.split("/").pop()}${asked.length ? ", after asking /api/plans" : ", nothing asked first"}`);
-  }
-  await context.close();
-}
-
 // -- the page's links ------------------------------------------------------------
-// Every address the page links to, on every system's view, answers: the site's
-// own pages here (the app is the host's, so only on a deployment), GitHub's
-// release pages and files there, asked for their headers only.
+// Every address the page links to answers: the site's own pages here (the app
+// is the host's, so only on a deployment).
 for (const href of [...links].sort()) {
   const url = new URL(href);
   const local = !args.url && url.origin === new URL(target).origin;
   if (local && url.pathname === "/app") continue;
-  if (url.hash && url.pathname === "/changelog") {
-    // The changelog's anchors are tools/site.py's: one per release in CHANGELOG.md.
-    const text = local ? await readFile(resolve("CHANGELOG.md"), "utf8") : "";
-    const there = local ? text.includes(`## [${url.hash.slice(2)}]`)
-      : (await (await fetch(url, { headers: bypass })).text()).includes(`id="${url.hash.slice(1)}"`);
-    if (!there) problems.push(`links: ${href} names no release on the changelog`);
-  }
   let status = 0;
   for (let attempt = 0; attempt < 2 && !(status >= 200 && status < 400); attempt++) {
     try {
-      const answer = await fetch(url, { method: url.hostname.endsWith("github.com") ? "HEAD" : "GET",
-        redirect: "follow", headers: url.origin === new URL(target).origin ? bypass : {} });
+      const answer = await fetch(url, { redirect: "follow", headers: url.origin === new URL(target).origin ? bypass : {} });
       status = answer.status;
     } catch (trouble) {
       status = String(trouble.cause?.code || trouble.message);
@@ -596,4 +444,4 @@ if (problems.length) {
   for (const p of problems) console.log(`  FAIL  ${p}`);
   process.exit(1);
 }
-console.log("  the download page offers each system its own build");
+console.log("  the download page says the desktop app is coming soon, to every system");

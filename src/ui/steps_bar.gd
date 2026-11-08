@@ -86,7 +86,10 @@ const AUTHORS := 3
 ## The model has steps its author gave it, so the fourth order is offered.
 var _authored: bool = false
 ## The row of step edits, shown in the author's steps.
-var _edits: HBoxContainer
+var _edits: HFlowContainer
+## The slider's least width, beside the step's words: narrower, the words
+## go under it rather than the slider to a sliver.
+const SLIDER_LEAST := 120.0
 ## How the booklet prints the step showing (BookletLooks): its own row.
 var _looks: HFlowContainer
 var _look_said: Label
@@ -178,13 +181,24 @@ func _build() -> void:
 
 	# The timeline itself, the width of the window: what is being dragged
 	# is the whole build, and a short slider makes a brick a pixel.
-	var line := HBoxContainer.new()
-	line.add_theme_constant_override("separation", 10)
+	#
+	# Every row of the bar wraps where the model's room is narrower than
+	# the row, as its booklet row does: in one line each, the bar's least
+	# width was the whole row of buttons, and with the bin, Stress and the
+	# assistant beside the model it held the layout wider than a laptop's
+	# window, Done and Instructions past its right edge (APP_UX6
+	# timelinefit). Here the step's words go under the slider.
+	var line := HFlowContainer.new()
+	line.add_theme_constant_override("h_separation", 10)
+	line.add_theme_constant_override("v_separation", 2)
 	column.add_child(line)
 	_slider = HSlider.new()
 	_slider.accessibility_name = "Timeline: the step shown"
 	_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	# Its line's height, its track drawn down the middle of it: a flow lays
+	# a child that does not fill at the top of its line.
+	_slider.size_flags_vertical = Control.SIZE_FILL
+	_slider.custom_minimum_size = Vector2(SLIDER_LEAST, 0)
 	_slider.min_value = 0
 	_slider.step = 1
 	_slider.focus_mode = Control.FOCUS_NONE
@@ -221,8 +235,9 @@ func _build() -> void:
 	_pieces.mouse_filter = Control.MOUSE_FILTER_PASS
 	column.add_child(_pieces)
 
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", 6)
+	row.add_theme_constant_override("v_separation", 4)
 	column.add_child(row)
 
 	var start := _button("Start", "An empty baseplate (Home)")
@@ -262,26 +277,31 @@ func _build() -> void:
 	row.add_child(_order_button)
 	_named["steps_order"] = _order_button
 
-	var gap := Control.new()
-	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(gap)
+	# Instructions and Done together at the right-hand end of whichever line
+	# they fall on: the rest of that line is theirs to stand at the end of.
+	var ends := HBoxContainer.new()
+	ends.add_theme_constant_override("separation", 6)
+	ends.alignment = BoxContainer.ALIGNMENT_END
+	ends.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(ends)
 
 	var save := _button("Instructions",
 		"These steps as a printable booklet, pictures and parts included")
 	save.pressed.connect(func() -> void: export_wanted.emit())
-	row.add_child(save)
+	ends.add_child(save)
 	_named["steps_booklet"] = save
 
 	var close := _button("Done", "Back to the whole model")
 	close.pressed.connect(stop)
-	row.add_child(close)
+	ends.add_child(close)
 	_named["steps_done"] = close
 	_named["steps_slider"] = _slider
 
 	# Changing the author's steps, on the step showing: as LeoCAD and Studio
 	# keep theirs beside the step list. Shown in the author's steps only.
-	_edits = HBoxContainer.new()
-	_edits.add_theme_constant_override("separation", 6)
+	_edits = HFlowContainer.new()
+	_edits.add_theme_constant_override("h_separation", 6)
+	_edits.add_theme_constant_override("v_separation", 4)
 	_edits.visible = false
 	column.add_child(_edits)
 	for edit: Array in [
@@ -1138,9 +1158,9 @@ func _row_can_drop(row: StepRow, at: Vector2, data: Variant) -> bool:
 	if row.over != index:
 		row.over = index
 		row.queue_redraw()
-		var tag: Label = data.get("tag")
+		var tag: Variant = data.get("tag")
 		if is_instance_valid(tag):
-			tag.text = "Move %s to %s" % [_parts_words((data["steps_to"] as Array).size()),
+			(tag as Label).text = "Move %s to %s" % [_parts_words((data["steps_to"] as Array).size()),
 				_step_words(_steps[index])]
 	return true
 

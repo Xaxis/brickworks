@@ -1,0 +1,13 @@
+0 Blrev single
+0 Name: blrev_single.ldr
+0 Author: A. Builder
+0 !BRICKWORKS PAGE_SETUP A4 BOX_FRAME #112233 SPINE_COLOUR #445566
+0 !BRICKWORKS PAGE_TEXT TITLE Mine
+0 !BRICKWORKS PAGE_TEXT BACK_COVER Words of a later build
+0 // their comment, with # and "quotes" and a back\slash
+1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+1 14 0 -48 0 1 0 0 0 1 0 0 0 1 3003.dat
+0 STEP
+1 1 40 -48 0 1 0 0 0 1 0 0 0 1 3003.dat
+0 STEP

@@ -820,15 +820,24 @@ static func left_out_words(result: Dictionary, again: bool = true) -> String:
 	return note
 
 
-## What the open just made left off the baseplate (ModelStore.unshown), and
-## the light lines it could not read, as [method left_out_words] says a
-## file's; "" for nothing. Kept in the file either way: the app's own writes
-## them back (ModelStore._absent), someone else's carries them (SourceFile).
+## What the open just made left off the baseplate (ModelStore.unshown), the
+## light lines it could not read, as [method left_out_words] says a file's,
+## and what of its booklet no step shows ([method looks_words]); "" for
+## nothing. Kept in the file either way: the app's own writes them back
+## (ModelStore._absent), someone else's carries them (SourceFile).
 static func unshown_words(store: ModelStore) -> String:
 	if not store.not_opened.is_empty():
 		return ""
 	return left_out_words({"missing": store.unshown.size(), "unshown": store.unshown,
-		"kept": true, "lights_unread": store.lights_unread_words}, false)
+		"kept": true, "lights_unread": store.lights_unread_words}, false) + looks_words(store)
+
+
+## What of the booklet as its designer set it the model just opened shows on
+## no step now, kept in the file (BookletLooks.unmatched_words): said where
+## an open says what it left out. A pull whose parts had gone into a
+## sub-model was dropped from sight without a word (pullkept).
+static func looks_words(store: ModelStore) -> String:
+	return BookletLooks.unmatched_words(store.world, store.library, store.scenery)
 
 
 ## Who made a model and on what terms, in a line: "LDraw model by Roland
@@ -894,7 +903,8 @@ func _import() -> void:
 				_say(str(result["error"]))
 				return
 			opened.emit(int(result["placed"]))
-			var note: String = "opened %d parts" % int(result["placed"]) + left_out_words(result)
+			var note: String = "opened %d parts" % int(result["placed"]) + left_out_words(result) \
+				+ looks_words(store)
 			if not _picker.notes.is_empty():
 				note += " — " + _picker.notes
 			_say(note))

@@ -1,7 +1,7 @@
 ## The model as a 3D file, for Blender and other renderers, AR, or a 3D
 ## printer: glTF (one .glb, or a .gltf with its data inside), OBJ with its
-## MTL, or STL. File, Export, 3D model… and export_model over MCP both come
-## here, through Exports.model_3d.
+## MTL, STL, or a 3MF in its colours (Mesh3mf). File, Export, 3D model… and
+## export_model over MCP both come here, through Exports.model_3d.
 ##
 ## Written here rather than by GLTFDocument.append_from_scene, which the plan
 ## named. Measured on 4.7.2: it writes a mesh for every MeshInstance3D (a
@@ -28,7 +28,7 @@
 class_name MeshExport
 extends RefCounted
 
-const FORMATS: PackedStringArray = ["glb", "gltf", "obj", "stl"]
+const FORMATS: PackedStringArray = ["glb", "gltf", "obj", "stl", "3mf"]
 
 ## How the dialog and the tool name each.
 const NAMES: Dictionary = {
@@ -36,18 +36,20 @@ const NAMES: Dictionary = {
 	"gltf": "glTF (.gltf)",
 	"obj": "OBJ with its colours (.obj, .mtl)",
 	"stl": "STL to 3D print (.stl)",
+	"3mf": "3MF in its colours, to 3D print (.3mf)",
 }
 
 const MIME: Dictionary = {
 	"glb": "model/gltf-binary", "gltf": "model/gltf+json", "obj": "model/obj",
-	"mtl": "model/mtl", "stl": "model/stl", "zip": "application/zip",
+	"mtl": "model/mtl", "stl": "model/stl", "zip": "application/zip", "3mf": "model/3mf",
 }
 
-## How many triangles OBJ and STL will write: every one of every part, as
-## neither format can share a shape. Measured on Orthanc, 2,575,061
-## triangles: see "3d model export" in .claude/skills/verify/features/model-io.md.
-## A probe lifts them to measure past them.
-static var most_triangles: Dictionary = {"obj": 1000000, "stl": 3000000}
+## How many triangles OBJ, STL and 3MF will write: every one of every part,
+## as none of them shares a shape (a 3MF could, but a printer wants a colour
+## as one mesh). Measured on Orthanc, 2,575,061 triangles: see "3d model
+## export" in .claude/skills/verify/features/model-io.md. A 3MF is text,
+## as an OBJ is. A probe lifts them to measure past them.
+static var most_triangles: Dictionary = {"obj": 1000000, "stl": 3000000, "3mf": 1000000}
 
 const METRES: float = Lbm.LDU_MM / 1000.0
 const MILLIMETRES: float = Lbm.LDU_MM
@@ -66,6 +68,8 @@ class Made extends RefCounted:
 	var triangles: int = 0
 	## glTF: the shapes written, each once.
 	var shapes: int = 0
+	## 3MF: the objects written, one a colour.
+	var colours: int = 0
 	## Part id -> how many, left out for having no shape in this build.
 	var left_out: Dictionary = {}
 	var cancelled: bool = false
@@ -183,6 +187,11 @@ func write(format: String, title: String, named: String = "") -> Made:
 			if made.cancelled or bytes.is_empty():
 				return made
 			made.files.append([base + ".stl", bytes, MIME["stl"]])
+		"3mf":
+			var bytes: PackedByteArray = await Mesh3mf.new(self).write(list, title, made)
+			if made.cancelled or bytes.is_empty():
+				return made
+			made.files.append([base + ".3mf", bytes, MIME["3mf"]])
 	if made.parts == 0 and made.refused.is_empty():
 		made.refused = "no part of this model has its shape here yet"
 		made.files.clear()
