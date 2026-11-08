@@ -1,0 +1,5 @@
+r1|Make a short video of this model being built up, step by step.
+r2|Which parts are like the red headlight brick and could do the same job in the pod? Name the three you would pick first, and change nothing.
+r3|What can you see of what I am doing in my window right now: which build step is showing, and is there a part in my hand?
+r4|In the instructions, show the pod's wing plate pulled out the way it goes on, give each step a colour guide, and tell me how the booklet's first page now looks.
+r5|Render a picture of the model at the best quality the app has, and say how it was lit.
