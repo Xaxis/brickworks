@@ -475,18 +475,43 @@ func taken_whole(of: Dictionary = {}) -> Array:
 
 
 ## Whether item [param i] is down a stud of one of [param others], or one of
-## theirs down its, past the stud's foot further than BrickNet joins them: no
-## seat moves it, as it is in that part (the check says so, [method
-## collisions]). Nearer, it is on the stud, low, and the seat puts it up. A
-## pair the sets build so is not sunk ([method _fit_sunk]), here as there.
+## theirs down its, past the stud's foot further than BrickNet joins them, and
+## further than the sets build those two ([method _fit_sunk]): in that part,
+## as the check says ([method collisions]).
 func _sunk_near(i: int, others: PackedInt32Array) -> bool:
 	for j: int in others:
 		if items[j] == null:
 			continue
-		var depth: float = maxf(Exact.sunk(items[j], items[i]), Exact.sunk(items[i], items[j]))
+		var depth: float = _down(i, j)
 		if depth > Exact.SUNK_PAST and not _fit_sunk(i, j, depth):
 			return true
 	return false
+
+
+## Whether item [param i] is down a stud of one of [param others], or one of
+## theirs down its, past the stud's foot further than BrickNet joins them
+## (Exact.SUNK_PAST): no seat moves it. Further down than the sets build those
+## two, it is in that part ([method _sunk_near]), and the check says so; as
+## far as they build it ([method _fit_sunk]), a tube or a socket LDraw draws
+## deeper than BrickNet frames it takes the stud whole, and it is seated
+## already: a 4740 dish 4 LDU down a 6141's stud, as 31038-1 has it. Seated
+## onto that frame, it went 4 LDU further, where no set has it. Nearer, it is
+## on the stud, low, and the seat puts it up: a session writes a part to the 2
+## LDU lattice, an LDU off each way at most. Only the stud says it is seated,
+## never another part it meets as the sets put the two: a saddle written an
+## LDU low met the sword in its clip and its rider's leg as 6034-1 and 6074-1
+## have them, and was left there (realjoints4, 2026-11-08).
+func _past_a_foot(i: int, others: PackedInt32Array) -> bool:
+	for j: int in others:
+		if items[j] != null and _down(i, j) > Exact.SUNK_PAST:
+			return true
+	return false
+
+
+## How far item [param i] is down a stud of item [param j] past its foot, or
+## [param j] down one of [param i]'s, the further (Exact.sunk), LDU.
+func _down(i: int, j: int) -> float:
+	return maxf(Exact.sunk(items[j], items[i]), Exact.sunk(items[i], items[j]))
 
 
 ## Whether items [param i] and [param j], one [param depth] LDU down a stud
@@ -1740,7 +1765,7 @@ func _seat_pieces(wanted: Dictionary, near: Dictionary, moved: Dictionary) -> vo
 			for j: int in (near.get(int(i), PackedInt32Array()) as PackedInt32Array):
 				if not mine.has(j):
 					outside.append(j)
-			down = down or _sunk_near(int(i), outside)
+			down = down or _past_a_foot(int(i), outside)
 		if down:
 			continue
 		var best: Dictionary = {}
@@ -1812,21 +1837,6 @@ func _meets_exactly(i: int, points: Dictionary) -> bool:
 					return true
 				slid = true
 	return slid and not _short_of_its_stud(i, points)
-
-
-## Whether item [param i] meets one of [param others] as the LEGO Group's
-## own sets meet those two parts, where they put the one against the other
-## ([method known_fit]): seated already, though no connector of it meets one
-## exactly. A 4740 dish takes a 6141 round plate's stud whole, 4 LDU past where
-## BrickNet frames its tube, as 31038-1, 41015-1 and 42022-1 build it; seated
-## onto that frame it went 4 LDU further down, where no set has it, and the
-## check refused 31038-1's table (realjoints3, 2026-11-07).
-func _as_sets_build(i: int, others: PackedInt32Array) -> bool:
-	for j: int in others:
-		var found: Variant = between(i, j)
-		if found is Dictionary and not (found as Dictionary).is_empty() and known_fit(i, j):
-			return true
-	return false
 
 
 ## Whether a stud or a hole of item [param i] stands an LDU or two short of a
@@ -1961,8 +1971,7 @@ func _seat(movable: Array) -> Dictionary:
 	var order: Array = wanted.keys()
 	order.sort_custom(func(a: int, b: int) -> bool: return _volume(a) < _volume(b))
 	for i: int in order:
-		if not near.has(i) or _meets_exactly(i, points) or _sunk_near(i, near[i]) \
-				or _as_sets_build(i, near[i]):
+		if not near.has(i) or _meets_exactly(i, points) or _past_a_foot(i, near[i]):
 			continue
 		var others: PackedInt32Array = near[i]
 		var found: Dictionary = Exact.seat_move(items, i, SEAT_REACH, 0.05, others)
