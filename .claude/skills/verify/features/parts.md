@@ -3,7 +3,7 @@
 Finding one of 28,000 parts by the words a builder would type, and getting its
 geometry in front of them.
 
-<!-- covers: lib:part search, ui:parts bin, ui:palette, lib:mesh fetch, ui:recent and favourite parts, ui:techniques in the bin, ui:find a part from a photo, cli:dialog look probe, cli:picker folder probe, ui:the app's dialogs and menus, ui:where a chooser opens, cli:contrast probe, ui:buttons seen and read -->
+<!-- covers: lib:part search, ui:parts bin, ui:palette, lib:mesh fetch, ui:recent and favourite parts, ui:techniques in the bin, ui:new parts in the bin, cli:binrow probe, ui:find a part from a photo, cli:dialog look probe, cli:picker folder probe, ui:the app's dialogs and menus, ui:where a chooser opens, cli:contrast probe, ui:buttons seen and read -->
 
 ## Sub-features
 
@@ -540,6 +540,29 @@ geometry in front of them.
   row stood 2,600 px down (bintech). On a phone the Parts sheet goes with
   the pick, as it does for a part (`PhoneShell._held_whole`); a tablet's
   stays beside the model.
+- `new parts in the bin` (`PartsBin.newest`, the bin's *New*; APP_UX7
+  binrow): Studio's bin opens on a New parts palette. *New*, after Palettes,
+  lists every part the catalogue has first made in its latest two years
+  (`NEW_YEARS`): the latest year any part was first made in, read from
+  `PartInfo.first_year` (catalogue.json's `years`, Rebrickable's set
+  inventories), not the calendar's, so a catalogue made in January still has
+  the year before's; 282 on 2026-11-08, 2025 and 2026. The newest year first,
+  within a year as All lists them, staples first (`_sort_for`); no fold, every
+  part in plain sight. Its tooltip and status line name the two years ("282
+  parts first made in 2025 or 2026, the newest first"); words typed narrow it,
+  as a shelf's do; building from a set it picks among the set's parts. A
+  catalogue with no years (a clone without the Rebrickable tables) has no New
+  chip. Every shelf, All, Recent, Favourites, Palettes, New, Techniques, Fits
+  and Like this, is in the chips' window unscrolled at any width
+  (`_fit_shelves`): the shelves wrap, the window shows every row they take
+  (two at least in a column 700 tall, one in a shorter one), and where leaving
+  their counts off saves the shelves a row, they say their names alone. The
+  room is worked out with two digits kept for each count, so a part chosen or
+  kept never moves the parts under the pointer. The categories after them
+  scroll. At 1280 x 720 with Stress open the window was one row and Like this
+  sat under it (appux7's walk). `binrow_probe` (1400 x 900; the window made
+  1280 x 720 and 1024 x 768 in turn; through the sign-in screen, .env),
+  `binrow_phone_probe` (390 x 844), `binrow_tablet_probe` (1024 x 768).
 - `find a part from a photo` (`src/net/brickognize.gd`): the camera in the
   bin's search field. The first press says the photo goes to Brickognize, a
   third party that may keep it and train on it (their terms, read 2026-10-24),

@@ -12734,3 +12734,12 @@ msgstr "%s estrellas"
 
 msgid "%s large stars"
 msgstr "%s estrellas grandes"
+
+# The parts bin's New shelf, the parts first made in the catalogue's latest two
+# years (APP_UX7 #5, binrow).
+
+msgid "The parts first made in %d or %d, the newest first"
+msgstr "Las piezas fabricadas por primera vez en %d o %d, las más recientes primero"
+
+msgid "%s first made in %d or %d, the newest first"
+msgstr "%s fabricadas por primera vez en %d o %d, las más recientes primero"
