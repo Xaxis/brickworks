@@ -256,6 +256,8 @@ func _steps() -> void:
 	_check("signed in to the account on another device, the same marks: %s" % (problem if not problem.is_empty()
 		else JSON.stringify(there).left(140)), problem.is_empty() and fetched.is_empty() and not elsewhere.offline
 		and not there.is_empty() and _same(there, CollectionStore.marks))
+	var answered: int = _missing_in(_set_of(await _account_now(other), "7140-1"))
+	_check("...as the account answers that device: 7140-1 %d missing" % answered, answered == 3)
 	elsewhere.queue_free()
 	await other.sign_out()
 	other.queue_free()
