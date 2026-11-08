@@ -5025,7 +5025,7 @@
       "id": "ui:mosaic",
       "kind": "ui",
       "entry": "src/ui/mosaic_dialog.gd",
-      "reach": "godot --headless --path . --script src/dev/mosaic_probe.gd",
+      "reach": "godot --headless --path . --script src/dev/mosaic_probe.gd; in the app's window: tools/probe.sh mosaic_window_probe (1280x720; PROBE_SIZE=1400x900 too)",
       "area": "view",
       "tests": []
     },
