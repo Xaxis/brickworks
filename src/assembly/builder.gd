@@ -1863,10 +1863,16 @@ func extend_last(steps: Array) -> void:
 		_history.append({"undo": "group", "steps": steps})
 		return
 	var last: Dictionary = _history.back()
+	# Said as what the person did, before what followed from it is folded
+	# in: a hand Delete that emptied a step with a look (a group of one
+	# "add") took its look in a "steplooks" after it, and its undo said
+	# "changed 2 parts" where it had said "removed 1 part" (pkreview).
 	if last.get("undo", "") != "group":
 		var words: String = _words_for(last)
 		last = {"undo": "group", "steps": [last], "words": words}
 		_history[_history.size() - 1] = last
+	elif not last.has("words"):
+		last["words"] = _words_for(last)
 	(last["steps"] as Array).append_array(steps)
 
 

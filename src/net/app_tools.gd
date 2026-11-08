@@ -191,7 +191,7 @@ a part and makes it step 1 of the booklet.
  - edit_steps: the build steps the booklet and the timeline follow. With \
 no op it lists them; "to" puts parts in any step by its number, "next"/"prev" \
 move them a step, "new" makes a step of them, "earlier"/"later"/"merge"/\
-"delete" act on a step by its number.
+"delete" act on a step by its number, "name" names one ("Build the cockpit").
  - booklet_layout reads the booklet's pages and how each step is printed, \
 changing nothing; edit_booklet sets one step's view (turn=, tilt=, \
 "usual"), zoom=, size=, page= ("new", "alone"), parts=, callout= and the \
@@ -383,13 +383,18 @@ func definitions() -> Array:
 				+ "step later or earlier; \"new\" makes a new step of bricks=; \"earlier\", "
 				+ "\"later\", \"merge\" (with the next) and \"delete\" act on step=, a number "
 				+ "from the list. A model with no steps of its own is given the worked-out "
-				+ "ones first, in the same undo step."),
+				+ "ones first, in the same undo step."
+				# stepnames: a step named, in a block of its own.
+				+ " \"name\" gives step= a name= (\"Build the cockpit\"), said beside its "
+				+ "number on the timeline, in Build it and in the booklet; name= \"\" takes it "
+				+ "off."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"op": {"type": "string", "enum": ["list", "to", "next", "prev", "new", "earlier",
-					"later", "merge", "delete"]},
+					"later", "merge", "delete", "name"]},
+				"name": {"type": "string", "description": "for name: what the step is called, up to 80 characters; \"\" takes it off"},
 				"bricks": {"type": "array", "items": {"type": "integer"},
 					"description": "part numbers from look_at_model, for to, next, prev and new"},
-				"step": {"type": "integer", "description": "a step's number, for to, earlier, later, merge and delete"},
+				"step": {"type": "integer", "description": "a step's number, for to, earlier, later, merge, delete and name"},
 				"from": {"type": "integer", "description": "list from this step; 1 when omitted"},
 			}},
 		},
@@ -1497,7 +1502,16 @@ func _edit_steps(input: Dictionary) -> String:
 				return "There is no step %d: the steps run 1 to %d." % [int(input["step"]),
 					steps[steps.size() - 1].number]
 			return shell.change_steps(op, [], at)
-	return "op is one of list, to, next, prev, new, earlier, later, merge, delete."
+		"name":
+			# stepnames: one call, one undo (Shell.change_look "name").
+			if not input.has("step") or not input.has("name"):
+				return "Give step= a step's number from edit_steps's list, and name= what it is called (\"\" takes it off)."
+			var named: Instructions.Step = _step_numbered(steps, int(input["step"]))
+			if named == null:
+				return "There is no step %d: the steps run 1 to %d." % [int(input["step"]),
+					steps[steps.size() - 1].number]
+			return _sentence(shell.change_look("name", named, {"name": str(input["name"])}))
+	return "op is one of list, to, next, prev, new, earlier, later, merge, delete, name."
 
 
 # -- the booklet, by hand --------------------------------------------------------
@@ -2115,6 +2129,9 @@ func _list_steps(steps: Array[Instructions.Step], from: int) -> String:
 			where = " (puts on the %s%s)" % [step.assembly,
 				" x%d" % step.copies.size() if step.copies.size() > 1 else ""]
 		var line: String = "  %d%s: %s" % [step.number, where, " ".join(numbers)]
+		if not step.name.is_empty():
+			# stepnames: its name, as the timeline says it.
+			line = "  %d%s \"%s\": %s" % [step.number, where, step.name, " ".join(numbers)]
 		characters += line.length()
 		if characters > 6000:
 			said.append("  ... edit_steps {\"from\": %d} for the rest." % step.number)

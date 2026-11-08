@@ -277,7 +277,9 @@ const SUBMENUS: Dictionary = {
 		"cut_grow", "cut_shrink", "-", "cut_flip", "cut_ghosts"],
 	# Next step (E) is in Build itself, over these.
 	"steps": ["step_prev", "step_next", "step_to", "step_new", "-", "step_earlier", "step_later",
-		"step_merge", "step_delete"],
+		"step_merge", "step_delete",
+		# stepnames: the step the timeline is on, given a name.
+		"-", "step_name"],
 	# The step's picture first: its view, folded (menurows), and its size on
 	# the page.
 	"booklet": [">booklet_view", "booklet_bigger", "booklet_smaller", "-", "booklet_new_page",
@@ -1256,6 +1258,13 @@ func _define() -> void:
 		if timeline != null:
 			timeline.ask_step_to(), selected,
 		"The selected parts into any step, its number typed")
+	# stepnames (APP_UX6 #9): the step the timeline is on named, as Studio
+	# names a step; said beside its number on the timeline, in Build it and
+	# in the booklet, and kept in the file.
+	_add("step_name", "Name the step…", 0, func() -> void:
+		if timeline != null:
+			timeline.ask_step_name(), on_a_step,
+		"What the step the timeline is on is called (\"Build the cockpit\"): said beside its number on the timeline, in Build it and in the booklet")
 	# How the booklet prints the step the timeline is on (BookletLooks), as
 	# Studio's Instruction Maker sets each step's view and page.
 	for look: Array in [
@@ -3094,6 +3103,16 @@ func change_look(op: String, at: Instructions.Step, fields: Dictionary = {}) -> 
 				notes.append({"image": file, "at": spot})
 				words = "a picture put on step %d's page" % number
 			change = {"notes": notes}
+		"name":
+			# stepnames: what the step is called, beside its number on the
+			# timeline, in Build it and in the booklet (BookletLooks "name");
+			# name= the words, "" to take it off.
+			var named: String = BookletLooks.name_of(fields.get("name", ""))
+			change = {"name": named if not named.is_empty() else null}
+			words = ("step %d named “%s”" % [number, named]) if not named.is_empty() \
+				else "step %d's name taken off" % number
+			if not named.is_empty():
+				Language.keep_name(named)
 		"sign":
 			# The turn sign taken off the step, or put back (BookletLooks
 			# "sign"); sign= says which, else it turns over.

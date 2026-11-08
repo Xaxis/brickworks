@@ -16,7 +16,8 @@
 ## for the sub-model as a whole, and "|booklet" for the booklet. A step's
 ## own: {"turn": [x, y, z] degrees, "how": "REL"|"ABS"|"ADD", or "turn":
 ## "end", "zoom": float, "size": float, "page": "new"|"alone", "parts":
-## false, "place": {item: [x, y, w, h]}, "notes": [note]}. A sub-model's:
+## false, "place": {item: [x, y, w, h]}, "notes": [note], "name": words}.
+## A sub-model's:
 ## {"callout": false}. The booklet's: {"per_page": 1, 2 or 4, "highlight":
 ## false, "sheet": its page set up (BookletSheet.said)}. "|data": {name:
 ## base64} holds the pictures a page shows, and the one behind every page.
@@ -79,6 +80,14 @@
 ## PORTRAIT MARGIN 12 ..." in the model, its page, and "... PAGE_TEXT TITLE
 ## words" a line each of the designer's words on it (BookletSheet).
 ##
+## A step's "name" is what its designer called it, as Studio names a step
+## ("Build the cockpit"): said beside its number on the timeline, in Build
+## it and on its booklet page (Instructions.Step.name). It is the step's,
+## and goes with its parts over a step edit, as its zoom does. In the file:
+## "... STEP_NAME Build the cockpit" in the step, the words to the line's
+## end. A build from before it keeps the line where it is, as it keeps any
+## line it does not know (stepnames).
+##
 ## A step's "section" is the booklet's chapter that starts on it: the name
 ## its banner prints ("island", "part 2"), in force on every step after it
 ## in the booklet's order until the next, "" for none. The worked-out plan
@@ -99,7 +108,7 @@ const META := "0 !BRICKWORKS "
 ## The words of the app's own step lines, after META.
 const WORDS: Array[String] = ["PAGE", "ZOOM", "SIZE", "PARTS", "CALLOUT", "PER_PAGE",
 	"HIGHLIGHT", "PLACE", "TEXT", "IMAGE", "PANEL", "ARROW", "TURN_SIGN", "NOTE", "GUIDE",
-	"PULL", "COLOURS", "ACTUAL_SIZE", "PREVIEW", "SECTION", "PAGE_SETUP", "PAGE_TEXT"]
+	"PULL", "COLOURS", "ACTUAL_SIZE", "PREVIEW", "SECTION", "PAGE_SETUP", "PAGE_TEXT", "STEP_NAME"]
 ## How far a step's parts are pulled out by default, in studs (Studio's
 ## buffer exchange), and the most.
 const PULL_STUDS := 2.0
@@ -136,6 +145,22 @@ const PITCH_MOST := 80.0
 
 static func key(definition: String, step: int) -> String:
 	return "%s|%d" % [definition, step]
+
+
+## The most characters a step's name keeps: a line of a page, not a page.
+const NAME_MOST := 80
+
+
+## [param value] as a step's name is kept: words on one line, spaces run
+## together, at most NAME_MOST characters; "" for none. A line break in it
+## would end the file's line, and the rest would be read as a line of its
+## own.
+static func name_of(value: Variant) -> String:
+	if not value is String:
+		return ""
+	var words: PackedStringArray = (value as String).replace("\t", " ").replace("\r", " ") \
+		.replace("\n", " ").split(" ", false)
+	return " ".join(words).left(NAME_MOST).strip_edges()
 
 
 ## The name a section's steps are kept under: "" for the model, else the
@@ -529,6 +554,8 @@ static func _usual(field: String, value: Variant) -> bool:
 			return not (value is Dictionary) or float((value as Dictionary).get("studs", 0.0)) <= 0.0
 		"page":
 			return str(value).is_empty() or str(value) == "auto"
+		"name":
+			return name_of(value).is_empty()
 		"per_page":
 			return int(value) <= 0
 	return false
@@ -1410,6 +1437,11 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 					_put_in(out, key(definition, step), "preview", false)
 			"SECTION":
 				_put_in(out, key(definition, step), "section", _rest_after(line, 3))
+			"STEP_NAME":
+				# The words as written, to the line's end (stepnames).
+				var named: String = name_of(_rest_after(line, 3))
+				if not named.is_empty():
+					_put_in(out, key(definition, step), "name", named)
 			"NOTE":
 				# The words or picture just before it, turned and faded.
 				var notes: Array = (out.get(key(definition, step), {}) as Dictionary).get("notes", [])
@@ -1718,6 +1750,8 @@ static func _typed_field(field: String, value: Variant) -> Variant:
 			return value if value is String and value in ["REL", "ABS", "ADD"] else null
 		"line", "section":
 			return (value as String).left(400) if value is String else null
+		"name":
+			return name_of(value) if not name_of(value).is_empty() else null
 		"zoom":
 			return _typed_number(value, 0.25, 4.0)
 		"size":
@@ -2115,6 +2149,8 @@ static func _step_lines(out: PackedStringArray, looks: Dictionary, definition: S
 	wrote[key(definition, step)] = true
 	if look.has("section"):
 		out.append((META + "SECTION " + str(look["section"])).strip_edges() + eol)
+	if not name_of(look.get("name")).is_empty():
+		out.append(META + "STEP_NAME " + name_of(look["name"]) + eol)
 	if look.has("page"):
 		out.append(META + "PAGE " + str(look["page"]).to_upper() + eol)
 	if look.has("zoom"):
@@ -2430,6 +2466,8 @@ static func layout_said(world: BrickWorld, pages: Array[Booklet.Page], from: int
 		var each := PackedStringArray()
 		for entry: Booklet.Entry in page.entries:
 			var how := PackedStringArray()
+			if not entry.name.is_empty():
+				how.append("named \"%s\"" % entry.name)
 			if not entry.look.is_empty():
 				var named: String = entry.look.get_slice("|", 0)
 				var step: int = entry.look.get_slice("|", 1).to_int()

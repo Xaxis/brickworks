@@ -12539,3 +12539,39 @@ msgstr "%s: Ein Teil kommt in seiner Farbe in die Hand, eine Baugruppe wird ganz
 
 msgid "Right-click a part to keep it in Favourites too"
 msgstr "Ein Rechtsklick auf ein Teil behält es auch in den Favoriten"
+
+# Name the step (stepnames, APP_UX6 #9): the timeline's Name… button, the
+# Steps menu's row, its dialog and what the bar says of it.
+
+msgid "Name…"
+msgstr "Benennen…"
+
+msgid "What this step is called (\"Build the cockpit\"): said beside its number here, in Build it and in the booklet (%s)"
+msgstr "Wie dieser Schritt heißt („Baue das Cockpit“): steht neben seiner Nummer hier, beim Bauen und in der Anleitung (%s)"
+
+msgid "Name the step"
+msgstr "Schritt benennen"
+
+msgid "Name the step…"
+msgstr "Schritt benennen…"
+
+msgid "What the step the timeline is on is called (\"Build the cockpit\"): said beside its number on the timeline, in Build it and in the booklet"
+msgstr "Wie der Schritt der Zeitleiste heißt („Baue das Cockpit“): steht neben seiner Nummer auf der Zeitleiste, beim Bauen und in der Anleitung"
+
+msgid "Step %d is called"
+msgstr "Schritt %d heißt"
+
+msgid "Step %d, %s %d of %d, is called"
+msgstr "Schritt %d, %s %d von %d, heißt"
+
+msgid "Build the cockpit"
+msgstr "Baue das Cockpit"
+
+msgid "The step's name"
+msgstr "Der Name des Schritts"
+
+msgid "step %d named “%s”"
+msgstr "Schritt %d „%s“ genannt"
+
+msgid "step %d's name taken off"
+msgstr "Name von Schritt %d entfernt"

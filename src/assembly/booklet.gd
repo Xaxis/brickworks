@@ -159,6 +159,9 @@ class Entry extends RefCounted:
 	## arrow in (BookletLooks "pull", Studio's buffer exchange): {"studs",
 	## "parts"}, or {} for none. BookletMaker moves them and draws the arrows.
 	var pull: Dictionary = {}
+	## What its designer called it ("Build the cockpit", Instructions.Step
+	## .name): printed beside its number, as Studio prints a step's name.
+	var name: String = ""
 
 	## Laid out: the room the page gives it (its panel), the picture's
 	## rect, the part of it the model is drawn in, and how big.
@@ -689,6 +692,8 @@ static func things_on(page: Page) -> Array:
 		var own: Array = []
 		own.append({"kind": "picture", "rect": ink_of(entry), "hand": entry.place.has("picture")})
 		var header: Rect2 = number_rect(entry)
+		if not entry.name.is_empty():
+			header = header.merge(name_rect(entry))
 		if entry.turned:
 			header = header.merge(sign_rect(entry))
 		# Its guides go with its number.
@@ -729,11 +734,86 @@ static func number_rect(entry: Entry) -> Rect2:
 		entry.number_size))
 
 
+## A step's name beside its number: its words' size, how far from the
+## number, the most it is across before it wraps, and its lines' height.
+const NAME_SIZE := 3.6
+const NAME_GAP := 2.0
+const NAME_WIDE := 64.0
+const NAME_LINE := 1.2
+
+
+## Where [param entry]'s name is printed: right of its number, its first
+## line's middle level with the number's when it is one line, its top at
+## the number's when it wraps; no wider than the room its panel gives it
+## right of the number, nor than NAME_WIDE. Zero when it has none.
+static func name_rect(entry: Entry) -> Rect2:
+	if entry.name.is_empty():
+		return Rect2(number_rect(entry).end - Vector2(0.0, entry.number_size), Vector2.ZERO)
+	var number: Rect2 = number_rect(entry)
+	var size: Vector2 = name_size(entry.name, _name_room(entry))
+	return Rect2(Vector2(number.end.x + NAME_GAP,
+		number.position.y + maxf(0.0, (entry.number_size - size.y) * 0.5)), size)
+
+
+## How wide [param entry]'s name may be before it wraps: the room its panel
+## gives it right of its number, at most NAME_WIDE.
+static func _name_room(entry: Entry) -> float:
+	if entry.panel.size.x <= 0.0:
+		return NAME_WIDE
+	return clampf(entry.panel.end.x - number_rect(entry).end.x - NAME_GAP, 12.0, NAME_WIDE)
+
+
+## How much room [param name] takes printed at NAME_SIZE, wrapped at
+## [param room] mm ([method name_lines]): [widest line, lines' height].
+static func name_size(name: String, room: float) -> Vector2:
+	var lines: PackedStringArray = name_lines(name, room)
+	var widest: float = 0.0
+	for line: String in lines:
+		widest = maxf(widest, Helvetica.text_width(line, NAME_SIZE, true))
+	return Vector2(minf(widest, room), lines.size() * NAME_SIZE * NAME_LINE)
+
+
+## [param name]'s lines at NAME_SIZE, wrapped between words at [param room]
+## mm, and a word wider than that alone broken where it passes it. The page
+## prints these lines as they are, each ended by a break of its own: a
+## browser's type is not the PDF's, and wrapping where its own measure said
+## would have put a third line over the turn sign under the number.
+static func name_lines(name: String, room: float) -> PackedStringArray:
+	var lines := PackedStringArray()
+	var line: String = ""
+	for word: String in name.split(" ", false):
+		var joined: String = word if line.is_empty() else line + " " + word
+		if Helvetica.text_width(joined, NAME_SIZE, true) <= room:
+			line = joined
+			continue
+		if not line.is_empty():
+			lines.append(line)
+		line = word
+		while line.length() > 1 and Helvetica.text_width(line, NAME_SIZE, true) > room:
+			var cut: int = line.length() - 1
+			while cut > 1 and Helvetica.text_width(line.left(cut), NAME_SIZE, true) > room:
+				cut -= 1
+			lines.append(line.left(cut))
+			line = line.substr(cut)
+	if not line.is_empty():
+		lines.append(line)
+	return lines
+
+
 ## The turn sign's square: under the step's number, as a LEGO booklet puts
 ## it, as wide as the number is high and a quarter more.
 static func sign_rect(entry: Entry) -> Rect2:
 	var size: float = entry.number_size * SIGN
-	return Rect2(entry.number_at + Vector2(0.0, entry.number_size + SIGN_GAP), Vector2(size, size))
+	return Rect2(Vector2(entry.number_at.x, under_number(entry) + SIGN_GAP), Vector2(size, size))
+
+
+## Where what goes under a step's number starts: under the number, or under
+## its name beside it where that wraps lower ([method name_rect]).
+static func under_number(entry: Entry) -> float:
+	var bottom: float = entry.number_at.y + entry.number_size
+	if not entry.name.is_empty():
+		bottom = maxf(bottom, name_rect(entry).end.y)
+	return bottom
 
 
 ## The turn sign's size against the step number's height, and the gap above it.
@@ -919,8 +999,15 @@ static func _number_size(entry: Entry, panel: Rect2) -> float:
 static func _header(entry: Entry, panel: Rect2) -> Vector2:
 	var parts: Vector2 = _parts_size(entry.lots, _parts_width(entry, panel))
 	var number: float = _number_size(entry, panel)
-	var width: float = maxf(parts.x, number * 0.62 * str(entry.number).length() + 1.0)
+	var numbered: float = number * 0.62 * str(entry.number).length() + 1.0
+	var width: float = maxf(parts.x, numbered)
 	var height: float = parts.y + (1.6 if not entry.lots.is_empty() else 0.0) + number
+	if not entry.name.is_empty():
+		# Its name beside the number (name_rect), wrapped to the panel.
+		var room: float = clampf(panel.size.x - 0.4 - numbered - NAME_GAP, 12.0, NAME_WIDE)
+		var named: Vector2 = name_size(entry.name, room)
+		width = maxf(width, numbered + NAME_GAP + named.x)
+		height += maxf(0.0, named.y - number)
 	if entry.turned:
 		# The turn sign under the number, as a LEGO booklet puts it.
 		width = maxf(width, number * SIGN)
@@ -948,7 +1035,7 @@ const GUIDE_LABEL := 3.0
 ## sign and the lines of its hidden colours.
 static func _extras_top(entry: Entry) -> Vector2:
 	var y: float = (sign_rect(entry).end.y if entry.turned
-		else entry.number_at.y + entry.number_size) + 1.2
+		else under_number(entry)) + 1.2
 	return Vector2(entry.number_at.x, y + MARK_LINE * entry.marks.size())
 
 
@@ -1502,11 +1589,12 @@ static func _page(page: Page, document: Document) -> String:
 static func _entry(entry: Entry, document: Document, out: PackedStringArray,
 		svg: PackedStringArray, in_banner: Array = []) -> void:
 	if not entry.image.is_empty():
-		_image(out, entry.image, entry.rect, "Step %d" % entry.number)
+		_image(out, entry.image, entry.rect, "Step %d" % entry.number
+			+ ((": " + _escape(entry.name)) if not entry.name.is_empty() else ""))
 	# A hidden colour starting here: under the number and its turn sign, one
 	# line a colour.
 	var line: float = (sign_rect(entry).end.y if entry.turned
-		else entry.number_at.y + entry.number_size) + 1.2
+		else under_number(entry)) + 1.2
 	for mark: Dictionary in entry.marks:
 		if mark in in_banner:
 			continue
@@ -1530,6 +1618,14 @@ static func _entry(entry: Entry, document: Document, out: PackedStringArray,
 			y += tallest + QUANTITY + 1.0
 	out.append(_text(entry.number_at, entry.number_size, str(entry.number), "n",
 		document.sheet.number_style()))
+	if not entry.name.is_empty():
+		# Beside the number, wrapped to its room (name_rect), in the
+		# booklet's ink.
+		var named: Rect2 = name_rect(entry)
+		var lines: PackedStringArray = name_lines(entry.name, _name_room(entry))
+		out.append(_text(named.position, NAME_SIZE, "<br>".join(Array(lines).map(
+			func(line: String) -> String: return _escape(line))), "q tx nm",
+			"width:calc(%s * var(--mm))" % _n(_name_room(entry) + 2.0)))
 	if entry.turned:
 		svg.append(_turn_sign(sign_rect(entry)))
 	for pointer: Array in entry.pointers:
