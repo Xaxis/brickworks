@@ -12861,3 +12861,20 @@ msgstr "%s Sterne"
 
 msgid "%s large stars"
 msgstr "%s große Sterne"
+
+# View › Edges and studs (APP_UX6 #19 edges): the parts' seams and their studs, each drawn or not
+
+msgid "Edges and studs"
+msgstr "Kanten und Noppen"
+
+msgid "Edges"
+msgstr "Kanten"
+
+msgid "Studs"
+msgstr "Noppen"
+
+msgid "A fine line where each part meets the next, so courses and bonds read in a wall"
+msgstr "Eine feine Linie, wo ein Teil an das nächste stößt, damit Reihen und Verbände in einer Wand zu sehen sind"
+
+msgid "Off, the parts are drawn without their studs, each in its place: the shapes alone, and a big model drawn faster"
+msgstr "Aus: die Teile ohne ihre Noppen gezeichnet, jedes an seinem Platz: nur die Formen, und ein großes Modell schneller gezeichnet"
