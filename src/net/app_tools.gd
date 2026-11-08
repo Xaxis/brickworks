@@ -3654,9 +3654,9 @@ static func _collection_lot(given: Variant, library: PartLibrary, adding: bool) 
 	if asked.is_empty():
 		return "no part"
 	var id: String = library.resolve(asked)
-	if not library.parts.has(id):
+	if not library.has_part(id):
 		id = library.by_shop(asked)
-	if id.is_empty() or not library.parts.has(id):
+	if id.is_empty() or not library.has_part(id):
 		return "no part numbered %s (search_parts finds it by its words)" % asked
 	if not Collection.ownable(id, library):
 		return "%s is not a part anyone owns on its own (a sticker, or a piece of a bigger part)" % id

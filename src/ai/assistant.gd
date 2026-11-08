@@ -5009,7 +5009,7 @@ func _attachment_points(args: Dictionary) -> String:
 		prefix = "#%d." % brick_id
 	else:
 		part_id = str(args.get("part", ""))
-		if not library.parts.has(part_id):
+		if not library.has_part(part_id):
 			return "No part '%s' exists." % part_id
 		var hypothetical := Placement.from_dict(args)
 		var mesh: Lbm.PartMesh = await _geometry_of(part_id)
@@ -13107,7 +13107,7 @@ func _attach_one(model: Model, placement: Placement, named: Dictionary,
 		return ("attaches to '%s', which is in section '%s', and there is no such section"
 			% [ref, target.section])
 	for part_id: String in [target.part, placement.part]:
-		if not library.parts.has(part_id):
+		if not library.has_part(part_id):
 			return "no part '%s' exists" % part_id
 	_on_its_line(target)
 	var target_mesh: Lbm.PartMesh = library.mesh_for(target.part)
@@ -22746,7 +22746,7 @@ func _geometry_of(part_id: String) -> Lbm.PartMesh:
 ## [param part_id] seated on the points given, best first: each tried as
 ## the check would try it, so what is listed fits and holds as it stands.
 func _fits_said(read: OpenPoints, points: Array, part_id: String, args: Dictionary) -> String:
-	if not library.parts.has(part_id):
+	if not library.has_part(part_id):
 		return "No part '%s' exists; search_parts finds one." % part_id
 	if await _geometry_of(part_id) == null:
 		return "The geometry for %s could not be fetched; ask again." % part_id

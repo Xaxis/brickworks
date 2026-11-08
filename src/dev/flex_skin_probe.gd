@@ -12,9 +12,15 @@
 ## - a piece is in the pointer's way where it is drawn, and not once hidden;
 ##   its copy is in the step the file places it in;
 ## - saved untouched, the file is the same, line for line;
-## - a piece taken away, or moved, is written whole (one line cannot say
-##   it), and opens again as edited: the piece gone, or where it was moved,
-##   carried as a part of the file's;
+## - a piece taken away, or moved, is the line placing its sub-model taken
+##   out or written again (and its end parts', which stayed), every other
+##   line kept (keeptext4: before, the file was written whole, the skin
+##   carried as a part), and opens again as edited: the piece gone, or where
+##   it was moved;
+## - a piece put in (pasted) is one line naming it and its skin carried in a
+##   section of its own at the end, every other line kept;
+## - the tube's piece taken away, its end parts left: opens again with the
+##   ends where they were and no tube;
 ## - opened again with no library to hand (as the web build is), the skin of
 ##   bundled primitives still builds.
 ##
@@ -118,6 +124,8 @@ func _run() -> void:
 	_drawn()
 	_taken_away()
 	_moved()
+	_pasted()
+	_skin_taken_off()
 	_without_library()
 	for path: String in OS.get_cmdline_user_args():
 		_repository(path)
@@ -148,6 +156,16 @@ func _one(part_id: String) -> BrickWorld.Brick:
 	return null
 
 
+## The copy each [param part_id] is in, sorted.
+func _paths_of(part_id: String) -> Array:
+	var out: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == part_id:
+			out.append(Assemblies.path_of(brick))
+	out.sort()
+	return out
+
+
 ## What the app holds: "part colour x y z" a part, sorted.
 func _model() -> PackedStringArray:
 	var out := PackedStringArray()
@@ -158,6 +176,27 @@ func _model() -> PackedStringArray:
 		out.append("%s %d %.1f %.1f %.1f" % [brick.part_id, brick.color_code,
 			snappedf(at.x, 0.1) + 0.0, snappedf(at.y, 0.1) + 0.0, snappedf(at.z, 0.1) + 0.0])
 	out.sort()
+	return out
+
+
+## The lines of [param before] not in [param after] in their order, but those
+## [param edited]: each as many times as it may go, and never looked for, so
+## that one written again further on (a title a new section takes) does not
+## carry the search past the lines after it.
+static func _lost(before: String, after: String, edited: Array) -> Array:
+	var said: PackedStringArray = after.split("\n")
+	var at: int = 0
+	var may: Array = edited.duplicate()
+	var out: Array = []
+	for line: String in before.split("\n"):
+		if may.has(line):
+			may.erase(line)
+			continue
+		var found: int = said.find(line, at)
+		if found >= 0:
+			at = found + 1
+		else:
+			out.append(line)
 	return out
 
 
@@ -241,12 +280,21 @@ func _taken_away() -> void:
 		return
 	_builder.remove_brick_id(band.id)
 	var model: PackedStringArray = _model()
+	var held: BrickWorld.Brick = _one("flexprobe - tube-flex")
+	var tube_step: int = held.step if held != null else -2
 	var saved: String = _store.to_text(_store.title, true)
-	_expect(saved.contains("0 Author: Somebody Else [someone]"),
-		"written whole, under its author's name")
+	# Its step emptied, the STEP line ending it stays: the app still
+	# numbers the tube's step, and a step's page settings go by its number.
+	var placing: String = "1 71 0 -96 200 1 0 0 0 1 0 0 0 1 flexprobe - band.ldr"
+	var differ: Array = _differ(FILE.replace(placing + "\n", ""), saved)
+	_expect(not saved.contains(placing) and differ.is_empty(),
+		"the line placing the band taken out, every other line kept: %s" % "; ".join(differ))
 	_open(saved)
 	_expect(_model() == model, "opened again, the band gone and the rest as it was")
-	_expect(_one("flexprobe - tube-flex") != null, "the tube still drawn")
+	var tube: BrickWorld.Brick = _one("flexprobe - tube-flex")
+	_expect(tube != null, "the tube still drawn")
+	_expect(tube != null and tube.step == tube_step,
+		"...on the step it was on: %d, was %d" % [tube.step if tube != null else -1, tube_step])
 
 
 func _moved() -> void:
@@ -259,12 +307,65 @@ func _moved() -> void:
 	_builder.move_bricks({tube.id: tube.transform.translated(Vector3(40, 0, 0))})
 	var model: PackedStringArray = _model()
 	var saved: String = _store.to_text(_store.title, true)
-	_expect(saved.contains("0 FILE flexprobe - tube-flex.dat")
-		and saved.contains("0 FILE flexprobe - donor.dat"),
-		"written whole, the skin carried as a part with the donor it is drawn from")
+	# The tube's end parts stayed where they were: in the tube moved, their
+	# lines say so.
+	var placing: String = "1 2 60 -48 0 1 0 0 0 1 0 0 0 1 flexprobe - tube.ldr"
+	var lost: Array = _lost(FILE, saved, [placing, "1 16 0 0 0 1 0 0 0 1 0 0 0 1 3062b.dat",
+		"1 16 0 -84 0 1 0 0 0 1 0 0 0 1 3062b.dat"])
+	var placed: Array = Array(saved.split("\n")).filter(func(line: String) -> bool:
+		return line.begins_with("1 ") and line.ends_with(" flexprobe - tube.ldr"))
+	_expect(lost.is_empty() and placed.size() == 1 and placed[0] != placing
+		and not saved.contains("tube-flex.dat"),
+		"the line placing the tube written again, every other line kept: %s, %s"
+			% [placed, "; ".join(lost)])
 	_open(saved)
 	_expect(_model() == model, "opened again, the tube where it was moved, its ends where they were")
 	_expect(_skins().size() == 2, "and both drawn: %d" % _skins().size())
+
+
+func _pasted() -> void:
+	print("flexskin: a piece put in")
+	_open(FILE)
+	var tube: BrickWorld.Brick = _one("flexprobe - tube-flex")
+	if tube == null:
+		_expect(false, "no tube to put in again")
+		return
+	_world.add_brick(tube.part_id, tube.color_code, tube.transform.translated(Vector3(0, 0, 120)))
+	var model: PackedStringArray = _model()
+	var saved: String = _store.to_text(_store.title, true)
+	var lost: Array = _lost(FILE, saved, [])
+	_expect(lost.is_empty() and saved.contains("flexprobe - tube-flex.dat\n")
+		and saved.contains("0 FILE flexprobe - tube-flex.dat"),
+		"a line naming it, its skin carried, every other line kept: %s" % "; ".join(lost))
+	_open(saved)
+	_expect(_model() == model, "opened again, the piece where it was put, the rest as it was")
+	_expect(_skins().size() == 3, "and all three drawn: %d" % _skins().size())
+
+
+func _skin_taken_off() -> void:
+	print("flexskin: a piece taken away, its ends left")
+	_open(FILE)
+	var tube: BrickWorld.Brick = _one("flexprobe - tube-flex")
+	if tube == null:
+		_expect(false, "no tube to take away")
+		return
+	_builder.remove_brick_id(tube.id)
+	var model: PackedStringArray = _model()
+	var held: Array = _paths_of("3062b")
+	var saved: String = _store.to_text(_store.title, true)
+	# Its ends are still its copy's, written in a section of their own titled
+	# as it was; its own section, placed by nothing, yields the title.
+	var lost: Array = _lost(FILE, saved, ["1 2 60 -48 0 1 0 0 0 1 0 0 0 1 flexprobe - tube.ldr",
+		"1 16 0 0 0 1 0 0 0 1 0 0 0 1 3062b.dat", "1 16 0 -84 0 1 0 0 0 1 0 0 0 1 3062b.dat",
+		"0 Tube"])
+	_expect(lost.is_empty(), "every line kept but the tube's placing line and its title: %s"
+		% "; ".join(lost))
+	_open(saved)
+	_expect(_model() == model, "opened again, its ends where they were and no tube: %s"
+		% ", ".join(_model()))
+	_expect(_paths_of("3062b") == held, "...in the copy they were in: %s / %s"
+		% [str(held), str(_paths_of("3062b"))])
+	_expect(_skins().size() == 1, "only the band drawn: %d" % _skins().size())
 
 
 func _without_library() -> void:

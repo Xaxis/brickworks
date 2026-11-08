@@ -119,6 +119,10 @@ static func of(world: BrickWorld, library: PartLibrary,
 	for brick: BrickWorld.Brick in world.bricks():
 		if skip.has(brick.id) or inventory.whole_of.has(brick.id):
 			continue
+		# A part the library has not got (PartLibrary.add_stand_in) has no
+		# name, element or price to list it by: the open says which it is.
+		if library != null and library.is_stand_in(brick.part_id):
+			continue
 		if not is_piece(brick.part_id, library):
 			inventory.drawn_in_pieces += 1
 			inventory._not_pieces[brick.id] = true
@@ -264,7 +268,7 @@ static func count_of_text(text: String, library: PartLibrary) -> int:
 	var bricks: Array = []
 	for placement: LdrModel.Placement in model.flatten(library.parts):
 		var part: String = library.resolve(ModelStore.studio_part(placement.part_id, library))
-		if not library.parts.has(part):
+		if not library.has_part(part):
 			continue
 		var brick := BrickWorld.Brick.new(bricks.size() + 1, part, placement.color_code,
 			placement.transform)

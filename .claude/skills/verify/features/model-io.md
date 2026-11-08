@@ -45,36 +45,121 @@ Whether what you built is still there tomorrow, and still means the same thing.
   Brickworks (the LDraw model repository, Studio, LDCad, LeoCAD, an `.io`)
   is kept when it opens, and every save of it (Save, the autosave, Export,
   `.io`, a share link, `save_model` over MCP: all `ModelStore._text_into`) is
-  that file again with only what changed. Each part on the baseplate is paired
-  with the line it was read from by what it is (number, colour, place in the
-  file's coordinates, sub-model copy), never by id, so undo, a move by picking
-  up and an edit over MCP pair alike. A part as it was keeps its line byte for
-  byte; moved, turned, recoloured or swapped, its line is rewritten in place,
-  in its sub-model's frame, under the number the file used when it is the same
-  part (`30028` stays `30028`, placed where its stub puts `30028b`); taken
-  away, its line goes; added, a line at the end of its step in its sub-model.
-  Lines the app does not read (author, `!LICENSE`, `!HISTORY`, `BFC`, LDCad's
-  `!LDCAD` blocks, comments, the parts a file carries) are never touched. The
-  lift that stands a model on the ground is the view's: taken off again on
-  every save, so the file keeps its coordinates (whole-model saves too).
-  What cannot be one line is written whole (`write` returns null): a copy of
-  a sub-model changed apart from its other copies, an assembly made or
-  renamed, steps given to a model that had none, a copy put in another step.
-  Then the author's header lines are kept in place of `0 Author: Brickworks`
-  (`SourceFile.header`, and `0 !BRICKWORKS WORKED_STEPS` when the steps are
-  the app's), and what the app could not show is carried in
-  (`SourceFile.carried_into`). Saved under another name, the name goes in a
-  `0 !BRICKWORKS TITLE` line, the author's first line untouched. The app's own
-  lines (floor, share, set) are the only lines added. A file Brickworks wrote
-  (`0 Author: Brickworks`) is written whole, as before.
+  that file again with only what changed, written by identity (keeptext4,
+  2026-11-06). Each part read knows its line (`LdrModel.Placement.origin`,
+  `BrickWorld.Brick.origin`: the lines placing the copies round it, then its
+  own), kept through undo, the autosave, the session's model, move, turn,
+  recolour, swap, step edits, Ungroup, a sub-assembly made, rename and a copy
+  following another (`Assemblies.realize`); a copy, a paste and a part put
+  down have none. Each copy of a sub-model knows the lines
+  placing it (`BrickWorld.unit_chains`). A save (`SourceFile.write`) walks the
+  file section by section, line by line, and a line changes only where what
+  it says changed, and moves only with the one line it is about. A part as
+  it was, its line byte for byte; recoloured or swapped, its 12 numbers as
+  they were; moved only, its 9 rotation numbers as they were; turned, those
+  written at 6 significant digits (`SourceFile._numbers_for`), in its
+  sub-model's frame, under the number the file used (`4073` stays `4073`;
+  `30028` stays `30028`, placed where its stub puts `30028b`). Gone, its line
+  out with only the lines about the next line right above it, a closed list
+  (`SourceFile._binds_next`: BFC INVERTNEXT, `!LDCAD GROUP_NXT`, MLCad's
+  BTG, `!TEXMAP NEXT`, Studio's PE_TEX_PATH and PE_TEX_INFO, `!LEOCAD
+  PIECE`; not MLCad's HIDE, a hidden part's own line). Comments, metas the
+  app does not know and both lines of every pair (BEGIN/END, START/END,
+  STORE/RETRIEVE, SKIP_BEGIN/SKIP_END, MLCad's GROUP: `_read_pairs`) stay
+  where they are; a pair goes only when every line between its two went. An
+  LSynth hose and a TEXMAP block move whole with their first part
+  (`_read_blocks`): no step can split them. A group's parts are each their
+  own: one a step edit takes out of a LeoCAD group goes with its group's
+  pair round it, as LeoCAD writes a group across two steps, and the pair it
+  left goes once every part did (`GROUPED`, `_emit`); MLCad's group says
+  itself on each part's BTG line, which goes with it. A copy whose every
+  part moved alike, the line placing it written again (`_common`), never by
+  a majority and never as a reflection, which opens as every part's other
+  hand. A part
+  or copy with no line, a line at the end of its step, with a section of its
+  own for a sub-model it needs; copies of one sub-model that no longer agree,
+  the changed one a section of its own ("x 2.ldr"), its placing line pointed
+  at it, as Studio and LDCad do. A step edit: a section whose steps it did not
+  change byte for byte, ROTSTEP and step endings too; the parts it moved at
+  the end of the step they are in now (each step the block in its place where
+  the steps and blocks agree in number, an author's empty page too; a step
+  emptied loses its STEP line, or, ended by a ROTSTEP, the one before, unless
+  the app still numbers it, as after its parts were deleted; steps made one,
+  each block next to the other with nothing else in it, lose the STEP line
+  between and move no part (`_merged`); new steps in order); a section of no STEP line gets them only where its parts are now in
+  more than one step, so a reopen keeps the steps a person saw; a copy with no
+  part in it stays where its line is (its step is no one's to see).
+  `0 !BRICKWORKS IN <copy>` goes before the lines of a copy built in its
+  parent's steps (`AuthorSteps.IN_PARENT`), and `0 !BRICKWORKS COPY n` above
+  a line whose copy would be read back numbered otherwise (the copy before it
+  taken off: the app's own line, which other programs skip, so the copy opens
+  again as itself). Every other line where it was (notes, metas,
+  empty steps, ROTSTEP, the author, `!DATA`, FILE names, sub-models nothing
+  places, one emptied by an edit too, as Ungroup, LDCad and Studio keep it).
+  A part made here that a new line names (a skin pasted, a part from the
+  element maker) is carried in a section at the end
+  (`SourceFile._made_lines`). A sub-model nothing places now whose title a
+  copy is written under (the rear engines named as the section taken apart
+  was) is titled anew, "x 2" (`SourceFile._yield_titles`): two sections of
+  one title open as neither. A file opened from text is never written whole.
+  Before it goes over the file it is read back (`SourceFile.checked`): its
+  parts as an open reads them (a mirrored copy's turned to their other
+  hand, an LDCad skin as the flexible part the library built from it:
+  `CustomParts.put_skins`) must be the model's, part, colour and place,
+  and every pair must open and close as in the file, with no END before its
+  BEGIN. Where not, nothing is written: Save says why in the bar and the
+  model is as it was (`ModelStore.kept_refused`, `_kept_refusal`), Export
+  and Save as refuse the same, and Together will not share it. Before
+  keeptext4 each save paired the parts with the lines again by place, path
+  and nearness and wrote the model whole where that failed; two reviews
+  found 16 losses (bench/results/keeptext3-2026-11-06/kt3review/report.md),
+  and a third, that comments went with the part below them, sections were
+  laid out again and no save was read back (kt4review-2026-11-07).
+  The lift that stands a model on the ground is the view's: taken off again
+  on every save, so the file keeps its coordinates. A file in CRLF is saved
+  in CRLF (`SourceFile.ended`), and every line the app writes of its own
+  into it ends as the file's lines do (`SourceFile.eol_of`, `lines_put`):
+  the floor, hidden colours, cut-away, motions and pins, the share link, bin
+  sets, picture to trace and set. Saved under another name, the name goes in
+  a `0 !BRICKWORKS TITLE` line, the author's first line untouched. A file
+  Brickworks wrote (`0 Author: Brickworks`) is written whole, as before,
+  keeping the lines of its header it did not write (`SourceFile.header_of`,
+  `ModelStore._own_header`: the castle's `0 // Designed by ...`).
+  Probes: `keep_text` (14 edits on 30 files, `src/dev/fixtures/kt_*` among
+  them: each saved, opened again, undone and saved again, and each time
+  every part in place and step, every line the edit did not touch in order
+  byte for byte, never written whole; each file also given a step edit,
+  saved, opened, given another and opened again; every pair of another
+  program's lines opening and closing as in the file in every save; and
+  kt4review's 26 files of the LDraw model repository saved unedited byte for
+  byte, a part between a pair's lines given a step edit and taken off, never
+  refused: `KEEP_TEXT_ONLY=pairs`) and `kt3r_probe` (kt3review's findings,
+  `src/dev/fixtures/kt3r_*`). kt4review's own specs, `analyze.py` and
+  `reader_check.py` are in bench/results/kt4review-2026-11-07/.
 - `parts the app cannot show` (`ModelStore.unshown`, `SourceFile.unshown`):
   a part of the file the library has not got, a part the file carries that
   cannot be built (on the web, one drawn from an official part or subpart,
   which a build does not ship: 42082-1's 13971, 8202-1's 57719), or a
-  flexible part whose skin cannot be built, is never dropped: it stays in the
-  file and is saved back, and File, Open says how many and which, a flexible
-  part once by its sub-model ("… (ropeLQ-1 (flexible))"). `fidelity_probe`
-  checks it, and the cad task test counts a part lost on open only when it
+  flexible part whose skin cannot be built, is never dropped: it is a brick
+  in the world like any other, drawn as nothing and offered nowhere
+  (`PartLibrary.add_stand_in`: a PartInfo with no size, `mesh_for` null,
+  `reachable` false), with its place, colour, copy, step and line, so move,
+  rename, Ungroup, delete, undo and copy carry it and a save writes it by
+  its line (keeptext4: kept beside the world in `ModelStore._absent` and
+  `SourceFile.not_shown`, moving its copy left it behind and deleting the
+  copy kept it, kt3review #6 and #8). A model given steps by an edit gives
+  it the step of the part nearest it in its copy
+  (`AuthorSteps._stand_ins_stepped`). It is no part to anything that asks
+  by number (`PartLibrary.has_part`): a file opened later that carries a
+  sub-model or a part by that number builds it (Studio's too), and a session
+  asking for it hears there is none. Nor is it in the parts list, the shop
+  lists or what a model needs from a collection, and the model does not
+  stand on it. File, Open says how many and which, a
+  flexible part once by its sub-model ("… (ropeLQ-1 (flexible))").
+  `fidelity_probe` checks it, `kt3r_probe`'s unshown_copy and
+  delete_unshown_copy move and delete its copy, unshown_edits picks it up,
+  renames, ungroups and copies its copy, stand_in_named opens the file that
+  carries it, and the cad task test counts a part lost on open only when it
   is neither shown nor kept.
 - `flexible parts drawn` (`CustomParts.begin_skins`, `PartForge.build_skin`):
   LDCad writes a hose's, a rope's or a band's skin after `0 !LDCAD
@@ -90,9 +175,10 @@ Whether what you built is still there tomorrow, and still means the same thing.
   put in the sub-model as one piece paired with the GENERATED line: one
   piece a copy, in the copy's colour, in its step, selectable and hideable
   (a cover of 4-LDU blocks along its surface), its end parts parts still.
-  Saved untouched the file is itself; the piece moved, recoloured, taken
-  away or added writes the model whole (`SourceFile.write` returns null),
-  the skin carried as `0 FILE <sub-model>-flex.dat` with its donors, which
+  Saved untouched the file is itself; the piece moved or taken away is the
+  line placing its sub-model written again or taken out, every other line
+  kept; a piece pasted is one line, its skin carried as
+  `0 FILE <sub-model>-flex.dat` at the end (`SourceFile._made_lines`), which
   opens again as a skin (`0 !CATEGORY Flexible`). A generated copy of only
   parts (a pneumatic hose of 166 segments, a chain) has no skin: its parts
   were drawn already, and `Flex.items_in` reads it as one hose. Every build
@@ -936,10 +1022,9 @@ Whether what you built is still there tomorrow, and still means the same thing.
   after any change, an empty one too.
 - `the autosave of a model short of a part` (`ModelStore.tick`,
   `ModelStore._text_into`): a model with parts not yet fetched, that never
-  come (`ModelStore.awaited`), or that the catalogue has not got
-  (`ModelStore._absent` for the app's own file; `SourceFile` keeps someone
-  else's) is autosaved like any other, those parts written where the file had
-  them, in their sub-model even when nothing else of it is on the baseplate
+  come (`ModelStore.awaited`), or that the catalogue has not got (a brick
+  drawn as nothing, `PartLibrary.add_stand_in`, written with the rest) is
+  autosaved like any other, those parts written where the file had them, in their sub-model even when nothing else of it is on the baseplate
   (`ModelStore._hold_unit`: until 2026-10-30 such a sub-model's parts went out
   loose in the model), and reopens with every part, the missing ones awaited
   and put down when they come. An open of a saved model says what it could not

@@ -152,7 +152,7 @@ static func _section_again(section: PackedStringArray, path: Dictionary,
 		return section
 	var meta: PackedStringArray = path["meta"] if still \
 		else _meta_again(path["meta"], kind, pieces, ends)
-	var eol: String = "\r" if section[0].ends_with("\r") else ""
+	var eol: String = SourceFile.eol_of(section[0])
 	var out := PackedStringArray()
 	if has_points:
 		# Written back over the file: its path lines replaced where they are.

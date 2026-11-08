@@ -152,17 +152,8 @@ static func written_into(text: String, pin_lines: PackedStringArray) -> String:
 		if kept[n].begins_with(Motions.META) or kept[n].begins_with(ModelFloor.META):
 			at = n + 1
 	if at < 0:
-		at = kept.size()
-		for n: int in kept.size():
-			var line: String = kept[n].strip_edges()
-			if n > 0 and (line.is_empty() or line.begins_with("1 ") or line.begins_with("0 FILE")
-					or line == "0 STEP" or line.to_upper().begins_with("0 ROTSTEP")):
-				at = n
-				break
-	var head: PackedStringArray = kept.slice(0, at)
-	head.append_array(pin_lines)
-	head.append_array(kept.slice(at))
-	return "\n".join(head)
+		at = ModelFloor.head_end(kept)
+	return SourceFile.lines_put(kept, at, pin_lines)
 
 
 ## [param pin]'s part here: the one it is on while that is still its part,

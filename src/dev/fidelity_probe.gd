@@ -256,9 +256,11 @@ func _edits() -> void:
 	_expect(_model() == model, "opened again, the model as edited")
 
 
-## Every part of the sub-model placed once taken away: the sub-model goes
-## with them, its block and the line placing it, and nothing else changes.
-## It used to stay in the file, empty and still placed.
+## Every part of the sub-model placed once taken away: the line placing it
+## goes, and nothing else changes. It used to stay in the file, empty and
+## still placed; then its block went with it (keeptext4), until kt4review:
+## a sub-model's block is kept, placed by nothing, as Ungroup, LDCad and
+## Studio keep it. Placed by nothing, it is no part of the model.
 func _emptied() -> void:
 	print("fidelity: a sub-model emptied")
 	_open(FILE)
@@ -272,13 +274,14 @@ func _emptied() -> void:
 	var model: PackedStringArray = _model()
 	var saved: String = _store.to_text(_store.title, true)
 	var changed: Array = _changed(FILE, saved)
-	_expect(not saved.contains("fidelity - once.ldr"),
-		"neither the sub-model nor the line placing it is left")
-	_expect(saved.contains("0 FILE fidelity - twice.ldr") and saved.contains("0 FILE fidelity - band.ldr")
-		and not saved.contains("0 NOFILE\n0 NOFILE"),
-		"the other sub-models kept, no stray end left between them")
-	_expect((changed[0] as Array).size() == 9 and (changed[1] as Array).size() == 0,
-		"nothing else changed: 9 lines out (the placing line, the block and its end), none in: "
+	_expect(not saved.contains("1 16 0 -48 0 1 0 0 0 1 0 0 0 1 fidelity - once.ldr"),
+		"the line placing it is gone")
+	_expect(saved.contains(FILE.substr(FILE.find("0 FILE fidelity - once.ldr"),
+		FILE.find("0 FILE fidelity - twice.ldr") - FILE.find("0 FILE fidelity - once.ldr"))),
+		"its block kept whole, placed by nothing, the other sub-models after it")
+	_expect((changed[0] as Array) == ["1 16 0 -48 0 1 0 0 0 1 0 0 0 1 fidelity - once.ldr"]
+		and (changed[1] as Array).size() == 0,
+		"nothing else changed: the placing line out, none in: "
 		+ "%d out, %d in" % [(changed[0] as Array).size(), (changed[1] as Array).size()])
 	_open(saved)
 	_expect(_model() == model, "opened again, the model as edited")
@@ -299,12 +302,18 @@ func _copies_apart() -> void:
 	var saved: String = _store.to_text(_store.title, true)
 	_expect(saved.contains("0 Author: Somebody Else [someone]") and saved.contains(
 		"0 !LICENSE Redistributable under CCAL version 2.0"),
-		"written whole, still under its author's name and licence")
+		"still under its author's name and licence")
+	# Until keeptext4 written whole; now the copy moved is a section of its
+	# own and the other keeps the file's.
+	_expect(saved.contains("0 FILE fidelity - twice.ldr\n0 Twice\n")
+		and saved.count("0 FILE fidelity - twice") == 2,
+		"the copy changed a sub-model of its own, the other the file's")
 	_expect(not saved.contains("0 Author: Brickworks"), "not claimed as Brickworks's")
 	_expect(saved.contains("\n1 14 40 0 -60 1 0 0 0 1 0 0 0 1 nopart9x.dat\n"),
 		"the part it could not show carried, where it was, in its colour")
-	_expect(saved.contains("0 FILE fidelity - band-flex.dat") and saved.contains(
-		"0 !LDCAD PATH_SKIN"), "the band carried as a part, its path with it")
+	_expect(saved.contains("\n1 71 0 -96 200 1 0 0 0 1 0 0 0 1 fidelity - band.ldr\n")
+		and saved.contains("0 FILE fidelity - band.ldr\n0 Band\n0 Name: fidelity - band.ldr\n"
+		+ "0 !LDCAD PATH_SKIN"), "the band as the file has it, its path with it")
 	var again: Dictionary = _open(saved)
 	_expect(_model() == model, "opened again, the model as edited, the band in it")
 	_expect(again.get("unshown", {}) == {"nopart9x": 1},

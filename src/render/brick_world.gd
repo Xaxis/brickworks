@@ -80,6 +80,12 @@ class Brick extends RefCounted:
 	## (Instructions.plan). A file's "0 STEP" lines were read and dropped,
 	## so a Studio model opened and saved here lost its designer's steps.
 	var step: int = -1
+	## The line of someone else's file it was read from, and the copies
+	## round it there (LdrModel.Placement.origin): kept through a move, a
+	## turn, a new colour, a step edit and any change to the tree of
+	## sub-models, so a save writes it back on its own line (SourceFile).
+	## "" for a part put down here, copied or pasted.
+	var origin: String = ""
 
 	func _init(brick_id: int, part: String, color: int, at: Transform3D) -> void:
 		id = brick_id
@@ -272,6 +278,14 @@ var history: Array = []
 ## step. Kept here and not on the bricks, so it outlives taking a copy's
 ## parts off and putting them back. See [member Brick.step].
 var unit_steps: Dictionary = {}
+## Each copy of a sub-model of someone else's file by its path now -> its
+## place in the file (LdrModel.unit_chains): carried wherever a change to
+## the tree takes the path (Builder.regroup), so a save knows which copy
+## a renamed, ungrouped or moved one was (SourceFile).
+var unit_chains: Dictionary = {}
+## The origins of bricks taken off, by id: one put back under its number
+## (Builder's undo) is the line it was again.
+var _gone_origins: Dictionary = {}
 ## How the booklet shows each step, as its designer set it (BookletLooks):
 ## "<sub-model>|<step>" -> {turn, zoom, size, page, parts}, and the
 ## sub-models' and the booklet's own. Changed only by the history's steps.
@@ -388,7 +402,9 @@ func _place(part_id: String, color_code: int, at: Transform3D, as_id: int = 0) -
 		# The stub's geometry is the new part's, where it is to hand first.
 		drawn_as = part_id
 		part = library.mesh_for(part_id)
-	if part == null:
+	# A part this build has not got is a brick all the same, drawn as
+	# nothing (PartLibrary.add_stand_in).
+	if part == null and not library.is_stand_in(real):
 		return 0
 	var number: int = as_id if as_id > 0 and as_id < _next_id and not _bricks.has(as_id) \
 		else _next_id
@@ -397,11 +413,12 @@ func _place(part_id: String, color_code: int, at: Transform3D, as_id: int = 0) -
 		_next_id += 1
 	else:
 		_out_of_order = true
+		brick.origin = _gone_origins.get(number, "")
 	_bricks[brick.id] = brick
 
 	var keys := PackedStringArray()
 	var info: PartLibrary.PartInfo = library.parts[drawn_as]
-	for surface_index: int in part.surface_count():
+	for surface_index: int in (part.surface_count() if part != null else 0):
 		var key: String = _batch_key(info.mesh_hash, surface_index, part, color_code)
 		var batch: Batch = _batches.get(key)
 		if batch == null:
@@ -425,6 +442,9 @@ func remove_brick(brick_id: int) -> bool:
 
 
 func _unplace(brick_id: int) -> void:
+	var going: Brick = _bricks.get(brick_id)
+	if going != null and not going.origin.is_empty():
+		_gone_origins[brick_id] = going.origin
 	for key: String in _brick_batches.get(brick_id, PackedStringArray()):
 		var batch: Batch = _batches.get(key)
 		if batch == null:
@@ -438,6 +458,11 @@ func _unplace(brick_id: int) -> void:
 	_bricks.erase(brick_id)
 	_spans.erase(brick_id)
 	_drawn.erase(brick_id)
+
+
+## The origin a brick taken off had (Brick.origin), "" for none.
+func gone_origin(brick_id: int) -> String:
+	return str(_gone_origins.get(brick_id, ""))
 
 
 func move_brick(brick_id: int, to: Transform3D) -> bool:
@@ -487,7 +512,7 @@ func recolor_brick(brick_id: int, color_code: int) -> bool:
 	var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
 	var info: PartLibrary.PartInfo = library.parts[brick.part_id]
 	var keys := PackedStringArray()
-	for surface_index: int in part.surface_count():
+	for surface_index: int in (part.surface_count() if part != null else 0):
 		var key: String = _batch_key(
 			info.mesh_hash, surface_index, part, color_code)
 		var batch: Batch = _batches.get(key)
@@ -527,6 +552,8 @@ func clear() -> void:
 	_next_id = 1
 	_out_of_order = false
 	unit_steps.clear()
+	unit_chains.clear()
+	_gone_origins.clear()
 	step_looks.clear()
 	motions = null
 	cut_kept = {}
@@ -635,7 +662,7 @@ func repaint_in_place(changes: Dictionary) -> void:
 		var part: Lbm.PartMesh = library.mesh_for(brick.part_id)
 		var code: int = int(changes[brick_id])
 		var same_class: bool = true
-		for surface_index: int in part.surface_count():
+		for surface_index: int in (part.surface_count() if part != null else 0):
 			if _material_class_for(part, surface_index, code) \
 					!= _material_class_for(part, surface_index, brick.color_code):
 				same_class = false
@@ -763,8 +790,10 @@ func copy_at_home(at_home: bool = true) -> BrickWorld:
 		twin.unit = brick.unit
 		twin.step = brick.step
 		twin.hidden = brick.hidden
+		twin.origin = brick.origin
 		copy._bricks[brick_id] = twin
 	copy._next_id = _next_id
+	copy.unit_chains = unit_chains.duplicate()
 	return copy
 
 
@@ -791,7 +820,7 @@ func model_bounds() -> AABB:
 			continue
 		var brick: Brick = _bricks[brick_id]
 		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id)
-		if info == null:
+		if info == null or info.stand_in:
 			continue
 		var box: AABB = brick.transform * info.bounds
 		if first:
