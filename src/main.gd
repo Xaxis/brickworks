@@ -3892,8 +3892,8 @@ func _maybe_open_library() -> void:
 	_store.credit = ModelLibrary.credit_of(entry)
 	_store.touch()
 	_bar.opened.emit(placed)
-	_bar.say("opened %s — %s%s" % [title, ModelBar.credit_words(_store.credit),
-		ModelBar.left_out_words(result, false)])
+	_bar.say("opened %s — %s%s%s" % [title, ModelBar.credit_words(_store.credit),
+		ModelBar.left_out_words(result, false), ModelBar.looks_words(_store)])
 
 
 ## The mouse in the viewer: a left drag on a part that moves moves it on its
@@ -6049,6 +6049,10 @@ func _make_assistant() -> void:
 	# Claude's change to a selection made in one copy of a sub-assembly is
 	# followed by the others, as a change by hand is.
 	_assistant_made.assemblies = _shell.assemblies
+	# And a step it took the last part off goes with its booklet look, in the
+	# same undo, as one by hand does (pullkept).
+	_assistant_made.focus_edited.connect(func(_words: String, _before: Image,
+			_after: Image) -> void: _store.looks_follow_edit())
 	# So a snapshot does not carry the baseplate off with it.
 	_assistant_made.scenery = _store.scenery
 	# And what the model stands on, read when asked: on a bare floor what only
@@ -7878,6 +7882,10 @@ func _on_model_edited() -> void:
 	# Every other copy of a sub-assembly just edited follows it.
 	if _verbs != null and _verbs.assemblies != null:
 		_verbs.assemblies.after_edit()
+	# A step it took the last part off goes with its booklet look, in the
+	# same undo (pullkept).
+	if _store != null:
+		_store.looks_follow_edit()
 	# The timeline in the author's steps shows the model as it now is: a
 	# part put down in the step showing, an undone step edit. (Worked out,
 	# it is the order it was when opened, as it always was: on Orthanc the
@@ -8237,7 +8245,8 @@ func _open_given(path: String) -> int:
 		_bar.say("could not open %s: %s" % [path.get_file(), result["error"]])
 		printerr("could not open %s: %s" % [path, result["error"]])
 		return 0
-	var said: String = "opened %d parts" % int(result["placed"]) + ModelBar.left_out_words(result)
+	var said: String = "opened %d parts" % int(result["placed"]) + ModelBar.left_out_words(result) \
+		+ ModelBar.looks_words(_store)
 	if not str(made["note"]).is_empty():
 		said += " — " + str(made["note"])
 	_bar.say(said)

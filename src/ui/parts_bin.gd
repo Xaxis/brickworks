@@ -4203,26 +4203,35 @@ func _reader() -> Node:
 	return _reading
 
 
-## The worked constructions, in the order show_technique lists them: by what
-## they are for, and under that one a row, with its picture and why it
-## works. What is typed finds them (Techniques.found): the groups the best
-## of it is in first, and in each the best first.
-func _fill_techniques(query: String) -> void:
+## The grid emptied for rows of the bin's own (Techniques, Palettes), and the
+## list it showed let go with it: the grid grows into [member _display] as it
+## is scrolled or has room under it (_process), each tile at its place in the
+## list (bintiles). Left as the last search's, that search's tiles came in
+## above the rows: "window in a wall" typed under Techniques showed 30-odd
+## parts in sight and its five constructions 2,600 px down, where no click
+## reached them, on the live site from rel-m267 (bintech, 2026-11-08); 192
+## after "brick" when scrolled (palettes_probe, 2026-11-07).
+func _empty_for_rows() -> void:
 	for child: Node in _grid.get_children():
 		_grid.remove_child(child)
 		child.queue_free()
 	_cells.clear()
 	_shown = 0
-	# What the last list showed is no list here: grown into as it scrolled
-	# (_process), a search's tiles came in among the rows, 192 of them
-	# after "brick" (palettes_probe, 2026-11-07).
 	_display = []
 	_folds = {}
 	_hold_page(0)
 	_to_list_top()
+	_techniques_seen = []
+
+
+## The worked constructions, in the order show_technique lists them: by what
+## they are for, and under that one a row, with its picture and why it
+## works. What is typed finds them (Techniques.found): the groups the best
+## of it is in first, and in each the best first.
+func _fill_techniques(query: String) -> void:
+	_empty_for_rows()
 	_grid.columns = 1
 	_grid.add_theme_constant_override("v_separation", int(_z(4)))
-	_techniques_seen = []
 	_techniques_shown = 0
 	var techniques: GDScript = Later.script(&"Techniques")
 	var listed: Array = techniques.all()
@@ -5104,18 +5113,7 @@ func _show_shelf_line() -> void:
 
 ## Every palette, or the one open, its entries narrowed by [param query].
 func _fill_palettes(query: String) -> void:
-	for child: Node in _grid.get_children():
-		_grid.remove_child(child)
-		child.queue_free()
-	_cells.clear()
-	_shown = 0
-	# What the last list showed is no list here: grown into as it scrolled
-	# (_process), its tiles came in under the palettes.
-	_display = []
-	_folds = {}
-	_hold_page(0)
-	_to_list_top()
-	_techniques_seen = []
+	_empty_for_rows()
 	_shelf_seen = PartShelf.palettes_revision
 	var open: Dictionary = PartShelf.palette(_shelf_open) if not _shelf_open.is_empty() else {}
 	if open.is_empty():
