@@ -106,9 +106,6 @@ const PULL_MOST := 8.0
 const BOOKLET := "|booklet"
 ## The pictures a page shows, by name: {name: base64}.
 const DATA := "|data"
-## In what [method as_written] gives, and only there: the steps a file
-## written whole has with nothing in them, {definition: [step]}.
-const EMPTY_STEPS := "|empty"
 ## The items of a step a designer can place on its page, and how many
 ## numbers place each.
 const ITEMS: Dictionary = {"picture": 4, "parts": 3, "callout": 4, "number": 2}
@@ -968,66 +965,44 @@ static func _turns_follow(looks: Dictionary, before: Dictionary, after: Dictiona
 
 
 ## The looks keyed as a file written whole numbers its steps (ModelStore's
-## LdrModel.write_tree and write_ldr): each section's steps one after
-## another, none empty. A step whose parts were all taken off the model is a
-## number with nothing in it here (BrickWorld.Brick.step) and no step
-## there; written as kept, each look after it went on the step after its
-## own, and the file opened again had them there. Each step is seen from
-## what it is seen from now. The looks themselves where no section has an
-## empty step. A file written back over (SourceFile) keeps the empty step,
-## and its looks as they are.
+## LdrModel.write_tree and write_ldr): [param steps] is each section's steps
+## as written, by definition (LdrModel.steps_written's, with
+## [method with_kept_steps]'), and the file's step n is the n-th of them. A
+## step whose parts were all taken off the model is a number the writer
+## writes no step for (BrickWorld.Brick.step); written as kept, each look
+## after it went on the step after its own, and the file opened again had
+## them there. Each step is seen from what it is seen from now. The looks
+## themselves where no section's steps have a gap, as for a model with no
+## steps of its own ([param steps] empty). A file written back over
+## (SourceFile) keeps its own steps, and its looks as they are.
 ##
-## A step that is gone but set up for the booklet (anything but its turn
-## and section mark) keeps its number, and its place is under EMPTY_STEPS
-## ({definition: [step]}) for [method with_empty_steps] to write it as a
-## 0 STEP of its own with its lines, which no page shows (Instructions
-## plans no step with nothing in it): the open says such a look is kept in
-## the file, and up to 2026-11-07 the next save dropped it (pkreview's
-## empty_own). A section mark on a gone step with nothing else on it starts
-## the next step there is.
-static func as_written(world: BrickWorld, skip: Dictionary = {}) -> Dictionary:
+## A section mark on a step not written starts the next step there is.
+static func as_written(world: BrickWorld, steps: Dictionary) -> Dictionary:
 	var looks: Dictionary = world.step_looks
-	if looks.is_empty():
+	if looks.is_empty() or steps.is_empty():
 		return looks
-	var set_up: Dictionary = {}     ## definition -> {step: true}, set up for the booklet
-	for name: String in looks:
-		var tail: String = name.get_slice("|", 1)
-		if tail.is_valid_int() and looks[name] is Dictionary and (looks[name] as Dictionary) \
-				.keys().any(func(field: String) -> bool:
-					return not field in ["turn", "how", "line", "section"]):
-			(set_up.get_or_add(name.get_slice("|", 0), {}) as Dictionary)[tail.to_int()] = true
-	var gapped: Dictionary = {}     ## definition -> [its first copy, its steps in order, the empty]
-	var sections: Array = first_copies(world, skip)
-	var items_in: Dictionary = AuthorSteps.items_in(world, sections, skip)
-	for section: String in sections:
-		var steps: Array = AuthorSteps.steps_of(items_in[section])
-		if steps.is_empty():
-			continue
-		var gone: Array = (set_up.get(definition_of(section), {}) as Dictionary).keys() \
-			.filter(func(at: int) -> bool: return not steps.has(at))
-		if gone.is_empty() and int(steps[steps.size() - 1]) + 1 == steps.size():
-			continue
-		steps.append_array(gone)
-		steps.sort()
-		gapped[definition_of(section)] = [section, steps,
-			gone.map(func(at: int) -> int: return steps.find(at))]
+	var gapped: Dictionary = {}     ## definition -> its steps as written, in order
+	for definition: String in steps:
+		var order: Array = steps[definition]
+		if not order.is_empty() and int(order[order.size() - 1]) + 1 != order.size():
+			gapped[definition] = order
 	if gapped.is_empty():
 		return looks
 	var out: Dictionary = {}
-	var starts: Dictionary = {}     ## where a section on a gone step starts now
+	var starts: Dictionary = {}     ## where a section on a step not written starts now
 	for name: String in looks:
 		var definition: String = name.get_slice("|", 0)
 		var tail: String = name.get_slice("|", 1)
 		if not gapped.has(definition) or not tail.is_valid_int():
 			out[name] = looks[name]
 			continue
-		var at: int = (gapped[definition][1] as Array).find(tail.to_int())
+		var at: int = (gapped[definition] as Array).find(tail.to_int())
 		if at < 0:
 			# A section that started on a step that is gone starts on the
 			# next one there is.
 			if (looks[name] as Dictionary).has("section"):
-				at = (gapped[definition][1] as Array).bsearch(tail.to_int())
-				if at < (gapped[definition][1] as Array).size():
+				at = (gapped[definition] as Array).bsearch(tail.to_int())
+				if at < (gapped[definition] as Array).size():
 					starts[key(definition, at)] = looks[name]["section"]
 			continue
 		var look: Dictionary = (looks[name] as Dictionary).duplicate(true)
@@ -1040,13 +1015,12 @@ static func as_written(world: BrickWorld, skip: Dictionary = {}) -> Dictionary:
 		if not look.has("section"):
 			look["section"] = starts[name]
 			out[name] = look
-	var empty: Dictionary = {}
 	for definition: String in gapped:
-		var section: String = gapped[definition][0]
-		var steps: Array = gapped[definition][1]
+		var order: Array = gapped[definition]
 		var state: Dictionary = {}
-		for at: int in steps.size():
-			var turn: Dictionary = turn_at(world, section, int(steps[at]))
+		for at: int in order.size():
+			# A definition names its own steps as a section does (turn_at).
+			var turn: Dictionary = turn_at(world, definition, int(order[at]))
 			if JSON.stringify(turn) == JSON.stringify(state):
 				continue
 			var look: Dictionary = out.get(key(definition, at), {})
@@ -1057,104 +1031,151 @@ static func as_written(world: BrickWorld, skip: Dictionary = {}) -> Dictionary:
 				look["how"] = str(turn.get("how", "REL"))
 			out[key(definition, at)] = look
 			state = turn
-		if not (gapped[definition][2] as Array).is_empty():
-			empty[definition] = gapped[definition][2]
-	if not empty.is_empty():
-		out[EMPTY_STEPS] = empty
 	return out
 
 
-## [param text], a model written whole, with a 0 STEP of its own for each
-## step [param empty] ([method as_written]'s EMPTY_STEPS) puts in a
-## section, where it comes among the section's steps: so each step in the
-## file is the step of the looks' numbering, and [method written_into]
-## writes an empty step's lines before its STEP. One before a section's
-## first step goes above the lines that go with its first part (its copy,
-## the sub-model it is built in), as LdrModel reads those up to the part;
-## one after the last, after the last part. [param names] and
-## [param main_key] as [method read] takes them.
-static func with_empty_steps(text: String, empty: Dictionary, names: Dictionary,
-		main_key: String) -> String:
-	if empty.is_empty():
-		return text
-	var lines: PackedStringArray = text.split("\n")
-	var eol: String = "\r" if not lines.is_empty() and lines[0].ends_with("\r") else ""
-	## Each section: [definition, the lines ending its steps, its first part
-	## line, its last, its FILE line]; null for lines in no section.
-	var spans: Array = []
-	var span: Variant = ["", [], -1, -1, -1]
-	var first_file: bool = true
-	for n: int in lines.size():
-		var line: String = lines[n].strip_edges()
-		var keyword: String = _keyword(line)
-		if keyword == "FILE" or keyword == "NOFILE":
-			if span != null:
-				spans.append(span)
-			span = null
-			if keyword == "FILE":
-				var file_key: String = LdrModel._key(" ".join(LdrModel._fields(line).slice(2)))
-				span = ["" if first_file or file_key == main_key
-					else str(names.get(file_key, file_key)), [], -1, -1, n]
-				first_file = false
+## [param placed] (LdrModel.steps_written's: each written section's steps,
+## by definition) with each step that has nothing in it and that the booklet
+## is set up on (a look of more than its turn and section mark): written as
+## a 0 STEP of its own, which no page shows (Instructions plans no step with
+## nothing in it), so the file opened again has the look on its step; up to
+## 2026-11-07 the next save dropped it (pkreview's empty_own). A step an edit
+## empties takes its look with it ([method emptied]), so such a step is one
+## the model's file had empty. A look of a sub-model with no section written
+## is not.
+static func with_kept_steps(looks: Dictionary, placed: Dictionary) -> Dictionary:
+	var out: Dictionary = placed
+	for name: String in looks:
+		var definition: String = name.get_slice("|", 0)
+		var tail: String = name.get_slice("|", 1)
+		if not tail.is_valid_int() or tail.to_int() < 0 or not placed.has(definition) \
+				or not (looks[name] is Dictionary) or not _set_up(looks[name]) \
+				or (out[definition] as Array).has(tail.to_int()):
 			continue
-		if span == null:
+		if out == placed:
+			out = placed.duplicate(true)
+		(out[definition] as Array).append(tail.to_int())
+		(out[definition] as Array).sort()
+	return out
+
+
+## Whether [param look] sets up its step's page: anything but its turn and
+## the section it starts, which hold for the steps after it.
+static func _set_up(look: Dictionary) -> bool:
+	return look.keys().any(func(field: String) -> bool:
+		return not field in ["turn", "how", "line", "section"])
+
+
+## After an edit kept in the history, [param step] (Builder.last_step): the
+## look of each step it took the last thing off, dropped, as the step is gone
+## and its page with it. Returns the undo, the table as it was, or [] when
+## none. A step left holding anything keeps its look: a part, a copy put on,
+## or one of [param held] (ModelStore's parts on their way and those the
+## catalogue lacks, written in their steps). The turn of one dropped holds on
+## for the next step that has anything, and the chapter it began begins
+## there, where neither has its own. What it took off is in the step: each
+## part taken off ("add", which puts it back) from its step, and each copy
+## of a sub-model round it from the step that put that on, when nothing is
+## left of the copy. A step the model's file had empty keeps its look, as no
+## edit took a part off it ([method with_kept_steps] writes it). Up to
+## 2026-11-07 a step emptied kept its look out of sight: a save wrote it as a
+## step of its own and every open named it, with nothing in the app to reach
+## it by (pkreview).
+static func emptied(world: BrickWorld, step: Dictionary, skip: Dictionary = {},
+		held: Array = []) -> Array:
+	if not any_step_look(world):
+		return []
+	var taken: Dictionary = {}
+	_taken_from(world, step, taken)
+	var gone: Array = taken.keys().filter(func(name: String) -> bool:
+		return world.step_looks.get(name) is Dictionary)
+	if gone.is_empty():
+		return []
+	var holding: Dictionary = {}    ## definition -> {step: true}, those with anything in them
+	var sections: Array = first_copies(world, skip)
+	var items_in: Dictionary = AuthorSteps.items_in(world, sections, skip)
+	for section: String in sections:
+		for at: int in AuthorSteps.steps_of(items_in[section]):
+			(holding.get_or_add(definition_of(section), {}) as Dictionary)[at] = true
+	for item: Variant in held:
+		var placement: LdrModel.Placement = item
+		if placement.step >= 0:
+			(holding.get_or_add(definition_of(AuthorSteps.home(world, Assemblies.path_from(
+				placement.group, placement.unit))), {}) as Dictionary)[placement.step] = true
+	gone = gone.filter(func(name: String) -> bool:
+		return not (holding.get(name.get_slice("|", 0), {}) as Dictionary) \
+			.has(name.get_slice("|", 1).to_int()))
+	if gone.is_empty():
+		return []
+	var was: Dictionary = world.step_looks.duplicate(true)
+	# The latest first: a turn or a chapter of a later step is the one in
+	# force after both.
+	gone.sort_custom(func(a: String, b: String) -> bool:
+		return a.get_slice("|", 1).to_int() > b.get_slice("|", 1).to_int())
+	for name: String in gone:
+		var look: Dictionary = world.step_looks[name]
+		world.step_looks.erase(name)
+		var definition: String = name.get_slice("|", 0)
+		var after: Array = (holding.get(definition, {}) as Dictionary).keys().filter(
+			func(at: int) -> bool: return at > name.get_slice("|", 1).to_int())
+		if after.is_empty():
 			continue
-		if keyword == "STEP" or keyword == "ROTSTEP":
-			(span[1] as Array).append(n)
-		elif _of_type(line, "1") or _of_type(line, "2") or _of_type(line, "3") \
-				or _of_type(line, "4") or _of_type(line, "5"):
-			if int(span[2]) < 0:
-				span[2] = n
-			span[3] = n
-	if span != null:
-		spans.append(span)
-	var inserts: Dictionary = {}    ## line -> how many STEP lines go before it
-	for each: Array in spans:
-		if not empty.has(each[0]) or int(each[2]) < 0:
-			continue
-		var places: Array = empty[each[0]]
-		var endings: Array = each[1]
-		# Where each of the file's steps goes in the looks' numbering.
-		var final: Array = []
-		var at: int = 0
-		while final.size() < endings.size() + 1:
-			if not places.has(at):
-				final.append(at)
-			at += 1
-		var head: int = int(each[2])
-		while head - 1 > int(each[4]) and _keyword(lines[head - 1]).begins_with("!"):
-			head -= 1
-		inserts[head] = int(inserts.get(head, 0)) + int(final[0])
-		for step: int in endings.size():
-			var gap: int = int(final[step + 1]) - int(final[step]) - 1
-			inserts[int(endings[step]) + 1] = int(inserts.get(int(endings[step]) + 1, 0)) + gap
-		var after: int = places.filter(func(place: int) -> bool: return place > int(final[-1])).size()
-		inserts[int(each[3]) + 1] = int(inserts.get(int(each[3]) + 1, 0)) + after
-	var out := PackedStringArray()
-	for n: int in lines.size() + 1:
-		for _k: int in int(inserts.get(n, 0)):
-			out.append("0 STEP" + eol)
-		if n < lines.size():
-			out.append(lines[n])
-	return "\n".join(out)
+		var next: String = key(definition, int(after.min()))
+		var then: Dictionary = (world.step_looks.get(next, {}) as Dictionary).duplicate(true)
+		var carried: bool = false
+		if look.has("turn") and not then.has("turn"):
+			for field: String in ["turn", "how", "line"]:
+				if look.has(field):
+					then[field] = look[field]
+			carried = true
+		if look.has("section") and not then.has("section"):
+			then["section"] = look["section"]
+			carried = true
+		if carried:
+			world.step_looks[next] = then
+	return [{"undo": "steplooks", "looks": was}]
+
+
+## Into [param taken], the step look key of each step [param step] took
+## something off ([method emptied]).
+static func _taken_from(world: BrickWorld, step: Dictionary, taken: Dictionary) -> void:
+	if str(step.get("undo", "")) == "group":
+		for inner: Variant in step.get("steps", []):
+			if inner is Dictionary:
+				_taken_from(world, inner, taken)
+		return
+	if str(step.get("undo", "")) != "add":
+		return
+	var path: String = Assemblies.path_from(str(step.get("group", "")), str(step.get("unit", "")))
+	if int(step.get("step", -1)) >= 0:
+		taken[key(definition_of(AuthorSteps.home(world, path)), int(step["step"]))] = true
+	# The copies round it, each off the step that puts it on: a step that held
+	# only the copy is left with nothing when nothing is left of the copy.
+	var copy: String = path
+	while not copy.is_empty():
+		var on: int = int(world.unit_steps.get(copy, -1))
+		if on >= 0:
+			taken[key(definition_of(AuthorSteps.home(world, Assemblies.parent_of(copy))), on)] = true
+		copy = Assemblies.parent_of(copy)
 
 
 ## What of the booklet as its designer set it no step shows now, said as a
 ## model opens (ModelBar.unshown_words): " — the pull on step 1 of the
-## model matches no step now, kept in the file"; "" for nothing. A pull
-## whose parts no part of its step is ([method _pulls_follow_parts] moved
-## those it could); and a step's look on a step the booklet shows none of,
-## one that puts on only sub-models it builds where they stand, worked out
-## by the plan only where a look is on a step with no part of its own. Each
-## stays in the file as it is ([method written_into]), and was dropped from
-## sight without a word (pullkept). A part still on its way ([param
-## awaited], ModelStore's) is in its step; while any is, the plan is not
-## asked, as a step of them alone is in no plan yet.
-static func unmatched_words(world: BrickWorld, library: PartLibrary, skip: Dictionary = {},
-		awaited: Array = []) -> String:
+## model matches no step now, kept in the file"; "" for nothing. A pull none
+## of whose parts is a part of its step ([method _pulls_follow_parts] moved
+## those it could), on a step the booklet shows, where another can be set.
+## It stays in the file as it is ([method written_into]), and was dropped
+## from sight without a word (pullkept). A look on a step the booklet shows
+## no page of (one the file has empty, one of parts the catalogue lacks or
+## still on their way, one that puts on only sub-models it builds where they
+## stand) is kept in the file too, and not said: nothing in the app reaches
+## it, and up to 2026-11-07 every open said it again (pkreview). Which steps
+## are shown is asked of the plan, only when a pull matches none.
+static func unmatched_words(world: BrickWorld, library: PartLibrary,
+		skip: Dictionary = {}) -> String:
 	if world == null or not any_step_look(world) or not AuthorSteps.any(world, skip):
 		return ""
-	if _said_for == [world.get_instance_id(), world.generation(), awaited.size()]:
+	if _said_for == [world.get_instance_id(), world.generation(), world.brick_count()]:
 		return _said
 	var own: Dictionary = {}      ## step look key -> {part: true}, its own parts
 	for brick: BrickWorld.Brick in world.bricks():
@@ -1162,53 +1183,39 @@ static func unmatched_words(world: BrickWorld, library: PartLibrary, skip: Dicti
 			var at: String = key(definition_of(AuthorSteps.home(world, Assemblies.path_of(brick))),
 				brick.step)
 			own.get_or_add(at, {})[LdrModel._key(brick.part_id)] = true
-	for placement: LdrModel.Placement in awaited:
-		if placement.step >= 0:
-			var at: String = key(definition_of(AuthorSteps.home(world,
-				Assemblies.path_from(placement.group, placement.unit))), placement.step)
-			own.get_or_add(at, {})[LdrModel._key(placement.part_id)] = true
 	var names: Array = world.step_looks.keys().filter(func(name: String) -> bool:
-		return name.get_slice("|", 1).is_valid_int() and world.step_looks[name] is Dictionary)
+		var pull: Variant = (world.step_looks[name] as Dictionary).get("pull") \
+			if world.step_looks[name] is Dictionary else null
+		return name.get_slice("|", 1).is_valid_int() and pull is Dictionary \
+			and not (pull.get("parts", []) as Array).is_empty() \
+			and not (pull["parts"] as Array).any(func(part: String) -> bool:
+				return (own.get(name, {}) as Dictionary).has(part)))
 	names.sort_custom(func(a: String, b: String) -> bool:
 		return a.get_slice("|", 0) < b.get_slice("|", 0) or a.get_slice("|", 0) \
 			== b.get_slice("|", 0) and a.get_slice("|", 1).to_int() < b.get_slice("|", 1).to_int())
-	var said := PackedStringArray()
-	var unplaced: Array = []
-	for name: String in names:
-		var look: Dictionary = world.step_looks[name]
-		var pull: Variant = look.get("pull")
-		if pull is Dictionary and not (pull.get("parts", []) as Array).is_empty() \
-				and not (pull["parts"] as Array).any(func(part: String) -> bool:
-					return (own.get(name, {}) as Dictionary).has(part)):
-			said.append("the pull on %s matches no step now, kept in the file" % _step_named(name))
-		# A turn holds on for the steps after it, and a section's start goes
-		# on to the next step there is (sections_by): neither is the step's
-		# alone.
-		if not own.has(name) and look.keys().any(func(field: String) -> bool:
-				return not field in ["turn", "how", "line", "section", "pull"]):
-			unplaced.append(name)
-	if not unplaced.is_empty() and awaited.is_empty() and library != null:
-		var shown: Dictionary = {}
+	var shown: Dictionary = own
+	if not names.is_empty() and library != null:
+		shown = {}
 		for step: Instructions.Step in Instructions.plan(world, library, skip, {}, true):
 			if step.authored_step >= 0:
 				shown[key(definition_of(step.authored_in), step.authored_step)] = true
-		for name: String in unplaced:
-			if not shown.has(name):
-				said.append("what the booklet sets on %s matches no step now, kept in the file"
-					% _step_named(name))
+	var said := PackedStringArray()
+	for name: String in names:
+		if shown.has(name):
+			said.append("the pull on %s matches no step now, kept in the file" % _step_named(name))
 	var out: String = ""
 	for n: int in mini(said.size(), 3):
 		out += " — " + said[n]
 	if said.size() > 3:
 		out += " — and %d more like it" % (said.size() - 3)
-	_said_for = [world.get_instance_id(), world.generation(), awaited.size()]
+	_said_for = [world.get_instance_id(), world.generation(), world.brick_count()]
 	_said = out
 	return out
 
 
 ## [method unmatched_words] as last worked out, for the world, its
-## generation and the parts on their way it was worked out for: an open says
-## it more than once (Main._open).
+## generation and how many parts it had (more come as they arrive): an open
+## says it more than once (Main._open).
 static var _said_for: Array = []
 static var _said: String = ""
 
@@ -1453,9 +1460,12 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 ## on the step that puts the sub-model on, which no page shows, and opened
 ## again the pull was gone (pullkept).
 ##
-## Each step there that adds some of the parts, and has no pull of its own,
-## gets a pull of the parts it adds, as they are built; what none takes
-## stays where the file has it, said on open (unmatched_words), never lost.
+## Each part of it goes to the first step there, as they are built, that
+## adds it and has no pull of its own, so no part is pulled twice: given to
+## every step that added it, the 3003s a sub-model laid in three steps were
+## pulled out on all three, a pull the designer set once (pkreview's
+## spread). A step given parts gets a pull of those; what none takes stays
+## where the file has it, said on open (unmatched_words), never lost.
 ## When the whole pull goes to one step, and its own step adds no part of
 ## its own, the rest of what that step's page was set up with goes too, if
 ## the step it goes to has none yet: the zoom, the page, the words and
@@ -1519,19 +1529,25 @@ static func _pulls_follow_parts(text: String, looks: Dictionary, names: Dictiona
 		for file: String in at[here]["order"]:
 			if definition_by.has(file):
 				_adding(file, named, steps, definition_by, adding, seen)
-		var given: Array = []       ## [step key, whether it had a look before]
-		var taken: Dictionary = {}
+		var taken: Dictionary = {}      ## part -> the step key it goes to
+		var order: Array = []           ## those step keys, as built
 		for each: Array in adding:
-			var to: Dictionary = looks.get(each[0], {})
-			if to.has("pull"):
+			if (looks.get(each[0], {}) as Dictionary).has("pull"):
 				continue
-			given.append([each[0], not to.is_empty()])
-			var pull: Dictionary = (look["pull"] as Dictionary).duplicate(true)
-			pull["parts"] = each[1]
-			to["pull"] = pull
-			looks[each[0]] = to
 			for part: String in each[1]:
-				taken[part] = true
+				if not taken.has(part):
+					taken[part] = each[0]
+					if not order.has(each[0]):
+						order.append(each[0])
+		var given: Array = []       ## [step key, whether it had a look before]
+		for to_key: String in order:
+			var to: Dictionary = looks.get(to_key, {})
+			given.append([to_key, not to.is_empty()])
+			var pull: Dictionary = (look["pull"] as Dictionary).duplicate(true)
+			pull["parts"] = named.filter(func(part: String) -> bool:
+				return str(taken.get(part, "")) == to_key)
+			to["pull"] = pull
+			looks[to_key] = to
 		if given.is_empty():
 			continue
 		var left: Array = named.filter(func(part: String) -> bool: return not taken.has(part))

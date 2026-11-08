@@ -11499,6 +11499,7 @@ msgstr "Nommez d’abord la page"
 
 # Page setup… (pagesetup2): a style taken away, the picture's size, a picture the file lacks
 
+
 msgid "Remove…"
 msgstr "Retirer…"
 
@@ -12177,13 +12178,10 @@ msgstr "%s : complet, vos pièces en vrac remplaçant les %d pièces indiquées 
 msgid "no such choice"
 msgstr "ce choix n'existe pas"
 
-# pullkept: what of the booklet no step shows now, said on open
+# pullkept: a pull no step shows now, said on open
 
 msgid "the pull on %s matches no step now, kept in the file"
 msgstr "l’extraction de %s ne correspond plus à aucune étape, conservée dans le fichier"
-
-msgid "what the booklet sets on %s matches no step now, kept in the file"
-msgstr "ce que la notice règle sur %s ne correspond plus à aucune étape, conservé dans le fichier"
 
 msgid "step %d of the model"
 msgstr "l’étape %d du modèle"

@@ -834,7 +834,7 @@ static func unshown_words(store: ModelStore) -> String:
 ## an open says what it left out. A pull whose parts had gone into a
 ## sub-model was dropped from sight without a word (pullkept).
 static func looks_words(store: ModelStore) -> String:
-	return BookletLooks.unmatched_words(store.world, store.library, store.scenery, store.awaited)
+	return BookletLooks.unmatched_words(store.world, store.library, store.scenery)
 
 
 ## Who made a model and on what terms, in a line: "LDraw model by Roland
