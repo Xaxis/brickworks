@@ -1,0 +1,8 @@
+w1|Give these instructions a cover titled "Twin Pods" with "Build them both" under it, the words "Designed in Brickworks" at the foot of every page, and the parts boxes framed in dark blue. Then show me the cover as it will print.
+w2|Which parts do the sets 7140 and 9493 have in common, and what would I have to buy to build 9493 from the parts of 7140? Make me the LEGO Pick a Brick list for it.
+w3|Could I build the model that is open now from the parts of set 7140? Tell me what I would still need.
+w4|Export this model for my colour 3D printer, so each colour can go on its own filament, and tell me how many colours it uses.
+w5|Away from the pods, make me a 1x1 plate with a clip on top, a bar 4 studs long and a pair of 4x2 wedge plates, left and right, and put them on the baseplate.
+w6|I own set 7140, the X-wing, but not all of it: two of its white 1x2 plates are lost. Put the set in my collection that way, with those two marked missing.
+w7|Keep the parts of the two pods, in their colours, as a palette of my own called "Pod parts", so I can use them in my other models.
+w8|Which part is a plain 1x1 plate, and which is the 1x1 brick with one stud on its side? Say how big each one is, in studs and in bricks.
