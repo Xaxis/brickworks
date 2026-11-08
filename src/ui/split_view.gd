@@ -306,8 +306,12 @@ func _give_back() -> void:
 	for dock: SideDock in _docks():
 		if not _left_as.has(dock) or bool(_left_as[dock]) != dock.is_open():
 			return
-	for dock: SideDock in folded:
-		if is_instance_valid(dock) and dock.visible and not dock.is_open():
+	# Untyped until checked: a column may have gone since it was folded.
+	for item: Variant in folded:
+		if not is_instance_valid(item):
+			continue
+		var dock: SideDock = item
+		if dock.visible and not dock.is_open():
 			dock.set_open(true)
 
 

@@ -1631,13 +1631,15 @@ func status_words() -> String:
 func _set_buttons() -> void:
 	var busy: bool = _working or _recording
 	for row: Dictionary in _row_buttons:
+		# Untyped until checked: rows built afresh have freed the old buttons.
 		for key: String in ["play", "back", "edit", "pick"]:
-			var button: BaseButton = row[key]
-			if is_instance_valid(button):
+			var item: Variant = row[key]
+			if is_instance_valid(item):
+				var button: BaseButton = item
 				button.disabled = busy or (_playing and button != _stop_button and key != "pick")
-	for button: Button in _keep_buttons:
-		if is_instance_valid(button):
-			button.disabled = busy or _playing
+	for item: Variant in _keep_buttons:
+		if is_instance_valid(item):
+			(item as Button).disabled = busy or _playing
 	_play_all.disabled = busy or (_playing and _stop_button != _play_all)
 	_new.disabled = busy or _playing
 	_new_sequence.disabled = busy or _playing
@@ -1651,8 +1653,9 @@ func _set_buttons() -> void:
 		var row: Dictionary = _seq_buttons[n]
 		var still: bool = busy or _playing
 		for key: String in ["up", "down", "out"]:
-			var button: Button = row[key]
-			if is_instance_valid(button):
+			var item: Variant = row[key]
+			if is_instance_valid(item):
+				var button: Button = item
 				button.disabled = still or (key == "up" and n == 0) \
 					or (key == "down" and n == _seq_buttons.size() - 1)
 	var motion: Motions.Motion = _edited()
@@ -2141,9 +2144,9 @@ func controls_by_name() -> Dictionary:
 			out["motions_joint_%d" % n] = _joint_parts[n]["slider"]
 	var shown: Dictionary = {}
 	for key: String in out:
-		var control: Control = out[key]
-		if is_instance_valid(control) and control.is_visible_in_tree():
-			shown[key] = control
+		var item: Variant = out[key]
+		if is_instance_valid(item) and (item as Control).is_visible_in_tree():
+			shown[key] = item
 	return shown
 
 

@@ -1369,9 +1369,10 @@ func _notification(what: int) -> void:
 		if _seeking >= 0:
 			WorkerTasks.collect(_seeking)
 			_seeking = -1
-		for tile: Button in _put_by:
-			if is_instance_valid(tile):
-				tile.free()
+		# Untyped until checked: a tile may have gone with its grid.
+		for item: Variant in _put_by:
+			if is_instance_valid(item):
+				(item as Button).free()
 		_put_by.clear()
 		return
 	if what != NOTIFICATION_TRANSLATION_CHANGED or _grid == null or _search == null or library == null:
