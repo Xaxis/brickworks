@@ -146,6 +146,12 @@ class Options extends RefCounted:
 	var smooth_tiles: bool = true
 	var accents: bool = true
 	var dither: bool = true
+	## The part of the picture laid, as fractions of it from its top left
+	## (Mosaic.crop_rect): what was drawn on it in the dialog.
+	var crop: Rect2 = Rect2(0, 0, 1, 1)
+	## The colours chosen (a set's, what the person owns): every stud's top
+	## element is one of them. Empty for the Art's own.
+	var palette: PackedInt32Array = PackedInt32Array()
 
 
 ## What each stud of the picture is to be. Cells run across then down,
@@ -274,6 +280,9 @@ class Art extends RefCounted:
 	var panels: Vector2i = Vector2i.ONE
 	var base_colour: int = 0
 	var plan: Plan
+	## False when the plan had a palette that neither tile is made in, and
+	## it was laid in the Art's own colours instead.
+	var palette_kept: bool = true
 
 	## As a model, for the checker and for placing.
 	func model(name: String = "Picture") -> Assistant.Model:
@@ -334,12 +343,14 @@ static func kind_of(placement: Assistant.Placement, panel: int) -> String:
 	return "relief plates"
 
 
-## How many panels a picture comes to.
+## How many panels a picture comes to: down from the crop's proportions
+## unless the person chose it.
 static func size_for(image: Image, options: Options) -> Vector2i:
 	var across: int = clampi(options.panels_across, 1, MOST_PANELS)
 	var down: int = options.panels_down
 	if down <= 0 and image != null and not image.is_empty():
-		down = roundi(float(across) * image.get_height() / image.get_width())
+		var seen: Vector2i = Mosaic.crop_rect(image.get_size(), options.crop).size
+		down = roundi(float(across) * seen.y / seen.x)
 	return Vector2i(across, clampi(down, 1, MOST_PANELS))
 
 
@@ -357,15 +368,17 @@ static func analyse(image: Image, options: Options, library: PartLibrary,
 	if image == null or image.is_empty():
 		return plan
 	var panels: Vector2i = size_for(image, options)
-	plan.want = picture_cells(image, panels.x * PANEL, panels.y * PANEL)
+	plan.want = picture_cells(Mosaic.cut(image, options.crop), panels.x * PANEL, panels.y * PANEL)
 	black_point(plan.want, library)
 	plan.sized(panels.x * PANEL, panels.y * PANEL)
+	plan.palette = options.palette
 	if guide != null and guide.texture.size() != plan.cells():
 		push_warning("an Art guide of %d studs for a picture of %d, left out"
 			% [guide.texture.size(), plan.cells()])
 		guide = null
 	if guide != null:
-		plan.palette = guide.palette
+		if not guide.palette.is_empty() or options.palette.is_empty():
+			plan.palette = guide.palette
 		plan.base_colour = guide.base_colour
 		# A region in one colour is that colour to everything that reads
 		# the picture after this, so it is flat and its edge is an edge.
@@ -787,17 +800,91 @@ static func base_for(plan: Plan, library: PartLibrary) -> int:
 	return most
 
 
-## [param among] cut to the plan's palette, where that leaves [param part]
-## a colour to be; otherwise all of it.
+## What is under the picture — the panels, the plates of relief — in the
+## plan's palette, where that leaves [param part] a colour to be; otherwise
+## [param among]. Only their edges show, so they may leave it; the studs on
+## top never do ([method _palette_of]).
 static func _among(plan: Plan, among: Array[int], library: PartLibrary,
 		part: String) -> Array[int]:
 	if plan.palette.is_empty():
 		return among
-	var kept: Array[int] = []
-	for code: int in among:
-		if plan.palette.has(code):
-			kept.append(code)
+	var kept: Array[int] = _palette_of(plan, false, library)
 	return kept if not colours_for(library, part, kept).is_empty() else among
+
+
+## The colours a stud's top element may be: the Art's own (SOLID, and the
+## accent finishes for a star), or where the plan has a palette, those of it
+## a stud can be — opaque ones (Mosaic.paintable), and for a star its accent
+## finishes too. A palette is kept to stud for stud: an element made in none
+## of it is laid as one that is ([method _keep_to_palette]).
+static func _palette_of(plan: Plan, accented: bool, library: PartLibrary) -> Array[int]:
+	var out: Array[int] = []
+	if plan.palette.is_empty():
+		out.append_array(SOLID)
+		if accented:
+			out.append_array(ACCENTS)
+		return out
+	for code: int in plan.palette:
+		if not out.has(code) and (Mosaic.paintable(code, library)
+				or (accented and ACCENTS.has(code))):
+			out.append(code)
+	return out
+
+
+## Where the plan has a palette, every stud's top laid in an element made
+## in one of its colours: a quarter circle or a cheese slope made in none of
+## them is a square tile, a round plate a round tile, a 2 x 2 star four
+## 1 x 1 stars, and round and square tiles stand in for each other. False,
+## the palette left, when neither tile is made in any of its colours.
+static func _keep_to_palette(plan: Plan, options: Options, library: PartLibrary) -> bool:
+	if plan.palette.is_empty():
+		return true
+	var plain: Array[int] = _palette_of(plan, false, library)
+	var lit: Array[int] = _palette_of(plan, true, library)
+	var round_ok: bool = not colours_for(library, ROUND, plain).is_empty()
+	var square_ok: bool = not colours_for(library, SQUARE, plain).is_empty()
+	if not round_ok and not square_ok:
+		plan.palette = PackedInt32Array()
+		return false
+	var tile: int = Style.SQUARE if square_ok else Style.ROUND
+	var dot: int = Style.ROUND if round_ok else Style.SQUARE
+	var flat: bool = options.depth <= 0
+	var quarter_ok: bool = not colours_for(library, QUARTER, plain).is_empty()
+	var slope_ok: bool = not colours_for(library, SLOPE, plain).is_empty()
+	var speck_ok: bool = not colours_for(library, SPECK, plain).is_empty()
+	var star_part: String = part_for(Style.STAR, flat)
+	var star_ok: Array[bool] = [not colours_for(library, star_part, plain).is_empty(),
+		not colours_for(library, star_part, lit if options.accents else plain).is_empty()]
+	var big_ok: Array[bool] = [not colours_for(library, BIG_ROUND, plain).is_empty(),
+		not colours_for(library, BIG_ROUND, lit if options.accents else plain).is_empty()]
+	for i: int in plan.cells():
+		if plan.big[i] == 1 and not big_ok[1 if plan.accent[i] == 1 else 0]:
+			plan.big[i] = 0
+			for j: int in [i + 1, i + plan.across, i + plan.across + 1]:
+				if j < plan.cells() and plan.style[j] == Style.COVERED:
+					plan.style[j] = Style.STAR
+					plan.accent[j] = plan.accent[i]
+	for i: int in plan.cells():
+		match plan.style[i]:
+			Style.ROUND:
+				if not round_ok:
+					plan.style[i] = Style.SQUARE
+			Style.SQUARE:
+				if not square_ok:
+					plan.style[i] = Style.ROUND
+			Style.QUARTER:
+				if not quarter_ok:
+					plan.style[i] = tile
+			Style.SLOPE:
+				if not slope_ok:
+					plan.style[i] = tile
+			Style.SPECK:
+				if not speck_ok:
+					plan.style[i] = dot
+			Style.STAR:
+				if plan.big[i] == 0 and not star_ok[1 if plan.accent[i] == 1 else 0]:
+					plan.style[i] = dot
+	return true
 
 
 static func _made_in(library: PartLibrary, part: String, code: int) -> bool:
@@ -850,13 +937,14 @@ static func lay(plan: Plan, options: Options, library: PartLibrary) -> Art:
 	if n == 0:
 		return art
 	art.panels = Vector2i(ceili(plan.across / float(PANEL)), ceili(plan.down / float(PANEL)))
+	art.palette_kept = _keep_to_palette(plan, options, library)
 	if plan.base_colour < 0:
 		plan.base_colour = base_for(plan, library)
 	art.base_colour = plan.base_colour
 	var flat: bool = options.depth <= 0
 
 	var labs: Dictionary = {}
-	for code: int in SOLID + ACCENTS + [plan.base_colour]:
+	for code: int in SOLID + ACCENTS + Array(plan.palette) + [plan.base_colour]:
 		labs[code] = _lab_of(library, code)
 	var palettes: Dictionary = {}
 
@@ -894,11 +982,7 @@ static func lay(plan: Plan, options: Options, library: PartLibrary) -> Art:
 			var accented: bool = style == Style.STAR and plan.accent[i] == 1 and options.accents
 			var key: String = part + ("+" if accented else "")
 			if not palettes.has(key):
-				var among: Array[int] = []
-				among.append_array(SOLID)
-				if accented:
-					among.append_array(ACCENTS)
-				palettes[key] = colours_for(library, part, _among(plan, among, library, part))
+				palettes[key] = colours_for(library, part, _palette_of(plan, accented, library))
 			var choices: PackedInt32Array = palettes[key]
 			# Said outright: a region's one colour, or a star's finish,
 			# where the part is made in it. Nothing to make up for after.

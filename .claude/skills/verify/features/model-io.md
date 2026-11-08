@@ -786,16 +786,30 @@ Whether what you built is still there tomorrow, and still means the same thing.
   corners dropped; a part placed mirrored turned back; two-sided (non-BFC)
   triangles turned out (`Mesh3mf._face_out`: across shared edges from the
   certified ones, then each unreached shell by its volume about the part's
-  middle). Capped at 1,000,000 triangles like OBJ. Parts are LDraw's shapes,
-  closed but not stitched (a stud stands on the top face), so lib3mf's
-  `IsManifoldAndOriented` is false for most objects: the core's manifold rule
-  is not met, and every slicer fills the shells as solids. **Check:**
+  middle). Capped at 1,000,000 triangles like OBJ. Each piece is then closed
+  (APP_UX7 #12 print3mf2; `src/parts/closed_mesh.gd`, preloaded by
+  `Mesh3mf._piece`, `Mesh3mf.close_up` to turn it off): T-junctions split
+  exactly (open edges grouped by line, whole 1/64 LDU), near ones within
+  0.1 LDU; a triangle lying on another sharing its edge dropped; round an
+  edge of more than two triangles each solid wedge's two sides paired; a
+  planar loop whose cap would lie on the part's own face (a stud's foot, a
+  tube's top) cut into that face, kept only when the remade faces cover the
+  old less the loops exactly; any other loop capped (loops in a plane
+  together, a ring for a tube; else the least-area span, else a fan); a
+  vertex where solids touch at a point given a copy per fan. So lib3mf's
+  `IsManifoldAndOriented` holds for every object and every edge has two
+  triangles going opposite ways (the core's 4.1): the car's 7 objects and
+  the print, mirror and no-front case's 3, where as drawn none are; 297 of
+  300 random library parts close whole in the Python prototype the
+  GDScript follows (`bench/results/print3mf2-2026-11-08/`). **Check:**
   `tools/probe.sh print3mf_probe` (headless, a few minutes, of which the
   reader is most; needs `uvx` and, once, the network for lib3mf 2.5.0,
   xmlschema 4.3.2 and numpy 2.5.4, kept in uv's cache). The reader alone:
   `uvx --with lib3mf==2.5.0 --with xmlschema==4.3.2 --with numpy==2.5.4
   python3 -I tools/print3mf/check_3mf.py FILE.3mf` prints a JSON report and
-  exits 1 on any error. Its winding test (three tilted rays from 1 µm in
+  exits 1 on any error; each object's `manifold_and_oriented` (lib3mf's) and
+  `edges_not_two`/`edges_one_way` (by vertex index) say whether it is closed.
+  Its winding test (three tilted rays from 1 µm in
   front of each triangle and three from behind, the positive fill rule
   against the triangle's own shell): facing in when empty behind and filled
   or below nought in front; internal when filled both sides (LDraw's shapes

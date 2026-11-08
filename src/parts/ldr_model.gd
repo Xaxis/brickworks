@@ -164,6 +164,16 @@ const COPY_META := "0 !BRICKWORKS COPY"
 ## written in the steps they are built in: every LDraw reader builds the
 ## order shown, and this app reads each copy back as it was (stepskeep).
 const IN_META := "0 !BRICKWORKS IN"
+## The word after "0 !BRICKWORKS" of each of those four, as [method parse]
+## compares a line's: written out, not sliced from them four times over for
+## every "0 !BRICKWORKS" line read (lreview's file of 200,000, 2026-11-07).
+const _AUTHORED_WORD := "AUTHORED_STEPS"
+const _WORKED_WORD := "WORKED_STEPS"
+const _COPY_WORD := "COPY"
+const _IN_WORD := "IN"
+## A light placed in the model, "0 !BRICKWORKS LIGHT {...}" (SceneLights):
+## its word, as the others' are compared.
+const _LIGHT_WORD := "LIGHT"
 ## The unit step of such a copy (AuthorSteps reads it from here): kept here,
 ## where the file is read, so reading one names no class of the app's and
 ## compiles alone, which is what a file browser's picture of a model waits
@@ -180,15 +190,27 @@ var generated: Dictionary = {}
 ## by its body: made once an open, where the web looks for what a skin is
 ## drawn from before it opens (CustomParts.unreached_by) and builds it after.
 var skin_texts: Dictionary = {}
+## The model's own light lines (SceneLights), as the file has them, without a
+## line's CR, in its order: those of its first FILE section and any before
+## it. Read here, in the one reading of the file, so which model a light is
+## of is decided where every part's is: a sub-model's are [member
+## section_lights]'s.
+var light_lines := PackedStringArray()
+## A sub-model's light lines, by its key (as [member unit_sections] names
+## the section each copy is of) -> Array of the lines as the file has them.
+var section_lights: Dictionary = {}
 
 
 ## Whether the steps in the file are an author's, to keep: there are steps,
 ## and they are not ones Brickworks worked out and wrote itself. Every file
 ## it saved wrote its worked-out order as 0 STEP lines, so other tools see
 ## a build, and those are no one's steps: kept, a model saved yesterday
-## would have a new tower's hundred parts in its last step tomorrow.
+## would have a new tower's hundred parts in its last step tomorrow. A
+## model of one step has no 0 STEP line, and its mark says it is the
+## author's all the same: read as no one's, it lost its booklet looks on
+## open and its next save erased them (pkreview, pullkept).
 func steps_are_authored() -> bool:
-	return stepped and not marked_worked \
+	return (stepped or marked_authored) and not marked_worked \
 		and (marked_authored or author.strip_edges() != "Brickworks")
 
 
@@ -228,6 +250,9 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 	## The !DATA section being read, and its base64 so far.
 	var data_name: String = ""
 	var data := PackedStringArray()
+	## The model's own light lines, kept here and given to it at the end: a
+	## packed array read out of an object and appended to is a copy.
+	var own_lights := PackedStringArray()
 
 	var index: int = -1
 	for raw: String in text.split("\n"):
@@ -294,16 +319,27 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 				model.stepped = true
 				within = ""
 			elif keyword == "!BRICKWORKS" and tokens.size() > 2 \
-					and tokens[2] == AUTHORED_META.get_slice(" ", 2):
+					and tokens[2] == _AUTHORED_WORD:
 				model.marked_authored = true
 			elif keyword == "!BRICKWORKS" and tokens.size() > 2 \
-					and tokens[2] == WORKED_META.get_slice(" ", 2):
+					and tokens[2] == _WORKED_WORD:
 				model.marked_worked = true
 			elif keyword == "!BRICKWORKS" and tokens.size() > 3 \
-					and tokens[2] == COPY_META.get_slice(" ", 2):
+					and tokens[2] == _COPY_WORD:
 				copy_next = maxi(tokens[3].to_int(), 0)
 			elif keyword == "!BRICKWORKS" and tokens.size() > 2 \
-					and tokens[2] == IN_META.get_slice(" ", 2):
+					and tokens[2] == _LIGHT_WORD:
+				# The model's own, or the sub-model's being read: a light is
+				# of the model its line is in, as a part is.
+				if current == model.main:
+					own_lights.append(raw.trim_suffix("\r"))
+				else:
+					var key: String = _key(current.name)
+					if not model.section_lights.has(key):
+						model.section_lights[key] = []
+					(model.section_lights[key] as Array).append(raw.trim_suffix("\r"))
+			elif keyword == "!BRICKWORKS" and tokens.size() > 2 \
+					and tokens[2] == _IN_WORD:
 				# A path's names may hold spaces: the rest of the line.
 				within = line.substr(line.to_upper().find(keyword) + keyword.length()).strip_edges() \
 					.substr(tokens[2].length()).strip_edges()
@@ -357,6 +393,7 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 
 	if not data_name.is_empty():
 		model.embedded_data[data_name] = Marshalls.base64_to_raw("".join(data))
+	model.light_lines = own_lights
 	for file_name: String in sections:
 		var lines := PackedStringArray(sections[file_name])
 		# The first section is the model itself, whatever it is called.
@@ -390,10 +427,99 @@ static func has_size(basis: Basis) -> bool:
 
 
 static func _is_file_line(line: String) -> bool:
-	var tokens: PackedStringArray = line.split(" ", false)
-	return tokens.size() >= 2 and tokens[0] == "0" \
-		and (tokens[1].to_upper() == "FILE" or tokens[1].to_upper() == "NOFILE"
-			or tokens[1].to_upper() == "!DATA")
+	return not section_word(line).is_empty()
+
+
+## What [param line] opens or closes of a file of many sections, its words
+## split as [method parse] splits every line ([method _fields]: a tab is a
+## space): "FILE", "NOFILE" or "!DATA"; "" for any other line. Split on
+## spaces alone, "0<tab>FILE sub.ldr" ended no section here while parse
+## opened one there, and a sub-model's light was read as the model's
+## (lreview, 2026-11-07).
+static func section_word(line: String) -> String:
+	var tokens: PackedStringArray = _fields(line.strip_edges())
+	if tokens.size() < 2 or tokens[0].to_int() != 0:
+		return ""
+	var word: String = tokens[1].to_upper()
+	return word if word == "FILE" or word == "NOFILE" or word == "!DATA" else ""
+
+
+## Where [param text]'s own model is, as [method parse] reads it: x where its
+## lines begin after its 0 FILE line (0 when the text has none), y where they
+## end, at its second 0 FILE (the text's length when it has none). What a
+## writer puts into the model goes after the first of its lines (its title),
+## inside its FILE section, never before it. Each line that may be one read
+## as parse reads it ([method section_word]); those lines found by the
+## engine's searches for the word's last letters, "ILE" and "ile" (any case
+## of the word but a mix within them, FiLe say, which no tool writes): its
+## search without case took 860 ms over a model of 900,000 lines (these two
+## 250), and each save asks this more than once.
+static func main_span(text: String) -> Vector2i:
+	var start: int = -1
+	var upper: int = text.find("ILE")
+	var lower: int = text.find("ile")
+	while upper >= 0 or lower >= 0:
+		var found: int = upper if lower < 0 or (upper >= 0 and upper < lower) else lower
+		var line_start: int = text.rfind("\n", found) + 1
+		var line_end: int = text.find("\n", found)
+		if line_end < 0:
+			line_end = text.length()
+		if section_word(text.substr(line_start, line_end - line_start)) == "FILE":
+			if start >= 0:
+				return Vector2i(start, line_start)
+			start = mini(line_end + 1, text.length())
+		var after: int = line_end + 1
+		if after >= text.length():
+			break
+		if upper >= 0 and upper < after:
+			upper = text.find("ILE", after)
+		if lower >= 0 and lower < after:
+			lower = text.find("ile", after)
+	return Vector2i(maxi(start, 0), text.length())
+
+
+## Where [param text]'s own model's lines end ([method main_span]).
+static func main_end(text: String) -> int:
+	return main_span(text).y
+
+
+## [param text] with [param lines] put in after the first line of its own
+## model ([method main_span]: inside its FILE section, after its title),
+## each ending as the text's lines do: where a writer puts what it keeps in
+## the model.
+static func into_main(text: String, lines: PackedStringArray) -> String:
+	if lines.is_empty():
+		return text
+	var span: Vector2i = main_span(text)
+	var at: int = span.x
+	if at < span.y:
+		var stop: int = text.find("\n", at)
+		at = text.length() if stop < 0 else stop + 1
+	return lines_at(text, at, lines)
+
+
+## [param text] with [param lines] put in at [param at], where a line of it
+## begins or at its end, each ending as its lines do ([method eol_of]); a text
+## that ended without a line end still does.
+static func lines_at(text: String, at: int, lines: PackedStringArray) -> String:
+	if lines.is_empty():
+		return text
+	var eol: String = eol_of(text)
+	var block: String = eol.join(lines)
+	if at < text.length():
+		return text.substr(0, at) + block + eol + text.substr(at)
+	if text.is_empty() or text.ends_with("\n"):
+		return text + block + eol
+	return text + eol + block
+
+
+## How [param text] ends its lines, its first one's way: "\r\n" (Studio's,
+## Windows') or "\n". Every line a writer puts into a file ends this way, so
+## a file of one kind of line end is never given a line of the other or a CR
+## alone (lreview, 2026-11-07).
+static func eol_of(text: String) -> String:
+	var first: int = text.find("\n")
+	return "\r\n" if first > 0 and text[first - 1] == "\r" else "\n"
 
 
 ## Whether a FILE section is a part rather than a sub-model: its header
@@ -732,10 +858,11 @@ static func _origin(chain: String, line: int) -> String:
 ## sub-model is given a file name that is one, since a reference to it would
 ## be read as that part. 3315-1's container, a sub-model titled "33009", went
 ## out as 33009.ldr and came back as the library's 33009, its five parts gone and
-## the model 20 LDU higher.
+## the model 20 LDU higher. [param steps] as [method write_tree] takes them.
 static func write_ldr(
 	placements: Array, title: String = "Model", author_name: String = "",
-	frames: Dictionary = {}, embedded: Dictionary = {}, parts: Dictionary = {}
+	frames: Dictionary = {}, embedded: Dictionary = {}, parts: Dictionary = {},
+	steps: Dictionary = {}
 ) -> String:
 	var groups: Array[String] = []
 	for item: Variant in placements:
@@ -743,7 +870,7 @@ static func write_ldr(
 		if not group.is_empty() and not groups.has(group):
 			groups.append(group)
 	if groups.is_empty() and embedded.is_empty():
-		return _write_one(placements, title, author_name, [])
+		return _write_one(placements, title, author_name, [], "", [], [], [], steps.get("", []))
 
 	var main_file: String = title.to_snake_case() + ".ldr"
 	var file_of: Dictionary = {}
@@ -760,7 +887,8 @@ static func write_ldr(
 		var frame: Transform3D = frames.get(group, Transform3D.IDENTITY)
 		refs.append("1 16 %s %s" % [_line_numbers(frame), str(file_of[group])])
 	var text: String = "0 FILE " + main_file + "\n" \
-		+ _write_one(loose, title, author_name, refs) + "0 NOFILE\n"
+		+ _write_one(loose, title, author_name, refs, "", [], [], [],
+			steps.get("", []) if groups.is_empty() else []) + "0 NOFILE\n"
 	for group: String in groups:
 		var own: Array = placements.filter(func(p: Placement) -> bool:
 			return p.group == group)
@@ -808,38 +936,22 @@ static func write_ldr(
 ## goes in its section's first step. A copy built in its parent's steps
 ## (AuthorSteps.IN_PARENT) has no section: its parts, and the copies it
 ## places, are written in the steps of the one round it after a line
-## naming it (IN_META).
+## naming it (IN_META). [param steps]: each section's steps, by definition
+## ([method steps_written]'s and any a step list adds), each written, one
+## with nothing in it too. [param kept] is the lines a definition keeps that
+## are not parts, by its name -> the lines, written after its section's
+## first line as they are: a sub-model's lights the app could not read, or
+## any of its own (SceneLights.kept_in).
 static func write_tree(
 	placements: Array, title: String, author_name: String,
 	instances: Dictionary, embedded: Dictionary = {}, unit_steps: Dictionary = {},
-	parts: Dictionary = {}
+	parts: Dictionary = {}, steps: Dictionary = {}, kept: Dictionary = {}
 ) -> String:
-	var in_parent := func(path: String) -> bool:
-		return int(unit_steps.get(path, -1)) == IN_PARENT
-	# The section a path's own parts are written in, and the path within it.
-	var home_of := func(path: String) -> String:
-		while not path.is_empty() and in_parent.call(path):
-			path = "" if path.rfind("/") < 0 else path.substr(0, path.rfind("/"))
-		return path
-	var within_of := func(path: String, home: String) -> String:
-		if path == home:
-			return ""
-		return path if home.is_empty() else path.substr(home.length() + 1)
-	var ordered: Array = instances.keys().filter(func(path: String) -> bool:
-		return not in_parent.call(path))
-	ordered.sort_custom(func(a: String, b: String) -> bool:
-		var depth_a: int = a.count("/")
-		var depth_b: int = b.count("/")
-		if depth_a != depth_b:
-			return depth_a < depth_b
-		return a.naturalnocasecmp_to(b) < 0)
-	var masters: Dictionary = {}     ## def -> path
-	var defs: Array[String] = []
-	for path: String in ordered:
-		var def: String = str((instances[path] as Dictionary)["def"])
-		if not masters.has(def):
-			masters[def] = path
-			defs.append(def)
+	var tree: Dictionary = _tree_of(instances, unit_steps)
+	var masters: Dictionary = tree["masters"]
+	var defs: Array = tree["defs"]
+	var children: Dictionary = tree["children"]
+	var placed_within: Dictionary = tree["within"]
 	var main_file: String = title.to_snake_case() + ".ldr"
 	var file_of: Dictionary = {}
 	for def: String in defs:
@@ -848,27 +960,6 @@ static func write_tree(
 				or parts.has(file.get_basename()):
 			file = file.get_basename() + "_.ldr"
 		file_of[def] = file
-	var children: Dictionary = {}    ## the section placing it -> Array of paths
-	var placed_within: Dictionary = {}     ## path -> the copy it is placed in there, IN_META
-	for path: String in ordered:
-		var at: int = path.rfind("/")
-		var parent: String = "" if at < 0 else path.substr(0, at)
-		var section: String = home_of.call(parent)
-		placed_within[path] = within_of.call(parent, section)
-		if not children.has(section):
-			children[section] = []
-		(children[section] as Array).append(path)
-	# Each section's references in the order the model holds their parts
-	# (an instance's "first"): two put on in one step are built in the order
-	# they are read in (AuthorSteps.key_of). By name, 7140-1's ship went
-	# before its support vehicle once a sub-model was renamed, and every
-	# step of the vehicle came 30 later (unitsteps).
-	var last: int = 1 << 62
-	for section: String in children:
-		(children[section] as Array).sort_custom(func(a: String, b: String) -> bool:
-			var at_a: int = int((instances[a] as Dictionary).get("first", last))
-			var at_b: int = int((instances[b] as Dictionary).get("first", last))
-			return at_a < at_b if at_a != at_b else a.naturalnocasecmp_to(b) < 0)
 	var refs := func(parent: String, inverse: Transform3D) -> Array[String]:
 		var out: Array[String] = []
 		for child: String in children.get(parent, []):
@@ -892,27 +983,27 @@ static func write_tree(
 		return children.get(parent, []).map(func(child: String) -> String:
 			return str(placed_within[child]))
 	var loose: Array = placements.filter(func(p: Placement) -> bool:
-		return home_of.call(p.unit) == "")
+		return _home_in(p.unit, unit_steps) == "")
 	var text: String = "0 FILE " + main_file + "\n" \
 		+ _write_one(loose, title, author_name, refs.call("", Transform3D.IDENTITY), "",
 			ref_steps.call(""), loose.map(func(p: Placement) -> String:
-				return within_of.call(p.unit, "")), ref_within.call("")) \
+				return _within_of(p.unit, "")), ref_within.call(""), steps.get("", [])) \
 		+ "0 NOFILE\n"
 	for def: String in defs:
 		var master: String = masters[def]
 		var inverse: Transform3D = ((instances[master] as Dictionary)["frame"] as Transform3D) \
 			.affine_inverse()
 		var own: Array = placements.filter(func(p: Placement) -> bool:
-			return home_of.call(p.unit) == master).map(func(p: Placement) -> Placement:
+			return _home_in(p.unit, unit_steps) == master).map(func(p: Placement) -> Placement:
 				var local := Placement.new(p.part_id, p.color_code, inverse * p.transform, p.step)
 				local.group = p.group
 				local.unit = p.unit
-				local.within = within_of.call(p.unit, master)
+				local.within = _within_of(p.unit, master)
 				return local)
 		text += "0 FILE " + str(file_of[def]) + "\n" \
 			+ _write_one(own, def, author_name, refs.call(master, inverse), str(file_of[def]),
 				ref_steps.call(master), own.map(func(p: Placement) -> String: return p.within),
-				ref_within.call(master)) \
+				ref_within.call(master), steps.get(def, []), kept.get(def, PackedStringArray())) \
 			+ "0 NOFILE\n"
 	var names: Array = embedded.keys()
 	names.sort()
@@ -931,6 +1022,105 @@ static func write_tree(
 	return text
 
 
+## How [method write_tree] lays out [param instances]: "masters" (each
+## definition -> the copy it is written from), "defs" (the definitions in
+## the order written), "children" (each section -> the copies it puts on,
+## in the order it references them) and "within" (each copy -> the copy
+## built in its section's steps it is placed in, IN_META's, "" for none).
+static func _tree_of(instances: Dictionary, unit_steps: Dictionary) -> Dictionary:
+	var ordered: Array = instances.keys().filter(func(path: String) -> bool:
+		return int(unit_steps.get(path, -1)) != IN_PARENT)
+	ordered.sort_custom(func(a: String, b: String) -> bool:
+		var depth_a: int = a.count("/")
+		var depth_b: int = b.count("/")
+		if depth_a != depth_b:
+			return depth_a < depth_b
+		return a.naturalnocasecmp_to(b) < 0)
+	var masters: Dictionary = {}     ## def -> path
+	var defs: Array[String] = []
+	for path: String in ordered:
+		var def: String = str((instances[path] as Dictionary)["def"])
+		if not masters.has(def):
+			masters[def] = path
+			defs.append(def)
+	var children: Dictionary = {}    ## the section placing it -> Array of paths
+	var placed_within: Dictionary = {}     ## path -> the copy it is placed in there, IN_META
+	for path: String in ordered:
+		var at: int = path.rfind("/")
+		var parent: String = "" if at < 0 else path.substr(0, at)
+		var section: String = _home_in(parent, unit_steps)
+		placed_within[path] = _within_of(parent, section)
+		if not children.has(section):
+			children[section] = []
+		(children[section] as Array).append(path)
+	# Each section's references in the order the model holds their parts
+	# (an instance's "first"): two put on in one step are built in the order
+	# they are read in (AuthorSteps.key_of). By name, 7140-1's ship went
+	# before its support vehicle once a sub-model was renamed, and every
+	# step of the vehicle came 30 later (unitsteps).
+	var last: int = 1 << 62
+	for section: String in children:
+		(children[section] as Array).sort_custom(func(a: String, b: String) -> bool:
+			var at_a: int = int((instances[a] as Dictionary).get("first", last))
+			var at_b: int = int((instances[b] as Dictionary).get("first", last))
+			return at_a < at_b if at_a != at_b else a.naturalnocasecmp_to(b) < 0)
+	return {"masters": masters, "defs": defs, "children": children, "within": placed_within}
+
+
+## The section the parts directly in [param path] are written in: its own,
+## or for a copy built in its parent's steps (IN_PARENT), the nearest one
+## round it that is not.
+static func _home_in(path: String, unit_steps: Dictionary) -> String:
+	while not path.is_empty() and int(unit_steps.get(path, -1)) == IN_PARENT:
+		path = "" if path.rfind("/") < 0 else path.substr(0, path.rfind("/"))
+	return path
+
+
+## [param path] named within the section [param home] it is written in.
+static func _within_of(path: String, home: String) -> String:
+	if path == home:
+		return ""
+	return path if home.is_empty() else path.substr(home.length() + 1)
+
+
+## The steps of each file section [method write_tree] writes, by
+## definition ("" the model's own, and the only one of [method write_ldr],
+## which has no [param instances]), in order: those of the parts written in
+## it and of the copies it puts on, as [method _write_one] places each. The
+## writer writes them, with any a step list given adds, and the booklet's
+## looks are numbered by the same list (ModelStore, BookletLooks.as_written):
+## worked out from the model's parts and not the file's, a part the
+## catalogue lacks, written in a step of its own, made every save write one
+## step more and move every look after it (pkreview, 2026-11-07).
+static func steps_written(placements: Array, instances: Dictionary = {},
+		unit_steps: Dictionary = {}) -> Dictionary:
+	var tree: Dictionary = _tree_of(instances, unit_steps)
+	var def_at: Dictionary = {"": ""}     ## the section a definition is written from -> it
+	for def: String in tree["masters"]:
+		def_at[tree["masters"][def]] = def
+	var own: Dictionary = {}     ## section -> its placements, in order
+	for item: Variant in placements:
+		var placement: Placement = item
+		var home: String = _home_in(placement.unit, unit_steps)
+		if def_at.has(home):
+			(own.get_or_add(home, []) as Array).append(placement)
+	var out: Dictionary = {}
+	for section: String in def_at:
+		var listed: Array = own.get(section, [])
+		var used: Dictionary = {}
+		for placement: Placement in listed:
+			used[placement.step] = true
+		# A copy goes on in its step; with no steps given, in the step of the
+		# section's first part.
+		var first: int = (listed[0] as Placement).step if not listed.is_empty() else 0
+		for child: String in (tree["children"] as Dictionary).get(section, []):
+			used[int(unit_steps.get(child, 0)) if not unit_steps.is_empty() else first] = true
+		var order: Array = used.keys()
+		order.sort()
+		out[def_at[section]] = order
+	return out
+
+
 ## One file section: its header, then its references to sub-models and its
 ## parts, step by step, a "0 STEP" between steps. [param ref_steps] gives
 ## each reference the step it goes on in, as [param placements] carry
@@ -939,12 +1129,17 @@ static func write_tree(
 ## step 9 came back put on in step 1. [param within] and [param ref_within]
 ## name the copy built in this one's steps each part and each reference is
 ## of, "" for its own: each run of a step's lines of one such copy is
-## written after a line naming it (IN_META).
+## written after a line naming it (IN_META). [param steps] are steps to
+## write, in among the others, that nothing is in (ModelStore: one the
+## model's file had empty, that a booklet look is set on). [param kept] go
+## after its first line, as they are (write_tree).
 static func _write_one(placements: Array, title: String, author_name: String,
 		refs: Array[String], file_name: String = "", ref_steps: Array = [],
-		within: Array = [], ref_within: Array = []) -> String:
+		within: Array = [], ref_within: Array = [], steps: Array = [],
+		kept: PackedStringArray = PackedStringArray()) -> String:
 	var lines := PackedStringArray()
 	lines.append("0 " + title)
+	lines.append_array(kept)
 	lines.append("0 Name: " + (file_name if not file_name.is_empty()
 		else title.to_snake_case() + ".ldr"))
 	if not author_name.is_empty():
@@ -969,6 +1164,13 @@ static func _write_one(placements: Array, title: String, author_name: String,
 		items.append([placement.step, 1, n, "1 %s %s %s.dat" % [
 			colour, _line_numbers(placement.transform), placement.part_id],
 			str(within[n]) if n < within.size() else ""])
+	# A step with nothing in it: a place in the order, written as its 0 STEP.
+	var filled: Dictionary = {}
+	for item: Array in items:
+		filled[int(item[0])] = true
+	for step: Variant in steps:
+		if not filled.has(int(step)):
+			items.append([int(step), 2, 0, "", ""])
 	items.sort_custom(func(a: Array, b: Array) -> bool:
 		if int(a[0]) != int(b[0]):
 			return int(a[0]) < int(b[0])
@@ -988,6 +1190,8 @@ static func _write_one(placements: Array, title: String, author_name: String,
 			inside = ""
 		step = int(item[0])
 		started = true
+		if int(item[1]) == 2:
+			continue
 		if str(item[4]) != inside:
 			inside = str(item[4])
 			lines.append(IN_META + ("" if inside.is_empty() else " " + inside))

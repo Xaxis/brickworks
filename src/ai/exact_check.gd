@@ -218,11 +218,19 @@ func forgiven(i: int, j: int) -> bool:
 ## pair of their pieces that overlap is within it. Not in a run kept to
 ## BrickBench's parts (PartsOnly), whose verify.py forgives none of it.
 func known_fit(i: int, j: int) -> bool:
-	if not _shaped(i) or not _shaped(j) or PartsOnly.active():
+	if not _shaped(i) or not _shaped(j):
 		return false
-	var a: Exact.Item = items[i]
-	var b: Exact.Item = items[j]
-	var most: float = KnownFits.reach(parts[i], parts[j], a.at.affine_inverse() * b.at)
+	return meet_as_sets(items[i], parts[i], items[j], parts[j])
+
+
+## Whether [param a] (part [param a_part]) and [param b] meet no deeper than
+## official sets meet those two kinds of part, the one where the sets put it
+## against the other ([method known_fit]): the hand's room asks it of two
+## parts as the check asks it of two items (Builder.room_for).
+static func meet_as_sets(a: Exact.Item, a_part: String, b: Exact.Item, b_part: String) -> bool:
+	if a == null or b == null or PartsOnly.active():
+		return false
+	var most: float = KnownFits.reach(a_part, b_part, a.at.affine_inverse() * b.at)
 	if most <= Exact.TAU:
 		return false
 	for hit: Array in Exact.overlaps(a, b):
@@ -311,21 +319,40 @@ func between(i: int, j: int) -> Variant:
 	return found
 
 
-## [param blockers] without the ones the exact shapes clear of placement
-## [param index]: the lattice rounds a cover out to whole cells, and two
-## parts it calls overlapping can be clear by their shapes.
+## [param blockers] without the ones the exact shapes let placement [param
+## index] meet ([method let_meet]): the lattice rounds a cover out to whole
+## cells, and two parts it calls overlapping can be clear by their shapes.
 func drop_cleared(blockers: PackedInt64Array, index: int) -> PackedInt64Array:
 	if blockers.is_empty() or not _shaped(index):
 		return blockers
 	var began: int = Time.get_ticks_usec()
 	var kept := PackedInt64Array()
 	for key: int in blockers:
-		var found: Variant = between(index, item_of(key))
-		if found is Dictionary and (found as Dictionary).is_empty():
+		if let_meet(index, item_of(key)):
 			continue
 		kept.append(key)
 	_spent("cleared", began)
 	return kept
+
+
+## Whether items [param i] and [param j], both with exact shapes, may meet
+## where their covers overlap: clear of each other, or meeting as the LEGO
+## Group's own sets meet those two parts, where they put the one against the
+## other ([method known_fit]), and not down a stud past its foot further than
+## the sets build it ([method _sunk_near]). The covers had refused what the
+## collisions forgave as a fit: a 3960 dish on a 3941 round brick where 2150-1
+## and 4554-1 put it, 3062b under a 3960 as 6770-1 has it, a figure's hair on
+## its head (realjoints3, 2026-11-07). Not a joint's own parts ([method
+## at_joint]): the covers judge those by the joint (Joints.rounds), more
+## tightly than the shapes' round, and a clip 2 LDU off its bar's line, its
+## jaws inside the bar's round, is pressed into the bar's side.
+func let_meet(i: int, j: int) -> bool:
+	var found: Variant = between(i, j)
+	if not found is Dictionary:
+		return false
+	if (found as Dictionary).is_empty():
+		return true
+	return known_fit(i, j) and not _sunk_near(i, PackedInt32Array([j]))
 
 
 ## [param blockers] without the ones that meet placement [param index] only
@@ -432,19 +459,59 @@ func sunk(of: Dictionary = {}) -> Dictionary:
 	return out
 
 
+## Each pair of items, one of them in [param of] (any when it is empty), where
+## one is down a stud of the other past where BrickNet joins them, as the
+## sets build those two ([method _fit_sunk]): [the stud's item, the one down
+## it] each. The stud is taken whole by a tube or a socket LDraw draws deeper
+## than BrickNet frames it, so the two are joined though BrickNet's labels join
+## nothing there: a 4740 dish 4 LDU down a 6141's stud past its tube's frame,
+## as 31038-1 has it (realjoints3, 2026-11-07).
+func taken_whole(of: Dictionary = {}) -> Array:
+	var out: Array = []
+	for one: Array in Exact.sunk_pairs(items, of):
+		if _fit_sunk(int(one[0]), int(one[1]), float(one[2])):
+			out.append([int(one[0]), int(one[1])])
+	return out
+
+
 ## Whether item [param i] is down a stud of one of [param others], or one of
-## theirs down its, past the stud's foot further than BrickNet joins them: no
-## seat moves it, as it is in that part (the check says so, [method
-## collisions]). Nearer, it is on the stud, low, and the seat puts it up. A
-## pair the sets build so is not sunk ([method _fit_sunk]), here as there.
+## theirs down its, past the stud's foot further than BrickNet joins them, and
+## further than the sets build those two ([method _fit_sunk]): in that part,
+## as the check says ([method collisions]).
 func _sunk_near(i: int, others: PackedInt32Array) -> bool:
 	for j: int in others:
 		if items[j] == null:
 			continue
-		var depth: float = maxf(Exact.sunk(items[j], items[i]), Exact.sunk(items[i], items[j]))
+		var depth: float = _down(i, j)
 		if depth > Exact.SUNK_PAST and not _fit_sunk(i, j, depth):
 			return true
 	return false
+
+
+## Whether item [param i] is down a stud of one of [param others], or one of
+## theirs down its, past the stud's foot further than BrickNet joins them
+## (Exact.SUNK_PAST): no seat moves it. Further down than the sets build those
+## two, it is in that part ([method _sunk_near]), and the check says so; as
+## far as they build it ([method _fit_sunk]), a tube or a socket LDraw draws
+## deeper than BrickNet frames it takes the stud whole, and it is seated
+## already: a 4740 dish 4 LDU down a 6141's stud, as 31038-1 has it. Seated
+## onto that frame, it went 4 LDU further, where no set has it. Nearer, it is
+## on the stud, low, and the seat puts it up: a session writes a part to the 2
+## LDU lattice, an LDU off each way at most. Only the stud says it is seated,
+## never another part it meets as the sets put the two: a saddle written an
+## LDU low met the sword in its clip and its rider's leg as 6034-1 and 6074-1
+## have them, and was left there (realjoints4, 2026-11-08).
+func _past_a_foot(i: int, others: PackedInt32Array) -> bool:
+	for j: int in others:
+		if items[j] != null and _down(i, j) > Exact.SUNK_PAST:
+			return true
+	return false
+
+
+## How far item [param i] is down a stud of item [param j] past its foot, or
+## [param j] down one of [param i]'s, the further (Exact.sunk), LDU.
+func _down(i: int, j: int) -> float:
+	return maxf(Exact.sunk(items[j], items[i]), Exact.sunk(items[i], items[j]))
 
 
 ## Whether items [param i] and [param j], one [param depth] LDU down a stud
@@ -1698,7 +1765,7 @@ func _seat_pieces(wanted: Dictionary, near: Dictionary, moved: Dictionary) -> vo
 			for j: int in (near.get(int(i), PackedInt32Array()) as PackedInt32Array):
 				if not mine.has(j):
 					outside.append(j)
-			down = down or _sunk_near(int(i), outside)
+			down = down or _past_a_foot(int(i), outside)
 		if down:
 			continue
 		var best: Dictionary = {}
@@ -1904,7 +1971,7 @@ func _seat(movable: Array) -> Dictionary:
 	var order: Array = wanted.keys()
 	order.sort_custom(func(a: int, b: int) -> bool: return _volume(a) < _volume(b))
 	for i: int in order:
-		if not near.has(i) or _meets_exactly(i, points) or _sunk_near(i, near[i]):
+		if not near.has(i) or _meets_exactly(i, points) or _past_a_foot(i, near[i]):
 			continue
 		var others: PackedInt32Array = near[i]
 		var found: Dictionary = Exact.seat_move(items, i, SEAT_REACH, 0.05, others)

@@ -10,7 +10,8 @@
 ## takes it all back. The colour in hand stands in for its main colour.
 ##
 ## Every step is a click or a key sent as an input event against the real
-## scene. "Window in a wall" goes down on a wall, and three constructions
+## scene. "Window in a wall", found by typing it, its row first and in sight
+## with no part among the rows, goes down on a wall, and three constructions
 ## from other groups on the ground; each time the model checks as a design
 ## is checked, the count rises by the construction's parts, and one undo
 ## puts the model back. Pictures go to shots/bin_techniques/.
@@ -70,7 +71,7 @@ func _run() -> void:
 	await _frames(2)
 
 	var tab: Button = _tab()
-	_check("the parts bin has a Techniques tab beside Recent and Favourites (%s)"
+	_check("the parts bin has a Techniques tab after Recent, Favourites and Palettes (%s)"
 		% (tab.text if tab != null else "none"), tab != null and _beside_shelves(tab))
 	if tab == null:
 		_finish()
@@ -100,8 +101,9 @@ func _run() -> void:
 	_check("the rows in sight get their pictures", drawn)
 	await _shot("tab")
 
-	# Window in a wall, onto the wall.
-	await _choose("window in a wall")
+	# Window in a wall, onto the wall: found by typing, as a person finds one
+	# of ninety.
+	await _found_by_typing("window in a wall")
 	var technique: Dictionary = Techniques.named("window in a wall")
 	var parts: int = (technique["bricks"] as Array).size()
 	_check("choosing it holds it whole (%d of %d parts)" % [
@@ -130,6 +132,11 @@ func _run() -> void:
 	await _shot("window_down")
 	await _key(KEY_Z, true)
 	_check("one undo takes it all back (%d bricks)" % _count(), _snapshot() == before)
+	# What was typed taken away again: every construction listed.
+	await _click(_bin._search.get_global_rect().get_center())
+	await _key(KEY_A, true)
+	await _key(KEY_BACKSPACE)
+	await _settled()
 
 	# One from each of three other groups, on the ground.
 	for name: String in ["smooth diagonal", "round tower", "corner on a turntable"]:
@@ -189,6 +196,53 @@ func _choose(name: String) -> void:
 		if _builder.is_carrying():
 			break
 		await process_frame
+
+
+## Its words typed in the search, key by key, and its row clicked where it is
+## shown: first, in sight, and nothing but constructions listed with it. The
+## grid grew into the last search's parts, above the rows, and the window's
+## row stood 2,600 px down, where no click reached it (bintech, 2026-11-08).
+func _found_by_typing(name: String) -> void:
+	await _click(_bin._search.get_global_rect().get_center())
+	for letter: String in name:
+		var event := InputEventKey.new()
+		event.keycode = letter.to_upper().unicode_at(0) as Key
+		event.physical_keycode = event.keycode
+		event.unicode = letter.unicode_at(0)
+		for down: bool in [true, false]:
+			var key: InputEventKey = event.duplicate()
+			key.pressed = down
+			Input.parse_input_event(key)
+			await process_frame
+	await _settled()
+	var stray: int = 0
+	var first: Node = null
+	for child: Node in _bin._grid.get_children():
+		if child.has_meta("part"):
+			stray += 1
+		elif child.has_meta("technique") and first == null:
+			first = child
+	var row: Button = _row(name)
+	var list: Rect2 = _bin._scroll.get_global_rect()
+	_check("typed, its row is the first listed (%s), in sight (%s in %s), with no part among the rows (%d)"
+		% [first.get_meta("technique") if first != null else "none",
+		row.get_global_rect() if row != null else Rect2(), list, stray],
+		row != null and first == row and list.encloses(row.get_global_rect()) and stray == 0)
+	await _shot("typed")
+	if row == null:
+		return
+	await _click(row.get_global_rect().get_center())
+	for _n: int in 60:
+		if _builder.is_carrying():
+			break
+		await process_frame
+
+
+## What is typed searched (after the bin's pause for the next key), listed,
+## and grown into as the grid grows a frame at a time (PartsBin._process).
+func _settled() -> void:
+	await create_timer(float(PartsBin.SEARCH_DEBOUNCE) / 1000.0 + 0.2).timeout
+	await _frames(60)
 
 
 ## The pointer moved over the wall's top until the ghost stands on it as a
@@ -260,10 +314,12 @@ func _tab() -> Button:
 	return null
 
 
+## Straight after the person's own shelves: Recent, Favourites and, since
+## APP_UX6 palettes, Palettes.
 func _beside_shelves(tab: Button) -> bool:
 	var at: int = tab.get_index()
 	return at >= 2 and str(_bin._category_row.get_child(at - 1).get_meta("category", "")) \
-		== PartsBin.FAVOURITES
+		in [PartsBin.FAVOURITES, PartsBin.PALETTES]
 
 
 func _row(name: String) -> Button:

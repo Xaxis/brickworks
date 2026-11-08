@@ -11855,6 +11855,133 @@ msgstr "Eine Voreinstellung braucht einen Namen."
 msgid "The preset could not be kept."
 msgstr "Die Voreinstellung konnte nicht gespeichert werden."
 
+# lights (APP_UX5 #7): Render's Lights in the model, and its Dark light.
+msgid "Dark: only the model's own lights"
+msgstr "Dunkel: nur die eigenen Lichter des Modells"
+
+msgid "Lights in the model"
+msgstr "Lichter im Modell"
+
+msgid "Which of the model's lights to change"
+msgstr "Welches Licht des Modells geändert wird"
+
+msgid "The light's colour"
+msgstr "Die Farbe des Lichts"
+
+msgid "Take this light out of the model"
+msgstr "Dieses Licht aus dem Modell entfernen"
+
+msgid "Strength"
+msgstr "Stärke"
+
+msgid "Shadows"
+msgstr "Schatten"
+
+msgid "Whether what this light lights casts a shadow"
+msgstr "Ob das, was dieses Licht beleuchtet, einen Schatten wirft"
+
+msgid "From where I look"
+msgstr "Von wo ich schaue"
+
+msgid "Put the light where the window's camera is, shining the way it looks"
+msgstr "Das Licht dorthin setzen, wo die Kamera des Fensters ist, in ihre Blickrichtung leuchtend"
+
+msgid "Over the selection"
+msgstr "Über der Auswahl"
+
+msgid "Hang the light over the selected parts, or over the model, shining down on them"
+msgstr "Das Licht über die ausgewählten Teile oder über das Modell hängen, nach unten auf sie leuchtend"
+
+msgid "A bulb over the selection, lighting every way"
+msgstr "Eine Lampe über der Auswahl, die in alle Richtungen leuchtet"
+
+msgid "A spot over the selection, its cone just taking it in"
+msgstr "Ein Strahler über der Auswahl, dessen Lichtkegel sie gerade erfasst"
+
+msgid "A sun from the way the window looks, the same light everywhere"
+msgstr "Eine Sonne aus der Blickrichtung des Fensters, überall das gleiche Licht"
+
+msgid "A panel of light over the selection, its shadows soft"
+msgstr "Eine Lichtfläche über der Auswahl, mit weichen Schatten"
+
+msgid "Bulb"
+msgstr "Lampe"
+
+msgid "Spot"
+msgstr "Strahler"
+
+msgid "Sun"
+msgstr "Sonne"
+
+msgid "Light panel"
+msgstr "Lichtfläche"
+
+msgid "No lights yet"
+msgstr "Noch keine Lichter"
+
+msgid "This model is shared to look at: its lights are drawn, not changed."
+msgstr "Dieses Modell ist zum Ansehen geteilt: Seine Lichter werden gezeichnet, nicht geändert."
+
+msgid "Lights the model keeps, drawn in every quality: Add sets one over the selection, or over the model when nothing is selected."
+msgstr "Lichter, die das Modell behält, in jeder Qualität gezeichnet: Hinzufügen setzt eines über die Auswahl, oder über das Modell, wenn nichts ausgewählt ist."
+
+msgid "A model keeps at most %d lights."
+msgstr "Ein Modell behält höchstens %d Lichter."
+
+msgid "In the Dark light these are all there is, with the plastics that glow."
+msgstr "Bei „Dunkel“ sind sie das einzige Licht, mit den Kunststoffen, die leuchten."
+
+msgid "Over the studio's light. Dark, in Light, puts the studio out and lights the plastics that glow."
+msgstr "Zum Licht des Studios hinzu. „Dunkel“ unter Licht schaltet das Studio aus und lässt die Kunststoffe leuchten, die leuchten."
+
+msgid "Added a light: the model keeps it, and every render draws it."
+msgstr "Ein Licht hinzugefügt: Das Modell behält es, und jedes Rendering zeichnet es."
+
+msgid "Not now: %s"
+msgstr "Gerade nicht: %s"
+
+msgid "Not added: %s."
+msgstr "Nicht hinzugefügt: %s."
+
+msgid "A model keeps at most %d suns."
+msgstr "Ein Modell behält höchstens %d Sonnen."
+
+msgid "a model keeps at most %d lights"
+msgstr "ein Modell behält höchstens %d Lichter"
+
+msgid "a model keeps at most %d suns: with the studio's three lights and its sky that is eight, the most a renderer draws"
+msgstr "ein Modell behält höchstens %d Sonnen: mit den drei Lichtern des Studios und seinem Himmel sind das acht, mehr zeichnet kein Renderer"
+
+msgid "1 light line not read, kept in the file as it is"
+msgstr "1 Lichtzeile nicht gelesen, unverändert in der Datei behalten"
+
+msgid "%d light lines not read, kept in the file as they are"
+msgstr "%d Lichtzeilen nicht gelesen, unverändert in der Datei behalten"
+
+msgid "not a light's words"
+msgstr "keine Angaben eines Lichts"
+
+msgid "past the first %d light lines, which are all that are read"
+msgstr "nach den ersten %d Lichtzeilen, mehr werden nicht gelesen"
+
+msgid "of a kind there is not (spot, point, directional or area)"
+msgstr "von einer Art, die es nicht gibt (spot, point, directional oder area)"
+
+msgid "its at and aim are not three numbers each, aim not all 0"
+msgstr "at und aim sind nicht je drei Zahlen, aim nicht alle 0"
+
+msgid "its colour is not #rrggbb"
+msgstr "seine Farbe ist nicht #rrggbb"
+
+msgid "its strength is not above 0 (0.001 at least, as a file keeps it) to %d"
+msgstr "seine Stärke liegt nicht über 0 (mindestens 0,001, wie eine Datei sie behält) bis %d"
+
+msgid "its size is not 0 to 4000 LDU (a panel's above 0: 0.001 at least, as a file keeps it)"
+msgstr "seine Größe liegt nicht bei 0 bis 4000 LDU (die eines Paneels über 0: mindestens 0,001, wie eine Datei sie behält)"
+
+msgid "its cone is not %d to %d degrees"
+msgstr "sein Kegel hat nicht %d bis %d Grad"
+
 # A link that opens playing one of the model's motions (playlink, APP_UX5 10): the
 # share panel's Opens, and the viewer's pill while it plays or when the link's motion is not there.
 
@@ -12261,6 +12388,20 @@ msgstr "%s: vollständig, deine losen Teile ersetzen alle %d als fehlend markier
 msgid "no such choice"
 msgstr "keine solche Wahl"
 
+# pullkept: a pull no step shows now, said on open
+
+msgid "the pull on %s matches no step now, kept in the file"
+msgstr "das Herausziehen bei %s passt jetzt zu keinem Schritt, in der Datei behalten"
+
+msgid "step %d of the model"
+msgstr "Schritt %d des Modells"
+
+msgid "step %d of %s"
+msgstr "Schritt %d von %s"
+
+msgid "and %d more like it"
+msgstr "und %d weitere solche"
+
 # Make a part's clip plate, bar and wedge plate (makepart2, APP_UX6 #15): the families'
 # buttons, their ways, their rows and what the dialog says of each part.
 
@@ -12358,3 +12499,365 @@ msgstr "Noppen an drei Seiten"
 
 msgid "studs on four sides"
 msgstr "Noppen an vier Seiten"
+# A palette of the person's own, kept for every model (palettes, APP_UX6 21): the bin's
+# Palettes beside Favourites, an open palette's line, its menus and what they say.
+
+msgid "Palettes"
+msgstr "Paletten"
+
+msgid "Palette"
+msgstr "Palette"
+
+msgid "Sub-assembly"
+msgstr "Baugruppe"
+
+msgid "Your own palettes: parts in their colours and sub-assemblies, named and kept for every model"
+msgstr "Deine eigenen Paletten: Teile in ihren Farben und Baugruppen, benannt und für jedes Modell behalten"
+
+msgid "Narrow your palettes…"
+msgstr "Deine Paletten eingrenzen…"
+
+msgid "Every palette"
+msgstr "Alle Paletten"
+
+msgid "The palette's name"
+msgstr "Der Name der Palette"
+
+msgid "The palette's name: type over it to rename it"
+msgstr "Der Name der Palette: überschreibe ihn, um sie umzubenennen"
+
+msgid "New palette"
+msgstr "Neue Palette"
+
+msgid "A palette of your own, named: fill it with the part in hand or the parts selected in the model, each in its colour or as one sub-assembly"
+msgstr "Eine eigene Palette mit Namen: Fülle sie mit dem Teil in der Hand oder den im Modell ausgewählten Teilen, jedes in seiner Farbe oder als eine Baugruppe"
+
+msgid "Keep the part in hand, or the parts selected in the model, in this palette"
+msgstr "Das Teil in der Hand oder die im Modell ausgewählten Teile in dieser Palette behalten"
+
+msgid "The part in hand, in its colour"
+msgstr "Das Teil in der Hand, in seiner Farbe"
+
+msgid "The selected parts, each in its colour"
+msgstr "Die ausgewählten Teile, jedes in seiner Farbe"
+
+msgid "The selection, as one sub-assembly…"
+msgstr "Die Auswahl als eine Baugruppe…"
+
+msgid "Take the one chosen out, rename a sub-assembly, or delete the palette"
+msgstr "Das Gewählte herausnehmen, eine Baugruppe umbenennen oder die Palette löschen"
+
+msgid "Take the one chosen out"
+msgstr "Das Gewählte herausnehmen"
+
+msgid "Rename the sub-assembly chosen…"
+msgstr "Die gewählte Baugruppe umbenennen…"
+
+msgid "Delete this palette…"
+msgstr "Diese Palette löschen…"
+
+msgid "%d palette"
+msgstr "%d Palette"
+
+msgid "%d palettes"
+msgstr "%d Paletten"
+
+msgid "%d sub-assembly"
+msgstr "%d Baugruppe"
+
+msgid "%d sub-assemblies"
+msgstr "%d Baugruppen"
+
+msgid "“%s”: %s"
+msgstr "„%s“: %s"
+
+msgid "Choose it to open it"
+msgstr "Wähle sie, um sie zu öffnen"
+
+msgid "%s, a sub-assembly of %s"
+msgstr "%s, eine Baugruppe aus %s"
+
+msgid "“%s”: a sub-assembly of %s"
+msgstr "„%s“: eine Baugruppe aus %s"
+
+msgid "Choose it to hold it whole: a click puts it down"
+msgstr "Wähle sie, um sie ganz zu halten: Ein Klick setzt sie ab"
+
+msgid "“%s” could not be had: its parts did not load"
+msgstr "„%s“ war nicht zu haben: Seine Teile wurden nicht geladen"
+
+msgid "Choose a part in the bin first"
+msgstr "Wähle zuerst ein Teil im Teilekasten"
+
+msgid "Select parts in the model first"
+msgstr "Wähle zuerst Teile im Modell aus"
+
+msgid "choose a part in the bin first"
+msgstr "wähle zuerst ein Teil im Teilekasten"
+
+msgid "select parts in the model first"
+msgstr "wähle zuerst Teile im Modell aus"
+
+msgid "kept %s in “%s”"
+msgstr "%s in „%s“ behalten"
+
+msgid "%s is in “%s” already"
+msgstr "%s ist schon in „%s“"
+
+msgid "kept %s in “%s”, each in its colour"
+msgstr "%s in „%s“ behalten, jedes in seiner Farbe"
+
+msgid "every part selected is in “%s” already"
+msgstr "jedes ausgewählte Teil ist schon in „%s“"
+
+msgid "Keep as a sub-assembly"
+msgstr "Als Baugruppe behalten"
+
+msgid "kept the sub-assembly “%s”, %s, in “%s”"
+msgstr "die Baugruppe „%s“, %s, in „%s“ behalten"
+
+msgid "Choose a part or a sub-assembly in the palette first"
+msgstr "Wähle zuerst ein Teil oder eine Baugruppe in der Palette"
+
+msgid "Choose a sub-assembly in the palette first"
+msgstr "Wähle zuerst eine Baugruppe in der Palette"
+
+msgid "took it out of “%s”"
+msgstr "aus „%s“ herausgenommen"
+
+msgid "Take the sub-assembly out?"
+msgstr "Die Baugruppe herausnehmen?"
+
+msgid "“%s” goes from “%s”. Models built with it keep their parts."
+msgstr "„%s“ verschwindet aus „%s“. Modelle, die damit gebaut sind, behalten ihre Teile."
+
+msgid "Rename the sub-assembly"
+msgstr "Die Baugruppe umbenennen"
+
+msgid "Delete this palette?"
+msgstr "Diese Palette löschen?"
+
+msgid "“%s” and the %s in it go. Models built with them keep their parts."
+msgstr "„%s“ und die %s darin verschwinden. Modelle, die damit gebaut sind, behalten ihre Teile."
+
+msgid "deleted the palette “%s”"
+msgstr "die Palette „%s“ gelöscht"
+
+msgid "Its name in the palette"
+msgstr "Ihr Name in der Palette"
+
+msgid "The sub-assembly's name"
+msgstr "Der Name der Baugruppe"
+
+msgid "palette renamed “%s”"
+msgstr "Palette in „%s“ umbenannt"
+
+msgid "No palettes yet: New palette makes one, and Add fills it from the model"
+msgstr "Noch keine Paletten: Neue Palette legt eine an, und Hinzufügen füllt sie aus dem Modell"
+
+msgid "%s, for any model: choose one to open it"
+msgstr "%s, für jedes Modell: Wähle eine, um sie zu öffnen"
+
+msgid "Empty: select parts in the model, or choose a part in the bin, then Add"
+msgstr "Leer: Wähle Teile im Modell aus oder ein Teil im Teilekasten, dann Hinzufügen"
+
+msgid "%s: a part is taken in hand in its colour, a sub-assembly held whole"
+msgstr "%s: Ein Teil kommt in seiner Farbe in die Hand, eine Baugruppe wird ganz gehalten"
+
+msgid "Right-click a part to keep it in Favourites too"
+msgstr "Ein Rechtsklick auf ein Teil behält es auch in den Favoriten"
+
+# A mosaic cropped and coloured the person's way (APP_UX6 #10, mosaic2): Crop and Whole
+# picture over the picture, Colours (all, a set's, what I own), Mixed plate sizes, and the line under it.
+
+msgid "Colours"
+msgstr "Farben"
+
+msgid "All colours"
+msgstr "Alle Farben"
+
+msgid "A set's colours"
+msgstr "Die Farben eines Sets"
+
+msgid "Set number"
+msgstr "Set-Nummer"
+
+msgid "Crop"
+msgstr "Zuschneiden"
+
+msgid "Whole picture"
+msgstr "Ganzes Bild"
+
+msgid "Mixed plate sizes"
+msgstr "Gemischte Plattengrößen"
+
+msgid "Drag on the picture to choose the part of it to build"
+msgstr "Ziehe auf dem Bild, um den Teil davon zu wählen, der gebaut wird"
+
+msgid "Build all of the picture again"
+msgstr "Wieder das ganze Bild bauen"
+
+msgid "The colours it is laid in: every stud is one of them"
+msgstr "Die Farben, in denen es gelegt wird: jede Noppe hat eine davon"
+
+msgid "Every colour the parts are made in"
+msgstr "Jede Farbe, in der die Teile hergestellt werden"
+
+msgid "The colours of a set's parts: type its number"
+msgstr "Die Farben der Teile eines Sets: gib seine Nummer ein"
+
+msgid "The colours you own its parts in, from My collection"
+msgstr "Die Farben, in denen du seine Teile hast, laut Meine Sammlung"
+
+msgid "Add your parts or sets in My collection to build from what you own"
+msgstr "Füge deine Teile oder Sets in Meine Sammlung hinzu, um aus dem zu bauen, was du hast"
+
+msgid "Plates, flat: a 1 × 1 a stud, or each run of one colour in larger plates"
+msgstr "Platten, flach: eine 1 × 1 je Noppe oder jede Strecke einer Farbe in größeren Platten"
+
+msgid "Each run of one colour in the largest plate it fills, up to 8 × 8: the same picture stud for stud, in far fewer parts to buy and lay. Off is a 1 × 1 a stud."
+msgstr "Jede Strecke einer Farbe in der größten Platte, die sie füllt, bis 8 × 8: dasselbe Bild Noppe für Noppe, mit weit weniger Teilen zum Kaufen und Legen. Aus ist es eine 1 × 1 je Noppe."
+
+msgid "Type a set's number"
+msgstr "Gib die Nummer eines Sets ein"
+
+msgid "looking up %s…"
+msgstr "suche %s…"
+
+msgid "no set %s is known"
+msgstr "kein Set %s ist bekannt"
+
+msgid "%s “%s”: %d colours"
+msgstr "%s „%s“: %d Farben"
+
+msgid "%d colours you own its parts in"
+msgstr "%d Farben, in denen du seine Teile hast"
+
+msgid "%d × %d studs, %d × %d cm"
+msgstr "%d × %d Noppen, %d × %d cm"
+
+msgid "working it out…"
+msgstr "wird ausgerechnet…"
+
+msgid "%s plates for its %s studs, in %d colours: %s"
+msgstr "%s Platten für seine %s Noppen, in %d Farben: %s"
+
+msgid "you have %s of the %s"
+msgstr "du hast %s der %s"
+
+msgid "no round or square tile is made in the colours chosen, so it is laid in the Art's own"
+msgstr "in den gewählten Farben wird keine runde oder eckige Fliese hergestellt, darum ist es in den eigenen Farben der Art gelegt"
+
+msgid "no 1 × 1 plate is made in the colours chosen, so it is laid in all of them"
+msgstr "in den gewählten Farben wird keine 1 × 1 Platte hergestellt, darum ist es in allen gelegt"
+
+# The picture dialog's own words, none of them translated until mosaic2's
+# check of the words it shows read them (APP_UX6 #10, mosaic3).
+
+msgid "Build this picture"
+msgstr "Dieses Bild bauen"
+
+msgid "Brick Art"
+msgstr "Brick Art"
+
+msgid "Panels of round tiles, quarter circles, smooth tiles and raised relief, in the style of LEGO® Art sets"
+msgstr "Felder aus runden Fliesen, Viertelkreisen, glatten Fliesen und erhabenem Relief, im Stil der LEGO® Art Sets"
+
+msgid "Classic"
+msgstr "Klassisch"
+
+msgid "Blend colours"
+msgstr "Farben mischen"
+
+msgid "Mix nearby plates to suggest a colour the palette does not have. Off gives flat bands."
+msgstr "Benachbarte Platten mischen, um eine Farbe anzudeuten, die die Palette nicht hat. Aus ergibt flache Streifen."
+
+msgid "Panels across"
+msgstr "Felder breit"
+
+msgid "Panels down"
+msgstr "Felder hoch"
+
+msgid "Depth"
+msgstr "Tiefe"
+
+msgid "How many plates what stands out from the background is raised. 0 is flat."
+msgstr "Um wie viele Platten das, was sich vom Hintergrund abhebt, erhöht wird. 0 ist flach."
+
+msgid "flat"
+msgstr "flach"
+
+msgid "%d plate"
+msgstr "%d Platte"
+
+msgid "Round texture"
+msgstr "Runde Textur"
+
+msgid "1 × 1 round tiles, and round plates for points of light"
+msgstr "Runde 1 × 1 Fliesen, und runde Platten für Lichtpunkte"
+
+msgid "Contour quarters"
+msgstr "Viertelkreise an Konturen"
+
+msgid "Quarter-circle tiles turned along a curved edge"
+msgstr "Viertelkreis-Fliesen, entlang einer gebogenen Kante gedreht"
+
+msgid "Smooth tiles"
+msgstr "Glatte Fliesen"
+
+msgid "Square tiles where it is flat, merged up to 2 × 4"
+msgstr "Eckige Fliesen, wo es flach ist, zusammengefasst bis 2 × 4"
+
+msgid "Accent stars"
+msgstr "Akzentsterne"
+
+msgid "Stars in trans-clear, glow-in-the-dark and metallic where the part is made so"
+msgstr "Sterne in Trans-Klar, nachleuchtend und metallisch, wo das Teil so hergestellt wird"
+
+msgid "Mix nearby elements to suggest a colour the palette does not have"
+msgstr "Benachbarte Elemente mischen, um eine Farbe anzudeuten, die die Palette nicht hat"
+
+msgid "Tell %s: raise the core, make the stars glow…"
+msgstr "Sag %s: den Kern anheben, die Sterne leuchten lassen…"
+
+msgid "Design with %s"
+msgstr "Mit %s entwerfen"
+
+msgid "%s looks at the picture and plans it as a designer of LEGO® Art sets would — what stands out, the textures, the stars — with your key or your own Claude, as the assistant designs"
+msgstr "%s sieht sich das Bild an und plant es, wie ein Designer von LEGO® Art Sets es täte — was sich abhebt, die Texturen, die Sterne — mit deinem Schlüssel oder deinem eigenen Claude, wie der Assistent entwirft"
+
+msgid "%s looks at the picture and plans it as a designer of LEGO® Art sets would — what stands out, the textures, the stars — on your own key, as the assistant designs"
+msgstr "%s sieht sich das Bild an und plant es, wie ein Designer von LEGO® Art Sets es täte — was sich abhebt, die Texturen, die Sterne — mit deinem eigenen Schlüssel, wie der Assistent entwirft"
+
+msgid "%s round tiles"
+msgstr "%s runde Fliesen"
+
+msgid "%s square tiles"
+msgstr "%s eckige Fliesen"
+
+msgid "%s larger tiles"
+msgstr "%s größere Fliesen"
+
+msgid "%s relief plates"
+msgstr "%s Reliefplatten"
+
+msgid "%s cheese slopes"
+msgstr "%s Käseecken"
+
+msgid "%s joining plates"
+msgstr "%s Verbindungsplatten"
+
+msgid "%s quarter circles"
+msgstr "%s Viertelkreise"
+
+msgid "%s round plates"
+msgstr "%s runde Platten"
+
+msgid "%s 16 × 16 panels"
+msgstr "%s Felder 16 × 16"
+
+msgid "%s stars"
+msgstr "%s Sterne"
+
+msgid "%s large stars"
+msgstr "%s große Sterne"

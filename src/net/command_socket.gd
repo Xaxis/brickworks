@@ -652,6 +652,9 @@ const HINTS := {
 	"booklet_page": ["See a booklet page", "look"],
 	# Edit, Pattern…'s grid (PatternTool): copies added, nothing taken off.
 	"pattern_parts": ["Lay copies in a grid", "add"],
+	# lights (APP_UX5 #7): the lights kept with the model; one taken out is
+	# the person's own placing gone, and it is no undo step.
+	"light_model": ["Place the model's lights", "remove"],
 	# cancel=true stops only the session's own job.
 	"job": ["Follow a long job", "look"],
 	"fresh_eyes": ["Say what it reads as", "look"],
@@ -986,6 +989,7 @@ func _one_step(name: String, before: Dictionary, chat: String = "", who: String 
 		builder.fold_since(int(before["depth"]))
 		_mark(builder, chat)
 		_laid(builder.last_step())
+		_looks_follow()
 		return
 	var last: Dictionary = builder.last_step()
 	if not last.is_empty() and is_same(last, before["last"]) \
@@ -998,6 +1002,15 @@ func _one_step(name: String, before: Dictionary, chat: String = "", who: String 
 			SelectionScope.words_for(steps)])
 		_mark(builder, chat)
 		_laid(builder.last_step())
+		_looks_follow()
+
+
+## A step the call took the last part off goes with its booklet look, in the
+## same undo, as one by hand does (ModelStore.looks_follow_edit).
+func _looks_follow() -> void:
+	var store: ModelStore = app.get("_store") if app != null else null
+	if store != null:
+		store.looks_follow_edit()
 
 
 ## A call that put parts down makes the model one made with the assistant

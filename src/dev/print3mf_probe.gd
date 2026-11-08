@@ -16,6 +16,12 @@
 ## 0.1 mm on each axis, standing on the bed in the positive octant.
 ## export_model's 3mf writes the same model.
 ##
+## Every object a closed solid (APP_UX7 #12, print3mf2): lib3mf's
+## IsManifoldAndOriented true for each, every edge (by vertex index) shared
+## by exactly two triangles going opposite ways round, as the core's 4.1
+## asks, where the parts as LDraw draws them close none (read here with the
+## closing turned off); and the triangles no more than twice the parts'.
+##
 ## Then a model of the cases the car has none of: a printed tile, whose
 ## print is painted on it (each print triangle naming its colour, in the
 ## tile's object) and whose body stays one object; a part placed mirrored;
@@ -87,6 +93,7 @@ func _run() -> void:
 	var path: String = await _from_the_menu()
 	if not path.is_empty():
 		await _the_car(path)
+		await _as_drawn()
 		await _over_mcp(path)
 		await _strict(path)
 	await _cases()
@@ -156,18 +163,28 @@ func _the_car(path: String) -> void:
 			wrong.append("no object for %s" % colour.name)
 		elif str(object["colour"]) != _display(colour):
 			wrong.append("%s is %s, not %s" % [colour.name, object["colour"], colour.rgb.to_html(false)])
-		elif int(object["triangles"]) != int(triangles[code]):
+		elif int(object["triangles"]) < int(triangles[code]) or int(object["triangles"]) > 2 * int(triangles[code]):
 			wrong.append("%s has %d triangles, its parts %d" % [colour.name, object["triangles"],
 				triangles[code]])
-	_check("one object a colour, %d for the car's %d, each its colour's RGB and its parts' triangles: %s%s"
+	# Closed, an object has its parts' triangles and the caps and splits
+	# that close them: no fewer, and no more than twice as many.
+	_check("one object a colour, %d for the car's %d, each its colour's RGB and its parts' triangles closed: %s%s"
 		% [objects.size(), wanted.size(), ", ".join(objects.map(func(o: Dictionary) -> String:
 			return "%s %s (%d)" % [o["name"], o["colour"], o["triangles"]])),
 		"" if wrong.is_empty() else " — " + "; ".join(wrong)],
 		objects.size() == wanted.size() and wrong.is_empty())
 	var wheel: Dictionary = named.get(_library.color(0).name, {})
-	_check("...the steering wheel moulded black in black's object, its stand in red's (%d black triangles)"
-		% int(wheel.get("triangles", 0)), int(wheel.get("triangles", 0)) == int(triangles.get(0, -1)))
+	_check("...the steering wheel moulded black in black's object, its stand in red's (%d black triangles, the black parts' %d)"
+		% [int(wheel.get("triangles", 0)), int(triangles.get(0, -1))],
+		int(wheel.get("triangles", 0)) >= int(triangles.get(0, -1)) and int(triangles.get(0, -1)) > 0)
 	_winding(report, "the car's")
+	var parts: int = 0
+	for code: int in triangles:
+		parts += int(triangles[code])
+	var written: int = _sum(report, "triangles")
+	_check("...its %d triangles no more than twice its parts' %d (%.2f times)" % [written, parts,
+		float(written) / maxf(parts, 1)], written >= parts and written <= 2 * parts)
+	_closed(report, "the car's", wanted.size())
 	# The model's size: every vertex of every part where it stands, in mm on
 	# the printer's axes (x across, y deep, z up).
 	var box: AABB = _exact_box()
@@ -184,6 +201,40 @@ func _the_car(path: String) -> void:
 		low[1], low[2]], absf(low[0]) < 1e-3 and absf(low[1]) < 1e-3 and absf(low[2]) < 1e-3)
 	_check("...in millimetres, its unit stated: %s" % report.get("unit_attr", "-"),
 		report.get("unit_attr", "") == "millimeter")
+
+
+## The car as LDraw draws its parts, with the closing turned off: how many
+## of its objects a strict reader finds closed then.
+func _as_drawn() -> void:
+	print("── the car as LDraw draws it, not closed ──")
+	var writer: Script = load(WRITER) if ResourceLoader.exists(WRITER) else null
+	if writer == null or writer.get("close_up") == null:
+		_check("the writer can be asked not to close its pieces", false)
+		return
+	writer.set("close_up", false)
+	var report: Dictionary = _read(_written(await _say("export_model", {"format": "3mf"})))
+	writer.set("close_up", true)
+	var objects: Array = report.get("objects", [])
+	_check("as drawn, %d of %d objects closed, %d edges not shared by two triangles" % [
+		objects.filter(func(o: Dictionary) -> bool: return o["manifold_and_oriented"]).size(),
+		objects.size(), _sum(report, "edges_not_two")],
+		objects.size() > 0 and _sum(report, "edges_not_two") > 0)
+
+
+## Every object closed: lib3mf's IsManifoldAndOriented, and the core's
+## rules counted by vertex index.
+func _closed(report: Dictionary, what: String, wanted: int) -> void:
+	var objects: Array = report.get("objects", [])
+	var closed: Array = objects.filter(func(o: Dictionary) -> bool: return o["manifold_and_oriented"])
+	var open: Array = objects.filter(func(o: Dictionary) -> bool: return not o["manifold_and_oriented"])
+	_check("%s objects closed: %d of %d manifold and oriented by lib3mf%s" % [what, closed.size(),
+		objects.size(), "" if open.is_empty() else " (not: %s)" % ", ".join(open.map(
+			func(o: Dictionary) -> String: return o["name"]))],
+		objects.size() == wanted and closed.size() == wanted)
+	_check("...every edge shared by exactly two triangles, opposite ways round: %d of %d edges not, %d one way"
+		% [_sum(report, "edges_not_two"), _sum(report, "edges"), _sum(report, "edges_one_way")],
+		report.has("objects") and _sum(report, "edges") > 0 and _sum(report, "edges_not_two") == 0
+		and _sum(report, "edges_one_way") == 0)
 
 
 ## export_model's 3mf: the same model part as the dialog's file.
@@ -282,9 +333,11 @@ func _cases() -> void:
 	var writer: Script = load(WRITER) if ResourceLoader.exists(WRITER) else null
 	if writer != null:
 		writer.set("face_out", false)
+		writer.set("close_up", false)
 	var drawn: Dictionary = _read(_written(await _say("export_model", {"format": "3mf"})))
 	if writer != null:
 		writer.set("face_out", true)
+		writer.set("close_up", true)
 	var said: String = await _say("export_model", {"format": "3mf"})
 	var report: Dictionary = _read(_written(said))
 	_check_strict(report, "the print, the mirror and the part with no front")
@@ -302,6 +355,7 @@ func _cases() -> void:
 		% [TWO_SIDED, two, _sum(drawn, "inward"), _sum(report, "inward")],
 		_sum(drawn, "inward") > 0 and _sum(report, "inward") == 0)
 	_winding(report, "the print, the mirror and the part with no front:")
+	_closed(report, "the print, the mirror and the part with no front:", 3)
 
 
 ## A sticker whose LDraw file is not BFC-certified: its print drawn with no

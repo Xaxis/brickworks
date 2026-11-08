@@ -480,8 +480,42 @@ geometry in front of them.
   model with G) goes to the front of Recent, 24 kept; right-click any part to
   keep it in Favourites, marked with a star. Kept in `user://part_shelf.cfg`,
   never under a probe (`PartShelf.keeps`), which points it at a file of its own.
+- `palettes` (`PartShelf` palettes, the bin's *Palettes*; APP_UX6 palettes):
+  Studio's custom palettes. *Palettes* sits after Favourites, its count on it;
+  chosen it lists the person's palettes (a row each: a picture of its first
+  entry, its name, "12 parts, 1 sub-assembly") under a line with *New
+  palette*. New palette makes "Palette" (in the reader's language) and opens
+  it with its name chosen in the line's field, so typing names it (Return or
+  leaving the field renames). An open palette's line: ‹ back to the list, the
+  name, *Add* (the part in hand in its colour; the selected parts each in its
+  colour; the selection as one sub-assembly, its name asked, the selection's
+  own assembly name first) and *More* (take the one chosen out, a
+  sub-assembly asked first; rename a sub-assembly; delete the palette,
+  asked). Its parts are tiles keyed part/colour as a set's are: a click takes
+  the part in hand in its own colour, a drag puts it on the model, a
+  double-click replaces, a right-click keeps it in Favourites (Favourites is
+  as it was). A sub-assembly's tile (`_assembly_cell`, the sub-model mark in
+  its corner, drawn whole by `PartThumbnails.offer_group`) holds it whole once
+  its shapes are here (`construction_chosen`, as a technique), and put down
+  it is one assembly of its own name, a number after it where the model has
+  that name at any depth (`_unused_assembly`), never another copy of one.
+  Opening Palettes starts from no words, as Fits and Like this do. Kept in
+  `user://palettes.cfg` (`PartShelf.palettes_file`), apart from the shelf so
+  choosing a part never rewrites them; written beside and renamed into place
+  on a computer. Two windows or tabs never lose a change: every palette and
+  entry has an id, what is taken out is remembered by id (`gone`), every
+  change reads the file again and merges (`_load_palettes(true)`,
+  `_merged`), and a window that finds its own additions missing (the web's
+  late copy of another tab's older write) writes them back; the bin looks at
+  the file once a second while Palettes shows (`_watch_palettes`). A tab
+  left open on an older build after an update keeps what a later build
+  wrote: words it put on a palette or an entry, and entries of kinds it does
+  not know (`_later`, never shown, written back whole). A file that cannot be
+  read is kept beside it (`palettes.cfg.unreadable`) before a change writes
+  over it. No MCP tool: a session copies parts with edit_model.
+  `palettes_probe` (1280 x 720, PROBE_SIZE=1400x900 too).
 - `techniques in the bin` (`src/ai/techniques.gd`, the bin's Techniques):
-  *Techniques* sits beside Recent and Favourites, the assistant's worked
+  *Techniques* sits after Recent, Favourites and Palettes, the assistant's worked
   constructions (`Techniques.all()`, 91 on 2026-10-24) under their
   `Techniques.GROUPS`, one a row with its picture (`PartThumbnails.offer_group`,
   drawn once a colour and cached as a part's is) and its one-line reason
@@ -498,7 +532,14 @@ geometry in front of them.
   into LDraw lines and back (`Carry.from_ldraw`, the path a paste takes), and
   held whole (`EditVerbs.hold`): R turns it, a click puts it down, one undo
   takes it all back. The colour in hand stands in for its main colour
-  (`Techniques.main_colour`, the colour most of its parts are in).
+  (`Techniques.main_colour`, the colour most of its parts are in). Typed,
+  the rows are the only thing listed: the grid's growth reads the list it
+  shows (`PartsBin._display`), let go for rows of the bin's own
+  (`PartsBin._empty_for_rows`, Techniques and Palettes); from rel-m267 to
+  rel-m276 the last search's parts came in above the rows and the window's
+  row stood 2,600 px down (bintech). On a phone the Parts sheet goes with
+  the pick, as it does for a part (`PhoneShell._held_whole`); a tablet's
+  stays beside the model.
 - `find a part from a photo` (`src/net/brickognize.gd`): the camera in the
   bin's search field. The first press says the photo goes to Brickognize, a
   third party that may keep it and train on it (their terms, read 2026-10-24),
@@ -614,13 +655,14 @@ godot --headless --path . --script src/dev/search_probe.gd          # what it re
 godot --headless --path . --script src/dev/search_probe.gd -- --catalogue=PATH  # a corrected catalogue, before it is swapped in
 godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd  # Recent, Favourites, 3023
 godot --path . --resolution 1280x860 --script src/dev/bin_techniques_probe.gd  # Techniques: window in a wall onto a wall, three more; shots/bin_techniques/
+tools/probe.sh palettes_probe                  # Palettes: Castle made by New palette and Add, 12 parts in their colours and Gatepost whole; in the file and in the app started again; another model opens it in 2 presses, a part in hand in its colour, Gatepost put down whole as one assembly, one undo; Favourites unchanged; two windows' changes merged; a later build's entries and words kept, a damaged file kept beside it; Techniques/Palettes never list a search's tiles; shots/palettes/ (PROBE_SIZE=1400x900 too)
 godot --headless --path . --script src/dev/technique_search_probe.gd  # 18 queries, each's construction in the first three rows; titles as words
 godot --headless --path . --script src/dev/photo_search_stub_probe.gd  # the camera with Brickognize stubbed on 9061: told first, nothing sent, every failure in words
 godot --path . --resolution 1280x860 --script src/dev/photo_search_probe.gd -- --keep  # Brickognize live: 5 parts drawn by ModelShot, at least 4 right in the first three
 tools/probe.sh dialog_look_probe -- --shots=DIR  # every dialog, chooser and desktop menu in the app's look, read off the window's pixels (108 on 2026-10-26)
 tools/probe.sh picker_folder_probe                # every chooser in Pictures, Documents or Downloads first, then where its kind last came from
 tools/probe.sh contrast_probe -- --shots=DIR      # every button's edge 3:1, words 4.5:1, a question's default told apart (653 buttons on 2026-10-26); -- --main-only --every lists each
-node tools/web/bin_flow.mjs --url=http://127.0.0.1:9063/ --out=DIR   # both in a browser at 1280 and 390 (serve.py on 9063; Brickognize live)
+node tools/web/bin_flow.mjs --url=http://127.0.0.1:9063/ --out=DIR   # both in a browser at 1280 and 390 (serve.py on 9063 --parts assets/generated/parts --delay 0; Brickognize live): the window typed, its row first and in sight, held, put down (a tap on a phone, the sheet gone), undone
 godot --headless --path . --script src/dev/vocab_probe.gd           # the words a builder types
 tools/probe.sh search_rank_probe -- quality   # + 26 words builders type (snot, erling, macaroni, 2x4...) each in the first three; a size alone the brick first; "1x4 brick" and six more, that family on the first eight tiles
 tools/probe.sh bin_names_probe                # every tile in sight named in words and fitted, no two alike, its part drawn while it waits; shots/bin_names/
@@ -653,7 +695,9 @@ tools/check.sh --network    # adds remote_probe: geometry over the wire
 ```
 
 Techniques prove it when `bin_techniques_probe` exits 0: every construction
-listed under its group, "window in a wall" held whole (17 parts) with the
+listed under its group, "window in a wall" typed in the search key by key, its
+row first and in sight with no part tile among the rows, clicked where it is
+and held whole (17 parts) with the
 colour in hand where its red was, R turning it through four quarters, a click
 putting it on the wall's top in the wall's line, the model checking as a design
 does, and one undo taking all 17 back; then "smooth diagonal", "round tower"

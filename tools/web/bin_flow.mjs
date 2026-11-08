@@ -9,7 +9,8 @@
 // At 1280 x 860, by the mouse:
 //   1. Techniques, beside Recent and Favourites: its rows come, "window in a
 //      wall" among them.
-//   2. That row clicked: the construction in hand, whole (brickworksState
+//   2. Found by typing it: its row first and in sight, no part above it;
+//      clicked there, the construction in hand, whole (brickworksState
 //      carrying); a click on the baseplate puts it down, 17 more parts; one
 //      Ctrl-Z takes all 17 back.
 //   3. The camera in the search field: first it says the photo goes to
@@ -22,7 +23,9 @@
 //      prints and stickers folded under it behind a count (search242); the
 //      count pressed opens them after it, and pressed again folds them.
 // At 390 x 844, by a finger, as phone_flow.mjs has a phone: the parts sheet,
-// Techniques there, the folding, and the camera again with the same photo.
+// Techniques there and the window found and tapped as at 1280, the sheet
+// going with the pick, a tap on the model putting it down and Undo taking it
+// back; the folding, and the camera again with the same photo.
 //
 // Brickognize answers from the internet, so this needs it up; its failures
 // are proved with it stood in for (src/dev/photo_search_stub_probe.gd).
@@ -123,34 +126,75 @@ for (const phone of [false, true]) {
   await picture("1_techniques");
 
   // 2. Held whole, put down, and undone: found by typing, as a person finds
-  // one of ninety (the search narrows the Techniques), so its row is in sight.
-  if (!phone && row) {
+  // one of ninety (the search narrows the Techniques). What they see is
+  // read, not only what the app lists: on the live site from rel-m267 the
+  // window's row was listed, but 2,600 px down under the last search's parts,
+  // and the click meant for it reached nothing (bintech, 2026-11-08). On a
+  // phone the sheet goes with the pick, as it does for a part, and a tap on
+  // the model puts it down.
+  if (row) {
     const before = (await state()).bricks;
     await press("part search");
     await page.keyboard.type("window in a wall", { delay: 40 });
     await page.waitForTimeout(2500);
     const narrowed = await where("technique window in a wall", 30);
-    check("typing narrows them to the window", Boolean(narrowed)
-      && !(await controls())["technique round tower"]);
+    const listed = (await state()).tile_names || [];
+    const seen = Boolean(narrowed) && !narrowed.clipped
+      && narrowed.y - narrowed.h / 2 >= 0 && narrowed.y + narrowed.h / 2 <= height;
+    check(`typing narrows them to the window, its row first and in sight (${listed.slice(0, 3).join(", ")}`
+      + `${narrowed ? `; its row at ${narrowed.y} of ${height}${narrowed.clipped ? ", cut off" : ""}` : ""})`,
+      seen && listed[0] === "Window in a wall" && !(await controls())["technique round tower"]);
     await page.waitForTimeout(4000);
-    await hit(narrowed || row);
+    if (seen) await hit(narrowed);
     const held = await until((s) => s.carrying === true, 60);
     check("choosing it holds it whole", held.carrying === true);
-    const spot = centre;
-    for (let n = 0; n < 6; n++) {
-      await page.mouse.move(spot.x + n * 3, spot.y, { steps: 2 });
-      await page.waitForTimeout(400);
+    let down = { bricks: before };
+    if (phone) {
+      const sheet = ((await askApp(page, "Phone")) || {}).phone || {};
+      check(`the sheet went with the pick, the model in sight (${sheet.sheet || "none"})`, !sheet.sheet);
+      // The line over the model: what was picked, for a few seconds, then
+      // where it goes; never the part last taken, as it was ("Tap to put
+      // Brick 2 x 4 down" holding the window).
+      await page.waitForTimeout(5000);
+      const later = ((await askApp(page, "Phone")) || {}).phone || {};
+      check(`the line over the model names it, then says where it goes ("${sheet.hint || ""}", then "${later.hint || ""}")`,
+        /window in a wall|^Tap where it goes/i.test(String(sheet.hint || ""))
+        && String(later.hint || "").startsWith("Tap where it goes"));
+      await picture("2_held");
+      // A tap on the model: on the car's roof or the baseplate beside it,
+      // wherever the window can stand first.
+      const middle = { x: width / 2, y: height * 0.45 };
+      for (const [dx, dy] of [[0, 0], [0, -60], [-80, 40], [80, 40], [0, 120], [-100, -40], [100, -40]]) {
+        if (!held.carrying) break;
+        await page.touchscreen.tap(middle.x + dx, middle.y + dy);
+        down = await until((s) => s.bricks > before, 8);
+        if (down.bricks > before) break;
+      }
+      down = await until((s) => s.bricks === before + 17, 30);
+      check(`a tap puts it down: ${down.bricks - before} parts more (17)`, down.bricks === before + 17);
+    } else {
+      const spot = centre;
+      for (let n = 0; n < 6; n++) {
+        await page.mouse.move(spot.x + n * 3, spot.y, { steps: 2 });
+        await page.waitForTimeout(400);
+      }
+      await page.waitForTimeout(2000);
+      await picture("2_held");
+      await page.mouse.click(spot.x + 15, spot.y);
+      down = await until((s) => s.bricks === before + 17, 60);
+      check(`a click puts it down: ${down.bricks - before} parts more (17)`, down.bricks === before + 17);
     }
-    await page.waitForTimeout(2000);
-    await picture("2_held");
-    await page.mouse.click(spot.x + 15, spot.y);
-    const down = await until((s) => s.bricks === before + 17, 60);
-    check(`a click puts it down: ${down.bricks - before} parts more (17)`, down.bricks === before + 17);
     await page.waitForTimeout(3000);
     await picture("3_down");
-    await page.keyboard.press("Control+z");
+    if (phone) await press("phone_undo");
+    else await page.keyboard.press("Control+z");
     const undone = await until((s) => s.bricks === before, 30);
-    check(`one Ctrl-Z takes it all back (${undone.bricks} of ${before})`, undone.bricks === before);
+    check(`one ${phone ? "Undo" : "Ctrl-Z"} takes it all back (${undone.bricks} of ${before})`, undone.bricks === before);
+    if (phone) {
+      // Holding nothing, and the parts sheet up again for what follows.
+      await press("phone_select");
+      await press("phone_parts");
+    }
   }
 
   // 4. Prints and stickers folded under their part, opened by its count.

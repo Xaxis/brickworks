@@ -3892,8 +3892,8 @@ func _maybe_open_library() -> void:
 	_store.credit = ModelLibrary.credit_of(entry)
 	_store.touch()
 	_bar.opened.emit(placed)
-	_bar.say("opened %s — %s%s" % [title, ModelBar.credit_words(_store.credit),
-		ModelBar.left_out_words(result, false)])
+	_bar.say("opened %s — %s%s%s" % [title, ModelBar.credit_words(_store.credit),
+		ModelBar.left_out_words(result, false), ModelBar.looks_words(_store)])
 
 
 ## The mouse in the viewer: a left drag on a part that moves moves it on its
@@ -6052,6 +6052,10 @@ func _make_assistant() -> void:
 	# Claude's change to a selection made in one copy of a sub-assembly is
 	# followed by the others, as a change by hand is.
 	_assistant_made.assemblies = _shell.assemblies
+	# And a step it took the last part off goes with its booklet look, in the
+	# same undo, as one by hand does (pullkept).
+	_assistant_made.focus_edited.connect(func(_words: String, _before: Image,
+			_after: Image) -> void: _store.looks_follow_edit())
 	# So a snapshot does not carry the baseplate off with it.
 	_assistant_made.scenery = _store.scenery
 	# And what the model stands on, read when asked: on a bare floor what only
@@ -6401,6 +6405,13 @@ func _make_mosaic() -> void:
 	mosaic.build_wanted.connect(_build_mosaic)
 	mosaic.art_wanted.connect(_build_art)
 	mosaic.claude_wanted.connect(_design_art_with_claude)
+	# Its colours from what the person owns (My collection), told again as
+	# the collection arrives once they sign in.
+	mosaic.owned = func() -> Dictionary:
+		return _shell.collection_store.on_hand if _shell != null and _shell.collection_store != null \
+			else {}
+	if _shell != null and _shell.collection_store != null:
+		_shell.collection_store.changed.connect(mosaic.tell_owned)
 
 
 ## A 3D model laid in bricks, as a sub-assembly beside what is built.
@@ -6520,6 +6531,20 @@ func _make_render() -> void:
 		render.rig_lights.append(light)
 	render.named = _bar.model_name
 	render.player = _motions
+	# lights (APP_UX5 #7): Render's Lights in the model change the model,
+	# kept as any change is, never one shared to look at; a new light is set
+	# over the selection, or over what is built.
+	render.lights_changed = _store.touch
+	render.may_change = func() -> bool: return _shell == null or not _shell.read_only
+	render.chosen_box = func() -> AABB:
+		var box := AABB()
+		var any: bool = false
+		for id: int in _builder.selection:
+			var brick: BrickWorld.Brick = _world.get_brick(id)
+			if brick != null:
+				box = box.merge(_box_of(brick)) if any else _box_of(brick)
+				any = true
+		return box if any else _built_bounds()
 	_add_to_hud(render)
 	var kind: GDScript = Later.script(&"RenderDialog")
 	var fit: Callable = func() -> void: _inset(render, float(kind.WIDE), float(kind.TALL))
@@ -7052,24 +7077,30 @@ func default_view() -> void:
 	_camera.frame(_built_bounds())
 
 
-## Lay the chosen picture out in plates.
+## Lay the chosen picture out in plates: the crop drawn, in the colours
+## chosen, each run of a colour in the largest plate it fills unless the
+## person asked for a 1 x 1 a stud (Mosaic.make).
 ##
 ## The mosaic replaces whatever was there, because a picture is a whole
 ## model rather than an addition to one — and it goes through the
 ## ordinary placement path, so it is undoable, saveable, counted by the
 ## parts list and walked by the booklet like anything else.
-func _build_mosaic(across: int, dither: bool) -> void:
+func _build_mosaic(options: Mosaic.Options) -> void:
 	if _mosaic_source == null:
 		return
 	_bar.say("laying it out…")
 	await get_tree().process_frame
 
-	var pixels: Array[Mosaic.Pixel] = Mosaic.lay_out(
-		_mosaic_source, across, PackedInt32Array(Mosaic.PALETTE),
-		_library, dither)
-	if pixels.is_empty():
+	# What the dialog worked out for these choices, rather than the same
+	# picture worked out again.
+	var laid: Mosaic.Laid = _mosaic_made.current_classic() if _mosaic_made != null else null
+	if laid == null:
+		laid = Mosaic.make(_mosaic_source, options, _library)
+	if laid.plates.is_empty():
 		_bar.say("nothing to lay out")
 		return
+	# On the web the larger plates may be fetched rather than shipped.
+	await Mosaic.fetch(laid, _library)
 
 	_world.clear()
 	_builder.lattice.clear()
@@ -7078,24 +7109,13 @@ func _build_mosaic(across: int, dither: bool) -> void:
 		_assistant_made.forget_built()
 	_store.scenery.clear()
 
-	var part: Lbm.PartMesh = _library.mesh_for(Mosaic.PIXEL_PART)
-	for pixel: Mosaic.Pixel in pixels:
-		# A 1 x 1 plate sits centred on its stud, and the mosaic is laid
-		# on the ground, so y is the plate height and nothing else.
-		var at := Transform3D(Basis.IDENTITY, Vector3(
-			pixel.x * BrickLattice.STUD + BrickLattice.STUD * 0.5,
-			part.bounds.size.y,
-			pixel.z * BrickLattice.STUD + BrickLattice.STUD * 0.5))
-		var brick_id: int = _world.add_brick(
-			Mosaic.PIXEL_PART, pixel.color_code, at)
-		if brick_id != 0:
-			_builder.register(brick_id, Mosaic.PIXEL_PART, at)
+	var placed: PackedInt64Array = Mosaic.put_down(laid, _world, _builder, _library)
 
 	_on_a_floor_of_its_own()
 	_camera.frame(_built_bounds(), 1.1)
 	_camera.set_view("top")
 	_on_model_changed()
-	_bar.say(Keymap.filled("%d plates — press {parts_list} for what to buy") % pixels.size())
+	_bar.say(Keymap.filled("%d plates — press {parts_list} for what to buy") % placed.size())
 
 
 ## A picture laid in plates is a whole model on its own panels, with nothing
@@ -7879,6 +7899,10 @@ func _on_model_edited() -> void:
 	# Every other copy of a sub-assembly just edited follows it.
 	if _verbs != null and _verbs.assemblies != null:
 		_verbs.assemblies.after_edit()
+	# A step it took the last part off goes with its booklet look, in the
+	# same undo (pullkept).
+	if _store != null:
+		_store.looks_follow_edit()
 	# The timeline in the author's steps shows the model as it now is: a
 	# part put down in the step showing, an undone step edit. (Worked out,
 	# it is the order it was when opened, as it always was: on Orthanc the
@@ -8238,7 +8262,8 @@ func _open_given(path: String) -> int:
 		_bar.say("could not open %s: %s" % [path.get_file(), result["error"]])
 		printerr("could not open %s: %s" % [path, result["error"]])
 		return 0
-	var said: String = "opened %d parts" % int(result["placed"]) + ModelBar.left_out_words(result)
+	var said: String = "opened %d parts" % int(result["placed"]) + ModelBar.left_out_words(result) \
+		+ ModelBar.looks_words(_store)
 	if not str(made["note"]).is_empty():
 		said += " — " + str(made["note"])
 	_bar.say(said)
