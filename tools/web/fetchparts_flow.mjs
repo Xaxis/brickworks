@@ -4,8 +4,8 @@
 //   tools/export.sh web
 //   node tools/web/play_flow.mjs --write-house=/tmp/house.mpd
 //   tools/web/serve.py build/web 9821 --parts assets/generated/parts --delay 0 --compressed \
-//       --share F3tchP4rts=vendor/omr/files/42022-1_Rally-Racer.mpd --share H0useFl0w=/tmp/house.mpd
-//   node tools/web/fetchparts_flow.mjs --url=http://127.0.0.1:9821 --house=H0useFl0w --out=DIR
+//       --share F3tchP4rts=vendor/omr/files/42022-1_Rally-Racer.mpd --share H0useFl0w1=/tmp/house.mpd
+//   node tools/web/fetchparts_flow.mjs --url=http://127.0.0.1:9821 --house=H0useFl0w1 --out=DIR
 //
 // And against the build before, ABBA: the same served from a second export
 // (pre261's, say) on another port, --base=http://127.0.0.1:9822, --rounds=2
@@ -213,9 +213,10 @@ async function run(side, origin, size, round, model = "car") {
   const loadAt = load();
   console.log(`\n${side} ${size} r${round} ${model}, ${said}, load ${loadAt}: ${origin}/m/${id}`);
   const began = Date.now();
-  await page.goto(`${origin}/m/${id}`, { waitUntil: "domcontentloaded", timeout: 300000 });
+  const opened = await page.goto(`${origin}/m/${id}`, { waitUntil: "domcontentloaded", timeout: 300000 });
   const line = { side, size, round, model, load: Number(loadAt) };
   try {
+    if (!opened || !opened.ok()) throw new Error(`/m/${id} answered ${opened ? opened.status() : "nothing"}`);
     await until(page, () => ((window.brickworksShare || {}).opened || {}).parts !== undefined, "every part here", 900);
     // 3 s more, as the frames after every part came are its opening too.
     await page.waitForTimeout(3000);

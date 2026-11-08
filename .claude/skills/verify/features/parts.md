@@ -695,9 +695,9 @@ node tools/web/fetch_retry_flow.mjs --url=http://127.0.0.1:9195/ --out=DIR   # t
 # every part file through the page's own fetch, none by HTTPRequest: 42022 Rally Racer's link (47 of its 71 shapes fetched)
 # at a laptop's size on broadband and a phone's on a phone network, against the build before, ABBA (local only)
 node tools/web/play_flow.mjs --write-house=DIR/house.mpd   # playweb's house, the model the frame bar was measured on
-tools/web/serve.py build/web 9821 --parts assets/generated/parts --delay 0 --compressed --share F3tchP4rts=vendor/omr/files/42022-1_Rally-Racer.mpd --share H0useFl0w=DIR/house.mpd
-tools/web/serve.py BASE/build/web 9822 --parts assets/generated/parts --delay 0 --compressed --share F3tchP4rts=vendor/omr/files/42022-1_Rally-Racer.mpd --share H0useFl0w=DIR/house.mpd
-node tools/web/fetchparts_flow.mjs --url=http://127.0.0.1:9821 --base=http://127.0.0.1:9822 --house=H0useFl0w --rounds=2 --out=DIR   # 0 by the engine; whole; the house's longest frame <= 506 / 564 ms (mean); the car's shapes in half the base's time
+tools/web/serve.py build/web 9821 --parts assets/generated/parts --delay 0 --compressed --share F3tchP4rts=vendor/omr/files/42022-1_Rally-Racer.mpd --share H0useFl0w1=DIR/house.mpd
+tools/web/serve.py BASE/build/web 9822 --parts assets/generated/parts --delay 0 --compressed --share F3tchP4rts=vendor/omr/files/42022-1_Rally-Racer.mpd --share H0useFl0w1=DIR/house.mpd
+node tools/web/fetchparts_flow.mjs --url=http://127.0.0.1:9821 --base=http://127.0.0.1:9822 --house=H0useFl0w1 --rounds=2 --out=DIR   # 0 by the engine; whole; the house's longest frame <= 506 / 564 ms (mean); the car's shapes in half the base's time
 godot --headless --path . --script src/dev/availability_probe.gd    # what was really made, and silence otherwise
 godot --headless --path . --script src/dev/variety_probe.gd        # whether a model reads as a set
 godot --headless --path . --script src/dev/usage_probe.gd         # whether search leads with the part sets use
