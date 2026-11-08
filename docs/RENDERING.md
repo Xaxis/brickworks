@@ -571,6 +571,91 @@ Pictures, `bench/results/render353-2026-10-29/`:
   shadow on nothing is the raster's). No denoiser: 256 samples are clean
   enough on the car, and Cycles keeps OIDN for R2.
 
+## 5d. Lights in the model, and plastics that glow (APP_UX5 lights)
+
+- **What a model keeps.** Up to 8 lights (`SceneLights`, a `0 !BRICKWORKS
+  LIGHT {json}` line each after the file's first line): a bulb, a spot, a sun
+  or a square panel, its place and aim in the file's coordinates, colour,
+  strength, a spot's cone, a bulb's radius or a panel's side, and shadows.
+  Strength 1 lights a face 100 LDU from a lamp, or any face turned to a sun,
+  as the window's key does; a lamp falls off with the square of distance.
+  Older Brickworks and other LDraw readers pass over the lines.
+- **What is read, and what is kept as it is.** Only the main model's lines,
+  up to an MPD's second `0 FILE` (or `0 !DATA`, or its first `0 NOFILE`): a
+  sub-model's lights and saved views are its own, and stay in it. At most 4
+  of the 8 are suns: the studio's three lights, the sky (Good) and four suns
+  are eight, the most either renderer draws, so the tracer and the raster
+  always light the same. Each number is rounded to the thousandth a file
+  keeps before it is checked, so a strength that would be written as 0 is
+  refused, with why. A line that is no light (not `{`-words, past the first
+  64 tried, of a kind there is not, a ninth light, a fifth sun) is not read
+  and stays in the file word for word: where it was in someone else's file,
+  after the lights in Brickworks' own (written whole); the open says how
+  many and why on the status bar. A save takes out exactly the lines the
+  open read (`SceneLights._sorting`, the one rule for both), writes a light
+  read and not changed since in its author's words, and keeps the file's
+  line ends.
+- **Rasterised** as Godot's own lights (`StudioRender._place_lamps`): an
+  OmniLight3D, a SpotLight3D (its edge the rim to the power 3, which Godot
+  takes as `spot_angle_attenuation` 1/3: it raises the rim to the
+  reciprocal, and at 3 the floor beside the car had a third of the light), a
+  DirectionalLight3D; a panel a spot opened to 80 degrees falling off as the
+  cosine, its size softening the shadows. **Path traced** by the tracer's
+  `from_lamps`, the same fall, cone and edge, the panel a true square of
+  light, each lamp's random numbers a stream of their own.
+- **Nothing outside a spot changes.** The exposure and the sweep's level
+  are metered with the lamps hidden, as a photographer meters the set and
+  then adds a lamp; the lamps are bounced by neither the raster's global
+  illumination (`light_indirect_energy` 0) nor the tracer (first surface
+  only), so the draft shows the light Best draws, and a pixel whose surface
+  is outside the cone is the same pixel. Their bounce is what is given up.
+  For that the same settings draw the same picture: the tracer's samples
+  take their numbers from their own index and the seed, not from how its
+  passes fell (a pass's size follows the card's timing, and changes only
+  between whole samples); and a raster picture in one piece is drawn wider
+  and cut back when it has occlusion, as pieces were, since its last
+  column came out darker and not the same twice.
+- **Dark** (Render's Light, `lighting` "dark"; `render_model light=dark`):
+  the studio's three lights and the sky put out, the ambient 0.025, the
+  sweep beyond the lights' reach 4% of its colour, no metering. The neons
+  (Trans Neon Green, Orange, Yellow, Red) and Glow In Dark give off light, as
+  Eyesight draws them: the plastic shaders' `glow` (2.0 times their colour)
+  and, rasterised, a light at each 80-LDU lump of them (12 at most, no
+  shadow); traced, their faces are lights of their own, opaque and clear.
+- **On Compatibility** (the web's renderer), which draws at most 8 bulbs
+  and spots on one thing (`max_lights_per_object`; the stage's batches are
+  one thing each, so in effect the set, and spots counted apart): while
+  anything glows the glow keeps at least 2 lights of its own
+  (`GLOW_KEPT`), the model's bulbs making room by the dimmest given to the
+  one nearest it (where the two are, by energy), and the glow's lumps
+  gathered into the lights it has (a few rounds of k-means weighted by
+  power), so its energy only ever goes into a glow light, never a bulb.
+  Folded into the nearest bulb instead (the first design), 8 bulbs over a
+  neon grid drew the glow from where the bulbs hang, the picture's mean
+  177.6 to 117.6 and its far floor black. Now, the mean / the floor left /
+  right of the grid with 0 and 8 bulbs: Forward+ 171.2 / 134.0 / 168.3 and
+  174.9 / 154.7 / 168.3; Compatibility 175.3 / 139.8 / 169.8 and 175.6 /
+  155.4 / 166.1 (the left floor, under the bulbs, rising as on Forward+).
+  Compatibility
+  adds light in sRGB, so Dark there is calibrated against Forward+ on the
+  card through zink: exposure x2, lamps x4 over `BrickWorld.light_energy`,
+  and the model's suns sharing what Forward+ gives them together (it adds
+  in linear light and encodes the sum, so 4 equal suns light about 1.9 times
+  one: each is scaled by the sum's 1/2.2th power over the sum of the
+  powers). The car's mean under 0 to 4 suns: Forward+ 18.4, 103.7, 134.5,
+  151.8, 162.3; Compatibility 22.6, 109.2, 140.6, 158.5, 166.5 (it was 9.9,
+  24.0, 33.7, 41.7, 48.8). No exposure and lamp energy alone brought one
+  sun and four within 15% (24 pairs tried).
+- **Measured** (`tools/probe.sh lights`): see the probe's numbers in its
+  run log; the bar is 0 px changed outside the cone both ways (on
+  Compatibility, which draws a shadowed light in passes of its own, none
+  more than a level apart and none lighter on the whole: 92,700 px came
+  out a level apart, more of them darker, the mean -0.135 of a level) and
+  the
+  floor the spot lights beside the car 15% and 10 levels lighter, on a grey
+  sweep (the car's roof is black), and the plate round a neon 1 x 1 three
+  times as light as round a Trans Green one.
+
 ## 6. Web and desktop
 
 - **Desktop (Forward+):**
