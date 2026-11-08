@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:the booklet's own cover and colours, cli:booklook probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:the booklet's own cover and colours, cli:booklook probe -->
 
 ## Sub-features
 
@@ -2139,6 +2139,87 @@ picture the assistant is shown.
   windows on one user folder (the probe again headless, `--race-remove`)
   losing no style's picture. `--dialog-only` with `PROBE_SIZE=1400x900`
   checks the dialog alone at that size.
+- `what is set in the booklet kept over an open` and `pullkept probe`
+  (APP_UX6 #1 pullkept; `BookletLooks.read`, `_pulls_follow_parts`,
+  `unmatched_words`, `ModelBar.looks_words`, `Assistant._tag_assemblies`):
+  every step line of the booklet (pull, colours, turn, zoom, notes, place,
+  page) is read back to the step it was written on, a sub-model's own steps
+  too. A save makes the session's named assemblies sub-models; where the
+  model's steps are its own those copies stay built in their parent's
+  steps (`AuthorSteps.IN_PARENT`, the file's `0 !BRICKWORKS IN` lines), as
+  Make a sub-assembly keeps them, so the booklet seen before the save is
+  the one after. A file (as Pods.ldr was saved by rel-m268) whose pull
+  names parts its step no longer puts in, with them in copies that step
+  puts in, has each of those parts read onto the first step of those copies
+  that adds it, as built (`_adding`), so no part is pulled twice; a step with
+  a pull of its own keeps it, and what no step takes stays on the file's
+  step. When
+  the whole pull goes to one step and the file's step adds no part of its
+  own, the rest of that page goes too (zoom, page, size, parts list, turn
+  sign, 1:1 guide, panel, places, words, arrows) if the step has no look
+  yet; its turn, section mark and a sub-model preview set off stay. The
+  next save writes them there. `booklet_layout` says a step pulls out only
+  the parts it adds (`_pull_said`). A pull none of whose parts is in its
+  step, on a step the booklet shows, is kept in the file and named on open:
+  "the pull on step 1 of the model matches no step now, kept in the file",
+  in the MCP `open_model` reply and the status bar (de/fr/es in `locale/`);
+  a look on a step the booklet shows no page of is kept and not named
+  (`unmatched_words`). A whole write numbers the looks by one list of
+  steps, each section's, worked out from the placements it writes, parts
+  still on their way and those the catalogue lacks among them
+  (`LdrModel.steps_written`, used by `write_tree`/`write_ldr` and
+  `BookletLooks.as_written`); a step the file had empty that the booklet is
+  set up on is in the list and written as a 0 STEP of its own
+  (`with_kept_steps`). An edit that takes a step's last part off (by hand,
+  over MCP, the assistant's change to a selection) drops that step's look
+  in the same undo (`ModelStore.looks_follow_edit`, `BookletLooks.emptied`;
+  its turn and chapter go on to the next step); undo brings both back, the
+  part in its step (`SelectionScope.snapshot` keeps the step). Lines with
+  tabs between their fields read and write as
+  with spaces (`_of_type`), and a model of one step marked
+  AUTHORED_STEPS keeps its steps and looks (`LdrModel.steps_are_authored`).
+  `pullkept_probe` (headless;
+  `PULLKEPT_ONLY=pods,session,named,review,lines,files,emptied,loop` for
+  some):
+  `src/dev/fixtures/mcp_walk_pods.ldr` opened by `open_model`, step 1's
+  look pulling 41769a and 41770a 2 studs and `booklet_layout` saying
+  "41770a, 41769a pulled out 2 studs", the PULL line in side_pod.ldr's step
+  after a save, the same after a reopen and the second save byte for byte;
+  the walk's session replayed over MCP and saved, step 1 pulling both after
+  a reopen and with step 1's parts made a sub-assembly by hand; a file
+  without the wing plates and one with a zoom on a step shown nowhere kept
+  over a save and not named on open (MCP and `ModelBar.unshown_words`), and
+  steps4 with a pull of 3003 on step 2 named and kept; the
+  review's files (`src/dev/fixtures/pullkept/`, from
+  bench/results/pkreview-2026-11-07) opened over MCP, saved, opened and
+  saved again with their looks, open words and booklet lines checked: tie
+  and three split, nested carried with its zoom, haspull kept and not
+  named (no page shows the step that puts `a` on), twice,
+  spread and pods_pull3003 one pull on the first step adding 3003,
+  absent_only's zoom on its step of a part the catalogue lacks, steps4,
+  empty_own and theirs_empty kept as an empty step with the booklet at 3
+  steps and nothing named, pods_alllines' 11 lines carried to the side
+  pod's first step, Pods
+  with CRLF and with tabs, theirs_tabs edited with its tab lines kept, a
+  one-step model as a file and made over MCP; on every step
+  `booklet_layout` pulls out only parts the step adds; the
+  gatehouse given every kind of booklet line over MCP and `page_setup`, its
+  looks and parts the same after a save and an open, its lines byte for
+  byte on the second save; every file of LDraw's model repository with a
+  booklet line (117, the 44 turned among them), the gatehouse, 346-2 and
+  Pods opened, saved, opened and saved: every booklet line in its file step
+  byte for byte and every part in its step. A shared model's carried pages
+  (`SharedPages`' PAGES and PAGE {...}) are the share's, not the booklet's:
+  a save takes them off and a share works them out again. steps4's step 2,
+  its one part taken off over MCP (`edit_model`) and by hand: the look gone
+  with it, `undo` bringing both back with the part in step 2, redo taking
+  both, saved with 2 STEP lines and opened naming nothing. Every file in
+  `src/dev/fixtures/pullkept/` and the walk's Pods (as given, CRLF, tabs)
+  opened, saved, opened, saved, opened and saved: the same STEP count each
+  save, each look with the same parts at each open, the second and third
+  saves byte for byte. A session saves only over files it wrote
+  (`save_model`), so each model opened over MCP is saved under a name of
+  its own first.
 - `the booklet's own cover and colours` and `booklook probe`
   (APP_UX6 #5 booklook; `BookletSheet`'s title, subtitle, cover_line,
   cover_picture, header, footer, box_frame, box_fill, box_corners,
