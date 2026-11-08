@@ -1467,14 +1467,15 @@ static func may_pass(result: int, code: int) -> bool:
 ## Fetch [param url], and call [param done] with (code, body) once, with an
 ## answer that asking again would not change or the last of
 ## [constant RETRY_AFTER]'s tries. The one way geometry and exact shapes are
-## fetched, and so the parts bin's pictures. False when no request could be
-## sent.
+## fetched, and so the parts bin's pictures. In a browser the page fetches
+## each ([method _ask_page]); HTTPRequest is the desktop's. False when no
+## request could be sent.
 func _ask(url: String, done: Callable, tries: int = 0) -> bool:
 	if _fetch_host == null or not _fetch_host.is_inside_tree():
 		return false
 	var kind: String = url.get_extension()
-	if kind == BWX and OS.has_feature("web"):
-		return _ask_page(url, done, tries)
+	if OS.has_feature("web"):
+		return _ask_page(url, kind, done, tries)
 	var request := HTTPRequest.new()
 	_fetch_host.add_child(request)
 	request.request_completed.connect(func(result: int, code: int,
@@ -1508,44 +1509,73 @@ func _answered(url: String, kind: String, done: Callable, tries: int, result: in
 	done.call(code, body)
 
 
-## In a browser, an exact shape fetched by the page itself and handed over
-## the moment its bytes are in. The engine polls an HTTPRequest once a frame
-## and each of its states takes a frame: the house's gates' shapes took 7
-## frames from asked to answered, 1 to 4 s while its model was drawn in
-## software (playweb, 2026-11-07), as Together's requests did
-## (Together._ask_page).
-func _ask_page(url: String, done: Callable, tries: int) -> bool:
+## In a browser, a part file of [param kind] (its geometry, its exact shape)
+## fetched by the page itself and handed over the moment its bytes are in.
+## The engine polls an HTTPRequest once a frame and each of its states takes
+## a frame: a part took 7 frames from asked to answered, and a frame of a
+## model being drawn in software is most of a second, so 47 parts of a
+## Technic car took seconds after the last of their bytes had come
+## (fetchparts, 2026-11-08), as the house's gates' shapes did (playweb,
+## 2026-11-07) and Together's requests (Together._ask_page). Its bytes are
+## kept by the page and taken in one copy ([constant PAGE_FETCH]), not
+## carried as base64 through the callback, which is handed only strings and
+## numbers.
+func _ask_page(url: String, kind: String, done: Callable, tries: int) -> bool:
 	if _page_answer == null:
 		_page_answer = JavaScriptBridge.create_callback(_on_page_answer)
-		JavaScriptBridge.get_interface("window").brickworksShapeFetched = _page_answer
+		JavaScriptBridge.get_interface("window").brickworksPartFetched = _page_answer
+		JavaScriptBridge.eval(PAGE_FETCH, true)
 	_page_asked += 1
-	_page_asks[_page_asked] = [url, done, tries]
-	# Its bytes as base64: a callback is handed strings and numbers.
-	JavaScriptBridge.eval(("fetch(%s).then(async (r) => { const b = new Uint8Array(await r.arrayBuffer());"
-		+ " let s = ''; for (let i = 0; i < b.length; i += 32768) s += String.fromCharCode.apply(null, b.subarray(i, i + 32768));"
-		+ " window.brickworksShapeFetched(%d, r.status, btoa(s)); })"
-		+ ".catch(() => window.brickworksShapeFetched(%d, 0, ''));") % [JSON.stringify(url),
-		_page_asked, _page_asked], true)
-	_open[BWX] = int(_open.get(BWX, 0)) + 1
+	_page_asks[_page_asked] = [url, kind, done, tries]
+	JavaScriptBridge.eval("window.brickworksPartFetch(%d, %s)" % [_page_asked, JSON.stringify(url)], true)
+	_open[kind] = int(_open.get(kind, 0)) + 1
 	return true
 
 
+## The page's end of [method _ask_page]: brickworksPartFetch(id, url)
+## fetches, keeps an answer's bytes by its id, and says (id, status, size)
+## to brickworksPartFetched, status 0 for none; brickworksPartTake(id) hands
+## the bytes over, once, as a Uint8Array, which JavaScriptBridge.eval gives
+## the app as a PackedByteArray in a single copy.
+const PAGE_FETCH := """(function () {
+	const kept = new Map();
+	window.brickworksPartFetch = function (id, url) {
+		fetch(url).then(function (answer) {
+			if (!answer.ok) return [answer.status, null];
+			return answer.arrayBuffer().then(function (bytes) { return [answer.status, bytes]; });
+		}).then(function (got) {
+			if (got[1]) kept.set(id, new Uint8Array(got[1]));
+			window.brickworksPartFetched(id, got[0], got[1] ? got[1].byteLength : 0);
+		}, function () {
+			window.brickworksPartFetched(id, 0, 0);
+		});
+	};
+	window.brickworksPartTake = function (id) {
+		const bytes = kept.get(id) || new Uint8Array(0);
+		kept.delete(id);
+		return bytes;
+	};
+})();"""
+
+
 ## The page's answer to [method _ask_page]'s fetch [param args][0]: its
-## status (0 for none) and its bytes as base64.
+## status (0 for none) and how many bytes came, taken from the page here.
 func _on_page_answer(args: Array) -> void:
 	var id: int = int(args[0])
 	var asked: Array = _page_asks.get(id, [])
 	_page_asks.erase(id)
+	var bytes: Variant = JavaScriptBridge.eval("window.brickworksPartTake(%d)" % id, true) \
+		if int(args[2]) > 0 else PackedByteArray()
 	if asked.is_empty():
 		return
 	var code: int = int(args[1])
-	_answered(asked[0], BWX, asked[1], int(asked[2]),
+	_answered(asked[0], asked[1], asked[2], int(asked[3]),
 		HTTPRequest.RESULT_SUCCESS if code != 0 else HTTPRequest.RESULT_CANT_CONNECT, code,
-		Marshalls.base64_to_raw(str(args[2])) if code != 0 else PackedByteArray())
+		bytes if bytes is PackedByteArray else PackedByteArray())
 
 
-## The page's fetches: the callback it answers through, and id -> [url, done,
-## tries] for each still out.
+## The page's fetches: the callback it answers through, and id -> [url, kind,
+## done, tries] for each still out.
 var _page_answer: JavaScriptObject = null
 var _page_asked: int = 0
 var _page_asks: Dictionary = {}
