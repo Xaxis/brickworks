@@ -10584,12 +10584,28 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	# Whoever is pressing keys has stopped watching.
 	if _playback != null and _playback.is_playing():
 		_playback.stop()
-	# A single-letter shortcut must never fire while someone is typing a
-	# part name or a brief.
+	var key: InputEventKey = event
+	# A field with the keys keeps the ones it types with: what prints, with
+	# no Ctrl, Alt or Cmd (AltGr, which Windows and a browser send as Ctrl
+	# and Alt, still prints), and the keys that move, select and delete in
+	# its text, with any. So a single-letter shortcut never fires while
+	# someone types a part name or a brief. The rest are the app's, as in
+	# every desktop app: F1, F9, Ctrl+S and Alt+X from the bin's search did
+	# nothing, and nothing said why (APP_UX7 #4). What the field does with a
+	# modified key, Ctrl+A, C, V, X and Z on its text, it took before this.
 	var focused: Control = get_viewport().gui_get_focus_owner()
 	if focused is LineEdit or focused is TextEdit:
-		return
-	var key: InputEventKey = event
+		const EDITING: Array[Key] = [KEY_BACKSPACE, KEY_DELETE, KEY_INSERT, KEY_ENTER,
+			KEY_KP_ENTER, KEY_TAB, KEY_ESCAPE, KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN, KEY_HOME,
+			KEY_END, KEY_PAGEUP, KEY_PAGEDOWN, KEY_MENU, KEY_SHIFT, KEY_CTRL, KEY_ALT, KEY_META,
+			KEY_CAPSLOCK]
+		var code: Key = key.keycode
+		var prints: bool = key.unicode >= 32 or (code > KEY_NONE and code < KEY_SPECIAL) \
+			or (code >= KEY_KP_MULTIPLY and code <= KEY_KP_9)
+		var held: bool = key.ctrl_pressed or key.alt_pressed or key.meta_pressed
+		var alt_gr: bool = key.unicode >= 32 and key.ctrl_pressed and key.alt_pressed
+		if code in EDITING or (prints and (not held or alt_gr)):
+			return
 	# The key as the person's keymap has it (Keymap): the key that does
 	# what it is bound to, a command no key does out of the box, or nothing,
 	# for a key a preset took off what it did. A shared model's viewer has
