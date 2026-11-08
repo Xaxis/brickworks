@@ -77,8 +77,21 @@ func _run() -> void:
 	_fits(dialog, "as it opens")
 	await _shot("opened")
 
+	# What else is up over the window as the dialog opens: a popup closed by
+	# a click outside it takes that click.
+	var up: Array[String] = []
+	for sub: Window in root.get_embedded_subwindows():
+		if sub.visible:
+			up.append("%s %s" % [sub.get_class(), sub.name])
+	print("    over the window: %s; the keys with %s" % [", ".join(up) if not up.is_empty()
+		else "nothing", root.gui_get_focus_owner()])
+
 	# Crop, then a rectangle dragged on the picture.
 	await _click(_middle(dialog._cropping))
+	if not dialog._cropping.button_pressed:
+		# Said, so a click that missed says where it went.
+		print("    Crop's click at %s went to %s; Crop at %s" % [_px(_middle(dialog._cropping)),
+			root.gui_get_hovered_control(), dialog._cropping.get_global_rect()])
 	_check("Crop shows the whole picture to drag on", dialog._cropping.button_pressed)
 	await _drag(dialog, Vector2(0.18, 0.25), Vector2(0.82, 0.9))
 	var crop: Rect2 = dialog.crop()
@@ -99,7 +112,12 @@ func _run() -> void:
 	var popup: PopupMenu = dialog._colours.get_popup()
 	_check("Colours opens its list of three", popup.visible and popup.item_count == 3)
 	await _shot("colours_list")
-	await _key(KEY_DOWN)
+	# Down to A set's colours, as many presses as the list's own highlight
+	# needs (none is highlighted when the list opens to a click), then Return.
+	for _n: int in 3:
+		if popup.get_focused_item() == MosaicDialog.Colours.SET:
+			break
+		await _key(KEY_DOWN)
 	await _key(KEY_ENTER)
 	if dialog._colours.selected != MosaicDialog.Colours.SET:
 		_check("A set's colours chosen from the list with the keys (selected %d)" % dialog._colours.selected, false)
