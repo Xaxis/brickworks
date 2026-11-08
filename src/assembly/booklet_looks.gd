@@ -1080,6 +1080,11 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 	var data_name: String = ""
 	var data := PackedStringArray()
 	var pictures: Dictionary = {}
+	# The first FILE is the model's own, as written_into reads it, whatever
+	# main_key says: _looks_into's check gives none. Up to 2026-11-07, read
+	# with none, someone else's page was not the file's, so the file was
+	# written again and its usual page left the old line in (pagesetup).
+	var first_file: bool = true
 	for raw: String in text.split("\n"):
 		var line: String = raw.strip_edges()
 		if not data_name.is_empty():
@@ -1102,7 +1107,9 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 			continue
 		if keyword == "FILE":
 			var file_key: String = LdrModel._key(" ".join(words.slice(2)))
-			definition = "" if file_key == main_key else str(names.get(file_key, file_key))
+			definition = "" if first_file or file_key == main_key \
+				else str(names.get(file_key, file_key))
+			first_file = false
 			step = 0
 			continue
 		if keyword == "ROTSTEP":
