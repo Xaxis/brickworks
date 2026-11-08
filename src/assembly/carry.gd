@@ -71,17 +71,15 @@ func _ready() -> void:
 # -- what is held -----------------------------------------------------------
 
 
-## The parts of these bricks, in a frame of their own, ready to hold: a part
-## this build has not got among them (PartLibrary.add_stand_in), which a lift
-## takes off with the rest, and the line each was read from, which a lift
-## puts back down with it (Builder._put_carried).
+## The parts of these bricks, in a frame of their own, ready to hold, and
+## the line each was read from, which a lift puts back down with it
+## (Builder._put_carried).
 static func gather(world: BrickWorld, from: PartLibrary,
 		ids: Array) -> Array:
 	var placed: Array = []
 	for brick_id: int in ids:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
-		if brick != null and (from.mesh_for(brick.part_id) != null
-				or from.is_stand_in(brick.part_id)):
+		if brick != null and from.mesh_for(brick.part_id) != null:
 			placed.append({"part": brick.part_id, "color": brick.color_code,
 				"at": brick.transform, "group": brick.group, "unit": brick.unit,
 				"step": brick.step, "origin": brick.origin})

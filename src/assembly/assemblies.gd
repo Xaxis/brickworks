@@ -1202,12 +1202,6 @@ func counterparts(from: String, to: String) -> Dictionary:
 func _same_place(part: String, here: Transform3D, there: Transform3D) -> bool:
 	if here.basis.is_equal_approx(there.basis):
 		return true
-	# A file's turn written to its precision (31037-1's lights at 0.707, a
-	# hair short of a true 45 degrees) is the turn a part put down has:
-	# taken for another, a copy put down rebuilt every other copy of its
-	# sub-model, and their lines were written again (keeptext4).
-	if here.basis.orthonormalized().is_equal_approx(there.basis.orthonormalized()):
-		return true
 	var mesh: Lbm.PartMesh = library.mesh_for(part)
 	if mesh == null:
 		return false

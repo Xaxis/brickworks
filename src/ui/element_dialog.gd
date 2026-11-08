@@ -490,7 +490,7 @@ func open(part_id: String = "") -> void:
 	visible = true
 	if not part_id.is_empty() and _start_from(part_id, true):
 		return
-	if not part_id.is_empty() and library != null and library.has_part(part_id):
+	if not part_id.is_empty() and library != null and library.parts.has(part_id):
 		_from.text = part_id
 	if _built == null:
 		_mode = "family"
@@ -528,7 +528,7 @@ func _start_from(part_id: String, quietly: bool = false) -> bool:
 ## "Change it": the part as itself, whichever family it is or is not.
 func _change_part(part_id: String) -> bool:
 	var id: String = part_id.strip_edges().to_lower().trim_suffix(".dat")
-	if library == null or not library.has_part(id):
+	if library == null or not library.parts.has(id):
 		_say("There is no part %s in the library." % id, true)
 		return false
 	_start_modify(id)

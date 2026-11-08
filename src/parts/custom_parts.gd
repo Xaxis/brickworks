@@ -42,7 +42,7 @@ static func make(library: PartLibrary, spec: RefCounted,
 	var id: String = base
 	var text: String = maker.dat(spec, id)
 	var n: int = 1
-	while library.has_part(id) and library.custom_source(id) != text:
+	while library.parts.has(id) and library.custom_source(id) != text:
 		n += 1
 		id = "%s-%d" % [base, n]
 		text = maker.dat(spec, id)
@@ -65,7 +65,7 @@ static func make_modified(library: PartLibrary, edit: RefCounted,
 ## this very part: {"text", "id", "problem"}.
 static func modified_text(library: PartLibrary, edit: RefCounted) -> Dictionary:
 	var info: PartLibrary.PartInfo = library.parts.get(edit.from)
-	if info == null or info.stand_in:
+	if info == null:
 		return {"text": "", "id": "", "problem": "there is no part %s" % edit.from}
 	var mesh: Lbm.PartMesh = library.mesh_for(edit.from)
 	var category: String = info.ldraw_category if info.custom else info.category
@@ -74,7 +74,7 @@ static func modified_text(library: PartLibrary, edit: RefCounted) -> Dictionary:
 	var id: String = base
 	var made: Dictionary = editor.make_dat(edit, mesh, info.name, category, id)
 	var n: int = 1
-	while made["problem"] == "" and library.has_part(id) \
+	while made["problem"] == "" and library.parts.has(id) \
 			and library.custom_source(id) != str(made["text"]):
 		n += 1
 		id = "%s-%d" % [base, n]
@@ -223,7 +223,7 @@ static func named_for(library: PartLibrary, id: String) -> String:
 		return ""
 	var named: String = id.substr(at + 3).strip_edges()
 	var info: PartLibrary.PartInfo = library.parts.get(named)
-	return named if info != null and not info.custom and not info.stand_in else ""
+	return named if info != null and not info.custom else ""
 
 
 ## The part [param id] is a copy of, for [param mesh], its geometry as the
@@ -556,7 +556,7 @@ static func _load_later(library: PartLibrary, texts: Dictionary,
 		return PackedStringArray(named.keys()))
 	for file_name: String in texts:
 		var id: String = file_name.get_basename()
-		if library.has_part(id):
+		if library.parts.has(id):
 			continue
 		var result: Dictionary = add(library, texts[file_name], id, false,
 			sources.get(file_name, {}))
@@ -650,15 +650,14 @@ static func _to_build(library: PartLibrary, model: LdrModel) -> PackedStringArra
 		var id: String = file_name.get_basename()
 		var text: String = model.embedded_parts[file_name]
 		var info: PartLibrary.PartInfo = library.parts.get(id)
-		# A stand-in only held the number for a model that did not carry it.
-		if info != null and not info.custom and not info.stand_in:
+		if info != null and not info.custom:
 			continue
 		if info != null and library.custom_source(id) == text:
 			continue
 		# A part Studio drew itself that LDraw has since drawn (bl_5095 is
 		# 5095): the library's, as ModelStore.studio_part reads the name.
 		var plain: PartLibrary.PartInfo = library.parts.get(id.trim_prefix("bl_"))
-		if id.begins_with("bl_") and plain != null and not plain.custom and not plain.stand_in:
+		if id.begins_with("bl_") and plain != null and not plain.custom:
 			continue
 		wanted.append(file_name)
 	return wanted
@@ -738,7 +737,7 @@ static func unreached_by(library: PartLibrary, model: LdrModel) -> PackedStringA
 				continue
 			var body: String = str(model.section_texts.get(sub.name.to_lower(), ""))
 			var seen: Array = _skins_of_body.get(body, [])
-			if not seen.is_empty() and (str(seen[0]).is_empty() or library.has_part(seen[0])):
+			if not seen.is_empty() and (str(seen[0]).is_empty() or library.parts.has(seen[0])):
 				continue
 			if not model.skin_texts.has(body):
 				model.skin_texts[body] = _skin_text(library, model, sub, body, pieces)
@@ -807,7 +806,7 @@ static func copied_parts(library: PartLibrary, model: LdrModel) -> PackedStringA
 	for file_name: String in model.embedded_parts:
 		var id: String = file_name.get_basename()
 		var info: PartLibrary.PartInfo = library.parts.get(id)
-		if info != null and not info.stand_in and (not info.custom or not info.copy_of.is_empty()):
+		if info != null and (not info.custom or not info.copy_of.is_empty()):
 			continue
 		var named: String = named_for(library, id)
 		if not named.is_empty() and not out.has(library.resolve(named)):
@@ -1029,7 +1028,7 @@ static func begin_skins(library: PartLibrary, model: LdrModel,
 		# or that it has none (42058's hose is 15,760 lines: read again on
 		# every open, 40 ms of a 150 ms one).
 		var seen: Array = _skins_of_body.get(body, [])
-		if not seen.is_empty() and (str(seen[0]).is_empty() or (library.has_part(seen[0])
+		if not seen.is_empty() and (str(seen[0]).is_empty() or (library.parts.has(seen[0])
 				and library.custom_source(seen[0]) == str(seen[1]))):
 			if not str(seen[0]).is_empty():
 				begun.append({"key": key, "sub": sub, "id": seen[0], "text": seen[1],
@@ -1051,7 +1050,7 @@ static func begin_skins(library: PartLibrary, model: LdrModel,
 		_skins_of_body[body] = [id, text]
 		var entry: Dictionary = {"key": key, "sub": sub, "id": id, "text": text,
 			"sources": sources, "pieces": pieces, "task": -1, "built": [null]}
-		if not (library.has_part(id) and library.custom_source(id) == text):
+		if not (library.parts.has(id) and library.custom_source(id) == text):
 			# Found already where the web looked before it opened (unreached_by).
 			var unreached: PackedStringArray = made_of["unreached"] if made_of.has("unreached") \
 				else Later.script(&"PartForge").unreached(text, sources)
@@ -1121,9 +1120,9 @@ static func end_skins(library: PartLibrary, model: LdrModel, begun: Array,
 ## in each sub-model LDCad generated a skin into, the skin the library has
 ## for its text in place of the drawing, its pieces kept. Nothing is built
 ## or added: a skin the library has not got for that text is left as
-## drawing. A save reads its text back so before it may go over anyone's
-## file (SourceFile.checked); read without, 31037-1's rope read back as 50
-## cylinders and every save of it was refused.
+## drawing. A save reads its text back before it may go over anyone's
+## file (SourceFile.gate): read without, 31037-1's rope read back as 50
+## cylinders (keeptext4).
 static func put_skins(library: PartLibrary, model: LdrModel) -> void:
 	var pieces: Dictionary = {}
 	for key: String in model.generated:
@@ -1139,7 +1138,7 @@ static func put_skins(library: PartLibrary, model: LdrModel) -> void:
 			var made_of: Dictionary = _skin_text(library, model, sub, body, pieces)
 			if not made_of.is_empty():
 				id = _skin_id(library, key, str(made_of["text"]))
-		if id.is_empty() or not library.has_part(id):
+		if id.is_empty() or not library.parts.has(id):
 			continue
 		var kept: Array[LdrModel.Placement] = []
 		for placement: LdrModel.Placement in sub.placements:
@@ -1300,7 +1299,7 @@ static func _skin_id(library: PartLibrary, key: String, text: String) -> String:
 	var base: String = key + "-flex"
 	var id: String = base
 	var n: int = 1
-	while library.has_part(id) and library.custom_source(id) != text:
+	while library.parts.has(id) and library.custom_source(id) != text:
 		n += 1
 		id = "%s-%d" % [base, n]
 	return id
@@ -1315,7 +1314,7 @@ static func _is_piece(library: PartLibrary, model: LdrModel, key: String,
 	if pieces.has(key):
 		return pieces[key]
 	var piece: bool = false
-	if library.has_part(key) or model.embedded_parts.has(key + ".dat"):
+	if library.parts.has(key) or model.embedded_parts.has(key + ".dat"):
 		piece = true
 	elif model.generated.has(key) and model.submodels.has(key):
 		piece = true

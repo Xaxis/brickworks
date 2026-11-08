@@ -68,29 +68,16 @@ static func read(text: String) -> Array:
 
 ## [param text] with [param views] (the file's coordinates) written into it
 ## after its first line, in their order, and any it had taken out; with none,
-## only taken out. A view its line still says is that line as it was, byte
-## for byte: written again, a hand-written one's fields came out in another
-## order in a file saved with nothing changed (kt4review's metas).
+## only taken out.
 static func written_into(text: String, views: Array) -> String:
 	if views.is_empty() and not text.contains(META):
 		return text
 	var kept := PackedStringArray()
-	var had: Array = []             ## [a view read, its line]
 	for line: String in text.split("\n"):
 		if not line.begins_with(META):
 			kept.append(line)
-			continue
-		var view: Dictionary = _parsed(line.substr(META.length()).strip_edges())
-		if not view.is_empty():
-			had.append([view, line])
 	for n: int in views.size():
-		var said: String = META + JSON.stringify(views[n])
-		for k: int in had.size():
-			if same([had[k][0]], [views[n]]):
-				said = had[k][1]
-				had.remove_at(k)
-				break
-		kept.insert(mini(1 + n, kept.size()), said)
+		kept.insert(mini(1 + n, kept.size()), META + JSON.stringify(views[n]))
 	return "\n".join(kept)
 
 

@@ -5827,6 +5827,9 @@ func _build_ui() -> void:
 	_restore_notice.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_notices.get_child(0).add_child(_restore_notice)
 	_store.not_restored.connect(_restore_notice.tell)
+	# Someone else's file an edit has written whole: how many of its own
+	# lines that leaves out, said once as it is edited (ModelStore).
+	_store.lines_left_out.connect(_bar.say)
 	# Graphics that cannot run the full mode started the simpler one by
 	# themselves: said once, above the model (GraphicsMode).
 	var graphics: String = GraphicsMode.to_say()

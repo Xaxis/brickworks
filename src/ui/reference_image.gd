@@ -778,11 +778,10 @@ static func written_into(text: String, kept: Dictionary) -> String:
 	var picture: String = str(kept.get("picture", ""))
 	if picture.is_empty():
 		return text
-	var eol: String = SourceFile.eol_of(text) + "\n"
-	var lines: String = META + JSON.stringify(_settings(kept)) + eol + PICTURE_META + picture + eol
+	var lines: String = META + JSON.stringify(_settings(kept)) + "\n" + PICTURE_META + picture + "\n"
 	var cut: int = text.find("\n")
 	if cut < 0:
-		return text + eol + lines
+		return text + "\n" + lines
 	return text.substr(0, cut + 1) + lines + text.substr(cut + 1)
 
 

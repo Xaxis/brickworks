@@ -253,32 +253,13 @@ static func _changes(world: BrickWorld, entry: Dictionary) -> bool:
 	return true
 
 
-## Number a section's steps 0, 1, 2… in the order they were: after an edit
-## has emptied one, or made one between two. A step the section had empty
-## before the edit ([param undo] says what each item had) stays: an
-## author's page for a note or a turn of the model, which a file keeps as
-## a STEP line of its own and a booklet's looks by its number
-## (BookletLooks). Taken out, the turn after it went on the step before it
-## and the note ended the step before (kt3review #4).
+## Number a section's steps 0, 1, 2… in the order they were, with no gaps:
+## after an edit has emptied one, or made one between two.
 static func _tidy(world: BrickWorld, section: String, skip: Dictionary, undo: Array) -> void:
 	var items: Array = items_of(world, section, skip)
-	var was: Dictionary = {}
-	for entry: Dictionary in undo:
-		if entry.has("step") and (entry.has("brick") or entry.has("unit")):
-			var named: String = _name_of(entry)
-			if not was.has(named):
-				was[named] = int(entry["step"])
 	var used: Dictionary = {}
-	var had: Dictionary = {}
 	for item: Dictionary in items:
 		used[int(item["step"])] = true
-		had[int(was.get(_name_of(item), item["step"]))] = true
-	var last: int = -1
-	for step: int in had:
-		last = maxi(last, step)
-	for step: int in last:
-		if not had.has(step):
-			used[step] = true
 	var order: Array = used.keys()
 	order.sort()
 	var place: Dictionary = {}
@@ -406,43 +387,9 @@ static func numbers_from_plan(world: BrickWorld, library: PartLibrary,
 static func adopted(world: BrickWorld, steps: Array[Instructions.Step],
 		skip: Dictionary = {}, in_place: bool = false) -> Dictionary:
 	var numbers: Dictionary = numbers_of(world, steps, skip, in_place)
-	_stand_ins_stepped(world, numbers, skip)
 	_tidy_numbers(world, numbers, skip)
 	_copies_alike(world, numbers, skip)
 	return numbers
-
-
-## Each part the library has not got (PartLibrary.add_stand_in), which no
-## plan builds as it has no shape, given the step of the part nearest it in
-## its copy, or the first step when its copy has no other. Left without, it
-## kept no step in a model given steps by an edit, and the save put it in
-## the step its line happened to fall in: the castle's sign moved step once
-## saved and opened again (keeptext4).
-static func _stand_ins_stepped(world: BrickWorld, numbers: Dictionary, skip: Dictionary) -> void:
-	if world.library == null:
-		return
-	var bricks: Dictionary = numbers["bricks"]
-	var stand_ins: Array[BrickWorld.Brick] = []
-	var by_path: Dictionary = {}    ## path -> its parts with a step
-	for brick: BrickWorld.Brick in world.bricks():
-		if skip.has(brick.id):
-			continue
-		if bricks.has(brick.id):
-			var path: String = Assemblies.path_of(brick)
-			if not by_path.has(path):
-				by_path[path] = []
-			(by_path[path] as Array).append(brick)
-		elif world.library.is_stand_in(brick.part_id):
-			stand_ins.append(brick)
-	for brick: BrickWorld.Brick in stand_ins:
-		var step: int = -1
-		var nearest: float = INF
-		for other: BrickWorld.Brick in by_path.get(Assemblies.path_of(brick), []):
-			var apart: float = other.transform.origin.distance_squared_to(brick.transform.origin)
-			if apart < nearest:
-				nearest = apart
-				step = int(bricks[other.id])
-		bricks[brick.id] = maxi(step, 0)
 
 
 ## The numbers of [param steps], a plan: each part the step it is in, and
@@ -960,75 +907,13 @@ static func _whole_under(world: BrickWorld, ids: Array, skip: Dictionary) -> Dic
 	return out
 
 
-## [param picked] ([method _selected]) with the same items of every other
-## copy of each sub-model built in steps of its own: a file says a sub-model's
-## steps once, for all its copies, so a part moved to another step in one
-## window is moved in every window, as a step swapped, merged or taken out is
-## ([method _copies]). Moved in one copy alone, 7140-1's four rear engines
-## could not be said in the file as it was, the model was written whole and
-## lost every line of the file's own text, and opened again every copy took
-## the steps of the one written (keeptext). A copy is another's twin part for
-## part, in the order its parts were read; one that is not keeps its own.
-static func _with_twins(world: BrickWorld, picked: Dictionary, skip: Dictionary) -> Dictionary:
-	var out: Dictionary = picked.duplicate()
-	var wanted: Dictionary = {}     ## a section of picked -> its other copies
-	for section: String in picked:
-		if section.is_empty():
-			continue
-		for copy: String in _copies(world, section, skip):
-			if copy != section and not picked.has(copy):
-				wanted[section] = (wanted.get(section, []) as Array) + [copy]
-	if wanted.is_empty():
-		return out
-	var own: Dictionary = {}        ## a copy -> its parts, by id, at any depth it steps
-	for brick: BrickWorld.Brick in world.bricks():
-		if skip.has(brick.id):
-			continue
-		var home_path: String = home(world, Assemblies.path_of(brick))
-		if not own.has(home_path):
-			own[home_path] = []
-		(own[home_path] as Array).append(brick)
-	for path: String in own:
-		(own[path] as Array).sort_custom(func(a: BrickWorld.Brick, b: BrickWorld.Brick) -> bool:
-			return a.id < b.id)
-	for section: String in wanted:
-		var model: Array = own.get(section, [])
-		var place: Dictionary = {}  ## brick id -> its index in its copy
-		for n: int in model.size():
-			place[(model[n] as BrickWorld.Brick).id] = n
-		for copy: String in wanted[section]:
-			var twin: Array = own.get(copy, [])
-			if twin.size() != model.size():
-				continue
-			var alike: bool = true
-			for n: int in model.size():
-				if (model[n] as BrickWorld.Brick).part_id != (twin[n] as BrickWorld.Brick).part_id:
-					alike = false
-					break
-			if not alike:
-				continue
-			var items: Array = []
-			for item: Dictionary in picked[section]:
-				if item.has("brick") and place.has(int(item["brick"])):
-					var other: BrickWorld.Brick = twin[int(place[int(item["brick"])])]
-					items.append({"brick": other.id, "step": maxi(other.step, 0)})
-				elif item.has("unit"):
-					var path: String = Assemblies.join(copy,
-						str(item["unit"]).substr(section.length() + 1))
-					if world.unit_steps.has(path):
-						items.append({"unit": path, "step": maxi(int(world.unit_steps[path]), 0)})
-			if not items.is_empty():
-				out[copy] = items
-	return out
-
-
 ## The selection moved [param by] steps, earlier or later, within its own
 ## section: Edit, Move to previous step and Move to next step. A part in
 ## the first step stays there; one moved on from the last makes a new one.
 static func move(world: BrickWorld, ids: Array, by: int, level: String,
 		skip: Dictionary = {}) -> Array:
 	var undo: Array = []
-	var picked: Dictionary = _with_twins(world, _selected(world, ids, level, skip), skip)
+	var picked: Dictionary = _selected(world, ids, level, skip)
 	for section: String in picked:
 		for item: Dictionary in picked[section]:
 			_put(world, item, maxi(int(item["step"]) + by, 0), undo)
@@ -1047,11 +932,9 @@ static func move_to(world: BrickWorld, ids: Array, level: String, section: Strin
 	var picked: Dictionary = _selected(world, ids, level, skip)
 	if not picked.has(section):
 		return undo
-	var own: Dictionary = _with_twins(world, {section: picked[section]}, skip)
-	for copy: String in own:
-		for item: Dictionary in own[copy]:
-			_put(world, item, to, undo)
-		_tidy(world, copy, skip, undo)
+	for item: Dictionary in picked[section]:
+		_put(world, item, to, undo)
+	_tidy(world, section, skip, undo)
 	return squash(undo)
 
 
@@ -1075,12 +958,10 @@ static func outside(world: BrickWorld, ids: Array, level: String, section: Strin
 static func new_step(world: BrickWorld, ids: Array, level: String,
 		after_in: String = "", after: int = -1, skip: Dictionary = {}) -> Array:
 	var undo: Array = []
-	var picked: Dictionary = _with_twins(world, _selected(world, ids, level, skip), skip)
-	# The step named is one of every copy of its sub-model.
-	var named: Array = _copies(world, after_in, skip)
+	var picked: Dictionary = _selected(world, ids, level, skip)
 	for section: String in picked:
 		var mine: Array = picked[section]
-		var from: int = after if named.has(section) and after >= 0 else -1
+		var from: int = after if section == after_in and after >= 0 else -1
 		if from < 0:
 			for item: Dictionary in mine:
 				from = maxi(from, int(item["step"]))

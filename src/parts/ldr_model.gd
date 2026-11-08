@@ -619,12 +619,8 @@ func _inline(
 				own_group = own_unit.get_slice("/", 0).get_slice("#", 0)
 
 		# A name is a sub-model only if it is not a real part: published
-		# models occasionally name a sub-assembly after a part number. A
-		# stand-in for a part the library has not got is none: the file
-		# that carries the sub-model by that name builds it (keeptext4).
-		var part_known: Variant = known_parts.get(placement.part_id)
-		if nested != null and (not known_parts.has(placement.part_id)
-				or (part_known is PartLibrary.PartInfo and (part_known as PartLibrary.PartInfo).stand_in)):
+		# models occasionally name a sub-assembly after a part number.
+		if nested != null and not known_parts.has(placement.part_id):
 			# A sub-model referenced by the model itself is one of its
 			# assemblies; what that sub-model nests stays part of it.
 			var named: String = own_group

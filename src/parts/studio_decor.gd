@@ -234,7 +234,7 @@ static func _custom_has(custom: Dictionary, file_name: String) -> bool:
 static func _has_own(library: PartLibrary, id: String) -> bool:
 	for candidate: String in [id, id.trim_prefix("bl_")]:
 		var info: PartLibrary.PartInfo = library.parts.get(library.resolve(candidate))
-		if info != null and not info.custom and not info.stand_in:
+		if info != null and not info.custom:
 			return true
 	return false
 

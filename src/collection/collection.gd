@@ -258,8 +258,7 @@ static func needs_of(stock: Inventory, library: PartLibrary = null) -> Dictionar
 ## numbers. api/_owned.js deriveOwnedFacts is the same rule.
 static func ownable(part: String, library: PartLibrary) -> bool:
 	var info: PartLibrary.PartInfo = library.parts.get(library.resolve(part))
-	if info == null or info.stand_in or info.category == "Sticker" \
-			or info.kind.contains("Flexible_Section"):
+	if info == null or info.category == "Sticker" or info.kind.contains("Flexible_Section"):
 		return false
 	return not info.name.begins_with("~") or info.is_redirect() or info.name.contains("(Obsolete)")
 
