@@ -131,8 +131,8 @@ func _steps() -> void:
 	print("\n1. the sign-in screen covers the app")
 	_check("the sign-in screen is up, nobody signed in", _gate != null and _gate.visible and not _account.signed_in())
 	_check("...and no collection is held: %d sets, %d lots, %d sets marked" % [_kept()["sets"].size(),
-		_kept()["parts"].size(), CollectionStore.marks.size()],
-		(_store.get("collection") as Collection).is_empty() and CollectionStore.marks.is_empty())
+		_kept()["parts"].size(), _marks().size()],
+		(_store.get("collection") as Collection).is_empty() and _marks().is_empty())
 	var before: String = await _call("edit_collection", {"missing": {"set": "7140-1", "none": true}})
 	_check("edit_collection says to sign in: “%s”" % before.left(100), before.contains("not signed in"))
 	await _shot("localbricks_gate")
@@ -189,7 +189,7 @@ func _steps() -> void:
 	_check("...the pool 3 pieces less: %d to %d" % [pool_before, int(_store.call("pieces_on_hand"))],
 		int(_store.call("pieces_on_hand")) == pool_before - 3)
 	_check("...kept at the account", _missing_in(_set_of(await _account_now(_account), "7140-1")) == 3)
-	var marks: Dictionary = CollectionStore.marks
+	var marks: Dictionary = _marks()
 	_check("...and handed to what builds from it (CollectionStore.marks): %s" % JSON.stringify(marks).left(140),
 		marks.has("7140-1") and int(marks["7140-1"].get("copies", 0)) == 1 and _sum(marks["7140-1"].get("missing", {})) == 3)
 	read = await _call("edit_collection", {})
@@ -211,10 +211,10 @@ func _steps() -> void:
 	var unmark: String = await _call("edit_collection", {"missing": {"set": "7140-1", "lots": [{"part": singles[0]["part"],
 		"color": singles[0]["colour"], "count": 0}]}})
 	_check("count 0 unmarks one: “%s”" % unmark.left(110), unmark.begins_with("Marked 1 lot of 7140-1")
-		and _missing_in(_set_of(_kept(), "7140-1")) == 2 and _sum(CollectionStore.marks["7140-1"].get("missing", {})) == 2)
+		and _missing_in(_set_of(_kept(), "7140-1")) == 2 and _sum(_marks().get("7140-1", {}).get("missing", {})) == 2)
 	var none: String = await _call("edit_collection", {"missing": {"set": "7140-1", "none": true}})
 	_check("none=true marks it whole: “%s”" % none.left(110), none.contains(": whole")
-		and _missing_in(_set_of(_kept(), "7140-1")) == 0 and not CollectionStore.marks.has("7140-1"))
+		and _missing_in(_set_of(_kept(), "7140-1")) == 0 and not _marks().has("7140-1"))
 	marked = await _call("edit_collection", {"missing": {"set": "7140-1", "lots": three}})
 	_check("...and the 3 marked again", marked.begins_with("Marked 3 lots of 7140-1") and _missing_in(_set_of(_kept(), "7140-1")) == 3)
 	_dialog.call("open", "own")
@@ -255,7 +255,7 @@ func _steps() -> void:
 	var there: Dictionary = elsewhere.call("_marks_of", elsewhere.collection) if elsewhere.has_method("_marks_of") else {}
 	_check("signed in to the account on another device, the same marks: %s" % (problem if not problem.is_empty()
 		else JSON.stringify(there).left(140)), problem.is_empty() and fetched.is_empty() and not elsewhere.offline
-		and not there.is_empty() and _same(there, CollectionStore.marks))
+		and not there.is_empty() and _same(there, _marks()))
 	var answered: int = _missing_in(_set_of(await _account_now(other), "7140-1"))
 	_check("...as the account answers that device: 7140-1 %d missing" % answered, answered == 3)
 	elsewhere.queue_free()
@@ -300,7 +300,7 @@ func _steps() -> void:
 			_missing_of(_set_of(_kept_of(loser), "7140-1"), several) == kept_count)
 		var key: String = Collection.key_of(str(several["part"]), int(several["colour"]), _library)
 		_check("...and the window hands on that count to what builds",
-			int((CollectionStore.marks.get("7140-1", {}).get("missing", {}) as Dictionary).get(key, 0)) == kept_count)
+			int((_marks().get("7140-1", {}).get("missing", {}) as Dictionary).get(key, 0)) == kept_count)
 	tab_b.queue_free()
 
 	print("\n9. a tab a newer build has followed")
@@ -343,7 +343,7 @@ func _steps() -> void:
 	await _frames(10)
 	_check("the sign-in screen is back", _gate.visible and not _account.signed_in())
 	_check("...nothing of the collection or its marks held: %d sets, %d marked" % [_kept()["sets"].size(),
-		CollectionStore.marks.size()], (_store.get("collection") as Collection).is_empty() and CollectionStore.marks.is_empty())
+		_marks().size()], (_store.get("collection") as Collection).is_empty() and _marks().is_empty())
 	var after: String = await _call("edit_collection", {"missing": {"set": "7140-1", "none": true}})
 	_check("...and edit_collection refused: “%s”" % after.left(100), after.contains("not signed in"))
 	await _shot("localbricks_signed_out")
@@ -438,6 +438,14 @@ func _languages() -> void:
 
 
 # -- what is kept ---------------------------------------------------------------------
+
+
+## CollectionStore.marks, read as it is looked up: empty on a build without
+## it (pre261), so the probe fails a check there rather than the script.
+static func _marks() -> Dictionary:
+	var marks: Variant = (load("res://src/collection/collection_store.gd") as GDScript).get("marks")
+	return marks if marks is Dictionary else {}
+
 
 
 func _kept() -> Dictionary:
