@@ -507,7 +507,9 @@ geometry in front of them.
   change reads the file again and merges (`_load_palettes(true)`,
   `_merged`), and a window that finds its own additions missing (the web's
   late copy of another tab's older write) writes them back; the bin looks at
-  the file once a second while Palettes shows (`_watch_palettes`). A tab
+  the file once a second while Palettes shows (`_watch_palettes`), and
+  counts them on the chip whatever shows, so a palette the person's Claude
+  makes over MCP (mcppalettes) is counted at once. A tab
   left open on an older build after an update keeps what a later build
   wrote: words it put on a palette or an entry, and entries of kinds it does
   not know (`_later`, never shown, written back whole). A file that cannot be

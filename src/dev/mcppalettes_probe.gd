@@ -13,7 +13,8 @@
 ##      that it changes;
 ##   2. Castle made in 1 call: edit_palette make, twelve parts of the model
 ##      each in its colour and the four of a gatepost as the sub-assembly
-##      Gatepost. The bin's Palettes, two presses, shows it: twelve tiles in
+##      Gatepost. The bin's Palettes chip counts it at once (it said
+##      "Palettes 0" beside it), and two presses show it: twelve tiles in
 ##      their colours and Gatepost. The same twelve and gatepost kept through
 ##      the bin's own New palette and Add rows: the two palettes' entries the
 ##      same, byte for byte in the file, but for each entry's id and the time
@@ -197,8 +198,12 @@ func _made_in_one_call() -> Array:
 	_check("...and says so: \"%s\"" % said.get_slice("\n", 0),
 		said.begins_with("Made the palette “Castle”: 12 parts, each in its colour; the sub-assembly “Gatepost”, 4 parts, whole."))
 
+	# The chip counts it before the bin's Palettes is opened.
+	var chip: Button = _named("palettes")
+	_check("the bin's Palettes chip counts it at once: \"%s\"" % chip.text,
+		await _until(func() -> bool: return chip.text == "Palettes 1", 10))
 	# The bin, as a person opens it: Palettes, then Castle.
-	await _click(_named("palettes").get_global_rect().get_center())
+	await _click(chip.get_global_rect().get_center())
 	var row: Button = _bin.controls_by_name().get("palette row Castle")
 	_check("the bin's Palettes lists Castle", row != null)
 	if row != null:
