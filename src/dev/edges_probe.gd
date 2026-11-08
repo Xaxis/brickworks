@@ -221,7 +221,8 @@ func _edges() -> void:
 	var drawn: Image = await _picture("walls_edges_" + _size)
 	await _choose("Edges")
 	_check("View › Edges and studs › Edges, from the keys, turns the seam off (ticked: %s)"
-		% _ticked("edges"), not _shown(&"edges_shown") and not _ticked("edges"))
+		% _ticked("edges"), _shell.command("edges") != null and not _shown(&"edges_shown")
+		and not _ticked("edges"))
 	await _frames(4)
 	var off: Image = await _picture("walls_no_edges_" + _size)
 	for n: int in walls.size():
@@ -291,7 +292,8 @@ func _studs() -> void:
 	await _frames(4)
 	await _choose("Studs")
 	_check("View › Edges and studs › Studs, from the keys, turns the studs off (ticked: %s)"
-		% _ticked("studs"), not _shown(&"studs_shown") and not _ticked("studs"))
+		% _ticked("studs"), _shell.command("studs") != null and not _shown(&"studs_shown")
+		and not _ticked("studs"))
 	await _drawn()
 	var off: Image = await _picture("studs_off_" + _size)
 	var off_flat: Image = await _flat_picture("studs_off_flat_" + _size)
@@ -534,7 +536,8 @@ func _kept(own_folder: bool) -> void:
 	await _choose("Edges")
 	await _choose("Studs")
 	_check("both off by the View's rows (Edges %s, Studs %s)" % [_shown(&"edges_shown"),
-		_shown(&"studs_shown")], not _shown(&"edges_shown") and not _shown(&"studs_shown"))
+		_shown(&"studs_shown")], _shell.command("edges") != null and _shell.command("studs") != null
+		and not _shown(&"edges_shown") and not _shown(&"studs_shown"))
 	var file := ConfigFile.new()
 	var read: int = file.load(ViewPrefs.WHERE)
 	_check("written to this machine's controls (%s): edges %s, studs %s" % [ViewPrefs.WHERE,
