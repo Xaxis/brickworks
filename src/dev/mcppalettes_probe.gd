@@ -202,8 +202,8 @@ func _made_in_one_call() -> Array:
 
 	# The chip counts it before the bin's Palettes is opened.
 	var chip: Button = _named("palettes")
-	_check("the bin's Palettes chip counts it at once: \"%s\"" % chip.text,
-		await _until(func() -> bool: return chip.text == "Palettes 1", 10))
+	var counted: bool = await _until(func() -> bool: return chip.text == "Palettes 1", 10)
+	_check("the bin's Palettes chip counts it at once: \"%s\"" % chip.text, counted)
 	# The bin, as a person opens it: Palettes, then Castle.
 	await _click(chip.get_global_rect().get_center())
 	var row: Button = _bin.controls_by_name().get("palette row Castle")
@@ -322,8 +322,14 @@ func _placed(post_shape: Array) -> void:
 	# The person asked about one part: a sub-assembly put down elsewhere is
 	# more than that part, refused as clear_model is; keeping a palette is not.
 	var assistant: Assistant = _main.get("_assistant")
-	var one: int = _world.bricks()[0].id
-	assistant.focus_on([one], true)
+	# A part of the gatepost, never the baseplate (scenery, no part to ask about).
+	var one: int = 0
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.group == "Gatepost":
+			one = brick.id
+			break
+	_check("...the person asks about one part of it", assistant.focus_on([one], true).is_empty()
+		and assistant.asked_about_selection())
 	var asked: String = await _call("edit_palette", {"action": "place", "palette": "Castle",
 		"assembly": "Gatepost", "at": {"x": 8, "y": 0, "z": 8}, "picture": false})
 	var kept: String = await _call("edit_palette", {"action": "make", "palette": "Asked",
