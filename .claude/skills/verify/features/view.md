@@ -2250,11 +2250,24 @@ picture the assistant is shown.
   **Mixed plate sizes** (on) lays each run of one colour in the largest plate
   it fills, up to 8 × 8, only plates LEGO sells in that colour
   (`Mosaic.merge`), the same picture stud for stud. Design with Claude's
-  brief carries the crop and the colours. `mosaic_probe`'s mosaic2 part proves
-  each: a red-framed picture cropped by a drag on the dialog (every stud from
-  inside, 0 red), each choice of colours in each mode on the car photo (set
-  31197, a made-up collection), the car's plate count cut by 30% or more with
-  the same stud for stud, and Build it's plates against the Pick a Brick file.
+  brief carries the crop and the colours. While a crop is dragged only its
+  frame moves; what it comes to is said once the drag ends (said at each move,
+  the lines under the picture changed in number and the picture moved under
+  the pointer). Colours no 1 × 1 plate is made in lay the Classic in all of
+  them and say so; a larger plate the web could not fetch goes down as
+  1 × 1s. Every word the dialog shows has its German, French and Spanish
+  entry; the Art's counts are joined by " · " so each is found ("%s round
+  tiles"). `mosaic_probe`'s mosaic2 part proves each: a red-framed picture
+  cropped by a drag on the dialog (every stud from inside, 0 red), each choice
+  of colours in each mode on the car photo (set 31197, a made-up collection),
+  the car's plate count cut by 30% or more with the same stud for stud, Build
+  it's plates against the Pick a Brick file, colours no plate is made in, and
+  every word it showed in de, fr and es. `mosaic_window_probe` (windowed, at
+  1280x720 and by PROBE_SIZE=1400x900) does it as a person in the app: the
+  sign-in screen first and a throwaway account signed in (needs .env), the car
+  picked, Crop and a drag, A set's colours by the keys and 31197 typed,
+  Classic, Build it, P and its Pick a Brick button, the dialog inside the
+  window at each; pictures in --out=DIR.
 - `LEGO Art layout` (`src/assembly/mosaic_art.gd`): `analyse` reads a picture
   into a `Plan` — per stud a style, a relief and an accent flag — and `lay`
   turns any plan into parts, which is the entry point for the assistant
@@ -2806,6 +2819,8 @@ MESA_VK_WSI_DEBUG=sw xvfb-run -a --server-args="-screen 0 1400x900x24" \
 #   on the GPU, for the card's time a frame: ~/.claude/claude-core/bin/gpu before it;
 #   `-- --every-frame` runs it drawing every frame, as the app did
 godot --headless --path . --script src/dev/mosaic_probe.gd        # the picture still looks like the picture, classic and Art
+#   and as the person chose it (APP_UX6 #10): crop, colours, mixed plates, words
+tools/probe.sh mosaic_window_probe -- --out=DIR                     # the same in the app's window, signed in (.env); PROBE_SIZE=1400x900 too
 #   -- --ldr=shots/art/galaxy.ldr writes the galaxy, to render corner, front and close
 godot --headless --path . --script src/dev/art_plan_probe.gd      # an Art plan is laid as it says; a bad one is refused
 #   no network: a canned plan over a tilted galaxy (sky smooth and flat, disc
