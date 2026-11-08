@@ -423,9 +423,11 @@ func _steps() -> void:
 
 	print("\n10. two devices put theirs together at the same moment")
 	var after_one: Dictionary = joined
-	var dev_a: Dictionary = {"parts": [{"part": "3024", "colour": 4, "qty": 6}, {"part": "3001", "colour": 4, "qty": 1}],
-		"sets": []}
-	var dev_b: Dictionary = {"parts": [{"part": "3024", "colour": 4, "qty": 2}, {"part": "3710", "colour": 0, "qty": 3}],
+	# As a device keeps them: every lot one added by hand.
+	var dev_a: Dictionary = {"parts": [{"part": "3024", "colour": 4, "qty": 6, "src": "hand"},
+		{"part": "3001", "colour": 4, "qty": 1, "src": "hand"}], "sets": []}
+	var dev_b: Dictionary = {"parts": [{"part": "3024", "colour": 4, "qty": 2, "src": "hand"},
+		{"part": "3710", "colour": 0, "qty": 3, "src": "hand"}],
 		"sets": [{"set": "6020-1", "qty": 1, "spares": false, "src": "hand"}]}
 	var a: CollectionStore = await _device_with("user://probe_device_a.here", dev_a)
 	var b: CollectionStore = await _device_with("user://probe_device_b.here", dev_b)
@@ -445,7 +447,7 @@ func _steps() -> void:
 	a.queue_free()
 	b.queue_free()
 	# Two tabs of one device, both pressing Put them together at once.
-	var dev_c: Dictionary = {"parts": [{"part": "3068b", "colour": 14, "qty": 5}], "sets": []}
+	var dev_c: Dictionary = {"parts": [{"part": "3068b", "colour": 14, "qty": 5, "src": "hand"}], "sets": []}
 	var tab_x: CollectionStore = await _device_with("user://probe_device_c.here", dev_c)
 	var tab_y := CollectionStore.new()
 	tab_y.library = _library
@@ -507,6 +509,13 @@ func _steps() -> void:
 	_check("Put them together: told what came of it: “%s”" % told.left(140),
 		told.begins_with("Put together: your account's collection has") and told.ends_with("nothing of either left out.")
 		and _holds(last, _summed(two, {"sets": [], "parts": [one]})).is_empty())
+	# What it says is what My collection lists behind it, lot for lot.
+	var listed_now: String = _text_of(_dialog.get("_own_rows"))
+	var lots_now: int = (_kept()["parts"] as Array).size()
+	_check("...as many lots as My collection lists: %d, “%s”" % [lots_now,
+		listed_now.get_slice("Loose parts —", 1).get_slice("\n", 0).strip_edges()],
+		told.contains(Counted.of(lots_now, "lot") + " of loose parts")
+		and listed_now.contains("Loose parts — " + Counted.of(lots_now, "lot")))
 	await _shot("localbricks_joined")
 	if offer != null:
 		(offer as ConfirmationDialog).get_ok_button().pressed.emit()
