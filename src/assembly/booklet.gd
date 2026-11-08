@@ -770,14 +770,16 @@ static func name_size(name: String, room: float) -> Vector2:
 	var widest: float = 0.0
 	for line: String in lines:
 		widest = maxf(widest, Helvetica.text_width(line, NAME_SIZE, true))
-	return Vector2(minf(widest, room), lines.size() * NAME_SIZE * NAME_LINE)
+	# Each line a line of type high, NAME_LINE apart (Booklet._entry).
+	return Vector2(minf(widest, room),
+		maxf(0.0, lines.size() - 1.0) * NAME_SIZE * NAME_LINE + NAME_SIZE)
 
 
 ## [param name]'s lines at NAME_SIZE, wrapped between words at [param room]
 ## mm, and a word wider than that alone broken where it passes it. The page
-## prints these lines as they are, each ended by a break of its own: a
-## browser's type is not the PDF's, and wrapping where its own measure said
-## would have put a third line over the turn sign under the number.
+## prints these lines as they are, each a line of its own: a browser's type
+## is not the PDF's, and wrapping where its own measure said would have put
+## a third line over the turn sign under the number.
 static func name_lines(name: String, room: float) -> PackedStringArray:
 	var lines := PackedStringArray()
 	var line: String = ""
@@ -1620,12 +1622,13 @@ static func _entry(entry: Entry, document: Document, out: PackedStringArray,
 		document.sheet.number_style()))
 	if not entry.name.is_empty():
 		# Beside the number, wrapped to its room (name_rect), in the
-		# booklet's ink.
+		# booklet's ink: a line each, so the browser, the PDF and the PNG
+		# break it at the same words and start each line at the same edge.
 		var named: Rect2 = name_rect(entry)
 		var lines: PackedStringArray = name_lines(entry.name, _name_room(entry))
-		out.append(_text(named.position, NAME_SIZE, "<br>".join(Array(lines).map(
-			func(line: String) -> String: return _escape(line))), "q tx nm",
-			"width:calc(%s * var(--mm))" % _n(_name_room(entry) + 2.0)))
+		for index: int in lines.size():
+			out.append(_text(named.position + Vector2(0.0, index * NAME_SIZE * NAME_LINE),
+				NAME_SIZE, _escape(lines[index]), "q nm"))
 	if entry.turned:
 		svg.append(_turn_sign(sign_rect(entry)))
 	for pointer: Array in entry.pointers:
