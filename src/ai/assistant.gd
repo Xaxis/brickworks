@@ -2465,6 +2465,14 @@ func _tag_assemblies() -> void:
 				break
 		if not outside:
 			return
+	# A model with steps of its own keeps them: a sub-model named here is
+	# built in the steps of the one that places it, as one made by hand is
+	# (Assemblies.made_steps). Built in steps of its own, the save that made
+	# Pods' side pod a sub-model took its parts out of the steps the booklet
+	# showed them in, and the wing plates pulled out in step 1 were drawn on
+	# no step (pullkept).
+	var stepped: bool = AuthorSteps.any(world, scenery)
+	var paths_before: Dictionary = AuthorSteps.paths_in(world, scenery) if stepped else {}
 	# A figure is its own sub-model wherever it stands; renamed after the
 	# tower it is in, it would be three arms and a hat in "tower".
 	var members: Dictionary = {}
@@ -2484,6 +2492,10 @@ func _tag_assemblies() -> void:
 		var group: String = _assembly_at(_to_studs(brick, info), named)
 		if not group.is_empty():
 			brick.group = group
+	if stepped:
+		for path: String in AuthorSteps.paths_in(world, scenery):
+			if not paths_before.has(path) and not world.unit_steps.has(path):
+				world.unit_steps[path] = AuthorSteps.IN_PARENT
 
 
 ## Hand the design the next assembly to detail, or say it is finished.

@@ -12261,6 +12261,20 @@ msgstr "%s: vollständig, deine losen Teile ersetzen alle %d als fehlend markier
 msgid "no such choice"
 msgstr "keine solche Wahl"
 
+# pullkept: a pull no step shows now, said on open
+
+msgid "the pull on %s matches no step now, kept in the file"
+msgstr "das Herausziehen bei %s passt jetzt zu keinem Schritt, in der Datei behalten"
+
+msgid "step %d of the model"
+msgstr "Schritt %d des Modells"
+
+msgid "step %d of %s"
+msgstr "Schritt %d von %s"
+
+msgid "and %d more like it"
+msgstr "und %d weitere solche"
+
 # Make a part's clip plate, bar and wedge plate (makepart2, APP_UX6 #15): the families'
 # buttons, their ways, their rows and what the dialog says of each part.
 
