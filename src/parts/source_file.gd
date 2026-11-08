@@ -1523,23 +1523,33 @@ func app_lines_placed(text: String) -> String:
 	_read_for_patch()
 	var had: Dictionary = {}        ## the file's own app lines, as it ended them
 	var meant: Dictionary = {}      ## the same, by what each says
-	for line: String in original:
+	var after: Dictionary = {}      ## each of them, the line it follows in the file
+	for n: int in original.size():
+		var line: String = original[n]
 		if _is_app_line(line):
 			had[line.trim_suffix("\r")] = line
 			meant[_app_said(line.trim_suffix("\r"))] = line
+			after[line] = original[n - 1].trim_suffix("\r") if n > 0 else ""
 	var put: PackedStringArray = text.split("\n")
 	var out := PackedStringArray()
 	for n: int in put.size():
 		var line: String = put[n]
 		var bare: String = line.trim_suffix("\r")
+		var own: String = str(had[bare]) if had.has(bare) \
+			else str(meant.get(_app_said(bare), "")) if _is_app_line(line) else ""
 		if not _is_app_line(line):
 			out.append(line)
-		elif had.has(bare):
+		elif not own.is_empty():
 			# One the file has (a save of it before): as it has it, so a
-			# save with nothing changed is the file byte for byte.
-			out.append(str(had[bare]))
-		elif meant.has(_app_said(bare)):
-			out.append(str(meant[_app_said(bare)]))
+			# save with nothing changed is the file byte for byte; where
+			# the file has it, or else above the lines that say what the
+			# next part is: the floor's writer puts its line above the
+			# first part, and with the file's own line there a second
+			# save left a GROUP_NXT saying it of the floor (keep_text).
+			var at: int = out.size()
+			if at == 0 or out[at - 1].trim_suffix("\r") != str(after[own]):
+				at = before_run(out, at)
+			out.insert(at, own)
 		else:
 			var said: String = line.trim_suffix("\r") + (_eol() if n < put.size() - 1 else "")
 			out.insert(before_run(out, out.size()), said)

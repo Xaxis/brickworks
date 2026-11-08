@@ -2956,6 +2956,13 @@ func _write(path: String, title: String, with_steps: bool = false,
 	var text: String = ReferenceImage.written_into(SetBin.written_into(with_share(
 		written if not written.is_empty() else to_text(title, with_steps), share_id,
 		remixed_from, remixed_from_version, credit, made_with), bin_sets), reference)
+	# A patch of someone else's file: the lines just put in end as its
+	# lines do, above any line that says what the next part is, as the
+	# patch's own (SourceFile.app_lines_placed); each came with "\n" alone
+	# into a CRLF file (keep_text's metas). Live's write is left as live's.
+	var source: SourceFile = _live_source()
+	if source != null and last_whole.is_empty():
+		text = source.app_lines_placed(text)
 	# Never a model of no parts over a file that has some, unless the person
 	# emptied the baseplate ([member emptied]). The autosave fires on its
 	# own a few seconds after any change, so whatever left the baseplate

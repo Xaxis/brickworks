@@ -1738,6 +1738,29 @@ func _after_edit(parts: Array, was: Dictionary, now: Dictionary, _done: Dictiona
 			continue
 		if not was.has(id) or not _unmatched([now[id]], [was[id]]).is_empty():
 			put.append(now[id])
+	# A part the app cannot show goes with its copy: it is no brick to
+	# take, and a copy taken off takes the sub-model no line places any
+	# more, and it, out of the file (keeptext5, as live's write does).
+	var gone: Array = []
+	for id: int in was:
+		var path: String = str(was[id][4])
+		if path.is_empty() or gone.has(path):
+			continue
+		var kept: bool = false
+		for other: int in now:
+			var there: String = str(now[other][4])
+			if there == path or there.begins_with(path + "/"):
+				kept = true
+				break
+		if not kept:
+			gone.append(path)
+	for entry: Array in parts:
+		if bool(entry[3]):
+			continue
+		for path: String in gone:
+			if str(entry[4]) == path or str(entry[4]).begins_with(path + "/"):
+				taken.append(entry)
+				break
 	return _unmatched(parts, taken) + put
 
 
