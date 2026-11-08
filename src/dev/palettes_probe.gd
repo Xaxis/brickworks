@@ -23,6 +23,10 @@
 ##   next change; an older copy stored over this one's (the web's tabs copy
 ##   each other's writes a moment late) has this window's entry written back
 ##   within three seconds; what another window took out stays out;
+## * a later build's tab beside this one (after an update): its own kind of
+##   entry not shown here, and it, a word it put on the palette and one on a
+##   part, all kept through this window's rename; a damaged file kept beside
+##   it before this window's next change writes over it;
 ## * Techniques scrolled to its end lists constructions only, as Palettes
 ##   does (both drew the last search's tiles in under their rows).
 ##
@@ -114,6 +118,7 @@ func _run() -> void:
 func _finish() -> void:
 	if _shelf.get("palettes_file") != null:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(PALETTES_FILE))
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(PALETTES_FILE + ".unreadable"))
 	PartShelf.clear()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(SHELF_FILE))
 	_put_back_autosave()
@@ -445,6 +450,65 @@ func _two_windows() -> void:
 	await _shot("two_windows")
 	castle = _palette_named("Castle")
 	_check("Castle has the gatepost still", not _assembly_of(castle, "Gatepost").is_empty())
+	await _later_build()
+
+
+## After an update a tab left open runs the old build beside the new one, on
+## the same file: what the later build wrote, this one keeps. And a file that
+## cannot be read is kept beside it before a change writes over it.
+func _later_build() -> void:
+	print("")
+	print("  a later build's palettes, and a damaged file")
+	var later: Array = _file_palettes()
+	for one: Dictionary in later:
+		if str(one["name"]) == "Castle":
+			one["shared"] = "with the club"
+			(one["entries"] as Array).append({"id": "later1", "set": "10497-1", "count": 2})
+			for entry: Dictionary in one["entries"]:
+				if str(entry.get("part", "")) == "3001":
+					entry["note"] = "for the gate"
+	await _write_file(later, _file_gone())
+	await create_timer(1.5).timeout
+	var tiles: int = _part_tiles().size()
+	_check("a later build's entry of a kind this one does not know is not shown: %d parts, \"%s\""
+		% [tiles, _status()], tiles == 13 and _status().begins_with("13 parts, 1 sub-assembly"))
+	await _rename_by_typing("Castle walls")
+	var walls: Dictionary = _file_palette("Castle walls")
+	var whole: bool = false
+	var note: String = ""
+	for entry: Dictionary in walls.get("entries", []):
+		if str(entry.get("id", "")) == "later1":
+			whole = entry == {"id": "later1", "set": "10497-1", "count": 2}
+		if str(entry.get("part", "")) == "3001":
+			note = str(entry.get("note", ""))
+	_check("renamed here, Castle walls keeps all a later build wrote: its entry %s, its \"shared\" (%s), 3001's note (%s)"
+		% ["whole" if whole else "lost", walls.get("shared", "lost"), note if not note.is_empty() else "lost"],
+		whole and str(walls.get("shared", "")) == "with the club" and note == "for the gate")
+
+	await create_timer(1.1).timeout
+	var damaged: String = "[palettes]\nlist=[{\n"
+	var file := FileAccess.open(PALETTES_FILE, FileAccess.WRITE)
+	file.store_string(damaged)
+	file.close()
+	await create_timer(1.5).timeout
+	await _rename_by_typing("Castle")
+	var aside: String = FileAccess.get_file_as_string(PALETTES_FILE + ".unreadable")
+	var castle: Dictionary = _file_palette("Castle")
+	_check("a damaged file: kept beside it as it was (%d bytes), and this window's palettes written: %s, Castle %d entries"
+		% [aside.length(), _file_names(), (castle.get("entries", []) as Array).size()],
+		aside == damaged and _file_names() == ["Castle", "Harbour", "Moat"]
+		and (castle.get("entries", []) as Array).size() == 15)
+
+
+## The open palette renamed as a person does: its name in the line chosen
+## and typed over, then Return.
+func _rename_by_typing(name: String) -> void:
+	var field: LineEdit = _named("palette name")
+	await _click(field.get_global_rect().get_center())
+	await _key(KEY_A, true)
+	await _type_keys(name)
+	await _key(KEY_ENTER)
+	await _frames(4)
 
 
 # -- Techniques, scrolled ----------------------------------------------------------

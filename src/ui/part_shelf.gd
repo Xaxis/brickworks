@@ -131,6 +131,12 @@ static func clear() -> void:
 # back. A tab whose copy another tab's older write replaced (the web copies
 # each tab's writes to the others a moment late) finds its own additions
 # missing when it next reads, and writes them back.
+#
+# Never lost to an older build either: after an update a tab left open runs
+# the old build beside a new one, on the same file. What this build does not
+# know (a word a later build adds to a palette or an entry, or a kind of entry
+# of its own) is held as it was read and written back whole, never shown.
+# A file that cannot be read is kept beside it before a change writes over it.
 
 ## Where they are kept. A probe points this elsewhere, as it does [member file].
 static var palettes_file: String = "user://palettes.cfg"
@@ -140,6 +146,8 @@ static var palettes_file: String = "user://palettes.cfg"
 static var _palettes: Array = []
 ## The ids of palettes and entries taken out, id -> true.
 static var _gone: Dictionary = {}
+## Entries of kinds a later build keeps, palette id -> [entry], as read.
+static var _later: Dictionary = {}
 static var _palettes_from: String = ""
 ## The file's time and size when it was last read or written here.
 static var _palettes_stamp: Array = []
@@ -302,6 +310,7 @@ static func forget_palettes() -> void:
 	_palettes_from = ""
 	_palettes = []
 	_gone = {}
+	_later = {}
 	_palettes_stamp = []
 
 
@@ -353,50 +362,65 @@ static func _load_palettes(force: bool = false) -> void:
 	if not force and stamp == _palettes_stamp:
 		return
 	var read: Variant = _read_palettes(palettes_file)
-	# There, but not readable: another window halfway through writing it. What
-	# is held stays, and the file is read again next time.
+	# There, but not readable: another window halfway through writing it, or
+	# damaged. What is held stays and the file is read again next time; a
+	# change about to write over it keeps a copy of it beside it first.
 	if read == null:
+		if force:
+			DirAccess.copy_absolute(ProjectSettings.globalize_path(palettes_file),
+				ProjectSettings.globalize_path(palettes_file + ".unreadable"))
 		return
 	var theirs: Dictionary = read
 	var merged: Array = _merged(_palettes, _gone, theirs["palettes"], theirs["gone"])
 	var before: String = var_to_str([_palettes, _gone.keys()])
 	_palettes = merged[0]
 	_gone = merged[1]
+	_later = _later_merged(_later, theirs["later"])
 	_palettes_stamp = stamp
 	if var_to_str([_palettes, _gone.keys()]) != before:
 		palettes_revision += 1
 	# What was held here and the file lacks, or the other way round: written
 	# back, so both windows' changes are in the file.
 	if var_to_str(_palettes) != var_to_str(theirs["palettes"]) \
-			or _gone.size() != (theirs["gone"] as Dictionary).size():
+			or _gone.size() != (theirs["gone"] as Dictionary).size() \
+			or var_to_str(_later) != var_to_str(theirs["later"]):
 		_keep_palettes()
 
 
-## {palettes, gone} as [param path] holds them, every entry checked: those
-## not whole are left out. Nothing there is none; null when it is there and
-## cannot be read.
+## {palettes, gone, later} as [param path] holds them, every entry checked:
+## those not whole are left out, and those of kinds a later build keeps go in
+## later (palette id -> [entry]). Nothing there is none; null when it is
+## there and cannot be read.
 static func _read_palettes(path: String) -> Variant:
-	var none: Dictionary = {"palettes": [], "gone": {}}
+	var none: Dictionary = {"palettes": [], "gone": {}, "later": {}}
 	if not FileAccess.file_exists(path):
 		return none
 	var kept := ConfigFile.new()
 	if kept.load(path) != OK:
 		return null
 	var palettes_read: Array = []
+	var later: Dictionary = {}
 	var listed: Variant = kept.get_value("palettes", "list", [])
 	for one: Variant in (listed as Array if listed is Array else []):
-		var whole: Dictionary = _palette_read(one)
-		if not whole.is_empty():
-			palettes_read.append(whole)
+		var theirs_later: Array = []
+		var whole: Dictionary = _palette_read(one, theirs_later)
+		if whole.is_empty():
+			continue
+		palettes_read.append(whole)
+		if not theirs_later.is_empty():
+			later[str(whole["id"])] = theirs_later
 	var gone: Dictionary = {}
 	var ids: Variant = kept.get_value("palettes", "gone", PackedStringArray())
 	if ids is PackedStringArray or ids is Array:
 		for id: Variant in ids:
 			gone[str(id)] = true
-	return {"palettes": palettes_read, "gone": gone}
+	return {"palettes": palettes_read, "gone": gone, "later": later}
 
 
-static func _palette_read(one: Variant) -> Dictionary:
+## A palette as read: what it holds checked, and whatever else a later build
+## wrote in it kept as it was. Entries of kinds this build does not know go
+## in [param later].
+static func _palette_read(one: Variant, later: Array) -> Dictionary:
 	if not one is Dictionary:
 		return {}
 	var given: Dictionary = one
@@ -407,10 +431,20 @@ static func _palette_read(one: Variant) -> Dictionary:
 	var entries: Array = []
 	var listed: Variant = given.get("entries", [])
 	for entry: Variant in (listed as Array if listed is Array else []):
+		if entry is Dictionary and not (entry as Dictionary).has("part") \
+				and not (entry as Dictionary).has("ldraw") \
+				and not str((entry as Dictionary).get("id", "")).is_empty():
+			later.append((entry as Dictionary).duplicate(true))
+			continue
 		var whole: Dictionary = _entry_read(entry)
 		if not whole.is_empty():
 			entries.append(whole)
-	return {"id": id, "name": name, "named": int(given.get("named", 0)), "entries": entries}
+	var out: Dictionary = given.duplicate(true)
+	out["id"] = id
+	out["name"] = name
+	out["named"] = int(given.get("named", 0))
+	out["entries"] = entries
+	return out
 
 
 static func _entry_read(entry: Variant) -> Dictionary:
@@ -420,18 +454,45 @@ static func _entry_read(entry: Variant) -> Dictionary:
 	var id: String = str(given.get("id", ""))
 	if id.is_empty():
 		return {}
+	var out: Dictionary = given.duplicate(true)
+	out["id"] = id
 	if given.has("part"):
 		var part: String = str(given["part"]).strip_edges()
 		if part.is_empty():
 			return {}
-		return {"id": id, "part": part, "colour": int(given.get("colour", 16))}
+		out["part"] = part
+		out["colour"] = int(given.get("colour", 16))
+		return out
 	var ldraw: String = str(given.get("ldraw", ""))
 	var count: int = int(given.get("count", 0))
 	if not ldraw.contains("1 ") or count <= 0:
 		return {}
 	var name: String = clean_name(str(given.get("name", "")))
-	return {"id": id, "name": name if not name.is_empty() else "Sub-assembly",
-		"named": int(given.get("named", 0)), "ldraw": ldraw, "count": count}
+	out["name"] = name if not name.is_empty() else "Sub-assembly"
+	out["named"] = int(given.get("named", 0))
+	out["ldraw"] = ldraw
+	out["count"] = count
+	return out
+
+
+## The later builds' entries held here and those the file has, made one:
+## the file's first, then those only held here (an older copy stored over
+## the file lacks them), none taken out, none of a palette no longer kept.
+static func _later_merged(held: Dictionary, theirs: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	for one: Dictionary in _palettes:
+		var id: String = str(one["id"])
+		var entries: Array = []
+		var placed: Dictionary = {}
+		for entry: Dictionary in (theirs.get(id, []) as Array) + (held.get(id, []) as Array):
+			var entry_id: String = str(entry.get("id", ""))
+			if _gone.has(entry_id) or placed.has(entry_id):
+				continue
+			placed[entry_id] = true
+			entries.append(entry)
+		if not entries.is_empty():
+			out[id] = entries
+	return out
 
 
 ## [mine] and [theirs] made one, as [palettes, gone]: every palette and entry
@@ -489,15 +550,28 @@ static func _palette_merged(mine: Dictionary, theirs: Dictionary, gone: Dictiona
 			kept["name"] = here["name"]
 			kept["named"] = here["named"]
 		entries.append(kept)
-	return {"id": theirs["id"], "name": named_by["name"], "named": named_by["named"],
-		"entries": entries}
+	# What else the file's palette holds (a later build's words) stays.
+	var out: Dictionary = theirs.duplicate()
+	out["name"] = named_by["name"]
+	out["named"] = named_by["named"]
+	out["entries"] = entries
+	return out
 
 
 static func _keep_palettes() -> void:
 	if not keeps:
 		return
+	var list: Array = _palettes
+	if not _later.is_empty():
+		list = []
+		for one: Dictionary in _palettes:
+			var with_later: Dictionary = one
+			if _later.has(str(one["id"])):
+				with_later = one.duplicate()
+				with_later["entries"] = (one["entries"] as Array) + (_later[str(one["id"])] as Array)
+			list.append(with_later)
 	var kept := ConfigFile.new()
-	kept.set_value("palettes", "list", _palettes)
+	kept.set_value("palettes", "list", list)
 	kept.set_value("palettes", "gone", PackedStringArray(_gone.keys()))
 	TabSession.writing(palettes_file)
 	# On a computer another window may read it at any moment: written beside

@@ -507,8 +507,12 @@ geometry in front of them.
   change reads the file again and merges (`_load_palettes(true)`,
   `_merged`), and a window that finds its own additions missing (the web's
   late copy of another tab's older write) writes them back; the bin looks at
-  the file once a second while Palettes shows (`_watch_palettes`). No MCP
-  tool: a session copies parts with edit_model.
+  the file once a second while Palettes shows (`_watch_palettes`). A tab
+  left open on an older build after an update keeps what a later build
+  wrote: words it put on a palette or an entry, and entries of kinds it does
+  not know (`_later`, never shown, written back whole). A file that cannot be
+  read is kept beside it (`palettes.cfg.unreadable`) before a change writes
+  over it. No MCP tool: a session copies parts with edit_model.
   `palettes_probe` (1280 x 720, PROBE_SIZE=1400x900 too).
 - `techniques in the bin` (`src/ai/techniques.gd`, the bin's Techniques):
   *Techniques* sits after Recent, Favourites and Palettes, the assistant's worked
@@ -644,7 +648,7 @@ godot --headless --path . --script src/dev/search_probe.gd          # what it re
 godot --headless --path . --script src/dev/search_probe.gd -- --catalogue=PATH  # a corrected catalogue, before it is swapped in
 godot --path . --resolution 1400x900 --script src/dev/handbuild_probe.gd  # Recent, Favourites, 3023
 godot --path . --resolution 1280x860 --script src/dev/bin_techniques_probe.gd  # Techniques: window in a wall onto a wall, three more; shots/bin_techniques/
-tools/probe.sh palettes_probe                  # Palettes: Castle made by New palette and Add, 12 parts in their colours and Gatepost whole; in the file and in the app started again; another model opens it in 2 presses, a part in hand in its colour, Gatepost put down whole as one assembly, one undo; Favourites unchanged; two windows' changes merged; Techniques/Palettes never list a search's tiles; shots/palettes/ (PROBE_SIZE=1400x900 too)
+tools/probe.sh palettes_probe                  # Palettes: Castle made by New palette and Add, 12 parts in their colours and Gatepost whole; in the file and in the app started again; another model opens it in 2 presses, a part in hand in its colour, Gatepost put down whole as one assembly, one undo; Favourites unchanged; two windows' changes merged; a later build's entries and words kept, a damaged file kept beside it; Techniques/Palettes never list a search's tiles; shots/palettes/ (PROBE_SIZE=1400x900 too)
 godot --headless --path . --script src/dev/technique_search_probe.gd  # 18 queries, each's construction in the first three rows; titles as words
 godot --headless --path . --script src/dev/photo_search_stub_probe.gd  # the camera with Brickognize stubbed on 9061: told first, nothing sent, every failure in words
 godot --path . --resolution 1280x860 --script src/dev/photo_search_probe.gd -- --keep  # Brickognize live: 5 parts drawn by ModelShot, at least 4 right in the first three
