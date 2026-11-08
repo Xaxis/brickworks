@@ -921,8 +921,6 @@ var _tail: Dictionary = {}
 var _pairs: Array = []
 ## A placing line -> the begin lines of the pairs round it.
 var _stack_at: Dictionary = {}
-## Section -> the lines placing it.
-var _placed_by: Dictionary = {}
 ## The file's lines are CRLF.
 var _crlf: bool = false
 
@@ -988,11 +986,6 @@ func _read_for_patch() -> void:
 		var stack: Array = open_all.duplicate()
 		stack.sort()
 		_stack_at[n] = stack
-		var named: String = LdrModel._key(" ".join(_words(raw).slice(14)))
-		if sections.has(named):
-			if not _placed_by.has(named):
-				_placed_by[named] = []
-			(_placed_by[named] as Array).append(n)
 	_close_open(open, count)
 	for key: String in sections:
 		var span: Array = sections[key]
@@ -1181,15 +1174,21 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 			return _no(plan, "a part was taken off one copy of a sub-model and not another (line %d)" % (line + 1))
 		if said.is_empty():
 			continue
+		# Its copies alike: one part, place and step, and one colour where
+		# any was painted (a colour of 16 is each copy's own until then).
 		var first: Array = said[0]
+		var painted: bool = false
 		for other: Array in said:
-			if other[0] != first[0] or int(other[1]) != int(first[1]) or int(other[3]) != int(first[3]) \
-					or not _same(other[2] as Transform3D, first[2] as Transform3D):
+			painted = painted or int(other[1]) != (other[4] as Read).colour
+		for other: Array in said:
+			if other[0] != first[0] or int(other[3]) != int(first[3]) \
+					or not _same(other[2] as Transform3D, first[2] as Transform3D) \
+					or painted and int(other[1]) != int(first[1]):
 				return _no(plan, "copies of a sub-model no longer agree (line %d)" % (line + 1))
 		var read: Read = first[4]
 		var was_local: Transform3D = (unit_frames.get(read.unit, Transform3D.IDENTITY) as Transform3D) \
 			.affine_inverse() * read.at if not read.unit.is_empty() else read.at
-		var changed: bool = str(first[0]) != read.part_id or int(first[1]) != read.colour \
+		var changed: bool = str(first[0]) != read.part_id or painted \
 			or not _same(first[2] as Transform3D, was_local)
 		var stepped: bool = authored and int(first[3]) != read.step
 		if (changed or stepped) and waits > 0:
@@ -1213,7 +1212,7 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 			for item: Array in said:
 				if (item[4] as Read).mirrored:
 					return _no(plan, "a part of a mirrored copy changed")
-			var text: Variant = _line_for(line, str(first[0]), int(first[1]), read, first[2], library)
+			var text: Variant = _line_for(line, str(first[0]), int(first[1]), painted, first[2], library)
 			if text == null:
 				return _no(plan, "a part's line could not be written (line %d)" % (line + 1))
 			rewrites[line] = text
@@ -1359,30 +1358,14 @@ func _common_move(plan: Plan, origins: Array) -> Variant:
 
 
 ## [param gone], lines of the file taken out, with what goes with them: the
-## lines bound to each above it, a sub-model no line places any more (its
-## FILE section, and its NOFILE), and a pair left with nothing in it.
+## lines bound to each above it, and a pair left with nothing in it. A
+## sub-model no line places any more stays, placed by nothing, as Ungroup,
+## LDCad and Studio keep one (kt4review): no part of the model.
 func _taken_with(gone: Dictionary) -> void:
 	for line: int in gone.keys():
 		for k: int in range(_bound_from[line], line):
 			gone[k] = true
 	var more: bool = true
-	while more:
-		more = false
-		for key: String in _placed_by:
-			if key == main_key or not sections.has(key) or gone.has(int((sections[key] as Array)[0])):
-				continue
-			var placed: bool = false
-			for line: int in _placed_by[key]:
-				placed = placed or not gone.has(line)
-			if placed:
-				continue
-			var span: Array = sections[key]
-			for n: int in range(int(span[0]), int(span[1])):
-				gone[n] = true
-			if int(span[1]) < original.size() and _keyword(original[int(span[1])]) == "NOFILE":
-				gone[int(span[1])] = true
-			more = true
-	more = true
 	while more:
 		more = false
 		for pair: Array in _pairs:
@@ -1420,9 +1403,9 @@ static func _numbers_of(words: PackedStringArray) -> Variant:
 ## Line [param line] rewritten for its part as it is now: [param part] in
 ## [param colour] at [param local] in its copy. The file's own number while
 ## it is still this part (a retired one placed where its stub puts the part
-## it became), its colour as it said it while that is the colour, and its
+## it became), its colour as it said it unless [param painted], and its
 ## numbers as they were where they still say the place or the turn.
-func _line_for(line: int, part: String, colour: int, read: Read, local: Transform3D,
+func _line_for(line: int, part: String, colour: int, painted: bool, local: Transform3D,
 		library: PartLibrary) -> Variant:
 	var words: PackedStringArray = _words(lines[line])
 	if _numbers_of(words) == null:
@@ -1444,7 +1427,7 @@ func _line_for(line: int, part: String, colour: int, read: Read, local: Transfor
 				by = library.moved_by(named)
 	elif said_id == part:
 		token = reference
-	var said_colour: String = words[1] if colour == read.colour else _colour_token(colour)
+	var said_colour: String = _colour_token(colour) if painted else words[1]
 	return "1 %s %s %s" % [said_colour, _numbers_for(words, local * by.affine_inverse()), token]
 
 
@@ -1478,24 +1461,33 @@ static func _add_to(table: Dictionary, key: Variant, value: Variant) -> void:
 
 
 ## [param text], a patch with the app's own lines written into it
-## (ModelStore), with those lines as the file's own: ending as its lines
-## end, and above the lines that say what the next part is for another
-## program ([method _binds_next]), never between them and that part, where
-## they were said of nothing: put after an LDCad GROUP_NXT, the floor's line
-## left the part in no group (ktreview).
+## (ModelStore), with those lines as the file's own: one the file has as it
+## has it; a new one ending as the file's lines end, and above the lines
+## that say what the next part is for another program ([method
+## _binds_next]), never between them and that part, where it was said of
+## nothing: put after an LDCad GROUP_NXT, the floor's line left the part in
+## no group (ktreview).
 func app_lines_placed(text: String) -> String:
 	if not text.contains("0 !BRICKWORKS"):
 		return text
 	_read_for_patch()
+	var had: Dictionary = {}        ## the file's own app lines, as it ended them
+	for line: String in original:
+		if _is_app_line(line):
+			had[line.trim_suffix("\r")] = line
 	var put: PackedStringArray = text.split("\n")
 	var out := PackedStringArray()
 	for n: int in put.size():
 		var line: String = put[n]
 		if not _is_app_line(line):
 			out.append(line)
-			continue
-		var said: String = line.trim_suffix("\r") + (_eol() if n < put.size() - 1 else "")
-		out.insert(before_run(out, out.size()), said)
+		elif had.has(line.trim_suffix("\r")):
+			# One the file has (a save of it before): as it has it, so a
+			# save with nothing changed is the file byte for byte.
+			out.append(str(had[line.trim_suffix("\r")]))
+		else:
+			var said: String = line.trim_suffix("\r") + (_eol() if n < put.size() - 1 else "")
+			out.insert(before_run(out, out.size()), said)
 	return "\n".join(out)
 
 
@@ -1741,8 +1733,7 @@ func _may_change(plan: Plan, line: int, moved: bool, steps_now: Dictionary) -> b
 
 ## Whether the file's line [param line] may be left out: a line no part in
 ## the model or on its way is read through ([param alive]) that is a part's
-## or a copy's, one bound to such a line, a pair left with nothing in it, or
-## a line of a sub-model no line places now.
+## or a copy's, one bound to such a line, or a pair left with nothing in it.
 func _may_go(plan: Plan, line: int, alive: Dictionary) -> bool:
 	if not plan.gone.has(line) or alive.has(line):
 		return false
@@ -1765,12 +1756,6 @@ func _may_go(plan: Plan, line: int, alive: Dictionary) -> bool:
 				return false
 		if any:
 			return true
-	var key: String = _sec[line]
-	if key != main_key and _placed_by.has(key):
-		for placer: int in _placed_by[key]:
-			if not plan.gone.has(placer) or alive.has(placer):
-				return false
-		return true
 	return false
 
 

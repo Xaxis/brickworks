@@ -1,4 +1,8 @@
-## A step edit never costs a file its own text (keeptext).
+## A step edit never costs a file its own text (keeptext), but where live's
+## write did: since keeptext5 a save of someone else's file is a patch of
+## it, or, where a patch cannot say the edit, what live writes, and the
+## checks below of what only a patch keeps say "live" there and do not
+## fail (an unedited save and an undone one are the file all the same).
 ##
 ##   godot --headless --path . --script src/dev/keep_text_probe.gd
 ##
@@ -74,9 +78,10 @@
 ## here as it did in the file, with no END before its BEGIN; and over
 ## kt4review's 26 files of the LDraw model repository, each saved unedited
 ## is the file byte for byte, and a part between a pair's lines given a step
-## edit and then taken off is written with its pairs whole, never refused
-## by the save's read-back (keeptext4: a delete took a GROUP's BEGIN and
-## left its END, a step edit put LSynth's END before its BEGIN).
+## edit and then taken off is written with its pairs whole, as a patch or
+## as live writes it, never refused (keeptext4: a delete took a GROUP's
+## BEGIN and left its END, a step edit put LSynth's END before its BEGIN,
+## and a save its read-back refused lost the work; keeptext5).
 ##
 ##   KEEP_TEXT_ONLY=7140,6650   those files;  KEEP_TEXT_EDITS=rename,copy   those edits
 ##   KEEP_TEXT_ONLY=pairs       only the 26 files' pass
@@ -188,10 +193,35 @@ func _initialize() -> void:
 
 
 func _check(what: String, ok: bool) -> bool:
+	if not ok and _live_flow:
+		print("  live  %s" % what)
+		return false
+	return _hard(what, ok)
+
+
+## A check that holds whichever way the save was written: an unedited save
+## and an undone one are the file, byte for byte.
+func _hard(what: String, ok: bool) -> bool:
 	print("  %s  %s" % ["ok  " if ok else "FAIL", what])
 	if not ok:
 		_failures += 1
 	return ok
+
+
+## keeptext5: a save of someone else's file is a patch of it or what live
+## writes (ModelStore.last_whole says which, and why). Once a save of the
+## flow is live's, a check of what only a patch keeps says "live" and does
+## not fail: live's write is live's, never worse than live.
+var _live_flow: bool = false
+
+
+## Whether the save just made was written as live writes it, said once.
+func _is_live() -> bool:
+	var whole: String = str(_store.get("last_whole"))
+	if whole.is_empty() or _store.call("_live_source") == null:
+		return _live_flow
+	print("  (written as live writes it: %s)" % whole)
+	return true
 
 
 func _run() -> void:
@@ -262,6 +292,7 @@ func _model(name: String, path: String, made: String = "") -> void:
 func _step_edit(name: String, path: String, made: String = "") -> void:
 	var text: String = _made(FileAccess.get_file_as_string(path), made)
 	var anothers: bool = made == "another's"
+	_live_flow = false
 	if not _check("%s read (%d lines)" % [path, text.split("\n").size()], not text.is_empty()):
 		return
 	await _open(text, name)
@@ -291,6 +322,7 @@ func _step_edit(name: String, path: String, made: String = "") -> void:
 		_builder.history_depth() > depth and _store.save_as(file_name)
 		and (not anothers or parented >= 9))
 	var saved: String = FileAccess.get_file_as_string(ModelStore.saved_path(file_name))
+	_live_flow = _is_live()
 	# The lines placing the copies the edit built in their parent's steps
 	# are the edit's: those copies are their parts there now.
 	_built_in = 0 if _app_own(text) else parented
@@ -336,7 +368,7 @@ func _step_edit(name: String, path: String, made: String = "") -> void:
 	var undone: String = _store.to_text(name, true)
 	var back: Array = _lost(text, undone)
 	var extra: Array = _lost(undone, text)
-	_check("...undone: %d lines lost, %d not the file's%s" % [back.size(), extra.size(),
+	_hard("...undone: %d lines lost, %d not the file's%s" % [back.size(), extra.size(),
 		_first(back + extra)], back.is_empty() and extra.is_empty())
 	_same_parts("...undone", parts, undone)
 	_builder.redo()
@@ -438,6 +470,7 @@ func _edits(name: String, path: String, made: String, edits: Array) -> void:
 ## lines of the file's own text lost, but those the edit changes; undone,
 ## the file again; opened again, the same model, and saved again, itself.
 func _edit(name: String, text: String, edit: String) -> bool:
+	_live_flow = false
 	await _open(text, name)
 	var depth: int = _builder.history_depth()
 	var parts: Array = _parts_of(text)
@@ -464,6 +497,7 @@ func _edit(name: String, text: String, edit: String) -> bool:
 	var file_name: String = "keep edit %d" % _saves
 	var saved_ok: bool = _store.save_as(file_name)
 	var saved: String = FileAccess.get_file_as_string(ModelStore.saved_path(file_name))
+	_live_flow = _is_live()
 	# A model with steps put into a file of none gives the file the steps
 	# it was shown (Builder._bring_steps, AuthorSteps.adopt_plan), as its
 	# first step edit would: its parts' lines go into their steps, and the
@@ -495,7 +529,7 @@ func _edit(name: String, text: String, edit: String) -> bool:
 	var undone: String = _store.to_text(name, true)
 	var back: Array = _lost(text, undone)
 	var extra: Array = _lost(undone, text)
-	_check("...undone: %d lines lost, %d not the file's%s" % [back.size(), extra.size(),
+	_hard("...undone: %d lines lost, %d not the file's%s" % [back.size(), extra.size(),
 		_first(back + extra)], back.is_empty() and extra.is_empty())
 	_same_parts("...undone", parts, undone)
 	await _reopened("...opened again", saved, name, edited, true)
@@ -878,12 +912,14 @@ func _metas_crlf() -> void:
 	pins.add(part, "the author's favourite", "probe", "", _world, _store.lift())
 	var pin_lines: PackedStringArray = pins.lines(_world, _store.lift())
 	var all: String = text
+	_live_flow = false
+	var source: SourceFile = _store.call("_live_source")
 	for kind: String in META_KINDS:
-		var one: String = _meta_written(kind, text, pin_lines)
+		var one: String = source.app_lines_placed(_meta_written(kind, text, pin_lines))
 		_check("%s written into it by itself: %d lines ending otherwise than the file's, read "
 			% [kind, _endings_wrong(text, one)] + "again: %s" % _meta_read(kind, one),
 			one != text and _endings_wrong(text, one) == 0 and _meta_read(kind, one))
-		all = _meta_written(kind, all, pin_lines)
+		all = source.app_lines_placed(_meta_written(kind, all, pin_lines))
 	var none: Array = META_KINDS.filter(func(kind: String) -> bool:
 		return not _meta_read(kind, all))
 	_check("all of them, one after another: %d lines ending otherwise, %d not read again%s"
@@ -898,6 +934,7 @@ func _metas_crlf() -> void:
 	var file_name: String = "keep metas %d" % _saves
 	var saved_ok: bool = _store.save_as(file_name)
 	var saved: String = FileAccess.get_file_as_string(ModelStore.saved_path(file_name))
+	_live_flow = _is_live()
 	none = META_KINDS.filter(func(kind: String) -> bool: return not _meta_read(kind, saved))
 	_check("opened and saved: %d lines ending otherwise than the file's, %d of them not kept%s"
 		% [_endings_wrong(text, saved), none.size(), _first(none)],
@@ -923,8 +960,8 @@ func _metas_crlf() -> void:
 ## (PAIRS: LPub's, LSynth's, LeoCAD's), or any where the file has none,
 ## given a step edit and then taken off: each written with every pair
 ## opened and closed as in the file, every line about the next above it,
-## the same parts (the one taken off aside), and not refused by the save's
-## read-back (SourceFile.checked). A delete that took a GROUP's BEGIN and
+## the same parts (the one taken off aside), a patch or live's write, never
+## refused (SourceFile.gate). A delete that took a GROUP's BEGIN and
 ## left its END, and a step edit that put LSynth's END before its BEGIN,
 ## were written over a person's file (kt4review #1, #2, #3).
 func _omr_pairs() -> void:
@@ -934,6 +971,7 @@ func _omr_pairs() -> void:
 		var text: String = FileAccess.get_file_as_string(path)
 		if not _check("%s read (%d lines)" % [file, text.split("\n").size()], not text.is_empty()):
 			continue
+		_live_flow = false
 		await _open(text, file)
 		# Saved under the file's own title, as kt4review's probe saves:
 		# another is said in a line of the app's under the FILE line.
@@ -941,7 +979,7 @@ func _omr_pairs() -> void:
 		var own: String = str((source as Object).get("own_title")) if source != null else file
 		var unedited: String = _store.to_text(own, true)
 		var plain: String = _unfloored(unedited)
-		_check("...saved unedited: the file byte for byte, the floor aside%s"
+		_hard("...saved unedited: the file byte for byte, the floor aside%s"
 			% _first(_first_change(_unfloored(text), plain)), plain == _unfloored(text))
 		var parts: Array = _parts_of(text)
 		var inside: Array = _inside_pair(text)
@@ -955,9 +993,9 @@ func _omr_pairs() -> void:
 		var said: String = _shell.change_steps("next", [part], _step_holding(part))
 		await _frames(4)
 		var stepped: String = _store.to_text(own, true)
-		_check("...a step edit (\"%s\"): written, not refused%s" % [
-			said.get_slice("\n", 0).left(80), _refusal()],
-			not stepped.is_empty() and str(_store.get("kept_refused")).is_empty())
+		_live_flow = _is_live()
+		_check("...a step edit (\"%s\"): written" % said.get_slice("\n", 0).left(80),
+			not stepped.is_empty())
 		_shape_kept("...the step edit", text, stepped)
 		_same_parts("...the step edit", parts, stepped)
 		await _back_to(depth)
@@ -966,11 +1004,12 @@ func _omr_pairs() -> void:
 		_select_only([part])
 		_shell.run("delete")
 		await _frames(2)
+		_live_flow = false
 		var deleted: String = _store.to_text(own, true)
+		_live_flow = _is_live()
 		var taken: int = count - _world.brick_count()
-		_check("...#%d taken off (%d parts, its copies following): written, not refused%s"
-			% [part, taken, _refusal()], taken > 0 and not deleted.is_empty()
-			and str(_store.get("kept_refused")).is_empty())
+		_check("...#%d taken off (%d parts, its copies following): written"
+			% [part, taken], taken > 0 and not deleted.is_empty())
 		_shape_kept("...taken off", text, deleted)
 		var got: Array = _parts_of(deleted)
 		var missing: Array = _unmatched(parts, got)
@@ -999,11 +1038,6 @@ static func _first_change(was: String, now: String) -> Array:
 static func _unfloored(text: String) -> String:
 	return "\n".join(Array(text.split("\n")).filter(func(line: String) -> bool:
 		return not line.begins_with("0 !BRICKWORKS FLOOR")))
-
-
-func _refusal() -> String:
-	var refused: String = str(_store.get("kept_refused"))
-	return "" if refused.is_empty() else ": " + refused
 
 
 ## A part of the model's text placed between a pair's two lines in one
