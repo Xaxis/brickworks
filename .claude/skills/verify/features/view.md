@@ -3038,11 +3038,14 @@ picture the assistant is shown.
   line where the model meets the page, a line where the number changes
   (one part meets the next), a third of it where one part's faces turn more
   than 30° and, in Line art, round a print (the flat colour 0.2 apart
-  inside one part, not glass); the shade is the clay's linear light, as
+  inside one part, not glass); the shade is the clay's linear light over
+  full light (`LineArt.full_light`: what 90% of the model's clay pixels are
+  darker than, the whole picture's clay drawn 256 across first), as
   halftone dots on a 45° screen (cell 1/150 of the short side, line 1/450,
-  at least 2 px) from 0.8 down to 0.3, so a black part and a white one in
-  one light get the same dots (the window lights black a third as much for
-  its colour); Line art white paper inside, Comic the flat colour, 0.82 of
+  at least 2 px) from 0.9 of it down to 0.5, up to 0.6 of a cell, so a
+  black part and a white one in one light get the same dots (the window
+  lights black a third as much for its colour) and a model seen square on
+  has its faces to the eye clean; Line art white paper inside, Comic the flat colour, 0.82 of
   it turned away, its dots 0.42 of it, black plastic lifted as the
   booklet's; round the model the backdrop's colour or nothing, the contact
   shadow (its alpha on nothing) in dots from 0.18 of it, its faint reaches
