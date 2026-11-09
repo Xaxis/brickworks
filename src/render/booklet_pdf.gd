@@ -322,12 +322,22 @@ static func _same_cluster(one: Dictionary, other: Dictionary) -> bool:
 
 ## [param cluster]'s letters shaped again in the emoji's face alone: its
 ## glyphs in their places, faced, or [param cluster] as it was where that
-## face lacks one of them.
+## face lacks one of them. Where the page drew the cluster in a face of
+## the system's (a colour emoji, a square an em wide), the outline is set
+## in the room the page gave it, at its middle, or made smaller to fit it
+## ("scale"), so the line's words stay where the page's are and a reader
+## still finds the space after it.
 func _in_emoji(text: String, cluster: Array) -> Array:
 	var start: int = cluster[0]["start"]
 	var again: Array = shaped(text.substr(start, int(cluster[0]["end"]) - start), _shaper_rids[2], SHAPED_AT)
 	if again.is_empty():
 		return cluster
+	var room: float = 0.0
+	var drawn: bool = true
+	for glyph: Dictionary in cluster:
+		room += float(glyph["advance"])
+		drawn = drawn and int(glyph["index"]) != 0 and (glyph["font_rid"] as RID).is_valid()
+	var taken: float = 0.0
 	for glyph: Dictionary in again:
 		if int(glyph["index"]) == 0 or not (_shaper_rids[2] as Array).has(glyph["font_rid"]):
 			return cluster
@@ -336,6 +346,16 @@ func _in_emoji(text: String, cluster: Array) -> Array:
 		glyph["face"] = _emoji_face()
 		if (glyph["face"] as Array).is_empty():
 			return cluster
+		taken += float(glyph["advance"])
+	if drawn and room > 0.0 and taken > room:
+		for glyph: Dictionary in again:
+			glyph["scale"] = room / taken
+			glyph["offset"] = (glyph["offset"] as Vector2) * room / taken
+			glyph["advance"] = float(glyph["advance"]) * room / taken
+	elif drawn and room > 0.0:
+		for glyph: Dictionary in again:
+			glyph["offset"] = (glyph["offset"] as Vector2) + Vector2((room - taken) / 2.0, 0.0)
+		again[-1]["advance"] = float(again[-1]["advance"]) + room - taken
 	return again
 
 
@@ -760,6 +780,7 @@ func _glyphs(content: PackedStringArray, op: Dictionary, line: Array) -> void:
 	var shown := PackedStringArray()
 	var array := PackedStringArray()
 	var font: String = ""
+	var font_size: float = size
 	var rise: float = 0.0
 	# Where the line's pen is, as shaped, and where the PDF's is: mm from
 	# the line's start.
@@ -781,20 +802,22 @@ func _glyphs(content: PackedStringArray, op: Dictionary, line: Array) -> void:
 			if how.is_empty():
 				continue
 			var lift: float = -offset.y * scale
-			if how[0] != font or absf(lift - rise) > 0.0005:
+			var sized: float = size * float(glyph.get("scale", 1.0))
+			if how[0] != font or absf(sized - font_size) > 0.0005 or absf(lift - rise) > 0.0005:
 				if not array.is_empty():
 					shown.append("[%s] TJ" % " ".join(array))
 					array.clear()
-				if how[0] != font:
+				if how[0] != font or absf(sized - font_size) > 0.0005:
 					font = how[0]
-					shown.append("/%s %s Tf" % [font, _n(size)])
+					font_size = sized
+					shown.append("/%s %s Tf" % [font, _n(font_size)])
 				if absf(lift - rise) > 0.0005:
 					rise = lift
 					shown.append("%s Ts" % _n(rise))
 			if absf(x - written) > 0.0005:
-				array.append(_n((written - x) * 1000.0 / size))
+				array.append(_n((written - x) * 1000.0 / font_size))
 			array.append("<%s>" % (how[1] as PackedByteArray).hex_encode())
-			written = x + int(how[2]) * size / 1000.0
+			written = x + int(how[2]) * font_size / 1000.0
 		pen += spacing
 	if not array.is_empty():
 		shown.append("[%s] TJ" % " ".join(array))

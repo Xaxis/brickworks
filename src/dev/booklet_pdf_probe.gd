@@ -29,9 +29,9 @@
 ## same, drawn by poppler and by Ghostscript where poppler draws Droid.
 ## Words right to left (pdfbidi): a second copy of dialog_a given a cover
 ## title in Arabic by page_setup and, by edit_booklet, step words set as a
-## step's name is (3.6 mm): Hebrew on step 1, a line of Latin, Hebrew and a
-## size ("Step 3: בנה את תא הטייס 2x4") on step 2, and three emoji, one a
-## ZWJ sequence, on step 3. Is each line printed as the booklet's page
+## step's name is (3.6 mm): a line of Latin, Hebrew and a size ("Step 3:
+## בנה את תא הטייס 2x4") on step 1, three emoji, one a ZWJ sequence, on
+## step 2, and Hebrew on step 3. Is each line printed as the booklet's page
 ## (BookletPng, the page's picture) draws it: the Hebrew right to left, the
 ## Arabic joined? Each run of ink between word gaps is where the page's is,
 ## its box within 2 px on every side, the PDF drawn by poppler and the page
@@ -43,7 +43,9 @@
 ## print of the booklet too: "Step 3: 2 בנה את תא הטייסx4", the bidi
 ## algorithm having set the 2 left of the Hebrew, which no reading of a page
 ## left to right can put back (pdfbidi, 2026-11-09)? Are the emoji glyphs,
-## read back as typed, with no "?" in the PDF and none named missing?
+## read back as typed, with no "?" in the PDF and none named missing, the
+## words between them where the page's are, each set in the room the page's
+## colour emoji takes?
 ## --words-only stops there. --against=DIR (the commit before's --into):
 ## its castle booklet's PDF written again from its own file, each page the
 ## same at 300 dots an inch to the pixel, the file no more than 10% bigger.
@@ -304,7 +306,11 @@ func _bidi(out: String) -> void:
 	tools.app = _main
 	tools.assistant = _main.get("_assistant")
 	print("    page_setup: %s" % str(await tools.run("page_setup", {"title": ARABIC})).left(200))
-	var placed: Array = [[1, HEBREW, 20.0], [2, MIXED, 145.0], [3, EMOJI, 20.0]]
+	# The mixed line on a page whose letters are mostly Latin, which poppler
+	# reads left to right; the Hebrew alone on its own, which it reads right
+	# to left. A page mostly Hebrew it reads right to left, the mixed line's
+	# Latin last, a PDF of ours or Chromium's alike.
+	var placed: Array = [[1, MIXED, 20.0], [2, EMOJI, 145.0], [3, HEBREW, 20.0]]
 	for each: Array in placed:
 		print("    edit_booklet: %s" % str(await tools.run("edit_booklet", {"step": each[0], "text": {
 			"words": each[1], "x": each[2], "y": 150.0, "w": 110.0, "h": 6.0, "size": 3.6}})).left(200))
@@ -373,9 +379,26 @@ func _bidi(out: String) -> void:
 		printed.get_region(band).save_png(ProjectSettings.globalize_path(out.path_join("bidi-%s-pdf.png" % name)))
 		if typed[1] == EMOJI:
 			# The page's emoji are the system's, in colour; the PDF's are the
-			# app's own, in outline, and as wide as theirs.
-			var ink: Array = _ink_runs(printed, band, roundi(size * 0.2 * COMPARED_AT))
-			_check("the %s prints ink (%d runs)" % [typed[0], ink.size()], ink.size() >= 4)
+			# app's own, in outline, set in the room the page's take: the
+			# words between where the page's are, each emoji's middle near
+			# its.
+			var gap: int = roundi(size * 0.2 * COMPARED_AT)
+			var theirs: Array = _ink_runs(page, band, gap)
+			var ours: Array = _ink_runs(printed, band, gap)
+			var spoken: Array = []
+			var middles: Array = []
+			for run: int in mini(theirs.size(), ours.size()):
+				var one: Rect2i = theirs[run]
+				var other: Rect2i = ours[run]
+				if run % 2 == 1:
+					spoken.append(maxi(absi(one.position.x - other.position.x), absi(one.end.x - other.end.x)))
+				else:
+					middles.append(absf(one.get_center().x - other.get_center().x))
+			_check("the %s prints a run of ink a word and an emoji, as the page (%d runs, the page %d)" % [
+				typed[0], ours.size(), theirs.size()], ours.size() == theirs.size() and ours.size() == 5)
+			_check("...its words where the page's are (each within %s px), the emoji's middles %s px from the page's" % [
+				str(spoken.max()) if not spoken.is_empty() else "-", str(middles)], not spoken.is_empty()
+				and int(spoken.max()) <= 2 and not middles.is_empty() and float(middles.max()) <= size * 0.1 * COMPARED_AT)
 			continue
 		var said_runs: String = _same_ink(page, printed, band, roundi(size * 0.2 * COMPARED_AT))
 		_check("the %s's ink where the page's is (%s)" % [typed[0], said_runs], said_runs.begins_with("ok"))
