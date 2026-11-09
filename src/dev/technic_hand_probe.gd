@@ -720,14 +720,10 @@ func _dishes_as_sets_build() -> void:
 		var line: String = ("by hand, %s clicked onto %s goes %.2f LDU up (the sets' %.2f), "
 			+ "%.2f LDU off its line: %s") % [held, below, up, float(dish[5]),
 				Vector2(off.x, off.z).length(), said.left(160)]
-		# The hand stands a 4740 on a lone stud by one of the four sockets the
-		# catalogue reads under it, 14 LDU off the stud's line, and the shapes
-		# meet there by 3.2 LDU; on its line, by its tube, the check passes it.
-		# Said, not passed, as it was before realjoints3: the hand's choice of
-		# socket, which this unit did not change.
-		if held == "4740":
-			print("  said  " + line)
-			continue
+		# The hand stood a 4740 on a lone stud by one of the four sockets the
+		# catalogue reads under it, 14 LDU off the stud's line, where its dome
+		# comes down: said, not passed, from realjoints3. It takes the stud in
+		# its tube now (Builder._takes_studs, seatfix), and is checked.
 		_ok(put != 0 and said.begins_with("2 bricks, buildable"), line)
 
 
