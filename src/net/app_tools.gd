@@ -171,6 +171,10 @@ const WINDOW_ONLY: Dictionary = {
 	# savedviews: the views kept with the model (SavedViews); save_view is
 	# save_view's (mcpsee3).
 	"saved_view_*": "the person's camera; view_model view= looks from a saved view by its name, and render_model view= renders it",
+	# edges (APP_UX6 #19): View › Edges and studs, how the person's own view
+	# draws the plastic.
+	"edges": "how the person's own view draws the parts; the pictures a session is shown (view_model) draw the plastic as it is moulded, seams and all",
+	"studs": "how the person's own view draws the parts; the pictures a session is shown (view_model) draw every stud, which a session counts and places by",
 }
 
 ## What a session reads about these, served by read_guide("app") — every
