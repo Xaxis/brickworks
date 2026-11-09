@@ -1100,6 +1100,14 @@
       "tests": []
     },
     {
+      "id": "cli:edges probe",
+      "kind": "cli",
+      "entry": "src/dev/edges_probe.gd",
+      "reach": "tools/probe.sh edges [-- --shots=DIR]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720, through the sign-in screen with a throwaway account (.env): the car's default view the same to the pixel after each row off and on, kept as default_view_WxH.png for an older build's; two walls' seam inside each face drawn and 0 px with Edges off; every kind of stud seen from its side, most of its round drawn and 0 px with Studs off, every part in its place and, drawn flat, 0 px covered differently outside the rounds; the car's triangles with Studs off; both kept over a restart; pictures in user://edges or DIR)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:embed browser flow",
       "kind": "cli",
       "entry": "tools/web/embed_flow.mjs",
@@ -1185,6 +1193,14 @@
       "entry": "src/dev/feedback_probe.gd",
       "reach": "tools/probe.sh feedback_probe [--shots=DIR]   (windowed: Help, Send feedback\u2026 opens, attaches, refuses, sends to a stand-in; Beta hub only for a tester)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:fetchparts browser flow",
+      "kind": "cli",
+      "entry": "tools/web/fetchparts_flow.mjs",
+      "reach": "node tools/web/fetchparts_flow.mjs --url=http://127.0.0.1:9821 [--base=http://127.0.0.1:9822 --rounds=2] [--house=H0useFl0w1] --out=DIR   (after tools/export.sh web and tools/web/serve.py build/web 9821 --parts assets/generated/parts --delay 0 --compressed --share F3tchP4rts=vendor/omr/files/42022-1_Rally-Racer.mpd --share H0useFl0w1=HOUSE (play_flow.mjs --write-house=HOUSE), and the build before likewise on 9822; local only: no part file by the engine's HTTPRequest, both whole, each longest frame no longer than the base's, the car's shapes in half the base's time)",
+      "area": "parts",
       "tests": []
     },
     {
@@ -2998,6 +3014,14 @@
       ]
     },
     {
+      "id": "lib:a session keeps and uses palettes over mcp",
+      "kind": "lib",
+      "entry": "src/net/palette_tool.gd",
+      "reach": "tools/probe.sh mcppalettes && PROBE_SIZE=1400x900 tools/probe.sh mcppalettes   (palettes reads the person's palettes, read-only; edit_palette make keeps twelve parts of the model each in its colour and a gatepost as the sub-assembly Gatepost in 1 call, the bin's Palettes shows it and its file entries are the bin's own Add rows' byte for byte but ids and times; place puts Gatepost down whole in another model in 1 call, each part to 0.01 LDU, low corner where asked, one assembly, one undo; take_out, rename, delete, agreed=true for a sub-assembly out and a delete; pictures in shots/mcppalettes/)",
+      "area": "mcp",
+      "tests": []
+    },
+    {
       "id": "lib:a session per tab",
       "kind": "lib",
       "entry": "src/parts/tab_session.gd",
@@ -4311,7 +4335,7 @@
       "id": "ui:accessibility",
       "kind": "ui",
       "entry": "src/ui/access.gd",
-      "reach": "godot --path .  (Tab from the model into the frame, Return on a part and Return again to put it down; Settings, Interface size and Reduce motion; with Orca running, each control said by its name)",
+      "reach": "godot --path .  (Tab from the model into the frame, Return on a part and Return again to put it down; Settings, Interface size and Reduce motion; with Orca running, each control said by its name)  /  tools/probe.sh a11y_modal_probe  (windowed: the app run where a screen reader is on, in a D-Bus session of its own, each window read over AT-SPI as Orca finds it, pointed at and from the focus: every dialog that holds the window MODAL, the Reference picture not, the focus inside the top dialog)",
       "area": "building",
       "tests": [
         "tests/fixtures/relay/world.mjs"
@@ -4751,6 +4775,14 @@
       "entry": "src/parts/submodel_file.gd",
       "reach": "godot --path .  (the model tree: right-click a sub-model's row, Export \u201cNAME\u201d as its own file\u2026, or the model's row, Export each sub-model (.zip)\u2026; File, Export, Each sub-model as its own file (.zip))  /  export_model format=ldraw submodels=true, or submodel=NAME",
       "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "ui:edges and studs",
+      "kind": "ui",
+      "entry": "src/render/studs_off.gd",
+      "reach": "tools/probe.sh edges && PROBE_SIZE=1280x720 tools/probe.sh edges   (by hand: View, Edges and studs, Edges or Studs; kept in this machine's controls.cfg [view]; only the window follows them: renders, booklets, view_model and thumbnails draw every seam and stud)",
+      "area": "view",
       "tests": []
     },
     {

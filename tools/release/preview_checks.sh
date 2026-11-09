@@ -178,6 +178,12 @@ declare -A CMD=(
   # 503: Playwright's route), all 29 down; a part no pack carries answered
   # 404, asked once and said once in the status bar (PartLibrary.RETRY_AFTER).
   [fetch_retry]="tools/web/fetch_retry_flow.mjs --url=$P/app $B --out=$S/${TAG}_fetch_retry_web"
+  # local only: fetchparts_flow.mjs. It times a Technic car's parts coming
+  # over the network against the build before, ABBA, two local exports side
+  # by side (serve.py --share serves the car's link to each): one preview has
+  # no build before to play beside it. Its own check, that no part file goes
+  # through the engine's HTTPRequest, is fetch_retry's path too (fetchparts,
+  # 2026-11-08).
   [progress]="tools/web/progress_check.mjs --url=$P/app"
   [share_probe]="tools/web/share_probe.mjs --url=$P"
   [site]="tools/web/site_check.mjs --url=$P"

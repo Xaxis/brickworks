@@ -80,6 +80,9 @@ static func schema() -> Dictionary:
 					+ "from it. clip: vertical (holds a bar standing up, 60897) or "
 					+ "horizontal (a bar lying along the edge, 61252). wedge: left or "
 					+ "right, the side that is straight (41770a is left)")},
+				"chamfer": {"type": "boolean", "description": ("wedge: true to cut the "
+					+ "far corner flat, 3 LDU along, as the LEGO® wedge plates 54383 and 41770b "
+					+ "have it; false, the default, runs the cut to the corner (41770a)")},
 				"sides": {"type": "string", "description": ("brick: the sides with "
 					+ "studs on them, letters of fblr: f is the +z face (the front), "
 					+ "b -z, l -x, r +x; studs 10 LDU under the top and every stud "
@@ -156,6 +159,8 @@ static func _new(args: Dictionary, library: PartLibrary) -> String:
 				spec.set(field, int(args[field]))
 	if args.has("way"):
 		spec.way = str(args["way"])
+	if args.has("chamfer"):
+		spec.chamfer = _truthy(args["chamfer"])
 	if args.has("sides"):
 		spec.sides = ElementMaker.canonical_sides(str(args["sides"]))
 	if args.has("studs"):

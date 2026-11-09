@@ -139,6 +139,10 @@ class Batch extends RefCounted:
 	## into, whole, casting their shadows and drawn no other way, so the
 	## light on what is outside the cut is the whole model's.
 	var shade: MultiMeshInstance3D = null
+	## The part it draws a surface of, and which: drawn with its studs or
+	## without (View › Edges and studs, [member BrickWorld.studs_shown]).
+	var part: Lbm.PartMesh = null
+	var surface_index: int = 0
 
 
 var library: PartLibrary
@@ -932,6 +936,7 @@ func _create_batch(
 	batch.instance.material_override = material
 	add_child(batch.instance)
 	batch.triangles = _triangles_of(part.surfaces[surface_index])
+	_drawn_as_viewed(batch, part, surface_index)
 	return batch
 
 
@@ -1063,6 +1068,7 @@ func _rebuild_batch(batch: Batch, key: String) -> void:
 	if not batch.ranks.is_empty():
 		_stop_reveal()
 	var count: int = batch.brick_ids.size()
+	_studs_into(batch)
 	_fresh_slots(batch, count)
 	if count == 0:
 		batch.multimesh.visible_instance_count = 0
@@ -2392,3 +2398,94 @@ func _see_through_follows() -> void:
 
 func _set_bounds(batch: Batch, bounds: AABB) -> void:
 	batch.instance.custom_aabb = bounds
+
+
+# -- View › Edges and studs (APP_UX6 #19) -------------------------------------
+#
+# The seam along every part's edges, and the studs, each drawn or not. Only
+# the window's world follows the View (Shell, kept by ViewPrefs). Every other
+# world draws both, as the plastic is: a render's copy, the booklet's, the
+# pictures a session is shown, a thumbnail. A person who turns the studs off
+# to see the shapes still renders and prints the model they built.
+
+
+## Whether the seam along every part's edges is drawn (plastic_body's
+## seam_shown).
+var edges_shown: bool = true
+## Whether the studs are drawn: off, each part as StudsOff draws it, where
+## it stands.
+var studs_shown: bool = true
+
+
+## The seam along the parts' edges drawn, or not a pixel of it.
+func set_edges_shown(on: bool) -> void:
+	if on == edges_shown:
+		return
+	edges_shown = on
+	for key: String in _batches:
+		var batch: Batch = _batches[key]
+		_seam_into(batch.instance.material_override)
+		# A cut's own copy of the material (_write_through) is made from the
+		# batch's, and the x-ray's and the shadow's draw no seam of theirs.
+		if batch.through != null:
+			_seam_into(batch.through.material_override)
+
+
+## The studs drawn, or each part drawn without them. Each batch is written
+## again as a change to it would be, in slices where this world's rebuilds
+## are, its part's surfaces made at that moment (StudsOff); a batch drawn as
+## it was until then.
+func set_studs_shown(on: bool) -> void:
+	if on == studs_shown:
+		return
+	studs_shown = on
+	for key: String in _batches:
+		var batch: Batch = _batches[key]
+		if batch.part != null and batch.multimesh.mesh != _mesh_as_viewed(batch):
+			_touching(batch)
+			_mark_dirty(key)
+
+
+## A new batch drawn as the View draws the rest: its part kept for its
+## studs, and the seam as it is set.
+func _drawn_as_viewed(batch: Batch, part: Lbm.PartMesh, surface_index: int) -> void:
+	batch.part = part
+	batch.surface_index = surface_index
+	if not edges_shown:
+		_seam_into(batch.instance.material_override)
+	_studs_into(batch)
+
+
+func _seam_into(material: Material) -> void:
+	var plastic := material as ShaderMaterial
+	if plastic != null:
+		plastic.set_shader_parameter("seam_shown", edges_shown)
+
+
+## The surface [param batch] draws as the View has it: its part's own, or
+## made without the studs.
+func _mesh_as_viewed(batch: Batch) -> Mesh:
+	if studs_shown or batch.part == null:
+		return batch.part.surfaces[batch.surface_index] if batch.part != null \
+			else batch.multimesh.mesh
+	return StudsOff.surfaces(batch.part)[batch.surface_index]
+
+
+## The batch's mesh, and its cut's, x-ray's and shadow's, made the one the
+## View draws: when the batch is made, and when it is written whole
+## (_rebuild_batch), which writes its twins again too. Its slots are let go
+## of first: the engine reads a MultiMesh's slots back off the card to
+## measure it when its mesh changes with slots in it.
+func _studs_into(batch: Batch) -> void:
+	if batch.part == null:
+		return
+	var mesh: Mesh = _mesh_as_viewed(batch)
+	if batch.multimesh.mesh == mesh:
+		return
+	batch.multimesh.instance_count = 0
+	batch.multimesh.mesh = mesh
+	batch.triangles = _triangles_of(mesh as ArrayMesh)
+	for twin: MultiMeshInstance3D in [batch.through, batch.xray, batch.shade]:
+		if twin != null and twin.multimesh.mesh != mesh:
+			twin.multimesh.instance_count = 0
+			twin.multimesh.mesh = mesh

@@ -12910,6 +12910,17 @@ msgstr "1 étoile"
 msgid "%s large stars"
 msgstr "%s grandes étoiles"
 
+# A wedge plate's far corner cut flat (makepart3, APP_UX7 #16): the maker's checkbox, its
+# tooltip and what the dialog says of the part.
+
+msgid "Far corner cut flat"
+msgstr "Coin arrière coupé droit"
+
+msgid "As LEGO® wedge plates such as 54383 and 41770b are: the sharp corner the cut ends in, cut off 1.2 mm along"
+msgstr "Comme sur les plaques biseautées LEGO® telles que 54383 et 41770b : le coin pointu où finit le côté biseauté, coupé sur 1,2 mm"
+
+msgid "Its far corner is cut flat."
+msgstr "Son coin arrière est coupé droit."
 msgid "1 large star"
 msgstr "1 grande étoile"
 # The parts bin's New shelf, the parts first made in the catalogue's latest two
@@ -12971,3 +12982,20 @@ msgstr "%d sous-modèles"
 
 msgid "1 sub-model"
 msgstr "1 sous-modèle"
+
+# View › Edges and studs (APP_UX6 #19 edges): the parts' seams and their studs, each drawn or not
+
+msgid "Edges and studs"
+msgstr "Arêtes et tenons"
+
+msgid "Edges"
+msgstr "Arêtes"
+
+msgid "Studs"
+msgstr "Tenons"
+
+msgid "A fine line where each part meets the next, so courses and bonds read in a wall"
+msgstr "Un trait fin là où chaque pièce rencontre la suivante, pour lire les rangs et l'appareil d'un mur"
+
+msgid "Off, the parts are drawn without their studs, each in its place: the shapes alone, and a big model drawn faster"
+msgstr "Désactivé, les pièces sont dessinées sans leurs tenons, chacune à sa place : les formes seules, et un grand modèle dessiné plus vite"

@@ -46,7 +46,24 @@ connectors and collision the library's own parts have.
   stud wide at the back to the far front corner, a stud on every whole
   square, whole tubes where the cut leaves room and, where its wall comes
   through one, the tube's arcs on the cavity's side in `1-16cyli`
-  sixteenths, which the walk reads as a shaft and a bore, as 41770a's are.
+  sixteenths, which the walk reads as a shaft and a bore, as 41770a's are;
+  a tube the wall comes within 2 LDU of without reaching is whole,
+  `stud4od` and fifteen sixteenths of its outside, as 54383 draws its two
+  (43722a draws the same tube as arcs, so the made 2 x 3 reads a tube where
+  43722a reads a bore). `chamfer=yes` (APP_UX7 #16) cuts the far corner
+  flat, square to the back, 3 LDU along (`WEDGE_CHAMFER`) and as wide as
+  the cut's slope makes it (`wedge_chamfer`: 1 LDU on a 3 x 6, 0.75 on a
+  2 x 4): 41770b, 41769b, 54383 and 54384 to their bounds and connectors.
+  `from_part` reads "... with Chamfer" and "... without Chamfer", and a
+  wing named neither (54383's "Wing  3 x  6 Right") only where its width
+  is the chamfered one's to 0.01 LDU (the dialog passes it): 54383, 54384,
+  78443, 24299 and their mirrors; 3544 (chamfered 4 along), 47397 and the
+  rest are changed as themselves. `seat_of` tells `Builder._takes_studs`
+  where a made part takes a stud — its sockets, sure, the foot of a stud
+  `plates` x 8 LDU under its top — as an exact shape tells it of a library
+  part: a made 61252 aimed with its clip in over a 2 x 4 stood on its
+  ring 1.448 LDU up (pre261); now it goes where 61252 goes, its plate on
+  the stud.
   Named `bw-<shape>`, never an LDraw `u`/`t` number (those are assigned by
   the Parts Library admin).
 - `build a part in the app` (`PartForge`): tools/build_meshes.py's
@@ -55,8 +72,9 @@ connectors and collision the library's own parts have.
   studs, fill cavities (clearing a Technic hole's bore), boxes, sockets, and
   a hole's two faces merged into one hole — ending in the same `.lbm` bytes.
   Needed because neither a desktop export nor a browser has Python.
-  Primitives: the thirty-two in `assets/ldraw/` (committed, in every export;
-  the clips' and the wedge plate's came with them;
+  Primitives: the thirty-four in `assets/ldraw/` (committed, in every export;
+  the clips' and the wedge plate's came with them, `stud4od` and `4-4cylo`
+  with the chamfered wedge plate's whole tubes;
   `peghole` and `4-4ndis` came with the Technic brick), `vendor/ldraw`
   when present, and in an export every primitive (`assets/ldraw/p/`,
   `PartForge.SHIPPED`, copied there by tools/export.sh and ignored by git),
@@ -105,7 +123,8 @@ connectors and collision the library's own parts have.
   (two to a row), LEGO's four named angles for a slope, studs on or off,
   Front/Back/Left/Right for studs on a brick's sides, a bracket's upright and
   which way it goes, a clip's way (vertical or horizontal) and a wedge
-  plate's hand (left or right) in the same list, a name, and "Start from a part" — a part number, or the
+  plate's hand (left or right) in the same list, "Far corner cut flat" for
+  a wedge plate, a name, and "Start from a part" — a part number, or the
   part in hand when the dialog opens. "Start from it" resizes a part of the
   families as its family and changes any other (a printed part, a grille,
   32000) as itself; "Change it" changes any part as itself, a plain 3001 too.
@@ -127,7 +146,7 @@ connectors and collision the library's own parts have.
   assistant's list, and so in every MCP session's, for a part no real one
   will do: a family and its sizes, as the dialog takes them (`across`, `deep`,
   `plates`, `run`, `angle`, `diameter`, `rise`, `way`, `sides`, `studs`,
-  `name`), or `from` a real part with its new size and what to do with its
+  `chamfer`, `name`), or `from` a real part with its new size and what to do with its
   studs. Made through `CustomParts.make` / `make_modified`, so it is the very
   file a person's spec makes, refused by the same `problem()`s in the same
   words, built by `PartForge`, filed under Custom and kept. The answer says
@@ -218,11 +237,13 @@ env -u DISPLAY -u WAYLAND_DISPLAY MESA_VK_WSI_DEBUG=sw \
   godot --path . --resolution 1400x900 --script src/dev/element_shot_probe.gd
 ```
 
-Proves it when: the tests say `446 passed, 7 skipped` without numpy and
-`453 passed` with it (`uv venv` + `uv pip install numpy scipy pytest`; see
+Proves it when: the tests say `490 passed, 7 skipped` without numpy and
+`496 passed` with it (pytest 9.2 also fails
+`test_a_corner_cut_out_of_a_2x2_brick_is_the_corner_brick`, an approx of
+tuples, as on pre261 0932d6d88; minitest passes it) (`uv venv` + `uv pip install numpy scipy pytest`; see
 pipeline.md), and the probe ends on "the maker makes the measured files, and
 the app builds them as the pipeline does" with every line `ok`: each of the
-45 fixtures "the same .lbm, byte for byte" built from only the shipped
+50 fixtures "the same .lbm, byte for byte" built from only the shipped
 primitives, and the 40 library parts in `tests/fixtures/elements/library.txt`
 the same from vendor/ldraw — among them 3700, 3701 and 6541, whose holes'
 two faces the app merges and whose bores it clears as the pipeline does —
@@ -272,7 +293,8 @@ made four long as itself — 15533's studs and tubes, each where 15533 has
 it — with 3062b three long refused in the dialog's words — and 3003 changed
 with "Change it" and its back-right corner cut out, three studs; then the
 clip plates, the bar and the wedge plates, each made as the part it copies
-(60897, 61252, 87994, 41770a, 41769a): its bounds the catalogue's to 0.01
+(60897, 61252, 87994, 41770a, 41769a, and with its far corner cut flat
+54383): its bounds the catalogue's to 0.01
 LDU and its connectors the same in kind, place and axis; each found
 in the bin's Custom category; all but the bracket placed by the mouse's ray on a 2 x 4 on
 a baseplate with a 2 x 4 on top, the lower brick's studs reaching into it at
@@ -284,15 +306,21 @@ mouse's ray, on its joint, placed and joined to it; the level clip, aimed at
 a 2 x 4's front row with its clip out over the edge, goes where 61252 goes
 (y 32, on its stud at its socket); the wedge plates are stacked like the
 bricks and their cut is an edge (6 LDU out free, 6 in plastic); and each of
-the five is made by one `make_part` call. The assistant's checker passes it
-all and counts twelve pieces (one per stack). Then each family used
+the six is made by one `make_part` call (54383's with `chamfer: true`).
+54383 started from by number is the chamfered 3 x 6 with the box ticked,
+and 3544 is changed as itself. The level clip, aimed at a 2 x 4's four
+middle studs in each of four turns, goes where 61252 goes (16 of 16;
+pre261 12), and aimed at the front row with its clip turned in, its plate
+rests on the stud 0.00 LDU up (pre261 1.45, on its ring), on one stud at
+its socket. The assistant's checker passes it all and counts fourteen
+pieces (one per stack). Then each family used
 as only it can be, asked of the checker: a 1 x 4 plate on the side studs and
 a 1 x 2 plate on the bracket's upright held, and each a stud further out
 floating; a Technic pin through the hole held and fitting (3700's place for
 it), turned across the hole an overlap; the hole left out of the cover. The
-parts list says "(custom element)", and the saved file carries thirteen
+parts list says "(custom element)", and the saved file carries fourteen
 parts, read strictly by `tools/build_custom.py --check`, and reopened into a
-fresh library 35 of 35 bricks where they were — the changed parts rebuilt from the
+fresh library 40 of 40 bricks where they were — the changed parts rebuilt from the
 connectors their own text states. `element_shot_probe` ends "the
 dialog makes parts in the window" and leaves `shots/element_dialog.png`,
 `shots/element_beside.png`, `shots/element_families.png` (made parts
