@@ -7,6 +7,7 @@ rules:
   - On the desktop an export asks where to save; in a browser it downloads.
   - export_model format=pickabrick names the parts with no LEGO® element number in its answer; tell the person, they buy those elsewhere.
   - A BrickLink wanted list takes condition (new, used, any), wanted_list (an ID) and notify; nothing is uploaded, the person uploads the file.
+  - export_model format=ldraw submodels=true writes every sub-model as a file of its own in one .zip; submodel= writes just the one, named as the model tree names it.
 title: Exports and renders
 nav: Exports and renders
 description: Every file Brickworks saves, from LDraw and Studio files to 3D models, pictures, shopping lists and photo-real renders.
@@ -17,6 +18,7 @@ description: Every file Brickworks saves, from LDraw and Studio files to 3D mode
 | Export | What it is for |
 |---|---|
 | LDraw model (`.ldr`, or `.mpd` with its sub-models) | The open format: LDCad, LeoCAD, Studio and every LDraw tool read it |
+| Each sub-model as its own file (`.zip`) | Every sub-model as an LDraw file of its own, to build or share apart |
 | BrickLink Studio model (`.io`) | Open it in Studio, with its steps |
 | 3D model (`.glb`, `.gltf`, `.obj`, `.stl`, `.3mf`) | Blender, AR, a 3D printer, one printing in colour |
 | Picture of the model (`.png`) | A picture with nothing behind the model |
@@ -32,6 +34,16 @@ ui:picture of the model
 -->
 
 ![File › Export › BrickLink Studio model, the model as an .io file.](/img/compare-io-720.webp "A Studio file, with its steps.")
+
+## Each sub-model on its own {#submodels}
+
+Right-click a sub-model in the model tree and choose **Export “its name” as its own file…**. It is written as an LDraw file of its own, with its own sub-models and its steps, so it opens alone in any LDraw tool: a ship's wing, a castle's gatehouse. **Export each sub-model (.zip)…**, on any row, or **File › Export › Each sub-model as its own file (.zip)** writes every sub-model so, each once, in one `.zip`.
+
+Each file holds the same lines the whole model's LDraw file has for that sub-model, so nothing in it is moved, renamed or rounded. A sub-model you built inside its model's steps, as the castle's towers are, gets a step for each step of the model it is in.
+
+<!-- covers
+ui:each sub-model as its own file
+-->
 
 ## Parts lists for shops {#shop-lists}
 

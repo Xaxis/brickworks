@@ -808,7 +808,11 @@ func row_rects() -> Dictionary:
 	if asked == _rows_asked:
 		return _rows
 	_rows_asked = asked
-	var shift: Vector2 = area.position - Vector2(0, _tree.get_scroll().y)
+	# get_item_area_rect is already where the row is drawn, scrolled: taking
+	# the scroll off again put every row a scroll too high, and a click at
+	# a row's middle in a scrolled tree chose a row above it (subexport,
+	# 2026-11-08; main._audit_tree adds none either).
+	var shift: Vector2 = area.position
 	var stack: Array = [_tree.get_root()]
 	while not stack.is_empty():
 		var row: TreeItem = stack.pop_back()

@@ -645,6 +645,15 @@ func _right_click_row(outliner: Outliner, path: String) -> PopupMenu:
 		if held >= 8:
 			break
 	var at: Vector2 = last.get_center()
+	# The row's place as the tree says it, and the row its own click finds
+	# there: until 2026-11-08 a scrolled tree's rows were said a scroll too
+	# high, and the click chose a row above.
+	var tree_at: Tree = outliner.get("_tree")
+	var found: TreeItem = tree_at.get_item_at_position(
+		tree_at.get_global_transform_with_canvas().affine_inverse() * at) if tree_at != null else null
+	_check("the tree says %s's row is where its click finds it (scrolled %d px)" % [
+		"the model" if path.is_empty() else Assemblies.label(path), roundi(tree_at.get_scroll().y)
+		if tree_at != null else 0], found != null and str(found.get_metadata(0)) == path)
 	var motion := InputEventMouseMotion.new()
 	motion.position = _as_event(at)
 	motion.global_position = motion.position
