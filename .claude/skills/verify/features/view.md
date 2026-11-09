@@ -2840,11 +2840,18 @@ picture the assistant is shown.
   the pixel after Edges and Studs each go off and on. A red and a black wall
   of 1 x 2s in running bond square on: pixels inside each face off its
   median colour by 10 levels (the seam), many drawn and 0 with Edges off
-  (chosen from View with the keys). Fifteen parts of every kind of stud laid
-  square on, each stud seen from its side: in its projected round (inset 2
-  px), pixels unlike the same picture with nothing drawn, most of them
-  drawn and 0 with Studs off; every part's transform and the model's box
-  unchanged, 0 px changed outside the rounds grown 3 px. Both off, then a
+  (chosen from View with the keys). Fifteen parts of every kind of stud
+  (3001, 3024, 6141, 3062b, 85861, 3794b, 3039, 87087, 4733, 30414, 3700,
+  3626c, 3065, 3068b, 3795; three turned so a side stud faces sideways)
+  laid square on in an orthographic view fitted to them, each stud seen
+  from its side: in its projected round (inset 2 px), pixels unlike the
+  same picture with nothing drawn, most of them drawn and 0 with Studs off;
+  every part's transform and the model's box unchanged. Outside the rounds
+  grown 3 px, pictures drawn flat (no MSAA, FXAA, TAA, glow, SSAO, SSIL or
+  SSR, so an edge's blend is not counted) are compared for coverage: 0 px
+  covered by a part with the studs and not without, or the other way (the
+  studs' own shadows, lit differently, are reported, not failed). Studs
+  facing the eye are left out of the rounds and masked. Both off, then a
   headless run of its own on the same data folder (`--after-restart`)
   finds them off and unticked and turns them on. Pictures in `user://edges`
   or `-- --shots=DIR`: look at `walls_*`, `studs_*` (`studs_rounds_*`

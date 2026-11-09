@@ -2357,8 +2357,6 @@ func _read_licence(id: String) -> void:
 	_licence_text.grab_focus.call_deferred()
 
 
-## View, Floor: what the model stands on (ModelFloor, FloorLayer). Each a
-## step of the history, and none of them moves what is built.
 ## View › Edges and studs (APP_UX6 #19): the seam along every part's edges
 ## and the studs, each drawn in the window or not (BrickWorld.edges_shown,
 ## studs_shown), as kept on this machine (ViewPrefs), and set on the window's
@@ -2380,6 +2378,8 @@ func _define_edges() -> void:
 	_ticked("studs", func() -> bool: return world.studs_shown)
 
 
+## View, Floor: what the model stands on (ModelFloor, FloorLayer). Each a
+## step of the history, and none of them moves what is built.
 func _define_floor() -> void:
 	var floor_layer: FloorLayer = app.get("_floor")
 	var plate: Callable = func() -> bool: return store.model_floor.is_plate()

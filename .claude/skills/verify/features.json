@@ -1094,7 +1094,7 @@
       "id": "cli:edges probe",
       "kind": "cli",
       "entry": "src/dev/edges_probe.gd",
-      "reach": "tools/probe.sh edges [-- --shots=DIR]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720, through the sign-in screen with a throwaway account (.env): the car's default view the same to the pixel after each row off and on, kept as default_view_WxH.png for an older build's; two walls' seam inside each face drawn and 0 px with Edges off; every kind of stud seen from its side, most of its round drawn and 0 px with Studs off, every part in its place and 0 px changed outside the rounds; both kept over a restart; pictures in user://edges or DIR)",
+      "reach": "tools/probe.sh edges [-- --shots=DIR]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720, through the sign-in screen with a throwaway account (.env): the car's default view the same to the pixel after each row off and on, kept as default_view_WxH.png for an older build's; two walls' seam inside each face drawn and 0 px with Edges off; every kind of stud seen from its side, most of its round drawn and 0 px with Studs off, every part in its place and, drawn flat, 0 px covered differently outside the rounds; the car's triangles with Studs off; both kept over a restart; pictures in user://edges or DIR)",
       "area": "view",
       "tests": []
     },
