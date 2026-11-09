@@ -58,6 +58,20 @@ func _initialize() -> void:
 	_run()
 
 
+## Whether [param pin] goes through a hole of [param other]: in its cells,
+## as a pin put down by hand is in them (Builder.room_for forgives what
+## Joints.both_ways pins).
+func _pinned_through(pin: int, other: int) -> bool:
+	var entries: Array = []
+	for id: int in [pin, other]:
+		var brick: BrickWorld.Brick = _world.get_brick(id)
+		if brick == null or _library.mesh_for(brick.part_id) == null:
+			return false
+		entries.append([id, brick.transform, _library.mesh_for(brick.part_id),
+			_library.resolve(brick.part_id)])
+	return (Joints.both_ways(entries).get(pin, {}) as Dictionary).has(other)
+
+
 func _check(what: String, ok: bool) -> void:
 	print("  %s  %s" % ["ok  " if ok else "FAIL", what])
 	if not ok:
@@ -227,11 +241,16 @@ func _model(name: String, text: String) -> void:
 		else "s", ", ".join(made.map(func(id: int) -> String: return _part_of(id)))],
 		made.size() >= 1 and made.size() <= 3 and same)
 	var in_way: Array = []
+	var through: Array = []
 	for id: int in made:
 		for other: int in _builder.lattice.blockers_boxes(_builder.lattice.boxes_of(id), id):
-			in_way.append("#%d %s in #%d %s" % [id, _part_of(id), other, _part_of(other)])
-	_check("...each with room: %s" % ("nothing in its way" if in_way.is_empty()
-		else "; ".join(in_way)), in_way.is_empty() and not made.is_empty())
+			if _pinned_through(id, other):
+				through.append("#%d %s through #%d %s" % [id, _part_of(id), other, _part_of(other)])
+			else:
+				in_way.append("#%d %s in #%d %s" % [id, _part_of(id), other, _part_of(other)])
+	_check("...each with room: %s%s" % ["nothing in its way" if in_way.is_empty()
+		else "; ".join(in_way), "" if through.is_empty() else " (%s, its hole, as a hand puts a pin)"
+		% ", ".join(through)], in_way.is_empty() and not made.is_empty())
 	var margin: float = stress.margin_of(weak_id)
 	var report: Stability.Report = stress.report
 	var tips: bool = false

@@ -61,6 +61,7 @@ const STACKS := {
 ## A friction pin, as Technic builders brace a beam with a second.
 const PIN := "2780"
 const PIN_COLOUR := 0
+const GHOST_THROUGH := preload("res://src/render/ghost_through.gdshader")
 
 var world: BrickWorld
 var library: PartLibrary
@@ -165,7 +166,8 @@ func place(fix: Fix) -> PackedInt64Array:
 
 
 ## The fix's parts as one ghost, a surface per colour (ghost.gdshader), as
-## Edit, Pattern shows its copies.
+## Edit, Pattern shows its copies; and drawn faint where the model hides it
+## (ghost_through.gdshader), since a pin's ghost is inside two holes.
 static func ghost_mesh(parts: Array, from: PartLibrary) -> ArrayMesh:
 	var by_colour: Dictionary = {}
 	for item: Dictionary in parts:
@@ -190,6 +192,10 @@ static func ghost_mesh(parts: Array, from: PartLibrary) -> ArrayMesh:
 		material.shader = Pattern.GHOST_SHADER
 		material.set_shader_parameter("tint", from.color(code).shown)
 		material.set_shader_parameter("valid", true)
+		var through := ShaderMaterial.new()
+		through.shader = GHOST_THROUGH
+		through.set_shader_parameter("tint", from.color(code).shown)
+		material.next_pass = through
 		mesh.surface_set_material(mesh.get_surface_count() - 1, material)
 	return mesh
 
