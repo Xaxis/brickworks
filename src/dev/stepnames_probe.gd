@@ -144,6 +144,9 @@ func _run() -> void:
 	if not _finger:
 		await _editor()
 		await _review()
+		_main.queue_free()
+		await _frames(4)
+		_main = null
 	await _build_it()
 	print("\nstepnames_probe: %s" % ("all passed" if _failures == 0 else "%d failed" % _failures))
 	quit(1 if _failures else 0)
@@ -221,7 +224,7 @@ func _editor() -> void:
 	var said: PackedStringArray = _builder.history_words(1)
 	_check("...one undo step, Undo says it (%d → %d; \"%s\")" % [depth, _builder.history_depth(),
 		said[0] if not said.is_empty() else ""], _builder.history_depth() == depth + 1
-		and not said.is_empty() and said[0] == "step 3 named “%s”" % COCKPIT)
+		and not said.is_empty() and said[0] == "step 3 named \"%s\"" % COCKPIT)
 	var past: Array = _past_the_window(_steps)
 	_check("...and the timeline inside the window (%s)" % (", ".join(past) if not past.is_empty()
 		else "nothing past it"), past.is_empty())
@@ -359,9 +362,6 @@ func _editor() -> void:
 		else "nothing past it"), past.is_empty())
 	await _shot("8_long_name")
 	await _booklet(LONG, "8_booklet_long")
-	_main.queue_free()
-	await _frames(4)
-	_main = null
 
 
 ## The booklet made from the model open (sn_named.ldr): step 3's page, its

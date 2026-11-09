@@ -2193,6 +2193,8 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 			continue
 		if keyword == "STEP" or keyword == "ROTSTEP":
 			_settle_names(out, pending, looks, key(definition, step), eol, wrote)
+			# Settled once: the next step's are its own.
+			pending.clear()
 			_step_lines(out, looks, definition, step, any_part, eol, wrote)
 			out.append(_ending(raw, looks, definition, step + 1, eol))
 			step += 1
