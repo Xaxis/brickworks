@@ -42,7 +42,8 @@
 ## in words; Render never changing a light it does not show; the designer's
 ## gate by the call; a file of 200,000 light lines that are no lights opened
 ## within [constant JUNK_SLOWER] of one of any other meta command, and saved
-## within [constant JUNK_SAVE] of one of 200,000 comments. Its second review
+## within [constant JUNK_SAVE] of one of 200,000 comments as long as its
+## lines. Its second review
 ## (N1, t11, t12, t18, t19): a cleared model's unread lines never in the next
 ## model's file; a CRLF file's last light line saved with no lone CR; the
 ## app's own MPD keeping its sub-model's light; a light put in a model with a
@@ -918,8 +919,11 @@ const VIEW_META := "0 !BRICKWORKS VIEW "
 ## A file of 200,000 light lines that are no lights opens no slower than the
 ## same file of comments, by this much.
 const JUNK_SLOWER := 1.2
-## And saved no slower than the same file of comments, by this much (the lead,
-## 2026-11-07).
+## And saved no slower than the same file of comments as long as its lines,
+## by this much (the lead, 2026-11-07). Against short comments it measured
+## the bytes a save writes: 2.09 times at ready, which the lead accepted, and
+## 1.88-2.34 times since on every run, the same file 0.77-1.22 times one of
+## comments as long (winsweep, 2026-11-09).
 const JUNK_SAVE := 1.5
 
 
@@ -1281,10 +1285,10 @@ func _r_gate() -> void:
 ## 200,000 light lines that are no lights: opened no slower than the same
 ## file of any other meta command this build has no use for ([constant
 ## JUNK_SLOWER]), and kept; saved within [constant JUNK_SAVE] of the same
-## file of comments, as the lead set it (lreview measured 2.9 times, from the
-## lights' own walk over the text's lines: the open's reading answers a save
-## now), and said beside it against comments as long as its lines and the
-## other meta. Each open and save as a person's (main's), three of each,
+## file of comments as long as its lines (lreview measured 2.9 times short
+## comments, from the lights' own walk over the text's lines: the open's
+## reading answers a save now), and said beside it against short comments
+## and the other meta. Each open and save as a person's (main's), three of each,
 ## taken in turn, the median.
 func _r_junk() -> void:
 	var body: String = "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n"
@@ -1334,13 +1338,13 @@ func _r_junk() -> void:
 		% [str(took["junk"]), str(took["other metas"]), opens["junk"] / maxf(opens["other metas"],
 		1.0)] + "%.1f; saved, %d kept" % [JUNK_SLOWER, kept],
 		opens["junk"] <= opens["other metas"] * JUNK_SLOWER and kept == 200000)
-	_check("...saved in %.0f ms against %.0f ms for 200,000 comments (%s and %s), %.2f times, at "
-		% [saving["junk"], saving["comments"], str(saves["junk"]), str(saves["comments"]),
-		saving["junk"] / maxf(saving["comments"], 1.0)] + "most %.1f" % JUNK_SAVE,
-		saving["junk"] <= saving["comments"] * JUNK_SAVE)
-	print("        against comments as long as its lines %.0f ms (%s): %.2f times; the other "
-		% [saving["comments as long"], str(saves["comments as long"]), saving["junk"]
-		/ maxf(saving["comments as long"], 1.0)] + "meta %.0f ms (%s): %.2f times; opened, "
+	_check("...saved in %.0f ms against %.0f ms for 200,000 comments as long as its lines (%s and %s), %.2f times, at most %.1f"
+		% [saving["junk"], saving["comments as long"], str(saves["junk"]), str(saves["comments as long"]),
+		saving["junk"] / maxf(saving["comments as long"], 1.0), JUNK_SAVE],
+		saving["junk"] <= saving["comments as long"] * JUNK_SAVE)
+	print("        against short comments %.0f ms (%s): %.2f times; the other "
+		% [saving["comments"], str(saves["comments"]), saving["junk"]
+		/ maxf(saving["comments"], 1.0)] + "meta %.0f ms (%s): %.2f times; opened, "
 		% [saving["other metas"], str(saves["other metas"]), saving["junk"]
 		/ maxf(saving["other metas"], 1.0)] + "comments %.0f ms (%s): %.2f times" % [
 		opens["comments"], str(took["comments"]), opens["junk"] / maxf(opens["comments"], 1.0)])
