@@ -1,6 +1,7 @@
 ## Where a render goes: a download in a browser; on the desktop, a file in
 ## Downloads, and for a turntable or an animation its frames in a folder, an
-## animated WebP beside them and, where ffmpeg is installed, an MP4.
+## animated WebP beside them (or a GIF, [member gif]) and, where ffmpeg is
+## installed, an MP4.
 ##
 ## Encoding is done on a worker where there are workers: a 4K PNG is a
 ## second or two of a browser's one thread otherwise, and the page would
@@ -10,6 +11,12 @@ extends RefCounted
 
 ## Where desktop files go; Downloads when empty. A probe points it at its own.
 var folder: String = ""
+## A turntable, an animation or a building kept as a GIF (AnimatedGif)
+## rather than an animated WebP: 256 colours, made to fit 8 MB, for the
+## chats, forums and mail that take a GIF and not a WebP (video2).
+var gif: bool = false
+## What the GIF came to, once made: AnimatedGif.from_webp's answer less its bytes.
+var gif_made: Dictionary = {}
 ## What was written or downloaded, for the person and for a check.
 var said: PackedStringArray = PackedStringArray()
 var paths: PackedStringArray = PackedStringArray()
@@ -63,7 +70,11 @@ var _mp4_out: String = ""
 
 ## Whether a picture or a turntable is still being written.
 func writing() -> bool:
-	return not _keeping.is_empty() or not _pending.is_empty() or _mp4_pid > 0
+	return not _keeping.is_empty() or not _pending.is_empty() or _mp4_pid > 0 or _making_gif
+
+
+## The GIF being made from the frames (finish_turntable), while it is.
+var _making_gif: bool = false
 
 
 ## As the app closes, with a render still being written: what is done is
@@ -82,7 +93,12 @@ func close_now() -> PackedStringArray:
 			WorkerTasks.collect(int(waiting[0]))
 			_keep_frame(int(waiting[2]), waiting[1])
 		_pending.clear()
-		if _mp4_pid > 0 and OS.is_process_running(_mp4_pid):
+		if _making_gif:
+			# Its frames' workers are let go of as the app closes
+			# (WorkerTasks): the frames it is made of are kept whole instead.
+			_making_gif = false
+			lines.append("the GIF was not finished: " + give(_webp.bytes(), _base + ".webp", "image/webp"))
+		elif _mp4_pid > 0 and OS.is_process_running(_mp4_pid):
 			lines.append("ffmpeg is still making %s and finishes it on its own" % _mp4_out)
 		elif _mp4_pid == 0 and _webp.frame_count() > 0:
 			lines.append("the turntable was not finished: %d frames kept%s, no WebP or MP4"
@@ -139,6 +155,7 @@ func animation_name(model: String, motion: String) -> String:
 	var named: String = base
 	var n: int = 2
 	while FileAccess.file_exists(where().path_join(named + ".webp")) \
+			or FileAccess.file_exists(where().path_join(named + ".gif")) \
 			or FileAccess.file_exists(where().path_join(named + ".mp4")):
 		named = "%s %d" % [base, n]
 		n += 1
@@ -225,20 +242,53 @@ func frames_added() -> int:
 	return _webp.frame_count() if _webp != null else 0
 
 
-## The WebP, and on the desktop the MP4 if ffmpeg is here. Returns the
-## lines to show.
-func finish_turntable() -> PackedStringArray:
+## The WebP or the GIF, and on the desktop the MP4 if ffmpeg is here.
+## Returns the lines to show. [param told] hears how the GIF is coming on.
+func finish_turntable(told: Callable = Callable()) -> PackedStringArray:
 	await _drain(0)
 	var lines := PackedStringArray()
 	if _webp == null or _webp.frame_count() == 0:
 		return lines
-	lines.append(give(_webp.bytes(), _base + ".webp", "image/webp"))
+	if gif:
+		var made: String = await _gif(told)
+		if made.is_empty():
+			return lines
+		lines.append(made)
+	else:
+		lines.append(give(_webp.bytes(), _base + ".webp", "image/webp"))
 	if not _frames_dir.is_empty():
 		lines.append("frames in %s" % _frames_dir)
 		var made: String = await _mp4()
 		if not made.is_empty():
 			lines.append(made)
 	return lines
+
+
+## The GIF of the frames kept (AnimatedGif), given as a file is: the line
+## to show, saying how big and how many frames a second it came to; the WebP
+## when its frames would not read back. Empty when the app closed under it
+## (close_now kept the WebP instead).
+func _gif(told: Callable) -> String:
+	_making_gif = true
+	var rate: int = _settings.fps if _settings != null else 24
+	var made: Dictionary = await AnimatedGif.from_webp(_webp.bytes(), _webp.frame_count(), rate,
+		_settings != null and _settings.transparent, told)
+	if not _making_gif:
+		return ""
+	_making_gif = false
+	if made.is_empty():
+		# Never nothing for a render drawn: the WebP it was to be made of.
+		return "no GIF: its frames would not read back; " + give(_webp.bytes(), _base + ".webp",
+			"image/webp")
+	var bytes: PackedByteArray = made["bytes"]
+	made.erase("bytes")
+	made["bytes_size"] = bytes.size()
+	gif_made = made
+	var line: String = give(bytes, _base + ".gif", "image/gif")
+	var size: Vector2i = made["size"]
+	return "%s; a GIF of %d x %d, %d frames at %s a second, %s MB" % [line, size.x, size.y,
+		int(made["frames"]), Motions.num(float(made["fps"]), 1),
+		Motions.num(float(bytes.size()) / 1e6, 1)]
 
 
 ## ffmpeg, if it is installed: on the PATH, or where Homebrew and the

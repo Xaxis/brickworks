@@ -3,7 +3,7 @@
 Finding one of 28,000 parts by the words a builder would type, and getting its
 geometry in front of them.
 
-<!-- covers: lib:part search, ui:parts bin, ui:palette, lib:mesh fetch, cli:fetchparts browser flow, ui:recent and favourite parts, ui:techniques in the bin, ui:new parts in the bin, cli:binrow probe, ui:find a part from a photo, cli:dialog look probe, cli:picker folder probe, ui:the app's dialogs and menus, ui:where a chooser opens, cli:contrast probe, ui:buttons seen and read -->
+<!-- covers: lib:part search, ui:parts bin, ui:palette, lib:mesh fetch, cli:fetchparts browser flow, ui:recent and favourite parts, ui:techniques in the bin, ui:new parts in the bin, cli:binrow probe, ui:rare colours in the bin, cli:rarity probe, ui:find a part from a photo, cli:dialog look probe, cli:picker folder probe, ui:the app's dialogs and menus, ui:where a chooser opens, cli:contrast probe, ui:buttons seen and read -->
 
 ## Sub-features
 
@@ -525,12 +525,15 @@ geometry in front of them.
   change reads the file again and merges (`_load_palettes(true)`,
   `_merged`), and a window that finds its own additions missing (the web's
   late copy of another tab's older write) writes them back; the bin looks at
-  the file once a second while Palettes shows (`_watch_palettes`). A tab
+  the file once a second while Palettes shows (`_watch_palettes`), and
+  counts them on the chip whatever shows, so a palette the person's Claude
+  makes over MCP (mcppalettes) is counted at once. A tab
   left open on an older build after an update keeps what a later build
   wrote: words it put on a palette or an entry, and entries of kinds it does
   not know (`_later`, never shown, written back whole). A file that cannot be
   read is kept beside it (`palettes.cfg.unreadable`) before a change writes
-  over it. No MCP tool: a session copies parts with edit_model.
+  over it. A session reads and changes the same palettes through the same
+  file (`palettes` and `edit_palette`, `PaletteTool`; see mcp.md).
   `palettes_probe` (1280 x 720, PROBE_SIZE=1400x900 too).
 - `techniques in the bin` (`src/ai/techniques.gd`, the bin's Techniques):
   *Techniques* sits after Recent, Favourites and Palettes, the assistant's worked
@@ -581,6 +584,27 @@ geometry in front of them.
   sat under it (appux7's walk). `binrow_probe` (1400 x 900; the window made
   1280 x 720 and 1024 x 768 in turn; through the sign-in screen, .env),
   `binrow_phone_probe` (390 x 844), `binrow_tablet_probe` (1024 x 768).
+- `rare colours in the bin` (`PartsBin._swatch_tip`, `PartLibrary.sets_in_colour`;
+  APP_UX7 rarity): with a part in hand, a colour's swatch tooltip says in how
+  many sets the part comes in it, "3001 comes in it, in 1,011 sets", and in
+  three sets or fewer (`RARE_IN`, BrickMissing's) "in 2 sets: rare in this
+  colour". The counts are Rebrickable's set inventories as the shards hold
+  them, a set's own parts and its figures', no spare alone, not what a pack
+  has only through a set packed in it, none of theme 746's database sets:
+  `tools/collection_data.py` writes them beside the shards as
+  `assets/generated/sets/colours_NN.json` (64 files by the part's number; a
+  full run, or `--colours` from the shards written). Not in the start: all of
+  them are 104 kB brotli. The desktop reads its own; the web fetches a part's
+  file from the deployment's `/sets/` (deploy.sh copies them with the shards)
+  and the tooltips are said again when it is in (`colour_sets_came`). A count
+  of 0 says nothing (silence), and a colour the catalogue's list says the part
+  was never made in but a set has gets the dot and its sets (7049b's Black,
+  108). `rarity_probe` (1400 x 900, the window made 1280 x 720; through the
+  sign-in screen, .env) rests on the swatches as a person does and reads the
+  tooltip up; `tests/test_collection.py` counts ten parts in a colour straight
+  off Rebrickable's tables (`tools/minitest.py tests/test_collection.py`);
+  `tools/web/bin_flow.mjs` step 5 reads Red's sentence in a browser against
+  the deployment's own file.
 - `find a part from a photo` (`src/net/brickognize.gd`): the camera in the
   bin's search field. The first press says the photo goes to Brickognize, a
   third party that may keep it and train on it (their terms, read 2026-10-24),

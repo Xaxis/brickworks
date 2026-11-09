@@ -1,9 +1,10 @@
 ---
-tools: search_parts, find_parts_like
+tools: search_parts, find_parts_like, palettes, edit_palette
 ai: Finding parts by words, number, shape or a photo, and the colours they come in. An assistant finds real parts with search_parts, the parts like one (to swap it for) with search_parts like=, or by their look with find_parts_like, never by guessing a part number.
 rules:
   - Every part is from the LDraw library; printed parts are found with the word print, stickered ones with sticker.
   - Colours are LDraw colour codes, and a part comes only in colours it was really made in.
+  - The person's palettes are theirs, kept for every model: palettes reads them; edit_palette makes one of the open model's parts (bricks=, each in its colour) and sub-assemblies (assembly=, assembly_bricks=) in one call, and place puts a sub-assembly down whole. Ask the person before deleting a palette or taking a sub-assembly out (agreed=true).
 title: The parts bin
 nav: The parts bin
 description: Find any part by name, number, shape or a photo, keep the ones you use, and choose its colour.
@@ -42,6 +43,16 @@ ui:techniques in the bin
 lib:worked constructions
 -->
 
+### Palettes {#palettes}
+
+**Palettes**, beside Favourites, keeps palettes of your own, as many as you like, each named: parts in their colours and whole sub-assemblies, there in every model you open. **New palette** makes one and its name is chosen, so typing names it. In an open palette, **Add** keeps the part in hand in its colour, the selected parts each in its colour, or the selection as one sub-assembly, named. A click on a part takes it in hand in its colour; a click on a sub-assembly takes it whole, and a click puts it down as a sub-assembly of its own. **More** takes one out, renames a sub-assembly or deletes the palette.
+
+Claude keeps them for you too: ask it to keep the parts of what you built as a palette, and it makes the one the bin then shows, in one step (`palettes`, `edit_palette`). It can put a kept sub-assembly down in any model whole, and asks you before it deletes a palette or takes a sub-assembly out.
+
+<!-- covers
+lib:a session keeps and uses palettes over mcp
+-->
+
 ## New parts {#new}
 
 **New**, after Palettes, lists every part first made in the two latest years the parts catalogue knows, now 2025 and 2026, the newest year first. A part's year is the year of the first set it came in. Type to narrow it: *slope* lists the new slopes. Its tooltip names the two years.
@@ -65,6 +76,12 @@ Select a part, or take one in hand, and choose **Like this** beside Fits: the bi
 The palette under the bin holds every colour parts are made in, and a part's own colours come first. [[[]] and [[]]] step through them, and [[Shift+C]] finds one by name or LDraw number. A part is drawn in its true colour, transparent and metallic finishes included.
 
 Tick **Only parts made in it** beside the colour's name and the bin lists only the parts real sets have in that colour, *Sand Green* or any other; choose another colour and the list follows it.
+
+With a part in hand, rest the pointer on a colour: its tooltip says in how many sets the part comes in it, *3001 comes in it, in 1,011 sets*. In three sets or fewer it says *rare in this colour*: a piece lost in it is hard to replace. The counts are Rebrickable's set inventories, a set's own parts and its minifigures', not its spares, and not a set counted again for a pack that holds it.
+
+<!-- covers
+ui:rare colours in the bin
+-->
 
 ## Swap, list and plain parts {#swap}
 
