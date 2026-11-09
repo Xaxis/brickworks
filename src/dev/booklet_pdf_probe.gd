@@ -402,15 +402,35 @@ func _bidi(out: String) -> void:
 			continue
 		var said_runs: String = _same_ink(page, printed, band, roundi(size * 0.2 * COMPARED_AT))
 		_check("the %s's ink where the page's is (%s)" % [typed[0], said_runs], said_runs.begins_with("ok"))
+		if typed[1] == ARABIC:
+			# The page's picture and the PDF could share one mistake (pre261
+			# drew a spaced line a letter at a time in both): the line shaped
+			# whole by the engine, as any label of the app's draws it, says
+			# how wide its words are joined.
+			var face := FontFile.new()
+			face.data = FileAccess.get_file_as_bytes("res://assets/fonts/LiberationSans-Bold.ttf")
+			face.allow_system_fallback = true
+			var whole: float = face.get_string_size(ARABIC, HORIZONTAL_ALIGNMENT_LEFT, -1, roundi(size * COMPARED_AT)).x \
+				+ float(op["spacing"]) * COMPARED_AT * (ARABIC.length() - 1)
+			var wide: Array = []
+			for image: Image in [page, printed]:
+				var inked: Array = _ink_runs(image, band, roundi(size * 0.2 * COMPARED_AT))
+				wide.append((inked[-1] as Rect2i).end.x - (inked[0] as Rect2i).position.x if not inked.is_empty() else 0)
+			_check("...as wide as the engine shapes it whole, joined (%d px on the page, %d printed, %d shaped)" % [
+				wide[0], wide[1], roundi(whole)], absf(wide[0] - whole) <= whole * 0.03
+				and absf(wide[1] - whole) <= whole * 0.03)
 	drawer.queue_free()
 
 
 ## Whether the ink of [param printed] inside [param band] is where that of
 ## [param page] is: each run of the page's ink between gaps of [param gap]
 ## px or more, the printed ink inside it (and half a gap either side) boxed
-## within 2 px of the page's on each side, and the printed page's runs as
-## many. "ok: ..." with the runs' worst, else what is off.
-func _same_ink(page: Image, printed: Image, band: Rect2i, gap: int) -> String:
+## within 2 px of the page's on each side, the printed page's runs as many,
+## and of each run's ink, the page's and the printed, all but 3% within
+## 2 px of the other's (a word's letters in the other order fill much the
+## same box, not the same pixels). "ok: ..." with the runs' worst, else
+## what is off.
+static func _same_ink(page: Image, printed: Image, band: Rect2i, gap: int) -> String:
 	var runs: Array = _ink_runs(page, band, gap)
 	var theirs: Array = _ink_runs(printed, band, gap)
 	if runs.is_empty():
@@ -418,7 +438,16 @@ func _same_ink(page: Image, printed: Image, band: Rect2i, gap: int) -> String:
 	var worst: int = 0
 	var off: Array = []
 	var mask: Array = _ink_mask(printed, band)
+	var own: Array = _ink_mask(page, band)
+	var near_printed: Array = _grown(mask, 2)
+	var near_page: Array = _grown(own, 2)
+	var least: float = 1.0
 	for run: Rect2i in runs:
+		var span := Vector2i(maxi(run.position.x - gap / 2, 0), mini(run.end.x + gap / 2, band.size.x))
+		var shared: float = minf(_share(own, near_printed, span), _share(mask, near_page, span))
+		least = minf(least, shared)
+		if shared < 0.97:
+			off.append("%d-%d px: %d%% of the ink within 2 px" % [run.position.x, run.end.x, floori(shared * 100.0)])
 		var low := Vector2i(1 << 30, 1 << 30)
 		var high := Vector2i(-1, -1)
 		for x: int in range(maxi(run.position.x - gap / 2, 0), mini(run.end.x + gap / 2, band.size.x)):
@@ -438,7 +467,48 @@ func _same_ink(page: Image, printed: Image, band: Rect2i, gap: int) -> String:
 		off.append("%d runs printed, %d on the page" % [theirs.size(), runs.size()])
 	if not off.is_empty():
 		return "%d runs, %s" % [runs.size(), "; ".join(off.slice(0, 4))]
-	return "ok: %d runs, each within %d px" % [runs.size(), worst]
+	return "ok: %d runs, each within %d px, %d%% of each one's ink within 2 px of the other's" % [runs.size(),
+		worst, floori(least * 100.0)]
+
+
+## [param mask] (rows of 1 and 0) with each inked pixel grown by [param by]
+## px every way.
+static func _grown(mask: Array, by: int) -> Array:
+	var across: Array = []
+	for row: PackedByteArray in mask:
+		var wide := PackedByteArray()
+		wide.resize(row.size())
+		for x: int in row.size():
+			if row[x]:
+				for at: int in range(maxi(x - by, 0), mini(x + by + 1, row.size())):
+					wide[at] = 1
+		across.append(wide)
+	var out: Array = []
+	for y: int in across.size():
+		var grown := PackedByteArray()
+		grown.resize((across[y] as PackedByteArray).size())
+		for other: int in range(maxi(y - by, 0), mini(y + by + 1, across.size())):
+			var row: PackedByteArray = across[other]
+			for x: int in row.size():
+				if row[x]:
+					grown[x] = 1
+		out.append(grown)
+	return out
+
+
+## The share of [param mask]'s ink between columns [param span] that
+## [param near] has: 1.0 where there is none.
+static func _share(mask: Array, near: Array, span: Vector2i) -> float:
+	var inked: int = 0
+	var found: int = 0
+	for y: int in mask.size():
+		var row: PackedByteArray = mask[y]
+		var close: PackedByteArray = near[y]
+		for x: int in range(span.x, span.y):
+			if row[x]:
+				inked += 1
+				found += close[x]
+	return 1.0 if inked == 0 else float(found) / inked
 
 
 ## The ink of [param image] inside [param band]: a row a PackedByteArray,
