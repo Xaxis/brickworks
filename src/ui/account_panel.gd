@@ -13,6 +13,10 @@
 ## ends every connection at once — Claude's tokens stop working that
 ## moment, on every device. Or, not connected, a way to connect it.
 ##
+## While the beta is open, its testers (betajoin, 2026-11-09): whether this
+## account is one, and Join the beta testers or Leave the beta in one press
+## (Account.join_beta, Account.leave_beta).
+##
 ## The owner's account (MASTER_EMAIL) also gets a link to the admin page,
 ## on the web, where the page is.
 ##
@@ -42,6 +46,10 @@ var _claude_box: VBoxContainer
 var _claude_state: Label
 var _claude_connect: LinkButton
 var _claude_disconnect: Button
+var _beta_box: VBoxContainer
+var _beta_said: Label
+var _beta_press: Button
+var _beta_busy: bool = false
 ## Claude connected to this tab (ClaudeConnector, a Later class): set
 ## once the assistant's panel is made (Main._make_chat).
 var connector: Node
@@ -155,6 +163,24 @@ func setup(with_account: Account) -> void:
 	every.autostart = true
 	every.timeout.connect(ask_feed)
 	add_child(every)
+
+	# The beta's testers: shown while the beta is open (_follow).
+	_beta_box = VBoxContainer.new()
+	_beta_box.add_theme_constant_override("separation", 6)
+	_beta_box.visible = false
+	column.add_child(_beta_box)
+	_beta_box.add_child(HSeparator.new())
+	var beta_title := Label.new()
+	beta_title.text = "Beta"
+	beta_title.add_theme_font_size_override("font_size", 14)
+	_beta_box.add_child(beta_title)
+	_beta_said = _line("", 12, 0.8)
+	_beta_box.add_child(_beta_said)
+	_beta_press = Button.new()
+	_beta_press.focus_mode = Control.FOCUS_NONE
+	_beta_press.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_beta_press.pressed.connect(_beta_pressed)
+	_beta_box.add_child(_beta_press)
 
 	_admin = Look.link("Accounts and connectors (admin)", 12)
 	_admin.uri = "/admin"
@@ -295,6 +321,8 @@ func controls_by_name() -> Dictionary:
 		named["account_disconnect_claude"] = _claude_disconnect
 	if _claude_connect.is_visible_in_tree():
 		named["account_connect_claude"] = _claude_connect
+	if _beta_press.is_visible_in_tree():
+		named["account_beta"] = _beta_press
 	if _tab_view != null:
 		named.merge(_tab_view.controls_by_name())
 	return named
@@ -427,10 +455,40 @@ func _follow() -> void:
 		+ "the account kept on this device. It is checked again when "
 		+ "Brickworks can be reached." if account.offline
 		else "Signed in on this device until you sign out.")
+	_beta_box.visible = account.signed_in() and account.beta_open
+	if not _beta_busy:
+		_beta_said.text = ("You are a beta tester. Thank you." if account.tester
+			else "Brickworks is in open beta. Testers try new features first and tell us what is "
+			+ "wrong; the first 100 we pick get a month of Pro.")
+	_beta_press.text = "Leave the beta" if account.tester else "Join the beta testers"
+	_beta_press.theme_type_variation = &"" if account.tester else &"DefaultButton"
 	# The admin page is a page of the site, so only where the site is.
 	_admin.visible = account.master and OS.has_feature("web")
 	if _admin.visible:
 		_admin.uri = Origin.here() + "/admin"
+
+
+## Join the beta's testers, or leave them, in one press.
+func _beta_pressed() -> void:
+	if _beta_busy:
+		return
+	_beta_busy = true
+	_beta_press.disabled = true
+	var leaving: bool = account.tester
+	var problem: String = ""
+	if leaving:
+		problem = await account.leave_beta()
+	else:
+		problem = await account.join_beta("app_settings")
+	_beta_busy = false
+	_beta_press.disabled = false
+	_follow()
+	if not problem.is_empty():
+		_beta_said.text = problem
+	elif leaving:
+		_beta_said.text = "You left the beta. Join again any time."
+	else:
+		_beta_said.text = "Joined. You are a beta tester."
 
 
 ## Escape closes it, like the other panels.
