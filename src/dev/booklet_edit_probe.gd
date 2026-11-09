@@ -933,18 +933,22 @@ func _printed(page: int, steps: Array, guides: Vector2, through: Array, text_nam
 	var turn_at: int = content.find("0.866 0.5 -0.5 0.866 ")
 	var fade_at: int = content.find("/A50 gs")
 	var red: PackedVector2Array = _pdf_red_line(content)
-	var words: RegExMatch = RegEx.create_from_string("1 0 0 -1 ([0-9.]+) ([0-9.]+) Tm [0-9. ]+ rg <%s"
-		% "Half".to_ascii_buffer().hex_encode()).search(content)
+	# Where a reader finds the words: poppler's box for them. The PDF draws
+	# glyph numbers in its own embedded type (pdfcid), not the letters.
+	var boxes: Array = []
+	OS.execute("pdftotext", ["-bbox", ProjectSettings.globalize_path(pdf), "-"], boxes)
+	var found: RegExMatch = RegEx.create_from_string("<word xMin=\"([0-9.]+)\"[^>]*>Half[^<]*<").search("".join(boxes))
+	var words_x: float = found.get_string(1).to_float() / BookletPdf.PT if found != null else -1.0
 	var off: Array = through.map(func(bend: Vector2) -> float: return _off_line(red, bend))
 	_check("the PDF: the picture drawn turned 30° (cm at %d, then Do: %s), the words under a 50%% graphics state (%s, /ca 0.5: %s), red ink %s mm from each bend, the words at x %s mm (the guide %s)"
 		% [turn_at, content.find(" Do", turn_at) > turn_at and content.find(" Do", turn_at) - turn_at < 120,
 			fade_at >= 0 and content.find("BT", fade_at) > fade_at, dictionary,
 			", ".join(PackedStringArray(off.map(func(d: float) -> String: return "%.2f" % d))),
-			words.get_string(1) if words != null else "?", guides.x],
+			"%.2f" % words_x if found != null else "?", guides.x],
 		turn_at >= 0 and content.find(" Do", turn_at) - turn_at < 120 and fade_at >= 0
 		and dictionary and off.size() == 2
-		and off.all(func(d: float) -> bool: return d < 0.3) and words != null
-		and absf(words.get_string(1).to_float() - guides.x) < 0.05)
+		and off.all(func(d: float) -> bool: return d < 0.3) and found != null
+		and absf(words_x - guides.x) < 0.05)
 	# The PNG, at 300 dots an inch.
 	var zip: String = _out.path_join("objects_pages.zip")
 	var drawer := BookletPng.new()
