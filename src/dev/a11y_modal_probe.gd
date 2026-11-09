@@ -10,9 +10,13 @@
 ## Read as a screen reader reads it: the app is run again in a D-Bus
 ## session of its own, where tools/a11y_tree.py says a screen reader is on
 ## (as Orca does), so Godot's own "auto" accessibility comes on as it does
-## for a person with one, and the tree is read back over AT-SPI: each
-## window's role, name and its MODAL state, and the element with the focus.
-## Nothing on the person's own bus is touched.
+## for a person with one, and the tree is read back over AT-SPI as Orca
+## finds a window: pointed at (the middle of its title bar and of its face)
+## and read up through the parents of what is there, and from the element
+## that took the focus: each window's role, name and its MODAL state.
+## Not by listing the window's children: AccessKit cuts that list short in
+## this app (tools/a11y_tree.py says where). Nothing on the person's own
+## bus is touched.
 ##
 ## Through the way in first, as a person comes: the sign-in screen up over
 ## the app (gate_for_probe), a throwaway account signed in (made with the
@@ -46,6 +50,8 @@ const NAMES := preload("res://src/dev/a11y_names_probe.gd")
 const FIRST: Array[String] = ["about", "new", "import_ldraw", "save_as", "reference"]
 ## How long the reader may take over one read.
 const READ_MS := 90000
+## The roles a window has in the tree.
+const WINDOWS: Array[String] = ["dialog", "frame", "window", "alert", "file chooser", "color chooser"]
 
 var _failures: int = 0
 var _main: Node
@@ -220,10 +226,10 @@ func _way(way: String) -> void:
 		await process_frame
 	await _frames(6)
 	await _shot(way)
-	_judge(way, await _ask({"do": "read"}))
+	await _look(way, {"do": "read"})
 	if way == "about":
-		_judge("about, the keys taken from the window and given back",
-			await _ask({"do": "away", "xid": _xid}))
+		await _look("about, the keys taken from the window and given back",
+			{"do": "away", "xid": _xid})
 	if way == "save_as" and SaveTo.showing != null and SaveTo.showing.visible:
 		await _replace_question(SaveTo.showing)
 	# Its work done before it is put away: a coroutine still waiting at quit
@@ -256,7 +262,7 @@ func _replace_question(chooser: FileDialog) -> void:
 		return
 	await _frames(6)
 	await _shot("save_as_replace")
-	_judge("save_as, replace it?", await _ask({"do": "read"}))
+	await _look("save_as, replace it?", {"do": "read"})
 	if question is ConfirmationDialog:
 		(question as ConfirmationDialog).get_cancel_button().pressed.emit()
 	question.hide()
@@ -264,18 +270,36 @@ func _replace_question(chooser: FileDialog) -> void:
 	DirAccess.remove_absolute(path)
 
 
-## Every window over the app, as the tree read says it is.
-func _judge(way: String, tree: Dictionary) -> void:
+## Every window over the app, as a screen reader finds it: pointed at, the
+## middle of its title bar and of its face, and read up through the parents
+## of what is there (as Orca's mouse review does), and from the focus.
+func _look(way: String, what: Dictionary) -> void:
+	var over: Array[Window] = []
+	for sub: Window in root.get_embedded_subwindows():
+		if sub.visible and not sub.get_flag(Window.FLAG_POPUP) and sub.get_parent() != null:
+			over.append(sub)
+	# In the window's own pixels, as the reader points: the app's drawing is
+	# scaled to the window (canvas_items stretch, the person's size).
+	var to_pixels: Transform2D = root.get_final_transform()
+	var points: Array = []
+	for sub: Window in over:
+		var bar: float = sub.get_theme_constant("title_height")
+		var face := Rect2(Vector2(sub.position), Vector2(sub.size))
+		for at: Vector2 in [face.position + Vector2(face.size.x / 2.0, -bar / 2.0), face.get_center()]:
+			var pixel: Vector2 = to_pixels * at
+			points.append([pixel.x, pixel.y])
+	what["points"] = points
+	_judge(way, await _ask(what), over)
+
+
+func _judge(way: String, tree: Dictionary, over: Array[Window]) -> void:
 	if tree.has("error"):
 		_check("%s: the tree was read (%s)" % [way, tree["error"]], false)
 		return
-	var nodes: Array = tree.get("windows", [])
-	var top: Dictionary = {}
-	var judged: int = 0
-	for sub: Window in root.get_embedded_subwindows():
-		if not sub.visible or sub.get_flag(Window.FLAG_POPUP) or sub.get_parent() == null:
-			continue
-		judged += 1
+	var hits: Array = tree.get("hits", [])
+	var top: String = ""
+	for n: int in over.size():
+		var sub: Window = over[n]
 		var title: String = _spoken(sub)
 		var own_question: bool = sub.get_parent().get_window() != root
 		var held: bool = _holder.get("_held").has(sub)
@@ -283,31 +307,36 @@ func _judge(way: String, tree: Dictionary) -> void:
 		if not own_question and not held and sub.exclusive and sub.transient:
 			_check("%s: “%s” holds the window only as the engine does, so its close is dropped"
 				% [way, title], false)
-		var node: Dictionary = _node_named(nodes, title)
+		var node: Dictionary = {}
+		var found_there: PackedStringArray = []
+		for k: int in [2 * n, 2 * n + 1]:
+			var at: Array = (hits[k] as Dictionary).get("chain", []) if k < hits.size() else []
+			found_there.append(_said(at))
+			if node.is_empty():
+				node = _window_named(at, title)
 		if node.is_empty():
-			_check("%s: “%s” (%s) is in the tree a screen reader reads" % [way, title,
-				sub.get_class()], false)
+			_check("%s: “%s” (%s) is in the tree a screen reader reads (pointed at, found: %s)"
+				% [way, title, sub.get_class(), " / ".join(found_there)], false)
 			continue
 		var modal: bool = bool(node.get("modal"))
-		_check("%s: “%s”, %s, %s, is %s to a screen reader (%s)" % [way, title,
+		_check("%s: “%s”, %s, %s, is %s to a screen reader (%s, %s)" % [way, title,
 			sub.get_class(), "a question of its dialog" if own_question else ("holding the window"
 			if holds else "beside the model"), "modal" if holds else "not modal",
-			"%s, %s" % [node.get("role"), "MODAL" if modal else "not modal"]], modal == holds)
+			node.get("role"), "MODAL" if modal else "not modal"], modal == holds)
 		var key: String = title if not own_question else "%s (its question)" % title
 		if holds:
 			_held_seen[key] = bool(_held_seen.get(key, true)) and modal
-			top = node
+			top = title
 		else:
 			_beside_seen[key] = bool(_beside_seen.get(key, false)) or modal
-	if judged == 0:
+	if over.is_empty():
 		print("    %s: no window over the app (a panel of its own)" % way)
 	if not top.is_empty():
 		var focus: Variant = tree.get("focus")
-		var inside: bool = focus is Dictionary and _starts_with((focus as Dictionary).get("path", []),
-			top.get("path", []))
-		_check("%s: the focus a screen reader reads is inside “%s” (%s)" % [way,
-			top.get("name"), "%s “%s”" % [(focus as Dictionary).get("role"),
-			(focus as Dictionary).get("name")] if focus is Dictionary else "nothing focused"], inside)
+		var focused: Array = focus if focus is Array else []
+		_check("%s: the focus a screen reader hears is inside “%s” (%s)" % [way, top,
+			_said(focused) if not focused.is_empty() else "nothing focused"],
+			not _window_named(focused, top).is_empty())
 
 
 ## The window's name in the tree: what Godot says it is called (Window's
@@ -317,22 +346,21 @@ static func _spoken(window: Window) -> String:
 		else window.tr(window.title)
 
 
-static func _node_named(nodes: Array, title: String) -> Dictionary:
-	var found: Dictionary = {}
-	for node: Dictionary in nodes:
-		if str(node.get("name")) == title:
-			if bool(node.get("showing")) or found.is_empty():
-				found = node
-	return found
+## In an element's chain up through its parents, the window of that name.
+static func _window_named(chain: Array, title: String) -> Dictionary:
+	for node: Dictionary in chain:
+		if str(node.get("role")) in WINDOWS and str(node.get("name")) == title:
+			return node
+	return {}
 
 
-static func _starts_with(path: Array, prefix: Array) -> bool:
-	if path.size() < prefix.size():
-		return false
-	for n: int in prefix.size():
-		if int(path[n]) != int(prefix[n]):
-			return false
-	return true
+## A chain as a person would hear it, nearest first.
+static func _said(chain: Array) -> String:
+	var words: PackedStringArray = []
+	for node: Dictionary in chain:
+		words.append("%s “%s”%s" % [node.get("role"), str(node.get("name")).left(40),
+			" MODAL" if bool(node.get("modal")) else ""])
+	return " < ".join(words) if not words.is_empty() else "nothing"
 
 
 ## One ask of the reader, and its answer.

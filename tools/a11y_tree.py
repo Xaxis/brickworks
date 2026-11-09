@@ -5,10 +5,20 @@
 
 Runs GODOT ARGS with a screen reader said to be on, and answers its asks:
 each ask_N.json the app writes in DIR is answered with tree_N.json.
-  {"do": "read"}              the windows in the app's tree, and its focus
-  {"do": "away", "xid": X}    the keys taken from X window X and given
-                              back, as a person switching to another
-                              program and back does; then a read
+  {"do": "read", "points": [[x, y], ...]}
+      what is at each point of the window (x, y in its pixels), from the
+      element there up through its parents: role, name, MODAL; and the
+      same from the element that last took the focus
+  {"do": "away", "xid": X, "points": ...}
+      the keys taken from X window X and given back, as a person
+      switching to another program and back does; then a read
+
+Found by pointing and by the focus, as Orca finds them (its mouse review,
+and its focus events read up through the parents), not by listing a
+window's children: AccessKit 0.22 stops a list of children early where an
+element of no role and no children (a spacer) is followed by a hidden one
+that has children, and the app's top bar has one (Model name's spacer,
+then the hidden Claude tab), so its window lists only the menus.
 
 Godot speaks to a screen reader through AccessKit, which on Linux is
 AT-SPI: a bus of its own (org.a11y.Bus) that the session bus names. The
@@ -36,6 +46,8 @@ WINDOWS = {"dialog", "frame", "window", "alert", "file chooser", "color chooser"
 # How deep a walk goes: the app's tree is its scene's, a dialog's question
 # a dozen levels into its dialog.
 DEEPEST = 60
+# And how many nodes at most: the whole app is a few thousand.
+MOST = 40000
 
 
 def refuse(why: str) -> int:
@@ -57,6 +69,13 @@ def main() -> int:
         from gi.repository import Atspi, Gio, GLib
     except (ImportError, ValueError) as e:
         return refuse("no AT-SPI for Python here (%s)" % e)
+    # libatspi does not know AccessKit's AddAccessible signal and warns on
+    # each one, thousands a run: counted, said once at the end.
+    unknown = [0]
+
+    def count(*_args):
+        unknown[0] += 1
+    GLib.log_set_handler("dbind", GLib.LogLevelFlags.LEVEL_WARNING, count)
     session = Gio.bus_get_sync(Gio.BusType.SESSION, None)
     for what in ("IsEnabled", "ScreenReaderEnabled"):
         session.call_sync("org.a11y.Bus", "/org/a11y/bus", "org.freedesktop.DBus.Properties", "Set",
@@ -64,6 +83,14 @@ def main() -> int:
                           None, Gio.DBusCallFlags.NONE, -1, None)
     print("a11y_tree: a screen reader said to be on, in this session's own bus", flush=True)
     os.makedirs(folder, exist_ok=True)
+    # The element that took the focus last, as Orca hears it.
+    focused = [None]
+
+    def took_focus(event, *_args):
+        if event.detail1:
+            focused[0] = event.source
+    listener = Atspi.EventListener.new(took_focus)
+    listener.register("object:state-changed:focused")
     app_run = subprocess.Popen(command)
     answered = 0
     while app_run.poll() is None:
@@ -83,14 +110,23 @@ def main() -> int:
             continue
         if wanted.get("do") == "away":
             wanted["away"] = away(int(wanted.get("xid", 0)))
-        # The app sends its tree at most 60 times a second.
-        time.sleep(0.25)
+        # The app sends its tree at most 60 times a second; its events
+        # heard meanwhile.
+        until = time.monotonic() + 0.25
+        while time.monotonic() < until:
+            GLib.MainContext.default().iteration(False)
+            time.sleep(0.01)
         answer = read(Atspi, app_run.pid)
         answer["asked"] = wanted
+        answer["hits"] = hits(Atspi, app_run.pid, wanted.get("points", []))
+        answer["focus"] = chain(Atspi, focused[0]) if focused[0] is not None else None
         out = os.path.join(folder, "tree_%d.json" % answered)
         with open(out + ".part", "w") as f:
             json.dump(answer, f)
         os.replace(out + ".part", out)
+    if unknown[0]:
+        print("a11y_tree: %d of libatspi's warnings about AccessKit's signals not shown"
+              % unknown[0], flush=True)
     return app_run.returncode
 
 
@@ -108,7 +144,7 @@ def read(Atspi, pid: int) -> dict:
     app = next((a for a in apps if a.get_process_id() == pid), apps[0])
     Atspi.Accessible.set_cache_mask(app, Atspi.Cache.NONE)
     app.clear_cache()
-    found = {"windows": [], "focus": None, "nodes": 0}
+    found = {"windows": [], "nodes": 0}
     walk(Atspi, app, [], found, 0)
     found["app"] = app.get_name()
     found["ms"] = round((time.monotonic() - started) * 1000)
@@ -116,26 +152,71 @@ def read(Atspi, pid: int) -> dict:
 
 
 def walk(Atspi, node, path: list, found: dict, depth: int) -> None:
-    if node is None or depth > DEEPEST:
+    if node is None or depth > DEEPEST or found["nodes"] >= MOST:
         return
     found["nodes"] += 1
     try:
         role = node.get_role_name()
         states = node.get_state_set()
         showing = states.contains(Atspi.StateType.SHOWING)
+        if os.environ.get("A11Y_TREE_DUMP") and found["nodes"] <= 400:
+            box = None
+            try:
+                e = node.get_extents(Atspi.CoordType.WINDOW)
+                box = [e.x, e.y, e.width, e.height]
+            except Exception:
+                pass
+            found.setdefault("dump", []).append([path, role, node.get_name(), node.get_child_count(),
+                                                 showing, box])
         if role in WINDOWS:
             found["windows"].append({"path": path, "role": role, "name": node.get_name(),
                                      "modal": states.contains(Atspi.StateType.MODAL),
                                      "showing": showing})
-        if states.contains(Atspi.StateType.FOCUSED):
-            found["focus"] = {"path": path, "role": role, "name": node.get_name()}
-        # A hidden branch holds nothing a person meets.
-        if depth > 0 and not showing and role not in WINDOWS:
-            return
         for i in range(node.get_child_count()):
             walk(Atspi, node.get_child_at_index(i), path + [i], found, depth + 1)
     except Exception as e:  # a node gone while read: said, not fatal
         found.setdefault("gone", []).append("%s: %s" % (path, e))
+
+
+def chain(Atspi, node) -> list:
+    """The element and its parents up to the app: role, name, MODAL."""
+    out = []
+    try:
+        while node is not None and len(out) < DEEPEST:
+            role = node.get_role_name()
+            if role == "application":
+                break
+            states = node.get_state_set()
+            box = node.get_extents(Atspi.CoordType.WINDOW)
+            out.append({"role": role, "name": node.get_name(),
+                        "modal": states.contains(Atspi.StateType.MODAL),
+                        "showing": states.contains(Atspi.StateType.SHOWING),
+                        "box": [box.x, box.y, box.width, box.height]})
+            node = node.get_parent()
+    except Exception as e:  # gone while read: said, not fatal
+        out.append({"role": "gone", "name": str(e)})
+    return out
+
+
+def hits(Atspi, pid: int, points: list) -> list:
+    desktop = Atspi.get_desktop(0)
+    app = None
+    for i in range(desktop.get_child_count()):
+        candidate = desktop.get_child_at_index(i)
+        if candidate is not None and (app is None or candidate.get_process_id() == pid):
+            app = candidate
+    out = []
+    window = app.get_child_at_index(0) if app is not None and app.get_child_count() else None
+    for x, y in points:
+        at = None
+        if window is not None:
+            try:
+                at = window.get_accessible_at_point(int(round(x)), int(round(y)),
+                                                    Atspi.CoordType.WINDOW)
+            except Exception:
+                at = None
+        out.append({"at": [x, y], "chain": chain(Atspi, at) if at is not None else []})
+    return out
 
 
 def away(xid: int) -> str:
