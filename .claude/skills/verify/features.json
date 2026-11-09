@@ -2863,6 +2863,14 @@
       "tests": []
     },
     {
+      "id": "cli:video2 probe",
+      "kind": "cli",
+      "entry": "src/dev/video2_probe.gd",
+      "reach": "tools/probe.sh video2 [OUT_DIR]; PROBE_SIZE=1400x900 tools/probe.sh video2 OUT_DIR   (windowed, on the GPU, signed in as a throwaway account: Pods' building video by hand and over MCP, the first step's parts 40% or more of the frame's height off its alpha, the last frame the whole model as a picture draws it; the car's 36-frame turntable kept as a GIF by hand and over MCP: GIF89a, 256 colours, looping, 8 MB or less, played by Chromium (tools/web/gif_plays.mjs) 36 frames that change, its first frame within a few levels of the frame it was made of; Kept as in sight; pictures in OUT_DIR)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:viewer first paint",
       "kind": "cli",
       "entry": "tools/viewer/first_paint.mjs",
@@ -5118,6 +5126,14 @@
       "entry": "src/ui/edit_verbs.gd",
       "reach": "godot --path .  (select, X picks it up, click puts it down, Esc puts it back; R turns it where it stands, and where it has no room the parts in the way flash red and it comes into hand turned)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:moving renders kept as a GIF",
+      "kind": "ui",
+      "entry": "src/render/animated_gif.gd",
+      "reach": "tools/probe.sh video2   (by hand: File, Render\u2026, Kept as GIF, then Render turntable, Render animation or Render building: one 256-colour palette for the whole video, an ordered dither, at most 640 px across and made to fit 8 MB by fewer frames a second then a smaller picture; render_model format=gif over MCP; node tools/web/gif_plays.mjs FILE.gif says what Chromium decodes)",
+      "area": "view",
       "tests": []
     },
     {
