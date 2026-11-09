@@ -62,6 +62,10 @@ const skip = (what) => console.log(`  --    ${what}`);
 const errors = [];
 const until = (page, test, arg = null, timeout = 20000) => page.waitForFunction(test, arg, { timeout }).then(() => true, () => false);
 const shot = async (page, name) => {
+  // A dialog's rise ended (site.css), so the picture is what a person sees.
+  await page.evaluate(() => Promise.race([new Promise((done) => setTimeout(done, 1500)),
+    Promise.all(document.getAnimations().filter((one) => one.effect?.getComputedTiming().iterations !== Infinity)
+      .map((one) => one.finished.catch(() => null)))])).catch(() => null);
   await page.screenshot({ path: path.join(out, name), timeout: 60000 })
     .catch((trouble) => console.log(`  --    no picture ${name}: ${String(trouble).split("\n")[0]}`));
 };
