@@ -165,7 +165,7 @@ class Spec extends RefCounted:
 	var rise: int = 1
 	var way: String = "down"
 	## A wedge plate's far corner cut flat ([constant WEDGE_CHAMFER]), as
-	## LEGO's own wedge plates have it (54383, 41770b). Off, the cut runs
+	## the LEGO Group's own wedge plates have it (54383, 41770b). Off, the cut runs
 	## to the corner (41770a).
 	var chamfer: bool = false
 

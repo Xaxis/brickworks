@@ -81,7 +81,7 @@ static func schema() -> Dictionary:
 					+ "horizontal (a bar lying along the edge, 61252). wedge: left or "
 					+ "right, the side that is straight (41770a is left)")},
 				"chamfer": {"type": "boolean", "description": ("wedge: true to cut the "
-					+ "far corner flat, 3 LDU along, as LEGO's wedge plates 54383 and 41770b "
+					+ "far corner flat, 3 LDU along, as the LEGO® wedge plates 54383 and 41770b "
 					+ "have it; false, the default, runs the cut to the corner (41770a)")},
 				"sides": {"type": "string", "description": ("brick: the sides with "
 					+ "studs on them, letters of fblr: f is the +z face (the front), "

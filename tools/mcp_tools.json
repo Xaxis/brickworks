@@ -3120,7 +3120,7 @@
           "type": "integer"
         },
         "chamfer": {
-          "description": "wedge: true to cut the far corner flat, 3 LDU along, as LEGO's wedge plates 54383 and 41770b have it; false, the default, runs the cut to the corner (41770a)",
+          "description": "wedge: true to cut the far corner flat, 3 LDU along, as the LEGO® wedge plates 54383 and 41770b have it; false, the default, runs the cut to the corner (41770a)",
           "type": "boolean"
         },
         "cut": {

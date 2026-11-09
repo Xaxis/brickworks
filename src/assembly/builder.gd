@@ -3690,9 +3690,13 @@ func _seated_by_sockets(part: Lbm.PartMesh, basis: Basis, snapped: Vector3,
 func _takes_studs(part_id: String, part: Lbm.PartMesh) -> Array:
 	# A part the maker made, where it drew it to take one: its box hangs
 	# under its plate where a level clip's ring does (ElementMaker.seat_of).
-	var made: Array = ElementMaker.seat_of(library, part_id, part)
-	if not made.is_empty():
-		return made
+	# The maker is loaded for a made part only: the first screen and the
+	# connector compile none of it (Later).
+	var info: PartLibrary.PartInfo = library.parts.get(part_id) if library != null else null
+	if info != null and info.custom:
+		var made: Array = Later.script(&"ElementMaker").seat_of(library, part_id, part)
+		if not made.is_empty():
+			return made
 	if part.sockets_drawn:
 		return [part.sockets, true, part.bounds.position.y]
 	var drawn: PackedVector2Array = Lbm.receivers_of(part)
