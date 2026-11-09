@@ -435,12 +435,14 @@ try {
           heads: document.querySelectorAll("#news > li.card li").length,
           lists: ["try", "known", "early"].map((id) => document.querySelectorAll(`#${id} > li`).length),
           sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
-          terms: document.querySelector(".beta-head .terms")?.textContent.trim() || "",
+          // What joining agrees to, for whoever can join; a tester has joined.
+          terms: [document.querySelector(".beta-head .terms")].filter((one) => one && getComputedStyle(one).visibility === "visible")
+            .map((one) => one.textContent.trim()).join(""),
         }));
         const testers = who === "tester";
-        check(`${label}: ${said.eyebrow}, the way in for ${said.visitor}, "${said.line}", under it "${said.terms.slice(0, 40)}…"`,
+        check(`${label}: ${said.eyebrow}, the way in for ${said.visitor}, "${said.line}", ${said.terms ? `under it "${said.terms.slice(0, 40)}…"` : "no terms line"}`,
           said.visitor === who && said.eyebrow === "Open beta" && LINE[who].test(said.line) && !said.sideways
-          && /^Joining agrees to the beta’s terms/.test(said.terms));
+          && (testers ? !said.terms : /^Joining agrees to the beta’s terms/.test(said.terms)));
         check(`${label}: ${said.sections.join(", ")}; this week's releases ${said.news.join(", ")} (${said.heads} heads)`
           + `${testers ? `; to try, known, early: ${said.lists.join(", ")}` : ""}`,
           said.sections.join() === (testers ? "get,report,new,testers,questions" : "get,report,new,questions")
