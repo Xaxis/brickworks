@@ -184,7 +184,7 @@ const barOf = (page) => page.evaluate(() => {
     height: Math.round(box.height), width: Math.round(box.width),
     badge: badge?.innerText.trim() || "", badgeTo: badge ? new URL(badge.href).pathname : "",
     report: Boolean(bar.querySelector("button[data-beta-report]")),
-    join: Boolean(bar.querySelector("button[data-beta-join]")), tester: Boolean(bar.querySelector("a.tester")),
+    join: Boolean(bar.querySelector("a[data-beta-join]")), tester: Boolean(bar.querySelector("a.tester")),
     hide: Boolean(bar.querySelector("button[data-beta-hide][aria-label]")),
     // Every part on one line, none cut off.
     oneLine: [...bar.children].every((one) => {
@@ -228,12 +228,23 @@ const fresh = (page) => page.evaluate(() => {
   } catch { /* nothing kept */ }
 });
 
+
+// Each part runs on whatever the one before it did: a part that throws
+// (pre261 has no bar to press) fails as itself, and the rest still run.
+async function section(name, body) {
+  try {
+    await body();
+  } catch (trouble) {
+    check(`${name} ran: ${String(trouble?.message || trouble).split("\n")[0].slice(0, 300)}`, false);
+  }
+}
+
 try {
   const open = remote ? (await (await fetch(`${remote}/api/plans?op=beta_spots`, { headers })).json().catch(() => ({}))).beta === "open" : true;
   console.log(`betahome flow: ${base}${remote ? ` (the beta ${open ? "open" : "off"} there)` : ` (stand-in, ${root})`}`);
 
   // --- bar ----------------------------------------------------------------
-  if (open && asked("bar")) {
+  if (open && asked("bar")) await section("bar", async () => {
     console.log("bar: on every page");
     const rounds = remote ? [[1280, "light", "out"], [390, "dark", "out"]]
       : [[1280, "light", "in"], [1280, "dark", "out"], [390, "light", "out"], [390, "dark", "in"]];
@@ -270,10 +281,10 @@ try {
         !wrong.length && missing.length < PAGES.length);
       await context.close();
     }
-  }
+  });
 
   // --- hide ---------------------------------------------------------------
-  if (open && asked("hide")) {
+  if (open && asked("hide")) await section("hide", async () => {
     console.log("hide: for a day");
     const { context, page } = await visitor({ width: 1280, who: remote ? "out" : "in" });
     await go(page, "/gallery");
@@ -294,10 +305,10 @@ try {
     await go(page, "/");
     check("back once the day is over", (await barOf(page)).there);
     await context.close();
-  }
+  });
 
   // --- press --------------------------------------------------------------
-  if (open && asked("press")) {
+  if (open && asked("press")) await section("press", async () => {
     console.log("press: Open beta, Report a bug, Join");
     for (const [width, theme, who] of remote ? [[1280, "light", "out"], [390, "dark", "out"]] : [[1280, "light", "in"], [390, "dark", "out"]]) {
       const { context, page, told, label } = await visitor({ width, theme, who });
@@ -318,26 +329,42 @@ try {
       await page.keyboard.press("Escape");
       await until(page, () => !document.querySelector("dialog[open]"), null, 5000);
       await page.keyboard.press("Escape");
+      // Join: to the hub's way in, its button ready, what joining agrees
+      // to said under it; one press there joins (signed out, signs in first).
       await go(page, "/gallery");
       await page.click("#beta-bar [data-beta-join]");
+      await until(page, () => location.pathname === "/beta" && document.documentElement.dataset.betaPage);
+      const landed = await page.evaluate(() => {
+        const focus = document.activeElement;
+        const terms = document.querySelector(".beta-head .terms");
+        const box = terms?.getBoundingClientRect();
+        return { path: location.pathname + location.hash, row: document.documentElement.dataset.betaPage,
+          focused: focus?.matches("#beta-acts [data-beta-join]") ? focus.textContent.trim() : focus?.tagName || "",
+          terms: terms?.textContent.trim() || "", termsTo: terms?.querySelector("a")?.getAttribute("href") || "",
+          termsSeen: Boolean(box) && box.bottom <= innerHeight && getComputedStyle(terms).visibility === "visible" };
+      });
+      check(`${label}: Join opens ${landed.path}, the way in for ${landed.row}, "${landed.focused}" focused, and under it "${landed.terms}"`,
+        landed.path === "/beta#beta-acts" && landed.row === who && /join/i.test(landed.focused)
+        && /^Joining agrees to the beta’s terms and to emails about the beta\./.test(landed.terms) && landed.termsTo === "/terms#beta" && landed.termsSeen);
+      await page.keyboard.press("Enter");
       if (who === "out") {
-        check(`${label}: Join, signed out, opens the sign-in`, await until(page, () => document.querySelector("dialog.sign-in[open]")));
+        check(`${label}: its Sign up and join opens the sign-in`, await until(page, () => document.querySelector("dialog.sign-in[open]")));
         await shot(page, `join-${width}-${theme}-${who}.png`);
       } else {
         const joined = await until(page, () => document.querySelector("#beta-bar a.tester")
           && /tester/i.test(document.querySelector(".toast")?.textContent || ""));
-        check(`${label}: Join makes a tester (${JSON.stringify(told.joins)}) and says so`, joined
-          && told.joins.length === 1 && told.joins[0]?.via === "bar");
+        check(`${label}: its Join the beta makes a tester at once (${JSON.stringify(told.joins)}) and says so`, joined
+          && told.joins.length === 1 && told.joins[0]?.via === "hub");
         await shot(page, `joined-${width}-${theme}-${who}.png`);
         await go(page, "/");
         check(`${label}: the next page has it kept: You're a tester`, (await barOf(page)).tester);
       }
       await context.close();
     }
-  }
+  });
 
   // --- home ---------------------------------------------------------------
-  if (open && asked("home")) {
+  if (open && asked("home")) await section("home", async () => {
     console.log("home: the way in for each visitor");
     const WANT = {
       out: { row: "out", first: /^Sign up and join/, said: /^The first 100 testers we approve get a month of Pro, free: 63 spots left\.$/ },
@@ -359,6 +386,8 @@ try {
           return { row: row?.dataset.visitor || "", first: row?.querySelector(".cta")?.textContent.trim() || "",
             second: row?.querySelectorAll(".cta")[1]?.textContent.trim() || "",
             said: document.getElementById("beta-said").textContent.trim(),
+            terms: document.getElementById("beta-terms")?.checkVisibility() ? document.getElementById("beta-terms").textContent.trim() : "",
+            termsTo: document.querySelector("#beta-terms a")?.getAttribute("href") || "",
             afterHero: hero !== band && band.previousElementSibling === hero,
             heroBottom: Math.round(hero.getBoundingClientRect().bottom + scrollY), top: Math.round(band.getBoundingClientRect().top + scrollY),
             points: band.querySelectorAll(".beta-points li").length };
@@ -366,7 +395,8 @@ try {
         const want = WANT[who];
         check(`${label}: #beta under the first screen's hero, ${said.points} points, ${said.row}: "${said.first}" / "${said.second}"`,
           drawn && said.afterHero && said.top >= said.heroBottom && said.points === 3 && said.row === want.row && want.first.test(said.first));
-        check(`${label}: its line: "${said.said}"`, want.said.test(said.said));
+        check(`${label}: its line: "${said.said}"${said.terms ? `, and "${said.terms}"` : ", no terms line"}`, want.said.test(said.said)
+          && (who === "tester" ? !said.terms : /^Joining agrees to the beta’s terms and to emails about the beta\./.test(said.terms) && said.termsTo === "/terms#beta"));
         // A second visit: the answer kept, the section there at the first frame.
         await page.goto(base + "/", { waitUntil: "load" });
         const keptMoved = await shiftedSoFar(page);
@@ -381,10 +411,10 @@ try {
         await context.close();
       }
     }
-  }
+  });
 
   // --- hub ----------------------------------------------------------------
-  if (open && asked("hub")) {
+  if (open && asked("hub")) await section("hub", async () => {
     console.log("hub: /beta for each visitor");
     const LINE = { out: /^63 of 100 free months of Pro left$/, in: /^63 of 100 free months of Pro left$/,
       tester: /^You’ve been a tester since 2 November 2026\. Thank you!$/ };
@@ -405,10 +435,12 @@ try {
           heads: document.querySelectorAll("#news > li.card li").length,
           lists: ["try", "known", "early"].map((id) => document.querySelectorAll(`#${id} > li`).length),
           sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+          terms: document.querySelector(".beta-head .terms")?.textContent.trim() || "",
         }));
         const testers = who === "tester";
-        check(`${label}: ${said.eyebrow}, the way in for ${said.visitor}, "${said.line}"`, said.visitor === who && said.eyebrow === "Open beta"
-          && LINE[who].test(said.line) && !said.sideways);
+        check(`${label}: ${said.eyebrow}, the way in for ${said.visitor}, "${said.line}", under it "${said.terms.slice(0, 40)}…"`,
+          said.visitor === who && said.eyebrow === "Open beta" && LINE[who].test(said.line) && !said.sideways
+          && /^Joining agrees to the beta’s terms/.test(said.terms));
         check(`${label}: ${said.sections.join(", ")}; this week's releases ${said.news.join(", ")} (${said.heads} heads)`
           + `${testers ? `; to try, known, early: ${said.lists.join(", ")}` : ""}`,
           said.sections.join() === (testers ? "get,report,new,testers,questions" : "get,report,new,questions")
@@ -418,10 +450,10 @@ try {
         await context.close();
       }
     }
-  }
+  });
 
   // --- off ----------------------------------------------------------------
-  if ((!open || !remote) && asked("off")) {
+  if ((!open || !remote) && asked("off")) await section("off", async () => {
     console.log("off: nothing drawn");
     for (const [width, theme, who] of remote ? [[1280, "light", "out"], [390, "dark", "out"]] : [[1280, "light", "in"], [390, "dark", "out"]]) {
       const { context, page, told, label } = await visitor({ width, theme, who, beta: "off" });
@@ -456,14 +488,19 @@ try {
       await shot(page, `hub-off-${width}-${theme}.png`, true);
       await context.close();
     }
-  }
+  });
 
   // --- same ---------------------------------------------------------------
   // Both sites side by side, page by page, settled (network quiet), at the
-  // same moment: what each says, how tall it is and its first screen. A page
-  // that differs is taken again twice (a picture or a list that came late);
-  // one that still differs keeps both pictures and where they differ (red).
-  if (!remote && before && asked("same")) {
+  // same moment: what each says, how tall it is and its first screen. The
+  // words must be the same. A page whose height or first screen differs is
+  // taken again, each side in a browser of its own: it passes if ours then
+  // matches one of pre261's, or if pre261's own two differ as much (this
+  // browser draws some pages a little differently each time: a gallery
+  // picture, a gradient, a font's hinting; pre261 against itself showed it
+  // on 14 of 80, run2/control). Else it keeps both pictures and where they
+  // differ (red), and fails.
+  if (!remote && before && asked("same")) await section("same", async () => {
     console.log(`same: the beta off, each page as ${before} shows it`);
     const compare = await browser.newPage();
     const settle = async (page, where, again) => {
@@ -508,34 +545,49 @@ try {
         sides[side] = await visitor({ width, theme, who: "out", beta: "off", tree, motion: "reduce" });
       }
       const differs = [];
+      const unsteady = [];
+      const exact = async (x, y) => x.text === y.text && x.height === y.height && x.picture && y.picture && (await differ(x, y)).n === 0;
+      const alone = async (tree, where) => {
+        const one = await visitor({ width, theme, who: "out", beta: "off", tree, motion: "reduce" });
+        try {
+          return await settle(one.page, where, false);
+        } finally {
+          await one.context.close();
+        }
+      };
       // /beta is the beta's hub now, and says Coming soon its own way (off).
       for (const where of PAGES.filter((one) => one !== "/beta")) {
-        let found = null;
-        for (let take = 0; take < 3; take += 1) {
-          const [a, b] = await Promise.all([settle(sides.before.page, where, take > 0), settle(sides.now.page, where, take > 0)]);
-          const pixels = a.picture && b.picture ? await differ(a, b) : { n: -2 };
-          found = { a, b, pixels, sameText: a.text === b.text };
-          if (found.sameText && a.height === b.height && pixels.n === 0) break;
+        const [a, b] = await Promise.all([settle(sides.before.page, where, false), settle(sides.now.page, where, false)]);
+        if (await exact(a, b)) continue;
+        const pixels = a.picture && b.picture ? await differ(a, b) : { n: -2 };
+        const sameText = a.text === b.text;
+        if (sameText) {
+          const [a2, b2] = [await alone(before, where), await alone(root, where)];
+          if ((await exact(a, b2)) || (await exact(a2, b2)) || (await exact(a2, b))) continue;
+          // Unsteady in pre261 too, and ours as tall as one of its own.
+          if (!(await exact(a, a2)) && a2.text === a.text && [b.height, b2.height].some((h) => h === a.height || h === a2.height)) {
+            const own = a.picture && a2.picture ? (await differ(a, a2)).n : -2;
+            unsteady.push(`${where} (pre261 ${a.height}/${a2.height} px, ${own} pixels apart; ours ${b.height}/${b2.height} px, ${pixels.n})`);
+            continue;
+          }
         }
-        const { a, b, pixels, sameText } = found;
-        if (!sameText || a.height !== b.height || pixels.n !== 0) {
-          differs.push(`${where}: ${sameText ? "same words" : "other words"}, ${a.height} -> ${b.height} px, ${pixels.n} pixels`);
-          const name = `same-${width}-${theme}-${where.replace(/[^a-z0-9]+/gi, "_") || "home"}`;
-          if (a.picture) writeFileSync(path.join(out, `${name}-before.png`), a.picture);
-          if (b.picture) writeFileSync(path.join(out, `${name}-now.png`), b.picture);
-          if (pixels.diff) writeFileSync(path.join(out, `${name}-diff.png`), Buffer.from(pixels.diff, "base64"));
-          if (!sameText) writeFileSync(path.join(out, `${name}-words.txt`), `${a.text}\n\n----- now -----\n\n${b.text}`);
-        }
+        differs.push(`${where}: ${sameText ? "same words" : "other words"}, ${a.height} -> ${b.height} px, ${pixels.n} pixels`);
+        const name = `same-${width}-${theme}-${where.replace(/[^a-z0-9]+/gi, "_") || "home"}`;
+        if (a.picture) writeFileSync(path.join(out, `${name}-before.png`), a.picture);
+        if (b.picture) writeFileSync(path.join(out, `${name}-now.png`), b.picture);
+        if (pixels.diff) writeFileSync(path.join(out, `${name}-diff.png`), Buffer.from(pixels.diff, "base64"));
+        if (!sameText) writeFileSync(path.join(out, `${name}-words.txt`), `${a.text}\n\n----- now -----\n\n${b.text}`);
       }
+      if (unsteady.length) console.log(`  --    ${width} ${theme}: drawn differently by pre261 itself, ours within it: ${unsteady.join("; ")}`);
       for (const side of Object.values(sides)) await side.context.close();
       check(`${width} ${theme}: all ${PAGES.length - 1} pages but /beta show what before showed (words, height, first screen)${differs.length
         ? `, not: ${differs.slice(0, 8).join("; ")}` : ""}`, !differs.length);
     }
     await compare.close();
-  }
+  });
 
   // --- weight -------------------------------------------------------------
-  if (!remote && before && asked("weight")) {
+  if (!remote && before && asked("weight")) await section("weight", async () => {
     console.log("weight: the homepage, as sent, and its first paint");
     const loadOf = async (tree) => {
       const { context, page } = await visitor({ width: 1280, who: "out", beta: "open", tree });
@@ -567,7 +619,7 @@ try {
       + `, raw ${of("before", "bytes")} -> ${of("now", "bytes")}), at most 10 KB more`, more <= 10240);
     check(`its first paint, median of 6 ABAB: ${of("before", "paint")} -> ${of("now", "paint")} ms (${later >= 0 ? "+" : ""}${later}), at most 50 ms more`,
       later <= 50);
-  }
+  });
 } catch (trouble) {
   check(`the flow ran: ${String(trouble?.stack || trouble).slice(0, 400)}`, false);
 } finally {

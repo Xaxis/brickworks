@@ -1,36 +1,23 @@
-// The beta's bar (betahome, 2026-11-09): on every page of the site while
-// the beta is open, a slim bar at the foot of the window: Open beta (the
-// beta's page, /beta), Report a bug, and Join, or "You’re a tester" once
-// you are; hidden for a day by its ×, and remembered. The owner: "make
-// sure you perfectly build the elegant ui/ux for reporting bugs and signup
-// for beta testing".
+// The beta's bar (betahome, 2026-11-09), on every page while the beta is
+// open: Open beta (/beta, the hub), Report a bug, and Join (to the hub's
+// way in, where what joining agrees to is said) or "You’re a tester";
+// hidden for a day by its ×. It floats at the window's foot and moves
+// nothing (docs/DESIGN_SYSTEM.md, Beta bar). web/theme.js asks for it on
+// every page, server pages too, but not on an embed's card, the consent
+// page, or for ten minutes after the beta was heard off. The homepage
+// (web/landing.js) and the hub (web/beta.js) take the beta from here:
 //
-// At the foot, floating, not a strip over the header: a strip that comes
-// once the server has answered pushes the whole page down under the
-// reader's eyes (a layout shift of 0.04 against the site's 0.02,
-// docs/DESIGN_SYSTEM.md "Steady loads"), and a bar that floats moves
-// nothing. Where Vercel keeps its preview toolbar and Sentry its Report a
-// Bug, out of the page's way, one press from anywhere.
-//
-// web/theme.js asks for this file on every page (so the server's pages,
-// /m/, /u/, /c/, have it too), never on an embed's card or the connector's
-// consent page, and not at all for ten minutes after the beta was found
-// off. It is also the beta's one source for the landing page (web/landing.js)
-// and the beta's page (web/beta.js), which import what they need of it:
-//
-//   betaState()      what the server says, kept here ten minutes:
-//                    {beta: "open" | "off" | "unknown", tester (null signed
-//                    out), state, cap, left, joined_at}; GET
-//                    /api/plans?op=beta signed in, ?op=beta_spots (cached by
-//                    the CDN) signed out
-//   joinBeta(via)    Join: signed out, sign in first (a new account's
-//                    welcome asks there, and its answer stands); then POST
-//                    ?op=beta_join {via}. Says so on window ("brickworks:beta",
-//                    the server's answer as its detail) for every part of the
-//                    page that shows it, as the welcome and Settings do
-//   reportBug(from)  Report a bug: web/bugreport.js's dialog in place
-//                    (window.brickworksReportBug), loaded on the first press;
-//                    without it, Send feedback's dialog as a bug
+//   betaState()      the server's answer, kept ten minutes: {beta, tester
+//                    (null signed out), state, welcome, cap, left,
+//                    joined_at}; GET /api/plans?op=beta, or signed out
+//                    ?op=beta_spots (cached by the CDN)
+//   joinBeta(via)    pressed beside what joining agrees to: signed out,
+//                    sign in first (a new account's welcome asks there);
+//                    then POST ?op=beta_join {via}, told on window as
+//                    "brickworks:beta", as the welcome and Settings do
+//   reportBug(from)  web/bugreport.js's dialog over the page
+//                    (window.brickworksReportBug), loaded on the first
+//                    press; without it, Send feedback's, as a bug
 //
 // Every word goes on the page as text.
 import { askToSignIn, call, email, signedIn } from "/account.js";
@@ -81,6 +68,8 @@ function heardOf(body, who) {
     beta: body?.beta === "open" ? "open" : "off",
     tester,
     state: inside && typeof body?.state === "string" ? body.state : null,
+    // A new account's welcome is still to ask it (betajoin, api/_beta.js).
+    welcome: inside && body?.welcome === true,
     cap: Number(pool?.cap) || 100,
     left: typeof pool?.left === "number" ? pool.left : null,
     joined_at: body?.joined_at || null,
@@ -143,8 +132,8 @@ function tell(heard) {
 
 // Joined or left elsewhere on the page (a new account's welcome, Settings):
 // the server's answer, its detail, kept before any part of the page draws
-// from it (this listener is the page's first: every part imports this
-// file); told with none, asked again. This file's own (tell) are kept.
+// from it (each asks betaState, a step after the event's listeners have
+// all run); told with none, asked again. This file's own (tell) are kept.
 addEventListener("brickworks:beta", (event) => {
   const detail = event.detail;
   if (detail?.who !== undefined) return;
@@ -161,13 +150,14 @@ addEventListener("brickworks:beta", (event) => {
 });
 
 /// Join: the account is a tester at once (POST ?op=beta_join, betajoin).
-/// [via]: where it was pressed (api/_beta.js VIA: "bar", "home", "hub").
-/// Signed out, signing in comes first, and a new account's welcome asks
-/// there: whatever it was told stands, Not now as much as Join, so a
-/// person is never joined past their own answer (one more press joins).
+/// [via]: where it was pressed (api/_beta.js VIA: "home", "hub"), always
+/// beside what joining agrees to. Signed out, signing in comes first, and a
+/// new account's welcome asks there: whatever it was told stands, Not now
+/// as much as Join, and one still to ask is left to ask, so a person is
+/// never joined past their own answer, nor asked twice at once.
 /// Resolves to the beta as it now is, or null when the person closed the
 /// sign-in. Throws an Error whose message says why, in the page's language.
-export async function joinBeta(via = "bar") {
+export async function joinBeta(via = "hub") {
   if (!signedIn()) {
     let answered = false;
     const heard = () => { answered = true; };
@@ -175,7 +165,7 @@ export async function joinBeta(via = "bar") {
     const yes = await askToSignIn("Sign in to join the Brickworks beta.").finally(() => removeEventListener("brickworks:beta", heard));
     if (!yes) return null;
     const now = await betaState({ fresh: true });
-    if (answered || now.tester || now.beta !== "open" || ["not_now", "left"].includes(now.state)) return now;
+    if (answered || now.tester || now.welcome || now.beta !== "open" || ["not_now", "left"].includes(now.state)) return now;
   }
   const asked = { method: "POST", body: { via } };
   let reply = await call("/api/plans?op=beta_join", asked);
@@ -223,24 +213,11 @@ function third(heard) {
     link.append(say("You’re a tester"));
     return link;
   }
-  const join = made("button", { type: "button", className: "cta small", textContent: say("Join") });
+  // To the hub's way in, where what joining agrees to is said beside it
+  // (the beta's terms and its emails): too much for the bar.
+  const join = made("a", { className: "cta small", href: `${langAt()}/beta#beta-acts`, textContent: say("Join") });
   join.setAttribute("aria-label", say("Join the beta"));
   join.dataset.betaJoin = "";
-  join.addEventListener("click", async () => {
-    join.disabled = true;
-    try {
-      const now = await joinBeta("bar");
-      if (now?.tester) {
-        const { toast } = await import("/kit.js");
-        toast(say("You’re a tester. Thank you!"));
-      }
-    } catch (trouble) {
-      const { toast } = await import("/kit.js");
-      toast(trouble.message);
-    } finally {
-      join.disabled = false;
-    }
-  });
   return join;
 }
 
@@ -299,10 +276,13 @@ async function start() {
   drawBar(await betaState());
   addEventListener("brickworks:beta", () => betaState().then(drawBar));
   addEventListener("brickworks:signed-in", () => betaState({ fresh: true }).then(drawBar));
-  addEventListener("resize", () => {
+  // Measured again when the window or the page's font changes its width.
+  const refit = () => {
     const bar = document.getElementById("beta-bar");
     if (bar) fit(bar);
-  }, { passive: true });
+  };
+  addEventListener("resize", refit, { passive: true });
+  document.fonts?.ready.then(refit);
   // Another tab joined, signed in or out, or hid the bar.
   addEventListener("storage", (event) => {
     if (event.key === KEY || event.key === HIDDEN) betaState().then(drawBar);

@@ -444,6 +444,11 @@ def test_the_page_says_what_the_brief_asks() -> None:
     for visitor in ("out", "in", "tester"):
         assert f'data-visitor="{visitor}" hidden' in PAGE, visitor
     assert "op=beta_hub" in SCRIPT and "/changelog.json" in SCRIPT and 'from "/betabar.js"' in SCRIPT
+    # What joining agrees to, said under the way in on the hub and the
+    # homepage, where every Join is pressed (the bar's leads here).
+    terms = 'Joining agrees to <a href="/terms#beta">the beta’s terms</a> and to emails about the beta.'
+    assert terms in PAGE and terms in (ROOT / "web/index.html").read_text()
+    assert "/beta#beta-acts" in (ROOT / "web/betabar.js").read_text()
     # LEGO® only as an adjective, marked, in the page's own words (the footer's notices are the shell's).
     main = PAGE[PAGE.index("<main"):PAGE.index("</main>")]
     assert not re.search(r"LEGO(?!®)", main)

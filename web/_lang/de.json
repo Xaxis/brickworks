@@ -996,7 +996,8 @@
   "A report is kept with your account and read only by the site’s owner. Only what you choose goes with it, and you see it before it goes. It is deleted with your account. More in <a href=\"/privacy#feedback\">privacy</a>.": "Eine Meldung wird mit deinem Konto gespeichert und nur vom Betreiber der Website gelesen. Nur was du auswählst, geht mit, und du siehst es vor dem Absenden. Sie wird mit deinem Konto gelöscht. Mehr unter <a href=\"/privacy#feedback\">Datenschutz</a>.",
   "Brickworks is in open beta. Join in one press, report a bug from any page with a picture taken for you, and see what changed this week. The first 100 testers we approve get 30 days of Pro, free.": "Brickworks ist in der offenen Beta. Mach mit einem Klick mit, melde Fehler von jeder Seite mit einem Bild, das für dich aufgenommen wird, und sieh, was sich diese Woche geändert hat. Die ersten 100 Tester, die wir bestätigen, bekommen 30 Tage Pro, kostenlos.",
   "Brickworks is in open beta: join in one press, report a bug from any page, and see what changed this week.": "Brickworks ist in der offenen Beta: Mach mit einem Klick mit, melde Fehler von jeder Seite und sieh, was sich diese Woche geändert hat.",
-  "New to try": "Neu zum Ausprobieren"
+  "New to try": "Neu zum Ausprobieren",
+  "Joining agrees to <a href=\"/terms#beta\">the beta’s terms</a> and to emails about the beta. Leave any time in Settings.": "Wer mitmacht, stimmt <a href=\"/terms#beta\">den Bedingungen der Beta</a> und E-Mails zur Beta zu. Verlassen kannst du sie jederzeit in den Einstellungen."
  },
  "scripts": {
   "Copy": "Kopieren",

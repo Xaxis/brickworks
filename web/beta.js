@@ -33,6 +33,8 @@ function lineOf(heard) {
   return say("All {cap} months of Pro are given. Joining stays open.", { cap: number(heard.cap) });
 }
 
+let focused = false;
+
 /// The page as [heard] has it.
 function draw(heard) {
   const open = heard.beta === "open";
@@ -41,6 +43,11 @@ function draw(heard) {
   const visitor = !open ? "" : heard.tester ? "tester" : signedIn() ? "in" : "out";
   for (const row of document.querySelectorAll("#beta-acts > [data-visitor]")) row.hidden = row.dataset.visitor !== visitor;
   document.documentElement.dataset.betaPage = visitor || heard.beta;
+  // Come from the bar's Join (/beta#beta-acts): its button, ready to press.
+  if (location.hash === "#beta-acts" && !focused && (visitor === "out" || visitor === "in")) {
+    focused = true;
+    document.querySelector(`#beta-acts > [data-visitor="${visitor}"] [data-beta-join]`)?.focus();
+  }
   if (open) news();
   if (heard.tester) testers();
 }

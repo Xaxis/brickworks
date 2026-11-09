@@ -135,6 +135,9 @@
 #beta-acts { min-height: var(--control-h); }
 #beta-acts > [hidden] { display: none; }
 #beta-said { min-height: 1lh; margin-top: var(--s-3); }
+/* What joining agrees to; a tester has joined. */
+#beta-terms { margin-top: var(--s-2); }
+:root[data-beta-home="tester"] #beta-terms { display: none; }
 .beta-points { display: grid; gap: var(--s-5); margin: 0; padding: 0; list-style: none; }
 .beta-points li { display: flex; align-items: flex-start; gap: var(--s-4); }
 .beta-points h3 { margin: 0 0 var(--s-1); }
@@ -204,7 +207,8 @@
 	     whoever reads it: signed out, Sign up and join (a new account's
 	     welcome joins it); signed in, Join the beta; a tester, Report a bug
 	     and What's new. Under it, while any are left, the months of Pro
-	     the first testers get, or a tester's thanks. Under the app's
+	     the first testers get, or a tester's thanks, and what joining
+	     agrees to (the beta's terms, its emails). Under the app's
 	     picture, so the product stays the first thing seen. Drawn from the
 	     first frame where this browser has heard the beta is open (<html
 	     data-beta>, web/theme.js); else put in only while its place is under
@@ -222,6 +226,7 @@
 						<div class="actions" data-visitor="tester" hidden><button class="cta" type="button" data-beta-report>Report a bug</button><a class="cta ghost" href="/beta#new">What’s new</a></div>
 					</div>
 					<p class="note" id="beta-said"></p>
+					<p class="note" id="beta-terms">Joining agrees to <a href="/terms#beta">the beta’s terms</a> and to emails about the beta. Leave any time in Settings.</p>
 				</div>
 				<ul class="beta-points">
 					<li><span class="glyph" aria-hidden="true"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#spark"></use></svg></span>

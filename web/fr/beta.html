@@ -44,6 +44,10 @@
    reading; then one of the three. */
 #beta-acts { min-height: 52px; }
 #beta-acts > [hidden] { display: none; }
+/* What joining agrees to, under the way in, from the first frame (off, its
+   room kept and nothing in it). */
+.beta-head .terms { max-width: 34rem; margin: var(--s-4) auto 0; color: var(--ink-soft); font-size: var(--t-small); }
+:root[data-beta-page="off"] .beta-head .terms { visibility: hidden; }
 .beta .narrow { width: min(100% - 32px, 980px); }
 .beta .section-head { margin-bottom: var(--s-5); }
 #report .actions { margin-top: var(--s-5); }
@@ -111,6 +115,7 @@
 				<div class="actions center" data-visitor="in" hidden><button class="cta big" type="button" data-beta-join>Rejoindre la bêta <span class="arrow" aria-hidden="true">→</span></button><a class="cta ghost big" href="#get">Ce que reçoivent les testeurs</a></div>
 				<div class="actions center" data-visitor="tester" hidden><button class="cta big" type="button" data-beta-report>Signaler un bug</button><a class="cta ghost big" href="/fr/settings#feedback">Vos messages</a></div>
 			</div>
+			<p class="terms">Participer, c’est accepter <a href="/fr/terms#beta">les conditions de la bêta</a> et les e-mails sur la bêta. Vous pouvez la quitter à tout moment dans les Réglages.</p>
 		</div>
 	</section>
 
