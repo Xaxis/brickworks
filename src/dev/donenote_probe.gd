@@ -405,7 +405,10 @@ func _render(kind: String) -> bool:
 		else RenderSettings.Quality.QUICK
 	settings.fps = 6
 	dialog.set("_build_seconds", 10)
-	dialog.set("folder", ProjectSettings.globalize_path(_out.path_join("renders")))
+	# Where Render writes, as Downloads is there for a person.
+	var folder: String = ProjectSettings.globalize_path(_out.path_join("renders"))
+	DirAccess.make_dir_recursive_absolute(folder)
+	dialog.set("folder", folder)
 	var button: Button = dialog.get("_picture_button" if kind == "picture"
 		else "_building_button") as Button
 	var before: Variant = dialog.get("_last")
@@ -419,8 +422,9 @@ func _render(kind: String) -> bool:
 	var made: Variant = dialog.get("_last")
 	var ok: bool = made is Dictionary and not is_same(made, before) \
 		and str((made as Dictionary).get("kind", "")) == kind
-	if not ok:
-		print("    (Render %s made nothing: %s)" % [kind, str(dialog.get("_status").text)])
+	var said: String = str(dialog.get("_status").text)
+	ok = ok and said.contains("wrote ")
+	print("    (Render %s: %s)" % [kind, said.left(160)])
 	await _frames(4)
 	dialog.call("close")
 	await _frames(6)
@@ -441,6 +445,7 @@ func _queue() -> bool:
 	await _frames(20)
 	var queue: RenderQueue = RenderQueue.of(_main)
 	queue.folder = ProjectSettings.globalize_path(_out.path_join("queue"))
+	DirAccess.make_dir_recursive_absolute(queue.folder)
 	var add: Button = queue.get("_add_button") as Button
 	var count: int = queue.items.size()
 	await _click(add.get_global_rect().get_center())
@@ -451,7 +456,8 @@ func _queue() -> bool:
 	var last: RenderQueue.Item = queue.items.back() if queue.items.size() > count else null
 	var ok: bool = last != null and last.state == "done"
 	if not ok:
-		print("    (the queue drew nothing: %s)" % ("no item" if last == null else last.state))
+		print("    (the queue drew nothing: %s)" % ("no item" if last == null
+			else "%s, %s" % [last.state, last.words]))
 	queue.close()
 	await _frames(6)
 	return ok
