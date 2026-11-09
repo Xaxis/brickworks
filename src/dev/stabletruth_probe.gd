@@ -16,12 +16,16 @@
 ## every joint's margin with it.
 ##
 ## A structure comes apart, by the check, where a joint's moment is past
-## what its studs hold where they let go (Balance.ULTIMATE_N, the line
-## Tested drops parts at), or where it tips, leans, stands top-heavy or a
-## piece tips off a touch. Each must come out as it was built, and one that
-## came apart must come apart at the joint it really broke at. Past the
+## what its studs hold where they let go (Balance.lets_go, the line Tested
+## drops parts at), or where it tips, leans, stands top-heavy or a piece
+## tips off a touch; what comes down is all that joint held up. Each must
+## come out as it was built, brick by brick: one that came apart lost the
+## brick it broke under and everything on it, and kept the rest. Past the
 ## working load and short of letting go is "weak": the status bar says so,
-## and it is printed, but it is not a fall.
+## and it is printed, but it is not a fall. The builds also bound where a
+## stud lets go, into a part a stud wide and into a wider one: above what
+## any standing one needs and below what a fallen one needed where it broke;
+## the check's let-go must be inside each.
 ##
 ## Then StableText2Brick's sample (BrickGPT, ICCV 2025): 150 structures of
 ## its test split, 100 by a hash of their ids and the 50 most stressed, whose
@@ -83,12 +87,22 @@ func _run() -> void:
 	quit(1 if _failures > 0 else 0)
 
 
-## StableLego's built structures, each judged as it really stood or fell.
+## StableLego's built structures, each judged as it really stood or fell,
+## brick by brick: one that came apart at brick K lost K and all it held up,
+## and kept the rest.
 func _built() -> void:
 	print("\nStableLego's structures, built for real:")
 	var right: int = 0
-	var low: float = 0.0          ## the most any standing one needs a stud to hold, N
-	var high: float = INF         ## the least any fallen one needed where it broke, N
+	var bricks_right: int = 0
+	var bricks: int = 0
+	var stairs_right: int = 0
+	var stairs: int = 0
+	## By how wide the part the studs go into is ("a stud wide" or "wider"):
+	## the most a stud of a standing structure needs to hold, the least one
+	## needed where a structure broke, and where the check has it let go, N.
+	var low: Dictionary = {}
+	var high: Dictionary = {}
+	var lets_go: Dictionary = {}
 	for name: String in BUILT_FILES:
 		var text: String = FileAccess.get_file_as_string(BUILT + name + ".ldr")
 		var stood: bool = text.contains("0 // built: stands")
@@ -96,44 +110,84 @@ func _built() -> void:
 		for line: String in text.split("\n"):
 			if line.begins_with("0 // breaks at: the joint under brick "):
 				broke = line.trim_prefix("0 // breaks at: the joint under brick ").get_slice(" ", 0)
-		var keys: Dictionary = _keys(text)
 		var started: int = Time.get_ticks_usec()
 		var report: Stability.Report = _weigh(text, name)
 		var ms: float = (Time.get_ticks_usec() - started) / 1000.0
 		if report == null:
 			_check("%s opens and is weighed" % name, false)
 			continue
+		var keys: Dictionary = _keys(text)
 		var judged: Dictionary = _judged(report)
 		var falls: bool = bool(judged["falls"])
 		# The worst joint, and what each stud of it needs to hold.
 		var worst: Balance.JointLoad = judged["worst"]
 		var where: String = str(keys.get(worst.beyond, "?")) if worst != null else ""
-		var needs: float = _needs(worst)
 		print("  %-21s built: %-7s  check: %-12s status bar: %-28s %5.1f ms" % [name,
 			"stands" if stood else "falls", "comes apart" if falls else "stands", report.summary(), ms])
 		if worst != null:
-			print("    worst joint: under brick %s, %d studs, %s g past it, %s N·cm about its edge: "
-				% [where, worst.studs, Balance.tidy(worst.grams), Balance.tidy(worst.moment)]
-				+ "%s N a stud to hold, %s of where it lets go" % [Balance.tidy(needs),
-					Balance.tidy(worst.moment / maxf(worst.ultimate, 0.000001))])
+			print("    worst joint: under brick %s, %d studs into a part %s, %s g past it, %s N·cm about "
+				% [where, worst.studs, _width(worst), Balance.tidy(worst.grams), Balance.tidy(worst.moment)]
+				+ "its edge: %.2f N a stud to hold; it lets go at %.2f" % [_needs(worst), _lets_go(worst)])
 		for risk: Stability.Risk in report.risks:
 			if risk.kind != "levered":
 				print("    %s: %s" % [risk.kind, risk.message])
-		var ok: bool = falls == (not stood)
+		# What really came down: the brick it broke under and all it held up.
+		var came_down: Dictionary = {}
+		var weighed: bool = true
+		if not stood:
+			var at: Variant = keys.find_key(broke)
+			weighed = at != null and report.margins.has(at)
+			if weighed:
+				came_down = _past(report.margins[at])
+			else:
+				print("    the joint it broke at is not one the check weighs")
+		var said: Dictionary = judged["down"]
+		var own_right: int = 0
+		var own: int = 0
+		for brick: BrickWorld.Brick in _world.bricks():
+			if keys.has(brick.id):
+				own += 1
+				if weighed and came_down.has(brick.id) == (bool(judged["all"]) or said.has(brick.id)):
+					own_right += 1
+		bricks += own
+		bricks_right += own_right
+		if name.begins_with("stair_") and not name.ends_with("_good"):
+			stairs += own
+			stairs_right += own_right
+		print("    %d of %d bricks as built: %d came down, the check brings down %d" % [own_right, own,
+			came_down.size(), own if bool(judged["all"]) else said.size()])
+		for id: Variant in report.margins:
+			var one: Balance.JointLoad = report.margins[id]
+			if one.kind != "studs" or one.capacity <= 0.0:
+				continue
+			var wide: String = _width(one)
+			if lets_go.has(wide) and absf(float(lets_go[wide]) - _lets_go(one)) > 0.001:
+				_check("every joint into a part %s lets go at one load (%.2f N, %.2f N here)"
+					% [wide, float(lets_go[wide]), _lets_go(one)], false)
+			lets_go[wide] = _lets_go(one)
+			if stood:
+				low[wide] = maxf(float(low.get(wide, 0.0)), _needs(one))
+			elif str(keys.get(one.beyond, "")) == broke:
+				high[wide] = minf(float(high.get(wide, INF)), _needs(one))
+		var ok: bool = falls == (not stood) and own_right == own
 		if not stood:
 			ok = ok and where == broke
-			high = minf(high, needs)
-		else:
-			low = maxf(low, needs)
 		if ok:
 			right += 1
 		_check("%s judged as it was built (%s%s)" % [name, "stands" if stood else "falls",
 			"" if stood else ", at the joint under brick %s; the check says under %s" % [broke, where]], ok)
-	print("  %d of %d judged as built" % [right, BUILT_FILES.size()])
-	print("  the clutch these builds allow: more than %s N a stud (the most a standing one needs), "
-		% Balance.tidy(low) + "less than %s N (the least a fallen one needed where it broke)" % Balance.tidy(high))
-	_check("the clutch where it lets go, %s N, is between them" % Balance.tidy(Balance.ULTIMATE_N),
-		Balance.ULTIMATE_N > low and Balance.ULTIMATE_N < high)
+	print("  %d of %d judged as built; %d of %d bricks; the stairs of 19 and 20, %d of %d bricks"
+		% [right, BUILT_FILES.size(), bricks_right, bricks, stairs_right, stairs])
+	for wide: String in ["wider", "a stud wide"]:
+		if not lets_go.has(wide):
+			continue
+		var most: float = float(low.get(wide, 0.0))
+		var least: float = float(high.get(wide, INF))
+		print("  into a part %s, the builds allow a stud to let go at more than %.2f N (the most a "
+			% [wide, most] + "standing one needs) and less than %.2f N (the least a fallen one needed "
+			% least + "where it broke)")
+		_check("into a part %s, the check lets go at %.2f N, between them" % [wide, float(lets_go[wide])],
+			float(lets_go[wide]) > most and float(lets_go[wide]) < least)
 
 
 ## StableText2Brick's sample, brick by brick against its scores.
@@ -178,7 +232,7 @@ func _sample() -> void:
 				continue
 			var score: float = float(scores[n])
 			row[1] += 1
-			var flagged: bool = bool(judged["all"]) or (judged["ids"] as Dictionary).has(brick.id)
+			var flagged: bool = bool(judged["all"]) or (judged["down"] as Dictionary).has(brick.id)
 			if flagged and score > 0.0:
 				alarms += 1
 			var weak: bool = (judged["weak"] as Dictionary).has(brick.id)
@@ -238,40 +292,75 @@ func _weigh(text: String, name: String) -> Stability.Report:
 
 
 ## What the check says of each brick: {"falls": whether anything comes apart,
-## "all": a whole-model fall (every brick goes), "ids": id -> true for each
-## brick at a joint past where it lets go or tipping off a touch, "weak":
-## id -> true for each past its working load (the status bar's), "worst": the
-## joint nearest letting go}.
+## "all": a whole-model fall (every brick goes), "down": id -> true for each
+## brick that comes down, past a joint that lets go or tipping off a touch,
+## "weak": id -> true for each past its working load (the status bar's),
+## "worst": the joint nearest letting go}.
 func _judged(report: Stability.Report) -> Dictionary:
-	var ids: Dictionary = {}
+	var down: Dictionary = {}
 	var weak: Dictionary = {}
 	var all: bool = false
 	var worst: Balance.JointLoad = null
 	for id: Variant in report.margins:
 		var one: Balance.JointLoad = report.margins[id]
 		if one.ultimate > 0.0 and one.moment > one.ultimate:
-			ids[int(id)] = true
+			down.merge(_past(one))
 		if worst == null or one.moment / maxf(one.ultimate, 0.000001) \
 				> worst.moment / maxf(worst.ultimate, 0.000001):
 			worst = one
+	for piece: Dictionary in report.tipping:
+		for id: Variant in piece.get("ids", []):
+			down[int(id)] = true
 	for risk: Stability.Risk in report.risks:
 		match risk.kind:
 			"levered":
 				weak[risk.brick_id] = true
 			"rests on a touch":
-				ids[risk.brick_id] = true
+				down[risk.brick_id] = true
 				weak[risk.brick_id] = true
 			_:
 				all = true
-	return {"falls": all or not ids.is_empty(), "all": all, "ids": ids, "weak": weak, "worst": worst}
+	return {"falls": all or not down.is_empty(), "all": all, "down": down, "weak": weak, "worst": worst}
 
 
-## What a joint's studs must each hold for it not to let go, N: its moment
-## against their levers at 1 N.
+## Everything that comes down when [param one] lets go: the part past it and
+## all held to that by studs, short of the part it lets go of, the baseplate
+## and the scenery (SelectBy.connected, as a person picks it up).
+func _past(one: Balance.JointLoad) -> Dictionary:
+	var stop: Dictionary = _store.scenery.duplicate()
+	stop[one.held_by] = true
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == PLATE:
+			stop[brick.id] = true
+	var out: Dictionary = {}
+	for id: Variant in SelectBy.connected(_world, _builder.lattice, [one.beyond], stop):
+		out[int(id)] = true
+	return out
+
+
+## What each of a joint's studs must hold for it not to let go, N: its
+## moment against their levers (the working load is ALLOWABLE_N a stud).
 static func _needs(one: Balance.JointLoad) -> float:
-	if one == null or one.ultimate <= 0.0:
+	if one == null or one.capacity <= 0.0:
 		return 0.0
-	return one.moment / one.ultimate * Balance.ULTIMATE_N
+	return one.moment / one.capacity * Balance.ALLOWABLE_N
+
+
+## Where the check has each of a joint's studs let go, N.
+static func _lets_go(one: Balance.JointLoad) -> float:
+	if one == null or one.capacity <= 0.0:
+		return 0.0
+	return one.ultimate / one.capacity * Balance.ALLOWABLE_N
+
+
+## How wide the part a joint's studs go into is, "a stud wide" or "wider":
+## the part over a flat joint, or the one a part hangs from.
+func _width(one: Balance.JointLoad) -> String:
+	var into: BrickWorld.Brick = _world.get_brick(one.held_by if one.hangs else one.beyond)
+	var mesh: Lbm.PartMesh = _library.mesh_for(into.part_id) if into != null else null
+	if mesh != null and minf(mesh.bounds.size.x, mesh.bounds.size.z) < 30.0:
+		return "a stud wide"
+	return "wider"
 
 
 ## Each world brick's key in the source ("0 // brick K" before its line), by

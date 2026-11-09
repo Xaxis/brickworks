@@ -29,13 +29,15 @@
 ## -----------
 ## A stud joint holds a moment about the edge it would turn on by the
 ## rigid-plastic bound M = Σ F·dᵢ, each stud pulling F at its distance dᵢ
-## from that edge (a 2x2 at 1 N a stud holds 3.2 N·cm). Nobody has published
-## a measured clutch force: the book the LEGO Group published says "the
-## ideal strength's value must remain secret" (The Secret Life of LEGO®
-## Bricks, p. 22), and StableLego
-## measured 0.98 N per contact point, three or four contact points to a stud
-## (arXiv 2402.10711). So F is 1 N a stud for the working load and 3 N for
-## where it lets go, and the answer is honest to a factor of two or so.
+## from that edge (a 2x2 at 1 N a stud holds 3.2 N·cm). The LEGO Group keeps
+## its clutch figure to itself ("the ideal strength's value must remain
+## secret", The Secret Life of LEGO® Bricks, p. 22). Where a stud lets go is
+## measured from what StableLego built (arXiv 2402.10711) and weighed here
+## as it is built (src/dev/stabletruth_probe.gd, docs/RESEARCH.md unit 3):
+## [constant ULTIMATE_N] into a part two studs wide or more, and more into
+## one a stud wide ([constant ULTIMATE_ONE_WIDE_N]). The working load, the
+## line past which the status bar calls a joint weak, is a margin under
+## that, not a measure: 1 N a stud.
 ##
 ## What a joint carries is everything beyond it: the parts that come off with
 ## it. That is only well defined where the joint is the one thing holding
@@ -69,9 +71,28 @@ extends RefCounted
 ## m/s².
 const GRAVITY := 9.81
 const MM_PER_LDU := 0.4
-## A stud's working load and where it lets go, N (see above).
+## A stud's working load, N: what the status bar holds a joint to, and calls
+## it weak past. A margin, never measured; about half of where a stud lets
+## go into a part two studs wide, a third into one a stud wide.
 const ALLOWABLE_N := 1.0
-const ULTIMATE_N := 3.0
+## Where a stud lets go, N, levered about the edge it would turn on as
+## [method _load] weighs it, into a part two studs wide or more: Tested lets
+## a part fall past it. Measured against the structures StableLego built and
+## saw stand or fall (stabletruth_probe): stairs of 2 x 4 bricks two studs
+## on each, of 19 levels, which stood, needing 1.84 N a stud at their weakest
+## joint, of 20, which came apart there at 2.06 N, and 200 g on stairs of 4
+## levels, which came apart at 2.00 N. 3 N, the figure this was until then,
+## read the 20 levels and the 200 g as standing.
+const ULTIMATE_N := 1.92
+## ...and into a part a stud wide: each stud is gripped at four points
+## round it, not three as in a wider part's tube and walls, and they sit
+## further from the edge it turns on. StableLego's contact points, levered as
+## [method _load] levers a joint two studs deep (every joint their builds
+## broke at), hold 1.6 times as much there. That puts it at 3.07 N, between
+## what its stick of 1-wide bricks needed where it held, 2.93 N, and where it
+## came apart, 3.21 N; at 1.92 N it read both sticks as coming apart. Both
+## are 1.02 N a contact point on that layout, against StableLego's 0.98 N.
+const ULTIMATE_ONE_WIDE_N := ULTIMATE_N * 1.6
 ## Within this of the lowest cell a part counts as standing on the floor, in
 ## cells: half a plate, so a tyre's rounded foot does and a chassis above it
 ## does not.
@@ -330,7 +351,9 @@ class Report extends RefCounted:
 				if not one.pose.is_empty():
 					line += ", %s" % one.pose
 				shown.append(line)
-			lines.append("Most loaded stud joints (1 N a stud working, 3 N lets go): "
+			lines.append(("Most loaded stud joints (%s N a stud working; it lets go at %s N, "
+				+ "%s N into a part a stud wide): ") % [Balance.tidy(ALLOWABLE_N),
+					Balance.tidy(ULTIMATE_N), Balance.tidy(ULTIMATE_ONE_WIDE_N)]
 				+ "; ".join(shown) + ".")
 			if over > 0:
 				lines.append(("%d past the working load: brace %s, give %s more studs, or "
@@ -1445,10 +1468,21 @@ func _load(bridge: Dictionary, moved: Transform3D, grams: float, carried: Vector
 	var to_cm: float = MM_PER_LDU / 10.0
 	one.moment = maxf(bending.length() - pressed * reach, 0.0) * to_cm
 	one.capacity = ALLOWABLE_N * lever * to_cm
-	one.ultimate = ULTIMATE_N * lever * to_cm
+	# The studs are in the upper part's underside, or pointing into it from
+	# the side (_find_bridges): how wide it is says how hard they are held.
+	one.ultimate = lets_go(_meshes[upper] if upper < _meshes.size() else null) * lever * to_cm
 	one.ratio = one.moment / maxf(one.capacity, 0.000001)
 	one.at = joint
 	return one
+
+
+## Where a stud lets go into a part of [param mesh], N: [constant
+## ULTIMATE_ONE_WIDE_N] into a part a stud wide across its own footprint,
+## [constant ULTIMATE_N] into any other or one with no shape.
+static func lets_go(mesh: Lbm.PartMesh) -> float:
+	if mesh != null and minf(mesh.bounds.size.x, mesh.bounds.size.z) < BrickLattice.STUD * 1.5:
+		return ULTIMATE_ONE_WIDE_N
+	return ULTIMATE_N
 
 
 ## A joint pins or axles alone make, weighed as one fails (docs/MECHANISMS.md
