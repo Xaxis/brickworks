@@ -14,7 +14,9 @@
 ##    Render, Quick, 720p, no background (so a frame's alpha is its parts),
 ##    Building's 10 s, Return. In the frame where the first step's parts are
 ##    all down, just before the second's begin, they fill 40% or more of the
-##    frame's height, read off the picture; the last frame is the whole
+##    frame's height, read off the picture; the first frame shows the first
+##    part coming down, all of it (the frame a GIF shows where it does not
+##    play: it was the part's shadow alone); the last frame is the whole
 ##    model, as a picture with the same choices draws it.
 ## 2. Over MCP, the same model as the walk drew it: render_model build with
 ##    view hero (turning), no backdrop and format gif. The first step 40% or
@@ -147,6 +149,16 @@ func _first_step(built: BuildRender, dir: String, how: String) -> void:
 	if not _check("%s: frame %d of %d, the first step's %d part%s all down" % [how, at + 1,
 			built.frames, first, "" if first == 1 else "s"], frame != null and built.shown[at] == first):
 		return
+	# The first frame, the one a GIF shows where it does not play: the first
+	# part coming down, all of it in the picture.
+	var start: Image = Image.load_from_file(dir.path_join("frame_0001.png"))
+	var at_start: Rect2i = _alpha_box(start)
+	if start != null:
+		start.save_png(_out.path_join("%s_first_frame.png" % how.replace(" ", "_")))
+	_check("%s: the first frame shows the first part coming down, all of it: %s in %s" % [how,
+		str(at_start), str(start.get_size() if start != null else Vector2i.ZERO)], start != null
+		and at_start.size.y > 0 and at_start.position.y > 1 and at_start.end.y < start.get_height() - 1
+		and at_start.position.x > 1 and at_start.end.x < start.get_width() - 1)
 	var box: Rect2i = _alpha_box(frame)
 	var tall: float = float(box.size.y) / float(frame.get_height())
 	var wide: float = float(box.size.x) / float(frame.get_width())

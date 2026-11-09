@@ -2495,7 +2495,10 @@ picture the assistant is shown.
   where they stand, as the model is turned then (`BuildRender.framed_at`,
   `StudioRender._follow`), eased over about the time a part takes to come
   down (twice a running mean, `BuildRender._eased`), so a first step of one
-  plate fills the picture; once the model is finished the camera settles,
+  plate fills the picture; until the first part is down it is framed from
+  where that part begins too, so the first frame (all a GIF shows where it
+  does not play) is a part coming down, not its shadow; once the model is
+  finished the camera settles,
   over about a second, into the view chosen as a picture frames it (a view
   not fitted, As I see it or a saved view, is the person's own framing), so
   the last frame is the picture's. The lights' shadows reach as far as each
@@ -2848,7 +2851,8 @@ picture the assistant is shown.
   Render, Quick, 720p, no background, Building 10 s and Return, and over MCP
   as the walk drew it (view hero, turning, no backdrop, format gif): in the
   frame where the first step's parts are all down they fill 40% or more of
-  the frame's height, read off its alpha; the last frame the whole model,
+  the frame's height, read off its alpha; the first frame the first part
+  coming down, all of it in the picture; the last frame the whole model,
   as a picture with the same choices draws it. The car's 36-frame
   turntable kept as a GIF by hand (Kept as GIF, Return) and over MCP:
   GIF89a, a global table of 256 colours, looping for ever, 36 frames, 8 MB

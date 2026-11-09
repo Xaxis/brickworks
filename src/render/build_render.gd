@@ -138,7 +138,10 @@ func lay_out(seconds: float, fps: int, height: float) -> void:
 ## of it and of the steps before it, where they stand; the camera eased
 ## from one to the next over about the time a part takes to come down
 ## (twice a running mean, so it starts and stops gently), and so never
-## framed on less than the parts that are down. Every frame of the last
+## framed on less than the parts that are down. Until the first part is
+## down it is framed from where that part begins too, so the first frame,
+## the one a GIF shows where it does not play, is of a part coming down
+## rather than its shadow. Every frame of the last
 ## step and the finished model is framed on the whole of it. While it goes
 ## up the camera is fitted close; once it is finished it settles, over
 ## about a second, into the view chosen as a picture frames it (As I see
@@ -168,6 +171,11 @@ func _frame_steps(each: float, count: int, fps: int) -> void:
 		low_at[n] = lows[step] if count > 0 else Vector3.ZERO
 		high_at[n] = highs[step] if count > 0 else Vector3.ZERO
 		finished_at[n] = Vector3.ONE if at >= count else Vector3.ZERO
+	if count > 0 and not _boxes.is_empty():
+		var above := AABB(_boxes[0].position + Vector3(0.0, _drop, 0.0), _boxes[0].size)
+		for n: int in mini(ceili(_starts[0] + _landing), frames):
+			low_at[n] = low_at[n].min(above.position)
+			high_at[n] = high_at[n].max(above.end)
 	var width: int = maxi(roundi(_landing * 0.5) + 1, roundi(EASING * float(fps)) + 1)
 	_framed_low = _eased(_eased(low_at, width), width)
 	_framed_high = _eased(_eased(high_at, width), width)
