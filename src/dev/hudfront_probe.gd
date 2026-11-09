@@ -423,12 +423,15 @@ func _open(panel: String, again: bool = false) -> bool:
 			# The bin's Stickers.
 			(_main.get("_bin") as PartsBin).stickers_wanted.emit()
 		"the page laid out":
-			# The timeline on a step first, as a person clicks one: the page
-			# laid out is that step's.
+			# The timeline open on a step first (Build › Timeline), as a
+			# person opens it: the page laid out is that step's.
 			var steps: StepsBar = _main.get("_steps")
 			if steps.current_step() == null:
-				steps.refresh(1)
-				await _frames(4)
+				_shell.run("timeline")
+				for _n: int in 600:
+					if steps.current_step() != null:
+						break
+					await process_frame
 			_shell.run("booklet_lay_out")
 		"Find's list":
 			_shell.run("select_find")
