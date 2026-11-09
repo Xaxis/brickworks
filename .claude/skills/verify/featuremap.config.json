@@ -5008,6 +5008,13 @@
       "entry": "src/dev/lineart_probe.gd",
       "reach": "tools/probe.sh lineart [-- --shots=DIR --reference=DIR]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720, through the sign-in screen with a throwaway account (.env): Render's default of the car and a scene's window and Product kept for an older build's run (--reference) byte for byte; the Look row clicked; Line art's paper, greys, outline, the wall's seams inked and dots where the light leaves a face; Comic's colours; on nothing; an animation's moved part leaves no line; render_model; 10036-1 in both looks to look at)",
       "area": "view"
+    },
+    {
+      "kind": "lib",
+      "label": "a session keeps and uses palettes over mcp",
+      "entry": "src/net/palette_tool.gd",
+      "reach": "tools/probe.sh mcppalettes && PROBE_SIZE=1400x900 tools/probe.sh mcppalettes   (palettes reads the person's palettes, read-only; edit_palette make keeps twelve parts of the model each in its colour and a gatepost as the sub-assembly Gatepost in 1 call, the bin's Palettes shows it and its file entries are the bin's own Add rows' byte for byte but ids and times; place puts Gatepost down whole in another model in 1 call, each part to 0.01 LDU, low corner where asked, one assembly, one undo; take_out, rename, delete, agreed=true for a sub-assembly out and a delete; pictures in shots/mcppalettes/)",
+      "area": "mcp"
     }
   ]
 }

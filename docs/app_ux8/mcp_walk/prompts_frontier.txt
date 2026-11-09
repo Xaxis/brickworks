@@ -1,0 +1,8 @@
+new|
+n1|Clear the baseplate and build a bridge: two towers of 2x2 bricks, six bricks tall and six studs apart, with a deck of 1x8 plates across their tops. Will it hold if a minifigure stands in the middle, and where is it weakest?
+n2|Could an eight-year-old build this in the order of its instructions, with their own hands? Is there a step where a part has to go under one already placed, or hangs in the air until a later step?
+n3|Make the instructions easier for a six-year-old: fewer parts in each step, and the parts each step needs shown beside it. Then show me page 2.
+n4|Away from the bridge, build a gear train: a 24-tooth gear driving an 8-tooth gear, each on its own axle held in a Technic beam frame. How many turns does the small gear make for one turn of the big one? Then make a short video of it turning.
+n5|Using only the parts in my collection, design a small car. Tell me if you needed anything I don't own.
+n6|Design a small red fire engine at the quality of a LEGO City set, about 150 parts, and tell me how it compares with a real set of that size.
+n7|My friend wants to build this model with me at the same time, from their own computer. Set that up for us.

@@ -6366,6 +6366,140 @@
     "annotations": {
       "openWorldHint": false,
       "readOnlyHint": true,
+      "title": "List the person's palettes"
+    },
+    "description": "The person's own palettes, as the parts bin's Palettes keeps them: each named, of parts in their colours and of sub-assemblies, kept apart from any model so they are there in every model the person opens, on this computer (in this browser on the web). With no palette=, every palette with what it holds; palette= one by its name, in full: each part's number, name and colour, and each sub-assembly's name and parts. Changes nothing. edit_palette makes and changes them, and puts a sub-assembly down.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "palette": {
+          "description": "a palette's name",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "palettes"
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Keep parts in a palette"
+    },
+    "description": "Make or change one of the person's palettes (the parts bin's Palettes), as its New palette, Add and More rows do, or put one of its sub-assemblies down in the model. palette= its name. action make (a new palette called palette=; a name taken is refused) or add keeps parts in it, each part and colour once: bricks= parts of the open model by number, each in its colour; parts= any part by number and LDraw colour; from= \"model\" or \"selection\" every part of the open model or of the person's selection. assembly= keeps a sub-assembly whole by that name, as Add, The selection, as one sub-assembly does: its parts assembly_bricks=, or with none given from= (the selection or the whole model). Parts and a sub-assembly go in one call. take_out takes parts= or the sub-assembly assembly= out; rename renames the palette, or the sub-assembly assembly=, to to=; delete deletes the palette. Taking out a sub-assembly and deleting a palette need agreed=true: ask the person first, as the window asks them. action place puts the sub-assembly assembly= down in the model whole, as a click on its tile does: each part where it stood beside the others, as a sub-assembly of its own name, one undo step; at= {x, y, z} is where its low corner goes (studs, plates, studs, as look_at_model gives them; beside the model when not given), rot= quarter turns about the upright first, every part checked for room, all or nothing. A part alone from a palette goes in with edit_model's add, in its colour. Answered with what the palette holds, or with what was put down pictured (picture=false: words alone).",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "enum": [
+            "make",
+            "add",
+            "take_out",
+            "rename",
+            "delete",
+            "place"
+          ],
+          "type": "string"
+        },
+        "agreed": {
+          "description": "the person said yes (take_out of a sub-assembly, delete)",
+          "type": "boolean"
+        },
+        "assembly": {
+          "description": "a sub-assembly's name in the palette",
+          "type": "string"
+        },
+        "assembly_bricks": {
+          "description": "parts of the open model, by their numbers in look_at_model",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "at": {
+          "additionalProperties": false,
+          "description": "place: where the sub-assembly's low corner goes, in studs, plates and studs",
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "z": {
+              "type": "number"
+            }
+          },
+          "type": "object"
+        },
+        "bricks": {
+          "description": "parts of the open model, by their numbers in look_at_model",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "from": {
+          "enum": [
+            "model",
+            "selection"
+          ],
+          "type": "string"
+        },
+        "palette": {
+          "description": "the palette's name (make: the new one's)",
+          "type": "string"
+        },
+        "parts": {
+          "description": "parts by number, each in a colour",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "color": {
+                "description": "LDraw colour code",
+                "type": "integer"
+              },
+              "part": {
+                "description": "part number, e.g. 3001",
+                "type": "string"
+              }
+            },
+            "required": [
+              "part",
+              "color"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "picture": {
+          "description": "place: false, words alone",
+          "type": "boolean"
+        },
+        "rot": {
+          "description": "place: quarter turns about the upright, 0 to 3",
+          "type": "integer"
+        },
+        "to": {
+          "description": "rename: the new name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action",
+        "palette"
+      ],
+      "type": "object"
+    },
+    "name": "edit_palette"
+  },
+  {
+    "annotations": {
+      "openWorldHint": false,
+      "readOnlyHint": true,
       "title": "Follow a long job"
     },
     "description": "How a long piece of work is going: a call that answered with a job number (a render, a turntable, a booklet, a Studio file, a Brick Art picture, a brickify, a mechanism's recording, or any call still going after 20 s). It waits up to 45 s for the work to end, then says how far it has got; once done it gives the work's answer, picture and all, or why it stopped. cancel=true stops it, as Cancel in the window does. id= the job's number; the latest when omitted.",

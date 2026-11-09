@@ -3014,6 +3014,14 @@
       ]
     },
     {
+      "id": "lib:a session keeps and uses palettes over mcp",
+      "kind": "lib",
+      "entry": "src/net/palette_tool.gd",
+      "reach": "tools/probe.sh mcppalettes && PROBE_SIZE=1400x900 tools/probe.sh mcppalettes   (palettes reads the person's palettes, read-only; edit_palette make keeps twelve parts of the model each in its colour and a gatepost as the sub-assembly Gatepost in 1 call, the bin's Palettes shows it and its file entries are the bin's own Add rows' byte for byte but ids and times; place puts Gatepost down whole in another model in 1 call, each part to 0.01 LDU, low corner where asked, one assembly, one undo; take_out, rename, delete, agreed=true for a sub-assembly out and a delete; pictures in shots/mcppalettes/)",
+      "area": "mcp",
+      "tests": []
+    },
+    {
       "id": "lib:a session per tab",
       "kind": "lib",
       "entry": "src/parts/tab_session.gd",
