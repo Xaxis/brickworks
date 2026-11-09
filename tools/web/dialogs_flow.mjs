@@ -19,7 +19,10 @@
 //                  then deleted, each asked and answered
 //   Versions       a version kept
 //   Share          the name typed above the keyboard; published by link
-//                  where the test account is signed in to a deployment
+//                  where signed in to a deployment, as an account of the
+//                  run's own: the four dialogs checks of every preview
+//                  spent the shared test account's 60 publishes a day
+//                  between them (2026-11-08), and Share was refused
 //   Settings       a setting changed (Reduce motion), and back
 //   Build together a session started where signed in, and ended
 //   Export         a 3D model's question answered: a file downloaded; an
@@ -41,8 +44,8 @@
 //                  above the keyboard, a torso chosen by its tile, Back to
 //                  the slots where they take turns with a slot's choices,
 //                  Place in model, and a tap standing the figure there
-//   Account        last: Sign out, and the sign-in screen up, where the
-//                  test account is signed in, audited as a dialog is
+//   Account        last: Sign out, and the sign-in screen up, where
+//                  signed in, audited as a dialog is
 //
 // At every step the app is asked (window.brickworksAskPhone) for every
 // target a finger has and every line of text, in points, and what is open
@@ -88,7 +91,7 @@ const check = (what, ok) => {
 const say = (what) => console.log(`  --    ${what}`);
 const sizes = (list) => list.slice(0, 4).map((t) => `${t.name} ${t.box[2]}x${t.box[3]}`).join("; ");
 
-const browser = await launch();
+const browser = await launch({ ownAccount: true });
 try {
   for (const size of SIZES) {
     const [width, height] = size.split("x").map(Number);
