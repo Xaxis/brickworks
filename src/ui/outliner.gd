@@ -104,7 +104,7 @@ func _ready() -> void:
 	_tree.item_edited.connect(_on_edited)
 	_tree.button_clicked.connect(_on_button)
 	# subexport: a right click on a row, its menu.
-	_tree.item_mouse_selected.connect(_on_row_clicked)
+	_tree.gui_input.connect(_on_tree_input)
 	_tree.set_drag_forwarding(_drag_data, _can_drop, _drop)
 	column.add_child(_tree)
 	# A name typed over ends in item_edited; Esc ends it with nothing said,
@@ -681,16 +681,22 @@ const MENU_ONE := 0
 const MENU_EACH := 1
 
 
-func _on_row_clicked(at: Vector2, button: int) -> void:
-	if button != MOUSE_BUTTON_RIGHT:
+## The row under a right click, from the click's own place: the tree's
+## item_mouse_selected gives the pointer's place as the system has it, which
+## a click sent to the window (a check's, a remote session's) does not move.
+func _on_tree_input(event: InputEvent) -> void:
+	var click: InputEventMouseButton = event as InputEventMouseButton
+	if click == null or not click.pressed or click.button_index != MOUSE_BUTTON_RIGHT:
 		return
-	var row: TreeItem = _tree.get_item_at_position(at)
+	var row: TreeItem = _tree.get_item_at_position(click.position)
 	if row == null:
 		return
 	var path: String = str(row.get_metadata(0))
 	if path == SUGGESTED or path.begins_with(SUGGESTION):
 		return
-	open_row_menu(path, _tree.get_global_transform_with_canvas() * at)
+	# After the tree has chosen the row (allow_rmb_select), as a file
+	# manager highlights the row its menu is for.
+	open_row_menu.call_deferred(path, _tree.get_global_transform_with_canvas() * click.position)
 
 
 ## The row menu for the row of [param path] ("" the model's), at [param at]

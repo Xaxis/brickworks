@@ -623,17 +623,28 @@ func _show_tree() -> void:
 
 
 func _right_click_row(outliner: Outliner, path: String) -> PopupMenu:
-	var rects: Dictionary = outliner.row_rects()
-	for _n: int in 30:
-		if rects.has(path):
-			break
-		await _frames(2)
-		rects = outliner.row_rects()
+	var rects: Dictionary = await _row_in_sight(outliner, path)
 	if not rects.has(path):
 		print("    no row for %s among %d in sight (the tree %s, in the window %s)" % [path,
 			rects.size(), "open" if outliner.is_open() else "folded", outliner.is_visible_in_tree()])
 		return null
-	var at: Vector2 = (rects[path] as Rect2).get_center()
+	# Where the row stays: a window just resized lays the column out again
+	# over a few frames, and the row measured first was another's by the
+	# click (east curtain wall's, at 1280 x 720).
+	var held: int = 0
+	var last: Rect2 = rects[path]
+	for _n: int in 120:
+		await _frames(1)
+		rects = outliner.row_rects()
+		if not rects.has(path):
+			rects = await _row_in_sight(outliner, path)
+			if not rects.has(path):
+				return null
+		held = held + 1 if (rects[path] as Rect2).is_equal_approx(last) else 0
+		last = rects[path]
+		if held >= 8:
+			break
+	var at: Vector2 = last.get_center()
 	var motion := InputEventMouseMotion.new()
 	motion.position = _as_event(at)
 	motion.global_position = motion.position
@@ -649,7 +660,45 @@ func _right_click_row(outliner: Outliner, path: String) -> PopupMenu:
 		await _frames(3)
 	await _frames(6)
 	var menu: Variant = outliner.get("row_menu")
+	var tree: Tree = outliner.get("_tree")
+	var chosen: TreeItem = tree.get_selected() if tree != null else null
+	_check("the right click chose %s's row, as a file manager does" % Assemblies.label(path)
+		if not path.is_empty() else "the right click chose the model's row",
+		chosen != null and str(chosen.get_metadata(0)) == path)
 	return menu if menu is PopupMenu and (menu as PopupMenu).visible else null
+
+
+## [param path]'s row in sight, the tree scrolled to it with the wheel over it
+## as a person scrolls: up to its top, then down a notch at a time.
+func _row_in_sight(outliner: Outliner, path: String) -> Dictionary:
+	var rects: Dictionary = outliner.row_rects()
+	for _n: int in 10:
+		if rects.has(path):
+			return rects
+		await _frames(2)
+		rects = outliner.row_rects()
+	var tree: Tree = outliner.get("_tree")
+	if tree == null or not tree.is_visible_in_tree():
+		return rects
+	var over: Vector2 = _as_event(tree.get_global_rect().get_center())
+	for wheel: MouseButton in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
+		for _n: int in 40 if wheel == MOUSE_BUTTON_WHEEL_UP else 120:
+			if rects.has(path):
+				return rects
+			var before: float = tree.get_scroll().y
+			for down: bool in [true, false]:
+				var event := InputEventMouseButton.new()
+				event.button_index = wheel
+				event.pressed = down
+				event.factor = 1.0
+				event.position = over
+				event.global_position = over
+				Input.parse_input_event(event)
+			await _frames(2)
+			rects = outliner.row_rects()
+			if is_equal_approx(before, tree.get_scroll().y):
+				break
+	return rects
 
 
 ## The first row of the tree [param named] names: its definition's first
