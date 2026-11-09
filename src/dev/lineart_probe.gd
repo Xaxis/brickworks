@@ -40,10 +40,9 @@ extends SceneTree
 
 const SET := "res://vendor/omr/files/10036-1.mpd"
 ## The engine's own random numbers seeded with this before each picture
-## laid beside an older build's: a Good render's light gathers along rays
-## the engine turns at random each frame (SDFGI), and the engine seeds them
-## anew at each start, so two runs of one build differ by a level here and
-## there unless they start from the same seed.
+## laid beside an older build's, which the engine seeds anew at each start:
+## unseeded, two runs of one build drew the default render a level apart
+## in 74,251 pixels.
 const DRAWN_WITH := 20261109
 ## A pixel this much darker than white (of 1) is ink.
 const INK := 0.5
@@ -192,21 +191,17 @@ func _finish() -> void:
 # -- the default render, the same to the pixel ----------------------------------
 
 
-## File, Render's own choices of the example car: drawn once to make the
-## engine's programs, then twice from the same seed, the two the same; the
-## last kept, and laid against an older build's.
+## File, Render's own choices of the example car, the first picture drawn
+## in the run: a Good render's light gathers over frames and keeps some of
+## what it gathered for the next (a third render of the car came out a
+## level darker than the first, all over), so only the first is the same
+## from one run to the next. Kept, and laid against an older build's.
 func _default_render() -> void:
 	print("\n  the default render, as File, Render… draws it of the example car")
 	_check("the example car is on the baseplate (%d parts)" % _world.brick_count(),
 		_world.brick_count() > 20)
-	await _render.render(_world, RenderSettings.new())
 	seed(DRAWN_WITH)
-	var first: Image = await _render.render(_world, RenderSettings.new())
-	seed(DRAWN_WITH)
-	var again: Image = await _render.render(_world, RenderSettings.new())
-	_check("drawn twice from one seed, the same picture to the pixel (%d px differ)"
-		% _differing(first, again), first != null and _differing(first, again) == 0)
-	_keep_and_compare(again, "default_render")
+	_keep_and_compare(await _render.render(_world, RenderSettings.new()), "default_render")
 
 
 func _keep_and_compare(image: Image, name: String) -> void:
@@ -453,11 +448,13 @@ func _line_art() -> void:
 ## The four pictures the last line picture was made of, to look at: the
 ## set's lit and flat, the parts' numbers and their faces' directions.
 func _keep_what_it_was_made_of() -> void:
-	var line: LineArt = _render.get("_line")
+	# Not typed: an older build has no LineArt, and the probe runs there too.
+	var line: Object = _render.get("_line")
 	var made_of: Dictionary = {"lit": _render.get("_out"), "flat": _render.get("_base")}
 	if line != null:
-		made_of["codes"] = line.codes_view
-		made_of["normals"] = line.normals_view
+		made_of["codes"] = line.get("codes_view")
+		made_of["normals"] = line.get("normals_view")
+		made_of["clay"] = line.get("light_view")
 	for name: String in made_of:
 		var view: SubViewport = made_of[name]
 		var image: Image = view.get_texture().get_image() if view != null else null
@@ -607,7 +604,9 @@ func _animated() -> void:
 		_check("two frames drawn (%d)" % drawn, false)
 		return
 	frames[1].save_png(ProjectSettings.globalize_path(_out.path_join("lineart_moved.png")))
-	var at: Vector2 = _project(shots[0], _boxes["white"].get_center() + Vector3(0, 12, 0),
+	# Its front face's foot, under the tile on it, which stays.
+	var box: AABB = _boxes["white"]
+	var at: Vector2 = _project(shots[0], Vector3(box.get_center().x, box.position.y + 5.0, box.end.z),
 		frames[0].get_size())
 	var before: float = _cover(frames[0], at, 10, false)
 	var after: float = _cover(frames[1], at, 10, false)

@@ -1,21 +1,24 @@
 // The Line art and Comic looks (LineArt): the model as a person inks it.
 //
-// Four pictures of the same shot come in. The model in the set's light
-// (lit_tex) and in its own colours with no light at all (flat_tex), both on
-// nothing; every part a flat colour that is its number (code_tex, as
-// booklet_codes draws it); and which way each face looks (normal_tex,
-// line_normals). Out of them:
+// Five pictures of the same shot come in. The model in the set's light
+// (lit_tex), for the shadow it casts on the floor (its alpha), and in its
+// own colours with no light at all (flat_tex), both on nothing; every part
+// a flat colour that is its number (code_tex, as booklet_codes draws it);
+// which way each face looks (normal_tex, line_normals); and the model all
+// white clay in the set's light (light_tex). Out of them:
 //
 //   lines   where the model meets the page, thickest; where one part meets
 //           the next, which is how a wall's bricks are counted; and,
 //           thinnest, where a part's own surface turns a corner more than
 //           CREASE degrees: a stud's rim, a brick's top edge, a slope's
-//           fold. Nothing else, so a shadow's edge or a glint is no line;
-//   shade   the light falling on each face, the lit picture over the flat
-//           one, so a red brick and a white one in the same light are
-//           shaded the same: drawn as halftone dots, a screen at 45° that
-//           grows from nothing on a face turned to the light to dots that
-//           nearly touch in shadow, and on the floor the model's shadow;
+//           fold; and in Line art round a print (a face, a stripe), where
+//           a part's own colour changes. Nothing else, so a shadow's edge
+//           or a glint is no line;
+//   shade   the light falling on each face, the clay's, so a red brick and
+//           a white one in the same light are shaded the same: drawn as
+//           halftone dots, a screen at 45° that grows from nothing on a
+//           face turned to the light to dots that nearly touch in shadow,
+//           and on the floor the darker heart of the model's shadow;
 //   paper   Line art's model is the paper's white inside its lines, to ink
 //           or colour over; Comic's is the plastic's own colour, flat, a
 //           shade darker where the light leaves it, its dots a darker shade
@@ -32,6 +35,7 @@ uniform sampler2D lit_tex : filter_nearest, repeat_disable;
 uniform sampler2D flat_tex : filter_nearest, repeat_disable;
 uniform sampler2D code_tex : filter_nearest, repeat_disable;
 uniform sampler2D normal_tex : filter_nearest, repeat_disable;
+uniform sampler2D light_tex : filter_nearest, repeat_disable;
 // One pixel, as a distance in UV, and where this piece's first pixel is in
 // the whole picture.
 uniform vec2 pixel = vec2(0.001);
@@ -50,11 +54,18 @@ uniform vec3 ink_colour = vec3(0.06, 0.06, 0.07);
 uniform vec3 ink_on_dark = vec3(0.46, 0.47, 0.50);
 // A part's surface turned more than this between two pixels, as the cosine.
 uniform float crease = 0.866;
-// The light, lit over flat, at which the dots begin and where they are
-// densest; and how much of the cell they cover there.
-uniform float shade_from = 0.9;
-uniform float shade_full = 0.42;
+// A print's edge: a part's own colour this far apart between two pixels.
+uniform float print_edge = 0.2;
+// The light on the clay (linear, white in full light is about 0.9) at
+// which the dots begin and where they are densest; and how much of the
+// cell they cover there.
+uniform float shade_from = 0.8;
+uniform float shade_full = 0.3;
 uniform float densest = 0.55;
+// The floor's shadow (its alpha) drawn from here, darkest there: its faint
+// outer reaches, which spread far round a model, left as paper.
+uniform float floor_from = 0.18;
+uniform float floor_full = 0.8;
 
 const int MOST = 6;
 
@@ -68,6 +79,12 @@ bool is_brick(vec3 code) {
 
 float lightness(vec3 c) {
 	return dot(c, vec3(0.299, 0.587, 0.114));
+}
+
+vec3 to_linear(vec3 c) {
+	vec3 low = c / 12.92;
+	vec3 high = pow((c + vec3(0.055)) / 1.055, vec3(2.4));
+	return mix(high, low, vec3(lessThan(c, vec3(0.04045))));
 }
 
 vec3 facing(vec2 uv) {
@@ -95,19 +112,18 @@ float dot_at(vec2 at, float tone) {
 	return 1.0 - smoothstep(radius - soft, radius + soft, d);
 }
 
-// The tone for a face in [light], lit over flat.
+// The tone for a face in [light], the clay's.
 float tone_for(float light) {
 	return densest * (1.0 - smoothstep(shade_full, shade_from, light));
 }
 
-// A pixel of the model: [line] of it inked.
-vec3 on_the_model(vec2 at, vec4 flat_colour, vec4 lit, float line, float to_page, float between,
+// A pixel of the model: [line] of it inked, [light] on it.
+vec3 on_the_model(vec2 at, vec4 flat_colour, float light, float line, float to_page, float between,
 		bool light_other) {
 	// Clear plastic drawn on nothing comes out see-through; drawn here as
 	// the colour it is.
 	vec3 own = flat_colour.a > 0.01 ? flat_colour.rgb / max(flat_colour.a, 0.01) : flat_colour.rgb;
 	own = clamp(own, 0.0, 1.0);
-	float light = lightness(lit.rgb) / max(lightness(own) * max(flat_colour.a, 0.2), 0.035);
 	float tone = tone_for(light);
 	vec3 shown;
 	vec3 line_colour = ink_colour;
@@ -143,6 +159,7 @@ void fragment() {
 	vec3 n = brick ? facing(UV) : vec3(0.0, 0.0, 1.0);
 	vec4 lit = texture(lit_tex, UV);
 	vec4 flat_colour = texture(flat_tex, UV);
+	bool printable = !comic && flat_colour.a > 0.95;
 
 	// The nearest change of each kind within reach.
 	float outline = ink * 0.75;
@@ -152,6 +169,7 @@ void fragment() {
 	float to_page = 99.0;
 	float to_part = 99.0;
 	float to_corner = 99.0;
+	float to_print = 99.0;
 	bool light_other = false;
 	for (int y = -MOST; y <= MOST; y++) {
 		for (int x = -MOST; x <= MOST; x++) {
@@ -172,18 +190,25 @@ void fragment() {
 						light_other = true;
 					}
 				}
-			} else if (brick && d <= corner + 1.0 && dot(facing(uv), n) < crease) {
-				to_corner = min(to_corner, d);
+			} else if (brick && d <= corner + 1.0) {
+				if (dot(facing(uv), n) < crease) {
+					to_corner = min(to_corner, d);
+				} else if (printable) {
+					vec4 there = texture(flat_tex, uv);
+					if (there.a > 0.95 && distance(there.rgb, flat_colour.rgb) > print_edge) {
+						to_print = min(to_print, d);
+					}
+				}
 			}
 		}
 	}
-	float line = max(covered(outline, to_page),
-		max(covered(between, to_part), covered(corner, to_corner)));
+	float line = max(max(covered(outline, to_page), covered(between, to_part)),
+		max(covered(corner, to_corner), covered(corner, to_print)));
 
 	if (!brick) {
 		// The page, with the model's shadow on it in dots: the contact
 		// shadow, which on nothing is drawn as alpha.
-		float shadow = dot_at(at, clamp(lit.a * 0.9, 0.0, densest));
+		float shadow = dot_at(at, densest * smoothstep(floor_from, floor_full, lit.a));
 		float ink_here = max(line, shadow);
 		if (paper.a > 0.5) {
 			COLOR = vec4(mix(paper.rgb, ink_colour, ink_here), 1.0);
@@ -191,7 +216,9 @@ void fragment() {
 			COLOR = vec4(ink_colour, ink_here);
 		}
 	} else {
-		COLOR = vec4(on_the_model(at, flat_colour, lit, line, to_page, between, light_other), 1.0);
+		vec3 clay = to_linear(texture(light_tex, UV).rgb);
+		float light = dot(clay, vec3(0.2126, 0.7152, 0.0722));
+		COLOR = vec4(on_the_model(at, flat_colour, light, line, to_page, between, light_other), 1.0);
 	}
 }
 

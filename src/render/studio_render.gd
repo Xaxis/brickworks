@@ -2259,11 +2259,14 @@ func _line_picture(settings: RenderSettings, from: float, to: float, words: Stri
 		_flat(false)
 		if not flat_drawn:
 			return null
-		_line.before_codes(_camera, size, _stage.transform)
+		_line.before_codes(_camera, _scene, size, _stage.transform)
 		var coded: bool = await _draw([_line.codes_view])
 		if coded:
 			_line.before_normals()
 			coded = await _draw([_line.normals_view])
+		if coded:
+			_line.before_light()
+			coded = await _draw([_line.light_view])
 		_line.after()
 		if not coded:
 			return null

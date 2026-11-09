@@ -13,11 +13,14 @@
 ## StudioRender draws the model twice in the set as it stands, as the window
 ## draws it (one frame, as Quick does: the lines and the dots are the
 ## picture, so a grade adds nothing to them, and the draft is the picture):
-## lit, and in its own colours with no light (flat), both on nothing. This
-## keeps a copy of the model of its own beside the render's, on a layer no
-## camera of the set's sees, drawn twice more: each part a flat colour that
-## is its number (booklet_codes) and which way each face looks
-## (line_normals). line_art.gdshader makes the picture of the four.
+## lit, for the shadow it casts on the floor, and in its own colours with no
+## light (flat), prints and all. This keeps a copy of the model of its own
+## beside the render's, on a layer no camera of the set's sees, drawn three
+## times more: each part a flat colour that is its number (booklet_codes),
+## which way each face looks (line_normals), and all of it white clay in the
+## set's light, so the light on a black part and on a white one are drawn
+## alike (the window lights black plastic a third as much, for its own
+## colour, as white). line_art.gdshader makes the picture of the five.
 ##
 ## The window's own look and the product look never come here: their
 ## pictures are drawn as they were, to the pixel.
@@ -33,11 +36,12 @@ const LOOKS: Array[String] = ["lineart", "comic"]
 ## StudioRender's warm-up 1 << 19.
 const LAYER := 1 << 18
 ## A part's line across, as a share of the picture's short side (2.4 pixels
-## at 1080p), never thinner than this many pixels; the halftone's cell the
+## at 1080p), never thinner than this many pixels (a line between two parts
+## a pixel either side of where they meet, solid); the halftone's cell the
 ## same way (7.2 at 1080p), about a newspaper's 65 lines an inch with the
 ## picture printed A5.
 const INK_SHARE := 1.0 / 450.0
-const THINNEST := 1.5
+const THINNEST := 2.0
 const CELL_SHARE := 1.0 / 150.0
 const SMALLEST_CELL := 4.0
 
@@ -47,13 +51,16 @@ var stage: BrickWorld
 var ids: Dictionary = {}
 var codes_view: SubViewport
 var normals_view: SubViewport
+var light_view: SubViewport
 var ink_view: SubViewport
 
 var _for: Array = []
 var _codes_camera: Camera3D
 var _normals_camera: Camera3D
+var _light_camera: Camera3D
 var _codes: ShaderMaterial
 var _normals: ShaderMaterial
+var _clay: StandardMaterial3D
 var _ink: ShaderMaterial
 ## The flat picture's light: the plastic's colour and nothing else.
 var flat_light: Environment
@@ -100,6 +107,17 @@ func setup(world: World3D, parent: Node3D, library: PartLibrary) -> void:
 	_codes_camera = _camera_in(codes_view, plain)
 	normals_view = _view_3d(world, "LineNormals")
 	_normals_camera = _camera_in(normals_view, plain)
+	# The clay: white, matt, no glint, both sides of a face drawn as the
+	# plastic's are; in the set's light and its shadows (the render's own
+	# stage casts them, and this copy is where it is).
+	_clay = StandardMaterial3D.new()
+	_clay.albedo_color = Color(1, 1, 1)
+	_clay.roughness = 1.0
+	_clay.metallic_specular = 0.0
+	_clay.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
+	_clay.cull_mode = BaseMaterial3D.CULL_DISABLED
+	light_view = _view_3d(world, "LineLight")
+	_light_camera = _camera_in(light_view, null)
 
 	flat_light = Environment.new()
 	flat_light.background_mode = Environment.BG_CLEAR_COLOR
@@ -126,6 +144,7 @@ func setup(world: World3D, parent: Node3D, library: PartLibrary) -> void:
 	_ink.shader = INK
 	_ink.set_shader_parameter("code_tex", codes_view.get_texture())
 	_ink.set_shader_parameter("normal_tex", normals_view.get_texture())
+	_ink.set_shader_parameter("light_tex", light_view.get_texture())
 	rect.material = _ink
 	ink_view.add_child(rect)
 
@@ -199,17 +218,22 @@ func move(staged: int, to: Transform3D) -> void:
 		stage.move_brick(twin, to)
 
 
-## Ready to draw the codes from where [param camera] (the set's) looks, at
-## [param size]: the copy shown where the stage is ([param placed], under
-## the same turn), on its own layer, its parts in their numbers.
-func before_codes(camera: Camera3D, size: Vector2i, placed: Transform3D) -> void:
+## Ready to draw the codes from where [param camera] (the set's, in
+## [param scene]) looks, at [param size]: the copy shown where the stage is
+## ([param placed], under the same turn), on its own layer, its parts in
+## their numbers.
+func before_codes(camera: Camera3D, scene: SubViewport, size: Vector2i,
+		placed: Transform3D) -> void:
 	stage.transform = placed
-	for view: SubViewport in [codes_view, normals_view]:
+	for view: SubViewport in [codes_view, normals_view, light_view]:
 		if view.size != size:
 			view.size = size
-	for twin: Camera3D in [_codes_camera, _normals_camera]:
+	for twin: Camera3D in [_codes_camera, _normals_camera, _light_camera]:
 		twin.global_transform = camera.global_transform
 		twin.set_frustum(camera.size, camera.frustum_offset, camera.near, camera.far)
+	_light_camera.environment = camera.environment
+	_light_camera.attributes = camera.attributes
+	light_view.positional_shadow_atlas_size = scene.positional_shadow_atlas_size
 	stage.draw_as(_codes, func(brick_id: int) -> Color:
 		return BookletStudio.code_colour(brick_id))
 	for child: Node in stage.get_children():
@@ -227,6 +251,14 @@ func before_normals() -> void:
 		var batch := child as MultiMeshInstance3D
 		if batch != null:
 			batch.material_override = _normals
+
+
+## Then all of it in clay, in the set's light.
+func before_light() -> void:
+	for child: Node in stage.get_children():
+		var batch := child as MultiMeshInstance3D
+		if batch != null:
+			batch.material_override = _clay
 
 
 ## The copy out of every picture again.
