@@ -1538,7 +1538,8 @@ static func _add_to(table: Dictionary, key: Variant, value: Variant) -> void:
 ## no group (ktreview). One that says what a line of the file says, its
 ## fields in another order (a VIEW written by hand or another build), is
 ## the file's line: kt4review's metas came back reordered with nothing
-## changed.
+## changed. And one the file has stays where the file has it in its step
+## ([method _in_file_places]).
 func app_lines_placed(text: String) -> String:
 	if not text.contains("0 !BRICKWORKS"):
 		return text
@@ -1546,14 +1547,21 @@ func app_lines_placed(text: String) -> String:
 	var had: Dictionary = {}        ## the file's own app lines, as it ended them
 	var meant: Dictionary = {}      ## the same, by what each says
 	var after: Dictionary = {}      ## each of them, the line it follows in the file
+	var before: Dictionary = {}     ## and the line after it
+	var twice: Dictionary = {}      ## those the file has more than once
 	for n: int in original.size():
 		var line: String = original[n]
 		if _is_app_line(line):
+			if had.has(line.trim_suffix("\r")):
+				twice[line] = true
 			had[line.trim_suffix("\r")] = line
 			meant[_app_said(line.trim_suffix("\r"))] = line
-			after[line] = original[n - 1].trim_suffix("\r") if n > 0 else ""
+			# "\n" for none: no line is that.
+			after[line] = original[n - 1].trim_suffix("\r") if n > 0 else "\n"
+			before[line] = original[n + 1].trim_suffix("\r") if n + 1 < original.size() else "\n"
 	var put: PackedStringArray = text.split("\n")
 	var out := PackedStringArray()
+	var own_at := PackedByteArray()  ## 1 for each line of out the file has
 	for n: int in put.size():
 		var line: String = put[n]
 		var bare: String = line.trim_suffix("\r")
@@ -1561,24 +1569,132 @@ func app_lines_placed(text: String) -> String:
 			else str(meant.get(_app_said(bare), "")) if _is_app_line(line) else ""
 		if not _is_app_line(line):
 			out.append(line)
+			own_at.append(0)
 		elif not own.is_empty():
-			# One the file has (a save of it before): as it has it, where
-			# the app's writer puts it, which in a file Brickworks wrote is
-			# where the file has it, so a save with nothing changed is the
-			# file byte for byte; one put elsewhere by hand moves there, as
-			# live's write moves it (kt5 lights1). Right after the line it
-			# follows in the file, or else above the lines that say what the
-			# next part is: the floor's writer puts its line above the
-			# first part, and with the file's own line there a second
-			# save left a GROUP_NXT saying it of the floor (keep_text).
+			# One the file has (a save of it before): as it has it. Right
+			# after the line it follows in the file, or else above the
+			# lines that say what the next part is: the floor's writer puts
+			# its line above the first part, and with the file's own line
+			# there a second save left a GROUP_NXT saying it of the floor
+			# (keep_text). Then where the file has it in its step
+			# (_in_file_places).
 			var at: int = out.size()
 			if at == 0 or out[at - 1].trim_suffix("\r") != str(after[own]):
 				at = before_run(out, at)
 			out.insert(at, own)
+			own_at.insert(at, 0 if twice.has(own) else 1)
 		else:
 			var said: String = line.trim_suffix("\r") + (_eol() if n < put.size() - 1 else "")
-			out.insert(before_run(out, out.size()), said)
-	return "\n".join(out)
+			var at: int = before_run(out, out.size())
+			out.insert(at, said)
+			own_at.insert(at, 0)
+	return "\n".join(_in_file_places(out, own_at, after, before))
+
+
+## [param out] with each line the file has ([param own_at], an app line the
+## file has once) moved, within the stretch of lines the app's writer put it
+## in, to where the file has it there: after the line it follows in the
+## file ([param after]), or else before the line after it ([param before]),
+## when that line is in the stretch once. A stretch is the lines between two
+## that begin a step or a model (STEP, ROTSTEP, FILE, NOFILE), so no line
+## changes step or model. A writer that puts its lines elsewhere than an
+## older build did moved them on a save with nothing changed: since pre261 a
+## VIEW goes under the main model's title, before it under its 0 FILE
+## (kt4review's studio_meta), and a step's look one put by hand at its top
+## went to its end (kt5 lights1). One whose neighbours went keeps the place
+## its writer gave it.
+static func _in_file_places(out: PackedStringArray, own_at: PackedByteArray,
+		after: Dictionary, before: Dictionary) -> PackedStringArray:
+	if not own_at.has(1):
+		return out
+	var result := PackedStringArray()
+	var size: int = out.size()
+	# A last empty line is the text's end, in no stretch.
+	var end: int = size - 1 if size > 0 and out[size - 1].is_empty() else size
+	var start: int = 0
+	var opener: String = "\n"       ## the line before the stretch; none at the top
+	while start < end:
+		var stop: int = start
+		while stop < end and not _begins_stretch(out[stop]):
+			stop += 1
+		result.append_array(_placed_in(out.slice(start, stop), own_at.slice(start, stop),
+			opener, after, before))
+		if stop < end:
+			result.append(out[stop])
+			opener = out[stop].trim_suffix("\r")
+		start = stop + 1
+	for n: int in range(end, size):
+		result.append(out[n])
+	return result
+
+
+## [method _in_file_places] for one stretch, [param lines], after the line
+## [param opener].
+static func _placed_in(lines: PackedStringArray, own_at: PackedByteArray, opener: String,
+		after: Dictionary, before: Dictionary) -> PackedStringArray:
+	if not own_at.has(1):
+		return lines
+	var where: Dictionary = {}      ## a line's text (its end aside) -> its line, -2 for more than one
+	for k: int in lines.size():
+		var bare: String = lines[k].trim_suffix("\r")
+		where[bare] = -2 if where.has(bare) else k
+	# Each line to place goes after or before another, or at the top: one
+	# not to be placed, or one placed before it, so every one is reached.
+	var after_of: Dictionary = {}   ## a line -> those going right after it
+	var before_of: Dictionary = {}  ## a line -> those going right before it
+	var top: Array[int] = []
+	var base: Array[int] = []       ## the lines not to be placed, in order
+	var last_kept: int = -1
+	for k: int in lines.size():
+		if own_at[k] == 0:
+			base.append(k)
+			last_kept = k
+			continue
+		var prev: String = str(after.get(lines[k], "\n"))
+		var at: int = int(where.get(prev, -1))
+		if at >= 0 and (own_at[at] == 0 or at < k):
+			_add_to(after_of, at, k)
+			continue
+		if prev == opener:
+			top.append(k)
+			continue
+		at = int(where.get(str(before.get(lines[k], "\n")), -1))
+		if at >= 0 and (own_at[at] == 0 or at < k):
+			_add_to(before_of, at, k)
+		elif last_kept >= 0:
+			# Where its writer put it: after the line before it there.
+			_add_to(after_of, last_kept, k)
+		else:
+			top.append(k)
+	# Written out without recursion (a file can have thousands in a row):
+	# 2k + 1 writes line k, 2k writes what goes before it, it, and after it.
+	var out := PackedStringArray()
+	var stack := PackedInt32Array()
+	var roots: Array[int] = top + base
+	for n: int in range(roots.size() - 1, -1, -1):
+		stack.append(roots[n] * 2)
+	while not stack.is_empty():
+		var v: int = stack[stack.size() - 1]
+		stack.remove_at(stack.size() - 1)
+		var k: int = v >> 1
+		if v & 1:
+			out.append(lines[k])
+			continue
+		var afters: Array = after_of.get(k, [])
+		for n: int in range(afters.size() - 1, -1, -1):
+			stack.append(int(afters[n]) * 2)
+		stack.append(k * 2 + 1)
+		var befores: Array = before_of.get(k, [])
+		for n: int in range(befores.size() - 1, -1, -1):
+			stack.append(int(befores[n]) * 2)
+	return out
+
+
+## Whether [param line] begins a step or a model, where a stretch of
+## [method _in_file_places] ends.
+static func _begins_stretch(line: String) -> bool:
+	var word: String = _keyword(line)
+	return word == "STEP" or word == "ROTSTEP" or word == "FILE" or word == "NOFILE"
 
 
 # -- the gate -----------------------------------------------------------------
