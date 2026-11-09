@@ -342,7 +342,9 @@ class NavButton extends Control:
 		# slid by a drag, the words that say its keys.
 		var element: RID = get_accessibility_element()
 		if kind == "pan":
+			# Text is read by its value, as a Label's is.
 			AccessibilityServer.update_set_role(element, AccessibilityServer.ROLE_STATIC_TEXT)
+			AccessibilityServer.update_set_value(element, atr(accessibility_name))
 			return
 		AccessibilityServer.update_set_role(element, AccessibilityServer.ROLE_BUTTON)
 		AccessibilityServer.update_add_action(element, AccessibilityServer.ACTION_CLICK, _pressed_by_reader)

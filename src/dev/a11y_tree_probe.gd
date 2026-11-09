@@ -228,12 +228,19 @@ func _targets() -> Dictionary:
 				and not (node.get_parent() is ViewCube and str(node.get("kind")) == "pan"):
 			view.append(node)
 	out["view"] = view
-	# The properties of the part selected: where it is and how it is turned.
+	# The properties of the part selected: where it is and how it is turned,
+	# in whichever properties are shown (where the room allows, those under
+	# the bin, Main._bin_props; else the column's).
 	var properties: Array = []
-	for key: String in ["_x", "_y", "_z", "_yaw"]:
-		var field: Variant = _shell.inspector.get(key)
-		if field is Control and (field as Control).is_visible_in_tree():
-			properties.append(field)
+	for inspector: Variant in [_main.get("_bin_props"), _shell.inspector]:
+		if not (inspector is Control and (inspector as Control).is_visible_in_tree()):
+			continue
+		for key: String in ["_x", "_y", "_z", "_yaw"]:
+			var field: Variant = (inspector as Control).get(key)
+			if field is Control and (field as Control).is_visible_in_tree():
+				properties.append(field)
+		if not properties.is_empty():
+			break
 	out["properties"] = properties
 	out["status line"] = [_shell.status.get("_hint")]
 	return out
@@ -404,8 +411,18 @@ func _away(way: String) -> String:
 	# what AccessKit had been sent by the end of that frame, no later one.
 	var hidden_at: Array[int] = [-1]
 	var read: Array[Dictionary] = [{}]
+	# What is drawn where a part of it was, once it is gone, is not a part of
+	# it: the boxes of the controls shown outside it, read with the tree.
+	var elsewhere: Array[Rect2] = []
+	var shown_when_read: Array[bool] = [false]
 	var read_now := func() -> void:
 		read[0] = _ask_now({"do": "browse", "points": points})
+		shown_when_read[0] = panel.is_visible_in_tree()
+		for node: Node in _all_under(_main):
+			var control: Control = node as Control
+			if control != null and control != panel and not panel.is_ancestor_of(control) \
+					and control.is_visible_in_tree():
+				elsewhere.append(_pixels(control.get_global_rect()))
 	var on_hidden := func() -> void:
 		if hidden_at[0] < 0 and not panel.is_visible_in_tree():
 			hidden_at[0] = Engine.get_process_frames()
@@ -420,7 +437,13 @@ func _away(way: String) -> String:
 		_shell.run(way)
 		await _frames(3)
 	if panel.is_visible_in_tree():
-		print("    %s: neither Escape nor its command put it away: hidden by hand" % way)
+		var close: BaseButton = _close_button(panel)
+		if close != null:
+			how = "its Close button"
+			close.pressed.emit()
+			await _frames(3)
+	if panel.is_visible_in_tree():
+		print("    %s: neither Escape, its command nor a Close button put it away: hidden by hand" % way)
 		how = "by hand"
 		(_ancestor_panel(panel)).visible = false
 	for _n: int in 600:
@@ -436,9 +459,15 @@ func _away(way: String) -> String:
 		return "stayed"
 	# The window itself (its frame) is under everything: not a part of it.
 	var still: Array[String] = []
+	if shown_when_read[0]:
+		still.append("the app showed it again before the tree was read")
+	var gone: Array[Rect2] = []
+	for part: Rect2 in parts:
+		if not elsewhere.any(func(box: Rect2) -> bool: return _same_box(box, part)):
+			gone.append(part)
 	for hit: Dictionary in tree.get("hits", []):
 		var chain: Array = hit.get("chain", [])
-		if not chain.is_empty() and str(chain[0]["role"]) != "frame" and _within_any(chain[0], parts):
+		if not chain.is_empty() and str(chain[0]["role"]) != "frame" and _within_any(chain[0], gone):
 			still.append("pointed at (%d, %d): %s “%s” %s" % [int(hit["at"][0]), int(hit["at"][1]),
 				chain[0]["role"], str(chain[0]["name"]).left(30), chain[0].get("box")])
 	var browsed: Array[String] = []
@@ -447,7 +476,7 @@ func _away(way: String) -> String:
 		var box := Rect2(at[0], at[1], at[2], at[3])
 		if str(element[1]) == "frame" or box.size.x <= 0.0:
 			continue
-		for part: Rect2 in parts:
+		for part: Rect2 in gone:
 			if _same_box(box, part):
 				browsed.append("%s “%s” %s" % [element[1], str(element[2]).left(24), _rect_words(box)])
 				break
@@ -519,6 +548,16 @@ func _new_panel(before: Dictionary) -> Control:
 
 
 ## The outermost control of [param panel] the app shows and hides as one.
+## A panel's own Close button (its × or Close), as a person puts it away.
+static func _close_button(panel: Control) -> BaseButton:
+	for node: Node in _all_under(panel):
+		var button: Button = node as Button
+		if button != null and button.is_visible_in_tree() and not button.disabled \
+				and (button.text in ["Close", "×"] or button.accessibility_name == "Close"):
+			return button
+	return null
+
+
 static func _ancestor_panel(panel: Control) -> Control:
 	var at: Control = panel
 	while at.get_parent() is Control and not (at.get_parent() is Container) and at.visible:
@@ -671,7 +710,8 @@ func _box_of(way: String) -> int:
 				node = element
 				break
 		if node.is_empty():
-			lines.append("“%s” not found where it is drawn (found: %s)" % [_spoken(sub), _said(chain)])
+			lines.append("“%s” (%s under %s) not found where it is drawn, %s (found: %s)" % [_spoken(sub),
+				sub.get_class(), sub.get_parent().name, _rect_words(drawn), _said(chain)])
 			all_near = false
 			continue
 		var at: Array = node.get("box", [0, 0, 0, 0])
