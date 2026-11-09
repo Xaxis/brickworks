@@ -132,9 +132,17 @@ const RED_BOX = async ([data, region]) => {
   for (let y = y0 + 1; y < y1; y++) for (const x of [x0 + 1, x1 - 1]) { all += 1; on += red(x, y) ? 1 : 0; }
   return { size: [w, h], same, box: { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 }, edge: all ? on / all : 0 };
 };
-// In the page: the red of [canvas]'s picture as it is now, grown 2 px.
-const KEEP_RED = (selector) => {
-  const canvas = document.querySelector(selector);
+// In the page: the red of a picture before its marks, grown 2 px: the
+// report's canvas as it is now ([selector]), or a PNG of the window
+// ([png], base64), for the app, whose picture is the window's own.
+const KEEP_RED = async ({ selector, png }) => {
+  let canvas = selector ? document.querySelector(selector) : null;
+  if (png) {
+    const bytes = Uint8Array.from(atob(png), (c) => c.charCodeAt(0));
+    const bitmap = await createImageBitmap(new Blob([bytes], { type: "image/png" }));
+    canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+    canvas.getContext("2d").drawImage(bitmap, 0, 0);
+  }
   const { width: w, height: h } = canvas;
   const px = canvas.getContext("2d").getImageData(0, 0, w, h).data;
   const red = new Uint8Array(w * h);
@@ -287,7 +295,7 @@ try {
     check(`${width}: a bug chosen (${state.kinds.join(", ")}), Send on the screen`, state.kinds.includes("bug*") && state.send);
     const wide = await page.evaluate(() => document.documentElement.clientWidth || innerWidth);
     const ratio = await page.evaluate((across) => Math.min(devicePixelRatio || 1, 2, 1600 / across), wide);
-    const before = await page.evaluate(KEEP_RED, "dialog.feedback.report[open] canvas.marking");
+    const before = await page.evaluate(KEEP_RED, { selector: "dialog.feedback.report[open] canvas.marking" });
     check(`${width}: the page's picture attached, ${state.picture.join(" x ")} (the page ${wide} wide at ${ratio.toFixed(2)}),`
       + ` drawn (${before.colours} colours)`, Math.abs(state.picture[0] - Math.round(wide * ratio)) <= 1 && before.colours >= 12);
     check(`${width}: it says what will be sent: "${state.sends}"`, /^What you wrote · the picture · this page and your browser$/.test(state.sends));
@@ -383,6 +391,9 @@ try {
       check(`the beta shut: no Report a bug in the top bar (${JSON.stringify(button)})`, !button);
       await shot(page, "5-app-beta-shut.png");
     } else if (check(`the beta open: Report a bug in the top bar, beside Account (${JSON.stringify(button)})`, Boolean(button))) {
+      // The window as the report will take it: its red (the bin's red
+      // bricks) is not a box's.
+      const plain = await page.screenshot({ type: "png", timeout: 60000 }).catch(() => null);
       await clickStill(page, "report_bug", { seconds: 30 });
       const up = await until(page, () => (window.brickworksState?.feedback || {}).reporting === true
         && Boolean((window.brickworksControls || {}).report_picture), null, 30000);
@@ -415,10 +426,11 @@ try {
         if (inbox) {
           check(`kept, the app's, from the bar, its box in its details (${inbox.row?.details?.marks})`, inbox.row?.source === "app"
             && inbox.row.details?.from === "bar" && inbox.row.details?.marks === state.marks);
-          // The app's picture before its marks is the app's own, not the
-          // page's: the box is read near where the app says it is, as a red
-          // edge all round.
+          // The app's picture before its marks is the window as it was
+          // pressed: the box is read near where the app says it is, as a
+          // red edge all round, apart from the red the window had.
           await page.evaluate(() => { window.__bwBefore = null; });
+          if (plain) await page.evaluate(KEEP_RED, { png: plain.toString("base64") });
           const found = inbox.picture && marked ? await page.evaluate(RED_BOX, [inbox.picture, marked]) : null;
           check(`the picture in the owner's inbox (${found?.size?.join(" x ")}) has the box, red, where it was drawn:`
             + ` found ${JSON.stringify(found?.box)}, marked ${JSON.stringify(marked)} (each edge within 2 px; its edge`
