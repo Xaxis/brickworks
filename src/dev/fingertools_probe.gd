@@ -179,6 +179,9 @@ func _run() -> void:
 func _way_in() -> bool:
 	var account: Account = _main.get("_account")
 	var gate: Control = _main.get("_gate")
+	if not _check("the app is built, its account there to sign in to", account != null
+			and bool(_main.get("_built"))):
+		return false
 	for _n: int in 900:
 		if account.state != Account.State.CHECKING:
 			break

@@ -135,9 +135,11 @@ With the **Rotate** tool, a click on a part puts three rings on it; with **Move*
 - Type a number while you drag, or straight after, to make it exact: degrees for a ring (**23.58**), a length for an arrow (**3** studs, **2p** plates), and for a pane both its axes (**2x -1z**). [[Enter]] puts it there; [[Esc]] leaves the drag as it was. A free roll has no number.
 - Nothing goes through anything: a drag stops at the last place with room, and the part in the way lights up.
 - [[Esc]] or a right-click while dragging puts it back. Each drag is one step to undo.
+- On a phone or a tablet they are a fingertip wide: tap a part, then drag a ring, an arrow or a pane with one finger, and tap the tag for the next axes. The view stays still under that finger, even if you rest it on the handle first. A second finger puts the drag back and moves the view instead.
 
 <!-- covers
 ui:handles on the selection
+ui:measure and handles by finger
 -->
 
 ## Mirror, replace and paint {#mirror}
@@ -204,6 +206,8 @@ ui:undo history
 Press [[U]] and click two points: the distance in studs, plates and millimetres. One LDraw unit is exactly 0.4 mm: a stud is 8 mm across, a brick 9.6 mm tall and a plate 3.2 mm.
 
 Click near a pin, a hole, an axle, a bar or a hinge and the point goes on its middle. With both points on one, Measure also says the angle between them, to a tenth of a degree: where a spring or a link goes between two pin holes.
+
+On a phone or a tablet, Measure is in **More › Tools**: tap two points. Each tap goes on the stud or connector nearest your fingertip, so it reads what a click right on it would. Holding your finger down doesn't pick up a part while the ruler is out.
 
 An assistant measures with `measure`, between two connectors it names, and is told the same words. A hinge you left at an angle reads back as that angle.
 
