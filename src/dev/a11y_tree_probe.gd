@@ -18,31 +18,39 @@
 ## browse: the window walked from its root down through each element's
 ## children as AT-SPI lists them, as a screen reader browses it (Orca's
 ## flat review, its structural navigation). It reaches the menus, the
-## toolbar, the parts bin and its search, the model's view, the properties
-## and the status line, each where it is on screen, in that order. On pre261
-## the walk stopped at Model name: AccessKit 0.22 (accesskit_consumer 0.38,
-## iterators.rs next_filtered_sibling) ends a list of children where an
-## element of no role and no children (a spacer) comes before a hidden one
-## that has children, and the top bar had one, its spacer and then the
-## hidden Claude tab.
+## toolbar, the parts bin and its search, the view (its cube and the
+## buttons round it), the properties and the status line, each where it is
+## on screen, in that order. On pre261 the walk stopped at Model name:
+## AccessKit 0.22 (accesskit_consumer 0.38, iterators.rs
+## next_filtered_sibling) ends a list of children where an element of no
+## role and no children (a spacer) comes before a hidden one that has
+## children, and the top bar had one, its spacer and then the hidden Claude
+## tab. And the view had nothing in it a screen reader lists: its cube and
+## buttons were plain controls, which AccessKit passes by.
 ##
 ## away: each panel the menus open over the model, put away as a person
 ## does (Escape, else its command again), is gone from the tree the frame
-## after: nothing of it found where it was, pointing or browsing, and a
-## dialog brought up there (Clear the baseplate?) is what pointing at it
-## finds. On pre261 the panels stayed: CanvasItem::set_visible never told
-## AccessKit a panel was hidden.
+## it was hidden in: nothing of it found where it was, pointing or
+## browsing, and a dialog brought up there (Clear the baseplate?) is what
+## pointing at it finds. Read with the app held at the end of that frame,
+## at a person's 30 frames a second. On pre261 the panels stayed:
+## CanvasItem::set_visible never told AccessKit a panel was hidden.
 ##
-## boxes: every dialog of the main window says it is where it is drawn,
-## within 2 px: each brought up and read back (its box over AT-SPI), and
-## every one made, up or not, by the transform the engine gives it. On
-## pre261 a dialog made inside a panel that is not at the window's corner
+## boxes: each dialog brought up is read back where it is drawn, within
+## 2 px (pointed at, as Orca's mouse review finds it), and so is a menu of
+## the bar's (browsed to: pointing at a menu finds what is under it, as the
+## engine hit-tests a window below what comes after it in the tree); and
+## of every window the main window has made, up or not, those the engine
+## would say are elsewhere are each placed again (src/ui/placed_window.gd).
+## On pre261 a menu or a dialog under controls not at the window's corner
 ## was said to be that far from where it was drawn (Window's
 ## get_accessibility_transform undoes only its parent's own offset).
 extends SceneTree
 
 const READER := "res://tools/a11y_tree.py"
 const PROBE := "res://src/dev/a11y_tree_probe.gd"
+## The script that places a window again (src/ui/access_tree.gd), where it is.
+const PLACING := "res://src/ui/placed_window.gd"
 ## The commands that open a dialog or a panel, as a11y_names_probe opens them.
 const NAMES := preload("res://src/dev/a11y_names_probe.gd")
 ## How long the reader may take over one read.
@@ -213,8 +221,13 @@ func _targets() -> Dictionary:
 	if tile != null:
 		parts.append(tile)
 	out["parts bin"] = parts
-	var over_model: Control = _main.get("_over_model")
-	out["view"] = [over_model.get_parent()]
+	# The view: its cube and the buttons round it, the view's own controls.
+	var view: Array = []
+	for node: Node in _all_under(_main.get("_over_model") as Control):
+		if (node is ViewCube or node.get_parent() is ViewCube) and (node as Control).is_visible_in_tree() \
+				and not (node.get_parent() is ViewCube and str(node.get("kind")) == "pan"):
+			view.append(node)
+	out["view"] = view
 	var properties: Array = []
 	for key: String in ["prop_x", "prop_y", "prop_z", "prop_turn"]:
 		var field: Variant = _shell.inspector.controls_by_name().get(key)
@@ -494,21 +507,34 @@ static func _ancestor_panel(panel: Control) -> Control:
 
 func _boxes() -> void:
 	print("  boxes: each dialog says it is where it is drawn")
-	# Every dialog of the main window made by now, up or not: the box the
-	# engine gives it by the transforms of the nodes it is under.
+	# Every window of the main window made by now, dialogs and menus, up or
+	# not: those the engine would say are elsewhere (the transforms of the
+	# nodes they are under, as Godot 4.7.2 gives them) must each be placed
+	# again in their own update (src/ui/placed_window.gd).
+	var placing: Script = load(PLACING) as Script if ResourceLoader.exists(PLACING) else null
 	var made: Array[Window] = []
 	_gather_windows(root, made)
 	var off: Array[String] = []
+	var put_right: int = 0
 	for dialog: Window in made:
 		var said: Rect2 = _said_box(dialog)
 		var drawn: Rect2 = _pixels(Rect2(Vector2(dialog.position), Vector2(dialog.size)))
 		var by: Vector2 = said.position - drawn.position
-		if by.length() > NEAR:
+		if by.length() <= NEAR:
+			continue
+		if placing != null and dialog.get_script() == placing:
+			put_right += 1
+		else:
 			off.append("“%s” (%s under %s) by (%d, %d)" % [_spoken(dialog), dialog.get_class(),
 				dialog.get_parent().name, int(by.x), int(by.y)])
-	_check("boxes: every dialog made, %d, is said to be where it is drawn, within %d px%s"
-		% [made.size(), int(NEAR), "" if off.is_empty() else "; not: " + ", ".join(off)],
+	_check("boxes: of the %d windows made, %d the engine says are elsewhere are each placed again%s"
+		% [made.size(), put_right + off.size(), "" if off.is_empty()
+			else "; %d not: %s" % [off.size(), ", ".join(off.slice(0, 6)) + (" …" if off.size() > 6 else "")]],
 		off.is_empty() and made.size() > 0)
+	# A menu brought up, its box read over AT-SPI: found by browsing, where
+	# pointing finds what is under it (the engine hit-tests a window drawn
+	# over the app below what comes after it in the tree).
+	await _menu_box()
 	# And each brought up, read back over AT-SPI.
 	var ways: Array[String] = ["about", "new", "import_ldraw", "save_as", "reference"]
 	for name: String in NAMES.OPENERS + NAMES.WITH_A_SELECTION:
@@ -562,9 +588,9 @@ func _accessibility_transform(node: Node) -> Transform2D:
 func _gather_windows(node: Node, out: Array[Window]) -> void:
 	for child: Node in node.get_children(true):
 		if child is Window:
-			var window: Window = child
-			if not window.get_flag(Window.FLAG_POPUP) and window.get_embedder() == root:
-				out.append(window)
+			# A window's own questions are placed by the window they are in:
+			# the main window's are judged here.
+			out.append(child as Window)
 			continue
 		if child is Node3D and child.get_child_count() > 64:
 			continue
@@ -638,6 +664,42 @@ func _box_of(way: String) -> int:
 	await _idle()
 	await _put_away(before)
 	return 1 if all_near else 0
+
+
+## The bar's first menu brought up and its box read by browsing: the
+## element of its size, where it is said to be against where it is drawn.
+func _menu_box() -> void:
+	var bar: ModelBar = _main.get("_bar")
+	var button: MenuButton = null
+	for child: Node in bar.menus.get_children():
+		if child is MenuButton and (child as MenuButton).is_visible_in_tree():
+			button = child
+			break
+	if button == null:
+		_check("boxes: a menu of the bar is there to bring up", false)
+		return
+	button.show_popup()
+	await _frames(12)
+	var popup: PopupMenu = button.get_popup()
+	var drawn: Rect2 = _pixels(Rect2(Vector2(popup.position), Vector2(popup.size)))
+	var tree: Dictionary = await _ask({"do": "browse"})
+	var best: Array = []
+	for element: Array in tree.get("reached", []):
+		var at: Array = element[3]
+		var box := Rect2(at[0], at[1], at[2], at[3])
+		if absf(box.size.x - drawn.size.x) <= NEAR + 1.0 and absf(box.size.y - drawn.size.y) <= NEAR + 1.0:
+			if best.is_empty() or box.position.distance_to(drawn.position) \
+					< Rect2(best[3][0], best[3][1], best[3][2], best[3][3]).position.distance_to(drawn.position):
+				best = element
+	var said := Rect2()
+	if not best.is_empty():
+		said = Rect2(best[3][0], best[3][1], best[3][2], best[3][3])
+		await _shot_boxes("box_menu", [[drawn, said]])
+	var near: bool = not best.is_empty() and said.position.distance_to(drawn.position) <= NEAR
+	_check("boxes: the %s menu, drawn at %s, is said at %s" % [button.text, _rect_words(drawn),
+		_rect_words(said) if not best.is_empty() else "nowhere (no element of its size reached)"], near)
+	popup.hide()
+	await _frames(4)
 
 
 static func _rect_words(rect: Rect2) -> String:
@@ -912,7 +974,8 @@ static func _outline(image: Image, rect: Rect2, colour: Color) -> void:
 
 func _finish() -> void:
 	if not _email.is_empty():
-		var gone: int = await SignInHelper.delete_accounts(_email, root)
+		# Every throwaway of this probe's: one a run cut short left too.
+		var gone: int = await SignInHelper.delete_accounts("delivered+bwa11ytree", root)
 		print("    (removed %d throwaway account(s))" % gone)
 	print("a11y_tree: %s" % ("all checks passed" if _failures == 0 else "%d checks failed" % _failures))
 	quit(1 if _failures > 0 else 0)

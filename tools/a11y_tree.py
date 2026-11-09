@@ -182,14 +182,29 @@ def browse(Atspi, pid: int) -> dict:
         if node is None or depth > DEEPEST or len(reached) >= MOST:
             return
         try:
-            e = node.get_extents(Atspi.CoordType.WINDOW)
             count = node.get_child_count()
-            reached.append([depth, node.get_role_name(), node.get_name(), [e.x, e.y, e.width, e.height],
-                            node.get_state_set().contains(Atspi.StateType.SHOWING), count])
-            for i in range(count):
-                go(node.get_child_at_index(i), depth + 1)
+            role = node.get_role_name()
+            name = node.get_name()
+            showing = node.get_state_set().contains(Atspi.StateType.SHOWING)
         except Exception as ex:  # a node gone while read: said, not fatal
             gone.append(str(ex))
+            return
+        # An element with no place on screen (no Component: AccessKit gives
+        # none to one without bounds) is still reached.
+        box = [0, 0, 0, 0]
+        try:
+            e = node.get_extents(Atspi.CoordType.WINDOW)
+            box = [e.x, e.y, e.width, e.height]
+        except Exception:
+            pass
+        reached.append([depth, role, name, box, showing, count])
+        for i in range(count):
+            try:
+                child = node.get_child_at_index(i)
+            except Exception as ex:
+                gone.append(str(ex))
+                continue
+            go(child, depth + 1)
     for i in range(app.get_child_count()):
         go(app.get_child_at_index(i), 0)
     return {"reached": reached, "gone": gone, "nodes": len(reached),
