@@ -22,7 +22,8 @@ Three kinds of claim:
   its brick with a stud on one side has 87087's studs, its bracket 99781's,
   its Technic brick 3700's holes. And a part made to copy one LEGO makes
   is that part, measured from the library: the clip plates 60897 and
-  61252, the bar 87994, the wedge plates 41770a and 41769a, each the same
+  61252, the bar 87994, the wedge plates 41770a and 41769a, and with
+  their far corner cut flat 41770b, 41769b, 54383 and 54384, each the same
   bounds and every connector in the same place, facing the same way.
 """
 
@@ -76,8 +77,8 @@ def spec_of(name: str) -> dict:
             spec: dict = {}
             for word in words:
                 key, value = word.split("=")
-                spec[key] = value if key in ("family", "studs", "from", "sides", "way") \
-                    else int(value)
+                spec[key] = value if key in ("family", "studs", "from", "sides", "way",
+                                             "chamfer") else int(value)
             spec.setdefault("sides", "")
             return spec
     raise AssertionError(f"{name} does not say what made it")
@@ -100,14 +101,26 @@ def footprint(spec: dict) -> tuple[float, float]:
     return spec["across"] * 20.0, spec["deep"] * 20.0
 
 
+def chamfer(spec: dict) -> float:
+    """How much narrower a wedge plate with its far corner cut flat is
+    than its studs: the cut's run over the 3 LDU of its length the flat
+    takes (54383: 1 LDU; 41770b: 0.75). 0 for one cut to its corner."""
+    if spec["family"] != "wedge" or spec.get("chamfer") != "yes":
+        return 0.0
+    return 3.0 * (spec["across"] - 1) / spec["deep"]
+
+
 def body(spec: dict) -> tuple[float, float, float, float]:
     """Where the plastic is, seen from above, without studs standing off
     it: x0, x1, z0, z1. A bracket's upright is 4 LDU thick in front of its
-    plate (99781: the plate's studs at z = 0, its upright's face at -14)."""
+    plate (99781: the plate's studs at z = 0, its upright's face at -14). A
+    chamfered wedge plate's flat is in from its cut side (+X on a left one)."""
     width, depth = footprint(spec)
     if spec["family"] == "bracket":
         return -width / 2, width / 2, -depth / 2 - 4.0, depth / 2
-    return -width / 2, width / 2, -depth / 2, depth / 2
+    if spec["family"] == "wedge" and spec["way"] == "right":
+        return -width / 2 + chamfer(spec), width / 2, -depth / 2, depth / 2
+    return -width / 2, width / 2 - chamfer(spec), -depth / 2, depth / 2
 
 
 # A clip plate's clip, as 60897 (vertical) and 61252 (horizontal) have it:
@@ -240,7 +253,8 @@ def wedge_inside(spec: dict, x: float, z: float, margin: float) -> bool:
     plate the footprint's size, its tip one stud wide at the back (-Z) on
     the straight side, cut straight from there to the far front corner. A
     left one is straight on the left (-X), as 41770a; a right one mirrors
-    it."""
+    it. Chamfered, its far corner is cut flat, square to the back, as
+    41770b's is."""
     width, depth = footprint(spec)
     m = -1.0 if spec["way"] == "right" else 1.0
     bx, bz = (-width / 2 + 20.0) * m, -depth / 2
@@ -248,7 +262,8 @@ def wedge_inside(spec: dict, x: float, z: float, margin: float) -> bool:
     length = math.hypot(cx - bx, cz - bz)
     # The cut's normal, out of the plate: away from the straight side and back.
     nx, nz = abs(cz - bz) / length * m, -abs(cx - bx) / length
-    return nx * x + nz * z <= nx * bx + nz * bz - margin
+    return nx * x + nz * z <= nx * bx + nz * bz - margin \
+        and m * x <= width / 2 - chamfer(spec) - margin
 
 
 def top_at(spec: dict, x: float, z: float) -> float | None:
@@ -798,6 +813,10 @@ def test_a_standard_size_has_the_library_parts_shape(
     ("bw-bar3.dat", "87994.dat"),        # Bar 3L
     ("bw-wedge2x4l.dat", "41770a.dat"),  # Wing 2 x 4 Left
     ("bw-wedge2x4r.dat", "41769a.dat"),  # Wing 2 x 4 Right
+    ("bw-wedge2x4lc.dat", "41770b.dat"),  # Wing 2 x 4 Left with Chamfer
+    ("bw-wedge2x4rc.dat", "41769b.dat"),  # Wing 2 x 4 Right with Chamfer
+    ("bw-wedge3x6rc.dat", "54383.dat"),  # Wing 3 x 6 Right
+    ("bw-wedge3x6lc.dat", "54384.dat"),  # Wing 3 x 6 Left
 ])
 def test_a_copy_is_the_part_it_copies(library: Library, made: str, real: str) -> None:
     """The bounds to a hundredth of an LDU, and every connector the mesh

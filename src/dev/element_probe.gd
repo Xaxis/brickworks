@@ -47,6 +47,16 @@
 ## wedge plates are stacked and clutched, with the space their cut leaves
 ## free; and each is made again in one make_part call, the same part.
 ##
+## And what APP_UX7 #16 asked of them: a made part seated on a stud as the
+## part it copies is (ElementMaker.seat_of). The level clip plate aimed at
+## a 2 x 4's middle studs in each of four turns goes where 61252 goes, and
+## aimed at the front row with its clip turned in over the brick, its plate
+## rests on the stud, 0.00 LDU up, where before it stood on its clip's ring
+## 1.448 LDU up. And the wedge plate with its far corner cut flat: 54383,
+## copied to its bounds and connectors, the cut corner and the two tubes
+## the cut's wall comes near all, stacked and clutched; and 54383, which
+## LDraw names only "Wing  3 x  6 Right", started from as itself.
+##
 ## Made parts go to user://custom_parts_probe/, never the person's own.
 extends SceneTree
 
@@ -70,6 +80,8 @@ const COPIES: Array = [
 	["bar", {"across": 3}, "Bar  3L", "87994"],
 	["wedge", {"across": 2, "deep": 4, "way": "left"}, "Wing  2 x  4 Left", "41770a"],
 	["wedge", {"across": 2, "deep": 4, "way": "right"}, "Wing  2 x  4 Right", "41769a"],
+	["wedge", {"across": 3, "deep": 6, "way": "right", "chamfer": true},
+		"Wing  3 x  6 Right with Chamfer", "54383"],
 ]
 
 
@@ -181,13 +193,19 @@ func _initialize() -> void:
 	_wedge_cut(copies[3])
 	_stack(copies[4], Vector3(0, 0, -280), false)
 	_wedge_cut(copies[4])
+	print("\nthe 3 x 6 wedge plate, its far corner cut flat as 54383's")
+	_stack(copies[5], Vector3(-200, 0, 280), false)
+	_wedge_cut(copies[5])
+	_started_as_itself(dialog)
+	print("\nthe level clip plate seated on a stud as 61252 is")
+	_seated(level_clip, Vector3(0, 0, 280))
 	print("\neach made again in one make_part call")
 	await _by_mcp(copies)
 
 	print("\nwhat the assistant's checker makes of all of it")
 	# The eight stacks, the clip on its bar in its brick, the level clip
-	# on its 2 x 4 and the two wedge stacks.
-	_checker(12)
+	# on its 2 x 4, the three wedge stacks and the level clip seated.
+	_checker(14)
 
 	print("\neach family used the way only it can be")
 	_used(sided, bracket, technic)
@@ -362,9 +380,9 @@ func _hand(part_id: String, near: Vector3) -> int:
 
 ## Where the ghost of [param part_id] stands aimed straight down at [param
 ## near], or null where it may not go there.
-func _ghost_of(part_id: String, near: Vector3) -> Variant:
+func _ghost_of(part_id: String, near: Vector3, turn: int = 0) -> Variant:
 	_builder.held_part = part_id
-	_builder.held_rotation = 0
+	_builder.held_rotation = turn
 	_builder.held_face = "up"
 	_builder.update_preview(near + Vector3(0.3, 2000, 0.3), Vector3.DOWN)
 	return _builder.ghost_transform() if _builder.can_place() else null
@@ -678,6 +696,80 @@ func _on_edge(clip: String, near: Vector3) -> void:
 	var reach: Dictionary = _studs_into(under)
 	_ok(int(reach.get(made, 0)) == 1 and _on_sockets(under, it, mesh),
 		"%s sits on one of the 2 x 4's studs, at its socket, at %s" % [clip, it.transform.origin])
+
+
+## The level clip plate on a 2 x 4, aimed as a person aims it: at each of
+## the 2 x 4's four middle studs in each of four turns, it goes where 61252
+## goes; and aimed at the front row with its clip turned in, over the
+## brick, its plate rests on a stud, 0.00 LDU up (pre261: 1.448, on its
+## clip's ring), where 61252's goes — the back row, its clip out over the
+## back edge. Placed so, it sits on one stud, at its socket.
+func _seated(clip: String, near: Vector3) -> void:
+	var below: int = _hand("3001", near)
+	if below == 0:
+		_ok(false, "a 2 x 4 goes on the baseplate at %s" % near)
+		return
+	var foot: float = _world.get_brick(below).transform.origin.y
+	var same: int = 0
+	var differ := PackedStringArray()
+	for aim: Vector3 in [Vector3(10, 0, 10), Vector3(10, 0, -10), Vector3(-10, 0, 10),
+			Vector3(-10, 0, -10)]:
+		for turn: int in 4:
+			var real: Variant = _ghost_of("61252", near + aim, turn)
+			var mine: Variant = _ghost_of(clip, near + aim, turn)
+			if real != null and mine != null and (mine as Transform3D).is_equal_approx(real):
+				same += 1
+			else:
+				differ.append("%s turned %d: %s, not %s" % [aim, turn,
+					(mine as Transform3D).origin if mine != null else "refused",
+					(real as Transform3D).origin if real != null else "refused"])
+	_ok(same == 16, "aimed at the 2 x 4's four middle studs, turned each of four ways, %s goes where 61252 goes (%d of 16)%s"
+		% [clip, same, "" if differ.is_empty() else ": " + "; ".join(differ)])
+	var aim: Vector3 = near + Vector3(10, 0, 10)
+	var real_in: Variant = _ghost_of("61252", aim, 2)
+	var mine_in: Variant = _ghost_of(clip, aim, 2)
+	var up: float = INF
+	if mine_in != null:
+		up = (mine_in as Transform3D).origin.y - ElementMaker.PLATE - foot
+	_ok(mine_in != null and real_in != null and absf(up) < 0.005
+		and (mine_in as Transform3D).is_equal_approx(real_in),
+		"aimed at the front row, its clip turned in over the brick, its plate rests on the stud %.2f LDU up, where 61252's does (%s, %s)"
+		% [up, (mine_in as Transform3D).origin if mine_in != null else "refused",
+			(real_in as Transform3D).origin if real_in != null else "refused"])
+	var made: int = _builder.place() if mine_in != null else 0
+	if made == 0:
+		_ok(false, "and a click puts it there")
+		return
+	var under: BrickWorld.Brick = _world.get_brick(below)
+	var it: BrickWorld.Brick = _world.get_brick(made)
+	var reach: Dictionary = _studs_into(under)
+	_ok(int(reach.get(made, 0)) == 1 and _on_sockets(under, it, _library.mesh_for(clip))
+		and is_equal_approx(it.transform.origin.y - ElementMaker.PLATE, foot),
+		"...and a click puts it there: on one of the 2 x 4's studs, at its socket, its plate on the 2 x 4's top (%s)"
+		% it.transform.origin)
+
+
+## 54383 started from in the dialog. LDraw names it "Wing  3 x  6 Right",
+## no more; its width, 59 LDU, is a chamfered 3 x 6's (60 less the 1 LDU
+## its corner cut takes), so it starts as the wedge plate it is, its corner
+## cut flat, the checkbox ticked. And 3544, "Wing  3 x  8 Left", cut 4 LDU
+## along (59 LDU wide, where the maker's 3 x 8 would be 59.25), is not the
+## maker's and is changed as itself.
+func _started_as_itself(dialog: ElementDialog) -> void:
+	dialog.open()
+	var started: bool = dialog.start_from("54383")
+	var spec: ElementMaker.Spec = dialog.spec()
+	var box: CheckBox = dialog.get("_chamfer")
+	_ok(started and dialog.edit() == null and spec.family == "wedge" and spec.across == 3
+		and spec.deep == 6 and spec.way == "right" and spec.get("chamfer") == true and box != null
+		and box.visible and box.button_pressed and dialog.get("_about").text.contains("far corner is cut flat"),
+		"54383, named only \"Wing  3 x  6 Right\", starts as the wedge plate it is, its far corner cut flat and the box ticked: %s"
+		% dialog.get("_about").text)
+	dialog.open()
+	dialog.start_from("3544")
+	_ok(dialog.edit() != null, "3544, \"%s\", cut 4 LDU along, is changed as itself"
+		% _library.parts["3544"].name)
+	dialog.set_field("family", "brick")
 
 
 ## A wedge plate's cut is its edge: 6 LDU out from the middle of the cut is

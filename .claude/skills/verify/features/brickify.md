@@ -197,7 +197,10 @@ A 3D model — a sculpt, a scan, anything in OBJ, STL, glTF, PLY, 3MF, VOX or FB
 - `brickify a 3d model` (`src/ui/brickify_dialog.gd`, `src/ui/mesh_file_picker.gd`):
   Ctrl-I (plain I is x-ray), Make > Brickify a 3D model…, or File > Import > 3D model to brickify. The
   file chooser (several files at once in a browser, for an `.mtl` or a `.bin`;
-  on the desktop in Downloads, then where the last came from: `OpenFrom`),
+  on the desktop in Downloads, then where the last came from: `OpenFrom`;
+  the desktop's chooser hangs on the window, not under the panel, which is
+  hidden until a file is chosen: under it a screen reader was told the
+  chooser was not there at all, a11ymodal 2026-11-08, `a11y_modal_probe`),
   then a panel: the model turning, its triangles, size in studs along its
   longest side or its scale in mm a unit (each moves the other), which way is
   up (STL defaults to Z), what it comes to in studs, bricks and centimetres,

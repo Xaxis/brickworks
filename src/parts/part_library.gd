@@ -1376,7 +1376,7 @@ func request_mesh(part_id: String, urgent: bool = false) -> bool:
 		if not waiting.has(part_id):
 			waiting.append(part_id)
 		return true
-	if int(_open.get("lbm", 0)) >= MAX_IN_FLIGHT:
+	if int(_open.get("lbm", 0)) >= _most_in_flight:
 		if urgent:
 			_urgent[part_id] = true
 		if _queued_fetches.has(part_id):
@@ -1419,6 +1419,14 @@ func request_mesh(part_id: String, urgent: bool = false) -> bool:
 ## each is polled once a frame: a big set's own parts were most of its open
 ## (walk180, A8).
 const MAX_IN_FLIGHT := 16
+## On the web each is the page's own fetch, answered between frames rather
+## than polled in them, and the next is asked only once an answer has been
+## heard there: sixteen at a time came in waves a frame or more apart, the
+## Rally Racer's 47 geometries in three, 2 to 7 s at 0.5 to 2 s a frame
+## (fetchparts, 2026-11-08). The browser's one HTTP/2 connection carries
+## them all, so there a big set's parts are asked in one wave.
+const MAX_IN_FLIGHT_PAGE := 48
+var _most_in_flight: int = MAX_IN_FLIGHT_PAGE if OS.has_feature("web") else MAX_IN_FLIGHT
 
 
 ## Ask now for the geometry of each of [param part_ids] this build has not
@@ -1467,14 +1475,15 @@ static func may_pass(result: int, code: int) -> bool:
 ## Fetch [param url], and call [param done] with (code, body) once, with an
 ## answer that asking again would not change or the last of
 ## [constant RETRY_AFTER]'s tries. The one way geometry and exact shapes are
-## fetched, and so the parts bin's pictures. False when no request could be
-## sent.
+## fetched, and so the parts bin's pictures. In a browser the page fetches
+## each ([method _ask_page]); HTTPRequest is the desktop's. False when no
+## request could be sent.
 func _ask(url: String, done: Callable, tries: int = 0) -> bool:
 	if _fetch_host == null or not _fetch_host.is_inside_tree():
 		return false
 	var kind: String = url.get_extension()
-	if kind == BWX and OS.has_feature("web"):
-		return _ask_page(url, done, tries)
+	if OS.has_feature("web"):
+		return _ask_page(url, kind, done, tries)
 	var request := HTTPRequest.new()
 	_fetch_host.add_child(request)
 	request.request_completed.connect(func(result: int, code: int,
@@ -1508,44 +1517,73 @@ func _answered(url: String, kind: String, done: Callable, tries: int, result: in
 	done.call(code, body)
 
 
-## In a browser, an exact shape fetched by the page itself and handed over
-## the moment its bytes are in. The engine polls an HTTPRequest once a frame
-## and each of its states takes a frame: the house's gates' shapes took 7
-## frames from asked to answered, 1 to 4 s while its model was drawn in
-## software (playweb, 2026-11-07), as Together's requests did
-## (Together._ask_page).
-func _ask_page(url: String, done: Callable, tries: int) -> bool:
+## In a browser, a part file of [param kind] (its geometry, its exact shape)
+## fetched by the page itself and handed over the moment its bytes are in.
+## The engine polls an HTTPRequest once a frame and each of its states takes
+## a frame: a part took 7 frames from asked to answered, and a frame of a
+## model being drawn in software is most of a second, so 47 parts of a
+## Technic car took seconds after the last of their bytes had come
+## (fetchparts, 2026-11-08), as the house's gates' shapes did (playweb,
+## 2026-11-07) and Together's requests (Together._ask_page). Its bytes are
+## kept by the page and taken in one copy ([constant PAGE_FETCH]), not
+## carried as base64 through the callback, which is handed only strings and
+## numbers.
+func _ask_page(url: String, kind: String, done: Callable, tries: int) -> bool:
 	if _page_answer == null:
 		_page_answer = JavaScriptBridge.create_callback(_on_page_answer)
-		JavaScriptBridge.get_interface("window").brickworksShapeFetched = _page_answer
+		JavaScriptBridge.get_interface("window").brickworksPartFetched = _page_answer
+		JavaScriptBridge.eval(PAGE_FETCH, true)
 	_page_asked += 1
-	_page_asks[_page_asked] = [url, done, tries]
-	# Its bytes as base64: a callback is handed strings and numbers.
-	JavaScriptBridge.eval(("fetch(%s).then(async (r) => { const b = new Uint8Array(await r.arrayBuffer());"
-		+ " let s = ''; for (let i = 0; i < b.length; i += 32768) s += String.fromCharCode.apply(null, b.subarray(i, i + 32768));"
-		+ " window.brickworksShapeFetched(%d, r.status, btoa(s)); })"
-		+ ".catch(() => window.brickworksShapeFetched(%d, 0, ''));") % [JSON.stringify(url),
-		_page_asked, _page_asked], true)
-	_open[BWX] = int(_open.get(BWX, 0)) + 1
+	_page_asks[_page_asked] = [url, kind, done, tries]
+	JavaScriptBridge.eval("window.brickworksPartFetch(%d, %s)" % [_page_asked, JSON.stringify(url)], true)
+	_open[kind] = int(_open.get(kind, 0)) + 1
 	return true
 
 
+## The page's end of [method _ask_page]: brickworksPartFetch(id, url)
+## fetches, keeps an answer's bytes by its id, and says (id, status, size)
+## to brickworksPartFetched, status 0 for none; brickworksPartTake(id) hands
+## the bytes over, once, as a Uint8Array, which JavaScriptBridge.eval gives
+## the app as a PackedByteArray in a single copy.
+const PAGE_FETCH := """(function () {
+	const kept = new Map();
+	window.brickworksPartFetch = function (id, url) {
+		fetch(url).then(function (answer) {
+			if (!answer.ok) return [answer.status, null];
+			return answer.arrayBuffer().then(function (bytes) { return [answer.status, bytes]; });
+		}).then(function (got) {
+			if (got[1]) kept.set(id, new Uint8Array(got[1]));
+			window.brickworksPartFetched(id, got[0], got[1] ? got[1].byteLength : 0);
+		}, function () {
+			window.brickworksPartFetched(id, 0, 0);
+		});
+	};
+	window.brickworksPartTake = function (id) {
+		const bytes = kept.get(id) || new Uint8Array();
+		kept.delete(id);
+		return bytes;
+	};
+})();"""
+
+
 ## The page's answer to [method _ask_page]'s fetch [param args][0]: its
-## status (0 for none) and its bytes as base64.
+## status (0 for none) and how many bytes came, taken from the page here.
 func _on_page_answer(args: Array) -> void:
 	var id: int = int(args[0])
 	var asked: Array = _page_asks.get(id, [])
 	_page_asks.erase(id)
+	var bytes: Variant = JavaScriptBridge.eval("window.brickworksPartTake(%d)" % id, true) \
+		if int(args[2]) > 0 else PackedByteArray()
 	if asked.is_empty():
 		return
 	var code: int = int(args[1])
-	_answered(asked[0], BWX, asked[1], int(asked[2]),
+	_answered(asked[0], asked[1], asked[2], int(asked[3]),
 		HTTPRequest.RESULT_SUCCESS if code != 0 else HTTPRequest.RESULT_CANT_CONNECT, code,
-		Marshalls.base64_to_raw(str(args[2])) if code != 0 else PackedByteArray())
+		bytes if bytes is PackedByteArray else PackedByteArray())
 
 
-## The page's fetches: the callback it answers through, and id -> [url, done,
-## tries] for each still out.
+## The page's fetches: the callback it answers through, and id -> [url, kind,
+## done, tries] for each still out.
 var _page_answer: JavaScriptObject = null
 var _page_asked: int = 0
 var _page_asks: Dictionary = {}
@@ -1553,7 +1591,7 @@ var _page_asks: Dictionary = {}
 
 ## Start the next waiting fetch, if there is room.
 func _next_fetch() -> void:
-	while not _queued_fetches.is_empty() and int(_open.get("lbm", 0)) < MAX_IN_FLIGHT:
+	while not _queued_fetches.is_empty() and int(_open.get("lbm", 0)) < _most_in_flight:
 		var part_id: String = _queued_fetches[0]
 		_queued_fetches.remove_at(0)
 		_urgent.erase(part_id)
@@ -1652,9 +1690,27 @@ const LBM := "lbm"
 const BWX := "bwx"
 ## What one frame reads where there are no threads, ms: at least one thing.
 const READ_BUDGET_MS := 4.0
-## The most one worker's task reads before the next frame keeps them and
-## starts another: what is wanted most since then goes first.
-const READ_AT_ONCE := 6
+## What one frame keeps of what a worker has read (meshes made, parts put
+## down), ms: at least one thing, and no more than this or [constant
+## KEEP_SHARE] of what the frame before cost besides keeping, whichever is
+## more.
+##
+## A worker read six a task, and a frame kept what it had read and started
+## the next six. In a browser drawing on its CPU a frame is 0.5 to 2 s, so
+## the 47 geometries of the Rally Racer came in 8 frames, 5.5 s after the
+## last had arrived (fetchparts, 2026-11-08). A worker now reads all that
+## waits, the most wanted first as it comes, and each frame keeps what fits.
+##
+## Where a frame is quick, as with any graphics card (16 ms at 60 a second),
+## that is 4 ms. Where it is slow, every frame while parts come is the model
+## drawn again, whatever it keeps: 4 ms there spread the car's 47 over 33 to
+## 43 frames of 0.6 to 4 s each, its shapes in 23 to 43 s on a phone against
+## 15 s before (bench/results/fetchparts-2026-11-08/ab7_fixed4ms). So a
+## slow frame keeps a quarter of its own cost. Of its own cost only: sized by
+## the whole frame before, keeping bought itself more keeping, and a long
+## frame stayed a third longer.
+const KEEP_BUDGET_MS := 4.0
+const KEEP_SHARE := 0.25
 ## Whether what is read ahead is read on a worker: where there are threads. A
 ## probe turns it off to read in frames under the budget, as a browser without
 ## threads does.
@@ -1669,6 +1725,12 @@ var _to_read: Array = []
 var _was_read: Array = []
 var _read_lock := Mutex.new()
 var _reading: int = -1
+## Read and not kept yet, [that, what it made]: the main thread's alone.
+var _to_keep: Array = []
+## When [method _read_frame] last began, and how long it took, µs: the frame
+## before's cost besides its parts.
+var _read_frame_at: int = 0
+var _kept_us: int = 0
 ## Exact shapes being read from this build's files ahead (read_ahead): hash ->
 ## true. Not on their way as a fetch is: one wanted now is read there, as before.
 var _reading_shapes: Dictionary = {}
@@ -1703,12 +1765,19 @@ func _read_frame() -> void:
 		WorkerTasks.collect(_reading)
 		_reading = -1
 	_read_lock.lock()
-	var done: Array = _was_read
+	_to_keep.append_array(_was_read)
 	_was_read = []
 	var waiting: bool = not _to_read.is_empty()
 	_read_lock.unlock()
-	for one: Array in done:
+	var now: int = Time.get_ticks_usec()
+	var drawn_us: int = now - _read_frame_at - _kept_us if _read_frame_at > 0 else 0
+	var budget_us: float = maxf(KEEP_BUDGET_MS * 1000.0, drawn_us * KEEP_SHARE)
+	_read_frame_at = now
+	while not _to_keep.is_empty():
+		var one: Array = _to_keep.pop_front()
 		_kept_read(one[0], one[1])
+		if Time.get_ticks_usec() - now > budget_us:
+			break
 	if waiting and not read_on_a_worker and _reading < 0:
 		var began: int = Time.get_ticks_usec()
 		while true:
@@ -1722,18 +1791,21 @@ func _read_frame() -> void:
 				break
 	elif waiting and _reading < 0:
 		_reading = WorkerTasks.add(_read_some, false, "read parts' geometry and shapes")
+	_kept_us = Time.get_ticks_usec() - now
 	_read_lock.lock()
-	var idle: bool = _to_read.is_empty() and _reading < 0
+	var idle: bool = _to_read.is_empty() and _reading < 0 and _to_keep.is_empty()
 	_read_lock.unlock()
 	var tree: SceneTree = _read_tree()
 	if idle and tree != null and tree.process_frame.is_connected(_read_frame):
 		tree.process_frame.disconnect(_read_frame)
+		_read_frame_at = 0
 
 
-## On a worker: up to [constant READ_AT_ONCE] of what waits, read. The first
-## of each kind the app reads is read alone (WorkerTasks.first_here).
+## On a worker: all that waits, read, the first waiting first, so what is
+## wanted most meanwhile goes next. The first of each kind the app reads is
+## read alone (WorkerTasks.first_here).
 func _read_some() -> void:
-	for _n: int in READ_AT_ONCE:
+	while true:
 		_read_lock.lock()
 		var item: Array = _to_read.pop_front() if not _to_read.is_empty() else []
 		_read_lock.unlock()
@@ -1848,7 +1920,7 @@ func request_exact(part_id: String) -> bool:
 	# then, a link's motion's shapes asked as its model was first shown were
 	# asked again only once every part was here, and came 4 to 8 s after it
 	# (playweb, 2026-11-07).
-	if int(_open.get("bwx", 0)) >= MAX_IN_FLIGHT or (OS.has_feature("web") and remote_parts.is_empty()):
+	if int(_open.get("bwx", 0)) >= _most_in_flight or (OS.has_feature("web") and remote_parts.is_empty()):
 		_exact_waiting.append(part_id)
 		return true
 	_fetching_exact[info.mesh_hash] = true
@@ -1916,7 +1988,7 @@ func _on_fetched_exact(code: int, body: PackedByteArray, hash_name: String,
 
 ## Start the next exact shape waiting, if there is room.
 func _next_exact() -> void:
-	while not _exact_waiting.is_empty() and int(_open.get("bwx", 0)) < MAX_IN_FLIGHT \
+	while not _exact_waiting.is_empty() and int(_open.get("bwx", 0)) < _most_in_flight \
 			and not (OS.has_feature("web") and remote_parts.is_empty()):
 		var next: String = _exact_waiting[0]
 		_exact_waiting.remove_at(0)

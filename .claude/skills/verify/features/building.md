@@ -1051,7 +1051,30 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   launch by keys alone: toolbar, a part, put down, a colour, the view cube),
   `a11y_motion_probe` (each of the three moving, then still),
   `a11y_size_probe` (85% and 150% at 1280 x 800, nothing off the window,
-  pictures in shots/a11y_size/); `tools/web/app_a11y_flow.mjs` (preview
+  pictures in shots/a11y_size/), `a11y_modal_probe` (APP_UX7 #15,
+  2026-11-08, `bench/results/a11ymodal-2026-11-08/`: windowed, 1280x720 and
+  `PROBE_SIZE=1400x900`; the app run again under `dbus-run-session` by
+  `tools/a11y_tree.py`, which sets the private bus's
+  `org.a11y.Status.ScreenReaderEnabled` as Orca does, so Godot's own "auto"
+  accessibility comes on, and reads each window back over AT-SPI as Orca
+  finds it: pointed at (its title bar's middle and its own) and read up
+  through the parents, or else from the last focus event (a panel put away
+  stays in the tree: Godot 4.7.2 does not tell AccessKit a Control was
+  hidden, `CanvasItem::set_visible`, and over Clear the baseplate's
+  question the pointer finds a panel put away before it). Not by listing the window's
+  children: AccessKit 0.22 ends that list at Model name, where an empty
+  spacer is followed by the hidden Claude tab, so a screen reader browsing
+  the window hears only the menus (both findings for units of their own);
+  signed in as
+  a throwaway account through the sign-in screen, needs .env: About, New's
+  question, Import's chooser, Save as and its "replace it?", Reference
+  picture and a11y_names_probe's openers each up in turn, and every window
+  over the app judged: a dialog `ModalDialogs` holds, or a dialog's own
+  question, is MODAL, anything else is not, and the focus is inside the top
+  one, also after the keys are taken from the window and given back. On
+  pre261 every held dialog read as a plain dialog: dialogclose had made them
+  not exclusive, and Window's accessibility update says FLAG_MODAL is
+  `exclusive`); `tools/web/app_a11y_flow.mjs` (preview
   check `app_a11y`: both sizes at 1280, every size on a phone at 390 x 844
   and 844 x 390 and at 150% with the assistant's drawer open (fitted again
   as the size changes, `Main._fit_drawers`: least widths given for more

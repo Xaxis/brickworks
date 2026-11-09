@@ -38,10 +38,14 @@ TAG=${BRANCH//\//-}_unit
 SHA=$(git rev-parse --short HEAD)
 # What the unit changed: since where it left main, or the release branch it
 # was made from when that is later. A unit made from rel-m147 before m147
-# shipped would otherwise run every check m147's own changes call for.
+# shipped would otherwise run every check m147's own changes call for. The
+# local pre branch (pre261) counts too: each unit merged there has run its
+# own checks, and the train runs them all again, so a unit that merged
+# pre261 runs only its own (11-09: stepnames ran 59 checks over 5 h, most of
+# them for six other units' changes).
 BASE=$(git merge-base HEAD main) || exit 1
 FROM=main
-for ref in $(git for-each-ref --format='%(refname:short)' 'refs/heads/rel-*'); do
+for ref in $(git for-each-ref --format='%(refname:short)' 'refs/heads/rel-*' 'refs/heads/pre*'); do
   mb=$(git merge-base HEAD "$ref") || continue
   # A release that has merged this unit already holds all of it.
   [ "$mb" = "$(git rev-parse HEAD)" ] && continue
