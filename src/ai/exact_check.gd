@@ -230,13 +230,52 @@ func known_fit(i: int, j: int) -> bool:
 static func meet_as_sets(a: Exact.Item, a_part: String, b: Exact.Item, b_part: String) -> bool:
 	if a == null or b == null or PartsOnly.active():
 		return false
-	var most: float = KnownFits.reach(a_part, b_part, a.at.affine_inverse() * b.at)
+	var rel: Transform3D = a.at.affine_inverse() * b.at
+	var most: float = KnownFits.reach(a_part, b_part, rel)
+	# Turned otherwise than the sets have it: the same fit where the part
+	# turned is round about its own up axis (KnownFits.reach).
+	if most <= Exact.TAU and KnownFits.posed(a_part, b_part):
+		most = KnownFits.reach(a_part, b_part, rel, spins(a.shape), spins(b.shape))
 	if most <= Exact.TAU:
 		return false
 	for hit: Array in Exact.overlaps(a, b):
 		if float(hit[0]) > most:
 			return false
 	return true
+
+
+## Whether [param shape] is round about its own up axis, the line through its
+## origin a stud or a tube of it stands on: centred on that line, and no
+## corner of any piece further from it than SPIN_SLACK times the least its
+## box reaches across. Turned any way about it, it is the same shape to that
+## much, so a set's fit of it is the same fit turned (KnownFits.reach): a
+## 4740 dish, a 6141 round plate, a 3941 round brick, a 4589 cone. Not a 2 x 2
+## brick, whose corners stand 1.41 times as far out as its sides, nor a half
+## pin, long along one way.
+static func spins(shape: Exact.Shape) -> bool:
+	if shape == null or not shape.has_pieces():
+		return false
+	var reach: float = minf(minf(-shape.lo.x, shape.hi.x), minf(-shape.lo.z, shape.hi.z))
+	var widest: float = maxf(maxf(-shape.lo.x, shape.hi.x), maxf(-shape.lo.z, shape.hi.z))
+	if reach <= 0.0 or widest > reach + SPIN_CENTRED:
+		return false
+	var limit: float = reach * SPIN_SLACK
+	limit *= limit
+	for piece: Exact.Piece in shape.pieces:
+		for v: Vector3 in piece.verts:
+			if v.x * v.x + v.z * v.z > limit:
+				return false
+	return true
+
+
+## How far a part's corners may stand past the least its box reaches across,
+## as a share, for it to be round ([method spins]): a round drawn with
+## sixteen sides, a flat side square to an axis, has its corners 1 /
+## cos(11.25 degrees) = 1.02 out; an octagon's, 1.08; a square's, 1.41.
+const SPIN_SLACK := 1.03
+## And how far off its origin, either way, its box may reach further one way
+## than another, LDU: LDraw's three decimals, not a tab.
+const SPIN_CENTRED := 0.1
 
 
 ## For each pair of pieces of items [param i] and [param j] that overlap:
@@ -497,13 +536,25 @@ func _sunk_near(i: int, others: PackedInt32Array) -> bool:
 ## already: a 4740 dish 4 LDU down a 6141's stud, as 31038-1 has it. Seated
 ## onto that frame, it went 4 LDU further, where no set has it. Nearer, it is
 ## on the stud, low, and the seat puts it up: a session writes a part to the 2
-## LDU lattice, an LDU off each way at most. Only the stud says it is seated,
-## never another part it meets as the sets put the two: a saddle written an
-## LDU low met the sword in its clip and its rider's leg as 6034-1 and 6074-1
-## have them, and was left there (realjoints4, 2026-11-08).
+## LDU lattice, an LDU off each way at most. Unless it stands on that stud as
+## the sets put those two ([method known_fit], the stud's part and no other):
+## then it is seated where they have it, however little past the foot. 42088-1
+## and 42105-1 put a 6141 round plate 2 LDU down a half pin's stud, over its
+## collar, as twelve sets do; seated onto the foot, each went 2 LDU from
+## where its set has it (seatfix, 2026-11-08). One across its stud's line,
+## where no hole on a stud can be, goes onto the stud: 6542-1's file stands
+## its 6141s an LDU and two off its 4070s' side studs. Only the stud says it
+## is seated, never another part it meets as the sets put the two: a saddle
+## written an LDU low met the sword in its clip and its rider's leg as 6034-1
+## and 6074-1 have them, and was left there (realjoints4, 2026-11-08); its
+## horse, whose studs it is on, it meets in no set's pose, and it is seated
+## up onto them.
 func _past_a_foot(i: int, others: PackedInt32Array) -> bool:
 	for j: int in others:
-		if items[j] != null and _down(i, j) > Exact.SUNK_PAST:
+		if items[j] == null:
+			continue
+		var depth: float = _down(i, j)
+		if depth > Exact.SUNK_PAST or (depth > 0.0 and known_fit(i, j)):
 			return true
 	return false
 

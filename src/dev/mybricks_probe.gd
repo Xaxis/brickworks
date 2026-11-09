@@ -97,6 +97,12 @@ func _run() -> void:
 	Account.where = "user://probe_session.json"
 	Account._clear()
 	CollectionStore.where = "user://probe_collection.json"
+	# The assistant shown, as it is for a person whose Claude adds to their
+	# collection: a probe keeps no settings, so it would start as a first
+	# visit, which names no assistant, "Added by Claude" least of all
+	# (smallwords, noai_probe).
+	ShellPrefs.put("assistant", "on")
+	ShellPrefs.put("assistant_offered", true)
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	_main = load("res://src/main.tscn").instantiate()
 	root.add_child(_main)

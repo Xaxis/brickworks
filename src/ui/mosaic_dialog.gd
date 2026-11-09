@@ -773,12 +773,19 @@ func find_set() -> void:
 ## The colours chosen, said and drawn.
 func _tell_palette() -> void:
 	var shown: PackedInt32Array = _paintable(palette)
+	# One whole line for one colour and one for any other count, each an
+	# entry of its own: the German's "in denen" is "in der" for one.
+	var set_number: String = _set_found.trim_suffix("-1")
 	match _colours.selected:
+		Colours.SET when _set_found.is_empty():
+			_palette_said.text = "Type a set's number"
+		Colours.SET when shown.size() == 1:
+			_palette_said.text = "%s “%s”: 1 colour" % [set_number, _set_name]
 		Colours.SET:
-			_palette_said.text = ("%s “%s”: %d colours" % [_set_found.trim_suffix("-1"), _set_name,
-				shown.size()] if not _set_found.is_empty() else "Type a set's number")
+			_palette_said.text = "%s “%s”: %d colours" % [set_number, _set_name, shown.size()]
 		Colours.OWNED:
-			_palette_said.text = "%d colours you own its parts in" % shown.size()
+			_palette_said.text = ("1 colour you own its parts in" if shown.size() == 1
+				else "%d colours you own its parts in" % shown.size())
 		_:
 			_palette_said.text = ""
 	_palette_said.tooltip_text = _palette_said.text
@@ -859,9 +866,12 @@ func _work_out() -> void:
 		var sizes := PackedStringArray()
 		for entry: Array in laid.by_size().slice(0, 4):
 			sizes.append("%s %s" % [_comma(int(entry[1])), str(entry[0])])
-		_detail.text = "%d × %d studs, %.0f × %.0f cm — %s plates for its %s studs, in %d colours: %s%s%s%s" % [
+		# Each count with its own word (Counted), which each language finds
+		# whole: "1 plate", "1 colour" (smallwords).
+		_detail.text = "%d × %d studs, %.0f × %.0f cm — %s for its %s studs, in %s: %s%s%s%s" % [
 			laid.across, laid.down, laid.across * STUD_MM / 10.0, laid.down * STUD_MM / 10.0,
-			_comma(laid.plates.size()), _comma(laid.studs()), laid.colours(), ", ".join(sizes),
+			Counted.grouped(laid.plates.size(), "plate"), _comma(laid.studs()),
+			Counted.of(laid.colours(), "colour"), ", ".join(sizes),
 			", …" if laid.by_size().size() > 4 else "", _have(laid.counts()),
 			"" if laid.palette_kept else
 				" — no 1 × 1 plate is made in the colours chosen, so it is laid in all of them"]
@@ -870,18 +880,16 @@ func _work_out() -> void:
 	last_art = art
 	_show_result()
 	var studs := Vector2i(art.plan.across, art.plan.down)
-	var said := PackedStringArray()
-	for entry: Array in art.by_element():
-		said.append("%s %s" % [_comma(int(entry[1])), str(entry[0])])
 	var needs: Dictionary = {}
 	for placement: Assistant.Placement in art.placements:
 		var key: String = "%s/%d" % [placement.part, placement.color]
 		needs[key] = int(needs.get(key, 0)) + 1
 	# The kinds joined by " · ", which the languages find one by one ("%s
-	# round tiles"); joined by commas, the list was one place no entry took.
-	_detail.text = "%d × %d studs, %.0f × %.0f cm — %s parts — %s%s%s" % [
+	# round tiles", "1 star"); joined by commas, the list was one place no
+	# entry took.
+	_detail.text = "%d × %d studs, %.0f × %.0f cm — %s — %s%s%s" % [
 		studs.x, studs.y, studs.x * STUD_MM / 10.0, studs.y * STUD_MM / 10.0,
-		_comma(art.placements.size()), " · ".join(said), _have(needs),
+		Counted.grouped(art.placements.size(), "part"), " · ".join(art.element_words()), _have(needs),
 		"" if art.palette_kept else
 			" — no round or square tile is made in the colours chosen, so it is laid in the Art's own"]
 

@@ -174,14 +174,20 @@ func open(page: String = "own") -> void:
 ## with the assistant in the window (Settings, Assistant (AI)), what it can
 ## do with the collection. A fetch replaces all the person's Rebrickable
 ## data, fetched or exported, and the loose parts brought in before
-## sources were kept (mb2review findings 1 and 5).
+## sources were kept (mb2review findings 1 and 5). With the assistant off
+## it names no assistant, not even what one added (noai_probe; mosaic3
+## found it, 2026-11-08). Each a whole note, one entry for a translator.
 static func _rebrickable_note() -> String:
+	if ShellPrefs.assistant_shown():
+		return ("Your Rebrickable key goes from here to rebrickable.com and nowhere else, and is "
+			+ "not kept. What comes back replaces what came from Rebrickable before, fetched or "
+			+ "exported, and the loose parts brought in before. What you count here, a BrickLink XML, "
+			+ "and what an assistant added stay. Ask the assistant for \"a small house from my "
+			+ "collection\" and it builds from what you own.")
 	return ("Your Rebrickable key goes from here to rebrickable.com and nowhere else, and is "
 		+ "not kept. What comes back replaces what came from Rebrickable before, fetched or "
-		+ "exported, and the loose parts brought in before. What you count here, a BrickLink XML, "
-		+ "and what an assistant added stay."
-		+ (" Ask the assistant for \"a small house from my collection\" and it builds from what you own."
-			if ShellPrefs.assistant_shown() else ""))
+		+ "exported, and the loose parts brought in before. What you count here, a BrickLink XML "
+		+ "and everything else stay.")
 
 
 func is_showing() -> bool:
@@ -682,16 +688,20 @@ func _fill_own() -> void:
 			pieces += int(lot["qty"])
 			who[str(lot["by"])] = true
 		var named: String = str(who.keys()[0]) if who.size() == 1 else "your assistants"
+		# With the assistant off, who added them goes unnamed: "Claude" is
+		# the one who adds them (noai_probe).
+		var shown: bool = ShellPrefs.assistant_shown()
 		var heading := HBoxContainer.new()
 		heading.add_theme_constant_override("separation", 8)
-		var said: Label = _label("Added by %s — %s, %s: look them over" % [named,
-			Counted.of(added.size(), "lot"), Counted.of(pieces, "piece")], 12, 0.85)
+		var counted: Array = [Counted.of(added.size(), "lot"), Counted.of(pieces, "piece")]
+		var said: Label = _label("Added by %s — %s, %s: look them over" % ([named] + counted) if shown
+			else "Not added by you — %s, %s: look them over" % counted, 12, 0.85)
 		said.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		said.add_theme_color_override("font_color", Look.ACCENT)
 		heading.add_child(said)
 		_small(_button(heading, "Keep them", _keep_added, "collection_keep_added",
 			"Keep these as your own loose parts"))
-		_small(_button(heading, "Take back what %s added" % named, _take_back,
+		_small(_button(heading, "Take back what %s added" % named if shown else "Take back what was added", _take_back,
 			"collection_take_back", "Take out exactly the lots listed here; nothing of yours"))
 		_own_rows.add_child(heading)
 		for lot: Dictionary in added.slice(0, MOST_ROWS):

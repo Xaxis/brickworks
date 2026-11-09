@@ -784,8 +784,8 @@ static func measured(art: MosaicArt.Art, library: PartLibrary) -> String:
 		", …" if used.size() > 10 else ""])
 	var patch: Array = _largest_patch(plan, colour, ground)
 	if not patch.is_empty():
-		lines.append("- The largest patch of one colour outside the background: %d studs of %s."
-			% [int(patch[0]), _name_of(library, int(patch[1]))])
+		lines.append("- The largest patch of one colour outside the background: %s of %s."
+			% [Counted.of(int(patch[0]), "stud"), _name_of(library, int(patch[1]))])
 	var star_words := PackedStringArray()
 	var star_count: int = 0
 	for key: String in stars:
@@ -793,9 +793,9 @@ static func measured(art: MosaicArt.Art, library: PartLibrary) -> String:
 		star_count += int(stars[key])
 	lines.append("- Stars: %d%s." % [star_count,
 		" — " + ", ".join(star_words) if not star_words.is_empty() else ""])
-	lines.append("- Relief: %d%% of the picture raised, up to %d plate%s; %s."
-		% [roundi(100.0 * raised / n), highest, "" if highest == 1 else "s",
-		"the edge is flat" if edge_raised == 0 else "%d studs at the edge raised" % edge_raised])
+	lines.append("- Relief: %d%% of the picture raised, up to %s; %s."
+		% [roundi(100.0 * raised / n), Counted.of(highest, "plate"),
+		"the edge is flat" if edge_raised == 0 else "%s at the edge raised" % Counted.of(edge_raised, "stud")])
 	return "Measured on what was laid:\n" + "\n".join(lines)
 
 
@@ -835,15 +835,13 @@ static func _name_of(library: PartLibrary, code: int) -> String:
 	return colour.name if colour != null else "colour %d" % code
 
 
-## What a laid plan came to, in words: its size, and its parts by element.
+## What a laid plan came to, in words: its size, and its parts by element,
+## counted as the dialog counts them (MosaicArt.Art.element_words).
 static func said_of(art: MosaicArt.Art) -> String:
-	var said := PackedStringArray()
-	for entry: Array in art.by_element():
-		said.append("%d %s" % [int(entry[1]), str(entry[0])])
 	var highest: int = 0
 	for value: int in art.plan.relief:
 		highest = maxi(highest, value)
-	return "%d x %d studs on %d x %d panels (%.0f x %.0f cm), standing up to %d plate%s: %d parts — %s." % [
+	return "%d x %d studs on %d x %d panels (%.0f x %.0f cm), standing up to %s: %s — %s." % [
 		art.plan.across, art.plan.down, art.panels.x, art.panels.y,
-		art.plan.across * 0.8, art.plan.down * 0.8, highest, "" if highest == 1 else "s",
-		art.placements.size(), ", ".join(said)]
+		art.plan.across * 0.8, art.plan.down * 0.8, Counted.of(highest, "plate"),
+		Counted.grouped(art.placements.size(), "part"), ", ".join(art.element_words())]
