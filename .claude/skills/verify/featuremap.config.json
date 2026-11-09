@@ -3872,7 +3872,42 @@
       "kind": "cli",
       "label": "beta browser flow",
       "entry": "tools/web/beta_flow.mjs",
-      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/beta_flow.mjs --url=<preview> --out=DIR   (a preview from tools/deploy.sh --unit --billing-stand-in --beta-open, or the beta off: Coming soon and refused; preview check [beta])",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/beta_flow.mjs --url=<preview> --out=DIR   (a preview from tools/deploy.sh --unit --billing-stand-in --beta-open, or the beta off: Coming soon and refused; joining refused off, and an approved tester leaves and joins again with the month and spot as they were; preview check [beta])",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "joining the beta's testers",
+      "entry": "supabase/beta_join.sql",
+      "reach": "python3 tools/minitest.py tests/test_beta_join.py   (tests/fixtures/beta/join_check.mjs: the API over beta.sql, feedback.sql and beta_join.sql in a Postgres of its own; welcome, join, Not now, leave, the month untouched, the owner's list, off, and before the file); PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/beta_join.sql --dry --table=beta_testers",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the beta's welcome at sign-up",
+      "entry": "web/beta-welcome.js",
+      "reach": "the beta open, a new account signs in by the dialog (web/account.js askAgeIfAsked, after the age question): Join the beta testers or Not now (POST /api/plans?op=beta_join, ?op=beta_leave); Settings' Beta row (#beta-part) joins or leaves in one press; tools/web/betajoin_flow.mjs",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the beta's welcome in the app",
+      "entry": "src/ui/sign_in_gate.gd",
+      "reach": "the beta open, a new account past the code and the age question: the sign-in screen's welcome (beta_join, beta_not_now, beta_start), and Account's Beta row (account_beta); tools/probe.sh betajoin_probe with BRICKWORKS_API",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "betajoin browser flow",
+      "entry": "tools/web/betajoin_flow.mjs",
+      "reach": "node tools/web/betajoin_flow.mjs --url=http://127.0.0.1:9960 --owner=<its MASTER_EMAIL> [--off=URL] [--before=URL] --out=DIR   (a local server with BRICKWORKS_BETA=open and --hold=feedback until beta_join.sql is applied; see its head)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "betajoin probe",
+      "entry": "src/dev/betajoin_probe.gd",
+      "reach": "BRICKWORKS_API=http://127.0.0.1:9960 tools/probe.sh betajoin_probe [-- off]   (windowed, live: the real form, the welcome, Join, Account's Beta row, Not now never asked again; off: no welcome, no row, 403; skipped without BRICKWORKS_API)",
       "area": "web"
     },
     {
@@ -4068,7 +4103,7 @@
       "kind": "cli",
       "label": "the feedback stand-in",
       "entry": "tools/web/feedback_stand_in.mjs",
-      "reach": "node tools/web/relay_server.mjs 9060 --static=build/web --hold=feedback   (supabase/beta.sql and feedback.sql in a Postgres of this machine's own, PG_BIN and PG_MODULE set; GET /__held/feedback)",
+      "reach": "node tools/web/relay_server.mjs 9060 --static=build/web --hold=feedback   (supabase/beta.sql, feedback.sql and beta_join.sql in a Postgres of this machine's own, PG_BIN and PG_MODULE set; GET /__held/feedback)",
       "area": "web"
     },
     {

@@ -573,6 +573,8 @@ dialog.beta-welcome .gets {
 }
 dialog.beta-welcome .actions { margin-top: var(--s-5); }
 dialog.beta-welcome .note { margin: var(--s-3) 0 0; }
+/* On a phone the two choices stack, each the dialog's width, Join on top. */
+@media (width < 600px) { dialog.beta-welcome .actions .cta { flex: 1 1 100%; } }
 
 /* A person to follow (the feed's designers, First steps): their avatar,
    their name and best models, and Follow. A list of them is .people-list. */

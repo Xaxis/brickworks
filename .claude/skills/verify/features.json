@@ -254,6 +254,7 @@
       "area": "web",
       "tests": [
         "tests/test_beta.py",
+        "tests/test_beta_join.py",
         "tests/test_billing_pay.py",
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
@@ -529,7 +530,23 @@
       "id": "cli:beta browser flow",
       "kind": "cli",
       "entry": "tools/web/beta_flow.mjs",
-      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/beta_flow.mjs --url=<preview> --out=DIR   (a preview from tools/deploy.sh --unit --billing-stand-in --beta-open, or the beta off: Coming soon and refused; preview check [beta])",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/beta_flow.mjs --url=<preview> --out=DIR   (a preview from tools/deploy.sh --unit --billing-stand-in --beta-open, or the beta off: Coming soon and refused; joining refused off, and an approved tester leaves and joins again with the month and spot as they were; preview check [beta])",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:betajoin browser flow",
+      "kind": "cli",
+      "entry": "tools/web/betajoin_flow.mjs",
+      "reach": "node tools/web/betajoin_flow.mjs --url=http://127.0.0.1:9960 --owner=<its MASTER_EMAIL> [--off=URL] [--before=URL] --out=DIR   (a local server with BRICKWORKS_BETA=open and --hold=feedback until beta_join.sql is applied; see its head)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:betajoin probe",
+      "kind": "cli",
+      "entry": "src/dev/betajoin_probe.gd",
+      "reach": "BRICKWORKS_API=http://127.0.0.1:9960 tools/probe.sh betajoin_probe [-- off]   (windowed, live: the real form, the welcome, Join, Account's Beta row, Not now never asked again; off: no welcome, no row, 403; skipped without BRICKWORKS_API)",
       "area": "web",
       "tests": []
     },
@@ -2119,6 +2136,7 @@
       "area": "web",
       "tests": [
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/test_beta_join.py",
         "tests/test_coming_soon.py",
         "tests/test_feedback.py",
         "tests/test_release_train.py"
@@ -2616,7 +2634,7 @@
       "id": "cli:the feedback stand-in",
       "kind": "cli",
       "entry": "tools/web/feedback_stand_in.mjs",
-      "reach": "node tools/web/relay_server.mjs 9060 --static=build/web --hold=feedback   (supabase/beta.sql and feedback.sql in a Postgres of this machine's own, PG_BIN and PG_MODULE set; GET /__held/feedback)",
+      "reach": "node tools/web/relay_server.mjs 9060 --static=build/web --hold=feedback   (supabase/beta.sql, feedback.sql and beta_join.sql in a Postgres of this machine's own, PG_BIN and PG_MODULE set; GET /__held/feedback)",
       "area": "web",
       "tests": []
     },
@@ -3427,6 +3445,14 @@
       "entry": "src/assembly/flex_follow.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=hoses   (by hand: open 42080-1 and raise the crane's arm; its pneumatic tubes from the cab bend and follow; drag an arm a tube is too short for and it stops, the status bar naming the tube)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "lib:joining the beta's testers",
+      "kind": "lib",
+      "entry": "supabase/beta_join.sql",
+      "reach": "python3 tools/minitest.py tests/test_beta_join.py   (tests/fixtures/beta/join_check.mjs: the API over beta.sql, feedback.sql and beta_join.sql in a Postgres of its own; welcome, join, Not now, leave, the month untouched, the owner's list, off, and before the file); PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/beta_join.sql --dry --table=beta_testers",
+      "area": "web",
       "tests": []
     },
     {
@@ -4437,6 +4463,7 @@
       "area": "web",
       "tests": [
         "tests/test_beta.py",
+        "tests/test_beta_join.py",
         "tests/test_feedback.py"
       ]
     },
@@ -4714,6 +4741,7 @@
       "area": "web",
       "tests": [
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/test_beta_join.py",
         "tests/test_coming_soon.py",
         "tests/test_feedback.py",
         "tests/test_release_train.py"
@@ -5778,6 +5806,22 @@
       "kind": "ui",
       "entry": "web/beta-admin.html",
       "reach": "<deployment>/beta-admin as MASTER_EMAIL (?tests=1 the checks' pool): GET /api/admin?op=beta, POST ?op=beta_decide&account=U {decision, note}, POST ?op=beta_grant",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:the beta's welcome at sign-up",
+      "kind": "ui",
+      "entry": "web/beta-welcome.js",
+      "reach": "the beta open, a new account signs in by the dialog (web/account.js askAgeIfAsked, after the age question): Join the beta testers or Not now (POST /api/plans?op=beta_join, ?op=beta_leave); Settings' Beta row (#beta-part) joins or leaves in one press; tools/web/betajoin_flow.mjs",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:the beta's welcome in the app",
+      "kind": "ui",
+      "entry": "src/ui/sign_in_gate.gd",
+      "reach": "the beta open, a new account past the code and the age question: the sign-in screen's welcome (beta_join, beta_not_now, beta_start), and Account's Beta row (account_beta); tools/probe.sh betajoin_probe with BRICKWORKS_API",
       "area": "web",
       "tests": []
     },

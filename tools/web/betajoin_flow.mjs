@@ -22,12 +22,12 @@
 //      13 or over), then the welcome, light and dark: what Brickworks is,
 //      that it is in beta, what a tester does and gets, Join the beta
 //      testers first and Not now, nothing ticked. Join, one press: GET
-//      op=beta says tester, the dialog thanks them in place. Settings' Beta
-//      row: tester since, Leave the beta (one press: not a tester), Join
-//      again (one press).
+//      op=beta says tester, the dialog thanks them in place, and First
+//      steps follow. Settings' Beta row: tester since, and Leave the beta.
 //   2. Another new account at 1280 x 800, dark: Not now, one press; not a
 //      tester; signed in again by the dialog, never welcomed again;
-//      Settings offers Join, and one press makes it a tester.
+//      Settings offers Join, and one press makes it a tester, and one more
+//      leaves.
 //   3. The owner's /beta-admin?tests=1: the testers, newest first, where
 //      each joined from, and the month's queue under them.
 //   4. --off, the beta off: a new account signed in by the dialog is not
@@ -173,7 +173,9 @@ const welcomeSaid = (page) => page.evaluate(() => {
     inside: box.left >= 0 && box.right <= innerWidth + 0.5 && box.bottom <= innerHeight + 0.5,
     sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
     cut: [...dialog.querySelectorAll("button, p, h2")].filter((el) => el.offsetWidth && el.scrollWidth > el.clientWidth + 1).length,
-    joinHeight: join?.getBoundingClientRect().height || 0,
+    // Its own height: the dialog opens from 98% (site.css), so a rect
+    // measured as it opens is 2% short.
+    joinHeight: join?.offsetHeight || 0,
   };
 });
 
@@ -240,7 +242,7 @@ try {
       await until(page, () => !document.querySelector("dialog.beta-welcome") && document.querySelector("dialog.first-steps[open]")));
     await page.keyboard.press("Escape");
 
-    console.log("   Settings: leave, and join again");
+    console.log("   Settings: tester since, and Leave");
     await page.goto(`${site}/settings`, { waitUntil: "load" });
     await settingsReady(page);
     let row = await rowSaid(page);
@@ -249,17 +251,6 @@ try {
     check(`...and the month: "${row.month.slice(0, 80)}"`, /For a month of Pro, tell us what you build/.test(row.month));
     await page.locator("#beta-part").scrollIntoViewIfNeeded();
     await both(page, "3-settings-tester-390", "#beta-part");
-    await page.click("#beta-leave");
-    await until(page, () => /You left the beta/.test(document.getElementById("beta-status")?.textContent || ""));
-    const left = await api(site, "/api/plans?op=beta", { token });
-    row = await rowSaid(page);
-    check(`Leave the beta, one press: tester ${left.json?.tester}, ${left.json?.state}; "${row.status}"`,
-      left.json?.tester === false && left.json?.state === "left" && row.join && !row.leave);
-    await both(page, "4-settings-left-390", "#beta-part");
-    await page.click("#beta-join");
-    await until(page, () => /Joined/.test(document.getElementById("beta-status")?.textContent || ""));
-    const back = await api(site, "/api/plans?op=beta", { token });
-    check(`Join the beta testers, one press: tester ${back.json?.tester}`, back.json?.tester === true);
     await context.close();
   }
 
@@ -299,6 +290,13 @@ try {
     check(`an existing account joins from Account, one press: tester ${joined.json?.tester}; "${row.said}"`,
       joined.json?.tester === true && row.leave && /beta tester since/.test(row.said));
     await both(page, "7-settings-joined-1280", "#beta-part");
+    await page.click("#beta-leave");
+    await until(page, () => /You left the beta/.test(document.getElementById("beta-status")?.textContent || ""));
+    const left = await api(site, "/api/plans?op=beta", { token: await tokenOf(page) });
+    row = await rowSaid(page);
+    check(`...and leaves, one press: tester ${left.json?.tester}, ${left.json?.state}; "${row.status}"`,
+      left.json?.tester === false && left.json?.state === "left" && row.join && !row.leave);
+    await both(page, "8-settings-left-1280", "#beta-part");
     await context.close();
   }
 
@@ -315,11 +313,11 @@ try {
       months: Boolean(document.getElementById("months-h")) && document.getElementById("n-spots-left")?.textContent.trim() }));
     const a = listed.rows.find((one) => one.includes(address("a")));
     const b = listed.rows.find((one) => one.includes(address("b")));
-    check(`the testers listed (${listed.counts.join(", ")}): A "${a}"`, shown && /Tester/.test(a || "")
-      && /from the welcome at sign-up/.test(a || ""));
-    check(`...B "${b}"`, /Tester/.test(b || "") && /from Settings/.test(b || ""));
+    check(`the testers listed (${listed.counts.join(", ")} testers, at sign-up, left, not now): A "${a}"`, shown
+      && /Tester/.test(a || "") && /from the welcome at sign-up/.test(a || "") && listed.counts[0] === "1" && listed.counts[1] === "1");
+    check(`...B, who left: "${b}"`, /Left/.test(b || "") && /from Settings/.test(b || "") && listed.counts[2] === "1");
     check(`...the month's queue under them: ${listed.months} spots left`, listed.months !== false && listed.months !== "");
-    await both(page, "8-owner-testers-1280");
+    await both(page, "9-owner-testers-1280");
     await context.close();
   }
 
@@ -331,7 +329,7 @@ try {
     const said = await welcomeSaid(page);
     check(`in German: "${said?.title}", "${said?.join}", "${said?.later}"`, said?.title === "Willkommen bei Brickworks"
       && said.join === "Beta-Tester werden" && said.later === "Nicht jetzt" && said.cut === 0);
-    await both(page, "9-welcome-de-390");
+    await both(page, "10-welcome-de-390");
     await context.close();
   }
 
@@ -358,7 +356,7 @@ try {
     const account = await api(offSite, "/api/account", { token });
     check(`/api/account says nothing of a welcome: ${JSON.stringify(account.json?.beta)}`,
       JSON.stringify(account.json?.beta) === JSON.stringify({ tester: false, early: [] }));
-    await shot(page, "10-settings-off-1280.png");
+    await shot(page, "11-settings-off-1280.png");
 
     // --- 5. As before ------------------------------------------------------------------
     if (args.before) {
@@ -366,13 +364,14 @@ try {
       console.log(`5. Every page as before (${beforeSite})`);
       const read = async (base, pathname, who) => {
         const { page: one, context: its } = await open(base, pathname, { width: 1280, who, label: `as before ${pathname}` });
-        await one.waitForTimeout(2500);
+        await one.waitForLoadState("networkidle").catch(() => null);
+        await one.waitForTimeout(1500);
         const text = await one.evaluate(() => document.body.innerText.replace(/[ \t]+/g, " ").replace(/\n+/g, "\n").trim());
         await its.close();
         return text;
       };
       const who = await mintSession(email);
-      for (const [pathname, as] of [["/", null], ["/settings", null], ["/settings", who], ["/de/settings", who],
+      for (const [pathname, as] of [["/index.html", null], ["/de/", null], ["/settings", null], ["/settings", who], ["/de/settings", who],
         ["/beta", null], ["/profile", who], ["/beta-hub", who]]) {
         const [now, then] = [await read(offSite, pathname, as), await read(beforeSite, pathname, as)];
         const at = now.split("\n").findIndex((line, i) => line !== then.split("\n")[i]);
