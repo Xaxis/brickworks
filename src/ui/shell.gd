@@ -2277,7 +2277,7 @@ func _make_report_button() -> void:
 	report_button.name = "report_bug"
 	report_button.accessibility_name = "Report a bug"
 	row.move_child(report_button, account.get_index())
-	report_button.visible = beta_open
+	report_button.visible = _report_shown()
 
 
 ## The beta open, or not, for the account signed in: the top bar's Report a
@@ -2287,7 +2287,13 @@ func set_beta_open(on: bool) -> void:
 	if report_button == null and bar != null:
 		_make_report_button()
 	if report_button != null:
-		report_button.visible = on
+		report_button.visible = _report_shown()
+
+
+## In the top bar while the beta is open; a phone's bar has no room for it,
+## and More holds Help's Report a bug… there.
+func _report_shown() -> bool:
+	return beta_open and not Phone.on()
 
 
 func _report_from_now() -> String:
