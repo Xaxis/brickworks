@@ -12932,6 +12932,72 @@ msgstr "Die %d oder %d erstmals hergestellten Teile, die neuesten zuerst"
 msgid "%s first made in %d or %d, the newest first"
 msgstr "%s, %d oder %d erstmals hergestellt, die neuesten zuerst"
 
+# View › Edges and studs (APP_UX6 #19 edges): the parts' seams and their studs, each drawn or not
+
+msgid "Edges and studs"
+msgstr "Kanten und Noppen"
+
+msgid "Edges"
+msgstr "Kanten"
+
+msgid "Studs"
+msgstr "Noppen"
+
+msgid "A fine line where each part meets the next, so courses and bonds read in a wall"
+msgstr "Eine feine Linie, wo ein Teil an das nächste stößt, damit Reihen und Verbände in einer Wand zu sehen sind"
+
+msgid "Off, the parts are drawn without their studs, each in its place: the shapes alone, and a big model drawn faster"
+msgstr "Aus: die Teile ohne ihre Noppen gezeichnet, jedes an seinem Platz: nur die Formen, und ein großes Modell schneller gezeichnet"
+
+# video2 (APP_UX6 #11): Render's Kept as, a WebP or a GIF.
+msgid "Kept as"
+msgstr "Gespeichert als"
+
+msgid "WebP"
+msgstr "WebP"
+
+msgid "GIF"
+msgstr "GIF"
+
+msgid "A GIF plays anywhere a picture goes, chats, forums and mail included: 256 colours, at most 640 pixels across, made to fit in 8 MB."
+msgstr "Ein GIF läuft überall, wo ein Bild hingeht, auch in Chats, Foren und E-Mails: 256 Farben, höchstens 640 Pixel breit, passend für 8 MB."
+
+msgid "An animated WebP keeps every colour and is small; every browser plays it."
+msgstr "Ein animiertes WebP behält jede Farbe und ist klein; jeder Browser spielt es ab."
+
+msgid "%d frames, %s s at %d a second, as a GIF."
+msgstr "%d Bilder, %s s bei %d pro Sekunde, als GIF."
+
+msgid "%d frames, %s s at %d a second, as a GIF, the frames, and an MP4 where ffmpeg is installed."
+msgstr "%d Bilder, %s s bei %d pro Sekunde, als GIF, die Einzelbilder und ein MP4, wo ffmpeg installiert ist."
+
+msgid "%s parts as the timeline builds them, step by step, over %d s at %d a second, the camera turning %d° round, as a GIF."
+msgstr "%s Teile, wie die Zeitleiste sie baut, Schritt für Schritt, über %d s bei %d pro Sekunde, die Kamera dreht sich um %d°, als GIF."
+
+msgid "%s parts as the timeline builds them, step by step, over %d s at %d a second, the camera turning %d° round, as a GIF, the frames, and an MP4 where ffmpeg is installed."
+msgstr "%s Teile, wie die Zeitleiste sie baut, Schritt für Schritt, über %d s bei %d pro Sekunde, die Kamera dreht sich um %d°, als GIF, die Einzelbilder und ein MP4, wo ffmpeg installiert ist."
+
+msgid "%s: %s s at %d a second, %s, as a GIF."
+msgstr "%s: %s s bei %d pro Sekunde, %s, als GIF."
+
+msgid "%s: %s s at %d a second, %s, as a GIF, the frames, and an MP4 where ffmpeg is installed."
+msgstr "%s: %s s bei %d pro Sekunde, %s, als GIF, die Einzelbilder und ein MP4, wo ffmpeg installiert ist."
+
+msgid "Making the GIF…"
+msgstr "GIF wird erstellt…"
+
+msgid "Making the GIF: frame %d of %d…"
+msgstr "GIF wird erstellt: Bild %d von %d…"
+
+msgid "a GIF of %d x %d, %d frames at %s a second, %s MB"
+msgstr "ein GIF mit %d × %d, %d Bilder bei %s pro Sekunde, %s MB"
+
+msgid "the GIF was not finished: %s"
+msgstr "das GIF wurde nicht fertig: %s"
+
+msgid "no GIF: its frames would not read back"
+msgstr "kein GIF: seine Bilder ließen sich nicht zurücklesen"
+
 # A long job says when it is done: Settings' row, and what the note says
 # finished (APP_UX7 #11, donenote).
 
