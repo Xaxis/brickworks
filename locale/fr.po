@@ -12923,3 +12923,11 @@ msgid "Its far corner is cut flat."
 msgstr "Son coin arrière est coupé droit."
 msgid "1 large star"
 msgstr "1 grande étoile"
+# The parts bin's New shelf, the parts first made in the catalogue's latest two
+# years (APP_UX7 #5, binrow).
+
+msgid "The parts first made in %d or %d, the newest first"
+msgstr "Les pièces fabriquées pour la première fois en %d ou %d, les plus récentes d'abord"
+
+msgid "%s first made in %d or %d, the newest first"
+msgstr "%s fabriquées pour la première fois en %d ou %d, les plus récentes d'abord"

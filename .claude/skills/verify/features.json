@@ -209,6 +209,7 @@
       "reach": "node tools/web/together_probe.mjs --url=<a relay server or a preview>   (with .env sourced; BW_BYPASS for a preview)",
       "area": "together",
       "tests": [
+        "tests/test_flows_for.py",
         "tests/test_steps_score.py"
       ]
     },
@@ -546,6 +547,14 @@
       "entry": "tools/web/billing_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/billing_flow.mjs --url=<preview> --out=DIR   (a preview from tools/deploy.sh --unit --billing-stand-in, or plans off: nothing answers; --stand-in=<tools/web/admission_stand_in.mjs> on this machine also pays and cancels; preview check [billing])",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:binrow probe",
+      "kind": "cli",
+      "entry": "src/dev/binrow_probe.gd",
+      "reach": "tools/probe.sh binrow_probe -- --shots=DIR   (windowed, 1400x900, signed in through the gate with a throwaway account from .env: at 1400x900, 1280x720 and 1024x768, as first opened and with Stress, the assistant, a part's properties and the bin open, the eight shelves inside the chips' window unscrolled; 42 parts at 1400x900; the walk's Like this Plate 2 x 4 seventh at 1400x900 and 1280x720; New's list against the catalogue's years); tools/probe.sh binrow_phone_probe (390x844) and binrow_tablet_probe (1024x768)",
+      "area": "parts",
       "tests": []
     },
     {
@@ -3139,6 +3148,7 @@
       "reach": "node tools/web/relay_server.mjs 9011 --hold=together_sessions,together_ops,together_people, then godot --headless --path . --script src/dev/together_probe.gd -- --api=http://127.0.0.1:9011   (with .env sourced)",
       "area": "together",
       "tests": [
+        "tests/test_flows_for.py",
         "tests/test_steps_score.py"
       ]
     },
@@ -4135,6 +4145,7 @@
       "reach": "godot --headless --path . --script src/dev/techniques_probe.gd",
       "area": "assistant",
       "tests": [
+        "tests/test_flows_for.py",
         "tests/test_realset.py"
       ]
     },
@@ -5086,6 +5097,14 @@
       "tests": []
     },
     {
+      "id": "ui:new parts in the bin",
+      "kind": "ui",
+      "entry": "src/ui/parts_bin.gd",
+      "reach": "godot --path .  (New among the bin's shelves, after Palettes: the parts first made in the catalogue's latest two years, the newest first; words typed narrow it. Every shelf, All to Like this, in sight at any width, their counts left off where that saves a row)",
+      "area": "parts",
+      "tests": []
+    },
+    {
       "id": "ui:new tab or window",
       "kind": "ui",
       "entry": "src/parts/tab_session.gd",
@@ -5659,6 +5678,7 @@
       "reach": "godot --path .  (Techniques beside Recent and Favourites in the parts bin; a row held whole, R turns it, a click puts it down)",
       "area": "parts",
       "tests": [
+        "tests/test_flows_for.py",
         "tests/test_realset.py"
       ]
     },
