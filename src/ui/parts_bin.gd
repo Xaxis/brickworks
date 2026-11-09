@@ -618,6 +618,7 @@ func _build_categories() -> void:
 		if category in SHELVES:
 			button.text = _shelf_text(category, _shelves_short)
 			button.tooltip_text = _shelf_tip(category)
+			_chip_seen = PartShelf.palettes_revision
 		# Their counts change as a person works (_refresh_shelf).
 		if category == RECENT or category == FAVOURITES or category == PALETTES:
 			button.set_meta("shelf", category)
@@ -5222,6 +5223,8 @@ var _shelf_more: MenuButton
 ## was last looked at for another window's change.
 var _shelf_seen: int = -1
 var _shelf_looked: int = 0
+## PartShelf.palettes_revision when the Palettes chip was last counted.
+var _chip_seen: int = -1
 ## A sub-assembly's name asked for, and a palette's or an entry's going asked.
 var _name_asker: ConfirmationDialog
 var _name_field: LineEdit
@@ -5882,6 +5885,11 @@ func _watch_palettes() -> void:
 		return
 	if _shelf_line.visible != (_category == PALETTES):
 		_show_shelf_line()
+	# The chip's count, whatever shows: a palette the person's Claude made
+	# (mcppalettes) left it saying "Palettes 0" beside the palette.
+	if PartShelf.palettes_revision != _chip_seen:
+		_chip_seen = PartShelf.palettes_revision
+		_refresh_shelf()
 	if _category != PALETTES or not is_visible_in_tree():
 		return
 	var now: int = Time.get_ticks_msec()

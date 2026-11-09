@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:a step's name, cli:stepnames probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:a step's name, cli:stepnames probe -->
 
 ## Sub-features
 
@@ -2898,6 +2898,49 @@ picture the assistant is shown.
   whole, as it draws a shadowed light in passes of its own and that
   rounds), the
   glowing brick's, `suns_*` and `grid_*`.
+- `edges and studs` (APP_UX6 #19 edges; View, Edges and studs, Edges and
+  Studs; `src/render/studs_off.gd`, `StudsOff`; `BrickWorld.set_edges_shown`
+  and `set_studs_shown`; `ViewPrefs.edges` and `.studs`, kept in this
+  machine's `controls.cfg` under `[view]`). Edges off sets the plastic
+  shaders' `seam_shown` false (`plastic_body.gdshaderinc`'s `seam_at` gives
+  0): not a pixel of the seam on any face, and on, the shader's output
+  unchanged. Studs off draws each part from `StudsOff.surfaces`: its
+  triangles wholly inside a male `stud` connector's round (radius 6.1, 4.8
+  tall, from its foot along its axis, so side studs, round plates' rings,
+  hollow and open studs, jumpers and heads alike) taken out, and where that
+  leaves the foot open (a round plate's top) a disc laid over it; a stud of
+  which nothing was taken (DUPLO and Quatro, bigger than a System stud)
+  stays drawn. Each part stays where it was: the meshes keep the part's
+  bounds, and the bricks, connectors, picking and history are not touched.
+  Worked out once a part (cached on its `Lbm.PartMesh`), swapped into a
+  batch while its slot count is 0 (so the engine reads nothing back), and
+  only in the window's world: renders, booklets, `view_model`, corner
+  pictures and thumbnails draw every seam and stud; the part in hand keeps
+  its studs to place by. On MCP both are WINDOW_ONLY.
+- `edges probe` (`src/dev/edges_probe.gd`, `tools/probe.sh edges`, windowed
+  on the GPU at 1400 x 900, `PROBE_SIZE=1280x720` too): through the sign-in
+  screen with a throwaway account (.env). The car's default view, its 3D
+  alone, kept as `default_view_WxH.png` (lay an older build's beside it,
+  byte for byte: the default view unchanged to the pixel), and the same to
+  the pixel after Edges and Studs each go off and on. A red and a black wall
+  of 1 x 2s in running bond square on: pixels inside each face off its
+  median colour by 10 levels (the seam), many drawn and 0 with Edges off
+  (chosen from View with the keys). Fifteen parts of every kind of stud
+  (3001, 3024, 6141, 3062b, 85861, 3794b, 3039, 87087, 4733, 30414, 3700,
+  3626c, 3065, 3068b, 3795; three turned so a side stud faces sideways)
+  laid square on in an orthographic view fitted to them, each stud seen
+  from its side: in its projected round (inset 2 px), pixels unlike the
+  same picture with nothing drawn, most of them drawn and 0 with Studs off;
+  every part's transform and the model's box unchanged. Outside the rounds
+  grown 3 px, pictures drawn flat (no MSAA, FXAA, TAA, glow, SSAO, SSIL or
+  SSR, so an edge's blend is not counted) are compared for coverage: 0 px
+  covered by a part with the studs and not without, or the other way (the
+  studs' own shadows, lit differently, are reported, not failed). Studs
+  facing the eye are left out of the rounds and masked. Both off, then a
+  headless run of its own on the same data folder (`--after-restart`)
+  finds them off and unticked and turns them on. Pictures in `user://edges`
+  or `-- --shots=DIR`: look at `walls_*`, `studs_*` (`studs_rounds_*`
+  outlines each round measured, yellow), the menus and `car_*`.
 - `quiet probe` (`src/dev/quiet_probe.gd`, `tools/probe.sh quiet_probe`,
   windowed at 1280 x 720, `PROBE_SIZE=1400x900`): APP_UX4 unit 9's bar.
   The first build's offer on a first visit, gone at the third part put down

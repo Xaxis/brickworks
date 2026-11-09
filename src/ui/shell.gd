@@ -209,7 +209,10 @@ const MENUS: Array = [
 		"isolate", "show_all", "lock", "unlock", "-", "paint", "replace", "mirror"]],
 	["View", [">viewpoint", "mode_orbit", "mode_pan", "mode_zoom",
 		"fit", "fit_model", "fit_selection",
-		"ortho", "grid", ">floor", "-", "cut", ">cut_away", "xray", "stress", "stud_map", "-",
+		"ortho", "grid", ">floor",
+		# edges (APP_UX6 #19): the parts' seams and their studs, each drawn or not.
+		">edges_studs",
+		"-", "cut", ">cut_away", "xray", "stress", "stud_map", "-",
 		">panels", "split_view", "full_screen"]],
 	["Build", ["timeline", "step_close", ">steps", "pose", "instructions", ">booklet", "parts_list",
 		"collection_need", "-", "make_submodel", "leave_submodel", "enter_assembly",
@@ -298,6 +301,8 @@ const SUBMENUS: Dictionary = {
 		"booklet_zoom_out"],
 	"floor": ["floor_16", "floor_32", "floor_48", "floor_custom", ">floor_colour", "-",
 		"floor_grid", "floor_none", "-", "floor_part", "floor_default"],
+	# edges (APP_UX6 #19): View › Edges and studs.
+	"edges_studs": ["edges", "studs"],
 	"floor_colour": ["floor_colour_2", "floor_colour_10", "floor_colour_288",
 		"floor_colour_19", "floor_colour_28", "floor_colour_71", "floor_colour_72",
 		"floor_colour_378", "floor_colour_1", "floor_colour_15", "floor_colour_0",
@@ -309,7 +314,9 @@ const SUBMENU_WORDS: Dictionary = {"recent": "Open recent", "import": "Import",
 	"export": "Export", "history": "History", "select_by": "Select by",
 	"viewpoint": "Viewpoint", "cut_away": "Cut away by", "panels": "Panels",
 	"steps": "Build steps", "booklet": "Booklet page", "booklet_view": "Step's view",
-	"floor": "Floor", "floor_colour": "Baseplate colour"}
+	"floor": "Floor", "floor_colour": "Baseplate colour",
+	# edges (APP_UX6 #19).
+	"edges_studs": "Edges and studs"}
 
 
 ## Everything put on screen: the menus into the bar, the toolbar under it,
@@ -1345,6 +1352,8 @@ func _define() -> void:
 		"Lines between the studs of the baseplate, for counting them")
 	_ticked("grid", func() -> bool: return grid.visible)
 	_define_floor()
+	# edges (APP_UX6 #19): View › Edges and studs.
+	_define_edges()
 	# A picture to build over (src/ui/reference_image.gd).
 	_add("reference", "Reference picture…", 0, func() -> void:
 		(app.get("_reference") as ReferenceImage).open(), Callable(),
@@ -2355,6 +2364,27 @@ func _read_licence(id: String) -> void:
 	_licence_text.scroll_vertical = 0
 	_licence.popup_centered()
 	_licence_text.grab_focus.call_deferred()
+
+
+## View › Edges and studs (APP_UX6 #19): the seam along every part's edges
+## and the studs, each drawn in the window or not (BrickWorld.edges_shown,
+## studs_shown), as kept on this machine (ViewPrefs), and set on the window's
+## world here, before its first part is drawn.
+func _define_edges() -> void:
+	world.set_edges_shown(ViewPrefs.edges)
+	world.set_studs_shown(ViewPrefs.studs)
+	_add("edges", "Edges", 0, func() -> void:
+		ViewPrefs.edges = not world.edges_shown
+		world.set_edges_shown(ViewPrefs.edges)
+		ViewPrefs.keep(), Callable(),
+		"A fine line where each part meets the next, so courses and bonds read in a wall")
+	_ticked("edges", func() -> bool: return world.edges_shown)
+	_add("studs", "Studs", 0, func() -> void:
+		ViewPrefs.studs = not world.studs_shown
+		world.set_studs_shown(ViewPrefs.studs)
+		ViewPrefs.keep(), Callable(),
+		"Off, the parts are drawn without their studs, each in its place: the shapes alone, and a big model drawn faster")
+	_ticked("studs", func() -> bool: return world.studs_shown)
 
 
 ## View, Floor: what the model stands on (ModelFloor, FloorLayer). Each a
