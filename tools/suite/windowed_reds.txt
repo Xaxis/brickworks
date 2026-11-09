@@ -1,0 +1,29 @@
+# The windowed probes (tools/suite/windowed.txt) red on pre261, as the last sweep of them all
+# found them, so the next sweep compares against it. One a line: NAME, then from a # its
+# cause, the commit that brought it and who owns its fix. A name here is expected red until its
+# owner's fix merges; a red the next sweep finds that is not here is new, and one here that
+# passes is fixed (take its line out).
+#
+# winsweep, 2026-11-09: pre261 d1d05cb77, all 159 run one after another in one GPU job, each
+# at its header's size (probe.sh, PROBE_LISTED=1), 11,104 s in all at load 24-68 on 24
+# threads. 152 green, 7 red; each red run again alone: 6 red again, connect_form green.
+# Results: bench/results/winsweep-2026-11-09/ (sweep1, rerun1, final).
+a11y_names   # My collection's "How many" SpinBox (CollectionDialog, loose parts) has no name a screen reader says: 1 of 2248 controls. Since 4a47ad075 (mybricks, 11-06). Owner: a11ynames, running.
+keys3   # File: 24 rows, 482 units tall in a 1280x720 window, at most 470. Compare two sets or models (ee47dd32d, comparesets, 11-07) was the row that took it past. Owner: subexport, running (folding the export rows into Export ▸).
+#
+# Red on pre261 d1d05cb77 and fixed on winsweep (green at 1400x900 and 1280x720 there):
+#   keys2, keys4: View › Edges and studs (e7523ab42, edges) added Edges and Studs with no key
+#     and no row in docs/app_ux3/keys.md: 108 with no key against the table's 106. The table
+#     names both, kept without a key (a look set once, as the floor), counts 224 and 108.
+#   watched_frames: the viewer read 30 of 8808-1's exact shapes on its frames before what moves
+#     was said: Main._turn_pages_over -> BuildSteps.work_out_turns -> BookletMaker._stud_way
+#     (9d0f93fe1, buildturn, 11-06). The shapes not read yet are read on a worker first
+#     (Main._shapes_off_frame). On pre261 one aim frame was over its bar in each of 4 runs
+#     (taken or aimed, a different part each time, load 28-69); on winsweep none in 2.
+#   lights: a save of 200,000 junk light lines judged against short comments measured the
+#     bytes written (1.88-2.34 times on every run, 2.09 accepted at ready); judged now against
+#     comments as long as its lines (0.77-1.22 times), the bar still 1.5.
+#
+# Red once and green alone (not expected red):
+#   connect_form: Claude Code's tooltip came back while the pointer rested on it after its click
+#     (load 56 in the sweep); green alone at load 43 on the same snapshot.
