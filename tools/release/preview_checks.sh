@@ -341,6 +341,13 @@ declare -A CMD=(
   # its own run is local, with a throwaway owner (the flow's head).
   # Throwaway accounts, deleted after.
   [feedback]="tools/web/feedback_flow.mjs --url=$P --out=$S/${TAG}_feedback"
+  # Report a bug (bugreport): window.brickworksReportBug over the page at 390
+  # and 1280, the page's picture drawn, a box marked on it and found in the
+  # kept picture where it was drawn (within 2 px), Your reports listing each
+  # with its number, Escape and Cancel sending nothing; the app's top bar's
+  # Report a bug with the beta open (tools/deploy.sh --unit --beta-open), and
+  # none with it shut, as every release's preview has it. A throwaway, deleted.
+  [bugreport]="tools/web/bugreport_flow.mjs --url=$P --out=$S/${TAG}_bugreport"
   [tabs]="tools/web/tabs_flow.mjs --url=$P/app --out=$S/${TAG}_tabs"
   # Two chats, two tabs: the relay's rules alone, then the app in two tabs.
   [tabpair_probe]="tools/web/tabpair_probe.mjs --url=$P"

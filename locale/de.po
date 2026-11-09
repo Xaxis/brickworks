@@ -5018,6 +5018,133 @@ msgstr "Das hat gerade nicht geklappt. Versuch es in einer Minute noch einmal."
 msgid "Thank you."
 msgstr "Danke."
 
+# Report a bug (bugreport, 2026-11-09)
+msgid "Report a bug"
+msgstr "Fehler melden"
+
+msgid "Report a bug…"
+msgstr "Fehler melden…"
+
+msgid "Report this"
+msgstr "Melden"
+
+msgid "Tell us what went wrong, with a picture of the window to mark the spot on"
+msgstr "Sag uns, was schiefgelaufen ist, mit einem Bild des Fensters, auf dem du die Stelle markierst"
+
+msgid "Tell us what went wrong, with a picture of the window to mark the spot on (%s)"
+msgstr "Sag uns, was schiefgelaufen ist, mit einem Bild des Fensters, auf dem du die Stelle markierst (%s)"
+
+msgid "Share an idea"
+msgstr "Eine Idee teilen"
+
+msgid "Ask a question"
+msgstr "Eine Frage stellen"
+
+msgid "What happened?"
+msgstr "Was ist passiert?"
+
+msgid "What would you like?"
+msgstr "Was wünschst du dir?"
+
+msgid "What would you like to ask?"
+msgstr "Was möchtest du fragen?"
+
+msgid "What did you expect to happen? (optional)"
+msgstr "Was hast du erwartet? (optional)"
+
+msgid "Tell us what went wrong. We read every report ourselves."
+msgstr "Sag uns, was schiefgelaufen ist. Wir lesen jede Meldung selbst."
+
+msgid "Send report"
+msgstr "Meldung senden"
+
+msgid "Clear the marks"
+msgstr "Markierungen entfernen"
+
+msgid "Leave the picture out"
+msgstr "Bild weglassen"
+
+msgid "Put the picture back"
+msgstr "Bild wieder mitsenden"
+
+msgid "Drag on the picture to mark the spot."
+msgstr "Zieh auf dem Bild, um die Stelle zu markieren."
+
+msgid "1 mark. Drag again to add another."
+msgstr "1 Markierung. Zieh noch einmal für eine weitere."
+
+msgid "%d marks. Drag again to add another."
+msgstr "%d Markierungen. Zieh noch einmal für eine weitere."
+
+msgid "No picture goes with it."
+msgstr "Es geht kein Bild mit."
+
+msgid "The picture that goes with the report. Drag on it to mark the spot."
+msgstr "Das Bild, das mit der Meldung geht. Zieh darauf, um die Stelle zu markieren."
+
+msgid "What will be sent"
+msgstr "Was gesendet wird"
+
+msgid "What you wrote"
+msgstr "Was du geschrieben hast"
+
+msgid "the picture"
+msgstr "das Bild"
+
+msgid "the picture, with 1 mark"
+msgstr "das Bild, mit 1 Markierung"
+
+msgid "the picture, with %d marks"
+msgstr "das Bild, mit %d Markierungen"
+
+msgid "the version and your system"
+msgstr "die Version und dein System"
+
+msgid "the model, as a file"
+msgstr "das Modell als Datei"
+
+msgid "1 log line"
+msgstr "1 Protokollzeile"
+
+msgid "%d log lines"
+msgstr "%d Protokollzeilen"
+
+msgid "the error it said"
+msgstr "die Fehlermeldung"
+
+msgid "The app's log lines up to the error (%d), which say what it was doing"
+msgstr "Die Protokollzeilen der App bis zum Fehler (%d), die zeigen, was sie gerade tat"
+
+msgid "Say what happened."
+msgstr "Sag, was passiert ist."
+
+msgid "Sign in to send a report: Account, at the top right."
+msgstr "Melde dich an, um eine Meldung zu senden: Konto, oben rechts."
+
+msgid "Something went wrong in Brickworks. Report this, and what it was doing goes with it."
+msgstr "In Brickworks ist etwas schiefgelaufen. Melde es, und was die App gerade tat, geht mit."
+
+msgid "Thank you. Report #%d is in."
+msgstr "Danke. Meldung #%d ist eingegangen."
+
+msgid "Thank you. Your report is in."
+msgstr "Danke. Deine Meldung ist eingegangen."
+
+msgid "We read every report ourselves. Follow it, and our answer, in Your reports."
+msgstr "Wir lesen jede Meldung selbst. Verfolge sie und unsere Antwort unter Deine Meldungen."
+
+msgid "We read every report ourselves. Follow it, and our answer, in Your reports. The picture and the model did not go with it."
+msgstr "Wir lesen jede Meldung selbst. Verfolge sie und unsere Antwort unter Deine Meldungen. Das Bild und das Modell gingen nicht mit."
+
+msgid "We read every report ourselves. Follow it, and our answer, in Your reports. The picture did not go with it."
+msgstr "Wir lesen jede Meldung selbst. Verfolge sie und unsere Antwort unter Deine Meldungen. Das Bild ging nicht mit."
+
+msgid "We read every report ourselves. Follow it, and our answer, in Your reports. The model did not go with it."
+msgstr "Wir lesen jede Meldung selbst. Verfolge sie und unsere Antwort unter Deine Meldungen. Das Modell ging nicht mit."
+
+msgid "Your reports"
+msgstr "Deine Meldungen"
+
 msgid "A complete CAD for LEGO® models, built by hand or with the assistant, on the web or on your own computer."
 msgstr "Ein vollständiges CAD für LEGO® Modelle, von Hand oder mit dem Assistenten gebaut, im Web oder auf deinem eigenen Computer."
 

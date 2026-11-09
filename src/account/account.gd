@@ -85,6 +85,10 @@ var master: bool = false
 ## deployment says, the app only shows ([method early_on]).
 var tester: bool = false
 var early: Array[String] = []
+## Whether the beta is open on this deployment (BRICKWORKS_BETA, api/_beta.js):
+## the top bar's Report a bug and the error notices' Report this are shown
+## while it is (bugreport). The deployment says, the app only shows.
+var beta_open: bool = false
 ## Signed in from what this device kept, because Supabase could not be
 ## reached to confirm it.
 var offline: bool = false
@@ -483,6 +487,7 @@ func _ask_who(hold: bool = false) -> void:
 				return
 		var beta: Variant = said.get("beta")
 		tester = beta is Dictionary and bool((beta as Dictionary).get("tester", false))
+		beta_open = beta is Dictionary and bool((beta as Dictionary).get("open", false))
 		early.clear()
 		if beta is Dictionary and (beta as Dictionary).get("early") is Array:
 			for key: Variant in (beta as Dictionary)["early"]:
@@ -616,6 +621,7 @@ func _forget(why: String) -> void:
 	user_id = ""
 	master = false
 	tester = false
+	beta_open = false
 	early.clear()
 	offline = false
 	age_ask = false

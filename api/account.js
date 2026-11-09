@@ -91,6 +91,7 @@
 // anyone reinstalling.
 
 import { AuthError, authConfigured, bearer, isMaster, verify } from "./_auth.js";
+import { betaMode } from "./_beta.js";
 import { db, dbConfigured, reach } from "./_db.js";
 import { earlyFor } from "./_early.js";
 import { linkFetch } from "./_link.js";
@@ -195,7 +196,9 @@ export default async function handler(request, response) {
     signed_in: true,
     email: claims.email || null,
     master: isMaster(claims),
-    beta: { tester, early: earlyFor(tester) },
+    // open: the beta's switch (api/_beta.js betaMode), so the app shows its
+    // top bar's Report a bug while the beta is open (bugreport).
+    beta: { tester, early: earlyFor(tester), open: betaMode() === "open" },
     ...(age ? { age } : {}),
   });
 }
