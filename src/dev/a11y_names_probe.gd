@@ -194,7 +194,7 @@ func _run() -> void:
 	if all:
 		Language.choose("de")
 		_in_german = true
-		await _frames(12)
+		await _settle()
 		_walk_all("launch, in German")
 		for name: String in ["collection", "settings"]:
 			await _open_and_walk(name)
@@ -268,7 +268,7 @@ func _open_and_walk(name: String) -> void:
 	await _frames(12)
 	while _shown().size() <= before.size() and Time.get_ticks_msec() < until:
 		await process_frame
-	await _frames(4)
+	await _settle()
 	_walk_all(name)
 	await _shot(name)
 	# Its work done before it is put away (Colour the hidden parts draws its
@@ -838,6 +838,34 @@ func _idle() -> void:
 		if not Working.is_busy() and (hidden == null or not bool(hidden.get("_working"))):
 			return
 		await process_frame
+
+
+## Until what is drawn stops changing, at most 3 s: a dialog that lays its
+## page out after it shows is walked, and pictured, as a person sees it
+## (My collection, What do I need?, was an empty panel at 16 frames).
+func _settle() -> void:
+	await _idle()
+	var until: int = Time.get_ticks_msec() + 3000
+	var last: int = -1
+	var same: int = 0
+	while same < 3 and Time.get_ticks_msec() < until:
+		await _frames(4)
+		var now: int = _sized(root)
+		same = same + 1 if now == last else 0
+		last = now
+
+
+## The controls drawn under [param node]: shown and with a size.
+func _sized(node: Node) -> int:
+	if node is Window and node != root and not (node as Window).visible:
+		return 0
+	if node is CanvasItem and not (node as CanvasItem).visible:
+		return 0
+	var count: int = 1 if node is Control and (node as Control).size.x >= 1.0 \
+		and (node as Control).size.y >= 1.0 else 0
+	for child: Node in node.get_children(true):
+		count += _sized(child)
+	return count
 
 
 func _frames(n: int) -> void:
