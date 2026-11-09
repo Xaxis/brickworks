@@ -117,7 +117,7 @@ the booklet, the files). The top ten got their pictures in this unit.
 
 | Rank | Page | What a person comes to do | Pictures | Rewrite unit |
 |---|---|---|---|---|
-| 1 | first-model | build a first model in ten minutes | 3 (this unit) | docs1 |
+| 1 | first-model | build a first model in ten minutes | 2 (this unit) | docs1 |
 | 2 | building | put down, turn, move and copy parts exactly | 3 (this unit) | docs1 |
 | 3 | parts-bin | find the part and the colour | 2 (this unit) | docs1 |
 | 4 | selecting | select many parts and change them | 2 (this unit) | docs1 |
@@ -125,7 +125,7 @@ the booklet, the files). The top ten got their pictures in this unit.
 | 6 | instructions | steps and a booklet to print | 2 (this unit) | docs3 |
 | 7 | exports | a file, a shopping list or a render out | 2 (this unit) | docs3 |
 | 8 | collection | what I own, what I need, what I can build | 2 (this unit) | docs3 |
-| 9 | ai | have an AI design or change a model | 1 (this unit) | docs4 |
+| 9 | ai | have an AI design or change a model | 2 (this unit) | docs4 |
 | 10 | connect | connect the AI app I already use | 2 (this unit, one of the site) | docs4 |
 | 11 | index | find my way in | hero (web/img, by hand) | docs1 |
 | 12 | saving-and-files | save, find and reopen; bring a file in | 2 | docs3 |
@@ -189,8 +189,8 @@ its search (`main.gd:10884`). Fixed in this unit. Missing: Check stability
 has [[Alt+K]]; the tour's offer goes by itself once someone builds or
 opens a model (`first_build.gd:20`); Find a command… ([[Ctrl+/]]) is the
 way out for someone new. "Works the same in a browser and in the desktop
-app" leads. Pictures (this unit): the window with its parts numbered; a
-part in hand over the baseplate; the timeline.
+app" leads. Pictures (this unit): the window with its parts numbered, as a
+first visit sees it; a part in hand over an empty baseplate.
 
 **building.** Wrong: none; every key checked. Missing: the Snap and Turn
 choices (Stud, ½ stud, ½ plate, Free; 90, 45, 15, 5 degrees,
@@ -200,8 +200,8 @@ the longest page, reference order, with assistants' tool calls in the
 middle of a person's steps: split into placing (in hand, typed numbers,
 sideways, joints, connect, tracks) and changing (copy, patterns, move,
 handles, mirror, split, lock, sub-assemblies, undo, measure). Pictures
-(this unit): a typed move with its field at the pointer; the Rotate tool's
-rings; the Move tool's arrows.
+(this unit): the Rotate tool's rings; the Move tool's arrows; Pattern. To
+add: a typed move with its field at the pointer.
 
 **selecting.** Wrong: "make a sub-model": the menu says **Make a
 sub-assembly…**. Missing: the menu on a part is half named (it also has
@@ -215,7 +215,7 @@ part; a selection by colour.
 chip counts (11-09). "How the app's dialogs look" is about every dialog
 and belongs on panels-and-settings. Quality: it opens on how names are
 drawn before "type to search". Pictures (this unit): a search with its
-results; the colours under the parts.
+results; the bin as it opens.
 
 ### docs2: See and shape
 
@@ -283,7 +283,9 @@ has (emoji, and Japanese on the web) are "?". Fixed in this unit. Missing:
 [[Ctrl+Shift+B]] for Page setup; "the desktop app up to 0.19.0". Quality:
 the most common goal, a PDF, is the last section; lead with three steps:
 [[E]] for steps, [[Alt+B]], Save as PDF. Pictures (this unit): the
-timeline under the model; the booklet's first page.
+timeline under the model; Page setup. The booklet itself opens in its own
+tab, which no window picture can show: its picture stays the hand-made one
+of a real page (10-20) until the site flow can open a booklet.
 
 **exports.** Wrong: Render's **Backdrop** is **Background** and **View**
 is **Camera** (`render_dialog.gd:526`, `:574`); Best's "256 frames" is "As
@@ -292,7 +294,8 @@ the web (`render_settings.gd:382`, `path_tracer.gd:100`); the 3D caption
 leaves out 3MF. The two names are fixed in this unit. Missing: [[F9]],
 [[Shift+F9]], [[Alt+L]]. Quality: two pages in one: give Render a page of
 its own (`render.md`, with `_moved.json` keeping its anchors). Pictures
-(this unit): File › Export's list; Render.
+(this unit): the 3D export's choice; Render. The 3D picture made by hand
+for the compare page (10-15) is no longer on this page.
 
 **collection.** Wrong: none. Missing: nothing of note. Quality: a
 150-word paragraph on edits made in two places at once is engineering
@@ -320,8 +323,8 @@ desktop app": the web reaches one that allows the site
 (`ai_settings.gd:43`). Missing: #my-claude and #my-copilot are desktop
 only and do not say the desktop is coming soon. Quality: 1,783 words of
 reference; typing a brief and pressing **Build it** comes after a
-four-way table. Pictures (this unit): the assistant panel; sketches;
-Settings' AI.
+four-way table. Pictures (this unit): the assistant panel; Settings' AI.
+To add: sketches.
 
 **connector.** Wrong: Disconnect is "Disconnect <app>" in Account
 (`account_panel.gd:384`), and the site's Settings has it too. Missing: the

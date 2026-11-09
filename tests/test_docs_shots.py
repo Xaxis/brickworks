@@ -115,3 +115,23 @@ def test_the_built_docs_carry_every_picture(tmp_path: Path) -> None:
             assert (tmp_path / "docs/img" / f"{name}.webp").exists(), name
         page = tmp_path / ("docs.html" if shot["page"] == "index" else f"docs/{shot['page']}.html")
         assert f'id="shot-{shot["id"]}"' in page.read_text(encoding="utf-8"), shot["id"]
+
+
+def test_a_flicker_is_the_same_picture_and_a_change_is_not(monkeypatch, tmp_path: Path) -> None:
+    """The cut's hatched faces flicker by a level or few from frame to frame:
+    a run that reads them a little differently has not changed the picture,
+    and one word changed has."""
+    from PIL import Image, ImageDraw
+    monkeypatch.setattr(shots, "KEPT", tmp_path)
+    before = Image.new("RGB", (400, 300), (40, 42, 48))
+    ImageDraw.Draw(before).text((20, 20), "Cut away by a plane", fill=(230, 230, 230))
+    shots.keep(before, "before")
+    flicker = before.copy()
+    for x in range(20):
+        r, g, b = flicker.getpixel((200 + x, 150))
+        flicker.putpixel((200 + x, 150), (r, g, b + 4))
+    assert shots.flickers("before", flicker) == 20
+    changed = before.copy()
+    ImageDraw.Draw(changed).text((20, 20), "Cut away by a box", fill=(230, 230, 230))
+    assert shots.flickers("before", changed) is None
+    assert shots.flickers("not kept", flicker) is None

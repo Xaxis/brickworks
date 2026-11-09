@@ -270,6 +270,9 @@ func _take(shot: Dictionary) -> void:
 		await _do(step)
 		await _frames(int(step.get("after", 6)))
 	await _frames(int(shot.get("settle", 30)))
+	var gate: Variant = _main.get("_gate")
+	if gate is CanvasItem and (gate as CanvasItem).is_visible_in_tree():
+		_failed.append("the sign-in screen was over the window when it was to be read")
 	if not _failed.is_empty():
 		_say(id, {"ok": false, "why": "; ".join(_failed)})
 		quit(1)
@@ -345,15 +348,23 @@ func _stop_playback() -> void:
 
 
 ## Through the sign-in screen as somebody is let in (gate_probe): an account
-## with a fixed address and a session that needs no renewing.
+## with a fixed address and a session that needs no renewing. Only once the
+## account has its answer from the deployment nobody answers (three tries,
+## about 20 s, as gate_probe waits): let in before, its start-up check ended
+## after and put the sign-in screen back over the window, so a picture taken
+## late in its window came out dimmed under it (connect-your-ai, 11-09).
 func _let_in() -> void:
 	var account: Account = _main.get("_account")
 	if account == null:
 		return
-	for _n: int in 300:
-		if account.state != Account.State.CHECKING:
+	if account.deployment != null and not account.deployment.finished:
+		await account.deployment.wait()
+	for _n: int in 600:
+		if account.state != Account.State.CHECKING and not account.renewing:
 			break
 		await process_frame
+	if account.state == Account.State.CHECKING:
+		_failed.append("the account was still asking who is here after 10 s")
 	account.email = "you@example.com"
 	account._access = "docs.shots.signed.in"
 	account._expires_at = Time.get_unix_time_from_system() + 36000.0

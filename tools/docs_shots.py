@@ -37,6 +37,16 @@ the same code makes no change and a change means the UI changed. A changed
 one is written again as WebP into docs-site/img/, and its old and new
 picture and what differs are put side by side in the run's folder
 (diff/index.html) to be looked at before it is committed.
+
+A few pixels a level or two off are not a change: the cut's hatched faces
+flicker by up to 4 levels on 26 pixels from frame to frame (the-view-cut
+never reads the same twice), and a picture of them would otherwise be
+"changed" by every run. So each picture's lossless pixels are kept by
+their sha in ~/.cache/brickworks-docs-shots, and a new one that differs
+from the one the lock names by at most FLICKER_LEVELS on at most
+FLICKER_SHARE of its pixels is the same, as a screenshot test's threshold
+(Playwright's maxDiffPixels) has it. Any real change (a word, a control,
+a colour) moves far more pixels by far more.
 """
 
 from __future__ import annotations
@@ -66,6 +76,10 @@ CORE = Path.home() / ".claude/claude-core/bin"
 # A picture more than this is too heavy for a docs page (each is lazy).
 MOST_BYTES = 300_000
 QUALITY = 84
+# Each picture's lossless pixels, by sha, for the next run to compare with.
+KEPT = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "brickworks-docs-shots"
+FLICKER_LEVELS = 8
+FLICKER_SHARE = 0.001
 ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 THEMES = ("dark", "light")
 SHOWN = re.compile(r'^!\[([^\]]*)\]\(/docs/img/([a-z0-9-]+)\.webp(?:[ \t]+"([^"]*)")?\)[ \t]*$', re.M)
@@ -328,6 +342,37 @@ def pixels(path: Path):
         return picture.convert("RGB")
 
 
+def keep(picture, sha: str) -> None:
+    """A picture's lossless pixels, kept by sha for the next run."""
+    try:
+        KEPT.mkdir(parents=True, exist_ok=True)
+        kept = KEPT / f"{sha}.png"
+        if not kept.exists():
+            picture.save(kept)
+    except OSError:
+        pass
+
+
+def flickers(sha: str, picture) -> int | None:
+    """How many pixels [picture] differs by from the one made from [sha],
+    when each by at most FLICKER_LEVELS and no more than FLICKER_SHARE of
+    them: the same picture, flickering. None when it differs more, or the
+    one made before is not kept here."""
+    from PIL import ImageChops
+    kept = KEPT / f"{sha}.png"
+    if not sha or not kept.exists():
+        return None
+    before = pixels(kept)
+    if before.size != picture.size:
+        return None
+    delta = ImageChops.difference(before, picture)
+    if max(high for _, high in delta.getextrema()) > FLICKER_LEVELS:
+        return None
+    red, green, blue = delta.split()
+    moved = sum(ImageChops.lighter(ImageChops.lighter(red, green), blue).histogram()[1:])
+    return moved if moved <= FLICKER_SHARE * picture.width * picture.height else None
+
+
 def encode(raw: Path, out: Path, wanted: list[str]) -> list[dict]:
     """Each picture wanted, against what it was made from last: written as
     WebP where its pixels are new. What happened to each, in order."""
@@ -351,8 +396,13 @@ def encode(raw: Path, out: Path, wanted: list[str]) -> list[dict]:
             sha = hashlib.sha256(f"{picture.width}x{picture.height}\n".encode() + picture.tobytes()).hexdigest()
             target = IMG / f"{name}.webp"
             record = made.get(name, {})
+            keep(picture, sha)
             if record.get("sha256") == sha and target.exists():
                 told.append({"name": name, "what": "same", "bytes": target.stat().st_size})
+                continue
+            flicker = flickers(record.get("sha256", ""), picture) if target.exists() else None
+            if flicker is not None:
+                told.append({"name": name, "what": "same", "bytes": target.stat().st_size, "flicker": flicker})
                 continue
             old = pixels(target) if target.exists() else None
             picture.save(target, "WEBP", quality=QUALITY, method=6)
@@ -432,7 +482,9 @@ def main(argv: list[str]) -> int:
     told = encode(raw, out, app + site)
     total = sum(p.stat().st_size for p in IMG.glob("*.webp"))
     for t in told:
-        if t["what"] != "same":
+        if "flicker" in t:
+            print(f"  same     {t['name']}: {t['flicker']} px within {FLICKER_LEVELS} levels of the last, kept as it was")
+        elif t["what"] != "same":
             print(f"  {t['what']:8} {t['name']}" + (f": {t['why']}" if "why" in t else
                                                      f", {t['bytes'] // 1000} KB" + (f", {t['differ']} px differ"
                                                                                     if "differ" in t else "")))
