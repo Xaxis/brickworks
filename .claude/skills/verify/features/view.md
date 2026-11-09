@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, ui:strengthen a weak joint, cli:strengthen probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe -->
 
 ## Sub-features
 
@@ -717,6 +717,40 @@ picture the assistant is shown.
   in shots/stress_list/; `-- time FILE RUNS` times Stress coming on, for a
   base checkout too); `src/dev/stress_sets.gd -- FILE.mpd ...` counts red and
   amber on any sets.
+- `strengthen a weak joint` (`src/assembly/strengthen.gd`, `Strengthen`;
+  APP_UX8 #8 strengthen): with a red or amber row of Stress's panel chosen,
+  the fewest parts that make the joint hold, offered under the row's words
+  ("Strengthen adds a Plate 1 x 2 across the seam, onto the Brick 1 x 4
+  beside it. Then it holds about 2.6 times its working load.") and drawn as a
+  ghost where they would go (`Pattern.GHOST_SHADER`). Of three kinds, a
+  builder's: a plate (or a brick) across the seam onto a part of the side
+  that holds, on a filler where the tops differ, or under the seam (a tie); up
+  to three bricks and plates under it from the ground, the baseplate or a
+  part below (a prop); a friction pin through the next two holes in line (a
+  pin). Each candidate is checked for room as a part put down by hand
+  (`Builder.room_for`), weighed as one with the joint by Balance's rule, worst
+  of every way it could come off (`Strengthen.held_as_one`), and the best four
+  then weighed with the model as Stress weighs it (`Balance.measure` with the
+  parts in, on a worker for a big model): offered only when the joint is
+  then above its working load and nothing that held before is past its own.
+  Strengthen puts them down as one step to undo ("Strengthen: ..."), in the
+  sub-assembly and step a part put down by hand goes, selected. From my
+  bricks (shown only when the person has a collection, off) makes it of
+  parts they own in colours they have one left of after the model's own
+  (`CollectionStore.on_hand`), and says when one is not theirs.
+  `weakest_joints` answers each red or amber joint it lists with the same fix
+  and the `edit_model` call that puts it down ("Call edit_model
+  {"add":[...],"picture":false}"), `mine=true` of the person's parts; the same
+  fix as an earlier joint's said as such. Read-only: nothing is changed
+  until the call is made. `tools/probe.sh strengthen` (and
+  `PROBE_SIZE=1280x720`; windowed, through the sign-in screen): ten weak
+  models, each's fix offered, put down, weighed, undone to the byte and made
+  over MCP to the same bytes; From my bricks; a picture of each ghost.
+  Known gaps: a fix is looked for within two studs of the parts past the
+  joint and among the 120 parts nearest it; a tie is a plate or a brick of
+  the common rectangles, a prop of 1 x 1 to 2 x 4 columns, a pin a friction
+  pin; a joint that only a part across several seams would hold is said to
+  have no fix.
 - `stud directions` (`src/ui/stud_map.gd`, `StudMap`, `BrickWorld.set_painted`;
   APP_UX5 seeing2): View → Stud directions (under Stress) draws every part in
   the colour of where its studs point, from its male stud connectors turned

@@ -12948,3 +12948,117 @@ msgstr "Una línea fina donde cada pieza se une a la siguiente, para leer las hi
 
 msgid "Off, the parts are drawn without their studs, each in its place: the shapes alone, and a big model drawn faster"
 msgstr "Desactivado, las piezas se dibujan sin sus espigas, cada una en su sitio: solo las formas, y un modelo grande se dibuja más rápido"
+
+# View, Stress's Strengthen (APP_UX8 #8, strengthen): the fewest parts that make a weak
+# joint hold, offered, drawn as a ghost and put down as one step; From my bricks.
+
+msgid "Strengthen"
+msgstr "Reforzar"
+
+msgid "Put the parts shown down: the joint then holds. One step to undo"
+msgstr "Colocar las piezas mostradas: la unión aguanta entonces. Un solo paso para deshacer"
+
+msgid "From my bricks"
+msgstr "Con mis piezas"
+
+msgid "Make the fix of parts you own, in colours you have one of left"
+msgstr "Hacer el refuerzo con piezas que tienes, en colores de los que te queda una"
+
+msgid "Looking for the fewest parts that make it hold…"
+msgstr "Buscando las menos piezas con las que aguante…"
+
+msgid "No fix of up to three parts has room here: brace it by hand."
+msgstr "Ningún refuerzo de hasta tres piezas cabe aquí: refuérzala a mano."
+
+msgid "No fix of up to three parts has room here: hold it with studs by hand."
+msgstr "Ningún refuerzo de hasta tres piezas cabe aquí: sujétala con espigas a mano."
+
+msgid "Strengthen adds %s"
+msgstr "Reforzar añade %s"
+
+msgid "Then it holds about %s times its working load"
+msgstr "Entonces aguanta unas %s veces su carga de trabajo"
+
+msgid "Then it holds about %s times its working load."
+msgstr "Entonces aguanta unas %s veces su carga de trabajo."
+
+msgid "Then nothing levers it"
+msgstr "Entonces nada hace palanca sobre ella"
+
+msgid "Then nothing levers it."
+msgstr "Entonces nada hace palanca sobre ella."
+
+msgid "Then it is held square, on pins on two lines"
+msgstr "Entonces queda fija, en pasadores en dos líneas"
+
+msgid "Then it is held square, on pins on two lines."
+msgstr "Entonces queda fija, en pasadores en dos líneas."
+
+msgid "All from your bricks."
+msgstr "Todo con tus piezas."
+
+msgid "Not all from your bricks: you have none of one left."
+msgstr "No todo con tus piezas: de una no te queda ninguna."
+
+msgid "a %s through the next two holes in line"
+msgstr "%s por los dos agujeros siguientes alineados"
+
+msgid "a %s under it, down to the ground"
+msgstr "%s debajo, hasta el suelo"
+
+msgid "a %s and a %s under it, down to the ground"
+msgstr "%s y %s debajo, hasta el suelo"
+
+msgid "a %s, a %s and a %s under it, down to the ground"
+msgstr "%s, %s y %s debajo, hasta el suelo"
+
+msgid "a %s under it, down to the baseplate"
+msgstr "%s debajo, hasta la placa base"
+
+msgid "a %s and a %s under it, down to the baseplate"
+msgstr "%s y %s debajo, hasta la placa base"
+
+msgid "a %s, a %s and a %s under it, down to the baseplate"
+msgstr "%s, %s y %s debajo, hasta la placa base"
+
+msgid "a %s under it, down to the %s under it"
+msgstr "%s debajo, hasta %s de abajo"
+
+msgid "a %s and a %s under it, down to the %s under it"
+msgstr "%s y %s debajo, hasta %s de abajo"
+
+msgid "a %s, a %s and a %s under it, down to the %s under it"
+msgstr "%s, %s y %s debajo, hasta %s de abajo"
+
+msgid "a %s across the seam, onto the %s beside it"
+msgstr "%s a través de la junta, sobre %s de al lado"
+
+msgid "a %s across the seam, onto the %s beside it, on a %s"
+msgstr "%s a través de la junta, sobre %s de al lado, sobre %s"
+
+msgid "a %s across the seam, onto the %s beside it, on a %s and a %s"
+msgstr "%s a través de la junta, sobre %s de al lado, sobre %s y %s"
+
+msgid "a %s over the seam, onto the %s beside it"
+msgstr "%s por encima de la junta, sobre %s de al lado"
+
+msgid "a %s over the seam, onto the %s beside it, on a %s"
+msgstr "%s por encima de la junta, sobre %s de al lado, sobre %s"
+
+msgid "a %s over the seam, onto the %s beside it, on a %s and a %s"
+msgstr "%s por encima de la junta, sobre %s de al lado, sobre %s y %s"
+
+msgid "a %s under the seam, into the %s beside it"
+msgstr "%s bajo la junta, en %s de al lado"
+
+msgid "strengthened: %s"
+msgstr "reforzado: %s"
+
+msgid "%s takes it back"
+msgstr "%s lo deshace"
+
+msgid "Strengthen: %s"
+msgstr "Reforzar: %s"
+
+msgid "the model changed: its fix is looked for again"
+msgstr "el modelo cambió: se busca de nuevo su refuerzo"

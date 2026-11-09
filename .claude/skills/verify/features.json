@@ -2515,6 +2515,14 @@
       "tests": []
     },
     {
+      "id": "cli:strengthen probe",
+      "kind": "cli",
+      "entry": "src/dev/strengthen_probe.gd",
+      "reach": "tools/probe.sh strengthen [-- --shots=DIR]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720, through the sign-in screen with a throwaway account (.env): ten models with a weak joint each, its row pressed, the fix offered and drawn as a ghost, Strengthen adds 1 to 3 parts with room and Stress weighs the joint above its working load with no new red, one undo back to the byte, weakest_joints' edit_model call made as given gives the same model to the byte; a tie, a prop and a pin among them; From my bricks with a collection; a picture of each ghost in user://strengthen or DIR)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:table race",
       "kind": "cli",
       "entry": "src/dev/table_race_probe.gd",
@@ -5650,6 +5658,14 @@
       "entry": "src/ui/status_bar.gd",
       "reach": "godot --path .  (the line along the foot of the window)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:strengthen a weak joint",
+      "kind": "ui",
+      "entry": "src/assembly/strengthen.gd",
+      "reach": "tools/probe.sh strengthen && PROBE_SIZE=1280x720 tools/probe.sh strengthen   (by hand: View, Stress; press a red or amber row: the fewest parts that make it hold, a plate across the seam, a brick under it or a second pin, drawn as a ghost; Strengthen puts them down, one undo; From my bricks, shown with a collection, makes it of the person's parts; a session: weakest_joints answers each such joint with its fix as an edit_model call, mine=true of their parts)",
+      "area": "view",
       "tests": []
     },
     {

@@ -5001,6 +5001,20 @@
       "entry": "src/net/palette_tool.gd",
       "reach": "tools/probe.sh mcppalettes && PROBE_SIZE=1400x900 tools/probe.sh mcppalettes   (palettes reads the person's palettes, read-only; edit_palette make keeps twelve parts of the model each in its colour and a gatepost as the sub-assembly Gatepost in 1 call, the bin's Palettes shows it and its file entries are the bin's own Add rows' byte for byte but ids and times; place puts Gatepost down whole in another model in 1 call, each part to 0.01 LDU, low corner where asked, one assembly, one undo; take_out, rename, delete, agreed=true for a sub-assembly out and a delete; pictures in shots/mcppalettes/)",
       "area": "mcp"
+    },
+    {
+      "kind": "ui",
+      "label": "strengthen a weak joint",
+      "entry": "src/assembly/strengthen.gd",
+      "reach": "tools/probe.sh strengthen && PROBE_SIZE=1280x720 tools/probe.sh strengthen   (by hand: View, Stress; press a red or amber row: the fewest parts that make it hold, a plate across the seam, a brick under it or a second pin, drawn as a ghost; Strengthen puts them down, one undo; From my bricks, shown with a collection, makes it of the person's parts; a session: weakest_joints answers each such joint with its fix as an edit_model call, mine=true of their parts)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "strengthen probe",
+      "entry": "src/dev/strengthen_probe.gd",
+      "reach": "tools/probe.sh strengthen [-- --shots=DIR]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720, through the sign-in screen with a throwaway account (.env): ten models with a weak joint each, its row pressed, the fix offered and drawn as a ghost, Strengthen adds 1 to 3 parts with room and Stress weighs the joint above its working load with no new red, one undo back to the byte, weakest_joints' edit_model call made as given gives the same model to the byte; a tie, a prop and a pin among them; From my bricks with a collection; a picture of each ghost in user://strengthen or DIR)",
+      "area": "view"
     }
   ]
 }
