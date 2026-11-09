@@ -49,6 +49,8 @@ var _hands: HandTools
 var _see: SeeTools
 ## Edit, Pattern…'s grid for a session (PatternTool, APP_UX4 grid).
 var _pattern: PatternTool
+## The person's palettes for a session (PaletteTool, APP_UX7 mcppalettes).
+var _palette: PaletteTool
 
 
 ## The window's commands (Shell) a session does with a tool: command id, or
@@ -344,6 +346,13 @@ says yes.
 (q, kind, size, technic, instructions, sort); open=<id> reads one as a \
 reference — its size, parts, credit, licence and picture. Read-only. Credit \
 its builder and keep to its licence in anything made from it.
+ - palettes, read-only: the person's own palettes, as the parts bin's \
+Palettes keeps them for every model: parts in their colours and \
+sub-assemblies. edit_palette makes one (make), keeps more in it (add: \
+bricks= parts of the model, parts= by number and colour, from= the model or \
+the selection, assembly= a sub-assembly whole), take_out, rename and delete \
+as the bin's rows do, and place puts a kept sub-assembly down in the model \
+whole, at= where its low corner goes, one undo step.
  - job: what takes long on a big model (render_model, animate_model's \
 rendering, render_motion, export_model's studio, picture and instructions, make_art, \
 brickify) \
@@ -1228,7 +1237,7 @@ func definitions() -> Array:
 		},
 		GalleryTool.definition(),
 		PatternTool.definition(),
-	] + HandTools.definitions() + SeeTools.definitions()
+	] + HandTools.definitions() + SeeTools.definitions() + PaletteTool.definitions()
 
 
 func has(tool: String) -> bool:
@@ -1347,6 +1356,16 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 			if not _pattern.changed.is_empty():
 				return await _seeing().pictured(laid, _pattern.changed, input.get("picture"))
 			return laid
+		# mcppalettes: the person's palettes (PaletteTool); a sub-assembly put
+		# down answered with it pictured, as the hand tools' changes are.
+		"palettes", "edit_palette":
+			if _palette == null:
+				_palette = PaletteTool.new()
+				_palette.app = app
+			var kept: String = await _palette.run(tool, input)
+			if not _palette.changed.is_empty():
+				return await _seeing().pictured(kept, _palette.changed, input.get("picture"))
+			return kept
 	return "No tool called %s." % tool
 
 
@@ -1411,6 +1430,10 @@ const CHANGES: Array[String] = ["set_floor", "edit_steps", "edit_booklet", "lay_
 ## tool: light_model's list was refused while the designer built, as edit_steps'
 ## list and set_floor's question were (lreview, 2026-11-07).
 static func changes(tool: String, input: Dictionary) -> bool:
+	# mcppalettes: a palette's sub-assembly put down changes the model; the
+	# rest of edit_palette changes only the person's palettes.
+	if tool == "edit_palette":
+		return str(input.get("action", "")) == "place"
 	return tool in CHANGES and not _while_looking(tool, input)
 
 
@@ -1442,6 +1465,9 @@ static func _while_looking(tool: String, input: Dictionary) -> bool:
 		# pagesetup: how the page is set up, read.
 		"page_setup":
 			return input.is_empty()
+		# mcppalettes: the person's palettes, read.
+		"palettes":
+			return true
 		# lights (APP_UX5 #7): the model's lights, listed.
 		"light_model":
 			return str(input.get("op", "list")) == "list"

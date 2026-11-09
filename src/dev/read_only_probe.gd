@@ -153,7 +153,9 @@ func _run() -> void:
 			# The window's hand tools that only look (mcphand).
 			["measure", {"from": "0 0 0", "to": "2 3 1"}], ["in_view", {}],
 			# What a session sees as a person does (seeing).
-			["view_board", {}], ["view_board", {"step": 2}], ["booklet_page", {"page": 2}]]:
+			["view_board", {}], ["view_board", {"step": 2}], ["booklet_page", {"page": 2}],
+			# mcppalettes: the person's palettes, read.
+			["palettes", {}]]:
 		_called[str(call[0])] = true
 		var was: String = _standing(app_world)
 		sent += 1
