@@ -293,7 +293,7 @@ const LIST: Array = [
 		"links": [["github.com/liberationfonts", "https://github.com/liberationfonts"]]},
 	{"id": "notoemoji", "name": "Noto Emoji",
 		"what": "The emoji a booklet's PDF prints, in outline, carried in the PDF.",
-		"terms": "SIL Open Font License 1.1. Copyright 2013 Google LLC.",
+		"terms": "SIL Open Font License 1.1. Copyright (c) 2013 Google LLC.",
 		"full": "The emoji's licence",
 		"links": [["github.com/googlefonts/noto-emoji", "https://github.com/googlefonts/noto-emoji"]]},
 	{"id": "ldd", "name": "ldraw.xml",
