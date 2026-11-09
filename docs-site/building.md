@@ -205,7 +205,7 @@ ui:undo history
 
 Press [[U]] and click two points: the distance in studs, plates and millimetres. One LDraw unit is exactly 0.4 mm: a stud is 8 mm across, a brick 9.6 mm tall and a plate 3.2 mm.
 
-Click near a pin, a hole, an axle, a bar or a hinge and the point goes on its middle. With both points on one, Measure also says the angle between them, to a tenth of a degree: where a spring or a link goes between two pin holes.
+Click near a pin, a hole, an axle, a bar or a hinge and the point goes on its middle; near a stud, on the middle of its top. With both points on one, Measure also says the angle between them, to a tenth of a degree: where a spring or a link goes between two pin holes.
 
 On a phone or a tablet, Measure is in **More › Tools**: tap two points. Each tap goes on the stud or connector nearest your fingertip, so it reads what a click right on it would. Holding your finger down doesn't pick up a part while the ruler is out.
 

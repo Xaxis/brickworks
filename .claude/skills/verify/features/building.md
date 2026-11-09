@@ -1543,7 +1543,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   snap to half a stud across and a cell up. A point within 14 px of a
   connector's middle on the part under it (`JointSnap.ends_for`: a pin, hole,
   axle, bar, clip or hinge) goes on that middle (`Measure._end_near`), its axis
-  drawn through it; with both points on one the label adds the angle between
+  drawn through it; a point within 14 px of a stud's top goes on the top's
+  middle (`Measure._stud_near`, fingertools: the lattice has no studs, so a
+  click on one went through to the part's top and read 2 to 4 LDU low); with both points on one the label adds the angle between
   their axes to 0.1° ("37.9° between the two pin holes", `Measure.angle`: the
   lines' angle, 0 to 90°, unless both are pins or axles), as LDCad's
   (APP_UX2 7). Works in either view through the camera clicked in. While it is
@@ -2712,7 +2714,7 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   the ruler is out a finger held down takes no part off and opens no part's
   actions (`Measure.takes` takes the touch first); its words say tap, not Esc
   (new de/fr/es entries). Handles: every target 44 points or more across
-  (arrows and rings 23 points each side, rings 96 to 140 points round fitted to
+  (arrows and rings 23 points each side, rings 120 to 140 points round fitted to
   the view, the outer ring 46 points out, panes 0.25 to 0.75 of an arrow's
   reach, nearest wins and a pane's face counts as on it, a pane thinner than
   half a fingertip left out, the tag 48 points each way); the finger that

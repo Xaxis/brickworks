@@ -248,7 +248,15 @@ func _point(at: Vector2) -> Dictionary:
 	var hit: BrickLattice.Hit = lattice.raycast(origin, direction)
 	var point: Vector3
 	if hit.is_valid():
+		# A connector's middle or a stud's top, whichever is nearer: the
+		# lattice has no studs, so a click on one went through it to the
+		# part's top and read 2 to 4 LDU low (fingertools).
 		var end: JointSnap.End = _end_near(hit.brick_id, at)
+		var stud: Variant = _stud_near(hit.brick_id, at)
+		var view: int = camera.view_at(at)
+		if stud != null and (end == null or camera.screen_of(stud, view).distance_to(at)
+				< camera.screen_of(end.middle(), view).distance_to(at)):
+			return {"at": stud, "end": null}
 		if end != null:
 			return {"at": end.middle(), "end": end}
 		point = origin + direction.normalized() * hit.distance
@@ -305,14 +313,7 @@ func _spots_of(brick_id: int, view: int) -> PackedVector2Array:
 	var brick: BrickWorld.Brick = world.get_brick(brick_id)
 	if brick == null:
 		return out
-	var points := PackedVector3Array()
-	var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
-	if mesh != null:
-		for connector: Lbm.Connector in mesh.connectors:
-			if connector.kind == "stud" and connector.gender == "male" \
-					and connector.axis.length_squared() > 0.5:
-				points.append(brick.transform * (connector.position
-					+ connector.axis.normalized() * STUD_TALL))
+	var points: PackedVector3Array = _stud_tops(brick_id)
 	for end: JointSnap.End in JointSnap.ends_for(library, brick.part_id):
 		points.append(end.placed(brick.transform, brick_id).middle())
 	for point: Vector3 in points:
@@ -325,6 +326,42 @@ func _spots_of(brick_id: int, view: int) -> PackedVector2Array:
 ## a hole round the back of the part, or behind another, is not in sight.
 func _in_sight(spot: Vector2, brick_id: int) -> bool:
 	return lattice.raycast(camera.ray_origin(spot), camera.ray_normal(spot)).brick_id == brick_id
+
+
+## The tops of [param brick_id]'s studs, in the model: each stud's middle,
+## [constant STUD_TALL] out from its foot.
+func _stud_tops(brick_id: int) -> PackedVector3Array:
+	var out := PackedVector3Array()
+	var brick: BrickWorld.Brick = world.get_brick(brick_id) if world != null else null
+	if brick == null or library == null:
+		return out
+	var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
+	if mesh == null:
+		return out
+	for connector: Lbm.Connector in mesh.connectors:
+		if connector.kind == "stud" and connector.gender == "male" \
+				and connector.axis.length_squared() > 0.5:
+			out.append(brick.transform * (connector.position
+				+ connector.axis.normalized() * STUD_TALL))
+	return out
+
+
+## The top of the stud of [param brick_id] nearest [param at] on the screen,
+## within [constant NEAR] as a connector's middle is; null for none.
+func _stud_near(brick_id: int, at: Vector2) -> Variant:
+	var view: int = camera.view_at(at)
+	var window: Window = get_window() if is_inside_tree() else null
+	var best_off: float = NEAR * (window.content_scale_factor if window != null
+		and window.content_scale_factor > 0.0 else 1.0)
+	var best: Variant = null
+	for top: Vector3 in _stud_tops(brick_id):
+		if camera.behind(top, view):
+			continue
+		var off: float = camera.screen_of(top, view).distance_to(at)
+		if off < best_off:
+			best_off = off
+			best = top
+	return best
 
 
 ## The connector of [param brick_id] whose middle is nearest [param at] on

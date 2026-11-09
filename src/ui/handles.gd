@@ -44,8 +44,8 @@
 ## By finger (fingertools, APP_UX8 #10), laid out for one (Phone.on): every
 ## handle a fingertip's target or more, Apple's 44 points. A finger takes the
 ## handle nearest it within half a fingertip, a pane's face counting as on
-## it; the rings stand at least 96 points round, the outer ring a fingertip
-## outside them, the tag a fingertip tall, and a pane that cannot be a
+## it; the rings stand at least 120 points round, the outer ring a fingertip
+## outside them, the tag 48 points each way, and a pane that cannot be a
 ## fingertip's target is left out (the arrows either side still slide it).
 ## The finger that took a handle is the handles' until it lifts: the view
 ## did not turn with it (CadCamera's one-finger turn), so a drag moved the
@@ -106,12 +106,14 @@ const SWEEP_DEGREES := 5.0
 const SWEEP_LDU := 4.0
 ## Laid out for a finger, in points: how near a ring or an arrow a finger has
 ## to land to take it (a band a fingertip wide and a little over); the
-## rings' radius at least and at most; how far outside them the outer ring
-## stands; a pane's span along each of its axes (as [constant PANE]); how
-## far a finger may wander and still be a tap; and the tag's least size each
-## way (Material's 48, its words inside a fingertip with room round them).
+## rings' radius at least (at 96, two rings seen from a three-quarter view ran
+## 40 points apart, a fingertip's target split between them) and at most; how
+## far outside them the outer ring stands; a pane's span along each of its
+## axes (as [constant PANE]); how far a finger may wander and still be a tap;
+## and the tag's least size each way (Material's 48, its words inside a
+## fingertip with room round them).
 const FINGER_PICK := Phone.TARGET * 0.5 + 1.0
-const FINGER_RADIUS := 96.0
+const FINGER_RADIUS := 120.0
 const FINGER_LARGEST := 140.0
 const FINGER_OUTER_GAP := Phone.TARGET + 2.0
 const FINGER_PANE: Array[float] = [0.25, 0.75]
