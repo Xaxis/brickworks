@@ -237,11 +237,13 @@ env -u DISPLAY -u WAYLAND_DISPLAY MESA_VK_WSI_DEBUG=sw \
   godot --path . --resolution 1400x900 --script src/dev/element_shot_probe.gd
 ```
 
-Proves it when: the tests say `446 passed, 7 skipped` without numpy and
-`453 passed` with it (`uv venv` + `uv pip install numpy scipy pytest`; see
+Proves it when: the tests say `490 passed, 7 skipped` without numpy and
+`496 passed` with it (pytest 9.2 also fails
+`test_a_corner_cut_out_of_a_2x2_brick_is_the_corner_brick`, an approx of
+tuples, as on pre261 0932d6d88; minitest passes it) (`uv venv` + `uv pip install numpy scipy pytest`; see
 pipeline.md), and the probe ends on "the maker makes the measured files, and
 the app builds them as the pipeline does" with every line `ok`: each of the
-45 fixtures "the same .lbm, byte for byte" built from only the shipped
+50 fixtures "the same .lbm, byte for byte" built from only the shipped
 primitives, and the 40 library parts in `tests/fixtures/elements/library.txt`
 the same from vendor/ldraw — among them 3700, 3701 and 6541, whose holes'
 two faces the app merges and whose bores it clears as the pipeline does —
@@ -291,7 +293,8 @@ made four long as itself — 15533's studs and tubes, each where 15533 has
 it — with 3062b three long refused in the dialog's words — and 3003 changed
 with "Change it" and its back-right corner cut out, three studs; then the
 clip plates, the bar and the wedge plates, each made as the part it copies
-(60897, 61252, 87994, 41770a, 41769a): its bounds the catalogue's to 0.01
+(60897, 61252, 87994, 41770a, 41769a, and with its far corner cut flat
+54383): its bounds the catalogue's to 0.01
 LDU and its connectors the same in kind, place and axis; each found
 in the bin's Custom category; all but the bracket placed by the mouse's ray on a 2 x 4 on
 a baseplate with a 2 x 4 on top, the lower brick's studs reaching into it at
@@ -303,15 +306,21 @@ mouse's ray, on its joint, placed and joined to it; the level clip, aimed at
 a 2 x 4's front row with its clip out over the edge, goes where 61252 goes
 (y 32, on its stud at its socket); the wedge plates are stacked like the
 bricks and their cut is an edge (6 LDU out free, 6 in plastic); and each of
-the five is made by one `make_part` call. The assistant's checker passes it
-all and counts twelve pieces (one per stack). Then each family used
+the six is made by one `make_part` call (54383's with `chamfer: true`).
+54383 started from by number is the chamfered 3 x 6 with the box ticked,
+and 3544 is changed as itself. The level clip, aimed at a 2 x 4's four
+middle studs in each of four turns, goes where 61252 goes (16 of 16;
+pre261 12), and aimed at the front row with its clip turned in, its plate
+rests on the stud 0.00 LDU up (pre261 1.45, on its ring), on one stud at
+its socket. The assistant's checker passes it all and counts fourteen
+pieces (one per stack). Then each family used
 as only it can be, asked of the checker: a 1 x 4 plate on the side studs and
 a 1 x 2 plate on the bracket's upright held, and each a stud further out
 floating; a Technic pin through the hole held and fitting (3700's place for
 it), turned across the hole an overlap; the hole left out of the cover. The
-parts list says "(custom element)", and the saved file carries thirteen
+parts list says "(custom element)", and the saved file carries fourteen
 parts, read strictly by `tools/build_custom.py --check`, and reopened into a
-fresh library 35 of 35 bricks where they were — the changed parts rebuilt from the
+fresh library 40 of 40 bricks where they were — the changed parts rebuilt from the
 connectors their own text states. `element_shot_probe` ends "the
 dialog makes parts in the window" and leaves `shots/element_dialog.png`,
 `shots/element_beside.png`, `shots/element_families.png` (made parts
