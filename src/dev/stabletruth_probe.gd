@@ -29,9 +29,11 @@
 ##
 ## Then StableText2Brick's sample (BrickGPT, ICCV 2025): 150 structures of
 ## its test split, 100 by a hash of their ids and the 50 most stressed, whose
-## per-brick scores StableLego's analysis computed. Every one of them holds,
-## so each brick the check says comes apart is a false alarm; at least 95%
-## of the bricks must agree. Computed, not built: agreement, not truth.
+## per-brick scores StableLego's analysis computed: how much of each brick's
+## own joint its load leaves. Every one of them holds, so each brick whose
+## own joint the check lets go is a false alarm; at least 95% of the bricks
+## must agree. What such a joint brings down with it is said beside.
+## Computed, not built: agreement, not truth.
 ##
 ## Exits non-zero when the bar is not met.
 extends SceneTree
@@ -201,7 +203,13 @@ func _car() -> void:
 	_check("the status bar says the car %s" % said, said == "stands up")
 
 
-## StableText2Brick's sample, brick by brick against its scores.
+## StableText2Brick's sample, brick by brick against its scores. A score
+## is how much of a brick's own joint its load leaves (StableLego's
+## analysis), so the check's verdict on that same joint is what it is
+## held to: a brick is a false alarm when the check has its own joint let
+## go, or it tips off a touch, and they scored it holding. What comes
+## down with such a brick is counted and said too, never held to the bar:
+## one joint at a tower's foot brings down the tower.
 func _sample() -> void:
 	print("\nStableText2Brick's sample, its scores computed by StableLego's analysis:")
 	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(SAMPLE + "scores.json"))
@@ -211,13 +219,15 @@ func _sample() -> void:
 	var structures: Dictionary = (parsed as Dictionary)["structures"]
 	var ids: Array = structures.keys()
 	ids.sort()
-	var rows: Dictionary = {}     ## sample -> [structures, bricks, alarms, structures with any, weak]
+	## sample -> [structures, bricks, false alarms, structures with any,
+	## status bar weak, bricks brought down]
+	var rows: Dictionary = {}
 	var stressed_bricks: int = 0  ## bricks scored under 0.5
 	var stressed_weak: int = 0    ## of those, past the working load by the check
 	var weak_bricks: int = 0      ## bricks past the working load by the check
 	var weak_unstressed: int = 0  ## of those, scored 0.5 or more
 	var slowest: float = 0.0
-	var whole_alarms: Dictionary = {}  ## kind -> structures
+	var alarmed: Array[String] = []
 	for id: String in ids:
 		var entry: Dictionary = structures[id]
 		var scores: Array = entry["scores"]
@@ -231,9 +241,11 @@ func _sample() -> void:
 		var order: Dictionary = _order(text)
 		var plate: Vector3 = _plate()
 		var judged: Dictionary = _judged(report)
-		var row: Array = rows.get(entry["sample"], [0, 0, 0, 0, 0])
+		var row: Array = rows.get(entry["sample"], [0, 0, 0, 0, 0, 0])
 		row[0] += 1
 		var alarms: int = 0
+		var brought: int = 0
+		var lowest: float = 1.0
 		for brick: BrickWorld.Brick in _world.bricks():
 			var place: String = _at(brick.transform.origin - plate)
 			if not order.has(place):
@@ -243,9 +255,12 @@ func _sample() -> void:
 				continue
 			var score: float = float(scores[n])
 			row[1] += 1
-			var flagged: bool = bool(judged["all"]) or (judged["down"] as Dictionary).has(brick.id)
-			if flagged and score > 0.0:
+			var all: bool = bool(judged["all"])
+			if score > 0.0 and (all or (judged["at"] as Dictionary).has(brick.id)):
 				alarms += 1
+				lowest = minf(lowest, score)
+			if score > 0.0 and (all or (judged["down"] as Dictionary).has(brick.id)):
+				brought += 1
 			var weak: bool = (judged["weak"] as Dictionary).has(brick.id)
 			if score < 0.5:
 				stressed_bricks += 1
@@ -256,21 +271,23 @@ func _sample() -> void:
 				if score >= 0.5:
 					weak_unstressed += 1
 		row[2] += alarms
+		row[5] += brought
 		if alarms > 0:
 			row[3] += 1
-			for risk: Stability.Risk in report.risks:
-				whole_alarms[risk.kind] = int(whole_alarms.get(risk.kind, 0)) + 1
+			alarmed.append("%s (%s, %d brick%s at the joint, %d brought down, scored %.2f at the least)"
+				% [id.left(8), entry["sample"], alarms, "" if alarms == 1 else "s", brought, lowest])
 		if not report.is_stable():
 			row[4] += 1
 		rows[entry["sample"]] = row
-	var total: Array = [0, 0, 0, 0, 0]
+	var total: Array = [0, 0, 0, 0, 0, 0]
 	for sample: String in ["hashed", "stressed"]:
-		var row: Array = rows.get(sample, [0, 0, 0, 0, 0])
-		for k: int in 5:
+		var row: Array = rows.get(sample, [0, 0, 0, 0, 0, 0])
+		for k: int in 6:
 			total[k] += row[k]
 		_agreement(sample, row)
 	_agreement("both", total)
-	print("  false alarms by what the check said: %s" % str(whole_alarms))
+	for line: String in alarmed:
+		print("    false alarm: %s" % line)
 	print("  bricks they score under 0.5 (half a contact's clutch used): %d; past the working load "
 		% stressed_bricks + "by the check: %d. Bricks past the working load: %d, of them scored 0.5 or more: %d"
 		% [stressed_weak, weak_bricks, weak_unstressed])
@@ -282,9 +299,11 @@ func _sample() -> void:
 
 func _agreement(sample: String, row: Array) -> void:
 	var agree: float = 1.0 - float(row[2]) / maxf(float(row[1]), 1.0)
+	var standing: float = 1.0 - float(row[5]) / maxf(float(row[1]), 1.0)
 	print("  %-9s %3d structures, %5d bricks: %s agree, %d false alarms in %d structures; "
 		% [sample, int(row[0]), int(row[1]), _pct(agree), int(row[2]), int(row[3])]
-		+ "the status bar says weak joints on %d" % int(row[4]))
+		+ "%s left standing (%d brought down); the status bar says weak joints on %d"
+		% [_pct(standing), int(row[5]), int(row[4])])
 
 
 ## The model in [param text] opened as a person opens a file, and weighed as
@@ -303,11 +322,13 @@ func _weigh(text: String, name: String) -> Stability.Report:
 
 
 ## What the check says of each brick: {"falls": whether anything comes apart,
-## "all": a whole-model fall (every brick goes), "down": id -> true for each
-## brick that comes down, past a joint that lets go or tipping off a touch,
-## "weak": id -> true for each past its working load (the status bar's),
-## "worst": the joint nearest letting go}.
+## "all": a whole-model fall (every brick goes), "at": id -> true for each
+## brick whose own joint lets go or that tips off a touch, "down": id -> true
+## for each that comes down, those and all they hold up, "weak": id -> true
+## for each past its working load (the status bar's), "worst": the joint
+## nearest letting go}.
 func _judged(report: Stability.Report) -> Dictionary:
+	var at: Dictionary = {}
 	var down: Dictionary = {}
 	var weak: Dictionary = {}
 	var all: bool = false
@@ -315,6 +336,7 @@ func _judged(report: Stability.Report) -> Dictionary:
 	for id: Variant in report.margins:
 		var one: Balance.JointLoad = report.margins[id]
 		if one.ultimate > 0.0 and one.moment > one.ultimate:
+			at[one.beyond] = true
 			down.merge(_past(one))
 		if worst == null or one.moment / maxf(one.ultimate, 0.000001) \
 				> worst.moment / maxf(worst.ultimate, 0.000001):
@@ -327,11 +349,13 @@ func _judged(report: Stability.Report) -> Dictionary:
 			"levered":
 				weak[risk.brick_id] = true
 			"rests on a touch":
+				at[risk.brick_id] = true
 				down[risk.brick_id] = true
 				weak[risk.brick_id] = true
 			_:
 				all = true
-	return {"falls": all or not down.is_empty(), "all": all, "down": down, "weak": weak, "worst": worst}
+	return {"falls": all or not down.is_empty(), "all": all, "at": at, "down": down, "weak": weak,
+		"worst": worst}
 
 
 ## Everything that comes down when [param one] lets go: the part past it and
