@@ -44,6 +44,7 @@ const BUILT_FILES: Array[String] = ["stair_19", "stair_20", "stair_20_good", "st
 const PLATE := "4186"
 ## The share of StableText2Brick's bricks that must agree.
 const AGREE := 0.95
+const CAR := "res://models/car.ldr"
 
 var _failures: int = 0
 var _library: PartLibrary
@@ -80,6 +81,7 @@ func _run() -> void:
 		% [Balance.tidy(Balance.ULTIMATE_N), Balance.tidy(Balance.ALLOWABLE_N)])
 	_built()
 	_sample()
+	_car()
 	if _failures > 0:
 		print("\n%d check(s) failed" % _failures)
 	else:
@@ -188,6 +190,15 @@ func _built() -> void:
 			% least + "where it broke)")
 		_check("into a part %s, the check lets go at %.2f N, between them" % [wide, float(lets_go[wide])],
 			float(lets_go[wide]) > most and float(lets_go[wide]) < least)
+
+
+## The car the app opens at its start: the status bar still says it stands
+## up whatever the clutch where a stud lets go is (APP_UX8 #4's bar).
+func _car() -> void:
+	print("\nThe car:")
+	var report: Stability.Report = _weigh(FileAccess.get_file_as_string(CAR), "car")
+	var said: String = report.summary() if report != null else "(did not open)"
+	_check("the status bar says the car %s" % said, said == "stands up")
 
 
 ## StableText2Brick's sample, brick by brick against its scores.
