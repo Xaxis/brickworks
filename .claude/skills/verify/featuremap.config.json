@@ -1413,6 +1413,13 @@
     },
     {
       "kind": "cli",
+      "label": "two builds' first visits at an equal load",
+      "entry": "tools/web/start_abba.mjs",
+      "reach": "heavy node tools/web/start_abba.mjs --arm=base=SNAP/build/web --arm=new=SNAP2/build/web --blocks=4 --out=DIR   (with .env sourced; an arm may be a URL; --summary --out=DIR says the table again; python3 tools/minitest.py tests/test_start_abba.py)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
       "label": "progress check",
       "entry": "tools/web/progress_check.mjs",
       "reach": "node tools/web/progress_check.mjs --dir=build/web   (with .env sourced; or BW_BYPASS=… --url=<a preview>/app; --only=timeline,booklet,…; --report-only for a build from before)",

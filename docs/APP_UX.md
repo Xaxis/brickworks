@@ -447,6 +447,30 @@ notes). It is listed so the plan is whole, not as a new unit.
   bound; one that fails lets it go at once.
 - Left: the warm start's compile (above), the catalogue and the first frame;
   the engine's own wasm is 6.9 MB of the cold 8.9.
+- **At an equal load, m276 against pre261** (webstart9, 2026-11-09,
+  `tools/web/start_abba.mjs`, `bench/results/webstart9-2026-11-09/abba`).
+  APP_UX8 found every first-visit number nearly twice APP_UX7's. Both
+  builds exported from locked snapshots, served alike, six blocks of
+  A B B A at load 33-43, medians:
+
+  | | m276 (de20e50df) | pre261 (858b82bca) | pre261, paired by block |
+  |---|---|---|---|
+  | usable, cold | 16.87 s (14.66-19.82) | 16.83 (14.40-20.25) | x1.02 |
+  | usable, warm | 11.21 (9.83-13.27) | 10.53 (9.58-12.71) | x0.96 |
+  | compile, cold | 4.00 (3.28-4.80) | 3.98 (3.32-5.39) | x1.07 (plain medians x0.99) |
+  | compile, warm | 3.98 (3.28-4.71) | 3.88 (3.18-4.60) | x1.00 |
+  | main thread, cold | 9.22 (8.24-9.75) | 9.20 (8.66-9.94) | x1.03 |
+  | first screen's source | 5.67 MB, 200 scripts | 5.95 MB, 205 | |
+
+  The code did not do it. The same m276 build that APP_UX7 timed at
+  10.2 s cold, 6.0 warm and a 2.2 s compile at load 18-31 took 16.9,
+  11.2 and 4.0 here, and every stage of its start grew alike (the
+  catalogue 0.9 to 1.8 s, the interface 0.7 to 1.2). Its main thread's
+  CPU went from 5.7 to 9.2 s too: the load stretches CPU time as well as
+  the wall clock, so two days' numbers compare nothing. Builds are
+  compared at the same moments. The 5% more source (exact_check.gd
+  90 KB, parts_bin.gd 41 KB, scene_lights.gd 30 KB the most) is about
+  0.1 s of compile. The bar stays 10 s cold and 4 s warm.
 
 **Step 2 plan** (firstscreen, 2026-11-05). The first screen compiles 228
 scripts, 6.18 MB of the app's 10.73 (`tools/web/start_closure.py`). Each

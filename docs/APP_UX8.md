@@ -921,6 +921,13 @@ two days. drive changes 39 lines of it today.
   - `pre261` within 10% of m276, or brought back to it;
   - A13's 10 s cold and 4 s warm still the target;
   - `load_check` and the `web_start` checks pass.
+- **Measured (2026-11-09): it was the box.** `tools/web/start_abba.mjs`,
+  local exports, six blocks of A B B A at load 33 to 43: pre261 x1.02
+  cold and x0.96 warm to usable, the compile x1.07 cold and x1.00 warm,
+  against m276. The same m276 build took 16.9 s cold, 11.2 warm and a
+  4.0 s compile, where APP_UX7 read 10.2, 6.0 and 2.2 at load 18 to 31.
+  The first screen's source grew 5% (5.67 to 5.95 MB), about 0.1 s at
+  0.37 s a MB. Nothing moved; A13's target stands (APP_UX.md, A13).
 
 **2. design20: the silhouette, the next lever for set quality.**
 - **Change.** The session sees its model's outline from the reference's
