@@ -5001,6 +5001,20 @@
       "entry": "src/net/palette_tool.gd",
       "reach": "tools/probe.sh mcppalettes && PROBE_SIZE=1400x900 tools/probe.sh mcppalettes   (palettes reads the person's palettes, read-only; edit_palette make keeps twelve parts of the model each in its colour and a gatepost as the sub-assembly Gatepost in 1 call, the bin's Palettes shows it and its file entries are the bin's own Add rows' byte for byte but ids and times; place puts Gatepost down whole in another model in 1 call, each part to 0.01 LDU, low corner where asked, one assembly, one undo; take_out, rename, delete, agreed=true for a sub-assembly out and a delete; pictures in shots/mcppalettes/)",
       "area": "mcp"
+    },
+    {
+      "kind": "ui",
+      "label": "measure and handles by finger",
+      "entry": "src/ui/handles.gd",
+      "reach": "on a phone or a tablet: More's Measure, then a tap on a stud and a tap on another, each going on the stud's or the connector's middle nearest it within half a fingertip; the Move or Rotate tool, a tap on a part, then an arrow, pane, ring or the trackball dragged by a finger (every target 44 points or more), the tag tapped for the next axes, a second finger putting a drag back  (Measure._finger_point, Handles._finger_input; tools/probe.sh fingertools_probe)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "fingertools probe",
+      "entry": "src/dev/fingertools_probe.gd",
+      "reach": "tools/probe.sh fingertools_probe   (windowed, 390x844 by its header; through the sign-in screen with a throwaway account (.env); pictures in --shots=DIR, else user://fingertools)",
+      "area": "building"
     }
   ]
 }

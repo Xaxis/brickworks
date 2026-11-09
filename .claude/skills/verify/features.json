@@ -1220,6 +1220,14 @@
       "tests": []
     },
     {
+      "id": "cli:fingertools probe",
+      "kind": "cli",
+      "entry": "src/dev/fingertools_probe.gd",
+      "reach": "tools/probe.sh fingertools_probe   (windowed, 390x844 by its header; through the sign-in screen with a throwaway account (.env); pictures in --shots=DIR, else user://fingertools)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:first build probe",
       "kind": "cli",
       "entry": "src/dev/first_build_probe.gd",
@@ -4976,6 +4984,14 @@
       "kind": "ui",
       "entry": "src/ui/measure.gd",
       "reach": "godot --path .  (U, then click two points)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:measure and handles by finger",
+      "kind": "ui",
+      "entry": "src/ui/handles.gd",
+      "reach": "on a phone or a tablet: More's Measure, then a tap on a stud and a tap on another, each going on the stud's or the connector's middle nearest it within half a fingertip; the Move or Rotate tool, a tap on a part, then an arrow, pane, ring or the trackball dragged by a finger (every target 44 points or more), the tag tapped for the next axes, a second finger putting a drag back  (Measure._finger_point, Handles._finger_input; tools/probe.sh fingertools_probe)",
       "area": "building",
       "tests": []
     },

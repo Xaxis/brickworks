@@ -12948,3 +12948,11 @@ msgstr "Una línea fina donde cada pieza se une a la siguiente, para leer las hi
 
 msgid "Off, the parts are drawn without their studs, each in its place: the shapes alone, and a big model drawn faster"
 msgstr "Desactivado, las piezas se dibujan sin sus espigas, cada una en su sitio: solo las formas, y un modelo grande se dibuja más rápido"
+
+# Measure by finger (APP_UX8 #10 fingertools): the ruler's words on a phone, where
+# a tap is what puts a point down and there is no Esc to press.
+msgid "Measuring: tap a point, then another"
+msgstr "Midiendo: toca un punto y luego otro"
+
+msgid "0 mm — tap another point"
+msgstr "0 mm — toca otro punto"
