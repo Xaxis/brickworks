@@ -35,8 +35,17 @@ func ask() -> void:
 		_dialog.title = "Brickify a 3D model"
 		_dialog.size = Vector2i(760, 520)
 		_dialog.file_selected.connect(open_path)
-		add_child(_dialog)
+		# On the window, not under the Brickify panel, which waits hidden
+		# until a model is chosen: a screen reader is told nothing under a
+		# hidden node is there, the chooser with it (a11ymodal).
+		get_window().add_child(_dialog)
 	OpenFrom.ask(_dialog, "mesh")
+
+
+func _exit_tree() -> void:
+	if _dialog != null and is_instance_valid(_dialog):
+		_dialog.queue_free()
+	_dialog = null
 
 
 ## A model on this computer, with the files it names read from beside it.
