@@ -201,3 +201,79 @@ def test_colors_json_carries_the_table_and_nothing_else() -> None:
     assert written[43] == 15
     assert 179 not in written and 179 in HELD_BACK
     assert written[315] == 95
+
+
+# A part and a colour, its sets counted straight off Rebrickable's tables:
+# seven in three sets or fewer, "rare in this colour" in the parts bin, and
+# three common, 7049b's black among them, which the catalogue's join says it
+# was never made in (rarity, 2026-11-09).
+SPOT = [("3001", 4), ("3001", 13), ("3023b", 0), ("4740", 5), ("4740", 6),
+        ("7049b", 0), ("3069b", 367), ("3062b", 89), ("87087", 431), ("3005", 41)]
+
+
+def _sets_straight(pairs: list[tuple[str, int]], index: dict) -> dict[tuple[str, int], set[str]]:
+    """The sets each (LDraw part, LDraw colour) comes in, read off the raw
+    tables in Rebrickable's numbers: a set's own first inventory and its
+    minifigures', spares apart, and not what it has only by packing another
+    set, nor one of Rebrickable's database sets (theme 746). Every
+    Rebrickable number and colour id the index joins to it counts."""
+    colours = {int(k): v for k, v in index["colours"].items()}
+    first: dict[str, str] = {}
+    for row in sorted(_table("inventories"), key=lambda r: int(r["version"] or 1)):
+        first.setdefault(row["set_num"], row["id"])
+    figures: dict[str, list[str]] = {}
+    packed: dict[str, list[str]] = {}
+    for table, key, into in (("inventory_minifigs", "fig_num", figures),
+                             ("inventory_sets", "set_num", packed)):
+        for row in _table(table):
+            if row[key] in first:
+                into.setdefault(row["inventory_id"], []).append(first[row[key]])
+    wanted = set(pairs)
+    holding: dict[str, set[tuple[str, int]]] = {}
+    for row in _table("inventory_parts"):
+        if row["is_spare"] == "True" or int(row["color_id"]) not in colours:
+            continue
+        part = row["part_num"].lower()
+        pair = (index["parts"].get(part, part), colours[int(row["color_id"])])
+        if pair in wanted:
+            holding.setdefault(row["inventory_id"], set()).add(pair)
+
+    def held(inventory: str, depth: int = 0) -> set[tuple[str, int]]:
+        found = set(holding.get(inventory, ()))
+        if depth < 4:
+            for inner in figures.get(inventory, []) + packed.get(inventory, []):
+                found |= held(inner, depth + 1)
+        return found
+
+    out: dict[tuple[str, int], set[str]] = {pair: set() for pair in pairs}
+    for row in _table("sets"):
+        inventory = first.get(row["set_num"])
+        if inventory is None or row["theme_id"] == "746":
+            continue
+        own = held(inventory)
+        for inner in packed.get(inventory, ()):
+            own -= held(inner, 1)
+        for pair in own:
+            out[pair].add(row["set_num"])
+    return out
+
+
+def test_a_part_in_a_colour_is_in_as_many_sets_as_rebrickables_inventories_say() -> None:
+    index = json.loads((SETS / "index.json").read_text())
+    straight = _sets_straight(SPOT, index)
+    for (part, colour), sets in straight.items():
+        shard = json.loads((SETS / f"colours_{collection_data.colour_shard_of(part):02d}.json")
+                           .read_text())
+        row = shard["parts"].get(part, [])
+        written = dict(zip(row[0::2], row[1::2])).get(colour, 0)
+        print(f"{part} in {colour}: {written} sets written, {len(sets)} in Rebrickable's "
+              f"inventories{': ' + ', '.join(sorted(sets)) if len(sets) <= 3 else ''}")
+        assert written == len(sets) > 0, (part, colour)
+    assert sum(1 for sets in straight.values() if len(sets) <= 3) == 7
+
+
+def test_the_colours_file_rule_is_the_apps() -> None:
+    # The same numbers src/dev/rarity_probe.gd asks PartLibrary for.
+    assert collection_data.colour_shard_of("3001") == 27
+    assert collection_data.colour_shard_of("4740") == 60
+    assert collection_data.colour_shard_of(" 3023B ") == 52

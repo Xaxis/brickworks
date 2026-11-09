@@ -22,6 +22,10 @@
 //   4. 3008, 3001, 3039 and 3069b typed: the part itself is the first tile, its
 //      prints and stickers folded under it behind a count (search242); the
 //      count pressed opens them after it, and pressed again folds them.
+//   5. 3001 typed and its tile clicked: Red's swatch says in how many sets
+//      it comes in red, as the deployment's /sets/colours_NN.json counts
+//      them, and any swatch in sight that says "rare in this colour" names a
+//      count of three or fewer (rarity). By the mouse only.
 // At 390 x 844, by a finger, as phone_flow.mjs has a phone: the parts sheet,
 // Techniques there and the window found and tapped as at 1280, the sheet
 // going with the pick, a tap on the model putting it down and Undo taking it
@@ -250,6 +254,47 @@ for (const phone of [false, true]) {
         blue.colour === 1 && held !== 1);
       await page.waitForTimeout(phone ? 8000 : 5000);
       await picture("5_found");
+    }
+  }
+  // 5. In how many sets the part in hand comes in a colour, on its swatch's
+  // tooltip, and "rare in this colour" in three or fewer (rarity): the
+  // part's colours file, fetched from the deployment's /sets/ when it is
+  // first in hand, said as the page reads the file itself. By the mouse
+  // only: a finger's layout puts every tooltip away.
+  if (!phone) {
+    const box = await where("part search");
+    if (box) {
+      await hit(box);
+      await page.keyboard.press("Control+a");
+      await page.waitForTimeout(150);
+      await page.keyboard.type("3001", { delay: 40 });
+      await until((now) => (now.found || [])[0] === "3001", 30);
+      const tile = await where("first part", 10);
+      if (tile) await hit(tile);
+      const held = await until((now) => now.held === "3001", 20);
+      let h = 0;
+      for (const byte of new TextEncoder().encode("3001")) h = (h * 31 + byte) % 1000003;
+      const file = new URL(`/sets/colours_${String(h % 64).padStart(2, "0")}.json`, page.url()).href;
+      const row = (await page.evaluate(async (at) => {
+        const answer = await fetch(at);
+        return answer.ok ? (await answer.json()).parts["3001"] || [] : [];
+      }, file).catch(() => [])) || [];
+      const sets = new Map();
+      for (let n = 0; n + 1 < row.length; n += 2) sets.set(row[n], row[n + 1]);
+      const red = sets.get(4) || 0;
+      const line = `3001 comes in it, in ${red.toLocaleString("en-US")} sets`;
+      let words = [];
+      for (let n = 0; n < 10; n++) {
+        words = ((await askApp(page, "Words")) || []).flatMap((w) => String(w).split("\n"));
+        if (words.includes(line)) break;
+        await page.waitForTimeout(1500);
+      }
+      const rare = words.filter((w) => /^3001 comes in it, in \d+ sets?: rare in this colour$/.test(w));
+      check(`3001 in hand (${held.held}); Red's swatch says "${line}" (${red} in ${file.split("/").pop()}), `
+        + `and ${rare.length} swatches in sight say rare`, held.held === "3001" && red > 3 && words.includes(line)
+        && rare.every((w) => Number(w.match(/in (\d+) set/)[1]) <= 3));
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(600);
     }
   }
   check(`no script error reached the console${errors.length ? `: ${errors.slice(0, 2).join(" | ")}` : ""}`,
