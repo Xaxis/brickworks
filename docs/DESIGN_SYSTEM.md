@@ -691,8 +691,11 @@ is on the page, `hidden`, for the script to show.
   ghost small `.cta` Report a bug, a small `.cta` Join (or a link that
   says you're a tester, its check in `--green`) and an `.icon-btn` × that
   hides it for a day. It rises and fades in after the page is drawn
-  (none with reduced motion). While shown, `<html data-betabar>` lifts
-  the toast over it and pads the footer, so nothing ends under it.
+  (none with reduced motion). On a phone its badge says Beta, its parts
+  sit closer and a tester's has no third part; still too wide for the
+  window (a small phone, a long language), `.tight` drops the badge and
+  keeps Report a bug, Join and × whole. While shown, `<html data-betabar>`
+  lifts the toast over it and pads the footer, so nothing ends under it.
 - **More menu**: `details.more-menu`, an `.icon-btn` summary with the
   more icon and the header Menu's `.menu-list` panel of links and
   buttons (Report it, Takedown requests), opening along the row from the

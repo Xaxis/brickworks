@@ -44,7 +44,7 @@
 // passes when it ends "betahome: all ok".
 import { launch } from "./browser.mjs";
 import * as stand from "./design_stand_in.mjs";
-import { mkdirSync, readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -75,8 +75,17 @@ const check = (what, ok) => {
 };
 const errors = [];
 const until = (page, test, arg = null, timeout = 15000) => page.waitForFunction(test, arg, { timeout }).then(() => true, () => false);
-const shot = (page, name, full = false) => page.screenshot({ path: path.join(out, name), fullPage: full, timeout: 60000 })
-  .catch((trouble) => console.log(`  --    no picture ${name}: ${String(trouble).split("\n")[0]}`));
+// A whole page's picture leaves the bar out: a fixed part is drawn once,
+// where the first screen had it, over whatever is there in the long picture
+// (the window's pictures show it where it is).
+const shot = async (page, name, full = false) => {
+  // Once what opens or fades in has (a dialog, the toast, the bar).
+  await page.waitForFunction(() => document.getAnimations().every((one) => one.playState !== "running"), null, { timeout: 3000 }).catch(() => null);
+  if (full) await page.evaluate(() => document.getElementById("beta-bar")?.style.setProperty("visibility", "hidden")).catch(() => null);
+  await page.screenshot({ path: path.join(out, name), fullPage: full, timeout: 60000 })
+    .catch((trouble) => console.log(`  --    no picture ${name}: ${String(trouble).split("\n")[0]}`));
+  if (full) await page.evaluate(() => document.getElementById("beta-bar")?.style.removeProperty("visibility")).catch(() => null);
+};
 
 // The pages: site_check's list (tools/web/site_check.mjs PAGES), and the
 // rest a person reaches from the header and footer.
@@ -89,8 +98,11 @@ const PAGES = [
   "/beta", "/terms", "/feed", "/no-such-brick",
 ];
 // What the bar's badge says in each language (web/_lang/<code>.json).
-const OPEN_BETA = { en: "Open beta", ...Object.fromEntries(["de", "fr", "es"].map((code) =>
-  [code, JSON.parse(readFileSync(path.join(root, `web/_lang/${code}.json`), "utf8")).scripts?.["Open beta"] || "?"])) };
+// The bar's label in each language: "Open beta", and on a phone "Beta".
+const wordsOf = (english) => ({ en: english, ...Object.fromEntries(["de", "fr", "es"].map((code) =>
+  [code, JSON.parse(readFileSync(path.join(root, `web/_lang/${code}.json`), "utf8")).scripts?.[english] || "?"])) });
+const OPEN_BETA = wordsOf("Open beta");
+const BETA = wordsOf("Beta");
 const SPOTS = { cap: 100, left: 63 };
 const JOINED = "2026-11-02T10:00:00Z";
 
@@ -148,10 +160,13 @@ async function visitor({ width, theme = "light", who = "out", beta = "open", tre
 
 /// The page at [where], drawn as far as the beta goes: the bar there and
 /// risen, or the beta heard and nothing to draw.
+// A page, loaded and quiet: the bar risen, or the beta kept as off, or
+// (a site with no bar, such as pre261's) nothing more asked for a moment.
 async function go(page, where) {
   await page.goto(base + where, { waitUntil: "load", timeout: 60000 });
+  await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => null);
   await until(page, () => document.querySelector("#beta-bar.shown")
-    || (localStorage.getItem("brickworks.beta") || "").includes('"off"'), null, 10000);
+    || (localStorage.getItem("brickworks.beta") || "").includes('"off"'), null, 1500);
   await page.waitForTimeout(400);
 }
 
@@ -167,15 +182,19 @@ const barOf = (page) => page.evaluate(() => {
     there: true, sideways, lang: html.lang, risen: bar.classList.contains("shown"),
     inside: box.left >= 0 && box.top >= 0 && box.right <= html.clientWidth + 0.5 && box.bottom <= innerHeight + 0.5,
     height: Math.round(box.height), width: Math.round(box.width),
-    badge: badge?.textContent.trim() || "", badgeTo: badge ? new URL(badge.href).pathname : "",
+    badge: badge?.innerText.trim() || "", badgeTo: badge ? new URL(badge.href).pathname : "",
     report: Boolean(bar.querySelector("button[data-beta-report]")),
     join: Boolean(bar.querySelector("button[data-beta-join]")), tester: Boolean(bar.querySelector("a.tester")),
     hide: Boolean(bar.querySelector("button[data-beta-hide][aria-label]")),
     // Every part on one line, none cut off.
     oneLine: [...bar.children].every((one) => {
       const at = one.getBoundingClientRect();
-      return one.classList.contains("third") || (at.top >= box.top - 0.5 && at.bottom <= box.bottom + 0.5 && one.scrollWidth <= at.width + 1);
-    }) && [...bar.querySelectorAll(".third > *")].every((one) => one.scrollWidth <= one.getBoundingClientRect().width + 1),
+      return one.classList.contains("third") || (at.top >= box.top - 0.5 && at.bottom <= box.bottom + 0.5
+        && at.left >= box.left - 0.5 && at.right <= box.right + 0.5 && one.scrollWidth <= at.width + 1);
+    }) && [...bar.querySelectorAll(".third > *")].every((one) => {
+      const at = one.getBoundingClientRect();
+      return at.left >= box.left - 0.5 && at.right <= box.right + 0.5 && one.scrollWidth <= at.width + 1;
+    }),
   };
 });
 
@@ -230,7 +249,7 @@ try {
           missing.push(where);
           continue;
         }
-        const want = OPEN_BETA[lang] || OPEN_BETA.en;
+        const want = (width < 600 ? BETA : OPEN_BETA)[lang] || "?";
         const to = lang === "en" ? "/beta" : `/${lang}/beta`;
         const bad = [!bar.risen && "not risen", !bar.inside && "outside the window", bar.sideways && "sideways",
           bar.badge !== want && `badge "${bar.badge}" not "${want}"`, bar.badgeTo !== to && `badge to ${bar.badgeTo}`,
@@ -247,7 +266,8 @@ try {
       }
       check(`${label}: the bar on all ${PAGES.length} pages${missing.length ? `, not on ${missing.join(" ")}` : ""}`, !missing.length);
       check(`${label}: in the window, its four parts in the page's language, nothing sideways or covered${wrong.length
-        ? `: ${wrong.slice(0, 4).join("; ")}${wrong.length > 4 ? ` and ${wrong.length - 4} more` : ""}` : ""}`, !wrong.length);
+        ? `: ${wrong.slice(0, 4).join("; ")}${wrong.length > 4 ? ` and ${wrong.length - 4} more` : ""}` : ""}`,
+        !wrong.length && missing.length < PAGES.length);
       await context.close();
     }
   }
@@ -293,7 +313,7 @@ try {
         bug: document.querySelector('dialog[open] input[value="bug"]')?.checked ?? null }));
       check(`${label}: Report a bug opens ${which.bugreport ? "web/bugreport.js's" : "Send feedback's"} dialog (${which.dialog})`
         + ` over the page, which stays${which.bug === null ? "" : `, a bug chosen: ${which.bug}`}`, opened && page.url() === at
-        && (which.bugreport || which.dialog.includes("sign-in") || which.bug === true));
+        && (which.bugreport || (/\bfeedback\b/.test(which.dialog) && which.bug === true)));
       await shot(page, `report-${width}-${theme}-${who}.png`);
       await page.keyboard.press("Escape");
       await until(page, () => !document.querySelector("dialog[open]"), null, 5000);
@@ -407,17 +427,23 @@ try {
       const { context, page, told, label } = await visitor({ width, theme, who, beta: "off" });
       const drawn = [];
       let scriptsAfterFirst = -1;
+      // /beta, the beta's own page, asks the server each time, as it must.
+      let hubAsked = 0;
       for (const where of PAGES) {
+        const was = told.scripts.length;
         await go(page, where);
         if (scriptsAfterFirst < 0) scriptsAfterFirst = told.scripts.length;
+        if (where === "/beta") hubAsked += told.scripts.length - was;
         const said = await page.evaluate(() => ({ bar: Boolean(document.getElementById("beta-bar")),
           marked: ["beta", "betabar"].filter((name) => document.documentElement.hasAttribute(`data-${name}`)),
-          band: document.getElementById("beta") ? getComputedStyle(document.getElementById("beta")).display : "none" }));
+          // The homepage's (privacy's and the terms' #beta are their own).
+          band: document.querySelector(".beta-panel") ? getComputedStyle(document.querySelector(".beta-panel").closest("section")).display : "none" }));
         if (said.bar || said.marked.length || said.band !== "none") drawn.push(`${where}: ${JSON.stringify(said)}`);
       }
       check(`${label}: no bar, no Open beta, on all ${PAGES.length} pages${drawn.length ? `: ${drawn.slice(0, 3).join("; ")}` : ""}`, !drawn.length);
-      check(`${label}: the bar's script asked for once (${scriptsAfterFirst}), then not again for ten minutes (${told.scripts.length - scriptsAfterFirst})`,
-        scriptsAfterFirst <= 1 && told.scripts.length === scriptsAfterFirst);
+      const later = told.scripts.length - scriptsAfterFirst - hubAsked;
+      check(`${label}: the bar's script asked for once (${scriptsAfterFirst}), then by no page but /beta for ten minutes (${later})`,
+        scriptsAfterFirst <= 1 && later === 0);
       await page.goto(base + "/beta", { waitUntil: "load" });
       await until(page, () => document.documentElement.dataset.betaPage);
       const hub = await page.evaluate(() => ({
@@ -433,48 +459,77 @@ try {
   }
 
   // --- same ---------------------------------------------------------------
+  // Both sites side by side, page by page, settled (network quiet), at the
+  // same moment: what each says, how tall it is and its first screen. A page
+  // that differs is taken again twice (a picture or a list that came late);
+  // one that still differs keeps both pictures and where they differ (red).
   if (!remote && before && asked("same")) {
     console.log(`same: the beta off, each page as ${before} shows it`);
     const compare = await browser.newPage();
+    const settle = async (page, where, again) => {
+      if (again) await page.reload({ waitUntil: "load", timeout: 60000 });
+      else await page.goto(base + where, { waitUntil: "load", timeout: 60000 });
+      await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => null);
+      await page.evaluate(() => document.fonts.ready);
+      await page.waitForTimeout(again ? 1500 : 600);
+      const words = await page.evaluate(() => ({ text: document.body.innerText, height: document.documentElement.scrollHeight }));
+      return { ...words, picture: await page.screenshot({ timeout: 60000 }).catch(() => null) };
+    };
+    const differ = async (a, b) => compare.evaluate(async ([one, two]) => {
+      const load = (src) => new Promise((done) => { const img = new Image(); img.onload = () => done(img); img.src = src; });
+      const [x, y] = await Promise.all([load(one), load(two)]);
+      if (x.width !== y.width || x.height !== y.height) return { n: -1 };
+      const canvas = new OffscreenCanvas(x.width, x.height);
+      const draw = canvas.getContext("2d", { willReadFrequently: true });
+      draw.drawImage(x, 0, 0);
+      const first = draw.getImageData(0, 0, x.width, x.height);
+      draw.drawImage(y, 0, 0);
+      const second = draw.getImageData(0, 0, x.width, x.height);
+      let n = 0;
+      const seen = first.data;
+      for (let i = 0; i < seen.length; i += 4) {
+        const same = seen[i] === second.data[i] && seen[i + 1] === second.data[i + 1] && seen[i + 2] === second.data[i + 2];
+        if (!same) n += 1;
+        // Where they differ in red, over the before picture faded.
+        if (same) { seen[i] = 128 + seen[i] / 2; seen[i + 1] = 128 + seen[i + 1] / 2; seen[i + 2] = 128 + seen[i + 2] / 2; }
+        else { seen[i] = 230; seen[i + 1] = 0; seen[i + 2] = 0; }
+      }
+      if (!n) return { n };
+      draw.putImageData(first, 0, 0);
+      const blob = await canvas.convertToBlob({ type: "image/png" });
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+      let text = "";
+      for (let i = 0; i < bytes.length; i += 32768) text += String.fromCharCode(...bytes.subarray(i, i + 32768));
+      return { n, diff: btoa(text) };
+    }, [`data:image/png;base64,${a.picture.toString("base64")}`, `data:image/png;base64,${b.picture.toString("base64")}`]);
     for (const [width, theme] of [[1280, "light"], [390, "dark"]]) {
       const sides = {};
       for (const [side, tree] of [["before", before], ["now", root]]) {
-        const { context, page } = await visitor({ width, theme, who: "out", beta: "off", tree, motion: "reduce" });
-        sides[side] = {};
-        // /beta is the beta's hub now, and says Coming soon its own way (off).
-        for (const where of PAGES.filter((one) => one !== "/beta")) {
-          await go(page, where);
-          await page.waitForTimeout(800);
-          const words = await page.evaluate(() => ({ text: document.body.innerText, height: document.documentElement.scrollHeight }));
-          const picture = await page.screenshot({ timeout: 60000 }).catch(() => null);
-          sides[side][where] = { ...words, picture };
-        }
-        await context.close();
+        sides[side] = await visitor({ width, theme, who: "out", beta: "off", tree, motion: "reduce" });
       }
-      const differ = [];
+      const differs = [];
+      // /beta is the beta's hub now, and says Coming soon its own way (off).
       for (const where of PAGES.filter((one) => one !== "/beta")) {
-        const [a, b] = [sides.before[where], sides.now[where]];
-        const pixels = a.picture && b.picture ? await compare.evaluate(async ([one, two]) => {
-          const load = (src) => new Promise((done) => { const img = new Image(); img.onload = () => done(img); img.src = src; });
-          const [x, y] = await Promise.all([load(one), load(two)]);
-          if (x.width !== y.width || x.height !== y.height) return -1;
-          const canvas = new OffscreenCanvas(x.width, x.height);
-          const draw = canvas.getContext("2d");
-          draw.drawImage(x, 0, 0);
-          const first = draw.getImageData(0, 0, x.width, x.height).data;
-          draw.drawImage(y, 0, 0);
-          const second = draw.getImageData(0, 0, x.width, x.height).data;
-          let n = 0;
-          for (let i = 0; i < first.length; i += 4) if (first[i] !== second[i] || first[i + 1] !== second[i + 1] || first[i + 2] !== second[i + 2]) n += 1;
-          return n;
-        }, [`data:image/png;base64,${a.picture.toString("base64")}`, `data:image/png;base64,${b.picture.toString("base64")}`]) : -2;
-        const sameText = a.text === b.text;
-        if (!sameText || a.height !== b.height || pixels !== 0) {
-          differ.push(`${where}: ${sameText ? "same words" : "other words"}, ${a.height} -> ${b.height} px, ${pixels} pixels`);
+        let found = null;
+        for (let take = 0; take < 3; take += 1) {
+          const [a, b] = await Promise.all([settle(sides.before.page, where, take > 0), settle(sides.now.page, where, take > 0)]);
+          const pixels = a.picture && b.picture ? await differ(a, b) : { n: -2 };
+          found = { a, b, pixels, sameText: a.text === b.text };
+          if (found.sameText && a.height === b.height && pixels.n === 0) break;
+        }
+        const { a, b, pixels, sameText } = found;
+        if (!sameText || a.height !== b.height || pixels.n !== 0) {
+          differs.push(`${where}: ${sameText ? "same words" : "other words"}, ${a.height} -> ${b.height} px, ${pixels.n} pixels`);
+          const name = `same-${width}-${theme}-${where.replace(/[^a-z0-9]+/gi, "_") || "home"}`;
+          if (a.picture) writeFileSync(path.join(out, `${name}-before.png`), a.picture);
+          if (b.picture) writeFileSync(path.join(out, `${name}-now.png`), b.picture);
+          if (pixels.diff) writeFileSync(path.join(out, `${name}-diff.png`), Buffer.from(pixels.diff, "base64"));
+          if (!sameText) writeFileSync(path.join(out, `${name}-words.txt`), `${a.text}\n\n----- now -----\n\n${b.text}`);
         }
       }
-      check(`${width} ${theme}: all ${PAGES.length - 1} pages but /beta show what before showed (words, height, first screen)${differ.length
-        ? `, not: ${differ.slice(0, 5).join("; ")}` : ""}`, !differ.length);
+      for (const side of Object.values(sides)) await side.context.close();
+      check(`${width} ${theme}: all ${PAGES.length - 1} pages but /beta show what before showed (words, height, first screen)${differs.length
+        ? `, not: ${differs.slice(0, 8).join("; ")}` : ""}`, !differs.length);
     }
     await compare.close();
   }

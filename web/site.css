@@ -1112,7 +1112,9 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 }
 .beta-bar.shown { opacity: 1; transform: none; }
 @media (width < 600px) { .beta-bar { right: 0; left: 0; width: max-content; margin-inline: auto; } }
+.beta-bar > * { flex: none; }
 .beta-bar > .badge { margin: 0 var(--s-1) 0 var(--s-1); }
+.beta-bar .short { display: none; }
 .beta-bar .icon-btn.small { padding: 0; border-color: transparent; border-radius: var(--control-radius); background: transparent; color: var(--ink-soft); }
 .beta-bar .icon-btn.small:hover { background: var(--panel-hi); color: var(--ink); }
 .beta-bar .third { display: contents; }
@@ -1123,6 +1125,18 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 .beta-bar .tester:hover { background: var(--panel-hi); }
 .beta-bar .tester .icon { width: 16px; height: 16px; color: var(--green); }
 @media (prefers-reduced-motion: reduce) { .beta-bar { transition: none; } }
+/* On a phone it is "Beta", Report a bug, Join and its ×, closer set; a
+   tester's has no third part (the hub says so). Still too wide for the
+   window, its label goes (.tight, web/betabar.js). */
+@media (width < 600px) {
+	.beta-bar { gap: 2px; }
+	.beta-bar .long, .beta-bar .third > a.tester { display: none; }
+	.beta-bar .short { display: inline; }
+	.beta-bar > .badge { padding: 0 10px; margin: 0 2px; }
+	.beta-bar .cta.small { padding-inline: 10px; }
+	.beta-bar .icon-btn.small { min-width: 40px; }
+}
+.beta-bar.tight > .badge { display: none; }
 /* While it is shown the toast speaks above it, and the footer ends past
    it, so the page's last line is never under it. */
 :root[data-betabar] .toast { bottom: calc(var(--s-5) + 60px); }

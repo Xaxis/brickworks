@@ -173,7 +173,11 @@
   }
   const age = Date.now() - Number(heard?.at || 0);
   if (heard?.beta === "open" && age < 86400000) root.dataset.beta = "open";
-  if (heard?.beta === "off" && age < 600000) return;
+  if (heard?.beta === "off" && age < 600000) {
+    // Said for the page's own scripts (web/landing.js), which then ask nothing.
+    window.brickworksBeta = "off";
+    return;
+  }
   const load = () => import("/betabar.js").catch(() => null);
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", load);
   else load();

@@ -256,7 +256,9 @@ function drawBar(heard) {
     bar.setAttribute("aria-label", say("The Brickworks beta"));
     // Not in the picture a report takes of the page (web/bugreport.js).
     bar.dataset.picture = "leave";
-    const badge = made("a", { className: "badge accent", href: `${langAt()}/beta`, textContent: say("Open beta") });
+    // "Open beta", and on a phone "Beta" (site.css).
+    const badge = made("a", { className: "badge accent", href: `${langAt()}/beta` });
+    badge.append(made("span", { className: "long", textContent: say("Open beta") }), made("span", { className: "short", textContent: say("Beta") }));
     const report = made("button", { type: "button", className: "cta ghost small", textContent: say("Report a bug") });
     report.dataset.betaReport = "";
     report.addEventListener("click", () => reportBug("bar"));
@@ -281,6 +283,14 @@ function drawBar(heard) {
     requestAnimationFrame(() => requestAnimationFrame(() => bar.classList.add("shown")));
   }
   bar.querySelector(".third").replaceChildren(third(heard));
+  fit(bar);
+}
+
+/// Too narrow for all of it (a small phone, a long language), its label goes
+/// and Report a bug, Join and its × stay, whole.
+function fit(bar) {
+  bar.classList.remove("tight");
+  if (bar.scrollWidth > bar.clientWidth + 1) bar.classList.add("tight");
 }
 
 async function start() {
@@ -289,6 +299,10 @@ async function start() {
   drawBar(await betaState());
   addEventListener("brickworks:beta", () => betaState().then(drawBar));
   addEventListener("brickworks:signed-in", () => betaState({ fresh: true }).then(drawBar));
+  addEventListener("resize", () => {
+    const bar = document.getElementById("beta-bar");
+    if (bar) fit(bar);
+  }, { passive: true });
   // Another tab joined, signed in or out, or hid the bar.
   addEventListener("storage", (event) => {
     if (event.key === KEY || event.key === HIDDEN) betaState().then(drawBar);

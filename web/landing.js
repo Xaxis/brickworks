@@ -21,7 +21,6 @@
 // how it ended on <html> (data-strip, data-sets, data-challenge), which
 // tools/web/landing_check.mjs waits on.
 import { signedIn } from "/account.js";
-import { betaState, joinBeta, reportBug } from "/betabar.js";
 import { collectionCard, counted, escapeHtml, langAt, modelCard, number, pictureOf, say } from "/card.js";
 import { toast } from "/kit.js";
 
@@ -166,6 +165,11 @@ function drawBeta(heard) {
   html.dataset.betaHome = visitor;
 }
 
+// The beta's own script (web/betabar.js), asked for only while the beta
+// may be open: web/theme.js says when this browser heard it off in the
+// last ten minutes (window.brickworksBeta), and then nothing is.
+const bar = () => import("/betabar.js");
+
 /// The beta's section, while it is open (web/betabar.js). Held since the
 /// first frame where this browser had heard so (<html data-beta>,
 /// web/theme.js); else put in only while its place is under the window, or
@@ -174,8 +178,12 @@ function drawBeta(heard) {
 async function beta() {
   const band = document.getElementById("beta");
   if (!band) return;
+  if (window.brickworksBeta === "off") {
+    html.dataset.betaHome = "off";
+    return;
+  }
   const held = html.dataset.beta === "open";
-  const heard = await betaState();
+  const heard = await (await bar()).betaState();
   if (heard.beta === "off") {
     html.dataset.betaHome = "off";
     return;
@@ -201,12 +209,12 @@ document.getElementById("beta")?.addEventListener("click", async (event) => {
   const pressed = event.target instanceof Element ? event.target.closest("[data-beta-join], [data-beta-report]") : null;
   if (!pressed) return;
   if (pressed.matches("[data-beta-report]")) {
-    reportBug("home");
+    (await bar()).reportBug("home");
     return;
   }
   pressed.disabled = true;
   try {
-    const now = await joinBeta("home");
+    const now = await (await bar()).joinBeta("home");
     if (now?.tester) toast(say("You’re a tester. Thank you!"));
   } catch (trouble) {
     toast(trouble.message);
@@ -215,9 +223,9 @@ document.getElementById("beta")?.addEventListener("click", async (event) => {
   }
 });
 // Joined, signed in or out here or in another part of the page.
-const again = () => betaState().then((heard) => heard.beta === "open" && drawBeta(heard));
-addEventListener("brickworks:beta", again);
-addEventListener("brickworks:signed-in", () => betaState({ fresh: true }).then((heard) => heard.beta === "open" && drawBeta(heard)));
+const again = (fresh) => bar().then((one) => one.betaState({ fresh })).then((heard) => heard.beta === "open" && drawBeta(heard));
+addEventListener("brickworks:beta", () => again(false));
+addEventListener("brickworks:signed-in", () => again(true));
 beta();
 
 /// [work] once [id] is [margin] from the window: a screen and a half, or in it.
