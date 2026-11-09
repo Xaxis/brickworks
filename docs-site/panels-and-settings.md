@@ -69,6 +69,14 @@ ui:docked panels
 ui:remembered layout
 -->
 
+## Panels over the model {#over-the-model}
+
+The keys sheet, Render, the parts list, My collection, the Library and the other panels that open over the model stack like windows: the one you opened last is in front. Ask again for one that is open behind another, by its key or its menu, and it comes to the front; Account and Share, which open and close from the same button, close. Click any part of one you can see and it comes forward too. The sign-in screen always stays over them all.
+
+<!-- covers
+ui:the panel asked for last in front
+-->
+
 ## The model tree {#model-tree}
 
 At the top of the right-hand column, the model tree lists the model's sub-assemblies and sections by name, inside one another. Click one to select it, double-click to edit inside it. **View › Panels › Model tree** shows or hides it.
