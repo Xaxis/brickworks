@@ -1058,13 +1058,7 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   `org.a11y.Status.ScreenReaderEnabled` as Orca does, so Godot's own "auto"
   accessibility comes on, and reads each window back over AT-SPI as Orca
   finds it: pointed at (its title bar's middle and its own) and read up
-  through the parents, or else from the last focus event (a panel put away
-  stays in the tree: Godot 4.7.2 does not tell AccessKit a Control was
-  hidden, `CanvasItem::set_visible`, and over Clear the baseplate's
-  question the pointer finds a panel put away before it). Not by listing the window's
-  children: AccessKit 0.22 ends that list at Model name, where an empty
-  spacer is followed by the hidden Claude tab, so a screen reader browsing
-  the window hears only the menus (both findings for units of their own);
+  through the parents, or else from the last focus event;
   signed in as
   a throwaway account through the sign-in screen, needs .env: About, New's
   question, Import's chooser, Save as and its "replace it?", Reference
@@ -1074,7 +1068,33 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   one, also after the keys are taken from the window and given back. On
   pre261 every held dialog read as a plain dialog: dialogclose had made them
   not exclusive, and Window's accessibility update says FLAG_MODAL is
-  `exclusive`); `tools/web/app_a11y_flow.mjs` (preview
+  `exclusive`); `a11y_tree_probe` (a11ytree, 2026-11-09,
+  `bench/results/a11ytree-2026-11-09/`: windowed, 1280x720 and
+  `PROBE_SIZE=1400x900`, the same private bus and sign-in; `--dump=DIR`
+  also writes Godot's node tree and the browse as JSON). Three faults of
+  Godot 4.7.2 / AccessKit 0.22, each put right in `src/ui/access_tree.gd`
+  (`AccessTree`, added beside `Access` by `Shell.build`, inert until a
+  screen reader is on, and on the web, which has no screen reader tree):
+  browsing the window from its root (as Orca's flat review walks each
+  element's children) reaches the menus, toolbar, parts bin and its search,
+  the view (the view cube, a panel, and its buttons), the properties and
+  the status line, in the order they are laid out (accesskit_consumer
+  0.38's `next_filtered_sibling` ends a list where an element of no role
+  and no children is followed by a hidden one with children: on pre261 the
+  window's list ended at Model name, 0 of 34 toolbar buttons reached; each
+  such element is given an empty internal child); each panel a person puts
+  away (Escape, its command, its Close button) is gone from the tree the
+  frame after, and Clear the baseplate's question brought up where it was
+  is found by pointing (`CanvasItem::set_visible` queues no accessibility
+  update in 4.7.2; on pre261 the pointer found the panel put away); every
+  embedded window and menu is said where it is drawn, within 2 px
+  (`Window::get_accessibility_transform` undoes only its parent's own
+  offset: the File menu was said 121 px right of where it is drawn; each
+  window without a script is given `src/ui/placed_window.gd`, and
+  `AccessTree.place` sets its transform in its own update). A fourth,
+  not put right: AccessKit hit-tests an embedded window below the
+  elements after its parent, so a menu over the toolbar is not found by
+  pointing (browse it instead); `tools/web/app_a11y_flow.mjs` (preview
   check `app_a11y`: both sizes at 1280, every size on a phone at 390 x 844
   and 844 x 390 and at 150% with the assistant's drawer open (fitted again
   as the size changes, `Main._fit_drawers`: least widths given for more

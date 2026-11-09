@@ -18,11 +18,11 @@ each ask_N.json the app writes in DIR is answered with tree_N.json.
       (src/dev/a11y_tree_probe.gd), and what is at each point
 
 Found by pointing and by the focus, as Orca finds them (its mouse review,
-and its focus events read up through the parents), not by listing a
-window's children: AccessKit 0.22 stops a list of children early where an
-element of no role and no children (a spacer) is followed by a hidden one
-that has children, and the app's top bar has one (Model name's spacer,
-then the hidden Claude tab), so its window lists only the menus.
+and its focus events read up through the parents), and by browsing, as
+Orca's flat review walks a window's children. AccessKit 0.22 stops a list
+of children early where an element of no role and no children (a spacer)
+is followed by a hidden one that has children; the app keeps such lists
+whole (src/ui/access_tree.gd), and a browse shows whether it does.
 
 Godot speaks to a screen reader through AccessKit, which on Linux is
 AT-SPI: a bus of its own (org.a11y.Bus) that the session bus names. The
