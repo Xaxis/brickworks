@@ -217,7 +217,14 @@ func _run() -> void:
 	await process_frame
 	var focused: Control = root.gui_get_focus_owner()
 	var typing: float = float(camera.get("_target_distance"))
-	_press(KEY_MINUS)
+	# The minus key itself, under every preset: a key that types is typed.
+	# _press would send the preset's zoom out instead (Studio's is Ctrl+-),
+	# and a key with Ctrl reaches its command from a field (APP_UX7 #4).
+	var minus := InputEventKey.new()
+	minus.keycode = KEY_MINUS
+	minus.unicode = 45
+	minus.pressed = true
+	root.push_input(minus)
 	await process_frame
 	_assert("while typing in the search box, - is a minus, not a zoom",
 		is_equal_approx(float(camera.get("_target_distance")), typing))

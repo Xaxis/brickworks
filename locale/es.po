@@ -13110,3 +13110,14 @@ msgstr "el GIF no se terminó: %s"
 
 msgid "no GIF: its frames would not read back"
 msgstr "sin GIF: sus fotogramas no se pudieron volver a leer"
+# A colour's swatch: in how many sets the part comes in it, and rare in it
+# in three or fewer (APP_UX7 #21, rarity).
+
+msgid "%s comes in it, in %s sets"
+msgstr "%s existe en este color, en %s sets"
+
+msgid "%s comes in it, in 1 set: rare in this colour"
+msgstr "%s existe en este color, en 1 set: raro en este color"
+
+msgid "%s comes in it, in %d sets: rare in this colour"
+msgstr "%s existe en este color, en %d sets: raro en este color"
