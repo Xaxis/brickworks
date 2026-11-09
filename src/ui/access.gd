@@ -157,14 +157,13 @@ static func _on_focus(control: Control) -> void:
 
 ## The kinds named here: a number, a slider, a choice, words typed, a list
 ## or a tree, and a button with no words of its own (a picture, a box to
-## tick with its words beside it).
+## tick with its words beside it, a menu's button drawn as a picture).
 static func _named_kind(control: Control) -> bool:
 	if control is LineEdit and control.get_parent() is SpinBox:
 		return false
-	return control is SpinBox or control is Slider or control is OptionButton \
+	return control is SpinBox or control is Slider or control is BaseButton \
 		or control is LineEdit or control is TextEdit or control is ItemList \
-		or control is Tree or control is TextureButton \
-		or (control is Button and not control is MenuButton)
+		or control is Tree
 
 
 ## Whether [param control] is a kind named here and says nothing yet: no
@@ -182,6 +181,8 @@ static func _wants_name(control: Control) -> bool:
 		return true
 	if control is Button:
 		return (control as Button).text.strip_edges().is_empty()
+	if control is LinkButton:
+		return (control as LinkButton).text.strip_edges().is_empty()
 	if control is LineEdit:
 		return (control as LineEdit).placeholder_text.strip_edges().is_empty()
 	if control is TextEdit:

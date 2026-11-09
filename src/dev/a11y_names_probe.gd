@@ -39,7 +39,10 @@
 ## Then the whole scene from launch, a selection's properties, the bin's
 ## tabs, every dialog and panel the menus open (OPENERS, which
 ## a11y_modal_probe walks too, and MORE), those that ask for a part
-## selected, the ways a11y_modal_probe brings a dialog up (New's question,
+## selected, the assistant's panel and its connector's form (the assistant
+## shown as Settings shows it), My collection's rows that come with what a
+## person owns (a loose lot's count, a set's missing count), the ways
+## a11y_modal_probe brings a dialog up (New's question,
 ## Import's chooser, Save as and its "replace it?", the Reference picture),
 ## the ones dialog_look_probe opens by hand (the photo search's question and
 ## chooser, Print's chooser, Saved models and its questions, the other
@@ -176,6 +179,8 @@ func _run() -> void:
 		settings.visible = false
 		await _frames(4)
 	if all:
+		await _assistant()
+		await _rows_with_data()
 		await _ways(builder, brick)
 		await _by_hand()
 		await _everything_else()
@@ -233,17 +238,20 @@ const WITH_A_SELECTION: Array[String] = ["make_submodel", "printed_versions", "f
 
 ## The menus' other dialogs and panels, which this probe alone walks: Find
 ## a command, Send feedback, Build together, Comments, Compare, the render
-## queue, the booklet's page setup, Go to step, a view kept, the parts the
-## model needs, the panels, and the assistant's own and its connector.
+## queue, the booklet's page setup, a view kept, the 3D export's question,
+## the panels and the tour.
 const MORE: Array[String] = [
 	"palette", "feedback", "together", "comments", "compare", "compare_sets",
-	"render_queue", "booklet_page_setup", "step_to", "save_view", "export_3d",
-	"panel_parts", "panel_properties", "panel_keys", "panel_assistant", "connector",
-	"tour",
+	"render_queue", "booklet_page_setup", "save_view", "export_3d",
+	"panel_parts", "panel_properties", "panel_keys", "tour",
 ]
 
-## With a part selected: Pattern and Replace.
-const MORE_WITH_A_SELECTION: Array[String] = ["pattern", "replace", "mirror"]
+## With a part selected: Pattern, Replace, Mirror and Move to step.
+const MORE_WITH_A_SELECTION: Array[String] = ["pattern", "replace", "mirror", "step_to"]
+
+## With the assistant shown, as Settings shows it: its panel and its
+## connector's form.
+const WITH_THE_ASSISTANT: Array[String] = ["panel_assistant", "connector"]
 
 
 func _open_and_walk(name: String) -> void:
@@ -282,6 +290,39 @@ func _put_away(before: Dictionary) -> void:
 		elif thing is CanvasItem:
 			(thing as CanvasItem).visible = false
 	await _frames(4)
+
+
+## The assistant shown, as Settings shows it, its panel and its
+## connector's form walked, and put away again.
+func _assistant() -> void:
+	var settings: ControlsDialog = _main.get("_controls")
+	settings.assistant_on.button_pressed = true
+	await _frames(12)
+	for name: String in WITH_THE_ASSISTANT:
+		await _open_and_walk(name)
+	settings.assistant_off.button_pressed = true
+	await _frames(8)
+
+
+## My collection's rows that come with what a person owns: a loose lot's
+## count, and a set's lot with how many are missing. A throwaway account
+## owns nothing, so they are made as the dialog makes them, from a lot.
+func _rows_with_data() -> void:
+	var before: Dictionary = _shown()
+	if not _shell.run("collection"):
+		return
+	await _frames(12)
+	var dialog: Control = _shell.collection
+	var lot: Dictionary = {"part": "3001", "colour": 4, "qty": 2, "count": 3}
+	var rows: Array[Control] = [dialog.call("_lot_row", lot), dialog.call("_mark_row", {}, lot)]
+	for row: Control in rows:
+		dialog.add_child(row)
+	await _frames(6)
+	_walk_all("collection, a loose lot and a set's lot")
+	for row: Control in rows:
+		row.queue_free()
+	await _idle()
+	await _put_away(before)
 
 
 ## The ways a11y_modal_probe brings a dialog up besides the menus'

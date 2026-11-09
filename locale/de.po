@@ -12931,3 +12931,121 @@ msgstr "Die %d oder %d erstmals hergestellten Teile, die neuesten zuerst"
 
 msgid "%s first made in %d or %d, the newest first"
 msgstr "%s, %d oder %d erstmals hergestellt, die neuesten zuerst"
+
+# Names a screen reader says, with no words on screen of their own: those Access
+# gives Godot's file dialog, the choices named where they are made, and every
+# accessibility_name of the interface (a11ynames, a11y_names_probe).
+
+msgid "Kind of file"
+msgstr "Dateityp"
+
+msgid "Drive"
+msgstr "Laufwerk"
+
+msgid "Move the favourite up"
+msgstr "Favoriten nach oben verschieben"
+
+msgid "Move the favourite down"
+msgstr "Favoriten nach unten verschieben"
+
+msgid "Drag to share the room between the panes"
+msgstr "Ziehen, um den Platz zwischen den Bereichen aufzuteilen"
+
+msgid "Create a new folder."
+msgstr "Einen neuen Ordner erstellen."
+
+msgid "3D file format"
+msgstr "3D-Dateiformat"
+
+msgid "Length"
+msgstr "Länge"
+
+msgid "Speed"
+msgstr "Geschwindigkeit"
+
+msgid "Frames"
+msgstr "Bilder"
+
+msgid "Measure periods against"
+msgstr "Perioden messen an"
+
+msgid "Where the cut is"
+msgstr "Wo der Schnitt liegt"
+
+msgid "Studs across"
+msgstr "Noppen in der Breite"
+
+msgid "Studs deep"
+msgstr "Noppen in der Tiefe"
+
+msgid "Find a key"
+msgstr "Eine Taste suchen"
+
+msgid "%s: %s. Set its key"
+msgstr "%s: %s. Taste festlegen"
+
+msgid "Search the LDraw sets"
+msgstr "Die LDraw-Sets durchsuchen"
+
+msgid "The minifigure"
+msgstr "Die Minifigur"
+
+msgid "Commands"
+msgstr "Befehle"
+
+msgid "Show the parts as a list"
+msgstr "Die Teile als Liste zeigen"
+
+msgid "Find a colour by name or number"
+msgstr "Eine Farbe nach Name oder Nummer suchen"
+
+msgid "The part, turning"
+msgstr "Das Teil, sich drehend"
+
+msgid "The print, to draw on"
+msgstr "Der Aufdruck, zum Zeichnen"
+
+msgid "Brush size"
+msgstr "Pinselgröße"
+
+msgid "The part wearing the print"
+msgstr "Das Teil mit dem Aufdruck"
+
+msgid "AI: who designs, provider, model and key"
+msgstr "KI: wer entwirft, Anbieter, Modell und Schlüssel"
+
+msgid "Show the key as it is typed"
+msgstr "Den Schlüssel beim Tippen zeigen"
+
+msgid "Test the model: one tool call and one picture"
+msgstr "Das Modell testen: ein Werkzeugaufruf und ein Bild"
+
+msgid "Models"
+msgstr "Modelle"
+
+msgid "API key"
+msgstr "API-Schlüssel"
+
+msgid "Back to Settings"
+msgstr "Zurück zu den Einstellungen"
+
+msgid "Provider"
+msgstr "Anbieter"
+
+msgid "Reasoning effort"
+msgstr "Denkaufwand"
+
+msgid "Where in the cycle"
+msgstr "Wo im Zyklus"
+
+msgid "View cube"
+msgstr "Ansichtswürfel"
+
+msgid "Turn the view up"
+msgstr "Ansicht nach oben drehen"
+
+msgid "Turn the view down"
+msgstr "Ansicht nach unten drehen"
+
+msgid "Slide the view: W, A, S and D"
+msgstr "Ansicht verschieben: W, A, S und D"
