@@ -420,7 +420,8 @@ func _follow() -> void:
 		else "Signed in"
 	# Let in from what this device kept while it is renewed: what waits on
 	# it says so (Account.renewing).
-	_state.text = (Account.waiting_words("Saving to your account, sharing and Claude go on")
+	_state.text = (Account.waiting_words("Saving to your account, sharing and Claude go on"
+			if claude_shown else "Saving to your account and sharing go on")
 		if account.renewing
 		else "Brickworks could not be reached just now, so this is "
 		+ "the account kept on this device. It is checked again when "

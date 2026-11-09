@@ -341,12 +341,17 @@ func _build() -> void:
 	root.add_child(_search)
 	_add_photo_button()
 
-	# Built from the catalogue once it is loaded, not from a fixed list.
+	# Built from the catalogue once it is loaded, not from a fixed list: the
+	# shelves first, every one in sight, then the categories, which scroll
+	# (_fit_shelves). Its width decides how many rows the shelves take.
 	var category_scroll := ScrollContainer.new()
 	category_scroll.custom_minimum_size = Vector2(0, _z(58))
 	category_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	root.add_child(category_scroll)
 	_category_scroll = category_scroll
+	category_scroll.resized.connect(_fit_palette)
+	# Folded or put away, its width is not laid out; fitted again as it shows.
+	category_scroll.visibility_changed.connect(func() -> void: _fit_palette.call_deferred())
 
 	_category_row = FlowContainer.new()
 	_category_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -570,8 +575,12 @@ func populate() -> void:
 ## The category buttons, taken from what the catalogue actually holds.
 func _build_categories() -> void:
 	var counts: Dictionary = {}
+	_new_latest = 0
 	for id: String in library.ids():
 		var info: PartLibrary.PartInfo = library.parts[id]
+		# The latest year the catalogue has a part first made in, which New
+		# lists from (newest).
+		_new_latest = maxi(_new_latest, info.first_year)
 		if info.is_redirect() or not info.reachable:
 			continue
 		var category: String = info.category.strip_edges()
@@ -581,17 +590,16 @@ func _build_categories() -> void:
 
 	var rest: Array[String] = []
 	for category: String in counts:
-		if category in LEADING:
+		if category in LEADING or category in SHELVES:
 			continue
 		rest.append(category)
 	# Biggest first, so the useful ones are near the front.
 	rest.sort_custom(func(a: String, b: String) -> bool:
 		return int(counts[a]) > int(counts[b]))
 
-	# The parts reached for lately and the ones kept, beside All: the bin
-	# is searched once per part and then wanted again and again. And the
-	# assistant's worked constructions, each with why it works.
-	_categories = ["All", RECENT, FAVOURITES, PALETTES, TECHNIQUES, FITS, LIKE]
+	# The shelves first (SHELVES), each in sight (_fit_shelves), then the
+	# catalogue's categories.
+	_categories.assign(SHELVES)
 	for category: String in LEADING:
 		if counts.has(category):
 			_categories.append(category)
@@ -603,30 +611,19 @@ func _build_categories() -> void:
 	for category: String in _categories:
 		var button := Button.new()
 		var total: int = int(counts.get(category, 0))
-		button.text = category if category == "All" else "%s %d" % [
-			category, total]
+		button.text = "%s %d" % [category, total]
 		button.tooltip_text = category
 		button.set_meta("category", category)
 		button.set_meta("count", total)
+		if category in SHELVES:
+			button.text = _shelf_text(category, _shelves_short)
+			button.tooltip_text = _shelf_tip(category)
+		# Their counts change as a person works (_refresh_shelf).
 		if category == RECENT or category == FAVOURITES or category == PALETTES:
-			button.text = _shelf_label(category)
 			button.set_meta("shelf", category)
-			button.tooltip_text = ("The parts you chose lately, newest first"
-				if category == RECENT
-				else "The parts you keep: right-click any part to add it or take it out"
-				if category == FAVOURITES else PALETTES_TIP)
-		if category == TECHNIQUES:
-			button.text = "%s %d" % [TECHNIQUES, TECHNIQUES_COUNT]
-			button.tooltip_text = Keymap.filled("Worked constructions, each with why it works: choose one "
-				+ "to hold it whole, {rotate_held|turns it}, a click puts it down", true)
-		if category == FITS:
-			button.text = FITS
-			button.tooltip_text = ("The parts that fit the selected part, or the one in hand: "
-				+ "a pin in its hole, a bar in its clip, a part on its studs")
-		if category == LIKE:
-			button.text = LIKE
-			button.tooltip_text = ("Parts like the selected part, or the one in hand: its size "
-				+ "and kind first, its prints among them; a double-click swaps the selection for one")
+		# A catalogue that says no part's year has no New to offer.
+		if category == NEW:
+			button.visible = _new_latest > 0
 		button.toggle_mode = true
 		button.button_pressed = category == _category
 		FocusGuard.by_keyboard(button)
@@ -640,7 +637,146 @@ func _build_categories() -> void:
 	if _category_row.get_child_count() > 0:
 		var last: Control = _category_row.get_child(_category_row.get_child_count() - 1)
 		_chip_tall = last.get_combined_minimum_size().y
+	_chip_widths.clear()
 	_fit_palette()
+
+
+## The shelves, in the order their chips stand, before the catalogue's
+## categories: the parts reached for lately and the ones kept, and the
+## person's own palettes, beside All, since the bin is searched once per part
+## and then wanted again and again; the catalogue's newest parts (Studio's
+## New parts palette); the assistant's worked constructions, each with why it
+## works; and the parts that fit the one in hand, or are like it.
+const SHELVES: Array[String] = ["All", RECENT, FAVOURITES, PALETTES, NEW, TECHNIQUES, FITS, LIKE]
+
+
+## A shelf's words on its chip: its name, and its count where [param short]
+## is not asked (_fit_shelves).
+func _shelf_text(shelf: String, short: bool) -> String:
+	var count: int = -1
+	if shelf == RECENT:
+		count = PartShelf.recent().size()
+	elif shelf == FAVOURITES:
+		count = PartShelf.favourites().size()
+	elif shelf == PALETTES:
+		count = PartShelf.palettes().size()
+	elif shelf == TECHNIQUES:
+		count = TECHNIQUES_COUNT
+	return shelf if short or count < 0 else "%s %d" % [shelf, count]
+
+
+## A shelf's words with room for its count to grow: two digits at the least,
+## so that a part chosen or kept never wraps the shelves onto another row and
+## moves the parts under the pointer.
+func _shelf_room_text(shelf: String) -> String:
+	var words: String = _shelf_text(shelf, false)
+	if shelf != RECENT and shelf != FAVOURITES and shelf != PALETTES:
+		return words
+	var digits: int = words.length() - shelf.length() - 1
+	return "%s %s" % [shelf, "8".repeat(maxi(2, digits))]
+
+
+## What a shelf's chip says it holds, on its tooltip.
+func _shelf_tip(shelf: String) -> String:
+	match shelf:
+		RECENT:
+			return "The parts you chose lately, newest first"
+		FAVOURITES:
+			return "The parts you keep: right-click any part to add it or take it out"
+		PALETTES:
+			return PALETTES_TIP
+		NEW:
+			return "The parts first made in %d or %d, the newest first" % [
+				_new_latest - NEW_YEARS + 1, _new_latest]
+		TECHNIQUES:
+			return Keymap.filled("Worked constructions, each with why it works: choose one "
+				+ "to hold it whole, {rotate_held|turns it}, a click puts it down", true)
+		FITS:
+			return ("The parts that fit the selected part, or the one in hand: "
+				+ "a pin in its hole, a bar in its clip, a part on its studs")
+		LIKE:
+			return ("Parts like the selected part, or the one in hand: its size "
+				+ "and kind first, its prints among them; a double-click swaps the selection for one")
+	return shelf
+
+
+## Whether the shelves' chips leave their counts off: where that saves them a
+## row (_fit_shelves).
+var _shelves_short: bool = false
+## A chip's least width for its words, by its words: every chip has the same
+## font, size and box. Cleared with a new language.
+var _chip_widths: Dictionary = {}
+## The rows the shelves took when last fitted in sight (_fit_shelves).
+var _shelf_rows: int = 1
+
+
+## The shelves laid out to be in sight in the chips' window, however narrow
+## the column: their counts left off where that saves them a row, and then as
+## many rows as they take, which the window shows at the least
+## (_fit_palette); the categories after them may scroll. Worked out from the
+## window's width and the room each count may grow into, never from the
+## counts as they are, so nothing a person does while building moves the
+## parts. At 1280 x 720 with Stress's panel open the bin was about 300 wide,
+## its window one row of chips, and Techniques, Fits and Like this sat in the
+## rows under it with a scroll bar 4 px wide to say so: the walk's click on
+## Like this missed (APP_UX7 binrow). The rows they take.
+func _fit_shelves() -> int:
+	# A column folded, or a finger's sheet put away, is not laid out, and its
+	# width is a stale one: the last fit stands until it shows (its
+	# visibility_changed and resized fit it then).
+	if _category_row == null or _category_scroll == null or not _category_scroll.is_visible_in_tree():
+		return _shelf_rows
+	var chips: Array[Button] = []
+	for child: Node in _category_row.get_children():
+		var chip := child as Button
+		if chip != null and chip.visible and not chip.is_queued_for_deletion() \
+				and str(chip.get_meta("category", "")) in SHELVES:
+			chips.append(chip)
+	# The window's width less its scroll bar, which the categories after the
+	# shelves bring.
+	var room: float = _category_scroll.size.x \
+		- _category_scroll.get_v_scroll_bar().get_combined_minimum_size().x
+	if chips.is_empty() or room <= 0.0:
+		return _shelf_rows
+	var gap: float = float(_category_row.get_theme_constant("h_separation"))
+	var whole := PackedFloat32Array()
+	var short := PackedFloat32Array()
+	for chip: Button in chips:
+		var shelf: String = str(chip.get_meta("category"))
+		whole.append(_chip_width(chip, _shelf_room_text(shelf)))
+		short.append(_chip_width(chip, _shelf_text(shelf, true)))
+	var rows_whole: int = rows_of(whole, room, gap)
+	var rows_short: int = rows_of(short, room, gap)
+	_shelves_short = rows_short < rows_whole
+	for chip: Button in chips:
+		chip.text = _shelf_text(str(chip.get_meta("category")), _shelves_short)
+	_shelf_rows = rows_short if _shelves_short else rows_whole
+	return _shelf_rows
+
+
+## The least width of [param chip] saying [param words], as its row lays it
+## out: said, read and put back.
+func _chip_width(chip: Button, words: String) -> float:
+	if not _chip_widths.has(words):
+		var was: String = chip.text
+		chip.text = words
+		_chip_widths[words] = floorf(chip.get_combined_minimum_size().x)
+		chip.text = was
+	return float(_chip_widths[words])
+
+
+## How many rows chips [param widths] wide take in a row [param room] wide,
+## [param gap] apart, wrapped as a FlowContainer wraps them: onto the next
+## row where one would end past the room, never a row with none.
+static func rows_of(widths: PackedFloat32Array, room: float, gap: float) -> int:
+	var rows: int = 1
+	var line: float = 0.0
+	for wide: float in widths:
+		if line > 0.0 and line + wide > room:
+			rows += 1
+			line = 0.0
+		line += wide + gap
+	return rows
 
 
 func _build_swatches() -> void:
@@ -843,9 +979,10 @@ func focus_colour_find() -> void:
 	_colour_find.select_all()
 
 
-## The palette's window, and the rows of categories: sized by the column
-## they are in, which only the window changes, so that nothing a person
-## does while building moves them.
+## The palette's window, and the rows of chips: sized by the column they
+## are in, which only the window changes, so that nothing a person does
+## while building moves them. The chips' window shows every shelf
+## (_fit_shelves); the categories after them scroll.
 ##
 ## The palette is the whole of what it holds where that fits in
 ## PALETTE_SHARE of the column, and otherwise a scrolling window onto it.
@@ -862,9 +999,10 @@ func _fit_palette() -> void:
 	if _palette == null or _palette_scroll == null:
 		return
 	var tall_column: float = column.size.y if column != null else size.y
-	# Two rows of categories, or one in a column too short to spare them.
+	# Two rows of chips, or one in a column too short to spare them, and
+	# always as many as every shelf takes (_fit_shelves).
 	if _chip_tall > 0.0:
-		var rows: int = 2 if tall_column >= SHORT else 1
+		var rows: int = maxi(2 if tall_column >= SHORT else 1, _fit_shelves())
 		_category_scroll.custom_minimum_size.y = _chip_tall * rows \
 			+ float(_category_row.get_theme_constant("v_separation")) * (rows - 1)
 	var wants: float = _palette.get_combined_minimum_size().y
@@ -1250,6 +1388,8 @@ func controls_by_name() -> Dictionary:
 			named["techniques"] = child
 		elif str(child.get_meta("category", "")) == "All":
 			named["all parts"] = child
+		elif str(child.get_meta("category", "")) == NEW:
+			named["new parts"] = child
 	for child: Node in _grid.get_children():
 		if child.has_meta("technique"):
 			named["technique " + str(child.get_meta("technique"))] = child
@@ -1347,7 +1487,7 @@ func _words_for(name: String) -> void:
 func _search_hint(category: String) -> String:
 	if category == PALETTES:
 		return "Narrow your palettes…"
-	if category in ABOUT_A_PART:
+	if category in ABOUT_A_PART or category == NEW:
 		return "Narrow these parts…"
 	return "Search %s parts…" % _comma(_offerable) if _offerable > 0 else "Search parts…"
 
@@ -1388,6 +1528,9 @@ func _notification(what: int) -> void:
 		return
 	if what != NOTIFICATION_TRANSLATION_CHANGED or _grid == null or _search == null or library == null:
 		return
+	# The chips' words are as wide as the language says them (_fit_shelves).
+	_chip_widths.clear()
+	_fit_palette.call_deferred()
 	for cell: Node in _grid.get_children():
 		if not cell.has_meta("name_label") or not library.parts.has(str(cell.get_meta("part", ""))):
 			continue
@@ -1487,7 +1630,7 @@ var _waiting: bool = false
 func _seeks(query: String) -> bool:
 	return library != null and _set_bin == null and not OS.has_feature("nothreads") \
 		and not query.strip_edges().is_empty() \
-		and not _category in [TECHNIQUES, RECENT, FAVOURITES, PALETTES, FITS, LIKE]
+		and not _category in [TECHNIQUES, RECENT, FAVOURITES, PALETTES, FITS, LIKE, NEW]
 
 
 ## [param query] searched on a worker, the window drawing meanwhile and the
@@ -1756,7 +1899,7 @@ func _list_set(query: String) -> void:
 	var needles: PackedStringArray = PartLibrary.in_ldraw_words(query).split(" ", false)
 	var asked: Array = _asked(needles)
 	var among: Dictionary = {}
-	var shelf: bool = _category in [RECENT, FAVOURITES, FITS, LIKE]
+	var shelf: bool = _category in [RECENT, FAVOURITES, FITS, LIKE, NEW]
 	if shelf:
 		for info: PartLibrary.PartInfo in _find(query, _category):
 			among[info.id] = true
@@ -1849,6 +1992,8 @@ func _find(query: String, category: String) -> Array[PartLibrary.PartInfo]:
 		return _fitting(needles)
 	if category == LIKE:
 		return _liked(needles)
+	if category == NEW:
+		return _newly_made(needles)
 	var wanted_category: String = category.to_lower()
 	if needles.is_empty():
 		return _unasked(wanted_category)
@@ -2031,6 +2176,55 @@ const LIKE_READ_MS := 4.0
 const LIKE_WAIT_MS := 25.0
 
 
+## New's parts that match what is typed: "slope" among them is the new slopes.
+func _newly_made(needles: PackedStringArray) -> Array[PartLibrary.PartInfo]:
+	_set_aside = 0
+	var key: int = library.ids().size()
+	if _new_found.is_empty() or int(_new_found[0]) != key:
+		_new_found = [key, newest(library, _new_latest)]
+	var found: Array[PartLibrary.PartInfo] = []
+	for info: PartLibrary.PartInfo in _new_found[1]:
+		if needles.is_empty() or PartLibrary.matched(info, needles) != PartLibrary.NOT_MATCHED:
+			found.append(info)
+	return found
+
+
+## New's parts: those of [param from] first made in the NEW_YEARS years to
+## [param latest], the newest year first and within a year as All lists them,
+## staples first (_sort_for). Studio's bin opens on a New parts palette; here
+## from the years catalogue.json gives each part (Rebrickable's inventories,
+## the year its first set came out). The latest is the catalogue's latest
+## year a part was first made in, not the calendar's: a catalogue made in
+## January still lists the year before's. None where no year is known.
+static func newest(from: PartLibrary, latest: int) -> Array[PartLibrary.PartInfo]:
+	var found: Array[PartLibrary.PartInfo] = []
+	if latest <= 0:
+		return found
+	var since: int = latest - NEW_YEARS + 1
+	var years: Dictionary = {}       ## year -> [PartInfo]
+	for id: String in from.ids():
+		var info: PartLibrary.PartInfo = from.parts[id]
+		if info.first_year < since or info.first_year > latest or info.is_redirect() \
+				or not info.reachable:
+			continue
+		if not years.has(info.first_year):
+			years[info.first_year] = []
+		(years[info.first_year] as Array).append(info)
+	for year: int in range(latest, since - 1, -1):
+		var those: Array[PartLibrary.PartInfo] = []
+		those.assign(years.get(year, []))
+		_sort_for(those, "")
+		found.append_array(those)
+	return found
+
+
+## New's last answer, [the catalogue's size, its parts], worked out the first
+## time New is chosen; and the latest year the catalogue has a part first made
+## in (_build_categories), 0 where it says none, and New is not offered.
+var _new_found: Array = []
+var _new_latest: int = 0
+
+
 ## A category's parts with nothing typed, staples first: worked out once a
 ## category, since sorting twenty thousand parts by their names is most of a
 ## second, and asked again each time the search is cleared.
@@ -2172,6 +2366,9 @@ const TECHNIQUES_COUNT := 91
 const FITS := "Fits"
 ## The parts like it: its footprint and kind first (PartLike).
 const LIKE := "Like this"
+## The parts first made in the catalogue's latest NEW_YEARS years (newest).
+const NEW := "New"
+const NEW_YEARS := 2
 ## What a construction's picture is asked for by: this and its name.
 const TECHNIQUE := "technique:"
 const STAR := "res://assets/ui/tools/star.svg"
@@ -2203,18 +2400,14 @@ func _from_shelf(shelf: String, needles: PackedStringArray) -> Array[PartLibrary
 	return found
 
 
-func _shelf_label(shelf: String) -> String:
-	var count: int = PartShelf.palettes().size() if shelf == PALETTES \
-		else (PartShelf.recent() if shelf == RECENT else PartShelf.favourites()).size()
-	return "%s %d" % [shelf, count]
-
-
-## The shelves' counts on their buttons, and the grid again if a shelf is
-## what is showing.
+## The shelves' counts on their buttons, where they say them
+## (_fit_shelves), and the grid again if a shelf is what is showing.
 func _refresh_shelf() -> void:
 	for child: Node in _category_row.get_children():
 		if child.has_meta("shelf"):
-			(child as Button).text = _shelf_label(str(child.get_meta("shelf")))
+			(child as Button).text = _shelf_text(str(child.get_meta("shelf")), _shelves_short)
+	# A count past the room kept for it (_shelf_room_text) takes more.
+	_fit_palette()
 	if _category == FAVOURITES:
 		_search_soon(_search.text)
 
@@ -2873,7 +3066,7 @@ func _take_fold(folded: Array) -> void:
 func _folds_listed(typed: String) -> bool:
 	var asked: String = " %s " % PartLibrary.in_ldraw_words(typed)
 	return _guesses.is_empty() and not _listing_set and _category != RECENT \
-		and _category != FAVOURITES and _category != FITS \
+		and _category != FAVOURITES and _category != FITS and _category != NEW \
 		and not asked.contains(" print ") and not asked.contains(" sticker ")
 
 
@@ -3186,6 +3379,9 @@ func _update_status() -> void:
 		_status.text = "The parts you choose will be here, newest first."
 	elif total == 0 and _category == FAVOURITES and _search.text.strip_edges().is_empty():
 		_status.text = "Right-click any part to keep it here."
+	elif total > 0 and _category == NEW and not _only_made.button_pressed:
+		_status.text = "%s first made in %d or %d, the newest first%s" % [Counted.of(total, "part"),
+			_new_latest - NEW_YEARS + 1, _new_latest, "" if shown >= total else " — scroll for more"]
 	elif total == 0 and _only_made.button_pressed:
 		_status.text = "No part here is known to be made in %s" % library.color(_selected_color).name
 	elif total == 0:
@@ -4639,7 +4835,7 @@ func _count_chips() -> void:
 			continue
 		var button: Button = child
 		var category: String = str(button.get_meta("category"))
-		if category in ["All", RECENT, FAVOURITES, PALETTES, TECHNIQUES, FITS, LIKE]:
+		if category in SHELVES:
 			continue
 		var count: int = int(kinds.get(category, 0)) if _set_bin != null else int(button.get_meta("count"))
 		button.text = "%s %d" % [category, count]

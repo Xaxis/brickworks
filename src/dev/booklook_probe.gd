@@ -914,6 +914,20 @@ func _save_path() -> void:
 
 
 ## blreview's [param name], copied into the probe's folder: its path there.
+## Whether [param letter] has a type here to print it: the booklet's own,
+## or the system's Godot draws it in where that has none.
+static func _typed(letter: String) -> bool:
+	var font: FontFile = load(BookletPdf.TYPE[0][0])
+	if font.has_char(letter.unicode_at(0)):
+		return true
+	var server: TextServer = TextServerManager.get_primary_interface()
+	var shaped: RID = server.create_shaped_text()
+	server.shaped_text_add_string(shaped, letter, font.get_rids(), 16)
+	var glyphs: Array = server.shaped_text_get_glyphs(shaped)
+	server.free_rid(shaped)
+	return not glyphs.is_empty() and int(glyphs[0]["index"]) != 0 and (glyphs[0]["font_rid"] as RID).is_valid()
+
+
 func _fixture(name: String) -> String:
 	var path: String = _out.path_join(name)
 	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
@@ -1178,8 +1192,13 @@ func _wide_letters() -> void:
 	var html: String = _out.path_join("wide_instructions.html")
 	await _main.call("_export_booklet", html)
 	var wrote: String = str(await _main.call("save_booklet_as", "pdf", _out.path_join("wide_export.pdf")))
-	_check("Save as PDF says which letters its type cannot print, not \"?\" in silence (%s)" % wrote.right(120),
-		wrote.begins_with("wrote") and wrote.contains("cannot print") and wrote.contains("城"))
+	# Only letters no type here has are named (pdfcid, 2026-11-08): the
+	# brick, whose only face is colour pictures. 城 is printed in the system's
+	# type where Godot draws it in one.
+	var cjk_typed: bool = _typed("城")
+	_check("Save as PDF says which letters no type here can print, not \"?\" in silence: 🧱, and 城 %s (%s)"
+		% ["printed" if cjk_typed else "too", wrote.right(120)], wrote.begins_with("wrote")
+		and wrote.contains("cannot print") and wrote.contains("🧱") and wrote.contains("城") != cjk_typed)
 	# The web's PDF is read from the booklet's own tab: its title, decoded,
 	# fed back to the reader with its pages.
 	await _tools.run("page_setup", {"title": "Gate <section> Hill", "cover_line": "", "header": ""})
