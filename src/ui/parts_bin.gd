@@ -1217,9 +1217,11 @@ func _mark_swatches() -> void:
 			elif info.never_made_in(code):
 				made = -1
 		# A set that has it is the proof the join lacked: 7049b's black is
-		# in 108 sets, and its colour list said it was never made in it.
+		# in 108 sets, and its colour list said it was never made in it. A
+		# rubber colour reads its plain one's sets, and is then no more than
+		# not never made, as for a part whose list has the plain colour.
 		if made < 0 and sets > 0:
-			made = 1
+			made = 1 if swatch.color.plain_code == code else 0
 		if swatch.made_in != made:
 			swatch.made_in = made
 			swatch.queue_redraw()
@@ -1275,12 +1277,12 @@ func _say_colour() -> void:
 		text = "%s%s, selected: a colour clicked paints %s" % [what, colour,
 			"it" if count == 1 else "them"]
 		if info != null and info.availability_known():
-			text += ". A dot marks the %s it comes in" % Counted.of(info.colors.size(), "colour")
+			text += ". A dot marks the %s it comes in" % Counted.of(_dotted(info), "colour")
 	else:
 		var color: PartLibrary.BrickColor = library.color(_selected_color)
 		text = "%s, %s" % [color.name, color.finish_name()]
 		if info != null and info.availability_known():
-			text += ". A dot marks the %s %s comes in" % [Counted.of(info.colors.size(), "colour"),
+			text += ". A dot marks the %s %s comes in" % [Counted.of(_dotted(info), "colour"),
 				info.id]
 			if not info.colors_partial:
 				text += "; it was made in no other"
@@ -1288,6 +1290,19 @@ func _say_colour() -> void:
 	_colour_note.tooltip_text = text
 	_only_made.tooltip_text = ("Only parts made in %s, as set inventories have them: the bin "
 		+ "lists no other while this is ticked") % library.color(_selected_color).name
+
+
+## How many colours a dot marks for [param info]: its colour list's, and
+## each a set has that the list says it was never made in, as
+## _mark_swatches dots it (7049b's Black, in 108 sets). A rubber colour is
+## counted as its plain one, so a tyre's Black is not counted twice.
+func _dotted(info: PartLibrary.PartInfo) -> int:
+	var count: int = info.colors.size()
+	for code: int in library.colors:
+		if (library.colors[code] as PartLibrary.BrickColor).plain_code == code \
+				and info.never_made_in(code) and library.sets_in_colour(info.id, code) > 0:
+			count += 1
+	return count
 
 
 ## One colour in the palette, drawn as what it is: see-through over a

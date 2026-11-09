@@ -27,7 +27,8 @@
 ##   or fewer, and nothing of sets where the file has none;
 ## - 7049b, a 2 x 4 brick with axle bushes, which the catalogue's colour list
 ##   says was never made in Black: its Black swatch says it comes in it, in
-##   the sets the file counts, with the dot of a colour it was made in.
+##   the sets the file counts, with the dot of a colour it was made in, and
+##   the line under the palette counts the dots the long list shows.
 ## And the three new sentences in German, French and Spanish (Language.says),
 ## each count grouped as the language groups it. Pictures go to --shots=DIR,
 ## else user://rarity: each tooltip up over the palette.
@@ -228,7 +229,10 @@ func _at(size: Vector2i, counts: Dictionary, odd: Dictionary) -> void:
 	var wrong: Array[String] = []
 	for code: int in swatches:
 		var said: String = (swatches[code] as Control).tooltip_text
-		var sets: int = int(counts.get(code, 0))
+		# A rubber colour reads its plain one's sets: a tyre in Rubber Black
+		# is in the sets with a Black one.
+		var sets: int = maxi(int(counts.get(code, 0)),
+			int(counts.get(_library.color(code).plain_code, 0)))
 		var ok: bool = said.split("\n").has(_said(PART, sets)) if sets > 0 \
 			else not said.contains(" sets") and not said.contains(" set:")
 		ok = ok and said.contains("rare in this colour") == (sets > 0 and sets <= RARE_IN)
@@ -252,6 +256,17 @@ func _at(size: Vector2i, counts: Dictionary, odd: Dictionary) -> void:
 		tip.replace("\n", " / "), black.made_in if black != null else 0],
 		tip.split("\n").has(_said(ODD, int(odd[BLACK]))) and not tip.contains("never")
 		and black != null and black.made_in == 1)
+	# The line under the palette counts the dots the long list shows.
+	if not all_colours.button_pressed:
+		await _click(all_colours.get_global_rect().get_center())
+		await _frames(10)
+	swatches = _bin.get("_swatches")
+	var dots: int = 0
+	for code: int in swatches:
+		dots += 1 if (swatches[code] as PartsBin.Swatch).made_in == 1 else 0
+	var note: String = (_bin.get("_colour_note") as Label).text
+	_check("%s: under the palette: \"%s\", %d dots in the long list" % [tag, note, dots],
+		dots >= 2 and note.contains("A dot marks the %d colours %s comes in" % [dots, ODD]))
 
 
 ## [param part] typed in the bin's search and its tile clicked, as a person
