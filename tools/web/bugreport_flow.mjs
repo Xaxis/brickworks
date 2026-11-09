@@ -126,6 +126,21 @@ const RED_BOX = async ([data, region]) => {
     }
   }
   if (x1 < 0) return { size: [w, h], same, box: null, edge: 0 };
+  // A box's sides are red end to end; red of the picture's own beside it
+  // (a red brick in the bin) is not, so the bounds are its outermost rows
+  // and columns red most of the way along, twice over.
+  const along = (fixed, lo, hi, isRow) => {
+    let on = 0;
+    for (let n = lo; n <= hi; n++) on += (isRow ? red(n, fixed) : red(fixed, n)) ? 1 : 0;
+    return on / Math.max(1, hi - lo + 1);
+  };
+  for (let pass = 0; pass < 2; pass++) {
+    const rows = []; const cols = [];
+    for (let y = y0; y <= y1; y++) if (along(y, x0, x1, true) >= 0.85) rows.push(y);
+    if (rows.length) { y0 = rows[0]; y1 = rows[rows.length - 1]; }
+    for (let x = x0; x <= x1; x++) if (along(x, y0, y1, false) >= 0.85) cols.push(x);
+    if (cols.length) { x0 = cols[0]; x1 = cols[cols.length - 1]; }
+  }
   // The ring 1 px in from the bounds' own edge: red all round, a box's.
   let on = 0; let all = 0;
   for (let x = x0 + 1; x < x1; x++) for (const y of [y0 + 1, y1 - 1]) { all += 1; on += red(x, y) ? 1 : 0; }
