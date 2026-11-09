@@ -82,12 +82,20 @@ func _new_account_joins(account: Account, gate: SignInGate) -> void:
 	var named: Dictionary = gate.controls_by_name()
 	await _click_control(named["signin_email"])
 	await _type(email)
-	await _click_control(named["signin_send"])
 	var code_field: LineEdit = named["signin_code"]
-	for _n: int in 900:
-		await process_frame
+	# Pressed again once if the deployment could not send it, as a person
+	# would: Supabase's admin API sometimes answers in more than the 10 s
+	# api/otp.js waits (2026-11-09, "no answer in 10 s").
+	for _try: int in 2:
+		await _click_control(named["signin_send"])
+		var asked: int = Time.get_ticks_msec()
+		while Time.get_ticks_msec() - asked < 30000:
+			await process_frame
+			if code_field.is_visible_in_tree() or not (named["signin_send"] as Button).disabled:
+				break
 		if code_field.is_visible_in_tree():
 			break
+		print("  (the form said: %s)" % _text_on(gate).replace("\n", " / "))
 	_ok(code_field.is_visible_in_tree(), "Email me a code moves on to the code")
 	var code: String = await SignInHelper.mint(email, root)
 	await _click_control(code_field)
