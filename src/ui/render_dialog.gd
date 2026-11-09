@@ -28,6 +28,10 @@
 ## for, the button drawn strong: a picture until a turntable's frames, a
 ## motion or a building's length is chosen, so Render, a length and Return
 ## is a building video.
+##
+## Kept as: a turntable, an animation and a building are an animated WebP,
+## or a GIF (AnimatedGif), for the chats, forums and mail that take a GIF
+## and not a WebP: 256 colours, made to fit 8 MB (video2, APP_UX6 gap 12).
 class_name RenderDialog
 extends PanelContainer
 
@@ -107,6 +111,9 @@ var _cameras: Array[Button] = []
 var _animation_note: Label
 var _lengths: Array[Button] = []
 var _building_note: Label
+## video2: what a turntable, an animation and a building are kept as.
+var _kept_as: Array[Button] = []
+var _kept_note: Label
 var _picture_button: Button
 var _turntable_button: Button
 var _animation_button: Button
@@ -120,6 +127,8 @@ var _background: int = 0
 var _on_what_moves: bool = false
 ## Building's length, in seconds.
 var _build_seconds: int = 20
+## video2: a turntable, an animation and a building kept as a GIF, not a WebP.
+var _as_gif: bool = false
 ## What Return renders: the kind whose choices were touched last.
 var _default: String = "picture"
 ## The steps being worked out for a building, until they are: Cancel stops it.
@@ -263,14 +272,19 @@ func _make_renderer() -> void:
 ## [param job] is the bar along the foot of the window (Working) that says
 ## how far it has got, in place of the panel's, and whose Cancel stops it:
 ## the session's job (ToolJobs) reads the same one.
-func render_for(kind: String, chosen: RenderSettings, job: Working.Job = null) -> String:
+func render_for(kind: String, chosen: RenderSettings, job: Working.Job = null,
+		as_gif: Variant = null) -> String:
 	if is_rendering():
 		return "a render is already being drawn"
 	_make_renderer()
 	_job = job
 	if job != null:
 		job.cancel_wanted.connect(_cancel)
+	# video2: a session's format for this render only, the person's choice
+	# left as it is.
+	_gif_asked = as_gif
 	var lines: PackedStringArray = await _start(kind, chosen)
+	_gif_asked = null
 	if job != null:
 		job.cancel_wanted.disconnect(_cancel)
 	_job = null
@@ -279,6 +293,9 @@ func render_for(kind: String, chosen: RenderSettings, job: Working.Job = null) -
 
 ## The Working job a render from outside reports to, while it lasts.
 var _job: Working.Job = null
+## video2: a render from outside kept as a GIF (true) or a WebP (false), or
+## as the dialog has it (null).
+var _gif_asked: Variant = null
 
 
 func last_picture() -> Image:
@@ -662,6 +679,12 @@ func _build() -> void:
 			_make_default("building")
 			_describe())
 	_building_note = _note(right)
+	# video2: a moving render's file.
+	_heading(right, "Kept as")
+	_kept_as = _segments(right, ["WebP", "GIF"], 0, func(n: int) -> void:
+		_as_gif = n == 1
+		_describe())
+	_kept_note = _note(right)
 	_list_presets()
 
 
@@ -936,13 +959,17 @@ func _describe() -> void:
 	# and the lens they keep.
 	_say_line_look()
 	var seconds: float = float(settings.frames) / float(settings.fps)
-	_frames_note.text = "%d frames, %.1f s at %d a second, as an animated WebP%s." % [
-		settings.frames, seconds, settings.fps,
+	var kept: String = "a GIF" if _as_gif else "an animated WebP"
+	_kept_note.text = ("A GIF plays anywhere a picture goes, chats, forums and mail included: "
+		+ "256 colours, at most 640 pixels across, made to fit in 8 MB." if _as_gif
+		else "An animated WebP keeps every colour and is small; every browser plays it.")
+	_frames_note.text = "%d frames, %.1f s at %d a second, as %s%s." % [
+		settings.frames, seconds, settings.fps, kept,
 		"" if OS.has_feature("web") else ", the frames, and an MP4 where ffmpeg is installed"]
 	var parts: int = world.brick_count() - scenery.size() if world != null else 0
 	_building_note.text = ("%s parts as the timeline builds them, step by step, over %d s at %d a "
-		+ "second, the camera turning %d° round, as an animated WebP%s.") % [Working.comma(parts),
-		_build_seconds, settings.fps, roundi(_build_seconds * BuildRender.TURNING),
+		+ "second, the camera turning %d° round, as %s%s.") % [Working.comma(parts),
+		_build_seconds, settings.fps, roundi(_build_seconds * BuildRender.TURNING), kept,
 		"" if OS.has_feature("web") else ", the frames, and an MP4 where ffmpeg is installed"]
 	var order: Array = _order_of(chosen_motion())
 	if order.is_empty():
@@ -951,10 +978,10 @@ func _describe() -> void:
 	var length: float = 0.0
 	for motion: Motions.Motion in order:
 		length += motion.length()
-	_animation_note.text = "%s: %.1f s at %d a second, %s, as an animated WebP%s." % [
+	_animation_note.text = "%s: %.1f s at %d a second, %s, as %s%s." % [
 		chosen_motion(), length, settings.fps,
 		"framed on what its parts sweep through" if _on_what_moves else "the camera as the picture is",
-		"" if OS.has_feature("web") else ", the frames, and an MP4 where ffmpeg is installed"]
+		kept, "" if OS.has_feature("web") else ", the frames, and an MP4 where ffmpeg is installed"]
 
 
 # -- lineart (APP_UX7 #22): the Line art and Comic looks' words --------------
@@ -1304,6 +1331,7 @@ func _start(kind: String, given: RenderSettings = null) -> PackedStringArray:
 	var chosen: RenderSettings = given if given != null else settings.copy()
 	var output := RenderOutput.new()
 	output.folder = folder
+	output.gif = bool(_gif_asked) if _gif_asked != null else _as_gif
 	_output = output
 	var model: String = str(named.call())
 	var lines := PackedStringArray()
@@ -1338,16 +1366,14 @@ func _start(kind: String, given: RenderSettings = null) -> PackedStringArray:
 				await output.add_frame(n, image))
 		await output.settle()
 		if done == chosen.frames:
-			_status.text = "Putting the frames together…"
-			if _job != null:
-				_job.say(_status.text)
-				_job.count(0, 0)
-			lines.append_array(await output.finish_turntable())
+			_putting_together(output)
+			lines.append_array(await output.finish_turntable(_making_gif))
 			_loop = looped
 			_loop_at = 0.0
 			_last = {"kind": "turntable", "frames": done, "bytes": output.last_bytes,
 				"width": chosen.size.x, "height": chosen.size.y,
-				"name": RenderOutput.file_name(model, "_turntable", "webp"), "output": output}
+				"name": RenderOutput.file_name(model, "_turntable", "gif" if output.gif else "webp"),
+				"output": output}
 	var seconds: float = float(Time.get_ticks_msec() - started) / 1000.0
 	_working = ""
 	_output = null
@@ -1390,16 +1416,13 @@ func _animate(chosen: RenderSettings, output: RenderOutput, model: String) -> Pa
 				_job.count(n + 1))
 	if done < chosen.frames:
 		return PackedStringArray()
-	_status.text = "Putting the frames together…"
-	if _job != null:
-		_job.say(_status.text)
-		_job.count(0, 0)
-	var lines: PackedStringArray = await output.finish_turntable()
+	_putting_together(output)
+	var lines: PackedStringArray = await output.finish_turntable(_making_gif)
 	_loop = looped
 	_loop_at = 0.0
 	_last = {"kind": "animation", "frames": done, "bytes": output.last_bytes,
 		"width": chosen.size.x, "height": chosen.size.y, "motion": name,
-		"name": output.base_name() + ".webp", "output": output}
+		"name": output.base_name() + (".gif" if output.gif else ".webp"), "output": output}
 	return lines
 
 
@@ -1440,20 +1463,34 @@ func _building(chosen: RenderSettings, output: RenderOutput, model: String) -> P
 				_job.count(n + 1))
 	if done < built.frames:
 		return PackedStringArray()
-	_status.text = "Putting the frames together…"
-	if _job != null:
-		_job.say(_status.text)
-		_job.count(0, 0)
+	_putting_together(output)
 	var lines: PackedStringArray = [built.said(chosen.fps)]
-	lines.append_array(await output.finish_turntable())
+	lines.append_array(await output.finish_turntable(_making_gif))
 	_loop = looped
 	_loop_at = 0.0
 	_loop_fps = LOOP_FPS
 	_last = {"kind": "building", "frames": done, "bytes": output.last_bytes,
 		"width": chosen.size.x, "height": chosen.size.y, "parts": built.order.size(),
-		"steps": built.steps, "name": output.base_name() + ".webp", "output": output,
+		"steps": built.steps, "name": output.base_name() + (".gif" if output.gif else ".webp"),
+		"output": output,
 		"build": built}
 	return lines
+
+
+## The frames drawn, said so while they are put together (as a GIF, a
+## frame at a time: [method _making_gif]).
+func _putting_together(output: RenderOutput) -> void:
+	_status.text = "Making the GIF…" if output.gif else "Putting the frames together…"
+	if _job != null:
+		_job.say(_status.text)
+		_job.count(0, 0)
+
+
+## How the GIF is coming on, "frame N of M", said as a render's progress is.
+func _making_gif(words: String) -> void:
+	_status.text = "Making the GIF: %s…" % words
+	if _job != null:
+		_job.say(_status.text)
 
 
 ## A picture far bigger than the panel, shrunk to it: an 8-megapixel
@@ -1474,7 +1511,7 @@ func _set_working(on: bool) -> void:
 	_building_button.disabled = on
 	_cancel_button.visible = on
 	_again_button.visible = false if on else _again_button.visible
-	for button: Button in _quality + _sizes + _backgrounds + _frames + _cameras + _lengths:
+	for button: Button in _quality + _sizes + _backgrounds + _frames + _cameras + _lengths + _kept_as:
 		button.disabled = on
 	_list_motions()
 
@@ -1556,6 +1593,9 @@ func controls_by_name() -> Dictionary:
 	for n: int in _lengths.size():
 		named_controls["render_length_%d" % BuildRender.LENGTHS[n]] = _lengths[n]
 	named_controls["render_building"] = _building_button
+	# video2.
+	named_controls["render_kept_webp"] = _kept_as[0]
+	named_controls["render_kept_gif"] = _kept_as[1]
 	named_controls["render_camera_seen"] = _cameras[0]
 	named_controls["render_camera_moves"] = _cameras[1]
 	named_controls["render_picture"] = _picture_button
