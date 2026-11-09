@@ -42,6 +42,16 @@ ui:techniques in the bin
 lib:worked constructions
 -->
 
+## New parts {#new}
+
+**New**, after Palettes, lists every part first made in the two latest years the parts catalogue knows, now 2025 and 2026, the newest year first. A part's year is the year of the first set it came in. Type to narrow it: *slope* lists the new slopes. Its tooltip names the two years.
+
+The shelves, All, Recent, Favourites, Palettes, New, Techniques, Fits and Like this, stay in sight however narrow the column is: they wrap onto another row, and where leaving off their counts saves a row, they show their names alone. The kinds of part after them, *Brick*, *Plate* and the rest, scroll.
+
+<!-- covers
+ui:new parts in the bin
+-->
+
 ## What fits {#fits}
 
 Select a part in the model, or take one in hand, and choose **Fits** beside Techniques: the bin lists the parts that fit it, the best fits first. A beam lists its pins, a clip its bars, a bar its clips, a hinge's base its top, a click hinge its other half, a ball its socket, and a jumper the 1 × 1 parts that sit on its stud; then the parts that sit on its studs, the ones real sets use most first. Type to narrow it: *axle* among a beam's fits lists the axles that go through it. Picking a part from the list keeps it on the part you asked about. Double-click a part in the list to put it on the selected part, where it fits and there is room: a pin goes into a beam's hole. [[Ctrl+Z]] takes it off.

@@ -1654,10 +1654,9 @@ picture the assistant is shown.
   (`BookletRead`: the file on the desktop, the tab's sections on the web)
   into a PDF written by hand (`BookletPdf`: the step pictures the booklet's
   own JPEGs as DCTDecode, a part's picture once, boxes and arrows as paths,
-  words as text in Liberation Sans, Helvetica's widths, the TrueType file
-  embedded whole as FontFile2 with its WinAnsi widths read from its own
-  hmtx and cmap: `BookletPdf.TYPE`, `font_metrics`; `assets/fonts/`, SIL
-  OFL, credited in `Credits.LIST` "liberation"; 269 x 199 mm pages) or a
+  words as text in Liberation Sans, Helvetica's widths: `BookletPdf.TYPE`;
+  `assets/fonts/`, SIL OFL, credited in `Credits.LIST` "liberation"; 269 x
+  199 mm pages) or a
   zip of a PNG a page at 300 dpi (`BookletPng.DPI`, a pHYs chunk saying so,
   `dpi_chunk`; the words in the same type; drawn with `force_draw`, as the
   web's app tab is out of view and gets no frames). `booklet_pdf_probe`
@@ -1669,6 +1668,25 @@ picture the assistant is shown.
   PDF drawn by poppler (`--shots` against the browser's own pictures, from
   `booklet_print.mjs --shots-only`). `booklet_flow.mjs` presses both in a
   browser and runs the same check on the downloads.
+- `the PDF's words in any script` (pdfcid, APP_UX7 #13, 2026-11-08): each
+  face goes in as a Type0 font, Identity-H, cut down to the glyphs the
+  pages use, with a ToUnicode map (`PdfType`, `src/render/pdf_type.gd`:
+  TrueType keeps every glyph's number and empties the rest, composites
+  keeping their parts; CFF is written with only the glyphs used, their
+  subroutines in place, each CID its old glyph number). A letter Liberation
+  lacks goes in the system's face Godot draws the page's PNG in
+  (`BookletPdf._system`: the TextServer's fallback, its file from
+  `OS.get_system_font_path`); none on the web. Only letters no face has
+  (a colour emoji) are "?" and named by the export (`missed_said`).
+  `booklet_pdf_probe -- --words-only --into=DIR` signs in a throwaway account,
+  gives booklook's dialog_a a Cyrillic title and Greek footer (page_setup)
+  and a Japanese note (edit_booklet), presses Instructions and Save as PDF,
+  and reads them back with pdftotext (0 "?"), pdffonts (embedded, subset,
+  ToUnicode) and, with the note set in Noto Sans CJK by hand, a CFF face
+  drawn by poppler and Ghostscript. `-- --against=DIR` (the commit before's
+  --into) writes its castle booklet's PDF again from its own file: every
+  page the same at 300 dpi to the pixel (pdftoppm, sha1 a page), the file
+  no more than 10% bigger. Look at DIR/words-pdf-*.png.
 - `the booklet`: build instructions laid out as a LEGO booklet, one HTML
   file that prints on A4 and Letter (landscape; `Booklet.PAGE` is 269 x 199 mm,
   inside both) and reads on screen (`--mm` scales the same millimetres to the

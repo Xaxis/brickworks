@@ -13,8 +13,12 @@
 ## about the same middle (cm), and faded ones drawn as faint (an ExtGState's
 ## /ca), as the browser draws them. The words are set in Liberation Sans, which has
 ## Helvetica's widths letter for letter (the widths the booklet lays its
-## words out by, BookletRead), and the type itself is in the file, so
-## every reader draws the same letters whether it has Helvetica or not.
+## words out by, BookletRead), and the type itself is in the file, cut
+## down to the letters the pages use (PdfType), so every reader draws the
+## same letters whether it has Helvetica or not, in Cyrillic and Greek as
+## in Latin. A letter it has none of (Japanese, say) is set in the type
+## the booklet's page draws it in, the system's own (BookletPng), carried
+## the same way; only a letter no type here has is "?", and named.
 ## The page is the booklet's, 269 x 199 mm, which fits A4 and US Letter
 ## turned on their side (Booklet), or the paper its designer set it up on
 ## (BookletSheet), the PDF's page that paper's size; a picture behind the
@@ -45,10 +49,11 @@ var _parts: Dictionary = {}
 var _behind: Array = []
 var _read: BookletRead
 var _ok: bool = true
-## The letters its type cannot print (win_ansi's "?"), each once, in the
+## The letters no type here can print ("?" in the PDF), each once, in the
 ## order met: said by the export ([method missed_said]), not left as "?" in
-## silence (blreview, 2026-11-07). Embedding a type that has them is its
-## own piece of work.
+## silence (blreview, 2026-11-07). Since pdfcid (2026-11-08) these are only
+## letters neither the app's type nor the system's has: an emoji, or
+## Japanese on the web, which has no system type to read.
 var missed: PackedStringArray = []
 ## The most of them [method missed_said] names.
 const MISSED_NAMED := 16
@@ -62,9 +67,25 @@ const _BOLD := 4
 ## assets/fonts/OFL.txt) and its PostScript name.
 const TYPE: Array = [["res://assets/fonts/LiberationSans-Regular.ttf", "LiberationSans"],
 	["res://assets/fonts/LiberationSans-Bold.ttf", "LiberationSans-Bold"]]
-## WinAnsi's codes above 127 that are not Latin-1's, by their character.
+## WinAnsi's codes above 127 that are not Latin-1's, by their character:
+## the reader's own Helvetica's, where the type cannot be read.
 const MORE := {0x20AC: 0x80, 0x2026: 0x85, 0x2018: 0x91, 0x2019: 0x92, 0x201C: 0x93,
 	0x201D: 0x94, 0x2022: 0x95, 0x2013: 0x96, 0x2014: 0x97, 0x2122: 0x99}
+
+## The type, regular and bold, read (PdfType); null where it could not be,
+## and its words then go to the reader's Helvetica.
+var _types: Array = [null, null]
+## The app's fonts of that type, to ask which system type draws a letter
+## they have none of, as the booklet's page draws it.
+var _faces: Array = [null, null]
+## The system's faces the words needed: [PdfType, its name on a page, its
+## object] each, by "path#face"; [] for a file that could not be used.
+var _system_faces: Dictionary = {}
+## The system's faces by the font Godot falls back to (its family, weight,
+## stretch, style and face): [PdfType, name, object], or [].
+var _system_fonts: Dictionary = {}
+## The system's faces the page being written uses: name -> object.
+var _page_fonts: Dictionary = {}
 
 
 ## Start a PDF going to [param path], or into memory when it is "" (take
@@ -76,126 +97,189 @@ func begin(path: String, read: BookletRead) -> bool:
 		if _file == null:
 			return false
 	_put(PackedByteArray([37, 80, 68, 70, 45, 49, 46, 52, 10, 37, 226, 227, 207, 211, 10]))
-	_font(_FONT, TYPE[0])
-	_font(_BOLD, TYPE[1])
+	for which: int in 2:
+		_faces[which] = load(str(TYPE[which][0])) as FontFile
+		_types[which] = _font(_FONT + which, TYPE[which])
 	return true
 
 
-## The type [param type] ([file, name]) as font [param number], the whole
-## TrueType file in the PDF. A file the app cannot read falls back to the
-## reader's own Helvetica, as the PDF was before, and says so.
-func _font(number: int, type: Array) -> void:
-	var source: FontFile = load(str(type[0])) as FontFile
-	var bytes: PackedByteArray = source.data if source != null else PackedByteArray()
-	var metrics: Dictionary = font_metrics(bytes)
-	if metrics.is_empty():
+## The type [param type] ([file, name]) for font [param number], read to
+## be written at the end with the glyphs the pages used (PdfType). A file
+## the app cannot read falls back to the reader's own Helvetica, as the PDF
+## was before, and says so: null then.
+func _font(number: int, type: Array) -> PdfType:
+	var source: FontFile = _faces[number - _FONT]
+	var read: PdfType = PdfType.read(source.data) if source != null else null
+	if read == null:
 		push_error("BookletPdf: %s cannot be read; the PDF's words are left to the reader's Helvetica"
 			% type[0])
 		_object(number, "<< /Type /Font /Subtype /Type1 /BaseFont /%s /Encoding /WinAnsiEncoding >>"
 			% ("Helvetica-Bold" if number == _BOLD else "Helvetica"))
-		return
+		return null
+	read.name = str(type[1])
+	return read
+
+
+## Type [param type] written as font [param number]: a Type0 font whose
+## glyphs are its own (CIDFontType2, or CIDFontType0 for CFF), named by
+## their numbers in it (Identity-H), holding only those used, with a
+## ToUnicode map so a reader finds and copies the words as typed.
+func _write_type(number: int, type: PdfType) -> void:
+	var named: String = type.subset_name()
+	var program: PackedByteArray = type.program()
 	var file: int = _new()
-	_stream(file, "/Length1 %d /Filter /FlateDecode" % bytes.size(),
-		bytes.compress(FileAccess.COMPRESSION_DEFLATE))
-	var descriptor: int = _new()
+	_stream(file, ("/Subtype /CIDFontType0C" if type.cff else "/Length1 %d" % program.size())
+		+ " /Filter /FlateDecode", program.compress(FileAccess.COMPRESSION_DEFLATE))
+	var metrics: Dictionary = type.metrics()
 	var box: Array = metrics["box"]
-	_object(descriptor, ("<< /Type /FontDescriptor /FontName /%s /Flags 32 /FontBBox [%d %d %d %d] "
-		+ "/ItalicAngle 0 /Ascent %d /Descent %d /CapHeight %d /StemV %d /FontFile2 %d 0 R >>") % [
-		type[1], box[0], box[1], box[2], box[3], metrics["ascent"], metrics["descent"],
-		metrics["cap"], 140 if number == _BOLD else 80, file])
-	_object(number, ("<< /Type /Font /Subtype /TrueType /BaseFont /%s /FirstChar 32 /LastChar 255 "
-		+ "/Widths [%s] /Encoding /WinAnsiEncoding /FontDescriptor %d 0 R >>") % [type[1],
-		" ".join(PackedStringArray((metrics["widths"] as Array).map(
-			func(width: int) -> String: return str(width)))), descriptor])
+	var descriptor: int = _new()
+	_object(descriptor, ("<< /Type /FontDescriptor /FontName /%s /Flags 4 /FontBBox [%d %d %d %d] "
+		+ "/ItalicAngle 0 /Ascent %d /Descent %d /CapHeight %d /StemV %d /%s %d 0 R >>") % [
+		named, box[0], box[1], box[2], box[3], metrics["ascent"], metrics["descent"], metrics["cap"],
+		140 if type.weight >= 600 else 80, "FontFile3" if type.cff else "FontFile2", file])
+	var glyphs: int = _new()
+	_object(glyphs, ("<< /Type /Font /Subtype /%s /BaseFont /%s /CIDSystemInfo << /Registry (Adobe) "
+		+ "/Ordering (Identity) /Supplement 0 >> /FontDescriptor %d 0 R /DW 1000 /W [%s]%s >>") % [
+		"CIDFontType0" if type.cff else "CIDFontType2", named, descriptor, type.widths(),
+		"" if type.cff else " /CIDToGIDMap /Identity"])
+	var unicode: int = _new()
+	_stream(unicode, "/Filter /FlateDecode", type.to_unicode().compress(FileAccess.COMPRESSION_DEFLATE))
+	_object(number, ("<< /Type /Font /Subtype /Type0 /BaseFont /%s /Encoding /Identity-H "
+		+ "/DescendantFonts [%d 0 R] /ToUnicode %d 0 R >>") % [named, glyphs, unicode])
 
 
-## What a PDF is told of TrueType [param bytes], in thousandths of its em:
-## {box [x0, y0, x1, y1], ascent, descent, cap, widths} with a width for
-## each code from 32 to 255 as WinAnsi reads it. Empty when it is not one.
-static func font_metrics(bytes: PackedByteArray) -> Dictionary:
-	if bytes.size() < 12:
-		return {}
-	var tables: Dictionary = {}
-	for index: int in _u16(bytes, 4):
-		var at: int = 12 + index * 16
-		if at + 16 > bytes.size():
-			return {}
-		tables[bytes.slice(at, at + 4).get_string_from_ascii()] = _u32(bytes, at + 8)
-	for needed: String in ["head", "hhea", "hmtx", "cmap", "OS/2"]:
-		if not tables.has(needed):
-			return {}
-	var head: int = tables["head"]
-	var em: float = maxf(1.0, _u16(bytes, head + 18))
-	var thousandths := func(units: int) -> int: return roundi(units * 1000.0 / em)
-	var os2: int = tables["OS/2"]
-	var glyphs: Dictionary = _glyphs(bytes, tables["cmap"])
-	var hmetrics: int = maxi(1, _u16(bytes, int(tables["hhea"]) + 34))
-	var widths: Array = []
-	for code: int in range(32, 256):
-		var character: int = code
-		for unicode: int in MORE:
-			if MORE[unicode] == code:
-				character = unicode
-		var glyph: int = mini(int(glyphs.get(character, 0)), hmetrics - 1)
-		widths.append(thousandths.call(_u16(bytes, int(tables["hmtx"]) + glyph * 4)))
-	return {"box": [thousandths.call(_i16(bytes, head + 36)), thousandths.call(_i16(bytes, head + 38)),
-			thousandths.call(_i16(bytes, head + 40)), thousandths.call(_i16(bytes, head + 42))],
-		"ascent": thousandths.call(_i16(bytes, os2 + 68)),
-		"descent": thousandths.call(_i16(bytes, os2 + 70)),
-		"cap": thousandths.call(_i16(bytes, os2 + 88)), "widths": widths}
+## Letter [param code] in the type, bold or not: [the font's name on the
+## page, its bytes in the words]; [] when the type has none of it and it
+## draws something (_other). A space it has none of is its space, and a
+## letter that draws nothing at all (a joiner, a variation selector) is
+## nothing, as the page draws them. Where the type cannot be read, the
+## reader's Helvetica's WinAnsi byte.
+func _own(code: int, bold: bool) -> Array:
+	var own: String = "F2" if bold else "F1"
+	var type: PdfType = _types[1 if bold else 0]
+	if type == null:
+		var byte: PackedByteArray = win_ansi(char(code))
+		if byte[0] == 0x3F and code != 0x3F:
+			_miss(code)
+		return [own, byte]
+	if _unseen(code):
+		return [own, PackedByteArray()]
+	var glyph: int = type.glyph_of(code)
+	var blank: bool = _blank(code)
+	if glyph > 0 and (blank or type.drawn(glyph)):
+		type.use(glyph, code)
+		return [own, _code(glyph)]
+	if blank:
+		glyph = type.glyph_of(0x20)
+		type.use(glyph, 0x20)
+		return [own, _code(glyph)]
+	return []
 
 
-## The glyph of each character WinAnsi has, from the font's Unicode map
-## (cmap's Windows Unicode table, format 4): character -> glyph.
-static func _glyphs(bytes: PackedByteArray, cmap: int) -> Dictionary:
-	var table: int = -1
-	for index: int in _u16(bytes, cmap + 2):
-		var record: int = cmap + 4 + index * 8
-		if _u16(bytes, record) == 3 and _u16(bytes, record + 2) == 1:
-			table = cmap + _u32(bytes, record + 4)
-	if table < 0 or _u16(bytes, table) != 4:
-		return {}
-	var segments: int = _u16(bytes, table + 6) / 2
-	var ends: int = table + 14
-	var starts: int = ends + segments * 2 + 2
-	var deltas: int = starts + segments * 2
-	var offsets: int = deltas + segments * 2
-	var wanted: Array = range(32, 256) + MORE.keys()
-	var out: Dictionary = {}
-	for character: int in wanted:
-		for segment: int in segments:
-			if _u16(bytes, ends + segment * 2) < character:
-				continue
-			var start: int = _u16(bytes, starts + segment * 2)
-			if start > character:
-				break
-			var delta: int = _u16(bytes, deltas + segment * 2)
-			var offset: int = _u16(bytes, offsets + segment * 2)
-			var glyph: int = character
-			if offset != 0:
-				glyph = _u16(bytes, offsets + segment * 2 + offset + (character - start) * 2)
-			if glyph != 0:
-				out[character] = (glyph + delta) & 0xFFFF
-			break
+## Letter [param code], which the type has none of, in [param found], the
+## system's face Godot draws it in on the page ([PdfType, name, object]
+## or []): or "?" in the type, named ([member missed]).
+func _other(code: int, bold: bool, found: Array) -> Array:
+	if not found.is_empty():
+		var face: PdfType = found[0]
+		var glyph: int = face.glyph_of(code)
+		if glyph > 0 and face.drawn(glyph):
+			face.use(glyph, code)
+			_page_fonts[found[1]] = found[2]
+			return [found[1], _code(glyph)]
+	_miss(code)
+	var type: PdfType = _types[1 if bold else 0]
+	var mark: int = type.glyph_of(0x3F)
+	type.use(mark, 0x3F)
+	return ["F2" if bold else "F1", _code(mark)]
+
+
+## Each letter of [param text]'s face where the type has none, as Godot
+## shapes the words to draw the booklet's page (BookletPng): the system's
+## that it falls back to, one face for a run as a browser's is, [PdfType,
+## name, object] a letter, [] where the type has it or nothing does. None
+## on the web, which has no system type to read.
+func _shaped(text: String, bold: bool) -> Array:
+	var out: Array = []
+	for _n: int in text.length():
+		out.append([])
+	var face: FontFile = _faces[1 if bold else 0]
+	if face == null or OS.has_feature("web"):
+		return out
+	var server: TextServer = TextServerManager.get_primary_interface()
+	var shaped: RID = server.create_shaped_text()
+	server.shaped_text_add_string(shaped, text, face.get_rids(), 16)
+	for glyph: Dictionary in server.shaped_text_get_glyphs(shaped):
+		var by: RID = glyph["font_rid"]
+		if int(glyph["index"]) == 0 or not by.is_valid() or face.get_rids().has(by):
+			continue
+		var family: String = server.font_get_name(by)
+		var key: String = "%s %d %d %d %d" % [family, server.font_get_weight(by),
+			server.font_get_stretch(by), server.font_get_style(by), server.font_get_face_index(by)]
+		if not _system_fonts.has(key):
+			_system_fonts[key] = _system_face(OS.get_system_font_path(family, server.font_get_weight(by),
+				server.font_get_stretch(by), server.font_get_style(by) & TextServer.FONT_ITALIC != 0),
+				server.font_get_face_index(by), family)
+		for at: int in range(int(glyph["start"]), mini(int(glyph["end"]), text.length())):
+			out[at] = _system_fonts[key]
+	server.free_rid(shaped)
 	return out
 
 
-static func _u16(bytes: PackedByteArray, at: int) -> int:
-	return (bytes[at] << 8) | bytes[at + 1] if at + 1 < bytes.size() else 0
+## The face [param face] of the system's font file [param path], the one
+## of family [param family] where the file holds several: [PdfType, name,
+## object], or [].
+func _system_face(path: String, face: int, family: String) -> Array:
+	var key: String = "%s#%d" % [path, face]
+	if _system_faces.has(key):
+		return _system_faces[key]
+	_system_faces[key] = []
+	if path.is_empty() or not FileAccess.file_exists(path):
+		return []
+	var bytes: PackedByteArray = FileAccess.get_file_as_bytes(path)
+	var type: PdfType = PdfType.read(bytes, face)
+	if type == null or not type.families.has(family):
+		for other: int in PdfType.faces(bytes):
+			var named: PdfType = PdfType.read(bytes, other)
+			if named != null and named.families.has(family):
+				type = named
+				break
+	if type == null:
+		return []
+	_system_faces[key] = [type, "F%d" % (3 + _system_faces.values().filter(
+		func(entry: Array) -> bool: return not entry.is_empty()).size()), _new()]
+	return _system_faces[key]
 
 
-static func _i16(bytes: PackedByteArray, at: int) -> int:
-	var value: int = _u16(bytes, at)
-	return value - 0x10000 if value >= 0x8000 else value
+## A letter no page shows, nor a reader reads: a joiner, a direction
+## mark, a variation selector, a soft hyphen.
+static func _unseen(code: int) -> bool:
+	return code == 0xAD or code >= 0x200B and code <= 0x200F or code >= 0x2060 and code <= 0x2064 \
+		or code >= 0xFE00 and code <= 0xFE0F or code == 0xFEFF or code >= 0xE0100 and code <= 0xE01EF
 
 
-static func _u32(bytes: PackedByteArray, at: int) -> int:
-	return (_u16(bytes, at) << 16) | _u16(bytes, at + 2)
+## A letter that draws nothing: a space, a break, a control.
+static func _blank(code: int) -> bool:
+	return code <= 0x20 or code >= 0x7F and code <= 0xA0 or code == 0x1680 \
+		or code >= 0x2000 and code <= 0x200A or code == 0x2028 or code == 0x2029 \
+		or code == 0x202F or code == 0x205F or code == 0x3000
+
+
+func _miss(code: int) -> void:
+	var letter: String = char(code)
+	if not letter.strip_edges().is_empty() and not missed.has(letter):
+		missed.append(letter)
+
+
+## A glyph's number as the words give it: two bytes (Identity-H).
+static func _code(glyph: int) -> PackedByteArray:
+	return PackedByteArray([glyph >> 8, glyph & 0xFF])
 
 
 ## One page of the booklet, as read (BookletRead.feed).
 func page(drawn: BookletRead.Page) -> void:
 	var content := PackedStringArray()
+	_page_fonts.clear()
 	content.append("%s 0 0 %s 0 %s cm 1 J 1 j" % [_n(PT), _n(-PT), _n(drawn.size.y * PT)])
 	var images := PackedStringArray()
 	var faded: Dictionary = {}
@@ -226,8 +310,10 @@ func page(drawn: BookletRead.Page) -> void:
 	_stream(contents, "/Filter /FlateDecode", squeezed)
 	var number: int = _new()
 	_object(number, ("<< /Type /Page /Parent %d 0 R /MediaBox [0 0 %s %s] /Contents %d 0 R "
-		+ "/Resources << /Font << /F1 %d 0 R /F2 %d 0 R >> /XObject << %s >>%s >> >>") % [
+		+ "/Resources << /Font << /F1 %d 0 R /F2 %d 0 R%s >> /XObject << %s >>%s >> >>") % [
 		_PAGES, _n(drawn.size.x * PT), _n(drawn.size.y * PT), contents, _FONT, _BOLD,
+		"".join(PackedStringArray(_page_fonts.keys().map(func(named: String) -> String:
+			return " /%s %d 0 R" % [named, _page_fonts[named]]))),
 		" ".join(_unique(images)), (" /ExtGState << %s >>" % " ".join(faded.values()))
 			if not faded.is_empty() else ""])
 	_kids.append("%d 0 R" % number)
@@ -259,6 +345,14 @@ static func _how(op: Dictionary, faded: Dictionary) -> String:
 ## Returns the file in memory when it was written there; empty when it was
 ## written to a file, or could not be (see [method ok]).
 func finish(title: String) -> PackedByteArray:
+	for which: int in 2:
+		if _types[which] != null:
+			_write_type(_FONT + which, _types[which])
+	var written: Dictionary = {}
+	for found: Array in _system_faces.values():
+		if not found.is_empty() and not written.has(found[2]):
+			written[found[2]] = true
+			_write_type(found[2], found[0])
 	_object(_PAGES, "<< /Type /Pages /Count %d /Kids [%s] >>" % [pages, " ".join(_kids)])
 	_object(_CATALOG, "<< /Type /Catalog /Pages %d 0 R >>" % _PAGES)
 	var info: int = _new()
@@ -437,19 +531,33 @@ func _rect(content: PackedStringArray, op: Dictionary) -> void:
 			_rounded(at.grow(-width * 0.5), maxf(0.0, radius - width * 0.5))])
 
 
+## Words, each run of letters in one face shown in it: the type's own
+## (_own), else the system's the page draws them in (_other).
 func _text(content: PackedStringArray, op: Dictionary) -> void:
 	var at: Vector2 = op["at"]
-	var spacing: float = op["spacing"]
+	var size: String = _n(op["size"])
 	var text: String = str(op["text"])
+	var shown := PackedStringArray()
+	var font: String = ""
+	var run := PackedByteArray()
+	var bold: bool = op["bold"]
+	var drawn_by: Array = []
 	for index: int in text.length():
 		var code: int = text.unicode_at(index)
-		if code >= 0x80 and code < 0xA0 or code > 0xFF and not MORE.has(code):
-			var letter: String = text[index]
-			if not letter.strip_edges().is_empty() and not missed.has(letter):
-				missed.append(letter)
-	content.append("BT /%s %s Tf %s Tc 1 0 0 -1 %s %s Tm %s rg <%s> Tj ET" % [
-		"F2" if op["bold"] else "F1", _n(op["size"]), _n(spacing), _n(at.x), _n(at.y),
-		_rgb(op["colour"]), win_ansi(str(op["text"])).hex_encode()])
+		var placed: Array = _own(code, bold)
+		if placed.is_empty():
+			if drawn_by.is_empty():
+				drawn_by = _shaped(text, bold)
+			placed = _other(code, bold, drawn_by[index])
+		if placed[0] != font and not run.is_empty():
+			shown.append("/%s %s Tf <%s> Tj" % [font, size, run.hex_encode()])
+			run = PackedByteArray()
+		font = placed[0]
+		run.append_array(placed[1])
+	if not run.is_empty():
+		shown.append("/%s %s Tf <%s> Tj" % [font, size, run.hex_encode()])
+	content.append("BT %s Tc 1 0 0 -1 %s %s Tm %s rg %s ET" % [_n(op["spacing"]), _n(at.x), _n(at.y),
+		_rgb(op["colour"]), " ".join(shown)])
 
 
 func _path(content: PackedStringArray, op: Dictionary) -> void:
@@ -508,9 +616,9 @@ func missed_said() -> String:
 		"it is" if missed.size() == 1 else "they are", "it" if missed.size() == 1 else "them"]
 
 
-## Words in the font's encoding (WinAnsi): Latin-1, and the dashes,
-## quotes, ellipsis and trademark sign; "?" for anything else (said:
-## [member missed]).
+## Words in the reader's Helvetica's encoding (WinAnsi), where the type
+## cannot be read: Latin-1, and the dashes, quotes, ellipsis and trademark
+## sign; "?" for anything else (said: [member missed]).
 static func win_ansi(text: String) -> PackedByteArray:
 	var out := PackedByteArray()
 	out.resize(text.length())
