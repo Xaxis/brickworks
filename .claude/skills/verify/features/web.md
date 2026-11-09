@@ -3132,7 +3132,10 @@ plan with Claude as the client.
   goes on asked of its own `_stud_way` on a dry maker, through `Later`,
   never a copy). That is worked out a little a frame while the model is
   looked at (`BuildSteps.work_out_turns`, from `main._turn_pages_over`: the
-  castle's 400 pages in about 2 s, no frame past 60 ms), never in a page's
+  castle's 400 pages in about 2 s, no frame past 60 ms; the parts' exact
+  shapes read on a worker first, `main._shapes_off_frame`, where there are
+  threads: asked on the frames, 8808-1's viewer read 30 there,
+  watched_frames_probe), never in a page's
   view; a page shown before its turn is known is upright until it is, then
   turns (`turned_over`). The camera looks
   from the turn with the turn's up (`CadCamera.look_from(direction, up)`

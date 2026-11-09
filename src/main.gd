@@ -3457,8 +3457,40 @@ func _turn_pages_over(pages: BuildSteps) -> void:
 	if not pages.asks_the_booklet() or pages.turns_known():
 		return
 	await Later.script_in_background(&"BookletMaker", null)
+	await _shapes_off_frame()
 	if pages == _build_pages:
 		pages.work_out_turns()
+
+
+## Every part's exact shape not read yet, read on a worker and waited for
+## over frames. The booklet asks a step's bricks for theirs (_stud_way), and
+## asked on the frames it read 30 of 8808-1's in the viewer as it came up,
+## a first read 25-60 ms of one (watched_frames_probe). Not in a browser,
+## whose shapes are fetched and which reads none on a worker
+## (Exact.shape_for), nor without threads.
+func _shapes_off_frame() -> void:
+	if OS.has_feature("web") or OS.has_feature("nothreads"):
+		return
+	var unread: Dictionary = {}
+	for brick: BrickWorld.Brick in _world.bricks():
+		if not unread.has(brick.part_id) and not Exact.known(_library, brick.part_id):
+			unread[brick.part_id] = true
+	if unread.is_empty():
+		return
+	var parts: PartLibrary = _library
+	var ids: Array = unread.keys()
+	var stop := WorkerTasks.Stop.new()
+	parts.begin_reading()
+	var task: int = WorkerTasks.add(func() -> void:
+		for id: Variant in ids:
+			if stop.asked():
+				return
+			Exact.shape_for(parts, str(id)), false, "read the parts' exact shapes for the booklet's turns")
+	parts.reading_in(task, stop.ask)
+	while not WorkerThreadPool.is_task_completed(task) and is_inside_tree():
+		await get_tree().process_frame
+	WorkerTasks.collect(task)
+	parts.end_reading(task)
 
 
 ## A page found to be turned over while it is on screen, in Build it or lit
