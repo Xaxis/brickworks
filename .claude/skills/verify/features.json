@@ -2435,14 +2435,6 @@
       "tests": []
     },
     {
-      "id": "cli:silhouette probe",
-      "kind": "cli",
-      "entry": "src/dev/silhouette_probe.gd",
-      "reach": "tools/probe.sh silhouette_probe",
-      "area": "assistant",
-      "tests": []
-    },
-    {
       "id": "cli:site check",
       "kind": "cli",
       "entry": "tools/web/site_check.mjs",
@@ -4067,14 +4059,6 @@
       "entry": "src/net/updates.gd",
       "reach": "tools/probe.sh updater_probe; python3 tools/release.py latest --check dist/<version>/latest.json",
       "area": "release",
-      "tests": []
-    },
-    {
-      "id": "lib:the silhouette laid over the real thing's",
-      "kind": "lib",
-      "entry": "src/ai/silhouette.gd",
-      "reach": "tools/probe.sh silhouette_probe   (headless: five tune-half sets read by their own outline differ by 0 studs and 0 plates; a stud wider and a brick taller said at the right tenth, plates and x or z; a reading given the other way round laid reversed; review_model's outline= leading the whole review and each submit_design with its picture; wrong readings refused; --shots=DIR keeps the pictures)",
-      "area": "assistant",
       "tests": []
     },
     {

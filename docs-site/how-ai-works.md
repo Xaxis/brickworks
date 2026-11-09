@@ -36,7 +36,6 @@ Brickworks hands the AI what a set designer knows:
 - **Figures on joints**: people, animals and heads laid on joints that turn and hold.
 - **Its own best work**: the best-scored earlier design of the nearest subject, and what was faulted in it.
 - **A surface pass** that settles studs, tiles and greebles once the shape stands.
-- **The real thing's outline**: the AI reads the outline of the real thing off a photograph from one side, and Brickworks lays the model's own outline from that side over it and says where the two differ, in studs and plates, before any detail.
 
 <!-- covers
 lib:shapes said as patterns
@@ -48,7 +47,6 @@ lib:figures told of their joints
 lib:recall our own scored designs
 lib:renders for the critique
 lib:studs written on the render
-lib:the silhouette laid over the real thing's
 -->
 
 The AI sees its own work in pictures with the studs counted along each side, so it can judge sizes, and then gets [fresh eyes](/docs/fresh-eyes).

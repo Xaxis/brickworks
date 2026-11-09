@@ -21462,20 +21462,13 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 		# A new design, so its surface and creative passes are still to come;
 		# parts placed for a person have none (FreshEyes asks only of a design).
 		_outside_designed = designing
-		# A new design on a bare baseplate is a new subject: its silhouette is
-		# read again. Built again over the last, it is the same thing's.
-		if bare and designing:
-			_outline_read = null
-			_outline_asked = false
 		_outside_looked = false
 		_outside_unsaved = true
 		_outside_creative_handed = false
 		_outside_creative = {}
 		surface_pass().reset()
 		fresh_eyes().designed(bare)
-	if not designing:
-		return _placed_said(design, report)
-	return _outline_first(_built_from_outside(design, report))
+	return _built_from_outside(design, report) if designing else _placed_said(design, report)
 
 
 ## A design built from outside — Claude over the connector, or a session
@@ -21498,13 +21491,10 @@ var _outside_reviewed: Dictionary = {}
 
 const FROM_OUTSIDE_NEXT := """A first design is never as detailed as a \
 set; this app's own designer always goes on from here, and so should you:
-  1. review_model with no assembly: the silhouette and proportions first. \
-Give it outline=, the real thing's outline read off a photograph of it \
-(find_reference) from one side, as its description says: your model's \
-outline from that side is laid over it, with where they differ in studs and \
-plates. Then the whole model measured against real sets of its size and \
-kind, with what to look for. view_model from two corners to see it. Fix the \
-masses before any detail.
+  1. review_model with no assembly: the silhouette and proportions first — \
+the whole model measured against real sets of its size and kind, with what \
+to look for. view_model from two corners to see it. Fix the masses before \
+any detail.
   2. Then each feature, one at a time{features}: the app lays the best \
 real set's piece for it where it goes and hands it to you with a picture \
 (the whole review hands the first). settle_feature says what it is to be: \
@@ -21788,74 +21778,13 @@ static func _span(from: float, to: float) -> String:
 	return "%s..%s" % [Placement._num(from), Placement._num(to)]
 
 
-## The real thing's silhouette as the session read it off a photograph
-## (review_model's outline=), laid over the model's own from the same side at
-## each whole review and each build (Silhouette). Null until given; a new
-## design on a bare baseplate clears it.
-var _outline_read: Silhouette.Reading = null
-## Whether a whole review has asked for it: asked once, never pressed.
-var _outline_asked: bool = false
-
-const OUTLINE_ASK := ("The silhouette first. Give review_model outline=, the real thing's "
-	+ "outline read off a photograph of it (find_reference) taken square from one side: "
-	+ "{\"from\": \"left\", \"heights\": [11 numbers]} — the side of your model the photograph "
-	+ "shows (front, back, left or right; the front is +z), and the top's height at each tenth "
-	+ "of its length, left to right as the photograph shows it, as shares of that length (a "
-	+ "car's roof is about 0.25 of its length). For a tall thing, \"widths\": its width at "
-	+ "each tenth of its height, ground to top, as shares of its height. bottoms= adds the "
-	+ "underside under each top (a plane's belly, a car's sills); above= leaves out a display "
-	+ "base, in plates. Read it off the photograph, not off your model. The app lays your "
-	+ "model's outline from that side over it and says where they differ in studs and plates, "
-	+ "at each whole review and each submit_design. A subject with no real counterpart has "
-	+ "none: go on without it.")
-
-
-## [param rest] (a String, or the blocks of an answer) after the silhouette
-## laid over the outline read, when one was read; [param rest] alone when not.
-func _outline_first(rest: Variant) -> Variant:
-	var blocks: Array = _silhouette_blocks()
-	if blocks.is_empty():
-		return rest
-	if rest is Array:
-		return blocks + (rest as Array)
-	var text: String = str(rest)
-	return blocks if text.is_empty() else blocks + [{"type": "text", "text": text}]
-
-
-## The model's outline from the side the outline was read from, laid over
-## it: the words, then the picture. Empty with nothing read or nothing built.
-func _silhouette_blocks() -> Array:
-	if _outline_read == null or builder == null or library == null:
-		return []
-	var outline: Silhouette.Outline = Silhouette.of_bricks(_bricks_inside({}), builder,
-		library, _outline_read.side, _outline_read.above)
-	if outline.is_empty():
-		return [{"type": "text", "text": ("The silhouette: nothing of the model stands %s, so "
-			+ "there is no outline to lay over the one read.") % (
-				"above %s plates" % Silhouette._n(_outline_read.above)
-				if _outline_read.above > 0.0 else "on the baseplate")}]
-	var laid: Silhouette.Comparison = Silhouette.compare(outline, _outline_read)
-	var blocks: Array = [{"type": "text", "text": Silhouette.said(laid)}]
-	var image: Image = Silhouette.picture(laid)
-	if image != null:
-		blocks.append({"type": "image", "source": {"type": "base64", "media_type": "image/png",
-			"data": Marshalls.raw_to_base64(image.save_png_to_buffer())}})
-	return blocks
-
-
 ## The review this app's own designer gives a model, for a session doing
 ## its own designing: the whole, or one named assembly close up.
-func review(assembly: String, feature: String = "", creative: bool = false,
-		outline: Variant = null) -> Variant:
+func review(assembly: String, feature: String = "", creative: bool = false) -> Variant:
 	# A coroutine for the whole model's check below: callers await it.
 	var everything: Array[BrickWorld.Brick] = _bricks_inside({})
 	if everything.is_empty():
 		return "The baseplate is bare: there is nothing to review."
-	if outline != null:
-		var reading: Silhouette.Reading = Silhouette.read(outline)
-		if not reading.error.is_empty():
-			return "Not read: %s Nothing else was done." % reading.error
-		_outline_read = reading
 	if creative:
 		return _creative_review()
 	if not feature.strip_edges().is_empty():
@@ -21884,9 +21813,6 @@ func review(assembly: String, feature: String = "", creative: bool = false,
 		var said := PackedStringArray()
 		said.append("The whole model: %s. %s." % [_texture(everything),
 			report["summary"]])
-		if _outline_read == null and not _outline_asked and _outside_designed:
-			_outline_asked = true
-			said.append(OUTLINE_ASK)
 		var faults: String = _exact_faults_said(report)
 		if not faults.is_empty():
 			said.append(faults)
@@ -21911,8 +21837,8 @@ func review(assembly: String, feature: String = "", creative: bool = false,
 		if not left.is_empty():
 			said.append("Once the silhouette is right, the first feature, the %s — the app "
 				% left[0] + "has laid a real set's piece for it:")
-			return _outline_first(_joined("\n\n".join(said), await _review_feature(left[0])))
-		return _outline_first("\n\n".join(said))
+			return _joined("\n\n".join(said), await _review_feature(left[0]))
+		return "\n\n".join(said)
 	var one: Dictionary = {}
 	for named: Dictionary in _outside_assemblies:
 		if str(named.get("name", "")).to_lower() == assembly.strip_edges().to_lower():

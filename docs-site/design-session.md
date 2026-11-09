@@ -17,7 +17,7 @@ Whichever assistant designs, Claude through the connector, ChatGPT, Claude Code,
 
 1. **Scale and references.** `plan_scale` with the real thing's length, `find_reference` for a picture of anything real, and `how_real_sets_build_this` for what real sets of the kind are built from, and the faults found in earlier designs of it.
 2. **The silhouette first.** `submit_design` with the main masses, the model's assemblies (what a person would name: the gatehouse, each tower) and its features (what the subject is known by: an owl's eyes, a car's grille), each with where it goes. The app builds it, checks it, and refuses what does not hold together, part by part.
-3. **Review.** `review_model` sets the silhouette and proportions beside real sets. Given `outline`, the real thing's outline read off a photograph from one side, it lays the model's own outline from that side over it, in a picture and in words: where they differ, in studs and plates, and at what place along it. The masses are fixed before any detail.
+3. **Review.** `review_model` sets the silhouette and proportions beside real sets; the masses are fixed before any detail.
 4. **Each feature.** The app lays a real set's piece where the feature goes, and `settle_feature` accepts it, asks for the next, rejects it, or says the assistant built it itself.
 5. **Each assembly**, looked at with `review_model` and detailed with `edit_model`.
 6. **The surface pass.** `review_model` with `surface`: the app tiles open studs, steps slopes and rounds hard edges, and `settle_surface` settles each finding.
