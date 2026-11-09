@@ -5001,6 +5001,20 @@
       "entry": "src/net/palette_tool.gd",
       "reach": "tools/probe.sh mcppalettes && PROBE_SIZE=1400x900 tools/probe.sh mcppalettes   (palettes reads the person's palettes, read-only; edit_palette make keeps twelve parts of the model each in its colour and a gatepost as the sub-assembly Gatepost in 1 call, the bin's Palettes shows it and its file entries are the bin's own Add rows' byte for byte but ids and times; place puts Gatepost down whole in another model in 1 call, each part to 0.01 LDU, low corner where asked, one assembly, one undo; take_out, rename, delete, agreed=true for a sub-assembly out and a delete; pictures in shots/mcppalettes/)",
       "area": "mcp"
+    },
+    {
+      "kind": "ui",
+      "label": "moving renders kept as a GIF",
+      "entry": "src/render/animated_gif.gd",
+      "reach": "tools/probe.sh video2   (by hand: File, Render…, Kept as GIF, then Render turntable, Render animation or Render building: one 256-colour palette for the whole video, an ordered dither, at most 640 px across and made to fit 8 MB by fewer frames a second then a smaller picture; render_model format=gif over MCP; node tools/web/gif_plays.mjs FILE.gif says what Chromium decodes)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "video2 probe",
+      "entry": "src/dev/video2_probe.gd",
+      "reach": "tools/probe.sh video2 [OUT_DIR]; PROBE_SIZE=1400x900 tools/probe.sh video2 OUT_DIR   (windowed, on the GPU, signed in as a throwaway account: Pods' building video by hand and over MCP, the first step's parts 40% or more of the frame's height off its alpha, the last frame the whole model as a picture draws it; the car's 36-frame turntable kept as a GIF by hand and over MCP: GIF89a, 256 colours, looping, 8 MB or less, played by Chromium (tools/web/gif_plays.mjs) 36 frames that change, its first frame within a few levels of the frame it was made of; Kept as in sight; pictures in OUT_DIR)",
+      "area": "view"
     }
   ]
 }
