@@ -141,6 +141,9 @@ const ACTS = [
 const named = new Set(ONLY || ACTS.map((act) => act.id));
 for (const act of ACTS) if (named.has(act.id) && act.needs) named.add(act.needs);
 const wanted = ACTS.filter((act) => named.has(act.id));
+// Where an act done in over twice the presses only for being three taps deep
+// in More belongs: More's rows (a command on a part's actions, or a row of its own).
+const MORE_FILE = "src/ui/phone_shell.gd (More: every command is More, its menu and its row)";
 // The panel an act leaves open for the next, which goes on in it: the screen
 // is put back only after the last of them.
 const goesOn = (act, next) => Boolean(next && (next.needs === act.id || (act.needs && next.needs === act.needs)));
@@ -199,7 +202,12 @@ for (const act of wanted) {
     if (!row.done || over) stops.push(`${size}: ${row.why}`);
     verdicts.push({ act: act.id, size, done: row.done, over, ran: row.ran });
   }
-  const file = stops.length ? `${stops.join("; ")} — **${act.file}**` : "";
+  // Over twice only for More's three taps: the fix is More's, not the act's.
+  const viaMore = SIZES.every((size) => {
+    const row = results[size]?.rows?.[act.id];
+    return !row || (row.done && row.more);
+  });
+  const file = stops.length ? `${stops.join("; ")} — **${viaMore ? MORE_FILE : act.file}**` : "";
   lines.push(`| ${act.what} | ${act.desktop}: ${act.how} | ${cells.join(" | ")} | ${file} |`);
 }
 lines.push("", "## What each act did", "");
@@ -288,9 +296,13 @@ async function walk(width, height, ratio, result) {
       }
       const tally = P.end();
       const ranOk = !result.threw && !result.timedOut;
+      const over = result.done && tally.n > act.desktop * 2;
       const why = result.threw ? `it could not run: ${result.threw.split("\n")[0]}`
-        : result.timedOut ? `it ran out of time (${Math.round(ACT_MS / 1000)} s)` : (result.why || tally.said.at(-1) || "");
-      rows[act.id] = { done: Boolean(result.done), taps: tally.n, ran: ranOk, why,
+        : result.timedOut ? `it ran out of time (${Math.round(ACT_MS / 1000)} s)`
+          : over ? `${tally.n} taps for the desktop's ${act.desktop}${tally.more
+            ? `, the command three taps deep in More (${tally.said.filter((l) => / the row$/.test(l)).join("; ")})` : ""}`
+            : result.done ? "" : (result.why || tally.said.at(-1) || "");
+      rows[act.id] = { done: Boolean(result.done), taps: tally.n, ran: ranOk, why, more: Boolean(tally.more),
         said: tally.said, seconds: Math.round((Date.now() - began) / 1000) };
       console.log(`  ${result.done ? "done" : ranOk ? "NOT " : "FAIL"}  ${act.id}: ${act.what}: ${tally.n} taps `
         + `(the desktop ${act.desktop})${result.done ? "" : ` — ${why}`}  [${Math.round((Date.now() - t0) / 1000)}s]`);
@@ -398,10 +410,69 @@ function person(page, cdp, width, height, size, choosers) {
     await page.waitForTimeout(400);
   };
   // A control pressed where it has come to rest (browser.mjs clickStill).
+  // Brought into sight first when it is past the screen's edge (reach).
   const press = async (name, seconds = 30) => {
-    const at = await clickStill(page, name, { find: (n) => where(n, seconds), optional: true, act: tap });
+    const first = await where(name, seconds);
+    if (first && (first.y + first.h / 2 > height || first.y - first.h / 2 < 0)) await reach(name, 2);
+    const at = first && await clickStill(page, name, { find: (n) => where(n, 5), optional: true, act: tap });
     if (!at) note(`"${name}" is not on the screen`);
     return Boolean(at);
+  };
+  // A row of the sheet it is in brought into sight by a finger's drags, as
+  // a person scrolls a part's actions to Move to step… under the screen's
+  // foot, and read again once it stands still (Main._page_places). Each drag
+  // is counted. Its place, or null when it is not there.
+  const reach = async (name, seconds = 10) => {
+    let at = await where(name, seconds);
+    for (let n = 0; at && n < 8; n++) {
+      const named = await controls();
+      const panel = Object.entries(named).find(([k, v]) => k.startsWith("phone_panel_")
+        && Math.abs(v.x - at.x) <= v.w / 2 && Math.abs(v.y - at.y) <= v.h / 2);
+      const head = panel ? named[panel[0].replace("phone_panel_", "phone_sheet_")] : null;
+      const box = panel ? panel[1] : { x: width / 2, y: height / 2, w: width, h: height };
+      const top = Math.max(0, head ? head.y + head.h / 2 : box.y - box.h / 2) + 4;
+      const bottom = Math.min(height, box.y + box.h / 2) - 4;
+      if (at.y - at.h / 2 >= top && at.y + at.h / 2 <= bottom) return at;
+      const span = (bottom - top) * 0.6;
+      const by = at.y + at.h / 2 > bottom ? -Math.min(at.y + at.h / 2 - bottom + 30, span)
+        : Math.min(top - (at.y - at.h / 2) + 30, span);
+      const from = by < 0 ? bottom - 12 : top + 12;
+      await drag({ x: box.x, y: from }, { x: box.x, y: from + by }, 16, 400);
+      at = await where(name, 5);
+    }
+    return at;
+  };
+  // A row of a sheet tapped once it is in sight.
+  const pressRow = async (name) => {
+    const at = await reach(name);
+    if (!at) {
+      note(`"${name}" is not on the screen`);
+      return false;
+    }
+    return press(name, 5);
+  };
+  // A button of a panel that stands over the model's lower half (Motions,
+  // Simulate), pressed as a person presses one under the panel's fold: its
+  // list dragged up a little first when it is low in the panel, where the
+  // panel's own rows stand over it, and again when a tap brought nothing.
+  // Every drag and tap is counted. [top] names the panel's Close, whose
+  // place is the panel's top. True once [test] says it took.
+  const pressIn = async (name, top, test, tries = 4) => {
+    for (let n = 0; n < tries; n++) {
+      const at = await where(name, n ? 4 : 15);
+      const head = await where(top, 5);
+      const foot = ((await controls()).phone_parts || { y: height, h: 0 });
+      const floor = foot.y - foot.h / 2 - height * 0.12;
+      if (at && head && at.y - at.h / 2 > head.y + head.h / 2 && at.y + at.h / 2 < floor) {
+        await tap(at);
+        if (await test()) return true;
+      }
+      if (!head) return false;
+      const from = { x: width * 0.3, y: Math.min(floor, head.y + height * 0.16) };
+      await drag(from, { x: from.x, y: from.y - height * 0.1 }, 14, 400);
+    }
+    note(`"${name}" never took a tap in its panel`);
+    return false;
   };
   const sheets = async () => (await ask())?.phone?.sheets || [];
   // What the screen shows, asked of the app: its targets and words.
@@ -498,6 +569,13 @@ function person(page, cdp, width, height, size, choosers) {
         if (at.y - at.h / 2 >= top && at.y + at.h / 2 <= bottom) {
           tally = counted;
           count((opened ? 1 : 0) + (menuOpened ? 1 : 0));
+          if (tally) {
+            tally.more = true;
+            const menu = await openMenu();
+            note(`${row}: ${[opened ? "More" : "", menuOpened ? (menu ? `its menu (${menu})` : "its menu") : "",
+              drags ? `${drags} drag${drags > 1 ? "s" : ""} to bring it into sight` : "", "the row"]
+              .filter(Boolean).join(", ")}`);
+          }
           await tap(at);
           await page.waitForTimeout(1200);
           return true;
@@ -551,6 +629,9 @@ function person(page, cdp, width, height, size, choosers) {
       await page.waitForTimeout(500);
     }
     if ((await state()).cut?.on) await more("cut");
+    // The timeline, which the page editor is opened from: over the foot, it
+    // covers the model's lowest parts.
+    if (Object.keys((await state()).timeline || {}).length) await more("timeline");
     // The ruler, what is in hand and what is selected let go, as Esc does.
     for (let n = 0; n < 3; n++) {
       const s = await state();
@@ -583,13 +664,21 @@ function person(page, cdp, width, height, size, choosers) {
   };
   // A tap that put the part in hand down, near a point: a step aside if the
   // spot takes nothing. Every tap is counted, the missed ones said.
+  // Where each part was put down, for a person's next tap on it when the
+  // app's own look finds no part (Layout picks parts whose top a line from
+  // the eye meets first: a flat row seen low can have none).
+  const laid = [];
   const putDown = async (at) => {
     const before = (await state()).bricks || 0;
     let missed = 0;
     for (const [dx, dy] of [[0, 0], [14, 0], [0, 14], [-14, 0], [0, -14], [28, 10]]) {
-      await tap({ x: at.x + dx, y: at.y + dy });
+      const spot = { x: at.x + dx, y: at.y + dy };
+      await tap(spot);
       const s = await until((now) => (now.bricks || 0) > before, 6);
-      if ((s.bricks || 0) > before) return { put: s.put, missed };
+      if ((s.bricks || 0) > before) {
+        laid.push(spot);
+        return { put: s.put, missed };
+      }
       missed += 1;
     }
     return { put: null, missed };
@@ -600,7 +689,12 @@ function person(page, cdp, width, height, size, choosers) {
     const view = (await controls()).view;
     return view ? { x: view.x, y: view.y } : { x: width / 2, y: height / 2 };
   };
-  const partsOnScreen = async () => ((await layout()) || {}).targets || [];
+  const partsOnScreen = async (most = 1) => {
+    const found = ((await layout()) || {}).targets || [];
+    if (found.length >= most || laid.length < most) return found;
+    note(`the app's look found ${found.length} parts; tapped where they were put down`);
+    return laid.slice(-Math.max(most, 4)).reverse();
+  };
   // A model opened as a person opens one from their computer (not counted):
   // More, Open…, From a file on this computer…, the file chosen.
   const openFile = async (file, count) => {
@@ -628,6 +722,7 @@ function person(page, cdp, width, height, size, choosers) {
   };
   const openModel = async (which) => {
     await tidy();
+    laid.length = 0;
     if (which === "car") {
       const s = await state();
       if ((s.bricks || 0) !== 61 && !(await openFile(CAR, 61))) throw new Error("the car would not open");
@@ -654,7 +749,7 @@ function person(page, cdp, width, height, size, choosers) {
       const parts = await partsOnScreen();
       if (!parts.length) return { why: "no part of the car on the screen to hold" };
       await hold(parts[Math.min(1, parts.length - 1)]);
-      if (!(await press("phone_row_step_to", 10))) return { why: "the part's actions have no Move to step…" };
+      if (!(await pressRow("phone_row_step_to"))) return { why: "the part's actions have no Move to step…" };
       let told = await ask();
       for (let n = 0; n < 20 && !(told?.dialogs || []).some((d) => /Move to step/.test(d)); n++) {
         await page.waitForTimeout(500);
@@ -778,7 +873,11 @@ function person(page, cdp, width, height, size, choosers) {
     async page_open() {
       if (!(await moreRow("timeline"))) return { why: "More has no Timeline" };
       await page.waitForTimeout(1500);
-      if (!(await press("booklet_lay_out", 15))) return { why: "the timeline has no Lay out the page… on the screen" };
+      // The timeline's own Lay out the page… where it shows one (its
+      // Booklet row, for the author's steps), else More's.
+      const own = await where("booklet_lay_out", 5);
+      if (own) await press("booklet_lay_out", 5);
+      else if (!(await moreRow("booklet_lay_out"))) return { why: "neither the timeline nor More has Lay out the page…" };
       const s = await until((now) => (now.page_editor?.page || 0) > 0, 30);
       note(`page ${s.page_editor?.page}: ${Object.keys(s.page_editor?.items || {}).join(", ")}`);
       return { done: (s.page_editor?.page || 0) > 0, why: "the page editor did not open" };
@@ -855,7 +954,7 @@ function person(page, cdp, width, height, size, choosers) {
       let parts = await partsOnScreen();
       if (!parts.length) return { why: "the plate is not on the screen" };
       await hold(parts[0]);
-      if (!(await press("phone_row_split_parts", 10))) return { why: "the plate's actions have no Split" };
+      if (!(await pressRow("phone_row_split_parts"))) return { why: "the plate's actions have no Split" };
       let s = await until((now) => (now.bricks || 0) > 1, 15);
       const split = s.bricks || 0;
       note(`split: ${split} parts (${(s.parts || []).join(", ")})`);
@@ -864,7 +963,7 @@ function person(page, cdp, width, height, size, choosers) {
       s = await until((now) => now.selected === split, 6);
       parts = await partsOnScreen();
       await hold(parts[0]);
-      if (!(await press("phone_row_merge_parts", 10))) return { why: "the pieces' actions have no Merge" };
+      if (!(await pressRow("phone_row_merge_parts"))) return { why: "the pieces' actions have no Merge" };
       s = await until((now) => now.bricks === 1, 15);
       note(`merged: ${s.bricks} part (${(s.parts || []).join(", ")}); said "${s.said}"`);
       return { done: s.bricks === 1 && (s.parts || [])[0] === "3020", why: `Merge left ${s.bricks} parts` };
@@ -876,7 +975,7 @@ function person(page, cdp, width, height, size, choosers) {
       // The row's Turn first, as a person tries it: it turns by the turn
       // step, 90° out of the box, with no way to choose another by finger.
       await hold(parts[0]);
-      if (!(await press("phone_row_show_properties", 10))) return { why: "the part's actions have no Properties" };
+      if (!(await pressRow("phone_row_show_properties"))) return { why: "the part's actions have no Properties" };
       const field = await where("prop_turn", 15);
       if (!field) return { why: "Properties shows no Turn field a finger reaches" };
       await tap(field);
@@ -906,7 +1005,7 @@ function person(page, cdp, width, height, size, choosers) {
         if (down.put) heights.push(down.put.pose[1]);
       }
       // The second course on the first: a tap on each brick's top.
-      const tops = (await partsOnScreen()).slice(0, 4);
+      const tops = (await partsOnScreen(4)).slice(0, 4);
       for (const top of tops) {
         const down = await putDown({ x: top.x, y: top.y });
         missed += down.missed;
@@ -926,7 +1025,7 @@ function person(page, cdp, width, height, size, choosers) {
     },
 
     async paint() {
-      const parts = (await partsOnScreen()).slice(0, 3);
+      const parts = (await partsOnScreen(3)).slice(0, 3);
       if (parts.length < 3) return { why: "fewer than three parts on the screen" };
       let code = 0;
       let painted = 0;
@@ -955,7 +1054,7 @@ function person(page, cdp, width, height, size, choosers) {
       // Read back, not counted: the same colour selected.
       const check = await untimed(async () => {
         await hold(parts[0]);
-        if (!(await press("phone_row_select_colour", 8))) return -1;
+        if (!(await pressRow("phone_row_select_colour"))) return -1;
         return (await until((now) => now.selected > 1, 6)).selected;
       });
       note(`${painted} of 3 painted ${code === 4 ? "red" : "blue"}, one at a time (a tap in Select replaces the `
@@ -967,21 +1066,27 @@ function person(page, cdp, width, height, size, choosers) {
       if (!(await moreRow("pose"))) return { why: "More has no Motions…" };
       let m = await untilRead("brickworksMotions", (now) => (now.suggested || []).length > 0 || (now.motions || []).length > 0, 90);
       note(`suggested ${JSON.stringify(m.suggested || []).slice(0, 80)}`);
-      if (!(await press("motion_keep_0", 15))) return { why: "the panel's Keep is not on the screen" };
-      m = await untilRead("brickworksMotions", (now) => (now.motions || []).length > 0, 15);
-      if (!(m.motions || []).length) return { why: "Keep kept no motion" };
-      if (!(await press("motion_play_0", 10))) return { why: "the motion's Play is not on the screen" };
-      m = await untilRead("brickworksMotions", (now) => now.playing || /^Played/.test(now.status || ""), 60);
+      const kept = async () => ((await untilRead("brickworksMotions", (now) => (now.motions || []).length > 0, 6)).motions || []).length > 0;
+      if (!(await pressIn("motion_keep_0", "motions_close", kept))) return { why: "the suggestion's Keep took no tap" };
+      const played = async () => {
+        const now = await untilRead("brickworksMotions", (one) => one.playing || /^Played/.test(one.status || ""), 20);
+        return Boolean(now.playing || /^Played/.test(now.status || ""));
+      };
+      if (!(await pressIn("motion_play_0", "motions_close", played))) return { why: "the motion's Play took no tap" };
+      m = await untilRead("brickworksMotions", (now) => !now.playing, 60);
       note(`"${String(m.status || "").slice(0, 100)}"`);
-      return { done: Boolean(m.playing || /^Played/.test(m.status || "")), why: "Play played nothing" };
+      return { done: true };
     },
 
     async motions_record() {
       const kept = ((await read("brickworksMotions")).motions || []).length;
-      if (!(await press("motions_new", 10))) return { why: "New motion is not on the screen" };
-      if (!(await press("motions_record", 10))) return { why: "Record is not on the screen" };
-      let m = await untilRead("brickworksMotions", (now) => now.recording, 10);
-      if (!m.recording) return { why: "Record did not listen" };
+      const editing = async () => (await untilRead("brickworksMotions", (now) => now.view === "edit", 6)).view === "edit";
+      if (!(await pressIn("motions_new", "motions_close", editing))) return { why: "New motion took no tap" };
+      // Its name, typed over, is left as offered: the keyboard put down.
+      await untimed(() => page.keyboard.press("Escape").catch(() => {}));
+      const listening = async () => Boolean((await untilRead("brickworksMotions", (now) => now.recording, 6)).recording);
+      if (!(await pressIn("motions_record", "motions_close", listening))) return { why: "Record took no tap" };
+      let m = await read("brickworksMotions");
       // A part of the model dragged across the view, as a door is swung: the
       // parts the app names on the screen, in turn, until one moves.
       const parts = await partsOnScreen();
@@ -989,8 +1094,9 @@ function person(page, cdp, width, height, size, choosers) {
         await drag({ x: part.x, y: part.y }, { x: part.x + 50, y: part.y + 20 }, 16, 300);
         note(`dragged ${part.part}: "${String((await read("brickworksMotions")).status || "").slice(0, 80)}"`);
       }
-      await press("motions_record", 10);
-      m = await untilRead("brickworksMotions", (now) => !now.recording, 10);
+      const stopped = async () => !(await untilRead("brickworksMotions", (now) => !now.recording, 6)).recording;
+      await pressIn("motions_record", "motions_close", stopped);
+      m = await read("brickworksMotions");
       const keys = (m.joints || []).reduce((n, j) => n + (Array.isArray(j.keys) ? j.keys.length : Number(j.keys || 0)), 0);
       note(`${(m.motions || []).length} motions (was ${kept}); ${keys} keys; "${String(m.status || "").slice(0, 100)}"`);
       return { done: keys >= 2, why: `a finger's drag in the view recorded ${keys} keys ("${String(m.status || "").slice(0, 80)}")` };
@@ -1000,7 +1106,14 @@ function person(page, cdp, width, height, size, choosers) {
       let m = await read("brickworksMotions");
       if (m.view !== "edit" && (m.motions || []).length) await untimed(() => press("motion_edit_0", 8));
       m = await untilRead("brickworksMotions", (now) => (now.joints || []).length > 0, 10);
-      const slider = await where("motions_joint_0", 8);
+      let slider = await where("motions_joint_0", 8);
+      const head = await where("motions_close", 5);
+      const foot = (await controls()).phone_parts || { y: height, h: 0 };
+      for (let n = 0; n < 4 && slider && head && slider.y > foot.y - foot.h / 2 - height * 0.12; n++) {
+        const from = { x: width * 0.15, y: head.y + height * 0.16 };
+        await drag(from, { x: from.x, y: from.y - height * 0.1 }, 14, 400);
+        slider = await where("motions_joint_0", 5);
+      }
       if (!slider) return { why: "no joint's slider on the screen" };
       const was = JSON.stringify((m.joints || [])[0]?.place);
       await drag({ x: slider.x - slider.w * 0.3, y: slider.y }, { x: slider.x + slider.w * 0.3, y: slider.y });
@@ -1013,8 +1126,9 @@ function person(page, cdp, width, height, size, choosers) {
       if (!(await moreRow("simulate"))) return { why: "More has no Simulate mechanism…" };
       let s = await untilRead("brickworksSimulate", (now) => now.open, 30);
       if (!s.open) return { why: "Simulate did not open" };
-      if (!(await press("simulate_play", 15))) return { why: "Simulate's Play is not on the screen" };
-      s = await untilRead("brickworksSimulate", (now) => now.playing, 15);
+      const playing = async () => Boolean((await untilRead("brickworksSimulate", (now) => now.playing, 6)).playing);
+      if (!(await pressIn("simulate_play", "simulate_close", playing))) return { why: "Play took no tap" };
+      s = await read("brickworksSimulate");
       note(`playing ${s.playing}; driver ${JSON.stringify(s.driver)}; "${String(s.status || s.readout || "").slice(0, 100)}"`);
       return { done: Boolean(s.playing), why: "Play did not play" };
     },
@@ -1022,8 +1136,18 @@ function person(page, cdp, width, height, size, choosers) {
     async simulate_scrub() {
       let s = await read("brickworksSimulate");
       if (!s.open) return { why: "Simulate is not open" };
-      if (s.playing) await untimed(() => press("simulate_play", 5));
-      const slider = await where("simulate_scrub", 10);
+      if (s.playing) {
+        await untimed(() => pressIn("simulate_play", "simulate_close", async () =>
+          !(await untilRead("brickworksSimulate", (now) => !now.playing, 6)).playing));
+      }
+      let slider = await where("simulate_scrub", 10);
+      const head = await where("simulate_close", 5);
+      const foot = (await controls()).phone_parts || { y: height, h: 0 };
+      for (let n = 0; n < 4 && slider && head && slider.y > foot.y - foot.h / 2 - height * 0.12; n++) {
+        const from = { x: width * 0.15, y: head.y + height * 0.16 };
+        await drag(from, { x: from.x, y: from.y - height * 0.1 }, 14, 400);
+        slider = await where("simulate_scrub", 5);
+      }
       if (!slider) return { why: "the cycle's slider is not on the screen" };
       s = await read("brickworksSimulate");
       const was = JSON.stringify([s.turns, s.readout]);
