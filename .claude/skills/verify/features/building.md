@@ -1020,7 +1020,17 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   button's words, a field's placeholder): the toolbar's words and key
   ("Select, V"), a part tile's title and number ("Brick 2 x 4, 3001"), a
   colour's name, a technique's, every dialog's sliders, numbers and fields;
-  `Access` names the parts of Godot's own file dialog it leaves unnamed. The
+  one made with no name (a number, a slider, a choice, a field with no
+  placeholder, a button drawn as a picture) `Access.name_from_words` names
+  as it is made from the words beside it: its label in the form, else its
+  tooltip's first line, else the label before it in its row (a button: its
+  tooltip's first line), again when the keys come to it unless someone
+  named it since; Godot says it through the translation, so in German in
+  German (a11ynames, 2026-11-09: My collection's How many had a tooltip
+  alone). A choice says what is chosen, so it is always named. What's
+  This? reads a name from a tooltip as none of its own. `Access` names the
+  parts of Godot's own file dialog it leaves unnamed (the favourites'
+  arrows, the bars between its panes, the kind of file). The
   status line is a live region, read out as it is said. F6 from the model
   goes into the frame, and Tab does while a screen reader runs (without one
   Tab folds the panels, as before: `FocusGuard._tab_in`): the name field,
@@ -1045,9 +1055,20 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   width and goes to pictures alone where its words do not fit,
   `PhoneShell._share_row`). Settings, Reduce motion: no
   build animation, no shimmer on a waiting picture, no camera easing.
-  Checks: `tools/probe.sh a11y_names_probe` (every operable control in the
-  frame, the bin's tabs, a selection and 30-odd dialogs and panels has a
-  name: 0 of 1,895 without; 666 of 1,888 on m166), `a11y_keys_probe` (from
+  Checks: `tools/probe.sh a11y_names_probe` (windowed, 1400x900 and
+  `PROBE_SIZE=1280x720`, signed in as a throwaway account through the
+  sign-in screen, needs .env: every operable control has a name in English
+  and in German, German as the app's own de.po reads it, then the window
+  put in German and read again; through the sign-in screen, the frame, the
+  bin's tabs, a selection and the dialogs it asks for, every dialog and
+  panel the menus open, the assistant's with it shown, My collection's
+  rows with parts owned, a11y_modal_probe's and dialog_look_probe's
+  dialogs and every other dialog in the window, 114 walked; a name a screen
+  reader alone hears with no German is no name, a part's, colour's or
+  model's name and words drawn on the control excepted; `-- --shots=DIR`
+  keeps a picture of each walk. 0 of 2,816 without, in either language, at 1400x900; on pre261
+  45 of 2,792 without and 273 without in German, How many among them;
+  666 of 1,888 on m166), `a11y_keys_probe` (from
   launch by keys alone: toolbar, a part, put down, a colour, the view cube),
   `a11y_motion_probe` (each of the three moving, then still),
   `a11y_size_probe` (85% and 150% at 1280 x 800, nothing off the window,
