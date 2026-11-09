@@ -311,7 +311,10 @@ def retire(where: Path, name: str) -> None:
 def take_app(only: list[str], raw: Path, given: Path | None) -> int:
     where, name = (given, "") if given else snapshot()
     try:
-        cmd = ["tools/probe.sh", "docs_shots_probe", "--", f"--out={raw}", f"--manifest={MANIFEST}"]
+        # The snapshot's own manifests, as its code is: a manifest edited
+        # here while the run goes changes none of its pictures.
+        manifest = where / MANIFEST.relative_to(ROOT)
+        cmd = ["tools/probe.sh", "docs_shots_probe", "--", f"--out={raw}", f"--manifest={manifest}"]
         if only:
             cmd.append("--only=" + ",".join(only))
         return run(cmd, cwd=where)

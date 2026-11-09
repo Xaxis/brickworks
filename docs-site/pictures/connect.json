@@ -73,7 +73,7 @@
     }
    ],
    "crop": "_chat._connector_form",
-   "pad": 8,
+   "pad": 4,
    "alt": "Or connect your AI, at the foot of the assistant panel: Your AI set to Claude, what each Claude plan needs, and the Connect Claude button.",
    "caption": "Tools › Connect your AI…: choose your app, then Connect.",
    "features": [
