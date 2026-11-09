@@ -1058,10 +1058,13 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   `org.a11y.Status.ScreenReaderEnabled` as Orca does, so Godot's own "auto"
   accessibility comes on, and reads each window back over AT-SPI as Orca
   finds it: pointed at (its title bar's middle and its own) and read up
-  through the parents, and from the last focus event. Not by listing the
-  window's children: AccessKit 0.22 ends that list at Model name, where an
-  empty spacer is followed by the hidden Claude tab, so a screen reader
-  browsing the window hears only the menus (a finding for its own unit);
+  through the parents, or else from the last focus event (a panel put away
+  stays in the tree: Godot 4.7.2 does not tell AccessKit a Control was
+  hidden, `CanvasItem::set_visible`, and over Clear the baseplate's
+  question the pointer finds a panel put away before it). Not by listing the window's
+  children: AccessKit 0.22 ends that list at Model name, where an empty
+  spacer is followed by the hidden Claude tab, so a screen reader browsing
+  the window hears only the menus (both findings for units of their own);
   signed in as
   a throwaway account through the sign-in screen, needs .env: About, New's
   question, Import's chooser, Save as and its "replace it?", Reference

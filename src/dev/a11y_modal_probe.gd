@@ -297,6 +297,8 @@ func _judge(way: String, tree: Dictionary, over: Array[Window]) -> void:
 		_check("%s: the tree was read (%s)" % [way, tree["error"]], false)
 		return
 	var hits: Array = tree.get("hits", [])
+	var focus: Variant = tree.get("focus")
+	var focused: Array = focus if focus is Array else []
 	var top: String = ""
 	for n: int in over.size():
 		var sub: Window = over[n]
@@ -314,15 +316,22 @@ func _judge(way: String, tree: Dictionary, over: Array[Window]) -> void:
 			found_there.append(_said(at))
 			if node.is_empty():
 				node = _window_named(at, title)
+		# Pointed at, or else heard through the focus inside it: a panel put
+		# away stays in the tree (Godot does not tell AccessKit a Control
+		# was hidden), and over a dialog it is what the pointer finds.
+		var found_by: String = "pointed at"
 		if node.is_empty():
-			_check("%s: “%s” (%s) is in the tree a screen reader reads (pointed at, found: %s)"
-				% [way, title, sub.get_class(), " / ".join(found_there)], false)
+			node = _window_named(focused, title)
+			found_by = "by its focus"
+		if node.is_empty():
+			_check("%s: “%s” (%s) is in the tree a screen reader reads (pointed at, found: %s; the focus: %s)"
+				% [way, title, sub.get_class(), " / ".join(found_there), _said(focused)], false)
 			continue
 		var modal: bool = bool(node.get("modal"))
-		_check("%s: “%s”, %s, %s, is %s to a screen reader (%s, %s)" % [way, title,
+		_check("%s: “%s”, %s, %s, is %s to a screen reader (%s, %s, %s)" % [way, title,
 			sub.get_class(), "a question of its dialog" if own_question else ("holding the window"
 			if holds else "beside the model"), "modal" if holds else "not modal",
-			node.get("role"), "MODAL" if modal else "not modal"], modal == holds)
+			node.get("role"), "MODAL" if modal else "not modal", found_by], modal == holds)
 		var key: String = title if not own_question else "%s (its question)" % title
 		if holds:
 			_held_seen[key] = bool(_held_seen.get(key, true)) and modal
@@ -332,8 +341,6 @@ func _judge(way: String, tree: Dictionary, over: Array[Window]) -> void:
 	if over.is_empty():
 		print("    %s: no window over the app (a panel of its own)" % way)
 	if not top.is_empty():
-		var focus: Variant = tree.get("focus")
-		var focused: Array = focus if focus is Array else []
 		_check("%s: the focus a screen reader hears is inside “%s” (%s)" % [way, top,
 			_said(focused) if not focused.is_empty() else "nothing focused"],
 			not _window_named(focused, top).is_empty())
