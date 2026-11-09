@@ -1,31 +1,33 @@
 <!DOCTYPE html>
 <!--
-  The beta at /beta (beta361, 2026-10-29; supabase/beta.sql, api/_beta.js).
-  The owner: "a 'beta tester' signup that lightly vets people so that we
-  can say have a 'beta promotion' where say the first 100 beta/user
-  signups get a free month".
+  The beta, at /beta: its hub (betahome, 2026-11-09; first the
+  application, beta361, 2026-10-29, and the testers' hub at /beta-hub,
+  beta374, which this page now is: /beta-hub answers 308 here). The
+  owner: "elegantly update the homepage to advertise the beta testing
+  period", with reporting bugs and signing up for it made elegant too.
 
-  What the beta is, what testers get (30 days of Pro: models kept with the
-  account without a limit, and commercial use; the desktop app is free to
-  everyone, docs/PLANS.md 2026-11-02), what we ask (real use and
-  honest feedback), how many of the 100 spots are left, live, and what
-  happens when the month ends. Then the form, for a signed-in account:
-  what you would build, which AI you use, your LEGO® or CAD background, a
-  link if you like, and the two agreements. Signed out, Apply asks you to
-  sign in first; applied, the page says where your application stands.
+  For everyone, while the beta is open: what it is, the way in that fits
+  whoever reads it (signed out, Sign up and join, whose new account's
+  welcome joins it; signed in, Join the beta, a tester at once; a tester,
+  Report a bug and Your reports), what testers get, with the months of Pro
+  left of the first 100, how to report a bug, what is new this week (the
+  changelog's newest releases, changelog.json, tools/site.py), and the
+  questions. And for a tester, from GET /api/plans?op=beta_hub, what we
+  know is wrong and the early features on their account.
 
-  web/beta.js draws it from GET /api/plans?op=beta. While BRICKWORKS_BETA
-  is off it answers {beta: off}, and the page says the beta is coming
-  soon, with no form and no count. Every part a script fills is held at
-  its size until it does (docs/DESIGN_SYSTEM.md, Steady loads).
+  web/beta.js draws it from web/betabar.js, which asks the server. While
+  BRICKWORKS_BETA is off the page says the beta is coming soon, with what
+  testers will get, and no way in, no count and none of the testers'
+  parts. Every part a script fills is held at its size until it does
+  (docs/DESIGN_SYSTEM.md, Steady loads). No inline script.
 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <script defer src="/ov/s.js" data-api="https://overlook.technology/e" data-site="ws_3frcuzvdsh" data-exclude="/m/**,/u/**,/c/**,/oauth/**,/admin"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Beta · Brickworks</title>
-<meta name="description" content="Test Brickworks Pro for a month, free: 100 testers get 30 days of Pro, models kept without a limit and commercial use. Use it for real and tell us honestly how it goes.">
+<title>The beta · Brickworks</title>
+<meta name="description" content="Brickworks is in open beta. Join in one press, report a bug from any page with a picture taken for you, and see what changed this week. The first 100 testers we approve get 30 days of Pro, free.">
 <link rel="canonical" href="https://brickworks.diy/beta">
 <link rel="alternate" hreflang="en" href="https://brickworks.diy/beta">
 <link rel="alternate" hreflang="de" href="https://brickworks.diy/de/beta">
@@ -37,8 +39,8 @@
 <link rel="apple-touch-icon" href="/favicon-180.png">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Brickworks">
-<meta property="og:title" content="Beta · Brickworks">
-<meta property="og:description" content="100 testers get 30 days of Brickworks Pro, free. No card, nothing to cancel.">
+<meta property="og:title" content="The beta · Brickworks">
+<meta property="og:description" content="Brickworks is in open beta: join in one press, report a bug from any page, and see what changed this week.">
 <meta property="og:url" content="https://brickworks.diy/beta">
 <meta property="og:image" content="https://brickworks.diy/share.png">
 <meta property="og:image:width" content="1200">
@@ -53,27 +55,32 @@
 /* Only layout here; every control, card and panel is site.css's. */
 .beta-head { padding: var(--page-top) 0 var(--s-7); text-align: center; }
 .beta-head h1 { max-width: 20ch; margin-inline: auto; }
-.beta-head .lede { margin: 0 auto var(--s-5); max-width: 62ch; }
-/* The count, held at its height before it is known: a line, and on a
-   phone two, where "Coming soon" and "All 100 spots are taken" wrap. */
+.beta-head .lede { margin: 0 auto var(--s-5); max-width: 58ch; }
+/* The line under the title, held at its height before it is known: a line,
+   and on a phone two. */
 .spots { min-height: 1lh; margin: 0 0 var(--s-5); font-size: var(--t-lede); }
 @media (width < 600px) { .spots { min-height: 2lh; } }
 .spots .bone { display: inline-block; width: 14em; max-width: 80%; vertical-align: middle; }
+/* The way in, held at a big button's height until the page knows who is
+   reading; then one of the three. */
+#beta-acts { min-height: 52px; }
+#beta-acts > [hidden] { display: none; }
 .beta .narrow { width: min(100% - 32px, 980px); }
 .beta .section-head { margin-bottom: var(--s-5); }
-.ends { display: grid; gap: var(--s-4); }
-@media (width >= 900px) { .ends { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.ends h2 { margin-bottom: var(--s-2); }
-/* The form and where an application stands share one panel, held at the
-   form's height while the page asks which to show. */
-.apply { max-width: 720px; min-height: 360px; }
-.apply form { display: grid; gap: var(--s-4); }
-.apply .pair { display: grid; gap: var(--s-4); }
-@media (width >= 600px) { .apply .pair { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.apply .agree { display: grid; gap: var(--s-1); }
-.apply .said { margin: 0; min-height: 1.5em; color: var(--ink); }
-.apply h3 { margin-bottom: var(--s-2); }
-.apply .card p + p, .apply .card p + .actions { margin-top: var(--s-3); }
+#report .actions { margin-top: var(--s-5); }
+/* What is new: each release a card, its heads a list. */
+.news { display: grid; gap: var(--s-4); margin: 0; padding: 0; list-style: none; }
+@media (width >= 900px) { .news { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.news .card h3 { margin: 0 0 var(--s-1); }
+.news .card ul { margin: var(--s-3) 0 0; padding-left: 1.2em; color: var(--ink-soft); font-size: var(--t-small); }
+.news .card li + li { margin-top: var(--s-1); }
+.news .card .more { display: inline-block; margin-top: var(--s-3); font-size: var(--t-small); font-weight: 600; }
+.news .skeleton { min-height: 220px; }
+.grid { display: grid; gap: var(--s-4); grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); margin: 0 0 var(--s-6); padding: 0; list-style: none; }
+.grid .card h3 { margin: 0 0 var(--s-2); }
+.grid .card .pill { margin-top: var(--s-3); max-width: 100%; white-space: normal; }
+#testers .sub-h { margin: var(--s-6) 0 var(--s-2); }
+#testers .note { margin: 0 0 var(--s-4); }
 </style>
 <script src="/follow.js" type="module"></script>
 <script src="/beta.js" type="module"></script>
@@ -115,11 +122,15 @@
 <main id="main" class="beta">
 	<section class="beta-head halo" aria-labelledby="beta-h">
 		<div class="wrap">
-			<p class="eyebrow"><span data-when="open">The Brickworks beta</span><span data-when="off" hidden>The Brickworks beta · Coming soon</span></p>
-			<h1 id="beta-h">Test Brickworks Pro for a month, free</h1>
-			<p class="lede">We are looking for 100 people to use Brickworks for real and tell us honestly how it goes. Each tester gets 30 days of Pro, free: no card, nothing to pay and nothing to cancel.</p>
+			<p class="eyebrow"><span data-when="open">Open beta</span><span data-when="off" hidden>The Brickworks beta · Coming soon</span></p>
+			<h1 id="beta-h">Help shape Brickworks</h1>
+			<p class="lede">Use Brickworks for real, tell us what goes wrong, and see what we fix. Joining takes one press, and costs nothing.</p>
 			<p class="spots" id="spots" aria-live="polite"><span class="bone" aria-hidden="true"></span></p>
-			<div class="actions center"><a class="cta big" href="#apply" id="to-apply">Apply <span class="arrow" aria-hidden="true">→</span></a><a class="cta ghost big" href="/plans">What Pro is</a></div>
+			<div id="beta-acts">
+				<div class="actions center" data-visitor="out" hidden><button class="cta big" type="button" data-beta-join>Sign up and join <span class="arrow" aria-hidden="true">→</span></button><a class="cta ghost big" href="#get">What testers get</a></div>
+				<div class="actions center" data-visitor="in" hidden><button class="cta big" type="button" data-beta-join>Join the beta <span class="arrow" aria-hidden="true">→</span></button><a class="cta ghost big" href="#get">What testers get</a></div>
+				<div class="actions center" data-visitor="tester" hidden><button class="cta big" type="button" data-beta-report>Report a bug</button><a class="cta ghost big" href="/settings#feedback">Your reports</a></div>
+			</div>
 		</div>
 	</section>
 
@@ -127,108 +138,65 @@
 		<div class="wrap narrow">
 			<div class="section-head"><div>
 				<h2 class="title" id="get-h">What testers get</h2>
-				<p>30 days of Pro on your account, from the day we approve you, or from the day Pro launches if that is later.</p>
+				<p>Nothing to pay, and not much of your time: use it for real and tell us honestly how it goes.</p>
 			</div></div>
 			<ul class="features">
-				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true"><use href="/icons.svg#library"></use></svg></span>
-					<h3>Every model kept</h3>
-					<p>Keep as many models with your account as you like, on every device you sign in to. Free keeps 25.</p></li>
-				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true"><use href="/icons.svg#book"></use></svg></span>
-					<h3>Commercial use</h3>
-					<p>For the month, sell what you make with Brickworks: instructions, kits, renders or builds made to order, under Pro’s terms. The desktop app is free to everyone, with Pro or without.</p></li>
 				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true"><use href="/icons.svg#spark"></use></svg></span>
-					<h3>Your own AI, as always</h3>
-					<p>You bring your own: the AI app you use through the connector, Claude or another, or an Anthropic API key, in any browser; in the desktop app, your own key for OpenAI, Gemini and others too. Brickworks never counts it, on Free or on Pro.</p></li>
+					<h3>New things first</h3>
+					<p>Early features on your account before everyone, and each week’s changes here, as they go out.</p></li>
+				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true"><use href="/icons.svg#library"></use></svg></span>
+					<h3>A month of Pro, free</h3>
+					<p>The first 100 testers we approve get 30 days of Pro: every model kept with your account (Free keeps 25), and commercial use. No card, and nothing to cancel.</p></li>
+				<li class="feature"><span class="glyph"><svg class="icon" aria-hidden="true"><use href="/icons.svg#comment"></use></svg></span>
+					<h3>Heard and answered</h3>
+					<p>Every report is read by the site’s owner. Yours are in your account, each with where it stands and our answer.</p></li>
 			</ul>
 		</div>
 	</section>
 
-	<section class="section" id="ask" aria-labelledby="ask-h">
+	<section class="section" id="report" aria-labelledby="report-h" data-when="open" hidden>
 		<div class="wrap narrow">
 			<div class="section-head"><div>
-				<h2 class="title" id="ask-h">What we ask</h2>
-				<p>Nothing to pay, and not much of your time.</p>
+				<h2 class="title" id="report-h">Report a bug in one press</h2>
+				<p>From wherever you are, without leaving what you were doing.</p>
 			</div></div>
 			<ol class="steps">
-				<li><h3>Use it for real</h3><p>Build things you want to build, in your browser, over the month.</p></li>
-				<li><h3>Tell us honestly</h3><p>What works, what does not, and what you looked for and could not find. We ask by email, a question or two.</p></li>
-				<li><h3>That is all</h3><p>No card, no subscription, nothing to cancel. When the month ends, it ends.</p></li>
+				<li><h3>Press Report a bug</h3><p>In the app, at the top beside Account, or in Help. On the site, in the bar at the foot of every page.</p></li>
+				<li><h3>Mark the spot</h3><p>A picture of what you see is taken for you. Mark where it went wrong, and say what you expected.</p></li>
+				<li><h3>See what we do</h3><p>It says what will be sent before it goes. After, it is in Your reports, with where it stands and our answer.</p></li>
 			</ol>
+			<div class="actions"><button class="cta" type="button" data-beta-report>Report a bug</button><a class="cta ghost" href="/settings#feedback">Your reports</a></div>
 		</div>
 	</section>
 
-	<section class="section" id="ends">
+	<section class="section" id="new" aria-labelledby="new-h" data-when="open" hidden>
 		<div class="wrap narrow">
-			<div class="ends">
-				<section class="card" aria-labelledby="ends-h">
-					<h2 id="ends-h">When the month ends</h2>
-					<p>You are back on Free. Nothing is charged, no card is asked for, and nothing is deleted. Above 25 models kept with your account, you keep every one of them and can open, change and save them all, but you add no new ones until you are under 25.</p>
-				</section>
-				<section class="card" aria-labelledby="had-h">
-					<h2 id="had-h">Had an account before 29 October 2026?</h2>
-					<p>It has Pro already, free and with no end date (<a href="/plans#had">Plans</a>). You are welcome as a tester all the same: apply, and you will not take one of the 100 spots.</p>
-				</section>
+			<div class="section-head">
+				<div>
+					<h2 class="title" id="new-h">What’s new</h2>
+					<p>This week’s changes, newest first, as the changelog has them.</p>
+				</div>
+				<a href="/changelog">The whole changelog</a>
 			</div>
+			<ul class="news" id="news">
+				<li class="card skeleton" aria-hidden="true"><span class="bone short"></span><span class="bone wide"></span><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span></li>
+				<li class="card skeleton" aria-hidden="true"><span class="bone short"></span><span class="bone wide"></span><span class="bone wide"></span><span class="bone"></span><span class="bone short"></span></li>
+			</ul>
 		</div>
 	</section>
 
-	<section class="section" id="apply" aria-labelledby="apply-h">
+	<!-- A tester's alone (GET /api/plans?op=beta_hub, api/_early.js): what
+	     to try, what we know is wrong, and the early features on their
+	     account. Under the rest, so its coming moves nothing above it. -->
+	<section class="section" id="testers" aria-labelledby="try-h" hidden>
 		<div class="wrap narrow">
-			<div class="section-head"><div>
-				<h2 class="title" id="apply-h">Apply</h2>
-				<p>One application an account. It takes a minute.</p>
-			</div></div>
-			<div class="apply" id="apply-panel">
-				<div class="card skeleton" id="apply-wait" aria-hidden="true">
-					<span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone button"></span>
-				</div>
-				<p class="state" id="apply-soon" hidden>Coming soon. The beta is not open yet: applications open here shortly.</p>
-				<div class="card" id="apply-out" hidden>
-					<h3>Sign in to apply</h3>
-					<p>Sign in with your email first: we send you a code, no password. New to Brickworks? Signing in makes your account.</p>
-					<div class="actions"><button class="cta" type="button" id="sign-in">Sign in to apply</button></div>
-				</div>
-				<form class="card" id="apply-form" novalidate hidden>
-					<p class="said" id="apply-was" hidden></p>
-					<label>What would you build? <small>A sentence or two: 20 to 800 characters</small>
-						<textarea name="build" id="f-build" rows="4" minlength="20" maxlength="800" required></textarea></label>
-					<div class="pair">
-						<label>Which AI do you use?
-							<select name="ai" id="f-ai" required>
-								<option value="" disabled selected hidden>Choose one</option>
-								<option value="claude">Claude</option>
-								<option value="chatgpt">ChatGPT</option>
-								<option value="own_key">My own API key</option>
-								<option value="not_sure">Not sure yet</option>
-							</select></label>
-						<label>Your LEGO® or CAD background
-							<select name="background" id="f-background" required>
-								<option value="" disabled selected hidden>Choose one</option>
-								<option value="new">New to both</option>
-								<option value="lego">I build LEGO® models</option>
-								<option value="cad">I use CAD</option>
-								<option value="both">Both</option>
-							</select></label>
-					</div>
-					<label>About it <small>Optional, one line: what you build, or which CAD</small>
-						<input name="background_line" id="f-line" maxlength="160" autocomplete="off"></label>
-					<label>A link to your work <small>Optional: Rebrickable, BrickLink, Flickr, GitHub or a portfolio</small>
-						<input name="link" id="f-link" inputmode="url" maxlength="300" placeholder="https://" autocomplete="url"></label>
-					<div class="agree">
-						<label class="choice"><input type="checkbox" name="terms" id="f-terms" required><span>I agree to the <a href="/terms#beta">beta’s terms</a>.</span></label>
-						<label class="choice"><input type="checkbox" name="emails" id="f-emails" required><span>Email me about the beta: the decision, my month, and a question or two about how it is going.</span></label>
-					</div>
-					<div class="actions"><button class="cta" type="submit" id="apply-send">Apply</button></div>
-					<p class="said" id="apply-said" role="status"></p>
-					<p class="note">What you send is kept with your account, read only by the site’s owner, and deleted with your account (<a href="/privacy#beta">privacy</a>).</p>
-				</form>
-				<div class="card" id="apply-status" hidden>
-					<h3 id="status-h"></h3>
-					<p id="status-said"></p>
-					<p id="status-more" hidden></p>
-					<div class="actions" id="status-acts" hidden><a class="cta" href="/app">Open the app</a></div>
-				</div>
-			</div>
+			<div class="section-head"><div><h2 class="title" id="try-h">New to try</h2></div></div>
+			<ul class="grid" id="try"></ul>
+			<h3 class="sub-h" id="known-h">What we know is wrong</h3>
+			<p class="note">Already on our list: no need to report these.</p>
+			<ul class="grid" id="known" aria-labelledby="known-h"></ul>
+			<h3 class="sub-h" id="early-h">Early features on your account</h3>
+			<ul class="grid" id="early" aria-labelledby="early-h"></ul>
 		</div>
 	</section>
 
@@ -236,28 +204,24 @@
 		<div class="wrap narrow">
 			<div class="section-head"><div><h2 class="title" id="q-h">Questions</h2></div></div>
 			<details class="qa">
-				<summary>Who can apply?</summary>
-				<div><p>Anyone with a Brickworks account who signs in with an email address, since the beta writes to you. One application an account.</p></div>
+				<summary>Who can join?</summary>
+				<div><p>Anyone with a Brickworks account, while the beta is open. Press Join and you are a tester at once. New to Brickworks? Signing up takes your email and a code, no password.</p></div>
 			</details>
 			<details class="qa">
-				<summary>How are testers chosen?</summary>
-				<div><p>We read every application ourselves. The first 100 we approve get the spots, numbered in the order we approve them. Nothing is decided by a machine.</p></div>
+				<summary>Is the month of Pro for every tester?</summary>
+				<div><p>For the first 100 we approve. We read who joins ourselves; nothing is decided by a machine. Each gets 30 days of Pro, once, from the day we approve them, or from the day Pro launches if that is later. Joining never waits on it.</p></div>
 			</details>
 			<details class="qa">
-				<summary>Is the month a subscription?</summary>
-				<div><p>No. It is 30 days of Pro given to your account, once. Nothing renews, nothing is charged, and no card is ever asked for. To keep Pro after it, you choose to, on <a href="/plans">Plans</a>.</p></div>
+				<summary>What happens when the month ends?</summary>
+				<div><p>You are back on Free. Nothing is charged, no card is asked for, and nothing is deleted. Above 25 models kept with your account, you keep every one of them and can open, change and save them all, but you add no new ones until you are under 25.</p></div>
 			</details>
 			<details class="qa">
-				<summary>What if the 100 spots are gone?</summary>
-				<div><p>Applications stay open, as a waitlist. If we open more spots, the waitlist is read first.</p></div>
-			</details>
-			<details class="qa">
-				<summary>What if I am not chosen?</summary>
-				<div><p>We email you, and you can apply again 30 days later. Brickworks stays free in your browser either way.</p></div>
+				<summary>Had an account before 29 October 2026?</summary>
+				<div><p>It has Pro already, free and with no end date (<a href="/plans#had">Plans</a>). You are welcome as a tester all the same, and you take none of the 100 months.</p></div>
 			</details>
 			<details class="qa">
 				<summary>What happens to what I send?</summary>
-				<div><p>It is kept with your account, read only by the site’s owner, and deleted with your account. An application we decline is erased 90 days after. No IP address is kept. More in <a href="/privacy#beta">privacy</a>.</p></div>
+				<div><p>A report is kept with your account and read only by the site’s owner. Only what you choose goes with it, and you see it before it goes. It is deleted with your account. More in <a href="/privacy#feedback">privacy</a>.</p></div>
 			</details>
 		</div>
 	</section>

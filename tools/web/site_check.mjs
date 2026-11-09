@@ -213,6 +213,9 @@ for (const [from, to] of [
   ["/challenges", "/challenge"],
   ["/challenges/", "/challenge"],
   ["/challenges?id=3", "/challenge?id=3"],
+  // The testers' hub became the beta's own page (betahome).
+  ["/beta-hub", "/beta"],
+  ["/de/beta-hub", "/de/beta"],
 ]) {
   const r = await get(from);
   const where = (r.headers.get("location") || "").replace(base, "").replace(SITE, "");

@@ -2,6 +2,8 @@
 // each part nears the screen, a screen and a half ahead, so it is in by
 // the time it is read, and a visitor who never scrolls fetches none of it:
 //
+// - #beta, while the beta is open: why to join, and the way in that fits
+//   whoever reads it (web/betabar.js says what the server does);
 // - #made, its first model in 3D in its picture's place (web/start3d.js,
 //   its looks in web/view3d.css), both asked for as the section nears;
 // - #sets, four of the LDraw library's biggest sets with a 3D model, as
@@ -18,7 +20,10 @@
 // leaves the sets' tile and the challenge's with their own words. Each says
 // how it ended on <html> (data-strip, data-sets, data-challenge), which
 // tools/web/landing_check.mjs waits on.
-import { collectionCard, counted, escapeHtml, langAt, modelCard, pictureOf, say } from "/card.js";
+import { signedIn } from "/account.js";
+import { betaState, joinBeta, reportBug } from "/betabar.js";
+import { collectionCard, counted, escapeHtml, langAt, modelCard, number, pictureOf, say } from "/card.js";
+import { toast } from "/kit.js";
 
 const GALLERY = /^[A-Za-z0-9]{10}$/;
 const SET = /^[a-z]{2,8}-[A-Za-z0-9_-]{1,120}$/;
@@ -149,14 +154,70 @@ function view3d() {
   import("/start3d.js").then(({ start3d }) => start3d(picture)).catch(() => { /* the picture stays the app's link */ });
 }
 
-// The beta's line under the last offer, only while it is open
-// (GET /api/plans?op=beta_spots: {beta: "open", left} or anything else).
-async function beta() {
-  const line = document.getElementById("beta");
-  if (!line) return;
-  const body = await ask("/api/plans?op=beta_spots");
-  if (body?.beta === "open") line.hidden = false;
+/// The beta's section (#beta) as [heard] has it: the way in for whoever
+/// reads it, and the line under it.
+function drawBeta(heard) {
+  const visitor = heard.tester ? "tester" : signedIn() ? "in" : "out";
+  for (const row of document.querySelectorAll("#beta-acts > [data-visitor]")) row.hidden = row.dataset.visitor !== visitor;
+  const said = document.getElementById("beta-said");
+  said.textContent = heard.tester ? say("You’re a tester. Thank you: your reports and our answers are in your account.")
+    : heard.left > 0 ? say("The first {cap} testers we approve get a month of Pro, free: {spots} left.",
+      { cap: number(heard.cap), spots: counted(heard.left, "spot") }) : "";
+  html.dataset.betaHome = visitor;
 }
+
+/// The beta's section, while it is open (web/betabar.js). Held since the
+/// first frame where this browser had heard so (<html data-beta>,
+/// web/theme.js); else put in only while its place is under the window, or
+/// once it is again, so nothing in view moves (docs/DESIGN_SYSTEM.md, Out of
+/// sight). Off, it is not drawn; not heard, a held one stays as it was.
+async function beta() {
+  const band = document.getElementById("beta");
+  if (!band) return;
+  const held = html.dataset.beta === "open";
+  const heard = await betaState();
+  if (heard.beta === "off") {
+    html.dataset.betaHome = "off";
+    return;
+  }
+  if (heard.beta !== "open") {
+    if (held) drawBeta(heard);
+    return;
+  }
+  drawBeta(heard);
+  if (held) return;
+  const next = document.getElementById("made");
+  const under = () => !next || next.getBoundingClientRect().top >= innerHeight;
+  const show = () => {
+    if (!under()) return false;
+    html.dataset.beta = "open";
+    removeEventListener("scroll", show);
+    return true;
+  };
+  if (!show()) addEventListener("scroll", show, { passive: true });
+}
+
+document.getElementById("beta")?.addEventListener("click", async (event) => {
+  const pressed = event.target instanceof Element ? event.target.closest("[data-beta-join], [data-beta-report]") : null;
+  if (!pressed) return;
+  if (pressed.matches("[data-beta-report]")) {
+    reportBug("home");
+    return;
+  }
+  pressed.disabled = true;
+  try {
+    const now = await joinBeta("home");
+    if (now?.tester) toast(say("You’re a tester. Thank you!"));
+  } catch (trouble) {
+    toast(trouble.message);
+  } finally {
+    pressed.disabled = false;
+  }
+});
+// Joined, signed in or out here or in another part of the page.
+const again = () => betaState().then((heard) => heard.beta === "open" && drawBeta(heard));
+addEventListener("brickworks:beta", again);
+addEventListener("brickworks:signed-in", () => betaState({ fresh: true }).then((heard) => heard.beta === "open" && drawBeta(heard)));
 beta();
 
 /// [work] once [id] is [margin] from the window: a screen and a half, or in it.

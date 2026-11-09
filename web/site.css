@@ -1093,6 +1093,41 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 .toast.shown { transform: translate(-50%, 0); opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
 
+/* The beta's bar (web/betabar.js), on every page while the beta is open:
+   Open beta, Report a bug and Join (or You're a tester), and its × that
+   hides it for a day. It floats at the window's foot, at its left and on a
+   phone in the middle, over the page and moving none of it: a strip over
+   the header that came with the server's answer pushed every page down
+   (Steady loads). Its corners round its buttons' at its padding's
+   distance, and it rises and fades in as a dialog does. */
+.beta-bar {
+	position: fixed; z-index: 50; left: var(--s-4); bottom: calc(var(--s-4) + env(safe-area-inset-bottom, 0px));
+	display: flex; align-items: center; gap: var(--s-1); max-width: calc(100vw - 32px);
+	padding: 4px; border: 1px solid var(--line-strong); border-radius: var(--r-3);
+	background: color-mix(in srgb, var(--panel) 88%, transparent);
+	backdrop-filter: saturate(1.6) blur(16px); -webkit-backdrop-filter: saturate(1.6) blur(16px);
+	box-shadow: var(--highlight), var(--shadow);
+	opacity: 0; transform: translateY(8px);
+	transition: opacity var(--motion-open) var(--ease), transform var(--motion-open) var(--ease);
+}
+.beta-bar.shown { opacity: 1; transform: none; }
+@media (width < 600px) { .beta-bar { right: 0; left: 0; width: max-content; margin-inline: auto; } }
+.beta-bar > .badge { margin: 0 var(--s-1) 0 var(--s-1); }
+.beta-bar .icon-btn.small { padding: 0; border-color: transparent; border-radius: var(--control-radius); background: transparent; color: var(--ink-soft); }
+.beta-bar .icon-btn.small:hover { background: var(--panel-hi); color: var(--ink); }
+.beta-bar .third { display: contents; }
+.beta-bar .tester {
+	display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border-radius: var(--control-radius);
+	color: var(--ink); font-size: var(--t-small); font-weight: 600; text-decoration: none; white-space: nowrap;
+}
+.beta-bar .tester:hover { background: var(--panel-hi); }
+.beta-bar .tester .icon { width: 16px; height: 16px; color: var(--green); }
+@media (prefers-reduced-motion: reduce) { .beta-bar { transition: none; } }
+/* While it is shown the toast speaks above it, and the footer ends past
+   it, so the page's last line is never under it. */
+:root[data-betabar] .toast { bottom: calc(var(--s-5) + 60px); }
+:root[data-betabar] .site-foot { padding-bottom: calc(var(--s-6) + 64px); }
+
 /* The "more" menu: an icon button that opens a short list of what else
    can be done (Report it, Takedown requests), the header Menu's panel.
    A <details>, so it opens with no script; web/kit.js closes it on a click

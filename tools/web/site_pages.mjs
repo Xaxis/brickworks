@@ -257,13 +257,14 @@ export function sitePages({ remote = "" } = {}) {
       } },
     { name: "admin", path: "/admin", admin: true,
       ready: (page, { signedIn }) => (signedIn ? until(page, () => !document.querySelector("#view")?.classList.contains("hide")) : true) },
-    // The beta (web/beta.html): the spots and the form signed in; signed
-    // out, Sign in to apply's dialog, as a person opens it.
+    // The beta's hub (web/beta.html): a tester's, with what we know is
+    // wrong, signed in; signed out, Sign up and join's dialog, as a person
+    // opens it.
     { name: "beta", path: "/beta",
-      ready: (page) => until(page, () => document.getElementById("apply-wait")?.hidden === true),
+      ready: (page) => until(page, () => document.documentElement.dataset.betaPage),
       open: async (page, { signedIn }) => {
         if (signedIn) return [];
-        await page.click("#sign-in");
+        await page.click("#beta-acts [data-visitor=out] [data-beta-join]");
         const opened = await until(page, () => document.querySelector("dialog.sign-in[open]"));
         return [[opened ? "sign in" : "sign in (missing)", "dialog.sign-in"]];
       } },
