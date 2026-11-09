@@ -1,4 +1,5 @@
-## Closing the window closes the app, whatever dialog is up.
+## Closing the window closes the app, whatever dialog is up, and a screen
+## reader still hears each dialog as modal.
 ##
 ## The engine drops a close request (the title bar's X, Alt+F4, the session
 ## ending, Cmd+Q) sent to a window that has an exclusive child: Window's
@@ -10,22 +11,31 @@
 ## and 0.19.0). The platform's own Save dialog, where a desktop has one, is
 ## no window of the app's, which is why that one never held it.
 ##
-## So nothing is exclusive to the main window. A dialog that would be is
-## made not exclusive the frame it is up, and while it is, this node, the
-## main window's last, takes every event the main window would have
-## refused, as the engine did: what is aimed at the dialog still reaches it,
-## and nothing behind it moves. A press beside it gives the dialog the keys
-## again, which the engine did only for a screen reader. A dialog's own
-## questions (a file chooser's "replace it?") stay exclusive to the dialog,
-## and a window left not exclusive on purpose (Reference picture: the model
-## stays to hand while it is open) is left as it is.
+## A window is its parent's exclusive child only while it is transient to
+## it (Window::_set_transient_exclusive_child), so that tie is what is cut:
+## a dialog that would hold the main window is made not transient the frame
+## it is up, and keeps its exclusive flag. The engine tells a screen reader
+## a window is modal by that flag (Window's accessibility update sets
+## FLAG_MODAL to it), so every dialog is still heard as one: making them
+## not exclusive instead (dialogclose, 2026-11-07) left every dialog a plain
+## window to a screen reader, its place in the app said nowhere (a11ymodal).
+## For a window shown in the main one, being transient does nothing else.
+##
+## While a dialog is up, this node, the main window's last, takes every
+## event the main window would have refused, as the engine did: what is
+## aimed at the dialog still reaches it, and nothing behind it moves. A
+## press beside it gives the dialog the keys again, which the engine did
+## only for a screen reader. A dialog's own questions (a file chooser's
+## "replace it?") stay transient and exclusive to the dialog, and a window
+## left not exclusive on purpose (Reference picture: the model stays to
+## hand while it is open) is left as it is.
 class_name ModalDialogs
 extends Node
 
 static var _windows: Dictionary = {}
 
-## The windows made not exclusive here: each holds the main window while it
-## is up. Untyped: one freed is read back to be let go.
+## The windows cut from the main one here: each holds it while it is up.
+## Untyped: one freed is read back to be let go.
 var _held: Array = []
 
 
@@ -49,7 +59,8 @@ func _process(_delta: float) -> void:
 	for sub: Window in window.get_embedded_subwindows():
 		if sub.exclusive and sub.transient and sub.get_parent() != null \
 				and sub.get_parent().get_window() == window:
-			sub.exclusive = false
+			# Each popup makes it transient again (Window.popup).
+			sub.transient = false
 			if not _held.has(sub):
 				_held.append(sub)
 	# First to hear an event: the last of the window's nodes.
