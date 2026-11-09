@@ -2384,6 +2384,9 @@ msgstr "Sélection : %s en %s. Un clic sur une couleur peint les pièces"
 msgid "%d colours"
 msgstr "%d couleurs"
 
+msgid "1 colour"
+msgstr "1 couleur"
+
 msgid "A dot marks the %d colours it comes in"
 msgstr "Un point marque les %d couleurs dans lesquelles la pièce existe"
 
@@ -4597,6 +4600,9 @@ msgstr "Il est publié"
 msgid "Saving to your account, sharing and Claude go on"
 msgstr "L'enregistrement dans votre compte, le partage et Claude reprennent"
 
+msgid "Saving to your account and sharing go on"
+msgstr "L'enregistrement dans votre compte et le partage reprennent"
+
 msgid "Sign in to Brickworks to share a model."
 msgstr "Connectez-vous à Brickworks pour partager un modèle."
 
@@ -6616,8 +6622,8 @@ msgstr "Récupérer"
 msgid "Read your sets and parts lists from your Rebrickable account"
 msgstr "Lire vos sets et listes de pièces depuis votre compte Rebrickable"
 
-msgid "Your Rebrickable key goes from here to rebrickable.com and nowhere else, and is not kept. What comes back replaces what came from Rebrickable before, fetched or exported, and the loose parts brought in before. What you count here, a BrickLink XML, and what an assistant added stay."
-msgstr "Votre clé Rebrickable va d'ici à rebrickable.com et nulle part ailleurs, et n'est pas conservée. Ce qui revient remplace ce qui venait de Rebrickable, récupéré ou exporté, et les pièces en vrac importées avant. Ce que vous comptez ici, un XML BrickLink et ce qu'un assistant a ajouté restent."
+msgid "Your Rebrickable key goes from here to rebrickable.com and nowhere else, and is not kept. What comes back replaces what came from Rebrickable before, fetched or exported, and the loose parts brought in before. What you count here, a BrickLink XML and everything else stay."
+msgstr "Votre clé Rebrickable va d'ici à rebrickable.com et nulle part ailleurs, et n'est pas conservée. Ce qui revient remplace ce qui venait de Rebrickable, récupéré ou exporté, et les pièces en vrac importées avant. Ce que vous comptez ici, un XML BrickLink et tout le reste restent."
 
 msgid "Your Rebrickable key goes from here to rebrickable.com and nowhere else, and is not kept. What comes back replaces what came from Rebrickable before, fetched or exported, and the loose parts brought in before. What you count here, a BrickLink XML, and what an assistant added stay. Ask the assistant for \"a small house from my collection\" and it builds from what you own."
 msgstr "Votre clé Rebrickable va d'ici à rebrickable.com et nulle part ailleurs, et n'est pas conservée. Ce qui revient remplace ce qui venait de Rebrickable, récupéré ou exporté, et les pièces en vrac importées avant. Ce que vous comptez ici, un XML BrickLink et ce qu'un assistant a ajouté restent. Demandez à l'assistant « une petite maison avec ma collection » et il construit avec ce que vous possédez."
@@ -11265,6 +11271,9 @@ msgstr "Trouve une pièce ci-dessus, par son numéro ou des mots, d'après une p
 msgid "Added by %s — %s, %s: look them over"
 msgstr "Ajouté par %s — %s, %s : vérifie-les"
 
+msgid "Not added by you — %s, %s: look them over"
+msgstr "Non ajoutés par vous — %s, %s : vérifiez-les"
+
 msgid "Keep them"
 msgstr "Les garder"
 
@@ -11273,6 +11282,9 @@ msgstr "Les garder comme tes propres pièces en vrac"
 
 msgid "Take back what %s added"
 msgstr "Reprendre ce que %s a ajouté"
+
+msgid "Take back what was added"
+msgstr "Reprendre ce qui a été ajouté"
 
 msgid "Take out exactly the lots listed here; nothing of yours"
 msgstr "Retirer exactement les lots listés ici ; rien des tiens"
@@ -12735,8 +12747,14 @@ msgstr "aucun set %s n'est connu"
 msgid "%s “%s”: %d colours"
 msgstr "%s « %s » : %d couleurs"
 
+msgid "%s “%s”: 1 colour"
+msgstr "%s « %s » : 1 couleur"
+
 msgid "%d colours you own its parts in"
 msgstr "%d couleurs dans lesquelles vous possédez ses pièces"
+
+msgid "1 colour you own its parts in"
+msgstr "1 couleur dans laquelle vous possédez ses pièces"
 
 msgid "%d × %d studs, %d × %d cm"
 msgstr "%d × %d tenons, %d × %d cm"
@@ -12744,8 +12762,8 @@ msgstr "%d × %d tenons, %d × %d cm"
 msgid "working it out…"
 msgstr "calcul en cours…"
 
-msgid "%s plates for its %s studs, in %d colours: %s"
-msgstr "%s plaques pour ses %s tenons, en %d couleurs : %s"
+msgid "%s for its %s studs, in %s: %s"
+msgstr "%s pour ses %s tenons, en %s : %s"
 
 msgid "you have %s of the %s"
 msgstr "vous en avez %s sur %s"
@@ -12837,32 +12855,73 @@ msgstr "%s regarde l'image et la planifie comme le ferait un designer de sets LE
 msgid "%s round tiles"
 msgstr "%s plaques lisses rondes"
 
+msgid "1 round tile"
+msgstr "1 plaque lisse ronde"
+
 msgid "%s square tiles"
 msgstr "%s plaques lisses carrées"
+
+msgid "1 square tile"
+msgstr "1 plaque lisse carrée"
 
 msgid "%s larger tiles"
 msgstr "%s plaques lisses plus grandes"
 
+msgid "1 larger tile"
+msgstr "1 plaque lisse plus grande"
+
 msgid "%s relief plates"
 msgstr "%s plaques de relief"
+
+msgid "1 relief plate"
+msgstr "1 plaque de relief"
 
 msgid "%s cheese slopes"
 msgstr "%s tuiles fromage"
 
+msgid "1 cheese slope"
+msgstr "1 tuile fromage"
+
 msgid "%s joining plates"
 msgstr "%s plaques de jonction"
+
+msgid "1 joining plate"
+msgstr "1 plaque de jonction"
 
 msgid "%s quarter circles"
 msgstr "%s quarts de cercle"
 
+msgid "1 quarter circle"
+msgstr "1 quart de cercle"
+
 msgid "%s round plates"
 msgstr "%s plaques rondes"
+
+msgid "1 round plate"
+msgstr "1 plaque ronde"
 
 msgid "%s 16 × 16 panels"
 msgstr "%s panneaux 16 × 16"
 
+msgid "1 16 × 16 panel"
+msgstr "1 panneau 16 × 16"
+
 msgid "%s stars"
 msgstr "%s étoiles"
 
+msgid "1 star"
+msgstr "1 étoile"
+
 msgid "%s large stars"
 msgstr "%s grandes étoiles"
+
+msgid "1 large star"
+msgstr "1 grande étoile"
+# The parts bin's New shelf, the parts first made in the catalogue's latest two
+# years (APP_UX7 #5, binrow).
+
+msgid "The parts first made in %d or %d, the newest first"
+msgstr "Les pièces fabriquées pour la première fois en %d ou %d, les plus récentes d'abord"
+
+msgid "%s first made in %d or %d, the newest first"
+msgstr "%s fabriquées pour la première fois en %d ou %d, les plus récentes d'abord"

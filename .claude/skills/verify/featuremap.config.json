@@ -3459,7 +3459,7 @@
       "kind": "ui",
       "label": "the booklet as a PDF and as PNG pages",
       "entry": "src/render/booklet_pdf.gd",
-      "reach": "godot --path . --resolution 1280x800 --script src/dev/booklet_pdf_probe.gd -- --model=M --into=DIR   (by hand: Instructions, then the booklet's Save as PDF or Save pages as PNG beside Print; -- --html=BOOKLET.html saves one already made; tools/booklet_pdf_check.py BOOKLET.html BOOKLET.pdf --zip PAGES.zip reads them; on the web, booklet_flow.mjs presses both)",
+      "reach": "godot --path . --resolution 1280x800 --script src/dev/booklet_pdf_probe.gd -- --model=M --into=DIR   (by hand: Instructions, then the booklet's Save as PDF or Save pages as PNG beside Print; -- --html=BOOKLET.html saves one already made; -- --words-only: Cyrillic, Greek and Japanese read back by pdftotext; -- --against=DIR: the commit before's castle PDF the same at 300 dpi; tools/booklet_pdf_check.py BOOKLET.html BOOKLET.pdf --zip PAGES.zip reads them; on the web, booklet_flow.mjs presses both)",
       "area": "view"
     },
     {
@@ -4929,14 +4929,14 @@
       "kind": "cli",
       "label": "print3mf probe",
       "entry": "src/dev/print3mf_probe.gd",
-      "reach": "tools/probe.sh print3mf_probe [-- --hashes=FILE | --same-as=FILE]   (headless; the car as a 3MF from File, Export, 3D model… and export_model, read by tools/print3mf/check_3mf.py; a printed tile, a mirrored brick and a part with no BFC; the reader refusing a turned triangle, a colour that is none and a corner past its vertices; --hashes/--same-as compare the car's GLB and STL with another build's)",
+      "reach": "tools/probe.sh print3mf_probe [-- --hashes=FILE | --same-as=FILE]   (headless; the car as a 3MF from File, Export, 3D model… and export_model, read by tools/print3mf/check_3mf.py; every object closed (lib3mf IsManifoldAndOriented, every edge two triangles going opposite ways; as drawn, with Mesh3mf.close_up off, none), its triangles at most twice its parts'; a printed tile, a mirrored brick and a part with no BFC; the reader refusing a turned triangle, a colour that is none and a corner past its vertices; --hashes/--same-as compare the car's GLB and STL with another build's)",
       "area": "model-io"
     },
     {
       "kind": "cli",
       "label": "3mf strict reader",
       "entry": "tools/print3mf/check_3mf.py",
-      "reach": "uvx --with lib3mf==2.5.0 --with xmlschema==4.3.2 --with numpy==2.5.4 python3 -I tools/print3mf/check_3mf.py FILE.3mf [--json=OUT]   (the package, the core XSD tools/print3mf/3mf_core.xsd, the core's rules, lib3mf in strict mode; each object's name, colour, triangles and winding, and the build's box; exit 1 on any error)",
+      "reach": "uvx --with lib3mf==2.5.0 --with xmlschema==4.3.2 --with numpy==2.5.4 python3 -I tools/print3mf/check_3mf.py FILE.3mf [--json=OUT]   (the package, the core XSD tools/print3mf/3mf_core.xsd, the core's rules, lib3mf in strict mode; each object's name, colour, triangles, closedness (lib3mf's manifold_and_oriented; edges_not_two and edges_one_way by vertex index) and winding, and the build's box; exit 1 on any error)",
       "area": "model-io"
     },
     {
@@ -4966,6 +4966,20 @@
       "entry": "src/dev/lights_probe.gd",
       "reach": "tools/probe.sh lights [-- --keep=DIR] [-- --no-trace]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720: a spot over the car by Render's Spot, 0 px changed outside its cone rasterised and path traced, the roof under it lighter by 15% and 10 levels, the two the same light within 35%; a Trans Neon Green 1 x 1 in the Dark light lighting the white plate round it 3 times as much as a Trans Green one, both ways; kept over save, Save as, the autosave, a step edit and Build together's words, back after an open; light_model over MCP; then --older=DIR on an older checkout opens each file whole, its light line left alone; pictures in shots/lights/)",
       "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "new parts in the bin",
+      "entry": "src/ui/parts_bin.gd",
+      "reach": "godot --path .  (New among the bin's shelves, after Palettes: the parts first made in the catalogue's latest two years, the newest first; words typed narrow it. Every shelf, All to Like this, in sight at any width, their counts left off where that saves a row)",
+      "area": "parts"
+    },
+    {
+      "kind": "cli",
+      "label": "binrow probe",
+      "entry": "src/dev/binrow_probe.gd",
+      "reach": "tools/probe.sh binrow_probe -- --shots=DIR   (windowed, 1400x900, signed in through the gate with a throwaway account from .env: at 1400x900, 1280x720 and 1024x768, as first opened and with Stress, the assistant, a part's properties and the bin open, the eight shelves inside the chips' window unscrolled; 42 parts at 1400x900; the walk's Like this Plate 2 x 4 seventh at 1400x900 and 1280x720; New's list against the catalogue's years); tools/probe.sh binrow_phone_probe (390x844) and binrow_tablet_probe (1024x768)",
+      "area": "parts"
     }
   ]
 }

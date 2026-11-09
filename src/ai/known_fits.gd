@@ -59,7 +59,46 @@ static func _read() -> Dictionary:
 ## figure holds or sits on by its mould, or any other part as "brick"; two
 ## parts that are not a minifigure's by their moulds, where the sets put
 ## the one in the other's frame.
-static func reach(a: String, b: String, rel: Transform3D) -> float:
+##
+## A fit is what meets, not which way round it is turned: where [param
+## a_spins] (or [param b_spins]) says that part is round about its own up
+## axis ([method ExactCheck.spins]), a set's pose is the same fit with that
+## part turned any way about it, so its place and its up axis are what must
+## match. A 4740 dish on a 6141 round plate's stud, turned a quarter, meets
+## it as 31038-1 has it unturned; 2150-1 turns its 3941 a half round under
+## its 3960, and 42049-1 its 6141s on half pins both ways, and each pair is
+## the one fit.
+static func reach(a: String, b: String, rel: Transform3D, a_spins: bool = false,
+		b_spins: bool = false) -> float:
+	var key: Array = _key(a, b)
+	if key[1]:
+		rel = rel.affine_inverse()
+		var was: bool = a_spins
+		a_spins = b_spins
+		b_spins = was
+	if key[2]:
+		return float((_table["plain"] as Dictionary).get(key[0], 0.0))
+	var most: float = 0.0
+	var same: bool = key[3]
+	for pose: Array in (_table["posed"] as Dictionary).get(key[0], []):
+		if _near(rel, pose, a_spins, b_spins) \
+				or (same and _near(rel.affine_inverse(), pose, b_spins, a_spins)):
+			most = maxf(most, float(pose[2]))
+	return most
+
+
+## Whether the sets meet parts [param a] and [param b] in a pose of their own
+## (two parts that are not a minifigure's), as [method reach] would ask: only
+## then is it worth working out whether either is round.
+static func posed(a: String, b: String) -> bool:
+	var key: Array = _key(a, b)
+	return not key[2] and (_table["posed"] as Dictionary).has(key[0])
+
+
+## The table's key for parts [param a] and [param b]: [key, whether the two
+## were swapped to make it, whether it is a minifigure's (plain), whether
+## both are one mould or kind].
+static func _key(a: String, b: String) -> Array:
 	var kinds: Dictionary = _table["kinds"]
 	var ma: String = family(a)
 	var mb: String = family(b)
@@ -68,37 +107,48 @@ static func reach(a: String, b: String, rel: Transform3D) -> float:
 	var body: bool = _body(ka) or _body(kb)
 	ka = ka if _body(ka) else "brick" if body and ka != "held" else ma
 	kb = kb if _body(kb) else "brick" if body and kb != "held" else mb
-	if ka > kb:
+	var swapped: bool = ka > kb
+	if swapped:
 		var was: String = ka
 		ka = kb
 		kb = was
-		rel = rel.affine_inverse()
-	var key: String = "%s|%s" % [ka, kb]
-	if body:
-		return float((_table["plain"] as Dictionary).get(key, 0.0))
-	var most: float = 0.0
-	for pose: Array in (_table["posed"] as Dictionary).get(key, []):
-		if _near(rel, pose) or (ka == kb and _near(rel.affine_inverse(), pose)):
-			most = maxf(most, float(pose[2]))
-	return most
+	return ["%s|%s" % [ka, kb], swapped, body, ka == kb]
 
 
 static func _body(kind: String) -> bool:
 	return not kind.is_empty() and kind != "held"
 
 
-static func _near(rel: Transform3D, pose: Array) -> bool:
+## Whether [param rel] (b in a's frame) is the set's [param pose]: to the
+## place and the turn, or, for a part round about its own up axis ([param
+## a_spins], [param b_spins]), turned any way about it. b turned about its own
+## up keeps its place and its up in a's frame; a turned about its own, a's in
+## b's.
+static func _near(rel: Transform3D, pose: Array, a_spins: bool = false,
+		b_spins: bool = false) -> bool:
+	var at := Transform3D(pose[1] as Basis, pose[0] as Vector3)
+	if _same(rel, at, -1):
+		return true
+	if b_spins and _same(rel, at, 1):
+		return true
+	return a_spins and _same(rel.affine_inverse(), at.affine_inverse(), 1)
+
+
+## Whether [param rel] is [param pose] to the place and, of the turn, every
+## column, or only [param column] (the up axis of a part turned about it).
+static func _same(rel: Transform3D, pose: Transform3D, column: int) -> bool:
 	# With what the scan rounds a pose to (a hundredth of an LDU, a thousandth
 	# of a turn) over: 894-1's dish 11 LDU over its round brick was learned
 	# with one 10 over, exactly a place apart as the scan wrote them.
 	var place: float = float(_table["place"]) + 0.01
 	var turn: float = float(_table["turn"]) + 0.001
-	var off: Vector3 = (rel.origin - (pose[0] as Vector3)).abs()
+	var off: Vector3 = (rel.origin - pose.origin).abs()
 	if off.x > place or off.y > place or off.z > place:
 		return false
-	var basis: Basis = pose[1]
-	for column: int in 3:
-		var miss: Vector3 = (rel.basis[column] - basis[column]).abs()
+	for k: int in 3:
+		if column >= 0 and k != column:
+			continue
+		var miss: Vector3 = (rel.basis[k] - pose.basis[k]).abs()
 		if miss.x > turn or miss.y > turn or miss.z > turn:
 			return false
 	return true
