@@ -178,7 +178,9 @@ func _one_set(number: String) -> void:
 	var along_again: Silhouette.Comparison = _laid("left", "heights", heights)
 	var sample: Silhouette.Sample = along_again.samples[6]
 	var column: int = sample.cell
-	var top_row: int = side_outline.top[column] + side_outline.floor_cells
+	# On the top the sample reads: the highest within Silhouette.BAND cells of
+	# its column, where Tokyo's tower stands beside the column itself.
+	var top_row: int = roundi(sample.model / 2.0) + side_outline.floor_cells
 	var low := Vector3i(0, top_row, side_outline.model_cell(column))
 	var brick: int = _place_at("3005", 14, low)
 	var taller: Silhouette.Comparison = _laid("left", "heights", heights)
