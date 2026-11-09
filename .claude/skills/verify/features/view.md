@@ -3057,11 +3057,14 @@ picture the assistant is shown.
   picture, kept as `default_render.png`, and a small scene's Quick window
   (twice the same) and Product kept as `scene_window.png`,
   `scene_product.png`; `-- --reference=DIR` (the same probe run on an
-  older build, its `--shots`) lays each beside the older's, byte for byte.
-  Each is drawn after `seed(DRAWN_WITH)`: unseeded, two runs of one build
-  drew the default a level apart in 74,251 pixels, and a Good render keeps
-  some of the light it gathered for the next (a third render of the car a
-  level darker all over), so only a run's first is laid beside another's. The Look row clicked as a person clicks: each look in the
+  older build, its `--shots`) lays each beside the older's, byte for byte;
+  the Good default to the pixel or within what one build's own two runs
+  differ by (pre261 against itself: 19,682 to 29,551 of 2,073,600 pixels a
+  level or two apart, the mean within 0.003 of a level, seeded or not; its
+  light gathers over frames), so at most 2 levels, 5% of the pixels and a
+  mean of 0.02. A Good render keeps some of the light it gathered for the
+  next (a third render of the car a level darker all over), so only a
+  run's first is laid beside another's. The Look row clicked as a person clicks: each look in the
   window with its words whole, the inked two on a row of their own, the
   note and the draft following; Render picture in Comic writes a coloured
   640 x 360 with black lines. The small scene (three red 1 x 2s in a wall, a

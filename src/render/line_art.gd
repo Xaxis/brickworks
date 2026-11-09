@@ -44,6 +44,16 @@ const INK_SHARE := 1.0 / 450.0
 const THINNEST := 2.0
 const CELL_SHARE := 1.0 / 150.0
 const SMALLEST_CELL := 4.0
+## Full light, as an illustrator takes it: the clay's light that this share
+## of the model's pixels in the picture are darker than, its brightest
+## faces. Faces in it are paper and the dots grow as a face falls from it,
+## so a model seen square on is shaded as one seen from above, its faces
+## to the eye clean, not dotted for being turned from the sky.
+const FULL_SHARE := 0.9
+## The clay's whole picture is drawn this many pixels across to find it.
+const FULL_ACROSS := 256
+## Full light where too little of the model is in the picture to say.
+const FULL_ALONE := 0.8
 
 ## The copy: every part where the render's stage has it, a number each.
 var stage: BrickWorld
@@ -117,6 +127,8 @@ func setup(world: World3D, parent: Node3D, library: PartLibrary) -> void:
 	_clay.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
 	_clay.cull_mode = BaseMaterial3D.CULL_DISABLED
 	light_view = _view_3d(world, "LineLight")
+	# On nothing, so the model's pixels are told by their alpha (full_light).
+	light_view.transparent_bg = true
 	_light_camera = _camera_in(light_view, null)
 
 	flat_light = Environment.new()
@@ -261,6 +273,21 @@ func before_light() -> void:
 			batch.material_override = _clay
 
 
+## Full light (FULL_SHARE) of [param clay], the clay's picture on nothing.
+static func full_light(clay: Image) -> float:
+	var lights: PackedFloat32Array = []
+	if clay != null:
+		for y: int in clay.get_height():
+			for x: int in clay.get_width():
+				var c: Color = clay.get_pixel(x, y)
+				if c.a > 0.99:
+					lights.append(c.srgb_to_linear().get_luminance())
+	if lights.size() < 16:
+		return FULL_ALONE
+	lights.sort()
+	return clampf(lights[mini(int(lights.size() * FULL_SHARE), lights.size() - 1)], 0.05, 4.0)
+
+
 ## The copy out of every picture again.
 func after() -> void:
 	stage.visible = false
@@ -268,9 +295,10 @@ func after() -> void:
 
 ## The ink drawn for one piece of a picture [param asked] for: [param lit]
 ## and [param flat] the set's two pictures of it, [param size] across, its
-## first pixel at [param at] in a picture [param picture] across.
+## first pixel at [param at] in a picture [param picture] across, in which
+## [param full] is full light (full_light).
 func before_ink(lit: Texture2D, flat: Texture2D, asked: RenderSettings, picture: Vector2i,
-		at: Vector2i, size: Vector2i) -> void:
+		at: Vector2i, size: Vector2i, full: float) -> void:
 	if ink_view.size != size:
 		ink_view.size = size
 	_ink.set_shader_parameter("lit_tex", lit)
@@ -281,6 +309,7 @@ func before_ink(lit: Texture2D, flat: Texture2D, asked: RenderSettings, picture:
 	_ink.set_shader_parameter("ink", maxf(THINNEST, tall * INK_SHARE))
 	_ink.set_shader_parameter("cell", maxf(SMALLEST_CELL, tall * CELL_SHARE))
 	_ink.set_shader_parameter("comic", asked.look == "comic")
+	_ink.set_shader_parameter("light_full", full)
 	var backdrop: Color = asked.backdrop
 	_ink.set_shader_parameter("paper", Vector4(backdrop.r, backdrop.g, backdrop.b,
 		0.0 if asked.transparent else 1.0))

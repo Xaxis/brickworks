@@ -2248,6 +2248,9 @@ func _line_picture(settings: RenderSettings, from: float, to: float, words: Stri
 	_resolve_material.set_shader_parameter("sum_tex", _sums[0].get_texture())
 	_sum_materials[0].set_shader_parameter("first", true)
 	_sum_materials[0].set_shader_parameter("weight", 1.0)
+	var full: float = await _line_full_light(shot, plan, picture)
+	if full < 0.0:
+		return null
 	for tile: Rect2i in tiles:
 		var piece: int = tiles.find(tile)
 		_point(shot, tile, margin, picture, Vector2.ZERO, Vector2.ZERO)
@@ -2273,7 +2276,7 @@ func _line_picture(settings: RenderSettings, from: float, to: float, words: Stri
 		if not coded:
 			return null
 		_line.before_ink(_out.get_texture(), _base.get_texture(), _line_asked, picture,
-			tile.position - Vector2i(margin, margin), size)
+			tile.position - Vector2i(margin, margin), size, full)
 		if not await _draw([_line.ink_view]):
 			return null
 		_doing("reading the picture back")
@@ -2297,6 +2300,24 @@ func _line_picture(settings: RenderSettings, from: float, to: float, words: Stri
 		_doing("converting")
 		result.convert(Image.FORMAT_RGB8)
 	return result
+
+
+## Full light for a line picture [param picture] across (LineArt.full_light):
+## the clay of the whole of it, drawn small once. Below 0 if cancelled.
+func _line_full_light(shot: Shot, plan: Plan, picture: Vector2i) -> float:
+	var small := Vector2i(LineArt.FULL_ACROSS,
+		maxi(16, LineArt.FULL_ACROSS * picture.y / maxi(picture.x, 1)))
+	_point(shot, Rect2i(Vector2i.ZERO, picture), 0, picture, Vector2.ZERO, Vector2.ZERO)
+	_light_sample(plan, 0, 1)
+	_line.before_codes(_camera, _scene, small, _stage.transform)
+	_line.before_light()
+	_lights_seen_from(LineArt.LAYER, true)
+	var drawn: bool = await _draw([_line.light_view])
+	_lights_seen_from(LineArt.LAYER, false)
+	_line.after()
+	if not drawn:
+		return -1.0
+	return LineArt.full_light(await _read(_line.light_view))
 
 
 ## The set's lights, the model's own among them, seen from [param layer]

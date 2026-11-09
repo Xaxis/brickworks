@@ -56,11 +56,14 @@ uniform vec3 ink_on_dark = vec3(0.46, 0.47, 0.50);
 uniform float crease = 0.866;
 // A print's edge: a part's own colour this far apart between two pixels.
 uniform float print_edge = 0.2;
-// The light on the clay (linear) at which the dots begin and where they
-// are densest; and how much of the cell they cover there.
-uniform float shade_from = 0.75;
-uniform float shade_full = 0.35;
-uniform float densest = 0.55;
+// Full light, the clay's light on the model's brightest faces in the
+// whole picture (LineArt.full_light); the share of it at which the dots
+// begin and where they are densest; and how much of the cell they cover
+// there.
+uniform float light_full = 0.8;
+uniform float shade_from = 0.9;
+uniform float shade_full = 0.5;
+uniform float densest = 0.6;
 // The floor's shadow (its alpha) drawn from here, darkest there: its faint
 // outer reaches, which spread far round a model, left as paper.
 uniform float floor_from = 0.18;
@@ -216,7 +219,7 @@ void fragment() {
 		}
 	} else {
 		vec3 clay = to_linear(texture(light_tex, UV).rgb);
-		float light = dot(clay, vec3(0.2126, 0.7152, 0.0722));
+		float light = dot(clay, vec3(0.2126, 0.7152, 0.0722)) / max(light_full, 0.01);
 		COLOR = vec4(on_the_model(at, flat_colour, light, line, to_page, between, light_other), 1.0);
 	}
 }
