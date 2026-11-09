@@ -44,9 +44,10 @@
 ## By finger (fingertools, APP_UX8 #10), laid out for one (Phone.on): every
 ## handle a fingertip's target or more, Apple's 44 points. A finger takes the
 ## handle nearest it within half a fingertip, a pane's face counting as on
-## it; the rings stand at least 120 points round, the outer ring a fingertip
-## outside them, the tag 48 points each way, and a pane that cannot be a
-## fingertip's target is left out (the arrows either side still slide it).
+## it; a ring's far half only where no near half is within reach. The rings
+## stand at least 120 points round, the outer ring a fingertip outside them,
+## the tag 48 points each way, and a pane that cannot be a fingertip's
+## target is left out (the arrows either side still slide it).
 ## The finger that took a handle is the handles' until it lifts: the view
 ## did not turn with it (CadCamera's one-finger turn), so a drag moved the
 ## part and the view at once, and Main's hold brought up the part's actions
@@ -106,8 +107,8 @@ const SWEEP_DEGREES := 5.0
 const SWEEP_LDU := 4.0
 ## Laid out for a finger, in points: how near a ring or an arrow a finger has
 ## to land to take it (a band a fingertip wide and a little over); the
-## rings' radius at least (at 96, two rings seen from a three-quarter view ran
-## 40 points apart, a fingertip's target split between them) and at most; how
+## rings' radius at least (so that from a three-quarter view each ring's near
+## half has a fingertip's band clear of the others' near halves) and at most; how
 ## far outside them the outer ring stands; a pane's span along each of its
 ## axes (as [constant PANE]); how far a finger may wander and still be a tap;
 ## and the tag's least size each way (Material's 48, its words inside a
@@ -610,6 +611,11 @@ func handle_at(at: Vector2) -> Dictionary:
 		return {"kind": "frame"}
 	var best: Dictionary = {}
 	var best_off: float = _pick()
+	# A finger's reach is a fingertip, wider than the way two rings seen from
+	# a three-quarter view run apart, the far half of one beside the near half
+	# of another: the far half takes a finger only where no near half can.
+	var behind: Dictionary = {}
+	var behind_off: float = _pick()
 	var three: Array = screen_handles(view)
 	var extras: Array = screen_extras(view)
 	var lines: Array = three + extras.filter(func(handle: Dictionary) -> bool:
@@ -619,13 +625,19 @@ func handle_at(at: Vector2) -> Dictionary:
 		for k: int in points.size() - 1:
 			var near: Vector2 = Geometry2D.get_closest_point_to_segment(at, points[k], points[k + 1])
 			var off: float = near.distance_to(at)
+			var taken: Dictionary = {"kind": handle["kind"], "axis": handle["axis"],
+				"way": handle["way"], "at": near, "segment": k, "view": view}
 			# The near half of a ring before the far half behind it.
 			if handle["kind"] == "ring" and not bool((handle["front"] as Array)[k]):
+				if _finger():
+					if off < behind_off:
+						behind_off = off
+						behind = taken
+					continue
 				off += 3.0 * _scale()
 			if off < best_off:
 				best_off = off
-				best = {"kind": handle["kind"], "axis": handle["axis"], "way": handle["way"],
-					"at": near, "segment": k, "view": view}
+				best = taken
 	# A finger takes whichever is nearest within its reach, a pane's face
 	# counting as on it: its arrows' bands, kept clear of the panes, and the
 	# panes' faces, grown into the room round them, are each a fingertip.
@@ -639,6 +651,8 @@ func handle_at(at: Vector2) -> Dictionary:
 			if off < best_off:
 				best_off = off
 				best = _pane_taken(handle, at, view)
+	if best.is_empty():
+		best = behind
 	if not best.is_empty():
 		return best
 	for handle: Dictionary in extras:

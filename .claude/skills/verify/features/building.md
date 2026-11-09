@@ -2716,8 +2716,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   (new de/fr/es entries). Handles: every target 44 points or more across
   (arrows and rings 23 points each side, rings 120 to 140 points round fitted to
   the view, the outer ring 46 points out, panes 0.25 to 0.75 of an arrow's
-  reach, nearest wins and a pane's face counts as on it, a pane thinner than
-  half a fingertip left out, the tag 48 points each way); the finger that
+  reach, nearest wins and a pane's face counts as on it, a ring's far half
+  only where no near half is within reach, a pane thinner than half a
+  fingertip left out, the tag 48 points each way); the finger that
   presses a handle is the handles' till it lifts (`Handles._finger_input`: the
   view does not turn under it, a rest on it before the drag opens nothing);
   a second finger down puts the drag back and the view takes both; slop 10
