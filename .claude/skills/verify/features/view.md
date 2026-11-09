@@ -852,7 +852,7 @@ picture the assistant is shown.
   command has no key and no row there, or a preset's count differs; checks no
   two actions share a key, each key is on its menu row, and each does what its
   row does under each preset (pictures: the menus, the sheet filtered `alt-`);
-  none runs while the parts' search is typed in; Replace set to Alt-W in the
+  each runs from the parts' search too (typingkeys); Replace set to Alt-W in the
   sheet runs from Alt-W. `docs_menus.gd` now writes each row's key as the app's
   own keys have it, so the docs' menus and shortcuts pages list Alt-C and the
   rest.
@@ -872,12 +872,35 @@ picture the assistant is shown.
   98 before) is 106 or more; each key is on its row and does what the row does
   under each preset (Render's panel, the queue, the three shapes cut away, Page
   setup, the Pick a Brick Save dialog cancelled, the Library); Render in one
-  key press; none runs while the parts' search is typed in; the sheet lists
+  key press; each runs from the parts' search too (typingkeys); the sheet lists
   them, its rows keeping a name's capitals ("LEGO® Pick a Brick list",
   "BrickLink wanted list", never "lEGO®"; `ControlsDialog.bindings`)
   (pictures: File, File › Export, View › Cut away by, Build › Booklet page
   opened, the sheet filtered "F9", "cut away", "list"). `keys4_probe` still
   checks the counts and the keyless rows.
+- `keys while a field has the focus` (`src/main.gd` `_unhandled_key_input`,
+  APP_UX7 #4, the typingkeys unit, 2026-11-08): a field with the keys (a
+  LineEdit or TextEdit: the bin's search, Find's field, the assistant's brief,
+  a name) keeps only the keys it types with: what prints, with no Ctrl, Alt or
+  Cmd (AltGr, sent as Ctrl and Alt, still prints), and the keys that move,
+  select and delete in its text, with any modifier, Escape and Tab among
+  them. F1, F9, Ctrl+S, Alt+X and every other function or modified key reach
+  their commands; what the field does itself (Ctrl+A, C, V, X, Z) it takes
+  before Main hears it. Before, Main gave up every key while a field had
+  them, and the walk's F1 after a bin search did nothing.
+  `tools/probe.sh typingkeys_probe` (1400 x 900; `PROBE_SIZE=1280x720` too;
+  needs .env for its throwaway account) goes through the sign-in screen, then
+  under each of the four presets, from each of the three fields clicked as a
+  person clicks them: "87087" typed, F1 the keys sheet, F9 Render,
+  Ctrl+Shift+B Page setup, Alt+X the box, Ctrl+S saved, 1 press each; a
+  sentence of letters, digits, Space, Shift's capitals, brackets and - = typed
+  runs nothing (the model's bytes, its undo list, the view, the selection, the
+  tool, nothing open) and lands whole in the field; Ctrl+A, C, X, V, Z act on
+  the text (selected, copied, cut, pasted, undone) and leave the model as it
+  was; the walk's "cut away" typed into the sheet after F1 from the search
+  keeps 11 rows at 1400 x 900. Pictures in user://typingkeys (or --shots=DIR):
+  the sheet, Render, Page setup and the box from each field, each field typed
+  in, the sheet's "cut away".
 - `what's this` (`src/ui/whats_this.gd`, Help, What's This?, Shift+F1, the
   whatsthis unit, APP_UX4 10): the next click on any control says what it does
   in a bubble beside it, and does nothing else, as LeoCAD's, Qt's and Windows'

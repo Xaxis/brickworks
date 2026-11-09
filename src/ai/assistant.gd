@@ -6342,12 +6342,20 @@ func _prints_named(info: PartLibrary.PartInfo) -> String:
 		+ "finds any print by what is on it.")
 
 
+## A part on one line of an answer: its number and name, its size in the
+## bin's own words (PartsBin.size_words, the line a tile's tooltip says),
+## its studs and what can be had.
+##
+## Its size was its box, "covers 1x2 studs, 3 plates", where the bin says
+## "1 x 1, a stud on one side, 1 brick": the side stud counted as a stud of
+## room, so a session told the person 87087 is 1 x 2 (APP_UX7, mcpwords).
+## The bin's words are also the corner a placement is named by, the body's
+## (_footprint_start). A brick says its plates too, which y counts in.
 func _describe(info: PartLibrary.PartInfo) -> String:
-	var footprint: Vector2i = info.footprint_studs()
-	var plates: int = _height_plates(info)
-	return "%s: %s, covers %dx%d studs, %d plate%s, %s%s" % [
-		info.id, info.name.strip_edges(), footprint.x, footprint.y,
-		plates, "" if plates == 1 else "s", _studs_of(info),
+	var size: String = PartsBin.size_words(info)
+	if _height_plates(info) == 3:
+		size += " (3 plates)"
+	return "%s: %s, %s, %s%s" % [info.id, info.name.strip_edges(), size, _studs_of(info),
 		_made_in(info)]
 
 
