@@ -33,7 +33,7 @@ All part geometry derives from the LDraw Parts Library.
   > LDraw.org.
 
 - Source: https://library.ldraw.org/
-- Thirty-two of the library's primitives are copied unchanged into
+- Thirty-four of the library's primitives are copied unchanged into
   `assets/ldraw/` and ship in every build, each CC BY 4.0 and each file
   naming its author — because the element maker
   (`src/parts/element_maker.gd`) draws every part it makes from them and the
@@ -46,7 +46,8 @@ All part geometry derives from the LDraw Parts Library.
   `1-16ndis` and `3-16chrd` by Niels Karsdorp, `3-16cylo` by J.C. Tchang,
   `1-4chrd` and `1-4cylo` by Max Martin Richter, `1-16cyli` by Marc Klein,
   `3-16edge` and `rect2p` by Donald Sutter, and `box2-5` and `box4o8a` by
-  Steffen.
+  Steffen; and for a wedge plate's tube near its cut, `stud4od` by Philippe
+  Hurbain and `4-4cylo` by Mark Kennedy.
   A part the maker writes is an unofficial part, not a library one: its
   header names the maker as its author, and LDraw's own `u` and `t`
   numbers are assigned by the Parts Library admin, so it uses none.
