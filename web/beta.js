@@ -44,9 +44,17 @@ function draw(heard) {
   for (const row of document.querySelectorAll("#beta-acts > [data-visitor]")) row.hidden = row.dataset.visitor !== visitor;
   document.documentElement.dataset.betaPage = visitor || heard.beta;
   // Come from the bar's Join (/beta#beta-acts): its button, ready to press.
+  // Not before the page has loaded: the browser's own move to #beta-acts,
+  // which is not focusable, clears the focus as it scrolls there.
   if (location.hash === "#beta-acts" && !focused && (visitor === "out" || visitor === "in")) {
     focused = true;
-    document.querySelector(`#beta-acts > [data-visitor="${visitor}"] [data-beta-join]`)?.focus();
+    const button = document.querySelector(`#beta-acts > [data-visitor="${visitor}"] [data-beta-join]`);
+    const now = () => requestAnimationFrame(() => {
+      const free = !document.activeElement || document.activeElement === document.body;
+      if (button && free && !button.closest("[hidden]")) button.focus();
+    });
+    if (document.readyState === "complete") now();
+    else addEventListener("load", now, { once: true });
   }
   if (open) news();
   if (heard.tester) testers();

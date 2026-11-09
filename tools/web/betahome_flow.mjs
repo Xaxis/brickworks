@@ -525,7 +525,10 @@ try {
       let n = 0;
       const seen = first.data;
       for (let i = 0; i < seen.length; i += 4) {
-        const same = seen[i] === second.data[i] && seen[i + 1] === second.data[i + 1] && seen[i + 2] === second.data[i + 2];
+        // A colour off by a few levels (a corner's antialiasing, a
+        // gradient's dither) is not a difference anyone sees.
+        const same = Math.abs(seen[i] - second.data[i]) <= 8 && Math.abs(seen[i + 1] - second.data[i + 1]) <= 8
+          && Math.abs(seen[i + 2] - second.data[i + 2]) <= 8;
         if (!same) n += 1;
         // Where they differ in red, over the before picture faded.
         if (same) { seen[i] = 128 + seen[i] / 2; seen[i + 1] = 128 + seen[i + 1] / 2; seen[i + 2] = 128 + seen[i + 2] / 2; }
