@@ -77,6 +77,12 @@ The palette under the bin holds every colour parts are made in, and a part's own
 
 Tick **Only parts made in it** beside the colour's name and the bin lists only the parts real sets have in that colour, *Sand Green* or any other; choose another colour and the list follows it.
 
+With a part in hand, rest the pointer on a colour: its tooltip says in how many sets the part comes in it, *3001 comes in it, in 1,011 sets*. In three sets or fewer it says *rare in this colour*: a piece lost in it is hard to replace. The counts are Rebrickable's set inventories, a set's own parts and its minifigures', not its spares, and not a set counted again for a pack that holds it.
+
+<!-- covers
+ui:rare colours in the bin
+-->
+
 ## Swap, list and plain parts {#swap}
 
 Double-click a part in the bin to swap what is selected for it: three red bricks become three red masonry bricks in one step, in their places and colour, and [[Ctrl+Z]] swaps them back. **List**, under the bin, shows a row per part with its number, its size in studs and how many colours it was made in. Clear **Prints** beside it and printed and stickered parts leave the bin. **Only parts made in it**, **Prints** and **List** stay as you left them the next time you open Brickworks.

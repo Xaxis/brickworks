@@ -12997,6 +12997,18 @@ msgstr "das GIF wurde nicht fertig: %s"
 
 msgid "no GIF: its frames would not read back"
 msgstr "kein GIF: seine Bilder ließen sich nicht zurücklesen"
+# A colour's swatch: in how many sets the part comes in it, and rare in it
+# in three or fewer (APP_UX7 #21, rarity).
+
+msgid "%s comes in it, in %s sets"
+msgstr "%s gibt es in dieser Farbe, in %s Sets"
+
+msgid "%s comes in it, in 1 set: rare in this colour"
+msgstr "%s gibt es in dieser Farbe, in 1 Set: selten in dieser Farbe"
+
+msgid "%s comes in it, in %d sets: rare in this colour"
+msgstr "%s gibt es in dieser Farbe, in %d Sets: selten in dieser Farbe"
+
 
 # A long job says when it is done: Settings' row, and what the note says
 # finished (APP_UX7 #11, donenote).
