@@ -123,14 +123,16 @@ func _run() -> void:
 	words.capitals = "de" in Language.CAPITALISED
 	words.thousands = str(Language.THOUSANDS["de"])
 	_de = words
+	# The colours' names, kept in every language, before the first walk:
+	# the sign-in screen is over the bin and its colours.
+	var library: PartLibrary = _main.get("_library")
+	for code: int in library.colors:
+		_colours[(library.colors[code] as PartLibrary.BrickColor).name] = true
 	if not await _way_in():
 		await _finish()
 		return
 	var store: ModelStore = _main.get("_store")
 	store.keeps = false
-	var library: PartLibrary = _main.get("_library")
-	for code: int in library.colors:
-		_colours[(library.colors[code] as PartLibrary.BrickColor).name] = true
 	_main.call("clear_model")
 	await _frames(6)
 	_walk_all("launch")
@@ -589,7 +591,7 @@ func _no_german(control: Control) -> String:
 	# A name a screen reader alone hears, as it was set: read so while the
 	# window is in English.
 	var given: String = _given(control) if not _in_german else ""
-	if _has_words(given) and not _a_name(given):
+	if _has_words(given) and not _a_name(given) and not _drawn_on(control, given):
 		if String(_de.call(&"find", given)).is_empty():
 			return "no German for “%s”" % given.left(60)
 	return ""
@@ -616,6 +618,16 @@ func _read_menus(node: Node, when: String) -> void:
 					menu.get_item_tooltip(index).get_slice("\n", 0).left(50)]
 	for child: Node in node.get_children(true):
 		_read_menus(child, when)
+
+
+## Whether [param words] are drawn on [param control] itself, by a label
+## in it (a technique's tile, its title): words on screen, which the
+## languages probe checks, not a name a screen reader alone hears.
+static func _drawn_on(control: Control, words: String) -> bool:
+	for label: Node in control.find_children("*", "Label", true, false):
+		if (label as Label).visible and (label as Label).text.strip_edges() == words:
+			return true
+	return false
 
 
 static func _has_words(text: String) -> bool:

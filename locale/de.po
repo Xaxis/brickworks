@@ -13050,6 +13050,9 @@ msgstr "Ansicht nach unten drehen"
 msgid "Slide the view: W, A, S and D"
 msgstr "Ansicht verschieben: W, A, S und D"
 
+msgid "Step"
+msgstr "Schritt"
+
 # View › Edges and studs (APP_UX6 #19 edges): the parts' seams and their studs, each drawn or not
 
 msgid "Edges and studs"
