@@ -425,9 +425,15 @@ its alt and caption, the features it shows. One command makes them all:
   window is 1400 x 900 and the app goes through the sign-in screen as a
   person does, let in as `you@example.com`, offline: no clock, no counts,
   nothing of the day. Its steps are a person's: the menus' commands by
-  name, keys, clicks, the pointer over a part. It is read until two reads
+  name, keys, clicks, the pointer over a part. It starts as someone who
+  has been here before (the tour skipped, the assistant's offer closed)
+  unless the manifest says `"first_visit": true`. It is read with the
+  pointer off the window unless a step put it somewhere, until two reads
   are the same pixels, cut to a control's own rectangle, and marked with
-  numbered outlines where the manifest says.
+  numbered outlines where the manifest says. A picture fails, and is never
+  written, when the sign-in screen or a tooltip is up as it is read (each
+  dimmed or covered a picture once), when a step names nothing, or when a
+  crop finds nothing in sight.
 - **The site's** are taken by `tools/web/docs_shots_flow.mjs` on a site
   built from the tree (`tools/site.py`), or on a deployment with `--url`,
   in Chromium on SwiftShader, in each theme the manifest names, with what
@@ -436,7 +442,12 @@ its alt and caption, the features it shows. One command makes them all:
 - Both write lossless PNGs. The command hashes each one's pixels, and a
   picture whose pixels are the ones `docs-site/img/shots.lock` says it was
   made from is left alone. So the same code makes no change, and a picture
-  that changes is a UI that changed. A changed one is written as WebP
+  that changes is a UI that changed. One thing moves by itself: the cut's
+  hatched faces flicker by up to 4 levels on a few dozen pixels from frame
+  to frame. So each picture's lossless pixels are kept by their hash in
+  `~/.cache/brickworks-docs-shots`, and a new one within 8 levels on 0.1%
+  of its pixels of the last is the same (a screenshot test's threshold;
+  any real change moves far more). A changed one is written as WebP
   (quality 84) into `docs-site/img/`, and its old and new picture and what
   differs, in magenta, are put side by side in the run's
   `diff/index.html`.
