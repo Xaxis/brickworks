@@ -209,6 +209,7 @@
       "reach": "node tools/web/together_probe.mjs --url=<a relay server or a preview>   (with .env sourced; BW_BYPASS for a preview)",
       "area": "together",
       "tests": [
+        "tests/test_flows_for.py",
         "tests/test_steps_score.py"
       ]
     },
@@ -294,7 +295,7 @@
       "id": "cli:3mf strict reader",
       "kind": "cli",
       "entry": "tools/print3mf/check_3mf.py",
-      "reach": "uvx --with lib3mf==2.5.0 --with xmlschema==4.3.2 --with numpy==2.5.4 python3 -I tools/print3mf/check_3mf.py FILE.3mf [--json=OUT]   (the package, the core XSD tools/print3mf/3mf_core.xsd, the core's rules, lib3mf in strict mode; each object's name, colour, triangles and winding, and the build's box; exit 1 on any error)",
+      "reach": "uvx --with lib3mf==2.5.0 --with xmlschema==4.3.2 --with numpy==2.5.4 python3 -I tools/print3mf/check_3mf.py FILE.3mf [--json=OUT]   (the package, the core XSD tools/print3mf/3mf_core.xsd, the core's rules, lib3mf in strict mode; each object's name, colour, triangles, closedness (lib3mf's manifold_and_oriented; edges_not_two and edges_one_way by vertex index) and winding, and the build's box; exit 1 on any error)",
       "area": "model-io",
       "tests": []
     },
@@ -546,6 +547,14 @@
       "entry": "tools/web/billing_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/billing_flow.mjs --url=<preview> --out=DIR   (a preview from tools/deploy.sh --unit --billing-stand-in, or plans off: nothing answers; --stand-in=<tools/web/admission_stand_in.mjs> on this machine also pays and cancels; preview check [billing])",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:binrow probe",
+      "kind": "cli",
+      "entry": "src/dev/binrow_probe.gd",
+      "reach": "tools/probe.sh binrow_probe -- --shots=DIR   (windowed, 1400x900, signed in through the gate with a throwaway account from .env: at 1400x900, 1280x720 and 1024x768, as first opened and with Stress, the assistant, a part's properties and the bin open, the eight shelves inside the chips' window unscrolled; 42 parts at 1400x900; the walk's Like this Plate 2 x 4 seventh at 1400x900 and 1280x720; New's list against the catalogue's years); tools/probe.sh binrow_phone_probe (390x844) and binrow_tablet_probe (1024x768)",
+      "area": "parts",
       "tests": []
     },
     {
@@ -1999,7 +2008,7 @@
       "id": "cli:print3mf probe",
       "kind": "cli",
       "entry": "src/dev/print3mf_probe.gd",
-      "reach": "tools/probe.sh print3mf_probe [-- --hashes=FILE | --same-as=FILE]   (headless; the car as a 3MF from File, Export, 3D model\u2026 and export_model, read by tools/print3mf/check_3mf.py; a printed tile, a mirrored brick and a part with no BFC; the reader refusing a turned triangle, a colour that is none and a corner past its vertices; --hashes/--same-as compare the car's GLB and STL with another build's)",
+      "reach": "tools/probe.sh print3mf_probe [-- --hashes=FILE | --same-as=FILE]   (headless; the car as a 3MF from File, Export, 3D model\u2026 and export_model, read by tools/print3mf/check_3mf.py; every object closed (lib3mf IsManifoldAndOriented, every edge two triangles going opposite ways; as drawn, with Mesh3mf.close_up off, none), its triangles at most twice its parts'; a printed tile, a mirrored brick and a part with no BFC; the reader refusing a turned triangle, a colour that is none and a corner past its vertices; --hashes/--same-as compare the car's GLB and STL with another build's)",
       "area": "model-io",
       "tests": []
     },
@@ -3139,6 +3148,7 @@
       "reach": "node tools/web/relay_server.mjs 9011 --hold=together_sessions,together_ops,together_people, then godot --headless --path . --script src/dev/together_probe.gd -- --api=http://127.0.0.1:9011   (with .env sourced)",
       "area": "together",
       "tests": [
+        "tests/test_flows_for.py",
         "tests/test_steps_score.py"
       ]
     },
@@ -4135,6 +4145,7 @@
       "reach": "godot --headless --path . --script src/dev/techniques_probe.gd",
       "area": "assistant",
       "tests": [
+        "tests/test_flows_for.py",
         "tests/test_realset.py"
       ]
     },
@@ -5086,6 +5097,14 @@
       "tests": []
     },
     {
+      "id": "ui:new parts in the bin",
+      "kind": "ui",
+      "entry": "src/ui/parts_bin.gd",
+      "reach": "godot --path .  (New among the bin's shelves, after Palettes: the parts first made in the catalogue's latest two years, the newest first; words typed narrow it. Every shelf, All to Like this, in sight at any width, their counts left off where that saves a row)",
+      "area": "parts",
+      "tests": []
+    },
+    {
       "id": "ui:new tab or window",
       "kind": "ui",
       "entry": "src/parts/tab_session.gd",
@@ -5659,6 +5678,7 @@
       "reach": "godot --path .  (Techniques beside Recent and Favourites in the parts bin; a row held whole, R turns it, a click puts it down)",
       "area": "parts",
       "tests": [
+        "tests/test_flows_for.py",
         "tests/test_realset.py"
       ]
     },
@@ -5741,7 +5761,7 @@
       "id": "ui:the booklet as a PDF and as PNG pages",
       "kind": "ui",
       "entry": "src/render/booklet_pdf.gd",
-      "reach": "godot --path . --resolution 1280x800 --script src/dev/booklet_pdf_probe.gd -- --model=M --into=DIR   (by hand: Instructions, then the booklet's Save as PDF or Save pages as PNG beside Print; -- --html=BOOKLET.html saves one already made; tools/booklet_pdf_check.py BOOKLET.html BOOKLET.pdf --zip PAGES.zip reads them; on the web, booklet_flow.mjs presses both)",
+      "reach": "godot --path . --resolution 1280x800 --script src/dev/booklet_pdf_probe.gd -- --model=M --into=DIR   (by hand: Instructions, then the booklet's Save as PDF or Save pages as PNG beside Print; -- --html=BOOKLET.html saves one already made; -- --words-only: Cyrillic, Greek and Japanese read back by pdftotext; -- --against=DIR: the commit before's castle PDF the same at 300 dpi; tools/booklet_pdf_check.py BOOKLET.html BOOKLET.pdf --zip PAGES.zip reads them; on the web, booklet_flow.mjs presses both)",
       "area": "view",
       "tests": []
     },
