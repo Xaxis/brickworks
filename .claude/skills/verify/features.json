@@ -1100,6 +1100,14 @@
       "tests": []
     },
     {
+      "id": "cli:edges probe",
+      "kind": "cli",
+      "entry": "src/dev/edges_probe.gd",
+      "reach": "tools/probe.sh edges [-- --shots=DIR]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720, through the sign-in screen with a throwaway account (.env): the car's default view the same to the pixel after each row off and on, kept as default_view_WxH.png for an older build's; two walls' seam inside each face drawn and 0 px with Edges off; every kind of stud seen from its side, most of its round drawn and 0 px with Studs off, every part in its place and, drawn flat, 0 px covered differently outside the rounds; the car's triangles with Studs off; both kept over a restart; pictures in user://edges or DIR)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:embed browser flow",
       "kind": "cli",
       "entry": "tools/web/embed_flow.mjs",
@@ -4742,6 +4750,14 @@
       "kind": "ui",
       "entry": "src/render/idle_draw.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1280x860 --script src/dev/idle_probe.gd",
+      "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:edges and studs",
+      "kind": "ui",
+      "entry": "src/render/studs_off.gd",
+      "reach": "tools/probe.sh edges && PROBE_SIZE=1280x720 tools/probe.sh edges   (by hand: View, Edges and studs, Edges or Studs; kept in this machine's controls.cfg [view]; only the window follows them: renders, booklets, view_model and thumbnails draw every seam and stud)",
       "area": "view",
       "tests": []
     },
