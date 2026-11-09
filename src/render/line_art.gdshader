@@ -100,6 +100,42 @@ float tone_for(float light) {
 	return densest * (1.0 - smoothstep(shade_full, shade_from, light));
 }
 
+// A pixel of the model: [line] of it inked.
+vec3 on_the_model(vec2 at, vec4 flat_colour, vec4 lit, float line, float to_page, float between,
+		bool light_other) {
+	// Clear plastic drawn on nothing comes out see-through; drawn here as
+	// the colour it is.
+	vec3 own = flat_colour.a > 0.01 ? flat_colour.rgb / max(flat_colour.a, 0.01) : flat_colour.rgb;
+	own = clamp(own, 0.0, 1.0);
+	float light = lightness(lit.rgb) / max(lightness(own) * max(flat_colour.a, 0.2), 0.035);
+	float tone = tone_for(light);
+	vec3 shown;
+	vec3 line_colour = ink_colour;
+	if (comic) {
+		// Black plastic as print draws it: a dark grey whose faces can be
+		// told apart, and only the greys lifted (booklet_ink).
+		float chroma = max(own.r, max(own.g, own.b)) - min(own.r, min(own.g, own.b));
+		float dim = (1.0 - smoothstep(0.0, 0.24, lightness(own)))
+			* (1.0 - smoothstep(0.03, 0.10, chroma));
+		vec3 body = own * (1.0 + 0.8 * dim) + vec3(0.045) * dim;
+		if (flat_colour.a < 0.95) {
+			// Glass: its colour, paler, as a comic draws a window.
+			body = mix(body, vec3(1.0), 0.45);
+		}
+		// Two flat shades, lit and turned from the light, and dots of a
+		// darker shade over the second.
+		float away = smoothstep(shade_full + 0.1, shade_from - 0.05, light);
+		vec3 face = body * mix(0.82, 1.0, away);
+		shown = mix(face, body * 0.42, dot_at(at, tone));
+		if (lightness(body) < 0.16 && !light_other && to_page > between + 1.0) {
+			line_colour = ink_on_dark;
+		}
+	} else {
+		shown = mix(vec3(1.0), ink_colour, dot_at(at, tone));
+	}
+	return mix(shown, line_colour, line);
+}
+
 void fragment() {
 	vec2 at = origin + UV / pixel;
 	vec3 mine = texture(code_tex, UV).rgb;
@@ -154,38 +190,9 @@ void fragment() {
 		} else {
 			COLOR = vec4(ink_colour, ink_here);
 		}
-		return;
-	}
-
-	// Clear plastic drawn on nothing comes out see-through; drawn here as
-	// the colour it is.
-	vec3 own = flat_colour.a > 0.01 ? flat_colour.rgb / max(flat_colour.a, 0.01) : flat_colour.rgb;
-	own = clamp(own, 0.0, 1.0);
-	float light = lightness(lit.rgb) / max(lightness(own) * max(flat_colour.a, 0.2), 0.035);
-	float tone = tone_for(light);
-	vec3 shown;
-	vec3 line_colour = ink_colour;
-	if (comic) {
-		// Black plastic as print draws it: a dark grey whose faces can be
-		// told apart, and only the greys lifted (booklet_ink).
-		float chroma = max(own.r, max(own.g, own.b)) - min(own.r, min(own.g, own.b));
-		float dim = (1.0 - smoothstep(0.0, 0.24, lightness(own)))
-			* (1.0 - smoothstep(0.03, 0.10, chroma));
-		vec3 body = own * (1.0 + 0.8 * dim) + vec3(0.045) * dim;
-		if (flat_colour.a < 0.95) {
-			// Glass: its colour, paler, as a comic draws a window.
-			body = mix(body, vec3(1.0), 0.45);
-		}
-		// Two flat shades, lit and turned from the light, and dots of a
-		// darker shade over the second.
-		float away = smoothstep(shade_full + 0.1, shade_from - 0.05, light);
-		vec3 face = body * mix(0.82, 1.0, away);
-		shown = mix(face, body * 0.42, dot_at(at, tone));
-		if (lightness(body) < 0.16 && !light_other && to_page > between + 1.0) {
-			line_colour = ink_on_dark;
-		}
 	} else {
-		shown = mix(vec3(1.0), ink_colour, dot_at(at, tone));
+		COLOR = vec4(on_the_model(at, flat_colour, lit, line, to_page, between, light_other), 1.0);
 	}
-	COLOR = vec4(mix(shown, line_colour, line), 1.0);
 }
+
+

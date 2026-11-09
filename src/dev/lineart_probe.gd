@@ -39,6 +39,12 @@
 extends SceneTree
 
 const SET := "res://vendor/omr/files/10036-1.mpd"
+## The engine's own random numbers seeded with this before each picture
+## laid beside an older build's: a Good render's light gathers along rays
+## the engine turns at random each frame (SDFGI), and the engine seeds them
+## anew at each start, so two runs of one build differ by a level here and
+## there unless they start from the same seed.
+const DRAWN_WITH := 20261109
 ## A pixel this much darker than white (of 1) is ink.
 const INK := 0.5
 
@@ -186,14 +192,21 @@ func _finish() -> void:
 # -- the default render, the same to the pixel ----------------------------------
 
 
-## File, Render's own choices of the example car, the first picture drawn
-## (what was drawn before changes how a render's light gathers): kept, and
-## laid against an older build's.
+## File, Render's own choices of the example car: drawn once to make the
+## engine's programs, then twice from the same seed, the two the same; the
+## last kept, and laid against an older build's.
 func _default_render() -> void:
 	print("\n  the default render, as File, Render… draws it of the example car")
 	_check("the example car is on the baseplate (%d parts)" % _world.brick_count(),
 		_world.brick_count() > 20)
-	_keep_and_compare(await _render.render(_world, RenderSettings.new()), "default_render")
+	await _render.render(_world, RenderSettings.new())
+	seed(DRAWN_WITH)
+	var first: Image = await _render.render(_world, RenderSettings.new())
+	seed(DRAWN_WITH)
+	var again: Image = await _render.render(_world, RenderSettings.new())
+	_check("drawn twice from one seed, the same picture to the pixel (%d px differ)"
+		% _differing(first, again), first != null and _differing(first, again) == 0)
+	_keep_and_compare(again, "default_render")
 
 
 func _keep_and_compare(image: Image, name: String) -> void:
@@ -395,7 +408,9 @@ func _settings(look: String, view: String = "hero") -> RenderSettings:
 ## The scene's own window-look and product pictures, for an older build's.
 func _same_scene_as_before() -> void:
 	print("\n  the small scene as the window and Product draw it, for an older build's")
+	seed(DRAWN_WITH)
 	var first: Image = await _render.render(_world, _settings("window"))
+	seed(DRAWN_WITH)
 	var again: Image = await _render.render(_world, _settings("window"))
 	_check("drawn twice, the same picture to the pixel (%d px differ)" % _differing(first, again),
 		first != null and again != null and _differing(first, again) == 0)
@@ -419,6 +434,7 @@ func _line_art() -> void:
 		_check("Line art draws a picture", false)
 		return
 	drawn.save_png(ProjectSettings.globalize_path(_out.path_join("lineart_scene.png")))
+	_keep_what_it_was_made_of()
 	var shot: StudioRender.Shot = _render.last_shot
 	_check("white paper round the model, to the pixel: %.2f%%" % (_paper(drawn, mask, Color.WHITE) * 100.0),
 		_paper(drawn, mask, Color.WHITE) > 0.999)
@@ -432,6 +448,21 @@ func _line_art() -> void:
 	var front: Image = await _render.render(_world, _settings("lineart", "front"))
 	front.save_png(ProjectSettings.globalize_path(_out.path_join("lineart_front.png")))
 	_seams(front, _render.last_shot, "Line art")
+
+
+## The four pictures the last line picture was made of, to look at: the
+## set's lit and flat, the parts' numbers and their faces' directions.
+func _keep_what_it_was_made_of() -> void:
+	var line: LineArt = _render.get("_line")
+	var made_of: Dictionary = {"lit": _render.get("_out"), "flat": _render.get("_base")}
+	if line != null:
+		made_of["codes"] = line.codes_view
+		made_of["normals"] = line.normals_view
+	for name: String in made_of:
+		var view: SubViewport = made_of[name]
+		var image: Image = view.get_texture().get_image() if view != null else null
+		if image != null:
+			image.save_png(ProjectSettings.globalize_path(_out.path_join("made_of_%s.png" % name)))
 
 
 ## The white brick's faces: the two sides the camera sees, the one the
@@ -612,8 +643,8 @@ func _over_mcp() -> void:
 	_check("look lineart draws it inked: %s (%.2f%% grey)" % [text.left(90),
 		_share_grey(kept) * 100.0 if kept != null else 0.0],
 		kept != null and _share_grey(kept) > 0.999 and _share_ink(kept) > 0.005)
-	var refused: String = _text(await _rpc("tools/call", {"name": "render_model",
-		"arguments": {"kind": "picture", "look": "pencil"}}))
+	var refused: String = _text(await _finished(await _rpc("tools/call", {"name": "render_model",
+		"arguments": {"kind": "picture", "look": "pencil"}})))
 	_check("a look there is not is answered with those there are: %s" % refused.left(80),
 		refused.contains("lineart") and refused.contains("comic"))
 
