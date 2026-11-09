@@ -378,9 +378,13 @@ picture the assistant is shown.
   FileDialog of the main window was one, so with Godot's own file dialog up
   (no xdg portal; File, Open's and Import's always) or any question, the
   title bar's X, Alt+F4 and the session ending did nothing until it was
-  answered (desktop018, 0.18.0 and 0.19.0). Now nothing is exclusive to the
-  main window: a dialog that would be is made not exclusive the frame it is
-  up, and `ModalDialogs`, the root's last node, takes the events the main
+  answered (desktop018, 0.18.0 and 0.19.0). Now nothing is the main window's
+  exclusive child: a dialog that would be is made not transient to it the
+  frame it is up (a window is its parent's exclusive child only while
+  transient), keeping its exclusive flag, so a screen reader still hears it
+  as modal (a11ymodal, 2026-11-08: dialogclose first made them not
+  exclusive, which the engine reports as not modal; `a11y_modal_probe`).
+  `ModalDialogs`, the root's last node, takes the events the main
   window would have refused while one is, and gives the dialog the keys back
   on a press beside it. A dialog's own questions stay exclusive to it, and
   Reference picture stays not modal. The app still asks nothing as it
