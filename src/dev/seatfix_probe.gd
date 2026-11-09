@@ -147,13 +147,14 @@ func _dish_by_hand() -> void:
 
 ## [part in hand, part under it, the stud of that one aimed at (its index
 ## among its studs pointing up)]: bricks, plates and tiles on a plate, round
-## parts on a round plate's lone stud, and those the tube rule changes. A
-## 3960 dish goes on a round plate, as the sets stand it on four studs: on a
-## 2 x 2 plate the plate's corners are in its dome.
+## parts on a round plate's lone stud, and those the tube rule changes. Not
+## a 3960 dish, which the rule leaves on the catalogue's four studs round its
+## middle: there its foot's ring meets those studs, on a 2 x 2 plate or a
+## round one, before this unit as after.
 const SAMPLE: Array = [
 	["4740", "6141", 0], ["4740p01", "6141", 0], ["11598", "6141", 0], ["11245", "6141", 0],
 	["3003", "3022", 0], ["3001", "3020", 2], ["3022", "3022", 1], ["3068b", "3022", 3],
-	["3941", "3022", 0], ["4032", "3022", 2], ["11002", "3022", 1], ["3960", "4032", 0],
+	["3941", "3022", 0], ["4032", "3022", 2], ["11002", "3022", 1], ["3070b", "6141", 0],
 	["43898", "6141", 0], ["4589", "6141", 0], ["6141", "6141", 0], ["3062b", "6141", 0],
 ]
 
