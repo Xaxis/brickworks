@@ -133,6 +133,7 @@ static func make(text: String, model: LdrModel, placements: Array,
 	for unit: String in source.unit_sections:
 		var key: String = source.unit_sections[unit]
 		source.copies[key] = int(source.copies.get(key, 0)) + 1
+	source._read_for_patch()
 	return source
 
 
@@ -908,9 +909,11 @@ class Plan extends RefCounted:
 	var changed: Dictionary = {}
 
 
-# The file read once for patching: each line's section, step and the pairs
-# round it, as LdrModel.parse reads them.
-var _read_lines: bool = false
+# The file read for patching once, as it is made ([method make]), before
+# any save can read it: each line's section, step and the pairs round it,
+# as LdrModel.parse reads them. Read on first use, the autosave's worker
+# and a save on the main thread could both find it unread, one patching
+# from tables the other was still filling (kt5review #6, kt5r_race).
 var _why_never: String = ""
 var _sec := PackedStringArray()
 var _step_at := PackedInt32Array()
@@ -928,9 +931,6 @@ var _crlf: bool = false
 
 
 func _read_for_patch() -> void:
-	if _read_lines:
-		return
-	_read_lines = true
 	var count: int = original.size()
 	_crlf = count > 0 and original[0].ends_with("\r")
 	_sec.resize(count)
@@ -1027,13 +1027,82 @@ func _end_of_step(section: String, step: int) -> int:
 	return int(ends[step])
 
 
-## [param path] without its copies' numbers: what each copy round a part
-## is a copy of, outermost first.
-static func _copies_of(path: String) -> String:
-	var out := PackedStringArray()
-	for segment: String in Assemblies.segments(path):
-		out.append(Assemblies.definition(segment))
-	return "/".join(out)
+## The sub-model a copy of which was taken off ([param dead]) while a copy
+## of it numbered after that one stays, or "". An open numbers a sub-model's
+## copies in the file's order, so the one left opens again numbered one
+## less: Wing#2 as Wing#1, with the app's lines that name it by its path
+## (a motion's JOINT ASSEMBLY, a copy's step) naming another. Live's write
+## (B) writes them for the copies as they are (kt5review #5: 8156-1,
+## 8028-1, 5540-1's delcopy, nest_del_copy_comment).
+func _renumbered(dead: Dictionary) -> String:
+	var first_dead: Dictionary = {}     ## a sub-model -> the lowest number of a copy of it taken off
+	for path: String in dead:
+		var segment: String = Assemblies.leaf(path)
+		var kind: String = Assemblies.definition(segment)
+		var number: int = Assemblies.copy_of(segment)
+		first_dead[kind] = mini(int(first_dead.get(kind, number)), number)
+	if first_dead.is_empty():
+		return ""
+	for path: String in unit_sections:
+		if dead.has(path):
+			continue
+		var segment: String = Assemblies.leaf(path)
+		var kind: String = Assemblies.definition(segment)
+		if first_dead.has(kind) and Assemblies.copy_of(segment) > int(first_dead[kind]):
+			return kind
+	return ""
+
+
+## Why a patch taking out the lines [param gone] would leave what live's
+## write takes out with them; "": a sub-model of the file no line places
+## any more, its section left in the file for nothing to draw, or no part
+## at all with no new one ([param fresh] of them) in. The next save of
+## such a patch wrote the file's model whole as six lines and lost its
+## header (kt5review #4: 8644-1, 30572-1, 8121-1, 4309-1, 4348-1,
+## single_delete_all). A sub-model the file had and never placed stays.
+func _left_unplaced(gone: Dictionary, fresh: int) -> String:
+	var before: Dictionary = _placed_from_main({})
+	var after: Dictionary = _placed_from_main(gone)
+	for key: String in before:
+		if not after.has(key):
+			return "the sub-model %s is placed by no line any more" % _file_name(key)
+	if fresh == 0 and int(after.get(main_key, 0)) == 0 and int(before.get(main_key, 0)) > 0:
+		return "no part is left in the model"
+	return ""
+
+
+## Each section the main model's lines place, but for those of [param
+## gone], through its sub-models -> how many parts' lines, from the main
+## model down, are under it (the main model's key for them all).
+func _placed_from_main(gone: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	if not sections.has(main_key):
+		return out
+	var parts: int = 0
+	var todo: Array = [main_key]
+	var seen: Dictionary = {main_key: true}
+	while not todo.is_empty():
+		var key: String = todo.pop_back()
+		var span: Array = sections[key]
+		var start: int = int(span[0])
+		if start < original.size() and _keyword(original[start]) == "FILE":
+			start += 1
+		for n: int in range(start, int(span[1])):
+			if gone.has(n):
+				continue
+			var words: PackedStringArray = _words(original[n])
+			if words.size() < 15 or words[0] != "1":
+				continue
+			var named: String = LdrModel._key(" ".join(words.slice(14)))
+			if not sections.has(named):
+				parts += 1
+			elif not seen.has(named):
+				seen[named] = true
+				todo.append(named)
+	for key: String in seen:
+		out[key] = 0
+	out[main_key] = parts
+	return out
 
 
 ## The patch of the file for the model as [param bricks] stand (see the
@@ -1044,7 +1113,6 @@ static func _copies_of(path: String) -> String:
 func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibrary,
 		steps_now: Dictionary) -> Plan:
 	var plan := Plan.new()
-	_read_for_patch()
 	if not _why_never.is_empty():
 		return _no(plan, _why_never)
 	var back := Transform3D(Basis.IDENTITY, -lift)
@@ -1124,6 +1192,9 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 				frame = (moved as Transform3D) * was
 		frames[path] = frame
 		_add_to(placing, line, parent_now.affine_inverse() * frame)
+	var renumbered: String = _renumbered(dead_copies)
+	if not renumbered.is_empty():
+		return _no(plan, "a copy of %s taken off and a later one left, which opens again numbered one less" % renumbered)
 	var rewrites: Dictionary = {}   ## line -> its text now
 	var moves: Dictionary = {}      ## line -> the step it goes to
 	var recolour: Dictionary = {}   ## a copy's line -> the colour a flexible part in it is now
@@ -1147,7 +1218,7 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 			if local.basis.determinant() < 0.0 or LdrModel.to_transform(numbers).basis.determinant() < 0.0:
 				return _no(plan, "a mirrored copy moved")
 			rewrites[line] = "1 %s %s %s" % [words[1], _numbers_for(words, local),
-				" ".join(words.slice(14))]
+				_named_as_written(lines[line])]
 	# A copy put in another step: its line moved to the end of that step.
 	for path: String in steps_now:
 		if int(steps_now[path]) == int(unit_steps.get(path, -1)) or dead_copies.has(path):
@@ -1256,6 +1327,9 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 	for line: int in plan.gone:
 		if rewrites.has(line) or moves.has(line):
 			return _no(plan, "a line both taken out and kept")
+	var unplaced: String = _left_unplaced(plan.gone, plan.fresh.size())
+	if not unplaced.is_empty():
+		return _no(plan, unplaced)
 	# A part the app cannot show, or one still on its way, has no step in
 	# the model to follow: where every other part of its step goes to one
 	# other step (the steps numbered again), it would be left behind alone.
@@ -1479,8 +1553,8 @@ func _line_for(line: int, part: String, colour: int, painted: bool, local: Trans
 	var words: PackedStringArray = _words(lines[line])
 	if _numbers_of(words) == null:
 		return null
-	var reference: String = " ".join(words.slice(14))
-	var said_id: String = LdrModel._key(reference)
+	var reference: String = _named_as_written(lines[line])
+	var said_id: String = LdrModel._key(" ".join(words.slice(14)))
 	var token: String = part + ".dat"
 	var by := Transform3D.IDENTITY
 	if library != null:
@@ -1543,7 +1617,6 @@ static func _add_to(table: Dictionary, key: Variant, value: Variant) -> void:
 func app_lines_placed(text: String) -> String:
 	if not text.contains("0 !BRICKWORKS"):
 		return text
-	_read_for_patch()
 	var had: Dictionary = {}        ## the file's own app lines, as it ended them
 	var meant: Dictionary = {}      ## the same, by what each says
 	var after: Dictionary = {}      ## each of them, the line it follows in the file
@@ -1734,6 +1807,7 @@ func gate(plan: Plan, text: String, library: PartLibrary, waiting: Dictionary,
 	var used: Dictionary = {}
 	var last_kept: int = -1
 	var last: int = original.size() - 1
+	var may_say: Dictionary = _colours_said(plan)
 	for n: int in plan.out.size():
 		var said: String = plan.out[n]
 		if _is_app_line(said):
@@ -1752,15 +1826,27 @@ func gate(plan: Plan, text: String, library: PartLibrary, waiting: Dictionary,
 					return "line %d of the file changed with no edit to it" % (from + 1)
 				if how == REWRITE and (not _is_placing(said) or not _may_change(plan, from, false, steps_now)):
 					return "line %d of the file changed, and nothing on it was edited" % (from + 1)
+				if how == REWRITE:
+					var why: String = _rewritten_as_written(plan, from, said, may_say)
+					if not why.is_empty():
+						return why
 			MOVE:
 				if not _may_change(plan, from, true, steps_now):
 					return "line %d of the file moved, and nothing on it changed step" % (from + 1)
 				if said != original[from] and not (_is_placing(said) and _is_placing(original[from])
 						and _may_change(plan, from, false, steps_now)):
 					return "line %d of the file moved and changed, and nothing on it was edited" % (from + 1)
+				if said != original[from]:
+					var why: String = _rewritten_as_written(plan, from, said, may_say)
+					if not why.is_empty():
+						return why
 			NEW:
 				if not _is_placing(said) or (plan.new_bricks.get(n, []) as Array).is_empty():
 					return "a new line places no new part (%s)" % said.strip_edges().left(60)
+				var why: String = _new_as_written(said, plan.new_bricks[n] as Array,
+					n == plan.out.size() - 1)
+				if not why.is_empty():
+					return why
 			_:
 				return "a line is written the file has not got, and no part is on it (%s)" \
 					% said.strip_edges().left(60)
@@ -1778,6 +1864,88 @@ func gate(plan: Plan, text: String, library: PartLibrary, waiting: Dictionary,
 		return why
 	# Read back.
 	return _read_back_kept(plan, text, final, map, library, waiting, steps_now)
+
+
+## Each line of the file -> the colours it may now say, as their codes are
+## written ([method _colour_token]): those of the parts painted on it, and
+## of a flexible part painted whose colour it gives ([method _colour_line]).
+func _colours_said(plan: Plan) -> Dictionary:
+	var out: Dictionary = {}
+	for origin: String in plan.now:
+		var was: Read = by_origin.get(origin)
+		var colour: int = ((plan.now[origin] as Array)[0] as BrickWorld.Brick).color_code
+		if was == null or colour == was.colour:
+			continue
+		var token: String = _colour_token(colour)
+		_add_to(out, origin.get_slice("/", origin.get_slice_count("/") - 1).to_int(), token)
+		var giving: int = _colour_line(origin)
+		if giving >= 0:
+			_add_to(out, giving, token)
+	return out
+
+
+## Why [param said], the file's placing line [param from] rewritten, does
+## not say what changed as the file's own words say it; "". Its fields are
+## held to the file's as written, not as an open reads them, since an open
+## makes some of them one: a top-level 16 reads as 0 (black), and "wing
+## part.ldr" as "wing  part.ldr" (kt5review #1, gate2 g_bound_black).
+## - its colour as the file wrote it, or the code of a colour painted on it
+##   ([param may_say], [method _colours_said]);
+## - what it names as the file wrote it, or, where its part was swapped or
+##   painted, that part's number as a new line names it;
+## - its place's three numbers as the file wrote them unless the place they
+##   say is another, and its turn's nine unless the turn is;
+## - its line end the file's.
+func _rewritten_as_written(plan: Plan, from: int, said: String, may_say: Dictionary) -> String:
+	var was: PackedStringArray = _words(original[from])
+	var now: PackedStringArray = _words(said)
+	var was_at: Variant = _numbers_of(was)
+	var now_at: Variant = _numbers_of(now)
+	if was_at == null or now_at == null:
+		return "line %d of the file rewritten past reading" % (from + 1)
+	if now[1] != was[1] and not (may_say.get(from, []) as Array).has(now[1]):
+		return "line %d of the file says colour %s, which no part painted on it is" % [from + 1, now[1]]
+	var named: String = _named_as_written(said)
+	if named != _named_as_written(original[from]):
+		var swapped: bool = false
+		for read: Read in by_line.get(from, []):
+			if plan.now.has(read.origin):
+				var brick: BrickWorld.Brick = (plan.now[read.origin] as Array)[0]
+				if (brick.part_id != read.part_id or brick.color_code != read.colour) \
+						and named == brick.part_id + ".dat":
+					swapped = true
+		if not swapped:
+			return "line %d of the file names %s, not what it named (%s)" % [
+				from + 1, named.left(60), _named_as_written(original[from]).left(60)]
+	var a: Transform3D = LdrModel.to_transform(was_at)
+	var b: Transform3D = LdrModel.to_transform(now_at)
+	for k: int in range(2, 14):
+		if now[k] == was[k]:
+			continue
+		if k < 5 and a.origin.distance_to(b.origin) <= NEAR:
+			return "line %d of the file has its place written anew, and it is where it was" % (from + 1)
+		if k >= 5 and _same(Transform3D(a.basis, Vector3.ZERO), Transform3D(b.basis, Vector3.ZERO)):
+			return "line %d of the file has its turn written anew, and it is turned as it was" % (from + 1)
+	if said.ends_with("\r") != original[from].ends_with("\r") and from != original.size() - 1:
+		return "line %d of the file ends another way" % (from + 1)
+	return ""
+
+
+## Why [param said], a new line for the parts [param bricks], does not say
+## them as written: each one's colour by its own code (a 16 at the top of a
+## file would read as 0), its number as "part.dat", the file's line end
+## unless it is the text's [param at_end]; "".
+func _new_as_written(said: String, bricks: Array, at_end: bool) -> String:
+	var words: PackedStringArray = _words(said)
+	for item: Variant in bricks:
+		var brick: BrickWorld.Brick = item
+		if words[1] != _colour_token(brick.color_code):
+			return "a new line says colour %s, and its part is %s" % [words[1], _colour_token(brick.color_code)]
+		if _named_as_written(said) != brick.part_id + ".dat":
+			return "a new line names %s, and its part is %s" % [_named_as_written(said).left(60), brick.part_id]
+	if not at_end and said.ends_with("\r") != _crlf:
+		return "a new line ends another way than the file's"
+	return ""
 
 
 static func _is_app_line(line: String) -> bool:
@@ -2092,9 +2260,10 @@ func _read_back_kept(plan: Plan, text: String, final: PackedStringArray,
 		if not _close_to(held[1] as Transform3D, placement.transform):
 			return "read back, line %d is not where its part is" % (int(origin[origin.size() - 1]) + 1)
 		# Its copy by the lines placing it (the origin, matched above) and
-		# what each is a copy of: a copy taken off before it numbers it
-		# one less when the file is opened again, as live's write does.
-		if _copies_of(placement.unit) != _copies_of(brick.unit):
+		# by its path as the file opens again: the app's lines name a copy
+		# by it (a motion's JOINT ASSEMBLY, a copy's step), so a copy
+		# numbered again is another copy (kt5review #5, [method _renumbered]).
+		if placement.unit != brick.unit:
 			return "read back, line %d is in another copy" % (int(origin[origin.size() - 1]) + 1)
 		if authored and placement.step != brick.step:
 			return "read back, line %d is in step %d, not %d" % [int(origin[origin.size() - 1]) + 1,
@@ -2207,24 +2376,44 @@ static func _kind_said(words: PackedStringArray) -> String:
 
 ## [the pair's kind, 1] for a line opening a pair, [the kind, -1] for one
 ## closing it, [] for any other: the words before the one that opens or
-## closes are its kind. "0 SYNTH BEGIN ..." and "0 SYNTH END", "0 !LPUB
-## PLI BEGIN IGN" and "0 !LPUB PLI END", "0 !TEXMAP START ..." and "0
-## !TEXMAP END", "0 MLCAD SKIP_BEGIN" and "0 MLCAD SKIP_END", "0 BUFEXCHG
-## A STORE" and "0 BUFEXCHG A RETRIEVE".
+## closes are its kind. Only the pairs other programs write ([const
+## PAIRS]): "0 SYNTH BEGIN ..." and "0 SYNTH END", "0 !LPUB PLI BEGIN IGN"
+## and "0 !LPUB PLI END", "0 !TEXMAP START ..." and "0 !TEXMAP END", "0
+## MLCAD SKIP_BEGIN" and "0 MLCAD SKIP_END", "0 BUFEXCHG A STORE" and "0
+## BUFEXCHG A RETRIEVE", "0 !LEOCAD GROUP BEGIN Roof" and "0 !LEOCAD GROUP
+## END". A person's comment that says START or END, "0 Engine START", is a
+## comment, kept as any other and never taken out as a pair left empty: 17
+## of the OMR's files have one (kt5review c_del_engine).
 static func _pair_of(line: String) -> Array:
 	var words: PackedStringArray = _words(line)
-	if words.size() < 3 or words[0] != "0" or words[1].begins_with("//") \
-			or words[1].to_upper() in ["!BRICKWORKS", "STEP", "ROTSTEP"]:
+	if words.size() < 3 or words[0] != "0":
+		return []
+	var said: Array = PAIRS.get(words[1].to_upper().trim_prefix("!"), [])
+	if said.is_empty():
 		return []
 	var kind := PackedStringArray()
 	for n: int in range(1, mini(words.size(), 5)):
 		var word: String = words[n].to_upper().trim_prefix("!") if n == 1 else words[n].to_upper()
-		var opens: bool = word in ["BEGIN", "START", "STORE", "SKIP_BEGIN"]
-		var closes: bool = word in ["END", "RETRIEVE", "SKIP_END"]
+		var opens: bool = word in (said[0] as Array)
+		var closes: bool = word in (said[1] as Array)
 		if (opens or closes) and not kind.is_empty():
 			return [" ".join(kind) + (" SKIP" if word.begins_with("SKIP") else ""), 1 if opens else -1]
 		kind.append(word)
 	return []
+
+
+## The pairs of lines other programs write round parts, by a pair's first
+## word ("!" aside) -> [the words that open one, those that close it]:
+## LSynth's, LPub's (PLI, BOM, MULTI_STEP, CALLOUT), LDraw's texture map,
+## MLCad's SKIP and buffer exchange, LeoCAD's groups.
+const PAIRS := {
+	"SYNTH": [["BEGIN"], ["END"]],
+	"LPUB": [["BEGIN"], ["END"]],
+	"TEXMAP": [["START"], ["END"]],
+	"MLCAD": [["SKIP_BEGIN"], ["SKIP_END"]],
+	"BUFEXCHG": [["STORE"], ["RETRIEVE"]],
+	"LEOCAD": [["BEGIN"], ["END"]],
+}
 
 
 ## The twelve numbers placing [param local] in a line, from [param words]
@@ -2311,6 +2500,30 @@ static func _is_placing(line: String) -> bool:
 ## run of spaces, tabs and a "\r\n" file's carriage return (kt_tabs).
 static func _words(line: String) -> PackedStringArray:
 	return LdrModel._fields(line.strip_edges())
+
+
+## What placing line [param line] names, its 15th field to its end, as the
+## file has it: a name with two spaces in a row or a tab in it keeps them.
+## Its fields joined by one space made "wing  part.ldr" "wing part.ldr",
+## which names no section of the file to any other program (kt5review
+## tb_move_copy). Lookups still go by the fields joined, as LdrModel keys
+## its sections.
+static func _named_as_written(line: String) -> String:
+	var at: int = 0
+	var n: int = line.length()
+	for field: int in 15:
+		while at < n and _is_blank(line.unicode_at(at)):
+			at += 1
+		if field == 14:
+			break
+		while at < n and not _is_blank(line.unicode_at(at)):
+			at += 1
+	return line.substr(at).strip_edges(false, true)
+
+
+## A character LdrModel._fields splits on: a space, a tab, a carriage return.
+static func _is_blank(c: int) -> bool:
+	return c == 32 or c == 9 or c == 13
 
 
 ## The keyword of a line of type 0, upper case ("STEP", "FILE", "!LDCAD"),
