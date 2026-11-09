@@ -536,6 +536,12 @@ declare -A CMD=(
   # target 44 points or more and no text under 12, the parts panel kept
   # open beside the model.
   [tablet]="tools/web/tablet_flow.mjs --url=$P/app $B --out=$S/${TAG}_tablet_web"
+  # local only: phonewalk_flow.mjs. The walk by finger (APP_UX8, phonewalk):
+  # every act of the desktop walk at 390 x 844 and 1024 x 768, by touch alone,
+  # counted in taps beside the desktop's presses, and what a finger cannot do
+  # named with its file. A measure with no verdict: what it cannot do is the
+  # finding phonepanels and fingertools work from (--bar is their bar), and
+  # its two sizes run past a check's 45 minutes.
   # A finger's drag begun on a text field scrolls the list round it, as one
   # beside the fields does: the assistant's drawer at 844 x 390 and Settings'
   # AI page at 390 x 844 at 150% (three to the point); a tap types in the
