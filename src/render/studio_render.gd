@@ -2266,7 +2266,9 @@ func _line_picture(settings: RenderSettings, from: float, to: float, words: Stri
 			coded = await _draw([_line.normals_view])
 		if coded:
 			_line.before_light()
+			_lights_seen_from(LineArt.LAYER, true)
 			coded = await _draw([_line.light_view])
+			_lights_seen_from(LineArt.LAYER, false)
 		_line.after()
 		if not coded:
 			return null
@@ -2295,6 +2297,19 @@ func _line_picture(settings: RenderSettings, from: float, to: float, words: Stri
 		_doing("converting")
 		result.convert(Image.FORMAT_RGB8)
 	return result
+
+
+## The set's lights, the model's own among them, seen from [param layer]
+## too or no longer: a camera sees only the lights on the layers it draws
+## (as [method _warm] knows), and the clay is drawn on a layer of its own.
+func _lights_seen_from(layer: int, seen: bool) -> void:
+	var lights: Array[Light3D] = []
+	lights.append_array(_lights)
+	lights.append(_sky_light)
+	lights.append_array(_lamp_nodes)
+	lights.append_array(_glow_nodes)
+	for light: Light3D in lights:
+		light.layers = (light.layers | layer) if seen else (light.layers & ~layer)
 
 
 ## The picture path traced (PathTracer): the set put on the card, the

@@ -3027,31 +3027,41 @@ picture the assistant is shown.
   `line_normals.gdshader`; `RenderSettings.LOOKS`). StudioRender draws a
   line look's shot in one frame whatever the grade (`LineArt.underneath`:
   Quick, sharp, on nothing), the render's stage with its seam off
-  (`set_edges_shown(false)`): lit as the window lights it, then flat (an
-  even white ambient, no lamp, `room` 0: the plastic's own colour, prints
-  and all). A copy of the stage (`LineArt.stage`, layer 1 << 18, shown only
-  while it is drawn) is drawn in `booklet_codes` numbers and in
-  `line_normals` (view-space faces), into two viewports of its own sharing
-  the set's world and camera. `line_art.gdshader` makes the picture: an
-  outline 1.5 x a part's line where the model meets the page, a line where
-  the number changes (one part meets the next), a third of it where one
-  part's faces turn more than 30°; shade = lit over flat lightness, as
-  halftone dots on a 45° screen (cell 1/150 of the short side, line 1/450)
-  from 0.9 down to 0.42; Line art white paper inside, Comic the flat colour,
-  0.82 of it turned away, its dots 0.42 of it, black plastic lifted as the
+  (`set_edges_shown(false)`): lit as the window lights it (for the floor's
+  shadow, its alpha), then flat (an even white ambient, no lamp, `room` 0:
+  the plastic's own colour, prints and all). A copy of the stage
+  (`LineArt.stage`, layer 1 << 18, shown only while it is drawn) is drawn
+  in `booklet_codes` numbers, in `line_normals` (view-space faces) and in
+  white clay (a matt StandardMaterial3D) in the set's light and the stage's
+  shadows, into three viewports of its own sharing the set's world and
+  camera. `line_art.gdshader` makes the picture: an outline 1.5 x a part's
+  line where the model meets the page, a line where the number changes
+  (one part meets the next), a third of it where one part's faces turn more
+  than 30° and, in Line art, round a print (the flat colour 0.2 apart
+  inside one part, not glass); the shade is the clay's linear light, as
+  halftone dots on a 45° screen (cell 1/150 of the short side, line 1/450,
+  at least 2 px) from 0.8 down to 0.3, so a black part and a white one in
+  one light get the same dots (the window lights black a third as much for
+  its colour); Line art white paper inside, Comic the flat colour, 0.82 of
+  it turned away, its dots 0.42 of it, black plastic lifted as the
   booklet's; round the model the backdrop's colour or nothing, the contact
-  shadow (its alpha on nothing) in dots. Every piece of a big picture
+  shadow (its alpha on nothing) in dots from 0.18 of it, its faint reaches
+  left as paper. Every piece of a big picture
   drawn with a margin and on one screen (`origin`). An animation's moves
   are made on the copy too (`LineArt.move`), and it is made again after
   one. The window look and Product never reach any of it.
 - `lineart probe` (`src/dev/lineart_probe.gd`, `tools/probe.sh lineart`,
   windowed on the GPU at 1400 x 900, `PROBE_SIZE=1280x720` too): through
   the sign-in screen with a throwaway account (.env). First Render's
-  default (Good, window, 1080p) of the example car, twice the same, kept as
-  `default_render.png`, and a small scene's Quick window and Product kept as
-  `scene_window.png`, `scene_product.png`; `-- --reference=DIR` (the same
-  probe run on an older build, its `--shots`) lays each beside the older's,
-  byte for byte. The Look row clicked as a person clicks: each look in the
+  default (Good, window, 1080p) of the example car, the run's first
+  picture, kept as `default_render.png`, and a small scene's Quick window
+  (twice the same) and Product kept as `scene_window.png`,
+  `scene_product.png`; `-- --reference=DIR` (the same probe run on an
+  older build, its `--shots`) lays each beside the older's, byte for byte.
+  Each is drawn after `seed(DRAWN_WITH)`: unseeded, two runs of one build
+  drew the default a level apart in 74,251 pixels, and a Good render keeps
+  some of the light it gathered for the next (a third render of the car a
+  level darker all over), so only a run's first is laid beside another's. The Look row clicked as a person clicks: each look in the
   window with its words whole, the inked two on a row of their own, the
   note and the draft following; Render picture in Comic writes a coloured
   640 x 360 with black lines. The small scene (three red 1 x 2s in a wall, a
@@ -3068,7 +3078,8 @@ picture the assistant is shown.
   is not is answered with all four. Then 10036-1 Pizza To Go in both looks
   at 1080p (`lineart_set.png`, `comic_set.png`, `lineart_set_front.png`):
   look at them, lines a person would draw. Pictures in `user://lineart` or
-  `--shots=DIR`.
+  `--shots=DIR`, with `made_of_*.png`, the five pictures the scene's Line
+  art was made of (lit, flat, codes, normals, clay), to look at.
 
 ## How to reach it
 

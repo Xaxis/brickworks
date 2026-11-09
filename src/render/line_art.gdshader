@@ -56,11 +56,10 @@ uniform vec3 ink_on_dark = vec3(0.46, 0.47, 0.50);
 uniform float crease = 0.866;
 // A print's edge: a part's own colour this far apart between two pixels.
 uniform float print_edge = 0.2;
-// The light on the clay (linear, white in full light is about 0.9) at
-// which the dots begin and where they are densest; and how much of the
-// cell they cover there.
-uniform float shade_from = 0.8;
-uniform float shade_full = 0.3;
+// The light on the clay (linear) at which the dots begin and where they
+// are densest; and how much of the cell they cover there.
+uniform float shade_from = 0.75;
+uniform float shade_full = 0.35;
 uniform float densest = 0.55;
 // The floor's shadow (its alpha) drawn from here, darkest there: its faint
 // outer reaches, which spread far round a model, left as paper.

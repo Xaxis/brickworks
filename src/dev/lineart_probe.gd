@@ -11,12 +11,13 @@
 ## SUPABASE_SECRET_KEY).
 ##
 ## The bar:
-##   - the default render the same to the pixel: File, Render's own choices
-##     (Good, as in the window, 1080p, the box's view, white) of the example
-##     car as the app opens on it, drawn first and kept as default_render.png,
-##     and a Quick and a Product picture of a small scene, each compared byte
-##     for byte with --reference's (this probe run on an older build); and
-##     the Quick one drawn twice, the same both times;
+##   - the default render the same: File, Render's own choices (Good, as in
+##     the window, 1080p, the box's view, white) of the example car as the
+##     app opens on it, drawn first and kept as default_render.png, laid
+##     beside --reference's (this probe run on an older build) to the pixel
+##     or within what that build's own two runs differ by (GOOD_LEVELS); and
+##     a Quick and a Product picture of a small scene, byte for byte, the
+##     Quick one drawn twice the same;
 ##   - the Look row: Line art and Comic beside As in the window and Product,
 ##     each in the dialog and the window, its words whole; each clicked as a
 ##     person clicks, its words said under the row and the draft drawn in it;
@@ -39,11 +40,18 @@
 extends SceneTree
 
 const SET := "res://vendor/omr/files/10036-1.mpd"
-## The engine's own random numbers seeded with this before each picture
-## laid beside an older build's, which the engine seeds anew at each start:
-## unseeded, two runs of one build drew the default render a level apart
-## in 74,251 pixels.
-const DRAWN_WITH := 20261109
+## A Good render is not the same to the pixel from one run to the next of
+## one build: its light gathers over frames (SDFGI) and comes out a level
+## apart here and there. pre261 against itself, run twice: 19,682 to
+## 29,551 pixels of 2,073,600 a level or two apart, none further, the mean
+## within 0.003 of a level, seeded or not. Laid beside an older build's,
+## the default render passes the same to the pixel or within that: no
+## pixel more than this many levels apart, no more than this share of them,
+## and no more than this mean (a change of the light or the colours moves
+## them all one way).
+const GOOD_LEVELS := 2
+const GOOD_SHARE := 0.05
+const GOOD_MEAN := 0.02
 ## A pixel this much darker than white (of 1) is ink.
 const INK := 0.5
 
@@ -59,6 +67,9 @@ var _email: String = ""
 var _password: String = ""
 var _size: String = ""
 var _socket: CommandSocket
+## The clay the scene's Line art was shaded from (LineArt.light_view), the
+## picture in it at a margin of 1/24 of its height.
+var _clay: Image
 var _next: int = 0
 ## The small scene's bricks: name -> its box in the world.
 var _boxes: Dictionary = {}
@@ -194,17 +205,18 @@ func _finish() -> void:
 ## File, Render's own choices of the example car, the first picture drawn
 ## in the run: a Good render's light gathers over frames and keeps some of
 ## what it gathered for the next (a third render of the car came out a
-## level darker than the first, all over), so only the first is the same
-## from one run to the next. Kept, and laid against an older build's.
+## level darker than the first, all over), so only a run's first is laid
+## beside another's. Kept, and laid against an older build's.
 func _default_render() -> void:
 	print("\n  the default render, as File, Render… draws it of the example car")
 	_check("the example car is on the baseplate (%d parts)" % _world.brick_count(),
 		_world.brick_count() > 20)
-	seed(DRAWN_WITH)
-	_keep_and_compare(await _render.render(_world, RenderSettings.new()), "default_render")
+	_keep_and_compare(await _render.render(_world, RenderSettings.new()), "default_render", true)
 
 
-func _keep_and_compare(image: Image, name: String) -> void:
+## [param good]: a Good render, the same to the pixel or within what one
+## build's two runs differ by (GOOD_LEVELS).
+func _keep_and_compare(image: Image, name: String, good: bool = false) -> void:
 	if image == null:
 		_check("%s drew a picture" % name, false)
 		return
@@ -218,9 +230,18 @@ func _keep_and_compare(image: Image, name: String) -> void:
 	var older: Image = Image.load_from_file(kept) if FileAccess.file_exists(kept) else null
 	if older != null and older.get_format() != image.get_format():
 		older.convert(image.get_format())
-	_check("%s the same as the older build's to the pixel (%s; %d px differ)" % [name,
-		_sha(older) if older != null else "none kept", _differing(image, older)],
-		older != null and _differing(image, older) == 0)
+	var apart: Dictionary = _apart(image, older)
+	if not good or int(apart["pixels"]) == 0:
+		_check("%s the same as the older build's to the pixel (%s; %d px differ)" % [name,
+			_sha(older) if older != null else "none kept", int(apart["pixels"])],
+			older != null and int(apart["pixels"]) == 0)
+		return
+	var share: float = float(apart["pixels"]) / float(image.get_width() * image.get_height())
+	_check(("%s as the older build's, within what one build's two runs differ by: %d px "
+		+ "(%.2f%%) apart, at most %d levels, the mean %+.4f of a level")
+		% [name, int(apart["pixels"]), share * 100.0, int(apart["most"]), float(apart["mean"])],
+		int(apart["most"]) <= GOOD_LEVELS and share <= GOOD_SHARE
+		and absf(float(apart["mean"])) <= GOOD_MEAN)
 
 
 static func _sha(image: Image) -> String:
@@ -230,6 +251,31 @@ static func _sha(image: Image) -> String:
 	hashing.start(HashingContext.HASH_SHA256)
 	hashing.update(image.get_data())
 	return hashing.finish().hex_encode().left(16)
+
+
+## How far apart two pictures are: pixels that differ, the most levels any
+## channel is apart, and the mean of b - a over every channel.
+static func _apart(a: Image, b: Image) -> Dictionary:
+	if a == null or b == null or a.get_size() != b.get_size():
+		return {"pixels": -1, "most": 255, "mean": 255.0}
+	var da: PackedByteArray = a.get_data()
+	var db: PackedByteArray = b.get_data()
+	if da == db:
+		return {"pixels": 0, "most": 0, "mean": 0.0}
+	var channels: int = da.size() / (a.get_width() * a.get_height())
+	var pixels: int = 0
+	var most: int = 0
+	var total: int = 0
+	for at: int in range(0, mini(da.size(), db.size()), channels):
+		var differs: bool = false
+		for c: int in channels:
+			var step: int = db[at + c] - da[at + c]
+			if step != 0:
+				differs = true
+				total += step
+				most = maxi(most, absi(step))
+		pixels += int(differs)
+	return {"pixels": pixels, "most": most, "mean": float(total) / float(da.size())}
 
 
 static func _differing(a: Image, b: Image) -> int:
@@ -403,9 +449,7 @@ func _settings(look: String, view: String = "hero") -> RenderSettings:
 ## The scene's own window-look and product pictures, for an older build's.
 func _same_scene_as_before() -> void:
 	print("\n  the small scene as the window and Product draw it, for an older build's")
-	seed(DRAWN_WITH)
 	var first: Image = await _render.render(_world, _settings("window"))
-	seed(DRAWN_WITH)
 	var again: Image = await _render.render(_world, _settings("window"))
 	_check("drawn twice, the same picture to the pixel (%d px differ)" % _differing(first, again),
 		first != null and again != null and _differing(first, again) == 0)
@@ -460,6 +504,8 @@ func _keep_what_it_was_made_of() -> void:
 		var image: Image = view.get_texture().get_image() if view != null else null
 		if image != null:
 			image.save_png(ProjectSettings.globalize_path(_out.path_join("made_of_%s.png" % name)))
+			if name == "clay":
+				_clay = image
 
 
 ## The white brick's faces: the two sides the camera sees, the one the
@@ -483,6 +529,19 @@ func _shading(drawn: Image, lit: Image, shot: StudioRender.Shot, comic: bool) ->
 	var dots: int = _blobs(drawn, shade, reach, comic)
 	print("    the white brick: top %.3f, the lit side %.3f, the shaded side %.3f covered, %d dots there"
 		% [top_cover, _cover(drawn, lit_side, reach, comic), shade_cover, dots])
+	if _clay != null and not comic:
+		# The light it was shaded from there, and on the black brick's sides.
+		var margin := Vector2(clampi(picture.y / 24, 16, 96), clampi(picture.y / 24, 16, 96))
+		var black: AABB = _boxes["black"]
+		var said: PackedStringArray = []
+		for named: Array in [["top", top], ["lit side", lit_side], ["shaded side", shade],
+				["black's -x side", _project(shot, Vector3(black.position.x, black.get_center().y - 2.0,
+					black.get_center().z), picture)],
+				["black's +z side", _project(shot, Vector3(black.get_center().x,
+					black.get_center().y - 2.0, black.end.z), picture)]]:
+			var c: Color = _mean(_clay, named[1] + margin, 3)
+			said.append("%s %.3f" % [named[0], c.srgb_to_linear().get_luminance()])
+		print("    the clay's light (linear): %s" % ", ".join(said))
 	_check("%s: dots on the white brick's face away from the light (%.0f%% of it, %d dots), none on its lit top (%.1f%%)"
 		% ["Comic" if comic else "Line art", shade_cover * 100.0, dots, top_cover * 100.0],
 		shade_cover > 0.06 and dots >= 3 and top_cover < 0.03)
