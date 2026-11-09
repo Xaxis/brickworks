@@ -9,7 +9,6 @@
 # threads. 152 green, 7 red; each red run again alone: 6 red again, connect_form green.
 # Results: bench/results/winsweep-2026-11-09/ (sweep1, rerun1, final).
 a11y_names   # My collection's "How many" SpinBox (CollectionDialog, loose parts) has no name a screen reader says: 1 of 2248 controls. Since 4a47ad075 (mybricks, 11-06). Owner: a11ynames, running.
-keys3   # File: 24 rows, 482 units tall in a 1280x720 window, at most 470. Compare two sets or models (ee47dd32d, comparesets, 11-07) was the row that took it past. Owner: subexport, running (folding the export rows into Export ▸).
 #
 # Red on pre261 d1d05cb77 and fixed on winsweep (green at 1400x900 and 1280x720 there):
 #   keys2, keys4: View › Edges and studs (e7523ab42, edges) added Edges and Studs with no key
