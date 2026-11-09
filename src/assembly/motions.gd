@@ -377,6 +377,10 @@ static func tidied(at: Transform3D) -> Transform3D:
 static func moved_into(text: String, whole: Transform3D) -> String:
 	if whole.is_equal_approx(Transform3D.IDENTITY):
 		return text
+	# In doubles, on the line's own numbers: by way of a Transform3D (floats)
+	# an author's 0.988 came back as 0.98799998. A turn by a quarter is a
+	# signed shuffle of the line's numbers, so they come back as written.
+	var w: PackedFloat64Array = LdrModel.from_transform(whole)
 	var lines: PackedStringArray = text.split("\n")
 	var in_main: bool = false
 	for n: int in lines.size():
@@ -396,10 +400,22 @@ static func moved_into(text: String, whole: Transform3D) -> String:
 			numbers.append(words[k].to_float())
 		if numbers.size() != 12:
 			continue
-		var at: Transform3D = LdrModel.to_transform(numbers)
-		lines[n] = "1 %s %s %s%s" % [words[1], LdrModel._line_numbers(whole * at), " ".join(words.slice(14)),
-			"\r" if lines[n].ends_with("\r") else ""]
+		lines[n] = "1 %s %s %s%s" % [words[1], LdrModel.numbers_text(_composed(w, numbers)),
+			" ".join(words.slice(14)), "\r" if lines[n].ends_with("\r") else ""]
 	return "\n".join(lines)
+
+
+## A type-1 line's twelve numbers (x y z, then the rotation by rows) moved by
+## another's: its rotation turned by w's, its place turned and then moved.
+static func _composed(w: PackedFloat64Array, v: PackedFloat64Array) -> PackedFloat64Array:
+	var out := PackedFloat64Array()
+	out.resize(12)
+	for row: int in 3:
+		out[row] = w[row] + w[3 + row * 3] * v[0] + w[4 + row * 3] * v[1] + w[5 + row * 3] * v[2]
+		for column: int in 3:
+			out[3 + row * 3 + column] = (w[3 + row * 3] * v[3 + column] + w[4 + row * 3] * v[6 + column]
+				+ w[5 + row * 3] * v[9 + column])
+	return out
 
 
 func named(name: String) -> Motion:

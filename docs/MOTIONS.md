@@ -669,7 +669,9 @@ whole model along the ground, its wheels turning as they roll.
   were and the move put on its main model's placing lines alone
   (`Motions.moved_into`): a sub-model placed twice or mirrored, its name,
   the header, blank lines and CRLF stay as the author wrote them
-  (drivereview F2). Backwards drives it back the way it came; a link draws
+  (drivereview F2). The move is worked in doubles on each line's own
+  numbers, so a quarter turn writes the author's 0.988 back as 0.988, not
+  as the 0.98799998 a float would give. Backwards drives it back the way it came; a link draws
   it only. A path played backwards is laid from where
   the model stands, as its end. Each wheel's turn is worked out by how far
   along the path it is (a table at every 2 LDU), not frame by frame, so

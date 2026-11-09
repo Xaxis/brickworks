@@ -791,6 +791,7 @@ func _review() -> void:
 	var main_end: int = _main_end(a)
 	var placing: int = 0
 	var other := PackedStringArray()
+	var noisy := PackedStringArray()
 	for n: int in mini(a.size(), b.size()):
 		if a[n] == b[n]:
 			continue
@@ -798,6 +799,11 @@ func _review() -> void:
 			continue
 		if n < main_end and a[n].begins_with("1 ") and b[n].begins_with("1 "):
 			placing += 1
+			if _rotation_words(a[n]) != _rotation_words(b[n]):
+				if noisy.is_empty():
+					noisy.append("%d: %s -> %s" % [n + 1, a[n].c_escape().left(90), b[n].c_escape().left(90)])
+				else:
+					noisy.append("")
 			continue
 		if other.size() < 3:
 			other.append("%d: %s -> %s" % [n + 1, a[n].c_escape().left(90), b[n].c_escape().left(90)])
@@ -814,6 +820,10 @@ func _review() -> void:
 	_check("F2: ...CRLF kept (%d and %d), the motion lines in CRLF too (%d not), and no float noise" % [
 		defined.count("\r\n"), driven.count("\r\n"), bare], defined.count("\r\n") == driven.count("\r\n")
 		and bare == 0 and RegEx.create_from_string("\\b-?0\\.0000\\d*[1-9]").search(driven) == null)
+	# A quarter turn shuffles a line's rotation and turns some signs; the numbers
+	# themselves come back as the author wrote them (0.988, not 0.98799998).
+	_check("F2: ...each moved line's rotation in the author's own numbers, turned (%d of %d not%s)" % [
+		noisy.size(), placing, (": " + noisy[0]) if not noisy.is_empty() else ""], noisy.is_empty() and placing > 0)
 	var file: String = _out.path_join("rv_driven.mpd")
 	await _open(file)
 	_check("F1: opened again, the drive's joints all find their part (%s)" % _found(), _found_all())
@@ -949,7 +959,18 @@ func _move_all(by: Vector3) -> void:
 
 
 ## The first line past the main model's: the second FILE line, or the end.
-static func _main_end(lines: PackedStringArray) -> int:
+static ## A placing line's nine rotation numbers as written, signs dropped, in order:
+## what a quarter turn leaves alone.
+func _rotation_words(line: String) -> PackedStringArray:
+	var words: PackedStringArray = LdrModel._fields(line.strip_edges())
+	var out := PackedStringArray()
+	for k: int in range(5, mini(14, words.size())):
+		out.append(words[k].trim_prefix("-"))
+	out.sort()
+	return out
+
+
+func _main_end(lines: PackedStringArray) -> int:
 	var files: int = 0
 	for n: int in lines.size():
 		if lines[n].strip_edges().begins_with("0 FILE "):
