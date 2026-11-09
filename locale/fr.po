@@ -12931,3 +12931,20 @@ msgstr "Les pièces fabriquées pour la première fois en %d ou %d, les plus ré
 
 msgid "%s first made in %d or %d, the newest first"
 msgstr "%s fabriquées pour la première fois en %d ou %d, les plus récentes d'abord"
+
+# View › Edges and studs (APP_UX6 #19 edges): the parts' seams and their studs, each drawn or not
+
+msgid "Edges and studs"
+msgstr "Arêtes et tenons"
+
+msgid "Edges"
+msgstr "Arêtes"
+
+msgid "Studs"
+msgstr "Tenons"
+
+msgid "A fine line where each part meets the next, so courses and bonds read in a wall"
+msgstr "Un trait fin là où chaque pièce rencontre la suivante, pour lire les rangs et l'appareil d'un mur"
+
+msgid "Off, the parts are drawn without their studs, each in its place: the shapes alone, and a big model drawn faster"
+msgstr "Désactivé, les pièces sont dessinées sans leurs tenons, chacune à sa place : les formes seules, et un grand modèle dessiné plus vite"

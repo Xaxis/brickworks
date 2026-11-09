@@ -90,6 +90,10 @@ uniform vec3 part_box_max = vec3(0.0);
 uniform float seam_ldu : hint_range(0.0, 4.0) = 0.5;
 uniform float seam_pixels : hint_range(0.0, 3.0) = 1.0;
 uniform float seam_depth : hint_range(0.0, 1.0) = 0.45;
+// Whether the seam is drawn at all: View › Edges and studs › Edges, in the
+// window (BrickWorld.edges_shown). Off, not a pixel of it: a model read by
+// its colours alone, a mosaic or a sculpture, has no lines across it.
+uniform bool seam_shown = true;
 varying vec3 local_position;
 
 #ifdef PLASTIC_PRINT
@@ -209,7 +213,7 @@ void vertex() {
 // fwidth(at), taken by the caller outside any branch.
 float seam_at(vec3 at, vec3 per_pixel) {
 	vec3 size = part_box_max - part_box_min;
-	if (size.x <= 0.0 || size.y <= 0.0 || size.z <= 0.0) {
+	if (!seam_shown || size.x <= 0.0 || size.y <= 0.0 || size.z <= 0.0) {
 		return 0.0;
 	}
 	vec3 d = min(at - part_box_min, part_box_max - at);
