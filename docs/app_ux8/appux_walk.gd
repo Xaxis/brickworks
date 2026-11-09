@@ -1248,6 +1248,14 @@ func _round7() -> void:
 	_events = 0
 	await _click(_camera.unproject_position(where.origin + Vector3(0, -2, 0)))
 	await _frames(20)
+	# At a laptop's size the bin gives way to Properties beside Stress: a
+	# person brings it back by its rail, as binrow's probe does.
+	var bin_shown: bool = _bin._scroll.is_visible_in_tree()
+	if not bin_shown:
+		await _open_bin()
+	print("WALK round7 a 2 x 4 brick clicked with Stress open: the bin %s" % (
+		"in sight" if bin_shown else "gave way; back by its rail, %s" % (
+			"in sight" if _bin._scroll.is_visible_in_tree() else "STILL NOT in sight")))
 	var shelf_scroll: ScrollContainer = _bin.get("_category_scroll")
 	var window: Rect2 = shelf_scroll.get_global_rect() if shelf_scroll != null else Rect2()
 	var shelves: Array = []
@@ -1298,6 +1306,9 @@ func _round7() -> void:
 	await _frames(10)
 	if _shell.stress.panel.is_visible_in_tree():
 		_shell.run("stress")
+	_builder.clear_selection()
+	_builder.selection_changed.emit(0)
+	await _frames(10)
 	print("WALK round7 the Palettes chip: \"%s\"" % palettes_chip)
 	# typingkeys: keys pressed with "87087" typed in the bin's search.
 	var sheet: Control = _main.get("_controls")
@@ -1305,6 +1316,7 @@ func _round7() -> void:
 	for key: Array in [["F1", KEY_F1, false, false], ["F9", KEY_F9, false, false],
 			["Ctrl+Shift+B", KEY_B, true, true]]:
 		await _close_all()
+		await _open_bin()
 		await _click(search.get_global_rect().get_center())
 		await _key(KEY_A, true)
 		await _type("87087")
@@ -1356,6 +1368,7 @@ func _round7() -> void:
 	_camera.frame(AABB(Vector3(-50, 0, -50), Vector3(100, 40, 100)))
 	await _frames(30)
 	_events = 0
+	await _open_bin()
 	await _click(search.get_global_rect().get_center())
 	await _key(KEY_A, true)
 	await _type("4740")
@@ -1483,6 +1496,20 @@ func _round7() -> void:
 		keys.append("%s=%s" % [name, ("none" if _shell.key_words(name) == "" else _shell.key_words(name))
 			if there else "no such command"])
 	print("WALK round7 keys: %s" % ", ".join(keys))
+
+
+## The bin brought back by its rail when it has given way, as a person
+## clicks it.
+func _open_bin() -> void:
+	var dock: SideDock = _main.get("_bin_dock")
+	if dock == null or bool(dock.call("is_open")):
+		return
+	var rail: Button = dock.get("_rail")
+	if rail != null and rail.is_visible_in_tree():
+		await _click(rail.get_global_rect().get_center())
+	else:
+		dock.set_open(true)
+	await _frames(30)
 
 
 ## The weights the status bar shows over [param count] frames, each once, in
