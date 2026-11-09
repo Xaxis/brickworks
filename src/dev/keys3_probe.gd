@@ -164,8 +164,8 @@ func _menus() -> void:
 	# by their own names.
 	_check("the compares are in File › Compare (%s, %s), each still run by its name"
 		% [Keymap.menu_row("compare"), Keymap.menu_row("compare_sets")],
-		Keymap.menu_row("compare") == "File › Compare › Compare with…"
-		and Keymap.menu_row("compare_sets") == "File › Compare › Compare two sets or models…"
+		Keymap.menu_row("compare") == "File › Compare › Compare with"
+		and Keymap.menu_row("compare_sets") == "File › Compare › Compare two sets or models"
 		and _shell.menu_id("compare") >= 0 and _shell.menu_id("compare_sets") >= 0
 		and _shell.command("compare_sets") != null)
 	await _fold_shots()

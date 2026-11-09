@@ -147,7 +147,7 @@ func _sets_in_window() -> void:
 	var compare_rows: Array = Shell.SUBMENUS.get("compares", [])
 	_check("File › Compare lists it after Compare with… (%s)" % Keymap.menu_row("compare_sets"),
 		compare_rows == ["compare", "compare_sets"]
-		and Keymap.menu_row("compare_sets") == "File › Compare › Compare two sets or models…")
+		and Keymap.menu_row("compare_sets") == "File › Compare › Compare two sets or models")
 	var command: Shell.Command = _shell.command("compare_sets")
 	_check("its row reads \"%s\"" % (command.words if command != null else "(none)"),
 		command != null and command.words == "Compare two sets or models…")
