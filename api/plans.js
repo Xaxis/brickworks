@@ -72,10 +72,15 @@
 // And the beta (api/_beta.js, supabase/beta.sql), answered in every mode,
 // BRICKWORKS_BETA deciding it:
 //
-//   GET  /api/plans?op=beta        {beta: off}, or {beta: open, pool, early,
-//                                  test, application}: the spots left, and
-//                                  signed in, where your application stands
-//   POST /api/plans?op=beta        signed in, the form: kept, and emailed
+//   GET  /api/plans?op=beta        {beta: off}, or {beta: open, spots, pool,
+//                                  early, test, application}: the spots left,
+//                                  and signed in, whether you are a tester
+//                                  (tester, state, joined_at, welcome) and
+//                                  where your month stands (month)
+//   POST /api/plans?op=beta        signed in, the form ("tell us about you"):
+//                                  kept, and emailed; it joins the testers too
+//   POST /api/plans?op=beta_join   signed in, {via}: a tester at once
+//   POST /api/plans?op=beta_leave  signed in: not a tester, never welcomed again
 //   GET  /api/plans?op=beta_spots  {beta: off} or {beta: open, cap, left},
 //                                  signed out and cached a minute
 //   GET  /api/plans?op=beta_daily  Vercel's cron (/api/plans/beta-daily),
@@ -101,7 +106,7 @@ import { AuthError, bearer, verify } from "./_auth.js";
 import {
   admission, agreed, billingMode, charge, currentOffer, entitlementOf, mostModels, reportOwner, returnOrigin,
 } from "./_billing.js";
-import { betaDaily, betaHub, betaRoute, betaSpots } from "./_beta.js";
+import { betaDaily, betaHub, betaJoin, betaLeave, betaRoute, betaSpots } from "./_beta.js";
 import { feedbackRoute } from "./_feedback.js";
 import { db, dbConfigured } from "./_db.js";
 
@@ -358,6 +363,8 @@ export default async function handler(request, response) {
   response.setHeader("Cache-Control", "no-store");
   const op = String(request.query?.op || "");
   if (op === "beta") return betaRoute(request, response);
+  if (op === "beta_join") return betaJoin(request, response);
+  if (op === "beta_leave") return betaLeave(request, response);
   if (op === "feedback") return feedbackRoute(request, response, placeOf(request));
   if (request.method === "GET" && op === "beta_spots") return betaSpots(request, response);
   if (request.method === "GET" && op === "beta_hub") return betaHub(request, response);
