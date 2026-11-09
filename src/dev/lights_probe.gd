@@ -1338,10 +1338,9 @@ func _r_junk() -> void:
 		% [str(took["junk"]), str(took["other metas"]), opens["junk"] / maxf(opens["other metas"],
 		1.0)] + "%.1f; saved, %d kept" % [JUNK_SLOWER, kept],
 		opens["junk"] <= opens["other metas"] * JUNK_SLOWER and kept == 200000)
-	_check("...saved in %.0f ms against %.0f ms for 200,000 comments as long as its lines (%s and "
-		% [saving["junk"], saving["comments as long"]] + "%s), %.2f times, at most %.1f" % [
-		str(saves["junk"]), str(saves["comments as long"]), saving["junk"]
-		/ maxf(saving["comments as long"], 1.0), JUNK_SAVE],
+	_check("...saved in %.0f ms against %.0f ms for 200,000 comments as long as its lines (%s and %s), %.2f times, at most %.1f"
+		% [saving["junk"], saving["comments as long"], str(saves["junk"]), str(saves["comments as long"]),
+		saving["junk"] / maxf(saving["comments as long"], 1.0), JUNK_SAVE],
 		saving["junk"] <= saving["comments as long"] * JUNK_SAVE)
 	print("        against short comments %.0f ms (%s): %.2f times; the other "
 		% [saving["comments"], str(saves["comments"]), saving["junk"]
