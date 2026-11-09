@@ -4171,7 +4171,7 @@
       "readOnlyHint": false,
       "title": "Edit the build steps"
     },
-    "description": "The model's build steps, the order the booklet and the timeline follow, as Edit, Build steps changes them. op \"list\" (the default) gives them with the part numbers in each; \"to\" puts bricks= in step=, however far, as the person drags them onto a step; \"next\" or \"prev\" moves bricks= a step later or earlier; \"new\" makes a new step of bricks=; \"earlier\", \"later\", \"merge\" (with the next) and \"delete\" act on step=, a number from the list. A model with no steps of its own is given the worked-out ones first, in the same undo step. \"name\" gives step= a name= (\"Build the cockpit\"), said beside its number on the timeline, in Build it and in the booklet; name= \"\" takes it off.",
+    "description": "The model's build steps, the order the booklet and the timeline follow, as Edit, Build steps changes them. op \"list\" (the default) gives them with the part numbers in each; \"to\" puts bricks= in step=, however far, as the person drags them onto a step; \"next\" or \"prev\" moves bricks= a step later or earlier; \"new\" makes a new step of bricks=; \"earlier\", \"later\", \"merge\" (with the next) and \"delete\" act on step=, a number from the list. A model with no steps of its own is given the worked-out ones first, in the same undo step. \"name\" gives step= a name= (\"Build the cockpit\"), said beside its number on the timeline, in Build it and in the booklet; name= \"\" takes it off. callout_step= with step= names a step inside the callout step= puts on. A sub-model placed more than once has one set of steps: a name given to one of its steps is every copy's.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -4181,6 +4181,10 @@
             "type": "integer"
           },
           "type": "array"
+        },
+        "callout_step": {
+          "description": "for name: a step inside the callout step= puts on, from 1, as edit_booklet takes it",
+          "type": "integer"
         },
         "from": {
           "description": "list from this step; 1 when omitted",
