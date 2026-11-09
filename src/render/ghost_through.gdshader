@@ -11,6 +11,10 @@ render_mode blend_mix, depth_draw_never, depth_test_disabled, cull_back, unshade
 uniform vec3 tint : source_color = vec3(0.7, 0.1, 0.1);
 
 void fragment() {
-	ALBEDO = tint;
-	ALPHA = 0.32;
+	// Edged in light as the ghost is, so a black pin inside a red beam
+	// still shows its outline.
+	float facing = abs(dot(normalize(NORMAL), vec3(0.0, 0.0, 1.0)));
+	float rim = pow(1.0 - facing, 2.0);
+	ALBEDO = tint + rim * 0.45;
+	ALPHA = 0.3 + rim * 0.35;
 }
