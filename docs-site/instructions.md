@@ -116,7 +116,7 @@ ui:the booklet's page setup
 
 All of it is saved with the model. A style kept by **Keep as a style** is the look: it carries the colours, the header and footer, and the cover's line and picture to another model. The title and the line under it stay each model's own, so a style never changes them, and neither does putting the booklet's own look back. Claude can set it with `page_setup`: `title`, `subtitle`, `cover_line`, `cover_picture_data`, `header`, `footer`, `box_frame`, `box_fill`, `box_corners`, `number_colour` and `outline_colour`.
 
-Each line of words holds 120 letters; longer words are cut, and Brickworks says so. If **Save as PDF** meets letters its type has no shapes for (Chinese, Japanese, Korean, Cyrillic, Greek, emoji), it names them. They print as **?** in the PDF. The booklet's own page and its PNG pages show them as typed.
+Each line of words holds 120 letters; longer words are cut, and Brickworks says so. **Save as PDF** prints Cyrillic, Greek and other scripts as typed, with their fonts in the file. Letters no font it has can draw (emoji, and Japanese on the web) print as **?**, and it names them first. The booklet's own page and its PNG pages show them as typed.
 
 The cover, header, footer and colours are lines in the model's file. Brickworks before this release, and the desktop app up to 0.19.0, do not know them and leave them out when they save the model. Open and save a model you have set up this way only in this release or a later one. In a model made of sub-models, the page belongs to the main model. Words or a page set up inside a sub-model stay in that sub-model as they were, with the picture they name.
 

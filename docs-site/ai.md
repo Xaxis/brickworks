@@ -64,7 +64,7 @@ ui:design on your own Copilot plan
 
 ## Another AI on your own key {#other-ais}
 
-**Tools › Settings…**, then **AI…**, chooses who designs: **Claude**, as above, or **another AI on your own API key**. The other AI is given the same instructions and the same tools Claude is, builds in the window as Claude does, is held to the same checks, and answers the same [fresh look](/docs/fresh-eyes) at its first save.
+**Tools › Settings…**, then **AI: Claude…** (the link names who designs), chooses who designs: **Claude**, as above, or **another AI on your own API key**. The other AI is given the same instructions and the same tools Claude is, builds in the window as Claude does, is held to the same checks, and answers the same [fresh look](/docs/fresh-eyes) at its first save.
 
 <!-- covers
 ui:choose the AI that designs
@@ -105,7 +105,7 @@ The panel says this beside the key, for where you are. A key pasted in the assis
 On the desktop, programs running as you could still ask the keyring for it, so a key with a spending limit is safest. A key kept in a file by an earlier version moves into the keyring the first time it is read, and the file is deleted. Everywhere, the key is sent only to the provider you chose (or the address you gave), never to Brickworks, and never logged or saved with a model.
 
 > [!NOTE]
-> A model on your own computer (Ollama, LM Studio, vLLM) is for the desktop app: a browser asks before a website reaches your computer, and those servers refuse other sites unless told to allow them.
+> A model on your own computer (Ollama, LM Studio, vLLM) answers the web app only if it allows brickworks.diy (for Ollama, `OLLAMA_ORIGINS`), and the browser asks you first. A server elsewhere that is not on the list needs the desktop app, coming soon.
 
 ### From the command line {#ask-provider}
 

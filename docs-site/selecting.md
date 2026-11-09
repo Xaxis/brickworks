@@ -32,10 +32,10 @@ ui:box select
 Select a part, then **Select by** on the toolbar or **Edit › Select by**:
 
 - **Same colour** ([[Alt+C]]), **Same part** ([[Alt+P]]), or **Same part and colour** ([[Alt+A]]): every part that matches it. [[Shift]]-double-click picks every part like it at once.
-- **Everything connected**: everything held to it, through studs and joints.
+- **Everything connected** ([[Alt+J]]): everything held to it, through studs and joints.
 - **Same sub-model**: the sub-assembly it belongs to.
 - **Part number or name…** ([[Ctrl+F]]): find parts in the model by number, name or colour.
-- **The opposite**: everything that is not selected.
+- **The opposite** ([[Alt+I]]): everything that is not selected.
 
 <!-- covers
 ui:select by colour part or connection
@@ -57,7 +57,7 @@ ui:select by colour part or connection
 | [[L]] | Lock it |
 | [[Ctrl+H]], [[Shift+H]] | Hide it, or show only it |
 
-A right-click on a part opens its menu: Ask Claude about it, select what is connected, hide, paint, its printed versions, copy, delete, make a sub-model and its properties. See [On a part](/docs/menus#on-a-part).
+A right-click on a part opens its menu: Ask Claude about it, select what is connected, hide, paint, its printed versions, copy, delete, **Make a sub-assembly…** and its properties. See [On a part](/docs/menus#on-a-part).
 
 ## Swing on a hinge {#swing}
 

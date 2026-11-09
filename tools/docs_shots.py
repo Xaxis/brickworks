@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """The documentation's pictures, made again from the real app and the real
-site as docs-site/shots.json sets each one up.
+site as docs-site/pictures/<page>.json sets each one up.
 
     tools/docs_shots.py                   every picture: the app's from a locked
                                           snapshot of HEAD, the site's from a
@@ -20,7 +20,7 @@ The owner, 2026-11-09: docs "including images in it and having an
 iterative process established such that you keep it updated as we keep on
 building". Units change what a person sees every hour, so a picture taken
 by hand is out of date within a day. So each picture is written down once,
-in the manifest: the page it is on, what to set up (a model, a menu
+in its page's manifest (docs-site/pictures/<page>.json): the page it is on, what to set up (a model, a menu
 command, keys, clicks; the site's page and what its server answers), what
 to cut it to, and its words (alt and caption, which --write in
 tools/docs_site.py puts into the page). This makes every one of them again.
@@ -32,7 +32,7 @@ each in a window and an app data folder of its own. The site's by
 tools/web/docs_shots_flow.mjs, on SwiftShader under heavy, with what each
 page asks its server answered from the manifest. Both write lossless
 pictures; this reads their pixels, and a picture whose pixels are the ones
-docs-site/img/shots.lock.json says it was made from is left as it is, so
+docs-site/img/shots.lock says it was made from is left as it is, so
 the same code makes no change and a change means the UI changed. A changed
 one is written again as WebP into docs-site/img/, and its old and new
 picture and what differs are put side by side in the run's folder
@@ -54,9 +54,13 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-MANIFEST = ROOT / "docs-site/shots.json"
+# A page's pictures are docs-site/pictures/<page>.json: a file a page, so units
+# writing different pages never touch one file.
+MANIFEST = ROOT / "docs-site/pictures"
 IMG = ROOT / "docs-site/img"
-LOCK = IMG / "shots.lock.json"
+# What each picture was made from: "name sha256 width height bytes" a line,
+# sorted, written by this alone.
+LOCK = IMG / "shots.lock"
 FEATURES = ROOT / ".claude/skills/verify/features.json"
 CORE = Path.home() / ".claude/claude-core/bin"
 # A picture more than this is too heavy for a docs page (each is lazy).
@@ -67,22 +71,41 @@ THEMES = ("dark", "light")
 SHOWN = re.compile(r'^!\[([^\]]*)\]\(/docs/img/([a-z0-9-]+)\.webp(?:\s+"([^"]*)")?\)\s*$', re.M)
 
 
-def manifest() -> dict:
-    return json.loads(MANIFEST.read_text(encoding="utf-8"))
-
-
 def shots() -> list[dict]:
-    return manifest().get("shots", [])
+    """Every picture, from every page's file, each with its page."""
+    found = []
+    for path in sorted(MANIFEST.glob("*.json")):
+        for shot in json.loads(path.read_text(encoding="utf-8")).get("shots", []):
+            found.append({"page": path.stem, **shot, "_file": path.name})
+    return found
+
+
+def themed(shot: dict) -> list[tuple[str, str]]:
+    """The files a picture is, each with its theme: the app's one (the app has
+    one look), the site's one a theme it names, dark (the site's own) first."""
+    themes = shot.get("themes", ["dark"]) if shot.get("source") == "site" else ["dark"]
+    themes = sorted(dict.fromkeys(themes), key=lambda t: THEMES.index(t) if t in THEMES else len(THEMES))
+    return [(shot["id"] if theme == "dark" else f"{shot['id']}-{theme}", theme) for theme in themes]
 
 
 def names(shot: dict) -> list[str]:
-    """The files a picture is: one, or one a theme for the site's."""
-    themes = shot.get("themes", ["dark"]) if shot.get("source") == "site" else ["dark"]
-    return [shot["id"] if theme == "dark" else f"{shot['id']}-{theme}" for theme in themes]
+    return [name for name, _ in themed(shot)]
 
 
 def lock() -> dict:
-    return json.loads(LOCK.read_text(encoding="utf-8")) if LOCK.exists() else {}
+    made = {}
+    for line in LOCK.read_text(encoding="utf-8").splitlines() if LOCK.exists() else []:
+        if line.strip() and not line.startswith("#"):
+            name, sha, width, height, size = line.split()
+            made[name] = {"sha256": sha, "width": int(width), "height": int(height), "bytes": int(size)}
+    return made
+
+
+def write_lock(made: dict) -> None:
+    lines = [f"{name} {r['sha256']} {r['width']} {r['height']} {r['bytes']}" for name, r in sorted(made.items())]
+    LOCK.write_text("# What each docs picture was made from (tools/docs_shots.py writes this):\n"
+                    "# name, sha256 of its pixels, width, height, bytes of its .webp\n"
+                    + "\n".join(lines) + "\n", encoding="utf-8")
 
 
 def webp_size(path: Path) -> tuple[int, int] | None:
@@ -112,7 +135,7 @@ def problems(pages: dict[str, str]) -> list[str]:
     try:
         listed = shots()
     except (OSError, ValueError) as trouble:
-        return [f"docs-site/shots.json cannot be read: {trouble}"]
+        return [f"docs-site/pictures/ cannot be read: {trouble}"]
     made = lock()
     features = {f["id"] for f in json.loads(FEATURES.read_text(encoding="utf-8"))["features"]}
     seen: set[str] = set()
@@ -123,17 +146,17 @@ def problems(pages: dict[str, str]) -> list[str]:
             shown.setdefault(name, []).append((page, alt, caption))
     for shot in listed:
         sid = str(shot.get("id", ""))
-        where = f"docs-site/shots.json's {sid or 'picture with no id'}"
+        where = f"docs-site/pictures/{shot.get('_file')}'s {sid or 'picture with no id'}"
         if not ID.match(sid):
             found.append(f"{where}: an id is lower-case words joined by -")
             continue
         if sid in seen:
-            found.append(f"{where} is in docs-site/shots.json twice")
+            found.append(f"{where}: a picture of that id is in docs-site/pictures/ twice")
         seen.add(sid)
         if shot.get("source") not in ("app", "site"):
             found.append(f"{where}: source is app or site")
         if shot.get("page") not in pages:
-            found.append(f"{where} is for {shot.get('page')}, which is no docs page")
+            found.append(f"{where}: docs-site/pictures/{shot.get('_file')} is for {shot.get('page')}, which is no docs page")
         alt = str(shot.get("alt", "")).strip()
         if not alt:
             found.append(f"{where} has no alt: the words a person who cannot see it reads")
@@ -161,7 +184,7 @@ def problems(pages: dict[str, str]) -> list[str]:
             if not record or size != (record.get("width"), record.get("height")) \
                     or path.stat().st_size != record.get("bytes"):
                 found.append(f"docs-site/img/{name}.webp is not what tools/docs_shots.py made "
-                             "(docs-site/img/shots.lock.json): make it again with --only=" + sid)
+                             "(docs-site/img/shots.lock): make it again with --only=" + sid)
             if path.stat().st_size > MOST_BYTES:
                 found.append(f"docs-site/img/{name}.webp is {path.stat().st_size // 1000} KB: crop it "
                              f"or give it a width, under {MOST_BYTES // 1000} KB")
@@ -171,20 +194,20 @@ def problems(pages: dict[str, str]) -> list[str]:
                          f"docs-site/{shot.get('page')}.md, then tools/docs_site.py --write")
         for page, page_alt, caption in on:
             if page != shot.get("page"):
-                found.append(f"docs-site/{page}.md shows {sid}, which docs-site/shots.json gives to {shot.get('page')}")
+                found.append(f"docs-site/{page}.md shows {sid}, which is docs-site/pictures/{shot.get('page')}.json's")
             elif page_alt != alt or caption != str(shot.get("caption", "")):
-                found.append(f"docs-site/{page}.md's words for {sid} are not docs-site/shots.json's: "
+                found.append(f"docs-site/{page}.md's words for {sid} are not docs-site/pictures/{page}.json's: "
                              "tools/docs_site.py --write")
         if len(on) > 1:
             found.append(f"{sid} is shown {len(on)} times")
     for name in sorted(set(shown) - seen):
-        found.append(f"docs-site/{shown[name][0][0]}.md shows /docs/img/{name}.webp, which docs-site/shots.json "
-                     "does not have")
+        found.append(f"docs-site/{shown[name][0][0]}.md shows /docs/img/{name}.webp, which no file in "
+                     "docs-site/pictures/ has")
     for path in sorted(IMG.glob("*.webp")) if IMG.exists() else []:
         if path.stem not in files:
-            found.append(f"docs-site/img/{path.name} is in no docs-site/shots.json picture: remove it")
+            found.append(f"docs-site/img/{path.name} is no picture in docs-site/pictures/: remove it")
     for name in sorted(set(made) - files):
-        found.append(f"docs-site/img/shots.lock.json has {name}, which docs-site/shots.json does not")
+        found.append(f"docs-site/img/shots.lock has {name}, which docs-site/pictures/ does not")
     return found
 
 
@@ -305,8 +328,8 @@ def pixels(path: Path):
         return picture.convert("RGB")
 
 
-def encode(raw: Path, out: Path) -> list[dict]:
-    """Each picture taken, against what it was made from last: written as
+def encode(raw: Path, out: Path, wanted: list[str]) -> list[dict]:
+    """Each picture wanted, against what it was made from last: written as
     WebP where its pixels are new. What happened to each, in order."""
     from PIL import Image, ImageChops
     made = lock()
@@ -314,13 +337,15 @@ def encode(raw: Path, out: Path) -> list[dict]:
     IMG.mkdir(parents=True, exist_ok=True)
     diff = out / "diff"
     for shot in shots():
+        if shot["id"] not in wanted:
+            continue
         for name in names(shot):
             png = raw / f"{name}.png"
             said = raw / f"{name}.json"
             if not png.exists():
-                if said.exists():
-                    why = json.loads(said.read_text(encoding="utf-8")).get("why", "not taken")
-                    told.append({"name": name, "what": "failed", "why": why})
+                why = json.loads(said.read_text(encoding="utf-8")).get("why", "not taken") if said.exists() \
+                    else "not taken (see the run's log)"
+                told.append({"name": name, "what": "failed", "why": why})
                 continue
             picture = pixels(png)
             sha = hashlib.sha256(f"{picture.width}x{picture.height}\n".encode() + picture.tobytes()).hexdigest()
@@ -347,7 +372,7 @@ def encode(raw: Path, out: Path) -> list[dict]:
                 picture.save(diff / f"{name}.new.png")
                 marked.save(diff / f"{name}.diff.png")
             told.append(entry)
-    LOCK.write_text(json.dumps(dict(sorted(made.items())), indent=1) + "\n", encoding="utf-8")
+    write_lock(made)
     changed = [t for t in told if t["what"] in ("changed", "new")]
     if changed:
         diff.mkdir(parents=True, exist_ok=True)
@@ -382,7 +407,7 @@ def main(argv: list[str]) -> int:
         found = docs_site.shot_problems()
         for problem in found:
             print(f"docs_shots: {problem}")
-        print(f"docs_shots: {len(shots())} picture(s) in docs-site/shots.json, "
+        print(f"docs_shots: {len(shots())} picture(s) in docs-site/pictures/, "
               + (f"{len(found)} problem(s)" if found else "each made and shown"))
         return 1 if found else 0
     if given.affected:
@@ -392,7 +417,7 @@ def main(argv: list[str]) -> int:
     only = [s for s in given.only.split(",") if s]
     unknown = sorted(set(only) - {s["id"] for s in shots()})
     if unknown:
-        raise SystemExit(f"docs_shots: no picture {', '.join(unknown)} in docs-site/shots.json")
+        raise SystemExit(f"docs_shots: no picture {', '.join(unknown)} in docs-site/pictures/")
     want = [s for s in shots() if not only or s["id"] in only]
     app = [s["id"] for s in want if s.get("source") == "app"] if not given.site or given.app else []
     site = [s["id"] for s in want if s.get("source") == "site"] if not given.app or given.site else []
@@ -404,7 +429,7 @@ def main(argv: list[str]) -> int:
         bad |= take_app(only and app, raw, Path(given.snapshot).resolve() if given.snapshot else None)
     if site:
         bad |= take_site(only and site, raw, given.url)
-    told = encode(raw, out)
+    told = encode(raw, out, app + site)
     total = sum(p.stat().st_size for p in IMG.glob("*.webp"))
     for t in told:
         if t["what"] != "same":

@@ -1,0 +1,75 @@
+{
+ "shots": [
+  {
+   "id": "building-rotate",
+   "source": "app",
+   "setup": [
+    {
+     "select": {
+      "part": "3004",
+      "nth": 0
+     }
+    },
+    {
+     "run": "mode_rotate",
+     "after": 20
+    }
+   ],
+   "crop": "window",
+   "width": 1200,
+   "alt": "The red car with one brick selected and the Rotate tool's three rings round it, one for each way it can turn.",
+   "caption": "The Rotate tool: drag a ring to turn the selection, in the toolbar's turn step.",
+   "features": [
+    "ui:handles on the selection",
+    "ui:tool modes"
+   ]
+  },
+  {
+   "id": "building-move",
+   "source": "app",
+   "setup": [
+    {
+     "select": {
+      "part": "3004",
+      "nth": 0
+     }
+    },
+    {
+     "run": "mode_move",
+     "after": 20
+    }
+   ],
+   "crop": "window",
+   "width": 1200,
+   "alt": "The red car with one brick selected and the Move tool's three arrows on it, red, green and blue.",
+   "caption": "The Move tool: drag an arrow to slide the selection along it.",
+   "features": [
+    "ui:handles on the selection",
+    "ui:move and turn a selection"
+   ]
+  },
+  {
+   "id": "building-pattern",
+   "source": "app",
+   "setup": [
+    {
+     "select": {
+      "part": "3004",
+      "nth": 0
+     }
+    },
+    {
+     "run": "pattern",
+     "after": 30
+    }
+   ],
+   "crop": "@opened",
+   "pad": 0,
+   "alt": "The Pattern dialog, which repeats the selection in a line, a grid or a circle.",
+   "caption": "Edit › Pattern… copies the selection in a line, a grid or round a circle.",
+   "features": [
+    "ui:patterns"
+   ]
+  }
+ ]
+}

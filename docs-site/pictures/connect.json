@@ -1,0 +1,84 @@
+{
+ "shots": [
+  {
+   "id": "connect-allow",
+   "source": "site",
+   "route": "/authorize?response_type=code&client_id=https%3A%2F%2Fclaude.ai%2Foauth%2Fmcp-oauth-client-metadata&redirect_uri=https%3A%2F%2Fclaude.ai%2Fapi%2Fmcp%2Fauth_callback&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256&state=docs",
+   "viewport": [
+    1280,
+    900
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "answers": {
+    "/api/oauth?op=check": {
+     "client": "Claude",
+     "claude": true,
+     "client_name": "Claude",
+     "return_to": "claude.ai",
+     "loopback": false
+    },
+    "/api/account": {
+     "enabled": true,
+     "url": "https://sign-in.example",
+     "key": "docs"
+    },
+    "https://sign-in.example/auth/v1/token": {
+     "access_token": "docs",
+     "refresh_token": "docs",
+     "user": {
+      "email": "you@example.com",
+      "id": "docs"
+     }
+    },
+    "/api/oauth?op=remembered": {
+     "status": 200,
+     "body": {}
+    }
+   },
+   "storage": {
+    "brickworks.session": {
+     "refresh_token": "docs",
+     "email": "you@example.com",
+     "user_id": "docs",
+     "url": "https://sign-in.example",
+     "key": "docs"
+    }
+   },
+   "wait": "#allow-step:not(.hide)",
+   "crop": ".card",
+   "pad": 16,
+   "alt": "The Brickworks page Claude opens: signed in as you@example.com, it asks Let Claude build in Brickworks?, lists what Claude will be able to do, and has Allow and Cancel buttons.",
+   "caption": "The one question Brickworks asks, once for each app.",
+   "features": [
+    "ui:connect Claude sign-in page"
+   ]
+  },
+  {
+   "id": "connect-your-ai",
+   "source": "app",
+   "setup": [
+    {
+     "assistant": true,
+     "after": 30
+    },
+    {
+     "run": "connector",
+     "after": 30
+    },
+    {
+     "frames": 30
+    }
+   ],
+   "crop": "_chat",
+   "pad": 0,
+   "alt": "Connect your AI in the assistant panel: a list of AI apps under Your AI, Claude chosen, and a Connect button with that app's steps under it.",
+   "caption": "Tools › Connect your AI…: choose your app, then Connect.",
+   "features": [
+    "ui:connect your AI"
+   ]
+  }
+ ]
+}

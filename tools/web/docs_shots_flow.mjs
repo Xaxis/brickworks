@@ -1,4 +1,4 @@
-// The documentation's pictures of the website, taken as docs-site/shots.json
+// The documentation's pictures of the website, taken as docs-site/pictures/<page>.json
 // sets each one up, for tools/docs_shots.py to make docs-site/img/ of.
 //
 //   node tools/web/docs_shots_flow.mjs --root=DIR --out=DIR [--only=ID,ID] [--manifest=FILE]
@@ -17,7 +17,7 @@
 // DIR/<id>.json saying what was taken.
 import { launch } from "./browser.mjs";
 import { serveDir } from "./static_server.mjs";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -27,7 +27,7 @@ const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   return [k, rest.join("=") || true];
 }));
 const here = path.dirname(fileURLToPath(import.meta.url));
-const manifestPath = path.resolve(String(args.manifest || path.join(here, "../../docs-site/shots.json")));
+const manifestPath = path.resolve(String(args.manifest || path.join(here, "../../docs-site/pictures")));
 const out = path.resolve(String(args.out || "shots/docs_shots"));
 const only = args.only ? String(args.only).split(",").filter(Boolean) : [];
 mkdirSync(out, { recursive: true });
@@ -42,8 +42,12 @@ if (!site) {
 const bypass = process.env.BW_BYPASS || process.env.VERCEL_BYPASS || "";
 const headers = bypass && !served ? { "x-vercel-protection-bypass": bypass, "x-vercel-skip-toolbar": "1" } : {};
 
-const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-const shots = (manifest.shots || []).filter((s) => s.source === "site" && (!only.length || only.includes(s.id)));
+// A page's pictures are a file of their own (docs-site/pictures/<page>.json).
+const files = statSync(manifestPath).isDirectory()
+  ? readdirSync(manifestPath).filter((f) => f.endsWith(".json")).sort().map((f) => path.join(manifestPath, f))
+  : [manifestPath];
+const shots = files.flatMap((f) => JSON.parse(readFileSync(f, "utf8")).shots || [])
+  .filter((s) => s.source === "site" && (!only.length || only.includes(s.id)));
 const STILL = `*, *::before, *::after { animation: none !important; transition: none !important;
   caret-color: transparent !important; scroll-behavior: auto !important; }`;
 

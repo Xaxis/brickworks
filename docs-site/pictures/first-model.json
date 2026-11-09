@@ -1,0 +1,79 @@
+{
+ "shots": [
+  {
+   "id": "first-model-window",
+   "source": "app",
+   "setup": [],
+   "crop": "window",
+   "width": 1200,
+   "marks": [
+    {
+     "at": "_bar",
+     "n": "1",
+     "side": "right"
+    },
+    {
+     "at": "_shell.toolbar",
+     "n": "2",
+     "side": "right"
+    },
+    {
+     "at": "_bin",
+     "n": "3"
+    },
+    {
+     "at": "_gizmo",
+     "n": "4",
+     "side": "right"
+    }
+   ],
+   "alt": "The Brickworks window with a red car on a green baseplate. Numbered outlines mark 1, the menus along the top; 2, the toolbar; 3, the parts bin on the left; 4, the view cube.",
+   "caption": "The window: 1 menus, 2 toolbar, 3 parts bin, 4 view cube.",
+   "features": [
+    "ui:menus and toolbar",
+    "ui:parts bin",
+    "ui:view cube"
+   ]
+  },
+  {
+   "id": "first-model-in-hand",
+   "source": "app",
+   "setup": [
+    {
+     "run": "new",
+     "after": 30
+    },
+    {
+     "take": {
+      "part": "3001",
+      "colour": 4
+     },
+     "after": 20
+    },
+    {
+     "mouse": [
+      760,
+      520
+     ]
+    },
+    {
+     "frames": 10
+    },
+    {
+     "mouse": [
+      764,
+      524
+     ]
+    }
+   ],
+   "settle": 40,
+   "crop": "window",
+   "width": 1200,
+   "alt": "An empty green baseplate with a red 2 x 4 brick in hand, drawn where it will go under the pointer.",
+   "caption": "A part in hand follows the pointer and snaps to the studs; a click puts it down.",
+   "features": [
+    "ui:place and remove"
+   ]
+  }
+ ]
+}

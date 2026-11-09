@@ -1,5 +1,5 @@
 ## The documentation's pictures of the app, taken off the real window as
-## docs-site/shots.json sets each one up, for tools/docs_shots.py to make
+## docs-site/pictures/<page>.json sets each one up, for tools/docs_shots.py to make
 ## docs-site/img/ of. Every picture is taken in a Brickworks of its own:
 ## this run starts one window a picture (the same engine, the same
 ## display, the GPU lease it holds), with an app data folder of its own,
@@ -27,31 +27,41 @@
 ##   {"key": "Ctrl+Shift+Z"}                a key, as a person presses it
 ##   {"type": "hinge"}                      words typed into whatever has the keys
 ##   {"mouse": [x, y]} / {"click": [x, y]}  the pointer, in the window's pixels;
-##   {"click": "path"}                      or the middle of a control
+##   {"click": "path"}                      or the middle of a control,
+##   {"click": {"part": "3001"}}            or the top of a part
 ##   {"right_click": ...}                   the same with the other button
 ##   {"over": {"part": "3001", "nth": 0, "lift": 1}}  the pointer over a part
 ##                                          (lift: plates above its top)
 ##   {"select": {"part": "3001", "colour": 4} | "all" | [n, ...]}
 ##   {"call": "path.method", "args": [...]} {"set": "path.property", "value": v}
+##   {"take": {"part": "3001", "colour": 4}} a part into hand, as its tile in the bin
 ##   {"assistant": true}                    the assistant shown (Settings)
 ##   {"frames": 30}
-## And the picture: "crop" ("window", a path, [x, y, w, h], or a list of
+## And the picture: "crop" ("window", a path, "@opened" for the panel or
+## window the setup put in sight, [x, y, w, h], or a list of
 ## those, joined), "pad" (pixels round a crop), "marks" ([{"at": path,
 ## "n": 1}]: an outline and a numbered disc drawn over the window, in the
 ## app's own font), "width" (made smaller to at most this).
 extends SceneTree
 
-const MANIFEST := "res://docs-site/shots.json"
+## A page's pictures are a file of their own: docs-site/pictures/<page>.json.
+const MANIFEST := "res://docs-site/pictures"
 ## How long one window may take, its start included, before it is ended.
 const SECONDS_A_PICTURE := 180
 ## The pixels two reads must agree on, at most this many reads.
 const SETTLE_READS := 12
+## What a picture's own window is told, in its environment.
+const ONE := "BRICKWORKS_DOCS_SHOT"
+const ONE_OUT := "BRICKWORKS_DOCS_SHOT_OUT"
+const ONE_MANIFEST := "BRICKWORKS_DOCS_SHOT_MANIFEST"
 
 var _out: String = ""
 var _manifest: String = MANIFEST
 var _main: Node
 var _shell: Shell
 var _failed: PackedStringArray = PackedStringArray()
+## The panels and windows in sight before the setup (the "@opened" crop).
+var _shown_before: Dictionary = {}
 
 
 func _initialize() -> void:
@@ -59,15 +69,19 @@ func _initialize() -> void:
 
 
 func _start() -> void:
-	var one: String = ""
+	# A picture's own window is told which picture by its environment, not
+	# its arguments: the app reads its own (--out= is its export), and a
+	# window here must start as a person's does, with none.
+	var one: String = OS.get_environment(ONE)
+	if not one.is_empty():
+		_out = OS.get_environment(ONE_OUT)
+		_manifest = OS.get_environment(ONE_MANIFEST)
 	var only: PackedStringArray = PackedStringArray()
-	for arg: String in OS.get_cmdline_user_args():
+	for arg: String in OS.get_cmdline_user_args() if one.is_empty() else PackedStringArray():
 		if arg.begins_with("--out="):
 			_out = arg.substr(6)
 		elif arg.begins_with("--only="):
 			only = arg.substr(7).split(",", false)
-		elif arg.begins_with("--one="):
-			one = arg.substr(6)
 		elif arg.begins_with("--manifest="):
 			_manifest = arg.substr(11)
 	if _out.is_empty():
@@ -97,18 +111,28 @@ func _start() -> void:
 		await _take(found[0])
 
 
-## The manifest's pictures of the app.
+## The manifest's pictures of the app: every page's file in a folder, or one file.
 func _shots() -> Array:
 	var path: String = _manifest if _manifest.begins_with("/") or _manifest.begins_with("res://") \
 		else ProjectSettings.globalize_path("res://").path_join(_manifest)
-	var text: String = FileAccess.get_file_as_string(path)
-	var parsed: Variant = JSON.parse_string(text)
-	if not parsed is Dictionary:
-		return []
+	var files: PackedStringArray = PackedStringArray()
+	if DirAccess.dir_exists_absolute(path):
+		var names: PackedStringArray = DirAccess.get_files_at(path)
+		names.sort()
+		for name: String in names:
+			if name.ends_with(".json"):
+				files.append(path.path_join(name))
+	else:
+		files.append(path)
 	var out: Array = []
-	for shot: Variant in (parsed as Dictionary).get("shots", []):
-		if shot is Dictionary and str(shot.get("source", "")) == "app":
-			out.append(shot)
+	for file: String in files:
+		var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(file))
+		if not parsed is Dictionary:
+			print("docs shots probe FAIL: %s is not a manifest" % file)
+			continue
+		for shot: Variant in (parsed as Dictionary).get("shots", []):
+			if shot is Dictionary and str(shot.get("source", "")) == "app":
+				out.append(shot)
 	return out
 
 
@@ -133,12 +157,14 @@ func _every(shots: Array, only: PackedStringArray) -> void:
 		var data: String = _out.path_join(".data").path_join(id)
 		DirAccess.make_dir_recursive_absolute(data)
 		OS.set_environment("XDG_DATA_HOME", data)
+		OS.set_environment(ONE, id)
+		OS.set_environment(ONE_OUT, _out)
+		OS.set_environment(ONE_MANIFEST, _manifest)
 		DirAccess.remove_absolute(_out.path_join(id + ".json"))
 		var args: PackedStringArray = PackedStringArray(["--path", ProjectSettings.globalize_path("res://")])
 		args.append_array(engine)
 		args.append_array(["--resolution", "%dx%d" % [at.x, at.y],
-			"--script", "res://src/dev/docs_shots_probe.gd", "--",
-			"--one=" + id, "--out=" + _out, "--manifest=" + _manifest])
+			"--script", "res://src/dev/docs_shots_probe.gd"])
 		var began: int = Time.get_ticks_msec()
 		var pid: int = OS.create_process(OS.get_executable_path(), args)
 		if pid <= 0:
@@ -217,6 +243,14 @@ func _take(shot: Dictionary) -> void:
 	_stop_playback()
 	await _let_in()
 	await _frames(20)
+	# The pointer off the window, as a person's is while the window is read:
+	# nothing hovered unless a step puts it there.
+	var away := InputEventMouseMotion.new()
+	away.position = Vector2(-40, -40)
+	away.global_position = away.position
+	Input.parse_input_event(away)
+	await _frames(4)
+	_shown_before = _panels_shown()
 	for step: Variant in shot.get("setup", []):
 		if not step is Dictionary:
 			_failed.append("a step that is not an object: %s" % str(step))
@@ -379,6 +413,13 @@ func _do(step: Dictionary) -> void:
 			_failed.append("nothing at %s" % path.get_basename())
 		else:
 			(target as Object).set(path.get_extension(), step["value"])
+	elif step.has("take"):
+		# What a click on the part's tile in the bin sends, in its colour.
+		var bin: PartsBin = _main.get("_bin")
+		var taken: Dictionary = step["take"] if step["take"] is Dictionary else {"part": str(step["take"])}
+		if taken.has("colour"):
+			bin.color_chosen.emit(int(taken["colour"]))
+		bin.part_chosen.emit(str(taken["part"]))
 	elif step.has("assistant"):
 		_shell.set_assistant(bool(step["assistant"]))
 	elif step.has("frames"):
@@ -433,6 +474,8 @@ func _point(given: Variant) -> Variant:
 		var rect: Variant = _rect_of(given)
 		if rect != null:
 			return (rect as Rect2).get_center()
+	if given is Dictionary:
+		return _over(given)
 	_failed.append("no point at %s" % str(given))
 	return null
 
@@ -543,24 +586,44 @@ func _node(path: String) -> Variant:
 ## Where a path's control or window is, in the window's pixels.
 func _rect_of(path: String) -> Variant:
 	var found: Variant = _node(path)
-	if found is Control:
-		var control: Control = found
+	if not (found is Control or found is Window):
+		_failed.append("nothing to frame at %s" % path)
+		return null
+	var rect: Variant = _rect_of_node(found)
+	if rect == null:
+		_failed.append("%s is not shown" % path)
+	return rect
+
+
+## A control's or a window's rectangle in the window's pixels; null when it
+## is not in sight. A control's own canvas layer, the window it is in (an
+## embedded dialog) and the window's stretch are all taken into account.
+func _rect_of_node(node: Node) -> Variant:
+	if node is Control:
+		var control: Control = node
 		if not control.is_visible_in_tree():
-			_failed.append("%s is not shown" % path)
 			return null
-		var box: Rect2 = control.get_global_rect()
-		var to_window: Transform2D = control.get_viewport().get_final_transform() \
-			* control.get_viewport().get_canvas_transform()
-		return to_window * box
-	if found is Window:
-		var window: Window = found
+		var box := Rect2(Vector2.ZERO, control.size)
+		return _to_window(control.get_viewport(), control.get_global_transform_with_canvas()) * box
+	if node is Window:
+		var window: Window = node
 		if not window.visible:
-			_failed.append("%s is not shown" % path)
 			return null
 		var box := Rect2(Vector2(window.position), Vector2(window.size))
-		return root.get_final_transform() * box
-	_failed.append("nothing to frame at %s" % path)
+		var host: Viewport = window.get_parent().get_viewport() if window.get_parent() != null else root
+		return _to_window(host, Transform2D.IDENTITY) * box
 	return null
+
+
+## From [param viewport]'s canvas, through [param inner], to the window's pixels.
+func _to_window(viewport: Viewport, inner: Transform2D) -> Transform2D:
+	var at: Transform2D = viewport.get_final_transform() * inner
+	while viewport is Window and viewport != root and (viewport as Window).is_embedded():
+		var window: Window = viewport
+		at = Transform2D(0.0, Vector2(window.position)) * at
+		viewport = window.get_parent().get_viewport() if window.get_parent() != null else root
+		at = viewport.get_final_transform() * at
+	return at
 
 
 ## The part of the window a picture shows, padded and kept inside it.
@@ -575,6 +638,8 @@ func _crop(given: Variant, pad: int, size: Vector2i) -> Variant:
 		var rect: Variant = null
 		if one is Array and (one as Array).size() == 4:
 			rect = Rect2(float(one[0]), float(one[1]), float(one[2]), float(one[3]))
+		elif one is String and one == "@opened":
+			rect = _opened()
 		elif one is String:
 			rect = _rect_of(one)
 		if rect == null:
@@ -589,6 +654,52 @@ func _crop(given: Variant, pad: int, size: Vector2i) -> Variant:
 		_failed.append("the crop %s is outside the window" % str(given))
 		return null
 	return cut
+
+
+## Every panel and window in sight now, by instance id.
+func _panels_shown() -> Dictionary:
+	var shown: Dictionary = {}
+	var stack: Array[Node] = [root]
+	while not stack.is_empty():
+		var node: Node = stack.pop_back()
+		if node is CanvasItem and not (node as CanvasItem).is_visible_in_tree():
+			continue
+		if node is Window and node != root and not (node as Window).visible:
+			continue
+		if (node is PanelContainer or node is Window or node is Popup) and node != root:
+			shown[node.get_instance_id()] = node
+		for child: Node in node.get_children(true):
+			stack.append(child)
+	return shown
+
+
+## The outermost panel or window the setup put in sight (a dialog, a menu, a
+## panel opened by a command), whatever the app calls it: the largest of
+## those now in sight that were not before, with none of them round it.
+func _opened() -> Variant:
+	var best: Variant = null
+	var area: float = 0.0
+	var now: Dictionary = _panels_shown()
+	for id: int in now:
+		if _shown_before.has(id):
+			continue
+		var node: Node = now[id]
+		var up: Node = node.get_parent()
+		var inside: bool = false
+		while up != null:
+			if now.has(up.get_instance_id()) and not _shown_before.has(up.get_instance_id()):
+				inside = true
+				break
+			up = up.get_parent()
+		if inside:
+			continue
+		var rect: Variant = _rect_of_node(node)
+		if rect != null and (rect as Rect2).get_area() > area:
+			area = (rect as Rect2).get_area()
+			best = rect
+	if best == null:
+		_failed.append("the setup put no panel or window in sight to crop to (@opened)")
+	return best
 
 
 ## Nothing that moves by itself in the picture: the pointer off everything,

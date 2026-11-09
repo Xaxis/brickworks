@@ -45,7 +45,7 @@ what it documents with a comment under its heading:
     -->
 
 Pictures of the app and the site are made, not taken by hand: each is
-written down once in docs-site/shots.json (its page, what to set up, what
+written down once in docs-site/pictures/<page>.json (what to set up, what
 to cut it to, its alt and caption) and tools/docs_shots.py makes them all
 again into docs-site/img/, served at /docs/img/. A page shows one as
 `![alt](/docs/img/<id>.webp "caption")`, its words copied from the manifest
@@ -100,7 +100,7 @@ def _tool(name: str):
 
 site_shell = _tool("site_shell")  # the site's one header and footer
 assistants = _tool("assistants")  # every AI app Brickworks connects to, assets/assistants.json
-docs_shots = _tool("docs_shots")  # the pictures of the app and the site, docs-site/shots.json
+docs_shots = _tool("docs_shots")  # the pictures of the app and the site, docs-site/pictures/
 SHOTS = SRC / "img"  # each made by tools/docs_shots.py, served at /docs/img/
 
 # -- Markdown -----------------------------------------------------------------
@@ -348,24 +348,23 @@ def render(page: Page, markdown: str) -> None:
 
 
 def shot_figure(src: str, alt: str, cap: str) -> str:
-    """A picture tools/docs_shots.py made (docs-site/shots.json): at its own
+    """A picture tools/docs_shots.py made (docs-site/pictures/): at its own
     size, never stretched, loaded only when it comes near, and opened whole
     by a click; a picture of the site in the theme the page is in, its other
     theme's never fetched (a hidden lazy picture is not loaded)."""
     name = src.rsplit("/", 1)[-1].removesuffix(".webp")
     shot = next((s for s in docs_shots.shots() if s.get("id") == name), {})
-    files = docs_shots.names(shot) if shot else [name]
+    files = docs_shots.themed(shot) if shot else [(name, "dark")]
 
     def one(file: str, theme: str) -> str:
         size = webp_size(SHOTS / f"{file}.webp")
         dims = f' width="{size[0]}" height="{size[1]}"' if size else ""
-        kind = f' class="on-{theme}"' if len(files) > 1 else ""
-        return (f'<a class="shot-open"{kind} href="/docs/img/{file}.webp" aria-label="{html.escape(alt)}, whole">'
+        kind = f' class="shot-open on-{theme}"' if len(files) > 1 else ' class="shot-open"'
+        return (f'<a{kind} href="/docs/img/{file}.webp" aria-label="{html.escape(alt)}, whole">'
                 f'<img src="/docs/img/{file}.webp" alt="{html.escape(alt)}"{dims} loading="lazy" decoding="async"></a>')
 
-    themes = ["dark"] + [f.rsplit("-", 1)[-1] for f in files[1:]]
     return (f'<figure class="shot shot-{shot.get("source", "app")}" id="shot-{name}">'
-            + "".join(one(f, t) for f, t in zip(files, themes)) + f"{cap}</figure>")
+            + "".join(one(f, t) for f, t in files) + f"{cap}</figure>")
 
 
 def named_tables(page: Page, fragment: str) -> str:
@@ -1343,7 +1342,7 @@ def made_files(pages: list[Page]) -> dict[Path, str]:
     for name, doc in tool_docs().items():
         if name in tools:
             files[doc.path] = with_said(doc, tools[name])
-    # Each picture's words on its page are the manifest's (docs-site/shots.json).
+    # Each picture's words on its page are its manifest's (docs-site/pictures/<page>.json).
     for path in sorted(SRC.glob("*.md")):
         text = path.read_text(encoding="utf-8")
         if docs_shots.SHOWN.search(text):

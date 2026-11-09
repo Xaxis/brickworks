@@ -20,7 +20,7 @@ ui:tour
 
 ## 2. Put a part down {#place}
 
-Press [[P]] or click a part in the **parts bin** on the left: it is now *in hand* and follows the pointer over the baseplate, snapping to the studs. Click to put it down. It stays in hand, so each click puts down another. Press [[Esc]] or right-click to let go, and [[Q]] to take the last part back.
+Click a part in the **parts bin** on the left, or press [[/]] and type its name: it is now *in hand* and follows the pointer over the baseplate, snapping to the studs. Click to put it down. It stays in hand, so each click puts down another. Press [[Esc]] or right-click to let go, and [[Q]] to take the last part back.
 
 - [[R]] turns the part in hand a quarter turn; [[T]] tips it onto its side.
 - [[[]] and [[]]] step through colours; [[Shift+C]] asks for a colour by name or number.
