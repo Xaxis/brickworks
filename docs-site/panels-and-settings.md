@@ -114,4 +114,5 @@ ui:what the app is busy with
 
 <!-- covers
 ui:interface languages
+ui:a long job says when it is done
 -->
