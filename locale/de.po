@@ -12607,6 +12607,104 @@ msgstr "Kein Rad dreht sich beim Rollen: keines steht auf einer waagrechten Achs
 msgid "No wheel turns as it rolls: none stands on the ground on a level axle."
 msgstr "Kein Rad dreht sich beim Rollen: keines steht auf einer waagrechten Achse auf dem Boden."
 
+# unit drive, review fixes: refused motion lines said and kept, a joint's part gone, a contact of no studs
+
+msgid "1 motion line not read, kept in the file as it is"
+msgstr "1 Bewegungszeile nicht gelesen, unverändert in der Datei behalten"
+
+msgid "%d motion lines not read, kept in the file as they are"
+msgstr "%d Bewegungszeilen nicht gelesen, unverändert in der Datei behalten"
+
+msgid "%s (%d lines): %s"
+msgstr "%s (%d Zeilen): %s"
+
+msgid "a path has at most %d legs, not %d"
+msgstr "ein Weg hat höchstens %d Abschnitte, nicht %d"
+
+msgid "a turn of its path has no RADIUS"
+msgstr "eine Kurve seines Wegs hat keinen RADIUS"
+
+msgid "its path has %s where a leg goes"
+msgstr "sein Weg hat %s, wo ein Abschnitt steht"
+
+msgid "it has two path lines"
+msgstr "es hat zwei Wegzeilen"
+
+msgid "it has two steering lines"
+msgstr "es hat zwei Lenkungszeilen"
+
+msgid "a wheel or steering line with no path read"
+msgstr "eine Rad- oder Lenkungszeile ohne gelesenen Weg"
+
+msgid "a wheel or steering line this does not read"
+msgstr "eine Rad- oder Lenkungszeile, die hier nicht gelesen wird"
+
+msgid "nothing it moves was read"
+msgstr "nichts, was sie bewegt, wurde gelesen"
+
+msgid "a sequence plays motions, and moves nothing of its own"
+msgstr "eine Abfolge spielt Bewegungen ab und bewegt selbst nichts"
+
+msgid "its path line is not one this reads"
+msgstr "ihre Wegzeile wird hier nicht gelesen"
+
+msgid "its MOTION line is not one this reads"
+msgstr "ihre MOTION-Zeile wird hier nicht gelesen"
+
+msgid "a track line this does not read"
+msgstr "eine Spurzeile, die hier nicht gelesen wird"
+
+msgid "a driver line this does not read"
+msgstr "eine Antriebszeile, die hier nicht gelesen wird"
+
+msgid "a key line this does not read"
+msgstr "eine Schlüsselzeile, die hier nicht gelesen wird"
+
+msgid "a key of a track it does not have"
+msgstr "ein Schlüssel einer Spur, die es nicht hat"
+
+msgid "a motion line with no motion's name"
+msgstr "eine Bewegungszeile ohne Namen einer Bewegung"
+
+msgid "%s is not a motion line this reads"
+msgstr "%s ist keine Bewegungszeile, die hier gelesen wird"
+
+msgid "a path takes %s to %d seconds, not %s"
+msgstr "ein Weg dauert %s bis %d Sekunden, nicht %s"
+
+msgid "a straight goes 0.01 to %d studs (less than 0 backwards), not %s"
+msgstr "eine Gerade geht 0,01 bis %d Noppen (unter 0 rückwärts), nicht %s"
+
+msgid "A straight goes 0.01 to %d studs (less than 0 backwards), not %s."
+msgstr "Eine Gerade geht 0,01 bis %d Noppen (unter 0 rückwärts), nicht %s."
+
+msgid "a turn goes 0.01 to %d degrees, not %s"
+msgstr "eine Kurve geht 0,01 bis %d Grad, nicht %s"
+
+msgid "A turn goes 0.01 to %d degrees, not %s."
+msgstr "Eine Kurve geht 0,01 bis %d Grad, nicht %s."
+
+msgid "a turn's radius is %s to %d studs, not %s"
+msgstr "der Radius einer Kurve ist %s bis %d Noppen, nicht %s"
+
+msgid "A turn's radius is %s to %d studs, not %s."
+msgstr "Der Radius einer Kurve ist %s bis %d Noppen, nicht %s."
+
+msgid "a motion's joint has no part where it was, kept in the file as it was: %s"
+msgstr "ein Gelenk einer Bewegung hat kein Teil mehr, wo es war, unverändert in der Datei behalten: %s"
+
+msgid "%d motions' joints have no part where they were, kept in the file as they were: %s"
+msgstr "%d Gelenke von Bewegungen haben kein Teil mehr, wo sie waren, unverändert in der Datei behalten: %s"
+
+msgid "the %s touches with no stud in contact: nothing holds it there"
+msgstr "%s berührt ohne Noppe im Kontakt: nichts hält es dort"
+
+msgid "on no stud"
+msgstr "auf keiner Noppe"
+
+msgid "%s touches %s with no stud in contact, %s g past it: nothing holds it there"
+msgstr "%s berührt %s ohne Noppe im Kontakt, %s g darüber hinaus: nichts hält es dort"
+
 # end unit drive
 
 # A palette of the person's own, kept for every model (palettes, APP_UX6 21): the bin's

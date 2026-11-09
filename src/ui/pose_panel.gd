@@ -1048,6 +1048,7 @@ func rename(words: String) -> void:
 			if one.sequence[n].to_lower() == was.to_lower():
 				one.sequence[n] = words
 	motion.name = words
+	motions.rename_unread(was, words)
 	builder.record([{"undo": "motions", "motions": had}], "renamed the motion %s %s" % [Motions.quoted(was),
 		Motions.quoted(words)])
 	_editing_name = words
@@ -2216,7 +2217,10 @@ func set_path_seconds(seconds: float) -> void:
 		return
 	_change("changed the path of %s" % Motions.quoted(motion.name), func(edited: Motions.Motion) -> void:
 		edited.path = edited.path.copy()
-		edited.path.seconds = clampf(seconds, 0.5, Motions.MOST_SECONDS))
+		edited.path.seconds = snappedf(clampf(seconds, 0.5, Motions.MOST_SECONDS), 0.001)
+		# Its length now its parts', as Record makes it: a file's MOTION
+		# line said 8 seconds of a path made 3 (drivereview F8).
+		edited.seconds = 0.0)
 	_refresh()
 
 
@@ -2240,7 +2244,8 @@ func remove_path() -> void:
 		_say("It moves nothing but the path: Remove takes the motion out.")
 		return
 	_change("took the path out of %s" % Motions.quoted(motion.name), func(edited: Motions.Motion) -> void:
-		edited.path = null)
+		edited.path = null
+		edited.seconds = 0.0)
 	_refresh()
 
 

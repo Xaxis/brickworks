@@ -181,6 +181,8 @@ class JointLoad extends RefCounted:
 	func held_on() -> String:
 		match kind:
 			"studs":
+				if studs == 0:
+					return "on no stud"
 				return "on %d stud%s" % [studs, "" if studs == 1 else "s"]
 			"axle":
 				return "on an axle keyed in its hole"
@@ -325,6 +327,11 @@ class Report extends RefCounted:
 					str(name_of.call(one.held_by)), one.studs, "" if one.studs == 1 else "s",
 					Balance.tidy(one.moment), Balance.tidy(one.capacity), Balance.tidy(one.ratio),
 					Balance.tidy(one.ultimate)]
+				if one.studs == 0:
+					# No stud in contact: nothing to divide its load by.
+					line = "%s %s %s with no stud in contact: nothing holds it there" % [
+						str(name_of.call(one.beyond)), "hanging from" if one.hangs else "on",
+						str(name_of.call(one.held_by))]
 				if one.hangs:
 					line += ", pulled %s N" % Balance.tidy(one.pull)
 				if not one.pose.is_empty():

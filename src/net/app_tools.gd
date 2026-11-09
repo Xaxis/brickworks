@@ -2619,6 +2619,10 @@ func _list_motions(input: Dictionary) -> String:
 		lines.append("The model's motions, kept in its file (places from where it was built):")
 		for motion: Motions.Motion in motions.list:
 			lines.append_array(_motion_words(player, motion, true))
+	# Its file's motion lines this could not read, kept in it as they are.
+	if not motions.unread.is_empty():
+		var unread: String = motions.unread_words()
+		lines.append("%s%s." % [unread.left(1).to_upper(), unread.substr(1)])
 	if bool(input.get("suggest", true)):
 		var offered: Array = player.suggest().filter(func(one: Motions.Motion) -> bool:
 			return motions.named(one.name) == null)

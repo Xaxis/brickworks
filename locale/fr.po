@@ -12607,6 +12607,104 @@ msgstr "Aucune roue ne tourne en roulant : aucune ne repose au sol sur un essieu
 msgid "No wheel turns as it rolls: none stands on the ground on a level axle."
 msgstr "Aucune roue ne tourne en roulant : aucune ne repose au sol sur un essieu horizontal."
 
+# unit drive, review fixes: refused motion lines said and kept, a joint's part gone, a contact of no studs
+
+msgid "1 motion line not read, kept in the file as it is"
+msgstr "1 ligne de mouvement non lue, gardée telle quelle dans le fichier"
+
+msgid "%d motion lines not read, kept in the file as they are"
+msgstr "%d lignes de mouvement non lues, gardées telles quelles dans le fichier"
+
+msgid "%s (%d lines): %s"
+msgstr "%s (%d lignes) : %s"
+
+msgid "a path has at most %d legs, not %d"
+msgstr "un trajet a au plus %d tronçons, pas %d"
+
+msgid "a turn of its path has no RADIUS"
+msgstr "un virage de son trajet n'a pas de RADIUS"
+
+msgid "its path has %s where a leg goes"
+msgstr "son trajet a %s là où va un tronçon"
+
+msgid "it has two path lines"
+msgstr "il a deux lignes de trajet"
+
+msgid "it has two steering lines"
+msgstr "il a deux lignes de direction"
+
+msgid "a wheel or steering line with no path read"
+msgstr "une ligne de roue ou de direction sans trajet lu"
+
+msgid "a wheel or steering line this does not read"
+msgstr "une ligne de roue ou de direction illisible ici"
+
+msgid "nothing it moves was read"
+msgstr "rien de ce qu'il bouge n'a été lu"
+
+msgid "a sequence plays motions, and moves nothing of its own"
+msgstr "une séquence joue des mouvements et ne bouge rien elle-même"
+
+msgid "its path line is not one this reads"
+msgstr "sa ligne de trajet est illisible ici"
+
+msgid "its MOTION line is not one this reads"
+msgstr "sa ligne MOTION est illisible ici"
+
+msgid "a track line this does not read"
+msgstr "une ligne de piste illisible ici"
+
+msgid "a driver line this does not read"
+msgstr "une ligne d'entraînement illisible ici"
+
+msgid "a key line this does not read"
+msgstr "une ligne de clé illisible ici"
+
+msgid "a key of a track it does not have"
+msgstr "une clé d'une piste qu'il n'a pas"
+
+msgid "a motion line with no motion's name"
+msgstr "une ligne de mouvement sans nom de mouvement"
+
+msgid "%s is not a motion line this reads"
+msgstr "%s n'est pas une ligne de mouvement lisible ici"
+
+msgid "a path takes %s to %d seconds, not %s"
+msgstr "un trajet dure de %s à %d secondes, pas %s"
+
+msgid "a straight goes 0.01 to %d studs (less than 0 backwards), not %s"
+msgstr "une ligne droite va de 0,01 à %d tenons (moins de 0 en arrière), pas %s"
+
+msgid "A straight goes 0.01 to %d studs (less than 0 backwards), not %s."
+msgstr "Une ligne droite va de 0,01 à %d tenons (moins de 0 en arrière), pas %s."
+
+msgid "a turn goes 0.01 to %d degrees, not %s"
+msgstr "un virage va de 0,01 à %d degrés, pas %s"
+
+msgid "A turn goes 0.01 to %d degrees, not %s."
+msgstr "Un virage va de 0,01 à %d degrés, pas %s."
+
+msgid "a turn's radius is %s to %d studs, not %s"
+msgstr "le rayon d'un virage va de %s à %d tenons, pas %s"
+
+msgid "A turn's radius is %s to %d studs, not %s."
+msgstr "Le rayon d'un virage va de %s à %d tenons, pas %s."
+
+msgid "a motion's joint has no part where it was, kept in the file as it was: %s"
+msgstr "une articulation d'un mouvement n'a plus de pièce là où elle était, gardée telle quelle dans le fichier : %s"
+
+msgid "%d motions' joints have no part where they were, kept in the file as they were: %s"
+msgstr "%d articulations de mouvements n'ont plus de pièce là où elles étaient, gardées telles quelles dans le fichier : %s"
+
+msgid "the %s touches with no stud in contact: nothing holds it there"
+msgstr "%s touche sans aucun tenon en contact : rien ne le tient là"
+
+msgid "on no stud"
+msgstr "sur aucun tenon"
+
+msgid "%s touches %s with no stud in contact, %s g past it: nothing holds it there"
+msgstr "%s touche %s sans aucun tenon en contact, %s g au-delà : rien ne le tient là"
+
 # end unit drive
 
 # A palette of the person's own, kept for every model (palettes, APP_UX6 21): the bin's

@@ -264,6 +264,10 @@ func _weigh_margins(bricks: Array, graph: Dictionary, report: Report) -> void:
 			one.beyond_part, ("hangs from" if one.hangs else "is levered off") if one.kind == "studs"
 				else "turns on", one.held_part, one.held_on(), Balance.tidy(one.grams),
 			Balance.tidy(one.ratio), "studs' " if one.kind == "studs" else ""]
+		if one.kind == "studs" and one.studs == 0:
+			# No stud in contact: nothing holds it, and no load to divide.
+			risk.message = "%s touches %s with no stud in contact, %s g past it: nothing holds it there" % [
+				one.beyond_part, one.held_part, Balance.tidy(one.grams)]
 		report.risks.append(risk)
 	for piece: Dictionary in weighed.tipping:
 		var risk := Risk.new()

@@ -93,7 +93,7 @@ Claude can find a gear train for a ratio you need, from real gears on real axle 
 
 A model can keep its own named movements in its file: *Open the doors*, *Steer left and right*, *Lift the boom*. **Build › Motions…** ([[Alt+O]]) lists them, with suggestions from what moves in the model. Keep a suggestion, or press **New motion**, then **Record** and drag a part in the view, or set a joint's slider to put a key. **Play** and **Play backwards** run it. Anybody who opens your shared model can play them too.
 
-A model on wheels can drive. Its suggestion *Drive and turn left* takes it 32 studs straight, then a quarter turn to the left. Under **Where it drives**, add a leg and pick **Straight**, **Left** or **Right**, with its length or its angle and radius in studs. As it drives, each wheel turns once for each round of its tyre, and the steering turns into the corners. **Play** leaves the model where the drive ends, as one undo step. **Play backwards** drives it back the same way.
+A model on wheels can drive. Its suggestion *Drive and turn left* takes it 32 studs straight, then a quarter turn to the left. Under **Where it drives**, add a leg and pick **Straight**, **Left** or **Right**, with its length or its angle and radius in studs. As it drives, each wheel turns once for each round of its tyre, and the steering turns into the corners. **Play** leaves the model where the drive ends, as one undo step: the whole model moved, its wheels and steering at rest as they were, and a file from another program keeps every line but those that place its parts and sub-models. **Play backwards** drives it back the same way.
 
 <!-- covers
 ui:motions panel

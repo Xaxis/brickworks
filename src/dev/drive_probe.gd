@@ -34,6 +34,15 @@
 ##  8. A link that opens it playing (?motion=drive-and-turn-left): the viewer draws the
 ##     racer driving off and its tyres turning, all of it in the window and
 ##     on its floor all the way.
+##  9. Someone else's file, as its review tried it (drivereview F1-F9): the
+##     racer (CRLF, a sub-model placed twice, one mirrored) driven and kept,
+##     saved: only its main model's placing lines and the motion lines
+##     differ, no noise, CRLF kept; opened again, every joint of the drive
+##     finds its part, and so after a move by hand and after a wheel taken
+##     off and put back by undo; refused and out-of-order lines said, kept
+##     verbatim and read alike; a leg or seconds that rounds to nothing, and
+##     values of the wrong kind, refused in words; the panel's seconds the
+##     motion's length; a contact of no studs said, not divided by.
 ##
 ## It loads on a build from before (what is new is asked for by name), so
 ## that build fails its checks rather than failing to load. Pictures in
@@ -118,6 +127,9 @@ func _run() -> void:
 		await process_frame
 	if not _shared_text.is_empty():
 		await _link()
+	# Last, in a window of its own: it opens other files.
+	await _start()
+	await _review()
 	print("")
 	print("drive_probe: %s" % ("all passed" if _failures == 0 else "%d FAILED" % _failures))
 	if _main != null and is_instance_valid(_main):
@@ -757,6 +769,223 @@ func _link() -> void:
 	var builder: Builder = _main.get("_builder") if _main != null else null
 	_check("...drawn only: the store wrote nothing, no step kept", builder != null and builder.history_depth() == 0
 		and _off(built, 0.0)[0] == 0)
+
+
+# -- 9. someone else's file, as the review tried it -------------------------------------------------
+
+
+func _review() -> void:
+	print("\n9. someone else's file, driven, kept and saved (drivereview)")
+	if not await _open(RACER):
+		_check("the racer opens", false)
+		return
+	await _say("define_motion", {"name": NAME, "suggested": true})
+	var defined: String = _saved("rv_defined.mpd")
+	_print((await _say("play_motion", {"name": NAME})).get_slice("\n", 0))
+	var driven: String = _saved("rv_driven.mpd")
+	var a: PackedStringArray = defined.split("\n")
+	var b: PackedStringArray = driven.split("\n")
+	var main_end: int = _main_end(a)
+	var placing: int = 0
+	var other := PackedStringArray()
+	for n: int in mini(a.size(), b.size()):
+		if a[n] == b[n]:
+			continue
+		if a[n].strip_edges().begins_with(Motions.META) and b[n].strip_edges().begins_with(Motions.META):
+			continue
+		if n < main_end and a[n].begins_with("1 ") and b[n].begins_with("1 "):
+			placing += 1
+			continue
+		if other.size() < 3:
+			other.append("%d: %s -> %s" % [n + 1, a[n].c_escape().left(90), b[n].c_escape().left(90)])
+		else:
+			other.append("")
+	_print("main model %d lines; %d placing lines moved; other lines changed: %d %s" % [main_end, placing,
+		other.size(), " | ".join(other.slice(0, 3))])
+	_check("F2: kept and saved, the same lines (%d, %d) and only main-model placing lines and motion lines differ (%d other)"
+		% [a.size(), b.size(), other.size()], a.size() == b.size() and other.is_empty() and placing > 0)
+	var bare: int = 0
+	for line: String in b:
+		if line.strip_edges().begins_with(Motions.META) and not line.ends_with("\r"):
+			bare += 1
+	_check("F2: ...CRLF kept (%d and %d), the motion lines in CRLF too (%d not), and no float noise" % [
+		defined.count("\r\n"), driven.count("\r\n"), bare], defined.count("\r\n") == driven.count("\r\n")
+		and bare == 0 and RegEx.create_from_string("\\b-?0\\.0000\\d*[1-9]").search(driven) == null)
+	var file: String = _out.path_join("rv_driven.mpd")
+	await _open(file)
+	_check("F1: opened again, the drive's joints all find their part (%s)" % _found(), _found_all())
+	# Moved whole by hand, nothing asked of its joints first: live's own bug.
+	await _open(file)
+	_move_all(Vector3(40.0, 0.0, 0.0))
+	_saved("rv_by_hand.mpd")
+	await _open(_out.path_join("rv_by_hand.mpd"))
+	_check("F1: moved whole by hand, saved and opened again, its joints all found (%s)" % _found(), _found_all())
+	# A part put back as another id (Builder.renumber), the model moved
+	# since its file was read, so its place no longer finds it.
+	_move_all(Vector3(0.0, 0.0, 60.0))
+	var motion: Motions.Motion = _player.motions().named(NAME)
+	var path: Variant = motion.get("path") if motion != null else null
+	var wheel: Motions.Joint = (path.get("wheels") as Array)[0] if path != null \
+		and not (path.get("wheels") as Array).is_empty() else null
+	var was: BrickWorld.Brick = _world.get_brick(wheel.lead) if wheel != null else null
+	if was != null:
+		var at: Transform3D = was.transform
+		var part: String = was.part_id
+		var colour: int = was.color_code
+		var unit: String = was.unit
+		var group: String = was.group
+		_world.remove_brick(was.id)
+		var again: int = _world.add_brick(part, colour, at)
+		_world.get_brick(again).unit = unit
+		_world.get_brick(again).group = group
+		_builder.renumber(was.id, again)
+		var back_as: Array = _player.parts_of(wheel)
+		var text: String = _saved("rv_renumbered.mpd")
+		var want: Vector3 = (at.origin - _store.lift()) * LdrModel.FLIP
+		_check("F1: a wheel put back as #%d for #%d is found (%s) and written where it stands" % [again, was.id, back_as],
+			back_as == [again] and text.contains(wheel.ref_words()) and wheel.place.distance_to(want) < 0.01)
+		# And one taken off for good: written as it was, and the save says so.
+		_builder.remove_brick_id(again)
+		_saved("rv_wheel_gone.mpd")
+		var gone: String = str(_store.get("motions_gone_words"))
+		_print("a wheel taken off, saved: %s" % gone)
+		_check("F1: a joint whose part is gone at a save gets a sentence naming its motion",
+			gone.contains(Motions.quoted(NAME)) and gone.contains(part))
+	else:
+		_check("F1: a wheel of the drive found to put back", false)
+	# Lines out of order, and lines it cannot read: said, read alike, kept as they are.
+	var lines: PackedStringArray = _motion_lines(driven)
+	var reordered := PackedStringArray()
+	for line: String in lines:
+		if line.contains("_WHEEL ") or line.contains("_STEER "):
+			reordered.append(line)
+	for line: String in lines:
+		if not (line.contains("_WHEEL ") or line.contains("_STEER ")):
+			reordered.append(line)
+	var refused := PackedStringArray([
+		'0 !BRICKWORKS MOTION "Too far" AFTER "" SECONDS 8',
+		'0 !BRICKWORKS MOTION_PATH "Too far" SECONDS 8 EASE' + " STRAIGHT 1".repeat(33),
+		'0 !BRICKWORKS MOTION_PATH "%s" SECONDS 8 EASE STRAIGHT 0.004' % NAME,
+		'0 !BRICKWORKS MOTION_PATH "No radius" SECONDS 8 EASE STRAIGHT 32 LEFT 90'])
+	var odd: String = Motions.written_into(driven, reordered + refused)
+	_write(_out.path_join("rv_odd.mpd"), odd)
+	await _open(_out.path_join("rv_odd.mpd"))
+	var said: String = ModelBar.unshown_words(_store)
+	_print("opened: %s" % said)
+	var listed: String = await _say("list_motions", {"suggest": false})
+	var read: Motions.Motion = _player.motions().named(NAME)
+	var read_path: Variant = read.get("path") if read != null else null
+	_check("F4: wheel and steering lines before their path read alike (%d wheels, steering %s)" % [
+		(read_path.get("wheels") as Array).size() if read_path != null else 0,
+		read_path != null and read_path.get("steer") != null],
+		read_path != null and (read_path.get("wheels") as Array).size() == 3 and read_path.get("steer") != null)
+	_check("F5: the 4 lines it cannot read said on open and by list_motions",
+		said.contains("4 motion lines not read, kept in the file as they are") and listed.contains("4 motion lines not read"))
+	var resaved: String = _saved("rv_odd_saved.mpd")
+	var kept: int = 0
+	for line: String in refused:
+		if resaved.contains(line + "\r\n"):
+			kept += 1
+	_check("F5: ...and saved, each written back as it was, in CRLF (%d of %d)" % [kept, refused.size()],
+		kept == refused.size() and _motion_lines(resaved).size() == lines.size() + refused.size())
+	# Values from a session, each checked for what it is.
+	var asked := {
+		"a straight of 0.004 studs": [{"legs": [{"straight": 0.004}]}, "not 0.004"],
+		"seconds of 0.0001": [{"seconds": 0.0001}, "not 0.0001"],
+		"a straight of [1]": [{"legs": [{"straight": [1]}]}, "a number of studs"],
+		"seconds of {}": [{"seconds": {}}, "a number of seconds"],
+		"eased of \"no\"": [{"eased": "no"}, "true or false"],
+		"a straight of 1e30": [{"legs": [{"straight": 1e30}]}, "not 1e+30"],
+		"a word it has not": [{"legs": [], "speed": 3}, "not speed="],
+	}
+	for what: String in asked:
+		var answer: String = await _say("define_motion", {"name": "Odd", "path": asked[what][0]})
+		_check("F3/F7: %s refused in words (%s)" % [what, answer.get_slice("\n", 0).left(110)],
+			answer.contains(str(asked[what][1])) and _player.motions().named("Odd") == null)
+	var turned: String = await _say("define_motion", {"name": "Odd turn", "path": {"legs": [{"left": 90,
+		"radius": 0.996}]}})
+	var odd_turn: Motions.Motion = _player.motions().named("Odd turn")
+	_check("F7: a radius of 0.996 kept as 1 (%s)" % turned.get_slice("\n", 0).left(80), odd_turn != null
+		and odd_turn.get("path") != null and is_equal_approx(float((odd_turn.get("path").get("legs") as Array)[0][2]), 1.0))
+	# The panel's seconds are the motion's length.
+	var panel: PosePanel = _main.get("_pose")
+	panel.edit(NAME)
+	panel.call("set_path_seconds", 3.0)
+	var length: float = _player.motions().named(NAME).length() if _player.motions().named(NAME) != null else -1.0
+	_check("F8: the panel's Over at 3 seconds, the motion's length 3 (%s)" % Motions.num(length, 3),
+		is_equal_approx(length, 3.0) and _store.to_text("Racer").contains('MOTION "%s" AFTER "" SECONDS 3' % NAME))
+	panel.back_to_list()
+	# A contact of no studs.
+	var report := Balance.Report.new()
+	var none := Balance.JointLoad.new()
+	none.beyond_part = "3001"
+	none.studs = 0
+	none.moment = 2.0
+	none.capacity = 0.0
+	none.ratio = 2.0 / 0.000001
+	report.joints = [none]
+	report.margin = 40.0
+	report.edge = "left"
+	var words: String = (_main.get("_grab_drag") as GrabDrag).call("_standing_words", report, false)
+	_check("F9: a contact of no studs said as no contact, no load divided (%s)" % words,
+		words.contains("no stud in contact") and not words.contains("carry about"))
+
+
+## Every part of the model moved by [param by] (LDU), one grab, as a
+## person moving it all by hand.
+func _move_all(by: Vector3) -> void:
+	var moving := Grab.new()
+	moving.world = _world
+	moving.builder = _builder
+	moving.library = _library
+	for brick: BrickWorld.Brick in _world.bricks():
+		if not _store.scenery.has(brick.id):
+			moving.rest[brick.id] = brick.transform
+			moving.placed[brick.id] = Transform3D(Basis.IDENTITY, by) * brick.transform
+	moving.commit("moved it all")
+
+
+## The first line past the main model's: the second FILE line, or the end.
+static func _main_end(lines: PackedStringArray) -> int:
+	var files: int = 0
+	for n: int in lines.size():
+		if lines[n].strip_edges().begins_with("0 FILE "):
+			files += 1
+			if files == 2:
+				return n
+	return lines.size()
+
+
+## The model saved as the review saved it (ModelStore.save_file), its text.
+func _saved(file: String) -> String:
+	var path: String = _out.path_join(file)
+	if not _store.save_file(path, "Racer"):
+		_check("saved %s (%s)" % [file, _store.refused], false)
+		return ""
+	return FileAccess.get_file_as_string(path)
+
+
+func _write(path: String, text: String) -> void:
+	var access := FileAccess.open(path, FileAccess.WRITE)
+	access.store_string(text)
+	access.close()
+
+
+## The drive's joints, found and not: "4 of 4".
+func _found() -> String:
+	var motion: Motions.Motion = _player.motions().named(NAME)
+	if motion == null:
+		return "no drive"
+	var joints: Array = motion.joints()
+	var found: int = joints.filter(func(one: Motions.Joint) -> bool: return not _player.parts_of(one).is_empty()).size()
+	return "%d of %d" % [found, joints.size()]
+
+
+func _found_all() -> bool:
+	var motion: Motions.Motion = _player.motions().named(NAME)
+	if motion == null or motion.joints().is_empty():
+		return false
+	return motion.joints().all(func(one: Motions.Joint) -> bool: return not _player.parts_of(one).is_empty())
 
 
 # -- helpers --------------------------------------------------------------------------------------

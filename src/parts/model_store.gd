@@ -543,6 +543,16 @@ var lights_unread_words: String:
 		return SceneLights.unread_words(_lights_now().get("why", {}))
 
 
+## The motion lines of the model on the baseplate its open could not read,
+## kept to be written back (Motions.unread_words): "" for none.
+var motions_unread_words: String:
+	get:
+		return world.motions.unread_words() if world != null and world.motions != null else ""
+## What the last write said of the joints of the model's motions whose part
+## is gone ([method _motion_lines]): "" for none.
+var motions_gone_words: String = ""
+
+
 ## The open's reading of the model's lights ([member _lights_read]) while the
 ## model on the baseplate is the one it was read with; {} once it is not.
 func _lights_now() -> Dictionary:
@@ -1701,6 +1711,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 		# here, so a door saved open is known to be open (Motions.Joint.at).
 		for brick: BrickWorld.Brick in world.bricks():
 			world.motions.snapshot[brick.id] = brick.transform
+		_find_joints()
 	example = false
 	_opened_whole = world.generation()
 	_opened_parts = _parts_with_awaited()
@@ -1714,7 +1725,8 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	out.append({"placed": placed, "missing": missing.size(),
 		"waiting": asked_for.size(), "missing_ids": missing, "error": "",
 		"unshown": unshown, "kept": source != null or not _absent.is_empty(),
-		"unbuilt": unbuilt, "lights_unread": lights_unread_words})
+		"unbuilt": unbuilt, "lights_unread": lights_unread_words,
+		"motions_unread": motions_unread_words})
 
 
 ## Why [param text], which places no part, is not a model to open: "" for
@@ -2052,21 +2064,83 @@ func _live_source() -> SourceFile:
 var motion_rebase: Callable = Callable()
 
 
+## The part each joint of the model's motions takes hold of, found once
+## its parts are where the file put them: as the model opens, and as parts
+## still on their way arrive. Found later, by where the file had it, a part
+## a drive or a hand had moved first was not found, and its joint was
+## written stale: the door and the wheels were gone at the next open
+## (drivereview F1).
+func _find_joints() -> void:
+	var motions: Motions = world.motions
+	if motions == null:
+		return
+	for joint: Motions.Joint in motions.joints:
+		if joint.by == "part" and world.get_brick(joint.lead) == null:
+			joint.lead = Motions.part_at(joint, world, _lift_now())
+
+
 ## The model's motions as lines (Motions.lines), each joint's ref and where
-## it stands written as the model now is: its part's place, in the file's
-## coordinates, and how far it stands from where it was built.
+## it stands written as the model now is: its part's number, colour and
+## place as it stands, in the file's coordinates, and how far it stands from
+## where it was built. A joint whose part is gone is written as it was, and
+## said ([member motions_gone_words]).
 func _motion_lines() -> PackedStringArray:
 	var motions: Motions = world.motions
-	if motions == null or motions.is_empty():
+	motions_gone_words = ""
+	if motions == null or not motions.has_lines():
 		return PackedStringArray()
 	var back: Vector3 = _lift_now()
+	var gone: Array = []
 	for joint: Motions.Joint in motions.joints:
 		if motion_rebase.is_valid():
 			motion_rebase.call(joint)
+		if joint.by != "part":
+			continue
 		var lead: BrickWorld.Brick = world.get_brick(joint.lead) if joint.lead != 0 else null
-		if joint.by == "part" and lead != null and lead.part_id == joint.part:
-			joint.place = (lead.transform.origin - back) * LdrModel.FLIP
+		if lead == null or lead.part_id != joint.part:
+			lead = world.get_brick(Motions.part_at(joint, world, back))
+		if lead == null:
+			if not _awaits(joint, back):
+				gone.append(joint)
+			continue
+		joint.lead = lead.id
+		joint.colour = lead.color_code
+		joint.place = (lead.transform.origin - back) * LdrModel.FLIP
+	motions_gone_words = _gone_words(motions, gone)
 	return motions.lines()
+
+
+## Whether [param joint]'s part is one still on its way (the web fetches
+## some after the model opens): not gone, only not here yet.
+func _awaits(joint: Motions.Joint, back: Vector3) -> bool:
+	if world.generation() != _awaited_in:
+		return false
+	var want: Vector3 = joint.place * LdrModel.FLIP + back
+	for placement: LdrModel.Placement in awaited:
+		if placement.part_id == joint.part and placement.color_code == joint.colour \
+				and placement.transform.origin.distance_to(want) < Motions.PLACE_SLACK:
+			return true
+	return false
+
+
+## What a save says of [param gone], joints whose part the model no longer
+## has: each motion that moves one, by name, and the part, kept in the file
+## where it was. "" for none.
+func _gone_words(motions: Motions, gone: Array) -> String:
+	if gone.is_empty():
+		return ""
+	var said := PackedStringArray()
+	for joint: Motions.Joint in gone:
+		var names := PackedStringArray()
+		for motion: Motions.Motion in motions.list:
+			if motion.joints().has(joint):
+				names.append(Motions.quoted(motion.name))
+		var info: PartLibrary.PartInfo = library.parts.get(joint.part) if library != null else null
+		said.append("%s (%s, %s, colour %d)" % [", ".join(names), Inventory._tidy(info.name) if info != null
+			else "part", joint.part, joint.colour])
+	return ("a motion's joint has no part where it was, kept in the file as it was: %s" if gone.size() == 1
+		else "%d motions' joints have no part where they were, kept in the file as they were: %s") % (
+		[", ".join(said)] if gone.size() == 1 else [gone.size(), "; ".join(said)])
 
 
 ## How far the model was lifted to stand on the ground as it opened: a
@@ -2096,6 +2170,14 @@ func _source_asked(title_now: String) -> Dictionary:
 	var source: SourceFile = _live_source()
 	if source == null:
 		return {}
+	# The kept drives' rigid move of the whole model (Motions.moved) taken
+	# off the parts, so the file pairs them as they were and keeps every
+	# sub-model's lines, then put on its main model's lines alone
+	# ([method _source_text_of]): a drive kept rewrote every line of a file,
+	# and one with a sub-model placed twice was written whole (drivereview F2).
+	var whole: Transform3D = world.motions.moved if world.motions != null else Transform3D.IDENTITY
+	var lifted := Transform3D(Basis.IDENTITY, _lift_now())
+	var unmoved: Transform3D = lifted * whole.affine_inverse() * lifted.affine_inverse()
 	var bricks: Array = []
 	for brick: BrickWorld.Brick in world.bricks():
 		if scenery.has(brick.id):
@@ -2103,7 +2185,7 @@ func _source_asked(title_now: String) -> Dictionary:
 		# A section broken out is written where it was pulled from: its
 		# parts as they stand there (BrickWorld.home_of).
 		var home := BrickWorld.Brick.new(brick.id, brick.part_id, brick.color_code,
-			brick.transform if world.broken_out.is_empty() else world.home_of(brick))
+			unmoved * (brick.transform if world.broken_out.is_empty() else world.home_of(brick)))
 		home.group = brick.group
 		home.unit = brick.unit
 		home.step = brick.step
@@ -2117,7 +2199,7 @@ func _source_asked(title_now: String) -> Dictionary:
 	if world.generation() == _awaited_in:
 		for placement: LdrModel.Placement in awaited:
 			waiting["%d|%s" % [placement.line, placement.unit]] = true
-	return {"source": source, "bricks": bricks, "lift": _lift_now(), "waiting": waiting,
+	return {"source": source, "bricks": bricks, "lift": _lift_now(), "waiting": waiting, "whole": whole,
 		"library": library, "title": title_now,
 		"unit_steps": world.unit_steps.duplicate(true) if source.authored else {},
 		"floor": model_floor, "hidden": hidden_scheme.duplicate(true),
@@ -2139,7 +2221,8 @@ static func _source_text_of(asked: Dictionary) -> Variant:
 		asked["library"], asked["unit_steps"])
 	if written == null:
 		return null
-	var text: String = _without_app_lines(str(written))
+	var text: String = _without_app_lines(Motions.moved_into(str(written),
+		asked.get("whole", Transform3D.IDENTITY)))
 	var title_now: String = asked["title"]
 	if title_now != source.own_title and not title_now.is_empty():
 		text = _after_first_line(text, TITLE_META + title_now)
@@ -2265,6 +2348,8 @@ func place_awaited(part_id: String) -> int:
 			builder.register(brick_id, placement.part_id, placement.transform)
 			landed += 1
 	awaited = still
+	if landed > 0:
+		_find_joints()
 	if awaited.is_empty():
 		_settle()
 	return landed

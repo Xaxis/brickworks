@@ -855,8 +855,13 @@ func _standing_words(weighed: Balance.Report, live: bool) -> String:
 			break
 		var info: PartLibrary.PartInfo = library.parts.get(one.beyond_part)
 		var name: String = Bodies._short(info.name) if info != null else one.beyond_part
-		out += "; the %s's %d stud%s carry about %sx their working load" % [name, one.studs,
-			"" if one.studs == 1 else "s", Balance.tidy(one.ratio)]
+		if one.kind == "studs" and one.studs == 0:
+			# A contact of no studs holds nothing: said so, not a load
+			# divided by nothing ("0 studs carry about 3801303x", drivereview F9).
+			out += "; the %s touches with no stud in contact: nothing holds it there" % name
+		else:
+			out += "; the %s's %d stud%s carry about %sx their working load" % [name, one.studs,
+				"" if one.studs == 1 else "s", Balance.tidy(one.ratio)]
 		break
 	return out
 

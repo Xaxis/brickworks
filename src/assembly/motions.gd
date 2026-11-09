@@ -56,6 +56,12 @@ const MOST_TURN_DEG := 360.0
 ## A turn's least radius, studs: a car's turning circle, not a spin.
 const LEAST_RADIUS := 1.0
 const MOST_RADIUS := 1000.0
+## A path's shortest, seconds: what its line is read back as at the least.
+const LEAST_PATH_SECONDS := 0.1
+## How near a part must be to a joint's place to be its part, LDU: a file's
+## numbers are rounded, and a part read and written again is never further
+## off than this.
+const PLACE_SLACK := 4.0
 
 
 class Joint extends RefCounted:
@@ -213,22 +219,47 @@ class Path extends RefCounted:
 		return out
 
 
-## A path's leg read at the edge: [kind, amount, radius], or why not.
+## A path's leg read at the edge: [kind, amount, radius], or why not. Each
+## number snapped to the hundredth the file writes it to before it is
+## judged, so what is kept is what was checked: a straight of 0.004 studs
+## was kept as 0 and a radius of 0.996 refused as "not 1" (drivereview F3,
+## F7).
 static func leg_of(kind: String, amount: float, radius: float = 0.0) -> Variant:
 	kind = kind.strip_edges().to_upper()
 	if not kind in LEGS:
 		return "a leg is straight, left or right, not %s" % kind.to_lower()
+	var snapped: float = snappedf(amount, 0.01) if is_finite(amount) else INF
 	if kind == "STRAIGHT":
-		if is_zero_approx(amount) or absf(amount) > MOST_LEG_STUDS:
-			return "a straight goes 0 to %d studs (less than 0 backwards), not %s" % [int(MOST_LEG_STUDS),
-				num(amount, 2)]
-		return [kind, snappedf(amount, 0.01), 0.0]
-	if amount <= 0.0 or amount > MOST_TURN_DEG:
-		return "a turn goes 0 to %d degrees, not %s" % [int(MOST_TURN_DEG), num(amount, 2)]
-	if radius < LEAST_RADIUS or radius > MOST_RADIUS:
+		if snapped == 0.0 or absf(snapped) > MOST_LEG_STUDS:
+			return "a straight goes 0.01 to %d studs (less than 0 backwards), not %s" % [
+				int(MOST_LEG_STUDS), given(amount)]
+		return [kind, snapped, 0.0]
+	if snapped <= 0.0 or snapped > MOST_TURN_DEG:
+		return "a turn goes 0.01 to %d degrees, not %s" % [int(MOST_TURN_DEG), given(amount)]
+	var across: float = snappedf(radius, 0.01) if is_finite(radius) else INF
+	if across < LEAST_RADIUS or across > MOST_RADIUS:
 		return "a turn's radius is %s to %d studs, not %s" % [num(LEAST_RADIUS, 1), int(MOST_RADIUS),
-			num(radius, 2)]
-	return [kind, snappedf(amount, 0.01), snappedf(radius, 0.01)]
+			given(radius)]
+	return [kind, snapped, across]
+
+
+## A path's seconds read at the edge, snapped to the thousandth the file
+## writes them to: the seconds, or why not. One that snaps to nothing is
+## refused, not written as 0 and read back as some other length.
+static func path_seconds_of(seconds: float) -> Variant:
+	var snapped: float = snappedf(seconds, 0.001) if is_finite(seconds) else INF
+	if snapped < LEAST_PATH_SECONDS or snapped > MOST_SECONDS:
+		return "a path takes %s to %d seconds, not %s" % [num(LEAST_PATH_SECONDS, 1), int(MOST_SECONDS),
+			given(seconds)]
+	return snapped
+
+
+## A number as it was given, for words that say why it was refused: as
+## many places as it has, up to six, and a huge one in powers of ten.
+static func given(value: float) -> String:
+	if not is_finite(value) or absf(value) >= 1e15:
+		return String.num_scientific(value)
+	return num(value, 6)
 
 
 class Motion extends RefCounted:
@@ -287,10 +318,88 @@ var joints: Array = []
 ## a joint read from a file is measured from it once its sides are found.
 ## Shared by copies; empty for motions made in this session.
 var snapshot: Dictionary = {}
+## Where the paths kept since the model was read have moved it whole, in
+## the file's coordinates (LdrModel.to_transform's, the model not lifted):
+## a kept drive is one rigid move of the whole model (drivereview F2), so a
+## file of someone else's is written with its model's own lines moved and
+## every sub-model's lines as they were ([method moved_into]).
+var moved := Transform3D.IDENTITY
 
 
 func is_empty() -> bool:
 	return list.is_empty()
+
+
+## Whether there is anything to write: a motion, or a line read and kept.
+func has_lines() -> bool:
+	return not list.is_empty() or not unread.is_empty()
+
+
+## The part of [param world] [param joint]'s ref names, by its number and
+## colour, the nearest within PLACE_SLACK of its place (LDraw's
+## coordinates, the model [param lift] above them as it stands); 0 for none.
+## Looked for once the model is built from its file, before anything moves
+## (ModelStore): found later by where the file had it, a part a drive or a
+## hand had moved was not found, and its joint was written as it had been
+## read, where its part no longer was (drivereview F1).
+static func part_at(joint: Joint, world: BrickWorld, lift: Vector3) -> int:
+	if joint.by != "part" or world == null:
+		return 0
+	var want: Vector3 = joint.place * LdrModel.FLIP + lift
+	var best: int = 0
+	var nearest: float = PLACE_SLACK
+	for brick: BrickWorld.Brick in world.bricks():
+		if brick.part_id != joint.part or brick.color_code != joint.colour:
+			continue
+		var off: float = brick.transform.origin.distance_to(want)
+		if off < nearest:
+			nearest = off
+			best = brick.id
+	return best
+
+
+## A whole model's move as a file writes it: turned square snapped square,
+## its place to a thousandth of an LDU, so every part of the model moves
+## alike and no line is written with a float's noise (-0.00000004).
+static func tidied(at: Transform3D) -> Transform3D:
+	var basis: Basis = at.basis.orthonormalized()
+	var square: Basis = BrickLattice.snap_basis(basis)
+	if square.is_equal_approx(basis):
+		basis = square
+	return Transform3D(basis, Vector3(snappedf(at.origin.x, 0.001), snappedf(at.origin.y, 0.001),
+		snappedf(at.origin.z, 0.001)))
+
+
+## [param text], an LDraw file, with its whole model moved by [param whole]
+## (the file's coordinates): each line of its main model that places a part
+## or a sub-model, and no other. A sub-model placed twice, or mirrored,
+## stays as its author wrote it, and so does every other line.
+static func moved_into(text: String, whole: Transform3D) -> String:
+	if whole.is_equal_approx(Transform3D.IDENTITY):
+		return text
+	var lines: PackedStringArray = text.split("\n")
+	var in_main: bool = false
+	for n: int in lines.size():
+		var words: PackedStringArray = LdrModel._fields(lines[n].strip_edges())
+		if words.size() >= 2 and words[0] == "0" and words[1].to_upper() in ["FILE", "NOFILE", "!DATA"]:
+			# The main model is the first FILE's section, or a file of none.
+			if in_main or words[1].to_upper() != "FILE":
+				break
+			in_main = true
+			continue
+		if words.size() < 15 or words[0] != "1":
+			continue
+		var numbers := PackedFloat64Array()
+		for k: int in range(2, 14):
+			if not words[k].is_valid_float():
+				break
+			numbers.append(words[k].to_float())
+		if numbers.size() != 12:
+			continue
+		var at: Transform3D = LdrModel.to_transform(numbers)
+		lines[n] = "1 %s %s %s%s" % [words[1], LdrModel._line_numbers(whole * at), " ".join(words.slice(14)),
+			"\r" if lines[n].ends_with("\r") else ""]
+	return "\n".join(lines)
 
 
 func named(name: String) -> Motion:
@@ -366,6 +475,7 @@ func put(motion: Motion) -> void:
 		motion.path.wheels = motion.path.wheels.map(func(one: Joint) -> Joint: return joint_for(one))
 		if motion.path.steer != null:
 			motion.path.steer = joint_for(motion.path.steer)
+	_drop_unread(motion.name)
 	for n: int in list.size():
 		if (list[n] as Motion).name.to_lower() == motion.name.to_lower():
 			list[n] = motion
@@ -380,6 +490,7 @@ func remove(name: String) -> bool:
 		if (list[n] as Motion).name.to_lower() == name.strip_edges().to_lower():
 			list.remove_at(n)
 			_tidy_joints()
+			_drop_unread(name)
 			return true
 	return false
 
@@ -399,6 +510,9 @@ func _tidy_joints() -> void:
 func copy() -> Motions:
 	var out := Motions.new()
 	out.snapshot = snapshot
+	out.unread = unread.duplicate()
+	out.unread_why = unread_why.duplicate()
+	out.moved = moved
 	var map: Dictionary = {}
 	for joint: Joint in joints:
 		map[joint] = joint.copy()
@@ -566,6 +680,8 @@ func lines() -> PackedStringArray:
 			if motion.path.steer != null:
 				out.append("%s_STEER %s AT %s JOINT %s" % [META, quoted(motion.name),
 					num(motion.path.steer.at, 2), motion.path.steer.ref_words()])
+	# And the lines this could not read, as the file had them.
+	out.append_array(unread)
 	return out
 
 
@@ -576,12 +692,18 @@ func lines() -> PackedStringArray:
 static func written_into(text: String, motion_lines: PackedStringArray) -> String:
 	if motion_lines.is_empty() and not text.contains(META):
 		return text
+	# Each line ended as the file's are: a CRLF file's motion lines went out
+	# in LF alone (drivereview, keeptext5 note e).
+	var eol: String = "\r" if text.split("\n", true, 1)[0].ends_with("\r") else ""
 	var kept := PackedStringArray()
 	for line: String in text.split("\n"):
-		if not line.begins_with(META):
+		if not line.strip_edges().begins_with(META):
 			kept.append(line)
 	if motion_lines.is_empty():
 		return "\n".join(kept)
+	var ended := PackedStringArray()
+	for line: String in motion_lines:
+		ended.append(line + eol)
 	var at: int = -1
 	for n: int in kept.size():
 		if kept[n].begins_with(ModelFloor.META):
@@ -596,26 +718,39 @@ static func written_into(text: String, motion_lines: PackedStringArray) -> Strin
 				at = n
 				break
 	var head: PackedStringArray = kept.slice(0, at)
-	head.append_array(motion_lines)
+	head.append_array(ended)
 	head.append_array(kept.slice(at))
 	return "\n".join(head)
 
 
-## The motions a model's text carries, read at the edge: a line of the
-## wrong shape is left out, and said in [member unread].
+## The motions a model's text carries, read at the edge. A line this
+## cannot read is left out of the motions, kept as it is in [member unread]
+## to be written back, and said ([method unread_words]): its own reason, or
+## that the motion it is part of moves nothing this reads (drivereview F5:
+## six lines a save dropped without a word). A key, wheel or steering line
+## is read after every track and path, so the order the lines are in does
+## not matter (F4).
 static func read(text: String) -> Motions:
 	var out := Motions.new()
 	if not text.contains(META):
 		return out
 	var tracks: Dictionary = {}   ## "motion|n" -> Track
-	for raw: String in text.split("\n"):
+	var later: Array = []         ## [n, line, words]: keys, wheels and steering
+	var lines_of: Dictionary = {} ## Motion -> [[n, line, part]]: the lines read into it
+	var refused: Array = []       ## [n, line, motion name, why, rank]
+	var text_lines: PackedStringArray = text.split("\n")
+	for n: int in text_lines.size():
+		var raw: String = text_lines[n].trim_suffix("\r")
 		var line: String = raw.strip_edges()
 		if not line.begins_with(META):
 			continue
 		# 0 !BRICKWORKS MOTION_TRACK "name" ...
 		var words: PackedStringArray = tokens(line)
 		if words.size() < 4 or words[3].strip_edges().is_empty():
-			out.unread.append(line)
+			refused.append([n, raw, "", "a motion line with no motion's name", 0])
+			continue
+		if words[2] in ["MOTION_KEY", "MOTION_WHEEL", "MOTION_STEER"]:
+			later.append([n, raw, words])
 			continue
 		var name: String = words[3].strip_edges()
 		var motion: Motion = out.named(name)
@@ -624,58 +759,182 @@ static func read(text: String) -> Motions:
 			motion.name = name
 			out.list.append(motion)
 		var rest: PackedStringArray = words.slice(4)
-		var ok: bool = true
+		var why: String = ""
 		match words[2]:
 			"MOTION":
-				ok = _read_motion(motion, rest)
+				if not _read_motion(motion, rest):
+					why = "its MOTION line is not one this reads"
 			"MOTION_TRACK":
 				var track: Track = _read_track(out, rest)
-				ok = track != null
-				if ok:
+				if track == null:
+					why = "a track line this does not read"
+				else:
 					motion.tracks.append(track)
 					tracks["%s|%s" % [name.to_lower(), rest[0]]] = track
-			"MOTION_KEY":
-				ok = rest.size() >= 4 and tracks.has("%s|%s" % [name.to_lower(), rest[0]]) \
-					and rest[1].is_valid_float() and rest[2].is_valid_float() and rest[3] in HOWS
-				if ok:
-					(tracks["%s|%s" % [name.to_lower(), rest[0]]] as Track).add_key(
-						clampf(rest[1].to_float(), 0.0, MOST_SECONDS), rest[2].to_float(), rest[3])
 			"MOTION_DRIVER":
-				ok = _read_driver(out, motion, rest)
+				if not _read_driver(out, motion, rest):
+					why = "a driver line this does not read"
 			"MOTION_PATH":
-				ok = motion.path == null and _read_path(motion, rest)
-			"MOTION_WHEEL", "MOTION_STEER":
-				# AT deg JOINT ref..., after its path's line.
-				var joint: Joint = _read_ref(rest.slice(3)) if rest.size() >= 4 and rest[0] == "AT" \
-					and rest[1].is_valid_float() and rest[2] == "JOINT" else null
-				ok = joint != null and motion.path != null \
-					and (words[2] == "MOTION_WHEEL" or motion.path.steer == null)
-				if ok:
-					joint.at = rest[1].to_float()
-					joint = out.joint_for(joint)
-					if words[2] == "MOTION_STEER":
-						motion.path.steer = joint
-					elif not motion.path.wheels.has(joint):
-						motion.path.wheels.append(joint)
+				why = "it has two path lines" if motion.path != null else _read_path(motion, rest)
 			_:
-				ok = false
-		if not ok:
-			out.unread.append(line)
-	# A motion that moves nothing and plays nothing is nothing; a sequence
-	# has no tracks of its own.
+				why = "%s is not a motion line this reads" % words[2]
+		if why.is_empty():
+			if not lines_of.has(motion):
+				lines_of[motion] = []
+			(lines_of[motion] as Array).append([n, raw, words[2]])
+		else:
+			refused.append([n, raw, name, why, 0])
+	for entry: Array in later:
+		var words: PackedStringArray = entry[2]
+		var name: String = words[3].strip_edges()
+		var motion: Motion = out.named(name)
+		var rest: PackedStringArray = words.slice(4)
+		var why: String = ""
+		if words[2] == "MOTION_KEY":
+			var key: String = "%s|%s" % [name.to_lower(), rest[0] if not rest.is_empty() else ""]
+			if not tracks.has(key):
+				why = "a key of a track it does not have"
+			elif rest.size() < 4 or not rest[1].is_valid_float() or not rest[2].is_valid_float() \
+					or not rest[3] in HOWS:
+				why = "a key line this does not read"
+			else:
+				(tracks[key] as Track).add_key(clampf(rest[1].to_float(), 0.0, MOST_SECONDS),
+					rest[2].to_float(), rest[3])
+		else:
+			# AT deg JOINT ref..., with its motion's path.
+			var joint: Joint = _read_ref(rest.slice(3)) if rest.size() >= 4 and rest[0] == "AT" \
+				and rest[1].is_valid_float() and rest[2] == "JOINT" else null
+			if motion == null or motion.path == null:
+				why = "a wheel or steering line with no path read"
+			elif joint == null:
+				why = "a wheel or steering line this does not read"
+			elif words[2] == "MOTION_STEER" and motion.path.steer != null:
+				why = "it has two steering lines"
+			else:
+				joint.at = rest[1].to_float()
+				joint = out.joint_for(joint)
+				if words[2] == "MOTION_STEER":
+					motion.path.steer = joint
+				elif not motion.path.wheels.has(joint):
+					motion.path.wheels.append(joint)
+		if why.is_empty():
+			if not lines_of.has(motion):
+				lines_of[motion] = []
+			(lines_of[motion] as Array).append([int(entry[0]), str(entry[1]), words[2]])
+		else:
+			refused.append([int(entry[0]), str(entry[1]), name, why, 1])
+	# A sequence has no tracks of its own: those lines are not read.
 	for one: Motion in out.list:
 		if one.is_sequence() and (not one.tracks.is_empty() or one.driver != null or one.path != null):
 			one.tracks.clear()
 			one.driver = null
 			one.path = null
+			var kept: Array = []
+			for read_line: Array in lines_of.get(one, []):
+				if str(read_line[2]) == "MOTION":
+					kept.append(read_line)
+				else:
+					refused.append([int(read_line[0]), str(read_line[1]), one.name,
+						"a sequence plays motions, and moves nothing of its own", 1])
+			lines_of[one] = kept
+	# A motion that moves nothing and plays nothing is nothing: its lines,
+	# read or not, are kept as they are.
+	for one: Motion in out.list:
+		if not one.tracks.is_empty() or one.driver != null or one.path != null or one.is_sequence():
+			continue
+		for read_line: Array in lines_of.get(one, []):
+			refused.append([int(read_line[0]), str(read_line[1]), one.name,
+				"nothing it moves was read", 2])
 	out.list = out.list.filter(func(one: Motion) -> bool:
 		return not one.tracks.is_empty() or one.driver != null or one.path != null or one.is_sequence())
 	out._tidy_joints()
+	refused.sort_custom(func(a: Array, b: Array) -> bool: return int(a[0]) < int(b[0]))
+	# Each motion's lines said once, by the first of its own reasons.
+	var why_of: Dictionary = {}   ## name -> [rank, why]
+	var count_of: Dictionary = {} ## name -> lines
+	for one: Array in refused:
+		out.unread.append(str(one[1]))
+		var name: String = str(one[2])
+		count_of[name] = int(count_of.get(name, 0)) + 1
+		if not why_of.has(name) or int(one[4]) < int((why_of[name] as Array)[0]):
+			why_of[name] = [int(one[4]), str(one[3])]
+	for name: String in why_of:
+		var why: String = str((why_of[name] as Array)[1])
+		var lines: int = int(count_of[name])
+		if name.is_empty():
+			out.unread_why.append(why)
+		elif lines == 1:
+			out.unread_why.append("%s: %s" % [quoted(name), why])
+		else:
+			out.unread_why.append("%s (%d lines): %s" % [quoted(name), lines, why])
 	return out
 
 
-## Lines read and left out, as they were: a motion line of the wrong shape.
+## Lines read and left out, as they were (without a line end): written back
+## after the motion lines ([method lines]) so a save loses none of them.
 var unread := PackedStringArray()
+## Why, a motion at a time, in words: '"Drive" (5 lines): a path has at most
+## 32 legs, not 33'.
+var unread_why := PackedStringArray()
+
+
+## The lines [member unread] has, said where an open says what it left out:
+## "3 motion lines not read, kept in the file as they are: ..."; "" for none.
+func unread_words() -> String:
+	if unread.is_empty():
+		return ""
+	var said: String = "1 motion line not read, kept in the file as it is" if unread.size() == 1 \
+		else "%d motion lines not read, kept in the file as they are" % unread.size()
+	return "%s: %s" % [said, "; ".join(unread_why)]
+
+
+## The lines of [member unread] that name the motion [param name], or only
+## those that do not.
+func _unread_naming(name: String, naming: bool) -> PackedStringArray:
+	var out := PackedStringArray()
+	for line: String in unread:
+		var words: PackedStringArray = tokens(line.strip_edges())
+		var names: bool = words.size() >= 4 and words[3].strip_edges().to_lower() == name.strip_edges().to_lower()
+		if names == naming:
+			out.append(line)
+	return out
+
+
+## A refused line belongs to the motion it names: it is the file's while
+## that motion is, and goes with it once the motion is made again or taken
+## out here (an undo brings both back). Kept, it would be read into the
+## motion made again at the next open: a second path line read as the path
+## of a motion whose path was taken out.
+func _drop_unread(name: String) -> void:
+	var kept: PackedStringArray = _unread_naming(name, false)
+	if kept.size() == unread.size():
+		return
+	unread = kept
+	unread_why = PackedStringArray(Array(unread_why).filter(func(why: String) -> bool:
+		return not why.begins_with(quoted(name) + " (") and not why.begins_with(quoted(name) + ":")))
+
+
+## [param was] renamed [param now] in the lines of [member unread] that
+## name it, so they stay with it.
+func rename_unread(was: String, now: String) -> void:
+	for n: int in unread.size():
+		var line: String = unread[n]
+		var words: PackedStringArray = tokens(line.strip_edges())
+		if words.size() < 4 or words[3].strip_edges().to_lower() != was.strip_edges().to_lower():
+			continue
+		# The name's own words, quoted or not, after its keyword.
+		var from: int = line.find(words[2]) + words[2].length()
+		var at: int = line.find('"%s"' % words[3], from)
+		var length: int = words[3].length() + 2
+		if at < 0:
+			at = line.find(words[3], from)
+			length = words[3].length()
+		if at >= 0:
+			unread[n] = line.left(at) + quoted(now) + line.substr(at + length)
+	for n: int in unread_why.size():
+		var head: String = quoted(was)
+		if unread_why[n].begins_with(head + ":") or unread_why[n].begins_with(head + " ("):
+			unread_why[n] = quoted(now) + unread_why[n].substr(head.length())
 
 
 static func _read_motion(motion: Motion, rest: PackedStringArray) -> bool:
@@ -732,12 +991,15 @@ static func _read_driver(into: Motions, motion: Motion, rest: PackedStringArray)
 
 
 ## SECONDS s EASE|LINEAR legs...: each leg STRAIGHT studs, or LEFT|RIGHT
-## degrees RADIUS studs.
-static func _read_path(motion: Motion, rest: PackedStringArray) -> bool:
+## degrees RADIUS studs. "" when it is read into [param motion], else why not.
+static func _read_path(motion: Motion, rest: PackedStringArray) -> String:
 	if rest.size() < 5 or rest[0] != "SECONDS" or not rest[1].is_valid_float() or not rest[2] in ["EASE", "LINEAR"]:
-		return false
+		return "its path line is not one this reads"
+	var seconds: Variant = path_seconds_of(rest[1].to_float())
+	if seconds is String:
+		return str(seconds)
 	var path := Path.new()
-	path.seconds = clampf(rest[1].to_float(), 0.1, MOST_SECONDS)
+	path.seconds = seconds
 	path.how = rest[2]
 	var n: int = 3
 	while n < rest.size():
@@ -749,11 +1011,17 @@ static func _read_path(motion: Motion, rest: PackedStringArray) -> bool:
 				and rest[n + 2] == "RADIUS" and rest[n + 3].is_valid_float():
 			leg = leg_of(rest[n], rest[n + 1].to_float(), rest[n + 3].to_float())
 			n += 4
-		if not (leg is Array) or path.legs.size() >= MOST_LEGS:
-			return false
+		elif rest[n] in ["LEFT", "RIGHT"]:
+			return "a turn of its path has no RADIUS"
+		else:
+			return "its path has %s where a leg goes" % rest[n].to_lower()
+		if leg is String:
+			return str(leg)
 		path.legs.append(leg)
+	if path.legs.size() > MOST_LEGS:
+		return "a path has at most %d legs, not %d" % [MOST_LEGS, path.legs.size()]
 	motion.path = path
-	return true
+	return ""
 
 
 static func _read_ref(words: PackedStringArray) -> Joint:
@@ -805,6 +1073,10 @@ static func quoted(words: String) -> String:
 ## A number written the same every time: at most [param places] decimals,
 ## no trailing zeros, no "-0".
 static func num(value: float, places: int) -> String:
+	if not is_finite(value) or absf(value) >= 1e15:
+		# A whole number past what an int holds: 1e30 was said as
+		# -9223372036854775808 (drivereview F7).
+		return String.num_scientific(value)
 	var snapped: float = snappedf(value, pow(10.0, -places))
 	if is_equal_approx(snapped, roundf(snapped)):
 		return str(int(roundf(snapped)))

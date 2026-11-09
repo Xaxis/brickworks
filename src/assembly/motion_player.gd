@@ -24,7 +24,7 @@ const SHORT_DEG := 0.5
 const SHORT_STUDS := GrabDrag.SHORT_STUDS
 ## A part found again by its number and colour this near where its ref
 ## says, LDU: a fifth of a stud.
-const PLACE_SLACK := 4.0
+const PLACE_SLACK := Motions.PLACE_SLACK
 ## Frames a second a motion is played at when it is not rendered.
 const PLAY_FPS := 12
 ## A loop is turned at most this far in one step, degrees, or slid this
@@ -76,25 +76,35 @@ func parts_of(joint: Motions.Joint) -> Array:
 		if not ids.is_empty():
 			joint.lead = int(ids[0])
 		return ids
+	# The part it took hold of, by its id: found as the model was read
+	# (ModelStore), or as it was made here, and followed when an undo put
+	# it back as another id. Recoloured, it is the same part.
+	joint.lead = _carried(joint.lead)
 	var lead: BrickWorld.Brick = world.get_brick(joint.lead) if joint.lead != 0 else null
-	if lead != null and lead.part_id == joint.part and lead.color_code == joint.colour:
+	if lead != null and lead.part_id == joint.part:
 		return [lead.id]
-	# Again by its number, colour and place: a file opened, or the part put
-	# back by an undo as another number.
-	var want: Vector3 = joint.place * LdrModel.FLIP + (store.lift() if store != null else Vector3.ZERO)
-	var best: int = 0
-	var nearest: float = PLACE_SLACK
-	for brick: BrickWorld.Brick in world.bricks():
-		if brick.part_id != joint.part or brick.color_code != joint.colour:
-			continue
-		var off: float = brick.transform.origin.distance_to(want)
-		if off < nearest:
-			nearest = off
-			best = brick.id
+	# Else by its number, colour and place, as the file has it: a part that
+	# arrived after the model opened (the web fetches some).
+	var best: int = Motions.part_at(joint, world, store.lift() if store != null else Vector3.ZERO)
 	if best != 0:
 		joint.lead = best
 		return [best]
 	return []
+
+
+## [param id], a part's id, followed to the id an undo or redo put it back
+## as (Builder.renumber); where the model stood as the file was read goes
+## with it. [param id] itself while it is there.
+func _carried(id: int) -> int:
+	if id == 0 or builder == null or world.get_brick(id) != null:
+		return id
+	var now: int = builder._live(id)
+	if now == id or world.get_brick(now) == null:
+		return id
+	var snapshot: Dictionary = motions().snapshot
+	if snapshot.has(id) and not snapshot.has(now):
+		snapshot[now] = snapshot[id]
+	return now
 
 
 ## What [param joint] is called: its sub-assembly, else "#80".
@@ -211,6 +221,8 @@ func at_now(joint: Motions.Joint) -> float:
 		_measure(joint, grabbing.picked_of(ids), true)
 		if not joint.measured:
 			return joint.at
+	joint.ours = _carried(joint.ours)
+	joint.theirs = _carried(joint.theirs)
 	var ours: BrickWorld.Brick = world.get_brick(joint.ours)
 	var theirs: BrickWorld.Brick = world.get_brick(joint.theirs)
 	if ours == null or theirs == null:
@@ -226,6 +238,8 @@ func rebase(joint: Motions.Joint) -> void:
 	var now: float = at_now(joint)
 	joint.at = now
 	if joint.measured:
+		joint.ours = _carried(joint.ours)
+		joint.theirs = _carried(joint.theirs)
 		var ours: BrickWorld.Brick = world.get_brick(joint.ours)
 		var theirs: BrickWorld.Brick = world.get_brick(joint.theirs)
 		if ours == null or theirs == null:
@@ -620,17 +634,28 @@ func finish(played: Played, keep: bool = false, words: String = "") -> void:
 		item.to = item.track.place_at(length if item.driver or not reverse else 0.0) \
 			if item.stop_words.is_empty() and item.role.is_empty() else _reached(item)
 	if keep and not played.frames.is_empty():
-		# A path's joints kept where its last frame put them before the path
-		# moved the model, and then the whole model moved: one step.
-		var last: Dictionary = played.local_last if played.drive != null else played.frames.back()
+		# A path's tracks kept where its last frame put them before the path
+		# moved the model, and then the whole model moved: one step. Its
+		# wheels' spin and its steering are not kept: they come to rest as
+		# they were, and a kept drive is a rigid move of the whole model, so
+		# a file keeps every sub-model's lines (drivereview F2). Kept, the
+		# wheels made each copy of a sub-model placed twice its own.
+		var kept_items: Array = played.order.filter(func(item: Item) -> bool: return item.role.is_empty())
+		var last: Dictionary = played.frames.back()
+		if played.drive != null:
+			last = {}
+			for item: Item in kept_items:
+				for key: Variant in item.grab.placed:
+					if played.local_last.has(key):
+						last[key] = played.local_last[key]
 		played.standing = grabbing.standing_with(last)
-		for item: Item in played.order:
+		for item: Item in kept_items:
 			for key: Variant in item.grab.placed:
 				if last.has(key):
 					item.grab.placed[key] = last[key]
 		var depth: int = builder.history_depth()
 		var said_as: String = words if not words.is_empty() else "played %s" % Motions.quoted(played.name)
-		var grabs: Array = played.order.map(func(item: Item) -> Grab: return item.grab)
+		var grabs: Array = kept_items.map(func(item: Item) -> Grab: return item.grab)
 		played.kept = grabbing.keep_held(grabs, said_as) if not grabs.is_empty() else 0
 		if played.drive != null:
 			played.kept += _keep_driven(played, said_as)
@@ -1372,14 +1397,21 @@ func _wheel_at(played: Played, item: Item, s: float) -> Array:
 	return [whole * centre, (whole.basis * line).normalized()]
 
 
-## The model moved where [param played]'s path ends, every part of it, as a
+## The model moved where [param played]'s path ends, every part of it by one
+## rigid move squared and rounded as a file writes it (Motions.tidied), as a
 ## grab keeps the parts it moves (Grab.commit): no part left behind, its
-## joints read where they stand from where they were built as before.
-## Returns how many parts moved.
+## joints read where they stand from where they were built as before. The
+## move is kept with the motions (Motions.moved), so someone else's file is
+## written with only its main model's lines moved. Returns how many parts
+## moved.
 func _keep_driven(played: Played, words: String) -> int:
-	var whole: Transform3D = played.drive.moved(played.drive.seconds)
-	if whole.is_equal_approx(Transform3D.IDENTITY):
+	# Its end as the file writes it, in the file's coordinates, then back
+	# where the model stands: every part moved by the one tidied move.
+	var lift := Transform3D(Basis.IDENTITY, store.lift() if store != null else Vector3.ZERO)
+	var in_file: Transform3D = Motions.tidied(lift.affine_inverse() * played.drive.moved(played.drive.seconds) * lift)
+	if in_file.is_equal_approx(Transform3D.IDENTITY):
 		return 0
+	var whole: Transform3D = lift * in_file * lift.affine_inverse()
 	var moving := Grab.new()
 	moving.world = world
 	moving.builder = builder
@@ -1390,7 +1422,12 @@ func _keep_driven(played: Played, words: String) -> int:
 			continue
 		moving.rest[brick.id] = brick.transform
 		moving.placed[brick.id] = whole * brick.transform
+	var had: Motions = motions().copy()
 	var moved: int = moving.commit(words)
+	if moved > 0:
+		# Where the model went, kept with its motions: an undo takes both back.
+		motions().moved = in_file * motions().moved
+		builder.record([{"undo": "motions", "motions": had}], words)
 	grabbing.edited.call()
 	return moved
 
@@ -1656,6 +1693,12 @@ func path_words(path: Motions.Path) -> String:
 ## wheels and steering found; or why not. A turn's radius when omitted is
 ## the tightest corner the model takes well (corner_radius).
 func path_from(given: Dictionary) -> Variant:
+	# Each word and each value checked for what it is: a leg of [1] or
+	# seconds of {} stopped the script, and a word path= has no was let by
+	# (drivereview F7).
+	for key: Variant in given:
+		if not str(key) in ["legs", "seconds", "eased"]:
+			return "path= takes legs=, seconds= and eased=, not %s=." % str(key)
 	var legs: Array = []
 	var asked: Variant = given.get("legs", [])
 	if not (asked is Array):
@@ -1668,6 +1711,9 @@ func path_from(given: Dictionary) -> Variant:
 			return "Each leg is {\"straight\": studs}, or {\"left\": degrees} or {\"right\": degrees} with radius= studs."
 		var leg: Dictionary = raw
 		var kind: String = ""
+		for word: Variant in leg:
+			if not str(word) in ["straight", "left", "right", "radius"]:
+				return "A leg takes straight=, left= or right=, and radius=, not %s=." % str(word)
 		for word: String in ["straight", "left", "right"]:
 			if leg.has(word):
 				if not kind.is_empty():
@@ -1675,28 +1721,49 @@ func path_from(given: Dictionary) -> Variant:
 				kind = word
 		if kind.is_empty():
 			return "A leg is {\"straight\": studs}, {\"left\": degrees} or {\"right\": degrees}: not %s." % JSON.stringify(leg)
+		if not _is_number(leg[kind]):
+			return "A leg's %s= is a number of %s, not %s." % [kind, "studs" if kind == "straight" else "degrees",
+				JSON.stringify(leg[kind])]
 		var radius: float = 0.0
-		if kind != "straight":
+		if kind == "straight":
 			if leg.has("radius"):
-				radius = float(leg["radius"])
-			else:
-				if corner < 0.0:
-					corner = corner_radius(path)
-				radius = corner
+				return "A straight has no radius=: only a turn, left= or right=, has one."
+		elif leg.has("radius"):
+			if not _is_number(leg["radius"]):
+				return "A turn's radius= is a number of studs, not %s." % JSON.stringify(leg["radius"])
+			radius = float(leg["radius"])
+		else:
+			if corner < 0.0:
+				corner = corner_radius(path)
+			radius = corner
 		var made: Variant = Motions.leg_of(kind, float(leg[kind]), radius)
 		if made is String:
 			return "%s%s." % [str(made).left(1).to_upper(), str(made).substr(1)]
 		legs.append(made)
 	if legs.size() > Motions.MOST_LEGS:
-		return "A path has at most %d legs." % Motions.MOST_LEGS
+		return "A path has at most %d legs, not %d." % [Motions.MOST_LEGS, legs.size()]
 	path.legs = legs if not legs.is_empty() else [["STRAIGHT", DRIVE_STRAIGHT, 0.0],
 		["LEFT", DRIVE_CORNER, corner if corner > 0.0 else corner_radius(path)]]
-	var seconds: float = float(given.get("seconds", 0.0))
-	if seconds < 0.0 or seconds > Motions.MOST_SECONDS:
-		return "path= seconds= is 0 to %d: %s is not." % [int(Motions.MOST_SECONDS), str(given["seconds"])]
-	path.seconds = seconds if seconds > 0.0 else clampf(ceilf(path.studs() / DRIVE_SPEED), 1.0, Motions.MOST_SECONDS)
+	if given.has("seconds"):
+		if not _is_number(given["seconds"]):
+			return "path= seconds= is a number of seconds, not %s." % JSON.stringify(given["seconds"])
+		var seconds: Variant = Motions.path_seconds_of(float(given["seconds"]))
+		if seconds is String:
+			return "path= seconds=: %s (left out, it goes at %d studs a second)." % [str(seconds),
+				int(DRIVE_SPEED)]
+		path.seconds = seconds
+	else:
+		path.seconds = clampf(ceilf(path.studs() / DRIVE_SPEED), 1.0, Motions.MOST_SECONDS)
+	if given.has("eased") and not (given["eased"] is bool):
+		return "path= eased= is true or false, not %s." % JSON.stringify(given["eased"])
 	path.how = "EASE" if bool(given.get("eased", true)) else "LINEAR"
 	return path
+
+
+## Whether [param value], read from a session's JSON, is a number: not a
+## true or false, a list or words.
+static func _is_number(value: Variant) -> bool:
+	return (value is float or value is int) and is_finite(float(value))
 
 
 ## What a path did, said: how far the model went, each wheel's turns, the
