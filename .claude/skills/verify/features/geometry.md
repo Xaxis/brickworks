@@ -466,8 +466,14 @@ can occupy the same millimetre.
   two, is seated where they have it (`ExactCheck._past_a_foot`): the 6141s
   42088-1 and 42105-1 put 2 LDU down a half pin's stud stay there. Only the
   stud's own part says so, never another part it meets, so a saddle an LDU
-  low still goes up onto its horse's studs. `seatfix_probe`: a 4740 turned
-  each quarter on a 6141 over MCP, and four real sub-models through the
+  low still goes up onto its horse's studs. By hand, a part with no hole
+  pointing down takes a stud in the tubes at its foot where its own shape
+  fills every one of the catalogue's sockets (`Builder._takes_studs`,
+  `_tubes_only`): a 4740 dish on a 6141 is on the stud's line, where the
+  catalogue's corners stood it 14 LDU off; a 3960 dish, which has room on
+  four studs, keeps them. `seatfix_probe`: a 4740 turned each quarter on a
+  6141 by hand and over MCP, sixteen parts (bricks, plates, tiles, round
+  parts) each clicked onto a stud, and four real sub-models through the
   check; `animals_probe` reads its as-set check where the set has each
   saddle, not by its cell (seatfix).
   A part that only rests on a lone stud at a hinge's free end, its stud's
@@ -699,7 +705,7 @@ python3 tools/connection_audit.py run [--shards 6 --parallel 2]   # every real s
 python3 tools/connection_audit.py report --before DIR --write docs/CONNECTIONS.md
 godot --headless --path . --script src/dev/flex_probe.gd         # chains on their sprockets, hoses between holes
 godot --headless --path . --script src/dev/technic_hand_probe.gd # the same joints made by hand, a clip on 2540's handle
-godot --headless --path . --script src/dev/seatfix_probe.gd     # a 4740 on a 6141 by hand and over MCP at each turn; real sub-models seated where their sets have them
+godot --headless --path . --script src/dev/seatfix_probe.gd     # a 4740 on a 6141 by hand and over MCP at each turn; 16 parts by hand on a stud; real sub-models seated where their sets have them
 godot --headless --path . --script src/dev/axle_probe.gd         # axles through holes, gears in mesh, a crank's train at 1:3
 godot --headless --path . --script src/dev/gear_mesh_probe.gd    # gears pointed onto axles seat in mesh and turn by their teeth
 godot --headless --path . --script src/dev/clutch_probe.gd       # positions that cannot be built
