@@ -282,6 +282,10 @@ func _build_welcome(column: VBoxContainer) -> void:
 	_welcome_later = Button.new()
 	_welcome_later.text = "Not now"
 	_welcome_later.custom_minimum_size = Vector2(0, 38)
+	# Two to one, as the site's pair: Not now a real button, not its words
+	# against the border; Join keeps its words whole in any language.
+	_welcome_join.size_flags_stretch_ratio = 2.0
+	_welcome_later.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_welcome_later.focus_mode = Control.FOCUS_NONE
 	_welcome_later.pressed.connect(_not_now)
 	row.add_child(_welcome_later)
