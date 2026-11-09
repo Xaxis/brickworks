@@ -12910,6 +12910,17 @@ msgstr "1 estrella"
 msgid "%s large stars"
 msgstr "%s estrellas grandes"
 
+# A wedge plate's far corner cut flat (makepart3, APP_UX7 #16): the maker's checkbox, its
+# tooltip and what the dialog says of the part.
+
+msgid "Far corner cut flat"
+msgstr "Esquina trasera cortada en recto"
+
+msgid "As LEGO® wedge plates such as 54383 and 41770b are: the sharp corner the cut ends in, cut off 1.2 mm along"
+msgstr "Como en las placas en cuña LEGO® como 54383 y 41770b: la esquina aguda en que acaba el lado cortado, cortada a lo largo de 1,2 mm"
+
+msgid "Its far corner is cut flat."
+msgstr "Su esquina trasera está cortada en recto."
 msgid "1 large star"
 msgstr "1 estrella grande"
 # The parts bin's New shelf, the parts first made in the catalogue's latest two
