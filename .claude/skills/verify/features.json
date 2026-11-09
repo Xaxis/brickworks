@@ -2498,6 +2498,14 @@
       "tests": []
     },
     {
+      "id": "cli:subexport probe",
+      "kind": "cli",
+      "entry": "src/dev/subexport_probe.gd",
+      "reach": "tools/probe.sh subexport_probe -- --shots=DIR",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "cli:table race",
       "kind": "cli",
       "entry": "src/dev/table_race_probe.gd",
@@ -4732,6 +4740,14 @@
       "entry": "src/render/idle_draw.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1280x860 --script src/dev/idle_probe.gd",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:each sub-model as its own file",
+      "kind": "ui",
+      "entry": "src/parts/submodel_file.gd",
+      "reach": "godot --path .  (the model tree: right-click a sub-model's row, Export \u201cNAME\u201d as its own file\u2026, or the model's row, Export each sub-model (.zip)\u2026; File, Export, Each sub-model as its own file (.zip))  /  export_model format=ldraw submodels=true, or submodel=NAME",
+      "area": "model-io",
       "tests": []
     },
     {

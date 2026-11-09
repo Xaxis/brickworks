@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, ui:library search, cli:library search probe, cli:library browser flow, lib:model versions, ui:versions of a model, ui:compare with a save, lib:model diff, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, lib:a plan's limit on models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:a line placing a part at no size, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe, cli:picklist probe, cli:direct colour probe, cli:print3mf probe, cli:3mf strict reader -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, ui:library search, cli:library search probe, cli:library browser flow, lib:model versions, ui:versions of a model, ui:compare with a save, lib:model diff, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, lib:a plan's limit on models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:a line placing a part at no size, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe, cli:picklist probe, cli:direct colour probe, cli:print3mf probe, cli:3mf strict reader, ui:each sub-model as its own file, cli:subexport probe -->
 
 ## Sub-features
 
@@ -807,6 +807,27 @@ Whether what you built is still there tomorrow, and still means the same thing.
   sizes. `centring_probe` measures all three, with either column folded. In a
   browser, `share_flow.mjs` on a local export (2026-10-13) got a card
   (`og_image.png`) with the car's middle 0.0% off the picture's, filling 88%.
+- `each sub-model as its own file` (`src/parts/submodel_file.gd`, `Exports.submodel`
+  and `each_submodel` in `src/ui/exports.gd`, the model tree's row menu in
+  `src/ui/outliner.gd`; APP_UX7 #19): a right click on a sub-model's row in the
+  model tree, Export “NAME” as its own file…, writes that sub-model with its own
+  sub-models and steps (a plain .ldr, an .mpd when it has sub-models); on the
+  model's row, Export each sub-model (.zip)…, and File, Export, Each sub-model as
+  its own file (.zip), write one file a sub-model, each definition once, in
+  NAME_submodels.zip. Over MCP `export_model format=ldraw submodels=true`, or
+  `submodel=NAME` (the row's name, "Wing (copy 2)", or a path). Each file is
+  cut from the text File, Export, LDraw model writes, never written again: its
+  section and every section it places, line for line, with the model's own
+  AUTHORED_STEPS or WORKED_STEPS line put in after its author, so an author's
+  steps stay the author's when it is opened alone. A copy built in its parent's
+  steps (the castle's towers, `AuthorSteps.IN_PARENT`) has no section: its file
+  is its lines out of the parent's, a step for each of the parent's steps it is
+  in, in the parent's coordinates. **Check:** `tools/probe.sh subexport_probe
+  -- --shots=DIR` (signs in a throwaway account: needs .env): 7140-1, the castle
+  and the castle with its steps its own; each file's sections against the whole
+  file's, line for line; each opened alone to the same parts within 0.001 LDU,
+  colours, tree and an author's steps; the whole model's file the same to the
+  byte before and after; the tree's menu pictured at 1400 x 900 and 1280 x 720.
 - `parts lists for shops` (`src/assembly/shop_lists.gd`, File, Export → BrickLink
   wanted list / Rebrickable parts list / LEGO® Pick a Brick list, and the same
   three buttons on the parts list): BrickLink's wanted-list XML (item, its

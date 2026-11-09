@@ -240,6 +240,12 @@
 							"line": true
 						},
 						{
+							"name": "export_submodels",
+							"words": "Each sub-model as its own file (.zip)",
+							"key": "",
+							"tip": "Every sub-model as an LDraw file of its own, with its own sub-models and steps, in one .zip"
+						},
+						{
 							"name": "export_all",
 							"words": "All my models (.zip)",
 							"key": "",
@@ -1736,6 +1742,7 @@
 		"export_all": "",
 		"export_rebrickable": "",
 		"export_pickabrick": "alt-L",
+		"export_submodels": "",
 		"render": "F9",
 		"render_queue": "shift-F9",
 		"pose": "alt-O",

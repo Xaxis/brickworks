@@ -179,6 +179,14 @@ func _subject(subject: Array) -> void:
 	print("    the whole model's file: %d bytes, sha256 %s" % [whole.length(), before_sha])
 	var parsed: LdrModel = LdrModel.parse(whole, "model")
 	var placed: Array[LdrModel.Placement] = parsed.flatten(_library.parts)
+	# The whole model's parts as the app holds them (each number as the
+	# library resolved it), where the file has them: [path, part, colour, place].
+	var back := Transform3D(Basis.IDENTITY, -(_store.call("_lift_now") as Vector3))
+	var held: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		if not _store.scenery.has(brick.id):
+			held.append([Assemblies.path_of(brick), brick.part_id, brick.color_code,
+				back * brick.transform])
 	var paths_missing: Array = Array(tree).filter(func(path: String) -> bool:
 		return not parsed.unit_steps.has(path))
 	_check("every row of the model tree (%d) is a copy the whole file places%s" % [tree.size(),
@@ -229,7 +237,7 @@ func _subject(subject: Array) -> void:
 		var text: String = zip[file]
 		if _same_lines(tag, file, text, whole, parsed, placed, path):
 			lines_ok += 1
-		var result: Array = await _alone(tag, file, text, parsed, placed, path, whole)
+		var result: Array = await _alone(tag, file, text, parsed, held, path)
 		if bool(result[0]):
 			alone_ok += 1
 		worst = maxf(worst, float(result[1]))
@@ -390,8 +398,8 @@ static func _sections(text: String) -> Dictionary:
 ## [param path] there, in its colour, where the whole model has it in its
 ## own frame within NEAR, and no other; its tree the sub-model's own; an
 ## author's steps still the author's. [ok, the worst distance].
-func _alone(tag: String, file: String, text: String, parsed: LdrModel,
-		placed: Array[LdrModel.Placement], path: String, _whole: String) -> Array:
+func _alone(tag: String, file: String, text: String, parsed: LdrModel, held: Array,
+		path: String) -> Array:
 	var home: String = _home_of(parsed, path)
 	var frame: Transform3D = Transform3D.IDENTITY
 	var built_within: bool = int(parsed.unit_steps[path]) == LdrModel.IN_PARENT
@@ -401,9 +409,9 @@ func _alone(tag: String, file: String, text: String, parsed: LdrModel,
 		frame = parsed.unit_frames[home]
 	var inverse: Transform3D = frame.affine_inverse()
 	var wanted: Array = []
-	for placement: LdrModel.Placement in placed:
-		if Assemblies.within(placement.unit, path):
-			wanted.append([placement.part_id, placement.color_code, inverse * placement.transform])
+	for one: Array in held:
+		if Assemblies.within(str(one[0]), path):
+			wanted.append([one[1], one[2], inverse * (one[3] as Transform3D)])
 	var tree_wanted := PackedStringArray()
 	for unit: String in parsed.unit_steps:
 		if unit != path and Assemblies.within(unit, path):
@@ -430,6 +438,9 @@ func _alone(tag: String, file: String, text: String, parsed: LdrModel,
 				best_far = far
 				best = n
 		if best < 0 or best_far > NEAR:
+			if unmatched == 0:
+				print("    not there: %s in %d at %s (nearest of that part %.4f LDU)" % [want[0],
+					int(want[1]), (want[2] as Transform3D).origin, best_far])
 			unmatched += 1
 			continue
 		taken[best] = true
@@ -597,6 +608,18 @@ func _show_tree() -> void:
 	if not _shell.outliner.is_open():
 		_shell.outliner.set_open(true)
 	await _frames(10)
+	if not _shell.outliner.is_visible_in_tree():
+		var hidden: Array[String] = []
+		var at: Node = _shell.outliner
+		while at != null and at != root:
+			if at is CanvasItem and not (at as CanvasItem).visible:
+				hidden.append("%s (%s)" % [at.name, at.get_class()])
+			at = at.get_parent()
+		var chat: Variant = _main.get("_chat_dock")
+		print("    the model tree out of sight: the right column %s, the assistant's %s; hidden: %s"
+			% ["open" if dock is SideDock and (dock as SideDock).is_open() else "folded",
+			"open" if chat is SideDock and (chat as SideDock).is_open() else "folded",
+			", ".join(hidden)])
 
 
 func _right_click_row(outliner: Outliner, path: String) -> PopupMenu:
@@ -607,6 +630,8 @@ func _right_click_row(outliner: Outliner, path: String) -> PopupMenu:
 		await _frames(2)
 		rects = outliner.row_rects()
 	if not rects.has(path):
+		print("    no row for %s among %d in sight (the tree %s, in the window %s)" % [path,
+			rects.size(), "open" if outliner.is_open() else "folded", outliner.is_visible_in_tree()])
 		return null
 	var at: Vector2 = (rects[path] as Rect2).get_center()
 	var motion := InputEventMouseMotion.new()
@@ -707,6 +732,9 @@ func _say(tool: String, arguments: Dictionary) -> String:
 func _as_event(at: Vector2) -> Vector2:
 	var rect: Vector2 = root.get_visible_rect().size
 	var window := Vector2(DisplayServer.window_get_size())
+	# No window to scale to without one.
+	if window.x <= 0.0 or window.y <= 0.0 or DisplayServer.get_name() == "headless":
+		return at
 	return at * (window / rect)
 
 

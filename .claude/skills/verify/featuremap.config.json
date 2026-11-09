@@ -4654,6 +4654,20 @@
     },
     {
       "kind": "ui",
+      "label": "each sub-model as its own file",
+      "entry": "src/parts/submodel_file.gd",
+      "reach": "godot --path .  (the model tree: right-click a sub-model's row, Export “NAME” as its own file…, or the model's row, Export each sub-model (.zip)…; File, Export, Each sub-model as its own file (.zip))  /  export_model format=ldraw submodels=true, or submodel=NAME",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "subexport probe",
+      "entry": "src/dev/subexport_probe.gd",
+      "reach": "tools/probe.sh subexport_probe -- --shots=DIR",
+      "area": "model-io"
+    },
+    {
+      "kind": "ui",
       "label": "cut away by a shape",
       "entry": "src/render/cut_shape.gd",
       "reach": "tools/probe.sh cutshapes && PROBE_SIZE=1280x720 tools/probe.sh cutshapes && tools/probe.sh cutshapes_kept   (by hand: View, Cut away by, A box; drag a knob, or the wheel over it; Grow, Shrink; A sphere or A cylinder in the strip; save, open)",
