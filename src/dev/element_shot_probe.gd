@@ -405,9 +405,12 @@ func _copies(button: Button, dialog: ElementDialog, library: PartLibrary,
 			# The sentence under the preview grew a line and the controls'
 			# room shrank under the box; scrolled to it again, as a person
 			# would to see it ticked.
+			# The pointer back on the box it ticked: left where the scroll
+			# moved, it rested on Bracket long enough for its tooltip.
 			(dialog.get("_scroll") as ScrollContainer).ensure_control_visible(chamfer)
 			for _n: int in 3:
 				await process_frame
+			await _move(chamfer.get_global_rect().get_center())
 			await RenderingServer.frame_post_draw
 			_save("element_chamfer_dialog.png")
 		var made: Array = []
