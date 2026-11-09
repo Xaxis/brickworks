@@ -206,9 +206,16 @@ try {
     // Joining the testers too (betajoin); leaving is anybody's, whatever the switch.
     const join = await api("/api/plans?op=beta_join", { method: "POST", token: someone.access_token, body: { via: "site" } });
     check(`op=beta_join is refused: ${join.status} ${join.json?.error}`, join.status === 403 && join.json?.beta === "off");
+    // Before supabase/beta_join.sql is applied there is nothing to leave:
+    // 503, as joining answers then (api/_beta.js refused, notYet).
     const leave = await api("/api/plans?op=beta_leave", { method: "POST", token: someone.access_token, body: {} });
-    check(`op=beta_leave answers off, and takes nothing: ${leave.status} ${JSON.stringify(leave.json)}`,
-      leave.status === 200 && leave.json?.beta === "off" && leave.json?.tester === false);
+    if (leave.status === 503) {
+      check(`op=beta_leave before beta_join.sql is applied: 503 "${leave.json?.error}"`,
+        /not open here yet/.test(leave.json?.error || ""));
+    } else {
+      check(`op=beta_leave answers off, and takes nothing: ${leave.status} ${JSON.stringify(leave.json)}`,
+        leave.status === 200 && leave.json?.beta === "off" && leave.json?.tester === false);
+    }
     for (const [width, theme] of [[390, "dark"], [1280, "light"]]) {
       const { page, context } = await open("/beta", { width, theme, label: `off ${width}` });
       const said = await betaSaid(page);
@@ -310,7 +317,7 @@ try {
     // answers 503 and nothing changes.
     r = await api("/api/plans?op=beta_join", { method: "POST", token: a.access_token, body: { via: "site" } });
     if (r.status === 503) {
-      check(`op=beta_join before beta_join.sql is applied: 503 "${r.json?.error}"`, /beta_join\.sql/.test(r.json?.error || ""));
+      check(`op=beta_join before beta_join.sql is applied: 503 "${r.json?.error}"`, /not open here yet/.test(r.json?.error || ""));
     } else {
       check(`op=beta_join: ${r.status}, tester ${r.json?.tester}`, r.status === 200 && r.json?.tester === true);
       r = await api("/api/plans?op=beta_leave", { method: "POST", token: a.access_token, body: {} });
