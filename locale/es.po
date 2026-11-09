@@ -12949,6 +12949,55 @@ msgstr "Una línea fina donde cada pieza se une a la siguiente, para leer las hi
 msgid "Off, the parts are drawn without their studs, each in its place: the shapes alone, and a big model drawn faster"
 msgstr "Desactivado, las piezas se dibujan sin sus espigas, cada una en su sitio: solo las formas, y un modelo grande se dibuja más rápido"
 
+# video2 (APP_UX6 #11): Render's Kept as, a WebP or a GIF.
+msgid "Kept as"
+msgstr "Guardado como"
+
+msgid "WebP"
+msgstr "WebP"
+
+msgid "GIF"
+msgstr "GIF"
+
+msgid "A GIF plays anywhere a picture goes, chats, forums and mail included: 256 colours, at most 640 pixels across, made to fit in 8 MB."
+msgstr "Un GIF se ve en cualquier sitio al que va una imagen, chats, foros y correo incluidos: 256 colores, 640 píxeles de ancho como mucho, hecho para caber en 8 MB."
+
+msgid "An animated WebP keeps every colour and is small; every browser plays it."
+msgstr "Un WebP animado conserva todos los colores y ocupa poco; todos los navegadores lo reproducen."
+
+msgid "%d frames, %s s at %d a second, as a GIF."
+msgstr "%d fotogramas, %s s a %d por segundo, como GIF."
+
+msgid "%d frames, %s s at %d a second, as a GIF, the frames, and an MP4 where ffmpeg is installed."
+msgstr "%d fotogramas, %s s a %d por segundo, como GIF, los fotogramas y un MP4 donde ffmpeg esté instalado."
+
+msgid "%s parts as the timeline builds them, step by step, over %d s at %d a second, the camera turning %d° round, as a GIF."
+msgstr "%s piezas tal como las construye la línea de tiempo, paso a paso, durante %d s a %d por segundo, con la cámara girando %d°, como GIF."
+
+msgid "%s parts as the timeline builds them, step by step, over %d s at %d a second, the camera turning %d° round, as a GIF, the frames, and an MP4 where ffmpeg is installed."
+msgstr "%s piezas tal como las construye la línea de tiempo, paso a paso, durante %d s a %d por segundo, con la cámara girando %d°, como GIF, los fotogramas y un MP4 donde ffmpeg esté instalado."
+
+msgid "%s: %s s at %d a second, %s, as a GIF."
+msgstr "%s: %s s a %d por segundo, %s, como GIF."
+
+msgid "%s: %s s at %d a second, %s, as a GIF, the frames, and an MP4 where ffmpeg is installed."
+msgstr "%s: %s s a %d por segundo, %s, como GIF, los fotogramas y un MP4 donde ffmpeg esté instalado."
+
+msgid "Making the GIF…"
+msgstr "Creando el GIF…"
+
+msgid "Making the GIF: frame %d of %d…"
+msgstr "Creando el GIF: fotograma %d de %d…"
+
+msgid "a GIF of %d x %d, %d frames at %s a second, %s MB"
+msgstr "un GIF de %d × %d, %d fotogramas a %s por segundo, %s MB"
+
+msgid "the GIF was not finished: %s"
+msgstr "el GIF no se terminó: %s"
+
+msgid "no GIF: its frames would not read back"
+msgstr "sin GIF: sus fotogramas no se pudieron volver a leer"
+
 # Measure by finger (APP_UX8 #10 fingertools): the ruler's words on a phone, where
 # a tap is what puts a point down and there is no Esc to press.
 msgid "Measuring: tap a point, then another"

@@ -5295,6 +5295,14 @@
         "depth_of_field": {
           "type": "boolean"
         },
+        "format": {
+          "description": "a turntable's or a build's file: webp, or gif for where a WebP is not taken (chats, forums, mail): 256 colours, at most 640 pixels across, made to fit 8 MB. As Render's Kept as has it when omitted",
+          "enum": [
+            "webp",
+            "gif"
+          ],
+          "type": "string"
+        },
         "kind": {
           "enum": [
             "picture",
