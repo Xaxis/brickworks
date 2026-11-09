@@ -544,6 +544,10 @@ var _assistant: Node:
 ## The assistant if anything has made it, else null: for what has nothing
 ## to tell one that was never made (forgetting what it built, say).
 var _assistant_made: Node = null
+## A long job says when it is done (src/ui/done_note.gd, a Later class): made
+## with the first job that tells it, or Render's dialog (_done_note); null
+## until then.
+var _done_note_made: Node = null
 ## Set as _build_ui ends: what is made on first use is wired to what the
 ## window has, so it is made only once all of that is there.
 var _built: bool = false
@@ -862,8 +866,11 @@ func _tell_page() -> void:
 		JavaScriptBridge.eval("window.brickworksAskWords = false", true)
 		JavaScriptBridge.eval("window.brickworksWords = %s" % JSON.stringify(words_shown()), true)
 	if not _page_title.is_empty():
+		# "Done · " before it while a long job's end waits to be seen (DoneNote).
+		var titled: String = _page_title if _done_note_made == null \
+			else str(_done_note_made.call("titled", _page_title))
 		JavaScriptBridge.eval("if (document.title !== %s) document.title = %s"
-			% [JSON.stringify(_page_title), JSON.stringify(_page_title)], true)
+			% [JSON.stringify(titled), JSON.stringify(titled)], true)
 	# And how many parts are standing, so a browser check can tell that a
 	# click put something down rather than guess it from the pixels.
 	if _world != null:
@@ -6165,6 +6172,12 @@ func _make_chat() -> void:
 	chat.offers_hidden_colours = _offers_hidden_colours
 	chat.hidden_colours_wanted.connect(func() -> void: open_hidden_colours("sections"))
 	chat.asked.connect(_note_design_asked)
+	# A design, a change or sketches the person asked for here says when it
+	# is done, while nobody is looking (DoneNote): the ask is where the web
+	# asks whether it may notify, the press still fresh.
+	chat.asked.connect(func() -> void: _done_note().started("design"))
+	chat.run_ended.connect(func(ok: bool, what: String) -> void:
+		_done_note().finished(what, ok))
 	chat.designing.connect(func(brief: String) -> void:
 		_fresh_brief = brief
 		_make_room(ModelStore.name_for(brief))
@@ -6547,6 +6560,31 @@ func _make_render() -> void:
 	var fit: Callable = func() -> void: _inset(render, float(kind.WIDE), float(kind.TALL))
 	fit.call()
 	get_viewport().size_changed.connect(fit)
+	# A Best render, a turntable, an animation or a build video says when it
+	# is done, while nobody is looking (DoneNote).
+	_done_note().follow_render(render)
+
+
+## The done note (DoneNote), made the first time a job tells it something:
+## a long job says when it is done while nobody is looking.
+func _done_note() -> Node:
+	if _done_note_made == null:
+		_done_note_made = Later.make(&"DoneNote")
+		_done_note_made.name = "DoneNote"
+		_done_note_made.set("named", func() -> String:
+			return _bar.model_name() if _bar != null else "Model")
+		# What a session from outside asked for is said in its own chat.
+		_done_note_made.set("driven", func() -> bool: return _session_at_work())
+		add_child(_done_note_made)
+	return _done_note_made
+
+
+## File, Render queue…'s queue, as it is made (RenderQueue.of): its end said
+## by the done note while nobody is looking, whoever filled it.
+func follow_render_queue(queue: Node) -> void:
+	queue.connect(&"began", func() -> void: _done_note().started("queue"))
+	queue.connect(&"emptied", func(drawn: int, _failed: int) -> void:
+		_done_note().finished("queue", drawn > 0))
 
 
 ## When anything last reached the window, and when it last drew a frame:

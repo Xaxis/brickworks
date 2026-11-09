@@ -12920,3 +12920,39 @@ msgstr "Les pièces fabriquées pour la première fois en %d ou %d, les plus ré
 
 msgid "%s first made in %d or %d, the newest first"
 msgstr "%s fabriquées pour la première fois en %d ou %d, les plus récentes d'abord"
+
+# A long job says when it is done: Settings' row, and what the note says
+# finished (APP_UX7 #11, donenote).
+
+msgid "Say when a long job is done"
+msgstr "Prévenir quand un long travail est terminé"
+
+msgid "A design, a Best render, the render queue or a build video that finishes while you are in another window: the window asks for your attention, or in a browser, a notification says so."
+msgstr "Un modèle, un rendu en qualité Meilleure, la file de rendu ou une vidéo de construction qui se termine pendant que vous êtes dans une autre fenêtre : la fenêtre demande votre attention, ou dans un navigateur, une notification le dit."
+
+msgid "Design done"
+msgstr "Modèle terminé"
+
+msgid "Sketches ready to choose from"
+msgstr "Esquisses prêtes à choisir"
+
+msgid "Best render done"
+msgstr "Rendu Meilleure terminé"
+
+msgid "Turntable done"
+msgstr "Plateau tournant terminé"
+
+msgid "Animation done"
+msgstr "Animation terminée"
+
+msgid "Build video done"
+msgstr "Vidéo de construction terminée"
+
+msgid "Render queue done"
+msgstr "File de rendu terminée"
+
+msgid "The design did not finish"
+msgstr "Le modèle n'a pas fini"
+
+msgid "The render did not finish"
+msgstr "Le rendu n'a pas fini"
