@@ -61,6 +61,10 @@ var _wall: Array[AABB] = []
 
 
 func _initialize() -> void:
+	# Never more than this on the card, whatever hangs.
+	create_timer(1500.0).timeout.connect(func() -> void:
+		print("  FAIL  the probe was still going after 25 minutes")
+		quit(1))
 	_run()
 
 
