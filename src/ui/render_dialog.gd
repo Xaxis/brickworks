@@ -202,6 +202,9 @@ func _add_scrim() -> void:
 	_scrim.visible = visible
 	parent.add_child(_scrim)
 	parent.move_child(_scrim, get_index())
+	# Just under the panel wherever it goes: Render brought to the front
+	# brings its veil (HudFront).
+	_scrim.set_meta(HudFront.UNDER, self)
 
 
 ## Whether nobody can see the window, as Main decides it (Main._watch_view):
@@ -229,7 +232,7 @@ func open() -> void:
 	# lights (APP_UX5 #7): the model's lights as it keeps them now.
 	_list_lamps(0)
 	_describe()
-	visible = true
+	HudFront.show_panel(self)
 	if _scrim != null:
 		_scrim.visible = true
 	# The window's own model is behind the veil: not drawing it while the

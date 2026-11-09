@@ -1231,7 +1231,7 @@ func open() -> void:
 	_show_face("settings")
 	_show_designer()
 	_fill()
-	visible = true
+	HudFront.show_panel(self)
 	_fit_settings.call_deferred()
 
 
@@ -1245,7 +1245,7 @@ func open_keys() -> void:
 	keys_reset.visible = not Keymap.own().is_empty()
 	_said.text = HOW_TO_SET
 	_fill()
-	visible = true
+	HudFront.show_panel(self)
 	if _find.visible:
 		_find.grab_focus.call_deferred()
 

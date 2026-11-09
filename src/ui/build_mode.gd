@@ -573,7 +573,7 @@ func _hide_changed() -> void:
 
 
 func open() -> void:
-	visible = true
+	HudFront.show_panel(self)
 	_fit()
 
 

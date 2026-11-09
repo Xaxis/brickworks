@@ -2837,7 +2837,7 @@ func _enter_view() -> void:
 	_share_view.loading()
 	_build_mode = Later.make(&"BuildMode")
 	_build_mode.thumbnails = _thumbnails
-	$HUD.add_child(_build_mode)
+	_add_to_hud(_build_mode)
 	_build_mode.next_wanted.connect(_build_next)
 	_build_mode.back_wanted.connect(_build_back)
 	# A part at a time or the step whole, chosen on the page: the step it is
@@ -5952,7 +5952,7 @@ func _build_ui() -> void:
 	_account_panel.show_claude(ShellPrefs.assistant_shown())
 	if _connector_made != null:
 		_account_panel.use_connector(_connector_made)
-	$HUD.add_child(_account_panel)
+	_add_to_hud(_account_panel)
 	_inset(_account_panel, AccountPanel.WIDE, AccountPanel.TALL)
 	get_viewport().size_changed.connect(func() -> void:
 		_inset(_account_panel, AccountPanel.WIDE, AccountPanel.TALL))
@@ -6254,24 +6254,30 @@ static func _shown(panel: CanvasItem) -> bool:
 
 
 ## [param panel] over the window, under the sign-in screen, which _build_ui
-## adds last so that it is over everything.
+## adds last so that it is over everything; and in front of the other panels
+## whenever it is shown, clicked or given the keys (HudFront).
 func _add_to_hud(panel: Control) -> void:
-	var first: int = $HUD.get_child_count()
 	$HUD.add_child(panel)
-	_under_gates(first)
+	_hud_front.take(panel)
 
 
-## What was added to the HUD from child [param first] on, put back under
-## the sign-in screen.
-func _under_gates(first: int) -> void:
-	var under: int = $HUD.get_child_count()
-	if is_instance_valid(_gate) and _gate.get_parent() == $HUD and _gate.get_index() < first:
-		under = mini(under, _gate.get_index())
-	if under >= first:
-		return
-	for node: Node in $HUD.get_children().slice(first):
-		$HUD.move_child(node, under)
-		under += 1
+# -- the panel asked for last in front (hudfront) --------------------------------
+
+## Keeps the HUD's panels in the order they were last shown, clicked or given
+## the keys in, under the sign-in screen (src/ui/hud_front.gd): made with the
+## first panel added to the HUD.
+var _hud_front: HudFront:
+	get:
+		if _hud_front_made == null:
+			_hud_front_made = HudFront.new()
+			_hud_front_made.name = "HudFront"
+			_hud_front_made.hud = $HUD
+			_hud_front_made.control_at = _control_at
+			add_child(_hud_front_made)
+		return _hud_front_made
+var _hud_front_made: HudFront = null
+
+# -- end hudfront ------------------------------------------------------------------
 
 
 ## Whether the phone's layout has sized the tools' column's panels
@@ -6494,7 +6500,8 @@ func _make_studio() -> void:
 	add_child(studio)
 	var first: int = $HUD.get_child_count()
 	studio.setup($HUD)
-	_under_gates(first)
+	for made: Node in $HUD.get_children().slice(first):
+		_hud_front.take(made as Control)
 	studio.said.connect(func(words: String) -> void: _bar.say(words))
 	studio.made.connect(func(part_id: String) -> void:
 		_bin.populate()
