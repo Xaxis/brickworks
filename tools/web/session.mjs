@@ -30,7 +30,9 @@
 // accepts mail and delivers it nowhere, so a code that is sent costs no
 // one an inbox and no sender a bounce. BW_TEST_EMAIL picks another.
 
-import { createHmac } from "node:crypto";
+import { createHash, createHmac, randomBytes } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { hostname } from "node:os";
 
 // The shared test account, which every flow's pages are signed in as.
 const SHARED_EMAIL = "delivered+brickworks-tests@resend.dev";
@@ -141,8 +143,7 @@ async function passwordSession(p, email) {
   }));
   let reply = await grant();
   if (reply.status === 400 && !made.ok && email.toLowerCase() === SHARED_EMAIL) {
-    const listed = await (await fetch(`${p.url}/auth/v1/admin/users?page=1&per_page=1000`, { headers: admin })).json();
-    const shared = (listed.users || []).find((u) => (u.email || "").toLowerCase() === SHARED_EMAIL);
+    const shared = (await users(p).catch(() => [])).find((u) => (u.email || "").toLowerCase() === SHARED_EMAIL);
     if (shared) {
       await fetch(`${p.url}/auth/v1/admin/users/${shared.id}`, { method: "PUT", headers: admin, body: JSON.stringify({ password }) });
       reply = await grant();
@@ -213,14 +214,122 @@ export async function signInContext(context, email = TEST_EMAIL) {
 export async function deleteAccount(email) {
   const p = project();
   if (!p || !email || email === TEST_EMAIL) return false;
-  const listed = await (await fetch(`${p.url}/auth/v1/admin/users?page=1&per_page=1000`, {
-    headers: { apikey: p.secret, authorization: `Bearer ${p.secret}` },
-  })).json();
-  const user = (listed.users || []).find((u) => (u.email || "").toLowerCase() === email.toLowerCase());
-  if (!user) return false;
+  const user = (await users(p).catch(() => [])).find((u) => (u.email || "").toLowerCase() === email.toLowerCase());
+  return user ? removed(p, user) : false;
+}
+
+async function removed(p, user) {
   const gone = await fetch(`${p.url}/auth/v1/admin/users/${user.id}`, {
     method: "DELETE",
     headers: { apikey: p.secret, authorization: `Bearer ${p.secret}` },
+  }).catch(() => null);
+  return Boolean(gone?.ok);
+}
+
+/// Every account the project has, the admin list a page of 1,000 at a time.
+async function users(p) {
+  const all = [];
+  for (let page = 1; ; page++) {
+    const reply = await fetch(`${p.url}/auth/v1/admin/users?page=${page}&per_page=1000`, {
+      headers: { apikey: p.secret, authorization: `Bearer ${p.secret}` },
+    });
+    if (!reply.ok) throw new Error(`the admin list of accounts answered ${reply.status}`);
+    const listed = (await reply.json()).users || [];
+    all.push(...listed);
+    if (listed.length < 1000) return all;
+  }
+}
+
+// An account of the run's own.
+//
+// Brickworks limits what one account does in a short time (api/share.js
+// may_publish: 20 publishes an hour, 60 a day), and the shared test account
+// is one account. The four dialogs checks publish, and every unit's preview
+// and every train ran them, all as that account: from 2026-11-08 19:47Z
+// each was refused Share ("you have published a lot in a short time"). A
+// flow that spends such a limit signs in as an account of its own instead,
+// launch({ ownAccount: true }) (browser.mjs): at a Resend test address,
+// made and signed in by its password as the shared one is
+// (passwordSession), and deleted with everything of it when the run closes
+// its browser or is stopped (SIGINT, SIGTERM, SIGHUP). A run killed outright
+// leaves it behind, and the next run's sweep deletes it: the address names
+// the machine, the process and when that process started, so a run on the
+// same machine deletes one whose process has ended, and any run one over a
+// day old. Only these: other flows' throwaways are theirs to delete.
+const RUN_ADDRESS = /^delivered\+bw-flowrun-([0-9a-f]{6})-(\d+)-(\d+)-[0-9a-f]+@resend\.dev$/i;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const MACHINE = createHash("sha256").update(hostname()).digest("hex").slice(0, 6);
+
+/// When process [pid] started, in clock ticks since boot (the 22nd field
+/// of /proc/PID/stat), so another process given the same pid later is not
+/// taken for it; null when it has ended, or where there is no /proc.
+function started(pid) {
+  try {
+    const stat = readFileSync(`/proc/${pid}/stat`, "utf8");
+    return stat.slice(stat.lastIndexOf(")") + 2).split(" ")[19] || null;
+  } catch {
+    return null;
+  }
+}
+
+function running(pid, start) {
+  if (start !== "0") return started(pid) === start;
+  try {
+    process.kill(Number(pid), 0);
+    return true;
+  } catch (trouble) {
+    return trouble.code === "EPERM";
+  }
+}
+
+/// The address of an account of process [pid]'s own, on this machine.
+export function runAddress(pid = process.pid) {
+  return `delivered+bw-flowrun-${MACHINE}-${pid}-${started(pid) || "0"}-${randomBytes(3).toString("hex")}@resend.dev`;
+}
+
+/// Whether [user] is a run's own account its run left behind: made on this
+/// machine for a process that has ended, or made anywhere over a day ago.
+export function leftBehind(user, now = Date.now()) {
+  const named = RUN_ADDRESS.exec(String(user?.email || ""));
+  if (!named) return false;
+  const made = Date.parse(String(user.created_at || ""));
+  if (Number.isFinite(made) && now - made > DAY_MS) return true;
+  return named[1] === MACHINE && !running(named[2], named[3]);
+}
+
+let own = null;
+
+/// This run's own account's address, once earlier runs' left-behind ones
+/// are deleted. The account is made by its first sign-in (mintSession) and
+/// deleted by endOwnAccount, or when the run is stopped.
+export async function ownAccount() {
+  if (own) return own.email;
+  const p = project();
+  if (!p) throw new Error("no SUPABASE_URL / SUPABASE_SECRET_KEY / SUPABASE_PUBLISHABLE_KEY — source .env");
+  try {
+    let swept = 0;
+    for (const user of await users(p)) if (leftBehind(user) && await removed(p, user)) swept += 1;
+    if (swept) console.log(`  (deleted ${swept} account(s) of earlier runs, left behind when they were killed)`);
+  } catch (trouble) {
+    console.log(`  (earlier runs' accounts not swept: ${trouble.message})`);
+  }
+  own = { email: runAddress(), ended: null };
+  for (const [signal, code] of [["SIGINT", 130], ["SIGHUP", 129], ["SIGTERM", 143]]) {
+    process.once(signal, () => {
+      setTimeout(() => process.exit(code), 20000).unref();
+      endOwnAccount().finally(() => process.exit(code));
+    });
+  }
+  return own.email;
+}
+
+/// This run's own account deleted, with everything of it; once, however
+/// often asked.
+export function endOwnAccount() {
+  if (!own) return Promise.resolve(false);
+  own.ended ||= deleteAccount(own.email).then((gone) => {
+    console.log(`  (this run's own account ${gone ? "deleted" : "not deleted: the next run's sweep will"}, ${own.email})`);
+    return gone;
   });
-  return gone.ok;
+  return own.ended;
 }
