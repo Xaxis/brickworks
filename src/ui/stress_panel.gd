@@ -34,9 +34,12 @@ const SAFE := Color(0.78, 0.76, 0.72)
 var view: StressView
 ## Main's: [param ids] selected, and framed with [param around] (part ids).
 var show_part: Callable = func(_ids: Array, _around: Array) -> void: pass
-## Main's: what finds a joint's fix and puts it down; null where the panel
-## has no model to change.
-var fixer: Strengthen = null
+## Main's: makes what finds a joint's fix and puts it down (Strengthen,
+## one of Later's, compiled the first time a fix is looked for); none where
+## the panel has no model to change.
+var make_fixer: Callable = Callable()
+## What [member make_fixer] made ([method fixer_now]).
+var fixer: RefCounted = null
 ## Main's: called once a fix is down, as after an edit by hand.
 var edited: Callable = func() -> void: pass
 ## Main's: what the person owns, "part/colour" -> count
@@ -44,7 +47,7 @@ var edited: Callable = func() -> void: pass
 var owned: Callable = func() -> Dictionary: return {}
 ## The fix for the one stepped to, once found; null while it is looked for,
 ## or when there is none.
-var fix: Strengthen.Fix = null
+var fix: RefCounted = null
 
 ## What is listed, worst first (StressView.Weak), and the one stepped to,
 ## -1 for none.
@@ -184,7 +187,7 @@ func _say_chosen() -> void:
 ## Look for [param one]'s fix, past its working load or near it: the one
 ## found for it is kept while the model is as it was.
 func _look_for_fix(one: StressView.Weak) -> void:
-	var wanted: bool = fixer != null and view != null and view.report != null \
+	var wanted: bool = make_fixer.is_valid() and view != null and view.report != null \
 		and one.margin < StressView.CLOSE
 	var theirs: Dictionary = owned.call() if wanted else {}
 	_mine.visible = wanted and not theirs.is_empty()
@@ -201,9 +204,10 @@ func _look_for_fix(one: StressView.Weak) -> void:
 	_finding = true
 	_offer.text = "Looking for the fewest parts that make it hold…"
 	_strengthen.disabled = true
+	fixer_now()
 	fixer.scenery = view.scenery
 	fixer.owned = theirs if _mine.visible and _mine.button_pressed else {}
-	var found: Strengthen.Fix = await fixer.find(view.report, one)
+	var found: RefCounted = await fixer.find(view.report, one)
 	if asked != _looking:
 		return
 	_finding = false
@@ -213,7 +217,7 @@ func _look_for_fix(one: StressView.Weak) -> void:
 			"brace it by hand." if one.joint != null else "hold it with studs by hand.")
 		_fit_later()
 		return
-	_offer.text = "Strengthen adds %s. %s.%s" % [found.what, Strengthen.held_words(found),
+	_offer.text = "Strengthen adds %s. %s.%s" % [found.what, Later.script(&"Strengthen").held_words(found),
 		"" if fixer.owned.is_empty() else (" All from your bricks." if found.mine
 			else " Not all from your bricks: you have none of one left.")]
 	_strengthen.disabled = false
@@ -221,11 +225,19 @@ func _look_for_fix(one: StressView.Weak) -> void:
 	_fit_later()
 
 
+## The Strengthen that finds the fixes, made the first time one is wanted;
+## null where the panel has none.
+func fixer_now() -> RefCounted:
+	if fixer == null and make_fixer.is_valid():
+		fixer = make_fixer.call()
+	return fixer
+
+
 ## Put the fix down, one step to undo, and the parts it adds selected.
 func strengthen() -> void:
 	if fix == null or fixer == null:
 		return
-	var put: Strengthen.Fix = fix
+	var put: RefCounted = fix
 	var made: PackedInt64Array = fixer.place(put)
 	_forget_fix()
 	if made.is_empty():
@@ -242,12 +254,12 @@ func strengthen() -> void:
 	edited.call()
 
 
-func _show_ghost(found: Strengthen.Fix) -> void:
+func _show_ghost(found: RefCounted) -> void:
 	if _ghost == null:
 		_ghost = MeshInstance3D.new()
 		_ghost.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		fixer.builder.add_child(_ghost)
-	_ghost.mesh = Strengthen.ghost_mesh(found.parts, view.library)
+	_ghost.mesh = Later.script(&"Strengthen").ghost_mesh(found.parts, view.library)
 	_ghost.visible = true
 
 

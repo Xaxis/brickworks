@@ -5799,11 +5799,13 @@ func _build_ui() -> void:
 	_shell.stress.panel.show_part = _show_weak
 	# Its Strengthen: the fewest parts that make a weak joint hold, found and
 	# put down as one step, from the person's own parts when asked.
-	var fixer := Strengthen.new()
-	fixer.world = _world
-	fixer.library = _library
-	fixer.builder = _builder
-	_shell.stress.panel.fixer = fixer
+	# Made the first time a fix is looked for, as Later's classes are.
+	_shell.stress.panel.make_fixer = func() -> RefCounted:
+		var fixer: RefCounted = Later.make(&"Strengthen") as RefCounted
+		fixer.world = _world
+		fixer.library = _library
+		fixer.builder = _builder
+		return fixer
 	_shell.stress.panel.edited = _on_model_edited
 	_shell.stress.panel.owned = func() -> Dictionary:
 		return _shell.collection_store.on_hand if _shell.collection_store != null else {}

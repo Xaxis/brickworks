@@ -4856,7 +4856,7 @@ func _weakest_joints(input: Dictionary) -> String:
 func _strengthen_words(report: Stability.Report, input: Dictionary) -> String:
 	var shell: Shell = app.get("_shell")
 	var panel: StressPanel = shell.stress.panel if shell != null and shell.stress != null else null
-	var fixer: Strengthen = panel.fixer if panel != null else null
+	var fixer: RefCounted = panel.fixer_now() if panel != null else null
 	if fixer == null:
 		return ""
 	var store: ModelStore = app.get("_store")
@@ -4882,7 +4882,7 @@ func _strengthen_words(report: Stability.Report, input: Dictionary) -> String:
 	var revision: int = world.revision
 	var given: Dictionary = {}
 	for one: StressView.Weak in wanted:
-		var fix: Strengthen.Fix = await fixer.find(report, one)
+		var fix: RefCounted = await fixer.find(report, one)
 		if world.revision != revision:
 			lines.append("  The model changed while its fixes were looked for; ask again.")
 			break
@@ -4896,7 +4896,7 @@ func _strengthen_words(report: Stability.Report, input: Dictionary) -> String:
 			continue
 		given[call] = one.id
 		lines.append("  #%d: %s. %s.%s Call edit_model %s" % [one.id, fix.what,
-			Strengthen.held_words(fix), "" if theirs.is_empty() else (" All from your bricks."
+			Later.script(&"Strengthen").held_words(fix), "" if theirs.is_empty() else (" All from your bricks."
 				if fix.mine else " Not all from your bricks: you have none of one left."), call])
 	return "\n" + "\n".join(lines)
 
@@ -4904,7 +4904,7 @@ func _strengthen_words(report: Stability.Report, input: Dictionary) -> String:
 ## The edit_model input that puts [param fix]'s parts down where Strengthen
 ## would: each by its low corner in studs and plates, its face and its turn,
 ## as edit_model reads a part added (Assistant._square_transform).
-func _fix_call(fix: Strengthen.Fix) -> String:
+func _fix_call(fix: RefCounted) -> String:
 	if assistant == null:
 		return "(no call: this app has no assistant to make it)"
 	var library: PartLibrary = app.get("_library")

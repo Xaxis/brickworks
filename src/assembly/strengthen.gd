@@ -61,6 +61,7 @@ const STACKS := {
 ## A friction pin, as Technic builders brace a beam with a second.
 const PIN := "2780"
 const PIN_COLOUR := 0
+const GHOST := preload("res://src/render/ghost.gdshader")
 const GHOST_THROUGH := preload("res://src/render/ghost_through.gdshader")
 
 var world: BrickWorld
@@ -189,7 +190,7 @@ static func ghost_mesh(parts: Array, from: PartLibrary) -> ArrayMesh:
 	for code: int in by_colour:
 		(by_colour[code] as SurfaceTool).commit(mesh)
 		var material := ShaderMaterial.new()
-		material.shader = Pattern.GHOST_SHADER
+		material.shader = GHOST
 		material.set_shader_parameter("tint", from.color(code).shown)
 		material.set_shader_parameter("valid", true)
 		var through := ShaderMaterial.new()
