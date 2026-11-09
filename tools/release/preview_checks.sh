@@ -337,8 +337,9 @@ declare -A CMD=(
   # with the beta off, as every release's is, no bar on any page and no
   # Open beta on the homepage, and the bar's script not asked for again;
   # open (a unit's --beta-open), signed out, the bar on every page at 390
-  # and 1280, hidden for a day by its x, Join and Report a bug each opening
-  # their dialog, the homepage's Sign up and join and /beta's hub. Reads only.
+  # and 1280, hidden for a day by its x, Join opening the hub's way in beside
+  # the terms, Report a bug its dialog, the homepage's Sign up and join and
+  # /beta's hub. Reads only.
   [betahome]="tools/web/betahome_flow.mjs --url=$P --out=$S/${TAG}_betahome"
   # Feedback (beta374): the /feedback page, the footer's and the account
   # menu's Send feedback, the dialog on the site at 390 and 1280 (a picture
