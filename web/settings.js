@@ -11,7 +11,7 @@
 // word goes on the page as text, never as markup. Each part asks for its
 // own and draws what came, so one that cannot be read leaves the others.
 import {
-  age, askAgeIfAsked, askToSignIn, call, email, madeUp, orangecheckButton, redeem, sendCode, signOut, signedIn,
+  age, askAgeIfAsked, askToSignIn, betaOpen, call, email, madeUp, orangecheckButton, redeem, sendCode, signOut, signedIn,
 } from "/account.js";
 import { langAt, say, told } from "/card.js";
 import { showFeedCount } from "/follow.js";
@@ -321,9 +321,11 @@ async function load() {
     document.documentElement.dataset.settings = "signed-out";
     return;
   }
-  const parts = Promise.all([orangecheck().catch(() => null), claude().catch(() => null), feedback().catch(() => null),
-    beta().catch(() => drawBeta(null))]);
   const ageNow = age().catch(() => null);
+  // The beta's row only while the account says the beta is open: with it
+  // off the page asks nothing of /api/plans, as before (billing_flow).
+  const parts = Promise.all([orangecheck().catch(() => null), claude().catch(() => null), feedback().catch(() => null),
+    ageNow.then(() => (betaOpen() ? beta() : drawBeta(null))).catch(() => drawBeta(null))]);
   const answer = await call("/api/people?op=me");
   if (answer.status === 401) {
     signOut();

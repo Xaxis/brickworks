@@ -346,10 +346,20 @@ try {
     check(`a new account signed in by the dialog is not welcomed: ${next}`, next !== "welcome"
       && !(await page.$("dialog.beta-welcome")));
     await page.keyboard.press("Escape");
+    // Off, Settings asks nothing of the beta: billing_flow holds a page with
+    // plans off to asking nothing of /api/plans but its feedback.
+    const asked = [];
+    page.on("request", (one) => {
+      const url = new URL(one.url());
+      if (url.pathname.startsWith("/api/plans")) asked.push(url.pathname + url.search);
+    });
     await page.goto(`${offSite}/settings`, { waitUntil: "load" });
     await settingsReady(page);
+    await page.waitForTimeout(1000);
     const row = await rowSaid(page);
     check(`Settings has no Beta row: shown ${row.shown}, in the contents ${row.toc}`, !row.shown && !row.toc);
+    const ofBeta = asked.filter((one) => /[?&]op=beta/.test(one));
+    check(`...and asked nothing of the beta: ${ofBeta.join(" ") || "nothing"}`, ofBeta.length === 0);
     const token = await tokenOf(page);
     const join = await api(offSite, "/api/plans?op=beta_join", { method: "POST", token, body: { via: "settings" } });
     check(`op=beta_join refused: ${join.status} ${JSON.stringify(join.json)}`, join.status === 403 && join.json?.beta === "off");

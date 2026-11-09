@@ -579,6 +579,12 @@ export async function age() {
   return said.signed_in && said.age ? said.age : null;
 }
 
+/// Whether the last age() heard the beta is open for this account: a page
+/// asks nothing more of the beta when it is not (billing_flow, beta off).
+export function betaOpen() {
+  return beta?.open === true;
+}
+
 /// The beta's welcome (web/beta-welcome.js), when the server says it is
 /// due: the beta open, a new account, not asked yet. Once a page.
 async function welcomeIfDue() {
