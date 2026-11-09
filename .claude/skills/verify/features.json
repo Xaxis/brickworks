@@ -549,6 +549,14 @@
       "tests": []
     },
     {
+      "id": "cli:binrow probe",
+      "kind": "cli",
+      "entry": "src/dev/binrow_probe.gd",
+      "reach": "tools/probe.sh binrow_probe -- --shots=DIR   (windowed, 1400x900, signed in through the gate with a throwaway account from .env: at 1400x900, 1280x720 and 1024x768, as first opened and with Stress, the assistant, a part's properties and the bin open, the eight shelves inside the chips' window unscrolled; 42 parts at 1400x900; the walk's Like this Plate 2 x 4 seventh at 1400x900 and 1280x720; New's list against the catalogue's years); tools/probe.sh binrow_phone_probe (390x844) and binrow_tablet_probe (1024x768)",
+      "area": "parts",
+      "tests": []
+    },
+    {
       "id": "cli:booklet safe probe",
       "kind": "cli",
       "entry": "src/dev/booklet_safe_probe.gd",
@@ -5083,6 +5091,14 @@
       "entry": "src/camera/view_prefs.gd",
       "reach": "godot --path .  (Settings, Navigate like: Studio, Blender or Mecabricks; then drag with each button)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:new parts in the bin",
+      "kind": "ui",
+      "entry": "src/ui/parts_bin.gd",
+      "reach": "godot --path .  (New among the bin's shelves, after Palettes: the parts first made in the catalogue's latest two years, the newest first; words typed narrow it. Every shelf, All to Like this, in sight at any width, their counts left off where that saves a row)",
+      "area": "parts",
       "tests": []
     },
     {
