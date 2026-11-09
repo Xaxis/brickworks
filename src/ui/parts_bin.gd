@@ -1203,25 +1203,38 @@ func _mark_swatches() -> void:
 	if library == null:
 		return
 	var info: PartLibrary.PartInfo = _subject()
+	# A part's sets in each colour come a file at a time on the web: the
+	# tooltips are said again when its file is in.
+	if not library.colour_sets_came.is_connected(_mark_swatches):
+		library.colour_sets_came.connect(_mark_swatches)
 	for code: int in _swatches:
 		var swatch: Swatch = _swatches[code]
 		var made: int = 0
+		var sets: int = library.sets_in_colour(info.id, code) if info != null else -1
 		if info != null and info.availability_known():
 			if info.colors.has(code):
 				made = 1
 			elif info.never_made_in(code):
 				made = -1
+		# A set that has it is the proof the join lacked: 7049b's black is
+		# in 108 sets, and its colour list said it was never made in it.
+		if made < 0 and sets > 0:
+			made = 1
 		if swatch.made_in != made:
 			swatch.made_in = made
 			swatch.queue_redraw()
-		swatch.tooltip_text = _swatch_tip(swatch.color, info, made)
+		swatch.tooltip_text = _swatch_tip(swatch.color, info, made, sets)
 		swatch.accessibility_description = swatch.tooltip_text.trim_prefix(swatch.color.name) \
 			.strip_edges()
 	_say_colour()
 
 
+## [param sets]: in how many sets the part comes in the colour
+## (PartLibrary.sets_in_colour), said after "comes in it", and three or
+## fewer as rare in it (rarity). None said for 0, which is silence, or -1,
+## still to come.
 func _swatch_tip(color: PartLibrary.BrickColor, info: PartLibrary.PartInfo,
-		made: int) -> String:
+		made: int, sets: int = -1) -> String:
 	var tip: String = "%s (%d), %s" % [color.name, color.code, color.finish_name()]
 	if not library.is_current(color.code) and library.recent_since > 0:
 		if library.colour_use(color.code).y > 0:
@@ -1229,7 +1242,13 @@ func _swatch_tip(color: PartLibrary.BrickColor, info: PartLibrary.PartInfo,
 		else:
 			tip += "\nin no set inventory"
 	if info != null:
-		if made > 0:
+		if sets > PartLibrary.RARE_IN:
+			tip += "\n%s comes in it, in %s sets" % [info.id, Working.comma(sets)]
+		elif sets == 1:
+			tip += "\n%s comes in it, in 1 set: rare in this colour" % info.id
+		elif sets > 0:
+			tip += "\n%s comes in it, in %d sets: rare in this colour" % [info.id, sets]
+		elif made > 0:
 			tip += "\n%s comes in it" % info.id
 		elif made < 0:
 			tip += "\n%s was never made in it" % info.id

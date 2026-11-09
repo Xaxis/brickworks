@@ -4980,6 +4980,20 @@
       "entry": "tools/web/fetchparts_flow.mjs",
       "reach": "node tools/web/fetchparts_flow.mjs --url=http://127.0.0.1:9821 [--base=http://127.0.0.1:9822 --rounds=2] [--house=H0useFl0w1] --out=DIR   (after tools/export.sh web and tools/web/serve.py build/web 9821 --parts assets/generated/parts --delay 0 --compressed --share F3tchP4rts=vendor/omr/files/42022-1_Rally-Racer.mpd --share H0useFl0w1=HOUSE (play_flow.mjs --write-house=HOUSE), and the build before likewise on 9822; local only: no part file by the engine's HTTPRequest, both whole, each longest frame no longer than the base's, the car's shapes in half the base's time)",
       "area": "parts"
+    },
+    {
+      "kind": "ui",
+      "label": "rare colours in the bin",
+      "entry": "src/ui/parts_bin.gd",
+      "reach": "godot --path .  (a part in hand, a swatch's tooltip says in how many sets it comes in that colour, \"3001 comes in it, in 1,011 sets\", and \"rare in this colour\" in three sets or fewer: PartLibrary.sets_in_colour, from assets/generated/sets/colours_NN.json, fetched from the deployment's /sets/ on the web)",
+      "area": "parts"
+    },
+    {
+      "kind": "cli",
+      "label": "rarity probe",
+      "entry": "src/dev/rarity_probe.gd",
+      "reach": "tools/probe.sh rarity_probe -- --shots=DIR   (windowed, 1400x900, signed in through the gate with a throwaway account from .env: at 1400x900 and 1280x720, 3001 typed and clicked, Red's and a rare colour's tooltips rested on and read against its colours file, every swatch in sight, 7049b's Black; the three sentences in de, fr and es); python3 tools/minitest.py tests/test_collection.py (ten parts in a colour counted straight off Rebrickable's tables)",
+      "area": "parts"
     }
   ]
 }

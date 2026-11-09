@@ -12931,3 +12931,15 @@ msgstr "Les pièces fabriquées pour la première fois en %d ou %d, les plus ré
 
 msgid "%s first made in %d or %d, the newest first"
 msgstr "%s fabriquées pour la première fois en %d ou %d, les plus récentes d'abord"
+
+# A colour's swatch: in how many sets the part comes in it, and rare in it
+# in three or fewer (APP_UX7 #21, rarity).
+
+msgid "%s comes in it, in %s sets"
+msgstr "%s existe dans cette couleur, dans %s sets"
+
+msgid "%s comes in it, in 1 set: rare in this colour"
+msgstr "%s existe dans cette couleur, dans 1 set : rare dans cette couleur"
+
+msgid "%s comes in it, in %d sets: rare in this colour"
+msgstr "%s existe dans cette couleur, dans %d sets : rare dans cette couleur"
