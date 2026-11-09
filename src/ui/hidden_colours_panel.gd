@@ -283,6 +283,13 @@ func refresh() -> void:
 		return
 	_status.text = "Drawing the inside…"
 	var drawn: Array = await pictures(plan)
+	# Closed while they were drawn: close let the plan go, so nothing is
+	# shown, and opened again meanwhile, it is worked out again.
+	if plan == null:
+		_working = false
+		if _again and visible:
+			await refresh()
+		return
 	before = drawn[0]
 	after = drawn[1]
 	_before_rect.texture = ImageTexture.create_from_image(before) if before != null else null

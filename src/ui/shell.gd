@@ -462,6 +462,9 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	add_child(guard)
 	# And names for the parts of Godot's own dialogs it leaves unnamed.
 	add_child(Access.new())
+	# And the window's tree whole, as it is drawn, where the engine tells it
+	# otherwise: src/ui/access_tree.gd.
+	add_child(AccessTree.new())
 
 	_save_as = ConfirmationDialog.new()
 	_save_as.title = "Save as"
