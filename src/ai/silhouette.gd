@@ -54,6 +54,11 @@ const LARGEST := 20.0
 ## a 37th, and a stud is the least a width can change by.
 const OFF_HEIGHT := 2.0 * PLATE
 const OFF_WIDTH := 0.75 * STUD
+## Each sample reads the model's outline over this many cells either side
+## (a fifth of a stud across, half a plate up), as an eye reads a photograph:
+## one cell row through an open frame or past a plate-thin wing read nothing
+## there, and the London skyline's lattice read 8 studs narrow at one tenth.
+const BAND := 2
 ## The runs over the line said, largest first.
 const RUNS_SAID := 5
 ## A reading laid the other way round is taken as meant when it fits this
@@ -340,11 +345,10 @@ static func reading_of(outline: Outline, mode: String, count: int = 11) -> Dicti
 	for n: int in count:
 		var at: int = _at(span, float(n) / float(count - 1))
 		if mode == "heights":
-			values.append(snappedf(float(maxi(0, outline.top[at])) * CELL / whole, 0.001))
-			lows.append(snappedf(float(maxi(0, outline.bottom[at])) * CELL / whole, 0.001))
+			values.append(snappedf(_top_near(outline, at, span) * CELL / whole, 0.001))
+			lows.append(snappedf(_bottom_near(outline, at, span) * CELL / whole, 0.001))
 		else:
-			var wide: int = outline.right[at] - outline.left[at] if outline.left[at] >= 0 else 0
-			values.append(snappedf(float(wide) * CELL / whole, 0.001))
+			values.append(snappedf(_width_near(outline, at, span) * CELL / whole, 0.001))
 	said[mode] = values
 	if mode == "heights":
 		said["bottoms"] = lows
@@ -368,6 +372,43 @@ static func _span(outline: Outline, mode: String) -> Vector2i:
 ## The cell a share of the span reads.
 static func _at(span: Vector2i, share: float) -> int:
 	return clampi(span.x + roundi(share * float(span.y - span.x)), span.x, span.y)
+
+
+## The highest top of the columns within [constant BAND] of column [param at],
+## in cells.
+static func _top_near(outline: Outline, at: int, span: Vector2i) -> float:
+	var most: int = 0
+	for c: int in range(maxi(span.x, at - BAND), mini(span.y, at + BAND) + 1):
+		most = maxi(most, outline.top[c])
+	return float(most)
+
+
+## The lowest underside of the filled columns within [constant BAND] of
+## column [param at], in cells.
+static func _bottom_near(outline: Outline, at: int, span: Vector2i) -> float:
+	var least: int = -1
+	for c: int in range(maxi(span.x, at - BAND), mini(span.y, at + BAND) + 1):
+		if outline.bottom[c] >= 0:
+			least = outline.bottom[c] if least < 0 else mini(least, outline.bottom[c])
+	return float(maxi(0, least))
+
+
+## The leftmost column and the column past the rightmost of the filled rows
+## within [constant BAND] of row [param at]; x -1 when none is filled.
+static func _across_near(outline: Outline, at: int, span: Vector2i) -> Vector2i:
+	var left: int = -1
+	var right: int = 0
+	for r: int in range(maxi(span.x, at - BAND), mini(span.y, at + BAND) + 1):
+		if outline.left[r] >= 0:
+			left = outline.left[r] if left < 0 else mini(left, outline.left[r])
+			right = maxi(right, outline.right[r])
+	return Vector2i(left, right)
+
+
+## The width across those rows, leftmost to rightmost, in cells.
+static func _width_near(outline: Outline, at: int, span: Vector2i) -> float:
+	var across: Vector2i = _across_near(outline, at, span)
+	return float(across.y - across.x) if across.x >= 0 else 0.0
 
 
 ## [param reading] laid over [param outline]: the samples, the runs over the
@@ -405,14 +446,12 @@ static func _laid(outline: Outline, reading: Reading, reversed: bool) -> Compari
 		sample.cell = _at(span, share)
 		sample.outline = reading.values[read_at] * laid.span
 		if reading.mode == "heights":
-			sample.model = float(maxi(0, outline.top[sample.cell])) * CELL
+			sample.model = _top_near(outline, sample.cell, span) * CELL
 			if not reading.bottoms.is_empty():
-				sample.model_low = float(maxi(0, outline.bottom[sample.cell])) * CELL
+				sample.model_low = _bottom_near(outline, sample.cell, span) * CELL
 				sample.outline_low = reading.bottoms[read_at] * laid.span
 		else:
-			var row: int = sample.cell
-			sample.model = float(outline.right[row] - outline.left[row]) * CELL \
-				if outline.left[row] >= 0 else 0.0
+			sample.model = _width_near(outline, sample.cell, span) * CELL
 		laid.samples.append(sample)
 	return laid
 
@@ -667,9 +706,10 @@ static func picture(laid: Comparison) -> Image:
 			if one.outline_low >= 0.0:
 				lows.append(Vector2(x, origin.y - one.outline_low / CELL * px))
 		else:
+			var across: Vector2i = _across_near(outline, one.cell, Vector2i(laid.first, laid.last))
 			var r: int = one.cell
-			var middle: float = float(outline.left[r] + outline.right[r]) * 0.5 \
-				if outline.left[r] >= 0 else float(outline.cols) * 0.5
+			var middle: float = float(across.x + across.y) * 0.5 \
+				if across.x >= 0 else float(outline.cols) * 0.5
 			var y: float = origin.y - (float(r) + 0.5) * px
 			points.append(Vector2(origin.x + (middle - one.outline / CELL * 0.5) * px, y))
 			lows.append(Vector2(origin.x + (middle + one.outline / CELL * 0.5) * px, y))

@@ -80,6 +80,7 @@ func _run() -> void:
 	_ok(_reversed >= 3, "%d of the 5 sets' heights, given the other way round, were laid reversed"
 		% _reversed)
 	await _readings_refused()
+	await _band()
 	await _session_path()
 	await _review_of_a_set()
 	print("\n%s" % ("all passed" if _failures == 0 else "%d FAILED" % _failures))
@@ -237,6 +238,52 @@ func _readings_refused() -> void:
 		0.1], "above": 2, "picture": "Car side.jpg"})
 	_ok(ok.error.is_empty() and ok.side == "left" and ok.mode == "heights" and ok.above == 2.0
 		and ok.values.size() == 5, "a good reading is read: its side, its heights, above= 2")
+
+
+## A wing a plate thin, lying between two samples' rows, is read by the
+## samples within half a plate of it, as an eye reads a photograph at a tenth
+## of the height: a single cell row read nothing of it, and the London
+## skyline's open frame read 8 studs narrow at one tenth.
+func _band() -> void:
+	print("\na plate-thin wing between two samples' rows is read by those near it")
+	_world.clear()
+	_builder.lattice.clear()
+	for level: int in 5:
+		_place_at("3003", 1, Vector3i(0, level * 12, 0))
+	var bare: Silhouette.Outline = Silhouette.of_bricks(_world.bricks(), _builder, _library,
+		"front")
+	var column: Dictionary = Silhouette.reading_of(bare, "widths")
+	var span := Vector2i(0, bare.rows - 1)
+	var rows: Array[int] = []
+	for n: int in 11:
+		rows.append(Silhouette._at(span, float(n) / 10.0))
+	# The first plate's place just over a sample's row with no sample's row in it.
+	var wing: int = -1
+	for n: int in range(1, 10):
+		for gap: int in [1, 2]:
+			var low: int = rows[n] + gap
+			if wing >= 0 or posmod(low + bare.floor_cells, 4) != 0:
+				continue
+			if rows.all(func(r: int) -> bool: return r < low or r > low + 3):
+				wing = low
+	var id: int = _place_at("3666", 4, Vector3i(-20, wing + bare.floor_cells, 0)) if wing >= 0 else 0
+	var laid: Silhouette.Comparison = Silhouette.compare(Silhouette.of_bricks(_world.bricks(),
+		_builder, _library, "front"), Silhouette.read(column))
+	var near: Array[int] = []
+	var read: Array[float] = []
+	for n: int in 11:
+		if rows[n] >= wing - Silhouette.BAND and rows[n] <= wing + 3 + Silhouette.BAND:
+			near.append(n)
+			read.append(laid.samples[n].model / STUD)
+	var single: int = laid.outline.right[rows[near[0]]] - laid.outline.left[rows[near[0]]] \
+		if not near.is_empty() else 0
+	_ok(id != 0 and not near.is_empty() and read.all(func(w: float) -> bool: return w == 6.0)
+		and single * 2 == int(2 * STUD),
+		"the wing at rows %d to %d, between samples' rows %s: samples %s read %s studs wide, where their own row reads %s"
+		% [wing, wing + 3, str(rows), str(near), str(read), Silhouette._n(float(single) * 2.0 / STUD)])
+	var words: String = Silhouette.said(laid)
+	_ok(laid.runs.size() == 1 and words.contains("4 studs wider than the outline"),
+		"...and laid over the column without it, it is said: %s" % _line_with(words, "wider"))
 
 
 ## The path a session takes: build, whole review, outline, build again.
