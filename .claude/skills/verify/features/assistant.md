@@ -3,7 +3,7 @@
 Turning a sentence into a model that holds together, then looking at it and
 fixing what it got wrong.
 
-<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, cli:design frame probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints, lib:best of two, cli:best of two probe, cli:best of two walk probe, lib:fresh eyes at the first save, cli:fresh eyes probe, lib:designing with any provider on the person's key, cli:design with another provider from a brief, cli:provider loop probe, ui:choose the AI that designs, cli:ai settings probe, lib:designing on Anthropic's Messages or Gemini's own API, cli:provider apis probe, lib:designing on OpenAI's Responses, lib:saying who designs, cli:designer words probe, lib:a design drawn as any provider writes it, cli:test designs on the owner's own ideas, ui:connect your AI, cli:connect any probe, lib:a person's own keys kept in the system's keychain, cli:keychain probe, cli:a keyring of a run's own, cli:key leak probe -->
+<!-- covers: lib:design loop, lib:a big check on a worker, cli:design from a brief, cli:measure how a model is built, cli:score designs on the bench, cli:judge design rounds in pairs, lib:model and effort settings, lib:reference pictures, lib:shapes said as patterns, lib:worked constructions, lib:find a reference picture, lib:real sets' pieces by what they are, lib:recall our own scored designs, cli:run the designer on BrickBench, cli:test designs against real sets, lib:keep a run to a list of parts, lib:the surface pass, ui:ask claude about the selection, ui:sketch first, lib:claude's design is one undo step, cli:design undo probe, cli:design frame probe, lib:the check by real shapes, lib:placing a part by its connectors, lib:figures told of their joints, lib:characters laid on joints, lib:best of two, cli:best of two probe, cli:best of two walk probe, lib:fresh eyes at the first save, cli:fresh eyes probe, lib:the silhouette laid over the real thing's, cli:silhouette probe, lib:designing with any provider on the person's key, cli:design with another provider from a brief, cli:provider loop probe, ui:choose the AI that designs, cli:ai settings probe, lib:designing on Anthropic's Messages or Gemini's own API, cli:provider apis probe, lib:designing on OpenAI's Responses, lib:saying who designs, cli:designer words probe, lib:a design drawn as any provider writes it, cli:test designs on the owner's own ideas, ui:connect your AI, cli:connect any probe, lib:a person's own keys kept in the system's keychain, cli:keychain probe, cli:a keyring of a run's own, cli:key leak probe -->
 
 ## Sub-features
 
@@ -129,6 +129,28 @@ fixing what it got wrong.
   `fresh eyes: the session's own final look (N refused): {...}`.
   `fresh_eyes_probe` chats c14 (Claude Code here, the pass a save hands over),
   c16 and c17 (none, the pass asked for, and before the first look).
+- `the silhouette laid over the real thing's`: `src/ai/silhouette.gd`
+  (`Silhouette`, design20). A session gives review_model `outline=` (its schema
+  in `CommandSocket._socket_tools`, read by `Silhouette.read`, a wrong one
+  answered `Not read: ...` and nothing else done): the side of its model a
+  photograph of the real thing shows (`from`: front, back, left, right; the
+  front is +z), and `heights` (the top at each tenth of the length, left to
+  right as the photograph shows it, shares of the length) with `bottoms`
+  optional, or `widths` (each tenth of the height, shares of the height), and
+  `above` to leave a display base out. The model's outline from that side is
+  its parts' lattice covers (`of_bricks`, headless, no graphics card), read at
+  the same places at the model's own length or height (`compare`); a reading
+  that fits far better the other way round is laid so and says the other
+  `from`. The answer (`said`) names each run of samples two plates (a stud
+  across) or more off, largest first, at its tenths and the model's x or z
+  (or plates up), then every sample; the picture (`picture`) is the model's
+  elevation in its colours with the outline in red, orange stripes past it,
+  blue stripes short of it. It leads the whole review (`Assistant.review`,
+  `_outline_first`) and every design's submit_design answer after
+  (`_built_from_outside`); with none read, the first build's next steps and the
+  first whole review ask for it once (`OUTLINE_ASK`); a new design on a bare
+  baseplate is read again. `silhouette_probe` (headless; `--shots=DIR` keeps
+  the pictures).
 - `designing with any provider on the person's key`: `src/ai/designer_loop.gd`
   (`DesignerLoop`), `src/ai/provider.gd` (the adapter's shape and the
   transcript), `src/ai/openai_chat.gd` (Chat Completions: every server that

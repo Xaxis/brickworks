@@ -1135,7 +1135,9 @@ func _socket_tools() -> Array:
 				+ "designer does after a design stands: with no assembly, the "
 				+ "whole model measured against real LEGO® sets of its size and "
 				+ "kind — shapes, colours, the one-off pieces, how coarse — and "
-				+ "what to check it for; with an assembly named in "
+				+ "what to check it for, led by your model's outline from one side laid "
+				+ "over the real thing's when outline= gives it, read off a photograph "
+				+ "(it leads each submit_design after too); with an assembly named in "
 				+ "submit_design, that one close up, measured, with the parts "
 				+ "real sets of the kind use that it has none of; with a feature "
 				+ "(eyes, beak, wheel arches, grille), the best real set's piece "
@@ -1164,6 +1166,34 @@ func _socket_tools() -> Array:
 						+ "assemblies have had their turns"},
 					"creative": {"type": "boolean", "description":
 						"true for the creative pass, after the surface pass"},
+					"outline": {"type": "object", "description": ("the real thing's "
+						+ "silhouette, read off a photograph of it (find_reference) taken "
+						+ "square from one side, before you look at your model's: the app "
+						+ "lays your model's outline from that side over it, at your model's "
+						+ "length (or height), and says where they differ in studs and plates, "
+						+ "here and at each submit_design"),
+						"properties": {
+							"from": {"type": "string", "enum": ["front", "back", "left", "right"],
+								"description": "the side of your model the photograph shows; the front is +z"},
+							"heights": {"type": "array", "items": {"type": "number"},
+								"description": ("the top's height at each tenth of its length, "
+									+ "left to right as the photograph shows it, as shares of "
+									+ "that length: 11 numbers (a car's roof about 0.25)")},
+							"bottoms": {"type": "array", "items": {"type": "number"},
+								"description": ("with heights: the underside's height at the "
+									+ "same places, shares of the length (a plane's belly, a "
+									+ "car's sills; 0 where it meets the ground)")},
+							"widths": {"type": "array", "items": {"type": "number"},
+								"description": ("for a tall thing, instead of heights: its "
+									+ "width at each tenth of its height, ground to top, as "
+									+ "shares of that height: 11 numbers")},
+							"above": {"type": "number", "description": ("plates up where the "
+								+ "thing starts, to leave a display base out; 0 when omitted")},
+							"picture": {"type": "string", "description":
+								"the photograph's title, as find_reference named it"},
+						},
+						"required": ["from"],
+						"additionalProperties": false},
 				},
 				"additionalProperties": false,
 			},
@@ -1245,7 +1275,8 @@ func _run_own(tool: String, input: Dictionary) -> Variant:
 		if bool(input.get("surface", false)):
 			return await assistant.surface_review()
 		return await assistant.review(str(input.get("assembly", "")),
-			str(input.get("feature", "")), bool(input.get("creative", false)))
+			str(input.get("feature", "")), bool(input.get("creative", false)),
+			input.get("outline"))
 	# Not until its features are settled: saving handed the next one back
 	# only after the file was written, and every session then ended.
 	if tool == "save_model" and assistant != null:
