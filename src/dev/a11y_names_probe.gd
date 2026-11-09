@@ -145,7 +145,9 @@ func _run() -> void:
 	await _frames(6)
 	_walk_all("a selection")
 	for name: String in WITH_A_SELECTION + MORE_WITH_A_SELECTION:
-		builder.select_brick(brick, false)
+		# A part of the model selected again: Replace and Make a sub-model
+		# leave another in its place.
+		builder.select_brick(_a_part(), false)
 		await _frames(2)
 		await _open_and_walk(name)
 
@@ -181,7 +183,7 @@ func _run() -> void:
 	if all:
 		await _assistant()
 		await _rows_with_data()
-		await _ways(builder, brick)
+		await _ways(builder)
 		await _by_hand()
 		await _everything_else()
 
@@ -237,17 +239,18 @@ const OPENERS: Array[String] = [
 const WITH_A_SELECTION: Array[String] = ["make_submodel", "printed_versions", "flex"]
 
 ## The menus' other dialogs and panels, which this probe alone walks: Find
-## a command, Send feedback, Build together, Comments, Compare, the render
+## a command, Send feedback, Build together, Comments, Compare (its view, as
+## Compare sets opens it: File, Compare with… wants a save first), the render
 ## queue, the booklet's page setup, a view kept, the 3D export's question,
 ## the panels and the tour.
 const MORE: Array[String] = [
-	"palette", "feedback", "together", "comments", "compare", "compare_sets",
+	"palette", "feedback", "together", "comments", "compare_sets",
 	"render_queue", "booklet_page_setup", "save_view", "export_3d",
 	"panel_parts", "panel_properties", "panel_keys", "tour",
 ]
 
-## With a part selected: Pattern, Replace, Mirror and Move to step.
-const MORE_WITH_A_SELECTION: Array[String] = ["pattern", "replace", "mirror", "step_to"]
+## With a part selected: Move to step, Pattern, Mirror and Replace.
+const MORE_WITH_A_SELECTION: Array[String] = ["step_to", "pattern", "mirror", "replace"]
 
 ## With the assistant shown, as Settings shows it: its panel and its
 ## connector's form.
@@ -325,12 +328,23 @@ func _rows_with_data() -> void:
 	await _put_away(before)
 
 
+## A part of the model, as the walk left it: Make a sub-model and Replace
+## put another in the place of the one put down.
+func _a_part() -> int:
+	var world: BrickWorld = _main.get("_world")
+	var store: ModelStore = _main.get("_store")
+	for each: BrickWorld.Brick in world.bricks():
+		if not store.scenery.has(each.id):
+			return each.id
+	return -1
+
+
 ## The ways a11y_modal_probe brings a dialog up besides the menus'
 ## commands: New over a part taken off asks first; Import's chooser
 ## (Godot's own); Save as's "replace it?" over a file already there; the
 ## Reference picture, with a picture.
-func _ways(builder: Builder, brick: int) -> void:
-	builder.select_brick(brick, false)
+func _ways(builder: Builder) -> void:
+	builder.select_brick(_a_part(), false)
 	await _frames(2)
 	builder.remove_selection()
 	await _frames(4)
