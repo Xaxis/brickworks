@@ -795,6 +795,10 @@ static func name_lines(name: String, room: float) -> PackedStringArray:
 			var cut: int = line.length() - 1
 			while cut > 1 and Helvetica.text_width(line.left(cut), NAME_SIZE, true) > room:
 				cut -= 1
+			# Between letters as a reader sees them, never inside an emoji
+			# of several or a letter and its accents (BookletLooks.cut).
+			var whole: int = BookletLooks.cut(line, cut).length()
+			cut = whole if whole > 0 else cut
 			lines.append(line.left(cut))
 			line = line.substr(cut)
 	if not line.is_empty():
@@ -1591,8 +1595,10 @@ static func _page(page: Page, document: Document) -> String:
 static func _entry(entry: Entry, document: Document, out: PackedStringArray,
 		svg: PackedStringArray, in_banner: Array = []) -> void:
 	if not entry.image.is_empty():
+		# Escaped once, by _image: escaped here too, "&" read "&amp;amp;"
+		# (snreview).
 		_image(out, entry.image, entry.rect, "Step %d" % entry.number
-			+ ((": " + _escape(entry.name)) if not entry.name.is_empty() else ""))
+			+ ((": " + entry.name) if not entry.name.is_empty() else ""))
 	# A hidden colour starting here: under the number and its turn sign, one
 	# line a colour.
 	var line: float = (sign_rect(entry).end.y if entry.turned

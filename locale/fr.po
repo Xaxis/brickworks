@@ -12979,8 +12979,26 @@ msgstr "Construis le cockpit"
 msgid "The step's name"
 msgstr "Le nom de l'étape"
 
-msgid "step %d named “%s”"
-msgstr "étape %d nommée « %s »"
+msgid "step %d named %s"
+msgstr "étape %d nommée %s"
 
 msgid "step %d's name taken off"
 msgstr "nom de l'étape %d retiré"
+
+msgid "step %d's callout step %d named %s"
+msgstr "étape %d, étape %d de l'encadré nommée %s"
+
+msgid "step %d's callout step %d's name taken off"
+msgstr "nom de l'étape %d, étape %d de l'encadré retiré"
+
+msgid "step %d named %s, in each of the %d copies of the %s"
+msgstr "étape %d nommée %s, dans chacune des %d copies de %s"
+
+msgid "step %d's name taken off, in each of the %d copies of the %s"
+msgstr "nom de l'étape %d retiré, dans chacune des %d copies de %s"
+
+msgid "step %d's callout step %d named %s, in each of the %d copies of the %s"
+msgstr "étape %d, étape %d de l'encadré nommée %s, dans chacune des %d copies de %s"
+
+msgid "step %d's callout step %d's name taken off, in each of the %d copies of the %s"
+msgstr "nom de l'étape %d, étape %d de l'encadré retiré, dans chacune des %d copies de %s"

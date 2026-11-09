@@ -3139,10 +3139,26 @@ func change_look(op: String, at: Instructions.Step, fields: Dictionary = {}) -> 
 			# name= the words, "" to take it off.
 			var named: String = BookletLooks.name_of(fields.get("name", ""))
 			change = {"name": named if not named.is_empty() else null}
-			words = ("step %d named “%s”" % [number, named]) if not named.is_empty() \
-				else "step %d's name taken off" % number
+			# Quoted as a motion's name is (Motions.quoted), kept as written in
+			# every language. A callout's step is said as the timeline numbers
+			# it, and a sub-model placed more than once has one set of steps,
+			# so its name is every copy's: said, with how many (snreview F4,
+			# F5, F8).
+			var quoted: String = Motions.quoted(named)
+			var copies: int = BookletLooks.copies_of(world, section, skip)
+			var whose: String = Instructions._name_of(section)
+			if at.in_callout():
+				words = ("step %d's callout step %d named %s" % [number, at.callout_step, quoted]) \
+					if not named.is_empty() \
+					else "step %d's callout step %d's name taken off" % [number, at.callout_step]
+			else:
+				words = ("step %d named %s" % [number, quoted]) if not named.is_empty() \
+					else "step %d's name taken off" % number
+			if copies > 1:
+				words += ", in each of the %d copies of the %s" % [copies, whose]
+				Language.keep_name(whose)
 			if not named.is_empty():
-				Language.keep_name(named)
+				Language.keep_name(quoted)
 		"sign":
 			# The turn sign taken off the step, or put back (BookletLooks
 			# "sign"); sign= says which, else it turns over.

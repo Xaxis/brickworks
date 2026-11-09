@@ -43,6 +43,21 @@
 ##      share carries: Next tapped to step 3, "Build the cockpit" on a line
 ##      of its own under "Step 3 of 4", inside the window; step 2 "The first
 ##      brick"; step 4 no name.
+##  10. snreview's findings (2026-11-09), on its fixtures (five, row,
+##      theirs_odd and its CRLF twin, sub; 7140-1.mpd). F1: a step that kept
+##      none of its parts names no step and gives it no zoom: five's step 3's
+##      only part on to step 4 is "Delta pair", back to step 2 "Bravo
+##      bricks", step 1 deleted "Bravo bricks" at its zoom; row's the same;
+##      a merge keeps the first step's look; each saved, opened, undone.
+##      F2, F3: theirs_odd's two names in a step read as the first, both
+##      lines kept; saved, every name line as written where it was (spaces,
+##      a tab, the header's, an empty last step's, one after NOFILE), and so
+##      after a step edit, in LF and CRLF. F7: name_of's Unicode spaces and
+##      its cut on a whole letter. F4: a name with quotes said quoted in the
+##      reply, Undo and the list. F6: the step picture's alt escaped once.
+##      F8: sub.ldr's wing step named, said for both copies; its "Both wings
+##      on" shows nowhere, its line kept. F5: edit_steps names a callout's
+##      step by callout_step=.
 ##
 ## At a phone's and a tablet's size (a window under 1200 wide) the layout
 ## for a finger, and 9 alone: Build it is what a phone has of the steps.
@@ -57,7 +72,7 @@ const MODELS := "user://models/"
 const COCKPIT := "Build the cockpit"
 const BRICK := "The first brick"
 const LONG := "Put the long wing plates on both sides, then the tail fin and its two flaps last"
-const WATCHDOG := 900.0
+const WATCHDOG := 1800.0
 
 var _failures: int = 0
 var _out: String = ""
@@ -128,6 +143,7 @@ func _run() -> void:
 	BuildSteps._kept.clear()
 	if not _finger:
 		await _editor()
+		await _review()
 	await _build_it()
 	print("\nstepnames_probe: %s" % ("all passed" if _failures == 0 else "%d failed" % _failures))
 	quit(1 if _failures else 0)
@@ -467,6 +483,328 @@ func _op_said(op: Dictionary) -> String:
 	if op.is_empty():
 		return "none"
 	return "\"%s\" %.1f mm at %s" % [op["text"], float(op["size"]), op["at"]]
+
+
+# -- 10: snreview's findings (2026-11-09), each on the reviewer's fixture --------------------
+
+const FIX := "res://src/dev/fixtures/stepnames/"
+const META := "0 !BRICKWORKS STEP_NAME"
+const FIVE_SAID := "1[3020/4,3020/4] \"Alpha base\" | 2[3001/14,3001/14] \"Bravo bricks\" | 3[3003/1] \"Charlie one\" | 4[3004/2,3004/2] \"Delta pair\" | 5[3005/15] \"Echo last\""
+## F1: [file, what, op, part, x (or the step's number), the steps then, [step
+## index, its zoom then]].
+const F1_CASES: Array = [
+	["five.ldr", "step 3's only part to step 4, which is named", "next", "3003", 0.0,
+		"1[3020/4,3020/4] \"Alpha base\" | 2[3001/14,3001/14] \"Bravo bricks\" | 3[3003/1,3004/2,3004/2] \"Delta pair\" | 4[3005/15] \"Echo last\"",
+		[1, 1.5]],
+	["five.ldr", "step 3's only part to step 2, which is named", "prev", "3003", 0.0,
+		"1[3020/4,3020/4] \"Alpha base\" | 2[3001/14,3001/14,3003/1] \"Bravo bricks\" | 3[3004/2,3004/2] \"Delta pair\" | 4[3005/15] \"Echo last\"",
+		[1, 1.5]],
+	["five.ldr", "step 1 deleted, its parts into step 2", "delete", "", 1,
+		"1[3001/14,3001/14,3020/4,3020/4] \"Bravo bricks\" | 2[3003/1] \"Charlie one\" | 3[3004/2,3004/2] \"Delta pair\" | 4[3005/15] \"Echo last\"",
+		[0, 1.5]],
+	["row.ldr", "step 1's only part to step 2 (named, zoomed)", "next", "3001", 0.0,
+		"1[3001/1,3001/4] \"Blue\" | 2[3001/14] | 3[3001/2] \"Green\"", [0, 1.5]],
+	["row.ldr", "step 2's only part (named, zoomed) to step 1: its zoom goes with its name", "prev", "3001", 100.0,
+		"1[3001/1,3001/4] \"Red\" | 2[3001/14] | 3[3001/2] \"Green\"", [0, 0.0]],
+	["row.ldr", "step 2 merged with step 3 (nothing taken: the first step's look)", "merge", "", 2,
+		"1[3001/4] \"Red\" | 2[3001/1,3001/14] \"Blue\" | 3[3001/2] \"Green\"", [1, 1.5]],
+]
+
+
+func _review() -> void:
+	print("\n10. snreview's findings, each on the reviewer's fixture")
+	await _review_follow()
+	await _review_lines()
+	_review_name_of()
+	await _review_words()
+	await _review_alt()
+	await _review_copies()
+	await _review_callout()
+
+
+## F1: a step that kept none of its parts gives its name (and zoom) to none.
+func _review_follow() -> void:
+	print("\n10. F1: a step that kept none of its parts names no step")
+	for case: Array in F1_CASES:
+		var fixture: String = FileAccess.get_file_as_string(FIX + str(case[0]))
+		await _open_text(fixture, "r_" + str(case[0]))
+		var opened: String = _steps_said()
+		var depth: int = _builder.history_depth()
+		var reply: String = ""
+		if str(case[2]) in ["next", "prev"]:
+			reply = await _say("edit_steps", {"op": case[2], "bricks": [_id_at(case[3], float(case[4]))]})
+		else:
+			reply = await _say("edit_steps", {"op": case[2], "step": int(case[4])})
+		var after: String = _steps_said()
+		var spot: Array = case[6]
+		var zoom: float = float(BookletLooks.of(_world, "", int(spot[0])).get("zoom", 0.0))
+		_check("%s, %s: %s (%s), step %d's zoom %s" % [case[0], case[1], after,
+			reply.get_slice("\n", 0).left(80), int(spot[0]) + 1, zoom if zoom > 0.0 else "none"],
+			after == str(case[5]) and is_equal_approx(zoom, float(spot[1])))
+		var saved: String = await _save("r_saved.ldr")
+		await _open_text(saved, "r_saved_open.ldr")
+		_check("...saved and opened again the same (%s)" % ("the same" if _steps_said() == after
+			else _steps_said()), _steps_said() == after)
+		await _open_text(fixture, "r_" + str(case[0]))
+		if str(case[2]) in ["next", "prev"]:
+			await _say("edit_steps", {"op": case[2], "bricks": [_id_at(case[3], float(case[4]))]})
+		else:
+			await _say("edit_steps", {"op": case[2], "step": int(case[4])})
+		var made: int = _builder.history_depth() - depth
+		_shell.run("undo")
+		await _settled()
+		_check("...one undo step (%d), undone as it opened (%s)" % [made, "the same"
+			if _steps_said() == opened else _steps_said()], made == 1 and _steps_said() == opened)
+
+
+## F2, F3: two names in a step (the first wins, both kept), and every name
+## line kept as written where it was: spaces, a tab, the header's, an empty
+## last step's, one after NOFILE, in LF and in CRLF.
+func _review_lines() -> void:
+	for file: String in ["theirs_odd.ldr", "theirs_odd_crlf.ldr"]:
+		print("\n10. F2, F3: %s, its name lines as their author wrote them" % file)
+		var fixture: String = FileAccess.get_file_as_string(FIX + file)
+		await _open_text(fixture, "r_" + file)
+		var opened: String = _steps_said()
+		var more: Variant = BookletLooks.of(_world, "", 2).get("name_more")
+		_check("opened: step 3 is \"First of two\", the first of its two lines, the second kept (%s; %s)"
+			% [opened, more], opened.contains("3[3003/1] \"First of two\"") and more is Array
+			and str((more as Array)[0]).ends_with("STEP_NAME Second of two"))
+		var last: String = str(BookletLooks.of(_world, "", 4).get("name", ""))
+		_check("...step 1 named in the header, step 2's spaces and tab read as one space (%s), the empty last step named \"%s\""
+			% [opened, last], opened.begins_with("1[3020/4] \"From the header\" | 2[3001/14] \"Spaced out tab\"")
+			and opened.ends_with("4[3004/2]") and last == "On an empty last step")
+		var plain: String = await _save("r_plain_" + file)
+		_check("...saved with nothing changed: every name line as written, where it was (%s)" % (
+			"the same" if _name_places(plain) == _name_places(fixture) else " ; ".join(_name_places(plain))),
+			_name_places(plain) == _name_places(fixture))
+		# Step 2's only part to step 3: step 2 goes, and its name with it.
+		var depth: int = _builder.history_depth()
+		var reply: String = await _say("edit_steps", {"op": "next", "bricks": [_id_at("3001", 0.0)]})
+		var moved: String = _steps_said()
+		last = str(BookletLooks.of(_world, "", 3).get("name", ""))
+		_check("its 3001, step 2's only part, to step 3: \"First of two\" (%s; %s), the empty last step still \"%s\"" % [
+			moved, reply.get_slice("\n", 0).left(80), last],
+			moved == "1[3020/4] \"From the header\" | 2[3001/14,3003/1] \"First of two\" | 3[3004/2]"
+			and last == "On an empty last step")
+		var text: String = await _save("r_moved_" + file)
+		var want: PackedStringArray = _name_places(fixture)
+		var had: PackedStringArray = PackedStringArray()
+		for place: String in want:
+			if not place.contains("Spaced"):
+				had.append(place.get_slice(" <- ", 0))
+		var lines: PackedStringArray = PackedStringArray()
+		for place: String in _name_places(text):
+			lines.append(place.get_slice(" <- ", 0))
+		_check("...saved: the other name lines each as written, the second of two, the empty last step's and the one after NOFILE (%s)"
+			% " ; ".join(lines), lines == had and text.contains("0 NOFILE" + ("\r\n" if fixture.contains("\r\n") else "\n")
+				+ "0 !BRICKWORKS STEP_NAME After the end"))
+		if fixture.contains("\r\n"):
+			_check("...every line CRLF still", not text.replace("\r\n", "").contains("\n"))
+		await _open_text(text, "r_moved_open_" + file)
+		_check("...opened again the same (%s)" % ("the same" if _steps_said() == moved else _steps_said()),
+			_steps_said() == moved)
+		await _open_text(fixture, "r_" + file)
+		depth = _builder.history_depth()
+		await _say("edit_steps", {"op": "next", "bricks": [_id_at("3001", 0.0)]})
+		_shell.run("undo")
+		await _settled()
+		var undone: String = await _save("r_undone_" + file)
+		_check("...undone: as it opened, its name lines as written (%s)" % ("the same"
+			if _name_places(undone) == _name_places(fixture) else " ; ".join(_name_places(undone))),
+			_steps_said() == opened and _name_places(undone) == _name_places(fixture))
+		var _unused: int = depth
+
+
+## F7: every Unicode space and line separator is a space, a name of only those
+## is none, and 80 characters cut between two of a person's letters.
+func _review_name_of() -> void:
+	print("\n10. F7: a name's spaces and its cut")
+	var family: String = "\U01F468‍\U01F469‍\U01F467"
+	var cases: Array = [
+		["A B C", "A B C"], ["A\u0085B", "A B"], ["A\vB\fC", "A B C"],
+		["x　y z w", "x y z w"], ["　   \t", ""],
+		["a".repeat(79) + family, "a".repeat(79)], ["a".repeat(79) + "é", "a".repeat(79)],
+		["a".repeat(78) + family, "a".repeat(78)],
+	]
+	for case: Array in cases:
+		var got: String = BookletLooks.name_of(case[0])
+		_check("name_of(%s) is %s (%d characters)" % [str(case[0]).c_escape().left(40),
+			("\"%s\"" % got.left(20) + ("..." if got.length() > 20 else "")) if not got.is_empty() else "no name",
+			got.length()], got == str(case[1]))
+	var whole: String = BookletLooks.name_of("a".repeat(75) + family + "b")
+	_check("...and a whole emoji kept where it fits (%d characters, ends with it: %s)" % [whole.length(),
+		whole.ends_with(family)], whole == "a".repeat(75) + family)
+
+
+## F4: a name quoted as a motion's is, in the reply, the list and Undo.
+func _review_words() -> void:
+	print("\n10. F4: a name with quotes in it, said quoted")
+	await _open_text(FileAccess.get_file_as_string(FIX + "five.ldr"), "r_words.ldr")
+	var called: String = "Say \"hi\" twice"
+	var reply: String = await _say("edit_steps", {"op": "name", "step": 2, "name": called})
+	var undo: PackedStringArray = _builder.history_words(1)
+	var listed: String = await _say("edit_steps", {"op": "list"})
+	var line: String = ""
+	for one: String in listed.split("\n"):
+		if one.strip_edges().begins_with("2 "):
+			line = one.strip_edges()
+	_check("edit_steps name: %s; Undo: %s; the list: %s" % [reply.get_slice("\n", 0), undo, line],
+		reply.begins_with("Step 2 named \"Say 'hi' twice\"") and not undo.is_empty()
+		and undo[0] == "step 2 named \"Say 'hi' twice\"" and line.begins_with("2 \"Say 'hi' twice\": "))
+	_shell.run("undo")
+	await _settled()
+
+
+## F6: the booklet picture's alt escaped once.
+func _review_alt() -> void:
+	print("\n10. F6: the step picture's alt in the booklet's HTML")
+	await _open_text(FileAccess.get_file_as_string(FIX + "five.ldr"), "r_alt.ldr")
+	var called: String = "Tom & \"Jerry\" <b>"
+	await _say("edit_steps", {"op": "name", "step": 3, "name": called})
+	var maker := BookletMaker.new()
+	maker.library = _library
+	maker.only = {3: true}
+	BookletMaker.open_when_written = false
+	_main.add_child(maker)
+	await maker.make(_world, _store.scenery, "Alt")
+	var document: Booklet.Document = maker.document
+	maker.queue_free()
+	var html: String = ""
+	for page: Booklet.Page in document.pages if document != null else []:
+		for entry: Booklet.Entry in page.entries:
+			if entry.number == 3:
+				html = Booklet.page_html(page, document)
+	var found: RegExMatch = RegEx.create_from_string("alt=\"(Step 3[^\"]*)\"").search(html)
+	var alt: String = found.get_string(1) if found != null else "none"
+	_check("alt=\"%s\"" % alt, alt == "Step 3: Tom &amp; &quot;Jerry&quot; &lt;b&gt;")
+	_shell.run("undo")
+	await _settled()
+
+
+## F8: a name given to a step of a sub-model placed twice says it is every
+## copy's; the main model's step that puts the wings on shows nowhere.
+func _review_copies() -> void:
+	print("\n10. F8: sub.ldr, a wing placed twice, built where it stands")
+	var fixture: String = FileAccess.get_file_as_string(FIX + "sub.ldr")
+	await _open_text(fixture, "r_sub.ldr")
+	var opened: String = _steps_said()
+	var reply: String = await _say("edit_steps", {"op": "name", "step": 2, "name": "Over MCP"})
+	var then: String = _steps_said()
+	_check("edit_steps name step 2: %s (%s)" % [reply.get_slice("\n", 0), then],
+		reply.begins_with("Step 2 named \"Over MCP\", in each of the 2 copies of the wing")
+		and then.contains("2[3020/1] \"Over MCP\"") and then.contains("4[3020/1] \"Over MCP\""))
+	_shell.run("undo")
+	await _settled()
+	var plan: Array[Instructions.Step] = _plan()
+	var fourth: Instructions.Step = null
+	for step: Instructions.Step in plan:
+		if step.number == 4:
+			fourth = step
+	var said: String = _shell.change_look("name", fourth, {"name": "Second wing plate"}) \
+		if fourth != null else "no step 4"
+	_check("named on the timeline at step 4, the second copy's: \"%s\"" % said,
+		said == "step 4 named \"Second wing plate\", in each of the 2 copies of the wing")
+	_shell.run("undo")
+	await _settled()
+	var shown: bool = opened.contains("Both wings on")
+	_check("the main model's step 2, \"Both wings on\", puts on the wings built where they stand and shows nowhere (%s); its line kept: %s"
+		% ["shown" if shown else "no step for it", (await _save("r_sub_saved.ldr")).contains(META + " Both wings on")],
+		not shown)
+
+
+## F5: edit_steps names a callout's step, as edit_booklet takes one.
+func _review_callout() -> void:
+	print("\n10. F5: 7140-1.mpd, a callout's steps named over MCP")
+	await _open_text(FileAccess.get_file_as_string("res://vendor/omr/files/7140-1.mpd"), "r_7140.mpd")
+	var first: Instructions.Step = null
+	for _n: int in 1200:
+		for step: Instructions.Step in _plan():
+			if step.in_callout() and step.callout_step == 1 and step.callout_steps >= 2:
+				first = step
+				break
+		if first != null:
+			break
+		await process_frame
+	if not _check("a callout of two steps or more (%s)" % ("step %d" % first.number if first != null
+			else "none"), first != null):
+		return
+	var number: int = first.number
+	var reply: String = await _say("edit_steps", {"op": "name", "step": number, "callout_step": 2,
+		"name": "Callout two"})
+	var named: Dictionary = {}
+	for step: Instructions.Step in _plan():
+		if step.number == number and not step.name.is_empty():
+			named["%d.%d" % [step.number, step.callout_step]] = step.name
+	_check("callout_step 2: %s (%s)" % [reply.get_slice("\n", 0), named],
+		reply.begins_with("Step %d's callout step 2 named \"Callout two\"" % number)
+		and named == {"%d.2" % number: "Callout two"})
+	var wrong: String = await _say("edit_steps", {"op": "name", "step": number, "callout_step": 99,
+		"name": "Nowhere"})
+	_check("...callout_step 99: %s" % wrong.get_slice("\n", 0),
+		wrong.begins_with("Step %d's callout has steps 1 to %d." % [number, first.callout_steps]))
+	_shell.run("undo")
+	await _settled()
+
+
+## Each STEP_NAME line of [param text] as written, with the line before it:
+## "line <- the one before".
+static func _name_places(text: String) -> PackedStringArray:
+	var out := PackedStringArray()
+	var lines: PackedStringArray = text.split("\n")
+	for n: int in lines.size():
+		if lines[n].contains("STEP_NAME"):
+			out.append("%s <- %s" % [lines[n].c_escape(), lines[n - 1].c_escape() if n > 0 else ""])
+	return out
+
+
+func _open_text(text: String, file: String) -> void:
+	_write(MODELS + file, text)
+	_main.call("clear_model")
+	await _frames(4)
+	_main.call("_open", MODELS + file)
+	await _settled()
+
+
+func _save(file: String) -> String:
+	await _say("save_model", {"name": file})
+	return FileAccess.get_file_as_string(MODELS + file)
+
+
+func _plan() -> Array[Instructions.Step]:
+	return Instructions.plan(_world, _library, _store.scenery, {}, true)
+
+
+## Each step as "N[its parts]" (or "N.c[...]" in a callout) and its name,
+## as snreview's probe says them.
+func _steps_said() -> String:
+	var out := PackedStringArray()
+	for step: Instructions.Step in _plan():
+		var parts := PackedStringArray()
+		for id: int in step.brick_ids:
+			var brick: BrickWorld.Brick = _world.get_brick(id)
+			if brick != null:
+				parts.append("%s/%d" % [brick.part_id.get_basename(), brick.color_code])
+		parts.sort()
+		var label: String = ("%d.%d" % [step.number, step.callout_step]) if step.in_callout() \
+			else str(step.number)
+		out.append("%s[%s]%s" % [label, ",".join(parts), (" \"%s\"" % step.name)
+			if not step.name.is_empty() else ""])
+	return " | ".join(out)
+
+
+## The model's part [param part]: the one furthest left for [param x] under
+## 50 (the file's x 0), else the one at the file's x, a hundred apart.
+func _id_at(part: String, x: float) -> int:
+	var found: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		if not _store.scenery.has(brick.id) and brick.part_id.get_basename() == part:
+			found.append(brick)
+	if found.is_empty():
+		return -1
+	found.sort_custom(func(a: BrickWorld.Brick, b: BrickWorld.Brick) -> bool:
+		return a.transform.origin.x < b.transform.origin.x)
+	return (found[clampi(roundi(x / 100.0), 0, found.size() - 1)] as BrickWorld.Brick).id
 
 
 # -- 9: Build it on a shared link ------------------------------------------------------------

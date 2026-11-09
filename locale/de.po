@@ -12979,8 +12979,26 @@ msgstr "Baue das Cockpit"
 msgid "The step's name"
 msgstr "Der Name des Schritts"
 
-msgid "step %d named “%s”"
-msgstr "Schritt %d „%s“ genannt"
+msgid "step %d named %s"
+msgstr "Schritt %d %s genannt"
 
 msgid "step %d's name taken off"
 msgstr "Name von Schritt %d entfernt"
+
+msgid "step %d's callout step %d named %s"
+msgstr "Schritt %d, Nebenbau-Schritt %d %s genannt"
+
+msgid "step %d's callout step %d's name taken off"
+msgstr "Name von Schritt %d, Nebenbau-Schritt %d entfernt"
+
+msgid "step %d named %s, in each of the %d copies of the %s"
+msgstr "Schritt %d %s genannt, in jeder der %d Kopien von %s"
+
+msgid "step %d's name taken off, in each of the %d copies of the %s"
+msgstr "Name von Schritt %d entfernt, in jeder der %d Kopien von %s"
+
+msgid "step %d's callout step %d named %s, in each of the %d copies of the %s"
+msgstr "Schritt %d, Nebenbau-Schritt %d %s genannt, in jeder der %d Kopien von %s"
+
+msgid "step %d's callout step %d's name taken off, in each of the %d copies of the %s"
+msgstr "Name von Schritt %d, Nebenbau-Schritt %d entfernt, in jeder der %d Kopien von %s"

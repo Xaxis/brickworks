@@ -405,11 +405,14 @@ func definitions() -> Array:
 				# stepnames: a step named, in a block of its own.
 				+ " \"name\" gives step= a name= (\"Build the cockpit\"), said beside its "
 				+ "number on the timeline, in Build it and in the booklet; name= \"\" takes it "
-				+ "off."),
+				+ "off. callout_step= with step= names a step inside the callout step= puts on. "
+				+ "A sub-model placed more than once has one set of steps: a name given to one "
+				+ "of its steps is every copy's."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"op": {"type": "string", "enum": ["list", "to", "next", "prev", "new", "earlier",
 					"later", "merge", "delete", "name"]},
 				"name": {"type": "string", "description": "for name: what the step is called, up to 80 characters; \"\" takes it off"},
+				"callout_step": {"type": "integer", "description": "for name: a step inside the callout step= puts on, from 1, as edit_booklet takes it"},
 				"bricks": {"type": "array", "items": {"type": "integer"},
 					"description": "part numbers from look_at_model, for to, next, prev and new"},
 				"step": {"type": "integer", "description": "a step's number, for to, earlier, later, merge, delete and name"},
@@ -1610,6 +1613,15 @@ func _edit_steps(input: Dictionary) -> String:
 			if named == null:
 				return "There is no step %d: the steps run 1 to %d." % [int(input["step"]),
 					steps[steps.size() - 1].number]
+			# A callout's step as edit_booklet takes one (snreview F5).
+			if input.has("callout_step"):
+				var inside: Instructions.Step = _step_numbered(steps, named.number,
+					maxi(1, int(input["callout_step"])))
+				if inside == null or int(input["callout_step"]) < 1:
+					return ("Step %d puts on no sub-assembly built in a callout." % named.number) \
+						if not named.attaches() or named.callout_steps <= 0 \
+						else "Step %d's callout has steps 1 to %d." % [named.number, named.callout_steps]
+				named = inside
 			return _sentence(shell.change_look("name", named, {"name": str(input["name"])}))
 	return "op is one of list, to, next, prev, new, earlier, later, merge, delete, name."
 
@@ -2231,7 +2243,8 @@ func _list_steps(steps: Array[Instructions.Step], from: int) -> String:
 		var line: String = "  %d%s: %s" % [step.number, where, " ".join(numbers)]
 		if not step.name.is_empty():
 			# stepnames: its name, as the timeline says it.
-			line = "  %d%s \"%s\": %s" % [step.number, where, step.name, " ".join(numbers)]
+			line = "  %d%s %s: %s" % [step.number, where, Motions.quoted(step.name),
+				" ".join(numbers)]
 		characters += line.length()
 		if characters > 6000:
 			said.append("  ... edit_steps {\"from\": %d} for the rest." % step.number)

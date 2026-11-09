@@ -2283,11 +2283,21 @@ picture the assistant is shown.
   header grows for it; the turn sign and guides go under both). A callout
   box's own steps print no name; a sub-assembly on pages of its own does.
   Names are one line, at most 80 characters (`BookletLooks.NAME_MOST`),
-  tabs and breaks made spaces. The name is a look field, so it follows the
-  step's parts over step edits (the first step's wins on a merge) and goes
-  when the step loses its last part. Shared links carry it in the model's
-  own lines (`SharedPages.read` names the carried steps). In the file: `0
-  !BRICKWORKS STEP_NAME words` in its step, before PAGE and ZOOM. An older
+  every Unicode space and line break made a space, cut on a whole letter
+  (`BookletLooks.cut`). The name is a look field, so it follows the step's
+  parts over step edits: on a merge the first step's wins; where a step
+  that kept none of its parts joins one that kept its own, the one that
+  kept them is the step, by its own name and zoom (the other's words,
+  pictures and arrows kept on its page); it goes when the step loses its
+  last part. A sub-model placed more than once has one set of steps, so a
+  name is every copy's, and the words say so ("in each of the 2 copies of
+  the wing", `BookletLooks.copies_of`). `edit_steps` names a callout's step
+  with `callout_step=`, as `edit_booklet` takes one. Shared links carry it
+  in the model's own lines (`SharedPages.read` names the carried steps). In
+  the file: `0 !BRICKWORKS STEP_NAME words` in its step, before PAGE and
+  ZOOM. Another author's lines are kept as written where they were (spaces,
+  tabs, a second line in a step, read as the first: `name_more`; one after
+  NOFILE; an empty last step's). An older
   build (pre261, live m276) opens a named file whole; it keeps the line in
   another author's file (written back as it was) and drops it from
   Brickworks' own on a save, as every app line it does not know. Also: a
@@ -2304,7 +2314,12 @@ picture the assistant is shown.
   opened whole and saved with their lines; the hand Delete's undo words;
   an 80-character name cut on the timeline and wrapped on the page; Build
   it on a shared link, steps worked out and carried, the name under the
-  number. Pictures in `shots/stepnames/<size>/`.
+  number; then snreview's repros on `src/dev/fixtures/stepnames/` (five,
+  row, theirs_odd LF and CRLF, sub; 7140-1.mpd's callout): which step keeps
+  its name and zoom over moves, deletes and merges, each saved, opened and
+  undone; every name line as written; `name_of`'s spaces and cut; quoted
+  words; the picture's alt escaped once; the copies' words; `callout_step=`.
+  Pictures in `shots/stepnames/<size>/`.
 - `the booklet's own cover and colours` and `booklook probe`
   (APP_UX6 #5 booklook; `BookletSheet`'s title, subtitle, cover_line,
   cover_picture, header, footer, box_frame, box_fill, box_corners,

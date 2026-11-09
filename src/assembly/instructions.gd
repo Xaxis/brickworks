@@ -183,8 +183,9 @@ class Step extends RefCounted:
 	func shortened_name(most: int) -> String:
 		if most <= 0 or name.length() <= most:
 			return name
-		# Cut between words where it can, never after a comma: "sides,…".
-		var cut: String = name.left(most - 1)
+		# Cut between words where it can, never after a comma: "sides,…",
+		# and never inside a letter as a reader sees it (BookletLooks.cut).
+		var cut: String = BookletLooks.cut(name, most - 1)
 		if cut.rfind(" ") > most / 2:
 			cut = cut.left(cut.rfind(" "))
 		return cut.strip_edges().rstrip(",;:·-–—") + "…"

@@ -12979,8 +12979,26 @@ msgstr "Construye la cabina"
 msgid "The step's name"
 msgstr "El nombre del paso"
 
-msgid "step %d named “%s”"
-msgstr "paso %d llamado «%s»"
+msgid "step %d named %s"
+msgstr "paso %d llamado %s"
 
 msgid "step %d's name taken off"
 msgstr "nombre del paso %d quitado"
+
+msgid "step %d's callout step %d named %s"
+msgstr "paso %d, paso %d del recuadro llamado %s"
+
+msgid "step %d's callout step %d's name taken off"
+msgstr "nombre del paso %d, paso %d del recuadro quitado"
+
+msgid "step %d named %s, in each of the %d copies of the %s"
+msgstr "paso %d llamado %s, en cada una de las %d copias de %s"
+
+msgid "step %d's name taken off, in each of the %d copies of the %s"
+msgstr "nombre del paso %d quitado, en cada una de las %d copias de %s"
+
+msgid "step %d's callout step %d named %s, in each of the %d copies of the %s"
+msgstr "paso %d, paso %d del recuadro llamado %s, en cada una de las %d copias de %s"
+
+msgid "step %d's callout step %d's name taken off, in each of the %d copies of the %s"
+msgstr "nombre del paso %d, paso %d del recuadro quitado, en cada una de las %d copias de %s"

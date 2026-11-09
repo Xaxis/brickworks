@@ -46,7 +46,7 @@ ui:the author's steps
 
 ### A step's name {#step-name}
 
-A step can have a name, as in Studio: **Name…** in the timeline's **Booklet** row, or **Build › Build steps › Name the step…** ([[Shift+F2]]), names the step the timeline is on, "Build the cockpit". The timeline says it after the step's number, **Build it** under the number, and the booklet beside the number on its page. Clear the words to take it off. Each is one Undo, and the name is saved with the step in the model's file. An assistant names a step with edit_steps.
+A step can have a name, as in Studio: **Name…** in the timeline's **Booklet** row, or **Build › Build steps › Name the step…** ([[Shift+F2]]), names the step the timeline is on, "Build the cockpit". The timeline says it after the step's number, **Build it** under the number, and the booklet beside the number on its page. Clear the words to take it off. Each is one Undo, and the name is saved with the step in the model's file. A sub-model placed more than once is built in one set of steps, so a name given to one copy's step names that step in every copy, and Brickworks says so. An assistant names a step with edit_steps, a callout's step too.
 
 <!-- covers
 ui:a step's name
