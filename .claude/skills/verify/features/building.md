@@ -1056,7 +1056,13 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   `PROBE_SIZE=1400x900`; the app run again under `dbus-run-session` by
   `tools/a11y_tree.py`, which sets the private bus's
   `org.a11y.Status.ScreenReaderEnabled` as Orca does, so Godot's own "auto"
-  accessibility comes on, and reads the tree back over AT-SPI; signed in as
+  accessibility comes on, and reads each window back over AT-SPI as Orca
+  finds it: pointed at (its title bar's middle and its own) and read up
+  through the parents, and from the last focus event. Not by listing the
+  window's children: AccessKit 0.22 ends that list at Model name, where an
+  empty spacer is followed by the hidden Claude tab, so a screen reader
+  browsing the window hears only the menus (a finding for its own unit);
+  signed in as
   a throwaway account through the sign-in screen, needs .env: About, New's
   question, Import's chooser, Save as and its "replace it?", Reference
   picture and a11y_names_probe's openers each up in turn, and every window

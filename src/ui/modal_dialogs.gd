@@ -19,7 +19,9 @@
 ## FLAG_MODAL to it), so every dialog is still heard as one: making them
 ## not exclusive instead (dialogclose, 2026-11-07) left every dialog a plain
 ## window to a screen reader, its place in the app said nowhere (a11ymodal).
-## For a window shown in the main one, being transient does nothing else.
+## Nothing else a person meets hangs on that tie for a window shown inside
+## the main one: the keys stay in the dialog when the window loses them and
+## gets them back (a11y_modal_probe, About away and back).
 ##
 ## While a dialog is up, this node, the main window's last, takes every
 ## event the main window would have refused, as the engine did: what is

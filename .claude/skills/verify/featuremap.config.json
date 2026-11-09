@@ -3452,7 +3452,7 @@
       "kind": "ui",
       "label": "accessibility",
       "entry": "src/ui/access.gd",
-      "reach": "godot --path .  (Tab from the model into the frame, Return on a part and Return again to put it down; Settings, Interface size and Reduce motion; with Orca running, each control said by its name)  /  tools/probe.sh a11y_modal_probe  (windowed: the app run where a screen reader is on, in a D-Bus session of its own, its tree read over AT-SPI: every dialog that holds the window MODAL, the Reference picture not, the focus inside the top dialog)",
+      "reach": "godot --path .  (Tab from the model into the frame, Return on a part and Return again to put it down; Settings, Interface size and Reduce motion; with Orca running, each control said by its name)  /  tools/probe.sh a11y_modal_probe  (windowed: the app run where a screen reader is on, in a D-Bus session of its own, each window read over AT-SPI as Orca finds it, pointed at and from the focus: every dialog that holds the window MODAL, the Reference picture not, the focus inside the top dialog)",
       "area": "building"
     },
     {
