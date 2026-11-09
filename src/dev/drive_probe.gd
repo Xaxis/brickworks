@@ -958,8 +958,7 @@ func _move_all(by: Vector3) -> void:
 	moving.commit("moved it all")
 
 
-## The first line past the main model's: the second FILE line, or the end.
-static ## A placing line's nine rotation numbers as written, signs dropped, in order:
+## A placing line's nine rotation numbers as written, signs dropped, in order:
 ## what a quarter turn leaves alone.
 func _rotation_words(line: String) -> PackedStringArray:
 	var words: PackedStringArray = LdrModel._fields(line.strip_edges())
@@ -970,7 +969,8 @@ func _rotation_words(line: String) -> PackedStringArray:
 	return out
 
 
-func _main_end(lines: PackedStringArray) -> int:
+## The first line past the main model's: the second FILE line, or the end.
+static func _main_end(lines: PackedStringArray) -> int:
 	var files: int = 0
 	for n: int in lines.size():
 		if lines[n].strip_edges().begins_with("0 FILE "):
