@@ -48,6 +48,11 @@ var _claude_connect: LinkButton
 var _claude_disconnect: Button
 var _beta_box: VBoxContainer
 var _beta_said: Label
+# What the last press said, kept while the account is as it left it: the
+# account's own refresh after joining or leaving redraws the row, and
+# took the words away before they were read.
+var _beta_after: String = ""
+var _beta_after_tester: bool = false
 var _beta_press: Button
 var _beta_busy: bool = false
 ## Claude connected to this tab (ClaudeConnector, a Later class): set
@@ -232,6 +237,8 @@ func _keep_centred() -> void:
 
 
 func open() -> void:
+	# Opened again, the row says where the account stands, not the last press.
+	_beta_after = ""
 	_follow()
 	_kept.text = StorageKeep.words()
 	visible = not visible
@@ -456,8 +463,11 @@ func _follow() -> void:
 		+ "Brickworks can be reached." if account.offline
 		else "Signed in on this device until you sign out.")
 	_beta_box.visible = account.signed_in() and account.beta_open
+	if not account.signed_in() or account.tester != _beta_after_tester:
+		_beta_after = ""
 	if not _beta_busy:
-		_beta_said.text = ("You are a beta tester. Thank you." if account.tester
+		_beta_said.text = (_beta_after if not _beta_after.is_empty()
+			else "You are a beta tester. Thank you." if account.tester
 			else "Brickworks is in open beta. Testers try new features first and tell us what is "
 			+ "wrong; the first 100 we pick get a month of Pro.")
 	_beta_press.text = "Leave the beta" if account.tester else "Join the beta testers"
@@ -482,13 +492,11 @@ func _beta_pressed() -> void:
 		problem = await account.join_beta("app_settings")
 	_beta_busy = false
 	_beta_press.disabled = false
+	_beta_after_tester = account.tester
+	_beta_after = (problem if not problem.is_empty()
+		else "You left the beta. Join again any time." if leaving
+		else "Joined. You are a beta tester.")
 	_follow()
-	if not problem.is_empty():
-		_beta_said.text = problem
-	elif leaving:
-		_beta_said.text = "You left the beta. Join again any time."
-	else:
-		_beta_said.text = "Joined. You are a beta tester."
 
 
 ## Escape closes it, like the other panels.

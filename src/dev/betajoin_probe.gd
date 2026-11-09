@@ -156,17 +156,31 @@ func _new_account_joins(account: Account, gate: SignInGate) -> void:
 	_save("3_account_tester.png")
 	if press == null:
 		return
+	var changes: Array[int] = [0]
+	var count := func() -> void: changes[0] += 1
+	account.changed.connect(count)
 	await _click_control(press)
 	await _until(func() -> bool: return press.text == "Join the beta testers" and not press.disabled)
 	var left: Dictionary = await _beta_said(account)
 	_ok(left.get("tester") == false and left.get("state") == "left",
 		"Leave the beta, one press: tester %s, %s" % [left.get("tester"), left.get("state")])
+	# Said, and still said once the account has asked who it is again (the
+	# second change): that refresh once redrew the row without the words.
+	await _until(func() -> bool: return changes[0] >= 2)
 	await _settle()
+	_ok(_text_on(panel).contains("You left the beta. Join again any time."),
+		"...and the row says so, after the account's refresh too (%d changes)" % changes[0])
 	_save("4_account_left.png")
+	changes[0] = 0
 	await _click_control(press)
 	await _until(func() -> bool: return press.text == "Leave the beta" and not press.disabled)
 	var again: Dictionary = await _beta_said(account)
 	_ok(again.get("tester") == true, "Join the beta testers, one press: tester %s" % again.get("tester"))
+	await _until(func() -> bool: return changes[0] >= 2)
+	await _settle()
+	_ok(_text_on(panel).contains("Joined. You are a beta tester."),
+		"...and the row says so, after the account's refresh too (%d changes)" % changes[0])
+	account.changed.disconnect(count)
 	panel.visible = false
 	account.sign_out()
 	await _settle()
