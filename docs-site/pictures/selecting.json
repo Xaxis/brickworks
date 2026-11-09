@@ -5,10 +5,7 @@
    "source": "app",
    "setup": [
     {
-     "right_click": {
-      "part": "3004",
-      "nth": 0
-     },
+     "right_click": {"part": "3004", "nth": 0},
      "after": 30
     }
    ],
@@ -16,32 +13,21 @@
    "pad": 0,
    "alt": "The menu that opens on a right-click on a part, with ways to select what is like it or connected to it, hide it, paint it, copy it and more.",
    "caption": "A right-click on a part opens its menu.",
-   "features": [
-    "ui:selection edits"
-   ]
+   "features": ["ui:selection edits"]
   },
   {
    "id": "selecting-same-colour",
    "source": "app",
    "setup": [
     {
-     "select": {
-      "part": "3023b",
-      "nth": 0
-     }
+     "select": {"part": "3023b", "nth": 0}
     },
-    {
-     "run": "select_colour",
-     "after": 20
-    }
+    {"run": "select_colour", "after": 20}
    ],
-   "crop": "window",
-   "width": 1200,
+   "crop": "_over_model",
    "alt": "The red car with every red part outlined as selected after Same colour, the other colours left out.",
    "caption": "Edit › Select by › Same colour (Alt+C) takes every part of the selection's colour.",
-   "features": [
-    "ui:select by colour part or connection"
-   ]
+   "features": ["ui:select by colour part or connection"]
   }
  ]
 }

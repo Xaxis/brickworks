@@ -7,73 +7,39 @@
    "crop": "window",
    "width": 1200,
    "marks": [
-    {
-     "at": "_bar",
-     "n": "1",
-     "side": "right"
-    },
-    {
-     "at": "_shell.toolbar",
-     "n": "2",
-     "side": "right"
-    },
-    {
-     "at": "_bin",
-     "n": "3"
-    },
-    {
-     "at": "_gizmo",
-     "n": "4",
-     "side": "right"
-    }
+    {"at": "_bar", "n": "1", "side": "right"},
+    {"at": "_shell.toolbar", "n": "2", "side": "right"},
+    {"at": "_bin", "n": "3"},
+    {"at": "_gizmo", "n": "4", "side": "right"},
+    {"at": "_shell.first_build", "n": "5", "side": "right"}
    ],
-   "alt": "The Brickworks window with a red car on a green baseplate. Numbered outlines mark 1, the menus along the top; 2, the toolbar; 3, the parts bin on the left; 4, the view cube.",
-   "caption": "The window: 1 menus, 2 toolbar, 3 parts bin, 4 view cube.",
-   "features": [
-    "ui:menus and toolbar",
-    "ui:parts bin",
-    "ui:view cube"
-   ]
+   "alt": "The Brickworks window on a first visit, a red car on the baseplate. Numbered outlines mark 1, the menus along the top; 2, the toolbar; 3, the parts bin on the left; 4, the view cube; 5, Build your first model's offer over the model.",
+   "caption": "The window: 1 menus, 2 toolbar, 3 parts bin, 4 view cube, 5 Build your first model.",
+   "features": ["ui:menus and toolbar", "ui:parts bin", "ui:view cube"],
+   "first_visit": true
   },
   {
    "id": "first-model-in-hand",
    "source": "app",
    "setup": [
+    {"run": "new", "after": 30},
     {
-     "run": "new",
-     "after": 30
-    },
-    {
-     "take": {
-      "part": "3001",
-      "colour": 4
-     },
+     "take": {"part": "3001", "colour": 4},
      "after": 20
     },
     {
-     "mouse": [
-      760,
-      520
-     ]
+     "mouse": {"at": [0, 0, 0]}
     },
+    {"frames": 10},
     {
-     "frames": 10
-    },
-    {
-     "mouse": [
-      764,
-      524
-     ]
+     "mouse": {"at": [20, 0, 10]}
     }
    ],
    "settle": 40,
-   "crop": "window",
-   "width": 1200,
+   "crop": "_over_model",
    "alt": "An empty green baseplate with a red 2 x 4 brick in hand, drawn where it will go under the pointer.",
    "caption": "A part in hand follows the pointer and snaps to the studs; a click puts it down.",
-   "features": [
-    "ui:place and remove"
-   ]
+   "features": ["ui:place and remove"]
   }
  ]
 }

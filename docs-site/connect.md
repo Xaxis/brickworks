@@ -28,7 +28,11 @@ Every app adds Brickworks at the same address, signs in the same way and builds 
 
 ## In the app {#in-the-app}
 
+![Connect your AI in the assistant panel: a list of AI apps under Your AI, Claude chosen, and a Connect button with that app's steps under it.](/docs/img/connect-your-ai.webp "Tools › Connect your AI…: choose your app, then Connect.")
+
 **Connect your AI**, at the foot of the assistant panel (or **Tools › Connect your AI…**), starts on Claude. Choose the app you use under **Your AI**, then press **Connect**: it opens that app's link, copies its command, or copies the address and opens its page, as its card above says, with its steps, who can add it and what it cannot do yet under the button. Then sign in to Brickworks and **Allow**, once for each app.
+
+![The Brickworks page Claude opens: signed in as you@example.com, it asks Let Claude build in Brickworks?, lists what Claude will be able to do, and has Allow and Cancel buttons.](/docs/img/connect-allow.webp "The one question Brickworks asks, once for each app.")
 
 <!-- covers
 ui:connect your AI

@@ -31,12 +31,15 @@
 ##   {"click": {"part": "3001"}}            or the top of a part
 ##   {"right_click": ...}                   the same with the other button
 ##   {"over": {"part": "3001", "nth": 0, "lift": 1}}  the pointer over a part
-##                                          (lift: plates above its top)
+##                                          (lift: plates above its top),
+##   {"over": {"at": [0, 0, 0]}}            or a point in the model (LDU)
 ##   {"select": {"part": "3001", "colour": 4} | "all" | [n, ...]}
 ##   {"call": "path.method", "args": [...]} {"set": "path.property", "value": v}
 ##   {"take": {"part": "3001", "colour": 4}} a part into hand, as its tile in the bin
 ##   {"assistant": true}                    the assistant shown (Settings)
 ##   {"frames": 30}
+## Each starts as someone who has been here before (Build your first model
+## skipped, the offer of the assistant closed) unless "first_visit": true.
 ## And the picture: "crop" ("window", a path, "@opened" for the panel or
 ## window the setup put in sight, [x, y, w, h], or a list of
 ## those, joined), "pad" (pixels round a crop), "marks" ([{"at": path,
@@ -222,8 +225,10 @@ func _take(shot: Dictionary) -> void:
 	create_timer(SECONDS_A_PICTURE).timeout.connect(func() -> void:
 		_say(id, {"ok": false, "why": "not taken in %d s" % SECONDS_A_PICTURE})
 		quit(1))
+	# Frames at a person's pace, so a step's frames are its time too: what
+	# fades or slides in by the clock has done so when the picture is read.
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
-	Engine.max_fps = 0
+	Engine.max_fps = 60
 	# Offline, as gate_probe's first half: nothing in a picture is the day's.
 	OS.set_environment("BRICKWORKS_API", "http://127.0.0.1:9")
 	_main = load("res://src/main.tscn").instantiate()
@@ -243,6 +248,13 @@ func _take(shot: Dictionary) -> void:
 	_stop_playback()
 	await _let_in()
 	await _frames(20)
+	# Someone who has been here before: Build your first model skipped and
+	# the offer of the assistant closed, as their buttons do, unless the
+	# picture is of a first visit.
+	if not bool(shot.get("first_visit", false)):
+		_press(_shell.first_build.get("_skip"))
+		_press(_main.get("_offer_close"))
+		await _frames(10)
 	# The pointer off the window, as a person's is while the window is read:
 	# nothing hovered unless a step puts it there.
 	var away := InputEventMouseMotion.new()
@@ -308,6 +320,12 @@ func _take(shot: Dictionary) -> void:
 	_main.queue_free()
 	await process_frame
 	quit(0)
+
+
+## What a click on a button in sight does.
+func _press(button: Variant) -> void:
+	if button is BaseButton and (button as BaseButton).is_visible_in_tree():
+		(button as BaseButton).pressed.emit()
 
 
 func _say(id: String, what: Dictionary) -> void:
@@ -421,7 +439,8 @@ func _do(step: Dictionary) -> void:
 			bin.color_chosen.emit(int(taken["colour"]))
 		bin.part_chosen.emit(str(taken["part"]))
 	elif step.has("assistant"):
-		_shell.set_assistant(bool(step["assistant"]))
+		# As Settings' "Show the assistant" does: on, remembered, its column open.
+		_main.call("set_assistant", bool(step["assistant"]))
 	elif step.has("frames"):
 		await _frames(int(step["frames"]))
 	else:
@@ -512,13 +531,17 @@ func _click(at: Vector2, button: MouseButton, times: int) -> void:
 ## The window's pixel over a part of the model ({"part", "colour", "nth",
 ## "lift": plates over its top}).
 func _over(given: Variant) -> Variant:
+	var camera: CadCamera = _main.get("_camera")
+	if given is Dictionary and (given as Dictionary).has("at"):
+		# A point in the model, in LDraw units (-Y up): the floor's middle is [0, 0, 0].
+		var at: Array = given["at"]
+		return root.get_final_transform() * camera.screen_of(Vector3(float(at[0]), float(at[1]), float(at[2])))
 	var found: Array = _bricks(given)
 	if found.is_empty():
 		_failed.append("no part like %s to point at" % JSON.stringify(given))
 		return null
 	var brick: BrickWorld.Brick = found[0]
 	var world: BrickWorld = _main.get("_world")
-	var camera: CadCamera = _main.get("_camera")
 	var box: AABB = (world.library.parts[brick.part_id] as PartLibrary.PartInfo).bounds \
 		if world.library.parts.has(brick.part_id) else AABB()
 	# LDraw's up is -Y: the top of a part is its bounds' least Y.

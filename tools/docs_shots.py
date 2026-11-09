@@ -68,7 +68,7 @@ MOST_BYTES = 300_000
 QUALITY = 84
 ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 THEMES = ("dark", "light")
-SHOWN = re.compile(r'^!\[([^\]]*)\]\(/docs/img/([a-z0-9-]+)\.webp(?:\s+"([^"]*)")?\)\s*$', re.M)
+SHOWN = re.compile(r'^!\[([^\]]*)\]\(/docs/img/([a-z0-9-]+)\.webp(?:[ \t]+"([^"]*)")?\)[ \t]*$', re.M)
 
 
 def shots() -> list[dict]:

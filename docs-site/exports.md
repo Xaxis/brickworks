@@ -47,13 +47,15 @@ ui:parts lists for shops
 
 ## 3D models {#3d}
 
+![The 3D model export dialog: a choice of glb, gltf, obj, stl or 3mf, each with a line on what it is for.](/docs/img/exports-3d.webp "File › Export › 3D model…")
+
 **3D model…** writes the model as glTF (`.glb` or `.gltf`) in its colours, OBJ, STL for a printer, or 3MF for a printer that prints in several colours, each part with its real shape.
 
 A **3MF** has an object for each colour, in that colour, so your slicer gives each its own filament: when it asks, load it as one object of several parts. It is in millimetres, standing on the bed. A part moulded in two colours, such as a steering wheel on its stand, goes to both; a printed pattern is painted on its part for a slicer that reads a triangle's colour, and prints in the part's own colour in one that does not. The parts are LDraw's shapes at their exact size, not loosened for a printer, so printed parts may fit real bricks tightly.
 
-![The 3D model export's formats.](/img/compare-export3d-640.webp "Export a 3D model: glb, gltf, obj, stl or 3mf.")
-
 ## Render {#render}
+
+![The Render dialog: a picture of the car on the left, and on the right its quality, size, background, lights and camera.](/docs/img/exports-render.webp "File › Render… (F9).")
 
 **File › Render…** (or the toolbar's camera) makes a picture of the model worth keeping, a turntable, an animation of one of its motions, or a video of it being built. The picture on the left is a quick draft of the render, drawn again every time a choice changes, so what comes out is what you looked at; **Render** only makes it better. A render runs a piece at a time, with its progress on the bar and **Cancel** (or [[Esc]]) to stop it; when it is done it downloads, or on the desktop goes to Downloads.
 

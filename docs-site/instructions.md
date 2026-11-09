@@ -30,6 +30,8 @@ ui:any step in one go
 
 ## The timeline {#timeline}
 
+![The timeline under the model: the car built to its first step, a slider and a row of numbered steps, the parts the step adds, and Start, Back, Reverse, Play, Next and End.](/docs/img/instructions-timeline.webp "Build › Timeline (B): the steps a booklet is made of.")
+
 [[B]] opens the timeline under the model: the build from an empty baseplate to the finished model. [[Left]] and [[Right]] step through it, [[Space]] plays it, and [[Home]] and [[End]] go to its start and end. Its buttons are **Earlier**, **Later**, **Merge with next**, **Delete step**, **New step from selection** and **Move to step…**; click a step in its row of steps to go to it.
 
 <!-- covers
@@ -85,6 +87,8 @@ ui:what is set in the booklet kept over an open
 -->
 
 ### The page: paper, margins, colour {#page-setup}
+
+![Page setup for the booklet: its tabs for the paper, the cover, the header and footer and the steps' colours, with the paper's size, margins and colour.](/docs/img/instructions-page-setup.webp "Build › Booklet page › Page setup… (Ctrl+Shift+B).")
 
 The booklet's own page is 269 x 199 mm on its side. It fits A4 and US Letter turned on their side with a margin to spare, so one PDF prints on both. To print on another paper, or in your own colours, use **Build › Booklet page › Page setup…**:
 

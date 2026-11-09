@@ -2120,6 +2120,7 @@
       "tests": [
         "tests/fixtures/feedback/api_check.mjs",
         "tests/test_coming_soon.py",
+        "tests/test_docs_shots.py",
         "tests/test_feedback.py",
         "tests/test_release_train.py"
       ]
@@ -2610,6 +2611,14 @@
       "entry": "src/dev/ahead_probe.gd",
       "reach": "godot --headless --path . --script src/dev/ahead_probe.gd -- --most-ms=50   (tools/probe.sh ahead_probe: a part turned by move_part, Ctrl+Z, a part placed by a click, on the Ducati a session designed, 8808-1 and 42004-1, each followed 4 s while the joints are read and the model weighed on workers; then a press while the joints are read takes the worker's reading, and one while a session moves a part says so)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "cli:the docs' pictures",
+      "kind": "cli",
+      "entry": "tools/docs_shots.py",
+      "reach": "python3 tools/docs_shots.py [--only=ID,ID] [--app | --site] [--affected]   (docs-site/pictures/<page>.json: the app's through tools/probe.sh docs_shots_probe on the GPU from a locked snapshot, the site's by tools/web/docs_shots_flow.mjs; into docs-site/img/, with diff/index.html of what changed; tools/docs_site.py --check fails on one missing or not made by it)",
+      "area": "web",
       "tests": []
     },
     {
@@ -4715,6 +4724,7 @@
       "tests": [
         "tests/fixtures/feedback/api_check.mjs",
         "tests/test_coming_soon.py",
+        "tests/test_docs_shots.py",
         "tests/test_feedback.py",
         "tests/test_release_train.py"
       ]

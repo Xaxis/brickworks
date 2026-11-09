@@ -4,39 +4,25 @@
    "id": "instructions-timeline",
    "source": "app",
    "setup": [
-    {
-     "run": "timeline",
-     "after": 30
-    }
+    {"run": "timeline", "after": 30}
    ],
-   "crop": "window",
-   "width": 1200,
-   "alt": "The timeline under the model: the car's build steps in a row, the current one lit, with buttons to play and to step.",
+   "crop": ["_over_model", "_steps"],
+   "alt": "The timeline under the model: the car built to its first step, a slider and a row of numbered steps, the parts the step adds, and Start, Back, Reverse, Play, Next and End.",
    "caption": "Build › Timeline (B): the steps a booklet is made of.",
-   "features": [
-    "ui:build steps"
-   ]
+   "features": ["ui:build steps"]
   },
   {
-   "id": "instructions-booklet",
+   "id": "instructions-page-setup",
    "source": "app",
    "setup": [
-    {
-     "run": "instructions",
-     "after": 30
-    },
-    {
-     "frames": 180
-    }
+    {"run": "booklet_page_setup", "after": 30},
+    {"frames": 30}
    ],
-   "settle": 60,
-   "crop": "window",
-   "width": 1200,
-   "alt": "The car's instruction booklet open on a page of steps, each step's new parts in a box above its picture.",
-   "caption": "Build › Instructions… (Alt+B) makes the booklet from the steps.",
-   "features": [
-    "ui:the booklet"
-   ]
+   "crop": "@opened",
+   "pad": 0,
+   "alt": "Page setup for the booklet: its tabs for the paper, the cover, the header and footer and the steps' colours, with the paper's size, margins and colour.",
+   "caption": "Build › Booklet page › Page setup… (Ctrl+Shift+B).",
+   "features": ["ui:the booklet's own cover and colours"]
   }
  ]
 }

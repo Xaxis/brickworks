@@ -4,44 +4,29 @@
    "id": "parts-bin-search",
    "source": "app",
    "setup": [
-    {
-     "click": "_bin._search"
-    },
-    {
-     "type": "slope 2 x 2",
-     "after": 20
-    },
-    {
-     "frames": 120
-    }
+    {"click": "_bin._search"},
+    {"type": "slope 2 x 2", "after": 20},
+    {"frames": 120}
    ],
    "settle": 60,
    "crop": "_bin",
    "pad": 0,
    "alt": "The parts bin with slope 2 x 2 typed in its search and the slopes it found shown as pictures with their names, the colours below.",
    "caption": "Type what you want: the bin finds it by name, number or the words builders use.",
-   "features": [
-    "ui:parts bin",
-    "lib:part search"
-   ]
+   "features": ["ui:parts bin", "lib:part search"]
   },
   {
    "id": "parts-bin-shelves",
    "source": "app",
    "setup": [
-    {
-     "frames": 60
-    }
+    {"frames": 60}
    ],
    "settle": 60,
    "crop": "_bin",
    "pad": 0,
    "alt": "The parts bin as it opens: its shelves along the top, a grid of part pictures, and the colours at the foot.",
    "caption": "The bin's shelves, parts and colours.",
-   "features": [
-    "ui:parts bin",
-    "ui:palette"
-   ]
+   "features": ["ui:parts bin", "ui:palette"]
   }
  ]
 }

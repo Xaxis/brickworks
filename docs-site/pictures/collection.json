@@ -4,41 +4,27 @@
    "id": "collection-dialog",
    "source": "app",
    "setup": [
-    {
-     "run": "collection",
-     "after": 30
-    },
-    {
-     "frames": 30
-    }
+    {"run": "collection", "after": 30},
+    {"frames": 30}
    ],
    "crop": "@opened",
    "pad": 0,
    "alt": "My collection: the sets and loose parts you own, with ways to add a set by its number, from a photo of its box, or from Rebrickable.",
    "caption": "File › My collection…",
-   "features": [
-    "ui:my collection"
-   ]
+   "features": ["ui:my collection"]
   },
   {
    "id": "collection-parts-list",
    "source": "app",
    "setup": [
-    {
-     "run": "parts_list",
-     "after": 30
-    },
-    {
-     "frames": 30
-    }
+    {"run": "parts_list", "after": 30},
+    {"frames": 30}
    ],
    "crop": "@opened",
    "pad": 0,
    "alt": "The car's parts list: each part's picture, name, colour and how many, with What do I need? and the shop lists at the foot.",
    "caption": "Build › Parts list (P).",
-   "features": [
-    "ui:parts lists for shops"
-   ]
+   "features": ["ui:parts lists for shops"]
   }
  ]
 }

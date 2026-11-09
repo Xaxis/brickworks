@@ -1,50 +1,28 @@
 {
  "shots": [
-  {
-   "id": "the-view-cube",
-   "source": "app",
-   "setup": [],
-   "crop": "_gizmo",
-   "pad": 8,
-   "alt": "The view cube in the corner of the view, its faces named, with buttons round it to slide, zoom and fit.",
-   "caption": "The view cube: click a face, edge or corner to look from there.",
-   "features": [
-    "ui:view cube"
-   ]
-  },
+  {"id": "the-view-cube", "source": "app", "setup": [], "crop": "_gizmo", "pad": 8, "alt": "The view cube in the corner of the view, its faces named, with buttons round it to slide, zoom and fit.", "caption": "The view cube: click a face, edge or corner to look from there.", "features": ["ui:view cube"]},
   {
    "id": "the-view-cut",
    "source": "app",
    "setup": [
-    {
-     "run": "cut",
-     "after": 30
-    }
+    {"run": "cut", "after": 30}
    ],
-   "crop": "window",
-   "width": 1200,
+   "crop": "_over_model",
    "alt": "The red car cut away by a plane, showing the inside of its parts, with the cut-away's strip of choices along the view.",
    "caption": "View › Cut away (K) shows the inside; its strip changes the shape and side.",
-   "features": [
-    "ui:cut-away"
-   ]
+   "features": ["ui:cut-away"]
   },
   {
    "id": "the-view-split",
    "source": "app",
    "setup": [
-    {
-     "run": "split_view",
-     "after": 40
-    }
+    {"run": "split_view", "after": 40}
    ],
-   "crop": "window",
-   "width": 1200,
-   "alt": "The view split in two: the red car from the front on one side and from another side on the other.",
+   "crop": ["_over_model", "_split"],
+   "width": 1000,
+   "alt": "The model area split in two: the red car turned three-quarters on the left, and straight from the front on the right with Front, Top, Side, Back and Fit above it.",
    "caption": "View › Split (F8) shows the model from two sides at once.",
-   "features": [
-    "ui:split view"
-   ]
+   "features": ["ui:split view"]
   }
  ]
 }

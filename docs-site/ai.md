@@ -25,6 +25,8 @@ An AI can design a whole model from a sentence, change a part of one, or answer 
 
 ## The assistant panel {#panel}
 
+![The assistant panel beside the parts bin: a box to describe what to build, Build it, and Connect your AI at its foot.](/docs/img/ai-assistant.webp "The assistant panel: say what to build, then Build it.")
+
 The panel on the right is where you talk to Claude in the app. Describe what you want (*a red fire engine with a ladder that lifts*) and press **Build it**. You watch it build: each part goes down as Claude places it, and the status bar says what it is doing. When it has finished, the whole design is one step of Undo.
 
 <!-- covers
@@ -63,6 +65,8 @@ ui:design on your own Copilot plan
 -->
 
 ## Another AI on your own key {#other-ais}
+
+![Settings' AI page: who designs, Claude or another AI on your own key, with the provider, its model and the key.](/docs/img/ai-settings.webp "Tools › Settings…, then AI: Claude…")
 
 **Tools › Settings…**, then **AI: Claude…** (the link names who designs), chooses who designs: **Claude**, as above, or **another AI on your own API key**. The other AI is given the same instructions and the same tools Claude is, builds in the window as Claude does, is held to the same checks, and answers the same [fresh look](/docs/fresh-eyes) at its first save.
 
