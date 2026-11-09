@@ -683,9 +683,10 @@ func _box_of(way: String) -> int:
 		await process_frame
 	await _frames(6)
 	var over: Array[Window] = []
+	# Not a hover hint (Godot's tooltip, which the pointer passes through).
 	for sub: Window in root.get_embedded_subwindows():
 		if sub.visible and not sub.get_flag(Window.FLAG_POPUP) and sub.get_parent() != null \
-				and not before.has(sub.get_instance_id()):
+				and not sub.get_flag(Window.FLAG_MOUSE_PASSTHROUGH) and not before.has(sub.get_instance_id()):
 			over.append(sub)
 	if over.is_empty():
 		await _idle()
@@ -840,7 +841,7 @@ static func _said(chain: Array) -> String:
 	var words: PackedStringArray = []
 	for node: Dictionary in chain:
 		words.append("%s “%s”%s" % [node.get("role"), str(node.get("name")).left(40),
-			" MODAL" if bool(node.get("modal")) else ""])
+			" MODAL" if node.get("modal", false) == true else ""])
 	return " < ".join(words) if not words.is_empty() else "nothing"
 
 
