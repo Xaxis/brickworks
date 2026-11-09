@@ -378,9 +378,13 @@ picture the assistant is shown.
   FileDialog of the main window was one, so with Godot's own file dialog up
   (no xdg portal; File, Open's and Import's always) or any question, the
   title bar's X, Alt+F4 and the session ending did nothing until it was
-  answered (desktop018, 0.18.0 and 0.19.0). Now nothing is exclusive to the
-  main window: a dialog that would be is made not exclusive the frame it is
-  up, and `ModalDialogs`, the root's last node, takes the events the main
+  answered (desktop018, 0.18.0 and 0.19.0). Now nothing is the main window's
+  exclusive child: a dialog that would be is made not transient to it the
+  frame it is up (a window is its parent's exclusive child only while
+  transient), keeping its exclusive flag, so a screen reader still hears it
+  as modal (a11ymodal, 2026-11-08: dialogclose first made them not
+  exclusive, which the engine reports as not modal; `a11y_modal_probe`).
+  `ModalDialogs`, the root's last node, takes the events the main
   window would have refused while one is, and gives the dialog the keys back
   on a press beside it. A dialog's own questions stay exclusive to it, and
   Reference picture stays not modal. The app still asks nothing as it
@@ -852,7 +856,7 @@ picture the assistant is shown.
   command has no key and no row there, or a preset's count differs; checks no
   two actions share a key, each key is on its menu row, and each does what its
   row does under each preset (pictures: the menus, the sheet filtered `alt-`);
-  none runs while the parts' search is typed in; Replace set to Alt-W in the
+  each runs from the parts' search too (typingkeys); Replace set to Alt-W in the
   sheet runs from Alt-W. `docs_menus.gd` now writes each row's key as the app's
   own keys have it, so the docs' menus and shortcuts pages list Alt-C and the
   rest.
@@ -872,12 +876,35 @@ picture the assistant is shown.
   98 before) is 106 or more; each key is on its row and does what the row does
   under each preset (Render's panel, the queue, the three shapes cut away, Page
   setup, the Pick a Brick Save dialog cancelled, the Library); Render in one
-  key press; none runs while the parts' search is typed in; the sheet lists
+  key press; each runs from the parts' search too (typingkeys); the sheet lists
   them, its rows keeping a name's capitals ("LEGO® Pick a Brick list",
   "BrickLink wanted list", never "lEGO®"; `ControlsDialog.bindings`)
   (pictures: File, File › Export, View › Cut away by, Build › Booklet page
   opened, the sheet filtered "F9", "cut away", "list"). `keys4_probe` still
   checks the counts and the keyless rows.
+- `keys while a field has the focus` (`src/main.gd` `_unhandled_key_input`,
+  APP_UX7 #4, the typingkeys unit, 2026-11-08): a field with the keys (a
+  LineEdit or TextEdit: the bin's search, Find's field, the assistant's brief,
+  a name) keeps only the keys it types with: what prints, with no Ctrl, Alt or
+  Cmd (AltGr, sent as Ctrl and Alt, still prints), and the keys that move,
+  select and delete in its text, with any modifier, Escape and Tab among
+  them. F1, F9, Ctrl+S, Alt+X and every other function or modified key reach
+  their commands; what the field does itself (Ctrl+A, C, V, X, Z) it takes
+  before Main hears it. Before, Main gave up every key while a field had
+  them, and the walk's F1 after a bin search did nothing.
+  `tools/probe.sh typingkeys_probe` (1400 x 900; `PROBE_SIZE=1280x720` too;
+  needs .env for its throwaway account) goes through the sign-in screen, then
+  under each of the four presets, from each of the three fields clicked as a
+  person clicks them: "87087" typed, F1 the keys sheet, F9 Render,
+  Ctrl+Shift+B Page setup, Alt+X the box, Ctrl+S saved, 1 press each; a
+  sentence of letters, digits, Space, Shift's capitals, brackets and - = typed
+  runs nothing (the model's bytes, its undo list, the view, the selection, the
+  tool, nothing open) and lands whole in the field; Ctrl+A, C, X, V, Z act on
+  the text (selected, copied, cut, pasted, undone) and leave the model as it
+  was; the walk's "cut away" typed into the sheet after F1 from the search
+  keeps 11 rows at 1400 x 900. Pictures in user://typingkeys (or --shots=DIR):
+  the sheet, Render, Page setup and the box from each field, each field typed
+  in, the sheet's "cut away".
 - `what's this` (`src/ui/whats_this.gd`, Help, What's This?, Shift+F1, the
   whatsthis unit, APP_UX4 10): the next click on any control says what it does
   in a bubble beside it, and does nothing else, as LeoCAD's, Qt's and Windows'
@@ -1650,10 +1677,9 @@ picture the assistant is shown.
   (`BookletRead`: the file on the desktop, the tab's sections on the web)
   into a PDF written by hand (`BookletPdf`: the step pictures the booklet's
   own JPEGs as DCTDecode, a part's picture once, boxes and arrows as paths,
-  words as text in Liberation Sans, Helvetica's widths, the TrueType file
-  embedded whole as FontFile2 with its WinAnsi widths read from its own
-  hmtx and cmap: `BookletPdf.TYPE`, `font_metrics`; `assets/fonts/`, SIL
-  OFL, credited in `Credits.LIST` "liberation"; 269 x 199 mm pages) or a
+  words as text in Liberation Sans, Helvetica's widths: `BookletPdf.TYPE`;
+  `assets/fonts/`, SIL OFL, credited in `Credits.LIST` "liberation"; 269 x
+  199 mm pages) or a
   zip of a PNG a page at 300 dpi (`BookletPng.DPI`, a pHYs chunk saying so,
   `dpi_chunk`; the words in the same type; drawn with `force_draw`, as the
   web's app tab is out of view and gets no frames). `booklet_pdf_probe`
@@ -1665,6 +1691,25 @@ picture the assistant is shown.
   PDF drawn by poppler (`--shots` against the browser's own pictures, from
   `booklet_print.mjs --shots-only`). `booklet_flow.mjs` presses both in a
   browser and runs the same check on the downloads.
+- `the PDF's words in any script` (pdfcid, APP_UX7 #13, 2026-11-08): each
+  face goes in as a Type0 font, Identity-H, cut down to the glyphs the
+  pages use, with a ToUnicode map (`PdfType`, `src/render/pdf_type.gd`:
+  TrueType keeps every glyph's number and empties the rest, composites
+  keeping their parts; CFF is written with only the glyphs used, their
+  subroutines in place, each CID its old glyph number). A letter Liberation
+  lacks goes in the system's face Godot draws the page's PNG in
+  (`BookletPdf._system`: the TextServer's fallback, its file from
+  `OS.get_system_font_path`); none on the web. Only letters no face has
+  (a colour emoji) are "?" and named by the export (`missed_said`).
+  `booklet_pdf_probe -- --words-only --into=DIR` signs in a throwaway account,
+  gives booklook's dialog_a a Cyrillic title and Greek footer (page_setup)
+  and a Japanese note (edit_booklet), presses Instructions and Save as PDF,
+  and reads them back with pdftotext (0 "?"), pdffonts (embedded, subset,
+  ToUnicode) and, with the note set in Noto Sans CJK by hand, a CFF face
+  drawn by poppler and Ghostscript. `-- --against=DIR` (the commit before's
+  --into) writes its castle booklet's PDF again from its own file: every
+  page the same at 300 dpi to the pixel (pdftoppm, sha1 a page), the file
+  no more than 10% bigger. Look at DIR/words-pdf-*.png.
 - `the booklet`: build instructions laid out as a LEGO booklet, one HTML
   file that prints on A4 and Letter (landscape; `Booklet.PAGE` is 269 x 199 mm,
   inside both) and reads on screen (`--mm` scales the same millimetres to the
@@ -3025,6 +3070,11 @@ godot --headless --path . --script src/dev/mosaic_probe.gd        # the picture 
 #   and as the person chose it (APP_UX6 #10): crop, colours, mixed plates, words
 tools/probe.sh mosaic_window_probe -- --shots=DIR                   # the same in the app's window, signed in (.env); PROBE_SIZE=1400x900 too
 #   -- --ldr=shots/art/galaxy.ldr writes the galaxy, to render corner, front and close
+godot --headless --path . --script src/dev/art_counts_probe.gd    # every count Brick Art says reads right for one and for many
+#   (smallwords): each element kind one and two as the dialog and a session
+#   count them, the dialog's plates, colours, panels, relief and palette on
+#   pictures that come to one and two, each in German, French and Spanish
+#   found whole with its one said apart from its many
 godot --headless --path . --script src/dev/art_plan_probe.gd      # an Art plan is laid as it says; a bad one is refused
 #   no network: a canned plan over a tilted galaxy (sky smooth and flat, disc
 #   round and one up, core three up, three stars by hand in glow, trans-clear

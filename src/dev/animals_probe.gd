@@ -39,6 +39,10 @@
 ## its clip or its rider's leg as their sets put them. Only a stud says a
 ## part is seated now, 27 of 27 (realjoints4, 2026-11-08).
 ##
+## The as-set check read each saddle by its cell, which the write puts an LDU
+## low, so what it saw refused there was the write's (up to 1.80 LDU off);
+## it reads the saddle where its set has it now (seatfix, 2026-11-08).
+##
 ## And the seat moves no part a bar holds where its set has it: 10267-1's
 ## candle (37762), its bar down a flower plate's hollow stud and its hole 3 LDU
 ## off that stud, as harvest_probe writes it. The seat that took the move
@@ -79,6 +83,10 @@ var _hand: Array = [0, 0]
 var _off_in_file: PackedStringArray = []
 var _saddles: Array = [0, 0]
 var _worst: float = 0.0
+## How far from where its set has it the as-set check read a saddle, LDU.
+var _as_set_off: float = 0.0
+## And how far its cell, which it read before, is from there, LDU.
+var _cell_off: float = 0.0
 var _refused: int = 0
 var _not_on: int = 0
 var _missed: PackedStringArray = []
@@ -138,8 +146,10 @@ func _run() -> void:
 		+ "set has it to %.2f LDU (%d of %d, at least %d; the worst %.2f)" % [SEATED,
 			_saddles[1], _saddles[0], SADDLES_AT_LEAST, _worst],
 		_saddles[1] == _saddles[0] and _saddles[0] >= SADDLES_AT_LEAST)
-	_check("and none of them is refused for more than it is where its set has it (%d)"
-		% _refused, _refused == 0)
+	_check("and none of them is refused for more than it is where its set has it (%d), "
+		% _refused + "read where its set has it (the furthest %.3f LDU off; its cell, " % _as_set_off
+		+ "which it was read by before, up to %.2f)" % _cell_off,
+		_refused == 0 and _as_set_off <= SEATED)
 	_world.clear()
 	_builder.lattice.clear()
 	var candle := Assistant.Model.new()
@@ -334,14 +344,25 @@ func _seat_saddle(where: String, saddle: int, id: String, at: Transform3D) -> vo
 		return
 	# What the check says of it where its set has it: a fault there is the
 	# set file's own, as 6379-1's rider sits 8 LDU down into its saddle, the
-	# holes of its legs on the horse's studs where the saddle's are.
+	# holes of its legs on the horse's studs where the saddle's are. Where its
+	# set has it, to the LDU: read back from the world, a moved part is
+	# written by its cell, an LDU low on a horse's back, which is where the
+	# session's own is written, so every fault there was the set's (seatfix,
+	# 2026-11-08). The rest of the way is its nudge.
+	var mesh: Lbm.PartMesh = _library.mesh_for(id)
 	var as_set: Assistant.Model = _assistant._model_from_world()
-	as_set.placements[index].moved = true
+	var own_spot: Assistant.Placement = as_set.placements[index]
+	own_spot.moved = true
+	own_spot.nudge = Vector3.ZERO
+	_cell_off = maxf(_cell_off, _assistant._transform(own_spot, mesh).origin.distance_to(
+		at.origin))
+	own_spot.nudge = at.origin - _assistant._transform(own_spot, mesh).origin
+	_as_set_off = maxf(_as_set_off, _assistant._transform(own_spot, mesh).origin.distance_to(
+		at.origin))
 	var own: Dictionary = {}
 	for fault: String in _faults_naming(_assistant._check(as_set, true), index):
 		own[_fault_key(fault)] = true
 	var placement: Assistant.Placement = model.placements[index]
-	var mesh: Lbm.PartMesh = _library.mesh_for(id)
 	placement.x = snappedf(placement.x + placement.nudge.x / Assistant.STUD, 0.01)
 	placement.y = snappedf(placement.y + placement.nudge.y / Assistant.PLATE, 0.01)
 	placement.z = snappedf(placement.z + placement.nudge.z / Assistant.STUD, 0.01)

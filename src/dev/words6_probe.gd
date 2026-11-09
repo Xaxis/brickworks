@@ -18,7 +18,14 @@
 ##   as a brick, a plate's as a plate (they read "4 plates" and "2 plates");
 ##   the same as a screen reader says it, and in the bin's list of rows;
 ## * F1's keys sheet, "cut away" typed into its box: the rows of the box, the
-##   sphere and the cylinder kept, each saying what it cuts away by.
+##   sphere and the cylinder kept, each saying what it cuts away by;
+## * over MCP, a session hears each part's size in the bin's own words
+##   (APP_UX7 mcpwords): search_parts by number says 87087 "1 x 1, a stud on
+##   one side, 1 brick", 4733 "1 x 1, studs on four sides, 1 brick" and 30414
+##   "4 x 1, studs on one side, 1 brick", as their tiles' tooltips do, where it
+##   said "covers 1x2 studs", "2x2" and "4x2"; every part the walk's 30 words
+##   and like=4070 list says the line its tile's tooltip says; the words of the
+##   MCP walk's w8 find 3024 and 87087 first, each in those words.
 ##
 ## At 1400 x 900, and at 1280 x 720 with PROBE_SIZE=1280x720. Pictures go to
 ## shots/words6/. Look at them.
@@ -114,6 +121,7 @@ func _run() -> void:
 	await _plate_words()
 	await _walk_words()
 	await _tooltips()
+	await _mcp_words()
 	await _keys_sheet()
 
 	_socket.queue_free()
@@ -298,6 +306,70 @@ func _move(at: Vector2) -> void:
 	motion.position = _as_event(at)
 	motion.global_position = motion.position
 	Input.parse_input_event(motion)
+
+
+# -- a part's size over MCP -----------------------------------------------------
+
+
+## A session's words for a part's size are the bin's: each part of SIZES by its
+## number, every part the walk's 30 words and like=4070 list (the parts like
+## the headlight brick, the walk's r2), and the words of the MCP walk's w8.
+func _mcp_words() -> void:
+	print("")
+	print("  over MCP: a part's size in the bin's words")
+	for part: String in SIZES:
+		var line: String = (await _mcp_lines({"query": part, "limit": 1})).get(part, "")
+		_check("search_parts %s: \"%s\"" % [part, line], _in_bin_words(line, str(SIZES[part])))
+	var lines: int = 0
+	var wrong := PackedStringArray()
+	var asked: Array = []
+	for row: Array in WALK:
+		asked.append({"query": row[0], "limit": 15})
+	asked.append({"query": "", "like": "4070", "limit": 15})
+	for arguments: Dictionary in asked:
+		var said: Dictionary = await _mcp_lines(arguments)
+		for part: String in said:
+			lines += 1
+			var info: PartLibrary.PartInfo = _library.parts.get(part)
+			if not _in_bin_words(str(said[part]), PartsBin.size_words(info)):
+				wrong.append("%s for \"%s\": %s" % [part, arguments.get("like", arguments["query"]),
+					str(said[part]).left(110)])
+	print("    %d lines, e.g. %s" % [lines, ", ".join(wrong.slice(0, 3))])
+	_check("%d parts listed for the walk's 30 words and like=4070, %d not in their tile's words%s"
+		% [lines, wrong.size(), "" if wrong.is_empty() else ": " + "; ".join(wrong.slice(0, 4))],
+		lines >= 300 and wrong.is_empty())
+	# The MCP walk's w8: "Which part is a plain 1x1 plate, and which is the 1x1
+	# brick with one stud on its side? Say how big each one is, in studs and in
+	# bricks."
+	for pair: Array in [["1x1 plate", "3024"], ["1x1 brick with stud on side", "87087"]]:
+		var said: Dictionary = await _mcp_lines({"query": pair[0], "limit": 5})
+		var first: String = said.keys()[0] if not said.is_empty() else "-"
+		_check("w8's \"%s\": %s first, \"%s\"" % [pair[0], first, said.get(first, "")],
+			first == pair[1] and _in_bin_words(str(said[first]),
+				PartsBin.size_words(_library.parts.get(pair[1]))))
+
+
+## search_parts with [param arguments], as a session asks: each part its answer
+## lists, first first, to its line.
+func _mcp_lines(arguments: Dictionary) -> Dictionary:
+	_next += 1
+	var answer: Variant = await _socket.answer_rpc({"jsonrpc": "2.0", "id": _next,
+		"method": "tools/call", "params": {"name": "search_parts", "arguments": arguments}})
+	var out: Dictionary = {}
+	for block: Dictionary in ((answer as Dictionary).get("result", {}) as Dictionary).get("content", []):
+		for line: String in str(block.get("text", "")).split("\n"):
+			var id: String = line.strip_edges().get_slice(":", 0)
+			if line.contains(": ") and _library.parts.has(id) and not out.has(id):
+				out[id] = line.strip_edges()
+	return out
+
+
+## Whether a part's [param line] says its size as [param words], the bin's
+## tile's line, whole: after its name and before what follows, never its box
+## ("covers 1x2 studs").
+func _in_bin_words(line: String, words: String) -> bool:
+	return not line.contains("covers ") and (line.contains(", %s," % words)
+		or line.contains(", %s (" % words) or line.ends_with(", " + words))
 
 
 # -- the keys sheet --------------------------------------------------------------

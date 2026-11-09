@@ -3119,6 +3119,10 @@
           ],
           "type": "integer"
         },
+        "chamfer": {
+          "description": "wedge: true to cut the far corner flat, 3 LDU along, as the LEGO® wedge plates 54383 and 41770b have it; false, the default, runs the cut to the corner (41770a)",
+          "type": "boolean"
+        },
         "cut": {
           "additionalProperties": false,
           "description": "with from: a box to cut out of the part — a corner, a notch, a step — in studs from its low x and low z (its left and back) and plates up from its bottom; the cut faces are closed and a wall put back where it opens the part's hollow underside.",

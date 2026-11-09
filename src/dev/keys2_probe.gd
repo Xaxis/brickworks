@@ -21,7 +21,7 @@
 ##   the Pick a Brick list's Save dialog (cancelled), the Library;
 ## - Render from the model in one key press (the walk counted 5 by the
 ##   palette);
-## - typed into the parts' search, none of them runs anything;
+## - typed into the parts' search, each still does what its row does;
 ## - the keys sheet (F1) lists each with its words and key.
 ##
 ## The data folder is the run's own (probe.sh gives one).
@@ -109,7 +109,7 @@ func _run() -> void:
 	await _menus(table)
 	await _model()
 	await _keys_do_what_rows_do()
-	await _not_while_typing()
+	await _from_the_search()
 	await _sheet_lists_them()
 	Keymap.use("brickworks")
 	Keymap.reset()
@@ -428,25 +428,31 @@ func _keys_do_what_rows_do() -> void:
 
 # -- typed into a field ----------------------------------------------------------
 
-func _not_while_typing() -> void:
-	print("\n  typed into the parts' search, the keys run nothing")
-	_select([_a])
+## From the parts' search, each key does what it does from the model: a field
+## keeps only the keys it types with (Main._unhandled_key_input, APP_UX7 #4).
+## The walk typed in the bin and found F1 dead; typingkeys_probe has the
+## letters typed there running nothing.
+func _from_the_search() -> void:
+	print("\n  typed into the parts' search, each key still does what its row does")
 	var bin: PartsBin = _main.get("_bin")
-	bin.focus_search()
-	await _frames(6)
-	var field: Control = root.gui_get_focus_owner()
-	_check("the parts' search has the keys (%s)" % field, field is LineEdit)
-	var pressed: Array = []
+	var missed: Array = []
 	for name: String in NAMES:
-		pressed.append(Keymap.listed(name))
+		await _put_away()
+		_select([_a])
+		bin.focus_search()
+		await _frames(6)
+		var field: Control = root.gui_get_focus_owner()
+		if not field is LineEdit:
+			missed.append("%s (the search had not the keys: %s)" % [Keymap.listed(name), field])
+			continue
 		await _press(Keymap.key_of(name))
-	await _frames(20)
-	var ran: Array = _open_now()
-	_check("%s ran nothing%s, and the search kept the keys" % [", ".join(pressed),
-		"" if ran.is_empty() else ": " + ", ".join(ran)],
-		ran.is_empty() and root.gui_get_focus_owner() == field)
+		var seen: Array = await _what_opened(name)
+		if seen != [OPENS[name]]:
+			missed.append("%s (%s)" % [Keymap.listed(name), str(seen)])
 	await _put_away()
 	_builder.clear_selection()
+	_check("each of the eight from the search, in 1 press%s" % ("" if missed.is_empty()
+		else ": not " + ", ".join(missed)), missed.is_empty())
 
 
 # -- the keys sheet --------------------------------------------------------------

@@ -2384,6 +2384,9 @@ msgstr "Ausgewählt: %s in %s. Ein Klick auf eine Farbe färbt die Teile um"
 msgid "%d colours"
 msgstr "%d Farben"
 
+msgid "1 colour"
+msgstr "1 Farbe"
+
 msgid "A dot marks the %d colours it comes in"
 msgstr "Ein Punkt markiert die %d Farben, in denen es das Teil gibt"
 
@@ -4597,6 +4600,9 @@ msgstr "Es wird veröffentlicht"
 msgid "Saving to your account, sharing and Claude go on"
 msgstr "Speichern im Konto, Teilen und Claude gehen weiter"
 
+msgid "Saving to your account and sharing go on"
+msgstr "Speichern im Konto und Teilen gehen weiter"
+
 msgid "Sign in to Brickworks to share a model."
 msgstr "Melde dich bei Brickworks an, um ein Modell zu teilen."
 
@@ -6616,8 +6622,8 @@ msgstr "Abrufen"
 msgid "Read your sets and parts lists from your Rebrickable account"
 msgstr "Deine Sets und Teilelisten aus deinem Rebrickable-Konto lesen"
 
-msgid "Your Rebrickable key goes from here to rebrickable.com and nowhere else, and is not kept. What comes back replaces what came from Rebrickable before, fetched or exported, and the loose parts brought in before. What you count here, a BrickLink XML, and what an assistant added stay."
-msgstr "Dein Rebrickable-Schlüssel geht von hier nur an rebrickable.com und wird nicht gespeichert. Was zurückkommt, ersetzt, was vorher aus Rebrickable kam, abgerufen oder exportiert, und die früher eingelesenen losen Teile. Was du hier zählst, eine BrickLink-XML und was ein Assistent hinzugefügt hat, bleiben."
+msgid "Your Rebrickable key goes from here to rebrickable.com and nowhere else, and is not kept. What comes back replaces what came from Rebrickable before, fetched or exported, and the loose parts brought in before. What you count here, a BrickLink XML and everything else stay."
+msgstr "Dein Rebrickable-Schlüssel geht von hier nur an rebrickable.com und wird nicht gespeichert. Was zurückkommt, ersetzt, was vorher aus Rebrickable kam, abgerufen oder exportiert, und die früher eingelesenen losen Teile. Was du hier zählst, eine BrickLink-XML und alles andere bleiben."
 
 msgid "Your Rebrickable key goes from here to rebrickable.com and nowhere else, and is not kept. What comes back replaces what came from Rebrickable before, fetched or exported, and the loose parts brought in before. What you count here, a BrickLink XML, and what an assistant added stay. Ask the assistant for \"a small house from my collection\" and it builds from what you own."
 msgstr "Dein Rebrickable-Schlüssel geht von hier nur an rebrickable.com und wird nicht gespeichert. Was zurückkommt, ersetzt, was vorher aus Rebrickable kam, abgerufen oder exportiert, und die früher eingelesenen losen Teile. Was du hier zählst, eine BrickLink-XML und was ein Assistent hinzugefügt hat, bleiben. Bitte den Assistenten um „ein kleines Haus aus meiner Sammlung“, und er baut aus dem, was du hast."
@@ -11265,6 +11271,9 @@ msgstr "Such oben ein Teil, nach Nummer oder Wörtern, anhand eines Fotos oder d
 msgid "Added by %s — %s, %s: look them over"
 msgstr "Hinzugefügt von %s — %s, %s: sieh sie dir an"
 
+msgid "Not added by you — %s, %s: look them over"
+msgstr "Nicht von dir hinzugefügt — %s, %s: sieh sie dir an"
+
 msgid "Keep them"
 msgstr "Behalten"
 
@@ -11273,6 +11282,9 @@ msgstr "Diese als deine eigenen losen Teile behalten"
 
 msgid "Take back what %s added"
 msgstr "Zurücknehmen, was %s hinzugefügt hat"
+
+msgid "Take back what was added"
+msgstr "Zurücknehmen, was hinzugefügt wurde"
 
 msgid "Take out exactly the lots listed here; nothing of yours"
 msgstr "Genau die hier gelisteten Posten herausnehmen; nichts von deinen"
@@ -12730,8 +12742,14 @@ msgstr "kein Set %s ist bekannt"
 msgid "%s “%s”: %d colours"
 msgstr "%s „%s“: %d Farben"
 
+msgid "%s “%s”: 1 colour"
+msgstr "%s „%s“: 1 Farbe"
+
 msgid "%d colours you own its parts in"
 msgstr "%d Farben, in denen du seine Teile hast"
+
+msgid "1 colour you own its parts in"
+msgstr "1 Farbe, in der du seine Teile hast"
 
 msgid "%d × %d studs, %d × %d cm"
 msgstr "%d × %d Noppen, %d × %d cm"
@@ -12739,8 +12757,8 @@ msgstr "%d × %d Noppen, %d × %d cm"
 msgid "working it out…"
 msgstr "wird ausgerechnet…"
 
-msgid "%s plates for its %s studs, in %d colours: %s"
-msgstr "%s Platten für seine %s Noppen, in %d Farben: %s"
+msgid "%s for its %s studs, in %s: %s"
+msgstr "%s für seine %s Noppen, in %s: %s"
 
 msgid "you have %s of the %s"
 msgstr "du hast %s der %s"
@@ -12832,35 +12850,87 @@ msgstr "%s sieht sich das Bild an und plant es, wie ein Designer von LEGO® Art 
 msgid "%s round tiles"
 msgstr "%s runde Fliesen"
 
+msgid "1 round tile"
+msgstr "1 runde Fliese"
+
 msgid "%s square tiles"
 msgstr "%s eckige Fliesen"
+
+msgid "1 square tile"
+msgstr "1 eckige Fliese"
 
 msgid "%s larger tiles"
 msgstr "%s größere Fliesen"
 
+msgid "1 larger tile"
+msgstr "1 größere Fliese"
+
 msgid "%s relief plates"
 msgstr "%s Reliefplatten"
+
+msgid "1 relief plate"
+msgstr "1 Reliefplatte"
 
 msgid "%s cheese slopes"
 msgstr "%s Käseecken"
 
+msgid "1 cheese slope"
+msgstr "1 Käseecke"
+
 msgid "%s joining plates"
 msgstr "%s Verbindungsplatten"
+
+msgid "1 joining plate"
+msgstr "1 Verbindungsplatte"
 
 msgid "%s quarter circles"
 msgstr "%s Viertelkreise"
 
+msgid "1 quarter circle"
+msgstr "1 Viertelkreis"
+
 msgid "%s round plates"
 msgstr "%s runde Platten"
+
+msgid "1 round plate"
+msgstr "1 runde Platte"
 
 msgid "%s 16 × 16 panels"
 msgstr "%s Felder 16 × 16"
 
+msgid "1 16 × 16 panel"
+msgstr "1 Feld 16 × 16"
+
 msgid "%s stars"
 msgstr "%s Sterne"
 
+msgid "1 star"
+msgstr "1 Stern"
+
 msgid "%s large stars"
 msgstr "%s große Sterne"
+
+# A wedge plate's far corner cut flat (makepart3, APP_UX7 #16): the maker's checkbox, its
+# tooltip and what the dialog says of the part.
+
+msgid "Far corner cut flat"
+msgstr "Hintere Ecke flach abgeschnitten"
+
+msgid "As LEGO® wedge plates such as 54383 and 41770b are: the sharp corner the cut ends in, cut off 1.2 mm along"
+msgstr "Wie bei LEGO® Keilplatten wie 54383 und 41770b: die spitze Ecke, in der die schräge Seite endet, auf 1,2 mm Länge abgeschnitten"
+
+msgid "Its far corner is cut flat."
+msgstr "Ihre hintere Ecke ist flach abgeschnitten."
+msgid "1 large star"
+msgstr "1 großer Stern"
+# The parts bin's New shelf, the parts first made in the catalogue's latest two
+# years (APP_UX7 #5, binrow).
+
+msgid "The parts first made in %d or %d, the newest first"
+msgstr "Die %d oder %d erstmals hergestellten Teile, die neuesten zuerst"
+
+msgid "%s first made in %d or %d, the newest first"
+msgstr "%s, %d oder %d erstmals hergestellt, die neuesten zuerst"
 
 # Name the step (stepnames, APP_UX6 #9): the timeline's Name… button, the
 # Steps menu's row, its dialog and what the bar says of it.
