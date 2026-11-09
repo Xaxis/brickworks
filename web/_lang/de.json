@@ -1373,7 +1373,7 @@
   "LEGO® Pick a Brick CSV": "LEGO® Pick a Brick CSV",
   "LEGO® Pick a Brick CSV, {n} of {all}": "LEGO® Pick a Brick CSV, {n} von {all}",
   "Not on the Pick a Brick list, with no LEGO® element number known: {lots} ({parts}).": "Nicht auf der Pick a Brick-Liste, ohne bekannte LEGO® Elementnummer: {lots} ({parts}).",
-  "Pick a Brick takes {most} of an element: add by hand {more}.": "Pick a Brick nimmt {most} pro Element: von Hand hinzufügen {more}.",
+  "Pick a Brick takes {most} of an element: add by hand {more}.": "Pick a Brick nimmt höchstens {most} pro Element, von Hand hinzufügen: {more}.",
   "{n} more of {element}": "{n} weitere von {element}",
   "Rebrickable lists no parts for it: a book, gear or something else that is not built.": "Rebrickable führt keine Teile dafür: ein Buch, Merchandise oder etwas anderes, das nicht gebaut wird.",
   "Parts you own": "Teile, die du besitzt",

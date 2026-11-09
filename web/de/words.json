@@ -606,7 +606,7 @@
 "Photos of their real builds of models in the gallery.": "Fotos ihrer echten Nachbauten von Modellen aus der Galerie.",
 "Photos show the build, not people: no faces, and nobody's name or address.": "Fotos zeigen den Nachbau, keine Menschen: keine Gesichter und keine Namen oder Adressen.",
 "Pick a Brick takes {lines} elements a file.": "Pick a Brick nimmt {lines} Elemente pro Datei.",
-"Pick a Brick takes {most} of an element: add by hand {more}.": "Pick a Brick nimmt {most} pro Element: von Hand hinzufügen {more}.",
+"Pick a Brick takes {most} of an element: add by hand {more}.": "Pick a Brick nimmt höchstens {most} pro Element, von Hand hinzufügen: {more}.",
 "Picture of this page": "Bild dieser Seite",
 "Picture:": "Bild:",
 "Pictures of your own and likes on your profile are not open on Brickworks yet.": "Eigene Bilder und Likes auf deinem Profil gibt es auf Brickworks noch nicht.",
