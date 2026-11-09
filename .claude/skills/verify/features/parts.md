@@ -3,7 +3,7 @@
 Finding one of 28,000 parts by the words a builder would type, and getting its
 geometry in front of them.
 
-<!-- covers: lib:part search, ui:parts bin, ui:palette, lib:mesh fetch, ui:recent and favourite parts, ui:techniques in the bin, ui:find a part from a photo, cli:dialog look probe, cli:picker folder probe, ui:the app's dialogs and menus, ui:where a chooser opens, cli:contrast probe, ui:buttons seen and read -->
+<!-- covers: lib:part search, ui:parts bin, ui:palette, lib:mesh fetch, cli:fetchparts browser flow, ui:recent and favourite parts, ui:techniques in the bin, ui:new parts in the bin, cli:binrow probe, ui:find a part from a photo, cli:dialog look probe, cli:picker folder probe, ui:the app's dialogs and menus, ui:where a chooser opens, cli:contrast probe, ui:buttons seen and read -->
 
 ## Sub-features
 
@@ -173,10 +173,19 @@ geometry in front of them.
   1, studs on four sides", 30414 "4 x 1, studs on one side" (were 1 x 2, 2 x
   2, 4 x 2); and the height is its body's, less the stud on top: every brick
   read "4 plates" and every plate "2 plates" (`_height_text`).
+  And a session hears a part's size in those words (mcpwords, APP_UX7 14):
+  search_parts, and its like=, say each part's tile's line
+  (`Assistant._describe` calls `PartsBin.size_words`), a brick's plates after
+  it, which y counts in: "87087: Brick 1 x 1 with Stud on 1 Side, 1 x 1, a
+  stud on one side, 1 brick (3 plates), 1 stud on top and 1 facing sideways",
+  where it said its box, "covers 1x2 studs, 3 plates", and a session told the
+  person 87087 is 1 x 2.
   `words6_probe` (1400 x 900, PROBE_SIZE=1280x720 too): both words in the
   bin and search_parts, the walk's 30 words each with pre261's first part
   first in both, the tooltips of 87087, 4733, 30414, 3001 and 3024 and
-  87087's list row, and F1's sheet for "cut away" (see `keys sheet`).
+  87087's list row, the same five over MCP in their tooltips' words and
+  every part the 30 words and like=4070 list in its tile's (no "covers"),
+  and F1's sheet for "cut away" (see `keys sheet`).
 - `parts bin`: the panel that shows the results, with a category filter and the
   current colour applied to the thumbnails. It searches through `PartSearch`
   (every word, ranked as search_parts ranks; in German, French or Spanish its
@@ -377,9 +386,15 @@ geometry in front of them.
   storage bucket at run time. Several callers can ask for the same part at once,
   and every one of them has to hear that it arrived. Geometry and exact shapes
   (and so the bin's previews) go through one fetch, `PartLibrary._ask`; in a
-  browser an exact shape is fetched by the page itself (`_ask_page`, handed
-  over as its bytes come, where an HTTPRequest took a frame for each of its
-  states: 7 frames, 1 to 4 s, playweb), and one asked for before the
+  browser every part file, geometry and exact shape, is fetched by the page
+  itself (`_ask_page`, `PAGE_FETCH`: handed over as its bytes come and taken
+  in one copy, where an HTTPRequest took a frame for each of its states: 7
+  frames, 1 to 4 s, playweb; geometry too since fetchparts, 2026-11-08),
+  `MAX_IN_FLIGHT_PAGE` (48) at once, where the desktop's HTTPRequest opens
+  `MAX_IN_FLIGHT` (16). `fetchparts browser flow`
+  (`tools/web/fetchparts_flow.mjs`, local only, recipe below) counts the
+  engine's fetches of part files (none) and times a Technic car's 47
+  fetched shapes against the build before. One asked for before the
   deployment has said where the parts live waits for it as geometry does
   (`_release_waiting`, `_next_exact`). A fault
   that may pass (no answer, 408, 429, 5xx: `may_pass`, `_answered`) is asked again after
@@ -397,9 +412,12 @@ geometry in front of them.
   `Exact.keep_shape`): a part's geometry and exact shape are read from their
   bytes in GDScript, 1 to 50 ms a part, so what is wanted ahead of the frame
   that shows it is read off that frame: on a worker where there are threads,
-  `READ_AT_ONCE` a task, or in frames under `READ_BUDGET_MS` where there are
-  none (`read_on_a_worker`); the meshes made and everything kept on the main
-  thread, and said as a fetch is (`fetched`, `exact_fetched`). Through it: a
+  all that waits, the most wanted first, or in frames under `READ_BUDGET_MS`
+  where there are none (`read_on_a_worker`); the meshes made and everything
+  kept on the main thread, each frame what fits in `KEEP_BUDGET_MS` or
+  `KEEP_SHARE` of the frame before's cost besides keeping, whichever is more
+  (so keeping never buys itself more keeping), and said as a fetch
+  is (`fetched`, `exact_fetched`). Through it: a
   tile's picture (`PartThumbnails._render` asks `request_mesh`, which reads a
   part on disk there and fetches one that is not), a fetch's answer
   (`_on_fetched`, `_on_fetched_exact`: still on its way until read), and the
@@ -507,12 +525,15 @@ geometry in front of them.
   change reads the file again and merges (`_load_palettes(true)`,
   `_merged`), and a window that finds its own additions missing (the web's
   late copy of another tab's older write) writes them back; the bin looks at
-  the file once a second while Palettes shows (`_watch_palettes`). A tab
+  the file once a second while Palettes shows (`_watch_palettes`), and
+  counts them on the chip whatever shows, so a palette the person's Claude
+  makes over MCP (mcppalettes) is counted at once. A tab
   left open on an older build after an update keeps what a later build
   wrote: words it put on a palette or an entry, and entries of kinds it does
   not know (`_later`, never shown, written back whole). A file that cannot be
   read is kept beside it (`palettes.cfg.unreadable`) before a change writes
-  over it. No MCP tool: a session copies parts with edit_model.
+  over it. A session reads and changes the same palettes through the same
+  file (`palettes` and `edit_palette`, `PaletteTool`; see mcp.md).
   `palettes_probe` (1280 x 720, PROBE_SIZE=1400x900 too).
 - `techniques in the bin` (`src/ai/techniques.gd`, the bin's Techniques):
   *Techniques* sits after Recent, Favourites and Palettes, the assistant's worked
@@ -540,6 +561,29 @@ geometry in front of them.
   row stood 2,600 px down (bintech). On a phone the Parts sheet goes with
   the pick, as it does for a part (`PhoneShell._held_whole`); a tablet's
   stays beside the model.
+- `new parts in the bin` (`PartsBin.newest`, the bin's *New*; APP_UX7
+  binrow): Studio's bin opens on a New parts palette. *New*, after Palettes,
+  lists every part the catalogue has first made in its latest two years
+  (`NEW_YEARS`): the latest year any part was first made in, read from
+  `PartInfo.first_year` (catalogue.json's `years`, Rebrickable's set
+  inventories), not the calendar's, so a catalogue made in January still has
+  the year before's; 282 on 2026-11-08, 2025 and 2026. The newest year first,
+  within a year as All lists them, staples first (`_sort_for`); no fold, every
+  part in plain sight. Its tooltip and status line name the two years ("282
+  parts first made in 2025 or 2026, the newest first"); words typed narrow it,
+  as a shelf's do; building from a set it picks among the set's parts. A
+  catalogue with no years (a clone without the Rebrickable tables) has no New
+  chip. Every shelf, All, Recent, Favourites, Palettes, New, Techniques, Fits
+  and Like this, is in the chips' window unscrolled at any width
+  (`_fit_shelves`): the shelves wrap, the window shows every row they take
+  (two at least in a column 700 tall, one in a shorter one), and where leaving
+  their counts off saves the shelves a row, they say their names alone. The
+  room is worked out with two digits kept for each count, so a part chosen or
+  kept never moves the parts under the pointer. The categories after them
+  scroll. At 1280 x 720 with Stress open the window was one row and Like this
+  sat under it (appux7's walk). `binrow_probe` (1400 x 900; the window made
+  1280 x 720 and 1024 x 768 in turn; through the sign-in screen, .env),
+  `binrow_phone_probe` (390 x 844), `binrow_tablet_probe` (1024 x 768).
 - `find a part from a photo` (`src/net/brickognize.gd`): the camera in the
   bin's search field. The first press says the photo goes to Brickognize, a
   third party that may keep it and train on it (their terms, read 2026-10-24),
@@ -672,7 +716,7 @@ tools/probe.sh likethis_probe                 # Like this: ten parts each with i
 tools/probe.sh likethis_phone_probe           # the same with taps on a phone, the chip a fingertip
 tools/probe.sh likethis_tablet_probe          # and on a tablet
 tools/probe.sh likewords_probe                # Like this and Fits after a search start from no words, its list as on an empty one; "curved" narrows it, said; All gets its words back; shots/likewords/ (PROBE_SIZE=1400x900 too)
-tools/probe.sh words6_probe                   # "plate 1 x 1" and "1x1 plate" list 3024 first and 6141 next in the bin and search_parts; the walk's 30 words keep their first part in both; 87087, 4733, 30414 tooltips say the studs on top and on the sides; "cut away" on F1's sheet keeps the box, sphere and cylinder; shots/words6/ (PROBE_SIZE=1280x720 too)
+tools/probe.sh words6_probe                   # "plate 1 x 1" and "1x1 plate" list 3024 first and 6141 next in the bin and search_parts; the walk's 30 words keep their first part in both; 87087, 4733, 30414 tooltips say the studs on top and on the sides, and search_parts says each part's size as its tile does; "cut away" on F1's sheet keeps the box, sphere and cylinder; shots/words6/ (PROBE_SIZE=1280x720 too)
 tools/probe.sh bin2_probe                     # only parts made in Sand Green; Prints off; List rows; a double-click replaces three bricks, and puts two pins in a beam from Fits; "1x4 brick" bricks first; 8841-1's Balance booklet, each step's parts first; the toggles kept over a restart; shots/bin2/
 PROBE_SIZE=1400x900 tools/probe.sh bin2_probe
 # the tiles on the web, on a slow network: drawn as the bin opens, and from the first frame of a search typed (local only)
@@ -685,6 +729,12 @@ godot --headless --path . --script src/dev/inventory_probe.gd       # parts list
 godot --headless --path . --script src/dev/fetch_probe.gd           # every caller hears it arrived
 godot --headless --path . --script src/dev/fetch_retry_probe.gd     # a failing host on 9191 (-- --port=N): asked again, said once, saved and autosaved whole; the deployment asked again where parts live
 node tools/web/fetch_retry_flow.mjs --url=http://127.0.0.1:9195/ --out=DIR   # the crane in a browser, its fetches cut then 503; a part 404s and the tab reloads with it still awaited (needs serve.py on 9195)
+# every part file through the page's own fetch, none by HTTPRequest: 42022 Rally Racer's link (47 of its 71 shapes fetched)
+# at a laptop's size on broadband and a phone's on a phone network, against the build before, ABBA (local only)
+node tools/web/play_flow.mjs --write-house=DIR/house.mpd   # playweb's house, the model the frame bar was measured on
+tools/web/serve.py build/web 9821 --parts assets/generated/parts --delay 0 --compressed --share F3tchP4rts=vendor/omr/files/42022-1_Rally-Racer.mpd --share H0useFl0w1=DIR/house.mpd
+tools/web/serve.py BASE/build/web 9822 --parts assets/generated/parts --delay 0 --compressed --share F3tchP4rts=vendor/omr/files/42022-1_Rally-Racer.mpd --share H0useFl0w1=DIR/house.mpd
+node tools/web/fetchparts_flow.mjs --url=http://127.0.0.1:9821 --base=http://127.0.0.1:9822 --house=H0useFl0w1 --rounds=2 --out=DIR   # 0 by the engine; whole; the car and the house each no longer a frame than the base (mean, file in hand to every part here + 3 s); the car's shapes in half the base's time
 godot --headless --path . --script src/dev/availability_probe.gd    # what was really made, and silence otherwise
 godot --headless --path . --script src/dev/variety_probe.gd        # whether a model reads as a set
 godot --headless --path . --script src/dev/usage_probe.gd         # whether search leads with the part sets use

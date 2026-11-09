@@ -56,6 +56,7 @@ var _plates: SpinBox
 var _run: SpinBox
 var _diameter: SpinBox
 var _studs: CheckBox
+var _chamfer: CheckBox
 var _sides: Dictionary = {}          ## letter -> its CheckBox
 var _rise: SpinBox
 var _way: OptionButton
@@ -313,6 +314,17 @@ func _build() -> void:
 			_changed())
 	column.add_child(_studs)
 
+	# A wedge plate's far corner, cut flat as LEGO's own are cut.
+	_chamfer = CheckBox.new()
+	_chamfer.text = "Far corner cut flat"
+	_chamfer.tooltip_text = ("As LEGO® wedge plates such as 54383 and 41770b are: the sharp "
+		+ "corner the cut ends in, cut off 1.2 mm along")
+	_chamfer.toggled.connect(func(on: bool) -> void:
+		if not _filling:
+			_spec.chamfer = on
+			_changed())
+	column.add_child(_chamfer)
+
 	# A part being changed keeps its studs, or has them taken off, or put
 	# on wherever its top is flat.
 	var studs_row := _row(column, "Studs on its top")
@@ -508,7 +520,8 @@ func _start_from(part_id: String, quietly: bool = false) -> bool:
 			_say("There is no part %s in the library." % id, true)
 		return false
 	var spec: ElementMaker.Spec = ElementMaker.parse_spec(library.custom_source(id)) \
-		if info.custom else ElementMaker.from_part(id, info.name, info.size.y)
+		if info.custom else ElementMaker.from_part(id, info.name, info.size.y,
+			info.size.x)
 	if spec == null:
 		# Not one of the families: changed from its own geometry instead.
 		if quietly:
@@ -594,6 +607,7 @@ func _show_spec() -> void:
 	_rows["studs_top"].visible = false
 	_rows["cut"].visible = false
 	_studs.visible = true
+	_chamfer.visible = _spec.family == "wedge"
 	_rows["plates"].get_child(0).text = "Height, plates (3 = a brick)"
 	_filling = true
 	var shown: Button = _family_buttons.get(_spec.family)
@@ -608,6 +622,7 @@ func _show_spec() -> void:
 	_fill_way(_spec.family)
 	_select_way(_spec.way)
 	_studs.button_pressed = _spec.studs
+	_chamfer.button_pressed = _spec.chamfer
 	for letter: String in _sides:
 		(_sides[letter] as CheckBox).button_pressed = _spec.sides.contains(letter)
 	_name.text = _spec.title
@@ -667,6 +682,7 @@ func _show_edit() -> void:
 		_cut[n].value = [cut_values[0], cut_values[2], cut_values[1], cut_values[3],
 			cut_values[4], cut_values[5]][n]
 	_studs.visible = false
+	_chamfer.visible = false
 	(_rows["across"].get_child(0) as Label).text = "Length, studs"
 	(_rows["deep"].get_child(0) as Label).text = "Width, studs"
 	(_rows["plates"].get_child(0) as Label).text = "Height, plates"
@@ -729,6 +745,8 @@ static func _fit_family(spec: ElementMaker.Spec) -> void:
 	var ways: Array = ElementMaker.WAYS.get(spec.family, [])
 	if not ways.is_empty() and not ways.has(spec.way):
 		spec.way = ways[0]
+	if spec.family != "wedge":
+		spec.chamfer = false
 	if spec.family != "brick":
 		spec.sides = ""
 	elif not spec.sides.is_empty() and spec.plates < 3:
@@ -913,6 +931,8 @@ static func describe(spec: ElementMaker.Spec, built: RefCounted) -> String:
 	elif spec.family == "wedge":
 		words += " Its cut side runs at %.1f° to the straight side, to a tip one stud wide." \
 			% ElementMaker.wedge_angle(spec)
+		if spec.chamfer:
+			words += " Its far corner is cut flat."
 	return words
 
 
@@ -1032,6 +1052,8 @@ func set_field(field: String, value: Variant) -> void:
 					_choose_family(index)
 		"studs":
 			_studs.button_pressed = bool(value)
+		"chamfer":
+			_chamfer.button_pressed = bool(value)
 		"sides":
 			var wanted: String = ElementMaker.canonical_sides(str(value))
 			for letter: String in _sides:

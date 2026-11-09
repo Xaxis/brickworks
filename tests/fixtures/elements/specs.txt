@@ -61,3 +61,11 @@ family=clip across=3 deep=2 plates=1 way=vertical studs=no
 family=clip across=1 deep=3 plates=1 way=horizontal studs=yes
 family=bar across=7
 family=wedge across=4 deep=10 plates=1 way=right studs=yes
+# Round seven's (APP_UX7 #16): the wedge plate with its far corner cut flat,
+# 41770b, 41769b (2 x 4) and 54383, 54384 (3 x 6), whose two tubes the cut's
+# wall comes near are whole; and a size nothing in the library has.
+family=wedge across=2 deep=4 plates=1 way=left chamfer=yes studs=yes
+family=wedge across=2 deep=4 plates=1 way=right chamfer=yes studs=yes
+family=wedge across=3 deep=6 plates=1 way=right chamfer=yes studs=yes
+family=wedge across=3 deep=6 plates=1 way=left chamfer=yes studs=yes
+family=wedge across=5 deep=7 plates=1 way=left chamfer=yes studs=no

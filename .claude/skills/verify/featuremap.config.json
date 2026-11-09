@@ -3452,14 +3452,14 @@
       "kind": "ui",
       "label": "accessibility",
       "entry": "src/ui/access.gd",
-      "reach": "godot --path .  (Tab from the model into the frame, Return on a part and Return again to put it down; Settings, Interface size and Reduce motion; with Orca running, each control said by its name)",
+      "reach": "godot --path .  (Tab from the model into the frame, Return on a part and Return again to put it down; Settings, Interface size and Reduce motion; with Orca running, each control said by its name)  /  tools/probe.sh a11y_modal_probe  (windowed: the app run where a screen reader is on, in a D-Bus session of its own, each window read over AT-SPI as Orca finds it, pointed at and from the focus: every dialog that holds the window MODAL, the Reference picture not, the focus inside the top dialog)",
       "area": "building"
     },
     {
       "kind": "ui",
       "label": "the booklet as a PDF and as PNG pages",
       "entry": "src/render/booklet_pdf.gd",
-      "reach": "godot --path . --resolution 1280x800 --script src/dev/booklet_pdf_probe.gd -- --model=M --into=DIR   (by hand: Instructions, then the booklet's Save as PDF or Save pages as PNG beside Print; -- --html=BOOKLET.html saves one already made; tools/booklet_pdf_check.py BOOKLET.html BOOKLET.pdf --zip PAGES.zip reads them; on the web, booklet_flow.mjs presses both)",
+      "reach": "godot --path . --resolution 1280x800 --script src/dev/booklet_pdf_probe.gd -- --model=M --into=DIR   (by hand: Instructions, then the booklet's Save as PDF or Save pages as PNG beside Print; -- --html=BOOKLET.html saves one already made; -- --words-only: Cyrillic, Greek and Japanese read back by pdftotext; -- --against=DIR: the commit before's castle PDF the same at 300 dpi; tools/booklet_pdf_check.py BOOKLET.html BOOKLET.pdf --zip PAGES.zip reads them; on the web, booklet_flow.mjs presses both)",
       "area": "view"
     },
     {
@@ -4959,6 +4959,48 @@
       "entry": "src/dev/lights_probe.gd",
       "reach": "tools/probe.sh lights [-- --keep=DIR] [-- --no-trace]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720: a spot over the car by Render's Spot, 0 px changed outside its cone rasterised and path traced, the roof under it lighter by 15% and 10 levels, the two the same light within 35%; a Trans Neon Green 1 x 1 in the Dark light lighting the white plate round it 3 times as much as a Trans Green one, both ways; kept over save, Save as, the autosave, a step edit and Build together's words, back after an open; light_model over MCP; then --older=DIR on an older checkout opens each file whole, its light line left alone; pictures in shots/lights/)",
       "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "new parts in the bin",
+      "entry": "src/ui/parts_bin.gd",
+      "reach": "godot --path .  (New among the bin's shelves, after Palettes: the parts first made in the catalogue's latest two years, the newest first; words typed narrow it. Every shelf, All to Like this, in sight at any width, their counts left off where that saves a row)",
+      "area": "parts"
+    },
+    {
+      "kind": "cli",
+      "label": "binrow probe",
+      "entry": "src/dev/binrow_probe.gd",
+      "reach": "tools/probe.sh binrow_probe -- --shots=DIR   (windowed, 1400x900, signed in through the gate with a throwaway account from .env: at 1400x900, 1280x720 and 1024x768, as first opened and with Stress, the assistant, a part's properties and the bin open, the eight shelves inside the chips' window unscrolled; 42 parts at 1400x900; the walk's Like this Plate 2 x 4 seventh at 1400x900 and 1280x720; New's list against the catalogue's years); tools/probe.sh binrow_phone_probe (390x844) and binrow_tablet_probe (1024x768)",
+      "area": "parts"
+    },
+    {
+      "kind": "cli",
+      "label": "fetchparts browser flow",
+      "entry": "tools/web/fetchparts_flow.mjs",
+      "reach": "node tools/web/fetchparts_flow.mjs --url=http://127.0.0.1:9821 [--base=http://127.0.0.1:9822 --rounds=2] [--house=H0useFl0w1] --out=DIR   (after tools/export.sh web and tools/web/serve.py build/web 9821 --parts assets/generated/parts --delay 0 --compressed --share F3tchP4rts=vendor/omr/files/42022-1_Rally-Racer.mpd --share H0useFl0w1=HOUSE (play_flow.mjs --write-house=HOUSE), and the build before likewise on 9822; local only: no part file by the engine's HTTPRequest, both whole, each longest frame no longer than the base's, the car's shapes in half the base's time)",
+      "area": "parts"
+    },
+    {
+      "kind": "ui",
+      "label": "edges and studs",
+      "entry": "src/render/studs_off.gd",
+      "reach": "tools/probe.sh edges && PROBE_SIZE=1280x720 tools/probe.sh edges   (by hand: View, Edges and studs, Edges or Studs; kept in this machine's controls.cfg [view]; only the window follows them: renders, booklets, view_model and thumbnails draw every seam and stud)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "edges probe",
+      "entry": "src/dev/edges_probe.gd",
+      "reach": "tools/probe.sh edges [-- --shots=DIR]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720, through the sign-in screen with a throwaway account (.env): the car's default view the same to the pixel after each row off and on, kept as default_view_WxH.png for an older build's; two walls' seam inside each face drawn and 0 px with Edges off; every kind of stud seen from its side, most of its round drawn and 0 px with Studs off, every part in its place and, drawn flat, 0 px covered differently outside the rounds; the car's triangles with Studs off; both kept over a restart; pictures in user://edges or DIR)",
+      "area": "view"
+    },
+    {
+      "kind": "lib",
+      "label": "a session keeps and uses palettes over mcp",
+      "entry": "src/net/palette_tool.gd",
+      "reach": "tools/probe.sh mcppalettes && PROBE_SIZE=1400x900 tools/probe.sh mcppalettes   (palettes reads the person's palettes, read-only; edit_palette make keeps twelve parts of the model each in its colour and a gatepost as the sub-assembly Gatepost in 1 call, the bin's Palettes shows it and its file entries are the bin's own Add rows' byte for byte but ids and times; place puts Gatepost down whole in another model in 1 call, each part to 0.01 LDU, low corner where asked, one assembly, one undo; take_out, rename, delete, agreed=true for a sub-assembly out and a delete; pictures in shots/mcppalettes/)",
+      "area": "mcp"
     }
   ]
 }
