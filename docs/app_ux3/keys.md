@@ -14,10 +14,10 @@ eight keys2 gave.
 
 | Preset | Commands | Without a key before keys | After keys | Before keys2 | After |
 |---|---|---|---|---|---|
-| Brickworks | 221 | 115 | 110 | 112 | 105 |
-| Studio | 221 | 118 | 113 | 115 | 108 |
-| Mecabricks | 221 | 116 | 111 | 113 | 106 |
-| LDCad | 221 | 118 | 114 | 116 | 109 |
+| Brickworks | 222 | 115 | 110 | 112 | 106 |
+| Studio | 222 | 118 | 113 | 115 | 109 |
+| Mecabricks | 222 | 116 | 111 | 113 | 107 |
+| LDCad | 222 | 118 | 114 | 116 | 110 |
 
 The menus had 201 commands when keys counted. Cut away by a box, a sphere or a cylinder
 (APP_UX4 8) added five, each with no key. The Pick a Brick list added one
@@ -27,8 +27,9 @@ done, six more without a key after it. Page setup… (pagesetup) and Stud direct
 before keys2. keys2 gave eight a key under every preset, each one no command had: 104
 without a key then, so 106 of the 210 had one (the walk's `counts`, APP_UX5). Saved views
 (savedviews, APP_UX5 #8) added eleven: Save this view… and the nine saved views, each with
-a key under every preset, and Render each saved view with none. 221 now, 105 without a key
-under the app's keys, 116 with one.
+a key under every preset, and Render each saved view with none: 221, 105 without a key
+under the app's keys. Compare two sets or models… (comparesets, APP_UX6 #7) added one more
+with none: 222 now, 106 without a key under the app's keys, 116 with one.
 
 APP_UX3 counted 110 with the app's keys on 2026-10-30. Eight came since with none (the
 booklet's Pull out, Colour guide, 1:1 guide and Sub-model preview; Render queue; Check for
@@ -125,6 +126,7 @@ to anything. Save this view… is Alt and the first free letter of its row, V.
 | `import_mesh` | File › Import › 3D model to brickify (.obj, .stl, .ply, .3mf, .vox, .fbx, .gltf, .glb) | — | — | — | once a model | all | a file chosen once, from File › Import |
 | `versions` | File › Versions | — | — | — | rarely | all | an older save, looked for now and then |
 | `compare` | File › Compare with | — | — | — | rarely | all | two versions side by side, now and then |
+| `compare_sets` | File › Compare two sets or models | — | — | — | rarely | all | two sets or models side by side, now and then |
 | `export_ldraw` | File › Export › LDraw model (.ldr, or .mpd with its sub-models) | — | — | — | once a model | all | made once a model is done |
 | `export_io` | File › Export › BrickLink Studio model (.io) | — | — | — | once a model | all | made once a model is done |
 | `export_3d` | File › Export › 3D model (.glb, .gltf, .obj, .stl) | — | — | — | once a model | all | made once a model is done |
