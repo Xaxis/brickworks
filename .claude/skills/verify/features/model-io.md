@@ -91,8 +91,14 @@ Whether what you built is still there tomorrow, and still means the same thing.
   (`ModelStore.lines_left_out`, `left_out_words`: how many of which kind).
   In a patch the app's own lines end as the file's lines do and go above a
   line saying what the next part is (`SourceFile.app_lines_placed`); one
-  the file already has stays where the file has it, its text kept even
-  with its JSON fields in another order (a hand-written VIEW). The share,
+  the file already has keeps its text, even with its JSON fields in another
+  order (a hand-written VIEW), and goes where the app's writer puts it: in a
+  file Brickworks wrote, where the file has it; one put elsewhere by hand (a
+  VIEW lower down, a step's look after the STEP before it) moves there, as
+  live's write moves it. A light line read stays where it is, changed in
+  place, a new one after the light before it (`SceneLights.written_with`),
+  in a patch as in (B), and a sub-model's light lines are kept with its
+  section's lines. The share,
   set bin and trace lines `ModelStore._write` adds pass through the same.
   A part of a mirrored copy agrees with its line only as it was opened (an
   edit to one is (B)); a step edit moves the lines of the parts it moved to

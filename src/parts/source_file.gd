@@ -1562,9 +1562,12 @@ func app_lines_placed(text: String) -> String:
 		if not _is_app_line(line):
 			out.append(line)
 		elif not own.is_empty():
-			# One the file has (a save of it before): as it has it, so a
-			# save with nothing changed is the file byte for byte; where
-			# the file has it, or else above the lines that say what the
+			# One the file has (a save of it before): as it has it, where
+			# the app's writer puts it, which in a file Brickworks wrote is
+			# where the file has it, so a save with nothing changed is the
+			# file byte for byte; one put elsewhere by hand moves there, as
+			# live's write moves it (kt5 lights1). Right after the line it
+			# follows in the file, or else above the lines that say what the
 			# next part is: the floor's writer puts its line above the
 			# first part, and with the file's own line there a second
 			# save left a GROUP_NXT saying it of the floor (keep_text).
