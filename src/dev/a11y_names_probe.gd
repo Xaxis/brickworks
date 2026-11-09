@@ -278,9 +278,12 @@ func _open_and_walk(name: String) -> void:
 
 
 ## Put away: Escape first, as a person would; then anything still up
-## that was not before. A dialog is closed as its window's close button
-## closes it, so whoever awaits its answer hears "cancelled" (SaveTo.ask
-## left waiting held its dialog in a static, and the heap broke at exit).
+## that was not before, the outermost alone: what is inside it goes with
+## it and comes back with it (My collection, which Escape leaves up, came
+## back an empty panel when its pages were hidden too). A dialog is closed
+## as its window's close button closes it, so whoever awaits its answer
+## hears "cancelled" (SaveTo.ask left waiting held its dialog in a static,
+## and the heap broke at exit).
 func _put_away(before: Dictionary) -> void:
 	_key(KEY_ESCAPE)
 	await _frames(4)
@@ -288,6 +291,8 @@ func _put_away(before: Dictionary) -> void:
 		if before.has(id):
 			continue
 		var thing: Object = instance_from_id(id)
+		if thing is CanvasItem and not (thing as CanvasItem).is_visible_in_tree():
+			continue
 		if thing is AcceptDialog and (thing as Window).visible:
 			(thing as Window).close_requested.emit()
 		if thing is Window and (thing as Window).visible:
