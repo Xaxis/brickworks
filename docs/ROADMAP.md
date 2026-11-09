@@ -128,6 +128,23 @@ plainer — see the first lever below.
    here 17-20. A direction, not yet a norm: nineteen sets. The repository
    serves sets one file at a time now (the zip is gone); the URL is in
    the tool.
+   - the model's outline laid over the real thing's, read off a
+     photograph from the same side, with where they differ in studs and
+     plates. **Tried, NO-GO** (design20, 2026-11-09, docs/DESIGN_SCORES.md).
+     Against its own LDraw model, each of five sets differs by 0 at every
+     tenth, and a stud added is said where it is. On the smoke, 5 subjects
+     a job each, likeness went 1 to 1 of 10 and overall 0 to 1. Both lever
+     wins were Gandalf's, which had no outline. A defining feature was named
+     wrong in 9 of 10 verdicts both ways. 2 of 4 sessions with a real
+     counterpart gave an outline. Neither brought a difference to it: the
+     Charger's body stayed on the ground between its wheels, 4 plates
+     under the photograph's, and its tail 6 plates low. This is the third
+     NO-GO of the kind (design18 a photograph, design19 shares, design20
+     the shape). A session given a difference keeps its model. Next: ask
+     for the outline before the first build, and let the app's own shapes
+     take it as their profile, so the first mass has it. Read the plan
+     from above and the setbacks' count too: the judge's words where the
+     tenths matched. `7b8321b5b` holds the lever.
 3. **Generalise.** The fire station (run 20) with every lever came to
    737 parts and 67 shapes against the first station's 62 — the levers
    that took the castle from 71 to 113 did not carry. The difference is
