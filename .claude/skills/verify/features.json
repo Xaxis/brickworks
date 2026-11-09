@@ -209,6 +209,7 @@
       "reach": "node tools/web/together_probe.mjs --url=<a relay server or a preview>   (with .env sourced; BW_BYPASS for a preview)",
       "area": "together",
       "tests": [
+        "tests/test_flows_for.py",
         "tests/test_steps_score.py"
       ]
     },
@@ -3155,6 +3156,7 @@
       "reach": "node tools/web/relay_server.mjs 9011 --hold=together_sessions,together_ops,together_people, then godot --headless --path . --script src/dev/together_probe.gd -- --api=http://127.0.0.1:9011   (with .env sourced)",
       "area": "together",
       "tests": [
+        "tests/test_flows_for.py",
         "tests/test_steps_score.py"
       ]
     },
@@ -4151,6 +4153,7 @@
       "reach": "godot --headless --path . --script src/dev/techniques_probe.gd",
       "area": "assistant",
       "tests": [
+        "tests/test_flows_for.py",
         "tests/test_realset.py"
       ]
     },
@@ -5691,6 +5694,7 @@
       "reach": "godot --path .  (Techniques beside Recent and Favourites in the parts bin; a row held whole, R turns it, a click puts it down)",
       "area": "parts",
       "tests": [
+        "tests/test_flows_for.py",
         "tests/test_realset.py"
       ]
     },
