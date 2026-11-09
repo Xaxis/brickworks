@@ -18,7 +18,22 @@
 ## same letters whether it has Helvetica or not, in Cyrillic and Greek as
 ## in Latin. A letter it has none of (Japanese, say) is set in the type
 ## the booklet's page draws it in, the system's own (BookletPng), carried
-## the same way; only a letter no type here has is "?", and named.
+## the same way, and an emoji in Noto Emoji, which the app carries for it
+## in outline (the page's are in colour, which no PDF type holds); only a
+## letter no type here has is "?", and named.
+##
+## Each line is shaped by the engine's text server as the page's is
+## (TextServer: the Unicode bidi algorithm, then each run's glyphs), set
+## left to right as the booklet's page sets every line: so Hebrew and
+## Arabic print right to left, Arabic's letters joined in the forms they
+## take beside each other, and an emoji made of several (a ZWJ sequence)
+## as its one glyph. Those glyphs are what the line shows, each where the
+## shaping puts it, and each reads back (the ToUnicode map) as the letters
+## it stands for, so a reader finds the words as typed; up to 2026-11-09
+## each letter was its own glyph in the order typed, and a Hebrew step name
+## printed backwards (snreview). A line drawn one glyph a letter, left to
+## right (Latin, Greek, Cyrillic, Japanese), is written as it was before,
+## a letter at a time at the type's own widths.
 ## The page is the booklet's, 269 x 199 mm, which fits A4 and US Letter
 ## turned on their side (Booklet), or the paper its designer set it up on
 ## (BookletSheet), the PDF's page that paper's size; a picture behind the
@@ -57,6 +72,16 @@ var _ok: bool = true
 var missed: PackedStringArray = []
 ## The most of them [method missed_said] names.
 const MISSED_NAMED := 16
+## The emoji's face: Noto Emoji 3.000 at its regular weight (SIL Open
+## Font License 1.1, assets/fonts/NotoEmoji-OFL.txt), in outline, which a
+## PDF can carry as it carries the type.
+const EMOJI := "res://assets/fonts/NotoEmoji-Regular.ttf"
+## The size a line is shaped at, in pixels. The faces it is shaped in are
+## placed to a 64th of a pixel and not hinted, so a glyph's place comes
+## back to 1/4096 of the words' size, the type's own measure and not a
+## screen's; and a glyph shaped is drawn into the engine's cache at it,
+## which a size near a PDF's own thousand made 40 ms a line.
+const SHAPED_AT := 64
 
 const _CATALOG := 1
 const _PAGES := 2
@@ -86,6 +111,12 @@ var _system_faces: Dictionary = {}
 var _system_fonts: Dictionary = {}
 ## The system's faces the page being written uses: name -> object.
 var _page_fonts: Dictionary = {}
+## The faces each line is shaped in ([method _shaper]): the type, regular
+## and bold, then the emoji's; and their engine's RIDs, to know a glyph's.
+var _shapers: Array = [null, null, null]
+var _shaper_rids: Array = [[], [], []]
+## Each line as shaped ([method _shape]), by its weight and words.
+var _lines: Dictionary = {}
 
 
 ## Start a PDF going to [param path], or into memory when it is "" (take
@@ -100,7 +131,27 @@ func begin(path: String, read: BookletRead) -> bool:
 	for which: int in 2:
 		_faces[which] = load(str(TYPE[which][0])) as FontFile
 		_types[which] = _font(_FONT + which, TYPE[which])
+		_shapers[which] = _shaper(_faces[which], true)
+	_shapers[2] = _shaper(load(EMOJI) as FontFile, false)
+	for which: int in 3:
+		if _shapers[which] != null:
+			_shaper_rids[which] = (_shapers[which] as FontFile).get_rids()
 	return true
+
+
+## A face of [param source]'s own to shape lines in: not hinted and placed
+## to a 64th of a pixel ([constant SHAPED_AT]), the system's faces the
+## engine falls back to taking the same from it where [param fallback]
+## (the emoji's has none: it is asked alone). Null without a source.
+static func _shaper(source: FontFile, fallback: bool) -> FontFile:
+	if source == null or source.data.is_empty():
+		return null
+	var made := FontFile.new()
+	made.data = source.data
+	made.hinting = TextServer.HINTING_NONE
+	made.subpixel_positioning = TextServer.SUBPIXEL_POSITIONING_ONE_QUARTER
+	made.allow_system_fallback = fallback
+	return made
 
 
 ## The type [param type] ([file, name]) for font [param number], read to
@@ -194,36 +245,143 @@ func _other(code: int, bold: bool, found: Array) -> Array:
 	return ["F2" if bold else "F1", _code(mark)]
 
 
-## Each letter of [param text]'s face where the type has none, as Godot
-## shapes the words to draw the booklet's page (BookletPng): the system's
-## that it falls back to, one face for a run as a browser's is, [PdfType,
-## name, object] a letter, [] where the type has it or nothing does. None
-## on the web, which has no system type to read.
-func _shaped(text: String, bold: bool) -> Array:
-	var out: Array = []
-	for _n: int in text.length():
-		out.append([])
-	var face: FontFile = _faces[1 if bold else 0]
-	if face == null or OS.has_feature("web"):
-		return out
+## [param text] shaped in [param fonts] at [param size] as a line of the
+## booklet's page is: left to right, as its page sets every line (it says
+## no direction), the bidi algorithm turning a run of Hebrew or Arabic
+## about. Its glyphs, left to right (TextServer.shaped_text_get_glyphs).
+static func shaped(text: String, fonts: Array, size: int) -> Array:
 	var server: TextServer = TextServerManager.get_primary_interface()
-	var shaped: RID = server.create_shaped_text()
-	server.shaped_text_add_string(shaped, text, face.get_rids(), 16)
-	for glyph: Dictionary in server.shaped_text_get_glyphs(shaped):
-		var by: RID = glyph["font_rid"]
-		if int(glyph["index"]) == 0 or not by.is_valid() or face.get_rids().has(by):
-			continue
-		var family: String = server.font_get_name(by)
-		var key: String = "%s %d %d %d %d" % [family, server.font_get_weight(by),
-			server.font_get_stretch(by), server.font_get_style(by), server.font_get_face_index(by)]
-		if not _system_fonts.has(key):
-			_system_fonts[key] = _system_face(OS.get_system_font_path(family, server.font_get_weight(by),
-				server.font_get_stretch(by), server.font_get_style(by) & TextServer.FONT_ITALIC != 0),
-				server.font_get_face_index(by), family)
-		for at: int in range(int(glyph["start"]), mini(int(glyph["end"]), text.length())):
-			out[at] = _system_fonts[key]
-	server.free_rid(shaped)
+	var line: RID = server.create_shaped_text(TextServer.DIRECTION_LTR)
+	var rids: Array[RID] = []
+	rids.assign(fonts)
+	server.shaped_text_add_string(line, text, rids, size)
+	var glyphs: Array = server.shaped_text_get_glyphs(line)
+	server.free_rid(line)
+	return glyphs
+
+
+## Whether [param glyphs] are one a letter, in the letters' order, left to
+## right: what setting a letter at a time draws.
+static func plain(glyphs: Array) -> bool:
+	var last: int = -1
+	for glyph: Dictionary in glyphs:
+		var start: int = glyph["start"]
+		if int(glyph["flags"]) & TextServer.GRAPHEME_IS_RTL or int(glyph["end"]) - start != 1 or start <= last:
+			return false
+		last = start
+	return true
+
+
+## [param text] shaped in the type, bold or not, and the emoji's face and
+## the system's after it, as the page shapes it (BookletPng): its glyphs
+## left to right, each with its "face" ([PdfType, name, object], or []
+## where none here can go in the PDF). Where the engine took an emoji from
+## a colour face, which a PDF cannot carry, its cluster is shaped again in
+## the emoji's own. Each line once a PDF.
+func _shape(text: String, bold: bool) -> Array:
+	var key: String = ("b" if bold else "r") + text
+	if _lines.has(key):
+		return _lines[key]
+	var which: int = 1 if bold else 0
+	var out: Array = []
+	if _shapers[which] == null:
+		_lines[key] = out
+		return out
+	var fonts: Array = (_shaper_rids[which] as Array) + (_shaper_rids[2] as Array)
+	var glyphs: Array = shaped(text, fonts, SHAPED_AT)
+	var at: int = 0
+	while at < glyphs.size():
+		var cluster: Array = [glyphs[at]]
+		while at + cluster.size() < glyphs.size() and _same_cluster(glyphs[at + cluster.size()], glyphs[at]):
+			cluster.append(glyphs[at + cluster.size()])
+		at += cluster.size()
+		var lacking: bool = false
+		for glyph: Dictionary in cluster:
+			glyph["face"] = _face(glyph, bold)
+			lacking = lacking or (glyph["face"] as Array).is_empty()
+		if lacking and _shapers[2] != null and _draws(text, cluster):
+			cluster = _in_emoji(text, cluster)
+		out.append_array(cluster)
+	_lines[key] = out
 	return out
+
+
+## Whether [param cluster]'s letters draw anything (not only spaces and
+## joiners).
+static func _draws(text: String, cluster: Array) -> bool:
+	for at: int in range(int(cluster[0]["start"]), int(cluster[0]["end"])):
+		var code: int = text.unicode_at(at)
+		if not _unseen(code) and not _blank(code):
+			return true
+	return false
+
+
+static func _same_cluster(one: Dictionary, other: Dictionary) -> bool:
+	return int(one["start"]) == int(other["start"]) and int(one["end"]) == int(other["end"])
+
+
+## [param cluster]'s letters shaped again in the emoji's face alone: its
+## glyphs in their places, faced, or [param cluster] as it was where that
+## face lacks one of them.
+func _in_emoji(text: String, cluster: Array) -> Array:
+	var start: int = cluster[0]["start"]
+	var again: Array = shaped(text.substr(start, int(cluster[0]["end"]) - start), _shaper_rids[2], SHAPED_AT)
+	if again.is_empty():
+		return cluster
+	for glyph: Dictionary in again:
+		if int(glyph["index"]) == 0 or not (_shaper_rids[2] as Array).has(glyph["font_rid"]):
+			return cluster
+		glyph["start"] = int(glyph["start"]) + start
+		glyph["end"] = int(glyph["end"]) + start
+		glyph["face"] = _emoji_face()
+		if (glyph["face"] as Array).is_empty():
+			return cluster
+	return again
+
+
+## The face [param glyph] is in, as the PDF carries it: [PdfType, name on
+## a page, object], or [] where it is in none (no face has its letter) or in
+## one no PDF can carry (a colour emoji's, a face the system will not let
+## be cut down).
+func _face(glyph: Dictionary, bold: bool) -> Array:
+	var by: RID = glyph["font_rid"]
+	if int(glyph["index"]) == 0 or not by.is_valid():
+		return []
+	var which: int = 1 if bold else 0
+	if (_shaper_rids[which] as Array).has(by):
+		return [_types[which], "F2" if bold else "F1", _BOLD if bold else _FONT] \
+			if _types[which] != null else []
+	if (_shaper_rids[2] as Array).has(by):
+		return _emoji_face()
+	if OS.has_feature("web"):
+		return []
+	var server: TextServer = TextServerManager.get_primary_interface()
+	var family: String = server.font_get_name(by)
+	var key: String = "%s %d %d %d %d" % [family, server.font_get_weight(by), server.font_get_stretch(by),
+		server.font_get_style(by), server.font_get_face_index(by)]
+	if not _system_fonts.has(key):
+		_system_fonts[key] = _system_face(OS.get_system_font_path(family, server.font_get_weight(by),
+			server.font_get_stretch(by), server.font_get_style(by) & TextServer.FONT_ITALIC != 0),
+			server.font_get_face_index(by), family)
+	return _system_fonts[key]
+
+
+## The emoji's face in the PDF, read the first time a page has an emoji:
+## [PdfType, name, object], or [] when it cannot be read.
+func _emoji_face() -> Array:
+	if not _system_faces.has(EMOJI):
+		_system_faces[EMOJI] = []
+		var type: PdfType = PdfType.read((_shapers[2] as FontFile).data)
+		if type != null:
+			_system_faces[EMOJI] = _named(type)
+	return _system_faces[EMOJI]
+
+
+## [param type] given its name on a page, after the faces before it, and
+## its object.
+func _named(type: PdfType) -> Array:
+	return [type, "F%d" % (3 + _system_faces.values().filter(
+		func(entry: Array) -> bool: return not entry.is_empty()).size()), _new()]
 
 
 ## The face [param face] of the system's font file [param path], the one
@@ -246,8 +404,7 @@ func _system_face(path: String, face: int, family: String) -> Array:
 				break
 	if type == null:
 		return []
-	_system_faces[key] = [type, "F%d" % (3 + _system_faces.values().filter(
-		func(entry: Array) -> bool: return not entry.is_empty()).size()), _new()]
+	_system_faces[key] = _named(type)
 	return _system_faces[key]
 
 
@@ -531,9 +688,25 @@ func _rect(content: PackedStringArray, op: Dictionary) -> void:
 			_rounded(at.grow(-width * 0.5), maxf(0.0, radius - width * 0.5))])
 
 
-## Words, each run of letters in one face shown in it: the type's own
-## (_own), else the system's the page draws them in (_other).
+## Words: as shaped ([method _shape]), a letter at a time where that is
+## one glyph a letter left to right ([method _letters]), else glyph by
+## glyph ([method _glyphs]).
 func _text(content: PackedStringArray, op: Dictionary) -> void:
+	var text: String = str(op["text"])
+	var bold: bool = op["bold"]
+	# Where the type cannot be read its words are the reader's Helvetica's,
+	# a letter at a time (_own).
+	var line: Array = _shape(text, bold) if _types[1 if bold else 0] != null else []
+	if line.is_empty() or plain(line):
+		_letters(content, op, line)
+	else:
+		_glyphs(content, op, line)
+
+
+## Words, each run of letters in one face shown in it: the type's own
+## (_own), else the face the line was shaped in for it (_other), at the
+## faces' own widths and the words' spacing (Tc).
+func _letters(content: PackedStringArray, op: Dictionary, line: Array) -> void:
 	var at: Vector2 = op["at"]
 	var size: String = _n(op["size"])
 	var text: String = str(op["text"])
@@ -547,7 +720,10 @@ func _text(content: PackedStringArray, op: Dictionary) -> void:
 		var placed: Array = _own(code, bold)
 		if placed.is_empty():
 			if drawn_by.is_empty():
-				drawn_by = _shaped(text, bold)
+				drawn_by.resize(text.length())
+				drawn_by.fill([])
+				for glyph: Dictionary in line:
+					drawn_by[int(glyph["start"])] = glyph["face"]
 			placed = _other(code, bold, drawn_by[index])
 		if placed[0] != font and not run.is_empty():
 			shown.append("/%s %s Tf <%s> Tj" % [font, size, run.hex_encode()])
@@ -558,6 +734,134 @@ func _text(content: PackedStringArray, op: Dictionary) -> void:
 		shown.append("/%s %s Tf <%s> Tj" % [font, size, run.hex_encode()])
 	content.append("BT %s Tc 1 0 0 -1 %s %s Tm %s rg %s ET" % [_n(op["spacing"]), _n(at.x), _n(at.y),
 		_rgb(op["colour"]), " ".join(shown)])
+
+
+## A shaped line ([param line]) glyph by glyph, left to right, each where
+## the shaping puts it: from the faces' own widths (/W) by a TJ's move, and
+## raised or lowered where it says (a mark over its letter, Ts). The words'
+## spacing goes after each cluster of glyphs, a letter as the page sees it.
+## Each glyph reads back as the letters it stands for ([method _reads]); a
+## cluster no face here has is "?", its letters named ([member missed]).
+func _glyphs(content: PackedStringArray, op: Dictionary, line: Array) -> void:
+	var size: float = op["size"]
+	var scale: float = size / SHAPED_AT
+	var spacing: float = op["spacing"]
+	var text: String = str(op["text"])
+	var bold: bool = op["bold"]
+	var at: Vector2 = op["at"]
+	var shown := PackedStringArray()
+	var array := PackedStringArray()
+	var font: String = ""
+	var rise: float = 0.0
+	# Where the line's pen is, as shaped, and where the PDF's is: mm from
+	# the line's start.
+	var pen: float = 0.0
+	var written: float = 0.0
+	var index: int = 0
+	while index < line.size():
+		var cluster: Array = [line[index]]
+		while index + cluster.size() < line.size() and _same_cluster(line[index + cluster.size()], line[index]):
+			cluster.append(line[index + cluster.size()])
+		index += cluster.size()
+		var placed: Array = _reads(text, cluster, bold)
+		for each: int in cluster.size():
+			var glyph: Dictionary = cluster[each]
+			var offset: Vector2 = glyph["offset"]
+			var x: float = pen + offset.x * scale
+			pen += float(glyph["advance"]) * scale
+			var how: Array = placed[each]
+			if how.is_empty():
+				continue
+			var lift: float = -offset.y * scale
+			if how[0] != font or absf(lift - rise) > 0.0005:
+				if not array.is_empty():
+					shown.append("[%s] TJ" % " ".join(array))
+					array.clear()
+				if how[0] != font:
+					font = how[0]
+					shown.append("/%s %s Tf" % [font, _n(size)])
+				if absf(lift - rise) > 0.0005:
+					rise = lift
+					shown.append("%s Ts" % _n(rise))
+			if absf(x - written) > 0.0005:
+				array.append(_n((written - x) * 1000.0 / size))
+			array.append("<%s>" % (how[1] as PackedByteArray).hex_encode())
+			written = x + int(how[2]) * size / 1000.0
+		pen += spacing
+	if not array.is_empty():
+		shown.append("[%s] TJ" % " ".join(array))
+	if absf(rise) > 0.0005:
+		shown.append("0 Ts")
+	content.append("BT 0 Tc 1 0 0 -1 %s %s Tm %s rg %s ET" % [_n(at.x), _n(at.y), _rgb(op["colour"]),
+		" ".join(shown)])
+
+
+## How each glyph of [param cluster] (one letter as the page sees it, or a
+## few drawn as one) is written: [the face's name on the page, its bytes,
+## its width in thousandths] each, or [] for a glyph left out. A glyph that
+## is a letter's own in its face reads back as that letter; the rest of the
+## cluster's letters go with the first glyph that is none's own (a joined
+## form, a ligature, an emoji's sequence) and the others read as nothing.
+## A cluster no face has is the type's "?", its letters named.
+func _reads(text: String, cluster: Array, bold: bool) -> Array:
+	var start: int = cluster[0]["start"]
+	var letters: String = text.substr(start, int(cluster[0]["end"]) - start)
+	var out: Array = []
+	var faced: bool = true
+	for glyph: Dictionary in cluster:
+		faced = faced and not (glyph["face"] as Array).is_empty()
+	if not faced:
+		var drawn: bool = _draws(text, cluster)
+		for letter: int in letters.length():
+			var code: int = letters.unicode_at(letter)
+			if not _unseen(code) and not _blank(code):
+				_miss(code)
+		for glyph: Dictionary in cluster:
+			out.append([])
+		var type: PdfType = _types[1 if bold else 0]
+		if drawn and type != null:
+			var mark: int = type.glyph_of(0x3F)
+			type.use(mark, 0x3F)
+			out[0] = ["F2" if bold else "F1", _code(mark), type.width(mark)]
+		return out
+	# The letters each glyph is the face's own glyph of.
+	var owned: Dictionary = {}
+	var rest: Array = []
+	for glyph: Dictionary in cluster:
+		var face: PdfType = (glyph["face"] as Array)[0]
+		var mine: int = -1
+		for letter: int in letters.length():
+			if not owned.has(letter) and face.glyph_of(letters.unicode_at(letter)) == int(glyph["index"]):
+				owned[letter] = true
+				mine = letter
+				break
+		rest.append(mine)
+	var left := ""
+	for letter: int in letters.length():
+		if not owned.has(letter):
+			left += letters[letter]
+	# The glyphs in the letters' order: a run right to left is drawn last
+	# letter first.
+	var order: Array = range(cluster.size())
+	if int(cluster[0]["flags"]) & TextServer.GRAPHEME_IS_RTL:
+		order.reverse()
+	var reads: Array = []
+	reads.resize(cluster.size())
+	for each: int in order:
+		if int(rest[each]) >= 0:
+			reads[each] = letters[int(rest[each])]
+		else:
+			reads[each] = left
+			left = ""
+	for each: int in cluster.size():
+		var glyph: Dictionary = cluster[each]
+		var found: Array = glyph["face"]
+		var face: PdfType = found[0]
+		face.use_text(int(glyph["index"]), reads[each])
+		if not (found[1] == "F1" or found[1] == "F2"):
+			_page_fonts[found[1]] = found[2]
+		out.append([found[1], _code(int(glyph["index"])), face.width(int(glyph["index"]))])
+	return out
 
 
 func _path(content: PackedStringArray, op: Dictionary) -> void:
