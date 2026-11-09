@@ -587,14 +587,14 @@ function refused(response, trouble) {
 }
 
 /// The signed-in claims of a POST to join or leave, or the answer already
-/// sent: 401 signed out, 405 for anything but a POST, 503 with nowhere to
-/// keep it.
-async function poster(request, response, what) {
-  if (request.method !== "POST") return void say(response, 405, `POST to ${what}, signed in`);
+/// sent: 401 signed out ([signIn], in words), 405 for anything but a POST,
+/// 503 with nowhere to keep it.
+async function poster(request, response, signIn) {
+  if (request.method !== "POST") return void say(response, 405, "POST, signed in");
   if (!dbConfigured()) return void say(response, 503, "The beta is not open here yet.");
   try {
     const claims = await claimsOf(request);
-    if (!claims) return void say(response, 401, `Sign in to ${what}.`);
+    if (!claims) return void say(response, 401, signIn);
     if (claims.email_verified === false) return void say(response, 403, "Confirm your email address first: sign in with a code.");
     return claims;
   } catch (trouble) {
@@ -617,7 +617,7 @@ async function join(account, via) {
 export async function betaJoin(request, response) {
   response.setHeader("Cache-Control", "no-store");
   if (betaMode() === "off") return say(response, 403, "The beta is not open yet.", { beta: "off" });
-  const claims = await poster(request, response, "join the beta");
+  const claims = await poster(request, response, "Sign in to join the beta.");
   if (!claims) return response;
   try {
     const member = await join(claims.sub, String(bodyOf(request)?.via || ""));
@@ -634,7 +634,7 @@ export async function betaJoin(request, response) {
 /// does, or {beta: off, tester, state} with the beta off.
 export async function betaLeave(request, response) {
   response.setHeader("Cache-Control", "no-store");
-  const claims = await poster(request, response, "leave the beta");
+  const claims = await poster(request, response, "Sign in to leave the beta.");
   if (!claims) return response;
   try {
     const member = await db("rpc/beta_leave", { method: "POST", body: { p_account: claims.sub } });

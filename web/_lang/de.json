@@ -935,7 +935,6 @@
   "Free is for personal and educational use. Selling what you make with Brickworks, such as instructions, kits, renders or builds made to order, comes with <a href=\"/plans\">Pro</a>, under <a href=\"/terms#commercial-use\">its licence</a>. It covers Brickworks alone, not anyone else’s trademarks or designs.": "Der kostenlose Tarif ist für private Zwecke und für Bildung. Zu verkaufen, was du mit Brickworks baust, etwa Bauanleitungen, Bausätze, Renderings oder Auftragsbauten, gehört zu <a href=\"/plans\">Pro</a>, nach <a href=\"/terms#commercial-use\">seiner Lizenz</a>. Sie gilt nur für Brickworks, nicht für Marken oder Designs anderer.",
   "Nothing you have is taken away. Every account made before 29 October 2026 keeps Pro, free and with no end date: any number of models kept with your account, and commercial use.": "Dir wird nichts genommen. Jedes Konto, das vor dem 29. Oktober 2026 erstellt wurde, behält Pro, kostenlos und ohne Enddatum: beliebig viele Modelle in deinem Konto, und kommerzielle Nutzung.",
   "Free is for personal and educational use. Selling what you make with Brickworks, such as instructions, kits, renders or builds made to order, comes with Pro, under its licence in the terms. It covers Brickworks alone, not anyone else’s trademarks or designs.": "Der kostenlose Tarif ist für private Zwecke und für Bildung. Zu verkaufen, was du mit Brickworks baust, etwa Bauanleitungen, Bausätze, Renderings oder Auftragsbauten, gehört zu Pro, nach seiner Lizenz in den Bedingungen. Sie gilt nur für Brickworks, nicht für Marken oder Designs anderer.",
-  "Updated 3 November 2026": "Aktualisiert am 3. November 2026",
   "Paid plans": "Bezahlte Tarife",
   "Paying for Pro": "Pro bezahlen",
   "Refunds": "Erstattungen",
@@ -1021,7 +1020,11 @@
   "A green dragon asleep on its hoard of gold, a treasure chest and a goblet beside it.": "Ein grüner Drache, schlafend auf seinem Goldschatz, daneben eine Schatztruhe und ein Kelch.",
   "See all models": "Alle Modelle ansehen",
   "Browse collections": "Sammlungen durchstöbern",
-  "Build together in the app: its panel lists You and Ann, both here, with Follow and Remove beside Ann and a link to copy; on the red car beside it, Ann’s pointer and the part they have selected, outlined in their blue.": "Gemeinsam bauen in der App: das Feld nennt Du und Ann, beide da, mit Folgen und Entfernen neben Ann und einem Link zum Kopieren; am roten Auto daneben Anns Zeiger und das Teil, das Ann ausgewählt hat, blau umrandet."
+  "Build together in the app: its panel lists You and Ann, both here, with Follow and Remove beside Ann and a link to copy; on the red car beside it, Ann’s pointer and the part they have selected, outlined in their blue.": "Gemeinsam bauen in der App: das Feld nennt Du und Ann, beide da, mit Folgen und Entfernen neben Ann und einem Link zum Kopieren; am roten Auto daneben Anns Zeiger und das Teil, das Ann ausgewählt hat, blau umrandet.",
+  "Brickworks is in open beta.": "Brickworks ist in der offenen Beta.",
+  "Join the beta testers": "Beta-Tester werden",
+  "Beta hub": "Beta-Bereich",
+  "Leave the beta": "Beta verlassen"
  },
  "scripts": {
   "Copy": "Kopieren",
@@ -2520,6 +2523,29 @@
   "Not shown: {parts} made for this model alone, which this site has no shape for.": "Nicht gezeigt: {parts}, nur für dieses Modell gemacht, für die diese Seite keine Form hat.",
   "{name} could not be shown here. The picture is still here; try again in a moment.": "{name} konnte hier nicht gezeigt werden. Das Bild ist noch da; versuch es gleich noch einmal.",
   "This phone could not open its camera on the room. The model is still here to turn.": "Dieses Telefon konnte seine Kamera nicht auf das Zimmer öffnen. Das Modell ist noch da und lässt sich drehen.",
-  "{name} could not be got ready for your room. The picture is still here; try again in a moment.": "{name} konnte nicht für dein Zimmer vorbereitet werden. Das Bild ist noch da; versuch es gleich noch einmal."
+  "{name} could not be got ready for your room. The picture is still here; try again in a moment.": "{name} konnte nicht für dein Zimmer vorbereitet werden. Das Bild ist noch da; versuch es gleich noch einmal.",
+  "Open beta": "Offene Beta",
+  "A CAD for LEGO® models, in your browser: every LDraw part, joined where the real ones join.": "Ein CAD für LEGO® Modelle, im Browser: jedes LDraw-Teil, verbunden, wo sich die echten verbinden.",
+  "It is in open beta: it works, and it gets better every week with what builders tell us.": "Es ist in der offenen Beta: Es funktioniert, und es wird jede Woche besser durch das, was uns Bauende sagen.",
+  "Testers try new features first and tell us what is wrong. The first 100 we pick get a month of Pro.": "Tester probieren Neues zuerst aus und sagen uns, was nicht stimmt. Die ersten 100, die wir auswählen, bekommen einen Monat Pro.",
+  "Join the beta testers": "Beta-Tester werden",
+  "Joining agrees to {terms} and to emails about the beta. Leave any time in Settings.": "Wer mitmacht, stimmt {terms} und E-Mails zur Beta zu. Verlassen kannst du sie jederzeit in den Einstellungen.",
+  "the beta's terms": "den Bedingungen der Beta",
+  "You are a beta tester": "Du bist Beta-Tester",
+  "Thank you. Report a bug whenever something is wrong, from wherever you are. What you send, and our answers, are in Settings.": "Danke! Melde einen Fehler, wann immer etwas nicht stimmt, egal wo du gerade bist. Was du schickst und unsere Antworten findest du in den Einstellungen.",
+  "For a month of Pro, {link}: it takes a minute.": "Für einen Monat Pro {link}: Das dauert eine Minute.",
+  "tell us what you build": "erzähl uns, was du baust",
+  "You have been a beta tester since {day}. Thank you.": "Du bist seit dem {day} Beta-Tester. Danke!",
+  "You are a beta tester. Thank you.": "Du bist Beta-Tester. Danke!",
+  "Brickworks is in open beta. Testers try new features first and tell us what is wrong; the first 100 we pick get a month of Pro.": "Brickworks ist in der offenen Beta. Tester probieren Neues zuerst aus und sagen uns, was nicht stimmt; die ersten 100, die wir auswählen, bekommen einen Monat Pro.",
+  "Your account has Pro already, free and with no end date.": "Dein Konto hat Pro schon, kostenlos und ohne Enddatum.",
+  "Your month of Pro runs from {starts} to {ends}.": "Dein Monat Pro läuft vom {starts} bis zum {ends}.",
+  "Your month of Pro starts the day Pro launches.": "Dein Monat Pro beginnt an dem Tag, an dem Pro startet.",
+  "Not one of this round's months of Pro. You stay a tester.": "Diesmal ist kein Monat Pro dabei. Tester bleibst du.",
+  "We have what you told us, and email you once we decide on your month of Pro.": "Wir haben, was du uns erzählt hast, und schreiben dir, sobald wir über deinen Monat Pro entschieden haben.",
+  "Joined. You are a beta tester.": "Dabei. Du bist Beta-Tester.",
+  "You left the beta. Join again any time.": "Du hast die Beta verlassen. Du kannst jederzeit wieder mitmachen.",
+  "Confirm your email address first: sign in with a code.": "Bestätige zuerst deine E-Mail-Adresse: Melde dich mit einem Code an.",
+  "Not open yet: supabase/beta_join.sql is not applied.": "Noch nicht freigeschaltet: supabase/beta_join.sql ist nicht angewendet."
  }
 }
