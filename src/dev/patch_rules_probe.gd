@@ -20,7 +20,11 @@
 ## 6. a source patched on a worker and on this thread at once, this one
 ##    begun as the worker's has, each the first patch of the source, 24
 ##    times: the two the same each time. Read on first use, the second
-##    found the tables being filled and patched from them half made.
+##    found the tables being filled and patched from them half made;
+## 7. drive's lines (MOTION_PATH, MOTION_WHEEL, MOTION_STEER) written into
+##    a patch as the store writes a model's motions (Motions.written_into,
+##    then SourceFile.app_lines_placed): each carried, the gate letting the
+##    patch through.
 extends SceneTree
 
 var _fails: int = 0
@@ -72,6 +76,7 @@ func _initialize() -> void:
 	_unplaced()
 	_renumbered()
 	_race()
+	_drive()
 	print("patch_rules probe: %s" % ("all checks passed" if _fails == 0 else "%d failed" % _fails))
 	quit(1 if _fails > 0 else 0)
 
@@ -239,3 +244,20 @@ func _race() -> void:
 			refused += 1
 	_check("a source patched on a worker and here at once, 24 times: the two texts the same each time "
 		+ "(%d differ) and each a patch (%d refused)" % [differ, refused], differ == 0 and refused == 0)
+
+
+func _drive() -> void:
+	var opened: Array = _opened(WING)
+	var source: SourceFile = opened[0]
+	var bricks: Array = opened[1]
+	(bricks[0] as BrickWorld.Brick).color_code = 0
+	var drive := PackedStringArray([
+		"0 !BRICKWORKS MOTION_PATH \"Drive and turn left\" SECONDS 7 EASE STRAIGHT 32 LEFT 90 RADIUS 24",
+		"0 !BRICKWORKS MOTION_WHEEL \"Drive and turn left\" AT 0 JOINT PART 3482 71 70 0 -70",
+		"0 !BRICKWORKS MOTION_STEER \"Drive and turn left\" AT 0 JOINT PART 3829c01 0 0 -24 -60"])
+	var text: String = source.app_lines_placed(Motions.written_into(
+		str(_patched(source, bricks, opened[2])[0]), drive))
+	var why: String = source.checked(text, bricks, Vector3.ZERO, {}, null, opened[2])
+	var carried: bool = Array(drive).all(func(line: String) -> bool: return text.contains(line + "\n"))
+	_check("drive's MOTION_PATH, MOTION_WHEEL and MOTION_STEER lines in a patch: each carried (%s), the gate lets it through (%s)"
+		% [carried, why], carried and why.is_empty())
