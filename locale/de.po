@@ -12861,3 +12861,15 @@ msgstr "%s Sterne"
 
 msgid "%s large stars"
 msgstr "%s große Sterne"
+
+# A wedge plate's far corner cut flat (makepart3, APP_UX7 #16): the maker's checkbox, its
+# tooltip and what the dialog says of the part.
+
+msgid "Far corner cut flat"
+msgstr "Hintere Ecke flach abgeschnitten"
+
+msgid "As LEGO® wedge plates such as 54383 and 41770b are: the sharp corner the cut ends in, cut off 1.2 mm along"
+msgstr "Wie bei LEGO® Keilplatten wie 54383 und 41770b: die spitze Ecke, in der die schräge Seite endet, auf 1,2 mm Länge abgeschnitten"
+
+msgid "Its far corner is cut flat."
+msgstr "Ihre hintere Ecke ist flach abgeschnitten."

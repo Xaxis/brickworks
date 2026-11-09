@@ -26,6 +26,7 @@
 ##   bar 8 LDU across              its top end at the origin   (87994)
 ##   clip 10 in front of the plate clip5.dat or clip6.dat       (60897, 61252)
 ##   wedge tip one stud wide       the cut to the far corner   (41770a, 43722a)
+##   wedge chamfer 3 LDU along     the far corner cut flat     (54383, 41770b)
 ##
 ## Everything is in LDraw's own space: X right, Y *down*, origin at the
 ## middle of the footprint on the top of the body, the long side along X.
@@ -91,6 +92,13 @@ const CLIP_OUT := 10.0
 ## library's wedge plates join such a tube to the wall: 43722a's back tube,
 ## 0.65 LDU from it, is drawn as arcs, and 41770a's, 2.55 LDU from it, whole.
 const WEDGE_GAP := 2.0
+## How far along its length a chamfered wedge plate's far corner is cut
+## flat, square to its back edge: 3 LDU, 1.2 mm, as 54383 and 54384,
+## 41769b and 41770b, 43722b, 24299 and 78443 have it, each as wide as the
+## cut's slope makes it (1 LDU on 54383, 0.75 on 41770b). The cut's acute
+## corner is too thin to fill and too sharp to keep. (3544 and 48208, older
+## moulds, are cut 4 along.)
+const WEDGE_CHAMFER := 3.0
 
 ## The sides a brick can carry studs on, in the order they are written:
 ## front (LDraw's -Z, the long face 87087 and 30414 put theirs on), back,
@@ -156,6 +164,10 @@ class Spec extends RefCounted:
 	## ([constant WAYS]).
 	var rise: int = 1
 	var way: String = "down"
+	## A wedge plate's far corner cut flat ([constant WEDGE_CHAMFER]), as
+	## LEGO's own wedge plates have it (54383, 41770b). Off, the cut runs
+	## to the corner (41770a).
+	var chamfer: bool = false
 
 	func duplicate() -> Spec:
 		var copy := Spec.new()
@@ -171,6 +183,7 @@ class Spec extends RefCounted:
 		copy.sides = sides
 		copy.rise = rise
 		copy.way = way
+		copy.chamfer = chamfer
 		return copy
 
 	## The spec as a line of words, the form the header carries and the
@@ -194,6 +207,8 @@ class Spec extends RefCounted:
 			words += " rise=%d way=%s" % [rise, way]
 		elif family == "clip" or family == "wedge":
 			words += " way=%s" % way
+		if family == "wedge" and chamfer:
+			words += " chamfer=yes"
 		if not sides.is_empty():
 			words += " sides=%s" % sides
 		# A curve over the whole depth has no flat rows for a stud to stand
@@ -210,6 +225,8 @@ class Spec extends RefCounted:
 static func problem(spec: Spec) -> String:
 	if not FAMILIES.has(spec.family):
 		return "there is no family called %s" % spec.family
+	if spec.chamfer and spec.family != "wedge":
+		return "only a wedge plate has a far corner to cut flat"
 	# A bar has a length and no height in plates, and no studs to put on its
 	# sides.
 	if spec.family == "bar":
@@ -364,9 +381,11 @@ static func title_for(spec: Spec) -> String:
 				_pad(mini(spec.across, spec.deep)), _pad(maxi(spec.across, spec.deep)),
 				spec.way.capitalize(), where]
 		"wedge":
-			# LDraw names a wedge plate a wing, width first: "Wing  2 x  4 Left".
-			return "Wing %s x %s %s%s" % [_pad(spec.across), _pad(spec.deep),
-				spec.way.capitalize(), "" if spec.studs else " without Studs"]
+			# LDraw names a wedge plate a wing, width first: "Wing  2 x  4 Left",
+			# and one cut at its corner as 41770b: "... Left with Chamfer".
+			return "Wing %s x %s %s%s%s" % [_pad(spec.across), _pad(spec.deep),
+				spec.way.capitalize(), " with Chamfer" if spec.chamfer else "",
+				"" if spec.studs else " without Studs"]
 	var short: int = mini(spec.across, spec.deep)
 	var long: int = maxi(spec.across, spec.deep)
 	return "%s %s x %s%s%s" % [_word(spec), _pad(short), _pad(long),
@@ -487,7 +506,8 @@ static func id_for(spec: Spec) -> String:
 		"clip":
 			tail = "clip%dx%d%s" % [spec.across, spec.deep, spec.way.left(1)]
 		"wedge":
-			tail = "wedge%dx%d%s" % [spec.across, spec.deep, spec.way.left(1)]
+			tail = "wedge%dx%d%s%s" % [spec.across, spec.deep, spec.way.left(1),
+				"c" if spec.chamfer else ""]
 		_:
 			tail = "b%dx%dx%d" % [mini(spec.across, spec.deep),
 				maxi(spec.across, spec.deep), spec.plates]
@@ -567,6 +587,34 @@ static func parse_spec(text: String) -> Spec:
 const MADE_BY := "0 // Made by Brickworks:"
 
 
+## Where a part the maker made takes a stud from underneath, for the builder
+## to seat it by (Builder._takes_studs), as a part LEGO made is seated by the
+## holes its exact shape has: [its sockets, true, where the foot of a stud
+## in it stands], in the app's axes. The sockets are those its build found
+## (Lbm), sure because the maker drew the part to take a stud there; the
+## foot is the bottom of its body, its plates under its top, whatever hangs
+## lower. A level clip's ring hangs 1.448 LDU under its plate, and a made
+## 61252 aimed with its clip in over a brick stood on its ring, that far up
+## off its stud, where 61252 itself goes on the next row by its holes
+## (makepart2, 2026-11-07). [] for any other part, and for a made one with
+## nothing that takes a stud (a bar) or no sockets found.
+static func seat_of(library: PartLibrary, part_id: String, part: Lbm.PartMesh) -> Array:
+	var info: PartLibrary.PartInfo = library.parts.get(part_id) if library != null else null
+	if info == null or not info.custom or part == null or part.sockets.is_empty():
+		return []
+	# The header's line alone: this is asked at every move of a held part.
+	var text: String = library.custom_source(part_id)
+	var at: int = text.find(MADE_BY)
+	if at < 0:
+		return []
+	var end: int = text.find("\n", at)
+	var from: int = at + MADE_BY.length()
+	var spec: Spec = from_words(text.substr(from, end - from if end >= 0 else -1))
+	if spec.family == "bar" or not problem(spec).is_empty():
+		return []
+	return [part.sockets, true, -spec.plates * PLATE]
+
+
 ## A spec from the words [method Spec.to_words] writes.
 static func from_words(words: String) -> Spec:
 	var spec := Spec.new()
@@ -586,6 +634,7 @@ static func from_words(words: String) -> Spec:
 			"sides": spec.sides = canonical_sides(pair[1])
 			"rise": spec.rise = pair[1].to_int()
 			"way": spec.way = pair[1]
+			"chamfer": spec.chamfer = pair[1] == "yes"
 	return spec
 
 
@@ -612,10 +661,13 @@ static func canonical_sides(text: String) -> String:
 ## "Tile  2 x  2 with Groove", "Slope Brick 45  2 x  2", "Slope Brick 33
 ## 3 x  2 Inverted", "Brick  2 x  2 Round", "Plate  4 x  4 Round", "Bar  3L",
 ## "Plate  1 x  1 with Clip Vertical (Thick C-Clip)", "Wing  2 x  4 Left
-## without Chamfer" — and a name that says anything more (printed, with a
-## hole, a thin clip, a chamfered tip) is not a plain part and returns null
-## rather than a part it is not.
-static func from_part(part_id: String, name: String, tall: float = 0.0) -> Spec:
+## without Chamfer", "Wing  3 x  6 Right" — and a name that says anything
+## more (printed, with a hole, a thin clip, a truncated tip) is not a plain
+## part and returns null rather than a part it is not. [param tall] and
+## [param wide] are the part's own height and width along X, in LDU, where
+## its name does not say them.
+static func from_part(part_id: String, name: String, tall: float = 0.0,
+		wide: float = 0.0) -> Spec:
 	var text: String = name.strip_edges()
 	if text.begins_with("~") or text.begins_with("="):
 		return null
@@ -688,23 +740,35 @@ static func from_part(part_id: String, name: String, tall: float = 0.0) -> Spec:
 		spec.family = "bar"
 		spec.across = words[1].trim_suffix("L").to_int()
 		return spec if problem(spec).is_empty() else null
-	# "Wing  2 x  4 Left without Chamfer": the wedge plate the maker draws,
-	# its tip a stud wide and its cut to the far corner (41770a, 43722a).
-	# The others are cut otherwise (24299's tip, 54383's corner) and are
-	# changed as themselves.
+	# "Wing  2 x  4 Left without Chamfer" and "... with Chamfer": the wedge
+	# plate the maker draws, its tip a stud wide and its cut to the far
+	# corner (41770a, 43722a), or that corner cut flat (41770b). A wing whose
+	# name says neither is one of them only where its own width is the
+	# chamfered one's to a hundredth, a width no other cut gives: 54383's 59
+	# LDU, 78443's 39.5. The others (3544's chamfer 4 LDU long, 3936's second
+	# corner, 47397 or 30355, whose widths are whole studs whatever their
+	# tips are) are changed as themselves.
 	if head == "Wing":
 		var wing: Array = _dims(words, 1)
 		if wing.is_empty() or int(wing[2]) != 0:
 			return null
 		var hand: PackedStringArray = words.slice(int(wing[3]))
-		if hand.size() != 3 or not (hand[0] == "Left" or hand[0] == "Right") \
-				or hand[1] != "without" or hand[2] != "Chamfer":
+		if hand.is_empty() or not (hand[0] == "Left" or hand[0] == "Right"):
 			return null
 		spec.family = "wedge"
 		spec.across = int(wing[0])
 		spec.deep = int(wing[1])
 		spec.plates = 1
 		spec.way = hand[0].to_lower()
+		var said: String = " ".join(hand.slice(1))
+		if said == "with Chamfer":
+			spec.chamfer = true
+		elif said.is_empty():
+			spec.chamfer = true
+			if absf(wide - (spec.across * STUD - wedge_chamfer(spec))) > 0.01:
+				return null
+		elif said != "without Chamfer":
+			return null
 		return spec if problem(spec).is_empty() else null
 	if head == "Slope" and words.size() > 2 and words[1] == "Brick":
 		var angle: int = words[2].to_int()
@@ -1446,12 +1510,27 @@ static func _bar(spec: Spec, out: PackedStringArray) -> void:
 ## The outline of a wedge plate from above, as [x, z] corners: the front
 ## of the straight side, the tip's other end one stud across, the far
 ## corner the cut runs to, and the back of the straight side. A left one's
-## straight side is at -X, as 41770a's is; a right one is its mirror.
+## straight side is at -X, as 41770a's is; a right one is its mirror. A
+## chamfered one has the far corner as two: where the chamfer leaves the
+## cut, and where it meets the back ([method wedge_chamfer]).
 static func wedge_outline(spec: Spec) -> Array:
 	var x: float = spec.across * STUD * 0.5
 	var z: float = spec.deep * STUD * 0.5
 	var m: float = -1.0 if spec.way == "right" else 1.0
+	if spec.chamfer:
+		var w: float = wedge_chamfer(spec)
+		return [[-x * m, -z], [(-x + STUD) * m, -z], [(x - w) * m, z - WEDGE_CHAMFER],
+			[(x - w) * m, z], [-x * m, z]]
 	return [[-x * m, -z], [(-x + STUD) * m, -z], [x * m, z], [-x * m, z]]
+
+
+## How much narrower a chamfered wedge plate is than its studs, in LDU: the
+## cut's run over [constant WEDGE_CHAMFER] of its length, 1 for a 3 x 6
+## (54383), 0.75 for a 2 x 4 (41770b). 0 for a wedge plate cut to its corner.
+static func wedge_chamfer(spec: Spec) -> float:
+	if not spec.chamfer:
+		return 0.0
+	return WEDGE_CHAMFER * (spec.across - 1) / float(spec.deep)
 
 
 ## The angle between a wedge plate's cut side and its straight side, in
@@ -1493,17 +1572,20 @@ static func wedge_has_stud(spec: Spec, i: int, j: int) -> bool:
 
 ## A wedge plate: 41770a and 41769a, 43722a and 43723a, at any size. A
 ## plate whose straight side is the left or the right, cut on the diagonal
-## from a tip one stud across at the front to the far corner at the back.
+## from a tip one stud across at the front to the far corner at the back;
+## chamfered, that corner cut flat, as 54383 and 41770b are.
 ##
 ## A stud stands wherever its whole stud's square is inside the cut, which
 ## gives 41770a its four and 54383 its nine. The cavity is 4 LDU in from
 ## every side, the cut's too, and the tubes between four studs are whole
-## where the cut's wall stays [constant WEDGE_GAP] clear of them; where it
-## comes nearer, or through one, as it does through two of 41770a's three,
-## the part of it on the cavity's side is drawn, to the next sixteenth of a
-## turn into the wall, so it meets the wall as the library's own cut tubes
-## do (and one the wall only comes near, as 43722a's back one, all but the
-## sixteenth that faces the wall).
+## where the cut's wall stays [constant WEDGE_GAP] clear of them. One the
+## wall comes nearer without reaching it is joined to it by the sixteenth
+## of its outside that faces it, its bore whole, as 54383's two are
+## ([method _near_tube]; 43722a draws the same tube as arcs, which the mesh
+## build reads as a bore, not a tube). Where the wall goes through one, as
+## it does through two of 41770a's three, the part of it on the cavity's
+## side is drawn, to the next sixteenth of a turn into the wall, so it
+## meets the wall as the library's own cut tubes do.
 static func _wedge(spec: Spec, out: PackedStringArray) -> void:
 	var h: float = PLATE
 	var corners: Array = wedge_outline(spec)
@@ -1532,23 +1614,36 @@ static func _wedge(spec: Spec, out: PackedStringArray) -> void:
 		top.append([c[0], 0, c[1]])
 	_face(out, top, [0, -1, 0])
 	_outline(out, top)
-	for n: int in 4:
+	# Each side's outward way, and the corner of the cavity under each
+	# corner: a chamfer's two corners share the cavity's far one, which is
+	# further in than the chamfer comes whatever the plate's size.
+	var outwards: Array = [[0, 0, -1], [nx, 0, nz], [0, 0, 1], [-m, 0, 0]]
+	var under: Array = [0, 1, 2, 3]
+	if corners.size() == 5:
+		outwards.insert(2, [m, 0, 0])
+		under = [0, 1, 2, 2, 3]
+	var count: int = corners.size()
+	for n: int in count:
 		var a: Array = corners[n]
-		var b: Array = corners[(n + 1) % 4]
-		var outward: Array = [[0, 0, -1], [nx, 0, nz], [0, 0, 1], [-m, 0, 0]][n]
+		var b: Array = corners[(n + 1) % count]
 		_face(out, [[a[0], 0, a[1]], [b[0], 0, b[1]], [b[0], h, b[1]], [a[0], h, a[1]]],
-			outward)
+			outwards[n])
 		_line(out, [a[0], 0, a[1]], [a[0], h, a[1]])
 		_line(out, [a[0], h, a[1]], [b[0], h, b[1]])
 	out.append("0 // Underneath: the rim, the cavity and its ceiling")
-	for n: int in 4:
+	for n: int in count:
 		var a: Array = corners[n]
-		var b: Array = corners[(n + 1) % 4]
-		var ia: Array = inner[n]
-		var ib: Array = inner[(n + 1) % 4]
+		var b: Array = corners[(n + 1) % count]
+		var k: int = under[n]
+		var ia: Array = inner[k]
+		var ib: Array = inner[under[(n + 1) % count]]
+		if ia == ib:
+			# The chamfer's: a corner of the rim, and no wall of its own.
+			_face(out, [[a[0], h, a[1]], [b[0], h, b[1]], [ia[0], h, ia[1]]], [0, 1, 0])
+			continue
 		_face(out, [[a[0], h, a[1]], [b[0], h, b[1]], [ib[0], h, ib[1]], [ia[0], h, ia[1]]],
 			[0, 1, 0])
-		var inward: Array = [[0, 0, 1], [-nx, 0, -nz], [0, 0, -1], [m, 0, 0]][n]
+		var inward: Array = [[0, 0, 1], [-nx, 0, -nz], [0, 0, -1], [m, 0, 0]][k]
 		_face(out, [[ia[0], TOP, ia[1]], [ib[0], TOP, ib[1]], [ib[0], h, ib[1]],
 			[ia[0], h, ia[1]]], inward)
 		_line(out, [ia[0], h, ia[1]], [ib[0], h, ib[1]])
@@ -1570,12 +1665,42 @@ static func _wedge(spec: Spec, out: PackedStringArray) -> void:
 			if room >= TUBE_RADIUS + WEDGE_GAP:
 				out.append(_ref(tx, TOP, tz, 1, 0, 0, 0, -(h - TOP) / 4.0, 0, 0, 0, 1,
 					"stud4.dat"))
+			elif room > TUBE_RADIUS:
+				_near_tube(out, tx, tz, -nx, -nz, h)
 			elif room > 0.0:
 				_cut_tube(out, tx, tz, -nx, -nz, room, h)
 
 
-## A tube the cut's wall comes near or through, as the part of it on the
-## cavity's side: its outside and its bore in sixteenths of a turn
+## A tube the cut's inner wall comes within [constant WEDGE_GAP] of but does
+## not reach: joined to the wall by the sixteenth of its outside that faces
+## it, its bore whole, as 54383 draws its two (stud4od, the tube without its
+## outside, and fifteen sixteenths of that outside). It grips a stud as any
+## tube does. The ceiling to the bottom, centred on [param ax], [param az]
+## (unit, away from the wall).
+static func _near_tube(out: PackedStringArray, cx: float, cz: float, ax: float, az: float,
+		h: float) -> void:
+	out.append(_ref(cx, TOP, cz, 1, 0, 0, 0, -(h - TOP) / 4.0, 0, 0, 0, 1, "stud4od.dat"))
+	var kept: int = 15
+	var step: float = TAU / 16.0
+	var start: float = atan2(az, ax) - kept * step * 0.5
+	var inside: float = TUBE_RADIUS - 2.0
+	for k: int in kept:
+		var t: float = start + k * step
+		out.append(_ref(cx, TOP, cz, TUBE_RADIUS * cos(t), 0, -TUBE_RADIUS * sin(t), 0,
+			h - TOP, 0, TUBE_RADIUS * sin(t), 0, TUBE_RADIUS * cos(t), "1-16cyli.dat"))
+	for end: int in 2:
+		var t: float = start + (kept * step if end == 1 else 0.0)
+		var c: float = cos(t)
+		var s: float = sin(t)
+		var away: Array = [-s, 0, c] if end == 1 else [s, 0, -c]
+		_face(out, [[cx + inside * c, TOP, cz + inside * s],
+			[cx + TUBE_RADIUS * c, TOP, cz + TUBE_RADIUS * s],
+			[cx + TUBE_RADIUS * c, h, cz + TUBE_RADIUS * s],
+			[cx + inside * c, h, cz + inside * s]], away)
+
+
+## A tube the cut's wall comes through, as the part of it on the cavity's
+## side: its outside and its bore in sixteenths of a turn
 ## (1-16cyli, as the library draws every round), centred on [param ax],
 ## [param az] (unit, away from the wall), [param room] from the wall, from
 ## the ceiling to the bottom, with its bottom ring and its two ends closed.
@@ -1697,6 +1822,14 @@ static func _rim(out: PackedStringArray, y: float, ox0: float, ox1: float, oz0: 
 ## out of the plastic. Winding every face by hand is how a part ends up
 ## with one face drawn inside out; this cannot.
 static func _face(out: PackedStringArray, points: Array, outward: Array) -> void:
+	# LDraw draws a face of three or four corners; a flat convex one of more
+	# (a chamfered wedge plate's top) is its first four and a fan of the rest.
+	if points.size() > 4:
+		_face(out, points.slice(0, 4), outward)
+		var rest: Array = [points[0]]
+		rest.append_array(points.slice(3))
+		_face(out, rest, outward)
+		return
 	var a: Array = points[0]
 	var b: Array = points[1]
 	var c: Array = points[2]

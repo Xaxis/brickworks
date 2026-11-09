@@ -3688,6 +3688,11 @@ func _seated_by_sockets(part: Lbm.PartMesh, basis: Basis, snapped: Vector3,
 ## (Exact's "hole", where a stud goes in), which the seat puts it by; a
 ## tube's label is not one, being where a stud goes inside a tube.
 func _takes_studs(part_id: String, part: Lbm.PartMesh) -> Array:
+	# A part the maker made, where it drew it to take one: its box hangs
+	# under its plate where a level clip's ring does (ElementMaker.seat_of).
+	var made: Array = ElementMaker.seat_of(library, part_id, part)
+	if not made.is_empty():
+		return made
 	if part.sockets_drawn:
 		return [part.sockets, true, part.bounds.position.y]
 	var drawn: PackedVector2Array = Lbm.receivers_of(part)
