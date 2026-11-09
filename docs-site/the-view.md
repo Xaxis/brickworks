@@ -100,6 +100,16 @@ An assistant sees the same with view_board and `"studs": true`: the six sides an
 ui:stud directions
 -->
 
+## Edges and studs {#edges-studs}
+
+**View › Edges and studs** turns two things in the picture on and off. **Edges** is the fine line drawn where each part meets the next, which makes the courses and the bond of a wall easy to read; off, the parts meet without it. **Studs** off draws every part without its studs, on top, on its sides and on a round plate alike, so you see the shapes alone, and a big model draws faster. Each part stays exactly where it is and still joins the parts it joined. The part in your hand keeps its studs, so you can see where it will go.
+
+Both are kept on this computer for the next time. They change only your view: renders, the instructions, shared pictures and what an assistant is shown always draw every edge and stud.
+
+<!-- covers
+ui:edges and studs
+-->
+
 ## Floor and stud grid {#floor}
 
 **View › Floor** sets what the model stands on: a baseplate 16, 32 or 48 studs (or any size in eights to 192), in a colour baseplates come in, a grid floor, or nothing at all, as a car or a ship stands on a table. With nothing selected, the properties panel has the same. **Settings › New models start on** chooses the floor a new model gets. **View › Stud grid** ([[Alt+G]]) draws the studs' grid over the floor.

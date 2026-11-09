@@ -785,6 +785,24 @@
 					]
 				},
 				{
+					"submenu": "edges_studs",
+					"words": "Edges and studs",
+					"items": [
+						{
+							"name": "edges",
+							"words": "Edges",
+							"key": "",
+							"tip": "A fine line where each part meets the next, so courses and bonds read in a wall"
+						},
+						{
+							"name": "studs",
+							"words": "Studs",
+							"key": "",
+							"tip": "Off, the parts are drawn without their studs, each in its place: the shapes alone, and a big model drawn faster"
+						}
+					]
+				},
+				{
 					"line": true
 				},
 				{
@@ -1844,6 +1862,8 @@
 		"floor_colour_7": "",
 		"floor_part": "",
 		"floor_default": "",
+		"edges": "",
+		"studs": "",
 		"reference": "alt-N",
 		"cut": "K",
 		"cut_x": "",

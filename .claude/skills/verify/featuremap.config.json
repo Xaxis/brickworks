@@ -4994,6 +4994,20 @@
       "entry": "src/dev/rarity_probe.gd",
       "reach": "tools/probe.sh rarity_probe -- --shots=DIR   (windowed, 1400x900, signed in through the gate with a throwaway account from .env: at 1400x900 and 1280x720, 3001 typed and clicked, Red's and a rare colour's tooltips rested on and read against its colours file, every swatch in sight, 7049b's Black; the three sentences in de, fr and es); python3 tools/minitest.py tests/test_collection.py (ten parts in a colour counted straight off Rebrickable's tables)",
       "area": "parts"
+    },
+    {
+      "kind": "ui",
+      "label": "edges and studs",
+      "entry": "src/render/studs_off.gd",
+      "reach": "tools/probe.sh edges && PROBE_SIZE=1280x720 tools/probe.sh edges   (by hand: View, Edges and studs, Edges or Studs; kept in this machine's controls.cfg [view]; only the window follows them: renders, booklets, view_model and thumbnails draw every seam and stud)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "edges probe",
+      "entry": "src/dev/edges_probe.gd",
+      "reach": "tools/probe.sh edges [-- --shots=DIR]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720, through the sign-in screen with a throwaway account (.env): the car's default view the same to the pixel after each row off and on, kept as default_view_WxH.png for an older build's; two walls' seam inside each face drawn and 0 px with Edges off; every kind of stud seen from its side, most of its round drawn and 0 px with Studs off, every part in its place and, drawn flat, 0 px covered differently outside the rounds; the car's triangles with Studs off; both kept over a restart; pictures in user://edges or DIR)",
+      "area": "view"
     }
   ]
 }
