@@ -1,0 +1,5 @@
+x1|Away from the pods, put a 2x2 inverted dish, part 4740, on a 1x1 round plate, part 6141, with the dish's tube on the plate's stud, and check that it sits the way LEGO sets have it.
+x2|Give these instructions a cover titled "Двойные капсулы" with "Δύο κάψουλες" under it, then save the instructions as a PDF. Do those letters print as I typed them?
+x3|Make me a 4x2 wedge plate, the left-hand one, with its far corner cut flat the way LEGO's 54383 has it, and a 1x1 plate with a clip on top. Set the clip plate on a stud of the baseplate: does it sit flush on the stud?
+x4|Hang a spotlight over the pods, shining down on them, and make me a picture in the dark so I can see what it lights.
+x5|Export this model for my 3D printer as a 3MF. Will my slicer read every part as a closed solid, or will it have to repair some?
