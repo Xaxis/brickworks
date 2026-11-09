@@ -1691,17 +1691,26 @@ const BWX := "bwx"
 ## What one frame reads where there are no threads, ms: at least one thing.
 const READ_BUDGET_MS := 4.0
 ## What one frame keeps of what a worker has read (meshes made, parts put
-## down), ms: at least one thing, and then no more than this.
+## down), ms: at least one thing, and no more than this or [constant
+## KEEP_SHARE] of what the frame before cost besides keeping, whichever is
+## more.
 ##
 ## A worker read six a task, and a frame kept what it had read and started
 ## the next six. In a browser drawing on its CPU a frame is 0.5 to 2 s, so
 ## the 47 geometries of the Rally Racer came in 8 frames, 5.5 s after the
 ## last had arrived (fetchparts, 2026-11-08). A worker now reads all that
-## waits, the most wanted first as it comes, and each frame keeps what fits
-## in this slice. The same slice in every frame: one sized by the frame
-## before it gave a long frame a long slice, which made the next one long
-## too, and parts made the frames they came in longer than they were.
+## waits, the most wanted first as it comes, and each frame keeps what fits.
+##
+## Where a frame is quick, as with any graphics card (16 ms at 60 a second),
+## that is 4 ms. Where it is slow, every frame while parts come is the model
+## drawn again, whatever it keeps: 4 ms there spread the car's 47 over 33 to
+## 43 frames of 0.6 to 4 s each, its shapes in 23 to 43 s on a phone against
+## 15 s before (bench/results/fetchparts-2026-11-08/ab7_fixed4ms). So a
+## slow frame keeps a quarter of its own cost. Of its own cost only: sized by
+## the whole frame before, keeping bought itself more keeping, and a long
+## frame stayed a third longer.
 const KEEP_BUDGET_MS := 4.0
+const KEEP_SHARE := 0.25
 ## Whether what is read ahead is read on a worker: where there are threads. A
 ## probe turns it off to read in frames under the budget, as a browser without
 ## threads does.
@@ -1718,6 +1727,10 @@ var _read_lock := Mutex.new()
 var _reading: int = -1
 ## Read and not kept yet, [that, what it made]: the main thread's alone.
 var _to_keep: Array = []
+## When [method _read_frame] last began, and how long it took, µs: the frame
+## before's cost besides its parts.
+var _read_frame_at: int = 0
+var _kept_us: int = 0
 ## Exact shapes being read from this build's files ahead (read_ahead): hash ->
 ## true. Not on their way as a fetch is: one wanted now is read there, as before.
 var _reading_shapes: Dictionary = {}
@@ -1756,11 +1769,14 @@ func _read_frame() -> void:
 	_was_read = []
 	var waiting: bool = not _to_read.is_empty()
 	_read_lock.unlock()
-	var began_keeping: int = Time.get_ticks_usec()
+	var now: int = Time.get_ticks_usec()
+	var drawn_us: int = now - _read_frame_at - _kept_us if _read_frame_at > 0 else 0
+	var budget_us: float = maxf(KEEP_BUDGET_MS * 1000.0, drawn_us * KEEP_SHARE)
+	_read_frame_at = now
 	while not _to_keep.is_empty():
 		var one: Array = _to_keep.pop_front()
 		_kept_read(one[0], one[1])
-		if Time.get_ticks_usec() - began_keeping > KEEP_BUDGET_MS * 1000.0:
+		if Time.get_ticks_usec() - now > budget_us:
 			break
 	if waiting and not read_on_a_worker and _reading < 0:
 		var began: int = Time.get_ticks_usec()
@@ -1775,12 +1791,14 @@ func _read_frame() -> void:
 				break
 	elif waiting and _reading < 0:
 		_reading = WorkerTasks.add(_read_some, false, "read parts' geometry and shapes")
+	_kept_us = Time.get_ticks_usec() - now
 	_read_lock.lock()
 	var idle: bool = _to_read.is_empty() and _reading < 0 and _to_keep.is_empty()
 	_read_lock.unlock()
 	var tree: SceneTree = _read_tree()
 	if idle and tree != null and tree.process_frame.is_connected(_read_frame):
 		tree.process_frame.disconnect(_read_frame)
+		_read_frame_at = 0
 
 
 ## On a worker: all that waits, read, the first waiting first, so what is

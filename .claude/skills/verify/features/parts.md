@@ -414,8 +414,9 @@ geometry in front of them.
   that shows it is read off that frame: on a worker where there are threads,
   all that waits, the most wanted first, or in frames under `READ_BUDGET_MS`
   where there are none (`read_on_a_worker`); the meshes made and everything
-  kept on the main thread, each frame what fits in `KEEP_BUDGET_MS` (the
-  same slice in every frame, however long), and said as a fetch
+  kept on the main thread, each frame what fits in `KEEP_BUDGET_MS` or
+  `KEEP_SHARE` of the frame before's cost besides keeping, whichever is more
+  (so keeping never buys itself more keeping), and said as a fetch
   is (`fetched`, `exact_fetched`). Through it: a
   tile's picture (`PartThumbnails._render` asks `request_mesh`, which reads a
   part on disk there and fetches one that is not), a fetch's answer
