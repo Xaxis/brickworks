@@ -2836,8 +2836,9 @@ picture the assistant is shown.
   200,000 lines of another meta command (`0 !BRICKWORKS FOO x`), its time
   against comments said beside it (every `0 !BRICKWORKS` line costs the
   open's other readers more than a comment does), and saved within 1.5x of
-  200,000 comments (medians of 12, after a warm-up; against comments as
-  long and other metas said beside it). lreview's second review: a model
+  200,000 comments as long as its lines (medians of 12, after a warm-up;
+  against short comments, which measure the bytes written, about 2x, and
+  other metas said beside it). lreview's second review: a model
   with a line it cannot read, cleared by Clear, then a part put down and
   saved: no light line in the new file (the read and unread lines are the
   model's, kept against the world's generation); a CRLF file whose last line
