@@ -228,9 +228,10 @@ func _targets() -> Dictionary:
 				and not (node.get_parent() is ViewCube and str(node.get("kind")) == "pan"):
 			view.append(node)
 	out["view"] = view
+	# The properties of the part selected: where it is and how it is turned.
 	var properties: Array = []
-	for key: String in ["prop_x", "prop_y", "prop_z", "prop_turn"]:
-		var field: Variant = _shell.inspector.controls_by_name().get(key)
+	for key: String in ["_x", "_y", "_z", "_yaw"]:
+		var field: Variant = _shell.inspector.get(key)
 		if field is Control and (field as Control).is_visible_in_tree():
 			properties.append(field)
 	out["properties"] = properties
@@ -261,8 +262,26 @@ func _browse() -> void:
 	if not _dump.is_empty():
 		_write_json("browse_start.json", tree)
 	await _shot("browse")
-	var firsts: Array[int] = []
+	# Reading order as the window is laid out: the bars along the top, then
+	# the columns left to right, each top to bottom (at 1400 x 900 the
+	# properties sit under the bin), then the status line.
+	var areas: Dictionary = {}
 	for region: String in REGIONS:
+		var area := Rect2()
+		for control: Control in targets.get(region, []):
+			var box: Rect2 = _pixels(control.get_global_rect())
+			area = box if area.size == Vector2.ZERO else area.merge(box)
+		areas[region] = area
+	var columns: Array = ["parts bin", "view", "properties"]
+	columns.sort_custom(func(a: String, b: String) -> bool:
+		var one: Rect2 = areas[a]
+		var two: Rect2 = areas[b]
+		if one.end.x <= two.position.x + 1.0 or two.end.x <= one.position.x + 1.0:
+			return one.position.x < two.position.x
+		return one.position.y < two.position.y)
+	var order_wanted: Array = ["menus", "toolbar"] + columns + ["status line"]
+	var firsts: Array[int] = []
+	for region: String in order_wanted:
 		var wanted: Array = targets.get(region, [])
 		if wanted.is_empty():
 			_check("browse: %s is on screen to be reached" % region, false)
@@ -287,8 +306,8 @@ func _browse() -> void:
 	for n: int in range(1, firsts.size()):
 		if firsts[n] >= 0 and firsts[n - 1] >= 0 and firsts[n] < firsts[n - 1]:
 			order = false
-	_check("browse reaches them in reading order, menus to status line (at %s of %d)"
-		% [", ".join(firsts.map(func(n: int) -> String: return str(n))), reached.size()], order)
+	_check("browse reaches them in reading order, %s (at %s of %d)" % [", ".join(order_wanted),
+		", ".join(firsts.map(func(n: int) -> String: return str(n))), reached.size()], order)
 	if reached.size() > 0:
 		var last: Array = reached[reached.size() - 1]
 		print("    the last reached: %s “%s”" % [last[1], str(last[2]).left(40)])
@@ -376,9 +395,11 @@ func _away(way: String) -> String:
 				and control.size.y >= 4.0:
 			parts.append(_pixels(control.get_global_rect()))
 	await _shot("away_%s_up" % way)
-	var centre: Vector2 = face.get_center()
-	var points: Array = [[centre.x, centre.y], [face.position.x + 12.0, face.position.y + 12.0],
-		[face.end.x - 12.0, face.end.y - 12.0]]
+	# Where it was in the window: a panel taller than the window scrolls.
+	var seen: Rect2 = face.intersection(Rect2(Vector2.ZERO, Vector2(DisplayServer.window_get_size())))
+	var centre: Vector2 = seen.get_center()
+	var points: Array = [[centre.x, centre.y], [seen.position.x + 12.0, seen.position.y + 12.0],
+		[seen.end.x - 12.0, seen.end.y - 12.0]]
 	# Read once the frame it was hidden in is drawn, with the app held there:
 	# what AccessKit had been sent by the end of that frame, no later one.
 	var hidden_at: Array[int] = [-1]
@@ -413,22 +434,25 @@ func _away(way: String) -> String:
 	if tree.has("error"):
 		_check("away %s: the tree was read (%s)" % [way, tree["error"]], false)
 		return "stayed"
+	# The window itself (its frame) is under everything: not a part of it.
 	var still: Array[String] = []
 	for hit: Dictionary in tree.get("hits", []):
 		var chain: Array = hit.get("chain", [])
-		if not chain.is_empty() and _within_any(chain[0], parts):
-			still.append("pointed at (%d, %d): %s “%s”" % [int(hit["at"][0]), int(hit["at"][1]),
-				chain[0]["role"], str(chain[0]["name"]).left(30)])
-	var browsed: int = 0
+		if not chain.is_empty() and str(chain[0]["role"]) != "frame" and _within_any(chain[0], parts):
+			still.append("pointed at (%d, %d): %s “%s” %s" % [int(hit["at"][0]), int(hit["at"][1]),
+				chain[0]["role"], str(chain[0]["name"]).left(30), chain[0].get("box")])
+	var browsed: Array[String] = []
 	for element: Array in tree.get("reached", []):
 		var at: Array = element[3]
 		var box := Rect2(at[0], at[1], at[2], at[3])
+		if str(element[1]) == "frame" or box.size.x <= 0.0:
+			continue
 		for part: Rect2 in parts:
-			if _same_box(box, part) and box.size.x > 0.0:
-				browsed += 1
+			if _same_box(box, part):
+				browsed.append("%s “%s” %s" % [element[1], str(element[2]).left(24), _rect_words(box)])
 				break
-	if browsed > 0:
-		still.append("%d of its parts browsed" % browsed)
+	if not browsed.is_empty():
+		still.append("%d of its parts browsed: %s" % [browsed.size(), ", ".join(browsed.slice(0, 4))])
 	var ok: bool = still.is_empty()
 	_check("away %s: put away (%s, frame %d), gone the frame after%s" % [way, how, hidden_at[0],
 		"" if ok else ": " + "; ".join(still)], ok)

@@ -208,7 +208,7 @@ func _give_place(window: Window) -> void:
 ## one's is the inverse of what AccessKit composes down to its parent, then
 ## where the window is in the window that draws it.
 static func place(window: Window) -> void:
-	if window.get_embedder() == null:
+	if not window.is_embedded():
 		return
 	var element: RID = window.get_accessibility_element()
 	if not element.is_valid():
@@ -229,7 +229,7 @@ static func _drawn(window: Window) -> Transform2D:
 static func _composed(node: Node) -> Transform2D:
 	var chain: Array[Node] = []
 	var at: Node = node
-	while at != null and not (at is Window and (at as Window).get_embedder() == null):
+	while at != null and not (at is Window and not (at as Window).is_embedded()):
 		chain.append(at)
 		at = at.get_parent()
 	var composed := Transform2D.IDENTITY
