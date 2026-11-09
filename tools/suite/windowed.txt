@@ -38,7 +38,7 @@ find_part
 save_dialog
 kart_steer
 booklet_stream
-booklet_pdf   # Save as PDF and Save pages as PNG from the castle's booklet, read by poppler and pypdf (pdf249); signed in, a Cyrillic title, Greek footer and Japanese note read back by pdftotext with 0 "?", every font embedded, cut down and mapped to Unicode, a CFF face drawn by poppler and Ghostscript (APP_UX7 #13 pdfcid)
+booklet_pdf   # Save as PDF and Save pages as PNG from the castle's booklet, read by poppler and pypdf (pdf249); signed in, a Cyrillic title, Greek footer and Japanese note read back by pdftotext with 0 "?", every font embedded, cut down and mapped to Unicode, a CFF face drawn by poppler and Ghostscript (APP_UX7 #13 pdfcid); an Arabic title and Hebrew, mixed and emoji step words printed where the page's PNG draws them (ink runs within 2 px) and read back as typed, emoji in Noto Emoji (pdfbidi)
 stress_list
 viewer_steps   # Build it at step 1, the viewer timeline framing its steps, the play pill only for what moves (viewer218)
 bin_techniques   # the parts bin's Techniques: a construction held whole, turned, put down on a wall, one undo (bin238)

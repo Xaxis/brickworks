@@ -415,6 +415,14 @@ static func _unseen(code: int) -> bool:
 		or code >= 0xFE00 and code <= 0xFE0F or code == 0xFEFF or code >= 0xE0100 and code <= 0xE01EF
 
 
+## Whether [param letters] are some and all unseen ([method _unseen]).
+static func _unseen_all(letters: String) -> bool:
+	for at: int in letters.length():
+		if not _unseen(letters.unicode_at(at)):
+			return false
+	return not letters.is_empty()
+
+
 ## A letter that draws nothing: a space, a break, a control.
 static func _blank(code: int) -> bool:
 	return code <= 0x20 or code >= 0x7F and code <= 0xA0 or code == 0x1680 \
@@ -853,7 +861,28 @@ func _reads(text: String, cluster: Array, bold: bool) -> Array:
 		else:
 			reads[each] = left
 			left = ""
+	# A glyph the shaping hid, advancing nothing for letters that show
+	# nothing (a variation selector, a joiner the face has no sequence for:
+	# its space glyph), is left out and its letters read with the glyph
+	# before it, or after it where it is first. Written, its width would
+	# fill the gap after the cluster that a reader reads a space by.
+	var kept: int = -1
+	var carried: String = ""
+	for each: int in order:
+		if float(cluster[each]["advance"]) == 0.0 and _unseen_all(str(reads[each])):
+			if kept >= 0:
+				reads[kept] += reads[each]
+			else:
+				carried += reads[each]
+			reads[each] = null
+		else:
+			reads[each] = carried + str(reads[each])
+			carried = ""
+			kept = each
 	for each: int in cluster.size():
+		if reads[each] == null:
+			out.append([])
+			continue
 		var glyph: Dictionary = cluster[each]
 		var found: Array = glyph["face"]
 		var face: PdfType = found[0]

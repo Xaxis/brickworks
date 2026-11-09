@@ -1698,9 +1698,9 @@ picture the assistant is shown.
   keeping their parts; CFF is written with only the glyphs used, their
   subroutines in place, each CID its old glyph number). A letter Liberation
   lacks goes in the system's face Godot draws the page's PNG in
-  (`BookletPdf._system`: the TextServer's fallback, its file from
+  (`BookletPdf._face`: the TextServer's fallback, its file from
   `OS.get_system_font_path`); none on the web. Only letters no face has
-  (a colour emoji) are "?" and named by the export (`missed_said`).
+  are "?" and named by the export (`missed_said`).
   `booklet_pdf_probe -- --words-only --into=DIR` signs in a throwaway account,
   gives booklook's dialog_a a Cyrillic title and Greek footer (page_setup)
   and a Japanese note (edit_booklet), presses Instructions and Save as PDF,
@@ -1710,6 +1710,28 @@ picture the assistant is shown.
   --into) writes its castle booklet's PDF again from its own file: every
   page the same at 300 dpi to the pixel (pdftoppm, sha1 a page), the file
   no more than 10% bigger. Look at DIR/words-pdf-*.png.
+- `the PDF's words right to left, and emoji` (pdfbidi, 2026-11-09): each
+  line is shaped by the TextServer as the page's is, left to right as the
+  page sets every line (`BookletPdf.shaped`, `DIRECTION_LTR`: the bidi
+  algorithm turns a Hebrew or Arabic run about, Arabic's letters joined).
+  A line that shapes to one glyph a letter left to right (`plain`) is
+  written a letter at a time as before (`_letters`); any other glyph by
+  glyph where the shaping puts it (`_glyphs`: TJ moves, Ts for a raised
+  mark), each glyph reading back as its letters (`_reads`, `PdfType
+  .use_text`). Shaped at 64 px in copies of the faces not hinted and placed
+  to a 64th of a pixel (`_shaper`). Emoji go in Noto Emoji, carried in
+  outline (`BookletPdf.EMOJI`, `assets/fonts/NotoEmoji-Regular.ttf`, 863 KB,
+  OFL, `Credits.LIST` "notoemoji"); one the engine took from a colour face
+  is shaped again in it (`_in_emoji`). `BookletPng` draws a spaced line
+  (a title, a step number) that is not plain glyph by glyph too, and every
+  line `DIRECTION_LTR`. `booklet_pdf_probe -- --words-only` also gives a
+  second dialog_a an Arabic title, Hebrew, mixed and emoji step words, and
+  compares each line's ink runs, the PDF drawn by poppler against
+  `BookletPng.page_image`, both at 12.5 px a mm (within 2 px a side); look
+  at DIR/bidi-*-page.png against DIR/bidi-*-pdf.png. pdftotext reads a
+  line mixing directions as poppler reads any PDF of what the page shows
+  (Chromium's own print too): "Step 3: 2 בנה...x4", the 2 set left of the
+  Hebrew by the bidi algorithm.
 - `the booklet`: build instructions laid out as a LEGO booklet, one HTML
   file that prints on A4 and Letter (landscape; `Booklet.PAGE` is 269 x 199 mm,
   inside both) and reads on screen (`--mm` scales the same millimetres to the
