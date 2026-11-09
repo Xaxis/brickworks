@@ -3,7 +3,7 @@
 Letting a session that is already open build in Brickworks, instead of Brickworks
 asking for an API key.
 
-<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, ui:design on your own Copilot plan, lib:the window's commands over mcp, lib:what a session sees over mcp, lib:a session keeps a view over mcp, lib:pattern's grid over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe, cli:mcp walk probe, cli:mcp walk 3 probe, cli:mcp lean probe, cli:mcp agree probe, cli:mcp detail probe, cli:replay calls, cli:first design undo probe, cli:undo ids probe, lib:the model in Claude, cli:model view check, ui:the model in Claude in 3D, lib:the viewer's own tools, lib:the model packed for the viewer, cli:viewer tools probe, cli:build the viewer, cli:viewer readers check, cli:viewer first paint, cli:app host check, lib:words for a failed request -->
+<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, ui:design on your own Copilot plan, lib:the window's commands over mcp, lib:what a session sees over mcp, lib:a session keeps a view over mcp, lib:a session keeps and uses palettes over mcp, lib:pattern's grid over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe, cli:mcp walk probe, cli:mcp walk 3 probe, cli:mcp lean probe, cli:mcp agree probe, cli:mcp detail probe, cli:replay calls, cli:first design undo probe, cli:undo ids probe, lib:the model in Claude, cli:model view check, ui:the model in Claude in 3D, lib:the viewer's own tools, lib:the model packed for the viewer, cli:viewer tools probe, cli:build the viewer, cli:viewer readers check, cli:viewer first paint, cli:app host check, lib:words for a failed request -->
 
 ## Sub-features
 
@@ -153,6 +153,22 @@ asking for an API key.
   each on the MCP walk's Pods (`src/dev/fixtures/mcp_walk_pods.ldr`),
   windowed: three spellings of 4070 pick out exactly #6 and #11, the saved
   view back by its key and by `render_model view=` within 0.1° and 0.1 LDU.
+  **Palettes** (`src/net/palette_tool.gd`, `PaletteTool`, APP_UX7 mcppalettes,
+  2026-11-08): the bin's palettes for a session, through `PartShelf` and its
+  file, so a palette a session makes is the one the bin shows. `palettes`
+  reads (readOnlyHint, allowed in a tab looking at a shared model);
+  `edit_palette` action make/add keeps `bricks=` (each in its colour),
+  `parts=` by number and colour, `from=` the model or the selection, and a
+  sub-assembly whole (`assembly=`, `assembly_bricks=`, kept as the bin keeps
+  one: `Carry.as_ldraw(Carry.gather(...))`) in one call; take_out, rename and
+  delete as More does, a sub-assembly out and a delete only with
+  `agreed=true` (the window asks first); place puts a sub-assembly down
+  whole as its tile does (`Carry.from_ldraw`, moved by whole studs and
+  plates so its low corner lands on `at=`, `rot=` quarter turns, every part
+  checked with `Builder.room_for`, all or nothing, one undo, named as the bin
+  names one, `_unused_assembly`), answered pictured. `mcppalettes_probe`
+  checks each, windowed: the made palette's file entries are the bin's own
+  Add rows' byte for byte but each entry's id and naming time.
   **Pattern's grid** (`src/net/pattern_tool.gd`, `PatternTool`, APP_UX4 grid,
   2026-11-05): `pattern_parts` is Edit, Pattern…, In a grid on bricks= in one
   call: `columns`, `rows`, `levels` (each counting the parts given; a row is
@@ -725,6 +741,7 @@ godot --headless --path . --script src/dev/mcphand_probe.gd        # Mirror, Spl
 PROBE_SIZE=1400x900 tools/probe.sh seeing                           # what a session sees: six views in one picture, highlight/xray/step, a booklet page against its PDF, hand tools pictured, how Best was drawn (also PROBE_SIZE=1280x720)
 PROBE_SIZE=1400x900 tools/probe.sh seeing2                          # how parts join and what it made: the stud map read part by part, View, Stud directions, highlight "3024"/"step:3"/"red", check_design's findings pictured, a pull by brick number, six frames of a build and a motion (also PROBE_SIZE=1280x720)
 tools/probe.sh mcpsee3 && PROBE_SIZE=1280x720 tools/probe.sh mcpsee3   # a session picks out 4070 however quoted (#6 and #11 of the walk's Pods), save_view in 1 call back by its key and by render_model view= within 0.1° and 0.1 LDU, in_view lists it; pictures in MCPSEE3_SHOTS or user://mcpsee3_probe
+tools/probe.sh mcppalettes && PROBE_SIZE=1400x900 tools/probe.sh mcppalettes   # palettes read-only; edit_palette makes 12 parts + Gatepost in 1 call, the bin's own byte for byte; Gatepost placed whole in another model in 1 call to 0.01 LDU, one undo; take_out/rename/delete, agreed=true; pictures in shots/mcppalettes/
 godot --headless --path . --script src/dev/mcpcad_probe.gd         # CAD answers without the method, designs with it, the refusal's place, attachment_points parts=, in_view at step 4 of 9 with a part in hand
 node tools/web/in_view_flow.mjs --dir=build/web --out=shots/in_view [--size=1400x900]   # in_view in the browser: step 4 of 9, 3004 in hand turned once over the floor, a picture laid by the mouse and keys; nothing changed; step 4's bricks drawn in the picture, and again in --again=4 more openings with Next at once (a local export, .env loaded)
 BRICKWORKS_API=http://127.0.0.1:8790 godot --headless --path . --script src/dev/gallery_tool_probe.gd   # the gallery, with relay_server.mjs 8790 running

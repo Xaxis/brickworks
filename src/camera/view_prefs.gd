@@ -43,6 +43,16 @@ static var preset: String = "studio"
 ## answer, kept as a variable for what already reads it.
 static var middle_slides: bool = true
 
+## How the window draws the plastic (View › Edges and studs, APP_UX6 #19):
+## the seam along every part's edges, and the studs. Both on is the model as
+## it is moulded; Edges off is a model read by its colours alone, as a
+## mosaic or a sculpture is; Studs off is a model read by its shapes, as
+## LDCad and LDView draw one, and a big one drawn with a third fewer
+## triangles. Kept here, beside the controls: what a screen draws well is a
+## fact about the machine, as the wheel is about the mouse.
+static var edges: bool = true
+static var studs: bool = true
+
 static var _loaded: bool = false
 
 
@@ -55,6 +65,8 @@ static func load_them() -> void:
 		use(preset)
 		return
 	invert_zoom = bool(file.get_value("view", "invert_zoom", false))
+	edges = bool(file.get_value("view", "edges", true))
+	studs = bool(file.get_value("view", "studs", true))
 	var kept: String = str(file.get_value("view", "preset", "studio"))
 	use(kept if PRESETS.has(kept) else "studio")
 
@@ -66,13 +78,16 @@ static func use(name: String) -> void:
 
 
 ## Kept on this machine. Not by a probe, which would change the person's
-## own settings by checking them.
+## own settings by checking them, unless it is a check of what outlives a
+## restart, in a data folder of its own (ShellPrefs.kept_by_a_check).
 static func keep() -> void:
-	if OS.get_cmdline_args().has("--script"):
+	if OS.get_cmdline_args().has("--script") and not ShellPrefs.kept_by_a_check:
 		return
 	var file := ConfigFile.new()
 	file.set_value("view", "invert_zoom", invert_zoom)
 	file.set_value("view", "preset", preset)
+	file.set_value("view", "edges", edges)
+	file.set_value("view", "studs", studs)
 	file.save(WHERE)
 
 
