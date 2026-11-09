@@ -332,6 +332,12 @@ declare -A CMD=(
   # spot 100; deleting the account erases its application. The checks' own
   # pool of spots, never the 100. Throwaway accounts, deleted after.
   [beta]="tools/web/beta_flow.mjs --url=$P --out=$S/${TAG}_beta"
+  # local only: betajoin_flow.mjs. Joining the beta as a step of signing
+  # up (the welcome, Settings' Beta row, the owner's list) needs
+  # supabase/beta_join.sql, which no preview has until the lead applies it,
+  # so it runs against tools/web/relay_server.mjs --hold=feedback with the
+  # beta open (its head). On a preview, beta (above) checks joining and
+  # leaving: refused off, never money open, 503 before the file.
   # Feedback (beta374): the /feedback page, the footer's and the account
   # menu's Send feedback, the dialog on the site at 390 and 1280 (a picture
   # chosen, removed and chosen again) and in the app (Help, Send
