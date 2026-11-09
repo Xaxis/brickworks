@@ -3686,7 +3686,16 @@ func _seated_by_sockets(part: Lbm.PartMesh, basis: Basis, snapped: Vector3,
 ## wolf's (48812) foot being no stud square, and the ghost went by its box.
 ## So the receivers it draws, or the holes its exact shape has lowest
 ## (Exact's "hole", where a stud goes in), which the seat puts it by; a
-## tube's label is not one, being where a stud goes inside a tube.
+## tube's label is not one, being where a stud goes inside a tube. Unless
+## the tube is at its foot and the catalogue's places are not: where the
+## part's own shape fills every one of those, so no stud could stand there,
+## a stud goes in only by the tube. A 4740 dish's catalogue put it on four
+## studs round its middle, where its dome comes down, and a dish clicked on
+## a 6141's stud stood 14 LDU off it, refused. Of the sets' 836 4740s, 441
+## stand on one stud in their tube and none on four (seatfix, 2026-11-08). A
+## 3960 dish, which they stand on four studs 37 times and on one 61, has
+## room on four and keeps them; a hat, its tube up where a head's stud
+## goes, keeps its own.
 func _takes_studs(part_id: String, part: Lbm.PartMesh) -> Array:
 	if part.sockets_drawn:
 		return [part.sockets, true, part.bounds.position.y]
@@ -3705,8 +3714,51 @@ func _takes_studs(part_id: String, part: Lbm.PartMesh) -> Array:
 			holes.clear()
 		lowest = minf(lowest, frame.origin.y)
 		holes.append(Vector2(frame.origin.x, frame.origin.z))
-	return [holes, true, lowest] if not holes.is_empty() \
+	if not holes.is_empty():
+		return [holes, true, lowest]
+	if not _by_tube.has(part_id):
+		_by_tube[part_id] = _tubes_only(shape, part)
+	var tubes: PackedVector2Array = _by_tube[part_id]
+	return [tubes, true, part.bounds.position.y] if not tubes.is_empty() \
 		else [part.sockets, false, part.bounds.position.y]
+
+
+## Where a part takes a stud only in a tube ([method _takes_studs]), by id.
+var _by_tube: Dictionary = {}
+
+
+## The tubes at [param part]'s foot, pointing down, that a stud has room in,
+## where its shape leaves room for one at none of the catalogue's sockets;
+## else none.
+static func _tubes_only(shape: Exact.Shape, part: Lbm.PartMesh) -> PackedVector2Array:
+	var tubes := PackedVector2Array()
+	if shape == null or not shape.has_pieces():
+		return tubes
+	var foot: float = part.bounds.position.y
+	for socket: Vector2 in part.sockets:
+		if _stud_has_room(shape, Vector3(socket.x, foot, socket.y)):
+			return tubes
+	for k: int in shape.connector_count():
+		var frame: Transform3D = shape.frames[k]
+		if shape.kind[k] == Exact.HOLE and shape.sub[k] == Exact.S_TUBE \
+				and (-frame.basis.y).y >= 0.99 and absf(frame.origin.y - foot) <= 1.0 \
+				and _stud_has_room(shape, Vector3(frame.origin.x, foot, frame.origin.z)):
+			tubes.append(Vector2(frame.origin.x, frame.origin.z))
+	return tubes
+
+
+## Whether a stud standing at [param at] (its foot, in the part's frame) is in
+## none of [param shape]'s pieces: its middle and a ring 4.5 LDU out, an LDU
+## and three up the stud's 4.
+static func _stud_has_room(shape: Exact.Shape, at: Vector3) -> bool:
+	for up: float in [1.0, 3.0]:
+		if Exact.in_shape(shape, at + Vector3(0.0, up, 0.0)):
+			return false
+		for k: int in 8:
+			var turn: float = TAU * k / 8.0
+			if Exact.in_shape(shape, at + Vector3(4.5 * cos(turn), up, 4.5 * sin(turn))):
+				return false
+	return true
 
 
 ## Where on the stud grid a part goes across, by its sockets, when its box
