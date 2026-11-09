@@ -400,7 +400,11 @@ try {
     const signedIn = await until(page, () => (window.brickworksAccount || {}).state === "signed_in", null, 240000);
     check("the app is up, signed in", signedIn);
     await until(page, () => Boolean((window.brickworksControls || {}).account), null, 120000);
-    await page.waitForTimeout(3000);
+    // The button comes when the account says the beta is open, the
+    // account's answer seconds in on a busy box: it is waited for, and
+    // with the beta shut, given as long not to come.
+    if (open_) await until(page, () => Boolean((window.brickworksControls || {}).report_bug), null, 60000);
+    else await page.waitForTimeout(15000);
     const button = await page.evaluate(() => (window.brickworksControls || {}).report_bug || null);
     if (!open_) {
       check(`the beta shut: no Report a bug in the top bar (${JSON.stringify(button)})`, !button);
