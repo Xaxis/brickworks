@@ -549,6 +549,14 @@
       "tests": []
     },
     {
+      "id": "cli:binrow probe",
+      "kind": "cli",
+      "entry": "src/dev/binrow_probe.gd",
+      "reach": "tools/probe.sh binrow_probe -- --shots=DIR   (windowed, 1400x900, signed in through the gate with a throwaway account from .env: at 1400x900, 1280x720 and 1024x768, as first opened and with Stress, the assistant, a part's properties and the bin open, the eight shelves inside the chips' window unscrolled; 42 parts at 1400x900; the walk's Like this Plate 2 x 4 seventh at 1400x900 and 1280x720; New's list against the catalogue's years); tools/probe.sh binrow_phone_probe (390x844) and binrow_tablet_probe (1024x768)",
+      "area": "parts",
+      "tests": []
+    },
+    {
       "id": "cli:booklet safe probe",
       "kind": "cli",
       "entry": "src/dev/booklet_safe_probe.gd",
@@ -5094,6 +5102,14 @@
       "tests": []
     },
     {
+      "id": "ui:new parts in the bin",
+      "kind": "ui",
+      "entry": "src/ui/parts_bin.gd",
+      "reach": "godot --path .  (New among the bin's shelves, after Palettes: the parts first made in the catalogue's latest two years, the newest first; words typed narrow it. Every shelf, All to Like this, in sight at any width, their counts left off where that saves a row)",
+      "area": "parts",
+      "tests": []
+    },
+    {
       "id": "ui:new tab or window",
       "kind": "ui",
       "entry": "src/parts/tab_session.gd",
@@ -5749,7 +5765,7 @@
       "id": "ui:the booklet as a PDF and as PNG pages",
       "kind": "ui",
       "entry": "src/render/booklet_pdf.gd",
-      "reach": "godot --path . --resolution 1280x800 --script src/dev/booklet_pdf_probe.gd -- --model=M --into=DIR   (by hand: Instructions, then the booklet's Save as PDF or Save pages as PNG beside Print; -- --html=BOOKLET.html saves one already made; tools/booklet_pdf_check.py BOOKLET.html BOOKLET.pdf --zip PAGES.zip reads them; on the web, booklet_flow.mjs presses both)",
+      "reach": "godot --path . --resolution 1280x800 --script src/dev/booklet_pdf_probe.gd -- --model=M --into=DIR   (by hand: Instructions, then the booklet's Save as PDF or Save pages as PNG beside Print; -- --html=BOOKLET.html saves one already made; -- --words-only: Cyrillic, Greek and Japanese read back by pdftotext; -- --against=DIR: the commit before's castle PDF the same at 300 dpi; tools/booklet_pdf_check.py BOOKLET.html BOOKLET.pdf --zip PAGES.zip reads them; on the web, booklet_flow.mjs presses both)",
       "area": "view",
       "tests": []
     },

@@ -201,8 +201,10 @@ func _made_in_one_call() -> Array:
 		said.begins_with("Made the palette “Castle”: 12 parts, each in its colour; the sub-assembly “Gatepost”, 4 parts, whole."))
 
 	# The chip counts it before the bin's Palettes is opened.
+	# Where the shelves show their names alone (binrow), there is no count.
 	var chip: Button = _named("palettes")
-	var counted: bool = await _until(func() -> bool: return chip.text == "Palettes 1", 10)
+	var wanted: String = "Palettes" if bool(_bin.get("_shelves_short")) else "Palettes 1"
+	var counted: bool = await _until(func() -> bool: return chip.text == wanted, 10)
 	_check("the bin's Palettes chip counts it at once: \"%s\"" % chip.text, counted)
 	# The bin, as a person opens it: Palettes, then Castle.
 	await _click(chip.get_global_rect().get_center())
