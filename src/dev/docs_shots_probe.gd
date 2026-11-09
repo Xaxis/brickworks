@@ -42,7 +42,8 @@
 ## skipped, the offer of the assistant closed) unless "first_visit": true.
 ## And the picture: "crop" ("window", a path, "@opened" for the panel or
 ## window the setup put in sight, [x, y, w, h], or a list of
-## those, joined), "pad" (pixels round a crop), "marks" ([{"at": path,
+## those, joined), "pad" (pixels round a crop), "tooltip" (true: a tooltip
+## up is the point; otherwise one fails the picture), "marks" ([{"at": path,
 ## "n": 1}]: an outline and a numbered disc drawn over the window, in the
 ## app's own font), "width" (made smaller to at most this).
 extends SceneTree
@@ -65,6 +66,8 @@ var _shell: Shell
 var _failed: PackedStringArray = PackedStringArray()
 ## The panels and windows in sight before the setup (the "@opened" crop).
 var _shown_before: Dictionary = {}
+## A step put the pointer where the picture wants it (a part in hand follows it).
+var _pointer_placed: bool = false
 
 
 func _initialize() -> void:
@@ -257,10 +260,7 @@ func _take(shot: Dictionary) -> void:
 		await _frames(10)
 	# The pointer off the window, as a person's is while the window is read:
 	# nothing hovered unless a step puts it there.
-	var away := InputEventMouseMotion.new()
-	away.position = Vector2(-40, -40)
-	away.global_position = away.position
-	Input.parse_input_event(away)
+	_away()
 	await _frames(4)
 	_shown_before = _panels_shown()
 	for step: Variant in shot.get("setup", []):
@@ -270,6 +270,17 @@ func _take(shot: Dictionary) -> void:
 		await _do(step)
 		await _frames(int(step.get("after", 6)))
 	await _frames(int(shot.get("settle", 30)))
+	# The pointer off everything again, unless a step put it somewhere to be
+	# seen (a part in hand follows it): parts-bin-shelves had the search's
+	# tooltip over its shelves, from a pointer the setup never moved. And a
+	# tooltip still up is a failure, never a picture, unless it is the point.
+	var tooltip: bool = bool(shot.get("tooltip", false))
+	if not _pointer_placed and not tooltip:
+		_away()
+		await _frames(6)
+	var tip: String = _tooltip_up(root)
+	if not tip.is_empty() and not tooltip:
+		_failed.append("a tooltip was up: %s" % tip.left(80))
 	var gate: Variant = _main.get("_gate")
 	if gate is CanvasItem and (gate as CanvasItem).is_visible_in_tree():
 		_failed.append("the sign-in screen was over the window when it was to be read")
@@ -414,6 +425,7 @@ func _do(step: Dictionary) -> void:
 		var at: Variant = _point(step["mouse"])
 		if at != null:
 			_move(at)
+			_pointer_placed = true
 	elif step.has("click") or step.has("right_click"):
 		var right: bool = step.has("right_click")
 		var at: Variant = _point(step["right_click"] if right else step["click"])
@@ -423,6 +435,7 @@ func _do(step: Dictionary) -> void:
 		var at: Variant = _over(step["over"])
 		if at != null:
 			_move(at)
+			_pointer_placed = true
 	elif step.has("select"):
 		_select(step["select"])
 	elif step.has("call"):
@@ -738,6 +751,30 @@ func _opened() -> Variant:
 
 ## Nothing that moves by itself in the picture: the pointer off everything,
 ## a field's caret held on, nothing hovered.
+## The pointer off the window, as a person's is while the window is read.
+func _away() -> void:
+	var away := InputEventMouseMotion.new()
+	away.position = Vector2(-40, -40)
+	away.global_position = away.position
+	Input.parse_input_event(away)
+
+
+## What a tooltip up in the window says, or nothing.
+func _tooltip_up(under: Node) -> String:
+	for child: Node in under.get_children(true):
+		if child.get_class() == "TooltipPanel" and child is Window and (child as Window).visible:
+			var words: Array[String] = []
+			for label: Node in child.find_children("*", "Label", true, false):
+				words.append((label as Label).text)
+			for rich: Node in child.find_children("*", "RichTextLabel", true, false):
+				words.append((rich as RichTextLabel).get_parsed_text())
+			return " ".join(words).strip_edges() if not words.is_empty() else "(a tooltip)"
+		var found: String = _tooltip_up(child)
+		if not found.is_empty():
+			return found
+	return ""
+
+
 func _hold_still() -> void:
 	var focus: Control = root.gui_get_focus_owner()
 	if focus is LineEdit:
