@@ -220,8 +220,10 @@ async function drawBox(page, a, b) {
   const rect = await page.evaluate(() => {
     const canvas = document.querySelector("dialog.feedback.report[open] canvas.marking");
     canvas.scrollIntoView({ block: "center" });
+    // The picture as drawn: inside the canvas's border.
     const r = canvas.getBoundingClientRect();
-    return { left: r.left, top: r.top, width: r.width, height: r.height, w: canvas.width, h: canvas.height };
+    return { left: r.left + canvas.clientLeft, top: r.top + canvas.clientTop, width: canvas.clientWidth,
+      height: canvas.clientHeight, w: canvas.width, h: canvas.height };
   });
   const from = { x: rect.left + rect.width * a[0], y: rect.top + rect.height * a[1] };
   const to = { x: rect.left + rect.width * b[0], y: rect.top + rect.height * b[1] };
@@ -229,9 +231,9 @@ async function drawBox(page, a, b) {
   await page.mouse.down();
   for (let n = 1; n <= 8; n++) await page.mouse.move(from.x + (to.x - from.x) * n / 8, from.y + (to.y - from.y) * n / 8);
   await page.mouse.up();
-  const scale = rect.w / rect.width;
-  const x0 = Math.round((from.x - rect.left) * scale); const y0 = Math.round((from.y - rect.top) * scale);
-  const x1 = Math.round((to.x - rect.left) * scale); const y1 = Math.round((to.y - rect.top) * scale);
+  const sx = rect.w / rect.width; const sy = rect.h / rect.height;
+  const x0 = Math.round((from.x - rect.left) * sx); const y0 = Math.round((from.y - rect.top) * sy);
+  const x1 = Math.round((to.x - rect.left) * sx); const y1 = Math.round((to.y - rect.top) * sy);
   return { x: Math.min(x0, x1), y: Math.min(y0, y1), w: Math.abs(x1 - x0), h: Math.abs(y1 - y0) };
 }
 
@@ -355,9 +357,9 @@ try {
     check(`${said.head} lists each, its number and where it stands: ${said.items.map((t) => `"${t.replace(/\s+/g, " ").trim()}"`).join(", ")}`,
       listed && sent.length === 2 && said.head === "Your reports"
       && said.items.every((t, n) => t.includes(`#${sent[n]}`) && /Received/.test(t)));
-    await page.evaluate((id) => document.getElementById(`report-${id}`)?.scrollIntoView({ block: "center" }), sent[0]);
-    await page.waitForTimeout(800);
-    await shot(page, "3-your-reports.png");
+    // The section itself: the page's own scrolling settles after the shot.
+    await page.locator("#feedback").screenshot({ path: path.join(out, "3-your-reports.png"), timeout: 60000 })
+      .catch((trouble) => console.log(`  --    no picture 3-your-reports.png: ${String(trouble).split("\n")[0]}`));
     await context.close();
   }
 

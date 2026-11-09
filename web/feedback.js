@@ -114,15 +114,16 @@ function markable(made, changed) {
   const marks = [];
   let drag = null;
   const draw = () => {
-    if (!marks.length && !drag) thick = thickNow();
     context.drawImage(picture, 0, 0);
     for (const box of marks) ring(context, box, thick);
     if (drag) ring(context, boxOf(drag.from, drag.to), thick);
   };
+  // Where on the picture itself: inside its border, each way at its own
+  // scale (the border box's shape is not quite the picture's).
   const at = (event) => {
     const shown = view.getBoundingClientRect();
-    const x = (event.clientX - shown.left) * (picture.width / shown.width);
-    const y = (event.clientY - shown.top) * (picture.height / shown.height);
+    const x = (event.clientX - shown.left - view.clientLeft) * (picture.width / (view.clientWidth || 1));
+    const y = (event.clientY - shown.top - view.clientTop) * (picture.height / (view.clientHeight || 1));
     return { x: Math.round(Math.min(Math.max(x, 0), picture.width)), y: Math.round(Math.min(Math.max(y, 0), picture.height)),
       cx: event.clientX, cy: event.clientY };
   };
@@ -131,6 +132,8 @@ function markable(made, changed) {
     if (event.button !== 0 || marks.length >= MOST_MARKS) return;
     event.preventDefault();
     view.setPointerCapture(event.pointerId);
+    // Measured as the first box starts, once the picture is laid out.
+    if (!marks.length) thick = thickNow();
     drag = { from: at(event), to: at(event) };
   });
   view.addEventListener("pointermove", (event) => {
