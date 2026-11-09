@@ -234,6 +234,11 @@ export async function pagePicture({ leave = [] } = {}) {
   const paint = (element, alpha, top) => {
     if (left.has(element) || drawn > MOST_ELEMENTS || performance.now() - started > BUDGET_MS) return;
     if (/^(SCRIPT|STYLE|NOSCRIPT|TEMPLATE|LINK|META|HEAD)$/.test(element.tagName)) return;
+    // Not drawn by the browser either: display none, or inside a closed
+    // <details> (the site's menus) or what content-visibility skips.
+    if (element.checkVisibility && !element.checkVisibility()) return;
+    const holder = element.parentElement;
+    if (holder?.tagName === "DETAILS" && !holder.open && element.tagName !== "SUMMARY") return;
     const style = getComputedStyle(element);
     if (style.display === "none") return;
     const shown = alpha * (parseFloat(style.opacity) || (style.opacity === "0" ? 0 : 1));

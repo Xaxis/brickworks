@@ -209,7 +209,7 @@ func _from_the_bar() -> void:
 	var shown: Rect2 = picture.call("shown_rect")
 	var from: Vector2 = shown.position + shown.size * Vector2(0.30, 0.25)
 	var to: Vector2 = shown.position + shown.size * Vector2(0.62, 0.55)
-	await _drag(picture.get_global_transform() * from, picture.get_global_transform() * to)
+	await _drag(_in_window(picture, from), _in_window(picture, to))
 	var marks: Array = picture.get("marks")
 	var expect: Rect2i = Rect2i()
 	if _check("a drag on it draws one box (%s)" % [marks], marks.size() == 1):
@@ -223,7 +223,7 @@ func _from_the_bar() -> void:
 	await _shot("2_marked")
 	(dialog.controls_by_name()["feedback_words"] as TextEdit).text = "The second brick floats after I undo."
 	(dialog.controls_by_name()["report_expected"] as TextEdit).text = "It sits back on the first."
-	await _click((dialog.controls_by_name()["feedback_send"] as Control).get_global_rect().get_center())
+	await _click(_centre(dialog.controls_by_name()["feedback_send"]))
 	for _n: int in 120:
 		await process_frame
 		if not _sent.is_empty() and bool(dialog.page_state()["sent"]):
@@ -253,7 +253,7 @@ func _from_the_bar() -> void:
 	_check("...and still fits the window", _fits(dialog))
 	await _shot("3_thanks")
 	var asked: int = Outside.opened.size()
-	await _click((dialog.controls_by_name()["report_reports"] as Control).get_global_rect().get_center())
+	await _click(_centre(dialog.controls_by_name()["report_reports"]))
 	_check("Your reports opens the site's reports (%s), and the dialog goes"
 		% (Outside.opened.back() if Outside.opened.size() > asked else "nothing"),
 		Outside.opened.size() == asked + 1 and str(Outside.opened.back()).ends_with("/settings#feedback")
@@ -312,7 +312,7 @@ func _from_the_key() -> void:
 		return
 	_check("Alt-Shift-R opened the report, from the key", dialog.page_state()["from"] == "key" and _fits(dialog))
 	_check("...and turned nothing", builder.get("held_rotation") == turned)
-	await _click((dialog.controls_by_name()["feedback_cancel"] as Control).get_global_rect().get_center())
+	await _click(_centre(dialog.controls_by_name()["feedback_cancel"]))
 	_check("Cancel puts it away, and nothing is sent", not dialog.visible and _sent.size() == 1)
 
 
@@ -347,7 +347,7 @@ func _from_an_error() -> void:
 	_check("...it fits the window", _fits(dialog))
 	await _shot("6_from_error")
 	(dialog.controls_by_name()["feedback_words"] as TextEdit).text = "It said something went wrong as I opened the bin."
-	await _click((dialog.controls_by_name()["feedback_send"] as Control).get_global_rect().get_center())
+	await _click(_centre(dialog.controls_by_name()["feedback_send"]))
 	for _n: int in 120:
 		await process_frame
 		if _sent.size() == 2:
@@ -458,6 +458,21 @@ func _stand_in(asked: Dictionary, token: String) -> Dictionary:
 
 
 # -- a hand ----------------------------------------------------------------------
+
+## [param local], a point of [param control], in the window's own units: a
+## dialog is a window of its own inside the app's, placed in it (Main's
+## _page_places does the same).
+func _in_window(control: Control, local: Vector2) -> Vector2:
+	var at: Vector2 = control.get_global_transform() * local
+	var holder: Viewport = control.get_viewport()
+	if holder is Window and holder != root:
+		at += Vector2((holder as Window).position)
+	return at
+
+
+func _centre(control: Control) -> Vector2:
+	return _in_window(control, control.size * 0.5)
+
 
 func _event_at(at: Vector2) -> Vector2:
 	return at * (Vector2(DisplayServer.window_get_size()) / root.get_visible_rect().size)

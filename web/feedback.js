@@ -107,10 +107,14 @@ function markable(made, changed) {
   view.setAttribute("role", "img");
   view.setAttribute("aria-label", say("The picture of the page that goes with the report. Drag on it to mark the spot."));
   const context = view.getContext("2d");
-  const thick = Math.max(3, Math.round(picture.width / 400));
+  // About 2 of the page's pixels as it is shown here, at least 3 of the
+  // picture's: thick enough to see in the dialog and in the inbox.
+  const thickNow = () => Math.max(3, Math.round(2 * picture.width / (view.getBoundingClientRect().width || picture.width)));
+  let thick = 3;
   const marks = [];
   let drag = null;
   const draw = () => {
+    if (!marks.length && !drag) thick = thickNow();
     context.drawImage(picture, 0, 0);
     for (const box of marks) ring(context, box, thick);
     if (drag) ring(context, boxOf(drag.from, drag.to), thick);
@@ -236,8 +240,10 @@ export function openFeedback({ kind = "", report = false, picture: given = null,
   status.setAttribute("role", "status");
   const send = el("button", { type: "submit", className: "cta", textContent: report ? say("Send report") : say("Send") });
   const cancel = el("button", { type: "button", className: "cta ghost", textContent: say("Cancel") });
-  form.append(kinds, wordsLabel, expectedLabel, addressLabel, sent, sendsPart, el("div", { className: "actions" }, send, cancel),
-    status);
+  // A report's status sits above Send and Cancel, which stay in sight
+  // along its foot as it scrolls (site.css).
+  const buttons = el("div", { className: "actions" }, send, cancel);
+  form.append(kinds, wordsLabel, expectedLabel, addressLabel, sent, sendsPart, ...(report ? [status, buttons] : [buttons, status]));
   dialog.append(title, said, form);
   document.body.append(dialog);
 
@@ -423,7 +429,9 @@ export function openFeedback({ kind = "", report = false, picture: given = null,
       // Its number, and where to follow it.
       title.textContent = Number.isSafeInteger(id) && id > 0 ? say("Thank you. Report #{id} is in.", { id })
         : say("Thank you. Your report is in.");
-      const lost = answer.body.attached?.picture === false ? ` ${say("The picture did not go with it.")}` : "";
+      // What did not go with it, in the server's words (api/_feedback.js THANKS).
+      const lost = String(answer.body.said || "").split(/(?<=\.) (?=[A-Z])/).filter((one) => /did not go with it\.$/.test(one))
+        .map((one) => ` ${told(one)}`).join("");
       said.textContent = say("We read every report ourselves. Follow it, and our answer, in Your reports.") + lost;
       row.append(el("a", { className: "cta", href: `${langAt()}/settings#feedback`, textContent: say("Your reports") }));
       done.className = "cta ghost";

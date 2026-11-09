@@ -2301,6 +2301,13 @@ func _report_from_now() -> String:
 ## From an error notice ([param where] "notice"), [param error] is what it
 ## said and [param lines] the log up to it.
 func report_bug(where: String, lines: PackedStringArray = PackedStringArray(), error: String = "") -> void:
+	# A report already open keeps what was written in it; Send feedback open
+	# goes, so the picture is of the window and not of it.
+	if _feedback != null and _feedback.visible:
+		if bool(_feedback.get("reporting")):
+			_feedback.grab_focus()
+			return
+		_feedback.hide()
 	for _n: int in 2:
 		await get_tree().process_frame
 	var window: Image = get_viewport().get_texture().get_image()

@@ -80,10 +80,11 @@ async function api(pathname, { method = "GET", token, body } = {}) {
 async function kept(id) {
   if (!SUPABASE || !SECRET) return null;
   const auth = { apikey: SECRET, authorization: `Bearer ${SECRET}` };
-  const rows = await (await fetch(`${SUPABASE}/rest/v1/feedback?id=eq.${id}&select=id,kind,words,source,page,details,log,picture`,
-    { headers: auth })).json().catch(() => []);
-  const row = Array.isArray(rows) ? rows[0] : null;
-  if (!row) return { row: null, picture: "" };
+  // As the inbox reads one (api/admin.js): the table is the functions' alone.
+  const one = await fetch(`${SUPABASE}/rest/v1/rpc/feedback_one`, { method: "POST",
+    headers: { ...auth, "content-type": "application/json" }, body: JSON.stringify({ p_id: id }) });
+  const row = one.ok ? await one.json().catch(() => null) : null;
+  if (!row || !row.id) return { row: null, picture: "" };
   let picture = "";
   if (row.picture) {
     const file = await fetch(`${SUPABASE}/storage/v1/object/feedback/${row.picture}`, { headers: auth });
@@ -354,7 +355,8 @@ try {
     check(`${said.head} lists each, its number and where it stands: ${said.items.map((t) => `"${t.replace(/\s+/g, " ").trim()}"`).join(", ")}`,
       listed && sent.length === 2 && said.head === "Your reports"
       && said.items.every((t, n) => t.includes(`#${sent[n]}`) && /Received/.test(t)));
-    await page.evaluate(() => document.getElementById("feedback")?.scrollIntoView());
+    await page.evaluate((id) => document.getElementById(`report-${id}`)?.scrollIntoView({ block: "center" }), sent[0]);
+    await page.waitForTimeout(800);
     await shot(page, "3-your-reports.png");
     await context.close();
   }

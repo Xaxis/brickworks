@@ -550,15 +550,31 @@ dialog.feedback figcaption { font-size: var(--t-small); color: var(--ink-soft); 
 dialog.feedback .tick span { overflow-wrap: anywhere; }
 /* Report a bug (bugreport.js): wider, the page's picture large to mark the
    spot on with a drag, and what will be sent in a line before Send. */
-dialog.feedback.report { width: min(640px, calc(100vw - 32px)); }
+dialog.feedback.report { width: min(960px, calc(100vw - 32px)); }
 dialog.feedback figure.marked { margin: 0 0 10px; }
+dialog.feedback figure.marked figcaption { margin: 0; padding: 0; }
 dialog.feedback canvas.marking {
-	display: block; max-width: 100%; max-height: 38vh; width: auto; height: auto; margin: 0 auto 6px;
+	display: block; max-width: 100%; max-height: 40vh; width: auto; height: auto; margin: 0 0 6px;
 	border: 1px solid var(--line); border-radius: var(--r-1); cursor: crosshair; touch-action: none;
 }
 dialog.feedback figure.marked .actions { margin: 6px 0 0; }
 dialog.feedback .sends-head { margin: 0 0 2px; font-size: var(--t-small); color: var(--ink-soft); }
-dialog.feedback .sends { margin: 0 0 14px; color: var(--ink); font-size: var(--t-small); }
+dialog.feedback .sends { margin: 0 0 4px; color: var(--ink); font-size: var(--t-small); }
+/* Send and Cancel stay in sight while the report scrolls, as a dialog's
+   footer does (GitHub's and Linear's new issue). */
+dialog.feedback.report form > .actions {
+	position: sticky; bottom: -24px; z-index: 1; margin: 0 -24px -24px; padding: 12px 24px 24px;
+	background: var(--panel); border-top: 1px solid var(--line);
+}
+/* Wide enough, the words on the left and the picture on the right, the
+   whole report in one screen. */
+@media (width >= 900px) {
+	dialog.feedback.report form { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); column-gap: 28px; align-items: start; }
+	dialog.feedback.report form > * { grid-column: 1; }
+	dialog.feedback.report form > fieldset.attach { grid-column: 2; grid-row: 1 / span 5; }
+	dialog.feedback.report form > .actions, dialog.feedback.report form > .said { grid-column: 1 / -1; }
+	dialog.feedback.report canvas.marking { max-height: 52vh; }
+}
 /* First steps after a first sign-in (first-steps.js): wider, for a row of
    pills and a grid of cards, its steps counted in the eyebrow. */
 dialog.first-steps { width: min(640px, calc(100vw - 32px)); }
