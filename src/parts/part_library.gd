@@ -904,9 +904,11 @@ static func colour_shard_of(part_id: String) -> int:
 ## inventories: a set's own parts and its figures', not a spare alone, not
 ## what a pack has only by holding another set, and none of Rebrickable's
 ## database sets. A part moved to another number is counted as that one, and
-## a code as every colour it may be (made_as): a tyre in Rubber Black is in
-## the sets with a Black one. 0 when no set is known to have it, which is
-## silence, not evidence. -1 while its file is still to come: asked for
+## a code as itself or its plain colour: a tyre in Rubber Black is in the
+## sets with a Black one. Not made_as's other leg: the counts are LDraw codes
+## already, and LDraw's Olive Green is Rebrickable's 326, which would give
+## Yellowish Green (326) Olive Green's sets. 0 when no set is known to have
+## it, which is silence, not evidence. -1 while its file is still to come: asked for
 ## here, and [signal colour_sets_came] says when to ask again.
 func sets_in_colour(part_id: String, code: int) -> int:
 	var info: PartInfo = parts.get(part_id)
@@ -920,9 +922,10 @@ func sets_in_colour(part_id: String, code: int) -> int:
 	if not held is Dictionary:
 		return -1 if held == null or _colour_sets_out.has(file) else 0
 	var row: Dictionary = (held as Dictionary).get(part_id, {})
-	var most: int = 0
-	for made: Variant in made_as.get(code, [code]):
-		most = maxi(most, int(row.get(int(made), 0)))
+	var most: int = int(row.get(code, 0))
+	var color: BrickColor = colors.get(code)
+	if color != null and color.plain_code != code:
+		most = maxi(most, int(row.get(color.plain_code, 0)))
 	return most
 
 
