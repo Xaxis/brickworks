@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, lib:line art and comic looks, cli:lineart probe -->
 
 ## Sub-features
 
@@ -3020,6 +3020,55 @@ picture the assistant is shown.
   (100); left alone first as a person leaves it, or pressed `--at-once`
   before that, or `--during` the making ready while it waits for someone
   using the window (it must wait, and the press must not).
+- `line art and comic looks` (APP_UX7 #22 lineart; File, Render…, Look,
+  Line art and Comic, on a row of their own under As in the window and
+  Product; `render_model` and `render_queue`'s `look lineart`/`comic`;
+  `src/render/line_art.gd`, `LineArt`, `line_art.gdshader`,
+  `line_normals.gdshader`; `RenderSettings.LOOKS`). StudioRender draws a
+  line look's shot in one frame whatever the grade (`LineArt.underneath`:
+  Quick, sharp, on nothing), the render's stage with its seam off
+  (`set_edges_shown(false)`): lit as the window lights it, then flat (an
+  even white ambient, no lamp, `room` 0: the plastic's own colour, prints
+  and all). A copy of the stage (`LineArt.stage`, layer 1 << 18, shown only
+  while it is drawn) is drawn in `booklet_codes` numbers and in
+  `line_normals` (view-space faces), into two viewports of its own sharing
+  the set's world and camera. `line_art.gdshader` makes the picture: an
+  outline 1.5 x a part's line where the model meets the page, a line where
+  the number changes (one part meets the next), a third of it where one
+  part's faces turn more than 30°; shade = lit over flat lightness, as
+  halftone dots on a 45° screen (cell 1/150 of the short side, line 1/450)
+  from 0.9 down to 0.42; Line art white paper inside, Comic the flat colour,
+  0.82 of it turned away, its dots 0.42 of it, black plastic lifted as the
+  booklet's; round the model the backdrop's colour or nothing, the contact
+  shadow (its alpha on nothing) in dots. Every piece of a big picture
+  drawn with a margin and on one screen (`origin`). An animation's moves
+  are made on the copy too (`LineArt.move`), and it is made again after
+  one. The window look and Product never reach any of it.
+- `lineart probe` (`src/dev/lineart_probe.gd`, `tools/probe.sh lineart`,
+  windowed on the GPU at 1400 x 900, `PROBE_SIZE=1280x720` too): through
+  the sign-in screen with a throwaway account (.env). First Render's
+  default (Good, window, 1080p) of the example car, twice the same, kept as
+  `default_render.png`, and a small scene's Quick window and Product kept as
+  `scene_window.png`, `scene_product.png`; `-- --reference=DIR` (the same
+  probe run on an older build, its `--shots`) lays each beside the older's,
+  byte for byte. The Look row clicked as a person clicks: each look in the
+  window with its words whole, the inked two on a row of their own, the
+  note and the draft following; Render picture in Comic writes a coloured
+  640 x 360 with black lines. The small scene (three red 1 x 2s in a wall, a
+  white 2 x 4 under a tile, a yellow slope, a black 2 x 2) at 1280 x 720:
+  Line art's paper white to the pixel more than 6 px from the model, only
+  greys, the outline dark round 95% of the edge, the wall's two seams inked
+  in 90% of their rows (front view), the white brick's face the window's
+  light leaves darker more than 6% dots in 3 or more spots and its top
+  under 3%; Comic red and yellow, outlined, seams inked, dots on the shaded
+  face; on nothing every pixel clear away from the model, the model solid,
+  its outline drawn over nothing, the contact shadow in 10+ dots; an
+  animation frame with the white brick sent away leaves no ink where it
+  stood; `render_model` lists both looks and draws `lineart`; a look there
+  is not is answered with all four. Then 10036-1 Pizza To Go in both looks
+  at 1080p (`lineart_set.png`, `comic_set.png`, `lineart_set_front.png`):
+  look at them, lines a person would draw. Pictures in `user://lineart` or
+  `--shots=DIR`.
 
 ## How to reach it
 

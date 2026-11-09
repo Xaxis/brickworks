@@ -12948,3 +12948,26 @@ msgstr "Una línea fina donde cada pieza se une a la siguiente, para leer las hi
 
 msgid "Off, the parts are drawn without their studs, each in its place: the shapes alone, and a big model drawn faster"
 msgstr "Desactivado, las piezas se dibujan sin sus espigas, cada una en su sitio: solo las formas, y un modelo grande se dibuja más rápido"
+
+# Render's Look, Line art and Comic (APP_UX7 #22 lineart): the model inked as a person draws it
+
+msgid "Line art"
+msgstr "Dibujo a línea"
+
+msgid "Comic"
+msgstr "Cómic"
+
+msgid "Black lines on white, as you would ink it, the shade in halftone dots: to colour over or print."
+msgstr "Líneas negras sobre blanco, como entintado a mano, las sombras en una trama de puntos: para colorear o imprimir."
+
+msgid "Bold lines over each part's own colour, flat, with halftone dots where the light leaves it."
+msgstr "Líneas marcadas sobre el color propio de cada pieza, plano, con una trama de puntos donde la luz lo deja."
+
+msgid "Drawn in one frame at any quality: the lines and the dots are the picture."
+msgstr "Se dibuja en un solo fotograma con cualquier calidad: las líneas y los puntos son la imagen."
+
+msgid "Line art and Comic are drawn sharp all through."
+msgstr "El dibujo a línea y el cómic se dibujan nítidos de principio a fin."
+
+msgid "inking"
+msgstr "entintando"

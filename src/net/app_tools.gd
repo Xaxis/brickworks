@@ -887,6 +887,11 @@ func definitions() -> Array:
 				+ "keep is answered with those it does. look product is a product shot's: glossy "
 				+ "plastic with rounded edges, clear parts that bend the light, a key, fill "
 				+ "and rim over a softbox studio (window, the default, is the window's own). "
+				# lineart (APP_UX7 #22).
+				+ "look lineart is the model inked: black lines round it, where each part meets "
+				+ "the next and where a part turns a corner, on white, the shade in halftone dots; "
+				+ "comic the same lines and dots over each part's own flat colour; with backdrop "
+				+ "none on nothing. "
 				+ "backdrop white, gradient, grey, dark or none (as Render last had it when "
 				+ "omitted). depth_of_field blurs what is nearer and farther than the "
 				+ "model's middle, as a lens at f/4 does, and is drawn at best. light studio "
@@ -902,7 +907,7 @@ func definitions() -> Array:
 				"quality": {"type": "string", "enum": ["quick", "good", "best"]},
 				"size": {"type": "string", "enum": ["720p", "1080p", "4k", "square"]},
 				"view": {"type": "string", "description": "hero, front, side, back, low or top, or a view saved with the model, by its name"},
-				"look": {"type": "string", "enum": ["window", "product"]},
+				"look": {"type": "string", "enum": RenderSettings.LOOKS.keys()},
 				"backdrop": {"type": "string", "enum": ["white", "gradient", "grey", "dark",
 					"none"]},
 				"depth_of_field": {"type": "boolean"},
@@ -936,7 +941,7 @@ func definitions() -> Array:
 				"size": {"type": "string", "enum": ["720p", "1080p", "4k", "square"]},
 				"samples": {"type": "integer", "description": "Best's samples, 1 to 4096"},
 				"view": {"type": "string", "description": "current, hero, front, side, back, low or top, or a view saved with the model, by its name"},
-				"look": {"type": "string", "enum": ["window", "product"]},
+				"look": {"type": "string", "enum": RenderSettings.LOOKS.keys()},
 				"backdrop": {"type": "string", "enum": ["white", "gradient", "grey", "dark",
 					"none"]},
 				"depth_of_field": {"type": "boolean"},
@@ -3842,7 +3847,7 @@ func _render(input: Dictionary, work: Working.Job = null) -> Variant:
 		chosen.keep_view(world.saved_views[at], app.get("_camera") as Camera3D)
 	var look: String = str(input.get("look", "window"))
 	if not RenderSettings.LOOKS.has(look):
-		return "look is window or product."
+		return "look is %s." % LineArt.looks_in_words()
 	chosen.look = look
 	if input.has("backdrop"):
 		var backdrop: String = str(input["backdrop"])
