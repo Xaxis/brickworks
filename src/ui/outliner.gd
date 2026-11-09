@@ -103,6 +103,8 @@ func _ready() -> void:
 	_tree.item_activated.connect(_on_activated)
 	_tree.item_edited.connect(_on_edited)
 	_tree.button_clicked.connect(_on_button)
+	# subexport: a right click on a row, its menu.
+	_tree.item_mouse_selected.connect(_on_row_clicked)
 	_tree.set_drag_forwarding(_drag_data, _can_drop, _drop)
 	column.add_child(_tree)
 	# A name typed over ends in item_edited; Esc ends it with nothing said,
@@ -663,6 +665,69 @@ func _on_button(row: TreeItem, _column: int, id: int, _mouse: int) -> void:
 					builder.locked[brick_id] = true
 			builder.clear_selection()
 	_refresh(true)
+
+
+# -- subexport (APP_UX7 #19): the row's menu ------------------------------------
+
+
+## The menu a right click on a row opens: the sub-model as a file of its own,
+## with its own sub-models and steps, and each sub-model so in one .zip
+## (Exports.submodel, each_submodel), as Studio's and LDCad's model trees
+## export a sub-model. On the model's row, each sub-model only.
+var row_menu: PopupMenu
+## The row the menu is for: its path.
+var _menu_path: String = ""
+const MENU_ONE := 0
+const MENU_EACH := 1
+
+
+func _on_row_clicked(at: Vector2, button: int) -> void:
+	if button != MOUSE_BUTTON_RIGHT:
+		return
+	var row: TreeItem = _tree.get_item_at_position(at)
+	if row == null:
+		return
+	var path: String = str(row.get_metadata(0))
+	if path == SUGGESTED or path.begins_with(SUGGESTION):
+		return
+	open_row_menu(path, _tree.get_global_transform_with_canvas() * at)
+
+
+## The row menu for the row of [param path] ("" the model's), at [param at]
+## in the window.
+func open_row_menu(path: String, at: Vector2) -> void:
+	if row_menu == null:
+		row_menu = PopupMenu.new()
+		row_menu.name = "ModelTreeMenu"
+		row_menu.add_theme_font_size_override("font_size", 13)
+		row_menu.id_pressed.connect(_on_row_menu)
+		add_child(row_menu)
+	_menu_path = path
+	row_menu.clear()
+	if not path.is_empty():
+		row_menu.add_item("Export “%s” as its own file…" % Assemblies.label(path), MENU_ONE)
+		row_menu.set_item_tooltip(row_menu.get_item_index(MENU_ONE),
+			"As an LDraw file, with its own sub-models and steps")
+	row_menu.add_item("Export each sub-model (.zip)…", MENU_EACH)
+	row_menu.set_item_tooltip(row_menu.get_item_index(MENU_EACH),
+		"Every sub-model as an LDraw file of its own, with its own sub-models and steps, in one .zip")
+	row_menu.set_item_disabled(row_menu.get_item_index(MENU_EACH), assemblies.paths().is_empty())
+	row_menu.reset_size()
+	var room: Vector2 = get_viewport().get_visible_rect().size
+	var corner := Vector2(minf(at.x, room.x - row_menu.size.x - 4.0),
+		minf(at.y, room.y - row_menu.size.y - 4.0))
+	row_menu.position = Vector2i(corner.max(Vector2.ZERO))
+	row_menu.popup()
+
+
+func _on_row_menu(id: int) -> void:
+	var exports: Node = shell.app.get("_exports")
+	if exports == null:
+		return
+	if id == MENU_ONE and not _menu_path.is_empty():
+		await exports.call("submodel", _menu_path, true)
+	elif id == MENU_EACH:
+		await exports.call("each_submodel", true)
 
 
 func _drag_data(at: Vector2) -> Variant:

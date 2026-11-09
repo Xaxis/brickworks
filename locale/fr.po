@@ -12920,3 +12920,54 @@ msgstr "Les pièces fabriquées pour la première fois en %d ou %d, les plus ré
 
 msgid "%s first made in %d or %d, the newest first"
 msgstr "%s fabriquées pour la première fois en %d ou %d, les plus récentes d'abord"
+
+# subexport (APP_UX7 #19): each sub-model as a file of its own, from File, Export
+# and the model tree's menu.
+
+msgid "Each sub-model as its own file (.zip)"
+msgstr "Chaque sous-modèle dans son propre fichier (.zip)"
+
+msgid "Every sub-model as an LDraw file of its own, with its own sub-models and steps, in one .zip"
+msgstr "Chaque sous-modèle dans son propre fichier LDraw, avec ses propres sous-modèles et étapes, dans un seul .zip"
+
+msgid "Make a sub-model first"
+msgstr "Créez d’abord un sous-modèle"
+
+msgid "Export “%s” as its own file…"
+msgstr "Exporter « %s » dans son propre fichier…"
+
+msgid "As an LDraw file, with its own sub-models and steps"
+msgstr "En fichier LDraw, avec ses propres sous-modèles et étapes"
+
+msgid "Export each sub-model (.zip)…"
+msgstr "Exporter chaque sous-modèle (.zip)…"
+
+msgid "Exporting %s…"
+msgstr "Export de %s…"
+
+msgid "Exporting each sub-model…"
+msgstr "Export de chaque sous-modèle…"
+
+msgid "stopped exporting"
+msgstr "export arrêté"
+
+msgid "this model has no sub-models: LDraw model writes it whole"
+msgstr "ce modèle n’a pas de sous-modèles : Modèle LDraw l’écrit en entier"
+
+msgid "%s is not a sub-model of this model"
+msgstr "%s n’est pas un sous-modèle de ce modèle"
+
+msgid "%s, each with its own sub-models and steps: %s"
+msgstr "%s, chacun avec ses propres sous-modèles et étapes : %s"
+
+msgid "%d steps"
+msgstr "%d étapes"
+
+msgid "1 step"
+msgstr "1 étape"
+
+msgid "%d sub-models"
+msgstr "%d sous-modèles"
+
+msgid "1 sub-model"
+msgstr "1 sous-modèle"

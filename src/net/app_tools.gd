@@ -107,6 +107,9 @@ const COMMANDS: Dictionary = {
 	"compare_sets": "parts_list",
 	# mcpsee3: View › Viewpoint › Save this view… (SavedViews.save_now).
 	"save_view": "save_view",
+	# subexport (APP_UX7 #19): File › Export › Each sub-model is
+	# export_model's submodels=true.
+	"export_submodels": "export_model",
 }
 
 ## The window's commands no tool does, each with why. A command that is
@@ -1019,7 +1022,10 @@ func definitions() -> Array:
 				+ "the answer is a job number at once, and job gives the result. A bricklink "
 				+ "wanted list takes condition, wanted_list and notify, as BrickLink's upload "
 				+ "reads them; what is not given is what the person chose last on the parts "
-				+ "list's BrickLink button. Nothing is uploaded: the person uploads the file."),
+				+ "list's BrickLink button. Nothing is uploaded: the person uploads the file."
+				+ " With format ldraw, submodels=true writes each sub-model as an LDraw file of its own, "
+				+ "with its own sub-models and steps, all in one .zip (File, Export, Each sub-model), "
+				+ "and submodel= just the one of that name in the model tree, as its row's menu does."),
 			"input_schema": {"type": "object", "additionalProperties": false,
 				"required": ["format"], "properties": {
 				"format": {"type": "string", "enum": ["ldraw", "studio", "glb", "gltf", "obj",
@@ -1029,6 +1035,9 @@ func definitions() -> Array:
 					"description": "bricklink: the condition wanted (CONDITION N or U; any leaves it out)"},
 				"wanted_list": {"type": "integer", "description": "bricklink: the ID of one of the person's wanted lists (WANTEDLISTID, the number after wantedMoreID= in its address); 0 for the main wanted list"},
 				"notify": {"type": "boolean", "description": "bricklink: BrickLink emails the person when a lot of a part is listed for sale (NOTIFY Y)"},
+				# subexport (APP_UX7 #19).
+				"submodels": {"type": "boolean", "description": "ldraw: each sub-model as an LDraw file of its own, with its own sub-models and steps, in one .zip"},
+				"submodel": {"type": "string", "description": "ldraw: only this sub-model as an LDraw file of its own, by its name in the model tree (Wing, Wing (copy 2), or a path Ship#1/Wing#2)"},
 			}},
 		},
 		{
@@ -4225,6 +4234,9 @@ func _export(input: Dictionary, work: Working.Job = null) -> String:
 			else "The person has no saved models yet."
 	if world.brick_count() - store.scenery.size() <= 0:
 		return "There is nothing on the baseplate to export yet."
+	# subexport (APP_UX7 #19): each sub-model, or one, as a file of its own.
+	if input.has("submodels") or input.has("submodel"):
+		return await _export_submodels(input, exports)
 	var said: String = ""
 	match str(input.get("format", "")):
 		"ldraw":
@@ -4259,6 +4271,58 @@ func _export(input: Dictionary, work: Working.Job = null) -> String:
 			return ("format is ldraw, studio, glb, gltf, obj, stl, 3mf, picture, bricklink, rebrickable, "
 				+ "pickabrick, instructions or all_models.")
 	return said.left(1).to_upper() + said.substr(1) + "." if not said.is_empty() else "Nothing written."
+
+
+# -- subexport (APP_UX7 #19) ----------------------------------------------------------
+
+
+## export_model's submodels=true: each sub-model as an LDraw file of its own,
+## with its own sub-models and steps, in one .zip (Exports.each_submodel);
+## submodel=NAME: that one, by its name in the model tree (Exports.submodel).
+func _export_submodels(input: Dictionary, exports: Exports) -> String:
+	if str(input.get("format", "")) != "ldraw":
+		return "submodels and submodel write LDraw files: give them with format ldraw."
+	var said: String = ""
+	if input.has("submodel"):
+		var paths: PackedStringArray = (app.get("_shell") as Shell).assemblies.paths()
+		var asked: String = str(input["submodel"]).strip_edges()
+		var path: String = submodel_named(asked, paths)
+		if path.is_empty():
+			var names := PackedStringArray()
+			for each: String in paths:
+				var name: String = Assemblies.label(each)
+				if not names.has(name) and names.size() < 30:
+					names.append(name)
+			if names.is_empty():
+				return "This model has no sub-models: format ldraw without submodel writes it whole."
+			return "No sub-model is called %s. The model tree's: %s." % [asked.left(80),
+				", ".join(names)]
+		said = await exports.submodel(path)
+	elif bool(input.get("submodels", false)):
+		said = await exports.each_submodel()
+	else:
+		said = await (app.get("_bar") as ModelBar).export_now(exports.folder)
+	return said.left(1).to_upper() + said.substr(1) + "." if not said.is_empty() else "Nothing written."
+
+
+## The path in [param paths] (the model tree's) that [param asked] names: the
+## path itself ("Ship#1/Wing#2"), the name its row shows ("Wing (copy 2)"),
+## or its definition ("Wing", its first copy), whatever the case; "" for none.
+static func submodel_named(asked: String, paths: PackedStringArray) -> String:
+	var wanted: String = asked.strip_edges().to_lower()
+	if wanted.is_empty():
+		return ""
+	for path: String in paths:
+		if path.to_lower() == wanted:
+			return path
+	for path: String in paths:
+		if Assemblies.label(path).to_lower() == wanted \
+				or Assemblies.leaf(path).to_lower() == wanted:
+			return path
+	for path: String in paths:
+		if Assemblies.definition(Assemblies.leaf(path)).to_lower() == wanted:
+			return path
+	return ""
 
 
 # -- brickify -----------------------------------------------------------------------

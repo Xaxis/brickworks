@@ -263,7 +263,10 @@ const SUBMENUS: Dictionary = {
 	"export": ["export_ldraw", "export_io", "export_3d", "export_picture", "export_bricklink",
 		"export_rebrickable",
 		"export_pickabrick",
-		"-", "export_all"],
+		"-",
+		# subexport (APP_UX7 #19): each sub-model as a file of its own.
+		"export_submodels",
+		"export_all"],
 	"select_by": ["select_colour", "select_part", "select_alike", "select_find",
 		"select_connected", "select_submodel", "select_inverse"],
 	"viewpoint": ["view_default", "view_front", "view_back", "view_left", "view_right",
@@ -761,7 +764,9 @@ const OPENS_A_TAB: Array[String] = ["instructions"]
 ## so no "Exporting…" bar sits under the dialog while the person chooses.
 ## The shop lists are counted before they ask, and are said first as ever.
 const ASKS_WHERE: Array[String] = ["save_as", "export_ldraw", "export_io", "export_picture",
-	"export_all", "instructions"]
+	"export_all", "instructions",
+	# subexport (APP_UX7 #19).
+	"export_submodels"]
 
 ## Laying a floor again under a big model: its plates cover more ground.
 const FLOOR_SLOW_FROM := 3000
@@ -946,6 +951,8 @@ const NEEDS: Dictionary = {
 	"back_to_site": "In a browser only",
 	"check_updates": "In the desktop app only: the site updates itself",
 	"reinstall": "In the desktop app only", "restart": "Reload the tab instead",
+	# subexport (APP_UX7 #19).
+	"export_submodels": "Make a sub-model first",
 }
 
 
@@ -1099,6 +1106,13 @@ func _define() -> void:
 		func() -> void: await app.get("_exports").shop_list("pickabrick", {}, true),
 		something, "LEGO® element numbers and how many of each, to upload at LEGO® Pick a "
 			+ "Brick, 400 to a file; the parts with no number known are named")
+	# subexport (APP_UX7 #19): each sub-model as a file of its own, in one
+	# .zip (src/ui/exports.gd, src/parts/submodel_file.gd); one from the model
+	# tree's menu (src/ui/outliner.gd).
+	_add("export_submodels", "Each sub-model as its own file (.zip)", 0,
+		func() -> void: await app.get("_exports").each_submodel(true),
+		func() -> bool: return something.call() and not assemblies.paths().is_empty(),
+		"Every sub-model as an LDraw file of its own, with its own sub-models and steps, in one .zip")
 	_add("render", "Render…", 0, func() -> void: app.call("open_render"), something,
 		"A photo-real picture or turntable of the model, on a backdrop, in studio light")
 	# src/ui/render_queue.gd, loaded the first time it is asked for.
