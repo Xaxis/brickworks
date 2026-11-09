@@ -920,6 +920,8 @@ func definitions() -> Array:
 				# lights (APP_UX5 #7).
 				"light": {"type": "string", "enum": ["studio", "softbox", "window", "daylight",
 					"dark"]},
+				# video2 (APP_UX6 #11).
+				"format": {"type": "string", "enum": ["webp", "gif"], "description": "a turntable's or a build's file: webp, or gif for where a WebP is not taken (chats, forums, mail): 256 colours, at most 640 pixels across, made to fit 8 MB. As Render's Kept as has it when omitted"},
 			}},
 		},
 		{
@@ -3901,8 +3903,17 @@ func _render(input: Dictionary, work: Working.Job = null) -> Variant:
 			return "seconds is %d to %d." % [BuildRender.SHORTEST, BuildRender.LONGEST]
 		chosen.frames = seconds * chosen.fps
 		kind = "building"
+	# video2 (APP_UX6 #11): a turntable or a build as a GIF.
+	var as_gif: Variant = null
+	if input.has("format"):
+		var format: String = str(input["format"])
+		if not format in ["webp", "gif"]:
+			return "format is webp or gif."
+		if kind == "picture" and format == "gif":
+			return "format is a turntable's or a build's: a picture is kept as a PNG."
+		as_gif = format == "gif"
 	var was: Variant = dialog._last.get("output")
-	var said: String = await dialog.render_for(kind, chosen, work)
+	var said: String = await dialog.render_for(kind, chosen, work, as_gif)
 	var how: String = _best_said(dialog, chosen)
 	if not how.is_empty():
 		said = "%s. %s" % [said.trim_suffix("."), how]

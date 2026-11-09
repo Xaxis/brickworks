@@ -14,10 +14,10 @@ eight keys2 gave.
 
 | Preset | Commands | Without a key before keys | After keys | Before keys2 | After |
 |---|---|---|---|---|---|
-| Brickworks | 222 | 115 | 110 | 112 | 106 |
-| Studio | 222 | 118 | 113 | 115 | 109 |
-| Mecabricks | 222 | 116 | 111 | 113 | 107 |
-| LDCad | 222 | 118 | 114 | 116 | 110 |
+| Brickworks | 224 | 115 | 110 | 112 | 108 |
+| Studio | 224 | 118 | 113 | 115 | 111 |
+| Mecabricks | 224 | 116 | 111 | 113 | 109 |
+| LDCad | 224 | 118 | 114 | 116 | 112 |
 
 The menus had 201 commands when keys counted. Cut away by a box, a sphere or a cylinder
 (APP_UX4 8) added five, each with no key. The Pick a Brick list added one
@@ -29,7 +29,9 @@ without a key then, so 106 of the 210 had one (the walk's `counts`, APP_UX5). Sa
 (savedviews, APP_UX5 #8) added eleven: Save this view… and the nine saved views, each with
 a key under every preset, and Render each saved view with none: 221, 105 without a key
 under the app's keys. Compare two sets or models… (comparesets, APP_UX6 #7) added one more
-with none: 222 now, 106 without a key under the app's keys, 116 with one.
+with none: 222, 106 without a key under the app's keys. View › Edges and studs
+(edges, APP_UX6 #19) added two, Edges and Studs, each with none: 224 now, 108 without a key
+under the app's keys, 116 with one.
 
 APP_UX3 counted 110 with the app's keys on 2026-10-30. Eight came since with none (the
 booklet's Pull out, Colour guide, 1:1 guide and Sub-model preview; Render queue; Check for
@@ -198,6 +200,8 @@ to anything. Save this view… is Alt and the first free letter of its row, V.
 | `cut_shrink` | View › Cut away by › Shrink it a plate | — | — | — | a few times a cut | all | the wheel over a knob, or a knob dragged, sizes the shape a face at a time; Shrink is the strip's button |
 | `stress` | View › Stress | — | — | — | a few times a model | all | Alt-K checks stability; Stress is the colour of it, looked at after |
 | `stud_map` | View › Stud directions | — | — | — | once a design | all | a check of which way studs face, looked at once and put away; it shares Stress's layer, and Stress has none either |
+| `edges` | View › Edges and studs › Edges | — | — | — | once, kept | all | a look set once and kept on this machine, as the floor is; every picture and booklet is drawn whole whatever it says |
+| `studs` | View › Edges and studs › Studs | — | — | — | once, kept | all | a look set once and kept on this machine, as the floor is; every picture and booklet is drawn whole whatever it says |
 | `panel_parts` | View › Panels › Parts bin | — | — | — | once a session | all | a panel set once a session, and it stays |
 | `panel_assistant` | View › Panels › Assistant | — | — | — | once a session | all | a panel set once a session, and it stays |
 | `panel_properties` | View › Panels › Properties | — (Instruction Maker's inspector, Ctrl-Alt-2) | — | I, the information panel | once a session | all | a panel set once a session; I is X-ray here, used far more |

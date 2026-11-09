@@ -5015,6 +5015,20 @@
       "entry": "src/dev/strengthen_probe.gd",
       "reach": "tools/probe.sh strengthen [-- --shots=DIR]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720, through the sign-in screen with a throwaway account (.env): ten models with a weak joint each, its row pressed, the fix offered and drawn as a ghost, Strengthen adds 1 to 3 parts with room and Stress weighs the joint above its working load with no new red, one undo back to the byte, weakest_joints' edit_model call made as given gives the same model to the byte; a tie, a prop and a pin among them; From my bricks with a collection; a picture of each ghost in user://strengthen or DIR)",
       "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "moving renders kept as a GIF",
+      "entry": "src/render/animated_gif.gd",
+      "reach": "tools/probe.sh video2   (by hand: File, Render…, Kept as GIF, then Render turntable, Render animation or Render building: one 256-colour palette for the whole video, an ordered dither, at most 640 px across and made to fit 8 MB by fewer frames a second then a smaller picture; render_model format=gif over MCP; node tools/web/gif_plays.mjs FILE.gif says what Chromium decodes)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "video2 probe",
+      "entry": "src/dev/video2_probe.gd",
+      "reach": "tools/probe.sh video2 [OUT_DIR]; PROBE_SIZE=1400x900 tools/probe.sh video2 OUT_DIR   (windowed, on the GPU, signed in as a throwaway account: Pods' building video by hand and over MCP, the first step's parts 40% or more of the frame's height off its alpha, the last frame the whole model as a picture draws it; the car's 36-frame turntable kept as a GIF by hand and over MCP: GIF89a, 256 colours, looping, 8 MB or less, played by Chromium (tools/web/gif_plays.mjs) 36 frames that change, its first frame within a few levels of the frame it was made of; Kept as in sight; pictures in OUT_DIR)",
+      "area": "view"
     }
   ]
 }
