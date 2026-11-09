@@ -2715,7 +2715,7 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   (arrows and rings 23 points each side, rings 96 to 140 points round fitted to
   the view, the outer ring 46 points out, panes 0.25 to 0.75 of an arrow's
   reach, nearest wins and a pane's face counts as on it, a pane thinner than
-  half a fingertip left out, the tag 44 points each way); the finger that
+  half a fingertip left out, the tag 48 points each way); the finger that
   presses a handle is the handles' till it lifts (`Handles._finger_input`: the
   view does not turn under it, a rest on it before the drag opens nothing);
   a second finger down puts the drag back and the view takes both; slop 10
@@ -2731,7 +2731,7 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   then by a finger rested on it 0.65 s first: the same 60 LDU, the view as it
   was, the Move tool and the selection kept, no sheet, one undo; a second
   finger mid-drag puts it back. `targets`: every Move and Rotate handle's
-  widest circle where a press takes it (sampled every 2 points), 44 or more,
+  widest circle where a press takes it (sampled every point), 44 or more,
   printed as a table; a tap on the tag cycles the axes. `dialogs`: 17 of the
   app's opened and closed from their commands (none a platform file dialog)
   and made ones freed while open, a list filled twice in a frame, one popped

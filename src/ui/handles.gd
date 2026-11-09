@@ -107,14 +107,16 @@ const SWEEP_LDU := 4.0
 ## Laid out for a finger, in points: how near a ring or an arrow a finger has
 ## to land to take it (a band a fingertip wide and a little over); the
 ## rings' radius at least and at most; how far outside them the outer ring
-## stands; a pane's span along each of its axes (as [constant PANE]); and how
-## far a finger may wander and still be a tap.
+## stands; a pane's span along each of its axes (as [constant PANE]); how
+## far a finger may wander and still be a tap; and the tag's least size each
+## way (Material's 48, its words inside a fingertip with room round them).
 const FINGER_PICK := Phone.TARGET * 0.5 + 1.0
 const FINGER_RADIUS := 96.0
 const FINGER_LARGEST := 140.0
 const FINGER_OUTER_GAP := Phone.TARGET + 2.0
 const FINGER_PANE: Array[float] = [0.25, 0.75]
 const FINGER_SLOP := 10.0
+const FINGER_TAG := 48.0
 
 var builder: Builder
 var world: BrickWorld
@@ -583,7 +585,7 @@ func _tag_box(said: String = "", view: int = CadCamera.MAIN) -> Rect2:
 		words + Vector2(14, 8) * _scale())
 	# A fingertip's target each way, laid out for a finger.
 	if _finger():
-		box.size = box.size.max(Vector2.ONE * _points(Phone.TARGET))
+		box.size = box.size.max(Vector2.ONE * _points(FINGER_TAG))
 	# Inside its own view.
 	var room: Rect2 = _overlays.rect(view)
 	box.position.x = clampf(box.position.x, room.position.x + 4.0,

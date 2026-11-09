@@ -43,8 +43,9 @@ const SAME_LDU := 0.1
 const RESTED := 0.65
 ## Up in the air, clear of the floor and whatever stands on it.
 const AIR := Vector3(0, 400, 0)
-## How finely the targets are sampled, points.
-const CELL := 2.0
+## How finely the targets are sampled, points: a target's width is read to
+## within a point.
+const CELL := 1.0
 ## The app's dialogs opened from their commands, as More's rows run them;
 ## none of them the platform's own file dialog.
 const DIALOGS: Array[String] = ["versions", "settings", "parts_list", "collection",
@@ -429,7 +430,12 @@ func _drag() -> void:
 	# A second finger down mid-drag: the gesture is the view's.
 	var was: Vector3 = _world.get_brick(brick).transform.origin
 	depth = _builder.history_depth()
+	if _verbs.mode != "move":
+		_shell.run("mode_move")
+		await _frames(4)
 	arrow = _arrow(0)
+	if not _check("its x arrow is on the screen again, for a second finger", not arrow.is_empty()):
+		return
 	path = _three_studs(arrow)
 	var from: Vector2 = path[0]
 	_touch(0, from, true)
@@ -455,9 +461,13 @@ func _drag() -> void:
 		and _builder.history_depth() == depth and not handles.is_dragging())
 
 
-## The one part there is now.
+## The 2 x 4 brick put up in the air: the baseplate is a part of the model
+## too, and an undo may give the brick back under another id.
 func _only_brick() -> int:
-	return int(_world._bricks.keys()[0]) if not _world._bricks.is_empty() else 0
+	for id: int in _world._bricks:
+		if _world.get_brick(id).part_id == "3001":
+			return id
+	return 0
 
 
 ## Where to press on arrow [param n], and the arrow: {at, way (on the screen),
@@ -576,7 +586,9 @@ func _targets() -> void:
 		if not _builder.selection.has(brick):
 			_builder.select_brick(brick, false)
 			await _frames(4)
+		var began: int = Time.get_ticks_msec()
 		var sizes: Dictionary = _target_sizes()
+		print("  (%s's targets sampled in %.1f s)" % [tool, (Time.get_ticks_msec() - began) / 1000.0])
 		var small: PackedStringArray = []
 		var kinds: PackedStringArray = []
 		for label: String in sizes:
