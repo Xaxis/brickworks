@@ -31,7 +31,11 @@
 ## the part it copies (60897, 87994, 41770a, 41769a, 61252), and 3062b
 ## beside them takes the made bar in its hollow stud and the bar the made
 ## clip, each taken as a click on a tile takes it and clicked on where it
-## goes: shots/element_clip.png. With -- only=copies, only that.
+## goes: shots/element_clip.png. With -- only=copies, only that. And
+## APP_UX7 #16's: a 3 x 6 wedge plate with "Far corner cut flat" clicked,
+## its dialog kept as shots/element_chamfer_dialog.png, beside 54383, the
+## part it copies, in element_clip.png, and the two from overhead, their
+## corners cut flat: shots/element_chamfer.png.
 ##
 ## A window is needed because the preview and the thumbnails are drawn by
 ## SubViewports. Run it on Xvfb, never on somebody's screen (tools/check.sh
@@ -354,13 +358,16 @@ func _copies(button: Button, dialog: ElementDialog, library: PartLibrary,
 		_ok(false, "the parts bin has its Make a part… button")
 		return
 	# [the family's button, the way to set first if not its first, the
-	# part it copies, the title].
+	# part it copies, the title, and sizes to set and whether to click "Far
+	# corner cut flat", where it has them].
 	var makes: Array = [
 		["clip", "", "60897", "Plate  1 x  1 with Clip Vertical (Thick C-Clip)"],
 		["bar", "", "87994", "Bar  3L"],
 		["wedge", "", "41770a", "Wing  2 x  4 Left"],
 		["wedge", "right", "41769a", "Wing  2 x  4 Right"],
 		["clip", "horizontal", "61252", "Plate  1 x  1 with Clip Horizontal (Thick C-Clip)"],
+		["wedge", "right", "54383", "Wing  3 x  6 Right with Chamfer", {"across": 3, "deep": 6},
+			true],
 	]
 	var buttons: Dictionary = dialog.get("_family_buttons")
 	var add: Button = dialog.get("_add")
@@ -372,6 +379,21 @@ func _copies(button: Button, dialog: ElementDialog, library: PartLibrary,
 		await _press(buttons[entry[0]])
 		if not str(entry[1]).is_empty():
 			dialog.set_field("way", entry[1])
+		var sizes: Dictionary = entry[4] if entry.size() > 4 else {}
+		for field: String in sizes:
+			dialog.set_field(field, sizes[field])
+		var chamfer: CheckBox = dialog.get("_chamfer")
+		if entry.size() > 5 and bool(entry[5]):
+			_ok(chamfer != null and chamfer.is_visible_in_tree() and not chamfer.button_pressed,
+				"a wedge plate's dialog shows \"Far corner cut flat\", not ticked")
+			if chamfer != null:
+				# Scrolled to, as a person scrolls to it in a short window.
+				(dialog.get("_scroll") as ScrollContainer).ensure_control_visible(chamfer)
+				for _n: int in 3:
+					await process_frame
+				await _press(chamfer)
+				_ok(chamfer.button_pressed and dialog.spec().get("chamfer") == true,
+					"...and a click on it ticks it and the part's corner is cut")
 		for _n: int in 30:
 			await process_frame
 		await RenderingServer.frame_post_draw
@@ -379,6 +401,18 @@ func _copies(button: Button, dialog: ElementDialog, library: PartLibrary,
 			"%s %s: its preview drew, \"%s\"" % [entry[0], entry[1], dialog.get("_about").text])
 		if ids.is_empty():
 			_save("element_clip_dialog.png")
+		if entry.size() > 5:
+			# The sentence under the preview grew a line and the controls'
+			# room shrank under the box; scrolled to it again, as a person
+			# would to see it ticked.
+			# The pointer back on the box it ticked: left where the scroll
+			# moved, it rested on Bracket long enough for its tooltip.
+			(dialog.get("_scroll") as ScrollContainer).ensure_control_visible(chamfer)
+			for _n: int in 3:
+				await process_frame
+			await _move(chamfer.get_global_rect().get_center())
+			await RenderingServer.frame_post_draw
+			_save("element_chamfer_dialog.png")
 		var made: Array = []
 		dialog.made.connect(func(id: String) -> void: made.append(id), CONNECT_ONE_SHOT)
 		await _press(add)
@@ -455,6 +489,21 @@ func _copies(button: Button, dialog: ElementDialog, library: PartLibrary,
 	builder.hide_preview()
 	await RenderingServer.frame_post_draw
 	_save("element_clip.png")
+
+	# The two 3 x 6 wedge plates from nearly overhead, the made one and
+	# 54383, so their far corners, cut flat, can be seen to be the same.
+	var pair := AABB()
+	for brick_id: int in placed.slice(placed.size() - 3, placed.size() - 1):
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		var bounds: AABB = brick.transform * library.mesh_for(brick.part_id).bounds
+		pair = bounds if pair.size == Vector3.ZERO else pair.merge(bounds)
+	camera.set("_target_yaw", deg_to_rad(0.0))
+	camera.set("_target_pitch", deg_to_rad(70.0))
+	camera.frame(pair, 0.8)
+	for _n: int in 180:
+		await process_frame
+	await RenderingServer.frame_post_draw
+	_save("element_chamfer.png")
 
 
 ## Take [param part_id] as a click on its tile takes it, move the pointer

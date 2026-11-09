@@ -34,9 +34,12 @@
 ##
 ## Vertices are one per place within a part (the app's meshes have two
 ## where a crease gives a corner two normals), as the core's edges are by
-## vertex. Parts are not stitched to each other, and a part is as LDraw
-## draws it: closed, but a stud stands on a top face that runs on under it,
-## which every slicer fills as the solid it is.
+## vertex. Each piece is then closed (ClosedMesh, print3mf2): its
+## T-junctions split, its open loops capped (a stud's foot, a tube's top),
+## so every edge has exactly two triangles, once each way round, and a
+## slicer prints each colour with nothing to repair. Parts are not
+## stitched to each other: each is a solid of its own, touching its
+## neighbours, which the core's positive fill rule unites.
 class_name Mesh3mf
 extends RefCounted
 
@@ -65,6 +68,10 @@ const SOLID_POINTING := 0.05
 ## Whether two-sided surfaces are turned to face out; a probe turns it
 ## off to see what they are as LDraw draws them.
 static var face_out: bool = true
+## Whether each piece is closed; a probe turns it off likewise.
+static var close_up: bool = true
+
+const CLOSED_MESH := preload("res://src/parts/closed_mesh.gd")
 
 
 ## Some of a part's triangles that go to one object: its body (the
@@ -284,7 +291,7 @@ func _pieces_of(part_id: String) -> Array:
 
 ## Surfaces made one piece in [param colour]: their places welded, their
 ## degenerate triangles dropped (3MF wants a triangle's three corners
-## distinct), and two-sided ones turned to face out.
+## distinct), two-sided ones turned to face out, and the whole closed.
 func _piece(shapes: Array, colour: int) -> Piece:
 	var piece := Piece.new()
 	piece.colour = colour
@@ -318,6 +325,12 @@ func _piece(shapes: Array, colour: int) -> Piece:
 		unknown = unknown or shape.two_sided
 	if unknown and face_out:
 		await _face_out(piece, known)
+	if close_up:
+		var closer: RefCounted = CLOSED_MESH.new(maker._pace)
+		await closer.close(piece.positions, piece.triangles, piece.painted)
+		piece.positions = closer.positions
+		piece.triangles = closer.triangles
+		piece.painted = closer.painted
 	return piece
 
 

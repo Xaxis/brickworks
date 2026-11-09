@@ -6404,6 +6404,13 @@ func _make_mosaic() -> void:
 	mosaic.build_wanted.connect(_build_mosaic)
 	mosaic.art_wanted.connect(_build_art)
 	mosaic.claude_wanted.connect(_design_art_with_claude)
+	# Its colours from what the person owns (My collection), told again as
+	# the collection arrives once they sign in.
+	mosaic.owned = func() -> Dictionary:
+		return _shell.collection_store.on_hand if _shell != null and _shell.collection_store != null \
+			else {}
+	if _shell != null and _shell.collection_store != null:
+		_shell.collection_store.changed.connect(mosaic.tell_owned)
 
 
 ## A 3D model laid in bricks, as a sub-assembly beside what is built.
@@ -6523,6 +6530,20 @@ func _make_render() -> void:
 		render.rig_lights.append(light)
 	render.named = _bar.model_name
 	render.player = _motions
+	# lights (APP_UX5 #7): Render's Lights in the model change the model,
+	# kept as any change is, never one shared to look at; a new light is set
+	# over the selection, or over what is built.
+	render.lights_changed = _store.touch
+	render.may_change = func() -> bool: return _shell == null or not _shell.read_only
+	render.chosen_box = func() -> AABB:
+		var box := AABB()
+		var any: bool = false
+		for id: int in _builder.selection:
+			var brick: BrickWorld.Brick = _world.get_brick(id)
+			if brick != null:
+				box = box.merge(_box_of(brick)) if any else _box_of(brick)
+				any = true
+		return box if any else _built_bounds()
 	_add_to_hud(render)
 	var kind: GDScript = Later.script(&"RenderDialog")
 	var fit: Callable = func() -> void: _inset(render, float(kind.WIDE), float(kind.TALL))
@@ -7088,24 +7109,30 @@ func default_view() -> void:
 	_camera.frame(_built_bounds())
 
 
-## Lay the chosen picture out in plates.
+## Lay the chosen picture out in plates: the crop drawn, in the colours
+## chosen, each run of a colour in the largest plate it fills unless the
+## person asked for a 1 x 1 a stud (Mosaic.make).
 ##
 ## The mosaic replaces whatever was there, because a picture is a whole
 ## model rather than an addition to one — and it goes through the
 ## ordinary placement path, so it is undoable, saveable, counted by the
 ## parts list and walked by the booklet like anything else.
-func _build_mosaic(across: int, dither: bool) -> void:
+func _build_mosaic(options: Mosaic.Options) -> void:
 	if _mosaic_source == null:
 		return
 	_bar.say("laying it out…")
 	await get_tree().process_frame
 
-	var pixels: Array[Mosaic.Pixel] = Mosaic.lay_out(
-		_mosaic_source, across, PackedInt32Array(Mosaic.PALETTE),
-		_library, dither)
-	if pixels.is_empty():
+	# What the dialog worked out for these choices, rather than the same
+	# picture worked out again.
+	var laid: Mosaic.Laid = _mosaic_made.current_classic() if _mosaic_made != null else null
+	if laid == null:
+		laid = Mosaic.make(_mosaic_source, options, _library)
+	if laid.plates.is_empty():
 		_bar.say("nothing to lay out")
 		return
+	# On the web the larger plates may be fetched rather than shipped.
+	await Mosaic.fetch(laid, _library)
 
 	_world.clear()
 	_builder.lattice.clear()
@@ -7114,24 +7141,13 @@ func _build_mosaic(across: int, dither: bool) -> void:
 		_assistant_made.forget_built()
 	_store.scenery.clear()
 
-	var part: Lbm.PartMesh = _library.mesh_for(Mosaic.PIXEL_PART)
-	for pixel: Mosaic.Pixel in pixels:
-		# A 1 x 1 plate sits centred on its stud, and the mosaic is laid
-		# on the ground, so y is the plate height and nothing else.
-		var at := Transform3D(Basis.IDENTITY, Vector3(
-			pixel.x * BrickLattice.STUD + BrickLattice.STUD * 0.5,
-			part.bounds.size.y,
-			pixel.z * BrickLattice.STUD + BrickLattice.STUD * 0.5))
-		var brick_id: int = _world.add_brick(
-			Mosaic.PIXEL_PART, pixel.color_code, at)
-		if brick_id != 0:
-			_builder.register(brick_id, Mosaic.PIXEL_PART, at)
+	var placed: PackedInt64Array = Mosaic.put_down(laid, _world, _builder, _library)
 
 	_on_a_floor_of_its_own()
 	_camera.frame(_built_bounds(), 1.1)
 	_camera.set_view("top")
 	_on_model_changed()
-	_bar.say(Keymap.filled("%d plates — press {parts_list} for what to buy") % pixels.size())
+	_bar.say(Keymap.filled("%d plates — press {parts_list} for what to buy") % placed.size())
 
 
 ## A picture laid in plates is a whole model on its own panels, with nothing
@@ -10617,12 +10633,28 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	# Whoever is pressing keys has stopped watching.
 	if _playback != null and _playback.is_playing():
 		_playback.stop()
-	# A single-letter shortcut must never fire while someone is typing a
-	# part name or a brief.
+	var key: InputEventKey = event
+	# A field with the keys keeps the ones it types with: what prints, with
+	# no Ctrl, Alt or Cmd (AltGr, which Windows and a browser send as Ctrl
+	# and Alt, still prints), and the keys that move, select and delete in
+	# its text, with any. So a single-letter shortcut never fires while
+	# someone types a part name or a brief. The rest are the app's, as in
+	# every desktop app: F1, F9, Ctrl+S and Alt+X from the bin's search did
+	# nothing, and nothing said why (APP_UX7 #4). What the field does with a
+	# modified key, Ctrl+A, C, V, X and Z on its text, it took before this.
 	var focused: Control = get_viewport().gui_get_focus_owner()
 	if focused is LineEdit or focused is TextEdit:
-		return
-	var key: InputEventKey = event
+		const EDITING: Array[Key] = [KEY_BACKSPACE, KEY_DELETE, KEY_INSERT, KEY_ENTER,
+			KEY_KP_ENTER, KEY_TAB, KEY_ESCAPE, KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN, KEY_HOME,
+			KEY_END, KEY_PAGEUP, KEY_PAGEDOWN, KEY_MENU, KEY_SHIFT, KEY_CTRL, KEY_ALT, KEY_META,
+			KEY_CAPSLOCK]
+		var code: Key = key.keycode
+		var prints: bool = key.unicode >= 32 or (code > KEY_NONE and code < KEY_SPECIAL) \
+			or (code >= KEY_KP_MULTIPLY and code <= KEY_KP_9)
+		var held: bool = key.ctrl_pressed or key.alt_pressed or key.meta_pressed
+		var alt_gr: bool = key.unicode >= 32 and key.ctrl_pressed and key.alt_pressed
+		if code in EDITING or (prints and (not held or alt_gr)):
+			return
 	# The key as the person's keymap has it (Keymap): the key that does
 	# what it is bound to, a command no key does out of the box, or nothing,
 	# for a key a preset took off what it did. A shared model's viewer has

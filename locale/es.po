@@ -2384,6 +2384,9 @@ msgstr "Selección: %s en %s. Un clic en un color pinta las piezas"
 msgid "%d colours"
 msgstr "%d colores"
 
+msgid "1 colour"
+msgstr "1 color"
+
 msgid "A dot marks the %d colours it comes in"
 msgstr "Un punto marca los %d colores en que existe la pieza"
 
@@ -4597,6 +4600,9 @@ msgstr "Se publica"
 msgid "Saving to your account, sharing and Claude go on"
 msgstr "Guardar en tu cuenta, compartir y Claude continúan"
 
+msgid "Saving to your account and sharing go on"
+msgstr "Guardar en tu cuenta y compartir continúan"
+
 msgid "Sign in to Brickworks to share a model."
 msgstr "Inicia sesión en Brickworks para compartir un modelo."
 
@@ -6616,8 +6622,8 @@ msgstr "Obtener"
 msgid "Read your sets and parts lists from your Rebrickable account"
 msgstr "Leer tus sets y listas de piezas de tu cuenta de Rebrickable"
 
-msgid "Your Rebrickable key goes from here to rebrickable.com and nowhere else, and is not kept. What comes back replaces what came from Rebrickable before, fetched or exported, and the loose parts brought in before. What you count here, a BrickLink XML, and what an assistant added stay."
-msgstr "Tu clave de Rebrickable va de aquí a rebrickable.com y a ningún otro sitio, y no se guarda. Lo que vuelve sustituye lo que vino antes de Rebrickable, descargado o exportado, y las piezas sueltas importadas antes. Lo que cuentas aquí, un XML de BrickLink y lo que añadió un asistente se quedan."
+msgid "Your Rebrickable key goes from here to rebrickable.com and nowhere else, and is not kept. What comes back replaces what came from Rebrickable before, fetched or exported, and the loose parts brought in before. What you count here, a BrickLink XML and everything else stay."
+msgstr "Tu clave de Rebrickable va de aquí a rebrickable.com y a ningún otro sitio, y no se guarda. Lo que vuelve sustituye lo que vino antes de Rebrickable, descargado o exportado, y las piezas sueltas importadas antes. Lo que cuentas aquí, un XML de BrickLink y todo lo demás se quedan."
 
 msgid "Your Rebrickable key goes from here to rebrickable.com and nowhere else, and is not kept. What comes back replaces what came from Rebrickable before, fetched or exported, and the loose parts brought in before. What you count here, a BrickLink XML, and what an assistant added stay. Ask the assistant for \"a small house from my collection\" and it builds from what you own."
 msgstr "Tu clave de Rebrickable va de aquí a rebrickable.com y a ningún otro sitio, y no se guarda. Lo que vuelve sustituye lo que vino antes de Rebrickable, descargado o exportado, y las piezas sueltas importadas antes. Lo que cuentas aquí, un XML de BrickLink y lo que añadió un asistente se quedan. Pide al asistente «una casita con mi colección» y construirá con lo que tienes."
@@ -11265,6 +11271,9 @@ msgstr "Busca una pieza arriba, por su número o palabras, a partir de una foto,
 msgid "Added by %s — %s, %s: look them over"
 msgstr "Añadido por %s — %s, %s: revísalos"
 
+msgid "Not added by you — %s, %s: look them over"
+msgstr "No añadidos por ti — %s, %s: revísalos"
+
 msgid "Keep them"
 msgstr "Conservarlos"
 
@@ -11273,6 +11282,9 @@ msgstr "Conservarlas como tus propias piezas sueltas"
 
 msgid "Take back what %s added"
 msgstr "Retirar lo que añadió %s"
+
+msgid "Take back what was added"
+msgstr "Retirar lo que se añadió"
 
 msgid "Take out exactly the lots listed here; nothing of yours"
 msgstr "Quitar exactamente los lotes listados aquí; nada de lo tuyo"
@@ -11854,6 +11866,133 @@ msgstr "Un preajuste necesita un nombre."
 
 msgid "The preset could not be kept."
 msgstr "No se pudo guardar el preajuste."
+
+# lights (APP_UX5 #7): Render's Lights in the model, and its Dark light.
+msgid "Dark: only the model's own lights"
+msgstr "Oscuro: solo las luces del propio modelo"
+
+msgid "Lights in the model"
+msgstr "Luces en el modelo"
+
+msgid "Which of the model's lights to change"
+msgstr "Qué luz del modelo cambiar"
+
+msgid "The light's colour"
+msgstr "El color de la luz"
+
+msgid "Take this light out of the model"
+msgstr "Quitar esta luz del modelo"
+
+msgid "Strength"
+msgstr "Intensidad"
+
+msgid "Shadows"
+msgstr "Sombras"
+
+msgid "Whether what this light lights casts a shadow"
+msgstr "Si lo que ilumina esta luz proyecta sombra"
+
+msgid "From where I look"
+msgstr "Desde donde miro"
+
+msgid "Put the light where the window's camera is, shining the way it looks"
+msgstr "Poner la luz donde está la cámara de la ventana, iluminando hacia donde mira"
+
+msgid "Over the selection"
+msgstr "Sobre la selección"
+
+msgid "Hang the light over the selected parts, or over the model, shining down on them"
+msgstr "Colgar la luz sobre las piezas seleccionadas, o sobre el modelo, iluminándolas desde arriba"
+
+msgid "A bulb over the selection, lighting every way"
+msgstr "Una bombilla sobre la selección, que ilumina en todas direcciones"
+
+msgid "A spot over the selection, its cone just taking it in"
+msgstr "Un foco sobre la selección, con el cono justo abarcándola"
+
+msgid "A sun from the way the window looks, the same light everywhere"
+msgstr "Un sol desde donde mira la ventana, la misma luz en todas partes"
+
+msgid "A panel of light over the selection, its shadows soft"
+msgstr "Un panel de luz sobre la selección, de sombras suaves"
+
+msgid "Bulb"
+msgstr "Bombilla"
+
+msgid "Spot"
+msgstr "Foco"
+
+msgid "Sun"
+msgstr "Sol"
+
+msgid "Light panel"
+msgstr "Panel de luz"
+
+msgid "No lights yet"
+msgstr "Aún no hay luces"
+
+msgid "This model is shared to look at: its lights are drawn, not changed."
+msgstr "Este modelo se comparte para verlo: sus luces se dibujan, no se cambian."
+
+msgid "Lights the model keeps, drawn in every quality: Add sets one over the selection, or over the model when nothing is selected."
+msgstr "Luces que el modelo guarda, dibujadas en cualquier calidad: Añadir pone una sobre la selección, o sobre el modelo cuando no hay nada seleccionado."
+
+msgid "A model keeps at most %d lights."
+msgstr "Un modelo guarda como mucho %d luces."
+
+msgid "In the Dark light these are all there is, with the plastics that glow."
+msgstr "Con «Oscuro», son la única luz, junto con los plásticos que brillan."
+
+msgid "Over the studio's light. Dark, in Light, puts the studio out and lights the plastics that glow."
+msgstr "Sobre la luz del estudio. «Oscuro», en Luz, apaga el estudio y hace brillar los plásticos que brillan."
+
+msgid "Added a light: the model keeps it, and every render draws it."
+msgstr "Luz añadida: el modelo la guarda y cada render la dibuja."
+
+msgid "Not now: %s"
+msgstr "Ahora no: %s"
+
+msgid "Not added: %s."
+msgstr "No añadida: %s."
+
+msgid "A model keeps at most %d suns."
+msgstr "Un modelo guarda como mucho %d soles."
+
+msgid "a model keeps at most %d lights"
+msgstr "un modelo guarda como mucho %d luces"
+
+msgid "a model keeps at most %d suns: with the studio's three lights and its sky that is eight, the most a renderer draws"
+msgstr "un modelo guarda como mucho %d soles: con las tres luces del estudio y su cielo son ocho, lo más que dibuja un motor de render"
+
+msgid "1 light line not read, kept in the file as it is"
+msgstr "1 línea de luz sin leer, guardada tal cual en el archivo"
+
+msgid "%d light lines not read, kept in the file as they are"
+msgstr "%d líneas de luz sin leer, guardadas tal cual en el archivo"
+
+msgid "not a light's words"
+msgstr "no son las palabras de una luz"
+
+msgid "past the first %d light lines, which are all that are read"
+msgstr "pasadas las primeras %d líneas de luz, las únicas que se leen"
+
+msgid "of a kind there is not (spot, point, directional or area)"
+msgstr "de un tipo que no existe (spot, point, directional o area)"
+
+msgid "its at and aim are not three numbers each, aim not all 0"
+msgstr "su at y su aim no son tres números cada uno, aim no todo 0"
+
+msgid "its colour is not #rrggbb"
+msgstr "su color no es #rrggbb"
+
+msgid "its strength is not above 0 (0.001 at least, as a file keeps it) to %d"
+msgstr "su intensidad no está por encima de 0 (0,001 como mínimo, como la guarda un archivo) hasta %d"
+
+msgid "its size is not 0 to 4000 LDU (a panel's above 0: 0.001 at least, as a file keeps it)"
+msgstr "su tamaño no está entre 0 y 4000 LDU (el de un panel por encima de 0: 0,001 como mínimo, como lo guarda un archivo)"
+
+msgid "its cone is not %d to %d degrees"
+msgstr "su cono no está entre %d y %d grados"
 
 # A link that opens playing one of the model's motions (playlink, APP_UX5 10): the
 # share panel's Opens, and the viewer's pill while it plays or when the link's motion is not there.
@@ -12637,3 +12776,256 @@ msgstr "%s: una pieza se toma en la mano en su color, un subconjunto se sostiene
 
 msgid "Right-click a part to keep it in Favourites too"
 msgstr "Haz clic derecho en una pieza para guardarla también en Favoritas"
+
+# A mosaic cropped and coloured the person's way (APP_UX6 #10, mosaic2): Crop and Whole
+# picture over the picture, Colours (all, a set's, what I own), Mixed plate sizes, and the line under it.
+
+msgid "Colours"
+msgstr "Colores"
+
+msgid "All colours"
+msgstr "Todos los colores"
+
+msgid "A set's colours"
+msgstr "Los colores de un set"
+
+msgid "Set number"
+msgstr "Número de set"
+
+msgid "Crop"
+msgstr "Recortar"
+
+msgid "Whole picture"
+msgstr "Imagen completa"
+
+msgid "Mixed plate sizes"
+msgstr "Placas de varios tamaños"
+
+msgid "Drag on the picture to choose the part of it to build"
+msgstr "Arrastra sobre la imagen para elegir la parte que se construye"
+
+msgid "Build all of the picture again"
+msgstr "Volver a construir toda la imagen"
+
+msgid "The colours it is laid in: every stud is one of them"
+msgstr "Los colores en que se coloca: cada espiga es de uno de ellos"
+
+msgid "Every colour the parts are made in"
+msgstr "Todos los colores en que se fabrican las piezas"
+
+msgid "The colours of a set's parts: type its number"
+msgstr "Los colores de las piezas de un set: escribe su número"
+
+msgid "The colours you own its parts in, from My collection"
+msgstr "Los colores en que tienes sus piezas, según Mi colección"
+
+msgid "Add your parts or sets in My collection to build from what you own"
+msgstr "Añade tus piezas o sets en Mi colección para construir con lo que tienes"
+
+msgid "Plates, flat: a 1 × 1 a stud, or each run of one colour in larger plates"
+msgstr "Placas, planas: una 1 × 1 por espiga, o cada tramo de un color en placas más grandes"
+
+msgid "Each run of one colour in the largest plate it fills, up to 8 × 8: the same picture stud for stud, in far fewer parts to buy and lay. Off is a 1 × 1 a stud."
+msgstr "Cada tramo de un color en la placa más grande que llena, hasta 8 × 8: la misma imagen espiga a espiga, con muchas menos piezas que comprar y colocar. Desactivado, es una 1 × 1 por espiga."
+
+msgid "Type a set's number"
+msgstr "Escribe el número de un set"
+
+msgid "looking up %s…"
+msgstr "buscando %s…"
+
+msgid "no set %s is known"
+msgstr "no se conoce ningún set %s"
+
+msgid "%s “%s”: %d colours"
+msgstr "%s «%s»: %d colores"
+
+msgid "%s “%s”: 1 colour"
+msgstr "%s «%s»: 1 color"
+
+msgid "%d colours you own its parts in"
+msgstr "%d colores en que tienes sus piezas"
+
+msgid "1 colour you own its parts in"
+msgstr "1 color en que tienes sus piezas"
+
+msgid "%d × %d studs, %d × %d cm"
+msgstr "%d × %d espigas, %d × %d cm"
+
+msgid "working it out…"
+msgstr "calculando…"
+
+msgid "%s for its %s studs, in %s: %s"
+msgstr "%s para sus %s espigas, en %s: %s"
+
+msgid "you have %s of the %s"
+msgstr "tienes %s de las %s"
+
+msgid "no round or square tile is made in the colours chosen, so it is laid in the Art's own"
+msgstr "no se fabrica ninguna baldosa redonda ni cuadrada en los colores elegidos, así que se coloca en los propios del Art"
+
+msgid "no 1 × 1 plate is made in the colours chosen, so it is laid in all of them"
+msgstr "no se fabrica ninguna placa 1 × 1 en los colores elegidos, así que se coloca en todos"
+
+# The picture dialog's own words, none of them translated until mosaic2's
+# check of the words it shows read them (APP_UX6 #10, mosaic3).
+
+msgid "Build this picture"
+msgstr "Construir esta imagen"
+
+msgid "Brick Art"
+msgstr "Brick Art"
+
+msgid "Panels of round tiles, quarter circles, smooth tiles and raised relief, in the style of LEGO® Art sets"
+msgstr "Paneles de baldosas redondas, cuartos de círculo, baldosas lisas y relieve elevado, al estilo de los sets LEGO® Art"
+
+msgid "Classic"
+msgstr "Clásico"
+
+msgid "Blend colours"
+msgstr "Mezclar colores"
+
+msgid "Mix nearby plates to suggest a colour the palette does not have. Off gives flat bands."
+msgstr "Mezcla placas cercanas para sugerir un color que la paleta no tiene. Desactivado da franjas planas."
+
+msgid "Panels across"
+msgstr "Paneles de ancho"
+
+msgid "Panels down"
+msgstr "Paneles de alto"
+
+msgid "Depth"
+msgstr "Profundidad"
+
+msgid "How many plates what stands out from the background is raised. 0 is flat."
+msgstr "Cuántas placas se eleva lo que destaca del fondo. 0 es plano."
+
+msgid "flat"
+msgstr "plano"
+
+msgid "%d plate"
+msgstr "%d placa"
+
+msgid "Round texture"
+msgstr "Textura redonda"
+
+msgid "1 × 1 round tiles, and round plates for points of light"
+msgstr "Baldosas redondas 1 × 1, y placas redondas para los puntos de luz"
+
+msgid "Contour quarters"
+msgstr "Cuartos de círculo en contornos"
+
+msgid "Quarter-circle tiles turned along a curved edge"
+msgstr "Baldosas de cuarto de círculo giradas a lo largo de un borde curvo"
+
+msgid "Smooth tiles"
+msgstr "Baldosas lisas"
+
+msgid "Square tiles where it is flat, merged up to 2 × 4"
+msgstr "Baldosas cuadradas donde es plano, unidas hasta 2 × 4"
+
+msgid "Accent stars"
+msgstr "Estrellas de acento"
+
+msgid "Stars in trans-clear, glow-in-the-dark and metallic where the part is made so"
+msgstr "Estrellas en transparente, fosforescente y metalizado donde la pieza se fabrica así"
+
+msgid "Mix nearby elements to suggest a colour the palette does not have"
+msgstr "Mezcla elementos cercanos para sugerir un color que la paleta no tiene"
+
+msgid "Tell %s: raise the core, make the stars glow…"
+msgstr "Dile a %s: eleva el núcleo, haz que brillen las estrellas…"
+
+msgid "Design with %s"
+msgstr "Diseñar con %s"
+
+msgid "%s looks at the picture and plans it as a designer of LEGO® Art sets would — what stands out, the textures, the stars — with your key or your own Claude, as the assistant designs"
+msgstr "%s mira la imagen y la planifica como lo haría un diseñador de sets LEGO® Art — lo que destaca, las texturas, las estrellas — con tu clave o tu propio Claude, como diseña el asistente"
+
+msgid "%s looks at the picture and plans it as a designer of LEGO® Art sets would — what stands out, the textures, the stars — on your own key, as the assistant designs"
+msgstr "%s mira la imagen y la planifica como lo haría un diseñador de sets LEGO® Art — lo que destaca, las texturas, las estrellas — con tu propia clave, como diseña el asistente"
+
+msgid "%s round tiles"
+msgstr "%s baldosas redondas"
+
+msgid "1 round tile"
+msgstr "1 baldosa redonda"
+
+msgid "%s square tiles"
+msgstr "%s baldosas cuadradas"
+
+msgid "1 square tile"
+msgstr "1 baldosa cuadrada"
+
+msgid "%s larger tiles"
+msgstr "%s baldosas más grandes"
+
+msgid "1 larger tile"
+msgstr "1 baldosa más grande"
+
+msgid "%s relief plates"
+msgstr "%s placas de relieve"
+
+msgid "1 relief plate"
+msgstr "1 placa de relieve"
+
+msgid "%s cheese slopes"
+msgstr "%s tejas queso"
+
+msgid "1 cheese slope"
+msgstr "1 teja queso"
+
+msgid "%s joining plates"
+msgstr "%s placas de unión"
+
+msgid "1 joining plate"
+msgstr "1 placa de unión"
+
+msgid "%s quarter circles"
+msgstr "%s cuartos de círculo"
+
+msgid "1 quarter circle"
+msgstr "1 cuarto de círculo"
+
+msgid "%s round plates"
+msgstr "%s placas redondas"
+
+msgid "1 round plate"
+msgstr "1 placa redonda"
+
+msgid "%s 16 × 16 panels"
+msgstr "%s paneles 16 × 16"
+
+msgid "1 16 × 16 panel"
+msgstr "1 panel 16 × 16"
+
+msgid "%s stars"
+msgstr "%s estrellas"
+
+msgid "1 star"
+msgstr "1 estrella"
+
+msgid "%s large stars"
+msgstr "%s estrellas grandes"
+
+# A wedge plate's far corner cut flat (makepart3, APP_UX7 #16): the maker's checkbox, its
+# tooltip and what the dialog says of the part.
+
+msgid "Far corner cut flat"
+msgstr "Esquina trasera cortada en recto"
+
+msgid "As LEGO® wedge plates such as 54383 and 41770b are: the sharp corner the cut ends in, cut off 1.2 mm along"
+msgstr "Como en las placas en cuña LEGO® como 54383 y 41770b: la esquina aguda en que acaba el lado cortado, cortada a lo largo de 1,2 mm"
+
+msgid "Its far corner is cut flat."
+msgstr "Su esquina trasera está cortada en recto."
+msgid "1 large star"
+msgstr "1 estrella grande"
+# The parts bin's New shelf, the parts first made in the catalogue's latest two
+# years (APP_UX7 #5, binrow).
+
+msgid "The parts first made in %d or %d, the newest first"
+msgstr "Las piezas fabricadas por primera vez en %d o %d, las más recientes primero"
+
+msgid "%s first made in %d or %d, the newest first"
+msgstr "%s fabricadas por primera vez en %d o %d, las más recientes primero"

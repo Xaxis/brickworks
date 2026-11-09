@@ -17,7 +17,7 @@
 ##   Replace with the part in hand, the stud grid, Check stability (the
 ##   same words), Simulate, Motions, the reference picture and Instructions
 ##   (the booklet's Save dialog, cancelled);
-## - typed into the parts' search, none of them runs anything;
+## - typed into the parts' search, each still does what its row does;
 ## - the keys sheet (F1) lists each with its words, and Replace set there
 ##   to Alt-W is done by Alt-W.
 ##
@@ -105,7 +105,7 @@ func _run() -> void:
 		await _menus(table)
 		await _model()
 		await _keys_do_what_rows_do(table)
-		await _not_while_typing()
+		await _from_the_search()
 		await _sheet_lists_them(table)
 	Keymap.use("brickworks")
 	Keymap.reset()
@@ -424,38 +424,39 @@ func _keys_do_what_rows_do(table: Dictionary) -> void:
 
 # -- typed into a field ----------------------------------------------------------
 
-func _not_while_typing() -> void:
-	print("\n  typed into the parts' search, the keys run nothing")
-	_select([_a, _c])
+## From the parts' search, each key does what it does from the model: a field
+## keeps only the keys it types with (Main._unhandled_key_input, APP_UX7 #4).
+## typingkeys_probe has the letters typed there running nothing.
+func _from_the_search() -> void:
+	print("\n  typed into the parts' search, each key still does what its row does")
+	Keymap.use("brickworks")
 	var bin: PartsBin = _main.get("_bin")
-	bin.focus_search()
-	await _frames(6)
-	var field: Control = root.gui_get_focus_owner()
-	_check("the parts' search has the keys (%s)" % field, field is LineEdit)
-	var grid_was: bool = _shell.grid.visible
+	var cases: Dictionary = _cases()
+	var missed: Array = []
 	for name: String in ["select_none", "select_find", "reference", "pose", "simulate", "instructions",
 			"grid"]:
+		var case: Array = cases[name]
+		await case[0].call()
+		await _frames(4)
+		var before: Variant = null
+		if name == "grid":
+			before = await case[1].call()
+		bin.focus_search()
+		await _frames(6)
+		var field: Control = root.gui_get_focus_owner()
+		if not field is LineEdit:
+			missed.append("%s (the search had not the keys: %s)" % [Keymap.listed(name), field])
+			await case[2].call()
+			continue
 		await _press(Keymap.key_of(name))
-	await _frames(20)
-	var ran: Array = []
-	if _builder.selection.size() != 2:
-		ran.append("Select nothing")
-	var list: Variant = _main.get("_inventory_made")
-	if list != null and (list as Control).visible:
-		ran.append("Find")
-	if ((_main.get("_reference") as ReferenceImage).get("_dialog") as Window).visible:
-		ran.append("the reference picture")
-	if _panel_up("_pose_made"):
-		ran.append("Motions")
-	if _panel_up("_simulate_made"):
-		ran.append("Simulate")
-	if SaveTo.showing != null:
-		ran.append("Instructions")
-	if _shell.grid.visible != grid_was:
-		ran.append("the grid")
-	_check("Ctrl-shift-A, Ctrl-F, alt-N, alt-O, alt-U, alt-B and alt-G ran nothing%s, and the search kept the keys"
-		% ("" if ran.is_empty() else ": " + ", ".join(ran)),
-		ran.is_empty() and root.gui_get_focus_owner() == field)
+		var seen: Variant = await case[1].call()
+		if not case[3].call(seen) or (name == "grid" and seen == before):
+			missed.append("%s (%s)" % [Keymap.listed(name), str(seen)])
+		await case[2].call()
+		await _frames(6)
+		root.gui_release_focus()
+	_check("Ctrl-shift-A, Ctrl-F, alt-N, alt-O, alt-U, alt-B and alt-G from the search, 1 press each%s"
+		% ("" if missed.is_empty() else ": not " + ", ".join(missed)), missed.is_empty())
 	root.gui_release_focus()
 	_builder.clear_selection()
 
