@@ -34,7 +34,8 @@
 ## goes: shots/element_clip.png. With -- only=copies, only that. And
 ## APP_UX7 #16's: a 3 x 6 wedge plate with "Far corner cut flat" clicked,
 ## its dialog kept as shots/element_chamfer_dialog.png, beside 54383, the
-## part it copies, in element_clip.png.
+## part it copies, in element_clip.png, and the two from overhead, their
+## corners cut flat: shots/element_chamfer.png.
 ##
 ## A window is needed because the preview and the thumbnails are drawn by
 ## SubViewports. Run it on Xvfb, never on somebody's screen (tools/check.sh
@@ -401,6 +402,13 @@ func _copies(button: Button, dialog: ElementDialog, library: PartLibrary,
 		if ids.is_empty():
 			_save("element_clip_dialog.png")
 		if entry.size() > 5:
+			# The sentence under the preview grew a line and the controls'
+			# room shrank under the box; scrolled to it again, as a person
+			# would to see it ticked.
+			(dialog.get("_scroll") as ScrollContainer).ensure_control_visible(chamfer)
+			for _n: int in 3:
+				await process_frame
+			await RenderingServer.frame_post_draw
 			_save("element_chamfer_dialog.png")
 		var made: Array = []
 		dialog.made.connect(func(id: String) -> void: made.append(id), CONNECT_ONE_SHOT)
@@ -478,6 +486,21 @@ func _copies(button: Button, dialog: ElementDialog, library: PartLibrary,
 	builder.hide_preview()
 	await RenderingServer.frame_post_draw
 	_save("element_clip.png")
+
+	# The two 3 x 6 wedge plates from nearly overhead, the made one and
+	# 54383, so their far corners, cut flat, can be seen to be the same.
+	var pair := AABB()
+	for brick_id: int in placed.slice(placed.size() - 3, placed.size() - 1):
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		var bounds: AABB = brick.transform * library.mesh_for(brick.part_id).bounds
+		pair = bounds if pair.size == Vector3.ZERO else pair.merge(bounds)
+	camera.set("_target_yaw", deg_to_rad(0.0))
+	camera.set("_target_pitch", deg_to_rad(70.0))
+	camera.frame(pair, 0.8)
+	for _n: int in 180:
+		await process_frame
+	await RenderingServer.frame_post_draw
+	_save("element_chamfer.png")
 
 
 ## Take [param part_id] as a click on its tile takes it, move the pointer
