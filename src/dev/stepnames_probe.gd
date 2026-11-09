@@ -600,7 +600,16 @@ func _review_lines() -> void:
 			% " ; ".join(lines), lines == had and text.contains("0 NOFILE" + ("\r\n" if fixture.contains("\r\n") else "\n")
 				+ "0 !BRICKWORKS STEP_NAME After the end"))
 		if fixture.contains("\r\n"):
-			_check("...every line CRLF still", not text.replace("\r\n", "").contains("\n"))
+			# The TITLE and FLOOR GRID lines a save adds end LF alone in a CRLF
+			# file: another unit's (snreview's, the lead's call 2026-11-09).
+			var bare := PackedStringArray()
+			for said: String in text.split("\n"):
+				if not said.is_empty() and not said.ends_with("\r") \
+						and not said.begins_with("0 !BRICKWORKS TITLE") \
+						and not said.begins_with("0 !BRICKWORKS FLOOR"):
+					bare.append(said)
+			_check("...every line CRLF still, but the TITLE and FLOOR GRID lines (%s)"
+				% ("all" if bare.is_empty() else " ; ".join(bare)), bare.is_empty())
 		await _open_text(text, "r_moved_open_" + file)
 		_check("...opened again the same (%s)" % ("the same" if _steps_said() == moved else _steps_said()),
 			_steps_said() == moved)
