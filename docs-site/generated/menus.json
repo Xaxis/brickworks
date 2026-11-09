@@ -158,16 +158,22 @@
 					"tip": "The last 20 saves of this model, to open one again or compare it with"
 				},
 				{
-					"name": "compare",
-					"words": "Compare with…",
-					"key": "",
-					"tip": "What changed since one of this model's saves: added green, removed red, moved amber"
-				},
-				{
-					"name": "compare_sets",
-					"words": "Compare two sets or models…",
-					"key": "",
-					"tip": "The parts a set, a saved model or this one shares with another, the parts in only one, and what to buy to build one from the other"
+					"submenu": "compares",
+					"words": "Compare",
+					"items": [
+						{
+							"name": "compare",
+							"words": "Compare with…",
+							"key": "",
+							"tip": "What changed since one of this model's saves: added green, removed red, moved amber"
+						},
+						{
+							"name": "compare_sets",
+							"words": "Compare two sets or models…",
+							"key": "",
+							"tip": "The parts a set, a saved model or this one shares with another, the parts in only one, and what to buy to build one from the other"
+						}
+					]
 				},
 				{
 					"line": true

@@ -63,7 +63,7 @@ The choice is saved with the model, so opening it brings the set's parts back to
 
 ## Compare two sets or models {#compare-sets}
 
-**File › Compare two sets or models…** puts any two side by side: a set, by the number on its box (*7140*), a model you saved or an example, or the model open now. Choose them as **A**, what you have, and **B**, what you want to build, and choose **Compare**.
+**File › Compare › Compare two sets or models…** puts any two side by side: a set, by the number on its box (*7140*), a model you saved or an example, or the model open now. Choose them as **A**, what you have, and **B**, what you want to build, and choose **Compare**.
 
 Three tabs list the parts by part and colour, each with its picture: **In both**, **Only in A** and **Only in B**. Each piece is counted once, so the tabs add up to each side's pieces. A piece of B that A has in another moulding of the same part, such as 3794a for 3794b, counts as in both and says so. A set's spare parts are not counted, and nor are the open model's stickers and parts you made yourself, since no shop sells them on their own.
 

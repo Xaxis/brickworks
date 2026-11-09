@@ -92,7 +92,7 @@ var versions: Window:
 			_make_versions()
 		return _versions
 var _versions: Window = null
-## Compare with a save, from Versions… or File, Compare with…:
+## Compare with a save, from Versions… or File, Compare, Compare with…:
 ## src/ui/compare_view.gd.
 var compare: Control:
 	get:
@@ -196,12 +196,14 @@ const ALT := KEY_MASK_ALT
 ## do I need? beside the parts list. Then Build › Booklet page reached 27
 ## rows with Page setup…, and View 482 of 470 units with Stud map, so the
 ## step's turns, tilts and zoom went into Booklet page's own Step's view,
-## and the five panels into View › Panels (menurows).
+## and the five panels into View › Panels (menurows). Then File was 482 of
+## 470 units with Compare two sets or models…, so the two compares, each
+## used now and then, went into File › Compare beside Versions… (subexport).
 const MENUS: Array = [
 	["File", ["new", "new_window", "open", "library", "collection", "collection_build", ">recent",
-		">import", "-", "save", "save_as", "versions", "compare",
-		# comparesets (APP_UX6 #7): any two of a set, a saved model or the open one.
-		"compare_sets",
+		">import", "-", "save", "save_as", "versions",
+		# subexport: Compare with… and Compare two sets or models… (APP_UX6 #7).
+		">compares",
 		"-", "share", "together",
 		"comments", ">export", "render", "render_queue", "-", "clear", "quit"]],
 	["Edit", ["undo", "redo", ">history", "-", "cut_parts", "copy", "paste", "duplicate",
@@ -304,6 +306,8 @@ const SUBMENUS: Dictionary = {
 		"floor_grid", "floor_none", "-", "floor_part", "floor_default"],
 	# edges (APP_UX6 #19): View › Edges and studs.
 	"edges_studs": ["edges", "studs"],
+	# subexport: File › Compare, a save's changes and two sets' parts.
+	"compares": ["compare", "compare_sets"],
 	"floor_colour": ["floor_colour_2", "floor_colour_10", "floor_colour_288",
 		"floor_colour_19", "floor_colour_28", "floor_colour_71", "floor_colour_72",
 		"floor_colour_378", "floor_colour_1", "floor_colour_15", "floor_colour_0",
@@ -317,7 +321,9 @@ const SUBMENU_WORDS: Dictionary = {"recent": "Open recent", "import": "Import",
 	"steps": "Build steps", "booklet": "Booklet page", "booklet_view": "Step's view",
 	"floor": "Floor", "floor_colour": "Baseplate colour",
 	# edges (APP_UX6 #19).
-	"edges_studs": "Edges and studs"}
+	"edges_studs": "Edges and studs",
+	# subexport.
+	"compares": "Compare"}
 
 
 ## Everything put on screen: the menus into the bar, the toolbar under it,

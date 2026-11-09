@@ -4618,7 +4618,7 @@
       "id": "ui:compare two sets or models",
       "kind": "ui",
       "entry": "src/ui/compare_view.gd",
-      "reach": "tools/probe.sh comparesets_probe -- --shots=DIR   (File, Compare two sets or models\u2026: A and B each a set by its number, a saved model or the model open now; In both, Only in A and Only in B by part and colour, adding up to each side's pieces; Swap; the list to buy to build B from A to BrickLink, Rebrickable or LEGO\u00ae Pick a Brick)",
+      "reach": "tools/probe.sh comparesets_probe -- --shots=DIR   (File, Compare, Compare two sets or models\u2026: A and B each a set by its number, a saved model or the model open now; In both, Only in A and Only in B by part and colour, adding up to each side's pieces; Swap; the list to buy to build B from A to BrickLink, Rebrickable or LEGO\u00ae Pick a Brick)",
       "area": "collection",
       "tests": []
     },
@@ -4626,7 +4626,7 @@
       "id": "ui:compare with a save",
       "kind": "ui",
       "entry": "src/ui/compare_view.gd",
-      "reach": "tools/probe.sh compare_probe   (File, Compare with\u2026, or Compare on a row of Versions\u2026: added green, removed a red ghost, moved or turned amber with a faint ghost, recoloured violet, the rest faded; the panel's counts, Previous and Next; Esc or Close puts the view back)",
+      "reach": "tools/probe.sh compare_probe   (File, Compare, Compare with\u2026, or Compare on a row of Versions\u2026: added green, removed a red ghost, moved or turned amber with a faint ghost, recoloured violet, the rest faded; the panel's counts, Previous and Next; Esc or Close puts the view back)",
       "area": "model-io",
       "tests": []
     },

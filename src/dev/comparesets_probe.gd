@@ -143,13 +143,11 @@ func _sets_in_window() -> void:
 	print("     the inventories: 7140-1 %s, %d pieces; 9493-1 %s, %d pieces; %d share part and colour as listed"
 		% [a_record.get("n", "?"), a_pieces, b_record.get("n", "?"), b_pieces, shared])
 	_check("both sets are in the inventories", a_pieces > 0 and b_pieces > 0)
-	var file_rows: Array = []
-	for row: Variant in Shell.MENUS:
-		if str(row[0]) == "File":
-			file_rows = row[1]
-	_check("File lists it after Compare with… (%s)" % ", ".join(file_rows.slice(
-		maxi(0, file_rows.find("compare") - 1), file_rows.find("compare") + 3)),
-		file_rows.has("compare_sets") and file_rows.find("compare_sets") == file_rows.find("compare") + 1)
+	# File › Compare holds both compares (subexport).
+	var compare_rows: Array = Shell.SUBMENUS.get("compares", [])
+	_check("File › Compare lists it after Compare with… (%s)" % Keymap.menu_row("compare_sets"),
+		compare_rows == ["compare", "compare_sets"]
+		and Keymap.menu_row("compare_sets") == "File › Compare › Compare two sets or models…")
 	var command: Shell.Command = _shell.command("compare_sets")
 	_check("its row reads \"%s\"" % (command.words if command != null else "(none)"),
 		command != null and command.words == "Compare two sets or models…")

@@ -10,8 +10,8 @@
 ##   fewer, and each of the menus along the top opens no taller than 60% of
 ##   the window, measured as palette_probe measures Edit; no command is in
 ##   two of them; a step's turns and zoom are in Build › Booklet page ›
-##   Step's view, pictured open beside Booklet page, and the panels in
-##   View › Panels;
+##   Step's view, pictured open beside Booklet page, the panels in
+##   View › Panels, and the two compares in File › Compare;
 ## - Shift-2 paints three selected parts the second favourite in one key,
 ##   one undo takes it back; Ctrl-Shift-1 paints them the model's most used
 ##   colour; a browser's Shift-2 (") and a UK keyboard's Shift-2 (@'s key
@@ -160,6 +160,14 @@ func _menus() -> void:
 		Keymap.menu_row("panel_keys")], ["panel_parts", "panel_assistant", "panel_properties",
 		"panel_outliner", "panel_keys"].all(func(named: String) -> bool:
 			return Keymap.menu_row(named).begins_with("View › Panels › ")))
+	# subexport: File fits with both compares in File › Compare, still run
+	# by their own names.
+	_check("the compares are in File › Compare (%s, %s), each still run by its name"
+		% [Keymap.menu_row("compare"), Keymap.menu_row("compare_sets")],
+		Keymap.menu_row("compare") == "File › Compare › Compare with…"
+		and Keymap.menu_row("compare_sets") == "File › Compare › Compare two sets or models…"
+		and _shell.menu_id("compare") >= 0 and _shell.menu_id("compare_sets") >= 0
+		and _shell.command("compare_sets") != null)
 	await _fold_shots()
 	# The Viewpoint submenu's rows run: From the front turns the view.
 	var view: PopupMenu = _shell.menu("View").get_popup()

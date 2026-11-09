@@ -104,7 +104,7 @@ const COMMANDS: Dictionary = {
 	# savedviews: View › Viewpoint › Render each saved view is render_queue's
 	# add view=NAME, a view at a time.
 	"render_views": "render_queue",
-	# comparesets (APP_UX6 #7): File, Compare two sets or models… is
+	# comparesets (APP_UX6 #7): File, Compare, Compare two sets or models… is
 	# parts_list which="compare".
 	"compare_sets": "parts_list",
 	# mcpsee3: View › Viewpoint › Save this view… (SavedViews.save_now).
@@ -249,7 +249,7 @@ opens one. Over changes not saved it is refused unless discard_changes=true, \
 and undo brings back what it replaced. Each save is kept, the \
 last 20: name= with versions=true lists a model's, version=N opens one; \
 versions=true with version=N opens nothing and says what changed since that \
-save, part by part, as File, Compare with… draws it. \
+save, part by part, as File, Compare, Compare with… draws it. \
 link= opens a copy of a gallery model, as Open in Brickworks does; \
 library= opens LDraw's model of a real set (gallery library=true finds them).
  - parts_list: the model's parts by part and colour with element ids; \
@@ -835,7 +835,7 @@ func definitions() -> Array:
 				+ "saved models, the examples and the official models of real sets, ranked by "
 				+ "how much of each they own. "
 				# comparesets (APP_UX6 #7): Rebrickable's set compare.
-				+ "which=\"compare\" is File, Compare two sets or models…: a= and b= each a "
+				+ "which=\"compare\" is File, Compare, Compare two sets or models…: a= and b= each a "
 				+ "set number (\"7140\"), a saved model's or an example's name, or \"open\" for "
 				+ "the model open now; it says the parts in both and in only one, by part and "
 				+ "colour, each side's pieces counted once, and what to buy to build b from a. "
@@ -3270,7 +3270,7 @@ func _open(input: Dictionary) -> String:
 
 
 ## open_model versions=true version=N: what changed in the model open now
-## since its save [param version] of [param kept], as File, Compare with…
+## since its save [param version] of [param kept], as File, Compare, Compare with…
 ## matches it (ModelDiff), and inside the sub-assembly the person is editing
 ## when they are; opening nothing and drawing nothing.
 func _compare(chosen: ModelStore.Entry, kept: Array[ModelVersions.Version], version: int) -> String:
@@ -3292,7 +3292,7 @@ func _compare(chosen: ModelStore.Entry, kept: Array[ModelVersions.Version], vers
 		ModelDiff.parts_of_world(app.get("_world"), store.scenery, store.lift(), store.awaited,
 			inside))
 	return CompareView.said_of(diff, kept[version - 1], inside, library) \
-		+ "\nNothing was opened or changed. File, Compare with… shows the person the same."
+		+ "\nNothing was opened or changed. File, Compare, Compare with… shows the person the same."
 
 
 ## Why an open is refused: the person's changes would go, and a session
@@ -3572,7 +3572,7 @@ func _parts_list(input: Dictionary) -> String:
 # -- comparesets: two sets' or models' parts (APP_UX6 #7) ---------------------------
 
 
-## parts_list which="compare": a= against b=, as File, Compare two sets or
+## parts_list which="compare": a= against b=, as File, Compare, Compare two sets or
 ## models… shows them (PartsCompare), and with shop= the list to buy to build
 ## b from a written for that shop by the parts list's own writers.
 func _parts_compare(input: Dictionary) -> String:
