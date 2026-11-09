@@ -17,13 +17,19 @@
 ## what is chosen as its words: that is its value, and its name is what it
 ## chooses, so a choice needs a name of its own ("Fill: Plates").
 ##
-## Each control is read in English, then the app is put in German as
-## Settings puts it (Language.apply) and it is read again: a name Godot
-## says untranslated where the words have German (a button's tooltip,
-## which the engine reads as it is) is no name in German, nor is one with
-## no German at all ("How many" where the file has no entry) unless it is
-## a name (a part's, a model's) or a number. A dialog made in one language
-## is read in the other as it stands.
+## Each control is read in English and in German: as Language.apply("de")
+## puts German in the TranslationServer, its words (Language.Words) read
+## through as Godot reads them, a name through tr() and a button's words
+## and a field's placeholder through atr(), without putting the window in
+## German each time (the whole window is laid out again then, 2 s a time,
+## 400 s a run). A button with neither words nor a name Godot reads by its
+## tooltip as it is, in English, though the app has the German: that is
+## no name in German. Nor is a name a screen reader alone hears (an
+## accessibility_name) with no German at all, unless it is a name of
+## something (a part's, a colour's, a model's, an address); words drawn on
+## screen are the languages probe's to check. At the end the window is put
+## in German as Settings puts it, and the launch, My collection and
+## Settings are read again through the engine itself.
 ##
 ## Through the way in, as a person comes: the sign-in screen up over the
 ## app (gate_for_probe), walked, then a throwaway account signed in (made
@@ -62,8 +68,12 @@ var _seen: Dictionary = {}
 var _walked: PackedStringArray = []
 ## Windows already popped up and walked, by instance id.
 var _windows_walked: Dictionary = {}
-## How long the language took to change, in all.
-var _switch_ms: int = 0
+## The app's German, as Language.apply("de") makes it.
+var _de: Translation
+## Every LDraw colour's name, in English: a colour is said by its name.
+var _colours: Dictionary = {}
+## Whether the window is in German now, for the last walks.
+var _in_german: bool = false
 
 
 func _initialize() -> void:
@@ -105,11 +115,19 @@ func _run() -> void:
 		playback.stop()
 	_shell = _main.get("_shell")
 	_bin = _main.get("_bin")
+	var words: Language.Words = Language.Words.new(load("res://locale/de.po") as Translation)
+	words.locale = "de"
+	words.capitals = "de" in Language.CAPITALISED
+	words.thousands = str(Language.THOUSANDS["de"])
+	_de = words
 	if not await _way_in():
 		await _finish()
 		return
 	var store: ModelStore = _main.get("_store")
 	store.keeps = false
+	var library: PartLibrary = _main.get("_library")
+	for code: int in library.colors:
+		_colours[(library.colors[code] as PartLibrary.BrickColor).name] = true
 	_main.call("clear_model")
 	await _frames(6)
 	_walk_all("launch")
@@ -162,9 +180,20 @@ func _run() -> void:
 		await _by_hand()
 		await _everything_else()
 
+	# Then the window in German, as Settings puts it, and read again through
+	# the engine: the launch, My collection, Settings.
+	if all:
+		Language.choose("de")
+		_in_german = true
+		await _frames(12)
+		_walk_all("launch, in German")
+		for name: String in ["collection", "settings"]:
+			await _open_and_walk(name)
+		Language.choose("en")
+		_in_german = false
+		await _frames(6)
+
 	print("a11y names probe: walked %d: %s" % [_walked.size(), ", ".join(_walked)])
-	print("a11y names probe: the language changed %d times, %d ms in all"
-		% [_walked.size() * 2, _switch_ms])
 	_say_unnamed("have no name", _unnamed)
 	_say_unnamed("have no name in German", _unnamed_de)
 	_check("every control a person can operate has a name (%d of %d have none)"
@@ -456,40 +485,15 @@ func _gather_shown(node: Node, out: Dictionary, depth: int) -> void:
 		_gather_shown(child, out, depth + 1)
 
 
-## Every operable control in sight read in English, then in German.
+## Every operable control in sight read in English and in German, or in
+## German alone through the engine once the window is in German.
 func _walk_all(when: String) -> void:
 	_walked.append(when)
-	var found: Array[Control] = []
-	_walk(root, when, found)
+	_walk(root, when)
 	_read_menus(root, when)
-	var started: int = Time.get_ticks_msec()
-	Language.apply("de")
-	for control: Control in found:
-		if not is_instance_valid(control):
-			continue
-		var id: int = control.get_instance_id()
-		if _unnamed.has(id) or _unnamed_de.has(id):
-			continue
-		var english: String = str(control.get_meta(&"_a11y_names_en", ""))
-		var german: String = spoken(control).strip_edges()
-		var why: String = ""
-		if german.is_empty():
-			why = "none"
-		elif german == english and _has_words(english):
-			if not Language.says(english).is_empty():
-				why = "said in English: “%s”" % english.left(60)
-			elif not _a_name(english):
-				why = "no German for “%s”" % english.left(60)
-		if not why.is_empty():
-			_unnamed_de[id] = "%s  %s  [%s]  %s" % [when, control.get_class(), _where(control), why]
-	Language.apply("en")
-	for control: Control in found:
-		if is_instance_valid(control):
-			control.remove_meta(&"_a11y_names_en")
-	_switch_ms += Time.get_ticks_msec() - started
 
 
-func _walk(node: Node, when: String, found: Array[Control]) -> void:
+func _walk(node: Node, when: String) -> void:
 	if node is Window and node != root and not (node as Window).visible:
 		return
 	if node is CanvasItem and not (node as CanvasItem).visible:
@@ -497,18 +501,50 @@ func _walk(node: Node, when: String, found: Array[Control]) -> void:
 	if node is Control:
 		var control: Control = node
 		if _operable(control) and control.size.x >= 1.0 and control.size.y >= 1.0:
-			var id: int = control.get_instance_id()
-			_seen[id] = true
-			var english: String = spoken(control).strip_edges()
-			if english.is_empty():
-				if not _unnamed.has(id):
-					_unnamed[id] = "%s  %s  [%s]  %s" % [when, control.get_class(),
-						_where(control), control.tooltip_text.get_slice("\n", 0).left(50)]
-			else:
-				control.set_meta(&"_a11y_names_en", english)
-				found.append(control)
+			_judge(control, when)
 	for child: Node in node.get_children(true):
-		_walk(child, when, found)
+		_walk(child, when)
+
+
+func _judge(control: Control, when: String) -> void:
+	var id: int = control.get_instance_id()
+	_seen[id] = true
+	var line: String = "%s  %s  [%s]  " % [when, control.get_class(), _where(control)]
+	if not _in_german:
+		var english: String = spoken(control).strip_edges()
+		if english.is_empty():
+			if not _unnamed.has(id):
+				_unnamed[id] = line + control.tooltip_text.get_slice("\n", 0).left(50)
+			return
+	if _unnamed_de.has(id):
+		return
+	var why: String = _no_german(control)
+	if not why.is_empty():
+		_unnamed_de[id] = line + why
+
+
+## Why [param control] has no name a screen reader says in German, or "".
+func _no_german(control: Control) -> String:
+	var german: String = (spoken(control) if _in_german else spoken(control, _german)).strip_edges()
+	if german.is_empty():
+		return "none"
+	var tip: String = control.tooltip_text.strip_edges()
+	if _by_tooltip(control) and not _german(tip).is_empty() and _german(tip) != tip:
+		return "said in English: “%s”, its tooltip, which Godot reads as it is" % tip.left(60)
+	# A name a screen reader alone hears, as it was set: read so while the
+	# window is in English.
+	var given: String = _given(control) if not _in_german else ""
+	if _has_words(given) and not _a_name(given):
+		if String(_de.call(&"find", given)).is_empty():
+			return "no German for “%s”" % given.left(60)
+	return ""
+
+
+## [param text] as the app's German says it, or as it is where it has none
+## (tr()'s way).
+func _german(text: String) -> String:
+	var said: String = String(_de.call(&"find", text))
+	return said if not said.is_empty() else text
 
 
 ## Every item of every menu in the tree, open or not.
@@ -531,12 +567,14 @@ static func _has_words(text: String) -> bool:
 	return RegEx.create_from_string(r"\p{L}{2,}").search(text) != null
 
 
-## A name kept as it is in every language: a model's or one a person gave
-## (Language.keep_name), a number, an address, a file. What the interface
-## writes itself has an entry, and a part's name its German (PartWords).
-static func _a_name(text: String) -> bool:
-	return Language._is_kept_name(text) or text.begins_with("“") or text.contains("@") \
-		or text.contains("://") or RegEx.create_from_string(r"\.[a-z0-9]{2,4}$").search(text) != null
+## A name kept as it is in every language: a part's (its number after it,
+## "Brick 2 x 4 with Car Grille Pattern, 3001p11"), a colour's, a model's
+## or one a person gave (Language.keep_name), an address, a file, a
+## number. What the interface writes itself has an entry.
+func _a_name(text: String) -> bool:
+	return _colours.has(text) or Language._is_kept_name(text) or text.begins_with("“") \
+		or text.contains("@") or text.contains("://") \
+		or RegEx.create_from_string(r", [0-9]+[a-z0-9]*$|\.[a-z0-9]{2,4}$|^[\w.-]+\.[a-z]{2,}/").search(text) != null
 
 
 ## What a person can press, type in or choose from, or what takes the
@@ -546,6 +584,10 @@ static func _a_name(text: String) -> bool:
 ## labels, FOCUS_ACCESSIBILITY) is read as what it says.
 static func _operable(control: Control) -> bool:
 	if control is ScrollBar:
+		return false
+	# A menu's rows are said each by its words, read below (_read_menus);
+	# the engine's control that draws them is the menu itself.
+	if control.get_class() == "PopupMenuItems":
 		return false
 	# A spin box's field is said by the spin box's name.
 	if control is LineEdit and control.get_parent() is SpinBox:
@@ -566,30 +608,41 @@ static func _operable(control: Control) -> bool:
 ## line_edit.cpp, text_edit.cpp): accessibility_name through tr(), a
 ## button's words and a field's placeholder through atr(), a button's
 ## tooltip as it is. But a tooltip of more than one line is help, not a
-## name; and a choice's words are its value, not its name.
-static func spoken(control: Control) -> String:
+## name; and a choice's words are its value, not its name. With
+## [param say], the words are said through it instead of the engine's
+## translation (a language other than the window's).
+static func spoken(control: Control, say: Callable = Callable()) -> String:
+	# Through the engine's tr() as the property reads it: as it was set
+	# while the window is in English, where [param say] says it.
 	var given: String = control.accessibility_name
+	if say.is_valid() and not given.is_empty():
+		given = str(say.call(given))
 	if given.is_empty() and not control.accessibility_labeled_by_nodes.is_empty():
 		var labels: PackedStringArray = []
 		for path: NodePath in control.accessibility_labeled_by_nodes:
 			var label: Node = control.get_node_or_null(path)
 			if label is Label:
-				labels.append(label.atr((label as Label).text))
+				var words: String = (label as Label).text
+				labels.append(str(say.call(words)) if say.is_valid() else label.atr(words))
 		given = " ".join(labels)
+	var drawn := func(words: String) -> String:
+		if words.is_empty() or not control.can_auto_translate():
+			return words
+		return control.atr(words) if not say.is_valid() else str(say.call(words))
 	if control is OptionButton:
 		return given
 	if control is Button or control is LinkButton:
-		var words: String = control.atr(str(control.get("text")))
+		var words: String = drawn.call(str(control.get("text")))
 		if not words.is_empty():
 			return words if given.is_empty() or given == words else given + ": " + words
-		if given.is_empty() and control.tooltip_text.strip_edges().split("\n").size() == 1:
+		if _by_tooltip(control):
 			return control.tooltip_text
 		return given
 	if control is LineEdit or control is TextEdit:
-		var placeholder: String = control.atr(str(control.get("placeholder_text")))
+		var placeholder: String = drawn.call(str(control.get("placeholder_text")))
 		return placeholder if given.is_empty() else given
 	if control is Label:
-		return control.atr((control as Label).text) if given.is_empty() else given
+		return drawn.call((control as Label).text) if given.is_empty() else given
 	if control is TabBar:
 		var bar: TabBar = control
 		if not given.is_empty():
@@ -599,6 +652,31 @@ static func spoken(control: Control) -> String:
 				return ""
 		return "tabs" if bar.tab_count > 0 else ""
 	return given
+
+
+## The name [param control] was given: its accessibility_name, or its
+## labels' words (accessibility_labeled_by_nodes). The property reads
+## through tr(), so while the window is in English this is as it was set.
+static func _given(control: Control) -> String:
+	var given: String = control.accessibility_name
+	if given.is_empty() and not control.accessibility_labeled_by_nodes.is_empty():
+		var labels: PackedStringArray = []
+		for path: NodePath in control.accessibility_labeled_by_nodes:
+			var label: Node = control.get_node_or_null(path)
+			if label is Label:
+				labels.append((label as Label).text)
+		given = " ".join(labels)
+	return given
+
+
+## Whether Godot names [param control] by its tooltip: a button with no
+## words and no name, and a tooltip of one line (one of more is help).
+static func _by_tooltip(control: Control) -> bool:
+	if not (control is Button or control is LinkButton) or control is OptionButton:
+		return false
+	return str(control.get("text")).is_empty() and _given(control).is_empty() \
+		and not control.tooltip_text.strip_edges().is_empty() \
+		and control.tooltip_text.strip_edges().split("\n").size() == 1
 
 
 ## The control's owner, by its class (the nearest scripted node above it
