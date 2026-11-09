@@ -265,7 +265,9 @@ The pick never fetched a part file for itself, and the longest pick is a
 third of round seven's 1,426 ms (fetchparts). On a phone, `load_check`'s
 "working" never comes, because a phone keeps the bin behind a button, so
 its run says FAIL on that line alone, as before; the first frame is the
-measure.
+measure. The phone's run is `load_check` with a 390 x 844 touch context
+at 3x, kept beside its log in the results
+(`bench/results/appux8-2026-11-09/web/load_check_phone.mjs`).
 
 ## Over MCP: the walk's tasks as the owner's Claude does them
 
