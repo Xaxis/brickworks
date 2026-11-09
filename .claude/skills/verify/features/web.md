@@ -1036,8 +1036,11 @@ plan with Claude as the client.
 - `a model's parts and its download` (`api/_parts.js`, `api/share.js`
   `partsSection`, `download`, `web/model-page.js` `startParts`, 2026-10-26,
   site278, docs/SOCIAL.md): on `/m/<id>`, a Parts tab (with the count) and
-  `#parts`: "N parts in M lots", Colour · Kind (`[data-group]`), BrickLink
-  XML and Rebrickable CSV (links that download), and `ul.lot-list`, asked
+  `#parts`: "N parts in M lots", Colour · Kind (`[data-group]`), the
+  shops' lists in `.parts-shops` (links that download: BrickLink XML,
+  Rebrickable CSV and LEGO® Pick a Brick CSV, sitepickabrick 2026-11-08),
+  `p.pab-note` under them only when Pick a Brick leaves something off, and
+  `ul.lot-list`, asked
   for (`/m/<id>/parts.json`) as the section comes within 800 px of the
   screen or its tab is chosen, drawn into a `min-height` kept for its first
   12 rows of 60 px, `li.group` (a colour's or kind's swatch, name and
@@ -1051,7 +1054,26 @@ plan with Claude as the client.
   file; the facts pill and the tab say its count, so they agree with the
   app. `wantedList` and `rebrickableCsv` are `ShopLists`' two exports, a
   made part or an unnumbered colour left off and counted (`left_out` in the
-  JSON). `?op=file` is the stored file as it is, `application/x-ldraw`,
+  JSON). `pickABrick` is its third (`ShopLists.pick_a_brick`):
+  `/m/<id>/parts-pab.csv` (`?op=parts&as=pab`; `/m/<id>/v/<n>/parts-pab.csv`
+  for an older version) is `elementId,quantity` joined by `\r\n` with none
+  after the last line, an element a line (two lots of one element, a tyre
+  in Rubber Black and in Black, one line; a direct colour as the element of
+  the colour it stands in as), 999 of an element at most, 400 lines a file:
+  past that `parts-pab-2.csv` and on (`as=pab-2`), one link each ("LEGO®
+  Pick a Brick CSV, 1 of 2"), named `<name>-pickabrick.csv` or
+  `-pickabrick-<n>.csv` each where there are more; a file past the last,
+  or a list with no element number known at all, is a 404. A lot with no
+  element number known, or a made part, is not on it: counted in
+  `left_out.pickabrick` and `pickabrick.left_out_pieces` (the JSON's
+  `pickabrick` is `{files, lines, pieces, left_out_pieces, over}`) and in
+  `p.pab-note` ("Not on the Pick a Brick list, with no LEGO® element number
+  known: 2 lots (5 parts)."), with each element past 999 and how many more
+  to add by hand. Checked by `parts page probe` (each file word for word
+  the app's, on `src/dev/fixtures/pickabrick_big.ldr` too: 432 elements in
+  two files, 1,005 of one), `tests/test_pick_a_brick_page.py` (the page,
+  the route and the note through the real handler) and `model_page_flow`
+  step 16. `?op=file` is the stored file as it is, `application/x-ldraw`,
   `attachment; filename="<name>.mpd"` (`-v<n>` for an older version);
   `?op=parts&as=json|xml|csv` likewise named; both signed out, kept by the
   CDN as the page (`SHARED_CACHE`), 404/410 as the viewer's answer. The
@@ -1189,9 +1211,11 @@ plan with Claude as the client.
   Pictures in `--out`; with no `--url` the stand-in's watchtower made of
   `models/car.ldr`.
 - `parts page probe`: `tools/probe.sh parts_page_probe` (headless, about a
-  minute once its class list is current): opens 6040-1, 10243-1, 42080-1
-  and 8880-1 in the app (or the files given after `--`), takes each one's
-  `Inventory.of` and `ShopLists` exports, and runs
+  minute once its class list is current): opens 6040-1, 10243-1, 42080-1,
+  8880-1 and `src/dev/fixtures/pickabrick_big.ldr` in the app (or the files
+  given after `--`), takes each one's `Inventory.of` and `ShopLists`
+  exports (BrickLink's, Rebrickable's and each Pick a Brick file, with the
+  lots and pieces it leaves off and those past 999), and runs
   `node tools/web/parts_check.mjs --app=<their JSON>`, which lists the same
   files with `api/_parts.js` and prints the app's and the page's pieces and
   lots side by side, every lot that differs, and whether each export is
