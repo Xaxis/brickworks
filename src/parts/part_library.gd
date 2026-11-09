@@ -1691,19 +1691,17 @@ const BWX := "bwx"
 ## What one frame reads where there are no threads, ms: at least one thing.
 const READ_BUDGET_MS := 4.0
 ## What one frame keeps of what a worker has read (meshes made, parts put
-## down), ms: at least one thing, and this share of the frame before it
-## where frames are long.
+## down), ms: at least one thing, and then no more than this.
 ##
 ## A worker read six a task, and a frame kept what it had read and started
 ## the next six. In a browser drawing on its CPU a frame is 0.5 to 2 s, so
 ## the 47 geometries of the Rally Racer came in 8 frames, 5.5 s after the
 ## last had arrived (fetchparts, 2026-11-08). A worker now reads all that
-## waits, the most wanted first as it comes, and each frame keeps what fits:
-## 4 ms of a quick frame, a quarter of a slow one. A frame that already
-## takes half a second is not held by 125 ms more, and the part is seen
-## frames sooner; a quick one keeps going at 45 frames a second or more.
+## waits, the most wanted first as it comes, and each frame keeps what fits
+## in this slice. The same slice in every frame: one sized by the frame
+## before it gave a long frame a long slice, which made the next one long
+## too, and parts made the frames they came in longer than they were.
 const KEEP_BUDGET_MS := 4.0
-const KEEP_SHARE := 0.25
 ## Whether what is read ahead is read on a worker: where there are threads. A
 ## probe turns it off to read in frames under the budget, as a browser without
 ## threads does.
@@ -1720,8 +1718,6 @@ var _read_lock := Mutex.new()
 var _reading: int = -1
 ## Read and not kept yet, [that, what it made]: the main thread's alone.
 var _to_keep: Array = []
-## When [method _read_frame] last ran, µs, for the length of a frame.
-var _read_frame_at: int = 0
 ## Exact shapes being read from this build's files ahead (read_ahead): hash ->
 ## true. Not on their way as a fetch is: one wanted now is read there, as before.
 var _reading_shapes: Dictionary = {}
@@ -1760,14 +1756,11 @@ func _read_frame() -> void:
 	_was_read = []
 	var waiting: bool = not _to_read.is_empty()
 	_read_lock.unlock()
-	var now: int = Time.get_ticks_usec()
-	var frame_us: int = now - _read_frame_at if _read_frame_at > 0 else 0
-	_read_frame_at = now
-	var budget_us: float = maxf(KEEP_BUDGET_MS * 1000.0, frame_us * KEEP_SHARE)
+	var began_keeping: int = Time.get_ticks_usec()
 	while not _to_keep.is_empty():
 		var one: Array = _to_keep.pop_front()
 		_kept_read(one[0], one[1])
-		if Time.get_ticks_usec() - now > budget_us:
+		if Time.get_ticks_usec() - began_keeping > KEEP_BUDGET_MS * 1000.0:
 			break
 	if waiting and not read_on_a_worker and _reading < 0:
 		var began: int = Time.get_ticks_usec()
@@ -1788,7 +1781,6 @@ func _read_frame() -> void:
 	var tree: SceneTree = _read_tree()
 	if idle and tree != null and tree.process_frame.is_connected(_read_frame):
 		tree.process_frame.disconnect(_read_frame)
-		_read_frame_at = 0
 
 
 ## On a worker: all that waits, read, the first waiting first, so what is

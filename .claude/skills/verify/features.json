@@ -1191,7 +1191,7 @@
       "id": "cli:fetchparts browser flow",
       "kind": "cli",
       "entry": "tools/web/fetchparts_flow.mjs",
-      "reach": "node tools/web/fetchparts_flow.mjs --url=http://127.0.0.1:9821 [--base=http://127.0.0.1:9822 --rounds=2] [--house=H0useFl0w1] --out=DIR   (after tools/export.sh web and tools/web/serve.py build/web 9821 --parts assets/generated/parts --delay 0 --compressed --share F3tchP4rts=vendor/omr/files/42022-1_Rally-Racer.mpd --share H0useFl0w1=HOUSE (play_flow.mjs --write-house=HOUSE), and the build before likewise on 9822; local only: no part file by the engine's HTTPRequest, both whole, the house's longest frame, the car's shapes in half the base's time)",
+      "reach": "node tools/web/fetchparts_flow.mjs --url=http://127.0.0.1:9821 [--base=http://127.0.0.1:9822 --rounds=2] [--house=H0useFl0w1] --out=DIR   (after tools/export.sh web and tools/web/serve.py build/web 9821 --parts assets/generated/parts --delay 0 --compressed --share F3tchP4rts=vendor/omr/files/42022-1_Rally-Racer.mpd --share H0useFl0w1=HOUSE (play_flow.mjs --write-house=HOUSE), and the build before likewise on 9822; local only: no part file by the engine's HTTPRequest, both whole, each longest frame no longer than the base's, the car's shapes in half the base's time)",
       "area": "parts",
       "tests": []
     },

@@ -414,8 +414,8 @@ geometry in front of them.
   that shows it is read off that frame: on a worker where there are threads,
   all that waits, the most wanted first, or in frames under `READ_BUDGET_MS`
   where there are none (`read_on_a_worker`); the meshes made and everything
-  kept on the main thread, each frame what fits in `KEEP_BUDGET_MS` or
-  `KEEP_SHARE` of the frame before it, whichever is more, and said as a fetch
+  kept on the main thread, each frame what fits in `KEEP_BUDGET_MS` (the
+  same slice in every frame, however long), and said as a fetch
   is (`fetched`, `exact_fetched`). Through it: a
   tile's picture (`PartThumbnails._render` asks `request_mesh`, which reads a
   part on disk there and fetches one that is not), a fetch's answer
@@ -730,7 +730,7 @@ node tools/web/fetch_retry_flow.mjs --url=http://127.0.0.1:9195/ --out=DIR   # t
 node tools/web/play_flow.mjs --write-house=DIR/house.mpd   # playweb's house, the model the frame bar was measured on
 tools/web/serve.py build/web 9821 --parts assets/generated/parts --delay 0 --compressed --share F3tchP4rts=vendor/omr/files/42022-1_Rally-Racer.mpd --share H0useFl0w1=DIR/house.mpd
 tools/web/serve.py BASE/build/web 9822 --parts assets/generated/parts --delay 0 --compressed --share F3tchP4rts=vendor/omr/files/42022-1_Rally-Racer.mpd --share H0useFl0w1=DIR/house.mpd
-node tools/web/fetchparts_flow.mjs --url=http://127.0.0.1:9821 --base=http://127.0.0.1:9822 --house=H0useFl0w1 --rounds=2 --out=DIR   # 0 by the engine; whole; the house's longest frame <= 506 / 564 ms (mean); the car's shapes in half the base's time
+node tools/web/fetchparts_flow.mjs --url=http://127.0.0.1:9821 --base=http://127.0.0.1:9822 --house=H0useFl0w1 --rounds=2 --out=DIR   # 0 by the engine; whole; the car and the house each no longer a frame than the base (mean, file in hand to every part here + 3 s); the car's shapes in half the base's time
 godot --headless --path . --script src/dev/availability_probe.gd    # what was really made, and silence otherwise
 godot --headless --path . --script src/dev/variety_probe.gd        # whether a model reads as a set
 godot --headless --path . --script src/dev/usage_probe.gd         # whether search leads with the part sets use
