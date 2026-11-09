@@ -4,6 +4,7 @@
 ##   godot --path . --resolution 1400x900 --script src/dev/drive_probe.gd
 ##   PROBE_SIZE=1280x720 tools/probe.sh drive_probe      the smaller window
 ##   ... -- OUT_DIR   (where the files go; shots/drive when not given)
+##   DRIVE_ONLY=review ...   section 9 alone
 ##
 ## Kinebrick Studio's car drives; Brickworks' motions turned and slid joints
 ## only. Here 8808-1, the F1 racer (vendor/omr/files): two front wheels on
@@ -114,7 +115,9 @@ func _run() -> void:
 		print("drive probe: drawn headless, so nothing is rendered (xvfb-run draws it)")
 	Download.folder = _out
 	(_main.get("_pose") as PosePanel).folder = _out
-	if await _open(RACER):
+	# DRIVE_ONLY=review: section 9 alone, as a build from before is tried.
+	var only_review: bool = OS.get_environment("DRIVE_ONLY") == "review"
+	if not only_review and await _open(RACER):
 		await _panel()
 		var motion: Motions.Motion = await _defined()
 		if motion != null:
