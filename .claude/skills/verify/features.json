@@ -6052,6 +6052,14 @@
       "tests": []
     },
     {
+      "id": "ui:the panel asked for last in front",
+      "kind": "ui",
+      "entry": "src/ui/hud_front.gd",
+      "reach": "tools/probe.sh hudfront_probe   (Find with \"87087\", then F1 or F9: the keys sheet or Render opens over Find's list; any HUD panel shown by a key, a menu, a button or MCP, clicked, or given the keys comes to the front, under the sign-in screen; Render's veil comes with Render)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "ui:theme choice",
       "kind": "ui",
       "entry": "web/theme.js",

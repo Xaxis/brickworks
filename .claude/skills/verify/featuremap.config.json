@@ -5106,6 +5106,13 @@
       "entry": "src/dev/bugreport_probe.gd",
       "reach": "PROBE_SIZE=1280x720 tools/probe.sh bugreport_probe [--shots=DIR]   (windowed, signs a throwaway in: top bar, Help and Alt-Shift-R each open the report in one press; a drawn box in the sent JPEG within 2 px; Report this on an error; Escape and Cancel send nothing; the beta shut hides the button)",
       "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the panel asked for last in front",
+      "entry": "src/ui/hud_front.gd",
+      "reach": "tools/probe.sh hudfront_probe   (Find with \"87087\", then F1 or F9: the keys sheet or Render opens over Find's list; any HUD panel shown by a key, a menu, a button or MCP, clicked, or given the keys comes to the front, under the sign-in screen; Render's veil comes with Render)",
+      "area": "view"
     }
   ]
 }

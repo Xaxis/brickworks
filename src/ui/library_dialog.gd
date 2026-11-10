@@ -105,7 +105,8 @@ signal said(text: String)
 func attach(main: Node) -> void:
 	app = main
 	books = main.get("_model_library")
-	main.get_node("HUD").add_child(self)
+	# In front of the other panels while it shows, under the sign-in screen.
+	main.call("_add_to_hud", self)
 	# Over the frame: while it shows, F6 comes into it, at its search, and
 	# Tab from the search goes on to what it found (FocusGuard).
 	add_to_group(FocusGuard.OVER)
@@ -148,7 +149,7 @@ func _say_themes(themes: PackedStringArray) -> void:
 
 ## Open on a shelf: "sets" or "community".
 func open(source: String = "") -> void:
-	visible = true
+	HudFront.show_panel(self)
 	# Drawn for the screen it is on now: a browser's ratio is known only
 	# once the page is up.
 	_search.right_icon = Icons.icon_for(MAGNIFIER, MAGNIFIER_TALL, Icons.density(self))
