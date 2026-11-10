@@ -1,0 +1,216 @@
+0 FILE wheels.ldr
+0 !BRICKWORKS FROM_SET 8808
+0 Wheels
+0 Name: wheels.ldr
+0 Author: Charles Farmer [farmer]
+0 !LDRAW_ORG Model
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+0 !BRICKWORKS AUTHORED_STEPS
+0 !BRICKWORKS FLOOR GRID
+0 !BRICKWORKS MOTION "Drive and turn left" AFTER "" SECONDS 8
+0 !BRICKWORKS MOTION_PATH "Drive and turn left" SECONDS 8 EASE STRAIGHT 32 LEFT 90 RADIUS 30
+0 !BRICKWORKS MOTION_WHEEL "Drive and turn left" AT 0 JOINT PART 3482 15 70 0 -70
+0 !BRICKWORKS MOTION_WHEEL "Drive and turn left" AT 0 JOINT PART 3482 15 -70 0 -70
+0 !BRICKWORKS MOTION_WHEEL "Drive and turn left" AT 0 JOINT PART 3482 15 70 0 160
+0 !BRICKWORKS MOTION_STEER "Drive and turn left" AT 0 JOINT PART 2819 7 0 -48 24
+
+1 0 -20 0 0 1 0 0 0 1 0 0 0 1 2780.dat
+1 4 -30 -10 80 0 0 1 0 1 0 -1 0 0 2730.dat
+0 STEP
+1 7 -50 0 160 0 0 -1 0 1 0 1 0 0 3713.dat
+1 0 0 0 160 -1 0 0 0 1 0 0 0 -1 3737.dat
+1 7 -20 0 -40 -1 0 0 0 1 0 0 0 -1 4274.dat
+1 4 -10 -10 -40 0 0 1 0 1 0 -1 0 0 3894.dat
+0 STEP
+1 0 20 0 0 1 0 0 0 1 0 0 0 1 2780.dat
+1 0 -10 0 100 0 -1 0 0.15700001 0 -0.98799998 0.98799998 0 0.15700001 2825.dat
+1 0 10 0 100 0 1 0 -0.15700001 0 -0.98799998 -0.98799998 0 0.15700001 2825.dat
+1 0 0 0 100 1 0 0 0 0.98799998 0.15700001 0 -0.15700001 0.98799998 3706.dat
+1 7 20 0 -40 1 0 0 0 -1 0 0 0 -1 4274.dat
+1 4 10 -10 -40 0 0 1 0 1 0 -1 0 0 3894.dat
+1 4 0 -18 -40 -1 0 0 0 1 0 0 0 -1 3068b.dat
+0 STEP
+1 4 30 -10 80 0 0 1 0 1 0 -1 0 0 2730.dat
+1 4 0 -10 -110 1 0 0 0 1 0 0 0 1 3298.dat
+0 STEP
+1 7 50 0 160 0 0 1 0 1 0 -1 0 0 3713.dat
+1 4 -10 -18 -10 0 0 -1 0 1 0 1 0 0 2420.dat
+1 4 10 -18 -10 1 0 0 0 1 0 0 0 1 2420.dat
+1 4 0 -18 -100 1 0 0 0 1 0 0 0 1 3022.dat
+0 STEP
+0 !BRICKWORKS COPY 1
+1 16 0 32 0 1 0 0 0 1 0 0 0 1 main_sub_6a.ldr
+0 !BRICKWORKS COPY 1
+1 16 0 32 0 1 0 0 0 1 0 0 0 1 main_sub_6b.ldr
+0 STEP
+1 4 -50 -18 30 0 0 1 0 1 0 -1 0 0 2450.dat
+1 4 50 -18 30 1 0 0 0 1 0 0 0 1 2450.dat
+0 STEP
+1 0 -10 14 -10 0 0 -1 0 1 0 1 0 0 2420.dat
+1 0 10 14 -10 1 0 0 0 1 0 0 0 1 2420.dat
+1 0 0 14 100 1 0 0 0 1 0 0 0 1 3034.dat
+1 0 0 14 70 1 0 0 0 1 0 0 0 1 3460.dat
+0 STEP
+1 0 -50 14 30 0 0 1 0 1 0 -1 0 0 2450.dat
+1 0 50 14 30 1 0 0 0 1 0 0 0 1 2450.dat
+1 0 0 14 -40 1 0 0 0 1 0 0 0 1 3022.dat
+1 0 0 14 -100 1 0 0 0 1 0 0 0 1 3022.dat
+0 STEP
+1 0 0 14 -140 1 0 0 0 1 0 0 0 1 3034.dat
+1 0 -30 14 160 0 0 1 0 1 0 -1 0 0 3710.dat
+1 0 30 14 160 0 0 1 0 1 0 -1 0 0 3710.dat
+1 0 0 14 -70 1 0 0 0 1 0 0 0 1 4262.dat
+0 STEP
+0 !BRICKWORKS COPY 1
+1 16 0 32 0 1 0 0 0 1 0 0 0 1 main_sub_11.ldr
+1 4 0 -26 -10 1 0 0 0 1 0 0 0 1 3710.dat
+0 STEP
+0 !BRICKWORKS COPY 1
+1 16 0 32 0 1 0 0 0 1 0 0 0 1 main_sub_12.ldr
+1 4 -30 -18 180 0 0 1 0 1 0 -1 0 0 3666.dat
+1 4 30 -18 180 0 0 1 0 1 0 -1 0 0 3666.dat
+0 STEP
+0 !BRICKWORKS COPY 1
+1 16 0 32 0 1 0 0 0 1 0 0 0 1 main_sub_13.ldr
+1 0 0 -34 -10 1 0 0 0 1 0 0 0 1 3710.dat
+1 0 0 -59.252 109.444 1 0 0 0 0.98799998 0.15700001 0 -0.15700001 0.98799998 3704.dat
+0 STEP
+0 !BRICKWORKS COPY 1
+1 16 0 32 0 1 0 0 0 1 0 0 0 1 main_sub_14.ldr
+0 !BRICKWORKS COPY 2
+1 16 0 32 120 -1 0 0 0 1 0 0 0 -1 main_sub_14.ldr
+1 4 0 -18 -70 1 0 0 0 1 0 0 0 1 4262.dat
+1 4 0 -28 -30 1 0 0 0 1 0 0 0 1 4262.dat
+0 STEP
+0 !BRICKWORKS COPY 1
+1 16 0 32 0 1 0 0 0 1 0 0 0 1 main_sub_15.ldr
+1 7 0 -36 -30 -1 0 0 0 1 0 0 0 -1 3743.dat
+0 STEP
+1 15 70 0 -70 0 0 -1 0 1 0 1 0 0 3482.dat
+1 0 70 0 -70 0 0 -1 0 1 0 1 0 0 3483.dat
+0 STEP
+0 !BRICKWORKS COPY 1
+1 16 0 32 0 1 0 0 0 1 0 0 0 1 main_sub_16.ldr
+0 !BRICKWORKS COPY 3
+1 16 0 32 0 1 0 0 0 1 0 0 0 1 rim.ldr
+0 !BRICKWORKS COPY 4
+1 16 0 32 230 1 0 0 0 1 0 0 0 1 rim.ldr
+0 !BRICKWORKS IN Front hub#1
+0 !BRICKWORKS COPY 2
+1 16 140 32 230 1 0 0 0 1 0 0 0 1 rim.ldr
+0 STEP
+0 !BRICKWORKS COPY 8
+1 16 160 32 230 1 0 0 0 1 0 0 0 1 rim.ldr
+0 !BRICKWORKS COPY 5
+1 16 -20 32 0 1 0 0 0 1 0 0 0 1 rim.ldr
+0 !BRICKWORKS COPY 6
+1 16 -20 32 230 1 0 0 0 1 0 0 0 1 rim.ldr
+0 !BRICKWORKS COPY 7
+1 16 160 32 0 1 0 0 0 1 0 0 0 1 rim.ldr
+0
+0 NOFILE
+0 FILE main_sub_6a.ldr
+0 Main Sub 6a
+0 Name: main_sub_6a.ldr
+0 Author: Charles Farmer [farmer]
+
+1 4 -70 -42 80 0 0 1 0 1 0 -1 0 0 3701.dat
+1 4 -50 -50 100 -1 0 0 0 1 0 0 0 -1 3021.dat
+1 4 -50 -50 70 -1 0 0 0 1 0 0 0 -1 3623.dat
+0
+0 NOFILE
+0 FILE main_sub_6b.ldr
+0 Main Sub 6b
+0 Name: main_sub_6b.ldr
+0 Author: Charles Farmer [farmer]
+
+1 4 70 -42 80 0 0 1 0 1 0 -1 0 0 3701.dat
+1 4 50 -50 100 -1 0 0 0 1 0 0 0 -1 3021.dat
+1 4 50 -50 70 -1 0 0 0 1 0 0 0 -1 3623.dat
+0
+0 NOFILE
+0 FILE main_sub_11.ldr
+0 Main Sub 11
+0 Name: main_sub_11.ldr
+0 Author: Charles Farmer [farmer]
+
+1 0 0 -32 190 1 0 0 0 -0.80599999 -0.59299999 0 0.59299999 -0.80599999 3705.dat
+1 7 -13 -32 190 0 0 1 0.59299999 -0.80599999 0 0.80599999 0.59299999 0 4265a.dat
+0 STEP
+1 0 -8 -61.626 149.722 0 1 0 -0.59299999 0 -0.80599999 -0.80599999 0 0.59299999 4262.dat
+1 0 8 -61.626 149.722 0 -1 0 -0.59299999 0 0.80599999 -0.80599999 0 -0.59299999 4262.dat
+0 STEP
+1 7 13 -32 190 0 0 -1 0.59299999 0.80599999 0 0.80599999 -0.59299999 0 4265a.dat
+0 STEP
+1 0 -30 -42 190 0 0 -1 0 1 0 1 0 0 6541.dat
+1 0 30 -42 190 0 0 -1 0 1 0 1 0 0 6541.dat
+0
+0 NOFILE
+0 FILE main_sub_12.ldr
+0 Main Sub 12
+0 Name: main_sub_12.ldr
+0 Author: Charles Farmer [farmer]
+
+1 7 50 -42 -70 1 0 0 0 1 0 0 0 1 4261.dat
+0 STEP
+1 0 70 -32 -70 1 0 0 0 1 0 0 0 1 3705.dat
+1 7 35 -32 -70 0 0 -1 0 1 0 1 0 0 4265a.dat
+1 7 50 -42 -30 0 0 1 1 0 0 0 1 0 3749.dat
+0
+0 NOFILE
+0 FILE main_sub_13.ldr
+0 Main Sub 13
+0 Name: main_sub_13.ldr
+0 Author: Charles Farmer [farmer]
+
+1 7 -50 -42 -70 1 0 0 0 1 0 0 0 1 4261.dat
+0 STEP
+1 0 -70 -32 -70 1 0 0 0 1 0 0 0 1 3705.dat
+1 7 -35 -32 -70 0 0 1 -1 0 0 0 -1 0 4265a.dat
+1 7 -50 -42 -30 0 0 1 1 0 0 0 1 0 3749.dat
+0
+0 NOFILE
+0 FILE main_sub_14.ldr
+0 Main Sub 14
+0 Name: main_sub_14.ldr
+0 Author: Charles Farmer [farmer]
+
+1 0 30 -74 110 0 0 -1 0 1 0 1 0 0 4070.dat
+1 0 30 -74 10 0 0 -1 0 1 0 1 0 0 4070.dat
+0 STEP
+1 0 44 -64 60 0 -1 0 0 0 -1 1 0 0 4262.dat
+0
+0 NOFILE
+0 FILE main_sub_15.ldr
+0 Main Sub 15
+0 Name: main_sub_15.ldr
+0 Author: Charles Farmer [farmer]
+
+1 0 0 -58 220 -1 0 0 0 1 0 0 0 -1 3034.dat
+0 STEP
+1 4 -70 -106 220 0 0 -1 0 1 0 1 0 0 4864a.dat
+1 4 70 -106 220 0 0 1 0 1 0 -1 0 0 4864a.dat
+0 STEP
+1 0 0 -114 220 -1 0 0 0 1 0 0 0 -1 3034.dat
+0
+0 NOFILE
+0 FILE main_sub_16.ldr
+0 Main Sub 16
+0 Name: main_sub_16.ldr
+0 Author: Charles Farmer [farmer]
+
+1 7 0 -80 -30 -1 0 0 0 1 0 0 0 -1 3647.dat
+1 0 0 -80 -10 0 0 1 0 1 0 -1 0 0 4519.dat
+1 0 0 -90 -10 1 0 0 0 1 0 0 0 1 3701.dat
+0 STEP
+1 7 0 -80 24 -1 0 0 0 0 -1 0 -1 0 2819.dat
+0
+0 NOFILE
+0 FILE rim.ldr
+0 Rim
+0 Name: rim.ldr
+0 Author: Charles Farmer [farmer]
+
+1 0 -70 -32 -70 0 0 -1 0 1 0 1 0 0 3483.dat
+0
+0 NOFILE

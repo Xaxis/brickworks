@@ -44,8 +44,8 @@
 ##     verbatim and read alike; a leg or seconds that rounds to nothing, and
 ##     values of the wrong kind, refused in words; the panel's seconds the
 ##     motion's length; a contact of no studs said, not divided by.
-##     And as drvcheck tried it again (A-C): a wheel taken off and the drive
-##     played, its steering arm free on its axle said by its kind, never
+##     And as drvcheck tried it again (A-C): its own file with a rim taken
+##     off, the drive played, its steering arm free on its axle said by its kind, never
 ##     "0 studs carry about 3801304x"; a check's numbers for a friction pin,
 ##     a free pin and an axle each in its own words; an edit of a motion, and
 ##     define_motion making it again, keep its refused lines; taken out, only
@@ -63,6 +63,9 @@
 extends SceneTree
 
 const RACER := "res://vendor/omr/files/8808-1.mpd"
+## The racer as drvcheck left it (w6): its wheels made sub-models, a rim
+## deleted, the drive kept in it.
+const RIM_OFF := "res://tests/fixtures/motions/8808-1_rim_off.mpd"
 const NAME := "Drive and turn left"
 const LINK_ID := "Dr1veL1nk01"
 const STUD := 20.0
@@ -991,14 +994,9 @@ func _review() -> void:
 ## joint, in its own words.
 func _kinds() -> void:
 	print("\n9b. a joint said by its kind (drvcheck A, B)")
-	if await _open(RACER):
-		await _say("define_motion", {"name": NAME, "suggested": true})
-		var rim: int = 0
-		for brick: BrickWorld.Brick in _world.bricks():
-			if brick.part_id == "3482":
-				rim = brick.id
-		_builder.remove_brick_id(rim)
-		await _frames(4)
+	# drvcheck's w6: the racer with its wheels made sub-models and a rim
+	# deleted, the drive kept in it.
+	if await _open(RIM_OFF):
 		var played: String = await _say("play_motion", {"name": NAME})
 		var now: String = ""
 		for line: String in played.split("\n"):
@@ -1015,12 +1013,12 @@ func _kinds() -> void:
 			_print("its most loaded joint: %s on %s, %s, studs %d, %sx" % [worst.beyond_part, worst.held_part,
 				worst.kind, worst.studs, Balance.tidy(worst.ratio)])
 		_print(now)
-		_check("A: a wheel rim off and the drive played, its steering arm free on its axle said by its kind (%s)"
+		_check("A: drvcheck's w6 played, its steering arm free on its axle said by its kind (%s)"
 			% now.get_slice("; ", 1), worst != null and worst.kind == "free pin" and worst.ratio > 1.0
 			and now.contains("turns on a frictionless pin or axle with nothing holding it")
 			and not now.get_slice("; ", 1).contains("stud"))
 	else:
-		_check("A: the racer opens", false)
+		_check("A: %s opens" % RIM_OFF, false)
 	# B: Balance.Report.said() and the standing words, each kind of joint.
 	var want := {
 		"friction pin": ["on a friction pin: 2.0 N·cm against 1.5 (1.3x; lets go at 3.0)",
