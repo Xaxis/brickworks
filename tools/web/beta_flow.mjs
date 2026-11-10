@@ -397,9 +397,16 @@ try {
     check(`B joins: ${r.status}, tester ${r.json?.tester}`, r.status === 200 && r.json?.tester === true);
     ({ page, context } = await open("/beta#about", { width: 1280, who: b, label: "keyboard" }));
     about = await aboutSaid(page);
-    const landed = await until(page, () => document.activeElement?.id === "about-h") ? await aboutSaid(page) : about;
-    check(`come by /beta#about: there, the focus on its title (${landed.focused}, ${landed.top} px from the top)`,
-      landed.shown === "apply-form" && landed.focused === "about-h" && Math.abs(landed.top) < 40);
+    // There once drawn: its title focused, in the window and clear of the
+    // sticky head (html's scroll-padding-top), after the smooth scroll.
+    const there = await until(page, () => {
+      const head = document.getElementById("about-h").getBoundingClientRect();
+      const bar = document.querySelector(".site-head").getBoundingClientRect();
+      return document.activeElement?.id === "about-h" && head.top >= bar.bottom && head.bottom <= innerHeight;
+    });
+    const landed = await aboutSaid(page);
+    check(`come by /beta#about: there, the focus on its title (${landed.focused}, the section ${landed.top} px from the top)`,
+      there && landed.shown === "apply-form" && landed.focused === "about-h");
     await page.focus("#f-build");
     await page.keyboard.type(form.build);
     const stops = [];
