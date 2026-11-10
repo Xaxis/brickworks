@@ -305,7 +305,10 @@ plan with Claude as the client.
   tool list from that tab once it has said hello, else the tools of the app
   build the deployment serves, `tools/mcp_tools.json` put beside the function
   by `deploy.sh` (`ownTools`), with the guidance of a hello of that same list
-  (`guidanceOf`), so Claude can add it before the app is opened; never
+  (`guidanceOf`, found by the `list` hash kept beside each hello, and never
+  waited on past half a second: a lookup that fails or is slow leaves that
+  handshake without guidance, not failed, 2026-11-10,
+  `tests/test_relay_hello.py`), so Claude can add it before the app is opened; never
   another tab's list, which had been a test build's: 69 tools for 68,
   2026-10-29, `tests/test_relay_hello.py`) — and one tab's private
   address (`/api/mcp?t=<token>`), the way from 2026-10-09, still answered for
