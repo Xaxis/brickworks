@@ -1053,9 +1053,9 @@ func _kinds() -> void:
 		var standing: String = (_main.get("_grab_drag") as GrabDrag).call("_standing_words", report, false)
 		var spoken: String = str(want[kind][1])
 		_check("B: %s, said() \"%s\"; standing \"%s\"" % [kind, line.get_slice(": ", 1), standing.get_slice("; ", 1)],
-			line.contains("#2 on #1 " + str(want[kind][0])) and not line.contains("0 stud")
+			line.contains("#2 on #1 " + str(want[kind][0])) and not line.contains(" 0 stud")
 			and (standing.contains(spoken) if not spoken.is_empty() else not standing.contains(";"))
-			and not standing.get_slice("; ", 1).contains("0 stud"))
+			and not standing.contains(" 0 stud"))
 
 
 # -- 10. parts on their way ------------------------------------------------------------
