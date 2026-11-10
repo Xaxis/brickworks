@@ -390,7 +390,7 @@ try {
     check(`op=beta_join refused: ${join.status} ${JSON.stringify(join.json)}`, join.status === 403 && join.json?.beta === "off");
     const account = await api(offSite, "/api/account", { token });
     check(`/api/account says nothing of a welcome: ${JSON.stringify(account.json?.beta)}`,
-      JSON.stringify(account.json?.beta) === JSON.stringify({ tester: false, early: [] }));
+      JSON.stringify(account.json?.beta) === JSON.stringify({ tester: false, early: [], open: false }));
     await shot(page, "11-settings-off-1280.png");
 
     // --- 5. As before ------------------------------------------------------------------

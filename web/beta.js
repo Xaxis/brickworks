@@ -3,12 +3,13 @@
 // to try, what we know is wrong and their early features. What the server says comes
 // from web/betabar.js (GET /api/plans?op=beta), which also joins and opens
 // Report a bug; this week's releases from changelog.json (tools/site.py);
-// a tester's parts from GET /api/plans?op=beta_hub (api/_early.js). Off,
-// the page says the beta is coming soon and offers no way in. Every word
-// goes on the page as text, never as markup.
-import { call, signedIn } from "/account.js";
+// a tester's parts from GET /api/plans?op=beta_hub (api/_early.js), and
+// their "tell us about you" (betajoin) from GET /api/plans?op=beta's
+// application. Off, the page says the beta is coming soon and offers no
+// way in. Every word goes on the page as text, never as markup.
+import { askToSignIn, call, signedIn } from "/account.js";
 import { betaState, joinBeta, reportBug } from "/betabar.js";
-import { langAt, number, say } from "/card.js";
+import { langAt, number, say, told } from "/card.js";
 import { toast } from "/kit.js";
 
 const $ = (id) => document.getElementById(id);
@@ -58,6 +59,11 @@ function draw(heard) {
   }
   if (open) news();
   if (heard.tester) testers();
+  if (heard.tester) about();
+  else if (aboutAsked) {
+    aboutAsked = false;
+    $("about").hidden = true;
+  }
 }
 
 // -- what is new ------------------------------------------------------------
@@ -164,6 +170,140 @@ async function testers() {
   document.querySelector("#testers .note").hidden = !lists.known.length;
   $("testers").hidden = !Object.values(lists).some((cards) => cards.length);
 }
+
+// -- tell us about you (a tester's) -------------------------------------------
+// The month of Pro's application, after joining and never a gate to it
+// (betajoin): the form, or where it stands (POST and GET
+// /api/plans?op=beta, api/_beta.js). A tester agreed to the terms and the
+// emails when it joined, so neither is asked here.
+
+let aboutAsked = false;
+let aboutLanded = false;
+const PANELS = ["apply-wait", "apply-form", "apply-status"];
+// The form's own least, as the server's (api/_beta.js LEAST_BUILD).
+const LEAST_BUILD = 20;
+
+/// Only [id] of the panel's parts shown: swapped in one frame.
+function show(id) {
+  for (const one of PANELS) $(one).hidden = one !== id;
+}
+
+/// Where an application stands, in words: [title, line, more].
+function standing(app, cap) {
+  if (app.status === "approved" && app.early) {
+    return [say("You are a tester"), say("Your account was made before 29 October 2026, so it has Pro already, free and "
+      + "with no end date. You did not need one of the spots."), ""];
+  }
+  if (app.status === "approved") {
+    const month = app.comp === "granted" && app.month_ends_at
+      ? say("Your month of Pro runs from {from} to {to}.", { from: day(app.month_starts_at), to: day(app.month_ends_at) })
+      : say("Your month of Pro starts the day Pro launches, and runs 30 days from then. We will email you when it starts.");
+    return [say("You are in: spot {spot} of {cap}", { spot: app.spot, cap }), month,
+      say("When it ends you are back on Free: nothing is charged, and nothing is deleted.")];
+  }
+  if (app.status === "waitlist") {
+    return [say("On the waitlist"), say("You applied on {day}, after all {cap} spots were taken. If we open more, your "
+      + "application is read with the others.", { day: day(app.applied_at), cap }), ""];
+  }
+  if (app.status === "declined") {
+    return [say("Not this time"), say("We could not offer you a spot this time. You may apply again from {day}.",
+      { day: day(app.may_apply_again_at) }), ""];
+  }
+  return [say("Applied"), say("You applied on {day}. We read every application ourselves, and will email you once we "
+    + "have decided.", { day: day(app.applied_at) }), app.early ? say("Your account was made before 29 October 2026, so "
+    + "it has Pro already, free and with no end date; you would not take one of the spots.") : ""];
+}
+
+/// The section as [answer] (op=beta's) has it: where the application
+/// stands, or the form, again once a decline's wait is over.
+function drawAbout(answer) {
+  const app = answer.application || null;
+  const again = app?.status === "declined" && Date.parse(app.may_apply_again_at || "") <= Date.now();
+  if (app && !again) {
+    const [title, said, more] = standing(app, answer.pool?.cap ?? answer.spots?.cap ?? 100);
+    $("status-h").textContent = title;
+    $("status-said").textContent = said;
+    $("status-more").textContent = more;
+    $("status-more").hidden = !more;
+    show("apply-status");
+  } else {
+    $("apply-was").hidden = !again;
+    $("apply-was").textContent = again ? say("Your last application was declined. You may apply again now.") : "";
+    show("apply-form");
+  }
+  // Come from a link to /beta#about (the welcome, Settings, the beta's
+  // emails): the section was hidden as the page loaded, so the browser
+  // could not go there; it does now, once.
+  if (location.hash === "#about" && !aboutLanded) {
+    aboutLanded = true;
+    const now = () => requestAnimationFrame(() => {
+      $("about").scrollIntoView({ block: "start" });
+      $("about-h").focus({ preventScroll: true });
+    });
+    if (document.readyState === "complete") now();
+    else addEventListener("load", now, { once: true });
+  }
+}
+
+async function about() {
+  if (aboutAsked) return;
+  aboutAsked = true;
+  $("about").hidden = false;
+  const { status, body } = await call("/api/plans?op=beta").catch(() => ({ status: 0, body: {} }));
+  if (status !== 200 || body?.beta !== "open" || body.tester !== true) {
+    aboutAsked = false;
+    $("about").hidden = true;
+    return;
+  }
+  drawAbout(body);
+}
+
+/// What the form says, or a line saying what to fix first: [body, why, field].
+function filled() {
+  const build = $("f-build").value.trim();
+  if (build.length < LEAST_BUILD) {
+    return [null, say("Say what you would build, in a sentence or two: at least {n} characters.", { n: LEAST_BUILD }), "f-build"];
+  }
+  if (!$("f-ai").value) return [null, say("Choose which AI you use."), "f-ai"];
+  if (!$("f-background").value) return [null, say("Choose your LEGO® or CAD background."), "f-background"];
+  return [{ build, ai: $("f-ai").value, background: $("f-background").value, background_line: $("f-line").value,
+    link: $("f-link").value }, "", ""];
+}
+
+$("apply-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const said = $("apply-said");
+  const [body, why, field] = filled();
+  if (!body) {
+    said.textContent = why;
+    $(field).focus();
+    return;
+  }
+  const button = $("apply-send");
+  button.disabled = true;
+  said.textContent = say("Sending…");
+  try {
+    let reply = await call("/api/plans?op=beta", { method: "POST", body });
+    if (reply.status === 401 && (await askToSignIn("Sign in again to tell us about you."))) {
+      reply = await call("/api/plans?op=beta", { method: "POST", body });
+    }
+    if (reply.status === 200) {
+      said.textContent = "";
+      drawAbout(reply.body);
+      $("status-h").focus();
+      return;
+    }
+    said.textContent = told(reply.body?.error, say("That did not go just now. Try again in a minute."));
+    if (reply.status === 409) {
+      aboutAsked = false;
+      about();
+    }
+  } catch {
+    said.textContent = say("That did not go just now. Try again in a minute.");
+  } finally {
+    button.disabled = false;
+  }
+});
 
 // -- presses ----------------------------------------------------------------
 

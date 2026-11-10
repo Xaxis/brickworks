@@ -3947,9 +3947,13 @@ plan with Claude as the client.
   /beta says Coming soon with no way in and no count, GET ?op=beta is
   `{beta: off}` and asks nothing, POST is 403. Open, /beta is the beta's
   hub (below); the application (what you'd build 20-800, AI, background
-  and a line up to 160, a link https up to 300, two boxes) is no form there
-  but checked at the edge as the API takes it (422 with why), one an
-  account (409; a declined one again after 30 days).
+  and a line up to 160, a link https up to 300, two boxes a tester need
+  not tick) is a tester's "tell us about you" there, at /beta#about
+  (betajoin: shown once joined, the old ids #apply-form, #f-build,
+  #apply-send, #apply-status; then where it stands), checked at the edge
+  as the API takes it (422 with why), one an account (409; a declined one
+  again after 30 days). beta_flow fills it by hand at 390, by keyboard
+  alone from /beta#about at 1280, and reads a decline's date there.
   Spots 1-100 one at a time under the pool's row lock: proven on a
   throwaway Postgres (`tests/fixtures/beta/db_check.mjs`: two at once at
   99 give 100 and "full"; 120 from ten connections give 1-100 once each).
