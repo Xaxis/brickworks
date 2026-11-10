@@ -22,7 +22,7 @@ const PANELS := {
 	"MosaicDialog": "/docs/art-and-brickify#mosaic",
 	"MouldEditor": "/docs/figures-and-prints#mould",
 	"PageEditor": "/docs/instructions#lay-out",
-	"PatternDialog": "/docs/building#patterns",
+	"PatternDialog": "/docs/changing-parts#patterns",
 	"PosePanel": "/docs/joints-and-mechanisms#motions",
 	"PrintEditor": "/docs/figures-and-prints#prints",
 	"RenderDialog": "/docs/exports#render",

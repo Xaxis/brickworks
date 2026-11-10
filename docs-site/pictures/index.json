@@ -1,0 +1,17 @@
+{
+ "shots": [
+  {
+   "id": "index-window",
+   "source": "app",
+   "setup": [
+    {"open": "res://models/corner_shop.ldr", "after": 60}
+   ],
+   "settle": 60,
+   "crop": "window",
+   "width": 1200,
+   "alt": "The Brickworks window with a corner shop model open on its baseplate: the menus and the toolbar along the top, the parts bin down the left, and the view cube at the top right of the model.",
+   "caption": "Brickworks in a browser, with a model open.",
+   "features": ["ui:menus and toolbar", "ui:parts bin", "ui:view cube"]
+  }
+ ]
+}

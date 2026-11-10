@@ -45,7 +45,9 @@
 ## those, joined), "pad" (pixels round a crop), "tooltip" (true: a tooltip
 ## up is the point; otherwise one fails the picture), "marks" ([{"at": path,
 ## "n": 1}]: an outline and a numbered disc drawn over the window, in the
-## app's own font), "width" (made smaller to at most this).
+## app's own font), "width" (made smaller to at most this), "window"
+## ("390x844": the window's size), "phone" (true: the phone's layout, as a
+## browser that small has it, at a browser's scale, as --phone probes do).
 extends SceneTree
 
 ## A page's pictures are a file of their own: docs-site/pictures/<page>.json.
@@ -234,6 +236,13 @@ func _take(shot: Dictionary) -> void:
 	Engine.max_fps = 60
 	# Offline, as gate_probe's first half: nothing in a picture is the day's.
 	OS.set_environment("BRICKWORKS_API", "http://127.0.0.1:9")
+	# The phone's layout is a browser's alone (Phone._wanted); a desktop
+	# window as small as a phone is laid out for one only when told, as
+	# open_menu_reach_probe's --phone does.
+	var phone: bool = bool(shot.get("phone", false))
+	if phone:
+		Phone._on = 1
+		Phone._wide = false
 	_main = load("res://src/main.tscn").instantiate()
 	_main.set("gate_for_probe", true)
 	root.add_child(_main)
@@ -249,6 +258,8 @@ func _take(shot: Dictionary) -> void:
 		quit(1)
 		return
 	_stop_playback()
+	if phone:
+		_hold_phone_scale()
 	await _let_in()
 	await _frames(20)
 	# Someone who has been here before: Build your first model skipped and
@@ -334,6 +345,25 @@ func _take(shot: Dictionary) -> void:
 	_main.queue_free()
 	await process_frame
 	quit(0)
+
+
+## A phone draws at a browser's scale (Main.screen_factor, web), where a
+## desktop window draws its layout half as big, which no phone does: held
+## there, with the phone layout's own look at the window's density stopped
+## (open_menu_reach_probe).
+func _hold_phone_scale() -> void:
+	var layout: Variant = _main.get("_phone")
+	if layout is Node:
+		(layout as Node).set_process(false)
+	else:
+		_failed.append("the phone's layout was asked for and is not in the window")
+	for link: Dictionary in root.size_changed.get_connections():
+		var call: Callable = link["callable"]
+		if call.get_method() == &"_match_screen_density":
+			root.size_changed.disconnect(call)
+	var main_script: GDScript = _main.get_script()
+	root.content_scale_factor = main_script.sized_factor(Room.across(), Room.down(), true,
+		ShellPrefs.interface_size(), true)
 
 
 ## What a click on a button in sight does.
