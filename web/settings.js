@@ -64,7 +64,10 @@ async function feedback() {
     const item = make("li", "report");
     item.dataset.report = String(one.id);
     item.dataset.status = one.status;
-    const marks = make("p", "marks", make("span", "pill", KINDS[one.kind] ? KINDS[one.kind]() : say("A report")),
+    // Its number, as the thank-you said it (bugreport): "#123".
+    item.id = `report-${one.id}`;
+    const marks = make("p", "marks", make("strong", "number", `#${one.id}`),
+      make("span", "pill", KINDS[one.kind] ? KINDS[one.kind]() : say("A report")),
       make("span", `pill${one.status === "fixed" ? " good" : one.status === "new" ? "" : " new"}`,
         STANDS[one.status] ? STANDS[one.status]() : one.status),
       one.beta ? make("span", "pill", say("Beta")) : null, make("small", "", when(one.at)));

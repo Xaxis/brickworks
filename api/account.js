@@ -204,6 +204,8 @@ export default async function handler(request, response) {
     signed_in: true,
     email: claims.email || null,
     master: isMaster(claims),
+    // open (only while it is): the app shows its top bar's Report a bug
+    // then (bugreport); off, the account says nothing of the beta.
     beta: { tester, early: earlyFor(tester), ...(open ? { open, welcome } : {}) },
     ...(age ? { age } : {}),
   });

@@ -239,9 +239,9 @@ def test_a_tester_is_marked_and_sees_the_early_features_and_the_hub() -> None:
     got = api()
     if got is None:
         return
-    assert got["account_before"] == {"tester": False, "early": []}
+    assert got["account_before"] == {"tester": False, "early": [], "open": False}
     assert got["hub_before"]["status"] == 403
-    assert got["account_tester"] == {"tester": True, "early": ["beta_hub"]}
+    assert got["account_tester"] == {"tester": True, "early": ["beta_hub"], "open": False}
     hub = got["hub"]["json"]
     assert got["hub"]["status"] == 200 and hub["tester"] is True
     assert [one["key"] for one in hub["early"]] == ["beta_hub"] and hub["new"] and hub["known"]
@@ -306,5 +306,5 @@ def test_before_the_sql_words_never_a_crash() -> None:
         return
     assert got["no_sql_send"] == {"status": 503, "json": {"error": "Feedback is not open here yet. Try again soon."}}
     assert got["no_sql_inbox"]["status"] == 503
-    assert got["no_sql_account"] == {"tester": False, "early": []}
+    assert got["no_sql_account"] == {"tester": False, "early": [], "open": False}
     assert got["no_sql_hub"]["status"] == 503

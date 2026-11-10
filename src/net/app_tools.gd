@@ -165,6 +165,8 @@ const WINDOW_ONLY: Dictionary = {
 	"about": "help for the person",
 	"back_to_site": "leaves the web app for the website in the person's tab, ending the session's connection",
 	"feedback": "a report from the person to the people who make Brickworks, in their own words",
+	# bugreport: the same, a bug's, with a picture of the window the person marks.
+	"report_bug": "a report from the person to the people who make Brickworks, in their own words, with a picture of their window",
 	"beta_hub": "help for the person",
 	"check_updates": "the person's own copy of the app: a new version is theirs to take, and taking it restarts the app the session is driving",
 	"reinstall": "puts a fresh copy of the app in place and restarts it, ending the session's connection",

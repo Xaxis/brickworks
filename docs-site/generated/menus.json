@@ -1513,6 +1513,15 @@
 					"line": true
 				},
 				{
+					"name": "report_bug",
+					"words": "Report a bug…",
+					"key": "Alt+Shift+R",
+					"tip": "Tell us what went wrong, with a picture of the window to mark the spot on"
+				},
+				{
+					"line": true
+				},
+				{
 					"name": "check_updates",
 					"words": "Check for updates…",
 					"key": "",
@@ -1955,6 +1964,7 @@
 		"website": "",
 		"beta_hub": "",
 		"feedback": "",
+		"report_bug": "alt-shift-R",
 		"about": "",
 		"back_to_site": ""
 	}

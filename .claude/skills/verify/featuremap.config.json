@@ -3053,7 +3053,7 @@
       "kind": "ui",
       "label": "your settings page",
       "entry": "web/settings.html",
-      "reach": "https://brickworks.diy/settings   (settings.js: Profile, Appearance, Email, Privacy, Claude, Feedback, Sign out, Delete account)",
+      "reach": "https://brickworks.diy/settings   (settings.js: Profile, Appearance, Email, Privacy, Claude, Your reports, Sign out, Delete account)",
       "area": "web"
     },
     {
@@ -4033,7 +4033,7 @@
       "kind": "ui",
       "label": "your feedback on settings",
       "entry": "web/settings.js",
-      "reach": "https://brickworks.diy/settings#feedback signed in   (each report, where it stands, a tester's marked, our answers; never the owner's note)",
+      "reach": "https://brickworks.diy/settings#feedback signed in   (Your reports: each report with its number (#N, anchored report-N), where it stands, a tester's marked, our answers; never the owner's note)",
       "area": "web"
     },
     {
@@ -5077,6 +5077,34 @@
       "label": "betajoin probe",
       "entry": "src/dev/betajoin_probe.gd",
       "reach": "BRICKWORKS_API=http://127.0.0.1:9960 tools/probe.sh betajoin_probe [-- off]   (windowed, live: the real form, the welcome, Join, Account's Beta row, Not now never asked again; off: no welcome, no row, 403; skipped without BRICKWORKS_API)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "report a bug in the app",
+      "entry": "src/ui/feedback_dialog.gd",
+      "reach": "godot --path .  (the beta open, signed in: Report a bug in the top bar beside Account, Help › Report a bug… and Alt-Shift-R under every preset each open the report over the model with the window's picture; a drag marks the spot (PictureMarks), Leave the picture out, what will be sent in a line; Report this on an error notice (Main._on_script_error) ticks its log lines; sent, Report #N and Your reports; Help's row and its key with the beta shut too; tools/probe.sh bugreport_probe)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "report a bug on the site",
+      "entry": "web/bugreport.js",
+      "reach": "window.brickworksReportBug({source: \"site\"}) on any page (the beta bar's Report a bug loads it): the page drawn to a picture by the page itself, web/feedback.js's report mode over the page with a box to drag on it; signed out, a sign-in first; sent, Report #N and Your reports (/settings#feedback); tools/web/bugreport_flow.mjs",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "bugreport browser flow",
+      "entry": "tools/web/bugreport_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/bugreport_flow.mjs --url=<deployment> --out=DIR   (the site at 390 and 1280: the report over the page, a box found in the kept picture within 2 px, Your reports; the app's top bar with the beta open, none with it shut; preview check [bugreport])",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "bugreport probe",
+      "entry": "src/dev/bugreport_probe.gd",
+      "reach": "PROBE_SIZE=1280x720 tools/probe.sh bugreport_probe [--shots=DIR]   (windowed, signs a throwaway in: top bar, Help and Alt-Shift-R each open the report in one press; a drawn box in the sent JPEG within 2 px; Report this on an error; Escape and Cancel send nothing; the beta shut hides the button)",
       "area": "web"
     }
   ]

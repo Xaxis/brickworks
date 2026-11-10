@@ -90,6 +90,8 @@ var early: Array[String] = []
 ## welcome is due (a new account, not yet asked whether to join its
 ## testers), which the sign-in screen shows once the age question is
 ## answered ([method join_beta], [method leave_beta]).
+## The top bar's Report a bug and the error notices' Report this show
+## while it is open (bugreport). The deployment says, the app only shows.
 var beta_open: bool = false
 var beta_welcome: bool = false
 ## Signed in from what this device kept, because Supabase could not be
@@ -664,6 +666,7 @@ func _forget(why: String) -> void:
 	user_id = ""
 	master = false
 	tester = false
+	beta_open = false
 	early.clear()
 	beta_open = false
 	beta_welcome = false

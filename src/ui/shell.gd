@@ -224,7 +224,7 @@ const MENUS: Array = [
 		"mode_connect", "mode_clone", "mode_paint", "mode_hide", "mode_delete", "-", "rotate_held",
 		"tip_held", "-", "measure", "stability", "simulate", "hidden_colours", "reseat", "-",
 		"ask_claude", "connector", "settings"]],
-	["Help", ["keys", "whats_this", "tour", "-", "check_updates", "reinstall", "restart"]],
+	["Help", ["keys", "whats_this", "tour", "-", "report_bug", "-", "check_updates", "reinstall", "restart"]],
 ]
 
 ## The app's own menu, opened from the mark at the far left of the menu
@@ -623,6 +623,8 @@ func _run_now(name: String) -> void:
 ## said when it cannot be: Alt-C with nothing selected says to select a
 ## part first, where it said nothing.
 func run_key(action: String) -> void:
+	if action == "report_bug":
+		_report_from = "key"
 	if ColourKeys.owns(action):
 		ColourKeys.press(action, self)
 	elif action == "select_cycle":
@@ -970,14 +972,14 @@ var read_only: bool = false
 const LOOKING: Array[String] = ["view_default", "view_front", "view_back",
 	"view_left", "view_right", "view_top", "view_bottom", "view_iso", "fit",
 	"fit_model", "ortho", "full_screen", "timeline", "parts_list", "instructions",
-	"docs", "website", "beta_hub", "feedback", "about", "back_to_site", "palette"]
+	"docs", "website", "beta_hub", "feedback", "report_bug", "about", "back_to_site", "palette"]
 
 
 ## What may be done while a model is being laid (ModelStore.laying): look
 ## at what is down from another side, and nothing that reads the model.
 const WHILE_LAYING: Array[String] = ["view_default", "view_front", "view_back",
 	"view_left", "view_right", "view_top", "view_bottom", "view_iso", "fit",
-	"ortho", "full_screen", "docs", "website", "beta_hub", "feedback", "about", "back_to_site",
+	"ortho", "full_screen", "docs", "website", "beta_hub", "feedback", "report_bug", "about", "back_to_site",
 	"palette"]
 
 
@@ -1623,6 +1625,10 @@ func _define() -> void:
 		"For beta testers: what to try, what we know is wrong, and how to tell us")
 	_add("feedback", "Send feedback…", 0, _show_feedback, Callable(),
 		"Something wrong, an idea or a question, to the people who make Brickworks")
+	# bugreport (2026-11-09): a bug, with the window's picture to mark the
+	# spot on. Its key is the keymap's (Alt-Shift-R, Keymap.PRESET_KEYS).
+	_add("report_bug", "Report a bug…", 0, func() -> void: report_bug(_report_from_now()), Callable(),
+		"Tell us what went wrong, with a picture of the window to mark the spot on")
 	_add("about", "About Brickworks", 0, _show_about)
 	# The web app had no way back to the site but the browser's own Back
 	# (brand373). This tab, the site's own address: a preview's on a preview.
@@ -2244,6 +2250,79 @@ func _show_feedback() -> void:
 	feedback.account = app.get("_account")
 	feedback.recent = app.get("_log")
 	feedback.open(window)
+
+
+# -- bugreport (2026-11-09): reporting a bug is one press from anywhere -------
+
+## Report a bug, in the top bar beside Account, while the beta is open
+## ([method set_beta_open]): as Linear's and Figma's betas keep theirs in
+## sight, the one place a tester looks. Help, Report a bug… and its key are
+## there whatever the beta.
+var report_button: Button = null
+## Whether the beta is open for the account signed in (Account.beta_open).
+var beta_open: bool = false
+## Where the next Report a bug… was asked from: the key says so, and the
+## top bar's button; the menus are "menu".
+var _report_from: String = "menu"
+
+
+## The top bar's Report a bug, beside Account, hidden until the beta is open.
+func _make_report_button() -> void:
+	var account: Control = bar.controls_by_name().get("account")
+	if account == null:
+		return
+	var row: Container = account.get_parent()
+	report_button = bar._button(row, "Report a bug", func() -> void:
+		_report_from = "bar"
+		run("report_bug"),
+		"Tell us what went wrong, with a picture of the window to mark the spot on (%s)"
+		% Keymap.written("report_bug"))
+	report_button.name = "report_bug"
+	report_button.accessibility_name = "Report a bug"
+	row.move_child(report_button, account.get_index())
+	report_button.visible = _report_shown()
+
+
+## The beta open, or not, for the account signed in: the top bar's Report a
+## bug and the error notices' Report this are there while it is (Main).
+func set_beta_open(on: bool) -> void:
+	beta_open = on
+	if report_button == null and bar != null:
+		_make_report_button()
+	if report_button != null:
+		report_button.visible = _report_shown()
+
+
+## In the top bar while the beta is open; a phone's bar has no room for it,
+## and More holds Help's Report a bug… there.
+func _report_shown() -> bool:
+	return beta_open and not Phone.on()
+
+
+func _report_from_now() -> String:
+	var where: String = _report_from
+	_report_from = "menu"
+	return where
+
+
+## Report a bug…: the window pictured as it is, once a menu has gone from
+## it and before the dialog covers it, and the report opened over the model.
+## From an error notice ([param where] "notice"), [param error] is what it
+## said and [param lines] the log up to it.
+func report_bug(where: String, lines: PackedStringArray = PackedStringArray(), error: String = "") -> void:
+	# A report already open keeps what was written in it; Send feedback open
+	# goes, so the picture is of the window and not of it.
+	if _feedback != null and _feedback.visible:
+		if bool(_feedback.get("reporting")):
+			_feedback.grab_focus()
+			return
+		_feedback.hide()
+	for _n: int in 2:
+		await get_tree().process_frame
+	var window: Image = get_viewport().get_texture().get_image()
+	feedback.account = app.get("_account")
+	feedback.recent = app.get("_log")
+	feedback.open_report(window, where, lines, error)
 
 
 func _show_about() -> void:
@@ -3723,6 +3802,8 @@ func controls_by_name() -> Dictionary:
 		out["save_as_cancel"] = _save_as.get_cancel_button()
 	if _feedback != null:
 		out.merge(_feedback.controls_by_name())
+	if report_button != null and report_button.is_visible_in_tree():
+		out["report_bug"] = report_button
 	# About's links to the licences in full, and the licence open.
 	if _about != null and _about.visible:
 		out["about_ok"] = _about.get_ok_button()
