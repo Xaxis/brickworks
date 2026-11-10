@@ -13,7 +13,9 @@
   left of the first 100, how to report a bug, what is new this week (the
   changelog's newest releases, changelog.json, tools/site.py), and the
   questions. And for a tester, from GET /api/plans?op=beta_hub, what we
-  know is wrong and the early features on their account.
+  know is wrong and the early features on their account; and at #about
+  (betajoin), "tell us about you", the month of Pro's application, or
+  where it stands, from GET /api/plans?op=beta.
 
   web/beta.js draws it from web/betabar.js, which asks the server. While
   BRICKWORKS_BETA is off the page says the beta is coming soon, with what
@@ -86,6 +88,16 @@
 .grid .card .pill { margin-top: var(--s-3); max-width: 100%; white-space: normal; }
 #testers .sub-h { margin: var(--s-6) 0 var(--s-2); }
 #testers .note { margin: 0 0 var(--s-4); }
+/* Tell us about you: the form, or where it stands, in one panel; held at
+   the form's height while the page asks which. */
+.apply { max-width: 720px; }
+.apply .skeleton { min-height: 360px; }
+.apply form { display: grid; gap: var(--s-4); }
+.apply .pair { display: grid; gap: var(--s-4); }
+@media (width >= 600px) { .apply .pair { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.apply .said { margin: 0; min-height: 1.5em; color: var(--ink); }
+.apply h3 { margin-bottom: var(--s-2); }
+.apply .card p + p { margin-top: var(--s-3); }
 </style>
 <script src="/follow.js" type="module"></script>
 <script src="/beta.js" type="module"></script>
@@ -203,6 +215,60 @@
 			<ul class="grid" id="known" aria-labelledby="known-h"></ul>
 			<h3 class="sub-h" id="early-h">Early features on your account</h3>
 			<ul class="grid" id="early" aria-labelledby="early-h"></ul>
+		</div>
+	</section>
+
+	<!-- A tester's too (betajoin): "tell us about you", the month of Pro's
+	     application (POST /api/plans?op=beta, api/_beta.js applicationOf),
+	     or where it stands. A tester agreed to the beta's terms and its
+	     emails when it joined, so the form asks neither. The welcome,
+	     Settings and the beta's emails link here, /beta#about. -->
+	<section class="section" id="about" aria-labelledby="about-h" hidden>
+		<div class="wrap narrow">
+			<div class="section-head"><div>
+				<h2 class="title" id="about-h" tabindex="-1">Tell us about you</h2>
+				<p>For a month of Pro: the first 100 testers we approve get 30 days, free. It takes a minute, and it’s up to you.</p>
+			</div></div>
+			<div class="apply">
+				<div class="card skeleton" id="apply-wait" aria-hidden="true">
+					<span class="bone wide"></span><span class="bone"></span><span class="bone short"></span><span class="bone button"></span>
+				</div>
+				<form class="card" id="apply-form" novalidate hidden>
+					<p class="said" id="apply-was" hidden></p>
+					<label>What would you build? <small>A sentence or two: 20 to 800 characters</small>
+						<textarea name="build" id="f-build" rows="4" minlength="20" maxlength="800" required></textarea></label>
+					<div class="pair">
+						<label>Which AI do you use?
+							<select name="ai" id="f-ai" required>
+								<option value="" disabled selected hidden>Choose one</option>
+								<option value="claude">Claude</option>
+								<option value="chatgpt">ChatGPT</option>
+								<option value="own_key">My own API key</option>
+								<option value="not_sure">Not sure yet</option>
+							</select></label>
+						<label>Your LEGO® or CAD background
+							<select name="background" id="f-background" required>
+								<option value="" disabled selected hidden>Choose one</option>
+								<option value="new">New to both</option>
+								<option value="lego">I build LEGO® models</option>
+								<option value="cad">I use CAD</option>
+								<option value="both">Both</option>
+							</select></label>
+					</div>
+					<label>About it <small>Optional, one line: what you build, or which CAD</small>
+						<input name="background_line" id="f-line" maxlength="160" autocomplete="off"></label>
+					<label>A link to your work <small>Optional: Rebrickable, BrickLink, Flickr, GitHub or a portfolio</small>
+						<input name="link" id="f-link" inputmode="url" maxlength="300" placeholder="https://" autocomplete="url"></label>
+					<div class="actions"><button class="cta" type="submit" id="apply-send">Send</button></div>
+					<p class="said" id="apply-said" role="status"></p>
+					<p class="note">What you send is kept with your account, read only by the site’s owner, and deleted with your account (<a href="/privacy#beta">privacy</a>).</p>
+				</form>
+				<div class="card" id="apply-status" hidden>
+					<h3 id="status-h" tabindex="-1"></h3>
+					<p id="status-said"></p>
+					<p id="status-more" hidden></p>
+				</div>
+			</div>
 		</div>
 	</section>
 
