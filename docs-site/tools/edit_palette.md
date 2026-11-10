@@ -1,0 +1,11 @@
+---
+tool: edit_palette
+example: {"action": "make", "palette": "Castle", "bricks": [3, 4, 7], "assembly": "Gatepost", "assembly_bricks": [12, 13, 14, 15]}
+---
+
+Ask Claude to keep parts as a palette of your own, "the parts of these two pods, as Pod parts", and it makes the palette the bin's Palettes then shows, in the model you have open and every one after it. It can put a kept sub-assembly down in a model whole (`"action": "place"`), and asks you before it deletes a palette or takes a sub-assembly out of one.
+
+<!-- the tool list's words: tools/docs_site.py --write copies them here from tools/mcp_tools.json; --check fails while they differ -->
+```text
+Make or change one of the person's palettes (the parts bin's Palettes), as its New palette, Add and More rows do, or put one of its sub-assemblies down in the model. palette= its name. action make (a new palette called palette=; a name taken is refused) or add keeps parts in it, each part and colour once: bricks= parts of the open model by number, each in its colour; parts= any part by number and LDraw colour; from= "model" or "selection" every part of the open model or of the person's selection. assembly= keeps a sub-assembly whole by that name, as Add, The selection, as one sub-assembly does: its parts assembly_bricks=, or with none given from= (the selection or the whole model). Parts and a sub-assembly go in one call. take_out takes parts= or the sub-assembly assembly= out; rename renames the palette, or the sub-assembly assembly=, to to=; delete deletes the palette. Taking out a sub-assembly and deleting a palette need agreed=true: ask the person first, as the window asks them. action place puts the sub-assembly assembly= down in the model whole, as a click on its tile does: each part where it stood beside the others, as a sub-assembly of its own name, one undo step; at= {x, y, z} is where its low corner goes (studs, plates, studs, as look_at_model gives them; beside the model when not given), rot= quarter turns about the upright first, every part checked for room, all or nothing. A part alone from a palette goes in with edit_model's add, in its colour. Answered with what the palette holds, or with what was put down pictured (picture=false: words alone).
+```

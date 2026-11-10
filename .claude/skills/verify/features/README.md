@@ -26,7 +26,12 @@ Never driven from here:
 
 - **Real people's accounts.** The account recipes ([account](account.md)) make
   throwaway accounts at Resend's test addresses (`delivered+bw…@resend.dev`)
-  and delete them, and the browser flows sign in as one test account. Never ask
+  and delete them, and the browser flows sign in as one test account. A flow
+  that publishes signs in as an account of its own run instead
+  (`launch({ ownAccount: true })`, `delivered+bw-flowrun-…`), deleted when the
+  run ends or is stopped and swept by the next run when it was killed: the shared
+  account's 60 publishes a day are spent by every preview at once
+  (`tests/test_flow_accounts.py` fails a flow that publishes without). Never ask
   for a code for a real address as a check: it emails them. `account_flow.mjs
   --master` signs the owner's account in (no email is sent) and is opt-in for
   that reason. The dormant tables (`assistant_usage`, `assistant_designs`) are

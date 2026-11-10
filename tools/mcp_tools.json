@@ -3119,6 +3119,10 @@
           ],
           "type": "integer"
         },
+        "chamfer": {
+          "description": "wedge: true to cut the far corner flat, 3 LDU along, as the LEGO® wedge plates 54383 and 41770b have it; false, the default, runs the cut to the corner (41770a)",
+          "type": "boolean"
+        },
         "cut": {
           "additionalProperties": false,
           "description": "with from: a box to cut out of the part — a corner, a notch, a step — in studs from its low x and low z (its left and back) and plates up from its bottom; the cut faces are closed and a wall put back where it opens the part's hollow underside.",
@@ -5318,7 +5322,7 @@
       "readOnlyHint": false,
       "title": "Render a picture"
     },
-    "description": "Render the model as File, Render does: a picture, a turntable (a WebP and, where ffmpeg is installed, an MP4), or build: the model built up as a video, the timeline's steps one after another, each step's parts coming down into place and the camera turning slowly round, over seconds (10 to 60, 20 when omitted), as Render's Building does; on a studio sweep with soft shadows. quality quick, good or best (good for a picture, quick for a turntable or a build when omitted); size 720p, 1080p, 4k or square (720p for a turntable or a build); view hero, front, side, back, low or top, or the name of a view the person saved with the model (View › Viewpoint), drawn from exactly there; a name it does not keep is answered with those it does. look product is a product shot's: glossy plastic with rounded edges, clear parts that bend the light, a key, fill and rim over a softbox studio (window, the default, is the window's own). backdrop white, gradient, grey, dark or none (as Render last had it when omitted). depth_of_field blurs what is nearer and farther than the model's middle, as a lens at f/4 does, and is drawn at best. light studio (the window's three lights, the default), softbox, window or daylight (photographed places), or dark: the studio put out, the model's own lights (light_model) and the plastics that glow all that lights it. Saved where Render saves. It is a job: the answer is a job number at once, and job gives the result: a picture with it, or a turntable's or a build's six frames in one picture, the last its end. Needs the app in a window.",
+    "description": "Render the model as File, Render does: a picture, a turntable (a WebP and, where ffmpeg is installed, an MP4), or build: the model built up as a video, the timeline's steps one after another, each step's parts coming down into place and the camera turning slowly round, over seconds (10 to 60, 20 when omitted), as Render's Building does; on a studio sweep with soft shadows. quality quick, good or best (good for a picture, quick for a turntable or a build when omitted); size 720p, 1080p, 4k or square (720p for a turntable or a build); view hero, front, side, back, low or top, or the name of a view the person saved with the model (View › Viewpoint), drawn from exactly there; a name it does not keep is answered with those it does. look product is a product shot's: glossy plastic with rounded edges, clear parts that bend the light, a key, fill and rim over a softbox studio (window, the default, is the window's own). look lineart is the model inked: black lines round it, where each part meets the next and where a part turns a corner, on white, the shade in halftone dots; comic the same lines and dots over each part's own flat colour; with backdrop none on nothing. backdrop white, gradient, grey, dark or none (as Render last had it when omitted). depth_of_field blurs what is nearer and farther than the model's middle, as a lens at f/4 does, and is drawn at best. light studio (the window's three lights, the default), softbox, window or daylight (photographed places), or dark: the studio put out, the model's own lights (light_model) and the plastics that glow all that lights it. Saved where Render saves. It is a job: the answer is a job number at once, and job gives the result: a picture with it, or a turntable's or a build's six frames in one picture, the last its end. Needs the app in a window.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -5334,6 +5338,14 @@
         },
         "depth_of_field": {
           "type": "boolean"
+        },
+        "format": {
+          "description": "a turntable's or a build's file: webp, or gif for where a WebP is not taken (chats, forums, mail): 256 colours, at most 640 pixels across, made to fit 8 MB. As Render's Kept as has it when omitted",
+          "enum": [
+            "webp",
+            "gif"
+          ],
+          "type": "string"
         },
         "kind": {
           "enum": [
@@ -5356,7 +5368,9 @@
         "look": {
           "enum": [
             "window",
-            "product"
+            "product",
+            "lineart",
+            "comic"
           ],
           "type": "string"
         },
@@ -5440,7 +5454,9 @@
         "look": {
           "enum": [
             "window",
-            "product"
+            "product",
+            "lineart",
+            "comic"
           ],
           "type": "string"
         },
@@ -6397,6 +6413,140 @@
       "type": "object"
     },
     "name": "booklet_page"
+  },
+  {
+    "annotations": {
+      "openWorldHint": false,
+      "readOnlyHint": true,
+      "title": "List the person's palettes"
+    },
+    "description": "The person's own palettes, as the parts bin's Palettes keeps them: each named, of parts in their colours and of sub-assemblies, kept apart from any model so they are there in every model the person opens, on this computer (in this browser on the web). With no palette=, every palette with what it holds; palette= one by its name, in full: each part's number, name and colour, and each sub-assembly's name and parts. Changes nothing. edit_palette makes and changes them, and puts a sub-assembly down.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "palette": {
+          "description": "a palette's name",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "palettes"
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Keep parts in a palette"
+    },
+    "description": "Make or change one of the person's palettes (the parts bin's Palettes), as its New palette, Add and More rows do, or put one of its sub-assemblies down in the model. palette= its name. action make (a new palette called palette=; a name taken is refused) or add keeps parts in it, each part and colour once: bricks= parts of the open model by number, each in its colour; parts= any part by number and LDraw colour; from= \"model\" or \"selection\" every part of the open model or of the person's selection. assembly= keeps a sub-assembly whole by that name, as Add, The selection, as one sub-assembly does: its parts assembly_bricks=, or with none given from= (the selection or the whole model). Parts and a sub-assembly go in one call. take_out takes parts= or the sub-assembly assembly= out; rename renames the palette, or the sub-assembly assembly=, to to=; delete deletes the palette. Taking out a sub-assembly and deleting a palette need agreed=true: ask the person first, as the window asks them. action place puts the sub-assembly assembly= down in the model whole, as a click on its tile does: each part where it stood beside the others, as a sub-assembly of its own name, one undo step; at= {x, y, z} is where its low corner goes (studs, plates, studs, as look_at_model gives them; beside the model when not given), rot= quarter turns about the upright first, every part checked for room, all or nothing. A part alone from a palette goes in with edit_model's add, in its colour. Answered with what the palette holds, or with what was put down pictured (picture=false: words alone).",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "enum": [
+            "make",
+            "add",
+            "take_out",
+            "rename",
+            "delete",
+            "place"
+          ],
+          "type": "string"
+        },
+        "agreed": {
+          "description": "the person said yes (take_out of a sub-assembly, delete)",
+          "type": "boolean"
+        },
+        "assembly": {
+          "description": "a sub-assembly's name in the palette",
+          "type": "string"
+        },
+        "assembly_bricks": {
+          "description": "parts of the open model, by their numbers in look_at_model",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "at": {
+          "additionalProperties": false,
+          "description": "place: where the sub-assembly's low corner goes, in studs, plates and studs",
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "z": {
+              "type": "number"
+            }
+          },
+          "type": "object"
+        },
+        "bricks": {
+          "description": "parts of the open model, by their numbers in look_at_model",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "from": {
+          "enum": [
+            "model",
+            "selection"
+          ],
+          "type": "string"
+        },
+        "palette": {
+          "description": "the palette's name (make: the new one's)",
+          "type": "string"
+        },
+        "parts": {
+          "description": "parts by number, each in a colour",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "color": {
+                "description": "LDraw colour code",
+                "type": "integer"
+              },
+              "part": {
+                "description": "part number, e.g. 3001",
+                "type": "string"
+              }
+            },
+            "required": [
+              "part",
+              "color"
+            ],
+            "type": "object"
+          },
+          "type": "array"
+        },
+        "picture": {
+          "description": "place: false, words alone",
+          "type": "boolean"
+        },
+        "rot": {
+          "description": "place: quarter turns about the upright, 0 to 3",
+          "type": "integer"
+        },
+        "to": {
+          "description": "rename: the new name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action",
+        "palette"
+      ],
+      "type": "object"
+    },
+    "name": "edit_palette"
   },
   {
     "annotations": {

@@ -11,6 +11,8 @@ description: Tell Brickworks the sets and parts you own, then see what a model n
 
 ## Your sets and parts {#my-collection}
 
+![My collection: the sets and loose parts you own, with ways to add a set by its number, from a photo of its box, or from Rebrickable.](/docs/img/collection-dialog.webp "File › My collection…")
+
 **File › My collection…** keeps the sets and loose parts you own. Bring them in from your Rebrickable account (with your own Rebrickable key), from a BrickLink or Rebrickable list, or type them in. Each set is counted out into its parts. Your collection is kept with your account, so it is there on every device you sign in on.
 
 Each change you make is made on your collection as your account keeps it, so a change made at the same moment on another device, or by Claude, is kept as well as yours. If a count you change was changed somewhere else since you looked, nothing is changed: My collection says so and shows the collection as it is now, for you to change it again. Fetching from your Rebrickable account replaces what came from Rebrickable before, by a fetch or an export, and the loose parts brought in before (listed as such); the parts you count by hand, a BrickLink list and what Claude added stay, and a set you typed that Rebrickable lists is kept once. If the connection drops while a change is being sent, My collection says it may have been made: open it again to see. A copy of Brickworks from before this still takes a set out; if it read your collection before a change made elsewhere, it asks you to update it (on the web, reload the page) first.
@@ -48,6 +50,8 @@ ui:a set's missing parts
 **Parts missing from a set.** Most sets that have been played with are short of a few pieces. Beside a set under *What I own*, choose **Missing parts…** and say how many of each part are missing; **All missing** marks every part, for counting back in what you find. What do I need? and What can I build? then count only what is there, and **Build from it** leaves the missing parts out of the bin. **Closest to whole** lists your sets with parts missing, those nearest to complete first, and **What it needs** shows what do I need? for that set: its missing parts, less any loose parts you have added that make them up. Loose parts count towards any set; parts of your other sets do not, since taking them would break those sets.
 
 ## What do I need? {#need}
+
+![The car's parts list: each part's picture, name, colour and how many, with What do I need? and the shop lists at the foot.](/docs/img/collection-parts-list.webp "Build › Parts list (P).")
 
 **Build › What do I need?…** (or [[P]], then *What do I need?*) lists what this model uses that you do not own, and what you own that could stand in for it. Export what is left as a shopping list: see [Parts lists for shops](/docs/exports#shop-lists).
 

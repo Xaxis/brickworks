@@ -1,7 +1,8 @@
-// The beta's applications, for the owner (beta-admin.html): /api/admin?op=beta
-// asked with the session in this browser (web/account.js), drawn, and each
-// decided with ?op=beta_decide. Every word is put on the page as text,
-// never as markup: the answers are what people typed.
+// The beta's testers and its months of Pro, for the owner (beta-admin.html):
+// /api/admin?op=beta_testers and ?op=beta asked with the session in this
+// browser (web/account.js), drawn, and each month decided with
+// ?op=beta_decide. Every word is put on the page as text, never as markup:
+// the answers are what people typed.
 import { call, signedIn } from "/account.js";
 
 const $ = (id) => document.getElementById(id);
@@ -9,6 +10,12 @@ const TESTS = new URLSearchParams(location.search).get("tests") === "1";
 const AI = { claude: "Claude", chatgpt: "ChatGPT", own_key: "Their own API key", not_sure: "Not sure yet" };
 const BACKGROUND = { new: "New to both", lego: "Builds LEGO® models", cad: "Uses CAD", both: "Both" };
 const STATUS = { new: "New", waitlist: "Waitlist", approved: "Approved", declined: "Declined" };
+const STATE = { tester: "Tester", left: "Left", not_now: "Not now" };
+const VIA = { welcome: "the welcome at sign-up", app: "the app's welcome at sign-up", settings: "Settings",
+  app_settings: "the app's Account", home: "the homepage", hub: "the beta hub", beta: "the beta page", bar: "the beta bar",
+  application: "an application", site: "the site" };
+// Each tester as listed, by account: a month's application says whether it left.
+let members = new Map();
 const when = (iso) => (iso ? new Date(iso).toLocaleString(undefined, { year: "numeric", month: "short", day: "numeric",
   hour: "2-digit", minute: "2-digit" }) : "");
 const day = (iso) => (iso ? new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "");
@@ -38,7 +45,46 @@ function signalsOf(app) {
     [issues.length ? `The form: ${issues.join(", ")}` : `The form: ${n(s.quality?.words ?? 0, "word", "words")}, nothing odd`,
       issues.length > 0],
     ...(app.early ? [["Account from before 29 October 2026: has Pro already, takes no spot", false]] : []),
+    ...(members.get(app.account)?.state === "left" ? [[`Left the beta on ${day(members.get(app.account).said_at)}`, true]] : []),
   ];
+}
+
+/// A tester's row: the address, when and from where, and its month.
+function testerRow(one) {
+  const app = one.application;
+  const month = !app ? "told us nothing yet" : app.status === "approved"
+    ? `month approved${app.spot ? `, spot ${app.spot}` : ""} (${app.comp === "granted" ? "given" : "still to give"})`
+    : `month ${STATUS[app.status]?.toLowerCase() || app.status}`;
+  const said = one.state === "not_now" ? `Said Not now, ${day(one.said_at)}`
+    : `${one.state === "left" ? `Left ${day(one.said_at)}; joined` : "Joined"} ${day(one.joined_at)} from ${VIA[one.via] || one.via}; ${month}`;
+  return make("li", "tester", make("b", "", one.email || one.account),
+    make("span", one.state === "tester" ? "pill good" : "pill", STATE[one.state] || one.state), make("small", "", said));
+}
+
+/// The testers, drawn; false when they could not be read.
+async function loadTesters() {
+  const reply = await call(`/api/admin?op=beta_testers${TESTS ? "&tests=1" : ""}`).catch(() => null);
+  if (!reply || reply.status !== 200) {
+    members = new Map();
+    $("testers").replaceChildren();
+    $("testers").hidden = true;
+    $("testers-empty").hidden = true;
+    $("testers-said").textContent = reply?.body?.error || "The testers could not be read just now.";
+    for (const id of ["n-testers", "n-welcome", "n-left", "n-not-now"]) $(id).textContent = "—";
+    return reply?.status !== 404;
+  }
+  const t = reply.body;
+  members = new Map(t.testers.map((one) => [one.account, one]));
+  $("n-testers").textContent = String(t.counts.testers);
+  $("n-welcome").textContent = String(t.counts.welcome);
+  $("n-left").textContent = String(t.counts.left);
+  $("n-not-now").textContent = String(t.counts.not_now);
+  $("testers-said").textContent = `${TESTS ? "The site's checks' own accounts (?tests=1). " : ""}Newest first, then who left, `
+    + `then who said Not now. ${t.counts.application} of the ${t.counts.testers} told us about themselves.`;
+  $("testers").replaceChildren(...t.testers.map(testerRow));
+  $("testers").hidden = t.testers.length === 0;
+  $("testers-empty").hidden = t.testers.length > 0;
+  return true;
 }
 
 function row(list, term, ...value) {
@@ -118,7 +164,7 @@ function decideForm(app) {
 
 async function load() {
   const query = new URLSearchParams({ op: "beta", ...(status ? { status } : {}), ...(TESTS ? { tests: "1" } : {}) });
-  const reply = await call(`/api/admin?${query}`).catch(() => null);
+  const [reply] = await Promise.all([call(`/api/admin?${query}`).catch(() => null), loadTesters()]);
   if (!reply || reply.status !== 200) {
     $("gate").hidden = false;
     $("view").hidden = true;
@@ -128,7 +174,7 @@ async function load() {
   }
   const q = reply.body;
   $("n-given").textContent = `${q.pool.given} of ${q.pool.cap}`;
-  $("n-left").textContent = String(q.pool.left);
+  $("n-spots-left").textContent = String(q.pool.left);
   $("n-new").textContent = String(q.counts.new);
   $("n-waitlist").textContent = String(q.counts.waitlist);
   $("n-pending").textContent = String(q.counts.pending);

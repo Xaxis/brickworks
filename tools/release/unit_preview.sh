@@ -17,6 +17,11 @@
 # check's log (_unit_pv_<check>.log). UNIT_REUSE=1 runs the checks again on
 # the preview this branch last made, if it was made from this very commit.
 set -u
+# A unit gives the live database way to a release train within ten minutes,
+# not the train's hour: each of a preview's 10-14 live checks waited an hour
+# behind m283/m284, so units sat 6-11 h on lines the train runs itself
+# (keeptext5, stepnames, subexport, 2026-11-10). LIVE_WAIT=SECONDS overrides.
+export LIVE_WAIT="${LIVE_WAIT:-600}"
 W=$(cd "${1:?usage: unit_preview.sh WORKTREE [CHECK...]}" && pwd) || exit 1
 shift
 # The worktree's own scripts, which know its own checks (ship.sh, m87).
@@ -38,10 +43,14 @@ TAG=${BRANCH//\//-}_unit
 SHA=$(git rev-parse --short HEAD)
 # What the unit changed: since where it left main, or the release branch it
 # was made from when that is later. A unit made from rel-m147 before m147
-# shipped would otherwise run every check m147's own changes call for.
+# shipped would otherwise run every check m147's own changes call for. The
+# local pre branch (pre261) counts too: each unit merged there has run its
+# own checks, and the train runs them all again, so a unit that merged
+# pre261 runs only its own (11-09: stepnames ran 59 checks over 5 h, most of
+# them for six other units' changes).
 BASE=$(git merge-base HEAD main) || exit 1
 FROM=main
-for ref in $(git for-each-ref --format='%(refname:short)' 'refs/heads/rel-*'); do
+for ref in $(git for-each-ref --format='%(refname:short)' 'refs/heads/rel-*' 'refs/heads/pre*'); do
   mb=$(git merge-base HEAD "$ref") || continue
   # A release that has merged this unit already holds all of it.
   [ "$mb" = "$(git rev-parse HEAD)" ] && continue

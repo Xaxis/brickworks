@@ -44,6 +44,15 @@ what it documents with a comment under its heading:
     ui:box select
     -->
 
+Pictures of the app and the site are made, not taken by hand: each is
+written down once in docs-site/pictures/<page>.json (what to set up, what
+to cut it to, its alt and caption) and tools/docs_shots.py makes them all
+again into docs-site/img/, served at /docs/img/. A page shows one as
+`![alt](/docs/img/<id>.webp "caption")`, its words copied from the manifest
+by --write. --check fails when a picture is missing or not what its last
+run made, is on no page or the wrong one, its words are not the manifest's,
+or it names a feature the map does not have.
+
 One source for people and for assistants (docs363, 2026-10-29: "a
 comprehensive docs system ... ALSO/basis for the MCP"). A page's head says,
 besides its title, which MCP tools it explains (tools:), which of the app's
@@ -67,6 +76,7 @@ import html
 import importlib.util
 import json
 import re
+import shutil
 import struct
 import sys
 from pathlib import Path
@@ -90,6 +100,8 @@ def _tool(name: str):
 
 site_shell = _tool("site_shell")  # the site's one header and footer
 assistants = _tool("assistants")  # every AI app Brickworks connects to, assets/assistants.json
+docs_shots = _tool("docs_shots")  # the pictures of the app and the site, docs-site/pictures/
+SHOTS = SRC / "img"  # each made by tools/docs_shots.py, served at /docs/img/
 
 # -- Markdown -----------------------------------------------------------------
 # The few things these pages use, and no more: headings with ids, paragraphs,
@@ -272,9 +284,13 @@ def render(page: Page, markdown: str) -> None:
         if picture:
             flush()
             alt, src, caption = picture.group(1), picture.group(2), picture.group(3) or ""
+            cap = f"<figcaption>{inline(caption)}</figcaption>" if caption else ""
+            if src.startswith("/docs/img/"):
+                out.append(shot_figure(src, alt, cap))
+                i += 1
+                continue
             size = webp_size(WEB / src.lstrip("/")) if src.startswith("/img/") else None
             dims = f' width="{size[0]}" height="{size[1]}"' if size else ""
-            cap = f"<figcaption>{inline(caption)}</figcaption>" if caption else ""
             out.append(f'<figure class="shot"><img src="{html.escape(src)}" alt="{html.escape(alt)}"'
                        f'{dims} loading="lazy" decoding="async">{cap}</figure>')
             i += 1
@@ -329,6 +345,26 @@ def render(page: Page, markdown: str) -> None:
         i += 1
     flush()
     page.html += named_tables(page, "\n".join(out))
+
+
+def shot_figure(src: str, alt: str, cap: str) -> str:
+    """A picture tools/docs_shots.py made (docs-site/pictures/): at its own
+    size, never stretched, loaded only when it comes near, and opened whole
+    by a click; a picture of the site in the theme the page is in, its other
+    theme's never fetched (a hidden lazy picture is not loaded)."""
+    name = src.rsplit("/", 1)[-1].removesuffix(".webp")
+    shot = next((s for s in docs_shots.shots() if s.get("id") == name), {})
+    files = docs_shots.themed(shot) if shot else [(name, "dark")]
+
+    def one(file: str, theme: str) -> str:
+        size = webp_size(SHOTS / f"{file}.webp")
+        dims = f' width="{size[0]}" height="{size[1]}"' if size else ""
+        kind = f' class="shot-open on-{theme}"' if len(files) > 1 else ' class="shot-open"'
+        return (f'<a{kind} href="/docs/img/{file}.webp" aria-label="{html.escape(alt)}, whole">'
+                f'<img src="/docs/img/{file}.webp" alt="{html.escape(alt)}"{dims} loading="lazy" decoding="async"></a>')
+
+    return (f'<figure class="shot shot-{shot.get("source", "app")}" id="shot-{name}">'
+            + "".join(one(f, t) for f, t in files) + f"{cap}</figure>")
 
 
 def named_tables(page: Page, fragment: str) -> str:
@@ -1184,6 +1220,10 @@ def build(out: Path) -> int:
     (docs / "search.json").write_text(json.dumps(search_index(pages), ensure_ascii=False, separators=(",", ":")),
                                       encoding="utf-8")
     (docs / "llms.txt").write_text(llms_txt(nav, pages), encoding="utf-8")
+    pictures = docs / "img"
+    pictures.mkdir(exist_ok=True)
+    for picture in sorted(SHOTS.glob("*.webp")):
+        shutil.copyfile(picture, pictures / picture.name)
     return len(pages)
 
 
@@ -1302,6 +1342,11 @@ def made_files(pages: list[Page]) -> dict[Path, str]:
     for name, doc in tool_docs().items():
         if name in tools:
             files[doc.path] = with_said(doc, tools[name])
+    # Each picture's words on its page are its manifest's (docs-site/pictures/<page>.json).
+    for path in sorted(SRC.glob("*.md")):
+        text = path.read_text(encoding="utf-8")
+        if docs_shots.SHOWN.search(text):
+            files[path] = docs_shots.with_words(text)
     return files
 
 
@@ -1429,7 +1474,10 @@ def check() -> list[str]:
             path = path.split("?")[0]
             if not path:
                 path = page.url
-            if path.startswith("/docs"):
+            if path.startswith("/docs/img/"):
+                if not (SHOTS / path.removeprefix("/docs/img/")).exists():
+                    problems.append(f"{page.name}.md shows {target}, which is not in docs-site/img/")
+            elif path.startswith("/docs"):
                 if path not in anchors:
                     problems.append(f"{page.name}.md links to {target}: no such docs page")
                 elif frag and frag not in anchors[path] and not frag.startswith("cmd-"):
@@ -1442,7 +1490,15 @@ def check() -> list[str]:
     problems += tool_problems(pages)
     problems += head_problems(pages)
     problems += way_problems(pages)
+    problems += shot_problems()
     return problems
+
+
+def shot_problems() -> list[str]:
+    """The pictures' (tools/docs_shots.py): each made, shown on its page with
+    the manifest's words, naming only features the map has."""
+    texts = {p.stem: p.read_text(encoding="utf-8") for p in SRC.glob("*.md") if not p.stem.startswith("_")}
+    return docs_shots.problems(texts)
 
 
 def said_pages(pages: list[Page]) -> dict[str, str]:
@@ -1480,7 +1536,9 @@ def main(argv: list[str]) -> int:
             return 1
         _, pages = load()
         covered = sum(len(p.covers) for p in pages)
-        print(f"docs: {len(pages)} pages, {covered} features covered, every link resolves")
+        pictures = len(docs_shots.shots())
+        print(f"docs: {len(pages)} pages, {covered} features covered, every link resolves, "
+              f"{pictures} picture(s) made and shown")
         return 0
     if argv == ["--write"]:
         for path in write():

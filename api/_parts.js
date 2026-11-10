@@ -19,12 +19,14 @@
 // (tools/web/part_facts.mjs) and worked out of assets/generated in a checkout,
 // so the two cannot say different things.
 //
-// The exports are the two the app makes (src/assembly/shop_lists.gd): a
+// The exports are the three the app makes (src/assembly/shop_lists.gd): a
 // BrickLink wanted list (BrickLink's XML: ITEMTYPE, ITEMID, COLOR, MINQTY in
-// <INVENTORY>) and a Rebrickable parts list (its CSV import: Part, Color,
+// <INVENTORY>), a Rebrickable parts list (its CSV import: Part, Color,
 // Quantity), a lot left off where the shop has no number for its colour, and
-// a made part, which no shop sells; a part in a direct colour (0x2RRGGBB)
-// listed in the nearest colour still made, as the app lists it (standIn).
+// a made part, which no shop sells; and the LEGO® Pick a Brick list (its upload:
+// elementId, quantity), a lot with no element number known left off and
+// counted, never guessed. A part in a direct colour (0x2RRGGBB) is listed in
+// the nearest colour still made, as the app lists it (standIn).
 
 import { existsSync, readFileSync } from "node:fs";
 import { deflateSync } from "node:zlib";
@@ -676,6 +678,18 @@ function lotMaker(library, given) {
   const lots = [];
   const byKey = new Map();
   let pieces = 0;
+  // A part's LEGO element number in a colour (PartLibrary.element_for): its
+  // plain colour's (a tyre in Rubber Black is sold as a Black one), and
+  // cloth's by its flat number; "" where none is known.
+  const elementOf = (part, code) => {
+    const plain = library.colour(code).plain;
+    const found = given.elements[`${part}/${plain}`] || "";
+    const info = library.info(part);
+    if (!found && info && info.name.includes("(Formed") && /c\d\d$/.test(part)) {
+      return given.elements[`${part.slice(0, -3)}/${plain}`] || "";
+    }
+    return found;
+  };
   const add = (part, code, n = 1) => {
     const key = `${part}:${code}`;
     let lot = byKey.get(key);
@@ -683,15 +697,11 @@ function lotMaker(library, given) {
       const info = library.info(part);
       const colour = library.colour(code);
       const plain = library.colour(colour.plain);
-      let element = given.elements[`${part}/${colour.plain}`] || "";
-      // Cloth is listed by its flat number (PartLibrary.element_for).
-      if (!element && info && info.name.includes("(Formed") && /c\d\d$/.test(part)) {
-        element = given.elements[`${part.slice(0, -3)}/${colour.plain}`] || "";
-      }
       lot = {
         part, name: tidy(info ? info.name : part) + (info && info.custom ? " (custom element)" : ""),
         category: info ? info.category : "", colour: code, colour_name: colour.name, hex: colour.hex,
-        lego_colour: plain.lego, count: 0, element, custom: Boolean(info && info.custom), copy_of: (info && info.copy_of) || "",
+        lego_colour: plain.lego, count: 0, element: elementOf(part, code), custom: Boolean(info && info.custom),
+        copy_of: (info && info.copy_of) || "",
         bricklink: shopPart(info, part, "bricklink"), bricklink_colour: plain.bricklink,
         rebrickable: shopPart(info, part, "rebrickable"), rebrickable_colour: plain.rebrickable,
         mesh: (info && info.mesh) || "", stand_in: null,
@@ -701,7 +711,8 @@ function lotMaker(library, given) {
       const instead = standIn(code, given);
       if (instead >= 0) {
         const stood = library.colour(instead);
-        lot.stand_in = { colour: instead, name: stood.name, bricklink: stood.bricklink, rebrickable: stood.rebrickable };
+        lot.stand_in = { colour: instead, name: stood.name, bricklink: stood.bricklink, rebrickable: stood.rebrickable,
+          element: elementOf(part, instead) };
       }
       byKey.set(key, lot);
       lots.push(lot);
@@ -796,6 +807,52 @@ export function rebrickableCsv(inventory) {
     rows.push(`${part},${colour},${lot.count}`);
   }
   return { text: `${rows.join("\n")}\n`, lots: inventory.lots.length - left, left_out: left, stand_ins: standIns };
+}
+
+/// LEGO® Pick a Brick takes up to 400 lines a file, and up to 999 of an
+/// element (ShopLists.PICK_A_BRICK_LINES, PICK_A_BRICK_MOST).
+export const PICK_A_BRICK_LINES = 400;
+export const PICK_A_BRICK_MOST = 999;
+
+/// The LEGO® Pick a Brick list (ShopLists.pick_a_brick), word for word the
+/// app's: `elementId,quantity` as the LEGO Group's own template writes it, line ends
+/// and all, a line an element, in files of PICK_A_BRICK_LINES lines:
+/// {files, lines, pieces, lots, missing, over, stand_ins}. A lot with no
+/// element number known, or a made part, is not on it: [missing] holds those
+/// lots, counted, never guessed. Two lots of one element (a tyre in Rubber
+/// Black and one in Black) are one line. An element wanted more than
+/// PICK_A_BRICK_MOST times is asked for that many, and the rest is in
+/// [over]: {element: how many more}. A part in a direct colour is the
+/// element of the part in the colour it stands in as, named in [stand_ins].
+export function pickABrick(inventory) {
+  const wanted = new Map();
+  const missing = [];
+  const standIns = [];
+  let pieces = 0;
+  for (const lot of inventory.lots) {
+    const element = lot.stand_in ? lot.stand_in.element : lot.element;
+    if (lot.custom || !element) {
+      missing.push(lot);
+      continue;
+    }
+    if (lot.stand_in) noteStandIn(standIns, lot);
+    wanted.set(element, (wanted.get(element) || 0) + lot.count);
+    pieces += lot.count;
+  }
+  const files = [];
+  const over = {};
+  const elements = [...wanted.keys()];
+  for (let start = 0; start < elements.length; start += PICK_A_BRICK_LINES) {
+    const rows = ["elementId,quantity"];
+    for (const element of elements.slice(start, start + PICK_A_BRICK_LINES)) {
+      const count = wanted.get(element);
+      if (count > PICK_A_BRICK_MOST) over[element] = count - PICK_A_BRICK_MOST;
+      rows.push(`${element},${Math.min(count, PICK_A_BRICK_MOST)}`);
+    }
+    files.push(rows.join("\r\n"));
+  }
+  return { files, lines: elements.length, pieces, lots: inventory.lots.length - missing.length, missing, over,
+    stand_ins: standIns };
 }
 
 /// What a page needs to draw each lot's picture itself (web/part-pictures.js,

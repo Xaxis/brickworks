@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:the panel asked for last in front, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe, ui:a long job says when it is done, cli:donenote probe, lib:line art and comic looks, cli:lineart probe -->
 
 ## Sub-features
 
@@ -378,9 +378,13 @@ picture the assistant is shown.
   FileDialog of the main window was one, so with Godot's own file dialog up
   (no xdg portal; File, Open's and Import's always) or any question, the
   title bar's X, Alt+F4 and the session ending did nothing until it was
-  answered (desktop018, 0.18.0 and 0.19.0). Now nothing is exclusive to the
-  main window: a dialog that would be is made not exclusive the frame it is
-  up, and `ModalDialogs`, the root's last node, takes the events the main
+  answered (desktop018, 0.18.0 and 0.19.0). Now nothing is the main window's
+  exclusive child: a dialog that would be is made not transient to it the
+  frame it is up (a window is its parent's exclusive child only while
+  transient), keeping its exclusive flag, so a screen reader still hears it
+  as modal (a11ymodal, 2026-11-08: dialogclose first made them not
+  exclusive, which the engine reports as not modal; `a11y_modal_probe`).
+  `ModalDialogs`, the root's last node, takes the events the main
   window would have refused while one is, and gives the dialog the keys back
   on a press beside it. A dialog's own questions stay exclusive to it, and
   Reference picture stays not modal. The app still asks nothing as it
@@ -852,7 +856,7 @@ picture the assistant is shown.
   command has no key and no row there, or a preset's count differs; checks no
   two actions share a key, each key is on its menu row, and each does what its
   row does under each preset (pictures: the menus, the sheet filtered `alt-`);
-  none runs while the parts' search is typed in; Replace set to Alt-W in the
+  each runs from the parts' search too (typingkeys); Replace set to Alt-W in the
   sheet runs from Alt-W. `docs_menus.gd` now writes each row's key as the app's
   own keys have it, so the docs' menus and shortcuts pages list Alt-C and the
   rest.
@@ -872,12 +876,61 @@ picture the assistant is shown.
   98 before) is 106 or more; each key is on its row and does what the row does
   under each preset (Render's panel, the queue, the three shapes cut away, Page
   setup, the Pick a Brick Save dialog cancelled, the Library); Render in one
-  key press; none runs while the parts' search is typed in; the sheet lists
+  key press; each runs from the parts' search too (typingkeys); the sheet lists
   them, its rows keeping a name's capitals ("LEGO® Pick a Brick list",
   "BrickLink wanted list", never "lEGO®"; `ControlsDialog.bindings`)
   (pictures: File, File › Export, View › Cut away by, Build › Booklet page
   opened, the sheet filtered "F9", "cut away", "list"). `keys4_probe` still
   checks the counts and the keyless rows.
+- `keys while a field has the focus` (`src/main.gd` `_unhandled_key_input`,
+  APP_UX7 #4, the typingkeys unit, 2026-11-08): a field with the keys (a
+  LineEdit or TextEdit: the bin's search, Find's field, the assistant's brief,
+  a name) keeps only the keys it types with: what prints, with no Ctrl, Alt or
+  Cmd (AltGr, sent as Ctrl and Alt, still prints), and the keys that move,
+  select and delete in its text, with any modifier, Escape and Tab among
+  them. F1, F9, Ctrl+S, Alt+X and every other function or modified key reach
+  their commands; what the field does itself (Ctrl+A, C, V, X, Z) it takes
+  before Main hears it. Before, Main gave up every key while a field had
+  them, and the walk's F1 after a bin search did nothing.
+  `tools/probe.sh typingkeys_probe` (1400 x 900; `PROBE_SIZE=1280x720` too;
+  needs .env for its throwaway account) goes through the sign-in screen, then
+  under each of the four presets, from each of the three fields clicked as a
+  person clicks them: "87087" typed, F1 the keys sheet, F9 Render,
+  Ctrl+Shift+B Page setup, Alt+X the box, Ctrl+S saved, 1 press each; a
+  sentence of letters, digits, Space, Shift's capitals, brackets and - = typed
+  runs nothing (the model's bytes, its undo list, the view, the selection, the
+  tool, nothing open) and lands whole in the field; Ctrl+A, C, X, V, Z act on
+  the text (selected, copied, cut, pasted, undone) and leave the model as it
+  was; the walk's "cut away" typed into the sheet after F1 from the search
+  keeps 11 rows at 1400 x 900. Pictures in user://typingkeys (or --shots=DIR):
+  the sheet, Render, Page setup and the box from each field, each field typed
+  in, the sheet's "cut away".
+- `the panel asked for last in front` (`src/ui/hud_front.gd`, `src/main.gd`
+  `_add_to_hud`, the hudfront unit, 2026-11-09): every panel of the HUD (the
+  keys sheet, Render, Find's list, the minifigure builder and its print and
+  mould editors, the mosaic, Brickify, the part maker, Share, Account, My
+  collection, the Library, Print on a part, the sticker sheet, Printed
+  versions, the page laid out by hand, the viewer's Build it) comes to the
+  front of the HUD as it is shown, by a key, a menu, a button or MCP, and as
+  it is asked for again while it shows behind another (each panel's own open
+  shows it with `HudFront.show_panel`; Account and Share, which their buttons
+  open and close, close); as a press lands on it where it is in sight (before
+  the press goes on to what it is on); and as the keys go into it (Tab, F6).
+  Always under the sign-in screen; Render's veil comes with Render, so what is
+  behind Render stays veiled. Before, they stacked in the order they were
+  made, and the walk's F1 and F9 opened under Find's list.
+  `tools/probe.sh hudfront_probe` (1400 x 900; `PROBE_SIZE=1280x720` too; needs
+  .env for its throwaway account) goes through the sign-in screen, makes each
+  of 14 panels once with Find's list last, then the walk's Ctrl+F, "87087",
+  F1 and F9 (the keys sheet, then Render, takes a click at the middle of what
+  it shares with Find's list), then every pair each way round: the one opened
+  last takes the click at the middle of the area they share by hit-test and
+  by the window's hover, a click on the first where it is in sight brings it
+  forward, and the second asked for again comes forward again (Account and
+  Share close); then every panel open and
+  the account signed out: the sign-in screen takes a click at the middle of
+  each, and the keys sheet asked for and clicked then stays under it.
+  Pictures in user://hudfront (or --shots=DIR).
 - `what's this` (`src/ui/whats_this.gd`, Help, What's This?, Shift+F1, the
   whatsthis unit, APP_UX4 10): the next click on any control says what it does
   in a bubble beside it, and does nothing else, as LeoCAD's, Qt's and Windows'
@@ -1671,9 +1724,9 @@ picture the assistant is shown.
   keeping their parts; CFF is written with only the glyphs used, their
   subroutines in place, each CID its old glyph number). A letter Liberation
   lacks goes in the system's face Godot draws the page's PNG in
-  (`BookletPdf._system`: the TextServer's fallback, its file from
+  (`BookletPdf._face`: the TextServer's fallback, its file from
   `OS.get_system_font_path`); none on the web. Only letters no face has
-  (a colour emoji) are "?" and named by the export (`missed_said`).
+  are "?" and named by the export (`missed_said`).
   `booklet_pdf_probe -- --words-only --into=DIR` signs in a throwaway account,
   gives booklook's dialog_a a Cyrillic title and Greek footer (page_setup)
   and a Japanese note (edit_booklet), presses Instructions and Save as PDF,
@@ -1683,6 +1736,28 @@ picture the assistant is shown.
   --into) writes its castle booklet's PDF again from its own file: every
   page the same at 300 dpi to the pixel (pdftoppm, sha1 a page), the file
   no more than 10% bigger. Look at DIR/words-pdf-*.png.
+- `the PDF's words right to left, and emoji` (pdfbidi, 2026-11-09): each
+  line is shaped by the TextServer as the page's is, left to right as the
+  page sets every line (`BookletPdf.shaped`, `DIRECTION_LTR`: the bidi
+  algorithm turns a Hebrew or Arabic run about, Arabic's letters joined).
+  A line that shapes to one glyph a letter left to right (`plain`) is
+  written a letter at a time as before (`_letters`); any other glyph by
+  glyph where the shaping puts it (`_glyphs`: TJ moves, Ts for a raised
+  mark), each glyph reading back as its letters (`_reads`, `PdfType
+  .use_text`). Shaped at 64 px in copies of the faces not hinted and placed
+  to a 64th of a pixel (`_shaper`). Emoji go in Noto Emoji, carried in
+  outline (`BookletPdf.EMOJI`, `assets/fonts/NotoEmoji-Regular.ttf`, 863 KB,
+  OFL, `Credits.LIST` "notoemoji"); one the engine took from a colour face
+  is shaped again in it (`_in_emoji`). `BookletPng` draws a spaced line
+  (a title, a step number) that is not plain glyph by glyph too, and every
+  line `DIRECTION_LTR`. `booklet_pdf_probe -- --words-only` also gives a
+  second dialog_a an Arabic title, Hebrew, mixed and emoji step words, and
+  compares each line's ink runs, the PDF drawn by poppler against
+  `BookletPng.page_image`, both at 12.5 px a mm (within 2 px a side); look
+  at DIR/bidi-*-page.png against DIR/bidi-*-pdf.png. pdftotext reads a
+  line mixing directions as poppler reads any PDF of what the page shows
+  (Chromium's own print too): "Step 3: 2 בנה...x4", the 2 set left of the
+  Hebrew by the bidi algorithm.
 - `the booklet`: build instructions laid out as a LEGO booklet, one HTML
   file that prints on A4 and Letter (landscape; `Booklet.PAGE` is 269 x 199 mm,
   inside both) and reads on screen (`--mm` scales the same millimetres to the
@@ -2508,7 +2583,19 @@ picture the assistant is shown.
   length, its parts coming down into place one after another from a quarter
   of the model's height above (at least 48 LDU), all down before the next
   step; the last fifth the finished model. The camera turns 4.5° a second
-  and ends on the view chosen, framed on the finished model. Drawn through
+  and ends on the view chosen, and follows the build (video2, APP_UX6 gap
+  12): each frame is fitted close to every part of the steps begun so far,
+  where they stand, as the model is turned then (`BuildRender.framed_at`,
+  `StudioRender._follow`), eased over about the time a part takes to come
+  down (twice a running mean, `BuildRender._eased`), so a first step of one
+  plate fills the picture; until the first part is down it is framed from
+  where that part begins too, so the first frame (all a GIF shows where it
+  does not play) is a part coming down, not its shadow; once the model is
+  finished the camera settles,
+  over about a second, into the view chosen as a picture frames it (a view
+  not fitted, As I see it or a saved view, is the person's own framing), so
+  the last frame is the picture's. The lights' shadows reach as far as each
+  frame's camera needs. Drawn through
   `StudioRender.animate` (a part not yet arrived drawn at no size,
   `BuildRender.AWAY`; only the parts that change a frame are moved), with
   the contact shadow off (it is the finished model's), kept as a turntable
@@ -2713,6 +2800,32 @@ picture the assistant is shown.
   its buttons going two rows, so it never lies over a tool's panel beside
   the model; Escape puts it away as a rung of Main's ladder after the parts list, before the
   tool and the selection (`Main._render_queue_up`).
+- `a long job says when it is done` (APP_UX7 #11 donenote; Settings, Say when
+  a long job is done, on Reduce motion's line; `src/ui/done_note.gd`, a Later
+  class `Main._done_note()` makes with the first job): a design, a change or
+  sketches asked in the assistant's panel (`ChatPanel.run_ended`, the person's
+  own runs only, not a session's, not one stopped), Render's picture at Best,
+  turntable, animation and build video (the dialog has no end signal and is
+  video2's: `DoneNote.follow_render` asks `is_rendering()` each frame, its
+  kind from `_working`, made or not from `_last`), and the render queue
+  drawn empty (`RenderQueue.began` / `emptied`, told to
+  `Main.follow_render_queue` by `RenderQueue.of`), ending while the window
+  is not looked at: on the desktop `DisplayServer.window_request_attention()`
+  and the title "Done · …" until the window has the focus again (asked every
+  500 ms while waiting); on the web one `Notification` (title the model's
+  name, body "Best render done" and so on, a click focusing the tab) and the
+  tab's title the same way (`Main._tell_page` through `DoneNote.titled`).
+  Focused, or turned off (ShellPrefs `done_note`), nothing. The browser's
+  permission is asked at the first long job's start, the press still fresh,
+  never on load, and not for a session's call (`CommandSocket.at_work`).
+  Check: `tools/probe.sh donenote_probe` (windowed, 1400 x 900, and
+  `PROBE_SIZE=1280x720`; signed in through the gate with a throwaway account
+  from .env; `DoneNote.stand_in` stands in for the focus, the attention and
+  the browser): each of the four unfocused 1 attention request and 1
+  notification, focused 0, off 0, the web asking nothing on load and once
+  at the first job; pictures of Settings with the row in `user://donenote`
+  (`-- --shots=DIR`). By hand on the web: a Best render started, another tab
+  looked at, a notification named after the model when it is done.
 - `saved views` (APP_UX5 #8; View › Viewpoint › Save this view… Alt-V, Saved
   view 1 to 9 Alt-Shift-1 to 9, Render each saved view; `src/ui/saved_views.gd`,
   `SavedViews`): where the window looks from, kept by a name with the model as
@@ -2809,8 +2922,9 @@ picture the assistant is shown.
   200,000 lines of another meta command (`0 !BRICKWORKS FOO x`), its time
   against comments said beside it (every `0 !BRICKWORKS` line costs the
   open's other readers more than a comment does), and saved within 1.5x of
-  200,000 comments (medians of 12, after a warm-up; against comments as
-  long and other metas said beside it). lreview's second review: a model
+  200,000 comments as long as its lines (medians of 12, after a warm-up;
+  against short comments, which measure the bytes written, about 2x, and
+  other metas said beside it). lreview's second review: a model
   with a line it cannot read, cleared by Clear, then a part put down and
   saved: no light line in the new file (the read and unread lines are the
   model's, kept against the world's generation); a CRLF file whose last line
@@ -2831,6 +2945,84 @@ picture the assistant is shown.
   whole, as it draws a shadowed light in passes of its own and that
   rounds), the
   glowing brick's, `suns_*` and `grid_*`.
+- `edges and studs` (APP_UX6 #19 edges; View, Edges and studs, Edges and
+  Studs; `src/render/studs_off.gd`, `StudsOff`; `BrickWorld.set_edges_shown`
+  and `set_studs_shown`; `ViewPrefs.edges` and `.studs`, kept in this
+  machine's `controls.cfg` under `[view]`). Edges off sets the plastic
+  shaders' `seam_shown` false (`plastic_body.gdshaderinc`'s `seam_at` gives
+  0): not a pixel of the seam on any face, and on, the shader's output
+  unchanged. Studs off draws each part from `StudsOff.surfaces`: its
+  triangles wholly inside a male `stud` connector's round (radius 6.1, 4.8
+  tall, from its foot along its axis, so side studs, round plates' rings,
+  hollow and open studs, jumpers and heads alike) taken out, and where that
+  leaves the foot open (a round plate's top) a disc laid over it; a stud of
+  which nothing was taken (DUPLO and Quatro, bigger than a System stud)
+  stays drawn. Each part stays where it was: the meshes keep the part's
+  bounds, and the bricks, connectors, picking and history are not touched.
+  Worked out once a part (cached on its `Lbm.PartMesh`), swapped into a
+  batch while its slot count is 0 (so the engine reads nothing back), and
+  only in the window's world: renders, booklets, `view_model`, corner
+  pictures and thumbnails draw every seam and stud; the part in hand keeps
+  its studs to place by. On MCP both are WINDOW_ONLY.
+- `edges probe` (`src/dev/edges_probe.gd`, `tools/probe.sh edges`, windowed
+  on the GPU at 1400 x 900, `PROBE_SIZE=1280x720` too): through the sign-in
+  screen with a throwaway account (.env). The car's default view, its 3D
+  alone, kept as `default_view_WxH.png` (lay an older build's beside it,
+  byte for byte: the default view unchanged to the pixel), and the same to
+  the pixel after Edges and Studs each go off and on. A red and a black wall
+  of 1 x 2s in running bond square on: pixels inside each face off its
+  median colour by 10 levels (the seam), many drawn and 0 with Edges off
+  (chosen from View with the keys). Fifteen parts of every kind of stud
+  (3001, 3024, 6141, 3062b, 85861, 3794b, 3039, 87087, 4733, 30414, 3700,
+  3626c, 3065, 3068b, 3795; three turned so a side stud faces sideways)
+  laid square on in an orthographic view fitted to them, each stud seen
+  from its side: in its projected round (inset 2 px), pixels unlike the
+  same picture with nothing drawn, most of them drawn and 0 with Studs off;
+  every part's transform and the model's box unchanged. Outside the rounds
+  grown 3 px, pictures drawn flat (no MSAA, FXAA, TAA, glow, SSAO, SSIL or
+  SSR, so an edge's blend is not counted) are compared for coverage: 0 px
+  covered by a part with the studs and not without, or the other way (the
+  studs' own shadows, lit differently, are reported, not failed). Studs
+  facing the eye are left out of the rounds and masked. Both off, then a
+  headless run of its own on the same data folder (`--after-restart`)
+  finds them off and unticked and turns them on. Pictures in `user://edges`
+  or `-- --shots=DIR`: look at `walls_*`, `studs_*` (`studs_rounds_*`
+  outlines each round measured, yellow), the menus and `car_*`.
+- `moving renders kept as a GIF` (`src/render/animated_gif.gd`, video2,
+  APP_UX6 gap 12; Render's Kept as, WebP or GIF; render_model `format=gif`):
+  a turntable, an animation or a building kept as an animated GIF instead of
+  the WebP (the PNG frames and the MP4 as before on the desktop), for the
+  chats, forums and mail that take a GIF and not a WebP. Made from the
+  WebP's frames once drawn (`RenderOutput._gif`, `AnimatedGif.from_webp`):
+  one palette of 256 colours for the whole video (median cut on a 5-5-5
+  histogram of 12 frames spread through it; a frame's own palette shimmers),
+  each pixel its nearest colour after an 8 x 8 ordered dither (the same
+  pattern every frame, so what stands still stays still), LZW as GIF89a,
+  NETSCAPE2.0 looping for ever, delays in hundredths that add up to the
+  length. Made to share: at most 640 px on its long side, and to fit 8 MB by
+  what three of its frames come to, fewer frames a second first (down to
+  12), then a smaller picture (down to 320), then fewer frames; over all
+  the same, every other frame shown twice as long. Planned on one worker
+  (the frame code's first run, WorkerTasks), its frames on workers a few at
+  a time; a frame a frame where there are no threads. The status says
+  "Making the GIF: frame N of M…". Closed under it, the WebP is kept
+  instead (`RenderOutput.close_now`). `node tools/web/gif_plays.mjs FILE.gif
+  [--frame0=PNG]` says what Chromium's own decoder makes of a GIF.
+- `video2 probe` (`src/dev/video2_probe.gd`, `tools/probe.sh video2 [OUT]`,
+  windowed on the GPU at 1280 x 720, `PROBE_SIZE=1400x900` too; signed in
+  as a throwaway account, .env): Pods (the MCP walk's model) built by
+  Render, Quick, 720p, no background, Building 10 s and Return, and over MCP
+  as the walk drew it (view hero, turning, no backdrop, format gif): in the
+  frame where the first step's parts are all down they fill 40% or more of
+  the frame's height, read off its alpha; the first frame the first part
+  coming down, all of it in the picture; the last frame the whole model,
+  as a picture with the same choices draws it. The car's 36-frame
+  turntable kept as a GIF by hand (Kept as GIF, Return) and over MCP:
+  GIF89a, a global table of 256 colours, looping for ever, 36 frames, 8 MB
+  or less; Chromium decodes 36 frames of 640 x 360 that change, 1.5 s, and
+  an <img> of it; its first frame within 4 levels of the frame it was made
+  of. A format it does not keep refused; Kept as in sight in the window.
+  Pictures and the first-step and last frames in OUT.
 - `quiet probe` (`src/dev/quiet_probe.gd`, `tools/probe.sh quiet_probe`,
   windowed at 1280 x 720, `PROBE_SIZE=1400x900`): APP_UX4 unit 9's bar.
   The first build's offer on a first visit, gone at the third part put down
@@ -2950,6 +3142,72 @@ picture the assistant is shown.
   (100); left alone first as a person leaves it, or pressed `--at-once`
   before that, or `--during` the making ready while it waits for someone
   using the window (it must wait, and the press must not).
+- `line art and comic looks` (APP_UX7 #22 lineart; File, Render…, Look,
+  Line art and Comic, on a row of their own under As in the window and
+  Product; `render_model` and `render_queue`'s `look lineart`/`comic`;
+  `src/render/line_art.gd`, `LineArt`, `line_art.gdshader`,
+  `line_normals.gdshader`; `RenderSettings.LOOKS`). StudioRender draws a
+  line look's shot in one frame whatever the grade (`LineArt.underneath`:
+  Quick, sharp, on nothing), the render's stage with its seam off
+  (`set_edges_shown(false)`): lit as the window lights it (for the floor's
+  shadow, its alpha), then flat (an even white ambient, no lamp, `room` 0:
+  the plastic's own colour, prints and all). A copy of the stage
+  (`LineArt.stage`, layer 1 << 18, shown only while it is drawn) is drawn
+  in `booklet_codes` numbers, in `line_normals` (view-space faces) and in
+  white clay (a matt StandardMaterial3D) in the set's light and the stage's
+  shadows, into three viewports of its own sharing the set's world and
+  camera. `line_art.gdshader` makes the picture: an outline 1.5 x a part's
+  line where the model meets the page, a line where the number changes
+  (one part meets the next), a third of it where one part's faces turn more
+  than 30° and, in Line art, round a print (the flat colour 0.2 apart
+  inside one part, not glass); the shade is the clay's linear light over
+  full light (`LineArt.full_light`: what 90% of the model's clay pixels are
+  darker than, the whole picture's clay drawn 256 across first), as
+  halftone dots on a 45° screen (cell 1/150 of the short side, line 1/450,
+  at least 2 px) from 0.9 of it down to 0.5, up to 0.6 of a cell, so a
+  black part and a white one in one light get the same dots (the window
+  lights black a third as much for its colour) and a model seen square on
+  has its faces to the eye clean; Line art white paper inside, Comic the flat colour, 0.82 of
+  it turned away, its dots 0.42 of it, black plastic lifted as the
+  booklet's; round the model the backdrop's colour or nothing, the contact
+  shadow (its alpha on nothing) in dots from 0.18 of it, its faint reaches
+  left as paper. Every piece of a big picture
+  drawn with a margin and on one screen (`origin`). An animation's moves
+  are made on the copy too (`LineArt.move`), and it is made again after
+  one. The window look and Product never reach any of it.
+- `lineart probe` (`src/dev/lineart_probe.gd`, `tools/probe.sh lineart`,
+  windowed on the GPU at 1400 x 900, `PROBE_SIZE=1280x720` too): through
+  the sign-in screen with a throwaway account (.env). First Render's
+  default (Good, window, 1080p) of the example car, the run's first
+  picture, kept as `default_render.png`, and a small scene's Quick window
+  (twice the same) and Product kept as `scene_window.png`,
+  `scene_product.png`; `-- --reference=DIR` (the same probe run on an
+  older build, its `--shots`) lays each beside the older's, byte for byte;
+  the Good default to the pixel or within what one build's own two runs
+  differ by (pre261 against itself: 19,682 to 29,551 of 2,073,600 pixels a
+  level or two apart, the mean within 0.003 of a level, seeded or not; its
+  light gathers over frames), so at most 2 levels, 5% of the pixels and a
+  mean of 0.02. A Good render keeps some of the light it gathered for the
+  next (a third render of the car a level darker all over), so only a
+  run's first is laid beside another's. The Look row clicked as a person clicks: each look in the
+  window with its words whole, the inked two on a row of their own, the
+  note and the draft following; Render picture in Comic writes a coloured
+  640 x 360 with black lines. The small scene (three red 1 x 2s in a wall, a
+  white 2 x 4 under a tile, a yellow slope, a black 2 x 2) at 1280 x 720:
+  Line art's paper white to the pixel more than 6 px from the model, only
+  greys, the outline dark round 95% of the edge, the wall's two seams inked
+  in 90% of their rows (front view), the white brick's face the window's
+  light leaves darker more than 6% dots in 3 or more spots and its top
+  under 3%; Comic red and yellow, outlined, seams inked, dots on the shaded
+  face; on nothing every pixel clear away from the model, the model solid,
+  its outline drawn over nothing, the contact shadow in 10+ dots; an
+  animation frame with the white brick sent away leaves no ink where it
+  stood; `render_model` lists both looks and draws `lineart`; a look there
+  is not is answered with all four. Then 10036-1 Pizza To Go in both looks
+  at 1080p (`lineart_set.png`, `comic_set.png`, `lineart_set_front.png`):
+  look at them, lines a person would draw. Pictures in `user://lineart` or
+  `--shots=DIR`, with `made_of_*.png`, the five pictures the scene's Line
+  art was made of (lit, flat, codes, normals, clay), to look at.
 
 ## How to reach it
 

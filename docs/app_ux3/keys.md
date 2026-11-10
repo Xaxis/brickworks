@@ -14,10 +14,10 @@ eight keys2 gave.
 
 | Preset | Commands | Without a key before keys | After keys | Before keys2 | After |
 |---|---|---|---|---|---|
-| Brickworks | 221 | 115 | 110 | 112 | 105 |
-| Studio | 221 | 118 | 113 | 115 | 108 |
-| Mecabricks | 221 | 116 | 111 | 113 | 106 |
-| LDCad | 221 | 118 | 114 | 116 | 109 |
+| Brickworks | 225 | 115 | 110 | 112 | 108 |
+| Studio | 225 | 118 | 113 | 115 | 111 |
+| Mecabricks | 225 | 116 | 111 | 113 | 109 |
+| LDCad | 225 | 118 | 114 | 116 | 112 |
 
 The menus had 201 commands when keys counted. Cut away by a box, a sphere or a cylinder
 (APP_UX4 8) added five, each with no key. The Pick a Brick list added one
@@ -27,8 +27,12 @@ done, six more without a key after it. Page setup… (pagesetup) and Stud direct
 before keys2. keys2 gave eight a key under every preset, each one no command had: 104
 without a key then, so 106 of the 210 had one (the walk's `counts`, APP_UX5). Saved views
 (savedviews, APP_UX5 #8) added eleven: Save this view… and the nine saved views, each with
-a key under every preset, and Render each saved view with none. 221 now, 105 without a key
-under the app's keys, 116 with one.
+a key under every preset, and Render each saved view with none: 221, 105 without a key
+under the app's keys. Compare two sets or models… (comparesets, APP_UX6 #7) added one more
+with none: 222, 106 without a key under the app's keys. View › Edges and studs
+(edges, APP_UX6 #19) added two, Edges and Studs, each with none: 224, 108 without a key
+under the app's keys. Report a bug… (bugreport, 2026-11-09) added one with a key under every
+preset: 225 now, 108 without a key, 117 with one.
 
 APP_UX3 counted 110 with the app's keys on 2026-10-30. Eight came since with none (the
 booklet's Pull out, Colour guide, 1:1 guide and Sub-model preview; Render queue; Check for
@@ -113,6 +117,20 @@ to anything. Save this view… is Alt and the first free letter of its row, V.
 | `saved_view_8` | View › Viewpoint › Saved view 8 | — | — | — | many times a session | alt-shift-8 | alt-shift-8 | alt-shift-8 | alt-shift-8 | as the first |
 | `saved_view_9` | View › Viewpoint › Saved view 9 | — | — | — | many times a session | alt-shift-9 | alt-shift-9 | alt-shift-9 | alt-shift-9 | as the first |
 
+## Given a key with Report a bug (bugreport, 2026-11-09)
+
+While the beta is open a report is one press from anywhere: the top bar's Report a bug,
+Help › Report a bug…, and this key, as Linear's and Figma's betas keep theirs in sight.
+The field's own is a browser's (Chrome's Report an issue, Alt-Shift-I), which a page never
+hears. Alt-Shift-R is R for Report beside Alt-R, Replace; no preset gives it to anything,
+no browser keeps it, and R alone (turn the part in hand) and Shift-R (turn it back) are
+told apart from it by Alt. It is kept with the beta shut: Help's row stays, and so does
+its key.
+
+| Command | Menu | Studio | LeoCAD | LDCad | How often | Brickworks | Studio's keys | Mecabricks' | LDCad's | Why this key |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `report_bug` | Help › Report a bug | — | — | — | when something goes wrong | alt-shift-R | alt-shift-R | alt-shift-R | alt-shift-R | R for Report, beside Alt-R, Replace; Chrome's Alt-Shift-I is the browser's |
+
 ## Left without a key, on purpose
 
 "Keyless under" names the presets a command has no key in; "all" is all four.
@@ -125,6 +143,7 @@ to anything. Save this view… is Alt and the first free letter of its row, V.
 | `import_mesh` | File › Import › 3D model to brickify (.obj, .stl, .ply, .3mf, .vox, .fbx, .gltf, .glb) | — | — | — | once a model | all | a file chosen once, from File › Import |
 | `versions` | File › Versions | — | — | — | rarely | all | an older save, looked for now and then |
 | `compare` | File › Compare with | — | — | — | rarely | all | two versions side by side, now and then |
+| `compare_sets` | File › Compare two sets or models | — | — | — | rarely | all | two sets or models side by side, now and then |
 | `export_ldraw` | File › Export › LDraw model (.ldr, or .mpd with its sub-models) | — | — | — | once a model | all | made once a model is done |
 | `export_io` | File › Export › BrickLink Studio model (.io) | — | — | — | once a model | all | made once a model is done |
 | `export_3d` | File › Export › 3D model (.glb, .gltf, .obj, .stl) | — | — | — | once a model | all | made once a model is done |
@@ -196,6 +215,8 @@ to anything. Save this view… is Alt and the first free letter of its row, V.
 | `cut_shrink` | View › Cut away by › Shrink it a plate | — | — | — | a few times a cut | all | the wheel over a knob, or a knob dragged, sizes the shape a face at a time; Shrink is the strip's button |
 | `stress` | View › Stress | — | — | — | a few times a model | all | Alt-K checks stability; Stress is the colour of it, looked at after |
 | `stud_map` | View › Stud directions | — | — | — | once a design | all | a check of which way studs face, looked at once and put away; it shares Stress's layer, and Stress has none either |
+| `edges` | View › Edges and studs › Edges | — | — | — | once, kept | all | a look set once and kept on this machine, as the floor is; every picture and booklet is drawn whole whatever it says |
+| `studs` | View › Edges and studs › Studs | — | — | — | once, kept | all | a look set once and kept on this machine, as the floor is; every picture and booklet is drawn whole whatever it says |
 | `panel_parts` | View › Panels › Parts bin | — | — | — | once a session | all | a panel set once a session, and it stays |
 | `panel_assistant` | View › Panels › Assistant | — | — | — | once a session | all | a panel set once a session, and it stays |
 | `panel_properties` | View › Panels › Properties | — (Instruction Maker's inspector, Ctrl-Alt-2) | — | I, the information panel | once a session | all | a panel set once a session; I is X-ray here, used far more |

@@ -395,6 +395,7 @@ func render(world: BrickWorld, settings: RenderSettings) -> Image:
 	worst_frame_ms = 0.0
 	worst_step = ""
 	_quicken()
+	settings = _drawn_in_lines(settings)
 	var image: Image = null
 	if await _prepare(world, settings, false):
 		image = await _picture(settings, 0.1, 1.0)
@@ -413,6 +414,7 @@ func turntable(world: BrickWorld, settings: RenderSettings, each: Callable) -> i
 	worst_frame_ms = 0.0
 	worst_step = ""
 	_quicken()
+	settings = _drawn_in_lines(settings)
 	var done: int = 0
 	if await _prepare(world, settings, true):
 		var frames: int = maxi(settings.frames, 1)
@@ -445,9 +447,14 @@ func turntable(world: BrickWorld, settings: RenderSettings, each: Callable) -> i
 ## moving parts pass through (each one's corners, every frame): with
 ## [member RenderSettings.on_what_moves] the camera is fitted to them, which
 ## a box's corners far off the parts' own would leave small in the frame.
+## [param framed_at] (frame -> [AABB in the model's place, float]) is what
+## each frame is framed on and how far it has settled into the view chosen,
+## the camera following it (_follow): a building video's what is built so
+## far.
 func animate(world: BrickWorld, settings: RenderSettings, frames: int, pose_at: Callable,
 		turn_at: Callable, reach: AABB, each: Callable,
-		swept: PackedVector3Array = PackedVector3Array()) -> int:
+		swept: PackedVector3Array = PackedVector3Array(),
+		framed_at: Callable = Callable()) -> int:
 	if _busy or not possible() or world == null:
 		return 0
 	_busy = true
@@ -455,6 +462,7 @@ func animate(world: BrickWorld, settings: RenderSettings, frames: int, pose_at: 
 	worst_frame_ms = 0.0
 	worst_step = ""
 	_quicken()
+	settings = _drawn_in_lines(settings)
 	var done: int = 0
 	_reach = reach
 	_swept = swept
@@ -463,15 +471,24 @@ func animate(world: BrickWorld, settings: RenderSettings, frames: int, pose_at: 
 		if not is_zero_approx(float(turn_at.call(n))):
 			turning = true
 			break
-	if await _prepare(world, settings, turning):
+	# Followed, each frame is fitted as the model stands turned then: the
+	# circle a turn sweeps is not framed.
+	var following: bool = framed_at.is_valid()
+	if await _prepare(world, settings, turning and not following):
+		var whole: Shot = last_shot
 		for n: int in maxi(frames, 1):
 			var poses: Dictionary = pose_at.call(n)
 			for brick_id: Variant in poses:
 				var staged: int = int(_staged_ids.get(int(brick_id), 0))
 				if staged != 0:
 					_stage.move_brick(staged, poses[brick_id])
+					if _line_asked != null:
+						_line.move(staged, poses[brick_id])
 			_stage._flush()
 			_pivot.rotation = Vector3(0.0, TAU * float(turn_at.call(n)), 0.0)
+			if following:
+				var framed: Array = framed_at.call(n)
+				_follow(whole, settings, framed[0], float(framed[1]))
 			var from: float = 0.1 + 0.9 * float(n) / float(frames)
 			var image: Image = await _picture(settings, from, from + 0.9 / float(frames),
 				"frame %d of %d" % [n + 1, frames])
@@ -483,14 +500,80 @@ func animate(world: BrickWorld, settings: RenderSettings, frames: int, pose_at: 
 			done += 1
 			if _cancelled:
 				break
+		if following:
+			last_shot = whole
+			_shadow_reach(whole, _bounds)
 	_pivot.rotation = Vector3.ZERO
 	_reach = AABB()
 	_swept = PackedVector3Array()
 	# The copy on the stage stands as the last frame did, not as the model
 	# does: copied again next time.
 	_staged = []
+	if _line != null:
+		_line.forget()
 	_finish()
 	return done
+
+
+## The camera for a frame framed on [param box] (part of the model, where
+## it stands in the model) as [method animate]'s framed_at says: a building
+## video's first step fills the picture, and the camera draws back as the
+## model goes up, to [param whole], the picture's own, once the whole model
+## is built and turned back. From [param whole]'s direction, through its
+## lens, fitted to the box as the model stands turned in this frame; then,
+## by [param settled] (0 to 1), as the view chosen frames the whole beyond
+## a fit (As I see it and a saved view are a person's own framing, not
+## fitted), so the last frames are the picture's. The shadows are drawn as
+## far as this frame's camera needs, so a step close up has the sharp
+## shadows a picture of it would.
+func _follow(whole: Shot, settings: RenderSettings, box: AABB, settled: float) -> void:
+	var turned: float = _pivot.rotation.y
+	if box.size == Vector3.ZERO or (box.is_equal_approx(_bounds) and is_zero_approx(turned)
+			and is_equal_approx(settled, 1.0)):
+		last_shot = whole
+		_shadow_reach(whole, _bounds)
+		return
+	var aspect: float = float(settings.size.x) / float(maxi(settings.size.y, 1))
+	var turn := Basis(Vector3.UP, turned)
+	var around: Vector3 = _pivot.position
+	var points := PackedVector3Array()
+	var everything := PackedVector3Array()
+	for n: int in 8:
+		points.append(around + turn * (_corner(box, n) - around))
+		everything.append(_corner(_bounds, n))
+	var centre: Vector3 = around + turn * (box.get_center() - around)
+	var fitted_whole: Vector3 = _fit_points(whole.basis, everything, whole.fov, aspect)
+	var fitted: Vector3 = _fit_points(whole.basis, points, whole.fov, aspect)
+	var shot := Shot.new()
+	shot.basis = whole.basis
+	shot.fov = whole.fov
+	shot.aperture = whole.aperture
+	shot.heading = whole.heading
+	shot.toward = whole.toward
+	shot.far = whole.far
+	shot.origin = fitted + (whole.origin - fitted_whole) * clampf(settled, 0.0, 1.0)
+	var nearest: float = INF
+	var farthest: float = 0.0
+	for point: Vector3 in points:
+		var depth: float = (point - shot.origin).dot(-shot.basis.z)
+		nearest = minf(nearest, depth)
+		farthest = maxf(farthest, depth)
+	# A quarter of the way, not half: a part coming down from above comes
+	# towards a camera looking down.
+	shot.near = clampf(nearest * 0.25, 0.5, 200.0)
+	shot.focus_distance = maxf(lerpf(nearest, farthest, clampf(settings.focus, 0.0, 1.0)),
+		shot.near * 2.0)
+	last_shot = shot
+	_shadow_reach(shot, AABB(centre - box.size * 0.5, box.size))
+
+
+## The lights' shadows drawn as far from [param shot]'s camera as
+## [param box] needs, as _dress has them for the whole model.
+func _shadow_reach(shot: Shot, box: AABB) -> void:
+	var reach: float = (shot.origin - box.get_center()).length() + box.size.length() * 0.5 * 2.5
+	for light: DirectionalLight3D in _lights:
+		light.directional_shadow_max_distance = reach
+	_sky_light.directional_shadow_max_distance = reach
 
 
 ## The box an animation's moving parts sweep, framed with the model.
@@ -514,6 +597,7 @@ func _finish() -> void:
 	_settle()
 	if _cancelled:
 		progress.emit(0.0, "cancelled")
+	_line_asked = null
 	_busy = false
 	_cancelled = false
 
@@ -1037,6 +1121,9 @@ func _prepare(world: BrickWorld, settings: RenderSettings, turning: bool) -> boo
 		await _build()
 	_stage.library = library
 	_stage.product = settings.look == "product"
+	# lineart (APP_UX7 #22): a line look draws its own lines; the seam along
+	# every part's edges would come out of its pictures as dots.
+	_stage.set_edges_shown(_line_asked == null)
 	# On the web a photographed place's light is fetched the first time a
 	# picture is lit by one (WebPacks): the set waits for it, saying so. The
 	# product look's softbox is the full renderer's alone (_dress).
@@ -1046,6 +1133,8 @@ func _prepare(world: BrickWorld, settings: RenderSettings, turning: bool) -> boo
 		await WebPacks.need(WebPacks.HDRI)
 	progress.emit(0.0, "setting up the model")
 	if not await _stage_model(world):
+		return false
+	if _line_asked != null and not await _line_staged():
 		return false
 	if _bounds.size.length() <= 0.0:
 		return false
@@ -2074,6 +2163,8 @@ func _contact_shadow() -> bool:
 
 ## The picture, piece by piece and sample by sample.
 func _picture(settings: RenderSettings, from: float, to: float, words: String = "") -> Image:
+	if _line_asked != null:
+		return await _line_picture(settings, from, to, words)
 	var plan: Plan = plan_for(settings)
 	_traced_last = plan.traced
 	if plan.traced:
@@ -2151,6 +2242,171 @@ func _picture(settings: RenderSettings, from: float, to: float, words: String = 
 		_doing("converting")
 		result.convert(Image.FORMAT_RGB8)
 	return result
+
+
+# -- lineart (APP_UX7 #22): the Line art and Comic looks (LineArt) ----------
+
+
+## The line looks, made the first time one is asked for, and what the
+## picture being drawn in one was asked for; null for every other look.
+var _line: LineArt = null
+var _line_asked: RenderSettings = null
+## What the flat picture put aside: the camera's light and layers, and the
+## lights' being on.
+var _flat_kept: Array = []
+
+
+## What the set draws for [param settings]: itself, or for a line look what
+## LineArt inks over, [member _line_asked] kept for the ink.
+func _drawn_in_lines(settings: RenderSettings) -> RenderSettings:
+	_line_asked = settings if LineArt.drawn_in_lines(settings.look) else null
+	return LineArt.underneath(settings) if _line_asked != null else settings
+
+
+## The line looks' copy of the model, made of the stage as staged.
+func _line_staged() -> bool:
+	if _line == null:
+		_line = LineArt.new()
+		_line.name = "LineArt"
+		add_child(_line)
+		_line.setup(_scene.world_3d, _pivot, library)
+	_line.stage.library = library
+	return await _line.stage_from(_stage, _staged, func() -> bool: return _cancelled)
+
+
+## The set lit by nothing but an even white, the plastic's own colour and no
+## more ([param on]), or as it was.
+func _flat(on: bool) -> void:
+	var lights: Array[Light3D] = []
+	lights.append_array(_lights)
+	lights.append(_sky_light)
+	if on:
+		_flat_kept = [_camera.environment, _camera.cull_mask, _lamps.visible]
+		for light: Light3D in lights:
+			_flat_kept.append(light.visible)
+			light.visible = false
+		_camera.environment = _line.flat_light
+		_camera.cull_mask = 1
+		_lamps.visible = false
+	else:
+		_camera.environment = _flat_kept[0]
+		_camera.cull_mask = _flat_kept[1]
+		_lamps.visible = _flat_kept[2]
+		for n: int in lights.size():
+			lights[n].visible = _flat_kept[3 + n]
+	var dark: bool = _line_asked.lighting == "dark"
+	for batch: Node in _stage.get_children():
+		if not batch is MultiMeshInstance3D:
+			continue
+		var plastic := (batch as MultiMeshInstance3D).material_override as ShaderMaterial
+		while plastic != null:
+			plastic.set_shader_parameter("room", 0.0 if on or dark else 1.0)
+			plastic.set_shader_parameter("glow", 0.0 if on else _glow)
+			plastic = plastic.next_pass as ShaderMaterial
+
+
+## A picture in a line look, a piece at a time as any picture is: for each,
+## the set's two pictures of it (lit, then flat), the copy's two (its parts'
+## numbers, then their faces), and the ink made of the four, read back.
+func _line_picture(settings: RenderSettings, from: float, to: float, words: String) -> Image:
+	var plan: Plan = plan_for(settings)
+	var shot: Shot = last_shot
+	var picture: Vector2i = Vector2i(maxi(settings.size.x, 1), maxi(settings.size.y, 1))
+	var tiles: Array[Rect2i] = _tiles(picture)
+	last_tiles = tiles.size()
+	# Every piece drawn wider and cut back, for the widest line and the
+	# occlusion's look past its edge: the lines meet across the cut.
+	var margin: int = clampi(picture.y / 24, 16, 96)
+	var size: Vector2i = tiles[0].size + Vector2i(margin * 2, margin * 2)
+	_size_all(size)
+	var result := Image.create(picture.x, picture.y, false, Image.FORMAT_RGBA8)
+	_resolve_material.set_shader_parameter("dither", 0.0)
+	_resolve_material.set_shader_parameter("sum_tex", _sums[0].get_texture())
+	_sum_materials[0].set_shader_parameter("first", true)
+	_sum_materials[0].set_shader_parameter("weight", 1.0)
+	var full: float = await _line_full_light(shot, plan, picture)
+	if full < 0.0:
+		return null
+	for tile: Rect2i in tiles:
+		var piece: int = tiles.find(tile)
+		_point(shot, tile, margin, picture, Vector2.ZERO, Vector2.ZERO)
+		_light_sample(plan, 0, 1)
+		if not await _draw([_scene, _sums[0], _base, _out]):
+			return null
+		_flat(true)
+		var flat_drawn: bool = await _draw([_scene, _base])
+		_flat(false)
+		if not flat_drawn:
+			return null
+		_line.before_codes(_camera, _scene, size, _stage.transform)
+		var coded: bool = await _draw([_line.codes_view])
+		if coded:
+			_line.before_normals()
+			coded = await _draw([_line.normals_view])
+		if coded:
+			_line.before_light()
+			_lights_seen_from(LineArt.LAYER, true)
+			coded = await _draw([_line.light_view])
+			_lights_seen_from(LineArt.LAYER, false)
+		_line.after()
+		if not coded:
+			return null
+		_line.before_ink(_out.get_texture(), _base.get_texture(), _line_asked, picture,
+			tile.position - Vector2i(margin, margin), size, full)
+		if not await _draw([_line.ink_view]):
+			return null
+		_doing("reading the picture back")
+		var drawn: Image = await _read(_line.ink_view)
+		if drawn == null:
+			return null
+		await get_tree().process_frame
+		_doing("putting the piece in")
+		if drawn.get_format() != Image.FORMAT_RGBA8:
+			drawn.convert(Image.FORMAT_RGBA8)
+		var inside: Rect2i = tile.intersection(Rect2i(Vector2i.ZERO, picture))
+		result.blit_rect(drawn, Rect2i(Vector2i(margin, margin), inside.size), inside.position)
+		piece_done.emit(drawn.get_region(Rect2i(Vector2i(margin, margin), inside.size)),
+			inside.position)
+		var said: String = words if not words.is_empty() else "inking"
+		if tiles.size() > 1 and words.is_empty():
+			said = "piece %d of %d, inking" % [piece + 1, tiles.size()]
+		progress.emit(lerpf(from, to, float(piece + 1) / float(tiles.size())), said)
+	if not _line_asked.transparent:
+		await get_tree().process_frame
+		_doing("converting")
+		result.convert(Image.FORMAT_RGB8)
+	return result
+
+
+## Full light for a line picture [param picture] across (LineArt.full_light):
+## the clay of the whole of it, drawn small once. Below 0 if cancelled.
+func _line_full_light(shot: Shot, plan: Plan, picture: Vector2i) -> float:
+	var small := Vector2i(LineArt.FULL_ACROSS,
+		maxi(16, LineArt.FULL_ACROSS * picture.y / maxi(picture.x, 1)))
+	_point(shot, Rect2i(Vector2i.ZERO, picture), 0, picture, Vector2.ZERO, Vector2.ZERO)
+	_light_sample(plan, 0, 1)
+	_line.before_codes(_camera, _scene, small, _stage.transform)
+	_line.before_light()
+	_lights_seen_from(LineArt.LAYER, true)
+	var drawn: bool = await _draw([_line.light_view])
+	_lights_seen_from(LineArt.LAYER, false)
+	_line.after()
+	if not drawn:
+		return -1.0
+	return LineArt.full_light(await _read(_line.light_view))
+
+
+## The set's lights, the model's own among them, seen from [param layer]
+## too or no longer: a camera sees only the lights on the layers it draws
+## (as [method _warm] knows), and the clay is drawn on a layer of its own.
+func _lights_seen_from(layer: int, seen: bool) -> void:
+	var lights: Array[Light3D] = []
+	lights.append_array(_lights)
+	lights.append(_sky_light)
+	lights.append_array(_lamp_nodes)
+	lights.append_array(_glow_nodes)
+	for light: Light3D in lights:
+		light.layers = (light.layers | layer) if seen else (light.layers & ~layer)
 
 
 ## The picture path traced (PathTracer): the set put on the card, the

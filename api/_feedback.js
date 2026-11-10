@@ -12,10 +12,11 @@
 //
 // Routes (ops of existing API files: Vercel's plan stops at 12 functions):
 //
-//   POST /api/plans?op=feedback   {kind, words, email (signed out), source,
-//                                 page, details, log, picture: {type, data
-//                                 (base64)}, model: {name, text}}: 200 {id,
-//                                 beta, attached, said}; 422 with why, 429
+//   POST /api/plans?op=feedback   {kind, words, expected, email (signed
+//                                 out), source, page, details, log, picture:
+//                                 {type, data (base64)}, model: {name,
+//                                 text}}: 200 {id, beta, attached, said};
+//                                 422 with why, 429
 //                                 too many in an hour, 401 a sign-in that
 //                                 has ended, 503 before feedback.sql
 //   GET  /api/plans?op=feedback   signed in: {reports, beta}, your own, each
@@ -38,8 +39,12 @@ import { db, dbConfigured, reach } from "./_db.js";
 export const KINDS = Object.freeze({ bug: "Something is wrong", idea: "An idea", question: "A question" });
 export const SOURCES = ["site", "app"];
 export const STATUSES = ["new", "seen", "planned", "fixed", "wont_fix"];
-export const MOST = Object.freeze({ words: 4000, page: 300, log: 20000, note: 2000, reply: 4000, email: 254,
-  detail: 200, details: 20, picture: 1_500_000, model: 1_500_000 });
+export const MOST = Object.freeze({ words: 4000, expected: 2000, page: 300, log: 20000, note: 2000, reply: 4000,
+  email: 254, detail: 200, details: 20, picture: 1_500_000, model: 1_500_000 });
+// A bug report's "What did you expect to happen?" (bugreport, 2026-11-09),
+// kept after what happened, under this, in the report's words: the inbox
+// and Your reports show it as written, with nothing in the database new.
+export const EXPECTED = "Expected:";
 // What a report's sender is thanked with after "Thank you.", a sentence
 // each (web/feedback.js says each in the page's language): where its
 // answer comes, and what of it did not go.
@@ -117,8 +122,16 @@ export function reportOf(body, { signedIn }) {
   const kind = String(body.kind || "");
   if (!KINDS[kind]) throw new Refusal(422, "Choose what it is: something wrong, an idea or a question.");
   if (typeof body.words !== "string") throw new Refusal(422, "Say what happened, or what you would like.");
-  const words = lines(body.words);
-  if (words.length < 3) throw new Refusal(422, "Say what happened, or what you would like.");
+  const said = lines(body.words);
+  if (said.length < 3) throw new Refusal(422, "Say what happened, or what you would like.");
+  if (body.expected !== undefined && body.expected !== null && typeof body.expected !== "string") {
+    throw new Refusal(422, "What you expected is words.");
+  }
+  const expected = kind === "bug" ? lines(body.expected || "") : "";
+  if (expected.length > MOST.expected) {
+    throw new Refusal(422, `At most ${MOST.expected} characters for what you expected; that is ${expected.length}.`);
+  }
+  const words = expected ? `${said}\n\n${EXPECTED} ${expected}` : said;
   if (words.length > MOST.words) throw new Refusal(422, `At most ${MOST.words} characters; that is ${words.length}.`);
   let email = null;
   if (!signedIn) {

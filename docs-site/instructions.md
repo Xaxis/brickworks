@@ -30,6 +30,8 @@ ui:any step in one go
 
 ## The timeline {#timeline}
 
+![The timeline under the model: the car built to its first step, a slider and a row of numbered steps, the parts the step adds, and Start, Back, Reverse, Play, Next and End.](/docs/img/instructions-timeline.webp "Build › Timeline (B): the steps a booklet is made of.")
+
 [[B]] opens the timeline under the model: the build from an empty baseplate to the finished model. [[Left]] and [[Right]] step through it, [[Space]] plays it, and [[Home]] and [[End]] go to its start and end. Its buttons are **Earlier**, **Later**, **Merge with next**, **Delete step**, **New step from selection** and **Move to step…**; click a step in its row of steps to go to it.
 
 <!-- covers
@@ -86,6 +88,8 @@ ui:what is set in the booklet kept over an open
 
 ### The page: paper, margins, colour {#page-setup}
 
+![Page setup for the booklet: its tabs for the paper, the cover, the header and footer and the steps' colours, with the paper's size, margins and colour.](/docs/img/instructions-page-setup.webp "Build › Booklet page › Page setup… (Ctrl+Shift+B).")
+
 The booklet's own page is 269 x 199 mm on its side. It fits A4 and US Letter turned on their side with a margin to spare, so one PDF prints on both. To print on another paper, or in your own colours, use **Build › Booklet page › Page setup…**:
 
 - **Paper**: the booklet's own, A4, US Letter or A5, and **Orientation**, on its side or upright. The booklet is laid out again on that page, and the PDF's pages are that paper's size.
@@ -116,7 +120,7 @@ ui:the booklet's page setup
 
 All of it is saved with the model. A style kept by **Keep as a style** is the look: it carries the colours, the header and footer, and the cover's line and picture to another model. The title and the line under it stay each model's own, so a style never changes them, and neither does putting the booklet's own look back. Claude can set it with `page_setup`: `title`, `subtitle`, `cover_line`, `cover_picture_data`, `header`, `footer`, `box_frame`, `box_fill`, `box_corners`, `number_colour` and `outline_colour`.
 
-Each line of words holds 120 letters; longer words are cut, and Brickworks says so. If **Save as PDF** meets letters its type has no shapes for (Chinese, Japanese, Korean, Cyrillic, Greek, emoji), it names them. They print as **?** in the PDF. The booklet's own page and its PNG pages show them as typed.
+Each line of words holds 120 letters; longer words are cut, and Brickworks says so. **Save as PDF** prints Cyrillic, Greek and other scripts as typed, with their fonts in the file. Letters no font it has can draw (emoji, and Japanese on the web) print as **?**, and it names them first. The booklet's own page and its PNG pages show them as typed.
 
 The cover, header, footer and colours are lines in the model's file. Brickworks before this release, and the desktop app up to 0.19.0, do not know them and leave them out when they save the model. Open and save a model you have set up this way only in this release or a later one. In a model made of sub-models, the page belongs to the main model. Words or a page set up inside a sub-model stay in that sub-model as they were, with the picture they name.
 

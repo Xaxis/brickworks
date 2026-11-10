@@ -1114,6 +1114,8 @@ const PAGES = [
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})[.]mpd$/, "share", "file"],
   [/^\/m\/([A-Za-z0-9]{10})()\/parts[.](json|xml|csv)$/, "share", "parts"],
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/parts[.](json|xml|csv)$/, "share", "parts"],
+  [/^\/m\/([A-Za-z0-9]{10})()\/parts-(pab|pab-[1-9][0-9]{0,2})[.]csv$/, "share", "parts"],
+  [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/parts-(pab|pab-[1-9][0-9]{0,2})[.]csv$/, "share", "parts"],
   [/^\/m\/([A-Za-z0-9]{10})\/scene[.]json$/, "share", "scene"],
   [/^\/m\/([A-Za-z0-9]{10})\/v\/([1-9][0-9]{0,5})\/scene[.]json$/, "share", "scene"],
   [/^\/m\/([A-Za-z0-9]{10})\/room[.]json$/, "share", "room"],
@@ -1993,13 +1995,19 @@ function share(method, params, who, state = {}, body = undefined) {
   return null;
 }
 
-/// The beta (api/_beta.js): open, 37 of its 100 spots given; the form
-/// checked as the server checks it, and kept, which nothing here keeps.
+/// The beta (api/_beta.js): open, 37 of its 100 spots given. Sam is a
+/// tester since the day it opened (betajoin's answer: tester, state,
+/// joined_at, spots); signed out, the spots alone, as ?op=beta_spots says
+/// them. Telling us about you is checked as the server checks it, and
+/// kept, which nothing here keeps.
 const BETA_POOL = { pool: "beta", cap: 100, given: 37, left: 63 };
-const BETA_AT = "2026-10-29T18:00:00Z";
+export const BETA_AT = "2026-10-29T18:00:00Z";
+const BETA_SPOTS = { cap: BETA_POOL.cap, left: BETA_POOL.left };
+const BETA_TESTER = { tester: true, state: "tester", joined_at: BETA_AT, welcome: false };
 function beta(method, body, who) {
   if (method === "GET") {
-    return answer(200, { beta: "open", signed_in: Boolean(who), pool: BETA_POOL, early: false, test: false, application: null });
+    return answer(200, who ? { beta: "open", signed_in: true, ...BETA_TESTER, spots: BETA_SPOTS, pool: BETA_POOL, early: false, test: false, application: null }
+      : { beta: "open", signed_in: false, spots: BETA_SPOTS, pool: BETA_POOL, early: false, test: false, application: null });
   }
   if (!who) return answer(401, { error: "Sign in to apply." });
   try {
@@ -2032,12 +2040,25 @@ function betaQueue() {
         decisions: [{ decision: "approved", note: "Good crane", by: "owner@example.com", at: BETA_AT }] })] };
 }
 
+/// The owner's testers (api/admin.js ?op=beta_testers, as
+/// beta_testers_list answers): Ada joined at sign-up and told us about
+/// herself; Bo left; Cy said Not now.
+function betaTesters() {
+  const one = (account, email, state, via, application) => ({ account, email, state, joined_at: state === "not_now" ? null : BETA_AT,
+    via, said_at: BETA_AT, made_at: BETA_AT, application });
+  return { beta: "open", tests: false, counts: { testers: 1, left: 1, not_now: 1, welcome: 1, application: 1 },
+    testers: [one("00000000-0000-4000-8000-0000000000b1", "ada@example.com", "tester", "welcome", { status: "new", spot: null, comp: "none" }),
+      one("00000000-0000-4000-8000-0000000000b3", "bo@example.com", "left", "beta", null),
+      one("00000000-0000-4000-8000-0000000000b4", "cy@example.com", "not_now", "welcome", null)] };
+}
+
 /// /api/admin: the site's owner's page.
 function admin(method, params, who, state) {
   if (!who) return answer(401, { error: SIGN_IN });
   if (!state.admin) return answer(404, { error: "not found" });
   const op = params.get("op") || "";
   if (method === "GET" && op === "beta") return answer(200, betaQueue());
+  if (method === "GET" && op === "beta_testers") return answer(200, betaTesters());
   if (method === "POST") return answer(200, { ok: true });
   // A reported photo, to look at: a picture, which the flow serves.
   if (op === "photo") return null;
@@ -2192,6 +2213,11 @@ function answered({ url, method = "GET", body, state = {} }) {
     // anything it takes answered as kept, which nothing here keeps.
     case "plans": {
       if (params.get("op") === "beta") return beta(verb, body, who, state);
+      if (params.get("op") === "beta_spots") return answer(200, { beta: "open", ...BETA_SPOTS });
+      if (params.get("op") === "beta_join") {
+        if (verb !== "POST") return answer(405, { error: "POST {via}" });
+        return who ? answer(200, { beta: "open", signed_in: true, ...BETA_TESTER, spots: BETA_SPOTS }) : answer(401, { error: "Sign in to join the beta." });
+      }
       // The beta hub (api/_beta.js betaHub): Sam is a tester.
       if (params.get("op") === "beta_hub") {
         return who ? answer(200, { tester: true, early: EARLY, new: NEW, known: KNOWN }) : answer(401, { error: "Sign in to see the beta hub." });
@@ -2231,7 +2257,7 @@ function docsBuilt(web) {
 /// the landing page, /oauth/authorize for the connector's sign-in, and the
 /// 404 page for anything else; each in a language at /de/... too (the 404
 /// page for anything there is nothing at in it). The changelog filled as
-/// tools/site.py fills it, and the docs (/docs, /docs/<page>, English
+/// tools/site.py fills it (and its changelog.json), and the docs (/docs, /docs/<page>, English
 /// only) as tools/docs_site.py builds them.
 function staticFile(web, pathname) {
   const lang = /^\/(de|fr|es)(?=\/|$)/.exec(pathname)?.[1] || "";
@@ -2239,6 +2265,11 @@ function staticFile(web, pathname) {
   if (!lang && /^\/docs(?:\/[\w-]+)?$/.test(rest)) {
     const file = path.join(docsBuilt(web), rest === "/docs" ? "docs.html" : `${rest.slice(1)}.html`);
     if (existsSync(file)) return { status: 200, body: readFileSync(file), type: TYPES[".html"] };
+  }
+  // The newest releases' heads, which tools/site.py writes beside the
+  // changelog for the beta's page.
+  if (pathname === "/changelog.json") {
+    return { status: 200, body: execFileSync("python3", [path.join(web, "../tools/site.py"), "--whats-new"]), type: TYPES[".json"] };
   }
   const named = { "/oauth/authorize": "oauth/authorize.html" }[rest];
   const own = lang ? `${lang}/` : "";

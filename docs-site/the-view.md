@@ -53,6 +53,8 @@ ui:navigation presets
 
 ## The view cube {#view-cube}
 
+![The view cube in the corner of the view, its faces named, with buttons round it to slide, zoom and fit.](/docs/img/the-view-cube.webp "The view cube: click a face, edge or corner to look from there.")
+
 The cube in the corner turns the view to the face you click and shows which way the model faces. Its buttons zoom in and out.
 
 <!-- covers
@@ -60,6 +62,8 @@ ui:view cube
 -->
 
 ## A second view beside the model {#split}
+
+![The model area split in two: the red car turned three-quarters on the left, and straight from the front on the right with Front, Top, Side, Back and Fit above it.](/docs/img/the-view-split.webp "View › Split (F8) shows the model from two sides at once.")
 
 **View › Split** ([[F8]]) puts a second view of the model beside the first, square on from the front. **Front**, **Top**, **Side** and **Back** at its top turn it, **Fit** frames the whole model in it, and **×** goes back to one view. It starts looking where the main view looks, at the same size, and follows it until you move it: the wheel over it zooms it, and a drag over it slides it, without moving the main view. A right drag over it does nothing, since a view square on cannot turn. Once moved it keeps its own zoom and place, and the app remembers them with the split.
 
@@ -70,6 +74,8 @@ ui:split view
 -->
 
 ## Cut away and X-ray {#see-inside}
+
+![The red car cut away by a plane, showing the inside of its parts, with the cut-away's strip of choices along the view.](/docs/img/the-view-cut.webp "View › Cut away (K) shows the inside; its strip changes the shape and side.")
 
 - **View › Cut away** ([[K]]) puts a plane through the model. Drag the strip's slider to move it, choose **X**, **Y** or **Z**, **Flip** to cut the other side away, and **Ghost** to leave a faint copy of what is cut.
 - **View › Cut away by › A box**, **A sphere** or **A cylinder** takes a shape out of the model: round the selection, or with nothing selected the middle of the model from half way up. Drag the knob on any face to push or pull it a plate at a time, or turn the wheel over it. Shift-drag moves the whole shape, and Esc or a right-click puts a drag back. **Grow** and **Shrink** in the strip move every face at once, and its first list swaps the shape for another or for the plane. Where the cut goes through a part, the face it leaves is filled in the part's colour, so a wall reads as a wall.
@@ -98,6 +104,16 @@ An assistant sees the same with view_board and `"studs": true`: the six sides an
 
 <!-- covers
 ui:stud directions
+-->
+
+## Edges and studs {#edges-studs}
+
+**View › Edges and studs** turns two things in the picture on and off. **Edges** is the fine line drawn where each part meets the next, which makes the courses and the bond of a wall easy to read; off, the parts meet without it. **Studs** off draws every part without its studs, on top, on its sides and on a round plate alike, so you see the shapes alone, and a big model draws faster. Each part stays exactly where it is and still joins the parts it joined. The part in your hand keeps its studs, so you can see where it will go.
+
+Both are kept on this computer for the next time. They change only your view: renders, the instructions, shared pictures and what an assistant is shown always draw every edge and stud.
+
+<!-- covers
+ui:edges and studs
 -->
 
 ## Floor and stud grid {#floor}

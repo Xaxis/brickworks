@@ -12,9 +12,13 @@
 // this browser opens starts as a returning visitor's: a session of the test
 // account, minted on the test side (session.mjs) and put where the app keeps
 // one. Needs .env sourced; without it the pages start signed out and say
-// so. launch({ signedOut: true }) for a flow about signing in itself.
+// so. launch({ signedOut: true }) for a flow about signing in itself, and
+// launch({ ownAccount: true }) for one that spends what an account may do
+// in an hour or a day, such as publishing: its pages are signed in as an
+// account of the run's own, deleted when the run ends (session.mjs).
+import { steadyShots } from "./steady_shots.mjs";
 import { chromium } from "playwright";
-import { canSignIn, signInContext, TEST_EMAIL } from "./session.mjs";
+import { canSignIn, endOwnAccount, ownAccount, signInContext, TEST_EMAIL } from "./session.mjs";
 
 export const SOFTWARE = [
   "--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader",
@@ -27,7 +31,7 @@ export const START_MS = 5 * 60 * 1000;
 
 let warned = false;
 
-async function signedIn(context) {
+async function signedIn(context, email) {
   if (!canSignIn()) {
     if (!warned) {
       warned = true;
@@ -37,9 +41,9 @@ async function signedIn(context) {
     return context;
   }
   try {
-    await signInContext(context);
+    await signInContext(context, email);
   } catch (trouble) {
-    console.log(`  (could not sign the test account in: ${trouble.message})`);
+    console.log(`  (could not sign ${email} in: ${trouble.message})`);
   }
   return context;
 }
@@ -104,18 +108,25 @@ export async function instantScroll(context) {
 }
 
 export async function launch(options = {}) {
-  const { signedOut = false, realCounter = false, ...rest } = options;
-  const browser = await chromium.launch({ ...rest, args: [...SOFTWARE, ...(rest.args || [])] });
+  const { signedOut = false, realCounter = false, ownAccount: own = false, ...rest } = options;
+  // A run's own account is deleted before the run ends, stopped too, so the
+  // run answers its signals itself (ownAccount), not Playwright.
+  const mine = own && !signedOut && canSignIn();
+  const email = mine ? await ownAccount() : TEST_EMAIL;
+  const signals = mine ? { handleSIGINT: false, handleSIGTERM: false, handleSIGHUP: false } : {};
+  const browser = await chromium.launch({ ...signals, ...rest, args: [...SOFTWARE, ...(rest.args || [])] });
   const made = browser.newContext.bind(browser);
-  const bare = async (contextOptions) => instantScroll(await made(contextOptions));
+  // Every page of every context takes a dropped picture again (steady_shots.mjs).
+  const steady = (context) => { context.on("page", (page) => steadyShots(page)); return context; };
+  const bare = async (contextOptions) => instantScroll(steady(await made(contextOptions)));
   const newContext = realCounter ? bare : async (contextOptions) => quietCounter(await bare(contextOptions));
   if (signedOut) {
     const newPage = browser.newPage.bind(browser);
     browser.newContext = (contextOptions) => newContext(withRatio(contextOptions));
-    browser.newPage = (pageOptions) => newPage(withRatio(pageOptions));
+    browser.newPage = async (pageOptions) => steadyShots(await newPage(withRatio(pageOptions)));
     return browser;
   }
-  browser.newContext = async (contextOptions) => signedIn(await newContext(withRatio(contextOptions)));
+  browser.newContext = async (contextOptions) => signedIn(await newContext(withRatio(contextOptions)), email);
   // A page of its own context, which Playwright closes with the page.
   browser.newPage = async (pageOptions) => {
     const context = await browser.newContext(pageOptions);
@@ -123,7 +134,18 @@ export async function launch(options = {}) {
     page.on("close", () => context.close().catch(() => {}));
     return page;
   };
-  browser.testAccount = canSignIn() ? TEST_EMAIL : null;
+  browser.testAccount = canSignIn() ? email : null;
+  if (mine) {
+    console.log(`  (signed in as this run's own account, ${email})`);
+    const close = browser.close.bind(browser);
+    browser.close = async (...how) => {
+      try {
+        return await close(...how);
+      } finally {
+        await endOwnAccount();
+      }
+    };
+  }
   return browser;
 }
 

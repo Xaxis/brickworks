@@ -336,9 +336,10 @@ func _own_words(control: Control, point: Vector2) -> String:
 
 
 ## A control's name as a person reads it on screen: a button's words, or
-## what a screen reader calls it.
+## what a screen reader calls it, but a name taken from its own tooltip
+## (Access.name_from_words), which is shown as the tooltip it is.
 func _name_of(control: Control) -> String:
-	if not control.accessibility_name.strip_edges().is_empty():
+	if not control.accessibility_name.strip_edges().is_empty() and not Access.from_tooltip(control):
 		return control.accessibility_name.strip_edges()
 	if control is Button and not (control is OptionButton) \
 			and not (control as Button).text.strip_edges().is_empty():

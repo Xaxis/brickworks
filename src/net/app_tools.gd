@@ -49,6 +49,8 @@ var _hands: HandTools
 var _see: SeeTools
 ## Edit, Pattern…'s grid for a session (PatternTool, APP_UX4 grid).
 var _pattern: PatternTool
+## The person's palettes for a session (PaletteTool, APP_UX7 mcppalettes).
+var _palette: PaletteTool
 
 
 ## The window's commands (Shell) a session does with a tool: command id, or
@@ -163,6 +165,8 @@ const WINDOW_ONLY: Dictionary = {
 	"about": "help for the person",
 	"back_to_site": "leaves the web app for the website in the person's tab, ending the session's connection",
 	"feedback": "a report from the person to the people who make Brickworks, in their own words",
+	# bugreport: the same, a bug's, with a picture of the window the person marks.
+	"report_bug": "a report from the person to the people who make Brickworks, in their own words, with a picture of their window",
 	"beta_hub": "help for the person",
 	"check_updates": "the person's own copy of the app: a new version is theirs to take, and taking it restarts the app the session is driving",
 	"reinstall": "puts a fresh copy of the app in place and restarts it, ending the session's connection",
@@ -171,6 +175,10 @@ const WINDOW_ONLY: Dictionary = {
 	# savedviews: the views kept with the model (SavedViews); save_view is
 	# save_view's (mcpsee3).
 	"saved_view_*": "the person's camera; view_model view= looks from a saved view by its name, and render_model view= renders it",
+	# edges (APP_UX6 #19): View › Edges and studs, how the person's own view
+	# draws the plastic.
+	"edges": "how the person's own view draws the parts; the pictures a session is shown (view_model) draw the plastic as it is moulded, seams and all",
+	"studs": "how the person's own view draws the parts; the pictures a session is shown (view_model) draw every stud, which a session counts and places by",
 }
 
 ## What a session reads about these, served by read_guide("app") — every
@@ -340,6 +348,13 @@ says yes.
 (q, kind, size, technic, instructions, sort); open=<id> reads one as a \
 reference — its size, parts, credit, licence and picture. Read-only. Credit \
 its builder and keep to its licence in anything made from it.
+ - palettes, read-only: the person's own palettes, as the parts bin's \
+Palettes keeps them for every model: parts in their colours and \
+sub-assemblies. edit_palette makes one (make), keeps more in it (add: \
+bricks= parts of the model, parts= by number and colour, from= the model or \
+the selection, assembly= a sub-assembly whole), take_out, rename and delete \
+as the bin's rows do, and place puts a kept sub-assembly down in the model \
+whole, at= where its low corner goes, one undo step.
  - job: what takes long on a big model (render_model, animate_model's \
 rendering, render_motion, export_model's studio, picture and instructions, make_art, \
 brickify) \
@@ -899,6 +914,11 @@ func definitions() -> Array:
 				+ "keep is answered with those it does. look product is a product shot's: glossy "
 				+ "plastic with rounded edges, clear parts that bend the light, a key, fill "
 				+ "and rim over a softbox studio (window, the default, is the window's own). "
+				# lineart (APP_UX7 #22).
+				+ "look lineart is the model inked: black lines round it, where each part meets "
+				+ "the next and where a part turns a corner, on white, the shade in halftone dots; "
+				+ "comic the same lines and dots over each part's own flat colour; with backdrop "
+				+ "none on nothing. "
 				+ "backdrop white, gradient, grey, dark or none (as Render last had it when "
 				+ "omitted). depth_of_field blurs what is nearer and farther than the "
 				+ "model's middle, as a lens at f/4 does, and is drawn at best. light studio "
@@ -914,13 +934,15 @@ func definitions() -> Array:
 				"quality": {"type": "string", "enum": ["quick", "good", "best"]},
 				"size": {"type": "string", "enum": ["720p", "1080p", "4k", "square"]},
 				"view": {"type": "string", "description": "hero, front, side, back, low or top, or a view saved with the model, by its name"},
-				"look": {"type": "string", "enum": ["window", "product"]},
+				"look": {"type": "string", "enum": RenderSettings.LOOKS.keys()},
 				"backdrop": {"type": "string", "enum": ["white", "gradient", "grey", "dark",
 					"none"]},
 				"depth_of_field": {"type": "boolean"},
 				# lights (APP_UX5 #7).
 				"light": {"type": "string", "enum": ["studio", "softbox", "window", "daylight",
 					"dark"]},
+				# video2 (APP_UX6 #11).
+				"format": {"type": "string", "enum": ["webp", "gif"], "description": "a turntable's or a build's file: webp, or gif for where a WebP is not taken (chats, forums, mail): 256 colours, at most 640 pixels across, made to fit 8 MB. As Render's Kept as has it when omitted"},
 			}},
 		},
 		{
@@ -948,7 +970,7 @@ func definitions() -> Array:
 				"size": {"type": "string", "enum": ["720p", "1080p", "4k", "square"]},
 				"samples": {"type": "integer", "description": "Best's samples, 1 to 4096"},
 				"view": {"type": "string", "description": "current, hero, front, side, back, low or top, or a view saved with the model, by its name"},
-				"look": {"type": "string", "enum": ["window", "product"]},
+				"look": {"type": "string", "enum": RenderSettings.LOOKS.keys()},
 				"backdrop": {"type": "string", "enum": ["white", "gradient", "grey", "dark",
 					"none"]},
 				"depth_of_field": {"type": "boolean"},
@@ -1240,7 +1262,7 @@ func definitions() -> Array:
 		},
 		GalleryTool.definition(),
 		PatternTool.definition(),
-	] + HandTools.definitions() + SeeTools.definitions()
+	] + HandTools.definitions() + SeeTools.definitions() + PaletteTool.definitions()
 
 
 func has(tool: String) -> bool:
@@ -1359,6 +1381,16 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 			if not _pattern.changed.is_empty():
 				return await _seeing().pictured(laid, _pattern.changed, input.get("picture"))
 			return laid
+		# mcppalettes: the person's palettes (PaletteTool); a sub-assembly put
+		# down answered with it pictured, as the hand tools' changes are.
+		"palettes", "edit_palette":
+			if _palette == null:
+				_palette = PaletteTool.new()
+				_palette.app = app
+			var kept: String = await _palette.run(tool, input)
+			if not _palette.changed.is_empty():
+				return await _seeing().pictured(kept, _palette.changed, input.get("picture"))
+			return kept
 	return "No tool called %s." % tool
 
 
@@ -1423,6 +1455,10 @@ const CHANGES: Array[String] = ["set_floor", "edit_steps", "edit_booklet", "lay_
 ## tool: light_model's list was refused while the designer built, as edit_steps'
 ## list and set_floor's question were (lreview, 2026-11-07).
 static func changes(tool: String, input: Dictionary) -> bool:
+	# mcppalettes: a palette's sub-assembly put down changes the model; the
+	# rest of edit_palette changes only the person's palettes.
+	if tool == "edit_palette":
+		return str(input.get("action", "")) == "place"
 	return tool in CHANGES and not _while_looking(tool, input)
 
 
@@ -1454,6 +1490,9 @@ static func _while_looking(tool: String, input: Dictionary) -> bool:
 		# pagesetup: how the page is set up, read.
 		"page_setup":
 			return input.is_empty()
+		# mcppalettes: the person's palettes, read.
+		"palettes":
+			return true
 		# lights (APP_UX5 #7): the model's lights, listed.
 		"light_model":
 			return str(input.get("op", "list")) == "list"
@@ -3974,7 +4013,7 @@ func _render(input: Dictionary, work: Working.Job = null) -> Variant:
 		chosen.keep_view(world.saved_views[at], app.get("_camera") as Camera3D)
 	var look: String = str(input.get("look", "window"))
 	if not RenderSettings.LOOKS.has(look):
-		return "look is window or product."
+		return "look is %s." % LineArt.looks_in_words()
 	chosen.look = look
 	if input.has("backdrop"):
 		var backdrop: String = str(input["backdrop"])
@@ -3999,8 +4038,17 @@ func _render(input: Dictionary, work: Working.Job = null) -> Variant:
 			return "seconds is %d to %d." % [BuildRender.SHORTEST, BuildRender.LONGEST]
 		chosen.frames = seconds * chosen.fps
 		kind = "building"
+	# video2 (APP_UX6 #11): a turntable or a build as a GIF.
+	var as_gif: Variant = null
+	if input.has("format"):
+		var format: String = str(input["format"])
+		if not format in ["webp", "gif"]:
+			return "format is webp or gif."
+		if kind == "picture" and format == "gif":
+			return "format is a turntable's or a build's: a picture is kept as a PNG."
+		as_gif = format == "gif"
 	var was: Variant = dialog._last.get("output")
-	var said: String = await dialog.render_for(kind, chosen, work)
+	var said: String = await dialog.render_for(kind, chosen, work, as_gif)
 	var how: String = _best_said(dialog, chosen)
 	if not how.is_empty():
 		said = "%s. %s" % [said.trim_suffix("."), how]
