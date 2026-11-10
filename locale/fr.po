@@ -13059,6 +13059,127 @@ msgstr "Les pièces fabriquées pour la première fois en %d ou %d, les plus ré
 msgid "%s first made in %d or %d, the newest first"
 msgstr "%s fabriquées pour la première fois en %d ou %d, les plus récentes d'abord"
 
+# Names a screen reader says, with no words on screen of their own: those Access
+# gives Godot's file dialog, the choices named where they are made, and every
+# accessibility_name of the interface (a11ynames, a11y_names_probe).
+
+msgid "Kind of file"
+msgstr "Type de fichier"
+
+msgid "Drive"
+msgstr "Lecteur"
+
+msgid "Move the favourite up"
+msgstr "Monter le favori"
+
+msgid "Move the favourite down"
+msgstr "Descendre le favori"
+
+msgid "Drag to share the room between the panes"
+msgstr "Faites glisser pour partager la place entre les volets"
+
+msgid "Create a new folder."
+msgstr "Créer un nouveau dossier."
+
+msgid "3D file format"
+msgstr "Format de fichier 3D"
+
+msgid "Length"
+msgstr "Longueur"
+
+msgid "Speed"
+msgstr "Vitesse"
+
+msgid "Frames"
+msgstr "Images"
+
+msgid "Measure periods against"
+msgstr "Mesurer les périodes par rapport à"
+
+msgid "Where the cut is"
+msgstr "Où passe la coupe"
+
+msgid "Studs across"
+msgstr "Tenons en largeur"
+
+msgid "Studs deep"
+msgstr "Tenons en profondeur"
+
+msgid "Find a key"
+msgstr "Chercher une touche"
+
+msgid "%s: %s. Set its key"
+msgstr "%s : %s. Choisir sa touche"
+
+msgid "Search the LDraw sets"
+msgstr "Rechercher dans les sets LDraw"
+
+msgid "The minifigure"
+msgstr "La minifigurine"
+
+msgid "Commands"
+msgstr "Commandes"
+
+msgid "Show the parts as a list"
+msgstr "Afficher les pièces en liste"
+
+msgid "Find a colour by name or number"
+msgstr "Chercher une couleur par nom ou numéro"
+
+msgid "The part, turning"
+msgstr "La pièce, qui tourne"
+
+msgid "The print, to draw on"
+msgstr "L'impression, pour dessiner dessus"
+
+msgid "Brush size"
+msgstr "Taille du pinceau"
+
+msgid "The part wearing the print"
+msgstr "La pièce qui porte l'impression"
+
+msgid "AI: who designs, provider, model and key"
+msgstr "IA : qui conçoit, fournisseur, modèle et clé"
+
+msgid "Show the key as it is typed"
+msgstr "Afficher la clé pendant la saisie"
+
+msgid "Test the model: one tool call and one picture"
+msgstr "Tester le modèle : un appel d'outil et une image"
+
+msgid "Models"
+msgstr "Modèles"
+
+msgid "API key"
+msgstr "Clé d'API"
+
+msgid "Back to Settings"
+msgstr "Retour aux réglages"
+
+msgid "Provider"
+msgstr "Fournisseur"
+
+msgid "Reasoning effort"
+msgstr "Effort de raisonnement"
+
+msgid "Where in the cycle"
+msgstr "Où dans le cycle"
+
+msgid "View cube"
+msgstr "Cube de vue"
+
+msgid "Turn the view up"
+msgstr "Tourner la vue vers le haut"
+
+msgid "Turn the view down"
+msgstr "Tourner la vue vers le bas"
+
+msgid "Slide the view: W, A, S and D"
+msgstr "Faire glisser la vue : W, A, S et D"
+
+msgid "Step"
+msgstr "Étape"
+
 # View › Edges and studs (APP_UX6 #19 edges): the parts' seams and their studs, each drawn or not
 
 msgid "Edges and studs"

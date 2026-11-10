@@ -378,6 +378,7 @@ func _build() -> void:
 	choose.add_theme_constant_override("separation", 8)
 	column.add_child(choose)
 	_modes = OptionButton.new()
+	_modes.accessibility_name = "Colour the hidden parts"
 	_modes.focus_mode = Control.FOCUS_NONE
 	_modes.add_theme_font_size_override("font_size", 12)
 	for label: String in MODE_LABELS:

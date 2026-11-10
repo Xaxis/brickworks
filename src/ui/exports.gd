@@ -262,6 +262,7 @@ func ask_model_3d() -> void:
 		words.custom_minimum_size = Vector2(440, 0)
 		asking.add_child(words)
 		_format_choice = OptionButton.new()
+		_format_choice.accessibility_name = "3D file format"
 		for format: String in MeshExport.FORMATS:
 			_format_choice.add_item(MeshExport.NAMES[format])
 		_format_choice.item_selected.connect(func(_index: int) -> void: _describe_format())

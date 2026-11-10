@@ -930,9 +930,12 @@ building it showed:
   description), a part's title and number ("Brick 2 x 4, 3001"), a colour's
   name, a technique's, and every dialog's fields, sliders, numbers and
   previews. Godot reads a button with no name by its tooltip, which here is
-  a paragraph of help, so that counts as no name. `a11y_names_probe` walks
-  the frame, the bin's tabs, a selection's properties and 30-odd dialogs and
-  panels the menus open: 666 of 1,888 had none on m166, 0 now.
+  a paragraph of help, so that counts as no name. A control made with no
+  name is named from the words beside it as it is made (`Access`), in the
+  language the window is in. `a11y_names_probe` walks the frame, the bin's
+  tabs, a selection's properties and every dialog and panel, 114 in all,
+  in English and in German: 666 of 1,888 had none on m166, 45 of 2,792 on
+  pre261 (11-09, a number a dialog made with a tooltip alone), 0 now.
 - The keys go from the model into the frame with F6, the key desktop apps
   and browsers move between their panes with, and with Tab while a screen
   reader is running (Godot's own Tab starts from a control at the window's
