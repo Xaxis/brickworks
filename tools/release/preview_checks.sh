@@ -682,7 +682,7 @@ run() {
   if live "$name"; then
     alone "$name" && how=alone
     if ! take_live_db "$how"; then
-      echo "$name exit=75 fails=1 $(( $(date +%s) - t0 ))s :: FAIL the live database stayed busy (LIVE_WAIT, an hour): $(tail -1 "$LIVE_DB.log")" >> "$S/$TAG.out"
+      echo "$name exit=75 fails=1 $(( $(date +%s) - t0 ))s :: FAIL the live database stayed busy (LIVE_WAIT, $(( ${LIVE_WAIT:-3600} / 60 )) min): $(tail -1 "$LIVE_DB.log")" >> "$S/$TAG.out"
       return
     fi
     echo "$(date '+%F %T') took $TAG $name after $(( $(date +%s) - t0 ))s ($LIVE_DB_HOW)" >> "$LIVE_DB.log"
