@@ -4915,7 +4915,7 @@
       "kind": "cli",
       "label": "localbricks probe",
       "entry": "src/dev/localbricks_probe.gd",
-      "reach": "tools/relay_probe.sh localbricks   (a window, 1280x720; PROBE_SIZE=1400x900; -- --shots=DIR: through the sign-in screen with a password, 7140-1's lots marked by edit_collection missing= and refused past its inventory, Build from it 282 of 285, a restart and another device, two tabs at once one refused, a tab a newer build followed leaving the copy on this device, two copies 566 of 570 and one of them 284 of 285, signed out nothing held, the words in de/fr/es)",
+      "reach": "tools/relay_probe.sh localbricks   (a window, 1280x720; PROBE_SIZE=1400x900; -- --shots=DIR: through the sign-in screen with a password, 7140-1's lots marked by edit_collection missing= (each said was N, now M; none=true refused while marked) and refused past its inventory, Build from it 282 of 285, a restart and another device, two tabs at once one refused, a tab a newer build followed leaving the copy on this device, two copies 566 of 570 and one of them 284 of 285, signed out nothing held, the words in de/fr/es)",
       "area": "collection"
     },
     {

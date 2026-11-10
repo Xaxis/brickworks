@@ -278,27 +278,7 @@ func refresh_pool() -> void:
 	records = found
 	on_hand = collection.pool(records, library)
 	if _asks:
-		marks = _marks_of(collection)
-
-
-## What [param mine]'s sets are marked as missing, by set number ([member
-## marks]).
-func _marks_of(mine: Collection) -> Dictionary:
-	var out: Dictionary = {}
-	for entry: Dictionary in mine.sets:
-		if Collection.is_fig(entry):
-			continue
-		var number: String = str(entry["set"])
-		if not out.has(number):
-			out[number] = {"copies": 0, "missing": {}}
-		out[number]["copies"] = int(out[number]["copies"]) + int(entry.get("qty", 1))
-		var gone: Dictionary = Collection.missing_keys(entry, library)
-		for key: String in gone:
-			out[number]["missing"][key] = int(out[number]["missing"].get(key, 0)) + int(gone[key])
-	for number: String in out.keys():
-		if (out[number]["missing"] as Dictionary).is_empty():
-			out.erase(number)
-	return out
+		marks = collection.marks(library)
 
 
 func pieces_on_hand() -> int:

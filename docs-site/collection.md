@@ -1,7 +1,7 @@
 ---
 tools: parts_list, edit_collection
 panels: CollectionDialog#my-collection
-ai: The sets and parts a person owns, kept with their account: what a model needs that they lack, and what they can build now. parts_list which=need lists what is missing, which=buildable what the collection can build, which=compare a= b= what two sets or models share and what to buy to build b from a. edit_collection adds the loose parts a person shows in a photo of their pile, in one call, each lot marked as the session's for the person to keep or take back; it never changes their sets or their own lots. edit_collection missing= marks how many of each part a set they own is missing.
+ai: The sets and parts a person owns, kept with their account: what a model needs that they lack, and what they can build now. parts_list which=need lists what is missing, which=buildable what the collection can build, which=compare a= b= what two sets or models share and what to buy to build b from a. edit_collection adds the loose parts a person shows in a photo of their pile, in one call, each lot marked as the session's for the person to keep or take back; it never changes their sets or their own lots. edit_collection missing= puts how many of each named part a set they own is missing to a count, all its copies together, and says each change as was N, now M so it can be put back; none=true says a set has nothing missing only while nothing is marked, and is refused otherwise: the lots are named to unmark them; missing= is sent alone, not with add= or remove=.
 rules:
   - The collection comes from Rebrickable (with the person's own key), a BrickLink or Rebrickable list, or typed in.
 title: My collection

@@ -111,12 +111,26 @@ which models they could build from what they have. Added 2026-10-12.
   (`CollectionStore.marks`, kept by the window's store and emptied at a
   sign-out; `SetBin.left_out`), their copies beyond the bin's making up the
   marks first, and the bar says "less the N pieces marked missing"
-  (localbricks). edit_collection missing={set, lots: [{part, color,
-  count}]} marks them for a session (count 0 unmarks, none=true marks the
-  set whole), refusing a part not in the set's inventory or a count past
-  what its copies have; signed out it is refused, as all of edit_collection
-  is. A tab a newer build has followed still marks at the account but
-  leaves the copy on this device alone (`NewerBuild.may_write`).
+  (localbricks); a bin open on a set is made again from the same sets and
+  records whenever the window's store changes (`PartsBin.follow_marks` on
+  `CollectionStore.changed`), so a mark made here, by a session, on another
+  device or read after start-up leaves the part out at once.
+  edit_collection missing={set, lots: [{part, color, count}]}
+  (`AppTools._collection_marks`, redesigned by lbfix after two reviews):
+  one count per part per set, every entry of the number together
+  (`Collection.marks`, by `Collection.key_of`, so a mark kept as 179 is
+  6141's); a write is one `missing` op per entry, the count spread over the
+  entries as far as each holds the part, under the inventory's number with
+  the part's other numbers there put to 0; every reply says each change
+  "was N, now M"; none=true is refused while anything is marked ("name the
+  lots to unmark") and says "Nothing to change" when nothing is; colours
+  and counts are checked before anything is looked up (`_lot_given`: whole
+  counts, known codes); with add= or remove= it is refused ("send them in
+  separate calls"); a part not in the set's inventory or a count past what
+  its copies have is refused. The read back lists each set once with its
+  copies and its marks. Signed out it is refused, as all of
+  edit_collection is. A tab a newer build has followed still marks at the
+  account but leaves the copy on this device alone (`NewerBuild.may_write`).
 - `build from a set's parts` (`src/collection/set_bin.gd`, `src/ui/parts_bin.gd`,
   docs/APP_UX.md B10, 2026-10-30): the parts bin as one set's parts, or
   several sets' added up, a tile for each part and colour in its own colour,
@@ -486,9 +500,10 @@ Proves it when:
   (`Main.gate_for_probe`): signed out, nothing held and edit_collection says
   to sign in; signed in through it with a password (the age question
   answered); 7140 and 3931-1 typed; missing= marks 3 of 7140-1's lots in 1
-  call, the pool 3 less, `CollectionStore.marks` handed them, a part not in
-  the inventory and a count past it refused with nothing changed, count 0
-  and none=true unmark; Build from it 282 of 285, the bar saying so; a
+  call, each said "was 0, now 1", the pool 3 less, `CollectionStore.marks`
+  handed them, a part not in the inventory and a count past it refused with
+  nothing changed, count 0 unmarks, none=true refused with 2 marked and
+  both named unmark it whole; Build from it 282 of 285, the bar saying so; a
   restart and another device signed in to the account read the same marks;
   two tabs marking one lot from the same count, one made and one refused
   (409) and shown the account as it is; a tab a newer build has followed

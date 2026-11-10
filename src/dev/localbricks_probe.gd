@@ -21,10 +21,11 @@
 ##      edit_collection says to sign in
 ##   2. signed in through it (the age question answered if asked): it goes
 ##   3. 7140 and 3931-1 typed in My collection, kept at the account
-##   4. edit_collection missing=: 3 of 7140-1's lots marked in 1 call, the
-##      pool 3 less, read back; refused with words and nothing changed: a
-##      part not in its inventory, a count past what it has; count 0
-##      unmarks, none=true marks it whole, marked again
+##   4. edit_collection missing=: 3 of 7140-1's lots marked in 1 call, each
+##      said "was 0, now 1", the pool 3 less, read back; refused with words
+##      and nothing changed: a part not in its inventory, a count past what
+##      it has; count 0 unmarks; none=true refused while 2 are marked (lbfix:
+##      the lots are named to unmark), both named unmark it whole, marked again
 ##   5. Build from it: 282 of 285 in the bin, 3 left out, the bar says so
 ##   6. kept over a restart: the copy on this device, then the account's
 ##   7. on another device signed in to the account: the same marks
@@ -184,8 +185,9 @@ func _steps() -> void:
 	var three: Array = singles.map(func(lot: Dictionary) -> Dictionary:
 		return {"part": lot["part"], "color": lot["colour"], "count": 1})
 	var marked: String = await _call("edit_collection", {"missing": {"set": "7140-1", "lots": three}})
-	_check("3 of 7140-1's lots marked missing in 1 call: “%s”" % marked.left(120),
-		marked.begins_with("Marked 3 lots of 7140-1") and _missing_in(_set_of(_kept(), "7140-1")) == 3)
+	_check("3 of 7140-1's lots marked missing in 1 call, each said: “%s”" % marked.replace("\n", " | ").left(160),
+		marked.begins_with("Changed what 7140-1") and marked.count("was 0, now 1") == 3
+		and _missing_in(_set_of(_kept(), "7140-1")) == 3)
 	_check("...the pool 3 pieces less: %d to %d" % [pool_before, int(_store.call("pieces_on_hand"))],
 		int(_store.call("pieces_on_hand")) == pool_before - 3)
 	_check("...kept at the account", _missing_in(_set_of(await _account_now(_account), "7140-1")) == 3)
@@ -210,13 +212,21 @@ func _steps() -> void:
 	_check("...neither changed anything at the account", _same(await _account_now(_account), held))
 	var unmark: String = await _call("edit_collection", {"missing": {"set": "7140-1", "lots": [{"part": singles[0]["part"],
 		"color": singles[0]["colour"], "count": 0}]}})
-	_check("count 0 unmarks one: “%s”" % unmark.left(110), unmark.begins_with("Marked 1 lot of 7140-1")
+	_check("count 0 unmarks one: “%s”" % unmark.replace("\n", " | ").left(130), unmark.contains("was 1, now 0")
 		and _missing_in(_set_of(_kept(), "7140-1")) == 2 and _sum(_marks().get("7140-1", {}).get("missing", {})) == 2)
 	var none: String = await _call("edit_collection", {"missing": {"set": "7140-1", "none": true}})
-	_check("none=true marks it whole: “%s”" % none.left(110), none.contains(": whole")
+	_check("none=true refused while 2 are marked, saying to name them: “%s”" % none.left(130),
+		none.begins_with("Nothing was changed") and none.contains("name the lots to unmark")
+		and _missing_in(_set_of(_kept(), "7140-1")) == 2)
+	var both: Array = [singles[1], singles[2]].map(func(lot: Dictionary) -> Dictionary:
+		return {"part": lot["part"], "color": lot["colour"], "count": 0})
+	none = await _call("edit_collection", {"missing": {"set": "7140-1", "lots": both}})
+	_check("the 2 named, count 0, unmark it whole: “%s”" % none.replace("\n", " | ").left(150), none.contains(": it is whole")
 		and _missing_in(_set_of(_kept(), "7140-1")) == 0 and not _marks().has("7140-1"))
+	none = await _call("edit_collection", {"missing": {"set": "7140-1", "none": true}})
+	_check("...and none=true says so with nothing marked: “%s”" % none.left(110), none.begins_with("Nothing to change"))
 	marked = await _call("edit_collection", {"missing": {"set": "7140-1", "lots": three}})
-	_check("...and the 3 marked again", marked.begins_with("Marked 3 lots of 7140-1") and _missing_in(_set_of(_kept(), "7140-1")) == 3)
+	_check("...and the 3 marked again", marked.begins_with("Changed what 7140-1") and _missing_in(_set_of(_kept(), "7140-1")) == 3)
 	_dialog.call("open", "own")
 	await _settled()
 	await _shot("localbricks_marked")
@@ -252,7 +262,7 @@ func _steps() -> void:
 	elsewhere.account = other
 	root.add_child(elsewhere)
 	fetched = await elsewhere.load_collection()
-	var there: Dictionary = elsewhere.call("_marks_of", elsewhere.collection) if elsewhere.has_method("_marks_of") else {}
+	var there: Dictionary = elsewhere.collection.marks(_library)
 	_check("signed in to the account on another device, the same marks: %s" % (problem if not problem.is_empty()
 		else JSON.stringify(there).left(140)), problem.is_empty() and fetched.is_empty() and not elsewhere.offline
 		and not there.is_empty() and _same(there, _marks()))
@@ -311,7 +321,7 @@ func _steps() -> void:
 	var stale_tab: String = await _call("edit_collection", {"missing": {"set": "7140-1", "lots": [{"part": several["part"],
 		"color": several["colour"], "count": 0}]}})
 	_check("its mark made all the same, at the account: “%s”" % stale_tab.left(100),
-		stale_tab.begins_with("Marked 1 lot of 7140-1")
+		stale_tab.begins_with("Changed what 7140-1") and stale_tab.contains(", now 0")
 		and _missing_of(_set_of(await _account_now(_account), "7140-1"), several) == 0)
 	_check("...and the copy on this device untouched, byte for byte (NewerBuild.may_write)",
 		FileAccess.get_file_as_string(CollectionStore.where) == copy_text)
@@ -329,7 +339,7 @@ func _steps() -> void:
 	var past: String = await _call("edit_collection", {"missing": {"set": "7140-1", "lots": [{"part": singles[1]["part"],
 		"color": singles[1]["colour"], "count": 2}]}})
 	_check("one lot marked 2, past what one copy has: “%s”" % past.left(110),
-		past.begins_with("Marked 1 lot of 7140-1") and _missing_in(_set_of(_kept(), "7140-1")) == 4)
+		past.begins_with("Changed what 7140-1") and past.contains("was 1, now 2") and _missing_in(_set_of(_kept(), "7140-1")) == 4)
 	await _build_from(PackedStringArray(["7140-1", "7140-1"]), whole * 2, 4, "both copies of 7140-1")
 	await _shot("localbricks_two_copies")
 	await _drop_set()
