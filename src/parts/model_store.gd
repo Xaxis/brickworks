@@ -1496,6 +1496,10 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	# The app's own file carries them itself (_text_into).
 	_absent = absent if source == null else []
 
+	# Which copy of the file each copy is, by its path, wherever an edit
+	# takes it (Assemblies.realize): its parts' lines (SourceFile.patch).
+	if source != null:
+		world.unit_chains = model.unit_chains.duplicate()
 	# Each sub-model copy's step in the one that places it, by its path.
 	if authored:
 		world.unit_steps = model.unit_steps.duplicate()
@@ -1562,6 +1566,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 			world.get_brick(brick_id).group = placement.group
 			world.get_brick(brick_id).unit = placement.unit
 			world.get_brick(brick_id).step = placement.step
+			world.get_brick(brick_id).origin = placement.origin
 			placed += 1
 		if paced and job.due():
 			job.count(down.size())
@@ -1633,6 +1638,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 				world.get_brick(brick_id).group = placement.group
 				world.get_brick(brick_id).unit = placement.unit
 				world.get_brick(brick_id).step = placement.step
+				world.get_brick(brick_id).origin = placement.origin
 				builder.register(brick_id, placement.part_id, placement.transform)
 				placed += 1
 				landing = true
@@ -2081,6 +2087,55 @@ func _lift_now() -> Vector3:
 	return Vector3(0.0, _lifted_by, 0.0)
 
 
+## Someone else's file an edit has it written whole (live's write, not a
+## patch: SourceFile.patch), with [param words] saying how many of its own
+## lines of which kind that leaves out. Said once for each file opened, as
+## the edit is made, never as a refusal: the model saves all the same
+## (main.gd puts it on the bar).
+signal lines_left_out(words: String)
+## How the last write of someone else's file was made: "" a patch of it,
+## else why it was written as live writes it (a probe's to read).
+var last_whole: String = ""
+## Whether someone else's file is patched at all: false writes it as live
+## does, for a probe to hold the two side by side.
+static var patch_files: bool = true
+## The sources [signal lines_left_out] was said for, by instance id.
+var _left_out_said: Dictionary = {}
+
+
+func _say_left_out(source: SourceFile, drops: Dictionary) -> void:
+	if drops.is_empty() or _left_out_said.has(source.get_instance_id()):
+		return
+	_left_out_said[source.get_instance_id()] = true
+	var words: String = left_out_words(title, drops)
+	print("Brickworks: " + words)
+	lines_left_out.emit(words)
+
+
+## What [signal lines_left_out] says of the model [param name], whose
+## written text leaves out [param drops] (SourceFile.left_out_of).
+static func left_out_words(name: String, drops: Dictionary) -> String:
+	var count: int = 0
+	var kinds := PackedStringArray()
+	var named: Array = drops.keys()
+	named.sort_custom(func(a: String, b: String) -> bool:
+		return int(drops[a]) > int(drops[b]) or int(drops[a]) == int(drops[b]) and a < b)
+	for kind: String in named:
+		var many: int = drops[kind]
+		count += many
+		match kind:
+			"comment":
+				kinds.append(("%d comment" if many == 1 else "%d comments") % many)
+			"header":
+				kinds.append(("%d header line" if many == 1 else "%d header lines") % many)
+			"other":
+				kinds.append(("%d other line" if many == 1 else "%d other lines") % many)
+			_:
+				kinds.append(("%d %s line" if many == 1 else "%d %s lines") % [many, kind])
+	return "After this change, saving “%s” writes it afresh: %d of its file's lines won't be kept (%s)" \
+		% [name, count, "; ".join(kinds)]
+
+
 ## The source file with the model on the baseplate written into it, or null
 ## when there is none or the change cannot be written into it as it is.
 func _source_text(title_now: String) -> Variant:
@@ -2108,16 +2163,22 @@ func _source_asked(title_now: String) -> Dictionary:
 		home.unit = brick.unit
 		home.step = brick.step
 		home.hidden = brick.hidden
+		home.origin = brick.origin
 		bricks.append(home)
 	# In an order of their own, not the world's: which line a part is paired
 	# with and where a part put down goes in the file follow it, and two
 	# copies of a model built in another order (Together) wrote two files.
 	bricks = _in_brick_order(bricks)
+	# What is on its way: by its line and copy for the whole write
+	# (SourceFile.write), by its place in the file for a patch.
 	var waiting: Dictionary = {}
+	var waiting_lines: Dictionary = {}
 	if world.generation() == _awaited_in:
 		for placement: LdrModel.Placement in awaited:
-			waiting["%d|%s" % [placement.line, placement.unit]] = true
+			waiting_lines["%d|%s" % [placement.line, placement.unit]] = true
+			waiting[placement.origin] = true
 	return {"source": source, "bricks": bricks, "lift": _lift_now(), "waiting": waiting,
+		"waiting_lines": waiting_lines,
 		"library": library, "title": title_now,
 		"unit_steps": world.unit_steps.duplicate(true) if source.authored else {},
 		"floor": model_floor, "hidden": hidden_scheme.duplicate(true),
@@ -2131,30 +2192,64 @@ func _source_asked(title_now: String) -> Dictionary:
 
 
 ## The source file with the parts [method _source_asked] copied written into
-## it, or null when the change cannot be written into it as it is. Reads
-## only what it is given, so on any thread.
+## it, or null when the model is written whole: the patch of the file
+## (SourceFile.patch) where the gate passes it, else what live wrote
+## (SourceFile.write). Reads only what it is given, so on any thread.
 static func _source_text_of(asked: Dictionary) -> Variant:
+	var written: Variant = _source_written(asked)
+	return null if written == null else str(written)
+
+
+## The file's own text for the change as the gate holds it ([param written],
+## a writer's), with the app's own taken out and the title written in.
+static func _titled(asked: Dictionary, written: String) -> String:
 	var source: SourceFile = asked["source"]
-	var written: Variant = source.write(asked["bricks"], asked["lift"], asked["waiting"],
-		asked["library"], asked["unit_steps"])
-	if written == null:
-		return null
-	var text: String = _without_app_lines(str(written))
+	var text: String = _without_app_lines(written)
 	var title_now: String = asked["title"]
 	if title_now != source.own_title and not title_now.is_empty():
 		text = _after_first_line(text, TITLE_META + title_now)
 	return text
 
 
-## [method _source_text_of], and what else the app keeps in someone else's
-## file written into it: a hose's path, the floor, the hidden colours, the
-## motions, the booklet's looks and the set it is. On any thread: the
-## autosave makes it on a worker ([method _text_into]).
+## Someone else's file written for the change, with what else the app keeps
+## in it: a hose's path, the floor, the hidden colours, the motions, the
+## booklet's looks and the set it is. A patch of the file where the edit is
+## one (SourceFile.patch) and the gate passes what is written
+## (SourceFile.gate); else what live wrote, the file with the change
+## (SourceFile.write), or null for the model written whole. Never refused:
+## keeptext4 refused what its gate did not pass, and the work went with the
+## next open (kt4review). On any thread: the autosave makes it on a worker
+## ([method _text_into]). Says in [param asked] "whole", why it was not a
+## patch, and "drops", what of the file's lines live's write leaves out.
 static func _source_written(asked: Dictionary) -> Variant:
-	var from_source: Variant = _source_text_of(asked)
-	if from_source == null:
+	var source: SourceFile = asked["source"]
+	var library: PartLibrary = asked["library"]
+	var plan: SourceFile.Plan = source.patch(asked["bricks"], asked["lift"], asked["waiting"],
+		library, asked["unit_steps"]) if patch_files else null
+	var why: String = plan.why if plan != null else "patches are off"
+	if why.is_empty():
+		var patched: String = source.app_lines_placed(
+			_written_with(asked, _titled(asked, "\n".join(plan.out))))
+		why = source.gate(plan, patched, library, asked["waiting"], asked["unit_steps"])
+		if why.is_empty():
+			asked["whole"] = ""
+			return patched
+	asked["whole"] = why
+	_said_whole(source, why)
+	var written: Variant = source.write(asked["bricks"], asked["lift"], asked["waiting_lines"],
+		library, asked["unit_steps"])
+	if written == null:
+		asked["whole"] = why + " (the model written whole)"
 		return null
-	var kept: String = str(from_source)
+	var kept: String = _written_with(asked, _titled(asked, str(written)))
+	if not asked.get("drops_said", false):
+		asked["drops"] = source.left_out_of(kept)
+	return kept
+
+
+## [param kept], the file with the change, and what else the app keeps in
+## it ([method _source_written]).
+static func _written_with(asked: Dictionary, kept: String) -> String:
 	# A hose LDCad laid, bent by a grab: its path where it now lies.
 	kept = LdcadPath.written_into(kept, asked["source"], asked["library"])
 	var ground: ModelFloor = asked["floor"]
@@ -2168,6 +2263,27 @@ static func _source_written(asked: Dictionary) -> Variant:
 	kept = _looks_into(kept, asked["looks"], asked["authored"])
 	var number: String = asked["set"]
 	return kept if set_in(kept) == number else with_set(kept, number)
+
+
+## Why each source was last written as live writes it, said on the console
+## once for each reason: the autosave writes it again a second after each
+## change. Written from workers, so under a lock.
+static var _whole_said: Dictionary = {}
+static var _whole_lock: Mutex = Mutex.new()
+
+
+static func _said_whole(source: SourceFile, why: String) -> void:
+	var key: String = "%d|%s" % [source.get_instance_id(), why]
+	_whole_lock.lock()
+	var said: bool = _whole_said.has(key)
+	if not said:
+		if _whole_said.size() > 200:
+			_whole_said.clear()
+		_whole_said[key] = true
+	_whole_lock.unlock()
+	if not said:
+		print("Brickworks: %s is written as live writes it, not a patch: %s" % [
+			source.own_title if not source.own_title.is_empty() else "the model", why])
 
 
 ## [param text] without the lines this app writes again on every save.
@@ -2262,6 +2378,7 @@ func place_awaited(part_id: String) -> int:
 			world.get_brick(brick_id).group = placement.group
 			world.get_brick(brick_id).unit = placement.unit
 			world.get_brick(brick_id).step = placement.step
+			world.get_brick(brick_id).origin = placement.origin
 			builder.register(brick_id, placement.part_id, placement.transform)
 			landed += 1
 	awaited = still
@@ -2439,12 +2556,15 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	# arrived as it opened.
 	var asked: Dictionary = _source_asked(title)
 	if not asked.is_empty():
+		asked["drops_said"] = _left_out_said.has((asked["source"] as SourceFile).get_instance_id())
 		var kept: Variant
 		if pace != null:
 			kept = await WorkerTasks.awaited(func() -> Variant:
 				return ModelStore._source_written(asked), "write the model's file", library)
 		else:
 			kept = _source_written(asked)
+		_say_left_out(asked["source"], asked.get("drops", {}))
+		last_whole = str(asked.get("whole", ""))
 		if kept != null:
 			made.append(kept)
 			return
@@ -2596,7 +2716,20 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	text = _with_looks(text, true, steps)
 	if model != world:
 		model.free()
-	made.append(with_set(text, from_set))
+	text = with_set(text, from_set)
+	# Someone else's file written whole: what of its own lines that leaves
+	# out, said once as it is edited.
+	var source: SourceFile = _live_source()
+	if source != null and not _left_out_said.has(source.get_instance_id()):
+		var whole: String = text
+		var drops: Variant
+		if pace != null:
+			drops = await WorkerTasks.awaited(func() -> Variant:
+				return source.left_out_of(whole), "read what the file leaves out", library)
+		else:
+			drops = source.left_out_of(whole)
+		_say_left_out(source, drops)
+	made.append(text)
 
 
 ## [param text] with how the booklet shows each step written into it
@@ -2922,6 +3055,13 @@ func _write(path: String, title: String, with_steps: bool = false,
 	var text: String = ReferenceImage.written_into(SetBin.written_into(with_share(
 		written if not written.is_empty() else to_text(title, with_steps), share_id,
 		remixed_from, remixed_from_version, credit, made_with), bin_sets), reference)
+	# A patch of someone else's file: the lines just put in end as its
+	# lines do, above any line that says what the next part is, as the
+	# patch's own (SourceFile.app_lines_placed); each came with "\n" alone
+	# into a CRLF file (keep_text's metas). Live's write is left as live's.
+	var source: SourceFile = _live_source()
+	if source != null and last_whole.is_empty():
+		text = source.app_lines_placed(text)
 	# Never a model of no parts over a file that has some, unless the person
 	# emptied the baseplate ([member emptied]). The autosave fires on its
 	# own a few seconds after any change, so whatever left the baseplate

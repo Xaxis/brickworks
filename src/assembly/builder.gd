@@ -563,6 +563,13 @@ func _apply(step: Dictionary) -> Dictionary:
 		world.step_looks = (step["looks"] as Dictionary).duplicate(true)
 		return {"undo": "steplooks", "looks": looked}
 
+	# Which copy of someone else's file each path is: the table as it was,
+	# its own reverse.
+	if step.get("undo", "") == "unitchains":
+		var chained: Dictionary = world.unit_chains
+		world.unit_chains = (step["chains"] as Dictionary).duplicate()
+		return {"undo": "unitchains", "chains": chained}
+
 	if step.get("undo", "") == "unitstep":
 		var unit: String = str(step["unit"])
 		var held: Dictionary = {"undo": "unitstep", "unit": unit,
@@ -613,6 +620,10 @@ func _apply(step: Dictionary) -> Dictionary:
 		world.get_brick(new_id).group = str(step.get("group", ""))
 		world.get_brick(new_id).unit = str(step.get("unit", ""))
 		world.get_brick(new_id).step = int(step.get("step", -1))
+		# The line of someone else's file it was (SourceFile), under
+		# another number too.
+		if new_id != int(step.get("was", new_id)):
+			world.get_brick(new_id).origin = world.gone_origin(int(step["was"]))
 		# Put back where it was taken off: the cover it had then, kept with
 		# the step, rather than worked out again from the part.
 		var cover: Variant = step.get("cover")
@@ -1539,6 +1550,8 @@ func _swap(brick: BrickWorld.Brick, part_id: String, at: Transform3D, packed: Pa
 	world.get_brick(made).group = brick.group
 	world.get_brick(made).unit = brick.unit
 	world.get_brick(made).step = brick.step
+	# The part another file put there, on its line still (SourceFile).
+	world.get_brick(made).origin = brick.origin
 	lattice.occupy_boxes(made, packed)
 	steps.append({"undo": "remove", "brick": made})
 	steps.append({"undo": "add", "part": brick.part_id, "color": brick.color_code,
@@ -1657,6 +1670,7 @@ func mirror_bricks(alive: PackedInt64Array, axis: int, across: float = NAN,
 		world.get_brick(new_id).group = "" if copy else brick.group
 		world.get_brick(new_id).unit = "" if copy else brick.unit
 		world.get_brick(new_id).step = brick.step
+		world.get_brick(new_id).origin = "" if copy else brick.origin
 		lattice.occupy_boxes(new_id, item["boxes"])
 		steps.push_front({"undo": "remove", "brick": new_id})
 		made.append(new_id)
@@ -1825,6 +1839,17 @@ func _carry(carry: Callable) -> Array:
 				joint.assembly = str(to[0])
 		if had != null:
 			undo.append({"undo": "motions", "motions": had})
+	# Which copy of someone else's file each path is (SourceFile), where the
+	# change takes it: one split is that copy in both places.
+	if not world.unit_chains.is_empty():
+		var chains: Dictionary = {}
+		for path: String in world.unit_chains:
+			for to: String in carry.call(path):
+				if not chains.has(to) or to == path:
+					chains[to] = world.unit_chains[path]
+		if chains != world.unit_chains:
+			undo.append({"undo": "unitchains", "chains": world.unit_chains})
+			world.unit_chains = chains
 	return undo
 
 
@@ -1932,6 +1957,7 @@ func swap_bricks(remove_ids: PackedInt64Array, adds: Array) -> Array:
 			continue
 		set_path(world.get_brick(new_id), str(item.get("path", "")))
 		world.get_brick(new_id).step = int(item.get("step", -1))
+		world.get_brick(new_id).origin = str(item.get("origin", ""))
 		lattice.occupy_boxes(new_id, boxes_for(library.mesh_for(str(item["part"])), at))
 		put.append({"undo": "remove", "brick": new_id})
 	# Undone in order: the new ones off first, then the old ones back.
@@ -2240,10 +2266,14 @@ func _put_carried() -> int:
 		world.get_brick(brick_id).unit = unit
 		if not carrying.lifted and copy_group.is_valid():
 			set_path(world.get_brick(brick_id), path)
-		# Moved, a part keeps its build step; a copy goes in the step a
-		# placed part would.
+		# Moved, a part keeps its build step, and the line of the file it
+		# was read from (BrickWorld.Brick.origin): picked up and put down,
+		# it was written as a part gone and a part new (keeptext4). A copy
+		# goes in the step a placed part would, and was read from no line.
 		world.get_brick(brick_id).step = int(item.get("step", -1)) if carrying.lifted \
 			else _new_step(world.get_brick(brick_id))
+		if carrying.lifted:
+			world.get_brick(brick_id).origin = str(item.get("origin", ""))
 		lattice.occupy_boxes(brick_id, item["boxes"])
 		steps.append({"undo": "remove", "brick": brick_id})
 		ids.append(brick_id)

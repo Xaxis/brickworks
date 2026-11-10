@@ -67,6 +67,74 @@ Whether what you built is still there tomorrow, and still means the same thing.
   `0 !BRICKWORKS TITLE` line, the author's first line untouched. The app's own
   lines (floor, share, set) are the only lines added. A file Brickworks wrote
   (`0 Author: Brickworks`) is written whole, as before.
+  Since keeptext5 (2026-11-08) a save is exactly one of two things, never
+  refused: (A) a patch of the file (`SourceFile.patch`), the file as opened
+  with four line operations, each bound to an edited part, every other line
+  byte for byte in its order: a part's own line rewritten (colour, place,
+  part, its own number kept, and what it names after its 15th field as the
+  file wrote it, a sub-model named with two spaces in a row or a tab in it
+  too, `SourceFile._named_as_written`; a flexible part's colour on the line
+  placing its path's sub-model, as LDCad paints a path), a part's line taken
+  out with the lines bound to it (`_binds_next`) and a pair it leaves empty
+  (only the pairs other programs write, `SourceFile.PAIRS`: LSynth, LPub,
+  TEXMAP, MLCad's SKIP and BUFEXCHG, LeoCAD; a comment "0 Engine START" is a
+  comment), a new part's line at the end of its step outside every pair, and a
+  part's line moved to the end of another step where the pairs round it are
+  the same at both places; or (B) what live writes (`SourceFile.write`, else
+  the model whole). Each part knows its line (`LdrModel.Placement.origin`,
+  `BrickWorld.Brick.origin`, `BrickWorld.unit_chains`). The patch goes over
+  the file only when its gate passes it (`SourceFile.gate`): the text
+  written, the app's own lines aside, diffed line by line against the file
+  as opened (`_as_written`, `_aligned`), each line kept byte for byte in
+  order, each changed, moved, added or left out one of the four for a part
+  actually edited, every part line in the pairs it was in, and the text read
+  back as an open reads it to the model, part by part by its line and each
+  in the copy of its path. A line rewritten or added is held to the file as
+  written, not as an open reads it (`_rewritten_as_written`,
+  `_new_as_written`): its colour code the file's or the painted colour's own
+  (a top-level 16 reads as 0), its name the file's byte for byte or a swapped
+  part's "part.dat", its place's and turn's numbers the file's unless they say
+  another place or turn, its line end the file's. A delete that would leave a
+  sub-model no line places, or no part at all (`_left_unplaced`), or that
+  takes off a copy of a sub-model with a later copy left, which an open
+  numbers one less (`_renumbered`: Wing#2 opens as Wing#1, and a motion's
+  JOINT ASSEMBLY or a copy's step names it by its path), is (B). The tables a
+  patch reads are filled as the source is made (`SourceFile.make`), so the
+  autosave's worker and a save on the main thread never fill them at once
+  (read on first use, that corrupted the heap). Any
+  failure writes (B), says why once on the console ("written as live writes
+  it, not a patch: ..."; `ModelStore.last_whole`), and where (B) leaves out
+  lines of the file the bar says so once, as the edit is made
+  (`ModelStore.lines_left_out`, `left_out_words`: how many of which kind).
+  In a patch the app's own lines end as the file's lines do and go above a
+  line saying what the next part is (`SourceFile.app_lines_placed`); one
+  the file already has keeps its text, even with its JSON fields in another
+  order (a hand-written VIEW), and stays where the file has it within the
+  step (the stretch between two STEP, ROTSTEP, FILE or NOFILE lines) its
+  writer puts it in (`SourceFile._in_file_places`): since pre261 a VIEW is
+  written under the main model's title, under its 0 FILE before, and a
+  step's look at the step's end, so an older build's file or a look put at
+  a step's top by hand moved on a save with nothing changed (`app_lines`).
+  A light line read stays where it is, changed in place, a new one after the
+  light before it (`SceneLights.written_with`), in a patch as in (B), and a
+  sub-model's light lines are kept with its section's lines. The share,
+  set bin and trace lines `ModelStore._write` adds pass through the same.
+  A part of a mirrored copy agrees with its line only as it was opened (an
+  edit to one is (B)); a step edit moves the lines of the parts it moved to
+  the end of their new steps, and one that leaves a step of the file with
+  no part (a merge, a step emptied: the steps numbered again) is (B), which
+  takes that step's line out, where a patch moved every later line up a
+  step and left a STEP after the last (booklet_edit); a part the app cannot show
+  that would be left behind its step-mates makes the save (B).
+  keeptext4 wrote every edit into the file and refused what its gate did not
+  pass, which trapped the work and lost it on the next open
+  (bench/results/kt4review-2026-11-07). Probes: `paint_string` (a person
+  paints 42079-1's rope, saves, opens another file, comes back to it
+  yellow), `keep_text` and `kt3r` (each save a patch keeping every line
+  the edit did not touch, or live's write), `patch_rules` (kt5review's six:
+  names kept, the gate as written, comment pairs, deletes that go to (B), the
+  patch on two threads at once), and kt4review's
+  `kt4r_probe.gd`/`kt4r_gate.gd` with its specs and analyzers.
 - `parts the app cannot show` (`ModelStore.unshown`, `SourceFile.unshown`):
   a part of the file the library has not got, a part the file carries that
   cannot be built (on the web, one drawn from an official part or subpart,

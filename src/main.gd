@@ -5920,6 +5920,9 @@ func _build_ui() -> void:
 	# Report this on it while the beta is open, should the account be known
 	# already (bugreport).
 	_offer_reports()
+	# Someone else's file an edit has written whole: how many of its own
+	# lines that leaves out, said once as it is edited (ModelStore).
+	_store.lines_left_out.connect(_bar.say)
 	# Graphics that cannot run the full mode started the simpler one by
 	# themselves: said once, above the model (GraphicsMode).
 	var graphics: String = GraphicsMode.to_say()
