@@ -61,7 +61,7 @@ def test_off_no_welcome_and_joining_refused():
     # Refused before the database is asked anything.
     assert got["off_join_calls"] == []
     # The account says nothing of the beta's welcome while it is off.
-    assert got["off_account"] == {"tester": False, "early": []}
+    assert got["off_account"] == {"tester": False, "early": [], "open": False}
     assert got["off_rejoin"] == 403
     # Anybody may leave, whatever the switch.
     assert got["off_leave"]["status"] == 200 and got["off_leave"]["json"] == {"beta": "off", "tester": False, "state": "left"}
