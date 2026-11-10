@@ -12,7 +12,10 @@
   gallery path traced, the first turning in 3D in its picture's place; why,
   five benefits in plain words, three of them pictures; the community, this
   month's challenge, Build together, what a builder does here and the
-  gallery's Top, live; and one last offer, with the plans in a line. No
+  gallery's Top, live; and one last offer, with the plans in a line. While
+  the beta is open, its section (#beta, betahome, 2026-11-09) sits under
+  the first screen: why to join, three points, and the way in for whoever
+  reads it (web/betabar.js asks the server). No
   title or first screen calls it AI, and the assistant is named once.
   Every claim is something the app does today
   (.claude/skills/verify/features/web.md, docs-site/).
@@ -118,6 +121,27 @@
 @media (width >= 1200px) { .acts { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .acts li { display: flex; align-items: center; gap: var(--s-3); color: var(--ink-soft); font-size: var(--t-small); }
 #top .scroller-head h3 { margin: 0; }
+
+/* The beta, while it is open: not drawn until this browser has heard it is
+   (web/theme.js, web/landing.js). Its words beside its three points from
+   900 px, over them under it; its way in held at a button's height and
+   the line under it at a line's, so what fills them moves nothing. */
+#beta { display: none; }
+:root[data-beta="open"] #beta { display: block; }
+.beta-panel { display: grid; gap: var(--s-6); padding: clamp(24px, 4vw, 48px); }
+@media (width >= 900px) { .beta-panel { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); align-items: center; gap: var(--s-7); } }
+.beta-words .title { margin-bottom: var(--s-3); }
+.beta-words .lede { margin-bottom: var(--s-5); }
+#beta-acts { min-height: var(--control-h); }
+#beta-acts > [hidden] { display: none; }
+#beta-said { min-height: 1lh; margin-top: var(--s-3); }
+/* What joining agrees to; a tester has joined. */
+#beta-terms { margin-top: var(--s-2); }
+:root[data-beta-home="tester"] #beta-terms { display: none; }
+.beta-points { display: grid; gap: var(--s-5); margin: 0; padding: 0; list-style: none; }
+.beta-points li { display: flex; align-items: flex-start; gap: var(--s-4); }
+.beta-points h3 { margin: 0 0 var(--s-1); }
+.beta-points p { margin: 0; color: var(--ink-soft); font-size: var(--t-small); }
 </style>
 <script src="/follow.js" type="module"></script>
 <script src="/landing.js" type="module"></script>
@@ -175,6 +199,44 @@
 					width="2400" height="1350" fetchpriority="high" decoding="async"
 					alt="The Brickworks builder with a castle of 2,438 parts open and its gatehouse selected: menus and a toolbar across the top; down the left the parts bin, the model tree of its sub-assemblies, and the gatehouse's properties, a sub-assembly of 406 parts; the view cube at top right; and in the middle a stone castle with towers, a moat and a courtyard, the gatehouse outlined in yellow.">
 			</figure>
+		</div>
+	</section>
+
+	<!-- The beta, while it is open (web/landing.js, from web/betabar.js):
+	     why to join in a sentence, three points, and the way in that fits
+	     whoever reads it: signed out, Sign up and join (a new account's
+	     welcome joins it); signed in, Join the beta; a tester, Report a bug
+	     and What's new. Under it, while any are left, the months of Pro
+	     the first testers get, or a tester's thanks, and what joining
+	     agrees to (the beta's terms, its emails). Under the app's
+	     picture, so the product stays the first thing seen. Drawn from the
+	     first frame where this browser has heard the beta is open (<html
+	     data-beta>, web/theme.js); else put in only while its place is under
+	     the window, so nothing in view moves. Off, never drawn. -->
+	<section class="section" id="beta" aria-labelledby="beta-h">
+		<div class="wrap">
+			<div class="tile challenge beta-panel">
+				<div class="beta-words">
+					<p class="eyebrow">Open beta</p>
+					<h2 class="title" id="beta-h">Help shape Brickworks</h2>
+					<p class="lede">Brickworks is in open beta. Join the testers to try new things first and tell us what to fix and build next.</p>
+					<div id="beta-acts">
+						<div class="actions" data-visitor="out" hidden><button class="cta" type="button" data-beta-join>Sign up and join <span class="arrow" aria-hidden="true">→</span></button><a class="cta ghost" href="/beta">What testers get</a></div>
+						<div class="actions" data-visitor="in" hidden><button class="cta" type="button" data-beta-join>Join the beta <span class="arrow" aria-hidden="true">→</span></button><a class="cta ghost" href="/beta">What testers get</a></div>
+						<div class="actions" data-visitor="tester" hidden><button class="cta" type="button" data-beta-report>Report a bug</button><a class="cta ghost" href="/beta#new">What’s new</a></div>
+					</div>
+					<p class="note" id="beta-said"></p>
+					<p class="note" id="beta-terms">Joining agrees to <a href="/terms#beta">the beta’s terms</a> and to emails about the beta. Leave any time in Settings.</p>
+				</div>
+				<ul class="beta-points">
+					<li><span class="glyph" aria-hidden="true"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#spark"></use></svg></span>
+						<div><h3>New things first</h3><p>Early features on your account, and each week’s changes on the beta’s page.</p></div></li>
+					<li><span class="glyph" aria-hidden="true"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#camera"></use></svg></span>
+						<div><h3>A bug in one press</h3><p>Report a bug from any page or in the app. The picture is taken for you, and you mark the spot.</p></div></li>
+					<li><span class="glyph" aria-hidden="true"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#comment"></use></svg></span>
+						<div><h3>Heard and answered</h3><p>We read every report. Your account shows where each one stands, and our answer.</p></div></li>
+				</ul>
+			</div>
 		</div>
 	</section>
 
@@ -345,10 +407,6 @@
 					<a class="cta ghost big" href="/gallery">Explore the gallery</a>
 				</div>
 				<p class="note">Free for personal and educational use. Pro keeps every model you make and adds a licence to sell what you make. <a href="/plans">See the plans</a></p>
-				<!-- Shown only while the beta is open (web/landing.js asks
-				     /api/plans?op=beta_spots): the page's last line, so its
-				     coming moves nothing above it. -->
-				<p class="note" id="beta" hidden>Beta: 100 testers get a month of Pro, free. <a href="/beta">Apply</a></p>
 			</div>
 		</div>
 	</section>

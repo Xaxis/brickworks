@@ -684,6 +684,18 @@ is on the page, `hidden`, for the script to show.
   (`role="status"`, on the page empty from its load, since a screen
   reader reads a region's change and not a region that arrives already
   speaking), gone in 2.4 s.
+- **Beta bar**: `aside.beta-bar` (`web/betabar.js`, asked for by
+  `web/theme.js` on every page while the beta is open): a floating pill
+  at the foot of the window, bottom left (centred under 600 px), above
+  the page and moving nothing in it: an accent `.badge` to /beta, a
+  ghost small `.cta` Report a bug, a small `.cta` Join (or a link that
+  says you're a tester, its check in `--green`) and an `.icon-btn` × that
+  hides it for a day. It rises and fades in after the page is drawn
+  (none with reduced motion). On a phone its badge says Beta, its parts
+  sit closer and a tester's has no third part; still too wide for the
+  window (a small phone, a long language), `.tight` drops the badge and
+  keeps Report a bug, Join and × whole. While shown, `<html data-betabar>`
+  lifts the toast over it and pads the footer, so nothing ends under it.
 - **More menu**: `details.more-menu`, an `.icon-btn` summary with the
   more icon and the header Menu's `.menu-list` panel of links and
   buttons (Report it, Takedown requests), opening along the row from the

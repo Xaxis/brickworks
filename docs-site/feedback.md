@@ -1,5 +1,5 @@
 ---
-ai: Send feedback is in the app's Brickworks menu (the mark at the left of the menu bar), in every site page's footer and in the account menu, and at brickworks.diy/feedback. It sends something wrong, an idea or a question to the people who make Brickworks, with a picture and, if ticked, details, the open model and the app's last log lines. Signed in, the reports and our answers are on the settings page; signed out, an email address is asked so we can answer. Beta testers' reports are marked, and testers have a beta hub. No tool sends feedback; send the person to Brickworks › Send feedback… or /feedback.
+ai: Send feedback is in the app's Brickworks menu (the mark at the left of the menu bar), in every site page's footer and in the account menu, and at brickworks.diy/feedback. It sends something wrong, an idea or a question to the people who make Brickworks, with a picture and, if ticked, details, the open model and the app's last log lines. Signed in, the reports and our answers are on the settings page; signed out, an email address is asked so we can answer. Beta testers' reports are marked; testers have a hub at brickworks.diy/beta, and while the beta is open every site page has a beta bar with Report a bug. No tool sends feedback; send the person to Brickworks › Send feedback… or /feedback.
 rules:
   - Nothing goes with a report unless the person chooses it, and they can see all of it first.
   - Only the people who make Brickworks read reports; answers come by email and are kept with the report.
@@ -65,19 +65,20 @@ lib:feedback kept and answered
 
 ## The beta hub {#beta-hub}
 
-[Beta testers](/docs/beta) have a page of their own, the [beta hub](/beta-hub), and a **Beta hub** link in the account menu and in the app's Brickworks menu. The hub shows:
+The beta's page, [/beta](/beta), is its hub, with a **Beta hub** link in the account menu and in the app's Brickworks menu. It shows:
 
-- what is new to try;
-- what we already know is wrong;
-- the early features your account has before everyone else;
-- how to tell us.
+- what is new this week, from the [changelog](/changelog);
+- how to report a bug;
+- for a [tester](/docs/beta): what is new to try, what we already know is wrong, and the early features your account has before everyone else.
+
+While the beta is open, a slim bar floats at the foot of every page of the site: **Open beta**, which opens the hub; **Report a bug**, which opens the report over the page you are on; and **Join**, which takes you to the hub's way in (once you have joined, it says you are a tester). Its × hides it for a day.
 
 A tester's reports are marked as a tester's, here and on your settings page.
 
 Some features reach testers before anyone else, in the app and on the site alike. Your account says which ones, and they turn on when you sign in. When a feature opens to everyone, it simply stays.
 
 <!-- covers
-ui:the beta hub
+ui:the beta bar
 lib:early features for beta testers
 -->
 

@@ -3844,7 +3844,7 @@
       "kind": "ui",
       "label": "beta page",
       "entry": "web/beta.html",
-      "reach": "<deployment>/beta   (BRICKWORKS_BETA off: Coming soon, no form, no count; open: the spots left live, signed out Sign in to apply, signed in the form (web/beta.js), applied where it stands; tools/web/beta_flow.mjs)",
+      "reach": "<deployment>/beta   (the beta's hub, web/beta.js; BRICKWORKS_BETA off: Coming soon, no way in, no count; open: the months of Pro left, the way in for each visitor (signed out Sign up and join, signed in Join the beta, a tester Report a bug and Your reports), what testers get, how to report, this week's releases from /changelog.json, the questions; a tester: what to try, known issues, early features from GET /api/plans?op=beta_hub; /beta-hub answers 308 here; tools/web/beta_flow.mjs, tools/web/betahome_flow.mjs)",
       "area": "web"
     },
     {
@@ -4034,13 +4034,6 @@
       "label": "your feedback on settings",
       "entry": "web/settings.js",
       "reach": "https://brickworks.diy/settings#feedback signed in   (each report, where it stands, a tester's marked, our answers; never the owner's note)",
-      "area": "web"
-    },
-    {
-      "kind": "ui",
-      "label": "the beta hub",
-      "entry": "web/beta-hub.html",
-      "reach": "<deployment>/beta-hub   (signed out: sign in; not a tester: for testers; a tester: what's new, known issues, early features, how to tell us; GET /api/plans?op=beta_hub; Help, Beta hub in the app for a tester)",
       "area": "web"
     },
     {
@@ -5029,6 +5022,27 @@
       "entry": "src/dev/rarity_probe.gd",
       "reach": "tools/probe.sh rarity_probe -- --shots=DIR   (windowed, 1400x900, signed in through the gate with a throwaway account from .env: at 1400x900 and 1280x720, 3001 typed and clicked, Red's and a rare colour's tooltips rested on and read against its colours file, every swatch in sight, 7049b's Black; the three sentences in de, fr and es); python3 tools/minitest.py tests/test_collection.py (ten parts in a colour counted straight off Rebrickable's tables)",
       "area": "parts"
+    },
+    {
+      "kind": "ui",
+      "label": "the beta bar",
+      "entry": "web/betabar.js",
+      "reach": "<deployment>/ any page, with the beta open (tools/deploy.sh --unit --beta-open)   (web/theme.js asks for it; Open beta to /beta, Report a bug (window.brickworksReportBug of web/bugreport.js, else Send feedback as a bug), Join or You're a tester; its x hides it for a day; none with the beta off, on an embed or on the consent page; tools/web/betahome_flow.mjs)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the homepage's open beta",
+      "entry": "web/landing.js",
+      "reach": "<deployment>/ with the beta open   (#beta under the first screen: why to join, three points, the way in for each visitor, the months of Pro left from ?op=beta_spots; held from the first frame by <html data-beta>, else put in only while out of sight; tools/web/betahome_flow.mjs)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "the beta's homepage and bar browser flow",
+      "entry": "tools/web/betahome_flow.mjs",
+      "reach": "node tools/web/betahome_flow.mjs --out=DIR   (the stand-in: the bar on every page at 390 and 1280, light and dark, hidden for a day, its three presses; the homepage for each visitor; /beta as the hub; the beta off: nothing drawn; --url=<preview> with BW_BYPASS for a deployment; preview check [betahome])",
+      "area": "web"
     }
   ]
 }

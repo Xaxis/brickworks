@@ -1,17 +1,18 @@
 ---
-ai: The beta gives each of 100 approved testers 30 days of Pro, free and once: no card, nothing renews. A signed-in account applies once at brickworks.diy/beta, and the owner reads and decides each application. When the month ends the account is on Free and nothing is deleted. No tool applies; send the person to /beta.
+ai: The beta gives each of 100 approved testers 30 days of Pro, free and once: no card, nothing renews. Any account joins in one press, at once, at brickworks.diy/beta or in a new account's welcome; the owner approves the first 100 testers' month. When the month ends the account is on Free and nothing is deleted. No tool applies; send the person to /beta.
 rules:
   - AI is never limited, tester or not: people bring their own.
   - An account made before 29 October 2026 has Pro already and takes none of the 100 spots.
 title: The beta
 nav: The beta
-description: 100 testers get 30 days of Pro, free. What you get, what we ask, how to apply and what happens when the month ends.
+description: 100 testers get 30 days of Pro, free. What you get, what we ask, how to join and what happens when the month ends.
 ---
 
 The [beta](/beta) is how Brickworks finds 100 people to use it for real and tell us honestly how it goes. Each tester gets **30 days of Pro**, free: no card, nothing to pay and nothing to cancel.
 
 <!-- covers
 ui:beta page
+ui:the homepage's open beta
 api:applying to the beta
 lib:the beta's spots and months
 -->
@@ -29,17 +30,15 @@ The month starts the day you are approved, or the day Pro launches if that is la
 
 ## What we ask {#ask}
 
-Use Brickworks for real, on things you want to build, and tell us honestly what works and what does not: **Send feedback** in the app's Brickworks menu or the site's footer, whenever something is wrong or you have an idea. As a tester you also have the [beta hub](/docs/feedback#beta-hub), with what is new to try and what we know is wrong.
+Use Brickworks for real, on things you want to build, and tell us honestly what works and what does not: **Send feedback** in the app's Brickworks menu or the site's footer, whenever something is wrong or you have an idea. While the beta is open, **Report a bug** is on every page of the site, in the beta bar at the foot of the window, and [/beta](/beta) is your [hub](/docs/feedback#beta-hub): what is new to try and what we know is wrong.
 
-## Applying {#apply}
+## Joining {#apply}
 
-1. Open [/beta](/beta) and sign in with your email. Signing in makes your account if you have none.
-2. Say what you would build, which AI you use (Claude, ChatGPT, your own key, or not sure), your LEGO® or CAD background, and a link to your work if you like (Rebrickable, BrickLink, Flickr, GitHub or a portfolio).
-3. Agree to the [beta's terms](/terms#beta) and to emails about the beta, then **Apply**.
+1. Open [/beta](/beta), the homepage's **Open beta**, or **Join** in the beta bar at the foot of any page.
+2. Signed out, **Sign up and join** signs you in with your email first (signing in makes your account if you have none), and a new account's welcome asks whether to join.
+3. Signed in, **Join the beta**: you are a tester at once. Joining agrees to the [beta's terms](/terms#beta) and to emails about the beta; leave any time in Settings.
 
-One application an account. We read each one ourselves, and email you when we have decided. The page shows where yours stands: applied, on the waitlist, approved with your spot, or not this time.
-
-The page counts the spots left as they go. Once all 100 are taken, applying puts you on the waitlist, which is read first if more spots open.
+The month of Pro goes to the first 100 testers we approve, and we email you when yours is. The beta's page counts the months left as they go; once all 100 are given, joining stays open.
 
 ## When the month ends {#ends}
 

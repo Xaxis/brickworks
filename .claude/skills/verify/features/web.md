@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:key leak browser flow, cli:the visit counter served from the site, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, cli:each thread's CPU in a browser, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, ui:build party, cli:build party browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, api:a deleted account's plan ended at Admission, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, lib:the gallery's daily choice, lib:the weekly look at the OMR, cli:the weekly AI showcase, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:a link that opens playing, cli:playlink probe, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, cli:what the pointer moving costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, cli:buildturn probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:every set's page, lib:a set's picture drawn from its parts, cli:set catalogue, cli:sets browser flow, cli:set parts probe, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, cli:relay timing, ui:beta page, api:applying to the beta, lib:the beta's spots and months, ui:the beta's owner queue, cli:beta browser flow, ui:a list's pages, cli:paging browser flow, ui:send feedback, ui:send feedback in the app, api:sending feedback, lib:feedback kept and answered, ui:the owner's feedback inbox, ui:your feedback on settings, ui:the beta hub, lib:early features for beta testers, cli:feedback browser flow, cli:feedback probe, cli:the feedback stand-in, lib:achievements with levels, lib:challenge notices, lib:what a model is based on, cli:based on browser flow, ui:the embed in 3D, cli:embed browser flow, ui:your achievements tab, ui:a model in 3D on its page, lib:mentions in comments, cli:mentions browser flow, ui:the gallery's builds tab, lib:builds in the gallery, cli:gallery builds browser flow, lib:more like a designer, ui:more like on a profile, cli:more like browser flow, api:a set's own picture, cli:set pictures, cli:browse browser flow, cli:browse pages, api:POST /api/account?op=fetch, cli:link browser flow, ui:the model in your room, cli:room GLB probe, cli:room browser flow -->
+<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:key leak browser flow, cli:the visit counter served from the site, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, cli:each thread's CPU in a browser, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, ui:build party, cli:build party browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, api:a deleted account's plan ended at Admission, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, lib:the gallery's daily choice, lib:the weekly look at the OMR, cli:the weekly AI showcase, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:a link that opens playing, cli:playlink probe, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, cli:what the pointer moving costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, cli:buildturn probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:every set's page, lib:a set's picture drawn from its parts, cli:set catalogue, cli:sets browser flow, cli:set parts probe, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, cli:relay timing, ui:beta page, ui:the beta bar, ui:the homepage's open beta, cli:the beta's homepage and bar browser flow, api:applying to the beta, lib:the beta's spots and months, ui:the beta's owner queue, cli:beta browser flow, ui:a list's pages, cli:paging browser flow, ui:send feedback, ui:send feedback in the app, api:sending feedback, lib:feedback kept and answered, ui:the owner's feedback inbox, ui:your feedback on settings, lib:early features for beta testers, cli:feedback browser flow, cli:feedback probe, cli:the feedback stand-in, lib:achievements with levels, lib:challenge notices, lib:what a model is based on, cli:based on browser flow, ui:the embed in 3D, cli:embed browser flow, ui:your achievements tab, ui:a model in 3D on its page, lib:mentions in comments, cli:mentions browser flow, ui:the gallery's builds tab, lib:builds in the gallery, cli:gallery builds browser flow, lib:more like a designer, ui:more like on a profile, cli:more like browser flow, api:a set's own picture, cli:set pictures, cli:browse browser flow, cli:browse pages, api:POST /api/account?op=fetch, cli:link browser flow, ui:the model in your room, cli:room GLB probe, cli:room browser flow -->
 
 ## Sub-features
 
@@ -1616,7 +1616,7 @@ plan with Claude as the client.
   deploy.sh routes it.
 - **Every page the site links to, in its language** (languages7, 2026-11-02):
   the account menu's `/feed`, `/notifications`, `/builds`, `/feedback`,
-  `/beta` and `/beta-hub`; the footer's `/terms`, `/privacy`,
+  `/beta` (the beta's hub; `/beta-hub` answers 308 there); the footer's `/terms`, `/privacy`,
   `/guidelines`, `/takedown` and `/changelog`; the page not found and the
   connector's consent page (`/de/oauth/authorize`, `web/de/oauth/
   authorize.html`). Only the docs stay English. The feed's and the
@@ -3919,14 +3919,13 @@ plan with Claude as the client.
   BRICKWORKS_BETA (off unless "open"; production's off). What testers get
   is what Pro is (2026-11-02, docs/PLANS.md): every model kept and
   commercial use; the desktop app is everyone's, so neither the page nor a
-  mail offers it as theirs, and the AI card says only Claude works in a
-  browser (the flow checks #get first, open or off). Off: /beta says
-  Coming soon with no form and no count, GET ?op=beta is `{beta: off}` and
-  asks nothing, POST is 403. Open: the spots left (`N of 100 spots left`),
-  signed out Sign in to apply (the sign-in dialog), signed in the form (what
-  you'd build 20-800, AI, background and a line up to 160, a link https up
-  to 300, two boxes), checked again at the edge (422 with why), one an
-  account (409; a declined one again after 30 days), then where it stands.
+  mail offers it as theirs (the flow checks #get first, open or off). Off:
+  /beta says Coming soon with no way in and no count, GET ?op=beta is
+  `{beta: off}` and asks nothing, POST is 403. Open, /beta is the beta's
+  hub (below); the application (what you'd build 20-800, AI, background
+  and a line up to 160, a link https up to 300, two boxes) is no form there
+  but checked at the edge as the API takes it (422 with why), one an
+  account (409; a declined one again after 30 days).
   Spots 1-100 one at a time under the pool's row lock: proven on a
   throwaway Postgres (`tests/fixtures/beta/db_check.mjs`: two at once at
   99 give 100 and "full"; 120 from ten connections give 1-100 once each).
@@ -3953,6 +3952,34 @@ plan with Claude as the client.
   --url=<preview> --out=DIR` (ends "beta: all ok"); on any other deployment
   the same flow checks Coming soon and the refusal. Needs supabase/beta.sql
   applied.
+- `the beta bar` (`web/betabar.js`, asked for by `web/theme.js`), `the
+  homepage's open beta` (`web/index.html` #beta, `web/landing.js`) and
+  `beta page` as the hub (`web/beta.html`, `web/beta.js`): betahome,
+  2026-11-09, the owner's "elegantly update the homepage to advertise the
+  beta testing period". While BRICKWORKS_BETA is open, every page (the
+  server's /m/, /u/, /c/ too, by theme.js; never an embed or the consent
+  page) has a floating bar at the foot: Open beta (to /beta), Report a bug
+  (`window.brickworksReportBug({source: "site", from})` of web/bugreport.js,
+  loaded on the first press; without it Send feedback's dialog as a bug),
+  and Join (POST ?op=beta_join {via}; signed out the sign-in first, whose
+  welcome's answer stands) or You're a tester; its x hides it for a day
+  ("brickworks.betabar.hidden"). What the server said is kept ten minutes
+  ("brickworks.beta"): signed in GET ?op=beta, signed out ?op=beta_spots;
+  off, theme.js does not ask for the bar again for ten minutes, and nothing
+  is drawn. The homepage's #beta sits under the hero: why to join, three
+  points, and the way in for the visitor (signed out Sign up and join,
+  signed in Join the beta, a tester Report a bug and What's new), the
+  months of Pro left while any are; held from the first frame by
+  `<html data-beta="open">` (theme.js, from what was kept), else put in
+  only while its place is under the window, so nothing in view moves.
+  /beta: the line under the title (months left, or a tester thanked since
+  their day), the way in, what testers get, how to report, this week's
+  releases (`/changelog.json`, `tools/site.py --whats-new`, written beside
+  the changelog), the questions; a tester's what to try, known issues and
+  early features (GET ?op=beta_hub). Prove: `node
+  tools/web/betahome_flow.mjs --out=DIR` (the stand-in, beta open and off,
+  ends "betahome: all ok"), then on a `tools/deploy.sh --unit --beta-open`
+  preview `--url=<preview>` with `BW_BYPASS`.
 - `send feedback` (`web/feedback.js`, `web/feedback.html`, the footer's
   and the account menu's Send feedback, `web/follow.js`), `send feedback in
   the app` (`src/ui/feedback_dialog.gd`, `src/ui/recent_log.gd`, Help in
@@ -3961,7 +3988,7 @@ plan with Claude as the client.
   `the owner's feedback inbox` (`web/admin-feedback.js` on /admin#feedback,
   `api/admin.js` ?op=feedback, feedback_file, feedback_triage,
   feedback_reply), `your feedback on settings` (`web/settings.js`
-  #feedback), `the beta hub` (`web/beta-hub.html`, `web/beta-hub.js`,
+  #feedback), the beta hub (a tester's part of `beta page`,
   `api/plans.js` ?op=beta_hub) and `early features for beta testers`
   (`api/_early.js`, `web/early.js`, `Account.early_on`,
   `Shell.EARLY_COMMANDS`; GET /api/account's `beta: {tester, early}`):
@@ -4477,7 +4504,7 @@ live, 210 of 333 failed (none of the four pages had a copy, the
 challenge's link head English, the reasons' parts and colours English,
 "Bei Schritt 3: es ist ...").
 Then every other page the site links to (`--pages=feed,notifications,builds,
-feedback,beta,beta-hub,terms,privacy,guidelines,takedown,changelog,missing,consent`,
+feedback,beta,terms,privacy,guidelines,takedown,changelog,missing,consent`,
 languages7, 2026-11-02): the account menu's pages signed in in the browser
 only, every call answered by the stand-in, the feed and the notifications
 showing at least three of the server's lines with the name where the

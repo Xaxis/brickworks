@@ -603,6 +603,8 @@ authorize_csp="default-src 'self'; script-src 'self'; connect-src 'self' ${signi
 # names the build; the build it names under /b/<sha>/ is cached forever.
 # /pricing, in English and each language, is the plans page's name before
 # the owner asked for Plans (2026-11-03), so a link that guessed it lands.
+# /beta-hub, in English and each language, was the testers' hub until it
+# became the beta's own page (betahome, 2026-11-09): kept links land there.
 cat > .vercel/output/config.json <<EOF
 {
   "version": 3,
@@ -619,6 +621,8 @@ cat > .vercel/output/config.json <<EOF
     { "src": "/challenges/?", "status": 308, "headers": { "Location": "/challenge" } },
     { "src": "/pricing([.]html|/)?", "status": 308, "headers": { "Location": "/plans" } },
     { "src": "/($langs)/pricing([.]html|/)?", "status": 308, "headers": { "Location": "/\$1/plans" } },
+    { "src": "/beta-hub([.]html|/)?", "status": 308, "headers": { "Location": "/beta" } },
+    { "src": "/($langs)/beta-hub([.]html|/)?", "status": 308, "headers": { "Location": "/\$1/beta" } },
     { "src": "/([A-Za-z0-9_-]+)[.]html", "status": 308, "headers": { "Location": "/\$1" } },
 $docs_moved
     { "src": "/docs/([A-Za-z0-9_-]+)[.]html", "status": 308, "headers": { "Location": "/docs/\$1" } },
