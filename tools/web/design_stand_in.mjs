@@ -2040,12 +2040,25 @@ function betaQueue() {
         decisions: [{ decision: "approved", note: "Good crane", by: "owner@example.com", at: BETA_AT }] })] };
 }
 
+/// The owner's testers (api/admin.js ?op=beta_testers, as
+/// beta_testers_list answers): Ada joined at sign-up and told us about
+/// herself; Bo left; Cy said Not now.
+function betaTesters() {
+  const one = (account, email, state, via, application) => ({ account, email, state, joined_at: state === "not_now" ? null : BETA_AT,
+    via, said_at: BETA_AT, made_at: BETA_AT, application });
+  return { beta: "open", tests: false, counts: { testers: 1, left: 1, not_now: 1, welcome: 1, application: 1 },
+    testers: [one("00000000-0000-4000-8000-0000000000b1", "ada@example.com", "tester", "welcome", { status: "new", spot: null, comp: "none" }),
+      one("00000000-0000-4000-8000-0000000000b3", "bo@example.com", "left", "beta", null),
+      one("00000000-0000-4000-8000-0000000000b4", "cy@example.com", "not_now", "welcome", null)] };
+}
+
 /// /api/admin: the site's owner's page.
 function admin(method, params, who, state) {
   if (!who) return answer(401, { error: SIGN_IN });
   if (!state.admin) return answer(404, { error: "not found" });
   const op = params.get("op") || "";
   if (method === "GET" && op === "beta") return answer(200, betaQueue());
+  if (method === "GET" && op === "beta_testers") return answer(200, betaTesters());
   if (method === "POST") return answer(200, { ok: true });
   // A reported photo, to look at: a picture, which the flow serves.
   if (op === "photo") return null;
