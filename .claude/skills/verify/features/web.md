@@ -305,7 +305,10 @@ plan with Claude as the client.
   tool list from that tab once it has said hello, else the tools of the app
   build the deployment serves, `tools/mcp_tools.json` put beside the function
   by `deploy.sh` (`ownTools`), with the guidance of a hello of that same list
-  (`guidanceOf`), so Claude can add it before the app is opened; never
+  (`guidanceOf`, found by the `list` hash kept beside each hello, and never
+  waited on past half a second: a lookup that fails or is slow leaves that
+  handshake without guidance, not failed, 2026-11-10,
+  `tests/test_relay_hello.py`), so Claude can add it before the app is opened; never
   another tab's list, which had been a test build's: 69 tools for 68,
   2026-10-29, `tests/test_relay_hello.py`) — and one tab's private
   address (`/api/mcp?t=<token>`), the way from 2026-10-09, still answered for
@@ -3947,9 +3950,13 @@ plan with Claude as the client.
   /beta says Coming soon with no way in and no count, GET ?op=beta is
   `{beta: off}` and asks nothing, POST is 403. Open, /beta is the beta's
   hub (below); the application (what you'd build 20-800, AI, background
-  and a line up to 160, a link https up to 300, two boxes) is no form there
-  but checked at the edge as the API takes it (422 with why), one an
-  account (409; a declined one again after 30 days).
+  and a line up to 160, a link https up to 300, two boxes a tester need
+  not tick) is a tester's "tell us about you" there, at /beta#about
+  (betajoin: shown once joined, the old ids #apply-form, #f-build,
+  #apply-send, #apply-status; then where it stands), checked at the edge
+  as the API takes it (422 with why), one an account (409; a declined one
+  again after 30 days). beta_flow fills it by hand at 390, by keyboard
+  alone from /beta#about at 1280, and reads a decline's date there.
   Spots 1-100 one at a time under the pool's row lock: proven on a
   throwaway Postgres (`tests/fixtures/beta/db_check.mjs`: two at once at
   99 give 100 and "full"; 120 from ten connections give 1-100 once each).

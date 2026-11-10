@@ -16,6 +16,7 @@
 // launch({ ownAccount: true }) for one that spends what an account may do
 // in an hour or a day, such as publishing: its pages are signed in as an
 // account of the run's own, deleted when the run ends (session.mjs).
+import { steadyShots } from "./steady_shots.mjs";
 import { chromium } from "playwright";
 import { canSignIn, endOwnAccount, ownAccount, signInContext, TEST_EMAIL } from "./session.mjs";
 
@@ -115,12 +116,14 @@ export async function launch(options = {}) {
   const signals = mine ? { handleSIGINT: false, handleSIGTERM: false, handleSIGHUP: false } : {};
   const browser = await chromium.launch({ ...signals, ...rest, args: [...SOFTWARE, ...(rest.args || [])] });
   const made = browser.newContext.bind(browser);
-  const bare = async (contextOptions) => instantScroll(await made(contextOptions));
+  // Every page of every context takes a dropped picture again (steady_shots.mjs).
+  const steady = (context) => { context.on("page", (page) => steadyShots(page)); return context; };
+  const bare = async (contextOptions) => instantScroll(steady(await made(contextOptions)));
   const newContext = realCounter ? bare : async (contextOptions) => quietCounter(await bare(contextOptions));
   if (signedOut) {
     const newPage = browser.newPage.bind(browser);
     browser.newContext = (contextOptions) => newContext(withRatio(contextOptions));
-    browser.newPage = (pageOptions) => newPage(withRatio(pageOptions));
+    browser.newPage = async (pageOptions) => steadyShots(await newPage(withRatio(pageOptions)));
     return browser;
   }
   browser.newContext = async (contextOptions) => signedIn(await newContext(withRatio(contextOptions)), email);

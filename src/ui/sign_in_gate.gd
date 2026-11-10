@@ -261,6 +261,11 @@ func _build_age(column: VBoxContainer) -> void:
 func _build_welcome(column: VBoxContainer) -> void:
 	_welcome = VBoxContainer.new()
 	_welcome.add_theme_constant_override("separation", 10)
+	# The welcome holds the keys itself, so Enter, Space or Escape choose
+	# nothing: joining agrees to the beta's terms and its mail, and must be a
+	# press of Join, or Tab to it (its focus drawn) then Enter. It held
+	# Join's focus, undrawn, and one Enter made a tester (betaopen, 11-10).
+	_welcome.focus_mode = Control.FOCUS_ALL
 	column.add_child(_welcome)
 	_welcome.add_child(_line("A CAD for LEGO® models: every LDraw part, joined where the real ones "
 		+ "join.", 15, 0.95))
@@ -276,7 +281,7 @@ func _build_welcome(column: VBoxContainer) -> void:
 	_welcome_join.theme_type_variation = &"DefaultButton"
 	_welcome_join.custom_minimum_size = Vector2(0, 38)
 	_welcome_join.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_welcome_join.focus_mode = Control.FOCUS_NONE
+	_welcome_join.focus_mode = Control.FOCUS_ALL
 	_welcome_join.pressed.connect(_join)
 	row.add_child(_welcome_join)
 	_welcome_later = Button.new()
@@ -286,7 +291,7 @@ func _build_welcome(column: VBoxContainer) -> void:
 	# against the border; Join keeps its words whole in any language.
 	_welcome_join.size_flags_stretch_ratio = 2.0
 	_welcome_later.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_welcome_later.focus_mode = Control.FOCUS_NONE
+	_welcome_later.focus_mode = Control.FOCUS_ALL
 	_welcome_later.pressed.connect(_not_now)
 	row.add_child(_welcome_later)
 	_welcome_note = _line("", 12, 1.0)
@@ -515,7 +520,7 @@ func _follow() -> void:
 		_months[0].grab_focus.call_deferred(true)
 	_asked_shown = asking_age
 	if welcoming and not _welcome_shown:
-		_welcome_join.grab_focus.call_deferred(true)
+		_welcome.grab_focus.call_deferred(true)
 	_welcome_shown = welcoming
 	if thanking:
 		_thanks_go.grab_focus.call_deferred(true)
