@@ -46,7 +46,8 @@
    reading, and whichever it then shows: nothing under it moves. */
 #beta-acts { display: grid; }
 #beta-acts > * { grid-area: 1 / 1; align-self: start; }
-#beta-acts > [hidden] { display: flex; visibility: hidden; }
+/* Over site.css's [hidden] { display: none !important }. */
+#beta-acts > [hidden] { display: flex !important; visibility: hidden; }
 /* What joining agrees to, under the way in, from the first frame (off, its
    room kept and nothing in it). */
 .beta-head .terms { max-width: 34rem; margin: var(--s-4) auto 0; color: var(--ink-soft); font-size: var(--t-small); }

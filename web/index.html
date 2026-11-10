@@ -137,7 +137,8 @@
    stacked in a narrow panel) whichever it shows (beta.html's likewise). */
 #beta-acts { display: grid; }
 #beta-acts > * { grid-area: 1 / 1; align-self: start; }
-#beta-acts > [hidden] { display: flex; visibility: hidden; }
+/* Over site.css's [hidden] { display: none !important }. */
+#beta-acts > [hidden] { display: flex !important; visibility: hidden; }
 #beta-said { min-height: 1lh; margin-top: var(--s-3); }
 /* What joining agrees to; a tester has joined. */
 #beta-terms { margin-top: var(--s-2); }
