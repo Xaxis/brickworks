@@ -1830,6 +1830,7 @@ func _build() -> void:
 	_rate.tooltip_text = "Frames a second"
 	rendering.add_child(_rate)
 	_size = OptionButton.new()
+	_size.accessibility_name = "Size"
 	_size.add_theme_font_size_override("font_size", 12)
 	_size.focus_mode = Control.FOCUS_NONE
 	for size: Array in SIZES:

@@ -5,17 +5,23 @@
 //   tools/deploy.sh --unit --billing-stand-in --beta-open      the beta open, billing test (the stand-in)
 //   BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/beta_flow.mjs --url=<that preview> --out=DIR
 //
-// With the beta off (every release preview, and production until the
-// owner says), it checks that: /beta says Coming soon with no form and no
-// count, GET ?op=beta says off, and the API refuses an application. Open,
-// with throwaway accounts at Resend test addresses, each deleted at the end
-// whatever happened, and the site's checks' own pool of spots (accounts at
-// resend.dev take none of the 100):
+// /beta is the beta's hub (betahome, 2026-11-09): the way in for whoever
+// reads it, what testers get, how to report, what is new, the questions.
+// The month's application is no form there any more (betajoin's welcome
+// asks it, as "tell us about you"), so this flow sends it as the API takes
+// it, and reads the hub for what it says of the count and the visitor.
 //
-//   1. Signed out, at 1280: the spots left; Sign in to apply opens the
+// With the beta off (every release preview, and production until the
+// owner says), it checks that: /beta says Coming soon with no way in and
+// no count, GET ?op=beta says off, and the API refuses an application.
+// Open, with throwaway accounts at Resend test addresses, each deleted at
+// the end whatever happened, and the site's checks' own pool of spots
+// (accounts at resend.dev take none of the 100):
+//
+//   1. Signed out, at 1280: the months left; Sign up and join opens the
 //      sign-in dialog; the API answers 401.
-//   2. Signed in at 390: the form, filled and sent as a person would; the
-//      page says Applied. A second application is refused (409).
+//   2. Signed in at 390: the hub's way in for an account; its application
+//      sent as the API takes it. A second is refused (409).
 //   3. The owner, on /beta-admin?tests=1 at 1280: the application with what
 //      was read of it (email confirmed, the account's age, its domain, the
 //      same inbox, models kept and shared, the form). Approve: the next
@@ -25,11 +31,16 @@
 //   4. The approved email: kept, and on a deployment with a mail key,
 //      delivered to the throwaway's inbox (Resend's own word, last_event);
 //      on a unit's preview, which has none, kept as dry.
-//   5. A decline: emailed, and the page says when to apply again.
+//   5. A decline: emailed.
 //   6. The spots left count down; two approvals at once at 99 given make
-//      one spot 100 and one refusal; the page then says all are taken.
+//      one spot 100 and one refusal; the hub then says all are given.
 //   7. Deleting an account (POST /api/account?op=delete, the person's own
 //      path) erases its application and its emails.
+//
+// Joining the testers (betajoin, op=beta_join and op=beta_leave) is never
+// money: off, joining is refused and leaving takes nothing; open, the
+// approved tester leaves and joins again with the month and its spot as
+// they were, and the spots left the same.
 //
 // Before either: what testers get is what Pro is (every model kept and
 // commercial use), the desktop app is not sold as theirs, and no ChatGPT.
@@ -136,13 +147,16 @@ async function open(pathname, { width, theme = "light", who = null, label }) {
   return { page, context };
 }
 
-/// What /beta shows once drawn: the count, which part of the panel, its words.
+/// What /beta shows once drawn (web/beta.js, <html data-beta-page>): the
+/// line under the title, the way in shown (out, in, tester, or none), and
+/// which of the beta's own sections are shown.
 async function betaSaid(page) {
-  await until(page, () => document.getElementById("apply-wait")?.hidden === true);
+  await until(page, () => document.documentElement.dataset.betaPage);
   return page.evaluate(() => {
-    const shown = ["apply-soon", "apply-out", "apply-form", "apply-status"].find((id) => !document.getElementById(id).hidden);
+    const shown = [...document.querySelectorAll("#beta-acts > [data-visitor]")].find((row) => !row.hidden)?.dataset.visitor || "";
     return { spots: document.getElementById("spots").textContent.trim(), shown,
-      words: shown ? document.getElementById(shown).innerText.replace(/\s+/g, " ").trim() : "",
+      sections: ["report", "new", "testers"].filter((id) => !document.getElementById(id).hidden),
+      form: Boolean(document.querySelector("main form")),
       // Its words, not as drawn: the eyebrow is drawn in capitals.
       eyebrow: [...document.querySelectorAll(".beta-head .eyebrow span")].filter((s) => !s.hidden).map((s) => s.textContent).join(" "),
       sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1 };
@@ -184,8 +198,8 @@ try {
     const { page, context } = await open("/beta", { width: 1280, label: "what testers get" });
     const get = await page.locator("#get").innerText();
     const heads = await page.$$eval("#get h3", (all) => all.map((one) => one.textContent.trim()));
-    check(`what testers get: ${heads.join(", ")}`, heads.includes("Every model kept") && heads.includes("Commercial use")
-      && !heads.some((one) => /desktop/i.test(one)));
+    check(`what testers get: ${heads.join(", ")}`, heads.includes("A month of Pro, free") && /every model kept/i.test(get)
+      && /commercial use/i.test(get) && !heads.some((one) => /desktop/i.test(one)));
     check("...no ChatGPT, and other AIs' keys only in the desktop app",
       !/ChatGPT/.test(get) && get.split(/(?<=[.:;?!])\s+/).every((one) => !/OpenAI|Gemini|your own key\b/.test(one) || /desktop/.test(one)));
     await context.close();
@@ -198,12 +212,26 @@ try {
     made.push(address("off"));
     const r = await api("/api/plans?op=beta", { method: "POST", token: someone.access_token, body: form });
     check(`POST an application is refused: ${r.status} ${r.json?.error}`, r.status === 403 && r.json?.beta === "off");
+    // Joining the testers too (betajoin); leaving is anybody's, whatever the switch.
+    const join = await api("/api/plans?op=beta_join", { method: "POST", token: someone.access_token, body: { via: "site" } });
+    check(`op=beta_join is refused: ${join.status} ${join.json?.error}`, join.status === 403 && join.json?.beta === "off");
+    // Before supabase/beta_join.sql is applied there is nothing to leave:
+    // 503, as joining answers then (api/_beta.js refused, notYet).
+    const leave = await api("/api/plans?op=beta_leave", { method: "POST", token: someone.access_token, body: {} });
+    if (leave.status === 503) {
+      check(`op=beta_leave before beta_join.sql is applied: 503 "${leave.json?.error}"`,
+        /not open here yet/.test(leave.json?.error || ""));
+    } else {
+      check(`op=beta_leave answers off, and takes nothing: ${leave.status} ${JSON.stringify(leave.json)}`,
+        leave.status === 200 && leave.json?.beta === "off" && leave.json?.tester === false);
+    }
     for (const [width, theme] of [[390, "dark"], [1280, "light"]]) {
       const { page, context } = await open("/beta", { width, theme, label: `off ${width}` });
       const said = await betaSaid(page);
-      check(`${width}: Coming soon, no form, no count: ${said.shown}, "${said.spots}"`, said.shown === "apply-soon"
+      check(`${width}: Coming soon, no way in, no count: "${said.shown}", "${said.spots}"`, said.shown === "" && !said.form
         && /Coming soon/i.test(said.eyebrow) && /Coming soon/.test(said.spots) && !said.sideways);
-      check(`${width}: no Apply button`, await page.evaluate(() => document.getElementById("to-apply").hidden));
+      check(`${width}: none of the open beta's parts: ${said.sections.join(", ") || "none"}`, said.sections.length === 0);
+      check(`${width}: no beta bar`, await page.evaluate(() => !document.getElementById("beta-bar")));
       const moved = await shifted(page);
       check(`${width}: nothing moved as it loaded and scrolled: ${moved}`, moved < 0.02);
       await shot(page, `beta-off-${width}-${theme}.png`, true);
@@ -211,18 +239,18 @@ try {
     }
   } else {
     // --- 1. Signed out ---------------------------------------------------------
-    console.log("1. Signed out: the spots, and sign in to apply");
+    console.log("1. Signed out: the months left, and sign up and join");
     // The checks' pool, three from the end.
     await rpc("beta_test_pool", { p_given: 97 });
     let { page, context } = await open("/beta", { width: 1280, label: "signed out" });
     let said = await betaSaid(page);
-    check(`the spots left: "${said.spots}"`, /^\d+ of \d+ spots left$|^All \d+ spots are taken/.test(said.spots));
-    check(`Sign in to apply: ${said.shown}`, said.shown === "apply-out");
+    check(`the months left: "${said.spots}"`, /^\d+ of \d+ free months of Pro left$|^All \d+ months of Pro are given/.test(said.spots));
+    check(`Sign up and join: ${said.shown}`, said.shown === "out");
     let moved = await shifted(page);
     check(`1280 signed out: nothing moved as it loaded and scrolled: ${moved}`, moved < 0.02);
     await page.evaluate(() => window.scrollTo(0, 0));
-    await page.click("#sign-in");
-    check("Sign in to apply opens the sign-in dialog", await until(page, () => document.querySelector("dialog.sign-in[open]")));
+    await page.click("#beta-acts [data-visitor=out] [data-beta-join]");
+    check("Sign up and join opens the sign-in dialog", await until(page, () => document.querySelector("dialog.sign-in[open]")));
     await shot(page, "beta-signed-out-1280.png");
     await context.close();
     let r = await api("/api/plans?op=beta", { method: "POST", body: form });
@@ -234,24 +262,14 @@ try {
     made.push(address("a"));
     ({ page, context } = await open("/beta", { width: 390, theme: "dark", who: a, label: "apply 390" }));
     said = await betaSaid(page);
-    check(`signed in: the form, and the checks' spots: "${said.spots}"`, said.shown === "apply-form" && said.spots === "3 of 100 spots left");
+    check(`signed in: the way in, and the checks' months: ${said.shown}, "${said.spots}"`,
+      ["in", "tester"].includes(said.shown) && said.spots === "3 of 100 free months of Pro left");
     moved = await shifted(page);
     check(`390 signed in: nothing moved as it loaded and scrolled: ${moved}`, moved < 0.02);
-    await page.click("#apply-send");
-    check("sent empty: the page says what to fix", await until(page, () => /at least 20/.test(document.getElementById("apply-said").textContent)));
-    await page.fill("#f-build", form.build);
-    await page.selectOption("#f-ai", "claude");
-    await page.selectOption("#f-background", "lego");
-    await page.fill("#f-line", form.background_line);
-    await page.fill("#f-link", "rebrickable.com/users/someone/mocs/");
-    await page.check("#f-terms");
-    await page.check("#f-emails");
-    await shot(page, "beta-form-390-dark.png", true);
-    await page.click("#apply-send");
-    said = await until(page, () => !document.getElementById("apply-status").hidden) ? await betaSaid(page) : said;
-    check(`applied: "${said.words.slice(0, 80)}"`, said.shown === "apply-status" && /^Applied/.test(said.words) && !said.sideways);
-    await shot(page, "beta-applied-390-dark.png");
+    await shot(page, "beta-signed-in-390-dark.png", true);
     await context.close();
+    r = await api("/api/plans?op=beta", { method: "POST", token: a.access_token, body: { ...form, link: "rebrickable.com/users/someone/mocs/" } });
+    check(`applied: ${r.status} ${r.json?.application?.status}`, r.status === 200 && r.json?.application?.status === "new");
     r = await api("/api/plans?op=beta", { method: "POST", token: a.access_token, body: form });
     check(`a second application is refused: ${r.status} ${r.json?.error}`, r.status === 409);
     const aId = a.kept.user_id;
@@ -285,13 +303,33 @@ try {
       + `${granted ? " (given at Admission's test mode)" : " (pending)"}`, granted || app?.comp === "pending");
     ({ page, context } = await open("/beta", { width: 1280, who: a, label: "approved" }));
     said = await betaSaid(page);
-    check(`the page: "${said.words.slice(0, 110)}"`, /You are in: spot 98 of 100/.test(said.words)
-      && (granted ? /Your month of Pro runs from/.test(said.words) : /starts the day Pro launches/.test(said.words)));
-    check(`and counts it: "${said.spots}"`, said.spots === "2 of 100 spots left");
+    check(`the hub: a tester's, with what we know is wrong: ${said.shown}, ${said.sections.join(", ")}`, said.shown === "tester"
+      && said.sections.includes("testers"));
+    check(`and thanks them: "${said.spots}"`, /^You’re a tester|^You’ve been a tester since/.test(said.spots));
     moved = await shifted(page);
     check(`1280 approved: nothing moved as it loaded and scrolled: ${moved}`, moved < 0.02);
     await shot(page, "beta-approved-1280.png");
     await context.close();
+
+    // Joining and leaving the testers (betajoin): at once, and never money.
+    // A tester who leaves keeps the month and its spot, and joining again
+    // takes no other. Before supabase/beta_join.sql is applied, joining
+    // answers 503 and nothing changes.
+    r = await api("/api/plans?op=beta_join", { method: "POST", token: a.access_token, body: { via: "site" } });
+    if (r.status === 503) {
+      check(`op=beta_join before beta_join.sql is applied: 503 "${r.json?.error}"`, /not open here yet/.test(r.json?.error || ""));
+    } else {
+      check(`op=beta_join: ${r.status}, tester ${r.json?.tester}`, r.status === 200 && r.json?.tester === true);
+      r = await api("/api/plans?op=beta_leave", { method: "POST", token: a.access_token, body: {} });
+      const kept = r.json?.application;
+      check(`op=beta_leave: tester ${r.json?.tester}, ${r.json?.state}`, r.status === 200 && r.json?.tester === false
+        && r.json?.state === "left");
+      check(`...the month as it was: ${kept?.status}, spot ${kept?.spot}, ${kept?.comp}; ${r.json?.pool?.left} spots left`,
+        kept?.status === "approved" && kept?.spot === 98 && kept?.comp === app?.comp && r.json?.pool?.left === 2);
+      r = await api("/api/plans?op=beta_join", { method: "POST", token: a.access_token, body: { via: "site" } });
+      check(`...and joins again: tester ${r.json?.tester}, spot ${r.json?.application?.spot}, ${r.json?.pool?.left} left`,
+        r.json?.tester === true && r.json?.application?.spot === 98 && r.json?.pool?.left === 2);
+    }
 
     // --- 4. The approved email ----------------------------------------------------
     console.log("4. The emails");
@@ -311,37 +349,7 @@ try {
     console.log("5. A decline");
     const b = await mintSession(address("b"));
     made.push(address("b"));
-    // B applies by keyboard alone, at 1280: Tab from the panel's first
-    // field to Apply, the dropdowns by arrow keys, the boxes by Space.
-    ({ page, context } = await open("/beta", { width: 1280, who: b, label: "keyboard" }));
-    said = await betaSaid(page);
-    await page.focus("#f-build");
-    await page.keyboard.type(form.build);
-    const stops = [];
-    const tab = async () => {
-      await page.keyboard.press("Tab");
-      const at = await page.evaluate(() => document.activeElement?.id || document.activeElement?.tagName);
-      stops.push(at);
-      return at;
-    };
-    await tab();
-    await page.keyboard.press("ArrowDown");
-    await tab();
-    await page.keyboard.press("ArrowDown");
-    await tab();
-    await tab();
-    await tab();
-    await page.keyboard.press("Space");
-    // The terms' own link sits in the first box's words.
-    while (!["f-emails", "BODY"].includes(await tab()) && stops.length < 10) { /* on to the second box */ }
-    await page.keyboard.press("Space");
-    await tab();
-    await page.keyboard.press("Enter");
-    const keyed = await until(page, () => !document.getElementById("apply-status").hidden
-      && document.activeElement?.id === "status-h");
-    check(`applied by keyboard alone, the focus on the answer: ${stops.join(" > ")}`, keyed
-      && stops.slice(0, 5).join() === "f-ai,f-background,f-line,f-link,f-terms");
-    await context.close();
+    await api("/api/plans?op=beta", { method: "POST", token: b.access_token, body: form });
     r = await api("/api/plans?op=beta", { token: b.access_token });
     check(`B applied: ${r.json?.application?.status} (${r.json?.application?.ai}, ${r.json?.application?.background})`,
       r.json?.application?.status === "new");
@@ -355,10 +363,6 @@ try {
       const word = await resendSaid(declinedMail.sent_id);
       check(`and Resend says: ${word}`, ["delivered", "accepted"].includes(word));
     }
-    ({ page, context } = await open("/beta", { width: 390, who: b, label: "declined" }));
-    said = await betaSaid(page);
-    check(`the page: "${said.words.slice(0, 100)}"`, /Not this time/.test(said.words) && /apply again from/.test(said.words));
-    await context.close();
 
     // --- 6. The last spots ----------------------------------------------------------
     console.log("6. Two approvals at once at 99 given");
@@ -372,9 +376,13 @@ try {
     const spots = both.map((one) => one.json?.application?.spot ?? one.json?.refused ?? one.status);
     check(`one spot 100 and one refusal: ${JSON.stringify(spots)}`, spots.filter((s) => s === 100).length === 1
       && both.filter((one) => one.status === 409 && one.json?.refused === "full").length === 1);
-    ({ page, context } = await open("/beta", { width: 1280, who: a, label: "full" }));
+    // Read by an account that has not joined (a tester is thanked in the
+    // count's place), signed in, past the CDN's minute on ?op=beta_spots.
+    const e = await mintSession(address("e"));
+    made.push(address("e"));
+    ({ page, context } = await open("/beta", { width: 1280, who: e, label: "full" }));
     said = await betaSaid(page);
-    check(`the page says all are taken: "${said.spots}"`, /^All 100 spots are taken/.test(said.spots));
+    check(`the hub says all are given: "${said.spots}"`, /^All 100 months of Pro are given/.test(said.spots));
     await context.close();
 
     // --- 7. Deleting an account -------------------------------------------------------

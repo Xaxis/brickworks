@@ -515,6 +515,14 @@ var _full_offer: AccountFullOffer
 var _restore_notice: RestoreNotice
 ## This computer runs the simpler graphics mode, said once (GraphicsMode).
 var _graphics_notice: RestoreNotice
+## Something went wrong in the app's own scripts, said above the model with
+## Report this while the beta is open (bugreport, _on_script_error); made
+## the first time.
+var _error_notice: RestoreNotice
+## Each error said so this run, by its line: once each, and at most
+## ERRORS_SAID, so a fault that repeats every frame says it once.
+var _errors_said: Dictionary = {}
+const ERRORS_SAID := 5
 ## When the files other tabs and windows share with this one were last
 ## looked at (_watch_other_tabs), in ticks.
 var _tabs_looked: int = 0
@@ -544,6 +552,10 @@ var _assistant: Node:
 ## The assistant if anything has made it, else null: for what has nothing
 ## to tell one that was never made (forgetting what it built, say).
 var _assistant_made: Node = null
+## A long job says when it is done (src/ui/done_note.gd, a Later class): made
+## with the first job that tells it, or Render's dialog (_done_note); null
+## until then.
+var _done_note_made: Node = null
 ## Set as _build_ui ends: what is made on first use is wired to what the
 ## window has, so it is made only once all of that is there.
 var _built: bool = false
@@ -862,8 +874,11 @@ func _tell_page() -> void:
 		JavaScriptBridge.eval("window.brickworksAskWords = false", true)
 		JavaScriptBridge.eval("window.brickworksWords = %s" % JSON.stringify(words_shown()), true)
 	if not _page_title.is_empty():
+		# "Done · " before it while a long job's end waits to be seen (DoneNote).
+		var titled: String = _page_title if _done_note_made == null \
+			else str(_done_note_made.call("titled", _page_title))
 		JavaScriptBridge.eval("if (document.title !== %s) document.title = %s"
-			% [JSON.stringify(_page_title), JSON.stringify(_page_title)], true)
+			% [JSON.stringify(titled), JSON.stringify(titled)], true)
 	# And how many parts are standing, so a browser check can tell that a
 	# click put something down rather than guess it from the pixels.
 	if _world != null:
@@ -1210,6 +1225,8 @@ func _page_controls() -> Dictionary:
 		named.merge(_full_offer.controls_by_name())
 	if _restore_notice != null:
 		named.merge(_restore_notice.controls_by_name())
+	if _error_notice != null:
+		named.merge(_error_notice.controls_by_name())
 	if _graphics_notice != null:
 		named.merge(_graphics_notice.controls_by_name())
 	if _brickify_made != null:
@@ -1737,6 +1754,7 @@ func _ready() -> void:
 		get_window().title = "Brickworks %s" % BuildInfo.version()
 	# The last log lines, for Help, Send feedback… to offer (RecentLog).
 	_log = RecentLog.new()
+	_log.on_error = _on_script_error
 	OS.add_logger(_log)
 	_boot_mark("ready")
 	# Which graphics mode this window draws in, and why, in every log
@@ -2718,12 +2736,52 @@ func _on_account_changed() -> void:
 	# A beta tester's early features in the menus (Account.early_on).
 	if _shell != null:
 		_shell.set_early(_account.early if _account.signed_in() else ([] as Array[String]))
+	_offer_reports()
 	# A viewer is nobody's session: no connector, ever.
 	if not _viewing.is_empty():
 		return
 	_maybe_copy()
 	_maybe_join_together()
 	_tell_connector_who()
+
+
+## While the beta is open (Account.beta_open), reporting a bug is one press
+## from anywhere (bugreport, 2026-11-09): Report a bug in the top bar beside
+## Account, and Report this on a notice of something gone wrong (the model
+## not opened at start-up, an error in the app's scripts), whose report
+## carries what the notice said. Help, Report a bug… is there whatever the
+## beta.
+func _offer_reports() -> void:
+	var open: bool = _account != null and _account.signed_in() and _account.beta_open \
+		and _viewing.is_empty()
+	if _shell != null:
+		_shell.set_beta_open(open)
+	if _restore_notice != null:
+		_restore_notice.offer_report(func() -> void:
+			_shell.report_bug("notice", _log.last() if _log != null else PackedStringArray(),
+				_restore_notice.words().left(RecentLog.WIDEST)) if open else Callable())
+	if _error_notice != null and not open:
+		_error_notice.dismiss()
+
+
+## An error in the app's own scripts (RecentLog.on_error): said above the
+## model while the beta is open, with Report this, which carries [param
+## said] and the log [param lines] up to it. Each error once a run, and at
+## most ERRORS_SAID.
+func _on_script_error(said: String, lines: PackedStringArray) -> void:
+	if not _built or _shell == null or _notices == null or _account == null \
+			or not (_account.signed_in() and _account.beta_open) or not _viewing.is_empty():
+		return
+	if _errors_said.has(said) or _errors_said.size() >= ERRORS_SAID:
+		return
+	_errors_said[said] = true
+	if _error_notice == null:
+		_error_notice = RestoreNotice.new()
+		_error_notice.key = "error_got_it"
+		_error_notice.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		_notices.get_child(0).add_child(_error_notice)
+	_error_notice.offer_report(func() -> void: _shell.report_bug("notice", lines, said))
+	_error_notice.tell("Something went wrong in Brickworks. Report this, and what it was doing goes with it.")
 
 
 ## The connector, if made, put back as it was once somebody is in, and off
@@ -2837,7 +2895,7 @@ func _enter_view() -> void:
 	_share_view.loading()
 	_build_mode = Later.make(&"BuildMode")
 	_build_mode.thumbnails = _thumbnails
-	$HUD.add_child(_build_mode)
+	_add_to_hud(_build_mode)
 	_build_mode.next_wanted.connect(_build_next)
 	_build_mode.back_wanted.connect(_build_back)
 	# A part at a time or the step whole, chosen on the page: the step it is
@@ -5861,6 +5919,9 @@ func _build_ui() -> void:
 	_restore_notice.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_notices.get_child(0).add_child(_restore_notice)
 	_store.not_restored.connect(_restore_notice.tell)
+	# Report this on it while the beta is open, should the account be known
+	# already (bugreport).
+	_offer_reports()
 	# Graphics that cannot run the full mode started the simpler one by
 	# themselves: said once, above the model (GraphicsMode).
 	var graphics: String = GraphicsMode.to_say()
@@ -5986,7 +6047,7 @@ func _build_ui() -> void:
 	_account_panel.show_claude(ShellPrefs.assistant_shown())
 	if _connector_made != null:
 		_account_panel.use_connector(_connector_made)
-	$HUD.add_child(_account_panel)
+	_add_to_hud(_account_panel)
 	_inset(_account_panel, AccountPanel.WIDE, AccountPanel.TALL)
 	get_viewport().size_changed.connect(func() -> void:
 		_inset(_account_panel, AccountPanel.WIDE, AccountPanel.TALL))
@@ -6199,6 +6260,12 @@ func _make_chat() -> void:
 	chat.offers_hidden_colours = _offers_hidden_colours
 	chat.hidden_colours_wanted.connect(func() -> void: open_hidden_colours("sections"))
 	chat.asked.connect(_note_design_asked)
+	# A design, a change or sketches the person asked for here says when it
+	# is done, while nobody is looking (DoneNote): the ask is where the web
+	# asks whether it may notify, the press still fresh.
+	chat.asked.connect(func() -> void: _done_note().started("design"))
+	chat.run_ended.connect(func(ok: bool, what: String) -> void:
+		_done_note().finished(what, ok))
 	chat.designing.connect(func(brief: String) -> void:
 		_fresh_brief = brief
 		_make_room(ModelStore.name_for(brief))
@@ -6288,24 +6355,30 @@ static func _shown(panel: CanvasItem) -> bool:
 
 
 ## [param panel] over the window, under the sign-in screen, which _build_ui
-## adds last so that it is over everything.
+## adds last so that it is over everything; and in front of the other panels
+## whenever it is shown, clicked or given the keys (HudFront).
 func _add_to_hud(panel: Control) -> void:
-	var first: int = $HUD.get_child_count()
 	$HUD.add_child(panel)
-	_under_gates(first)
+	_hud_front.take(panel)
 
 
-## What was added to the HUD from child [param first] on, put back under
-## the sign-in screen.
-func _under_gates(first: int) -> void:
-	var under: int = $HUD.get_child_count()
-	if is_instance_valid(_gate) and _gate.get_parent() == $HUD and _gate.get_index() < first:
-		under = mini(under, _gate.get_index())
-	if under >= first:
-		return
-	for node: Node in $HUD.get_children().slice(first):
-		$HUD.move_child(node, under)
-		under += 1
+# -- the panel asked for last in front (hudfront) --------------------------------
+
+## Keeps the HUD's panels in the order they were last shown, clicked or given
+## the keys in, under the sign-in screen (src/ui/hud_front.gd): made with the
+## first panel added to the HUD.
+var _hud_front: HudFront:
+	get:
+		if _hud_front_made == null:
+			_hud_front_made = HudFront.new()
+			_hud_front_made.name = "HudFront"
+			_hud_front_made.hud = $HUD
+			_hud_front_made.control_at = _control_at
+			add_child(_hud_front_made)
+		return _hud_front_made
+var _hud_front_made: HudFront = null
+
+# -- end hudfront ------------------------------------------------------------------
 
 
 ## Whether the phone's layout has sized the tools' column's panels
@@ -6528,7 +6601,8 @@ func _make_studio() -> void:
 	add_child(studio)
 	var first: int = $HUD.get_child_count()
 	studio.setup($HUD)
-	_under_gates(first)
+	for made: Node in $HUD.get_children().slice(first):
+		_hud_front.take(made as Control)
 	studio.said.connect(func(words: String) -> void: _bar.say(words))
 	studio.made.connect(func(part_id: String) -> void:
 		_bin.populate()
@@ -6581,6 +6655,31 @@ func _make_render() -> void:
 	var fit: Callable = func() -> void: _inset(render, float(kind.WIDE), float(kind.TALL))
 	fit.call()
 	get_viewport().size_changed.connect(fit)
+	# A Best render, a turntable, an animation or a build video says when it
+	# is done, while nobody is looking (DoneNote).
+	_done_note().follow_render(render)
+
+
+## The done note (DoneNote), made the first time a job tells it something:
+## a long job says when it is done while nobody is looking.
+func _done_note() -> Node:
+	if _done_note_made == null:
+		_done_note_made = Later.make(&"DoneNote")
+		_done_note_made.name = "DoneNote"
+		_done_note_made.set("named", func() -> String:
+			return _bar.model_name() if _bar != null else "Model")
+		# What a session from outside asked for is said in its own chat.
+		_done_note_made.set("driven", func() -> bool: return _session_at_work())
+		add_child(_done_note_made)
+	return _done_note_made
+
+
+## File, Render queue…'s queue, as it is made (RenderQueue.of): its end said
+## by the done note while nobody is looking, whoever filled it.
+func follow_render_queue(queue: Node) -> void:
+	queue.connect(&"began", func() -> void: _done_note().started("queue"))
+	queue.connect(&"emptied", func(drawn: int, _failed: int) -> void:
+		_done_note().finished("queue", drawn > 0))
 
 
 ## When anything last reached the window, and when it last drew a frame:

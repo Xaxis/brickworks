@@ -140,7 +140,8 @@ func attach(main: Node) -> void:
 	add_child(_picker)
 	_picker.picked.connect(_on_file)
 	_picker.failed.connect(func(why: String) -> void: _say(why))
-	main.get_node("HUD").add_child(self)
+	# In front of the other panels while it shows, under the sign-in screen.
+	main.call("_add_to_hud", self)
 	_fit()
 	get_viewport().size_changed.connect(_fit)
 	store.changed.connect(_on_store_changed)
@@ -160,7 +161,7 @@ func _ready() -> void:
 
 ## Open on one page: "own", "need" or "build".
 func open(page: String = "own") -> void:
-	visible = true
+	HudFront.show_panel(self)
 	_need_set = {}
 	_rb_note.text = _rebrickable_note()
 	_show(page)

@@ -10,6 +10,8 @@ description: Put parts down, colour and turn them, make a step, save the model a
 
 This walks through one small model from an empty baseplate to a link you can send. Everything here works the same in a browser and in the desktop app.
 
+![The Brickworks window on a first visit, a red car on the baseplate. Numbered outlines mark 1, the menus along the top; 2, the toolbar; 3, the parts bin on the left; 4, the view cube; 5, Build your first model's offer over the model.](/docs/img/first-model-window.webp "The window: 1 menus, 2 toolbar, 3 parts bin, 4 view cube, 5 Build your first model.")
+
 ## 1. Build your first model {#tour}
 
 A first visit offers **Build your first model** along the top of the model: seven short steps, each done in the app, not read about. **Start** gives you a baseplate of your own (the example model comes off; a model of yours is kept, and **File › New** asks first if it is not saved). Each step says one thing, frames what to use and names your key for it, and moves on when the app sees it done, whichever way you do it: put a part down, turn it, colour it, move it, copy it, turn the view, and save. **Skip** ends it at any step, and it is not offered again; **Help › Take the tour** brings it back.
@@ -20,7 +22,9 @@ ui:tour
 
 ## 2. Put a part down {#place}
 
-Press [[P]] or click a part in the **parts bin** on the left: it is now *in hand* and follows the pointer over the baseplate, snapping to the studs. Click to put it down. It stays in hand, so each click puts down another. Press [[Esc]] or right-click to let go, and [[Q]] to take the last part back.
+Click a part in the **parts bin** on the left, or press [[/]] and type its name: it is now *in hand* and follows the pointer over the baseplate, snapping to the studs. Click to put it down. It stays in hand, so each click puts down another. Press [[Esc]] or right-click to let go, and [[Q]] to take the last part back.
+
+![An empty green baseplate with a red 2 x 4 brick in hand, drawn where it will go under the pointer.](/docs/img/first-model-in-hand.webp "A part in hand follows the pointer and snaps to the studs; a click puts it down.")
 
 - [[R]] turns the part in hand a quarter turn; [[T]] tips it onto its side.
 - [[[]] and [[]]] step through colours; [[Shift+C]] asks for a colour by name or number.

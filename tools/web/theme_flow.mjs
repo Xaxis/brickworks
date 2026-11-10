@@ -175,6 +175,19 @@ async function noFlash(page, look, label) {
 
 async function visit(page, address) {
   await page.goto(base + address, { waitUntil: "load", timeout: 60000 });
+  await drawn(page);
+}
+
+/// [page] loaded again, as visit() waits for one: a reload's load event
+/// can come before its first frame on a busy machine, and a quarter of a
+/// second later there were none to read ("0 frames": admin and authorize,
+/// each once, betahome 2026-11-09).
+async function reloaded(page) {
+  await page.reload({ waitUntil: "load" });
+  await drawn(page);
+}
+
+async function drawn(page) {
   await page.waitForFunction(() => (window.__themeFrames || []).length > 0 && document.readyState === "complete", null, { timeout: 15000 })
     .catch(() => null);
   await page.waitForTimeout(250);
@@ -203,8 +216,7 @@ async function onePage(browser, one, width) {
       return said;
     };
     looksRight(await choose("dark"), "dark", "dark", `${label} Dark chosen${other ? " in another tab" : ""}, at once`);
-    await page.reload({ waitUntil: "load" });
-    await page.waitForTimeout(250);
+    await reloaded(page);
     await noFlash(page, "dark", `${label} reloaded, every frame`);
     looksRight(await page.evaluate(shown), "dark", "dark", `${label} reloaded`);
     const tab = await context.newPage();
@@ -218,8 +230,7 @@ async function onePage(browser, one, width) {
     await settle(page);
     looksRight(await page.evaluate(shown), "dark", "system", `${label} System follows the computer to dark`);
     looksRight(await choose("light"), "light", "light", `${label} Light chosen under a dark computer, at once`);
-    await page.reload({ waitUntil: "load" });
-    await page.waitForTimeout(250);
+    await reloaded(page);
     await noFlash(page, "light", `${label} reloaded under a dark computer, every frame`);
     looksRight(await page.evaluate(shown), "light", "light", `${label} reloaded under a dark computer`);
     if (out) await page.screenshot({ path: path.join(out, `${one.name}_${width}_light_chosen.png`), timeout: 60000 }).catch(() => null);
@@ -324,8 +335,7 @@ async function signedIn(browser) {
       .then(() => true, () => false);
     check(followed, "a new browser profile, signed in: its first page follows the account to dark");
     looksRight(await fresh.evaluate(shown), "dark", "dark", "a new browser profile, signed in");
-    await fresh.reload({ waitUntil: "load" });
-    await fresh.waitForTimeout(250);
+    await reloaded(fresh);
     await noFlash(fresh, "dark", "its next page, every frame");
     await second.close();
 

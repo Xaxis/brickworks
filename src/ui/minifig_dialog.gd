@@ -119,7 +119,7 @@ func open() -> void:
 	# rows too wide for a phone would be made to flow (TouchSizing).
 	_arrange()
 	_take_turn(false)
-	visible = true
+	HudFront.show_panel(self)
 	_name.text = figure.name
 	_sight.forget()
 	_refresh_all()
@@ -909,7 +909,9 @@ func _make_own() -> void:
 
 
 func _overlay(editor: Control) -> void:
-	get_parent().add_child(editor)
+	# A panel of the HUD's as the builder is, in front while it shows and
+	# under the sign-in screen (HudFront).
+	HudFront.add_beside(self, editor)
 	editor.set_anchors_preset(Control.PRESET_FULL_RECT)
 	for side: Side in [SIDE_LEFT, SIDE_TOP]:
 		editor.set_offset(side, 24)

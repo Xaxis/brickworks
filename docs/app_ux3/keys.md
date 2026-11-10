@@ -14,10 +14,10 @@ eight keys2 gave.
 
 | Preset | Commands | Without a key before keys | After keys | Before keys2 | After |
 |---|---|---|---|---|---|
-| Brickworks | 224 | 115 | 110 | 112 | 108 |
-| Studio | 224 | 118 | 113 | 115 | 111 |
-| Mecabricks | 224 | 116 | 111 | 113 | 109 |
-| LDCad | 224 | 118 | 114 | 116 | 112 |
+| Brickworks | 225 | 115 | 110 | 112 | 108 |
+| Studio | 225 | 118 | 113 | 115 | 111 |
+| Mecabricks | 225 | 116 | 111 | 113 | 109 |
+| LDCad | 225 | 118 | 114 | 116 | 112 |
 
 The menus had 201 commands when keys counted. Cut away by a box, a sphere or a cylinder
 (APP_UX4 8) added five, each with no key. The Pick a Brick list added one
@@ -30,8 +30,9 @@ without a key then, so 106 of the 210 had one (the walk's `counts`, APP_UX5). Sa
 a key under every preset, and Render each saved view with none: 221, 105 without a key
 under the app's keys. Compare two sets or models… (comparesets, APP_UX6 #7) added one more
 with none: 222, 106 without a key under the app's keys. View › Edges and studs
-(edges, APP_UX6 #19) added two, Edges and Studs, each with none: 224 now, 108 without a key
-under the app's keys, 116 with one.
+(edges, APP_UX6 #19) added two, Edges and Studs, each with none: 224, 108 without a key
+under the app's keys. Report a bug… (bugreport, 2026-11-09) added one with a key under every
+preset: 225 now, 108 without a key, 117 with one.
 
 APP_UX3 counted 110 with the app's keys on 2026-10-30. Eight came since with none (the
 booklet's Pull out, Colour guide, 1:1 guide and Sub-model preview; Render queue; Check for
@@ -115,6 +116,20 @@ to anything. Save this view… is Alt and the first free letter of its row, V.
 | `saved_view_7` | View › Viewpoint › Saved view 7 | — | — | — | many times a session | alt-shift-7 | alt-shift-7 | alt-shift-7 | alt-shift-7 | as the first |
 | `saved_view_8` | View › Viewpoint › Saved view 8 | — | — | — | many times a session | alt-shift-8 | alt-shift-8 | alt-shift-8 | alt-shift-8 | as the first |
 | `saved_view_9` | View › Viewpoint › Saved view 9 | — | — | — | many times a session | alt-shift-9 | alt-shift-9 | alt-shift-9 | alt-shift-9 | as the first |
+
+## Given a key with Report a bug (bugreport, 2026-11-09)
+
+While the beta is open a report is one press from anywhere: the top bar's Report a bug,
+Help › Report a bug…, and this key, as Linear's and Figma's betas keep theirs in sight.
+The field's own is a browser's (Chrome's Report an issue, Alt-Shift-I), which a page never
+hears. Alt-Shift-R is R for Report beside Alt-R, Replace; no preset gives it to anything,
+no browser keeps it, and R alone (turn the part in hand) and Shift-R (turn it back) are
+told apart from it by Alt. It is kept with the beta shut: Help's row stays, and so does
+its key.
+
+| Command | Menu | Studio | LeoCAD | LDCad | How often | Brickworks | Studio's keys | Mecabricks' | LDCad's | Why this key |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `report_bug` | Help › Report a bug | — | — | — | when something goes wrong | alt-shift-R | alt-shift-R | alt-shift-R | alt-shift-R | R for Report, beside Alt-R, Replace; Chrome's Alt-Shift-I is the browser's |
 
 ## Left without a key, on purpose
 

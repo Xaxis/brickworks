@@ -7,14 +7,22 @@
 ## has read it.
 ##
 ## The same notice says, once, that this computer runs Brickworks in its
-## simpler graphics mode (GraphicsMode.to_say), under its own [member key].
+## simpler graphics mode (GraphicsMode.to_say), under its own [member key];
+## and that something went wrong in the app (Main's error notice).
+##
+## While the beta is open, a notice of something gone wrong has Report this
+## beside Got it ([method offer_report], bugreport 2026-11-09): the report
+## opens over the model with what the notice said.
 class_name RestoreNotice
 extends PanelContainer
 
-## Its button's name for a probe (controls_by_name).
+## Its button's name for a probe (controls_by_name); Report this's is this
+## with "_report" after it.
 var key: String = "restore_got_it"
 var _words: Label
 var _close: Button
+var _report_button: Button
+var _report: Callable = Callable()
 
 
 func _ready() -> void:
@@ -42,9 +50,24 @@ func _ready() -> void:
 	_words.add_theme_font_size_override("font_size", 13)
 	_words.add_theme_color_override("font_color", Color(0.96, 0.93, 0.88))
 	row.add_child(_words)
+	_report_button = ReloadOffer.button("Report this", true)
+	_report_button.visible = false
+	_report_button.pressed.connect(func() -> void:
+		if _report.is_valid():
+			_report.call()
+		dismiss())
+	row.add_child(_report_button)
 	_close = ReloadOffer.button("Got it", false)
 	_close.pressed.connect(dismiss)
 	row.add_child(_close)
+
+
+## Report this beside Got it, running [param report]; an unset one takes it
+## away.
+func offer_report(report: Callable) -> void:
+	_report = report
+	if _report_button != null:
+		_report_button.visible = report.is_valid()
 
 
 ## Say [param said] (ModelStore.not_restored).
@@ -62,4 +85,9 @@ func words() -> String:
 
 
 func controls_by_name() -> Dictionary:
-	return {key: _close} if visible else {}
+	if not visible:
+		return {}
+	var out: Dictionary = {key: _close}
+	if _report_button.visible:
+		out[key + "_report"] = _report_button
+	return out

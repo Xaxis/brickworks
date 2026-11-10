@@ -1020,7 +1020,17 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   button's words, a field's placeholder): the toolbar's words and key
   ("Select, V"), a part tile's title and number ("Brick 2 x 4, 3001"), a
   colour's name, a technique's, every dialog's sliders, numbers and fields;
-  `Access` names the parts of Godot's own file dialog it leaves unnamed. The
+  one made with no name (a number, a slider, a choice, a field with no
+  placeholder, a button drawn as a picture) `Access.name_from_words` names
+  as it is made from the words beside it: its label in the form, else its
+  tooltip's first line, else the label before it in its row (a button: its
+  tooltip's first line), again when the keys come to it unless someone
+  named it since; Godot says it through the translation, so in German in
+  German (a11ynames, 2026-11-09: My collection's How many had a tooltip
+  alone). A choice says what is chosen, so it is always named. What's
+  This? reads a name from a tooltip as none of its own. `Access` names the
+  parts of Godot's own file dialog it leaves unnamed (the favourites'
+  arrows, the bars between its panes, the kind of file). The
   status line is a live region, read out as it is said. F6 from the model
   goes into the frame, and Tab does while a screen reader runs (without one
   Tab folds the panels, as before: `FocusGuard._tab_in`): the name field,
@@ -1045,9 +1055,20 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   width and goes to pictures alone where its words do not fit,
   `PhoneShell._share_row`). Settings, Reduce motion: no
   build animation, no shimmer on a waiting picture, no camera easing.
-  Checks: `tools/probe.sh a11y_names_probe` (every operable control in the
-  frame, the bin's tabs, a selection and 30-odd dialogs and panels has a
-  name: 0 of 1,895 without; 666 of 1,888 on m166), `a11y_keys_probe` (from
+  Checks: `tools/probe.sh a11y_names_probe` (windowed, 1400x900 and
+  `PROBE_SIZE=1280x720`, signed in as a throwaway account through the
+  sign-in screen, needs .env: every operable control has a name in English
+  and in German, German as the app's own de.po reads it, then the window
+  put in German and read again; through the sign-in screen, the frame, the
+  bin's tabs, a selection and the dialogs it asks for, every dialog and
+  panel the menus open, the assistant's with it shown, My collection's
+  rows with parts owned, a11y_modal_probe's and dialog_look_probe's
+  dialogs and every other dialog in the window, 114 walked; a name a screen
+  reader alone hears with no German is no name, a part's, colour's or
+  model's name and words drawn on the control excepted; `-- --shots=DIR`
+  keeps a picture of each walk. 0 of 2,816 without, in either language, at 1400x900; on pre261
+  45 of 2,792 without and 273 without in German, How many among them;
+  666 of 1,888 on m166), `a11y_keys_probe` (from
   launch by keys alone: toolbar, a part, put down, a colour, the view cube),
   `a11y_motion_probe` (each of the three moving, then still),
   `a11y_size_probe` (85% and 150% at 1280 x 800, nothing off the window,
@@ -1058,13 +1079,7 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   `org.a11y.Status.ScreenReaderEnabled` as Orca does, so Godot's own "auto"
   accessibility comes on, and reads each window back over AT-SPI as Orca
   finds it: pointed at (its title bar's middle and its own) and read up
-  through the parents, or else from the last focus event (a panel put away
-  stays in the tree: Godot 4.7.2 does not tell AccessKit a Control was
-  hidden, `CanvasItem::set_visible`, and over Clear the baseplate's
-  question the pointer finds a panel put away before it). Not by listing the window's
-  children: AccessKit 0.22 ends that list at Model name, where an empty
-  spacer is followed by the hidden Claude tab, so a screen reader browsing
-  the window hears only the menus (both findings for units of their own);
+  through the parents, or else from the last focus event;
   signed in as
   a throwaway account through the sign-in screen, needs .env: About, New's
   question, Import's chooser, Save as and its "replace it?", Reference
@@ -1074,7 +1089,33 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   one, also after the keys are taken from the window and given back. On
   pre261 every held dialog read as a plain dialog: dialogclose had made them
   not exclusive, and Window's accessibility update says FLAG_MODAL is
-  `exclusive`); `tools/web/app_a11y_flow.mjs` (preview
+  `exclusive`); `a11y_tree_probe` (a11ytree, 2026-11-09,
+  `bench/results/a11ytree-2026-11-09/`: windowed, 1280x720 and
+  `PROBE_SIZE=1400x900`, the same private bus and sign-in; `--dump=DIR`
+  also writes Godot's node tree and the browse as JSON). Three faults of
+  Godot 4.7.2 / AccessKit 0.22, each put right in `src/ui/access_tree.gd`
+  (`AccessTree`, added beside `Access` by `Shell.build`, inert until a
+  screen reader is on, and on the web, which has no screen reader tree):
+  browsing the window from its root (as Orca's flat review walks each
+  element's children) reaches the menus, toolbar, parts bin and its search,
+  the view (the view cube, a panel, and its buttons), the properties and
+  the status line, in the order they are laid out (accesskit_consumer
+  0.38's `next_filtered_sibling` ends a list where an element of no role
+  and no children is followed by a hidden one with children: on pre261 the
+  window's list ended at Model name, 0 of 34 toolbar buttons reached; each
+  such element is given an empty internal child); each panel a person puts
+  away (Escape, its command, its Close button) is gone from the tree the
+  frame after, and Clear the baseplate's question brought up where it was
+  is found by pointing (`CanvasItem::set_visible` queues no accessibility
+  update in 4.7.2; on pre261 the pointer found the panel put away); every
+  embedded window and menu is said where it is drawn, within 2 px
+  (`Window::get_accessibility_transform` undoes only its parent's own
+  offset: the File menu was said 121 px right of where it is drawn; each
+  window without a script is given `src/ui/placed_window.gd`, and
+  `AccessTree.place` sets its transform in its own update). A fourth,
+  not put right: AccessKit hit-tests an embedded window below the
+  elements after its parent, so a menu over the toolbar is not found by
+  pointing (browse it instead); `tools/web/app_a11y_flow.mjs` (preview
   check `app_a11y`: both sizes at 1280, every size on a phone at 390 x 844
   and 844 x 390 and at 150% with the assistant's drawer open (fitted again
   as the size changes, `Main._fit_drawers`: least widths given for more

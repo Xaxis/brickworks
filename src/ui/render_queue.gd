@@ -76,6 +76,12 @@ class Item extends RefCounted:
 		return state in ["done", "failed", "cancelled"]
 
 signal changed
+## It has started drawing what it was given, and has drawn all of it and
+## stands empty: [param drawn] pictures written, [param failed] not. Not when
+## it was paused or stopped. Main's done note says so when nobody is looking
+## (DoneNote, Main.follow_render_queue).
+signal began
+signal emptied(drawn: int, failed: int)
 
 var items: Array[Item] = []
 ## Where pictures go: Render's own folder when empty.
@@ -126,6 +132,8 @@ static func of(app: Node) -> RenderQueue:
 	holder.add_child(queue)
 	if holder == room:
 		holder.move_child(queue, 0)
+	if app.has_method("follow_render_queue"):
+		app.call("follow_render_queue", queue)
 	return queue
 
 
@@ -308,6 +316,8 @@ func _run() -> void:
 	if _running:
 		return
 	_running = true
+	var drawn: int = 0
+	var failed: int = 0
 	while not paused:
 		var next: Item = null
 		for item: Item in items:
@@ -316,8 +326,16 @@ func _run() -> void:
 				break
 		if next == null:
 			break
+		if drawn + failed == 0:
+			began.emit()
 		await _render_one(next)
+		if next.state == "done":
+			drawn += 1
+		else:
+			failed += 1
 	_running = false
+	if not paused and drawn + failed > 0:
+		emptied.emit(drawn, failed)
 	if _job != null:
 		_job.end()
 		_job = null

@@ -1,0 +1,30 @@
+{
+ "shots": [
+  {
+   "id": "exports-3d",
+   "source": "app",
+   "setup": [
+    {"run": "export_3d", "after": 30}
+   ],
+   "crop": "@opened",
+   "pad": 0,
+   "alt": "The 3D model export dialog: a choice of glb, gltf, obj, stl or 3mf, each with a line on what it is for.",
+   "caption": "File › Export › 3D model…",
+   "features": ["ui:3d model export"]
+  },
+  {
+   "id": "exports-render",
+   "source": "app",
+   "setup": [
+    {"run": "render", "after": 30},
+    {"frames": 60}
+   ],
+   "settle": 60,
+   "crop": "@opened",
+   "pad": 0,
+   "alt": "The Render dialog: a picture of the car on the left, and on the right its quality, size, background, lights and camera.",
+   "caption": "File › Render… (F9).",
+   "features": ["ui:photo-real render"]
+  }
+ ]
+}

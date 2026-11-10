@@ -9,6 +9,7 @@
 
 entry:src/dev/*  # probes and dumps: how the app is tested (tools/check.sh)
 entry:tools/web/*  # browser flows and checks, run against a deployment by the release
+entry:tools/docs_shots.py  # how the docs' own pictures are made from the app and the site
 entry:tools/bench/*  # the design benches: the project's measures of Claude's designs
 entry:tools/release/*  # how a release is made, checked and published
 entry:tools/release.py  # building, smoking and publishing the desktop packages

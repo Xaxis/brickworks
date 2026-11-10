@@ -17,6 +17,7 @@ connector         # needs the relay with .env's keys, and makes accounts in prod
 tabs              # needs the relay with .env's keys; tabs_flow holds it on a deployment
 tabpair           # needs the relay with .env's keys; tabpair_probe.mjs and tabpair_flow on a deployment
 together          # needs the relay with .env's keys, and makes accounts in production Supabase; together_flow runs it beside two browsers on a deployment
+betajoin          # needs a relay with the beta open and --hold=feedback (its head), and makes accounts in production Supabase; betajoin_flow does the site's half
 desktop_cloud     # needs the relay with .env's keys, and makes an account in production Supabase; cloud_library_flow holds the web half on a deployment
 mybricks          # needs the relay with .env's keys, and makes an account in production Supabase; tools/web/mybricks_api.mjs holds the endpoint's half
 mysets            # needs the relay with .env's keys, and makes an account in production Supabase; tools/web/mysets_api.mjs holds the endpoint's half
@@ -26,6 +27,7 @@ candidate         # asks of one model whether it may go on the landing page, by 
 daylight          # a measuring tool for one file and box; patterns runs its functions here
 technique_sheet   # pictures for a person, no pass or fail
 gallery           # pictures of every shipped model for a person, no pass or fail
+docs_shots        # the docs' pictures for tools/docs_shots.py, a window a picture: no pass or fail of its own, and every one together is past ten minutes
 anim_walk         # an audit: every answer printed for a person, no pass or fail
 new_parts         # needs the numbers of the parts a library update added: tools/update_parts.py prints them, then tools/probe.sh new_parts_probe N N N
 grab              # 23-25 min in a window; headless its presses land 25x off (35 of 227 fail); coast's 3 fail at load 40 with m146

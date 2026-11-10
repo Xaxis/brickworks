@@ -10,13 +10,15 @@ nav: The parts bin
 description: Find any part by name, number, shape or a photo, keep the ones you use, and choose its colour.
 ---
 
-The parts bin is the top of the left-hand column. [[P]] opens it, and [[/]] goes straight to its search. Each part's name is under its picture, *Plate 1×2*, *Brick 1×1 with Stud on 1 Side*; its number is on its tooltip. Where names begin alike and run long, each goes on from the words that set it apart. While a picture is still coming, the part is drawn in its place from its size and studs, so no tile is ever a blank square.
+The parts bin is the top of the left-hand column. [[/]] goes straight to its search, opening it if it was put away (**View › Panels › Parts bin** shows or hides it). Each part's name is under its picture, *Plate 1×2*, *Brick 1×1 with Stud on 1 Side*; its number is on its tooltip. Where names begin alike and run long, each goes on from the words that set it apart. While a picture is still coming, the part is drawn in its place from its size and studs, so no tile is ever a blank square.
 
 <!-- covers
 ui:parts bin
 -->
 
 ## Search {#search}
+
+![The parts bin with slope 2 x 2 typed in its search, the slopes it found shown as pictures with their names, and how many it found at the foot.](/docs/img/parts-bin-search.webp "Type what you want: the bin finds it by name, number or the words builders use.")
 
 Type what you want in words: *2x4 brick*, *slope 45*, *wheel*, *window*, a part number like *3001*, or what is printed on it, with *print*: *control panel print*. The bin understands builders' words: *SNOT* finds bricks with side studs and brackets, *cheese* the small slopes, *Erling* the headlight brick, *Travis* the brick with studs on four sides, *macaroni* the curved corners, *jumper*, *click hinge* and *cheese grater* what builders mean by them. A size alone is a brick: *2x4* lists Brick 2 × 4 first. A size with a kind of part lists that kind first: *1x4 brick* is bricks, *2x2 tile* tiles. Every part comes from the LDraw library, and its geometry is fetched the first time it is used and kept.
 
@@ -34,6 +36,8 @@ ui:find a part from a photo
 -->
 
 ## Recent, Favourites and Techniques {#shelves}
+
+![The parts bin as it opens: its shelves along the top, a grid of part pictures with their names, and how many it shows at the foot.](/docs/img/parts-bin-shelves.webp "The bin's shelves and its parts.")
 
 **Recent** keeps the parts you used last. Right-click a part to keep it in **Favourites**. **Techniques** holds worked constructions from real sets, such as a row of hinged plates or a SNOT wall: a click takes one whole into hand, [[R]] turns it, and a click puts it down.
 
@@ -76,6 +80,12 @@ Select a part, or take one in hand, and choose **Like this** beside Fits: the bi
 The palette under the bin holds every colour parts are made in, and a part's own colours come first. [[[]] and [[]]] step through them, and [[Shift+C]] finds one by name or LDraw number. A part is drawn in its true colour, transparent and metallic finishes included.
 
 Tick **Only parts made in it** beside the colour's name and the bin lists only the parts real sets have in that colour, *Sand Green* or any other; choose another colour and the list follows it.
+
+With a part in hand, rest the pointer on a colour: its tooltip says in how many sets the part comes in it, *3001 comes in it, in 1,011 sets*. In three sets or fewer it says *rare in this colour*: a piece lost in it is hard to replace. The counts are Rebrickable's set inventories, a set's own parts and its minifigures', not its spares, and not a set counted again for a pack that holds it.
+
+<!-- covers
+ui:rare colours in the bin
+-->
 
 ## Swap, list and plain parts {#swap}
 

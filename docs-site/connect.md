@@ -28,7 +28,11 @@ Every app adds Brickworks at the same address, signs in the same way and builds 
 
 ## In the app {#in-the-app}
 
+![Or connect your AI, at the foot of the assistant panel: Your AI set to Claude, what each Claude plan needs, and the Connect Claude button.](/docs/img/connect-your-ai.webp "Tools › Connect your AI…: choose your app, then Connect.")
+
 **Connect your AI**, at the foot of the assistant panel (or **Tools › Connect your AI…**), starts on Claude. Choose the app you use under **Your AI**, then press **Connect**: it opens that app's link, copies its command, or copies the address and opens its page, as its card above says, with its steps, who can add it and what it cannot do yet under the button. Then sign in to Brickworks and **Allow**, once for each app.
+
+![The Brickworks page Claude opens: signed in as you@example.com, it asks Let Claude build in Brickworks?, lists what Claude will be able to do, and has Allow and Cancel buttons.](/docs/img/connect-allow.webp "The one question Brickworks asks, once for each app.")
 
 <!-- covers
 ui:connect your AI
@@ -46,7 +50,7 @@ Measured at the default setting, a small house took 11 minutes and $2.40, and a 
 
 ## Another AI on your own key {#other-ai}
 
-In the desktop app, coming soon, **Tools › Settings…**, **AI…** sets another AI on your own key, from OpenAI, Google Gemini, OpenRouter and others: see [Another AI on your own key](/docs/ai#other-ais).
+**Tools › Settings…**, then **AI: Claude…**, sets another AI on your own key, from OpenAI, Google Gemini, OpenRouter and others, in the web app as in the desktop's: see [Another AI on your own key](/docs/ai#other-ais).
 
 > [!NOTE]
 > A key stays in your browser or on your computer, and is sent only to its own provider. The page's security policy refuses to send anything anywhere but its own short list, so a key has nowhere else to go.

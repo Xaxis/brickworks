@@ -30,6 +30,16 @@
 ## in here is not asked again. Not asked offline, nor by a deployment from
 ## before the question.
 ##
+## Then, while the beta is open, a new account's welcome to it (betajoin,
+## 2026-11-09): joining the beta is a step of signing up. Once, right after
+## the code and the age question: what Brickworks is, that it is in beta,
+## what a tester does and gets, and Join the beta testers or Not now, with
+## nothing chosen for them. Join makes the account a tester at once and
+## says so in place, with where things are now and Start building; Not now
+## lets them in, and the deployment keeps either answer, so it is never
+## asked again ([method Account.join_beta], [method Account.leave_beta]).
+## The deployment says when it is due ([member Account.beta_welcome]).
+##
 ## Not shown at all when nobody is in front of the window: a probe, a
 ## headless run, or a command-line run that renders, exports or designs
 ## and quits (Main._gate_wanted). And not when the deployment has no
@@ -63,6 +73,20 @@ var _age_note: Label
 var _refused: VBoxContainer
 var _gone: Label
 var _answering: bool = false
+## The beta's welcome: its words and two choices, then the thank-you after
+## Join, which stays until Start building.
+var _beta_mark: Label
+var _welcome: VBoxContainer
+var _welcome_join: Button
+var _welcome_later: Button
+var _welcome_note: Label
+var _thanks: VBoxContainer
+var _thanks_go: Button
+var _thanking: bool = false
+var _welcome_busy: bool = false
+var _welcome_shown: bool = false
+## The rule over what an account is, which the welcome leaves out.
+var _rule: HSeparator
 
 const MONTHS: PackedStringArray = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
 	"Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -122,6 +146,16 @@ func setup(with_account: Account) -> void:
 	name_label.add_theme_font_size_override("font_size", 14)
 	name_label.modulate = Color(1, 1, 1, 0.75)
 	mark.add_child(name_label)
+	# The beta named beside the name, small, in the brick's yellow: the
+	# welcome's only label, not a banner.
+	_beta_mark = Label.new()
+	_beta_mark.text = "Open beta"
+	_beta_mark.uppercase = true
+	_beta_mark.add_theme_font_size_override("font_size", 11)
+	_beta_mark.add_theme_color_override("font_color", Color(0.95, 0.80, 0.22))
+	_beta_mark.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_beta_mark.visible = false
+	mark.add_child(_beta_mark)
 
 	_title = Label.new()
 	_title.text = "Sign in to start building"
@@ -164,8 +198,10 @@ func setup(with_account: Account) -> void:
 	column.add_child(_unreachable)
 
 	_build_age(column)
+	_build_welcome(column)
 
-	column.add_child(HSeparator.new())
+	_rule = HSeparator.new()
+	column.add_child(_rule)
 	# What an account is and is not, where it is asked for.
 	_keeps = _line(keeps_words(), 11, 0.6)
 	column.add_child(_keeps)
@@ -221,6 +257,121 @@ func _build_age(column: VBoxContainer) -> void:
 		11, 0.6))
 
 
+## The beta's welcome and the thank-you after Join.
+func _build_welcome(column: VBoxContainer) -> void:
+	_welcome = VBoxContainer.new()
+	_welcome.add_theme_constant_override("separation", 10)
+	column.add_child(_welcome)
+	_welcome.add_child(_line("A CAD for LEGO® models: every LDraw part, joined where the real ones "
+		+ "join.", 15, 0.95))
+	_welcome.add_child(_line("It is in open beta: it works, and it gets better every week with what "
+		+ "builders tell us.", 13, 0.8))
+	_welcome.add_child(_aside("Testers try new features first and tell us what is wrong. The "
+		+ "first 100 we pick get a month of Pro."))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	_welcome.add_child(row)
+	_welcome_join = Button.new()
+	_welcome_join.text = "Join the beta testers"
+	_welcome_join.theme_type_variation = &"DefaultButton"
+	_welcome_join.custom_minimum_size = Vector2(0, 38)
+	_welcome_join.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_welcome_join.focus_mode = Control.FOCUS_NONE
+	_welcome_join.pressed.connect(_join)
+	row.add_child(_welcome_join)
+	_welcome_later = Button.new()
+	_welcome_later.text = "Not now"
+	_welcome_later.custom_minimum_size = Vector2(0, 38)
+	# Two to one, as the site's pair: Not now a real button, not its words
+	# against the border; Join keeps its words whole in any language.
+	_welcome_join.size_flags_stretch_ratio = 2.0
+	_welcome_later.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_welcome_later.focus_mode = Control.FOCUS_NONE
+	_welcome_later.pressed.connect(_not_now)
+	row.add_child(_welcome_later)
+	_welcome_note = _line("", 12, 1.0)
+	_welcome_note.add_theme_color_override("font_color", Color(1.0, 0.72, 0.45))
+	_welcome_note.visible = false
+	_welcome.add_child(_welcome_note)
+	_welcome.add_child(_line("Joining agrees to the beta's terms and to emails about the beta. "
+		+ "Leave any time in Account.", 11, 0.6))
+
+	_thanks = VBoxContainer.new()
+	_thanks.add_theme_constant_override("separation", 10)
+	column.add_child(_thanks)
+	_thanks.add_child(_line("Thank you. Report a bug whenever something is wrong, from wherever you "
+		+ "are. What you send, and our answers, are kept with your account.", 14, 0.9))
+	_thanks.add_child(_aside("For a month of Pro, tell us what you build on the beta's page: it "
+		+ "takes a minute."))
+	var about: LinkButton = Look.link("Tell us what you build", 12)
+	about.uri = (Origin.here() if OS.has_feature("web") else Deployment.api_base()) + "/beta#about"
+	_thanks.add_child(about)
+	_thanks_go = Button.new()
+	_thanks_go.text = "Start building"
+	_thanks_go.theme_type_variation = &"DefaultButton"
+	_thanks_go.custom_minimum_size = Vector2(0, 38)
+	_thanks_go.focus_mode = Control.FOCUS_NONE
+	_thanks_go.pressed.connect(func() -> void:
+		_thanking = false
+		_follow())
+	_thanks.add_child(_thanks_go)
+
+
+## A line set apart: the tester's part, on a faint panel with the brick's
+## yellow down its left edge.
+func _aside(text: String) -> PanelContainer:
+	var panel := PanelContainer.new()
+	var face := StyleBoxFlat.new()
+	face.bg_color = Color(1, 1, 1, 0.05)
+	face.border_color = Color(0.95, 0.80, 0.22, 0.9)
+	face.border_width_left = 3
+	face.corner_radius_top_right = 4
+	face.corner_radius_bottom_right = 4
+	face.content_margin_left = 12
+	face.content_margin_right = 10
+	face.content_margin_top = 8
+	face.content_margin_bottom = 8
+	panel.add_theme_stylebox_override("panel", face)
+	panel.add_child(_line(text, 13, 0.92))
+	return panel
+
+
+func _join() -> void:
+	if _welcome_busy:
+		return
+	_welcome_busy = true
+	_welcome_join.disabled = true
+	_welcome_later.disabled = true
+	_welcome_note.visible = false
+	var problem: String = await account.join_beta("app")
+	_welcome_busy = false
+	_welcome_join.disabled = false
+	_welcome_later.disabled = false
+	if not problem.is_empty():
+		_welcome_note.text = problem
+		_welcome_note.visible = true
+		return
+	_thanking = true
+	_follow()
+
+
+func _not_now() -> void:
+	if _welcome_busy:
+		return
+	_welcome_busy = true
+	_welcome_join.disabled = true
+	_welcome_later.disabled = true
+	var problem: String = await account.leave_beta()
+	_welcome_busy = false
+	_welcome_join.disabled = false
+	_welcome_later.disabled = false
+	if not problem.is_empty():
+		# Not kept: let in all the same. The welcome comes again at the next
+		# sign-in, which is the most it can do.
+		account.beta_welcome = false
+	_follow()
+
+
 ## Whether the age question was showing at the last _follow: the keys are
 ## put on it once, as it shows.
 var _asked_shown: bool = false
@@ -268,6 +419,10 @@ func _ready() -> void:
 func controls_by_name() -> Dictionary:
 	if not visible:
 		return {}
+	if _welcome.visible:
+		return {"beta_join": _welcome_join, "beta_not_now": _welcome_later}
+	if _thanks.visible:
+		return {"beta_start": _thanks_go}
 	if _age.visible:
 		var asked: Dictionary = {"age_year": _year, "age_go": _age_go}
 		for at: int in _months.size():
@@ -322,10 +477,21 @@ func _follow() -> void:
 	var asking_age: bool = signed_in and account.age_ask and not account.refused
 	var waiting: bool = signed_in and (account.asking_who or (account.age_ask and account.refused)) \
 		and not asking_age
-	visible = not account.lets_in() or asking_age or waiting
+	# The beta's welcome after the age question, and its thank-you.
+	if not signed_in:
+		_thanking = false
+	var thanking: bool = signed_in and _thanking and not asking_age
+	var welcoming: bool = signed_in and account.beta_welcome and not asking_age and not waiting \
+		and not thanking
+	visible = not account.lets_in() or asking_age or waiting or welcoming or thanking
 	var told: bool = account.refused and state == Account.State.SIGNED_OUT
 	_title.text = "One question first" if asking_age else (
-		"Accounts are for 13 and over" if told else "Sign in to start building")
+		"Welcome to Brickworks" if welcoming else (
+		"You are a beta tester" if thanking else (
+		"Accounts are for 13 and over" if told else "Sign in to start building")))
+	_beta_mark.visible = welcoming or thanking
+	_welcome.visible = welcoming
+	_thanks.visible = thanking
 	_age.visible = asking_age
 	_refused.visible = told
 	_gone.visible = account.refused_now
@@ -333,6 +499,8 @@ func _follow() -> void:
 	_form.visible = state == Account.State.SIGNED_OUT
 	_unreachable.visible = state == Account.State.UNREACHABLE
 	_keeps.text = keeps_words()
+	_keeps.visible = not (welcoming or thanking)
+	_rule.visible = _keeps.visible
 	_ended.text = account.ended
 	_ended.visible = state == Account.State.SIGNED_OUT and not account.ended.is_empty()
 	if _form.visible and not _shown_form:
@@ -346,6 +514,11 @@ func _follow() -> void:
 	if asking_age and not _asked_shown:
 		_months[0].grab_focus.call_deferred(true)
 	_asked_shown = asking_age
+	if welcoming and not _welcome_shown:
+		_welcome_join.grab_focus.call_deferred(true)
+	_welcome_shown = welcoming
+	if thanking:
+		_thanks_go.grab_focus.call_deferred(true)
 
 
 ## Every click and key that reaches here while it is up stops here: they
