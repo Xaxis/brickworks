@@ -270,7 +270,7 @@ function wordsOf(kind, data, origin) {
           + "more, it is read with the others."] : []),
         `What you told us is kept with your account and deleted with it: ${origin}/privacy#beta.`,
       ],
-      action: { label: "See your application", href: `${origin}/beta#apply` },
+      action: { label: "See your application", href: `${origin}/beta#about` },
     };
   }
   if (kind === "approved" && data.early) {

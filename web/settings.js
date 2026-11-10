@@ -243,7 +243,7 @@ function drawBeta(said) {
     : say("Brickworks is in open beta. Testers try new features first and tell us what is wrong; the first 100 we pick get a month of Pro.");
   $("beta-join").hidden = tester;
   $("beta-hub").hidden = !tester;
-  $("beta-hub").href = `${langAt()}/beta-hub`;
+  $("beta-hub").href = `${langAt()}/beta`;
   $("beta-leave").hidden = !tester;
   const month = monthSaid(said.month || said);
   $("beta-month").hidden = !tester;
@@ -251,7 +251,7 @@ function drawBeta(said) {
   if (tester && month) $("beta-month").append(month);
   if (tester && !month) {
     const about = make("a", "", say("tell us what you build"));
-    about.href = `${langAt()}/beta#apply`;
+    about.href = `${langAt()}/beta#about`;
     $("beta-month").append(sayInto(make("span"), say("For a month of Pro, {link}: it takes a minute."), { link: about }));
   }
 }
@@ -288,6 +288,8 @@ async function betaPress(op, button) {
     return;
   }
   drawBeta(answer.body);
+  // The beta's bar (web/betabar.js) redraws from it, in this tab at once.
+  dispatchEvent(new CustomEvent("brickworks:beta", { detail: answer.body }));
   $("beta-status").textContent = answer.body.tester ? say("Joined. You are a beta tester.")
     : say("You left the beta. Join again any time.");
   (answer.body.tester ? $("beta-leave") : $("beta-join")).focus();

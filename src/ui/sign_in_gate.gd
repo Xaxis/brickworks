@@ -304,7 +304,7 @@ func _build_welcome(column: VBoxContainer) -> void:
 	_thanks.add_child(_aside("For a month of Pro, tell us what you build on the beta's page: it "
 		+ "takes a minute."))
 	var about: LinkButton = Look.link("Tell us what you build", 12)
-	about.uri = (Origin.here() if OS.has_feature("web") else Deployment.api_base()) + "/beta#apply"
+	about.uri = (Origin.here() if OS.has_feature("web") else Deployment.api_base()) + "/beta#about"
 	_thanks.add_child(about)
 	_thanks_go = Button.new()
 	_thanks_go.text = "Start building"
