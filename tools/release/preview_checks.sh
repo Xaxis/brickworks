@@ -193,6 +193,11 @@ declare -A CMD=(
   # "Build together" and goes there, the pages list folds on a phone, and
   # what is on this page follows the reading.
   [docs]="tools/web/docs_flow.mjs --url=$P --out=$S/${TAG}_docs"
+  # local only: docs_shots_flow.mjs. It takes the docs' pictures of the
+  # site (tools/docs_shots.py), a site put together from the checkout with
+  # what each page asks answered from the manifest; a picture it makes is a
+  # file the commit carries, and [docs] holds each one shown on a
+  # deployment.
   # Every page and dialog, each visible control judged against the design
   # system's tokens (web/site.css, docs/DESIGN_SYSTEM.md); the API answered
   # by its stand-in, so no account is made.
