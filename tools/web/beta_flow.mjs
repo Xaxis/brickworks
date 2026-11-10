@@ -339,6 +339,8 @@ try {
     check(`the month: ${app?.comp} ${app?.month_starts_at || ""} to ${app?.month_ends_at || ""}`
       + `${granted ? " (given at Admission's test mode)" : " (pending)"}`, granted || app?.comp === "pending");
     ({ page, context } = await open("/beta", { width: 1280, who: a, label: "approved" }));
+    // A tester's parts come with GET op=beta_hub, after the page is drawn.
+    await until(page, () => document.getElementById("testers")?.hidden === false);
     said = await betaSaid(page);
     check(`the hub: a tester's, with what we know is wrong: ${said.shown}, ${said.sections.join(", ")}`, said.shown === "tester"
       && said.sections.includes("testers"));

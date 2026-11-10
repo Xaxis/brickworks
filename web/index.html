@@ -132,8 +132,12 @@
 @media (width >= 900px) { .beta-panel { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); align-items: center; gap: var(--s-7); } }
 .beta-words .title { margin-bottom: var(--s-3); }
 .beta-words .lede { margin-bottom: var(--s-5); }
-#beta-acts { min-height: var(--control-h); }
-#beta-acts > [hidden] { display: none; }
+/* The way in's three rows laid in one place, those not shown kept but
+   invisible: it holds the tallest's room at every width (two buttons
+   stacked in a narrow panel) whichever it shows (beta.html's likewise). */
+#beta-acts { display: grid; }
+#beta-acts > * { grid-area: 1 / 1; align-self: start; }
+#beta-acts > [hidden] { display: flex; visibility: hidden; }
 #beta-said { min-height: 1lh; margin-top: var(--s-3); }
 /* What joining agrees to; a tester has joined. */
 #beta-terms { margin-top: var(--s-2); }

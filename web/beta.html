@@ -63,10 +63,13 @@
 .spots { min-height: 1lh; margin: 0 0 var(--s-5); font-size: var(--t-lede); }
 @media (width < 600px) { .spots { min-height: 2lh; } }
 .spots .bone { display: inline-block; width: 14em; max-width: 80%; vertical-align: middle; }
-/* The way in, held at a big button's height until the page knows who is
-   reading; then one of the three. */
-#beta-acts { min-height: 52px; }
-#beta-acts > [hidden] { display: none; }
+/* The way in: its three rows laid in one place, those not shown kept but
+   invisible, so it holds the tallest's room at every width (on a phone, two
+   big buttons stacked) from the first frame, before the page knows who is
+   reading, and whichever it then shows: nothing under it moves. */
+#beta-acts { display: grid; }
+#beta-acts > * { grid-area: 1 / 1; align-self: start; }
+#beta-acts > [hidden] { display: flex; visibility: hidden; }
 /* What joining agrees to, under the way in, from the first frame (off, its
    room kept and nothing in it). */
 .beta-head .terms { max-width: 34rem; margin: var(--s-4) auto 0; color: var(--ink-soft); font-size: var(--t-small); }
