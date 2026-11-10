@@ -254,11 +254,11 @@
       "area": "web",
       "tests": [
         "tests/test_beta.py",
+        "tests/test_beta_join.py",
         "tests/test_billing_pay.py",
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
-        "tests/test_site_lang.py",
         "tests/test_site_shell.py"
       ]
     },
@@ -530,7 +530,23 @@
       "id": "cli:beta browser flow",
       "kind": "cli",
       "entry": "tools/web/beta_flow.mjs",
-      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/beta_flow.mjs --url=<preview> --out=DIR   (a preview from tools/deploy.sh --unit --billing-stand-in --beta-open, or the beta off: Coming soon and refused; preview check [beta])",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/beta_flow.mjs --url=<preview> --out=DIR   (a preview from tools/deploy.sh --unit --billing-stand-in --beta-open, or the beta off: Coming soon and refused; joining refused off, and an approved tester leaves and joins again with the month and spot as they were; preview check [beta])",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:betajoin browser flow",
+      "kind": "cli",
+      "entry": "tools/web/betajoin_flow.mjs",
+      "reach": "node tools/web/betajoin_flow.mjs --url=http://127.0.0.1:9960 --owner=<its MASTER_EMAIL> [--off=URL] [--before=URL] --out=DIR   (a local server with BRICKWORKS_BETA=open and --hold=feedback until beta_join.sql is applied; see its head)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:betajoin probe",
+      "kind": "cli",
+      "entry": "src/dev/betajoin_probe.gd",
+      "reach": "BRICKWORKS_API=http://127.0.0.1:9960 tools/probe.sh betajoin_probe [-- off]   (windowed, live: the real form, the welcome, Join, Account's Beta row, Not now never asked again; off: no welcome, no row, 403; skipped without BRICKWORKS_API)",
       "area": "web",
       "tests": []
     },
@@ -2120,6 +2136,7 @@
       "area": "web",
       "tests": [
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/test_beta_join.py",
         "tests/test_coming_soon.py",
         "tests/test_feedback.py",
         "tests/test_release_train.py"
@@ -2131,14 +2148,6 @@
       "entry": "src/dev/quit_probe.gd",
       "reach": "godot --headless --path . --script src/dev/quit_probe.gd",
       "area": "view",
-      "tests": []
-    },
-    {
-      "id": "cli:rarity probe",
-      "kind": "cli",
-      "entry": "src/dev/rarity_probe.gd",
-      "reach": "tools/probe.sh rarity_probe -- --shots=DIR   (windowed, 1400x900, signed in through the gate with a throwaway account from .env: at 1400x900 and 1280x720, 3001 typed and clicked, Red's and a rare colour's tooltips rested on and read against its colours file, every swatch in sight, 7049b's Black; the three sentences in de, fr and es); python3 tools/minitest.py tests/test_collection.py (ten parts in a colour counted straight off Rebrickable's tables)",
-      "area": "parts",
       "tests": []
     },
     {
@@ -2606,14 +2615,6 @@
       "tests": []
     },
     {
-      "id": "cli:the beta's homepage and bar browser flow",
-      "kind": "cli",
-      "entry": "tools/web/betahome_flow.mjs",
-      "reach": "node tools/web/betahome_flow.mjs --out=DIR   (the stand-in: the bar on every page at 390 and 1280, light and dark, hidden for a day, its three presses; the homepage for each visitor; /beta as the hub; the beta off: nothing drawn; --url=<preview> with BW_BYPASS for a deployment; preview check [betahome])",
-      "area": "web",
-      "tests": []
-    },
-    {
       "id": "cli:the booklet by hand in a browser",
       "kind": "cli",
       "entry": "tools/web/booklet_edit_flow.mjs",
@@ -2633,7 +2634,7 @@
       "id": "cli:the feedback stand-in",
       "kind": "cli",
       "entry": "tools/web/feedback_stand_in.mjs",
-      "reach": "node tools/web/relay_server.mjs 9060 --static=build/web --hold=feedback   (supabase/beta.sql and feedback.sql in a Postgres of this machine's own, PG_BIN and PG_MODULE set; GET /__held/feedback)",
+      "reach": "node tools/web/relay_server.mjs 9060 --static=build/web --hold=feedback   (supabase/beta.sql, feedback.sql and beta_join.sql in a Postgres of this machine's own, PG_BIN and PG_MODULE set; GET /__held/feedback)",
       "area": "web",
       "tests": []
     },
@@ -3452,6 +3453,14 @@
       "entry": "src/assembly/flex_follow.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 --script src/dev/grab_probe.gd -- --only=hoses   (by hand: open 42080-1 and raise the crane's arm; its pneumatic tubes from the cab bend and follow; drag an arm a tube is too short for and it stops, the status bar naming the tube)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "lib:joining the beta's testers",
+      "kind": "lib",
+      "entry": "supabase/beta_join.sql",
+      "reach": "python3 tools/minitest.py tests/test_beta_join.py   (tests/fixtures/beta/join_check.mjs: the API over beta.sql, feedback.sql and beta_join.sql in a Postgres of its own; welcome, join, Not now, leave, the month untouched, the owner's list, off, and before the file); PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/beta_join.sql --dry --table=beta_testers",
+      "area": "web",
       "tests": []
     },
     {
@@ -4352,7 +4361,7 @@
       "id": "ui:accessibility",
       "kind": "ui",
       "entry": "src/ui/access.gd",
-      "reach": "godot --path .  (Tab from the model into the frame, Return on a part and Return again to put it down; Settings, Interface size and Reduce motion; with Orca running, each control said by its name)  /  tools/probe.sh a11y_modal_probe  (windowed: the app run where a screen reader is on, in a D-Bus session of its own, each window read over AT-SPI as Orca finds it, pointed at and from the focus: every dialog that holds the window MODAL, the Reference picture not, the focus inside the top dialog)  /  tools/probe.sh a11y_tree_probe  (windowed, the same bus: browsing the window from its root reaches the menus, toolbar, parts bin, view, properties and status line in reading order; each panel put away gone from the tree the frame after, and Clear the baseplate's question found by pointing where it was; each dialog and menu said where it is drawn, within 2 px; src/ui/access_tree.gd)",
+      "reach": "godot --path .  (Tab from the model into the frame, Return on a part and Return again to put it down; Settings, Interface size and Reduce motion; with Orca running, each control said by its name)  /  tools/probe.sh a11y_modal_probe  (windowed: the app run where a screen reader is on, in a D-Bus session of its own, each window read over AT-SPI as Orca finds it, pointed at and from the focus: every dialog that holds the window MODAL, the Reference picture not, the focus inside the top dialog)",
       "area": "building",
       "tests": [
         "tests/fixtures/relay/world.mjs"
@@ -4458,12 +4467,12 @@
       "id": "ui:beta page",
       "kind": "ui",
       "entry": "web/beta.html",
-      "reach": "<deployment>/beta   (the beta's hub, web/beta.js; BRICKWORKS_BETA off: Coming soon, no way in, no count; open: the months of Pro left, the way in for each visitor (signed out Sign up and join, signed in Join the beta, a tester Report a bug and Your reports), what testers get, how to report, this week's releases from /changelog.json, the questions; a tester: what to try, known issues, early features from GET /api/plans?op=beta_hub; /beta-hub answers 308 here; tools/web/beta_flow.mjs, tools/web/betahome_flow.mjs)",
+      "reach": "<deployment>/beta   (BRICKWORKS_BETA off: Coming soon, no form, no count; open: the spots left live, signed out Sign in to apply, signed in the form (web/beta.js), applied where it stands; tools/web/beta_flow.mjs)",
       "area": "web",
       "tests": [
         "tests/test_beta.py",
-        "tests/test_feedback.py",
-        "tests/test_site_lang.py"
+        "tests/test_beta_join.py",
+        "tests/test_feedback.py"
       ]
     },
     {
@@ -4552,9 +4561,7 @@
       "entry": "web/changelog.html",
       "reach": "https://brickworks.diy/changelog   (filled from CHANGELOG.md by tools/site.py)",
       "area": "web",
-      "tests": [
-        "tests/test_beta.py"
-      ]
+      "tests": []
     },
     {
       "id": "ui:check for updates reinstall and restart",
@@ -4742,6 +4749,7 @@
       "area": "web",
       "tests": [
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/test_beta_join.py",
         "tests/test_coming_soon.py",
         "tests/test_feedback.py",
         "tests/test_release_train.py"
@@ -5406,14 +5414,6 @@
       "tests": []
     },
     {
-      "id": "ui:rare colours in the bin",
-      "kind": "ui",
-      "entry": "src/ui/parts_bin.gd",
-      "reach": "godot --path .  (a part in hand, a swatch's tooltip says in how many sets it comes in that colour, \"3001 comes in it, in 1,011 sets\", and \"rare in this colour\" in three sets or fewer: PartLibrary.sets_in_colour, from assets/generated/sets/colours_NN.json, fetched from the deployment's /sets/ on the web)",
-      "area": "parts",
-      "tests": []
-    },
-    {
       "id": "ui:recent and favourite parts",
       "kind": "ui",
       "entry": "src/ui/part_shelf.gd",
@@ -5479,7 +5479,6 @@
       "reach": "https://brickworks.diy/m/<id>, /u/<handle>, /c/<id>   (Report it opens a dialog; /api/people?op=report)",
       "area": "web",
       "tests": [
-        "tests/test_beta.py",
         "tests/test_comment_mentions.py",
         "tests/test_feedback.py"
       ]
@@ -5808,18 +5807,37 @@
       "tests": []
     },
     {
-      "id": "ui:the beta bar",
+      "id": "ui:the beta hub",
       "kind": "ui",
-      "entry": "web/betabar.js",
-      "reach": "<deployment>/ any page, with the beta open (tools/deploy.sh --unit --beta-open)   (web/theme.js asks for it; Open beta to /beta, Report a bug (window.brickworksReportBug of web/bugreport.js, else Send feedback as a bug), Join or You're a tester; its x hides it for a day; none with the beta off, on an embed or on the consent page; tools/web/betahome_flow.mjs)",
+      "entry": "web/beta-hub.html",
+      "reach": "<deployment>/beta-hub   (signed out: sign in; not a tester: for testers; a tester: what's new, known issues, early features, how to tell us; GET /api/plans?op=beta_hub; Help, Beta hub in the app for a tester)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/fixtures/feedback/api_check.mjs",
+        "tests/test_site_lang.py"
+      ]
     },
     {
       "id": "ui:the beta's owner queue",
       "kind": "ui",
       "entry": "web/beta-admin.html",
       "reach": "<deployment>/beta-admin as MASTER_EMAIL (?tests=1 the checks' pool): GET /api/admin?op=beta, POST ?op=beta_decide&account=U {decision, note}, POST ?op=beta_grant",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:the beta's welcome at sign-up",
+      "kind": "ui",
+      "entry": "web/beta-welcome.js",
+      "reach": "the beta open, a new account signs in by the dialog (web/account.js askAgeIfAsked, after the age question): Join the beta testers or Not now (POST /api/plans?op=beta_join, ?op=beta_leave); Settings' Beta row (#beta-part) joins or leaves in one press; tools/web/betajoin_flow.mjs",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:the beta's welcome in the app",
+      "kind": "ui",
+      "entry": "src/ui/sign_in_gate.gd",
+      "reach": "the beta open, a new account past the code and the age question: the sign-in screen's welcome (beta_join, beta_not_now, beta_start), and Account's Beta row (account_beta); tools/probe.sh betajoin_probe with BRICKWORKS_API",
       "area": "web",
       "tests": []
     },
@@ -5929,14 +5947,6 @@
         "tests/test_release_train.py",
         "tests/test_site_shell.py"
       ]
-    },
-    {
-      "id": "ui:the homepage's open beta",
-      "kind": "ui",
-      "entry": "web/landing.js",
-      "reach": "<deployment>/ with the beta open   (#beta under the first screen: why to join, three points, the way in for each visitor, the months of Pro left from ?op=beta_spots; held from the first frame by <html data-beta>, else put in only while out of sight; tools/web/betahome_flow.mjs)",
-      "area": "web",
-      "tests": []
     },
     {
       "id": "ui:the hover drawn at the device's pace",

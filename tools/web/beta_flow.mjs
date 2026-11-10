@@ -37,6 +37,11 @@
 //   7. Deleting an account (POST /api/account?op=delete, the person's own
 //      path) erases its application and its emails.
 //
+// Joining the testers (betajoin, op=beta_join and op=beta_leave) is never
+// money: off, joining is refused and leaving takes nothing; open, the
+// approved tester leaves and joins again with the month and its spot as
+// they were, and the spots left the same.
+//
 // Before either: what testers get is what Pro is (every model kept and
 // commercial use), the desktop app is not sold as theirs, and no ChatGPT.
 //
@@ -207,6 +212,19 @@ try {
     made.push(address("off"));
     const r = await api("/api/plans?op=beta", { method: "POST", token: someone.access_token, body: form });
     check(`POST an application is refused: ${r.status} ${r.json?.error}`, r.status === 403 && r.json?.beta === "off");
+    // Joining the testers too (betajoin); leaving is anybody's, whatever the switch.
+    const join = await api("/api/plans?op=beta_join", { method: "POST", token: someone.access_token, body: { via: "site" } });
+    check(`op=beta_join is refused: ${join.status} ${join.json?.error}`, join.status === 403 && join.json?.beta === "off");
+    // Before supabase/beta_join.sql is applied there is nothing to leave:
+    // 503, as joining answers then (api/_beta.js refused, notYet).
+    const leave = await api("/api/plans?op=beta_leave", { method: "POST", token: someone.access_token, body: {} });
+    if (leave.status === 503) {
+      check(`op=beta_leave before beta_join.sql is applied: 503 "${leave.json?.error}"`,
+        /not open here yet/.test(leave.json?.error || ""));
+    } else {
+      check(`op=beta_leave answers off, and takes nothing: ${leave.status} ${JSON.stringify(leave.json)}`,
+        leave.status === 200 && leave.json?.beta === "off" && leave.json?.tester === false);
+    }
     for (const [width, theme] of [[390, "dark"], [1280, "light"]]) {
       const { page, context } = await open("/beta", { width, theme, label: `off ${width}` });
       const said = await betaSaid(page);
@@ -292,6 +310,26 @@ try {
     check(`1280 approved: nothing moved as it loaded and scrolled: ${moved}`, moved < 0.02);
     await shot(page, "beta-approved-1280.png");
     await context.close();
+
+    // Joining and leaving the testers (betajoin): at once, and never money.
+    // A tester who leaves keeps the month and its spot, and joining again
+    // takes no other. Before supabase/beta_join.sql is applied, joining
+    // answers 503 and nothing changes.
+    r = await api("/api/plans?op=beta_join", { method: "POST", token: a.access_token, body: { via: "site" } });
+    if (r.status === 503) {
+      check(`op=beta_join before beta_join.sql is applied: 503 "${r.json?.error}"`, /not open here yet/.test(r.json?.error || ""));
+    } else {
+      check(`op=beta_join: ${r.status}, tester ${r.json?.tester}`, r.status === 200 && r.json?.tester === true);
+      r = await api("/api/plans?op=beta_leave", { method: "POST", token: a.access_token, body: {} });
+      const kept = r.json?.application;
+      check(`op=beta_leave: tester ${r.json?.tester}, ${r.json?.state}`, r.status === 200 && r.json?.tester === false
+        && r.json?.state === "left");
+      check(`...the month as it was: ${kept?.status}, spot ${kept?.spot}, ${kept?.comp}; ${r.json?.pool?.left} spots left`,
+        kept?.status === "approved" && kept?.spot === 98 && kept?.comp === app?.comp && r.json?.pool?.left === 2);
+      r = await api("/api/plans?op=beta_join", { method: "POST", token: a.access_token, body: { via: "site" } });
+      check(`...and joins again: tester ${r.json?.tester}, spot ${r.json?.application?.spot}, ${r.json?.pool?.left} left`,
+        r.json?.tester === true && r.json?.application?.spot === 98 && r.json?.pool?.left === 2);
+    }
 
     // --- 4. The approved email ----------------------------------------------------
     console.log("4. The emails");

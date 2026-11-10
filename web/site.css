@@ -561,6 +561,20 @@ dialog.first-steps .kinds { margin: 0 0 var(--s-5); }
 dialog.first-steps .models { margin: 0 0 var(--s-2); grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-3); }
 @media (width < 600px) { dialog.first-steps .models { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 dialog.first-steps .actions { margin-top: var(--s-5); }
+/* The beta's welcome after a first sign-in (beta-welcome.js): what
+   Brickworks is in the ink, the beta and the tester's part under it, the
+   two choices, and the terms in the quiet line last. */
+dialog.beta-welcome { width: min(460px, calc(100vw - 32px)); }
+dialog.beta-welcome .eyebrow { margin-bottom: var(--s-2); }
+dialog.beta-welcome .what { color: var(--ink); font-size: var(--t-lede); line-height: 1.45; text-wrap: pretty; }
+dialog.beta-welcome .gets {
+	padding: 10px 12px; border-left: 3px solid var(--accent-edge); background: var(--panel-hi);
+	border-radius: 0 var(--r-1) var(--r-1) 0; color: var(--ink); text-wrap: pretty;
+}
+dialog.beta-welcome .actions { margin-top: var(--s-5); }
+dialog.beta-welcome .note { margin: var(--s-3) 0 0; }
+/* On a phone the two choices stack, each the dialog's width, Join on top. */
+@media (width < 600px) { dialog.beta-welcome .actions .cta { flex: 1 1 100%; } }
 
 /* A person to follow (the feed's designers, First steps): their avatar,
    their name and best models, and Follow. A list of them is .people-list. */

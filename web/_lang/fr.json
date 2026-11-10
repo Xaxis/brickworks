@@ -868,7 +868,6 @@
   "Free is for personal and educational use. Selling what you make with Brickworks, such as instructions, kits, renders or builds made to order, comes with <a href=\"/plans\">Pro</a>, under <a href=\"/terms#commercial-use\">its licence</a>. It covers Brickworks alone, not anyone else’s trademarks or designs.": "L’offre Gratuit est pour un usage personnel et éducatif. Vendre ce que vous créez avec Brickworks, comme des instructions, des kits, des rendus ou des constructions sur commande, passe par <a href=\"/plans\">Pro</a>, selon <a href=\"/terms#commercial-use\">sa licence</a>. Elle ne couvre que Brickworks, jamais les marques ou les créations d’autrui.",
   "Nothing you have is taken away. Every account made before 29 October 2026 keeps Pro, free and with no end date: any number of models kept with your account, and commercial use.": "Rien de ce que vous avez ne vous est retiré. Chaque compte créé avant le 29 octobre 2026 garde Pro, gratuitement et sans date de fin : autant de modèles que vous voulez conservés avec votre compte, et l’usage commercial.",
   "Free is for personal and educational use. Selling what you make with Brickworks, such as instructions, kits, renders or builds made to order, comes with Pro, under its licence in the terms. It covers Brickworks alone, not anyone else’s trademarks or designs.": "L’offre Gratuit est pour un usage personnel et éducatif. Vendre ce que vous créez avec Brickworks, comme des instructions, des kits, des rendus ou des constructions sur commande, passe par Pro, selon sa licence dans les conditions. Elle ne couvre que Brickworks, jamais les marques ou les créations d’autrui.",
-  "Updated 3 November 2026": "Mis à jour le 3 novembre 2026",
   "Paid plans": "Offres payantes",
   "Paying for Pro": "Payer Pro",
   "Refunds": "Remboursements",
@@ -997,7 +996,12 @@
   "Brickworks is in open beta. Join in one press, report a bug from any page with a picture taken for you, and see what changed this week. The first 100 testers we approve get 30 days of Pro, free.": "Brickworks est en bêta ouverte. Rejoignez-la en un clic, signalez un bug depuis n’importe quelle page avec une capture prise pour vous, et voyez ce qui a changé cette semaine. Les 100 premiers testeurs que nous approuvons reçoivent 30 jours de Pro offerts.",
   "Brickworks is in open beta: join in one press, report a bug from any page, and see what changed this week.": "Brickworks est en bêta ouverte : rejoignez-la en un clic, signalez un bug depuis n’importe quelle page, et voyez ce qui a changé cette semaine.",
   "New to try": "Nouveautés à essayer",
-  "Joining agrees to <a href=\"/terms#beta\">the beta’s terms</a> and to emails about the beta. Leave any time in Settings.": "Participer, c’est accepter <a href=\"/terms#beta\">les conditions de la bêta</a> et les e-mails sur la bêta. Vous pouvez la quitter à tout moment dans les Réglages."
+  "Joining agrees to <a href=\"/terms#beta\">the beta’s terms</a> and to emails about the beta. Leave any time in Settings.": "Participer, c’est accepter <a href=\"/terms#beta\">les conditions de la bêta</a> et les e-mails sur la bêta. Vous pouvez la quitter à tout moment dans les Réglages.",
+  "Brickworks is in open beta.": "Brickworks est en bêta ouverte.",
+  "Join the beta testers": "Devenir testeur de la bêta",
+  "Beta hub": "Espace bêta",
+  "Leave the beta": "Quitter la bêta",
+  "Beta": "Bêta"
  },
  "scripts": {
   "Copy": "Copier",
@@ -2518,6 +2522,28 @@
   "spot": "place",
   "spots": "places",
   "Sign in to join the Brickworks beta.": "Connectez-vous pour rejoindre la bêta de Brickworks.",
-  "Sign in again to join the beta.": "Reconnectez-vous pour rejoindre la bêta."
+  "Sign in again to join the beta.": "Reconnectez-vous pour rejoindre la bêta.",
+  "A CAD for LEGO® models, in your browser: every LDraw part, joined where the real ones join.": "Une CAO pour les modèles LEGO®, dans votre navigateur : chaque pièce LDraw, assemblée là où les vraies s’assemblent.",
+  "It is in open beta: it works, and it gets better every week with what builders tell us.": "Il est en bêta ouverte : il fonctionne, et il s’améliore chaque semaine grâce à ce que les constructeurs nous disent.",
+  "Testers try new features first and tell us what is wrong. The first 100 we pick get a month of Pro.": "Les testeurs essaient les nouveautés en premier et nous disent ce qui ne va pas. Les 100 premiers que nous choisissons reçoivent un mois de Pro.",
+  "Join the beta testers": "Devenir testeur de la bêta",
+  "Joining agrees to {terms} and to emails about the beta. Leave any time in Settings.": "Participer, c’est accepter {terms} et les e-mails sur la bêta. Vous pouvez la quitter à tout moment dans les Réglages.",
+  "the beta's terms": "les conditions de la bêta",
+  "You are a beta tester": "Vous êtes testeur de la bêta",
+  "Thank you. Report a bug whenever something is wrong, from wherever you are. What you send, and our answers, are in Settings.": "Merci. Signalez un bug dès que quelque chose ne va pas, où que vous soyez. Ce que vous envoyez, et nos réponses, sont dans les Réglages.",
+  "For a month of Pro, {link}: it takes a minute.": "Pour un mois de Pro, {link} : cela prend une minute.",
+  "tell us what you build": "dites-nous ce que vous construisez",
+  "You have been a beta tester since {day}. Thank you.": "Vous êtes testeur de la bêta depuis le {day}. Merci.",
+  "You are a beta tester. Thank you.": "Vous êtes testeur de la bêta. Merci.",
+  "Brickworks is in open beta. Testers try new features first and tell us what is wrong; the first 100 we pick get a month of Pro.": "Brickworks est en bêta ouverte. Les testeurs essaient les nouveautés en premier et nous disent ce qui ne va pas ; les 100 premiers que nous choisissons reçoivent un mois de Pro.",
+  "Your account has Pro already, free and with no end date.": "Votre compte a déjà Pro, gratuitement et sans date de fin.",
+  "Your month of Pro runs from {starts} to {ends}.": "Votre mois de Pro court du {starts} au {ends}.",
+  "Your month of Pro starts the day Pro launches.": "Votre mois de Pro commence le jour du lancement de Pro.",
+  "Not one of this round's months of Pro. You stay a tester.": "Pas de mois de Pro cette fois-ci. Vous restez testeur.",
+  "We have what you told us, and email you once we decide on your month of Pro.": "Nous avons bien ce que vous nous avez dit, et vous écrirons dès que nous aurons décidé de votre mois de Pro.",
+  "Joined. You are a beta tester.": "C’est fait. Vous êtes testeur de la bêta.",
+  "You left the beta. Join again any time.": "Vous avez quitté la bêta. Vous pouvez revenir à tout moment.",
+  "Confirm your email address first: sign in with a code.": "Confirmez d’abord votre adresse e-mail : connectez-vous avec un code.",
+  "Not open yet: supabase/beta_join.sql is not applied.": "Pas encore ouvert : supabase/beta_join.sql n’est pas appliqué."
  }
 }

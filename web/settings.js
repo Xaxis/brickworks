@@ -1,4 +1,5 @@
-// Your settings, /settings (settings.html): the theme, what Brickworks
+// Your settings, /settings (settings.html): the beta while it is open (join
+// its testers in one press, or leave in one: api/_beta.js), the theme, what Brickworks
 // emails you, orangecheck linked or not (api/orangecheck.js), your age
 // answer, whom your profile shows you follow and whether it shows the
 // models you liked (supabase/avatars.sql), the AI apps that may work
@@ -10,7 +11,7 @@
 // word goes on the page as text, never as markup. Each part asks for its
 // own and draws what came, so one that cannot be read leaves the others.
 import {
-  age, askAgeIfAsked, askToSignIn, call, email, madeUp, orangecheckButton, redeem, sendCode, signOut, signedIn,
+  age, askAgeIfAsked, askToSignIn, betaOpen, call, email, madeUp, orangecheckButton, redeem, sendCode, signOut, signedIn,
 } from "/account.js";
 import { langAt, say, told } from "/card.js";
 import { showFeedCount } from "/follow.js";
@@ -227,6 +228,73 @@ $("oc-code").addEventListener("submit", async (event) => {
 /// Accounts are for 13 and over: an answer under 13 deletes the account, so
 /// only a row from before that says so, and it has nothing public here (the
 /// server refuses it too).
+/// The beta's row, as GET /api/plans?op=beta says it stands (null: off, or
+/// not known): Join for anybody not a tester, and for a tester since when,
+/// the hub, Leave, and where its month of Pro stands.
+function drawBeta(said) {
+  const open = Boolean(said && said.beta === "open" && said.signed_in === true);
+  $("beta-part").hidden = !open;
+  $("beta-toc").hidden = !open;
+  if (!open) return;
+  const tester = said.tester === true;
+  $("beta-said").textContent = tester
+    ? (said.joined_at ? say("You have been a beta tester since {day}. Thank you.", { day: when(said.joined_at) })
+      : say("You are a beta tester. Thank you."))
+    : say("Brickworks is in open beta. Testers try new features first and tell us what is wrong; the first 100 we pick get a month of Pro.");
+  $("beta-join").hidden = tester;
+  $("beta-hub").hidden = !tester;
+  $("beta-hub").href = `${langAt()}/beta-hub`;
+  $("beta-leave").hidden = !tester;
+  const month = monthSaid(said.month || said);
+  $("beta-month").hidden = !tester;
+  $("beta-month").replaceChildren();
+  if (tester && month) $("beta-month").append(month);
+  if (tester && !month) {
+    const about = make("a", "", say("tell us what you build"));
+    about.href = `${langAt()}/beta#apply`;
+    $("beta-month").append(sayInto(make("span"), say("For a month of Pro, {link}: it takes a minute."), { link: about }));
+  }
+}
+
+/// Where a tester's month of Pro stands, in words, from the month's part
+/// of op=beta ({early, application}); "" with nothing told us yet.
+function monthSaid({ early, application } = {}) {
+  if (early) return say("Your account has Pro already, free and with no end date.");
+  if (!application) return "";
+  if (application.status === "approved" && application.comp === "granted") {
+    return say("Your month of Pro runs from {starts} to {ends}.", { starts: when(application.month_starts_at),
+      ends: when(application.month_ends_at) });
+  }
+  if (application.status === "approved") return say("Your month of Pro starts the day Pro launches.");
+  if (application.status === "declined") return say("Not one of this round's months of Pro. You stay a tester.");
+  return say("We have what you told us, and email you once we decide on your month of Pro.");
+}
+
+/// The beta's row asked for and drawn.
+async function beta() {
+  const answer = await call("/api/plans?op=beta");
+  drawBeta(answer.status === 200 ? answer.body : null);
+}
+
+/// Join or leave from the row, in one press: [op] beta_join or beta_leave.
+async function betaPress(op, button) {
+  button.disabled = true;
+  $("beta-status").textContent = "";
+  const answer = await call(`/api/plans?op=${op}`, { method: "POST", body: op === "beta_join" ? { via: "settings" } : {} })
+    .catch(() => null);
+  button.disabled = false;
+  if (!answer || answer.status !== 200) {
+    $("beta-status").textContent = told(answer?.body?.error, say("That did not work just now."));
+    return;
+  }
+  drawBeta(answer.body);
+  $("beta-status").textContent = answer.body.tester ? say("Joined. You are a beta tester.")
+    : say("You left the beta. Join again any time.");
+  (answer.body.tester ? $("beta-leave") : $("beta-join")).focus();
+}
+$("beta-join").addEventListener("click", () => betaPress("beta_join", $("beta-join")));
+$("beta-leave").addEventListener("click", () => betaPress("beta_leave", $("beta-leave")));
+
 function drawAge(kept, handle) {
   const young = Boolean(kept && kept.over_13 === false);
   $("young").hidden = !young;
@@ -253,8 +321,11 @@ async function load() {
     document.documentElement.dataset.settings = "signed-out";
     return;
   }
-  const parts = Promise.all([orangecheck().catch(() => null), claude().catch(() => null), feedback().catch(() => null)]);
   const ageNow = age().catch(() => null);
+  // The beta's row only while the account says the beta is open: with it
+  // off the page asks nothing of /api/plans, as before (billing_flow).
+  const parts = Promise.all([orangecheck().catch(() => null), claude().catch(() => null), feedback().catch(() => null),
+    ageNow.then(() => (betaOpen() ? beta() : drawBeta(null))).catch(() => drawBeta(null))]);
   const answer = await call("/api/people?op=me");
   if (answer.status === 401) {
     signOut();

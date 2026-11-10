@@ -12949,6 +12949,58 @@ msgstr "Un trait fin là où chaque pièce rencontre la suivante, pour lire les 
 msgid "Off, the parts are drawn without their studs, each in its place: the shapes alone, and a big model drawn faster"
 msgstr "Désactivé, les pièces sont dessinées sans leurs tenons, chacune à sa place : les formes seules, et un grand modèle dessiné plus vite"
 
+# The beta's welcome after signing up, and its row in Account (betajoin)
+msgid "Open beta"
+msgstr "Bêta ouverte"
+
+msgid "Welcome to Brickworks"
+msgstr "Bienvenue dans Brickworks"
+
+msgid "A CAD for LEGO® models: every LDraw part, joined where the real ones join."
+msgstr "Une CAO pour les modèles LEGO® : chaque pièce LDraw, assemblée là où les vraies s'assemblent."
+
+msgid "It is in open beta: it works, and it gets better every week with what builders tell us."
+msgstr "Il est en bêta ouverte : il fonctionne, et il s'améliore chaque semaine grâce à ce que les constructeurs nous disent."
+
+msgid "Testers try new features first and tell us what is wrong. The first 100 we pick get a month of Pro."
+msgstr "Les testeurs essaient les nouveautés en premier et nous disent ce qui ne va pas. Les 100 premiers que nous choisissons reçoivent un mois de Pro."
+
+msgid "Join the beta testers"
+msgstr "Devenir testeur de la bêta"
+
+msgid "Joining agrees to the beta's terms and to emails about the beta. Leave any time in Account."
+msgstr "Participer, c'est accepter les conditions de la bêta et les e-mails sur la bêta. Vous pouvez la quitter à tout moment dans Compte."
+
+msgid "You are a beta tester"
+msgstr "Vous êtes testeur de la bêta"
+
+msgid "Thank you. Report a bug whenever something is wrong, from wherever you are. What you send, and our answers, are kept with your account."
+msgstr "Merci. Signalez un bug dès que quelque chose ne va pas, où que vous soyez. Ce que vous envoyez, et nos réponses, sont gardés avec votre compte."
+
+msgid "For a month of Pro, tell us what you build on the beta's page: it takes a minute."
+msgstr "Pour un mois de Pro, dites-nous ce que vous construisez sur la page de la bêta : cela prend une minute."
+
+msgid "Tell us what you build"
+msgstr "Dites-nous ce que vous construisez"
+
+msgid "Beta"
+msgstr "Bêta"
+
+msgid "You are a beta tester. Thank you."
+msgstr "Vous êtes testeur de la bêta. Merci."
+
+msgid "Brickworks is in open beta. Testers try new features first and tell us what is wrong; the first 100 we pick get a month of Pro."
+msgstr "Brickworks est en bêta ouverte. Les testeurs essaient les nouveautés en premier et nous disent ce qui ne va pas ; les 100 premiers que nous choisissons reçoivent un mois de Pro."
+
+msgid "Leave the beta"
+msgstr "Quitter la bêta"
+
+msgid "You left the beta. Join again any time."
+msgstr "Vous avez quitté la bêta. Vous pouvez revenir à tout moment."
+
+msgid "Joined. You are a beta tester."
+msgstr "C'est fait. Vous êtes testeur de la bêta."
+
 # video2 (APP_UX6 #11): Render's Kept as, a WebP or a GIF.
 msgid "Kept as"
 msgstr "Enregistré en"

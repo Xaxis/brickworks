@@ -183,7 +183,7 @@ SIGN_IN_WHY = re.compile(r'"(Sign in\b(?:[^"\\\n]|\\.)*\.)"')
 # in the functions named: a literal with a capitalized word in it, outside
 # say(), is English left on the page. Those no copy loads are read for
 # their words too: a set's page, which the server makes, and its scripts.
-SAID_ALL = {"web/account.js": (), "web/first-steps.js": (), "web/set-page.js": (),
+SAID_ALL = {"web/account.js": (), "web/first-steps.js": (), "web/beta-welcome.js": (), "web/set-page.js": (),
             "web/model-page.js": (), "api/_sets.js": ("setPage", "facts", "structured"),
             "api/share.js": ("sharePage", "describe", "pageHead", "creditOf", "licenceWords", "setFacts", "testedMark", "madeFact",
                              "designerRow", "modelledLine", "nextRow", "actionBar", "shareSheet", "mediaStrip", "pageTabs",
