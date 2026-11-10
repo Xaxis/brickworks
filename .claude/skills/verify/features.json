@@ -1952,7 +1952,7 @@
       "id": "cli:parts page probe",
       "kind": "cli",
       "entry": "src/dev/parts_page_probe.gd",
-      "reach": "tools/probe.sh parts_page_probe [-- FILE.mpd ...]   (headless; the app's Inventory.of and ShopLists of four Library sets, or the files given, against the page's list, tools/web/parts_check.mjs, lot by lot and word for word)",
+      "reach": "tools/probe.sh parts_page_probe [-- FILE.mpd ...]   (headless; the app's Inventory.of and ShopLists of four Library sets and src/dev/fixtures/pickabrick_big.ldr, or the files given, against the page's list, tools/web/parts_check.mjs, lot by lot and its BrickLink, Rebrickable and Pick a Brick files word for word)",
       "area": "web",
       "tests": []
     },
@@ -4362,7 +4362,7 @@
       "id": "ui:a model's parts and its download",
       "kind": "ui",
       "entry": "api/_parts.js",
-      "reach": "https://brickworks.diy/m/<id>#parts (Parts: by Colour or Kind, Show all; BrickLink XML /m/<id>/parts.xml, Rebrickable CSV /m/<id>/parts.csv, the list /m/<id>/parts.json; Download /m/<id>.mpd, /m/<id>/v/<n>.mpd)",
+      "reach": "https://brickworks.diy/m/<id>#parts (Parts: by Colour or Kind, Show all; BrickLink XML /m/<id>/parts.xml, Rebrickable CSV /m/<id>/parts.csv, LEGO\u00ae Pick a Brick CSV /m/<id>/parts-pab.csv (past 400 elements also parts-pab-2.csv and on; what it leaves off under the buttons), the list /m/<id>/parts.json; Download /m/<id>.mpd, /m/<id>/v/<n>.mpd)",
       "area": "web",
       "tests": []
     },
