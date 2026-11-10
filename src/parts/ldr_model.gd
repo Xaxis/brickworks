@@ -1209,8 +1209,32 @@ static func _line_numbers(at: Transform3D) -> String:
 		if value == floorf(value) and absf(value) < 1e9:
 			numbers.append(str(int(value)))
 			continue
-		var places: int = 4 if n < 3 else 8
-		var shown: String = String.num(value, places) \
-			.rstrip("0").rstrip(".")
-		numbers.append("0" if shown == "-0" or shown.is_empty() else shown)
+		numbers.append(_number_text(value, 4 if n < 3 else 8))
 	return " ".join(numbers)
+
+
+## Whether a placement's numbers are held in single precision, as in every
+## build the app ships; a double-precision engine keeps them as written.
+static var _held_single: bool = Vector3(0.1, 0.0, 0.0).x != 0.1
+
+
+static func _as_held(value: float) -> float:
+	return PackedFloat32Array([value])[0] if _held_single else value
+
+
+## [param value] in the fewest places, up to [param most], that read back as
+## the same number. A placement is held in single precision, so an author's
+## 0.806 is 0.80599999427... here: written to its eight places it came back
+## "0.80599999", and every recoloured or moved part of a hand-made file
+## changed its text with nothing changed in its place (keeptext5, 11-09).
+## The fewest places that are the same single-precision number say exactly
+## what was held, so a file written and read again is the same to the bit.
+static func _number_text(value: float, most: int) -> String:
+	var held: float = _as_held(value)
+	var shown: String = ""
+	for places: int in range(1, most + 1):
+		shown = String.num(value, places)
+		if _as_held(shown.to_float()) == held:
+			break
+	shown = shown.rstrip("0").rstrip(".") if shown.contains(".") else shown
+	return "0" if shown == "-0" or shown.is_empty() else shown
