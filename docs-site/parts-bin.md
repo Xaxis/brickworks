@@ -18,7 +18,7 @@ ui:parts bin
 
 ## Search {#search}
 
-![The parts bin with slope 2 x 2 typed in its search and the slopes it found shown as pictures with their names, the colours below.](/docs/img/parts-bin-search.webp "Type what you want: the bin finds it by name, number or the words builders use.")
+![The parts bin with slope 2 x 2 typed in its search, the slopes it found shown as pictures with their names, and how many it found at the foot.](/docs/img/parts-bin-search.webp "Type what you want: the bin finds it by name, number or the words builders use.")
 
 Type what you want in words: *2x4 brick*, *slope 45*, *wheel*, *window*, a part number like *3001*, or what is printed on it, with *print*: *control panel print*. The bin understands builders' words: *SNOT* finds bricks with side studs and brackets, *cheese* the small slopes, *Erling* the headlight brick, *Travis* the brick with studs on four sides, *macaroni* the curved corners, *jumper*, *click hinge* and *cheese grater* what builders mean by them. A size alone is a brick: *2x4* lists Brick 2 × 4 first. A size with a kind of part lists that kind first: *1x4 brick* is bricks, *2x2 tile* tiles. Every part comes from the LDraw library, and its geometry is fetched the first time it is used and kept.
 
@@ -37,7 +37,7 @@ ui:find a part from a photo
 
 ## Recent, Favourites and Techniques {#shelves}
 
-![The parts bin as it opens: its shelves along the top, a grid of part pictures, and the colours at the foot.](/docs/img/parts-bin-shelves.webp "The bin's shelves, parts and colours.")
+![The parts bin as it opens: its shelves along the top, a grid of part pictures with their names, and how many it shows at the foot.](/docs/img/parts-bin-shelves.webp "The bin's shelves and its parts.")
 
 **Recent** keeps the parts you used last. Right-click a part to keep it in **Favourites**. **Techniques** holds worked constructions from real sets, such as a row of hinged plates or a SNOT wall: a click takes one whole into hand, [[R]] turns it, and a click puts it down.
 
