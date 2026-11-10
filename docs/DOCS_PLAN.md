@@ -436,18 +436,24 @@ its alt and caption, the features it shows. One command makes them all:
   crop finds nothing in sight.
 - **The site's** are taken by `tools/web/docs_shots_flow.mjs` on a site
   built from the tree (`tools/site.py`), or on a deployment with `--url`,
-  in Chromium on SwiftShader, in each theme the manifest names, with what
-  the page asks its server answered from the manifest. Animations and the
-  caret are stopped.
+  in Chromium on SwiftShader, in each theme the manifest names, at the
+  address a person is sent to (the consent page at `/oauth/authorize`),
+  with what the page asks its server answered from the manifest.
+  Animations and the caret are stopped, and text is drawn in grey, never
+  in a screen's colour stripes, which Chrome chose for some runs and not
+  others.
 - Both write lossless PNGs. The command hashes each one's pixels, and a
   picture whose pixels are the ones `docs-site/img/shots.lock` says it was
   made from is left alone. So the same code makes no change, and a picture
-  that changes is a UI that changed. One thing moves by itself: the cut's
-  hatched faces flicker by up to 4 levels on a few dozen pixels from frame
-  to frame. So each picture's lossless pixels are kept by their hash in
-  `~/.cache/brickworks-docs-shots`, and a new one within 8 levels on 0.1%
-  of its pixels of the last is the same (a screenshot test's threshold;
-  any real change moves far more). A changed one is written as WebP
+  that changes is a UI that changed. Two things move by themselves: the
+  cut's hatched faces flicker by up to 4 levels on a few dozen pixels from
+  frame to frame, and the site's soft glow behind the consent page is
+  dithered differently each run, about 2,300 pixels by up to 4. So each
+  picture's lossless pixels are kept by their hash in
+  `~/.cache/brickworks-docs-shots`, and a new one is the same as the last
+  when it is within 8 levels on 0.1% of its pixels (a screenshot test's
+  threshold), or within 4 levels anywhere, too little to see. Any real
+  change moves far more. A changed one is written as WebP
   (quality 84) into `docs-site/img/`, and its old and new picture and what
   differs, in magenta, are put side by side in the run's
   `diff/index.html`.

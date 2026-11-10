@@ -39,6 +39,12 @@ if (!site) {
   console.error("docs_shots_flow: --url=<deployment> or --root=<a site from tools/site.py>");
   process.exit(2);
 }
+// The addresses a deployment serves from a page of another name. A
+// picture is taken at the address a person is sent to, as its scripts see
+// it: the connector's sign-in page is /oauth/authorize (api/oauth.js's
+// authorization_endpoint), and web/theme.js leaves the beta's bar off it by
+// that path; at /authorize, which no one is sent to, the bar's scripts came in.
+const PAGES = { "/oauth/authorize": "authorize.html" };
 const bypass = process.env.BW_BYPASS || process.env.VERCEL_BYPASS || "";
 const headers = bypass && !served ? { "x-vercel-protection-bypass": bypass, "x-vercel-skip-toolbar": "1" } : {};
 
@@ -51,7 +57,13 @@ const shots = files.flatMap((f) => JSON.parse(readFileSync(f, "utf8")).shots || 
 const STILL = `*, *::before, *::after { animation: none !important; transition: none !important;
   caret-color: transparent !important; scroll-behavior: auto !important; }`;
 
-const browser = await launch({ signedOut: true });
+// Text in grey, never in a screen's red-green-blue stripes. Chrome picks
+// one or the other for each layer as it draws, and not the same way each
+// run: in two of six runs one theme's text came out striped, 400,000
+// pixels a few levels off, though the page was the same (2026-11-09).
+// Grey is what a picture should carry anyway: it is shown on screens whose
+// stripes run otherwise, and scaled.
+const browser = await launch({ signedOut: true, args: ["--disable-lcd-text"] });
 let failed = 0;
 let taken = 0;
 for (const shot of shots) {
@@ -76,6 +88,9 @@ for (const shot of shots) {
           const status = given && typeof given === "object" && "status" in given && "body" in given ? given.status : 200;
           const body = given && typeof given === "object" && "status" in given && "body" in given ? given.body : given;
           return route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
+        }
+        if (local && served && PAGES[asked.pathname]) {
+          return route.fulfill({ path: path.join(path.resolve(String(args.root)), PAGES[asked.pathname]) });
         }
         if (local) return route.continue();
         return route.fulfill({ status: 404, contentType: "text/plain", body: "" });

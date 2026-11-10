@@ -45,8 +45,11 @@ never reads the same twice), and a picture of them would otherwise be
 their sha in ~/.cache/brickworks-docs-shots, and a new one that differs
 from the one the lock names by at most FLICKER_LEVELS on at most
 FLICKER_SHARE of its pixels is the same, as a screenshot test's threshold
-(Playwright's maxDiffPixels) has it. Any real change (a word, a control,
-a colour) moves far more pixels by far more.
+(Playwright's maxDiffPixels) has it; and so is one with no pixel more than
+UNSEEN_LEVELS off, however many moved, a difference too small to see: the
+site's soft glow behind the consent page is dithered differently from run
+to run, 2,300 pixels by up to 4 levels (2026-11-09). Any real change (a
+word, a control, a colour) moves far more pixels by far more.
 """
 
 from __future__ import annotations
@@ -80,6 +83,7 @@ QUALITY = 84
 KEPT = Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "brickworks-docs-shots"
 FLICKER_LEVELS = 8
 FLICKER_SHARE = 0.001
+UNSEEN_LEVELS = 4
 ID = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 THEMES = ("dark", "light")
 SHOWN = re.compile(r'^!\[([^\]]*)\]\(/docs/img/([a-z0-9-]+)\.webp(?:[ \t]+"([^"]*)")?\)[ \t]*$', re.M)
@@ -359,8 +363,8 @@ def keep(picture, sha: str) -> None:
 def flickers(sha: str, picture) -> int | None:
     """How many pixels [picture] differs by from the one made from [sha],
     when each by at most FLICKER_LEVELS and no more than FLICKER_SHARE of
-    them: the same picture, flickering. None when it differs more, or the
-    one made before is not kept here."""
+    them, or each by at most UNSEEN_LEVELS: the same picture, flickering.
+    None when it differs more, or the one made before is not kept here."""
     from PIL import ImageChops
     kept = KEPT / f"{sha}.png"
     if not sha or not kept.exists():
@@ -369,11 +373,12 @@ def flickers(sha: str, picture) -> int | None:
     if before.size != picture.size:
         return None
     delta = ImageChops.difference(before, picture)
-    if max(high for _, high in delta.getextrema()) > FLICKER_LEVELS:
+    most = max(high for _, high in delta.getextrema())
+    if most > FLICKER_LEVELS:
         return None
     red, green, blue = delta.split()
     moved = sum(ImageChops.lighter(ImageChops.lighter(red, green), blue).histogram()[1:])
-    return moved if moved <= FLICKER_SHARE * picture.width * picture.height else None
+    return moved if most <= UNSEEN_LEVELS or moved <= FLICKER_SHARE * picture.width * picture.height else None
 
 
 def encode(raw: Path, out: Path, wanted: list[str]) -> list[dict]:

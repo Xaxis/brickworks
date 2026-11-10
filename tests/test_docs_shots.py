@@ -131,6 +131,16 @@ def test_a_flicker_is_the_same_picture_and_a_change_is_not(monkeypatch, tmp_path
         r, g, b = flicker.getpixel((200 + x, 150))
         flicker.putpixel((200 + x, 150), (r, g, b + 4))
     assert shots.flickers("before", flicker) == 20
+    # A glow dithered otherwise: 2% of the picture, none of it more than 4
+    # levels off, is the same; 6 levels over as many is a change.
+    glow, shade = before.copy(), before.copy()
+    for x in range(60):
+        for y in range(40):
+            r, g, b = before.getpixel((300 + x, 200 + y))
+            glow.putpixel((300 + x, 200 + y), (r, g + 4, b))
+            shade.putpixel((300 + x, 200 + y), (r, g + 6, b))
+    assert shots.flickers("before", glow) == 2400
+    assert shots.flickers("before", shade) is None
     changed = before.copy()
     ImageDraw.Draw(changed).text((20, 20), "Cut away by a box", fill=(230, 230, 230))
     assert shots.flickers("before", changed) is None
