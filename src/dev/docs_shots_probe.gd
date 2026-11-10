@@ -41,7 +41,8 @@
 ## Each starts as someone who has been here before (Build your first model
 ## skipped, the offer of the assistant closed) unless "first_visit": true.
 ## And the picture: "crop" ("window", a path, "@opened" for the panel or
-## window the setup put in sight, [x, y, w, h], or a list of
+## window the setup put in sight, "@pointer" for where a step left the
+## pointer (with "pad", a square round it), [x, y, w, h], or a list of
 ## those, joined), "pad" (pixels round a crop), "tooltip" (true: a tooltip
 ## up is the point; otherwise one fails the picture), "marks" ([{"at": path,
 ## "n": 1}]: an outline and a numbered disc drawn over the window, in the
@@ -70,6 +71,8 @@ var _failed: PackedStringArray = PackedStringArray()
 var _shown_before: Dictionary = {}
 ## A step put the pointer where the picture wants it (a part in hand follows it).
 var _pointer_placed: bool = false
+## Where, in the window's pixels (the "@pointer" crop).
+var _pointer_at: Vector2 = Vector2.INF
 
 
 func _initialize() -> void:
@@ -554,6 +557,7 @@ func _point(given: Variant) -> Variant:
 
 
 func _move(at: Vector2) -> void:
+	_pointer_at = at
 	Input.warp_mouse(at)
 	var motion := InputEventMouseMotion.new()
 	motion.position = at
@@ -717,6 +721,11 @@ func _crop(given: Variant, pad: int, size: Vector2i) -> Variant:
 			rect = Rect2(float(one[0]), float(one[1]), float(one[2]), float(one[3]))
 		elif one is String and one == "@opened":
 			rect = _opened()
+		elif one is String and one == "@pointer":
+			if _pointer_at.is_finite():
+				rect = Rect2(_pointer_at, Vector2.ZERO)
+			else:
+				_failed.append("no step put the pointer anywhere (@pointer)")
 		elif one is String:
 			rect = _rect_of(one)
 		if rect == null:

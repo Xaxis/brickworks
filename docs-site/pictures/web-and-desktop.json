@@ -27,12 +27,12 @@
    "phone": true,
    "setup": [
     {
-     "frames": 360
+     "frames": 60
     }
    ],
    "settle": 60,
    "crop": "window",
-   "alt": "Brickworks on a phone, 390 pixels across: the mark, the model's name, undo and redo along the top, the red car on its baseplate, and one row of tools along the foot.",
+   "alt": "Brickworks on a phone, 390 pixels across: the mark, the model's name, undo and redo along the top, the red car on its baseplate with a note that it opened, and one row of tools along the foot.",
    "caption": "On a phone: one row of tools, and the rest in sheets over the model.",
    "features": [
     "ui:two fingers' twist"

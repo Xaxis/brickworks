@@ -35,7 +35,7 @@ Saved models are kept in your browser and privately with your account, so **File
 
 ## On a tablet or a phone {#phone}
 
-![Brickworks on a phone, 390 pixels across: the mark, the model's name, undo and redo along the top, the red car on its baseplate, and one row of tools along the foot.](/docs/img/web-and-desktop-phone.webp "On a phone: one row of tools, and the rest in sheets over the model.")
+![Brickworks on a phone, 390 pixels across: the mark, the model's name, undo and redo along the top, the red car on its baseplate with a note that it opened, and one row of tools along the foot.](/docs/img/web-and-desktop-phone.webp "On a phone: one row of tools, and the rest in sheets over the model.")
 
 On a touch screen the app is laid out for a finger: one row of tools, and the parts, the colours and the rest in panels beside the model or, on a phone, in sheets over it. A browser window as small as a phone gets this layout too, whatever you point with.
 

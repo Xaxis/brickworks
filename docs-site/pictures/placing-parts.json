@@ -49,6 +49,18 @@
      "key": "Equal"
     },
     {
+     "key": "Equal"
+    },
+    {
+     "key": "Equal"
+    },
+    {
+     "key": "Equal"
+    },
+    {
+     "key": "Equal"
+    },
+    {
      "key": "Equal",
      "after": 20
     },
@@ -58,13 +70,13 @@
     }
    ],
    "settle": 40,
-   "crop": "@focus",
+   "crop": "@pointer",
    "alt": "A red 2 x 4 brick in hand on an empty baseplate, the small field at the pointer reading 3x, x +3 studs, Enter puts it down, and the brick's ghost three studs along x, where the number puts it.",
    "caption": "Type a number with a part in hand: the field opens at the pointer and the ghost shows where it goes.",
    "features": [
     "ui:type a number while moving"
    ],
-   "pad": 170
+   "pad": 200
   },
   {
    "id": "placing-parts-connect",
@@ -115,6 +127,24 @@
      "key": "Equal"
     },
     {
+     "key": "Equal"
+    },
+    {
+     "key": "Equal"
+    },
+    {
+     "key": "Equal"
+    },
+    {
+     "key": "Equal"
+    },
+    {
+     "key": "Equal"
+    },
+    {
+     "key": "Equal"
+    },
+    {
      "key": "Equal",
      "after": 20
     },
@@ -124,12 +154,13 @@
     }
    ],
    "settle": 40,
-   "crop": "_over_model",
+   "crop": "@pointer",
    "alt": "A Technic beam in hand over the baseplate, its pin holes lit in blue, each a point it can go on by.",
    "caption": "Connect (N) lights a part's points: click the one it goes on by, then where it goes.",
    "features": [
     "ui:connect by a point"
-   ]
+   ],
+   "pad": 180
   }
  ]
 }
