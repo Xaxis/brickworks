@@ -25,6 +25,12 @@ While the beta is open, a new account is asked once, right after its first sign-
 - **Join the beta testers** makes you a tester at once, and says where to report what is wrong.
 - **Not now** is kept: the question never comes again.
 
+Any account can also join from the beta's own page:
+
+1. Open [/beta](/beta), the homepage's **Open beta**, or **Join** in the beta bar at the foot of any page.
+2. Signed out, **Sign up and join** signs you in with your email first (signing in makes your account if you have none), and a new account's welcome asks whether to join.
+3. Signed in, **Join the beta**: you are a tester at once. Joining agrees to the [beta's terms](/terms#beta) and to emails about the beta; leave any time in Settings.
+
 Either way you can change your mind in one press: the **Beta** row of [Settings](/settings) on the site, or of **Account** in the app, says whether you are a tester, with **Join the beta testers** or **Leave the beta**. Leaving takes nothing away: a month of Pro already given stays yours.
 
 <!-- covers
@@ -48,16 +54,11 @@ The month starts the day you are approved, or the day Pro launches if that is la
 
 Use Brickworks for real, on things you want to build, and tell us honestly what works and what does not: **Send feedback** in the app's Brickworks menu or the site's footer, whenever something is wrong or you have an idea. While the beta is open, **Report a bug** is on every page of the site, in the beta bar at the foot of the window, and [/beta](/beta) is your [hub](/docs/feedback#beta-hub): what is new to try and what we know is wrong.
 
-## Joining {#apply}
-
-1. Open [/beta](/beta), the homepage's **Open beta**, or **Join** in the beta bar at the foot of any page.
-2. Signed out, **Sign up and join** signs you in with your email first (signing in makes your account if you have none), and a new account's welcome asks whether to join.
-3. Signed in, **Join the beta**: you are a tester at once. Joining agrees to the [beta's terms](/terms#beta) and to emails about the beta; leave any time in Settings.
 ## Asking for the month of Pro {#apply}
 
-1. Open [/beta](/beta) and sign in with your email. Signing in makes your account if you have none.
+1. Join, as above. Then [/beta](/beta) shows you **Tell us about you**; the welcome's thank-you and Settings link straight to it.
 2. Say what you would build, which AI you use (Claude, ChatGPT, your own key, or not sure), your LEGO® or CAD background, and a link to your work if you like (Rebrickable, BrickLink, Flickr, GitHub or a portfolio).
-3. If you have not joined yet, agree to the [beta's terms](/terms#beta) and to emails about the beta, then **Apply**: that joins you too.
+3. Press **Send**. There are no boxes to tick: joining agreed to the terms and the emails. The same place then says where it stands.
 
 The month of Pro goes to the first 100 testers we approve, and we email you when yours is. The beta's page counts the months left as they go; once all 100 are given, joining stays open.
 

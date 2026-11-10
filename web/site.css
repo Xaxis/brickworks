@@ -1179,7 +1179,12 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 }
 .beta-bar.tight > .badge { display: none; }
 /* While it is shown the toast speaks above it, and the footer ends past
-   it, so the page's last line is never under it. */
+   it, so the page's last line is never under it. Whatever is scrolled to,
+   by Tab, a link or a page's own script, stops clear above it, as under
+   the header (scroll-padding-top): a tester tabbing down Settings at 390
+   came to its Beta row's Beta hub and Leave the beta under the bar
+   (betaopen, 2026-11-10). Its 52 px at most, 16 below it, 12 clear. */
+:root[data-betabar] { scroll-padding-bottom: calc(var(--s-4) + 64px + env(safe-area-inset-bottom, 0px)); }
 :root[data-betabar] .toast { bottom: calc(var(--s-5) + 60px); }
 :root[data-betabar] .site-foot { padding-bottom: calc(var(--s-6) + 64px); }
 

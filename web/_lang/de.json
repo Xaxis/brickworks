@@ -1002,7 +1002,24 @@
   "Leave the beta": "Beta verlassen",
   "Beta": "Beta",
   "To the people who make Brickworks, and nobody else. Signed in, your reports are in <a href=\"/settings#feedback\">Your reports</a> on your settings page, with where each stands and our answers. Signed out, we answer at the address you give. <a href=\"/privacy#feedback\">What we keep, and for how long</a>.": "An die Leute, die Brickworks machen, und an niemanden sonst. Bist du angemeldet, findest du deine Meldungen unter <a href=\"/settings#feedback\">Deine Meldungen</a> in deinen Einstellungen, mit ihrem jeweiligen Stand und unseren Antworten. Bist du nicht angemeldet, antworten wir an die Adresse, die du angibst. <a href=\"/privacy#feedback\">Was wir speichern und wie lange</a>.",
-  "While the beta is open, Report a bug is one press from anywhere: beside Account at the top of the app, in its Help menu, with Alt+Shift+R, and in the bar along the top of every page here. It takes a picture of what you see by itself; drag on the picture to mark the spot. When the app says something went wrong, Report this sends what it was doing with it. After it goes, it has a number, and you can follow it, and our answer, in <a href=\"/settings#feedback\">Your reports</a>.": "Solange die Beta offen ist, ist Fehler melden überall einen Klick entfernt: neben Konto oben in der App, in ihrem Hilfe-Menü, mit Alt+Umschalt+R und in der Leiste oben auf jeder Seite hier. Es macht selbst ein Bild von dem, was du siehst; zieh auf dem Bild, um die Stelle zu markieren. Sagt die App, dass etwas schiefgelaufen ist, schickt Melden mit, was sie gerade tat. Ist die Meldung gesendet, hat sie eine Nummer, und du kannst sie und unsere Antwort unter <a href=\"/settings#feedback\">Deine Meldungen</a> verfolgen."
+  "While the beta is open, Report a bug is one press from anywhere: beside Account at the top of the app, in its Help menu, with Alt+Shift+R, and in the bar along the top of every page here. It takes a picture of what you see by itself; drag on the picture to mark the spot. When the app says something went wrong, Report this sends what it was doing with it. After it goes, it has a number, and you can follow it, and our answer, in <a href=\"/settings#feedback\">Your reports</a>.": "Solange die Beta offen ist, ist Fehler melden überall einen Klick entfernt: neben Konto oben in der App, in ihrem Hilfe-Menü, mit Alt+Umschalt+R und in der Leiste oben auf jeder Seite hier. Es macht selbst ein Bild von dem, was du siehst; zieh auf dem Bild, um die Stelle zu markieren. Sagt die App, dass etwas schiefgelaufen ist, schickt Melden mit, was sie gerade tat. Ist die Meldung gesendet, hat sie eine Nummer, und du kannst sie und unsere Antwort unter <a href=\"/settings#feedback\">Deine Meldungen</a> verfolgen.",
+  "Tell us about you": "Erzähl uns von dir",
+  "For a month of Pro: the first 100 testers we approve get 30 days, free. It takes a minute, and it’s up to you.": "Für einen Monat Pro: Die ersten 100 Tester, die wir bestätigen, bekommen 30 Tage kostenlos. Das dauert eine Minute, und es liegt ganz bei dir.",
+  "What would you build? <small>A sentence or two: 20 to 800 characters</small> <textarea name=\"build\" id=\"f-build\" rows=\"4\" minlength=\"20\" maxlength=\"800\" required></textarea>": "Was würdest du bauen? <small>Ein, zwei Sätze: 20 bis 800 Zeichen</small> <textarea name=\"build\" id=\"f-build\" rows=\"4\" minlength=\"20\" maxlength=\"800\" required></textarea>",
+  "Which AI do you use?": "Welche KI nutzt du?",
+  "Choose one": "Bitte wählen",
+  "My own API key": "Mein eigener API-Schlüssel",
+  "Not sure yet": "Weiß ich noch nicht",
+  "Your LEGO® or CAD background": "Deine Erfahrung mit LEGO® Modellen oder CAD",
+  "New to both": "Beides neu für mich",
+  "I build LEGO® models": "Ich baue LEGO® Modelle",
+  "I use CAD": "Ich nutze CAD",
+  "Both": "Beides",
+  "About it <small>Optional, one line: what you build, or which CAD</small> <input name=\"background_line\" id=\"f-line\" maxlength=\"160\" autocomplete=\"off\">": "Mehr dazu <small>Optional, eine Zeile: was du baust oder welches CAD</small> <input name=\"background_line\" id=\"f-line\" maxlength=\"160\" autocomplete=\"off\">",
+  "A link to your work <small>Optional: Rebrickable, BrickLink, Flickr, GitHub or a portfolio</small> <input name=\"link\" id=\"f-link\" inputmode=\"url\" maxlength=\"300\" placeholder=\"https://\" autocomplete=\"url\">": "Ein Link zu deinen Arbeiten <small>Optional: Rebrickable, BrickLink, Flickr, GitHub oder ein Portfolio</small> <input name=\"link\" id=\"f-link\" inputmode=\"url\" maxlength=\"300\" placeholder=\"https://\" autocomplete=\"url\">",
+  "Send": "Senden",
+  "What you send is kept with your account, read only by the site’s owner, and deleted with your account (<a href=\"/privacy#beta\">privacy</a>).": "Was du schickst, wird mit deinem Konto gespeichert, nur vom Betreiber der Website gelesen und mit deinem Konto gelöscht (<a href=\"/privacy#beta\">Datenschutz</a>).",
+  "https://": "https://"
  },
  "scripts": {
   "Copy": "Kopieren",
@@ -2580,6 +2597,7 @@
   "Thank you. Your report is in.": "Danke. Deine Meldung ist eingegangen.",
   "We read every report ourselves. Follow it, and our answer, in Your reports.": "Wir lesen jede Meldung selbst. Verfolge sie und unsere Antwort unter Deine Meldungen.",
   "Your reports": "Deine Meldungen",
-  "Sign in to report a bug: your reports, and our answers, are kept with your account.": "Melde dich an, um einen Fehler zu melden: deine Meldungen und unsere Antworten bleiben bei deinem Konto."
+  "Sign in to report a bug: your reports, and our answers, are kept with your account.": "Melde dich an, um einen Fehler zu melden: deine Meldungen und unsere Antworten bleiben bei deinem Konto.",
+  "Sign in again to tell us about you.": "Melde dich noch einmal an, um uns von dir zu erzählen."
  }
 }

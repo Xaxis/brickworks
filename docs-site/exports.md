@@ -47,13 +47,15 @@ ui:parts lists for shops
 
 ## 3D models {#3d}
 
+![The 3D model export dialog: a choice of glb, gltf, obj, stl or 3mf, each with a line on what it is for.](/docs/img/exports-3d.webp "File › Export › 3D model…")
+
 **3D model…** writes the model as glTF (`.glb` or `.gltf`) in its colours, OBJ, STL for a printer, or 3MF for a printer that prints in several colours, each part with its real shape.
 
 A **3MF** has an object for each colour, in that colour, so your slicer gives each its own filament: when it asks, load it as one object of several parts. It is in millimetres, standing on the bed. A part moulded in two colours, such as a steering wheel on its stand, goes to both; a printed pattern is painted on its part for a slicer that reads a triangle's colour, and prints in the part's own colour in one that does not. The parts are LDraw's shapes at their exact size, not loosened for a printer, so printed parts may fit real bricks tightly.
 
-![The 3D model export's formats.](/img/compare-export3d-640.webp "Export a 3D model: glb, gltf, obj or stl.")
-
 ## Render {#render}
+
+![The Render dialog: a picture of the car on the left, and on the right its quality, size, background, lights and camera.](/docs/img/exports-render.webp "File › Render… (F9).")
 
 **File › Render…** (or the toolbar's camera) makes a picture of the model worth keeping, a turntable, an animation of one of its motions, or a video of it being built. The picture on the left is a quick draft of the render, drawn again every time a choice changes, so what comes out is what you looked at; **Render** only makes it better. A render runs a piece at a time, with its progress on the bar and **Cancel** (or [[Esc]]) to stop it; when it is done it downloads, or on the desktop goes to Downloads.
 
@@ -67,11 +69,11 @@ The choices are a photographer's:
 | Choice | What there is |
 |---|---|
 | Quality | A quick one in the window's own look, up to Best: path traced on a graphics card that traces rays, so shadows soften as they should, light bounces off the floor and between the parts, and glass tints what is behind it; elsewhere frames averaged for soft shadows from an area light, smooth edges, shading under every ledge, and depth of field |
-| Look | **As in the window**, or **Product** (below) |
+| Look | **As in the window**, or **Product** (below); or drawn in ink, **Line art** or **Comic** (below) |
 | Size | 720p, 1080p, 4K, Square, or Custom |
-| Backdrop | White, Gradient, Grey, Dark, a Colour you pick, or None (a transparent picture), with a contact shadow under the model if you like |
+| Background | White, Gradient, Grey, Dark, a Colour you pick, or None (a transparent picture), with a contact shadow under the model if you like |
 | Light | Three lights, as in the window; or photographed light: a softbox studio, window light, or daylight; or **Dark**: only the [model's own lights](#lights) and the plastics that glow |
-| View | Three-quarter like the box, the view you are looking at, front, side, back three-quarter, low looking up, from above, or one of the [views saved with the model](/docs/the-view#saved-views) |
+| Camera | Three-quarter like the box, the view you are looking at, front, side, back three-quarter, low looking up, from above, or one of the [views saved with the model](/docs/the-view#saved-views) |
 | Lens | The focal length, and an aperture from Off to f/2 for depth of field (blur comes with Best) |
 
 **Preset**, at the top, keeps these choices by a name: **Save…** names them, and choosing the name again, on any model, puts every choice back at once. Presets are kept on this device, for every model; change a choice by hand and none is chosen. **Remove** forgets the one chosen.
@@ -108,6 +110,16 @@ ui:render queue
 
 <!-- covers
 lib:product look
+-->
+
+### Line art and Comic {#line-art}
+
+**Line art** draws the model as a person inks it: black lines on white paper, thickest round the model, then where one part meets the next, so a wall's bricks can be counted, and thinnest where a part's own surface turns a corner, a stud's rim or a brick's top edge, and round a print, a face or a stripe. The shade is halftone dots, a screen at 45°, none on a face turned to the light and close together on one turned away, the same on a red brick as on a white one in the same light, and the model's shadow on the floor is dots too. It is a page to colour over or print. **Comic** has the same lines and dots over each part's own colour, flat, a shade darker where the light leaves it; black parts are a dark grey, so their faces can still be told apart, with grey lines between them.
+
+Both are drawn in one frame at any quality, since the lines and the dots are the picture, and sharp all through, whatever the lens. With the backdrop **None** the paper round the model is left out, so the drawing goes over anything. A turntable, an animation and a building can be drawn in either. Claude asks for them with `render_model`'s `look` lineart or comic.
+
+<!-- covers
+lib:line art and comic looks
 -->
 
 ### Animation {#animation}

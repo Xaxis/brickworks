@@ -29,19 +29,23 @@ ui:box select
 
 ## Select by colour, part or connection {#select-by}
 
+![The red car with every red part outlined as selected after Same colour, the other colours left out.](/docs/img/selecting-same-colour.webp "Edit › Select by › Same colour (Alt+C) takes every part of the selection's colour.")
+
 Select a part, then **Select by** on the toolbar or **Edit › Select by**:
 
 - **Same colour** ([[Alt+C]]), **Same part** ([[Alt+P]]), or **Same part and colour** ([[Alt+A]]): every part that matches it. [[Shift]]-double-click picks every part like it at once.
-- **Everything connected**: everything held to it, through studs and joints.
+- **Everything connected** ([[Alt+J]]): everything held to it, through studs and joints.
 - **Same sub-model**: the sub-assembly it belongs to.
 - **Part number or name…** ([[Ctrl+F]]): find parts in the model by number, name or colour.
-- **The opposite**: everything that is not selected.
+- **The opposite** ([[Alt+I]]): everything that is not selected.
 
 <!-- covers
 ui:select by colour part or connection
 -->
 
 ## What a selection can do {#edits}
+
+![The menu that opens on a right-click on a part, with ways to select what is like it or connected to it, hide it, paint it, copy it and more.](/docs/img/selecting-menu.webp "A right-click on a part opens its menu.")
 
 | Press | What happens |
 |---|---|
@@ -57,7 +61,7 @@ ui:select by colour part or connection
 | [[L]] | Lock it |
 | [[Ctrl+H]], [[Shift+H]] | Hide it, or show only it |
 
-A right-click on a part opens its menu: Ask Claude about it, select what is connected, hide, paint, its printed versions, copy, delete, make a sub-model and its properties. See [On a part](/docs/menus#on-a-part).
+A right-click on a part opens its menu: Ask Claude about it, select what is connected, hide, paint, its printed versions, copy, delete, **Make a sub-assembly…** and its properties. See [On a part](/docs/menus#on-a-part).
 
 ## Swing on a hinge {#swing}
 

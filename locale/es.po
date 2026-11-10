@@ -5214,6 +5214,12 @@ msgstr "La tipografía del PDF de un manual y de las imágenes de sus páginas, 
 msgid "The type's licence"
 msgstr "Licencia de la tipografía"
 
+msgid "The emoji a booklet's PDF prints, in outline, carried in the PDF"
+msgstr "Los emoji que imprime el PDF de un manual, en contorno, incluidos en el PDF"
+
+msgid "The emoji's licence"
+msgstr "Licencia de los emoji"
+
 msgid "LEGO® Digital Designer's part and colour numbers in LDraw's terms, for opening .lxf models"
 msgstr "Los números de piezas y colores de LEGO® Digital Designer en términos de LDraw, para abrir modelos .lxf"
 
@@ -13248,6 +13254,28 @@ msgstr "Has dejado la beta. Puedes volver cuando quieras."
 
 msgid "Joined. You are a beta tester."
 msgstr "Hecho. Ya participas en la beta."
+# Render's Look, Line art and Comic (APP_UX7 #22 lineart): the model inked as a person draws it
+
+msgid "Line art"
+msgstr "Dibujo a línea"
+
+msgid "Comic"
+msgstr "Cómic"
+
+msgid "Black lines on white, as you would ink it, the shade in halftone dots: to colour over or print."
+msgstr "Líneas negras sobre blanco, como entintado a mano, las sombras en una trama de puntos: para colorear o imprimir."
+
+msgid "Bold lines over each part's own colour, flat, with halftone dots where the light leaves it."
+msgstr "Líneas marcadas sobre el color propio de cada pieza, plano, con una trama de puntos donde la luz lo deja."
+
+msgid "Drawn in one frame at any quality: the lines and the dots are the picture."
+msgstr "Se dibuja en un solo fotograma con cualquier calidad: las líneas y los puntos son la imagen."
+
+msgid "Line art and Comic are drawn sharp all through."
+msgstr "El dibujo a línea y el cómic se dibujan nítidos de principio a fin."
+
+msgid "inking"
+msgstr "entintando"
 
 # video2 (APP_UX6 #11): Render's Kept as, a WebP or a GIF.
 msgid "Kept as"
@@ -13308,3 +13336,40 @@ msgstr "%s existe en este color, en 1 set: raro en este color"
 
 msgid "%s comes in it, in %d sets: rare in this colour"
 msgstr "%s existe en este color, en %d sets: raro en este color"
+
+
+# A long job says when it is done: Settings' row, and what the note says
+# finished (APP_UX7 #11, donenote).
+
+msgid "Say when a long job is done"
+msgstr "Avisar cuando termine un trabajo largo"
+
+msgid "A design, a Best render, the render queue or a build video that finishes while you are in another window: the window asks for your attention, or in a browser, a notification says so."
+msgstr "Un diseño, un render en calidad Máxima, la cola de renderizado o un vídeo de construcción que termina mientras estás en otra ventana: la ventana pide tu atención, o en un navegador, lo dice una notificación."
+
+msgid "Design done"
+msgstr "Diseño terminado"
+
+msgid "Sketches ready to choose from"
+msgstr "Bocetos listos para elegir"
+
+msgid "Best render done"
+msgstr "Render en calidad Máxima terminado"
+
+msgid "Turntable done"
+msgstr "Plataforma giratoria terminada"
+
+msgid "Animation done"
+msgstr "Animación terminada"
+
+msgid "Build video done"
+msgstr "Vídeo de construcción terminado"
+
+msgid "Render queue done"
+msgstr "Cola de renderizado terminada"
+
+msgid "The design did not finish"
+msgstr "El diseño no terminó"
+
+msgid "The render did not finish"
+msgstr "El render no terminó"

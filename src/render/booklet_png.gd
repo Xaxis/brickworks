@@ -254,14 +254,37 @@ func _text(op: Dictionary) -> void:
 	var spacing: float = float(op["spacing"]) * px_per_mm
 	var colour: Color = op["colour"]
 	colour.a *= float(op.get("alpha", 1.0))
+	# Left to right, as the booklet's page sets every line (it says no
+	# direction): a run of Hebrew or Arabic in it turned about by the bidi
+	# algorithm, as the browser turns it, and as the PDF (BookletPdf).
 	if absf(spacing) < 0.3:
-		font.draw_string(_canvas, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, colour)
+		font.draw_string(_canvas, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, colour,
+			TextServer.JUSTIFICATION_KASHIDA | TextServer.JUSTIFICATION_WORD_BOUND, TextServer.DIRECTION_LTR)
 		return
-	# Letter by letter where the letters are set closer (a step number, a
-	# title). A letter the type has none of (CJK, an emoji) is drawn as the
-	# rest of the page's words are, in the type the system has for it:
-	# draw_char draws nothing for it, and up to 2026-11-07 a CJK title left
-	# the cover's band empty.
+	# Set closer (a step number, a title), the line shaped whole where its
+	# letters are not one glyph each left to right (Hebrew, Arabic's joined
+	# letters, an emoji of several), its glyphs drawn where the shaping puts
+	# them, the spacing after each cluster: a letter at a time, a Hebrew or
+	# Arabic title was drawn backwards and its letters apart (pdfbidi).
+	var glyphs: Array = BookletPdf.shaped(text, font.get_rids(), size)
+	if not BookletPdf.plain(glyphs):
+		var server: TextServer = TextServerManager.get_primary_interface()
+		for index: int in glyphs.size():
+			var glyph: Dictionary = glyphs[index]
+			var by: RID = glyph["font_rid"]
+			var where: Vector2 = at + (glyph["offset"] as Vector2)
+			if by.is_valid():
+				server.font_draw_glyph(by, _canvas, size, where, int(glyph["index"]), colour)
+			elif int(glyph["index"]) > 0:
+				server.draw_hex_code_box(_canvas, size, where, int(glyph["index"]), colour)
+			at.x += float(glyph["advance"])
+			if index + 1 == glyphs.size() or int(glyphs[index + 1]["start"]) != int(glyph["start"]):
+				at.x += spacing
+		return
+	# Letter by letter otherwise. A letter the type has none of (CJK, an
+	# emoji) is drawn as the rest of the page's words are, in the type the
+	# system has for it: draw_char draws nothing for it, and up to 2026-11-07
+	# a CJK title left the cover's band empty.
 	for index: int in text.length():
 		var letter: String = text[index]
 		if font.has_char(letter.unicode_at(0)):

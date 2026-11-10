@@ -3779,6 +3779,13 @@
     },
     {
       "kind": "cli",
+      "label": "the docs' pictures",
+      "entry": "tools/docs_shots.py",
+      "reach": "python3 tools/docs_shots.py [--only=ID,ID] [--app | --site] [--affected]   (docs-site/pictures/<page>.json: the app's through tools/probe.sh docs_shots_probe on the GPU from a locked snapshot, the site's by tools/web/docs_shots_flow.mjs; into docs-site/img/, with diff/index.html of what changed; tools/docs_site.py --check fails on one missing or not made by it)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
       "label": "the menus written for the docs",
       "entry": "src/dev/docs_menus.gd",
       "reach": "godot --headless --path . --script src/dev/docs_menus.gd -- --menus-to=docs-site/generated/menus.json   (tests/test_docs_site.py says when it is due)",
@@ -3844,7 +3851,7 @@
       "kind": "ui",
       "label": "beta page",
       "entry": "web/beta.html",
-      "reach": "<deployment>/beta   (the beta's hub, web/beta.js; BRICKWORKS_BETA off: Coming soon, no way in, no count; open: the months of Pro left, the way in for each visitor (signed out Sign up and join, signed in Join the beta, a tester Report a bug and Your reports), what testers get, how to report, this week's releases from /changelog.json, the questions; a tester: what to try, known issues, early features from GET /api/plans?op=beta_hub; /beta-hub answers 308 here; tools/web/beta_flow.mjs, tools/web/betahome_flow.mjs)",
+      "reach": "<deployment>/beta   (the beta's hub, web/beta.js; BRICKWORKS_BETA off: Coming soon, no way in, no count; open: the months of Pro left, the way in for each visitor (signed out Sign up and join, signed in Join the beta, a tester Report a bug and Your reports), what testers get, how to report, this week's releases from /changelog.json, the questions; a tester: what to try, known issues, early features from GET /api/plans?op=beta_hub, and #about, \"tell us about you\", the month of Pro's form or where it stands (GET/POST ?op=beta); /beta-hub answers 308 here; tools/web/beta_flow.mjs, tools/web/betahome_flow.mjs)",
       "area": "web"
     },
     {
@@ -5106,6 +5113,41 @@
       "entry": "src/dev/bugreport_probe.gd",
       "reach": "PROBE_SIZE=1280x720 tools/probe.sh bugreport_probe [--shots=DIR]   (windowed, signs a throwaway in: top bar, Help and Alt-Shift-R each open the report in one press; a drawn box in the sent JPEG within 2 px; Report this on an error; Escape and Cancel send nothing; the beta shut hides the button)",
       "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the panel asked for last in front",
+      "entry": "src/ui/hud_front.gd",
+      "reach": "tools/probe.sh hudfront_probe   (Find with \"87087\", then F1 or F9: the keys sheet or Render opens over Find's list; any HUD panel shown by a key, a menu, a button or MCP, clicked, or given the keys comes to the front, under the sign-in screen; Render's veil comes with Render)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "a long job says when it is done",
+      "entry": "src/ui/done_note.gd",
+      "reach": "godot --path .  (Settings, Say when a long job is done, on Reduce motion's line: a design asked in the assistant's panel, Render's picture at Best, turntable, animation or build video, or the render queue drawn empty, ending while the window is not looked at: the window asks for attention and its title starts \"Done · \" on the desktop; on the web one notification with the model's name and what finished, the permission asked at the first long job's start, never on load)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "donenote probe",
+      "entry": "src/dev/donenote_probe.gd",
+      "reach": "tools/probe.sh donenote_probe -- --shots=DIR   (windowed, 1400x900 and PROBE_SIZE=1280x720, signed in through the gate with a throwaway account from .env; the focus, the window's attention and the browser's Notification a stand-in: a design in the panel on a stand-in API, Render picture at Best, the render queue's Add this view and Render building, each run to its end; unfocused 1 attention request or 1 notification each, focused 0, turned off by a click in Settings and kept 0; the web asks nothing on load and once at the first long job)",
+      "area": "view"
+    },
+    {
+      "kind": "lib",
+      "label": "line art and comic looks",
+      "entry": "src/render/line_art.gd",
+      "reach": "tools/probe.sh lineart && PROBE_SIZE=1280x720 tools/probe.sh lineart   (by hand: File, Render…, Look, Line art or Comic, the draft drawn in it; render_model look=lineart|comic over MCP; with Background None on nothing)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "lineart probe",
+      "entry": "src/dev/lineart_probe.gd",
+      "reach": "tools/probe.sh lineart [-- --shots=DIR --reference=DIR]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720, through the sign-in screen with a throwaway account (.env): Render's default of the car and a scene's window and Product kept for an older build's run (--reference) byte for byte; the Look row clicked; Line art's paper, greys, outline, the wall's seams inked and dots where the light leaves a face; Comic's colours; on nothing; an animation's moved part leaves no line; render_model; 10036-1 in both looks to look at)",
+      "area": "view"
     }
   ]
 }

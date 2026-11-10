@@ -75,7 +75,7 @@ func _ready() -> void:
 func open(part_id: String, for_slot: String, colour: int) -> void:
 	slot = for_slot
 	colour_code = colour
-	visible = true
+	HudFront.show_panel(self)
 	_name.text = ""
 	_start_from(part_id)
 

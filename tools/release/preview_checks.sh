@@ -193,6 +193,11 @@ declare -A CMD=(
   # "Build together" and goes there, the pages list folds on a phone, and
   # what is on this page follows the reading.
   [docs]="tools/web/docs_flow.mjs --url=$P --out=$S/${TAG}_docs"
+  # local only: docs_shots_flow.mjs. It takes the docs' pictures of the
+  # site (tools/docs_shots.py), a site put together from the checkout with
+  # what each page asks answered from the manifest; a picture it makes is a
+  # file the commit carries, and [docs] holds each one shown on a
+  # deployment.
   # Every page and dialog, each visible control judged against the design
   # system's tokens (web/site.css, docs/DESIGN_SYSTEM.md); the API answered
   # by its stand-in, so no account is made.
@@ -677,7 +682,7 @@ run() {
   if live "$name"; then
     alone "$name" && how=alone
     if ! take_live_db "$how"; then
-      echo "$name exit=75 fails=1 $(( $(date +%s) - t0 ))s :: FAIL the live database stayed busy (LIVE_WAIT, an hour): $(tail -1 "$LIVE_DB.log")" >> "$S/$TAG.out"
+      echo "$name exit=75 fails=1 $(( $(date +%s) - t0 ))s :: FAIL the live database stayed busy (LIVE_WAIT, $(( ${LIVE_WAIT:-3600} / 60 )) min): $(tail -1 "$LIVE_DB.log")" >> "$S/$TAG.out"
       return
     fi
     echo "$(date '+%F %T') took $TAG $name after $(( $(date +%s) - t0 ))s ($LIVE_DB_HOW)" >> "$LIVE_DB.log"
