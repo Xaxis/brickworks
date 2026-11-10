@@ -30,7 +30,10 @@ var families: PackedStringArray = []
 var cff: bool = false
 ## How heavy it is (OS/2's usWeightClass), 400 when it does not say.
 var weight: int = 400
-## The glyphs used, each with the letter it was first used for.
+## The glyphs used, each with the words it reads back as: the letter it
+## was first used for, the letters a glyph stands for together (an Arabic
+## ligature, an emoji's sequence), or "" for one that reads as nothing (a
+## second glyph of one letter).
 var used: Dictionary = {}
 
 var _bytes := PackedByteArray()
@@ -96,8 +99,14 @@ func drawn(glyph: int) -> bool:
 ## Glyph [param glyph] used for the letter [param letter]: kept in the face
 ## written, and read back as that letter.
 func use(glyph: int, letter: int) -> void:
+	use_text(glyph, char(letter))
+
+
+## Glyph [param glyph] used for the words [param text]: kept, and read back
+## as them, where it has not been used for others before.
+func use_text(glyph: int, text: String) -> void:
 	if not used.has(glyph):
-		used[glyph] = letter
+		used[glyph] = text
 
 
 ## Glyph [param glyph]'s advance, in thousandths of the size.
@@ -144,9 +153,10 @@ func widths() -> String:
 	return " ".join(out)
 
 
-## The ToUnicode map: each glyph used, the letter it reads back as.
+## The ToUnicode map: each glyph used, the words it reads back as; one that
+## reads as nothing is left out.
 func to_unicode() -> PackedByteArray:
-	var glyphs: Array = used.keys()
+	var glyphs: Array = used.keys().filter(func(glyph: int) -> bool: return not str(used[glyph]).is_empty())
 	glyphs.sort()
 	var lines := PackedStringArray(["/CIDInit /ProcSet findresource begin", "12 dict begin", "begincmap",
 		"/CIDSystemInfo << /Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def",
@@ -156,7 +166,7 @@ func to_unicode() -> PackedByteArray:
 		var block: Array = glyphs.slice(first, first + 100)
 		lines.append("%d beginbfchar" % block.size())
 		for glyph: int in block:
-			var letter: PackedByteArray = char(int(used[glyph])).to_utf16_buffer()
+			var letter: PackedByteArray = str(used[glyph]).to_utf16_buffer()
 			# Big-endian, as a CMap's strings are.
 			for index: int in range(0, letter.size() - 1, 2):
 				var low: int = letter[index]

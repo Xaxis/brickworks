@@ -5214,6 +5214,12 @@ msgstr "La police du PDF d'une notice et des images de ses pages, incluse dans l
 msgid "The type's licence"
 msgstr "Licence de la police"
 
+msgid "The emoji a booklet's PDF prints, in outline, carried in the PDF"
+msgstr "Les emoji que le PDF d'une notice imprime, en contours, inclus dans le PDF"
+
+msgid "The emoji's licence"
+msgstr "Licence des emoji"
+
 msgid "LEGO® Digital Designer's part and colour numbers in LDraw's terms, for opening .lxf models"
 msgstr "Les numéros de pièces et de couleurs de LEGO® Digital Designer en termes LDraw, pour ouvrir les modèles .lxf"
 

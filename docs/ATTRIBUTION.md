@@ -344,6 +344,24 @@ Helvetica's, which the booklet lays its words out by.
 - The PDFs made with it are not bound by the licence (it says so of
   documents made with the fonts); the whole font goes into each PDF.
 
+## The booklet's emoji (Noto Emoji)
+
+An emoji in a booklet's words is printed in its PDF in Noto Emoji, in
+outline (`assets/fonts/NotoEmoji-Regular.ttf`, `BookletPdf.EMOJI`): the
+booklet's page draws emoji in the system's colour face, which no PDF type
+can carry, and the web has none. It is Noto Emoji 3.000 from
+https://github.com/google/fonts (`ofl/notoemoji`), its variable font made
+the static regular weight (fontTools' instancer, glyph names left out):
+863 KB, against 1.98 MB for all its weights. Only the glyphs a booklet uses
+go into its PDF (PdfType).
+
+- Licence: **SIL Open Font License 1.1**, copyright 2013 Google LLC, with
+  no Reserved Font Name, so a copy changed so may keep its name. Each copy
+  carries the notice and the licence (`assets/fonts/NotoEmoji-OFL.txt`;
+  `Credits.NOTO_EMOJI_OFL`, shown in About and written into
+  THIRD-PARTY-NOTICES.txt).
+- The PDFs made with it are not bound by the licence.
+
 ## LEGO trademarks
 
 LEGO® is a trademark of the LEGO Group of companies which does not

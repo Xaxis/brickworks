@@ -1192,13 +1192,14 @@ func _wide_letters() -> void:
 	var html: String = _out.path_join("wide_instructions.html")
 	await _main.call("_export_booklet", html)
 	var wrote: String = str(await _main.call("save_booklet_as", "pdf", _out.path_join("wide_export.pdf")))
-	# Only letters no type here has are named (pdfcid, 2026-11-08): the
-	# brick, whose only face is colour pictures. 城 is printed in the system's
-	# type where Godot draws it in one.
+	# Only letters no type here has are named (pdfcid, 2026-11-08). The
+	# brick is printed in the app's own Noto Emoji (pdfbidi, 2026-11-09); 城
+	# is printed in the system's type where Godot draws it in one.
 	var cjk_typed: bool = _typed("城")
-	_check("Save as PDF says which letters no type here can print, not \"?\" in silence: 🧱, and 城 %s (%s)"
-		% ["printed" if cjk_typed else "too", wrote.right(120)], wrote.begins_with("wrote")
-		and wrote.contains("cannot print") and wrote.contains("🧱") and wrote.contains("城") != cjk_typed)
+	_check("Save as PDF prints the brick in the app's emoji and 城 %s, naming only letters no type here has (%s)"
+		% ["in the system's type" if cjk_typed else "named", wrote.right(120)], wrote.begins_with("wrote")
+		and not wrote.contains("🧱") and wrote.contains("cannot print") != cjk_typed
+		and wrote.contains("城") != cjk_typed)
 	# The web's PDF is read from the booklet's own tab: its title, decoded,
 	# fed back to the reader with its pages.
 	await _tools.run("page_setup", {"title": "Gate <section> Hill", "cover_line": "", "header": ""})

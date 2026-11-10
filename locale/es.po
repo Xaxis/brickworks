@@ -5214,6 +5214,12 @@ msgstr "La tipografía del PDF de un manual y de las imágenes de sus páginas, 
 msgid "The type's licence"
 msgstr "Licencia de la tipografía"
 
+msgid "The emoji a booklet's PDF prints, in outline, carried in the PDF"
+msgstr "Los emoji que imprime el PDF de un manual, en contorno, incluidos en el PDF"
+
+msgid "The emoji's licence"
+msgstr "Licencia de los emoji"
+
 msgid "LEGO® Digital Designer's part and colour numbers in LDraw's terms, for opening .lxf models"
 msgstr "Los números de piezas y colores de LEGO® Digital Designer en términos de LDraw, para abrir modelos .lxf"
 
