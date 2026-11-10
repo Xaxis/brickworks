@@ -495,7 +495,7 @@ try {
       // orangecheck's row is there where the deployment signs in with it
       // (api/orangecheck.js), and nowhere else.
       check(`${label}: ${rows.join(" · ")}`, rows.join(",").replace("Email,orangecheck,", "Email,")
-        === "Profile,Appearance,Email,Privacy,Assistants,Feedback,Sign out,Delete this account…");
+        === "Profile,Appearance,Email,Privacy,Assistants,Your reports,Sign out,Delete this account…");
       check(`${label}: her choices as she made them (comments ${choices.comments}, ${choices.kinds}, follows shown ${choices.follows})`,
         (!mailReady || (choices.comments && /models:true/.test(choices.kinds) && /remixes:false/.test(choices.kinds)))
         && (!followsReady || choices.follows) && choices.who.includes(adaEmail) && choices.edit === "/profile?edit=1");
