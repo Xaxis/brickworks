@@ -5134,6 +5134,20 @@
       "entry": "src/dev/donenote_probe.gd",
       "reach": "tools/probe.sh donenote_probe -- --shots=DIR   (windowed, 1400x900 and PROBE_SIZE=1280x720, signed in through the gate with a throwaway account from .env; the focus, the window's attention and the browser's Notification a stand-in: a design in the panel on a stand-in API, Render picture at Best, the render queue's Add this view and Render building, each run to its end; unfocused 1 attention request or 1 notification each, focused 0, turned off by a click in Settings and kept 0; the web asks nothing on load and once at the first long job)",
       "area": "view"
+    },
+    {
+      "kind": "lib",
+      "label": "line art and comic looks",
+      "entry": "src/render/line_art.gd",
+      "reach": "tools/probe.sh lineart && PROBE_SIZE=1280x720 tools/probe.sh lineart   (by hand: File, Render…, Look, Line art or Comic, the draft drawn in it; render_model look=lineart|comic over MCP; with Background None on nothing)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "lineart probe",
+      "entry": "src/dev/lineart_probe.gd",
+      "reach": "tools/probe.sh lineart [-- --shots=DIR --reference=DIR]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720, through the sign-in screen with a throwaway account (.env): Render's default of the car and a scene's window and Product kept for an older build's run (--reference) byte for byte; the Look row clicked; Line art's paper, greys, outline, the wall's seams inked and dots where the light leaves a face; Comic's colours; on nothing; an animation's moved part leaves no line; render_model; 10036-1 in both looks to look at)",
+      "area": "view"
     }
   ]
 }

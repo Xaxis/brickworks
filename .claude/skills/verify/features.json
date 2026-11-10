@@ -1512,6 +1512,14 @@
       "tests": []
     },
     {
+      "id": "cli:lineart probe",
+      "kind": "cli",
+      "entry": "src/dev/lineart_probe.gd",
+      "reach": "tools/probe.sh lineart [-- --shots=DIR --reference=DIR]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720, through the sign-in screen with a throwaway account (.env): Render's default of the car and a scene's window and Product kept for an older build's run (--reference) byte for byte; the Look row clicked; Line art's paper, greys, outline, the wall's seams inked and dots where the light leaves a face; Comic's colours; on nothing; an animation's moved part leaves no line; render_model; 10036-1 in both looks to look at)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:link browser flow",
       "kind": "cli",
       "entry": "tools/web/link_flow.mjs",
@@ -3543,6 +3551,14 @@
       "entry": "src/parts/ldr_model.gd",
       "reach": "godot --headless --path . --script src/dev/import_probe.gd",
       "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "lib:line art and comic looks",
+      "kind": "lib",
+      "entry": "src/render/line_art.gd",
+      "reach": "tools/probe.sh lineart && PROBE_SIZE=1280x720 tools/probe.sh lineart   (by hand: File, Render\u2026, Look, Line art or Comic, the draft drawn in it; render_model look=lineart|comic over MCP; with Background None on nothing)",
+      "area": "view",
       "tests": []
     },
     {

@@ -13254,6 +13254,28 @@ msgstr "Du hast die Beta verlassen. Du kannst jederzeit wieder mitmachen."
 
 msgid "Joined. You are a beta tester."
 msgstr "Dabei. Du bist Beta-Tester."
+# Render's Look, Line art and Comic (APP_UX7 #22 lineart): the model inked as a person draws it
+
+msgid "Line art"
+msgstr "Strichzeichnung"
+
+msgid "Comic"
+msgstr "Comic"
+
+msgid "Black lines on white, as you would ink it, the shade in halftone dots: to colour over or print."
+msgstr "Schwarze Linien auf Weiß, wie mit Tusche gezeichnet, die Schatten in Rasterpunkten: zum Ausmalen oder Drucken."
+
+msgid "Bold lines over each part's own colour, flat, with halftone dots where the light leaves it."
+msgstr "Kräftige Linien über der eigenen Farbe jedes Teils, flächig, mit Rasterpunkten, wo das Licht nachlässt."
+
+msgid "Drawn in one frame at any quality: the lines and the dots are the picture."
+msgstr "In einem Bild gezeichnet, bei jeder Qualität: Die Linien und die Punkte sind das Bild."
+
+msgid "Line art and Comic are drawn sharp all through."
+msgstr "Strichzeichnung und Comic werden überall scharf gezeichnet."
+
+msgid "inking"
+msgstr "wird getuscht"
 
 # video2 (APP_UX6 #11): Render's Kept as, a WebP or a GIF.
 msgid "Kept as"
