@@ -5018,6 +5018,133 @@ msgstr "No se ha podido enviar ahora. Vuelve a intentarlo en un minuto."
 msgid "Thank you."
 msgstr "Gracias."
 
+# Report a bug (bugreport, 2026-11-09)
+msgid "Report a bug"
+msgstr "Informar de un error"
+
+msgid "Report a bug…"
+msgstr "Informar de un error…"
+
+msgid "Report this"
+msgstr "Informar"
+
+msgid "Tell us what went wrong, with a picture of the window to mark the spot on"
+msgstr "Cuéntanos qué ha fallado, con una imagen de la ventana para marcar el lugar"
+
+msgid "Tell us what went wrong, with a picture of the window to mark the spot on (%s)"
+msgstr "Cuéntanos qué ha fallado, con una imagen de la ventana para marcar el lugar (%s)"
+
+msgid "Share an idea"
+msgstr "Compartir una idea"
+
+msgid "Ask a question"
+msgstr "Hacer una pregunta"
+
+msgid "What happened?"
+msgstr "¿Qué ha pasado?"
+
+msgid "What would you like?"
+msgstr "¿Qué te gustaría?"
+
+msgid "What would you like to ask?"
+msgstr "¿Qué quieres preguntar?"
+
+msgid "What did you expect to happen? (optional)"
+msgstr "¿Qué esperabas que pasara? (opcional)"
+
+msgid "Tell us what went wrong. We read every report ourselves."
+msgstr "Cuéntanos qué ha fallado. Leemos cada informe nosotros mismos."
+
+msgid "Send report"
+msgstr "Enviar el informe"
+
+msgid "Clear the marks"
+msgstr "Borrar las marcas"
+
+msgid "Leave the picture out"
+msgstr "No incluir la imagen"
+
+msgid "Put the picture back"
+msgstr "Volver a incluir la imagen"
+
+msgid "Drag on the picture to mark the spot."
+msgstr "Arrastra sobre la imagen para marcar el lugar."
+
+msgid "1 mark. Drag again to add another."
+msgstr "1 marca. Arrastra otra vez para añadir otra."
+
+msgid "%d marks. Drag again to add another."
+msgstr "%d marcas. Arrastra otra vez para añadir otra."
+
+msgid "No picture goes with it."
+msgstr "No va ninguna imagen."
+
+msgid "The picture that goes with the report. Drag on it to mark the spot."
+msgstr "La imagen que va con el informe. Arrastra sobre ella para marcar el lugar."
+
+msgid "What will be sent"
+msgstr "Lo que se enviará"
+
+msgid "What you wrote"
+msgstr "Lo que has escrito"
+
+msgid "the picture"
+msgstr "la imagen"
+
+msgid "the picture, with 1 mark"
+msgstr "la imagen, con 1 marca"
+
+msgid "the picture, with %d marks"
+msgstr "la imagen, con %d marcas"
+
+msgid "the version and your system"
+msgstr "la versión y tu sistema"
+
+msgid "the model, as a file"
+msgstr "el modelo, como archivo"
+
+msgid "1 log line"
+msgstr "1 línea del registro"
+
+msgid "%d log lines"
+msgstr "%d líneas del registro"
+
+msgid "the error it said"
+msgstr "el mensaje de error"
+
+msgid "The app's log lines up to the error (%d), which say what it was doing"
+msgstr "Las líneas del registro de la aplicación hasta el error (%d), que dicen qué estaba haciendo"
+
+msgid "Say what happened."
+msgstr "Di qué ha pasado."
+
+msgid "Sign in to send a report: Account, at the top right."
+msgstr "Inicia sesión para enviar un informe: Cuenta, arriba a la derecha."
+
+msgid "Something went wrong in Brickworks. Report this, and what it was doing goes with it."
+msgstr "Algo ha fallado en Brickworks. Infórmanos, y lo que estaba haciendo irá con el informe."
+
+msgid "Thank you. Report #%d is in."
+msgstr "Gracias. El informe #%d ha llegado."
+
+msgid "Thank you. Your report is in."
+msgstr "Gracias. Tu informe ha llegado."
+
+msgid "We read every report ourselves. Follow it, and our answer, in Your reports."
+msgstr "Leemos cada informe nosotros mismos. Síguelo, y nuestra respuesta, en Tus mensajes."
+
+msgid "We read every report ourselves. Follow it, and our answer, in Your reports. The picture and the model did not go with it."
+msgstr "Leemos cada informe nosotros mismos. Síguelo, y nuestra respuesta, en Tus mensajes. La imagen y el modelo no fueron con él."
+
+msgid "We read every report ourselves. Follow it, and our answer, in Your reports. The picture did not go with it."
+msgstr "Leemos cada informe nosotros mismos. Síguelo, y nuestra respuesta, en Tus mensajes. La imagen no fue con él."
+
+msgid "We read every report ourselves. Follow it, and our answer, in Your reports. The model did not go with it."
+msgstr "Leemos cada informe nosotros mismos. Síguelo, y nuestra respuesta, en Tus mensajes. El modelo no fue con él."
+
+msgid "Your reports"
+msgstr "Tus mensajes"
+
 msgid "A complete CAD for LEGO® models, built by hand or with the assistant, on the web or on your own computer."
 msgstr "Un CAD completo para modelos de LEGO®, construidos a mano o con el asistente, en la web o en tu propio ordenador."
 
@@ -12932,6 +13059,127 @@ msgstr "Las piezas fabricadas por primera vez en %d o %d, las más recientes pri
 msgid "%s first made in %d or %d, the newest first"
 msgstr "%s fabricadas por primera vez en %d o %d, las más recientes primero"
 
+# Names a screen reader says, with no words on screen of their own: those Access
+# gives Godot's file dialog, the choices named where they are made, and every
+# accessibility_name of the interface (a11ynames, a11y_names_probe).
+
+msgid "Kind of file"
+msgstr "Tipo de archivo"
+
+msgid "Drive"
+msgstr "Unidad"
+
+msgid "Move the favourite up"
+msgstr "Subir el favorito"
+
+msgid "Move the favourite down"
+msgstr "Bajar el favorito"
+
+msgid "Drag to share the room between the panes"
+msgstr "Arrastra para repartir el espacio entre los paneles"
+
+msgid "Create a new folder."
+msgstr "Crear una carpeta nueva."
+
+msgid "3D file format"
+msgstr "Formato de archivo 3D"
+
+msgid "Length"
+msgstr "Longitud"
+
+msgid "Speed"
+msgstr "Velocidad"
+
+msgid "Frames"
+msgstr "Fotogramas"
+
+msgid "Measure periods against"
+msgstr "Medir los períodos respecto a"
+
+msgid "Where the cut is"
+msgstr "Dónde está el corte"
+
+msgid "Studs across"
+msgstr "Espigas a lo ancho"
+
+msgid "Studs deep"
+msgstr "Espigas a lo largo"
+
+msgid "Find a key"
+msgstr "Buscar una tecla"
+
+msgid "%s: %s. Set its key"
+msgstr "%s: %s. Asignar su tecla"
+
+msgid "Search the LDraw sets"
+msgstr "Buscar en los sets de LDraw"
+
+msgid "The minifigure"
+msgstr "La minifigura"
+
+msgid "Commands"
+msgstr "Comandos"
+
+msgid "Show the parts as a list"
+msgstr "Mostrar las piezas en una lista"
+
+msgid "Find a colour by name or number"
+msgstr "Buscar un color por nombre o número"
+
+msgid "The part, turning"
+msgstr "La pieza, girando"
+
+msgid "The print, to draw on"
+msgstr "La impresión, para dibujar en ella"
+
+msgid "Brush size"
+msgstr "Tamaño del pincel"
+
+msgid "The part wearing the print"
+msgstr "La pieza que lleva la impresión"
+
+msgid "AI: who designs, provider, model and key"
+msgstr "IA: quién diseña, proveedor, modelo y clave"
+
+msgid "Show the key as it is typed"
+msgstr "Mostrar la clave mientras se escribe"
+
+msgid "Test the model: one tool call and one picture"
+msgstr "Probar el modelo: una llamada a una herramienta y una imagen"
+
+msgid "Models"
+msgstr "Modelos"
+
+msgid "API key"
+msgstr "Clave de API"
+
+msgid "Back to Settings"
+msgstr "Volver a los ajustes"
+
+msgid "Provider"
+msgstr "Proveedor"
+
+msgid "Reasoning effort"
+msgstr "Esfuerzo de razonamiento"
+
+msgid "Where in the cycle"
+msgstr "En qué punto del ciclo"
+
+msgid "View cube"
+msgstr "Cubo de vista"
+
+msgid "Turn the view up"
+msgstr "Girar la vista hacia arriba"
+
+msgid "Turn the view down"
+msgstr "Girar la vista hacia abajo"
+
+msgid "Slide the view: W, A, S and D"
+msgstr "Desplazar la vista: W, A, S y D"
+
+msgid "Step"
+msgstr "Paso"
+
 # View › Edges and studs (APP_UX6 #19 edges): the parts' seams and their studs, each drawn or not
 
 msgid "Edges and studs"
@@ -12948,6 +13196,58 @@ msgstr "Una línea fina donde cada pieza se une a la siguiente, para leer las hi
 
 msgid "Off, the parts are drawn without their studs, each in its place: the shapes alone, and a big model drawn faster"
 msgstr "Desactivado, las piezas se dibujan sin sus espigas, cada una en su sitio: solo las formas, y un modelo grande se dibuja más rápido"
+
+# The beta's welcome after signing up, and its row in Account (betajoin)
+msgid "Open beta"
+msgstr "Beta abierta"
+
+msgid "Welcome to Brickworks"
+msgstr "Te damos la bienvenida a Brickworks"
+
+msgid "A CAD for LEGO® models: every LDraw part, joined where the real ones join."
+msgstr "Un CAD para modelos de LEGO®: cada pieza de LDraw, unida donde se unen las de verdad."
+
+msgid "It is in open beta: it works, and it gets better every week with what builders tell us."
+msgstr "Está en beta abierta: funciona, y mejora cada semana con lo que nos cuentan quienes construyen."
+
+msgid "Testers try new features first and tell us what is wrong. The first 100 we pick get a month of Pro."
+msgstr "Quienes participan prueban antes lo nuevo y nos cuentan qué falla. Las primeras 100 personas que elijamos reciben un mes de Pro."
+
+msgid "Join the beta testers"
+msgstr "Participar en la beta"
+
+msgid "Joining agrees to the beta's terms and to emails about the beta. Leave any time in Account."
+msgstr "Al participar aceptas las condiciones de la beta y los correos sobre la beta. Puedes dejarla cuando quieras en Cuenta."
+
+msgid "You are a beta tester"
+msgstr "Ya participas en la beta"
+
+msgid "Thank you. Report a bug whenever something is wrong, from wherever you are. What you send, and our answers, are kept with your account."
+msgstr "Gracias. Informa de un fallo cuando algo no vaya bien, estés donde estés. Lo que envías, y nuestras respuestas, se guardan con tu cuenta."
+
+msgid "For a month of Pro, tell us what you build on the beta's page: it takes a minute."
+msgstr "Para un mes de Pro, cuéntanos qué construyes en la página de la beta: es un minuto."
+
+msgid "Tell us what you build"
+msgstr "Cuéntanos qué construyes"
+
+msgid "Beta"
+msgstr "Beta"
+
+msgid "You are a beta tester. Thank you."
+msgstr "Participas en la beta. Gracias."
+
+msgid "Brickworks is in open beta. Testers try new features first and tell us what is wrong; the first 100 we pick get a month of Pro."
+msgstr "Brickworks está en beta abierta. Quienes participan prueban antes lo nuevo y nos cuentan qué falla; las primeras 100 personas que elijamos reciben un mes de Pro."
+
+msgid "Leave the beta"
+msgstr "Dejar la beta"
+
+msgid "You left the beta. Join again any time."
+msgstr "Has dejado la beta. Puedes volver cuando quieras."
+
+msgid "Joined. You are a beta tester."
+msgstr "Hecho. Ya participas en la beta."
 
 # video2 (APP_UX6 #11): Render's Kept as, a WebP or a GIF.
 msgid "Kept as"
@@ -12997,3 +13297,14 @@ msgstr "el GIF no se terminó: %s"
 
 msgid "no GIF: its frames would not read back"
 msgstr "sin GIF: sus fotogramas no se pudieron volver a leer"
+# A colour's swatch: in how many sets the part comes in it, and rare in it
+# in three or fewer (APP_UX7 #21, rarity).
+
+msgid "%s comes in it, in %s sets"
+msgstr "%s existe en este color, en %s sets"
+
+msgid "%s comes in it, in 1 set: rare in this colour"
+msgstr "%s existe en este color, en 1 set: raro en este color"
+
+msgid "%s comes in it, in %d sets: rare in this colour"
+msgstr "%s existe en este color, en %d sets: raro en este color"

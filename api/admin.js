@@ -73,6 +73,9 @@
 //                                        month of Pro; and the email
 //   POST /api/admin?op=beta_grant        every month still to give, given at
 //                                        Admission: what runs once Pro launches
+//   GET  /api/admin?op=beta_testers[&tests=1]  every tester, who left and who
+//                                        said Not now, each with its month's
+//                                        place (supabase/beta_join.sql)
 //   GET  /api/admin?op=feedback[&kind=K][&beta=1|0][&status=S][&tests=1]
 //                                        the feedback inbox: every report,
 //                                        newest first, with what was attached
@@ -113,7 +116,7 @@ import { AvatarRefusal, removeAvatar } from "./_avatars.js";
 import { facesOf, pictureAt } from "./_faces.js";
 import { keyed, readShard, shardOf } from "./_owned.js";
 import { originOf } from "./_oauth.js";
-import { betaDecide, betaGrant, betaQueue } from "./_beta.js";
+import { betaDecide, betaGrant, betaQueue, betaTesters } from "./_beta.js";
 import { feedbackFile, feedbackInbox, feedbackReply, feedbackTriage } from "./_feedback.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
@@ -182,9 +185,9 @@ export default async function handler(request, response) {
       + "remove_avatar, pick, unpick, challenge, end_challenge, plan, beta_decide, beta_grant, feedback_triage or "
       + "feedback_reply" });
   }
-  if (op === "beta") {
+  if (op === "beta" || op === "beta_testers") {
     try {
-      return await betaQueue(request, response);
+      return await (op === "beta" ? betaQueue : betaTesters)(request, response);
     } catch (error) {
       return response.status(502).json({ error: error.message });
     }

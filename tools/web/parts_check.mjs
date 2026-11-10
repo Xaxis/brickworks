@@ -1,7 +1,8 @@
 // A model page's parts list against the app's (site278): for each file the
 // app's parts list was taken of (src/dev/parts_page_probe.gd writes them),
 // the page's own list of the same file (api/_parts.js), lot by lot, and the
-// two exports word for word. And each lot's picture (site304): the page
+// three exports word for word: BrickLink's, Rebrickable's, and each file of
+// LEGO's Pick a Brick list with what it leaves off (sitepickabrick). And each lot's picture (site304): the page
 // draws it (web/part-pictures.js) from the geometry it names (mesh), which
 // must be the app's own for the part, here in assets/generated/parts, read
 // by the page's reader (web/lbm.js) into triangles, with a surface in the
@@ -15,12 +16,14 @@
 //
 // APP.json: {path: {pieces, lots: [[part, colour, count, name, bricklink id,
 // bricklink colour, rebrickable id, rebrickable colour, element, custom,
-// mesh]], xml, csv, <code>: [[its tile's name in that language, the English
-// one the tile falls back to, its colour's and its kind's, "" for none]]}}.
+// mesh]], xml, csv, pab: {files, lines, pieces, left_out, left_out_pieces,
+// over, stand_ins} (ShopLists.pick_a_brick), <code>: [[its tile's name in
+// that language, the English one the tile falls back to, its colour's and its
+// kind's, "" for none]]}}.
 // Prints the two totals and lots side by side, every lot that differs, and
 // exits 1 when any does.
 import { existsSync, readFileSync } from "node:fs";
-import { inventoryOf, namesOf, paletteOf, partsTable, rebrickableCsv, useNames, wantedList } from "../../api/_parts.js";
+import { inventoryOf, namesOf, paletteOf, partsTable, pickABrick, rebrickableCsv, useNames, wantedList } from "../../api/_parts.js";
 import { INHERIT, parseLbm } from "../../web/lbm.js";
 
 const appFile = (process.argv.find((a) => a.startsWith("--app=")) || "").slice(6);
@@ -54,6 +57,27 @@ for (const [path, theirs] of Object.entries(app)) {
   }
   const xml = wantedList(page).text === theirs.xml;
   const csv = rebrickableCsv(page).text === theirs.csv;
+  // LEGO's Pick a Brick list: each file byte for byte, and what it leaves
+  // off (lots with no element number, their pieces) and past 999, the app's.
+  const made = pickABrick(page);
+  const pab = { files: made.files, lines: made.lines, pieces: made.pieces, left_out: made.missing.length,
+    left_out_pieces: made.missing.reduce((n, lot) => n + lot.count, 0), over: made.over, stand_ins: made.stand_ins };
+  const pabDiffers = Object.keys(pab).filter((key) => JSON.stringify(pab[key]) !== JSON.stringify(theirs.pab?.[key]));
+  if (pabDiffers.includes("files")) {
+    const app = theirs.pab?.files || [];
+    for (let n = 0; n < Math.max(app.length, pab.files.length); n += 1) {
+      const a = (app[n] ?? "").split("\r\n");
+      const b = (pab.files[n] ?? "").split("\r\n");
+      const at = a.findIndex((line, i) => line !== b[i]);
+      if (at >= 0 || a.length !== b.length) {
+        differing.push(`    Pick a Brick file ${n + 1}, line ${at >= 0 ? at + 1 : Math.min(a.length, b.length) + 1}: app ${JSON.stringify(a[at >= 0 ? at : b.length] ?? null)}\n            page ${JSON.stringify(b[at >= 0 ? at : a.length] ?? null)}`);
+        break;
+      }
+    }
+  }
+  for (const key of pabDiffers.filter((one) => one !== "files")) {
+    differing.push(`    Pick a Brick ${key}: app ${JSON.stringify(theirs.pab?.[key] ?? null)}, page ${JSON.stringify(pab[key])}`);
+  }
   // The pictures: each lot the app has geometry for, drawn from the same.
   const pictures = [];
   let drawable = 0;
@@ -102,10 +126,14 @@ for (const [path, theirs] of Object.entries(app)) {
   console.log(`${name.padEnd(20)} ${String(theirs.pieces).padStart(11)} ${String(page.pieces).padStart(12)} `
     + `${String(theirs.lots.length).padStart(10)} ${String(page.lots.length).padStart(10)} ${String(differing.length).padStart(11)}`
     + `   wanted list ${xml ? "same" : "DIFFERS"}, Rebrickable CSV ${csv ? "same" : "DIFFERS"}, `
+    + `Pick a Brick ${pabDiffers.length ? `DIFFERS (${pabDiffers.join(", ")})` : "same"} (${pab.files.length} `
+    + `${pab.files.length === 1 ? "file" : "files"}, ${pab.lines} lines, ${pab.pieces} pieces; ${pab.left_out} lots, `
+    + `${pab.left_out_pieces} pieces with no element left off; ${Object.keys(pab.over).length} past 999), `
     + `${drawable} pictures from the app's geometry, ${page.lots.filter((lot) => lot.custom).length} swatches${pictures.length ? `, ${pictures.length} WRONG` : ""}`
     + (namesDir ? `, ${said} names said as the app says them in ${Object.keys(languages).join("/")}${naming.length ? `, ${naming.length} DIFFER` : ""}` : ""));
   for (const line of [...differing, ...pictures, ...naming].slice(0, 8)) console.log(line);
-  if (differing.length || pictures.length || naming.length || theirs.pieces !== page.pieces || !xml || !csv) failed += 1;
+  if (differing.length || pictures.length || naming.length || theirs.pieces !== page.pieces || !xml || !csv
+    || pabDiffers.length) failed += 1;
 }
 console.log(failed ? `parts_check: ${failed} FAILED` : "parts_check: every list is the app's, lot by lot");
 process.exit(failed ? 1 : 0);

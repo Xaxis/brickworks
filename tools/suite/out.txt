@@ -17,6 +17,7 @@ connector         # needs the relay with .env's keys, and makes accounts in prod
 tabs              # needs the relay with .env's keys; tabs_flow holds it on a deployment
 tabpair           # needs the relay with .env's keys; tabpair_probe.mjs and tabpair_flow on a deployment
 together          # needs the relay with .env's keys, and makes accounts in production Supabase; together_flow runs it beside two browsers on a deployment
+betajoin          # needs a relay with the beta open and --hold=feedback (its head), and makes accounts in production Supabase; betajoin_flow does the site's half
 desktop_cloud     # needs the relay with .env's keys, and makes an account in production Supabase; cloud_library_flow holds the web half on a deployment
 mybricks          # needs the relay with .env's keys, and makes an account in production Supabase; tools/web/mybricks_api.mjs holds the endpoint's half
 mysets            # needs the relay with .env's keys, and makes an account in production Supabase; tools/web/mysets_api.mjs holds the endpoint's half
