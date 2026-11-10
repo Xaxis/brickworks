@@ -50,7 +50,7 @@ const json = (status, body) => new Response(JSON.stringify(body), { status, head
 
 export async function hold() {
   if (inner) return;
-  db = await startPostgres({ also: ["supabase/feedback.sql"] });
+  db = await startPostgres({ also: ["supabase/feedback.sql", "supabase/beta_join.sql"] });
   inner = globalThis.fetch;
   globalThis.fetch = async (url, init = {}) => {
     const where = String(url);

@@ -515,6 +515,14 @@ var _full_offer: AccountFullOffer
 var _restore_notice: RestoreNotice
 ## This computer runs the simpler graphics mode, said once (GraphicsMode).
 var _graphics_notice: RestoreNotice
+## Something went wrong in the app's own scripts, said above the model with
+## Report this while the beta is open (bugreport, _on_script_error); made
+## the first time.
+var _error_notice: RestoreNotice
+## Each error said so this run, by its line: once each, and at most
+## ERRORS_SAID, so a fault that repeats every frame says it once.
+var _errors_said: Dictionary = {}
+const ERRORS_SAID := 5
 ## When the files other tabs and windows share with this one were last
 ## looked at (_watch_other_tabs), in ticks.
 var _tabs_looked: int = 0
@@ -1210,6 +1218,8 @@ func _page_controls() -> Dictionary:
 		named.merge(_full_offer.controls_by_name())
 	if _restore_notice != null:
 		named.merge(_restore_notice.controls_by_name())
+	if _error_notice != null:
+		named.merge(_error_notice.controls_by_name())
 	if _graphics_notice != null:
 		named.merge(_graphics_notice.controls_by_name())
 	if _brickify_made != null:
@@ -1737,6 +1747,7 @@ func _ready() -> void:
 		get_window().title = "Brickworks %s" % BuildInfo.version()
 	# The last log lines, for Help, Send feedback… to offer (RecentLog).
 	_log = RecentLog.new()
+	_log.on_error = _on_script_error
 	OS.add_logger(_log)
 	_boot_mark("ready")
 	# Which graphics mode this window draws in, and why, in every log
@@ -2718,12 +2729,52 @@ func _on_account_changed() -> void:
 	# A beta tester's early features in the menus (Account.early_on).
 	if _shell != null:
 		_shell.set_early(_account.early if _account.signed_in() else ([] as Array[String]))
+	_offer_reports()
 	# A viewer is nobody's session: no connector, ever.
 	if not _viewing.is_empty():
 		return
 	_maybe_copy()
 	_maybe_join_together()
 	_tell_connector_who()
+
+
+## While the beta is open (Account.beta_open), reporting a bug is one press
+## from anywhere (bugreport, 2026-11-09): Report a bug in the top bar beside
+## Account, and Report this on a notice of something gone wrong (the model
+## not opened at start-up, an error in the app's scripts), whose report
+## carries what the notice said. Help, Report a bug… is there whatever the
+## beta.
+func _offer_reports() -> void:
+	var open: bool = _account != null and _account.signed_in() and _account.beta_open \
+		and _viewing.is_empty()
+	if _shell != null:
+		_shell.set_beta_open(open)
+	if _restore_notice != null:
+		_restore_notice.offer_report(func() -> void:
+			_shell.report_bug("notice", _log.last() if _log != null else PackedStringArray(),
+				_restore_notice.words().left(RecentLog.WIDEST)) if open else Callable())
+	if _error_notice != null and not open:
+		_error_notice.dismiss()
+
+
+## An error in the app's own scripts (RecentLog.on_error): said above the
+## model while the beta is open, with Report this, which carries [param
+## said] and the log [param lines] up to it. Each error once a run, and at
+## most ERRORS_SAID.
+func _on_script_error(said: String, lines: PackedStringArray) -> void:
+	if not _built or _shell == null or _notices == null or _account == null \
+			or not (_account.signed_in() and _account.beta_open) or not _viewing.is_empty():
+		return
+	if _errors_said.has(said) or _errors_said.size() >= ERRORS_SAID:
+		return
+	_errors_said[said] = true
+	if _error_notice == null:
+		_error_notice = RestoreNotice.new()
+		_error_notice.key = "error_got_it"
+		_error_notice.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		_notices.get_child(0).add_child(_error_notice)
+	_error_notice.offer_report(func() -> void: _shell.report_bug("notice", lines, said))
+	_error_notice.tell("Something went wrong in Brickworks. Report this, and what it was doing goes with it.")
 
 
 ## The connector, if made, put back as it was once somebody is in, and off
@@ -3406,8 +3457,40 @@ func _turn_pages_over(pages: BuildSteps) -> void:
 	if not pages.asks_the_booklet() or pages.turns_known():
 		return
 	await Later.script_in_background(&"BookletMaker", null)
+	await _shapes_off_frame()
 	if pages == _build_pages:
 		pages.work_out_turns()
+
+
+## Every part's exact shape not read yet, read on a worker and waited for
+## over frames. The booklet asks a step's bricks for theirs (_stud_way), and
+## asked on the frames it read 30 of 8808-1's in the viewer as it came up,
+## a first read 25-60 ms of one (watched_frames_probe). Not in a browser,
+## whose shapes are fetched and which reads none on a worker
+## (Exact.shape_for), nor without threads.
+func _shapes_off_frame() -> void:
+	if OS.has_feature("web") or OS.has_feature("nothreads"):
+		return
+	var unread: Dictionary = {}
+	for brick: BrickWorld.Brick in _world.bricks():
+		if not unread.has(brick.part_id) and not Exact.known(_library, brick.part_id):
+			unread[brick.part_id] = true
+	if unread.is_empty():
+		return
+	var parts: PartLibrary = _library
+	var ids: Array = unread.keys()
+	var stop := WorkerTasks.Stop.new()
+	parts.begin_reading()
+	var task: int = WorkerTasks.add(func() -> void:
+		for id: Variant in ids:
+			if stop.asked():
+				return
+			Exact.shape_for(parts, str(id)), false, "read the parts' exact shapes for the booklet's turns")
+	parts.reading_in(task, stop.ask)
+	while not WorkerThreadPool.is_task_completed(task) and is_inside_tree():
+		await get_tree().process_frame
+	WorkerTasks.collect(task)
+	parts.end_reading(task)
 
 
 ## A page found to be turned over while it is on screen, in Build it or lit
@@ -5827,6 +5910,9 @@ func _build_ui() -> void:
 	_restore_notice.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_notices.get_child(0).add_child(_restore_notice)
 	_store.not_restored.connect(_restore_notice.tell)
+	# Report this on it while the beta is open, should the account be known
+	# already (bugreport).
+	_offer_reports()
 	# Graphics that cannot run the full mode started the simpler one by
 	# themselves: said once, above the model (GraphicsMode).
 	var graphics: String = GraphicsMode.to_say()

@@ -322,16 +322,31 @@ declare -A CMD=(
   # local only: webhook_replay.mjs. Admission's webhook, signed by its own
   # code, into such a preview, which Admission's deliveries cannot reach.
   # The beta (api/_beta.js, supabase/beta.sql): on a deployment with the
-  # beta off, as every release's is, /beta says Coming soon with no form and
-  # no count and the API refuses an application. On a unit's preview from
-  # tools/deploy.sh --unit --billing-stand-in --beta-open: signed out sent
-  # to sign in; a throwaway applies once from the form at 390; the owner's
-  # queue shows its signals and approves it, the next spot and its month
-  # given in Admission's test mode; the emails kept (delivered where there
-  # is a mail key); a decline; two approvals at once at 99 given make one
-  # spot 100; deleting the account erases its application. The checks' own
-  # pool of spots, never the 100. Throwaway accounts, deleted after.
+  # beta off, as every release's is, /beta says Coming soon with no way in
+  # and no count and the API refuses an application. On a unit's preview
+  # from tools/deploy.sh --unit --billing-stand-in --beta-open: signed out,
+  # Sign up and join opens the sign-in; a throwaway's hub at 390 and its
+  # application sent as the API takes it; the owner's queue shows its
+  # signals and approves it, the next spot and its month given in
+  # Admission's test mode; the emails kept (delivered where there is a mail
+  # key); a decline; two approvals at once at 99 given make one spot 100;
+  # deleting the account erases its application. The checks' own pool of
+  # spots, never the 100. Throwaway accounts, deleted after.
   [beta]="tools/web/beta_flow.mjs --url=$P --out=$S/${TAG}_beta"
+  # The beta's bar and homepage (betahome, web/betabar.js, web/landing.js):
+  # with the beta off, as every release's is, no bar on any page and no
+  # Open beta on the homepage, and the bar's script not asked for again;
+  # open (a unit's --beta-open), signed out, the bar on every page at 390
+  # and 1280, hidden for a day by its x, Join opening the hub's way in beside
+  # the terms, Report a bug its dialog, the homepage's Sign up and join and
+  # /beta's hub. Reads only.
+  [betahome]="tools/web/betahome_flow.mjs --url=$P --out=$S/${TAG}_betahome"
+  # local only: betajoin_flow.mjs. Joining the beta as a step of signing
+  # up (the welcome, Settings' Beta row, the owner's list) needs
+  # supabase/beta_join.sql, which no preview has until the lead applies it,
+  # so it runs against tools/web/relay_server.mjs --hold=feedback with the
+  # beta open (its head). On a preview, beta (above) checks joining and
+  # leaving: refused off, never money open, 503 before the file.
   # Feedback (beta374): the /feedback page, the footer's and the account
   # menu's Send feedback, the dialog on the site at 390 and 1280 (a picture
   # chosen, removed and chosen again) and in the app (Help, Send
@@ -341,6 +356,13 @@ declare -A CMD=(
   # its own run is local, with a throwaway owner (the flow's head).
   # Throwaway accounts, deleted after.
   [feedback]="tools/web/feedback_flow.mjs --url=$P --out=$S/${TAG}_feedback"
+  # Report a bug (bugreport): window.brickworksReportBug over the page at 390
+  # and 1280, the page's picture drawn, a box marked on it and found in the
+  # kept picture where it was drawn (within 2 px), Your reports listing each
+  # with its number, Escape and Cancel sending nothing; the app's top bar's
+  # Report a bug with the beta open (tools/deploy.sh --unit --beta-open), and
+  # none with it shut, as every release's preview has it. A throwaway, deleted.
+  [bugreport]="tools/web/bugreport_flow.mjs --url=$P --out=$S/${TAG}_bugreport"
   [tabs]="tools/web/tabs_flow.mjs --url=$P/app --out=$S/${TAG}_tabs"
   # Two chats, two tabs: the relay's rules alone, then the app in two tabs.
   [tabpair_probe]="tools/web/tabpair_probe.mjs --url=$P"

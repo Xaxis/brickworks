@@ -35,7 +35,10 @@
 //                            parts list counts it (api/_parts.js); as=xml
 //                            (/m/X/parts.xml) a BrickLink wanted list,
 //                            as=csv (/m/X/parts.csv) a Rebrickable parts
-//                            list, each to download; with v=N, version N's
+//                            list, as=pab (/m/X/parts-pab.csv; past 400
+//                            elements as=pab-2, /m/X/parts-pab-2.csv, and
+//                            on) a LEGO® Pick a Brick list, each to
+//                            download; with v=N, version N's
 //   GET  ?op=scene&id=X      /m/X/scene.json: the model packed for its page's
 //                            3D view (api/_parts.js sceneOf), every part's
 //                            place, turn and colour, its geometry in the
@@ -250,7 +253,8 @@ import {
   librarySets, searchSets, setCard, setModel, setTitle, themeOf, themes,
 } from "./_library.js";
 // A model's parts list from its file, as the app's (site278).
-import { inventoryOf, inventoryOfLots, namesOf, paletteOf, partNames, partsTable, rebrickableCsv, roomOf, sceneOf, wantedList } from "./_parts.js";
+import { PICK_A_BRICK_LINES, PICK_A_BRICK_MOST, inventoryOf, inventoryOfLots, namesOf, paletteOf, partNames, partsTable,
+  pickABrick, rebrickableCsv, roomOf, sceneOf, wantedList } from "./_parts.js";
 import { checkTested, markOf, ownerMark, publicMark } from "./_tested.js";
 import { changedOf, changesBetween, lotSaid, readChanges, saidOf } from "./_versions.js";
 import { countSaid, sideSaid, stepCount, stepsSaid } from "./_steps.js";
@@ -1426,7 +1430,7 @@ export const LOTS_SHOWN = 12;
 export const LOT_ROW = 60;
 
 /// Its parts (site278, docs/SOCIAL.md U4): how many in how many lots, the
-/// two shops' lists to download, and the list itself, which
+/// three shops' lists to download, and the list itself, which
 /// web/model-page.js asks for (/m/X/parts.json) as the section nears the
 /// screen, a row a lot under a row a colour, or a kind. Nothing where
 /// this deployment cannot list them. [at] is /m/X, or /m/X/v/N for an older
@@ -1435,6 +1439,7 @@ function partsSection(at, parts) {
   if (!parts || !parts.lots.length) return "";
   const colours = new Set(parts.lots.map((lot) => lot.colour)).size;
   const rows = Math.min(LOTS_SHOWN, parts.lots.length + colours);
+  const pab = pickABrick(parts);
   // Lean: every byte here is in the page's first bytes, and the list is not.
   return `<section class="parts" id="parts" aria-labelledby="parts-h" data-parts="${at}/parts.json">`
     + `<h2 id="parts-h">${asText(say("Parts"))}</h2><p class="note">${escapeHtml(say("{parts} in {lots}",
@@ -1442,12 +1447,50 @@ function partsSection(at, parts) {
     + `<div class="parts-bar"><div class="segmented" role="group" aria-label="${asText(say("Group them by"))}">`
     + `<button type="button" data-group="colour" aria-pressed="true">${asText(say("Colour"))}</button>`
     + `<button type="button" data-group="kind" aria-pressed="false">${asText(say("Kind"))}</button></div>`
-    + `<a class="cta ghost small" href="${at}/parts.xml" download>BrickLink XML</a>`
-    + `<a class="cta ghost small" href="${at}/parts.csv" download>Rebrickable CSV</a></div>`
+    // The shops' lists together: beside Colour and Kind where they fit, on
+    // a row of their own where not, so a phone's rows read shop by shop.
+    + `<div class="parts-shops"><a class="cta ghost small" href="${at}/parts.xml" download>BrickLink XML</a>`
+    + `<a class="cta ghost small" href="${at}/parts.csv" download>Rebrickable CSV</a>${pickABrickLinks(at, pab)}</div></div>`
+    + pickABrickNote(pab)
     + `<ul class="lot-list" style="min-height:${rows * LOT_ROW}px"></ul>`
     + (parts.lots.length + colours > LOTS_SHOWN ? `<button type="button" class="cta ghost small" data-all hidden>`
       + `${escapeHtml(say("Show all {lots}", { lots: counted(parts.lots.length, "lot") }))}</button>` : "")
     + `</section>`;
+}
+
+/// The parts' LEGO® Pick a Brick list ([made]: api/_parts.js pickABrick),
+/// beside the other two shops': /m/X/parts-pab.csv, and past
+/// PICK_A_BRICK_LINES elements a file each, as Pick a Brick's upload takes
+/// them (/m/X/parts-pab-2.csv, …), each saying which it is. None where no
+/// part has an element number known.
+function pickABrickLinks(at, made) {
+  const all = made.files.length;
+  const what = say("A list of LEGO® element numbers to upload at LEGO® Pick a Brick");
+  const why = all > 1 ? `. ${say("Pick a Brick takes {lines} elements a file.", { lines: number(PICK_A_BRICK_LINES) })}` : "";
+  return made.files.map((file, n) => `<a class="cta ghost small" href="${at}/parts-pab${n ? `-${n + 1}` : ""}.csv" download`
+    + ` title="${asText(`${what}${why}`)}">${asText(all > 1
+      ? say("LEGO® Pick a Brick CSV, {n} of {all}", { n: number(n + 1), all: number(all) })
+      : say("LEGO® Pick a Brick CSV"))}</a>`).join("");
+}
+
+/// What the Pick a Brick list ([made]) leaves for a person to find
+/// elsewhere, under the shops' buttons: the lots with no LEGO® element
+/// number known (a made part among them), counted, never guessed; and each
+/// element wanted more times than Pick a Brick takes, the rest to add by
+/// hand. Nothing where it leaves nothing.
+function pickABrickNote(made) {
+  const said = [];
+  if (made.missing.length) {
+    said.push(say("Not on the Pick a Brick list, with no LEGO® element number known: {lots} ({parts}).", {
+      lots: counted(made.missing.length, "lot"),
+      parts: counted(made.missing.reduce((n, lot) => n + lot.count, 0), "part") }));
+  }
+  const over = Object.entries(made.over);
+  if (over.length) {
+    said.push(say("Pick a Brick takes {most} of an element: add by hand {more}.", { most: number(PICK_A_BRICK_MOST),
+      more: over.map(([element, more]) => say("{n} more of {element}", { n: number(more), element })).join(", ") }));
+  }
+  return said.length ? `<p class="note pab-note">${said.map((one) => escapeHtml(one)).join(" ")}</p>` : "";
 }
 
 /// The public collections it is in (docs/SOCIAL.md U11, [PR-C]), each a card
@@ -1970,11 +2013,26 @@ function partsAnswer(response, parts, base, as, said, lang = "en") {
     response.setHeader("Content-Disposition", `attachment; filename="${base}-rebrickable.csv"`);
     return response.status(200).end(rebrickableCsv(parts).text);
   }
-  if (as !== "json") return fail(400, `a parts list is json, xml or csv, not ${as}`);
+  // The LEGO® Pick a Brick list (pickABrick), a file of PICK_A_BRICK_LINES
+  // elements at most: pab the first, pab-2 the second, as the page links
+  // them; named as the app names them, -pickabrick.csv, or -pickabrick-N.csv
+  // each where there are more.
+  const asked = /^pab(?:-([1-9][0-9]{0,2}))?$/.exec(as);
+  if (asked) {
+    const { files } = pickABrick(parts);
+    const n = Number(asked[1] || 1);
+    if (!files.length) return fail(404, "No LEGO® element number is known for any part of this, so there is nothing for Pick a Brick.");
+    if (n > files.length) return fail(404, `Its Pick a Brick list is ${count(files.length, "file")}.`);
+    response.setHeader("Content-Type", "text/csv; charset=utf-8");
+    response.setHeader("Content-Disposition", `attachment; filename="${base}-pickabrick${files.length > 1 ? `-${n}` : ""}.csv"`);
+    return response.status(200).end(files[n - 1]);
+  }
+  if (as !== "json") return fail(400, `a parts list is json, xml, csv or pab, not ${as}`);
   // Each lot's picture is drawn by the page (web/part-pictures.js) from its
   // part's geometry (mesh), fetched from the store (root), in its colours.
   const root = storeRoot();
   const words = SITE_LANGS.includes(lang) ? partNames(lang) : null;
+  const pab = pickABrick(parts);
   return response.status(200).json({
     ...said, ...(words ? { lang } : {}), pieces: parts.pieces,
     lots: parts.lots.map((lot) => ({ part: lot.part, name: lot.name, category: lot.category, colour: lot.colour,
@@ -1982,10 +2040,17 @@ function partsAnswer(response, parts, base, as, said, lang = "en") {
       mesh: (root && lot.mesh) || null, ...namesOf(lot, words) })),
     root: root || null, colours: root ? paletteOf() : {},
     // What each shop's list leaves off: a made part, or a colour it has no
-    // number for; and the direct colours each lists in the nearest colour
-    // still made ("#FF0000 as Reddish Orange"), as no shop sells them.
-    left_out: { bricklink: wantedList(parts).left_out, rebrickable: rebrickableCsv(parts).left_out },
+    // number for (Pick a Brick's: a lot with no element number known); and
+    // the direct colours each lists in the nearest colour still made
+    // ("#FF0000 as Reddish Orange"), as no shop sells them.
+    left_out: { bricklink: wantedList(parts).left_out, rebrickable: rebrickableCsv(parts).left_out,
+      pickabrick: pab.missing.length },
     stand_ins: wantedList(parts).stand_ins,
+    // The Pick a Brick list: its files, its lines (an element each) and the
+    // pieces on it, the pieces of the lots it left off, and each element
+    // past what it takes, with how many more to add by hand.
+    pickabrick: { files: pab.files.length, lines: pab.lines, pieces: pab.pieces,
+      left_out_pieces: pab.missing.reduce((n, lot) => n + lot.count, 0), over: pab.over },
   });
 }
 

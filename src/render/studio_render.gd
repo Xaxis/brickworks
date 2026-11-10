@@ -445,9 +445,14 @@ func turntable(world: BrickWorld, settings: RenderSettings, each: Callable) -> i
 ## moving parts pass through (each one's corners, every frame): with
 ## [member RenderSettings.on_what_moves] the camera is fitted to them, which
 ## a box's corners far off the parts' own would leave small in the frame.
+## [param framed_at] (frame -> [AABB in the model's place, float]) is what
+## each frame is framed on and how far it has settled into the view chosen,
+## the camera following it (_follow): a building video's what is built so
+## far.
 func animate(world: BrickWorld, settings: RenderSettings, frames: int, pose_at: Callable,
 		turn_at: Callable, reach: AABB, each: Callable,
-		swept: PackedVector3Array = PackedVector3Array()) -> int:
+		swept: PackedVector3Array = PackedVector3Array(),
+		framed_at: Callable = Callable()) -> int:
 	if _busy or not possible() or world == null:
 		return 0
 	_busy = true
@@ -463,7 +468,11 @@ func animate(world: BrickWorld, settings: RenderSettings, frames: int, pose_at: 
 		if not is_zero_approx(float(turn_at.call(n))):
 			turning = true
 			break
-	if await _prepare(world, settings, turning):
+	# Followed, each frame is fitted as the model stands turned then: the
+	# circle a turn sweeps is not framed.
+	var following: bool = framed_at.is_valid()
+	if await _prepare(world, settings, turning and not following):
+		var whole: Shot = last_shot
 		for n: int in maxi(frames, 1):
 			var poses: Dictionary = pose_at.call(n)
 			for brick_id: Variant in poses:
@@ -472,6 +481,9 @@ func animate(world: BrickWorld, settings: RenderSettings, frames: int, pose_at: 
 					_stage.move_brick(staged, poses[brick_id])
 			_stage._flush()
 			_pivot.rotation = Vector3(0.0, TAU * float(turn_at.call(n)), 0.0)
+			if following:
+				var framed: Array = framed_at.call(n)
+				_follow(whole, settings, framed[0], float(framed[1]))
 			var from: float = 0.1 + 0.9 * float(n) / float(frames)
 			var image: Image = await _picture(settings, from, from + 0.9 / float(frames),
 				"frame %d of %d" % [n + 1, frames])
@@ -483,6 +495,9 @@ func animate(world: BrickWorld, settings: RenderSettings, frames: int, pose_at: 
 			done += 1
 			if _cancelled:
 				break
+		if following:
+			last_shot = whole
+			_shadow_reach(whole, _bounds)
 	_pivot.rotation = Vector3.ZERO
 	_reach = AABB()
 	_swept = PackedVector3Array()
@@ -491,6 +506,67 @@ func animate(world: BrickWorld, settings: RenderSettings, frames: int, pose_at: 
 	_staged = []
 	_finish()
 	return done
+
+
+## The camera for a frame framed on [param box] (part of the model, where
+## it stands in the model) as [method animate]'s framed_at says: a building
+## video's first step fills the picture, and the camera draws back as the
+## model goes up, to [param whole], the picture's own, once the whole model
+## is built and turned back. From [param whole]'s direction, through its
+## lens, fitted to the box as the model stands turned in this frame; then,
+## by [param settled] (0 to 1), as the view chosen frames the whole beyond
+## a fit (As I see it and a saved view are a person's own framing, not
+## fitted), so the last frames are the picture's. The shadows are drawn as
+## far as this frame's camera needs, so a step close up has the sharp
+## shadows a picture of it would.
+func _follow(whole: Shot, settings: RenderSettings, box: AABB, settled: float) -> void:
+	var turned: float = _pivot.rotation.y
+	if box.size == Vector3.ZERO or (box.is_equal_approx(_bounds) and is_zero_approx(turned)
+			and is_equal_approx(settled, 1.0)):
+		last_shot = whole
+		_shadow_reach(whole, _bounds)
+		return
+	var aspect: float = float(settings.size.x) / float(maxi(settings.size.y, 1))
+	var turn := Basis(Vector3.UP, turned)
+	var around: Vector3 = _pivot.position
+	var points := PackedVector3Array()
+	var everything := PackedVector3Array()
+	for n: int in 8:
+		points.append(around + turn * (_corner(box, n) - around))
+		everything.append(_corner(_bounds, n))
+	var centre: Vector3 = around + turn * (box.get_center() - around)
+	var fitted_whole: Vector3 = _fit_points(whole.basis, everything, whole.fov, aspect)
+	var fitted: Vector3 = _fit_points(whole.basis, points, whole.fov, aspect)
+	var shot := Shot.new()
+	shot.basis = whole.basis
+	shot.fov = whole.fov
+	shot.aperture = whole.aperture
+	shot.heading = whole.heading
+	shot.toward = whole.toward
+	shot.far = whole.far
+	shot.origin = fitted + (whole.origin - fitted_whole) * clampf(settled, 0.0, 1.0)
+	var nearest: float = INF
+	var farthest: float = 0.0
+	for point: Vector3 in points:
+		var depth: float = (point - shot.origin).dot(-shot.basis.z)
+		nearest = minf(nearest, depth)
+		farthest = maxf(farthest, depth)
+	# A quarter of the way, not half: a part coming down from above comes
+	# towards a camera looking down.
+	shot.near = clampf(nearest * 0.25, 0.5, 200.0)
+	shot.focus_distance = maxf(lerpf(nearest, farthest, clampf(settings.focus, 0.0, 1.0)),
+		shot.near * 2.0)
+	last_shot = shot
+	_shadow_reach(shot, AABB(centre - box.size * 0.5, box.size))
+
+
+## The lights' shadows drawn as far from [param shot]'s camera as
+## [param box] needs, as _dress has them for the whole model.
+func _shadow_reach(shot: Shot, box: AABB) -> void:
+	var reach: float = (shot.origin - box.get_center()).length() + box.size.length() * 0.5 * 2.5
+	for light: DirectionalLight3D in _lights:
+		light.directional_shadow_max_distance = reach
+	_sky_light.directional_shadow_max_distance = reach
 
 
 ## The box an animation's moving parts sweep, framed with the model.

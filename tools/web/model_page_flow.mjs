@@ -85,9 +85,15 @@
 //      (the store the geometry comes from); the BrickLink wanted list well-formed
 //      XML of ITEMTYPE P, ITEMID, a numbered COLOR and MINQTY, adding up to
 //      the total less what it says it left off; the Rebrickable CSV
-//      Part,Color,Quantity likewise; and Download the stored file byte for
-//      byte, signed out, named for the model. And Like and I built it say
-//      their names beside their icons.
+//      Part,Color,Quantity likewise; the LEGO® Pick a Brick CSV
+//      (sitepickabrick) a link a file, each elementId,quantity with LEGO's
+//      line ends, 400 lines and 999 of an element at most, byte for byte
+//      the list api/_parts.js pickABrick makes of the same version's lots
+//      as its parts.json gives them, its pieces and the pieces it leaves
+//      off adding up to the total, and what it leaves off said under the
+//      buttons, counted; and Download the stored file byte for byte, signed
+//      out, named for the model. And Like and I built it say their names
+//      beside their icons.
 //  17. In 3D, here (viewer369, tools/viewer/inline.js), on the watchtower
 //      (a deployment's first model), signed out: none of the 3D view's code
 //      (viewer3d.js, three.js and all) asked for until View in 3D is used;
@@ -106,6 +112,7 @@
 // Save's lists and More open.
 import { launch } from "./browser.mjs";
 import * as stand from "./design_stand_in.mjs";
+import { PICK_A_BRICK_LINES, PICK_A_BRICK_MOST, pickABrick } from "../../api/_parts.js";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -378,6 +385,13 @@ async function partsChecks(page, label, seen, one) {
     const csv = await ask(at.replace(/json$/, "csv"));
     const json = await (await fetch(at)).json();
     const file = await ask(download);
+    // LEGO's Pick a Brick list: each file its link offers, and what the
+    // page says it leaves off.
+    const links = [...document.querySelectorAll('#parts .parts-bar a[href*="/parts-pab"]')]
+      .map((a) => ({ href: a.getAttribute("href"), text: a.textContent, title: a.title, download: a.hasAttribute("download") }));
+    const pab = [];
+    for (const link of links) pab.push(await ask(link.href));
+    const pabNote = document.querySelector("#parts .pab-note")?.textContent ?? null;
     const doc = new DOMParser().parseFromString(xml.text, "application/xml");
     const items = [...doc.querySelectorAll("INVENTORY > ITEM")].map((item) => ({
       type: item.querySelector("ITEMTYPE")?.textContent, id: item.querySelector("ITEMID")?.textContent,
@@ -385,7 +399,7 @@ async function partsChecks(page, label, seen, one) {
       fields: [...item.children].map((c) => c.tagName).join(",") }));
     return { xml: { ...xml, text: xml.text.slice(0, 300), wellFormed: !doc.querySelector("parsererror"),
       root: doc.documentElement.tagName, items }, csv: { ...csv, lines: csv.text.trim().split("\n") },
-      left: json.left_out, file };
+      left: json.left_out, file, links, pab, pabNote, json: { lots: json.lots, pickabrick: json.pickabrick, stand_ins: json.stand_ins } };
   }, { at: before.at, download: before.download });
   // The file as it is stored: the viewer's own answer on a deployment
   // (api/share.js gives the model's text as stored), the stand-in's bucket
@@ -409,9 +423,57 @@ async function partsChecks(page, label, seen, one) {
   check(`${label}: the Rebrickable CSV is Part,Color,Quantity, a lot a row (${rows.length}, ${got.left.rebrickable} left off, ${got.csv.named})`,
     got.csv.status === 200 && got.csv.lines[0] === "Part,Color,Quantity" && rows.every((r) => /^[^,]+,\d+,[1-9]\d*$/.test(r))
       && rows.length === counted.lots - got.left.rebrickable && /attachment; filename="[a-z0-9-]+-rebrickable\.csv"/.test(got.csv.named));
+  pickABrickChecks(label, got, total, before.at);
   check(`${label}: Download is the stored file byte for byte, signed out (${got.file.length} bytes, ${got.file.named})`,
     got.file.status === 200 && got.file.same && got.file.length > 0 && /attachment; filename="[a-z0-9-]+(-v\d+)?\.mpd"/.test(got.file.named));
   await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+}
+
+/// 16's LEGO® Pick a Brick list (sitepickabrick), from what [got] fetched as
+/// the page offers it: a link a file, /m/X/parts-pab.csv then -2, -3 (the
+/// version's own under /m/X/v/N, [at] its parts.json); each file LEGO's
+/// template, elementId,quantity with \r\n line ends, at most 400 lines and
+/// 999 of an element; byte for byte the list the checkout's pickABrick makes
+/// of the same version's lots as the same deployment's parts.json gives
+/// them (their element numbers, kinds and counts: the parts page probe holds
+/// that port to the app's word for word), where no direct colour stands in
+/// as another (parts.json has not their stand-in's element); its pieces and
+/// the ones it leaves off adding up to the [total]; and those left off said
+/// under the buttons as lots and parts, counted, where there are any.
+function pickABrickChecks(label, got, total, at) {
+  const summary = got.json.pickabrick || {};
+  const base = at.replace(/\/parts\.json$/, "");
+  const files = got.pab.map((one) => one.text);
+  const hrefs = got.links.map((link) => link.href);
+  const wantHrefs = files.map((_, n) => `${base}/parts-pab${n ? `-${n + 1}` : ""}.csv`);
+  check(`${label}: the LEGO® Pick a Brick CSV is offered beside the other two, a link a file to download (${got.links.map((l) => `${l.text} ${l.href}`).join("; ") || "none"})`,
+    got.links.length === summary.files && got.links.length >= 1 && got.links.every((l) => l.download && /^LEGO® Pick a Brick CSV/.test(l.text) && l.title)
+      && JSON.stringify(hrefs) === JSON.stringify(wantHrefs));
+  const named = got.pab.map((one) => one.named);
+  const rows = files.flatMap((text) => text.split("\r\n").slice(1));
+  const well = got.pab.every((one, n) => one.status === 200 && /text\/csv/.test(one.type)
+    && new RegExp(`attachment; filename="[a-z0-9-]+-pickabrick${got.pab.length > 1 ? `-${n + 1}` : ""}\\.csv"`).test(one.named)
+    && one.text.startsWith("elementId,quantity\r\n") && !/\n(?!$)/.test(one.text.replace(/\r\n/g, "")) && !one.text.endsWith("\n")
+    && one.text.split("\r\n").length - 1 <= PICK_A_BRICK_LINES);
+  check(`${label}: each Pick a Brick file is LEGO's template, elementId,quantity with its \\r\\n line ends, ${PICK_A_BRICK_LINES} lines at most (${named.join(", ")})`,
+    well && rows.length === summary.lines && rows.every((row) => /^\d+,[1-9]\d*$/.test(row) && Number(row.split(",")[1]) <= PICK_A_BRICK_MOST));
+  const asked = rows.reduce((n, row) => n + Number(row.split(",")[1]), 0);
+  const over = Object.values(summary.over || {}).reduce((a, b) => a + b, 0);
+  check(`${label}: its ${asked} pieces asked for, ${over} more by hand past ${PICK_A_BRICK_MOST} and the ${summary.left_out_pieces} it leaves off add up to the total, ${total}`,
+    asked + over === summary.pieces && summary.pieces + summary.left_out_pieces === total);
+  if (got.json.stand_ins.length) {
+    console.log(`  (${label}: ${got.json.stand_ins.join(", ")}: its file is held to the app by the parts page probe, not here)`);
+  } else {
+    const made = pickABrick({ lots: got.json.lots.map((lot) => ({ ...lot, stand_in: null, element: lot.element || "" })) });
+    check(`${label}: the Pick a Brick files are byte for byte the list of the version's own lots (${made.files.length} file${made.files.length === 1 ? "" : "s"}, ${made.lines} lines, ${made.missing.length} lots left off)`,
+      JSON.stringify(made.files) === JSON.stringify(files) && made.missing.length === got.left.pickabrick);
+  }
+  const leftLots = got.left.pickabrick;
+  const note = got.pabNote;
+  check(`${label}: what it leaves off is said under the buttons, counted (${note ?? "nothing left off, no note"})`,
+    leftLots === 0 ? note === null || !/element number/.test(note)
+      : note !== null && note.includes(`${leftLots.toLocaleString("en-US")} lot${leftLots === 1 ? "" : "s"}`)
+        && note.includes(`${summary.left_out_pieces.toLocaleString("en-US")} part${summary.left_out_pieces === 1 ? "" : "s"}`));
 }
 
 /// 17. The model in 3D, here, on [page] (the picture on screen).

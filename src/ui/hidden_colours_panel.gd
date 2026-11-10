@@ -283,6 +283,13 @@ func refresh() -> void:
 		return
 	_status.text = "Drawing the inside…"
 	var drawn: Array = await pictures(plan)
+	# Closed while they were drawn: close let the plan go, so nothing is
+	# shown, and opened again meanwhile, it is worked out again.
+	if plan == null:
+		_working = false
+		if _again and visible:
+			await refresh()
+		return
 	before = drawn[0]
 	after = drawn[1]
 	_before_rect.texture = ImageTexture.create_from_image(before) if before != null else null
@@ -371,6 +378,7 @@ func _build() -> void:
 	choose.add_theme_constant_override("separation", 8)
 	column.add_child(choose)
 	_modes = OptionButton.new()
+	_modes.accessibility_name = "Colour the hidden parts"
 	_modes.focus_mode = Control.FOCUS_NONE
 	_modes.add_theme_font_size_override("font_size", 12)
 	for label: String in MODE_LABELS:
