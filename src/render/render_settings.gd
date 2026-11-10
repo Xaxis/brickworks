@@ -35,13 +35,18 @@ const BACKDROPS: Dictionary = {
 const LOOKS: Dictionary = {
 	"window": "As in the window",
 	"product": "Product",
+	# lineart (APP_UX7 #22): the model inked as a person would draw it (LineArt).
+	"lineart": "Line art",
+	"comic": "Comic",
 }
 
 var quality: int = Quality.GOOD
 ## How the plastic and the set are drawn: "window", as the window draws
 ## them, or "product", as a product shot is lit and finished (StudioRender:
 ## plastic with a gloss and rounded edges, clear parts that tint what is behind,
-## a key, fill and rim over a studio's light, and AgX's film-like tones).
+## a key, fill and rim over a studio's light, and AgX's film-like tones); or
+## inked (LineArt): "lineart", black lines on white with the shade in halftone
+## dots, and "comic", the same lines over the plastic's own flat colours.
 var look: String = "window"
 var size: Vector2i = Vector2i(1920, 1080)
 ## Nothing behind the model: the backdrop is not drawn, the contact shadow
@@ -170,7 +175,7 @@ func take(asked: Dictionary) -> String:
 		forget_eye()
 	if asked.has("look"):
 		if not LOOKS.has(str(asked["look"])):
-			return "look is window or product."
+			return "look is %s." % LineArt.looks_in_words()
 		look = str(asked["look"])
 	if asked.has("backdrop"):
 		var backdrop_asked: String = str(asked["backdrop"])
