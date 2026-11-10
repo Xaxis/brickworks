@@ -76,7 +76,7 @@
    "features": [
     "ui:type a number while moving"
    ],
-   "pad": 230
+   "pad": 200
   },
   {
    "id": "placing-parts-connect",

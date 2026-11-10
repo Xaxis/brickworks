@@ -27,7 +27,7 @@
    "phone": true,
    "setup": [
     {
-     "frames": 60
+     "frames": 360
     }
    ],
    "settle": 60,
