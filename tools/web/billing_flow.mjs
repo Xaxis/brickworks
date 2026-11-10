@@ -217,8 +217,9 @@ try {
     check("/settings drawn, with no Plan row", (await planSaid(page)) === null);
     await page.waitForTimeout(1500);
     // Your feedback on /settings is read from /api/plans?op=feedback
-    // (api/_feedback.js, 2026-10-29), which is not paying.
-    const ofPlans = (p) => (p.startsWith("/api/plans") && !/[?&]op=feedback(&|$)/.test(p)) || p === "/plan.js";
+    // (api/_feedback.js, 2026-10-29), and the Beta row from ?op=beta
+    // (api/_beta.js, 2026-11-09): neither is paying.
+    const ofPlans = (p) => (p.startsWith("/api/plans") && !/[?&]op=(feedback|beta)(&|$)/.test(p)) || p === "/plan.js";
     check(`/settings asked nothing of plans: ${asked.filter(ofPlans).join(" ") || "nothing"}`,
       !asked.some(ofPlans));
     await shot(page, "settings-off-1280-light.png", true);
