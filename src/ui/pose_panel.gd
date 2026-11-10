@@ -407,7 +407,7 @@ func keep_suggestion(name: String) -> void:
 			builder.record([{"undo": "motions", "motions": had}], "kept the motion %s" % Motions.quoted(name))
 			_chosen = name
 			_refresh()
-			_say("Kept %s. Play plays it; undo takes it out." % Motions.quoted(name))
+			_say(_with_let_go("Kept %s. Play plays it; undo takes it out." % Motions.quoted(name), motions))
 			return
 
 
@@ -650,6 +650,9 @@ func _change(words: String, edit_with: Callable) -> void:
 	_look = null
 	_seen_history = _history_now()
 	_seen_motions = world.motions
+	# A refused line the change let go is said (Motions.let_go_words).
+	if not motions.let_go.is_empty():
+		_say(motions.let_go_words())
 
 
 func _fill_editor() -> void:
@@ -1068,7 +1071,13 @@ func remove_motion() -> void:
 	motions.remove(name)
 	builder.record([{"undo": "motions", "motions": had}], "took the motion %s out" % Motions.quoted(name))
 	back_to_list()
-	_say("Took %s out. Undo puts it back." % Motions.quoted(name))
+	_say(_with_let_go("Took %s out. Undo puts it back." % Motions.quoted(name), motions))
+
+
+## [param words], and after them what [param motions]' last change let go
+## of the lines it did not read (Motions.let_go_words), if anything.
+func _with_let_go(words: String, motions: Motions) -> String:
+	return words if motions.let_go.is_empty() else "%s %s." % [words, motions.let_go_words()]
 
 
 # -- sequences ----------------------------------------------------------------------------
@@ -1095,6 +1104,8 @@ func new_sequence() -> void:
 	_chosen = motion.name
 	_draft = null
 	_refresh()
+	if not motions.let_go.is_empty():
+		_say(motions.let_go_words())
 	_seq_name.grab_focus()
 	_seq_name.select_all()
 	_say("Kept %s: every motion, in order. Name it; Up and Down change the order. Undo takes it out."

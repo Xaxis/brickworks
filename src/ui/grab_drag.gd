@@ -855,13 +855,19 @@ func _standing_words(weighed: Balance.Report, live: bool) -> String:
 			break
 		var info: PartLibrary.PartInfo = library.parts.get(one.beyond_part)
 		var name: String = Bodies._short(info.name) if info != null else one.beyond_part
+		# Each joint by its kind: a pin or an axle has no studs to count, and
+		# what nothing holds has no load to divide ("the Technic Steering
+		# Arm's 0 studs carry about 3801304x", drivereview F9, drvcheck A).
 		if one.kind == "studs" and one.studs == 0:
-			# A contact of no studs holds nothing: said so, not a load
-			# divided by nothing ("0 studs carry about 3801303x", drivereview F9).
 			out += "; the %s touches with no stud in contact: nothing holds it there" % name
-		else:
+		elif one.kind == "studs":
 			out += "; the %s's %d stud%s carry about %sx their working load" % [name, one.studs,
 				"" if one.studs == 1 else "s", Balance.tidy(one.ratio)]
+		elif one.holds_nothing():
+			out += "; the %s turns %s with nothing holding it" % [name, one.held_on()]
+		else:
+			out += "; the %s carries about %sx its working load %s" % [name, Balance.tidy(one.ratio),
+				one.held_on()]
 		break
 	return out
 

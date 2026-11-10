@@ -346,6 +346,10 @@ static func part_at(joint: Joint, world: BrickWorld, lift: Vector3) -> int:
 	if joint.by != "part" or world == null:
 		return 0
 	var want: Vector3 = joint.place * LdrModel.FLIP + lift
+	# Not found since the file was read (a part the web fetched later): where
+	# the drives kept since have moved the whole model (drvcheck D).
+	if joint.lead == 0 and world.motions != null:
+		want = world.motions.moved_place(joint) * LdrModel.FLIP + lift
 	var best: int = 0
 	var nearest: float = PLACE_SLACK
 	for brick: BrickWorld.Brick in world.bricks():
@@ -491,14 +495,16 @@ func put(motion: Motion) -> void:
 		motion.path.wheels = motion.path.wheels.map(func(one: Joint) -> Joint: return joint_for(one))
 		if motion.path.steer != null:
 			motion.path.steer = joint_for(motion.path.steer)
-	_drop_unread(motion.name)
+	var replaced: bool = false
 	for n: int in list.size():
 		if (list[n] as Motion).name.to_lower() == motion.name.to_lower():
 			list[n] = motion
-			_tidy_joints()
-			return
-	list.append(motion)
+			replaced = true
+			break
+	if not replaced:
+		list.append(motion)
 	_tidy_joints()
+	_settle_unread()
 
 
 func remove(name: String) -> bool:
@@ -506,7 +512,7 @@ func remove(name: String) -> bool:
 		if (list[n] as Motion).name.to_lower() == name.strip_edges().to_lower():
 			list.remove_at(n)
 			_tidy_joints()
-			_drop_unread(name)
+			_settle_unread()
 			return true
 	return false
 
@@ -664,6 +670,26 @@ func free_name(words: String) -> String:
 # -- the lines in the file --------------------------------------------------------
 
 
+## [param joint]'s ref as written. A part's not found since the file was
+## read (its lead 0: one the web is still fetching) is written where the
+## drives kept since have moved the whole model ([member moved]), as that
+## part's own line is (drvcheck D): written where the file had it, the next
+## open found nothing there.
+func _ref_written(joint: Joint) -> String:
+	if joint.by != "part" or joint.lead != 0 or moved.is_equal_approx(Transform3D.IDENTITY):
+		return joint.ref_words()
+	var now: Joint = joint.copy()
+	now.place = moved_place(joint)
+	return now.ref_words()
+
+
+## Where [param joint]'s part stands in the file's coordinates (LDraw's)
+## once the model has moved whole by [member moved]: for a joint not found
+## since the file was read, whose place is where the file had it.
+func moved_place(joint: Joint) -> Vector3:
+	return (moved * (joint.place * LdrModel.FLIP)) * LdrModel.FLIP
+
+
 ## The motion lines, without line breaks, in the order they are written.
 func lines() -> PackedStringArray:
 	var out := PackedStringArray()
@@ -679,23 +705,23 @@ func lines() -> PackedStringArray:
 		for n: int in motion.tracks.size():
 			var track: Track = motion.tracks[n]
 			out.append("%s_TRACK %s %d %s AT %s JOINT %s" % [META, quoted(motion.name), n + 1,
-				track.joint.mode.to_upper(), num(track.joint.at, 2), track.joint.ref_words()])
+				track.joint.mode.to_upper(), num(track.joint.at, 2), _ref_written(track.joint)])
 			for key: Array in track.keys:
 				out.append("%s_KEY %s %d %s %s %s" % [META, quoted(motion.name), n + 1,
 					num(float(key[0]), 3), num(float(key[1]), 2), str(key[2])])
 		if motion.driver != null:
 			out.append("%s_DRIVER %s TURNS %s SECONDS %s AT %s JOINT %s" % [META, quoted(motion.name),
 				num(motion.turns, 3), num(motion.driver_seconds, 3), num(motion.driver.at, 2),
-				motion.driver.ref_words()])
+				_ref_written(motion.driver)])
 		if motion.path != null:
 			out.append("%s_PATH %s SECONDS %s %s %s" % [META, quoted(motion.name), num(motion.path.seconds, 3),
 				motion.path.how, motion.path.leg_words()])
 			for wheel: Joint in motion.path.wheels:
 				out.append("%s_WHEEL %s AT %s JOINT %s" % [META, quoted(motion.name), num(wheel.at, 2),
-					wheel.ref_words()])
+					_ref_written(wheel)])
 			if motion.path.steer != null:
 				out.append("%s_STEER %s AT %s JOINT %s" % [META, quoted(motion.name),
-					num(motion.path.steer.at, 2), motion.path.steer.ref_words()])
+					num(motion.path.steer.at, 2), _ref_written(motion.path.steer)])
 	# And the lines this could not read, as the file had them.
 	out.append_array(unread)
 	return out
@@ -904,30 +930,66 @@ func unread_words() -> String:
 	return "%s: %s" % [said, "; ".join(unread_why)]
 
 
-## The lines of [member unread] that name the motion [param name], or only
-## those that do not.
-func _unread_naming(name: String, naming: bool) -> PackedStringArray:
-	var out := PackedStringArray()
-	for line: String in unread:
+## The lines of [member unread] the last change here let go ([method put],
+## [method remove]), as they were; said by whoever made it
+## ([method let_go_words]).
+var let_go := PackedStringArray()
+
+
+## After a change here, a refused line stays as the file had it while the
+## next open would refuse it too; one it would read into a motion goes: a
+## second path line, read as the path of a motion whose path was taken out
+## or of one taken out whole (it would come back), an old MOTION line
+## setting the seconds of one made again. Every other is kept through an
+## edit (drvcheck C: an edit of a motion's seconds dropped its refused
+## steering line, unsaid), its reason as the next open will say it. What
+## goes is in [member let_go]; an undo brings it back.
+func _settle_unread() -> void:
+	let_go = PackedStringArray()
+	# Again until none goes: a line refused only for one that went (a third
+	# path line, "it has two path lines") would be read in its place.
+	while not unread.is_empty():
+		var again: Motions = Motions.read("\n".join(lines()))
+		var refused: Dictionary = {}   ## line -> times the next open would refuse it
+		for line: String in again.unread:
+			refused[line] = int(refused.get(line, 0)) + 1
+		var kept := PackedStringArray()
+		var gone := PackedStringArray()
+		for line: String in unread:
+			if int(refused.get(line, 0)) > 0:
+				refused[line] = int(refused[line]) - 1
+				kept.append(line)
+			else:
+				gone.append(line)
+		unread = kept
+		if gone.is_empty():
+			if again.unread.size() == kept.size():
+				unread_why = again.unread_why
+			return
+		let_go.append_array(gone)
+	unread_why = PackedStringArray()
+
+
+## What [member let_go] holds, said where the change is said: "1 motion
+## line not read let go, as the next open would read it into “Drive”:
+## 0 !BRICKWORKS MOTION_PATH ..."; "" for none.
+func let_go_words() -> String:
+	if let_go.is_empty():
+		return ""
+	var names := PackedStringArray()
+	for line: String in let_go:
 		var words: PackedStringArray = tokens(line.strip_edges())
-		var names: bool = words.size() >= 4 and words[3].strip_edges().to_lower() == name.strip_edges().to_lower()
-		if names == naming:
-			out.append(line)
-	return out
-
-
-## A refused line belongs to the motion it names: it is the file's while
-## that motion is, and goes with it once the motion is made again or taken
-## out here (an undo brings both back). Kept, it would be read into the
-## motion made again at the next open: a second path line read as the path
-## of a motion whose path was taken out.
-func _drop_unread(name: String) -> void:
-	var kept: PackedStringArray = _unread_naming(name, false)
-	if kept.size() == unread.size():
-		return
-	unread = kept
-	unread_why = PackedStringArray(Array(unread_why).filter(func(why: String) -> bool:
-		return not why.begins_with(quoted(name) + " (") and not why.begins_with(quoted(name) + ":")))
+		var name: String = quoted(words[3].strip_edges()) if words.size() >= 4 else '""'
+		if not names.has(name):
+			names.append(name)
+	if let_go.size() == 1:
+		return "1 motion line not read let go, as the next open would read it into %s: %s" % [names[0],
+			let_go[0].strip_edges()]
+	var shown := PackedStringArray()
+	for line: String in let_go:
+		shown.append(line.strip_edges())
+	return "%d motion lines not read let go, as the next open would read them into %s: %s" % [
+		let_go.size(), ", ".join(names), "; ".join(shown)]
 
 
 ## [param was] renamed [param now] in the lines of [member unread] that

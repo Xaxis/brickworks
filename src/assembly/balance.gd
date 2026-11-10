@@ -193,6 +193,14 @@ class JointLoad extends RefCounted:
 		return "on %s" % ("a frictionless pin or axle" if pins == 1
 			else "%d frictionless pins or axles in a line" % pins)
 
+	## Whether nothing holds it against what it carries, so there is no
+	## working load to divide its load by: a contact of no studs, or pins
+	## with no friction ridges (or an axle in a round hole) on one line,
+	## free to turn about it. Divided by nothing, a steering arm on its axle
+	## read "0 studs carry about 3801304x" (drivereview F9, drvcheck A).
+	func holds_nothing() -> bool:
+		return (kind == "studs" and studs == 0) or kind == "free pin"
+
 
 class Report extends RefCounted:
 	var grams: float = 0.0
@@ -322,16 +330,23 @@ class Report extends RefCounted:
 			if not name_of.is_valid():
 				name_of = func(id: int) -> String: return "#%d" % id
 			for one: JointLoad in joints.slice(0, 3):
-				var line: String = "%s %s %s on %d stud%s: %s N·cm against %s (%sx; lets go at %s)" % [
-					str(name_of.call(one.beyond)), "hanging from" if one.hangs else "on",
-					str(name_of.call(one.held_by)), one.studs, "" if one.studs == 1 else "s",
-					Balance.tidy(one.moment), Balance.tidy(one.capacity), Balance.tidy(one.ratio),
-					Balance.tidy(one.ultimate)]
-				if one.studs == 0:
+				# Each joint by its kind (held_on): a pin or an axle has no
+				# studs to count (drvcheck B).
+				var who: String = "%s %s %s" % [str(name_of.call(one.beyond)),
+					"hanging from" if one.hangs else "on", str(name_of.call(one.held_by))]
+				var line: String
+				if one.kind == "studs" and one.studs == 0:
 					# No stud in contact: nothing to divide its load by.
-					line = "%s %s %s with no stud in contact: nothing holds it there" % [
-						str(name_of.call(one.beyond)), "hanging from" if one.hangs else "on",
-						str(name_of.call(one.held_by))]
+					line = "%s with no stud in contact: nothing holds it there" % who
+				elif one.holds_nothing():
+					line = "%s %s: it turns with nothing holding it%s" % [who, one.held_on(),
+						", %s N·cm about its line" % Balance.tidy(one.moment) if one.moment > 0.0 else ""]
+				elif is_inf(one.capacity):
+					line = "%s %s: it does not turn there" % [who, one.held_on()]
+				else:
+					line = "%s %s: %s N·cm against %s (%sx; lets go at %s)" % [who, one.held_on(),
+						Balance.tidy(one.moment), Balance.tidy(one.capacity), Balance.tidy(one.ratio),
+						Balance.tidy(one.ultimate)]
 				if one.hangs:
 					line += ", pulled %s N" % Balance.tidy(one.pull)
 				if not one.pose.is_empty():

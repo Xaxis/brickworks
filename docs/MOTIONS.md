@@ -631,8 +631,13 @@ whole model along the ground, its wheels turning as they roll.
   kept in the file as they are: “Drive and turn left” (6 lines): a path
   has at most 32 legs, not 33") and written back verbatim after the motion
   lines, in the file's own line ends; it belongs to the motion it names,
-  renamed with it, and goes when that motion is made again or taken out
-  (an undo brings it back). Keys, wheels and steering are read after every
+  renamed with it, and stays through every edit of it, define_motion making
+  it again too (`Motions._settle_unread`). Only a line the next open would
+  read into a motion goes: a second path line, once that motion's path is
+  taken out or the motion is, would come back as its path. What goes is
+  said where the change is ("1 motion line not read let go, as the next
+  open would read it into “Drive and turn left”: ..."), and an undo brings
+  it back (drvcheck C). Keys, wheels and steering are read after every
   track and path, so the lines may come in any order. A motion may have
   tracks and a path both: its joints move as the model drives. An older
   app (rel-m281 and before) drops the whole driven motion, not just its
@@ -701,3 +706,12 @@ whole model along the ground, its wheels turning as they roll.
   was lost, and the door and the wheels were gone at the next open
   (drivereview F1, live's hand-move bug too). A joint whose part is gone
   at a save is written as it was, and the save says so.
+- **A drive kept while parts are on their way** (the web fetches some after
+  a model opens) moves them with the model: each is put down where the
+  drives kept since have moved it (`ModelStore.awaited_at`, `Motions.moved`),
+  written there by a save before it comes, and a joint not found since the
+  open is looked for and written there too (`Motions.part_at`,
+  `_ref_written`). Put down where the file had it, a rim arrived where the
+  model had been, and its joint was written where nothing stood (drvcheck
+  D). A part that arrives after the drive is kept and before it is undone
+  stays where it landed: the undo moves only what the drive moved.

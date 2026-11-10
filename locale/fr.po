@@ -3388,11 +3388,11 @@ msgstr "%s tourne sur %s sur un connecteur à friction, avec %s g au-delà, %s f
 msgid "%s turns on %s on %d friction pins in a line with %s g past it, %sx its working load"
 msgstr "%s tourne sur %s sur %d connecteurs à friction alignés, avec %s g au-delà, %s fois leur charge de travail"
 
-msgid "%s turns on %s on a frictionless pin or axle with %s g past it, %sx its working load"
-msgstr "%s tourne sur %s sur un connecteur sans friction ou un axe, avec %s g au-delà, %s fois sa charge de travail"
+msgid "%s turns on %s on a frictionless pin or axle with %s g past it, and nothing holding it"
+msgstr "%s tourne sur %s sur un connecteur sans friction ou un axe, avec %s g au-delà, et rien ne le retient"
 
-msgid "%s turns on %s on %d frictionless pins or axles in a line with %s g past it, %sx its working load"
-msgstr "%s tourne sur %s sur %d connecteurs sans friction ou axes alignés, avec %s g au-delà, %s fois leur charge de travail"
+msgid "%s turns on %s on %d frictionless pins or axles in a line with %s g past it, and nothing holding it"
+msgstr "%s tourne sur %s sur %d connecteurs sans friction ou axes alignés, avec %s g au-delà, et rien ne le retient"
 
 msgid "%s g held by nothing stands on %s by touch alone, its weight %s studs past where it touches"
 msgstr "%s g tenus par rien reposent sur %s par simple contact, leur poids à %s tenons au-delà du contact"
@@ -12704,6 +12704,26 @@ msgstr "sur aucun tenon"
 
 msgid "%s touches %s with no stud in contact, %s g past it: nothing holds it there"
 msgstr "%s touche %s sans aucun tenon en contact, %s g au-delà : rien ne le tient là"
+
+# drvcheck A-C: a pin or an axle said by its kind, refused motion lines an edit lets go
+
+msgid "the %s turns on a frictionless pin or axle with nothing holding it"
+msgstr "%s tourne sur un connecteur sans friction ou un axe, sans rien pour le retenir"
+
+msgid "the %s turns on %d frictionless pins or axles in a line with nothing holding it"
+msgstr "%s tourne sur %d connecteurs sans friction ou axes alignés, sans rien pour le retenir"
+
+msgid "the %s carries about %sx its working load on a friction pin"
+msgstr "%s porte environ %s fois sa charge de travail sur un connecteur à friction"
+
+msgid "the %s carries about %sx its working load on %d friction pins in a line"
+msgstr "%s porte environ %s fois sa charge de travail sur %d connecteurs à friction alignés"
+
+msgid "1 motion line not read let go, as the next open would read it into %s: %s"
+msgstr "1 ligne de mouvement non lue retirée, car la prochaine ouverture la lirait dans %s : %s"
+
+msgid "%d motion lines not read let go, as the next open would read them into %s: %s"
+msgstr "%d lignes de mouvement non lues retirées, car la prochaine ouverture les lirait dans %s : %s"
 
 # end unit drive
 

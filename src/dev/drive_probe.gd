@@ -44,6 +44,18 @@
 ##     verbatim and read alike; a leg or seconds that rounds to nothing, and
 ##     values of the wrong kind, refused in words; the panel's seconds the
 ##     motion's length; a contact of no studs said, not divided by.
+##     And as drvcheck tried it again (A-C): a wheel taken off and the drive
+##     played, its steering arm free on its axle said by its kind, never
+##     "0 studs carry about 3801304x"; a check's numbers for a friction pin,
+##     a free pin and an axle each in its own words; an edit of a motion, and
+##     define_motion making it again, keep its refused lines; taken out, only
+##     the line the next open would read as the motion again goes, said.
+## 10. A drive kept while parts are still on their way, as the web fetches
+##     them after a model opens (drvcheck D): the library pointed at a host
+##     this probe runs, which holds the racer's wheel rims back; the drive
+##     played and kept; saved before they come, and after: each rim put down
+##     in its tyre where the drive left the model, and opened again, each
+##     there and every joint of the drive finding its part.
 ##
 ## It loads on a build from before (what is new is asked for by name), so
 ## that build fails its checks rather than failing to load. Pictures in
@@ -133,6 +145,9 @@ func _run() -> void:
 	# Last, in a window of its own: it opens other files.
 	await _start()
 	await _review()
+	await _kinds()
+	# Last of all: it points the library at a host of its own.
+	await _arrive()
 	print("")
 	print("drive_probe: %s" % ("all passed" if _failures == 0 else "%d FAILED" % _failures))
 	if _main != null and is_instance_valid(_main):
@@ -879,7 +894,9 @@ func _review() -> void:
 		'0 !BRICKWORKS MOTION "Too far" AFTER "" SECONDS 8',
 		'0 !BRICKWORKS MOTION_PATH "Too far" SECONDS 8 EASE' + " STRAIGHT 1".repeat(33),
 		'0 !BRICKWORKS MOTION_PATH "%s" SECONDS 8 EASE STRAIGHT 0.004' % NAME,
-		'0 !BRICKWORKS MOTION_PATH "No radius" SECONDS 8 EASE STRAIGHT 32 LEFT 90'])
+		'0 !BRICKWORKS MOTION_PATH "No radius" SECONDS 8 EASE STRAIGHT 32 LEFT 90',
+		# A second path the drive's own would read, were its path gone (C).
+		'0 !BRICKWORKS MOTION_PATH "%s" SECONDS 8 EASE STRAIGHT 5 RIGHT 45 RADIUS 30' % NAME])
 	var odd: String = Motions.written_into(driven, reordered + refused)
 	_write(_out.path_join("rv_odd.mpd"), odd)
 	await _open(_out.path_join("rv_odd.mpd"))
@@ -892,8 +909,8 @@ func _review() -> void:
 		(read_path.get("wheels") as Array).size() if read_path != null else 0,
 		read_path != null and read_path.get("steer") != null],
 		read_path != null and (read_path.get("wheels") as Array).size() == 3 and read_path.get("steer") != null)
-	_check("F5: the 4 lines it cannot read said on open and by list_motions",
-		said.contains("4 motion lines not read, kept in the file as they are") and listed.contains("4 motion lines not read"))
+	_check("F5: the 5 lines it cannot read said on open and by list_motions",
+		said.contains("5 motion lines not read, kept in the file as they are") and listed.contains("5 motion lines not read"))
 	var resaved: String = _saved("rv_odd_saved.mpd")
 	var kept: int = 0
 	for line: String in refused:
@@ -928,6 +945,30 @@ func _review() -> void:
 	_check("F8: the panel's Over at 3 seconds, the motion's length 3 (%s)" % Motions.num(length, 3),
 		is_equal_approx(length, 3.0) and _store.to_text("Racer").contains('MOTION "%s" AFTER "" SECONDS 3' % NAME))
 	panel.back_to_list()
+	# C (drvcheck): an edit keeps a motion's refused lines; only a line the
+	# next open would read into a motion goes, and the change says so.
+	var edited: String = _saved("rv_odd_edited.mpd")
+	_check("C: the panel's edit of its seconds keeps every refused line (%d of %d)" % [
+		_kept_lines(edited, refused), refused.size()], _kept_lines(edited, refused) == refused.size())
+	var again: String = await _say("define_motion", {"name": NAME, "suggested": true})
+	var remade: String = _saved("rv_odd_remade.mpd")
+	_check("C: define_motion making it again keeps them too (%d of %d; %s)" % [_kept_lines(remade, refused),
+		refused.size(), again.get_slice("(", 0)], _kept_lines(remade, refused) == refused.size()
+		and again.begins_with("Changed") and not again.contains("let go"))
+	panel.edit(NAME)
+	panel.remove_motion()
+	var status: String = panel.status_words()
+	var removed: String = _saved("rv_odd_removed.mpd")
+	var second: String = refused[refused.size() - 1]
+	_print("taken out: %s" % status)
+	_check("C: taken out, its second path line goes, said, as the next open would read it as the motion again "
+		+ "(%d of %d others kept)" % [_kept_lines(removed, refused.slice(0, refused.size() - 1)), refused.size() - 1],
+		status.contains("1 motion line not read let go, as the next open would read it into %s" % Motions.quoted(NAME))
+		and status.contains(second) and not removed.contains(second)
+		and _kept_lines(removed, refused.slice(0, refused.size() - 1)) == refused.size() - 1)
+	await _write_and_open(removed, "rv_odd_removed.mpd")
+	_check("C: ...opened again, no motion of its name comes back (%s)" % ModelBar.unshown_words(_store).left(120),
+		_player.motions().named(NAME) == null)
 	# A contact of no studs.
 	var report := Balance.Report.new()
 	var none := Balance.JointLoad.new()
@@ -942,6 +983,243 @@ func _review() -> void:
 	var words: String = (_main.get("_grab_drag") as GrabDrag).call("_standing_words", report, false)
 	_check("F9: a contact of no studs said as no contact, no load divided (%s)" % words,
 		words.contains("no stud in contact") and not words.contains("carry about"))
+
+
+## A (drvcheck): the review's own F9 case, a wheel rim taken off the racer
+## and the drive played, said by the kind of its most loaded joint (the
+## steering arm free on its axle); and B: a check's numbers for each kind of
+## joint, in its own words.
+func _kinds() -> void:
+	print("\n9b. a joint said by its kind (drvcheck A, B)")
+	if await _open(RACER):
+		await _say("define_motion", {"name": NAME, "suggested": true})
+		var rim: int = 0
+		for brick: BrickWorld.Brick in _world.bricks():
+			if brick.part_id == "3482":
+				rim = brick.id
+		_builder.remove_brick_id(rim)
+		await _frames(4)
+		var played: String = await _say("play_motion", {"name": NAME})
+		var now: String = ""
+		for line: String in played.split("\n"):
+			if line.begins_with("Now:"):
+				now = line
+		var judge: Variant = (_main.get("_grab_drag") as GrabDrag).get("_judge")
+		var worst: Balance.JointLoad = null
+		if judge != null:
+			var weighed: Balance.Report = judge.call("weigh_pose", {})
+			for one: Balance.JointLoad in weighed.joints:
+				if worst == null or one.ratio > worst.ratio:
+					worst = one
+		if worst != null:
+			_print("its most loaded joint: %s on %s, %s, studs %d, %sx" % [worst.beyond_part, worst.held_part,
+				worst.kind, worst.studs, Balance.tidy(worst.ratio)])
+		_print(now)
+		_check("A: a wheel rim off and the drive played, its steering arm free on its axle said by its kind (%s)"
+			% now.get_slice("; ", 1), worst != null and worst.kind == "free pin" and worst.ratio > 1.0
+			and now.contains("turns on a frictionless pin or axle with nothing holding it")
+			and not now.get_slice("; ", 1).contains("stud"))
+	else:
+		_check("A: the racer opens", false)
+	# B: Balance.Report.said() and the standing words, each kind of joint.
+	var want := {
+		"friction pin": ["on a friction pin: 2.0 N·cm against 1.5 (1.3x; lets go at 3.0)",
+			"carries about 1.3x its working load on a friction pin"],
+		"free pin": ["on 2 frictionless pins or axles in a line: it turns with nothing holding it, 2.0 N·cm about its line",
+			"turns on 2 frictionless pins or axles in a line with nothing holding it"],
+		"axle": ["on an axle keyed in its hole: it does not turn there", ""],
+		"studs": ["with no stud in contact: nothing holds it there",
+			"touches with no stud in contact: nothing holds it there"],
+	}
+	for kind: String in want:
+		var report := Balance.Report.new()
+		report.empty = false
+		report.margin = 40.0
+		report.edge = "left"
+		var one := Balance.JointLoad.new()
+		one.beyond = 2
+		one.held_by = 1
+		one.beyond_part = "3705"
+		one.held_part = "2819"
+		one.kind = kind
+		one.pins = 2 if kind == "free pin" else (1 if kind != "studs" else 0)
+		one.moment = 2.0
+		one.capacity = 1.5 if kind == "friction pin" else (INF if kind == "axle" else 0.0)
+		one.ultimate = 3.0 if kind == "friction pin" else 0.0
+		one.ratio = 0.0 if kind == "axle" else one.moment / maxf(one.capacity, 0.000001)
+		report.joints = [one]
+		var line: String = ""
+		for each: String in report.said().split("\n"):
+			if each.begins_with("Most loaded"):
+				line = each
+		var standing: String = (_main.get("_grab_drag") as GrabDrag).call("_standing_words", report, false)
+		var spoken: String = str(want[kind][1])
+		_check("B: %s, said() \"%s\"; standing \"%s\"" % [kind, line.get_slice(": ", 1), standing.get_slice("; ", 1)],
+			line.contains("#2 on #1 " + str(want[kind][0])) and not line.contains("0 stud")
+			and (standing.contains(spoken) if not spoken.is_empty() else not standing.contains(";"))
+			and not standing.contains("0 stud"))
+
+
+# -- 10. parts on their way ------------------------------------------------------------
+
+## The parts host of section 10: its port, its listener, the asks it is
+## reading, the files it holds back and the asks held for them.
+const HOST_PORT := 9917
+const RIM := "3482"
+var _host := TCPServer.new()
+var _host_port: int = 0
+var _host_peers: Array[Dictionary] = []
+var _held_back: Dictionary = {}
+var _held_peers: Array = []
+
+
+## D (drvcheck): a drive kept while parts are still on their way, as the
+## web fetches them after a model opens (PartLibrary, ModelStore.awaited).
+func _arrive() -> void:
+	print("\n10. a drive kept while parts are still on their way (drvcheck D)")
+	if not await _open(RACER):
+		_check("D: the racer opens", false)
+		return
+	await _say("define_motion", {"name": NAME, "suggested": true})
+	_saved("ar_defined.mpd")
+	var whole: Array = _rims_in_tyres()
+	var parts: int = _world.brick_count()
+	# Nothing on disk: every part fetched from this probe's host, as the web
+	# fetches what its pack does not carry; the rims held back.
+	_host_port = HOST_PORT
+	while _host.listen(_host_port, "127.0.0.1") != OK:
+		_host_port += 1
+		if _host_port > HOST_PORT + 2:
+			_check("D: a port for the parts host", false)
+			return
+	process_frame.connect(_host_tick)
+	var deployment: Deployment = _main.get("_deployment")
+	var since: int = Time.get_ticks_msec()
+	while deployment != null and not deployment.finished and Time.get_ticks_msec() - since < 30_000:
+		await process_frame
+	_library._root = "user://no_parts/"
+	_library.release_geometry()
+	_library.remote_parts = "http://127.0.0.1:%d/" % _host_port
+	_held_back[(_library.parts[RIM] as PartLibrary.PartInfo).mesh_hash + ".lbm"] = true
+	_main.call("clear_model")
+	await _frames(3)
+	_main.call("_open", _out.path_join("ar_defined.mpd"))
+	since = Time.get_ticks_msec()
+	while Time.get_ticks_msec() - since < 120_000 and not (not _store.laying and whole.size() > 0
+			and _store.awaited.size() == whole.size() and _world.brick_count() == parts - whole.size()):
+		await process_frame
+	await _frames(10)
+	_builder.forget_history()
+	_check("D: opened with its %d rims on their way (%d awaited, %d of %d parts down)" % [whole.size(),
+		_store.awaited.size(), _world.brick_count(), parts], _store.awaited.size() == whole.size()
+		and whole.size() > 0 and _world.brick_count() == parts - whole.size())
+	var mark: BrickWorld.Brick = null
+	for brick: BrickWorld.Brick in _world.bricks():
+		if mark == null and not _store.scenery.has(brick.id):
+			mark = brick
+	var from: Vector3 = mark.transform.origin if mark != null else Vector3.ZERO
+	var played: String = await _say("play_motion", {"name": NAME})
+	_print(played.get_slice("\n", 0).left(160))
+	var went: float = mark.transform.origin.distance_to(from) if mark != null else 0.0
+	_check("D: played and kept with its rims on their way, the model %s LDU from where it stood" % Motions.num(went, 1),
+		went > 100.0 and _store.awaited.size() == whole.size())
+	var early: String = _saved("ar_kept_rims_coming.mpd")
+	# The rims come.
+	_held_back.clear()
+	for held: Array in _held_peers:
+		_host_answer(held[0], str(held[1]))
+	_held_peers.clear()
+	since = Time.get_ticks_msec()
+	while not _store.awaited.is_empty() and Time.get_ticks_msec() - since < 60_000:
+		await process_frame
+	await _frames(5)
+	var landed: Array = _rims_in_tyres()
+	_check("D: kept while they came, each rim put down in its tyre where the drive left the model "
+		+ "(off %s LDU, was %s)" % [_tidy_list(landed), _tidy_list(whole)], _same_list(landed, whole))
+	var late: String = _saved("ar_kept_rims_landed.mpd")
+	for each: Array in [["saved before they came", early, "ar_kept_rims_coming.mpd"],
+			["saved once they had", late, "ar_kept_rims_landed.mpd"]]:
+		if str(each[1]).is_empty():
+			_check("D: %s, saved" % each[0], false)
+			continue
+		_main.call("clear_model")
+		await _frames(3)
+		_main.call("_open", _out.path_join(str(each[2])))
+		since = Time.get_ticks_msec()
+		while Time.get_ticks_msec() - since < 120_000 and (_store.laying or not _store.awaited.is_empty()
+				or _world.brick_count() < parts):
+			await process_frame
+		await _frames(10)
+		var back: Array = _rims_in_tyres()
+		_check("D: %s and opened again: each rim in its tyre (off %s LDU), the drive's joints all found (%s)"
+			% [each[0], _tidy_list(back), _found()], _same_list(back, whole) and _found_all())
+	process_frame.disconnect(_host_tick)
+	_host.stop()
+
+
+## Each wheel rim's distance from the nearest other part's middle, LDU, in
+## order: what a rim left behind changes.
+func _rims_in_tyres() -> Array:
+	var out: Array = []
+	for rim: BrickWorld.Brick in _world.bricks():
+		if rim.part_id != RIM:
+			continue
+		var nearest: float = INF
+		for other: BrickWorld.Brick in _world.bricks():
+			if other.part_id != RIM and not _store.scenery.has(other.id):
+				nearest = minf(nearest, other.transform.origin.distance_to(rim.transform.origin))
+		out.append(nearest)
+	out.sort()
+	return out
+
+
+static func _same_list(one: Array, other: Array) -> bool:
+	if one.size() != other.size() or one.is_empty():
+		return false
+	for n: int in one.size():
+		if absf(float(one[n]) - float(other[n])) > 0.05:
+			return false
+	return true
+
+
+static func _tidy_list(values: Array) -> String:
+	return ", ".join(values.map(func(value: float) -> String: return "%.2f" % value))
+
+
+## Each frame: the host reads its asks and answers them, from the checkout's
+## generated parts; a file held back is answered once let go.
+func _host_tick() -> void:
+	while _host.is_connection_available():
+		_host_peers.append({"peer": _host.take_connection(), "got": PackedByteArray()})
+	for client: Dictionary in _host_peers.duplicate():
+		var peer: StreamPeerTCP = client["peer"]
+		peer.poll()
+		if peer.get_status() != StreamPeerTCP.STATUS_CONNECTED:
+			_host_peers.erase(client)
+			continue
+		var available: int = peer.get_available_bytes()
+		if available > 0:
+			client["got"] = (client["got"] as PackedByteArray) + (peer.get_data(available)[1] as PackedByteArray)
+		var text: String = (client["got"] as PackedByteArray).get_string_from_ascii()
+		if not text.contains("\r\n\r\n"):
+			continue
+		_host_peers.erase(client)
+		var file: String = text.get_slice(" ", 1).get_file()
+		if _held_back.has(file):
+			_held_peers.append([peer, file])
+		else:
+			_host_answer(peer, file)
+
+
+func _host_answer(peer: StreamPeerTCP, file: String) -> void:
+	var folder: String = "parts/" if file.ends_with(".lbm") else "exact/"
+	var body: PackedByteArray = FileAccess.get_file_as_bytes("res://assets/generated/" + folder + file)
+	var how: int = 200 if not body.is_empty() else 404
+	peer.put_data(("HTTP/1.1 %d %s\r\nContent-Length: %d\r\nConnection: close\r\n\r\n" % [how,
+		"OK" if how == 200 else "Not Found", body.size()]).to_ascii_buffer())
+	if not body.is_empty():
+		peer.put_data(body)
+	peer.disconnect_from_host()
 
 
 ## Every part of the model moved by [param by] (LDU), one grab, as a
@@ -978,6 +1256,22 @@ static func _main_end(lines: PackedStringArray) -> int:
 			if files == 2:
 				return n
 	return lines.size()
+
+
+## How many of [param lines] [param text] has, each whole, in CRLF.
+static func _kept_lines(text: String, lines: PackedStringArray) -> int:
+	var kept: int = 0
+	for line: String in lines:
+		if text.contains(line + "\r\n"):
+			kept += 1
+	return kept
+
+
+## [param text] written as [param file] in the probe's folder, and opened.
+func _write_and_open(text: String, file: String) -> bool:
+	var path: String = _out.path_join(file)
+	_write(path, text)
+	return await _open(path)
 
 
 ## The model saved as the review saved it (ModelStore.save_file), its text.

@@ -4824,7 +4824,7 @@ func _placed(coming: bool) -> Array:
 		out.append([brick.part_id, brick.transform, brick.color_code])
 	if coming:
 		for placement: LdrModel.Placement in _store.awaited:
-			out.append([placement.part_id, placement.transform, placement.color_code])
+			out.append([placement.part_id, _store.awaited_at(placement), placement.color_code])
 	return out
 
 

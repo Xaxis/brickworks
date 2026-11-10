@@ -2581,7 +2581,7 @@ func _animate(input: Dictionary, work: Working.Job = null) -> Variant:
 		builder.record([{"undo": "motions", "motions": had}], "%s the motion %s" % [
 			"changed" if replaced else "made", Motions.quoted(ANIMATION)])
 		kept = (" Kept as the motion %s: the person plays it in Build, Motions…, and play_motion "
-			+ "plays it; one step: undo takes it out.") % Motions.quoted(ANIMATION)
+			+ "plays it; one step: undo takes it out.%s") % [Motions.quoted(ANIMATION), _let_go_said(motions)]
 	if not bool(input.get("render", true)):
 		return "Set %s.%s" % [said, kept]
 	if not StudioRender.possible():
@@ -2744,7 +2744,8 @@ func _define_motion(input: Dictionary) -> String:
 		var had: Motions = motions.copy()
 		motions.remove(name)
 		builder.record([{"undo": "motions", "motions": had}], "took the motion %s out" % Motions.quoted(name))
-		return "Took %s out of the model. One step: undo puts it back." % Motions.quoted(name)
+		return "Took %s out of the model. One step: undo puts it back.%s" % [Motions.quoted(name),
+			_let_go_said(motions)]
 	var motion: Motions.Motion = null
 	if bool(input.get("suggested", false)):
 		var offered: Array = player.suggest()
@@ -2780,6 +2781,7 @@ func _define_motion(input: Dictionary) -> String:
 	var replaced: bool = motions.named(name) != null
 	var had: Motions = motions.copy()
 	motions.put(motion)
+	var let_go: String = _let_go_said(motions)
 	builder.record([{"undo": "motions", "motions": had}], "%s the motion %s" % [
 		"changed" if replaced else "made", Motions.quoted(name)])
 	# Checked where it begins in its sequence: after the motions it follows,
@@ -2799,11 +2801,11 @@ func _define_motion(input: Dictionary) -> String:
 		await verbs.press("undo")
 	var joints: int = motion.joints().size()
 	return ("%s %s in the model (%s s, %d joint%s): it is saved with it. Played once to check%s, and the "
-		+ "model put back: %s. play_motion plays it%s; one step: undo takes it out.") % [
+		+ "model put back: %s. play_motion plays it%s; one step: undo takes it out.%s") % [
 		"Changed" if replaced else "Kept", Motions.quoted(name), Motions.num(motion.length(), 2), joints,
 		"" if joints == 1 else "s", (" after %s, which it follows" % ", then ".join(first))
 		if not first.is_empty() else "", player.said(played), (" alone, from where the model stands, and "
-		+ "with sequence=true after %s" % ", then ".join(first)) if not first.is_empty() else ""]
+		+ "with sequence=true after %s" % ", then ".join(first)) if not first.is_empty() else "", let_go]
 
 
 ## A sequence called [param name] of the model's motions named in [param
@@ -2838,6 +2840,7 @@ func _define_sequence(player: MotionPlayer, motion: Motions.Motion) -> String:
 	var replaced: bool = motions.named(motion.name) != null
 	var had: Motions = motions.copy()
 	motions.put(motion)
+	var let_go: String = _let_go_said(motions)
 	builder.record([{"undo": "motions", "motions": had}], "%s the sequence %s" % [
 		"changed" if replaced else "made", Motions.quoted(motion.name)])
 	var drawn: MotionRender = MotionRender.frames_of(player, [motion], false, MotionPlayer.PLAY_FPS)
@@ -2845,9 +2848,15 @@ func _define_sequence(player: MotionPlayer, motion: Motions.Motion) -> String:
 	return ("%s %s in the model, a sequence of %d (%s s): %s, each from where the one before left the "
 		+ "model. It is saved with it. Played once to check, and the model put back: %s play_motion plays "
 		+ "it (reverse=true backwards, in reverse order), render_motion renders it whole; one step: undo "
-		+ "takes it out.") % ["Changed" if replaced else "Kept", Motions.quoted(motion.name),
+		+ "takes it out.%s") % ["Changed" if replaced else "Kept", Motions.quoted(motion.name),
 		motion.sequence.size(), Motions.num(motions.seconds_of(motion), 2), ", then ".join(Array(motion.sequence).map(
-		func(one: String) -> String: return Motions.quoted(one))), " ".join(drawn.lines)]
+		func(one: String) -> String: return Motions.quoted(one))), " ".join(drawn.lines), let_go]
+
+
+## What [param motions]' last change let go of the lines it did not read
+## (Motions.let_go_words), as a sentence after a reply's own; "" for none.
+static func _let_go_said(motions: Motions) -> String:
+	return "" if motions.let_go.is_empty() else " %s." % motions.let_go_words()
 
 
 ## A motion from define_motion's tracks= and driver=, or why not.

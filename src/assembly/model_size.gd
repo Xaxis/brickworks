@@ -82,7 +82,16 @@ static func coming(store: ModelStore) -> Array:
 	if store == null or store.world == null or store.awaited.is_empty() \
 			or store._awaited_in != store.world.generation():
 		return []
-	return store.awaited
+	# Where they stand now: moved with the model by a drive kept since
+	# (ModelStore.awaited_at), which only of_model's fields need.
+	var motions: Motions = store.world.motions
+	if motions == null or motions.moved.is_equal_approx(Transform3D.IDENTITY):
+		return store.awaited
+	var out: Array = []
+	for placement: LdrModel.Placement in store.awaited:
+		out.append(LdrModel.Placement.new(placement.part_id, placement.color_code,
+			store.awaited_at(placement), placement.step))
+	return out
 
 
 ## [param bricks]' size and weight, those in [param skip] left out. Kept in

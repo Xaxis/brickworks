@@ -2076,7 +2076,11 @@ func _find_joints() -> void:
 		return
 	for joint: Motions.Joint in motions.joints:
 		if joint.by == "part" and world.get_brick(joint.lead) == null:
-			joint.lead = Motions.part_at(joint, world, _lift_now())
+			# Only a part found: a lead of 0 is a joint not found since the
+			# file was read, its place the file's (Motions.part_at).
+			var found: int = Motions.part_at(joint, world, _lift_now())
+			if found != 0:
+				joint.lead = found
 
 
 ## The model's motions as lines (Motions.lines), each joint's ref and where
@@ -2323,6 +2327,20 @@ func not_coming(part_id: String) -> int:
 	return awaited.size()
 
 
+## Where [param placement], one of [member awaited], stands now: where the
+## file had it, moved with the whole model by the drives kept since it
+## opened (Motions.moved), as every part here was. A drive kept while the
+## web was still fetching left those parts where the model had been, and
+## the file then had them there (drvcheck D). Undone, the drive takes them
+## back with it.
+func awaited_at(placement: LdrModel.Placement) -> Transform3D:
+	var whole: Transform3D = world.motions.moved if world.motions != null else Transform3D.IDENTITY
+	if whole.is_equal_approx(Transform3D.IDENTITY):
+		return placement.transform
+	var lifted := Transform3D(Basis.IDENTITY, _lift_now())
+	return lifted * whole * lifted.affine_inverse() * placement.transform
+
+
 ## Put down what was waiting for [param part_id]. Returns how many landed;
 ## none once the world has been cleared since the model opened.
 func place_awaited(part_id: String) -> int:
@@ -2339,13 +2357,13 @@ func place_awaited(part_id: String) -> int:
 		if placement.part_id != part_id:
 			still.append(placement)
 			continue
-		var brick_id: int = world.add_brick(
-			placement.part_id, placement.color_code, placement.transform)
+		var at: Transform3D = awaited_at(placement)
+		var brick_id: int = world.add_brick(placement.part_id, placement.color_code, at)
 		if brick_id != 0:
 			world.get_brick(brick_id).group = placement.group
 			world.get_brick(brick_id).unit = placement.unit
 			world.get_brick(brick_id).step = placement.step
-			builder.register(brick_id, placement.part_id, placement.transform)
+			builder.register(brick_id, placement.part_id, at)
 			landed += 1
 	awaited = still
 	if landed > 0:
@@ -2617,7 +2635,7 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 		# as the file had them.
 		var held_at: Array = []
 		for waiting: LdrModel.Placement in awaited:
-			held_at.append([waiting, back * waiting.transform])
+			held_at.append([waiting, back * awaited_at(waiting)])
 		for absent: LdrModel.Placement in _absent:
 			held_at.append([absent, absent.transform])
 		for pair: Array in held_at:
@@ -2660,7 +2678,7 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 		if world.generation() == _awaited_in:
 			for placement: LdrModel.Placement in awaited:
 				var held := LdrModel.Placement.new(placement.part_id, placement.color_code,
-					Transform3D(Basis.IDENTITY, -_lift_now()) * placement.transform,
+					Transform3D(Basis.IDENTITY, -_lift_now()) * awaited_at(placement),
 					placement.step)
 				held.unit = placement.unit
 				held.line = placement.line
