@@ -176,7 +176,7 @@ const sessions = {};
 async function throwaway(who) {
   const email = address(who);
   made.push(email);
-  const session = await mintSession(email);
+  const session = await mintSession(email, { welcome: false });
   sessions[email] = session;
   return session;
 }
@@ -417,7 +417,7 @@ try {
   } else if (beta.json?.beta !== "open" || !ownerAddress) {
     skip(`a tester's hub and report: needs the beta open (${beta.json?.beta}) and --owner`);
   } else {
-    owner = await mintSession(ownerAddress);
+    owner = await mintSession(ownerAddress, { welcome: false });
     made.push(ownerAddress);
     B = await throwaway("b");
     const form = { build: "A Technic tower crane with a working slewing ring and a two-speed winch.", ai: "claude",
@@ -459,7 +459,7 @@ try {
   if (!applied || !ownerAddress) {
     skip(applied ? "the inbox itself: needs --owner (never the site's real owner)" : "the inbox itself: once feedback.sql is applied");
   } else {
-    owner ??= await mintSession(ownerAddress);
+    owner ??= await mintSession(ownerAddress, { welcome: false });
     if (!made.includes(ownerAddress)) made.push(ownerAddress);
     const { page, context } = await open("/admin?tests=1#feedback", { width: 1280, who: owner, label: "inbox" });
     const listed = () => page.evaluate(() => [...document.querySelectorAll("#fb-list > li")].map((li) => ({

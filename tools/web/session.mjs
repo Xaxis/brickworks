@@ -21,6 +21,10 @@
 // test addresses, which no one can receive mail at; any other address,
 // the owner's above all, is signed in by its code as before.
 //
+// A session stands for an account that has been through signing up, so
+// what signing up asks once is answered for it too: the age question
+// (answerAge), and while the beta is open, its welcome (notNow).
+//
 // Only the signing in is a shortcut, and it needs SUPABASE_SECRET_KEY, so
 // it runs only where .env is. Nothing in production is weakened for it.
 //
@@ -53,8 +57,10 @@ export function canSignIn() {
 }
 
 /// A sign-in code for [email], made the way api/otp.js makes one and sent
-/// nowhere. Making it replaces any code sent before.
-export async function mintCode(email = TEST_EMAIL) {
+/// nowhere. Making it replaces any code sent before. A new account's
+/// welcome to the beta is answered (notNow) before the code is typed,
+/// unless { welcome: false } says the flow will meet it itself.
+export async function mintCode(email = TEST_EMAIL, { welcome = true } = {}) {
   const p = project();
   if (!p) throw new Error("no SUPABASE_URL / SUPABASE_SECRET_KEY / SUPABASE_PUBLISHABLE_KEY — source .env");
   const headers = { apikey: p.secret, authorization: `Bearer ${p.secret}`, "content-type": "application/json" };
@@ -67,8 +73,14 @@ export async function mintCode(email = TEST_EMAIL) {
   const body = await reply.json().catch(() => ({}));
   const code = body.email_otp || body.properties?.email_otp;
   if (!code) throw new Error(`no code minted: ${reply.status}`);
+  if (welcome) await notNow(body.id || body.user?.id, email);
   return code;
 }
+
+const isOwner = (email) => {
+  const master = String(process.env.MASTER_EMAIL || "").trim().toLowerCase();
+  return Boolean(master) && String(email || "").toLowerCase() === master;
+};
 
 /// The age question (supabase/trust.sql) answered 13 or over for a test's
 /// account, so a flow that lists or makes a profile is not asked first:
@@ -78,9 +90,7 @@ export async function mintCode(email = TEST_EMAIL) {
 /// whose answer is theirs to give. Quiet when neither is there.
 export async function answerAge(userId, email, atLeast13 = true) {
   const p = project();
-  if (!p || !userId) return;
-  const master = String(process.env.MASTER_EMAIL || "").trim().toLowerCase();
-  if (master && String(email || "").toLowerCase() === master) return;
+  if (!p || !userId || isOwner(email)) return;
   await fetch(`${p.url}/rest/v1/rpc/answer_age`, {
     method: "POST",
     headers: { apikey: p.secret, authorization: `Bearer ${p.secret}`, "content-type": "application/json" },
@@ -95,15 +105,58 @@ export async function answerAge(userId, email, atLeast13 = true) {
   }
 }
 
+/// The beta's welcome answered Not now for a test's account, as a person
+/// who came for something else answers it at sign-up: the deployment's
+/// own beta_leave (supabase/beta_join.sql), which the app's and the site's
+/// Not now call. While the beta is open, an account made in the last seven
+/// days that has not answered it is welcomed once, over the builder in
+/// /app or over the page on the site, and until it is answered nothing
+/// else in the app can be pressed or is told to the page: every check on
+/// a beta-open deployment that signed in a new account waited there and
+/// failed (welcomeall, 2026-11-10). Answered here, before any page asks
+/// who it is, so it is never shown and no flow need know of it; asked of
+/// every session minted, so a welcome due again is answered again. Only
+/// when due: an account that answered, applied or is a tester keeps what
+/// it is (beta_leave would make a tester leave). The shared test account,
+/// made long before, is never due. Never the owner's account. Quiet where
+/// beta_join.sql is not applied.
+async function notNow(userId, email) {
+  const p = project();
+  if (!p || !userId || isOwner(email)) return;
+  const rpc = (name) => fetch(`${p.url}/rest/v1/rpc/${name}`, {
+    method: "POST",
+    headers: { apikey: p.secret, authorization: `Bearer ${p.secret}`, "content-type": "application/json" },
+    body: JSON.stringify({ p_account: userId }),
+  });
+  try {
+    const member = await rpc("beta_member");
+    if (member.status === 404) return;
+    const due = await member.json().catch(() => null);
+    if (!member.ok) throw new Error(`beta_member answered ${member.status}`);
+    if (due?.welcome !== true) return;
+    const left = await rpc("beta_leave");
+    const said = await left.json().catch(() => null);
+    if (!left.ok || said?.welcome !== false) {
+      throw new Error(`beta_leave answered ${left.status} ${JSON.stringify(said).slice(0, 120)}`);
+    }
+  } catch (trouble) {
+    console.log(`  (the beta's welcome left unanswered for ${email}: ${trouble.message})`);
+  }
+}
+
 /// A whole session for [email], as the app keeps one: signed in by
 /// password at a Resend test address, by its code anywhere else. Its age
 /// is answered 13 or over (answerAge), unless { age: false } says leave it
-/// to be asked, as the age flow does.
-export async function mintSession(email = TEST_EMAIL, { age = true } = {}) {
+/// to be asked, as the age flow does; and the beta's welcome Not now
+/// (notNow), unless { welcome: false } says the flow will meet it itself,
+/// as the beta's own flows do.
+export async function mintSession(email = TEST_EMAIL, { age = true, welcome = true } = {}) {
   const p = project();
   if (!p) throw new Error("no SUPABASE_URL / SUPABASE_SECRET_KEY / SUPABASE_PUBLISHABLE_KEY — source .env");
   const body = (isTestAddress(email) && await passwordSession(p, email)) || await codeSession(p, email);
-  if (age) await answerAge(body.user?.id, body.user?.email || email);
+  const id = body.user?.id;
+  const address = body.user?.email || email;
+  await Promise.all([age && answerAge(id, address), welcome && notNow(id, address)]);
   return {
     access_token: body.access_token,
     kept: {
@@ -166,7 +219,7 @@ async function codeSession(p, email) {
   let reply = null;
   let body = {};
   for (let attempt = 1; attempt <= 5; attempt++) {
-    const code = await mintCode(email);
+    const code = await mintCode(email, { welcome: false });
     reply = await patiently("redeeming a code", () => fetch(`${p.url}/auth/v1/verify`, {
       method: "POST",
       headers: { apikey: p.key, "content-type": "application/json" },
