@@ -13,8 +13,8 @@
     "_bar.mark",
     "@opened"
    ],
-   "pad": 8,
-   "alt": "The Brickworks menu open under the mark at the far left of the menu bar: About Brickworks, Send feedback, Find a command, Brickworks website, Documentation, Account and Back to brickworks.diy.",
+   "pad": 0,
+   "alt": "The Brickworks menu open under the mark at the far left of the menu bar: About Brickworks, Send feedback, Find a command with its key Ctrl+/, Brickworks website, Documentation and Account.",
    "caption": "The Brickworks menu, at the far left of the menu bar.",
    "features": [
     "ui:the app menu"
@@ -27,12 +27,12 @@
    "phone": true,
    "setup": [
     {
-     "frames": 60
+     "frames": 360
     }
    ],
    "settle": 60,
    "crop": "window",
-   "alt": "Brickworks on a phone, 390 pixels across: the mark, the model's name and the menus along the top, the red car on its baseplate, and one row of tools along the foot.",
+   "alt": "Brickworks on a phone, 390 pixels across: the mark, the model's name, undo and redo along the top, the red car on its baseplate, and one row of tools along the foot.",
    "caption": "On a phone: one row of tools, and the rest in sheets over the model.",
    "features": [
     "ui:two fingers' twist"

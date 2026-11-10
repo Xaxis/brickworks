@@ -15,7 +15,7 @@ Brickworks is a web app: open [brickworks.diy/app](/app) and build. Nothing is i
 
 Open [brickworks.diy/app](/app) in a recent browser on a computer, a tablet or a phone: it needs WebGL 2 and WebAssembly threads, and nothing else.
 
-![The Brickworks menu open under the mark at the far left of the menu bar: About Brickworks, Send feedback, Find a command, Brickworks website, Documentation, Account and Back to brickworks.diy.](/docs/img/web-and-desktop-menu.webp "The Brickworks menu, at the far left of the menu bar.")
+![The Brickworks menu open under the mark at the far left of the menu bar: About Brickworks, Send feedback, Find a command with its key Ctrl+/, Brickworks website, Documentation and Account.](/docs/img/web-and-desktop-menu.webp "The Brickworks menu, at the far left of the menu bar.")
 
 The Brickworks mark at the far left of the menu bar opens the app's own menu: **About Brickworks**, **Send feedback…**, **Find a command…** ([[Ctrl+/]]), **Brickworks website**, **Documentation**, **Account…** and **Back to brickworks.diy**; a beta tester's has **Beta hub** too.
 
@@ -35,7 +35,7 @@ Saved models are kept in your browser and privately with your account, so **File
 
 ## On a tablet or a phone {#phone}
 
-![Brickworks on a phone, 390 pixels across: the mark, the model's name and the menus along the top, the red car on its baseplate, and one row of tools along the foot.](/docs/img/web-and-desktop-phone.webp "On a phone: one row of tools, and the rest in sheets over the model.")
+![Brickworks on a phone, 390 pixels across: the mark, the model's name, undo and redo along the top, the red car on its baseplate, and one row of tools along the foot.](/docs/img/web-and-desktop-phone.webp "On a phone: one row of tools, and the rest in sheets over the model.")
 
 On a touch screen the app is laid out for a finger: one row of tools, and the parts, the colours and the rest in panels beside the model or, on a phone, in sheets over it. A browser window as small as a phone gets this layout too, whatever you point with.
 

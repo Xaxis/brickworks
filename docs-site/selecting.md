@@ -72,11 +72,11 @@ Each is explained on [Moving and changing parts](/docs/changing-parts).
 
 Right-click a part and its menu has, from the top:
 
-- **Ask Claude about this…** and **Ask Claude to brace this…**, with the assistant on ([Designing with AI](/docs/ai)), and **Comments…**, pinned to the model's parts, a new one on this part.
-- **Everything connected**, **Same part**, **Same colour**: select by it.
+- **Ask Claude about this…**, with the assistant on ([Designing with AI](/docs/ai)), and **Ask Claude to brace this…** while **View › Stress** shows the part weak; **Comment on it…**, pinned to the part.
+- **Select everything joined to it**, **Select the same part**, **Select the same colour**.
 - **Hide** and **Show only the selection**.
 - **Copy**, **Duplicate**, **Delete**.
-- **Paint the selection**, **Split into smaller parts**, **Merge into bigger parts**, **Replace with the part in hand** and **Printed versions…**.
+- **Paint with** the colour in hand, **Split into smaller parts**, **Merge into bigger parts**, **Replace with the part in hand** and **Printed versions…**.
 - **Swing on its hinge**, for a part that hangs from one.
 - **Move to previous step**, **Move to next step** and **Move to step…**, for the [build steps](/docs/instructions).
 - **Make a sub-assembly…** and **Properties**.
