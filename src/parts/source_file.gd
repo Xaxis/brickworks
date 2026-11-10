@@ -523,9 +523,12 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 	# A line written here ends as the file's lines do (Studio's in "\r\n").
 	var eol: String = "\r" if not lines.is_empty() and lines[0].ends_with("\r") else ""
 	var out := PackedStringArray()
+	var tail: int = -1      ## where the file's last line went
 	for n: int in lines.size():
 		for extra: String in inserts.get(n, []):
 			out.append(extra + eol)
+		if n == lines.size() - 1 and not (replace.has(n) and str(replace[n]).is_empty()):
+			tail = out.size()
 		if replace.has(n):
 			if not str(replace[n]).is_empty():
 				out.append(str(replace[n]) + eol)
@@ -533,7 +536,7 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 		out.append(lines[n])
 	for extra: String in inserts.get(lines.size(), []):
 		out.append(extra + eol)
-	return "\n".join(out)
+	return "\n".join(_ended_as_begun(out, tail, lines, eol))
 
 
 ## A section whose steps changed, written again a step at a time: each
@@ -1455,14 +1458,7 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 			_emit(plan, str(rewrites[n]) + _eol(), REWRITE, n, [])
 		else:
 			_emit(plan, lines[n], KEEP, n, [])
-	# A file that ended without a line break, with lines put after its last:
-	# that line ended as the rest, and the file ending as it did.
-	if inserts.has(count) and count > 0 and not lines[count - 1].is_empty():
-		var last: int = plan.from.find(count - 1)
-		if last >= 0:
-			plan.out[last] = plan.out[last] + ("" if plan.out[last].ends_with("\r") else _eol())
-			var end: int = plan.out.size() - 1
-			plan.out[end] = plan.out[end].trim_suffix("\r")
+	plan.out = _ended_as_begun(plan.out, plan.from.find(count - 1), lines, _eol())
 	plan.changed = rewrites.duplicate()
 	for line: int in moves:
 		plan.changed[line] = true
@@ -1471,6 +1467,26 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 
 func _eol() -> String:
 	return "\r" if _crlf else ""
+
+
+## [param out], a writer's lines of the file [param file_lines], ending as
+## the file did where it ended with no line break: the line [param tail]
+## (where the file's last line went, kept, rewritten or moved; -1 for gone)
+## ended as the rest ([param eol]) where a line follows it, and the last
+## line written with no end. A rewrite of the last line was given the
+## file's line end, and a CRLF file came back ending in a bare CR (kt5check
+## F4); its last line taken out left the one before it so.
+static func _ended_as_begun(out: PackedStringArray, tail: int, file_lines: PackedStringArray,
+		eol: String) -> PackedStringArray:
+	var count: int = file_lines.size()
+	if count == 0 or out.is_empty() or file_lines[count - 1].is_empty() \
+			or file_lines[count - 1].ends_with("\r"):
+		return out
+	var end: int = out.size() - 1
+	if tail >= 0 and tail < end and not out[tail].ends_with("\r"):
+		out[tail] = out[tail] + eol
+	out[end] = out[end].trim_suffix("\r")
+	return out
 
 
 func _emit(plan: Plan, text: String, how: int, from: int, placed: Array) -> void:
@@ -1808,12 +1824,18 @@ func gate(plan: Plan, text: String, library: PartLibrary, waiting: Dictionary,
 	var last_kept: int = -1
 	var last: int = original.size() - 1
 	var may_say: Dictionary = _colours_said(plan)
+	# A file that ended with no line break ends so again: the text's last
+	# line with no end, the file's line before it that had one too
+	# (_ended_as_begun).
+	var ends_bare: bool = last >= 0 and not original[last].is_empty() \
+		and not original[last].ends_with("\r")
 	for n: int in plan.out.size():
 		var said: String = plan.out[n]
 		if _is_app_line(said):
 			continue
 		var from: int = plan.from[n]
 		var how: int = plan.how[n]
+		var at_end: bool = ends_bare and n == plan.out.size() - 1 and text.ends_with(said)
 		if how != NEW and how != FOREIGN and (from < 0 or from >= original.size() or used.has(from)):
 			return "a line of the file written twice, or one it has not got"
 		match how:
@@ -1822,22 +1844,24 @@ func gate(plan: Plan, text: String, library: PartLibrary, waiting: Dictionary,
 					return "line %d of the file out of its order" % (from + 1)
 				last_kept = from
 				if how == KEEP and said != original[from] \
-						and not (from == last and said == original[from] + _eol()):
+						and not (from == last and said == original[from] + _eol()) \
+						and not (at_end and said == original[from].trim_suffix("\r")):
 					return "line %d of the file changed with no edit to it" % (from + 1)
 				if how == REWRITE and (not _is_placing(said) or not _may_change(plan, from, false, steps_now)):
 					return "line %d of the file changed, and nothing on it was edited" % (from + 1)
 				if how == REWRITE:
-					var why: String = _rewritten_as_written(plan, from, said, may_say)
+					var why: String = _rewritten_as_written(plan, from, said, may_say, at_end)
 					if not why.is_empty():
 						return why
 			MOVE:
 				if not _may_change(plan, from, true, steps_now):
 					return "line %d of the file moved, and nothing on it changed step" % (from + 1)
-				if said != original[from] and not (_is_placing(said) and _is_placing(original[from])
+				if said != original[from] and not (from == last and said == original[from] + _eol()) \
+						and not (_is_placing(said) and _is_placing(original[from])
 						and _may_change(plan, from, false, steps_now)):
 					return "line %d of the file moved and changed, and nothing on it was edited" % (from + 1)
 				if said != original[from]:
-					var why: String = _rewritten_as_written(plan, from, said, may_say)
+					var why: String = _rewritten_as_written(plan, from, said, may_say, at_end)
 					if not why.is_empty():
 						return why
 			NEW:
@@ -1895,8 +1919,10 @@ func _colours_said(plan: Plan) -> Dictionary:
 ##   painted, that part's number as a new line names it;
 ## - its place's three numbers as the file wrote them unless the place they
 ##   say is another, and its turn's nine unless the turn is;
-## - its line end the file's.
-func _rewritten_as_written(plan: Plan, from: int, said: String, may_say: Dictionary) -> String:
+## - its line end the file's, or none where it ends the text of a file that
+##   ended with no line break ([param at_end]).
+func _rewritten_as_written(plan: Plan, from: int, said: String, may_say: Dictionary,
+		at_end: bool = false) -> String:
 	var was: PackedStringArray = _words(original[from])
 	var now: PackedStringArray = _words(said)
 	var was_at: Variant = _numbers_of(was)
@@ -1926,7 +1952,8 @@ func _rewritten_as_written(plan: Plan, from: int, said: String, may_say: Diction
 			return "line %d of the file has its place written anew, and it is where it was" % (from + 1)
 		if k >= 5 and _same(Transform3D(a.basis, Vector3.ZERO), Transform3D(b.basis, Vector3.ZERO)):
 			return "line %d of the file has its turn written anew, and it is turned as it was" % (from + 1)
-	if said.ends_with("\r") != original[from].ends_with("\r") and from != original.size() - 1:
+	if said.ends_with("\r") != original[from].ends_with("\r") and from != original.size() - 1 \
+			and not at_end:
 		return "line %d of the file ends another way" % (from + 1)
 	return ""
 
@@ -2477,8 +2504,12 @@ static func _binds_next(line: String) -> bool:
 	if words.size() < 3:
 		return false
 	var said: String = first + " " + words[2].to_upper()
+	# And the app's own: which copy the reference after it is (LdrModel
+	# .COPY_META). Not bound, it stayed when its copy was taken off, saying
+	# it of nothing (kt5check F3).
 	return said == "BFC INVERTNEXT" or said == "!LDCAD GROUP_NXT" or said == "MLCAD BTG" \
-		or said == "!TEXMAP NEXT" or said == "!LEOCAD PIECE"
+		or said == "!TEXMAP NEXT" or said == "!LEOCAD PIECE" \
+		or said == LdrModel.COPY_META.substr(2)
 
 
 ## [param at], or where the lines right above line [param at] of

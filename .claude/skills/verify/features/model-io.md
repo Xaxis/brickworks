@@ -126,6 +126,20 @@ Whether what you built is still there tomorrow, and still means the same thing.
   takes that step's line out, where a patch moved every later line up a
   step and left a STEP after the last (booklet_edit); a part the app cannot show
   that would be left behind its step-mates makes the save (B).
+  Written whole, a copy is placed on its definition's first copy by the fit
+  that lays each part turned as it is (`Assemblies.exact_match`, its
+  "bases"), mirrored where only a mirror does: a mirrored copy of parts that
+  look the same turned a half (a plate and a tile) also lies on the first
+  turned a half, filling the same cells, and was written so, by a matrix
+  that turns, and opened again with each part turned a half (kt5check F2).
+  Copies follow an edit by the same fit (`best_match`), so a wedge put in the
+  first copy goes into the mirrored one in its other hand. A copy's
+  `0 !BRICKWORKS COPY n` line is bound to the reference after it
+  (`_binds_next`) and goes, or moves, with it (F3). A file that ended with no
+  line break ends so again, in a patch and in (B)
+  (`SourceFile._ended_as_begun`): its last line rewritten was given the
+  file's line end, a CRLF file ending in a bare CR (F4). `fidelity_probe`
+  checks the three.
   keeptext4 wrote every edit into the file and refused what its gate did not
   pass, which trapped the work and lost it on the next open
   (bench/results/kt4review-2026-11-07). Probes: `paint_string` (a person
