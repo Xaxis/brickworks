@@ -908,6 +908,33 @@ func _interface(column: VBoxContainer) -> void:
 		"No build animation, no shimmer, and the view moves without gliding.",
 		ShellPrefs.reduce_motion(),
 		func(on: bool) -> void: ShellPrefs.put("reduce_motion", on))
+	_done_note_choice(column)
+
+
+## Settings, Say when a long job is done (DoneNote), on Reduce motion's line:
+## a line of its own cost the settings their fit at 100% (a11y_size).
+var done_note: CheckBox
+
+
+func _done_note_choice(column: VBoxContainer) -> void:
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", 24)
+	column.add_child(line)
+	column.move_child(line, reduce_motion.get_index())
+	column.remove_child(reduce_motion)
+	line.add_child(reduce_motion)
+	done_note = CheckBox.new()
+	done_note.text = "Say when a long job is done"
+	done_note.tooltip_text = ("A design, a Best render, the render queue or a build video "
+		+ "that finishes while you are in another window: the window asks for your "
+		+ "attention, or in a browser, a notification says so.")
+	done_note.button_pressed = DoneNote.wanted()
+	done_note.focus_mode = Control.FOCUS_NONE
+	done_note.add_theme_font_size_override("font_size", 12)
+	done_note.toggled.connect(func(on: bool) -> void:
+		DoneNote.want(on)
+		changed.emit())
+	line.add_child(done_note)
 
 
 ## Settings, Updates: Automatic, Ask first or Off (Updater.MODES).
@@ -1225,6 +1252,7 @@ func open() -> void:
 	if interface_choice != null:
 		interface_choice.select(_interface_index())
 		reduce_motion.set_pressed_no_signal(ShellPrefs.reduce_motion())
+		done_note.set_pressed_no_signal(DoneNote.wanted())
 		language_choice.select(Language.codes().find(Language.current()))
 	if updates_choice != null:
 		updates_choice.select(Updater.MODES.find(Updater.mode()))
