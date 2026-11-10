@@ -186,8 +186,17 @@ const rowSaid = (page) => page.evaluate(() => {
   return { shown: Boolean(part) && !part.hidden, toc: shown("beta-toc"), said: document.getElementById("beta-said")?.textContent.trim(),
     month: shown("beta-month") ? document.getElementById("beta-month").textContent.trim() : "",
     join: shown("beta-join"), leave: shown("beta-leave"), hub: shown("beta-hub"),
+    hubTo: document.getElementById("beta-hub")?.getAttribute("href"),
     status: document.getElementById("beta-status")?.textContent.trim() };
 });
+/// What the page told its other parts of the beta (the "brickworks:beta"
+/// event web/betabar.js redraws from): listened for from now on this page,
+/// and each detail heard since.
+const listen = (page) => page.evaluate(() => {
+  window.betaHeard = [];
+  addEventListener("brickworks:beta", (event) => window.betaHeard.push(event.detail ?? null));
+});
+const heard = (page) => page.evaluate(() => window.betaHeard || []);
 const settingsReady = (page) => until(page, () => document.documentElement.dataset.settings === "ready", null, 30000);
 
 let on = false;
@@ -224,17 +233,21 @@ try {
     const token = await tokenOf(page);
     const before = await api(site, "/api/plans?op=beta", { token });
     check(`before: tester ${before.json?.tester}, welcome ${before.json?.welcome}`, before.json?.tester === false && before.json?.welcome === true);
+    await listen(page);
     await page.click("#beta-join");
     const joined = await until(page, () => document.querySelector("dialog.beta-welcome")?.dataset.step === "joined");
+    const told = await heard(page);
+    check(`...and the page is told at once ("brickworks:beta", tester ${told[0]?.tester}, ${told.length} event)`,
+      told.length === 1 && told[0]?.tester === true && told[0]?.state === "tester");
     const after = await api(site, "/api/plans?op=beta", { token });
     check(`Join, one press: GET op=beta says tester ${after.json?.tester}, ${after.json?.state}, joined ${after.json?.joined_at}`,
       joined && after.json?.tester === true && after.json?.state === "tester" && Boolean(after.json?.joined_at));
     const thanks = await page.evaluate(() => ({ title: document.querySelector("dialog.beta-welcome h2")?.textContent.trim(),
       words: document.querySelector("dialog.beta-welcome")?.innerText.replace(/\s+/g, " "),
-      apply: document.querySelector('dialog.beta-welcome a[href$="/beta#apply"]')?.getAttribute("href"),
+      apply: document.querySelector('dialog.beta-welcome a[href$="/beta#about"]')?.getAttribute("href"),
       focused: document.activeElement?.id }));
     check(`the thank-you: "${thanks.title}", telling us about you after (${thanks.apply}), the focus on ${thanks.focused}`,
-      thanks.title === "You are a beta tester" && /Report a bug/.test(thanks.words) && thanks.apply === "/beta#apply"
+      thanks.title === "You are a beta tester" && /Report a bug/.test(thanks.words) && thanks.apply === "/beta#about"
       && thanks.focused === "beta-carry-on");
     await both(page, "2-joined-390");
     await page.click("#beta-carry-on");
@@ -246,8 +259,9 @@ try {
     await page.goto(`${site}/settings`, { waitUntil: "load" });
     await settingsReady(page);
     let row = await rowSaid(page);
-    check(`the Beta row: "${row.said}", Leave ${row.leave}, Beta hub ${row.hub}`, row.shown && row.toc
-      && /^You have been a beta tester since .+\. Thank you\.$/.test(row.said) && row.leave && row.hub && !row.join);
+    check(`the Beta row: "${row.said}", Leave ${row.leave}, Beta hub ${row.hub} (${row.hubTo})`, row.shown && row.toc
+      && /^You have been a beta tester since .+\. Thank you\.$/.test(row.said) && row.leave && row.hub && !row.join
+      && row.hubTo === "/beta");
     check(`...and the month: "${row.month.slice(0, 80)}"`, /For a month of Pro, tell us what you build/.test(row.month));
     await page.locator("#beta-part").scrollIntoViewIfNeeded();
     await both(page, "3-settings-tester-390", "#beta-part");
@@ -266,8 +280,12 @@ try {
     check(`...inside the window, nothing cut or sideways (focus on ${said?.focused})`, said?.inside && !said.sideways
       && said.cut === 0 && said.focused === "beta-join");
     await both(page, "5-welcome-1280");
+    await listen(page);
     await page.click("#beta-not-now");
     check("Not now closes it", await until(page, () => !document.querySelector("dialog.beta-welcome")));
+    const toldLater = await heard(page);
+    check(`...and the page is told ("brickworks:beta", ${toldLater[0]?.state}, ${toldLater.length} event)`,
+      toldLater.length === 1 && toldLater[0]?.tester === false && toldLater[0]?.state === "not_now");
     const token = await tokenOf(page);
     const now = await api(site, "/api/plans?op=beta", { token });
     check(`...not a tester: tester ${now.json?.tester}, ${now.json?.state}, welcome ${now.json?.welcome}`,
@@ -283,12 +301,16 @@ try {
       && /^Brickworks is in open beta\./.test(row.said));
     await page.locator("#beta-part").scrollIntoViewIfNeeded();
     await both(page, "6-settings-not-tester-1280", "#beta-part");
+    await listen(page);
     await page.click("#beta-join");
     await until(page, () => /Joined/.test(document.getElementById("beta-status")?.textContent || ""));
     const joined = await api(site, "/api/plans?op=beta", { token: await tokenOf(page) });
     row = await rowSaid(page);
     check(`an existing account joins from Account, one press: tester ${joined.json?.tester}; "${row.said}"`,
       joined.json?.tester === true && row.leave && /beta tester since/.test(row.said));
+    let toldRow = await heard(page);
+    check(`...and the page is told ("brickworks:beta", tester ${toldRow.at(-1)?.tester}, ${toldRow.length} event)`,
+      toldRow.length === 1 && toldRow[0]?.tester === true);
     await both(page, "7-settings-joined-1280", "#beta-part");
     await page.click("#beta-leave");
     await until(page, () => /You left the beta/.test(document.getElementById("beta-status")?.textContent || ""));
@@ -296,6 +318,9 @@ try {
     row = await rowSaid(page);
     check(`...and leaves, one press: tester ${left.json?.tester}, ${left.json?.state}; "${row.status}"`,
       left.json?.tester === false && left.json?.state === "left" && row.join && !row.leave);
+    toldRow = await heard(page);
+    check(`...and the page is told ("brickworks:beta", ${toldRow.at(-1)?.state}, ${toldRow.length} events)`,
+      toldRow.length === 2 && toldRow[1]?.tester === false && toldRow[1]?.state === "left");
     await both(page, "8-settings-left-1280", "#beta-part");
     await context.close();
   }

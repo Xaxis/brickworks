@@ -99,7 +99,11 @@ export async function betaWelcome({ via = "welcome" } = {}) {
         .catch(() => null);
       join.disabled = false;
       later.disabled = false;
-      if (said && said.status === 200) return said.body;
+      if (said && said.status === 200) {
+        // The bar, the homepage and /beta (web/betabar.js) redraw from it.
+        dispatchEvent(new CustomEvent("brickworks:beta", { detail: said.body }));
+        return said.body;
+      }
       note.textContent = said && said.body.error ? say(said.body.error) : say("That did not go just now. Try again in a minute.");
       return null;
     };
@@ -115,7 +119,7 @@ export async function betaWelcome({ via = "welcome" } = {}) {
       body.replaceChildren(
         make("p", "", say("Thank you. Report a bug whenever something is wrong, from wherever you are. What you send, and our answers, are in Settings.")),
         sayInto(make("p", "gets"), say("For a month of Pro, {link}: it takes a minute."),
-          { link: linked(say("tell us what you build"), `${langAt()}/beta#apply`) }),
+          { link: linked(say("tell us what you build"), `${langAt()}/beta#about`) }),
         make("div", "actions", carry));
       dialog.dataset.step = "joined";
       carry.focus();
