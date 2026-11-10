@@ -3956,7 +3956,10 @@ plan with Claude as the client.
   #apply-send, #apply-status; then where it stands), checked at the edge
   as the API takes it (422 with why), one an account (409; a declined one
   again after 30 days). beta_flow fills it by hand at 390, by keyboard
-  alone from /beta#about at 1280, and reads a decline's date there.
+  alone from /beta#about at 1280, and reads a decline's date there. A link
+  to /beta#about lands there, its title focused, once what is new and a
+  tester's parts above it are drawn (web/beta.js newsAsked, testersAsked):
+  landed before the hub's answer, its lists pushed the section 1297 px down.
   Spots 1-100 one at a time under the pool's row lock: proven on a
   throwaway Postgres (`tests/fixtures/beta/db_check.mjs`: two at once at
   99 give 100 and "full"; 120 from ten connections give 1-100 once each).
@@ -3994,7 +3997,10 @@ plan with Claude as the client.
   loaded on the first press; without it Send feedback's dialog as a bug),
   and Join (POST ?op=beta_join {via}; signed out the sign-in first, whose
   welcome's answer stands) or You're a tester; its x hides it for a day
-  ("brickworks.betabar.hidden"). What the server said is kept ten minutes
+  ("brickworks.betabar.hidden"). While it is shown, whatever is scrolled to
+  (Tab, a link, a page's script) stops clear above it
+  (`:root[data-betabar]` scroll-padding-bottom): Settings' Beta hub and
+  Leave were under it at 390. What the server said is kept ten minutes
   ("brickworks.beta"): signed in GET ?op=beta, signed out ?op=beta_spots;
   off, theme.js does not ask for the bar again for ten minutes, and nothing
   is drawn. The homepage's #beta sits under the hero: why to join, three
@@ -4010,7 +4016,9 @@ plan with Claude as the client.
   early features (GET ?op=beta_hub). Prove: `node
   tools/web/betahome_flow.mjs --out=DIR` (the stand-in, beta open and off,
   ends "betahome: all ok"), then on a `tools/deploy.sh --unit --beta-open`
-  preview `--url=<preview>` with `BW_BYPASS`.
+  preview `--url=<preview>` with `BW_BYPASS`: the months left are the
+  deployment's (?op=beta_spots), and Join's focus is read a frame after the
+  page has loaded and drawn, when web/beta.js puts it there.
 - `joining the beta's testers` (`supabase/beta_join.sql`, `api/_beta.js`
   betaJoin, betaLeave, memberOf, betaTesters), `the beta's welcome at
   sign-up` (`web/beta-welcome.js`, `web/account.js` askAgeIfAsked, Settings'
@@ -4129,6 +4137,13 @@ plan with Claude as the client.
   --beta-open`: the site at 390 and 1280, the kept picture read from the
   bucket for the box (within 2 px), Your reports, Escape and Cancel; the
   app's top bar; with the beta shut, no button. Ends "bugreport: all ok".
+  Its throwaway is a new account, so with the beta open the app shows the
+  beta's welcome over the builder first, and nothing else is pressable or
+  told to the page till it is answered: bugreport_flow and feedback_flow
+  answer it Not now with `answerWelcome` (`tools/web/browser.mjs`), which
+  asks GET /api/account whether it is due, so a welcome due and never
+  shown fails. Any flow that opens /app with a fresh account on a
+  beta-open deployment needs the same.
 - `compare media` (`tools/web/compare_media.mjs`): retakes every picture and clip
   of `/compare` from the live app in a real, headed Chromium window on
   SwiftShader, its tabs and address bar in the picture (ffmpeg's x11grab):

@@ -124,7 +124,9 @@ async function resendSaid(id) {
 const browser = await launch({ signedOut: true });
 
 /// [pathname] at [width] in [theme], signed in as [who] (a mintSession) or out.
-async function open(pathname, { width, theme = "light", who = null, label }) {
+/// With [answer], an op of /api/plans the page asks after it is drawn: its
+/// reply, caught from the page's start (answered), or null when none came.
+async function open(pathname, { width, theme = "light", who = null, label, answer = "" }) {
   const phone = width < 600;
   const context = await browser.newContext({ viewport: { width, height: phone ? 844 : 900 }, colorScheme: theme,
     extraHTTPHeaders: headers, ...(phone ? { deviceScaleFactor: 2, isMobile: true, hasTouch: true } : {}) });
@@ -146,8 +148,10 @@ async function open(pathname, { width, theme = "light", who = null, label }) {
       errors.push(`${label}: ${m.text().slice(0, 220)}`);
     }
   });
+  const answered = answer ? page.waitForResponse((reply) => new URL(reply.url()).pathname === "/api/plans"
+    && new URL(reply.url()).searchParams.get("op") === answer, { timeout: 120000 }).catch(() => null) : null;
   await page.goto(site + pathname, { waitUntil: "load", timeout: 60000 });
-  return { page, context };
+  return { page, context, answered };
 }
 
 /// What /beta shows once drawn (web/beta.js, <html data-beta-page>): the
@@ -338,12 +342,20 @@ try {
     const granted = app?.comp === "granted" && Date.parse(app.month_ends_at) - Date.parse(app.month_starts_at) === 30 * 86400000;
     check(`the month: ${app?.comp} ${app?.month_starts_at || ""} to ${app?.month_ends_at || ""}`
       + `${granted ? " (given at Admission's test mode)" : " (pending)"}`, granted || app?.comp === "pending");
-    ({ page, context } = await open("/beta", { width: 1280, who: a, label: "approved" }));
-    // A tester's parts come with GET op=beta_hub, after the page is drawn.
-    await until(page, () => document.getElementById("testers")?.hidden === false);
+    let answered;
+    ({ page, context, answered } = await open("/beta", { width: 1280, who: a, label: "approved", answer: "beta_hub" }));
+    // A tester's parts come with GET op=beta_hub, which the page asks once
+    // it has drawn: its answer waited for, then the parts drawn from it.
+    // Read when the page was drawn, they were not there yet (betaopen,
+    // 2026-11-10); the answer can take its time on a loaded box.
+    const hub = await answered;
+    const heard = hub?.ok() ? await hub.json().catch(() => null) : null;
+    const lists = ["new", "known", "early"].map((key) => (heard?.[key] || []).length);
+    if (lists.some((n) => n > 0)) await until(page, () => document.getElementById("testers")?.hidden === false);
     said = await betaSaid(page);
-    check(`the hub: a tester's, with what we know is wrong: ${said.shown}, ${said.sections.join(", ")}`, said.shown === "tester"
-      && said.sections.includes("testers"));
+    check(`the hub: a tester's, with what we know is wrong (op=beta_hub ${hub ? hub.status() : "never asked"}: new, known,`
+      + ` early ${lists.join("/")}): ${said.shown}, ${said.sections.join(", ")}`, said.shown === "tester" && heard?.tester === true
+      && lists.some((n) => n > 0) && said.sections.includes("testers"));
     check(`and thanks them: "${said.spots}"`, /^You’re a tester|^You’ve been a tester since/.test(said.spots));
     const stands = await aboutSaid(page);
     check(`"tell us about you" says where it stands: "${stands.words.slice(0, 110)}"`, stands.shown === "apply-status"
