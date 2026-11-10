@@ -1013,6 +1013,9 @@ func rename_unread(was: String, now: String) -> void:
 		var head: String = quoted(was)
 		if unread_why[n].begins_with(head + ":") or unread_why[n].begins_with(head + " ("):
 			unread_why[n] = quoted(now) + unread_why[n].substr(head.length())
+	# Renamed onto the name of a motion taken out, whose refused lines stay:
+	# one the next open would read into it goes, as after any change.
+	_settle_unread()
 
 
 static func _read_motion(motion: Motion, rest: PackedStringArray) -> bool:

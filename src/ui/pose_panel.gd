@@ -1057,7 +1057,7 @@ func rename(words: String) -> void:
 	_editing_name = words
 	_chosen = words
 	_refresh()
-	_say("Renamed %s. Undo gives it its old name." % Motions.quoted(words))
+	_say(_with_let_go("Renamed %s. Undo gives it its old name." % Motions.quoted(words), motions))
 
 
 ## Take the edited motion out of the model: one step to undo.
