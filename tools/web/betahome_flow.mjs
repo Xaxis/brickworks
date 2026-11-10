@@ -345,7 +345,7 @@ try {
       // as it was drawn, the focus was still on the page (betaopen,
       // 2026-11-10), and Enter pressed there opened nothing.
       await until(page, () => location.pathname === "/beta" && document.documentElement.dataset.betaPage
-        && document.readyState === "complete");
+        && document.readyState === "complete", null, 60000);
       await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
       const landed = await page.evaluate(() => {
         const focus = document.activeElement;
