@@ -68,7 +68,8 @@ function draw(heard) {
 
 // -- what is new ------------------------------------------------------------
 
-let newsAsked = false;
+// What is new, asked once: its drawing, which a landing on #about waits for.
+let newsAsked = null;
 
 /// One release as a card: its name, its date, the heads of its notes as
 /// written (in English), and a link to all of it on the changelog.
@@ -94,9 +95,12 @@ function release(one) {
   return card;
 }
 
-async function news() {
-  if (newsAsked) return;
-  newsAsked = true;
+function news() {
+  newsAsked ||= drawNews();
+  return newsAsked;
+}
+
+async function drawNews() {
   const list = $("news");
   let releases = [];
   try {
@@ -120,7 +124,9 @@ async function news() {
 
 // -- a tester's -------------------------------------------------------------
 
-let testersAsked = false;
+// A tester's parts, asked once they are a tester: their drawing, which a
+// landing on #about waits for; asked again at the next draw if it failed.
+let testersAsked = null;
 const WHERE = { site: () => say("On the site"), app: () => say("In the app"), both: () => say("In the app and on the site") };
 // A page of the site with a copy in the page's language opens it (/library
 // as /de/library); the docs have none.
@@ -153,14 +159,16 @@ function card({ title, words, where, href }) {
   return item;
 }
 
-async function testers() {
-  if (testersAsked) return;
-  testersAsked = true;
+function testers() {
+  testersAsked ||= drawTesters().then((drawn) => {
+    if (!drawn) testersAsked = null;
+  });
+  return testersAsked;
+}
+
+async function drawTesters() {
   const { status, body } = await call("/api/plans?op=beta_hub").catch(() => ({ status: 0, body: {} }));
-  if (status !== 200) {
-    testersAsked = false;
-    return;
-  }
+  if (status !== 200) return false;
   const lists = { try: body.new || [], known: (body.known || []).map((one) => ({ ...one, where: "" })), early: body.early || [] };
   for (const [id, cards] of Object.entries(lists)) {
     $(id).replaceChildren(...cards.map(card));
@@ -169,6 +177,7 @@ async function testers() {
   for (const id of ["known", "early"]) $(`${id}-h`).hidden = !lists[id].length;
   document.querySelector("#testers .note").hidden = !lists.known.length;
   $("testers").hidden = !Object.values(lists).some((cards) => cards.length);
+  return true;
 }
 
 // -- tell us about you (a tester's) -------------------------------------------
@@ -233,15 +242,21 @@ function drawAbout(answer) {
   }
   // Come from a link to /beta#about (the welcome, Settings, the beta's
   // emails): the section was hidden as the page loaded, so the browser
-  // could not go there; it does now, once.
+  // could not go there; it does now, once, after what is new and a
+  // tester's parts above it are drawn. Gone there before them, the page
+  // was pushed down under the reader by what they added: the hub's lists
+  // put the section 1297 px down at 1280, its title focused off the
+  // window (beta_flow on a preview, betaon 2026-11-10).
   if (location.hash === "#about" && !aboutLanded) {
     aboutLanded = true;
     const now = () => requestAnimationFrame(() => {
       $("about").scrollIntoView({ block: "start" });
       $("about-h").focus({ preventScroll: true });
     });
-    if (document.readyState === "complete") now();
-    else addEventListener("load", now, { once: true });
+    Promise.allSettled([newsAsked, testersAsked]).then(() => {
+      if (document.readyState === "complete") now();
+      else addEventListener("load", now, { once: true });
+    });
   }
 }
 

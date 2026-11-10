@@ -3953,7 +3953,10 @@ plan with Claude as the client.
   #apply-send, #apply-status; then where it stands), checked at the edge
   as the API takes it (422 with why), one an account (409; a declined one
   again after 30 days). beta_flow fills it by hand at 390, by keyboard
-  alone from /beta#about at 1280, and reads a decline's date there.
+  alone from /beta#about at 1280, and reads a decline's date there. A link
+  to /beta#about lands there, its title focused, once what is new and a
+  tester's parts above it are drawn (web/beta.js newsAsked, testersAsked):
+  landed before the hub's answer, its lists pushed the section 1297 px down.
   Spots 1-100 one at a time under the pool's row lock: proven on a
   throwaway Postgres (`tests/fixtures/beta/db_check.mjs`: two at once at
   99 give 100 and "full"; 120 from ten connections give 1-100 once each).
