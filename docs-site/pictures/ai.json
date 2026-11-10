@@ -1,0 +1,30 @@
+{
+ "shots": [
+  {
+   "id": "ai-assistant",
+   "source": "app",
+   "setup": [
+    {"assistant": true, "after": 30},
+    {"frames": 30}
+   ],
+   "crop": "_chat",
+   "pad": 0,
+   "alt": "The assistant panel beside the parts bin: a box to describe what to build, Build it, and Connect your AI at its foot.",
+   "caption": "The assistant panel: say what to build, then Build it.",
+   "features": ["ui:assistant on or off"]
+  },
+  {
+   "id": "ai-settings",
+   "source": "app",
+   "setup": [
+    {"run": "settings", "after": 30},
+    {"click": "_controls.ai_open", "after": 30}
+   ],
+   "crop": "_controls",
+   "pad": 0,
+   "alt": "Settings' AI page: who designs, Claude or another AI on your own key, with the provider, its model and the key.",
+   "caption": "Tools › Settings…, then AI: Claude…",
+   "features": ["ui:choose the AI that designs"]
+  }
+ ]
+}

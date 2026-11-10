@@ -100,6 +100,8 @@ ui:copy paste and duplicate
 
 ## Patterns {#patterns}
 
+![The Pattern dialog over a single red brick: In a row, In a grid, Round and Along a hose; how many in all, along which axis and how many studs apart.](/docs/img/building-pattern.webp "Edit › Pattern… copies the selection in a line, a grid or round a circle.")
+
 A fence, a colonnade, a round tower or a wheel's spokes are copies laid out at once:
 
 - **Straight after a copy:** put a [[Ctrl+D]] copy down one step along, then type `11x` and [[Enter]] to make it one of 11 in the row, each the same step again. `/4` cuts the gap between the copy and where it came from in four, putting three between. One [[Ctrl+Z]] takes the copy and all the rest back.
@@ -124,6 +126,10 @@ ui:tool modes
 -->
 
 ## Rings and arrows {#handles}
+
+![The red car with one brick selected and the Rotate tool's three rings round it, one for each way it can turn.](/docs/img/building-rotate.webp "The Rotate tool: drag a ring to turn the selection, in the toolbar's turn step.")
+
+![The red car with one brick selected and the Move tool's three arrows on it, red, green and blue.](/docs/img/building-move.webp "The Move tool: drag an arrow to slide the selection along it.")
 
 With the **Rotate** tool, a click on a part puts three rings on it; with **Move**, three arrows. Drag a ring to turn the selection about that axis, or an arrow to slide it along one. A click on the part again does the tool's own step: **Rotate** turns it by the turn step, **Move** picks it up.
 
