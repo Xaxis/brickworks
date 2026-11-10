@@ -127,6 +127,19 @@ func _new_account_joins(account: Account, gate: SignInGate) -> void:
 	var before: Dictionary = await _beta_said(account)
 	_ok(before.get("tester") == false and before.get("welcome") == true,
 		"GET op=beta before: tester %s, welcome %s" % [before.get("tester"), before.get("welcome")])
+	# Keys choose nothing: Enter, Space and Escape with the welcome as it
+	# opens. One Enter made a tester while Join held an undrawn focus
+	# (betaopen, 11-10); joining agrees to the beta's terms and its mail.
+	for key: Key in [KEY_ENTER, KEY_KP_ENTER, KEY_SPACE, KEY_ESCAPE]:
+		await _key(key)
+	await _settle()
+	var keyed: Dictionary = await _beta_said(account)
+	_ok(keyed.get("tester") == false and keyed.get("welcome") == true and join.is_visible_in_tree(),
+		"Enter, Space and Escape choose nothing: tester %s, welcome %s, still asked %s"
+		% [keyed.get("tester"), keyed.get("welcome"), join.is_visible_in_tree()])
+	await _key(KEY_TAB)
+	var owner: Control = gate.get_viewport().gui_get_focus_owner()
+	_ok(owner == join, "Tab goes to Join, its focus drawn: %s" % (owner.name if owner != null else "nothing"))
 	await _click_control(join)
 	var start: Button = null
 	for _n: int in 900:
@@ -367,6 +380,18 @@ func _type(text: String) -> void:
 
 
 ## Everything a panel says in sight, for a check to look for words in.
+func _key(code: Key) -> void:
+	for down: bool in [true, false]:
+		var event := InputEventKey.new()
+		event.keycode = code
+		event.physical_keycode = code
+		event.pressed = down
+		Input.parse_input_event(event)
+		await process_frame
+	for _n: int in 30:
+		await process_frame
+
+
 func _text_on(node: Node) -> String:
 	var said := PackedStringArray()
 	for child: Node in node.find_children("*", "Label", true, false):

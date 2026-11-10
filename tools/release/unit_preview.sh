@@ -17,6 +17,11 @@
 # check's log (_unit_pv_<check>.log). UNIT_REUSE=1 runs the checks again on
 # the preview this branch last made, if it was made from this very commit.
 set -u
+# A unit gives the live database way to a release train within ten minutes,
+# not the train's hour: each of a preview's 10-14 live checks waited an hour
+# behind m283/m284, so units sat 6-11 h on lines the train runs itself
+# (keeptext5, stepnames, subexport, 2026-11-10). LIVE_WAIT=SECONDS overrides.
+export LIVE_WAIT="${LIVE_WAIT:-600}"
 W=$(cd "${1:?usage: unit_preview.sh WORKTREE [CHECK...]}" && pwd) || exit 1
 shift
 # The worktree's own scripts, which know its own checks (ship.sh, m87).

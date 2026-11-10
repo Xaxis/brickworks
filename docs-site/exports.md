@@ -69,7 +69,7 @@ The choices are a photographer's:
 | Choice | What there is |
 |---|---|
 | Quality | A quick one in the window's own look, up to Best: path traced on a graphics card that traces rays, so shadows soften as they should, light bounces off the floor and between the parts, and glass tints what is behind it; elsewhere frames averaged for soft shadows from an area light, smooth edges, shading under every ledge, and depth of field |
-| Look | **As in the window**, or **Product** (below) |
+| Look | **As in the window**, or **Product** (below); or drawn in ink, **Line art** or **Comic** (below) |
 | Size | 720p, 1080p, 4K, Square, or Custom |
 | Background | White, Gradient, Grey, Dark, a Colour you pick, or None (a transparent picture), with a contact shadow under the model if you like |
 | Light | Three lights, as in the window; or photographed light: a softbox studio, window light, or daylight; or **Dark**: only the [model's own lights](#lights) and the plastics that glow |
@@ -110,6 +110,16 @@ ui:render queue
 
 <!-- covers
 lib:product look
+-->
+
+### Line art and Comic {#line-art}
+
+**Line art** draws the model as a person inks it: black lines on white paper, thickest round the model, then where one part meets the next, so a wall's bricks can be counted, and thinnest where a part's own surface turns a corner, a stud's rim or a brick's top edge, and round a print, a face or a stripe. The shade is halftone dots, a screen at 45°, none on a face turned to the light and close together on one turned away, the same on a red brick as on a white one in the same light, and the model's shadow on the floor is dots too. It is a page to colour over or print. **Comic** has the same lines and dots over each part's own colour, flat, a shade darker where the light leaves it; black parts are a dark grey, so their faces can still be told apart, with grey lines between them.
+
+Both are drawn in one frame at any quality, since the lines and the dots are the picture, and sharp all through, whatever the lens. With the backdrop **None** the paper round the model is left out, so the drawing goes over anything. A turntable, an animation and a building can be drawn in either. Claude asks for them with `render_model`'s `look` lineart or comic.
+
+<!-- covers
+lib:line art and comic looks
 -->
 
 ### Animation {#animation}

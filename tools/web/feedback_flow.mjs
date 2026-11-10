@@ -46,7 +46,7 @@
 //      and their reports and files with them.
 //
 // Pictures in --out. It passes when it ends "feedback: all ok".
-import { clickStill, launch, typeInMenu } from "./browser.mjs";
+import { answerWelcome, clickStill, launch, typeInMenu } from "./browser.mjs";
 import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
@@ -339,6 +339,10 @@ try {
     const press = (name) => clickStill(page, name, { seconds: 60, optional: true, after: 400 });
     const signedIn = await until(page, () => (window.brickworksAccount || {}).state === "signed_in", null, 240000);
     check("the app is up, signed in as A", signedIn);
+    // A new account, with the beta open, is welcomed to it over the
+    // builder first; A says Not now, as a person come to send feedback would.
+    const welcome = await answerWelcome(page, { site, headers, token: A.access_token });
+    check(`the beta's welcome, when due: ${welcome}`, welcome === "Not now" || welcome === "not due");
     check("A's early features: none", await page.evaluate(() => (window.brickworksAccount?.early || []).length === 0));
     // In the app's menu, the mark's at the menu bar's far left.
     const markUp = await until(page, () => Boolean((window.brickworksControls || {}).app_menu), null, 120000);

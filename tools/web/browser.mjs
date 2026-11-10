@@ -16,6 +16,7 @@
 // launch({ ownAccount: true }) for one that spends what an account may do
 // in an hour or a day, such as publishing: its pages are signed in as an
 // account of the run's own, deleted when the run ends (session.mjs).
+import { steadyShots } from "./steady_shots.mjs";
 import { chromium } from "playwright";
 import { canSignIn, endOwnAccount, ownAccount, signInContext, TEST_EMAIL } from "./session.mjs";
 
@@ -115,12 +116,14 @@ export async function launch(options = {}) {
   const signals = mine ? { handleSIGINT: false, handleSIGTERM: false, handleSIGHUP: false } : {};
   const browser = await chromium.launch({ ...signals, ...rest, args: [...SOFTWARE, ...(rest.args || [])] });
   const made = browser.newContext.bind(browser);
-  const bare = async (contextOptions) => instantScroll(await made(contextOptions));
+  // Every page of every context takes a dropped picture again (steady_shots.mjs).
+  const steady = (context) => { context.on("page", (page) => steadyShots(page)); return context; };
+  const bare = async (contextOptions) => instantScroll(steady(await made(contextOptions)));
   const newContext = realCounter ? bare : async (contextOptions) => quietCounter(await bare(contextOptions));
   if (signedOut) {
     const newPage = browser.newPage.bind(browser);
     browser.newContext = (contextOptions) => newContext(withRatio(contextOptions));
-    browser.newPage = (pageOptions) => newPage(withRatio(pageOptions));
+    browser.newPage = async (pageOptions) => steadyShots(await newPage(withRatio(pageOptions)));
     return browser;
   }
   browser.newContext = async (contextOptions) => signedIn(await newContext(withRatio(contextOptions)), email);
@@ -327,8 +330,34 @@ export async function appFromModelPage(page, { finger = false, ms = 180000 } = {
   return true;
 }
 
+/// The beta's welcome in the app, answered as a person answers it when
+/// joining is not what they came for: Not now. While the beta is open, an
+/// account made in the last seven days that has not answered it is welcomed
+/// once (supabase/beta_join.sql beta_member), and an app started signed in
+/// shows the welcome over the builder when its own question of who this is
+/// comes back (Account._ask_who), seconds in on a busy box. Until it is
+/// answered nothing else can be pressed and the page is told of nothing
+/// else (Main._page_controls): bugreport_flow and feedback_flow, each with
+/// a new account, waited a minute for a Report a bug and a feedback dialog
+/// behind it (betaopen, 2026-11-10). Whether it is due is asked of the
+/// deployment as the app asks it (GET /api/account, which changes nothing),
+/// so a welcome due and never shown is told apart from one not due. What
+/// happened: "not due", "Not now" (pressed, and the builder back), or what
+/// went wrong, for the flow's check.
+export async function answerWelcome(page, { site, headers = {}, token, seconds = 240 }) {
+  const reply = await fetch(`${site}/api/account`, { headers: { ...headers, authorization: `Bearer ${token}` } })
+    .catch(() => null);
+  const said = await reply?.json().catch(() => null);
+  if (!said?.signed_in) return `the account not read (${reply?.status ?? "unreachable"})`;
+  if (said.beta?.welcome !== true) return "not due";
+  if (!(await clickStill(page, "beta_not_now", { seconds, optional: true }))) return "due, and never shown";
+  const gone = await page.waitForFunction(() => (window.brickworksAccount || {}).gated === false, null,
+    { timeout: 60000 }).then(() => true, () => false);
+  return gone ? "Not now" : "Not now pressed, and the welcome stayed";
+}
+
 // The assistant's controls, which live in the right-hand column.
-const ASSISTANT = /^(key_field|use_key|change_key|brief|build|stop|connect_claude|claude_|connector_)/;
+const ASSISTANT =/^(key_field|use_key|change_key|brief|build|stop|connect_claude|claude_|connector_)/;
 // The model tree's and the properties' controls: down the right-hand
 // column, which the assistant shares, or a phone's drawer down the left.
 const PROPERTIES = /^(prop_|properties$|outliner|sections_)/;

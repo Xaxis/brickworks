@@ -27,7 +27,7 @@
 //   6. The throwaway deleted the person's own way, its reports with it.
 //
 // Pictures in --out. It passes when it ends "bugreport: all ok".
-import { clickStill, launch } from "./browser.mjs";
+import { answerWelcome, clickStill, launch } from "./browser.mjs";
 import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
@@ -399,6 +399,12 @@ try {
     const { page, context } = await open("/app", { width: 1400, height: 900, who: R, label: "app" });
     const signedIn = await until(page, () => (window.brickworksAccount || {}).state === "signed_in", null, 240000);
     check("the app is up, signed in", signedIn);
+    // A new account, with the beta open, is welcomed to it over the
+    // builder first; the throwaway says Not now, as a person reporting a
+    // bug would.
+    const welcome = await answerWelcome(page, { site, headers, token: R.access_token });
+    check(`the beta's welcome, ${open_ ? "due to a new account" : "the beta shut"}: ${welcome}`,
+      welcome === (open_ ? "Not now" : "not due"));
     await until(page, () => Boolean((window.brickworksControls || {}).account), null, 120000);
     // The button comes when the account says the beta is open, the
     // account's answer seconds in on a busy box: it is waited for, and
