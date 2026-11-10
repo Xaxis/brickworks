@@ -5113,6 +5113,27 @@
       "entry": "src/dev/bugreport_probe.gd",
       "reach": "PROBE_SIZE=1280x720 tools/probe.sh bugreport_probe [--shots=DIR]   (windowed, signs a throwaway in: top bar, Help and Alt-Shift-R each open the report in one press; a drawn box in the sent JPEG within 2 px; Report this on an error; Escape and Cancel send nothing; the beta shut hides the button)",
       "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the panel asked for last in front",
+      "entry": "src/ui/hud_front.gd",
+      "reach": "tools/probe.sh hudfront_probe   (Find with \"87087\", then F1 or F9: the keys sheet or Render opens over Find's list; any HUD panel shown by a key, a menu, a button or MCP, clicked, or given the keys comes to the front, under the sign-in screen; Render's veil comes with Render)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "a long job says when it is done",
+      "entry": "src/ui/done_note.gd",
+      "reach": "godot --path .  (Settings, Say when a long job is done, on Reduce motion's line: a design asked in the assistant's panel, Render's picture at Best, turntable, animation or build video, or the render queue drawn empty, ending while the window is not looked at: the window asks for attention and its title starts \"Done · \" on the desktop; on the web one notification with the model's name and what finished, the permission asked at the first long job's start, never on load)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "donenote probe",
+      "entry": "src/dev/donenote_probe.gd",
+      "reach": "tools/probe.sh donenote_probe -- --shots=DIR   (windowed, 1400x900 and PROBE_SIZE=1280x720, signed in through the gate with a throwaway account from .env; the focus, the window's attention and the browser's Notification a stand-in: a design in the panel on a stand-in API, Render picture at Best, the render queue's Add this view and Render building, each run to its end; unfocused 1 attention request or 1 notification each, focused 0, turned off by a click in Settings and kept 0; the web asks nothing on load and once at the first long job)",
+      "area": "view"
     }
   ]
 }

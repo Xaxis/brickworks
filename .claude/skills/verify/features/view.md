@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:the panel asked for last in front, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe, ui:a long job says when it is done, cli:donenote probe -->
 
 ## Sub-features
 
@@ -905,6 +905,32 @@ picture the assistant is shown.
   keeps 11 rows at 1400 x 900. Pictures in user://typingkeys (or --shots=DIR):
   the sheet, Render, Page setup and the box from each field, each field typed
   in, the sheet's "cut away".
+- `the panel asked for last in front` (`src/ui/hud_front.gd`, `src/main.gd`
+  `_add_to_hud`, the hudfront unit, 2026-11-09): every panel of the HUD (the
+  keys sheet, Render, Find's list, the minifigure builder and its print and
+  mould editors, the mosaic, Brickify, the part maker, Share, Account, My
+  collection, the Library, Print on a part, the sticker sheet, Printed
+  versions, the page laid out by hand, the viewer's Build it) comes to the
+  front of the HUD as it is shown, by a key, a menu, a button or MCP, and as
+  it is asked for again while it shows behind another (each panel's own open
+  shows it with `HudFront.show_panel`; Account and Share, which their buttons
+  open and close, close); as a press lands on it where it is in sight (before
+  the press goes on to what it is on); and as the keys go into it (Tab, F6).
+  Always under the sign-in screen; Render's veil comes with Render, so what is
+  behind Render stays veiled. Before, they stacked in the order they were
+  made, and the walk's F1 and F9 opened under Find's list.
+  `tools/probe.sh hudfront_probe` (1400 x 900; `PROBE_SIZE=1280x720` too; needs
+  .env for its throwaway account) goes through the sign-in screen, makes each
+  of 14 panels once with Find's list last, then the walk's Ctrl+F, "87087",
+  F1 and F9 (the keys sheet, then Render, takes a click at the middle of what
+  it shares with Find's list), then every pair each way round: the one opened
+  last takes the click at the middle of the area they share by hit-test and
+  by the window's hover, a click on the first where it is in sight brings it
+  forward, and the second asked for again comes forward again (Account and
+  Share close); then every panel open and
+  the account signed out: the sign-in screen takes a click at the middle of
+  each, and the keys sheet asked for and clicked then stays under it.
+  Pictures in user://hudfront (or --shots=DIR).
 - `what's this` (`src/ui/whats_this.gd`, Help, What's This?, Shift+F1, the
   whatsthis unit, APP_UX4 10): the next click on any control says what it does
   in a bubble beside it, and does nothing else, as LeoCAD's, Qt's and Windows'
@@ -2752,6 +2778,32 @@ picture the assistant is shown.
   its buttons going two rows, so it never lies over a tool's panel beside
   the model; Escape puts it away as a rung of Main's ladder after the parts list, before the
   tool and the selection (`Main._render_queue_up`).
+- `a long job says when it is done` (APP_UX7 #11 donenote; Settings, Say when
+  a long job is done, on Reduce motion's line; `src/ui/done_note.gd`, a Later
+  class `Main._done_note()` makes with the first job): a design, a change or
+  sketches asked in the assistant's panel (`ChatPanel.run_ended`, the person's
+  own runs only, not a session's, not one stopped), Render's picture at Best,
+  turntable, animation and build video (the dialog has no end signal and is
+  video2's: `DoneNote.follow_render` asks `is_rendering()` each frame, its
+  kind from `_working`, made or not from `_last`), and the render queue
+  drawn empty (`RenderQueue.began` / `emptied`, told to
+  `Main.follow_render_queue` by `RenderQueue.of`), ending while the window
+  is not looked at: on the desktop `DisplayServer.window_request_attention()`
+  and the title "Done · …" until the window has the focus again (asked every
+  500 ms while waiting); on the web one `Notification` (title the model's
+  name, body "Best render done" and so on, a click focusing the tab) and the
+  tab's title the same way (`Main._tell_page` through `DoneNote.titled`).
+  Focused, or turned off (ShellPrefs `done_note`), nothing. The browser's
+  permission is asked at the first long job's start, the press still fresh,
+  never on load, and not for a session's call (`CommandSocket.at_work`).
+  Check: `tools/probe.sh donenote_probe` (windowed, 1400 x 900, and
+  `PROBE_SIZE=1280x720`; signed in through the gate with a throwaway account
+  from .env; `DoneNote.stand_in` stands in for the focus, the attention and
+  the browser): each of the four unfocused 1 attention request and 1
+  notification, focused 0, off 0, the web asking nothing on load and once
+  at the first job; pictures of Settings with the row in `user://donenote`
+  (`-- --shots=DIR`). By hand on the web: a Best render started, another tab
+  looked at, a notification named after the model when it is done.
 - `saved views` (APP_UX5 #8; View › Viewpoint › Save this view… Alt-V, Saved
   view 1 to 9 Alt-Shift-1 to 9, Render each saved view; `src/ui/saved_views.gd`,
   `SavedViews`): where the window looks from, kept by a name with the model as

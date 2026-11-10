@@ -499,7 +499,7 @@ func _number(column: Container, field: String, label: String, low: int,
 ## 32 x 32 baseplate in hand should not begin rebuilding itself because a
 ## button was pressed.
 func open(part_id: String = "") -> void:
-	visible = true
+	HudFront.show_panel(self)
 	if not part_id.is_empty() and _start_from(part_id, true):
 		return
 	if not part_id.is_empty() and library != null and library.parts.has(part_id):

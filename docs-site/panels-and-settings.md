@@ -69,6 +69,14 @@ ui:docked panels
 ui:remembered layout
 -->
 
+## Panels over the model {#over-the-model}
+
+The keys sheet, Render, the parts list, My collection, the Library and the other panels that open over the model stack like windows: the one you opened last is in front. Ask again for one that is open behind another, by its key or its menu, and it comes to the front; Account and Share, which open and close from the same button, close. Click any part of one you can see and it comes forward too. The sign-in screen always stays over them all.
+
+<!-- covers
+ui:the panel asked for last in front
+-->
+
 ## The model tree {#model-tree}
 
 At the top of the right-hand column, the model tree lists the model's sub-assemblies and sections by name, inside one another. Click one to select it, double-click to edit inside it. **View › Panels › Model tree** shows or hides it.
@@ -105,6 +113,7 @@ ui:what the app is busy with
 - **Navigate like** Studio, Blender or Mecabricks, and which way the wheel zooms ([The view](/docs/the-view#presets)).
 - **New models start on**: the floor a new model gets.
 - **Interface size** (85 to 150%) and **Reduce motion** ([Accessibility](/docs/accessibility)).
+- **Say when a long job is done**: a design, a Best render, the render queue or a build video that finishes while you are in another window says so. On the desktop the window asks for your attention and its title starts *Done ·*; in a browser, a notification names the model and what finished (the browser asks whether it may the first time you start one). Nothing is said while you are looking at Brickworks. On until you untick it.
 - **Language**: English, *Deutsch*, *Français* or *Español*, for the menus, tooltips, panels, the keys sheet and the tour. Parts and colours keep their names, as Studio keeps them. **Find a command** takes a command's words in either language. A link can choose one: brickworks.diy/app?lang=de.
 - **Assistant (AI)**: *Build by hand only*, or *Show the assistant* ([Connect your AI](/docs/connect#assistant-on)), and **AI…**: who designs, Claude or another AI on your own key ([Another AI on your own key](/docs/ai#other-ais)).
 - The app's version, at the foot.
@@ -113,4 +122,5 @@ ui:what the app is busy with
 
 <!-- covers
 ui:interface languages
+ui:a long job says when it is done
 -->

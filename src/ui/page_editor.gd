@@ -312,7 +312,7 @@ func open() -> void:
 	_shots.clear()
 	_part_shots.clear()
 	_callout_shown = -1
-	visible = true
+	HudFront.show_panel(self)
 	var steps: StepsBar = app.get("_steps")
 	var at: Instructions.Step = steps.booklet_step() if steps != null else null
 	await _lay_out(at.number if at != null else -1)

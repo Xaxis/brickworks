@@ -1090,6 +1090,14 @@
       "tests": []
     },
     {
+      "id": "cli:donenote probe",
+      "kind": "cli",
+      "entry": "src/dev/donenote_probe.gd",
+      "reach": "tools/probe.sh donenote_probe -- --shots=DIR   (windowed, 1400x900 and PROBE_SIZE=1280x720, signed in through the gate with a throwaway account from .env; the focus, the window's attention and the browser's Notification a stand-in: a design in the panel on a stand-in API, Render picture at Best, the render queue's Add this view and Render building, each run to its end; unfocused 1 attention request or 1 notification each, focused 0, turned off by a click in Settings and kept 0; the web asks nothing on load and once at the first long job)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:download page check",
       "kind": "cli",
       "entry": "tools/web/download_check.mjs",
@@ -4360,6 +4368,14 @@
       "tests": []
     },
     {
+      "id": "ui:a long job says when it is done",
+      "kind": "ui",
+      "entry": "src/ui/done_note.gd",
+      "reach": "godot --path .  (Settings, Say when a long job is done, on Reduce motion's line: a design asked in the assistant's panel, Render's picture at Best, turntable, animation or build video, or the render queue drawn empty, ending while the window is not looked at: the window asks for attention and its title starts \"Done \u00b7 \" on the desktop; on the web one notification with the model's name and what finished, the permission asked at the first long job's start, never on load)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "ui:a model in 3D on its page",
       "kind": "ui",
       "entry": "tools/viewer/inline.js",
@@ -6059,6 +6075,14 @@
       "entry": "web/admin-feedback.js",
       "reach": "<deployment>/admin#feedback as MASTER_EMAIL (?tests=1 the checks' own): GET /api/admin?op=feedback&kind&status&beta, ?op=feedback_file&id&file=picture|model, POST ?op=feedback_triage&id {status, note}, ?op=feedback_reply&id {words}",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:the panel asked for last in front",
+      "kind": "ui",
+      "entry": "src/ui/hud_front.gd",
+      "reach": "tools/probe.sh hudfront_probe   (Find with \"87087\", then F1 or F9: the keys sheet or Render opens over Find's list; any HUD panel shown by a key, a menu, a button or MCP, clicked, or given the keys comes to the front, under the sign-in screen; Render's veil comes with Render)",
+      "area": "view",
       "tests": []
     },
     {

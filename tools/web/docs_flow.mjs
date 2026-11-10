@@ -158,8 +158,8 @@ for (const width of [390, 1400]) {
       check(`${address} at ${width} ${theme}: drawn in the theme, nothing sideways, no error`,
         bg === want && (await sideways(page)) <= 0 && !errors.length,
         `background ${bg}, ${await sideways(page)} px sideways, ${errors.join("; ")}`);
-      if (address === "/docs") await page.screenshot({ path: `${out}/docs_${width}_${theme}.png`, fullPage: false });
-      if (address === LONG && width === 1400 && !dark) await page.screenshot({ path: `${out}/shortcuts_${width}_${theme}.png` });
+      if (address === "/docs") await page.screenshot({ timeout: 120000, path: `${out}/docs_${width}_${theme}.png`, fullPage: false });
+      if (address === LONG && width === 1400 && !dark) await page.screenshot({ timeout: 120000, path: `${out}/shortcuts_${width}_${theme}.png` });
       await context.close();
     }
   }
@@ -196,8 +196,8 @@ for (const [width, dark] of [[1400, false], [390, true]]) {
       && document.querySelector(".docs-results li a")?.getAttribute("href"), query, { timeout: 6000 })
       .then((h) => h.jsonValue(), () => "");
     check(`"${query}" finds ${want} first`, first.split("#")[0] === want, first);
-    if (query === "fresh eyes" && width === 1400) await page.screenshot({ path: `${out}/search_${width}_${theme}.png` });
-    if (query === "fresh eyes" && width === 390) await page.screenshot({ path: `${out}/search_${width}_${theme}.png` });
+    if (query === "fresh eyes" && width === 1400) await page.screenshot({ timeout: 120000, path: `${out}/search_${width}_${theme}.png` });
+    if (query === "fresh eyes" && width === 390) await page.screenshot({ timeout: 120000, path: `${out}/search_${width}_${theme}.png` });
   }
   await page.keyboard.press("Enter");
   await page.waitForURL(/\/docs\/build-together/, { timeout: 8000 }).catch(() => {});
@@ -218,7 +218,7 @@ console.log("docs_flow: the pages list and what is on this page");
   const shown = await page.evaluate(() => getComputedStyle(document.getElementById("docs-side")).display !== "none"
     && document.querySelector(".docs-menu-button").getAttribute("aria-expanded") === "true");
   check("390 px: the pages list folded behind Browse the docs, which opens it", hidden && shown);
-  await page.screenshot({ path: `${out}/docs_390_light_menu.png` });
+  await page.screenshot({ timeout: 120000, path: `${out}/docs_390_light_menu.png` });
   await page.click('#docs-side a[href="/docs/the-view"]');
   await page.waitForURL(/\/docs\/the-view$/, { timeout: 8000 }).catch(() => {});
   check("a link in it goes to its page", new URL(page.url()).pathname === "/docs/the-view", page.url());
