@@ -71,12 +71,12 @@
    ],
    "settle": 40,
    "crop": "@pointer",
-   "alt": "A red 2 x 4 brick in hand on an empty baseplate, the small field at the pointer reading 3x, x +3 studs, Enter puts it down, and the brick's ghost three studs along x, where the number puts it.",
+   "alt": "A red 2 x 4 brick in hand over an empty baseplate, seen through as a ghost, and the small field at the pointer reading 3x, with x +3 studs, Enter puts it down under it.",
    "caption": "Type a number with a part in hand: the field opens at the pointer and the ghost shows where it goes.",
    "features": [
     "ui:type a number while moving"
    ],
-   "pad": 200
+   "pad": 230
   },
   {
    "id": "placing-parts-connect",

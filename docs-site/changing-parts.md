@@ -23,7 +23,7 @@ ui:copy paste and duplicate
 
 ## Lay out copies in a pattern {#patterns}
 
-![The Pattern dialog over a single red brick: In a row, In a grid, Round and Along a hose; how many in all, along which axis and how many studs apart.](/docs/img/building-pattern.webp "Edit › Pattern… copies the selection in a line, a grid or round a circle.")
+![The Pattern dialog: In a row, In a grid, Round and Along a hose; In all 4, counting the selection; along x every 4.0 studs; 3 copies, each 4 studs along x, each with room; Cancel and Put them down.](/docs/img/building-pattern.webp "Edit › Pattern… copies the selection in a line, a grid or round a circle.")
 
 A fence, a colonnade, a round tower or a wheel's spokes are copies laid out at once.
 

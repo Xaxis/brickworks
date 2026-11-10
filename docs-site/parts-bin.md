@@ -24,9 +24,9 @@ Press [[/]] and type what you want: *2x4 brick*, *slope 45*, *wheel*, *window*, 
 
 - A size alone is a brick: *2x4* lists Brick 2 × 4 first. A size with a kind lists that kind first: *2x2 tile* is tiles.
 - Builders' words work: *SNOT* finds bricks with side studs and brackets, *cheese* the small slopes, *Erling* the headlight brick, *Travis* the brick with studs on four sides, *macaroni* the curved corners.
-- A part's name is under its picture and its number on its tooltip.
+- A part's name is under its picture and its number on its tooltip. A count like **+82** on a tile is its prints and other versions, folded under it: [[+]] shows them.
 
-Every part is from the LDraw library, fetched the first time it is used and kept.
+Every part is from the LDraw library, fetched once and kept.
 
 <!-- covers
 lib:part search
@@ -54,7 +54,7 @@ The chips along the top of the bin are its shelves, and stay in sight however na
 - **Techniques**: worked constructions from real sets, a row of hinged plates, a SNOT wall; a click takes one whole into hand.
 - **Fits** and **Like this**: what fits the part selected or in hand, and parts like it (below).
 
-Typing narrows any shelf: *slope* on New lists the new slopes.
+Typing narrows any shelf.
 
 <!-- covers
 ui:recent and favourite parts

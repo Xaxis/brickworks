@@ -41,7 +41,7 @@ ui:snap and turn step
 
 ## Put it an exact distance away {#typed}
 
-![A red 2 x 4 brick in hand on an empty baseplate, the small field at the pointer reading 3x, x +3 studs, Enter puts it down, and the brick's ghost three studs along x, where the number puts it.](/docs/img/placing-parts-typed.webp "Type a number with a part in hand: the field opens at the pointer and the ghost shows where it goes.")
+![A red 2 x 4 brick in hand over an empty baseplate, seen through as a ghost, and the small field at the pointer reading 3x, with x +3 studs, Enter puts it down under it.](/docs/img/placing-parts-typed.webp "Type a number with a part in hand: the field opens at the pointer and the ghost shows where it goes.")
 
 With a part or a copy in hand, type a number. A small field opens at the pointer and a ghost shows where the number puts the part, red where there is no room. [[Enter]] puts it down; [[Esc]] closes the field.
 
