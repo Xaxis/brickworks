@@ -3075,6 +3075,9 @@ msgstr "sa vue enregistrée est partie avec lui"
 msgid "its %d saved views went with it"
 msgstr "ses %d vues enregistrées sont parties avec lui"
 
+msgid "%s here keeps its own lights and views, not the copied ones"
+msgstr "%s garde ici ses propres lumières et vues, pas celles copiées"
+
 msgid "took 1 part out of its sub-assembly"
 msgstr "1 pièce sortie de son sous-ensemble"
 

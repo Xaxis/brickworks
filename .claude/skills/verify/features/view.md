@@ -2937,7 +2937,12 @@ picture the assistant is shown.
   or the sub-model it is in taken apart keeps them in its section, undo and
   redo too, `Assemblies.lines_renamed`; the step that leaves a sub-model no
   copy takes them, `Assemblies.lines_follow` after a Delete, Cut, MCP
-  remove or a regroup, so no name a gone sub-model had keeps any; a copy
+  remove or a regroup, so no name a gone sub-model had keeps any (a copy in
+  hand stands, `Assemblies._in_hand`); Copy and Cut put them on the clipboard
+  with the parts (`Carry.clipboard_lines`, `Assemblies.lines_held`) and a
+  paste's step puts them back where the model it lands in has none of its
+  own, into this model or another (`Assemblies.lines_pasted`): one it has
+  keeps its own, and the status line says so; a copy
   taken apart, `Assemblies._lines_apart`, puts its lights through its frame
   into the one it was in, the model's own lights (`BrickWorld.scene_lights`,
   a `scenelights` step) when that is the model, its last copy's views gone
@@ -3014,8 +3019,11 @@ picture the assistant is shown.
   again; B's lit Sub deleted and A's Sub pasted, none of B's lines in it; a
   lit sub-model's one copy deleted by hand and over MCP, undone, redone; two
   copies taken apart one by one, each light where it was among the model's
-  own, the last one's view gone and said, undone and redone twice; each
-  state saved, opened and saved again. `-- --review`
+  own, the last one's view gone and said, undone and redone twice; a lit Sub
+  cut and pasted in one model, copied and pasted beside itself (nothing
+  said), copied, deleted and pasted, cut from A and pasted into B, and into
+  C with a lit Sub of its own (C's kept, and said), each undone and redone;
+  each state saved, opened and saved again. `-- --review`
   runs only these review checks, nothing drawn (a minute, not the whole
   probe's renders). Then the car under 0 to 4 suns (each adding light)
   and the neon and white grids under 8 bulbs in the Dark light (the white

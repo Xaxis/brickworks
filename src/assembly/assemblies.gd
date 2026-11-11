@@ -460,7 +460,9 @@ func _lines_apart(path: String) -> Dictionary:
 		return {}
 	var parent: String = parent_of(path)
 	var parent_def: String = definition(leaf(parent))
-	var last: bool = copies_of(path).is_empty()
+	# A copy in hand stands, as it does for lines_follow: put down, it is
+	# still one.
+	var last: bool = copies_of(path).is_empty() and not _in_hand(builder).has(def)
 	var frames: Dictionary = file_frames()
 	# The file's coordinates of its definition, as written, to the window's
 	# (the copy's frame, file_frames'), and on to its parent's.
@@ -604,7 +606,9 @@ static func _keeps_lines(step: Dictionary) -> bool:
 ## copy: deleted, cut, taken off over MCP, or every part moved out of it. A
 ## copy taken apart takes its own ([method ungroup]). A sub-model one of
 ## [param held] is in (ModelStore's parts on their way and those the
-## catalogue lacks, which a save writes in their sub-models) is still there.
+## catalogue lacks, which a save writes in their sub-models) is still there,
+## and so is one a copy in hand is of ([method _in_hand]). Cut, the
+## clipboard has them for its paste ([method lines_held]).
 ## Kept under its name, a gone sub-model's lines were written in whatever
 ## next took the name: a copy pasted from another model, a hose laid, a
 ## Make, a Sections accept (lpcheck s12).
@@ -618,7 +622,7 @@ static func lines_follow(builder: Builder, step: Dictionary, held: Array = []) -
 		return world.section_lines.has(def))
 	if asked.is_empty():
 		return
-	var standing: Dictionary = {}
+	var standing: Dictionary = _in_hand(builder)
 	for brick: BrickWorld.Brick in world.bricks():
 		for segment: String in segments(path_of(brick)):
 			standing[definition(segment)] = true
@@ -631,6 +635,79 @@ static func lines_follow(builder: Builder, step: Dictionary, held: Array = []) -
 		if not standing.has(def):
 			lines.erase(def)
 	set_lines(builder, lines)
+
+
+## The sub-model of every part in hand (Builder.carrying), and each one it
+## is inside: lifted off the model to move it, or a copy to put down.
+static func _in_hand(builder: Builder) -> Dictionary:
+	var out: Dictionary = {}
+	if not builder.is_carrying():
+		return out
+	for item: Dictionary in builder.carrying.items:
+		for segment: String in segments(path_from(str(item.get("group", "")),
+				str(item.get("unit", "")))):
+			out[definition(segment)] = true
+	return out
+
+
+## For the clipboard (Carry.clipboard_lines): the lights and views of each
+## sub-model [param parts] (Carry.gather's) are in, at any depth. Cut, the
+## model lets them go with the parts (lines_follow), and a paste brings them
+## back, into this model or another.
+static func lines_held(world: BrickWorld, parts: Array) -> Dictionary:
+	var out: Dictionary = {}
+	if world.section_lines.is_empty():
+		return out
+	for item: Dictionary in parts:
+		for segment: String in segments(path_from(str(item.get("group", "")),
+				str(item.get("unit", "")))):
+			var def: String = definition(segment)
+			if world.section_lines.has(def):
+				out[def] = PackedStringArray(world.section_lines[def])
+	return out
+
+
+## Every sub-model [param world] has before a paste: one a part is in, or
+## one with lights or views kept. A paste's lines never replace these.
+static func definitions_had(world: BrickWorld) -> Dictionary:
+	var out: Dictionary = {}
+	for def: String in world.section_lines:
+		out[def] = true
+	for brick: BrickWorld.Brick in world.bricks():
+		for segment: String in segments(path_of(brick)):
+			out[definition(segment)] = true
+	return out
+
+
+## A paste's step (the newest) takes the lights and views [param carried]
+## (lines_held) of each sub-model it put a copy of down: [param pasted] is
+## each part's [path in the clipboard, path it was given], the sub-model of
+## each segment matched from the leaf up, so one renamed (a figure: "Guard"
+## to "Guard 2") takes its own. A sub-model the model [param had]
+## (definitions_had) keeps what it had, and what is returned says so where
+## the copied ones differed; "" otherwise. Undo takes them out with the
+## parts, Redo puts them back.
+static func lines_pasted(builder: Builder, carried: Dictionary, pasted: Array,
+		had: Dictionary) -> String:
+	var lines: Dictionary = builder.world.section_lines.duplicate()
+	var seen: Dictionary = {}
+	var kept := PackedStringArray()
+	for pair: Array in pasted:
+		var from: PackedStringArray = segments(str(pair[0]))
+		var to: PackedStringArray = segments(str(pair[1]))
+		for n: int in mini(from.size(), to.size()):
+			var was: String = definition(from[from.size() - 1 - n])
+			var now: String = definition(to[to.size() - 1 - n])
+			if seen.has(now) or not carried.has(was):
+				continue
+			seen[now] = true
+			if not had.has(now):
+				lines[now] = PackedStringArray(carried[was])
+			elif PackedStringArray(lines.get(now, PackedStringArray())) \
+					!= PackedStringArray(carried[was]):
+				kept.append("%s here keeps its own lights and views, not the copied ones" % now)
+	set_lines(builder, lines)
+	return "; ".join(kept)
 
 
 ## Into [param into], the definition of every copy history [param step] took

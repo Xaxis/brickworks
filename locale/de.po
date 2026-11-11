@@ -3075,6 +3075,9 @@ msgstr "ihre gespeicherte Ansicht verschwand mit ihr"
 msgid "its %d saved views went with it"
 msgstr "ihre %d gespeicherten Ansichten verschwanden mit ihr"
 
+msgid "%s here keeps its own lights and views, not the copied ones"
+msgstr "%s behält hier ihre eigenen Lichter und Ansichten, nicht die kopierten"
+
 msgid "took 1 part out of its sub-assembly"
 msgstr "1 Teil aus seiner Baugruppe genommen"
 

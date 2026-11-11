@@ -28,6 +28,10 @@ const GHOST_SHADER := preload("res://src/render/ghost.gdshader")
 ## after copying can still be pasted into, which is how a piece is moved
 ## from one model to another.
 static var clipboard: Array = []
+## The lights and views of each sub-model the clipboard's parts are in
+## (BrickWorld.section_lines, by definition), as Copy found them: a paste
+## puts them back where the model it lands in has none (Assemblies.lines_held).
+static var clipboard_lines: Dictionary = {}
 
 var library: PartLibrary
 
@@ -45,6 +49,10 @@ var lifted: bool = false
 ## a right click, as a part from the bin always has; a paste and a move go
 ## once. Five window bays took ten clicks (docs/APP_UX.md, A6).
 var repeats: bool = false
+## What a paste carries of its sub-models' lights and views (clipboard_lines):
+## put down, its step takes them (Builder._put_carried). Nothing else held
+## carries any.
+var lines: Dictionary = {}
 
 var _ghost: Node3D
 ## The ghost's one material: its "valid" says whether the group fits.
@@ -158,6 +166,7 @@ func hold(parts: Array, came_off_the_model: bool) -> void:
 	items = parts.duplicate(true)
 	turns = 0
 	lifted = came_off_the_model
+	lines = {}
 	_pinned = false
 	_base = []
 	var phase: float = phase_of(items[0].get("pivot", Vector3(10, 0, 10))) \
@@ -174,6 +183,7 @@ func drop() -> void:
 	items = []
 	lifted = false
 	repeats = false
+	lines = {}
 	_pinned = false
 	_base = []
 	_covers.clear()

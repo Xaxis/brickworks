@@ -750,6 +750,9 @@ func paste() -> int:
 		return 0
 	builder.cancel_carry()
 	builder.hold_copy(parts)
+	# The app's own copy brings its sub-models' lights and views with it.
+	if is_same(parts, Carry.clipboard):
+		builder.carrying.lines = Carry.clipboard_lines
 	aim_again.call()
 	say.call(Keymap.filled("holding %s — click to put down, {rotate_held|turns}, Esc puts away")
 		% _parts(parts.size()))
@@ -1411,7 +1414,10 @@ func _ready() -> void:
 			typed.close()
 		_typed_was = {}
 		_armed = {}
-		_note_copy())
+		_note_copy()
+		# A paste into a model with sub-models of its own of the same name.
+		if not builder.pasted_said.is_empty():
+			say.call(builder.pasted_said))
 
 
 ## Keep what is in hand before R or T, so a number typed next takes their

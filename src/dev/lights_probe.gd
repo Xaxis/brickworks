@@ -1246,6 +1246,7 @@ func _r_gone() -> void:
 	await _r_gone_pasted()
 	await _r_gone_deleted()
 	await _r_gone_apart()
+	await _r_gone_clipboard()
 
 
 func _r_gone_sections() -> void:
@@ -1376,6 +1377,121 @@ func _r_gone_deleted() -> void:
 			% [marks[1], marks[2]] + "again the same %s; Sub's lines kept by the model "
 			% [again] + "deleted, undone, redone %s" % [kept],
 			_same_marks(marks, want) and _same_marks(again, want) and kept == [false, true, false])
+
+
+## A lit Sub's lights and views go on the clipboard with its parts, and come
+## back with a paste, in the paste's own step: cut and pasted in one model;
+## copied and pasted beside itself (nothing said: its lines are the model's
+## own), then copied, deleted and pasted; cut from A and pasted into B; and
+## pasted into C, which has a lit Sub of its own and keeps it, and says so.
+## Each saved and opened again after each step, Undo and Redo.
+func _r_gone_clipboard() -> void:
+	var sub_light: String = _light("point", [0, -50, 0], {"colour": SUB_GREEN})
+	var lit: Array = ["L#ffffff@model", "L%s@sub" % SUB_GREEN, "V'%s'@sub" % SUB_VIEW]
+	var none: Array = ["L#ffffff@model"]
+	var builder: Builder = _main.get("_builder")
+	# Cut and pasted in one model: the cut takes them, the paste brings them.
+	await _opened(_put("gone_cut.mpd", _lit_sub("Brickworks", sub_light, _view_line(SUB_VIEW))))
+	var assemblies: Assemblies = _shell.get("assemblies")
+	_select(assemblies, _path_named(assemblies, "Sub"))
+	_shell.call("run", "cut_parts")
+	await _frames(10)
+	var marks: Array = [await _saved_marks("gone_cut_a")]
+	var put: Array = [await _pasted(builder)]
+	marks.append(await _saved_marks("gone_cut_b"))
+	marks.append_array(await _undone_redone("gone_cut", 2))
+	var want: Array = [none, lit, none, lit, none, lit]
+	var names: Array = ["gone_cut_a", "gone_cut_b", "gone_cut_c", "gone_cut_d", "gone_cut_e",
+		"gone_cut_f"]
+	var again: Array = await _reopened_marks(names)
+	_check("a lit Sub cut %s and pasted back (%s) %s in one model; the paste undone %s, the "
+		% [marks[0], put[0], marks[1], marks[2]] + "cut undone %s; both redone %s %s; each "
+		% [marks[3], marks[4], marks[5]] + "opened and saved again the same %s" % [again],
+		put[0]["at"] != 0 and _same_marks(marks, want) and _same_marks(again, want))
+	# Copied and pasted beside itself, then copied, deleted and pasted.
+	await _opened(_put("gone_copy.mpd", _lit_sub("Brickworks", sub_light, _view_line(SUB_VIEW))))
+	assemblies = _shell.get("assemblies")
+	_select(assemblies, _path_named(assemblies, "Sub"))
+	_shell.call("run", "copy")
+	await _frames(10)
+	put = [await _pasted(builder)]
+	marks = [await _saved_marks("gone_copy_a")]
+	_shell.call("run", "undo")
+	await _frames(10)
+	_select(assemblies, _path_named(assemblies, "Sub"))
+	_shell.call("run", "delete")
+	await _frames(10)
+	marks.append(await _saved_marks("gone_copy_b"))
+	put.append(await _pasted(builder))
+	marks.append(await _saved_marks("gone_copy_c"))
+	marks.append_array(await _undone_redone("gone_copy", 2, "d"))
+	want = [lit, none, lit, none, lit, none, lit]
+	names = ["gone_copy_a", "gone_copy_b", "gone_copy_c", "gone_copy_d", "gone_copy_e",
+		"gone_copy_f", "gone_copy_g"]
+	again = await _reopened_marks(names)
+	_check("a lit Sub copied and pasted beside itself (%s) %s, nothing said of its lines; "
+		% [put[0], marks[0]] + "undone, the copy deleted %s, pasted (%s) %s; the paste undone "
+		% [marks[1], put[1], marks[2]] + "%s, the delete undone %s; both redone %s %s; each " %
+		[marks[3], marks[4], marks[5], marks[6]] + "opened and saved again the same %s"
+		% [again], put[0]["at"] != 0 and put[1]["at"] != 0
+		and not str(put[0]["said"]).contains("keeps its own")
+		and _same_marks(marks, want) and _same_marks(again, want))
+	# Cut from A and pasted into B; pasted again into C, lit Sub and all.
+	await _opened(_put("gone_move_a.mpd", _lit_sub("Brickworks", sub_light,
+		_view_line(SUB_VIEW))))
+	assemblies = _shell.get("assemblies")
+	_select(assemblies, _path_named(assemblies, "Sub"))
+	_shell.call("run", "cut_parts")
+	await _frames(10)
+	await _opened(_put("gone_move_b.mpd", "\n".join(PackedStringArray(["0 Model B",
+		"0 Name: gone_move_b.ldr", "0 Author: Brickworks", _light("point", [0, -60, 0]),
+		"1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat", ""]))))
+	put = [await _pasted(builder)]
+	marks = [await _saved_marks("gone_move_b1")]
+	marks.append_array(await _undone_redone("gone_move_b", 1, "2"))
+	want = [lit, none, lit]
+	again = await _reopened_marks(["gone_move_b1", "gone_move_b2", "gone_move_b3"])
+	var own_light: String = _light("point", [0, -50, 0], {"colour": "#140001"})
+	var theirs: Array = ["L#ffffff@model", "L#140001@sub", "V'c view'@sub"]
+	await _opened(_put("gone_move_c.mpd", _lit_sub("Brickworks", own_light, _view_line("c view"))))
+	put.append(await _pasted(builder))
+	var into_c: Array = [await _saved_marks("gone_move_c1")]
+	into_c.append_array(await _undone_redone("gone_move_c", 1, "2"))
+	var c_again: Array = await _reopened_marks(["gone_move_c1", "gone_move_c2", "gone_move_c3"])
+	var c_want: Array = [theirs, theirs, theirs]
+	_check("a lit Sub cut from A and pasted into B (%s) %s; undone %s; redone %s; each opened "
+		% [put[0], marks[0], marks[1], marks[2]] + "and saved again the same %s; pasted into C, "
+		% [again] + "whose Sub is lit of its own (%s): C's kept %s, undone, redone %s; opened "
+		% [put[1], into_c[0], into_c.slice(1)] + "again %s" % [c_again],
+		put[0]["at"] != 0 and put[1]["at"] != 0 and _same_marks(marks, want)
+		and _same_marks(again, want) and _same_marks(into_c, c_want)
+		and _same_marks(c_again, c_want)
+		and str(put[1]["said"]).contains("Sub here keeps its own lights and views"))
+
+
+## Paste (Edit, Paste) put down beside the model: the part it put and what
+## the status bar said.
+func _pasted(builder: Builder) -> Dictionary:
+	_shell.call("run", "paste")
+	await _frames(10)
+	var at: int = await _put_down(builder)
+	var said: String = (_main.get("_bar") as ModelBar).status_text()
+	await _frames(10)
+	return {"at": at, "said": said}
+
+
+## [param steps] undone one by one, then redone, each saved as [param tag]_
+## and the next letter (or number) from [param first]: the marks of each.
+func _undone_redone(tag: String, steps: int, first: String = "c") -> Array:
+	var out: Array = []
+	var next: int = first.unicode_at(0)
+	for verb: String in ["undo", "redo"]:
+		for _n: int in steps:
+			_shell.call("run", verb)
+			await _frames(10)
+			out.append(await _saved_marks("%s_%s" % [tag, String.chr(next)]))
+			next += 1
+	return out
 
 
 ## Two copies of a lit Sub, as the app writes them: the first where its file
