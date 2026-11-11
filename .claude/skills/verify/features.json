@@ -29,7 +29,9 @@
       "entry": "api/collection.js",
       "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/collection   (401 signed out; GET, POST an op or an import, DELETE with a session; PUT refused 409)",
       "area": "collection",
-      "tests": []
+      "tests": [
+        "tests/test_packaged_facts.py"
+      ]
     },
     {
       "id": "api:/api/models",
@@ -82,7 +84,9 @@
       "entry": "api/admin.js",
       "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/admin   (401 signed out, 404 for anyone but MASTER_EMAIL)",
       "area": "account",
-      "tests": []
+      "tests": [
+        "tests/test_packaged_facts.py"
+      ]
     },
     {
       "id": "api:GET /api/otp/canary",
@@ -133,6 +137,7 @@
         "tests/test_gallery_crons.py",
         "tests/test_library_site.py",
         "tests/test_model_bases.py",
+        "tests/test_packaged_facts.py",
         "tests/test_release.py"
       ]
     },
@@ -242,6 +247,7 @@
         "tests/test_gallery_builds.py",
         "tests/test_library_site.py",
         "tests/test_model_bases.py",
+        "tests/test_packaged_facts.py",
         "tests/test_release.py",
         "tests/test_sets.py"
       ]
@@ -1350,6 +1356,14 @@
       "tests": []
     },
     {
+      "id": "cli:function packaging",
+      "kind": "cli",
+      "entry": "tools/package_api.sh",
+      "reach": "tools/package_api.sh OUT [--export=build/web] [ROUTE...]   (deploy.sh's functions, each with the catalogue's facts beside it, checked by tools/web/packaged_facts.mjs; tests/test_packaged_facts.py)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:gallery browser flow",
       "kind": "cli",
       "entry": "tools/web/gallery_flow.mjs",
@@ -1976,7 +1990,7 @@
       "id": "cli:part facts",
       "kind": "cli",
       "entry": "tools/web/part_facts.mjs",
-      "reach": "node tools/web/part_facts.mjs OUT.json   (deploy.sh writes _part_facts.json beside /api/share)",
+      "reach": "node tools/web/part_facts.mjs OUT.json   (tools/package_api.sh writes _part_facts.json once and puts it beside every function)",
       "area": "web",
       "tests": []
     },
@@ -3370,7 +3384,9 @@
       "entry": "src/collection/collection.gd",
       "reach": "godot --headless --path . --script src/dev/collection_probe.gd",
       "area": "collection",
-      "tests": []
+      "tests": [
+        "tests/test_packaged_facts.py"
+      ]
     },
     {
       "id": "lib:command socket",
@@ -3709,6 +3725,7 @@
         "tests/test_gallery_builds.py",
         "tests/test_library_site.py",
         "tests/test_model_bases.py",
+        "tests/test_packaged_facts.py",
         "tests/test_release.py"
       ]
     },
@@ -4527,7 +4544,9 @@
       "entry": "web/admin.html",
       "reach": "https://brickworks.diy/admin   (signed in to the app as MASTER_EMAIL)",
       "area": "account",
-      "tests": []
+      "tests": [
+        "tests/test_packaged_facts.py"
+      ]
     },
     {
       "id": "ui:age question",
@@ -4710,7 +4729,9 @@
       "entry": "web/admin.js",
       "reach": "https://brickworks.diy/admin signed in as MASTER_EMAIL: This week's pick (what visitors see, the choices with End, the week worked out) and Make it the pick beside every model in the gallery",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_packaged_facts.py"
+      ]
     },
     {
       "id": "ui:collections directory",
@@ -5737,7 +5758,9 @@
       "entry": "web/admin.js",
       "reach": "/admin as MASTER_EMAIL, This month's challenge (?tests=1 sets a test one): POST /api/admin?op=challenge, ?op=end_challenge&challenge=N; Set a year of themes: POST /api/admin?op=plan",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_packaged_facts.py"
+      ]
     },
     {
       "id": "ui:share panel",

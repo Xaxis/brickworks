@@ -35,6 +35,13 @@
 //   7. every mark taken off (to 0): 7140-1 kept as the older shape, no
 //      "missing" left; 7140-1 taken out, and the collection lot for lot the
 //      older collection of step 1
+//   8. two entries of 3931-1 marked, put together by a Rebrickable fetch
+//      that keeps one copy: as far as its inventory holds each part, the
+//      rest onto a BrickLink list's copy, else said (lbfix2)
+//   9. one part marked under its old number (4073) on one entry and its
+//      own (6141) on the other: counted as one part, the copy and the
+//      list's each 1; then a fetch without 3931-1 says it went with its
+//      marks (lbfix3)
 import { deleteAccount, mintSession } from "./session.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
@@ -271,6 +278,29 @@ try {
   check(carried.status === 200 && missingOf(rb, goblet) === 1 && missingOf(bl, goblet) === 1 && !carried.body.done?.unkept,
     `with a BrickLink list's copy kept too, what one copy cannot hold goes onto it: Rebrickable's ${missingOf(rb, goblet)}, `
     + `the list's ${missingOf(bl, goblet)}, unkept ${JSON.stringify(carried.body.done?.unkept ?? null)}`);
+
+  // lbfix3 (lb2check M1): a part by the number it means today and a colour by the one a shop files it under,
+  // whatever each entry was marked with: 6141 and its old 4073 were capped apart, 2 on a copy of 1.
+  console.log("\n9. one part marked under its old number on one entry and its own on the other; then a fetch without the set");
+  const dot = { part: "6141", colour: 29 }; // 3931-1 has 1 of it
+  const oldDot = { part: "4073", colour: 29 };
+  await call(token, { method: "POST", body: { from: "sets", text: "3931-1", id: id() } });
+  await mark("hand", dot, 0, 1);
+  await mark("rebrickable", oldDot, 0, 1);
+  const spelled = await call(token, { method: "POST", body: { from: "rebrickable_api", mode: "replace", id: id(),
+    sets: [["3931-1", 1, false]], parts: [] } });
+  const rb9 = setOf(spelled.body, "3931-1", "rebrickable");
+  const bl9 = setOf(spelled.body, "3931-1", "bricklink_xml");
+  check(spelled.status === 200 && missingOf(rb9, dot) === 1 && missingOf(rb9, oldDot) === 0 && missingOf(bl9, dot) === 1
+    && missingOf(bl9, oldDot) === 0 && !spelled.body.done?.unkept,
+    `6141/29 marked as 4073 and as 6141 is one part: Rebrickable's copy 1 (it has 1: ${JSON.stringify(rb9?.missing)}), `
+    + `the list's 1 (${JSON.stringify(bl9?.missing)}), unkept ${JSON.stringify(spelled.body.done?.unkept ?? null)}`);
+  const pieces = (rb9?.missing || []).reduce((n, m) => n + m.qty, 0);
+  const without = await call(token, { method: "POST", body: { from: "rebrickable_api", mode: "replace", id: id(),
+    sets: [["6020-1", 1, false]], parts: [] } });
+  check(without.status === 200 && !setOf(without.body, "3931-1", "rebrickable") && setOf(without.body, "3931-1", "bricklink_xml")
+    && same(without.body.done?.gone, [{ set: "3931-1", marked: pieces }]) && without.body.done?.gone_sets === 1,
+    `a fetch that no longer lists 3931-1 says it went with its ${pieces} marked missing: ${JSON.stringify(without.body.done?.gone ?? null)}`);
 } catch (error) {
   console.log(`  FAIL  ${error.stack || error}`);
   failures += 1;
