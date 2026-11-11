@@ -800,6 +800,9 @@ func open_row_menu(path: String, at: Vector2, by_finger: bool = false) -> void:
 ## An item chosen: asked again whether File › Export's own may run, as the
 ## menu may have stood open while the model became one shared to look at.
 func _on_row_menu(id: int) -> void:
+	# The finger that held the row lifting off an item chooses nothing: a tap does.
+	if not TouchSizing.chosen(row_menu):
+		return
 	var exports: Node = shell.app.get("_exports")
 	if exports == null or not MENU_COMMANDS.has(id) or not shell.can(MENU_COMMANDS[id]):
 		return

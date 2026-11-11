@@ -50,7 +50,9 @@
 ## - F4: the row menu on a model shared to look at, and on one being laid:
 ##   both items greyed as File › Export's are, and nothing written;
 ## - F5: a finger held still on a row opens its menu (a tap, or a finger
-##   that moves, does not), beside the finger, its lift choosing nothing;
+##   that moves, does not), beside the finger, its lift choosing nothing, a
+##   tap on its first item choosing it, and a finger that held it open and
+##   slid onto that item choosing nothing as it lifts there (subexport4);
 ##   on a phone and a tablet (subexport_phone_probe, subexport_tablet_probe,
 ##   which run F5 alone) at the size the menu has there, and a right click's
 ##   menu beside the pointer: sized for a finger once shown, the menu grew
@@ -753,13 +755,41 @@ func _finger_case() -> void:
 		_rect_words(room), _point_words(at), inside, under, roundi(apart), still, Array(lifted), after_tap,
 		after_move, after_scroll], shown and for_row == path and inside and not under and still
 		and lifted.is_empty() and not after_tap and not after_move and not after_scroll)
-	if shown:
-		menu.id_pressed.emit(menu.get_item_id(0))
-		menu.hide()
-		await _until_file(["ldr", "mpd"])
-		var written: PackedStringArray = DirAccess.get_files_at(_files)
-		_check("%s: and its first item, chosen, writes Other's file (%s)" % [on, ", ".join(written)],
-			Array(written) == ["other.mpd"])
+	if not shown:
+		return
+	# Its first item chosen by a tap, as a person chooses from it.
+	var item: Vector2 = _first_item(rect)
+	_touch(item, true)
+	await _frames(2)
+	_touch(item, false)
+	await _until_file(["ldr", "mpd"])
+	var written: PackedStringArray = DirAccess.get_files_at(_files)
+	_check("%s: and its first item, tapped, writes Other's file (%s), the menu put away (%s)" % [on,
+		", ".join(written), not menu.visible], Array(written) == ["other.mpd"] and not menu.visible)
+	# Held again, slid onto its first item, and lifted there once Godot's
+	# menu would choose what a button held from its opening is let go over.
+	_clear_files()
+	await _frames(6)
+	_touch(at, true)
+	await create_timer(0.8).timeout
+	var again: Rect2 = await _settled_rect(menu)
+	var onto: Vector2 = _first_item(again)
+	for step: int in 8:
+		_finger_drag(at.lerp(onto, (step + 1) / 8.0))
+		await _frames(2)
+	await create_timer(0.5).timeout
+	_touch(onto, false)
+	await _frames(30)
+	var slid: PackedStringArray = DirAccess.get_files_at(_files)
+	_check("%s: held again (its menu at %s) and slid onto its first item, the lift there chooses nothing (written %s) and leaves the menu open (%s)" % [
+		on, _rect_words(again), Array(slid), menu.visible], menu.visible and slid.is_empty())
+	menu.hide()
+	await _frames(6)
+
+
+## The middle of the first of a menu's two items at [param rect].
+static func _first_item(rect: Rect2) -> Vector2:
+	return Vector2(rect.position.x + minf(rect.size.x * 0.3, 120.0), rect.position.y + rect.size.y * 0.25)
 
 
 ## A right click on a row of the model tree laid out for a finger: its menu
