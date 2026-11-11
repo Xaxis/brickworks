@@ -1247,6 +1247,7 @@ func _r_gone() -> void:
 	await _r_gone_deleted()
 	await _r_gone_apart()
 	await _r_gone_clipboard()
+	await _r_gone_apart_held()
 
 
 func _r_gone_sections() -> void:
@@ -1468,6 +1469,43 @@ func _r_gone_clipboard() -> void:
 		and _same_marks(again, want) and _same_marks(into_c, c_want)
 		and _same_marks(c_again, c_want)
 		and str(put[1]["said"]).contains("Sub here keeps its own lights and views"))
+
+
+## Two copies of a lit Sub, one picked up to move (X) and the other taken
+## apart while it is in hand: the one in hand is still a copy, so Sub keeps
+## its light and view and nothing says its view went; put down, then all
+## three undone and redone, each saved and opened again.
+func _r_gone_apart_held() -> void:
+	var sub_light: String = _light("point", [0, -50, 0], {"colour": SUB_GREEN})
+	await _opened(_put("gone_held.mpd", "\n".join(PackedStringArray(["0 FILE main.ldr",
+		"0 Two lit", "0 Name: main.ldr", "0 Author: Brickworks", _light("point", [0, -60, 0]),
+		"1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat", "1 16 100 0 0 1 0 0 0 1 0 0 0 1 sub.ldr",
+		"1 16 -100 0 0 1 0 0 0 1 0 0 0 1 sub.ldr", "0 NOFILE", "0 FILE sub.ldr", "0 Sub",
+		"0 Name: sub.ldr", "0 Author: Brickworks", sub_light, _view_line(SUB_VIEW),
+		"1 14 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat", "0 NOFILE", ""]))))
+	var assemblies: Assemblies = _shell.get("assemblies")
+	var builder: Builder = _main.get("_builder")
+	var paths: PackedStringArray = assemblies.paths()
+	_select(assemblies, "Sub#2")
+	var lifted: int = builder.lift_selection()
+	var said: String = await _taken_apart("Sub#1")
+	var put: int = await _put_down(builder)
+	var marks: Array = [await _saved_marks("gone_held_a")]
+	for verb: String in ["undo", "redo"]:
+		for _n: int in 3:
+			_shell.call("run", verb)
+			await _frames(10)
+		marks.append(await _saved_marks("gone_held_" + ("b" if verb == "undo" else "c")))
+	var lit: Array = ["L#ffffff@model", "L%s@sub" % SUB_GREEN, "V'%s'@sub" % SUB_VIEW]
+	var apart: Array = lit + ["L%s@model" % SUB_GREEN]
+	var want: Array = [apart, lit, apart]
+	var again: Array = await _reopened_marks(["gone_held_a", "gone_held_b", "gone_held_c"])
+	_check("a lit Sub's copies %s: Sub#2 picked up (%d parts), Sub#1 taken apart (%s), Sub#2 "
+		% [paths, lifted] + "put down (#%d): Sub's light and view kept, Sub#1's light the model's "
+		% [put] + "%s; all three undone %s, redone %s; each opened and saved again the same %s"
+		% [marks[0], marks[1], marks[2], again],
+		lifted > 0 and put != 0 and not said.contains("view went with it")
+		and _same_marks(marks, want) and _same_marks(again, want))
 
 
 ## Paste (Edit, Paste) put down beside the model: the part it put and what
