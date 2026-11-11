@@ -7,7 +7,7 @@
 ## Rebrickable's set compare answers its most asked question, "can I build
 ## this from that set?": the parts in both, the parts in only one, and what
 ## to buy. Here, as a person and a session ask it, on the real scene:
-##   File, Compare two sets or models…, 7140 typed for A and 9493 for B: the
+##   File, Compare, Compare two sets or models…, 7140 typed for A and 9493 for B: the
 ##   pieces in both and in each alone add up to each set's inventory exactly
 ##   (read here from the inventory's own file, its spares apart), each tab's
 ##   rows to its count, and in both is no less than the two lists share part
@@ -130,7 +130,7 @@ func _raw(record: Dictionary) -> Dictionary:
 
 
 func _sets_in_window() -> void:
-	print("\n  File, Compare two sets or models…: 7140 against 9493")
+	print("\n  File, Compare, Compare two sets or models…: 7140 against 9493")
 	var a_record: Dictionary = _record("7140-1")
 	var b_record: Dictionary = _record("9493-1")
 	var a_pieces: int = _pieces(a_record)

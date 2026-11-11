@@ -32,6 +32,26 @@
 ##   own sub-models; an author's steps still the author's, written again
 ##   step for step as the file has them;
 ## - File › Export › LDraw model's file again, the same to the byte.
+## First, a line for each of sereview's findings (2026-11-09), on models
+## made for them:
+## - F1, F6: sub-models named with folders, a parent folder, control
+##   characters, what Windows refuses or keeps for a device (one with an
+##   extension), 304 bytes, nothing but refused characters, two that are
+##   one once made safe; and copies built in their parents' steps titled
+##   "..\..\evil", "Tårn", "a:b?c": every zip entry a name every system
+##   takes, inside the folder it is unzipped in, none twice, the same name
+##   by submodel= as in the zip, a built-in copy's Name line its file's;
+## - F2: the zip's members flagged UTF-8 in both headers, All my models'
+##   too (a model saved as Tårn: run it with a data folder of its own);
+## - F3: two sections of one key by folder ("Dup.ldr", "sub\dup.ldr"; 345-1's
+##   subparts): each file the twin the model is built of, opened alone to
+##   the same parts;
+## - F4: the row menu on a model shared to look at, and on one being laid:
+##   both items greyed as File › Export's are, and nothing written;
+## - F5: a finger held still on a row opens its menu (a tap, or a finger
+##   that moves, does not), beside the finger, its lift choosing nothing;
+## - F7: export_model with submodel= and submodels=true refused.
+## --cases-only runs those alone.
 ## Pictures go to --shots=DIR, else user://subexport.
 extends SceneTree
 
@@ -57,6 +77,7 @@ var _files: String = ""
 var _email: String = ""
 var _password: String = ""
 var _table: Array[String] = []
+var _cases_only: bool = false
 
 
 func _initialize() -> void:
@@ -74,6 +95,8 @@ func _run() -> void:
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with("--shots="):
 			_out = arg.trim_prefix("--shots=")
+		elif arg == "--cases-only":
+			_cases_only = true
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(_out))
 	ShellPrefs.kept_by_a_check = _own_data_folder()
 	_files = OS.get_user_data_dir().path_join("subexport_files")
@@ -107,7 +130,8 @@ func _run() -> void:
 	_shell = _main.get("_shell")
 	_bar = _main.get("_bar")
 	_socket = (_main.get("_connector") as ClaudeConnector).rpc
-	for subject: Array in SUBJECTS:
+	await _review_cases()
+	for subject: Array in [] if _cases_only else SUBJECTS:
 		await _subject(subject)
 	print("")
 	print("  model        sub-models  files  lines  opened alone  worst LDU  whole export")
@@ -174,19 +198,13 @@ func _subject(subject: Array) -> void:
 			AuthorSteps.any(_world, _store.scenery))
 	var tree: PackedStringArray = _shell.assemblies.paths()
 	# The whole model's file, as File › Export writes it, before and after.
-	var whole: String = await _whole_export(tag)
+	var read: Array = await _read_whole(tag)
+	var whole: String = read[0]
 	var before_sha: String = whole.sha256_text()
 	print("    the whole model's file: %d bytes, sha256 %s" % [whole.length(), before_sha])
-	var parsed: LdrModel = LdrModel.parse(whole, "model")
-	var placed: Array[LdrModel.Placement] = parsed.flatten(_library.parts)
-	# The whole model's parts as the app holds them (each number as the
-	# library resolved it), where the file has them: [path, part, colour, place].
-	var back := Transform3D(Basis.IDENTITY, -(_store.call("_lift_now") as Vector3))
-	var held: Array = []
-	for brick: BrickWorld.Brick in _world.bricks():
-		if not _store.scenery.has(brick.id):
-			held.append([Assemblies.path_of(brick), brick.part_id, brick.color_code,
-				back * brick.transform])
+	var parsed: LdrModel = read[1]
+	var placed: Array[LdrModel.Placement] = read[2]
+	var held: Array = read[3]
 	var paths_missing: Array = Array(tree).filter(func(path: String) -> bool:
 		return not parsed.unit_steps.has(path))
 	_check("every row of the model tree (%d) is a copy the whole file places%s" % [tree.size(),
@@ -256,6 +274,23 @@ func _subject(subject: Array) -> void:
 		before_sha.left(16)])
 
 
+## The whole model's file as File › Export writes it, read: [its text, the
+## model it parses to, its placements, and its parts as the app holds them
+## (each number as the library resolved it) where the file has them, each
+## [path, part, colour, place]].
+func _read_whole(tag: String) -> Array:
+	var whole: String = await _whole_export(tag)
+	var parsed: LdrModel = LdrModel.parse(whole, "model")
+	var placed: Array[LdrModel.Placement] = parsed.flatten(_library.parts)
+	var back := Transform3D(Basis.IDENTITY, -(_store.call("_lift_now") as Vector3))
+	var held: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		if not _store.scenery.has(brick.id):
+			held.append([Assemblies.path_of(brick), brick.part_id, brick.color_code,
+				back * brick.transform])
+	return [whole, parsed, placed, held]
+
+
 ## Which sub-model each file is: the path of the first copy of its section
 ## (or, for a copy built in its parent's steps, of its name) whose file is
 ## named so.
@@ -264,15 +299,425 @@ func _paths_by_file(parsed: LdrModel, names: Array, zip: Dictionary) -> Dictiona
 	var paths: Array = parsed.unit_steps.keys()
 	paths.sort()
 	for file: String in names:
-		# Its own section: the first, keyed as its FILE or Name line names it.
+		# Its own section: the first, keyed as its FILE or Name line names it;
+		# a copy built in its parent's steps, by its title, its first line
+		# (its name made safe for a file is not its title's).
 		var key: String = str(_sections(str(zip[file])).keys()[0])
+		var titled: String = ""
+		for line: String in str(zip[file]).split("\n"):
+			if LdrModel.section_word(line).is_empty():
+				titled = line.strip_edges()
+				break
 		for path: String in paths:
 			var built_within: bool = int(parsed.unit_steps[path]) == LdrModel.IN_PARENT
-			if (built_within and Assemblies.definition(Assemblies.leaf(path)).to_snake_case() == key) \
+			if (built_within and titled == "0 " + Assemblies.definition(Assemblies.leaf(path))) \
 					or (not built_within and str(parsed.unit_sections.get(path, "")) == key):
 				out[file] = path
 				break
 	return out
+
+
+# -- what sereview found (2026-11-09), a line each ----------------------------------
+
+
+## The names a sub-model may have that no system takes for a file as they
+## are, each a FILE section's: folders, the folder above, a dot first,
+## control characters, what Windows refuses and keeps for its devices (one
+## with an extension), 304 bytes, nothing but refused characters, dots and
+## spaces at the end, two that are one once made safe, and ones every system
+## takes as they are, Tårn, 城, 150°.
+const ODD_NAMES: Array[String] = ["../up.ldr", "C:\\win.ldr", "/abs.ldr", "..", "...",
+	".hidden.ldr", "what?.ldr", "CON.ldr", "aux.backup.ldr", "LPT1", "a<b>|c*.ldr",
+	"<>:|?*.ldr", "\"|\"", "end..", "x. .", "a?b.ldr", "ab.ldr", "Tårn.ldr", "城.ldr",
+	"Ferrari 150° Italia.ldr", "..\\..\\..\\evil.ldr"]
+const COLOURS: Array[int] = [1, 2, 4, 14, 15, 19, 25, 28, 70, 71, 72]
+
+
+func _odd_names() -> Array[String]:
+	var names: Array[String] = ODD_NAMES.duplicate()
+	names.append("ctl" + String.chr(1) + "x" + String.chr(27) + "z.ldr")
+	names.append("L".repeat(300) + ".ldr")
+	return names
+
+
+## A model of a sub-model for each of [method _odd_names], one part in each.
+func _odd_model() -> String:
+	var names: Array[String] = _odd_names()
+	var main := PackedStringArray(["0 FILE odd.ldr", "0 Odd names", "0 Name: odd.ldr",
+		"0 Author: subexport probe"])
+	var rest := PackedStringArray()
+	for n: int in names.size():
+		main.append("1 16 %d 0 0 1 0 0 0 1 0 0 0 1 %s" % [40 * n, names[n]])
+		rest.append_array(["0 FILE " + names[n], "0 Odd %d" % n, "0 Name: " + names[n],
+			"0 Author: subexport probe",
+			"1 %d 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat" % COLOURS[n % COLOURS.size()], "0 NOFILE"])
+	main.append("0 NOFILE")
+	return "\n".join(main) + "\n" + "\n".join(rest) + "\n"
+
+
+## The castle's way, three copies built in the model's own steps (IN_META),
+## titled as no file can be called.
+const IN_PARENT_MODEL := """0 Castle in steps
+0 Name: inparent.ldr
+0 Author: Reviewer
+0 !BRICKWORKS AUTHORED_STEPS
+
+0 !BRICKWORKS IN ..\\..\\evil#1
+1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 !BRICKWORKS IN Tårn#1
+1 1 200 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 !BRICKWORKS IN a:b?c#1
+1 2 400 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+0 !BRICKWORKS IN ..\\..\\evil#1
+1 4 0 -48 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 !BRICKWORKS IN Tårn#1
+1 1 200 -48 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 ROTSTEP 0 90 0 REL
+0 !BRICKWORKS IN Tårn#1
+1 1 200 -72 0 1 0 0 0 1 0 0 0 1 3003.dat
+0 !BRICKWORKS IN a:b?c#1
+1 2 400 -48 0 1 0 0 0 1 0 0 0 1 3003.dat
+0 STEP
+"""
+
+## Two sections of one key, by folder: the model is built of the last
+## (LdrModel keeps the last of a key), as LDView would take the first.
+const TWINS_MODEL := """0 FILE dupmain.ldr
+0 Dup main
+0 Name: dupmain.ldr
+0 Author: Reviewer
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 dup.ldr
+1 16 100 0 0 1 0 0 0 1 0 0 0 1 other.ldr
+0 NOFILE
+0 FILE Dup.ldr
+0 Dup first
+0 Name: Dup.ldr
+0 Author: Reviewer
+1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE other.ldr
+0 Other
+0 Name: other.ldr
+0 Author: Reviewer
+1 2 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 16 0 -48 0 1 0 0 0 1 0 0 0 1 dup.ldr
+0 NOFILE
+0 FILE sub\\dup.ldr
+0 Dup second
+0 Name: sub\\dup.ldr
+0 Author: Reviewer
+1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 4 40 -24 0 1 0 0 0 1 0 0 0 1 3003.dat
+0 NOFILE
+"""
+
+
+func _review_cases() -> void:
+	print("\nwhat sereview found (2026-11-09), a line each")
+	await _odd_names_case()
+	await _in_parent_case()
+	await _all_models_case()
+	await _twins_case()
+	await _gates_case()
+	await _finger_case()
+	await _both_flags_case()
+
+
+## F6, F1's root, and F2: the odd names' model, each sub-model at once.
+func _odd_names_case() -> void:
+	await _open(_odd_model(), "odd")
+	var tree: PackedStringArray = _shell.assemblies.paths()
+	_clear_files()
+	await _say("export_model", {"format": "ldraw", "submodels": true})
+	var zip_path: String = _newest("zip")
+	var zip: Dictionary = _zip_members(zip_path)
+	var unsafe: Array[String] = []
+	var seen: Dictionary = {}
+	for name: String in zip:
+		var why: String = _unsafe(name)
+		if not why.is_empty():
+			unsafe.append("%s: %s" % [_shown(name), why])
+		seen[name.to_lower()] = true
+	var names: Array = zip.keys()
+	names.sort()
+	_check("F6: %d sub-models named as no system takes a file, a .zip of %d, each name one every system takes, none twice: %s%s" % [
+		_odd_names().size(), zip.size(), ", ".join(names.map(func(n: String) -> String: return _shown(n))),
+		"" if unsafe.is_empty() else "; not so: " + "; ".join(unsafe)],
+		zip.size() == _odd_names().size() and unsafe.is_empty() and seen.size() == zip.size())
+	# One rule for both ways: each row by submodel= writes a file of the
+	# name the zip has for it (or that name's "_2", a twin's).
+	var differ: Array[String] = []
+	for path: String in tree:
+		_clear_files()
+		await _say("export_model", {"format": "ldraw", "submodel": path})
+		var files: PackedStringArray = DirAccess.get_files_at(_files)
+		var one: String = files[0] if files.size() == 1 else ""
+		var text: String = FileAccess.get_file_as_string(_files.path_join(one)) if not one.is_empty() else ""
+		var found: bool = false
+		for name: String in zip:
+			if str(zip[name]) == text and (name == one or (name.get_basename().begins_with(
+					one.get_basename() + "_") and name.get_extension() == one.get_extension())):
+				found = true
+		if not found:
+			differ.append("%s -> %s" % [Assemblies.label(path), _shown(one) if not one.is_empty()
+				else "%d files" % files.size()])
+	_check("F6: each of the %d rows by submodel= is named as the zip names it, one rule for both%s" % [
+		tree.size(), "" if differ.is_empty() else ": not " + ", ".join(differ.slice(0, 4))],
+		differ.is_empty() and not tree.is_empty())
+	var flags: Array = _utf8_flags(zip_path)
+	_check("F2: the zip says its names are UTF-8 (bit 11) in all %d members' own headers (%d) and the directory's (%d), so Tårn.ldr, 城.ldr, 150° read so: %s" % [
+		int(flags[0]), int(flags[1]), int(flags[2]), ", ".join(["Tårn.ldr", "城.ldr",
+		"Ferrari 150° Italia.ldr"].map(func(n: String) -> String: return "%s %s" % [n,
+		"in it" if zip.has(n) else "not in it"]))], int(flags[0]) == zip.size()
+		and int(flags[1]) == zip.size() and int(flags[2]) == zip.size() and zip.has("Tårn.ldr")
+		and zip.has("城.ldr") and zip.has("Ferrari 150° Italia.ldr"))
+
+
+## F1: copies built in their parent's steps, titled as no file is called.
+func _in_parent_case() -> void:
+	await _open(IN_PARENT_MODEL, "inparent")
+	_clear_files()
+	await _say("export_model", {"format": "ldraw", "submodels": true})
+	var zip: Dictionary = _zip_members(_newest("zip"))
+	var names: Array = zip.keys()
+	names.sort()
+	var evil: String = str(zip.get("evil.ldr", ""))
+	_clear_files()
+	await _say("export_model", {"format": "ldraw", "submodel": "..\\..\\evil"})
+	var files: PackedStringArray = DirAccess.get_files_at(_files)
+	var one: String = FileAccess.get_file_as_string(_files.path_join(files[0])) if files.size() == 1 else ""
+	_check("F1: a copy built in its parent's steps titled ..\\..\\evil is evil.ldr in the zip (%s), its Name line evil.ldr, and the same file by submodel= (%s)" % [
+		", ".join(names.map(func(n: String) -> String: return _shown(n))), ", ".join(Array(files).map(func(n: String) -> String: return _shown(n)))],
+		names == ["abc.ldr", "evil.ldr", "tårn.ldr"] and evil.contains("0 Name: evil.ldr")
+		and not evil.contains("..\\") and Array(files) == ["evil.ldr"] and one == evil)
+
+
+## F2: All my models' zip, by the same writer, a model saved as Tårn in it.
+func _all_models_case() -> void:
+	if not _own_data_folder():
+		_check("F2: All my models' zip names Tårn.ldr as UTF-8: run through tools/probe.sh, as it saves a model", false)
+		return
+	await _open(IN_PARENT_MODEL, "inparent")
+	var saved: bool = _store.save_as("Tårn")
+	_clear_files()
+	var exports: Exports = _main.get("_exports")
+	await exports.all_models()
+	var zip_path: String = _newest("zip")
+	var zip: Dictionary = _zip_members(zip_path)
+	var flags: Array = _utf8_flags(zip_path)
+	_check("F2: All my models' zip, saved as Tårn (%s): %s, flagged UTF-8 in %d of %d own headers and %d in the directory" % [
+		saved, ", ".join(zip.keys().map(func(n: String) -> String: return _shown(n))), int(flags[1]), int(flags[0]), int(flags[2])],
+		saved and zip.has("Tårn.ldr") and int(flags[0]) == zip.size() and int(flags[1]) == zip.size()
+		and int(flags[2]) == zip.size())
+
+
+## F3: of two sections of one key, each file the twin the model is built
+## of, opened alone to the same parts: the twins model, and 345-1's House,
+## whose part carries two subparts so (s\345 - u9078s01.dat).
+func _twins_case() -> void:
+	for subject: Array in [["F3 twins", TWINS_MODEL, ["Dup second", "Other"]],
+			["F3 345-1", FileAccess.get_file_as_string("res://vendor/omr/files/345-1.mpd"), ["House"]]]:
+		var tag: String = subject[0]
+		await _open(str(subject[1]), tag)
+		var read: Array = await _read_whole(tag)
+		var tree: PackedStringArray = _shell.assemblies.paths()
+		for named: String in subject[2]:
+			var path: String = _path_named(named, tree)
+			_clear_files()
+			await _say("export_model", {"format": "ldraw", "submodel": named})
+			var files: PackedStringArray = DirAccess.get_files_at(_files)
+			if files.size() != 1 or path.is_empty():
+				_check("%s: submodel=%s writes one file (%s)" % [tag, named, ", ".join(files)], false)
+				continue
+			var text: String = FileAccess.get_file_as_string(_files.path_join(files[0]))
+			await _alone(tag, files[0], text, read[1], read[3], path)
+			await _open(str(subject[1]), tag)
+
+
+## F4: the row menu as File › Export: on a model shared to look at, and on
+## one still being laid, both items greyed and nothing written; both again
+## once it is neither.
+func _gates_case() -> void:
+	await _open(TWINS_MODEL, "twins")
+	var outliner: Outliner = _shell.outliner
+	var path: String = _path_named("Other", _shell.assemblies.paths())
+	for gate: String in ["shared to look at", "being laid", "neither"]:
+		if gate == "shared to look at":
+			_shell.read_only = true
+		elif gate == "being laid":
+			_store.set("_laying_in", _world.generation())
+		_clear_files()
+		outliner.open_row_menu(path, Vector2(200, 200))
+		var menu: PopupMenu = outliner.row_menu
+		var items: Array[String] = []
+		var enabled: int = 0
+		for n: int in menu.item_count:
+			items.append("%s %s" % [menu.get_item_text(n), "greyed" if menu.is_item_disabled(n)
+				else "enabled"])
+			enabled += 0 if menu.is_item_disabled(n) else 1
+		menu.hide()
+		var file_menu: bool = _shell.can("export_ldraw") or _shell.can("export_submodels")
+		if gate != "neither":
+			# Pressed though greyed, as a stale menu or a check presses it.
+			outliner.call("_on_row_menu", Outliner.MENU_ONE)
+			outliner.call("_on_row_menu", Outliner.MENU_EACH)
+			for _n: int in 120:
+				await process_frame
+		var written: PackedStringArray = DirAccess.get_files_at(_files)
+		_shell.read_only = false
+		_store.set("_laying_in", -1)
+		await _frames(4)
+		if gate == "neither":
+			_check("F4: on a model neither, File › Export's and the menu's both enabled: %s" % " | ".join(items),
+				enabled == 2 and file_menu)
+		else:
+			_check("F4: on a model %s, File › Export refuses (%s) and the row menu greys both and writes nothing: %s; written %s" % [
+				gate, not file_menu, " | ".join(items), Array(written)], enabled == 0 and not file_menu
+				and written.is_empty() and items.size() == 2)
+
+
+## F5: a finger on a row of the model tree. A tap, and a finger that moves,
+## open nothing; held still, the row's menu, beside the finger, its lift
+## choosing nothing; its first item then writes the row's file.
+func _finger_case() -> void:
+	await _open(TWINS_MODEL, "twins")
+	var outliner: Outliner = _shell.outliner
+	await _show_tree()
+	var path: String = _path_named("Other", _shell.assemblies.paths())
+	var rects: Dictionary = await _row_in_sight(outliner, path)
+	if not rects.has(path):
+		_check("F5: the row of Other is in sight to hold a finger on", false)
+		return
+	var at: Vector2 = (rects[path] as Rect2).get_center()
+	_clear_files()
+	# A tap.
+	_touch(at, true)
+	await _frames(2)
+	_touch(at, false)
+	await create_timer(0.8).timeout
+	var after_tap: bool = outliner.row_menu != null and outliner.row_menu.visible
+	# A finger that moves along the row, then stays.
+	_touch(at, true)
+	for step: int in 6:
+		_finger_drag(at + Vector2(8.0 * (step + 1), 0.0))
+		await _frames(2)
+	await create_timer(0.8).timeout
+	var after_move: bool = outliner.row_menu != null and outliner.row_menu.visible
+	_touch(at + Vector2(48.0, 0.0), false)
+	await _frames(6)
+	if outliner.row_menu != null:
+		outliner.row_menu.hide()
+	# Held still.
+	_touch(at, true)
+	await create_timer(0.8).timeout
+	var menu: PopupMenu = outliner.row_menu
+	var shown: bool = menu != null and menu.visible
+	var for_row: String = str(outliner.get("_menu_path"))
+	var under: bool = shown and Rect2(Vector2(menu.position), Vector2(menu.size)).has_point(at)
+	await _shot("finger_menu")
+	_touch(at, false)
+	await _frames(20)
+	var still: bool = menu != null and menu.visible
+	var lifted: PackedStringArray = DirAccess.get_files_at(_files)
+	_check("F5: a finger held still on Other's row opens its menu (%s, for %s), beside the finger (under it: %s), and lifting chooses nothing (open still %s, written %s); a tap opens none (%s), nor a finger that moved (%s)" % [
+		shown, Assemblies.label(for_row) if not for_row.is_empty() else "the model", under, still,
+		Array(lifted), after_tap, after_move], shown and for_row == path and not under and still
+		and lifted.is_empty() and not after_tap and not after_move)
+	if shown:
+		menu.id_pressed.emit(menu.get_item_id(0))
+		menu.hide()
+		await _until_file(["ldr", "mpd"])
+		var written: PackedStringArray = DirAccess.get_files_at(_files)
+		_check("F5: and its first item, chosen, writes Other's file (%s)" % ", ".join(written),
+			Array(written) == ["other.mpd"])
+
+
+## F7: both flags at once.
+func _both_flags_case() -> void:
+	await _open(TWINS_MODEL, "twins")
+	_clear_files()
+	var said: String = await _say("export_model", {"format": "ldraw", "submodels": true, "submodel": "Other"})
+	var written: PackedStringArray = DirAccess.get_files_at(_files)
+	_check("F7: submodel=Other with submodels=true is refused and writes nothing (%s): %s" % [
+		Array(written), said.left(120)], written.is_empty() and said.contains("not both"))
+
+
+## Why a zip entry is not a name every system takes, or "": a folder, the
+## folder above, a dot first (hidden), a control character, what Windows
+## refuses or keeps, a dot or space at the end of it or of its stem, more
+## than 200 UTF-8 bytes, not .ldr or .mpd.
+static func _unsafe(name: String) -> String:
+	if name.contains("/") or name.contains("\\"):
+		return "a folder in it"
+	if name.begins_with("."):
+		return "a dot first"
+	for n: int in name.length():
+		var code: int = name.unicode_at(n)
+		if code < 32 or (code >= 127 and code < 160):
+			return "a control character"
+	for refused: String in ["<", ">", ":", "\"", "|", "?", "*"]:
+		if name.contains(refused):
+			return "Windows refuses " + refused
+	var stem: String = name.get_basename()
+	if name.ends_with(".") or name.ends_with(" ") or stem.ends_with(".") or stem.ends_with(" "):
+		return "a dot or a space at its end"
+	var device: String = name.get_slice(".", 0).strip_edges().to_upper()
+	if device in ["CON", "PRN", "AUX", "NUL"] or (device.length() == 4
+			and device.left(3) in ["COM", "LPT"] and "0123456789¹²³".contains(device.right(1))):
+		return "Windows keeps " + device
+	if name.to_utf8_buffer().size() > 200:
+		return "%d bytes" % name.to_utf8_buffer().size()
+	if not name.get_extension() in ["ldr", "mpd"]:
+		return "not .ldr or .mpd"
+	return ""
+
+
+## [param name] shown in a line: its control characters escaped, a long one
+## cut.
+static func _shown(name: String) -> String:
+	var out: String = name.c_escape()
+	return out if out.length() <= 40 else "%s… (%d bytes)" % [out.left(24), name.to_utf8_buffer().size()]
+
+
+## A zip's members, and how many of them its own headers and its directory
+## flag as named in UTF-8 (bit 11), read from its bytes: [members, own,
+## directory].
+static func _utf8_flags(path: String) -> Array:
+	var bytes: PackedByteArray = FileAccess.get_file_as_bytes(path)
+	var own: int = 0
+	var at: int = 0
+	while at + 30 <= bytes.size() and bytes.decode_u32(at) == 0x04034b50:
+		if bytes.decode_u16(at + 6) & 0x0800:
+			own += 1
+		at += 30 + bytes.decode_u16(at + 26) + bytes.decode_u16(at + 28) + bytes.decode_u32(at + 18)
+	var listed: int = 0
+	var members: int = 0
+	if bytes.size() >= 22 and bytes.decode_u32(bytes.size() - 22) == 0x06054b50:
+		members = bytes.decode_u16(bytes.size() - 22 + 10)
+		at = bytes.decode_u32(bytes.size() - 22 + 16)
+		for _n: int in members:
+			if at + 46 > bytes.size() or bytes.decode_u32(at) != 0x02014b50:
+				break
+			if bytes.decode_u16(at + 8) & 0x0800:
+				listed += 1
+			at += 46 + bytes.decode_u16(at + 28) + bytes.decode_u16(at + 30) + bytes.decode_u16(at + 32)
+	return [members, own, listed]
+
+
+func _touch(at: Vector2, down: bool) -> void:
+	var touch := InputEventScreenTouch.new()
+	touch.index = 0
+	touch.pressed = down
+	touch.position = _as_event(at)
+	Input.parse_input_event(touch)
+
+
+func _finger_drag(at: Vector2) -> void:
+	var drag := InputEventScreenDrag.new()
+	drag.index = 0
+	drag.position = _as_event(at)
+	Input.parse_input_event(drag)
 
 
 # -- the file, line by line --------------------------------------------------------

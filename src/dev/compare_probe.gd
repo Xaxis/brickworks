@@ -1,4 +1,4 @@
-## File, Compare with… and Versions…' Compare, as a person uses them: a model
+## File, Compare, Compare with… and Versions…' Compare, as a person uses them: a model
 ## of 65 parts saved, then 3 parts added, 2 taken off, 1 moved 2 studs, 1
 ## turned 90° and 1 recoloured, and compared with the save. Pictures before,
 ## during and after in shots/compare/.

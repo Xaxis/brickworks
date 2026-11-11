@@ -128,6 +128,13 @@ static func pack(text: String, thumbnail: PackedByteArray, parts: int,
 	return zip(members)
 
 
+## The zip's general purpose flag saying a member's name is UTF-8 (APPNOTE
+## 4.4.4, bit 11), in each member's own header and the central directory's.
+## Without it a reader takes a name as code page 437: tårn.ldr unzipped as
+## t├Ñrn.ldr, 城.ldr as σƒÄ.ldr (sereview F2). The names are UTF-8 always.
+const UTF8_NAMES := 0x0800
+
+
 ## A zip of [param members], [[name, bytes], …], each deflated; a member
 ## given as [name, bytes, deflated, crc] is deflated already.
 ##
@@ -162,7 +169,7 @@ static func zip(members: Array) -> PackedByteArray:
 		header.resize(30)
 		header.encode_u32(0, 0x04034b50)
 		header.encode_u16(4, 20)
-		header.encode_u16(6, 0)
+		header.encode_u16(6, UTF8_NAMES)
 		header.encode_u16(8, method)
 		header.encode_u16(10, dos_time)
 		header.encode_u16(12, dos_date)
@@ -176,7 +183,7 @@ static func zip(members: Array) -> PackedByteArray:
 		central.encode_u32(0, 0x02014b50)
 		central.encode_u16(4, 20)
 		central.encode_u16(6, 20)
-		central.encode_u16(8, 0)
+		central.encode_u16(8, UTF8_NAMES)
 		central.encode_u16(10, method)
 		central.encode_u16(12, dos_time)
 		central.encode_u16(14, dos_date)

@@ -21,8 +21,26 @@
 ## One section alone is written as a plain .ldr, without its FILE line; more
 ## than one as an .mpd, as the whole model's export names its file
 ## (ModelBar.ldraw_extension).
+##
+## Each file is named after its sub-model, by one rule for both kinds
+## ([method file_name]), into a name Windows, macOS and Linux all take and
+## no unzip puts outside its folder: a copy titled "..\..\evil" was a
+## zip entry `..\..\evil.ldr`, which Python's unzip wrote two folders up
+## (sereview F1, F6).
 class_name SubmodelFile
 extends RefCounted
+
+## The most a file's name holds, in UTF-8 bytes: inside every file system's
+## 255, with room for the folder an unzip puts it in.
+const MOST_BYTES := 200
+## Names Windows keeps for its devices, whatever follows a dot ("CON.ldr"
+## opens the console): one is given a "_" ("CON_.ldr").
+const RESERVED: Array[String] = ["CON", "PRN", "AUX", "NUL",
+	"COM0", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "COM¹", "COM²", "COM³",
+	"LPT0", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9", "LPT¹", "LPT²", "LPT³"]
+## What Windows refuses in a name; "/" and "\" are folders, kept to what
+## follows the last.
+const REFUSED := "<>:\"|?*"
 
 
 ## One sub-model's file.
@@ -46,10 +64,11 @@ class Whole extends RefCounted:
 	var model: LdrModel
 	## Every placement, its copy's path and the line it is read from.
 	var placed: Array[LdrModel.Placement] = []
-	## FILE section key -> [its FILE line, the line after its last] (its
-	## NOFILE line in it where it has one).
+	## Each FILE section as LdrModel.parse read it, by its whole name
+	## (LdrModel.whole_name) -> [its FILE line, the line after its last] (its
+	## NOFILE line in it where it has one); a file of no FILE line, "".
 	var sections: Dictionary = {}
-	## Its keys in the order the file has them.
+	## Its names in the order the file has them.
 	var order: Array[String] = []
 	var main_key: String = ""
 	## !DATA name (lower case) -> [its line, the line after its last].
@@ -66,36 +85,35 @@ static func read(text: String, known: Dictionary = {}) -> Whole:
 	whole.lines = text.split("\n")
 	whole.model = LdrModel.parse(text, "model")
 	whole.placed = whole.model.flatten(known)
-	var current: String = ""
+	# Each section where the model's own reading found it, so of two of one
+	# key the one the model is built of: read again here, the first was cut
+	# while the model was built of the last, and 345-1's House reopened 115
+	# of its 116 parts (sereview F3).
+	for name: String in whole.model.files:
+		var span: Vector2i = (whole.model.files[name] as LdrModel.SubModel).span
+		whole.sections[name] = [span.x, span.y]
+		whole.order.append(name)
+	if whole.order.is_empty():
+		whole.sections[""] = [0, whole.lines.size()]
+		whole.order.append("")
+	else:
+		whole.main_key = LdrModel.whole_name(whole.model.main.name)
+		whole.sections[whole.main_key] = [whole.model.main.span.x, whole.model.main.span.y]
+		whole.order.sort_custom(func(a: String, b: String) -> bool:
+			return int(whole.sections[a][0]) < int(whole.sections[b][0]))
+	# The pictures the file carries (!DATA), each to the next section's line.
 	var data_name: String = ""
-	var any_file: bool = false
 	for n: int in whole.lines.size():
 		var word: String = LdrModel.section_word(whole.lines[n])
 		if word.is_empty():
 			continue
-		var fields: PackedStringArray = LdrModel._fields(whole.lines[n].strip_edges())
-		if not current.is_empty():
-			(whole.sections[current] as Array)[1] = n + 1 if word == "NOFILE" else n
-			current = ""
 		if not data_name.is_empty():
 			(whole.data[data_name] as Array)[1] = n
 			data_name = ""
-		if word == "FILE":
-			var key: String = LdrModel._key(" ".join(fields.slice(2)))
-			if whole.sections.has(key):
-				continue
-			current = key
-			whole.sections[key] = [n, whole.lines.size()]
-			whole.order.append(key)
-			if not any_file:
-				whole.main_key = key
-			any_file = true
-		elif word == "!DATA" and fields.size() > 2:
+		var fields: PackedStringArray = LdrModel._fields(whole.lines[n].strip_edges())
+		if word == "!DATA" and fields.size() > 2:
 			data_name = " ".join(fields.slice(2)).get_file().to_lower()
 			whole.data[data_name] = [n, whole.lines.size()]
-	if not any_file:
-		whole.sections[""] = [0, whole.lines.size()]
-		whole.order.append("")
 	var main: Array = whole.sections[whole.main_key]
 	for n: int in range(int(main[0]), int(main[1])):
 		var line: String = whole.lines[n].strip_edges()
@@ -120,7 +138,7 @@ static func cut(whole: Whole, path: String) -> Made:
 		return null
 	if int(whole.model.unit_steps[path]) == LdrModel.IN_PARENT:
 		return _cut_built_within(whole, path)
-	var key: String = str(whole.model.unit_sections.get(path, ""))
+	var key: String = _section_of_copy(whole, path)
 	if not whole.sections.has(key) or key == whole.main_key:
 		return null
 	var keys: Array[String] = _placed_from([key], whole)
@@ -128,8 +146,7 @@ static func cut(whole: Whole, path: String) -> Made:
 	made.title = Assemblies.definition(Assemblies.leaf(path))
 	var first: Array = whole.sections[key]
 	var named: String = whole.lines[int(first[0])].strip_edges()
-	named = " ".join(LdrModel._fields(named).slice(2)).replace("\\", "/").get_file()
-	made.name = _file_name(named, keys.size() > 1)
+	made.name = file_name(" ".join(LdrModel._fields(named).slice(2)), keys.size() > 1)
 	var out := PackedStringArray()
 	for each: String in keys:
 		var span: Array = whole.sections[each]
@@ -169,13 +186,15 @@ static func each(whole: Whole) -> Array[Made]:
 		if made == null:
 			continue
 		# Two of one name (a copy built in its parent's steps named as a
-		# section is): the second "_2".
+		# section is, or two that one rule made one): the second "_2",
+		# whatever the case, as Windows and macOS see one name.
 		var base: String = made.name.get_basename()
 		var name: String = made.name
 		var n: int = 1
 		while names.has(name.to_lower()):
 			n += 1
-			name = "%s_%d.%s" % [base, n, made.name.get_extension()]
+			var suffix: String = "_%d.%s" % [n, made.name.get_extension()]
+			name = _capped(base, MOST_BYTES - suffix.to_utf8_buffer().size()) + suffix
 		names[name.to_lower()] = true
 		made.name = name
 		out.append(made)
@@ -193,9 +212,8 @@ static func _placed_from(keys: Array[String], whole: Whole) -> Array[String]:
 		var key: String = waiting.pop_back()
 		var span: Array = whole.sections[key]
 		for n: int in range(int(span[0]) + 1, int(span[1])):
-			var placed: String = _placed_by(whole.lines[n])
-			if placed.is_empty() or found.has(placed) or not whole.sections.has(placed) \
-					or placed == whole.main_key:
+			var placed: String = _section_of(whole, _placed_by(whole.lines[n]))
+			if placed.is_empty() or found.has(placed) or placed == whole.main_key:
 				continue
 			found[placed] = true
 			waiting.append(placed)
@@ -206,9 +224,9 @@ static func _placed_from(keys: Array[String], whole: Whole) -> Array[String]:
 	return out
 
 
-## The key of what a line places ("1 16 0 0 0 1 0 0 0 1 0 0 0 1 wing.ldr" ->
-## "wing"), a line hidden by MLCad, LPub's ghost or a picture's fallback
-## geometry too; "" for any other line.
+## What a line places, as it names it ("1 16 0 0 0 1 0 0 0 1 0 0 0 1
+## wing.ldr" -> "wing.ldr"), a line hidden by MLCad, LPub's ghost or a
+## picture's fallback geometry too; "" for any other line.
 static func _placed_by(raw: String) -> String:
 	var line: String = raw.strip_edges()
 	for before: String in ["0 !:", "0 MLCAD HIDE", "0 GHOST"]:
@@ -220,7 +238,43 @@ static func _placed_by(raw: String) -> String:
 	var fields: PackedStringArray = LdrModel._fields(line)
 	if fields.size() < 15 or fields[0] != "1":
 		return ""
-	return LdrModel._key(" ".join(fields.slice(14)))
+	return " ".join(fields.slice(14))
+
+
+## The section of the whole file a reference to [param reference] is built
+## of, as the app builds it: a sub-model's, the one LdrModel keeps for its
+## key (of "dup.ldr" and "sub\dup.ldr", the last); a part's own file's, by
+## its whole name, else the last of its file name (CustomParts.needs); ""
+## for none.
+static func _section_of(whole: Whole, reference: String) -> String:
+	if reference.is_empty():
+		return ""
+	var sub: LdrModel.SubModel = whole.model.submodels.get(LdrModel._key(reference))
+	if sub != null:
+		var section: String = LdrModel.whole_name(sub.name)
+		return section if whole.sections.has(section) else ""
+	var named: String = LdrModel.whole_name(reference)
+	if whole.sections.has(named):
+		return named
+	var found: String = ""
+	for each: String in whole.order:
+		if each.get_file() == named.get_file():
+			found = each
+	if found.is_empty():
+		var key: String = LdrModel._key(reference)
+		for each: String in whole.order:
+			if LdrModel._key(each) == key:
+				found = each
+	return found
+
+
+## The section the copy at [param path] is built of: its sub-model's, as
+## the model was built of it (LdrModel.unit_sections, the key it was found
+## by).
+static func _section_of_copy(whole: Whole, path: String) -> String:
+	var sub: LdrModel.SubModel = whole.model.submodels.get(
+		str(whole.model.unit_sections.get(path, "")))
+	return LdrModel.whole_name(sub.name) if sub != null else ""
 
 
 ## Each !DATA block a line of [param lines] names (a picture a print is
@@ -265,13 +319,58 @@ static func _marked(lines: PackedStringArray, marker: String, bare: bool) -> Pac
 	return out
 
 
-static func _file_name(named: String, many: bool) -> String:
-	var base: String = named.get_basename() if named.get_extension().to_lower() in ["ldr", "dat",
-		"mpd"] else named
-	base = base.replace(":", "_").strip_edges()
-	if base.is_empty():
-		base = "submodel"
-	return base + (".mpd" if many else ".ldr")
+## The file a sub-model [param named] is written as (a FILE line's name,
+## "sub\Wing.ldr", or a title, "north_east_tower"): .mpd when [param many]
+## sections go in it, else .ldr; its name [method safe_name].
+static func file_name(named: String, many: bool) -> String:
+	var bare: String = named.replace("\\", "/").get_file()
+	if bare.get_extension().to_lower() in ["ldr", "dat", "mpd"]:
+		bare = bare.get_basename()
+	return safe_name(bare, MOST_BYTES - 4) + (".mpd" if many else ".ldr")
+
+
+## [param named] as a name every system takes as a file's, of at most
+## [param room] UTF-8 bytes: what follows its last "/" or "\", without
+## control characters or [constant REFUSED], dots and spaces taken off its
+## ends (".." is the folder above; a name ending so Windows cannot open, one
+## starting with a dot macOS and Linux hide), a [constant RESERVED] one
+## given a "_", cut on a whole character; "submodel" when nothing is left.
+static func safe_name(named: String, room: int = MOST_BYTES) -> String:
+	var bare: String = named.replace("\\", "/").get_file()
+	var kept: String = ""
+	for n: int in bare.length():
+		var code: int = bare.unicode_at(n)
+		if code < 32 or (code >= 127 and code < 160) or REFUSED.contains(bare[n]):
+			continue
+		kept += bare[n]
+	kept = _capped(_trimmed(kept), room)
+	kept = _trimmed(kept)
+	var stem: String = kept.get_slice(".", 0).strip_edges()
+	if stem.to_upper() in RESERVED:
+		kept = stem + "_" + kept.substr(kept.get_slice(".", 0).length())
+	return kept if not kept.is_empty() else "submodel"
+
+
+## [param text] with the dots and spaces at its ends taken off.
+static func _trimmed(text: String) -> String:
+	var out: String = text.strip_edges()
+	while out.begins_with(".") or out.begins_with(" "):
+		out = out.substr(1)
+	while out.ends_with(".") or out.ends_with(" "):
+		out = out.left(-1)
+	return out
+
+
+## [param text] cut to at most [param room] UTF-8 bytes, on a whole
+## character.
+static func _capped(text: String, room: int) -> String:
+	var used: int = 0
+	for n: int in text.length():
+		var code: int = text.unicode_at(n)
+		used += 1 if code < 0x80 else 2 if code < 0x800 else 3 if code < 0x10000 else 4
+		if used > room:
+			return text.left(n)
+	return text
 
 
 static func _ended(text: String) -> String:
@@ -313,8 +412,7 @@ static func _cut_built_within(whole: Whole, path: String) -> Made:
 	var home: String = path
 	while not home.is_empty() and int(whole.model.unit_steps.get(home, 0)) == LdrModel.IN_PARENT:
 		home = Assemblies.parent_of(home)
-	var key: String = whole.main_key if home.is_empty() \
-		else str(whole.model.unit_sections.get(home, ""))
+	var key: String = whole.main_key if home.is_empty() else _section_of_copy(whole, home)
 	if not whole.sections.has(key):
 		return null
 	var span: Array = whole.sections[key]
@@ -369,13 +467,15 @@ static func _cut_built_within(whole: Whole, path: String) -> Made:
 		if before.begins_with(LdrModel.COPY_META):
 			body.append(whole.lines[n - 1])
 		body.append(whole.lines[n])
-		var placed: String = _placed_by(whole.lines[n])
-		if whole.sections.has(placed) and not references.has(placed):
+		var placed: String = _section_of(whole, _placed_by(whole.lines[n]))
+		if not placed.is_empty() and placed != whole.main_key and not references.has(placed):
 			references.append(placed)
 	var keys: Array[String] = _placed_from(references, whole) if not references.is_empty() \
 		else ([] as Array[String])
-	var own_name: String = made.title.to_snake_case()
-	made.name = _file_name(own_name, not keys.is_empty())
+	# Named as a section's file is, and its FILE and Name lines so: titled
+	# "..\..\evil", it was all three (sereview F1).
+	made.name = file_name(made.title.to_snake_case(), not keys.is_empty())
+	var own_name: String = made.name.get_basename()
 	var head := PackedStringArray(["0 " + made.title + eol,
 		"0 Name: " + own_name + ".ldr" + eol, author + eol])
 	if not whole.marker.is_empty():

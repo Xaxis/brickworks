@@ -890,12 +890,26 @@ Whether what you built is still there tomorrow, and still means the same thing.
   steps stay the author's when it is opened alone. A copy built in its parent's
   steps (the castle's towers, `AuthorSteps.IN_PARENT`) has no section: its file
   is its lines out of the parent's, a step for each of the parent's steps it is
-  in, in the parent's coordinates. **Check:** `tools/probe.sh subexport_probe
-  -- --shots=DIR` (signs in a throwaway account: needs .env): 7140-1, the castle
-  and the castle with its steps its own; each file's sections against the whole
-  file's, line for line; each opened alone to the same parts within 0.001 LDU,
-  colours, tree and an author's steps; the whole model's file the same to the
-  byte before and after; the tree's menu pictured at 1400 x 900 and 1280 x 720.
+  in, in the parent's coordinates. Each file's name is made safe by one rule
+  (`SubmodelFile.file_name`/`safe_name`): what follows the last / or \, no
+  control characters or `<>:"|?*`, no dots or spaces at its ends, Windows'
+  device names given a "_", at most 200 UTF-8 bytes; the zip flags its names
+  UTF-8 (`StudioIo.UTF8_NAMES`, every zip the app writes). Of two sections of
+  one key ("dup.ldr", "sub\dup.ldr") each file takes the one the model is built
+  of (`LdrModel.files`, `SubModel.span`). The row menu is File, Export's: greyed
+  where `Shell.can` refuses (shared to look at, still being laid); a finger
+  held still on a row (`FlingScroll.HOLD_MS`) opens it beside the finger.
+  **Check:** `tools/probe.sh subexport_probe -- --shots=DIR` (signs in a
+  throwaway account: needs .env; saves a model, so through probe.sh): first a
+  line for each of sereview's findings (F1-F7: odd names, copies titled
+  `..\..\evil`, the UTF-8 flag in both headers and in All my models' zip, FILE
+  twins by folder and 345-1's House opened alone, the menu's gates, a finger's
+  hold, both flags refused; `--cases-only` runs those alone); then 7140-1, the
+  castle and the castle with its steps its own; each file's sections against
+  the whole file's, line for line; each opened alone to the same parts within
+  0.001 LDU, colours, tree and an author's steps; the whole model's file the
+  same to the byte before and after; the tree's menu pictured at 1400 x 900 and
+  1280 x 720.
 - `parts lists for shops` (`src/assembly/shop_lists.gd`, File, Export → BrickLink
   wanted list / Rebrickable parts list / LEGO® Pick a Brick list, and the same
   three buttons on the parts list): BrickLink's wanted-list XML (item, its

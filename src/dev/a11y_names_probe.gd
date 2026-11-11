@@ -242,7 +242,7 @@ const WITH_A_SELECTION: Array[String] = ["make_submodel", "printed_versions", "f
 
 ## The menus' other dialogs and panels, which this probe alone walks: Find
 ## a command, Send feedback, Build together, Comments, Compare (its view, as
-## Compare sets opens it: File, Compare with… wants a save first), the render
+## Compare sets opens it: File, Compare, Compare with… wants a save first), the render
 ## queue, the booklet's page setup, a view kept, the 3D export's question,
 ## the panels and the tour.
 const MORE: Array[String] = [

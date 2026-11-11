@@ -4407,6 +4407,9 @@ func _export(input: Dictionary, work: Working.Job = null) -> String:
 func _export_submodels(input: Dictionary, exports: Exports) -> String:
 	if str(input.get("format", "")) != "ldraw":
 		return "submodels and submodel write LDraw files: give them with format ldraw."
+	# Both asked, one was written and the other not said (sereview F7).
+	if input.has("submodel") and bool(input.get("submodels", false)):
+		return "Give submodel=NAME or submodels=true, not both: submodel writes that one, submodels every one in a .zip."
 	var said: String = ""
 	if input.has("submodel"):
 		var paths: PackedStringArray = (app.get("_shell") as Shell).assemblies.paths()
