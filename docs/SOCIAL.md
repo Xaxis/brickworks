@@ -659,11 +659,16 @@ share function, 3.2 MB (0.8 MB gzipped), written at deploy by
 section's head, and the list is its own request (`/m/X/parts.json`) made as
 the section nears the screen, into rows of one height kept for it, so
 nothing moves. **Export**: a BrickLink wanted list (`/m/X/parts.xml`,
-BrickLink's XML: ITEMTYPE, ITEMID, COLOR, MINQTY in INVENTORY) and a
-Rebrickable parts list (`/m/X/parts.csv`: Part, Color, Quantity), in each
+BrickLink's XML: ITEMTYPE, ITEMID, COLOR, MINQTY in INVENTORY), a
+Rebrickable parts list (`/m/X/parts.csv`: Part, Color, Quantity) and a
+LEGO® Pick a Brick list (`/m/X/parts-pab.csv`: elementId, quantity, with
+LEGO's own line ends; past 400 elements a file each, `parts-pab-2.csv`
+and on, as its upload takes them; sitepickabrick, 2026-11-08), in each
 shop's own part and colour numbers as the app exports them
 (`ShopLists`), a made part or a colour the shop has no number for left
-off and counted, never guessed. **Download** beside Build it: the
+off and counted, never guessed: what Pick a Brick leaves off, a lot with
+no element number known, is said under the buttons in lots and parts,
+and an element past the 999 it takes, the rest to add by hand. **Download** beside Build it: the
 version's .mpd as it is stored (`/m/X.mpd`, `/m/X/v/N.mpd`), signed out,
 named for the model. **Like** and **I built it** ("Built") say their
 names beside their icons and counts from 600 px up (`.icon-btn.labelled`);

@@ -505,10 +505,12 @@ for page in .vercel/output/static/docs/*.html; do
 done
 [ "$docs" -gt 0 ] || { echo "deploy FAILED: tools/site.py wrote no documentation pages (docs/)"; exit 1; }
 # A docs page that moved (docs-site/_moved.json) answers at its old address
-# with a 308 to its new one, so a link anyone kept still lands.
+# with a 308 to its new one, so a link anyone kept still lands. A section
+# that moved ("page#anchor") is the old page's to send on: no fragment
+# reaches the server.
 docs_moved=$(python3 -c 'import json; m = json.load(open("docs-site/_moved.json"))
 print("".join("    { \"src\": \"/docs/%s(/|[.]html)?\", \"status\": 308, \"headers\": { \"Location\": \"/docs/%s\" } },\n" % (a, b)
-               for a, b in sorted(m.items()) if not a.startswith("$")), end="")') || {
+               for a, b in sorted(m.items()) if not a.startswith("$") and "#" not in a), end="")') || {
   echo "deploy FAILED: could not read docs-site/_moved.json"; exit 1; }
 echo "deploy: $docs documentation pages at /docs/"
 
@@ -603,6 +605,8 @@ authorize_csp="default-src 'self'; script-src 'self'; connect-src 'self' ${signi
 # names the build; the build it names under /b/<sha>/ is cached forever.
 # /pricing, in English and each language, is the plans page's name before
 # the owner asked for Plans (2026-11-03), so a link that guessed it lands.
+# /beta-hub, in English and each language, was the testers' hub until it
+# became the beta's own page (betahome, 2026-11-09): kept links land there.
 cat > .vercel/output/config.json <<EOF
 {
   "version": 3,
@@ -619,6 +623,8 @@ cat > .vercel/output/config.json <<EOF
     { "src": "/challenges/?", "status": 308, "headers": { "Location": "/challenge" } },
     { "src": "/pricing([.]html|/)?", "status": 308, "headers": { "Location": "/plans" } },
     { "src": "/($langs)/pricing([.]html|/)?", "status": 308, "headers": { "Location": "/\$1/plans" } },
+    { "src": "/beta-hub([.]html|/)?", "status": 308, "headers": { "Location": "/beta" } },
+    { "src": "/($langs)/beta-hub([.]html|/)?", "status": 308, "headers": { "Location": "/\$1/beta" } },
     { "src": "/([A-Za-z0-9_-]+)[.]html", "status": 308, "headers": { "Location": "/\$1" } },
 $docs_moved
     { "src": "/docs/([A-Za-z0-9_-]+)[.]html", "status": 308, "headers": { "Location": "/docs/\$1" } },
@@ -655,6 +661,7 @@ $docs_moved
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})/?", "dest": "/api/share?op=page&id=\$1&v=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})[.]mpd", "dest": "/api/share?op=file&id=\$1&v=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})/parts[.](json|xml|csv)", "dest": "/api/share?op=parts&id=\$1&v=\$2&as=\$3" },
+    { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})/parts-(pab|pab-[1-9][0-9]{0,2})[.]csv", "dest": "/api/share?op=parts&id=\$1&v=\$2&as=\$3" },
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})/scene[.]json", "dest": "/api/share?op=scene&id=\$1&v=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})/room[.]json", "dest": "/api/share?op=room&id=\$1&v=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})[.]png", "dest": "/api/share?op=image&id=\$1&v=\$2" },
@@ -665,6 +672,7 @@ $docs_moved
     { "src": "/m/([A-Za-z0-9]{10})[.]webp", "dest": "/api/share?op=thumb&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})[.]mpd", "dest": "/api/share?op=file&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})/parts[.](json|xml|csv)", "dest": "/api/share?op=parts&id=\$1&as=\$2" },
+    { "src": "/m/([A-Za-z0-9]{10})/parts-(pab|pab-[1-9][0-9]{0,2})[.]csv", "dest": "/api/share?op=parts&id=\$1&as=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/scene[.]json", "dest": "/api/share?op=scene&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})/room[.]json", "dest": "/api/share?op=room&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})/embed/?", "dest": "/api/share?op=embed&id=\$1" },

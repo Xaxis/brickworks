@@ -133,6 +133,11 @@ class Step extends RefCounted:
 	## a step worked out.
 	var authored_in: String = ""
 	var authored_step: int = -1
+	## What its designer called it ("Build the cockpit"), as Studio names a
+	## step: said beside its number on the timeline, in Build it and on
+	## its booklet page. Kept with the model's step (BookletLooks "name",
+	## [method names_kept]); "" for none, and for a step worked out.
+	var name: String = ""
 
 	## A step inside a callout box.
 	func in_callout() -> bool:
@@ -156,8 +161,12 @@ class Step extends RefCounted:
 		return ", ".join(pieces)
 
 	## What the timeline says this step is, numbered as the booklet is:
-	## "Step 12 of 40 · Window (2x), 1 of 3".
-	func caption(main_steps: int) -> String:
+	## "Step 12 of 40 · Window (2x), 1 of 3", and its name after, where its
+	## designer gave it one, [param between] the two: "Step 3 of 24 · Build
+	## the cockpit", or on a line of its own in Build it. A name longer than
+	## [param name_most] characters is cut there, with an ellipsis: the
+	## timeline's one line (0: whole).
+	func caption(main_steps: int, between: String = " · ", name_most: int = 0) -> String:
 		var said: String = "Step %d of %d" % [number, main_steps]
 		if not assembly.is_empty():
 			var what: String = assembly + (" (%dx)" % times if times > 1 else "")
@@ -165,7 +174,21 @@ class Step extends RefCounted:
 				said += " · %s, %d of %d" % [what, callout_step, callout_steps]
 			else:
 				said += " · %s, put on" % what
+		if not name.is_empty():
+			said += between + shortened_name(name_most)
 		return said
+
+	## [member name], cut at [param most] characters with an ellipsis where
+	## it is longer (0: whole).
+	func shortened_name(most: int) -> String:
+		if most <= 0 or name.length() <= most:
+			return name
+		# Cut between words where it can, never after a comma: "sides,…",
+		# and never inside a letter as a reader sees it (BookletLooks.cut).
+		var cut: String = BookletLooks.cut(name, most - 1)
+		if cut.rfind(" ") > most / 2:
+			cut = cut.left(cut.rfind(" "))
+		return cut.strip_edges().rstrip(",;:·-–—") + "…"
 
 
 ## Where a brick sits and what it rests on.
@@ -4218,7 +4241,25 @@ static func _authored_from(nodes: Array[Node2], found: Array[Assembly], world: B
 		out[index].index = index + 1
 	if units == null:
 		_sections_kept(world, out)
+		names_kept(world, out)
 	return out
+
+
+## Each of [param steps] given the name its designer gave its step of the
+## model (BookletLooks "name"), kept as the model's look is: a step's name
+## goes with its parts over a step edit, as its zoom does. A step worked out
+## has none, and neither has one the booklet's look names nothing for. Also
+## for steps carried with a shared model (SharedPages.read), which name the
+## model's steps as these do. Read only, so on any thread: a plan runs on a
+## worker as the model's file is written.
+static func names_kept(world: BrickWorld, steps: Array[Step]) -> void:
+	if world == null or world.step_looks.is_empty():
+		return
+	for step: Step in steps:
+		step.name = ""
+		if step.authored_step >= 0:
+			step.name = str(BookletLooks.of(world, step.authored_in, step.authored_step)
+				.get("name", ""))
 
 
 ## [param steps]' sections as the marks kept on the model's steps say

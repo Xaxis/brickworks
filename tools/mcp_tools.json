@@ -4171,7 +4171,7 @@
       "readOnlyHint": false,
       "title": "Edit the build steps"
     },
-    "description": "The model's build steps, the order the booklet and the timeline follow, as Edit, Build steps changes them. op \"list\" (the default) gives them with the part numbers in each; \"to\" puts bricks= in step=, however far, as the person drags them onto a step; \"next\" or \"prev\" moves bricks= a step later or earlier; \"new\" makes a new step of bricks=; \"earlier\", \"later\", \"merge\" (with the next) and \"delete\" act on step=, a number from the list. A model with no steps of its own is given the worked-out ones first, in the same undo step.",
+    "description": "The model's build steps, the order the booklet and the timeline follow, as Edit, Build steps changes them. op \"list\" (the default) gives them with the part numbers in each; \"to\" puts bricks= in step=, however far, as the person drags them onto a step; \"next\" or \"prev\" moves bricks= a step later or earlier; \"new\" makes a new step of bricks=; \"earlier\", \"later\", \"merge\" (with the next) and \"delete\" act on step=, a number from the list. A model with no steps of its own is given the worked-out ones first, in the same undo step. \"name\" gives step= a name= (\"Build the cockpit\"), said beside its number on the timeline, in Build it and in the booklet; name= \"\" takes it off. callout_step= with step= names a step inside the callout step= puts on. A sub-model placed more than once has one set of steps: a name given to one of its steps is every copy's.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -4182,9 +4182,17 @@
           },
           "type": "array"
         },
+        "callout_step": {
+          "description": "for name: a step inside the callout step= puts on, from 1, as edit_booklet takes it",
+          "type": "integer"
+        },
         "from": {
           "description": "list from this step; 1 when omitted",
           "type": "integer"
+        },
+        "name": {
+          "description": "for name: what the step is called, up to 80 characters; \"\" takes it off",
+          "type": "string"
         },
         "op": {
           "enum": [
@@ -4196,12 +4204,13 @@
             "earlier",
             "later",
             "merge",
-            "delete"
+            "delete",
+            "name"
           ],
           "type": "string"
         },
         "step": {
-          "description": "a step's number, for to, earlier, later, merge and delete",
+          "description": "a step's number, for to, earlier, later, merge, delete and name",
           "type": "integer"
         }
       },
@@ -4850,7 +4859,7 @@
       "readOnlyHint": false,
       "title": "Keep a motion in the model"
     },
-    "description": "Keep a named motion in the model, as a builder names it (\"Open the dome\"), played by the real joints as a drag moves them. tracks= each a joint (a part's number \"#80\" or a sub-assembly's name, as move_part names them) and its keys: t= seconds, place= degrees turned from where the model was built (studs slid, with slide=true), how= ease (the default), linear or hold. Or driver= a joint turned turns= times over seconds=, from where it stands: what it drives through gears, racks and linkages follows. Or sequence= the model's motions by name, in order (\"Show it all\": [\"Open the dome\", \"Extend the telescope\"]): a motion made of motions, each played from where the one before left the model, backwards in reverse order. suggested=true keeps list_motions' suggestion of that name; remove=true takes a motion out. It is saved with the model (its autosave, a save, an export, a shared link), one undo step, and answers by playing it once and putting the model back: where each joint ended, or stopped and on what.",
+    "description": "Keep a named motion in the model, as a builder names it (\"Open the dome\"), played by the real joints as a drag moves them. tracks= each a joint (a part's number \"#80\" or a sub-assembly's name, as move_part names them) and its keys: t= seconds, place= degrees turned from where the model was built (studs slid, with slide=true), how= ease (the default), linear or hold. Or driver= a joint turned turns= times over seconds=, from where it stands: what it drives through gears, racks and linkages follows. Or sequence= the model's motions by name, in order (\"Show it all\": [\"Open the dome\", \"Extend the telescope\"]): a motion made of motions, each played from where the one before left the model, backwards in reverse order. Or path= the whole model driven along the ground (legs: straight studs, left or right degrees), its wheels turning as they roll and its steering into the corners. suggested=true keeps list_motions' suggestion of that name; remove=true takes a motion out. It is saved with the model (its autosave, a save, an export, a shared link), one undo step, and answers by playing it once and putting the model back: where each joint ended, or stopped and on what.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -4879,6 +4888,47 @@
         "name": {
           "description": "what a builder calls it: Open the doors",
           "type": "string"
+        },
+        "path": {
+          "additionalProperties": false,
+          "description": "the whole model driven along the ground from where it stands, its wheels turning as they roll and its steering into the corners; with tracks= too, those joints move as it goes",
+          "properties": {
+            "eased": {
+              "description": "gathers speed and slows to a stop; true when omitted",
+              "type": "boolean"
+            },
+            "legs": {
+              "description": "in order; a 32-stud straight and a quarter turn left when omitted",
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "left": {
+                    "description": "degrees turned to the left",
+                    "type": "number"
+                  },
+                  "radius": {
+                    "description": "a turn's radius, studs, at the middle of the back axle; the tightest its steering takes well when omitted",
+                    "type": "number"
+                  },
+                  "right": {
+                    "description": "degrees turned to the right",
+                    "type": "number"
+                  },
+                  "straight": {
+                    "description": "studs ahead; less than 0 backwards",
+                    "type": "number"
+                  }
+                },
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "seconds": {
+              "description": "how long; at 10 studs a second when omitted",
+              "type": "number"
+            }
+          },
+          "type": "object"
         },
         "remove": {
           "type": "boolean"
@@ -5278,7 +5328,7 @@
       "readOnlyHint": false,
       "title": "Render a picture"
     },
-    "description": "Render the model as File, Render does: a picture, a turntable (a WebP and, where ffmpeg is installed, an MP4), or build: the model built up as a video, the timeline's steps one after another, each step's parts coming down into place and the camera turning slowly round, over seconds (10 to 60, 20 when omitted), as Render's Building does; on a studio sweep with soft shadows. quality quick, good or best (good for a picture, quick for a turntable or a build when omitted); size 720p, 1080p, 4k or square (720p for a turntable or a build); view hero, front, side, back, low or top, or the name of a view the person saved with the model (View › Viewpoint), drawn from exactly there; a name it does not keep is answered with those it does. look product is a product shot's: glossy plastic with rounded edges, clear parts that bend the light, a key, fill and rim over a softbox studio (window, the default, is the window's own). backdrop white, gradient, grey, dark or none (as Render last had it when omitted). depth_of_field blurs what is nearer and farther than the model's middle, as a lens at f/4 does, and is drawn at best. light studio (the window's three lights, the default), softbox, window or daylight (photographed places), or dark: the studio put out, the model's own lights (light_model) and the plastics that glow all that lights it. Saved where Render saves. It is a job: the answer is a job number at once, and job gives the result: a picture with it, or a turntable's or a build's six frames in one picture, the last its end. Needs the app in a window.",
+    "description": "Render the model as File, Render does: a picture, a turntable (a WebP and, where ffmpeg is installed, an MP4), or build: the model built up as a video, the timeline's steps one after another, each step's parts coming down into place and the camera turning slowly round, over seconds (10 to 60, 20 when omitted), as Render's Building does; on a studio sweep with soft shadows. quality quick, good or best (good for a picture, quick for a turntable or a build when omitted); size 720p, 1080p, 4k or square (720p for a turntable or a build); view hero, front, side, back, low or top, or the name of a view the person saved with the model (View › Viewpoint), drawn from exactly there; a name it does not keep is answered with those it does. look product is a product shot's: glossy plastic with rounded edges, clear parts that bend the light, a key, fill and rim over a softbox studio (window, the default, is the window's own). look lineart is the model inked: black lines round it, where each part meets the next and where a part turns a corner, on white, the shade in halftone dots; comic the same lines and dots over each part's own flat colour; with backdrop none on nothing. backdrop white, gradient, grey, dark or none (as Render last had it when omitted). depth_of_field blurs what is nearer and farther than the model's middle, as a lens at f/4 does, and is drawn at best. light studio (the window's three lights, the default), softbox, window or daylight (photographed places), or dark: the studio put out, the model's own lights (light_model) and the plastics that glow all that lights it. Saved where Render saves. It is a job: the answer is a job number at once, and job gives the result: a picture with it, or a turntable's or a build's six frames in one picture, the last its end. Needs the app in a window.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -5324,7 +5374,9 @@
         "look": {
           "enum": [
             "window",
-            "product"
+            "product",
+            "lineart",
+            "comic"
           ],
           "type": "string"
         },
@@ -5408,7 +5460,9 @@
         "look": {
           "enum": [
             "window",
-            "product"
+            "product",
+            "lineart",
+            "comic"
           ],
           "type": "string"
         },

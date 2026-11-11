@@ -224,6 +224,23 @@ static func _scrolls_across(control: Control, root: Control) -> bool:
 	return false
 
 
+## The words beside a link made a fingertip tall, on the link's line. A link
+## draws its words at the top of its box and a label in the middle of its
+## row, so on a phone Share's "Publishing means you agree to the" sat a line
+## under its "guidelines" (localbricks' pictures, 11-10). A label beside one
+## draws from the top too, as the link does: the same line on a desktop,
+## where the row is the words' own height.
+static func _level_beside(link: LinkButton) -> void:
+	var row := link.get_parent() as Container
+	if row == null or row is VBoxContainer:
+		return
+	for child: Node in row.get_children():
+		var label := child as Label
+		if label != null:
+			label.size_flags_vertical = Control.SIZE_FILL
+			label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+
+
 ## A button's or a link's words too long for [param across] end in an
 ## ellipsis there: a parts list's rows ran 175 points off a phone, and a
 ## link has no second line to wrap onto.
@@ -445,6 +462,8 @@ func _size_one(control: Control, k: float, widest: float) -> void:
 	was[&"min"] = [first, wants]
 	if wants != own:
 		control.custom_minimum_size = wants
+	if control is LinkButton and wants.y > control.get_minimum_size().y:
+		_level_beside(control as LinkButton)
 	# A list's rows and a tree's, each a fingertip tall.
 	if control is Tree or control is ItemList:
 		var font: Font = control.get_theme_font("font")

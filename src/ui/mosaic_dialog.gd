@@ -548,7 +548,7 @@ func show_for(image: Image) -> void:
 	tell_owned()
 	_preview.texture = ImageTexture.create_from_image(image)
 	_describe()
-	visible = true
+	HudFront.show_panel(self)
 
 
 func _show_mode() -> void:

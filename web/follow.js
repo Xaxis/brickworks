@@ -357,8 +357,8 @@ function accountPart(state) {
     places.append(link);
   }
   // Send feedback (web/feedback.js, opened below), and for a beta tester
-  // the beta hub (an early feature: web/early.js), added once the server
-  // has said.
+  // the beta hub (an early feature: web/early.js), the beta's page since
+  // betahome, added once the server has said.
   const feedback = document.createElement("a");
   feedback.href = `${at}/feedback`;
   feedback.dataset.feedback = "";
@@ -368,7 +368,7 @@ function accountPart(state) {
   earlyOn("beta_hub").then((on) => {
     if (!on || places.querySelector('[data-place="beta-hub"]')) return;
     const hub = document.createElement("a");
-    hub.href = `${at}/beta-hub`;
+    hub.href = `${at}/beta`;
     hub.dataset.place = "beta-hub";
     hub.append(say("Beta hub"));
     if (location.pathname === hub.getAttribute("href")) hub.setAttribute("aria-current", "page");

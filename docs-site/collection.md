@@ -6,14 +6,26 @@ rules:
   - The collection comes from Rebrickable (with the person's own key), a BrickLink or Rebrickable list, or typed in.
 title: My collection
 nav: My collection
-description: Tell Brickworks the sets and parts you own, then see what a model needs that you do not have, and what you can build now.
+description: Tell Brickworks the sets and parts you own, then see what a model needs that you do not have, what you can build now, and build from a set's parts.
 ---
 
-## Your sets and parts {#my-collection}
+My collection is the sets and loose parts you own. With it, Brickworks says what a model needs that you do not have, what you can build now, and lets you build from one set's parts. It is **File › My collection…**, kept with your account on every device you sign in on.
 
-**File › My collection…** keeps the sets and loose parts you own. Bring them in from your Rebrickable account (with your own Rebrickable key), from a BrickLink or Rebrickable list, or type them in. Each set is counted out into its parts. Your collection is kept with your account, so it is there on every device you sign in on.
+## Add your sets {#my-collection}
 
-Each change you make is made on your collection as your account keeps it, so a change made at the same moment on another device, or by Claude, is kept as well as yours. If a count you change was changed somewhere else since you looked, nothing is changed: My collection says so and shows the collection as it is now, for you to change it again. Fetching from your Rebrickable account replaces what came from Rebrickable before, by a fetch or an export, and the loose parts brought in before (listed as such); the parts you count by hand, a BrickLink list and what Claude added stay, and a set you typed that Rebrickable lists is kept once. If the connection drops while a change is being sent, My collection says it may have been made: open it again to see. A copy of Brickworks from before this still takes a set out; if it read your collection before a change made elsewhere, it asks you to update it (on the web, reload the page) first.
+![My collection, empty, on What I own: a box for set numbers with Add sets and Photo…, Rebrickable CSV… and BrickLink XML…, your Rebrickable key or username with Fetch, and the Loose parts row; What do I need? and What can I build? along the top.](/docs/img/collection-dialog.webp "File › My collection…")
+
+On the **What I own** page, any of these:
+
+- Type set numbers (*10237-1, 6020*) and press **Add sets**.
+- **Photo…** finds a set from a photo of its box, its booklet's cover or a minifigure, and offers the three it thinks most likely. The photo goes to Brickognize, a third party, and Brickworks says so the first time. A minifigure is kept by its BrickLink number, its parts not counted.
+- **Rebrickable CSV…** or **BrickLink XML…** reads a list you exported there.
+- From your Rebrickable account: your own **Rebrickable API key** and **User token** (or username and password), then **Fetch**. The key goes only to Rebrickable and is not kept. Fetching again replaces what came from Rebrickable before.
+
+Each set is counted out into its parts.
+
+> [!NOTE]
+> A change made at the same moment on another device, or by your AI, is kept as well as yours. If a count you change was changed somewhere else since you looked, nothing is changed, and My collection shows it as it is now for you to change again.
 
 <!-- covers
 ui:my collection
@@ -23,57 +35,62 @@ lib:collection sums
 api:/api/collection
 -->
 
-## Loose parts {#loose}
+## Add loose parts {#loose}
+
+Under *What I own*, the **Loose parts** row adds a tub of bricks a lot at a time:
+
+1. Type the part's number or a few words (*red 2x4 brick*, *3001*, or a BrickLink number), choose **Photo…** to find it from a picture, or take it in the parts bin. **Like this** offers parts that look like the one chosen.
+2. Pick its colour, say how many, and choose **Add**.
+
+Each lot is listed under *Loose parts*, to change its count or remove it.
+
+**From a photo, with your AI:** show your AI a photo of your pile and ask it to add what it sees. **Keep them** makes the lots it added yours; **Take back what Claude added** (or whichever AI it was) takes exactly those off. It never changes your sets or your own lots.
 
 <!-- covers
 ui:loose parts in my collection
 lib:a session's loose parts over mcp
 -->
 
-Most people own a tub of loose bricks as well as their sets. Under *What I own*, the **Loose parts** row adds them a lot at a time: type the part's number or a few words (*red 2x4 brick*, *3001*, or a BrickLink number), or choose **Photo…** to find it from a picture, or take a part in the parts bin; then pick its colour, say how many, and choose **Add**. **Like this** offers the parts that look like the one chosen. Each lot is listed under *Loose parts* (lots brought in from a list are listed under where they came from), where you can change its count or remove it. Adding more of a part and colour you already have adds to that lot.
+## Mark a set's missing parts {#sets}
 
-What do I need? and What can I build? count your loose parts with your sets', and they are kept with your account like the rest.
+Beside a set, choose **Missing parts…** and say how many of each are missing (**All missing** marks every part, to count back in what you find). What do I need? and What can I build? then count only what is there.
 
-**From a photo, with Claude.** Show your own Claude a photo of your pile and ask it to add what it sees: it adds every lot in one go, each marked as that chat's. *What I own* then says what it added, so you can look the lots over: **Keep them** makes them your own, and **Take back what Claude added** takes exactly those lots off again. Claude never changes your sets or the lots you added yourself.
-
-## Sets as they really are {#sets}
+**Closest to whole** lists your sets with parts missing, nearest to complete first, and **What it needs** says what each is short of, less any loose parts that make it up.
 
 <!-- covers
 ui:a set from a photo
 ui:a set's missing parts
 -->
 
-**A set from a photo.** Beside **Add sets**, choose **Photo…** and pick a photo of the set's box, the cover of its building instructions, or a minifigure. Brickworks asks Brickognize what it shows and offers the three it thinks most likely; choose the right one to add it. A photo of the box's front, on its own, works best. The photo goes to Brickognize, a third party, and Brickworks says so the first time. A minifigure is kept among your sets by its BrickLink number; its parts are not counted, as Brickworks has no list of what is in each.
-
-**Parts missing from a set.** Most sets that have been played with are short of a few pieces. Beside a set under *What I own*, choose **Missing parts…** and say how many of each part are missing; **All missing** marks every part, for counting back in what you find. What do I need? and What can I build? then count only what is there. **Closest to whole** lists your sets with parts missing, those nearest to complete first, and **What it needs** shows what do I need? for that set: its missing parts, less any loose parts you have added that make them up. Loose parts count towards any set; parts of your other sets do not, since taking them would break those sets.
-
 ## What do I need? {#need}
 
-**Build › What do I need?…** (or [[P]], then *What do I need?*) lists what this model uses that you do not own, and what you own that could stand in for it. Export what is left as a shopping list: see [Parts lists for shops](/docs/exports#shop-lists).
+![The car's parts list, 61 pieces in 32 lots: each with how many, its picture, number, name and colour; along the top What do I need?, Save as CSV, and the BrickLink, Rebrickable and LEGO® Pick a Brick lists.](/docs/img/collection-parts-list.webp "Build › Parts list (P).")
+
+**Build › What do I need?…** (or **What do I need?** on the parts list, [[P]]) lists what the model uses that you do not own, and what you own that could stand in. Export what is left as a shopping list: see [Buy the parts](/docs/exports#shop-lists).
+
+## What can I build? {#build}
+
+**File › What can I build?…** ranks the examples, your saved models and LDraw's models of real sets by how much of each you own. On the website, [the gallery](/docs/gallery) sorts by **Parts I own**, and its *You can build now* shelf has the models you have every part for.
 
 ## Build from a set's parts {#set-bin}
 
-Build something else from a set you own, as an alternate build. Type the set's number into the parts bin's search (*10497-1*, or *set 10497*) and choose **Build from it** on the line that comes up at the top of the bin; or choose **Build from it** beside a set under *What I own*, or **Build from them all** for every set there, counted together.
+Build something else from a set you own, as an alternate build:
 
-The parts bin becomes that set's parts, a tile for each part in each colour, with how many are left. Taking a tile takes its colour too. Each part you put down takes one from its count, and undo or a delete gives it back. A part with none left is greyed and can still be used: the bin then says how many over the set the model is. The line at the top of the bin names the set and how many of its parts are left; **All parts** goes back to every part. A search or a category picks among the set's parts, and typing another set's number offers to add its parts.
+1. Type the set's number into the parts bin's search (*10497-1*, or *set 10497*) and choose **Build from it** at the top of the bin. Or choose **Build from it** beside a set under *What I own*, or **Build from them all**.
+2. The bin becomes that set's parts, a tile for each part in each colour, with how many are left. Each part you put down takes one; undo or a delete gives it back. A part with none left is greyed but still yours to use, and the bin says how far over the set the model is.
+3. **All parts** goes back to the whole catalogue.
 
-Where the LDraw community has made a model of the set, the bin follows its booklet: the parts of the step you are on come first, each marked with a line along its top, and the line under the set's says which step it is and how many parts it still wants. As those parts go in, the bin turns to the next step by itself; **‹** and **›** turn it by hand, and **Stop** lists the set's parts most held first again. A set with several models, such as *8841-1*'s Desert Racer and its five alternates, offers them by name under *Follow a booklet:* when you type its number: choose the one you are building.
-
-The choice is saved with the model, so opening it brings the set's parts back to the bin.
+Where the LDraw community has a model of the set, the bin follows its booklet: the parts of the step you are on come first, and it turns to the next step as they go in (**‹** and **›** turn it by hand). A set with several models, such as *8841-1*, offers them under *Follow a booklet:*. The choice is saved with the model.
 
 ## Compare two sets or models {#compare-sets}
 
-**File › Compare › Compare two sets or models…** puts any two side by side: a set, by the number on its box (*7140*), a model you saved or an example, or the model open now. Choose them as **A**, what you have, and **B**, what you want to build, and choose **Compare**.
+**File › Compare › Compare two sets or models…** puts any two side by side: a set by its number (*7140*), a saved model or an example, or the model open now.
 
-Three tabs list the parts by part and colour, each with its picture: **In both**, **Only in A** and **Only in B**. Each piece is counted once, so the tabs add up to each side's pieces. A piece of B that A has in another moulding of the same part, such as 3794a for 3794b, counts as in both and says so. A set's spare parts are not counted, and nor are the open model's stickers and parts you made yourself, since no shop sells them on their own.
-
-**Only in B** is what to buy to build B from A. **BrickLink**, **Rebrickable** and **LEGO® Pick a Brick** under the list write it for that shop, as the parts list's own buttons do: see [Parts lists for shops](/docs/exports#shop-lists). **Swap** turns it round. Your own Claude can do the same with `parts_list` (*which: compare*), and write the list for a shop.
+1. Choose **A**, what you have, and **B**, what you want to build, then **Compare**.
+2. The tabs **In both**, **Only in A** and **Only in B** list the parts by part and colour. A piece of B that A has in another moulding of the same part counts as in both; spare parts, stickers and parts you made are not counted.
+3. **Only in B** is what to buy: **BrickLink**, **Rebrickable** and **LEGO® Pick a Brick** under it write it for that shop. **Swap** turns it round.
 
 <!-- covers
 ui:compare two sets or models
 lib:parts compare
 -->
-
-## What can I build? {#build}
-
-**File › What can I build?…** ranks models by how much of each you already own. On the website, [the gallery](/docs/gallery) can sort by **Parts I own**, and its *You can build now* shelf shows models you have every part for.

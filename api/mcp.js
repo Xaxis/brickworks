@@ -399,7 +399,9 @@ const TAB = "channel,seen_at,instance,visible,open,owner,tab,model,used_at";
 //                it when it is written (helloFromTab), so a call need not
 //                read a quarter of a megabyte of tools to learn it, the
 //                largest single cost of a call; null where another hello
-//                has been written since, and then the hello is read
+//                has been written since, and then the hello is read. And
+//                how this deployment's own build's guidance is found
+//                (guidanceOf), with no tool list read.
 //   answered_at  when the tab last answered a call (ACTIVE_MS)
 // Whether they are there is asked once an instance, and again a minute
 // after a no, so a relay deployed before the file is applied goes on as
@@ -464,22 +466,50 @@ function keptOrder(value) {
 
 // And the guidance that goes with them: the instructions of the latest
 // hello of this very list, whoever's tab said it, since the app's guidance
-// is the same for everyone. Kept once found, and looked for again a minute
-// after a miss; none until a tab of this build has said hello.
+// is the same for everyone. Found by the short hash of the tools kept
+// beside each hello (list, above), so one row's instructions are read and
+// no tool list: it read the twenty latest hellos' whole tool lists, 4.3 MB
+// in 1.7 to 6 s, and found none once twenty newer hellos were other
+// builds' (2026-11-10, mcpinit). None until a tab of this build has said
+// hello, nor where that column is not there yet. Kept once found; looked
+// for again a minute after a miss, and on the next ask after a failure.
+//
+// Never what a handshake hangs on. A lookup that failed or was slow failed
+// initialize itself (502 after 9.2 s on a preview, 2026-11-10), and a
+// client whose handshake fails is taken for one that shows no pages. It
+// is waited for GUIDANCE_WAIT_MS, three times its read; past that the
+// handshake goes without guidance, and a lookup still under way is kept
+// for the next ask, not made again.
 const GUIDANCE_AGAIN_MS = 60_000;
+const GUIDANCE_WAIT_MS = 500;
 let ownGuidance = null;
+let guidanceLooking = null;
 
 async function guidanceOf(tools) {
   const known = ownGuidance;
   if (known && (known.text !== null || Date.now() - known.at < GUIDANCE_AGAIN_MS)) return known.text || "";
-  const list = listOf(tools);
-  const recent = await db("relay_tabs?hello=not.is.null&owner=not.is.null"
-    + "&select=channel,tools:hello->tools&order=seen_at.desc&limit=20") || [];
-  const same = recent.find((row) => listOf(row.tools) === list);
-  const [said] = (same && await db(`relay_tabs?channel=eq.${same.channel}`
-    + "&select=instructions:hello->>instructions")) || [];
-  ownGuidance = { at: Date.now(), text: said ? String(said.instructions || "") : null };
-  return ownGuidance.text || "";
+  // One at a time, but none held a minute: an instance can be frozen
+  // between requests partway through a read.
+  if (!guidanceLooking || Date.now() - guidanceLooking.at > GUIDANCE_AGAIN_MS) {
+    const looking = { at: Date.now() };
+    looking.done = lookForGuidance(tools).then(
+      (text) => { ownGuidance = { at: Date.now(), text }; },
+      (trouble) => console.error(`relay guidance: ${String(trouble?.message || trouble).slice(0, 160)}`),
+    ).finally(() => { if (guidanceLooking === looking) guidanceLooking = null; });
+    guidanceLooking = looking;
+  }
+  let timer;
+  await Promise.race([guidanceLooking.done, new Promise((resolve) => { timer = setTimeout(resolve, GUIDANCE_WAIT_MS); })]);
+  clearTimeout(timer);
+  return (ownGuidance && ownGuidance.text) || "";
+}
+
+// The instructions of the latest hello of [tools], or null for none.
+async function lookForGuidance(tools) {
+  if (!(await columns())) return null;
+  const [said] = await db(`relay_tabs?list=eq.${listOf(tools)}&owner=not.is.null`
+    + "&select=instructions:hello->>instructions&order=seen_at.desc&limit=1") || [];
+  return said ? String(said.instructions || "") : null;
 }
 
 // "closed", "hidden", "quiet" or "ready". Alive is ready, in view or not; a

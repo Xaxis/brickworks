@@ -281,8 +281,13 @@ last piece waits on its release (below).
   `https://brickworks.diy`; the deployment's own `*.vercel.app` address is
   not one (13, below).
 - **Packages.** me-client 0.50.0 (exchangeNativeCode; 0.48.0 at step 4,
-  0.42.0 before) and auth-core 2.18.0, pinned in
-  tools/web/vendor_orangecheck.sh. From 0.48.0 the button, its stylesheet
+  0.42.0 before) and auth-core 2.18.0 for the server bundle, and me-client
+  0.59.0 for the pages' files, pinned in tools/web/vendor_orangecheck.sh.
+  From 0.59.0 the button says back the nonce orangecheck's window sends to
+  the page that opened it, to that window alone, and refuses an option it
+  does not know or one that is inherited; its words, its stylesheet and the
+  Connect words are byte for byte 0.50.0's (tools/web/oc_echo_check.mjs,
+  2026-11-11). From 0.48.0 the button, its stylesheet
   and the Connect words are byte for byte the same, and the server bundle
   only gains what `exchangeNativeCode` brings (`checkOcSession`,
   `checkSignInRule`). `checkOcToken` tells a token that is no

@@ -1,0 +1,47 @@
+{
+ "shots": [
+  {
+   "id": "booklet-page-setup",
+   "source": "app",
+   "setup": [
+    {
+     "run": "booklet_page_setup",
+     "after": 30
+    },
+    {
+     "frames": 30
+    }
+   ],
+   "crop": "@opened",
+   "pad": 0,
+   "alt": "Page setup for the booklet, on its Page tab: the paper and which way up, the margins, the page colour, a picture behind every page, and a header and footer; under the tabs, a style to choose or keep.",
+   "caption": "Build › Booklet page › Page setup… (Ctrl+Shift+B).",
+   "features": [
+    "ui:the booklet's page setup"
+   ]
+  },
+  {
+   "id": "booklet-lay-out",
+   "source": "app",
+   "setup": [
+    {
+     "run": "timeline",
+     "after": 30
+    },
+    {
+     "run": "booklet_lay_out",
+     "after": 300
+    }
+   ],
+   "settle": 60,
+   "crop": "_page_editor_made",
+   "pad": 0,
+   "alt": "Lay out the page, on page 2 of the car's booklet: four steps, each with its picture, parts box and number in a dashed box to drag; rulers along the top and left; and along the top Add words, Add a picture, Draw an arrow, Turn and Opacity, Put back, Apply to later pages and Done.",
+   "caption": "Lay out the page… on the timeline's Booklet row.",
+   "features": [
+    "ui:the booklet page by hand"
+   ],
+   "width": 1000
+  }
+ ]
+}

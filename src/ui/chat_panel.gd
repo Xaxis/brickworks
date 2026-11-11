@@ -78,6 +78,12 @@ signal designing(brief: String)
 ## Something was asked of the panel, a design or a change to one, before
 ## [signal designing]: Main notes where the view is, to frame what comes.
 signal asked
+## The person's own run from this panel ended by itself, not stopped:
+## [param what] is "design" (a design or a change to one) or "sketches"
+## (three to choose from), [param ok] whether it made what was asked. Main's
+## done note says so when nobody is looking (DoneNote). A session's from
+## outside is said in its own chat, and not here.
+signal run_ended(ok: bool, what: String)
 
 ## The card a running design is shown on, while it runs.
 ##
@@ -633,6 +639,7 @@ func _on_sketches(sketches: Array, model_id: String, tokens: Brain.Spend, ours: 
 		_send.text = _send_words()
 		_show_sketch_first()
 		_status.text = ""
+		run_ended.emit(true, "sketches")
 	if _sketch_cards != null and is_instance_valid(_sketch_cards):
 		_sketch_cards.name = "sketches_before"
 	_sketch_cards = VBoxContainer.new()
@@ -1525,6 +1532,7 @@ func _on_built(brick_count: int) -> void:
 
 
 func _on_finished(ok: bool, summary: String) -> void:
+	var ours: bool = _working
 	_working = false
 	# The chip taken off while it ran: the next request is about the model.
 	if not _chip.visible and assistant != null:
@@ -1538,6 +1546,8 @@ func _on_finished(ok: bool, summary: String) -> void:
 		_close_run("Stopped", "Stopped. What it built so far stays; undo takes it back.")
 	else:
 		_close_run("Done" if ok else "Did not finish", _sentence(summary), ok)
+		if ours:
+			run_ended.emit(ok, "design")
 	# A refused key will be refused again. Forget it and ask for another,
 	# rather than leave it in place to fail the next brief the same way.
 	if not ok and summary.begins_with(Assistant.KEY_REFUSED) \

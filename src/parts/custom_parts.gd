@@ -1116,6 +1116,41 @@ static func end_skins(library: PartLibrary, model: LdrModel, begun: Array,
 	return made
 
 
+## [param model]'s flexible parts as the open puts them ([method end_skins]):
+## in each sub-model LDCad generated a skin into, the skin the library has
+## for its text in place of the drawing, its pieces kept. Nothing is built
+## or added: a skin the library has not got for that text is left as
+## drawing. A save reads its text back before it may go over anyone's
+## file (SourceFile.gate): read without, 31037-1's rope read back as 50
+## cylinders (keeptext4).
+static func put_skins(library: PartLibrary, model: LdrModel) -> void:
+	var pieces: Dictionary = {}
+	for key: String in model.generated:
+		var sub: LdrModel.SubModel = model.submodels.get(key)
+		if sub == null:
+			continue
+		var body: String = str(model.section_texts.get(sub.name.to_lower(), ""))
+		var id: String = ""
+		var seen: Array = _skins_of_body.get(body, [])
+		if not seen.is_empty():
+			id = str(seen[0])
+		else:
+			var made_of: Dictionary = _skin_text(library, model, sub, body, pieces)
+			if not made_of.is_empty():
+				id = _skin_id(library, key, str(made_of["text"]))
+		if id.is_empty() or not library.parts.has(id):
+			continue
+		var kept: Array[LdrModel.Placement] = []
+		for placement: LdrModel.Placement in sub.placements:
+			if _is_piece(library, model, LdrModel._key(placement.part_id), pieces):
+				kept.append(placement)
+		var at: Array = model.generated[key]
+		var piece := LdrModel.Placement.new(id, 16, Transform3D.IDENTITY, int(at[1]))
+		piece.line = int(at[0])
+		kept.append(piece)
+		sub.placements = kept
+
+
 ## A skin built (PartForge.build_skin) put in the library as a part no bin
 ## shows; why not, or "".
 static func _add_skin(library: PartLibrary, built: RefCounted, text: String) -> String:

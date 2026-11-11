@@ -237,7 +237,7 @@ func show_for(world: BrickWorld, from_library: PartLibrary,
 		_rows.add_child(row)
 	_sight.forget()
 
-	visible = true
+	HudFront.show_panel(self)
 	# Where it was, when it is the same model's list again: the way to find
 	# one part, look at it, and come back for the next.
 	var of: String = "%s %d %d" % [title, _stock.pieces, _stock.lot_count()]

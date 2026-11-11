@@ -425,19 +425,41 @@ def test_every_email_is_plain_and_html_and_says_what_it_must() -> None:
 
 
 def test_the_page_says_what_the_brief_asks() -> None:
+    # /beta is the beta's hub (betahome): what a tester gets, how to report,
+    # what is new this week, what we know is wrong, and your reports; the
+    # month's money words as before. The application's questions are a
+    # tester's optional "tell us about you" (betajoin), at #about: one form,
+    # hidden until the page knows a tester reads it, asking no box (joining
+    # agreed to the terms and the emails).
     words = re.sub(r"<[^>]+>", " ", PAGE)
     words = re.sub(r"\s+", " ", words)
     assert not re.search(r"AI builds?", PAGE + SCRIPT, re.I)
     for said in ("30 days of Pro", "honest", "Nothing is charged", "no card", "nothing is deleted", "25 models",
-                 "Coming soon", "before 29 October 2026"):
+                 "Coming soon", "before 29 October 2026", "What testers get", "Report a bug in one press",
+                 "Mark the spot", "What’s new", "What we know is wrong", "Your reports"):
         assert said.lower() in words.lower(), said
-    for field in ('name="build"', 'name="ai"', 'name="background"', 'name="background_line"', 'name="link"',
-                  'name="terms"', 'name="emails"'):
-        assert field in PAGE, field
-    assert 'maxlength="800"' in PAGE and 'maxlength="160"' in PAGE and 'maxlength="300"' in PAGE
+    for part in ('id="get"', 'id="report"', 'id="new"', 'id="testers"', 'id="known"', 'id="questions"',
+                 'href="/settings#feedback"', 'href="/plans#had"', 'href="/changelog"'):
+        assert part in PAGE, part
+    assert PAGE.count("<form") == 1 and 'id="about" aria-labelledby="about-h" hidden' in PAGE
+    about = PAGE[PAGE.index('id="about"'):PAGE.index('id="questions"')]
+    for part in ('id="apply-form"', 'id="f-build"', 'id="f-ai"', 'id="f-background"', 'id="f-line"', 'id="f-link"',
+                 'id="apply-send"', 'id="apply-status"'):
+        assert part in about, part
+    assert 'type="checkbox"' not in about
+    assert 'op=beta"' in SCRIPT and 'method: "POST"' in SCRIPT and "heard.tester) about()" in SCRIPT
+    # The way in for each visitor; none drawn until the page knows who reads it.
+    for visitor in ("out", "in", "tester"):
+        assert f'data-visitor="{visitor}" hidden' in PAGE, visitor
+    assert "op=beta_hub" in SCRIPT and "/changelog.json" in SCRIPT and 'from "/betabar.js"' in SCRIPT
+    # What joining agrees to, said under the way in on the hub and the
+    # homepage, where every Join is pressed (the bar's leads here).
+    terms = 'Joining agrees to <a href="/terms#beta">the beta’s terms</a> and to emails about the beta.'
+    assert terms in PAGE and terms in (ROOT / "web/index.html").read_text()
+    assert "/beta#beta-acts" in (ROOT / "web/betabar.js").read_text()
     # LEGO® only as an adjective, marked, in the page's own words (the footer's notices are the shell's).
     main = PAGE[PAGE.index("<main"):PAGE.index("</main>")]
-    assert "LEGO® " in main and not re.search(r"LEGO(?!®)", main)
+    assert not re.search(r"LEGO(?!®)", main)
 
 
 def test_terms_privacy_sitemap_and_docs_know_the_beta() -> None:

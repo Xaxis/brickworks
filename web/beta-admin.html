@@ -1,8 +1,12 @@
 <!doctype html>
 <html lang="en">
 <!--
-  The beta's applications, for the site's owner (beta361, 2026-10-29):
-  each with its answers and what the server read of it, filtered by where
+  The beta's testers and its months of Pro, for the site's owner. Since
+  betajoin (2026-11-09) anybody joins the testers in one press, so the page
+  lists them first: each with when and from where they joined, who left,
+  who said Not now, and where their month stands (/api/admin?op=beta_testers).
+  Then the month's queue as before (beta361, 2026-10-29): each application
+  ("tell us about you") with its answers and what the server read of it, filtered by where
   it stands, approved or declined with a note, every decision recorded
   with who and when; the spots used and left; and Grant pending months,
   which gives at Admission every month still waiting (once Pro launches).
@@ -45,6 +49,15 @@
   .signals .flag { color: var(--bad); font-weight: 600; }
   .app form { display: grid; gap: var(--s-3); margin-top: var(--s-4); }
   .app .said { margin: 0; min-height: 1.5em; color: var(--ink); }
+  .part-h { margin: var(--s-7) 0 var(--s-1); }
+  .testers { display: grid; margin: var(--s-4) 0 0; padding: 0; list-style: none; border: 1px solid var(--line);
+    border-radius: var(--r-2); background: var(--panel); }
+  .tester { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px var(--s-4); align-items: center;
+    padding: var(--s-3) var(--s-4); }
+  .tester + .tester { border-top: 1px solid var(--line); }
+  .tester b { overflow-wrap: anywhere; font-weight: 600; }
+  .tester small { grid-column: 1; color: var(--ink-soft); font-size: var(--t-small); }
+  .tester .pill { grid-row: 1 / span 2; grid-column: 2; }
 </style>
 <script src="/follow.js" type="module"></script>
 <script type="module" src="/beta-admin.js"></script>
@@ -83,7 +96,7 @@
 </header>
 <main id="main" class="wrap queue">
   <h1>Beta testers</h1>
-  <p class="sub">Applications to the beta, with what the server read of each. Nothing is decided for you: approve or decline each yourself.</p>
+  <p class="sub">Everybody who joined the beta, then the month of Pro's queue: what testers told us about themselves, with what the server read of each. Nothing is decided for you: approve or decline each month yourself.</p>
 
   <div id="gate" class="card">
     <p id="gate-note">Checking your sign-in…</p>
@@ -92,8 +105,19 @@
 
   <div id="view" hidden>
     <div class="stats">
+      <p class="stat"><b id="n-testers">—</b><span>testers</span></p>
+      <p class="stat"><b id="n-welcome">—</b><span>joined at sign-up</span></p>
+      <p class="stat"><b id="n-left">—</b><span>left</span></p>
+      <p class="stat"><b id="n-not-now">—</b><span>said Not now</span></p>
+    </div>
+    <h2 class="part-h" id="testers-h">Testers</h2>
+    <p class="note" id="testers-said">Newest first, then who left, then who said Not now.</p>
+    <ol class="testers" id="testers" aria-labelledby="testers-h"></ol>
+    <p class="state" id="testers-empty" hidden>Nobody has joined yet.</p>
+    <h2 class="part-h" id="months-h">Months of Pro</h2>
+    <div class="stats">
       <p class="stat"><b id="n-given">—</b><span>spots given</span></p>
-      <p class="stat"><b id="n-left">—</b><span>spots left</span></p>
+      <p class="stat"><b id="n-spots-left">—</b><span>spots left</span></p>
       <p class="stat"><b id="n-new">—</b><span>new</span></p>
       <p class="stat"><b id="n-waitlist">—</b><span>on the waitlist</span></p>
       <p class="stat"><b id="n-pending">—</b><span>months still to give</span></p>

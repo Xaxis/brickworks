@@ -1035,6 +1035,15 @@
 							"words": "Delete the step",
 							"key": "Alt+Delete",
 							"tip": "Take out the step the timeline is on; its parts join the step before"
+						},
+						{
+							"line": true
+						},
+						{
+							"name": "step_name",
+							"words": "Name the step…",
+							"key": "Shift+F2",
+							"tip": "What the step the timeline is on is called (\"Build the cockpit\"): said beside its number on the timeline, in Build it and in the booklet"
 						}
 					]
 				},
@@ -1525,6 +1534,15 @@
 					"line": true
 				},
 				{
+					"name": "report_bug",
+					"words": "Report a bug…",
+					"key": "Alt+Shift+R",
+					"tip": "Tell us what went wrong, with a picture of the window to mark the spot on"
+				},
+				{
+					"line": true
+				},
+				{
 					"name": "check_updates",
 					"words": "Check for updates…",
 					"key": "",
@@ -1818,6 +1836,7 @@
 		"step_merge": "alt-E",
 		"step_delete": "alt-Delete",
 		"step_to": "alt-T",
+		"step_name": "shift-F2",
 		"booklet_turn_left": "",
 		"booklet_turn_right": "",
 		"booklet_tilt_up": "",
@@ -1968,6 +1987,7 @@
 		"website": "",
 		"beta_hub": "",
 		"feedback": "",
+		"report_bug": "alt-shift-R",
 		"about": "",
 		"back_to_site": ""
 	}

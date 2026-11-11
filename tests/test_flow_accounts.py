@@ -10,6 +10,10 @@ Share. A flow that publishes now signs in as an account of the run's own
 signedOut: true }) and session.mjs's mintSession). Held here: that no flow
 presses Publish as the shared account, and that the sweep of accounts runs
 left behind takes those of ended processes and nothing else.
+
+And that every new account a flow mints has the beta's welcome answered
+before a page meets it (welcomeall, 2026-11-10), only when it is due, never
+for the owner, and not for a flow that says it will meet it itself.
 """
 
 from __future__ import annotations
@@ -90,4 +94,71 @@ def test_the_sweep_takes_only_accounts_of_ended_runs() -> None:
         "otherThrowaway": False,    # other flows' throwaways are theirs
         "shared": False,
         "mineUndated": False,
+    }, told
+
+
+# mintSession and mintCode against a stand-in Supabase: which of the beta's
+# functions each asked, by case.
+WELCOME = r"""
+import { mintCode, mintSession } from "SESSION";
+let member = { welcome: true };
+let asked = [];
+const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+globalThis.fetch = async (url, init = {}) => {
+  const { pathname } = new URL(url);
+  const body = init.body ? JSON.parse(init.body) : {};
+  if (pathname.startsWith("/rest/v1/rpc/beta_")) asked.push(pathname.slice("/rest/v1/rpc/".length));
+  if (pathname === "/auth/v1/admin/users") return json(422, {});
+  if (pathname === "/auth/v1/token") return json(200, { access_token: "a", refresh_token: "r", user: { id: "u1", email: body.email } });
+  if (pathname === "/auth/v1/admin/generate_link") return json(200, { id: "u2", email: body.email, email_otp: "123456" });
+  if (pathname === "/auth/v1/verify") return json(200, { access_token: "a", refresh_token: "r", user: { id: "u3", email: body.email } });
+  if (pathname === "/rest/v1/rpc/answer_age") return json(200, null);
+  if (pathname === "/rest/v1/rpc/beta_member") return member === 404 ? json(404, { code: "PGRST202" }) : json(200, member);
+  if (pathname === "/rest/v1/rpc/beta_leave") return json(200, { tester: false, state: "not_now", welcome: false });
+  return json(500, { unexpected: pathname });
+};
+const said = [];
+console.log = (line) => said.push(String(line));
+const seen = {};
+const run = async (name, how, as = { welcome: true }) => {
+  member = as;
+  asked = [];
+  await how();
+  seen[name] = asked.join(" ");
+};
+const fresh = "delivered+bw-new@resend.dev";
+await run("due", () => mintSession(fresh));
+await run("dueAgain", () => mintSession(fresh));
+await run("tester", () => mintSession(fresh), { welcome: false, tester: true, state: "tester" });
+await run("leftToTheFlow", () => mintSession(fresh, { welcome: false }));
+await run("code", () => mintCode(fresh));
+await run("codeLeftToTheFlow", () => mintCode(fresh, { welcome: false }));
+await run("owner", () => mintSession("owner@example.com"));
+await run("ownersCode", () => mintCode("owner@example.com"));
+await run("notApplied", () => mintSession(fresh), 404);
+seen.said = said;
+process.stdout.write(JSON.stringify(seen) + "\n");
+"""
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="needs node")
+def test_a_minted_account_has_the_beta_welcome_answered_only_when_due() -> None:
+    env = {"PATH": "/usr/bin:/bin", "SUPABASE_URL": "http://supabase.invalid", "SUPABASE_SECRET_KEY": "secret",
+           "SUPABASE_PUBLISHABLE_KEY": "key", "MASTER_EMAIL": "Owner@example.com"}
+    node = shutil.which("node")
+    out = subprocess.run([node, "--input-type=module", "-e", WELCOME.replace("SESSION", SESSION.as_uri())],
+                         cwd=ROOT, capture_output=True, text=True, timeout=60, env=env)
+    assert out.returncode == 0, out.stderr
+    told = json.loads(out.stdout.strip().splitlines()[-1])
+    assert told == {
+        "due": "beta_member beta_leave",       # Not now, as signing up would have answered it
+        "dueAgain": "beta_member beta_leave",  # due again (not kept): answered again
+        "tester": "beta_member",               # a tester is never made to leave
+        "leftToTheFlow": "",                   # the beta's own flows meet it themselves
+        "code": "beta_member beta_leave",      # a code typed into the dialog: answered before
+        "codeLeftToTheFlow": "",
+        "owner": "",                           # never the owner's account
+        "ownersCode": "",
+        "notApplied": "beta_member",           # no beta_join.sql there: quiet
+        "said": [],
     }, told

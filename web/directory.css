@@ -205,7 +205,8 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 .model-page .earlier li { margin: 4px 0; overflow-wrap: anywhere; }
 .model-page .earlier a { color: var(--ink); }
 /* Its parts (api/share.js partsSection, web/model-page.js startParts): how
-   many in how many lots, Colour or Kind and the two shops' lists, then a
+   many in how many lots, Colour or Kind and the shops' lists (a model's
+   three: what LEGO® Pick a Brick leaves off said under them), then a
    row a colour (or a kind) and under it a row a lot: its picture, its name,
    its number and colour, and how many. Every row is LOT_ROW (api/share.js)
    tall and a name too long for its row ends in an ellipsis, so the space the
@@ -213,6 +214,9 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 .model-page .parts .note { margin: 0 0 var(--s-3); color: var(--ink-soft); }
 .parts-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-3); }
 .parts-bar .segmented { margin-right: auto; }
+/* The shops' lists, one group: it wraps as a whole beside Colour and Kind
+   or under them, never one shop a row apart from the rest. */
+.parts-shops { display: flex; flex-wrap: wrap; gap: var(--s-2); }
 .lot-list { list-style: none; margin: 0 0 var(--s-3); padding: 0; }
 .lot-list li {
 	display: flex; align-items: center; gap: var(--s-3); height: 60px; min-width: 0;

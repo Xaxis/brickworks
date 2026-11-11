@@ -27,6 +27,25 @@
 ## Japanese in Droid Sans Fallback here, a TrueType face; Noto Sans CJK, a
 ## CFF face as a Mac's Hiragino is, is given the note by hand and read the
 ## same, drawn by poppler and by Ghostscript where poppler draws Droid.
+## Words right to left (pdfbidi): a second copy of dialog_a given a cover
+## title in Arabic by page_setup and, by edit_booklet, step words set as a
+## step's name is (3.6 mm): a line of Latin, Hebrew and a size ("Step 3:
+## בנה את תא הטייס 2x4") on step 1, three emoji, one a ZWJ sequence, on
+## step 2, and Hebrew on step 3. Is each line printed as the booklet's page
+## (BookletPng, the page's picture) draws it: the Hebrew right to left, the
+## Arabic joined? Each run of ink between word gaps is where the page's is,
+## its box within 2 px on every side, the PDF drawn by poppler and the page
+## by BookletPng at 12.5 px a mm (317.5 dots an inch, where these sizes are
+## whole pixels, so the page's rounding of its type to a whole pixel is not
+## measured). Does pdftotext read the Hebrew and the Arabic back as typed
+## (its own marks round a right-to-left run, U+202A-U+202C, aside), and the
+## mixed line as it reads any PDF of the line the page shows, Chromium's own
+## print of the booklet too: "Step 3: 2 בנה את תא הטייסx4", the bidi
+## algorithm having set the 2 left of the Hebrew, which no reading of a page
+## left to right can put back (pdfbidi, 2026-11-09)? Are the emoji glyphs,
+## read back as typed, with no "?" in the PDF and none named missing, the
+## words between them where the page's are, each set in the room the page's
+## colour emoji takes?
 ## --words-only stops there. --against=DIR (the commit before's --into):
 ## its castle booklet's PDF written again from its own file, each page the
 ## same at 300 dots an inch to the pixel, the file no more than 10% bigger.
@@ -66,6 +85,16 @@ const TITLE := "Крепость у моря — сборка"
 const FOOTER := "Οδηγίες συναρμολόγησης"
 const NOTE := "城の門を組み立てる、二つ目の手順"
 const FIXTURE := "res://tests/fixtures/booklook/dialog_a.ldr"
+## Words right to left, and emoji: what each is on the booklet.
+const ARABIC := "بناء القلعة الكبيرة"
+const HEBREW := "בנה את תא הטייס"
+const MIXED := "Step 3: בנה את תא הטייס 2x4"
+## MIXED as pdftotext reads it from any PDF of the line the page shows.
+const MIXED_READ := "Step 3: 2 בנה את תא הטייסx4"
+const EMOJI := "🚀 Rocket 👩‍🚀 crew 🧱"
+## The pages' density for the comparison: 12.5 px a mm, where 3.6 mm and
+## 10 mm type are whole pixels.
+const COMPARED_AT := 12.5
 
 
 func _initialize() -> void:
@@ -120,6 +149,7 @@ func _run() -> void:
 		_quit()
 		return
 	await _words(out)
+	await _bidi(out)
 	if words_only:
 		_quit()
 		return
@@ -253,6 +283,291 @@ func _words(out: String) -> void:
 	OS.execute("pdftoppm", ["-r", "150", "-png", pdf, ProjectSettings.globalize_path(out.path_join("words-pdf"))])
 	_checked(made["path"], made["pdf"], made["zip"], out)
 	await _cff(made["path"], out)
+
+
+## Hebrew, Arabic, a line of both directions and emoji, through the
+## person's way to a PDF: printed as the page draws them, read back as
+## typed.
+func _bidi(out: String) -> void:
+	print("")
+	print("a cover title in Arabic, step words in Hebrew, in Latin and Hebrew, and emoji (pdfbidi)")
+	var model: String = out.path_join("bidi.ldr")
+	var copy: FileAccess = FileAccess.open(model, FileAccess.WRITE)
+	copy.store_buffer(FileAccess.get_file_as_bytes(FIXTURE))
+	copy.close()
+	_main.call("_open", model)
+	var store: Object = _main.get("_store")
+	for _n: int in 600:
+		if (store.get("awaited") as Array).is_empty():
+			break
+		await process_frame
+	await _frames(10)
+	var tools := AppTools.new()
+	tools.app = _main
+	tools.assistant = _main.get("_assistant")
+	print("    page_setup: %s" % str(await tools.run("page_setup", {"title": ARABIC})).left(200))
+	# The mixed line on a page whose letters are mostly Latin, which poppler
+	# reads left to right; the Hebrew alone on its own, which it reads right
+	# to left. A page mostly Hebrew it reads right to left, the mixed line's
+	# Latin last, a PDF of ours or Chromium's alike.
+	var placed: Array = [[1, MIXED, 20.0], [2, EMOJI, 145.0], [3, HEBREW, 20.0]]
+	for each: Array in placed:
+		print("    edit_booklet: %s" % str(await tools.run("edit_booklet", {"step": each[0], "text": {
+			"words": each[1], "x": each[2], "y": 150.0, "w": 110.0, "h": 6.0, "size": 3.6}})).left(200))
+	var made: Dictionary = await _booklet(out.path_join("bidi_instructions.html"))
+	if made.is_empty():
+		return
+	var pdf: String = ProjectSettings.globalize_path(made["pdf"])
+	var line: String = made["pdf_line"]
+	_check("the export names no letter missing (%s)" % (line.substr(line.find(";")) if line.contains(";")
+		else "names none"), line.begins_with("wrote ") and not line.contains("cannot print"))
+	var said: Array = []
+	OS.execute("pdftotext", [pdf, "-"], said)
+	var words: String = "".join(said)
+	# poppler's own marks round a run it read right to left.
+	for mark: String in ["\u202a", "\u202b", "\u202c"]:
+		words = words.replace(mark, "")
+	for typed: Array in [["cover title in Arabic", ARABIC, ARABIC], ["step words in Hebrew", HEBREW, HEBREW],
+			["mixed line, as poppler reads any PDF of it", MIXED_READ, MIXED],
+			["emoji, one a ZWJ sequence", EMOJI, EMOJI]]:
+		_check("pdftotext reads the %s: \"%s\"" % [typed[0], typed[1]], words.contains(typed[1]))
+	_check("...with no \"?\" in the whole PDF's words (%d)" % words.count("?"), words.count("?") == 0)
+	var faces: PackedStringArray = _fonts(pdf, "the right-to-left PDF")
+	_check("...the emoji in the app's own Noto Emoji (%s)" % ", ".join(faces),
+		Array(faces).any(func(face: String) -> bool: return face.contains("NotoEmoji")))
+	# Where each line is, as the page lays it out.
+	var html: String = made["path"]
+	var found: Dictionary = {}
+	var order: Array = [0]
+	var read := BookletRead.new()
+	read.read_file(html, func(laid: BookletRead.Page) -> void:
+		order[0] += 1
+		for op: Dictionary in laid.ops:
+			if op["k"] == "text" and [ARABIC, HEBREW, MIXED, EMOJI].has(str(op["text"])):
+				found[str(op["text"])] = {"op": op, "order": order[0], "number": laid.number,
+					"size": laid.size})
+	_check("the booklet's page has each line (%d of 4)" % found.size(), found.size() == 4)
+	var drawer := BookletPng.new()
+	root.add_child(drawer)
+	var source: String = FileAccess.get_file_as_string(html)
+	var stem: String = ProjectSettings.globalize_path(out.path_join("bidi-at%s" % str(COMPARED_AT * 25.4)))
+	for typed: Array in [["cover title in Arabic", ARABIC, "arabic"], ["step words in Hebrew", HEBREW, "hebrew"],
+			["mixed line", MIXED, "mixed"], ["emoji line", EMOJI, "emoji"]]:
+		if not found.has(typed[1]):
+			continue
+		var where: Dictionary = found[typed[1]]
+		var page: Image = drawer.page_image(source, int(where["number"]), COMPARED_AT)
+		DirAccess.remove_absolute(stem + ".png")
+		OS.execute("pdftoppm", ["-r", str(COMPARED_AT * 25.4), "-f", str(where["order"]), "-l",
+			str(where["order"]), "-singlefile", "-png", pdf, stem])
+		var printed: Image = Image.load_from_file(stem + ".png") if FileAccess.file_exists(stem + ".png") else null
+		if not _check("the %s's page drawn by the booklet and by poppler, %s and %s px" % [typed[0],
+				str(page.get_size()) if page != null else "none", str(printed.get_size()) if printed != null
+				else "none"], page != null and printed != null
+				and absi(page.get_width() - printed.get_width()) <= 1 and absi(page.get_height() - printed.get_height()) <= 1):
+			continue
+		var op: Dictionary = where["op"]
+		var size: float = op["size"]
+		var at: Vector2 = op["at"]
+		var band := Rect2i(Vector2i(roundi((at.x - size) * COMPARED_AT), roundi((at.y - size * 1.05) * COMPARED_AT)),
+			Vector2i(roundi(minf(size * str(typed[1]).length() * 0.8 + size * 2.0,
+			float(where["size"].x) - at.x + size) * COMPARED_AT), roundi(size * 1.45 * COMPARED_AT)))
+		band = band.intersection(Rect2i(Vector2i.ZERO, page.get_size())).intersection(
+			Rect2i(Vector2i.ZERO, printed.get_size()))
+		var name: String = typed[2]
+		page.get_region(band).save_png(ProjectSettings.globalize_path(out.path_join("bidi-%s-page.png" % name)))
+		printed.get_region(band).save_png(ProjectSettings.globalize_path(out.path_join("bidi-%s-pdf.png" % name)))
+		if typed[1] == EMOJI:
+			# The page's emoji are the system's, in colour; the PDF's are the
+			# app's own, in outline, set in the room the page's take: the
+			# words between where the page's are, each emoji's middle near
+			# its.
+			var gap: int = roundi(size * 0.2 * COMPARED_AT)
+			var theirs: Array = _ink_runs(page, band, gap)
+			var ours: Array = _ink_runs(printed, band, gap)
+			var spoken: Array = []
+			var middles: Array = []
+			for run: int in mini(theirs.size(), ours.size()):
+				var one: Rect2i = theirs[run]
+				var other: Rect2i = ours[run]
+				if run % 2 == 1:
+					spoken.append(maxi(absi(one.position.x - other.position.x), absi(one.end.x - other.end.x)))
+				else:
+					middles.append(absf(one.get_center().x - other.get_center().x))
+			_check("the %s prints a run of ink a word and an emoji, as the page (%d runs, the page %d)" % [
+				typed[0], ours.size(), theirs.size()], ours.size() == theirs.size() and ours.size() == 5)
+			_check("...its words where the page's are (each within %s px), the emoji's middles %s px from the page's" % [
+				str(spoken.max()) if not spoken.is_empty() else "-", str(middles)], not spoken.is_empty()
+				and int(spoken.max()) <= 2 and not middles.is_empty() and float(middles.max()) <= size * 0.1 * COMPARED_AT)
+			continue
+		var said_runs: String = _same_ink(page, printed, band, roundi(size * 0.2 * COMPARED_AT))
+		_check("the %s's ink where the page's is (%s)" % [typed[0], said_runs], said_runs.begins_with("ok"))
+		if typed[1] == ARABIC:
+			# The page's picture and the PDF could share one mistake (pre261
+			# drew a spaced line a letter at a time in both): the line shaped
+			# whole by the engine, as any label of the app's draws it, says
+			# how wide its words are joined.
+			var face := FontFile.new()
+			face.data = FileAccess.get_file_as_bytes("res://assets/fonts/LiberationSans-Bold.ttf")
+			face.allow_system_fallback = true
+			var whole: float = face.get_string_size(ARABIC, HORIZONTAL_ALIGNMENT_LEFT, -1, roundi(size * COMPARED_AT)).x \
+				+ float(op["spacing"]) * COMPARED_AT * (ARABIC.length() - 1)
+			var wide: Array = []
+			for image: Image in [page, printed]:
+				var inked: Array = _ink_runs(image, band, roundi(size * 0.2 * COMPARED_AT))
+				wide.append((inked[-1] as Rect2i).end.x - (inked[0] as Rect2i).position.x if not inked.is_empty() else 0)
+			_check("...as wide as the engine shapes it whole, joined (%d px on the page, %d printed, %d shaped)" % [
+				wide[0], wide[1], roundi(whole)], absf(wide[0] - whole) <= whole * 0.03
+				and absf(wide[1] - whole) <= whole * 0.03)
+	drawer.queue_free()
+
+
+## Whether the ink of [param printed] inside [param band] is where that of
+## [param page] is: each run of the page's ink between gaps of [param gap]
+## px or more, the printed ink inside it (and half a gap either side) boxed
+## within 2 px of the page's on each side, the printed page's runs as many,
+## and of each run's ink, the page's and the printed, all but 3% within
+## 2 px of the other's (a word's letters in the other order fill much the
+## same box, not the same pixels). "ok: ..." with the runs' worst, else
+## what is off.
+static func _same_ink(page: Image, printed: Image, band: Rect2i, gap: int) -> String:
+	var runs: Array = _ink_runs(page, band, gap)
+	var theirs: Array = _ink_runs(printed, band, gap)
+	if runs.is_empty():
+		return "no ink on the page"
+	var worst: int = 0
+	var off: Array = []
+	var mask: Array = _ink_mask(printed, band)
+	var own: Array = _ink_mask(page, band)
+	var near_printed: Array = _grown(mask, 2)
+	var near_page: Array = _grown(own, 2)
+	var least: float = 1.0
+	for run: Rect2i in runs:
+		var span := Vector2i(maxi(run.position.x - gap / 2, 0), mini(run.end.x + gap / 2, band.size.x))
+		var shared: float = minf(_share(own, near_printed, span), _share(mask, near_page, span))
+		least = minf(least, shared)
+		if shared < 0.97:
+			off.append("%d-%d px: %d%% of the ink within 2 px" % [run.position.x, run.end.x, floori(shared * 100.0)])
+		var low := Vector2i(1 << 30, 1 << 30)
+		var high := Vector2i(-1, -1)
+		for x: int in range(maxi(run.position.x - gap / 2, 0), mini(run.end.x + gap / 2, band.size.x)):
+			for y: int in band.size.y:
+				if (mask[y] as PackedByteArray)[x]:
+					low = low.min(Vector2i(x, y))
+					high = high.max(Vector2i(x + 1, y + 1))
+		if high.x < 0:
+			off.append("no printed ink at %d-%d px" % [run.position.x, run.end.x])
+			continue
+		var apart: int = maxi(maxi(absi(low.x - run.position.x), absi(high.x - run.end.x)),
+			maxi(absi(low.y - run.position.y), absi(high.y - run.end.y)))
+		worst = maxi(worst, apart)
+		if apart > 2:
+			off.append("%d-%d px printed %d-%d" % [run.position.x, run.end.x, low.x, high.x])
+	if theirs.size() != runs.size():
+		off.append("%d runs printed, %d on the page" % [theirs.size(), runs.size()])
+	if not off.is_empty():
+		return "%d runs, %s" % [runs.size(), "; ".join(off.slice(0, 4))]
+	return "ok: %d runs, each within %d px, %d%% of each one's ink within 2 px of the other's" % [runs.size(),
+		worst, floori(least * 100.0)]
+
+
+## [param mask] (rows of 1 and 0) with each inked pixel grown by [param by]
+## px every way.
+static func _grown(mask: Array, by: int) -> Array:
+	var across: Array = []
+	for row: PackedByteArray in mask:
+		var wide := PackedByteArray()
+		wide.resize(row.size())
+		for x: int in row.size():
+			if row[x]:
+				for at: int in range(maxi(x - by, 0), mini(x + by + 1, row.size())):
+					wide[at] = 1
+		across.append(wide)
+	var out: Array = []
+	for y: int in across.size():
+		var grown := PackedByteArray()
+		grown.resize((across[y] as PackedByteArray).size())
+		for other: int in range(maxi(y - by, 0), mini(y + by + 1, across.size())):
+			var row: PackedByteArray = across[other]
+			for x: int in row.size():
+				if row[x]:
+					grown[x] = 1
+		out.append(grown)
+	return out
+
+
+## The share of [param mask]'s ink between columns [param span] that
+## [param near] has: 1.0 where there is none.
+static func _share(mask: Array, near: Array, span: Vector2i) -> float:
+	var inked: int = 0
+	var found: int = 0
+	for y: int in mask.size():
+		var row: PackedByteArray = mask[y]
+		var close: PackedByteArray = near[y]
+		for x: int in range(span.x, span.y):
+			if row[x]:
+				inked += 1
+				found += close[x]
+	return 1.0 if inked == 0 else float(found) / inked
+
+
+## The ink of [param image] inside [param band]: a row a PackedByteArray,
+## 1 where a pixel is far from the band's commonest colour (the page, or
+## the cover's band under its white title).
+static func _ink_mask(image: Image, band: Rect2i) -> Array:
+	var counts: Dictionary = {}
+	for y: int in range(0, band.size.y, 2):
+		for x: int in range(0, band.size.x, 2):
+			var key: Color = image.get_pixel(band.position.x + x, band.position.y + y)
+			var named: int = (roundi(key.r * 15) << 8) | (roundi(key.g * 15) << 4) | roundi(key.b * 15)
+			counts[named] = int(counts.get(named, 0)) + 1
+	var most: int = 0
+	for named: int in counts:
+		if int(counts[named]) > int(counts.get(most, 0)):
+			most = named
+	var behind := Color(((most >> 8) & 15) / 15.0, ((most >> 4) & 15) / 15.0, (most & 15) / 15.0)
+	var out: Array = []
+	for y: int in band.size.y:
+		var row := PackedByteArray()
+		row.resize(band.size.x)
+		for x: int in band.size.x:
+			var pixel: Color = image.get_pixel(band.position.x + x, band.position.y + y)
+			row[x] = 1 if maxf(absf(pixel.r - behind.r), maxf(absf(pixel.g - behind.g), absf(pixel.b - behind.b))) > 0.35 else 0
+		out.append(row)
+	return out
+
+
+## Each run of ink in [param image] inside [param band], left to right,
+## between gaps of [param gap] px or more: its box, in the band's pixels.
+static func _ink_runs(image: Image, band: Rect2i, gap: int) -> Array:
+	var mask: Array = _ink_mask(image, band)
+	var columns := PackedInt32Array()
+	columns.resize(band.size.x)
+	for y: int in band.size.y:
+		var row: PackedByteArray = mask[y]
+		for x: int in band.size.x:
+			columns[x] += row[x]
+	var runs: Array = []
+	var start: int = -1
+	var last: int = -1
+	for x: int in band.size.x + gap + 1:
+		var inked: bool = x < band.size.x and columns[x] > 0
+		if inked:
+			if start < 0:
+				start = x
+			last = x
+		elif start >= 0 and x - last >= gap:
+			var top: int = 1 << 30
+			var bottom: int = -1
+			for y: int in band.size.y:
+				for column: int in range(start, last + 1):
+					if (mask[y] as PackedByteArray)[column]:
+						top = mini(top, y)
+						bottom = maxi(bottom, y + 1)
+						break
+			runs.append(Rect2i(start, top, last + 1 - start, bottom - top))
+			start = -1
+	return runs
 
 
 ## The letters of [param text] no font of the app's has: neither its own
