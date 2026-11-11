@@ -293,7 +293,7 @@ func _c_post16() -> void:
 	var saved: String = _save()
 	print("  post.ldr as saved:\n    %s" % _section(saved, "post.ldr").strip_edges().replace("\n",
 		"\n    "))
-	_check("...saved: post.ldr once, its 3024 in 16", saved.count("0 FILE post") == 1
+	_check("...saved: post.ldr once, its 3024 in 16", saved.count("0 FILE post.ldr") == 1
 		and _section(saved, "post.ldr").contains("1 16 ") and _section(saved, "post.ldr")
 			.split("3024").size() == 2 and _section(saved, "post.ldr").contains("3024.dat")
 		and RegEx.create_from_string("\\n1 16 [^\\n]*3024\\.dat").search(
