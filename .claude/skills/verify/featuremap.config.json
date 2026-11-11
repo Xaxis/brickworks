@@ -5148,6 +5148,13 @@
       "entry": "src/dev/lineart_probe.gd",
       "reach": "tools/probe.sh lineart [-- --shots=DIR --reference=DIR]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720, through the sign-in screen with a throwaway account (.env): Render's default of the car and a scene's window and Product kept for an older build's run (--reference) byte for byte; the Look row clicked; Line art's paper, greys, outline, the wall's seams inked and dots where the light leaves a face; Comic's colours; on nothing; an animation's moved part leaves no line; render_model; 10036-1 in both looks to look at)",
       "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "orangecheck window answered",
+      "entry": "tools/web/oc_echo_check.mjs",
+      "reach": "node tools/web/oc_echo_check.mjs   (no .env; nothing reached off this machine)",
+      "area": "account"
     }
   ]
 }

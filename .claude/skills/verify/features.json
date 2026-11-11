@@ -1877,6 +1877,14 @@
       "tests": []
     },
     {
+      "id": "cli:orangecheck window answered",
+      "kind": "cli",
+      "entry": "tools/web/oc_echo_check.mjs",
+      "reach": "node tools/web/oc_echo_check.mjs   (no .env; nothing reached off this machine)",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "cli:outside probe",
       "kind": "cli",
       "entry": "src/dev/outside_probe.gd",
