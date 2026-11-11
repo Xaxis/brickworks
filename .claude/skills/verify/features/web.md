@@ -6838,7 +6838,10 @@ reference in light and dark at 390 and 1400 px with nothing sideways and
 no error, Ctrl+K finding "fresh eyes" and "Build together" first and Enter
 going there, `/` and Escape, the pages list behind Browse the docs at 390
 and down the left at 1400 with the page marked, On this page following the
-scroll, and a deep link landing with its heading in view. Pictures in
+scroll, a deep link landing with its heading in view, and each section that
+moved to another page (a `"page#anchor"` in `docs-site/_moved.json`, sent on
+by `web/docs.js` from the old page's `data-moved`, since no fragment reaches
+the server) landing where it went from its old address. Pictures in
 `--out`. The app's way in is Help, Documentation (`src/ui/shell.gd`,
 command `docs`), which opens the page of the panel in front.
 
@@ -6847,7 +6850,8 @@ command `docs`), which opens the page of the panel in front.
 Every picture on a docs page is made, never taken by hand
 (docs/DOCS_PLAN.md, "The pictures"). Each page's are written down in
 `docs-site/pictures/<page>.json`: an id, the app's (`source: app`, a setup of
-menu commands, keys, clicks, a part in hand or the pointer over one) or the
+menu commands, keys, clicks, a part in hand or the pointer over one, or
+models saved at fixed times, since File, Open and Versions say each save's time) or the
 site's (`source: site`, a route, what its server answers, its themes), the
 crop (a control by its path from Main, `@opened` for the dialog the setup
 opened, or a rectangle), numbered marks, its alt and caption, and the

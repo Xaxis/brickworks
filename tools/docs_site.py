@@ -805,11 +805,9 @@ def menus_data() -> dict:
 
 
 def shortcuts() -> str:
-    out = ["Made from the list the app's own **Keys and controls** panel draws ([[F1]] or [[,]] in the app), "
-           "and from the menus' keys, so it says exactly what the app answers to.\n",
-           "These are the app's own keys. To use BrickLink Studio's, Mecabricks' or LDCad's instead, or to set "
-           "your own, see [Your own keys](/docs/panels-and-settings#keys).\n",
-           "> [!NOTE]\n> On a Mac, press Cmd wherever this page says Ctrl.\n"]
+    # The page's own words, and its picture of the keys sheet, are in
+    # docs-site/shortcuts.md; these are the tables under them.
+    out = []
     for section, rows in keyboard():
         out.append(f"## {section}\n")
         body = []
@@ -1166,7 +1164,7 @@ def document(nav: list[dict], pages: dict[str, Page], order: list[Page], page: P
 <button type="button" class="docs-search-open wide" data-docs-search aria-keyshortcuts="Control+K Meta+K" aria-label="Search the docs">{ICON_SEARCH}<span>Search</span><kbd class="keys"><kbd>Ctrl</kbd><kbd>K</kbd></kbd></button>
 {sidebar(nav, pages, page)}
 </nav>
-<main id="main" class="docs-main" tabindex="-1">
+<main id="main" class="docs-main" tabindex="-1"{moved_here(page)}>
 {crumbs}
 <article class="docs-article">
 <header class="docs-head{' start' if page.name == 'index' else ''}">
@@ -1430,20 +1428,43 @@ def routes() -> set[str]:
 
 def moved() -> dict[str, str]:
     """docs-site/_moved.json: a page's old name and its new one, which
-    tools/deploy.sh answers with a 308 so an old link still lands."""
+    tools/deploy.sh answers with a 308 so an old link still lands; or a
+    section's, "page#anchor", which went to another page while its page
+    stayed (moved_here)."""
     found = json.loads((SRC / "_moved.json").read_text(encoding="utf-8"))
     return {old: new for old, new in found.items() if not old.startswith("$")}
+
+
+def moved_here(page: Page) -> str:
+    """The attribute that sends a link to a section that moved off [page]
+    on to where it went: a fragment never reaches the server, so no 308 can,
+    and web/docs.js follows it when the page has no such id. A desktop app
+    already installed opens its panels' old sections (src/ui/docs_pages.gd)."""
+    sections = {old.partition("#")[2]: "/docs/" + new for old, new in moved().items()
+                if old.partition("#")[0] == page.name and "#" in old}
+    if not sections:
+        return ""
+    return f' data-moved="{html.escape(json.dumps(sections, sort_keys=True), quote=True)}"'
 
 
 def check() -> list[str]:
     problems: list[str] = []
     nav, pages = load()
     names = {p.name for p in pages}
+    headings = {p.name: {a for _, a, _ in p.headings} for p in pages}
     for old, new in moved().items():
-        if new not in names:
+        page, _, anchor = new.partition("#")
+        if page not in names:
             problems.append(f"docs-site/_moved.json sends {old} to {new}, which is no page")
-        if old in names:
+        elif anchor and anchor not in headings[page]:
+            problems.append(f"docs-site/_moved.json sends {old} to {new}, which is no heading on {page}")
+        was, _, section = old.partition("#")
+        if not section and old in names:
             problems.append(f"docs-site/_moved.json moves {old}, which is still a page")
+        elif section and was not in names:
+            problems.append(f"docs-site/_moved.json moves a section of {was}, which is no page")
+        elif section and section in headings[was]:
+            problems.append(f"docs-site/_moved.json moves {old}, which is still a heading there")
     features = json.loads(FEATURES.read_text(encoding="utf-8"))["features"]
     ids = {f["id"] for f in features}
     rules = internal()

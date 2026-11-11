@@ -37,6 +37,10 @@
 ##   {"call": "path.method", "args": [...]} {"set": "path.property", "value": v}
 ##   {"take": {"part": "3001", "colour": 4}} a part into hand, as its tile in the bin
 ##   {"assistant": true}                    the assistant shown (Settings)
+##   {"saved": [{"name": "Red car", "from": "res://models/car.ldr",
+##     "at": "2026-10-04T10:12:00", "versions": [{"at": "...", "parts": 20}]}]}
+##                                          models saved here before, at fixed
+##                                          times (_seed_saved)
 ##   {"frames": 30}
 ## Each starts as someone who has been here before (Build your first model
 ## skipped, the offer of the assistant closed) unless "first_visit": true.
@@ -498,6 +502,8 @@ func _do(step: Dictionary) -> void:
 	elif step.has("assistant"):
 		# As Settings' "Show the assistant" does: on, remembered, its column open.
 		_main.call("set_assistant", bool(step["assistant"]))
+	elif step.has("saved"):
+		_seed_saved(step["saved"])
 	elif step.has("frames"):
 		await _frames(int(step["frames"]))
 	else:
@@ -508,6 +514,77 @@ func _do(step: Dictionary) -> void:
 func _loading() -> bool:
 	var world: BrickWorld = _main.get("_world")
 	return world != null and world.has_method("loading") and bool(world.call("loading"))
+
+
+## Models saved here before the picture, each at a fixed time. File, Open
+## and File, Versions… say when each was saved ("today at 14:05:09"), so a
+## save made by a step would put the clock in the picture, and every run
+## would make it again. Each is written as Save leaves one: its file in
+## ModelStore.SAVE_DIR, last changed at "at" (as this computer's clock says
+## it), and its saves kept as ModelVersions keeps them, named for their
+## times: each of "versions" with the model's first "parts" parts, older
+## first, then the model whole at "at", its last save.
+func _seed_saved(models: Array) -> void:
+	DirAccess.make_dir_recursive_absolute(ModelStore.SAVE_DIR)
+	for model: Dictionary in models:
+		var name: String = str(model.get("name", ""))
+		var text: String = FileAccess.get_file_as_string(str(model.get("from", "")))
+		if name.is_empty() or text.is_empty():
+			_failed.append("no model to save as %s from %s" % [name, model.get("from", "")])
+			continue
+		# Called by its name, as Save writes it: its first line, then Name:.
+		var lines: PackedStringArray = text.split("\n")
+		for n: int in mini(lines.size(), 2):
+			if lines[n].begins_with("0 Name:"):
+				lines[n] = "0 Name: %s.ldr" % name
+			elif n == 0 and lines[n].begins_with("0 ") and not lines[n].contains(":"):
+				lines[n] = "0 " + name
+		text = "\n".join(lines)
+		var saves: Array = []
+		for version: Dictionary in model.get("versions", []):
+			saves.append([_clock(str(version.get("at", ""))), _first_parts(text, int(version.get("parts", 0)))])
+		saves.append([_clock(str(model.get("at", ""))), text])
+		DirAccess.make_dir_recursive_absolute(ModelVersions.folder(name))
+		for save: Array in saves:
+			if int(save[0]) <= 0:
+				_failed.append("%s: a save's time is not a date and time" % name)
+				return
+			var packed: PackedByteArray = str(save[1]).to_utf8_buffer().compress(FileAccess.COMPRESSION_GZIP)
+			var kept := FileAccess.open(ModelVersions.folder(name) + "%013d-%d-%d.ldr.gz" % [
+				int(save[0]) * 1000, ModelStore.count_in(str(save[1])), packed.size()], FileAccess.WRITE)
+			kept.store_buffer(packed)
+			kept.close()
+		var path: String = ModelStore.SAVE_DIR + name + ".ldr"
+		var file := FileAccess.open(path, FileAccess.WRITE)
+		file.store_string(text)
+		file.close()
+		# Godot sets no file's time; the system's touch does (a probe runs on Linux).
+		if OS.execute("touch", ["-m", "-d", "@%d" % int(saves[-1][0]), ProjectSettings.globalize_path(path)]) != 0:
+			_failed.append("could not date %s" % path)
+
+
+## [param at], "2026-10-04T10:12:00", as the Unix seconds this computer's
+## clock says it at (ModelVersions.when_saved adds the zone back); 0 when
+## it is not a date and time.
+func _clock(at: String) -> int:
+	if at.length() < 19:
+		return 0
+	return Time.get_unix_time_from_datetime_string(at) \
+		- int(Time.get_time_zone_from_system().get("bias", 0)) * 60
+
+
+## [param text] with only its first [param count] parts (its other lines
+## kept): an earlier save of the model.
+func _first_parts(text: String, count: int) -> String:
+	var out: PackedStringArray = []
+	var parts: int = 0
+	for line: String in text.split("\n"):
+		if line.strip_edges().begins_with("1 "):
+			parts += 1
+			if parts > count:
+				continue
+		out.append(line)
+	return "\n".join(out)
 
 
 ## [param words] as a key: "Ctrl+Shift+Z", "F1", "Escape", "[".
