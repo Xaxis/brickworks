@@ -9,7 +9,7 @@
    ],
    "crop": "@opened",
    "pad": 0,
-   "alt": "My collection: the sets and loose parts you own, with ways to add a set by its number, from a photo of its box, or from Rebrickable.",
+   "alt": "My collection, empty, on What I own: a box for set numbers with Add sets and Photo…, Rebrickable CSV… and BrickLink XML…, your Rebrickable key or username with Fetch, and the Loose parts row; What do I need? and What can I build? along the top.",
    "caption": "File › My collection…",
    "features": ["ui:my collection"]
   },
@@ -22,7 +22,7 @@
    ],
    "crop": "@opened",
    "pad": 0,
-   "alt": "The car's parts list: each part's picture, name, colour and how many, with What do I need? and the shop lists at the foot.",
+   "alt": "The car's parts list, 61 pieces in 32 lots: each with how many, its picture, number, name and colour; along the top What do I need?, Save as CSV, and the BrickLink, Rebrickable and LEGO® Pick a Brick lists.",
    "caption": "Build › Parts list (P).",
    "features": ["ui:parts lists for shops"]
   }

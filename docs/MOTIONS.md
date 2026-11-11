@@ -604,3 +604,128 @@ Left for later:
   order.
 - The suggestion list could offer "Show it all" once a model has two or
   more motions.
+
+## What unit drive built (drive, 2026-11-07)
+
+APP_UX6 #12: Kinebrick Studio's car drives; here a motion can drive the
+whole model along the ground, its wheels turning as they roll.
+
+- **A path** is a motion's: its legs, each straight so many studs (less
+  than 0 backwards) or left or right so many degrees on a radius, over so
+  many seconds, eased (gathering speed over its first fifth, slowing over
+  its last) or not; the axles that roll, and the steering:
+
+      0 !BRICKWORKS MOTION "Drive and turn left" AFTER "" SECONDS 8
+      0 !BRICKWORKS MOTION_PATH "Drive and turn left" SECONDS 8 EASE STRAIGHT 32 LEFT 90 RADIUS 30
+      0 !BRICKWORKS MOTION_WHEEL "Drive and turn left" AT 0 JOINT PART 3482 15 70 0 -70
+      0 !BRICKWORKS MOTION_WHEEL "Drive and turn left" AT 0 JOINT PART 3482 15 -70 0 -70
+      0 !BRICKWORKS MOTION_WHEEL "Drive and turn left" AT 0 JOINT PART 3482 15 70 0 160
+      0 !BRICKWORKS MOTION_STEER "Drive and turn left" AT 0 JOINT PART 2819 7 0 -48 24
+
+  read at the edge like the rest (`Motions._read_path`, `leg_of`), each
+  number snapped to the hundredth (seconds the thousandth) the file writes
+  it to before it is judged: a leg or seconds that snaps to 0, a leg past
+  its limits, a turn with no RADIUS, a 33rd leg, a second path or steering
+  is refused. A refused line, and every line of a motion left moving
+  nothing, is said on open and in list_motions ("6 motion lines not read,
+  kept in the file as they are: “Drive and turn left” (6 lines): a path
+  has at most 32 legs, not 33") and written back verbatim after the motion
+  lines, in the file's own line ends; it belongs to the motion it names,
+  renamed with it, and stays through every edit of it, define_motion making
+  it again too (`Motions._settle_unread`). Only a line the next open would
+  read into a motion goes: a second path line, once that motion's path is
+  taken out or the motion is, would come back as its path. What goes is
+  said where the change is ("1 motion line not read let go, as the next
+  open would read it into “Drive and turn left”: ..."), and an undo brings
+  it back (drvcheck C). Keys, wheels and steering are read after every
+  track and path, so the lines may come in any order. A motion may have
+  tracks and a path both: its joints move as the model drives. An older
+  app (rel-m281 and before) drops the whole driven motion, not just its
+  path, wheel and steering lines: with those three unread, the motion
+  moves nothing it reads, so its MOTION line goes too, it says the model
+  has no motions of its own, and a save writes none of them.
+- **The radius is the back axle's middle's**, and the path starts there,
+  on the ground: what a person measures a car's turn by, and the one point
+  that goes round the corner on the radius asked whatever the steering
+  does. The way ahead is towards the wheels the steering turns.
+- **Each axle that rolls is one joint**, taken hold of through Grab as a
+  track's joint is, and turned by how far its own middle travels along the
+  way its tyre points over its tyre's radius (the biggest wheel or tyre it
+  turns, read off its box across the axle). 8808-1's back axle carries
+  four wheels on one Technic axle, so they turn as one at the rate of the
+  axle's middle; on the corner the outer two would slip, as the real set's
+  do. The front wheels are each on their own stub axle, steered.
+- **The steering** turns into each corner as far as points the steered
+  wheels through the corner's middle (each its own line, Ackermann's),
+  found by trying it on its own Grab, and eased in and out over up to 3
+  studs at each corner's ends; what it cannot reach is said. A corner left
+  without a radius is the tightest the steering takes well: where it
+  points the front wheels at three quarters of the most it turns (30 studs
+  on the racer).
+- **Played**, every part of the model moves along the path from where the
+  joints put it. The panel's Play and play_motion keep it where it ends,
+  one step, as one rigid move of the whole model: its end squared where it
+  is square and rounded to a thousandth of an LDU (`Motions.tidied`), every
+  part moved by it (Grab.commit, so each joint is still measured from where
+  the model was built). The wheels' spin and the steering are not kept:
+  they come to rest as they were, so no copy of a sub-model is made its
+  own. The move is kept with the motions (`Motions.moved`, undone with the
+  step), and someone else's file is written with its parts paired as they
+  were and the move put on its main model's placing lines alone
+  (`Motions.moved_into`): a sub-model placed twice or mirrored, its name,
+  the header, blank lines and CRLF stay as the author wrote them
+  (drivereview F2). The move is worked in doubles on each line's own
+  numbers, so a quarter turn writes the author's 0.988 back as 0.988, not
+  as the 0.98799998 a float would give. Backwards drives it back the way it came; a link draws
+  it only. A path played backwards is laid from where
+  the model stands, as its end. Each wheel's turn is worked out by how far
+  along the path it is (a table at every 2 LDU), not frame by frame, so
+  backwards brings every wheel back to the degree. All the path takes the
+  model over (`MotionPlayer.drive_box`, its parts at a dozen frames and its
+  last) is where the floor is laid, by the panel's Play (Main,
+  `MotionPlayer.driven`) and a link's alike, so neither the drive nor its
+  undo leaves it hanging off the edge; and the view is framed on it, in the
+  panel and on a link's page, where any of it would be out of sight.
+- **Suggested** as "Drive and turn left" when the model has a wheel or a
+  tyre on a level axle on the ground: a 32-stud straight and a quarter turn
+  left, at 10 studs a second.
+- **In the panel's editor**, Where it drives: Drive along a path, a row a
+  leg (Straight, Left or Right, how far, its radius, Take out), Add a leg,
+  Over (seconds), Eased and No path; each change one step.
+- **Over MCP**: define_motion path={"legs": [{"straight": 32}, {"left":
+  90}], "seconds": 8, "eased": true}; list_motions says where it drives
+  and what turns as it rolls. Each value is checked for what it is (a
+  number, true or false) and a word path= or a leg has no is refused in
+  words.
+- **Each joint's part is found as the model opens** (`ModelStore.
+  _find_joints`, `Motions.part_at`), while every part stands where the file
+  put it, and as parts still on their way arrive; an undo that puts a part
+  back as another id is followed (`MotionPlayer._carried`). Every joint is
+  written from its part as it stands: its number, colour and place. Found
+  only by where the file had it, a part a kept drive or a hand had moved
+  was lost, and the door and the wheels were gone at the next open
+  (drivereview F1, live's hand-move bug too). A joint whose part is gone
+  at a save is written as it was, and the save says so.
+- **A part outside the world goes where the model now is**: one on its way
+  (the web fetches some after a model opens), one the catalogue has not
+  got, one that landed late. One function answers where each stands
+  (`ModelStore.held_place`: where the file has it, moved by the drives kept
+  since, `Motions.moved`), and everything that reads such a place asks it:
+  where it is put down (`place_awaited`, `awaited_at`), a save of the app's
+  own file and of someone else's written whole (`carried_into`), Compare
+  (`awaited_now`), and whether a joint's part is still coming (`_awaits`).
+  A joint not found since the open is looked for and written there too
+  (`Motions.part_at`, `_ref_written`). Put down where the file had it, a rim
+  arrived where the model had been, and its joint was written where nothing
+  stood (drvcheck D); a part the catalogue lacks stayed behind in a save,
+  and Compare said every rim on its way had moved (drvrecheck F3).
+- **Undo and redo of a kept drive take what landed after it with them**: a
+  part put down after the model opened is kept as late (`ModelStore._late`),
+  and an undo or a redo that puts the motions back (`Builder.motions_hook`)
+  puts each late part it did not move itself where the model now stands,
+  from where it stood under the motions the step found, then looks for the
+  joints again. A drive kept while its parts land carries every part of the
+  model as it is at the keep, not only those there as it began to play.
+  Before, a rim that landed between the keep and its undo stayed a drive
+  away from its tyre, and redone after landing it was left where the model
+  had been, three of the four wheel joints lost both ways (drvrecheck F1).

@@ -227,7 +227,7 @@ try {
   if (!on) {
     console.log("The beta off: coming soon, and nothing taken");
     check(`GET ?op=beta says off: ${off.status} ${JSON.stringify(off.json)}`, off.status === 200 && off.json?.beta === "off");
-    const someone = await mintSession(address("off"));
+    const someone = await mintSession(address("off"), { welcome: false });
     made.push(address("off"));
     const r = await api("/api/plans?op=beta", { method: "POST", token: someone.access_token, body: form });
     check(`POST an application is refused: ${r.status} ${r.json?.error}`, r.status === 403 && r.json?.beta === "off");
@@ -277,7 +277,7 @@ try {
 
     // --- 2. Applying -------------------------------------------------------------
     console.log("2. Applying, once");
-    const a = await mintSession(address("a"));
+    const a = await mintSession(address("a"), { welcome: false });
     made.push(address("a"));
     ({ page, context } = await open("/beta", { width: 390, theme: "dark", who: a, label: "apply 390" }));
     said = await betaSaid(page);
@@ -317,7 +317,7 @@ try {
 
     // --- 3. The owner ------------------------------------------------------------
     console.log("3. The owner's queue, and an approval");
-    owner = await mintSession(process.env.MASTER_EMAIL, { age: false });
+    owner = await mintSession(process.env.MASTER_EMAIL, { age: false, welcome: false });
     ({ page, context } = await open("/beta-admin?tests=1", { width: 1280, who: owner, label: "queue" }));
     check("the queue shown to the owner", await until(page, () => document.getElementById("view")?.hidden === false, null, 30000));
     const card = page.locator("li.app", { hasText: address("a") });
@@ -402,7 +402,7 @@ try {
 
     // --- 5. A decline -------------------------------------------------------------
     console.log("5. A decline");
-    const b = await mintSession(address("b"));
+    const b = await mintSession(address("b"), { welcome: false });
     made.push(address("b"));
     // B, a tester, follows a link to /beta#about (the welcome's, Settings',
     // the beta's emails') and applies by keyboard alone, at 1280: Tab from
@@ -464,8 +464,8 @@ try {
 
     // --- 6. The last spots ----------------------------------------------------------
     console.log("6. Two approvals at once at 99 given");
-    const c = await mintSession(address("c"));
-    const d = await mintSession(address("d"));
+    const c = await mintSession(address("c"), { welcome: false });
+    const d = await mintSession(address("d"), { welcome: false });
     made.push(address("c"), address("d"));
     for (const one of [c, d]) await api("/api/plans?op=beta", { method: "POST", token: one.access_token, body: form });
     await rpc("beta_test_pool", { p_given: 99 });
@@ -476,7 +476,7 @@ try {
       && both.filter((one) => one.status === 409 && one.json?.refused === "full").length === 1);
     // Read by an account that has not joined (a tester is thanked in the
     // count's place), signed in, past the CDN's minute on ?op=beta_spots.
-    const e = await mintSession(address("e"));
+    const e = await mintSession(address("e"), { welcome: false });
     made.push(address("e"));
     ({ page, context } = await open("/beta", { width: 1280, who: e, label: "full" }));
     said = await betaSaid(page);

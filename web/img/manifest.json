@@ -14,18 +14,6 @@
   "caption": "Will it stand?"
  },
  {
-  "slug": "technic",
-  "files": {
-   "720": "technic-720.webp"
-  },
-  "width": 1200,
-  "height": 900,
-  "source": "node tools/web/app_shot.mjs --url=https://brickworks.diy/app --ratio=2 --model=res://models/kart.ldr --click=outliner --fold=assistant --click=cube_zoom_in --click=cube_zoom_in --click=cube_zoom_in --click=view (3200 x 1800, 2026-10-13), cropped to 1184,480 1520 x 1140; 400 x 250, cropped to 16:10 about its middle, for the landing page's six (2026-10-20)",
-  "subject": "Technic go-kart in the builder",
-  "alt": "A Technic go-kart in the builder, close up: a red frame of Technic beams on four black wheels, a steering wheel on a grey column, and one beam selected and outlined in yellow, on a green baseplate.",
-  "caption": "Technic."
- },
- {
   "slug": "booklet",
   "files": {
    "1200": "booklet-1200.webp",

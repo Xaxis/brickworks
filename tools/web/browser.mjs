@@ -343,7 +343,9 @@ export async function appFromModelPage(page, { finger = false, ms = 180000 } = {
 /// deployment as the app asks it (GET /api/account, which changes nothing),
 /// so a welcome due and never shown is told apart from one not due. What
 /// happened: "not due", "Not now" (pressed, and the builder back), or what
-/// went wrong, for the flow's check.
+/// went wrong, for the flow's check. Only for a flow that means to meet the
+/// welcome, whose accounts are minted with { welcome: false }: every other
+/// account minted has it answered before a page asks (session.mjs notNow).
 export async function answerWelcome(page, { site, headers = {}, token, seconds = 240 }) {
   const reply = await fetch(`${site}/api/account`, { headers: { ...headers, authorization: `Bearer ${token}` } })
     .catch(() => null);

@@ -1,0 +1,22 @@
+0 FILE model.ldr
+0 Model
+0 Name: model.ldr
+0 Author: A designer
+0 !BRICKWORKS AUTHORED_STEPS
+0 !BRICKWORKS STEP_NAME From the header
+
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3020.dat
+0 STEP
+0 !BRICKWORKS STEP_NAME   Spaced   out	tab
+1 14 0 -8 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+1 1 0 -32 0 1 0 0 0 1 0 0 0 1 3003.dat
+0 !BRICKWORKS STEP_NAME First of two
+0 !BRICKWORKS STEP_NAME Second of two
+0 STEP
+1 2 0 -56 0 1 0 0 0 1 0 0 0 1 3004.dat
+0 STEP
+0 !BRICKWORKS STEP_NAME On an empty last step
+0
+0 NOFILE
+0 !BRICKWORKS STEP_NAME After the end
