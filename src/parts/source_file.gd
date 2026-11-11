@@ -451,10 +451,11 @@ func header() -> PackedStringArray:
 ## class. [param bricks] are the model's parts (BrickWorld.Brick, the floor
 ## left out), [param lift] how far the model was moved to stand on the
 ## ground, [param waiting] the lines whose parts are still on their way
-## ("line|unit"). Null when the change cannot be written into the file as it
-## is.
+## ("line|unit") -> the step each is in now, [param held_at] the step each
+## part the app cannot show is in now, by origin ([method held_steps]). Null when
+## the change cannot be written into the file as it is.
 func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibrary,
-		unit_steps_now: Dictionary) -> Variant:
+		unit_steps_now: Dictionary, held_at: Dictionary = {}) -> Variant:
 	# A copy the file never placed, or steps given to a model that had none.
 	# A copy put in another step is written with the rest of the steps of
 	# the sub-model that places it (_restep).
@@ -543,11 +544,17 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 			if left.is_empty() or gone.is_empty():
 				break
 
-	# A section whose parts' steps changed is written again a step at a time.
+	# A section whose parts' steps changed is written again a step at a time:
+	# those the model holds and does not show too, whose steps a step edit
+	# numbers with the rest.
 	for line: int in by_line:
 		for origin: Read in by_line[line]:
 			if paired.has(origin) and (paired[origin][0] as BrickWorld.Brick).step != origin.step:
 				restepped[_section_of(origin.unit)] = true
+	var steps_held: Dictionary = held_steps(waiting, held_at)
+	for line: int in steps_held:
+		if line < _sec.size() and int(steps_held[line]) != _step_at[line]:
+			restepped[_sec[line]] = true
 
 	# Each line: as it was, rewritten, or taken out.
 	var replace: Dictionary = {}    ## line -> its new text, or "" to take it out
@@ -637,7 +644,7 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 	var eol_now: String = "\r" if not lines.is_empty() and lines[0].ends_with("\r") else ""
 	for section: String in restepped:
 		if not _restep(section, replace, inserts, added.get(section, []), paired,
-				unit_steps_now, eol_now):
+				unit_steps_now, eol_now, steps_held):
 			return null
 
 	# A line written here ends as the file's lines do (Studio's in "\r\n").
@@ -659,16 +666,48 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 	return "\n".join(_ended_as_begun(out, tail, lines, eol))
 
 
+## The step each part the model holds and does not show is in now, by its
+## line ([method patch], [method write]): [param held] is each part the app
+## cannot show, by origin -> its step (ModelStore reads them as the model
+## stands, BrickWorld.held), else its placement's own; [param waiting] each
+## on its way, by origin or by "line|unit" -> its step (true for one not
+## said). -2 for a line whose copies are in different steps. None for a file
+## whose steps are not its author's, which has no steps to keep.
+func held_steps(waiting: Dictionary, held: Dictionary = {}) -> Dictionary:
+	var out: Dictionary = {}
+	if not authored:
+		return out
+	for origin: String in unshown_origins:
+		_held_line(out, origin.get_slice("/", origin.get_slice_count("/") - 1).to_int(),
+			int(held.get(origin, (unshown_origins[origin] as LdrModel.Placement).step)))
+	for key: Variant in waiting:
+		if waiting[key] is int and not str(key).is_empty():
+			var said: String = str(key)
+			_held_line(out, said.get_slice("|", 0).to_int() if said.contains("|")
+				else said.get_slice("/", said.get_slice_count("/") - 1).to_int(), int(waiting[key]))
+	return out
+
+
+static func _held_line(out: Dictionary, line: int, step: int) -> void:
+	if line < 0 or step < 0:
+		return
+	out[line] = step if int(out.get(line, step)) == step else -2
+
+
 ## A section whose steps changed, written again a step at a time: each
 ## line in the step its part, or the copy of a sub-model it places, is in
 ## now, and the notes between them with the step most of theirs went to;
 ## each step ended by the line that ended the last of the file's steps
 ## that went into it, so a merge takes one STEP line out, a split puts one
 ## in, a reorder moves whole steps with their ROTSTEP, and every line
-## nobody changed is the file's, byte for byte. False when a line's copies
-## are now in different steps: one line cannot be in two.
+## nobody changed is the file's, byte for byte. A part the model holds and
+## does not show is in the step [param steps_held] says, by its line
+## ([method held_steps]): put with the step before it, a step of only such a
+## part went into that one, and its zoom and name with it (heldsteps). False
+## when a line's copies are now in different steps: one line cannot be in two.
 func _restep(section: String, replace: Dictionary, inserts: Dictionary, added: Array,
-		paired: Dictionary, unit_steps_now: Dictionary, eol: String) -> bool:
+		paired: Dictionary, unit_steps_now: Dictionary, eol: String,
+		steps_held: Dictionary = {}) -> bool:
 	if not sections.has(section):
 		return false
 	var span: Array = sections[section]
@@ -723,6 +762,11 @@ func _restep(section: String, replace: Dictionary, inserts: Dictionary, added: A
 				if now != -2 and now != step:
 					return false
 				now = step
+			if steps_held.has(n):
+				var kept_in: int = int(steps_held[n])
+				if kept_in == -2 or now != -2 and now != kept_in:
+					return false
+				now = kept_in
 			if now >= 0:
 				line_step[n] = now
 				latest = maxi(latest, now)
@@ -1232,10 +1276,12 @@ func _placed_from_main(gone: Dictionary) -> Dictionary:
 ## The patch of the file for the model as [param bricks] stand (see the
 ## class, (A)), or a [Plan] that says why there is none ([member Plan.why]).
 ## [param waiting] are the origins of parts still on their way, as they
-## were; [param steps_now] each copy's step (BrickWorld.unit_steps). Reads
-## only what it is given and this source: on any thread.
+## were, each -> the step it is in now; [param steps_now] each copy's step
+## (BrickWorld.unit_steps); [param held_at] the step each part the app
+## cannot show is in now, by origin ([method held_steps]). Reads only what it is
+## given and this source: on any thread.
 func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibrary,
-		steps_now: Dictionary) -> Plan:
+		steps_now: Dictionary, held_at: Dictionary = {}) -> Plan:
 	var plan := Plan.new()
 	if not _why_never.is_empty():
 		return _no(plan, _why_never)
@@ -1454,29 +1500,15 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 	var unplaced: String = _left_unplaced(plan.gone, plan.fresh.size())
 	if not unplaced.is_empty():
 		return _no(plan, unplaced)
-	# A part the app cannot show, or one still on its way, has no step in
-	# the model to follow: where every other part of its step goes to one
-	# other step (the steps numbered again), it would be left behind alone.
-	var behind: Array = []
-	for origin: String in unshown_origins:
-		behind.append(origin)
-	behind.append_array(waiting.keys())
-	for origin: Variant in behind:
-		var own: int = str(origin).get_slice("/", str(origin).get_slice_count("/") - 1).to_int()
-		if own < 0 or own >= _sec.size() or moves.has(own):
-			continue
-		var to: Dictionary = {}
-		var stays: bool = false
-		for other: int in by_line:
-			if other == own or plan.gone.has(other) or _sec[other] != _sec[own] \
-					or _step_at[other] != _step_at[own]:
-				continue
-			if moves.has(other):
-				to[int(moves[other])] = true
-			else:
-				stays = true
-		if not stays and to.size() == 1:
-			return _no(plan, "a part the app cannot show would be left out of its step (line %d)" % (own + 1))
+	# A part the app cannot show, or one still on its way, stays on its line:
+	# one a step edit put in another step (AuthorSteps numbers its step with
+	# the rest) is live's write, which moves its line (_restep). Up to
+	# 2026-11-11 it had no step to follow, and where every other part of its
+	# step went to one other step it was left behind alone (keeptext5).
+	var steps_held: Dictionary = held_steps(waiting, held_at)
+	for line: int in steps_held:
+		if line < _sec.size() and int(steps_held[line]) != _step_at[line]:
+			return _no(plan, "a part the app cannot show is in another step now (line %d)" % (line + 1))
 	# A step of the file every part went out of, and none came into: the
 	# steps numbered again (a merge, a step emptied), which moving lines
 	# cannot say. Each later part moved up a step left the file's STEP lines

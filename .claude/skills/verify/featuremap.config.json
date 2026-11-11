@@ -4520,6 +4520,13 @@
       "area": "view"
     },
     {
+      "kind": "cli",
+      "label": "heldsteps probe",
+      "entry": "src/dev/heldsteps_probe.gd",
+      "reach": "tools/probe.sh heldsteps_probe   (headless: a five-step model, own and someone else's, its 3062b missing from the library and then on its way from a local server; step merges, moves, deletes and a part taken off, saved and opened again: the held part on its own step with its STEP_NAME and ZOOM byte for byte, every other step as the same edit gives the model without it, and with the part back the model as it was; HELDSTEPS_OUT=dir for the saves)",
+      "area": "view"
+    },
+    {
       "kind": "lib",
       "label": "a person's own keys kept in the system's keychain",
       "entry": "src/ai/key_store.gd",

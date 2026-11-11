@@ -688,8 +688,11 @@ static func first_copies(world: BrickWorld, skip: Dictionary = {}) -> Array:
 
 
 ## An item of AuthorSteps.items_of as [method items_by_step] names it: a part
-## by its id, a sub-model's copy by its name.
+## by its id, a sub-model's copy by its name, a part the model holds and does
+## not show by its placement, so its step's look goes where it goes.
 static func item_name(item: Dictionary) -> String:
+	if item.has("held"):
+		return "h%d" % (item["held"] as Object).get_instance_id()
 	return ("b%d" % int(item["brick"])) if item.has("brick") \
 		else "u" + Assemblies.leaf(str(item["unit"]))
 

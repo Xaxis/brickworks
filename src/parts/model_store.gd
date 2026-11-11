@@ -134,7 +134,13 @@ class Entry extends RefCounted:
 		return "%s — %d bricks, %s" % [name, bricks, ModelVersions.when_saved(modified)]
 
 
-var world: BrickWorld
+## What the model holds and does not show is numbered with its steps
+## ([method _held_placements], BrickWorld.held).
+var world: BrickWorld:
+	set(value):
+		world = value
+		if value != null:
+			value.held = _held_placements
 var library: PartLibrary
 var builder: Builder
 
@@ -2287,15 +2293,20 @@ func _source_asked(title_now: String) -> Dictionary:
 	# copies of a model built in another order (Together) wrote two files.
 	bricks = _in_brick_order(bricks)
 	# What is on its way: by its line and copy for the whole write
-	# (SourceFile.write), by its place in the file for a patch.
+	# (SourceFile.write), by its place in the file for a patch; each -> the
+	# step it is in now, as is each part the app cannot show (BrickWorld.held):
+	# read here, as the model stands, for a write on a worker.
 	var waiting: Dictionary = {}
 	var waiting_lines: Dictionary = {}
 	if world.generation() == _awaited_in:
 		for placement: LdrModel.Placement in awaited:
-			waiting_lines["%d|%s" % [placement.line, placement.unit]] = true
-			waiting[placement.origin] = true
+			waiting_lines["%d|%s" % [placement.line, placement.unit]] = placement.step
+			waiting[placement.origin] = placement.step
+	var unshown_steps: Dictionary = {}
+	for placement: LdrModel.Placement in source.not_shown:
+		unshown_steps[placement.origin] = placement.step
 	return {"source": source, "bricks": bricks, "lift": _lift_now(), "waiting": waiting,
-		"waiting_lines": waiting_lines, "moved": whole,
+		"waiting_lines": waiting_lines, "held": unshown_steps, "moved": whole,
 		"library": library, "title": title_now,
 		"unit_steps": world.unit_steps.duplicate(true) if source.authored else {},
 		"floor": model_floor, "hidden": hidden_scheme.duplicate(true),
@@ -2342,7 +2353,7 @@ static func _source_written(asked: Dictionary) -> Variant:
 	var source: SourceFile = asked["source"]
 	var library: PartLibrary = asked["library"]
 	var plan: SourceFile.Plan = source.patch(asked["bricks"], asked["lift"], asked["waiting"],
-		library, asked["unit_steps"]) if patch_files else null
+		library, asked["unit_steps"], asked.get("held", {})) if patch_files else null
 	var why: String = plan.why if plan != null else "patches are off"
 	if why.is_empty():
 		var patched: String = source.app_lines_placed(
@@ -2357,7 +2368,7 @@ static func _source_written(asked: Dictionary) -> Variant:
 	asked["whole"] = why
 	_said_whole(source, why)
 	var written: Variant = source.write(asked["bricks"], asked["lift"], asked["waiting_lines"],
-		library, asked["unit_steps"])
+		library, asked["unit_steps"], asked.get("held", {}))
 	if written == null:
 		asked["whole"] = why + " (the model written whole)"
 		return null
@@ -2548,6 +2559,8 @@ func place_awaited(part_id: String) -> int:
 			world.get_brick(brick_id).unit = placement.unit
 			world.get_brick(brick_id).step = placement.step
 			world.get_brick(brick_id).origin = placement.origin
+			# A step edit made while it came is undone on it (Builder "heldstep").
+			placement.landed = brick_id
 			builder.register(brick_id, placement.part_id, at)
 			landed += 1
 			# Landed after the steps the history holds were made: none of
@@ -3027,13 +3040,18 @@ var _looks_followed: Dictionary = {}
 
 
 ## What the file has that is not on the baseplate and is written back in its
-## steps: parts on their way, and the app's own file's parts the catalogue
-## has not got. This model's only while it is the one opened.
+## steps: parts on their way, and the parts the catalogue has not got, the
+## app's own file's and someone else's (SourceFile.not_shown). This model's
+## only while it is the one opened. A step edit numbers their steps with the
+## rest (BrickWorld.held).
 func _held_placements() -> Array:
 	var out: Array = []
-	if world.generation() == _awaited_in:
+	if world != null and world.generation() == _awaited_in:
 		out.append_array(awaited)
 		out.append_array(_absent)
+		var source: SourceFile = _live_source()
+		if source != null:
+			out.append_array(source.not_shown)
 	return out
 
 
