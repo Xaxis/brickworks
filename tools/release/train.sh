@@ -688,6 +688,9 @@ work() {
   fi
   step "live; retiring"
   retire
+  # Old releases' output to the archive (moved, never deleted): release-out
+  # held 61 GB in 25,000 entries at 93% of the disk (2026-11-11).
+  say "$(bash "$HERE/archive_out.sh" 2>&1 | tail -1)"
   # Live, whatever the live checks after said: main has it and brickworks.diy serves it.
   [ "$code" = 0 ] || say "live, but ship.sh ended exit $code: its live checks ($RO/${TAG}_live.out)"
   finish live
