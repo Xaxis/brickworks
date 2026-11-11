@@ -16,5 +16,8 @@
   "instructions#booklet-extras": "booklet-layout#booklet-extras",
   "instructions#page-setup": "booklet-layout#page-setup",
   "instructions#booklet-look": "booklet-layout#booklet-look",
-  "instructions#lay-out": "booklet-layout#lay-out"
+  "instructions#lay-out": "booklet-layout#lay-out",
+  "ai#key-custody": "connect#key-custody",
+  "ai#ask-provider": "claude-code#command-line",
+  "connector#chatgpt": "connect-chatgpt"
 }

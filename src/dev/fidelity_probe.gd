@@ -22,6 +22,33 @@
 ## - a part the app cannot show is kept and named; the flexible part is
 ##   drawn, as one piece (flex_skin_probe proves the rest of that).
 ##
+## And a sub-model placed by nothing once its last copy is taken off keeps
+## its block, as the file had it, however the save is written (F5): a patch,
+## live's write (patches off), the copy taken apart, the model written whole
+## (an assembly made: a sub-model emptied and filled again, its old block
+## kept beside it and its copy's name kept at the next open; a block placed
+## by nothing, and the sub-model it places that the model still has, kept as
+## the file has them; a block placed by nothing called as a placed one
+## renames none of its copies; one renamed is written once), a model with
+## nothing left in it saved, opened (it was
+## refused: "there are no parts in that file") and saved again; a sub-model
+## the file never placed, written whole; and an undo brings the file back.
+## The emptied model's autosave restores left empty, its block kept for the
+## next save (sfreview F2); a model of no sub-model given a step, written
+## whole, keeps a block it never placed after itself, not as the model (F1);
+## and a placed sub-model titled as one placed by nothing is written under a
+## name of its own, the other's block kept (F5).
+##
+## And a sub-model placed three times, once mirrored, of parts that look the
+## same turned a half (kt5check's twice_mirror): the mirrored copy moved,
+## or the first taken off, the model is written whole, the mirrored copy by
+## a matrix that reflects, and opens again with every part turned as it was
+## (F2); the copies lie on each other mirrored, and a wedge put in the first
+## goes into the mirrored one in its other hand. The last copy taken off a
+## file the app saved takes its COPY line with it (F3). A CRLF file with no
+## line break at its end, its last line painted, moved or taken off, or a
+## part added, ends as it began: no bare CR (F4).
+##
 ## With FILE arguments, each is also opened, saved untouched and compared
 ## line for line (the repository's own files).
 extends SceneTree
@@ -83,6 +110,127 @@ const FILE := """0 FILE fidelity - main.ldr
 0 NOFILE
 """
 
+## kt5check's twice_mirror: a wing of a plate and a tile, each the same
+## turned a half, placed three times, the second mirrored.
+const MIRRORED := """0 FILE plane.ldr
+0 Plane
+0 Name: plane.ldr
+0 Author: Tess Tester
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 16 -80 -24 0 1 0 0 0 1 0 0 0 1 wing.ldr
+1 16 80 -24 0 -1 0 0 0 1 0 0 0 1 wing.ldr
+1 16 0 -48 0 1 0 0 0 1 0 0 0 1 wing.ldr
+0 NOFILE
+0 FILE wing.ldr
+0 Wing
+0 Name: wing.ldr
+0 Author: Tess Tester
+1 15 0 0 0 1 0 0 0 1 0 0 0 1 3020.dat
+1 16 20 -8 0 1 0 0 0 1 0 0 0 1 3023.dat
+0 NOFILE
+"""
+
+## The file the app saves of twice_mirror with its second wing taken off
+## (kt5check's live tm_del_w2): each copy's number on a line before it.
+const NUMBERED := """0 FILE plane.ldr
+0 Plane
+0 Name: plane.ldr
+0 Author: Tess Tester
+0 !BRICKWORKS FLOOR GRID
+
+0 !BRICKWORKS COPY 1
+1 16 0 24 0 1 0 0 0 1 0 0 0 1 wing.ldr
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 !BRICKWORKS COPY 3
+1 16 80 0 0 1 0 0 0 1 0 0 0 1 wing.ldr
+1 14 0 -72 0 1 0 0 0 1 0 0 0 1 3003.dat
+0
+0 NOFILE
+0 FILE wing.ldr
+0 Wing
+0 Name: wing.ldr
+0 Author: Tess Tester
+
+1 15 -80 -48 0 1 0 0 0 1 0 0 0 1 3020.dat
+1 0 -60 -56 0 1 0 0 0 1 0 0 0 1 3023b.dat
+0
+0 NOFILE
+"""
+
+## A pod placing a fin, and a fin of its own beside it: the pod taken off,
+## its block placed by nothing names a sub-model the model still has.
+const NESTED := """0 FILE rig - main.ldr
+0 Rig
+0 Name: rig - main.ldr
+0 Author: Somebody Else [someone]
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 16 0 -24 0 1 0 0 0 1 0 0 0 1 rig - pod.ldr
+1 16 100 0 0 1 0 0 0 1 0 0 0 1 rig - fin.ldr
+0 NOFILE
+0 FILE rig - pod.ldr
+0 Pod
+0 Name: rig - pod.ldr
+0 Author: Somebody Else [someone]
+1 1 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 16 0 -24 0 1 0 0 0 1 0 0 0 1 rig - fin.ldr
+0 NOFILE
+0 FILE rig - fin.ldr
+0 Fin
+0 Name: rig - fin.ldr
+0 Author: Somebody Else [someone]
+1 14 0 0 0 1 0 0 0 1 0 0 0 1 3022.dat
+0 NOFILE
+"""
+
+## A model of no sub-model and no STEP line, and a sub-model the file never
+## placed (sfreview's loose_unused).
+const LOOSE := """0 FILE loose.ldr
+0 Loose
+0 Name: loose.ldr
+0 Author: Somebody Else [someone]
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 1 80 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE spare.ldr
+0 Spare
+0 Name: spare.ldr
+0 Author: Somebody Else [someone]
+1 2 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 14 40 0 0 1 0 0 0 1 0 0 0 1 3004.dat
+0 NOFILE
+"""
+
+## A placed sub-model and one placed by nothing of one title, the placed
+## one's file named otherwise (sfreview's titles, cut down).
+const TITLES := """0 FILE main.ldr
+0 Titles
+0 Name: main.ldr
+0 Author: Somebody Else [someone]
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 16 0 -24 0 1 0 0 0 1 0 0 0 1 wing2.ldr
+1 1 80 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE wing.ldr
+0 Wing
+0 Name: wing.ldr
+0 Author: Somebody Else [someone]
+1 2 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 2 20 -24 0 1 0 0 0 1 0 0 0 1 3005.dat
+0 NOFILE
+0 FILE wing2.ldr
+0 Wing
+0 Name: wing2.ldr
+0 Author: Somebody Else [someone]
+1 1 0 0 0 1 0 0 0 1 0 0 0 1 3004.dat
+0 NOFILE
+"""
+
+## A CRLF file whose last line has no line break after it (kt5check's
+## crlf_tabs, cut down).
+const CRLF_LINES := ["0 Engine", "0 Name: engine.ldr", "0 Author: Somebody Else",
+	"1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat", "0 STEP",
+	"1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3020.dat", "1 14 0 -48 0 1 0 0 0 1 0 0 0 1 3020.dat"]
+
 
 func _initialize() -> void:
 	_run()
@@ -114,7 +262,11 @@ func _run() -> void:
 	_untouched()
 	_edits()
 	_emptied()
+	_unplaced_kept()
 	_copies_apart()
+	_mirrored_copy()
+	_copy_line_goes()
+	_crlf_end()
 	_named()
 	for path: String in OS.get_cmdline_user_args():
 		_repository(path)
@@ -287,6 +439,260 @@ func _emptied() -> void:
 	_expect(_model() == model, "opened again, the model as edited")
 
 
+## The once sub-model's block as the file has it, from its FILE line to its
+## NOFILE.
+static func _once_block() -> String:
+	var from: int = FILE.find("0 FILE fidelity - once.ldr")
+	return FILE.substr(from, FILE.find("0 NOFILE", from) + 8 - from)
+
+
+## How many lines of [param text] place [param file].
+static func _placing(text: String, file: String) -> int:
+	var count: int = 0
+	for line: String in text.split("\n"):
+		var words: PackedStringArray = line.strip_edges().split(" ", false)
+		if words.size() >= 15 and words[0] == "1" and line.strip_edges().ends_with(" " + file):
+			count += 1
+	return count
+
+
+## Each part's copy, sorted.
+func _units() -> Array:
+	var out: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		if not _store.scenery.has(brick.id):
+			out.append("%s %s" % [brick.part_id, Assemblies.path_of(brick)])
+	out.sort()
+	return out
+
+
+func _ids_of(part_id: String) -> Array:
+	var out: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == part_id:
+			out.append(brick.id)
+	return out
+
+
+func _unplaced_kept() -> void:
+	print("fidelity: a sub-model placed by nothing keeps its block")
+	var block: String = _once_block()
+	# Live's write: the patch off, as when it cannot be one.
+	ModelStore.patch_files = false
+	_open(FILE)
+	for id: int in _ids_of("3003"):
+		_builder.remove_brick_id(id)
+	var model: PackedStringArray = _model()
+	var saved: String = _store.to_text(_store.title, true)
+	ModelStore.patch_files = true
+	_expect(saved.contains(block) and _placing(saved, "fidelity - once.ldr") == 0,
+		"live's write: the block kept whole, nothing placing it (%d placing)"
+		% _placing(saved, "fidelity - once.ldr"))
+	_open(saved)
+	_expect(_model() == model, "...opened again, the model as edited")
+	# Taken apart: its parts loose in the model, the block placed by nothing.
+	_open(FILE)
+	var tree := Assemblies.new()
+	tree.world = _world
+	tree.builder = _builder
+	tree.library = _library
+	tree.scenery = _store.scenery
+	var apart: int = tree.ungroup("Once#1")
+	model = _model()
+	saved = _store.to_text(_store.title, true)
+	_expect(apart == 2 and saved.contains(block) and _placing(saved, "fidelity - once.ldr") == 0,
+		"the copy taken apart (%d parts): the block kept whole, nothing placing it (%s)"
+		% [apart, str(_store.get("last_whole"))])
+	_open(saved)
+	_expect(_model() == model, "...opened again, its parts where they were")
+	# Written whole: the copy's parts taken off, and an assembly made.
+	_open(FILE)
+	for id: int in _ids_of("3003"):
+		_builder.remove_brick_id(id)
+	_builder.select_brick(_brick("3001", 4).id, false)
+	_builder.name_group("Fidelity probe group")
+	model = _model()
+	saved = _store.to_text(_store.title, true)
+	_expect(saved.contains(block) and _placing(saved, "fidelity - once.ldr") == 0,
+		"written whole: the block kept as the file had it, nothing placing it (%s)"
+		% str(_store.get("last_whole")))
+	_expect(not saved.contains("0 FILE fidelity - twice.ldr")
+		and not saved.contains("0 FILE fidelity - band.ldr"),
+		"...and no section the model still places written twice")
+	_open(saved)
+	_expect(_model() == model, "...opened again, the model as edited")
+	# Emptied and filled again: the model's Once written, the file's block
+	# beside it placed by nothing, and the copy still Once#1 at the next open.
+	_open(FILE)
+	var refilled: Array = _ids_of("3003")
+	var at := Transform3D(Basis.IDENTITY, (_world.get_brick(refilled[0]) as BrickWorld.Brick)
+		.transform.origin + Vector3(0, -24, 0))
+	var added: int = _world.add_brick("3005", 5, at)
+	_builder.register(added, "3005", at)
+	_world.get_brick(added).unit = "Once#1"
+	for id: int in refilled:
+		_builder.remove_brick_id(id)
+	_builder.select_brick(_brick("3001", 4).id, false)
+	_builder.name_group("Fidelity probe group")
+	model = _model()
+	var units: Array = _units()
+	saved = _store.to_text(_store.title, true)
+	_expect(saved.contains(block) and _placing(saved, "fidelity - once.ldr") == 0
+		and saved.count("\n0 Once\n") == 2,
+		"emptied and filled again, written whole: the file's block kept, placed by nothing, beside the model's (%d called Once)"
+		% saved.count("\n0 Once\n"))
+	_open(saved)
+	_expect(_model() == model and _units() == units,
+		"...opened again, the model and its copies as edited (%s; edited %s)"
+		% [", ".join(_units()), ", ".join(units)])
+	# The pod taken off, the model written whole: its block as the file has
+	# it, and the fin's it places, beside the model's own fin.
+	_open(NESTED)
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.unit.begins_with("Pod#1"):
+			_builder.remove_brick_id(brick.id)
+	_builder.select_brick(_brick("3001", 4).id, false)
+	_builder.name_group("Fidelity probe group")
+	model = _model()
+	units = _units()
+	saved = _store.to_text(_store.title, true)
+	var pod_block: String = NESTED.substr(NESTED.find("0 FILE rig - pod.ldr"),
+		NESTED.find("0 FILE rig - fin.ldr") - NESTED.find("0 FILE rig - pod.ldr"))
+	var fin_block: String = NESTED.substr(NESTED.find("0 FILE rig - fin.ldr"))
+	_expect(saved.contains(pod_block) and saved.contains(fin_block)
+		and saved.count("\n0 Fin\n") == 2,
+		"the pod taken off, written whole: its block and the fin's it places kept as the file has them, beside the model's fin (%d called Fin)"
+		% saved.count("\n0 Fin\n"))
+	_open(saved)
+	_expect(_model() == model and _units() == units,
+		"...opened again, the model and its copies as edited (%s; edited %s%s)" % [
+			", ".join(_units()), ", ".join(units),
+			"" if _model() == model else "; parts %s, edited %s" % [_model(), model]])
+	# A sub-model the file never placed, the model written whole.
+	var spare: String = "0 FILE spare.ldr\n0 Spare\n0 Name: spare.ldr\n" \
+		+ "1 7 0 0 0 1 0 0 0 1 0 0 0 1 3004.dat\n0 NOFILE"
+	_open(FILE + spare + "\n")
+	_builder.select_brick(_brick("3001", 4).id, false)
+	_builder.name_group("Fidelity probe group")
+	saved = _store.to_text(_store.title, true)
+	_expect(saved.contains(spare), "a sub-model the file never placed, written whole: kept (%s)"
+		% str(_store.get("last_whole")))
+	# Renamed, the model written whole: the sub-model's parts are the file's
+	# still, so its block is not carried beside the model's.
+	_open(FILE)
+	tree = Assemblies.new()
+	tree.world = _world
+	tree.builder = _builder
+	tree.library = _library
+	tree.scenery = _store.scenery
+	var renamed: String = tree.rename("Once#1", "Uno")
+	_builder.select_brick(_brick("3001", 4).id, false)
+	_builder.name_group("Fidelity probe group")
+	model = _model()
+	saved = _store.to_text(_store.title, true)
+	_expect(renamed == "Uno" and not saved.contains("0 FILE fidelity - once.ldr")
+		and saved.count(" 3003.dat\n") == 2,
+		"renamed %s, written whole: written once, under its new name (%d lines of 3003)"
+		% [renamed, saved.count(" 3003.dat\n")])
+	_open(saved)
+	_expect(_model() == model, "...opened again, the model as edited")
+	# A block placed by nothing titled as a sub-model the model places: the
+	# copies keep their names. Two of one title were told apart by file
+	# name, placed or not, and the copies opened as "Twice (fidelity -
+	# twice)#1".
+	_open(FILE + "0 FILE spare twice.ldr\n0 Twice\n0 Name: spare twice.ldr\n"
+		+ "1 7 0 0 0 1 0 0 0 1 0 0 0 1 3004.dat\n0 NOFILE\n")
+	var twice: Array = _units().filter(func(unit: String) -> bool:
+		return unit.begins_with("3022 "))
+	_expect(twice == ["3022 Twice#1", "3022 Twice#1", "3022 Twice#2", "3022 Twice#2"],
+		"a block placed by nothing called Twice too: the copies still Twice#1 and Twice#2 (%s)"
+		% ", ".join(twice))
+	# The model's one sub-model taken off: nothing left in it, saved, opened
+	# and saved again, the sub-model still there.
+	var only: String = "\n".join(["0 FILE solo - main.ldr", "0 Solo", "0 Name: solo - main.ldr",
+		"0 Author: Somebody Else [someone]", "1 16 0 0 0 1 0 0 0 1 0 0 0 1 solo - car.ldr",
+		"0 NOFILE", "0 FILE solo - car.ldr", "0 Car", "0 Name: solo - car.ldr",
+		"1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat", "1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3003.dat",
+		"0 NOFILE", ""])
+	var car: String = only.substr(only.find("0 FILE solo - car.ldr"),
+		only.rfind("0 NOFILE") + 8 - only.find("0 FILE solo - car.ldr"))
+	_open(only)
+	for brick: BrickWorld.Brick in _world.bricks():
+		if not _store.scenery.has(brick.id):
+			_builder.remove_brick_id(brick.id)
+	saved = _store.to_text(_store.title, true)
+	_expect(saved.contains(car) and _placing(saved, "solo - car.ldr") == 0,
+		"the only sub-model taken off: its block kept, nothing placing it (%d placing)"
+		% _placing(saved, "solo - car.ldr"))
+	var opened: Dictionary = _open(saved)
+	var again: String = _store.to_text(_store.title, true)
+	_expect(str(opened.get("error", "")).is_empty() and _model().is_empty()
+		and again.contains(car) and _placing(again, "solo - car.ldr") == 0
+		and again.contains("0 Author: Somebody Else [someone]"),
+		"...opened again: an empty model (%d parts; %s), saved again still theirs, the block kept"
+		% [_model().size(), "opened" if str(opened.get("error", "")).is_empty() else str(opened["error"])])
+	# ...and so the autosave of it, restored as start-up restores it: the
+	# model left empty, not one that "could not be opened: ." with the last
+	# saved model or the sample opened in its place (sfreview F2), and the
+	# block kept for the next save.
+	DirAccess.make_dir_recursive_absolute(ModelStore.autosave().get_base_dir())
+	var autosaved: FileAccess = FileAccess.open(ModelStore.autosave(), FileAccess.WRITE)
+	autosaved.store_string(saved)
+	autosaved.close()
+	var back: int = _store.restore()
+	again = _store.to_text(_store.title, true)
+	DirAccess.remove_absolute(ModelStore.autosave())
+	_expect(back == 0 and _store.left_empty and _store.unrestored.is_empty()
+		and _model().is_empty() and again.contains(car) and _placing(again, "solo - car.ldr") == 0,
+		"...its autosave restored: left empty (%d back, left_empty %s, said [%s]), the block kept for the next save"
+		% [back, _store.left_empty, _store.unrestored])
+	# A model of no sub-model and no STEP line given a step, written whole,
+	# with a block the file never placed: the model is its own, the block
+	# after it. Written bare, the block came first as a FILE and opened as
+	# the model, the model's parts gone (sfreview F1).
+	var spare_block: String = LOOSE.substr(LOOSE.find("0 FILE spare.ldr"))
+	_open(LOOSE)
+	var lone: BrickWorld.Brick = _brick("3001", 1)
+	AuthorSteps.ensure(_world, _library, _store.scenery)
+	var stepped: Array = AuthorSteps.new_step(_world, [lone.id], "", "", -1, _store.scenery)
+	model = _model()
+	saved = _store.to_text(_store.title, true)
+	_open(saved)
+	_expect(not stepped.is_empty() and saved.contains(spare_block)
+		and _placing(saved, "spare.ldr") == 0 and _model() == model,
+		"a step given in a model of no sub-model, written whole (%s): the block kept after the model, opened again the model as edited (%s; edited %s)"
+		% [str(_store.get("last_whole")), _model(), model])
+	# A placed sub-model titled as one placed by nothing, written whole: the
+	# placed one under a name of its own, the other's block kept. The placed
+	# one took its name, and that one was taken as written already, its
+	# parts lost (sfreview F5).
+	var wing_block: String = TITLES.substr(TITLES.find("0 FILE wing.ldr"),
+		TITLES.find("0 FILE wing2.ldr") - TITLES.find("0 FILE wing.ldr"))
+	_open(TITLES)
+	_builder.select_brick(_brick("3001", 1).id, false)
+	_builder.name_group("Fidelity probe group")
+	model = _model()
+	units = _units()
+	saved = _store.to_text(_store.title, true)
+	_expect(saved.contains(wing_block) and _placing(saved, "wing.ldr") == 0,
+		"placed and placed-by-nothing sub-models of one title, written whole: the unplaced one's block kept (%d placing it)"
+		% _placing(saved, "wing.ldr"))
+	_open(saved)
+	_expect(_model() == model and _units() == units,
+		"...opened again, the model and its copies as edited (%s; edited %s)"
+		% [", ".join(_units()), ", ".join(units)])
+	# Undone: the file again, the block and its line as they were.
+	_open(FILE)
+	var depth: int = _builder.history_depth()
+	for id: int in _ids_of("3003"):
+		_builder.remove_brick_id(id)
+	while _builder.history_depth() > depth:
+		_builder.undo()
+	var differ: Array = _differ(FILE, _store.to_text(_store.title, true))
+	_expect(differ.is_empty(), "the copy taken off and undone: the file again%s"
+		% ("" if differ.is_empty() else ": " + "; ".join(differ.slice(0, 3))))
+
+
 func _copies_apart() -> void:
 	print("fidelity: one copy of two changed")
 	_open(FILE)
@@ -312,6 +718,171 @@ func _copies_apart() -> void:
 	_expect(_model() == model, "opened again, the model as edited, the band in it")
 	_expect(again.get("unshown", {}) == {"nopart9x": 1},
 		"and the part it cannot show still there, still said: %s" % again.get("unshown", {}))
+
+
+## What the app holds, each part turned too: "part colour copy at x y z,
+## its three axes", sorted, off the ground as the file has it.
+func _placed() -> PackedStringArray:
+	var lift: Vector3 = _store.lift()
+	var out := PackedStringArray()
+	for brick: BrickWorld.Brick in _world.bricks():
+		if _store.scenery.has(brick.id):
+			continue
+		var place := PackedStringArray()
+		for v: Vector3 in [brick.transform.origin - lift, brick.transform.basis.x,
+				brick.transform.basis.y, brick.transform.basis.z]:
+			for n: float in [v.x, v.y, v.z]:
+				place.append("%.2f" % (snappedf(n, 0.01) + 0.0))
+		out.append("%s %d %s at %s" % [brick.part_id, brick.color_code,
+			Assemblies.path_of(brick), " ".join(place)])
+	out.sort()
+	return out
+
+
+## The determinant of each line of [param text] placing [param file].
+static func _turns_of(text: String, file: String) -> Array:
+	var out: Array = []
+	for line: String in text.split("\n"):
+		var words: PackedStringArray = line.strip_edges().split(" ", false)
+		if words.size() == 15 and words[0] == "1" and words[14] == file:
+			var m: Array = []
+			for k: int in range(5, 14):
+				m.append(words[k].to_float())
+			out.append(snappedf(Basis(Vector3(m[0], m[3], m[6]), Vector3(m[1], m[4], m[7]),
+				Vector3(m[2], m[5], m[8])).determinant(), 0.001))
+	return out
+
+
+func _of_unit(unit: String) -> Array:
+	var out: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.unit == unit:
+			out.append(brick)
+	return out
+
+
+func _mirrored_copy() -> void:
+	print("fidelity: a mirrored copy of parts the same turned a half")
+	for taken_off: bool in [false, true]:
+		_open(MIRRORED)
+		var mirrored: Array = _of_unit("Wing#2")
+		var first: Array = _of_unit("Wing#1")
+		_expect(mirrored.size() == 2 and first.size() == 2,
+			"found the wings (%d, %d parts)" % [first.size(), mirrored.size()])
+		if mirrored.size() != 2 or first.size() != 2:
+			return
+		if taken_off:
+			for brick: BrickWorld.Brick in first:
+				_builder.remove_brick_id(brick.id)
+		else:
+			var moves: Dictionary = {}
+			for brick: BrickWorld.Brick in mirrored:
+				moves[brick.id] = brick.transform.translated(Vector3(0, 0, 20))
+			_builder.move_bricks(moves)
+		var held: PackedStringArray = _placed()
+		var saved: String = _store.to_text(_store.title, true)
+		var turns: Array = _turns_of(saved, "wing.ldr")
+		var what: String = "the first wing taken off" if taken_off else "the mirrored wing moved"
+		_expect(turns.count(-1.0) == 1 and turns.count(1.0) == turns.size() - 1,
+			"%s: written whole, the mirrored copy by a matrix that reflects (%s)"
+			% [what, str(turns)])
+		_open(saved)
+		var again: PackedStringArray = _placed()
+		var off: Array = []
+		for line: String in held:
+			if not again.has(line):
+				off.append(line)
+		_expect(off.is_empty() and again.size() == held.size(),
+			"...and opens again with every part turned as it was: %d of %d not %s"
+			% [off.size(), held.size(), str(off.slice(0, 2))])
+	# The copies as a matcher lays one on another (Assemblies.best_match),
+	# and a part put in the first followed into the mirrored one.
+	_open(MIRRORED)
+	var tree := Assemblies.new()
+	tree.world = _world
+	tree.builder = _builder
+	tree.library = _library
+	tree.scenery = _store.scenery
+	var fit: Dictionary = tree.best_match(tree.content("Wing#1"), tree.content("Wing#2"))
+	_expect(bool(fit["exact"]) and bool(fit["mirrored"]),
+		"the mirrored wing lies on the first mirrored, not turned (exact %s, mirrored %s)"
+		% [fit["exact"], fit["mirrored"]])
+	var wedge: String = _library.resolve("41769")
+	var other: String = Mirror.counterpart(_library, wedge)
+	var plate: BrickWorld.Brick = null
+	for brick: BrickWorld.Brick in _of_unit("Wing#1"):
+		if brick.part_id == "3020":
+			plate = brick
+	if plate == null or other.is_empty():
+		_expect(false, "found the first wing's plate and the wedge's other hand (%s)" % other)
+		return
+	var at: Transform3D = plate.transform.translated(Vector3(0, 8, 0))
+	var added: int = _world.add_brick(wedge, 4, at)
+	_builder.register(added, wedge, at)
+	_world.get_brick(added).unit = "Wing#1"
+	_world.get_brick(added).group = "Wing"
+	tree.copies_follow({"Wing#1": true})
+	var parts: Array = _of_unit("Wing#2").map(func(brick: BrickWorld.Brick) -> String:
+		return brick.part_id)
+	_expect(parts.has(other) and not parts.has(wedge),
+		"a wedge put in the first wing goes into the mirrored one in its other hand (%s)"
+		% str(parts))
+
+
+## The last copy of a sub-model taken off a file the app saved: its line
+## goes, and the line before it saying which copy it was goes with it.
+func _copy_line_goes() -> void:
+	print("fidelity: the last copy taken off a file the app saved")
+	_open(NUMBERED)
+	var last: Array = _of_unit("Wing#3")
+	_expect(last.size() == 2, "found the last wing (%d parts)" % last.size())
+	for brick: BrickWorld.Brick in last:
+		_builder.remove_brick_id(brick.id)
+	var saved: String = _store.to_text(_store.title, true)
+	var whole: String = str(_store.get("last_whole"))
+	_expect(not saved.contains("1 16 80 0 0 1 0 0 0 1 0 0 0 1 wing.ldr"), "its line is gone")
+	_expect(not saved.contains("0 !BRICKWORKS COPY 3"),
+		"...and the line saying which copy it was (written %s)"
+		% ("as a patch" if whole.is_empty() else "whole: " + whole))
+	_expect(saved.contains("0 !BRICKWORKS COPY 1\n1 16 0 24 0 1 0 0 0 1 0 0 0 1 wing.ldr"),
+		"the first copy's number still on the line before it")
+
+
+## A CRLF file with no line break at its end, saved after an edit to its
+## last line or past it: every line but the last ends in CR LF, the last in
+## nothing, as the file did.
+func _crlf_end() -> void:
+	print("fidelity: a CRLF file with no line break at its end")
+	var file: String = "\r\n".join(PackedStringArray(CRLF_LINES))
+	for edit: String in ["painted", "moved", "taken off", "added after"]:
+		_open(file)
+		var last: BrickWorld.Brick = _brick("3020", 14)
+		if last == null:
+			_expect(false, "found the file's last part")
+			return
+		match edit:
+			"painted":
+				_builder.paint_brick(last.id, 4)
+			"moved":
+				_builder.move_bricks({last.id: last.transform.translated(Vector3(20, 0, 0))})
+			"taken off":
+				_builder.remove_brick_id(last.id)
+			"added after":
+				var at: Transform3D = last.transform.translated(Vector3(0, 24, 0))
+				var added: int = _world.add_brick("3005", 5, at)
+				_builder.register(added, "3005", at)
+		var saved: String = _store.to_text(_store.title, true)
+		var whole: String = str(_store.get("last_whole"))
+		var lines: PackedStringArray = saved.split("\n")
+		var bare: int = 0
+		for n: int in lines.size() - 1:
+			if not lines[n].ends_with("\r"):
+				bare += 1
+		var tail: String = lines[lines.size() - 1]
+		_expect(whole.is_empty() and bare == 0 and not tail.ends_with("\r") and not tail.is_empty(),
+			"its last line %s: written as a patch (%s), every line but the last in CR LF (%d not), "
+			% [edit, "yes" if whole.is_empty() else whole, bare]
+			+ "the last with no end (%s)" % tail.c_escape().right(24))
 
 
 func _named() -> void:

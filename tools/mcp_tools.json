@@ -5256,7 +5256,7 @@
       "readOnlyHint": false,
       "title": "Add to the person's collection"
     },
-    "description": "The person's own bricks, as Build, My collection's What I own keeps them with their account: sets, and loose parts by part, colour and count. add=[{part, color, count}] adds loose lots, all in one call: given a photo of their pile, look at it closely, name each part (its LDraw number, as search_parts gives it; a BrickLink number is read too) and its LDraw colour code, count each, and add them together. Every lot added is marked as this chat's and listed for the person apart from their own, to keep or take back with one button. remove=[{part, color, count}] takes pieces off lots this chat added (count omitted: the whole lot). With neither, it reads the collection back, this chat's lots apart. Their sets and their own lots are theirs: this never changes them. parts_list which=\"need\" then measures the model against it, and which=\"buildable\" ranks what they can build.",
+    "description": "The person's own bricks, as Build, My collection's What I own keeps them with their account: sets, and loose parts by part, colour and count. add=[{part, color, count}] adds loose lots, all in one call: given a photo of their pile, look at it closely, name each part (its LDraw number, as search_parts gives it; a BrickLink number is read too) and its LDraw colour code, count each, and add them together. Every lot added is marked as this chat's and listed for the person apart from their own, to keep or take back with one button. remove=[{part, color, count}] takes pieces off lots this chat added (count omitted: the whole lot). With neither, it reads the collection back, this chat's lots apart. Their sets and their own lots are theirs: add= and remove= never change them; missing= changes only the marks it names, each said as was N, now M. parts_list which=\"need\" then measures the model against it, and which=\"buildable\" ranks what they can build. missing={set, lots: [{part, color, count}]} puts how many of each named part a set they own is missing to count, all its copies together (0 unmarks it), as its Missing parts… page does; the reply says each change as was N, now M, to put back. none=true says a set has nothing missing: refused while anything is marked, naming it; then name those lots, count 0, or send none=true with marked= the number of lots it said, to unmark them all. Send missing= alone, not with add= or remove=. What do I need?, the pool and a bin built from the set then count only what is there.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -5290,6 +5290,54 @@
         "limit": {
           "description": "how many lots the read back lists; 60 when omitted",
           "type": "integer"
+        },
+        "missing": {
+          "additionalProperties": false,
+          "description": "a set they own, and how many of each of its parts are missing",
+          "properties": {
+            "lots": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "color": {
+                    "description": "LDraw colour code",
+                    "type": "integer"
+                  },
+                  "count": {
+                    "description": "how many of it are missing, all the set's copies together; 0 unmarks it",
+                    "type": "integer"
+                  },
+                  "part": {
+                    "description": "the part's LDraw number, as the set's inventory lists it",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "part",
+                  "color",
+                  "count"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "marked": {
+              "description": "with none=true: how many lots its refusal said were marked; all of them unmarked while that is still so",
+              "type": "integer"
+            },
+            "none": {
+              "description": "the set has nothing missing; refused while any lot is marked (name those, count 0, or send marked=)",
+              "type": "boolean"
+            },
+            "set": {
+              "description": "the set's number, like 7140-1",
+              "type": "string"
+            }
+          },
+          "required": [
+            "set"
+          ],
+          "type": "object"
         },
         "remove": {
           "description": "pieces to take off lots this chat added",

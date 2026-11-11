@@ -50,7 +50,7 @@
    "wait": "#allow-step:not(.hide)",
    "crop": ".card",
    "pad": 16,
-   "alt": "The Brickworks page Claude opens: signed in as you@example.com, it asks Let Claude build in Brickworks?, lists what Claude will be able to do, and has Allow and Cancel buttons.",
+   "alt": "The Brickworks page your AI app opens, here for Claude: signed in as you@example.com, it asks Let Claude build in Brickworks?, lists what it will be able to do, and has Allow and Cancel buttons.",
    "caption": "The one question Brickworks asks, once for each app.",
    "features": [
     "ui:connect Claude sign-in page"
@@ -78,6 +78,34 @@
    "caption": "Tools › Connect your AI…: choose your app, then Connect.",
    "features": [
     "ui:connect your AI"
+   ]
+  },
+  {
+   "id": "connect-other-ai",
+   "source": "app",
+   "setup": [
+    {
+     "run": "settings",
+     "after": 30
+    },
+    {
+     "click": "_controls.ai_open",
+     "after": 30
+    },
+    {
+     "click": "_controls.ai.who_key",
+     "after": 30
+    }
+   ],
+   "crop": [
+    "_controls.ai.who_claude",
+    "_controls.ai.remember"
+   ],
+   "pad": 8,
+   "alt": "Settings' AI page with Another AI, on your own API key chosen: the provider, OpenAI, a box to paste its API key with Show, and Remember on this device.",
+   "caption": "Tools › Settings…, AI: Claude…, then Another AI.",
+   "features": [
+    "ui:choose the AI that designs"
    ]
   }
  ]

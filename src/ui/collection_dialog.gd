@@ -1073,6 +1073,8 @@ func _report(result: Dictionary, source: String) -> void:
 		line += " — no inventory is known for %s" % ", ".join(unknown)
 	if not str(result.get("clamped", "")).is_empty():
 		line += " — " + str(result["clamped"])
+	if not str(result.get("marks", "")).is_empty():
+		line += " — " + str(result["marks"])
 	_say(line)
 
 
@@ -1094,8 +1096,13 @@ func _build_from(numbers: PackedStringArray) -> void:
 	if dock != null and not dock.is_open():
 		dock.set_open(true)
 	close()
+	# What the person's copies are marked as missing is not in the bin
+	# (SetBin.make, CollectionStore.marks): said, so the counts read right.
+	var made: Variant = bin.get("_set_bin")
+	var gone: int = int(made.get("left_out")) if made is Object and made.get("left_out") != null else 0
 	if bar != null:
-		bar.say("building from the parts of %s" % bin.set_showing())
+		bar.say("building from the parts of %s%s" % [bin.set_showing(),
+			"" if gone == 0 else ", less the %s marked missing" % Counted.of(gone, "piece")])
 
 
 # --- a loose part ---------------------------------------------------------

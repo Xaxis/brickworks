@@ -400,14 +400,17 @@ func restore_fetched() -> int:
 
 
 ## The working model's text from the last session, or "". "" too for one
-## with no parts, which is begun again as it was left, under its name
-## ([member left_empty]).
+## with no parts anywhere, which is begun again as it was left, under its
+## name ([member left_empty]). One whose model places nothing, with a
+## sub-model the file keeps that nothing places (its last copy taken off,
+## kt5check F5), is opened, so the next save keeps that too
+## ([method _restored]).
 func _autosaved() -> String:
 	unrestored = ""
 	left_empty = false
 	var path: String = autosave()
 	var text: String = FileAccess.get_file_as_string(path) if FileAccess.file_exists(path) else ""
-	if text.is_empty() or _has_parts(text):
+	if text.is_empty() or text.begins_with("1 ") or text.contains("\n1 "):
 		return text
 	var name: String = title_in(text, "")
 	# A picture laid to build over comes back with it: the first thing a
@@ -435,8 +438,20 @@ func _restored(text: String, result: Dictionary) -> int:
 		_opened_whole = -1
 		_autosave_is_model = true
 	var back: int = int(result["placed"]) + (awaited.size() if opened else 0)
-	if back == 0 and count_in(text) > 0:
-		_keep_unopened(text, str(result["error"]))
+	if back > 0:
+		return back
+	var parts: int = count_in(text)
+	if parts > 0:
+		# Never said with no reason: "could not be opened: ." was all one
+		# whose sub-model nothing placed was told (sfreview F2).
+		var why: String = str(result["error"])
+		_keep_unopened(text, why if not why.is_empty()
+			else "none of its %d parts came back" % parts)
+	elif opened:
+		# A model that places nothing, as the person left it: begun again so,
+		# its file kept for the next save, the blocks it keeps with it, not
+		# the sample in its place (sfreview F2).
+		left_empty = true
 	return back
 
 
@@ -1517,6 +1532,9 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	# lines (BookletLooks); where the steps are not the author's, only the
 	# whole booklet's, its page set up and guides (_read_text).
 	world.step_looks = read["looks"]
+	# A sub-model's own lights and views, by its definition, wherever an
+	# edit takes its copies (BrickWorld.section_lines).
+	world.section_lines = Assemblies.lines_of(model)
 	# Stood on the ground before anything is placed, from every part in it;
 	# and brought down onto it, when another tool drew it up in the air.
 	var up: Vector3 = lift_for(known, foreign)
@@ -1736,13 +1754,17 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 
 
 ## Why [param text], which places no part, is not a model to open: "" for
-## an LDraw model with nothing in it, every line of it a comment or a meta
-## line as a model saved empty is, here or by any LDraw tool. A file of
-## anything else places nothing because it is not a model, and opening it
-## would put an empty baseplate where the person's model was.
+## an LDraw model with nothing in it, every line of its model a comment or a
+## meta line as a model saved empty is, here or by any LDraw tool, its
+## sub-models' parts placed by nothing (the last copy of its one sub-model
+## taken off and saved: its block is kept, kt5check F5, and the file was
+## refused at the next open). A file of anything else places nothing because
+## it is not a model, and opening it would put an empty baseplate where the
+## person's model was.
 static func _why_not_a_model(text: String) -> String:
 	var lines: int = 0
 	var drawn: bool = false
+	var files: int = 0
 	for raw: String in text.trim_prefix("\ufeff").split("\n"):
 		var line: String = raw.strip_edges()
 		if line.is_empty():
@@ -1750,7 +1772,11 @@ static func _why_not_a_model(text: String) -> String:
 		lines += 1
 		if line[0] not in "012345" or (line.length() > 1 and line[1] not in " \t"):
 			return "that is not an LDraw file"
-		drawn = drawn or line[0] != "0"
+		if LdrModel.section_word(line) == "FILE":
+			files += 1
+		# A line drawn in a sub-model's section, after the first FILE, is
+		# one nothing placed: the model itself still has nothing in it.
+		drawn = drawn or (line[0] != "0" and files <= 1)
 	if lines == 0:
 		return "it is empty"
 	return "there are no parts in that file" if drawn else ""
@@ -2851,6 +2877,32 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	for group: Variant in figures:
 		figures[group] = back * (figures[group] as Transform3D)
 	var known: Dictionary = library.parts if library != null else {}
+	# Someone else's file written whole: what it holds that is not on the
+	# baseplate, kept (SourceFile.carried_into), in the file's coordinates...
+	var waiting: Array = []
+	# ...and the places in the file of what the model holds, which say what
+	# of the file's sub-models nothing in the model is read through
+	# (SourceFile.unplaced_into).
+	var origins: Array = []
+	if _live_source() != null:
+		if world.generation() == _awaited_in:
+			for placement: LdrModel.Placement in awaited:
+				var held := LdrModel.Placement.new(placement.part_id, placement.color_code,
+					Transform3D(Basis.IDENTITY, -_lift_now()) * placement.transform,
+					placement.step)
+				held.unit = placement.unit
+				held.line = placement.line
+				waiting.append(held)
+				origins.append(placement.origin)
+		for brick: BrickWorld.Brick in world.bricks():
+			if not scenery.has(brick.id) and not brick.origin.is_empty():
+				origins.append(brick.origin)
+		# The sections it carries as it has them keep their names: no
+		# sub-model the model places is named as one, or that one is taken
+		# for it and lost (SourceFile.kept_keys).
+		var kept: Dictionary = _live_source().kept_keys(waiting, origins)
+		if not kept.is_empty():
+			known = known.merged(kept)
 	# One list of each section's steps, from the parts as they are written,
 	# what has not arrived and what the catalogue has not got among them: the
 	# writer writes those, and the booklet's looks go on them
@@ -2860,9 +2912,9 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	if authored and BookletLooks.any_step_look(world):
 		steps = BookletLooks.with_kept_steps(world.step_looks,
 			LdrModel.steps_written(placements, instances, unit_steps))
-	# A sub-model's light lines in its own section (SceneLights.kept_in).
+	# A sub-model's own lights and views in its own section, by its definition.
 	var text: String = LdrModel.write_tree(placements, title, "Brickworks", instances, embedded,
-		unit_steps, known, steps, SceneLights.kept_in(_lights_now(), instances)) \
+		unit_steps, known, steps, Assemblies.lines_written(world, instances)) \
 		if not instances.is_empty() \
 		else LdrModel.write_ldr(placements, title, "Brickworks", figures, embedded, known, steps)
 	if authored:
@@ -2871,19 +2923,14 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	# its steps still no one's when Brickworks worked them out.
 	if _live_source() != null:
 		text = _with_header(text, _live_source().header(), authored)
-		# And what it holds that is not on the baseplate, kept.
-		var waiting: Array = []
-		if world.generation() == _awaited_in:
-			for placement: LdrModel.Placement in awaited:
-				var held := LdrModel.Placement.new(placement.part_id, placement.color_code,
-					Transform3D(Basis.IDENTITY, -_lift_now()) * placement.transform,
-					placement.step)
-				held.unit = placement.unit
-				held.line = placement.line
-				waiting.append(held)
-		# Each where the model now stands (held_place), those the app cannot
-		# show as well as those on their way.
+		# And what it holds that is not on the baseplate, kept: each where
+		# the model now stands (held_place), those the app cannot show as
+		# well as those on their way.
 		text = _live_source().carried_into(text, waiting, held_place)
+		# And each sub-model of the file nothing in the model is read
+		# through, as the file had it: one it never placed, and one whose
+		# last copy was taken off (kt5check F5).
+		text = _live_source().unplaced_into(text, origins)
 		# And LDCad's hoses keep their paths, where they now lie.
 		text = LdcadPath.written_into(text, _live_source(), library)
 	# What it stands on goes with it, everywhere it goes: the autosave, a
@@ -2954,8 +3001,9 @@ static func _looks_into(text: String, looks: Dictionary, authored: bool,
 
 
 ## After an edit kept in the history: a step it took the last part off goes
-## with its look, in the same undo (BookletLooks.emptied), so an undo brings
-## both back. Called once each step of the history is made: by hand
+## with its look, in the same undo (BookletLooks.emptied), and a sub-model it
+## left no copy of with its own lights and views (Assemblies.lines_follow),
+## so an undo brings them back. Called once each step of the history is made: by hand
 ## (Main._on_model_edited), by a session (CommandSocket), by the assistant's
 ## change to a selection. Not for an undo or a redo, whose step has it in
 ## already (Builder.settled), nor while parts lifted off are held: put down,
@@ -2968,7 +3016,9 @@ func looks_follow_edit() -> void:
 	if step.is_empty() or is_same(step, builder.settled) or is_same(step, _looks_followed) \
 			or builder.is_carrying():
 		return
-	builder.extend_last(BookletLooks.emptied(world, step, scenery, _held_placements()))
+	var held: Array = _held_placements()
+	builder.extend_last(BookletLooks.emptied(world, step, scenery, held))
+	Assemblies.lines_follow(builder, step, held)
 	_looks_followed = builder.last_step()
 
 
@@ -3281,10 +3331,18 @@ func _store(path: String, text: String) -> bool:
 	return true
 
 
-## Whether LDraw [param text] places anything: a line of type 1 anywhere.
-## Read without parsing it, since the autosave asks on every write.
+## Whether LDraw [param text]'s model places anything: a line of type 1 in
+## its own section (LdrModel.main_span), as parse reads it. Not one in a
+## block the file keeps that nothing places (kt5check F5): a model emptied
+## by accident, kept with one, went over the saved model it emptied
+## (sfreview F2). Read without parsing it, since the autosave asks on every
+## write.
 static func _has_parts(text: String) -> bool:
-	return text.begins_with("1 ") or text.find("\n1 ") >= 0
+	var span: Vector2i = LdrModel.main_span(text)
+	if span.x == 0 and text.begins_with("1 "):
+		return true
+	var at: int = text.find("\n1 ", maxi(span.x - 1, 0))
+	return at >= 0 and at < span.y
 
 
 ## [param text] with the link it is shared at and the link it was copied
@@ -3405,21 +3463,29 @@ static func _count_bricks(path: String) -> int:
 ## twenty-odd references to studs and tubes, and one brick.
 static func count_in(text: String) -> int:
 	# Each section by its name: the files its lines refer to, and whether
-	# it declares a part. The first with any lines is the model.
+	# it declares a part. The model is the first FILE section, empty or not,
+	# as LdrModel.parse reads it, or the lines of a file with none: the first
+	# with any lines, it was a sub-model nothing places, after a model left
+	# empty, and a model of no parts was counted as that one's (sfreview F2).
 	var refs: Dictionary = {}
 	var is_part: Dictionary = {}
 	var order: Array[String] = []
 	var name: String = ""
+	var named: bool = false     ## the section being read is a FILE section
+	var model: Variant = null   ## the first FILE section's name
 	var lines := PackedStringArray()
 	var head := PackedStringArray()
 	for raw: String in (text + "\n0 NOFILE").split("\n"):
 		var line: String = raw.strip_edges()
 		if line.begins_with("0 FILE ") or line.begins_with("0 NOFILE"):
-			if not lines.is_empty() and not refs.has(name):
+			if (named or not lines.is_empty()) and not refs.has(name):
 				refs[name] = lines
 				is_part[name] = LdrModel.declares_part(head)
 				order.append(name)
-			name = LdrModel._key(line.substr(7)) if line.begins_with("0 FILE ") else ""
+			if named and model == null:
+				model = name
+			named = line.begins_with("0 FILE ")
+			name = LdrModel._key(line.substr(7)) if named else ""
 			lines = PackedStringArray()
 			head = PackedStringArray()
 			continue
@@ -3429,6 +3495,8 @@ static func count_in(text: String) -> int:
 			var fields: PackedStringArray = line.split(" ", false)
 			if fields.size() >= 15:
 				lines.append(LdrModel._key(" ".join(fields.slice(14))))
+	if model != null:
+		return _bricks_in(model, refs, is_part, 0)
 	if order.is_empty():
 		return 0
 	return _bricks_in(order[0], refs, is_part, 0)

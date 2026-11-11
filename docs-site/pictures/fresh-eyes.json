@@ -1,0 +1,46 @@
+{
+ "shots": [
+  {
+   "id": "fresh-eyes-without",
+   "source": "app",
+   "setup": [
+    {
+     "open": "res://tests/fixtures/docs/chameleon_plain.ldr",
+     "after": 60
+    },
+    {
+     "run": "fit_model",
+     "after": 60
+    }
+   ],
+   "crop": "_over_model",
+   "width": 720,
+   "alt": "A chameleon built in bricks without fresh eyes: a boxy green body striped in orange and blue on a brown branch, its tail a flat squared-off spiral and its pink tongue held straight out.",
+   "caption": "Without fresh eyes.",
+   "features": [
+    "lib:fresh eyes at the first save"
+   ]
+  },
+  {
+   "id": "fresh-eyes-with",
+   "source": "app",
+   "setup": [
+    {
+     "open": "res://tests/fixtures/docs/chameleon_fresh.ldr",
+     "after": 60
+    },
+    {
+     "run": "fit_model",
+     "after": 60
+    }
+   ],
+   "crop": "_over_model",
+   "width": 720,
+   "alt": "The same brief designed with fresh eyes: a slimmer chameleon with a turret eye and a crest along its back, its tail curled down in a hook and its pink tongue out to a fly, on a branch over leafy plants.",
+   "caption": "With fresh eyes: the same brief.",
+   "features": [
+    "lib:fresh eyes at the first save"
+   ]
+  }
+ ]
+}
