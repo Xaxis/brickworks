@@ -4520,6 +4520,13 @@
       "area": "view"
     },
     {
+      "kind": "cli",
+      "label": "heldsteps probe",
+      "entry": "src/dev/heldsteps_probe.gd",
+      "reach": "tools/probe.sh heldsteps_probe   (headless: a five-step model, own and someone else's, its 3062b missing from the library and then on its way from a local server; step merges, moves, deletes and a part taken off, saved and opened again: the held part on its own step with its STEP_NAME and ZOOM byte for byte, every other step as the same edit gives the model without it, and with the part back the model as it was; then a sub-model dragged in the tree into one holding it, a part moved on from the last step it follows, a part moved in the second copy of a sub-model placed twice, and someone else's file written whole, each with the held part alone in its own step and sub-model; HELDSTEPS_OUT=dir for the saves)",
+      "area": "view"
+    },
+    {
       "kind": "lib",
       "label": "a person's own keys kept in the system's keychain",
       "entry": "src/ai/key_store.gd",
@@ -4643,20 +4650,6 @@
       "label": "picklist probe",
       "entry": "src/dev/picklist_probe.gd",
       "reach": "tools/probe.sh picklist_probe -- --shots=DIR",
-      "area": "model-io"
-    },
-    {
-      "kind": "ui",
-      "label": "each sub-model as its own file",
-      "entry": "src/parts/submodel_file.gd",
-      "reach": "godot --path .  (the model tree: right-click a sub-model's row, Export “NAME” as its own file…, or the model's row, Export each sub-model (.zip)…; File, Export, Each sub-model as its own file (.zip))  /  export_model format=ldraw submodels=true, or submodel=NAME",
-      "area": "model-io"
-    },
-    {
-      "kind": "cli",
-      "label": "subexport probe",
-      "entry": "src/dev/subexport_probe.gd",
-      "reach": "tools/probe.sh subexport_probe -- --shots=DIR",
       "area": "model-io"
     },
     {
@@ -4927,6 +4920,13 @@
     },
     {
       "kind": "cli",
+      "label": "localbricks probe",
+      "entry": "src/dev/localbricks_probe.gd",
+      "reach": "tools/relay_probe.sh localbricks   (a window, 1280x720; PROBE_SIZE=1400x900; -- --shots=DIR: through the sign-in screen with a password, 7140-1's lots marked by edit_collection missing= (each said was N, now M; none=true refused while marked) and refused past its inventory, Build from it 282 of 285, a restart and another device, two tabs at once one refused, a tab a newer build followed leaving the copy on this device, two copies 566 of 570 and one of them 284 of 285, signed out nothing held, the words in de/fr/es)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
       "label": "print3mf probe",
       "entry": "src/dev/print3mf_probe.gd",
       "reach": "tools/probe.sh print3mf_probe [-- --hashes=FILE | --same-as=FILE]   (headless; the car as a 3MF from File, Export, 3D model… and export_model, read by tools/print3mf/check_3mf.py; every object closed (lib3mf IsManifoldAndOriented, every edge two triangles going opposite ways; as drawn, with Mesh3mf.close_up off, none), its triangles at most twice its parts'; a printed tile, a mirrored brick and a part with no BFC; the reader refusing a turned triangle, a colour that is none and a corner past its vertices; --hashes/--same-as compare the car's GLB and STL with another build's)",
@@ -4983,6 +4983,13 @@
     },
     {
       "kind": "cli",
+      "label": "the docs' pictures",
+      "entry": "tools/docs_shots.py",
+      "reach": "python3 tools/docs_shots.py [--only=ID,ID] [--app | --site] [--affected]   (docs-site/pictures/<page>.json: the app's through tools/probe.sh docs_shots_probe on the GPU from a locked snapshot, the site's by tools/web/docs_shots_flow.mjs; into docs-site/img/, with diff/index.html of what changed; tools/docs_site.py --check fails on one missing or not made by it)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
       "label": "fetchparts browser flow",
       "entry": "tools/web/fetchparts_flow.mjs",
       "reach": "node tools/web/fetchparts_flow.mjs --url=http://127.0.0.1:9821 [--base=http://127.0.0.1:9822 --rounds=2] [--house=H0useFl0w1] --out=DIR   (after tools/export.sh web and tools/web/serve.py build/web 9821 --parts assets/generated/parts --delay 0 --compressed --share F3tchP4rts=vendor/omr/files/42022-1_Rally-Racer.mpd --share H0useFl0w1=HOUSE (play_flow.mjs --write-house=HOUSE), and the build before likewise on 9822; local only: no part file by the engine's HTTPRequest, both whole, each longest frame no longer than the base's, the car's shapes in half the base's time)",
@@ -5022,13 +5029,6 @@
       "entry": "src/dev/video2_probe.gd",
       "reach": "tools/probe.sh video2 [OUT_DIR]; PROBE_SIZE=1400x900 tools/probe.sh video2 OUT_DIR   (windowed, on the GPU, signed in as a throwaway account: Pods' building video by hand and over MCP, the first step's parts 40% or more of the frame's height off its alpha, the last frame the whole model as a picture draws it; the car's 36-frame turntable kept as a GIF by hand and over MCP: GIF89a, 256 colours, looping, 8 MB or less, played by Chromium (tools/web/gif_plays.mjs) 36 frames that change, its first frame within a few levels of the frame it was made of; Kept as in sight; pictures in OUT_DIR)",
       "area": "view"
-    },
-    {
-      "kind": "cli",
-      "label": "the docs' pictures",
-      "entry": "tools/docs_shots.py",
-      "reach": "python3 tools/docs_shots.py [--only=ID,ID] [--app | --site] [--affected]   (docs-site/pictures/<page>.json: the app's through tools/probe.sh docs_shots_probe on the GPU from a locked snapshot, the site's by tools/web/docs_shots_flow.mjs; into docs-site/img/, with diff/index.html of what changed; tools/docs_site.py --check fails on one missing or not made by it)",
-      "area": "web"
     },
     {
       "kind": "ui",
@@ -5200,17 +5200,24 @@
     },
     {
       "kind": "cli",
-      "label": "localbricks probe",
-      "entry": "src/dev/localbricks_probe.gd",
-      "reach": "tools/relay_probe.sh localbricks   (a window, 1280x720; PROBE_SIZE=1400x900; -- --shots=DIR: through the sign-in screen with a password, 7140-1's lots marked by edit_collection missing= (each said was N, now M; none=true refused while marked) and refused past its inventory, Build from it 282 of 285, a restart and another device, two tabs at once one refused, a tab a newer build followed leaving the copy on this device, two copies 566 of 570 and one of them 284 of 285, signed out nothing held, the words in de/fr/es)",
-      "area": "collection"
-    },
-    {
-      "kind": "cli",
       "label": "function packaging",
       "entry": "tools/package_api.sh",
       "reach": "tools/package_api.sh OUT [--export=build/web] [ROUTE...]   (deploy.sh's functions, each with the catalogue's facts beside it, checked by tools/web/packaged_facts.mjs; tests/test_packaged_facts.py)",
       "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "each sub-model as its own file",
+      "entry": "src/parts/submodel_file.gd",
+      "reach": "godot --path .  (the model tree: right-click a sub-model's row, Export “NAME” as its own file…, or the model's row, Export each sub-model (.zip)…; File, Export, Each sub-model as its own file (.zip))  /  export_model format=ldraw submodels=true, or submodel=NAME",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "subexport probe",
+      "entry": "src/dev/subexport_probe.gd",
+      "reach": "tools/probe.sh subexport_probe -- --shots=DIR",
+      "area": "model-io"
     }
   ]
 }
