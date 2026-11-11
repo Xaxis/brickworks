@@ -294,6 +294,16 @@ var _gone_origins: Dictionary = {}
 ## "<sub-model>|<step>" -> {turn, zoom, size, page, parts}, and the
 ## sub-models' and the booklet's own. Changed only by the history's steps.
 var step_looks: Dictionary = {}
+## The lines each sub-model keeps that are not its parts and that a whole
+## write would not make again: its own lights and views (SceneLights,
+## SavedViews), as its file has them, by its definition (Assemblies
+## .definition) -> PackedStringArray. Read at the open (LdrModel
+## .section_lines), written in its section wherever it is (LdrModel
+## .write_tree). By its definition, not a copy's path: a rename, a Make round
+## it or the sub-model it is in taken apart moves the path, and the lines kept
+## by it were lost (lreview3). A rename and a copy made one of its own carry
+## them (Assemblies.lines_renamed). Changed only by the history's steps.
+var section_lines: Dictionary = {}
 ## The model's own named movements (Motions: "Open the doors"), read from
 ## its file and written into it. Changed only by the history's steps.
 var motions: Motions = null
@@ -562,6 +572,7 @@ func clear() -> void:
 	unit_chains.clear()
 	_gone_origins.clear()
 	step_looks.clear()
+	section_lines.clear()
 	motions = null
 	cut_kept = {}
 	saved_views = []

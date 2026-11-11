@@ -1416,9 +1416,13 @@ func accept(numbers: Array = []) -> PackedStringArray:
 			changes[brick_id] = path if rest.is_empty() else path + "/" + rest
 	if changes.is_empty():
 		return PackedStringArray()
-	builder.regroup(changes, "made %d section%s of %s" % [made_paths.size(),
-		"" if made_paths.size() == 1 else "s", Builder._many(changes.size())],
-		assemblies.wrapped(changes), assemblies.made_steps(made_paths))
+	if builder.regroup(changes, "made %d section%s of %s" % [made_paths.size(),
+			"" if made_paths.size() == 1 else "s", Builder._many(changes.size())],
+			assemblies.wrapped(changes), assemblies.made_steps(made_paths)) > 0:
+		# A name a gone sub-model had: its lights and views are not these.
+		for path: String in made_paths:
+			builder.extend_last(Assemblies.lines_renamed(world, "",
+				Assemblies.definition(Assemblies.leaf(path)), true))
 	assemblies.no_copies_follow()
 	var kept: Array[Suggestion] = []
 	for made: Suggestion in suggested:

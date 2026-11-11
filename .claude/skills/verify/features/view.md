@@ -2932,7 +2932,11 @@ picture the assistant is shown.
   studio's 3, the sky and 4 are the 8 a renderer draws), refused with why
   on every way in (a file, light_model, Together, Render's Add buttons).
   Only the main model's lines are read (to an MPD's second section: a
-  sub-model keeps its own lights and views); numbers are rounded to a
+  sub-model keeps its own lights and views, `LdrModel.section_lines`, held by
+  its definition in `BrickWorld.section_lines` so a rename, a Make round it
+  or the sub-model it is in taken apart keeps them in its section, undo and
+  redo too, `Assemblies.lines_renamed`; a line the model and a sub-model
+  both have is the model's in its own lines alone); numbers are rounded to a
   thousandth before they are checked; a line not read stays in the file
   word for word and the open says how many and why. Strength 1 lights a face
   100 LDU from a lamp, or any face turned to a sun, as the window's key does.
@@ -2991,7 +2995,15 @@ picture the assistant is shown.
   unread line once; an MPD whose `0 FILE` lines have a tab keeping its
   sub-model's light (sections are `LdrModel.parse`'s, never a regex of
   lights' own); a light added to a model with a comment before its `0 FILE`
-  inside its section. Then the car under 0 to 4 suns (each adding light)
+  inside its section. Its third (lreview3 F1-F3, lightpaths): a lit
+  sub-model with a view of its own renamed (the app's own MPD and someone
+  else's), everything made a sub-assembly round it, the sub-model it is in
+  taken apart, each saved, undone and saved, redone and saved: its light and
+  view once each, in its section, the model's lamp alone in the model; a
+  model whose sub-model holds its lamp's very line written whole, the lamp
+  still the model's, two lines in all, one light opened again. `-- --review`
+  runs only these review checks, nothing drawn (a minute, not the whole
+  probe's renders). Then the car under 0 to 4 suns (each adding light)
   and the neon and white grids under 8 bulbs in the Dark light (the white
   grid's floor rising; the neon grid's mean and far floor within 10% of no
   bulbs), on either renderer; `PROBE_COMPAT=1` runs it on Compatibility

@@ -1517,6 +1517,9 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	# lines (BookletLooks); where the steps are not the author's, only the
 	# whole booklet's, its page set up and guides (_read_text).
 	world.step_looks = read["looks"]
+	# A sub-model's own lights and views, by its definition, wherever an
+	# edit takes its copies (BrickWorld.section_lines).
+	world.section_lines = Assemblies.lines_of(model)
 	# Stood on the ground before anything is placed, from every part in it;
 	# and brought down onto it, when another tool drew it up in the air.
 	var up: Vector3 = lift_for(known, foreign)
@@ -2860,9 +2863,9 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	if authored and BookletLooks.any_step_look(world):
 		steps = BookletLooks.with_kept_steps(world.step_looks,
 			LdrModel.steps_written(placements, instances, unit_steps))
-	# A sub-model's light lines in its own section (SceneLights.kept_in).
+	# A sub-model's own lights and views in its own section, by its definition.
 	var text: String = LdrModel.write_tree(placements, title, "Brickworks", instances, embedded,
-		unit_steps, known, steps, SceneLights.kept_in(_lights_now(), instances)) \
+		unit_steps, known, steps, Assemblies.lines_written(world, instances)) \
 		if not instances.is_empty() \
 		else LdrModel.write_ldr(placements, title, "Brickworks", figures, embedded, known, steps)
 	if authored:

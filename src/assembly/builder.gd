@@ -618,6 +618,13 @@ func _apply(step: Dictionary) -> Dictionary:
 		world.step_looks = (step["looks"] as Dictionary).duplicate(true)
 		return {"undo": "steplooks", "looks": looked}
 
+	# Each sub-model's own lights and views (BrickWorld.section_lines): the
+	# whole table as it was, its own reverse.
+	if step.get("undo", "") == "sectionlines":
+		var lined: Dictionary = world.section_lines
+		world.section_lines = (step["lines"] as Dictionary).duplicate(true)
+		return {"undo": "sectionlines", "lines": lined}
+
 	# Which copy of someone else's file each path is: the table as it was,
 	# its own reverse.
 	if step.get("undo", "") == "unitchains":

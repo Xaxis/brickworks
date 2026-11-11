@@ -29,6 +29,8 @@
 ##                    Brickworks, which knows nothing of lights: each opens
 ##                    whole, and its light lines are as they were
 ##   -- --no-trace    the path-traced half left out (a second window size)
+##   -- --review      only what the reviews found, nothing drawn: the file's
+##                    lines through opens, edits and saves
 ##   -- --means=FILE  under Forward+ the Dark light's means under the model's
 ##                    suns written there; under Compatibility (the web's,
 ##                    on the card through zink: PROBE_COMPAT=1 tools/probe.sh
@@ -51,7 +53,12 @@
 ## as LdrModel reads them. And on this renderer, the car under 0 to 4 suns
 ## each adding light, and 8 bulbs over a grid of neon and of white bricks in
 ## the dark keeping the neon grid's mean and far floor within 10% of no bulbs
-## (on Compatibility too, and there within 10% of Forward+).
+## (on Compatibility too, and there within 10% of Forward+). Its third
+## (lreview3's F1-F3, lightpaths): a sub-model's light and view in its own
+## section through a rename (the app's own file and someone else's), a Make
+## round it and its outer sub-model taken apart, each undone and redone; and
+## a model whose sub-model holds its lamp's very line, written whole, keeping
+## its lamp.
 ##
 ## Leaves shots/lights/: Render with the spot, studio and dark; the spot's
 ## pictures and their maps (green changed inside, red changed outside, grey
@@ -133,6 +140,10 @@ func _run() -> void:
 	_tools = AppTools.new()
 	_tools.app = _main
 	_tools.assistant = _main.get("_assistant")
+	if OS.get_cmdline_user_args().has("--review"):
+		await _review()
+		_finish("lights: what the reviews found, and nothing drawn (--review)")
+		return
 	await _in_render()
 	await _kept_everywhere()
 	await _sessions()
@@ -940,6 +951,7 @@ func _review() -> void:
 	await _r_whole_mpd()
 	await _r_crlf_last()
 	await _r_sections()
+	await _r_paths()
 	await _r_junk()
 
 
@@ -1144,6 +1156,130 @@ func _r_sections() -> void:
 	_check("a light put in a model with a comment before its 0 FILE goes inside its section "
 		+ "(light at %d, FILE at %d)" % [written.find(META), written.find("0 FILE main.ldr")],
 		written.find(META) > written.find("0 FILE main.ldr") and written.find("0 FILE main.ldr") >= 0)
+
+
+## The sub-model's own light and view in the fixtures of [method _r_paths].
+const SUB_GREEN := "#00ff00"
+const SUB_VIEW := "sub view"
+
+
+## A sub-model's light and view follow it wherever its path goes, and stay
+## its own (lreview3's F1 and F3, lightpaths): it renamed, in the app's own
+## file and in someone else's (both written whole then); a Make round it;
+## the sub-model it is in taken apart. Each undone and redone, saved after
+## each. And F2: a model whose sub-model holds its lamp's very line, written
+## whole, keeps its lamp in itself. Up to 2026-11-10 each lost the line: the
+## open kept them by the copy's path, which every one of these changes.
+func _r_paths() -> void:
+	var assemblies: Assemblies = _shell.get("assemblies")
+	var sub_light: String = _light("point", [0, -50, 0], {"colour": SUB_GREEN})
+	var sub_view: String = VIEW_META + JSON.stringify({"name": SUB_VIEW, "yaw": 10, "pitch": -20,
+		"distance": 300, "focus": [0, 0, 0]})
+	for whose: String in ["Brickworks", "Someone"]:
+		await _opened(_put("paths_rename.mpd", _lit_sub(whose, sub_light, sub_view)))
+		assemblies.rename(_path_named(assemblies, "Sub"), "Engine")
+		await _frames(5)
+		var said: Array = await _saved_through("paths_rename", ["engine.ldr", "sub.ldr", "engine.ldr"])
+		_check("%s MPD, its lit sub-model renamed Engine, undone and redone, saved after each: "
+			% ("the app's own" if whose == "Brickworks" else "someone else's") + "its light and "
+			+ "view in its section each time (%s), the model's lamp in the model alone (%s)" % said,
+			said[0] == [true, true, true] and said[1] == [true, true, true])
+	await _opened(_put("paths_make.mpd", _lit_sub("Brickworks", sub_light, sub_view)))
+	var selection: Dictionary = {}
+	for brick: BrickWorld.Brick in _world.bricks():
+		selection[brick.id] = true
+	(_main.get("_builder") as Object).set("selection", selection)
+	assemblies.make("Box")
+	await _frames(5)
+	var made: Array = await _saved_through("paths_make", ["sub.ldr", "sub.ldr", "sub.ldr"])
+	_check("everything made a sub-assembly (Make), undone and redone, saved after each: the "
+		+ "sub-model's light and view in its section each time (%s), the lamp in the model (%s)"
+		% made, made[0] == [true, true, true] and made[1] == [true, true, true])
+	var nested: String = "\n".join(PackedStringArray(["0 FILE main.ldr", "0 Nested", "0 Name: main.ldr",
+		"0 Author: Brickworks", _light("point", [0, -60, 0]), "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat",
+		"1 16 100 0 0 1 0 0 0 1 0 0 0 1 outer.ldr", "0 NOFILE", "0 FILE outer.ldr", "0 Outer",
+		"0 Name: outer.ldr", "0 Author: Brickworks", "1 2 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat",
+		"1 16 0 -24 0 1 0 0 0 1 0 0 0 1 sub.ldr", "0 NOFILE", "0 FILE sub.ldr", "0 Sub",
+		"0 Name: sub.ldr", "0 Author: Brickworks", sub_light, sub_view,
+		"1 14 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat", "0 NOFILE", ""]))
+	await _opened(_put("paths_apart.mpd", nested))
+	assemblies.ungroup(_path_named(assemblies, "Outer"))
+	await _frames(5)
+	var apart: Array = await _saved_through("paths_apart", ["sub.ldr", "sub.ldr", "sub.ldr"])
+	_check("the sub-model it is in taken apart, undone and redone, saved after each: its light "
+		+ "and view in its section each time (%s), the lamp in the model (%s)" % apart,
+		apart[0] == [true, true, true] and apart[1] == [true, true, true])
+	# F2: the lamp's very line in the sub-model too.
+	var lamp: String = _light("point", [0, -60, 0])
+	await _opened(_put("paths_twin.mpd", _lit_sub("Brickworks", lamp, sub_view)))
+	var saved: String = ModelStore.SAVE_DIR + "paths_twin_saved.mpd"
+	_main.call("save_model", saved)
+	var after: String = FileAccess.get_file_as_string(saved)
+	var own: int = _lines_of(after.substr(0, LdrModel.main_end(after))).size()
+	await _opened(saved)
+	_check("a model whose sub-model holds its lamp's very line, written whole: %d light line in "
+		% own + "the model (1), %d in all (2), the sub-model's in it (%s); opened again, %d light (1)"
+		% [_lines_of(after).size(), _section_of(after, "sub.ldr").contains(lamp), _scene().size()],
+		own == 1 and _lines_of(after).size() == 2 and _section_of(after, "sub.ldr").contains(lamp)
+		and _scene().size() == 1)
+
+
+## The app's own MPD (or [param whose]'s): the model's lamp in the model, and
+## a sub-model "Sub" with [param sub_light] and [param sub_view] of its own.
+func _lit_sub(whose: String, sub_light: String, sub_view: String) -> String:
+	return "\n".join(PackedStringArray(["0 FILE main.ldr", "0 Lit sub", "0 Name: main.ldr",
+		"0 Author: " + whose, _light("point", [0, -60, 0]), "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat",
+		"1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat", "1 16 100 0 0 1 0 0 0 1 0 0 0 1 sub.ldr",
+		"0 NOFILE", "0 FILE sub.ldr", "0 Sub", "0 Name: sub.ldr", "0 Author: " + whose, sub_light,
+		sub_view, "1 14 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat", "0 NOFILE", ""]))
+
+
+## The path of the copy of [param definition] in the model.
+static func _path_named(assemblies: Assemblies, definition: String) -> String:
+	for path: String in assemblies.paths():
+		if Assemblies.definition(Assemblies.leaf(path)) == definition:
+			return path
+	return ""
+
+
+## Saved as the change left it, then undone and saved, then redone and saved
+## (named [param name]), each file's sub-model light and view looked for in
+## the section of [param sections] (in that order): [whether each was in it
+## once, the file's one copy of each], [whether the model kept its lamp
+## alone in its own lines].
+func _saved_through(name: String, sections: Array) -> Array:
+	var in_section: Array = []
+	var lamp_alone: Array = []
+	for n: int in 3:
+		if n == 1:
+			_shell.call("run", "undo")
+			await _frames(5)
+		elif n == 2:
+			_shell.call("run", "redo")
+			await _frames(5)
+		var saved: String = ModelStore.SAVE_DIR + "%s_%d.mpd" % [name, n]
+		_main.call("save_model", saved)
+		var text: String = FileAccess.get_file_as_string(saved)
+		var section: String = _section_of(text, str(sections[n]))
+		in_section.append(text.count(SUB_GREEN) == 1 and text.count(SUB_VIEW) == 1
+			and section.contains(SUB_GREEN) and section.contains(SUB_VIEW))
+		var own: String = text.substr(0, LdrModel.main_end(text))
+		lamp_alone.append(_lines_of(own).size() == 1 and not own.contains(SUB_GREEN)
+			and not own.contains(SUB_VIEW))
+	return [in_section, lamp_alone]
+
+
+## The lines of [param text]'s section [param file] (from its 0 FILE line to
+## the next), "" when it has none.
+static func _section_of(text: String, file: String) -> String:
+	var out := PackedStringArray()
+	var inside: bool = false
+	for line: String in text.split("\n"):
+		if LdrModel.section_word(line) == "FILE":
+			inside = line.strip_edges().to_lower().ends_with(" " + file)
+		if inside:
+			out.append(line)
+	return "\n".join(out)
 
 
 ## A value is rounded as a file keeps it before it is checked: a strength or

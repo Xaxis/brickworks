@@ -388,9 +388,10 @@ func make(name: String) -> String:
 		changes[brick_id] = path if rest.is_empty() else path + "/" + rest
 	if changes.is_empty():
 		return ""
-	builder.regroup(changes, "made the sub-assembly %s of %s" % [definition(segment),
-		Builder._many(changes.size())], wrapped(changes),
-		made_steps(PackedStringArray([path])))
+	if builder.regroup(changes, "made the sub-assembly %s of %s" % [definition(segment),
+			Builder._many(changes.size())], wrapped(changes),
+			made_steps(PackedStringArray([path]))) > 0:
+		builder.extend_last(lines_renamed(world, "", definition(segment), true))
 	changed.emit()
 	return path
 
@@ -449,13 +450,63 @@ func rename(path: String, wanted: String) -> String:
 		return old
 	var was_entered: String = entered
 	var carry: Callable = func(at: String) -> Array: return [_renamed_path(at, old, name)]
-	# Its steps' looks are kept by its name.
+	# Its steps' looks are kept by its name, and so are its own lights and views.
 	if builder.regroup(changes, "renamed %s to %s" % [old, name], carry) > 0:
 		builder.extend_last(BookletLooks.renamed(world, old, name, true))
+		builder.extend_last(lines_renamed(world, old, name, true))
 	if not was_entered.is_empty():
 		_set_entered(_renamed_path(was_entered, old, name))
 	changed.emit()
 	return name
+
+
+## A sub-model's own lines (BrickWorld.section_lines) of [param from] given
+## to [param to] as well, or with [param moved] in their place, as
+## BookletLooks.renamed carries its looks: a rename takes them, a copy made
+## one of its own keeps them. [param to] is a name no sub-model has
+## ([method unused_name]), so what is kept under it is a gone sub-model's,
+## left by its last copy taken apart or off, and goes; [param from] "" (a
+## Make's new sub-assembly) gives it nothing else. Returns the undo, the
+## whole table as it was, or [] when nothing changed.
+static func lines_renamed(world: BrickWorld, from: String, to: String, moved: bool) -> Array:
+	var lines: Dictionary = world.section_lines
+	if to.is_empty() or from == to or not (lines.has(to) or lines.has(from)):
+		return []
+	var was: Dictionary = lines.duplicate(true)
+	lines.erase(to)
+	if lines.has(from):
+		lines[to] = PackedStringArray(lines[from])
+		if moved:
+			lines.erase(from)
+	return [{"undo": "sectionlines", "lines": was}]
+
+
+## [param model]'s sub-models' own lines (LdrModel.section_lines), by the
+## definition their copies are of once laid (LdrModel._assembly_names), as
+## BrickWorld.section_lines keeps them.
+static func lines_of(model: LdrModel) -> Dictionary:
+	var out: Dictionary = {}
+	if model.section_lines.is_empty():
+		return out
+	var names: Dictionary = model._assembly_names()
+	for key: String in model.section_lines:
+		if names.has(key):
+			out[str(names[key])] = PackedStringArray(model.section_lines[key])
+	return out
+
+
+## The lines each definition [param instances] (file_frames) writes keeps of
+## its own, for LdrModel.write_tree: those of the sub-model its copies are
+## of, a copy written as one of its own ("Wing 2") among them.
+static func lines_written(world: BrickWorld, instances: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	if world.section_lines.is_empty():
+		return out
+	for path: String in instances:
+		var lines: Variant = world.section_lines.get(definition(leaf(path)))
+		if lines != null:
+			out[str((instances[path] as Dictionary)["def"])] = PackedStringArray(lines)
+	return out
 
 
 static func _renamed_path(path: String, old: String, name: String) -> String:
@@ -538,6 +589,9 @@ func make_unique(path: String) -> String:
 	# kept by the name it had, are its new name's too.
 	if own_steps and moved > 0:
 		builder.extend_last(BookletLooks.renamed(world, definition(leaf(path)), name, false))
+	# And its own lights and views, built in its own steps or not.
+	if moved > 0:
+		builder.extend_last(lines_renamed(world, definition(leaf(path)), name, false))
 	if within(entered, path):
 		_set_entered(fresh + entered.substr(path.length()))
 	changed.emit()
