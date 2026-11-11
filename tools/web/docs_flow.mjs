@@ -168,7 +168,7 @@ for (const width of [390, 1400]) {
 console.log("docs_flow: search");
 for (const [width, dark] of [[1400, false], [390, true]]) {
   const theme = dark ? "dark" : "light";
-  const { page, context } = await open("/docs/building", { width, dark });
+  const { page, context } = await open("/docs/placing-parts", { width, dark });
   await page.keyboard.press("Control+K");
   const opened = await page.waitForFunction(() => document.querySelector("dialog.docs-search")?.open
     && document.activeElement === document.querySelector("dialog.docs-search input"), null, { timeout: 4000 }).then(() => true, () => false);

@@ -10,17 +10,23 @@ nav: The parts bin
 description: Find any part by name, number, shape or a photo, keep the ones you use, and choose its colour.
 ---
 
-The parts bin is the top of the left-hand column. [[/]] goes straight to its search, opening it if it was put away (**View › Panels › Parts bin** shows or hides it). Each part's name is under its picture, *Plate 1×2*, *Brick 1×1 with Stud on 1 Side*; its number is on its tooltip. Where names begin alike and run long, each goes on from the words that set it apart. While a picture is still coming, the part is drawn in its place from its size and studs, so no tile is ever a blank square.
+The parts bin is where every part comes from. It is the top of the left-hand column; [[/]] goes straight to its search, opening the bin if it was put away (**View › Panels › Parts bin** shows or hides it).
 
 <!-- covers
 ui:parts bin
 -->
 
-## Search {#search}
+## Search for a part {#search}
 
 ![The parts bin with slope 2 x 2 typed in its search, the slopes it found shown as pictures with their names, and how many it found at the foot.](/docs/img/parts-bin-search.webp "Type what you want: the bin finds it by name, number or the words builders use.")
 
-Type what you want in words: *2x4 brick*, *slope 45*, *wheel*, *window*, a part number like *3001*, or what is printed on it, with *print*: *control panel print*. The bin understands builders' words: *SNOT* finds bricks with side studs and brackets, *cheese* the small slopes, *Erling* the headlight brick, *Travis* the brick with studs on four sides, *macaroni* the curved corners, *jumper*, *click hinge* and *cheese grater* what builders mean by them. A size alone is a brick: *2x4* lists Brick 2 × 4 first. A size with a kind of part lists that kind first: *1x4 brick* is bricks, *2x2 tile* tiles. Every part comes from the LDraw library, and its geometry is fetched the first time it is used and kept.
+Press [[/]] and type what you want: *2x4 brick*, *slope 45*, *wheel*, *window*, a part number like *3001*, or what is printed on it, with *print*: *control panel print*. Click a part to take it in hand.
+
+- A size alone is a brick: *2x4* lists Brick 2 × 4 first. A size with a kind lists that kind first: *2x2 tile* is tiles.
+- Builders' words work: *SNOT* finds bricks with side studs and brackets, *cheese* the small slopes, *Erling* the headlight brick, *Travis* the brick with studs on four sides, *macaroni* the curved corners.
+- A part's name is under its picture and its number on its tooltip. A count like **+82** on a tile is its prints and other versions, folded under it: [[+]] shows them.
+
+Every part is from the LDraw library, fetched once and kept.
 
 <!-- covers
 lib:part search
@@ -29,73 +35,69 @@ lib:mesh fetch
 
 ### Find a part from a photo {#photo}
 
-The camera in the search field takes a photo of a real part and finds it. The photo goes to Brickognize, a service that recognises parts, and the bin says so before the first one is sent. Brickognize's terms allow personal, non-commercial use, so photo search is not part of Pro's licence for commercial use.
+The camera in the search field finds a real part from a photo of it. The photo goes to Brickognize, a service that recognises parts, and the bin says so before the first is sent. Its terms allow personal use only, so photo search is not in Pro's commercial licence.
 
 <!-- covers
 ui:find a part from a photo
 -->
 
-## Recent, Favourites and Techniques {#shelves}
+## Use the shelves {#shelves}
 
 ![The parts bin as it opens: its shelves along the top, a grid of part pictures with their names, and how many it shows at the foot.](/docs/img/parts-bin-shelves.webp "The bin's shelves and its parts.")
 
-**Recent** keeps the parts you used last. Right-click a part to keep it in **Favourites**. **Techniques** holds worked constructions from real sets, such as a row of hinged plates or a SNOT wall: a click takes one whole into hand, [[R]] turns it, and a click puts it down.
+The chips along the top of the bin are its shelves, and stay in sight however narrow the column; the kinds of part after them, *Brick*, *Plate* and the rest, scroll.
+
+- **Recent**: the parts you used last.
+- **Favourites**: right-click a part to keep it here.
+- **Palettes**: your own (below). Recent, Favourites, Palettes and Techniques count what they hold.
+- **New**: parts first made in the two latest years the catalogue knows, now 2025 and 2026.
+- **Techniques**: worked constructions from real sets, a row of hinged plates, a SNOT wall; a click takes one whole into hand.
+- **Fits** and **Like this**: what fits the part selected or in hand, and parts like it (below).
+
+Typing narrows any shelf.
 
 <!-- covers
 ui:recent and favourite parts
 ui:techniques in the bin
 lib:worked constructions
+ui:new parts in the bin
 -->
 
-### Palettes {#palettes}
+### Keep palettes of your own {#palettes}
 
-**Palettes**, beside Favourites, keeps palettes of your own, as many as you like, each named: parts in their colours and whole sub-assemblies, there in every model you open. **New palette** makes one and its name is chosen, so typing names it. In an open palette, **Add** keeps the part in hand in its colour, the selected parts each in its colour, or the selection as one sub-assembly, named. A click on a part takes it in hand in its colour; a click on a sub-assembly takes it whole, and a click puts it down as a sub-assembly of its own. **More** takes one out, renames a sub-assembly or deletes the palette.
+A palette is a named set of parts in their colours and whole sub-assemblies, there in every model. **New palette** makes one. In an open palette, **Add** keeps the part in hand, the selected parts, or the selection as one sub-assembly; a click takes one back into hand. **More** takes one out, renames it or deletes the palette.
 
-Claude keeps them for you too: ask it to keep the parts of what you built as a palette, and it makes the one the bin then shows, in one step (`palettes`, `edit_palette`). It can put a kept sub-assembly down in any model whole, and asks you before it deletes a palette or takes a sub-assembly out.
+Your Claude can make one too: ask it to keep the parts of what you built as a palette, and the **Palettes** chip counts it with yours. It asks before it deletes anything.
 
 <!-- covers
 lib:a session keeps and uses palettes over mcp
 -->
 
-## New parts {#new}
+## Find what fits, or a part like it {#fits}
 
-**New**, after Palettes, lists every part first made in the two latest years the parts catalogue knows, now 2025 and 2026, the newest year first. A part's year is the year of the first set it came in. Type to narrow it: *slope* lists the new slopes. Its tooltip names the two years.
-
-The shelves, All, Recent, Favourites, Palettes, New, Techniques, Fits and Like this, stay in sight however narrow the column is: they wrap onto another row, and where leaving off their counts saves a row, they show their names alone. The kinds of part after them, *Brick*, *Plate* and the rest, scroll.
-
-<!-- covers
-ui:new parts in the bin
--->
-
-## What fits {#fits}
-
-Select a part in the model, or take one in hand, and choose **Fits** beside Techniques: the bin lists the parts that fit it, the best fits first. A beam lists its pins, a clip its bars, a bar its clips, a hinge's base its top, a click hinge its other half, a ball its socket, and a jumper the 1 × 1 parts that sit on its stud; then the parts that sit on its studs, the ones real sets use most first. Type to narrow it: *axle* among a beam's fits lists the axles that go through it. Picking a part from the list keeps it on the part you asked about. Double-click a part in the list to put it on the selected part, where it fits and there is room: a pin goes into a beam's hole. [[Ctrl+Z]] takes it off.
+Select a part, or take one in hand, and choose **Fits**: the bin lists what fits it, the best first: a beam's pins, a clip's bars, a hinge's other half, then the parts that sit on its studs. Double-click one to put it on the selected part: a pin goes into a beam's hole.
 
 ## Like this {#like-this}
 
-Select a part, or take one in hand, and choose **Like this** beside Fits: the bin lists five parts of its size and kind first, the ones real sets use most: a 2 × 4 brick's 2 × 4 bricks, a 1 × 2 plate's 1 × 2 plates, a 45° slope's 45° slopes of its size. Then the rest of its size by how much sets use them, nearby kinds among them, so a 2 × 4 brick's Plate 2 × 4 and Tile 2 × 4 come right after; then its kind in other sizes. Its prints and other moulds are among them, folded under the plain part. Double-click one, or tap it on a phone, and every selected part is swapped for it where it stands: each keeps its place, its turn, its colour, its step and its sub-model. [[Ctrl+Z]] brings them all back. An assistant gets the same list from search_parts with `like=` and a part number.
+**Like this** lists parts of its size and kind first, those real sets use most, then the rest of its size (a 2 × 4 brick's Plate 2 × 4 and Tile 2 × 4), then its kind in other sizes. Double-click one, or tap it on a phone, and every selected part is swapped for it, keeping its place, turn, colour and step.
 
-## Colours {#colours}
+## Choose a colour {#colours}
 
-The palette under the bin holds every colour parts are made in, and a part's own colours come first. [[[]] and [[]]] step through them, and [[Shift+C]] finds one by name or LDraw number. A part is drawn in its true colour, transparent and metallic finishes included.
+The palette under the bin holds every colour parts are made in, the part's own colours first. Click one, or press [[[]] and [[]]] to step through them, or [[Shift+C]] to find one by name or LDraw number. A part is drawn in its true colour, transparent and metallic finishes included.
 
-Tick **Only parts made in it** beside the colour's name and the bin lists only the parts real sets have in that colour, *Sand Green* or any other; choose another colour and the list follows it.
-
-With a part in hand, rest the pointer on a colour: its tooltip says in how many sets the part comes in it, *3001 comes in it, in 1,011 sets*. In three sets or fewer it says *rare in this colour*: a piece lost in it is hard to replace. The counts are Rebrickable's set inventories, a set's own parts and its minifigures', not its spares, and not a set counted again for a pack that holds it.
+- Tick **Only parts made in it** and the bin lists only the parts real sets have in that colour.
+- With a part in hand, rest the pointer on a colour: its tooltip says in how many sets the part comes in it, *3001 comes in it, in 1,011 sets*, or *rare in this colour* in three or fewer, so a piece lost in it is hard to replace. The counts are Rebrickable's set inventories.
 
 <!-- covers
 ui:rare colours in the bin
--->
-
-## Swap, list and plain parts {#swap}
-
-Double-click a part in the bin to swap what is selected for it: three red bricks become three red masonry bricks in one step, in their places and colour, and [[Ctrl+Z]] swaps them back. **List**, under the bin, shows a row per part with its number, its size in studs and how many colours it was made in. Clear **Prints** beside it and printed and stickered parts leave the bin. **Only parts made in it**, **Prints** and **List** stay as you left them the next time you open Brickworks.
-
-<!-- covers
 ui:palette
 lib:true colour
 lib:finishes
 -->
+
+## Swap, list and plain parts {#swap}
+
+Double-click any part in the bin to swap what is selected for it, in one undo step. **List**, under the bin, shows a row per part with its number, size and how many colours it was made in. Clear **Prints** and printed and stickered parts leave the bin. Both stay as you left them.
 
 ## Prints, stickers and made parts {#prints}
 
