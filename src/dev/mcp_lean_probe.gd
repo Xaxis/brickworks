@@ -83,7 +83,7 @@ func _what_if() -> void:
 	said = await _call("check_design", {"edit": {}})
 	_check("edit={} checks the model as it is: %s" % _text(said).get_slice("\n", 1).left(60),
 		_text(said).begins_with("What if") and _standing() == was)
-	var joints: String = _line_with(_text(said), "Most loaded stud joints")
+	var joints: String = _line_with(_text(said), "Most loaded joints")
 	_check("...naming a part standing by its number: %s" % joints.left(90),
 		joints.is_empty() or joints.contains(" #"))
 	said = await _call("check_design", {"edit": {"remove": [987654]}})

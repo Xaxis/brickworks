@@ -543,6 +543,16 @@ var lights_unread_words: String:
 		return SceneLights.unread_words(_lights_now().get("why", {}))
 
 
+## The motion lines of the model on the baseplate its open could not read,
+## kept to be written back (Motions.unread_words): "" for none.
+var motions_unread_words: String:
+	get:
+		return world.motions.unread_words() if world != null and world.motions != null else ""
+## What the last write said of the joints of the model's motions whose part
+## is gone ([method _motion_lines]): "" for none.
+var motions_gone_words: String = ""
+
+
 ## The open's reading of the model's lights ([member _lights_read]) while the
 ## model on the baseplate is the one it was read with; {} once it is not.
 func _lights_now() -> Dictionary:
@@ -1496,6 +1506,10 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	# The app's own file carries them itself (_text_into).
 	_absent = absent if source == null else []
 
+	# Which copy of the file each copy is, by its path, wherever an edit
+	# takes it (Assemblies.realize): its parts' lines (SourceFile.patch).
+	if source != null:
+		world.unit_chains = model.unit_chains.duplicate()
 	# Each sub-model copy's step in the one that places it, by its path.
 	if authored:
 		world.unit_steps = model.unit_steps.duplicate()
@@ -1562,6 +1576,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 			world.get_brick(brick_id).group = placement.group
 			world.get_brick(brick_id).unit = placement.unit
 			world.get_brick(brick_id).step = placement.step
+			world.get_brick(brick_id).origin = placement.origin
 			placed += 1
 		if paced and job.due():
 			job.count(down.size())
@@ -1625,15 +1640,16 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 				if not library.is_resident(placement.part_id):
 					still.append(placement)
 					continue
-				var brick_id: int = world.add_brick(
-					placement.part_id, placement.color_code, placement.transform)
+				var at: Transform3D = awaited_at(placement)
+				var brick_id: int = world.add_brick(placement.part_id, placement.color_code, at)
 				if brick_id == 0:
 					still.append(placement)
 					continue
 				world.get_brick(brick_id).group = placement.group
 				world.get_brick(brick_id).unit = placement.unit
 				world.get_brick(brick_id).step = placement.step
-				builder.register(brick_id, placement.part_id, placement.transform)
+				world.get_brick(brick_id).origin = placement.origin
+				builder.register(brick_id, placement.part_id, at)
 				placed += 1
 				landing = true
 				if job.due():
@@ -1701,6 +1717,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 		# here, so a door saved open is known to be open (Motions.Joint.at).
 		for brick: BrickWorld.Brick in world.bricks():
 			world.motions.snapshot[brick.id] = brick.transform
+		_find_joints()
 	example = false
 	_opened_whole = world.generation()
 	_opened_parts = _parts_with_awaited()
@@ -1714,7 +1731,8 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	out.append({"placed": placed, "missing": missing.size(),
 		"waiting": asked_for.size(), "missing_ids": missing, "error": "",
 		"unshown": unshown, "kept": source != null or not _absent.is_empty(),
-		"unbuilt": unbuilt, "lights_unread": lights_unread_words})
+		"unbuilt": unbuilt, "lights_unread": lights_unread_words,
+		"motions_unread": motions_unread_words})
 
 
 ## Why [param text], which places no part, is not a model to open: "" for
@@ -2052,21 +2070,92 @@ func _live_source() -> SourceFile:
 var motion_rebase: Callable = Callable()
 
 
+## The part each joint of the model's motions takes hold of, found once
+## its parts are where the file put them: as the model opens, and as parts
+## still on their way arrive. Found later, by where the file had it, a part
+## a drive or a hand had moved first was not found, and its joint was
+## written stale: the door and the wheels were gone at the next open
+## (drivereview F1).
+func _find_joints() -> void:
+	var motions: Motions = world.motions
+	if motions == null:
+		return
+	for joint: Motions.Joint in motions.joints:
+		if joint.by == "part" and world.get_brick(joint.lead) == null:
+			# Only a part found: a lead of 0 is a joint not found since the
+			# file was read, its place the file's (Motions.part_at).
+			var found: int = Motions.part_at(joint, world, _lift_now())
+			if found != 0:
+				joint.lead = found
+
+
 ## The model's motions as lines (Motions.lines), each joint's ref and where
-## it stands written as the model now is: its part's place, in the file's
-## coordinates, and how far it stands from where it was built.
+## it stands written as the model now is: its part's number, colour and
+## place as it stands, in the file's coordinates, and how far it stands from
+## where it was built. A joint whose part is gone is written as it was, and
+## said ([member motions_gone_words]).
 func _motion_lines() -> PackedStringArray:
 	var motions: Motions = world.motions
-	if motions == null or motions.is_empty():
+	motions_gone_words = ""
+	if motions == null or not motions.has_lines():
 		return PackedStringArray()
 	var back: Vector3 = _lift_now()
+	var gone: Array = []
 	for joint: Motions.Joint in motions.joints:
 		if motion_rebase.is_valid():
 			motion_rebase.call(joint)
+		if joint.by != "part":
+			continue
 		var lead: BrickWorld.Brick = world.get_brick(joint.lead) if joint.lead != 0 else null
-		if joint.by == "part" and lead != null and lead.part_id == joint.part:
-			joint.place = (lead.transform.origin - back) * LdrModel.FLIP
+		if lead == null or lead.part_id != joint.part:
+			lead = world.get_brick(Motions.part_at(joint, world, back))
+		if lead == null:
+			if not _awaits(joint, back):
+				gone.append(joint)
+			continue
+		joint.lead = lead.id
+		joint.colour = lead.color_code
+		joint.place = (lead.transform.origin - back) * LdrModel.FLIP
+	motions_gone_words = _gone_words(motions, gone)
 	return motions.lines()
+
+
+## Whether [param joint]'s part is one still on its way (the web fetches
+## some after the model opens): not gone, only not here yet.
+func _awaits(joint: Motions.Joint, back: Vector3) -> bool:
+	if world.generation() != _awaited_in:
+		return false
+	# Both where the model now stands: a joint not found since the file was
+	# read where the drives kept since moved it (Motions.part_at), the part
+	# where they moved it (awaited_at).
+	var place: Vector3 = world.motions.moved_place(joint) if joint.lead == 0 and world.motions != null \
+		else joint.place
+	var want: Vector3 = place * LdrModel.FLIP + back
+	for placement: LdrModel.Placement in awaited:
+		if placement.part_id == joint.part and placement.color_code == joint.colour \
+				and awaited_at(placement).origin.distance_to(want) < Motions.PLACE_SLACK:
+			return true
+	return false
+
+
+## What a save says of [param gone], joints whose part the model no longer
+## has: each motion that moves one, by name, and the part, kept in the file
+## where it was. "" for none.
+func _gone_words(motions: Motions, gone: Array) -> String:
+	if gone.is_empty():
+		return ""
+	var said := PackedStringArray()
+	for joint: Motions.Joint in gone:
+		var names := PackedStringArray()
+		for motion: Motions.Motion in motions.list:
+			if motion.joints().has(joint):
+				names.append(Motions.quoted(motion.name))
+		var info: PartLibrary.PartInfo = library.parts.get(joint.part) if library != null else null
+		said.append("%s (%s, %s, colour %d)" % [", ".join(names), Inventory._tidy(info.name) if info != null
+			else "part", joint.part, joint.colour])
+	return ("a motion's joint has no part where it was, kept in the file as it was: %s" if gone.size() == 1
+		else "%d motions' joints have no part where they were, kept in the file as they were: %s") % (
+		[", ".join(said)] if gone.size() == 1 else [gone.size(), "; ".join(said)])
 
 
 ## How far the model was lifted to stand on the ground as it opened: a
@@ -2079,6 +2168,55 @@ func _lift_now() -> Vector3:
 	if world == null or world.generation() != _opened_in:
 		return Vector3.ZERO
 	return Vector3(0.0, _lifted_by, 0.0)
+
+
+## Someone else's file an edit has it written whole (live's write, not a
+## patch: SourceFile.patch), with [param words] saying how many of its own
+## lines of which kind that leaves out. Said once for each file opened, as
+## the edit is made, never as a refusal: the model saves all the same
+## (main.gd puts it on the bar).
+signal lines_left_out(words: String)
+## How the last write of someone else's file was made: "" a patch of it,
+## else why it was written as live writes it (a probe's to read).
+var last_whole: String = ""
+## Whether someone else's file is patched at all: false writes it as live
+## does, for a probe to hold the two side by side.
+static var patch_files: bool = true
+## The sources [signal lines_left_out] was said for, by instance id.
+var _left_out_said: Dictionary = {}
+
+
+func _say_left_out(source: SourceFile, drops: Dictionary) -> void:
+	if drops.is_empty() or _left_out_said.has(source.get_instance_id()):
+		return
+	_left_out_said[source.get_instance_id()] = true
+	var words: String = left_out_words(title, drops)
+	print("Brickworks: " + words)
+	lines_left_out.emit(words)
+
+
+## What [signal lines_left_out] says of the model [param name], whose
+## written text leaves out [param drops] (SourceFile.left_out_of).
+static func left_out_words(name: String, drops: Dictionary) -> String:
+	var count: int = 0
+	var kinds := PackedStringArray()
+	var named: Array = drops.keys()
+	named.sort_custom(func(a: String, b: String) -> bool:
+		return int(drops[a]) > int(drops[b]) or int(drops[a]) == int(drops[b]) and a < b)
+	for kind: String in named:
+		var many: int = drops[kind]
+		count += many
+		match kind:
+			"comment":
+				kinds.append(("%d comment" if many == 1 else "%d comments") % many)
+			"header":
+				kinds.append(("%d header line" if many == 1 else "%d header lines") % many)
+			"other":
+				kinds.append(("%d other line" if many == 1 else "%d other lines") % many)
+			_:
+				kinds.append(("%d %s line" if many == 1 else "%d %s lines") % [many, kind])
+	return "After this change, saving “%s” writes it afresh: %d of its file's lines won't be kept (%s)" \
+		% [name, count, "; ".join(kinds)]
 
 
 ## The source file with the model on the baseplate written into it, or null
@@ -2096,6 +2234,14 @@ func _source_asked(title_now: String) -> Dictionary:
 	var source: SourceFile = _live_source()
 	if source == null:
 		return {}
+	# The kept drives' rigid move of the whole model (Motions.moved) taken
+	# off the parts, so the file pairs them as they were and keeps every
+	# sub-model's lines, then put on its main model's lines alone
+	# ([method _source_written]): a drive kept rewrote every line of a file,
+	# and one with a sub-model placed twice was written whole (drivereview F2).
+	var whole: Transform3D = world.motions.moved if world.motions != null else Transform3D.IDENTITY
+	var lifted := Transform3D(Basis.IDENTITY, _lift_now())
+	var unmoved: Transform3D = lifted * whole.affine_inverse() * lifted.affine_inverse()
 	var bricks: Array = []
 	for brick: BrickWorld.Brick in world.bricks():
 		if scenery.has(brick.id):
@@ -2103,21 +2249,27 @@ func _source_asked(title_now: String) -> Dictionary:
 		# A section broken out is written where it was pulled from: its
 		# parts as they stand there (BrickWorld.home_of).
 		var home := BrickWorld.Brick.new(brick.id, brick.part_id, brick.color_code,
-			brick.transform if world.broken_out.is_empty() else world.home_of(brick))
+			unmoved * (brick.transform if world.broken_out.is_empty() else world.home_of(brick)))
 		home.group = brick.group
 		home.unit = brick.unit
 		home.step = brick.step
 		home.hidden = brick.hidden
+		home.origin = brick.origin
 		bricks.append(home)
 	# In an order of their own, not the world's: which line a part is paired
 	# with and where a part put down goes in the file follow it, and two
 	# copies of a model built in another order (Together) wrote two files.
 	bricks = _in_brick_order(bricks)
+	# What is on its way: by its line and copy for the whole write
+	# (SourceFile.write), by its place in the file for a patch.
 	var waiting: Dictionary = {}
+	var waiting_lines: Dictionary = {}
 	if world.generation() == _awaited_in:
 		for placement: LdrModel.Placement in awaited:
-			waiting["%d|%s" % [placement.line, placement.unit]] = true
+			waiting_lines["%d|%s" % [placement.line, placement.unit]] = true
+			waiting[placement.origin] = true
 	return {"source": source, "bricks": bricks, "lift": _lift_now(), "waiting": waiting,
+		"waiting_lines": waiting_lines, "moved": whole,
 		"library": library, "title": title_now,
 		"unit_steps": world.unit_steps.duplicate(true) if source.authored else {},
 		"floor": model_floor, "hidden": hidden_scheme.duplicate(true),
@@ -2131,30 +2283,68 @@ func _source_asked(title_now: String) -> Dictionary:
 
 
 ## The source file with the parts [method _source_asked] copied written into
-## it, or null when the change cannot be written into it as it is. Reads
-## only what it is given, so on any thread.
+## it, or null when the model is written whole: the patch of the file
+## (SourceFile.patch) where the gate passes it, else what live wrote
+## (SourceFile.write). Reads only what it is given, so on any thread.
 static func _source_text_of(asked: Dictionary) -> Variant:
+	var written: Variant = _source_written(asked)
+	return null if written == null else str(written)
+
+
+## The file's own text for the change as the gate holds it ([param written],
+## a writer's), with the app's own taken out and the title written in.
+static func _titled(asked: Dictionary, written: String) -> String:
 	var source: SourceFile = asked["source"]
-	var written: Variant = source.write(asked["bricks"], asked["lift"], asked["waiting"],
-		asked["library"], asked["unit_steps"])
-	if written == null:
-		return null
-	var text: String = _without_app_lines(str(written))
+	var text: String = _without_app_lines(written)
 	var title_now: String = asked["title"]
 	if title_now != source.own_title and not title_now.is_empty():
 		text = _after_first_line(text, TITLE_META + title_now)
 	return text
 
 
-## [method _source_text_of], and what else the app keeps in someone else's
-## file written into it: a hose's path, the floor, the hidden colours, the
-## motions, the booklet's looks and the set it is. On any thread: the
-## autosave makes it on a worker ([method _text_into]).
+## Someone else's file written for the change, with what else the app keeps
+## in it: a hose's path, the floor, the hidden colours, the motions, the
+## booklet's looks and the set it is. A patch of the file where the edit is
+## one (SourceFile.patch) and the gate passes what is written
+## (SourceFile.gate); else what live wrote, the file with the change
+## (SourceFile.write), or null for the model written whole. Never refused:
+## keeptext4 refused what its gate did not pass, and the work went with the
+## next open (kt4review). On any thread: the autosave makes it on a worker
+## ([method _text_into]). Says in [param asked] "whole", why it was not a
+## patch, and "drops", what of the file's lines live's write leaves out.
 static func _source_written(asked: Dictionary) -> Variant:
-	var from_source: Variant = _source_text_of(asked)
-	if from_source == null:
+	var source: SourceFile = asked["source"]
+	var library: PartLibrary = asked["library"]
+	var plan: SourceFile.Plan = source.patch(asked["bricks"], asked["lift"], asked["waiting"],
+		library, asked["unit_steps"]) if patch_files else null
+	var why: String = plan.why if plan != null else "patches are off"
+	if why.is_empty():
+		var patched: String = source.app_lines_placed(
+			_written_with(asked, _titled(asked, "\n".join(plan.out))))
+		why = source.gate(plan, patched, library, asked["waiting"], asked["unit_steps"])
+		if why.is_empty():
+			asked["whole"] = ""
+			# The kept drives' rigid move put on the main model's lines once
+			# the gate has passed the patch of the parts as they were
+			# ([method _source_asked]).
+			return Motions.moved_into(patched, asked.get("moved", Transform3D.IDENTITY))
+	asked["whole"] = why
+	_said_whole(source, why)
+	var written: Variant = source.write(asked["bricks"], asked["lift"], asked["waiting_lines"],
+		library, asked["unit_steps"])
+	if written == null:
+		asked["whole"] = why + " (the model written whole)"
 		return null
-	var kept: String = str(from_source)
+	var kept: String = _written_with(asked, _titled(asked, Motions.moved_into(str(written),
+		asked.get("moved", Transform3D.IDENTITY))))
+	if not asked.get("drops_said", false):
+		asked["drops"] = source.left_out_of(kept)
+	return kept
+
+
+## [param kept], the file with the change, and what else the app keeps in
+## it ([method _source_written]).
+static func _written_with(asked: Dictionary, kept: String) -> String:
 	# A hose LDCad laid, bent by a grab: its path where it now lies.
 	kept = LdcadPath.written_into(kept, asked["source"], asked["library"])
 	var ground: ModelFloor = asked["floor"]
@@ -2168,6 +2358,27 @@ static func _source_written(asked: Dictionary) -> Variant:
 	kept = _looks_into(kept, asked["looks"], asked["authored"])
 	var number: String = asked["set"]
 	return kept if set_in(kept) == number else with_set(kept, number)
+
+
+## Why each source was last written as live writes it, said on the console
+## once for each reason: the autosave writes it again a second after each
+## change. Written from workers, so under a lock.
+static var _whole_said: Dictionary = {}
+static var _whole_lock: Mutex = Mutex.new()
+
+
+static func _said_whole(source: SourceFile, why: String) -> void:
+	var key: String = "%d|%s" % [source.get_instance_id(), why]
+	_whole_lock.lock()
+	var said: bool = _whole_said.has(key)
+	if not said:
+		if _whole_said.size() > 200:
+			_whole_said.clear()
+		_whole_said[key] = true
+	_whole_lock.unlock()
+	if not said:
+		print("Brickworks: %s is written as live writes it, not a patch: %s" % [
+			source.own_title if not source.own_title.is_empty() else "the model", why])
 
 
 ## [param text] without the lines this app writes again on every save.
@@ -2240,6 +2451,54 @@ func not_coming(part_id: String) -> int:
 	return awaited.size()
 
 
+## The one answer to where a part of the open model's file stands now that
+## the world does not hold, or did not when the model opened: one on its way
+## ([member awaited], [method awaited_at]), one the catalogue has not got
+## ([member _absent], someone else's SourceFile.not_shown), one that landed
+## late ([method _follow_motions]). [param in_file]: where the file has it,
+## in the file's coordinates (LdrModel.to_transform's, the model not
+## lifted); answered in them, moved with the whole model by the drives kept
+## since it opened (Motions.moved), as every part here was. Read where the
+## file had them, a drive kept while the web was still fetching left them
+## where the model had been (drvcheck D), and so did a save of a part the
+## catalogue lacks, Compare, and an undo or a redo of the drive once they
+## had landed (drvrecheck F1, F3).
+func held_place(in_file: Transform3D) -> Transform3D:
+	var whole: Transform3D = world.motions.moved if world.motions != null else Transform3D.IDENTITY
+	if whole.is_equal_approx(Transform3D.IDENTITY):
+		return in_file
+	return whole * in_file
+
+
+## Where [param placement], one of [member awaited], stands now in the
+## world ([method held_place]): its place is the world's as the model
+## opened, lifted.
+func awaited_at(placement: LdrModel.Placement) -> Transform3D:
+	var lifted := Transform3D(Basis.IDENTITY, _lift_now())
+	var in_file: Transform3D = lifted.affine_inverse() * placement.transform
+	var now: Transform3D = held_place(in_file)
+	return placement.transform if now == in_file else lifted * now
+
+
+## [member awaited], copies, each where it stands now ([method
+## awaited_at]): what Compare holds the parts on their way as
+## (ModelDiff.parts_of_world). Compared where the file had them, a drive
+## kept while they came said every one of them moved (drvrecheck F3).
+func awaited_now() -> Array:
+	var out: Array = []
+	if world.generation() != _awaited_in:
+		return out
+	for placement: LdrModel.Placement in awaited:
+		var now := LdrModel.Placement.new(placement.part_id, placement.color_code,
+			awaited_at(placement), placement.step)
+		now.group = placement.group
+		now.unit = placement.unit
+		now.line = placement.line
+		now.origin = placement.origin
+		out.append(now)
+	return out
+
+
 ## Put down what was waiting for [param part_id]. Returns how many landed;
 ## none once the world has been cleared since the model opened.
 func place_awaited(part_id: String) -> int:
@@ -2256,18 +2515,56 @@ func place_awaited(part_id: String) -> int:
 		if placement.part_id != part_id:
 			still.append(placement)
 			continue
-		var brick_id: int = world.add_brick(
-			placement.part_id, placement.color_code, placement.transform)
+		var at: Transform3D = awaited_at(placement)
+		var brick_id: int = world.add_brick(placement.part_id, placement.color_code, at)
 		if brick_id != 0:
 			world.get_brick(brick_id).group = placement.group
 			world.get_brick(brick_id).unit = placement.unit
 			world.get_brick(brick_id).step = placement.step
-			builder.register(brick_id, placement.part_id, placement.transform)
+			world.get_brick(brick_id).origin = placement.origin
+			builder.register(brick_id, placement.part_id, at)
 			landed += 1
+			# Landed after the steps the history holds were made: none of
+			# their moves carries it (_follow_motions).
+			if _late_in != world.generation():
+				_late.clear()
+				_late_in = world.generation()
+			_late[brick_id] = true
 	awaited = still
+	if landed > 0:
+		_find_joints()
 	if awaited.is_empty():
 		_settle()
 	return landed
+
+
+## The parts put down after the model opened ([method place_awaited]), id ->
+## true, while it is the one open ([member _late_in]): an undo or a redo
+## of a drive kept before they came moves the model and not them.
+var _late: Dictionary = {}
+var _late_in: int = -1
+
+
+## An undo or a redo put the model's motions back (Builder.motions_hook):
+## each part that landed late and that it did not move itself goes where
+## the model now stands, from where it stood under [param had], the whole
+## move (Motions.moved) the motions had before; and the joints the
+## motions put back look for their parts again. Left where they were, the
+## racer's rims stood a whole drive from their tyres and three of its four
+## wheel joints found nothing, and a save kept them there (drvrecheck F1).
+func _follow_motions(had: Transform3D, moved_itself: Dictionary) -> void:
+	if _late_in == world.generation():
+		var lifted := Transform3D(Basis.IDENTITY, _lift_now())
+		var unmoved: Transform3D = had.affine_inverse() * lifted.affine_inverse()
+		for id: Variant in _late:
+			var now_id: int = builder._live(int(id))
+			var brick: BrickWorld.Brick = world.get_brick(now_id)
+			if brick == null or moved_itself.has(now_id) or scenery.has(now_id):
+				continue
+			var to: Transform3D = lifted * held_place(unmoved * brick.transform)
+			if not to.is_equal_approx(brick.transform):
+				builder.put_at(now_id, to)
+	_find_joints()
 
 
 ## How far the model was lifted when it opened, and whether that was worked
@@ -2439,12 +2736,15 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	# arrived as it opened.
 	var asked: Dictionary = _source_asked(title)
 	if not asked.is_empty():
+		asked["drops_said"] = _left_out_said.has((asked["source"] as SourceFile).get_instance_id())
 		var kept: Variant
 		if pace != null:
 			kept = await WorkerTasks.awaited(func() -> Variant:
 				return ModelStore._source_written(asked), "write the model's file", library)
 		else:
 			kept = _source_written(asked)
+		_say_left_out(asked["source"], asked.get("drops", {}))
+		last_whole = str(asked.get("whole", ""))
 		if kept != null:
 			made.append(kept)
 			return
@@ -2529,12 +2829,13 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	# (fetch_retry_probe, 2026-10-20).
 	if _live_source() == null and world.generation() == _awaited_in:
 		# Awaited parts were stood on the ground with the rest; the absent are
-		# as the file had them.
+		# in the file's coordinates. Both where the model now stands
+		# (held_place): kept, a drive left them where it had been (drvrecheck F3).
 		var held_at: Array = []
 		for waiting: LdrModel.Placement in awaited:
-			held_at.append([waiting, back * waiting.transform])
+			held_at.append([waiting, back * awaited_at(waiting)])
 		for absent: LdrModel.Placement in _absent:
-			held_at.append([absent, absent.transform])
+			held_at.append([absent, held_place(absent.transform)])
 		for pair: Array in held_at:
 			var waiting: LdrModel.Placement = pair[0]
 			var held := LdrModel.Placement.new(waiting.part_id, waiting.color_code,
@@ -2580,7 +2881,9 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 				held.unit = placement.unit
 				held.line = placement.line
 				waiting.append(held)
-		text = _live_source().carried_into(text, waiting)
+		# Each where the model now stands (held_place), those the app cannot
+		# show as well as those on their way.
+		text = _live_source().carried_into(text, waiting, held_place)
 		# And LDCad's hoses keep their paths, where they now lie.
 		text = LdcadPath.written_into(text, _live_source(), library)
 	# What it stands on goes with it, everywhere it goes: the autosave, a
@@ -2596,7 +2899,20 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	text = _with_looks(text, true, steps)
 	if model != world:
 		model.free()
-	made.append(with_set(text, from_set))
+	text = with_set(text, from_set)
+	# Someone else's file written whole: what of its own lines that leaves
+	# out, said once as it is edited.
+	var source: SourceFile = _live_source()
+	if source != null and not _left_out_said.has(source.get_instance_id()):
+		var whole: String = text
+		var drops: Variant
+		if pace != null:
+			drops = await WorkerTasks.awaited(func() -> Variant:
+				return source.left_out_of(whole), "read what the file leaves out", library)
+		else:
+			drops = source.left_out_of(whole)
+		_say_left_out(source, drops)
+	made.append(text)
 
 
 ## [param text] with how the booklet shows each step written into it
@@ -2922,6 +3238,13 @@ func _write(path: String, title: String, with_steps: bool = false,
 	var text: String = ReferenceImage.written_into(SetBin.written_into(with_share(
 		written if not written.is_empty() else to_text(title, with_steps), share_id,
 		remixed_from, remixed_from_version, credit, made_with), bin_sets), reference)
+	# A patch of someone else's file: the lines just put in end as its
+	# lines do, above any line that says what the next part is, as the
+	# patch's own (SourceFile.app_lines_placed); each came with "\n" alone
+	# into a CRLF file (keep_text's metas). Live's write is left as live's.
+	var source: SourceFile = _live_source()
+	if source != null and last_whole.is_empty():
+		text = source.app_lines_placed(text)
 	# Never a model of no parts over a file that has some, unless the person
 	# emptied the baseplate ([member emptied]). The autosave fires on its
 	# own a few seconds after any change, so whatever left the baseplate

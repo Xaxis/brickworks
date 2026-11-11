@@ -35,17 +35,32 @@
 ##   {"over": {"at": [0, 0, 0]}}            or a point in the model (LDU)
 ##   {"select": {"part": "3001", "colour": 4} | "all" | [n, ...]}
 ##   {"call": "path.method", "args": [...]} {"set": "path.property", "value": v}
+##                                          ("optional": true: passed over where the
+##                                          path names nothing, as My Claude, there
+##                                          only where Claude Code is installed)
 ##   {"take": {"part": "3001", "colour": 4}} a part into hand, as its tile in the bin
 ##   {"assistant": true}                    the assistant shown (Settings)
+##   {"saved": [{"name": "Red car", "from": "res://models/car.ldr",
+##     "at": "2026-10-04T10:12:00", "versions": [{"at": "...", "parts": 20}]}]}
+##                                          models saved here before, at fixed
+##                                          times (_seed_saved)
 ##   {"frames": 30}
 ## Each starts as someone who has been here before (Build your first model
 ## skipped, the offer of the assistant closed) unless "first_visit": true.
 ## And the picture: "crop" ("window", a path, "@opened" for the panel or
-## window the setup put in sight, [x, y, w, h], or a list of
+## window the setup put in sight, "@pointer" for where a step left the
+## pointer (with "pad", a square round it), [x, y, w, h], or a list of
 ## those, joined), "pad" (pixels round a crop), "tooltip" (true: a tooltip
 ## up is the point; otherwise one fails the picture), "marks" ([{"at": path,
 ## "n": 1}]: an outline and a numbered disc drawn over the window, in the
-## app's own font), "width" (made smaller to at most this).
+## app's own font), "width" (made smaller to at most this), "window"
+## ("390x844": the window's size), "phone" (true: the phone's layout, as a
+## browser that small has it, at a browser's scale, as --phone probes do).
+## Or, in place of the window, what an assistant is shown: "tool"
+## ({"name": "view_board", "arguments": {...}}) is that call made once the
+## setup is done, as the connector makes it (CommandSocket.answer_rpc), and
+## the picture it answers with is the picture ("crop" then cuts that). The
+## pages about AI say what the AI sees, and this is it, not a copy of it.
 extends SceneTree
 
 ## A page's pictures are a file of their own: docs-site/pictures/<page>.json.
@@ -68,6 +83,8 @@ var _failed: PackedStringArray = PackedStringArray()
 var _shown_before: Dictionary = {}
 ## A step put the pointer where the picture wants it (a part in hand follows it).
 var _pointer_placed: bool = false
+## Where, in the window's pixels (the "@pointer" crop).
+var _pointer_at: Vector2 = Vector2.INF
 
 
 func _initialize() -> void:
@@ -234,6 +251,13 @@ func _take(shot: Dictionary) -> void:
 	Engine.max_fps = 60
 	# Offline, as gate_probe's first half: nothing in a picture is the day's.
 	OS.set_environment("BRICKWORKS_API", "http://127.0.0.1:9")
+	# The phone's layout is a browser's alone (Phone._wanted); a desktop
+	# window as small as a phone is laid out for one only when told, as
+	# open_menu_reach_probe's --phone does.
+	var phone: bool = bool(shot.get("phone", false))
+	if phone:
+		Phone._on = 1
+		Phone._wide = false
 	_main = load("res://src/main.tscn").instantiate()
 	_main.set("gate_for_probe", true)
 	root.add_child(_main)
@@ -249,6 +273,8 @@ func _take(shot: Dictionary) -> void:
 		quit(1)
 		return
 	_stop_playback()
+	if phone:
+		_hold_phone_scale()
 	await _let_in()
 	await _frames(20)
 	# Someone who has been here before: Build your first model skipped and
@@ -294,6 +320,14 @@ func _take(shot: Dictionary) -> void:
 	var settled: bool = false
 	var reads: int = 0
 	var last: PackedByteArray = PackedByteArray()
+	if shot.has("tool"):
+		picture = await _answered_with(shot["tool"])
+		if picture == null:
+			_say(id, {"ok": false, "why": "; ".join(_failed)})
+			quit(1)
+			return
+		settled = true
+		reads = SETTLE_READS
 	while reads < SETTLE_READS:
 		reads += 1
 		await RenderingServer.frame_post_draw
@@ -334,6 +368,62 @@ func _take(shot: Dictionary) -> void:
 	_main.queue_free()
 	await process_frame
 	quit(0)
+
+
+## A phone draws at a browser's scale (Main.screen_factor, web), where a
+## desktop window draws its layout half as big, which no phone does: held
+## there, with the phone layout's own look at the window's density stopped
+## (open_menu_reach_probe).
+func _hold_phone_scale() -> void:
+	var layout: Variant = _main.get("_phone")
+	if layout is Node:
+		(layout as Node).set_process(false)
+	else:
+		_failed.append("the phone's layout was asked for and is not in the window")
+	for link: Dictionary in root.size_changed.get_connections():
+		var call: Callable = link["callable"]
+		if call.get_method() == &"_match_screen_density":
+			root.size_changed.disconnect(call)
+	var main_script: GDScript = _main.get_script()
+	root.content_scale_factor = main_script.sized_factor(Room.across(), Room.down(), true,
+		ShellPrefs.interface_size(), true)
+
+
+## The picture [param call] ({"name", "arguments"}) is answered with, made
+## as the connector makes a session's call; null, and why in _failed, when
+## it answers without one. Waited for whole: a call slower than a job's
+## threshold would answer "Started job N" in place of its picture.
+func _answered_with(call: Variant) -> Image:
+	var asked: Dictionary = call if call is Dictionary else {"name": str(call)}
+	var connector: Variant = _main.get("_connector")
+	var rpc: Node = (connector as Object).get("rpc") if connector is Object else null
+	if rpc == null:
+		_failed.append("no session's call is answered here: a step {\"assistant\": true} first")
+		return null
+	var jobs: Variant = rpc.get("jobs")
+	if jobs is Object:
+		(jobs as Object).set("after_s", float(SECONDS_A_PICTURE))
+	var got: Variant = await rpc.answer_rpc({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+		"params": {"name": str(asked.get("name", "")), "arguments": asked.get("arguments", {})}})
+	var result: Dictionary = (got as Dictionary).get("result", {}) if got is Dictionary else {}
+	var said := PackedStringArray()
+	for block: Variant in result.get("content", []):
+		var one: Dictionary = block if block is Dictionary else {}
+		if str(one.get("type", "")) != "image":
+			said.append(str(one.get("text", "")).left(160))
+			continue
+		var bytes: PackedByteArray = Marshalls.base64_to_raw(str(one.get("data", "")))
+		var picture := Image.new()
+		var kind: String = str(one.get("mimeType", "image/png"))
+		var loaded: int = picture.load_jpg_from_buffer(bytes) if kind == "image/jpeg" \
+			else picture.load_webp_from_buffer(bytes) if kind == "image/webp" \
+			else picture.load_png_from_buffer(bytes)
+		if loaded == OK and not picture.is_empty():
+			return picture
+		_failed.append("%s answered with a %s picture that would not load" % [asked.get("name", ""), kind])
+		return null
+	_failed.append("%s answered with no picture: %s" % [asked.get("name", ""), " / ".join(said)])
+	return null
 
 
 ## What a click on a button in sight does.
@@ -451,9 +541,9 @@ func _do(step: Dictionary) -> void:
 	elif step.has("set"):
 		var path: String = step["set"]
 		var target: Variant = _node(path.get_basename())
-		if target == null:
+		if target == null and not bool(step.get("optional", false)):
 			_failed.append("nothing at %s" % path.get_basename())
-		else:
+		elif target != null:
 			(target as Object).set(path.get_extension(), step["value"])
 	elif step.has("take"):
 		# What a click on the part's tile in the bin sends, in its colour.
@@ -465,6 +555,8 @@ func _do(step: Dictionary) -> void:
 	elif step.has("assistant"):
 		# As Settings' "Show the assistant" does: on, remembered, its column open.
 		_main.call("set_assistant", bool(step["assistant"]))
+	elif step.has("saved"):
+		_seed_saved(step["saved"])
 	elif step.has("frames"):
 		await _frames(int(step["frames"]))
 	else:
@@ -475,6 +567,77 @@ func _do(step: Dictionary) -> void:
 func _loading() -> bool:
 	var world: BrickWorld = _main.get("_world")
 	return world != null and world.has_method("loading") and bool(world.call("loading"))
+
+
+## Models saved here before the picture, each at a fixed time. File, Open
+## and File, Versions… say when each was saved ("today at 14:05:09"), so a
+## save made by a step would put the clock in the picture, and every run
+## would make it again. Each is written as Save leaves one: its file in
+## ModelStore.SAVE_DIR, last changed at "at" (as this computer's clock says
+## it), and its saves kept as ModelVersions keeps them, named for their
+## times: each of "versions" with the model's first "parts" parts, older
+## first, then the model whole at "at", its last save.
+func _seed_saved(models: Array) -> void:
+	DirAccess.make_dir_recursive_absolute(ModelStore.SAVE_DIR)
+	for model: Dictionary in models:
+		var name: String = str(model.get("name", ""))
+		var text: String = FileAccess.get_file_as_string(str(model.get("from", "")))
+		if name.is_empty() or text.is_empty():
+			_failed.append("no model to save as %s from %s" % [name, model.get("from", "")])
+			continue
+		# Called by its name, as Save writes it: its first line, then Name:.
+		var lines: PackedStringArray = text.split("\n")
+		for n: int in mini(lines.size(), 2):
+			if lines[n].begins_with("0 Name:"):
+				lines[n] = "0 Name: %s.ldr" % name
+			elif n == 0 and lines[n].begins_with("0 ") and not lines[n].contains(":"):
+				lines[n] = "0 " + name
+		text = "\n".join(lines)
+		var saves: Array = []
+		for version: Dictionary in model.get("versions", []):
+			saves.append([_clock(str(version.get("at", ""))), _first_parts(text, int(version.get("parts", 0)))])
+		saves.append([_clock(str(model.get("at", ""))), text])
+		DirAccess.make_dir_recursive_absolute(ModelVersions.folder(name))
+		for save: Array in saves:
+			if int(save[0]) <= 0:
+				_failed.append("%s: a save's time is not a date and time" % name)
+				return
+			var packed: PackedByteArray = str(save[1]).to_utf8_buffer().compress(FileAccess.COMPRESSION_GZIP)
+			var kept := FileAccess.open(ModelVersions.folder(name) + "%013d-%d-%d.ldr.gz" % [
+				int(save[0]) * 1000, ModelStore.count_in(str(save[1])), packed.size()], FileAccess.WRITE)
+			kept.store_buffer(packed)
+			kept.close()
+		var path: String = ModelStore.SAVE_DIR + name + ".ldr"
+		var file := FileAccess.open(path, FileAccess.WRITE)
+		file.store_string(text)
+		file.close()
+		# Godot sets no file's time; the system's touch does (a probe runs on Linux).
+		if OS.execute("touch", ["-m", "-d", "@%d" % int(saves[-1][0]), ProjectSettings.globalize_path(path)]) != 0:
+			_failed.append("could not date %s" % path)
+
+
+## [param at], "2026-10-04T10:12:00", as the Unix seconds this computer's
+## clock says it at (ModelVersions.when_saved adds the zone back); 0 when
+## it is not a date and time.
+func _clock(at: String) -> int:
+	if at.length() < 19:
+		return 0
+	return Time.get_unix_time_from_datetime_string(at) \
+		- int(Time.get_time_zone_from_system().get("bias", 0)) * 60
+
+
+## [param text] with only its first [param count] parts (its other lines
+## kept): an earlier save of the model.
+func _first_parts(text: String, count: int) -> String:
+	var out: PackedStringArray = []
+	var parts: int = 0
+	for line: String in text.split("\n"):
+		if line.strip_edges().begins_with("1 "):
+			parts += 1
+			if parts > count:
+				continue
+		out.append(line)
+	return "\n".join(out)
 
 
 ## [param words] as a key: "Ctrl+Shift+Z", "F1", "Escape", "[".
@@ -524,6 +687,7 @@ func _point(given: Variant) -> Variant:
 
 
 func _move(at: Vector2) -> void:
+	_pointer_at = at
 	Input.warp_mouse(at)
 	var motion := InputEventMouseMotion.new()
 	motion.position = at
@@ -687,6 +851,11 @@ func _crop(given: Variant, pad: int, size: Vector2i) -> Variant:
 			rect = Rect2(float(one[0]), float(one[1]), float(one[2]), float(one[3]))
 		elif one is String and one == "@opened":
 			rect = _opened()
+		elif one is String and one == "@pointer":
+			if _pointer_at.is_finite():
+				rect = Rect2(_pointer_at, Vector2.ZERO)
+			else:
+				_failed.append("no step put the pointer anywhere (@pointer)")
 		elif one is String:
 			rect = _rect_of(one)
 		if rect == null:

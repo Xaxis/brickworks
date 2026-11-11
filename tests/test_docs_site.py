@@ -141,6 +141,23 @@ def test_a_feature_named_twice_or_unknown_is_said() -> None:
         raise AssertionError("a feature covered twice on one page was let through")
 
 
+def test_a_section_that_moved_is_sent_on_and_held_to_its_new_heading(monkeypatch) -> None:
+    """A "page#anchor" in _moved.json: the old page carries it for web/docs.js,
+    and --check fails while the old heading is still there or the new one is
+    not, or its page is no page."""
+    _, pages = docs_site.load()
+    page = next(p for p in pages if p.name == "exports")
+    assert 'data-moved="' in docs_site.moved_here(page)
+    assert json.loads(docs_site.html.unescape(docs_site.moved_here(page).split('"')[1]))["lights"] == "/docs/render#lights"
+    assert docs_site.moved_here(next(p for p in pages if p.name == "render")) == ""
+    for planted, said in [({"exports#shop-lists": "render#lights"}, "still a heading there"),
+                          ({"exports#gone": "render#nowhere"}, "no heading on render"),
+                          ({"nopage#gone": "render"}, "a section of nopage, which is no page")]:
+        monkeypatch.setattr(docs_site, "moved", lambda planted=planted: planted)
+        problems = docs_site.check()
+        assert any(said in problem for problem in problems), (planted, problems)
+
+
 def test_a_tools_words_changed_by_hand_fail_until_its_doc_is_read_again(monkeypatch) -> None:
     """The tool list's words and each tool's doc cannot part quietly: a
     description changed by hand fails the check, and so does a doc whose

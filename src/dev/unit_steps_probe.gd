@@ -108,7 +108,7 @@ func _castle(text: String) -> void:
 		_select_assembly(tower)
 		_shell.run("rename_assembly")
 		await _frames(2)
-		return _name_it("Keep")
+		return await _name_it("Keep")
 	await _edit(name, text, true, "renamed by its dialog", rename,
 		func(units: Dictionary) -> Array: return _carried(units, {tower: "Keep#1"}))
 	var other: String = "south-west tower#1"
@@ -125,7 +125,7 @@ func _castle(text: String) -> void:
 		_select_only(ids)
 		_shell.run("make_submodel")
 		await _frames(2)
-		return _name_it("East side")
+		return await _name_it("East side")
 	await _edit(name, text, true, "two made a sub-assembly by its dialog", make,
 		func(units: Dictionary) -> Array: return _carried(units, {pair[0]: "East side#1/" + pair[0],
 			pair[1]: "East side#1/" + pair[1]}, ["East side#1"]))
@@ -190,7 +190,7 @@ func _authored(text: String) -> void:
 		_select_assembly(engines[1])
 		_shell.run("rename_assembly")
 		await _frames(2)
-		return _name_it("Thrusters")
+		return await _name_it("Thrusters")
 	await _edit(name, text, false, "the rear engines renamed by their dialog", rename,
 		func(units: Dictionary) -> Array: return _carried(units, renamed))
 	var unique: String = Assemblies.join(Assemblies.parent_of(engines[2]), kind + " 2#1")
@@ -524,7 +524,7 @@ func _siblings(castle: String, authored: String) -> void:
 		_select_assembly(tower)
 		_shell.run("rename_assembly")
 		await _frames(2)
-		return _name_it("Keep")
+		return await _name_it("Keep")
 	await _edit(stepped, castle, true, "2. a tower renamed by its dialog, then saved", rename,
 		func(units: Dictionary) -> Array: return _carried(units, {tower: "Keep#1"}), false,
 		{"then": func(_state: Dictionary) -> Array: return _looks_by_name()})
@@ -554,7 +554,7 @@ func _siblings(castle: String, authored: String) -> void:
 		_select_only(loose.call())
 		_shell.run("make_submodel")
 		await _frames(2)
-		return _name_it("Gate plates")
+		return await _name_it("Gate plates")
 	await _edit(stepped, castle, true, "5. four of the castle's own parts made a sub-model by Ctrl-G",
 		make, func(units: Dictionary) -> Array: return _carried(units, {}, ["Gate plates#1"]), false,
 		{"then": func(_state: Dictionary) -> Array: return [_verbs.assemblies == _assemblies,
@@ -657,7 +657,7 @@ func _siblings(castle: String, authored: String) -> void:
 			_select_assembly(engine)
 			_shell.run("rename_assembly")
 			await _frames(2)
-			return _name_it(called),
+			return await _name_it(called),
 		func(units: Dictionary) -> Array: return _carried(units, renamed), false,
 		{"before": func() -> String:
 			_select_assembly(section)
@@ -831,10 +831,21 @@ func _select_only(ids: Array) -> void:
 
 
 ## The naming dialog the command opened, [param name] typed in it and OK
-## pressed. What the status bar then says.
+## pressed. What the status bar then says. A command the app has seen take
+## a while is said first (Working.attend: its busy line drawn, then the
+## command run), so its dialog comes up frames after the press: waited for,
+## as a person waits, 240 frames at most. Two frames were taken for enough,
+## and on the merge of 11-09 one rename found no dialog after them.
 func _name_it(name: String) -> String:
-	var field: LineEdit = _verbs.get("_name_field")
 	var dialog: ConfirmationDialog = _verbs.get("_naming")
+	for waited: int in 240:
+		dialog = _verbs.get("_naming")
+		if dialog != null and dialog.visible:
+			if waited > 0:
+				print("  ....the naming dialog up %d frames after the press and the two taken" % waited)
+			break
+		await process_frame
+	var field: LineEdit = _verbs.get("_name_field")
 	if field == null or dialog == null or not dialog.visible:
 		return "no naming dialog"
 	field.text = name

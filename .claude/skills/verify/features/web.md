@@ -3956,7 +3956,10 @@ plan with Claude as the client.
   #apply-send, #apply-status; then where it stands), checked at the edge
   as the API takes it (422 with why), one an account (409; a declined one
   again after 30 days). beta_flow fills it by hand at 390, by keyboard
-  alone from /beta#about at 1280, and reads a decline's date there.
+  alone from /beta#about at 1280, and reads a decline's date there. A link
+  to /beta#about lands there, its title focused, once what is new and a
+  tester's parts above it are drawn (web/beta.js newsAsked, testersAsked):
+  landed before the hub's answer, its lists pushed the section 1297 px down.
   Spots 1-100 one at a time under the pool's row lock: proven on a
   throwaway Postgres (`tests/fixtures/beta/db_check.mjs`: two at once at
   99 give 100 and "full"; 120 from ten connections give 1-100 once each).
@@ -3994,7 +3997,10 @@ plan with Claude as the client.
   loaded on the first press; without it Send feedback's dialog as a bug),
   and Join (POST ?op=beta_join {via}; signed out the sign-in first, whose
   welcome's answer stands) or You're a tester; its x hides it for a day
-  ("brickworks.betabar.hidden"). What the server said is kept ten minutes
+  ("brickworks.betabar.hidden"). While it is shown, whatever is scrolled to
+  (Tab, a link, a page's script) stops clear above it
+  (`:root[data-betabar]` scroll-padding-bottom): Settings' Beta hub and
+  Leave were under it at 390. What the server said is kept ten minutes
   ("brickworks.beta"): signed in GET ?op=beta, signed out ?op=beta_spots;
   off, theme.js does not ask for the bar again for ten minutes, and nothing
   is drawn. The homepage's #beta sits under the hero: why to join, three
@@ -4010,7 +4016,9 @@ plan with Claude as the client.
   early features (GET ?op=beta_hub). Prove: `node
   tools/web/betahome_flow.mjs --out=DIR` (the stand-in, beta open and off,
   ends "betahome: all ok"), then on a `tools/deploy.sh --unit --beta-open`
-  preview `--url=<preview>` with `BW_BYPASS`.
+  preview `--url=<preview>` with `BW_BYPASS`: the months left are the
+  deployment's (?op=beta_spots), and Join's focus is read a frame after the
+  page has loaded and drawn, when web/beta.js puts it there.
 - `joining the beta's testers` (`supabase/beta_join.sql`, `api/_beta.js`
   betaJoin, betaLeave, memberOf, betaTesters), `the beta's welcome at
   sign-up` (`web/beta-welcome.js`, `web/account.js` askAgeIfAsked, Settings'
@@ -4129,6 +4137,23 @@ plan with Claude as the client.
   --beta-open`: the site at 390 and 1280, the kept picture read from the
   bucket for the box (within 2 px), Your reports, Escape and Cancel; the
   app's top bar; with the beta shut, no button. Ends "bugreport: all ok".
+  Its throwaway is a new account, so with the beta open the app shows the
+  beta's welcome over the builder first, and nothing else is pressable or
+  told to the page till it is answered: bugreport_flow and feedback_flow
+  answer it Not now with `answerWelcome` (`tools/web/browser.mjs`), which
+  asks GET /api/account whether it is due, so a welcome due and never
+  shown fails; their accounts are minted with `{ welcome: false }` so it
+  is left for them to meet. Every other flow needs nothing: each account
+  `mintSession` or `mintCode` makes (`tools/web/session.mjs`, so every
+  `signInContext` and `launch({ ownAccount: true })` too) has the welcome
+  answered Not now before a page asks who it is (`notNow`: the
+  deployment's own beta_leave, only when beta_member says it is due, never
+  for the owner), as `answerAge` answers the age question (welcomeall,
+  2026-11-10). The shared test account is never due (made long before the
+  seven days). beta_flow, betajoin_flow, bugreport_flow and feedback_flow
+  mint with `{ welcome: false }`; a new flow that means to meet the
+  welcome does the same. `tests/test_flow_accounts.py` holds which cases
+  answer it.
 - `compare media` (`tools/web/compare_media.mjs`): retakes every picture and clip
   of `/compare` from the live app in a real, headed Chromium window on
   SwiftShader, its tabs and address bar in the picture (ffmpeg's x11grab):
@@ -6813,7 +6838,10 @@ reference in light and dark at 390 and 1400 px with nothing sideways and
 no error, Ctrl+K finding "fresh eyes" and "Build together" first and Enter
 going there, `/` and Escape, the pages list behind Browse the docs at 390
 and down the left at 1400 with the page marked, On this page following the
-scroll, and a deep link landing with its heading in view. Pictures in
+scroll, a deep link landing with its heading in view, and each section that
+moved to another page (a `"page#anchor"` in `docs-site/_moved.json`, sent on
+by `web/docs.js` from the old page's `data-moved`, since no fragment reaches
+the server) landing where it went from its old address. Pictures in
 `--out`. The app's way in is Help, Documentation (`src/ui/shell.gd`,
 command `docs`), which opens the page of the panel in front.
 
@@ -6822,7 +6850,8 @@ command `docs`), which opens the page of the panel in front.
 Every picture on a docs page is made, never taken by hand
 (docs/DOCS_PLAN.md, "The pictures"). Each page's are written down in
 `docs-site/pictures/<page>.json`: an id, the app's (`source: app`, a setup of
-menu commands, keys, clicks, a part in hand or the pointer over one) or the
+menu commands, keys, clicks, a part in hand or the pointer over one, or
+models saved at fixed times, since File, Open and Versions say each save's time) or the
 site's (`source: site`, a route, what its server answers, its themes), the
 crop (a control by its path from Main, `@opened` for the dialog the setup
 opened, or a rectangle), numbered marks, its alt and caption, and the

@@ -103,8 +103,13 @@ const wordsOf = (english) => ({ en: english, ...Object.fromEntries(["de", "fr", 
   [code, JSON.parse(readFileSync(path.join(root, `web/_lang/${code}.json`), "utf8")).scripts?.[english] || "?"])) });
 const OPEN_BETA = wordsOf("Open beta");
 const BETA = wordsOf("Beta");
-const SPOTS = { cap: 100, left: 63 };
+// The stand-in's months left; with --url, the deployment's, as its pages
+// read them (GET ?op=beta_spots): the real pool, 100 left before anyone was
+// approved, never the stand-in's 63 (betaopen, 2026-11-10).
+let SPOTS = { cap: 100, left: 63 };
 const JOINED = "2026-11-02T10:00:00Z";
+// A line said exactly [text], as a pattern.
+const exactly = (text) => new RegExp(`^${text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`);
 
 const browser = await launch({ signedOut: true });
 
@@ -240,7 +245,9 @@ async function section(name, body) {
 }
 
 try {
-  const open = remote ? (await (await fetch(`${remote}/api/plans?op=beta_spots`, { headers })).json().catch(() => ({}))).beta === "open" : true;
+  const spots = remote ? await (await fetch(`${remote}/api/plans?op=beta_spots`, { headers })).json().catch(() => ({})) : null;
+  const open = remote ? spots.beta === "open" : true;
+  if (open && remote) SPOTS = { cap: spots.cap, left: spots.left };
   console.log(`betahome flow: ${base}${remote ? ` (the beta ${open ? "open" : "off"} there)` : ` (stand-in, ${root})`}`);
 
   // --- bar ----------------------------------------------------------------
@@ -333,7 +340,13 @@ try {
       // to said under it; one press there joins (signed out, signs in first).
       await go(page, "/gallery");
       await page.click("#beta-bar [data-beta-join]");
-      await until(page, () => location.pathname === "/beta" && document.documentElement.dataset.betaPage);
+      // web/beta.js focuses the way in once the page has loaded and drawn,
+      // in the frame after: read then, as a person meets it. Read as soon
+      // as it was drawn, the focus was still on the page (betaopen,
+      // 2026-11-10), and Enter pressed there opened nothing.
+      await until(page, () => location.pathname === "/beta" && document.documentElement.dataset.betaPage
+        && document.readyState === "complete", null, 60000);
+      await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
       const landed = await page.evaluate(() => {
         const focus = document.activeElement;
         const terms = document.querySelector(".beta-head .terms");
@@ -366,9 +379,12 @@ try {
   // --- home ---------------------------------------------------------------
   if (open && asked("home")) await section("home", async () => {
     console.log("home: the way in for each visitor");
+    // web/landing.js drawBeta: no line once every month is given.
+    const line = SPOTS.left > 0
+      ? `The first ${SPOTS.cap} testers we approve get a month of Pro, free: ${SPOTS.left} spot${SPOTS.left === 1 ? "" : "s"} left.` : "";
     const WANT = {
-      out: { row: "out", first: /^Sign up and join/, said: /^The first 100 testers we approve get a month of Pro, free: 63 spots left\.$/ },
-      in: { row: "in", first: /^Join the beta/, said: /^The first 100 testers we approve get a month of Pro, free: 63 spots left\.$/ },
+      out: { row: "out", first: /^Sign up and join/, said: exactly(line) },
+      in: { row: "in", first: /^Join the beta/, said: exactly(line) },
       tester: { row: "tester", first: /^Report a bug$/, said: /^You’re a tester\. Thank you/ },
     };
     const whos = remote ? ["out"] : ["out", "in", "tester"];
@@ -416,7 +432,10 @@ try {
   // --- hub ----------------------------------------------------------------
   if (open && asked("hub")) await section("hub", async () => {
     console.log("hub: /beta for each visitor");
-    const LINE = { out: /^63 of 100 free months of Pro left$/, in: /^63 of 100 free months of Pro left$/,
+    // web/beta.js lineOf.
+    const left = SPOTS.left > 0 ? `${SPOTS.left} of ${SPOTS.cap} free months of Pro left`
+      : `All ${SPOTS.cap} months of Pro are given. Joining stays open.`;
+    const LINE = { out: exactly(left), in: exactly(left),
       tester: /^You’ve been a tester since 2 November 2026\. Thank you!$/ };
     const whos = remote ? ["out"] : ["out", "in", "tester"];
     for (const [width, theme] of [[1280, "light"], [390, "dark"]]) {

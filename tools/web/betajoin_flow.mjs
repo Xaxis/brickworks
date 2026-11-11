@@ -136,7 +136,7 @@ async function signInByDialog(base, page, email) {
   await page.fill("dialog.sign-in input", email);
   await page.click('dialog.sign-in button[type="submit"]');
   await until(page, () => document.querySelector("dialog.sign-in input")?.autocomplete === "one-time-code");
-  const code = await mintCode(email);
+  const code = await mintCode(email, { welcome: false });
   await page.fill("dialog.sign-in input", code);
   await page.click('dialog.sign-in button[type="submit"]');
   await until(page, () => !document.querySelector("dialog.sign-in"), null, 30000);
@@ -328,7 +328,7 @@ try {
   // --- 3. The owner's list ------------------------------------------------------------
   if (args.owner) {
     console.log("3. The owner's list of testers");
-    const owner = await mintSession(String(args.owner));
+    const owner = await mintSession(String(args.owner), { welcome: false });
     const { page, context } = await open(site, "/beta-admin?tests=1", { width: 1280, who: owner, label: "owner" });
     const shown = await until(page, () => document.getElementById("view")?.hidden === false
       && document.querySelectorAll("#testers .tester").length > 0, null, 30000);
@@ -405,7 +405,7 @@ try {
         await its.close();
         return text;
       };
-      const who = await mintSession(email);
+      const who = await mintSession(email, { welcome: false });
       for (const [pathname, as] of [["/index.html", null], ["/de/", null], ["/settings", null], ["/settings", who], ["/de/settings", who],
         ["/beta", null], ["/profile", who], ["/beta-hub", who]]) {
         const [now, then] = [await read(offSite, pathname, as), await read(beforeSite, pathname, as)];

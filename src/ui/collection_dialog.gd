@@ -358,7 +358,10 @@ func _own_page() -> Control:
 	var account := HBoxContainer.new()
 	account.add_theme_constant_override("separation", 6)
 	page.add_child(account)
-	account.add_child(_label("Rebrickable account", 12, 0.75))
+	# Its words whole, never clipped to nothing beside the fields.
+	var account_words: Label = _label("Rebrickable account", 12, 0.75)
+	account_words.clip_text = false
+	account.add_child(account_words)
 	_rb_key = _field(account, "Rebrickable API key", true, "collection_rb_key")
 	_rb_token = _field(account, "User token", true, "collection_rb_token")
 	_rb_user = _field(account, "or username", false, "collection_rb_user")
@@ -542,6 +545,12 @@ func _field(row: Container, hint: String, secret: bool, named: String) -> LineEd
 	field.secret = secret
 	field.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	field.add_theme_font_size_override("font_size", 12)
+	# As wide as its hint, so a row of them too wide for a phone is let
+	# flow onto two lines (TouchSizing._flow_rows), not squeezed till each
+	# says half its name: "Rebrickable", "and passwor" at 430 (11-10).
+	var font: Font = field.get_theme_font("font")
+	if font != null:
+		field.custom_minimum_size.x = ceilf(font.get_string_size(hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x) + 16.0
 	row.add_child(field)
 	_controls[named] = field
 	return field

@@ -256,9 +256,11 @@ func _edits() -> void:
 	_expect(_model() == model, "opened again, the model as edited")
 
 
-## Every part of the sub-model placed once taken away: the sub-model goes
-## with them, its block and the line placing it, and nothing else changes.
-## It used to stay in the file, empty and still placed.
+## Every part of the sub-model placed once taken away: the line placing it
+## goes, and nothing else changes. It used to stay in the file, empty and
+## still placed; then its block went with it (keeptext4), until kt4review:
+## a sub-model's block is kept, placed by nothing, as Ungroup, LDCad and
+## Studio keep it. Placed by nothing, it is no part of the model.
 func _emptied() -> void:
 	print("fidelity: a sub-model emptied")
 	_open(FILE)
@@ -272,13 +274,14 @@ func _emptied() -> void:
 	var model: PackedStringArray = _model()
 	var saved: String = _store.to_text(_store.title, true)
 	var changed: Array = _changed(FILE, saved)
-	_expect(not saved.contains("fidelity - once.ldr"),
-		"neither the sub-model nor the line placing it is left")
-	_expect(saved.contains("0 FILE fidelity - twice.ldr") and saved.contains("0 FILE fidelity - band.ldr")
-		and not saved.contains("0 NOFILE\n0 NOFILE"),
-		"the other sub-models kept, no stray end left between them")
-	_expect((changed[0] as Array).size() == 9 and (changed[1] as Array).size() == 0,
-		"nothing else changed: 9 lines out (the placing line, the block and its end), none in: "
+	_expect(not saved.contains("1 16 0 -48 0 1 0 0 0 1 0 0 0 1 fidelity - once.ldr"),
+		"the line placing it is gone")
+	_expect(saved.contains(FILE.substr(FILE.find("0 FILE fidelity - once.ldr"),
+		FILE.find("0 FILE fidelity - twice.ldr") - FILE.find("0 FILE fidelity - once.ldr"))),
+		"its block kept whole, placed by nothing, the other sub-models after it")
+	_expect((changed[0] as Array) == ["1 16 0 -48 0 1 0 0 0 1 0 0 0 1 fidelity - once.ldr"]
+		and (changed[1] as Array).size() == 0,
+		"nothing else changed: the placing line out, none in: "
 		+ "%d out, %d in" % [(changed[0] as Array).size(), (changed[1] as Array).size()])
 	_open(saved)
 	_expect(_model() == model, "opened again, the model as edited")

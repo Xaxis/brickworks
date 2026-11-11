@@ -196,7 +196,7 @@ func _input(event: InputEvent) -> void:
 
 
 func _compare() -> void:
-	var now: Array = ModelDiff.parts_of_world(world, store.scenery, store.lift(), store.awaited,
+	var now: Array = ModelDiff.parts_of_world(world, store.scenery, store.lift(), store.awaited_now(),
 		inside)
 	diff = ModelDiff.between(_was, now)
 	_revision = world.revision

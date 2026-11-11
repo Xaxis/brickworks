@@ -1290,6 +1290,10 @@ func _run_own(tool: String, input: Dictionary) -> Variant:
 			_saved_here[path] = true
 			var written: String = "Written to %s, with the app's models (%s)." % [file,
 				ProjectSettings.globalize_path(path)]
+			# A joint of a motion whose part is gone, written as it was.
+			var store: ModelStore = app.get("_store")
+			if store != null and not store.motions_gone_words.is_empty():
+				written += " %s%s." % [store.motions_gone_words.left(1).to_upper(), store.motions_gone_words.substr(1)]
 			if assistant != null:
 				written = Assistant._joined(written, assistant.save_advice())
 			# A run's last act is to save: so saving hands back the next
