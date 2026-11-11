@@ -3388,11 +3388,11 @@ msgstr "%s dreht sich an %s auf einem Reibungspin, mit %s g darüber hinaus, das
 msgid "%s turns on %s on %d friction pins in a line with %s g past it, %sx its working load"
 msgstr "%s dreht sich an %s auf %d Reibungspins in einer Reihe, mit %s g darüber hinaus, das %s-Fache ihrer Arbeitslast"
 
-msgid "%s turns on %s on a frictionless pin or axle with %s g past it, %sx its working load"
-msgstr "%s dreht sich an %s auf einem reibungslosen Pin oder einer Achse, mit %s g darüber hinaus, das %s-Fache seiner Arbeitslast"
+msgid "%s turns on %s on a frictionless pin or axle with %s g past it, and nothing holding it"
+msgstr "%s dreht sich an %s auf einem reibungslosen Pin oder einer Achse, mit %s g darüber hinaus, und nichts hält es"
 
-msgid "%s turns on %s on %d frictionless pins or axles in a line with %s g past it, %sx its working load"
-msgstr "%s dreht sich an %s auf %d reibungslosen Pins oder Achsen in einer Reihe, mit %s g darüber hinaus, das %s-Fache ihrer Arbeitslast"
+msgid "%s turns on %s on %d frictionless pins or axles in a line with %s g past it, and nothing holding it"
+msgstr "%s dreht sich an %s auf %d reibungslosen Pins oder Achsen in einer Reihe, mit %s g darüber hinaus, und nichts hält es"
 
 msgid "%s g held by nothing stands on %s by touch alone, its weight %s studs past where it touches"
 msgstr "%s g, von nichts gehalten, stehen nur durch Berührung auf %s, ihr Gewicht %s Noppen über die Auflage hinaus"
@@ -3471,12 +3471,6 @@ msgstr "Verbreitere es um %d Noppen nach %s"
 
 msgid "Widen it %d studs to the %s."
 msgstr "Verbreitere es um %d Noppen nach %s."
-
-msgid "1 stud joint overloaded, in red."
-msgstr "1 Noppenverbindung überlastet, rot markiert."
-
-msgid "%d stud joints overloaded, in red."
-msgstr "%d Noppenverbindungen überlastet, rot markiert."
 
 msgid "left"
 msgstr "links"
@@ -12644,6 +12638,245 @@ msgstr "Noppen an drei Seiten"
 
 msgid "studs on four sides"
 msgstr "Noppen an vier Seiten"
+
+# unit drive: a motion's path, where the whole model drives (pose_panel, motion_player)
+
+msgid "Where it drives"
+msgstr "Wohin es fährt"
+
+msgid "Drive along a path"
+msgstr "Einen Weg entlang fahren"
+
+msgid "The whole model driven along the ground, its wheels turning as it goes: 32 studs, then round a corner"
+msgstr "Das ganze Modell fährt über den Boden, seine Räder drehen sich dabei: 32 Noppen, dann um eine Kurve"
+
+msgid "Add a leg"
+msgstr "Abschnitt hinzufügen"
+
+msgid "Another leg at the path's end: straight on"
+msgstr "Ein weiterer Abschnitt am Ende des Wegs: geradeaus"
+
+msgid "No path"
+msgstr "Kein Weg"
+
+msgid "The model stays where it stands; its joints still move"
+msgstr "Das Modell bleibt, wo es steht; seine Gelenke bewegen sich weiter"
+
+msgid "Over"
+msgstr "Dauer"
+
+msgid "How long it takes, seconds"
+msgstr "Wie lange es dauert, in Sekunden"
+
+msgid "It gathers speed at the start and slows to a stop at the end"
+msgstr "Es beschleunigt am Anfang und bremst am Ende bis zum Halt"
+
+msgid "Straight"
+msgstr "Geradeaus"
+
+msgid "Straight on, or a turn to the left or the right"
+msgstr "Geradeaus oder eine Kurve nach links oder rechts"
+
+msgid "How far, studs (less than 0 backwards)"
+msgstr "Wie weit, in Noppen (unter 0 rückwärts)"
+
+msgid "How far round, degrees"
+msgstr "Wie weit herum, in Grad"
+
+msgid "How wide the turn is: its radius, studs, at the middle of the back axle"
+msgstr "Wie weit die Kurve ist: ihr Radius in Noppen, an der Mitte der Hinterachse"
+
+msgid "Take this leg out of the path"
+msgstr "Diesen Abschnitt aus dem Weg nehmen"
+
+msgid "It moves nothing but the path: Remove takes the motion out."
+msgstr "Es bewegt nichts außer dem Weg: „Entfernen“ nimmt die Bewegung heraus."
+
+msgid "It drives %s."
+msgstr "Es fährt %s."
+
+msgid "It drives %s. %s Play plays it."
+msgstr "Es fährt %s. %s „Abspielen“ spielt es ab."
+
+msgid "%s studs straight"
+msgstr "%s Noppen geradeaus"
+
+msgid "%s studs backwards"
+msgstr "%s Noppen rückwärts"
+
+msgid "%s° left on a %s-stud radius"
+msgstr "%s° nach links mit %s Noppen Radius"
+
+msgid "%s° right on a %s-stud radius"
+msgstr "%s° nach rechts mit %s Noppen Radius"
+
+msgid "%s, then %s"
+msgstr "%s, dann %s"
+
+msgid "1 wheel turns as it rolls (%s)"
+msgstr "1 Rad dreht sich beim Rollen (%s)"
+
+msgid "1 wheel turns as it rolls (%s)."
+msgstr "1 Rad dreht sich beim Rollen (%s)."
+
+msgid "%d wheels turn as it rolls (%s)"
+msgstr "%d Räder drehen sich beim Rollen (%s)"
+
+msgid "%d wheels turn as it rolls (%s)."
+msgstr "%d Räder drehen sich beim Rollen (%s)."
+
+msgid "%s, and %s steers it into the corners."
+msgstr "%s, und %s lenkt es in die Kurven."
+
+msgid "No wheel turns as it rolls: none stands on the ground on a level axle"
+msgstr "Kein Rad dreht sich beim Rollen: keines steht auf einer waagrechten Achse auf dem Boden"
+
+msgid "No wheel turns as it rolls: none stands on the ground on a level axle."
+msgstr "Kein Rad dreht sich beim Rollen: keines steht auf einer waagrechten Achse auf dem Boden."
+
+# unit drive, review fixes: refused motion lines said and kept, a joint's part gone, a contact of no studs
+
+msgid "1 motion line not read, kept in the file as it is"
+msgstr "1 Bewegungszeile nicht gelesen, unverändert in der Datei behalten"
+
+msgid "%d motion lines not read, kept in the file as they are"
+msgstr "%d Bewegungszeilen nicht gelesen, unverändert in der Datei behalten"
+
+msgid "%s (%d lines): %s"
+msgstr "%s (%d Zeilen): %s"
+
+msgid "a path has at most %d legs, not %d"
+msgstr "ein Weg hat höchstens %d Abschnitte, nicht %d"
+
+msgid "a turn of its path has no RADIUS"
+msgstr "eine Kurve seines Wegs hat keinen RADIUS"
+
+msgid "its path has %s where a leg goes"
+msgstr "sein Weg hat %s, wo ein Abschnitt steht"
+
+msgid "it has two path lines"
+msgstr "es hat zwei Wegzeilen"
+
+msgid "it has two steering lines"
+msgstr "es hat zwei Lenkungszeilen"
+
+msgid "a wheel or steering line with no path read"
+msgstr "eine Rad- oder Lenkungszeile ohne gelesenen Weg"
+
+msgid "a wheel or steering line this does not read"
+msgstr "eine Rad- oder Lenkungszeile, die hier nicht gelesen wird"
+
+msgid "nothing it moves was read"
+msgstr "nichts, was sie bewegt, wurde gelesen"
+
+msgid "a sequence plays motions, and moves nothing of its own"
+msgstr "eine Abfolge spielt Bewegungen ab und bewegt selbst nichts"
+
+msgid "its path line is not one this reads"
+msgstr "ihre Wegzeile wird hier nicht gelesen"
+
+msgid "its MOTION line is not one this reads"
+msgstr "ihre MOTION-Zeile wird hier nicht gelesen"
+
+msgid "a track line this does not read"
+msgstr "eine Spurzeile, die hier nicht gelesen wird"
+
+msgid "a driver line this does not read"
+msgstr "eine Antriebszeile, die hier nicht gelesen wird"
+
+msgid "a key line this does not read"
+msgstr "eine Schlüsselzeile, die hier nicht gelesen wird"
+
+msgid "a key of a track it does not have"
+msgstr "ein Schlüssel einer Spur, die es nicht hat"
+
+msgid "a motion line with no motion's name"
+msgstr "eine Bewegungszeile ohne Namen einer Bewegung"
+
+msgid "%s is not a motion line this reads"
+msgstr "%s ist keine Bewegungszeile, die hier gelesen wird"
+
+msgid "a path takes %s to %d seconds, not %s"
+msgstr "ein Weg dauert %s bis %d Sekunden, nicht %s"
+
+msgid "a straight goes 0.01 to %d studs (less than 0 backwards), not %s"
+msgstr "eine Gerade geht 0,01 bis %d Noppen (unter 0 rückwärts), nicht %s"
+
+msgid "A straight goes 0.01 to %d studs (less than 0 backwards), not %s."
+msgstr "Eine Gerade geht 0,01 bis %d Noppen (unter 0 rückwärts), nicht %s."
+
+msgid "a turn goes 0.01 to %d degrees, not %s"
+msgstr "eine Kurve geht 0,01 bis %d Grad, nicht %s"
+
+msgid "A turn goes 0.01 to %d degrees, not %s."
+msgstr "Eine Kurve geht 0,01 bis %d Grad, nicht %s."
+
+msgid "a turn's radius is %s to %d studs, not %s"
+msgstr "der Radius einer Kurve ist %s bis %d Noppen, nicht %s"
+
+msgid "A turn's radius is %s to %d studs, not %s."
+msgstr "Der Radius einer Kurve ist %s bis %d Noppen, nicht %s."
+
+msgid "a motion's joint has no part where it was, kept in the file as it was: %s"
+msgstr "ein Gelenk einer Bewegung hat kein Teil mehr, wo es war, unverändert in der Datei behalten: %s"
+
+msgid "%d motions' joints have no part where they were, kept in the file as they were: %s"
+msgstr "%d Gelenke von Bewegungen haben kein Teil mehr, wo sie waren, unverändert in der Datei behalten: %s"
+
+msgid "the %s touches with no stud in contact: nothing holds it there"
+msgstr "%s berührt ohne Noppe im Kontakt: nichts hält es dort"
+
+msgid "on no stud"
+msgstr "auf keiner Noppe"
+
+msgid "%s touches %s with no stud in contact, %s g past it: nothing holds it there"
+msgstr "%s berührt %s ohne Noppe im Kontakt, %s g darüber hinaus: nichts hält es dort"
+
+# drvcheck A-C: a pin or an axle said by its kind, refused motion lines an edit lets go
+
+msgid "the %s turns on a frictionless pin or axle with nothing holding it"
+msgstr "%s dreht sich auf einem reibungslosen Pin oder einer Achse, und nichts hält es"
+
+msgid "the %s turns on %d frictionless pins or axles in a line with nothing holding it"
+msgstr "%s dreht sich auf %d reibungslosen Pins oder Achsen in einer Reihe, und nichts hält es"
+
+msgid "the %s carries about %sx its working load on a friction pin"
+msgstr "%s trägt etwa das %s-Fache seiner Arbeitslast auf einem Reibungspin"
+
+msgid "the %s carries about %sx its working load on %d friction pins in a line"
+msgstr "%s trägt etwa das %s-Fache seiner Arbeitslast auf %d Reibungspins in einer Reihe"
+
+msgid "1 motion line not read let go, as the next open would read it into %s: %s"
+msgstr "1 nicht gelesene Bewegungszeile entfernt, da das nächste Öffnen sie in %s lesen würde: %s"
+
+msgid "%d motion lines not read let go, as the next open would read them into %s: %s"
+msgstr "%d nicht gelesene Bewegungszeilen entfernt, da das nächste Öffnen sie in %s lesen würde: %s"
+
+# drive2 (drvrecheck F4, words): joints by their kind, and the standing line's start and studs
+
+msgid "1 joint overloaded, in red."
+msgstr "1 Verbindung überlastet, rot markiert."
+
+msgid "%d joints overloaded, in red."
+msgstr "%d Verbindungen überlastet, rot markiert."
+
+msgid "stands, %s studs inside the %s edge"
+msgstr "Steht, %s Noppen innerhalb der Kante %s"
+
+msgid "would tip over to the %s, %s studs past its edge"
+msgstr "Würde nach %s kippen, %s Noppen jenseits seiner Kante"
+
+msgid "tips over to the %s, %s studs past its edge"
+msgstr "Kippt nach %s, %s Noppen jenseits seiner Kante"
+
+msgid "the %s's 1 stud carries about %sx its working load"
+msgstr "die 1 Noppe von %s trägt etwa das %s-Fache ihrer Arbeitslast"
+
+msgid "the %s's %d studs carry about %sx their working load"
+msgstr "die %2$d Noppen von %1$s tragen etwa das %3$s-Fache ihrer Arbeitslast"
+
+# end unit drive
+
 # A palette of the person's own, kept for every model (palettes, APP_UX6 21): the bin's
 # Palettes beside Favourites, an open palette's line, its menus and what they say.
 

@@ -118,10 +118,13 @@ A model can keep named movements in its file: *Open the doors*, *Steer left and 
 
 Anyone who opens your shared model can play them.
 
+A model on wheels can drive. Its suggestion *Drive and turn left* takes it 32 studs straight, then a quarter turn to the left. Under **Where it drives**, add a leg and pick **Straight**, **Left** or **Right**, with its length or its angle and radius in studs. As it drives, each wheel turns once for each round of its tyre, and the steering turns into the corners. **Play** leaves the model where the drive ends, as one undo step: the whole model moved, its wheels and steering at rest as they were, and a file from another program keeps every line but those that place its parts and sub-models. **Play backwards** drives it back the same way.
+
 <!-- covers
 ui:motions panel
 lib:motions
 lib:playing motions
+lib:driving along a path
 lib:posing joints
 lib:keyframed animation
 -->

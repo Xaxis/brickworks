@@ -205,8 +205,11 @@ func unshown(placements: Array) -> Dictionary:
 ## flexible part) placed where each copy of it was, and its section as the
 ## file had it; any other such part placed where it was, in the model's own
 ## section; and every section of the file those name. [param waiting] are
-## parts still on their way, in the file's coordinates.
-func carried_into(text: String, waiting: Array) -> String:
+## parts still on their way, in the file's coordinates. [param place] says
+## where a place the file has stands now, in them (ModelStore.held_place:
+## where the drives kept since moved the model), as the file has it when
+## not given.
+func carried_into(text: String, waiting: Array, place: Callable = Callable()) -> String:
 	var parts: Array = not_shown + waiting
 	if parts.is_empty():
 		return text
@@ -225,8 +228,10 @@ func carried_into(text: String, waiting: Array) -> String:
 			placed_units[unit] = true
 			var section: String = str(unit_sections[unit])
 			needed[section] = true
+			var frame: Transform3D = unit_frames[unit]
 			refs.append("1 %s %s %s" % [_colour_token(int(unit_colours.get(unit, 16))),
-				LdrModel._line_numbers(unit_frames[unit]), _file_name(section)])
+				LdrModel._line_numbers(place.call(frame) if place.is_valid() else frame),
+				_file_name(section)])
 			continue
 		var reference: String = placement.part_id + ".dat"
 		if placement.line >= 0:
@@ -236,7 +241,8 @@ func carried_into(text: String, waiting: Array) -> String:
 		if sections.has(LdrModel._key(reference)):
 			needed[LdrModel._key(reference)] = true
 		refs.append("1 %s %s %s" % [_colour_token(placement.color_code),
-			LdrModel._line_numbers(placement.transform), reference])
+			LdrModel._line_numbers(place.call(placement.transform) if place.is_valid()
+				else placement.transform), reference])
 	# And what those sections draw on that the file carries.
 	var todo: Array = needed.keys()
 	while not todo.is_empty():

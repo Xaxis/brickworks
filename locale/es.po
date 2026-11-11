@@ -3388,11 +3388,11 @@ msgstr "%s gira sobre %s en un pasador con fricción, con %s g más allá, %s ve
 msgid "%s turns on %s on %d friction pins in a line with %s g past it, %sx its working load"
 msgstr "%s gira sobre %s en %d pasadores con fricción en línea, con %s g más allá, %s veces su carga de trabajo"
 
-msgid "%s turns on %s on a frictionless pin or axle with %s g past it, %sx its working load"
-msgstr "%s gira sobre %s en un pasador sin fricción o un eje, con %s g más allá, %s veces su carga de trabajo"
+msgid "%s turns on %s on a frictionless pin or axle with %s g past it, and nothing holding it"
+msgstr "%s gira sobre %s en un pasador sin fricción o un eje, con %s g más allá, y nada lo sujeta"
 
-msgid "%s turns on %s on %d frictionless pins or axles in a line with %s g past it, %sx its working load"
-msgstr "%s gira sobre %s en %d pasadores sin fricción o ejes en línea, con %s g más allá, %s veces su carga de trabajo"
+msgid "%s turns on %s on %d frictionless pins or axles in a line with %s g past it, and nothing holding it"
+msgstr "%s gira sobre %s en %d pasadores sin fricción o ejes en línea, con %s g más allá, y nada lo sujeta"
 
 msgid "%s g held by nothing stands on %s by touch alone, its weight %s studs past where it touches"
 msgstr "%s g sin nada que los sujete se apoyan en %s solo por contacto, su peso a %s espigas más allá del apoyo"
@@ -3471,12 +3471,6 @@ msgstr "Ensánchalo %d espigas por el lado %s"
 
 msgid "Widen it %d studs to the %s."
 msgstr "Ensánchalo %d espigas por el lado %s."
-
-msgid "1 stud joint overloaded, in red."
-msgstr "1 unión de espigas sobrecargada, en rojo."
-
-msgid "%d stud joints overloaded, in red."
-msgstr "%d uniones de espigas sobrecargadas, en rojo."
 
 msgid "left"
 msgstr "izquierdo"
@@ -12644,6 +12638,245 @@ msgstr "espigas en tres lados"
 
 msgid "studs on four sides"
 msgstr "espigas en cuatro lados"
+
+# unit drive: a motion's path, where the whole model drives (pose_panel, motion_player)
+
+msgid "Where it drives"
+msgstr "Por dónde va"
+
+msgid "Drive along a path"
+msgstr "Conducir por un recorrido"
+
+msgid "The whole model driven along the ground, its wheels turning as it goes: 32 studs, then round a corner"
+msgstr "El modelo entero conducido por el suelo, sus ruedas girando a su paso: 32 espigas y luego una curva"
+
+msgid "Add a leg"
+msgstr "Añadir un tramo"
+
+msgid "Another leg at the path's end: straight on"
+msgstr "Otro tramo al final del recorrido: recto"
+
+msgid "No path"
+msgstr "Sin recorrido"
+
+msgid "The model stays where it stands; its joints still move"
+msgstr "El modelo se queda donde está; sus articulaciones siguen moviéndose"
+
+msgid "Over"
+msgstr "Duración"
+
+msgid "How long it takes, seconds"
+msgstr "Cuánto tarda, en segundos"
+
+msgid "It gathers speed at the start and slows to a stop at the end"
+msgstr "Gana velocidad al principio y frena hasta pararse al final"
+
+msgid "Straight"
+msgstr "Recto"
+
+msgid "Straight on, or a turn to the left or the right"
+msgstr "Recto, o una curva a la izquierda o a la derecha"
+
+msgid "How far, studs (less than 0 backwards)"
+msgstr "Qué distancia, en espigas (menos de 0, marcha atrás)"
+
+msgid "How far round, degrees"
+msgstr "Cuánto gira, en grados"
+
+msgid "How wide the turn is: its radius, studs, at the middle of the back axle"
+msgstr "Lo abierta que es la curva: su radio, en espigas, en el centro del eje trasero"
+
+msgid "Take this leg out of the path"
+msgstr "Quitar este tramo del recorrido"
+
+msgid "It moves nothing but the path: Remove takes the motion out."
+msgstr "No mueve nada más que el recorrido: «Quitar» saca el movimiento."
+
+msgid "It drives %s."
+msgstr "Recorre %s."
+
+msgid "It drives %s. %s Play plays it."
+msgstr "Recorre %s. %s «Reproducir» lo reproduce."
+
+msgid "%s studs straight"
+msgstr "%s espigas recto"
+
+msgid "%s studs backwards"
+msgstr "%s espigas marcha atrás"
+
+msgid "%s° left on a %s-stud radius"
+msgstr "%s° a la izquierda con un radio de %s espigas"
+
+msgid "%s° right on a %s-stud radius"
+msgstr "%s° a la derecha con un radio de %s espigas"
+
+msgid "%s, then %s"
+msgstr "%s y luego %s"
+
+msgid "1 wheel turns as it rolls (%s)"
+msgstr "1 rueda gira al rodar (%s)"
+
+msgid "1 wheel turns as it rolls (%s)."
+msgstr "1 rueda gira al rodar (%s)."
+
+msgid "%d wheels turn as it rolls (%s)"
+msgstr "%d ruedas giran al rodar (%s)"
+
+msgid "%d wheels turn as it rolls (%s)."
+msgstr "%d ruedas giran al rodar (%s)."
+
+msgid "%s, and %s steers it into the corners."
+msgstr "%s, y %s lo dirige en las curvas."
+
+msgid "No wheel turns as it rolls: none stands on the ground on a level axle"
+msgstr "Ninguna rueda gira al rodar: ninguna está en el suelo sobre un eje horizontal"
+
+msgid "No wheel turns as it rolls: none stands on the ground on a level axle."
+msgstr "Ninguna rueda gira al rodar: ninguna está en el suelo sobre un eje horizontal."
+
+# unit drive, review fixes: refused motion lines said and kept, a joint's part gone, a contact of no studs
+
+msgid "1 motion line not read, kept in the file as it is"
+msgstr "1 línea de movimiento sin leer, guardada tal cual en el archivo"
+
+msgid "%d motion lines not read, kept in the file as they are"
+msgstr "%d líneas de movimiento sin leer, guardadas tal cual en el archivo"
+
+msgid "%s (%d lines): %s"
+msgstr "%s (%d líneas): %s"
+
+msgid "a path has at most %d legs, not %d"
+msgstr "un recorrido tiene como mucho %d tramos, no %d"
+
+msgid "a turn of its path has no RADIUS"
+msgstr "una curva de su recorrido no tiene RADIUS"
+
+msgid "its path has %s where a leg goes"
+msgstr "su recorrido tiene %s donde va un tramo"
+
+msgid "it has two path lines"
+msgstr "tiene dos líneas de recorrido"
+
+msgid "it has two steering lines"
+msgstr "tiene dos líneas de dirección"
+
+msgid "a wheel or steering line with no path read"
+msgstr "una línea de rueda o de dirección sin recorrido leído"
+
+msgid "a wheel or steering line this does not read"
+msgstr "una línea de rueda o de dirección que aquí no se lee"
+
+msgid "nothing it moves was read"
+msgstr "no se leyó nada de lo que mueve"
+
+msgid "a sequence plays motions, and moves nothing of its own"
+msgstr "una secuencia reproduce movimientos y no mueve nada por sí misma"
+
+msgid "its path line is not one this reads"
+msgstr "su línea de recorrido no se lee aquí"
+
+msgid "its MOTION line is not one this reads"
+msgstr "su línea MOTION no se lee aquí"
+
+msgid "a track line this does not read"
+msgstr "una línea de pista que aquí no se lee"
+
+msgid "a driver line this does not read"
+msgstr "una línea de accionamiento que aquí no se lee"
+
+msgid "a key line this does not read"
+msgstr "una línea de clave que aquí no se lee"
+
+msgid "a key of a track it does not have"
+msgstr "una clave de una pista que no tiene"
+
+msgid "a motion line with no motion's name"
+msgstr "una línea de movimiento sin nombre de movimiento"
+
+msgid "%s is not a motion line this reads"
+msgstr "%s no es una línea de movimiento que se lea aquí"
+
+msgid "a path takes %s to %d seconds, not %s"
+msgstr "un recorrido dura de %s a %d segundos, no %s"
+
+msgid "a straight goes 0.01 to %d studs (less than 0 backwards), not %s"
+msgstr "una recta va de 0,01 a %d espigas (menos de 0 hacia atrás), no %s"
+
+msgid "A straight goes 0.01 to %d studs (less than 0 backwards), not %s."
+msgstr "Una recta va de 0,01 a %d espigas (menos de 0 hacia atrás), no %s."
+
+msgid "a turn goes 0.01 to %d degrees, not %s"
+msgstr "una curva va de 0,01 a %d grados, no %s"
+
+msgid "A turn goes 0.01 to %d degrees, not %s."
+msgstr "Una curva va de 0,01 a %d grados, no %s."
+
+msgid "a turn's radius is %s to %d studs, not %s"
+msgstr "el radio de una curva va de %s a %d espigas, no %s"
+
+msgid "A turn's radius is %s to %d studs, not %s."
+msgstr "El radio de una curva va de %s a %d espigas, no %s."
+
+msgid "a motion's joint has no part where it was, kept in the file as it was: %s"
+msgstr "una articulación de un movimiento ya no tiene pieza donde estaba, guardada tal cual en el archivo: %s"
+
+msgid "%d motions' joints have no part where they were, kept in the file as they were: %s"
+msgstr "%d articulaciones de movimientos ya no tienen pieza donde estaban, guardadas tal cual en el archivo: %s"
+
+msgid "the %s touches with no stud in contact: nothing holds it there"
+msgstr "%s toca sin ninguna espiga en contacto: nada lo sujeta ahí"
+
+msgid "on no stud"
+msgstr "sobre ninguna espiga"
+
+msgid "%s touches %s with no stud in contact, %s g past it: nothing holds it there"
+msgstr "%s toca %s sin ninguna espiga en contacto, %s g más allá: nada lo sujeta ahí"
+
+# drvcheck A-C: a pin or an axle said by its kind, refused motion lines an edit lets go
+
+msgid "the %s turns on a frictionless pin or axle with nothing holding it"
+msgstr "%s gira en un pasador sin fricción o un eje, sin nada que lo sujete"
+
+msgid "the %s turns on %d frictionless pins or axles in a line with nothing holding it"
+msgstr "%s gira en %d pasadores sin fricción o ejes en línea, sin nada que lo sujete"
+
+msgid "the %s carries about %sx its working load on a friction pin"
+msgstr "%s soporta unas %s veces su carga de trabajo en un pasador con fricción"
+
+msgid "the %s carries about %sx its working load on %d friction pins in a line"
+msgstr "%s soporta unas %s veces su carga de trabajo en %d pasadores con fricción en línea"
+
+msgid "1 motion line not read let go, as the next open would read it into %s: %s"
+msgstr "1 línea de movimiento sin leer quitada, porque la próxima apertura la leería en %s: %s"
+
+msgid "%d motion lines not read let go, as the next open would read them into %s: %s"
+msgstr "%d líneas de movimiento sin leer quitadas, porque la próxima apertura las leería en %s: %s"
+
+# drive2 (drvrecheck F4, words): joints by their kind, and the standing line's start and studs
+
+msgid "1 joint overloaded, in red."
+msgstr "1 unión sobrecargada, en rojo."
+
+msgid "%d joints overloaded, in red."
+msgstr "%d uniones sobrecargadas, en rojo."
+
+msgid "stands, %s studs inside the %s edge"
+msgstr "se sostiene, a %s espigas dentro del borde %s"
+
+msgid "would tip over to the %s, %s studs past its edge"
+msgstr "se volcaría hacia %s, a %s espigas más allá de su borde"
+
+msgid "tips over to the %s, %s studs past its edge"
+msgstr "se vuelca hacia %s, a %s espigas más allá de su borde"
+
+msgid "the %s's 1 stud carries about %sx its working load"
+msgstr "la espiga de %s soporta unas %s veces su carga de trabajo"
+
+msgid "the %s's %d studs carry about %sx their working load"
+msgstr "las %2$d espigas de %1$s soportan unas %3$s veces su carga de trabajo"
+
+# end unit drive
+
 # A palette of the person's own, kept for every model (palettes, APP_UX6 21): the bin's
 # Palettes beside Favourites, an open palette's line, its menus and what they say.
 

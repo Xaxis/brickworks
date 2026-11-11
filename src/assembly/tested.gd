@@ -1358,9 +1358,10 @@ static func _weighed(weighing: Weighing, ids: Array[int], number: int, tips: Arr
 	laps["weigh"] = int(laps.get("weigh", 0)) + Time.get_ticks_usec() - weigh_from
 	for one: Balance.JointLoad in joints:
 		if one.moment > one.ultimate:
-			tips.append([number, "%s%s %s %s on %d stud%s past where it lets go" % [fell,
+			# By its kind: a pin or an axle has no studs to count (drvcheck A).
+			tips.append([number, "%s%s %s %s %s past where it lets go" % [fell,
 				_named(one.beyond_part, library), "hangs from" if one.hangs else "is held by",
-				_named(one.held_part, library), one.studs, "" if one.studs == 1 else "s"]])
+				_named(one.held_part, library), one.held_on()]])
 			break
 	return true
 

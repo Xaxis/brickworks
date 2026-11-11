@@ -4859,7 +4859,7 @@
       "readOnlyHint": false,
       "title": "Keep a motion in the model"
     },
-    "description": "Keep a named motion in the model, as a builder names it (\"Open the dome\"), played by the real joints as a drag moves them. tracks= each a joint (a part's number \"#80\" or a sub-assembly's name, as move_part names them) and its keys: t= seconds, place= degrees turned from where the model was built (studs slid, with slide=true), how= ease (the default), linear or hold. Or driver= a joint turned turns= times over seconds=, from where it stands: what it drives through gears, racks and linkages follows. Or sequence= the model's motions by name, in order (\"Show it all\": [\"Open the dome\", \"Extend the telescope\"]): a motion made of motions, each played from where the one before left the model, backwards in reverse order. suggested=true keeps list_motions' suggestion of that name; remove=true takes a motion out. It is saved with the model (its autosave, a save, an export, a shared link), one undo step, and answers by playing it once and putting the model back: where each joint ended, or stopped and on what.",
+    "description": "Keep a named motion in the model, as a builder names it (\"Open the dome\"), played by the real joints as a drag moves them. tracks= each a joint (a part's number \"#80\" or a sub-assembly's name, as move_part names them) and its keys: t= seconds, place= degrees turned from where the model was built (studs slid, with slide=true), how= ease (the default), linear or hold. Or driver= a joint turned turns= times over seconds=, from where it stands: what it drives through gears, racks and linkages follows. Or sequence= the model's motions by name, in order (\"Show it all\": [\"Open the dome\", \"Extend the telescope\"]): a motion made of motions, each played from where the one before left the model, backwards in reverse order. Or path= the whole model driven along the ground (legs: straight studs, left or right degrees), its wheels turning as they roll and its steering into the corners. suggested=true keeps list_motions' suggestion of that name; remove=true takes a motion out. It is saved with the model (its autosave, a save, an export, a shared link), one undo step, and answers by playing it once and putting the model back: where each joint ended, or stopped and on what.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -4888,6 +4888,47 @@
         "name": {
           "description": "what a builder calls it: Open the doors",
           "type": "string"
+        },
+        "path": {
+          "additionalProperties": false,
+          "description": "the whole model driven along the ground from where it stands, its wheels turning as they roll and its steering into the corners; with tracks= too, those joints move as it goes",
+          "properties": {
+            "eased": {
+              "description": "gathers speed and slows to a stop; true when omitted",
+              "type": "boolean"
+            },
+            "legs": {
+              "description": "in order; a 32-stud straight and a quarter turn left when omitted",
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "left": {
+                    "description": "degrees turned to the left",
+                    "type": "number"
+                  },
+                  "radius": {
+                    "description": "a turn's radius, studs, at the middle of the back axle; the tightest its steering takes well when omitted",
+                    "type": "number"
+                  },
+                  "right": {
+                    "description": "degrees turned to the right",
+                    "type": "number"
+                  },
+                  "straight": {
+                    "description": "studs ahead; less than 0 backwards",
+                    "type": "number"
+                  }
+                },
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "seconds": {
+              "description": "how long; at 10 studs a second when omitted",
+              "type": "number"
+            }
+          },
+          "type": "object"
         },
         "remove": {
           "type": "boolean"
