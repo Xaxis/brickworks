@@ -807,6 +807,8 @@ func _carry_input(event: InputEvent) -> void:
 ## is the tree's scroll if not; lifted, or joined by a second (a pinch), it
 ## carries nothing.
 func _heard(event: InputEvent) -> void:
+	if _following >= 0 and _follow(event):
+		return
 	if not _pressed or not _press_finger:
 		return
 	var touch: InputEventScreenTouch = event as InputEventScreenTouch
@@ -843,6 +845,12 @@ func _carry() -> void:
 	var lifted: Array = _lift()
 	if lifted.is_empty():
 		return
+	# A menu of the tree's own that the hold put up (the row's) goes as the
+	# row lifts, as iOS's context menu does: put up in the window, it would
+	# take every move of the carry.
+	for child: Node in get_children():
+		if child is Popup and (child as Popup).visible:
+			(child as Popup).hide()
 	if _press_finger and DisplayServer.is_touchscreen_available():
 		# A finger on a touch screen's tree is its scroll, and Godot's Tree
 		# takes no drop while that lasts (drag_touching); it ends when the
@@ -853,6 +861,57 @@ func _carry() -> void:
 		if focused:
 			_tree.grab_focus()
 	_tree.force_drag(lifted[0], lifted[1])
+	_following = _press_index if _press_finger else -1
+
+
+## The finger a carry it lifted follows, -1 for none. Godot carries a drag
+## by the mouse it makes of a finger (emulate_mouse_from_touch), and lets
+## that mouse go, with the finger still down, when a menu put up in the
+## window goes: the row's menu a hold put up, put away as the row lifts
+## (_carry). The mouse let go is never pressed again and moves no more, so
+## the carry stood still at the row it left and the finger's lift dropped
+## nothing (treedrag on subexport, 2026-11-11). While it is let go, the
+## finger's moves and its lift are given to the window as the mouse's.
+var _following: int = -1
+
+
+## [param event] given as the mouse's while Godot's is let go, the carry's
+## (true), or not the carry's: the carry has ended, or it is another touch.
+func _follow(event: InputEvent) -> bool:
+	if not get_viewport().gui_is_dragging():
+		_following = -1
+		return false
+	var drag: InputEventScreenDrag = event as InputEventScreenDrag
+	var touch: InputEventScreenTouch = event as InputEventScreenTouch
+	var index: int = drag.index if drag != null else touch.index if touch != null else -2
+	if index != _following:
+		return false
+	if touch != null and not touch.pressed:
+		_following = -1
+	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		# Godot's own mouse still has the finger: it moves and drops it.
+		return true
+	if drag != null:
+		var move := InputEventMouseMotion.new()
+		move.device = InputEvent.DEVICE_ID_EMULATION
+		move.position = drag.position
+		move.global_position = drag.position
+		move.relative = drag.relative
+		move.screen_relative = drag.screen_relative
+		move.velocity = drag.velocity
+		move.screen_velocity = drag.screen_velocity
+		move.button_mask = MOUSE_BUTTON_MASK_LEFT
+		Input.parse_input_event(move)
+	elif touch.canceled:
+		get_viewport().gui_cancel_drag()
+	elif not touch.pressed:
+		var up := InputEventMouseButton.new()
+		up.device = InputEvent.DEVICE_ID_EMULATION
+		up.button_index = MOUSE_BUTTON_LEFT
+		up.position = touch.position
+		up.global_position = touch.position
+		Input.parse_input_event(up)
+	return true
 
 
 ## How deep the tree's top and bottom edges are, where a carry held scrolls

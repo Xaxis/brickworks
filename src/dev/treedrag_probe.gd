@@ -317,6 +317,10 @@ func _carry(from: String, onto: String, relative: bool) -> Dictionary:
 		await _frames(2)
 		if root.gui_is_dragging() and out["carried"] == "(no drag)":
 			out["carried"] = _drag_name(root.gui_get_drag_data())
+	if onto != "@view":
+		now = await _aim(onto, now, func(to: Vector2, by: Vector2) -> void:
+			_move(to, MOUSE_BUTTON_MASK_LEFT, by if relative else Vector2.ZERO))
+		goal = now
 	await _frames(4)
 	var local: Vector2 = _tree.get_global_transform_with_canvas().affine_inverse() * goal
 	if onto != "@view" and _tree.get_global_rect().has_point(goal):
@@ -368,6 +372,25 @@ func _by_finger() -> void:
 	paths = _shell.assemblies.paths()
 	var other: String = _first(paths, func(p: String) -> bool:
 		return Assemblies.parent_of(p).is_empty() and p.begins_with("Minifig"))
+	# The row's menu up from the hold, as a build with it (subexport) puts
+	# it up, and the finger moving on: the menu goes, and the row is carried
+	# and dropped, though Godot lets go of the mouse it makes of the finger
+	# as the menu goes.
+	before = _state()
+	depth = _builder.history_depth()
+	seen = await _finger_carry(other, vehicle, 0.7, Vector2.ZERO, true)
+	lands = vehicle + "/" + Assemblies.leaf(other)
+	paths = _shell.assemblies.paths()
+	_check("%s: held, its menu put up, then moved: carried %s, the outline on %s %s, dropped: %s, the menu left up %s, undo steps %d -> %d" % [
+		_kind(), seen.get("carried"), seen.get("under"), seen.get("outline"), lands if paths.has(lands)
+		else "not there", seen.get("menu"), depth, _builder.history_depth()], seen.get("carried") == other
+		and bool(seen.get("outline")) and paths.has(lands) and not paths.has(other)
+		and not bool(seen.get("menu")) and _builder.history_depth() == depth + 1)
+	if paths.has(lands):
+		await _shell.verbs.press("undo")
+		await _frames(6)
+	_check("%s: held, its menu put up, then moved: Undo: as before %s" % [_kind(), _unlike(before, _state())],
+		_state() == before)
 	for gesture: Array in [["moved down at once (a scroll)", 0.0, Vector2(0.0, 90.0)],
 			["moved across at once", 0.0, Vector2(90.0, 0.0)],
 			["held still and lifted", 0.7, Vector2.ZERO]]:
@@ -387,7 +410,7 @@ func _by_finger() -> void:
 ## events of it, as on a phone). Nothing but the finger scrolls the tree
 ## while it is down: a row out of sight is brought by holding the carry at
 ## the tree's edge (_bring).
-func _finger_carry(from: String, onto: String, hold: float, by: Vector2) -> Dictionary:
+func _finger_carry(from: String, onto: String, hold: float, by: Vector2, menu: bool = false) -> Dictionary:
 	_builder.clear_selection()
 	await _frames(10)
 	var out: Dictionary = {"carried": "(no drag)", "outline": false, "under": "(none)", "menu": false}
@@ -400,6 +423,15 @@ func _finger_carry(from: String, onto: String, hold: float, by: Vector2) -> Dict
 		var until: int = Time.get_ticks_msec() + roundi(hold * 1000.0)
 		while Time.get_ticks_msec() < until:
 			await process_frame
+	if menu and not _menu_up():
+		# A menu of the tree's own, put up in the window as a row's is,
+		# above the finger.
+		var put := PopupMenu.new()
+		put.add_item("The row's menu")
+		put.set_meta(&"treedrag_probe", true)
+		_outliner.add_child(put)
+		put.popup(Rect2i(Vector2i((at + Vector2(-60.0, -90.0)).round()), Vector2i(160, 40)))
+		await _frames(4)
 	var now: Vector2 = at
 	var goal: Vector2 = at + by
 	if onto != "@by" and not onto.is_empty():
@@ -415,6 +447,8 @@ func _finger_carry(from: String, onto: String, hold: float, by: Vector2) -> Dict
 			await _frames(2)
 			if root.gui_is_dragging() and out["carried"] == "(no drag)":
 				out["carried"] = _drag_name(root.gui_get_drag_data())
+		if onto != "@by":
+			now = await _aim(onto, now, func(to: Vector2, by_: Vector2) -> void: _drag(to, by_))
 	await _frames(4)
 	var local: Vector2 = _tree.get_global_transform_with_canvas().affine_inverse() * now
 	if _tree.get_global_rect().has_point(now):
@@ -434,7 +468,16 @@ func _finger_carry(from: String, onto: String, hold: float, by: Vector2) -> Dict
 			out["menu"] = true
 			(child as PopupMenu).hide()
 			await _frames(4)
+		if child.has_meta(&"treedrag_probe"):
+			child.queue_free()
 	return out
+
+
+func _menu_up() -> bool:
+	for child: Node in _outliner.get_children():
+		if child is PopupMenu and (child as PopupMenu).visible:
+			return true
+	return false
 
 
 ## Whether a row is one a drag carries: a sub-model's or a suggestion's
@@ -448,6 +491,24 @@ func _carryable(meta: String) -> bool:
 ## stops there to put it in: clear of the edge where the carry scrolls the
 ## tree (Outliner.EDGE, 20 units; the probe's own, so it runs before it).
 const CLEAR := 26.0
+
+
+## The pointer put on [param onto]'s row again, by [param point], while it
+## is not: leaving the tree's edge scrolls it a little further, and a hand
+## watching the row follows it. Where the pointer is then.
+func _aim(onto: String, now: Vector2, point: Callable) -> Vector2:
+	for _n: int in 6:
+		await _frames(3)
+		var row: TreeItem = _outliner.call("_find", _tree.get_root(), onto)
+		if row == null:
+			break
+		var rect: Rect2 = _tree.get_item_area_rect(row)
+		rect.position += _tree.get_global_rect().position
+		if rect.grow(-2.0).has_point(now) or not _tree.get_global_rect().has_point(rect.get_center()):
+			break
+		point.call(rect.get_center(), rect.get_center() - now)
+		now = rect.get_center()
+	return now
 
 
 ## [param onto]'s row brought into sight as a person brings it: the carry
