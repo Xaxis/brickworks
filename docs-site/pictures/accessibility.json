@@ -28,7 +28,7 @@
    "crop": "_bin",
    "pad": 0,
    "alt": "The parts bin with one part's tile ringed in blue: where the keys are, moved there with the arrows.",
-   "caption": "The arrows move the keyboard's focus through the parts bin; Return takes the part.",
+   "caption": "The arrows move the keyboard's focus through the parts bin; Enter takes the part.",
    "features": [
     "ui:accessibility",
     "ui:parts bin"
