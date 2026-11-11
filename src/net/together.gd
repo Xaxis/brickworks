@@ -107,14 +107,20 @@ const OVERTAKEN_MS := 1500
 ## What the model is besides its parts, carried the same way, each by a key
 ## of its own with its words as the file has them (_meta_now): its name, the
 ## floor, the colours of hidden parts, motions, the booklet's looks, the
-## steps of sub-assembly copies, sections broken out, and the lights placed
-## in it (SceneLights, as JSON in the file's coordinates). And "~part:<id>":
+## steps of sub-assembly copies, sections broken out, the lights placed in
+## it (SceneLights, as JSON in the file's coordinates), and each sub-model's
+## own lights and views with the frame they are in (BrickWorld.section_lines,
+## section_frames): sent with the change that renames or makes, so both sides
+## write the same. And "~part:<id>":
 ## the LDraw files of a part made in the app, sent once with the first part
 ## of it put down, so the other side can draw it.
 const META_KEYS: Array[String] = ["~title", "~floor", "~hidden", "~motions", "~looks",
 	"~unit_steps", "~broken",
 	# lights (APP_UX5 #7): the lights placed in the model.
-	"~lights"]
+	"~lights",
+	# pathcarry: a sub-model's own lights and views. Up to 2026-11-11 none
+	# were carried, and the other side's file had none after a rename.
+	"~sublines"]
 const MADE_PART := "~part:"
 ## A comment pinned to a part, a key each (PinnedComments.session_words), so
 ## two people pinning at once both keep theirs.
@@ -1464,7 +1470,39 @@ func _meta_now() -> Dictionary:
 		"~unit_steps": var_to_str(world.unit_steps),
 		"~broken": _broken_words(),
 		"~lights": JSON.stringify(SceneLights.in_file(world.scene_lights, store.lift())),
+		"~sublines": _sublines_words(),
 	}.merged(_pin_words())
+
+
+## Each sub-model's own lights and views (BrickWorld.section_lines) and the
+## frame they are in (section_frames, where it stood in the file's
+## coordinates and the parts it is found by), by its definition, as Godot
+## writes the value: {def: {"lines", "at", "parts": [[part, colour, at]]}}.
+func _sublines_words() -> String:
+	if world.section_lines.is_empty():
+		return ""
+	var back := Transform3D(Basis.IDENTITY, -store.lift())
+	var out: Dictionary = {}
+	for def: String in world.section_lines:
+		var one: Dictionary = {"lines": PackedStringArray(world.section_lines[def])}
+		var record: Variant = world.section_frames.get(def)
+		if record is Dictionary:
+			one["at"] = back * ((record as Dictionary)["at"] as Transform3D)
+			one["parts"] = ((record as Dictionary)["parts"] as Array).map(
+				func(item: Dictionary) -> Array: return [item["part"], item["color"], item["at"]])
+		out[def] = one
+	var words: String = var_to_str(out)
+	# As long as the session keeps for it (api/together.js), or the parts each
+	# frame is found by left out: the lines are what both sides write.
+	if words.length() > SUBLINES_MOST:
+		for def: String in out:
+			(out[def] as Dictionary).erase("parts")
+		words = var_to_str(out)
+	return words
+
+
+## The longest words the session keeps for "~sublines" (api/together.js META).
+const SUBLINES_MOST := 500_000
 
 
 ## Each comment pinned to a part, a key of its own.
@@ -1544,6 +1582,20 @@ func _put_meta(key: String, words: String) -> void:
 			if lights.size() != given.size():
 				TogetherWords.left_out("lights", "not lights")
 			world.scene_lights = SceneLights.placed(lights, store.lift())
+		"~sublines":
+			# Read as every other side's words are, then made precise: a
+			# sub-model's light and view lines alone, each frame of its shape
+			# (TogetherWords.section_lines), where the model stands here.
+			var dropped := PackedStringArray()
+			var given: Dictionary = TogetherWords.section_lines(TogetherWords.dictionary(words,
+				"sub-models' lights and views"), dropped)
+			TogetherWords.left_out_each("sub-models' lights and views", dropped)
+			var lifted := Transform3D(Basis.IDENTITY, store.lift())
+			var framed: Dictionary = given["frames"]
+			for def: String in framed:
+				(framed[def] as Dictionary)["at"] = lifted * ((framed[def] as Dictionary)["at"] as Transform3D)
+			world.section_lines = given["lines"]
+			world.section_frames = framed
 		_ when key.begins_with(PIN_KEY):
 			store.pins.put_session_words(key.substr(PIN_KEY.length()), words, world, store.lift(),
 				brick_of)
@@ -2254,7 +2306,7 @@ func check_edit(edit: Dictionary) -> Dictionary:
 		builder.lattice.occupy_boxes(brick_id, builder.boxes_for(
 			builder.library.mesh_for(brick.part_id), brick.transform))
 		builder.record([{"undo": "remove", "brick": brick_id}], "placed %s" % brick.part_id)
-		_capture()
+		_edited()
 		return {"ok": true, "uid": uid_of(brick_id)}
 	var brick_id: int = brick_of(str(edit.get("uid", "")))
 	if brick_id == 0 or world.get_brick(brick_id) == null:
@@ -2271,8 +2323,19 @@ func check_edit(edit: Dictionary) -> Dictionary:
 		"delete":
 			done = builder.remove_selection()
 	builder.clear_selection()
-	_capture()
+	_edited()
 	return {"ok": done > 0}
+
+
+## After a change [method check_edit] made as the keys and the mouse make it:
+## what follows one made by hand follows it, in its step, before it is sent
+## (ModelStore.looks_follow_edit: a sub-model it left no copy of takes its
+## own lights and views, a step it emptied its look). Up to 2026-11-11 they
+## stayed, and a sub-model made next of that name, on either side, had them.
+func _edited() -> void:
+	if store != null:
+		store.looks_follow_edit()
+	_capture()
 
 
 ## [param value] with each "uid:<uid>" a part's number here, and each

@@ -487,16 +487,13 @@ func leave_submodel() -> int:
 				say.call("took %s apart" % Assemblies.label(path) + ("" if assemblies.apart_said
 					.is_empty() else " — " + assemblies.apart_said))
 			return count
-		var changes: Dictionary = {}
-		for brick_id: int in builder.selection:
-			var brick: BrickWorld.Brick = world.get_brick(brick_id)
-			if brick != null:
-				changes[brick_id] = Assemblies.parent_of(Assemblies.path_of(brick))
-		var moved: int = builder.regroup(changes, "took %s out of its sub-assembly"
-			% _parts(changes.size()))
+		# A copy it leaves empty is taken apart, its lights with its parts
+		# (Assemblies.take_out).
+		var moved: int = assemblies.take_out(builder.selection.keys())
 		if moved > 0:
 			edited.call()
-			say.call("took %s out of its sub-assembly" % _parts(moved))
+			say.call("took %s out of its sub-assembly" % _parts(moved) + (""
+				if assemblies.apart_said.is_empty() else " — " + assemblies.apart_said))
 		return moved
 	var gone: int = builder.name_group("")
 	if gone > 0:
@@ -753,6 +750,7 @@ func paste() -> int:
 	# The app's own copy brings its sub-models' lights and views with it.
 	if is_same(parts, Carry.clipboard):
 		builder.carrying.lines = Carry.clipboard_lines
+		builder.carrying.frames = Carry.clipboard_frames
 	aim_again.call()
 	say.call(Keymap.filled("holding %s — click to put down, {rotate_held|turns}, Esc puts away")
 		% _parts(parts.size()))

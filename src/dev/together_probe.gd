@@ -565,12 +565,16 @@ func _sub_lines(a: Dictionary, b: Dictionary) -> void:
 	var view: String = "0 !BRICKWORKS VIEW " + JSON.stringify({"name": "sub view", "yaw": 10,
 		"pitch": -20, "distance": 300, "focus": [0, 0, 0]})
 	var text: String = "\n".join(PackedStringArray(["0 FILE main.ldr", "0 Together lit",
-		"0 Name: main.ldr", "0 Author: Brickworks", "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat",
-		"1 16 100 0 0 1 0 0 0 1 0 0 0 1 sub.ldr", "1 16 -100 0 0 1 0 0 0 1 0 0 0 1 lamp.ldr", "0 NOFILE",
+		"0 Name: main.ldr", "0 Author: Brickworks", "1 16 100 0 0 1 0 0 0 1 0 0 0 1 sub.ldr",
+		"1 16 -100 0 0 1 0 0 0 1 0 0 0 1 lamp.ldr", "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat", "0 NOFILE",
 		"0 FILE sub.ldr", "0 Sub", "0 Name: sub.ldr", "0 Author: Brickworks", green, view,
 		"1 14 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat", "0 NOFILE", "0 FILE lamp.ldr", "0 Lamp",
 		"0 Name: lamp.ldr", "0 Author: Brickworks", blue, "1 2 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat",
 		"0 NOFILE", ""]))
+	# Main's own part after its copies, as the app writes it: each side
+	# numbers its parts in the order it read them, and the order a file lists
+	# copies follows those numbers (AuthorSteps.first_under), so a Make on one
+	# side of a file read in another order lists its copies the other way.
 	(a["store"] as ModelStore).open_text(text, "Together lit")
 	(a["store"] as ModelStore).title = "Together lit"
 	var trouble: String = await ta.start()
@@ -608,14 +612,29 @@ func _sub_lines(a: Dictionary, b: Dictionary) -> void:
 	(a["builder"] as Builder).selection = held
 	var made: String = tree.make("Lamp")
 	await _settle([a, b])
+	var lamp_lit: Array = [ta.model_text().contains("#0000aa"), tb.model_text().contains("#0000aa"),
+		(a["world"] as BrickWorld).section_lines.has("Lamp"), (b["world"] as BrickWorld).section_lines.has("Lamp")]
 	_check("Lamp's last copy taken off on the other side (%s): a Lamp made of another part on the "
 		% str(gone.get("ok", false)) + "owner's (%s) has none of its light, on either side" % made,
-		bool(gone.get("ok", false)) and made == "Lamp#1" and not ta.model_text().contains("#0000aa")
-		and not tb.model_text().contains("#0000aa") and ta.model_hash() == tb.model_hash())
+		bool(gone.get("ok", false)) and made == "Lamp#1" and not lamp_lit[0] and not lamp_lit[1]
+		and ta.model_hash() == tb.model_hash(), "its light in the owner's file and the other's %s, "
+		% [lamp_lit.slice(0, 2)] + "Lamp's lines kept on each side %s, the files apart at %s"
+		% [lamp_lit.slice(2), _apart(ta.model_text(), tb.model_text())])
 	await ta.end()
 	var until: int = Time.get_ticks_msec() + 30000
 	while tb.live and Time.get_ticks_msec() < until:
 		await process_frame
+
+
+## Where [param mine] and [param theirs] first differ: "line N: mine / theirs",
+## or "none".
+static func _apart(mine: String, theirs: String) -> String:
+	var a: PackedStringArray = mine.split("\n")
+	var b: PackedStringArray = theirs.split("\n")
+	for n: int in maxi(a.size(), b.size()):
+		if n >= a.size() or n >= b.size() or a[n] != b[n]:
+			return "line %d: %s / %s" % [n, a[n] if n < a.size() else "-", b[n] if n < b.size() else "-"]
+	return "none"
 
 
 ## A model whose snapshot is over 4 MB starts a session, in parts.

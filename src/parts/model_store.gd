@@ -1724,6 +1724,25 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	example = false
 	_opened_whole = world.generation()
 	_opened_parts = _parts_with_awaited()
+	# Where each part not on the baseplate is in the tree, carried by every
+	# change from now (BrickWorld.held_paths): a rename or a Make round its
+	# copy takes it with it (place_awaited, _text_into).
+	var held: Dictionary = {}
+	for placement: LdrModel.Placement in _held_placements():
+		var open: String = Assemblies.path_from(placement.group, placement.unit)
+		if not open.is_empty():
+			held[open] = open
+	world.held_paths = held
+	# And the frame each sub-model's own lines are in: its first copy's as the
+	# file placed it, found from its parts wherever it goes (BrickWorld
+	# .section_frames).
+	if not world.section_lines.is_empty():
+		var tree := Assemblies.new()
+		tree.world = world
+		tree.builder = builder
+		tree.library = library
+		tree.scenery = scenery
+		world.section_frames = tree.frames_read(model, up)
 	_phase("meta")
 	loaded.emit(title, placed)
 	_phase("loaded")
@@ -2494,8 +2513,8 @@ func awaited_now() -> Array:
 	for placement: LdrModel.Placement in awaited:
 		var now := LdrModel.Placement.new(placement.part_id, placement.color_code,
 			awaited_at(placement), placement.step)
-		now.group = placement.group
-		now.unit = placement.unit
+		now.group = _held_now(placement).group
+		now.unit = _held_now(placement).unit
 		now.line = placement.line
 		now.origin = placement.origin
 		out.append(now)
@@ -2523,6 +2542,14 @@ func place_awaited(part_id: String) -> int:
 		if brick_id != 0:
 			world.get_brick(brick_id).group = placement.group
 			world.get_brick(brick_id).unit = placement.unit
+			# In its copy where that is now (held_path): a rename or a Make
+			# round it since the open moved it.
+			var open: String = Assemblies.path_from(placement.group, placement.unit)
+			if held_path(placement) != open:
+				world.get_brick(brick_id).unit = held_path(placement)
+				world.get_brick(brick_id).group = Assemblies.group_of(held_path(placement))
+			if not open.is_empty():
+				world.held_landed[brick_id] = open
 			world.get_brick(brick_id).step = placement.step
 			world.get_brick(brick_id).origin = placement.origin
 			builder.register(brick_id, placement.part_id, at)
@@ -2607,6 +2634,13 @@ func _settle() -> void:
 	# And the lights placed in it light it where it now stands (SceneLights).
 	world.scene_lights = SceneLights.moved(world.scene_lights, Vector3(0.0, by, 0.0))
 	_lights_kept = SceneLights.moved(_lights_kept, Vector3(0.0, by, 0.0))
+	# And its sub-models' lines' frames are where their parts now are.
+	var framed: Dictionary = {}
+	for def: String in world.section_frames:
+		var record: Dictionary = (world.section_frames[def] as Dictionary).duplicate()
+		record["at"] = (record["at"] as Transform3D).translated(Vector3(0.0, by, 0.0))
+		framed[def] = record
+	world.section_frames = framed
 	for brick: BrickWorld.Brick in model:
 		var to: Transform3D = brick.transform.translated(Vector3(0.0, by, 0.0))
 		builder.lattice.release(brick.id)
@@ -2847,8 +2881,9 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 			# In its sub-model, as the file had it: one with nothing on the
 			# baseplate (a band whose pieces could not be made) is written
 			# still, not its parts loose in the model.
-			var unit: String = Assemblies.path_from(waiting.group, waiting.unit)
+			var unit: String = held_path(waiting)
 			_hold_unit(instances, unit, back)
+			held.group = Assemblies.group_of(unit)
 			held.unit = unit
 			placements.append(held)
 	for group: Variant in figures:
@@ -2865,7 +2900,7 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 			LdrModel.steps_written(placements, instances, unit_steps))
 	# A sub-model's own lights and views in its own section, by its definition.
 	var text: String = LdrModel.write_tree(placements, title, "Brickworks", instances, embedded,
-		unit_steps, known, steps, Assemblies.lines_written(world, instances)) \
+		unit_steps, known, steps, tree.lines_written(world, instances, back)) \
 		if not instances.is_empty() \
 		else LdrModel.write_ldr(placements, title, "Brickworks", figures, embedded, known, steps)
 	if authored:
@@ -2988,9 +3023,36 @@ var _looks_followed: Dictionary = {}
 func _held_placements() -> Array:
 	var out: Array = []
 	if world.generation() == _awaited_in:
-		out.append_array(awaited)
-		out.append_array(_absent)
+		for placement: LdrModel.Placement in awaited:
+			out.append(_held_now(placement))
+		for placement: LdrModel.Placement in _absent:
+			out.append(_held_now(placement))
 	return out
+
+
+## The path in the tree of [param placement], one of [member awaited] or
+## [member _absent]: where every change since the open took the copy the
+## file had it in (BrickWorld.held_paths). Up to 2026-11-11 it kept the path
+## it was read in, and after a rename or a Make round its copy it landed in,
+## or was written in, a second sub-model under the old name.
+func held_path(placement: LdrModel.Placement) -> String:
+	var open: String = Assemblies.path_from(placement.group, placement.unit)
+	return str(world.held_paths.get(open, open))
+
+
+## [param placement] in its copy where that is now ([method held_path]):
+## itself, where nothing has moved it.
+func _held_now(placement: LdrModel.Placement) -> LdrModel.Placement:
+	var path: String = held_path(placement)
+	if path == Assemblies.path_from(placement.group, placement.unit):
+		return placement
+	var now := LdrModel.Placement.new(placement.part_id, placement.color_code,
+		placement.transform, placement.step)
+	now.group = Assemblies.group_of(path)
+	now.unit = path
+	now.line = placement.line
+	now.origin = placement.origin
+	return now
 
 
 ## [param text], written whole, under [param header] (SourceFile.header)

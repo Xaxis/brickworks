@@ -1101,11 +1101,12 @@ func _r_whole_mpd() -> void:
 	await _opened(saved)
 	_main.call("save_model", saved)
 	var after: String = FileAccess.get_file_as_string(saved)
-	var sub_at: int = after.find("0 FILE sub")
+	# In it, where it was against its part: written in the frame the save
+	# writes the sub-model in, not as read (Assemblies.lines_written).
 	_check("the app's own MPD, saved, opened and saved again: %d light lines (3), the "
-		% _lines_of(after).size() + "sub-model's in it (%s), the one it cannot read once (%d)"
-		% [sub_at > 0 and after.find(sub_light, sub_at) > 0, after.count("laser")],
-		_lines_of(after).size() == 3 and sub_at > 0 and after.find(sub_light, sub_at) > 0
+		% _lines_of(after).size() + "sub-model's in it where it was against its part (%s), the "
+		% _light_kept(text, after, "#00ff00") + "one it cannot read once (%d)" % after.count("laser"),
+		_lines_of(after).size() == 3 and _light_kept(text, after, "#00ff00")
 		and after.count("laser") == 1)
 
 
@@ -1211,7 +1212,8 @@ func _r_paths() -> void:
 		apart[0] == [true, true, true] and apart[1] == [true, true, true])
 	# F2: the lamp's very line in the sub-model too.
 	var lamp: String = _light("point", [0, -60, 0])
-	await _opened(_put("paths_twin.mpd", _lit_sub("Brickworks", lamp, sub_view)))
+	var twin: String = _lit_sub("Brickworks", lamp, sub_view)
+	await _opened(_put("paths_twin.mpd", twin))
 	var saved: String = ModelStore.SAVE_DIR + "paths_twin_saved.mpd"
 	_main.call("save_model", saved)
 	var after: String = FileAccess.get_file_as_string(saved)
@@ -1219,8 +1221,8 @@ func _r_paths() -> void:
 	await _opened(saved)
 	_check("a model whose sub-model holds its lamp's very line, written whole: %d light line in "
 		% own + "the model (1), %d in all (2), the sub-model's in it (%s); opened again, %d light (1)"
-		% [_lines_of(after).size(), _section_of(after, "sub.ldr").contains(lamp), _scene().size()],
-		own == 1 and _lines_of(after).size() == 2 and _section_of(after, "sub.ldr").contains(lamp)
+		% [_lines_of(after).size(), _light_kept(twin, after, "#ffffff"), _scene().size()],
+		own == 1 and _lines_of(after).size() == 2 and _light_kept(twin, after, "#ffffff")
 		and _scene().size() == 1)
 	await _r_gone()
 
@@ -1601,6 +1603,9 @@ func _r_frames() -> void:
 	var out_back: Array = _offsets(await _saved_text("frames_out_b"))
 	_check("...undone: its light and view in it again %s, %s" % [out_back[0], out_back[1]],
 		_same_offsets(out_back, want) and _model_green(await _saved_text("frames_out_c")).is_empty())
+	# Out of it again, as Escape leaves one: what is entered outlasts an open,
+	# and a paste goes into it.
+	assemblies.leave_to("")
 	await _r_held_copy()
 
 
@@ -1667,6 +1672,29 @@ static func _same_offsets(got: Array, want: Array) -> bool:
 	return (got[0][0] as Vector3).distance_to(want[0][0]) < 0.01 \
 		and (got[0][1] as Vector3).distance_to(want[0][1]) < 0.0001 \
 		and (got[1] as Vector3).distance_to(want[1]) < 0.01
+
+
+## Whether [param after] keeps one light of [param colour] in a sub-model,
+## where [param before] has its one against the sub-model's part (3003): a
+## sub-model written whole has its lines in the frame the save writes it in
+## (Assemblies.lines_written), so its line's words may change.
+static func _light_kept(before: String, after: String, colour: String) -> bool:
+	var was: Array = _light_against(before, colour)
+	var now: Array = _light_against(after, colour)
+	return was.size() == 1 and now.size() == 1 \
+		and (was[0][0] as Vector3).distance_to(now[0][0]) < 0.01 \
+		and (was[0][1] as Vector3).distance_to(now[0][1]) < 0.0001
+
+
+## The lights of [param colour] in [param text]'s sub-models: [where against
+## the sub-model's part, the way it shines] each.
+static func _light_against(text: String, colour: String) -> Array:
+	var part: Vector3 = _part_place(text)
+	var out: Array = []
+	for one: Array in _composed(text)["lights"]:
+		if str(one[0]) == colour and not str(one[3]).is_empty():
+			out.append([(one[1] as Vector3) - part, one[2]])
+	return out
 
 
 ## Where the sub-model's part (3003) is in the world of [param text].

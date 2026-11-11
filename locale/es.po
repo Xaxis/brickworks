@@ -3069,6 +3069,9 @@ msgstr "sus %d luces siguieron a sus piezas"
 msgid "%d of its lights went with it"
 msgstr "%d de sus luces se fueron con él"
 
+msgid "one of its lights went with it"
+msgstr "una de sus luces se fue con él"
+
 msgid "its saved view went with it"
 msgstr "su vista guardada se fue con él"
 

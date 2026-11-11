@@ -31,7 +31,7 @@ var _failures: int = 0
 
 const PARTS_DIR := "user://togethersafe_parts/"
 const OUTSIDE_DIR := "user://togethersafe_outside/"
-const KINDS: Array[String] = ["~hidden", "~looks", "~unit_steps", "~broken"]
+const KINDS: Array[String] = ["~hidden", "~looks", "~unit_steps", "~broken", "~sublines"]
 const UIDS: Array[String] = ["probe1.0", "probe1.1", "probe1.2"]
 
 
@@ -161,6 +161,12 @@ func _build_state(a: Dictionary) -> Dictionary:
 		"home": {ids[0]: world.get_brick(ids[0]).transform,
 			ids[1]: Transform3D(Basis(Vector3.UP, 0.3), Vector3(80, 24, 0))},
 		"touching": {ids[2]: true}}}
+	# A sub-model's own light and view, and the frame they are in.
+	world.section_lines = {"Sub": PackedStringArray([SceneLights.META + JSON.stringify({"kind": "point",
+		"at": [0, -50, 0], "aim": [0, 1, 0], "colour": "#00ff00"}), SavedViews.META
+		+ JSON.stringify({"name": "sub view", "yaw": 0.2, "pitch": 0.3, "distance": 300, "focus": [0, 0, 0]})])}
+	world.section_frames = {"Sub": {"at": Transform3D(Basis(Vector3.UP, 0.5), Vector3(100, 24, -40)),
+		"parts": [{"part": "3003", "color": 14, "at": Transform3D.IDENTITY}]}}
 	var words: Dictionary = {}
 	var now: Dictionary = together._meta_now()
 	for key: String in KINDS:
@@ -206,6 +212,8 @@ static func _state_of(side: Dictionary, key: String) -> Variant:
 			return (side["world"] as BrickWorld).unit_steps
 		"~broken":
 			return (side["world"] as BrickWorld).broken_out
+		"~sublines":
+			return [(side["world"] as BrickWorld).section_lines, (side["world"] as BrickWorld).section_frames]
 	return null
 
 
@@ -246,6 +254,8 @@ func _objects_refused(side: Dictionary, state: Dictionary) -> void:
 		"~unit_steps": _with_object("{\"House#1\": @}", "RefCounted", "unit steps"),
 		"~broken": _with_object("{\"House\": {\"home\": {}, \"offset\": Vector3(0, 0, -80), "
 			+ "\"touching\": @}}", "RefCounted", "broken out"),
+		"~sublines": _with_object("{\"Sub\": {\"lines\": [@], \"at\": @}}", "RefCounted",
+			"sub-model lines"),
 	}
 	for key: String in crafted:
 		# Its good words first, as the session had them.
@@ -263,6 +273,17 @@ func _objects_refused(side: Dictionary, state: Dictionary) -> void:
 			and world.brick_count() == parts and store.title == "Probe house")
 		together._put_meta(key, words[key])
 		_check("...and its good words land after them", together._meta_now()[key] == words[key])
+	# A sub-model's lines are its lights' and views' alone, each on one line:
+	# a part's line, a FILE line or one with a line end in it are none of
+	# them, so no other side writes them into this one's file.
+	var light: String = SceneLights.META + "{\"kind\": \"point\"}"
+	together._put_meta("~sublines", var_to_str({"Sub": {"lines": PackedStringArray([
+		"1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat", "0 FILE evil.ldr",
+		SceneLights.META + "{}\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat", light])},
+		"Bad/Name": {"lines": PackedStringArray([light])}}))
+	_check("~sublines: only a light's or a view's line is kept, on one line, under a sub-model's name",
+		world.section_lines == {"Sub": PackedStringArray([light])}, str(world.section_lines))
+	together._put_meta("~sublines", words["~sublines"])
 	# A made part's files: a Node is made and left where it is, so it is counted.
 	var orphans: int = int(Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT))
 	_put(side, "~part:bw-togethersafe-a", _with_object("{\"bw-togethersafe-a.dat\": \"0 a part\\n\", "
@@ -339,6 +360,9 @@ func _carried(side: Dictionary, state: Dictionary, whose: String) -> void:
 	var library: PartLibrary = side["library"]
 	var words: Dictionary = state["words"]
 	for key: String in KINDS:
+		# An older build sends none of a kind newer than it ("~sublines").
+		if not words.has(key):
+			continue
 		_put(side, key, str(words.get(key, "")))
 		var now: String = str(together._meta_now().get(key, ""))
 		_check("%s %s read here, and written back byte for byte" % [whose, key],

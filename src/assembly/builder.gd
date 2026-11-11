@@ -623,8 +623,28 @@ func _apply(step: Dictionary) -> Dictionary:
 	# whole table as it was, its own reverse.
 	if step.get("undo", "") == "sectionlines":
 		var lined: Dictionary = world.section_lines
+		var framed: Dictionary = world.section_frames
 		world.section_lines = (step["lines"] as Dictionary).duplicate(true)
-		return {"undo": "sectionlines", "lines": lined}
+		# And the frame each is in (BrickWorld.section_frames), with them.
+		world.section_frames = (step.get("frames", framed) as Dictionary).duplicate(true)
+		return {"undo": "sectionlines", "lines": lined, "frames": framed}
+
+	# Where the parts not on the baseplate are in the tree (BrickWorld
+	# .held_paths): the table as it was, and each of them that landed since
+	# the change, where the table had it, with it (BrickWorld.held_landed). A
+	# rename undone after its part on its way had landed left that part in a
+	# copy of the new name.
+	if step.get("undo", "") == "heldpaths":
+		var had: Dictionary = world.held_paths
+		var paths: Dictionary = (step["paths"] as Dictionary).duplicate()
+		for id: Variant in world.held_landed:
+			var landed: BrickWorld.Brick = world.get_brick(_live(int(id)))
+			var open: String = str(world.held_landed[id])
+			if landed != null and paths.has(open) \
+					and Assemblies.path_of(landed) == str(had.get(open, open)):
+				set_path(landed, str(paths[open]))
+		world.held_paths = paths
+		return {"undo": "heldpaths", "paths": had}
 
 	# Lights of the model's own (BrickWorld.scene_lights) a step took out or
 	# put in: a sub-model's, taken apart into the model (Assemblies.ungroup).
@@ -1932,6 +1952,16 @@ func _carry(carry: Callable) -> Array:
 		if chains != world.unit_chains:
 			undo.append({"undo": "unitchains", "chains": world.unit_chains})
 			world.unit_chains = chains
+	# Where each part on its way, or one the catalogue lacks, is in the tree
+	# (BrickWorld.held_paths): with the copy round it, so it lands in it, and
+	# a save writes it in it, under the name it has now (Assemblies.carried).
+	if not world.held_paths.is_empty():
+		var paths: Dictionary = {}
+		for open: String in world.held_paths:
+			paths[open] = Assemblies.carried(carry, str(world.held_paths[open]))
+		if paths != world.held_paths:
+			undo.append({"undo": "heldpaths", "paths": world.held_paths})
+			world.held_paths = paths
 	return undo
 
 
@@ -2271,6 +2301,7 @@ func copy_selection() -> int:
 		return 0
 	Carry.clipboard = Carry.gather(world, library, Array(alive))
 	Carry.clipboard_lines = Assemblies.lines_held(world, Carry.clipboard)
+	Carry.clipboard_frames = Assemblies.frames_held(world, Carry.clipboard_lines)
 	return Carry.clipboard.size()
 
 
@@ -2389,7 +2420,8 @@ func _put_carried() -> int:
 	_history.append({"undo": "group", "steps": steps, "words": words})
 	_redo.clear()
 	if lines_in:
-		pasted_said = Assemblies.lines_pasted(self, carrying.lines, pasted, had)
+		pasted_said = Assemblies.lines_pasted(self, carrying.lines, pasted, had, carrying.frames,
+			carrying.moved())
 	# A clone or a duplicate: another copy in hand for the next, as it
 	# was before anything was typed for this one, R's turn kept.
 	var again: Array = carrying.base_items() if carrying.repeats else []

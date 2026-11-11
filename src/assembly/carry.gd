@@ -32,6 +32,9 @@ static var clipboard: Array = []
 ## (BrickWorld.section_lines, by definition), as Copy found them: a paste
 ## puts them back where the model it lands in has none (Assemblies.lines_held).
 static var clipboard_lines: Dictionary = {}
+## And the frame each of those is in (BrickWorld.section_frames), so a paste
+## puts them where the copy it puts down is (Assemblies.frames_held).
+static var clipboard_frames: Dictionary = {}
 
 var library: PartLibrary
 
@@ -53,6 +56,8 @@ var repeats: bool = false
 ## put down, its step takes them (Builder._put_carried). Nothing else held
 ## carries any.
 var lines: Dictionary = {}
+## And the frame each is in (clipboard_frames).
+var frames: Dictionary = {}
 
 var _ghost: Node3D
 ## The ghost's one material: its "valid" says whether the group fits.
@@ -167,6 +172,7 @@ func hold(parts: Array, came_off_the_model: bool) -> void:
 	turns = 0
 	lifted = came_off_the_model
 	lines = {}
+	frames = {}
 	_pinned = false
 	_base = []
 	var phase: float = phase_of(items[0].get("pivot", Vector3(10, 0, 10))) \
@@ -184,6 +190,7 @@ func drop() -> void:
 	lifted = false
 	repeats = false
 	lines = {}
+	frames = {}
 	_pinned = false
 	_base = []
 	_covers.clear()
@@ -553,6 +560,17 @@ func hide_ghost() -> void:
 ## goes with it: without it a part moved in a sub-model's second copy went
 ## into its first, and one duplicated inside a copy within another into a
 ## new copy of the outermost (keeptext2).
+## How the parts held are moved from where they were gathered to where
+## [method placements] puts them now: the carry's frame after the pivot they
+## were gathered about. What a paste's sub-model lines are carried by
+## (Assemblies.lines_pasted).
+func moved() -> Transform3D:
+	var pivot: Vector3 = Vector3.ZERO
+	if not items.is_empty() and (items[0] as Dictionary).get("pivot") is Vector3:
+		pivot = (items[0] as Dictionary)["pivot"]
+	return _frame * Transform3D(Basis.IDENTITY, -pivot)
+
+
 func placements(builder: Builder) -> Array:
 	var covers: Array = _covers_for(builder)
 	var shift := Vector3i(

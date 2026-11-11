@@ -2942,7 +2942,15 @@ picture the assistant is shown.
   with the parts (`Carry.clipboard_lines`, `Assemblies.lines_held`) and a
   paste's step puts them back where the model it lands in has none of its
   own, into this model or another (`Assemblies.lines_pasted`): one it has
-  keeps its own, and the status line says so; a copy
+  keeps its own, and the status line says so. Each definition's lines are
+  in the frame of the copy the file read them with, kept with them
+  (`BrickWorld.section_frames`: where it stood and a few of its parts) and
+  found again from those parts wherever the copy is now
+  (`Assemblies.frame_now`): a save writes them re-based into the frame it
+  writes the definition in (`Assemblies.lines_written`, `rebased`, a view's
+  through `SavedViews.through_line`), a copy taken apart sends its lights
+  from there into its parent's frame, a paste moves the frame as it moves
+  the parts (`Carry.moved`); a copy
   taken apart, `Assemblies._lines_apart`, puts its lights through its frame
   into the one it was in, the model's own lights (`BrickWorld.scene_lights`,
   a `scenelights` step) when that is the model, its last copy's views gone
@@ -3003,8 +3011,8 @@ picture the assistant is shown.
   saved: no light line in the new file (the read and unread lines are the
   model's, kept against the world's generation); a CRLF file whose last line
   is a light, changed and saved, no lone CR; the app's own MPD saved, opened
-  and saved again with its sub-model's light in its sub-model and the
-  unread line once; an MPD whose `0 FILE` lines have a tab keeping its
+  and saved again with its sub-model's light in its sub-model, where it was
+  against its part, and the unread line once; an MPD whose `0 FILE` lines have a tab keeping its
   sub-model's light (sections are `LdrModel.parse`'s, never a regex of
   lights' own); a light added to a model with a comment before its `0 FILE`
   inside its section. Its third (lreview3 F1-F3, lightpaths): a lit
@@ -3013,7 +3021,8 @@ picture the assistant is shown.
   taken apart, each saved, undone and saved, redone and saved: its light and
   view once each, in its section, the model's lamp alone in the model; a
   model whose sub-model holds its lamp's very line written whole, the lamp
-  still the model's, two lines in all, one light opened again. And
+  still the model's, two lines in all, the sub-model's where it was against
+  its part, one light opened again. And
   lightpaths2's (lpcheck s6, s12): Alpha and Beta taken apart, sections of
   their names made over MCP and all undone, each its own light and view
   again; B's lit Sub deleted and A's Sub pasted, none of B's lines in it; a
@@ -3024,7 +3033,16 @@ picture the assistant is shown.
   said), copied, deleted and pasted, cut from A and pasted into B, and into
   C with a lit Sub of its own (C's kept, and said), each undone and redone;
   one copy taken apart while the other is in hand (X), its light and view
-  kept for the one put down; each state saved, opened and saved again.
+  kept for the one put down; each state saved, opened and saved again. And
+  pathcarry's (lp2check, `_r_frames`): the app's own file with its lit Sub
+  placed 100 LDU along (lpcheck s7_a) and turned a quarter, saved; its only
+  copy picked up and put down beside (P_moved), then taken apart (M), then
+  undone; copied from A and pasted into B (P); entered, all its parts taken
+  out (R: `Assemblies.take_out`, its light the model's and said); each
+  file's light and view checked where an LDraw reader composes them,
+  against the sub-model's part. And HB2: A's lit Sub pasted into B, whose
+  Sub's only part the catalogue lacks, is a copy of its own (`next_copy`
+  counts `BrickWorld.held_paths`), not written into the held one.
   `-- --review`
   runs only these review checks, nothing drawn (a minute, not the whole
   probe's renders). Then the car under 0 to 4 suns (each adding light)

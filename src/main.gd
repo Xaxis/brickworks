@@ -6157,6 +6157,8 @@ func _make_assistant() -> void:
 	# same undo, as one by hand does (pullkept).
 	_assistant_made.focus_edited.connect(func(_words: String, _before: Image,
 			_after: Image) -> void: _store.looks_follow_edit())
+	# And a request's run, kept as one step, as the one by hand does.
+	_assistant_made.run_kept.connect(_store.looks_follow_edit)
 	# So a snapshot does not carry the baseplate off with it.
 	_assistant_made.scenery = _store.scenery
 	# And what the model stands on, read when asked: on a bare floor what only

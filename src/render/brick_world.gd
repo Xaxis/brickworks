@@ -307,6 +307,28 @@ var step_looks: Dictionary = {}
 ## sub-model's are kept for whatever next takes its name. Changed only by the
 ## history's steps, a whole table each (Assemblies.set_lines).
 var section_lines: Dictionary = {}
+## The frame each of those is in, by its definition (Assemblies.frame_record):
+## {"at": where it stood when last known, in the window's coordinates,
+## "parts": a few of its copy's parts in it, each {part, color, at}}. A
+## definition's lines are in the frame of the copy the file read them with,
+## not the one a save writes it in, and that copy moves: where the frame is
+## now is found from those parts wherever its copy stands (Assemblies
+## .frame_now). Up to 2026-11-11 the lines were written as read, so a light
+## stayed where its copy had been (lp2check M, P, P_moved; lpcheck s7). Kept
+## for a definition with lines, and changed with them (Assemblies.set_lines).
+var section_frames: Dictionary = {}
+## Where each part not on the baseplate that the file has is in the tree:
+## those on their way and those the catalogue lacks (ModelStore.awaited,
+## _absent), by the path the file had them in -> the path every change since
+## gave it (Builder._carry), so a rename or a Make round their copy takes them
+## too. Up to 2026-11-11 they kept the path they were read in, and landed in,
+## or were written in, a second sub-model under the old name. Changed only by
+## the history's steps.
+var held_paths: Dictionary = {}
+## Those of them that have landed since (ModelStore.place_awaited): brick id
+## -> the path the file had it in, so the undo of a change made before it
+## landed takes it back with the rest (Builder._apply's "heldpaths").
+var held_landed: Dictionary = {}
 ## The model's own named movements (Motions: "Open the doors"), read from
 ## its file and written into it. Changed only by the history's steps.
 var motions: Motions = null
@@ -577,6 +599,10 @@ func clear() -> void:
 	_gone_origins.clear()
 	step_looks.clear()
 	section_lines.clear()
+	# Tables, not cleared in place: a history step may hold the one it found.
+	section_frames = {}
+	held_paths = {}
+	held_landed = {}
 	motions = null
 	cut_kept = {}
 	saved_views = []

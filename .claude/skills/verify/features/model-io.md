@@ -645,6 +645,14 @@ Whether what you built is still there tomorrow, and still means the same thing.
   this app saved keeps its height. `joints_probe` ("stood on the ground by its
   shape") opens a wheel spun 16 degrees on its axle both ways and with its tyre
   fetched late, and two bricks drawn 76 LDU up, by another tool and by this one.
+  A part still on its way, or one the app's own file has that the catalogue
+  lacks, is in its copy wherever every change since took it
+  (`BrickWorld.held_paths`, carried by `Builder._carry`; `ModelStore.held_path`):
+  `joints_probe` ("a part on its way, or one the catalogue lacks, in its
+  sub-model") renames its Sub Engine, and makes a Box round it, before the
+  part lands: saved before and after it lands it is in that sub-model, it
+  lands beside the rest, and Undo and Redo take it with them; a part the
+  catalogue lacks is written in Engine, and in Sub undone.
   A part a
   file carries is built from its carried subparts and primitives as well (see
   [elements](elements.md), `made parts in the library and in files`). There were two ways: the app's own opened

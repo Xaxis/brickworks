@@ -3069,6 +3069,9 @@ msgstr "ihre %d Lichter gingen mit ihren Teilen mit"
 msgid "%d of its lights went with it"
 msgstr "%d ihrer Lichter verschwanden mit ihr"
 
+msgid "one of its lights went with it"
+msgstr "eines ihrer Lichter verschwand mit ihr"
+
 msgid "its saved view went with it"
 msgstr "ihre gespeicherte Ansicht verschwand mit ihr"
 

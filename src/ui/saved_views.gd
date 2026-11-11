@@ -121,6 +121,31 @@ static func moved(views: Array, by: Vector3) -> Array:
 	return out
 
 
+## A sub-model's view [param line] carried by [param through], from the file's
+## coordinates of one frame of its definition to another's (Assemblies
+## .rebased): the point it looks at, and the way it looks turned with it, a
+## turn about the model's up as its yaw and any other as its frame. A line
+## this cannot read is as it was.
+static func through_line(line: String, through: Transform3D) -> String:
+	if not line.begins_with(META):
+		return line
+	var view: Dictionary = _parsed(line.substr(META.length()).strip_edges())
+	if view.is_empty():
+		return line
+	var out: Dictionary = _with_focus(view, through * focus_of(view))
+	var flip: Basis = Basis.from_scale(LdrModel.FLIP)
+	var turn: Basis = (flip * through.basis * flip).orthonormalized()
+	if turn.determinant() > 0.0 and not turn.is_equal_approx(Basis.IDENTITY):
+		if not view.has("frame") and (turn * Vector3.UP).is_equal_approx(Vector3.UP):
+			var ahead: Vector3 = turn * Vector3.BACK
+			out["yaw"] = snappedf(float(view["yaw"]) + atan2(ahead.x, ahead.z), 0.000001)
+		else:
+			var q: Quaternion = (turn * _frame_of(view)).get_rotation_quaternion()
+			out["frame"] = [snappedf(q.x, 0.000001), snappedf(q.y, 0.000001),
+				snappedf(q.z, 0.000001), snappedf(q.w, 0.000001)]
+	return META + JSON.stringify(out)
+
+
 ## Whether [param a] and [param b] are the same views, to a hundredth of an
 ## LDU and a ten-thousandth of a radian: what a file keeps of them is rounded.
 static func same(a: Array, b: Array) -> bool:

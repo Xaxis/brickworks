@@ -571,6 +571,61 @@ static func broken(raw: Dictionary, dropped: PackedStringArray) -> Dictionary:
 	return out
 
 
+## Each sub-model's own lights and views and the frame they are in, as
+## Together._sublines_words sends them: {def: {"lines": its LIGHT and VIEW
+## lines, "at": Transform3D, "parts": [[part, colour, Transform3D]]}}. Made
+## {"lines": {def: PackedStringArray}, "frames": {def: {"at", "parts":
+## [{part, color, at}]}}} (BrickWorld.section_lines, section_frames, in the
+## file's coordinates). A line is taken only as a sub-model keeps one: a
+## light's or a view's, on one line, so no other side writes parts, files or
+## anything else into this one's; a frame only of its shape, and only for
+## lines taken.
+static func section_lines(raw: Dictionary, dropped: PackedStringArray) -> Dictionary:
+	var lines: Dictionary = {}
+	var frames: Dictionary = {}
+	for def: Variant in raw:
+		var given: Variant = raw[def]
+		if not def is String or (def as String).is_empty() or (def as String).length() > 200 \
+				or (def as String).contains("/") or (def as String).contains("#") \
+				or _control.search(def) != null or not given is Dictionary \
+				or lines.size() >= 1000:
+			dropped.append("sub-model %s" % str(def).left(40))
+			continue
+		var kept := PackedStringArray()
+		var said: Variant = (given as Dictionary).get("lines")
+		for line: Variant in (said if said is PackedStringArray or said is Array else []):
+			if line is String and (line as String).length() <= 4000 and kept.size() < 256 \
+					and _control.search(line) == null and ((line as String).begins_with(SceneLights.META)
+					or (line as String).begins_with(SavedViews.META)):
+				kept.append(line)
+			else:
+				dropped.append("a line of %s" % str(def).left(40))
+		if kept.is_empty():
+			continue
+		lines[def] = kept
+		var at: Variant = (given as Dictionary).get("at")
+		if not _frame(at):
+			continue
+		var parts: Array = []
+		var listed: Variant = (given as Dictionary).get("parts", [])
+		for item: Variant in (listed if listed is Array else []):
+			if item is Array and (item as Array).size() == 3 and part_named(item[0]) \
+					and item[1] is int and _frame(item[2]) and parts.size() < 256:
+				parts.append({"part": item[0], "color": item[1], "at": item[2]})
+			else:
+				dropped.append("a part of %s's frame" % str(def).left(40))
+		frames[def] = {"at": at, "parts": parts}
+	return {"lines": lines, "frames": frames}
+
+
+## Whether [param at] is a place and a turn of the model's space.
+static func _frame(at: Variant) -> bool:
+	return at is Transform3D and _place((at as Transform3D).origin) \
+		and (at as Transform3D).basis.x.is_finite() and (at as Transform3D).basis.y.is_finite() \
+		and (at as Transform3D).basis.z.is_finite() \
+		and absf((at as Transform3D).basis.determinant()) > 0.000001
+
+
 static func _place(at: Variant) -> bool:
 	return at is Vector3 and (at as Vector3).is_finite() and (at as Vector3).length() < FARTHEST
 

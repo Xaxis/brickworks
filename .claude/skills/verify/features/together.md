@@ -32,7 +32,14 @@ app, joined by a link (docs/TOGETHER.md).
   once), per-person undo/redo (puts a part back only where it is still as
   the step left it). The model's own state as keys of their own
   (`_meta_now`: `~title`, `~floor`, `~hidden`, `~motions`, `~looks`,
-  `~unit_steps`, `~broken`), read every 250 ms and on each builder step;
+  `~unit_steps`, `~broken`, `~lights`, and `~sublines`: each sub-model's own
+  lights and views with the frame they are in, read at the edge by
+  `TogetherWords.section_lines`, a light's or a view's line alone, the relay
+  allowing it in `api/together.js` META), read every 250 ms and on each
+  builder step, so a rename or Make on one side and the lines it carries go
+  in one op; a change `check_edit` makes as the keys and the mouse do is
+  followed as one by hand is (`Together._edited`:
+  `ModelStore.looks_follow_edit`), before it is sent;
   a part made in the app sent as `~part:<id>` with its files. Chat as
   `~chat` ops (`messages`, `chat_words`). Pointers: `op=point` four times a
   second while the part under the mouse or the ghost moves
@@ -199,8 +206,11 @@ signed in as someone else.
   about 350 ms, Follow and its stop, a comment pinned/resolved/two at
   once/opened again, three changes held as a copy goes and sent again, a
   session begun again on the car with a part moved and a step of its own
-  (5b, in one request and in parts), and 25,600 parts started in 2 parts
-  and joined byte for byte.
+  (5b, in one request and in parts), a lit Sub renamed Engine on the
+  owner's side written with its light and view in Engine on the other, and
+  a lit Lamp's last copy deleted on the other side with a Lamp then made
+  on the owner's carrying none of it, the two files one (5c, pathcarry),
+  and 25,600 parts started in 2 parts and joined byte for byte.
 - Where the time of a change goes, stage by stage (`together timing`,
   `tools/web/together_timing.mjs`, a measure, local only): a baseline of
   paints, then each of the seven kinds of change and paints again; a line
