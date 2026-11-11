@@ -917,9 +917,9 @@ func _swaps_in(made: Dictionary) -> void:
 	if gone.is_empty() or fresh.is_empty():
 		return
 	var boxes: Array = gone.map(func(item: Dictionary) -> AABB:
-		return SelectionScope.box_of(str(item["part"]), item["at"], library))
+		return Later.script(&"SelectionScope").box_of(str(item["part"]), item["at"], library))
 	for item: Dictionary in fresh.duplicate():
-		var box: AABB = SelectionScope.box_of(str(item["part"]), item["at"], library)
+		var box: AABB = Later.script(&"SelectionScope").box_of(str(item["part"]), item["at"], library)
 		var middle: Vector3 = box.get_center()
 		var best: int = -1
 		for n: int in gone.size():
