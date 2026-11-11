@@ -124,7 +124,11 @@ static func moved(views: Array, by: Vector3) -> Array:
 ## A sub-model's view [param line] carried by [param through], from the file's
 ## coordinates of one frame of its definition to another's (Assemblies
 ## .rebased): the point it looks at, and the way it looks turned with it, a
-## turn about the model's up as its yaw and any other as its frame. A line
+## turn about the model's up as its yaw and any other as its frame. A
+## reflection (a mirrored copy's frame) is a mirror across the x axis and
+## then a turn: the view looks the mirrored way, its yaw the other way round
+## and its frame mirrored, from the mirrored place; up to 2026-11-11 only its
+## point was carried, and it looked the way it had (pccheck FW, FX). A line
 ## this cannot read is as it was.
 static func through_line(line: String, through: Transform3D) -> String:
 	if not line.begins_with(META):
@@ -135,15 +139,28 @@ static func through_line(line: String, through: Transform3D) -> String:
 	var out: Dictionary = _with_focus(view, through * focus_of(view))
 	var flip: Basis = Basis.from_scale(LdrModel.FLIP)
 	var turn: Basis = (flip * through.basis * flip).orthonormalized()
-	if turn.determinant() > 0.0 and not turn.is_equal_approx(Basis.IDENTITY):
+	var yaw: float = float(view["yaw"])
+	var own: Basis = _frame_of(view)
+	if turn.determinant() < 0.0:
+		var across := Basis.from_scale(Vector3(-1.0, 1.0, 1.0))
+		turn = turn * across
+		yaw = -yaw
+		own = across * own * across
+		out["yaw"] = snappedf(yaw, 0.000001)
+		if view.has("frame"):
+			out["frame"] = _quaternion_words(own.get_rotation_quaternion())
+	if not turn.is_equal_approx(Basis.IDENTITY):
 		if not view.has("frame") and (turn * Vector3.UP).is_equal_approx(Vector3.UP):
 			var ahead: Vector3 = turn * Vector3.BACK
-			out["yaw"] = snappedf(float(view["yaw"]) + atan2(ahead.x, ahead.z), 0.000001)
+			out["yaw"] = snappedf(yaw + atan2(ahead.x, ahead.z), 0.000001)
 		else:
-			var q: Quaternion = (turn * _frame_of(view)).get_rotation_quaternion()
-			out["frame"] = [snappedf(q.x, 0.000001), snappedf(q.y, 0.000001),
-				snappedf(q.z, 0.000001), snappedf(q.w, 0.000001)]
+			out["frame"] = _quaternion_words((turn * own).get_rotation_quaternion())
 	return META + JSON.stringify(out)
+
+
+static func _quaternion_words(q: Quaternion) -> Array:
+	return [snappedf(q.x, 0.000001), snappedf(q.y, 0.000001), snappedf(q.z, 0.000001),
+		snappedf(q.w, 0.000001)]
 
 
 ## Whether [param a] and [param b] are the same views, to a hundredth of an

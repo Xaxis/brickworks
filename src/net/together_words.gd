@@ -113,6 +113,61 @@ static func left_out(what: String, why: String) -> void:
 static var _said: Dictionary = {}
 
 
+## What the model's own state of key [param key] (Together._meta_now) is, in
+## words: "the model's lights", "Engine's lights and views". A part's uid
+## is "a part".
+static func state_named(key: String) -> String:
+	if key.begins_with("~sublines:"):
+		var def: String = key.substr("~sublines:".length())
+		return "%s's lights and views" % def if not def.is_empty() else "sub-models' lights and views"
+	if key.begins_with("~pin:"):
+		return "a comment pinned to a part"
+	match key:
+		"~title":
+			return "the model's name"
+		"~floor":
+			return "what the model stands on"
+		"~hidden":
+			return "the hidden colours"
+		"~motions":
+			return "the model's motions"
+		"~looks":
+			return "the booklet's looks"
+		"~unit_steps":
+			return "the steps of sub-assembly copies"
+		"~broken":
+			return "the sections broken out"
+		"~lights":
+			return "the model's lights"
+	return "a part" if not key.begins_with("~") else "the model's settings"
+
+
+## Said once when the session's server would not take [param kind] (the
+## start of a key of the model's own state: "~sublines:"), as Together
+## leaves it out from then: what the others' side cannot be sent.
+static func not_carried(kind: String) -> String:
+	var what: String = "sub-models' lights and views" if kind == "~sublines:" else state_named(kind)
+	return "This session can't carry %s yet: the others keep theirs as they were, and everything else still reaches them." % what
+
+
+## Said when another side's change came after this side's own to the same
+## thing and undid it (Together._take): [param name] who, [param keys] what
+## of it (a part's uid, or a key of the model's own state).
+static func overtaken(name: String, keys: Array) -> PackedStringArray:
+	var out := PackedStringArray()
+	var parts: int = keys.filter(func(key: String) -> bool: return not key.begins_with("~")).size()
+	if parts == 1:
+		out.append("%s changed a part you had just changed; theirs came after yours, so it stands." % name)
+	elif parts > 1:
+		out.append("%s changed %d parts you had just changed; theirs came after yours, so they stand."
+			% [name, parts])
+	for key: String in keys:
+		if key.begins_with("~"):
+			out.append("%s changed %s just after you did; theirs came after yours, so it stands."
+				% [name, state_named(key)])
+	return out
+
+
 ## [method left_out] for each of [param dropped], in one line; nothing for none.
 static func left_out_each(what: String, dropped: PackedStringArray) -> void:
 	if dropped.is_empty():
@@ -571,51 +626,43 @@ static func broken(raw: Dictionary, dropped: PackedStringArray) -> Dictionary:
 	return out
 
 
-## Each sub-model's own lights and views and the frame they are in, as
-## Together._sublines_words sends them: {def: {"lines": its LIGHT and VIEW
-## lines, "at": Transform3D, "parts": [[part, colour, Transform3D]]}}. Made
-## {"lines": {def: PackedStringArray}, "frames": {def: {"at", "parts":
-## [{part, color, at}]}}} (BrickWorld.section_lines, section_frames, in the
-## file's coordinates). A line is taken only as a sub-model keeps one: a
-## light's or a view's, on one line, so no other side writes parts, files or
-## anything else into this one's; a frame only of its shape, and only for
-## lines taken.
-static func section_lines(raw: Dictionary, dropped: PackedStringArray) -> Dictionary:
-	var lines: Dictionary = {}
+## One sub-model's own lights and views, [param def]'s, and where the frame
+## they are in stands for each of its copies, as Together._sublines_words
+## sends them: {"lines": its LIGHT and VIEW lines, "frames": {path:
+## Transform3D}}. Made {"lines": PackedStringArray, "frames": {path:
+## Transform3D}} (BrickWorld.section_lines' and section_frames' for it, in
+## the file's coordinates), or {} for a name no sub-model could have or no
+## line taken. A line is taken only as a sub-model keeps one: a light's or a
+## view's, on one line, so no other side writes parts, files or anything
+## else into this one's; a frame only for a path of one of its own copies,
+## and only of a place and a turn (a mirrored copy's reflects).
+static func sublines(def: String, raw: Dictionary, dropped: PackedStringArray) -> Dictionary:
+	if def.is_empty() or def.length() > 200 or def.contains("/") or def.contains("#") \
+			or _control.search(def) != null:
+		dropped.append("sub-model %s" % def.left(40))
+		return {}
+	var kept := PackedStringArray()
+	var said: Variant = raw.get("lines")
+	for line: Variant in (said if said is PackedStringArray or said is Array else []):
+		if line is String and (line as String).length() <= 4000 and kept.size() < 256 \
+				and _control.search(line) == null and ((line as String).begins_with(SceneLights.META)
+				or (line as String).begins_with(SavedViews.META)):
+			kept.append(line)
+		else:
+			dropped.append("a line of %s" % def.left(40))
+	if kept.is_empty():
+		return {}
 	var frames: Dictionary = {}
-	for def: Variant in raw:
-		var given: Variant = raw[def]
-		if not def is String or (def as String).is_empty() or (def as String).length() > 200 \
-				or (def as String).contains("/") or (def as String).contains("#") \
-				or _control.search(def) != null or not given is Dictionary \
-				or lines.size() >= 1000:
-			dropped.append("sub-model %s" % str(def).left(40))
-			continue
-		var kept := PackedStringArray()
-		var said: Variant = (given as Dictionary).get("lines")
-		for line: Variant in (said if said is PackedStringArray or said is Array else []):
-			if line is String and (line as String).length() <= 4000 and kept.size() < 256 \
-					and _control.search(line) == null and ((line as String).begins_with(SceneLights.META)
-					or (line as String).begins_with(SavedViews.META)):
-				kept.append(line)
-			else:
-				dropped.append("a line of %s" % str(def).left(40))
-		if kept.is_empty():
-			continue
-		lines[def] = kept
-		var at: Variant = (given as Dictionary).get("at")
-		if not _frame(at):
-			continue
-		var parts: Array = []
-		var listed: Variant = (given as Dictionary).get("parts", [])
-		for item: Variant in (listed if listed is Array else []):
-			if item is Array and (item as Array).size() == 3 and part_named(item[0]) \
-					and item[1] is int and _frame(item[2]) and parts.size() < 256:
-				parts.append({"part": item[0], "color": item[1], "at": item[2]})
-			else:
-				dropped.append("a part of %s's frame" % str(def).left(40))
-		frames[def] = {"at": at, "parts": parts}
-	return {"lines": lines, "frames": frames}
+	var given: Variant = raw.get("frames", {})
+	for path: Variant in (given if given is Dictionary else {}):
+		var at: Variant = (given as Dictionary)[path]
+		if path is String and (path as String).length() <= 400 and _control.search(path) == null \
+				and Assemblies.definition(Assemblies.leaf(path)) == def \
+				and Assemblies.segments(path).size() <= 32 and frames.size() < 1000 and _frame(at):
+			frames[path] = at
+		else:
+			dropped.append("a frame of %s" % def.left(40))
+	return {"lines": kept, "frames": frames}
 
 
 ## Whether [param at] is a place and a turn of the model's space.

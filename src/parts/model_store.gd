@@ -1748,8 +1748,8 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 		if not open.is_empty():
 			held[open] = open
 	world.held_paths = held
-	# And the frame each sub-model's own lines are in: its first copy's as the
-	# file placed it, found from its parts wherever it goes (BrickWorld
+	# And the frame each sub-model's own lines are in, for each of its copies
+	# as the file placed it, carried with it from now (BrickWorld
 	# .section_frames).
 	if not world.section_lines.is_empty():
 		var tree := Assemblies.new()
@@ -2673,12 +2673,10 @@ func _settle() -> void:
 	# And the lights placed in it light it where it now stands (SceneLights).
 	world.scene_lights = SceneLights.moved(world.scene_lights, Vector3(0.0, by, 0.0))
 	_lights_kept = SceneLights.moved(_lights_kept, Vector3(0.0, by, 0.0))
-	# And its sub-models' lines' frames are where their parts now are.
+	# And the frames its sub-models' lines are in, with their copies.
 	var framed: Dictionary = {}
-	for def: String in world.section_frames:
-		var record: Dictionary = (world.section_frames[def] as Dictionary).duplicate()
-		record["at"] = (record["at"] as Transform3D).translated(Vector3(0.0, by, 0.0))
-		framed[def] = record
+	for path: String in world.section_frames:
+		framed[path] = (world.section_frames[path] as Transform3D).translated(Vector3(0.0, by, 0.0))
 	world.section_frames = framed
 	for brick: BrickWorld.Brick in model:
 		var to: Transform3D = brick.transform.translated(Vector3(0.0, by, 0.0))
@@ -3069,8 +3067,51 @@ func looks_follow_edit() -> void:
 		return
 	var held: Array = _held_placements()
 	builder.extend_last(BookletLooks.emptied(world, step, scenery, held))
+	if _held_go_with(step):
+		held = _held_placements()
 	Assemblies.lines_follow(builder, step, held)
 	_looks_followed = builder.last_step()
+
+
+## The parts not on the baseplate (awaited, _absent) in a copy [param step]
+## took the last parts of off the model taken out with them, in that step,
+## so its Undo puts them back ("held", [method _held_undo]): a copy deleted
+## is gone whole. Up to 2026-11-11 they stayed, and a save wrote the copy
+## still, its part on its way alone in it, under its name, and the pasted
+## copy that took its place went by another (pccheck HA_5); landed, the part
+## made the copy again. Whether any went.
+func _held_go_with(step: Dictionary) -> bool:
+	if world.generation() != _awaited_in or (awaited.is_empty() and _absent.is_empty()):
+		return false
+	var emptied: Array = Assemblies.copies_emptied(builder, step)
+	if emptied.is_empty():
+		return false
+	var gone: Array = []
+	for pair: Array in [[awaited, "awaited"], [_absent, "absent"]]:
+		for placement: LdrModel.Placement in pair[0]:
+			var path: String = held_path(placement)
+			if emptied.any(func(copy: String) -> bool: return Assemblies.within(path, copy)):
+				gone.append([placement, pair[1]])
+	if gone.is_empty():
+		return false
+	builder.held_hook = _held_undo
+	_held_undo({"undo": "held", "take": gone})
+	builder.extend_last([{"undo": "held", "put": gone}])
+	return true
+
+
+## A history step's "held" ([method _held_go_with]): the parts not on the
+## baseplate it names put back ("put") or taken out ("take"), each [placement,
+## "awaited" or "absent"]. Returns its reverse (Builder.held_hook).
+func _held_undo(step: Dictionary) -> Dictionary:
+	for pair: Variant in step.get("take", []):
+		var list: Array = awaited if str((pair as Array)[1]) == "awaited" else _absent
+		list.erase((pair as Array)[0])
+	for pair: Variant in step.get("put", []):
+		var list: Array = awaited if str((pair as Array)[1]) == "awaited" else _absent
+		if not list.has((pair as Array)[0]):
+			list.append((pair as Array)[0])
+	return {"undo": "held", "put": step.get("take", []), "take": step.get("put", [])}
 
 
 ## The history step [method looks_follow_edit] last asked about.

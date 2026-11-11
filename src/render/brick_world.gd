@@ -307,15 +307,20 @@ var step_looks: Dictionary = {}
 ## sub-model's are kept for whatever next takes its name. Changed only by the
 ## history's steps, a whole table each (Assemblies.set_lines).
 var section_lines: Dictionary = {}
-## The frame each of those is in, by its definition (Assemblies.frame_record):
-## {"at": where it stood when last known, in the window's coordinates,
-## "parts": a few of its copy's parts in it, each {part, color, at}}. A
-## definition's lines are in the frame of the copy the file read them with,
-## not the one a save writes it in, and that copy moves: where the frame is
-## now is found from those parts wherever its copy stands (Assemblies
-## .frame_now). Up to 2026-11-11 the lines were written as read, so a light
-## stayed where its copy had been (lp2check M, P, P_moved; lpcheck s7). Kept
-## for a definition with lines, and changed with them (Assemblies.set_lines).
+## Where the frame those lines are in stands for each copy of a sub-model
+## with lines, by the copy's path, in the window's coordinates (a mirrored
+## copy's reflecting): a definition's lines are in its own frame, and each
+## copy places it. Set at the open from the file's references, every copy's
+## (Assemblies.frames_read), and from then carried with the copy by each
+## change through the transform the change applies: a move, a turn, a tip, a
+## drag (Assemblies.frames_moved), a mirror, a paste, a rename or a Make (by
+## its path: Builder._carry), a take-apart, a delete, and Undo and Redo of
+## each, in the same step (Assemblies.set_lines). Never found again from the
+## parts. Up to 2026-11-11 the lines were written as read, so a light stayed
+## where its copy had been (lp2check M, P, P_moved; lpcheck s7); then a few
+## of the first copy's parts were kept and matched where they stood, and no
+## match saw a mirrored copy, a copy deleted, or a turn of one whose parts
+## look the same turned (pccheck FW, FX, FY).
 var section_frames: Dictionary = {}
 ## Where each part not on the baseplate that the file has is in the tree:
 ## those on their way and those the catalogue lacks (ModelStore.awaited,

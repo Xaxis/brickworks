@@ -4795,6 +4795,56 @@ msgstr "Afficher les résolus (%d)"
 msgid "Comments in a session are for people 13 and over, as chat is."
 msgstr "Les commentaires d'une session sont réservés aux 13 ans et plus, comme la discussion."
 
+# Build together (pcfix): what another's change overtook, and what a session can't carry yet.
+msgid "%s changed a part you had just changed; theirs came after yours, so it stands."
+msgstr "%s a modifié une pièce que vous veniez de modifier ; sa modification est arrivée après la vôtre, elle s'applique donc."
+
+msgid "%s changed %d parts you had just changed; theirs came after yours, so they stand."
+msgstr "%s a modifié %d pièces que vous veniez de modifier ; ses modifications sont arrivées après les vôtres, elles s'appliquent donc."
+
+msgid "%s changed %s just after you did; theirs came after yours, so it stands."
+msgstr "%s a modifié %s juste après vous ; sa modification est arrivée après la vôtre, elle s'applique donc."
+
+msgid "This session can't carry %s yet: the others keep theirs as they were, and everything else still reaches them."
+msgstr "Cette session ne peut pas encore transmettre %s : les autres gardent les leurs tels quels, et tout le reste leur parvient toujours."
+
+msgid "%s's lights and views"
+msgstr "les lumières et les vues de %s"
+
+msgid "sub-models' lights and views"
+msgstr "les lumières et les vues des sous-modèles"
+
+msgid "the model's name"
+msgstr "le nom du modèle"
+
+msgid "what the model stands on"
+msgstr "ce sur quoi le modèle repose"
+
+msgid "the hidden colours"
+msgstr "les couleurs masquées"
+
+msgid "the model's motions"
+msgstr "les mouvements du modèle"
+
+msgid "the booklet's looks"
+msgstr "l'apparence des instructions"
+
+msgid "the steps of sub-assembly copies"
+msgstr "les étapes des copies de sous-ensembles"
+
+msgid "the sections broken out"
+msgstr "les sections extraites"
+
+msgid "the model's lights"
+msgstr "les lumières du modèle"
+
+msgid "a comment pinned to a part"
+msgstr "un commentaire épinglé à une pièce"
+
+msgid "the model's settings"
+msgstr "les réglages du modèle"
+
+
 msgid "A comment on %s, kept with the model: in its file, the autosave and a shared link, and seen by whoever builds it with you."
 msgstr "Un commentaire sur %s, gardé avec le modèle : dans son fichier, la sauvegarde automatique et un lien partagé, et vu par ceux qui le construisent avec vous."
 

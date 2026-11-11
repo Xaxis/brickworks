@@ -97,30 +97,35 @@ var _heard: Array = []
 var _polling: int = 0
 var _seen: String = ""
 var _sending: bool = false
-## uid -> when this side's last change to it came back numbered: another's
-## change to it numbered within [constant OVERTAKEN_MS] of it was made
+## uid -> this side's last change to it as it came back numbered: {"at": when,
+## "was": the session's state before it, "now": its own}. Another's change to
+## it numbered within [constant OVERTAKEN_MS] of it that undid it was made
 ## without seeing it (a change takes about that long to reach the other
-## side), and is said, so a change overtaken is never silent.
+## side), and is said, so a change overtaken is never silent (_overtook).
 var _mine_at: Dictionary = {}
 const OVERTAKEN_MS := 1500
 
 ## What the model is besides its parts, carried the same way, each by a key
 ## of its own with its words as the file has them (_meta_now): its name, the
 ## floor, the colours of hidden parts, motions, the booklet's looks, the
-## steps of sub-assembly copies, sections broken out, the lights placed in
-## it (SceneLights, as JSON in the file's coordinates), and each sub-model's
-## own lights and views with the frame they are in (BrickWorld.section_lines,
-## section_frames): sent with the change that renames or makes, so both sides
-## write the same. And "~part:<id>":
+## steps of sub-assembly copies, sections broken out, and the lights placed
+## in it (SceneLights, as JSON in the file's coordinates). And "~part:<id>":
 ## the LDraw files of a part made in the app, sent once with the first part
 ## of it put down, so the other side can draw it.
 const META_KEYS: Array[String] = ["~title", "~floor", "~hidden", "~motions", "~looks",
 	"~unit_steps", "~broken",
 	# lights (APP_UX5 #7): the lights placed in the model.
-	"~lights",
-	# pathcarry: a sub-model's own lights and views. Up to 2026-11-11 none
-	# were carried, and the other side's file had none after a rename.
-	"~sublines"]
+	"~lights"]
+## And each sub-model's own lights and views with where the frame they are in
+## stands for each of its copies (BrickWorld.section_lines, section_frames),
+## a key each, "~sublines:<its name>", as a comment pinned to a part is: sent
+## with the change that renames, makes, moves or takes one apart, so both
+## sides write the same. Up to 2026-11-11 none were carried, and the other
+## side's file had none after a rename; then one key held them all, and of
+## two people changing two sub-models' at once the later took the other's
+## back (pccheck T2), and an Undo found the key changed since and left its
+## lines out while it took the light it had moved out of the model's (T4).
+const SUBLINES_KEY := "~sublines:"
 const MADE_PART := "~part:"
 ## A comment pinned to a part, a key each (PinnedComments.session_words), so
 ## two people pinning at once both keep theirs.
@@ -877,7 +882,7 @@ func _lay_snapshot(snapshot: Dictionary) -> void:
 	# The model's own state as the owner had it, exactly.
 	var meta: Dictionary = snapshot.get("meta", {}) as Dictionary
 	for key: String in meta:
-		if key in META_KEYS or key.begins_with(PIN_KEY):
+		if _carried(key):
 			_put_meta(key, str(meta[key]))
 			_confirmed[key] = str(meta[key])
 	var now: Dictionary = _meta_now()
@@ -1000,9 +1005,11 @@ func _diff(touched: Variant) -> Dictionary:
 			if _shown.get(key) != meta[key]:
 				changes[key] = meta[key]
 				_shown[key] = meta[key]
-		# A pin taken back here (its pinning undone): "" to the others.
+		# A pin taken back here (its pinning undone), or a sub-model's lights
+		# and views gone with it: "" to the others.
 		for key: String in _shown.keys():
-			if key.begins_with(PIN_KEY) and not meta.has(key) and str(_shown[key]) != "":
+			if (key.begins_with(PIN_KEY) or key.begins_with(SUBLINES_KEY)) and not meta.has(key) \
+					and str(_shown[key]) != "":
 				changes[key] = ""
 				_shown[key] = ""
 	return changes
@@ -1041,11 +1048,14 @@ func _close_step() -> void:
 
 func _queue(changes: Dictionary) -> void:
 	# Comments alone (_talks), and a big change as several of OP_PARTS parts,
-	# the model's own state and a made part's files with the first.
+	# the model's own state and a made part's files with the first. What the
+	# session's server does not carry stays here (_drop_unknown).
 	var parts: Array = []
 	var first: Dictionary = {}
 	var pins: Dictionary = {}
 	for key: String in changes:
+		if key.begins_with("~") and not _carried_here(key):
+			continue
 		if key.begins_with(PIN_KEY):
 			pins[key] = changes[key]
 		elif key.begins_with("~"):
@@ -1126,6 +1136,15 @@ func _flush() -> void:
 	if code != 200:
 		# Not taken: sent again, from the first not numbered, in a moment.
 		_in_flight = maxi(0, _in_flight - going.size())
+		if code == 400 and _drop_unknown(_refused_key(got)):
+			# A key of the model's own state the session's server does not
+			# know (a newer build's, on an older server): left out from now,
+			# said once, and the rest sent at once. Up to 2026-11-11 it was
+			# sent again, refused again, every second, and nothing after it
+			# arrived (pccheck).
+			_sending = false
+			_flush()
+			return
 		said.emit("Could not reach the session; trying again.")
 		await get_tree().create_timer(1.0).timeout
 		_sending = false
@@ -1135,6 +1154,58 @@ func _flush() -> void:
 	# drawn in software is 600 ms and more, all of it a change not yet on
 	# its way if the page is closed.
 	_flush()
+
+
+## The model's own state the session's server does not carry, by the start
+## of its keys ("~sublines:"), each refused once (_drop_unknown): never sent.
+var _not_carried: Dictionary = {}
+
+
+## The key of the model's own state a 400 named as no state it knows
+## (api/together.js checkOps: "that is not a part's state: <its first 20
+## characters>"), or "" for any other refusal.
+static func _refused_key(got: Array) -> String:
+	var why: String = str((got[1] as Dictionary).get("error", "")) if got[1] is Dictionary else ""
+	var told: String = "that is not a part's state: "
+	if not why.begins_with(told):
+		return ""
+	var key: String = why.substr(told.length()).strip_edges()
+	return key if key.begins_with("~") else ""
+
+
+## Every change of [param named]'s kind (the key the server named, cut
+## short: those that begin as it does, or as far as its ":") taken out of
+## what is not yet numbered, and none sent from now ([member _not_carried]),
+## said once. False when there is nothing to take out: then it is sent
+## again as any refusal is.
+func _drop_unknown(named: String) -> bool:
+	if named.is_empty():
+		return false
+	var kind: String = named.substr(0, named.find(":") + 1) if named.contains(":") else named
+	var dropped: bool = false
+	for n: int in range(_pending.size() - 1, _in_flight - 1, -1):
+		var changes: Dictionary = (_pending[n] as Dictionary)["changes"]
+		for key: String in changes.keys():
+			if key.begins_with(kind):
+				changes.erase(key)
+				dropped = true
+		if changes.is_empty():
+			_pending.remove_at(n)
+	if not dropped:
+		return false
+	if not _not_carried.has(kind):
+		said.emit(TogetherWords.not_carried(kind))
+	_not_carried[kind] = true
+	_keep_pending()
+	return true
+
+
+## Whether [param key] is one the session's server was found not to carry.
+func _carried_here(key: String) -> bool:
+	for kind: String in _not_carried:
+		if key.begins_with(kind):
+			return false
+	return true
 
 
 ## Whether [param changes] are words to the others (a chat line, a comment),
@@ -1309,25 +1380,28 @@ func _take(ops: Array) -> void:
 			for uid: String in changes:
 				if uid == "~chat" or uid.begins_with(MADE_PART):
 					continue
+				var before: Variant = _confirmed.get(uid)
 				_confirm(uid, changes[uid])
 				# Sent before this page went and came back (_restore_pending):
 				# not shown here yet, so put down as another's.
 				if number <= _catch_up_to:
 					shown_again[uid] = true
 				else:
-					_mine_at[uid] = Time.get_ticks_msec()
+					_mine_at[uid] = {"at": Time.get_ticks_msec(), "was": before,
+						"now": _confirmed.get(uid)}
 			continue
+		var overtaken: Array = []
 		for uid: String in changes:
 			if uid == "~chat" or uid.begins_with(MADE_PART):
 				continue
 			_confirm(uid, changes[uid])
 			shown_again[uid] = true
-			# Mine came back a moment ago and theirs was numbered after it:
-			# theirs stands, and the person is told so.
-			if Time.get_ticks_msec() - int(_mine_at.get(uid, -OVERTAKEN_MS)) < OVERTAKEN_MS:
-				_mine_at.erase(uid)
-				said.emit("%s changed a part you had just changed; theirs came after yours, so it stands."
-					% _name_of(str(op.get("who", ""))))
+			# Mine came back a moment ago and theirs, numbered after it,
+			# undid it: theirs stands, and the person is told so.
+			if _overtook(uid):
+				overtaken.append(uid)
+		for words: String in TogetherWords.overtaken(_name_of(str(op.get("who", ""))), overtaken):
+			said.emit(words)
 	var later: Array = []
 	for uid: String in shown_again:
 		if _mine_on_the_way(uid):
@@ -1344,6 +1418,35 @@ func _take(ops: Array) -> void:
 		builder._living_selection()
 	if popped:
 		_keep_pending()
+
+
+## Whether another side's change to [param uid], just confirmed here, came
+## within [constant OVERTAKEN_MS] of this side's own to it and undid what that
+## did: a part's state not keeping a word of it that mine changed, the model's
+## own state not what mine made it. Another's change made after it saw mine,
+## keeping it, is theirs to make and said by nobody. Up to 2026-11-11 any
+## change of theirs to it in that time was "a part you had just changed",
+## said for every one: the model's lights, a sub-model's lights and views, a
+## change made on top of mine (pccheck).
+func _overtook(uid: String) -> bool:
+	var mine: Variant = _mine_at.get(uid)
+	if not mine is Dictionary:
+		return false
+	_mine_at.erase(uid)
+	if Time.get_ticks_msec() - int((mine as Dictionary)["at"]) >= OVERTAKEN_MS:
+		return false
+	var made: Variant = (mine as Dictionary)["now"]
+	var was: Variant = (mine as Dictionary)["was"]
+	var theirs: Variant = _confirmed.get(uid)
+	if theirs == made:
+		return false
+	if uid.begins_with("~") or not made is Array or not theirs is Array or not was is Array \
+			or (was as Array).size() != (made as Array).size():
+		return true
+	for n: int in (made as Array).size():
+		if (made as Array)[n] != (was as Array)[n] and (theirs as Array)[n] != (made as Array)[n]:
+			return true
+	return false
 
 
 static func _people_words(list: Array) -> String:
@@ -1470,39 +1573,40 @@ func _meta_now() -> Dictionary:
 		"~unit_steps": var_to_str(world.unit_steps),
 		"~broken": _broken_words(),
 		"~lights": JSON.stringify(SceneLights.in_file(world.scene_lights, store.lift())),
-		"~sublines": _sublines_words(),
-	}.merged(_pin_words())
+	}.merged(_pin_words()).merged(_sublines_words())
 
 
-## Each sub-model's own lights and views (BrickWorld.section_lines) and the
-## frame they are in (section_frames, where it stood in the file's
-## coordinates and the parts it is found by), by its definition, as Godot
-## writes the value: {def: {"lines", "at", "parts": [[part, colour, at]]}}.
-func _sublines_words() -> String:
-	if world.section_lines.is_empty():
-		return ""
-	var back := Transform3D(Basis.IDENTITY, -store.lift())
+## Each sub-model's own lights and views (BrickWorld.section_lines) and where
+## the frame they are in stands for each of its copies (section_frames, in
+## the file's coordinates), a key each ([constant SUBLINES_KEY]), as Godot
+## writes the value: {"lines": PackedStringArray, "frames": {path:
+## Transform3D}}. One longer than the session keeps (api/together.js) goes
+## without its frames: the lines are what both sides write.
+func _sublines_words() -> Dictionary:
 	var out: Dictionary = {}
+	if world.section_lines.is_empty():
+		return out
+	var back := Transform3D(Basis.IDENTITY, -store.lift())
+	var frames: Dictionary = {}
+	for path: String in world.section_frames:
+		var def: String = Assemblies.definition(Assemblies.leaf(path))
+		if not frames.has(def):
+			frames[def] = {}
+		(frames[def] as Dictionary)[path] = back * (world.section_frames[path] as Transform3D)
 	for def: String in world.section_lines:
-		var one: Dictionary = {"lines": PackedStringArray(world.section_lines[def])}
-		var record: Variant = world.section_frames.get(def)
-		if record is Dictionary:
-			one["at"] = back * ((record as Dictionary)["at"] as Transform3D)
-			one["parts"] = ((record as Dictionary)["parts"] as Array).map(
-				func(item: Dictionary) -> Array: return [item["part"], item["color"], item["at"]])
-		out[def] = one
-	var words: String = var_to_str(out)
-	# As long as the session keeps for it (api/together.js), or the parts each
-	# frame is found by left out: the lines are what both sides write.
-	if words.length() > SUBLINES_MOST:
-		for def: String in out:
-			(out[def] as Dictionary).erase("parts")
-		words = var_to_str(out)
-	return words
+		var one: Dictionary = {"lines": PackedStringArray(world.section_lines[def]),
+			"frames": frames.get(def, {})}
+		var words: String = var_to_str(one)
+		if words.length() > SUBLINES_MOST:
+			one.erase("frames")
+			words = var_to_str(one)
+		out[SUBLINES_KEY + def] = words
+	return out
 
 
-## The longest words the session keeps for "~sublines" (api/together.js META).
-const SUBLINES_MOST := 500_000
+## The longest words the session keeps for one sub-model's (api/together.js
+## SUBLINES_MOST).
+const SUBLINES_MOST := 200_000
 
 
 ## Each comment pinned to a part, a key of its own.
@@ -1516,7 +1620,7 @@ func _pin_words() -> Dictionary:
 
 ## Whether [param key] is the model's own state as a session carries it.
 static func _carried(key: String) -> bool:
-	return key in META_KEYS or key.begins_with(PIN_KEY)
+	return key in META_KEYS or key.begins_with(PIN_KEY) or key.begins_with(SUBLINES_KEY)
 
 
 ## Set the model's own state [param key] to [param words], past the history.
@@ -1582,25 +1686,39 @@ func _put_meta(key: String, words: String) -> void:
 			if lights.size() != given.size():
 				TogetherWords.left_out("lights", "not lights")
 			world.scene_lights = SceneLights.placed(lights, store.lift())
-		"~sublines":
-			# Read as every other side's words are, then made precise: a
-			# sub-model's light and view lines alone, each frame of its shape
-			# (TogetherWords.section_lines), where the model stands here.
-			var dropped := PackedStringArray()
-			var given: Dictionary = TogetherWords.section_lines(TogetherWords.dictionary(words,
-				"sub-models' lights and views"), dropped)
-			TogetherWords.left_out_each("sub-models' lights and views", dropped)
-			var lifted := Transform3D(Basis.IDENTITY, store.lift())
-			var framed: Dictionary = given["frames"]
-			for def: String in framed:
-				(framed[def] as Dictionary)["at"] = lifted * ((framed[def] as Dictionary)["at"] as Transform3D)
-			world.section_lines = given["lines"]
-			world.section_frames = framed
+		_ when key.begins_with(SUBLINES_KEY):
+			_sublines_from(key.substr(SUBLINES_KEY.length()), words)
 		_ when key.begins_with(PIN_KEY):
 			store.pins.put_session_words(key.substr(PIN_KEY.length()), words, world, store.lift(),
 				brick_of)
 	store.touch()
 	_shown[key] = _meta_now().get(key, "")
+
+
+## One sub-model's lights and views and their frames, [param def]'s, as
+## another side sent them ([method _sublines_words]): read as every other
+## side's words are, then made precise (TogetherWords.sublines), where the
+## model stands here; none ("") when it has none now. Its copies' frames go
+## with its lines, the other sub-models' as they were.
+func _sublines_from(def: String, words: String) -> void:
+	var lines: Dictionary = world.section_lines.duplicate()
+	var frames: Dictionary = {}
+	for path: String in world.section_frames:
+		if Assemblies.definition(Assemblies.leaf(path)) != def:
+			frames[path] = world.section_frames[path]
+	lines.erase(def)
+	if not words.is_empty():
+		var dropped := PackedStringArray()
+		var given: Dictionary = TogetherWords.sublines(def, TogetherWords.dictionary(words,
+			"sub-models' lights and views"), dropped)
+		TogetherWords.left_out_each("sub-models' lights and views", dropped)
+		if not given.is_empty():
+			lines[def] = given["lines"]
+			var lifted := Transform3D(Basis.IDENTITY, store.lift())
+			for path: String in given["frames"]:
+				frames[path] = lifted * (given["frames"][path] as Transform3D)
+	world.section_lines = lines
+	world.section_frames = frames
 
 
 ## Sections broken out, their parts named by uid rather than this side's
@@ -2173,6 +2291,17 @@ func undo(again: bool = false) -> String:
 			left += 1
 			continue
 		changes[uid] = back[uid]
+	# The model's lights and the sub-models' lights and views one step moved
+	# between them go back as one or not at all: a sub-model taken apart, its
+	# light into the model's, undone with its lines changed since, took the
+	# light out of the model's and put none back (pccheck T4).
+	var lit: Array = back.keys().filter(func(key: String) -> bool:
+		return key == "~lights" or key.begins_with(SUBLINES_KEY))
+	if lit.size() > 1 and lit.any(func(key: String) -> bool: return not changes.has(key)):
+		for key: String in lit:
+			if changes.has(key):
+				changes.erase(key)
+				left += 1
 	var undone_forward: Dictionary = {}
 	var undone_back: Dictionary = {}
 	for uid: String in changes:

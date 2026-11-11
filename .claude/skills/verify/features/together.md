@@ -32,15 +32,24 @@ app, joined by a link (docs/TOGETHER.md).
   once), per-person undo/redo (puts a part back only where it is still as
   the step left it). The model's own state as keys of their own
   (`_meta_now`: `~title`, `~floor`, `~hidden`, `~motions`, `~looks`,
-  `~unit_steps`, `~broken`, `~lights`, and `~sublines`: each sub-model's own
-  lights and views with the frame they are in, read at the edge by
-  `TogetherWords.section_lines`, a light's or a view's line alone, the relay
-  allowing it in `api/together.js` META), read every 250 ms and on each
+  `~unit_steps`, `~broken`, `~lights`, and `~sublines:<def>` a key per
+  sub-model: its own lights and views with where their frame stands for
+  each of its copies by path, read at the edge by `TogetherWords.sublines`,
+  a light's or a view's line alone, a frame only for a copy of it, the relay
+  allowing the key in `api/together.js` SUBLINES; `Together.undo` puts back
+  `~lights` and the `~sublines:` keys one step moved as one or none),
+  read every 250 ms and on each
   builder step, so a rename or Make on one side and the lines it carries go
   in one op; a change `check_edit` makes as the keys and the mouse do is
   followed as one by hand is (`Together._edited`:
   `ModelStore.looks_follow_edit`), before it is sent;
-  a part made in the app sent as `~part:<id>` with its files. Chat as
+  a part made in the app sent as `~part:<id>` with its files. A 400 naming a
+  `~` key the relay does not know (an older relay) drops that kind from what
+  is unsent and from then on, said once (`_drop_unknown`,
+  `TogetherWords.not_carried`), never a retry loop. Another's change that
+  undid one of mine within `OVERTAKEN_MS` is said by what it changed
+  (`_overtook`, `TogetherWords.overtaken`: a part, N parts, the model's
+  lights, a sub-model's lights and views), and only then. Chat as
   `~chat` ops (`messages`, `chat_words`). Pointers: `op=point` four times a
   second while the part under the mouse or the ghost moves
   (`Main`'s `pointer_at`), the others' drawn as a dot and a name at a

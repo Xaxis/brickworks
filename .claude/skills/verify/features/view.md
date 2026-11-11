@@ -2944,14 +2944,24 @@ picture the assistant is shown.
   paste's step puts them back where the model it lands in has none of its
   own, into this model or another (`Assemblies.lines_pasted`): one it has
   keeps its own, and the status line says so. Each definition's lines are
-  in the frame of the copy the file read them with, kept with them
-  (`BrickWorld.section_frames`: where it stood and a few of its parts) and
-  found again from those parts wherever the copy is now
-  (`Assemblies.frame_now`): a save writes them re-based into the frame it
-  writes the definition in (`Assemblies.lines_written`, `rebased`, a view's
-  through `SavedViews.through_line`), a copy taken apart sends its lights
-  from there into its parent's frame, a paste moves the frame as it moves
-  the parts (`Carry.moved`); a copy
+  in one frame, and where it stands for each copy is kept by the copy's
+  path (`BrickWorld.section_frames`, path -> Transform3D, a mirrored copy's
+  reflecting): set once at the open from every copy's reference
+  (`Assemblies.frames_read`) and from then carried by the transform each
+  edit applies, never found again from parts: a move, turn or tip
+  (`Assemblies.lines_follow` -> `moves_in`, `frames_moved`: only a copy all
+  of whose parts moved alike), a lift put down (`Builder._put_carried`),
+  Mirror (`Builder.mirror_bricks`, the reflection), a drive kept
+  (`MotionPlayer._keep_driven`), a rename, Make or split with the paths
+  (`Builder._carry`), a paste (`Assemblies.lines_pasted`, the copied copy's
+  frame moved as the parts, `Carry.moved`, only where the lines here are the
+  copied ones), Undo and Redo through the step's `sectionlines`; a save
+  writes them re-based into the frame it writes the definition in from the
+  first written copy that has one (`Assemblies.lines_written`, `rebased`, a
+  view's through `SavedViews.through_line`, a light's `SceneLights.through`,
+  both taking a reflection), a copy taken apart sends its lights from its
+  frame into its parent's (pccheck FW, FW3, FX, FY: a frame re-found from
+  parts saw no mirror and no turn of a symmetric copy); a copy
   taken apart, `Assemblies._lines_apart`, puts its lights through its frame
   into the one it was in, the model's own lights (`BrickWorld.scene_lights`,
   a `scenelights` step) when that is the model, its last copy's views gone

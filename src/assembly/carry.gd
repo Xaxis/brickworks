@@ -32,8 +32,9 @@ static var clipboard: Array = []
 ## (BrickWorld.section_lines, by definition), as Copy found them: a paste
 ## puts them back where the model it lands in has none (Assemblies.lines_held).
 static var clipboard_lines: Dictionary = {}
-## And the frame each of those is in (BrickWorld.section_frames), so a paste
-## puts them where the copy it puts down is (Assemblies.frames_held).
+## And where the frame those are in stands for each copy copied, by its path
+## (BrickWorld.section_frames), so a paste puts them where the copy it puts
+## down stands (Assemblies.frames_held).
 static var clipboard_frames: Dictionary = {}
 
 var library: PartLibrary

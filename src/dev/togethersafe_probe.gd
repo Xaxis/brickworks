@@ -31,7 +31,7 @@ var _failures: int = 0
 
 const PARTS_DIR := "user://togethersafe_parts/"
 const OUTSIDE_DIR := "user://togethersafe_outside/"
-const KINDS: Array[String] = ["~hidden", "~looks", "~unit_steps", "~broken", "~sublines"]
+const KINDS: Array[String] = ["~hidden", "~looks", "~unit_steps", "~broken", "~sublines:Sub"]
 const UIDS: Array[String] = ["probe1.0", "probe1.1", "probe1.2"]
 
 
@@ -165,8 +165,8 @@ func _build_state(a: Dictionary) -> Dictionary:
 	world.section_lines = {"Sub": PackedStringArray([SceneLights.META + JSON.stringify({"kind": "point",
 		"at": [0, -50, 0], "aim": [0, 1, 0], "colour": "#00ff00"}), SavedViews.META
 		+ JSON.stringify({"name": "sub view", "yaw": 0.2, "pitch": 0.3, "distance": 300, "focus": [0, 0, 0]})])}
-	world.section_frames = {"Sub": {"at": Transform3D(Basis(Vector3.UP, 0.5), Vector3(100, 24, -40)),
-		"parts": [{"part": "3003", "color": 14, "at": Transform3D.IDENTITY}]}}
+	world.section_frames = {"House#1/Sub#1": Transform3D(Basis(Vector3.UP, 0.5), Vector3(100, 24, -40)),
+		"Sub#2": Transform3D(Basis.FLIP_X, Vector3(-60, 0, 20))}
 	var words: Dictionary = {}
 	var now: Dictionary = together._meta_now()
 	for key: String in KINDS:
@@ -212,7 +212,7 @@ static func _state_of(side: Dictionary, key: String) -> Variant:
 			return (side["world"] as BrickWorld).unit_steps
 		"~broken":
 			return (side["world"] as BrickWorld).broken_out
-		"~sublines":
+		_ when key.begins_with("~sublines:"):
 			return [(side["world"] as BrickWorld).section_lines, (side["world"] as BrickWorld).section_frames]
 	return null
 
@@ -254,7 +254,7 @@ func _objects_refused(side: Dictionary, state: Dictionary) -> void:
 		"~unit_steps": _with_object("{\"House#1\": @}", "RefCounted", "unit steps"),
 		"~broken": _with_object("{\"House\": {\"home\": {}, \"offset\": Vector3(0, 0, -80), "
 			+ "\"touching\": @}}", "RefCounted", "broken out"),
-		"~sublines": _with_object("{\"Sub\": {\"lines\": [@], \"at\": @}}", "RefCounted",
+		"~sublines:Sub": _with_object("{\"lines\": [@], \"frames\": {\"Sub#1\": @}}", "RefCounted",
 			"sub-model lines"),
 	}
 	for key: String in crafted:
@@ -277,13 +277,16 @@ func _objects_refused(side: Dictionary, state: Dictionary) -> void:
 	# a part's line, a FILE line or one with a line end in it are none of
 	# them, so no other side writes them into this one's file.
 	var light: String = SceneLights.META + "{\"kind\": \"point\"}"
-	together._put_meta("~sublines", var_to_str({"Sub": {"lines": PackedStringArray([
+	together._put_meta("~sublines:Sub", var_to_str({"lines": PackedStringArray([
 		"1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat", "0 FILE evil.ldr",
-		SceneLights.META + "{}\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat", light])},
-		"Bad/Name": {"lines": PackedStringArray([light])}}))
+		SceneLights.META + "{}\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat", light]),
+		"frames": {"Other#1": Transform3D.IDENTITY, "Sub#1": Transform3D(Basis() * 0.0, Vector3.ZERO)}}))
+	together._put_meta("~sublines:Bad/Name", var_to_str({"lines": PackedStringArray([light])}))
 	_check("~sublines: only a light's or a view's line is kept, on one line, under a sub-model's name",
 		world.section_lines == {"Sub": PackedStringArray([light])}, str(world.section_lines))
-	together._put_meta("~sublines", words["~sublines"])
+	_check("...and only a frame that is one, of a copy of that sub-model", world.section_frames.is_empty(),
+		str(world.section_frames))
+	together._put_meta("~sublines:Sub", words["~sublines:Sub"])
 	# A made part's files: a Node is made and left where it is, so it is counted.
 	var orphans: int = int(Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT))
 	_put(side, "~part:bw-togethersafe-a", _with_object("{\"bw-togethersafe-a.dat\": \"0 a part\\n\", "
@@ -360,7 +363,7 @@ func _carried(side: Dictionary, state: Dictionary, whose: String) -> void:
 	var library: PartLibrary = side["library"]
 	var words: Dictionary = state["words"]
 	for key: String in KINDS:
-		# An older build sends none of a kind newer than it ("~sublines").
+		# An older build sends none of a kind newer than it ("~sublines:Sub").
 		if not words.has(key):
 			continue
 		_put(side, key, str(words.get(key, "")))

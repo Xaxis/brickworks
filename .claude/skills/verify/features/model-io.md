@@ -696,7 +696,11 @@ Whether what you built is still there tomorrow, and still means the same thing.
   sub-model") renames its Sub Engine, and makes a Box round it, before the
   part lands: saved before and after it lands it is in that sub-model, it
   lands beside the rest, and Undo and Redo take it with them; a part the
-  catalogue lacks is written in Engine, and in Sub undone.
+  catalogue lacks is written in Engine, and in Sub undone. Deleting a copy's
+  last parts takes its held ones with it in the same step
+  (`ModelStore._held_go_with`, `Assemblies.copies_emptied`, a `held` undo
+  through `Builder.held_hook`), so no file keeps the copy for a part on its
+  way alone (pccheck HA_5).
   A part a
   file carries is built from its carried subparts and primitives as well (see
   [elements](elements.md), `made parts in the library and in files`). There were two ways: the app's own opened
