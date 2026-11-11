@@ -4,42 +4,99 @@
    "id": "saving-open",
    "source": "app",
    "setup": [
-    {"saved": [
-     {"name": "Red car", "from": "res://models/car.ldr", "at": "2026-10-04T16:30:00"},
-     {"name": "Fishing boat", "from": "res://models/boat.ldr", "at": "2026-10-06T09:41:27"},
-     {"name": "Our house", "from": "res://models/house.ldr", "at": "2026-10-08T19:05:52"}
-    ]},
-    {"mouse": [480, 160]},
-    {"run": "open", "after": 30}
+    {
+     "saved": [
+      {
+       "name": "Red car",
+       "from": "res://models/car.ldr",
+       "at": "2026-10-04T16:30:00"
+      },
+      {
+       "name": "Fishing boat",
+       "from": "res://models/boat.ldr",
+       "at": "2026-10-06T09:41:27"
+      },
+      {
+       "name": "Our house",
+       "from": "res://models/house.ldr",
+       "at": "2026-10-08T19:05:52"
+      }
+     ]
+    },
+    {
+     "mouse": [
+      480,
+      160
+     ]
+    },
+    {
+     "run": "open",
+     "after": 30
+    }
    ],
    "crop": "@opened",
    "pad": 0,
    "alt": "File › Open… as a menu: From a file on this computer, From the library, and Rename or delete saved models at the top; then three saved models, newest first, each with its count of bricks and when it was saved; then the examples.",
    "caption": "File › Open… (Ctrl+O): your saved models, newest first, then the examples.",
-   "features": ["lib:save and reopen", "ui:rename or delete saved models"]
+   "features": [
+    "lib:save and reopen",
+    "ui:rename or delete saved models"
+   ]
   },
   {
    "id": "saving-versions",
    "source": "app",
    "setup": [
-    {"saved": [
-     {"name": "Red car", "from": "res://models/car.ldr", "at": "2026-10-04T16:30:00",
-      "versions": [
-       {"at": "2026-10-04T10:12:00", "parts": 14},
-       {"at": "2026-10-04T11:47:31", "parts": 30},
-       {"at": "2026-10-04T14:05:09", "parts": 47}
-      ]}
-    ]},
-    {"open": "user://models/Red car.ldr", "after": 60},
-    {"select": {"part": "3004", "nth": 1}},
-    {"key": "Delete", "after": 20},
-    {"run": "versions", "after": 30}
+    {
+     "saved": [
+      {
+       "name": "Red car",
+       "from": "res://models/car.ldr",
+       "at": "2026-10-04T16:30:00",
+       "versions": [
+        {
+         "at": "2026-10-04T10:12:00",
+         "parts": 14
+        },
+        {
+         "at": "2026-10-04T11:47:31",
+         "parts": 30
+        },
+        {
+         "at": "2026-10-04T14:05:09",
+         "parts": 47
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "open": "user://models/Red car.ldr",
+     "after": 60
+    },
+    {
+     "select": {
+      "part": "3004",
+      "nth": 1
+     }
+    },
+    {
+     "key": "Delete",
+     "after": 20
+    },
+    {
+     "run": "versions",
+     "after": 30
+    }
    ],
    "crop": "@opened",
    "pad": 0,
-   "alt": "The Versions dialog for Red car: a note that the model has changes not saved yet, with Save it now under it, then four saves, newest first, each with the day and time and its count of parts, the newest marked the last save, and Compare and Open on each.",
+   "alt": "The Versions dialog for Red car: a line on what Open and Compare do, a note that the model has changes not saved, Save it now, then its four saves, newest first, each with the day, the time and its count of parts, the newest marked the last save, and Compare and Open on each.",
    "caption": "File › Versions…: the model's last 20 saves, to compare or open.",
-   "features": ["ui:versions of a model", "lib:model versions"]
+   "features": [
+    "ui:versions of a model",
+    "lib:model versions"
+   ]
   }
  ]
 }

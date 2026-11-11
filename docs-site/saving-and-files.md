@@ -74,7 +74,7 @@ ui:rename or delete saved models
 
 ## Get an earlier save back {#versions}
 
-![The Versions dialog for Red car: a note that the model has changes not saved yet, with Save it now under it, then four saves, newest first, each with the day and time and its count of parts, the newest marked the last save, and Compare and Open on each.](/docs/img/saving-versions.webp "File › Versions…: the model's last 20 saves, to compare or open.")
+![The Versions dialog for Red car: a line on what Open and Compare do, a note that the model has changes not saved, Save it now, then its four saves, newest first, each with the day, the time and its count of parts, the newest marked the last save, and Compare and Open on each.](/docs/img/saving-versions.webp "File › Versions…: the model's last 20 saves, to compare or open.")
 
 Every save is also kept as a version: the last 20 of each model. A save that changes nothing keeps no copy.
 

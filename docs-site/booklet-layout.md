@@ -83,7 +83,7 @@ ui:the booklet's own cover and colours
 
 ## Lay a page out by hand {#lay-out}
 
-![Lay out the page: the booklet page with the step's picture, parts list and number each in a box to drag, rulers along the top and left, and buttons to add words, a picture or an arrow.](/docs/img/booklet-lay-out.webp "Lay out the page… on the timeline's Booklet row.")
+![Lay out the page, on page 2 of the car's booklet: four steps, each with its picture, parts box and number in a dashed box to drag; rulers along the top and left; and along the top Add words, Add a picture, Draw an arrow, Turn and Opacity, Put back, Apply to later pages and Done.](/docs/img/booklet-lay-out.webp "Lay out the page… on the timeline's Booklet row.")
 
 **Lay out page…** on the timeline's Booklet row (**Build › Booklet page › Lay out the page…**) puts the step's page in your hands:
 
