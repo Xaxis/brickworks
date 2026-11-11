@@ -213,6 +213,30 @@ func carried_into(text: String, waiting: Array, place: Callable = Callable()) ->
 	var parts: Array = not_shown + waiting
 	if parts.is_empty():
 		return text
+	var carried: Array = _carried(parts, place)
+	var refs: PackedStringArray = carried[0]
+	var needed: Dictionary = carried[1]
+	var out: String = _as_sections(text)
+	var cut: int = out.find("\n0 NOFILE")
+	var body: String = "\n".join(refs)
+	out = out.substr(0, cut + 1) + body + out.substr(cut) if cut >= 0 \
+		else out + body + "\n"
+	if not out.ends_with("\n"):
+		out += "\n"
+	for key: String in needed:
+		if out.contains("\n0 FILE " + _file_name(key) + "\n"):
+			continue
+		var span: Array = sections[key]
+		var section := PackedStringArray(lines.slice(int(span[0]), int(span[1])))
+		var written: String = "\n".join(section).strip_edges()
+		out += written + ("\n" if written.ends_with("0 NOFILE") else "\n0 NOFILE\n")
+	return out
+
+
+## What [method carried_into] puts in for [param parts]: [the lines placing
+## them, in the model's section, and each section of the file those name and
+## what those draw on, key -> true].
+func _carried(parts: Array, place: Callable = Callable()) -> Array:
 	var shown_sections: Dictionary = {}
 	for line: int in by_line:
 		shown_sections[_section_at(line)] = true
@@ -256,23 +280,39 @@ func carried_into(text: String, waiting: Array, place: Callable = Callable()) ->
 			if sections.has(named) and not needed.has(named):
 				needed[named] = true
 				todo.append(named)
-	var out: String = text
-	if not out.begins_with("0 FILE "):
-		out = "0 FILE %s.ldr\n%s0 NOFILE\n" % [
-			(own_title if not own_title.is_empty() else "model").to_snake_case(), out]
-	var cut: int = out.find("\n0 NOFILE")
-	var body: String = "\n".join(refs)
-	out = out.substr(0, cut + 1) + body + out.substr(cut) if cut >= 0 \
-		else out + body + "\n"
-	if not out.ends_with("\n"):
-		out += "\n"
-	for key: String in needed:
-		if out.contains("\n0 FILE " + _file_name(key) + "\n"):
-			continue
-		var span: Array = sections[key]
-		var section := PackedStringArray(lines.slice(int(span[0]), int(span[1])))
-		var written: String = "\n".join(section).strip_edges()
-		out += written + ("\n" if written.ends_with("0 NOFILE") else "\n0 NOFILE\n")
+	return [refs, needed]
+
+
+## [param text], the model written whole, as a file of sections, the model's
+## first: one with no FILE line (LdrModel.write_ldr's, of a model with no
+## sub-model) is put in one, named as none of the file's other sections is,
+## so a section carried after it is not read as the model (LdrModel.parse
+## takes the first FILE as the model). Written bare, with a block nothing
+## places after it, the model reopened as that block, its own parts gone
+## (sfreview F1).
+func _as_sections(text: String) -> String:
+	if LdrModel.section_word(text.get_slice("\n", 0)) == "FILE":
+		return text
+	var name: String = (own_title if not own_title.is_empty() else "model").to_snake_case()
+	while sections.has(LdrModel._key(name)) and LdrModel._key(name) != main_key:
+		name += "_"
+	return "0 FILE %s.ldr\n%s%s0 NOFILE\n" % [name, text, "" if text.ends_with("\n") else "\n"]
+
+
+## The keys of the sections a model written whole carries as the file has
+## them ([method carried_into], [method unplaced_into]), for [param waiting]
+## and [param origins] as those take them: no sub-model the model places is
+## written under one of their names (LdrModel.write_tree), or the one the
+## file has is taken for it and not written. A placed sub-model titled as
+## one placed by nothing took its file name, and that one's parts were lost
+## (sfreview F5).
+func kept_keys(waiting: Array, origins: Array) -> Dictionary:
+	var out: Dictionary = {}
+	var parts: Array = not_shown + waiting
+	if not parts.is_empty():
+		out.merge(_carried(parts)[1])
+	for key: String in _unplaced(origins):
+		out[key] = true
 	return out
 
 
@@ -290,21 +330,10 @@ func carried_into(text: String, waiting: Array, place: Callable = Callable()) ->
 ## written, and a sub-model placed by nothing, the author's work, was lost
 ## on the save (kt5check F5), as Studio and LDCad keep one.
 func unplaced_into(text: String, origins: Array) -> String:
-	var used: Dictionary = {main_key: true}
-	for origin: Variant in origins + unshown_origins.keys():
-		for at: String in str(origin).split("/", false):
-			var n: int = at.to_int()
-			if n < 0 or n >= original.size():
-				continue
-			used[_sec[n]] = true
-			# And what the line names: a part the file carries as a section.
-			var words: PackedStringArray = _words(original[n])
-			if words.size() >= 15 and words[0] == "1":
-				used[LdrModel._key(" ".join(words.slice(14)))] = true
-	var keys: Array = sections.keys().filter(func(key: String) -> bool:
-		return not used.has(key))
+	var keys: Array = _unplaced(origins)
 	if keys.is_empty():
 		return text
+	text = _as_sections(text)
 	# The text's own sections: the model's, named anew (LdrModel.write_tree),
 	# and the parts it embeds, named as the file has them.
 	var written: Dictionary = {}
@@ -339,6 +368,24 @@ func unplaced_into(text: String, origins: Array) -> String:
 			out += as_had + ("\n" if as_had.to_upper().ends_with("0 NOFILE") else "\n0 NOFILE\n")
 		keys = more
 	return out
+
+
+## The keys of the file's sections nothing in the model is read through, for
+## [param origins] as [method unplaced_into] takes them.
+func _unplaced(origins: Array) -> Array:
+	var used: Dictionary = {main_key: true}
+	for origin: Variant in origins + unshown_origins.keys():
+		for at: String in str(origin).split("/", false):
+			var n: int = at.to_int()
+			if n < 0 or n >= original.size():
+				continue
+			used[_sec[n]] = true
+			# And what the line names: a part the file carries as a section.
+			var words: PackedStringArray = _words(original[n])
+			if words.size() >= 15 and words[0] == "1":
+				used[LdrModel._key(" ".join(words.slice(14)))] = true
+	return sections.keys().filter(func(key: String) -> bool:
+		return not used.has(key))
 
 
 ## The outermost copy above (or at) [param unit] whose section and every

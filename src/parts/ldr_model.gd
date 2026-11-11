@@ -892,7 +892,7 @@ static func write_ldr(
 	if groups.is_empty() and embedded.is_empty():
 		return _write_one(placements, title, author_name, [], "", [], [], [], steps.get("", []))
 
-	var main_file: String = title.to_snake_case() + ".ldr"
+	var main_file: String = _main_file(title, parts)
 	var file_of: Dictionary = {}
 	for group: String in groups:
 		var file: String = group.to_snake_case() + ".ldr"
@@ -972,7 +972,7 @@ static func write_tree(
 	var defs: Array = tree["defs"]
 	var children: Dictionary = tree["children"]
 	var placed_within: Dictionary = tree["within"]
-	var main_file: String = title.to_snake_case() + ".ldr"
+	var main_file: String = _main_file(title, parts)
 	var file_of: Dictionary = {}
 	for def: String in defs:
 		var file: String = def.to_snake_case() + ".ldr"
@@ -1040,6 +1040,19 @@ static func write_tree(
 		for at: int in range(0, encoded.length(), 76):
 			text += "0 !: " + encoded.substr(at, 76) + "\n"
 	return text
+
+
+## The file name the model's own section is written under, after
+## [param title]: none of [param parts] (a part a reader knows, or a section
+## of the file a model written whole carries as the file has it,
+## SourceFile.kept_keys), as no sub-model's is, or the model is read as
+## that, and that as the model: a model titled as a sub-model its file
+## keeps, placed by nothing, took that one's name and lost it.
+static func _main_file(title: String, parts: Dictionary) -> String:
+	var file: String = title.to_snake_case() + ".ldr"
+	while parts.has(file.get_basename()):
+		file = file.get_basename() + "_.ldr"
+	return file
 
 
 ## How [method write_tree] lays out [param instances]: "masters" (each

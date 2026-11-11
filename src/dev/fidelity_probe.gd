@@ -33,6 +33,11 @@
 ## nothing left in it saved, opened (it was
 ## refused: "there are no parts in that file") and saved again; a sub-model
 ## the file never placed, written whole; and an undo brings the file back.
+## The emptied model's autosave restores left empty, its block kept for the
+## next save (sfreview F2); a model of no sub-model given a step, written
+## whole, keeps a block it never placed after itself, not as the model (F1);
+## and a placed sub-model titled as one placed by nothing is written under a
+## name of its own, the other's block kept (F5).
 ##
 ## And a sub-model placed three times, once mirrored, of parts that look the
 ## same turned a half (kt5check's twice_mirror): the mirrored copy moved,
@@ -174,6 +179,49 @@ const NESTED := """0 FILE rig - main.ldr
 0 Name: rig - fin.ldr
 0 Author: Somebody Else [someone]
 1 14 0 0 0 1 0 0 0 1 0 0 0 1 3022.dat
+0 NOFILE
+"""
+
+## A model of no sub-model and no STEP line, and a sub-model the file never
+## placed (sfreview's loose_unused).
+const LOOSE := """0 FILE loose.ldr
+0 Loose
+0 Name: loose.ldr
+0 Author: Somebody Else [someone]
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 1 80 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE spare.ldr
+0 Spare
+0 Name: spare.ldr
+0 Author: Somebody Else [someone]
+1 2 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 14 40 0 0 1 0 0 0 1 0 0 0 1 3004.dat
+0 NOFILE
+"""
+
+## A placed sub-model and one placed by nothing of one title, the placed
+## one's file named otherwise (sfreview's titles, cut down).
+const TITLES := """0 FILE main.ldr
+0 Titles
+0 Name: main.ldr
+0 Author: Somebody Else [someone]
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 16 0 -24 0 1 0 0 0 1 0 0 0 1 wing2.ldr
+1 1 80 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE wing.ldr
+0 Wing
+0 Name: wing.ldr
+0 Author: Somebody Else [someone]
+1 2 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 2 20 -24 0 1 0 0 0 1 0 0 0 1 3005.dat
+0 NOFILE
+0 FILE wing2.ldr
+0 Wing
+0 Name: wing2.ldr
+0 Author: Somebody Else [someone]
+1 1 0 0 0 1 0 0 0 1 0 0 0 1 3004.dat
 0 NOFILE
 """
 
@@ -583,6 +631,56 @@ func _unplaced_kept() -> void:
 		and again.contains("0 Author: Somebody Else [someone]"),
 		"...opened again: an empty model (%d parts; %s), saved again still theirs, the block kept"
 		% [_model().size(), "opened" if str(opened.get("error", "")).is_empty() else str(opened["error"])])
+	# ...and so the autosave of it, restored as start-up restores it: the
+	# model left empty, not one that "could not be opened: ." with the last
+	# saved model or the sample opened in its place (sfreview F2), and the
+	# block kept for the next save.
+	DirAccess.make_dir_recursive_absolute(ModelStore.autosave().get_base_dir())
+	var autosaved: FileAccess = FileAccess.open(ModelStore.autosave(), FileAccess.WRITE)
+	autosaved.store_string(saved)
+	autosaved.close()
+	var back: int = _store.restore()
+	again = _store.to_text(_store.title, true)
+	DirAccess.remove_absolute(ModelStore.autosave())
+	_expect(back == 0 and _store.left_empty and _store.unrestored.is_empty()
+		and _model().is_empty() and again.contains(car) and _placing(again, "solo - car.ldr") == 0,
+		"...its autosave restored: left empty (%d back, left_empty %s, said [%s]), the block kept for the next save"
+		% [back, _store.left_empty, _store.unrestored])
+	# A model of no sub-model and no STEP line given a step, written whole,
+	# with a block the file never placed: the model is its own, the block
+	# after it. Written bare, the block came first as a FILE and opened as
+	# the model, the model's parts gone (sfreview F1).
+	var spare_block: String = LOOSE.substr(LOOSE.find("0 FILE spare.ldr"))
+	_open(LOOSE)
+	var lone: BrickWorld.Brick = _brick("3001", 1)
+	AuthorSteps.ensure(_world, _library, _store.scenery)
+	var stepped: Array = AuthorSteps.new_step(_world, [lone.id], "", "", -1, _store.scenery)
+	model = _model()
+	saved = _store.to_text(_store.title, true)
+	_open(saved)
+	_expect(not stepped.is_empty() and saved.contains(spare_block)
+		and _placing(saved, "spare.ldr") == 0 and _model() == model,
+		"a step given in a model of no sub-model, written whole (%s): the block kept after the model, opened again the model as edited (%s; edited %s)"
+		% [str(_store.get("last_whole")), _model(), model])
+	# A placed sub-model titled as one placed by nothing, written whole: the
+	# placed one under a name of its own, the other's block kept. The placed
+	# one took its name, and that one was taken as written already, its
+	# parts lost (sfreview F5).
+	var wing_block: String = TITLES.substr(TITLES.find("0 FILE wing.ldr"),
+		TITLES.find("0 FILE wing2.ldr") - TITLES.find("0 FILE wing.ldr"))
+	_open(TITLES)
+	_builder.select_brick(_brick("3001", 1).id, false)
+	_builder.name_group("Fidelity probe group")
+	model = _model()
+	units = _units()
+	saved = _store.to_text(_store.title, true)
+	_expect(saved.contains(wing_block) and _placing(saved, "wing.ldr") == 0,
+		"placed and placed-by-nothing sub-models of one title, written whole: the unplaced one's block kept (%d placing it)"
+		% _placing(saved, "wing.ldr"))
+	_open(saved)
+	_expect(_model() == model and _units() == units,
+		"...opened again, the model and its copies as edited (%s; edited %s)"
+		% [", ".join(_units()), ", ".join(units)])
 	# Undone: the file again, the block and its line as they were.
 	_open(FILE)
 	var depth: int = _builder.history_depth()
