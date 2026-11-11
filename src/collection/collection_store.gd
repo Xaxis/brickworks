@@ -190,8 +190,8 @@ func _change_now(body: Dictionary) -> Dictionary:
 
 
 ## An import: {"from": ..., "text" or "sets"/"parts", "mode"}. Returns
-## {"error", "imported", "left_out", "clamped", "unkept"} ([method
-## clamped_words], [method unkept_words]).
+## {"error", "imported", "left_out", "clamped", "marks"} ([method
+## clamped_words], [method marks_words]).
 ## Sent again with no answer, it is told what the first try did.
 func add(payload: Dictionary) -> Dictionary:
 	var done: Dictionary = await change(payload)
@@ -199,7 +199,7 @@ func add(payload: Dictionary) -> Dictionary:
 		return {"error": done["said"], "imported": {}, "left_out": [], "clamped": ""}
 	var body: Dictionary = done["body"]
 	return {"error": "", "imported": body.get("imported", {}), "left_out": body.get("left_out", []),
-		"clamped": clamped_words(body), "unkept": unkept_words(body)}
+		"clamped": clamped_words(body), "marks": marks_words(body)}
 
 
 ## Loose lots added, each {"part", "colour", "qty"}, and "by" and "chat" for
@@ -332,25 +332,61 @@ static func clamped_words(body: Variant) -> String:
 		Counted.of(lots, "lot"), ", ".join(named), "" if lots <= named.size() else ", …"]
 
 
-## What a fetch could not keep marked missing, in words, or "": parts marked
-## on two copies of a set that it put together on one, more than that copy
-## holds and more than the person's other copy of it could take
-## (api/collection.js, done.unkept: lbfix2).
-static func unkept_words(body: Variant) -> String:
+## What a fetch did with the parts marked missing, in words, or "": marks on
+## two copies of a set that it put together on one, more than that copy
+## holds and more than the person's other copy of it could take ("unkept",
+## lbfix2); the sets whose inventories could not be read, their marks kept
+## as they were ("unread"); and the sets the fetch no longer lists, gone
+## with their marks ("gone", lbfix3). api/collection.js's done.
+static func marks_words(body: Variant) -> String:
 	if not body is Dictionary or not (body as Dictionary).get("done") is Dictionary:
 		return ""
 	var done: Dictionary = body["done"]
+	var said := PackedStringArray()
 	var held: Array = done["unkept"] if done.get("unkept") is Array else []
-	if held.is_empty():
-		return ""
+	if not held.is_empty():
+		var named := PackedStringArray()
+		for one: Variant in held.slice(0, 3):
+			if one is Dictionary:
+				named.append("%s: %d of %s in colour %d" % [str(one.get("set", "")), int(one.get("qty", 0)),
+					str(one.get("part", "")), int(one.get("colour", 0))])
+		var lots: int = int(done.get("unkept_lots", held.size()))
+		said.append("%s marked missing came to more than the copies kept hold, and the rest is no longer marked: %s%s"
+			% [Counted.of(lots, "lot"), ", ".join(named), "" if lots <= named.size() else ", …"])
+	var unread: Array = done["unread"] if done.get("unread") is Array else []
+	if not unread.is_empty():
+		var sets: int = int(done.get("unread_sets", unread.size()))
+		var named: String = _first_sets(unread, sets)
+		said.append("the inventory of %s could not be read; its marks are kept as they were" % named if sets == 1
+			else "the inventories of %s could not be read; their marks are kept as they were" % named)
+	var gone: Array = done["gone"] if done.get("gone") is Array else []
+	if not gone.is_empty():
+		var sets: int = int(done.get("gone_sets", gone.size()))
+		var numbers: Array = []
+		var pieces: int = 0
+		for one: Variant in gone:
+			if one is Dictionary:
+				numbers.append(str(one.get("set", "")))
+				pieces += int(one.get("marked", 0))
+		var named: String = _first_sets(numbers, sets)
+		if sets == 1:
+			said.append("%s is no longer in your Rebrickable lists: it went, with its %s marked missing"
+				% [named, Counted.of(pieces, "piece")])
+		elif sets <= numbers.size():
+			said.append("%s are no longer in your Rebrickable lists: they went, with their %s marked missing"
+				% [named, Counted.of(pieces, "piece")])
+		else:
+			said.append("%s are no longer in your Rebrickable lists: they went, with the parts marked missing in them"
+				% named)
+	return " — ".join(said)
+
+
+## The first three of [param numbers], and "…" for more of [param sets].
+static func _first_sets(numbers: Array, sets: int) -> String:
 	var named := PackedStringArray()
-	for one: Variant in held.slice(0, 3):
-		if one is Dictionary:
-			named.append("%s: %d of %s in colour %d" % [str(one.get("set", "")), int(one.get("qty", 0)),
-				str(one.get("part", "")), int(one.get("colour", 0))])
-	var lots: int = int(done.get("unkept_lots", held.size()))
-	return "%s marked missing came to more than the copies kept hold, and the rest is no longer marked: %s%s" % [
-		Counted.of(lots, "lot"), ", ".join(named), "" if lots <= named.size() else ", …"]
+	for one: Variant in numbers.slice(0, 3):
+		named.append(str(one))
+	return ", ".join(named) + ("" if sets <= named.size() else ", …")
 
 
 ## Whose collection this is: the signed-in account's id, empty when none.

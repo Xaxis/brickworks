@@ -102,9 +102,17 @@ which models they could build from what they have. Added 2026-10-12.
   replace carries them to the re-added set, an older app's PUT). A replace
   that puts two entries of a set together keeps each part's marks only as
   far as the copies kept hold it (the set's inventory, read from the shards
-  by `readShard`; with none, what the copies taken out were marked), the
-  rest onto the person's other copy of the set, else said (`done.unkept`,
-  `CollectionStore.unkept_words`, shown by the fetch's line: lbfix2). The pool,
+  by `readShard`, 16 at a time under one 60 s deadline), the rest onto the
+  person's other copy of the set, else said (`done.unkept`: lbfix2). A part
+  is counted as the app counts it, by `Collection.key_of` (6141 and its old
+  4073 are one part, Rubber Black 256 is Black 0), its inventory's rows of
+  that key summed as edit_collection's `per_copy` sums them, and written
+  under the inventory's own numbers, a row each (lbfix3, lb2check M1); the
+  facts are `_part_facts.json` beside every function (`tools/package_api.sh`,
+  M2). A set whose inventory could not be read keeps its marks as they were
+  (`done.unread`), and a set the replace no longer lists goes with its marks
+  (`done.gone`); all three said on the fetch's line
+  (`CollectionStore.marks_words`). The pool,
   and so What do I need? and What can I build?, count only what is there.
   Closest to whole lists the sets with parts missing by how many pieces are
   short (the marked less what loose parts make up; another set's parts never
@@ -487,7 +495,7 @@ Proves it when:
   (from git) reading every lot, importing to Rebrickable's lot, and taking a
   set out with every mark kept, refused from a stale copy. Look at the pictures: `mybricks_row`, `_like`,
   `_loose`, `_need`, `_build`, `_claude`, `_taken_back`.
-- `mysets_api.mjs` ends `every check passed` (33 checks): 7140-1 typed and 12
+- `mysets_api.mjs` ends `every check passed` (35 checks): 7140-1 typed and 12
   lots marked in one op; refusals (a stale count 409, a set not there, a lot
   twice, a bad colour or part, a count over 100,000, no lots) changing
   nothing; the marks kept through a lot added, a count set, a Keep, a retype,
@@ -496,7 +504,10 @@ Proves it when:
   refused as one, taken out both ways; every mark off and the collection
   back lot for lot; 3931-1 typed and fetched, 1 of 2343/47 marked on each,
   a replace that keeps one copy keeps 1 and says the other (`unkept`), and
-  with a BrickLink list's copy kept too, puts it there (lbfix2).
+  with a BrickLink list's copy kept too, puts it there (lbfix2); 6141/29
+  marked as 4073 on one entry and as 6141 on the other counted as one part,
+  1 on the kept copy and 1 on the list's, and a fetch without 3931-1 saying
+  it went with its marks (`gone`, lbfix3).
 - `mysets_probe` (tools/relay_probe.sh mysets, with `-- --shots=DIR`) ends `all
   good`: the notice first, cancelled sending nothing; a box photo's 7140-1
   added in 3 actions, both endpoints asked once each (a JPEG, top 3, no

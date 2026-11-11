@@ -740,23 +740,43 @@ var _names: Dictionary = {}
 
 
 ## What each sub-model's assembly is called: its title, or its file name
-## where it has none — and the file name too where two share a title, so
-## two different sub-models are never taken for copies of one. Never with
-## a "/" or a "#", which the path uses.
+## where it has none — and the file name too where two the model places
+## share a title, so two different sub-models are never taken for copies of
+## one. One placed by nothing has a title of its own only where no other
+## has it: a block the file keeps that nothing places (kt5check F5: the last
+## copy taken off, its block kept on the save) renames no copy of the
+## model's, as one of the same title did. Never with a "/" or a "#", which
+## the path uses.
 func _assembly_names() -> Dictionary:
-	var by_title: Dictionary = {}
+	# The sub-models the model places, at any depth.
+	var placed: Dictionary = {}
+	var todo: Array = [main] if main != null else []
+	while not todo.is_empty():
+		var sub: SubModel = todo.pop_back()
+		if placed.has(sub):
+			continue
+		placed[sub] = true
+		for placement: Placement in sub.placements:
+			var nested: SubModel = submodels.get(_key(placement.part_id))
+			if nested != null and not placed.has(nested):
+				todo.append(nested)
+	var titles: Dictionary = {}
+	var by_title: Dictionary = {}    ## title -> how many the model places
+	var all_titled: Dictionary = {}  ## title -> how many the file has
 	for key: String in submodels:
 		var sub: SubModel = submodels[key]
 		var title: String = (sub.title if not sub.title.is_empty() else key) \
 			.replace("/", "-").replace("#", "").strip_edges()
-		if not by_title.has(title):
-			by_title[title] = []
-		(by_title[title] as Array).append(key)
+		titles[key] = title
+		all_titled[title] = int(all_titled.get(title, 0)) + 1
+		if placed.has(sub):
+			by_title[title] = int(by_title.get(title, 0)) + 1
 	var out: Dictionary = {}
-	for title: String in by_title:
-		var keys: Array = by_title[title]
-		for key: String in keys:
-			out[key] = title if keys.size() == 1 else "%s (%s)" % [title, key]
+	for key: String in submodels:
+		var title: String = titles[key]
+		var alone: bool = int(by_title.get(title, 0)) == 1 if placed.has(submodels[key]) \
+			else int(all_titled[title]) == 1
+		out[key] = title if alone else "%s (%s)" % [title, key]
 	return out
 
 
@@ -919,7 +939,7 @@ static func write_ldr(
 	if groups.is_empty() and embedded.is_empty():
 		return _write_one(placements, title, author_name, [], "", [], [], [], steps.get("", []))
 
-	var main_file: String = title.to_snake_case() + ".ldr"
+	var main_file: String = _main_file(title, parts)
 	var file_of: Dictionary = {}
 	for group: String in groups:
 		var file: String = group.to_snake_case() + ".ldr"
@@ -999,7 +1019,7 @@ static func write_tree(
 	var defs: Array = tree["defs"]
 	var children: Dictionary = tree["children"]
 	var placed_within: Dictionary = tree["within"]
-	var main_file: String = title.to_snake_case() + ".ldr"
+	var main_file: String = _main_file(title, parts)
 	var file_of: Dictionary = {}
 	for def: String in defs:
 		var file: String = def.to_snake_case() + ".ldr"
@@ -1067,6 +1087,19 @@ static func write_tree(
 		for at: int in range(0, encoded.length(), 76):
 			text += "0 !: " + encoded.substr(at, 76) + "\n"
 	return text
+
+
+## The file name the model's own section is written under, after
+## [param title]: none of [param parts] (a part a reader knows, or a section
+## of the file a model written whole carries as the file has it,
+## SourceFile.kept_keys), as no sub-model's is, or the model is read as
+## that, and that as the model: a model titled as a sub-model its file
+## keeps, placed by nothing, took that one's name and lost it.
+static func _main_file(title: String, parts: Dictionary) -> String:
+	var file: String = title.to_snake_case() + ".ldr"
+	while parts.has(file.get_basename()):
+		file = file.get_basename() + "_.ldr"
+	return file
 
 
 ## How [method write_tree] lays out [param instances]: "masters" (each

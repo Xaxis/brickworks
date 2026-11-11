@@ -1072,8 +1072,8 @@ func _report(result: Dictionary, source: String) -> void:
 		line += " — no inventory is known for %s" % ", ".join(unknown)
 	if not str(result.get("clamped", "")).is_empty():
 		line += " — " + str(result["clamped"])
-	if not str(result.get("unkept", "")).is_empty():
-		line += " — " + str(result["unkept"])
+	if not str(result.get("marks", "")).is_empty():
+		line += " — " + str(result["marks"])
 	_say(line)
 
 

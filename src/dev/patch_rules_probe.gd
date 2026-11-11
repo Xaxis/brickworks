@@ -13,8 +13,10 @@
 ## 3. a comment saying START and END round a part ("0 Engine START") is no
 ##    pair: the part deleted, both kept; LeoCAD's GROUP BEGIN and END round
 ##    the only part of a group go with it;
-## 4. the only copy of a sub-model deleted, and every part deleted: no
-##    patch (live's write takes the sub-model out);
+## 4. the only copy of a sub-model deleted: a patch, the line placing it
+##    out and its block kept as the file has it (kt5check F5: live's write
+##    took the sub-model out, the author's work lost); every part deleted:
+##    no patch;
 ## 5. the first of two copies deleted (the second opens again as the
 ##    first): no patch; the second deleted: a patch the gate lets through;
 ## 6. a source patched on a worker and on this thread at once, this one
@@ -177,8 +179,10 @@ func _unplaced() -> void:
 	var bricks: Array = (opened[1] as Array).filter(func(b: BrickWorld.Brick) -> bool:
 		return b.unit.is_empty())
 	var got: Array = _patched(opened[0], bricks, opened[2])
-	_check("the only copy of a sub-model deleted: no patch (%s)" % got[1],
-		str(got[1]).contains("placed by no line"))
+	var block: String = WING.substr(WING.find("0 FILE wing  part.ldr"))
+	_check("the only copy of a sub-model deleted: a patch, its line out, its block kept (%s)"
+		% got[1], got[1] == "" and str(got[0]).contains(block)
+		and not str(got[0]).contains("1 16 0 -24 0 1 0 0 0 1 0 0 0 1 wing  part.ldr"))
 	opened = _opened("\n".join(["0 One", "0 Name: one.ldr", "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat",
 		"1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat", "0 STEP", ""]))
 	got = _patched(opened[0], [], opened[2])
