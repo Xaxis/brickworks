@@ -268,7 +268,7 @@ let R = null;
 const email = `delivered+bw-bugreport-${rand}@resend.dev`;
 const sent = [];
 try {
-  R = await mintSession(email);
+  R = await mintSession(email, { welcome: false });
   const who = await api("/api/account", { token: R.access_token });
   const open_ = Boolean(who.json?.beta?.open);
   console.log(`bugreport flow: ${site} (the beta ${open_ ? "open" : "shut"})`);

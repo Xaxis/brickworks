@@ -1,0 +1,25 @@
+{
+ "shots": [
+  {
+   "id": "menus-find-command",
+   "source": "app",
+   "setup": [
+    {
+     "run": "palette",
+     "after": 30
+    },
+    {
+     "type": "colour",
+     "after": 30
+    }
+   ],
+   "crop": "@opened",
+   "pad": 0,
+   "alt": "Find a command with colour typed: the commands whose names say colour, each with where it is in the menus and its key; those that cannot be used yet are greyed, saying what they wait for, and the chosen one's tooltip is under the list.",
+   "caption": "Find a command (Ctrl+/), with colour typed.",
+   "features": [
+    "ui:find a command"
+   ]
+  }
+ ]
+}

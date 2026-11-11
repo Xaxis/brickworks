@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:the panel asked for last in front, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe, ui:a long job says when it is done, cli:donenote probe, lib:line art and comic looks, cli:lineart probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:the panel asked for last in front, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe, ui:a long job says when it is done, cli:donenote probe, lib:line art and comic looks, cli:lineart probe, ui:a step's name, cli:stepnames probe, lib:driving along a path, cli:drive probe -->
 
 ## Sub-features
 
@@ -703,7 +703,10 @@ picture the assistant is shown.
   Known gaps: a part standing on the floor or a baseplate is held by the
   floor, so a tower's foot is not weighed; a clip, hinge, ball or turntable
   is not weighed. `tools/probe.sh stress_probe` (hand-worked cantilevers, a bonded
-  wall, the shipped models none red), `touch_probe` (walk180's tug bow amber
+  wall, the shipped models none red, and a joint of each kind past its load
+  said by its kind: a free pin "turns with nothing holding it", red, by no
+  ratio and no load it lets go at, "studs'" and more studs only for studs,
+  drvrecheck F2), `touch_probe` (walk180's tug bow amber
   at 0.86 with its ladder and without, a plate on a touch past it red and a
   weak joint, columns pressed down standing on studs and on a tile, and in
   the app the verdict, the view and `weakest_joints` agreeing) and
@@ -2313,6 +2316,61 @@ picture the assistant is shown.
   saves byte for byte. A session saves only over files it wrote
   (`save_model`), so each model opened over MCP is saved under a name of
   its own first.
+- `a step's name` and `stepnames probe` (APP_UX6 #9 stepnames;
+  `Instructions.Step.name`, `Instructions.names_kept`, `BookletLooks`
+  "name" and `name_of`, `Shell.change_look("name")`, `StepsBar.ask_step_name`,
+  `BuildMode._step_name`, `Booklet.name_rect`/`name_lines`): a step named as
+  Studio names one. Ways in: the timeline's Booklet row Name… (in the build
+  order and the author's steps), Build › Steps › Name the step…, Shift-F2
+  (beside F2, rename), and `edit_steps {"op": "name", "step": N, "name":
+  "..."}` over MCP (`""` takes it off). One undo each; a worked-out model
+  adopts the plan first in the same undo, as every look does. Said on the
+  timeline as "Step 3 of 24 · Build the cockpit · 3 of 24 bricks" (cut
+  between words at 40 characters with an ellipsis, `StepsBar.NAME_SHOWN`),
+  in Build it on a line of its own at 18 pt under "Step 3 of 24"
+  (`BuildSteps.caption` joins them with a line break; `page_state` "name"),
+  and on the booklet page beside the number, semibold 3.6 mm, 2 mm after
+  it, centred on its line, wrapped at 64 mm or the panel's room (the step's
+  header grows for it; the turn sign and guides go under both). A callout
+  box's own steps print no name; a sub-assembly on pages of its own does.
+  Names are one line, at most 80 characters (`BookletLooks.NAME_MOST`),
+  every Unicode space and line break made a space, cut on a whole letter
+  (`BookletLooks.cut`). The name is a look field, so it follows the step's
+  parts over step edits: on a merge the first step's wins; where a step
+  that kept none of its parts joins one that kept its own, the one that
+  kept them is the step, by its own name and zoom (the other's words,
+  pictures and arrows kept on its page); it goes when the step loses its
+  last part. A sub-model placed more than once has one set of steps, so a
+  name is every copy's, and the words say so ("in each of the 2 copies of
+  the wing", `BookletLooks.copies_of`). `edit_steps` names a callout's step
+  with `callout_step=`, as `edit_booklet` takes one. Shared links carry it
+  in the model's own lines (`SharedPages.read` names the carried steps). In
+  the file: `0 !BRICKWORKS STEP_NAME words` in its step, before PAGE and
+  ZOOM. Another author's lines are kept as written where they were (spaces,
+  tabs, a second line in a step, read as the first: `name_more`; one after
+  NOFILE; an empty last step's). An older
+  build (pre261, live m276) opens a named file whole; it keeps the line in
+  another author's file (written back as it was) and drops it from
+  Brickworks' own on a save, as every app line it does not know. Also: a
+  hand Delete that empties a step with a look undoes as "removed 1 part"
+  (`Builder.extend_last` words the step before grouping it).
+  `stepnames_probe` (a window; `PROBE_SIZE=1280x720`, `390x844` and
+  `1024x768` for Build it alone on a phone and a tablet): signed in through
+  the sign-in screen, steps4's step 3 named by Name… and typing, Return;
+  the timeline's words and one undo; Shift-F2 asks again with the name;
+  step 2 by `edit_steps`; saved with exactly two STEP_NAME lines more,
+  opened, saved again byte for byte; step 3's booklet page read back
+  (`BookletRead`) with the name beside the number and its ink in the 300
+  dpi PNG; `src/dev/fixtures/stepnames/named.ldr` and `named_theirs.ldr`
+  opened whole and saved with their lines; the hand Delete's undo words;
+  an 80-character name cut on the timeline and wrapped on the page; Build
+  it on a shared link, steps worked out and carried, the name under the
+  number; then snreview's repros on `src/dev/fixtures/stepnames/` (five,
+  row, theirs_odd LF and CRLF, sub; 7140-1.mpd's callout): which step keeps
+  its name and zoom over moves, deletes and merges, each saved, opened and
+  undone; every name line as written; `name_of`'s spaces and cut; quoted
+  words; the picture's alt escaped once; the copies' words; `callout_step=`.
+  Pictures in `shots/stepnames/<size>/`.
 - `the booklet's own cover and colours` and `booklook probe`
   (APP_UX6 #5 booklook; `BookletSheet`'s title, subtitle, cover_line,
   cover_picture, header, footer, box_frame, box_fill, box_corners,
@@ -3129,6 +3187,22 @@ picture the assistant is shown.
   nothing makes AFTER any more. play_motion's picture is from the view that
   sees most of what moves (`MotionRender.seen_from`, `best_view`: the
   lattice marched from each moving part toward each of StudioRender.VIEWS).
+- `driving along a path` (unit drive, APP_UX6 #12; `MotionPlayer.Drive`,
+  `drive_path`, `path_from`, `Motions.Path`): a motion's path, `0 !BRICKWORKS
+  MOTION_PATH "Drive and turn left" SECONDS 7 EASE STRAIGHT 32 LEFT 90 RADIUS 24`
+  with a `MOTION_WHEEL` line for each axle that rolls and a `MOTION_STEER`
+  line for the steering, written after the motion's other lines. The whole
+  model is driven along the ground, each leg straight so many studs (less
+  than 0 backwards) or left or right so many degrees on a radius measured at
+  the back axle's middle; each wheel's body is turned through Grab by the
+  distance its own middle travels over its tyre's radius, and the steering
+  is turned into each corner as far as its rack lets it, eased in and out.
+  Played as any motion: drawn only in the panel and on a link, kept by
+  play_motion as one step (Grab.commit of every part), backwards back to
+  where it began. Suggested as "Drive and turn left" when the model has a
+  wheel on a level axle on the ground. In the panel's editor, Where it
+  drives: Drive along a path, a row a leg, Add a leg, Over, Eased, No path.
+  Over MCP: define_motion path={legs:[{straight:32},{left:90}]}.
 - `render open check` (`tools/web/render_open_check.mjs`): the Render
   dialog's first open in a fresh browser, from the toolbar, every frame from
   the press to the first draft timed in the page (the engine's frame
@@ -3500,6 +3574,29 @@ tools/probe.sh pose_probe
 # Pictures of each state; and again in a 1280 x 720 window.
 tools/probe.sh motions_panel_probe -- bench/results/motions5-2026-10-20
 PROBE_SIZE=1280x720 tools/probe.sh motions_panel_probe -- bench/results/motions5-2026-10-20
+# The racer driven along a path (src/dev/drive_probe.gd): 8808-1's
+# suggested Drive and turn left kept from the Motions panel, Play driving it
+# in the window to where the path ends and Play backwards back, one step
+# each; its two legs in the editor and a corner made right written as RIGHT,
+# undone; define_motion path= a 32-stud
+# straight and a quarter turn left; read from its frames alone, the back
+# axle's middle goes 32 studs straight and round the file's radius within 0.1
+# stud, ending turned 90 ± 0.5°, and each axle turns once for each round of
+# its tyre (radius from the mesh) its middle travels, within 2%, rolling the
+# right way; the file's lines byte for byte and the same drive played from
+# it; play_motion kept on its floor, backwards back to the degree, two undos;
+# render_motion's frames draw it across the frame; a ?motion=drive-and-turn-left link drives it in the viewer, its
+# tyres turning. Section 10 (DRIVE_ONLY=arrive alone, DRIVE_PORT=N its parts
+# host's port): the rims held back on their way, the drive kept, each rim
+# put down in its tyre where the drive left the model, saved before and
+# after and opened again with every joint found; Compare with the save made
+# while they came finds nothing changed; kept, landed, undone and kept,
+# undone, landed, redone, each rim in its tyre (0.00 LDU) and 4 of 4 joints,
+# and so saved and opened again; the app's own file with a part the
+# catalogue lacks, driven and kept, writes it with the part it stood with
+# (drvrecheck F1, F3). Pictures in OUT_DIR, named by the window's size.
+tools/probe.sh drive_probe -- bench/results/drive-2026-11-07
+PROBE_SIZE=1280x720 tools/probe.sh drive_probe -- bench/results/drive-2026-11-07
 # What the animation audit found broken, on real sets (docs/ANIMATION.md;
 # src/dev/animation_probe.gd):
 # 31070-1's back window posed out and back stands where it was built, Play

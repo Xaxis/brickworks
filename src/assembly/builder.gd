@@ -75,6 +75,16 @@ var scenery: Dictionary = {}
 ## the step that changes what the model stands on. Unset, the step does
 ## nothing.
 var floor_hook: Callable = Callable()
+## Told after an undo or a redo that put the model's motions back as a step
+## kept them (a drive kept moves the whole model: Motions.moved): the whole
+## move they had before it, and the parts the step moved itself, id ->
+## true. What it did not move, a part that landed after it was made, the
+## store puts where the model now stands (ModelStore._follow_motions).
+## Unset, nothing else moves.
+var motions_hook: Callable = Callable()
+## The motions as the step being undone or redone found them, before it
+## first put them back; null when it has not.
+var _motions_before: Motions = null
 ## Sets the comments pinned to parts (PinnedComments.set_words) and returns
 ## what they were, for the step that pins, resolves or opens one again.
 ## Unset, the step does nothing.
@@ -403,7 +413,9 @@ func undo() -> bool:
 	# there to name, and kept with the step that redoes it: the step
 	# reversed would read backwards ("removed" for a placing redone).
 	var words: String = _words_for(step)
+	_motions_before = null
 	var back: Dictionary = _apply(step)
+	_follow_motions(step)
 	back["words"] = words
 	_redo.append(back)
 	settled = _history.back() if not _history.is_empty() else {}
@@ -417,13 +429,54 @@ func redo() -> bool:
 	if _redo.is_empty():
 		return false
 	var step: Dictionary = _redo.pop_back()
+	_motions_before = null
 	var again: Dictionary = _apply(step)
+	_follow_motions(step)
 	if step.has("words"):
 		again["words"] = step["words"]
 	_history.append(again)
 	settled = again
 	_living_selection()
 	return true
+
+
+## Once [param step] is undone or redone: if it put the model's motions
+## back, what it did not move itself told where the model now stands
+## ([member motions_hook]), after all of it, so the joints are looked for
+## with every part where the step leaves it.
+func _follow_motions(step: Dictionary) -> void:
+	var before: Motions = _motions_before
+	_motions_before = null
+	if before == null or not motions_hook.is_valid():
+		return
+	var moved_itself: Dictionary = {}
+	_moved_by(step, moved_itself)
+	motions_hook.call(before.moved, moved_itself)
+
+
+## Into [param into], each part [param step] moves, takes off or puts
+## down, by its id now.
+func _moved_by(step: Dictionary, into: Dictionary) -> void:
+	match str(step.get("undo", "")):
+		"group":
+			for inner: Variant in step.get("steps", []):
+				_moved_by(inner, into)
+		"move", "remove":
+			into[_live(int(step["brick"]))] = true
+		"add":
+			if step.has("was"):
+				into[_live(int(step["was"]))] = true
+
+
+## Move [param brick_id] to [param to] with no step of its own: one an undo
+## or a redo carries along with what it moves ([member motions_hook]).
+func put_at(brick_id: int, to: Transform3D) -> void:
+	var brick: BrickWorld.Brick = world.get_brick(brick_id)
+	if brick == null:
+		return
+	lattice.release(brick_id)
+	world.move_brick(brick_id, to)
+	lattice.occupy_boxes(brick_id, boxes_for(library.mesh_for(brick.part_id), to))
 
 
 ## The newest step of the history when an undo or a redo left it newest:
@@ -553,6 +606,8 @@ func _apply(step: Dictionary) -> Dictionary:
 	# reverse. Copies, so a motion changed later is not changed in the past.
 	if step.get("undo", "") == "motions":
 		var had: Motions = world.motions.copy() if world.motions != null else Motions.new()
+		if _motions_before == null:
+			_motions_before = had
 		world.motions = (step["motions"] as Motions).copy()
 		return {"undo": "motions", "motions": had}
 
@@ -1888,10 +1943,16 @@ func extend_last(steps: Array) -> void:
 		_history.append({"undo": "group", "steps": steps})
 		return
 	var last: Dictionary = _history.back()
+	# Said as what the person did, before what followed from it is folded
+	# in: a hand Delete that emptied a step with a look (a group of one
+	# "add") took its look in a "steplooks" after it, and its undo said
+	# "changed 2 parts" where it had said "removed 1 part" (pkreview).
 	if last.get("undo", "") != "group":
 		var words: String = _words_for(last)
 		last = {"undo": "group", "steps": [last], "words": words}
 		_history[_history.size() - 1] = last
+	elif not last.has("words"):
+		last["words"] = _words_for(last)
 	(last["steps"] as Array).append_array(steps)
 
 

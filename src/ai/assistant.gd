@@ -4454,11 +4454,17 @@ func _what_broke(report: Variant, model: Model) -> String:
 	for one: Balance.JointLoad in balance.joints:
 		if one.ratio <= 1.0 or bad.size() >= WORTH_SAYING:
 			continue
-		bad.append("%s %s %s on %d stud%s at %sx its working load (%s N·cm against %s; lets go at %s)"
-			% [str(name_of.call(one.beyond)), "hanging from" if one.hangs else "on",
-				str(name_of.call(one.held_by)), one.studs, "" if one.studs == 1 else "s",
-				Balance.tidy(one.ratio), Balance.tidy(one.moment), Balance.tidy(one.capacity),
-				Balance.tidy(one.ultimate)])
+		var who: String = "%s %s %s" % [str(name_of.call(one.beyond)), "hanging from" if one.hangs
+			else "on", str(name_of.call(one.held_by))]
+		# By its kind (Balance.JointLoad.held_on), and what nothing holds not
+		# divided by that nothing (drvcheck A).
+		if one.holds_nothing():
+			bad.append("%s with no stud in contact: nothing holds it there" % who if one.kind == "studs"
+				else "%s %s: it turns with nothing holding it" % [who, one.held_on()])
+			continue
+		bad.append("%s %s at %sx its working load (%s N·cm against %s; lets go at %s)"
+			% [who, one.held_on(), Balance.tidy(one.ratio), Balance.tidy(one.moment),
+				Balance.tidy(one.capacity), Balance.tidy(one.ultimate)])
 	if bad.is_empty():
 		return "It stands, and no stud joint is past its working load."
 	return ("As it stands now: %s. check_design edit= tries a fix on a copy first."

@@ -505,10 +505,12 @@ for page in .vercel/output/static/docs/*.html; do
 done
 [ "$docs" -gt 0 ] || { echo "deploy FAILED: tools/site.py wrote no documentation pages (docs/)"; exit 1; }
 # A docs page that moved (docs-site/_moved.json) answers at its old address
-# with a 308 to its new one, so a link anyone kept still lands.
+# with a 308 to its new one, so a link anyone kept still lands. A section
+# that moved ("page#anchor") is the old page's to send on: no fragment
+# reaches the server.
 docs_moved=$(python3 -c 'import json; m = json.load(open("docs-site/_moved.json"))
 print("".join("    { \"src\": \"/docs/%s(/|[.]html)?\", \"status\": 308, \"headers\": { \"Location\": \"/docs/%s\" } },\n" % (a, b)
-               for a, b in sorted(m.items()) if not a.startswith("$")), end="")') || {
+               for a, b in sorted(m.items()) if not a.startswith("$") and "#" not in a), end="")') || {
   echo "deploy FAILED: could not read docs-site/_moved.json"; exit 1; }
 echo "deploy: $docs documentation pages at /docs/"
 

@@ -1,18 +1,43 @@
 ---
-tools: edit_steps, booklet_layout, edit_booklet, booklet_page, page_setup
-panels: PageEditor#lay-out
-ai: Build steps, the timeline, the booklet laid out from them as a set's is, each step's page set by hand, and saving it as PDF or PNG pages. An assistant edits steps with edit_steps, reads the booklet's pages with booklet_layout, and sets a step's page with edit_booklet.
+tools: edit_steps, booklet_layout
+ai: Build steps, the timeline, and the booklet laid out from them as a set's is, saved as PDF or PNG pages. An assistant edits steps with edit_steps and reads the booklet's pages with booklet_layout. How a step is printed, the paper, the cover and pages laid out by hand are on the page about the booklet's layout.
 rules:
   - A step's turn is saved as LDraw's 0 ROTSTEP, which LPub, LDCad and Studio read.
   - A model from Studio, LDCad or LeoCAD keeps its author's own steps.
 title: Instructions and booklets
 nav: Instructions and booklets
-description: Build steps, the timeline, the booklet Brickworks lays out from them, laying a page out by hand, and saving it as a PDF.
+description: Build steps, the timeline that plays them, and the booklet of building instructions Brickworks lays out from them, saved as a PDF.
 ---
 
-## Build steps {#steps}
+Build steps are the order a model goes together in. From them Brickworks lays out building instructions as a set's booklet has them, ready to print or save as a PDF. Steps are in **Build › Build steps** and on the timeline ([[B]]); the booklet is **Build › Instructions…** ([[Alt+B]]).
 
-A model's build steps are the order it goes together in. Press [[E]] as you build: what was put down since the last step becomes one. **Build › Build steps** moves the selected parts a step earlier ([[Shift+[]]) or later ([[Shift+]]]), makes a step of them ([[Shift+N]]), and moves the step the timeline is on earlier ([[Alt+[]]) or later ([[Alt+]]]), merges it with the next ([[Alt+E]]) or deletes it ([[Alt+Delete]]).
+## A booklet in three steps {#quick}
+
+1. As you build, press [[E]] each time a step is done: whatever you put down since the last step becomes one.
+2. Press [[Alt+B]]. The booklet opens in a tab of its own: a cover, each step's picture with the parts it adds in a box, sub-assemblies built in callouts beside the step they go on, and the parts list at the back.
+3. Press **Save as PDF** at the top of the booklet, or **Print**.
+
+A model from Studio, LDCad or LeoCAD already has its author's steps, so you can go straight to step 2.
+
+![A page of a building instructions booklet made by Brickworks.](/img/booklet-720.webp "A booklet page: each step's picture and the parts it adds.")
+
+<!-- covers
+ui:the booklet
+-->
+
+## Change the steps {#steps}
+
+**Build › Build steps** has every change, and each is one Undo:
+
+| To | Press |
+|---|---|
+| Close a step: what you put down since becomes one | [[E]] |
+| Move the selected parts a step earlier or later | [[Shift+[]], [[Shift+]]] |
+| Make a step of the selected parts | [[Shift+N]] |
+| Move the selected parts to any step | [[Alt+T]], its number, [[Enter]] |
+| Move the step the timeline is on earlier or later | [[Alt+[]], [[Alt+]]] |
+| Merge it with the next step | [[Alt+E]] |
+| Take the step out, its parts joining the step before | [[Alt+Delete]] |
 
 <!-- covers
 ui:build steps
@@ -20,9 +45,9 @@ ui:build steps
 
 ### Any step in one go {#move-to-step}
 
-Under the timeline's slider is a row of the steps, one box a step. The steps the selected parts are in are marked in yellow: drag that mark onto any other step and the parts go there, however far. **Move to step…** ([[Alt+T]], also on the menu on a part) does the same with the step's number typed: [[Alt+T]], 17, [[Enter]]. Each is one Undo, and the booklet follows.
+Under the timeline's slider is a row of the steps, one box a step. The steps the selected parts are in are marked in yellow: drag that mark onto any other step, however far, and the parts go there. The booklet follows.
 
-With LDCad's keys, [[Page Up]] and [[Page Down]] go to the next and previous step while the timeline is up; with Studio's, [[Ctrl+D]] and [[Ctrl+A]] move the selected parts a step later and earlier there, as in Studio's step editor.
+With LDCad's keys, [[Page Up]] and [[Page Down]] go to the next and previous step while the timeline is up; with Studio's, [[Ctrl+D]] and [[Ctrl+A]] move the selected parts a step later and earlier, as Studio's step editor does.
 
 <!-- covers
 ui:any step in one go
@@ -30,9 +55,17 @@ ui:any step in one go
 
 ## The timeline {#timeline}
 
-![The timeline under the model: the car built to its first step, a slider and a row of numbered steps, the parts the step adds, and Start, Back, Reverse, Play, Next and End.](/docs/img/instructions-timeline.webp "Build › Timeline (B): the steps a booklet is made of.")
+![The timeline under the model: the car built to its first step, a slider and a row of numbered steps, the parts the step adds, and Start, Back, Reverse, Play, Next, End, the speed, Build order, Instructions and Done.](/docs/img/instructions-timeline.webp "Build › Timeline (B): the steps a booklet is made of.")
 
-[[B]] opens the timeline under the model: the build from an empty baseplate to the finished model. [[Left]] and [[Right]] step through it, [[Space]] plays it, and [[Home]] and [[End]] go to its start and end. Its buttons are **Earlier**, **Later**, **Merge with next**, **Delete step**, **New step from selection** and **Move to step…**; click a step in its row of steps to go to it.
+[[B]] (**Build › Timeline**) opens the timeline under the model: the build from an empty baseplate to the finished model.
+
+- **Start** and **End** ([[Home]], [[End]]) go to the empty baseplate and the finished model.
+- **Back** and **Next** ([[Left]], [[Right]]) go a step at a time; click a box in the row of steps to go to that step.
+- **Play** ([[Space]]) builds it, and **Reverse** takes it apart; **1x** sets the speed.
+- The order button chooses what it plays: **Build order**, the way you would put it together; **As made**, the order the parts were placed in; **History**, every change; or **Author's steps**.
+- **Instructions** opens the booklet, and **Done** puts the timeline away.
+
+In **Author's steps**, a row of buttons under it changes the step showing: **Earlier**, **Later**, **Merge with next**, **Delete step**, **New step from selection** and **Move to step…**. The **Booklet** row changes how the step is printed: see [Booklet layout](/docs/booklet-layout#booklet-by-hand).
 
 <!-- covers
 ui:build animation
@@ -40,111 +73,37 @@ ui:build animation
 
 ### The author's steps {#authors-steps}
 
-A model made in Studio, LDCad or LeoCAD keeps its author's own steps: the timeline opens in **Author's steps**, and the booklet follows them.
+A model made in Studio, LDCad or LeoCAD keeps its author's own steps: the timeline opens in **Author's steps**, and the booklet follows them. The steps you make with [[E]] are your model's author's steps too.
 
 <!-- covers
 ui:the author's steps
 -->
 
+### A step's name {#step-name}
+
+A step can have a name, as in Studio: **Name…** in the timeline's **Booklet** row, or **Build › Build steps › Name the step…** ([[Shift+F2]]), names the step the timeline is on, "Build the cockpit". The timeline says it after the step's number, **Build it** under the number, and the booklet beside the number on its page. Clear the words to take it off. Each is one Undo, and the name is saved with the step in the model's file. A sub-model placed more than once is built in one set of steps, so a name given to one copy's step names that step in every copy, and Brickworks says so. An assistant names a step with edit_steps, a callout's step too.
+
+<!-- covers
+ui:a step's name
+-->
+
 ## The booklet {#booklet}
 
-**Build › Instructions…** ([[Alt+B]], or **Instructions** on the toolbar) lays out a booklet from the steps, as a set's is: a cover, each step's picture with the parts it adds in a box, sub-assemblies built in callouts beside the step they go on, and the parts list at the back. It opens in its own tab, ready to print.
+**Build › Instructions…** ([[Alt+B]], or **Instructions** on the toolbar or the timeline) lays the booklet out from the steps and opens it in its own tab.
 
-<!-- covers
-ui:the booklet
--->
+To change how a step is printed, the paper, the cover or the layout of a page, see [Booklet layout](/docs/booklet-layout).
 
-![A page of a building instructions booklet made by Brickworks.](/img/booklet-720.webp "A booklet page: each step's picture and the parts it adds.")
+## Save it as a PDF or pictures {#save}
 
-### Each step by hand {#booklet-by-hand}
+At the top of the booklet:
 
-The timeline's **Booklet** row, or **Build › Booklet page**, changes how the step the timeline is on is printed: turn the view, look from higher or lower, use the window's view, zoom in or out (in the menu these are under **Step's view**), bigger or smaller on the page, start a new page or have a page alone, show its parts box or not, build its sub-assembly in a callout, and how many steps go on a page. **Outline new parts** outlines each step's new parts in orange.
+- **Print** prints it.
+- **Save as PDF** saves it as one PDF, its type in the file, so it reads and prints the same on any computer. Its words are words, so a reader can find and copy a step number or a part's element number.
+- **Save pages as PNG** saves a .zip of a picture a page, at 300 dots an inch.
 
-On a step inside a callout, **Turn left**, **Turn right**, **Higher**, **Lower**, **This view** and **Usual view** turn that step's picture alone, from the way the callout faces, and the steps after it in the callout until turned again. The turn is saved in the sub-model's file as a ROTSTEP, as LPub reads it.
+The booklet's own page is 269 x 199 mm on its side, which fits A4 and US Letter turned on their side with a margin to spare, so one PDF prints on both.
 
-<!-- covers
-ui:the booklet by hand
--->
-
-### Real size, colours, pulled out and finished {#booklet-extras}
-
-The first step to use each straight Technic axle or beam shows it at its real size in a box under the step number, with its length in studs in a ring. Lay the part on the printed page to check it. It prints true at 100% scale in the PDF and the PNG pages.
-
-On **Build › Booklet page**, for the step the timeline is on:
-
-- **Pull out the selected parts** draws them 2 studs out, the way they go in, with a red arrow pointing back in. With nothing selected it pulls out all of the step's new parts.
-- **Colour guide** lists the step's colours under its number.
-- **1:1 guide** puts the selected parts at real size. On a step that has a guide, it takes the guide away.
-- **Sub-model preview** shows a sub-assembly that is built on its own pages finished, on the first of those pages. It is on until you turn it off.
-
-Press a command again to put the step back as it was. Each change is one Undo and is saved with the model. Claude can set each one with `edit_booklet`. With `booklet_page` it sees a page as Instructions draws it and its PDF prints it.
-
-Everything you set for a step comes back when the model is opened again, on that step, in a sub-model's steps too. A pull follows its parts into the sub-models that build them, each part to the first step that puts it in. If the file was changed since, so that a pull on a step the booklet shows matches none of its parts, the line stays in the file and the open says so: "the pull on step 1 of the model matches no step now, kept in the file". Taking a step's last part off takes its settings with it, and Undo brings both back. A step the file itself has empty keeps its settings in the file, and the booklet shows no page for it.
-
-<!-- covers
-ui:the booklet's Studio extras
-ui:what is set in the booklet kept over an open
--->
-
-### The page: paper, margins, colour {#page-setup}
-
-![Page setup for the booklet: its tabs for the paper, the cover, the header and footer and the steps' colours, with the paper's size, margins and colour.](/docs/img/instructions-page-setup.webp "Build › Booklet page › Page setup… (Ctrl+Shift+B).")
-
-The booklet's own page is 269 x 199 mm on its side. It fits A4 and US Letter turned on their side with a margin to spare, so one PDF prints on both. To print on another paper, or in your own colours, use **Build › Booklet page › Page setup…**:
-
-- **Paper**: the booklet's own, A4, US Letter or A5, and **Orientation**, on its side or upright. The booklet is laid out again on that page, and the PDF's pages are that paper's size.
-- **Margins** keep the steps that far from the paper's edge.
-- **Page colour**, or a **Picture behind** every page, covering it. Step pictures let it show through round the model.
-- **Step numbers** sets how tall a step's number is printed. **Parts pictures** sets how big the parts are drawn in each step's parts box and the parts list.
-
-Each change is made as you choose it, one Undo each, and is saved with the model. A step's real-size guide still prints true on any paper.
-
-To use the same page on another model, type a name and press **Keep as a style**. On the other model, open **Page setup…** and choose the name under **Style**. Claude can do the same with `page_setup`, in one call.
-
-<!-- covers
-ui:the booklet's page setup
--->
-
-### The cover, header, footer and colours {#booklet-look}
-
-**Page setup…** has three tabs. **Page** holds the paper, margins and colour, and a **Header** and **Footer**: a line of your own words at the head of every page but the cover, and at the foot of every page, the cover too. Use the footer for a copyright line or your name.
-
-**Cover** makes the cover yours:
-
-- **Title**, across the top. Left empty, the cover says the model's name.
-- **Under the title**, a smaller line.
-- **Picture**: **Choose…** a picture of your own, shown whole on the cover, or **The model** to draw the finished model again.
-- **Line**, a line of your words over the count of pieces.
-
-**Steps** sets the colour and height of every step's number, the parts box's **frame**, **fill** and **corners** (0 for square), and the colour drawn round the parts each step adds. **Usual colours** puts the booklet's own back.
-
-All of it is saved with the model. A style kept by **Keep as a style** is the look: it carries the colours, the header and footer, and the cover's line and picture to another model. The title and the line under it stay each model's own, so a style never changes them, and neither does putting the booklet's own look back. Claude can set it with `page_setup`: `title`, `subtitle`, `cover_line`, `cover_picture_data`, `header`, `footer`, `box_frame`, `box_fill`, `box_corners`, `number_colour` and `outline_colour`.
-
-Each line of words holds 120 letters; longer words are cut, and Brickworks says so. **Save as PDF** prints Cyrillic, Greek and other scripts as typed, with their fonts in the file. Letters no font it has can draw (emoji, and Japanese on the web) print as **?**, and it names them first. The booklet's own page and its PNG pages show them as typed.
-
-The cover, header, footer and colours are lines in the model's file. Brickworks before this release, and the desktop app up to 0.19.0, do not know them and leave them out when they save the model. Open and save a model you have set up this way only in this release or a later one. In a model made of sub-models, the page belongs to the main model. Words or a page set up inside a sub-model stay in that sub-model as they were, with the picture they name.
-
-<!-- covers
-ui:the booklet's own cover and colours
--->
-
-### Lay a page out {#lay-out}
-
-**Lay out the page…** on the Booklet row puts the page in your hands: drag its picture, parts list, callout and step number where they go, and a corner to size each. **Add words**, **Add a picture…**, and **Draw an arrow**: drag it, drag its middle to bend it, and set its colour and width. A callout's own pages turn with **Previous** and **Next page**.
-
-Words or a picture turn by the round knob above them (it settles on every 15°), or type **Turn** in degrees; **Opacity** fades them. An arrow bends through as many points as you like: drag the dot in the middle of any stretch to add a bend, and double-click a bend to take it out. Drag a guide out of the ruler along the top or the left; what you drag near it lands on it, and dragging the guide back into its ruler takes it away. Guides are never printed. The PDF and the PNG pages print each turn, fade and bend as the page shows it. Words or a picture turned beside something else are kept off it by their turned outline, as the page draws them.
-
-Claude can do all of it for you over the connector: turn and fade words or a picture, bend an arrow through points, lay guides, and turn a callout's step. Each is one Undo.
-
-Laid out one page the way you like, press **Apply to later pages**: every later page with as many steps gets the same layout, its picture where yours is and drawn no larger than the booklet draws a step, and moved clear of a parts list that grew for a step of many parts. One Undo takes it all back. Set **Per page** first so the pages have the same number of steps.
-
-<!-- covers
-ui:the booklet page by hand
--->
-
-## Save it {#save}
-
-Beside **Print**, the booklet has **Save as PDF** and **Save pages as PNG**, a .zip of a picture a page at 300 dots an inch. The PDF carries its own type, so it reads the same on any computer.
+The PDF prints Latin, Cyrillic, Greek, Hebrew and Arabic letters as you typed them, and emoji in outline. A letter no font here has (Japanese, on the web) prints as **?**, and the message after the save names those letters; the booklet's page and its PNG pages show them as typed.
 
 <!-- covers
 ui:the booklet as a PDF and as PNG pages

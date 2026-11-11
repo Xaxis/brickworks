@@ -1055,7 +1055,12 @@ followed with 2x4 bricks, stands 0.6 inside, and Stability's own verdict says
 standing; a turntable arm over a 2x8 base, standing as built and 1.1 studs
 past the front edge at 90° of the 24-pose sweep, its middle-of-the-base
 counterweight m(1 + 2d) by hand, and the same pose found from a keyed
-animation; and check_design's words. On 2026-10-13 every check was made to
+animation; and check_design's words. And each joint said by its kind
+(drvrecheck F4): "1 joint overloaded", never "stud joint", for a pin; more
+studs only when every joint past its load is on studs, else a second pin off
+its line; the standing line ("stands, 5 studs inside the right edge", its
+studs' load, its tipping) left in English in de, fr and es by nothing but a
+part's name. On 2026-10-13 every check was made to
 fail once by breaking the code it guards (moment about the edge, the tubes,
 Stability's tipping, the sweep's two ways, the floor, the ground edges, the
 links, the hull's sign, the worst-pose pick, the advice's spare, the widen,
