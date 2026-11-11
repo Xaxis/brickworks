@@ -466,11 +466,12 @@ func _odd_names_case() -> void:
 		tree.size(), "" if differ.is_empty() else ": not " + ", ".join(differ.slice(0, 4))],
 		differ.is_empty() and not tree.is_empty())
 	var flags: Array = _utf8_flags(zip_path)
-	_check("F2: the zip says its names are UTF-8 (bit 11) in all %d members' own headers (%d) and the directory's (%d), so Tårn.ldr, 城.ldr, 150° read so: %s" % [
-		int(flags[0]), int(flags[1]), int(flags[2]), ", ".join(["Tårn.ldr", "城.ldr",
+	_check("F2: the zip says its names are UTF-8 (bit 11) in all %d members' own headers (%d) and the directory's (%d), made on Unix (%d), so Tårn.ldr, 城.ldr, 150° read so: %s" % [
+		int(flags[0]), int(flags[1]), int(flags[2]), int(flags[3]), ", ".join(["Tårn.ldr", "城.ldr",
 		"Ferrari 150° Italia.ldr"].map(func(n: String) -> String: return "%s %s" % [n,
 		"in it" if zip.has(n) else "not in it"]))], int(flags[0]) == zip.size()
-		and int(flags[1]) == zip.size() and int(flags[2]) == zip.size() and zip.has("Tårn.ldr")
+		and int(flags[1]) == zip.size() and int(flags[2]) == zip.size()
+		and int(flags[3]) == zip.size() and zip.has("Tårn.ldr")
 		and zip.has("城.ldr") and zip.has("Ferrari 150° Italia.ldr"))
 
 
@@ -506,10 +507,10 @@ func _all_models_case() -> void:
 	var zip_path: String = _newest("zip")
 	var zip: Dictionary = _zip_members(zip_path)
 	var flags: Array = _utf8_flags(zip_path)
-	_check("F2: All my models' zip, saved as Tårn (%s): %s, flagged UTF-8 in %d of %d own headers and %d in the directory" % [
-		saved, ", ".join(zip.keys().map(func(n: String) -> String: return _shown(n))), int(flags[1]), int(flags[0]), int(flags[2])],
-		saved and zip.has("Tårn.ldr") and int(flags[0]) == zip.size() and int(flags[1]) == zip.size()
-		and int(flags[2]) == zip.size())
+	_check("F2: All my models' zip, saved as Tårn (%s): %s, flagged UTF-8 in %d of %d own headers and %d in the directory, %d made on Unix" % [
+		saved, ", ".join(zip.keys().map(func(n: String) -> String: return _shown(n))), int(flags[1]), int(flags[0]), int(flags[2]),
+		int(flags[3])], saved and zip.has("Tårn.ldr") and int(flags[0]) == zip.size()
+		and int(flags[1]) == zip.size() and int(flags[2]) == zip.size() and int(flags[3]) == zip.size())
 
 
 ## F3: of two sections of one key, each file the twin the model is built
@@ -680,9 +681,10 @@ static func _shown(name: String) -> String:
 	return out if out.length() <= 40 else "%s… (%d bytes)" % [out.left(24), name.to_utf8_buffer().size()]
 
 
-## A zip's members, and how many of them its own headers and its directory
-## flag as named in UTF-8 (bit 11), read from its bytes: [members, own,
-## directory].
+## A zip's members, how many of them its own headers and its directory flag
+## as named in UTF-8 (bit 11), and how many the directory says were made on
+## Unix (unzip reads a name made on MS-DOS as code page 437, bit 11 or
+## not), read from its bytes: [members, own, directory, Unix].
 static func _utf8_flags(path: String) -> Array:
 	var bytes: PackedByteArray = FileAccess.get_file_as_bytes(path)
 	var own: int = 0
@@ -692,6 +694,7 @@ static func _utf8_flags(path: String) -> Array:
 			own += 1
 		at += 30 + bytes.decode_u16(at + 26) + bytes.decode_u16(at + 28) + bytes.decode_u32(at + 18)
 	var listed: int = 0
+	var unix: int = 0
 	var members: int = 0
 	if bytes.size() >= 22 and bytes.decode_u32(bytes.size() - 22) == 0x06054b50:
 		members = bytes.decode_u16(bytes.size() - 22 + 10)
@@ -701,8 +704,10 @@ static func _utf8_flags(path: String) -> Array:
 				break
 			if bytes.decode_u16(at + 8) & 0x0800:
 				listed += 1
+			if bytes.decode_u16(at + 4) >> 8 == 3:
+				unix += 1
 			at += 46 + bytes.decode_u16(at + 28) + bytes.decode_u16(at + 30) + bytes.decode_u16(at + 32)
-	return [members, own, listed]
+	return [members, own, listed, unix]
 
 
 func _touch(at: Vector2, down: bool) -> void:

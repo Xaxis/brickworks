@@ -133,6 +133,14 @@ static func pack(text: String, thumbnail: PackedByteArray, parts: int,
 ## Without it a reader takes a name as code page 437: tårn.ldr unzipped as
 ## t├Ñrn.ldr, 城.ldr as σƒÄ.ldr (sereview F2). The names are UTF-8 always.
 const UTF8_NAMES := 0x0800
+## Made by Unix, zip 2.0 (APPNOTE 4.4.2), as Python's zipfile and Info-ZIP's
+## zip say on Linux. Said MS-DOS (0), unzip took the names as code page 437
+## whatever bit 11 said: 150°.ldr unzipped as 150┬░.ldr (Debian's UnZip
+## 6.00, 2026-11-11), Python's own zip read so too once made "MS-DOS".
+const MADE_BY := 0x0314
+## Each member a plain file, rw-r--r-- (S_IFREG | 0644 in the high half),
+## the mode unzip gives it, as made by Unix.
+const FILE_MODE := 0x81A4 << 16
 
 
 ## A zip of [param members], [[name, bytes], …], each deflated; a member
@@ -181,7 +189,7 @@ static func zip(members: Array) -> PackedByteArray:
 		var central := PackedByteArray()
 		central.resize(46)
 		central.encode_u32(0, 0x02014b50)
-		central.encode_u16(4, 20)
+		central.encode_u16(4, MADE_BY)
 		central.encode_u16(6, 20)
 		central.encode_u16(8, UTF8_NAMES)
 		central.encode_u16(10, method)
@@ -191,7 +199,8 @@ static func zip(members: Array) -> PackedByteArray:
 		central.encode_u32(20, packed.size())
 		central.encode_u32(24, data.size())
 		central.encode_u16(28, name.size())
-		# Extra field, comment, disk, internal and external attributes: none.
+		# Extra field, comment, disk and internal attributes: none.
+		central.encode_u32(38, FILE_MODE)
 		central.encode_u32(42, out.size())
 		directory.append_array(central)
 		directory.append_array(name)
