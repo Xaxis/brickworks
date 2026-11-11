@@ -6971,6 +6971,33 @@ msgstr "omitidos: %s"
 msgid "no inventory is known for %s"
 msgstr "no se conoce el inventario de %s"
 
+msgid "%s marked missing came to more than the copies kept hold, and the rest is no longer marked: %s%s"
+msgstr "%s marcados como que faltan superaban lo que tienen las copias guardadas, y el resto ya no está marcado: %s%s"
+
+msgid "%s: %d of %s in colour %d"
+msgstr "%s: %d de %s en color %d"
+
+msgid "the inventory of %s could not be read"
+msgstr "no se pudo leer el inventario de %s"
+
+msgid "the inventories of %s could not be read"
+msgstr "no se pudieron leer los inventarios de %s"
+
+msgid "its marks are kept as they were"
+msgstr "sus marcas se mantienen como estaban"
+
+msgid "their marks are kept as they were"
+msgstr "sus marcas se mantienen como estaban"
+
+msgid "%s is no longer in your Rebrickable lists: it went, with its %s marked missing"
+msgstr "%s ya no está en tus listas de Rebrickable: se quitó, con sus %s marcadas como que faltan"
+
+msgid "%s are no longer in your Rebrickable lists: they went, with their %s marked missing"
+msgstr "%s ya no están en tus listas de Rebrickable: se quitaron, con sus %s marcadas como que faltan"
+
+msgid "%s are no longer in your Rebrickable lists: they went, with the parts marked missing in them"
+msgstr "%s ya no están en tus listas de Rebrickable: se quitaron, con las piezas marcadas como que faltan"
+
 msgid "building from the parts of %s"
 msgstr "construyendo con las piezas de %s"
 

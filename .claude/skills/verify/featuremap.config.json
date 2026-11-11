@@ -1646,7 +1646,14 @@
       "kind": "cli",
       "label": "part facts",
       "entry": "tools/web/part_facts.mjs",
-      "reach": "node tools/web/part_facts.mjs OUT.json   (deploy.sh writes _part_facts.json beside /api/share)",
+      "reach": "node tools/web/part_facts.mjs OUT.json   (tools/package_api.sh writes _part_facts.json once and puts it beside every function)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "function packaging",
+      "entry": "tools/package_api.sh",
+      "reach": "tools/package_api.sh OUT [--export=build/web] [ROUTE...]   (deploy.sh's functions, each with the catalogue's facts beside it, checked by tools/web/packaged_facts.mjs; tests/test_packaged_facts.py)",
       "area": "web"
     },
     {
