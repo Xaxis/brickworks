@@ -527,8 +527,9 @@ func _said_by_kind() -> void:
 		Language.apply(code)
 		var english: Array = []
 		for line: String in lines:
+			# A line with no translation at all is all of it English.
 			var left: Array = Language.left_in_english(line).filter(func(words: String) -> bool:
-				return words != name_words)
+				return words != name_words) if not Language.says(line).is_empty() else [line]
 			print("    %s: %s -> %s%s" % [code, line, Language.says(line),
 				"" if left.is_empty() else "  (English: %s)" % ", ".join(left)])
 			english.append_array(left)
