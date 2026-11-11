@@ -1,7 +1,7 @@
 ---
 tools: parts_list, edit_collection
 panels: CollectionDialog#my-collection
-ai: The sets and parts a person owns, kept with their account: what a model needs that they lack, and what they can build now. parts_list which=need lists what is missing, which=buildable what the collection can build, which=compare a= b= what two sets or models share and what to buy to build b from a. edit_collection adds the loose parts a person shows in a photo of their pile, in one call, each lot marked as the session's for the person to keep or take back; it never changes their sets or their own lots. edit_collection missing= puts how many of each named part a set they own is missing to a count, all its copies together, and says each change as was N, now M so it can be put back; none=true says a set has nothing missing only while nothing is marked, and is refused otherwise: the lots are named to unmark them; missing= is sent alone, not with add= or remove=.
+ai: The sets and parts a person owns, kept with their account: what a model needs that they lack, and what they can build now. parts_list which=need lists what is missing, which=buildable what the collection can build, which=compare a= b= what two sets or models share and what to buy to build b from a. edit_collection adds the loose parts a person shows in a photo of their pile, in one call, each lot marked as the session's for the person to keep or take back; it never changes their sets or their own lots. edit_collection missing= puts how many of each named part a set they own is missing to a count, all its copies together, and says each change as was N, now M so it can be put back; none=true says a set has nothing missing only while nothing is marked, and is refused otherwise, naming what is: the lots are named to unmark them, or none=true is sent again with marked= the number of lots it named; missing= is sent alone, not with add= or remove=.
 rules:
   - The collection comes from Rebrickable (with the person's own key), a BrickLink or Rebrickable list, or typed in.
 title: My collection
@@ -20,7 +20,7 @@ On the **What I own** page, any of these:
 - Type set numbers (*10237-1, 6020*) and press **Add sets**.
 - **Photo…** finds a set from a photo of its box, its booklet's cover or a minifigure, and offers the three it thinks most likely. The photo goes to Brickognize, a third party, and Brickworks says so the first time. A minifigure is kept by its BrickLink number, its parts not counted.
 - **Rebrickable CSV…** or **BrickLink XML…** reads a list you exported there.
-- From your Rebrickable account: your own **Rebrickable API key** and **User token** (or username and password), then **Fetch**. The key goes only to Rebrickable and is not kept. Fetching again replaces what came from Rebrickable before.
+- From your Rebrickable account: your own **Rebrickable API key** and **User token** (or username and password), then **Fetch**. The key goes only to Rebrickable and is not kept. Fetching again replaces what came from Rebrickable before. A set's missing parts stay marked, as far as the copies Rebrickable lists hold them; Brickworks says if any could not be.
 
 Each set is counted out into its parts.
 
@@ -44,7 +44,7 @@ Under *What I own*, the **Loose parts** row adds a tub of bricks a lot at a time
 
 Each lot is listed under *Loose parts*, to change its count or remove it.
 
-**From a photo, with your AI:** show your AI a photo of your pile and ask it to add what it sees. **Keep them** makes the lots it added yours; **Take back what Claude added** (or whichever AI it was) takes exactly those off. It never changes your sets or your own lots.
+**From a photo, with your AI:** show your AI a photo of your pile and ask it to add what it sees. **Keep them** makes the lots it added yours; **Take back what Claude added** (or whichever AI it was) takes exactly those off. Adding them never changes your sets or your own lots.
 
 <!-- covers
 ui:loose parts in my collection
@@ -56,6 +56,8 @@ lib:a session's loose parts over mcp
 Beside a set, choose **Missing parts…** and say how many of each are missing (**All missing** marks every part, to count back in what you find). What do I need? and What can I build? then count only what is there, and **Build from it** leaves them out of the bin.
 
 **Closest to whole** lists your sets with parts missing, nearest to complete first, and **What it needs** says what each is short of, less any loose parts that make it up.
+
+Your AI can mark them too: tell it what a set is missing, or that you found it all, and it says each part it changed, as it was and as it is now, so any change can be put back.
 
 <!-- covers
 ui:a set from a photo

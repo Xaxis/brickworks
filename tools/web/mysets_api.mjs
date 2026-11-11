@@ -227,6 +227,43 @@ try {
   const asOlder = (c) => ({ sets: c.sets, parts: c.parts.map((p) => (p.by ? { part: p.part, colour: p.colour, qty: p.qty, src: "hand" } : p)) });
   check(same(last.sets, older.sets) && same(asOlder(last).parts, asOlder(older).parts),
     `the collection lot for lot the older one (the session's lot kept as the person's): ${JSON.stringify(last.parts)}`);
+
+  // lbfix2 (lbcheck 6): a fetch put two entries' marks together on one copy
+  // whatever that copy holds, so a 1 + 1 spread was 2 of a part it has 1 of.
+  console.log("\n8. two entries of one set, each marked, put together by a Rebrickable fetch that keeps one copy");
+  const goblet = { part: "2343", colour: 47 }; // 3931-1 has 1 of it
+  const tub = { part: "3003", colour: 29 }; // and 1 of this
+  const mark = (src, lot, was, qty) => call(token, { method: "POST", body: { op: "missing", id: id(), set: "3931-1", src,
+    lots: [{ ...lot, was, qty }] } });
+  const missingOf = (entry, lot) => (entry?.missing || []).filter((m) => m.part === lot.part && m.colour === lot.colour)
+    .reduce((sum, m) => sum + m.qty, 0);
+  await call(token, { method: "POST", body: { from: "sets", text: "3931-1", id: id() } });
+  await call(token, { method: "POST", body: { from: "rebrickable_api", mode: "add", id: id(), sets: [["3931-1", 1, false]], parts: [] } });
+  await mark("hand", goblet, 0, 1);
+  await mark("rebrickable", goblet, 0, 1);
+  await mark("hand", tub, 0, 1);
+  const spread = (await call(token)).body;
+  check(missingOf(setOf(spread, "3931-1", "hand"), goblet) === 1 && missingOf(setOf(spread, "3931-1", "rebrickable"), goblet) === 1,
+    "3931-1 typed and fetched (two copies), 1 of 2343/47 marked on each and 1 of 3003/29 on the typed one");
+  const one = await call(token, { method: "POST", body: { from: "rebrickable_api", mode: "replace", id: id(),
+    sets: [["3931-1", 1, false]], parts: [] } });
+  const kept1 = setOf(one.body, "3931-1", "rebrickable");
+  check(one.status === 200 && !setOf(one.body, "3931-1", "hand") && missingOf(kept1, goblet) === 1 && missingOf(kept1, tub) === 1,
+    `a fetch that lists one copy keeps it marked as far as one copy holds: 2343/47 ${missingOf(kept1, goblet)} (it has 1), `
+    + `3003/29 ${missingOf(kept1, tub)} (${one.status}, ${JSON.stringify(kept1?.missing)})`);
+  check(same(one.body.done?.unkept, [{ set: "3931-1", ...goblet, qty: 1 }]) && one.body.done?.unkept_lots === 1,
+    `...and the one it could not keep is said: ${JSON.stringify(one.body.done?.unkept)}`);
+  await call(token, { method: "POST", body: { from: "bricklink_xml", id: id(), text:
+    "<INVENTORY><ITEM><ITEMTYPE>S</ITEMTYPE><ITEMID>3931-1</ITEMID><QTY>1</QTY></ITEM></INVENTORY>" } });
+  await call(token, { method: "POST", body: { from: "sets", text: "3931-1", id: id() } });
+  await mark("hand", goblet, 0, 1);
+  const carried = await call(token, { method: "POST", body: { from: "rebrickable_api", mode: "replace", id: id(),
+    sets: [["3931-1", 1, false]], parts: [] } });
+  const rb = setOf(carried.body, "3931-1", "rebrickable");
+  const bl = setOf(carried.body, "3931-1", "bricklink_xml");
+  check(carried.status === 200 && missingOf(rb, goblet) === 1 && missingOf(bl, goblet) === 1 && !carried.body.done?.unkept,
+    `with a BrickLink list's copy kept too, what one copy cannot hold goes onto it: Rebrickable's ${missingOf(rb, goblet)}, `
+    + `the list's ${missingOf(bl, goblet)}, unkept ${JSON.stringify(carried.body.done?.unkept ?? null)}`);
 } catch (error) {
   console.log(`  FAIL  ${error.stack || error}`);
   failures += 1;

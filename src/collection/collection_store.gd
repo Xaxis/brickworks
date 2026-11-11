@@ -114,7 +114,8 @@ func load_collection() -> String:
 ## changed, and the collection as it is now is taken and shown), or
 ## "unreached" (no answer came, sent again and still none, or it came for
 ## an account no longer signed in: it may have been made all the same);
-## "said" says it in words, empty when done; "body" is the account's answer.
+## "said" says it in words, empty when done; "body" is the account's answer;
+## "offline" is true on a refusal made because Brickworks cannot be reached.
 const DONE := "done"
 const REFUSED := "refused"
 const CONFLICT := "conflict"
@@ -152,7 +153,7 @@ func _change_now(body: Dictionary) -> Dictionary:
 		await load_collection()
 		if offline:
 			return {"kind": REFUSED, "said": "could not reach Brickworks, so nothing was changed: what is "
-				+ "shown is the copy on this device", "body": {}}
+				+ "shown is the copy on this device", "body": {}, "offline": true}
 	var sent: Dictionary = body.duplicate()
 	sent["id"] = "%d-%s" % [int(Time.get_unix_time_from_system() * 1000.0),
 		Crypto.new().generate_random_bytes(8).hex_encode()]
@@ -189,7 +190,8 @@ func _change_now(body: Dictionary) -> Dictionary:
 
 
 ## An import: {"from": ..., "text" or "sets"/"parts", "mode"}. Returns
-## {"error", "imported", "left_out", "clamped"} ([method clamped_words]).
+## {"error", "imported", "left_out", "clamped", "unkept"} ([method
+## clamped_words], [method unkept_words]).
 ## Sent again with no answer, it is told what the first try did.
 func add(payload: Dictionary) -> Dictionary:
 	var done: Dictionary = await change(payload)
@@ -197,7 +199,7 @@ func add(payload: Dictionary) -> Dictionary:
 		return {"error": done["said"], "imported": {}, "left_out": [], "clamped": ""}
 	var body: Dictionary = done["body"]
 	return {"error": "", "imported": body.get("imported", {}), "left_out": body.get("left_out", []),
-		"clamped": clamped_words(body)}
+		"clamped": clamped_words(body), "unkept": unkept_words(body)}
 
 
 ## Loose lots added, each {"part", "colour", "qty"}, and "by" and "chat" for
@@ -327,6 +329,27 @@ static func clamped_words(body: Variant) -> String:
 				int(one.get("over", 0))])
 	var lots: int = int(done.get("clamped_lots", held.size()))
 	return "%s stopped at 100,000, the most one lot holds, and the rest was not kept: %s%s" % [
+		Counted.of(lots, "lot"), ", ".join(named), "" if lots <= named.size() else ", …"]
+
+
+## What a fetch could not keep marked missing, in words, or "": parts marked
+## on two copies of a set that it put together on one, more than that copy
+## holds and more than the person's other copy of it could take
+## (api/collection.js, done.unkept: lbfix2).
+static func unkept_words(body: Variant) -> String:
+	if not body is Dictionary or not (body as Dictionary).get("done") is Dictionary:
+		return ""
+	var done: Dictionary = body["done"]
+	var held: Array = done["unkept"] if done.get("unkept") is Array else []
+	if held.is_empty():
+		return ""
+	var named := PackedStringArray()
+	for one: Variant in held.slice(0, 3):
+		if one is Dictionary:
+			named.append("%s: %d of %s in colour %d" % [str(one.get("set", "")), int(one.get("qty", 0)),
+				str(one.get("part", "")), int(one.get("colour", 0))])
+	var lots: int = int(done.get("unkept_lots", held.size()))
+	return "%s marked missing came to more than the copies kept hold, and the rest is no longer marked: %s%s" % [
 		Counted.of(lots, "lot"), ", ".join(named), "" if lots <= named.size() else ", …"]
 
 

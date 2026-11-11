@@ -99,7 +99,12 @@ which models they could build from what they have. Added 2026-10-12.
   the inventory less these), sent from the counts shown: a count changed
   elsewhere meanwhile is refused (409) with the collection as it is. Every
   other change keeps the marks (adds, counts, retyping, a Rebrickable
-  replace carries them to the re-added set, an older app's PUT). The pool,
+  replace carries them to the re-added set, an older app's PUT). A replace
+  that puts two entries of a set together keeps each part's marks only as
+  far as the copies kept hold it (the set's inventory, read from the shards
+  by `readShard`; with none, what the copies taken out were marked), the
+  rest onto the person's other copy of the set, else said (`done.unkept`,
+  `CollectionStore.unkept_words`, shown by the fetch's line: lbfix2). The pool,
   and so What do I need? and What can I build?, count only what is there.
   Closest to whole lists the sets with parts missing by how many pieces are
   short (the marked less what loose parts make up; another set's parts never
@@ -122,13 +127,21 @@ which models they could build from what they have. Added 2026-10-12.
   6141's); a write is one `missing` op per entry, the count spread over the
   entries as far as each holds the part, under the inventory's number with
   the part's other numbers there put to 0; every reply says each change
-  "was N, now M"; none=true is refused while anything is marked ("name the
-  lots to unmark") and says "Nothing to change" when nothing is; colours
-  and counts are checked before anything is looked up (`_lot_given`: whole
-  counts, known codes); with add= or remove= it is refused ("send them in
-  separate calls"); a part not in the set's inventory or a count past what
-  its copies have is refused. The read back lists each set once with its
-  copies and its marks. Signed out it is refused, as all of
+  "was N, now M", and what of now another device or tab made meanwhile;
+  none=true is refused while anything is marked ("name the lots to
+  unmark"), and sent again with marked= the count of lots it named unmarks
+  them all at once (a stale count refused with the count now), and says
+  "Nothing to change" when nothing is; every reply lists 60 lots and then
+  "and N more lots, M pieces" (`_bounded`, lbfix2); colours and counts are
+  checked before anything is looked up (`_lot_given`: whole counts, known
+  codes); a number is matched to the set's own rows first, then as the
+  library resolves it (`_set_key`: 3048c and 2909c03, which the library
+  lacks, are their rows, not BrickLink's 3048b and 74741-f1); with add= or
+  remove= it is refused ("send them in separate calls"); a part not in the
+  set's inventory or a count past what its copies have is refused, naming
+  the number asked; out of reach it says so once ("Brickworks could not be
+  reached", `AppTools.OFFLINE`), as add= does. The read back lists each set
+  once with its copies and its marks. Signed out it is refused, as all of
   edit_collection is. A tab a newer build has followed still marks at the
   account but leaves the copy on this device alone (`NewerBuild.may_write`).
 - `build from a set's parts` (`src/collection/set_bin.gd`, `src/ui/parts_bin.gd`,
@@ -474,14 +487,16 @@ Proves it when:
   (from git) reading every lot, importing to Rebrickable's lot, and taking a
   set out with every mark kept, refused from a stale copy. Look at the pictures: `mybricks_row`, `_like`,
   `_loose`, `_need`, `_build`, `_claude`, `_taken_back`.
-- `mysets_api.mjs` ends `every check passed` (29 checks): 7140-1 typed and 12
+- `mysets_api.mjs` ends `every check passed` (33 checks): 7140-1 typed and 12
   lots marked in one op; refusals (a stale count 409, a set not there, a lot
   twice, a bad colour or part, a count over 100,000, no lots) changing
   nothing; the marks kept through a lot added, a count set, a Keep, a retype,
   a Rebrickable replace (carried), another set's remove_set and an older
   app's PUT; one id sent twice made once; a minifigure kept, a set number
   refused as one, taken out both ways; every mark off and the collection
-  back lot for lot.
+  back lot for lot; 3931-1 typed and fetched, 1 of 2343/47 marked on each,
+  a replace that keeps one copy keeps 1 and says the other (`unkept`), and
+  with a BrickLink list's copy kept too, puts it there (lbfix2).
 - `mysets_probe` (tools/relay_probe.sh mysets, with `-- --shots=DIR`) ends `all
   good`: the notice first, cancelled sending nothing; a box photo's 7140-1
   added in 3 actions, both endpoints asked once each (a JPEG, top 3, no

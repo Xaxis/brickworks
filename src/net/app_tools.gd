@@ -260,7 +260,8 @@ the parts in both and in one only, and what to buy to build b from a.
 I own keeps them. add= lots seen in a photo of their pile (part, colour, \
 count), all in one call, each marked as the session's for the person to \
 keep or take back; remove= takes the session's own lots off; with neither \
-it reads the collection back. Their sets and their own lots are never changed.
+it reads the collection back; missing= marks a set's missing parts, each \
+change said as was N, now M. Nothing else of theirs is changed.
  - render_model: a picture or a turntable worth keeping, Quick, Good or \
 Best, up to 4K, as the window draws it or as a product shot, or kind="build" \
 the model built up step by step as a video, saved where Render saves; a \
@@ -890,13 +891,15 @@ func definitions() -> Array:
 				+ "take back with one button. remove=[{part, color, count}] takes pieces off "
 				+ "lots this chat added (count omitted: the whole lot). With neither, it reads "
 				+ "the collection back, this chat's lots apart. Their sets and their own lots "
-				+ "are theirs: this never changes them. parts_list which=\"need\" then measures "
+				+ "are theirs: add= and remove= never change them; missing= changes only the marks it "
+				+ "names, each said as was N, now M. parts_list which=\"need\" then measures "
 				+ "the model against it, and which=\"buildable\" ranks what they can build. "
 				# localbricks (APP_UX6 #8): a set's marks.
 				+ "missing={set, lots: [{part, color, count}]} puts how many of each named part a set they "
 				+ "own is missing to count, all its copies together (0 unmarks it), as its Missing parts… "
 				+ "page does; the reply says each change as was N, now M, to put back. none=true says a set "
-				+ "has nothing missing, and is refused while anything is marked: name those lots, count 0. "
+				+ "has nothing missing: refused while anything is marked, naming it; then name those lots, "
+				+ "count 0, or send none=true with marked= the number of lots it said, to unmark them all. "
 				+ "Send missing= alone, not with add= or remove=. What do I need?, the pool and a bin built "
 				+ "from the set then count only what is there."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
@@ -927,7 +930,9 @@ func definitions() -> Array:
 									"description": "how many of it are missing, all the set's copies together; 0 unmarks it"},
 							}}},
 						"none": {"type": "boolean",
-							"description": "the set has nothing missing; refused while any lot is marked (name those, count 0)"},
+							"description": "the set has nothing missing; refused while any lot is marked (name those, count 0, or send marked=)"},
+						"marked": {"type": "integer",
+							"description": "with none=true: how many lots its refusal said were marked; all of them unmarked while that is still so"},
 					}},
 			}},
 		},
@@ -3805,15 +3810,8 @@ func _edit_collection(input: Dictionary) -> String:
 	if not own.is_empty():
 		return "Nothing was changed: %s. edit_collection with nothing reads back what is there." % "; ".join(own)
 	var done: Dictionary = await mine.change_lots(add_lots, down_lots)
-	if done["kind"] == CollectionStore.UNREACHED:
-		return ("No answer came, so it may have been made (%s). edit_collection with nothing reads back "
-			+ "what is there: read it before sending this again.") % done["said"]
-	if done["kind"] == CollectionStore.CONFLICT:
-		return ("Nothing was changed: %s. The collection changed since this chat was shown it; "
-			+ "edit_collection with nothing reads back what is there now.") \
-			% str((done["body"] as Dictionary).get("error", done["said"]))
 	if done["kind"] != CollectionStore.DONE:
-		return "Nothing was changed: %s." % done["said"]
+		return _not_made(done, "this chat was shown it")
 	var said := PackedStringArray()
 	if not add_lots.is_empty():
 		var pieces: int = 0
@@ -3877,7 +3875,7 @@ static func _collection_lot(given: Variant, library: PartLibrary, adding: bool) 
 ## to 100,000, [param omitted] when none is given (null: one must be). Then
 ## the part, by its LDraw number or BrickLink's (PartLibrary.by_shop):
 ## "part" is "" when the library has none numbered so, "asked" what was
-## named, which only a set's marks take further, to the set's own inventory.
+## named, which a set's marks match to the set's own rows before "part".
 static func _lot_given(given: Variant, library: PartLibrary, least: int, omitted: Variant) -> Variant:
 	if not given is Dictionary:
 		return "a lot is {part, color, count}"
@@ -4012,12 +4010,18 @@ const NAME_LOTS := ("Name each part as the set's inventory lists it (search_part
 ##
 ##   Changed only as named, and said: each lot named is put to the count
 ##   asked, and the reply lists each change "was N, now M", so the person or
-##   their AI can put it back. none=true says a set has nothing missing, and
-##   is refused while anything is marked: the lots are named to unmark them.
+##   their AI can put it back, and what of "now" another device or tab made
+##   meanwhile. none=true says a set has nothing missing, and is refused
+##   while anything is marked, naming it: the lots are named to unmark them,
+##   or none=true sent again with marked= the number of lots it named, which
+##   unmarks them all while that is still so (lbcheck L2). Every reply lists
+##   at most SHOWN_LOTS lots, then counts the rest, as the read back does.
 ##
 ##   Validated at the edge: every colour and count checked before anything is
-##   looked up (_lot_given); a part the library lacks is matched to the set's
-##   inventory by its number only when that is all that was wrong.
+##   looked up (_lot_given). A number is matched to the set's own rows first,
+##   then as the library resolves it (an old number, BrickLink's): the set's
+##   inventory is the truth for a mark (lbcheck M1). Every refusal names the
+##   number asked.
 ##
 ##   One thing per call: with add= or remove= it is refused.
 func _collection_marks(mine: CollectionStore, library: PartLibrary, input: Dictionary) -> String:
@@ -4034,11 +4038,16 @@ func _collection_marks(mine: CollectionStore, library: PartLibrary, input: Dicti
 		return "missing.set is a set's number, like 7140-1."
 	var none: Variant = (asked as Dictionary).get("none")
 	var given: Variant = (asked as Dictionary).get("lots")
+	var seen: Variant = (asked as Dictionary).get("marked")
 	if none != null and not none is bool:
 		return "missing.none is true or false."
 	if none == true and given != null:
 		return ("Nothing was changed: none=true says the set has nothing missing and takes no lots; send one or "
 			+ "the other.")
+	if seen != null and (none != true or not (seen is int or seen is float) or float(seen) != floorf(float(seen))
+			or float(seen) < 0 or float(seen) > 100000):
+		return ("Nothing was changed: missing.marked goes with none=true, the number of lots its refusal said were "
+			+ "marked.")
 	var named: Array = []
 	if none != true:
 		if not given is Array or (given as Array).is_empty():
@@ -4049,7 +4058,9 @@ func _collection_marks(mine: CollectionStore, library: PartLibrary, input: Dicti
 		for n: int in (given as Array).size():
 			var lot: Variant = _lot_given(given[n], library, 0, null)
 			if lot is String:
-				bad.append("lot %d: %s" % [n + 1, lot])
+				var part: String = str((given[n] as Dictionary).get("part", "")).strip_edges() \
+					if given[n] is Dictionary else ""
+				bad.append("lot %d%s: %s" % [n + 1, " (%s)" % part if not part.is_empty() else "", lot])
 			else:
 				named.append(lot)
 		if not bad.is_empty():
@@ -4090,44 +4101,61 @@ func _collection_marks(mine: CollectionStore, library: PartLibrary, input: Dicti
 			var key: String = Collection.key_of(str(lot["part"]), int(lot["colour"]), library)
 			if not spelled.has(key):
 				spelled[key] = [str(lot["part"]), int(lot["colour"])]
-	if none == true:
-		if marked.is_empty():
-			return "Nothing to change: %s has nothing marked missing." % title
-		var lines := PackedStringArray()
-		for key: String in _sorted_keys(marked):
-			lines.append("%s: %d" % [_marked_words(key, spelled, library), int(marked[key])])
-		return ("Nothing was changed: %s has %s marked missing (%s). none=true says a set has nothing missing "
-			+ "only when nothing is marked: name the lots to unmark, each with count 0, and the reply says what each "
-			+ "was.") % [title, Counted.of(marked.size(), "lot"), "; ".join(lines)]
-	# Each lot named, matched to the set by its key, at a count its copies hold.
 	var wanted: Dictionary = {}
 	var order: Array = []
 	var bad := PackedStringArray()
-	for n: int in named.size():
-		var lot: Dictionary = named[n]
-		var key: String = Collection.key_of(str(lot["part"]), int(lot["colour"]), library) \
-			if not str(lot["part"]).is_empty() else Collection.key_of(str(lot["asked"]), int(lot["colour"]), library)
-		if str(lot["part"]).is_empty() and not spelled.has(key):
-			bad.append("lot %d: %s" % [n + 1, _no_part(str(lot["asked"]))])
-			continue
-		if not spelled.has(key):
-			bad.append("lot %d: %s in colour %d is not in %s's inventory" % [n + 1, lot["part"], int(lot["colour"]),
-				number])
-			continue
-		var most: int = int(per_copy[key][2]) * copies if per_copy.has(key) else int(marked.get(key, 0))
-		if int(lot["qty"]) > most:
-			bad.append("lot %d: %s has %d of %s in colour %d%s, so from 0 to %d of it can be missing" % [n + 1,
-				number, most, spelled[key][0], int(spelled[key][1]),
-				" in its %d copies" % copies if copies > 1 and per_copy.has(key) else "", most])
-			continue
-		if wanted.has(key):
-			bad.append("lot %d: %s in colour %d is named twice" % [n + 1, spelled[key][0], int(spelled[key][1])])
-			continue
-		wanted[key] = int(lot["qty"])
-		order.append(key)
+	if none == true:
+		if marked.is_empty():
+			return "Nothing to change: %s has nothing marked missing." % title
+		# Made whole in one call once what is marked was shown: the count of
+		# lots it was refused with sent back (lbcheck L2). Refused otherwise,
+		# naming what is marked now, bounded as the read back is.
+		if seen == null or int(seen) != marked.size():
+			var pieces: int = 0
+			for key: String in marked:
+				pieces += int(marked[key])
+			var said := PackedStringArray()
+			said.append("Nothing was changed: %s has %s marked missing%s, %s:" % [title, Counted.of(marked.size(), "lot"),
+				"" if seen == null else " now, not the %d sent" % int(seen), Counted.of(pieces, "piece")])
+			var lots: Array = []
+			for key: String in _sorted_keys(marked):
+				lots.append(["  %s: %d" % [_marked_words(key, spelled, library), int(marked[key])], int(marked[key])])
+			said.append_array(_bounded(lots))
+			said.append(("none=true says a set has nothing missing once what is marked was shown: send none=true "
+				+ "with marked=%d to unmark all %s in one call, or name the lots to unmark, each with count 0. The "
+				+ "reply says what was marked.") % [marked.size(), Counted.of(marked.size(), "lot")])
+			return "\n".join(said)
+		for key: String in _sorted_keys(marked):
+			wanted[key] = 0
+			order.append(key)
+	else:
+		# Each lot named, matched to the set by its key, at a count its copies hold.
+		for n: int in named.size():
+			var lot: Dictionary = named[n]
+			var asked_for: String = str(lot["asked"])
+			var key: String = _set_key(lot, spelled, library)
+			if key.is_empty():
+				bad.append("lot %d: %s" % [n + 1, _no_part(asked_for) if str(lot["part"]).is_empty()
+					else "%s%s in colour %d is not in %s's inventory" % [asked_for, " (LDraw's %s)" % lot["part"]
+					if str(lot["part"]) != asked_for else "", int(lot["colour"]), number]])
+				continue
+			var as_asked: String = asked_for if str(spelled[key][0]) == asked_for \
+				else "%s (its inventory's %s)" % [asked_for, spelled[key][0]]
+			var most: int = int(per_copy[key][2]) * copies if per_copy.has(key) else int(marked.get(key, 0))
+			if int(lot["qty"]) > most:
+				bad.append("lot %d: %s has %d of %s in colour %d%s, so from 0 to %d of it can be missing" % [n + 1,
+					number, most, as_asked, int(lot["colour"]),
+					" in its %d copies" % copies if copies > 1 and per_copy.has(key) else "", most])
+				continue
+			if wanted.has(key):
+				bad.append("lot %d: %s in colour %d is named twice" % [n + 1, as_asked, int(lot["colour"])])
+				continue
+			wanted[key] = int(lot["qty"])
+			order.append(key)
 	if not bad.is_empty():
 		return "Nothing was changed: %s. %s" % ["; ".join(bad), NAME_LOTS]
-	# Each entry's lots to write, one op an entry.
+	# Each entry's lots to write, by key: [key, lots, how many more or fewer
+	# it marks there].
 	var writes: Array = []
 	for _entry: Dictionary in entries:
 		writes.append([])
@@ -4159,58 +4187,75 @@ func _collection_marks(mine: CollectionStore, library: PartLibrary, input: Dicti
 				less -= take
 		for e: int in entries.size():
 			if int(after[e]) != int(held[e]):
-				(writes[e] as Array).append_array(_mark_writes(entries[e], key, int(after[e]), spelled[key], library))
-	var sent: int = 0
+				(writes[e] as Array).append([key, _mark_writes(entries[e], key, int(after[e]), spelled[key], library),
+					int(after[e]) - int(held[e])])
+	# One op an entry, or several for more lots than an op takes, each
+	# whole keys.
+	var ops: Array = []
 	for e: int in entries.size():
-		sent += 1 if not (writes[e] as Array).is_empty() else 0
-	if sent == 0:
-		var lines := PackedStringArray()
+		var lots: Array = []
+		var moved: Dictionary = {}
+		for group: Array in writes[e]:
+			if not lots.is_empty() and lots.size() + (group[1] as Array).size() > MOST_MARK_CHANGES:
+				ops.append([e, lots, moved])
+				lots = []
+				moved = {}
+			lots.append_array(group[1])
+			moved[group[0]] = group[2]
+		if not lots.is_empty():
+			ops.append([e, lots, moved])
+	if ops.is_empty():
+		var lines: Array = []
 		for key: String in order:
-			lines.append("%s: %d" % [_marked_words(key, spelled, library), int(before[key])])
-		return "Nothing to change: %s is marked so already (%s)." % [title, "; ".join(lines)]
+			lines.append(["  %s: %d" % [_marked_words(key, spelled, library), int(before[key])], int(before[key])])
+		return "Nothing to change: %s is marked so already:\n%s" % [title, "\n".join(_bounded(lines))]
 	var stopped: Dictionary = {}
+	var stopped_on: Dictionary = {}
 	var made: int = 0
-	for e: int in entries.size():
-		if (writes[e] as Array).is_empty():
-			continue
-		var body: Dictionary = {"op": "missing", "set": number, "lots": writes[e]}
-		var src: String = str((entries[e] as Dictionary).get("src", ""))
+	## key -> how many more (or fewer) this call's ops that were made marked.
+	var ours: Dictionary = {}
+	for op: Array in ops:
+		var body: Dictionary = {"op": "missing", "set": number, "lots": op[1]}
+		var src: String = str((entries[op[0]] as Dictionary).get("src", ""))
 		if not src.is_empty():
 			body["src"] = src
 		var done: Dictionary = await mine.change(body)
 		if done["kind"] != CollectionStore.DONE:
 			stopped = done
+			stopped_on = entries[op[0]]
 			break
 		made += 1
+		for key: String in op[2]:
+			ours[key] = int(ours.get(key, 0)) + int(op[2][key])
+	if made == 0:
+		return _not_made(stopped, "it was read", true)
 	# Said from the collection as the account now has it: what each lot was,
-	# and what it is.
+	# and what it is; and what of that came from somewhere else meanwhile
+	# (another device, a tab, the person's own page), apart from this call's.
 	var now_marked: Dictionary = (mine.collection.marks(library).get(number, {}) as Dictionary).get("missing", {})
-	var changed := PackedStringArray()
-	var already := PackedStringArray()
+	var changed: Array = []
+	var already: Array = []
 	for key: String in order:
 		var was: int = int(before[key])
 		var now: int = int(now_marked.get(key, 0))
+		var theirs: int = now - was - int(ours.get(key, 0))
 		if was != now:
-			changed.append("  %s: was %d, now %d" % [_marked_words(key, spelled, library), was, now])
+			changed.append(["  %s: was %d, now %d%s" % [_marked_words(key, spelled, library), was, now,
+				"" if theirs == 0 else " (%d of it marked meanwhile by another device or tab, not this call)" % theirs
+				if theirs > 0 else " (%d of it unmarked meanwhile by another device or tab, not this call)" % -theirs],
+				now, was])
 		elif now == int(wanted[key]):
-			already.append("%s: %d" % [_marked_words(key, spelled, library), now])
-	if made == 0:
-		if stopped["kind"] == CollectionStore.UNREACHED:
-			return ("No answer came, so it may have been made (%s). edit_collection with nothing reads back what is "
-				+ "there: read it before sending this again.") % stopped["said"]
-		if stopped["kind"] == CollectionStore.CONFLICT:
-			return ("Nothing was changed: %s. The collection changed since it was read; edit_collection with nothing "
-				+ "reads back what is there now.") % str((stopped["body"] as Dictionary).get("error", stopped["said"]))
-		return "Nothing was changed: %s." % stopped["said"]
+			already.append(["  %s: %d" % [_marked_words(key, spelled, library), now], now])
 	var said := PackedStringArray()
 	said.append("%s what %s is marked missing (%s):" % ["Changed" if stopped.is_empty()
 		else "Changed only part of", title, "its %d copies together" % copies if copies > 1 else "its one copy"])
-	said.append_array(changed)
+	said.append_array(_bounded(changed))
 	if not already.is_empty():
-		said.append("Already so: %s." % "; ".join(already))
+		said.append("Already so:")
+		said.append_array(_bounded(already))
 	if not stopped.is_empty():
-		said.append(("The rest was not changed: %s. edit_collection with nothing reads back what is there; "
-			+ "send the rest again from it.") % stopped["said"])
+		said.append("The rest was not changed: %s. edit_collection with nothing reads back what is there; send the rest again from it."
+			% _stopped_words(stopped, stopped_on, entries.size() > 1))
 	var whole: Dictionary = mine.collection.wholeness(_as_one_entry(number, copies, now_marked), record, library)
 	said.append(("%d of its %d pieces are marked missing now%s%s. To put any back, send its count as it was. What do "
 		+ "I need? for it (My collection, Closest to whole) lists what to find; the pool, What do I need?, What can I "
@@ -4218,6 +4263,94 @@ func _collection_marks(mine: CollectionStore, library: PartLibrary, input: Dicti
 		"" if int(whole["loose"]) == 0 else ", %d of them made up by their loose parts" % int(whole["loose"]),
 		"" if int(whole["marked"]) > 0 else ": it is whole"])
 	return "\n".join(said)
+
+
+## The most lots one "missing" op changes (api/collection.js MOST_LOT_CHANGES).
+const MOST_MARK_CHANGES := 2000
+
+
+## How many lots a reply lists before it counts the rest, as the read back does.
+const SHOWN_LOTS := 60
+
+
+## A reply's lots, each [line, how many marked now, and before when it
+## changed]: the first SHOWN_LOTS of them, then how many more and their
+## pieces, as the read back counts what it does not list (lbcheck L2).
+static func _bounded(lots: Array) -> PackedStringArray:
+	var out := PackedStringArray()
+	var pieces: int = 0
+	var was: int = 0
+	for n: int in lots.size():
+		if n < SHOWN_LOTS:
+			out.append(str(lots[n][0]))
+			continue
+		pieces += int(lots[n][1])
+		was += int(lots[n][2]) if (lots[n] as Array).size() > 2 else int(lots[n][1])
+	if lots.size() > SHOWN_LOTS:
+		out.append("  and %d more %s, %s%s: edit_collection with nothing, limit=, lists what is marked" % [
+			lots.size() - SHOWN_LOTS, "lot" if lots.size() - SHOWN_LOTS == 1 else "lots", Counted.of(pieces, "piece"),
+			"" if was == pieces else " now, %d before" % was])
+	return out
+
+
+## What the account said when it did not make an op, in a session's words:
+## its own error, without the op's lot number, which is not the session's.
+static func _account_said(done: Dictionary, strip_lot: bool) -> String:
+	var error: String = str((done.get("body", {}) as Dictionary).get("error", done["said"])) \
+		if done.get("body") is Dictionary else str(done["said"])
+	return RegEx.create_from_string("^lot \\d+: ").sub(error, "") if strip_lot else error
+
+
+## A change the account did not make, said to a session (the lots and the
+## marks alike): nothing was changed, or it may have been, and why; the
+## collection changed since [param since].
+static func _not_made(done: Dictionary, since: String, strip_lot: bool = false) -> String:
+	if done["kind"] == CollectionStore.UNREACHED:
+		return ("No answer came, so it may have been made (%s). edit_collection with nothing reads back what is "
+			+ "there: read it before sending this again.") % done["said"]
+	if done["kind"] == CollectionStore.CONFLICT:
+		return ("Nothing was changed: %s. The collection changed since %s; edit_collection with nothing reads back "
+			+ "what is there now.") % [_account_said(done, strip_lot), since]
+	if done.get("offline", false):
+		return OFFLINE
+	return "Nothing was changed: %s." % done["said"]
+
+
+## Said once, with what to do (lbcheck L4: the store's screen words said it twice).
+const OFFLINE := ("Nothing was changed: Brickworks could not be reached. Send it again once it answers; "
+	+ "edit_collection with nothing reads back the copy on this device.")
+
+
+## Why the op on [param entry] was not made, after others were: on which
+## copy, when the set has [param several], and in the account's words.
+static func _stopped_words(done: Dictionary, entry: Dictionary, several: bool) -> String:
+	var copy: String = ""
+	if several:
+		copy = "on its copy %s, " % {"hand": "typed in", "rebrickable": "from Rebrickable",
+			"bricklink_xml": "from a BrickLink list"}.get(str(entry.get("src", "")), "brought in before")
+	if done["kind"] == CollectionStore.CONFLICT:
+		return "%s%s: another device or tab changed it since it was read" % [copy, _account_said(done, true)]
+	if done["kind"] == CollectionStore.UNREACHED:
+		return "%sno answer came, so it may have been made (%s)" % [copy, done["said"]]
+	if done.get("offline", false):
+		return "%sBrickworks could not be reached" % copy
+	return copy + str(done["said"])
+
+
+## Which of a set's lots ([param rows]: key -> anything) a lot named for
+## its marks ([method _lot_given]) is, or "" for none. The set's own row
+## first: a number its inventory lists is that row, whatever else the
+## library makes of the number (lbcheck M1: 3048c is BrickLink's keyword for
+## 3048b, 2909c03 its 74741-f1); then the part the number resolves to, an
+## old number or BrickLink's.
+static func _set_key(lot: Dictionary, rows: Dictionary, library: PartLibrary) -> String:
+	var key: String = Collection.key_of(str(lot["asked"]), int(lot["colour"]), library)
+	if rows.has(key):
+		return key
+	if str(lot["part"]).is_empty():
+		return ""
+	key = Collection.key_of(str(lot["part"]), int(lot["colour"]), library)
+	return key if rows.has(key) else ""
 
 
 ## The lots to write in [param entry] so it is marked [param count] of
