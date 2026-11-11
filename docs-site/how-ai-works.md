@@ -8,7 +8,7 @@ nav: How the AI works
 description: What the AI works with, what the app checks before a part goes down, and how to ask for what you mean. AI is never limited, on any plan.
 ---
 
-Whichever AI designs, your own AI app through the connector, or Claude or another AI on your own key, it builds the same way and is held to the same checks.
+What an AI puts on your baseplate is real parts that fit and hold, checked as yours are. This page says what the AI works with, what the app checks, and how to ask for what you mean. Whichever AI designs, your own AI app through the connector, or Claude or another AI on your own key, it builds the same way and is held to the same checks.
 
 ## The same parts, the same checks {#same-checks}
 
@@ -32,10 +32,10 @@ Brickworks hands the AI what a set designer knows:
 
 - **Patterns** for shapes: a curve, a taper, a dome, a wall with windows, said as a pattern and laid in real parts.
 - **How real sets build it**: pieces of real sets found by what they are (a wheel arch, a roof ridge, a minifigure's chair) with pictures of real sets of the kind.
-- **Worked constructions**: hinged panels, SNOT walls, shells of hinged plates turned any way.
+- **Worked constructions**: hinged panels, walls built sideways with their studs facing out, shells of hinged plates turned any way.
 - **Figures on joints**: people, animals and heads laid on joints that turn and hold.
-- **Its own best work**: the best-scored earlier design of the nearest subject, and what was faulted in it.
-- **A surface pass** that settles studs, tiles and greebles once the shape stands.
+- **Its own best work**: the earlier design of the nearest subject that judges liked best, and what they faulted in it.
+- **A surface pass** once the shape stands: open studs tiled, slopes stepped, hard edges rounded, and small detail added where a real set has it.
 
 <!-- covers
 lib:shapes said as patterns
@@ -45,11 +45,18 @@ lib:turned any way on hinges
 lib:characters laid on joints
 lib:figures told of their joints
 lib:recall our own scored designs
+-->
+
+## It sees what you see {#sees}
+
+![The red car as the AI sees it, from a corner, with studs counted along two edges of its base so the AI can read sizes off the picture.](/docs/img/how-ai-works-view.webp "What the AI sees of its own work: the model, with its studs counted.")
+
+The AI looks at its work in pictures, with the studs counted along the edges, so it can read sizes off them rather than guess. It can look from any side, from up to six sides in one picture, with chosen parts picked out or the parts in front made see-through, at the model as built to a step, or at a page of the booklet as it prints; and it can ask what you are looking at: the step you are on, the part in your hand, what you have selected. Looking changes nothing. Then every new design gets [fresh eyes](/docs/fresh-eyes), a look at it as a stranger sees it.
+
+<!-- covers
 lib:renders for the critique
 lib:studs written on the render
 -->
-
-The AI sees its own work in pictures with the studs counted along each side, so it can judge sizes, and then gets [fresh eyes](/docs/fresh-eyes).
 
 ## Never limited {#never-limited}
 
@@ -59,7 +66,7 @@ AI is never limited, on any plan. You bring your own AI, so Brickworks never met
 
 - **Say the size**: *a minifigure-scale house, 16 by 16 studs*, *a Technic car about 30 cm long*.
 - **Say the subject and its parts**: *a lighthouse with a red and white tower, a gallery round the lamp and a keeper's cottage*.
-- **Sketch first** when you are not sure you have said what you mean: three cheap massings, then the one you pick.
-- **Change a part, not the whole**: select it and [Ask Claude about this](/docs/ai#ask), so nothing else moves.
+- **Sketch first** when you are not sure you have said what you mean: three quick sketches of the overall shape, then the one you pick.
+- **Change a part, not the whole**: select it and [Ask Claude about this…](/docs/ai#ask), so nothing else moves.
 - **Build together**: the AI and your hands can work on one model; each change is its own undo step.
 - **Own the result**: you can change any part by hand, and what you share is yours, credited to you.

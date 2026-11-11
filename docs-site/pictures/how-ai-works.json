@@ -1,0 +1,27 @@
+{
+ "shots": [
+  {
+   "id": "how-ai-works-view",
+   "source": "app",
+   "setup": [
+    {
+     "assistant": true,
+     "after": 30
+    }
+   ],
+   "tool": {
+    "name": "view_model",
+    "arguments": {
+     "from": "corner"
+    }
+   },
+   "width": 720,
+   "alt": "The red car as the AI sees it, from a corner, with studs counted along two edges of its base so the AI can read sizes off the picture.",
+   "caption": "What the AI sees of its own work: the model, with its studs counted.",
+   "features": [
+    "lib:renders for the critique",
+    "lib:studs written on the render"
+   ]
+  }
+ ]
+}

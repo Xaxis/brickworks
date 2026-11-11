@@ -1,0 +1,103 @@
+{
+ "shots": [
+  {
+   "id": "connector-toolbar",
+   "source": "app",
+   "setup": [
+    {
+     "assistant": true,
+     "after": 30
+    },
+    {
+     "set": "_connector.tab_id",
+     "value": "k7qd"
+    },
+    {
+     "call": "_connector._take_connections",
+     "args": [
+      {
+       "connections": [
+        {
+         "client": "Claude",
+         "since": "2026-10-04T12:00:00Z",
+         "last_used": "2026-11-01T12:00:00Z"
+        }
+       ]
+      }
+     ],
+     "after": 30
+    },
+    {
+     "call": "_connector._chat_called",
+     "args": [
+      {
+       "params": {
+        "_meta": {
+         "brickworks/chat": {
+          "chat": "docs-chat",
+          "since": "2026-11-10T12:00:00Z"
+         },
+         "brickworks/who": "Claude"
+        }
+       }
+      },
+      "submit_design",
+      {}
+     ],
+     "after": 30
+    }
+   ],
+   "crop": [
+    "_bar._claude_tab",
+    "_bar._account"
+   ],
+   "pad": 10,
+   "alt": "The toolbar's right end while a Claude chat works in the tab: a green dot and Claude working · tab k7qd, beside Account.",
+   "caption": "The toolbar names the tab, and says when a chat is working in it.",
+   "features": [
+    "ui:this tab and its claude chats"
+   ]
+  },
+  {
+   "id": "connector-account",
+   "source": "app",
+   "setup": [
+    {
+     "assistant": true,
+     "after": 30
+    },
+    {
+     "set": "_connector.tab_id",
+     "value": "k7qd"
+    },
+    {
+     "call": "_connector._take_connections",
+     "args": [
+      {
+       "connections": [
+        {
+         "client": "Claude",
+         "since": "2026-10-04T12:00:00Z",
+         "last_used": "2026-11-01T12:00:00Z"
+        }
+       ]
+      }
+     ],
+     "after": 30
+    },
+    {
+     "click": "_bar._account",
+     "after": 60
+    }
+   ],
+   "crop": "_account_panel._claude_box",
+   "pad": 12,
+   "alt": "Account's Your AI: Claude connected since 4 Oct and last used 1 Nov, this tab's name k7qd to say to Claude, no chat working in it yet, New chat for this tab, Open in Claude and Disconnect Claude.",
+   "caption": "Account: your AI apps, this tab's name and a new chat for it.",
+   "features": [
+    "ui:this tab and its claude chats",
+    "ui:account panel"
+   ]
+  }
+ ]
+}

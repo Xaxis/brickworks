@@ -35,6 +35,9 @@
 ##   {"over": {"at": [0, 0, 0]}}            or a point in the model (LDU)
 ##   {"select": {"part": "3001", "colour": 4} | "all" | [n, ...]}
 ##   {"call": "path.method", "args": [...]} {"set": "path.property", "value": v}
+##                                          ("optional": true: passed over where the
+##                                          path names nothing, as My Claude, there
+##                                          only where Claude Code is installed)
 ##   {"take": {"part": "3001", "colour": 4}} a part into hand, as its tile in the bin
 ##   {"assistant": true}                    the assistant shown (Settings)
 ##   {"saved": [{"name": "Red car", "from": "res://models/car.ldr",
@@ -53,6 +56,11 @@
 ## app's own font), "width" (made smaller to at most this), "window"
 ## ("390x844": the window's size), "phone" (true: the phone's layout, as a
 ## browser that small has it, at a browser's scale, as --phone probes do).
+## Or, in place of the window, what an assistant is shown: "tool"
+## ({"name": "view_board", "arguments": {...}}) is that call made once the
+## setup is done, as the connector makes it (CommandSocket.answer_rpc), and
+## the picture it answers with is the picture ("crop" then cuts that). The
+## pages about AI say what the AI sees, and this is it, not a copy of it.
 extends SceneTree
 
 ## A page's pictures are a file of their own: docs-site/pictures/<page>.json.
@@ -312,6 +320,14 @@ func _take(shot: Dictionary) -> void:
 	var settled: bool = false
 	var reads: int = 0
 	var last: PackedByteArray = PackedByteArray()
+	if shot.has("tool"):
+		picture = await _answered_with(shot["tool"])
+		if picture == null:
+			_say(id, {"ok": false, "why": "; ".join(_failed)})
+			quit(1)
+			return
+		settled = true
+		reads = SETTLE_READS
 	while reads < SETTLE_READS:
 		reads += 1
 		await RenderingServer.frame_post_draw
@@ -371,6 +387,43 @@ func _hold_phone_scale() -> void:
 	var main_script: GDScript = _main.get_script()
 	root.content_scale_factor = main_script.sized_factor(Room.across(), Room.down(), true,
 		ShellPrefs.interface_size(), true)
+
+
+## The picture [param call] ({"name", "arguments"}) is answered with, made
+## as the connector makes a session's call; null, and why in _failed, when
+## it answers without one. Waited for whole: a call slower than a job's
+## threshold would answer "Started job N" in place of its picture.
+func _answered_with(call: Variant) -> Image:
+	var asked: Dictionary = call if call is Dictionary else {"name": str(call)}
+	var connector: Variant = _main.get("_connector")
+	var rpc: Node = (connector as Object).get("rpc") if connector is Object else null
+	if rpc == null:
+		_failed.append("no session's call is answered here: a step {\"assistant\": true} first")
+		return null
+	var jobs: Variant = rpc.get("jobs")
+	if jobs is Object:
+		(jobs as Object).set("after_s", float(SECONDS_A_PICTURE))
+	var got: Variant = await rpc.answer_rpc({"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+		"params": {"name": str(asked.get("name", "")), "arguments": asked.get("arguments", {})}})
+	var result: Dictionary = (got as Dictionary).get("result", {}) if got is Dictionary else {}
+	var said := PackedStringArray()
+	for block: Variant in result.get("content", []):
+		var one: Dictionary = block if block is Dictionary else {}
+		if str(one.get("type", "")) != "image":
+			said.append(str(one.get("text", "")).left(160))
+			continue
+		var bytes: PackedByteArray = Marshalls.base64_to_raw(str(one.get("data", "")))
+		var picture := Image.new()
+		var kind: String = str(one.get("mimeType", "image/png"))
+		var loaded: int = picture.load_jpg_from_buffer(bytes) if kind == "image/jpeg" \
+			else picture.load_webp_from_buffer(bytes) if kind == "image/webp" \
+			else picture.load_png_from_buffer(bytes)
+		if loaded == OK and not picture.is_empty():
+			return picture
+		_failed.append("%s answered with a %s picture that would not load" % [asked.get("name", ""), kind])
+		return null
+	_failed.append("%s answered with no picture: %s" % [asked.get("name", ""), " / ".join(said)])
+	return null
 
 
 ## What a click on a button in sight does.
@@ -488,9 +541,9 @@ func _do(step: Dictionary) -> void:
 	elif step.has("set"):
 		var path: String = step["set"]
 		var target: Variant = _node(path.get_basename())
-		if target == null:
+		if target == null and not bool(step.get("optional", false)):
 			_failed.append("nothing at %s" % path.get_basename())
-		else:
+		elif target != null:
 			(target as Object).set(path.get_extension(), step["value"])
 	elif step.has("take"):
 		# What a click on the part's tile in the bin sends, in its colour.
