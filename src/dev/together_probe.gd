@@ -313,6 +313,7 @@ func _pair() -> void:
 	_check("the other side is told, and keeps what was built", not tb.live
 		and (b["world"] as BrickWorld).brick_count() == (a["world"] as BrickWorld).brick_count(), tb.ended_words)
 	await _again(a, b)
+	await _sub_lines(a, b)
 	if _arg("--big") != "no":
 		await _big(a, b)
 	var gone: int = await SignInHelper.delete_accounts("delivered+bwtogether", root)
@@ -545,6 +546,76 @@ func _again(a: Dictionary, b: Dictionary) -> void:
 			await process_frame
 	ta.parts_above = 3_500_000
 	ta.part_chars = 2_000_000
+
+
+## A sub-model's own lights and views (BrickWorld.section_lines) are both
+## sides': renamed on one side, the other writes them in it too, as each
+## side's save writes the whole model; its last copy taken off on one side,
+## both let them go with it, so a sub-model made again of that name on the
+## other has none of them. Up to 2026-11-11 nothing carried them: a sub-model
+## renamed on one side was written unlit on the other, and the lines of one
+## taken off waited there for whatever next took its name.
+func _sub_lines(a: Dictionary, b: Dictionary) -> void:
+	print("5c. a sub-model's lights and views, renamed and taken off on one side")
+	var ta: Together = a["together"]
+	var tb: Together = b["together"]
+	var green: String = "0 !BRICKWORKS LIGHT " + JSON.stringify({"kind": "point", "at": [0, -50, 0],
+		"aim": [0, 1, 0], "colour": "#00ff00", "strength": 1, "size": 4, "shadows": true})
+	var blue: String = green.replace("#00ff00", "#0000aa")
+	var view: String = "0 !BRICKWORKS VIEW " + JSON.stringify({"name": "sub view", "yaw": 10,
+		"pitch": -20, "distance": 300, "focus": [0, 0, 0]})
+	var text: String = "\n".join(PackedStringArray(["0 FILE main.ldr", "0 Together lit",
+		"0 Name: main.ldr", "0 Author: Brickworks", "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat",
+		"1 16 100 0 0 1 0 0 0 1 0 0 0 1 sub.ldr", "1 16 -100 0 0 1 0 0 0 1 0 0 0 1 lamp.ldr", "0 NOFILE",
+		"0 FILE sub.ldr", "0 Sub", "0 Name: sub.ldr", "0 Author: Brickworks", green, view,
+		"1 14 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat", "0 NOFILE", "0 FILE lamp.ldr", "0 Lamp",
+		"0 Name: lamp.ldr", "0 Author: Brickworks", blue, "1 2 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat",
+		"0 NOFILE", ""]))
+	(a["store"] as ModelStore).open_text(text, "Together lit")
+	(a["store"] as ModelStore).title = "Together lit"
+	var trouble: String = await ta.start()
+	if trouble.is_empty():
+		trouble = await tb.join(ta.link)
+	await _settle([a, b])
+	var tree := Assemblies.new()
+	tree.world = a["world"]
+	tree.builder = a["builder"]
+	tree.library = _library
+	tree.scenery = (a["store"] as ModelStore).scenery
+	var sub: String = ""
+	for path: String in tree.paths():
+		if Assemblies.definition(path) == "Sub":
+			sub = path
+	tree.rename(sub, "Engine")
+	await _settle([a, b])
+	var theirs: String = tb.model_text()
+	var engine: String = theirs.substr(theirs.find("0 FILE engine.ldr"))
+	_check("Sub renamed Engine on the owner's side: the other writes its light and view in Engine, "
+		+ "and the two files are one", trouble.is_empty() and theirs.find("0 FILE engine.ldr") > 0
+		and engine.contains("#00ff00") and engine.contains("sub view") and not theirs.contains("0 FILE sub.ldr")
+		and ta.model_hash() == tb.model_hash(), trouble if not trouble.is_empty()
+		else "%d light lines on the other side" % theirs.count("!BRICKWORKS LIGHT"))
+	# Lamp's one part taken off on the other side, as Delete takes it.
+	var gone: Dictionary = {}
+	for brick: BrickWorld.Brick in (b["world"] as BrickWorld).bricks():
+		if brick.color_code == 2:
+			gone = await tb.check_edit({"op": "delete", "uid": tb.uid_of(brick.id)})
+	await _settle([a, b])
+	var held: Dictionary = {}
+	for brick: BrickWorld.Brick in (a["world"] as BrickWorld).bricks():
+		if brick.color_code == 4:
+			held[brick.id] = true
+	(a["builder"] as Builder).selection = held
+	var made: String = tree.make("Lamp")
+	await _settle([a, b])
+	_check("Lamp's last copy taken off on the other side (%s): a Lamp made of another part on the "
+		% str(gone.get("ok", false)) + "owner's (%s) has none of its light, on either side" % made,
+		bool(gone.get("ok", false)) and made == "Lamp#1" and not ta.model_text().contains("#0000aa")
+		and not tb.model_text().contains("#0000aa") and ta.model_hash() == tb.model_hash())
+	await ta.end()
+	var until: int = Time.get_ticks_msec() + 30000
+	while tb.live and Time.get_ticks_msec() < until:
+		await process_frame
 
 
 ## A model whose snapshot is over 4 MB starts a session, in parts.
