@@ -3060,6 +3060,24 @@ msgstr "un clic lo toma entero, un doble clic lo edita por dentro"
 msgid "took %s apart"
 msgstr "%s deshecho"
 
+msgid "its light went with its parts"
+msgstr "su luz siguió a sus piezas"
+
+msgid "its %d lights went with its parts"
+msgstr "sus %d luces siguieron a sus piezas"
+
+msgid "%d of its lights went with it"
+msgstr "%d de sus luces se fueron con él"
+
+msgid "its saved view went with it"
+msgstr "su vista guardada se fue con él"
+
+msgid "its %d saved views went with it"
+msgstr "sus %d vistas guardadas se fueron con él"
+
+msgid "%s here keeps its own lights and views, not the copied ones"
+msgstr "%s conserva aquí sus propias luces y vistas, no las copiadas"
+
 msgid "took 1 part out of its sub-assembly"
 msgstr "1 pieza sacada de su subconjunto"
 

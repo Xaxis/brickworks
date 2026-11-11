@@ -192,6 +192,7 @@ static func _cover_moves(part: Lbm.PartMesh, at: Transform3D) -> bool:
 ## ([member below]).
 func place() -> int:
 	below = 0.0
+	pasted_said = ""
 	if is_carrying():
 		return _put_carried()
 	# Kept where it stands while Connect asks for the point it goes on by.
@@ -617,6 +618,32 @@ func _apply(step: Dictionary) -> Dictionary:
 		var looked: Dictionary = world.step_looks.duplicate(true)
 		world.step_looks = (step["looks"] as Dictionary).duplicate(true)
 		return {"undo": "steplooks", "looks": looked}
+
+	# Each sub-model's own lights and views (BrickWorld.section_lines): the
+	# whole table as it was, its own reverse.
+	if step.get("undo", "") == "sectionlines":
+		var lined: Dictionary = world.section_lines
+		world.section_lines = (step["lines"] as Dictionary).duplicate(true)
+		return {"undo": "sectionlines", "lines": lined}
+
+	# Lights of the model's own (BrickWorld.scene_lights) a step took out or
+	# put in: a sub-model's, taken apart into the model (Assemblies.ungroup).
+	# Each found by what it is, not where it is in the list, and the list made
+	# anew, as Render's are: a light placed or changed there, which keeps no
+	# step, is left as it is.
+	if step.get("undo", "") == "scenelights":
+		var lights: Array = world.scene_lights.duplicate()
+		var taken: Array = []
+		for light: Dictionary in step.get("take", []):
+			for n: int in lights.size():
+				if SceneLights.same([lights[n]], [light]):
+					taken.append(lights[n])
+					lights.remove_at(n)
+					break
+		var put: Array = step.get("put", [])
+		lights.append_array(put)
+		world.scene_lights = lights
+		return {"undo": "scenelights", "take": put, "put": taken}
 
 	# Which copy of someone else's file each path is: the table as it was,
 	# its own reverse.
@@ -2232,12 +2259,18 @@ func is_carrying() -> bool:
 	return carrying != null and carrying.is_holding()
 
 
+## What the last paste put down said of its sub-models' lights and views
+## (Assemblies.lines_pasted): "" but where the model it went into kept its own.
+var pasted_said: String = ""
+
+
 ## Copy the selection to the clipboard. Returns how many parts.
 func copy_selection() -> int:
 	var alive: PackedInt64Array = _living_selection()
 	if alive.is_empty():
 		return 0
 	Carry.clipboard = Carry.gather(world, library, Array(alive))
+	Carry.clipboard_lines = Assemblies.lines_held(world, Carry.clipboard)
 	return Carry.clipboard.size()
 
 
@@ -2309,6 +2342,11 @@ func _put_carried() -> int:
 	# A copy of a minifigure or a named assembly is another one, not more
 	# of the same: "Guard" pasted beside "Guard" is "Guard 2".
 	var renamed: Dictionary = {}
+	# Its sub-models' lights and views, where this model has none of its
+	# own: what it had before is kept (Assemblies.lines_pasted).
+	var lines_in: bool = not carrying.lifted and not carrying.lines.is_empty()
+	var had: Dictionary = Assemblies.definitions_had(world) if lines_in else {}
+	var pasted: Array = []
 	for item: Dictionary in carrying.placements(self):
 		var group: String = str(item["group"])
 		var unit: String = str(item.get("unit", ""))
@@ -2323,6 +2361,9 @@ func _put_carried() -> int:
 			int(item["color"]), item["at"])
 		if brick_id == 0:
 			continue
+		if lines_in:
+			pasted.append([Assemblies.path_from(str(item["group"]), unit),
+				path if copy_group.is_valid() else Assemblies.path_from(group, unit)])
 		world.get_brick(brick_id).group = group
 		world.get_brick(brick_id).unit = unit
 		if not carrying.lifted and copy_group.is_valid():
@@ -2347,6 +2388,8 @@ func _put_carried() -> int:
 		words = "moved %s" % _many(ids.size())
 	_history.append({"undo": "group", "steps": steps, "words": words})
 	_redo.clear()
+	if lines_in:
+		pasted_said = Assemblies.lines_pasted(self, carrying.lines, pasted, had)
 	# A clone or a duplicate: another copy in hand for the next, as it
 	# was before anything was typed for this one, R's turn kept.
 	var again: Array = carrying.base_items() if carrying.repeats else []
