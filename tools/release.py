@@ -2151,14 +2151,18 @@ def clean_env(home: Path) -> dict[str, str]:
     """
     # No display and no session bus: the runs are headless, and the one that
     # draws is given an Xvfb of its own.
-    keep = ("PATH", "LANG", "LC_ALL", "SystemRoot", "ComSpec", "PATHEXT", "WINDIR", "TMPDIR",
+    keep = ("PATH", "LANG", "LC_ALL", "SystemRoot", "ComSpec", "PATHEXT", "WINDIR",
             "VK_DRIVER_FILES", "VK_ICD_FILENAMES", "BOX_GPU_STATE", "BOX_GPU_HELD")
     env = {name: os.environ[name] for name in keep if name in os.environ}
     # The package under test never updates itself mid-run (Updater.mode).
+    # Its temporary files go in the clean home too, TMPDIR as well as TEMP:
+    # an AppImage run with --appimage-extract-and-run unpacks itself into
+    # $TMPDIR/appimage_extracted_*, 1.4 GB, and one ended by a timeout leaves
+    # it there (17 in /tmp, 24 GB, by 2026-11-10). In the home, it goes with it.
     env.update({"BRICKWORKS_UPDATES": "off", "HOME": str(home), "USERPROFILE": str(home),
                 "APPDATA": str(home / "AppData" / "Roaming"),
                 "LOCALAPPDATA": str(home / "AppData" / "Local"),
-                "TEMP": str(home / "tmp"), "TMP": str(home / "tmp")})
+                "TEMP": str(home / "tmp"), "TMP": str(home / "tmp"), "TMPDIR": str(home / "tmp")})
     (home / "tmp").mkdir(parents=True, exist_ok=True)
     return env
 
