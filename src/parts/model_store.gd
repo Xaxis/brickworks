@@ -2863,17 +2863,22 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 			entry["first"] = int(first[path])
 	# What has not arrived, or could not be fetched, goes out last, where the
 	# file had it, and so does what the catalogue has not got. Someone else's
-	# file carries them below (carried_into); the app's own was saved without
-	# them: a model saved on a phone that lost a part's fetch lost the part
-	# (fetch_retry_probe, 2026-10-20).
-	if _live_source() == null and world.generation() == _awaited_in:
+	# file carries below what it cannot write so (carried_into); the app's own
+	# was saved without them: a model saved on a phone that lost a part's
+	# fetch lost the part (fetch_retry_probe, 2026-10-20). Each in its step
+	# and its sub-model, someone else's file's too (SourceFile.in_own_steps):
+	# carried, theirs went in the model's last step (hscheck Sa).
+	if world.generation() == _awaited_in:
 		# Awaited parts were stood on the ground with the rest; the absent are
 		# in the file's coordinates. Both where the model now stands
 		# (held_place): kept, a drive left them where it had been (drvrecheck F3).
 		var held_at: Array = []
-		for waiting: LdrModel.Placement in awaited:
+		var source: SourceFile = _live_source()
+		var coming: Array = awaited if source == null else source.in_own_steps(awaited)
+		var unseen: Array = _absent if source == null else source.in_own_steps(source.not_shown)
+		for waiting: LdrModel.Placement in coming:
 			held_at.append([waiting, back * awaited_at(waiting)])
-		for absent: LdrModel.Placement in _absent:
+		for absent: LdrModel.Placement in unseen:
 			held_at.append([absent, held_place(absent.transform)])
 		for pair: Array in held_at:
 			var waiting: LdrModel.Placement = pair[0]

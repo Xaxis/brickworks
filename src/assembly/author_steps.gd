@@ -263,7 +263,7 @@ static func squash(undo: Array, world: BrickWorld = null) -> Array:
 		# A part by its number, which no name of a copy or an undo can be.
 		var name: Variant = int(entry["brick"]) if entry.has("brick") \
 			else ("u" + str(entry["unit"]) if entry.has("unit")
-				else ("h%d" % (entry["held"] as Object).get_instance_id() if entry.has("held")
+				else (held_name(entry["held"]) if entry.has("held")
 					else str(entry.get("undo", ""))))
 		if seen.has(name):
 			continue
@@ -842,7 +842,7 @@ static func rehomed(world: BrickWorld, was: Dictionary, units: Dictionary, carry
 		return undo
 	var going: Dictionary = {}      ## an item's name -> true
 	for one: Array in moving:
-		going[_name_of(one[0])] = true
+		going[name_of(one[0])] = true
 	var into: Dictionary = {}       ## a section -> [[the order it was built in, item]]
 	var touched: Dictionary = {}
 	for one: Array in moving:
@@ -869,7 +869,7 @@ static func rehomed(world: BrickWorld, was: Dictionary, units: Dictionary, carry
 	for now: String in into:
 		var last: int = -1
 		for item: Dictionary in items_of(world, now, skip):
-			if not going.has(_name_of(item)):
+			if not going.has(name_of(item)):
 				last = maxi(last, int(item["step"]))
 		var order: Array = into[now]
 		order.sort_custom(func(a: Array, b: Array) -> bool: return before(a[0], b[0]))
@@ -885,8 +885,22 @@ static func rehomed(world: BrickWorld, was: Dictionary, units: Dictionary, carry
 	return squash(undo)
 
 
-static func _name_of(item: Dictionary) -> String:
+## The name of an item of [method items_of], as every reader of them names
+## it: a part by its id, a copy by "u" and its path, and a part the model
+## holds and does not show by its placement ([method held_name]). Up to
+## 2026-11-11 such a part was read as a part by its id, and a drag in the
+## tree into a copy holding one stopped on a script error (hscheck R).
+static func name_of(item: Dictionary) -> String:
+	if item.has("held"):
+		return held_name(item["held"])
 	return ("u" + str(item["unit"])) if item.has("unit") else str(item["brick"])
+
+
+## A part the model holds and does not show (BrickWorld.held), by its
+## placement, as an item ([method name_of]), an undo ([method squash]) and a
+## step's look (BookletLooks.item_name) name it.
+static func held_name(placement: Object) -> String:
+	return "h%d" % placement.get_instance_id()
 
 
 # -- the edits ---------------------------------------------------------------
@@ -934,7 +948,7 @@ static func _selected(world: BrickWorld, ids: Array, level: String,
 			if whole.has(copy):
 				section = home(world, Assemblies.parent_of(copy))
 				item = {"unit": copy, "step": maxi(unit_step(world, copy, lowest), 0)}
-		var name: String = str(item.get("unit", item.get("brick")))
+		var name: String = name_of(item)
 		if seen.has(name):
 			continue
 		seen[name] = true
@@ -964,26 +978,126 @@ static func _whole_under(world: BrickWorld, ids: Array, skip: Dictionary) -> Dic
 	return out
 
 
+## What a move of the selection moves ([method _selected]): its items and
+## the same of every other copy of each sub-model they are in, each in its
+## own copy's section. A sub-model's steps are its own in every copy: Merge,
+## Delete, Earlier and Later change every copy ([method _copies]), a step's
+## look is the sub-model's (BookletLooks), and a file writes a sub-model
+## once. Up to 2026-11-11 a part moved in one copy of a sub-model placed
+## twice moved in that one only: the other kept its steps under the looks
+## that went with the first's, a part the model does not show was in
+## another step in each, and the file took one (hscheck E3 next_S1_one).
+## The same is the part at the same place among its copy's own parts, by
+## id, as they were read ([method _copies_alike]); a copy whose parts are
+## not those, part for part, keeps its own steps.
+static func _moved(world: BrickWorld, ids: Array, level: String, skip: Dictionary) -> Dictionary:
+	var picked: Dictionary = _selected(world, ids, level, skip)
+	var out: Dictionary = {}
+	for section: String in picked:
+		out[section] = (picked[section] as Array).duplicate()
+	var read: Dictionary = {}
+	for section: String in picked:
+		var copies: Array = _copies(world, section, skip)
+		if copies.size() < 2:
+			continue
+		if read.is_empty():
+			read = _copy_parts(world, skip)
+		for copy: String in copies:
+			if copy == section:
+				continue
+			var mine: Array = out.get_or_add(copy, [])
+			var named: Dictionary = {}
+			for item: Dictionary in mine:
+				named[name_of(item)] = true
+			for item: Dictionary in picked[section]:
+				var twin: Dictionary = _twin(world, item, section, copy, read)
+				if not twin.is_empty() and not named.has(name_of(twin)):
+					named[name_of(twin)] = true
+					mine.append(twin)
+	for section: String in out.keys():
+		if (out[section] as Array).is_empty():
+			out.erase(section)
+	return out
+
+
+## What [method _twin] reads: {"own": each path -> its own parts, by id,
+## "paths": every path ([method paths_in]), "lowest": [method lowest_under],
+## "alike": what it found of two paths, kept}.
+static func _copy_parts(world: BrickWorld, skip: Dictionary) -> Dictionary:
+	var own: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		if not skip.has(brick.id):
+			(own.get_or_add(Assemblies.path_of(brick), []) as Array).append(brick)
+	for path: String in own:
+		(own[path] as Array).sort_custom(func(a: BrickWorld.Brick, b: BrickWorld.Brick) -> bool:
+			return a.id < b.id)
+	return {"own": own, "paths": paths_in(world, skip), "lowest": lowest_under(world, skip),
+		"alike": {}}
+
+
+## [param item], of the copy [param section], as the same of the copy
+## [param copy] ([method _moved]): the copy at the same place in it, or the
+## part at the same place among the same path's own parts there when those
+## are the same parts in the same order. {} when there is none.
+static func _twin(world: BrickWorld, item: Dictionary, section: String, copy: String,
+		read: Dictionary) -> Dictionary:
+	if item.has("unit"):
+		var unit: String = copy + str(item["unit"]).substr(section.length())
+		if not (read["paths"] as Dictionary).has(unit) or home(world, Assemblies.parent_of(unit)) != copy:
+			return {}
+		return {"unit": unit, "step": maxi(unit_step(world, unit, read["lowest"]), 0)}
+	var brick: BrickWorld.Brick = world.get_brick(int(item["brick"]))
+	var path: String = Assemblies.path_of(brick)
+	var there: String = copy + path.substr(section.length())
+	var own: Dictionary = read["own"]
+	var mine: Array = own.get(path, [])
+	var theirs: Array = own.get(there, [])
+	var alike: Dictionary = read["alike"]
+	var pair: String = path + "|" + there
+	if not alike.has(pair):
+		var same: bool = mine.size() == theirs.size() and home(world, there) == copy
+		var n: int = 0
+		while same and n < mine.size():
+			same = (mine[n] as BrickWorld.Brick).part_id == (theirs[n] as BrickWorld.Brick).part_id
+			n += 1
+		alike[pair] = same
+	if not bool(alike[pair]):
+		return {}
+	var other: BrickWorld.Brick = theirs[mine.find(brick)]
+	return {"brick": other.id, "step": maxi(other.step, 0)}
+
+
 ## The selection moved [param by] steps, earlier or later, within its own
 ## section: Edit, Move to previous step and Move to next step. A part in
-## the first step stays there; one moved on from the last makes a new one.
-## The steps are those a person sees ([method steps_in]): moved by number,
-## a part went into a step of only parts the model does not show, and the
-## timeline had it where it was (pkreview3's next_3020: "now in step 1").
+## the first step stays there; one moved on from the last makes a new one,
+## right after the step it was in, as [method new_step] makes one: numbered
+## after the section's last, it went past a step of only parts the model
+## does not show after it, and a part alone in its step was moved on a step
+## where the timeline had it stay (hscheck E2 next_B). The steps are those a
+## person sees ([method steps_in]): moved by number, a part went into a step
+## of only parts the model does not show, and the timeline had it where it
+## was (pkreview3's next_3020: "now in step 1"). In every copy of a
+## sub-model ([method _moved]).
 static func move(world: BrickWorld, ids: Array, by: int, level: String,
 		skip: Dictionary = {}) -> Array:
 	var undo: Array = []
-	var picked: Dictionary = _selected(world, ids, level, skip)
+	var picked: Dictionary = _moved(world, ids, level, skip)
 	for section: String in picked:
 		var seen: Array = steps_in(world, section, skip)
-		var last: int = -1
-		for item: Dictionary in items_of(world, section, skip):
-			last = maxi(last, int(item["step"]))
+		var opened: bool = false
 		for item: Dictionary in picked[section]:
 			var at: int = int(item["step"])
 			var to: int = neighbour(seen, at, by)
-			if to < 0:
-				to = maxi(at + by, 0) if not seen.has(at) else (at if by < 0 else last + 1)
+			if to < 0 and by > 0 and seen.has(at):
+				# On from the last step: a new one after it, what is later one on.
+				if not opened:
+					opened = true
+					for other: Dictionary in items_of(world, section, skip):
+						if int(other["step"]) > at:
+							_put(world, other, int(other["step"]) + 1, undo)
+				to = at + 1
+			elif to < 0:
+				to = maxi(at + by, 0) if not seen.has(at) else at
 			_put(world, item, to, undo)
 		_tidy(world, section, skip, undo)
 	return squash(undo)
@@ -993,16 +1107,18 @@ static func move(world: BrickWorld, ids: Array, by: int, level: String,
 ## that is: Studio's step list, where the selection is dragged onto any
 ## step, and Move to step…. A step it empties is taken out, so the steps
 ## after it are one fewer. Parts outside [param section] are not moved
-## ([method outside] says so first).
+## ([method outside] says so first). In every copy of a sub-model
+## ([method _moved]).
 static func move_to(world: BrickWorld, ids: Array, level: String, section: String, to: int,
 		skip: Dictionary = {}) -> Array:
 	var undo: Array = []
-	var picked: Dictionary = _selected(world, ids, level, skip)
+	var picked: Dictionary = _moved(world, ids, level, skip)
 	if not picked.has(section):
 		return undo
-	for item: Dictionary in picked[section]:
-		_put(world, item, to, undo)
-	_tidy(world, section, skip, undo)
+	for copy: String in _copies(world, section, skip):
+		for item: Dictionary in picked.get(copy, []):
+			_put(world, item, to, undo)
+		_tidy(world, copy, skip, undo)
 	return squash(undo)
 
 
@@ -1023,21 +1139,23 @@ static func outside(world: BrickWorld, ids: Array, level: String, section: Strin
 ## timeline is on, in [param after_in]) or else after the latest of the
 ## steps they were in, and everything later one on: Edit, New step from
 ## selection. This is how a step is split in two, and how one is put in.
+## In every copy of a sub-model ([method _moved]).
 static func new_step(world: BrickWorld, ids: Array, level: String,
 		after_in: String = "", after: int = -1, skip: Dictionary = {}) -> Array:
 	var undo: Array = []
-	var picked: Dictionary = _selected(world, ids, level, skip)
+	var picked: Dictionary = _moved(world, ids, level, skip)
+	var copies_after: Array = _copies(world, after_in, skip) if after >= 0 else []
 	for section: String in picked:
 		var mine: Array = picked[section]
-		var from: int = after if section == after_in and after >= 0 else -1
+		var from: int = after if copies_after.has(section) else -1
 		if from < 0:
 			for item: Dictionary in mine:
 				from = maxi(from, int(item["step"]))
 		var chosen: Dictionary = {}
 		for item: Dictionary in mine:
-			chosen[str(item.get("unit", item.get("brick")))] = true
+			chosen[name_of(item)] = true
 		for item: Dictionary in items_of(world, section, skip):
-			if int(item["step"]) > from and not chosen.has(str(item.get("unit", item.get("brick")))):
+			if int(item["step"]) > from and not chosen.has(name_of(item)):
 				_put(world, item, int(item["step"]) + 1, undo)
 		for item: Dictionary in mine:
 			_put(world, item, from + 1, undo)

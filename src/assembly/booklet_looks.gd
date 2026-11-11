@@ -692,7 +692,7 @@ static func first_copies(world: BrickWorld, skip: Dictionary = {}) -> Array:
 ## not show by its placement, so its step's look goes where it goes.
 static func item_name(item: Dictionary) -> String:
 	if item.has("held"):
-		return "h%d" % (item["held"] as Object).get_instance_id()
+		return AuthorSteps.held_name(item["held"])
 	return ("b%d" % int(item["brick"])) if item.has("brick") \
 		else "u" + Assemblies.leaf(str(item["unit"]))
 

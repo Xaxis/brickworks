@@ -1714,7 +1714,22 @@ picture the assistant is shown.
   steps, takes a part off, saves and opens it again: the held part on its
   own step, its STEP_NAME and ZOOM byte for byte, and every other step as
   the same edit gives the model without it; with the part back the model
-  is as it was, and an edit made while it came is undone on it.
+  is as it was, and an edit made while it came is undone on it. hsfix
+  (2026-11-11, hscheck's findings): every reader of a step's items names a
+  held one alike (`AuthorSteps.name_of`, "h<id>"), so a sub-model dragged
+  in the tree into a copy holding one is renumbered with it, not stopped on
+  a script error (`rehomed`); a part moved on from the last step you see
+  opens a new step right after it, so a step of only held parts after it
+  keeps its place and a part alone in the last step stays put ("the steps
+  are as they were", `move`); a part moved, moved to a step or made a new
+  step in one copy of a sub-model placed twice is moved in every copy, part
+  for part (`AuthorSteps._moved`), as Merge, Delete, Earlier and Later
+  already were, so the copies, their held parts and the looks stay alike and
+  the save keeps an edit made in the second copy; and someone else's file
+  written whole writes each held part (missing or on its way) in its own
+  step and sub-model (`SourceFile.in_own_steps`), not at the end of the
+  model's last step, a wholly unshown sub-model still carried as the file
+  has it. `heldsteps_probe` section 6 drives each, own and someone else's.
 - `the booklet as a PDF and as PNG pages`: **Save as PDF** and **Save pages as PNG** sit beside Print in the
   booklet's bar (pdf249, 2026-10-24), shown where they work: on the desktop
   while the app serves the booklet (`Booklet.SAVE_SCRIPT` asks the app with

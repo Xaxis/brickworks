@@ -2760,10 +2760,10 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 		_take_back(undo)
 		return _not_in_step(number, str(where[0]), ids, level, skip)
 	# What the edit takes out of its step: a step keeps its look with the
-	# parts it keeps.
+	# parts it keeps. In every copy of a sub-model, as the edit moves them.
 	var taken: Dictionary = {}
 	if op in ["prev", "next", "new", "to"]:
-		for items: Variant in AuthorSteps._selected(world, ids, level, skip).values():
+		for items: Variant in AuthorSteps._moved(world, ids, level, skip).values():
 			for item: Dictionary in items:
 				taken[BookletLooks.item_name(item)] = true
 	elif op == "delete" and int(where[1]) >= 0:

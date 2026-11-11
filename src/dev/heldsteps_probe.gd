@@ -36,7 +36,14 @@
 ##   5. H on its way, the app's own file and someone else's: 3020 to the
 ##      next step, which takes it past H's, saved: H alone in step 1; H
 ##      arrives and is put down in it; the edit undone and redone, H's step
-##      each time with it.
+##      each time with it;
+##   6. hscheck's findings (hsfix), each the app's own file and someone
+##      else's: a sub-model dragged in the tree into one whose step 2 is H
+##      alone, H still alone there; 3003 moved on from the last step a person
+##      sees, H's after it, the steps as they were; in a sub-model placed
+##      twice, 3004 moved on in the second copy, both copies alike and H
+##      alone in its step in the file's; and someone else's file written
+##      whole, H missing or on its way, H alone in its own step.
 ## Saved files in HELDSTEPS_OUT (an absolute folder), or user://heldsteps/.
 extends SceneTree
 
@@ -44,7 +51,7 @@ const MODELS := "user://models/"
 const HELD := "3062b"
 ## Nothing listens here: a part held back is asked for and never comes.
 const PORT := 9943
-const WATCHDOG := 900.0
+const WATCHDOG := 1500.0
 const ZOOM := "0 !BRICKWORKS ZOOM 1.5"
 const NAME := "0 !BRICKWORKS STEP_NAME The held step"
 ## H's step's lines, as _steps lists a step's: in order.
@@ -121,6 +128,14 @@ func _run() -> void:
 	print("\n5. H on its way")
 	await _coming(true)
 	await _coming(false)
+
+	print("\n6. hscheck's findings (hsfix)")
+	for own: bool in [true, false]:
+		await _drag_into(own)
+		await _next_last(own)
+		await _second_copy(own)
+	await _theirs_whole("missing")
+	await _theirs_whole("coming")
 
 	_world.clear()
 	await _frames(4)
@@ -375,7 +390,195 @@ func _coming(own: bool) -> void:
 	_check("%s: and redone, as it was edited: %s" % [tag, _said(_steps(redone))], _steps(redone) == steps)
 
 
+## 6a: hsone dragged in the model's tree into hstwo, whose step 2 is H alone
+## (hscheck R_*_move_into: AuthorSteps.rehomed read H as a part, a script
+## error): saved, H alone in hstwo's step 2 with its lines, hsone put on in
+## hstwo after its last step, and nothing of H left in the model's own steps.
+func _drag_into(own: bool) -> void:
+	var tag: String = "drag_" + ("own" if own else "theirs")
+	print("\n  -- %s" % tag)
+	_take_away("missing")
+	await _open(tag, _file(own, [[A], ["1 16 200 0 0 1 0 0 0 1 0 0 0 1 hsone.ldr"],
+			["1 16 -200 0 0 1 0 0 0 1 0 0 0 1 hstwo.ldr"]],
+		{"hsone.ldr": [["1 4 0 0 0 1 0 0 0 1 0 0 0 1 3004.dat"],
+			["1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3004.dat"]],
+		"hstwo.ldr": [["1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3010.dat"], [HELD_LINE, ZOOM, NAME],
+			["1 2 0 -48 0 1 0 0 0 1 0 0 0 1 3010.dat"]]}), "missing")
+	var shell: Shell = _main.get("_shell")
+	var moved: String = shell.assemblies.move_into(_path_named("hsone"), _path_named("hstwo"))
+	shell.verbs.edited.call()
+	await _frames(6)
+	var saved: String = await _save(tag)
+	_put(tag + "_1_saved.ldr", saved)
+	var steps: Array = _steps(_sub(saved, "hstwo"))
+	print("    hsone now %s; hstwo: %s" % [moved, _said(steps)])
+	_check("%s: dragged into hstwo, %s alone in its step 2 with its lines, hsone on after its last"
+		% [tag, HELD], not moved.is_empty() and steps.size() == 4 and _held_at(steps) == 1
+		and (steps[1][0] as Array).size() == 1 and steps[1][1] == HELD_LOOKS
+		and (steps[3][0] as Array).any(func(p: String) -> bool: return p.begins_with("hsone")))
+	_check("%s: ...and not in the model's own steps" % tag, _held_at(_steps(saved)) < 0)
+	_bring_back()
+
+
+## 6b: 3003 moved to the next step from the last step a person sees, H's
+## alone after it (hscheck E2_*_next_B: it went past H's): a part alone in
+## its step stays, the steps as they were, as the model without H has it.
+func _next_last(own: bool) -> void:
+	var tag: String = "nextlast_" + ("own" if own else "theirs")
+	print("\n  -- %s" % tag)
+	var text: String = _file(own, [[A], [B, TEXT], [HELD_LINE, ZOOM, NAME]], {})
+	_take_away("missing")
+	await _open(tag, text, "missing")
+	var said: String = await _say("edit_steps", {"op": "next", "bricks": [_id_of("3003")]})
+	print("    next 3003: %s" % said.get_slice("\n", 0).left(140))
+	var saved: String = await _save(tag)
+	_put(tag + "_1_saved.ldr", saved)
+	print("    saved: %s" % _said(_steps(saved)))
+	_check("%s: the steps are as they were, %s's last with its lines" % [tag, HELD],
+		said.contains("as they were") and _steps(saved) == _steps(text))
+	_bring_back()
+
+
+## 6c: hssub placed twice, the second mirrored; its 3004 moved on in the
+## second copy only (hscheck E3_*_next_S1_one: one copy's H renumbered, the
+## other's not, and the second's edit lost on the save): the same in both
+## copies, H's step in each its own, and the file's hssub [H | its lines]
+## [3004, 3010].
+func _second_copy(own: bool) -> void:
+	var tag: String = "copies_" + ("own" if own else "theirs")
+	print("\n  -- %s" % tag)
+	_take_away("missing")
+	await _open(tag, _file(own, [[A], ["1 16 200 0 0 1 0 0 0 1 0 0 0 1 hssub.ldr"],
+			["1 16 -200 0 0 -1 0 0 0 1 0 0 0 1 hssub.ldr", "0 !BRICKWORKS ZOOM 2"]],
+		{"hssub.ldr": [["1 4 0 0 0 1 0 0 0 1 0 0 0 1 3004.dat"], [HELD_LINE, ZOOM, NAME],
+			["1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3010.dat", TEXT]]}), "missing")
+	var second: int = -1
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == "3004":
+			second = maxi(second, brick.id)
+	var said: String = await _say("edit_steps", {"op": "next", "bricks": [second]})
+	print("    next the second copy's 3004: %s" % said.get_slice("\n", 0).left(140))
+	var held_steps: Dictionary = {}
+	for placement: LdrModel.Placement in _world.held_parts():
+		held_steps[placement.step] = true
+	var part_steps: Dictionary = {}
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id in ["3004", "3010"]:
+			(part_steps.get_or_add(brick.part_id, {}) as Dictionary)[brick.step] = true
+	print("    %s's steps %s; the parts' %s" % [HELD, held_steps.keys(), part_steps])
+	_check("%s: both copies the same, %s in one step in each, each part in one" % [tag, HELD],
+		held_steps.size() == 1 and part_steps.values().all(func(s: Dictionary) -> bool:
+			return s.size() == 1))
+	var saved: String = await _save(tag)
+	_put(tag + "_1_saved.ldr", saved)
+	var steps: Array = _steps(_sub(saved, "hssub"))
+	print("    hssub saved: %s" % _said(steps))
+	_check("%s: hssub saved as [%s | its lines] [3004, 3010 | TEXT]" % [tag, HELD],
+		steps.size() == 2 and _held_at(steps) == 0 and (steps[0][0] as Array).size() == 1
+		and steps[0][1] == HELD_LOOKS and steps[1][0] == ["3004 4", "3010 1"])
+	_bring_back()
+
+
+## 6d: someone else's file written whole (a sub-model made of 3020 and 3003),
+## H missing or on its way (hscheck Sa_theirs_make: H was carried into the
+## model's last step, out of its own): H alone in its step with its lines.
+func _theirs_whole(how: String) -> void:
+	var tag: String = "whole_" + how
+	print("\n  -- %s" % tag)
+	_take_away(how)
+	await _open(tag, _file(false, [[A], [HELD_LINE, ZOOM, NAME], [B, TEXT], [C]], {}), how)
+	_builder.clear_selection()
+	_builder.select_brick(_id_of("3020"), true)
+	_builder.select_brick(_id_of("3003"), true)
+	var shell: Shell = _main.get("_shell")
+	print("    made Front of %d parts" % shell.verbs.name_submodel("Front"))
+	await _frames(6)
+	var saved: String = await _save(tag)
+	_put(tag + "_1_saved.ldr", saved)
+	var steps: Array = _steps(saved)
+	var at: int = _held_at(steps)
+	print("    %s; saved: %s" % [_store.last_whole, _said(steps)])
+	_check("%s: written whole, %s alone in its step 2 with its lines" % [tag, HELD],
+		_store.last_whole.contains("written whole") and at == 1 and (steps[at][0] as Array).size() == 1
+		and steps[at][1] == HELD_LOOKS)
+	_bring_back()
+	await _landed()
+
+
 # -- helpers --------------------------------------------------------------------------
+
+
+const A := "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3020.dat"
+const B := "1 1 120 -16 0 1 0 0 0 1 0 0 0 1 3003.dat"
+const C := "1 4 120 -40 0 1 0 0 0 1 0 0 0 1 3001.dat"
+const TEXT := "0 !BRICKWORKS TEXT 20 20 60 12 5 Step three"
+const HELD_LINE := "1 14 30 -24 10 1 0 0 0 1 0 0 0 1 3062b.dat"
+
+
+## A file of the probe's, the app's own ([param own]) or someone else's: the
+## model's steps [param main] (each a step's lines), then each sub-model of
+## [param subs] (its name -> its steps).
+static func _file(own: bool, main: Array, subs: Dictionary) -> String:
+	var lines := PackedStringArray(["0 FILE hsfix.ldr", "0 Held steps", "0 Name: hsfix.ldr",
+		"0 Author: " + ("Brickworks" if own else "Someone Else")])
+	if own:
+		lines.append("0 !BRICKWORKS AUTHORED_STEPS")
+	lines.append("")
+	var blocks: Array = [main]
+	var names: Array = [""]
+	for name: String in subs:
+		blocks.append(subs[name])
+		names.append(name)
+	for index: int in blocks.size():
+		if index > 0:
+			lines.append_array(["0 FILE " + names[index], "0 " + names[index], "0 Name: " + names[index]])
+		var steps: Array = blocks[index]
+		for n: int in steps.size():
+			lines.append_array(PackedStringArray(steps[n]))
+			if n < steps.size() - 1:
+				lines.append("0 STEP")
+		lines.append("0 NOFILE")
+	lines.append("")
+	return "\n".join(lines)
+
+
+## The section of [param text] for the sub-model [param name] ("hssub", as
+## a FILE line names it with ".ldr" once or more), as a file of its own for
+## [method _steps]; "" when there is none.
+static func _sub(text: String, name: String) -> String:
+	var out := PackedStringArray()
+	var inside: bool = false
+	for raw: String in text.split("\n"):
+		var words: PackedStringArray = raw.strip_edges().split(" ", false)
+		if words.size() >= 3 and words[0] == "0" and words[1].to_upper() == "FILE":
+			var named: String = words[2].to_lower()
+			while named.ends_with(".ldr"):
+				named = named.trim_suffix(".ldr")
+			inside = named == name
+		if inside:
+			out.append(raw)
+	return "\n".join(out)
+
+
+## The path of the copy whose name begins [param name].
+func _path_named(name: String) -> String:
+	var paths: Array = AuthorSteps.paths_in(_world, _store.scenery).keys()
+	paths.sort()
+	for path: String in paths:
+		if Assemblies.leaf(path).to_lower().begins_with(name):
+			return path
+	return ""
+
+
+## [param text] written as a model of the probe's and opened ([param how]:
+## H away so).
+func _open(tag: String, text: String, how: String) -> void:
+	_write(MODELS + "hs_" + tag + ".ldr", text)
+	_main.call("clear_model")
+	await _frames(4)
+	var opened: String = await _say("open_model", {"name": "hs_" + tag})
+	await _settled(how)
+	print("    open: %s" % opened.get_slice("\n", 0).left(140))
 
 
 ## [param text] written as a model of the probe's, opened ([param how]: H

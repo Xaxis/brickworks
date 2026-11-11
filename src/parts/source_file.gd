@@ -203,14 +203,15 @@ func unshown(placements: Array) -> Dictionary:
 ## could not show carried into it, so a model written whole loses nothing it
 ## could not show either: a sub-model that is nothing but such parts (a
 ## flexible part) placed where each copy of it was, and its section as the
-## file had it; any other such part placed where it was, in the model's own
+## file had it; any other such part the text has not got in its own step and
+## sub-model ([method in_own_steps]) placed where it was, in the model's own
 ## section; and every section of the file those name. [param waiting] are
 ## parts still on their way, in the file's coordinates. [param place] says
 ## where a place the file has stands now, in them (ModelStore.held_place:
 ## where the drives kept since moved the model), as the file has it when
 ## not given.
 func carried_into(text: String, waiting: Array, place: Callable = Callable()) -> String:
-	var parts: Array = not_shown + waiting
+	var parts: Array = _to_carry(waiting)
 	if parts.is_empty():
 		return text
 	var carried: Array = _carried(parts, place)
@@ -233,13 +234,62 @@ func carried_into(text: String, waiting: Array, place: Callable = Callable()) ->
 	return out
 
 
+## Of [param parts], what the app cannot show and what is on its way (as
+## [member not_shown] holds them, in the file's coordinates), those a model
+## written whole writes with the parts it shows, each in its own step and its
+## own sub-model as the file has it (ModelStore._text_into): all but one of a
+## sub-model nothing of which is shown, which goes as the file has it, and
+## one whose line names a section of the file or anything but the part
+## ([method carried_into]). Up to 2026-11-11 every one was carried, at the
+## end of the model's own section, out of its step and its sub-model
+## (hscheck Sa), where an open of the file had it in both.
+func in_own_steps(parts: Array) -> Array:
+	var shown: Dictionary = _shown_sections()
+	return parts.filter(func(placement: LdrModel.Placement) -> bool:
+		return _in_own_step(placement, shown))
+
+
+## [method in_own_steps] for one, [param shown] the sections the model
+## shows a part of ([method _shown_sections]).
+func _in_own_step(placement: LdrModel.Placement, shown: Dictionary) -> bool:
+	if not _outermost_unshown(placement.unit, shown).is_empty():
+		return false
+	var reference: String = _reference_of(placement)
+	return not sections.has(LdrModel._key(reference)) \
+		and reference.to_lower() == (placement.part_id + ".dat").to_lower()
+
+
+## What of [member not_shown] and [param waiting] [method carried_into]
+## carries: those a model written whole has not got ([method in_own_steps]).
+func _to_carry(waiting: Array) -> Array:
+	var shown: Dictionary = _shown_sections()
+	return (not_shown + waiting).filter(func(placement: LdrModel.Placement) -> bool:
+		return not _in_own_step(placement, shown))
+
+
+## The sections a part of which the model shows: each that a line of a part
+## on the baseplate is in.
+func _shown_sections() -> Dictionary:
+	var out: Dictionary = {}
+	for line: int in by_line:
+		out[_section_at(line)] = true
+	return out
+
+
+## The name the file's line places [param placement] by, or its part's.
+func _reference_of(placement: LdrModel.Placement) -> String:
+	if placement.line >= 0 and placement.line < lines.size():
+		var words: PackedStringArray = LdrModel._fields(lines[placement.line].strip_edges())
+		if words.size() >= 15:
+			return " ".join(words.slice(14))
+	return placement.part_id + ".dat"
+
+
 ## What [method carried_into] puts in for [param parts]: [the lines placing
 ## them, in the model's section, and each section of the file those name and
 ## what those draw on, key -> true].
 func _carried(parts: Array, place: Callable = Callable()) -> Array:
-	var shown_sections: Dictionary = {}
-	for line: int in by_line:
-		shown_sections[_section_at(line)] = true
+	var shown_sections: Dictionary = _shown_sections()
 	var refs := PackedStringArray()
 	var placed_units: Dictionary = {}
 	var needed: Dictionary = {}    ## section key -> true
@@ -257,11 +307,7 @@ func _carried(parts: Array, place: Callable = Callable()) -> Array:
 				LdrModel._line_numbers(place.call(frame) if place.is_valid() else frame),
 				_file_name(section)])
 			continue
-		var reference: String = placement.part_id + ".dat"
-		if placement.line >= 0:
-			var words: PackedStringArray = LdrModel._fields(lines[placement.line].strip_edges())
-			if words.size() >= 15:
-				reference = " ".join(words.slice(14))
+		var reference: String = _reference_of(placement)
 		if sections.has(LdrModel._key(reference)):
 			needed[LdrModel._key(reference)] = true
 		refs.append("1 %s %s %s" % [_colour_token(placement.color_code),
@@ -308,7 +354,7 @@ func _as_sections(text: String) -> String:
 ## (sfreview F5).
 func kept_keys(waiting: Array, origins: Array) -> Dictionary:
 	var out: Dictionary = {}
-	var parts: Array = not_shown + waiting
+	var parts: Array = _to_carry(waiting)
 	if not parts.is_empty():
 		out.merge(_carried(parts)[1])
 	for key: String in _unplaced(origins):
