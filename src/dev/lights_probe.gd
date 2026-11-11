@@ -1355,20 +1355,27 @@ func _r_gone_deleted() -> void:
 			var ids: Array = Array(assemblies.ids_under(path))
 			said = (await _mcp("edit_model", {"remove": ids})).get_slice("\n", 0).left(50)
 		var tag: String = "gone_del_%s" % ("hand" if how == "by hand" else "mcp")
+		# What the model keeps for the name, not only what a save writes: a
+		# gone definition's lines kept under its name go to the next one
+		# that takes it (s12), and a save of the model alone never shows it.
+		var kept: Array = [_world.section_lines.has("Sub")]
 		var marks: Array = [await _saved_marks(tag + "_a")]
 		_shell.call("run", "undo")
 		await _frames(10)
+		kept.append(_world.section_lines.has("Sub"))
 		marks.append(await _saved_marks(tag + "_b"))
 		_shell.call("run", "redo")
 		await _frames(10)
+		kept.append(_world.section_lines.has("Sub"))
 		marks.append(await _saved_marks(tag + "_c"))
 		var want: Array = [none, lit, none]
 		var again: Array = await _reopened_marks([tag + "_a", tag + "_b", tag + "_c"])
 		var asked: String = (" (%s)" % said) if not said.is_empty() else ""
 		_check("a lit sub-model's one copy deleted %s%s: its light and view gone %s; undone, "
 			% [how, asked, marks[0]] + "back in it %s; redone, gone %s; each opened and saved "
-			% [marks[1], marks[2]] + "again the same %s" % [again],
-			_same_marks(marks, want) and _same_marks(again, want))
+			% [marks[1], marks[2]] + "again the same %s; Sub's lines kept by the model "
+			% [again] + "deleted, undone, redone %s" % [kept],
+			_same_marks(marks, want) and _same_marks(again, want) and kept == [false, true, false])
 
 
 ## Two copies of a lit Sub, as the app writes them: the first where its file
