@@ -8,7 +8,7 @@ const SITE := "https://brickworks.diy"
 
 const PANELS := {
 	"AccountPanel": "/docs/account#account-panel",
-	"AiSettings": "/docs/ai#other-ais",
+	"AiSettings": "/docs/connect#other-ai",
 	"BrickifyDialog": "/docs/art-and-brickify#brickify",
 	"BuildMode": "/docs/model-pages#build-it",
 	"ClaudeTabView": "/docs/connector#tabs",

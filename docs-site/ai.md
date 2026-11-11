@@ -1,7 +1,6 @@
 ---
 tools: submit_design, choose_sketch, plan_scale, find_reference, how_real_sets_build_this, find_techniques, show_technique, place_technique, restyle_model, add_rooms
-panels: AiSettings#other-ais
-ai: How an AI designs in Brickworks: the person's own AI app (Claude, ChatGPT, Gemini and others) through the connector, or Claude or another AI on their own key in the assistant panel. It proposes parts and the app decides: every design is checked and sent back with what failed. A design starts with plan_scale, find_reference and how_real_sets_build_this, then submit_design.
+ai: How a person designs with an AI in Brickworks: in the assistant panel, with Claude on their own key or another AI on their own key, or in their own AI app through the connector. It proposes parts and the app decides: every design is checked and sent back with what failed. A design starts with plan_scale, find_reference and how_real_sets_build_this, then submit_design. Asked about a selection, the AI changes only that.
 rules:
   - The app builds what is submitted, checks it holds together, and refuses what does not.
   - A sketch is under 150 parts; three sketches, then choose_sketch one.
@@ -9,25 +8,30 @@ rules:
   - A whole design is one undo step.
 title: Designing with AI
 nav: The assistant
-description: How an AI designs in Brickworks: your own AI app or your own key, the assistant panel, sketches, and asking about a selection.
+description: Have an AI design a model from a sentence, sketch ideas first, or change only the parts you select, in the assistant panel or from your own AI app.
 ---
 
-An AI can design a whole model from a sentence, change a part of one, or answer a question about it: the AI app you use, or a model on your own API key. It builds with the same real parts and the same checks you do: the app decides whether each part fits and holds, so what goes on the baseplate is buildable. There is no AI in the window until you turn the assistant on ([Connect your AI](/docs/connect#assistant-on)).
+The assistant designs a whole model from a sentence, changes only the parts you select, or answers a question about them. It builds with the real parts and the checks you do: the app decides whether each part fits and holds, so what goes on the baseplate is buildable. It is the panel on the right once it is on (**Tools › Settings…**, *Assistant (AI)*, **Show the assistant**).
 
-## Ways to bring an AI {#ways}
+## Choose who designs {#ways}
 
-| Way | You need | Where it runs |
-|---|---|---|
-| [Your AI app](/docs/connect), through [the connector](/docs/connector) | Claude, ChatGPT, Gemini, Claude Code, Cursor or another: each app's page says which of its plans can add it | The app itself, building in your open Brickworks tab |
-| [Claude Code, started for you](/docs/claude-code#started-for-you) | The desktop app, and Claude Code signed in to your plan | The assistant panel |
-| [Your API key](#api-key) | A key from the Anthropic Console | The assistant panel itself |
-| [Another AI on your own key](#other-ais) | A key from OpenAI, Google, OpenRouter or another provider, or a model on your own computer | The assistant panel, chosen in **Settings › AI** |
+Every AI is your own, set up once in [Connect your AI](/docs/connect):
 
-## The assistant panel {#panel}
+- **Your AI app**, Claude, ChatGPT, Gemini, Claude Code or another, through [the connector](/docs/connector): you type the brief in that app, and it builds in your tab.
+- **Claude on your own Anthropic key**, in the panel itself.
+- **Another AI on your own key**, from OpenAI, Google, OpenRouter and others, chosen in **Tools › Settings…**, **AI: Claude…**.
 
-![The assistant panel beside the parts bin: a box to describe what to build, Build it, and Connect your AI at its foot.](/docs/img/ai-assistant.webp "The assistant panel: say what to build, then Build it.")
+## Build a model from a sentence {#panel}
 
-The panel on the right is where you talk to Claude in the app. Describe what you want (*a red fire engine with a ladder that lifts*) and press **Build it**. You watch it build: each part goes down as Claude places it, and the status bar says what it is doing. When it has finished, the whole design is one step of Undo.
+![The assistant panel beside the parts bin: a box to describe what to build, Build it with Sketch first ticked, the model and how hard it thinks, a place for your Anthropic key, and Connect your AI at its foot.](/docs/img/ai-assistant.webp "The assistant panel: say what to build, then Build it.")
+
+1. Describe what you want in the box at the top of the panel: *a red fire engine with a ladder that lifts*. Say the size if it matters (*16 by 16 studs*, *about 30 cm long*).
+2. For something real, **Add a picture of it**: a photo or drawing, whose proportions are measured rather than remembered.
+3. Press **Build it**. With **Sketch first** ticked, as it is for a new model, you choose from three sketches first (below).
+4. Watch it build: each part goes down as it is placed, and the panel says what it is doing.
+5. When it has finished, the whole design is one step of **Undo**. Change any part by hand, or ask for changes in the box.
+
+**New chat**, at the top of the panel, starts a fresh conversation; the model stays.
 
 <!-- covers
 lib:design loop
@@ -35,107 +39,35 @@ lib:claude's design is one undo step
 lib:a big check on a worker
 -->
 
-### Your API key {#api-key}
+### Sketch first {#sketch}
 
-Paste a key from the Anthropic Console into the panel. It is checked with Anthropic before it is kept, in this browser or for this visit only, and is sent nowhere but Anthropic.
-
-### Model and effort {#model-effort}
-
-Choose which Claude designs and how hard it thinks. Higher effort takes longer and costs more; medium effort costs about a third of the default. The panel offers only the combinations Anthropic accepts.
-
-<!-- covers
-lib:model and effort settings
--->
-
-### On your Claude plan, in the panel {#my-claude}
-
-In the desktop app, with Claude Code installed and signed in, the panel can design on your Claude plan instead of a key: it starts Claude Code for you and points it at this window. A new design of a whole model is then made twice at once, the second in a copy of the app with no window, and the better of the two is kept as the model; Undo brings back the other.
-
-<!-- covers
-ui:design on your own subscription
-lib:best of two
--->
-
-### On your GitHub Copilot plan, in the panel {#my-copilot}
-
-In the desktop app, with the GitHub Copilot CLI installed and signed in (`copilot login` in a terminal), **My Copilot** sits beside **My Claude**, and the panel designs on your Copilot plan with the model you chose in Copilot. Copilot is given this window's tools and nothing else: no shell, no files, none of your other MCP servers. A design is made once, and spends your plan's allowance as a prompt in Copilot does. From a terminal, `--ask-copilot="a small post box"` does the same at start-up.
-
-<!-- covers
-ui:design on your own Copilot plan
--->
-
-## Another AI on your own key {#other-ais}
-
-![Settings' AI page: who designs, Claude or another AI on your own key, with the provider, its model and the key.](/docs/img/ai-settings.webp "Tools › Settings…, then AI: Claude…")
-
-**Tools › Settings…**, then **AI: Claude…** (the link names who designs), chooses who designs: **Claude**, as above, or **another AI on your own API key**. The other AI is given the same instructions and the same tools Claude is, builds in the window as Claude does, is held to the same checks, and answers the same [fresh look](/docs/fresh-eyes) at its first save.
-
-<!-- covers
-ui:choose the AI that designs
-lib:designing with any provider on the person's key
-lib:designing on Anthropic's Messages or Gemini's own API
-lib:designing on OpenAI's Responses
-lib:saying who designs
-lib:a design drawn as any provider writes it
--->
-
-1. **Provider**: OpenAI, the Anthropic API, Google Gemini, OpenRouter, Mistral, Groq, Together, DeepSeek, xAI, or a server that speaks OpenAI's Chat Completions: Ollama, LM Studio or vLLM on your own computer, or any other at an **Address** you give.
-2. **API key**: paste it in. **Show** shows it while you type; once kept, the field is cleared and only its fingerprint is shown (`sk-pro…abcd`). **Remember on this device** keeps it; untick it to keep it for this visit only. **Forget the key** deletes it.
-3. **Model**: the provider's own list, asked for as soon as there is a key; type to filter it, or type a model's id and press [[Enter]] to use one not listed.
-4. **Temperature**, the most a reply may write, and the **reasoning effort**, where the model takes them.
-5. **Test** asks the model for one tool call and to name the colour of one small picture, and says plainly what works: an AI that cannot call tools cannot design, and one that cannot see pictures cannot judge its own work. Each test costs less than a cent.
-6. **Design with it** goes back to the assistant panel, ready for your brief. The panel then designs with the AI you chose.
-
-The app then names the AI wherever it said Claude for the one designing: the toolbar says *GPT-6.1 Sol working* while it works, its steps in **Edit › History** are its own (*GPT-6.1 Sol's submit design*), and **Ask GPT-6.1 Sol about this…** asks it about the selection. A design goes down brick by brick while the AI is still writing it, as Claude's does in the panel, and gives way to the checked model when it is done. OpenAI's own models are reached through OpenAI's Responses API, which hands the model the pictures it asks for as the answer to its own call, and carries its reasoning from one step to the next.
-
-### Where your key is kept {#key-custody}
-
-<!-- covers
-lib:a person's own keys kept in the system's keychain
--->
-
-The panel says this beside the key, for where you are. A key pasted in the assistant panel for Claude is kept the same way.
-
-| Where | How the key is kept |
-|---|---|
-| The desktop app on Linux | In your keyring (the Secret Service, as GNOME Keyring or KWallet keeps it), locked with your login. |
-| The desktop app on macOS | In your login Keychain, locked with your login. |
-| The desktop app on Windows | In Windows Credential Manager, locked with your Windows sign-in. |
-| The desktop app, where no keyring answers | On this computer only, in a file encrypted to it, so a copy taken elsewhere cannot be read. |
-| A browser | In this browser's storage for brickworks.diy, scrambled but not secret: anyone using this browser could recover it. Untick **Remember** on a shared computer. No script but Brickworks' own runs on the site, and the app can reach only the providers listed and your own computer. |
-| For this visit only | Nowhere on the device; gone when the tab or app closes. |
-| From the environment (desktop) | Read from the provider's environment variable the app was started with, and not kept by Brickworks. |
-
-On the desktop, programs running as you could still ask the keyring for it, so a key with a spending limit is safest. A key kept in a file by an earlier version moves into the keyring the first time it is read, and the file is deleted. Everywhere, the key is sent only to the provider you chose (or the address you gave), never to Brickworks, and never logged or saved with a model.
-
-> [!NOTE]
-> A model on your own computer (Ollama, LM Studio, vLLM) answers the web app only if it allows brickworks.diy (for Ollama, `OLLAMA_ORIGINS`), and the browser asks you first. A server elsewhere that is not on the list needs the desktop app, coming soon.
-
-### From the command line {#ask-provider}
-
-The desktop app can design one brief with another AI and quit, the key read from the provider's environment variable or the one kept, never printed:
-
-```sh
-./brickworks.x86_64 -- --ask-provider="a red tower" --provider=openai --provider-model=<model> --out=tower.ldr
-```
-
-`--provider-base=URL` names a server of your own.
-
-<!-- covers
-cli:design with another provider from a brief
--->
-
-## Sketch first {#sketch}
-
-**Sketch first**, beside **Build it**, asks for three quick massings of the idea, each under 150 parts, on a cheaper model. Pick the silhouette you mean on its card with **Design this one**, and the full design is built from it at your own model and effort. It is the cheap way to find out whether the brief was understood.
+**Sketch first**, beside **Build it**, asks for three quick sketches of the idea, each under 150 parts, on a cheaper model. They come as cards with their sizes: choose the shape you mean with **Design this one**, and the full design is built from it at your own model and effort. It is the cheap way to find out whether the brief was understood.
 
 <!-- covers
 ui:sketch first
 -->
 
-## Ask about the selection {#ask}
+### Model and effort {#model-effort}
 
-Select some parts, right-click one and choose **Ask Claude about this…** (or [[Ctrl+K]]): *make this wing longer*, *why does this fall off?*, *add a door here*. Claude may change only the selected parts and the space just round them, or a bigger box if it asks and you allow it. Everything else stays where it is, and a change that reaches outside is refused whole. In [View › Stress](/docs/the-view#stress), a red part's menu has **Ask Claude to brace this**.
+The two menus under **Build it** choose which Claude designs (Opus, Sonnet or Haiku) and how hard it thinks, from low to max. Higher effort takes longer and costs more; medium costs about a third of the default. A model that takes no effort setting shows none.
+
+<!-- covers
+lib:model and effort settings
+-->
+
+### Your API key {#api-key}
+
+With no AI app connected and no other AI chosen, the panel asks for an Anthropic key the first time: see [Claude on your own key](/docs/connect#api-key). **Change key**, at the panel's foot, forgets it for another.
+
+## Change only the parts you select {#ask}
+
+![A part's right-click menu with the assistant on: Ask Claude about this…, with its key Ctrl+K, at the top, above the menu's other commands.](/docs/img/ai-ask.webp "Right-click a part: Ask Claude about this…")
+
+1. Select the parts to change.
+2. Right-click one and choose **Ask Claude about this…**, or press [[Ctrl+K]] (also in the **Tools** menu).
+3. Say what you want: *make this wing longer*, *why does this fall off?*, *add a door here*.
+
+The AI may change only the selected parts and the space just round them, or a bigger box if it asks and you allow it. Everything else stays where it is, and a change that reaches outside is refused whole. In [View › Stress](/docs/the-view#stress), a red part's menu also has **Ask Claude to brace this…**.
 
 <!-- covers
 ui:ask claude about the selection
@@ -143,11 +75,44 @@ ui:ask claude about the selection
 
 ## Reference pictures {#references}
 
-For a real subject, a landmark, a vehicle or an animal, Claude can look up a reference picture from Wikimedia Commons and design from it. Only the picture's address goes out, from your browser.
+For a real subject, a landmark, a vehicle or an animal, the AI looks up a reference picture on Wikimedia Commons and sizes the model from it. Only the picture's address goes out, from your browser. Or give it your own with **Add a picture of it**.
 
 <!-- covers
 lib:reference pictures
 lib:find a reference picture
+-->
+
+## Another AI designing {#other-ais}
+
+Chosen in Settings ([how](/docs/connect#other-ai)), another AI gets the same instructions and tools Claude does, is held to the same checks, and gets the same [fresh look](/docs/fresh-eyes) at its first save. The app names it wherever it would say Claude: the toolbar says *GPT-6.1 Sol working*, its steps in **Edit › History** are its own (*GPT-6.1 Sol's submit design*), and the part's menu says **Ask GPT-6.1 Sol about this…**. A design goes down brick by brick while the AI is still writing it, and gives way to the checked model when it is done.
+
+<!-- covers
+lib:designing on Anthropic's Messages or Gemini's own API
+lib:designing on OpenAI's Responses
+lib:saying who designs
+lib:a design drawn as any provider writes it
+-->
+
+## In the desktop app {#desktop}
+
+> [!NOTE]
+> The desktop app is coming soon. These two run there only, because a browser cannot start a program on your computer.
+
+### On your Claude plan {#my-claude}
+
+With Claude Code installed and signed in, **My Claude** beside the model menus designs on your Claude plan with no key: the panel starts Claude Code for you, pointed at this window and nothing else. A new design is made twice at once, the second in a copy of the app with no window; the better is kept, and Undo brings back the other.
+
+<!-- covers
+ui:design on your own subscription
+lib:best of two
+-->
+
+### On your GitHub Copilot plan {#my-copilot}
+
+With the GitHub Copilot CLI installed and signed in (`copilot login`), **My Copilot** designs on your Copilot plan, with the model you chose there. Copilot gets this window's tools and nothing else: no shell, no files, none of your other MCP servers. Both can also be started from a terminal: [the command line](/docs/claude-code#command-line).
+
+<!-- covers
+ui:design on your own Copilot plan
 -->
 
 Read on: [how the AI works](/docs/how-ai-works), and [fresh eyes](/docs/fresh-eyes), the second look every new design gets.
