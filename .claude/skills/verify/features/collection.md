@@ -246,7 +246,7 @@ which models they could build from what they have. Added 2026-10-12.
   `SetInventories.shard_of`.
 - `compare two sets or models` and `parts compare` (APP_UX6 #7, comparesets,
   2026-11-07; `src/ui/compare_view.gd`'s parts sheet, `src/parts/parts_compare.gd`):
-  File, Compare two sets or models… (Shell `compare_sets`) opens Compare as a
+  File, Compare, Compare two sets or models… (Shell `compare_sets`) opens Compare as a
   sheet over the model, as the parts list is: A and B each a set by its number
   (`SetInventories`, its spares not counted, as Rebrickable's compare leaves
   them out), a saved model or an example (its file, as What can I build? reads
@@ -378,7 +378,7 @@ which models they could build from what they have. Added 2026-10-12.
 
 ```sh
 godot --path .     # Build > My collection…  ·  P, then What do I need?
-godot --path .     # File > Compare two sets or models…: 7140 for A, 9493 for B
+godot --path .     # File > Compare > Compare two sets or models…: 7140 for A, 9493 for B
 curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/collection   # 401 signed out
 ```
 

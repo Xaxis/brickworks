@@ -691,9 +691,8 @@ func _on_open() -> void:
 			for example: ModelStore.Entry in examples:
 				_saves.add_item(example.describe(), _entries.size())
 				_entries.append(example)
-	_saves.reset_size()
-	_saves.position = Vector2i(get_global_mouse_position()) + Vector2i(0, 8)
-	_saves.popup()
+	# Beside the pointer, at whatever size a phone gives it.
+	TouchSizing.popup_beside(_saves, get_global_mouse_position(), false)
 
 
 func _on_pick(id: int) -> void:
@@ -933,7 +932,7 @@ func _on_export() -> void:
 func export_now(into: String = "", asking: bool = false) -> String:
 	if world.brick_count() == 0:
 		return "nothing to export"
-	var file_name: String = model_name().to_snake_case() + ldraw_extension()
+	var file_name: String = SubmodelFile.titled(model_name(), ldraw_extension())
 	if OS.has_feature("web"):
 		if await store.export_paced(file_name, model_name()):
 			return "downloaded %s" % file_name

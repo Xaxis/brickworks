@@ -86,7 +86,7 @@ Where the LDraw community has a model of the set, the bin follows its booklet: t
 
 ## Compare two sets or models {#compare-sets}
 
-**File › Compare two sets or models…** puts any two side by side: a set by its number (*7140*), a saved model or an example, or the model open now.
+**File › Compare › Compare two sets or models…** puts any two side by side: a set by its number (*7140*), a saved model or an example, or the model open now.
 
 1. Choose **A**, what you have, and **B**, what you want to build, then **Compare**.
 2. The tabs **In both**, **Only in A** and **Only in B** list the parts by part and colour. A piece of B that A has in another moulding of the same part counts as in both; spare parts, stickers and parts you made are not counted.
