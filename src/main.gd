@@ -2631,7 +2631,7 @@ func ask_about_selection(words: String = "") -> void:
 ## name of what was taken off, and Save would have written the lighthouse
 ## over the model it replaced. The design names it when it stands.
 ##
-## [param kept] makes it one step of the history, named [param words]: a
+## [param kept] makes it the one step of the history, named [param words]: a
 ## session's clear (CommandSocket), which undo takes back whole. Kept as the
 ## difference of what was on the baseplate, its undo gave back the parts and
 ## nothing else of the model, under new numbers: its build steps' looks, its
@@ -2642,8 +2642,7 @@ func clear_model(kept: bool = false, words: String = "") -> void:
 	_world.clear(kept)
 	_builder.lattice.clear()
 	_builder.clear_selection()
-	if not kept:
-		_builder.forget_history()
+	_builder.forget_history()
 	if _assistant_made != null:
 		_assistant_made.forget_built()
 	_store.model_floor = ModelFloor.preferred()

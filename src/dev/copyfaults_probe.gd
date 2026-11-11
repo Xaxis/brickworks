@@ -17,7 +17,8 @@
 ##   wing's other step showed on that copy alone, and opened again on both,
 ##   or on neither (snreview);
 ## - metas: TITLE and CUT_AWAY lines went in after "0 FILE x", above the
-##   model's own title line, on every file with sub-models (kt4review);
+##   model's own title line, on every file with sub-models (kt4review), and
+##   FROM_SET and AUTHORED_STEPS lines too;
 ## - numbers: a part turned 36 degrees recoloured or moved keeps the
 ##   numbers its line had (keeptext5 #7, checked).
 ## Each case opens its file (src/dev/fixtures/copyfaults_*, and for metas
@@ -363,6 +364,7 @@ func _case_metas() -> void:
 		# At an odd LDU, as the cut's own strip puts a plane (SeeInside._odd):
 		# opened again, one at 10 is moved to 11.
 		_world.cut_kept = {"shape": "plane", "axis": "x", "at": 11.0, "away": 1, "ghosts": false}
+		_store.from_set = "6780-1"
 		var saved: String = _store.to_text("Renamed Here", true)
 		var said: String = _under_title(saved, title)
 		_check("%s saved: %s" % [name, said if not said.is_empty() else "under the title %s" % title],
@@ -375,8 +377,8 @@ func _case_metas() -> void:
 			and named == "Renamed Here")
 		var again: String = _store.to_text("Renamed Here", true)
 		said = _under_title(again, title)
-		_check("...saved again: %s" % (said if not said.is_empty() else "the same, under its title"),
-			said.is_empty() and again == saved)
+		_check("...saved again: %s" % (said if not said.is_empty() else "the same, under its title"
+			+ _first_unlike(saved, again)), said.is_empty() and again == saved)
 
 
 ## Where [param text]'s own lines stand against its title [param title]: ""
@@ -396,14 +398,29 @@ static func _under_title(text: String, title: String) -> String:
 		var line: String = lines[n].trim_suffix("\r")
 		if n > start and (line.begins_with("0 FILE ") or line == "0 NOFILE"):
 			ended = true
-		for meta: String in [SavedViews.META, CutShape.META, ModelStore.TITLE_META]:
+		for meta: String in [SavedViews.META, CutShape.META, ModelStore.TITLE_META,
+				ModelStore.SET_META, LdrModel.AUTHORED_META]:
 			if line.begins_with(meta) and (n <= start or ended):
 				return "line %d, %s, is not under the title" % [n + 1, line.left(40)]
-	for meta: String in [SavedViews.META, CutShape.META]:
+	for meta: String in [SavedViews.META, CutShape.META, ModelStore.SET_META]:
 		if not text.contains(meta):
 			return "no %sline" % meta.substr(14)
 	if not text.contains(ModelStore.TITLE_META) and lines[start].trim_suffix("\r") != "0 Renamed Here":
 		return "the new name nowhere"
+	return ""
+
+
+## Where two texts first part: "" when they are the same.
+static func _first_unlike(a: String, b: String) -> String:
+	if a == b:
+		return ""
+	var x: PackedStringArray = a.split("\n")
+	var y: PackedStringArray = b.split("\n")
+	for n: int in maxi(x.size(), y.size()):
+		var one: String = x[n] if n < x.size() else "(none)"
+		var two: String = y[n] if n < y.size() else "(none)"
+		if one != two:
+			return " (line %d was %s, is %s)" % [n + 1, one.left(90).c_escape(), two.left(90).c_escape()]
 	return ""
 
 

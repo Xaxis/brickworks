@@ -2414,8 +2414,11 @@ static func _written_with(asked: Dictionary, kept: String) -> String:
 	kept = Motions.written_into(kept, asked["motions"])
 	kept = PinnedComments.written_into(kept, asked["pins"])
 	kept = _looks_into(kept, asked["looks"], asked["authored"])
+	# Named by the file's own header (the LDraw model repository's) and by no
+	# line of the app's, it is the file's as it was.
 	var number: String = asked["set"]
-	return kept if set_in(kept) == number else with_set(kept, number)
+	return kept if set_in(kept) == number and not kept.contains(SET_META) \
+		else with_set(kept, number)
 
 
 ## Why each source was last written as live writes it, said on the console
@@ -3058,14 +3061,21 @@ static func _with_header(text: String, header: PackedStringArray, authored: bool
 	return text.substr(0, at + 1) + "\n".join(lines) + "\n" + rest
 
 
-## [param text] with the set it came from on a line after its first.
+## [param text] with the set it came from on a line under the model's title
+## (LdrModel.into_main), and any it had taken out: after an .mpd's first
+## line, its 0 FILE, it stood above the title, as the app's other lines did;
+## and a file's own, left where it was, went below the lines the next save
+## put in above it, so no two saves were the same (copyfaults).
 static func with_set(text: String, number: String) -> String:
-	if number.is_empty() or text.contains(SET_META):
+	if number.is_empty():
 		return text
-	var cut: int = text.find("\n")
-	if cut < 0:
-		return text + "\n" + SET_META + number + "\n"
-	return text.substr(0, cut + 1) + SET_META + number + "\n" + text.substr(cut + 1)
+	if text.contains(SET_META):
+		var kept := PackedStringArray()
+		for line: String in text.split("\n"):
+			if not line.begins_with(SET_META):
+				kept.append(line)
+		text = "\n".join(kept)
+	return LdrModel.into_main(text, PackedStringArray([SET_META + number]))
 
 
 ## The real set a model's text is, or empty: its own line, else the
@@ -3217,13 +3227,17 @@ static func _turn_key(column: Vector3) -> int:
 
 
 ## [param text] saying its steps are its author's, under the model's own
-## header (after its Author line), where LdrModel looks for it.
+## header (after its Author line), where LdrModel looks for it; with no
+## Author line in the model's own section, under its title (LdrModel
+## .into_main), not after an .mpd's 0 FILE nor in a sub-model's header.
 static func with_authored_steps(text: String) -> String:
-	var at: int = text.find("\n0 Author: ")
-	var cut: int = text.find("\n", at + 1) if at >= 0 else text.find("\n")
-	if cut < 0:
-		return text + "\n" + LdrModel.AUTHORED_META + "\n"
-	return text.substr(0, cut + 1) + LdrModel.AUTHORED_META + "\n" + text.substr(cut + 1)
+	var span: Vector2i = LdrModel.main_span(text)
+	var at: int = text.find("\n0 Author: ", maxi(span.x - 1, 0))
+	if at < 0 or at >= span.y:
+		return LdrModel.into_main(text, PackedStringArray([LdrModel.AUTHORED_META]))
+	var cut: int = text.find("\n", at + 1)
+	return LdrModel.lines_at(text, text.length() if cut < 0 else cut + 1,
+		PackedStringArray([LdrModel.AUTHORED_META]))
 
 
 ## Each minifigure in the model, by its group, and the frame it stands
