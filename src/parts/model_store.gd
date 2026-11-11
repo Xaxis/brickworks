@@ -1535,6 +1535,8 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	# A sub-model's own lights and views, by its definition, wherever an
 	# edit takes its copies (BrickWorld.section_lines).
 	world.section_lines = Assemblies.lines_of(model)
+	# And each section's name in the file, a whole write's again.
+	world.section_files = model.file_names()
 	# Stood on the ground before anything is placed, from every part in it;
 	# and brought down onto it, when another tool drew it up in the air.
 	var up: Vector3 = lift_for(known, foreign)
@@ -2914,9 +2916,10 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 			LdrModel.steps_written(placements, instances, unit_steps))
 	# A sub-model's own lights and views in its own section, by its definition.
 	var text: String = LdrModel.write_tree(placements, title, "Brickworks", instances, embedded,
-		unit_steps, known, steps, Assemblies.lines_written(world, instances)) \
+		unit_steps, known, steps, Assemblies.lines_written(world, instances), world.section_files) \
 		if not instances.is_empty() \
-		else LdrModel.write_ldr(placements, title, "Brickworks", figures, embedded, known, steps)
+		else LdrModel.write_ldr(placements, title, "Brickworks", figures, embedded, known, steps,
+			world.section_files)
 	if authored:
 		text = with_authored_steps(text)
 	# Someone else's model written whole: still theirs, under their terms,
@@ -3477,24 +3480,27 @@ static func count_in(text: String) -> int:
 	var head := PackedStringArray()
 	for raw: String in (text + "\n0 NOFILE").split("\n"):
 		var line: String = raw.strip_edges()
-		if line.begins_with("0 FILE ") or line.begins_with("0 NOFILE"):
+		# Each section by its name as LDraw compares it (LdrModel._key), the
+		# first block of a name the one a reference means, as the open reads it.
+		var word: String = LdrModel.section_word(raw) if line.begins_with("0") else ""
+		if word == "FILE" or word == "NOFILE":
 			if (named or not lines.is_empty()) and not refs.has(name):
 				refs[name] = lines
 				is_part[name] = LdrModel.declares_part(head)
 				order.append(name)
 			if named and model == null:
 				model = name
-			named = line.begins_with("0 FILE ")
-			name = LdrModel._key(line.substr(7)) if named else ""
+			named = word == "FILE"
+			name = LdrModel._key(LdrModel.file_name_of(raw)) if named else ""
 			lines = PackedStringArray()
 			head = PackedStringArray()
 			continue
 		if head.size() < 16:
 			head.append(line)
-		if line.begins_with("1 "):
-			var fields: PackedStringArray = line.split(" ", false)
-			if fields.size() >= 15:
-				lines.append(LdrModel._key(" ".join(fields.slice(14))))
+		if line.begins_with("1"):
+			var fields: PackedStringArray = LdrModel._fields(line)
+			if fields.size() >= 15 and fields[0] == "1":
+				lines.append(LdrModel._key(LdrModel.reference_of(raw)))
 	if model != null:
 		return _bricks_in(model, refs, is_part, 0)
 	if order.is_empty():

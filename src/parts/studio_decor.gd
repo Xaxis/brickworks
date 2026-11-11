@@ -92,18 +92,21 @@ class StudioTexture extends RefCounted:
 # -- reading --------------------------------------------------------------------------
 
 
-## The sections of an MPD text: lowercase file name -> its lines, the FILE
-## and NOFILE lines left out.
+## The sections of an MPD text: each by its name as LDraw compares it
+## (LdrModel._key) -> its lines, the FILE and NOFILE lines left out; a later
+## block of a name an earlier one has by a key no reference gives
+## (LdrModel.section_key), as the open reads it.
 static func sections(text: String) -> Dictionary:
 	var out: Dictionary = {}
 	var current: String = ""
 	var lines: Array = []
+	var blocks: Dictionary = {}
 	for raw: String in text.split("\n"):
 		var line: String = raw.strip_edges()
 		if line.begins_with("0 FILE "):
 			if not current.is_empty():
 				out[current] = PackedStringArray(lines)
-			current = line.substr(7).strip_edges().to_lower()
+			current = LdrModel.section_key(raw, blocks)
 			lines = []
 			continue
 		if line.begins_with("0 NOFILE"):
@@ -137,7 +140,7 @@ static func carried(model: String, model2: String, custom: Dictionary,
 		var tokens: PackedStringArray = raw.strip_edges().replace("\t", " ").split(" ", false)
 		if tokens.size() < 15 or tokens[0] != "1":
 			continue
-		var name: String = " ".join(tokens.slice(14)).strip_edges().to_lower().replace("\\", "/")
+		var name: String = LdrModel._key(LdrModel.reference_of(raw))
 		if own.has(name) or wanted.has(name):
 			continue
 		var bare: String = name.get_file()
@@ -282,8 +285,7 @@ static func _placements(lines: PackedStringArray) -> Array:
 		var place := PackedStringArray()
 		for word: String in tokens.slice(2, 14):
 			place.append("%.2f" % (snappedf(word.to_float(), 0.01) + 0.0))
-		out.append([" ".join(tokens.slice(14)).strip_edges().to_lower().replace("\\", "/"),
-			" ".join(place)])
+		out.append([LdrModel._key(LdrModel.reference_of(raw)), " ".join(place)])
 	return out
 
 
@@ -385,7 +387,7 @@ static func _walk(flat: Flat, source: Dictionary, name: String, at: Transform3D,
 				for word: String in tokens.slice(2, 14):
 					numbers.append(word.to_float())
 				var child: Transform3D = at * _placed(numbers)
-				var child_name: String = " ".join(tokens.slice(14)).to_lower().replace("\\", "/")
+				var child_name: String = LdrModel._key(" ".join(tokens.slice(14)))
 				var child_path: Array = path.duplicate()
 				child_path.append(subfile)
 				subfile += 1

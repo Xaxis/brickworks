@@ -307,6 +307,14 @@ var step_looks: Dictionary = {}
 ## sub-model's are kept for whatever next takes its name. Changed only by the
 ## history's steps, a whole table each (Assemblies.set_lines).
 var section_lines: Dictionary = {}
+## The name each sub-model's section had in the file the model was opened
+## from, by its definition, and the model's own by "" (LdrModel.file_names):
+## a whole write writes each under it again (LdrModel.write_tree), as LDCad
+## and Studio keep a file's names. Named again from its title at every save,
+## "0 FILE hssub.ldr" titled "hssub.ldr" went out as "hssub.ldr.ldr", and the
+## next open lost it (hscheck). A definition renamed is not in it, and is
+## named from its new name.
+var section_files: Dictionary = {}
 ## The model's own named movements (Motions: "Open the doors"), read from
 ## its file and written into it. Changed only by the history's steps.
 var motions: Motions = null
@@ -577,6 +585,7 @@ func clear() -> void:
 	_gone_origins.clear()
 	step_looks.clear()
 	section_lines.clear()
+	section_files.clear()
 	motions = null
 	cut_kept = {}
 	saved_views = []

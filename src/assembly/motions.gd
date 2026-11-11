@@ -405,7 +405,7 @@ static func moved_into(text: String, whole: Transform3D) -> String:
 		if numbers.size() != 12:
 			continue
 		lines[n] = "1 %s %s %s%s" % [words[1], LdrModel.numbers_text(_composed(w, numbers)),
-			" ".join(words.slice(14)), "\r" if lines[n].ends_with("\r") else ""]
+			LdrModel.reference_of(lines[n]), "\r" if lines[n].ends_with("\r") else ""]
 	return "\n".join(lines)
 
 

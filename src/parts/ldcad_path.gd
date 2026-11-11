@@ -88,7 +88,7 @@ static func _paths_of(source: SourceFile) -> Dictionary:
 ## ("pneumatic_hose_lq_12.ldr" for "42080 - pneumaticHoseLQ-12.ldr"), when
 ## one and only one source path ends so. "" for none.
 static func _match(file_line: String, paths: Dictionary) -> String:
-	var name: String = LdrModel._key(file_line.strip_edges().substr(7).strip_edges())
+	var name: String = LdrModel._key(LdrModel.file_name_of(file_line))
 	if paths.has(name):
 		return name
 	var plain: String = _letters(name)
@@ -123,7 +123,7 @@ static func _section_again(section: PackedStringArray, path: Dictionary,
 		var numbers := PackedFloat64Array()
 		for k: int in range(2, 14):
 			numbers.append(float(words[k]))
-		var part: String = library.resolve(LdrModel._key(" ".join(words.slice(14))))
+		var part: String = library.resolve(LdrModel.stem(LdrModel.reference_of(line)))
 		var its: String = Flex.strung(library, part)
 		if kind.is_empty():
 			kind = its

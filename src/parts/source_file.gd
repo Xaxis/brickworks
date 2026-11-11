@@ -69,6 +69,8 @@ var unit_sections: Dictionary = {}
 var unit_colours: Dictionary = {}
 ## Section key -> [first line, the line after its last].
 var sections: Dictionary = {}
+## The line of each FILE line -> the key of the section it begins.
+var _file_keys: Dictionary = {}
 var main_key: String = ""
 ## Section key -> how many copies of it the model places.
 var copies: Dictionary = {}
@@ -138,10 +140,17 @@ static func make(text: String, model: LdrModel, placements: Array,
 
 
 ## Where each FILE section's lines are; a file without any is one section.
+## Each by its name as LDraw compares it (LdrModel._key), and a later block
+## of a name an earlier one has by a key of its own (LdrModel.twin_key), as
+## LdrModel.parse reads them: the first is the one a reference means, and
+## the next is the file's all the same. Merged into the first, a whole write
+## kept only the first, where the open had read the last (sf2check
+## du_stepnew, dp_stepnew).
 func _read_sections() -> void:
 	var current: String = ""
 	var first: int = 0
 	var any_file: bool = false
+	var blocks: Dictionary = {}
 	for n: int in lines.size():
 		# Split as LdrModel.parse splits a line (a tab is a space), so a
 		# section here is the one it read the parts of.
@@ -158,7 +167,8 @@ func _read_sections() -> void:
 			sections[current] = [first, n]
 		current = ""
 		if keyword == "FILE":
-			current = LdrModel._key(" ".join(words.slice(2)))
+			current = LdrModel.section_key(lines[n], blocks)
+			_file_keys[n] = current
 			first = n
 			if not any_file:
 				main_key = current
@@ -168,6 +178,12 @@ func _read_sections() -> void:
 	if not any_file:
 		main_key = ""
 		sections[""] = [0, lines.size()]
+
+
+## The key of the section a file carries part [param part_id] as: its
+## file name, "<number>.dat" (CustomParts.sources_for, LdrModel.write_tree).
+static func _carried_as(part_id: String) -> String:
+	return LdrModel._key(part_id + ".dat")
 
 
 ## The section a copy's parts are in: the model's own for "", and for a
@@ -261,7 +277,7 @@ func _carried(parts: Array, place: Callable = Callable()) -> Array:
 		if placement.line >= 0:
 			var words: PackedStringArray = LdrModel._fields(lines[placement.line].strip_edges())
 			if words.size() >= 15:
-				reference = " ".join(words.slice(14))
+				reference = LdrModel.reference_of(lines[placement.line])
 		if sections.has(LdrModel._key(reference)):
 			needed[LdrModel._key(reference)] = true
 		refs.append("1 %s %s %s" % [_colour_token(placement.color_code),
@@ -276,7 +292,7 @@ func _carried(parts: Array, place: Callable = Callable()) -> Array:
 			var words: PackedStringArray = LdrModel._fields(lines[n].strip_edges())
 			if words.size() < 15 or words[0] != "1":
 				continue
-			var named: String = LdrModel._key(" ".join(words.slice(14)))
+			var named: String = LdrModel._key(LdrModel.reference_of(lines[n]))
 			if sections.has(named) and not needed.has(named):
 				needed[named] = true
 				todo.append(named)
@@ -293,10 +309,10 @@ func _carried(parts: Array, place: Callable = Callable()) -> Array:
 func _as_sections(text: String) -> String:
 	if LdrModel.section_word(text.get_slice("\n", 0)) == "FILE":
 		return text
-	var name: String = (own_title if not own_title.is_empty() else "model").to_snake_case()
+	var name: String = LdrModel.new_file_name(own_title if not own_title.is_empty() else "model")
 	while sections.has(LdrModel._key(name)) and LdrModel._key(name) != main_key:
-		name += "_"
-	return "0 FILE %s.ldr\n%s%s0 NOFILE\n" % [name, text, "" if text.ends_with("\n") else "\n"]
+		name = LdrModel._another(name)
+	return "0 FILE %s\n%s%s0 NOFILE\n" % [name, text, "" if text.ends_with("\n") else "\n"]
 
 
 ## The keys of the sections a model written whole carries as the file has
@@ -339,7 +355,7 @@ func unplaced_into(text: String, origins: Array) -> String:
 	var written: Dictionary = {}
 	for line: String in text.split("\n"):
 		if LdrModel.section_word(line) == "FILE":
-			written[LdrModel._key(" ".join(_words(line).slice(2)))] = true
+			written[LdrModel._key(LdrModel.file_name_of(line))] = true
 	var out: String = text if text.ends_with("\n") else text + "\n"
 	var carried: Dictionary = {}
 	while not keys.is_empty():
@@ -356,7 +372,7 @@ func unplaced_into(text: String, origins: Array) -> String:
 			for n: int in range(int(span[0]), int(span[1])):
 				var line: String = original[n].trim_suffix("\r")
 				var words: PackedStringArray = _words(line)
-				var named: String = LdrModel._key(" ".join(words.slice(14))) \
+				var named: String = LdrModel._key(LdrModel.reference_of(line)) \
 					if words.size() >= 15 and words[0] == "1" else ""
 				# And what it places as the file has it, a sub-model the model
 				# still has too: the model's own is written in a frame of its
@@ -383,7 +399,7 @@ func _unplaced(origins: Array) -> Array:
 			# And what the line names: a part the file carries as a section.
 			var words: PackedStringArray = _words(original[n])
 			if words.size() >= 15 and words[0] == "1":
-				used[LdrModel._key(" ".join(words.slice(14)))] = true
+				used[LdrModel._key(LdrModel.reference_of(original[n]))] = true
 	return sections.keys().filter(func(key: String) -> bool:
 		return not used.has(key))
 
@@ -424,8 +440,8 @@ func _section_at(line: int) -> String:
 ## A section's name as its FILE line gives it.
 func _file_name(key: String) -> String:
 	var span: Array = sections[key]
-	var first: String = lines[int(span[0])].strip_edges()
-	return first.substr(7).strip_edges() if first.begins_with("0 FILE ") else key + ".ldr"
+	var first: String = lines[int(span[0])]
+	return LdrModel.file_name_of(first) if LdrModel.section_word(first) == "FILE" else key + ".ldr"
 
 
 ## The meta lines of the model's own header that say whose it is and under
@@ -472,6 +488,8 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 		for item: Variant in bricks:
 			if (item as BrickWorld.Brick).step >= 0:
 				return null
+	if not _copies_are_the_files(bricks):
+		return null
 	var back := Transform3D(Basis.IDENTITY, -lift)
 	# The parts as the file had them, in buckets by what they are and where.
 	var open: Dictionary = {}       ## bucket -> [Read]
@@ -610,7 +628,7 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 			return null
 		# A skin built from this file is no file of its own here: written
 		# whole, it is carried.
-		if CustomParts.is_skin(brick.part_id) and not sections.has(brick.part_id):
+		if CustomParts.is_skin(brick.part_id) and not sections.has(_carried_as(brick.part_id)):
 			return null
 		if not brick.unit.is_empty() and brick.group != Assemblies.group_of(brick.unit):
 			return null
@@ -657,6 +675,25 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 	for extra: String in inserts.get(lines.size(), []):
 		out.append(extra + eol)
 	return "\n".join(_ended_as_begun(out, tail, lines, eol))
+
+
+## Whether each copy of a sub-model at a path the file has is the file's
+## copy there: it holds a part read in that copy, or none read from the file
+## at all. One that holds only parts read in another is another copy under
+## the file's path: Tail#1 renamed Wing once Wing#1 was taken off is Wing#1,
+## and written as the file's, the author's wing block lost its parts and took
+## the tail's (sf2check co_del_rename_tail). A part moved into a copy from
+## another is that copy's still.
+func _copies_are_the_files(bricks: Array) -> bool:
+	var own: Dictionary = {}    ## path -> whether a part the file read in it is in it
+	for item: Variant in bricks:
+		var brick: BrickWorld.Brick = item
+		if brick.unit.is_empty() or brick.origin.is_empty() or not unit_sections.has(brick.unit):
+			continue
+		var read: Read = by_origin.get(brick.origin)
+		if read != null:
+			own[brick.unit] = bool(own.get(brick.unit, false)) or read.unit == brick.unit
+	return not own.values().has(false)
 
 
 ## A section whose steps changed, written again a step at a time: each
@@ -841,7 +878,7 @@ func _unplace_emptied(replace: Dictionary, left: Array, moved_into: Dictionary) 
 				if words.size() < 15 or words[0] != "1":
 					continue
 				placed_any = true
-				var named: String = LdrModel._key(" ".join(words.slice(14)))
+				var named: String = LdrModel._key(LdrModel.reference_of(lines[n]))
 				if sections.has(named):
 					if not emptied.has(named):
 						all_gone = false
@@ -862,7 +899,7 @@ func _unplace_emptied(replace: Dictionary, left: Array, moved_into: Dictionary) 
 				continue
 			var words: PackedStringArray = LdrModel._fields(lines[n].strip_edges())
 			if words.size() >= 15 and words[0] == "1" \
-					and emptied.has(LdrModel._key(" ".join(words.slice(14)))):
+					and emptied.has(LdrModel._key(LdrModel.reference_of(lines[n]))):
 				replace[n] = ""
 
 
@@ -872,8 +909,8 @@ func _rewritten(line: int, live: Array, paired: Dictionary, library: PartLibrary
 	var words: PackedStringArray = LdrModel._fields(lines[line].strip_edges())
 	if words.size() < 15:
 		return null
-	var reference: String = " ".join(words.slice(14))
-	var written_id: String = LdrModel._key(reference)
+	var reference: String = LdrModel.reference_of(lines[line])
+	var written_id: String = LdrModel.stem(reference)
 	var text: String = ""
 	for origin: Read in live:
 		if origin.mirrored:
@@ -1070,17 +1107,15 @@ func _read_for_patch() -> void:
 	var step: int = 0
 	var open: Dictionary = {}       ## kind -> [begin lines]
 	var open_all: Array = []
-	var seen_files: Dictionary = {}
 	for n: int in count:
 		var raw: String = original[n]
 		var keyword: String = _keyword(raw)
 		if keyword == "FILE":
 			_close_open(open, n)
 			open_all.clear()
-			current = LdrModel._key(" ".join(_words(raw).slice(2)))
-			if seen_files.has(current):
+			current = str(_file_keys.get(n, ""))
+			if LdrModel.is_twin(current):
 				_why_never = "two FILE sections of one name"
-			seen_files[current] = true
 			step = 0
 		if not _ends.has(current):
 			_ends[current] = []
@@ -1217,7 +1252,7 @@ func _placed_from_main(gone: Dictionary) -> Dictionary:
 			var words: PackedStringArray = _words(original[n])
 			if words.size() < 15 or words[0] != "1":
 				continue
-			var named: String = LdrModel._key(" ".join(words.slice(14)))
+			var named: String = LdrModel._key(LdrModel.reference_of(original[n]))
 			if not sections.has(named):
 				parts += 1
 			elif not seen.has(named):
@@ -1342,7 +1377,7 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 			if local.basis.determinant() < 0.0 or LdrModel.to_transform(numbers).basis.determinant() < 0.0:
 				return _no(plan, "a mirrored copy moved")
 			rewrites[line] = "1 %s %s %s" % [words[1], _numbers_for(words, local),
-				_named_as_written(lines[line])]
+				LdrModel.reference_of(lines[line])]
 	# A copy put in another step: its line moved to the end of that step.
 	for path: String in steps_now:
 		if int(steps_now[path]) == int(unit_steps.get(path, -1)) or dead_copies.has(path):
@@ -1536,7 +1571,7 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 			return _no(plan, "a new part in a mirrored copy")
 		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if library != null else null
 		if CustomParts.is_skin(brick.part_id) or info != null and info.custom \
-				and not sections.has(brick.part_id):
+				and not sections.has(_carried_as(brick.part_id)):
 			return _no(plan, "a new part made here the file does not carry")
 		var section: String = _section_of(brick.unit)
 		var local: Transform3D = frame.affine_inverse() * (entry[1] as Transform3D)
@@ -1690,8 +1725,8 @@ func _line_for(line: int, part: String, colour: int, painted: bool, local: Trans
 	var words: PackedStringArray = _words(lines[line])
 	if _numbers_of(words) == null:
 		return null
-	var reference: String = _named_as_written(lines[line])
-	var said_id: String = LdrModel._key(" ".join(words.slice(14)))
+	var reference: String = LdrModel.reference_of(lines[line])
+	var said_id: String = LdrModel.stem(reference)
 	var token: String = part + ".dat"
 	var by := Transform3D.IDENTITY
 	if library != null:
@@ -2052,8 +2087,8 @@ func _rewritten_as_written(plan: Plan, from: int, said: String, may_say: Diction
 		return "line %d of the file rewritten past reading" % (from + 1)
 	if now[1] != was[1] and not (may_say.get(from, []) as Array).has(now[1]):
 		return "line %d of the file says colour %s, which no part painted on it is" % [from + 1, now[1]]
-	var named: String = _named_as_written(said)
-	if named != _named_as_written(original[from]):
+	var named: String = LdrModel.reference_of(said)
+	if named != LdrModel.reference_of(original[from]):
 		var swapped: bool = false
 		for read: Read in by_line.get(from, []):
 			if plan.now.has(read.origin):
@@ -2063,7 +2098,7 @@ func _rewritten_as_written(plan: Plan, from: int, said: String, may_say: Diction
 					swapped = true
 		if not swapped:
 			return "line %d of the file names %s, not what it named (%s)" % [
-				from + 1, named.left(60), _named_as_written(original[from]).left(60)]
+				from + 1, named.left(60), LdrModel.reference_of(original[from]).left(60)]
 	var a: Transform3D = LdrModel.to_transform(was_at)
 	var b: Transform3D = LdrModel.to_transform(now_at)
 	for k: int in range(2, 14):
@@ -2089,8 +2124,8 @@ func _new_as_written(said: String, bricks: Array, at_end: bool) -> String:
 		var brick: BrickWorld.Brick = item
 		if words[1] != _colour_token(brick.color_code):
 			return "a new line says colour %s, and its part is %s" % [words[1], _colour_token(brick.color_code)]
-		if _named_as_written(said) != brick.part_id + ".dat":
-			return "a new line names %s, and its part is %s" % [_named_as_written(said).left(60), brick.part_id]
+		if LdrModel.reference_of(said) != brick.part_id + ".dat":
+			return "a new line names %s, and its part is %s" % [LdrModel.reference_of(said).left(60), brick.part_id]
 	if not at_end and said.ends_with("\r") != _crlf:
 		return "a new line ends another way than the file's"
 	return ""
@@ -2652,30 +2687,6 @@ static func _is_placing(line: String) -> bool:
 ## run of spaces, tabs and a "\r\n" file's carriage return (kt_tabs).
 static func _words(line: String) -> PackedStringArray:
 	return LdrModel._fields(line.strip_edges())
-
-
-## What placing line [param line] names, its 15th field to its end, as the
-## file has it: a name with two spaces in a row or a tab in it keeps them.
-## Its fields joined by one space made "wing  part.ldr" "wing part.ldr",
-## which names no section of the file to any other program (kt5review
-## tb_move_copy). Lookups still go by the fields joined, as LdrModel keys
-## its sections.
-static func _named_as_written(line: String) -> String:
-	var at: int = 0
-	var n: int = line.length()
-	for field: int in 15:
-		while at < n and _is_blank(line.unicode_at(at)):
-			at += 1
-		if field == 14:
-			break
-		while at < n and not _is_blank(line.unicode_at(at)):
-			at += 1
-	return line.substr(at).strip_edges(false, true)
-
-
-## A character LdrModel._fields splits on: a space, a tab, a carriage return.
-static func _is_blank(c: int) -> bool:
-	return c == 32 or c == 9 or c == 13
 
 
 ## The keyword of a line of type 0, upper case ("STEP", "FILE", "!LDCAD"),

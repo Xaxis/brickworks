@@ -2267,6 +2267,13 @@
     },
     {
       "kind": "cli",
+      "label": "open faults probe",
+      "entry": "src/dev/openfaults_probe.gd",
+      "reach": "tools/probe.sh openfaults_probe   (a file opens as LDView reads it: a sub-model's name is its FILE line's text, a reference's its text after the 14th field, compared in any case with \\ as /, the first block of a name the one; hscheck's sub-model titled with its file name, se3check's castle, odd names and twins by folder, sf2check's two blocks of one name, co_del_rename_tail and cfc_wing2, each as someone else's file and as the app's own; Save, autosave, export, share, the copy kept for Undo, Save As and MCP save_model each read so again; opened again the same parts, colours, places, copies and steps; saved again the same file; OPENFAULTS_OUT=DIR keeps the texts for sf2check's readers.py)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
       "label": "flex skin probe",
       "entry": "src/dev/flex_skin_probe.gd",
       "reach": "godot --headless --path . --script src/dev/flex_skin_probe.gd -- vendor/omr/files/42082-1.mpd vendor/omr/files/8202-1.mpd   (LDCad's flexible parts drawn: each skin one piece in its copy, colour and step, picked and hidden, every face; saved untouched the same file; a piece moved or taken away written whole and opened as edited; FILEs: every flexible part drawn, none said not shown)",

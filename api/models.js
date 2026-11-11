@@ -78,6 +78,7 @@ import { gunzipSync } from "node:zlib";
 import { AuthError, authConfigured, bearer, verify } from "./_auth.js";
 import { entitlementOf, keepsAny, mostModels, reportOwner } from "./_billing.js";
 import { db, dbConfigured, reach } from "./_db.js";
+import { afterFields, keyOf } from "./_subfiles.js";
 
 // As supabase/account_models.sql holds them.
 export const MOST_STORED = 4 * 1024 * 1024;
@@ -125,7 +126,6 @@ export function partsIn(text) {
   let name = "";
   let lines = [];
   let head = [];
-  const key = (file) => file.trim().toLowerCase().replace(/\\/g, "/");
   for (const raw of `${text}\n0 NOFILE`.split("\n")) {
     const line = raw.trim();
     if (line.startsWith("0 FILE ") || line.startsWith("0 NOFILE")) {
@@ -134,7 +134,7 @@ export function partsIn(text) {
         isPart.set(name, head.some((h) => /^0 !LDRAW_ORG\s+(Unofficial_)?(Part|Subpart|Primitive|Shortcut)/i.test(h)));
         order.push(name);
       }
-      name = line.startsWith("0 FILE ") ? key(line.slice(7)) : "";
+      name = line.startsWith("0 FILE ") ? keyOf(afterFields(raw, 2)) : "";
       lines = [];
       head = [];
       continue;
@@ -142,7 +142,7 @@ export function partsIn(text) {
     if (head.length < 16) head.push(line);
     if (line.startsWith("1 ")) {
       const fields = line.split(/\s+/);
-      if (fields.length >= 15) lines.push(key(fields.slice(14).join(" ")));
+      if (fields.length >= 15) lines.push(keyOf(afterFields(raw, 14)));
     }
   }
   if (!order.length) return 0;

@@ -255,6 +255,7 @@ import {
 // A model's parts list from its file, as the app's (site278).
 import { PICK_A_BRICK_LINES, PICK_A_BRICK_MOST, inventoryOf, inventoryOfLots, namesOf, paletteOf, partNames, partsTable,
   pickABrick, rebrickableCsv, roomOf, sceneOf, wantedList } from "./_parts.js";
+import { afterFields, keyOf } from "./_subfiles.js";
 import { checkTested, markOf, ownerMark, publicMark } from "./_tested.js";
 import { changedOf, changesBetween, lotSaid, readChanges, saidOf } from "./_versions.js";
 import { countSaid, sideSaid, stepCount, stepsSaid } from "./_steps.js";
@@ -419,8 +420,10 @@ export function checkModel(text) {
       order.push(current.name);
     }
   };
+  // Each file by its name as LDraw compares it (keyOf): its first block is
+  // the one a reference means, as LDView reads a file (keep).
   const start = (name) => {
-    current = { name: name.toLowerCase(), placed: [], colours: [], isPart: /\.dat$/i.test(name), steps: 0, open: false,
+    current = { name: keyOf(name), placed: [], colours: [], isPart: /\.dat$/i.test(name), steps: 0, open: false,
       author: "" };
     keep();
   };
@@ -437,7 +440,7 @@ export function checkModel(text) {
     if (kind === "0") {
       const meta = (tokens[1] || "").toUpperCase();
       if (meta === "FILE") {
-        start(line.replace(/^0\s+FILE\s+/i, "").trim());
+        start(afterFields(raw, 2));
         inData = false;
       } else if (meta === "!DATA") {
         // An embedded picture: base64 in `0 !:` lines, not a model.
@@ -470,7 +473,7 @@ export function checkModel(text) {
         throw new Refusal(`that is not LDraw text: line ${lineNo} is not a well-formed part line`, 415);
       }
       keep();
-      current.placed.push(line.split(/\s+/).slice(14).join(" ").toLowerCase());
+      current.placed.push(keyOf(afterFields(raw, 14)));
       current.colours.push(tokens[1]);
       current.open = true;
     } else {

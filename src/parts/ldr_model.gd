@@ -66,6 +66,14 @@ class Placement extends RefCounted:
 	## own line, joined by "/" ("12/40/7"), so each copy of a sub-model's
 	## part has its own. "" for one not read from a file (SourceFile).
 	var origin: String = ""
+	## What its line names, its name from the 15th field on as the file has
+	## it, compared as LDraw compares names ([method LdrModel._key]): the
+	## sub-model of the file it places, where the file has a FILE section of
+	## that name. "" for one not read from a file. Not [member part_id], which
+	## is a part's number: "hssub.ldr.ldr" and "hssub.ldr" were one number,
+	## and a reference to the first was looked for as the second, never found,
+	## and drawn as a part nobody has (hscheck).
+	var reference: String = ""
 
 	func _init(id: String, color: int, at: Transform3D, in_step: int) -> void:
 		part_id = id
@@ -189,12 +197,11 @@ const IN_PARENT := -2
 ## (CustomParts.begin_skins), LDCad's donor sections among them.
 var section_texts: Dictionary = {}
 ## Every FILE section, a part's too, by its name as a reference finds it
-## ([method whole_name]: lowercase, "/" for "\"), the last of a name as
-## [member submodels] and [member embedded_sources] keep the last: name ->
-## SubModel, whose span says where it is. Two sections can share a key
-## ("dup.ldr", "sub\dup.ldr"): a sub-model is the one [member submodels]
-## has for it, a part's file the one its whole name finds (subexport cut
-## the first twin while the model was built of the last, sereview F3).
+## ([method _key]): name -> SubModel, whose span says where it is. The first
+## block of a name, as [member submodels] has it and a reference means it
+## (LDView's rule); a later block of the name is in no table. subexport cut
+## the first of two blocks while the model was built of the last (sereview
+## F3); the open reads the first now, and so does every reader.
 var files: Dictionary = {}
 ## The sub-models LDCad generated a flexible part's skin into: sub-model key
 ## -> [the line of its first `0 !LDCAD GENERATED`, the step it is in].
@@ -216,6 +223,9 @@ var light_lines := PackedStringArray()
 ## .section_lines). A sub-model's view is its own, as its light is, and a
 ## whole write lost it (lreview3's F3).
 var section_lines: Dictionary = {}
+## Whether the file has FILE sections, its model the first of them: whose
+## name [method file_names] gives the model's own.
+var has_file_lines: bool = false
 
 
 ## Whether the steps in the file are an author's, to keep: there are steps,
@@ -253,10 +263,14 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 	var current: SubModel = SubModel.new()
 	current.name = source_name
 	current.span = Vector2i(0, all.size())
-	model.submodels[source_name.to_lower()] = current
+	model.submodels[_key(source_name)] = current
 	model.main = current
 	# The FILE section whose span has not ended yet.
 	var open: SubModel = null
+	## The key the sub-model being read goes by ([method _key]): a later
+	## block of a name an earlier one has is read under a key of its own, one
+	## no reference can give, and nothing reaches it ([method twin_key]).
+	var current_key: String = _key(source_name)
 
 	var step: int = 0
 	## The copy the next reference is, from a COPY_META line before it.
@@ -265,9 +279,11 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 	## IN_META line: to the next, or the end of the step.
 	var within: String = ""
 	var first_file: bool = true
-	## The FILE section being read, and its lines as written.
+	## The FILE section being read, by its key, and its lines as written.
 	var section: String = ""
 	var sections: Dictionary = {}
+	## How many blocks of each FILE name have been read.
+	var blocks: Dictionary = {}
 	## The !DATA section being read, and its base64 so far.
 	var data_name: String = ""
 	var data := PackedStringArray()
@@ -278,7 +294,11 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 	var index: int = -1
 	for raw: String in all:
 		index += 1
-		var line: String = raw.strip_edges()
+		# Trimmed of what LDraw takes for space (SPACE), not of every
+		# character up to one as the engine's strip_edges is: a reference to
+		# a sub-model named in control characters lost its name, and the line
+		# was no reference at all (se3check).
+		var line: String = raw.lstrip(SPACE).rstrip(SPACE)
 		if not data_name.is_empty():
 			if line.begins_with("0 !:"):
 				data.append(line.substr(4).strip_edges())
@@ -318,31 +338,34 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 					open.span.y = index + 1
 					open = null
 			if keyword == "FILE":
-				var sub_name: String = " ".join(tokens.slice(2)).strip_edges()
-				section = sub_name.to_lower()
+				# Its name as the file has it, and keyed as a reference to it
+				# is looked up (_key): "Gate .ldr" is not "Gate.ldr", nor
+				# "parts\twin.ldr" "twin.ldr", nor "hssub.ldr.ldr" "hssub.ldr".
+				current_key = section_key(line, blocks)
+				section = current_key
 				sections[section] = []
 				if open != null:
 					open.span.y = index
 				current = SubModel.new()
-				current.name = sub_name
+				current.name = file_name_of(line)
 				current.span = Vector2i(index, all.size())
 				open = current
-				model.files[whole_name(sub_name)] = current
-				# Keyed the way a reference to it will be looked up.
-				# FILE names carry directories and extensions as written
-				# and references are reduced to a bare lowercase stem,
-				# so a sub-model called "sub/roof.ldr" was stored under
-				# that and looked for under "roof" — never found, and
-				# the whole sub-assembly silently dropped.
-				model.submodels[_key(sub_name)] = current
 				step = 0
 				within = ""
 				if first_file:
 					# The first FILE in an .mpd is the model itself; the
 					# rest are parts of it.
-					model.main = current
 					model.submodels.erase(_key(source_name))
+					model.main = current
+					model.has_file_lines = true
 					first_file = false
+				# The first block of a name is the one a reference to it
+				# means, as LDView reads a file (LDLModel::readComment loads a
+				# name once; a later block is "already loaded"): a later one
+				# is read, and nothing reaches it.
+				if not is_twin(current_key):
+					model.submodels[current_key] = current
+					model.files[current_key] = current
 			elif keyword == "STEP" or keyword == "ROTSTEP":
 				# A ROTSTEP ends a step as a STEP does, turning the view
 				# for the next (MLCad, LPub).
@@ -366,19 +389,19 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 				if current == model.main:
 					own_lights.append(raw.trim_suffix("\r"))
 				else:
-					model._section_line(_key(current.name), raw)
+					model._section_line(current_key, raw)
 			elif keyword == "!BRICKWORKS" and tokens.size() > 2 \
 					and tokens[2] == _VIEW_WORD and current != model.main:
 				# A sub-model's view: its own (the model's are SavedViews.read's).
-				model._section_line(_key(current.name), raw)
+				model._section_line(current_key, raw)
 			elif keyword == "!BRICKWORKS" and tokens.size() > 2 \
 					and tokens[2] == _IN_WORD:
 				# A path's names may hold spaces: the rest of the line.
 				within = line.substr(line.to_upper().find(keyword) + keyword.length()).strip_edges() \
 					.substr(tokens[2].length()).strip_edges()
 			elif keyword == "!LDCAD" and tokens.size() > 2 and tokens[2] == "GENERATED" \
-					and not model.generated.has(_key(current.name)):
-				model.generated[_key(current.name)] = [index, step]
+					and not model.generated.has(current_key):
+				model.generated[current_key] = [index, step]
 			elif keyword == "AUTHOR:" and model.author.is_empty():
 				model.author = " ".join(tokens.slice(2))
 			elif (current.title.is_empty() and current.placements.is_empty()
@@ -404,8 +427,12 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 		if not valid:
 			continue
 
-		var reference: String = " ".join(tokens.slice(14)).strip_edges()
-		reference = reference.replace("\\", "/").to_lower()
+		# What it names as the file has it: its fields joined by a space are
+		# that, but where the name has a run of spaces or a tab in it.
+		var named: String = " ".join(tokens.slice(14))
+		if not line.ends_with(named):
+			named = reference_of(line)
+		var reference: String = named.replace("\\", "/").to_lower()
 		var part_id: String = reference.get_file()
 		if part_id.ends_with(".dat") or part_id.ends_with(".ldr"):
 			part_id = part_id.substr(0, part_id.length() - 4)
@@ -421,29 +448,42 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 		read.line = index
 		read.copy = copy_next
 		read.within = within
+		read.reference = _key(named)
 		copy_next = 0
 		current.placements.append(read)
 
 	if not data_name.is_empty():
 		model.embedded_data[data_name] = Marshalls.base64_to_raw("".join(data))
 	model.light_lines = own_lights
+	var main_key: String = _key(model.main.name)
 	for file_name: String in sections:
 		var lines := PackedStringArray(sections[file_name])
-		# The first section is the model itself, whatever it is called.
-		if file_name == model.main.name.to_lower():
+		# The first section is the model itself, whatever it is called; and a
+		# later block of a name an earlier one has is read as nothing.
+		if file_name == main_key or is_twin(file_name):
 			continue
 		var body: String = "\n".join(lines).strip_edges() + "\n"
 		model.section_texts[file_name] = body
 		var key: String = file_name if file_name.ends_with(".dat") else file_name + ".dat"
 		if declares_library_file(lines):
-			var named: String = key.replace("\\", "/")
-			model.embedded_sources[named] = body
-			model.embedded_sources[named.get_file()] = body
+			model.embedded_sources[key] = body
+			_by_bare_name(model.embedded_sources, key, body)
 		if not _is_part(file_name, lines):
 			continue
-		model.embedded_parts[key.get_file()] = body
-		model.submodels.erase(_key(file_name))
+		_by_bare_name(model.embedded_parts, key, body)
+		model.submodels.erase(file_name)
 	return model
+
+
+## [param body] put in [param table] by its file name without a folder, as
+## a reference that gives none finds it: the file's own of that name before
+## one in a folder ("48\x.dat"), and the first of those, as with the
+## file's other names. A high-resolution primitive in 48\ took its plain
+## twin's place (10265-1's "10265 - t02q1765.dat", 345-1's s\ subparts).
+static func _by_bare_name(table: Dictionary, key: String, body: String) -> void:
+	var bare: String = key.get_file()
+	if bare == key or not table.has(bare):
+		table[bare] = body
 
 
 ## Whether a part turned by [param basis] has size: it goes some way along
@@ -631,21 +671,93 @@ static func direct_rgb(code: int) -> Color:
 	return Color.hex((code & 0xFFFFFF) << 8 | 0xFF)
 
 
-## A FILE line's or a reference's name whole, as a part's own files are
-## found by it (PartForge.normalise): lowercase, "/" for "\".
-static func whole_name(name: String) -> String:
-	return name.replace("\\", "/").strip_edges().to_lower()
+## What LDraw's readers take for space round a name: C's isspace, a space,
+## a tab, a line end, a vertical tab and a form feed. A FILE name and a
+## reference's are their text with these trimmed off and nothing else. The
+## engine's strip_edges takes every character up to a space's, and a
+## sub-model named in control characters alone lost its name and its parts
+## (se3check).
+const SPACE := " \t\n\v\f\r"
 
 
-## The name a reference and a FILE line have in common: no directory, no
-## extension, lowercase.
+## A sub-file's name as LDraw compares it, for a FILE line's name and a
+## reference's alike: as written, [constant SPACE] trimmed, in any case, "\"
+## and "/" the same (LDView's LDLModel::subModelNamed). Nothing else: "Gate
+## .ldr" is not "Gate.ldr", "parts\twin.ldr" not "twin.ldr", "Castle.ldr"
+## not the model's own "castle.mpd". Reduced to a bare stem, every pair was
+## one sub-model, and one of them was lost (se3check), and "hssub.ldr.ldr"
+## was looked for as "hssub.ldr" and never found (hscheck).
 static func _key(name: String) -> String:
-	var text: String = name.replace("\\", "/").strip_edges().to_lower()
-	text = text.get_file()
+	return name.lstrip(SPACE).rstrip(SPACE).replace("\\", "/").to_lower()
+
+
+## A part's number from the name a reference gives it: no folder, no ".dat"
+## or ".ldr" or ".mpd", lowercase. What the library knows a part by, never a
+## sub-file's name ([method _key]).
+static func stem(name: String) -> String:
+	var text: String = _key(name).get_file()
 	for suffix: String in [".ldr", ".dat", ".mpd"]:
 		if text.ends_with(suffix):
 			return text.substr(0, text.length() - suffix.length())
 	return text
+
+
+## The key of the [param seen]th block of a FILE name [param key] another
+## has before it: one with a line end in it, which no reference can give.
+## LDView reads the first block of a name and reports the next as "already
+## loaded", so a reference means the first, and a later one is the file's
+## all the same: kept as it is, as a block nothing places (SourceFile).
+static func twin_key(key: String, seen: int) -> String:
+	return "%s\n%d" % [key, seen]
+
+
+## The key of the section FILE line [param line] begins, as [method parse]
+## keys it, [param blocks] the count of each name's blocks read before it
+## (counted on): the first block of a name by its name ([method _key]), a
+## later one by a key of its own ([method twin_key]). What every reader of a
+## file's sections keys them by, so each reads the block a reference means.
+static func section_key(line: String, blocks: Dictionary) -> String:
+	var key: String = _key(file_name_of(line))
+	var seen: int = int(blocks.get(key, 0)) + 1
+	blocks[key] = seen
+	return key if seen == 1 else twin_key(key, seen)
+
+
+## Whether a section's key is a later block of a name ([method twin_key]).
+static func is_twin(key: String) -> bool:
+	return key.contains("\n")
+
+
+## The name [param line], a FILE line, gives its section: everything after
+## the word FILE, as written, [constant SPACE] trimmed.
+static func file_name_of(line: String) -> String:
+	return _after_fields(line, 2)
+
+
+## What [param line], a placing line, names: its 15th field to its end, as
+## written, [constant SPACE] trimmed. A name with two spaces in a row or a tab
+## in it keeps them: its fields joined by one space made "wing  part.ldr"
+## "wing part.ldr", which names no section of the file to any other program
+## (kt5review tb_move_copy).
+static func reference_of(line: String) -> String:
+	return _after_fields(line, 14)
+
+
+static func _after_fields(line: String, count: int) -> String:
+	var at: int = 0
+	var size: int = line.length()
+	for field: int in count + 1:
+		while at < size and _is_space(line.unicode_at(at)):
+			at += 1
+		if field == count:
+			break
+		while at < size and not _is_space(line.unicode_at(at)):
+			at += 1
+	return line.substr(at).rstrip(SPACE)
+
+
+static func _is_space(c: int) -> bool:
+	return c == 32 or (c >= 9 and c <= 13)
 
 
 ## The fields of a line, split on any run of whitespace (space, tab, a
@@ -710,12 +822,35 @@ static func from_transform(at: Transform3D) -> PackedFloat64Array:
 	return out
 
 
+## The name each sub-model's section was read with, by the definition its
+## copies are of once laid ([method _assembly_names]), and the model's own
+## by "" where the file has FILE sections: what a whole write writes each
+## under again (write_tree's files, BrickWorld.section_files). A sub-model
+## renamed, or a copy made one of its own, is written under a name of its
+## new one.
+func file_names() -> Dictionary:
+	var out: Dictionary = {}
+	var names: Dictionary = _assembly_names()
+	for key: String in names:
+		var sub: SubModel = submodels[key]
+		if sub != main:
+			out[str(names[key])] = sub.name
+	if has_file_lines:
+		out[""] = main.name
+	return out
+
+
 ## Every placement of the main model, with sub-models inlined.
 ##
 ## A sub-model reference carries its own transform, so inlining composes
 ## the two. Recursion is bounded because a model that contains itself is
 ## malformed and would otherwise hang the loader.
-func flatten(known_parts: Dictionary = {}) -> Array[Placement]:
+##
+## [param _known_parts], the parts a reader knows, is no longer asked: a
+## reference is a sub-model where the file has a FILE of its name, a part
+## where it has none ([method _inline]), whatever the library holds. Taken
+## still, so every reader that passes its library reads as it did.
+func flatten(_known_parts: Dictionary = {}) -> Array[Placement]:
 	var out: Array[Placement] = []
 	_names = _assembly_names()
 	unit_steps.clear()
@@ -725,8 +860,7 @@ func flatten(known_parts: Dictionary = {}) -> Array[Placement]:
 	unit_lines.clear()
 	unit_chains.clear()
 	if main != null:
-		_inline(main, Transform3D.IDENTITY, 0, out, known_parts, {}, 0, "", "",
-			{}, "")
+		_inline(main, Transform3D.IDENTITY, 0, out, {}, 0, "", "", {}, "")
 	return out
 
 
@@ -757,15 +891,21 @@ func _assembly_names() -> Dictionary:
 			continue
 		placed[sub] = true
 		for placement: Placement in sub.placements:
-			var nested: SubModel = submodels.get(_key(placement.part_id))
+			var nested: SubModel = submodels.get(placement.reference)
 			if nested != null and not placed.has(nested):
 				todo.append(nested)
+	# A sub-model with no title goes by its file name's stem ("roof" for
+	# "sub/roof.ldr"), and two of one stem by their file names whole.
+	var stems: Dictionary = {}
+	for key: String in submodels:
+		stems[stem(key)] = int(stems.get(stem(key), 0)) + 1
 	var titles: Dictionary = {}
 	var by_title: Dictionary = {}    ## title -> how many the model places
 	var all_titled: Dictionary = {}  ## title -> how many the file has
 	for key: String in submodels:
 		var sub: SubModel = submodels[key]
-		var title: String = (sub.title if not sub.title.is_empty() else key) \
+		var plain: String = stem(key) if int(stems[stem(key)]) == 1 else key
+		var title: String = (sub.title if not sub.title.is_empty() else plain) \
 			.replace("/", "-").replace("#", "").strip_edges()
 		titles[key] = title
 		all_titled[title] = int(all_titled.get(title, 0)) + 1
@@ -776,7 +916,9 @@ func _assembly_names() -> Dictionary:
 		var title: String = titles[key]
 		var alone: bool = int(by_title.get(title, 0)) == 1 if placed.has(submodels[key]) \
 			else int(all_titled[title]) == 1
-		out[key] = title if alone else "%s (%s)" % [title, key]
+		var plain: String = stem(key) if int(stems[stem(key)]) == 1 else key
+		out[key] = title if alone \
+			else "%s (%s)" % [title, plain.replace("/", "-").replace("#", "")]
 	return out
 
 
@@ -785,7 +927,6 @@ func _inline(
 	at: Transform3D,
 	color: int,
 	out: Array[Placement],
-	known_parts: Dictionary,
 	visiting: Dictionary,
 	depth: int,
 	group: String,
@@ -801,7 +942,7 @@ func _inline(
 	var made: Dictionary = {}
 
 	for placement: Placement in sub.placements:
-		var nested: SubModel = submodels.get(_key(placement.part_id))
+		var nested: SubModel = submodels.get(placement.reference)
 		# In a copy built in this one's steps: that copy's, as a reference
 		# makes one, numbered as the file says where that number is free.
 		var own_group: String = group
@@ -811,9 +952,13 @@ func _inline(
 			if depth == 0:
 				own_group = own_unit.get_slice("/", 0).get_slice("#", 0)
 
-		# A name is a sub-model only if it is not a real part: published
-		# models occasionally name a sub-assembly after a part number.
-		if nested != null and not known_parts.has(placement.part_id):
+		# A reference to a FILE of its name is that sub-model, whatever part
+		# its stem is the number of, as LDView reads it (a file's sub-file
+		# before the library's). Matched by a bare stem, a part's reference
+		# could be read as a sub-model of that stem, and was kept a part by
+		# whether the library had it; matched by the name, "3001.dat" is not
+		# "3001.ldr", and the file decides.
+		if nested != null:
 			# A sub-model referenced by the model itself is one of its
 			# assemblies; what that sub-model nests stays part of it.
 			var named: String = own_group
@@ -847,7 +992,7 @@ func _inline(
 				nested,
 				at * placement.transform,
 				placement.color_code if placement.color_code != 16 else color,
-				out, known_parts, visiting.duplicate(), depth + 1, named,
+				out, visiting.duplicate(), depth + 1, named,
 				inside, copies, placed_by)
 			continue
 
@@ -866,7 +1011,7 @@ func _inline(
 			placed.frame = at * REFLECT_X
 		out.append(placed)
 
-	visiting.erase(sub.name.to_lower())
+	visiting.erase(_key(sub.name))
 
 
 ## The path of the copy [param within] names (IN_META), built in the steps
@@ -925,11 +1070,12 @@ static func _origin(chain: String, line: int) -> String:
 ## sub-model is given a file name that is one, since a reference to it would
 ## be read as that part. 3315-1's container, a sub-model titled "33009", went
 ## out as 33009.ldr and came back as the library's 33009, its five parts gone and
-## the model 20 LDU higher. [param steps] as [method write_tree] takes them.
+## the model 20 LDU higher. [param steps] and [param files] as [method
+## write_tree] takes them.
 static func write_ldr(
 	placements: Array, title: String = "Model", author_name: String = "",
 	frames: Dictionary = {}, embedded: Dictionary = {}, parts: Dictionary = {},
-	steps: Dictionary = {}
+	steps: Dictionary = {}, files: Dictionary = {}
 ) -> String:
 	var groups: Array[String] = []
 	for item: Variant in placements:
@@ -939,14 +1085,8 @@ static func write_ldr(
 	if groups.is_empty() and embedded.is_empty():
 		return _write_one(placements, title, author_name, [], "", [], [], [], steps.get("", []))
 
-	var main_file: String = _main_file(title, parts)
-	var file_of: Dictionary = {}
-	for group: String in groups:
-		var file: String = group.to_snake_case() + ".ldr"
-		while file == main_file or file_of.values().has(file) \
-				or parts.has(file.get_basename()):
-			file = file.get_basename() + "_.ldr"
-		file_of[group] = file
+	var main_file: String = _main_file(title, parts, files)
+	var file_of: Dictionary = _file_names(groups, main_file, parts, files)
 	var loose: Array = placements.filter(func(p: Placement) -> bool:
 		return p.group.is_empty())
 	var refs: Array[String] = []
@@ -954,7 +1094,7 @@ static func write_ldr(
 		var frame: Transform3D = frames.get(group, Transform3D.IDENTITY)
 		refs.append("1 16 %s %s" % [_line_numbers(frame), str(file_of[group])])
 	var text: String = "0 FILE " + main_file + "\n" \
-		+ _write_one(loose, title, author_name, refs, "", [], [], [],
+		+ _write_one(loose, title, author_name, refs, main_file, [], [], [],
 			steps.get("", []) if groups.is_empty() else []) + "0 NOFILE\n"
 	for group: String in groups:
 		var own: Array = placements.filter(func(p: Placement) -> bool:
@@ -1008,25 +1148,22 @@ static func write_ldr(
 ## with nothing in it too. [param kept] is the lines a definition keeps that
 ## are not parts, by its name -> the lines, written after its section's
 ## first line as they are: a sub-model's own lights and views (BrickWorld
-## .section_lines, Assemblies.lines_written).
+## .section_lines, Assemblies.lines_written). [param files]: the name each
+## definition's section was read with, by its name, "" the model's own
+## (BrickWorld.section_files): written under it again ([method _file_names]).
 static func write_tree(
 	placements: Array, title: String, author_name: String,
 	instances: Dictionary, embedded: Dictionary = {}, unit_steps: Dictionary = {},
-	parts: Dictionary = {}, steps: Dictionary = {}, kept: Dictionary = {}
+	parts: Dictionary = {}, steps: Dictionary = {}, kept: Dictionary = {},
+	files: Dictionary = {}
 ) -> String:
 	var tree: Dictionary = _tree_of(instances, unit_steps)
 	var masters: Dictionary = tree["masters"]
 	var defs: Array = tree["defs"]
 	var children: Dictionary = tree["children"]
 	var placed_within: Dictionary = tree["within"]
-	var main_file: String = _main_file(title, parts)
-	var file_of: Dictionary = {}
-	for def: String in defs:
-		var file: String = def.to_snake_case() + ".ldr"
-		while file == main_file or file_of.values().has(file) \
-				or parts.has(file.get_basename()):
-			file = file.get_basename() + "_.ldr"
-		file_of[def] = file
+	var main_file: String = _main_file(title, parts, files)
+	var file_of: Dictionary = _file_names(defs, main_file, parts, files)
 	var refs := func(parent: String, inverse: Transform3D) -> Array[String]:
 		var out: Array[String] = []
 		for child: String in children.get(parent, []):
@@ -1039,6 +1176,12 @@ static func write_tree(
 			var leaf: String = child.get_slice("/", child.count("/"))
 			if leaf.get_slice("#", 0) == str(entry["def"]) and leaf.contains("#"):
 				line = "%s %d\n%s" % [COPY_META, maxi(leaf.get_slice("#", 1).to_int(), 1), line]
+			elif masters.get(str(entry["def"])) == child:
+				# The one copy of a definition of its own ("wing 2", from
+				# Wing#2): its first, as the file read again numbers it. Said
+				# nowhere, the next save said it, and wrote the file anew
+				# (copyfaults2: cfc_wing2).
+				line = "%s 1\n%s" % [COPY_META, line]
 			out.append(line)
 		return out
 	var ref_steps := func(parent: String) -> Array:
@@ -1052,7 +1195,7 @@ static func write_tree(
 	var loose: Array = placements.filter(func(p: Placement) -> bool:
 		return _home_in(p.unit, unit_steps) == "")
 	var text: String = "0 FILE " + main_file + "\n" \
-		+ _write_one(loose, title, author_name, refs.call("", Transform3D.IDENTITY), "",
+		+ _write_one(loose, title, author_name, refs.call("", Transform3D.IDENTITY), main_file,
 			ref_steps.call(""), loose.map(func(p: Placement) -> String:
 				return _within_of(p.unit, "")), ref_within.call(""), steps.get("", [])) \
 		+ "0 NOFILE\n"
@@ -1089,17 +1232,73 @@ static func write_tree(
 	return text
 
 
-## The file name the model's own section is written under, after
-## [param title]: none of [param parts] (a part a reader knows, or a section
-## of the file a model written whole carries as the file has it,
+## The file name the model's own section is written under: the one it was
+## read with ([param files]' ""), else one after [param title] ([method
+## new_file_name]); none of [param parts] (a part a reader knows, or a
+## section of the file a model written whole carries as the file has it,
 ## SourceFile.kept_keys), as no sub-model's is, or the model is read as
 ## that, and that as the model: a model titled as a sub-model its file
 ## keeps, placed by nothing, took that one's name and lost it.
-static func _main_file(title: String, parts: Dictionary) -> String:
-	var file: String = title.to_snake_case() + ".ldr"
-	while parts.has(file.get_basename()):
-		file = file.get_basename() + "_.ldr"
+static func _main_file(title: String, parts: Dictionary, files: Dictionary = {}) -> String:
+	var file: String = str(files.get("", ""))
+	if file.is_empty() or _reserved(file, parts):
+		file = new_file_name(title)
+	while _reserved(file, parts):
+		file = _another(file)
 	return file
+
+
+## The file name each of [param defs] is written under: the name it was read
+## with ([param files], by definition), else one after it ([method
+## new_file_name]), never the model's own ([param main_file]), another's, a
+## part a reader knows or a section kept as the file has it ([param parts]),
+## each compared as LDraw compares names ([method _key]). A sub-model kept
+## its name only where it was its title's snake case and ".ldr": "0 FILE
+## hssub.ldr" titled "hssub.ldr", as MLCad writes one, was written "FILE
+## hssub.ldr.ldr", and the next open lost it (hscheck). The names read with
+## are given out first, so a new one never takes one of them.
+static func _file_names(defs: Array, main_file: String, parts: Dictionary,
+		files: Dictionary) -> Dictionary:
+	var taken: Dictionary = {_key(main_file): true}
+	var out: Dictionary = {}
+	for def: String in defs:
+		var read: String = str(files.get(def, ""))
+		if read.is_empty() or taken.has(_key(read)) or _reserved(read, parts):
+			continue
+		out[def] = read
+		taken[_key(read)] = true
+	for def: String in defs:
+		if out.has(def):
+			continue
+		var file: String = new_file_name(def)
+		while taken.has(_key(file)) or _reserved(file, parts):
+			file = _another(file)
+		out[def] = file
+		taken[_key(file)] = true
+	return out
+
+
+## A file name for a section read under none, after [param title]: its snake
+## case, and ".ldr" after it where it does not end in an LDraw file's
+## extension already ("hssub.ldr", never "hssub.ldr.ldr").
+static func new_file_name(title: String) -> String:
+	var file: String = title.to_snake_case()
+	var lower: String = file.to_lower()
+	if lower.ends_with(".ldr") or lower.ends_with(".dat") or lower.ends_with(".mpd"):
+		return file
+	return file + ".ldr"
+
+
+## [param file] another way, for one taken: "_" before its extension.
+static func _another(file: String) -> String:
+	var extension: String = file.get_extension()
+	return file.get_basename() + "_" + ("." + extension if not extension.is_empty() else "")
+
+
+## Whether [param file] is one of [param parts]: a part a reader knows by
+## its number, or a section kept by its name (SourceFile.kept_keys).
+static func _reserved(file: String, parts: Dictionary) -> bool:
+	return parts.has(_key(file)) or parts.has(stem(file))
 
 
 ## How [method write_tree] lays out [param instances]: "masters" (each
@@ -1123,6 +1322,23 @@ static func _tree_of(instances: Dictionary, unit_steps: Dictionary) -> Dictionar
 		if not masters.has(def):
 			masters[def] = path
 			defs.append(def)
+	# Written in the order the model builds them, as their references are
+	# ("first", below), at each depth: by name, a copy that went its own way
+	# ("wing 2", of Wing#2) was written after the wing, and read again,
+	# before it ("wing 2#1" before "wing#1"), and a second save was not the
+	# first (copyfaults2: cfc_wing2).
+	var at_of: Dictionary = {}
+	for n: int in defs.size():
+		at_of[defs[n]] = n
+	var latest: int = 1 << 62
+	defs.sort_custom(func(a: String, b: String) -> bool:
+		var path_a: String = masters[a]
+		var path_b: String = masters[b]
+		if path_a.count("/") != path_b.count("/"):
+			return path_a.count("/") < path_b.count("/")
+		var first_a: int = int((instances[path_a] as Dictionary).get("first", latest))
+		var first_b: int = int((instances[path_b] as Dictionary).get("first", latest))
+		return first_a < first_b if first_a != first_b else int(at_of[a]) < int(at_of[b]))
 	var children: Dictionary = {}    ## the section placing it -> Array of paths
 	var placed_within: Dictionary = {}     ## path -> the copy it is placed in there, IN_META
 	for path: String in ordered:
@@ -1221,7 +1437,7 @@ static func _write_one(placements: Array, title: String, author_name: String,
 	lines.append("0 " + title)
 	lines.append_array(kept)
 	lines.append("0 Name: " + (file_name if not file_name.is_empty()
-		else title.to_snake_case() + ".ldr"))
+		else new_file_name(title)))
 	if not author_name.is_empty():
 		lines.append("0 Author: " + author_name)
 	lines.append("")
