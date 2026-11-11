@@ -332,7 +332,9 @@ func _a_plate_chosen() -> void:
 		_store.model_floor.same_as(plate) and _store.scenery.size() == 1)
 	_check("saved as the person's copy, %s" % COPY, _store.save_as(COPY))
 	var saved: String = FileAccess.get_file_as_string(ModelStore.saved_path(COPY))
-	_check("...its file says %s" % plate.to_meta(), saved.contains(plate.to_meta() + "\n"))
+	# A save keeps the file's own line ends (keeptext5): the set's OMR file
+	# has CRLF, so the line is read whole, not by a bare "\n" after it.
+	_check("...its file says %s" % plate.to_meta(), plate.to_meta() in saved.replace("\r\n", "\n").split("\n"))
 	await _start_clear()
 	var placed: int = await _bar.open_with_progress(ModelStore.saved_path(COPY))
 	_bar.opened.emit(placed)
