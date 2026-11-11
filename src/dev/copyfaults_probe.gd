@@ -36,7 +36,9 @@
 ## - clear_file: a clear undone gave the name back but not the file Save as
 ##   had written;
 ## - twin_nested: undoing a paint in a car's wheel left 14 parts for 10
-##   (live's too).
+##   (live's too);
+## - clear_lit (lightpaths'): a clear undone lost a sub-model's own light and
+##   view (BrickWorld.section_lines), and a save left them out of its section.
 ## Each case opens its file (src/dev/fixtures/copyfaults_*, and for metas
 ## ten files with sub-models), makes its edit as a person or a session makes
 ## it, saves as Save saves, opens the save again, and compares parts,
@@ -48,7 +50,7 @@ extends SceneTree
 const FX := "res://src/dev/fixtures/"
 const CASES: Array = ["rename", "duplicate", "rename_undo", "swap", "clear_undo", "step_copy",
 	"metas", "numbers", "twin_steps", "twin_moves", "twin_paints", "clear_held", "twin_relaid",
-	"clear_file", "twin_nested"]
+	"clear_file", "twin_nested", "clear_lit"]
 ## Ten files with sub-models, for the app's own lines.
 const METAS: Array = ["copyfaults_nest.mpd", "copyfaults_wing.ldr", "copyfaults_numbers.mpd",
 	"kt3r_dupfile.mpd", "kt3r_title_author.mpd", "kt3r_whole.mpd", "kt_runs.mpd",
@@ -116,6 +118,7 @@ func _run() -> void:
 			"twin_relaid": await _case_twin_relaid()
 			"clear_file": await _case_clear_file()
 			"twin_nested": await _case_twin_nested()
+			"clear_lit": await _case_clear_lit()
 			_: _check("no such case %s" % name, false)
 	print("\ncopyfaults probe: %s" % ("all checks passed" if _failures == 0
 		else "%d checks failed" % _failures))
@@ -746,6 +749,67 @@ func _case_twin_nested() -> void:
 	await _round_of("the paint", opened, tables)
 
 
+## (lightpaths') A sub-model placed twice with a light and a view of its own
+## (cfc_lit.mpd, the app's own file, so a save writes it whole): cleared over
+## MCP and undone, the model keeps them; saved, they are in the sub-model's
+## section, as before the clear, and opened again, still; redone, the model
+## has none, and undone again, the same as the first undo.
+func _case_clear_lit() -> void:
+	var text: String = _fixture("cfc_lit.mpd")
+	var own: Array = _lit_lines(text, "sub.ldr")
+	await _open(text)
+	var opened: Array = _every_part()
+	var tables: String = _tables()
+	var first: String = _save()
+	_check("cfc_lit.mpd opened and saved: sub.ldr's light and view in its section (%s), none "
+		% str(_lit_lines(first, "sub.ldr")) + "in main.ldr's",
+		own.size() == 2 and _lit_lines(first, "sub.ldr") == own
+		and _lit_lines(first, "main.ldr").filter(func(line: String) -> bool:
+			return own.has(line)).is_empty())
+	await _say("clear_model", {})
+	_check("...cleared: no part, no sub-model's lines (%s)" % JSON.stringify(_world.section_lines),
+		_every_part().is_empty() and _world.section_lines.is_empty())
+	print("  undo: %s" % (await _say("undo", {})).get_slice("\n", 0).left(100))
+	await _frames(4)
+	_check("...undone: every part as opened%s" % _unlike(opened, _every_part()),
+		_every_part() == opened)
+	_check("...the tables as opened, sub.ldr's lines with them (%s)" % _tables().left(300),
+		_tables() == tables)
+	var undone: String = _save()
+	_check("...saved: sub.ldr's light and view in its own section (%s)"
+		% str(_lit_lines(undone, "sub.ldr")), _lit_lines(undone, "sub.ldr") == own)
+	_check("...the save as before the clear%s" % _first_unlike(first, undone), undone == first)
+	_shell.run("redo")
+	await _frames(6)
+	_check("...redone: no part, no sub-model's lines (%s)" % JSON.stringify(_world.section_lines),
+		_every_part().is_empty() and _world.section_lines.is_empty())
+	_shell.run("undo")
+	await _frames(6)
+	_check("...undone again: every part and table as opened", _every_part() == opened
+		and _tables() == tables)
+	await _open(undone)
+	var again: String = _save()
+	_check("...opened again and saved: sub.ldr's light and view in its own section (%s)"
+		% str(_lit_lines(again, "sub.ldr")), _lit_lines(again, "sub.ldr") == own)
+	_check("...the same file%s" % _first_unlike(_as_kept(undone), _as_kept(again)),
+		_as_kept(again) == _as_kept(undone))
+
+
+## The LIGHT and VIEW lines of [param text]'s section "0 FILE [param file]",
+## in order, without line ends.
+static func _lit_lines(text: String, file: String) -> Array:
+	var out: Array = []
+	var inside: bool = false
+	for line: String in text.split("\n"):
+		var bare: String = line.strip_edges()
+		if bare.begins_with("0 FILE "):
+			inside = bare == "0 FILE " + file
+		elif inside and (bare.begins_with("0 !BRICKWORKS LIGHT ")
+				or bare.begins_with("0 !BRICKWORKS VIEW ")):
+			out.append(bare)
+	return out
+
+
 # -- copyfaults2's helpers -----------------------------------------------------------
 
 
@@ -934,9 +998,10 @@ func _every_part() -> Array:
 
 
 ## The world's tables kept by path: each copy's step, which copy of the
-## file each is, the step looks.
+## file each is, the step looks, and each sub-model's own lights and views.
 func _tables() -> String:
-	return JSON.stringify([_world.unit_steps, _world.unit_chains, _world.step_looks], "", true)
+	return JSON.stringify([_world.unit_steps, _world.unit_chains, _world.step_looks,
+		_world.section_lines], "", true)
 
 
 func _paths() -> Array:

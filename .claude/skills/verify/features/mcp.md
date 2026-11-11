@@ -1042,14 +1042,15 @@ All of these are in `tools/check.sh`.
   step putting the old one back. That step is the clear's own
   (`Main.clear_model(true, …)`, not the difference): every part under its own
   number (`BrickWorld.clear(keep_numbers)`), the floor, the step looks, the
-  copies' steps and chains, motions, sections broken out and the model's
+  copies' steps and chains, each sub-model's own lights and views
+  (`BrickWorld.section_lines`), motions, sections broken out and the model's
   name, file and lift (`ModelStore.identity`, Builder's "store" step), the
   parts it holds but does not show and those still being fetched, which land
   after the undo (`identity`'s "awaited", `ModelStore._land_arrived`), and the
   file Save as wrote (`Main._put_identity`, `ModelBar.on_disk`); as the
   difference, the undo lost the steps and looks, put the parts back as an
   Untitled model with no file, and its redo left a part behind
-  (`copyfaults_probe` clear_undo, clear_held, clear_file).
+  (`copyfaults_probe` clear_undo, clear_held, clear_file, clear_lit).
   `claude_undo_probe`: the person places a brick, a session edits, Undo takes
   the edit and keeps the brick, a second Undo takes the brick; then
   submit_design, review_model of a feature, edit_model (recolour, move,

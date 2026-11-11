@@ -2669,6 +2669,9 @@ func _clear_undone() -> Array:
 	if _floor != null:
 		back.append({"undo": "floor", "floor": _floor.held()})
 	back.append({"undo": "steplooks", "looks": _world.step_looks.duplicate(true)})
+	# Each sub-model's own lights and views (BrickWorld.section_lines): undone,
+	# a clear gave back the sub-model without them, and its save left them out.
+	back.append({"undo": "sectionlines", "lines": _world.section_lines.duplicate(true)})
 	back.append({"undo": "unitchains", "chains": _world.unit_chains.duplicate()})
 	for unit: String in _world.unit_steps:
 		var step: int = int(_world.unit_steps[unit])
