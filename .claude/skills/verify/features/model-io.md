@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, ui:library search, cli:library search probe, cli:library browser flow, lib:model versions, ui:versions of a model, ui:compare with a save, lib:model diff, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, lib:a plan's limit on models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:a line placing a part at no size, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe, cli:picklist probe, cli:direct colour probe, cli:print3mf probe, cli:3mf strict reader -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, ui:library search, cli:library search probe, cli:library browser flow, lib:model versions, ui:versions of a model, ui:compare with a save, lib:model diff, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, lib:a plan's limit on models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:a line placing a part at no size, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe, cli:picklist probe, cli:direct colour probe, cli:print3mf probe, cli:3mf strict reader, ui:each sub-model as its own file, cli:subexport probe -->
 
 ## Sub-features
 
@@ -927,6 +927,85 @@ Whether what you built is still there tomorrow, and still means the same thing.
   sizes. `centring_probe` measures all three, with either column folded. In a
   browser, `share_flow.mjs` on a local export (2026-10-13) got a card
   (`og_image.png`) with the car's middle 0.0% off the picture's, filling 88%.
+- `each sub-model as its own file` (`src/parts/submodel_file.gd`, `Exports.submodel`
+  and `each_submodel` in `src/ui/exports.gd`, the model tree's row menu in
+  `src/ui/outliner.gd`; APP_UX7 #19): a right click on a sub-model's row in the
+  model tree, Export “NAME” as its own file…, writes that sub-model with its own
+  sub-models and steps (a plain .ldr, an .mpd when it has sub-models); on the
+  model's row, Export each sub-model (.zip)…, and File, Export, Each sub-model as
+  its own file (.zip), write one file a sub-model, each definition once, in
+  NAME_submodels.zip. Over MCP `export_model format=ldraw submodels=true`, or
+  `submodel=NAME` (the row's name, "Wing (copy 2)", or a path). Each file is
+  cut from the text File, Export, LDraw model writes, never written again: its
+  section and every section it places, line for line, with the model's own
+  AUTHORED_STEPS or WORKED_STEPS line put in after its author, so an author's
+  steps stay the author's when it is opened alone. A copy built in its parent's
+  steps (the castle's towers, `AuthorSteps.IN_PARENT`) has no section: its file
+  is its lines out of the parent's, a step for each of the parent's steps it is
+  in, in the parent's coordinates. Each file's name is made safe by one rule
+  (`SubmodelFile._safe_name`; a FILE line's name by `file_name`, what follows
+  its last / or \, a folder there): no control characters, marks that turn
+  the text (`SubmodelFile.TURNS`: "x", U+202E, "exe.ldr" showed as
+  "xrdl.exe") or `<>:"|?*`, a / or \ in a title a "_" (a title's, never a
+  folder's), no dots or spaces at its ends, nor a character that draws
+  nothing first (`UNSEEN`) or a joiner last (`LOOSE_ENDS`), a title of
+  nothing to see named "model" (a sub-model "submodel"), Windows' device
+  names given a "_" looked for in the whole name with its tail (CON is
+  con_.mpd, con_instructions.html no device's; CONIN$ and CONOUT$ too), at
+  most 200 UTF-8 bytes cut between two characters as a reader sees them
+  (TextServer's grapheme breaks: が as か and its mark, é as e and its
+  accent, a family of faces kept whole); two names one to a disk or an
+  unzip (case aside, once each letter is its canonical decomposition:
+  "Café" as one letter and as e and its accent, `SubmodelFile._one_key`
+  with `src/parts/canonical_forms.gd`, written by
+  `tools/canonical_forms.py`) are a name and its "_2", as libarchive's
+  unzips and a macOS disk take them as one; Cafe and Café, Ma, Má and Mạ,
+  かっこう and がっこう stay apart (se4check); the zip flags its
+  names UTF-8 (`StudioIo.UTF8_NAMES`, every zip the app writes). The same rule
+  names every file the app writes after a title (`SubmodelFile.titled`: the
+  zip itself, File, Export's every kind, a picture, a render, the instructions
+  and their PDF, a parts list), and as the title is written, case and spaces
+  kept, where a person names it (`SubmodelFile.named`: Save as's suggestion,
+  the sticker sheet; "AC/DC" is AC_DC.mpd, which was DC.mpd): "My:
+  Castle?" was my:_castle?_submodels.zip, and a title 300 letters long a name
+  of 314 bytes no file system takes (se3check). The share page's downloads
+  keep their own rule (`fileName` in `api/share.js`): its words joined by
+  hyphens, letters and numbers in any script (がっこう, which was "model"),
+  sent in `filename*` with an ASCII `filename` beside it (`attachment`), a
+  Windows device's "_" looked for in the whole name (con_.mpd, con-v2.mpd;
+  `tests/test_download_names.py`). Of two sections of
+  one key ("dup.ldr", "sub\dup.ldr") each file carries the one the app builds
+  the model of and the one LDView's rule finds by the reference's whole name
+  (`LdrModel.files`, `SubModel.span`, `SubmodelFile._sections_of`), in the
+  whole file's order, so each reads it as it reads the whole. The row menu is File, Export's: greyed
+  where `Shell.can` refuses (shared to look at, still being laid); a finger
+  held still on a row (`FlingScroll.HOLD_MS`) opens it beside the finger
+  (`TouchSizing.popup_beside`): on a phone or a tablet at the size it has once
+  sized for a finger, above the finger or below it, never over it; its lift
+  chooses nothing, slid onto an item or not, and a tap chooses
+  (`TouchSizing.chosen`).
+  **Check:** `tools/probe.sh subexport_probe -- --shots=DIR` (signs in a
+  throwaway account: needs .env; saves a model, so through probe.sh): first a
+  line for each of sereview's findings (F1-F7: odd names, copies titled
+  `..\..\evil`, the UTF-8 flag in both headers and in All my models' zip, FILE
+  twins by folder and 345-1's House opened alone and read by LDraw's own rule, the menu's gates, a finger's
+  hold, both flags refused; `--cases-only` runs those alone); then 7140-1, the
+  castle and the castle with its steps its own; each file's sections against
+  the whole file's, line for line; each opened alone to the same parts within
+  0.001 LDU, colours, tree (by shape: a file alone numbers its copies from 1,
+  or as its COPY lines say, where the whole model numbers them across it) and
+  an author's steps; a copy titled `..\..\evil` keeps that title line, its
+  names (zip entry, Name line) are evil.ldr; the whole model's file the
+  same to the byte before and after; the tree's menu pictured at 1400 x 900 and
+  1280 x 720; se3check's lines (2-5: Café two ways, the marks that turn text,
+  CONIN$ and CONOUT$, "My: Castle?" and a 300-letter title through every export
+  over MCP); se4check's lines (1-8: Save as and the sticker sheet keep a title
+  whole, the keyboard chooses from a menu a hold left open, the zip's twins only
+  where a disk sees one name, a Ctrl-click on a row on a Mac, titles of nothing
+  to see, the cut between characters, CON's tail, the tree filled as its panel
+  opens). F5 on a phone and a tablet: `tools/probe.sh subexport_phone_probe`
+  (390 x 844) and `subexport_tablet_probe` (1180 x 820), F5 alone there and a
+  right click's menu beside the pointer.
 - `parts lists for shops` (`src/assembly/shop_lists.gd`, File, Export → BrickLink
   wanted list / Rebrickable parts list / LEGO® Pick a Brick list, and the same
   three buttons on the parts list): BrickLink's wanted-list XML (item, its
@@ -1043,7 +1122,7 @@ Whether what you built is still there tomorrow, and still means the same thing.
   (`version=N`). File, Export, All my models (`Exports.all_models`,
   `export_model all_models`) downloads every saved model in one .zip.
 - `compare with a save` and `model diff` (2026-10-30, compare, B10;
-  `src/ui/compare_view.gd`, `src/parts/model_diff.gd`): File, Compare with…
+  `src/ui/compare_view.gd`, `src/parts/model_diff.gd`): File, Compare, Compare with…
   (the versions list with Compare alone) or Compare on a row of Versions…
   draws the model on the baseplate against that save: added green, removed
   a Trans-Red ghost where it stood, moved or turned amber with an x-ray

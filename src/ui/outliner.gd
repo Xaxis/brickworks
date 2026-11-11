@@ -103,6 +103,8 @@ func _ready() -> void:
 	_tree.item_activated.connect(_on_activated)
 	_tree.item_edited.connect(_on_edited)
 	_tree.button_clicked.connect(_on_button)
+	# subexport: a right click on a row, its menu.
+	_tree.gui_input.connect(_on_tree_input)
 	_tree.set_drag_forwarding(_drag_data, _can_drop, _drop)
 	column.add_child(_tree)
 	# A name typed over ends in item_edited; Esc ends it with nothing said,
@@ -278,6 +280,15 @@ func set_open(open: bool) -> void:
 	toggled.emit(open)
 	# Folded, the tree was not kept up to date.
 	_refresh(true)
+
+
+## Shown (its panel opened, the phone's sheet it is in): the tree filled
+## before the frame is drawn. Filled only while it is shown, and looked at
+## again only twice a second, it stood empty for up to half a second each
+## time its panel opened (se4check).
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_VISIBILITY_CHANGED and shell != null and is_visible_in_tree():
+		_refresh.call_deferred(false)
 
 
 func _process(_delta: float) -> void:
@@ -665,6 +676,153 @@ func _on_button(row: TreeItem, _column: int, id: int, _mouse: int) -> void:
 	_refresh(true)
 
 
+# -- subexport (APP_UX7 #19): the row's menu ------------------------------------
+
+
+## The menu a right click on a row opens, or a finger held still on it: the
+## sub-model as a file of its own, with its own sub-models and steps, and
+## each sub-model so in one .zip (Exports.submodel, each_submodel), as
+## Studio's and LDCad's model trees export a sub-model. On the model's row,
+## each sub-model only. Each is File › Export's, and greyed when Shell.can
+## says File › Export's is (a model shared to look at, one still being
+## laid): the menu wrote what File › Export refused (sereview F4).
+var row_menu: PopupMenu
+## The row the menu is for: its path.
+var _menu_path: String = ""
+const MENU_ONE := 0
+const MENU_EACH := 1
+## The command each item is File › Export's of.
+const MENU_COMMANDS: Dictionary = {MENU_ONE: "export_ldraw", MENU_EACH: "export_submodels"}
+
+## A finger held still on a row opens its menu, as a right click does, a
+## finger having no second button (sereview F5): held as long as a finger's
+## hold on a part (FlingScroll.HOLD_MS, Main's), moved no further than a
+## tap may (CadCamera.TAP_SLOP). The finger, where it came down in the
+## tree, and the row there.
+var _hold: Timer
+var _hold_finger: int = -1
+var _hold_at := Vector2.ZERO
+var _hold_path: String = ""
+
+
+## The row under a right click (on a Mac a Ctrl-click too, EditVerbs'
+## rule), from the click's own place: the tree's item_mouse_selected gives
+## the pointer's place as the system has it, which a click sent to the
+## window (a check's, a remote session's) does not move. And a finger held
+## still on a row.
+func _on_tree_input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch or event is InputEventScreenDrag:
+		_held(event)
+		return
+	var click: InputEventMouseButton = event as InputEventMouseButton
+	if click == null or not click.pressed or (click.button_index != MOUSE_BUTTON_RIGHT
+			and not EditVerbs.mac_right_click(click)):
+		return
+	var row: TreeItem = _tree.get_item_at_position(click.position)
+	if row == null:
+		return
+	var path: String = str(row.get_metadata(0))
+	if path == SUGGESTED or path.begins_with(SUGGESTION):
+		return
+	# After the tree has chosen the row (allow_rmb_select), as a file
+	# manager highlights the row its menu is for.
+	open_row_menu.call_deferred(path, _tree.get_global_transform_with_canvas() * click.position)
+
+
+## A finger on the tree: down on a row, its hold begins; moved past a tap's
+## slop or lifted, it ends. The tree has the finger's emulated click as
+## well, which chooses the row, as a right click does.
+func _held(event: InputEvent) -> void:
+	var touch: InputEventScreenTouch = event as InputEventScreenTouch
+	if touch != null:
+		if not touch.pressed:
+			if touch.index == _hold_finger:
+				_end_hold()
+			return
+		if _hold_finger >= 0:
+			# A second finger: a pinch, not a hold.
+			_end_hold()
+			return
+		var row: TreeItem = _tree.get_item_at_position(touch.position)
+		var path: String = str(row.get_metadata(0)) if row != null else ""
+		if row == null or path == SUGGESTED or path.begins_with(SUGGESTION):
+			return
+		if _hold == null:
+			_hold = Timer.new()
+			_hold.one_shot = true
+			_hold.wait_time = FlingScroll.HOLD_MS / 1000.0
+			_hold.timeout.connect(_on_hold)
+			add_child(_hold)
+		_hold_finger = touch.index
+		_hold_at = touch.position
+		_hold_path = path
+		_hold.start()
+		return
+	var drag: InputEventScreenDrag = event as InputEventScreenDrag
+	if drag != null and drag.index == _hold_finger \
+			and drag.position.distance_to(_hold_at) > CadCamera.TAP_SLOP:
+		_end_hold()
+
+
+func _end_hold() -> void:
+	_hold_finger = -1
+	if _hold != null:
+		_hold.stop()
+
+
+## Held long enough: the row's menu, beside the finger, never under it, so
+## the finger lifting chooses nothing.
+func _on_hold() -> void:
+	var path: String = _hold_path
+	var at: Vector2 = _tree.get_global_transform_with_canvas() * _hold_at
+	_hold_finger = -1
+	if not _tree.is_visible_in_tree():
+		return
+	open_row_menu(path, at, true)
+
+
+## The row menu for the row of [param path] ("" the model's), beside
+## [param at] in the window, a finger's when [param by_finger]: none of it
+## under the point, at whatever size a phone gives it (TouchSizing.popup_beside).
+func open_row_menu(path: String, at: Vector2, by_finger: bool = false) -> void:
+	if row_menu == null:
+		row_menu = PopupMenu.new()
+		row_menu.name = "ModelTreeMenu"
+		row_menu.add_theme_font_size_override("font_size", 13)
+		row_menu.id_pressed.connect(_on_row_menu)
+		add_child(row_menu)
+	_menu_path = path
+	row_menu.clear()
+	if not path.is_empty():
+		row_menu.add_item("Export “%s” as its own file…" % Assemblies.label(path), MENU_ONE)
+	row_menu.add_item("Export each sub-model (.zip)…", MENU_EACH)
+	for id: int in [MENU_ONE, MENU_EACH]:
+		var index: int = row_menu.get_item_index(id)
+		if index < 0:
+			continue
+		var why: String = shell.why_not(MENU_COMMANDS[id])
+		row_menu.set_item_disabled(index, not shell.can(MENU_COMMANDS[id]))
+		row_menu.set_item_tooltip(index, why if not why.is_empty() else
+			"As an LDraw file, with its own sub-models and steps" if id == MENU_ONE
+			else "Every sub-model as an LDraw file of its own, with its own sub-models and steps, in one .zip")
+	TouchSizing.popup_beside(row_menu, at, by_finger)
+
+
+## An item chosen: asked again whether File › Export's own may run, as the
+## menu may have stood open while the model became one shared to look at.
+func _on_row_menu(id: int) -> void:
+	# The finger that held the row lifting off an item chooses nothing: a tap does.
+	if not TouchSizing.chosen(row_menu):
+		return
+	var exports: Node = shell.app.get("_exports")
+	if exports == null or not MENU_COMMANDS.has(id) or not shell.can(MENU_COMMANDS[id]):
+		return
+	if id == MENU_ONE and not _menu_path.is_empty():
+		await exports.call("submodel", _menu_path, true)
+	elif id == MENU_EACH:
+		await exports.call("each_submodel", true)
+
+
 func _drag_data(at: Vector2) -> Variant:
 	var row: TreeItem = _tree.get_item_at_position(at)
 	if row == null or str(row.get_metadata(0)).is_empty() or str(row.get_metadata(0)) == SUGGESTED:
@@ -737,7 +895,11 @@ func row_rects() -> Dictionary:
 	if asked == _rows_asked:
 		return _rows
 	_rows_asked = asked
-	var shift: Vector2 = area.position - Vector2(0, _tree.get_scroll().y)
+	# get_item_area_rect is already where the row is drawn, scrolled: taking
+	# the scroll off again put every row a scroll too high, and a click at
+	# a row's middle in a scrolled tree chose a row above it (subexport,
+	# 2026-11-08; main._audit_tree adds none either).
+	var shift: Vector2 = area.position
 	var stack: Array = [_tree.get_root()]
 	while not stack.is_empty():
 		var row: TreeItem = stack.pop_back()

@@ -504,7 +504,7 @@ func ask_bricklink() -> void:
 func _on_csv() -> void:
 	if _stock == null:
 		return
-	var file_name: String = _title.to_snake_case() + "_parts.csv"
+	var file_name: String = SubmodelFile.titled(_title, "_parts.csv")
 	var line: String = await Download.save(_stock.to_csv(), file_name, "text/csv")
 	tell(line)
 	if not line.is_empty():

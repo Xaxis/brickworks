@@ -1,4 +1,4 @@
-## File, Compare with… and Versions…' Compare, as a person uses them: a model
+## File, Compare, Compare with… and Versions…' Compare, as a person uses them: a model
 ## of 65 parts saved, then 3 parts added, 2 taken off, 1 moved 2 studs, 1
 ## turned 90° and 1 recoloured, and compared with the save. Pictures before,
 ## during and after in shots/compare/.
@@ -122,12 +122,16 @@ func _eight_changes() -> void:
 	var looks: Dictionary = _looks()
 	var aim: Dictionary = _camera.aim()
 	var before: Image = await _shot("before")
-	# File, Compare with…, from the menu, and the newest save's Compare.
+	# File › Compare › Compare with…, from the menu, and the newest save's
+	# Compare. File › Compare is the row after Versions… (subexport).
 	var file_menu: PopupMenu = _shell.menu("File").get_popup()
-	_check("File has Compare with…, after Versions…", _shell.menu_id("compare") >= 0
-		and file_menu.get_item_index(_shell.menu_id("compare"))
-			== file_menu.get_item_index(_shell.menu_id("versions")) + 1)
-	file_menu.id_pressed.emit(_shell.menu_id("compare"))
+	var compares: PopupMenu = file_menu.get_node_or_null("compares") as PopupMenu
+	var compare_row: int = file_menu.get_item_index(_shell.menu_id("versions")) + 1
+	_check("File › Compare, after Versions…, has Compare with… (%s)"
+		% Keymap.menu_row("compare"), compares != null and _shell.menu_id("compare") >= 0
+		and file_menu.get_item_submenu_node(compare_row) == compares
+		and compares.get_item_index(_shell.menu_id("compare")) == 0)
+	(compares if compares != null else file_menu).id_pressed.emit(_shell.menu_id("compare"))
 	await _frames(10)
 	var dialog: Dictionary = _shell.versions.page_state()
 	_check("it lists the saves to compare with (%d rows, comparing %s)" % [
