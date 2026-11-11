@@ -74,6 +74,10 @@ class Placement extends RefCounted:
 	## and a reference to the first was looked for as the second, never found,
 	## and drawn as a part nobody has (hscheck).
 	var reference: String = ""
+	## The brick it was put down as, once a part on its way came
+	## (ModelStore.place_awaited); 0 before. A step edit made while it was on
+	## its way gave it its step (AuthorSteps), and is undone on that brick.
+	var landed: int = 0
 
 	func _init(id: String, color: int, at: Transform3D, in_step: int) -> void:
 		part_id = id

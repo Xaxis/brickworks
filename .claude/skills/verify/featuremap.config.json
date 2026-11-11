@@ -5218,6 +5218,13 @@
       "entry": "tools/package_api.sh",
       "reach": "tools/package_api.sh OUT [--export=build/web] [ROUTE...]   (deploy.sh's functions, each with the catalogue's facts beside it, checked by tools/web/packaged_facts.mjs; tests/test_packaged_facts.py)",
       "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "heldsteps probe",
+      "entry": "src/dev/heldsteps_probe.gd",
+      "reach": "tools/probe.sh heldsteps_probe   (headless: a five-step model, own and someone else's, its 3062b missing from the library and then on its way from a local server; step merges, moves, deletes and a part taken off, saved and opened again: the held part on its own step with its STEP_NAME and ZOOM byte for byte, every other step as the same edit gives the model without it, and with the part back the model as it was; then a sub-model dragged in the tree into one holding it, a part moved on from the last step it follows, a part moved in the second copy of a sub-model placed twice, and someone else's file written whole, each with the held part alone in its own step and sub-model; HELDSTEPS_OUT=dir for the saves)",
+      "area": "view"
     }
   ]
 }
