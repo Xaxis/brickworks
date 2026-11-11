@@ -290,11 +290,11 @@ func set_open(open: bool) -> void:
 	_refresh(true)
 
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
 	if _pressed and _press_finger and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 		_press_hold.saw()
 	if get_viewport().gui_is_dragging() and _tree.is_visible_in_tree():
-		_edge_scroll(delta)
+		_edge_scroll(get_process_delta_time())
 	var now: int = Time.get_ticks_msec()
 	if now - _looked_at < 500:
 		return
