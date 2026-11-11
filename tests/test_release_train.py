@@ -28,7 +28,11 @@ whatever else failed (a timing check never), and what still fails runs on
 the live site only after the preview's battery, as a unit's check, the
 train's mark on the live database gone; status says which already fail
 there. It ships past such a check with --accept only where the live site
-fails it too, naming it in the merge message, the log and status. Staging
+fails it too, naming it in the merge message, the log and status. A timing
+check still failing runs on the preview and the live site by turns instead,
+P L L P, and holds the release only where the preview is worse beyond the
+noise; shipped past, its numbers are in the log, status and the commit main
+moves to, whose build is the merge's. Staging
 adds to the checks named those flows_for.py finds for what the branch changed,
 and says which. Named no probes, it runs every headless one the branch's
 tools/suite/headless.txt lists, never a windowed one or one out.txt keeps
@@ -105,7 +109,11 @@ esac
 # fails those in the battery and passes them alone; STUB_FAILS fails those
 # on the preview, alone too, and STUB_MISSING writes no line for those in
 # the battery; STUB_GATE holds the battery's last check until that file is
-# there; STUB_STALE_FAILS fails those on the live site.
+# there; STUB_STALE_FAILS fails those on the live site. Each writes its
+# log, the stand-in's own work in ms against a bar of 100: 150 where it
+# fails, else 60; run by turns on the preview and on the live site
+# (live_ab.sh, TAG_ab_NAME_<P|L>N), the next of STUB_AB_HERE's or
+# STUB_AB_THERE's numbers (50 when none is left), failing over the bar.
 P=$1 WT=$2 OUT=$3; shift 3
 S=$RELEASE_OUT
 # The checks it has, as the real one's table names them for train.sh stage.
@@ -130,8 +138,14 @@ for c in "$@"; do
     [ -e "$f" ] && kill -0 "${f##*/}" 2>/dev/null && marks=$((marks + 1))
   done
   echo "$OUT $c priority=${BOX_HEAVY_PRIORITY:-0} marks=$marks" >> "$S/check_how"
-  fail=""
+  fail=""; ms=""
   case "$OUT" in
+    *_ab_*)
+      side=${OUT##*_}; side=${side:0:1}
+      nums=${STUB_AB_HERE:-}; [ "$side" = L ] && nums=${STUB_AB_THERE:-}
+      k=$(cat "$S/${OUT%_*}.$side" 2>/dev/null || echo 0); echo $((k + 1)) > "$S/${OUT%_*}.$side"
+      read -r -a each <<< "$nums"; ms=${each[$k]:-50}
+      [ "${ms%.*}" -gt 100 ] && fail="FAIL by turns" ;;
     *_pv)
       if [ "$n" -eq $# ] && [ -n "${STUB_GATE:-}" ]; then
         for _ in $(seq 1 600); do [ -e "$STUB_GATE" ] && break; sleep 0.05; done
@@ -143,6 +157,8 @@ for c in "$@"; do
   esac
   if [ -n "$fail" ]; then echo "$c exit=1 fails=1 1s :: $fail" >> "$S/$OUT.out"
   else echo "$c exit=0 fails=0 1s :: passed" >> "$S/$OUT.out"; fi
+  if [ -n "$fail" ]; then said=FAIL; ms=${ms:-150}; else said=ok; ms=${ms:-60}; fi
+  echo "  $said  the stand-in's own work stays under 100 ms on average ($ms ms)  [1s]" > "$S/${OUT}_$c.log"
   echo "$OUT $c ended $(date +%s.%N)" >> "$S/check_times"
 done
 echo done >> "$S/$OUT.out"
@@ -215,7 +231,8 @@ class Yard:
         self.env = env
         self.git(where, "init", "-q", "--bare", "--initial-branch=main", str(where / "origin.git"))
         self.git(where, "init", "-q", "--initial-branch=main", str(self.r))
-        for name in ("train.sh", "retire_wt.sh", "ship.sh", "preview_lib.sh", "deploy_reads.sh", "flows_for.py"):
+        for name in ("train.sh", "retire_wt.sh", "ship.sh", "preview_lib.sh", "deploy_reads.sh", "flows_for.py",
+                     "live_ab.sh", "timing_judge.py"):
             self.put("tools/release/" + name, (ROOT / "tools" / "release" / name).read_text())
         for name, text in STUBS.items():
             self.put(name, text)
@@ -1085,17 +1102,18 @@ def test_every_check_failing_beside_others_runs_again_alone_whatever_else_failed
     try:
         assert y.train("stage", "t-m2", "stage2", "--checks", "io gallery keys progress",
                        STUB_FLAKY="io keys progress", STUB_MISSING="gallery",
-                       STUB_STALE_FAILS="progress").returncode == 0
+                       STUB_AB_HERE="150 160", STUB_AB_THERE="60 65").returncode == 0
         y.until(lambda: y.spec("t-m2", "result"))
         lead = y.text("t-m2_lead.out")
         assert "SHIP: io failed beside others; once more, alone" in lead, lead
         assert "SHIP: keys failed beside others; once more, alone" in lead, lead
         assert "SHIP: gallery did not run; once, alone" in lead, lead
-        # A timing check gets no second go: alone it would pass what the load showed.
+        # A timing check gets no second go: alone it would pass what the load
+        # showed. It runs by turns with brickworks.diy instead, never once there.
         assert not (y.ro / "t-m2_alone_progress_args").exists()
         assert y.spec("t-m2", "result") == ("not live: ship.sh ended exit 1: SHIP: held, failed on the preview: "
-                                            "progress (failing on brickworks.diy too: progress)"), y.logs()
-        assert y.text("t-m2_stale_args").split()[2:] == ["progress"]
+                                            "progress (by turns with brickworks.diy: t-m2_ab_NAME.judge)"), y.logs()
+        assert not (y.ro / "t-m2_stale_args").exists()
         y.unmoved()
     finally:
         y.stop()
@@ -1103,14 +1121,14 @@ def test_every_check_failing_beside_others_runs_again_alone_whatever_else_failed
 
 def test_it_ships_past_a_check_only_where_brickworks_diy_fails_it_too(tmp_path):
     y = Yard(tmp_path)
-    reason = "the booklet's bar is late on brickworks.diy too, and this release does not touch it"
+    reason = "the people page is late on brickworks.diy too, and this release does not touch it"
     try:
-        # Held on progress, which fails on brickworks.diy too, and keys, which passes there.
-        assert y.train("stage", "t-m2", "stage2", "--checks", "keys progress",
-                       STUB_FAILS="keys progress", STUB_STALE_FAILS="progress").returncode == 0
+        # Held on people, which fails on brickworks.diy too, and keys, which passes there.
+        assert y.train("stage", "t-m2", "stage2", "--checks", "keys people",
+                       STUB_FAILS="keys people", STUB_STALE_FAILS="people").returncode == 0
         y.until(lambda: y.spec("t-m2", "result"))
         assert y.spec("t-m2", "result").endswith(
-            "held, failed on the preview: keys progress (failing on brickworks.diy too: progress)"), y.logs()
+            "held, failed on the preview: keys people (failing on brickworks.diy too: people)"), y.logs()
         merge = y.git(y.wt / "t-m2", "rev-parse", "HEAD")
         made = y.text("t-m2_preview.sha").strip()
 
@@ -1121,18 +1139,18 @@ def test_it_ships_past_a_check_only_where_brickworks_diy_fails_it_too(tmp_path):
         assert "not one to ship past" in refused.stdout, refused.stdout
         assert y.spec("t-m2", "accept") == "" and y.git(y.wt / "t-m2", "rev-parse", "HEAD") == merge
         assert not (y.ro / "t-m2_accepted").exists()
-        assert "--accept wants a check and the reason" in y.train("reship", "t-m2", "--accept", "progress").stdout
-        both = y.train("reship", "t-m2", "--accept", "progress", reason, "--accept", "keys", "x")
+        assert "--accept wants a check and the reason" in y.train("reship", "t-m2", "--accept", "people").stdout
+        both = y.train("reship", "t-m2", "--accept", "people", reason, "--accept", "keys", "x")
         assert both.returncode == 1 and "keys passes on" in both.stdout, both.stdout
         assert y.spec("t-m2", "accept") == "" and y.git(y.wt / "t-m2", "rev-parse", "HEAD") == merge
 
-        # keys fixed in the release's worktree; progress shipped past.
+        # keys fixed in the release's worktree; people shipped past.
         (y.wt / "t-m2" / "keys.txt").write_text("keys, fixed\n")
         y.git(y.wt / "t-m2", "add", "keys.txt")
         y.git(y.wt / "t-m2", "commit", "-q", "-m", "keys, fixed")
-        out = y.train("reship", "t-m2", "--accept", "progress", reason, STUB_FAILS="")
+        out = y.train("reship", "t-m2", "--accept", "people", reason, STUB_FAILS="")
         assert out.returncode == 0, out.stdout + out.stderr
-        assert "t-m2's merge now says: Ships past progress where it fails on brickworks.diy too: " + reason \
+        assert "t-m2's merge now says: Ships past people where it fails on brickworks.diy too: " + reason \
             in out.stdout, out.stdout
         assert "reships from" in out.stdout and ": keys (and site, frames)" in out.stdout, out.stdout
         y.until(lambda: y.spec("t-m2", "result"))
@@ -1140,37 +1158,112 @@ def test_it_ships_past_a_check_only_where_brickworks_diy_fails_it_too(tmp_path):
         # The merge's words, the trees as they were and the fix on top; a preview of that commit.
         assert y.git(y.r, "log", "-1", "--format=%s", "main") == "keys, fixed"
         assert y.git(y.r, "log", "-1", "--format=%B", "main^") == (
-            "Merge: stage2\n\nShips past progress where it fails on brickworks.diy too: " + reason)
+            "Merge: stage2\n\nShips past people where it fails on brickworks.diy too: " + reason)
         assert y.git(y.r, "rev-parse", "main^^{tree}") == y.git(y.r, "rev-parse", "%s^{tree}" % merge)
         assert y.git(y.r, "log", "-1", "--format=%an <%ae>", "main^") == "Xaxis <william.neeley@gmail.com>"
         assert y.text("t-m2_preview.sha").strip() not in ("", made)
         assert "reusing preview" not in y.text("t-m2_lead.out")
         assert y.text("t-m2_pv_args").split()[2:] == ["keys", "site", "frames"]
         record = y.text("t-m2_accepted")
-        assert record.startswith("progress: %s\n  here: progress exit=1 " % reason), record
-        assert "FAIL beside others" in record and "  there: progress exit=1 fails=1 1s :: FAIL on the live site" in record
-        assert "shipped past what fails on brickworks.diy too:\n  progress: " + reason in y.text("t-m2_train.out")
+        assert record.startswith("people: %s\n  here: people exit=1 " % reason), record
+        assert "FAIL alone too" in record and "  there: people exit=1 fails=1 1s :: FAIL on the live site" in record
+        assert "shipped past what fails on brickworks.diy too:\n  people: " + reason in y.text("t-m2_train.out")
         status = y.train("status", "t-m2").stdout
-        assert "ships past what fails on https://brickworks.diy too:\n    progress: " + reason in status, status
-        assert "      there: progress exit=1" in status, status
+        assert "ships past what fails on https://brickworks.diy too:\n    people: " + reason in status, status
+        assert "      there: people exit=1" in status, status
 
         # Given when staged: shipped past where it fails there too, held where it passes there.
-        assert y.train("stage", "t-m3", "unitB", "--checks", "progress", "--accept", "progress", reason,
-                       STUB_FAILS="progress", STUB_STALE_FAILS="progress").returncode == 0
+        assert y.train("stage", "t-m3", "unitB", "--checks", "people", "--accept", "people", reason,
+                       STUB_FAILS="people", STUB_STALE_FAILS="people").returncode == 0
         y.until(lambda: y.spec("t-m3", "result"))
         assert y.spec("t-m3", "result") == "live", y.logs()
-        assert "SHIP: ships past progress, which fails on brickworks.diy too: " + reason in y.text("t-m3_lead.out")
-        assert ("Ships past progress where it fails on brickworks.diy too: " + reason
+        assert "SHIP: ships past people, which fails on brickworks.diy too: " + reason in y.text("t-m3_lead.out")
+        assert ("Ships past people where it fails on brickworks.diy too: " + reason
                 in y.git(y.r, "log", "-1", "--format=%B", "main"))
-        assert y.train("stage", "t-m4", "stage2", "--checks", "progress", "--accept", "progress", reason,
-                       STUB_FAILS="progress").returncode == 0
+        assert y.train("stage", "t-m4", "stage2", "--checks", "people", "--accept", "people", reason,
+                       STUB_FAILS="people").returncode == 0
         waiting = y.train("status", "t-m4").stdout
-        assert "may ship past progress should it fail on https://brickworks.diy too: " + reason in waiting, waiting
+        assert "may ship past people should it fail on https://brickworks.diy too: " + reason in waiting, waiting
         y.until(lambda: y.spec("t-m4", "result"))
-        assert y.spec("t-m4", "result") == "not live: ship.sh ended exit 1: SHIP: held, failed on the preview: progress"
+        assert y.spec("t-m4", "result") == "not live: ship.sh ended exit 1: SHIP: held, failed on the preview: people"
         assert not (y.ro / "t-m4_accepted").exists()
         bad = y.train("stage", "t-m5", "stage2", "--accept", "nosuch", "why")
         assert bad.returncode == 2 and "has no check nosuch" in bad.stdout, bad.stdout
+    finally:
+        y.stop()
+
+
+def test_a_timing_check_failing_on_the_preview_runs_by_turns_with_brickworks_diy_and_holds_only_where_worse(tmp_path):
+    """rel-m287 held twice on play while brickworks.diy passed it once, and an
+    A/B by hand, P L L P P L, found the preview no slower (2026-11-11)."""
+    y = Yard(tmp_path)
+    try:
+        # No worse than live: shipped past, both sides' numbers said.
+        assert y.train("stage", "t-m2", "stage2", "--checks", "progress", STUB_FAILS="progress",
+                       STUB_AB_HERE="95 70", STUB_AB_THERE="110 80").returncode == 0
+        y.until(lambda: y.spec("t-m2", "result"))
+        assert y.spec("t-m2", "result") == "live", y.logs()
+        # P L L P, the same check from the release's tree, at the release's priority on both sides.
+        runs = [y.text("t-m2_ab_progress_%s_args" % r).split() for r in ("P1", "L2", "L3", "P4")]
+        preview = y.text("t-m2_pv_args").split()[0]
+        assert [r[0] for r in runs] == [preview, "https://brickworks.diy", "https://brickworks.diy", preview], runs
+        assert all(r[1:] == [str(y.wt / "t-m2"), "progress"] for r in runs), runs
+        how = {" ".join(line.split()[:2]): line.split()[2] for line in y.text("check_how").splitlines()}
+        assert all(how["t-m2_ab_progress_%s progress" % r] == "priority=1" for r in ("P1", "L2", "L3", "P4")), how
+        assert not (y.ro / "t-m2_stale_args").exists()
+        lead = y.text("t-m2_lead.out")
+        assert "SHIP: progress ships past: the preview no worse than brickworks.diy beyond the noise " \
+               "(2 runs on the preview, 2 on brickworks.diy)" in lead, lead
+        measure = ("the stand-in's own work stays under # on average # ms (bar 100): here 95 70 (mean 82.5), "
+                   "there 110 80 (mean 95) (in the battery 150); noise 30; failed 0 of 2, 1 of 2: no worse")
+        record = y.text("t-m2_accepted")
+        assert record.startswith("progress: by turns with brickworks.diy, ships past: "), record
+        assert "\n  " + measure + "\n" in record, record
+        # The numbers in the commit main moved to, on the merge with its tree; the
+        # build brickworks.diy serves is the merge's, the one its checks passed.
+        merge = y.git(y.r, "rev-parse", "--short", "main^")
+        assert y.git(y.r, "log", "-1", "--format=%s", "main") == (
+            "Ships past progress: no worse here than on brickworks.diy beyond the noise, by turns")
+        assert measure in y.git(y.r, "log", "-1", "--format=%b", "main")
+        assert y.git(y.r, "log", "-1", "--format=%s", "main^").startswith("Merge: ")
+        assert y.git(y.r, "rev-parse", "main^{tree}") == y.git(y.r, "rev-parse", "main^^{tree}")
+        assert y.git(y.r, "log", "-1", "--format=%an <%ae>", "main") == "Xaxis <william.neeley@gmail.com>"
+        assert "/b/%s/" % merge in y.live.read_text() and y.text("t-m2_preview.sha").strip() == merge
+        assert "shipped past what fails on brickworks.diy too:\n  progress: by turns" in y.text("t-m2_train.out")
+        status = y.train("status", "t-m2").stdout
+        assert "by turns with https://brickworks.diy, progress ships past: the preview no worse" in status, status
+        assert "    " + measure in status, status
+        assert "live: brickworks.diy serves it (%s)" % merge in status, status
+        shipped = y.git(y.r, "rev-parse", "main")
+
+        # Worse than live beyond the noise: held, both sides' numbers said.
+        assert y.train("stage", "t-m3", "unitB", "--checks", "progress", STUB_FAILS="progress",
+                       STUB_AB_HERE="150 160", STUB_AB_THERE="60 65").returncode == 0
+        y.until(lambda: y.spec("t-m3", "result"))
+        assert y.spec("t-m3", "result") == ("not live: ship.sh ended exit 1: SHIP: held, failed on the preview: "
+                                            "progress (by turns with brickworks.diy: t-m3_ab_NAME.judge)"), y.logs()
+        assert y.git(y.r, "rev-parse", "main") == shipped and not (y.ro / "t-m3_accepted").exists()
+        status = y.train("status", "t-m3").stdout
+        assert ("by turns with https://brickworks.diy, progress holds: the preview is worse than brickworks.diy "
+                "beyond the noise (2 runs on the preview, 2 on brickworks.diy): the stand-in's own work") in status, status
+        assert ("here 150 160 (mean 155), there 60 65 (mean 62.5) (in the battery 150); noise 10; "
+                "failed 2 of 2, 0 of 2: worse") in status, status
+
+        # Over the bar on both sides alike: shipped past, and said so.
+        assert y.train("stage", "t-m4", "unitB", "--checks", "progress", STUB_FAILS="progress",
+                       STUB_AB_HERE="140 120", STUB_AB_THERE="150 125").returncode == 0
+        y.until(lambda: y.spec("t-m4", "result"))
+        assert y.spec("t-m4", "result") == "live", y.logs()
+        assert ("here 140 120 (mean 130), there 150 125 (mean 137.5) (in the battery 150); noise 25; "
+                "failed 2 of 2, 2 of 2: no worse") in y.git(y.r, "log", "-1", "--format=%b", "main")
+
+        # Another check holding the release: no A/B, it is not needed.
+        assert y.train("stage", "t-m5", "unitB", "--checks", "keys progress", STUB_FAILS="keys progress").returncode == 0
+        y.until(lambda: y.spec("t-m5", "result"))
+        assert y.spec("t-m5", "result") == ("not live: ship.sh ended exit 1: SHIP: held, failed on the preview: "
+                                            "keys progress"), y.logs()
+        assert "SHIP: progress not run by turns with brickworks.diy: the release holds on keys" in y.text("t-m5_lead.out")
+        assert y.text("t-m5_stale_args").split()[2:] == ["keys"] and not (y.ro / "t-m5_ab_progress_P1_args").exists()
     finally:
         y.stop()
 
