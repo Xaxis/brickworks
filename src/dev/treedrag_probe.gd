@@ -588,6 +588,19 @@ func _rows_at(size: Vector2i) -> void:
 		for child: TreeItem in row.get_children():
 			stack.append(child)
 	await _frames(10)
+	# A row chosen by a click, as a person has before dragging one: the tree
+	# is at its least height then (Properties fills the column), and
+	# scrolls, as sereview's probe found it.
+	var shown: Dictionary = _in_sight()
+	for meta: String in shown:
+		if _carryable(meta) and not meta.begins_with(Outliner.SUGGESTION):
+			var at: Vector2 = (shown[meta] as Rect2).get_center()
+			_button(at, true)
+			await _frames(2)
+			_button(at, false)
+			break
+	await create_timer(0.6).timeout
+	await _frames(2)
 	var most: float = 0.0
 	for _w: int in 200:
 		var was: float = _tree.get_scroll().y
@@ -603,10 +616,9 @@ func _rows_at(size: Vector2i) -> void:
 		if is_equal_approx(was, _tree.get_scroll().y):
 			break
 	for goal: float in [0.0, most * 0.5, most]:
-		# The last press's row let go, and the tree drawn again for it (twice
-		# a second, scrolled to the row chosen) before it is scrolled here and
-		# read: drawn again after, every row moves under the place read.
-		_builder.clear_selection()
+		# The tree drawn again for the last press's row (twice a second,
+		# scrolled to the row chosen) before it is scrolled here and read:
+		# drawn again after, every row moves under the place read.
 		await create_timer(0.6).timeout
 		for _w: int in 200:
 			if _tree.get_scroll().y >= goal - 1.0:
@@ -769,9 +781,14 @@ func _show_tree() -> bool:
 	await _frames(20)
 	_outliner = _shell.outliner
 	_tree = _outliner.get("_tree")
+	# Filled at its next look (twice a second), and laid out after it.
+	var until: int = Time.get_ticks_msec() + 3000
+	while Time.get_ticks_msec() < until and not (_tree.is_visible_in_tree() and _tree.get_root() != null):
+		await process_frame
 	var shown: bool = _tree.is_visible_in_tree() and _tree.get_root() != null
 	if not shown:
-		_check("%s: the model tree shown" % _kind(), false)
+		_check("%s: the model tree shown (shown %s, a root %s, open %s)" % [_kind(),
+			_tree.is_visible_in_tree(), _tree.get_root() != null, _shell.outliner.is_open()], false)
 	return shown
 
 
