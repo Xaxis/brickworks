@@ -1620,11 +1620,12 @@ func _r_held_copy() -> void:
 	_select(assemblies, _path_named(assemblies, "Sub"))
 	_shell.call("run", "copy")
 	await _frames(10)
-	await _opened(_put("frames_held_b.mpd", "\n".join(PackedStringArray(["0 FILE main.ldr",
+	var b_text: String = "\n".join(PackedStringArray(["0 FILE main.ldr",
 		"0 Model HB2", "0 Name: main.ldr", "0 Author: Brickworks", "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat",
 		"1 16 0 0 200 1 0 0 0 1 0 0 0 1 sub.ldr", "0 NOFILE", "0 FILE sub.ldr", "0 Sub",
 		"0 Name: sub.ldr", "0 Author: Brickworks", _light("point", [0, -60, 0], {"colour": "#00bb01"}),
-		_view_line("b view"), "1 14 0 -24 0 1 0 0 0 1 0 0 0 1 zz_nosuch_part.dat", "0 NOFILE", ""]))))
+		_view_line("b view"), "1 14 0 -24 0 1 0 0 0 1 0 0 0 1 zz_nosuch_part.dat", "0 NOFILE", ""]))
+	await _opened(_put("frames_held_b.mpd", b_text))
 	assemblies = _shell.get("assemblies")
 	var pasted: Dictionary = await _pasted(_main.get("_builder"))
 	var paths: PackedStringArray = assemblies.paths()
@@ -1641,6 +1642,31 @@ func _r_held_copy() -> void:
 	_check("A's lit Sub pasted into B, whose Sub is held by a part the catalogue lacks (%s): "
 		% pasted["said"] + "a copy of its own %s, not in the held one; written %s" % [paths, sections],
 		int(pasted["at"]) != 0 and not paths.has("Sub#1") and apart)
+	# B's Sub is still sub.ldr, its light and view in it where they were
+	# against its part, once; the pasted copy is one of its own, with none.
+	var was: Array = _against(_composed(b_text), "zz_nosuch_part.dat")
+	var now: Array = _against(_composed(text), "zz_nosuch_part.dat")
+	var held_named: bool = sections.any(func(section: Array) -> bool:
+		return str(section[0]) == "sub.ldr" and section.has("zz_nosuch_part.dat"))
+	_check("...B's Sub written as sub.ldr still (%s), its light and view there against its part, "
+		% held_named + "once: %s (%s), and none in the pasted copy's" % [now, was],
+		held_named and now == was and text.count("#00bb01") == 1 and text.count("b view") == 1
+		and not text.contains(SUB_GREEN))
+
+
+## [param flat] (_composed) against its [param part]'s place: each light and
+## view, [colour or name, its offset rounded, the section it is in], in order.
+static func _against(flat: Dictionary, part: String) -> Array:
+	var at: Vector3 = Vector3.INF
+	for one: Array in flat["parts"]:
+		if str(one[0]) == part:
+			at = one[1]
+	var out: Array = []
+	for one: Array in flat["lights"]:
+		out.append([str(one[0]), ((one[1] as Vector3) - at).snappedf(0.01), str(one[3])])
+	for one: Array in flat["views"]:
+		out.append([str(one[0]), ((one[1] as Vector3) - at).snappedf(0.01)])
+	return out
 
 
 ## Saved as [param name]: the file's text.

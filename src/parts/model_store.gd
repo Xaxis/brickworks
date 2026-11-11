@@ -2035,7 +2035,12 @@ static func _unshown_of(placements: Array) -> Dictionary:
 ## where they are not, at [param frame] as the rest are: a sub-model with
 ## nothing of it on the baseplate (Assemblies.file_frames finds none) whose
 ## parts the file is written with still. Each a definition of its own, as a
-## copy that went its own way is.
+## copy that went its own way is; and the file's own copy keeps its name:
+## copies with parts on the baseplate under that name were put down since (a
+## paste of another model's Sub, HB2), and go by a name of their own, as
+## file_frames names a copy that went its own way. Up to 2026-11-11 the
+## file's own went as "Sub+", and its lights and views were written with the
+## pasted copy's parts.
 static func _hold_unit(instances: Dictionary, unit: String, frame: Transform3D) -> void:
 	var path: String = ""
 	for leaf: String in unit.split("/", false):
@@ -2043,9 +2048,20 @@ static func _hold_unit(instances: Dictionary, unit: String, frame: Transform3D) 
 		if instances.has(path):
 			continue
 		var def: String = Assemblies.definition(leaf)
-		while instances.values().any(func(entry: Dictionary) -> bool: return str(entry["def"]) == def):
-			def += "+"
-		instances[path] = {"frame": frame, "def": def}
+		var named: Callable = func(name: String) -> Array:
+			return instances.keys().filter(func(other: String) -> bool:
+				return str((instances[other] as Dictionary)["def"]) == name)
+		var placed: Array = named.call(def)
+		if placed.any(func(other: String) -> bool: return bool((instances[other] as Dictionary).get("held", false))):
+			while not (named.call(def) as Array).is_empty():
+				def += "+"
+		elif not placed.is_empty():
+			var own: String = "%s %d" % [def, Assemblies.copy_of(Assemblies.leaf(str(placed[0])))]
+			while not (named.call(own) as Array).is_empty():
+				own += "+"
+			for other: String in placed:
+				(instances[other] as Dictionary)["def"] = own
+		instances[path] = {"frame": frame, "def": def, "held": true}
 
 
 ## The LDraw part a Studio model means by [param part_id].

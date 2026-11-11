@@ -902,28 +902,72 @@ static func lines_of(model: LdrModel) -> Dictionary:
 ## written as read, and a light stayed where its copy had been (lp2check
 ## P_moved; lpcheck s7_a: another tool's file whose first copy is not where
 ## the app writes it).
+##
+## A copy written as one of its own that none of the lines' parts are in
+## ([method _lies_in]: another model's Sub pasted in under this one's name)
+## is written without them while a copy they lie in has them: placed by
+## nothing, they were written at the other copy's place, a second light on
+## it. Where no copy has them, the ones that are kept them.
 func lines_written(lined: BrickWorld, instances: Dictionary, back: Transform3D) -> Dictionary:
 	var out: Dictionary = {}
 	if lined.section_lines.is_empty():
 		return out
 	var flip := Transform3D(Basis.from_scale(LdrModel.FLIP), Vector3.ZERO)
+	var placed: Dictionary = {}      ## definition -> true, written in a copy they lie in
+	var unplaced: Dictionary = {}    ## written name -> [path, parts]
 	for path: String in instances:
 		var def: String = definition(leaf(path))
 		var lines: Variant = lined.section_lines.get(def)
 		var written: String = str((instances[path] as Dictionary)["def"])
 		# The first copy of each definition written is the one it is written
 		# from (file_frames).
-		if lines == null or out.has(written):
+		if lines == null or out.has(written) or unplaced.has(written):
 			continue
 		var record: Variant = lined.section_frames.get(def)
-		var now: Variant = frame_now(record, content(path)) if record is Dictionary else null
-		if now == null:
-			out[written] = PackedStringArray(lines)
+		var parts: Array = content(path)
+		if record is Dictionary and not _lies_in(record, parts):
+			unplaced[written] = [path, parts]
 			continue
-		var frame: Transform3D = (instances[path] as Dictionary)["frame"]
-		out[written] = rebased(PackedStringArray(lines),
-			flip * frame.affine_inverse() * back * (now as Transform3D) * flip)
+		placed[def] = true
+		out[written] = _lines_at(PackedStringArray(lines), record, parts,
+			flip * ((instances[path] as Dictionary)["frame"] as Transform3D).affine_inverse() * back, flip)
+	for written: String in unplaced:
+		var path: String = (unplaced[written] as Array)[0]
+		var def: String = definition(leaf(path))
+		if not placed.has(def):
+			out[written] = _lines_at(PackedStringArray(lined.section_lines[def]),
+				lined.section_frames[def], (unplaced[written] as Array)[1],
+				flip * ((instances[path] as Dictionary)["frame"] as Transform3D).affine_inverse() * back, flip)
 	return out
+
+
+## [param lines] in the frame [param record] keeps (Variant: none, as they
+## are), found where the copy of [param parts] now has it ([method
+## frame_now]), carried by [param into] (the file's coordinates of the frame
+## written, from the window's) and [param flip].
+func _lines_at(lines: PackedStringArray, record: Variant, parts: Array, into: Transform3D,
+		flip: Transform3D) -> PackedStringArray:
+	var now: Variant = frame_now(record, parts) if record is Dictionary else null
+	if now == null:
+		return lines
+	return rebased(lines, into * (now as Transform3D) * flip)
+
+
+## Whether the lines [param record] keeps the frame of (frame_record) lie in
+## the copy of [param parts]: one with nothing on the baseplate is the one
+## read, held where the file had it; one that has a part the record keeps is
+## found by it. One with parts where the copy read had none, or none of its
+## parts, was put down under its name since.
+static func _lies_in(record: Dictionary, parts: Array) -> bool:
+	if parts.is_empty():
+		return true
+	var kept: Array = record.get("parts", [])
+	if kept.is_empty():
+		return false
+	var had: Dictionary = {}
+	for item: Dictionary in kept:
+		had[item["part"]] = true
+	return parts.any(func(item: Dictionary) -> bool: return had.has(item["part"]))
 
 
 ## [param lines], a sub-model's own (LIGHT and VIEW: BrickWorld

@@ -3042,7 +3042,10 @@ picture the assistant is shown.
   file's light and view checked where an LDraw reader composes them,
   against the sub-model's part. And HB2: A's lit Sub pasted into B, whose
   Sub's only part the catalogue lacks, is a copy of its own (`next_copy`
-  counts `BrickWorld.held_paths`), not written into the held one.
+  counts `BrickWorld.held_paths`), not written into the held one; B's Sub
+  is still written as sub.ldr (`ModelStore._hold_unit` names the pasted
+  copy "Sub 2"), its light and view in it once, where they were against its
+  part, and none in the pasted copy's (`Assemblies._lies_in`).
   `-- --review`
   runs only these review checks, nothing drawn (a minute, not the whole
   probe's renders). Then the car under 0 to 4 suns (each adding light)
