@@ -5882,6 +5882,10 @@ func _build_ui() -> void:
 	add_child(_shell)
 	_shell.build(column, _side if _side != null else _stack, _notices.get_child(0) as Control,
 		_over_model)
+	# A bin built from a set follows the person's marks as they change
+	# (lbfix): what is marked missing is out of it at once.
+	if _shell.collection_store != null:
+		_shell.collection_store.changed.connect(_bin.follow_marks)
 	# Who designs, named in the commands that ask it (Settings, AI).
 	_shell.name_designer(ProviderSettings.designer_name())
 	if _side != null:

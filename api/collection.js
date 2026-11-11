@@ -79,9 +79,15 @@
 // BrickLink's number with no -1 (no set number is without one, so the two
 // never meet). Every op keeps both as they are; a Rebrickable fetch that
 // lists a set again keeps its missing lots, as an import of a set already
-// there does; remove_set takes a figure out by its number, from an older
-// app too. An older app reads every set and lot as before and counts a set
-// with parts missing as whole, as it always has.
+// there does, as far as the copies it keeps hold each part (its inventory,
+// read from the shards; a part by the number it means today and the colour
+// a shop files it under, as the app counts it): what is more goes onto the
+// person's other copy of the set, or is said ("unkept"). A set whose
+// inventory could not be read keeps its marks as they were ("unread"); a
+// set the replace no longer lists goes with its marks, said ("gone").
+// remove_set takes a figure out by its number, from an older app too. An
+// older app reads every set and lot as
+// before and counts a set with parts missing as whole, as it always has.
 //
 // What was seen and is no longer so (a count moved on, a lot gone, the rev
 // moved on) is refused with 409 and the collection as it is now, changing
@@ -125,6 +131,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { AuthError, authConfigured, bearer, verify } from "./_auth.js";
 import { COLOUR_NAMES } from "./_colours.js";
 import { db, dbConfigured } from "./_db.js";
+import { originOf } from "./_oauth.js";
+import { plainColour, readShard, resolvePart, shardOf } from "./_owned.js";
 
 export const MAX_BYTES = 1_000_000;
 /// Keep them and Take back name every lot a session added, up to MAX_LOTS.
@@ -538,8 +546,9 @@ function withClamped(done, parts) {
 /// replace, what [src] brought before (and what was kept before sources
 /// were) goes first: its sets when the import has sets, its lots when it
 /// has parts. Nothing of another source's, the person's own counting or a
-/// session's is touched.
-function merged(have, add, mode, src) {
+/// session's is touched. [books] is set number -> its inventory record (or
+/// null, none known), for the sets whose marks a replace carries.
+function merged(have, add, mode, src, books = new Map()) {
   const replaceSets = mode === "replace" && add.sets.length > 0;
   const replaceParts = mode === "replace" && add.parts.length > 0;
   const brought = (one) => !one.by && (one.src === src || !one.src);
@@ -551,7 +560,10 @@ function merged(have, add, mode, src) {
   // A set a replace takes out and puts back keeps the parts marked missing
   // in it (mysets): the fetch says it is owned, not that it is whole.
   // Two entries of one set taken out (typed by hand, and Rebrickable's)
-  // put their marks together on the one put back.
+  // put their marks together on the one put back, as far as its copies
+  // hold each part (lbcheck 6: a 1 + 1 spread was 2 on a copy of 1), a
+  // part by the app's key whatever number and colour code each was marked
+  // under (lb2check M1: 6141 and its old 4073 were capped apart).
   const marked = new Map();
   for (const s of have.sets) {
     if (!Array.isArray(s.missing) || !s.missing.length || sets.get(s)) continue;
@@ -559,15 +571,158 @@ function merged(have, add, mode, src) {
     for (const p of s.missing) both.add({ ...p }, p.qty);
     marked.set(s.set, both.list);
   }
+  const carried = [];
   for (const s of add.sets) {
     const held = sets.add({ ...s, src }, s.qty);
     if (!held.missing && marked.has(s.set)) {
       held.missing = marked.get(s.set);
       marked.delete(s.set);
+      carried.push(held);
     }
   }
+  // Taken out and not put back: gone, and its marks with it.
+  const gone = [...marked].map(([set, lots]) => ({ set, marked: lots.reduce((n, p) => n + p.qty, 0) }));
+  const unkept = [];
+  const unread = [];
+  for (const held of carried) {
+    const record = books.get(held.set);
+    // No inventory read: nothing to count the marks against, so they are
+    // kept as they were. More marked than a copy holds loses nothing;
+    // fewer would (lb2check L1).
+    if (!record) {
+      unread.push(held.set);
+      continue;
+    }
+    const rows = rowsByKey(record);
+    const others = sets.list.filter((s) => s.set === held.set && s !== held && !s.fig);
+    const kept = [];
+    for (const [key, lots] of byKey(held.missing)) {
+      const spelled = rows.get(key);
+      // A part its inventory does not list is kept as marked: the app lets
+      // such a mark only come down.
+      if (!spelled) {
+        kept.push(...lots);
+        continue;
+      }
+      const total = lots.reduce((n, p) => n + p.qty, 0);
+      const here = Math.min(total, oneCopy(spelled) * copies(held));
+      kept.push(...placed(lots, here, spelled, copies(held)));
+      let over = total - here;
+      // Over what this copy holds: onto the person's other copy of the set,
+      // as far as it holds the part, else said.
+      for (const other of others) {
+        if (over === 0) break;
+        const theirs = Array.isArray(other.missing) ? other.missing : [];
+        const same = theirs.filter((p) => keyOf(p) === key);
+        const now = same.reduce((n, p) => n + p.qty, 0);
+        const put = Math.min(over, Math.max(0, oneCopy(spelled) * copies(other) - now));
+        if (put <= 0) continue;
+        other.missing = [...theirs.filter((p) => keyOf(p) !== key), ...placed(same, now + put, spelled, copies(other))];
+        over -= put;
+      }
+      if (over > 0) unkept.push({ set: held.set, part: spelled[0].part, colour: spelled[0].colour, qty: over });
+    }
+    held.missing = kept;
+    if (!held.missing.length) delete held.missing;
+  }
   for (const p of add.parts) parts.add({ ...p, src }, p.qty);
-  return { next: { sets: sets.list, parts: parts.list }, parts };
+  return { next: { sets: sets.list, parts: parts.list }, parts, unkept, unread, gone };
+}
+
+// A set's marks, counted as the app counts them. One rule, read from one
+// set of facts: the app's edit_collection counts a copy by its inventory's
+// rows of each key, summed (src/net/app_tools.gd, per_copy), a key being
+// Collection.key_of (PartLibrary.resolve, PartLibrary.plain_code); here
+// the same key from the same catalogue and colours (api/_owned.js
+// ownedFacts: _part_facts.json beside the function in a deployment, which
+// tools/package_api.sh puts there and checks).
+
+/// A lot's key, as Collection.key_of: the number it means today and the
+/// colour a shop files it under.
+const keyOf = (p) => `${resolvePart(p.part)}/${plainColour(Number(p.colour))}`;
+const copies = (entry) => Math.max(1, Number(entry.qty) || 1);
+
+/// [lots] by [keyOf], in the order first marked: key -> lots.
+function byKey(lots) {
+  const out = new Map();
+  for (const p of lots) out.set(keyOf(p), [...(out.get(keyOf(p)) || []), p]);
+  return out;
+}
+
+/// One copy's rows of the inventory [record] by [keyOf]: key -> [{part,
+/// colour, qty}], each spelling once with its rows summed, in the
+/// inventory's order.
+function rowsByKey(record) {
+  const out = new Map();
+  for (const row of Array.isArray(record?.p) ? record.p : []) {
+    if (!Array.isArray(row) || row.length < 3) continue;
+    const one = { part: String(row[0]), colour: Number(row[1]), qty: Number(row[2]) || 0 };
+    const spelled = out.get(keyOf(one)) || [];
+    const same = spelled.find((r) => r.part === one.part && r.colour === one.colour);
+    if (same) same.qty += one.qty;
+    else spelled.push(one);
+    out.set(keyOf(one), spelled);
+  }
+  return out;
+}
+
+/// How many one copy holds of a key's rows [spelled].
+const oneCopy = (spelled) => spelled.reduce((n, r) => n + r.qty, 0);
+
+/// [total] of one key's marks [lots], at most what [times] copies hold,
+/// written under its inventory's spellings [spelled], as edit_collection
+/// writes a mark under the inventory's number (app_tools.gd _mark_writes):
+/// a mark stays on its row when the inventory spells it so, as far as the
+/// row holds, and the rest goes on the rows in the inventory's order, so
+/// the set's page shows every one on a row of its own.
+function placed(lots, total, spelled, times) {
+  const rows = spelled.map((r) => ({ part: r.part, colour: r.colour, qty: 0, most: r.qty * times }));
+  let left = total;
+  for (const lot of lots) {
+    const row = rows.find((r) => r.part === lot.part && r.colour === lot.colour);
+    if (!row) continue;
+    const put = Math.min(left, lot.qty, row.most - row.qty);
+    row.qty += put;
+    left -= put;
+  }
+  for (const row of rows) {
+    const put = Math.min(left, row.most - row.qty);
+    row.qty += put;
+    left -= put;
+  }
+  return rows.filter((r) => r.qty > 0).map(({ part, colour, qty }) => ({ part, colour, qty }));
+}
+
+/// How long a fetch waits for the inventories it reads, all of them
+/// together; any not read by then is unknown (lb2check L2: read one after
+/// another at 15 s each, ~20 marked sets in other shards passed the
+/// function's 300 s, and the fetch failed on every retry).
+const READING_MS = 60000;
+
+/// The inventories [books] needs for an import: of each set it lists that
+/// a replace would take out marked (set number -> record, or null when
+/// none is known or it was not read in time), each shard read once a
+/// request, 16 at a time.
+async function inventoriesFor(have, body, add, books, origin) {
+  if (body?.mode !== "replace" || !add.sets.length) return;
+  const listed = new Set(add.sets.map((s) => s.set));
+  const wanted = [...new Set(have.sets.filter((s) => listed.has(s.set) && Array.isArray(s.missing) && s.missing.length
+    && !books.has(s.set)).map((s) => s.set))];
+  if (!wanted.length) return;
+  const shards = [...new Set(wanted.map(shardOf))];
+  const read = new Map();
+  let next = 0;
+  const reader = async () => {
+    while (next < shards.length) {
+      const n = shards[next++];
+      read.set(n, await readShard(n, origin).catch(() => null));
+    }
+  };
+  let timer;
+  await Promise.race([Promise.all(Array.from({ length: Math.min(16, shards.length) }, reader)),
+    new Promise((done) => { timer = setTimeout(done, READING_MS); })]);
+  clearTimeout(timer);
+  for (const set of wanted) books.set(set, read.get(shardOf(set))?.sets?.[set] || null);
 }
 
 function listed(body, field, most, where = field) {
@@ -748,14 +903,21 @@ export function applyOp(have, body) {
 
 /// An import, as a change: {next, done}. What it imported and left out is
 /// in [done], so a resend is told the same.
-function importing(have, body, imported) {
+function importing(have, body, imported, books = new Map()) {
   const mode = body?.mode === "replace" ? "replace" : "add";
-  const { next, parts } = merged(have, imported, mode, SOURCE_OF[String(body.from)]);
+  const { next, parts, unkept, unread, gone } = merged(have, imported, mode, SOURCE_OF[String(body.from)], books);
   return {
     next,
     done: withClamped({
       imported: { sets: imported.sets.length, lots: imported.parts.length },
       left_out: Object.entries(imported.leftOut).map(([why, count]) => ({ why, count })),
+      // Marks more than the copies kept hold, and not carried to another;
+      // the sets whose marks were kept as they were, their inventories not
+      // read; and the sets that went with their marks: the first 50 of
+      // each, and how many in all.
+      ...(unkept.length ? { unkept: unkept.slice(0, 50), unkept_lots: unkept.length } : {}),
+      ...(unread.length ? { unread: unread.slice(0, 50), unread_sets: unread.length } : {}),
+      ...(gone.length ? { gone: gone.slice(0, 50), gone_sets: gone.length } : {}),
     }, parts),
   };
 }
@@ -859,13 +1021,14 @@ const pause = (attempt) => new Promise((done) => setTimeout(done, 15 + Math.rand
 /// none). When another write came first, nothing is written, and it is
 /// made again on what that one left. [id], when given, is remembered with
 /// the write, and a change whose id is remembered is not made again.
-/// Returns {row, done}; throws what [make] refuses.
+/// Returns {row, done}; throws what [make] refuses. [make] may be async (an
+/// import reads the inventories of the sets whose marks it carries).
 async function change(owner, make, id = "") {
   for (let attempt = 0; attempt < TRIES; attempt++) {
     const have = await readRow(owner);
     const before = id ? have.recent.find((one) => idOf(one) === id) : undefined;
     if (before !== undefined) return { row: have, done: { ...(before?.done || {}), again: true } };
-    const made = make(have);
+    const made = await make(have);
     // A change that changes nothing is remembered too, where there is a
     // row to keep it in, so a resend is told what the first was.
     if (!made.next && !(id && have.there)) return { row: have, done: made.done };
@@ -996,7 +1159,11 @@ export default async function handler(request, response) {
         + "or op lots, set, keep, take_back, remove_set, missing or start_over");
     }
     const imported = parseImport(body);
-    const { row, done } = await change(owner, (have) => importing(have, body, imported), id);
+    const books = new Map();
+    const { row, done } = await change(owner, async (have) => {
+      await inventoriesFor(have, body, imported, books, originOf(request));
+      return importing(have, body, imported, books);
+    }, id);
     return response.status(200).json({ ...shown(row), done, imported: done.imported, left_out: done.left_out || [] });
   } catch (error) {
     if (error instanceof Conflict) return response.status(409).json({ error: error.message, ...shown(error.row) });

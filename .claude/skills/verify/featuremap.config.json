@@ -1646,7 +1646,7 @@
       "kind": "cli",
       "label": "part facts",
       "entry": "tools/web/part_facts.mjs",
-      "reach": "node tools/web/part_facts.mjs OUT.json   (deploy.sh writes _part_facts.json beside /api/share)",
+      "reach": "node tools/web/part_facts.mjs OUT.json   (tools/package_api.sh writes _part_facts.json once and puts it beside every function)",
       "area": "web"
     },
     {
@@ -2262,7 +2262,7 @@
       "kind": "cli",
       "label": "fidelity probe",
       "entry": "src/dev/fidelity_probe.gd",
-      "reach": "godot --headless --path . --script src/dev/fidelity_probe.gd -- vendor/omr/files/3315-1.mpd vendor/omr/files/42082-1.mpd   (someone else's file saved untouched is the same file; a part recoloured, moved, taken away and added is written as such and nothing else changes; written whole, still the author's; FILEs saved untouched and compared line for line)",
+      "reach": "godot --headless --path . --script src/dev/fidelity_probe.gd -- vendor/omr/files/3315-1.mpd vendor/omr/files/42082-1.mpd   (someone else's file saved untouched is the same file; a part recoloured, moved, taken away and added is written as such and nothing else changes; written whole, still the author's; a mirrored copy written whole by a matrix that reflects, opened again turned as it was, its copies following mirrored; the last copy's COPY line taken off with it; a sub-model placed by nothing keeping its block in a patch, live's write, taken apart, written whole (with what it places) and an emptied model saved, opened and saved again, renaming no copy of one called the same; a CRLF file with no line break at its end ending so after an edit to its last line; FILEs saved untouched and compared line for line)",
       "area": "model-io"
     },
     {
@@ -3779,13 +3779,6 @@
     },
     {
       "kind": "cli",
-      "label": "the docs' pictures",
-      "entry": "tools/docs_shots.py",
-      "reach": "python3 tools/docs_shots.py [--only=ID,ID] [--app | --site] [--affected]   (docs-site/pictures/<page>.json: the app's through tools/probe.sh docs_shots_probe on the GPU from a locked snapshot, the site's by tools/web/docs_shots_flow.mjs; into docs-site/img/, with diff/index.html of what changed; tools/docs_site.py --check fails on one missing or not made by it)",
-      "area": "web"
-    },
-    {
-      "kind": "cli",
       "label": "the menus written for the docs",
       "entry": "src/dev/docs_menus.gd",
       "reach": "godot --headless --path . --script src/dev/docs_menus.gd -- --menus-to=docs-site/generated/menus.json   (tests/test_docs_site.py says when it is due)",
@@ -4920,6 +4913,13 @@
     },
     {
       "kind": "cli",
+      "label": "localbricks probe",
+      "entry": "src/dev/localbricks_probe.gd",
+      "reach": "tools/relay_probe.sh localbricks   (a window, 1280x720; PROBE_SIZE=1400x900; -- --shots=DIR: through the sign-in screen with a password, 7140-1's lots marked by edit_collection missing= (each said was N, now M; none=true refused while marked) and refused past its inventory, Build from it 282 of 285, a restart and another device, two tabs at once one refused, a tab a newer build followed leaving the copy on this device, two copies 566 of 570 and one of them 284 of 285, signed out nothing held, the words in de/fr/es)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
       "label": "print3mf probe",
       "entry": "src/dev/print3mf_probe.gd",
       "reach": "tools/probe.sh print3mf_probe [-- --hashes=FILE | --same-as=FILE]   (headless; the car as a 3MF from File, Export, 3D model… and export_model, read by tools/print3mf/check_3mf.py; every object closed (lib3mf IsManifoldAndOriented, every edge two triangles going opposite ways; as drawn, with Mesh3mf.close_up off, none), its triangles at most twice its parts'; a printed tile, a mirrored brick and a part with no BFC; the reader refusing a turned triangle, a colour that is none and a corner past its vertices; --hashes/--same-as compare the car's GLB and STL with another build's)",
@@ -4957,7 +4957,7 @@
       "kind": "cli",
       "label": "lights probe",
       "entry": "src/dev/lights_probe.gd",
-      "reach": "tools/probe.sh lights [-- --keep=DIR] [-- --no-trace]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720: a spot over the car by Render's Spot, 0 px changed outside its cone rasterised and path traced, the roof under it lighter by 15% and 10 levels, the two the same light within 35%; a Trans Neon Green 1 x 1 in the Dark light lighting the white plate round it 3 times as much as a Trans Green one, both ways; kept over save, Save as, the autosave, a step edit and Build together's words, back after an open; light_model over MCP; then --older=DIR on an older checkout opens each file whole, its light line left alone; pictures in shots/lights/)",
+      "reach": "tools/probe.sh lights [-- --keep=DIR] [-- --no-trace] [-- --review]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720: a spot over the car by Render's Spot, 0 px changed outside its cone rasterised and path traced, the roof under it lighter by 15% and 10 levels, the two the same light within 35%; a Trans Neon Green 1 x 1 in the Dark light lighting the white plate round it 3 times as much as a Trans Green one, both ways; kept over save, Save as, the autosave, a step edit and Build together's words, back after an open; light_model over MCP; then --older=DIR on an older checkout opens each file whole, its light line left alone; a sub-model's light and view kept in its section through a rename, a Make and its outer taken apart, undone and redone, and the model's lamp its own when a sub-model has its very line; --review runs only the review checks, nothing drawn; pictures in shots/lights/)",
       "area": "view"
     },
     {
@@ -4973,6 +4973,13 @@
       "entry": "src/dev/binrow_probe.gd",
       "reach": "tools/probe.sh binrow_probe -- --shots=DIR   (windowed, 1400x900, signed in through the gate with a throwaway account from .env: at 1400x900, 1280x720 and 1024x768, as first opened and with Stress, the assistant, a part's properties and the bin open, the eight shelves inside the chips' window unscrolled; 42 parts at 1400x900; the walk's Like this Plate 2 x 4 seventh at 1400x900 and 1280x720; New's list against the catalogue's years); tools/probe.sh binrow_phone_probe (390x844) and binrow_tablet_probe (1024x768)",
       "area": "parts"
+    },
+    {
+      "kind": "cli",
+      "label": "the docs' pictures",
+      "entry": "tools/docs_shots.py",
+      "reach": "python3 tools/docs_shots.py [--only=ID,ID] [--app | --site] [--affected]   (docs-site/pictures/<page>.json: the app's through tools/probe.sh docs_shots_probe on the GPU from a locked snapshot, the site's by tools/web/docs_shots_flow.mjs; into docs-site/img/, with diff/index.html of what changed; tools/docs_site.py --check fails on one missing or not made by it)",
+      "area": "web"
     },
     {
       "kind": "cli",
@@ -5183,6 +5190,13 @@
       "entry": "src/dev/drive_probe.gd",
       "reach": "tools/probe.sh drive_probe [-- OUT_DIR]; PROBE_SIZE=1280x720 tools/probe.sh drive_probe [-- OUT_DIR]   (windowed, on the GPU: 8808-1 driven 32 studs and a quarter circle left from the Motions panel and over MCP; its path, wheels' turns and roll read from the frames alone; the file byte for byte; kept, backwards, undone; rendered; a ?motion= link driving it; pictures in shots/drive/)",
       "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "function packaging",
+      "entry": "tools/package_api.sh",
+      "reach": "tools/package_api.sh OUT [--export=build/web] [ROUTE...]   (deploy.sh's functions, each with the catalogue's facts beside it, checked by tools/web/packaged_facts.mjs; tests/test_packaged_facts.py)",
+      "area": "web"
     }
   ]
 }

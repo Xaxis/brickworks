@@ -94,11 +94,41 @@ Whether what you built is still there tomorrow, and still means the same thing.
   `_new_as_written`): its colour code the file's or the painted colour's own
   (a top-level 16 reads as 0), its name the file's byte for byte or a swapped
   part's "part.dat", its place's and turn's numbers the file's unless they say
-  another place or turn, its line end the file's. A delete that would leave a
-  sub-model no line places, or no part at all (`_left_unplaced`), or that
-  takes off a copy of a sub-model with a later copy left, which an open
-  numbers one less (`_renumbered`: Wing#2 opens as Wing#1, and a motion's
-  JOINT ASSEMBLY or a copy's step names it by its path), is (B). The tables a
+  another place or turn, its line end the file's. A delete that would leave
+  no part at all (`_left_unplaced`), or that takes off a copy of a sub-model
+  with a later copy left, which an open numbers one less (`_renumbered`:
+  Wing#2 opens as Wing#1, and a motion's JOINT ASSEMBLY or a copy's step
+  names it by its path), is (B). A sub-model no line places any more keeps
+  its block, placed by nothing, as the author made it and as Studio and
+  LDCad keep one, however the save is written: the patch takes out only the
+  lines placing it, live's write the same (`SourceFile._unplace_emptied`),
+  and the model written whole carries each section of the file nothing in
+  the model is read through, as the file had it, after its own
+  (`SourceFile.unplaced_into`, by the parts' origins: a sub-model the file
+  never placed too, and each section a kept block places, the model's own
+  ones too, since the whole write names and frames those anew). It went to
+  live's write, which took the block out, and the last copy taken off lost
+  the sub-model (kt5check F5). A block placed by nothing titled as one the
+  model places renames none of its copies at the next open: only placed
+  sub-models share a title (`LdrModel._assembly_names`; 5540's flexhose,
+  carried for the sub04b taken off, opened its copies under other names).
+  A model so emptied, its parts all in blocks nothing places, opens as an
+  empty model, still theirs (`ModelStore._why_not_a_model` counts the
+  model's own section's lines): it was refused as "there are no parts in
+  that file". The model is the file's first FILE section, empty or not, as
+  parse reads it (`ModelStore.count_in`, and `_has_parts` by
+  `LdrModel.main_span`), so the autosave of a model so emptied restores left
+  empty, its file kept for the next save (`ModelStore._restored`), not
+  "could not be opened: ." with the sample opened over it, and an empty
+  model with a kept block is refused over a saved model with parts as any
+  empty one is (sfreview F2). A model of no sub-model written whole is bare
+  text: what carries sections after it puts it in a FILE of its own first
+  (`SourceFile._as_sections`), or the kept block was the first FILE and
+  opened as the model (F1). The names of the sections a whole write carries
+  as the file has them are reserved before the model is written
+  (`SourceFile.kept_keys`, `LdrModel._main_file`): a placed sub-model titled
+  as one placed by nothing took its file name, and that one was skipped as
+  written already, its parts lost (F5). The tables a
   patch reads are filled as the source is made (`SourceFile.make`), so the
   autosave's worker and a save on the main thread never fill them at once
   (read on first use, that corrupted the heap). Any
@@ -126,6 +156,20 @@ Whether what you built is still there tomorrow, and still means the same thing.
   takes that step's line out, where a patch moved every later line up a
   step and left a STEP after the last (booklet_edit); a part the app cannot show
   that would be left behind its step-mates makes the save (B).
+  Written whole, a copy is placed on its definition's first copy by the fit
+  that lays each part turned as it is (`Assemblies.exact_match`, its
+  "bases"), mirrored where only a mirror does: a mirrored copy of parts that
+  look the same turned a half (a plate and a tile) also lies on the first
+  turned a half, filling the same cells, and was written so, by a matrix
+  that turns, and opened again with each part turned a half (kt5check F2).
+  Copies follow an edit by the same fit (`best_match`), so a wedge put in the
+  first copy goes into the mirrored one in its other hand. A copy's
+  `0 !BRICKWORKS COPY n` line is bound to the reference after it
+  (`_binds_next`) and goes, or moves, with it (F3). A file that ended with no
+  line break ends so again, in a patch and in (B)
+  (`SourceFile._ended_as_begun`): its last line rewritten was given the
+  file's line end, a CRLF file ending in a bare CR (F4). `fidelity_probe`
+  checks the three.
   keeptext4 wrote every edit into the file and refused what its gate did not
   pass, which trapped the work and lost it on the next open
   (bench/results/kt4review-2026-11-07). Probes: `paint_string` (a person

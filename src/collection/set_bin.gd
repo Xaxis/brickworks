@@ -33,6 +33,9 @@ var order: PackedStringArray = PackedStringArray()
 ## parts this build cannot draw.
 var pieces: int = 0
 var unshown: int = 0
+## How many pieces the person's own copies are marked as missing, left out
+## of [member have] (localbricks): a bin holds only what is there.
+var left_out: int = 0
 
 
 ## A bin of [param numbers]' parts, from their records ([param records]:
@@ -55,6 +58,30 @@ static func make(numbers: PackedStringArray, records: Dictionary, library: PartL
 			bin.pieces += int(lot[2])
 	if bin.sets.is_empty():
 		return null
+	# What the person's own copies of these sets are marked as missing is
+	# not there to build with (mysets' marks, CollectionStore.marks): left
+	# out (localbricks). Their copies beyond the bin's make up what these
+	# are missing first, and no more of a lot is left out than it holds.
+	for number: String in copies:
+		var marked: Dictionary = CollectionStore.marks.get(number, {})
+		var gone: Dictionary = marked.get("missing", {})
+		if gone.is_empty():
+			continue
+		var others: int = maxi(0, int(marked.get("copies", 0)) - int(copies[number]))
+		var one_copy: Dictionary = {}
+		for row: Variant in (records[number] as Dictionary).get("p", []):
+			if row is Array and (row as Array).size() >= 3:
+				var key: String = Collection.key_of(str(row[0]), int(row[1]), library)
+				one_copy[key] = int(one_copy.get(key, 0)) + int(row[2])
+		for key: String in gone:
+			var take: int = mini(int(gone[key]) - others * int(one_copy.get(key, 0)), int(bin.have.get(key, 0)))
+			if take <= 0:
+				continue
+			bin.have[key] = int(bin.have[key]) - take
+			if int(bin.have[key]) == 0:
+				bin.have.erase(key)
+			bin.pieces -= take
+			bin.left_out += take
 	var named := PackedStringArray()
 	for number: String in copies:
 		var words: String = ("%s %s" % [number, str((records[number] as Dictionary).get("n", ""))]).strip_edges()

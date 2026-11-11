@@ -213,6 +213,30 @@ func carried_into(text: String, waiting: Array, place: Callable = Callable()) ->
 	var parts: Array = not_shown + waiting
 	if parts.is_empty():
 		return text
+	var carried: Array = _carried(parts, place)
+	var refs: PackedStringArray = carried[0]
+	var needed: Dictionary = carried[1]
+	var out: String = _as_sections(text)
+	var cut: int = out.find("\n0 NOFILE")
+	var body: String = "\n".join(refs)
+	out = out.substr(0, cut + 1) + body + out.substr(cut) if cut >= 0 \
+		else out + body + "\n"
+	if not out.ends_with("\n"):
+		out += "\n"
+	for key: String in needed:
+		if out.contains("\n0 FILE " + _file_name(key) + "\n"):
+			continue
+		var span: Array = sections[key]
+		var section := PackedStringArray(lines.slice(int(span[0]), int(span[1])))
+		var written: String = "\n".join(section).strip_edges()
+		out += written + ("\n" if written.ends_with("0 NOFILE") else "\n0 NOFILE\n")
+	return out
+
+
+## What [method carried_into] puts in for [param parts]: [the lines placing
+## them, in the model's section, and each section of the file those name and
+## what those draw on, key -> true].
+func _carried(parts: Array, place: Callable = Callable()) -> Array:
 	var shown_sections: Dictionary = {}
 	for line: int in by_line:
 		shown_sections[_section_at(line)] = true
@@ -256,24 +280,112 @@ func carried_into(text: String, waiting: Array, place: Callable = Callable()) ->
 			if sections.has(named) and not needed.has(named):
 				needed[named] = true
 				todo.append(named)
-	var out: String = text
-	if not out.begins_with("0 FILE "):
-		out = "0 FILE %s.ldr\n%s0 NOFILE\n" % [
-			(own_title if not own_title.is_empty() else "model").to_snake_case(), out]
-	var cut: int = out.find("\n0 NOFILE")
-	var body: String = "\n".join(refs)
-	out = out.substr(0, cut + 1) + body + out.substr(cut) if cut >= 0 \
-		else out + body + "\n"
-	if not out.ends_with("\n"):
-		out += "\n"
-	for key: String in needed:
-		if out.contains("\n0 FILE " + _file_name(key) + "\n"):
-			continue
-		var span: Array = sections[key]
-		var section := PackedStringArray(lines.slice(int(span[0]), int(span[1])))
-		var written: String = "\n".join(section).strip_edges()
-		out += written + ("\n" if written.ends_with("0 NOFILE") else "\n0 NOFILE\n")
+	return [refs, needed]
+
+
+## [param text], the model written whole, as a file of sections, the model's
+## first: one with no FILE line (LdrModel.write_ldr's, of a model with no
+## sub-model) is put in one, named as none of the file's other sections is,
+## so a section carried after it is not read as the model (LdrModel.parse
+## takes the first FILE as the model). Written bare, with a block nothing
+## places after it, the model reopened as that block, its own parts gone
+## (sfreview F1).
+func _as_sections(text: String) -> String:
+	if LdrModel.section_word(text.get_slice("\n", 0)) == "FILE":
+		return text
+	var name: String = (own_title if not own_title.is_empty() else "model").to_snake_case()
+	while sections.has(LdrModel._key(name)) and LdrModel._key(name) != main_key:
+		name += "_"
+	return "0 FILE %s.ldr\n%s%s0 NOFILE\n" % [name, text, "" if text.ends_with("\n") else "\n"]
+
+
+## The keys of the sections a model written whole carries as the file has
+## them ([method carried_into], [method unplaced_into]), for [param waiting]
+## and [param origins] as those take them: no sub-model the model places is
+## written under one of their names (LdrModel.write_tree), or the one the
+## file has is taken for it and not written. A placed sub-model titled as
+## one placed by nothing took its file name, and that one's parts were lost
+## (sfreview F5).
+func kept_keys(waiting: Array, origins: Array) -> Dictionary:
+	var out: Dictionary = {}
+	var parts: Array = not_shown + waiting
+	if not parts.is_empty():
+		out.merge(_carried(parts)[1])
+	for key: String in _unplaced(origins):
+		out[key] = true
 	return out
+
+
+## [param text], the model written whole, with each section of the file
+## nothing in the model is read through carried as the file has it: a
+## sub-model it never placed, and one whose every copy was taken off.
+## [param origins] are the places in the file of the parts the model holds
+## and of those on their way (LdrModel.Placement.origin); the parts the app
+## cannot show are this source's. Each goes after the text's own sections,
+## in the file's order, with each section of the file it names that the
+## text has not got by that name: a sub-model the model still has, too, as
+## the file has it (the text's is named and framed anew), and one titled as
+## a sub-model the model places renames none of its copies at the next open
+## (LdrModel._assembly_names). Written whole, only what the model places was
+## written, and a sub-model placed by nothing, the author's work, was lost
+## on the save (kt5check F5), as Studio and LDCad keep one.
+func unplaced_into(text: String, origins: Array) -> String:
+	var keys: Array = _unplaced(origins)
+	if keys.is_empty():
+		return text
+	text = _as_sections(text)
+	# The text's own sections: the model's, named anew (LdrModel.write_tree),
+	# and the parts it embeds, named as the file has them.
+	var written: Dictionary = {}
+	for line: String in text.split("\n"):
+		if LdrModel.section_word(line) == "FILE":
+			written[LdrModel._key(" ".join(_words(line).slice(2)))] = true
+	var out: String = text if text.ends_with("\n") else text + "\n"
+	var carried: Dictionary = {}
+	while not keys.is_empty():
+		keys.sort_custom(func(a: String, b: String) -> bool:
+			return int((sections[a] as Array)[0]) < int((sections[b] as Array)[0]))
+		var more: Array = []
+		for key: String in keys:
+			# Written already: a part the model's own text embeds.
+			if carried.has(key) or written.has(key):
+				continue
+			carried[key] = true
+			var span: Array = sections[key]
+			var block := PackedStringArray()
+			for n: int in range(int(span[0]), int(span[1])):
+				var line: String = original[n].trim_suffix("\r")
+				var words: PackedStringArray = _words(line)
+				var named: String = LdrModel._key(" ".join(words.slice(14))) \
+					if words.size() >= 15 and words[0] == "1" else ""
+				# And what it places as the file has it, a sub-model the model
+				# still has too: the model's own is written in a frame of its
+				# own, under a name of its own (LdrModel.write_tree).
+				if sections.has(named) and not written.has(named) and not carried.has(named):
+					more.append(named)
+				block.append(line)
+			var as_had: String = "\n".join(block).strip_edges()
+			out += as_had + ("\n" if as_had.to_upper().ends_with("0 NOFILE") else "\n0 NOFILE\n")
+		keys = more
+	return out
+
+
+## The keys of the file's sections nothing in the model is read through, for
+## [param origins] as [method unplaced_into] takes them.
+func _unplaced(origins: Array) -> Array:
+	var used: Dictionary = {main_key: true}
+	for origin: Variant in origins + unshown_origins.keys():
+		for at: String in str(origin).split("/", false):
+			var n: int = at.to_int()
+			if n < 0 or n >= original.size():
+				continue
+			used[_sec[n]] = true
+			# And what the line names: a part the file carries as a section.
+			var words: PackedStringArray = _words(original[n])
+			if words.size() >= 15 and words[0] == "1":
+				used[LdrModel._key(" ".join(words.slice(14)))] = true
+	return sections.keys().filter(func(key: String) -> bool:
+		return not used.has(key))
 
 
 ## The outermost copy above (or at) [param unit] whose section and every
@@ -439,6 +551,7 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 
 	# Each line: as it was, rewritten, or taken out.
 	var replace: Dictionary = {}    ## line -> its new text, or "" to take it out
+	var moved_into: Dictionary = {}     ## a section a part of it went to another step of
 	var inserts: Dictionary = {}    ## line -> [lines to go before it]
 	for line: int in by_line:
 		var origins: Array = by_line[line]
@@ -483,6 +596,7 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 			if to == null:
 				return null
 			_insert(inserts, to, _step_lines(_section_of(first.unit), brick.step) + [written])
+			moved_into[_section_of(first.unit)] = true
 		else:
 			replace[line] = written
 
@@ -518,7 +632,7 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 			return null
 		_insert(inserts, to, _step_lines(section, brick.step) + [said])
 
-	_drop_emptied(replace, left)
+	_unplace_emptied(replace, left, moved_into)
 
 	var eol_now: String = "\r" if not lines.is_empty() and lines[0].ends_with("\r") else ""
 	for section: String in restepped:
@@ -529,9 +643,12 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 	# A line written here ends as the file's lines do (Studio's in "\r\n").
 	var eol: String = "\r" if not lines.is_empty() and lines[0].ends_with("\r") else ""
 	var out := PackedStringArray()
+	var tail: int = -1      ## where the file's last line went
 	for n: int in lines.size():
 		for extra: String in inserts.get(n, []):
 			out.append(extra + eol)
+		if n == lines.size() - 1 and not (replace.has(n) and str(replace[n]).is_empty()):
+			tail = out.size()
 		if replace.has(n):
 			if not str(replace[n]).is_empty():
 				out.append(str(replace[n]) + eol)
@@ -539,7 +656,7 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 		out.append(lines[n])
 	for extra: String in inserts.get(lines.size(), []):
 		out.append(extra + eol)
-	return "\n".join(out)
+	return "\n".join(_ended_as_begun(out, tail, lines, eol))
 
 
 ## A section whose steps changed, written again a step at a time: each
@@ -693,15 +810,20 @@ func _restep(section: String, replace: Dictionary, inserts: Dictionary, added: A
 	return true
 
 
-## A sub-model whose every part was taken out goes with them: its FILE
-## block, and each line that places it. Left in, the saved file kept an
-## empty sub-model, still placed where the assembly had been, which another
-## program's list of sub-models shows (2026-10-16). A sub-model is kept while
-## anything stays in it: a part not taken out, one the app cannot show, a
-## part added here ([param left]), a sub-model of its own still in use, or
+## A sub-model whose every part was taken out, its every copy taken off, is
+## placed by nothing: each line placing it goes, from every section still
+## in use, and its block stays as the file has it, its parts' lines with
+## it, as the patch keeps it ([method _left_unplaced]) and as Studio and
+## LDCad keep one. Its block went with them, and the last copy taken off
+## lost the author's sub-model on the save (kt5check F5). Placed still, with
+## its parts' lines gone, the saved file kept an empty sub-model where the
+## assembly had been, which another program's list shows (2026-10-16). A
+## sub-model is in use while anything stays in it: a part not taken out, one
+## the app cannot show, a part added here ([param left]) or moved to another
+## of its steps ([param moved_into]), a sub-model of its own still in use, or
 ## an LDCad flexible part's skin.
-func _drop_emptied(replace: Dictionary, left: Array) -> void:
-	var kept: Dictionary = {}
+func _unplace_emptied(replace: Dictionary, left: Array, moved_into: Dictionary) -> void:
+	var kept: Dictionary = moved_into.duplicate()
 	for entry: Array in left:
 		kept[_section_of((entry[0] as BrickWorld.Brick).unit)] = true
 	var emptied: Dictionary = {}
@@ -734,12 +856,9 @@ func _drop_emptied(replace: Dictionary, left: Array) -> void:
 		return
 	for key: String in sections:
 		var span: Array = sections[key]
-		if emptied.has(key) and int(span[1]) < lines.size() \
-				and lines[int(span[1])].strip_edges().to_upper().begins_with("0 NOFILE"):
-			replace[int(span[1])] = ""
 		for n: int in range(int(span[0]), int(span[1])):
 			if emptied.has(key):
-				replace[n] = ""
+				replace.erase(n)
 				continue
 			var words: PackedStringArray = LdrModel._fields(lines[n].strip_edges())
 			if words.size() >= 15 and words[0] == "1" \
@@ -1059,19 +1178,18 @@ func _renumbered(dead: Dictionary) -> String:
 	return ""
 
 
-## Why a patch taking out the lines [param gone] would leave what live's
-## write takes out with them; "": a sub-model of the file no line places
-## any more, its section left in the file for nothing to draw, or no part
-## at all with no new one ([param fresh] of them) in. The next save of
-## such a patch wrote the file's model whole as six lines and lost its
-## header (kt5review #4: 8644-1, 30572-1, 8121-1, 4309-1, 4348-1,
-## single_delete_all). A sub-model the file had and never placed stays.
+## Why a patch taking out the lines [param gone] is not to be one; "": no
+## part left at all with no new one ([param fresh] of them) in, which live's
+## write writes (kt5review #4: single_delete_all). A sub-model no line
+## places any more is no reason: its block stays, placed by nothing, as the
+## file's author made it and as Studio and LDCad keep one, and only the
+## lines placing it go. Sent to live's write, which dropped the block, the
+## last copy taken off lost the sub-model on the save (kt5check F5:
+## fidelity_probe's sub-model emptied, 30572-1, 8644-1, 8121-1, 4309-1,
+## 4348-1's delcopy).
 func _left_unplaced(gone: Dictionary, fresh: int) -> String:
 	var before: Dictionary = _placed_from_main({})
 	var after: Dictionary = _placed_from_main(gone)
-	for key: String in before:
-		if not after.has(key):
-			return "the sub-model %s is placed by no line any more" % _file_name(key)
 	if fresh == 0 and int(after.get(main_key, 0)) == 0 and int(before.get(main_key, 0)) > 0:
 		return "no part is left in the model"
 	return ""
@@ -1461,14 +1579,7 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 			_emit(plan, str(rewrites[n]) + _eol(), REWRITE, n, [])
 		else:
 			_emit(plan, lines[n], KEEP, n, [])
-	# A file that ended without a line break, with lines put after its last:
-	# that line ended as the rest, and the file ending as it did.
-	if inserts.has(count) and count > 0 and not lines[count - 1].is_empty():
-		var last: int = plan.from.find(count - 1)
-		if last >= 0:
-			plan.out[last] = plan.out[last] + ("" if plan.out[last].ends_with("\r") else _eol())
-			var end: int = plan.out.size() - 1
-			plan.out[end] = plan.out[end].trim_suffix("\r")
+	plan.out = _ended_as_begun(plan.out, plan.from.find(count - 1), lines, _eol())
 	plan.changed = rewrites.duplicate()
 	for line: int in moves:
 		plan.changed[line] = true
@@ -1477,6 +1588,26 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 
 func _eol() -> String:
 	return "\r" if _crlf else ""
+
+
+## [param out], a writer's lines of the file [param file_lines], ending as
+## the file did where it ended with no line break: the line [param tail]
+## (where the file's last line went, kept, rewritten or moved; -1 for gone)
+## ended as the rest ([param eol]) where a line follows it, and the last
+## line written with no end. A rewrite of the last line was given the
+## file's line end, and a CRLF file came back ending in a bare CR (kt5check
+## F4); its last line taken out left the one before it so.
+static func _ended_as_begun(out: PackedStringArray, tail: int, file_lines: PackedStringArray,
+		eol: String) -> PackedStringArray:
+	var count: int = file_lines.size()
+	if count == 0 or out.is_empty() or file_lines[count - 1].is_empty() \
+			or file_lines[count - 1].ends_with("\r"):
+		return out
+	var end: int = out.size() - 1
+	if tail >= 0 and tail < end and not out[tail].ends_with("\r"):
+		out[tail] = out[tail] + eol
+	out[end] = out[end].trim_suffix("\r")
+	return out
 
 
 func _emit(plan: Plan, text: String, how: int, from: int, placed: Array) -> void:
@@ -1814,12 +1945,18 @@ func gate(plan: Plan, text: String, library: PartLibrary, waiting: Dictionary,
 	var last_kept: int = -1
 	var last: int = original.size() - 1
 	var may_say: Dictionary = _colours_said(plan)
+	# A file that ended with no line break ends so again: the text's last
+	# line with no end, the file's line before it that had one too
+	# (_ended_as_begun).
+	var ends_bare: bool = last >= 0 and not original[last].is_empty() \
+		and not original[last].ends_with("\r")
 	for n: int in plan.out.size():
 		var said: String = plan.out[n]
 		if _is_app_line(said):
 			continue
 		var from: int = plan.from[n]
 		var how: int = plan.how[n]
+		var at_end: bool = ends_bare and n == plan.out.size() - 1 and text.ends_with(said)
 		if how != NEW and how != FOREIGN and (from < 0 or from >= original.size() or used.has(from)):
 			return "a line of the file written twice, or one it has not got"
 		match how:
@@ -1828,22 +1965,24 @@ func gate(plan: Plan, text: String, library: PartLibrary, waiting: Dictionary,
 					return "line %d of the file out of its order" % (from + 1)
 				last_kept = from
 				if how == KEEP and said != original[from] \
-						and not (from == last and said == original[from] + _eol()):
+						and not (from == last and said == original[from] + _eol()) \
+						and not (at_end and said == original[from].trim_suffix("\r")):
 					return "line %d of the file changed with no edit to it" % (from + 1)
 				if how == REWRITE and (not _is_placing(said) or not _may_change(plan, from, false, steps_now)):
 					return "line %d of the file changed, and nothing on it was edited" % (from + 1)
 				if how == REWRITE:
-					var why: String = _rewritten_as_written(plan, from, said, may_say)
+					var why: String = _rewritten_as_written(plan, from, said, may_say, at_end)
 					if not why.is_empty():
 						return why
 			MOVE:
 				if not _may_change(plan, from, true, steps_now):
 					return "line %d of the file moved, and nothing on it changed step" % (from + 1)
-				if said != original[from] and not (_is_placing(said) and _is_placing(original[from])
+				if said != original[from] and not (from == last and said == original[from] + _eol()) \
+						and not (_is_placing(said) and _is_placing(original[from])
 						and _may_change(plan, from, false, steps_now)):
 					return "line %d of the file moved and changed, and nothing on it was edited" % (from + 1)
 				if said != original[from]:
-					var why: String = _rewritten_as_written(plan, from, said, may_say)
+					var why: String = _rewritten_as_written(plan, from, said, may_say, at_end)
 					if not why.is_empty():
 						return why
 			NEW:
@@ -1901,8 +2040,10 @@ func _colours_said(plan: Plan) -> Dictionary:
 ##   painted, that part's number as a new line names it;
 ## - its place's three numbers as the file wrote them unless the place they
 ##   say is another, and its turn's nine unless the turn is;
-## - its line end the file's.
-func _rewritten_as_written(plan: Plan, from: int, said: String, may_say: Dictionary) -> String:
+## - its line end the file's, or none where it ends the text of a file that
+##   ended with no line break ([param at_end]).
+func _rewritten_as_written(plan: Plan, from: int, said: String, may_say: Dictionary,
+		at_end: bool = false) -> String:
 	var was: PackedStringArray = _words(original[from])
 	var now: PackedStringArray = _words(said)
 	var was_at: Variant = _numbers_of(was)
@@ -1932,7 +2073,8 @@ func _rewritten_as_written(plan: Plan, from: int, said: String, may_say: Diction
 			return "line %d of the file has its place written anew, and it is where it was" % (from + 1)
 		if k >= 5 and _same(Transform3D(a.basis, Vector3.ZERO), Transform3D(b.basis, Vector3.ZERO)):
 			return "line %d of the file has its turn written anew, and it is turned as it was" % (from + 1)
-	if said.ends_with("\r") != original[from].ends_with("\r") and from != original.size() - 1:
+	if said.ends_with("\r") != original[from].ends_with("\r") and from != original.size() - 1 \
+			and not at_end:
 		return "line %d of the file ends another way" % (from + 1)
 	return ""
 
@@ -2483,8 +2625,12 @@ static func _binds_next(line: String) -> bool:
 	if words.size() < 3:
 		return false
 	var said: String = first + " " + words[2].to_upper()
+	# And the app's own: which copy the reference after it is (LdrModel
+	# .COPY_META). Not bound, it stayed when its copy was taken off, saying
+	# it of nothing (kt5check F3).
 	return said == "BFC INVERTNEXT" or said == "!LDCAD GROUP_NXT" or said == "MLCAD BTG" \
-		or said == "!TEXMAP NEXT" or said == "!LEOCAD PIECE"
+		or said == "!TEXMAP NEXT" or said == "!LEOCAD PIECE" \
+		or said == LdrModel.COPY_META.substr(2)
 
 
 ## [param at], or where the lines right above line [param at] of

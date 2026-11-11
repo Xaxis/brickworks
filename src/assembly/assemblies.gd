@@ -395,11 +395,20 @@ func make(name: String) -> String:
 	return path
 
 
+## What [method ungroup] last said of the lights and views it moved or let
+## go ([method _lines_apart]), for the status bar after "took … apart"; ""
+## when it moved none.
+var apart_said: String = ""
+
+
 ## Take an assembly apart one level: what was in it is in its parent. A
 ## copy built in steps of its own has them made its parent's, in the order
 ## they were built (AuthorSteps.inlined), and the looks of the steps with
-## them (BookletLooks.inlined).
+## them (BookletLooks.inlined). Its lights go with its parts, and its last
+## copy takes its definition's lights and views with it ([method
+## _lines_apart]), in the same step.
 func ungroup(path: String) -> int:
+	apart_said = ""
 	if path.is_empty():
 		return 0
 	var parent: String = parent_of(path)
@@ -413,16 +422,103 @@ func ungroup(path: String) -> int:
 		leave_to(parent)
 	var numbers: Dictionary = AuthorSteps.inlined(world, path, scenery)
 	var looks: Dictionary = BookletLooks.inlined(world, path, numbers)
+	# Read while the copy is still one: its frame is found from its parts.
+	var lit: Dictionary = _lines_apart(path)
 	var carry: Callable = func(at: String) -> Array:
 		if at == path:
 			return []
 		return [join(parent, at.substr(path.length() + 1))] if within(at, path) else [at]
-	if builder.regroup(changes, "took %s apart" % label(path), carry, numbers) > 0 \
-			and not looks.is_empty():
-		builder.extend_last([{"undo": "steplooks", "looks": world.step_looks}])
-		world.step_looks = looks
+	if builder.regroup(changes, "took %s apart" % label(path), carry, numbers) > 0:
+		if not looks.is_empty():
+			builder.extend_last([{"undo": "steplooks", "looks": world.step_looks}])
+			world.step_looks = looks
+		if not lit.is_empty():
+			set_lines(builder, lit["lines"])
+			if not (lit["lights"] as Array).is_empty():
+				builder.extend_last([{"undo": "scenelights", "take": lit["lights"], "put": []}])
+				world.scene_lights = world.scene_lights + (lit["lights"] as Array)
+			apart_said = lit["said"]
 	changed.emit()
 	return changes.size()
+
+
+## What taking the copy at [param path] apart does to the lines kept by
+## definition (BrickWorld.section_lines), read before its parts move. Each of
+## its definition's lights goes with its parts, placed through the copy's
+## frame as a save writes the copy (file_frames): into the lines of the one
+## it is in, or the model's own lights (BrickWorld.scene_lights) when that is
+## the model, as many as a model keeps (SceneLights.joins). Its last copy
+## takes its definition's lines with it: its views too, as a view of a
+## sub-model that is gone frames nothing. Returns {"lines": the table after,
+## "lights": those the model gains, in the window's coordinates, "said": the
+## words for it}, or {} when it has none. Up to 2026-11-11 the lines stayed
+## under its name, and a save wrote them in whatever next took the name
+## (lpcheck s6, s12); before that, taken apart, its lights went unsaid.
+func _lines_apart(path: String) -> Dictionary:
+	var def: String = definition(leaf(path))
+	if not world.section_lines.has(def):
+		return {}
+	var parent: String = parent_of(path)
+	var parent_def: String = definition(leaf(parent))
+	# A copy in hand stands, as it does for lines_follow: put down, it is
+	# still one.
+	var last: bool = copies_of(path).is_empty() and not _in_hand(builder).has(def)
+	var frames: Dictionary = file_frames()
+	# The file's coordinates of its definition, as written, to the window's
+	# (the copy's frame, file_frames'), and on to its parent's.
+	var flip := Transform3D(Basis.from_scale(LdrModel.FLIP), Vector3.ZERO)
+	var through: Transform3D = ((frames[path] as Dictionary)["frame"] as Transform3D) * flip
+	if not parent.is_empty():
+		through = flip * ((frames[parent] as Dictionary)["frame"] as Transform3D) \
+			.affine_inverse() * through
+	var lines: Dictionary = world.section_lines.duplicate()
+	var theirs := PackedStringArray(lines.get(parent_def, PackedStringArray()))
+	var gained: Array = []
+	var moved: int = 0
+	var lost: int = 0
+	var why: String = ""
+	var views: int = 0
+	for line: String in world.section_lines[def]:
+		var word: String = _meta_word(line)
+		if word != "LIGHT":
+			views += 1 if word == "VIEW" else 0
+			continue
+		var light: Dictionary = SceneLights.of_line(line)
+		var reason: String = "not a light's words" if light.is_empty() else ""
+		if reason.is_empty():
+			light = SceneLights.through(light, through)
+			if parent.is_empty():
+				reason = SceneLights.joins(world.scene_lights + gained, light)
+				if reason.is_empty():
+					gained.append(light)
+			else:
+				theirs.append(SceneLights.META + JSON.stringify(light))
+		if reason.is_empty():
+			moved += 1
+		else:
+			lost += 1
+			why = reason
+	if not parent.is_empty() and moved > 0:
+		lines[parent_def] = theirs
+	if last:
+		lines.erase(def)
+	var said := PackedStringArray()
+	if moved > 0:
+		said.append("its light went with its parts" if moved == 1
+			else "its %d lights went with its parts" % moved)
+	if lost > 0:
+		said.append("%d of its lights went with it" % lost)
+		said.append(why)
+	if last and views > 0:
+		said.append("its saved view went with it" if views == 1
+			else "its %d saved views went with it" % views)
+	return {"lines": lines, "lights": gained, "said": " — ".join(said)}
+
+
+## The word after "0 !BRICKWORKS" on [param line] ("LIGHT", "VIEW"), or "".
+static func _meta_word(line: String) -> String:
+	var words: PackedStringArray = line.strip_edges().replace("\t", " ").split(" ", false, 3)
+	return words[2] if words.size() > 2 and words[0] == "0" and words[1] == "!BRICKWORKS" else ""
 
 
 ## Call a definition something else, in every copy of it.
@@ -449,9 +545,10 @@ func rename(path: String, wanted: String) -> String:
 		return old
 	var was_entered: String = entered
 	var carry: Callable = func(at: String) -> Array: return [_renamed_path(at, old, name)]
-	# Its steps' looks are kept by its name.
+	# Its steps' looks are kept by its name, and so are its own lights and views.
 	if builder.regroup(changes, "renamed %s to %s" % [old, name], carry) > 0:
 		builder.extend_last(BookletLooks.renamed(world, old, name, true))
+		lines_renamed(builder, old, name, true)
 	if not was_entered.is_empty():
 		_set_entered(_renamed_path(was_entered, old, name))
 	# Every copy renamed alike: none changed against another, so none is
@@ -461,6 +558,206 @@ func rename(path: String, wanted: String) -> String:
 	no_copies_follow()
 	changed.emit()
 	return name
+
+
+## A sub-model's own lines (BrickWorld.section_lines) of [param from] given
+## to [param to] as well, or with [param moved] in their place, in the newest
+## step of the history ([method set_lines]), as BookletLooks.renamed carries
+## its looks: a rename takes them, a copy made one of its own keeps them.
+## [param to] is a name no sub-model has ([method unused_name]), and none
+## keeps lines: a sub-model's go with its last copy ([method lines_follow]).
+static func lines_renamed(builder: Builder, from: String, to: String, moved: bool) -> void:
+	var lines: Dictionary = builder.world.section_lines
+	if to.is_empty() or from == to or not lines.has(from):
+		return
+	var now: Dictionary = lines.duplicate()
+	now[to] = PackedStringArray(lines[from])
+	if moved:
+		now.erase(from)
+	set_lines(builder, now)
+
+
+## The world's lines by definition (BrickWorld.section_lines) made [param
+## lines], in the newest step of the history (Builder.extend_last). Its undo
+## is the table as that step found it, kept once however many of the step's
+## changes make them: a step's undos are applied in their order, so with two
+## kept the later won, and the Undo of a Sections accept that kept one for
+## each of two names left the first one's lights and views out (lpcheck s6).
+## A step folded of others (Builder.fold_since) holds theirs newest first,
+## and its oldest, put back last, is the table as the first found it.
+static func set_lines(builder: Builder, lines: Dictionary) -> void:
+	var world: BrickWorld = builder.world
+	if lines == world.section_lines:
+		return
+	if not _keeps_lines(builder.last_step()):
+		builder.extend_last([{"undo": "sectionlines", "lines": world.section_lines}])
+	world.section_lines = lines
+
+
+## Whether history [param step], or one in it, puts the world's lines back
+## ([method set_lines]).
+static func _keeps_lines(step: Dictionary) -> bool:
+	if str(step.get("undo", "")) == "sectionlines":
+		return true
+	for inner: Variant in step.get("steps", []):
+		if inner is Dictionary and _keeps_lines(inner):
+			return true
+	return false
+
+
+## After an edit kept in the history, [param step] (Builder.last_step): the
+## lines of each sub-model it left no copy of (BrickWorld.section_lines) gone,
+## in that step ([method set_lines]), so its Undo puts them back with the
+## copy: deleted, cut, taken off over MCP, or every part moved out of it. A
+## copy taken apart takes its own ([method ungroup]). A sub-model one of
+## [param held] is in (ModelStore's parts on their way and those the
+## catalogue lacks, which a save writes in their sub-models) is still there,
+## and so is one a copy in hand is of ([method _in_hand]). Cut, the
+## clipboard has them for its paste ([method lines_held]).
+## Kept under its name, a gone sub-model's lines were written in whatever
+## next took the name: a copy pasted from another model, a hose laid, a
+## Make, a Sections accept (lpcheck s12).
+static func lines_follow(builder: Builder, step: Dictionary, held: Array = []) -> void:
+	var world: BrickWorld = builder.world
+	if world.section_lines.is_empty() or step.is_empty():
+		return
+	var left: Dictionary = {}
+	_left_from(step, left)
+	var asked: Array = left.keys().filter(func(def: String) -> bool:
+		return world.section_lines.has(def))
+	if asked.is_empty():
+		return
+	var standing: Dictionary = _in_hand(builder)
+	for brick: BrickWorld.Brick in world.bricks():
+		for segment: String in segments(path_of(brick)):
+			standing[definition(segment)] = true
+	for item: Variant in held:
+		var placement: LdrModel.Placement = item
+		for segment: String in segments(path_from(placement.group, placement.unit)):
+			standing[definition(segment)] = true
+	var lines: Dictionary = world.section_lines.duplicate()
+	for def: String in asked:
+		if not standing.has(def):
+			lines.erase(def)
+	set_lines(builder, lines)
+
+
+## The sub-model of every part in hand (Builder.carrying), and each one it
+## is inside: lifted off the model to move it, or a copy to put down.
+static func _in_hand(builder: Builder) -> Dictionary:
+	var out: Dictionary = {}
+	if not builder.is_carrying():
+		return out
+	for item: Dictionary in builder.carrying.items:
+		for segment: String in segments(path_from(str(item.get("group", "")),
+				str(item.get("unit", "")))):
+			out[definition(segment)] = true
+	return out
+
+
+## For the clipboard (Carry.clipboard_lines): the lights and views of each
+## sub-model [param parts] (Carry.gather's) are in, at any depth. Cut, the
+## model lets them go with the parts (lines_follow), and a paste brings them
+## back, into this model or another.
+static func lines_held(world: BrickWorld, parts: Array) -> Dictionary:
+	var out: Dictionary = {}
+	if world.section_lines.is_empty():
+		return out
+	for item: Dictionary in parts:
+		for segment: String in segments(path_from(str(item.get("group", "")),
+				str(item.get("unit", "")))):
+			var def: String = definition(segment)
+			if world.section_lines.has(def):
+				out[def] = PackedStringArray(world.section_lines[def])
+	return out
+
+
+## Every sub-model [param world] has before a paste: one a part is in, or
+## one with lights or views kept. A paste's lines never replace these.
+static func definitions_had(world: BrickWorld) -> Dictionary:
+	var out: Dictionary = {}
+	for def: String in world.section_lines:
+		out[def] = true
+	for brick: BrickWorld.Brick in world.bricks():
+		for segment: String in segments(path_of(brick)):
+			out[definition(segment)] = true
+	return out
+
+
+## A paste's step (the newest) takes the lights and views [param carried]
+## (lines_held) of each sub-model it put a copy of down: [param pasted] is
+## each part's [path in the clipboard, path it was given], the sub-model of
+## each segment matched from the leaf up, so one renamed (a figure: "Guard"
+## to "Guard 2") takes its own. A sub-model the model [param had]
+## (definitions_had) keeps what it had, and what is returned says so where
+## the copied ones differed; "" otherwise. Undo takes them out with the
+## parts, Redo puts them back.
+static func lines_pasted(builder: Builder, carried: Dictionary, pasted: Array,
+		had: Dictionary) -> String:
+	var lines: Dictionary = builder.world.section_lines.duplicate()
+	var seen: Dictionary = {}
+	var kept := PackedStringArray()
+	for pair: Array in pasted:
+		var from: PackedStringArray = segments(str(pair[0]))
+		var to: PackedStringArray = segments(str(pair[1]))
+		for n: int in mini(from.size(), to.size()):
+			var was: String = definition(from[from.size() - 1 - n])
+			var now: String = definition(to[to.size() - 1 - n])
+			if seen.has(now) or not carried.has(was):
+				continue
+			seen[now] = true
+			if not had.has(now):
+				lines[now] = PackedStringArray(carried[was])
+			elif PackedStringArray(lines.get(now, PackedStringArray())) \
+					!= PackedStringArray(carried[was]):
+				kept.append("%s here keeps its own lights and views, not the copied ones" % now)
+	set_lines(builder, lines)
+	return "; ".join(kept)
+
+
+## Into [param into], the definition of every copy history [param step] took
+## a part off or out of: each part taken off ("add", which puts it back) and
+## each moved in the tree ("regroup"), by the path it had.
+static func _left_from(step: Dictionary, into: Dictionary) -> void:
+	var kind: String = str(step.get("undo", ""))
+	if kind == "group":
+		for inner: Variant in step.get("steps", []):
+			if inner is Dictionary:
+				_left_from(inner, into)
+		return
+	if kind != "add" and kind != "regroup":
+		return
+	for segment: String in segments(path_from(str(step.get("group", "")),
+			str(step.get("unit", "")))):
+		into[definition(segment)] = true
+
+
+## [param model]'s sub-models' own lines (LdrModel.section_lines), by the
+## definition their copies are of once laid (LdrModel._assembly_names), as
+## BrickWorld.section_lines keeps them.
+static func lines_of(model: LdrModel) -> Dictionary:
+	var out: Dictionary = {}
+	if model.section_lines.is_empty():
+		return out
+	var names: Dictionary = model._assembly_names()
+	for key: String in model.section_lines:
+		if names.has(key):
+			out[str(names[key])] = PackedStringArray(model.section_lines[key])
+	return out
+
+
+## The lines each definition [param instances] (file_frames) writes keeps of
+## its own, for LdrModel.write_tree: those of the sub-model its copies are
+## of, a copy written as one of its own ("Wing 2") among them.
+static func lines_written(world: BrickWorld, instances: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	if world.section_lines.is_empty():
+		return out
+	for path: String in instances:
+		var lines: Variant = world.section_lines.get(definition(leaf(path)))
+		if lines != null:
+			out[str((instances[path] as Dictionary)["def"])] = PackedStringArray(lines)
+	return out
 
 
 static func _renamed_path(path: String, old: String, name: String) -> String:
@@ -543,6 +840,9 @@ func make_unique(path: String) -> String:
 	# kept by the name it had, are its new name's too.
 	if own_steps and moved > 0:
 		builder.extend_last(BookletLooks.renamed(world, definition(leaf(path)), name, false))
+	# And its own lights and views, built in its own steps or not.
+	if moved > 0:
+		lines_renamed(builder, definition(leaf(path)), name, false)
 	if within(entered, path):
 		_set_entered(fresh + entered.substr(path.length()))
 	changed.emit()
@@ -1401,10 +1701,20 @@ func contents_by_path() -> Dictionary:
 ## Whether ``a`` lies exactly on ``b``, as [method best_match] says it, but
 ## asking only that: the same parts in the same colours first, and each way
 ## of laying one on the other given up at its first part that lands on
-## nothing. {"at", "mirrored", "exact"}.
+## nothing. {"at", "mirrored", "exact", "bases"}: "bases" when each part
+## then lies turned as it is, not only filling the cells it fills.
+##
+## Of a fit laid as it is and a mirrored one, the one laying each part
+## turned as it is: a mirrored copy of parts that look the same turned a
+## half (twice_mirror's wing, a plate and a tile) lies on the first copy
+## turned a half too, filling the same cells, and was written so, by a
+## matrix that turns. Opened again, each of its parts came back turned a
+## half from where the model had it (kt5check F2): a part read through a
+## reflecting matrix is put down in its reflection (unmirror), and only the
+## mirror lays each part back as it was.
 func exact_match(a: Array, b: Array) -> Dictionary:
 	var none: Dictionary = {"at": Transform3D.IDENTITY, "mirrored": false, "score": 0,
-		"exact": false}
+		"exact": false, "bases": false}
 	if a.is_empty() or a.size() != b.size():
 		return none
 	var tally: Dictionary = {}
@@ -1418,10 +1728,13 @@ func exact_match(a: Array, b: Array) -> Dictionary:
 			return _exact_mirrored(a, b)
 		tally[key] = int(tally[key]) - 1
 	var found: Dictionary = _rigid_match(a, b, true)
-	if bool(found["exact"]):
-		found["mirrored"] = false
+	found["mirrored"] = false
+	if bool(found["exact"]) and bool(found["bases"]):
 		return found
-	return _exact_mirrored(a, b)
+	var mirrored: Dictionary = _exact_mirrored(a, b)
+	if bool(mirrored["exact"]) and (bool(mirrored["bases"]) or not bool(found["exact"])):
+		return mirrored
+	return found if bool(found["exact"]) else mirrored
 
 
 func _exact_mirrored(a: Array, b: Array) -> Dictionary:
@@ -1476,17 +1789,24 @@ func _mirrored(item: Dictionary) -> Dictionary:
 ## exact when every part of each lies on one of the other, in its colour.
 func best_match(a: Array, b: Array) -> Dictionary:
 	var best: Dictionary = {"at": Transform3D.IDENTITY, "mirrored": false, "score": 0,
-		"exact": false}
+		"exact": false, "bases": false}
 	for mirrored: bool in [false, true]:
-		# Laid exactly as it is, a mirrored fit could only tie, and a tie
-		# does not replace it.
-		if mirrored and bool(best["exact"]):
+		# Laid exactly as it is, each part turned as it is, a mirrored fit
+		# could only tie, and a tie does not replace it.
+		if mirrored and bool(best["exact"]) and bool(best["bases"]):
 			break
 		var from: Array = a.map(func(item: Dictionary) -> Dictionary:
 			return _mirrored(item)) if mirrored else a
 		var found: Dictionary = _rigid_match(from, b)
-		if int(found["score"]) > int(best["score"]) or (int(found["score"]) == int(best["score"])
-				and bool(found["exact"]) and not bool(best["exact"])):
+		# As many laid either way: the exact one, then the one laying each
+		# part turned as it is (exact_match). A mirrored copy of parts that
+		# look the same turned a half was taken for one turned, and a part
+		# added to the first copy went into it turned, not in its other hand.
+		var tie: bool = int(found["score"]) == int(best["score"])
+		if int(found["score"]) > int(best["score"]) or tie and (
+				(bool(found["exact"]) and not bool(best["exact"]))
+				or (bool(found["exact"]) == bool(best["exact"])
+					and bool(found["bases"]) and not bool(best["bases"]))):
 			best = found
 			best["mirrored"] = mirrored
 	return best
@@ -1494,7 +1814,7 @@ func best_match(a: Array, b: Array) -> Dictionary:
 
 func _rigid_match(a: Array, b: Array, exact_only: bool = false) -> Dictionary:
 	var best: Dictionary = {"at": Transform3D.IDENTITY, "score": 0, "exact": false,
-		"colours": false}
+		"colours": false, "bases": false}
 	if a.is_empty() or b.is_empty():
 		return best
 	# b by part, for the candidates and the look-ups.
@@ -1513,6 +1833,11 @@ func _rigid_match(a: Array, b: Array, exact_only: bool = false) -> Dictionary:
 			< (by_part.get(y["part"], []) as Array).size())
 	var half := Transform3D(Basis(Vector3.UP, PI), Vector3.ZERO)
 	var tried: int = 0
+	# Every part laid in its colour, some only filling the cells their
+	# match fills: only a way laying each turned as it is can do better,
+	# and only that is looked for after it, given up at a part that does
+	# not lie so (cheap: no part's cells are asked for).
+	var laid: bool = false
 	for anchor: Dictionary in anchors.slice(0, 3):
 		var mates: Array = by_part.get(anchor["part"], [])
 		for mate: Dictionary in mates:
@@ -1520,56 +1845,79 @@ func _rigid_match(a: Array, b: Array, exact_only: bool = false) -> Dictionary:
 				var at: Transform3D = (mate["at"] as Transform3D) * spin \
 					* (anchor["at"] as Transform3D).affine_inverse()
 				at = Transform3D(at.basis.orthonormalized(), at.origin)
-				var scored: Dictionary = _score(at, a, by_part, exact_only)
+				var scored: Dictionary = _score(at, a, by_part, exact_only or laid, laid)
 				tried += 1
+				if laid:
+					if int(scored["score"]) == a.size() and bool(scored["colours"]):
+						best = scored
+						best["at"] = at
+						best["exact"] = a.size() == b.size()
+						return best
+					continue
 				if int(scored["score"]) > int(best["score"]) or (
 						int(scored["score"]) == int(best["score"])
-						and bool(scored["colours"]) and not bool(best["colours"])):
+						and ((bool(scored["colours"]) and not bool(best["colours"]))
+							or (bool(scored["colours"]) == bool(best["colours"])
+								and bool(scored["bases"]) and not bool(best["bases"])))):
 					best = scored
 					best["at"] = at
-				# Every part laid, in its colour: nothing can lay more, and a
-				# tie never replaces it, so the rest of the search would end
-				# with this one. It went on through every anchor's every
-				# mate, 400 tries, for each of a model's copies.
+				# Every part laid, in its colour, each turned as it is: nothing
+				# can lay more, and a tie never replaces it, so the rest of the
+				# search would end with this one. It went on through every
+				# anchor's every mate, 400 tries, for each of a model's copies.
 				if int(best["score"]) == a.size() and bool(best["colours"]):
 					best["exact"] = a.size() == b.size()
-					return best
+					if bool(best["bases"]):
+						return best
+					laid = true
 			if tried > 400:
 				break
+	if laid:
+		return best
 	best["exact"] = int(best["score"]) == a.size() and a.size() == b.size() \
 		and bool(best["colours"])
 	return best
 
 
 ## How many of a's parts, laid by ``at``, land on a part of b: the same
-## part, at the same place, filling the same cells.
+## part, at the same place, filling the same cells. {"score", "colours":
+## each in its colour, "bases": each turned as the one it lands on}; with
+## [param turned_alike], a part lands only on one turned as it is.
 func _score(at: Transform3D, a: Array, by_part: Dictionary,
-		exact_only: bool = false) -> Dictionary:
+		exact_only: bool = false, turned_alike: bool = false) -> Dictionary:
 	var score: int = 0
 	var colours: bool = true
+	var bases: bool = true
 	var used: Dictionary = {}
 	for item: Dictionary in a:
 		var to: Transform3D = at * (item["at"] as Transform3D)
 		var hit: Dictionary = {}
+		var alike: bool = false
 		for other: Dictionary in by_part.get(item["part"], []):
 			if used.has(other["id"]):
 				continue
 			if (other["at"] as Transform3D).origin.distance_to(to.origin) > 0.6:
 				continue
-			if not _same_place(str(item["part"]), to, other["at"]):
-				continue
-			hit = other
-			break
+			if (other["at"] as Transform3D).basis.is_equal_approx(to.basis):
+				hit = other
+				alike = true
+				break
+			# Filling the same cells turned otherwise: taken where none
+			# there is turned as it is.
+			if hit.is_empty() and not turned_alike \
+					and _same_place(str(item["part"]), to, other["at"]):
+				hit = other
 		if hit.is_empty():
 			# Asked only whether it lies exactly: it does not.
 			if exact_only:
-				return {"score": score, "colours": false}
+				return {"score": score, "colours": false, "bases": false}
 			continue
 		used[hit["id"]] = true
 		score += 1
+		bases = bases and alike
 		if int(hit["color"]) != int(item["color"]):
 			colours = false
-	return {"score": score, "colours": colours}
+	return {"score": score, "colours": colours, "bases": bases and score > 0}
 
 
 ## Which part of the copy at [param to] each part of the copy at [param

@@ -3060,6 +3060,24 @@ msgstr "ein Klick nimmt sie ganz, ein Doppelklick bearbeitet sie von innen"
 msgid "took %s apart"
 msgstr "%s aufgelöst"
 
+msgid "its light went with its parts"
+msgstr "ihr Licht ging mit ihren Teilen mit"
+
+msgid "its %d lights went with its parts"
+msgstr "ihre %d Lichter gingen mit ihren Teilen mit"
+
+msgid "%d of its lights went with it"
+msgstr "%d ihrer Lichter verschwanden mit ihr"
+
+msgid "its saved view went with it"
+msgstr "ihre gespeicherte Ansicht verschwand mit ihr"
+
+msgid "its %d saved views went with it"
+msgstr "ihre %d gespeicherten Ansichten verschwanden mit ihr"
+
+msgid "%s here keeps its own lights and views, not the copied ones"
+msgstr "%s behält hier ihre eigenen Lichter und Ansichten, nicht die kopierten"
+
 msgid "took 1 part out of its sub-assembly"
 msgstr "1 Teil aus seiner Baugruppe genommen"
 
@@ -6952,6 +6970,33 @@ msgstr "ausgelassen: %s"
 
 msgid "no inventory is known for %s"
 msgstr "für %s ist kein Inventar bekannt"
+
+msgid "%s marked missing came to more than the copies kept hold, and the rest is no longer marked: %s%s"
+msgstr "%s als fehlend markiert: mehr, als die behaltenen Exemplare enthalten, und der Rest ist nicht mehr markiert: %s%s"
+
+msgid "%s: %d of %s in colour %d"
+msgstr "%s: %d von %s in Farbe %d"
+
+msgid "the inventory of %s could not be read"
+msgstr "das Inventar von %s konnte nicht gelesen werden"
+
+msgid "the inventories of %s could not be read"
+msgstr "die Inventare von %s konnten nicht gelesen werden"
+
+msgid "its marks are kept as they were"
+msgstr "seine Markierungen bleiben, wie sie waren"
+
+msgid "their marks are kept as they were"
+msgstr "ihre Markierungen bleiben, wie sie waren"
+
+msgid "%s is no longer in your Rebrickable lists: it went, with its %s marked missing"
+msgstr "%s ist nicht mehr in deinen Rebrickable-Listen: es wurde entfernt, samt seiner %s, die als fehlend markiert waren"
+
+msgid "%s are no longer in your Rebrickable lists: they went, with their %s marked missing"
+msgstr "%s sind nicht mehr in deinen Rebrickable-Listen: sie wurden entfernt, samt ihrer %s, die als fehlend markiert waren"
+
+msgid "%s are no longer in your Rebrickable lists: they went, with the parts marked missing in them"
+msgstr "%s sind nicht mehr in deinen Rebrickable-Listen: sie wurden entfernt, samt der Teile, die darin als fehlend markiert waren"
 
 msgid "building from the parts of %s"
 msgstr "baue aus den Teilen von %s"
@@ -13044,6 +13089,11 @@ msgstr "%s: Ein Teil kommt in seiner Farbe in die Hand, eine Baugruppe wird ganz
 
 msgid "Right-click a part to keep it in Favourites too"
 msgstr "Ein Rechtsklick auf ein Teil behält es auch in den Favoriten"
+
+# localbricks (APP_UX6 8): Build from it leaves out what a set is marked as missing.
+
+msgid "%s, less the %s marked missing"
+msgstr "%s, ohne die %s, die als fehlend markiert sind"
 
 # A mosaic cropped and coloured the person's way (APP_UX6 #10, mosaic2): Crop and Whole
 # picture over the picture, Colours (all, a set's, what I own), Mixed plate sizes, and the line under it.

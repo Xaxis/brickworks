@@ -29,7 +29,9 @@
       "entry": "api/collection.js",
       "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/collection   (401 signed out; GET, POST an op or an import, DELETE with a session; PUT refused 409)",
       "area": "collection",
-      "tests": []
+      "tests": [
+        "tests/test_packaged_facts.py"
+      ]
     },
     {
       "id": "api:/api/models",
@@ -82,7 +84,9 @@
       "entry": "api/admin.js",
       "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/admin   (401 signed out, 404 for anyone but MASTER_EMAIL)",
       "area": "account",
-      "tests": []
+      "tests": [
+        "tests/test_packaged_facts.py"
+      ]
     },
     {
       "id": "api:GET /api/otp/canary",
@@ -133,6 +137,7 @@
         "tests/test_gallery_crons.py",
         "tests/test_library_site.py",
         "tests/test_model_bases.py",
+        "tests/test_packaged_facts.py",
         "tests/test_release.py"
       ]
     },
@@ -242,6 +247,7 @@
         "tests/test_gallery_builds.py",
         "tests/test_library_site.py",
         "tests/test_model_bases.py",
+        "tests/test_packaged_facts.py",
         "tests/test_release.py",
         "tests/test_sets.py"
       ]
@@ -1257,7 +1263,7 @@
       "id": "cli:fidelity probe",
       "kind": "cli",
       "entry": "src/dev/fidelity_probe.gd",
-      "reach": "godot --headless --path . --script src/dev/fidelity_probe.gd -- vendor/omr/files/3315-1.mpd vendor/omr/files/42082-1.mpd   (someone else's file saved untouched is the same file; a part recoloured, moved, taken away and added is written as such and nothing else changes; written whole, still the author's; FILEs saved untouched and compared line for line)",
+      "reach": "godot --headless --path . --script src/dev/fidelity_probe.gd -- vendor/omr/files/3315-1.mpd vendor/omr/files/42082-1.mpd   (someone else's file saved untouched is the same file; a part recoloured, moved, taken away and added is written as such and nothing else changes; written whole, still the author's; a mirrored copy written whole by a matrix that reflects, opened again turned as it was, its copies following mirrored; the last copy's COPY line taken off with it; a sub-model placed by nothing keeping its block in a patch, live's write, taken apart, written whole (with what it places) and an emptied model saved, opened and saved again, renaming no copy of one called the same; a CRLF file with no line break at its end ending so after an edit to its last line; FILEs saved untouched and compared line for line)",
       "area": "model-io",
       "tests": []
     },
@@ -1347,6 +1353,14 @@
       "entry": "src/dev/fresh_eyes_probe.gd",
       "reach": "tools/probe.sh fresh_eyes_probe",
       "area": "assistant",
+      "tests": []
+    },
+    {
+      "id": "cli:function packaging",
+      "kind": "cli",
+      "entry": "tools/package_api.sh",
+      "reach": "tools/package_api.sh OUT [--export=build/web] [ROUTE...]   (deploy.sh's functions, each with the catalogue's facts beside it, checked by tools/web/packaged_facts.mjs; tests/test_packaged_facts.py)",
+      "area": "web",
       "tests": []
     },
     {
@@ -1515,7 +1529,7 @@
       "id": "cli:lights probe",
       "kind": "cli",
       "entry": "src/dev/lights_probe.gd",
-      "reach": "tools/probe.sh lights [-- --keep=DIR] [-- --no-trace]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720: a spot over the car by Render's Spot, 0 px changed outside its cone rasterised and path traced, the roof under it lighter by 15% and 10 levels, the two the same light within 35%; a Trans Neon Green 1 x 1 in the Dark light lighting the white plate round it 3 times as much as a Trans Green one, both ways; kept over save, Save as, the autosave, a step edit and Build together's words, back after an open; light_model over MCP; then --older=DIR on an older checkout opens each file whole, its light line left alone; pictures in shots/lights/)",
+      "reach": "tools/probe.sh lights [-- --keep=DIR] [-- --no-trace] [-- --review]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720: a spot over the car by Render's Spot, 0 px changed outside its cone rasterised and path traced, the roof under it lighter by 15% and 10 levels, the two the same light within 35%; a Trans Neon Green 1 x 1 in the Dark light lighting the white plate round it 3 times as much as a Trans Green one, both ways; kept over save, Save as, the autosave, a step edit and Build together's words, back after an open; light_model over MCP; then --older=DIR on an older checkout opens each file whole, its light line left alone; a sub-model's light and view kept in its section through a rename, a Make and its outer taken apart, undone and redone, and the model's lamp its own when a sub-model has its very line; --review runs only the review checks, nothing drawn; pictures in shots/lights/)",
       "area": "view",
       "tests": []
     },
@@ -1549,6 +1563,14 @@
       "entry": "tools/web/list_load.mjs",
       "reach": "node tools/web/list_load.mjs --url=<deployment> [--n=200] [--at-once=10]   (BW_BYPASS for a preview)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:localbricks probe",
+      "kind": "cli",
+      "entry": "src/dev/localbricks_probe.gd",
+      "reach": "tools/relay_probe.sh localbricks   (a window, 1280x720; PROBE_SIZE=1400x900; -- --shots=DIR: through the sign-in screen with a password, 7140-1's lots marked by edit_collection missing= (each said was N, now M; none=true refused while marked) and refused past its inventory, Build from it 282 of 285, a restart and another device, two tabs at once one refused, a tab a newer build followed leaving the copy on this device, two copies 566 of 570 and one of them 284 of 285, signed out nothing held, the words in de/fr/es)",
+      "area": "collection",
       "tests": []
     },
     {
@@ -1968,7 +1990,7 @@
       "id": "cli:part facts",
       "kind": "cli",
       "entry": "tools/web/part_facts.mjs",
-      "reach": "node tools/web/part_facts.mjs OUT.json   (deploy.sh writes _part_facts.json beside /api/share)",
+      "reach": "node tools/web/part_facts.mjs OUT.json   (tools/package_api.sh writes _part_facts.json once and puts it beside every function)",
       "area": "web",
       "tests": []
     },
@@ -3362,7 +3384,9 @@
       "entry": "src/collection/collection.gd",
       "reach": "godot --headless --path . --script src/dev/collection_probe.gd",
       "area": "collection",
-      "tests": []
+      "tests": [
+        "tests/test_packaged_facts.py"
+      ]
     },
     {
       "id": "lib:command socket",
@@ -3701,6 +3725,7 @@
         "tests/test_gallery_builds.py",
         "tests/test_library_site.py",
         "tests/test_model_bases.py",
+        "tests/test_packaged_facts.py",
         "tests/test_release.py"
       ]
     },
@@ -4519,7 +4544,9 @@
       "entry": "web/admin.html",
       "reach": "https://brickworks.diy/admin   (signed in to the app as MASTER_EMAIL)",
       "area": "account",
-      "tests": []
+      "tests": [
+        "tests/test_packaged_facts.py"
+      ]
     },
     {
       "id": "ui:age question",
@@ -4702,7 +4729,9 @@
       "entry": "web/admin.js",
       "reach": "https://brickworks.diy/admin signed in as MASTER_EMAIL: This week's pick (what visitors see, the choices with End, the week worked out) and Make it the pick beside every model in the gallery",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_packaged_facts.py"
+      ]
     },
     {
       "id": "ui:collections directory",
@@ -5729,7 +5758,9 @@
       "entry": "web/admin.js",
       "reach": "/admin as MASTER_EMAIL, This month's challenge (?tests=1 sets a test one): POST /api/admin?op=challenge, ?op=end_challenge&challenge=N; Set a year of themes: POST /api/admin?op=plan",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_packaged_facts.py"
+      ]
     },
     {
       "id": "ui:share panel",

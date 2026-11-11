@@ -21,6 +21,7 @@ entry:tools/storage_ldraw.py  # an upload to the parts store, the project's own
 entry:tools/storage_library.py  # an upload to the parts store, the project's own
 entry:tools/print3mf/*  # the strict 3MF reader print3mf_probe checks the app's 3MF with (print3mf); a person meets the 3MF, not it
 entry:tools/storage_parts.py  # an upload to the parts store, the project's own
+entry:tools/package_api.sh  # how the site's functions are packaged for a deploy (tools/deploy.sh)
 entry:tools/build_meshes.py  # the parts pipeline: the meshes the app ships
 entry:tools/build_exact.py  # the parts pipeline: the exact shapes the checks read
 entry:tools/build_custom.py  # the parts pipeline: the project's own made parts
