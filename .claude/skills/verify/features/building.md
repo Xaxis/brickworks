@@ -1651,9 +1651,10 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   past the window's drag threshold, a finger held still `FlingScroll.HOLD_MS`
   and then moved (moved at once, it scrolls the tree); a model shared to look
   at or being laid takes none (`Shell.why_frozen`). Probe: `treedrag_probe`
-  (headless: the mouse's drops with Undo, Redo, Save and a reopen, the
-  gates; `--phone`, `--tablet`: a finger's; `--rows`: sereview's scrolled
-  row drags at 1400x900 and 1280x720). Folded or open as it
+  (headless: the mouse's drops with Undo, Redo, Save and a reopen,
+  sereview's scrolled row drags at 1400x900 and 1280x720 (alone with
+  `--rows`), the gates; by hand `--phone` and `--tablet`: a finger's).
+  Folded or open as it
   was left (`outliner_open`). It looks again at every redraw of the world and
   twice a second, and works itself out again only when what it is made from
   has changed: the model's revision and undo history, how many parts are

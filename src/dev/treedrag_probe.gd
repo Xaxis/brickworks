@@ -20,17 +20,18 @@
 ## - onto the 3D view, onto its own row, its own parent's, and a row inside
 ##   it: nothing changed, and no outline over the rows it may not go in;
 ## - a press let go where it came down, and one moved less than the window's
-##   drag threshold: no drag, the row chosen.
-## A finger (--phone, --tablet): held still, then moved onto a sub-model's
-## row: inside it, the same undo, redo, save and reopen; one that moves at
-## once, down and across, the tree's scroll; one held still and lifted: no
-## drag; none changing the model.
+##   drag threshold: no drag, the row chosen;
+## - then (alone with --rows) sereview's row hits, the window 1400 x 900 and
+##   then 1280 x 720 as its probe set them, at the top, part way and the
+##   bottom of the scrolled tree: a row near the middle pressed and moved
+##   24 x 16 px as sereview's probe moved it carries that row.
+## A finger (--phone, --tablet; the suite runs the mouse's): held still,
+## then moved onto a sub-model's row in sight: inside it, the same undo,
+## redo, save and reopen; one that moves at once, down and across, the
+## tree's scroll; one held still and lifted: no drag; none changing the
+## model.
 ## Both: on a model shared to look at, and while 10179-1 is being laid,
 ## no drag and no drop, nothing changed and no file written.
-## --rows: sereview's row hits, the window 1400 x 900 and then 1280 x 720
-## as its probe set them, at the top, part way and the bottom of the
-## scrolled tree, a row near the middle pressed and moved 24 x 16 px as
-## sereview's probe moved it: the drag carries that row.
 extends SceneTree
 
 var _main: Node
@@ -106,6 +107,7 @@ func _run() -> void:
 		await _by_finger()
 	else:
 		await _by_mouse()
+		await _rows()
 	await _gates()
 	_finish()
 
