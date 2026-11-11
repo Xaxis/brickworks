@@ -1649,7 +1649,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   a row inside it); a suggestion dragged onto another merges them. The drag
   begins from the row the press was on (`Outliner._carry_input`): the mouse
   past the window's drag threshold, a finger held still `FlingScroll.HOLD_MS`
-  and then moved (moved at once, it scrolls the tree); a model shared to look
+  and then moved (moved at once, it scrolls the tree), heard by the window
+  first (`Outliner._heard`), as a menu its hold puts up takes the window's
+  input; a model shared to look
   at or being laid takes none (`Shell.why_frozen`). Probe: `treedrag_probe`
   (headless: the mouse's drops with Undo, Redo, Save and a reopen,
   sereview's scrolled row drags at 1400x900 and 1280x720 (alone with

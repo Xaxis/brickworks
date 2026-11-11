@@ -334,10 +334,13 @@ func _by_finger() -> void:
 	var after: Array = _state()
 	paths = _shell.assemblies.paths()
 	var what: String = "%s: held, then moved" % _kind()
-	_check("%s: carried %s onto %s, the outline on %s %s, dropped: %s" % [what, seen.get("carried"),
-		seen.get("onto"), seen.get("under"), seen.get("outline"), lands if paths.has(lands) else "not there"],
-		seen.get("carried") == figure and bool(seen.get("outline")) and paths.has(lands)
-		and not paths.has(figure))
+	# A build with the row's menu puts it up as the hold ends; the move that
+	# lifts the row puts it away (iOS's context menu and drag alike).
+	_check("%s: carried %s onto %s, the outline on %s %s, dropped: %s, a menu left up %s" % [what,
+		seen.get("carried"), seen.get("onto"), seen.get("under"), seen.get("outline"), lands
+		if paths.has(lands) else "not there", seen.get("menu")], seen.get("carried") == figure
+		and bool(seen.get("outline")) and paths.has(lands) and not paths.has(figure)
+		and not bool(seen.get("menu")))
 	await _round_trip(what, before, after, depth)
 	paths = _shell.assemblies.paths()
 	var other: String = _first(paths, func(p: String) -> bool:
@@ -349,10 +352,10 @@ func _by_finger() -> void:
 		depth = _builder.history_depth()
 		seen = await _finger_carry(other, "" if gesture[2] == Vector2.ZERO else "@by", float(gesture[1]),
 			gesture[2])
-		_check("%s: %s: a drag began %s, the model as it was %s, undo steps %d -> %d" % [_kind(),
-			gesture[0], seen.get("carried") != "(no drag)", _state() == before, depth,
-			_builder.history_depth()], seen.get("carried") == "(no drag)" and _state() == before
-			and _builder.history_depth() == depth)
+		_check("%s: %s: a drag began %s, the model as it was %s, undo steps %d -> %d (the row's menu up %s)" % [
+			_kind(), gesture[0], seen.get("carried") != "(no drag)", _state() == before, depth,
+			_builder.history_depth(), seen.get("menu")], seen.get("carried") == "(no drag)"
+			and _state() == before and _builder.history_depth() == depth)
 
 
 ## A finger down on [param from]'s row, held [param hold] seconds, then
@@ -364,7 +367,8 @@ func _by_finger() -> void:
 func _finger_carry(from: String, onto: String, hold: float, by: Vector2) -> Dictionary:
 	_builder.clear_selection()
 	await _frames(10)
-	var out: Dictionary = {"carried": "(no drag)", "outline": false, "under": "(none)", "onto": "(none)"}
+	var out: Dictionary = {"carried": "(no drag)", "outline": false, "under": "(none)", "onto": "(none)",
+		"menu": false}
 	var at: Vector2 = (await _rect(from)).get_center()
 	if at == Vector2.ZERO:
 		return out
@@ -408,6 +412,13 @@ func _finger_carry(from: String, onto: String, hold: float, by: Vector2) -> Dict
 	if root.gui_is_dragging():
 		root.gui_cancel_drag()
 		await _frames(2)
+	# A menu the hold put up (a build with the row's menu), noted and put
+	# away, so the next finger is the tree's.
+	for child: Node in _outliner.get_children():
+		if child is PopupMenu and (child as PopupMenu).visible:
+			out["menu"] = true
+			(child as PopupMenu).hide()
+			await _frames(4)
 	return out
 
 

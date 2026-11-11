@@ -106,8 +106,10 @@ func _ready() -> void:
 	_tree.set_drag_forwarding(_drag_data, _can_drop, _drop)
 	column.add_child(_tree)
 
-	# A row's drag begins from the press that chose it (_carry_input).
+	# A row's drag begins from the press that chose it (_carry_input), a
+	# finger's from its move as the window hears it (_heard).
 	_tree.gui_input.connect(_carry_input)
+	get_window().window_input.connect(_heard)
 	# A name typed over ends in item_edited; Esc ends it with nothing said,
 	# and the tree then stood as it was (refreshes held for the typing)
 	# until the next rename. Its editor going is heard as well.
@@ -743,12 +745,17 @@ func _drop(at: Vector2, data: Variant) -> void:
 ## finger's hold on a part, and then moves: a row is lifted from a phone's
 ## list so (iOS's and Android's lists alike), because a finger that moves at
 ## once is scrolling the list, in any direction, and one held and lifted
-## where it was has the row's own (its menu).
+## where it was has the row's own (its menu). As on iOS, a held finger that
+## then moves lifts the row even where its hold has put up the row's menu:
+## the window hears the finger first (_heard), because a menu, put up in the
+## window, takes all of the window's input after it.
 var _pressed: bool = false
 var _press_meta: String = ""
 ## Where the press came down, in the window.
 var _press_at := Vector2.ZERO
 var _press_finger: bool = false
+## The touch the finger's press is, once the window has heard it; -1 before.
+var _press_index: int = -1
 ## How long the finger has been held still, by what the frames saw: on a
 ## page drawing a frame a second, a swipe's down and move come a frame
 ## apart and timed by the clock would read as a hold (PressHold).
@@ -770,6 +777,7 @@ func _carry_input(event: InputEvent) -> void:
 		_press_meta = str(row.get_metadata(0))
 		_press_at = _tree.get_global_transform_with_canvas() * click.position
 		_press_finger = click.device == InputEvent.DEVICE_ID_EMULATION
+		_press_index = -1
 		_press_hold.start()
 		return
 	var motion: InputEventMouseMotion = event as InputEventMouseMotion
@@ -781,15 +789,40 @@ func _carry_input(event: InputEvent) -> void:
 		_tree.drop_mode_flags = Tree.DROP_MODE_ON_ITEM \
 			if _can_drop(motion.position, get_viewport().gui_get_drag_data()) else Tree.DROP_MODE_DISABLED
 		return
-	if not _pressed or motion.button_mask & MOUSE_BUTTON_MASK_LEFT == 0:
+	if not _pressed or _press_finger or motion.button_mask & MOUSE_BUTTON_MASK_LEFT == 0:
 		return
 	var moved: float = _press_at.distance_to(_tree.get_global_transform_with_canvas() * motion.position)
-	if moved <= (CadCamera.TAP_SLOP if _press_finger else float(get_viewport().gui_drag_threshold)):
+	if moved <= float(get_viewport().gui_drag_threshold):
 		return
 	_pressed = false
-	if _press_finger and _press_hold.held_ms() < FlingScroll.HOLD_MS:
-		return
 	_carry()
+
+
+## A finger pressed on a row, as the window hears it, before anything in it:
+## moved past a tap's slop, it lifts the row if it was held long enough and
+## is the tree's scroll if not; lifted, or joined by a second (a pinch), it
+## carries nothing.
+func _heard(event: InputEvent) -> void:
+	if not _pressed or not _press_finger:
+		return
+	var touch: InputEventScreenTouch = event as InputEventScreenTouch
+	if touch != null:
+		# The window hears the press after the click made of it (Input
+		# sends the emulated click first), so the press is the first touch.
+		if touch.pressed and _press_index < 0:
+			_press_index = touch.index
+		elif touch.index != _press_index or not touch.pressed:
+			_pressed = false
+		return
+	var drag: InputEventScreenDrag = event as InputEventScreenDrag
+	if drag == null or drag.index != _press_index:
+		return
+	var at: Vector2 = get_window().get_final_transform().affine_inverse() * drag.position
+	if _press_at.distance_to(at) <= CadCamera.TAP_SLOP:
+		return
+	_pressed = false
+	if _press_hold.held_ms() >= FlingScroll.HOLD_MS:
+		_carry()
 
 
 ## What a row carries: its assembly, a suggestion's number, or null for one
