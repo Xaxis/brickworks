@@ -495,7 +495,7 @@ Proves it when:
   (from git) reading every lot, importing to Rebrickable's lot, and taking a
   set out with every mark kept, refused from a stale copy. Look at the pictures: `mybricks_row`, `_like`,
   `_loose`, `_need`, `_build`, `_claude`, `_taken_back`.
-- `mysets_api.mjs` ends `every check passed` (33 checks): 7140-1 typed and 12
+- `mysets_api.mjs` ends `every check passed` (35 checks): 7140-1 typed and 12
   lots marked in one op; refusals (a stale count 409, a set not there, a lot
   twice, a bad colour or part, a count over 100,000, no lots) changing
   nothing; the marks kept through a lot added, a count set, a Keep, a retype,

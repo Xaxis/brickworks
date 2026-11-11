@@ -6972,7 +6972,7 @@ msgid "no inventory is known for %s"
 msgstr "für %s ist kein Inventar bekannt"
 
 msgid "%s marked missing came to more than the copies kept hold, and the rest is no longer marked: %s%s"
-msgstr "%s als fehlend markiert ergaben mehr, als die behaltenen Exemplare enthalten, und der Rest ist nicht mehr markiert: %s%s"
+msgstr "%s als fehlend markiert: mehr, als die behaltenen Exemplare enthalten, und der Rest ist nicht mehr markiert: %s%s"
 
 msgid "%s: %d of %s in colour %d"
 msgstr "%s: %d von %s in Farbe %d"
