@@ -16,7 +16,7 @@ Brickworks knows how parts are joined: studs, Technic pins and axles, hinges, cl
 
 ## Swing on a hinge {#hinge}
 
-![The moon rover with one solar panel and its hinge selected and swung up, and Properties beside it with the panel's Hinge angle.](/docs/img/joints-hinge.webp "Swing on its hinge (J): the panel, swung 15° a press; Properties says its angle.")
+![The moon rover's solar panel, hinge and all, selected and swung up beside the other lying flat, and Properties beside it saying the ten parts and their Hinge angle, -40.](/docs/img/joints-hinge.webp "Swing on its hinge (J): the panel, swung 15° a press; Properties says its angle.")
 
 1. Choose the **Hinge** tool ([[Shift+I]], or **Tools › Hinge tool**).
 2. Click a part that hangs on a hinge, a clip or a turntable. Each click swings it 15°; [[Shift]]-click swings it back.

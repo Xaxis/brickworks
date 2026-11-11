@@ -61,7 +61,7 @@
    ],
    "width": 1100,
    "settle": 40,
-   "alt": "The moon rover with one solar panel and its hinge selected and swung up, and Properties beside it with the panel's Hinge angle.",
+   "alt": "The moon rover's solar panel, hinge and all, selected and swung up beside the other lying flat, and Properties beside it saying the ten parts and their Hinge angle, -40.",
    "caption": "Swing on its hinge (J): the panel, swung 15° a press; Properties says its angle.",
    "features": [
     "ui:swing on a hinge",
