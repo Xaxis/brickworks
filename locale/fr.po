@@ -13045,6 +13045,11 @@ msgstr "%s : une pièce se prend en main dans sa couleur, un sous-ensemble se ti
 msgid "Right-click a part to keep it in Favourites too"
 msgstr "Un clic droit sur une pièce la garde aussi dans les Favorites"
 
+# localbricks (APP_UX6 8): Build from it leaves out what a set is marked as missing.
+
+msgid "%s, less the %s marked missing"
+msgstr "%s, moins les %s indiquées comme manquantes"
+
 # A mosaic cropped and coloured the person's way (APP_UX6 #10, mosaic2): Crop and Whole
 # picture over the picture, Colours (all, a set's, what I own), Mixed plate sizes, and the line under it.
 

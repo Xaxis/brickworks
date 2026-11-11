@@ -18,6 +18,15 @@ extends Node
 ## its own.
 static var where: String = "user://collection.json"
 
+## What each set the person owns is marked as missing, by set number:
+## {"copies": how many they own, "missing": key (Collection.key_of) ->
+## pieces}, every entry of that number's together. Kept current by the
+## window's store ([method refresh_pool]) and emptied when nobody is signed
+## in, so a bin built from a set (SetBin.make: Build from it, Build from
+## them all, a model's bin opened again) leaves out what is not there
+## (localbricks, APP_UX6 #8).
+static var marks: Dictionary = {}
+
 var account: Account
 var inventories: SetInventories
 var library: PartLibrary
@@ -49,6 +58,7 @@ func _ensure_inventories() -> void:
 
 ## From now on, fetched as each person signs in ([member account]'s).
 func follow_account() -> void:
+	_asks = true
 	if account != null:
 		account.changed.connect(_on_account)
 		_on_account()
@@ -67,6 +77,8 @@ func _on_account() -> void:
 		_held_for = ""
 		on_hand = {}
 		records = {}
+		if _asks:
+			marks = {}
 		changed.emit()
 		return
 	load_collection()
@@ -74,6 +86,8 @@ func _on_account() -> void:
 
 ## Whose collection was last fetched: the account's id, empty for nobody.
 var _loaded_for: String = ""
+## Whether this is the window's store, which keeps [member marks].
+var _asks: bool = false
 
 
 ## Fetch the account's copy, or fall back to the one on this device.
@@ -100,7 +114,8 @@ func load_collection() -> String:
 ## changed, and the collection as it is now is taken and shown), or
 ## "unreached" (no answer came, sent again and still none, or it came for
 ## an account no longer signed in: it may have been made all the same);
-## "said" says it in words, empty when done; "body" is the account's answer.
+## "said" says it in words, empty when done; "body" is the account's answer;
+## "offline" is true on a refusal made because Brickworks cannot be reached.
 const DONE := "done"
 const REFUSED := "refused"
 const CONFLICT := "conflict"
@@ -138,7 +153,7 @@ func _change_now(body: Dictionary) -> Dictionary:
 		await load_collection()
 		if offline:
 			return {"kind": REFUSED, "said": "could not reach Brickworks, so nothing was changed: what is "
-				+ "shown is the copy on this device", "body": {}}
+				+ "shown is the copy on this device", "body": {}, "offline": true}
 	var sent: Dictionary = body.duplicate()
 	sent["id"] = "%d-%s" % [int(Time.get_unix_time_from_system() * 1000.0),
 		Crypto.new().generate_random_bytes(8).hex_encode()]
@@ -175,7 +190,8 @@ func _change_now(body: Dictionary) -> Dictionary:
 
 
 ## An import: {"from": ..., "text" or "sets"/"parts", "mode"}. Returns
-## {"error", "imported", "left_out", "clamped"} ([method clamped_words]).
+## {"error", "imported", "left_out", "clamped", "unkept"} ([method
+## clamped_words], [method unkept_words]).
 ## Sent again with no answer, it is told what the first try did.
 func add(payload: Dictionary) -> Dictionary:
 	var done: Dictionary = await change(payload)
@@ -183,7 +199,7 @@ func add(payload: Dictionary) -> Dictionary:
 		return {"error": done["said"], "imported": {}, "left_out": [], "clamped": ""}
 	var body: Dictionary = done["body"]
 	return {"error": "", "imported": body.get("imported", {}), "left_out": body.get("left_out", []),
-		"clamped": clamped_words(body)}
+		"clamped": clamped_words(body), "unkept": unkept_words(body)}
 
 
 ## Loose lots added, each {"part", "colour", "qty"}, and "by" and "chat" for
@@ -251,13 +267,20 @@ func clear() -> Dictionary:
 	return await change({"op": "start_over", "rev": collection.rev})
 
 
-## Expand the sets afresh into [member on_hand].
+## Expand the sets afresh into [member on_hand]. A collection taken while
+## its sets were looked up (signed out meanwhile) is that one's to expand.
 func refresh_pool() -> void:
 	_ensure_inventories()
-	records = {}
-	if not collection.sets.is_empty():
-		records = await inventories.lookup(collection.set_numbers())
+	var held: Collection = collection
+	var found: Dictionary = {}
+	if not held.sets.is_empty():
+		found = await inventories.lookup(held.set_numbers())
+	if held != collection:
+		return
+	records = found
 	on_hand = collection.pool(records, library)
+	if _asks:
+		marks = collection.marks(library)
 
 
 func pieces_on_hand() -> int:
@@ -306,6 +329,27 @@ static func clamped_words(body: Variant) -> String:
 				int(one.get("over", 0))])
 	var lots: int = int(done.get("clamped_lots", held.size()))
 	return "%s stopped at 100,000, the most one lot holds, and the rest was not kept: %s%s" % [
+		Counted.of(lots, "lot"), ", ".join(named), "" if lots <= named.size() else ", …"]
+
+
+## What a fetch could not keep marked missing, in words, or "": parts marked
+## on two copies of a set that it put together on one, more than that copy
+## holds and more than the person's other copy of it could take
+## (api/collection.js, done.unkept: lbfix2).
+static func unkept_words(body: Variant) -> String:
+	if not body is Dictionary or not (body as Dictionary).get("done") is Dictionary:
+		return ""
+	var done: Dictionary = body["done"]
+	var held: Array = done["unkept"] if done.get("unkept") is Array else []
+	if held.is_empty():
+		return ""
+	var named := PackedStringArray()
+	for one: Variant in held.slice(0, 3):
+		if one is Dictionary:
+			named.append("%s: %d of %s in colour %d" % [str(one.get("set", "")), int(one.get("qty", 0)),
+				str(one.get("part", "")), int(one.get("colour", 0))])
+	var lots: int = int(done.get("unkept_lots", held.size()))
+	return "%s marked missing came to more than the copies kept hold, and the rest is no longer marked: %s%s" % [
 		Counted.of(lots, "lot"), ", ".join(named), "" if lots <= named.size() else ", …"]
 
 
@@ -376,7 +420,12 @@ static func _read_local(owner: String = "") -> Dictionary:
 	return parsed
 
 
+## The copy on this device written afresh; not by a tab a newer build has
+## followed (NewerBuild), which owns what the tabs share: the account holds
+## the change, and the newer build fetches it from there.
 static func _write_local(data: Dictionary) -> void:
+	if not NewerBuild.may_write(where):
+		return
 	var file: FileAccess = FileAccess.open(where, FileAccess.WRITE)
 	if file == null:
 		return

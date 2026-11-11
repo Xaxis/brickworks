@@ -3779,13 +3779,6 @@
     },
     {
       "kind": "cli",
-      "label": "the docs' pictures",
-      "entry": "tools/docs_shots.py",
-      "reach": "python3 tools/docs_shots.py [--only=ID,ID] [--app | --site] [--affected]   (docs-site/pictures/<page>.json: the app's through tools/probe.sh docs_shots_probe on the GPU from a locked snapshot, the site's by tools/web/docs_shots_flow.mjs; into docs-site/img/, with diff/index.html of what changed; tools/docs_site.py --check fails on one missing or not made by it)",
-      "area": "web"
-    },
-    {
-      "kind": "cli",
       "label": "the menus written for the docs",
       "entry": "src/dev/docs_menus.gd",
       "reach": "godot --headless --path . --script src/dev/docs_menus.gd -- --menus-to=docs-site/generated/menus.json   (tests/test_docs_site.py says when it is due)",
@@ -4920,6 +4913,13 @@
     },
     {
       "kind": "cli",
+      "label": "localbricks probe",
+      "entry": "src/dev/localbricks_probe.gd",
+      "reach": "tools/relay_probe.sh localbricks   (a window, 1280x720; PROBE_SIZE=1400x900; -- --shots=DIR: through the sign-in screen with a password, 7140-1's lots marked by edit_collection missing= (each said was N, now M; none=true refused while marked) and refused past its inventory, Build from it 282 of 285, a restart and another device, two tabs at once one refused, a tab a newer build followed leaving the copy on this device, two copies 566 of 570 and one of them 284 of 285, signed out nothing held, the words in de/fr/es)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
       "label": "print3mf probe",
       "entry": "src/dev/print3mf_probe.gd",
       "reach": "tools/probe.sh print3mf_probe [-- --hashes=FILE | --same-as=FILE]   (headless; the car as a 3MF from File, Export, 3D model… and export_model, read by tools/print3mf/check_3mf.py; every object closed (lib3mf IsManifoldAndOriented, every edge two triangles going opposite ways; as drawn, with Mesh3mf.close_up off, none), its triangles at most twice its parts'; a printed tile, a mirrored brick and a part with no BFC; the reader refusing a turned triangle, a colour that is none and a corner past its vertices; --hashes/--same-as compare the car's GLB and STL with another build's)",
@@ -4973,6 +4973,13 @@
       "entry": "src/dev/binrow_probe.gd",
       "reach": "tools/probe.sh binrow_probe -- --shots=DIR   (windowed, 1400x900, signed in through the gate with a throwaway account from .env: at 1400x900, 1280x720 and 1024x768, as first opened and with Stress, the assistant, a part's properties and the bin open, the eight shelves inside the chips' window unscrolled; 42 parts at 1400x900; the walk's Like this Plate 2 x 4 seventh at 1400x900 and 1280x720; New's list against the catalogue's years); tools/probe.sh binrow_phone_probe (390x844) and binrow_tablet_probe (1024x768)",
       "area": "parts"
+    },
+    {
+      "kind": "cli",
+      "label": "the docs' pictures",
+      "entry": "tools/docs_shots.py",
+      "reach": "python3 tools/docs_shots.py [--only=ID,ID] [--app | --site] [--affected]   (docs-site/pictures/<page>.json: the app's through tools/probe.sh docs_shots_probe on the GPU from a locked snapshot, the site's by tools/web/docs_shots_flow.mjs; into docs-site/img/, with diff/index.html of what changed; tools/docs_site.py --check fails on one missing or not made by it)",
+      "area": "web"
     },
     {
       "kind": "cli",

@@ -864,6 +864,40 @@ static func missing_keys(entry: Dictionary, library: PartLibrary = null) -> Dict
 	return out
 
 
+## Every entry of set [param number] the person owns (typed, fetched from
+## Rebrickable, a BrickLink list), minifigures apart, in the order kept.
+func entries_of(number: String) -> Array:
+	var out: Array = []
+	for entry: Dictionary in sets:
+		if str(entry["set"]) == number and not is_fig(entry):
+			out.append(entry)
+	return out
+
+
+## What each set is marked as missing, one count per part per set (lbfix):
+## set number -> {"copies": how many they own, "missing": key ([method
+## key_of]) -> pieces}, every entry of that number together, so a mark kept
+## under an older number of a part (179 for 6141) is the same mark. A set
+## with nothing marked is left out. CollectionStore.marks, SetBin and
+## edit_collection missing= all read it.
+func marks(library: PartLibrary = null) -> Dictionary:
+	var out: Dictionary = {}
+	for entry: Dictionary in sets:
+		if is_fig(entry):
+			continue
+		var number: String = str(entry["set"])
+		if not out.has(number):
+			out[number] = {"copies": 0, "missing": {}}
+		out[number]["copies"] = int(out[number]["copies"]) + maxi(1, int(entry.get("qty", 1)))
+		var gone: Dictionary = missing_keys(entry, library)
+		for key: String in gone:
+			_add(out[number]["missing"], key, int(gone[key]))
+	for number: String in out.keys():
+		if (out[number]["missing"] as Dictionary).is_empty():
+			out.erase(number)
+	return out
+
+
 ## How many of [param part] in [param colour] a set entry is marked as missing.
 static func missing_count(entry: Dictionary, part: String, colour: int) -> int:
 	for lot: Dictionary in missing_lots(entry):
