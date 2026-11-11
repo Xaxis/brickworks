@@ -92,7 +92,7 @@ ui:balance readout
 
 ## Simulate a mechanism {#simulate}
 
-![Simulate mechanism on a kart: the panel down the left saying what turns and how fast, and the kart with its steering wheel turned and its front wheels turned with it.](/docs/img/joints-steering.webp "Simulate mechanism turns the train from the part you choose, and finds where it stops.")
+![Simulate mechanism on a kart driven from its steering wheel: the panel down the left saying what turns and how fast, where the steering stops and whether the kart stands, and the kart with its footprint drawn on the floor.](/docs/img/joints-steering.webp "Simulate mechanism turns the train from the part you choose, and finds where it stops.")
 
 1. Select the part to drive (a crank, a steering wheel, a motor's axle), or none.
 2. **Tools › Simulate mechanism…** ([[Alt+U]]). The train turns from it; click another axle or crank to drive that instead.

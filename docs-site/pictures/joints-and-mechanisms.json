@@ -33,6 +33,10 @@
     {
      "run": "show_properties",
      "after": 60
+    },
+    {
+     "run": "fit_model",
+     "after": 90
     }
    ],
    "crop": [
@@ -105,7 +109,7 @@
    ],
    "width": 1200,
    "settle": 40,
-   "alt": "Simulate mechanism on a kart: the panel down the left saying what turns and how fast, and the kart with its steering wheel turned and its front wheels turned with it.",
+   "alt": "Simulate mechanism on a kart driven from its steering wheel: the panel down the left saying what turns and how fast, where the steering stops and whether the kart stands, and the kart with its footprint drawn on the floor.",
    "caption": "Simulate mechanism turns the train from the part you choose, and finds where it stops.",
    "features": [
     "ui:simulate mechanism",
