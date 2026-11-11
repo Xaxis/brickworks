@@ -1125,6 +1125,13 @@ func _tree_shown_case() -> void:
 	await _frames(10)
 	await _open(TWINS_MODEL.replace("Other", "Shown here"), "shown")
 	await create_timer(0.7).timeout
+	# Opened just after one of its half-second looks, as the next is furthest
+	# off: opened at any moment, the look it waited for came 0 to 500 ms on.
+	var looked: int = int(_shell.outliner.get("_looked_at"))
+	for _n: int in 600:
+		if int(_shell.outliner.get("_looked_at")) != looked:
+			break
+		await process_frame
 	var tree: Tree = _shell.outliner.get("_tree")
 	var began: int = Time.get_ticks_msec()
 	(dock as SideDock).set_open(true, false)
