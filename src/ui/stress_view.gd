@@ -264,9 +264,11 @@ static func part_words(weighed: Stability.Report, world: BrickWorld, library: Pa
 	var name: String = _named(library, brick.part_id)
 	var one: Balance.JointLoad = weighed.margins.get(id)
 	if one != null:
-		return "%s: carries %s g %s, margin %s" % [name, Balance.tidy(one.grams),
+		# What nothing holds has no margin (drvrecheck F2).
+		return "%s: carries %s g %s, %s" % [name, Balance.tidy(one.grams),
 			"hanging from" + one.held_on().trim_prefix("on") if one.hangs else one.held_on(),
-			margin_words(1.0 / maxf(one.ratio, 0.000001))]
+			"with nothing holding it" if one.holds_nothing() and one.moment > 0.000001
+			else "margin " + margin_words(1.0 / maxf(one.ratio, 0.000001))]
 	match str(weighed.held.get(id, "")):
 		"floor":
 			return "%s: stands on the %s" % [name, "baseplate" if not scenery.is_empty() else "ground"]
@@ -286,13 +288,16 @@ func brace_words(id: int) -> String:
 	var one: Balance.JointLoad = report.margins.get(id) if report != null else null
 	if one == null:
 		return ""
-	return ("Brace this: the %s %s %s g %s of the %s, %s its %sworking "
-		+ "load (margin %s). Make that joint hold, by supporting what it carries or by "
-		+ "tying it in with %s, and change nothing else.") % [
+	# What nothing holds is past no working load by a margin: it has none
+	# (drvrecheck F2).
+	var how: String = "with nothing holding it" if one.holds_nothing() and one.moment > 0.000001 \
+		else "%s its %sworking load (margin %s)" % ["past" if margin_of(id) < WEAK else "near",
+			"studs' " if one.kind == "studs" else "", margin_words(margin_of(id))]
+	return ("Brace this: the %s %s %s g %s of the %s, %s. Make that joint hold, by supporting "
+		+ "what it carries or by tying it in with %s, and change nothing else.") % [
 		_name(one.beyond_part), "hangs" if one.hangs else "carries", Balance.tidy(one.grams),
 		"from" + one.held_on().trim_prefix("on") if one.hangs else one.held_on(),
-		_name(one.held_part), "past" if margin_of(id) < WEAK else "near",
-		"studs' " if one.kind == "studs" else "", margin_words(margin_of(id)),
+		_name(one.held_part), how,
 		"more studs" if one.kind == "studs" else "a second pin off its line"]
 
 

@@ -200,6 +200,18 @@ func _joints_by_kind() -> void:
 	_check("the panel's fix for a free pin: a second pin off its line, no times the hold, no studs",
 		str(fixes.get("free pin", "")).contains("a second pin off its line")
 		and not str(fixes.get("free pin", "")).contains("times") and not str(fixes.get("free pin", "")).contains("stud"))
+	var free_id: int = int(ids["free pin"])
+	var pointed: String = StressView.part_words(report, _world, _library, {}, free_id)
+	var view := StressView.new()
+	view.world = _world
+	view.library = _library
+	view.report = report
+	var brace: String = view.brace_words(free_id)
+	view.free()
+	print("    pointing at the free pin: %s\n    Brace this: %s" % [pointed, brace])
+	_check("pointing at a free pin, and Brace this: with nothing holding it, no margin",
+		pointed.contains("with nothing holding it") and not pointed.contains("margin")
+		and brace.contains("with nothing holding it") and not brace.contains("margin"))
 	_check("...for a friction pin a second pin too, and more studs only for studs",
 		str(fixes.get("friction pin", "")).contains("a second pin off its line")
 		and not str(fixes.get("friction pin", "")).contains("more studs")
