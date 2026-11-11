@@ -1,0 +1,17 @@
+{
+ "shots": [
+  {
+   "id": "shortcuts-keys",
+   "source": "app",
+   "setup": [
+    {"run": "keys", "after": 40}
+   ],
+   "crop": "@opened",
+   "pad": 0,
+   "width": 1000,
+   "alt": "The app's keys sheet: a search box, then the keys for the mouse, the view and placing parts, each drawn as keys beside what it does.",
+   "caption": "Help › Keys and controls (F1): the same list as this page.",
+   "features": ["ui:controls panel and hint"]
+  }
+ ]
+}
