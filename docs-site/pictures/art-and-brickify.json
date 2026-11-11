@@ -1,0 +1,131 @@
+{
+ "shots": [
+  {
+   "id": "art-brick-art",
+   "source": "app",
+   "setup": [
+    {
+     "call": "_picker._read_file",
+     "args": [
+      "res://web/img/show-fox-720.webp"
+     ],
+     "after": 300
+    }
+   ],
+   "crop": "@opened",
+   "pad": 0,
+   "settle": 60,
+   "alt": "The Build this picture panel in Brick Art: a fox laid in 3 x 3 panels of round and square tiles above, with Panels across and down at 3, Depth, the texture choices, and what it comes to in studs, centimetres and parts.",
+   "caption": "Brick Art: the picture as LEGO® Art sets lay one, panel by panel.",
+   "features": [
+    "ui:mosaic",
+    "lib:LEGO Art layout"
+   ]
+  },
+  {
+   "id": "art-classic",
+   "source": "app",
+   "setup": [
+    {
+     "call": "_picker._read_file",
+     "args": [
+      "res://web/img/show-fox-720.webp"
+     ],
+     "after": 120
+    },
+    {
+     "call": "_mosaic.set_mode",
+     "args": [
+      "classic"
+     ],
+     "after": 30
+    },
+    {
+     "call": "_mosaic._colours.select",
+     "args": [
+      1
+     ]
+    },
+    {
+     "call": "_mosaic._colours.emit_signal",
+     "args": [
+      "item_selected",
+      1
+     ],
+     "after": 30
+    },
+    {
+     "click": "_mosaic._set_number",
+     "after": 10
+    },
+    {
+     "type": "21178",
+     "after": 180
+    }
+   ],
+   "crop": "@opened",
+   "pad": 0,
+   "settle": 60,
+   "alt": "The same panel in Classic, its colours from set 21178: the fox laid in plates in that set's colours, with the set's swatches under its number.",
+   "caption": "Classic, in the colours of one set's parts.",
+   "features": [
+    "ui:mosaic"
+   ]
+  },
+  {
+   "id": "art-brickify",
+   "source": "app",
+   "setup": [
+    {
+     "run": "new",
+     "after": 30
+    },
+    {
+     "call": "_brickify._picker.open_path",
+     "args": [
+      "res://tests/fixtures/brickify/fox.obj"
+     ],
+     "after": 300
+    }
+   ],
+   "crop": "@opened",
+   "pad": 0,
+   "settle": 60,
+   "alt": "The Brickify panel for a fox model: the fox laid in bricks turning in a picture, Size 24 studs, Scale, Up, Hollow, A stand where it needs one, Surface, Colour and the Brickify button.",
+   "caption": "Make › Brickify a 3D model… (Ctrl+I): its choices, and what they come to.",
+   "features": [
+    "ui:brickify a 3d model"
+   ]
+  },
+  {
+   "id": "art-brickified",
+   "source": "app",
+   "setup": [
+    {
+     "run": "new",
+     "after": 30
+    },
+    {
+     "call": "_brickify._picker.open_path",
+     "args": [
+      "res://tests/fixtures/brickify/fox.obj"
+     ],
+     "after": 240
+    },
+    {
+     "click": "_brickify._go",
+     "after": 1500
+    }
+   ],
+   "crop": "_over_model",
+   "width": 1000,
+   "settle": 60,
+   "alt": "The fox brickified on the baseplate, in orange, white and black bricks with slopes along its back, and Booklet, BrickLink, Rebrickable and What do I need? in the panel.",
+   "caption": "The fox, brickified at 24 studs.",
+   "features": [
+    "ui:brickify a 3d model",
+    "lib:brickify"
+   ]
+  }
+ ]
+}

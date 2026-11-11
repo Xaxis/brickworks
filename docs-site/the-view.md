@@ -1,43 +1,61 @@
 ---
 tools: view_model, set_floor, in_view, view_board, save_view
-ai: Turning, sliding and zooming the camera, navigation presets, views saved with the model, cutting away and X-ray, stress colours, stud directions, and the floor the model stands on. An assistant looks from a side with view_model and sets the floor with set_floor.
+ai: Turning, sliding and zooming the camera, navigation presets, the view cube, views saved with the model, the split view, cutting away and X-ray, stress colours, stud directions, edges and studs, and the floor the model stands on. An assistant looks at the model as the person does, and changes nothing by looking. view_model draws it from one side; view_board draws up to six sides (front, back, left, right, top and the corner) in one labelled picture, and can edge named parts in magenta and ghost the rest, draw parts see-through as X-ray does, show the model built to a step with that step's new parts edged, or with "studs": true colour it as Stud directions does. in_view says the views kept, the step the timeline is at, the part in hand, and the reference picture. set_floor sets the floor.
 rules:
   - view_model looks from corner, top, front, back, left or right; corner shows the shape best.
   - view_model view=NAME looks from a view the person saved with the model, exactly as their window draws it; a name it does not keep is answered with those it does.
   - save_view name=NAME keeps where the person's window looks from now with the model, as Save this view… does; in_view lists the views kept, each with its key.
   - Floors are a baseplate (16, 32 or 48 studs, or any size in eights to 192), a grid, or none.
+  - view_model and view_board change nothing, and always draw every edge and stud, whatever the person's window shows.
 title: The view
 nav: The view
-description: Turn, slide and zoom the camera, choose how the mouse navigates, and see inside a model.
+description: Turn, slide and zoom the camera, look from any side, save a view, and see inside a model.
 ---
+
+The view is how you look at the model: from any side, close up, two ways at once, or cut open. It is all in the **View** menu, and none of it changes the model.
 
 ## Turn, slide and zoom {#camera}
 
-With the left button, a drag on nothing turns the view; [[Shift]]-drag or [[Space]]-drag slides it; the wheel or a pinch zooms to the pointer. The right and middle buttons do what the navigation preset says (below). [[F]] frames the selection, or everything; [[0]] is the usual view; [[1]] to [[7]] are front, back, left, right, top, bottom and three-quarter; and [[`]] switches between square-on and perspective.
+| To | With a mouse | On a trackpad |
+|---|---|---|
+| Turn | Drag on empty space, or right-drag | Two fingers |
+| Slide | [[Shift]]-drag, or [[Space]] and drag | [[Shift]] and two fingers |
+| Zoom to the pointer | The wheel | Pinch |
 
-The **Orbit**, **Pan** and **Zoom** tools ([[O]], [[H]], [[Z]]) make a left drag only move the view, for a trackpad or a touchscreen.
+A drag that starts on a part moves the part. With nothing selected, the arrows turn the view, [[W]] [[A]] [[S]] [[D]] slide it and [[=]] [[-]] zoom. The **Orbit**, **Pan** and **Zoom** tools ([[O]], [[H]], [[Z]]) make every left drag move the view. The pointer shows what a drag will do. For touch screens, see [On a tablet or a phone](/docs/web-and-desktop#phone).
+
+A still model costs nothing to leave open: the app draws only when something changes, and on a slow computer it draws a lighter look while you move.
 
 <!-- covers
 ui:camera controls
 ui:left-button navigation
+ui:pointer cursors
+ui:drawing only what changed
+ui:a lighter look where frames are slow
+lib:quitting cleanly
 -->
 
-## Views saved with the model {#saved-views}
+## Look from a side {#sides}
 
-**View › Viewpoint › Save this view…** ([[Alt+V]]) keeps where you are looking from, by a name you give it, with the model: the next time it is opened, on any computer, the view is there. The first nine each have a key, [[Alt+Shift+1]] to [[Alt+Shift+9]], beside the digits that give every model's own views, and each has a row of **View › Viewpoint** under its name. A view saved square on comes back square on and the same size, and one from a step Build it turned over comes back turned. Saving a view under a name already kept replaces it in its place; the dialog lists the views with **Look from it** and **Remove**. Other programs and older copies of Brickworks open the file as before and pass over the views.
+- [[1]] to [[7]] look from the front, back, left, right, above, below and three-quarters (**Isometric**); [[0]] is the default view. All are in **View › Viewpoint**.
+- [[F]] fits the selection, or everything when nothing is selected; [[Shift+F]] or [[Home]] always fits the whole model.
+- [[`]] (**View › Orthographic**) switches between square-on and perspective.
+- **Turn the model left** or **right** ([[Shift+Q]], [[Shift+E]]) turns the model itself a quarter turn on its floor.
+- **View › Full screen** ([[F11]]).
 
-Render's **Camera** lists the model's views under *Saved with the model*, and draws exactly what the window shows from there, wherever the window is looking now. **View › Viewpoint › Render each saved view**, or the render queue's **Add each saved view**, queues a picture from each.
+## The view cube {#view-cube}
 
-Ask Claude to keep the view you are looking from and it does the same over the connector (`save_view`): the view is kept under the name you asked for, with its key, and Claude sees the model from there. It can list the views a model keeps (`in_view`), draw from one by its name, and take one out.
+![The view cube in the corner of the view, its faces named, with buttons round it to slide, zoom and fit.](/docs/img/the-view-cube.webp "The view cube: click a face, edge or corner to look from there.")
+
+The cube at the top right turns with the view. Click a face, an edge or a corner to look from there, or drag it to turn. Its arrows turn the view a step a click. Under it: a pad to drag the view sideways, zoom out and in, and fit.
 
 <!-- covers
-ui:saved views
-lib:a session keeps a view over mcp
+ui:view cube
 -->
 
 ## Navigate like Studio, Blender or Mecabricks {#presets}
 
-**Tools › Settings…**, *Navigate like*, sets what the right and middle buttons do, so your hands keep what they know:
+**Tools › Settings…**, **Navigate like**, sets what the right and middle buttons do:
 
 | Preset | Right-drag | Middle-drag |
 |---|---|---|
@@ -45,29 +63,26 @@ lib:a session keeps a view over mcp
 | Blender | Turn | Turn |
 | Mecabricks | Slide | Zoom |
 
-[[Shift]] with either gives the other of turning and sliding. Settings also says which way the wheel zooms.
+[[Shift]] swaps turning and sliding. **Invert zoom direction** turns the wheel round.
 
 <!-- covers
 ui:navigation presets
 -->
 
-## The view cube {#view-cube}
+## Save a view {#saved-views}
 
-![The view cube in the corner of the view, its faces named, with buttons round it to slide, zoom and fit.](/docs/img/the-view-cube.webp "The view cube: click a face, edge or corner to look from there.")
-
-The cube in the corner turns the view to the face you click and shows which way the model faces. Its buttons zoom in and out.
+Look from where you want, choose **View › Viewpoint › Save this view…** ([[Alt+V]]) and give it a name. It is kept in the model's file, so it is there on any computer. The first nine have keys, [[Alt+Shift+1]] to [[Alt+Shift+9]], and rows in **View › Viewpoint**. The dialog lists them with **Look from it** and **Remove**. Render's **Camera** offers each one, and **Render each saved view** queues a picture from all of them.
 
 <!-- covers
-ui:view cube
+ui:saved views
+lib:a session keeps a view over mcp
 -->
 
 ## A second view beside the model {#split}
 
 ![The model area split in two: the red car turned three-quarters on the left, and straight from the front on the right with Front, Top, Side, Back and Fit above it.](/docs/img/the-view-split.webp "View › Split (F8) shows the model from two sides at once.")
 
-**View › Split** ([[F8]]) puts a second view of the model beside the first, square on from the front. **Front**, **Top**, **Side** and **Back** at its top turn it, **Fit** frames the whole model in it, and **×** goes back to one view. It starts looking where the main view looks, at the same size, and follows it until you move it: the wheel over it zooms it, and a drag over it slides it, without moving the main view. A right drag over it does nothing, since a view square on cannot turn. Once moved it keeps its own zoom and place, and the app remembers them with the split.
-
-The second view works like the first. A part in hand shows in both. A click there puts the part down or picks a part. A box drawn there selects what it surrounds. Connect's points and the rotate and move handles are drawn in both views and can be taken in either. A part for a side stud or under an overhang is easier to aim square on. The split takes its room from the model's, never from the parts bin, and the app keeps it on for next time. Where the model's room is too narrow for two views, as on a laptop with the assistant open, the right-hand column (the assistant or Properties) folds to its tab while the split is on, and opens again when it goes. On a phone, a tablet held upright, or a window too small for two views even so, it is greyed.
+**View › Split** ([[F8]]) adds a square-on view beside the model. **Front**, **Top**, **Side** and **Back** turn it, **Fit** frames the model, **×** closes it. Its wheel and drag zoom and slide it alone. Build in either view: a part for a side stud is easiest to aim square on. Short of room, the right-hand column folds while the split is on.
 
 <!-- covers
 ui:split view
@@ -77,10 +92,12 @@ ui:split view
 
 ![The red car cut away by a plane, showing the inside of its parts, with the cut-away's strip of choices along the view.](/docs/img/the-view-cut.webp "View › Cut away (K) shows the inside; its strip changes the shape and side.")
 
-- **View › Cut away** ([[K]]) puts a plane through the model. Drag the strip's slider to move it, choose **X**, **Y** or **Z**, **Flip** to cut the other side away, and **Ghost** to leave a faint copy of what is cut.
-- **View › Cut away by › A box**, **A sphere** or **A cylinder** takes a shape out of the model: round the selection, or with nothing selected the middle of the model from half way up. Drag the knob on any face to push or pull it a plate at a time, or turn the wheel over it. Shift-drag moves the whole shape, and Esc or a right-click puts a drag back. **Grow** and **Shrink** in the strip move every face at once, and its first list swaps the shape for another or for the plane. Where the cut goes through a part, the face it leaves is filled in the part's colour, so a wall reads as a wall.
-- The cut, a plane or a shape, is saved with the model and is there again when you open it. Other LDraw programs ignore it, and Render and the instructions always draw the model whole.
-- **View › X-ray** ([[I]] with a part selected, or inside a sub-assembly) shows the selection through everything in front of it.
+**View › Cut away** ([[K]]) puts a plane through the model, with a strip of controls along the view:
+
+- The slider (or the wheel) moves the cut; **X**, **Y** and **Z** turn it; **Flip** ([[Shift+K]]) cuts the other side away; **Ghost** leaves a faint copy of what is cut.
+- The strip's first list, or **View › Cut away by**, takes out **A box** ([[Alt+X]]), **A sphere** ([[Alt+Z]]) or **A cylinder** ([[Alt+Y]]) round the selection instead. Drag a face's knob to move it a plate at a time; **Grow** and **Shrink** move them all.
+
+The cut is saved with the model; renders and instructions draw the model whole. **View › X-ray** ([[I]]) shows the selection through everything in front of it.
 
 <!-- covers
 ui:cut-away
@@ -90,7 +107,7 @@ ui:x-ray
 
 ## Stress {#stress}
 
-**View › Stress** colours each part by how hard its joints work to hold the model up: red is close to giving way. Point at a part to read why. Right-click a red part and **Ask Claude to brace this**.
+**View › Stress** colours each part by how near its weakest joint is to giving way: red past what its studs hold, amber close. Point at a part to read what it carries; the panel lists the weakest, worst first. With the assistant on, a red part's right-click menu has **Ask Claude to brace this…**.
 
 <!-- covers
 ui:stress view
@@ -98,9 +115,7 @@ ui:stress view
 
 ## Stud directions {#studs}
 
-**View › Stud directions** colours each part by where its studs point: green up, red down, blue to the front, yellow to the back, orange to the left and cyan to the right, as the front and side views see them. A part with studs up and one more way, such as a headlight brick, takes the colour of the other way; studs on two sides or more is black, and a part with no studs (a tile, a tyre) is grey. A legend over the model counts each; its **×** turns the view off. Only the picture changes: the parts keep their colours, and turning it on turns Stress off.
-
-An assistant sees the same with view_board and `"studs": true`: the six sides and the legend in one picture.
+**View › Stud directions** colours each part by where its studs point: green up, red down, blue front, yellow back, orange left, cyan right; black for two ways or more, grey for none. A legend counts each.
 
 <!-- covers
 ui:stud directions
@@ -108,9 +123,7 @@ ui:stud directions
 
 ## Edges and studs {#edges-studs}
 
-**View › Edges and studs** turns two things in the picture on and off. **Edges** is the fine line drawn where each part meets the next, which makes the courses and the bond of a wall easy to read; off, the parts meet without it. **Studs** off draws every part without its studs, on top, on its sides and on a round plate alike, so you see the shapes alone, and a big model draws faster. Each part stays exactly where it is and still joins the parts it joined. The part in your hand keeps its studs, so you can see where it will go.
-
-Both are kept on this computer for the next time. They change only your view: renders, the instructions, shared pictures and what an assistant is shown always draw every edge and stud.
+**View › Edges and studs** hides the line where parts meet, or every stud, to see the shapes alone; a big model draws faster. Renders, instructions and shared pictures always draw both.
 
 <!-- covers
 ui:edges and studs
@@ -118,47 +131,17 @@ ui:edges and studs
 
 ## Floor and stud grid {#floor}
 
-**View › Floor** sets what the model stands on: a baseplate 16, 32 or 48 studs (or any size in eights to 192), in a colour baseplates come in, a grid floor, or nothing at all, as a car or a ship stands on a table. With nothing selected, the properties panel has the same. **Settings › New models start on** chooses the floor a new model gets. **View › Stud grid** ([[Alt+G]]) draws the studs' grid over the floor.
+**View › Floor** chooses a baseplate (16, 32, 48 studs or any size, in a baseplate colour), a **Grid floor** or **No floor**. **The baseplate is part of the model** counts it in the parts list and the booklet. **View › Stud grid** ([[Alt+G]]) draws lines between the studs.
 
 <!-- covers
 ui:floor
 ui:stud grid
 -->
 
-## A picture to build over {#reference}
-
-**Make › Reference picture…** ([[Alt+N]]) lays a photo, a plan or a drawing (PNG, JPEG, WebP, BMP or SVG) in the scene to build over: on the floor under the model, or standing behind it as the front or the side view sees it. It opens as wide as the model, half see-through, with its corners showing.
-
-- **Width** is typed in studs, to a twentieth of a stud. Drag a corner to size it from the corner across; drag the picture to slide it.
-- **Opacity** fades it from 0 to 100%.
-- **Locked** leaves the mouse to the model: a click through the picture picks the part behind it. Unlocked, a click on the picture picks it out.
-- **Choose another…** swaps the picture and keeps where it lies; **Remove** takes it away.
-
-Each change is one step of **Edit › Undo**, whether you lay the picture, move it, size it, fade it, lock it, swap it or take it away. Dragging the opacity slider counts as one step, and so does typing a width.
-
-The picture is kept in the model's file, on lines other LDraw programs ignore, so it opens again with the model. A change to the picture alone counts as unsaved work, so New and Open ask before replacing the model, and the autosave keeps the picture. It is never in a render, the instructions, the parts list, an export or a shared link.
-
-An assistant sees it with `in_view`: the picture, where it lies, and the model drawn on it. `in_view` also tells it the step the timeline is at and the part in your hand. It changes nothing.
-
-<!-- covers
-ui:reference picture
--->
-
 ## What an assistant sees {#assistant-sees}
 
-An assistant looks at the model as you do. `view_model` draws it from one side; `view_board` draws up to six sides (front, back, left, right, top and the corner) in one labelled picture, each as `view_model` draws it. It can edge parts it names in magenta and ghost the rest, draw parts see-through as X-ray does, or show the model as built to a step with that step's new parts edged. It changes nothing.
+An assistant you connect looks at the model as you do, and changes nothing by looking (`view_model`, `view_board`).
 
 <!-- covers
 lib:what a session sees over mcp
--->
-
-## Pointers and speed {#pointers}
-
-The pointer shows what a drag will do: a hand to slide, an arrow round to turn, a magnifier to zoom, a brush to paint. When the model is still, the app stops drawing, so it costs nothing to leave open; on a slow computer it uses a lighter look while you move, and the full look as soon as you stop. Quitting with a big model mid-way waits for its work to finish, so the last save is whole.
-
-<!-- covers
-ui:pointer cursors
-ui:drawing only what changed
-ui:a lighter look where frames are slow
-lib:quitting cleanly
 -->

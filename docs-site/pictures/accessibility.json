@@ -1,0 +1,102 @@
+{
+ "shots": [
+  {
+   "id": "accessibility-keyboard",
+   "source": "app",
+   "setup": [
+    {
+     "key": "Slash",
+     "after": 10
+    },
+    {
+     "key": "Tab",
+     "after": 10
+    },
+    {
+     "key": "F6",
+     "after": 10
+    },
+    {
+     "key": "Down",
+     "after": 10
+    },
+    {
+     "key": "Down",
+     "after": 10
+    },
+    {
+     "key": "Right",
+     "after": 20
+    }
+   ],
+   "crop": "_bin",
+   "pad": 0,
+   "alt": "The parts bin with one part's tile ringed in blue: the keyboard's focus, moved there with the arrow keys.",
+   "caption": "The arrows move the keyboard's focus through the parts bin; Return takes the part.",
+   "features": [
+    "ui:accessibility",
+    "ui:parts bin"
+   ]
+  },
+  {
+   "id": "accessibility-whats-this",
+   "source": "app",
+   "setup": [
+    {
+     "run": "whats_this",
+     "after": 20
+    },
+    {
+     "click": "_shell.toolbar._snap",
+     "after": 30
+    }
+   ],
+   "crop": [
+    "@opened",
+    "_shell.toolbar._snap"
+   ],
+   "pad": 12,
+   "alt": "What's This? over the toolbar: the Snap chooser outlined and a box beside it naming Snap and saying what it does.",
+   "caption": "Help › What's This? (Shift+F1): the next click says what a control does instead of doing it.",
+   "features": [
+    "ui:what's this"
+   ]
+  },
+  {
+   "id": "accessibility-size",
+   "source": "app",
+   "setup": [
+    {
+     "run": "settings",
+     "after": 30
+    },
+    {
+     "call": "_controls.interface_choice.select",
+     "args": [
+      4
+     ]
+    },
+    {
+     "call": "_controls.interface_choice.emit_signal",
+     "args": [
+      "item_selected",
+      4
+     ],
+     "after": 60
+    },
+    {
+     "key": "Escape",
+     "after": 60
+    }
+   ],
+   "crop": "window",
+   "width": 1200,
+   "settle": 60,
+   "alt": "The Brickworks window at Interface size 150%: the menus, the toolbar, the parts bin's tiles and the words all half as big again, the model as before.",
+   "caption": "Settings, Interface size 150%: every control and word bigger.",
+   "features": [
+    "ui:accessibility"
+   ]
+  }
+ ]
+}

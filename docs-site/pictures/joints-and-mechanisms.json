@@ -1,0 +1,126 @@
+{
+ "shots": [
+  {
+   "id": "joints-hinge",
+   "source": "app",
+   "setup": [
+    {
+     "open": "res://tools/web/gallery_seeds/sleeping_dragon.ldr",
+     "after": 60
+    },
+    {
+     "run": "fit_model",
+     "after": 40
+    },
+    {
+     "select": {
+      "part": "44301a",
+      "nth": 0
+     }
+    },
+    {
+     "run": "mode_hinge",
+     "after": 20
+    },
+    {
+     "run": "swing",
+     "after": 20
+    },
+    {
+     "run": "swing",
+     "after": 40
+    }
+   ],
+   "crop": "_over_model",
+   "width": 1000,
+   "settle": 40,
+   "alt": "The sleeping dragon with one wing swung up on its click hinge by the Hinge tool, the hinge's parts selected.",
+   "caption": "The Hinge tool: each click swings a part 15° about its hinge.",
+   "features": [
+    "ui:swing on a hinge",
+    "ui:tool modes"
+   ]
+  },
+  {
+   "id": "joints-flex",
+   "source": "app",
+   "setup": [
+    {
+     "run": "flex",
+     "after": 40
+    }
+   ],
+   "crop": "@opened",
+   "pad": 0,
+   "alt": "The Hose, tube or chain panel: buttons for a pneumatic tube, a ribbed hose, a Flex-system hose, a flexible axle, a string, a Technic chain, a tread, a rubber band and a spring or shock, with the length to use.",
+   "caption": "Make › Hose, tube or chain… lays a flexible part between two connectors.",
+   "features": [
+    "ui:hoses and chains by hand"
+   ]
+  },
+  {
+   "id": "joints-steering",
+   "source": "app",
+   "setup": [
+    {
+     "open": "res://tests/fixtures/mcpwalk/steering_kart2.ldr",
+     "after": 60
+    },
+    {
+     "run": "fit_model",
+     "after": 40
+    },
+    {
+     "select": {
+      "part": "2819"
+     }
+    },
+    {
+     "run": "simulate",
+     "after": 420
+    },
+    {
+     "call": "_simulate.scrub_to",
+     "args": [
+      0.15
+     ],
+     "after": 60
+    },
+    {
+     "call": "_simulate.go_to_stop",
+     "after": 90
+    }
+   ],
+   "crop": "_over_model",
+   "width": 1000,
+   "settle": 40,
+   "alt": "A kart's steering turned to full lock by Simulate mechanism: both front wheels turned, and the panel saying where the steering stops.",
+   "caption": "Simulate mechanism turns the train from the part you choose, and finds where it stops.",
+   "features": [
+    "ui:simulate mechanism",
+    "lib:mechanisms"
+   ]
+  },
+  {
+   "id": "joints-motions",
+   "source": "app",
+   "setup": [
+    {
+     "open": "res://tests/fixtures/mcpwalk/steering_kart2.ldr",
+     "after": 60
+    },
+    {
+     "run": "pose",
+     "after": 180
+    }
+   ],
+   "crop": "@opened",
+   "pad": 0,
+   "alt": "The Motions panel listing the motions it suggests for a kart, each with Keep, and New motion and New sequence at its foot.",
+   "caption": "Build › Motions… suggests motions from what moves in the model.",
+   "features": [
+    "ui:motions panel"
+   ]
+  }
+ ]
+}

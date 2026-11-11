@@ -1,0 +1,110 @@
+{
+ "shots": [
+  {
+   "id": "panels-window",
+   "source": "app",
+   "setup": [
+    {
+     "select": {
+      "part": "3004",
+      "nth": 1
+     }
+    },
+    {
+     "run": "show_properties",
+     "after": 40
+    }
+   ],
+   "crop": "window",
+   "width": 1200,
+   "marks": [
+    {
+     "at": "_bar",
+     "n": "1",
+     "side": "right"
+    },
+    {
+     "at": "_shell.toolbar",
+     "n": "2",
+     "side": "right"
+    },
+    {
+     "at": "_bin",
+     "n": "3"
+    },
+    {
+     "at": "_bin.#Colours",
+     "n": "4"
+    },
+    {
+     "at": "_gizmo",
+     "n": "5",
+     "side": "right"
+    },
+    {
+     "at": "_hint",
+     "n": "6"
+    },
+    {
+     "at": "_shell.inspector",
+     "n": "7",
+     "side": "right"
+    },
+    {
+     "at": "_shell.status",
+     "n": "8"
+    }
+   ],
+   "alt": "The Brickworks window with a part of the red car selected, eight parts outlined and numbered: the menus, the toolbar, the parts bin, the colours, the view cube, the key strip, Properties down the right, and the status bar.",
+   "caption": "The window: 1 menus, 2 toolbar, 3 parts bin, 4 colours, 5 view cube, 6 key strip, 7 Properties, 8 status bar.",
+   "features": [
+    "ui:menus and toolbar",
+    "ui:parts bin",
+    "ui:properties panel",
+    "ui:status bar",
+    "ui:controls panel and hint"
+   ]
+  },
+  {
+   "id": "panels-settings",
+   "source": "app",
+   "setup": [
+    {
+     "run": "settings",
+     "after": 40
+    }
+   ],
+   "crop": "@opened",
+   "pad": 0,
+   "alt": "Settings: Invert zoom direction, Navigate like Studio, Keys like Brickworks, Interface size 100% and Language, Reduce motion and Say when a long job is done, New models start on, Assistant (AI) with AI: Claude…, and the version at the foot.",
+   "caption": "Tools › Settings… (,): everything you can change, on one page.",
+   "features": [
+    "ui:navigation presets",
+    "ui:interface languages",
+    "ui:a long job says when it is done"
+   ]
+  },
+  {
+   "id": "panels-keys",
+   "source": "app",
+   "setup": [
+    {
+     "run": "keys",
+     "after": 40
+    },
+    {
+     "type": "hinge",
+     "after": 40
+    }
+   ],
+   "crop": "@opened",
+   "pad": 0,
+   "width": 1000,
+   "alt": "The keys sheet with hinge typed in its box: only the rows about hinges left, the Hinge tool and Swing on its hinge with their keys.",
+   "caption": "Help › Keys and controls (F1), searched for hinge.",
+   "features": [
+    "ui:keys of one's own"
+   ]
+  }
+ ]
+}

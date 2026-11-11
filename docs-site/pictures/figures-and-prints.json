@@ -1,0 +1,106 @@
+{
+ "shots": [
+  {
+   "id": "figures-minifig",
+   "source": "app",
+   "setup": [
+    {
+     "run": "minifig",
+     "after": 240
+    }
+   ],
+   "crop": "@opened",
+   "pad": 0,
+   "width": 1000,
+   "settle": 60,
+   "alt": "The minifigure builder: the figure's slots down the left, the heads that fit the chosen slot in the middle with colours under them, and the figure turning on the right with Keep and Place in model.",
+   "caption": "Make › Minifigure builder… (M): a figure from real parts, slot by slot.",
+   "features": [
+    "ui:minifig builder"
+   ]
+  },
+  {
+   "id": "figures-print",
+   "source": "app",
+   "setup": [
+    {
+     "take": {
+      "part": "3068b",
+      "colour": 15
+     },
+     "after": 20
+    },
+    {
+     "run": "print_part",
+     "after": 240
+    }
+   ],
+   "crop": "@opened",
+   "pad": 0,
+   "width": 1000,
+   "settle": 60,
+   "alt": "The print designer on a white 2 x 2 tile: the canvas in the middle with drawing tools beside it, Start from, Add a picture… and Layers, and the tile turning as it is drawn.",
+   "caption": "Print… in the parts bin draws on the part in hand.",
+   "features": [
+    "ui:print designer"
+   ]
+  },
+  {
+   "id": "figures-printed-versions",
+   "source": "app",
+   "setup": [
+    {
+     "select": {
+      "part": "3068b",
+      "nth": 0
+     }
+    },
+    {
+     "run": "printed_versions",
+     "after": 300
+    }
+   ],
+   "crop": "@opened",
+   "pad": 0,
+   "width": 1000,
+   "settle": 60,
+   "alt": "Printed versions of a 2 x 2 tile: a grid of the printed tiles the LEGO Group made, each with its number, to swap the selected tile for.",
+   "caption": "Make › Printed versions… swaps a part for a print the LEGO Group made.",
+   "features": [
+    "ui:printed versions"
+   ]
+  },
+  {
+   "id": "figures-part-maker",
+   "source": "app",
+   "setup": [
+    {
+     "run": "part_maker",
+     "after": 90
+    },
+    {
+     "call": "_elements._choose_family",
+     "args": [
+      9
+     ],
+     "after": 90
+    },
+    {
+     "call": "_elements._chamfer.set_pressed",
+     "args": [
+      true
+     ],
+     "after": 120
+    }
+   ],
+   "crop": "@opened",
+   "pad": 0,
+   "settle": 60,
+   "alt": "The Make a part dialog with Wedge chosen among ten families: a wedge plate turning in the preview, its length and width, Left or right, Far corner cut flat ticked, and Add to parts.",
+   "caption": "Make a part…: a wedge plate with its far corner cut flat.",
+   "features": [
+    "ui:make a part"
+   ]
+  }
+ ]
+}
