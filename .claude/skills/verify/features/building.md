@@ -715,8 +715,13 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   model tree's row menu, a part's right-click menu, File, Open's) keeps the
   point (`BESIDE`) and is placed by it again at the size it is given here
   (`TouchSizing.beside`): a pointer's at its corner, turned back where the
-  window has no room; a finger's above it or below it, half a fingertip away
-  (`finger_gap`), never over it. Placed once at the desktop's size, the tree's
+  window has no room; a finger's above it (the hand is under the finger),
+  half a fingertip away where there is room and no nearer than
+  `TouchSizing.NEAREST` points, else below it, never over it. A menu a hold
+  opened is chosen from by a tap: the holding finger's own lift chooses
+  nothing wherever it lifts (`TouchSizing.chosen`, asked by the menu's
+  handler), as Godot's menu took a held button let go over an item 400 ms on
+  as a choice and a finger slid onto the menu below a top row exported a file. Placed once at the desktop's size, the tree's
   menu grew down over the finger holding its row (se3check; proved by
   `subexport_phone_probe` and `subexport_tablet_probe`). A dialog already placed never moves under a finger
   (`TouchSizing._place`, `finger_down`, press271): laid out again while a

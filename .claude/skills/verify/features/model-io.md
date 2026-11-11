@@ -913,7 +913,9 @@ Whether what you built is still there tomorrow, and still means the same thing.
   where `Shell.can` refuses (shared to look at, still being laid); a finger
   held still on a row (`FlingScroll.HOLD_MS`) opens it beside the finger
   (`TouchSizing.popup_beside`): on a phone or a tablet at the size it has once
-  sized for a finger, above the finger or below it, never over it.
+  sized for a finger, above the finger or below it, never over it; its lift
+  chooses nothing, slid onto an item or not, and a tap chooses
+  (`TouchSizing.chosen`).
   **Check:** `tools/probe.sh subexport_probe -- --shots=DIR` (signs in a
   throwaway account: needs .env; saves a model, so through probe.sh): first a
   line for each of sereview's findings (F1-F7: odd names, copies titled
