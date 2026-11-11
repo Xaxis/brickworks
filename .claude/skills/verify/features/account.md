@@ -4,7 +4,7 @@ Everyone who uses Brickworks signs in, on the web and the desktop, with an
 email address and a code sent to it. Nothing in the builder can be used until
 they have. A Claude connector belongs to the account that switched it on.
 
-<!-- covers: ui:sign-in screen, cli:made with probe, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:review sign-in page, cli:review sign-in flow, cli:ChatGPT connector flow, cli:every assistant's sign-in, ui:share panel, api:POST /api/account?op=age, api:POST /api/orangecheck, ui:sign in with orangecheck, cli:orangecheck check, cli:orangecheck browser flow, ui:sign in with orangecheck on the desktop, cli:orangecheck desktop flow, cli:orangecheck desktop probe, cli:orangecheck listener probe, cli:signup check, api:GET /api/otp/canary, cli:canary check -->
+<!-- covers: ui:sign-in screen, cli:made with probe, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:review sign-in page, cli:review sign-in flow, cli:ChatGPT connector flow, cli:every assistant's sign-in, ui:share panel, api:POST /api/account?op=age, api:POST /api/orangecheck, ui:sign in with orangecheck, cli:orangecheck check, cli:orangecheck browser flow, ui:sign in with orangecheck on the desktop, cli:orangecheck desktop flow, cli:orangecheck desktop probe, cli:orangecheck listener probe, cli:orangecheck window answered, cli:signup check, api:GET /api/otp/canary, cli:canary check -->
 
 ## Sub-features
 
@@ -391,8 +391,9 @@ they have. A Claude connector belongs to the account that switched it on.
   dialog's, /settings' Link orangecheck, an orangecheck account's delete) is
   our own `.cta.ghost` with `data-oc-sign-in`, made orangecheck's by its own
   code: its mono mark, its busy state, its window opened from the click, and
-  how the window ended said in its words (`OUTCOME_COPY`). That code is
-  me-client 0.48.0's, served from here (`web/oc-button.mjs`,
+  how the window ended said in its words (`OUTCOME_COPY`), and the nonce
+  orangecheck's window asks for said back to that window alone. That code is
+  me-client 0.59.0's (the server's checks 0.50.0's), served from here (`web/oc-button.mjs`,
   `web/oc-button.css`, `web/oc-connect-consent.mjs`, made by
   `tools/web/vendor_orangecheck.sh` with the server's checks in
   `api/_orangecheck.js`); the token it hands back is checked (`checkOcToken`;
@@ -623,7 +624,14 @@ between runs):
 ```sh
 set -a; . ./.env; set +a; node tools/web/orangecheck_check.mjs
 BW_BYPASS=$VERCEL_BYPASS node tools/web/oc_flow.mjs --url=<deployment> --out=shots/oc
+node tools/web/oc_echo_check.mjs
 ```
+
+`oc_echo_check` needs no .env and reaches nothing off this machine (about
+10 s): this checkout's button on one local address, orangecheck's window
+stood in for on another. It ends "all passed": asked by the window it
+opened, the button says the nonce back; asked from a frame inside that
+window, or by that window once it is at another address, it says nothing.
 
 `orangecheck_check` ends "N passed, 0 failed" (163 since oc237; a sign-in
 turned away by Supabase's redemption limit is tried again after 11 s. A
