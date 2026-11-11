@@ -2678,8 +2678,24 @@ func _clear_undone() -> Array:
 	for section: String in _world.broken_out:
 		back.append({"undo": "sectionout", "path": section,
 			"record": (_world.broken_out[section] as Dictionary).duplicate(true)})
-	back.append({"undo": "store", "store": _store.identity()})
+	var kept: Dictionary = _store.identity()
+	kept["on_disk"] = _bar.on_disk if _bar != null else ""
+	back.append({"undo": "store", "store": kept})
 	return back
+
+
+## The model made what a clear kept of it ([method _clear_undone],
+## ModelStore.put_identity), and the file Save as wrote it to with it
+## (ModelBar.on_disk), which a model begun lets go: undone, a clear gave the
+## model its name back, and Save then wrote it only here, not to its file
+## (cfcheck). Returns what it was, for the step that puts that back.
+func _put_identity(kept: Dictionary) -> Dictionary:
+	var on_disk: String = _bar.on_disk if _bar != null else ""
+	var was: Dictionary = _store.put_identity(kept)
+	was["on_disk"] = on_disk
+	if _bar != null:
+		_bar.on_disk = str(kept.get("on_disk", ""))
+	return was
 
 
 ## Work is about to go down on the baseplate, and [param name] is what it is.
@@ -5243,7 +5259,7 @@ func _build_ui() -> void:
 		_on_rebuilt(_world.brick_count(), _drawn[0], _drawn[1]))
 	_builder.scenery = _store.scenery
 	_builder.floor_hook = _floor.put
-	_builder.store_hook = _store.put_identity
+	_builder.store_hook = _put_identity
 
 	_stability = Stability.new()
 	_stability.library = _library

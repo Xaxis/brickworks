@@ -133,7 +133,8 @@ Whether what you built is still there tomorrow, and still means the same thing.
   yellow), `keep_text` and `kt3r` (each save a patch keeping every line
   the edit did not touch, or live's write), `copyfaults` (a copy renamed,
   duplicated, swapped over MCP or given a step edit leaves its twin as it
-  was, or both alike, saved and opened as shown; the app's own lines under
+  was, or both alike, and one moved or painted moves or paints only the
+  twin's part it pairs with (copyfaults2, with `cfcheck`), saved and opened as shown; the app's own lines under
   the model's title, `LdrModel.into_main`, in ten files with sub-models;
   a clear undone gives back the file's lines), `patch_rules` (kt5review's six:
   names kept, the gate as written, comment pairs, deletes that go to (B), the

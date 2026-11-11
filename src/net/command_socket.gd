@@ -993,6 +993,7 @@ func _one_step(name: String, before: Dictionary, chat: String = "", who: String 
 			"generation": before["generation"], "words": "%s's %s" % [who, name.replace("_", " ")]},
 			int(before["depth"]))
 		builder.fold_since(int(before["depth"]))
+		_copies_follow()
 		_mark(builder, chat)
 		_laid(builder.last_step())
 		_looks_follow()
@@ -1006,9 +1007,19 @@ func _one_step(name: String, before: Dictionary, chat: String = "", who: String 
 	if not steps.is_empty():
 		builder.record(steps, "%s's %s (%s)" % [who, name.replace("_", " "),
 			SelectionScope.words_for(steps)])
+		_copies_follow()
 		_mark(builder, chat)
 		_laid(builder.last_step())
 		_looks_follow()
+
+
+## The other copies of each sub-model the call changed take the change too,
+## in its step, as they take one made by hand (Assemblies.after_edit). Kept
+## here after the edit, the step was never one after_edit saw: a session's
+## edit_model to one of two posts left the other as it was (copyfaults2).
+func _copies_follow() -> void:
+	if assistant.assemblies != null:
+		assistant.assemblies.after_edit()
 
 
 ## A step the call took the last part off goes with its booklet look, in the

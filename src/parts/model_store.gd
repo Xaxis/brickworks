@@ -681,7 +681,11 @@ func _begin_as(named: String, picture: Dictionary = {}) -> void:
 ## (Builder's "store" step, Main.clear_model), so the undo gives the model
 ## back under its name, written into its file as before: undone, a session's
 ## clear left the parts as an untitled model, its file's lines lost
-## (copyfaults).
+## (copyfaults). And what it holds that is not on the baseplate ("awaited":
+## the parts on their way, [member awaited], or null when it holds none of
+## them, nor [member _absent]): undone, a clear of the app's own file with a
+## part the catalogue lacks saved without it, and so did the autosave
+## (cfcheck).
 func identity() -> Dictionary:
 	return {"title": title, "emptied": emptied, "example": example, "share_id": share_id,
 		"remixed_from": remixed_from, "remixed_from_version": remixed_from_version,
@@ -691,6 +695,8 @@ func identity() -> Dictionary:
 		"lights_kept": _lights_kept, "reference": reference.duplicate(true),
 		"made_with": made_with, "source": _live_source(),
 		"opened": world != null and world.generation() == _opened_in, "lifted_by": _lifted_by,
+		"awaited": awaited.duplicate() if world != null and world.generation() == _awaited_in
+			else null,
 		"lights_read": _lights_now(),
 		"views": world.saved_views.duplicate(true) if world != null else [],
 		"cut": world.cut_kept.duplicate(true) if world != null else {},
@@ -719,6 +725,14 @@ func put_identity(kept: Dictionary) -> Dictionary:
 	# from where its file had it.
 	_source = kept["source"]
 	_opened_in = world.generation() if bool(kept["opened"]) else -1
+	# What it holds that is not on the baseplate is this model's again: kept
+	# in what a save writes, and a part still on its way put down here when
+	# it lands (place_awaited); one that landed since the clear, now.
+	var waiting: Variant = kept.get("awaited")
+	_awaited_in = world.generation() if waiting is Array else -1
+	if waiting is Array:
+		awaited.assign(waiting)
+		_land_arrived.call_deferred()
 	_lifted_by = float(kept["lifted_by"])
 	_lights_read = kept["lights_read"]
 	_lights_in = world.generation() if not _lights_read.is_empty() else -1
@@ -731,6 +745,18 @@ func put_identity(kept: Dictionary) -> Dictionary:
 	emptied = bool(kept["emptied"])
 	bin_sets = (kept["bin_sets"] as PackedStringArray).duplicate()
 	return was
+
+
+## Put down each part of [member awaited] the catalogue has to hand now:
+## those that arrived while the model was cleared, given back by its undo
+## (put_identity), which place_awaited let go of then.
+func _land_arrived() -> void:
+	var parts: Dictionary = {}
+	for placement: LdrModel.Placement in awaited:
+		if library != null and library.is_resident(placement.part_id):
+			parts[placement.part_id] = true
+	for part_id: String in parts:
+		place_awaited(part_id)
 
 
 ## [param name], or it with a number after it when a saved model has it.
@@ -1565,7 +1591,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	_absent = absent if source == null else []
 
 	# Which copy of the file each copy is, by its path, wherever an edit
-	# takes it (Assemblies.realize): its parts' lines (SourceFile.patch).
+	# takes it (Builder.regroup): its parts' lines (SourceFile.patch).
 	if source != null:
 		world.unit_chains = model.unit_chains.duplicate()
 	# Each sub-model copy's step in the one that places it, by its path.

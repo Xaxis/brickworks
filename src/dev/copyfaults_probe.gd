@@ -21,6 +21,22 @@
 ##   FROM_SET and AUTHORED_STEPS lines too;
 ## - numbers: a part turned 36 degrees recoloured or moved keeps the
 ##   numbers its line had (keeptext5 #7, checked).
+## And cfcheck's, its fixtures src/dev/fixtures/cfc_* (copyfaults2): a twin
+## follows part by part, never colour by colour, and keeps every part's
+## number, order and line:
+## - twin_steps: a step edit on one copy repainted and renumbered the other,
+##   built again from it where the copies are placed in two colours;
+## - twin_moves, twin_paints: one part moved, the other copy took the
+##   moved one's colours, the colour each copy hands its parts of colour 16
+##   (live's too); a part put down in a copy goes down in the other's;
+## - clear_held: a clear undone lost the part the catalogue has not got from
+##   the save and the autosave;
+## - twin_relaid: a copy whose parts edit_model took off and put down again
+##   counted as new, and its twin stayed;
+## - clear_file: a clear undone gave the name back but not the file Save as
+##   had written;
+## - twin_nested: undoing a paint in a car's wheel left 14 parts for 10
+##   (live's too).
 ## Each case opens its file (src/dev/fixtures/copyfaults_*, and for metas
 ## ten files with sub-models), makes its edit as a person or a session makes
 ## it, saves as Save saves, opens the save again, and compares parts,
@@ -31,7 +47,8 @@ extends SceneTree
 
 const FX := "res://src/dev/fixtures/"
 const CASES: Array = ["rename", "duplicate", "rename_undo", "swap", "clear_undo", "step_copy",
-	"metas", "numbers"]
+	"metas", "numbers", "twin_steps", "twin_moves", "twin_paints", "clear_held", "twin_relaid",
+	"clear_file", "twin_nested"]
 ## Ten files with sub-models, for the app's own lines.
 const METAS: Array = ["copyfaults_nest.mpd", "copyfaults_wing.ldr", "copyfaults_numbers.mpd",
 	"kt3r_dupfile.mpd", "kt3r_title_author.mpd", "kt3r_whole.mpd", "kt_runs.mpd",
@@ -61,7 +78,7 @@ func _check(what: String, ok: bool) -> bool:
 
 func _run() -> void:
 	OS.set_environment("BRICKWORKS_API", "http://127.0.0.1:9")
-	create_timer(1200.0).timeout.connect(func() -> void:
+	create_timer(2400.0).timeout.connect(func() -> void:
 		print("copyfaults probe: not finished in time")
 		quit(1))
 	await process_frame
@@ -92,6 +109,13 @@ func _run() -> void:
 			"step_copy": await _case_step_copy()
 			"metas": await _case_metas()
 			"numbers": await _case_numbers()
+			"twin_steps": await _case_twin_steps()
+			"twin_moves": await _case_twin_moves()
+			"twin_paints": await _case_twin_paints()
+			"clear_held": await _case_clear_held()
+			"twin_relaid": await _case_twin_relaid()
+			"clear_file": await _case_clear_file()
+			"twin_nested": await _case_twin_nested()
 			_: _check("no such case %s" % name, false)
 	print("\ncopyfaults probe: %s" % ("all checks passed" if _failures == 0
 		else "%d checks failed" % _failures))
@@ -478,6 +502,367 @@ func _case_numbers() -> void:
 	_check("moved %d: the line's turn as written (%s)" % [moved, _diff(text, saved)],
 		now.size() == was.size() and now.slice(5, 14) == was.slice(5, 14)
 		and now[1] == was[1] and now[14] == was[14])
+
+
+# -- a copy follows its twin part by part (copyfaults2) ---------------------------
+
+
+## (1) A step edit on one copy, over MCP, changes steps only: every other
+## copy's parts keep their numbers, order, colours, places and lines, and
+## copies that share their definition's steps are built in the same steps.
+## The red post's 3005 of a sub-model placed red and blue put in the next
+## step (cfc_owncolour.mpd), the red tower's 3003 of the nest, and the red
+## wing's second step taken out (cfc_wing2.ldr).
+func _case_twin_steps() -> void:
+	for one: Array in [["cfc_owncolour.mpd", "Post#1", "3005", ["Post#2"], false],
+			["copyfaults_nest.mpd", "Tower#1", "3003", ["Tower#2"], true],
+			["cfc_wing2.ldr", "wing#1", "", ["wing#2"], true]]:
+		print("  %s" % one[0])
+		await _open(_fixture(one[0]))
+		var opened: Array = _every_part()
+		var tables: String = _tables()
+		var kept: Dictionary = {}
+		for path: String in one[3]:
+			kept[path] = _twin_said(path, false)
+		var said: String = ""
+		if str(one[2]).is_empty():
+			said = await _say("edit_steps", {"op": "delete", "step": 3})
+		else:
+			var brick: BrickWorld.Brick = _brick_of(one[1], one[2])
+			said = await _say("edit_steps", {"op": "next", "bricks": [brick.id]})
+		print("  edit_steps: %s" % said.get_slice("\n", 0).left(120))
+		for path: String in one[3]:
+			_check("...%s: every part's number, order, colour, place and line as opened%s"
+				% [path, _unlike(kept[path], _twin_said(path, false))],
+				kept[path] == _twin_said(path, false))
+			if bool(one[4]):
+				_check("...%s built in %s's steps (%s; %s)" % [path, one[1],
+					", ".join(_shape_steps(path)), ", ".join(_shape_steps(one[1]))],
+					_shape_steps(path) == _shape_steps(one[1]))
+		await _round_of("the step edit", opened, tables)
+
+
+## (2) A part of one copy moved where the copies are placed in two colours:
+## each other copy moves its part alike and keeps every colour, number and
+## line, part by part. The red post's 3005 a stud along (cfc_owncolour.mpd);
+## the red cap's round brick, in the placing colour (cfc_cap.mpd); a blue
+## car's wheel's top (cfc_nested.mpd), which three other wheels follow and
+## the red car keeps red.
+func _case_twin_moves() -> void:
+	for one: Array in [["cfc_owncolour.mpd", "Post#1", "3005", ["Post#2"], Vector3i(10, 0, 0)],
+			["cfc_cap.mpd", "Cap#1", "3062b", ["Cap#2"], Vector3i(10, 0, 0)],
+			["cfc_nested.mpd", "Car#2/Wheel#4", "6141",
+				["Car#1/Wheel#1", "Car#1/Wheel#2", "Car#2/Wheel#3"], Vector3i(0, 0, 10)]]:
+		print("  %s" % one[0])
+		await _open(_fixture(one[0]))
+		var opened: Array = _every_part()
+		var tables: String = _tables()
+		var brick: BrickWorld.Brick = _brick_of(one[1], one[2])
+		if not _check("...%s's %s found" % [one[1], one[2]], brick != null):
+			continue
+		var was: Vector3 = brick.transform.origin
+		var before: Dictionary = {}
+		for path: String in _paths():
+			before[path] = _parts_of(path)
+		_builder.clear_selection()
+		_builder.selection = {brick.id: true}
+		_builder.selection_changed.emit(1)
+		var moved: int = _builder.move_selection(one[4])
+		_main.call("_on_model_edited")
+		await _frames(4)
+		var by: Vector3 = brick.transform.origin - was
+		print("  moved %d by %s" % [moved, str(by)])
+		for path: String in _paths():
+			if path == one[1]:
+				continue
+			var want: Array = _said_of(before[path], str(one[2]) if (one[3] as Array).has(path)
+				else "", by)
+			_check("...%s: %s%s" % [path, "its %s moved alike, every other part, colour, number and line as opened" % one[2]
+				if (one[3] as Array).has(path) else "as opened", _unlike(want, _twin_said(path))],
+				want == _twin_said(path))
+		await _round_of("the move", opened, tables)
+
+
+## (2) Paints, where the copies are placed in two colours (the nest's red and
+## blue towers): a part in the placing colour painted in one copy keeps the
+## other's its own; a part in a colour of its own painted paints the other's.
+## And a part put down in the red post: in the post's red, the blue post's
+## goes down blue; in green, green. Every other part as it was.
+func _case_twin_paints() -> void:
+	for one: Array in [["3003", 2, "c4"], ["6141", 1, "c1"]]:
+		await _open(_fixture("copyfaults_nest.mpd"))
+		var opened: Array = _every_part()
+		var tables: String = _tables()
+		var before: Array = _parts_of("Tower#1")
+		var brick: BrickWorld.Brick = _brick_of("Tower#2", one[0])
+		_builder.clear_selection()
+		_builder.selection = {brick.id: true}
+		_builder.selection_changed.emit(1)
+		_builder.paint_selection(int(one[1]))
+		_main.call("_on_model_edited")
+		await _frames(4)
+		var tile: bool = one[0] == "6141"
+		var want: Array = _said_of(before, "", Vector3.ZERO).map(func(line: String) -> String:
+			return line.replace(" c14 ", " c1 ") if tile and line.contains(" 6141 ") else line)
+		_check("Tower#2's %s painted %d: Tower#1's %s, every other part as it was%s" % [one[0],
+			one[1], one[2], _unlike(want, _twin_said("Tower#1"))], want == _twin_said("Tower#1"))
+		await _round_of("the paint", opened, tables)
+	for one: Array in [[4, 1], [2, 2]]:
+		await _open(_fixture("cfc_owncolour.mpd"))
+		var opened: Array = _every_part()
+		var tables: String = _tables()
+		var before: Array = _parts_of("Post#2")
+		var top: BrickWorld.Brick = _brick_of("Post#1", "3005")
+		var twin_top: BrickWorld.Brick = _brick_of("Post#2", "3005")
+		var at: Transform3D = top.transform.translated(Vector3(0, 32, 0))
+		var put: int = _builder.put_part("3024", int(one[0]), at)
+		# As Builder.set_path puts it (by the class's name, Resource's answers).
+		_world.get_brick(put).unit = "Post#1"
+		_world.get_brick(put).group = "Post"
+		_main.call("_on_model_edited")
+		await _frames(4)
+		var want: Array = _said_of(before, "", Vector3.ZERO)
+		var fresh: Array = _twin_said("Post#2").slice(want.size())
+		var fresh_at: String = _numbers(twin_top.transform.translated(Vector3(0, 32, 0)))
+		_check("a 3024 put down in Post#1 in c%d: Post#2's parts as they were, and a 3024 c%d at %s (%s)"
+			% [one[0], one[1], fresh_at, str(fresh)], _twin_said("Post#2").slice(0, want.size())
+			== want and fresh.size() == 1 and str(fresh[0]).contains(" 3024 c%d %s " % [one[1],
+			fresh_at]))
+		await _round_of("the part put down", opened, tables)
+
+
+## (3) A model holding a part the catalogue has not got, the app's own file
+## (cfc_absent.ldr): cleared over MCP and undone, the save and the autosave
+## keep its line; and a part on its way at the clear that has come by the
+## undo is put down then.
+func _case_clear_held() -> void:
+	var text: String = _fixture("cfc_absent.ldr")
+	await _open(text)
+	var first: String = _save()
+	_check("cfc_absent.ldr opened and saved: its zz9999 line kept", first.contains("zz9999.dat"))
+	await _say("clear_model", {})
+	print("  undo: %s" % (await _say("undo", {})).get_slice("\n", 0).left(100))
+	await _frames(4)
+	var undone: String = _save()
+	_check("...cleared and undone, saved: the zz9999 line kept, as before the clear (%s)"
+		% _diff(first, undone), undone.contains("zz9999.dat") and undone == first)
+	_store.call("_write", ModelStore.autosave(), _store.title)
+	_check("...autosaved: the zz9999 line kept",
+		FileAccess.get_file_as_string(ModelStore.autosave()).contains("zz9999.dat"))
+	await _open(undone)
+	_check("...opened again and saved: the same file%s" % _first_unlike(undone, _save()),
+		_save() == undone)
+	await _open(text)
+	var waiting := LdrModel.Placement.new("3001", 2, Transform3D(Basis.IDENTITY,
+		Vector3(0, 200, 0)), 0)
+	_store.awaited.append(waiting)
+	await _say("clear_model", {})
+	await _say("undo", {})
+	await _frames(6)
+	var landed: int = 0
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == "3001" and brick.color_code == 2:
+			landed += 1
+	_check("...a part on its way at the clear, come since, put down after the undo (%d; %d waiting)"
+		% [landed, _store.awaited.size()], landed == 1 and _store.awaited.is_empty())
+
+
+## (4) One edit_model takes both parts of the red post off and puts a 3005
+## and a 3062b where they stood: the blue post follows, its 3005 under its
+## number, a 3062b blue for its other.
+func _case_twin_relaid() -> void:
+	await _open(_fixture("cfc_posts.mpd"))
+	var opened: Array = _every_part()
+	var tables: String = _tables()
+	var low: BrickWorld.Brick = _brick_of("Post#1", "3005", 0)
+	var high: BrickWorld.Brick = _brick_of("Post#1", "3005", 1)
+	var twin_low: Array = _twin_said("Post#2").slice(0, 1)
+	var add: Array = []
+	for pair: Array in [[_placement_of(low.id), "3005"], [_placement_of(high.id), "3062b"]]:
+		var one: Dictionary = {"part": pair[1], "color": 4}
+		for key: String in ["x", "y", "z", "face", "rot"]:
+			if (pair[0] as Dictionary).has(key):
+				one[key] = pair[0][key]
+		add.append(one)
+	var said: String = await _say("edit_model", {"remove": [low.id, high.id], "add": add,
+		"picture": false})
+	print("  edit_model: %s" % said.get_slice("\n", 0).left(160))
+	var now: Array = _twin_said("Post#2")
+	print("  Post#2: %s" % " | ".join(now))
+	_check("...Post#2 follows: its 3005 as it was, under its number (%s)" % str(twin_low),
+		now.size() == 2 and now.slice(0, 1) == twin_low)
+	_check("...and a 3062b, blue, for its other 3005",
+		now.size() == 2 and str(now[1]).contains(" 3062b c1 "))
+	await _round_of("the edit", opened, tables)
+
+
+## (5) A model saved to a file of its own (File, Save as), cleared over MCP
+## and undone: Save writes that file again.
+func _case_clear_file() -> void:
+	await _open(_fixture("copyfaults_wing.ldr"))
+	var bar: ModelBar = _main.get("_bar")
+	var path: String = ProjectSettings.globalize_path("user://cf2_saved_as.ldr")
+	print("  saved as %s: %s" % [path, str(await bar.save_to_file(path))])
+	var wrote: String = FileAccess.get_file_as_string(path)
+	_check("...written", wrote.contains("3020.dat"))
+	await _say("clear_model", {})
+	await _say("undo", {})
+	await _frames(4)
+	_check("...cleared and undone: the file to write still %s (%s)" % [path, bar.on_disk],
+		bar.on_disk == path)
+	DirAccess.remove_absolute(path)
+	print("  saved: %s" % str(await bar._on_save()))
+	_check("...Save writes it again, as before the clear%s" % _first_unlike(wrote,
+		FileAccess.get_file_as_string(path)), FileAccess.get_file_as_string(path) == wrote)
+	await _say("undo", {"redo": true})
+	_check("...redone: no file to write (%s)" % bar.on_disk, bar.on_disk.is_empty())
+	DirAccess.remove_absolute(path)
+
+
+## (6) Two cars, red and blue, each with two wheels (cfc_nested.mpd): a
+## wheel's black part painted green paints every wheel's, each car's top in
+## its car's colour; undone, every part as opened, ten and no more.
+func _case_twin_nested() -> void:
+	await _open(_fixture("cfc_nested.mpd"))
+	var opened: Array = _every_part()
+	var tables: String = _tables()
+	var before: Dictionary = {}
+	for path: String in _paths():
+		before[path] = _parts_of(path)
+	var hub: BrickWorld.Brick = _brick_of("Car#1/Wheel#1", "3062b")
+	_builder.clear_selection()
+	_builder.selection = {hub.id: true}
+	_builder.selection_changed.emit(1)
+	_builder.paint_selection(2)
+	_main.call("_on_model_edited")
+	await _frames(4)
+	_check("painted: the paths as opened (%s)" % str(_paths()), _paths() == before.keys())
+	for path: String in before:
+		var want: Array = _said_of(before[path], "", Vector3.ZERO).map(func(line: String) -> String:
+			return line.replace(" 3062b c0 ", " 3062b c2 "))
+		_check("...%s: %s%s" % [path, "its 3062b green, the rest as it was"
+			if path.contains("Wheel") else "as it was", _unlike(want, _twin_said(path))],
+			want == _twin_said(path))
+	await _round_of("the paint", opened, tables)
+
+
+# -- copyfaults2's helpers -----------------------------------------------------------
+
+
+## The [param nth] lowest part [param part] of the copy at [param path].
+func _brick_of(path: String, part: String, nth: int = 0) -> BrickWorld.Brick:
+	var found: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		if Assemblies.path_of(brick) == path and brick.part_id == part:
+			found.append(brick)
+	found.sort_custom(func(a: BrickWorld.Brick, b: BrickWorld.Brick) -> bool:
+		return a.transform.origin.y < b.transform.origin.y)
+	return found[nth] if nth < found.size() else null
+
+
+## Each brick directly in the copy at [param path], in the model's order:
+## number, part, colour, place, line and, where [param steps], step.
+func _twin_said(path: String, steps: bool = true) -> Array:
+	var out: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		if _store.scenery.has(brick.id) or Assemblies.path_of(brick) != path:
+			continue
+		out.append("#%d %s c%d %s o%s%s" % [brick.id, brick.part_id, brick.color_code,
+			_numbers(brick.transform), brick.origin, " s%d" % brick.step if steps else ""])
+	return out
+
+
+## The bricks directly in the copy at [param path], in the model's order, as
+## [number, part, colour, place, line, step]: what [method _said_of] reads.
+func _parts_of(path: String) -> Array:
+	var out: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		if not _store.scenery.has(brick.id) and Assemblies.path_of(brick) == path:
+			out.append([brick.id, brick.part_id, brick.color_code, brick.transform, brick.origin,
+				brick.step])
+	return out
+
+
+## [param parts] ([method _parts_of]) as [method _twin_said] says them, each
+## part [param moved] shifted [param by].
+static func _said_of(parts: Array, moved: String, by: Vector3) -> Array:
+	var out: Array = []
+	for one: Array in parts:
+		var at: Transform3D = one[3]
+		if one[1] == moved:
+			at = at.translated(by)
+		out.append("#%d %s c%d %s o%s s%d" % [one[0], one[1], one[2], _numbers(at), one[4],
+			one[5]])
+	return out
+
+
+## Each part of the copy at [param path] where it stands in the copy, with
+## its step: "part x,y,z sN", sorted, from the copy's lowest corner.
+func _shape_steps(path: String) -> Array:
+	var low := Vector3(INF, INF, INF)
+	for brick: BrickWorld.Brick in _world.bricks():
+		if Assemblies.path_of(brick) == path:
+			low = low.min(brick.transform.origin)
+	var out: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		if Assemblies.path_of(brick) == path:
+			var at: Vector3 = brick.transform.origin - low
+			out.append("%s %d,%d,%d s%d" % [brick.part_id, roundi(at.x), roundi(at.y),
+				roundi(at.z), brick.step])
+	out.sort()
+	return out
+
+
+## Undo, redo, Save, open again and a second save of the edit just made,
+## each checked: undone, every part (its number, colour, place, step, copy
+## and line) and the world's tables as [param opened] and [param tables];
+## redone, as the edit left them; saved and opened again, every part as
+## shown; saved again, the same file, but for the title line a reopened
+## whole write gains (metalines').
+func _round_of(what: String, opened: Array, tables: String) -> void:
+	var after: Array = _every_part()
+	var after_tables: String = _tables()
+	_shell.run("undo")
+	await _frames(6)
+	_check("...%s undone: every part as opened%s" % [what, _unlike(opened, _every_part())],
+		_every_part() == opened)
+	_check("...the tables as opened", _tables() == tables)
+	_shell.run("redo")
+	await _frames(6)
+	_check("...redone: every part as the edit left it%s" % _unlike(after, _every_part()),
+		_every_part() == after)
+	_check("...the tables as it left them", _tables() == after_tables)
+	var shown: Array = _looks()
+	var saved: String = _save()
+	await _open(saved)
+	_check("...saved and opened again: every part, colour, place and step as shown%s"
+		% _unlike(shown, _looks()), shown == _looks())
+	var again: String = _save()
+	if again != saved and _as_kept(again) == _as_kept(saved):
+		print("  note: saved again, %s; the same once those are set aside" % _first_unlike(saved,
+			again).strip_edges())
+	_check("...saved again: the same file%s" % _first_unlike(_as_kept(saved), _as_kept(again)),
+		_as_kept(saved) == _as_kept(again))
+
+
+## [param text] as a reopened whole write of it keeps it, as 7e6cb1aec wrote
+## it too: without a title line it gains ("0 !BRICKWORKS TITLE", metalines'
+## to fix), and its sub-models' sections in any order (so each without the
+## line end after it), without a first copy's line. A copy written as a sub-model of its own, "wing 2", opens again as
+## "wing 2#1", which sorts before "wing#1", and is written first, saying it
+## is copy 1 (cfc_wing2.ldr, any edit or none).
+static func _as_kept(text: String) -> String:
+	var kept := PackedStringArray()
+	for line: String in text.split("\n"):
+		var bare: String = line.trim_suffix("\r")
+		if not bare.begins_with("0 !BRICKWORKS TITLE ") and bare != "0 !BRICKWORKS COPY 1":
+			kept.append(line)
+	var sections: PackedStringArray = "\n".join(kept).split("\n0 FILE ")
+	var rest: Array = []
+	for section: String in sections.slice(1):
+		rest.append(section.strip_edges(false, true))
+	rest.sort()
+	return "\n0 FILE ".join(PackedStringArray([sections[0]] + rest))
 
 
 # -- helpers ------------------------------------------------------------------------

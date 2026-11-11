@@ -23173,9 +23173,7 @@ func _gather_focus_step(was: Dictionary) -> String:
 	# of a model's two wings, the other stayed as it was.
 	var followed: Array = [[], 0]
 	if assemblies != null:
-		var made: Dictionary = {"undo": "group", "steps": steps}
-		followed = assemblies.copies_follow(builder.touched_groups(made), {},
-			assemblies.named_by(made, ["remove"]), assemblies.named_by(made))
+		followed = assemblies.copies_follow({"undo": "group", "steps": steps})
 	focus.followed = int(followed[1])
 	var own: Array = steps
 	# What followed first, newest first as a group keeps them (Builder.extend_last).
