@@ -5155,6 +5155,20 @@
       "entry": "tools/web/oc_echo_check.mjs",
       "reach": "node tools/web/oc_echo_check.mjs   (no .env; nothing reached off this machine)",
       "area": "account"
+    },
+    {
+      "kind": "ui",
+      "label": "a step's name",
+      "entry": "src/assembly/booklet_looks.gd",
+      "reach": "godot --path .  (Build › Timeline, a step: the Booklet row's Name…, Build › Steps › Name the step… or Shift-F2, a name typed, Return: \"Step 3 of 24 · Build the cockpit\" on the timeline, cut at 40 characters; on its own line under \"Step 3 of 24\" in Build it; beside the step's number on the booklet page, wrapped at 64 mm; kept in the file as 0 !BRICKWORKS STEP_NAME in its step; edit_steps {\"op\": \"name\", \"step\": N, \"name\": \"...\"} over MCP, \"\" takes it off)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "stepnames probe",
+      "entry": "src/dev/stepnames_probe.gd",
+      "reach": "tools/probe.sh stepnames_probe   (a window, 1400x900; PROBE_SIZE=1280x720 the same, 390x844 and 1024x768 Build it alone: through the sign-in screen, steps4's step 3 named by Name… and typing, Shift-F2, step 2 by edit_steps, saved with two STEP_NAME lines more, opened and saved byte for byte, the booklet page's name beside its number in the HTML and the PNG, named.ldr and another author's named file saved with their lines, a hand Delete undone as \"removed 1 part\", an 80-character name cut on the timeline, Build it on a shared link worked out and carried; snreview's repros: which step keeps its name over moves and deletes, name lines kept as written, Unicode spaces, quoted words, the alt escaped once, a sub-model's copies, a callout's step named)",
+      "area": "view"
     }
   ]
 }

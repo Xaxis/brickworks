@@ -13373,3 +13373,56 @@ msgstr "El diseño no terminó"
 
 msgid "The render did not finish"
 msgstr "El render no terminó"
+# Name the step (stepnames, APP_UX6 #9): the timeline's Name… button, the
+# Steps menu's row, its dialog and what the bar says of it.
+
+msgid "Name…"
+msgstr "Nombrar…"
+
+msgid "What this step is called (\"Build the cockpit\"): said beside its number here, in Build it and in the booklet (%s)"
+msgstr "Cómo se llama este paso («Construye la cabina»): aparece junto a su número aquí, en Construir y en el folleto (%s)"
+
+msgid "Name the step"
+msgstr "Nombrar el paso"
+
+msgid "Name the step…"
+msgstr "Nombrar el paso…"
+
+msgid "What the step the timeline is on is called (\"Build the cockpit\"): said beside its number on the timeline, in Build it and in the booklet"
+msgstr "Cómo se llama el paso en que está la línea de tiempo («Construye la cabina»): aparece junto a su número en la línea de tiempo, en Construir y en el folleto"
+
+msgid "Step %d is called"
+msgstr "El paso %d se llama"
+
+msgid "Step %d, %s %d of %d, is called"
+msgstr "El paso %d, %s %d de %d, se llama"
+
+msgid "Build the cockpit"
+msgstr "Construye la cabina"
+
+msgid "The step's name"
+msgstr "El nombre del paso"
+
+msgid "step %d named %s"
+msgstr "paso %d llamado %s"
+
+msgid "step %d's name taken off"
+msgstr "nombre del paso %d quitado"
+
+msgid "step %d's callout step %d named %s"
+msgstr "paso %d, paso %d del recuadro llamado %s"
+
+msgid "step %d's callout step %d's name taken off"
+msgstr "nombre del paso %d, paso %d del recuadro quitado"
+
+msgid "step %d named %s, in each of the %d copies of the %s"
+msgstr "paso %d llamado %s, en cada una de las %d copias de %s"
+
+msgid "step %d's name taken off, in each of the %d copies of the %s"
+msgstr "nombre del paso %d quitado, en cada una de las %d copias de %s"
+
+msgid "step %d's callout step %d named %s, in each of the %d copies of the %s"
+msgstr "paso %d, paso %d del recuadro llamado %s, en cada una de las %d copias de %s"
+
+msgid "step %d's callout step %d's name taken off, in each of the %d copies of the %s"
+msgstr "nombre del paso %d, paso %d del recuadro quitado, en cada una de las %d copias de %s"
