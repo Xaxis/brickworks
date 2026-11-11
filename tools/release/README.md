@@ -386,6 +386,14 @@ whose branch is not on main. "Its commit is on main" alone also describes a
 running agent that has not committed yet, and two agents lost their work to
 a cleanup that checked only that (2026-10-16).
 
+`tools/release/archive_out.sh [--dry]` moves release-out's old output, never
+deleting it: the releases older than the newest 8 (`RELEASE_KEEP`) and any
+other entry untouched for 3 days (`RELEASE_IDLE_DAYS`) go to
+`~/brickworks-archive/release-out` (`RELEASE_ARCHIVE`), on the root disk, and
+`release-out/archive` links there. A running train's output, a hold and the
+archive stay. train.sh runs it once a release is live: release-out had grown to
+61 GB in 25,000 entries with /mnt/Projects at 93% (2026-11-11).
+
 A mesh sub-build ships on the staging worktree's own copy of the
 catalogue (`ln -sfn <copy> <worktree>/assets/generated`). Merge it into the
 shared catalogue only after the release is live, with `tools/merge_subbuild.py`
