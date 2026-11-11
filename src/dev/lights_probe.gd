@@ -1500,10 +1500,10 @@ func _r_gone_apart_held() -> void:
 	var apart: Array = lit + ["L%s@model" % SUB_GREEN]
 	var want: Array = [apart, lit, apart]
 	var again: Array = await _reopened_marks(["gone_held_a", "gone_held_b", "gone_held_c"])
-	_check("a lit Sub's copies %s: Sub#2 picked up (%d parts), Sub#1 taken apart (%s), Sub#2 "
-		% [paths, lifted] + "put down (#%d): Sub's light and view kept, Sub#1's light the model's "
-		% [put] + "%s; all three undone %s, redone %s; each opened and saved again the same %s"
-		% [marks[0], marks[1], marks[2], again],
+	_check("a lit Sub's copies %s: Sub#2 picked up (%d parts), Sub#1 taken apart (%s), "
+		% [paths, lifted, said] + "Sub#2 put down (#%d): Sub's light and view kept, Sub#1's "
+		% [put] + "light the model's %s; all three undone %s, redone %s; each opened and saved "
+		% [marks[0], marks[1], marks[2]] + "again the same %s" % [again],
 		lifted > 0 and put != 0 and not said.contains("view went with it")
 		and _same_marks(marks, want) and _same_marks(again, want))
 

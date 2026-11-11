@@ -3023,7 +3023,9 @@ picture the assistant is shown.
   cut and pasted in one model, copied and pasted beside itself (nothing
   said), copied, deleted and pasted, cut from A and pasted into B, and into
   C with a lit Sub of its own (C's kept, and said), each undone and redone;
-  each state saved, opened and saved again. `-- --review`
+  one copy taken apart while the other is in hand (X), its light and view
+  kept for the one put down; each state saved, opened and saved again.
+  `-- --review`
   runs only these review checks, nothing drawn (a minute, not the whole
   probe's renders). Then the car under 0 to 4 suns (each adding light)
   and the neon and white grids under 8 bulbs in the Dark light (the white
