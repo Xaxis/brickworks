@@ -29,7 +29,8 @@
 ## - each file opened alone in the app: every part of the sub-model there,
 ##   in its colour, where the whole model has it in the sub-model's own
 ##   frame, within 0.001 LDU, and nothing more; its tree the sub-model's
-##   own sub-models; an author's steps still the author's, written again
+##   own sub-models (each one's copies numbered from 1 as a file alone
+##   numbers them); an author's steps still the author's, written again
 ##   step for step as the file has them;
 ## - File › Export › LDraw model's file again, the same to the byte.
 ## First, a line for each of sereview's findings (2026-11-09), on models
@@ -491,10 +492,25 @@ func _in_parent_case() -> void:
 	await _say("export_model", {"format": "ldraw", "submodel": "..\\..\\evil"})
 	var files: PackedStringArray = DirAccess.get_files_at(_files)
 	var one: String = FileAccess.get_file_as_string(_files.path_join(files[0])) if files.size() == 1 else ""
-	_check("F1: a copy built in its parent's steps titled ..\\..\\evil is evil.ldr in the zip (%s), its Name line evil.ldr, and the same file by submodel= (%s)" % [
-		", ".join(names.map(func(n: String) -> String: return _shown(n))), ", ".join(Array(files).map(func(n: String) -> String: return _shown(n)))],
-		names == ["abc.ldr", "evil.ldr", "tårn.ldr"] and evil.contains("0 Name: evil.ldr")
-		and not evil.contains("..\\") and Array(files) == ["evil.ldr"] and one == evil)
+	# Its names (FILE, Name) are evil.ldr; its first line, the title a reader
+	# shows, stays as its author wrote it: "0 ..\..\evil" names no file.
+	var name_lines: Array = Array(evil.split("\n")).filter(func(line: String) -> bool:
+		return line.begins_with("0 FILE") or line.begins_with("0 Name:"))
+	var wrong: Array = []
+	if names != ["abc.ldr", "evil.ldr", "tårn.ldr"]:
+		wrong.append("the zip's names")
+	if name_lines != ["0 Name: evil.ldr"]:
+		wrong.append("its name lines %s" % [name_lines])
+	if not evil.begins_with("0 ..\\..\\evil\n"):
+		wrong.append("its title %s" % _shown(evil.get_slice("\n", 0)))
+	if Array(files) != ["evil.ldr"]:
+		wrong.append("submodel='s file")
+	elif one != evil:
+		wrong.append("submodel='s file differs from the zip's")
+	_check("F1: a copy built in its parent's steps titled ..\\..\\evil is evil.ldr in the zip (%s), its name lines %s, its title as written, and the same file by submodel= (%s)%s" % [
+		", ".join(names.map(func(n: String) -> String: return _shown(n))), name_lines,
+		", ".join(Array(files).map(func(n: String) -> String: return _shown(n))),
+		"" if wrong.is_empty() else ": not " + ", ".join(wrong)], wrong.is_empty())
 
 
 ## F2: All my models' zip, by the same writer, a model saved as Tårn in it.
@@ -917,8 +933,9 @@ static func _sections(text: String) -> Dictionary:
 
 ## [param text] opened alone in the app: every part of the sub-model at
 ## [param path] there, in its colour, where the whole model has it in its
-## own frame within NEAR, and no other; its tree the sub-model's own; an
-## author's steps still the author's. [ok, the worst distance].
+## own frame within NEAR, and no other; its tree the sub-model's own, by
+## [method _numbered_alone]; an author's steps still the author's. [ok, the
+## worst distance].
 func _alone(tag: String, file: String, text: String, parsed: LdrModel, held: Array,
 		path: String) -> Array:
 	var home: String = _home_of(parsed, path)
@@ -937,6 +954,7 @@ func _alone(tag: String, file: String, text: String, parsed: LdrModel, held: Arr
 	for unit: String in parsed.unit_steps:
 		if unit != path and Assemblies.within(unit, path):
 			tree_wanted.append(unit.substr(path.length() + 1))
+	tree_wanted = _numbered_alone(tree_wanted)
 	tree_wanted.sort()
 	await _open(text, file.get_basename())
 	var back := Transform3D(Basis.IDENTITY, -(_store.call("_lift_now") as Vector3))
@@ -968,7 +986,7 @@ func _alone(tag: String, file: String, text: String, parsed: LdrModel, held: Arr
 		worst = maxf(worst, best_far)
 		if int(got[best][1]) != int(want[1]):
 			colour_off += 1
-	var tree_got: PackedStringArray = _shell.assemblies.paths()
+	var tree_got: PackedStringArray = _numbered_alone(_shell.assemblies.paths())
 	tree_got.sort()
 	var authored: bool = AuthorSteps.any(_world, _store.scenery)
 	var marked: bool = text.contains(LdrModel.AUTHORED_META) or (not text.contains(LdrModel.WORKED_META)
@@ -989,6 +1007,34 @@ func _alone(tag: String, file: String, text: String, parsed: LdrModel, held: Arr
 				else "%s, not %s" % [tree_got, tree_wanted], steps_said if steps_ok
 				else ", its author's steps %s" % ("lost" if marked else "made up")], ok)
 	return [ok, worst]
+
+
+## [param paths] with each sub-model's copies numbered from 1, in the order
+## of their numbers: the tree's shape, its copies' numbers left out. Copies
+## are numbered across the whole model (Assemblies), so Other's copy of Dup
+## is Dup#2 there, after the main model's Dup#1, and Dup#1 in Other's file
+## alone; a file the app wrote says each copy's number (COPY_META), which
+## its file alone keeps where it is free. Both trees are compared so: the
+## same sub-models, nested alike, as many copies of each, in that order.
+static func _numbered_alone(paths: PackedStringArray) -> PackedStringArray:
+	var numbers: Dictionary = {}     ## a sub-model -> its copies' numbers in [param paths]
+	for unit: String in paths:
+		for segment: String in Assemblies.segments(unit):
+			var kind: String = Assemblies.definition(segment)
+			var seen: Array = numbers.get(kind, [])
+			if not seen.has(Assemblies.copy_of(segment)):
+				seen.append(Assemblies.copy_of(segment))
+			numbers[kind] = seen
+	for kind: String in numbers:
+		(numbers[kind] as Array).sort()
+	var out := PackedStringArray()
+	for unit: String in paths:
+		var segments := PackedStringArray()
+		for segment: String in Assemblies.segments(unit):
+			var kind: String = Assemblies.definition(segment)
+			segments.append("%s#%d" % [kind, (numbers[kind] as Array).find(Assemblies.copy_of(segment)) + 1])
+		out.append("/".join(segments))
+	return out
 
 
 ## The parts of each step of [param text]'s own model, each "part colour"
