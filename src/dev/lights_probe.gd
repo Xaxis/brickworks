@@ -1447,17 +1447,18 @@ func _r_gone_clipboard() -> void:
 		"0 Name: gone_move_b.ldr", "0 Author: Brickworks", _light("point", [0, -60, 0]),
 		"1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat", ""]))))
 	put = [await _pasted(builder)]
-	marks = [await _saved_marks("gone_move_b1")]
+	marks = [await _saved_marks("gone_move_b_1")]
 	marks.append_array(await _undone_redone("gone_move_b", 1, "2"))
 	want = [lit, none, lit]
-	again = await _reopened_marks(["gone_move_b1", "gone_move_b2", "gone_move_b3"])
+	again = await _reopened_marks(["gone_move_b_1", "gone_move_b_2", "gone_move_b_3"])
 	var own_light: String = _light("point", [0, -50, 0], {"colour": "#140001"})
 	var theirs: Array = ["L#ffffff@model", "L#140001@sub", "V'c view'@sub"]
 	await _opened(_put("gone_move_c.mpd", _lit_sub("Brickworks", own_light, _view_line("c view"))))
 	put.append(await _pasted(builder))
-	var into_c: Array = [await _saved_marks("gone_move_c1")]
+	var into_c: Array = [await _saved_marks("gone_move_c_1")]
 	into_c.append_array(await _undone_redone("gone_move_c", 1, "2"))
-	var c_again: Array = await _reopened_marks(["gone_move_c1", "gone_move_c2", "gone_move_c3"])
+	var c_again: Array = await _reopened_marks(["gone_move_c_1", "gone_move_c_2",
+		"gone_move_c_3"])
 	var c_want: Array = [theirs, theirs, theirs]
 	_check("a lit Sub cut from A and pasted into B (%s) %s; undone %s; redone %s; each opened "
 		% [put[0], marks[0], marks[1], marks[2]] + "and saved again the same %s; pasted into C, "
