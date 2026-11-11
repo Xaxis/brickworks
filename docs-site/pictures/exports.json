@@ -11,8 +11,8 @@
    ],
    "crop": "@opened",
    "pad": 0,
-   "alt": "The 3D model export dialog: a choice of glb, gltf, obj, stl or 3mf, each with a line on what it is for.",
-   "caption": "File › Export › 3D model…",
+   "alt": "The 3D model dialog: the model as a 3D file at its real size, for Blender or another 3D program, AR or a 3D printer; GLB (.glb) chosen from the list of formats, with a line on what a GLB file holds and opens in; Cancel and Export.",
+   "caption": "File › Export › 3D model…, with GLB chosen: the list also has glTF, OBJ, STL and 3MF.",
    "features": [
     "ui:3d model export"
    ]

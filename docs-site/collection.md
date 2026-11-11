@@ -13,7 +13,7 @@ My collection is the sets and loose parts you own. With it, Brickworks says what
 
 ## Add your sets {#my-collection}
 
-![My collection: the sets and loose parts you own, with ways to add a set by its number, from a photo of its box, or from Rebrickable.](/docs/img/collection-dialog.webp "File › My collection…")
+![My collection, empty, on What I own: a box for set numbers with Add sets and Photo…, Rebrickable CSV… and BrickLink XML…, your Rebrickable key or username with Fetch, and the Loose parts row; What do I need? and What can I build? along the top.](/docs/img/collection-dialog.webp "File › My collection…")
 
 On the **What I own** page, any of these:
 
@@ -64,7 +64,7 @@ ui:a set's missing parts
 
 ## What do I need? {#need}
 
-![The car's parts list: each part's picture, name, colour and how many, with What do I need? and the shop lists at the foot.](/docs/img/collection-parts-list.webp "Build › Parts list (P).")
+![The car's parts list, 61 pieces in 32 lots: each with how many, its picture, number, name and colour; along the top What do I need?, Save as CSV, and the BrickLink, Rebrickable and LEGO® Pick a Brick lists.](/docs/img/collection-parts-list.webp "Build › Parts list (P).")
 
 **Build › What do I need?…** (or **What do I need?** on the parts list, [[P]]) lists what the model uses that you do not own, and what you own that could stand in. Export what is left as a shopping list: see [Buy the parts](/docs/exports#shop-lists).
 

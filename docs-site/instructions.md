@@ -55,7 +55,7 @@ ui:any step in one go
 
 ## The timeline {#timeline}
 
-![The timeline under the model: the car built to its first step, a slider and a row of numbered steps, the parts the step adds, and Start, Back, Reverse, Play, Next and End.](/docs/img/instructions-timeline.webp "Build › Timeline (B): the steps a booklet is made of.")
+![The timeline under the model: the car built to its first step, a slider and a row of numbered steps, the parts the step adds, and Start, Back, Reverse, Play, Next, End, the speed, Build order, Instructions and Done.](/docs/img/instructions-timeline.webp "Build › Timeline (B): the steps a booklet is made of.")
 
 [[B]] (**Build › Timeline**) opens the timeline under the model: the build from an empty baseplate to the finished model.
 

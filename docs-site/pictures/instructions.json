@@ -13,7 +13,7 @@
     "_over_model",
     "_steps"
    ],
-   "alt": "The timeline under the model: the car built to its first step, a slider and a row of numbered steps, the parts the step adds, and Start, Back, Reverse, Play, Next and End.",
+   "alt": "The timeline under the model: the car built to its first step, a slider and a row of numbered steps, the parts the step adds, and Start, Back, Reverse, Play, Next, End, the speed, Build order, Instructions and Done.",
    "caption": "Build › Timeline (B): the steps a booklet is made of.",
    "features": [
     "ui:build steps"

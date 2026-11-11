@@ -51,7 +51,7 @@ The arrow beside **BrickLink** on the parts list sets what the wanted list asks 
 
 ## 3D models {#3d}
 
-![The 3D model export dialog: a choice of glb, gltf, obj, stl or 3mf, each with a line on what it is for.](/docs/img/exports-3d.webp "File › Export › 3D model…")
+![The 3D model dialog: the model as a 3D file at its real size, for Blender or another 3D program, AR or a 3D printer; GLB (.glb) chosen from the list of formats, with a line on what a GLB file holds and opens in; Cancel and Export.](/docs/img/exports-3d.webp "File › Export › 3D model…, with GLB chosen: the list also has glTF, OBJ, STL and 3MF.")
 
 **File › Export › 3D model…** writes the model at its real size, each part with its real shape:
 
