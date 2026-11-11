@@ -721,6 +721,15 @@ func identity() -> Dictionary:
 ## The model made what [param kept] ([method identity]) says, in the world
 ## as it now is; returns what it was, for the step that puts that back.
 func put_identity(kept: Dictionary) -> Dictionary:
+	# The parts the step this reverses put down as they landed ("landed",
+	# below): taken off again and on their way once more, in what it was. A
+	# redo of a clear left the part that had landed at its undo on the bare
+	# baseplate (cf2check).
+	for landed: Array in kept.get("landed", []):
+		var brick_id: int = builder._live(int(landed[0]))
+		if world.get_brick(brick_id) != null:
+			builder._apply({"undo": "remove", "brick": brick_id})
+			awaited.append(landed[1])
 	var was: Dictionary = identity()
 	title = str(kept["title"])
 	example = bool(kept["example"])
@@ -742,12 +751,11 @@ func put_identity(kept: Dictionary) -> Dictionary:
 	_opened_in = world.generation() if bool(kept["opened"]) else -1
 	# What it holds that is not on the baseplate is this model's again: kept
 	# in what a save writes, and a part still on its way put down here when
-	# it lands (place_awaited); one that landed since the clear, now.
+	# it lands (place_awaited); one that landed since the clear, at the end.
 	var waiting: Variant = kept.get("awaited")
 	_awaited_in = world.generation() if waiting is Array else -1
 	if waiting is Array:
 		awaited.assign(waiting)
-		_land_arrived.call_deferred()
 	_lifted_by = float(kept["lifted_by"])
 	_lights_read = kept["lights_read"]
 	_lights_in = world.generation() if not _lights_read.is_empty() else -1
@@ -759,19 +767,24 @@ func put_identity(kept: Dictionary) -> Dictionary:
 	begun.emit(title)
 	emptied = bool(kept["emptied"])
 	bin_sets = (kept["bin_sets"] as PackedStringArray).duplicate()
+	# Put down in this step, not after it, so its reverse takes them off.
+	was["landed"] = _land_arrived()
 	return was
 
 
 ## Put down each part of [member awaited] the catalogue has to hand now:
 ## those that arrived while the model was cleared, given back by its undo
-## (put_identity), which place_awaited let go of then.
-func _land_arrived() -> void:
+## (put_identity), which place_awaited let go of then. Returns each as
+## [its brick, its placement].
+func _land_arrived() -> Array:
 	var parts: Dictionary = {}
 	for placement: LdrModel.Placement in awaited:
 		if library != null and library.is_resident(placement.part_id):
 			parts[placement.part_id] = true
+	var landed: Array = []
 	for part_id: String in parts:
-		place_awaited(part_id)
+		place_awaited(part_id, landed)
+	return landed
 
 
 ## [param name], or it with a number after it when a saved model has it.
@@ -2606,8 +2619,9 @@ func awaited_now() -> Array:
 
 
 ## Put down what was waiting for [param part_id]. Returns how many landed;
-## none once the world has been cleared since the model opened.
-func place_awaited(part_id: String) -> int:
+## none once the world has been cleared since the model opened. Each landed
+## goes into [param landed_into] as [its brick, its placement].
+func place_awaited(part_id: String, landed_into: Array = []) -> int:
 	# Not into a model still being laid: what arrived meanwhile is put down
 	# once it is whole (_open_into).
 	if awaited.is_empty() or laying:
@@ -2630,6 +2644,7 @@ func place_awaited(part_id: String) -> int:
 			world.get_brick(brick_id).origin = placement.origin
 			builder.register(brick_id, placement.part_id, at)
 			landed += 1
+			landed_into.append([brick_id, placement])
 			# Landed after the steps the history holds were made: none of
 			# their moves carries it (_follow_motions).
 			if _late_in != world.generation():

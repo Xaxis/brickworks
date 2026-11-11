@@ -1023,6 +1023,7 @@ func copies_follow(step: Dictionary) -> Array:
 	var then: Dictionary = _before(step)
 	var moved: Dictionary = _moved_by(step)
 	var units: Dictionary = _units_named(step)
+	_from_ensured(step, then, units)
 	# Every pair laid first, on the copies as they stood before the step;
 	# then every change made. Laid as each changed, a car's copy, its wheels
 	# given the change already, no longer lay on the car as it was.
@@ -1032,7 +1033,7 @@ func copies_follow(step: Dictionary) -> Array:
 	for path: String in order:
 		if not moved.is_empty() and _moved_alike(path, moved):
 			continue
-		var made: Dictionary = _made_in(path, then)
+		var made: Dictionary = _made_in(path, then, units)
 		if made.is_empty():
 			continue
 		var was: Array = made["then"]
@@ -1060,6 +1061,50 @@ func copies_follow(step: Dictionary) -> Array:
 	_indexed = false
 	_syncing = false
 	return [back, followed.size()]
+
+
+## What [param undo], AuthorSteps.ensure's for a step edit, gave: the steps
+## the model has from it, {"bricks": brick -> its step, "units": copy ->
+## its step, or -1 for none}, {} for nothing. Kept with the edit's step as
+## "ensured" ([method _from_ensured]).
+static func ensured(world: BrickWorld, undo: Array) -> Dictionary:
+	if undo.is_empty():
+		return {}
+	var bricks: Dictionary = {}
+	var units: Dictionary = {}
+	for entry: Dictionary in undo:
+		match str(entry.get("undo", "")):
+			"restep":
+				var brick: BrickWorld.Brick = world.get_brick(int(entry["brick"]))
+				if brick != null:
+					bricks[brick.id] = brick.step
+			"unitstep":
+				units[str(entry["unit"])] = int(world.unit_steps.get(str(entry["unit"]), -1))
+	return {"bricks": bricks, "units": units}
+
+
+## A step edit on a model with no steps of its own gives every part and copy
+## the worked-out ones first, in its step (AuthorSteps.ensure, the step's
+## "ensured"): the edit starts from those, which are no change it made to
+## the other copies. Read as its own, every twin kept the number ensure gave
+## it, and a part of one wheel put in a step of its own, or the car's 3001,
+## stayed so in that copy alone; saved, every wheel had it (cffix). So
+## [param then] ([method _before]) reads each part ensure stepped in that
+## step, and [param units] ([method _units_named]) leaves out each copy
+## whose step is still ensure's.
+func _from_ensured(step: Dictionary, then: Dictionary, units: Dictionary) -> void:
+	var ensured: Dictionary = step.get("ensured", {})
+	if ensured.is_empty():
+		return
+	var bricks: Dictionary = ensured["bricks"]
+	for brick_id: int in bricks:
+		var was: Variant = then.get(brick_id)
+		if was is Dictionary:
+			(was as Dictionary)["step"] = int(bricks[brick_id])
+	var given: Dictionary = ensured["units"]
+	for unit: String in given:
+		if units.has(unit) and int(world.unit_steps.get(unit, -1)) == int(given[unit]):
+			units.erase(unit)
 
 
 ## Each brick [param step] names as it was before it, by its number now, or
@@ -1156,10 +1201,12 @@ func _content_then(path: String, then: Dictionary) -> Array:
 ## and each change to them, "moved", "painted", "stepped" and "regrouped"
 ## ([before, now] each), "gone" (before), "fresh" (now) and "swapped"
 ## ([before, now]: one put down where one taken off stood). {} when it
-## changed nothing of it; when it is new, nothing of it there before; when
-## nothing of it is left; and when it changed it whole, no part standing
-## where it stood and the copy lying on itself as it was.
-func _made_in(path: String, then: Dictionary) -> Dictionary:
+## changed nothing of it, nor the step of any copy inside it ([param units],
+## [method _units_named]: those [method _follow] gives the others); when it
+## is new, nothing of it there before; when nothing of it is left; and when
+## it changed it whole, no part standing where it stood and the copy lying
+## on itself as it was.
+func _made_in(path: String, then: Dictionary, units: Dictionary = {}) -> Dictionary:
 	var now: Array = content(path)
 	var was: Array = _content_then(path, then)
 	if now.is_empty() or was.is_empty():
@@ -1200,6 +1247,11 @@ func _made_in(path: String, then: Dictionary) -> Dictionary:
 	for kind: String in ["moved", "painted", "stepped", "regrouped", "gone", "fresh", "swapped"]:
 		changed = changed or not (made[kind] as Array).is_empty()
 	if not changed:
+		# A copy inside it put in another step, and nothing else: the wheel
+		# the car puts on in its own step, which every car does.
+		for unit: String in units:
+			if unit != path and within(unit, path):
+				return made
 		return {}
 	if standing == 0 and was.size() == now.size() \
 			and int(best_match(was, now)["score"]) == was.size():
@@ -1244,7 +1296,8 @@ func _swaps_in(made: Dictionary) -> void:
 ## [param claimed]: what each brick has been given by this follow already,
 ## brick id -> {"at", "color", "step", "path" or "gone": true}, which another
 ## copy of a copy round it does not give it again; nor what the step itself
-## changed of it ([param then]).
+## changed of it ([param then]); and "laid" for each part this follow put
+## down, which no later plan puts down again ([method _put_already]).
 func _follow(plan: Array, then: Dictionary, units: Dictionary, claimed: Dictionary) -> Array:
 	var path: String = plan[0]
 	var other: String = plan[1]
@@ -1259,6 +1312,7 @@ func _follow(plan: Array, then: Dictionary, units: Dictionary, claimed: Dictiona
 	var shared: bool = not AuthorSteps.in_parent(world, path) \
 		and not AuthorSteps.in_parent(world, other)
 	var inner: Dictionary = _inner_names(made["then"], pairs, twin)
+	var matched: Dictionary = {}    ## parts put down already that this plan has
 	var back: Array = []
 	for pair: Array in made["moved"]:
 		var brick_id: int = int(pairs[int(pair[0]["id"])])
@@ -1300,7 +1354,7 @@ func _follow(plan: Array, then: Dictionary, units: Dictionary, claimed: Dictiona
 			continue
 		var was: Dictionary = twin[brick_id]
 		var laid: Array = _laid(fit, str(pair[1]["part"]), pair[1]["at"])
-		if _put_already(other, laid, then, claimed):
+		if _put_already(other, laid, then, claimed, matched):
 			continue
 		off.append(brick_id)
 		# In the colour it is given where both copies had the one it replaces
@@ -1322,7 +1376,7 @@ func _follow(plan: Array, then: Dictionary, units: Dictionary, claimed: Dictiona
 	var votes: Dictionary = {} if shared else _step_votes(made["then"], pairs, twin)
 	for item: Dictionary in made["fresh"]:
 		var laid: Array = _laid(fit, str(item["part"]), item["at"])
-		if _put_already(other, laid, then, claimed):
+		if _put_already(other, laid, then, claimed, matched):
 			continue
 		var colour: int = int(item["color"])
 		if not placing.is_empty() and colour == int(placing[0]):
@@ -1332,7 +1386,11 @@ func _follow(plan: Array, then: Dictionary, units: Dictionary, claimed: Dictiona
 			"step": int(item["step"]) if shared or int(item["step"]) < 0
 				else _voted(votes, int(item["step"])), "origin": ""})
 	if not off.is_empty() or not on.is_empty():
-		back = builder.swap_bricks(off, on) + back
+		var swapped: Array = builder.swap_bricks(off, on)
+		for step: Dictionary in swapped:
+			if step["undo"] == "remove":
+				claimed[int(step["brick"])] = {"laid": true}
+		back = swapped + back
 	if shared:
 		for unit: String in units:
 			if unit == path or not within(unit, path):
@@ -1348,19 +1406,26 @@ func _follow(plan: Array, then: Dictionary, units: Dictionary, claimed: Dictiona
 	return back
 
 
-## Whether the step [param then] reads put down in the copy at [param other]
-## the part [param laid] ([its part, its place], [method _laid]) already,
-## one no copy has claimed: then it is claimed. A step folded with what
-## followed it, asked again, puts down no second part where the first is.
-func _put_already(other: String, laid: Array, then: Dictionary, claimed: Dictionary) -> bool:
+## Whether the part [param laid] ([its part, its place], [method _laid]) is
+## down in the copy at [param other] already, put down in this pass: by the
+## step [param then] reads (a step folded with what followed it, asked
+## again), or by the follow of another copy of a definition it is in, at any
+## depth ([param claimed] "laid"). Then this plan has it ([param matched]),
+## once. Each edit goes once into each copy of each definition: a 3024 put
+## down in Car#1/Wheel#1 went into Car#2/Wheel#3 with the wheel's copies and
+## again with the car's, and three deep once more with each copy round it
+## (cf2check).
+func _put_already(other: String, laid: Array, then: Dictionary, claimed: Dictionary,
+		matched: Dictionary) -> bool:
 	var at: Transform3D = laid[1]
 	for brick: BrickWorld.Brick in bricks_under(other):
-		if not then.has(brick.id) or then[brick.id] != null or brick.part_id != str(laid[0]) \
-				or (claimed.get(brick.id, {}) as Dictionary).has("put") \
+		var put: bool = (then.has(brick.id) and then[brick.id] == null) \
+			or (claimed.get(brick.id, {}) as Dictionary).has("laid")
+		if not put or matched.has(brick.id) or brick.part_id != str(laid[0]) \
 				or brick.transform.origin.distance_to(at.origin) > 0.6 \
 				or not _same_place(brick.part_id, brick.transform, at):
 			continue
-		claimed[brick.id] = {"put": true}
+		matched[brick.id] = true
 		return true
 	return false
 

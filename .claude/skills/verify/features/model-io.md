@@ -178,7 +178,10 @@ Whether what you built is still there tomorrow, and still means the same thing.
   the edit did not touch, or live's write), `copyfaults` (a copy renamed,
   duplicated, swapped over MCP or given a step edit leaves its twin as it
   was, or both alike, and one moved or painted moves or paints only the
-  twin's part it pairs with (copyfaults2, with `cfcheck`), saved and opened as shown; the app's own lines under
+  twin's part it pairs with (copyfaults2, with `cfcheck`), saved and opened as shown;
+  a part put down in the placing colour of copies placed in two colours is
+  one line in 16, not two lines and a whole write (`SourceFile._fresh_lines`,
+  `cf2check` post16); the app's own lines under
   the model's title, `LdrModel.into_main`, in ten files with sub-models;
   a clear undone gives back the file's lines), `patch_rules` (kt5review's six:
   names kept, the gate as written, comment pairs, deletes that go to (B), the

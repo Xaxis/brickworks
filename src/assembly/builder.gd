@@ -421,7 +421,7 @@ func undo() -> bool:
 	var words: String = _words_for(step)
 	_motions_before = null
 	var back: Dictionary = _apply(step)
-	_follow_motions(step)
+	_follow_motions(back)
 	back["words"] = words
 	_redo.append(back)
 	settled = _history.back() if not _history.is_empty() else {}
@@ -437,7 +437,7 @@ func redo() -> bool:
 	var step: Dictionary = _redo.pop_back()
 	_motions_before = null
 	var again: Dictionary = _apply(step)
-	_follow_motions(step)
+	_follow_motions(again)
 	if step.has("words"):
 		again["words"] = step["words"]
 	_history.append(again)
@@ -446,10 +446,10 @@ func redo() -> bool:
 	return true
 
 
-## Once [param step] is undone or redone: if it put the model's motions
-## back, what it did not move itself told where the model now stands
-## ([member motions_hook]), after all of it, so the joints are looked for
-## with every part where the step leaves it.
+## Once a step is undone or redone, [param step] the one that reverses it:
+## if it put the model's motions back, what it did not move itself told
+## where the model now stands ([member motions_hook]), after all of it, so
+## the joints are looked for with every part where the step leaves it.
 func _follow_motions(step: Dictionary) -> void:
 	var before: Motions = _motions_before
 	_motions_before = null
@@ -461,7 +461,9 @@ func _follow_motions(step: Dictionary) -> void:
 
 
 ## Into [param into], each part [param step] moves, takes off or puts
-## down, by its id now.
+## down, by its id now: of a step that reverses one, the parts that one
+## changed, and the parts on their way it put down (ModelStore.put_identity,
+## "landed"), where the motions it put back stand them already.
 func _moved_by(step: Dictionary, into: Dictionary) -> void:
 	match str(step.get("undo", "")):
 		"group":
@@ -472,6 +474,9 @@ func _moved_by(step: Dictionary, into: Dictionary) -> void:
 		"add":
 			if step.has("was"):
 				into[_live(int(step["was"]))] = true
+		"store":
+			for landed: Variant in (step["store"] as Dictionary).get("landed", []):
+				into[_live(int((landed as Array)[0]))] = true
 
 
 ## Move [param brick_id] to [param to] with no step of its own: one an undo

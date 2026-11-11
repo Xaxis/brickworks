@@ -2743,6 +2743,7 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 	# (AuthorSteps.adopt_plan): those are read after.
 	var looked: Dictionary = BookletLooks.items_by_step(world, skip)
 	var undo: Array = AuthorSteps.ensure(world, library, skip)
+	var ensured: Dictionary = Assemblies.ensured(world, undo)
 	if looked.is_empty():
 		looked = BookletLooks.items_by_step(world, skip)
 	var where: Array = _step_at(at)
@@ -2836,6 +2837,8 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 	if not now.is_empty():
 		number = int(now[0])
 	builder.record(undo, words)
+	if not ensured.is_empty():
+		builder.last_step()["ensured"] = ensured
 	# The other copies of a sub-model built in steps of its own take the edit
 	# too, in the same undo (Assemblies.copies_follow), as a file writes the
 	# sub-model once: a part of one wing moved to the wing's other step showed

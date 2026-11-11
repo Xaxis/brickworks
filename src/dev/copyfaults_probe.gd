@@ -39,18 +39,45 @@
 ##   (live's too);
 ## - clear_lit (lightpaths'): a clear undone lost a sub-model's own light and
 ##   view (BrickWorld.section_lines), and a save left them out of its section.
+## And cf2check's (cffix):
+## - twin_every, the invariant: one edit of each kind (put down, move, turn,
+##   paint, delete, swap, a step edit; by hand and over MCP) in one copy at
+##   depth 1, 2 and 3 (cf2_nest_same, cfc_nested, cf2_axles), and every copy
+##   of each sub-model holds the same parts as each other: count, part,
+##   place in its own frame, the same parts in the same steps, and colour by
+##   the rule (its own colour in every copy, or each copy's placing colour;
+##   a part painted from the placing colour in one copy keeps the other's
+##   placing colour), after the edit, Undo, Redo, Save and open again, and
+##   a second save the same file. A 3024 put down in Car#1/Wheel#1 went into
+##   Car#2/Wheel#3 once with the wheel's copies and again with the car's;
+##   three deep, once more with each copy round it;
+## - clear_redo: a clear's undo landed a part on its way after the step, and
+##   its redo left it on the bare baseplate.
 ## Each case opens its file (src/dev/fixtures/copyfaults_*, and for metas
 ## ten files with sub-models), makes its edit as a person or a session makes
 ## it, saves as Save saves, opens the save again, and compares parts,
 ## colours, copies, steps and lines as text, not by count.
 ##
 ##   COPYFAULTS_CASES=rename,metas   those cases
+##   COPYFAULTS_KINDS=put,mcp_move   twin_every's edits, of EDITS
+##   COPYFAULTS_DEPTHS=1,3           twin_every's copies edited, by depth
 extends SceneTree
 
 const FX := "res://src/dev/fixtures/"
 const CASES: Array = ["rename", "duplicate", "rename_undo", "swap", "clear_undo", "step_copy",
 	"metas", "numbers", "twin_steps", "twin_moves", "twin_paints", "clear_held", "twin_relaid",
-	"clear_file", "twin_nested", "clear_lit"]
+	"clear_file", "twin_nested", "clear_lit", "twin_every", "clear_redo"]
+## twin_every's files and the copy edited in each, one at each depth.
+const EVERY: Array = [["cf2_nest_same.mpd", "Car#1"], ["cf2_nest_same.mpd", "Car#1/Wheel#1"],
+	["cfc_nested.mpd", "Car#1"], ["cfc_nested.mpd", "Car#1/Wheel#1"],
+	["cf2_axles.mpd", "Truck#1"], ["cf2_axles.mpd", "Truck#1/Axle#1"],
+	["cf2_axles.mpd", "Truck#1/Axle#1/Wheel#1"]]
+## twin_every's edits: by hand, and as a session makes them over MCP.
+const EDITS: Array = ["put", "put_placing", "move", "turn", "paint", "delete", "swap", "step",
+	"step_copy", "mcp_move", "mcp_turn", "mcp_paint", "mcp_delete", "mcp_swap", "mcp_step",
+	"mcp_step_copy"]
+## What a swap puts down for each part edited: as wide, another part.
+const SWAP_FOR: Dictionary = {"6141": "3024", "3001": "3020", "3023": "3069b", "3062b": "3005"}
 ## Ten files with sub-models, for the app's own lines.
 const METAS: Array = ["copyfaults_nest.mpd", "copyfaults_wing.ldr", "copyfaults_numbers.mpd",
 	"kt3r_dupfile.mpd", "kt3r_title_author.mpd", "kt3r_whole.mpd", "kt_runs.mpd",
@@ -65,6 +92,11 @@ var _library: PartLibrary
 var _shell: Shell
 var _socket: CommandSocket
 var _rpc_id: int = 0
+## twin_every: each sub-model's copies as the file opened places them
+## ([method _read_copies]), and the invariant's count, held and asked.
+var _defs: Dictionary = {}
+var _agreed: int = 0
+var _asked: int = 0
 
 
 func _initialize() -> void:
@@ -119,6 +151,8 @@ func _run() -> void:
 			"clear_file": await _case_clear_file()
 			"twin_nested": await _case_twin_nested()
 			"clear_lit": await _case_clear_lit()
+			"twin_every": await _case_twin_every()
+			"clear_redo": await _case_clear_redo()
 			_: _check("no such case %s" % name, false)
 	print("\ncopyfaults probe: %s" % ("all checks passed" if _failures == 0
 		else "%d checks failed" % _failures))
@@ -810,6 +844,425 @@ static func _lit_lines(text: String, file: String) -> Array:
 	return out
 
 
+# -- cffix: each edit once in every copy, at every depth ------------------------------
+
+
+## The invariant: every edit of [constant EDITS] made in each copy of
+## [constant EVERY], each on its file as opened, and after it, its Undo,
+## its Redo and its save opened again, every copy of each sub-model holds
+## the same parts ([method _copies_agree]); and the round's own checks
+## ([method _round_of]).
+func _case_twin_every() -> void:
+	var kinds: Array = EDITS if OS.get_environment("COPYFAULTS_KINDS").is_empty() \
+		else Array(OS.get_environment("COPYFAULTS_KINDS").split(",", false))
+	var depths: Array = Array(OS.get_environment("COPYFAULTS_DEPTHS").split(",", false))
+	_agreed = 0
+	_asked = 0
+	for one: Array in EVERY:
+		var path: String = one[1]
+		var depth: int = Assemblies.segments(path).size()
+		if not depths.is_empty() and not depths.has(str(depth)):
+			continue
+		for kind: String in kinds:
+			var label: String = "%s %s (depth %d) %s" % [str(one[0]).get_basename(), path, depth,
+				kind]
+			print("\n  -- %s" % label)
+			await _open(_fixture(one[0]))
+			var read: String = _read_copies()
+			if not _check("%s: each copy's frame read off its file's lines%s" % [label,
+					"" if read.is_empty() else " (%s)" % read], read.is_empty()):
+				continue
+			_agree("%s opened" % label)
+			var opened: Array = _every_part()
+			var tables: String = _tables()
+			var said: String = await _edit_every(kind, path)
+			print("  %s" % said)
+			if said.ends_with("nothing to do"):
+				continue
+			# A session's edit its checks refuse changes nothing, and nothing
+			# follows: cf2_axles' axle plate is held by nothing, so a move,
+			# turn or swap of it is refused (the wheels take them at depth 3).
+			if said.contains(": Not applied") and _every_part() == opened:
+				print("  refused by a session's checks: no edit, nothing to follow")
+				continue
+			if kind.contains("step"):
+				print("  the copies' steps: %s" % JSON.stringify(_world.unit_steps))
+			if not _check("...%s took: the model changed" % label, _every_part() != opened
+					or _tables() != tables):
+				continue
+			_agree("%s, made" % label)
+			await _round_of(label, opened, tables, func(stage: String) -> void:
+				if stage == "reopened":
+					var again: String = _read_copies()
+					if not again.is_empty():
+						_check("...%s reopened: each copy's frame read off the save's lines (%s)"
+							% [label, again], false)
+						return
+				_agree("%s, %s" % [label, stage]))
+	print("\n  the invariant held %d times of %d" % [_agreed, _asked])
+	_check("twin_every: every copy of each sub-model alike, every time (%d of %d)" % [_agreed,
+		_asked], _asked > 0 and _agreed == _asked)
+
+
+## Make the edit [param kind] in the copy at [param path]: on its highest
+## part, or for a paint the highest of a colour of its own where it has one.
+## Returns what was done.
+func _edit_every(kind: String, path: String) -> String:
+	var top: BrickWorld.Brick = null
+	var low: BrickWorld.Brick = null
+	var own: BrickWorld.Brick = null
+	for brick: BrickWorld.Brick in _world.bricks():
+		if Assemblies.path_of(brick) != path:
+			continue
+		if top == null or brick.transform.origin.y > top.transform.origin.y:
+			top = brick
+		if low == null or brick.transform.origin.y < low.transform.origin.y:
+			low = brick
+	if top == null:
+		return "no part in %s" % path
+	# A session's move, turn and swap are checked to hold together: on the
+	# part the copy stands on, which stays on what it stood on.
+	if kind in ["mcp_move", "mcp_turn", "mcp_swap"]:
+		top = low
+	if kind.ends_with("step_copy"):
+		top = low
+	var placing: int = _placing_shown(path, top.color_code)
+	for brick: BrickWorld.Brick in _world.bricks():
+		if Assemblies.path_of(brick) == path and brick.color_code != placing and (own == null
+				or brick.transform.origin.y > own.transform.origin.y):
+			own = brick
+	var painted: BrickWorld.Brick = own if own != null else top
+	var swap: String = str(SWAP_FOR.get(top.part_id, "3024"))
+	match kind:
+		"put", "put_placing":
+			var colour: int = 2 if kind == "put" else placing
+			var put: int = await _hand_put_in("3024", colour,
+				top.transform.translated(Vector3(0, 40, 0)), path)
+			return "put down #%d, a 3024 in %d, in %s" % [put, colour, path]
+		"move":
+			_pick([top.id])
+			var moved: int = _builder.move_selection(Vector3i(10, 0, 0))
+			await _edited()
+			return "moved #%d %s a stud: %d" % [top.id, top.part_id, moved]
+		"turn":
+			_pick([top.id])
+			var turned: int = _builder.turn_selection(1)
+			await _edited()
+			return "turned #%d %s a quarter: %d" % [top.id, top.part_id, turned]
+		"paint":
+			_pick([painted.id])
+			var count: int = _builder.paint_selection(2)
+			await _edited()
+			return "painted #%d %s (c%d) green: %d" % [painted.id, painted.part_id,
+				painted.color_code, count]
+		"delete":
+			_pick([top.id])
+			var count: int = _builder.remove_selection()
+			await _edited()
+			return "took off #%d %s: %d" % [top.id, top.part_id, count]
+		"swap":
+			_pick([top.id])
+			var done: Vector2i = _builder.replace_selection(swap, true)
+			await _edited()
+			return "replaced #%d %s with a %s: %s" % [top.id, top.part_id, swap, str(done)]
+		"step":
+			var steps: StepsBar = _main.get("_steps")
+			var said: String = _shell.change_steps("new", [top.id], steps.current_step())
+			await _edited()
+			return "#%d %s into a new step: %s" % [top.id, top.part_id, said]
+		"step_copy", "mcp_step_copy":
+			# A copy inside it into a new step of its own, the copy entered.
+			var inner: String = ""
+			for one: String in _paths():
+				if Assemblies.parent_of(one) == path:
+					inner = one
+					break
+			if inner.is_empty():
+				return "no copy inside %s: nothing to do" % path
+			var ids: Array = Array(_shell.assemblies.ids_under(inner))
+			_shell.assemblies.enter(path)
+			var said: String = ""
+			if kind == "step_copy":
+				var steps: StepsBar = _main.get("_steps")
+				said = _shell.change_steps("new", ids, steps.current_step())
+				await _edited()
+			else:
+				said = (await _say("edit_steps", {"op": "new", "bricks": ids})).replace("\n",
+					" / ").left(400)
+			_shell.assemblies.leave_to("")
+			return "%s, in %s, into a new step: %s" % [inner, path, said]
+		"mcp_move":
+			return "edit_model move: " + (await _say("edit_model", {"move": [{"bricks": [top.id],
+				"dx": 1}], "picture": false})).replace("\n", " / ").left(400)
+		"mcp_turn":
+			return "edit_model turn: " + (await _say("edit_model", {"turn": [{"bricks": [top.id],
+				"yaw": 90}], "picture": false})).replace("\n", " / ").left(400)
+		"mcp_paint":
+			return "edit_model recolor: " + (await _say("edit_model", {"recolor": [{"bricks":
+				[painted.id], "color": 2}], "picture": false})).replace("\n", " / ").left(400)
+		"mcp_delete":
+			return "edit_model remove: " + (await _say("edit_model", {"remove": [top.id],
+				"picture": false})).replace("\n", " / ").left(400)
+		"mcp_swap":
+			var at: Dictionary = _placement_of(top.id)
+			var one: Dictionary = {"part": swap, "color": top.color_code}
+			for key: String in ["x", "y", "z", "face", "rot"]:
+				if at.has(key):
+					one[key] = at[key]
+			return "edit_model swap for a %s: " % swap + (await _say("edit_model", {"remove":
+				[top.id], "add": [one], "picture": false})).replace("\n", " / ").left(400)
+		"mcp_step":
+			return "edit_steps new: " + (await _say("edit_steps", {"op": "new",
+				"bricks": [top.id]})).replace("\n", " / ").left(400)
+	return "no such edit %s" % kind
+
+
+## A part put down in the copy at [param path] by hand, as one step.
+func _hand_put_in(part: String, colour: int, at: Transform3D, path: String) -> int:
+	var put: int = _builder.put_part(part, colour, at)
+	if put != 0:
+		_world.get_brick(put).unit = path
+		_world.get_brick(put).group = Assemblies.group_of(path)
+	await _edited()
+	return put
+
+
+## Only the bricks [param ids] selected.
+func _pick(ids: Array) -> void:
+	_builder.clear_selection()
+	for brick_id: int in ids:
+		_builder.selection[brick_id] = true
+	_builder.selection_changed.emit(ids.size())
+
+
+## An edit by hand made: what the app does after one.
+func _edited() -> void:
+	_main.call("_on_model_edited")
+	await _frames(4)
+
+
+## The colour the copy at [param path] shows its parts of colour 16 in, as
+## [method _read_copies] read it off its file against a copy placed in
+## another; [param otherwise] where every copy is placed in one colour.
+func _placing_shown(path: String, otherwise: int) -> int:
+	for def: String in _defs:
+		var placing: Dictionary = _defs[def]["placing"]
+		if not placing.has(path):
+			continue
+		if not (placing[path] as Array).is_empty():
+			return int(placing[path][1])
+		for other: String in placing:
+			if not (placing[other] as Array).is_empty():
+				return int(placing[other][0])
+	return otherwise
+
+
+## Each sub-model's copies as the open file places them, into [member _defs]:
+## definition -> {"paths", "frames" (path -> where it lies against the
+## first copy: the same line's part of each, the one's place against the
+## other's) and "placing" (path -> [the first copy's placing colour, its],
+## or [] where the two show their parts of 16 alike)}. "" when each copy's
+## frame agrees for every line; else why not.
+func _read_copies() -> String:
+	_defs.clear()
+	var lines_of: Dictionary = {}    ## path -> line -> its part there
+	for brick: BrickWorld.Brick in _world.bricks():
+		var path: String = Assemblies.path_of(brick)
+		if _store.scenery.has(brick.id) or path.is_empty():
+			continue
+		if brick.origin.is_empty():
+			return "#%d %s in %s on no line" % [brick.id, brick.part_id, path]
+		var line: String = brick.origin.get_slice("/", brick.origin.get_slice_count("/") - 1)
+		if not lines_of.has(path):
+			lines_of[path] = {}
+		(lines_of[path] as Dictionary)[line] = brick
+	for path: String in _paths():
+		var def: String = Assemblies.definition(Assemblies.leaf(path))
+		if not _defs.has(def):
+			_defs[def] = {"paths": [], "frames": {}, "placing": {}}
+		(_defs[def]["paths"] as Array).append(path)
+	for def: String in _defs.keys():
+		var paths: Array = _defs[def]["paths"]
+		var first: Dictionary = lines_of.get(paths[0], {})
+		# A sub-model of sub-models alone: its copies are said by theirs.
+		if first.is_empty() and paths.all(func(path: String) -> bool:
+				return not lines_of.has(path)):
+			_defs.erase(def)
+			continue
+		for path: String in paths:
+			var mine: Dictionary = lines_of.get(path, {})
+			if mine.keys() != first.keys():
+				return "%s's lines %s, %s's %s" % [path, str(mine.keys()), paths[0],
+					str(first.keys())]
+			var frame: Variant = null
+			var placing: Array = []
+			for line: String in first:
+				var a: BrickWorld.Brick = first[line]
+				var b: BrickWorld.Brick = mine[line]
+				var t: Transform3D = b.transform * a.transform.affine_inverse()
+				if frame == null:
+					frame = t
+				elif not _alike_at(t, frame):
+					return "%s lies unlike %s on line %s" % [path, paths[0], line]
+				if a.color_code != b.color_code:
+					if placing.is_empty():
+						placing = [a.color_code, b.color_code]
+					elif placing != [a.color_code, b.color_code]:
+						return "%s and %s differ in more than a placing colour" % [path, paths[0]]
+			(_defs[def]["frames"] as Dictionary)[path] = frame
+			(_defs[def]["placing"] as Dictionary)[path] = placing
+	return ""
+
+
+static func _alike_at(a: Transform3D, b: Transform3D) -> bool:
+	return a.origin.distance_to(b.origin) < 0.05 and a.basis.x.distance_to(b.basis.x) < 1e-3 \
+		and a.basis.y.distance_to(b.basis.y) < 1e-3 and a.basis.z.distance_to(b.basis.z) < 1e-3
+
+
+## Checked, said [param when]: every copy of each sub-model holds what its
+## first copy does ([method _copies_agree]).
+func _agree(when: String) -> void:
+	var unlike: String = _copies_agree()
+	_asked += 1
+	_agreed += 1 if unlike.is_empty() else 0
+	_check("...%s: every copy of each sub-model alike%s" % [when,
+		"" if unlike.is_empty() else " (%s)" % unlike], unlike.is_empty())
+
+
+## "" when every copy of each sub-model of [member _defs] holds the parts its
+## first copy holds: as many, the same parts in the same places in its own
+## frame, the same of them in a step together and in the same order of
+## steps, and each in the colour the rule gives it (its own, or the copy's
+## placing colour for one in the first copy's, or for one painted from it);
+## else the first that does not.
+func _copies_agree() -> String:
+	for def: String in _defs:
+		var paths: Array = _defs[def]["paths"]
+		var first: Dictionary = _keyed(paths[0], Transform3D.IDENTITY)
+		for path: String in paths.slice(1):
+			var frame: Transform3D = _defs[def]["frames"][path]
+			var placing: Array = _defs[def]["placing"][path]
+			var mine: Dictionary = _keyed(path, frame)
+			if mine.keys().size() != first.keys().size() or not mine.keys().all(
+					func(key: String) -> bool: return first.has(key)):
+				return "%s: %s; %s: %s" % [paths[0], _said_keys(first), path, _said_keys(mine)]
+			for key: String in first:
+				var theirs: Array = first[key]
+				var ours: Array = mine[key]
+				if theirs.size() != ours.size():
+					return "%s has %d of %s, %s %d" % [paths[0], theirs.size(), key, path,
+						ours.size()]
+				theirs.sort()
+				ours.sort()
+				for n: int in theirs.size():
+					var was: int = int(theirs[n])
+					var is_now: int = int(ours[n])
+					var given: int = int(placing[1]) if not placing.is_empty() \
+						and was == int(placing[0]) else was
+					var kept: bool = not placing.is_empty() and is_now == int(placing[1])
+					if is_now != given and not kept:
+						return "%s %s in c%d, in %s c%d" % [paths[0], key, was, path, is_now]
+	return ""
+
+
+## The parts directly in the copy at [param path], and the copies directly
+## inside it, each laid back by [param frame] onto the first copy: "part at
+## turned, step's place in the copy's order of steps" -> [their colours],
+## and "copy of a definition at turned, the step it goes on in" -> [0].
+func _keyed(path: String, frame: Transform3D) -> Dictionary:
+	var bricks: Array = []
+	var steps: Dictionary = {}
+	for brick: BrickWorld.Brick in _world.bricks():
+		if not _store.scenery.has(brick.id) and Assemblies.path_of(brick) == path:
+			bricks.append(brick)
+			steps[brick.step] = true
+	var inside: Array = _paths().filter(func(one: String) -> bool:
+		return Assemblies.parent_of(one) == path)
+	for one: String in inside:
+		steps[int(_world.unit_steps.get(one, -1))] = true
+	var order: Array = steps.keys()
+	order.sort()
+	var out: Dictionary = {}
+	var back: Transform3D = frame.affine_inverse()
+	for brick: BrickWorld.Brick in bricks:
+		var at: Transform3D = back * brick.transform
+		var key: String = "%s %s s%d" % [brick.part_id, _rounded(at), order.find(brick.step)]
+		if not out.has(key):
+			out[key] = []
+		(out[key] as Array).append(brick.color_code)
+	for one: String in inside:
+		var def: String = Assemblies.definition(Assemblies.leaf(one))
+		var placed: String = "?"
+		if _defs.has(def) and (_defs[def]["frames"] as Dictionary).has(one):
+			placed = _rounded(back * (_defs[def]["frames"][one] as Transform3D))
+		var key: String = "copy-of-%s %s s%d" % [def, placed,
+			order.find(int(_world.unit_steps.get(one, -1)))]
+		if not out.has(key):
+			out[key] = []
+		(out[key] as Array).append(0)
+	return out
+
+
+static func _rounded(at: Transform3D) -> String:
+	var out := PackedStringArray()
+	for value: float in [at.origin.x, at.origin.y, at.origin.z]:
+		var v: float = snappedf(value, 0.1)
+		out.append("%.1f" % (0.0 if absf(v) < 0.05 else v))
+	for axis: Vector3 in [at.basis.x, at.basis.y, at.basis.z]:
+		for value: float in [axis.x, axis.y, axis.z]:
+			out.append(str(roundi(value * 1000.0)))
+	return ",".join(out)
+
+
+static func _said_keys(keyed: Dictionary) -> String:
+	var out: Array = []
+	for key: String in keyed:
+		out.append("%s x%d" % [key.get_slice(" ", 0) + " " + key.get_slice(" ", 1).left(24)
+			+ " " + key.get_slice(" ", 2), (keyed[key] as Array).size()])
+	out.sort()
+	return " | ".join(out)
+
+
+## cf2check F2: a session's clear of the app's own file with a part on its
+## way (cfc_absent.ldr), undone as it has come: put down in the undo; its
+## redo takes it off with the rest and the baseplate is bare; undone again,
+## every part back once, and the save writes the part once.
+func _case_clear_redo() -> void:
+	var text: String = _fixture("cfc_absent.ldr")
+	await _open(text)
+	var count: int = _parts_here()
+	_store.awaited.append(LdrModel.Placement.new("3001", 2, Transform3D(Basis.IDENTITY,
+		Vector3(0, 200, 0)), 0))
+	await _say("clear_model", {})
+	await _say("undo", {})
+	await _frames(6)
+	_check("...undone: %d parts and the one come since (%d)" % [count, _parts_here()],
+		_parts_here() == count + 1)
+	await _say("undo", {"redo": true})
+	await _frames(6)
+	_check("...redone: the baseplate bare, nothing left behind (%d)" % _parts_here(),
+		_parts_here() == 0)
+	await _say("undo", {})
+	await _frames(6)
+	_check("...undone again: %d parts, each once (%d)" % [count + 1, _parts_here()],
+		_parts_here() == count + 1)
+	var saved: String = _save()
+	_check("...saved: one green 3001 line, the zz9999 line kept (%d)"
+		% RegEx.create_from_string("\\n1 2 [^\\n]*3001\\.dat").search_all(saved).size(),
+		saved.contains("zz9999.dat") and RegEx.create_from_string("\\n1 2 [^\\n]*3001\\.dat")
+			.search_all(saved).size() == 1)
+	_shell.run("redo")
+	await _frames(6)
+	_check("...redone by hand: bare again (%d)" % _parts_here(), _parts_here() == 0)
+
+
+func _parts_here() -> int:
+	var n: int = 0
+	for brick: BrickWorld.Brick in _world.bricks():
+		n += 0 if _store.scenery.has(brick.id) else 1
+	return n
+
+
 # -- copyfaults2's helpers -----------------------------------------------------------
 
 
@@ -882,25 +1335,41 @@ func _shape_steps(path: String) -> Array:
 ## and line) and the world's tables as [param opened] and [param tables];
 ## redone, as the edit left them; saved and opened again, every part as
 ## shown; saved again, the same file, but for the title line a reopened
-## whole write gains (metalines').
-func _round_of(what: String, opened: Array, tables: String) -> void:
+## whole write gains (metalines'). [param each], given, is told each of
+## "undone", "redone" and "reopened" there. [param edits]: how many steps
+## of history the edit took, each undone and redone.
+func _round_of(what: String, opened: Array, tables: String, each: Callable = Callable(),
+		edits: int = 1) -> void:
 	var after: Array = _every_part()
 	var after_tables: String = _tables()
-	_shell.run("undo")
-	await _frames(6)
+	for i: int in edits:
+		_shell.run("undo")
+		await _frames(6)
 	_check("...%s undone: every part as opened%s" % [what, _unlike(opened, _every_part())],
 		_every_part() == opened)
 	_check("...the tables as opened", _tables() == tables)
-	_shell.run("redo")
-	await _frames(6)
+	if each.is_valid():
+		each.call("undone")
+	for i: int in edits:
+		_shell.run("redo")
+		await _frames(6)
 	_check("...redone: every part as the edit left it%s" % _unlike(after, _every_part()),
 		_every_part() == after)
 	_check("...the tables as it left them", _tables() == after_tables)
+	if each.is_valid():
+		each.call("redone")
 	var shown: Array = _looks()
+	var shown_low: Array = _looks_low()
 	var saved: String = _save()
 	await _open(saved)
+	# Opened, a model stands on the floor: one whose lowest part was taken
+	# off or made lower stands lower, all of it alike.
+	if shown != _looks() and shown_low == _looks_low():
+		print("  note: opened again, the model stands on the floor, every part alike lower")
 	_check("...saved and opened again: every part, colour, place and step as shown%s"
-		% _unlike(shown, _looks()), shown == _looks())
+		% _unlike(shown, _looks()), shown == _looks() or shown_low == _looks_low())
+	if each.is_valid():
+		each.call("reopened")
 	var again: String = _save()
 	if again != saved and _as_kept(again) == _as_kept(saved):
 		print("  note: saved again, %s; the same once those are set aside" % _first_unlike(saved,
@@ -969,6 +1438,22 @@ func _looks(with_steps: bool = true) -> Array:
 	var out: Array = _placed(_every_part()).map(func(line: String) -> String:
 		var looks: String = line.get_slice(" [", 0)
 		return looks if with_steps else looks.left(looks.rfind(" s")))
+	out.sort()
+	return out
+
+
+## [method _looks] from the lowest part's place up: as alike when the whole
+## model stands higher or lower.
+func _looks_low() -> Array:
+	var low: float = INF
+	for brick: BrickWorld.Brick in _world.bricks():
+		if not _store.scenery.has(brick.id):
+			low = minf(low, brick.transform.origin.y)
+	var out: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		if not _store.scenery.has(brick.id):
+			out.append("%s c%d %s s%d" % [brick.part_id, brick.color_code,
+				_numbers(brick.transform.translated(Vector3(0, -low, 0))), brick.step])
 	out.sort()
 	return out
 

@@ -1602,7 +1602,21 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   from the twin, and one put down goes in the twin's placing colour if it was
   put down in the copy's, else in its own; a step edit changes the twins'
   steps only, and no other part of a twin changes number, colour or order
-  (`copyfaults_probe` twin_*, `cfcheck_probe`). A session's `edit_model`
+  (`copyfaults_probe` twin_*, `cfcheck_probe`). One pass makes each edit
+  once in each copy of each definition, however deep: every part a follow
+  lays is claimed for the pass (`Assemblies._follow`, `_put_already`), so a
+  plate put down on Car#1/Wheel#1 is one plate on Car#2/Wheel#3, not one for
+  the wheel's plan and one more for each car's (cffix, cf2check's F1). The
+  first step edit on a model with no steps follows too (its steps made and
+  the edit in one step: `Assemblies.ensured`, the step's "ensured"), and the
+  copies inside copies get their steps by read order
+  (`AuthorSteps._copies_alike`), so Car#2's wheels, Wheel#3 and #4, step as
+  Car#1's. `copyfaults_probe` twin_every checks it as one invariant: every
+  edit kind, by hand and over MCP, in a copy at depth 1, 2 and 3
+  (cf2_nest_same, cfc_nested, cf2_axles), leaves every copy of each
+  definition the same parts (count, part, colour rule, place in its own
+  frame, step) over undo, redo, save, open and a second save;
+  `cf2check_probe` is cf2check's attack, kept. A session's `edit_model`
   is followed the same way (`CommandSocket._one_step`). An assembly every part of which the edit moved alike (all of
   it nudged or turned) is the shape it was, and its copies are left alone; an
   undo or redo brings its copies' steps with it and builds none again. The

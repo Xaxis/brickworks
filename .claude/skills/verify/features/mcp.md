@@ -1046,7 +1046,9 @@ All of these are in `tools/check.sh`.
   (`BrickWorld.section_lines`), motions, sections broken out and the model's
   name, file and lift (`ModelStore.identity`, Builder's "store" step), the
   parts it holds but does not show and those still being fetched, which land
-  after the undo (`identity`'s "awaited", `ModelStore._land_arrived`), and the
+  in the undo's own step (`identity`'s "awaited", `ModelStore._land_arrived`,
+  their numbers in its "landed"), so its redo takes them off again and back
+  on their way (`copyfaults_probe` clear_redo), and the
   file Save as wrote (`Main._put_identity`, `ModelBar.on_disk`); as the
   difference, the undo lost the steps and looks, put the parts back as an
   Untitled model with no file, and its redo left a part behind

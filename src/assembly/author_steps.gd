@@ -537,7 +537,20 @@ static func _copies_alike(world: BrickWorld, numbers: Dictionary, skip: Dictiona
 			own[path] = []
 		(own[path] as Array).append(brick)
 	var by_definition: Dictionary = {}
+	var inside: Dictionary = {}    ## path -> the copies directly in it
+	var lowest: Dictionary = {}    ## path -> the lowest number of a part under it
+	for brick: BrickWorld.Brick in world.bricks():
+		if skip.has(brick.id):
+			continue
+		var under: String = ""
+		for segment: String in Assemblies.segments(Assemblies.path_of(brick)):
+			under = Assemblies.join(under, segment)
+			lowest[under] = mini(int(lowest.get(under, brick.id)), brick.id)
 	for path: String in paths_in(world, skip):
+		var parent: String = Assemblies.parent_of(path)
+		if not inside.has(parent):
+			inside[parent] = []
+		(inside[parent] as Array).append(path)
 		if int(units.get(path, -1)) == IN_PARENT and home(world, path, units).is_empty():
 			continue
 		var named: String = Assemblies.definition(Assemblies.leaf(path))
@@ -570,12 +583,32 @@ static func _copies_alike(world: BrickWorld, numbers: Dictionary, skip: Dictiona
 				continue
 			for n: int in copied.size():
 				bricks[(copied[n] as BrickWorld.Brick).id] = bricks[(model[n] as BrickWorld.Brick).id]
-			for path: String in units.keys():
-				if Assemblies.parent_of(path) != first:
-					continue
-				var twin: String = Assemblies.join(copy, Assemblies.leaf(path))
-				if units.has(twin):
+			# The copies inside it as the first's, each the one read in its
+			# place, as its parts are: the copies of a sub-model are numbered
+			# across the model, so the second car's wheels are Wheel#3 and
+			# Wheel#4, and looked for as the first's Wheel#1, none was found;
+			# the second car's wheels went on in a step the first's did not,
+			# and a save wrote the car once (cffix).
+			var theirs: Array = _in_order(inside.get(first, []), lowest)
+			var ours: Array = _in_order(inside.get(copy, []), lowest)
+			if theirs.size() != ours.size():
+				continue
+			for n: int in theirs.size():
+				var path: String = theirs[n]
+				var twin: String = ours[n]
+				if Assemblies.definition(Assemblies.leaf(path)) \
+						== Assemblies.definition(Assemblies.leaf(twin)) \
+						and units.has(path) and units.has(twin):
 					units[twin] = units[path]
+
+
+## [param paths] in the order their parts were read: by the lowest number
+## of a part under each ([param lowest]).
+static func _in_order(paths: Array, lowest: Dictionary) -> Array:
+	var out: Array = paths.duplicate()
+	out.sort_custom(func(a: String, b: String) -> bool:
+		return int(lowest.get(a, 0)) < int(lowest.get(b, 0)))
+	return out
 
 
 ## The numbers to write into a file for a model that has the author's
