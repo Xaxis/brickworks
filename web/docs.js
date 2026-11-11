@@ -9,6 +9,22 @@
 (() => {
   const mac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 
+  // -- a section that moved to another page (docs-site/_moved.json) -----------
+  // A link to it, or a desktop app's Help for its panel, still lands there:
+  // a fragment never reaches the server, so this page sends it on.
+  let moved = {};
+  try {
+    moved = JSON.parse(document.getElementById("main")?.dataset.moved || "{}");
+  } catch {
+    moved = {};
+  }
+  const followMoved = () => {
+    const id = decodeURIComponent(location.hash.slice(1));
+    if (id && !document.getElementById(id) && Object.hasOwn(moved, id)) location.replace(moved[id]);
+  };
+  followMoved();
+  window.addEventListener("hashchange", followMoved);
+
   // -- the pages list, behind Browse the docs under 900 px ------------------
   const side = document.getElementById("docs-side");
   const browse = document.querySelector(".docs-menu-button");

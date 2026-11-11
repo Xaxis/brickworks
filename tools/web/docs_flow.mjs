@@ -19,7 +19,9 @@
 //   5. The pages list: at 390 px hidden behind Browse the docs, which opens
 //      it, and a link in it goes to its page; at 1400 px down the left, with
 //      the page being read marked; what is on this page marks the section
-//      scrolled to; a deep link lands with its heading in view.
+//      scrolled to; a deep link lands with its heading in view; and a
+//      section that moved to another page (docs-site/_moved.json
+//      "page#anchor") lands where it went from its old address.
 //
 // Pictures in --out: docs_<width>_<theme>.png and search_<width>_<theme>.png.
 import { launch } from "./browser.mjs";
@@ -87,7 +89,7 @@ if (remote) {
   check("/docs/shortcuts.html answers 308 to /docs/shortcuts", old.status === 308 && old.location.endsWith("/docs/shortcuts"), `${old.status} ${old.location}`);
   // A page that moved (docs-site/_moved.json) lands at its new address.
   const moved = JSON.parse(readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "../../docs-site/_moved.json"), "utf8"));
-  for (const [was, now] of Object.entries(moved).filter(([k]) => !k.startsWith("$"))) {
+  for (const [was, now] of Object.entries(moved).filter(([k]) => !k.startsWith("$") && !k.includes("#"))) {
     const answer = await get(`/docs/${was}`, "manual");
     check(`/docs/${was}, moved, answers 308 to /docs/${now}`, answer.status === 308 && answer.location.endsWith(`/docs/${now}`), `${answer.status} ${answer.location}`);
   }
@@ -246,6 +248,22 @@ console.log("docs_flow: the pages list and what is on this page");
   }, heads[1]);
   check(`a deep link (#${heads[1]}) lands with its heading in view`, inView);
   await deep.context.close();
+}
+{
+  // A section that moved to another page (docs-site/_moved.json "page#anchor"):
+  // its old address lands on its new one, as a desktop app's Help opens it.
+  const moved = JSON.parse(readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "../../docs-site/_moved.json"), "utf8"));
+  const sections = Object.entries(moved).filter(([k]) => k.includes("#"));
+  const missed = [];
+  for (const [was, now] of sections) {
+    const { page, context } = await open(`/docs/${was}`, { width: 1400, dark: false });
+    const want = `/docs/${now}`;
+    await page.waitForURL((u) => u.pathname + u.hash === want, { timeout: 8000 }).catch(() => {});
+    const at = new URL(page.url());
+    if (at.pathname + at.hash !== want) missed.push(`${was}: ${at.pathname}${at.hash}`);
+    await context.close();
+  }
+  check(`each of ${sections.length} sections that moved lands where it went from its old address`, missed.length === 0, missed.join("; "));
 }
 
 await browser.close();
