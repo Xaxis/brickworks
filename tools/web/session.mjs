@@ -111,9 +111,10 @@ export async function answerAge(userId, email, atLeast13 = true) {
 /// Not now call. While the beta is open, an account made in the last seven
 /// days that has not answered it is welcomed once, over the builder in
 /// /app or over the page on the site, and until it is answered nothing
-/// else in the app can be pressed or is told to the page: every check on
-/// a beta-open deployment that signed in a new account waited there and
-/// failed (welcomeall, 2026-11-10). Answered here, before any page asks
+/// else in the app can be pressed or is told to the page: on a beta-open
+/// preview together_flow never found the File menu behind it, and
+/// account_flow was never let in after the age question (welcomeall,
+/// 2026-11-10). Answered here, before any page asks
 /// who it is, so it is never shown and no flow need know of it; asked of
 /// every session minted, so a welcome due again is answered again. Only
 /// when due: an account that answered, applied or is a tester keeps what
