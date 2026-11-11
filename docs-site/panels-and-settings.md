@@ -1,6 +1,6 @@
 ---
 panels: ControlsDialog#settings
-ai: The window's parts (menus, toolbar, the parts bin and its colours down the left, the model tree and properties down the right with the assistant as a tab beside them, the status bar), and every setting. Exact positions and hinge angles are typed in Properties.
+ai: The window's parts (the menus with Account at the far right, the toolbar, the parts bin and its colours down the left, the model tree and properties down the right with the assistant as a tab beside them, the key strip over the model, the status bar), Properties, the keys sheet, your own keys, and every setting. Exact positions and hinge angles are typed in Properties; in_view reads the model's size and weight as the status bar says them.
 rules:
   - Settings (,) and the keys sheet (F1, Help › Keys and controls) are two dialogs; the keys sheet keeps the rows that say what is typed into its box.
   - Properties take X, Y and Z to the hundredth of an LDraw unit.
@@ -9,77 +9,53 @@ nav: Panels and settings
 description: The window's panels, the toolbar and status bar, the properties of a part, and every setting.
 ---
 
+This page is a map of the window, what Properties holds, and every setting. Settings is **Tools › Settings…** ([[,]]); every key is on the keys sheet, **Help › Keys and controls** ([[F1]]).
+
 ## The window {#window}
 
-Along the top are the **menus** and under them the **toolbar**: the tools, Snap and Turn, Select by, History, Account and Share. Down the left are the **parts bin** and its colours. Down the right are the **model tree** and **properties**, and the **assistant** when it is on, as a tab beside them: the strip at the column's edge has one for each, and a click on one shows it. Along the foot, the **status bar** says what just happened and what a press will do, and a strip of the commonest keys sits over the model.
+![The Brickworks window with a part of the red car selected, eight parts outlined and numbered: the menus, the toolbar, the parts bin, the colours, the view cube, the key strip, Properties down the right, and the status bar.](/docs/img/panels-window.webp "The window: 1 menus, 2 toolbar, 3 parts bin, 4 colours, 5 view cube, 6 key strip, 7 Properties, 8 status bar.")
+
+1. **Menus**, with the Brickworks menu at the far left (Find a command, the docs, About) and **Account** at the far right.
+2. **Toolbar**: file, undo, the tools, Snap and Turn, and the view tools.
+3. **Parts bin**, with **Make a part…**, **Print…** and **Stickers…** at its top.
+4. **Colours**, under the bin.
+5. **View cube** ([The view](/docs/the-view#view-cube)).
+6. **Key strip**: the commonest keys and mouse moves, over the model. **View › Panels › Key strip** hides it.
+7. **Properties** and the model tree, down the right. With the assistant on, it has a tab of its own on the same strip, and one shows at a time.
+8. **Status bar**: what just happened, what a click would do now, and the model's size.
+
+Rest on a control for its tooltip; it never blocks a click. A long job shows a bar at the foot with **Cancel**. To ask what any control does, use [What's This?](/docs/accessibility#whats-this).
 
 <!-- covers
 ui:status bar
 ui:controls panel and hint
+ui:tooltips let clicks through
+ui:what the app is busy with
 -->
 
-## What's This? {#whats-this}
+## Size and weight {#size}
 
-Press [[Shift+F1]], or choose **Help › What's This?**, then click any button, field, chip or panel: instead of doing what it does, it says so, in a box beside it, with whether it is on and why it is greyed when it is. [[Esc]], a right click or [[Shift+F1]] again stops asking. Over the model, it says what the tool in use does there.
-
-With a part in hand, the status bar says where it goes if you click now: studs across (x) and back (z) from the middle of the floor, and plates up from the ground, such as "x 3, z 1 studs · 6 plates up".
-
-<!-- covers
-ui:what's this
--->
-
-## How big, and how heavy {#size}
-
-The status bar says how many parts the model has, whether it stands up and what it weighs ("61 bricks · stands up · 52 g"), and how big it is: studs across and deep and plates high, then centimetres each way, such as the car's "4.5 × 10.8 studs, 15 plates high · 3.60 × 8.64 × 4.96 cm". The weight is the model's as it is now, every part counted, a part still loading too. Studs and plates are in quarters (4½) only when every number on the line is a whole quarter, and in decimals otherwise; centimetres are to two places. The plates count the height as a wall's is counted, without the studs on top; the centimetres take the studs in, as a shelf has to. The baseplate it stands on is left out. Select some parts and it says how big they are instead, after how many are selected. **Properties** with nothing selected says the same size and about how much the model weighs, worked out from each part's shape. Claude reads both with `in_view`.
+The status bar says how many parts the model has, whether it stands, its weight, and its size in studs, plates and centimetres, as "61 bricks · stands up · 52 g · 4.5 × 10.8 studs, 15 plates high · 3.60 × 8.64 × 4.96 cm". The baseplate is left out. Select some parts and it says their size instead. With a part in hand it says where a click would put it: "x 3, z 1 studs · 6 plates up".
 
 <!-- covers
 ui:model size and weight
 -->
 
-## Your own keys {#keys}
-
-Every tool has a key: [[Shift+X]] Move, [[Shift+O]] Rotate, [[Shift+I]] Hinge, [[Shift+V]] Clone, [[Shift+P]] Paint, [[Shift+G]] Hide and [[Shift+Delete]] Delete. [[C]] paints what is selected; with nothing selected, it says how to paint.
-
-Coming from another program? In the keys sheet ([[F1]]), or in Settings, **Keys like** puts on the keys of BrickLink Studio, Mecabricks or LDCad: with Studio's, [[V]] is Select, [[C]] Clone, [[H]] Hinge, [[L]] Hide, [[Ctrl+G]] makes a sub-model, the arrows turn the part, and [[W]] [[A]] [[S]] [[D]] move it.
-
-To set a key yourself, click it in the keys sheet and press the one you want. [[Esc]] keeps the old key, [[Backspace]] leaves it with none. A key another command already has is refused, and the sheet says whose it is. A few keys are kept for themselves ([[Esc]], [[Enter]], [[Tab]], [[F1]]), and in a browser the browser's own ([[Ctrl+N]], [[Ctrl+T]], [[Ctrl+W]]). **Back to these keys** drops the ones you set. Your keys stay on this computer, and when you are signed in they go with your account to any browser or computer you sign in on.
-
-<!-- covers
-ui:keys of one's own
--->
-
-## Colours on keys {#colour-keys}
-
-Select some parts and press [[Shift+1]] to [[Shift+0]] to paint them one of your ten favourite colours, or [[Ctrl+Shift+1]] to [[Ctrl+Shift+0]] for the colours the model uses most, [[Ctrl+Shift+1]] the most. One key paints them all, and one [[Ctrl+Z]] takes it back. With a part in hand, the key is that part's colour. [[[]] and [[]]] still step through the colours beside the one you have.
-
-The favourites start as the colours LEGO® sets use most: Black, Light Bluish Grey, White and so on. To change one, open the keys sheet ([[F1]]), find **Colours**, click a favourite's swatch and pick a colour. Your favourites are kept with your keys, so they follow your account. With Studio's keys they have no key at first, as in Studio; set any of them in the sheet.
-
-To select more like what is selected: [[Alt+C]] the same colour, [[Alt+P]] the same part, [[Alt+A]] both, [[Alt+J]] everything joined to it, [[Alt+I]] everything else. With Studio's keys, [[Shift+V]] goes through the same colour, the same part, both and everything joined, a press each.
-
-<!-- covers
-ui:colour keys
--->
-
 ## Docked panels {#panels}
 
-Fold a panel by its header, and drag the bar between two to share the room. A click on a column's strip folds it away to the edge, and another brings it back. In a window about 1350 points across or wider (a 1366 x 768 laptop, 1400 x 900, 1920 x 1080), both columns show at once and the model keeps at least half the width: the assistant or the properties open down the right beside the parts bin, which narrows to make room and widens again when they fold. In a narrower window the model keeps 60% of the width, so one column shows beside it at a time, and opening one folds the other. **View** turns each panel on or off, and [[Tab]] shows or hides them all. Brickworks remembers the layout, the folds and the snap you chose, and starts with them next time.
+Fold a panel by its header, and drag the bar between two to share the room. A click on a column's strip folds it to the edge; another brings it back. In a window about 1,350 pixels wide or more, both columns show beside the model; narrower, one at a time. **View › Panels** shows or hides each, and [[Tab]] all of them. The layout is remembered.
+
+Panels that open over the model (the keys sheet, Render, the parts list) stack like windows: the last opened is in front, and a click or its key brings one forward.
 
 <!-- covers
 ui:docked panels
 ui:remembered layout
--->
-
-## Panels over the model {#over-the-model}
-
-The keys sheet, Render, the parts list, My collection, the Library and the other panels that open over the model stack like windows: the one you opened last is in front. Ask again for one that is open behind another, by its key or its menu, and it comes to the front; Account and Share, which open and close from the same button, close. Click any part of one you can see and it comes forward too. The sign-in screen always stays over them all.
-
-<!-- covers
 ui:the panel asked for last in front
 -->
 
 ## The model tree {#model-tree}
 
-At the top of the right-hand column, the model tree lists the model's sub-assemblies and sections by name, inside one another. Click one to select it, double-click to edit inside it. **View › Panels › Model tree** shows or hides it.
+The model tree lists the model's sub-assemblies and sections by name, one inside another. Click one to select it, double-click to edit inside it.
 
 <!-- covers
 ui:model tree
@@ -87,9 +63,9 @@ ui:model tree
 
 ## Properties {#properties}
 
-Select a part and the right-hand column says what it is, under the model tree: its part, its colour, where it stands and what it is joined to, every field in sight. Type its **X**, **Y** and **Z** to the hundredth of an LDraw unit, or, when it hangs from a joint, its **Hinge** angle in degrees. With nothing selected, it holds the floor's settings.
+Select a part and Properties says what it is: its part, colour, place and what it is joined to. Type its **X**, **Y** and **Z** (to the hundredth of an LDraw unit), its **Turn**, **Tilt** and **Roll**, or, on a joint, its **Hinge** angle. With two parts selected across hinges, **Meet** swings them together ([Meet on hinges](/docs/joints-and-mechanisms#meet)). With nothing selected it holds the floor and the model's size and weight.
 
-Whenever the properties down the right are folded or showing the assistant, the parts bin has the selected part's name, colour, **X**, **Y**, **Z**, **Turn**, **Tilt** and **Roll** under it as well, so you can put a part down, type it to its place and take the next without folding the bin. A colour clicked under them paints it. **More** opens the rest down the right.
+While Properties is folded, the same fields sit under the parts bin; **More** opens the rest.
 
 <!-- covers
 ui:properties panel
@@ -97,30 +73,53 @@ ui:properties under the bin
 ui:typed place and hinge
 -->
 
-## Tooltips and busy work {#busy}
+## Your own keys {#keys}
 
-Rest on a control for its tooltip; a tooltip never blocks a click on what is under it. When a command takes more than a moment, a bar at the foot says what Brickworks is working on, with **Cancel**.
+**Keys like**, in the keys sheet or Settings, puts on the keys of BrickLink Studio, Mecabricks or LDCad. With Studio's, [[V]] is Select, [[C]] Clone, [[H]] Hinge and [[L]] Hide.
+
+To set one yourself, click a key in the keys sheet and press the new one; [[Esc]] keeps the old, [[Backspace]] leaves none. A key another command has is refused, saying whose it is. [[Esc]], [[Enter]], [[Tab]], [[F1]] and the browser's own keys ([[Ctrl+N]], [[Ctrl+T]], [[Ctrl+W]]) cannot be set. **Back to these keys** drops yours. Signed in, your keys follow you to any browser.
 
 <!-- covers
-ui:tooltips let clicks through
-ui:what the app is busy with
+ui:keys of one's own
+-->
+
+## Colours on keys {#colour-keys}
+
+[[Shift+1]] to [[Shift+0]] paint the selection one of ten favourite colours, and [[Ctrl+Shift+1]] to [[Ctrl+Shift+0]] the colours the model uses most. With a part in hand, the key is its colour. To change a favourite, find **Colours** in the keys sheet and click its swatch.
+
+<!-- covers
+ui:colour keys
 -->
 
 ## Settings {#settings}
 
-**Tools › Settings…** ([[,]]) opens Settings, what you can change:
+![Settings: Invert zoom direction, Navigate like Studio, Keys like Brickworks and Graphics, Interface size 100% and Language, Reduce motion and Say when a long job is done, New models start on, Assistant (AI) with AI: Claude…, and the version and Updates at the foot.](/docs/img/panels-settings.webp "Tools › Settings… (,) in the desktop app; a browser has no Graphics or Updates.")
 
-- **Navigate like** Studio, Blender or Mecabricks, and which way the wheel zooms ([The view](/docs/the-view#presets)).
+- **Invert zoom direction**, and **Navigate like** Studio, Blender or Mecabricks ([The view](/docs/the-view#presets)).
+- **Keys like** (above).
+- **Interface size**, 85 to 150%, and **Reduce motion** ([Accessibility](/docs/accessibility)).
+- **Language**: English, Deutsch, Français or Español. Parts and colours keep their names. A link can choose one: brickworks.diy/app?lang=de.
+- **Say when a long job is done**: a design, a Best render, the render queue or a build video that finishes while you are elsewhere says so (a browser asks first whether it may notify you).
 - **New models start on**: the floor a new model gets.
-- **Interface size** (85 to 150%) and **Reduce motion** ([Accessibility](/docs/accessibility)).
-- **Say when a long job is done**: a design, a Best render, the render queue or a build video that finishes while you are in another window says so. On the desktop the window asks for your attention and its title starts *Done ·*; in a browser, a notification names the model and what finished (the browser asks whether it may the first time you start one). Nothing is said while you are looking at Brickworks. On until you untick it.
-- **Language**: English, *Deutsch*, *Français* or *Español*, for the menus, tooltips, panels, the keys sheet and the tour. Parts and colours keep their names, as Studio keeps them. **Find a command** takes a command's words in either language. A link can choose one: brickworks.diy/app?lang=de.
-- **Assistant (AI)**: *Build by hand only*, or *Show the assistant* ([Connect your AI](/docs/connect#assistant-on)), and **AI…**: who designs, Claude or another AI on your own key ([Another AI on your own key](/docs/ai#other-ais)).
-- The app's version, at the foot.
-
-**Help › Keys and controls** ([[F1]]) opens the keys sheet on its own: every key and gesture, drawn as keys and pictures of the mouse, in two columns as tall as the window, with the keys the menus show beside them ([Keyboard shortcuts](/docs/shortcuts)). Type into its box and only the rows whose keys or words say it stay: *hinge*, *undo*, *Ctrl*. The letters go to the box, not to the tools they are keys of; Escape closes it.
+- **Assistant (AI)**: *Build by hand only*, or *Show the assistant* ([Connect your AI](/docs/connect#assistant-on)). **AI: Claude…** chooses who designs ([Another AI on your own key](/docs/ai#other-ais)).
+- The app's version, at the foot. The desktop app adds **Graphics** and **Updates** ([The desktop app](/docs/web-and-desktop#desktop)).
 
 <!-- covers
 ui:interface languages
 ui:a long job says when it is done
+-->
+
+## The keys sheet {#keys-sheet}
+
+![The keys sheet with turn typed in its box: only the rows that say turn are left, each with its keys drawn as keys.](/docs/img/panels-keys.webp "Help › Keys and controls (F1), searched for turn.")
+
+**Help › Keys and controls** ([[F1]]) lists every key and mouse move, drawn as keys and pictures of the mouse. Type in its box and only the rows that say it stay: *turn*, *hinge*, *Ctrl*. [[Esc]] closes it. Every key is also on [Keyboard shortcuts](/docs/shortcuts).
+
+## How the app's dialogs look {#dialogs}
+
+Every dialog, chooser and menu has the panels' dark face, every button is edged so it can be seen, and a question's default button is the strong blue one.
+
+<!-- covers
+ui:the app's dialogs and menus
+ui:buttons seen and read
 -->

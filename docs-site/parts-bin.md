@@ -102,12 +102,3 @@ Double-click any part in the bin to swap what is selected for it, in one undo st
 ## Prints, stickers and made parts {#prints}
 
 **Print…** and **Stickers…** in the bin decorate parts, and **Make a part…** makes one the LEGO Group never made. See [Minifigures, prints and made parts](/docs/figures-and-prints).
-
-## How the app's dialogs look {#dialogs}
-
-Every dialog, chooser and menu in the app has the panels' dark face, on the desktop and on the web, and every button is edged so it can be seen on its face; a question's default button is the strong blue one.
-
-<!-- covers
-ui:the app's dialogs and menus
-ui:buttons seen and read
--->

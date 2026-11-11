@@ -85,18 +85,8 @@ Every row and its key: [On a part](/docs/menus#on-a-part).
 
 ## Swing on a hinge {#swing}
 
-Select what hangs from a hinge, a clip or a turntable and press [[J]] to swing it one way, [[Shift+J]] the other, as far as it has room. Its exact angle is typed in [Properties](/docs/panels-and-settings#properties).
+Select what hangs from a hinge, a clip or a turntable and press [[J]] to swing it one way, [[Shift+J]] the other, as far as it has room. Its exact angle is typed in [Properties](/docs/panels-and-settings#properties); to swing a chain of hinges until two parts meet, see [Meet on hinges](/docs/joints-and-mechanisms#meet).
 
 <!-- covers
 ui:swing on a hinge
--->
-
-## Meet on hinges {#meet}
-
-Select a part and the part it should meet, across a chain of hinges, clips or turntables, and press **Meet** in [Properties](/docs/panels-and-settings#properties). Every joint between them swings so a free end of one takes a free end of the other: a click hinge's finger goes into a fork, a pin into its eye, a clip onto a bar. A line of eight hinged plates closes into a ring, 45° each; a wing swings up to meet its strut.
-
-Each joint turns as little as it can, and a click hinge stops on its clicks. Everything built on the chain comes along, in one step to undo. When no swing can make them meet, nothing moves, and the status bar says how far apart the nearest swing leaves them, or what is in the way.
-
-<!-- covers
-ui:meet on hinges
 -->
