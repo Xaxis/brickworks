@@ -895,15 +895,17 @@ Whether what you built is still there tomorrow, and still means the same thing.
   control characters or `<>:"|?*`, no dots or spaces at its ends, Windows'
   device names given a "_", at most 200 UTF-8 bytes; the zip flags its names
   UTF-8 (`StudioIo.UTF8_NAMES`, every zip the app writes). Of two sections of
-  one key ("dup.ldr", "sub\dup.ldr") each file takes the one the model is built
-  of (`LdrModel.files`, `SubModel.span`). The row menu is File, Export's: greyed
+  one key ("dup.ldr", "sub\dup.ldr") each file carries the one the app builds
+  the model of and the one LDView's rule finds by the reference's whole name
+  (`LdrModel.files`, `SubModel.span`, `SubmodelFile._sections_of`), in the
+  whole file's order, so each reads it as it reads the whole. The row menu is File, Export's: greyed
   where `Shell.can` refuses (shared to look at, still being laid); a finger
   held still on a row (`FlingScroll.HOLD_MS`) opens it beside the finger.
   **Check:** `tools/probe.sh subexport_probe -- --shots=DIR` (signs in a
   throwaway account: needs .env; saves a model, so through probe.sh): first a
   line for each of sereview's findings (F1-F7: odd names, copies titled
   `..\..\evil`, the UTF-8 flag in both headers and in All my models' zip, FILE
-  twins by folder and 345-1's House opened alone, the menu's gates, a finger's
+  twins by folder and 345-1's House opened alone and read by LDraw's own rule, the menu's gates, a finger's
   hold, both flags refused; `--cases-only` runs those alone); then 7140-1, the
   castle and the castle with its steps its own; each file's sections against
   the whole file's, line for line; each opened alone to the same parts within

@@ -432,6 +432,7 @@ func _odd_names_case() -> void:
 	await _say("export_model", {"format": "ldraw", "submodels": true})
 	var zip_path: String = _newest("zip")
 	var zip: Dictionary = _zip_members(zip_path)
+	var flags: Array = _utf8_flags(zip_path)
 	var unsafe: Array[String] = []
 	var seen: Dictionary = {}
 	for name: String in zip:
@@ -465,7 +466,6 @@ func _odd_names_case() -> void:
 	_check("F6: each of the %d rows by submodel= is named as the zip names it, one rule for both%s" % [
 		tree.size(), "" if differ.is_empty() else ": not " + ", ".join(differ.slice(0, 4))],
 		differ.is_empty() and not tree.is_empty())
-	var flags: Array = _utf8_flags(zip_path)
 	_check("F2: the zip says its names are UTF-8 (bit 11) in all %d members' own headers (%d) and the directory's (%d), made on Unix (%d), so Tårn.ldr, 城.ldr, 150° read so: %s" % [
 		int(flags[0]), int(flags[1]), int(flags[2]), int(flags[3]), ", ".join(["Tårn.ldr", "城.ldr",
 		"Ferrari 150° Italia.ldr"].map(func(n: String) -> String: return "%s %s" % [n,
@@ -533,6 +533,9 @@ func _twins_case() -> void:
 				continue
 			var text: String = FileAccess.get_file_as_string(_files.path_join(files[0]))
 			await _alone(tag, files[0], text, read[1], read[3], path)
+			var unlike: String = _ldraw_unlike(text, str(read[0]))
+			_check("%s/%s: each reference LDraw's own rule (LDView's) finds a section for in the whole model's file finds the same lines here%s" % [
+				tag, files[0], "" if unlike.is_empty() else ", but not: " + unlike], unlike.is_empty())
 			await _open(str(subject[1]), tag)
 
 
@@ -642,6 +645,71 @@ func _both_flags_case() -> void:
 	var written: PackedStringArray = DirAccess.get_files_at(_files)
 	_check("F7: submodel=Other with submodels=true is refused and writes nothing (%s): %s" % [
 		Array(written), said.left(120)], written.is_empty() and said.contains("not both"))
+
+
+## LDraw's own rule (LDView's, LDCad's): a reference is a section of the
+## file when its whole name, case aside and "\\" as "/", is one; else a
+## part. Each reference of [param text] that rule finds a section for in
+## [param whole], not found so in [param text] or found with other lines:
+## "" for none.
+static func _ldraw_unlike(text: String, whole: String) -> String:
+	var mine: Dictionary = _by_whole_name(text)
+	var theirs: Dictionary = _by_whole_name(whole)
+	var unlike: Array[String] = []
+	for section: String in mine:
+		for line: String in mine[section]:
+			var fields: PackedStringArray = LdrModel._fields(line.strip_edges())
+			if fields.size() < 15 or fields[0] != "1":
+				continue
+			var named: String = _whole_name(" ".join(fields.slice(14)))
+			if theirs.has(named) and (not mine.has(named) or mine[named] != theirs[named]) \
+					and not unlike.has(named):
+				unlike.append(named)
+	return ", ".join(unlike.slice(0, 4))
+
+
+## Each FILE section of [param text] by its whole name ([method _whole_name]),
+## the first of a name as LDView takes it: its lines but FILE and NOFILE,
+## blank ones at its end left off; a text of no FILE line, "" its lines.
+static func _by_whole_name(text: String) -> Dictionary:
+	var out: Dictionary = {}
+	var current: String = ""
+	var lines: Array = []
+	var any: bool = false
+	var reading: bool = true
+	for line: String in text.split("\n"):
+		var word: String = LdrModel.section_word(line)
+		if word == "FILE":
+			if reading and (any or not lines.is_empty()):
+				_keep_section(out, current, lines)
+			current = _whole_name(" ".join(LdrModel._fields(line.strip_edges()).slice(2)))
+			lines = []
+			any = true
+			reading = true
+			continue
+		if word == "NOFILE" or word == "!DATA":
+			if reading:
+				_keep_section(out, current, lines)
+			reading = false
+			lines = []
+			continue
+		if reading:
+			lines.append(line)
+	if reading:
+		_keep_section(out, current, lines)
+	return out
+
+
+## A name as LDraw's rule reads it: lowercase, "\\" as "/".
+static func _whole_name(name: String) -> String:
+	return name.replace("\\", "/").strip_edges().to_lower()
+
+
+static func _keep_section(out: Dictionary, name: String, lines: Array) -> void:
+	while not lines.is_empty() and str(lines.back()).strip_edges().is_empty():
+		lines.pop_back()
+	if not out.has(name):
+		out[name] = lines.duplicate()
 
 
 ## Why a zip entry is not a name every system takes, or "": a folder, the

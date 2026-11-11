@@ -212,11 +212,11 @@ static func _placed_from(keys: Array[String], whole: Whole) -> Array[String]:
 		var key: String = waiting.pop_back()
 		var span: Array = whole.sections[key]
 		for n: int in range(int(span[0]) + 1, int(span[1])):
-			var placed: String = _section_of(whole, _placed_by(whole.lines[n]))
-			if placed.is_empty() or found.has(placed) or placed == whole.main_key:
-				continue
-			found[placed] = true
-			waiting.append(placed)
+			for placed: String in _sections_of(whole, _placed_by(whole.lines[n])):
+				if found.has(placed) or placed == whole.main_key:
+					continue
+				found[placed] = true
+				waiting.append(placed)
 	var out: Array[String] = keys.duplicate()
 	for key: String in whole.order:
 		if found.has(key) and not out.has(key):
@@ -241,21 +241,26 @@ static func _placed_by(raw: String) -> String:
 	return " ".join(fields.slice(14))
 
 
-## The section of the whole file a reference to [param reference] is built
-## of, as the app builds it: a sub-model's, the one LdrModel keeps for its
-## key (of "dup.ldr" and "sub\dup.ldr", the last); a part's own file's, by
-## its whole name, else the last of its file name (CustomParts.needs); ""
-## for none.
-static func _section_of(whole: Whole, reference: String) -> String:
+## The sections of the whole file a reference to [param reference] is read
+## as, each reader's, so the cut reads as the whole does in each: the app's
+## (a sub-model the one LdrModel keeps for its key, of "dup.ldr" and
+## "sub\dup.ldr" the last; a part's own file by its whole name), and
+## LDraw's own (LDView's, LDCad's: the section of its whole name, case
+## aside, "\" as "/"). Else the last of its file name, as the app falls
+## back (CustomParts.needs), or of its key. In the file's order, so of two
+## of one key the app's is still the last. [] for none.
+static func _sections_of(whole: Whole, reference: String) -> Array[String]:
+	var out: Array[String] = []
 	if reference.is_empty():
-		return ""
+		return out
 	var sub: LdrModel.SubModel = whole.model.submodels.get(LdrModel._key(reference))
-	if sub != null:
-		var section: String = LdrModel.whole_name(sub.name)
-		return section if whole.sections.has(section) else ""
+	if sub != null and whole.sections.has(LdrModel.whole_name(sub.name)):
+		out.append(LdrModel.whole_name(sub.name))
 	var named: String = LdrModel.whole_name(reference)
-	if whole.sections.has(named):
-		return named
+	if whole.sections.has(named) and not out.has(named):
+		out.append(named)
+	if not out.is_empty():
+		return out
 	var found: String = ""
 	for each: String in whole.order:
 		if each.get_file() == named.get_file():
@@ -265,7 +270,9 @@ static func _section_of(whole: Whole, reference: String) -> String:
 		for each: String in whole.order:
 			if LdrModel._key(each) == key:
 				found = each
-	return found
+	if not found.is_empty():
+		out.append(found)
+	return out
 
 
 ## The section the copy at [param path] is built of: its sub-model's, as
@@ -467,9 +474,9 @@ static func _cut_built_within(whole: Whole, path: String) -> Made:
 		if before.begins_with(LdrModel.COPY_META):
 			body.append(whole.lines[n - 1])
 		body.append(whole.lines[n])
-		var placed: String = _section_of(whole, _placed_by(whole.lines[n]))
-		if not placed.is_empty() and placed != whole.main_key and not references.has(placed):
-			references.append(placed)
+		for placed: String in _sections_of(whole, _placed_by(whole.lines[n])):
+			if placed != whole.main_key and not references.has(placed):
+				references.append(placed)
 	var keys: Array[String] = _placed_from(references, whole) if not references.is_empty() \
 		else ([] as Array[String])
 	# Named as a section's file is, and its FILE and Name lines so: titled
