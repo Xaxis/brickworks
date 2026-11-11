@@ -884,7 +884,12 @@ var _names: Dictionary = {}
 ## has it: a block the file keeps that nothing places (kt5check F5: the last
 ## copy taken off, its block kept on the save) renames no copy of the
 ## model's, as one of the same title did. Never with a "/" or a "#", which
-## the path uses.
+## the path uses. The model's own section is no assembly and clashes with
+## none: a model saved as "Flap" round its sub-model Flap had it back as
+## "Flap (flap)", and a motion of Flap#1 found nothing to move (motions).
+## Up to the exact names, the two had one key wherever the model's file
+## and its first section had one stem, and the model was dropped from the
+## table by chance.
 func _assembly_names() -> Dictionary:
 	# The sub-models the model places, at any depth.
 	var placed: Dictionary = {}
@@ -902,25 +907,29 @@ func _assembly_names() -> Dictionary:
 	# "sub/roof.ldr"), and two of one stem by their file names whole.
 	var stems: Dictionary = {}
 	for key: String in submodels:
-		stems[stem(key)] = int(stems.get(stem(key), 0)) + 1
+		if submodels[key] != main:
+			stems[stem(key)] = int(stems.get(stem(key), 0)) + 1
 	var titles: Dictionary = {}
 	var by_title: Dictionary = {}    ## title -> how many the model places
 	var all_titled: Dictionary = {}  ## title -> how many the file has
 	for key: String in submodels:
 		var sub: SubModel = submodels[key]
-		var plain: String = stem(key) if int(stems[stem(key)]) == 1 else key
+		var plain: String = stem(key) if int(stems.get(stem(key), 0)) <= 1 else key
 		var title: String = (sub.title if not sub.title.is_empty() else plain) \
 			.replace("/", "-").replace("#", "").strip_edges()
 		titles[key] = title
+		if sub == main:
+			continue
 		all_titled[title] = int(all_titled.get(title, 0)) + 1
 		if placed.has(sub):
 			by_title[title] = int(by_title.get(title, 0)) + 1
 	var out: Dictionary = {}
 	for key: String in submodels:
 		var title: String = titles[key]
-		var alone: bool = int(by_title.get(title, 0)) == 1 if placed.has(submodels[key]) \
-			else int(all_titled[title]) == 1
-		var plain: String = stem(key) if int(stems[stem(key)]) == 1 else key
+		var alone: bool = submodels[key] == main \
+			or (int(by_title.get(title, 0)) == 1 if placed.has(submodels[key])
+				else int(all_titled[title]) == 1)
+		var plain: String = stem(key) if int(stems.get(stem(key), 0)) <= 1 else key
 		out[key] = title if alone \
 			else "%s (%s)" % [title, plain.replace("/", "-").replace("#", "")]
 	return out

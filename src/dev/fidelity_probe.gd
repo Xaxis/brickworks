@@ -446,6 +446,17 @@ static func _once_block() -> String:
 	return FILE.substr(from, FILE.find("0 NOFILE", from) + 8 - from)
 
 
+## How many FILE lines of [param text] name [param file], as LDraw compares
+## a name (LdrModel._key).
+static func _files_named(text: String, file: String) -> int:
+	var count: int = 0
+	for line: String in text.split("\n"):
+		if LdrModel.section_word(line) == "FILE" \
+				and LdrModel._key(LdrModel.file_name_of(line)) == LdrModel._key(file):
+			count += 1
+	return count
+
+
 ## How many lines of [param text] place [param file].
 static func _placing(text: String, file: String) -> int:
 	var count: int = 0
@@ -516,9 +527,13 @@ func _unplaced_kept() -> void:
 	_expect(saved.contains(block) and _placing(saved, "fidelity - once.ldr") == 0,
 		"written whole: the block kept as the file had it, nothing placing it (%s)"
 		% str(_store.get("last_whole")))
-	_expect(not saved.contains("0 FILE fidelity - twice.ldr")
-		and not saved.contains("0 FILE fidelity - band.ldr"),
-		"...and no section the model still places written twice")
+	# Each section the model still places once, under the name the file
+	# gives it (BrickWorld.section_files), never as well as the file's block.
+	_expect(_files_named(saved, "fidelity - twice.ldr") == 1
+		and _files_named(saved, "fidelity - band.ldr") == 1
+		and saved.count("\n0 Twice\n") == 1 and saved.count("\n0 Band\n") == 1,
+		"...and no section the model still places written twice: %d FILE fidelity - twice.ldr, %d FILE fidelity - band.ldr"
+		% [_files_named(saved, "fidelity - twice.ldr"), _files_named(saved, "fidelity - band.ldr")])
 	_open(saved)
 	_expect(_model() == model, "...opened again, the model as edited")
 	# Emptied and filled again: the model's Once written, the file's block
@@ -546,7 +561,10 @@ func _unplaced_kept() -> void:
 		"...opened again, the model and its copies as edited (%s; edited %s)"
 		% [", ".join(_units()), ", ".join(units)])
 	# The pod taken off, the model written whole: its block as the file has
-	# it, and the fin's it places, beside the model's own fin.
+	# it, and the fin it places the model's own, written once under the
+	# file's name: a second block of that name is one LDraw reads as nothing
+	# (LdrModel.twin_key), and under another name the pod's fin is not the
+	# model's, as it is in the file.
 	_open(NESTED)
 	for brick: BrickWorld.Brick in _world.bricks():
 		if brick.unit.begins_with("Pod#1"):
@@ -558,11 +576,10 @@ func _unplaced_kept() -> void:
 	saved = _store.to_text(_store.title, true)
 	var pod_block: String = NESTED.substr(NESTED.find("0 FILE rig - pod.ldr"),
 		NESTED.find("0 FILE rig - fin.ldr") - NESTED.find("0 FILE rig - pod.ldr"))
-	var fin_block: String = NESTED.substr(NESTED.find("0 FILE rig - fin.ldr"))
-	_expect(saved.contains(pod_block) and saved.contains(fin_block)
-		and saved.count("\n0 Fin\n") == 2,
-		"the pod taken off, written whole: its block and the fin's it places kept as the file has them, beside the model's fin (%d called Fin)"
-		% saved.count("\n0 Fin\n"))
+	_expect(saved.contains(pod_block) and _files_named(saved, "rig - fin.ldr") == 1
+		and saved.count("\n0 Fin\n") == 1,
+		"the pod taken off, written whole: its block kept as the file has it, the fin it places the model's own under the file's name (%d FILE rig - fin.ldr, %d called Fin)"
+		% [_files_named(saved, "rig - fin.ldr"), saved.count("\n0 Fin\n")])
 	_open(saved)
 	_expect(_model() == model and _units() == units,
 		"...opened again, the model and its copies as edited (%s; edited %s%s)" % [

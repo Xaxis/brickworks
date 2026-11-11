@@ -633,11 +633,12 @@ func _all_models_case() -> void:
 		and int(flags[1]) == zip.size() and int(flags[2]) == zip.size() and int(flags[3]) == zip.size())
 
 
-## F3: of two sections of one key, each file the twin the model is built
-## of, opened alone to the same parts: the twins model, and 345-1's House,
-## whose part carries two subparts so (s\345 - u9078s01.dat).
+## F3: of two sections of one stem, each file the one the model is built
+## of, opened alone to the same parts: the twins model ("dup.ldr" is "Dup.ldr",
+## any case, as LDView reads it; "sub\dup.ldr" another, placed by nothing),
+## and 345-1's House, whose part carries two subparts so (s\345 - u9078s01.dat).
 func _twins_case() -> void:
-	for subject: Array in [["F3 twins", TWINS_MODEL, ["Dup second", "Other"]],
+	for subject: Array in [["F3 twins", TWINS_MODEL, ["Dup first", "Other"]],
 			["F3 345-1", FileAccess.get_file_as_string("res://vendor/omr/files/345-1.mpd"), ["House"]]]:
 		var tag: String = subject[0]
 		await _open(str(subject[1]), tag)

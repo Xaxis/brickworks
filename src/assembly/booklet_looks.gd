@@ -1711,8 +1711,10 @@ static func _pulls_follow_parts(text: String, looks: Dictionary, names: Dictiona
 	if pulled.is_empty():
 		return
 	# Each section's steps as the file has them: every file each puts in,
-	# parts and sub-models alike, by its key ({file: true}), and in order.
-	var steps: Dictionary = {}       ## definition -> [{"put": {file: true}, "order": [file]}]
+	# parts and sub-models alike, by its part's number ({file: true}), as a
+	# pull names its parts, and in order by its name as a section is keyed
+	# (LdrModel._key): "a.ldr", never "a", is the sub-model a.ldr.
+	var steps: Dictionary = {}       ## definition -> [{"put": {number: true}, "order": [key]}]
 	var definition_by: Dictionary = {}   ## file key -> definition
 	var definition: String = ""
 	var step: int = 0
@@ -1735,14 +1737,13 @@ static func _pulls_follow_parts(text: String, looks: Dictionary, names: Dictiona
 		var fields: PackedStringArray = LdrModel._fields(line)
 		if fields.size() < 15:
 			continue
-		# By its part's number, as a pull names its parts.
-		var file: String = LdrModel.stem(LdrModel.reference_of(line))
+		var reference: String = LdrModel.reference_of(line)
 		var of: Array = steps.get(definition, [])
 		while of.size() <= step:
 			of.append({"put": {}, "order": []})
 		steps[definition] = of
-		(of[step]["put"] as Dictionary)[file] = true
-		(of[step]["order"] as Array).append(file)
+		(of[step]["put"] as Dictionary)[LdrModel.stem(reference)] = true
+		(of[step]["order"] as Array).append(LdrModel._key(reference))
 	for name: String in pulled:
 		var look: Dictionary = looks[name]
 		var named: Array = look["pull"]["parts"]
