@@ -2028,8 +2028,8 @@ func _fill_history(menu: PopupMenu) -> void:
 func _ask_save_as() -> void:
 	# The desktop's is the platform's Save dialog, and a file where it says.
 	if not OS.has_feature("web"):
-		var path: String = await SaveTo.ask(SubmodelFile.safe_name(bar.model_name(),
-			SubmodelFile.MOST_BYTES - 4, "model") + bar.ldraw_extension(), "", "Save as")
+		var path: String = await SaveTo.ask(SubmodelFile.named(bar.model_name(),
+			bar.ldraw_extension()), "", "Save as")
 		if not path.is_empty():
 			await bar.save_to_file(path)
 		return

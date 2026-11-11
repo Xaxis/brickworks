@@ -935,21 +935,37 @@ Whether what you built is still there tomorrow, and still means the same thing.
   steps (the castle's towers, `AuthorSteps.IN_PARENT`) has no section: its file
   is its lines out of the parent's, a step for each of the parent's steps it is
   in, in the parent's coordinates. Each file's name is made safe by one rule
-  (`SubmodelFile.file_name`/`safe_name`): what follows the last / or \, no
-  control characters, marks that turn the text (`SubmodelFile.TURNS`:
-  "x", U+202E, "exe.ldr" showed as "xrdl.exe") or `<>:"|?*`, no dots or spaces at its
-  ends, Windows' device names given a "_" (CONIN$ and CONOUT$ too), at most 200
-  UTF-8 bytes; two names alike but for case and accents are two files ("Café"
-  as one letter and as e and its accent: Café_2.ldr, `SubmodelFile._one_key`),
-  as libarchive's unzips and a macOS disk take them as one; the zip flags its
+  (`SubmodelFile._safe_name`; a FILE line's name by `file_name`, what follows
+  its last / or \, a folder there): no control characters, marks that turn
+  the text (`SubmodelFile.TURNS`: "x", U+202E, "exe.ldr" showed as
+  "xrdl.exe") or `<>:"|?*`, a / or \ in a title a "_" (a title's, never a
+  folder's), no dots or spaces at its ends, nor a character that draws
+  nothing first (`UNSEEN`) or a joiner last (`LOOSE_ENDS`), a title of
+  nothing to see named "model" (a sub-model "submodel"), Windows' device
+  names given a "_" looked for in the whole name with its tail (CON is
+  con_.mpd, con_instructions.html no device's; CONIN$ and CONOUT$ too), at
+  most 200 UTF-8 bytes cut between two characters as a reader sees them
+  (TextServer's grapheme breaks: が as か and its mark, é as e and its
+  accent, a family of faces kept whole); two names one to a disk or an
+  unzip (case aside, once each letter is its canonical decomposition:
+  "Café" as one letter and as e and its accent, `SubmodelFile._one_key`
+  with `src/parts/canonical_forms.gd`, written by
+  `tools/canonical_forms.py`) are a name and its "_2", as libarchive's
+  unzips and a macOS disk take them as one; Cafe and Café, Ma, Má and Mạ,
+  かっこう and がっこう stay apart (se4check); the zip flags its
   names UTF-8 (`StudioIo.UTF8_NAMES`, every zip the app writes). The same rule
   names every file the app writes after a title (`SubmodelFile.titled`: the
   zip itself, File, Export's every kind, a picture, a render, the instructions
-  and their PDF, a parts list, a sticker sheet, Save as's suggestion): "My:
+  and their PDF, a parts list), and as the title is written, case and spaces
+  kept, where a person names it (`SubmodelFile.named`: Save as's suggestion,
+  the sticker sheet; "AC/DC" is AC_DC.mpd, which was DC.mpd): "My:
   Castle?" was my:_castle?_submodels.zip, and a title 300 letters long a name
   of 314 bytes no file system takes (se3check). The share page's downloads
-  keep their own ASCII rule (`fileName` in `api/share.js`), Windows' device
-  names given a "_" the same way. Of two sections of
+  keep their own rule (`fileName` in `api/share.js`): its words joined by
+  hyphens, letters and numbers in any script (がっこう, which was "model"),
+  sent in `filename*` with an ASCII `filename` beside it (`attachment`), a
+  Windows device's "_" looked for in the whole name (con_.mpd, con-v2.mpd;
+  `tests/test_download_names.py`). Of two sections of
   one key ("dup.ldr", "sub\dup.ldr") each file carries the one the app builds
   the model of and the one LDView's rule finds by the reference's whole name
   (`LdrModel.files`, `SubModel.span`, `SubmodelFile._sections_of`), in the
@@ -975,7 +991,11 @@ Whether what you built is still there tomorrow, and still means the same thing.
   same to the byte before and after; the tree's menu pictured at 1400 x 900 and
   1280 x 720; se3check's lines (2-5: Café two ways, the marks that turn text,
   CONIN$ and CONOUT$, "My: Castle?" and a 300-letter title through every export
-  over MCP). F5 on a phone and a tablet: `tools/probe.sh subexport_phone_probe`
+  over MCP); se4check's lines (1-8: Save as and the sticker sheet keep a title
+  whole, the keyboard chooses from a menu a hold left open, the zip's twins only
+  where a disk sees one name, a Ctrl-click on a row on a Mac, titles of nothing
+  to see, the cut between characters, CON's tail, the tree filled as its panel
+  opens). F5 on a phone and a tablet: `tools/probe.sh subexport_phone_probe`
   (390 x 844) and `subexport_tablet_probe` (1180 x 820), F5 alone there and a
   right click's menu beside the pointer.
 - `parts lists for shops` (`src/assembly/shop_lists.gd`, File, Export → BrickLink

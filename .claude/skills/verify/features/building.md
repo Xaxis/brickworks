@@ -718,7 +718,9 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   window has no room; a finger's above it (the hand is under the finger),
   half a fingertip away where there is room and no nearer than
   `TouchSizing.NEAREST` points, else below it, never over it. A menu a hold
-  opened is chosen from by a tap: the holding finger's own lift chooses
+  opened is chosen from by a tap or the keyboard (a key's press lets the hold
+  go, as a tap's does: held, lifted, then Down and Enter chose nothing,
+  se4check): the holding finger's own lift chooses
   nothing wherever it lifts (`TouchSizing.chosen`, asked by the menu's
   handler), as Godot's menu took a held button let go over an item 400 ms on
   as a choice and a finger slid onto the menu below a top row exported a file. Placed once at the desktop's size, the tree's
@@ -1662,7 +1664,11 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   has changed: the model's revision and undo history, how many parts are
   hidden and locked, the sub-assembly being edited, what is broken out and
   selected; folded, its header's count is the counts line's
-  (`Inventory.pieces_of_model`). Probe: `assembly_probe`; `see_inside_probe`
+  (`Inventory.pieces_of_model`). Worked out only while it is shown, it is
+  worked out as it is shown (`Outliner._notification`, its panel opened):
+  it stood empty, or the last model's, up to half a second (se4check 8).
+  A right click on a row, or on a Mac a Ctrl-click (`EditVerbs.mac_right_click`,
+  the view's and a part's rule too), opens its row menu. Probe: `assembly_probe`; `see_inside_probe`
   drags the cut up Orthanc with it folded and open, and has it say a
   sub-model hidden and locked by the keys and a part taken off and put back.
 - `sections`: a model split as a builder builds it, one section at a time

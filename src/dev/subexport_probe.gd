@@ -64,6 +64,18 @@
 ## and CONOUT$ given a "_" (4); and a model titled "My: Castle?", and one
 ## 300 letters long, through every export over MCP: each file named by the
 ## one rule, and written (5).
+## And se4check's (2026-11-11), a line each: Save as and the sticker sheet
+## keep a title's words before a "/" ("AC/DC" was DC.mpd) (1); held, lifted,
+## then the keyboard's Down and Enter chooses from the row's menu (2, F5's
+## last line, a phone's and a tablet's too); the zip's twins only where a
+## disk or an unzip sees one name: Cafe and Café two files, Café as one
+## letter and as e and its accent one name and its "_2" (3); a Ctrl-click
+## on a row opens its menu on a Mac, and on nothing else (4); a title of
+## nothing to see named "model" (5); the 200-byte cut between two
+## characters as a reader sees them (6); a Windows device's name looked for
+## with the tail: CON is con_.mpd and con_bricklink.xml (7); the model tree
+## filled as its panel opens, not half a second on (8). The share page's (9)
+## is tests/test_download_names.py.
 ## --cases-only runs those alone.
 ## Pictures go to --shots=DIR, else user://subexport.
 extends SceneTree
@@ -465,6 +477,7 @@ func _review_cases() -> void:
 	await _finger_case()
 	await _both_flags_case()
 	await _titled_case()
+	await _se4check_cases()
 
 
 ## F5 laid out for a finger: a phone's, at a browser's scale, or a tablet's.
@@ -552,9 +565,11 @@ func _odd_names_case() -> void:
 		and zip.has("城.ldr") and zip.has("Ferrari 150° Italia.ldr"))
 
 
-## What two names a file system or an unzip takes as one have alike.
+## What two names a file system or an unzip takes as one have alike: the
+## app's own key (SubmodelFile._one_key), which se4check's 3 holds to its
+## cases ([method _twins_by_accent_case]).
 static func _one_key(name: String) -> String:
-	return TextServerManager.get_primary_interface().strip_diacritics(name).to_lower()
+	return SubmodelFile._one_key(name)
 
 
 ## Whether [param name] has a mark that turns the way text runs.
@@ -783,6 +798,17 @@ func _finger_case() -> void:
 	var slid: PackedStringArray = DirAccess.get_files_at(_files)
 	_check("%s: held again (its menu at %s) and slid onto its first item, the lift there chooses nothing (written %s) and leaves the menu open (%s)" % [
 		on, _rect_words(again), Array(slid), menu.visible], menu.visible and slid.is_empty())
+	# se4check 2: the menu a hold left open, chosen from by the keyboard.
+	var held_open: bool = menu.visible
+	_clear_files()
+	await _key(KEY_DOWN)
+	var focused: int = menu.get_focused_item()
+	await _key(KEY_ENTER)
+	await _until_file(["ldr", "mpd"])
+	var by_keys: PackedStringArray = DirAccess.get_files_at(_files)
+	_check("se4check 2 (%s): the menu a hold left open (%s), then Down (item %d) and Enter: writes Other's file (%s), the menu put away (%s)" % [
+		on, held_open, focused, ", ".join(by_keys), not menu.visible],
+		held_open and focused == 0 and Array(by_keys) == ["other.mpd"] and not menu.visible)
 	menu.hide()
 	await _frames(6)
 
@@ -873,6 +899,265 @@ func _titled_case() -> void:
 		_check("se3check 5: a model titled %s, each export over MCP written and named by the one rule: %s%s" % [
 			_shown(title), ", ".join(written), "" if wrong.is_empty() else "; not so: " + "; ".join(wrong)],
 			wrong.is_empty())
+
+
+## se4check's findings (2026-11-11), a line each; 2 is F5's last.
+func _se4check_cases() -> void:
+	print("\nwhat se4check found (2026-11-11), a line each")
+	await _save_as_case()
+	_stickers_case()
+	await _twins_by_accent_case()
+	await _mac_click_case()
+	await _unseen_case()
+	await _cut_case()
+	await _device_case()
+	await _tree_shown_case()
+
+
+## 1: Save as, as a person presses it (Shell._ask_save_as, the Save dialog
+## asked nothing in a probe), names the file after the title as it is
+## written, a "/" a "_": it kept what followed the last.
+func _save_as_case() -> void:
+	var wrote: Array[String] = []
+	for title: String in ["AC/DC", "1/2 Scale Tower", "House"]:
+		await _open(TWINS_MODEL, title)
+		_clear_files()
+		await _shell._ask_save_as()
+		await _until_file(["mpd", "ldr"])
+		wrote.append(", ".join(DirAccess.get_files_at(_files)))
+	_check("se4check 1: Save as offers a title as it is written, a \"/\" in it a \"_\": %s" % ", ".join(wrote),
+		wrote == ["AC_DC.mpd", "1_2 Scale Tower.mpd", "House.mpd"])
+
+
+## 1 and 5: the sticker sheet's file, by its own function.
+func _stickers_case() -> void:
+	var sheet := StickerSheetDialog.new()
+	var named: Array[String] = []
+	for title: String in ["AC/DC", "1/2 Scale Tower", "House",
+			String.chr(0x200B) + String.chr(0x200C) + String.chr(0x200D) + String.chr(0x2060)]:
+		sheet.title = title
+		named.append(sheet.call("_file_name", "pdf"))
+	sheet.free()
+	_check("se4check 1: the sticker sheet too: %s" % ", ".join(named.map(func(n: String) -> String:
+		return n.c_escape())), named == ["AC_DC stickers.pdf", "1_2 Scale Tower stickers.pdf",
+		"House stickers.pdf", "stickers.pdf"])
+
+
+## 3: sub-models named alike but for an accent are two files, as every disk
+## and unzip keeps them; written two ways Unicode writes one letter, one
+## name and its "_2".
+func _twins_by_accent_case() -> void:
+	var hangul: String = String.chr(0xD55C)
+	var hangul_letters: String = String.chr(0x1112) + String.chr(0x1161) + String.chr(0x11AB)
+	var names: Array[String] = ["Cafe", CAFE_ONE, CAFE_TWO, "Ma", "M" + String.chr(0xE1),
+		"M" + String.chr(0x1EA1), "かっこう", "がっこう", hangul, hangul_letters, "Strasse",
+		"Stra" + String.chr(0xDF) + "e"]
+	var main := PackedStringArray(["0 FILE accents.ldr", "0 Accents", "0 Name: accents.ldr",
+		"0 Author: subexport probe"])
+	var rest := PackedStringArray()
+	for n: int in names.size():
+		main.append("1 16 %d 0 0 1 0 0 0 1 0 0 0 1 %s.ldr" % [40 * n, names[n]])
+		rest.append_array(["0 FILE %s.ldr" % names[n], "0 Accent %d" % n, "0 Name: %s.ldr" % names[n],
+			"1 %d 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat" % COLOURS[n % COLOURS.size()], "0 NOFILE"])
+	main.append("0 NOFILE")
+	await _open("\n".join(main) + "\n" + "\n".join(rest) + "\n", "accents")
+	_clear_files()
+	await _say("export_model", {"format": "ldraw", "submodels": true})
+	var zip: Dictionary = _zip_members(_newest("zip"))
+	var got: Array = zip.keys()
+	var apart: Array[String] = ["Cafe.ldr", "Ma.ldr", "M" + String.chr(0xE1) + ".ldr",
+		"M" + String.chr(0x1EA1) + ".ldr", "かっこう.ldr", "がっこう.ldr", "Strasse.ldr",
+		"Stra" + String.chr(0xDF) + "e.ldr"]
+	var missing: Array = apart.filter(func(n: String) -> bool: return not zip.has(n))
+	var twins: bool = (zip.has(CAFE_ONE + ".ldr") and zip.has(CAFE_TWO + "_2.ldr")) \
+		or (zip.has(CAFE_TWO + ".ldr") and zip.has(CAFE_ONE + "_2.ldr"))
+	var hangul_twins: bool = (zip.has(hangul + ".ldr") and zip.has(hangul_letters + "_2.ldr")) \
+		or (zip.has(hangul_letters + ".ldr") and zip.has(hangul + "_2.ldr"))
+	got.sort()
+	_check("se4check 3: %d sub-models named alike but for an accent, a .zip of %d: %s; apart where every disk and unzip keeps them apart (%s), Café two ways one name and its _2 (%s), 한 so too (%s)" % [
+		names.size(), zip.size(), ", ".join(got.map(func(n: String) -> String: return n.c_escape())),
+		"all" if missing.is_empty() else "not " + ", ".join(missing), twins, hangul_twins],
+		zip.size() == names.size() and missing.is_empty() and twins and hangul_twins)
+
+
+## 4: Ctrl and the left button on a row: its menu on a Mac (as a part's), a
+## row chosen anywhere else. EditVerbs._mac says which it is, as Phone._on
+## a phone.
+func _mac_click_case() -> void:
+	await _open(TWINS_MODEL, "twins")
+	var outliner: Outliner = _shell.outliner
+	await _show_tree()
+	var path: String = _path_named("Other", _shell.assemblies.paths())
+	var said: Array[String] = []
+	var ok: bool = true
+	for mac: int in [1, 0]:
+		EditVerbs._mac = mac
+		var rects: Dictionary = await _row_in_sight(outliner, path)
+		if not rects.has(path):
+			said.append("no row of Other in sight")
+			ok = false
+			continue
+		var at: Vector2 = (rects[path] as Rect2).get_center()
+		var motion := InputEventMouseMotion.new()
+		motion.position = _as_event(at)
+		motion.global_position = motion.position
+		Input.parse_input_event(motion)
+		await _frames(3)
+		for down: bool in [true, false]:
+			var event := InputEventMouseButton.new()
+			event.button_index = MOUSE_BUTTON_LEFT
+			event.ctrl_pressed = true
+			event.pressed = down
+			event.position = _as_event(at).floor()
+			event.global_position = event.position
+			Input.parse_input_event(event)
+			await _frames(3)
+		await _frames(6)
+		var menu: PopupMenu = outliner.row_menu
+		var shown: bool = menu != null and menu.visible
+		var for_row: String = str(outliner.get("_menu_path"))
+		said.append("%s %s" % ["on a Mac" if mac == 1 else "elsewhere",
+			("opens its menu (for %s)" % Assemblies.label(for_row)) if shown else "opens no menu"])
+		ok = ok and shown == (mac == 1) and (not shown or for_row == path)
+		if menu != null:
+			menu.hide()
+		await _frames(6)
+	EditVerbs._mac = -1
+	_check("se4check 4: a Ctrl-click on Other's row %s" % "; ".join(said), ok)
+
+
+## 5: a title of nothing to see (zero-width spaces and joiners; a soft
+## hyphen, the combining grapheme joiner and Mongolian's vowel separator)
+## names "model", by File › Export and by Save as; a sub-model so named
+## "submodel" in the zip.
+func _unseen_case() -> void:
+	var unseen: Array[String] = [String.chr(0x200B) + String.chr(0x200C) + String.chr(0x200D) + String.chr(0x2060),
+		String.chr(0x00AD) + String.chr(0x034F) + String.chr(0x180E)]
+	var wrote: Array[String] = []
+	for title: String in unseen:
+		await _open(TWINS_MODEL, title)
+		_clear_files()
+		await _say("export_model", {"format": "ldraw"})
+		wrote.append(", ".join(DirAccess.get_files_at(_files)))
+		_clear_files()
+		await _shell._ask_save_as()
+		await _until_file(["mpd", "ldr"])
+		wrote.append(", ".join(DirAccess.get_files_at(_files)))
+	var text: String = "0 FILE blank.ldr\n0 Blank\n0 Name: blank.ldr\n"
+	for n: int in unseen.size():
+		text += "1 16 %d 0 0 1 0 0 0 1 0 0 0 1 %s.ldr\n" % [40 * n, unseen[n]]
+	text += "0 NOFILE\n"
+	for n: int in unseen.size():
+		text += "0 FILE %s.ldr\n0 Blank %d\n1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat\n0 NOFILE\n" % [unseen[n], n]
+	await _open(text, "blank")
+	_clear_files()
+	await _say("export_model", {"format": "ldraw", "submodels": true})
+	var members: Array = _zip_members(_newest("zip")).keys()
+	members.sort()
+	_check("se4check 5: titled with nothing to see, the model's file and Save as's are %s; such sub-models in the zip %s" % [
+		", ".join(wrote.map(func(n: String) -> String: return n.c_escape())),
+		", ".join(members.map(func(n: String) -> String: return n.c_escape()))],
+		wrote == ["model.mpd", "model.mpd", "model.mpd", "model.mpd"]
+		and members == ["submodel.ldr", "submodel_2.ldr"])
+
+
+## 6: a title cut to fit 200 bytes is cut between two characters as a
+## reader sees them: が written as か and its mark keeps its mark, é as e
+## and its accent its accent, a family of faces joined by zero-width
+## joiners its last face.
+func _cut_case() -> void:
+	var family: String = String.chr(0x1F468) + String.chr(0x200D) + String.chr(0x1F469) + String.chr(0x200D) \
+		+ String.chr(0x1F467)
+	var server: TextServer = TextServerManager.get_primary_interface()
+	var said: Array[String] = []
+	var ok: bool = true
+	for title: String in [("e" + String.chr(0x301)).repeat(100), ("か" + String.chr(0x3099)).repeat(40),
+			family.repeat(20)]:
+		await _open(TWINS_MODEL, title)
+		_clear_files()
+		await _say("export_model", {"format": "ldraw"})
+		var files: PackedStringArray = DirAccess.get_files_at(_files)
+		var one: String = files[0] if files.size() == 1 else ""
+		var words: String = title.to_snake_case()
+		var base: String = one.trim_suffix(".mpd")
+		# Cut (300 bytes do not fit), at one of the title's own breaks.
+		var whole: bool = not base.is_empty() and base.length() < words.length() and words.begins_with(base) \
+			and Array(server.string_get_character_breaks(words)).has(base.length())
+		var last: int = base.unicode_at(base.length() - 1) if not base.is_empty() else 0
+		var good: bool = whole and one.to_utf8_buffer().size() <= SubmodelFile.MOST_BYTES and last != 0x200D
+		ok = ok and good
+		said.append("%s… %d bytes, %d characters as read, ends U+%04X%s" % [title.left(4).c_escape(),
+			one.to_utf8_buffer().size(), server.string_get_character_breaks(base).size(), last,
+			"" if good else " (cut inside one)"])
+	_check("se4check 6: titles of 300 bytes cut between two characters: %s" % "; ".join(said), ok)
+
+
+## 7: a Windows device's name looked for in the whole name with its tail:
+## "CON" is con_.mpd, and con_bricklink.xml is no device's (it was
+## con__bricklink.xml); Save as's CON_.mpd.
+func _device_case() -> void:
+	await _open(TWINS_MODEL, "CON")
+	var wrote: Array[String] = []
+	for asked: Dictionary in [{"format": "ldraw"}, {"format": "bricklink"}]:
+		_clear_files()
+		await _say("export_model", asked)
+		await _frames(4)
+		wrote.append(", ".join(DirAccess.get_files_at(_files)))
+	_clear_files()
+	await _shell._ask_save_as()
+	await _until_file(["mpd", "ldr"])
+	wrote.append(", ".join(DirAccess.get_files_at(_files)))
+	_check("se4check 7: a model titled CON: %s" % ", ".join(wrote),
+		wrote == ["con_.mpd", "con_bricklink.xml", "CON_.mpd"])
+
+
+## 8: the model tree filled as its panel opens: a model opened while the
+## panel was folded, then the panel opened, and the frames until its rows
+## are that model's. Filled only while shown and looked at twice a second,
+## it stood empty, or the last model's, up to half a second.
+func _tree_shown_case() -> void:
+	var dock: Variant = _main.get("_props_dock")
+	if not dock is SideDock:
+		_check("se4check 8: the right column, to fold and open", false)
+		return
+	await _show_tree()
+	(dock as SideDock).set_open(false, false)
+	await _frames(10)
+	await _open(TWINS_MODEL.replace("Other", "Shown here"), "shown")
+	await create_timer(0.7).timeout
+	var tree: Tree = _shell.outliner.get("_tree")
+	var began: int = Time.get_ticks_msec()
+	(dock as SideDock).set_open(true, false)
+	var frames: int = 0
+	while not _tree_has(tree, "Shown here") and Time.get_ticks_msec() - began < 3000:
+		await process_frame
+		frames += 1
+	var ms: int = Time.get_ticks_msec() - began
+	_check("se4check 8: a model opened with the panel folded, the panel opened: the tree had its rows %d frames (%d ms) on" % [
+		frames, ms], _tree_has(tree, "Shown here") and frames <= 1)
+
+
+static func _tree_has(tree: Tree, words: String) -> bool:
+	var stack: Array = [tree.get_root()]
+	while not stack.is_empty():
+		var row: TreeItem = stack.pop_back()
+		if row == null:
+			continue
+		if row.get_text(0).contains(words):
+			return true
+		stack.append_array(row.get_children())
+	return false
+
+
+func _key(code: Key) -> void:
+	for pressed: bool in [true, false]:
+		var event := InputEventKey.new()
+		event.keycode = code
+		event.physical_keycode = code
+		event.pressed = pressed
+		Input.parse_input_event(event)
+		await process_frame
+	await _frames(2)
 
 
 ## F7: both flags at once.

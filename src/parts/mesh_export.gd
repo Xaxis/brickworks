@@ -355,10 +355,12 @@ static func _name_of(info: PartLibrary.PartInfo, part_id: String) -> String:
 
 
 ## The files' name before its end, by the one rule for a file's name
-## (SubmodelFile.titled), with room for the longest end one is given: the
-## browser's zip of an OBJ and its colours.
+## (SubmodelFile.titled), with room for the longest end one is given (the
+## browser's zip of an OBJ and its colours, NAME_obj.zip), and a device's
+## name looked for before a ".", as each of its files has it: "CON" is
+## con_.glb, not the console.
 static func _file_base(title: String) -> String:
-	return SubmodelFile.titled(title, "_obj.zip").trim_suffix("_obj.zip")
+	return SubmodelFile.titled(title, ".obj.zip").trim_suffix(".obj.zip")
 
 
 # -- glTF -----------------------------------------------------------------------

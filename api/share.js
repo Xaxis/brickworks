@@ -1954,14 +1954,49 @@ export function piecesIn(text, otherwise) {
   }
 }
 
-/// A file name for [name]: its words in lower case, joined by hyphens,
-/// nothing a file system minds; [fallback] where none are left. A Windows
-/// device's name ("con.mpd" is the console there) given a "_", as the app
-/// names its own files (SubmodelFile.safe_name).
+/// A file name for [name]: its words in lower case, joined by hyphens, their
+/// letters and numbers in any script with their accents, as the app's own
+/// names keep them (SubmodelFile.titled); nothing a file system minds;
+/// [fallback] where none are left. At most 60 characters, cut between two
+/// as a reader sees them, so no accent is cut off its letter. It kept a to z
+/// and 0 to 9 alone, and named a Japanese title "model" and an Arabic one
+/// "1" (se4check). A Windows device's name is the whole file's to say
+/// ([attachment]).
 export function fileName(name, fallback) {
-  const words = String(name || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
-    .replace(/['’]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60).replace(/-+$/, "");
-  return /^(con|prn|aux|nul|com[0-9]|lpt[0-9])$/.test(words) ? `${words}_` : words || fallback;
+  const words = String(name || "").normalize("NFKC").toLowerCase()
+    .replace(/['’]/g, "").replace(/[^\p{L}\p{M}\p{N}]+/gu, "-").replace(/^[-\p{M}]+|-+$/gu, "");
+  let cut = "";
+  for (const { segment } of new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(words)) {
+    if (cut.length + segment.length > 60) break;
+    cut += segment;
+  }
+  return cut.replace(/-+$/, "") || fallback;
+}
+
+/// The Content-Disposition of a download named [file] ("castle-v2.mpd"):
+/// its name as it is in filename* (RFC 6266, which every browser reads),
+/// and in filename, for one that reads only that, the same in ASCII ("café"
+/// as "cafe", a name of no Latin letter "model"). A name all ASCII has
+/// filename alone, as it always had. A Windows device's name ("con.mpd" is
+/// the console there) given a "_", looked for in the whole name as Windows
+/// does: con-v2.mpd and con-bricklink.xml are no device's, and were
+/// con_-v2.mpd (se4check), the app's rule the same (SubmodelFile.titled).
+export function attachment(file) {
+  const named = undeviced(file);
+  const ascii = undeviced(named.normalize("NFKD").replace(/\p{M}/gu, "").replace(/[^\x21-\x7e]+/g, "-")
+    .replace(/["\\;%]/g, "-").replace(/^-+(?=\.)/, "model").replace(/^-+/, "model-").replace(/-{2,}/g, "-")
+    .replace(/-+(?=\.[^.]*$)/, ""));
+  if (named === ascii) return `attachment; filename="${ascii}"`;
+  const encoded = encodeURIComponent(named).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${encoded}`;
+}
+
+/// [file] with a "_" after a Windows device's name that starts it, whatever
+/// follows its first dot: con.mpd is con_.mpd, as the app has it.
+function undeviced(file) {
+  const device = file.split(".")[0].replace(/ +$/, "");
+  return /^(con|conin\$|conout\$|prn|aux|nul|com[0-9¹²³]|lpt[0-9¹²³])$/i.test(device)
+    ? `${device}_${file.slice(device.length)}` : file;
 }
 
 /// /m/X.mpd, /m/X/parts.json, .xml and .csv: the file as it is stored, or
@@ -1983,7 +2018,7 @@ async function download(response, op, id, asked, as, lang = "en") {
   const file = await getFile(stored);
   if (!file) return fail(410, "This model is no longer shared.");
   const base = `${fileName(row.name, id)}${shown.n === newest ? "" : `-v${shown.n}`}`;
-  const named = (ext) => `attachment; filename="${base}.${ext}"`;
+  const named = (ext) => attachment(`${base}.${ext}`);
   response.setHeader("Cache-Control", SHARED_CACHE);
   response.setHeader("X-Content-Type-Options", "nosniff");
   if (op === "file") {
@@ -2007,12 +2042,12 @@ function partsAnswer(response, parts, base, as, said, lang = "en") {
   if (!parts) return fail(503, "This site cannot list a model's parts just now.");
   if (as === "xml") {
     response.setHeader("Content-Type", "application/xml; charset=utf-8");
-    response.setHeader("Content-Disposition", `attachment; filename="${base}-bricklink.xml"`);
+    response.setHeader("Content-Disposition", attachment(`${base}-bricklink.xml`));
     return response.status(200).end(wantedList(parts).text);
   }
   if (as === "csv") {
     response.setHeader("Content-Type", "text/csv; charset=utf-8");
-    response.setHeader("Content-Disposition", `attachment; filename="${base}-rebrickable.csv"`);
+    response.setHeader("Content-Disposition", attachment(`${base}-rebrickable.csv`));
     return response.status(200).end(rebrickableCsv(parts).text);
   }
   // The LEGO® Pick a Brick list (pickABrick), a file of PICK_A_BRICK_LINES
@@ -2026,7 +2061,7 @@ function partsAnswer(response, parts, base, as, said, lang = "en") {
     if (!files.length) return fail(404, "No LEGO® element number is known for any part of this, so there is nothing for Pick a Brick.");
     if (n > files.length) return fail(404, `Its Pick a Brick list is ${count(files.length, "file")}.`);
     response.setHeader("Content-Type", "text/csv; charset=utf-8");
-    response.setHeader("Content-Disposition", `attachment; filename="${base}-pickabrick${files.length > 1 ? `-${n}` : ""}.csv"`);
+    response.setHeader("Content-Disposition", attachment(`${base}-pickabrick${files.length > 1 ? `-${n}` : ""}.csv`));
     return response.status(200).end(files[n - 1]);
   }
   if (as !== "json") return fail(400, `a parts list is json, xml, csv or pab, not ${as}`);

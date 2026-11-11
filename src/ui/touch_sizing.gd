@@ -796,14 +796,16 @@ static func beside(size: Vector2, at: Vector2, by_finger: bool, space: Rect2, pe
 ## finger held on a row near the top of a phone has its menu below it, and
 ## the finger that held the row and slid down onto the menu chose its first
 ## item as it lifted and exported a file (se3touch, subexport4). Chosen from
-## by a tap, as a phone's menu is.
+## by a tap, as a phone's menu is, or by the keyboard.
 static func chosen(menu: PopupMenu) -> bool:
 	return not menu.has_meta(HELD)
 
 
 ## [param menu] held open by the finger still down: what it lets go over
 ## chooses nothing, and leaves the menu open, until a press comes to the
-## menu (a tap on it) or it is put away.
+## menu (a tap on it, a key, a pad's button) or it is put away. Let go by a
+## tap alone, a menu held and lifted and then chosen from by the keyboard
+## (Down, Enter) did nothing (se4check).
 static func _held_open(menu: PopupMenu) -> void:
 	if not menu.has_meta(HELD):
 		menu.set_meta(HELD, menu.hide_on_item_selection)
@@ -812,7 +814,7 @@ static func _held_open(menu: PopupMenu) -> void:
 		return
 	menu.set_meta(&"touch_held_watched", true)
 	menu.window_input.connect(func(event: InputEvent) -> void:
-		if (event is InputEventMouseButton or event is InputEventScreenTouch) and event.is_pressed():
+		if event.is_pressed() and not event.is_echo():
 			_let_go(menu))
 	menu.popup_hide.connect(func() -> void: _let_go(menu))
 

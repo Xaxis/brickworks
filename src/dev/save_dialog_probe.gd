@@ -335,8 +335,7 @@ func _save_as() -> void:
 		return
 	_check("...its title Save as (%s)" % dialog.title, dialog.title == "Save as")
 	_check("...named after the model (%s)" % dialog.current_file,
-		dialog.current_file == SubmodelFile.safe_name(_bar.model_name(), SubmodelFile.MOST_BYTES - 4, "model")
-			+ _bar.ldraw_extension())
+		dialog.current_file == SubmodelFile.named(_bar.model_name(), _bar.ldraw_extension()))
 	await _shot("05_save_as_dialog")
 	var path: String = _out.path_join("Probe Tug" + _bar.ldraw_extension())
 	await _answer(dialog, path)

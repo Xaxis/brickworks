@@ -39,8 +39,8 @@ const MOST_BYTES := 200
 const RESERVED: Array[String] = ["CON", "CONIN$", "CONOUT$", "PRN", "AUX", "NUL",
 	"COM0", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "COM¹", "COM²", "COM³",
 	"LPT0", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9", "LPT¹", "LPT²", "LPT³"]
-## What Windows refuses in a name; "/" and "\" are folders, kept to what
-## follows the last.
+## What Windows refuses in a name. A "/" or "\" in a title is a "_": a
+## title's, never a folder's.
 const REFUSED := "<>:\"|?*"
 ## The marks that turn the way text runs, which a name shows and no one
 ## sees: "x\u202Eexe.ldr" reads "xrdl.exe" (se3check). Left-to-right and
@@ -48,6 +48,28 @@ const REFUSED := "<>:\"|?*"
 ## ends, Arabic's letter mark, and the byte-order mark.
 const TURNS: Array[int] = [0x200E, 0x200F, 0x202A, 0x202B, 0x202C, 0x202D, 0x202E,
 	0x2066, 0x2067, 0x2068, 0x2069, 0x061C, 0xFEFF]
+## The characters Unicode says draw nothing (Default_Ignorable_Code_Point,
+## Unicode 15), first and last of each run: the soft hyphen, the combining
+## grapheme joiner, Hangul's fillers, Mongolian's vowel separator and
+## variation selectors, the zero-width space, joiners and word joiner, the
+## variation selectors, the tags. A title of only these, spaces and marks
+## was a name of nothing to see before its ".ldr" (se4check).
+const UNSEEN: Array[int] = [0x00AD, 0x00AD, 0x034F, 0x034F, 0x061C, 0x061C, 0x115F, 0x1160,
+	0x17B4, 0x17B5, 0x180B, 0x180F, 0x200B, 0x200F, 0x202A, 0x202E, 0x2060, 0x206F,
+	0x3164, 0x3164, 0xFE00, 0xFE0F, 0xFEFF, 0xFEFF, 0xFFA0, 0xFFA0, 0xFFF0, 0xFFF8,
+	0x1BCA0, 0x1BCA3, 0x1D173, 0x1D17A, 0xE0000, 0xE0FFF]
+## Spaces of every width (Unicode's White_Space, controls aside).
+const SPACES: Array[int] = [0x0020, 0x00A0, 0x1680, 0x2000, 0x2001, 0x2002, 0x2003, 0x2004,
+	0x2005, 0x2006, 0x2007, 0x2008, 0x2009, 0x200A, 0x2028, 0x2029, 0x202F, 0x205F, 0x3000]
+## Of [constant UNSEEN], those that format what is around them and so mean
+## nothing at a name's end: there a joiner joins nothing (a family of faces
+## cut off its last). A variation selector or a tag ends an emoji (a red
+## heart, a flag), and stays.
+const LOOSE_ENDS: Array[int] = [0x00AD, 0x034F, 0x180E, 0x200B, 0x200C, 0x200D, 0x2060,
+	0x2061, 0x2062, 0x2063, 0x2064, 0xE0001]
+## The table of each character Unicode also writes as a letter and its marks
+## (tools/canonical_forms.py), loaded by [method _one_key] alone.
+const CANONICAL := "res://src/parts/canonical_forms.gd"
 
 
 ## One sub-model's file.
@@ -194,11 +216,13 @@ static func each(whole: Whole) -> Array[Made]:
 			continue
 		# Two of one name (a copy built in its parent's steps named as a
 		# section is, or two that one rule made one): the second "_2",
-		# whatever the case and the accents, as Windows and macOS see one
-		# name. "Café" written as one letter and as "e" and its accent were
-		# two members that every libarchive unzip (bsdtar, Windows' and
-		# macOS's tar) made one file, the second over the first, unsaid
-		# (se3check); a macOS disk takes them as one too.
+		# whatever the case, and written either way Unicode writes a letter
+		# with an accent, as Windows and macOS see one name. "Café" written
+		# as one letter and as "e" and its accent were two members that
+		# every libarchive unzip (bsdtar, Windows' and macOS's tar) made one
+		# file, the second over the first, unsaid (se3check); a macOS disk
+		# takes them as one too. "Cafe" and "Café" are two names to all of
+		# them, and stay so ([method _one_key]).
 		var base: String = made.name.get_basename()
 		var name: String = made.name
 		var n: int = 1
@@ -213,9 +237,56 @@ static func each(whole: Whole) -> Array[Made]:
 
 
 ## What two names that a file system or an unzip takes as one have alike:
-## the letters without their accents, in lower case.
+## each character as Unicode writes it as a letter and its marks (its
+## canonical decomposition, [constant CANONICAL]; a Hangul syllable its
+## letters), the marks on one letter in one order, in lower case. So "Café"
+## as one letter and as "e" and U+0301 are one; "Cafe" and "Café", "Ma",
+## "Má" and "Mạ", かっこう and がっこう are two, as they are to every disk
+## and unzip: the key stripped every accent, and the second of each pair
+## was named "_2" (se4check). Two names alike but for the order of two
+## marks of one kind ("a" with an acute then a grave, and a grave then an
+## acute), which Unicode keeps apart, are taken as one: the second is named
+## "_2", and nothing is lost.
 static func _one_key(name: String) -> String:
-	return TextServerManager.get_primary_interface().strip_diacritics(name).to_lower()
+	var plain: bool = true
+	for n: int in name.length():
+		if name.unicode_at(n) >= 0x80:
+			plain = false
+			break
+	if plain:
+		return name.to_lower()
+	var table: Dictionary = (load(CANONICAL) as GDScript).get_script_constant_map()["DECOMPOSED"]
+	var spelled: String = ""
+	for n: int in name.length():
+		var code: int = name.unicode_at(n)
+		if code >= 0xAC00 and code <= 0xD7A3:
+			# A Hangul syllable: its leading consonant, vowel and final one.
+			var at: int = code - 0xAC00
+			spelled += String.chr(0x1100 + at / 588) + String.chr(0x1161 + (at % 588) / 28)
+			if at % 28 != 0:
+				spelled += String.chr(0x11A7 + at % 28)
+		else:
+			spelled += str(table.get(code, name[n]))
+	var server: TextServer = TextServerManager.get_primary_interface()
+	var out: String = ""
+	var marks: Array[int] = []
+	for n: int in spelled.length():
+		# A mark that sits on a letter (one Unicode orders): strip_diacritics
+		# takes it away whole.
+		if server.strip_diacritics(spelled[n]).is_empty():
+			marks.append(spelled.unicode_at(n))
+			continue
+		out += _in_order(marks) + spelled[n]
+		marks.clear()
+	return (out + _in_order(marks)).to_lower()
+
+
+static func _in_order(marks: Array[int]) -> String:
+	marks.sort()
+	var out: String = ""
+	for code: int in marks:
+		out += String.chr(code)
+	return out
 
 
 ## [param keys] and every section their lines place, at every depth, in the
@@ -345,75 +416,134 @@ static func _marked(lines: PackedStringArray, marker: String, bare: bool) -> Pac
 
 ## The file a sub-model [param named] is written as (a FILE line's name,
 ## "sub\Wing.ldr", or a title, "north_east_tower"): .mpd when [param many]
-## sections go in it, else .ldr; its name [method safe_name].
+## sections go in it, else .ldr; what follows the last "/" or "\" of a
+## FILE line's name, a folder there, by [method _safe_name].
 static func file_name(named: String, many: bool) -> String:
 	var bare: String = named.replace("\\", "/").get_file()
 	if bare.get_extension().to_lower() in ["ldr", "dat", "mpd"]:
 		bare = bare.get_basename()
-	return safe_name(bare, MOST_BYTES - 4) + (".mpd" if many else ".ldr")
-
-
-## [param named] as a name every system takes as a file's, of at most
-## [param room] UTF-8 bytes: what follows its last "/" or "\", without
-## control characters, [constant TURNS] or [constant REFUSED], dots and
-## spaces taken off its ends (".." is the folder above; a name ending so
-## Windows cannot open, one starting with a dot macOS and Linux hide), a
-## [constant RESERVED] one given a "_", cut on a whole character;
-## [param none] when nothing is left.
-static func safe_name(named: String, room: int = MOST_BYTES, none: String = "submodel") -> String:
-	var bare: String = named.replace("\\", "/").get_file()
-	var kept: String = ""
-	for n: int in bare.length():
-		var code: int = bare.unicode_at(n)
-		if code < 32 or (code >= 127 and code < 160) or code in TURNS or REFUSED.contains(bare[n]):
-			continue
-		kept += bare[n]
-	kept = _trimmed(_capped(_trimmed(kept), room))
-	# A device's name looked for after the cut, which may leave one ("CON",
-	# 300 spaces, "x"), and cut again once given its "_", which may take it
-	# past [param room] ("aux." and 100 城); a cut only takes from the end.
-	var stem: String = kept.get_slice(".", 0).strip_edges()
-	if stem.to_upper() in RESERVED:
-		kept = _trimmed(_capped(stem + "_" + kept.substr(kept.get_slice(".", 0).length()), room))
-	return kept if not kept.is_empty() else none
+	return _safe_name(bare, ".mpd" if many else ".ldr", "submodel")
 
 
 ## The file the app writes named after [param title], a model's or a list's
 ## (File › Export's of every kind, a picture, a render, the instructions, a
 ## parts list), [param tail] its suffix and extension ("_submodels.zip",
 ## ".ldr"): the title's words joined by "_" as every export has named them,
-## a "/" or "\" in it one of those too (a title's, not a folder's), made
-## [method safe_name] in the room [param tail] leaves; [param none] when
-## nothing is left. One rule for every file the app names, a sub-model's
-## too: "My: Castle?" was my:_castle?_submodels.zip, which Windows refuses
-## or keeps in a stream after the ":", and a title 300 letters long a name
-## of 314 bytes, which no file system takes and over MCP failed to write
-## (se3check).
+## by [method _safe_name]; [param none] when nothing is left. One rule for
+## every file the app names, a sub-model's too: "My: Castle?" was
+## my:_castle?_submodels.zip, which Windows refuses or keeps in a stream
+## after the ":", and a title 300 letters long a name of 314 bytes, which
+## no file system takes and over MCP failed to write (se3check).
 static func titled(title: String, tail: String, none: String = "model") -> String:
-	var words: String = title.to_snake_case().replace("\\", "_").replace("/", "_")
-	return safe_name(words, MOST_BYTES - tail.to_utf8_buffer().size(), none) + tail
+	return _safe_name(_trimmed(title).to_snake_case(), tail, none)
 
 
-## [param text] with the dots and spaces at its ends taken off.
+## The file named after [param title] as it is written, its case and its
+## spaces kept, where a person names it: Save as's suggestion, the sticker
+## sheet ("My Castle stickers.pdf"). [param tail] and [param none] as
+## [method titled]'s. They kept only what followed a title's last "/":
+## "AC/DC" was offered as DC.mpd, "1/2 Scale Tower" as "2 Scale Tower.mpd"
+## (se4check).
+static func named(title: String, tail: String, none: String = "model") -> String:
+	return _safe_name(title, tail, none)
+
+
+## [param words] then [param tail] as a name every system takes as a file's,
+## of at most [constant MOST_BYTES] UTF-8 bytes: without control
+## characters, [constant TURNS] or [constant REFUSED], a "/" or "\" a "_"
+## (a title's, never a folder's: one function kept what followed the last,
+## and named AC/DC's file DC.mpd), its ends trimmed ([method _trimmed]),
+## cut on a whole character as a reader sees one ([method _capped]);
+## [param none] when nothing is left to see ([method _shows]); a
+## [constant RESERVED] name given a "_", looked for in the whole name with
+## its tail, as Windows does: "CON" is con_.mpd and con_instructions.html,
+## which is no device's.
+static func _safe_name(words: String, tail: String, none: String) -> String:
+	var room: int = MOST_BYTES - tail.to_utf8_buffer().size()
+	var kept: String = ""
+	for n: int in words.length():
+		var code: int = words.unicode_at(n)
+		if code < 32 or (code >= 127 and code < 160) or code in TURNS or REFUSED.contains(words[n]):
+			continue
+		kept += "_" if code == 0x2F or code == 0x5C else words[n]
+	kept = _trimmed(_capped(_trimmed(kept), room))
+	if not _shows(kept):
+		kept = none
+	# A device's name looked for after the cut, which may leave one ("CON",
+	# 300 spaces, "x"), and cut again once given its "_", which may take it
+	# past the room ("aux." and 100 城); a cut only takes from the end.
+	var device: String = (kept + tail).get_slice(".", 0).rstrip(" ")
+	if device.to_upper() in RESERVED and device.length() <= kept.length():
+		kept = _trimmed(_capped(device + "_" + kept.substr(device.length()), room))
+	return kept + tail
+
+
+## Whether [param text] has a character to see: not only [constant UNSEEN]
+## ones, spaces and marks with nothing under them. A title of zero-width
+## spaces and joiners, or of a soft hyphen, the combining grapheme joiner
+## and Mongolian's vowel separator, was a name of nothing before its ".ldr"
+## (se4check).
+static func _shows(text: String) -> bool:
+	# Never strip_diacritics(""): ICU says the empty string is not ended, and
+	# Godot prints that as an error.
+	if text.is_empty():
+		return false
+	var letters: String = TextServerManager.get_primary_interface().strip_diacritics(text)
+	for n: int in letters.length():
+		var code: int = letters.unicode_at(n)
+		if not _in_runs(code, UNSEEN) and not code in SPACES:
+			return true
+	return false
+
+
+## [param text] with what its ends may not have taken off: dots and spaces
+## (".." is the folder above; a name ending so Windows cannot open, one
+## starting with a dot macOS and Linux hide); first, a [constant UNSEEN]
+## character or a mark, with nothing before it to join or sit on; last, a
+## [constant LOOSE_ENDS] one.
 static func _trimmed(text: String) -> String:
-	var out: String = text.strip_edges()
-	while out.begins_with(".") or out.begins_with(" "):
-		out = out.substr(1)
-	while out.ends_with(".") or out.ends_with(" "):
-		out = out.left(-1)
-	return out
+	var from: int = 0
+	var to: int = text.length()
+	var server: TextServer = TextServerManager.get_primary_interface()
+	while from < to:
+		var code: int = text.unicode_at(from)
+		if code != 0x2E and not code in SPACES and not _in_runs(code, UNSEEN) \
+				and not server.strip_diacritics(text[from]).is_empty() and code > 32:
+			break
+		from += 1
+	while to > from:
+		var code: int = text.unicode_at(to - 1)
+		if code != 0x2E and not code in SPACES and not code in LOOSE_ENDS and code > 32:
+			break
+		to -= 1
+	return text.substr(from, to - from)
 
 
-## [param text] cut to at most [param room] UTF-8 bytes, on a whole
-## character.
+## Whether [param code] is in one of [param runs], first and last of each.
+static func _in_runs(code: int, runs: Array[int]) -> bool:
+	for n: int in range(0, runs.size(), 2):
+		if code >= runs[n] and code <= runs[n + 1]:
+			return true
+	return false
+
+
+## [param text] cut to at most [param room] UTF-8 bytes, between two
+## characters as a reader sees them (TextServer's grapheme breaks): a が
+## written as か and its mark, an é as e and its accent, a family of faces
+## joined by zero-width joiners, each kept whole or left out. Cut on a code
+## point, the first lost its mark and the last ended in a bare joiner
+## (se4check).
 static func _capped(text: String, room: int) -> String:
+	if text.to_utf8_buffer().size() <= room:
+		return text
 	var used: int = 0
-	for n: int in text.length():
-		var code: int = text.unicode_at(n)
-		used += 1 if code < 0x80 else 2 if code < 0x800 else 3 if code < 0x10000 else 4
+	var kept: int = 0
+	for end: int in TextServerManager.get_primary_interface().string_get_character_breaks(text):
+		used += text.substr(kept, end - kept).to_utf8_buffer().size()
 		if used > room:
-			return text.left(n)
-	return text
+			break
+		kept = end
+	return text.left(kept)
 
 
 static func _ended(text: String) -> String:

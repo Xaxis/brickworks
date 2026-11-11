@@ -282,6 +282,15 @@ func set_open(open: bool) -> void:
 	_refresh(true)
 
 
+## Shown (its panel opened, the phone's sheet it is in): the tree filled
+## before the frame is drawn. Filled only while it is shown, and looked at
+## again only twice a second, it stood empty for up to half a second each
+## time its panel opened (se4check).
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_VISIBILITY_CHANGED and shell != null and is_visible_in_tree():
+		_refresh.call_deferred(false)
+
+
 func _process(_delta: float) -> void:
 	var now: int = Time.get_ticks_msec()
 	if now - _looked_at < 500:
@@ -696,16 +705,18 @@ var _hold_at := Vector2.ZERO
 var _hold_path: String = ""
 
 
-## The row under a right click, from the click's own place: the tree's
-## item_mouse_selected gives the pointer's place as the system has it, which
-## a click sent to the window (a check's, a remote session's) does not move.
-## And a finger held still on a row.
+## The row under a right click (on a Mac a Ctrl-click too, EditVerbs'
+## rule), from the click's own place: the tree's item_mouse_selected gives
+## the pointer's place as the system has it, which a click sent to the
+## window (a check's, a remote session's) does not move. And a finger held
+## still on a row.
 func _on_tree_input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch or event is InputEventScreenDrag:
 		_held(event)
 		return
 	var click: InputEventMouseButton = event as InputEventMouseButton
-	if click == null or not click.pressed or click.button_index != MOUSE_BUTTON_RIGHT:
+	if click == null or not click.pressed or (click.button_index != MOUSE_BUTTON_RIGHT
+			and not EditVerbs.mac_right_click(click)):
 		return
 	var row: TreeItem = _tree.get_item_at_position(click.position)
 	if row == null:

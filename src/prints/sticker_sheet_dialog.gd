@@ -172,10 +172,9 @@ func _save(kind: String) -> void:
 
 
 ## The sheet's file, "NAME stickers.pdf": named by the one rule for a
-## file's name (SubmodelFile.safe_name).
+## file's name, the title as it is written (SubmodelFile.named).
 func _file_name(kind: String) -> String:
-	return SubmodelFile.safe_name(title + " stickers", SubmodelFile.MOST_BYTES - kind.length() - 1,
-		"stickers") + "." + kind
+	return SubmodelFile.named(title + " stickers", "." + kind, "stickers")
 
 
 ## The sheet's [param bytes] written where the person chooses, on the
