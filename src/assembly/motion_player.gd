@@ -1416,9 +1416,12 @@ func _keep_driven(played: Played, words: String) -> int:
 	moving.world = world
 	moving.builder = builder
 	moving.library = library
-	for one: Array in played.parts:
-		var brick: BrickWorld.Brick = world.get_brick(int(one[0]))
-		if brick == null:
+	# Every part of the model as it is now, those that landed while it
+	# played as well (ModelStore.place_awaited): one put down after the play
+	# began was left where the model had stood.
+	var scenery: Dictionary = store.scenery if store != null else {}
+	for brick: BrickWorld.Brick in world.bricks():
+		if scenery.has(brick.id):
 			continue
 		moving.rest[brick.id] = brick.transform
 		moving.placed[brick.id] = whole * brick.transform

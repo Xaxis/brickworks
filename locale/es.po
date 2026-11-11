@@ -3472,12 +3472,6 @@ msgstr "Ensánchalo %d espigas por el lado %s"
 msgid "Widen it %d studs to the %s."
 msgstr "Ensánchalo %d espigas por el lado %s."
 
-msgid "1 stud joint overloaded, in red."
-msgstr "1 unión de espigas sobrecargada, en rojo."
-
-msgid "%d stud joints overloaded, in red."
-msgstr "%d uniones de espigas sobrecargadas, en rojo."
-
 msgid "left"
 msgstr "izquierdo"
 
@@ -12857,6 +12851,29 @@ msgstr "1 línea de movimiento sin leer quitada, porque la próxima apertura la 
 
 msgid "%d motion lines not read let go, as the next open would read them into %s: %s"
 msgstr "%d líneas de movimiento sin leer quitadas, porque la próxima apertura las leería en %s: %s"
+
+# drive2 (drvrecheck F4, words): joints by their kind, and the standing line's start and studs
+
+msgid "1 joint overloaded, in red."
+msgstr "1 unión sobrecargada, en rojo."
+
+msgid "%d joints overloaded, in red."
+msgstr "%d uniones sobrecargadas, en rojo."
+
+msgid "stands, %s studs inside the %s edge"
+msgstr "se sostiene, a %s espigas dentro del borde %s"
+
+msgid "would tip over to the %s, %s studs past its edge"
+msgstr "se volcaría hacia %s, a %s espigas más allá de su borde"
+
+msgid "tips over to the %s, %s studs past its edge"
+msgstr "se vuelca hacia %s, a %s espigas más allá de su borde"
+
+msgid "the %s's 1 stud carries about %sx its working load"
+msgstr "la espiga de %s soporta unas %s veces su carga de trabajo"
+
+msgid "the %s's %d studs carry about %sx their working load"
+msgstr "las %2$d espigas de %1$s soportan unas %3$s veces su carga de trabajo"
 
 # end unit drive
 

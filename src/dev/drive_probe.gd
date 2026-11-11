@@ -4,7 +4,8 @@
 ##   godot --path . --resolution 1400x900 --script src/dev/drive_probe.gd
 ##   PROBE_SIZE=1280x720 tools/probe.sh drive_probe      the smaller window
 ##   ... -- OUT_DIR   (where the files go; shots/drive when not given)
-##   DRIVE_ONLY=review ...   section 9 alone
+##   DRIVE_ONLY=review ...   section 9 alone; DRIVE_ONLY=arrive, section 10 alone;
+##   DRIVE_PORT=N, section 10's parts host on that port (9917 when not given)
 ##
 ## Kinebrick Studio's car drives; Brickworks' motions turned and slid joints
 ## only. Here 8808-1, the F1 racer (vendor/omr/files): two front wheels on
@@ -55,7 +56,13 @@
 ##     this probe runs, which holds the racer's wheel rims back; the drive
 ##     played and kept; saved before they come, and after: each rim put down
 ##     in its tyre where the drive left the model, and opened again, each
-##     there and every joint of the drive finding its part.
+##     there and every joint of the drive finding its part. Compared with
+##     the save made while they come, as they still come, nothing changed;
+##     kept, landed and undone, and kept, undone, landed and redone, each
+##     rim in its tyre and every joint found, and so once saved and opened
+##     again (drvrecheck F1, F3). And the app's own file with a part the
+##     catalogue has not got, driven and kept: that part goes with the one
+##     it stood with (drvrecheck F3).
 ##
 ## It loads on a build from before (what is new is asked for by name), so
 ## that build fails its checks rather than failing to load. Pictures in
@@ -130,8 +137,19 @@ func _run() -> void:
 		print("drive probe: drawn headless, so nothing is rendered (xvfb-run draws it)")
 	Download.folder = _out
 	(_main.get("_pose") as PosePanel).folder = _out
-	# DRIVE_ONLY=review: section 9 alone, as a build from before is tried.
-	var only_review: bool = OS.get_environment("DRIVE_ONLY") == "review"
+	# DRIVE_ONLY=review: section 9 alone, as a build from before is tried;
+	# DRIVE_ONLY=arrive, section 10 alone.
+	var only: String = OS.get_environment("DRIVE_ONLY")
+	if only == "arrive":
+		await _arrive()
+		print("")
+		print("drive_probe: %s" % ("all passed" if _failures == 0 else "%d FAILED" % _failures))
+		_main.queue_free()
+		for _n: int in 5:
+			await process_frame
+		quit(1 if _failures > 0 else 0)
+		return
+	var only_review: bool = only == "review"
 	if not only_review and await _open(RACER):
 		await _panel()
 		var motion: Motions.Motion = await _defined()
@@ -1084,10 +1102,13 @@ func _arrive() -> void:
 	var parts: int = _world.brick_count()
 	# Nothing on disk: every part fetched from this probe's host, as the web
 	# fetches what its pack does not carry; the rims held back.
-	_host_port = HOST_PORT
+	# DRIVE_PORT=N: the run's own port, where several share the box.
+	var first: int = OS.get_environment("DRIVE_PORT").to_int() if OS.get_environment("DRIVE_PORT").is_valid_int() \
+		else HOST_PORT
+	_host_port = first
 	while _host.listen(_host_port, "127.0.0.1") != OK:
 		_host_port += 1
-		if _host_port > HOST_PORT + 2:
+		if _host_port > first + 2:
 			_check("D: a port for the parts host", false)
 			return
 	process_frame.connect(_host_tick)
@@ -1151,8 +1172,136 @@ func _arrive() -> void:
 		var back: Array = _rims_in_tyres()
 		_check("D: %s and opened again: each rim in its tyre (off %s LDU), the drive's joints all found (%s)"
 			% [each[0], _tidy_list(back), _found()], _same_list(back, whole) and _found_all())
+	# Compare with the save made while they came, as they still come: the
+	# same model (drvrecheck F3's sibling: Compare held them where the file
+	# had them, every rim moved).
+	if await _held_open("ar_defined.mpd", whole.size(), parts):
+		await _say("play_motion", {"name": NAME})
+		var saved: String = _saved("ar_compare.mpd")
+		var kept := ModelVersions.Version.new()
+		kept.path = _out.path_join("ar_compare.ldr.gz")
+		kept.at = int(Time.get_unix_time_from_system() * 1000.0)
+		kept.parts = parts
+		var packed := FileAccess.open(kept.path, FileAccess.WRITE)
+		packed.store_buffer(saved.to_utf8_buffer().compress(FileAccess.COMPRESSION_GZIP))
+		packed.close()
+		var compare: CompareView = (_main.get("_shell") as Shell).compare
+		var opened: bool = compare.open_with(kept)
+		var counts: Dictionary = compare.diff.counts() if opened and compare.diff != null else {}
+		var changes: int = compare.diff.changes.size() if opened and compare.diff != null else -1
+		compare.close()
+		_check("F3: Compare with its save, kept while its %d rims come, finds nothing changed (%d changes: %s)"
+			% [whole.size(), changes, counts], _store.awaited.size() == whole.size() and changes == 0)
+		await _let_go()
+	# Kept, landed, undone; and kept, undone, landed, redone (drvrecheck F1):
+	# the rims go with the model both ways, the joints find them, and a save
+	# opens again as it was.
+	for order: String in ["kept, landed, undone", "kept, undone, landed, redone"]:
+		if not await _held_open("ar_defined.mpd", whole.size(), parts):
+			continue
+		await _say("play_motion", {"name": NAME})
+		if order.contains("undone, landed"):
+			_builder.undo()
+			await _frames(4)
+		await _let_go()
+		if order.ends_with("redone"):
+			_builder.redo()
+		else:
+			_builder.undo()
+		await _frames(4)
+		var now: Array = _rims_in_tyres()
+		var file: String = "ar_%s.mpd" % order.replace(", ", "_")
+		_saved(file)
+		_check("F1: %s, each rim in its tyre (off %s LDU), the drive's joints %s"
+			% [order, _tidy_list(now), _found()], _same_list(now, whole) and _found_all())
+		await _reopen(file, parts)
+		var back: Array = _rims_in_tyres()
+		_check("F1: %s, saved and opened again: rims off %s LDU, joints %s" % [order, _tidy_list(back),
+			_found()], _same_list(back, whole) and _found_all())
 	process_frame.disconnect(_host_tick)
 	_host.stop()
+	# F3 (drvrecheck): the app's own file with a part the catalogue has not
+	# got beside one it has, driven and kept, saved: the two stand together.
+	_library._root = ""
+	_library.remote_parts = ""
+	var own := PackedStringArray()
+	var authored: bool = false
+	var twin: bool = false
+	for line: String in FileAccess.get_file_as_string(_out.path_join("ar_defined.mpd")).split("\n"):
+		if not authored and line.strip_edges().begins_with("0 Author:"):
+			own.append("0 Author: Brickworks\r")
+			authored = true
+			continue
+		own.append(line)
+		if not twin and line.strip_edges().begins_with("1 ") and line.contains(" 3298.dat"):
+			own.append(line.replace(" 3298.dat", " zz9999.dat"))
+			twin = true
+	_write(_out.path_join("ar_own.mpd"), "\n".join(own))
+	if twin and await _open(_out.path_join("ar_own.mpd")):
+		await _say("play_motion", {"name": NAME})
+		var text: String = _saved("ar_own_driven.mpd")
+		var absent: String = _line_with(text, " zz9999.dat").replace(" zz9999.dat", "")
+		var beside: String = _line_with(text, " 3298.dat").replace(" 3298.dat", "")
+		_check("F3: the app's own file, driven and kept: its part the catalogue has not got goes with "
+			+ "the one it stood with (%s | %s)" % [absent, beside], not absent.is_empty() and absent == beside)
+	else:
+		_check("F3: the app's own file with a part the catalogue has not got opens", false)
+
+
+## The racer's [param file] opened again with its rims held back on their
+## way: whether [param rims] wait and the rest of [param parts] are down.
+func _held_open(file: String, rims: int, parts: int) -> bool:
+	_held_back[(_library.parts[RIM] as PartLibrary.PartInfo).mesh_hash + ".lbm"] = true
+	_held_peers.clear()
+	_main.call("clear_model")
+	await _frames(3)
+	_library.release_geometry()
+	(_library.get("_arrived") as Dictionary).clear()
+	_main.call("_open", _out.path_join(file))
+	var since: int = Time.get_ticks_msec()
+	while Time.get_ticks_msec() - since < 120_000 and not (not _store.laying and _store.awaited.size() == rims
+			and _world.brick_count() == parts - rims):
+		await process_frame
+	await _frames(10)
+	_builder.forget_history()
+	var ok: bool = _store.awaited.size() == rims and _world.brick_count() == parts - rims
+	if not ok:
+		_check("D: %s opened with its rims on their way (%d awaited, %d of %d parts down)" % [file,
+			_store.awaited.size(), _world.brick_count(), parts], false)
+	return ok
+
+
+## The rims held back let come, and waited for.
+func _let_go() -> void:
+	_held_back.clear()
+	for held: Array in _held_peers:
+		_host_answer(held[0], str(held[1]))
+	_held_peers.clear()
+	var since: int = Time.get_ticks_msec()
+	while not _store.awaited.is_empty() and Time.get_ticks_msec() - since < 60_000:
+		await process_frame
+	await _frames(5)
+
+
+## [param file], saved by this probe, opened again with every part served.
+func _reopen(file: String, parts: int) -> void:
+	_held_back.clear()
+	_main.call("clear_model")
+	await _frames(3)
+	_main.call("_open", _out.path_join(file))
+	var since: int = Time.get_ticks_msec()
+	while Time.get_ticks_msec() - since < 120_000 and (_store.laying or not _store.awaited.is_empty()
+			or _world.brick_count() < parts):
+		await process_frame
+	await _frames(10)
+
+
+## The first line of [param text] that has [param words] in it, trimmed.
+static func _line_with(text: String, words: String) -> String:
+	for line: String in text.split("\n"):
+		if line.contains(words):
+			return line.strip_edges()
+	return ""
 
 
 ## Each wheel rim's distance from the nearest other part's middle, LDU, in

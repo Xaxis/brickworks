@@ -706,12 +706,26 @@ whole model along the ground, its wheels turning as they roll.
   was lost, and the door and the wheels were gone at the next open
   (drivereview F1, live's hand-move bug too). A joint whose part is gone
   at a save is written as it was, and the save says so.
-- **A drive kept while parts are on their way** (the web fetches some after
-  a model opens) moves them with the model: each is put down where the
-  drives kept since have moved it (`ModelStore.awaited_at`, `Motions.moved`),
-  written there by a save before it comes, and a joint not found since the
-  open is looked for and written there too (`Motions.part_at`,
-  `_ref_written`). Put down where the file had it, a rim arrived where the
-  model had been, and its joint was written where nothing stood (drvcheck
-  D). A part that arrives after the drive is kept and before it is undone
-  stays where it landed: the undo moves only what the drive moved.
+- **A part outside the world goes where the model now is**: one on its way
+  (the web fetches some after a model opens), one the catalogue has not
+  got, one that landed late. One function answers where each stands
+  (`ModelStore.held_place`: where the file has it, moved by the drives kept
+  since, `Motions.moved`), and everything that reads such a place asks it:
+  where it is put down (`place_awaited`, `awaited_at`), a save of the app's
+  own file and of someone else's written whole (`carried_into`), Compare
+  (`awaited_now`), and whether a joint's part is still coming (`_awaits`).
+  A joint not found since the open is looked for and written there too
+  (`Motions.part_at`, `_ref_written`). Put down where the file had it, a rim
+  arrived where the model had been, and its joint was written where nothing
+  stood (drvcheck D); a part the catalogue lacks stayed behind in a save,
+  and Compare said every rim on its way had moved (drvrecheck F3).
+- **Undo and redo of a kept drive take what landed after it with them**: a
+  part put down after the model opened is kept as late (`ModelStore._late`),
+  and an undo or a redo that puts the motions back (`Builder.motions_hook`)
+  puts each late part it did not move itself where the model now stands,
+  from where it stood under the motions the step found, then looks for the
+  joints again. A drive kept while its parts land carries every part of the
+  model as it is at the keep, not only those there as it began to play.
+  Before, a rim that landed between the keep and its undo stayed a drive
+  away from its tyre, and redone after landing it was left where the model
+  had been, three of the four wheel joints lost both ways (drvrecheck F1).

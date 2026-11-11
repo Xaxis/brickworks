@@ -1640,8 +1640,8 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 				if not library.is_resident(placement.part_id):
 					still.append(placement)
 					continue
-				var brick_id: int = world.add_brick(
-					placement.part_id, placement.color_code, placement.transform)
+				var at: Transform3D = awaited_at(placement)
+				var brick_id: int = world.add_brick(placement.part_id, placement.color_code, at)
 				if brick_id == 0:
 					still.append(placement)
 					continue
@@ -1649,7 +1649,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 				world.get_brick(brick_id).unit = placement.unit
 				world.get_brick(brick_id).step = placement.step
 				world.get_brick(brick_id).origin = placement.origin
-				builder.register(brick_id, placement.part_id, placement.transform)
+				builder.register(brick_id, placement.part_id, at)
 				placed += 1
 				landing = true
 				if job.due():
@@ -2125,10 +2125,15 @@ func _motion_lines() -> PackedStringArray:
 func _awaits(joint: Motions.Joint, back: Vector3) -> bool:
 	if world.generation() != _awaited_in:
 		return false
-	var want: Vector3 = joint.place * LdrModel.FLIP + back
+	# Both where the model now stands: a joint not found since the file was
+	# read where the drives kept since moved it (Motions.part_at), the part
+	# where they moved it (awaited_at).
+	var place: Vector3 = world.motions.moved_place(joint) if joint.lead == 0 and world.motions != null \
+		else joint.place
+	var want: Vector3 = place * LdrModel.FLIP + back
 	for placement: LdrModel.Placement in awaited:
 		if placement.part_id == joint.part and placement.color_code == joint.colour \
-				and placement.transform.origin.distance_to(want) < Motions.PLACE_SLACK:
+				and awaited_at(placement).origin.distance_to(want) < Motions.PLACE_SLACK:
 			return true
 	return false
 
@@ -2446,18 +2451,52 @@ func not_coming(part_id: String) -> int:
 	return awaited.size()
 
 
-## Where [param placement], one of [member awaited], stands now: where the
-## file had it, moved with the whole model by the drives kept since it
-## opened (Motions.moved), as every part here was. A drive kept while the
-## web was still fetching left those parts where the model had been, and
-## the file then had them there (drvcheck D). Undone, the drive takes them
-## back with it.
-func awaited_at(placement: LdrModel.Placement) -> Transform3D:
+## The one answer to where a part of the open model's file stands now that
+## the world does not hold, or did not when the model opened: one on its way
+## ([member awaited], [method awaited_at]), one the catalogue has not got
+## ([member _absent], someone else's SourceFile.not_shown), one that landed
+## late ([method _follow_motions]). [param in_file]: where the file has it,
+## in the file's coordinates (LdrModel.to_transform's, the model not
+## lifted); answered in them, moved with the whole model by the drives kept
+## since it opened (Motions.moved), as every part here was. Read where the
+## file had them, a drive kept while the web was still fetching left them
+## where the model had been (drvcheck D), and so did a save of a part the
+## catalogue lacks, Compare, and an undo or a redo of the drive once they
+## had landed (drvrecheck F1, F3).
+func held_place(in_file: Transform3D) -> Transform3D:
 	var whole: Transform3D = world.motions.moved if world.motions != null else Transform3D.IDENTITY
 	if whole.is_equal_approx(Transform3D.IDENTITY):
-		return placement.transform
+		return in_file
+	return whole * in_file
+
+
+## Where [param placement], one of [member awaited], stands now in the
+## world ([method held_place]): its place is the world's as the model
+## opened, lifted.
+func awaited_at(placement: LdrModel.Placement) -> Transform3D:
 	var lifted := Transform3D(Basis.IDENTITY, _lift_now())
-	return lifted * whole * lifted.affine_inverse() * placement.transform
+	var in_file: Transform3D = lifted.affine_inverse() * placement.transform
+	var now: Transform3D = held_place(in_file)
+	return placement.transform if now == in_file else lifted * now
+
+
+## [member awaited], copies, each where it stands now ([method
+## awaited_at]): what Compare holds the parts on their way as
+## (ModelDiff.parts_of_world). Compared where the file had them, a drive
+## kept while they came said every one of them moved (drvrecheck F3).
+func awaited_now() -> Array:
+	var out: Array = []
+	if world.generation() != _awaited_in:
+		return out
+	for placement: LdrModel.Placement in awaited:
+		var now := LdrModel.Placement.new(placement.part_id, placement.color_code,
+			awaited_at(placement), placement.step)
+		now.group = placement.group
+		now.unit = placement.unit
+		now.line = placement.line
+		now.origin = placement.origin
+		out.append(now)
+	return out
 
 
 ## Put down what was waiting for [param part_id]. Returns how many landed;
@@ -2485,12 +2524,47 @@ func place_awaited(part_id: String) -> int:
 			world.get_brick(brick_id).origin = placement.origin
 			builder.register(brick_id, placement.part_id, at)
 			landed += 1
+			# Landed after the steps the history holds were made: none of
+			# their moves carries it (_follow_motions).
+			if _late_in != world.generation():
+				_late.clear()
+				_late_in = world.generation()
+			_late[brick_id] = true
 	awaited = still
 	if landed > 0:
 		_find_joints()
 	if awaited.is_empty():
 		_settle()
 	return landed
+
+
+## The parts put down after the model opened ([method place_awaited]), id ->
+## true, while it is the one open ([member _late_in]): an undo or a redo
+## of a drive kept before they came moves the model and not them.
+var _late: Dictionary = {}
+var _late_in: int = -1
+
+
+## An undo or a redo put the model's motions back (Builder.motions_hook):
+## each part that landed late and that it did not move itself goes where
+## the model now stands, from where it stood under [param had], the whole
+## move (Motions.moved) the motions had before; and the joints the
+## motions put back look for their parts again. Left where they were, the
+## racer's rims stood a whole drive from their tyres and three of its four
+## wheel joints found nothing, and a save kept them there (drvrecheck F1).
+func _follow_motions(had: Transform3D, moved_itself: Dictionary) -> void:
+	if _late_in == world.generation():
+		var lifted := Transform3D(Basis.IDENTITY, _lift_now())
+		var unmoved: Transform3D = had.affine_inverse() * lifted.affine_inverse()
+		for id: Variant in _late:
+			var now_id: int = builder._live(int(id))
+			var brick: BrickWorld.Brick = world.get_brick(now_id)
+			if brick == null or moved_itself.has(now_id) or scenery.has(now_id):
+				continue
+			var to: Transform3D = lifted * held_place(unmoved * brick.transform)
+			if not to.is_equal_approx(brick.transform):
+				builder.put_at(now_id, to)
+	_find_joints()
 
 
 ## How far the model was lifted when it opened, and whether that was worked
@@ -2755,12 +2829,13 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	# (fetch_retry_probe, 2026-10-20).
 	if _live_source() == null and world.generation() == _awaited_in:
 		# Awaited parts were stood on the ground with the rest; the absent are
-		# as the file had them.
+		# in the file's coordinates. Both where the model now stands
+		# (held_place): kept, a drive left them where it had been (drvrecheck F3).
 		var held_at: Array = []
 		for waiting: LdrModel.Placement in awaited:
 			held_at.append([waiting, back * awaited_at(waiting)])
 		for absent: LdrModel.Placement in _absent:
-			held_at.append([absent, absent.transform])
+			held_at.append([absent, held_place(absent.transform)])
 		for pair: Array in held_at:
 			var waiting: LdrModel.Placement = pair[0]
 			var held := LdrModel.Placement.new(waiting.part_id, waiting.color_code,
@@ -2801,12 +2876,14 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 		if world.generation() == _awaited_in:
 			for placement: LdrModel.Placement in awaited:
 				var held := LdrModel.Placement.new(placement.part_id, placement.color_code,
-					Transform3D(Basis.IDENTITY, -_lift_now()) * awaited_at(placement),
+					Transform3D(Basis.IDENTITY, -_lift_now()) * placement.transform,
 					placement.step)
 				held.unit = placement.unit
 				held.line = placement.line
 				waiting.append(held)
-		text = _live_source().carried_into(text, waiting)
+		# Each where the model now stands (held_place), those the app cannot
+		# show as well as those on their way.
+		text = _live_source().carried_into(text, waiting, held_place)
 		# And LDCad's hoses keep their paths, where they now lie.
 		text = LdcadPath.written_into(text, _live_source(), library)
 	# What it stands on goes with it, everywhere it goes: the autosave, a

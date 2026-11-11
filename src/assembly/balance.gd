@@ -286,9 +286,32 @@ class Report extends RefCounted:
 		elif needs_help() and widen > 0:
 			out += " Widen it %d stud%s to the %s." % [widen, "" if widen == 1 else "s",
 				widen_toward]
+		# Joints, not stud joints: a pin or an axle among them has no studs
+		# (drvrecheck F4).
 		if over > 0:
-			out += " %d stud joint%s overloaded, in red." % [over, "" if over == 1 else "s"]
+			out += " %d joint%s overloaded, in red." % [over, "" if over == 1 else "s"]
 		return out
+
+	## How to make the joints past their working load hold, by their kind:
+	## more studs only for those on studs; a pin tied in with a second off
+	## its line, as Brace this asks (StressView.brace_words).
+	func over_words() -> String:
+		var on_studs: int = 0
+		var on_pins: int = 0
+		for one: JointLoad in joints:
+			if one.ratio > 1.0:
+				if one.kind == "studs":
+					on_studs += 1
+				else:
+					on_pins += 1
+		var them: String = "it" if over == 1 else "them"
+		if on_pins == 0:
+			return "brace %s, give %s more studs, or move weight back over what holds %s" % [them, them, them]
+		if on_studs == 0:
+			return "brace %s, tie %s in with a second pin off %s line, or move weight back over what holds %s" % [
+				them, them, "its" if over == 1 else "their", them]
+		return ("brace them, give those on studs more studs and tie those on pins in with a second "
+			+ "pin off their line, or move weight back over what holds them")
 
 	## The numbers for a Claude session (check_design), compact, with what to
 	## do about them. [param namer] says a brick id the way the session
@@ -352,12 +375,13 @@ class Report extends RefCounted:
 				if not one.pose.is_empty():
 					line += ", %s" % one.pose
 				shown.append(line)
-			lines.append("Most loaded stud joints (1 N a stud working, 3 N lets go): "
+			# What a stud holds said only where one of them is on studs.
+			var studded: bool = joints.slice(0, 3).any(func(one: JointLoad) -> bool:
+				return one.kind == "studs" and one.studs > 0)
+			lines.append("Most loaded joints%s: " % (" (1 N a stud working, 3 N lets go)" if studded else "")
 				+ "; ".join(shown) + ".")
 			if over > 0:
-				lines.append(("%d past the working load: brace %s, give %s more studs, or "
-					+ "move weight back over what holds it.") % [over,
-					"it" if over == 1 else "them", "it" if over == 1 else "them"])
+				lines.append("%d past the working load: %s." % [over, over_words()])
 		return "\n".join(lines)
 
 

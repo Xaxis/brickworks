@@ -5179,6 +5179,8 @@ func _build_ui() -> void:
 	_store.world = _world
 	_store.library = _library
 	_store.builder = _builder
+	# A drive undone or redone takes what landed after it was kept with it.
+	_builder.motions_hook = _store._follow_motions
 
 	# What the model stands on: src/render/floor_layer.gd.
 	_floor = FloorLayer.new()

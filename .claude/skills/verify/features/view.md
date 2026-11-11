@@ -703,7 +703,10 @@ picture the assistant is shown.
   Known gaps: a part standing on the floor or a baseplate is held by the
   floor, so a tower's foot is not weighed; a clip, hinge, ball or turntable
   is not weighed. `tools/probe.sh stress_probe` (hand-worked cantilevers, a bonded
-  wall, the shipped models none red), `touch_probe` (walk180's tug bow amber
+  wall, the shipped models none red, and a joint of each kind past its load
+  said by its kind: a free pin "turns with nothing holding it", red, by no
+  ratio and no load it lets go at, "studs'" and more studs only for studs,
+  drvrecheck F2), `touch_probe` (walk180's tug bow amber
   at 0.86 with its ladder and without, a plate on a touch past it red and a
   weak joint, columns pressed down standing on studs and on a tile, and in
   the app the verdict, the view and `weakest_joints` agreeing) and
@@ -3528,7 +3531,15 @@ PROBE_SIZE=1280x720 tools/probe.sh motions_panel_probe -- bench/results/motions5
 # right way; the file's lines byte for byte and the same drive played from
 # it; play_motion kept on its floor, backwards back to the degree, two undos;
 # render_motion's frames draw it across the frame; a ?motion=drive-and-turn-left link drives it in the viewer, its
-# tyres turning. Pictures in OUT_DIR, named by the window's size.
+# tyres turning. Section 10 (DRIVE_ONLY=arrive alone, DRIVE_PORT=N its parts
+# host's port): the rims held back on their way, the drive kept, each rim
+# put down in its tyre where the drive left the model, saved before and
+# after and opened again with every joint found; Compare with the save made
+# while they came finds nothing changed; kept, landed, undone and kept,
+# undone, landed, redone, each rim in its tyre (0.00 LDU) and 4 of 4 joints,
+# and so saved and opened again; the app's own file with a part the
+# catalogue lacks, driven and kept, writes it with the part it stood with
+# (drvrecheck F1, F3). Pictures in OUT_DIR, named by the window's size.
 tools/probe.sh drive_probe -- bench/results/drive-2026-11-07
 PROBE_SIZE=1280x720 tools/probe.sh drive_probe -- bench/results/drive-2026-11-07
 # What the animation audit found broken, on real sets (docs/ANIMATION.md;

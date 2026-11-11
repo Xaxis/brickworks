@@ -3472,12 +3472,6 @@ msgstr "Élargissez-le de %d tenons côté %s"
 msgid "Widen it %d studs to the %s."
 msgstr "Élargissez-le de %d tenons côté %s."
 
-msgid "1 stud joint overloaded, in red."
-msgstr "1 liaison par tenons surchargée, en rouge."
-
-msgid "%d stud joints overloaded, in red."
-msgstr "%d liaisons par tenons surchargées, en rouge."
-
 msgid "left"
 msgstr "gauche"
 
@@ -12857,6 +12851,29 @@ msgstr "1 ligne de mouvement non lue retirée, car la prochaine ouverture la lir
 
 msgid "%d motion lines not read let go, as the next open would read them into %s: %s"
 msgstr "%d lignes de mouvement non lues retirées, car la prochaine ouverture les lirait dans %s : %s"
+
+# drive2 (drvrecheck F4, words): joints by their kind, and the standing line's start and studs
+
+msgid "1 joint overloaded, in red."
+msgstr "1 liaison surchargée, en rouge."
+
+msgid "%d joints overloaded, in red."
+msgstr "%d liaisons surchargées, en rouge."
+
+msgid "stands, %s studs inside the %s edge"
+msgstr "tient debout, à %s tenons en deçà du bord %s"
+
+msgid "would tip over to the %s, %s studs past its edge"
+msgstr "basculerait vers %s, à %s tenons au-delà de son bord"
+
+msgid "tips over to the %s, %s studs past its edge"
+msgstr "bascule vers %s, à %s tenons au-delà de son bord"
+
+msgid "the %s's 1 stud carries about %sx its working load"
+msgstr "le tenon de %s porte environ %s fois sa charge de travail"
+
+msgid "the %s's %d studs carry about %sx their working load"
+msgstr "les %2$d tenons de %1$s portent environ %3$s fois leur charge de travail"
 
 # end unit drive
 

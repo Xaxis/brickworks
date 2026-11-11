@@ -3336,7 +3336,7 @@ func _compare(chosen: ModelStore.Entry, kept: Array[ModelVersions.Version], vers
 		else ""
 	var library: PartLibrary = app.get("_library")
 	var diff: ModelDiff = ModelDiff.between(ModelDiff.parts_of_text(text, library, inside),
-		ModelDiff.parts_of_world(app.get("_world"), store.scenery, store.lift(), store.awaited,
+		ModelDiff.parts_of_world(app.get("_world"), store.scenery, store.lift(), store.awaited_now(),
 			inside))
 	return CompareView.said_of(diff, kept[version - 1], inside, library) \
 		+ "\nNothing was opened or changed. File, Compare with… shows the person the same."
