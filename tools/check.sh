@@ -87,10 +87,17 @@ done
 # Brickworks, their models and settings): a Godot left to the default
 # XDG_DATA_HOME reads and writes there. doctor.sh's parse check ran so
 # (2026-10-20), and check.sh relied on whoever called it. A run here gets
-# a data folder of its own unless it was given one.
-if [ -z "${XDG_DATA_HOME:-}" ] || [ "$XDG_DATA_HOME" = "$HOME/.local/share" ]; then
+# a data folder of its own unless it was given one, and removes it when it
+# ends: 25 left in /tmp, some 230 MB, filled the disk (2026-11-10). heavy
+# runs this script again in its slot (below), so the folder is made in the
+# run that does the work, whose exit removes it.
+if [ -z "${BOX_HEAVY_HELD:-}" ] && [ -x "$HOME/.claude/claude-core/bin/heavy" ] && [ "$dry" = 0 ]; then
+  :
+elif [ -z "${XDG_DATA_HOME:-}" ] || [ "$XDG_DATA_HOME" = "$HOME/.local/share" ]; then
   XDG_DATA_HOME="$(mktemp -d "${TMPDIR:-/tmp}/brickworks-check-data.XXXXXX")"
   export XDG_DATA_HOME
+  check_data=$XDG_DATA_HOME
+  trap 'rm -rf -- "$check_data"' EXIT
   echo "  (app data for this run: $XDG_DATA_HOME)"
 fi
 # Nor the person's desktop, which this shell may carry: a run here opens no
