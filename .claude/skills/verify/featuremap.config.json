@@ -615,6 +615,13 @@
     },
     {
       "kind": "cli",
+      "label": "orangecheck window answered",
+      "entry": "tools/web/oc_echo_check.mjs",
+      "reach": "node tools/web/oc_echo_check.mjs   (no .env; nothing reached off this machine)",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
       "label": "account browser flow",
       "entry": "tools/web/account_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/account_flow.mjs --url=<deployment>/app --out=shots/account   (with .env sourced)",
