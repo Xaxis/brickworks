@@ -7,7 +7,7 @@
 ## Rebrickable's set compare answers its most asked question, "can I build
 ## this from that set?": the parts in both, the parts in only one, and what
 ## to buy. Here, as a person and a session ask it, on the real scene:
-##   File, Compare two sets or models…, 7140 typed for A and 9493 for B: the
+##   File, Compare, Compare two sets or models…, 7140 typed for A and 9493 for B: the
 ##   pieces in both and in each alone add up to each set's inventory exactly
 ##   (read here from the inventory's own file, its spares apart), each tab's
 ##   rows to its count, and in both is no less than the two lists share part
@@ -130,7 +130,7 @@ func _raw(record: Dictionary) -> Dictionary:
 
 
 func _sets_in_window() -> void:
-	print("\n  File, Compare two sets or models…: 7140 against 9493")
+	print("\n  File, Compare, Compare two sets or models…: 7140 against 9493")
 	var a_record: Dictionary = _record("7140-1")
 	var b_record: Dictionary = _record("9493-1")
 	var a_pieces: int = _pieces(a_record)
@@ -143,13 +143,11 @@ func _sets_in_window() -> void:
 	print("     the inventories: 7140-1 %s, %d pieces; 9493-1 %s, %d pieces; %d share part and colour as listed"
 		% [a_record.get("n", "?"), a_pieces, b_record.get("n", "?"), b_pieces, shared])
 	_check("both sets are in the inventories", a_pieces > 0 and b_pieces > 0)
-	var file_rows: Array = []
-	for row: Variant in Shell.MENUS:
-		if str(row[0]) == "File":
-			file_rows = row[1]
-	_check("File lists it after Compare with… (%s)" % ", ".join(file_rows.slice(
-		maxi(0, file_rows.find("compare") - 1), file_rows.find("compare") + 3)),
-		file_rows.has("compare_sets") and file_rows.find("compare_sets") == file_rows.find("compare") + 1)
+	# File › Compare holds both compares (subexport).
+	var compare_rows: Array = Shell.SUBMENUS.get("compares", [])
+	_check("File › Compare lists it after Compare with… (%s)" % Keymap.menu_row("compare_sets"),
+		compare_rows == ["compare", "compare_sets"]
+		and Keymap.menu_row("compare_sets") == "File › Compare › Compare two sets or models")
 	var command: Shell.Command = _shell.command("compare_sets")
 	_check("its row reads \"%s\"" % (command.words if command != null else "(none)"),
 		command != null and command.words == "Compare two sets or models…")

@@ -34,7 +34,8 @@ picture the assistant is shown.
   button only does that, the pointer says so, and `Esc` or `V` is Select
   again. Hiding moved to `Ctrl-H`. Two fingers on a trackpad turn (Shift
   slides) and a pinch zooms to the pointer (`WheelKind`); on a Mac, Ctrl-click
-  is a right click. The status bar's left line says what the mouse will do
+  is a right click (`EditVerbs.mac_right_click`, the model tree's rows too;
+  `EditVerbs._mac` says a check is on a Mac, as `Phone._on` a phone). The status bar's left line says what the mouse will do
   now (`EditVerbs.hint`: tool, keys held, part under the pointer). Mecabricks
   publishes no trackpad convention we could find, so two-finger turning
   follows SketchUp for Web's. `tools/web/nav_flow.mjs` does all of it with the

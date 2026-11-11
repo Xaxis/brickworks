@@ -92,7 +92,7 @@ var versions: Window:
 			_make_versions()
 		return _versions
 var _versions: Window = null
-## Compare with a save, from Versions… or File, Compare with…:
+## Compare with a save, from Versions… or File, Compare, Compare with…:
 ## src/ui/compare_view.gd.
 var compare: Control:
 	get:
@@ -196,12 +196,14 @@ const ALT := KEY_MASK_ALT
 ## do I need? beside the parts list. Then Build › Booklet page reached 27
 ## rows with Page setup…, and View 482 of 470 units with Stud map, so the
 ## step's turns, tilts and zoom went into Booklet page's own Step's view,
-## and the five panels into View › Panels (menurows).
+## and the five panels into View › Panels (menurows). Then File was 482 of
+## 470 units with Compare two sets or models…, so the two compares, each
+## used now and then, went into File › Compare beside Versions… (subexport).
 const MENUS: Array = [
 	["File", ["new", "new_window", "open", "library", "collection", "collection_build", ">recent",
-		">import", "-", "save", "save_as", "versions", "compare",
-		# comparesets (APP_UX6 #7): any two of a set, a saved model or the open one.
-		"compare_sets",
+		">import", "-", "save", "save_as", "versions",
+		# subexport: Compare with… and Compare two sets or models… (APP_UX6 #7).
+		">compares",
 		"-", "share", "together",
 		"comments", ">export", "render", "render_queue", "-", "clear", "quit"]],
 	["Edit", ["undo", "redo", ">history", "-", "cut_parts", "copy", "paste", "duplicate",
@@ -266,7 +268,10 @@ const SUBMENUS: Dictionary = {
 	"export": ["export_ldraw", "export_io", "export_3d", "export_picture", "export_bricklink",
 		"export_rebrickable",
 		"export_pickabrick",
-		"-", "export_all"],
+		"-",
+		# subexport (APP_UX7 #19): each sub-model as a file of its own.
+		"export_submodels",
+		"export_all"],
 	"select_by": ["select_colour", "select_part", "select_alike", "select_find",
 		"select_connected", "select_submodel", "select_inverse"],
 	"viewpoint": ["view_default", "view_front", "view_back", "view_left", "view_right",
@@ -303,6 +308,8 @@ const SUBMENUS: Dictionary = {
 		"floor_grid", "floor_none", "-", "floor_part", "floor_default"],
 	# edges (APP_UX6 #19): View › Edges and studs.
 	"edges_studs": ["edges", "studs"],
+	# subexport: File › Compare, a save's changes and two sets' parts.
+	"compares": ["compare", "compare_sets"],
 	"floor_colour": ["floor_colour_2", "floor_colour_10", "floor_colour_288",
 		"floor_colour_19", "floor_colour_28", "floor_colour_71", "floor_colour_72",
 		"floor_colour_378", "floor_colour_1", "floor_colour_15", "floor_colour_0",
@@ -316,7 +323,9 @@ const SUBMENU_WORDS: Dictionary = {"recent": "Open recent", "import": "Import",
 	"steps": "Build steps", "booklet": "Booklet page", "booklet_view": "Step's view",
 	"floor": "Floor", "floor_colour": "Baseplate colour",
 	# edges (APP_UX6 #19).
-	"edges_studs": "Edges and studs"}
+	"edges_studs": "Edges and studs",
+	# subexport.
+	"compares": "Compare"}
 
 
 ## Everything put on screen: the menus into the bar, the toolbar under it,
@@ -775,7 +784,9 @@ const OPENS_A_TAB: Array[String] = ["instructions"]
 ## so no "Exporting…" bar sits under the dialog while the person chooses.
 ## The shop lists are counted before they ask, and are said first as ever.
 const ASKS_WHERE: Array[String] = ["save_as", "export_ldraw", "export_io", "export_picture",
-	"export_all", "instructions"]
+	"export_all", "instructions",
+	# subexport (APP_UX7 #19).
+	"export_submodels"]
 
 ## Laying a floor again under a big model: its plates cover more ground.
 const FLOOR_SLOW_FROM := 3000
@@ -960,6 +971,8 @@ const NEEDS: Dictionary = {
 	"back_to_site": "In a browser only",
 	"check_updates": "In the desktop app only: the site updates itself",
 	"reinstall": "In the desktop app only", "restart": "Reload the tab instead",
+	# subexport (APP_UX7 #19).
+	"export_submodels": "Make a sub-model first",
 }
 
 
@@ -1113,6 +1126,13 @@ func _define() -> void:
 		func() -> void: await app.get("_exports").shop_list("pickabrick", {}, true),
 		something, "LEGO® element numbers and how many of each, to upload at LEGO® Pick a "
 			+ "Brick, 400 to a file; the parts with no number known are named")
+	# subexport (APP_UX7 #19): each sub-model as a file of its own, in one
+	# .zip (src/ui/exports.gd, src/parts/submodel_file.gd); one from the model
+	# tree's menu (src/ui/outliner.gd).
+	_add("export_submodels", "Each sub-model as its own file (.zip)", 0,
+		func() -> void: await app.get("_exports").each_submodel(true),
+		func() -> bool: return something.call() and not assemblies.paths().is_empty(),
+		"Every sub-model as an LDraw file of its own, with its own sub-models and steps, in one .zip")
 	_add("render", "Render…", 0, func() -> void: app.call("open_render"), something,
 		"A photo-real picture or turntable of the model, on a backdrop, in studio light")
 	# src/ui/render_queue.gd, loaded the first time it is asked for.
@@ -1707,12 +1727,7 @@ func open_context(at: Vector2) -> void:
 	# Painting is with the colour in hand: which one, said.
 	context.set_item_text(item_index(context, "paint"),
 		"Paint with %s" % library.color(builder.held_color).name)
-	context.reset_size()
-	var room: Vector2 = app.get_viewport().get_visible_rect().size
-	var corner: Vector2 = Vector2(minf(at.x, room.x - context.size.x - 4.0),
-		minf(at.y, room.y - context.size.y - 4.0))
-	context.position = Vector2i(corner.max(Vector2.ZERO))
-	context.popup()
+	TouchSizing.popup_beside(context, at, false)
 
 
 ## Where a command is in one menu: each menu that lists a command has an
@@ -2013,8 +2028,8 @@ func _fill_history(menu: PopupMenu) -> void:
 func _ask_save_as() -> void:
 	# The desktop's is the platform's Save dialog, and a file where it says.
 	if not OS.has_feature("web"):
-		var path: String = await SaveTo.ask(ModelStore._safe_name(bar.model_name())
-			+ bar.ldraw_extension(), "", "Save as")
+		var path: String = await SaveTo.ask(SubmodelFile.named(bar.model_name(),
+			bar.ldraw_extension()), "", "Save as")
 		if not path.is_empty():
 			await bar.save_to_file(path)
 		return

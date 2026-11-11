@@ -158,16 +158,22 @@
 					"tip": "The last 20 saves of this model, to open one again or compare it with"
 				},
 				{
-					"name": "compare",
-					"words": "Compare with…",
-					"key": "",
-					"tip": "What changed since one of this model's saves: added green, removed red, moved amber"
-				},
-				{
-					"name": "compare_sets",
-					"words": "Compare two sets or models…",
-					"key": "",
-					"tip": "The parts a set, a saved model or this one shares with another, the parts in only one, and what to buy to build one from the other"
+					"submenu": "compares",
+					"words": "Compare",
+					"items": [
+						{
+							"name": "compare",
+							"words": "Compare with…",
+							"key": "",
+							"tip": "What changed since one of this model's saves: added green, removed red, moved amber"
+						},
+						{
+							"name": "compare_sets",
+							"words": "Compare two sets or models…",
+							"key": "",
+							"tip": "The parts a set, a saved model or this one shares with another, the parts in only one, and what to buy to build one from the other"
+						}
+					]
 				},
 				{
 					"line": true
@@ -238,6 +244,12 @@
 						},
 						{
 							"line": true
+						},
+						{
+							"name": "export_submodels",
+							"words": "Each sub-model as its own file (.zip)",
+							"key": "",
+							"tip": "Every sub-model as an LDraw file of its own, with its own sub-models and steps, in one .zip"
 						},
 						{
 							"name": "export_all",
@@ -1772,6 +1784,7 @@
 		"export_all": "",
 		"export_rebrickable": "",
 		"export_pickabrick": "alt-L",
+		"export_submodels": "",
 		"render": "F9",
 		"render_queue": "shift-F9",
 		"pose": "alt-O",

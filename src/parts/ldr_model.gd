@@ -89,6 +89,9 @@ class SubModel extends RefCounted:
 	## References this sub-model makes to other sub-models rather than to
 	## parts, which the loader resolves by inlining.
 	var unresolved: PackedStringArray = PackedStringArray()
+	## Its lines of the file: its FILE line and the line after its last (its
+	## NOFILE line in it where it has one); a file with no FILE line, all.
+	var span := Vector2i(-1, -1)
 
 
 var name: String = ""
@@ -189,6 +192,14 @@ const IN_PARENT := -2
 ## case: what a part drawn from the file's sections is built from
 ## (CustomParts.begin_skins), LDCad's donor sections among them.
 var section_texts: Dictionary = {}
+## Every FILE section, a part's too, by its name as a reference finds it
+## ([method whole_name]: lowercase, "/" for "\"), the last of a name as
+## [member submodels] and [member embedded_sources] keep the last: name ->
+## SubModel, whose span says where it is. Two sections can share a key
+## ("dup.ldr", "sub\dup.ldr"): a sub-model is the one [member submodels]
+## has for it, a part's file the one its whole name finds (subexport cut
+## the first twin while the model was built of the last, sereview F3).
+var files: Dictionary = {}
 ## The sub-models LDCad generated a flexible part's skin into: sub-model key
 ## -> [the line of its first `0 !LDCAD GENERATED`, the step it is in].
 var generated: Dictionary = {}
@@ -241,11 +252,15 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 	var model := LdrModel.new()
 	model.name = source_name
 
+	var all: PackedStringArray = text.split("\n")
 	# A plain .ldr has no FILE lines and is one implicit sub-model.
 	var current: SubModel = SubModel.new()
 	current.name = source_name
+	current.span = Vector2i(0, all.size())
 	model.submodels[source_name.to_lower()] = current
 	model.main = current
+	# The FILE section whose span has not ended yet.
+	var open: SubModel = null
 
 	var step: int = 0
 	## The copy the next reference is, from a COPY_META line before it.
@@ -265,7 +280,7 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 	var own_lights := PackedStringArray()
 
 	var index: int = -1
-	for raw: String in text.split("\n"):
+	for raw: String in all:
 		index += 1
 		var line: String = raw.strip_edges()
 		if not data_name.is_empty():
@@ -276,6 +291,9 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 			data_name = ""
 		if line.begins_with("0 !DATA ") or line.begins_with("0 !DATA\t"):
 			section = ""
+			if open != null:
+				open.span.y = index
+				open = null
 			data_name = line.substr(7).strip_edges().get_file().to_lower()
 			data = PackedStringArray()
 			continue
@@ -300,12 +318,20 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 			var keyword: String = tokens[1].to_upper()
 			if keyword == "NOFILE":
 				section = ""
+				if open != null:
+					open.span.y = index + 1
+					open = null
 			if keyword == "FILE":
 				var sub_name: String = " ".join(tokens.slice(2)).strip_edges()
 				section = sub_name.to_lower()
 				sections[section] = []
+				if open != null:
+					open.span.y = index
 				current = SubModel.new()
 				current.name = sub_name
+				current.span = Vector2i(index, all.size())
+				open = current
+				model.files[whole_name(sub_name)] = current
 				# Keyed the way a reference to it will be looked up.
 				# FILE names carry directories and extensions as written
 				# and references are reduced to a bare lowercase stem,
@@ -607,6 +633,12 @@ static func is_direct_colour(code: int) -> bool:
 ## 0x4 to 0x7 dithered) are not read at all (_colour), so none is ever held.
 static func direct_rgb(code: int) -> Color:
 	return Color.hex((code & 0xFFFFFF) << 8 | 0xFF)
+
+
+## A FILE line's or a reference's name whole, as a part's own files are
+## found by it (PartForge.normalise): lowercase, "/" for "\".
+static func whole_name(name: String) -> String:
+	return name.replace("\\", "/").strip_edges().to_lower()
 
 
 ## The name a reference and a FILE line have in common: no directory, no
