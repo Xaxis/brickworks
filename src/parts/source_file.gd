@@ -270,6 +270,71 @@ func carried_into(text: String, waiting: Array) -> String:
 	return out
 
 
+## [param text], the model written whole, with each section of the file
+## nothing in the model is read through carried as the file has it: a
+## sub-model it never placed, and one whose every copy was taken off.
+## [param origins] are the places in the file of the parts the model holds
+## and of those on their way (LdrModel.Placement.origin); the parts the app
+## cannot show are this source's. Each goes after the text's own sections,
+## in the file's order, with each section of the file it names that the
+## text has not got by that name: a sub-model the model still has, too, as
+## the file has it (the text's is named and framed anew), and one titled as
+## a sub-model the model places renames none of its copies at the next open
+## (LdrModel._assembly_names). Written whole, only what the model places was
+## written, and a sub-model placed by nothing, the author's work, was lost
+## on the save (kt5check F5), as Studio and LDCad keep one.
+func unplaced_into(text: String, origins: Array) -> String:
+	var used: Dictionary = {main_key: true}
+	for origin: Variant in origins + unshown_origins.keys():
+		for at: String in str(origin).split("/", false):
+			var n: int = at.to_int()
+			if n < 0 or n >= original.size():
+				continue
+			used[_sec[n]] = true
+			# And what the line names: a part the file carries as a section.
+			var words: PackedStringArray = _words(original[n])
+			if words.size() >= 15 and words[0] == "1":
+				used[LdrModel._key(" ".join(words.slice(14)))] = true
+	var keys: Array = sections.keys().filter(func(key: String) -> bool:
+		return not used.has(key))
+	if keys.is_empty():
+		return text
+	# The text's own sections: the model's, named anew (LdrModel.write_tree),
+	# and the parts it embeds, named as the file has them.
+	var written: Dictionary = {}
+	for line: String in text.split("\n"):
+		if LdrModel.section_word(line) == "FILE":
+			written[LdrModel._key(" ".join(_words(line).slice(2)))] = true
+	var out: String = text if text.ends_with("\n") else text + "\n"
+	var carried: Dictionary = {}
+	while not keys.is_empty():
+		keys.sort_custom(func(a: String, b: String) -> bool:
+			return int((sections[a] as Array)[0]) < int((sections[b] as Array)[0]))
+		var more: Array = []
+		for key: String in keys:
+			# Written already: a part the model's own text embeds.
+			if carried.has(key) or written.has(key):
+				continue
+			carried[key] = true
+			var span: Array = sections[key]
+			var block := PackedStringArray()
+			for n: int in range(int(span[0]), int(span[1])):
+				var line: String = original[n].trim_suffix("\r")
+				var words: PackedStringArray = _words(line)
+				var named: String = LdrModel._key(" ".join(words.slice(14))) \
+					if words.size() >= 15 and words[0] == "1" else ""
+				# And what it places as the file has it, a sub-model the model
+				# still has too: the model's own is written in a frame of its
+				# own, under a name of its own (LdrModel.write_tree).
+				if sections.has(named) and not written.has(named) and not carried.has(named):
+					more.append(named)
+				block.append(line)
+			var as_had: String = "\n".join(block).strip_edges()
+			out += as_had + ("\n" if as_had.to_upper().ends_with("0 NOFILE") else "\n0 NOFILE\n")
+		keys = more
+	return out
+
+
 ## The outermost copy above (or at) [param unit] whose section and every
 ## section inside it shows nothing: "" when there is none.
 func _outermost_unshown(unit: String, shown_sections: Dictionary) -> String:
@@ -433,6 +498,7 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 
 	# Each line: as it was, rewritten, or taken out.
 	var replace: Dictionary = {}    ## line -> its new text, or "" to take it out
+	var moved_into: Dictionary = {}     ## a section a part of it went to another step of
 	var inserts: Dictionary = {}    ## line -> [lines to go before it]
 	for line: int in by_line:
 		var origins: Array = by_line[line]
@@ -477,6 +543,7 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 			if to == null:
 				return null
 			_insert(inserts, to, _step_lines(_section_of(first.unit), brick.step) + [written])
+			moved_into[_section_of(first.unit)] = true
 		else:
 			replace[line] = written
 
@@ -512,7 +579,7 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 			return null
 		_insert(inserts, to, _step_lines(section, brick.step) + [said])
 
-	_drop_emptied(replace, left)
+	_unplace_emptied(replace, left, moved_into)
 
 	var eol_now: String = "\r" if not lines.is_empty() and lines[0].ends_with("\r") else ""
 	for section: String in restepped:
@@ -690,15 +757,20 @@ func _restep(section: String, replace: Dictionary, inserts: Dictionary, added: A
 	return true
 
 
-## A sub-model whose every part was taken out goes with them: its FILE
-## block, and each line that places it. Left in, the saved file kept an
-## empty sub-model, still placed where the assembly had been, which another
-## program's list of sub-models shows (2026-10-16). A sub-model is kept while
-## anything stays in it: a part not taken out, one the app cannot show, a
-## part added here ([param left]), a sub-model of its own still in use, or
+## A sub-model whose every part was taken out, its every copy taken off, is
+## placed by nothing: each line placing it goes, from every section still
+## in use, and its block stays as the file has it, its parts' lines with
+## it, as the patch keeps it ([method _left_unplaced]) and as Studio and
+## LDCad keep one. Its block went with them, and the last copy taken off
+## lost the author's sub-model on the save (kt5check F5). Placed still, with
+## its parts' lines gone, the saved file kept an empty sub-model where the
+## assembly had been, which another program's list shows (2026-10-16). A
+## sub-model is in use while anything stays in it: a part not taken out, one
+## the app cannot show, a part added here ([param left]) or moved to another
+## of its steps ([param moved_into]), a sub-model of its own still in use, or
 ## an LDCad flexible part's skin.
-func _drop_emptied(replace: Dictionary, left: Array) -> void:
-	var kept: Dictionary = {}
+func _unplace_emptied(replace: Dictionary, left: Array, moved_into: Dictionary) -> void:
+	var kept: Dictionary = moved_into.duplicate()
 	for entry: Array in left:
 		kept[_section_of((entry[0] as BrickWorld.Brick).unit)] = true
 	var emptied: Dictionary = {}
@@ -731,12 +803,9 @@ func _drop_emptied(replace: Dictionary, left: Array) -> void:
 		return
 	for key: String in sections:
 		var span: Array = sections[key]
-		if emptied.has(key) and int(span[1]) < lines.size() \
-				and lines[int(span[1])].strip_edges().to_upper().begins_with("0 NOFILE"):
-			replace[int(span[1])] = ""
 		for n: int in range(int(span[0]), int(span[1])):
 			if emptied.has(key):
-				replace[n] = ""
+				replace.erase(n)
 				continue
 			var words: PackedStringArray = LdrModel._fields(lines[n].strip_edges())
 			if words.size() >= 15 and words[0] == "1" \
@@ -1056,19 +1125,18 @@ func _renumbered(dead: Dictionary) -> String:
 	return ""
 
 
-## Why a patch taking out the lines [param gone] would leave what live's
-## write takes out with them; "": a sub-model of the file no line places
-## any more, its section left in the file for nothing to draw, or no part
-## at all with no new one ([param fresh] of them) in. The next save of
-## such a patch wrote the file's model whole as six lines and lost its
-## header (kt5review #4: 8644-1, 30572-1, 8121-1, 4309-1, 4348-1,
-## single_delete_all). A sub-model the file had and never placed stays.
+## Why a patch taking out the lines [param gone] is not to be one; "": no
+## part left at all with no new one ([param fresh] of them) in, which live's
+## write writes (kt5review #4: single_delete_all). A sub-model no line
+## places any more is no reason: its block stays, placed by nothing, as the
+## file's author made it and as Studio and LDCad keep one, and only the
+## lines placing it go. Sent to live's write, which dropped the block, the
+## last copy taken off lost the sub-model on the save (kt5check F5:
+## fidelity_probe's sub-model emptied, 30572-1, 8644-1, 8121-1, 4309-1,
+## 4348-1's delcopy).
 func _left_unplaced(gone: Dictionary, fresh: int) -> String:
 	var before: Dictionary = _placed_from_main({})
 	var after: Dictionary = _placed_from_main(gone)
-	for key: String in before:
-		if not after.has(key):
-			return "the sub-model %s is placed by no line any more" % _file_name(key)
 	if fresh == 0 and int(after.get(main_key, 0)) == 0 and int(before.get(main_key, 0)) > 0:
 		return "no part is left in the model"
 	return ""

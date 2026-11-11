@@ -94,11 +94,28 @@ Whether what you built is still there tomorrow, and still means the same thing.
   `_new_as_written`): its colour code the file's or the painted colour's own
   (a top-level 16 reads as 0), its name the file's byte for byte or a swapped
   part's "part.dat", its place's and turn's numbers the file's unless they say
-  another place or turn, its line end the file's. A delete that would leave a
-  sub-model no line places, or no part at all (`_left_unplaced`), or that
-  takes off a copy of a sub-model with a later copy left, which an open
-  numbers one less (`_renumbered`: Wing#2 opens as Wing#1, and a motion's
-  JOINT ASSEMBLY or a copy's step names it by its path), is (B). The tables a
+  another place or turn, its line end the file's. A delete that would leave
+  no part at all (`_left_unplaced`), or that takes off a copy of a sub-model
+  with a later copy left, which an open numbers one less (`_renumbered`:
+  Wing#2 opens as Wing#1, and a motion's JOINT ASSEMBLY or a copy's step
+  names it by its path), is (B). A sub-model no line places any more keeps
+  its block, placed by nothing, as the author made it and as Studio and
+  LDCad keep one, however the save is written: the patch takes out only the
+  lines placing it, live's write the same (`SourceFile._unplace_emptied`),
+  and the model written whole carries each section of the file nothing in
+  the model is read through, as the file had it, after its own
+  (`SourceFile.unplaced_into`, by the parts' origins: a sub-model the file
+  never placed too, and each section a kept block places, the model's own
+  ones too, since the whole write names and frames those anew). It went to
+  live's write, which took the block out, and the last copy taken off lost
+  the sub-model (kt5check F5). A block placed by nothing titled as one the
+  model places renames none of its copies at the next open: only placed
+  sub-models share a title (`LdrModel._assembly_names`; 5540's flexhose,
+  carried for the sub04b taken off, opened its copies under other names).
+  A model so emptied, its parts all in blocks nothing places, opens as an
+  empty model, still theirs (`ModelStore._why_not_a_model` counts the
+  model's own section's lines): it was refused as "there are no parts in
+  that file". The tables a
   patch reads are filled as the source is made (`SourceFile.make`), so the
   autosave's worker and a save on the main thread never fill them at once
   (read on first use, that corrupted the heap). Any

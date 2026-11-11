@@ -2262,7 +2262,7 @@
       "kind": "cli",
       "label": "fidelity probe",
       "entry": "src/dev/fidelity_probe.gd",
-      "reach": "godot --headless --path . --script src/dev/fidelity_probe.gd -- vendor/omr/files/3315-1.mpd vendor/omr/files/42082-1.mpd   (someone else's file saved untouched is the same file; a part recoloured, moved, taken away and added is written as such and nothing else changes; written whole, still the author's; a mirrored copy written whole by a matrix that reflects, opened again turned as it was, its copies following mirrored; the last copy's COPY line taken off with it; a CRLF file with no line break at its end ending so after an edit to its last line; FILEs saved untouched and compared line for line)",
+      "reach": "godot --headless --path . --script src/dev/fidelity_probe.gd -- vendor/omr/files/3315-1.mpd vendor/omr/files/42082-1.mpd   (someone else's file saved untouched is the same file; a part recoloured, moved, taken away and added is written as such and nothing else changes; written whole, still the author's; a mirrored copy written whole by a matrix that reflects, opened again turned as it was, its copies following mirrored; the last copy's COPY line taken off with it; a sub-model placed by nothing keeping its block in a patch, live's write, taken apart, written whole (with what it places) and an emptied model saved, opened and saved again, renaming no copy of one called the same; a CRLF file with no line break at its end ending so after an edit to its last line; FILEs saved untouched and compared line for line)",
       "area": "model-io"
     },
     {

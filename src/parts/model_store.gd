@@ -1724,13 +1724,17 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 
 
 ## Why [param text], which places no part, is not a model to open: "" for
-## an LDraw model with nothing in it, every line of it a comment or a meta
-## line as a model saved empty is, here or by any LDraw tool. A file of
-## anything else places nothing because it is not a model, and opening it
-## would put an empty baseplate where the person's model was.
+## an LDraw model with nothing in it, every line of its model a comment or a
+## meta line as a model saved empty is, here or by any LDraw tool, its
+## sub-models' parts placed by nothing (the last copy of its one sub-model
+## taken off and saved: its block is kept, kt5check F5, and the file was
+## refused at the next open). A file of anything else places nothing because
+## it is not a model, and opening it would put an empty baseplate where the
+## person's model was.
 static func _why_not_a_model(text: String) -> String:
 	var lines: int = 0
 	var drawn: bool = false
+	var files: int = 0
 	for raw: String in text.trim_prefix("\ufeff").split("\n"):
 		var line: String = raw.strip_edges()
 		if line.is_empty():
@@ -1738,7 +1742,11 @@ static func _why_not_a_model(text: String) -> String:
 		lines += 1
 		if line[0] not in "012345" or (line.length() > 1 and line[1] not in " \t"):
 			return "that is not an LDraw file"
-		drawn = drawn or line[0] != "0"
+		if LdrModel.section_word(line) == "FILE":
+			files += 1
+		# A line drawn in a sub-model's section, after the first FILE, is
+		# one nothing placed: the model itself still has nothing in it.
+		drawn = drawn or (line[0] != "0" and files <= 1)
 	if lines == 0:
 		return "it is empty"
 	return "there are no parts in that file" if drawn else ""
@@ -2701,6 +2709,17 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 				held.line = placement.line
 				waiting.append(held)
 		text = _live_source().carried_into(text, waiting)
+		# And each sub-model of the file nothing in the model is read
+		# through, as the file had it: one it never placed, and one whose
+		# last copy was taken off (kt5check F5).
+		var origins: Array = []
+		if world.generation() == _awaited_in:
+			for placement: LdrModel.Placement in awaited:
+				origins.append(placement.origin)
+		for brick: BrickWorld.Brick in world.bricks():
+			if not scenery.has(brick.id) and not brick.origin.is_empty():
+				origins.append(brick.origin)
+		text = _live_source().unplaced_into(text, origins)
 		# And LDCad's hoses keep their paths, where they now lie.
 		text = LdcadPath.written_into(text, _live_source(), library)
 	# What it stands on goes with it, everywhere it goes: the autosave, a
