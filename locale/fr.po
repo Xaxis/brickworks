@@ -2766,6 +2766,9 @@ msgstr "DESSOUS"
 msgid "Double-click to edit inside; drag onto another to nest"
 msgstr "Double-clic pour modifier l'intérieur ; glisser sur un autre pour l'y imbriquer"
 
+msgid "Double-tap to edit inside; hold one, then drag it onto another to nest"
+msgstr "Double-toucher pour modifier l'intérieur ; maintenir, puis glisser sur un autre pour l'y imbriquer"
+
 msgid "How a builder would split the model into sections, as a set into bags"
 msgstr "Comment un constructeur diviserait le modèle en sections, comme un set en sachets"
 

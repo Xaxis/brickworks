@@ -2766,6 +2766,9 @@ msgstr "UNTEN"
 msgid "Double-click to edit inside; drag onto another to nest"
 msgstr "Doppelklick bearbeitet das Innere; auf eine andere ziehen verschachtelt sie"
 
+msgid "Double-tap to edit inside; hold one, then drag it onto another to nest"
+msgstr "Doppeltippen bearbeitet das Innere; gedrückt halten, dann auf eine andere ziehen verschachtelt sie"
+
 msgid "How a builder would split the model into sections, as a set into bags"
 msgstr "Wie ein Baumeister das Modell in Abschnitte teilen würde, wie ein Set in Tüten"
 
