@@ -83,8 +83,21 @@ func _run() -> void:
 	if playback is BuildPlayback:
 		(playback as BuildPlayback).stop()
 	if _finger and DisplayServer.get_name() == "headless":
-		# A phone's window and a tablet's, as a person holds them.
+		# A phone's window and a tablet's, as a person holds them, at the
+		# scale the app gives each (Main._match_screen_density, which reads
+		# no window size headless), as field_drag_probe holds a phone's.
 		root.size = Vector2i(390, 844) if not Phone.wide() else Vector2i(1180, 820)
+		await _frames(10)
+		var across := float(root.size.x)
+		var down := float(root.size.y)
+		if Phone.wide():
+			root.content_scale_factor = Phone.tablet_factor(across, down) * ShellPrefs.interface_size()
+		else:
+			var phone: Variant = _main.get("_phone")
+			if phone is Node:
+				(phone as Node).set_process(false)
+			root.content_scale_factor = (_main.get_script() as GDScript).sized_factor(across, down,
+				true, ShellPrefs.interface_size(), true)
 		await _frames(30)
 	_shell = _main.get("_shell")
 	_store = _main.get("_store")
@@ -94,7 +107,8 @@ func _run() -> void:
 	_builder = _main.get("_builder")
 	_bar = _main.get("_bar")
 	Download.folder = _out.path_join("files")
-	print("\ntreedrag: %s, window %s, %s, %s" % [_kind(), str(root.get_visible_rect().size),
+	print("\ntreedrag: %s, window %s (scale %.2f), %s, %s" % [_kind(), str(root.get_visible_rect().size),
+		root.content_scale_factor,
 		DisplayServer.get_name(), "a tablet's layout" if Phone.wide() else "a phone's layout"
 		if Phone.on() else "the desktop's"])
 	await _open_file("res://vendor/omr/files/7140-1.mpd", "7140-1")
@@ -274,6 +288,12 @@ func _carry(from: String, onto: String, relative: bool) -> Dictionary:
 	await _frames(3)
 	_button(at, true)
 	await _frames(4)
+	if relative:
+		# A hand holds the button a moment before it moves, and the tree is
+		# laid out again by then for the row the press chose (it looks twice
+		# a second): live's drag read the row at the press's place after it,
+		# and carried nothing (a check's quick events got in before it).
+		await create_timer(0.6).timeout
 	# Past the threshold, then on to where the row is now: the press chose
 	# a row, which can lay the tree out again.
 	var now: Vector2 = at
@@ -286,9 +306,10 @@ func _carry(from: String, onto: String, relative: bool) -> Dictionary:
 			out["carried"] = _drag_name(root.gui_get_drag_data())
 	var goal: Vector2 = root.get_visible_rect().get_center()
 	if onto != "@view":
-		goal = (await _rect(onto)).get_center()
-	if goal == Vector2.ZERO:
-		goal = now
+		var brought: Dictionary = await _bring(onto, now, func(to: Vector2, by: Vector2) -> void:
+			_move(to, MOUSE_BUTTON_MASK_LEFT, by if relative else Vector2.ZERO), out)
+		now = brought["now"]
+		goal = (brought["rect"] as Rect2).get_center() if (brought["rect"] as Rect2).has_area() else now
 	for step: int in 12:
 		var next: Vector2 = now.lerp(goal, float(step + 1) / 12.0)
 		_move(next, MOUSE_BUTTON_MASK_LEFT, (next - now) if relative else Vector2.ZERO)
@@ -326,18 +347,20 @@ func _by_finger() -> void:
 	var paths: PackedStringArray = _shell.assemblies.paths()
 	var figure: String = _first(paths, func(p: String) -> bool:
 		return Assemblies.parent_of(p).is_empty() and p.begins_with("Minifig"))
-	print("\n  a finger held on %s, then moved onto a sub-model's row in sight" % figure)
+	var vehicle: String = _first(paths, func(p: String) -> bool:
+		return Assemblies.parent_of(p).is_empty() and p.begins_with("Support Vehicle"))
+	print("\n  a finger held on %s, then moved onto %s" % [figure, vehicle])
 	var before: Array = _state()
 	var depth: int = _builder.history_depth()
-	var seen: Dictionary = await _finger_carry(figure, "@sight", 0.7, Vector2.ZERO)
-	var lands: String = str(seen.get("onto")) + "/" + Assemblies.leaf(figure)
+	var seen: Dictionary = await _finger_carry(figure, vehicle, 0.7, Vector2.ZERO)
+	var lands: String = vehicle + "/" + Assemblies.leaf(figure)
 	var after: Array = _state()
 	paths = _shell.assemblies.paths()
 	var what: String = "%s: held, then moved" % _kind()
 	# A build with the row's menu puts it up as the hold ends; the move that
 	# lifts the row puts it away (iOS's context menu and drag alike).
 	_check("%s: carried %s onto %s, the outline on %s %s, dropped: %s, a menu left up %s" % [what,
-		seen.get("carried"), seen.get("onto"), seen.get("under"), seen.get("outline"), lands
+		seen.get("carried"), vehicle, seen.get("under"), seen.get("outline"), lands
 		if paths.has(lands) else "not there", seen.get("menu")], seen.get("carried") == figure
 		and bool(seen.get("outline")) and paths.has(lands) and not paths.has(figure)
 		and not bool(seen.get("menu")))
@@ -359,16 +382,15 @@ func _by_finger() -> void:
 
 
 ## A finger down on [param from]'s row, held [param hold] seconds, then
-## moved onto [param onto]'s row ("@sight" a sub-model's row it may go into,
-## in sight once it has been held; "@by" by [param by]; "" not moved) and
+## moved onto [param onto]'s row ("@by" by [param by], "" not moved) and
 ## lifted, as a phone's touch screen sends it (the window makes the mouse's
-## events of it, as on a phone). Nothing scrolls the tree while the finger
-## is down, as nothing would: a target out of sight is no target.
+## events of it, as on a phone). Nothing but the finger scrolls the tree
+## while it is down: a row out of sight is brought by holding the carry at
+## the tree's edge (_bring).
 func _finger_carry(from: String, onto: String, hold: float, by: Vector2) -> Dictionary:
 	_builder.clear_selection()
 	await _frames(10)
-	var out: Dictionary = {"carried": "(no drag)", "outline": false, "under": "(none)", "onto": "(none)",
-		"menu": false}
+	var out: Dictionary = {"carried": "(no drag)", "outline": false, "under": "(none)", "menu": false}
 	var at: Vector2 = (await _rect(from)).get_center()
 	if at == Vector2.ZERO:
 		return out
@@ -381,17 +403,10 @@ func _finger_carry(from: String, onto: String, hold: float, by: Vector2) -> Dict
 	var now: Vector2 = at
 	var goal: Vector2 = at + by
 	if onto != "@by" and not onto.is_empty():
-		# Where the rows are now that the press has chosen one (the tree may
-		# have been laid out again by it), as the person sees them.
-		var rows: Dictionary = _in_sight()
-		if onto == "@sight":
-			onto = _target_in_sight(from, rows, at)
-		out["onto"] = onto
-		if not rows.has(onto):
-			_touch(now, false)
-			await _frames(10)
-			return out
-		goal = (rows[onto] as Rect2).get_center()
+		var brought: Dictionary = await _bring(onto, now, func(to: Vector2, by_: Vector2) -> void:
+			_drag(to, by_), out)
+		now = brought["now"]
+		goal = (brought["rect"] as Rect2).get_center() if (brought["rect"] as Rect2).has_area() else now
 	if not onto.is_empty():
 		for step: int in 14:
 			var next: Vector2 = now.lerp(goal, float(step + 1) / 14.0) if step < 13 else goal
@@ -429,24 +444,39 @@ func _carryable(meta: String) -> bool:
 	return not meta.is_empty() and meta != Outliner.SUGGESTED
 
 
-## The row in sight, of [param rows], that [param from] (a sub-model at
-## the top) may go into: another at the top, not a figure where one is in
-## sight (a figure goes into a vehicle more often than into a figure), the
-## nearest to [param at] but not under it. "" when there is none.
-func _target_in_sight(from: String, rows: Dictionary, at: Vector2) -> String:
-	var best: String = ""
-	var best_score: float = INF
-	for meta: String in rows:
-		if meta.is_empty() or meta == from or not Assemblies.parent_of(meta).is_empty() \
-				or not _carryable(meta) or meta.begins_with(Outliner.SUGGESTION) \
-				or (rows[meta] as Rect2).has_point(at):
-			continue
-		var score: float = (rows[meta] as Rect2).get_center().distance_to(at) \
-			+ (10000.0 if meta.begins_with("Minifig") else 0.0)
-		if score < best_score:
-			best_score = score
-			best = meta
-	return best
+## How far a row's middle is from the tree's top or bottom before a carry
+## stops there to put it in: clear of the edge where the carry scrolls the
+## tree (Outliner.EDGE, 20 units; the probe's own, so it runs before it).
+const CLEAR := 26.0
+
+
+## [param onto]'s row brought into sight as a person brings it: the carry
+## moved by [param point] (a place, the move to it) to the tree's edge
+## toward it and held there while the tree scrolls, until the row is clear
+## of the edge. Its rect then (an empty one when it never came), and where
+## the pointer is; [param out]'s carried is noted as the carry begins.
+func _bring(onto: String, now: Vector2, point: Callable, out: Dictionary) -> Dictionary:
+	var until: int = Time.get_ticks_msec() + 8000
+	while Time.get_ticks_msec() < until:
+		var row: TreeItem = _outliner.call("_find", _tree.get_root(), onto)
+		if row == null:
+			break
+		var area: Rect2 = _tree.get_global_rect()
+		var rect: Rect2 = _tree.get_item_area_rect(row)
+		rect.position += area.position
+		var y: float = rect.get_center().y
+		if rect.has_area() and y > area.position.y + CLEAR and y < area.end.y - CLEAR:
+			return {"rect": rect, "now": now}
+		var edge := Vector2(area.get_center().x,
+			area.position.y + 3.0 if y <= area.position.y + CLEAR else area.end.y - 3.0)
+		var next: Vector2 = now.move_toward(edge, 12.0)
+		if next != now:
+			point.call(next, next - now)
+			now = next
+		await _frames(1)
+		if root.gui_is_dragging() and out["carried"] == "(no drag)":
+			out["carried"] = _drag_name(root.gui_get_drag_data())
+	return {"rect": Rect2(), "now": now}
 
 
 # -- the gates -----------------------------------------------------------------------
@@ -467,7 +497,7 @@ func _gates() -> void:
 	_bar.said.connect(hear)
 	var seen: Dictionary = {}
 	if _finger:
-		seen = await _finger_carry(from, "@sight", 0.7, Vector2.ZERO)
+		seen = await _finger_carry(from, onto, 0.7, Vector2.ZERO)
 	else:
 		seen = await _carry(from, onto, true)
 	_bar.said.disconnect(hear)
@@ -573,12 +603,18 @@ func _rows_at(size: Vector2i) -> void:
 		if is_equal_approx(was, _tree.get_scroll().y):
 			break
 	for goal: float in [0.0, most * 0.5, most]:
+		# The last press's row let go, and the tree drawn again for it (twice
+		# a second, scrolled to the row chosen) before it is scrolled here and
+		# read: drawn again after, every row moves under the place read.
+		_builder.clear_selection()
+		await create_timer(0.6).timeout
 		for _w: int in 200:
 			if _tree.get_scroll().y >= goal - 1.0:
 				break
 			_wheel(MOUSE_BUTTON_WHEEL_DOWN)
 			await _frames(2)
-		await _frames(4)
+		await create_timer(0.6).timeout
+		await _frames(2)
 		var rects: Dictionary = _in_sight()
 		var keys: Array = rects.keys().filter(func(m: String) -> bool:
 			return not m.is_empty() and not m.begins_with(Outliner.SUGGESTION) and m != Outliner.SUGGESTED)

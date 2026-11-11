@@ -1651,7 +1651,9 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   past the window's drag threshold, a finger held still `FlingScroll.HOLD_MS`
   and then moved (moved at once, it scrolls the tree), heard by the window
   first (`Outliner._heard`), as a menu its hold puts up takes the window's
-  input; a model shared to look
+  input; held at the tree's top or bottom edge, a carry scrolls it
+  (`Outliner._edge_scroll`; Godot's own is off: 4 units deep, and never at
+  the top of a tree below its header); a model shared to look
   at or being laid takes none (`Shell.why_frozen`). Probe: `treedrag_probe`
   (headless: the mouse's drops with Undo, Redo, Save and a reopen,
   sereview's scrolled row drags at 1400x900 and 1280x720 (alone with

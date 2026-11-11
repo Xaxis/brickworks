@@ -99,6 +99,8 @@ func _ready() -> void:
 	_tree.add_theme_font_size_override("font_size", 12)
 	_tree.add_theme_constant_override("button_margin", 2)
 	_tree.drop_mode_flags = Tree.DROP_MODE_ON_ITEM
+	# A carry scrolls the tree at its edges by _edge_scroll, not Godot's.
+	_tree.add_theme_constant_override("scroll_speed", 0)
 	_tree.item_selected.connect(_on_selected)
 	_tree.item_activated.connect(_on_activated)
 	_tree.item_edited.connect(_on_edited)
@@ -288,9 +290,11 @@ func set_open(open: bool) -> void:
 	_refresh(true)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if _pressed and _press_finger and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 		_press_hold.saw()
+	if get_viewport().gui_is_dragging() and _tree.is_visible_in_tree():
+		_edge_scroll(delta)
 	var now: int = Time.get_ticks_msec()
 	if now - _looked_at < 500:
 		return
@@ -849,6 +853,43 @@ func _carry() -> void:
 		if focused:
 			_tree.grab_focus()
 	_tree.force_drag(lifted[0], lifted[1])
+
+
+## How deep the tree's top and bottom edges are, where a carry held scrolls
+## it, units (at most a sixth of the tree), and how fast it goes at the very
+## edge and beyond, units a second (a row a tenth of a second).
+const EDGE := 20.0
+const EDGE_SPEED := 240.0
+var _bar: VScrollBar
+
+
+## A carry held at the tree's top or bottom scrolls it to the rows out of
+## sight, faster the nearer the edge. Once a row is chosen the tree is at
+## its least height (Properties fills the column under it), four rows on a
+## desktop and two on a tablet, so the row to put it in is most often out
+## of sight. Godot's own scroll at a drag's edge is 4 units deep at 12 a
+## second, too thin for a finger and too slow for anyone, and never at the
+## top of a tree below its header: it compares the pointer in the tree with
+## the tree's place in the column (Tree's get_rect).
+func _edge_scroll(delta: float) -> void:
+	if _bar == null:
+		for child: Node in _tree.get_children(true):
+			if child is VScrollBar:
+				_bar = child
+	if _bar == null or not _bar.visible:
+		return
+	var at: Vector2 = _tree.get_local_mouse_position()
+	var tall: float = _tree.size.y
+	var edge: float = minf(EDGE, tall / 6.0)
+	if at.x < 0.0 or at.x > _tree.size.x or at.y < -edge or at.y > tall + edge:
+		return
+	var by: float = 0.0
+	if at.y < edge:
+		by = -minf((edge - at.y) / edge, 1.0)
+	elif at.y > tall - edge:
+		by = minf((at.y - (tall - edge)) / edge, 1.0)
+	if by != 0.0:
+		_bar.value += by * EDGE_SPEED * delta
 
 
 ## The pressed row's carry and what is drawn of it by the pointer, or none
