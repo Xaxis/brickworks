@@ -195,7 +195,11 @@ Whether what you built is still there tomorrow, and still means the same thing.
   file and is saved back, and File, Open says how many and which, a flexible
   part once by its sub-model ("… (ropeLQ-1 (flexible))"). `fidelity_probe`
   checks it, and the cad task test counts a part lost on open only when it
-  is neither shown nor kept.
+  is neither shown nor kept. It keeps its step and that step's looks
+  through step edits (heldsteps, 2026-11-11; view.md, the author's steps):
+  a save writes its line in the step it is in now, the patch only when that
+  is the step the file had it in (else live's write, which re-steps it,
+  `SourceFile.held_steps`). `heldsteps_probe` checks it.
 - `flexible parts drawn` (`CustomParts.begin_skins`, `PartForge.build_skin`):
   LDCad writes a hose's, a rope's or a band's skin after `0 !LDCAD
   GENERATED` in its sub-model (primitives bent a segment at a time, a donor

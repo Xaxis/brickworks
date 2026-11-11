@@ -605,6 +605,20 @@ func _apply(step: Dictionary) -> Dictionary:
 		stepped.step = int(step["step"])
 		return {"undo": "restep", "brick": stepped.id, "step": had}
 
+	# A part the model holds and does not show put in another step
+	# (AuthorSteps, BrickWorld.held), its own reverse; and the brick it was
+	# put down as, when it came after the edit (ModelStore.place_awaited).
+	if step.get("undo", "") == "heldstep":
+		var placement: LdrModel.Placement = step["held"]
+		var had: int = placement.step
+		placement.step = int(step["step"])
+		var landed: BrickWorld.Brick = world.get_brick(_live(placement.landed)) \
+			if placement.landed != 0 else null
+		if landed != null:
+			had = landed.step
+			landed.step = int(step["step"])
+		return {"undo": "heldstep", "held": placement, "step": had}
+
 	# A section broken out of the model or put back (Sections): which
 	# sections are out, and where each came from, set back to what the step
 	# kept; the record it replaced is the reverse.
@@ -1831,7 +1845,8 @@ static func set_path(brick: BrickWorld.Brick, path: String) -> void:
 ## tower lost the entry that built it in the castle's steps, and its parts
 ## moved steps (unitsteps). [param numbers] are steps the change gives,
 ## {"bricks": id -> step, "units": path before the change -> step, -1 for
-## none}: a copy's steps made its parent's as it is taken apart
+## none, "held": [[a part the model does not show (BrickWorld.held), its
+## step]]}: a copy's steps made its parent's as it is taken apart
 ## (AuthorSteps.inlined), a sub-assembly made built in its parent's. What it
 ## put in a section other than the one it was stepped in, and numbers none
 ## of, is numbered in the one it is in now (AuthorSteps.rehomed), each step's
@@ -1871,9 +1886,19 @@ func regroup(changes: Dictionary, words: String, carry: Callable = Callable(),
 				world.unit_steps.erase(to)
 			else:
 				world.unit_steps[to] = int(given[path])
+	# What the model holds and does not show, in the steps given with the rest.
+	var kept_held: Dictionary = {}
+	for pair: Array in numbers.get("held", []):
+		var placement: LdrModel.Placement = pair[0]
+		if placement.step != int(pair[1]):
+			steps.append({"undo": "heldstep", "held": placement, "step": placement.step})
+			kept_held[placement.get_instance_id()] = true
+			placement.step = int(pair[1])
 	# Each part's step once, as it was before all of it, as the copies' below.
 	var rehomed: Array = AuthorSteps.rehomed(world, was, units, carry, numbers, scenery)
 	steps.append_array(rehomed.filter(func(entry: Dictionary) -> bool:
+		if str(entry["undo"]) == "heldstep":
+			return not kept_held.has((entry["held"] as Object).get_instance_id())
 		return str(entry["undo"]) == "restep" and not kept.has(int(entry["brick"]))))
 	if not rehomed.is_empty():
 		steps.append_array(BookletLooks.follow(world, looked, scenery))

@@ -2766,6 +2766,9 @@ msgstr "ABAJO"
 msgid "Double-click to edit inside; drag onto another to nest"
 msgstr "Doble clic para editar dentro; arrastrar sobre otro para anidarlo"
 
+msgid "Double-tap to edit inside; hold one, then drag it onto another to nest"
+msgstr "Doble toque para editar dentro; mantener pulsado y arrastrar sobre otro para anidarlo"
+
 msgid "How a builder would split the model into sections, as a set into bags"
 msgstr "Cómo dividiría un constructor el modelo en secciones, como un set en bolsas"
 

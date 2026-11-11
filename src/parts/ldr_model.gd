@@ -66,6 +66,10 @@ class Placement extends RefCounted:
 	## own line, joined by "/" ("12/40/7"), so each copy of a sub-model's
 	## part has its own. "" for one not read from a file (SourceFile).
 	var origin: String = ""
+	## The brick it was put down as, once a part on its way came
+	## (ModelStore.place_awaited); 0 before. A step edit made while it was on
+	## its way gave it its step (AuthorSteps), and is undone on that brick.
+	var landed: int = 0
 
 	func _init(id: String, color: int, at: Transform3D, in_step: int) -> void:
 		part_id = id

@@ -1680,7 +1680,24 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   model and its sub-assemblies inside one another with their part counts. A
   row selects its parts, a double-click edits inside it, `F2` renames it in
   place, its eye and lock hide and lock it whole, and dragging a row onto
-  another nests it there (onto Model, back to the top). Folded or open as it
+  another nests it there (onto Model, back to the top), one undo step, the
+  row it would go into outlined (none where it may not: itself, its parent,
+  a row inside it); a suggestion dragged onto another merges them. The drag
+  begins from the row the press was on (`Outliner._carry_input`): the mouse
+  past the window's drag threshold, a finger held still `FlingScroll.HOLD_MS`
+  and then moved (moved at once, it scrolls the tree), heard by the window
+  first (`Outliner._heard`), as a menu its hold puts up takes the window's
+  input; that menu goes as the row lifts, and as Godot then lets go of the
+  mouse it makes of the finger, the finger's moves and lift carry and drop
+  it (`Outliner._follow`); held at the tree's top or bottom edge, a carry scrolls it
+  (`Outliner._edge_scroll`; Godot's own is off: 4 units deep, and never at
+  the top of a tree below its header); a model shared to look
+  at or being laid takes none (`Shell.why_frozen`). Probe: `treedrag_probe`
+  (headless: the mouse's drops with Undo, Redo, Save and a reopen,
+  sereview's scrolled row drags at 1400x900 and 1280x720 (alone with
+  `--rows`), the gates; by hand `--phone` and `--tablet`: a finger's,
+  held with a menu of the tree's own put up and then moved too).
+  Folded or open as it
   was left (`outliner_open`). It looks again at every redraw of the world and
   twice a second, and works itself out again only when what it is made from
   has changed: the model's revision and undo history, how many parts are
