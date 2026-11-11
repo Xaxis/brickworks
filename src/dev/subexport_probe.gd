@@ -323,9 +323,9 @@ func _paths_by_file(parsed: LdrModel, names: Array, zip: Dictionary) -> Dictiona
 ## The names a sub-model may have that no system takes for a file as they
 ## are, each a FILE section's: folders, the folder above, a dot first,
 ## control characters, what Windows refuses and keeps for its devices (one
-## with an extension), 304 bytes, nothing but refused characters, dots and
-## spaces at the end, two that are one once made safe, and ones every system
-## takes as they are, Tårn, 城, 150°.
+## with an extension, one long), 304 bytes, nothing but refused characters,
+## dots and spaces at the end, two that are one once made safe, and ones
+## every system takes as they are, Tårn, 城, 150°.
 const ODD_NAMES: Array[String] = ["../up.ldr", "C:\\win.ldr", "/abs.ldr", "..", "...",
 	".hidden.ldr", "what?.ldr", "CON.ldr", "aux.backup.ldr", "LPT1", "a<b>|c*.ldr",
 	"<>:|?*.ldr", "\"|\"", "end..", "x. .", "a?b.ldr", "ab.ldr", "Tårn.ldr", "城.ldr",
@@ -337,6 +337,9 @@ func _odd_names() -> Array[String]:
 	var names: Array[String] = ODD_NAMES.duplicate()
 	names.append("ctl" + String.chr(1) + "x" + String.chr(27) + "z.ldr")
 	names.append("L".repeat(300) + ".ldr")
+	# A device's name made long: the "_" it is given must not take it past 200
+	# bytes.
+	names.append("aux." + "城".repeat(100) + ".ldr")
 	return names
 
 

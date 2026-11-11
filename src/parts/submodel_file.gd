@@ -350,11 +350,13 @@ static func safe_name(named: String, room: int = MOST_BYTES) -> String:
 		if code < 32 or (code >= 127 and code < 160) or REFUSED.contains(bare[n]):
 			continue
 		kept += bare[n]
-	kept = _capped(_trimmed(kept), room)
-	kept = _trimmed(kept)
+	kept = _trimmed(_capped(_trimmed(kept), room))
+	# A device's name looked for after the cut, which may leave one ("CON",
+	# 300 spaces, "x"), and cut again once given its "_", which may take it
+	# past [param room] ("aux." and 100 城); a cut only takes from the end.
 	var stem: String = kept.get_slice(".", 0).strip_edges()
 	if stem.to_upper() in RESERVED:
-		kept = stem + "_" + kept.substr(kept.get_slice(".", 0).length())
+		kept = _trimmed(_capped(stem + "_" + kept.substr(kept.get_slice(".", 0).length()), room))
 	return kept if not kept.is_empty() else "submodel"
 
 
