@@ -175,8 +175,10 @@ const _WORKED_WORD := "WORKED_STEPS"
 const _COPY_WORD := "COPY"
 const _IN_WORD := "IN"
 ## A light placed in the model, "0 !BRICKWORKS LIGHT {...}" (SceneLights):
-## its word, as the others' are compared.
+## its word, as the others' are compared. And a view kept with it
+## (SavedViews), which a sub-model keeps as it keeps a light.
 const _LIGHT_WORD := "LIGHT"
+const _VIEW_WORD := "VIEW"
 ## The unit step of such a copy (AuthorSteps reads it from here): kept here,
 ## where the file is read, so reading one names no class of the app's and
 ## compiles alone, which is what a file browser's picture of a model waits
@@ -205,11 +207,15 @@ var skin_texts: Dictionary = {}
 ## line's CR, in its order: those of its first FILE section and any before
 ## it. Read here, in the one reading of the file, so which model a light is
 ## of is decided where every part's is: a sub-model's are [member
-## section_lights]'s.
+## section_lines]'s.
 var light_lines := PackedStringArray()
-## A sub-model's light lines, by its key (as [member unit_sections] names
-## the section each copy is of) -> Array of the lines as the file has them.
-var section_lights: Dictionary = {}
+## A sub-model's own light and view lines, by its key (as [member
+## unit_sections] names the section each copy is of) -> Array of the lines as
+## the file has them, without a line's CR, in its order: what the app's
+## whole write would not make again in its section (BrickWorld
+## .section_lines). A sub-model's view is its own, as its light is, and a
+## whole write lost it (lreview3's F3).
+var section_lines: Dictionary = {}
 
 
 ## Whether the steps in the file are an author's, to keep: there are steps,
@@ -360,10 +366,11 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 				if current == model.main:
 					own_lights.append(raw.trim_suffix("\r"))
 				else:
-					var key: String = _key(current.name)
-					if not model.section_lights.has(key):
-						model.section_lights[key] = []
-					(model.section_lights[key] as Array).append(raw.trim_suffix("\r"))
+					model._section_line(_key(current.name), raw)
+			elif keyword == "!BRICKWORKS" and tokens.size() > 2 \
+					and tokens[2] == _VIEW_WORD and current != model.main:
+				# A sub-model's view: its own (the model's are SavedViews.read's).
+				model._section_line(_key(current.name), raw)
 			elif keyword == "!BRICKWORKS" and tokens.size() > 2 \
 					and tokens[2] == _IN_WORD:
 				# A path's names may hold spaces: the rest of the line.
@@ -546,6 +553,14 @@ static func lines_at(text: String, at: int, lines: PackedStringArray) -> String:
 static func eol_of(text: String) -> String:
 	var first: int = text.find("\n")
 	return "\r\n" if first > 0 and text[first - 1] == "\r" else "\n"
+
+
+## [param raw], a line of sub-model [param key]'s section, kept as its own
+## ([member section_lines]).
+func _section_line(key: String, raw: String) -> void:
+	if not section_lines.has(key):
+		section_lines[key] = []
+	(section_lines[key] as Array).append(raw.trim_suffix("\r"))
 
 
 ## Whether a FILE section is a part rather than a sub-model: its header
@@ -972,8 +987,8 @@ static func write_ldr(
 ## ([method steps_written]'s and any a step list adds), each written, one
 ## with nothing in it too. [param kept] is the lines a definition keeps that
 ## are not parts, by its name -> the lines, written after its section's
-## first line as they are: a sub-model's lights the app could not read, or
-## any of its own (SceneLights.kept_in).
+## first line as they are: a sub-model's own lights and views (BrickWorld
+## .section_lines, Assemblies.lines_written).
 static func write_tree(
 	placements: Array, title: String, author_name: String,
 	instances: Dictionary, embedded: Dictionary = {}, unit_steps: Dictionary = {},

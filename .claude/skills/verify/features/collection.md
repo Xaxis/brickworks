@@ -4,7 +4,7 @@ What a person owns, kept with their account: what the open model needs that
 they do not have, what could stand in, the shortfall as a shopping list, and
 which models they could build from what they have. Added 2026-10-12.
 
-<!-- covers: ui:my collection, lib:collection sums, lib:collection kept with the account, lib:a rebrickable account, cli:set inventories, cli:official models' parts lists, cli:part counts probe, cli:model library, cli:model library in storage, api:/api/collection, cli:collection api probe, cli:collection browser flow, cli:apply sql to the live project, ui:loose parts in my collection, lib:a session's loose parts over mcp, cli:mybricks probe, cli:mybricks api test, ui:compare two sets or models, lib:parts compare, cli:comparesets probe, ui:a set from a photo, ui:a set's missing parts, cli:mysets probe, cli:mysets api test -->
+<!-- covers: ui:my collection, lib:collection sums, lib:collection kept with the account, lib:a rebrickable account, cli:set inventories, cli:official models' parts lists, cli:part counts probe, cli:model library, cli:model library in storage, api:/api/collection, cli:collection api probe, cli:collection browser flow, cli:apply sql to the live project, ui:loose parts in my collection, lib:a session's loose parts over mcp, cli:mybricks probe, cli:mybricks api test, ui:compare two sets or models, lib:parts compare, cli:comparesets probe, ui:a set from a photo, ui:a set's missing parts, cli:mysets probe, cli:mysets api test, cli:localbricks probe -->
 
 ## Sub-features
 
@@ -99,14 +99,51 @@ which models they could build from what they have. Added 2026-10-12.
   the inventory less these), sent from the counts shown: a count changed
   elsewhere meanwhile is refused (409) with the collection as it is. Every
   other change keeps the marks (adds, counts, retyping, a Rebrickable
-  replace carries them to the re-added set, an older app's PUT). The pool,
+  replace carries them to the re-added set, an older app's PUT). A replace
+  that puts two entries of a set together keeps each part's marks only as
+  far as the copies kept hold it (the set's inventory, read from the shards
+  by `readShard`; with none, what the copies taken out were marked), the
+  rest onto the person's other copy of the set, else said (`done.unkept`,
+  `CollectionStore.unkept_words`, shown by the fetch's line: lbfix2). The pool,
   and so What do I need? and What can I build?, count only what is there.
   Closest to whole lists the sets with parts missing by how many pieces are
   short (the marked less what loose parts make up; another set's parts never
   count), each with What it needs: What do I need? for that set (its own
   chooser: the open model or a set), its missing lots less loose parts, the
   BrickLink and Rebrickable lists named for it. Older apps read a marked set
-  as a whole one.
+  as a whole one. Build from it, Build from them all and a model's own set
+  bin leave out what the person's copies are marked missing
+  (`CollectionStore.marks`, kept by the window's store and emptied at a
+  sign-out; `SetBin.left_out`), their copies beyond the bin's making up the
+  marks first, and the bar says "less the N pieces marked missing"
+  (localbricks); a bin open on a set is made again from the same sets and
+  records whenever the window's store changes (`PartsBin.follow_marks` on
+  `CollectionStore.changed`), so a mark made here, by a session, on another
+  device or read after start-up leaves the part out at once.
+  edit_collection missing={set, lots: [{part, color, count}]}
+  (`AppTools._collection_marks`, redesigned by lbfix after two reviews):
+  one count per part per set, every entry of the number together
+  (`Collection.marks`, by `Collection.key_of`, so a mark kept as 179 is
+  6141's); a write is one `missing` op per entry, the count spread over the
+  entries as far as each holds the part, under the inventory's number with
+  the part's other numbers there put to 0; every reply says each change
+  "was N, now M", and what of now another device or tab made meanwhile;
+  none=true is refused while anything is marked ("name the lots to
+  unmark"), and sent again with marked= the count of lots it named unmarks
+  them all at once (a stale count refused with the count now), and says
+  "Nothing to change" when nothing is; every reply lists 60 lots and then
+  "and N more lots, M pieces" (`_bounded`, lbfix2); colours and counts are
+  checked before anything is looked up (`_lot_given`: whole counts, known
+  codes); a number is matched to the set's own rows first, then as the
+  library resolves it (`_set_key`: 3048c and 2909c03, which the library
+  lacks, are their rows, not BrickLink's 3048b and 74741-f1); with add= or
+  remove= it is refused ("send them in separate calls"); a part not in the
+  set's inventory or a count past what its copies have is refused, naming
+  the number asked; out of reach it says so once ("Brickworks could not be
+  reached", `AppTools.OFFLINE`), as add= does. The read back lists each set
+  once with its copies and its marks. Signed out it is refused, as all of
+  edit_collection is. A tab a newer build has followed still marks at the
+  account but leaves the copy on this device alone (`NewerBuild.may_write`).
 - `build from a set's parts` (`src/collection/set_bin.gd`, `src/ui/parts_bin.gd`,
   docs/APP_UX.md B10, 2026-10-30): the parts bin as one set's parts, or
   several sets' added up, a tile for each part and colour in its own colour,
@@ -363,6 +400,8 @@ tools/relay_probe.sh mybricks                     # a window, 1280x720 (PROBE_SI
 # a set's missing parts and a set from a photo (mysets): the endpoint's op, then the app, on a relay
 node tools/web/mysets_api.mjs --url=http://127.0.0.1:8790
 tools/relay_probe.sh mysets -- --shots=DIR        # a window, 1280x720 (PROBE_SIZE=1400x900 too)
+# marks left out of Build from, edit_collection missing=, through the sign-in screen (localbricks), on a relay
+tools/relay_probe.sh localbricks -- --shots=DIR   # a window, 1280x720 (PROBE_SIZE=1400x900 too)
 # rebuilding the data, after tools/fetch_data.sh or a catalogue change
 python3 tools/collection_data.py
 python3 tools/collection_data.py --bricklink   # only the index's BrickLink colours, after colors.json
@@ -448,14 +487,16 @@ Proves it when:
   (from git) reading every lot, importing to Rebrickable's lot, and taking a
   set out with every mark kept, refused from a stale copy. Look at the pictures: `mybricks_row`, `_like`,
   `_loose`, `_need`, `_build`, `_claude`, `_taken_back`.
-- `mysets_api.mjs` ends `every check passed` (29 checks): 7140-1 typed and 12
+- `mysets_api.mjs` ends `every check passed` (33 checks): 7140-1 typed and 12
   lots marked in one op; refusals (a stale count 409, a set not there, a lot
   twice, a bad colour or part, a count over 100,000, no lots) changing
   nothing; the marks kept through a lot added, a count set, a Keep, a retype,
   a Rebrickable replace (carried), another set's remove_set and an older
   app's PUT; one id sent twice made once; a minifigure kept, a set number
   refused as one, taken out both ways; every mark off and the collection
-  back lot for lot.
+  back lot for lot; 3931-1 typed and fetched, 1 of 2343/47 marked on each,
+  a replace that keeps one copy keeps 1 and says the other (`unkept`), and
+  with a BrickLink list's copy kept too, puts it there (lbfix2).
 - `mysets_probe` (tools/relay_probe.sh mysets, with `-- --shots=DIR`) ends `all
   good`: the notice first, cancelled sending nothing; a box photo's 7140-1
   added in 3 actions, both endpoints asked once each (a JPEG, top 3, no
@@ -469,6 +510,23 @@ Proves it when:
   reading every set and lot and their Remove keeping the marks; the older
   collection lot for lot at the end. Look at `mysets_photo`, `_marked`,
   `_need`, `_need_seven`, `_closest`, `_minifigure`.
+- `localbricks_probe` (tools/relay_probe.sh localbricks, with `-- --shots=DIR`)
+  ends `all good`, with the sign-in screen up as a person meets it
+  (`Main.gate_for_probe`): signed out, nothing held and edit_collection says
+  to sign in; signed in through it with a password (the age question
+  answered); 7140 and 3931-1 typed; missing= marks 3 of 7140-1's lots in 1
+  call, each said "was 0, now 1", the pool 3 less, `CollectionStore.marks`
+  handed them, a part not in the inventory and a count past it refused with
+  nothing changed, count 0 unmarks, none=true refused with 2 marked and
+  both named unmark it whole; Build from it 282 of 285, the bar saying so; a
+  restart and another device signed in to the account read the same marks;
+  two tabs marking one lot from the same count, one made and one refused
+  (409) and shown the account as it is; a tab a newer build has followed
+  marks at the account and leaves the copy on this device byte for byte;
+  two copies, Build from both 566 of 570 and from one of them 284 of 285;
+  signed out the screen back and nothing held; the bar's line in de, fr and
+  es. Look at `localbricks_gate`, `_marked`, `_build`, `_two_copies`,
+  `_signed_out`.
 - the live Brickognize (`bench/results/mysets-2026-11-07/live_photos.py`,
   ten Commons box photos, said, not gated): 7 of the 8 cropped to the box
   found, each first; whole scenes of box, bags and parts 2 of 10.

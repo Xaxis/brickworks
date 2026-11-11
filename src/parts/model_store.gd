@@ -1517,6 +1517,9 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	# lines (BookletLooks); where the steps are not the author's, only the
 	# whole booklet's, its page set up and guides (_read_text).
 	world.step_looks = read["looks"]
+	# A sub-model's own lights and views, by its definition, wherever an
+	# edit takes its copies (BrickWorld.section_lines).
+	world.section_lines = Assemblies.lines_of(model)
 	# Stood on the ground before anything is placed, from every part in it;
 	# and brought down onto it, when another tool drew it up in the air.
 	var up: Vector3 = lift_for(known, foreign)
@@ -2860,9 +2863,9 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	if authored and BookletLooks.any_step_look(world):
 		steps = BookletLooks.with_kept_steps(world.step_looks,
 			LdrModel.steps_written(placements, instances, unit_steps))
-	# A sub-model's light lines in its own section (SceneLights.kept_in).
+	# A sub-model's own lights and views in its own section, by its definition.
 	var text: String = LdrModel.write_tree(placements, title, "Brickworks", instances, embedded,
-		unit_steps, known, steps, SceneLights.kept_in(_lights_now(), instances)) \
+		unit_steps, known, steps, Assemblies.lines_written(world, instances)) \
 		if not instances.is_empty() \
 		else LdrModel.write_ldr(placements, title, "Brickworks", figures, embedded, known, steps)
 	if authored:
@@ -2954,8 +2957,9 @@ static func _looks_into(text: String, looks: Dictionary, authored: bool,
 
 
 ## After an edit kept in the history: a step it took the last part off goes
-## with its look, in the same undo (BookletLooks.emptied), so an undo brings
-## both back. Called once each step of the history is made: by hand
+## with its look, in the same undo (BookletLooks.emptied), and a sub-model it
+## left no copy of with its own lights and views (Assemblies.lines_follow),
+## so an undo brings them back. Called once each step of the history is made: by hand
 ## (Main._on_model_edited), by a session (CommandSocket), by the assistant's
 ## change to a selection. Not for an undo or a redo, whose step has it in
 ## already (Builder.settled), nor while parts lifted off are held: put down,
@@ -2968,7 +2972,9 @@ func looks_follow_edit() -> void:
 	if step.is_empty() or is_same(step, builder.settled) or is_same(step, _looks_followed) \
 			or builder.is_carrying():
 		return
-	builder.extend_last(BookletLooks.emptied(world, step, scenery, _held_placements()))
+	var held: Array = _held_placements()
+	builder.extend_last(BookletLooks.emptied(world, step, scenery, held))
+	Assemblies.lines_follow(builder, step, held)
 	_looks_followed = builder.last_step()
 
 

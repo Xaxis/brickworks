@@ -3060,6 +3060,24 @@ msgstr "un clic le prend en entier, un double-clic le modifie de l'intérieur"
 msgid "took %s apart"
 msgstr "%s défait"
 
+msgid "its light went with its parts"
+msgstr "sa lumière a suivi ses pièces"
+
+msgid "its %d lights went with its parts"
+msgstr "ses %d lumières ont suivi ses pièces"
+
+msgid "%d of its lights went with it"
+msgstr "%d de ses lumières sont parties avec lui"
+
+msgid "its saved view went with it"
+msgstr "sa vue enregistrée est partie avec lui"
+
+msgid "its %d saved views went with it"
+msgstr "ses %d vues enregistrées sont parties avec lui"
+
+msgid "%s here keeps its own lights and views, not the copied ones"
+msgstr "%s garde ici ses propres lumières et vues, pas celles copiées"
+
 msgid "took 1 part out of its sub-assembly"
 msgstr "1 pièce sortie de son sous-ensemble"
 
@@ -13044,6 +13062,11 @@ msgstr "%s : une pièce se prend en main dans sa couleur, un sous-ensemble se ti
 
 msgid "Right-click a part to keep it in Favourites too"
 msgstr "Un clic droit sur une pièce la garde aussi dans les Favorites"
+
+# localbricks (APP_UX6 8): Build from it leaves out what a set is marked as missing.
+
+msgid "%s, less the %s marked missing"
+msgstr "%s, moins les %s indiquées comme manquantes"
 
 # A mosaic cropped and coloured the person's way (APP_UX6 #10, mosaic2): Crop and Whole
 # picture over the picture, Colours (all, a set's, what I own), Mixed plate sizes, and the line under it.

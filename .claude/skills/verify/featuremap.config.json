@@ -4964,7 +4964,7 @@
       "kind": "cli",
       "label": "lights probe",
       "entry": "src/dev/lights_probe.gd",
-      "reach": "tools/probe.sh lights [-- --keep=DIR] [-- --no-trace]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720: a spot over the car by Render's Spot, 0 px changed outside its cone rasterised and path traced, the roof under it lighter by 15% and 10 levels, the two the same light within 35%; a Trans Neon Green 1 x 1 in the Dark light lighting the white plate round it 3 times as much as a Trans Green one, both ways; kept over save, Save as, the autosave, a step edit and Build together's words, back after an open; light_model over MCP; then --older=DIR on an older checkout opens each file whole, its light line left alone; pictures in shots/lights/)",
+      "reach": "tools/probe.sh lights [-- --keep=DIR] [-- --no-trace] [-- --review]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720: a spot over the car by Render's Spot, 0 px changed outside its cone rasterised and path traced, the roof under it lighter by 15% and 10 levels, the two the same light within 35%; a Trans Neon Green 1 x 1 in the Dark light lighting the white plate round it 3 times as much as a Trans Green one, both ways; kept over save, Save as, the autosave, a step edit and Build together's words, back after an open; light_model over MCP; then --older=DIR on an older checkout opens each file whole, its light line left alone; a sub-model's light and view kept in its section through a rename, a Make and its outer taken apart, undone and redone, and the model's lamp its own when a sub-model has its very line; --review runs only the review checks, nothing drawn; pictures in shots/lights/)",
       "area": "view"
     },
     {
@@ -5197,6 +5197,13 @@
       "entry": "src/dev/drive_probe.gd",
       "reach": "tools/probe.sh drive_probe [-- OUT_DIR]; PROBE_SIZE=1280x720 tools/probe.sh drive_probe [-- OUT_DIR]   (windowed, on the GPU: 8808-1 driven 32 studs and a quarter circle left from the Motions panel and over MCP; its path, wheels' turns and roll read from the frames alone; the file byte for byte; kept, backwards, undone; rendered; a ?motion= link driving it; pictures in shots/drive/)",
       "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "localbricks probe",
+      "entry": "src/dev/localbricks_probe.gd",
+      "reach": "tools/relay_probe.sh localbricks   (a window, 1280x720; PROBE_SIZE=1400x900; -- --shots=DIR: through the sign-in screen with a password, 7140-1's lots marked by edit_collection missing= (each said was N, now M; none=true refused while marked) and refused past its inventory, Build from it 282 of 285, a restart and another device, two tabs at once one refused, a tab a newer build followed leaving the copy on this device, two copies 566 of 570 and one of them 284 of 285, signed out nothing held, the words in de/fr/es)",
+      "area": "collection"
     }
   ]
 }

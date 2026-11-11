@@ -81,28 +81,15 @@ const WARM := "#fff1d6"
 ## many of its lines it could not read, by reason; "read" each kept light's
 ## line as the file has it and "twins" how many lines the same as it come
 ## before it, so a save finds it again; "unread" the model's other light
-## lines, as they are, in their order; "sections" a sub-model's light lines
-## by its key, as LdrModel.section_lights has them, and "units" the copies of
-## each, by its key: a sub-model's lights are its own, and stay in it.
+## lines, as they are, in their order. A sub-model's lights are its own, and
+## stay in it: the world keeps them by its definition (BrickWorld
+## .section_lines), wherever an edit takes its copies.
 ##
 ## It belongs to the model it was read from: ModelStore keeps it for the
 ## world's generation the model was laid in, and nothing else reads the file
 ## again for it.
 static func of_model(model: LdrModel) -> Dictionary:
-	var sorting: Dictionary = _sorting(model.light_lines)
-	var units: Dictionary = {}
-	if not model.section_lights.is_empty():
-		var paths: Array = model.unit_sections.keys()
-		paths.sort()
-		for path: String in paths:
-			var key: String = model.unit_sections[path]
-			if model.section_lights.has(key):
-				if not units.has(key):
-					units[key] = []
-				(units[key] as Array).append(path)
-	sorting["sections"] = model.section_lights
-	sorting["units"] = units
-	return sorting
+	return _sorting(model.light_lines)
 
 
 ## [method of_model] of [param text] alone, read as an open reads it: for
@@ -142,7 +129,7 @@ const _WORD := "LIGHT"
 
 
 ## [param lines] (a model's light lines, as LdrModel.light_lines has them)
-## sorted as [method of_model] says, but for "sections" and "units". Only a
+## sorted as [method of_model] says. Only a
 ## line whose words begin as a light's do ("{") is tried, and only the first
 ## [constant TRIES] of those: past them the rest are kept as they are,
 ## unread, uncounted but for how many. Every line is the file's own, read
@@ -194,7 +181,7 @@ static func _sorting(lines: PackedStringArray) -> Dictionary:
 			from = at + 1
 		unread_lines.append_array(lines.slice(from))
 	return {"lights": lights, "why": why, "read": read_lines, "twins": twins,
-		"unread": unread_lines, "sections": {}, "units": {}}
+		"unread": unread_lines}
 
 
 ## The words of a light's [param line] after its word: "{...}" for a light.
@@ -269,25 +256,6 @@ static func written_with(text: String, lights: Array, read: Dictionary, whole: b
 		read.get("unread", PackedStringArray()) if whole else PackedStringArray())
 
 
-## The lines of a sub-model that [param read] (an open's reading, [method
-## of_model]) keeps, by the definition [param instances] (Assemblies
-## .file_frames) writes each in: its first copy still in the model's. A
-## sub-model none of whose copies is left takes its lines with it.
-static func kept_in(read: Dictionary, instances: Dictionary) -> Dictionary:
-	var out: Dictionary = {}
-	var units: Dictionary = read.get("units", {})
-	var sections: Dictionary = read.get("sections", {})
-	for key: String in units:
-		for path: String in units[key]:
-			if not instances.has(path):
-				continue
-			var def: String = str((instances[path] as Dictionary)["def"])
-			if not out.has(def):
-				out[def] = PackedStringArray(sections[key])
-			break
-	return out
-
-
 ## [method written_with]'s work: [param adding] go in after the lights.
 static func _written(text: String, lights: Array, read: Dictionary,
 		adding: PackedStringArray) -> String:
@@ -297,11 +265,15 @@ static func _written(text: String, lights: Array, read: Dictionary,
 		return text
 	var said: Array = read.get("lights", [])
 	var twins: PackedInt32Array = read.get("twins", PackedInt32Array())
-	# Where each line read is now: its start, its end, the next line's start.
+	# Where each line read is now: its start, its end, the next line's start;
+	# in the model's own lines alone, as they were read (LdrModel.main_span).
+	# Found anywhere, a sub-model's line the same as the model's lamp was
+	# taken for it, and a whole write left the model without it (lreview3 F2).
 	var spans: Array[Vector3i] = []
 	var words_read := PackedStringArray()
+	var own_end: int = LdrModel.main_end(text) if not lines_read.is_empty() else 0
 	for m: int in lines_read.size():
-		spans.append(_line_at(text, lines_read[m], twins[m]))
+		spans.append(_line_at(text, lines_read[m], twins[m], own_end))
 		words_read.append(_words(said[m]))
 	# Each light kept as it was keeps its line: the first line after the last
 	# so kept whose light is the same. A light changed takes a line read whose
@@ -383,14 +355,14 @@ static func _written(text: String, lights: Array, read: Dictionary,
 
 
 ## Where the [param twin]th line after the first that is [param line] whole
-## is in [param text]: its start, its end before its line end, and where the
-## next line starts; x -1 when it is not there.
-static func _line_at(text: String, line: String, twin: int) -> Vector3i:
+## is in [param text] before [param before]: its start, its end before its
+## line end, and where the next line starts; x -1 when it is not there.
+static func _line_at(text: String, line: String, twin: int, before: int) -> Vector3i:
 	var from: int = 0
 	var count: int = 0
 	while true:
 		var at: int = text.find(line, from)
-		if at < 0:
+		if at < 0 or at >= before:
 			return Vector3i(-1, -1, -1)
 		var end: int = at + line.length()
 		var starts: bool = at == 0 or text[at - 1] == "\n"
@@ -435,6 +407,19 @@ static func placed(lights: Array, lift: Vector3) -> Array:
 		out.append(_with(light, at_of(light) * LdrModel.FLIP + lift,
 			aim_of(light) * LdrModel.FLIP))
 	return out
+
+
+## [param light] carried by [param frame], its place and the way it shines:
+## a sub-model's taken apart, into the one it was in (Assemblies.ungroup).
+static func through(light: Dictionary, frame: Transform3D) -> Dictionary:
+	return _with(light, frame * at_of(light), frame.basis * aim_of(light))
+
+
+## The light a file's [param line] keeps ([constant META]), in its file's
+## coordinates and checked as an open checks one; empty when it is none.
+static func of_line(line: String) -> Dictionary:
+	var body: String = _body(line)
+	return checked(body)[0] if body.begins_with("{") else {}
 
 
 ## [param lights] moved [param by] with the model they light: it stood lower
