@@ -955,10 +955,11 @@ const NOT_A_STEP: Array[String] = ["undo", "open_model", ToolJobs.TOOL]
 
 
 ## The model as it stood before a call, for its change to be one step of
-## the history; {} for a call that only looks.
+## the history; {} for a call that only looks, and for a clear, which keeps
+## its own (Main.clear_model).
 func _before_change(name: String) -> Dictionary:
 	if assistant == null or assistant.builder == null or assistant.world == null \
-			or leaves_the_model(name) or name in NOT_A_STEP:
+			or leaves_the_model(name) or name in NOT_A_STEP or name == "clear_model":
 		return {}
 	var builder: Builder = assistant.builder
 	var last: Dictionary = builder.last_step()
@@ -1262,9 +1263,14 @@ func _run_own(tool: String, input: Dictionary) -> Variant:
 				return ("Not now — the person asked about the parts they selected, "
 					+ "and clearing would take their whole model off. Change those "
 					+ "parts with edit_selection.")
-			# One undo puts it back (_call): the person's model, cleared by a
-			# session, was gone for good.
-			app.clear_model()
+			# One undo puts it back, the model whole (Main.clear_model): the
+			# person's model, cleared by a session, was gone for good.
+			var taken: int = assistant.world.brick_count() - assistant.scenery.size() \
+				if assistant != null and assistant.world != null else 0
+			app.clear_model(true, "%s's clear model (%d taken off)" % [
+				assistant.who if assistant != null else CLAUDE, taken])
+			if assistant != null:
+				_mark(assistant.builder, assistant.chat)
 			return "The baseplate is bare. undo puts it back."
 		"save_model":
 			# A name in the app's own models, never a path. It wrote

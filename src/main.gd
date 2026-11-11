@@ -2630,17 +2630,57 @@ func ask_about_selection(words: String = "") -> void:
 ## Untitled, because what goes down next is something new: it kept the
 ## name of what was taken off, and Save would have written the lighthouse
 ## over the model it replaced. The design names it when it stands.
-func clear_model() -> void:
-	_world.clear()
+##
+## [param kept] makes it one step of the history, named [param words]: a
+## session's clear (CommandSocket), which undo takes back whole. Kept as the
+## difference of what was on the baseplate, its undo gave back the parts and
+## nothing else of the model, under new numbers: its build steps' looks, its
+## name and its file's lines lost, and the redo after it left a part of the
+## model behind (copyfaults).
+func clear_model(kept: bool = false, words: String = "") -> void:
+	var back: Array = _clear_undone() if kept else []
+	_world.clear(kept)
 	_builder.lattice.clear()
 	_builder.clear_selection()
-	_builder.forget_history()
+	if not kept:
+		_builder.forget_history()
 	if _assistant_made != null:
 		_assistant_made.forget_built()
 	_store.model_floor = ModelFloor.preferred()
 	_lay_baseplate()
 	_sample_untouched = false
 	_store.begin(ModelStore.UNTITLED)
+	if kept:
+		_builder.record(back, words)
+
+
+## The step that undoes a clear, kept before it: every part as it stood, the
+## world's tables and the model's name and file (ModelStore.identity). The
+## floor goes before the parts and comes back after them, so a baseplate of
+## the model's own is back before the floor is laid again round it.
+func _clear_undone() -> Array:
+	var back: Array = [{"undo": "floor", "floor": ModelFloor.NONE}]
+	for brick: BrickWorld.Brick in _world.bricks():
+		if _store.scenery.has(brick.id):
+			continue
+		back.append({"undo": "add", "part": brick.part_id, "color": brick.color_code,
+			"transform": brick.transform, "group": brick.group, "unit": brick.unit,
+			"step": brick.step, "was": brick.id,
+			"cover": _builder.lattice.cover_of(brick.id)})
+	if _floor != null:
+		back.append({"undo": "floor", "floor": _floor.held()})
+	back.append({"undo": "steplooks", "looks": _world.step_looks.duplicate(true)})
+	back.append({"undo": "unitchains", "chains": _world.unit_chains.duplicate()})
+	for unit: String in _world.unit_steps:
+		var step: int = int(_world.unit_steps[unit])
+		back.append({"undo": "unitstep", "unit": unit, "step": step, "kept": step == -1})
+	if _world.motions != null:
+		back.append({"undo": "motions", "motions": _world.motions.copy()})
+	for section: String in _world.broken_out:
+		back.append({"undo": "sectionout", "path": section,
+			"record": (_world.broken_out[section] as Dictionary).duplicate(true)})
+	back.append({"undo": "store", "store": _store.identity()})
+	return back
 
 
 ## Work is about to go down on the baseplate, and [param name] is what it is.
@@ -5204,6 +5244,7 @@ func _build_ui() -> void:
 		_on_rebuilt(_world.brick_count(), _drawn[0], _drawn[1]))
 	_builder.scenery = _store.scenery
 	_builder.floor_hook = _floor.put
+	_builder.store_hook = _store.put_identity
 
 	_stability = Stability.new()
 	_stability.library = _library

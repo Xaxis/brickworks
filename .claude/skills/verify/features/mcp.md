@@ -1035,7 +1035,14 @@ All of these are in `tools/check.sh`.
   difference (`SelectionScope.steps_back`). The socket's own tools too:
   review_model with a feature lays a piece, save_model can hand the next
   feature back laid, and clear_model begins a new model as New does, its one
-  step putting the old one back.
+  step putting the old one back. That step is the clear's own
+  (`Main.clear_model(true, …)`, not the difference): every part under its own
+  number (`BrickWorld.clear(keep_numbers)`), the floor, the step looks, the
+  copies' steps and chains, motions, sections broken out and the model's
+  name, file and lift (`ModelStore.identity`, Builder's "store" step); as the
+  difference, the undo lost the steps and looks, put the parts back as an
+  Untitled model with no file, and its redo left a part behind
+  (`copyfaults_probe` clear_undo).
   `claude_undo_probe`: the person places a brick, a session edits, Undo takes
   the edit and keeps the brick, a second Undo takes the brick; then
   submit_design, review_model of a feature, edit_model (recolour, move,

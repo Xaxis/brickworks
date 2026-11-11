@@ -538,8 +538,22 @@ func recolor_brick(brick_id: int, color_code: int) -> bool:
 	return true
 
 
-func clear() -> void:
+## Take everything off. [param keep_numbers] for a clear the history keeps
+## (Main.clear_model): the numbers go on from where they were, and the lines
+## of a file each part was are kept as a part taken off keeps them, so its
+## undo puts the parts back under their own numbers and the steps before it
+## still name them. Begun again at 1, the baseplate laid after it took the
+## number of a part cleared, and the undo's redo took the wrong parts off
+## (copyfaults).
+func clear(keep_numbers: bool = false) -> void:
 	_stop_reveal()
+	if keep_numbers:
+		for brick: Brick in _bricks.values():
+			if not brick.origin.is_empty():
+				_gone_origins[brick.id] = brick.origin
+	else:
+		_next_id = 1
+		_gone_origins.clear()
 	for key: String in _batches:
 		var batch: Batch = _batches[key]
 		batch.instance.queue_free()
@@ -556,11 +570,9 @@ func clear() -> void:
 	_painted.clear()
 	_spans.clear()
 	_drawn.clear()
-	_next_id = 1
 	_out_of_order = false
 	unit_steps.clear()
 	unit_chains.clear()
-	_gone_origins.clear()
 	step_looks.clear()
 	motions = null
 	cut_kept = {}

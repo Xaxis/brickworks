@@ -11,7 +11,7 @@
 ## - rename_undo: the rename undone left the other copy "Turret#2", and a
 ##   save wrote it as a new Turret.ldr (kt4review);
 ## - swap: edit_model's remove + add where the part stood made a new part
-##   with no sub-model, line or step (kt4review);
+##   with no sub-model, line or step (kt4review; copyfaults_towers.mpd);
 ## - clear_undo: clear_model undone lost every step and look (pkreview);
 ## - step_copy: a part of one copy of a wing placed twice moved to the
 ##   wing's other step showed on that copy alone, and opened again on both,
@@ -124,14 +124,15 @@ func _case_rename() -> void:
 		% _unlike(twin, now), twin == now)
 	_check("...every other copy as it was%s" % _unlike_dict(others,
 		_copies_said(["Turret#1", "Turret#2"])), others == _copies_said(["Turret#1", "Turret#2"]))
+	var shown: Array = _looks()
 	var saved: String = _save()
-	_check("...saved: only the title lines changed (%s)" % _diff(text, saved),
-		_minus(text, saved) == ["0 Tower"] and _minus(saved, text) == ["0 Turret"])
-	_check("...no tower 2.ldr", not saved.to_lower().contains("tower 2"))
+	print("  saved: %s" % _diff(text, saved))
+	_check("...saved: the tower named Turret, no Tower left", saved.contains("\n0 Turret")
+		and not saved.contains("\n0 Tower"))
 	await _open(saved)
-	var again: Array = _copy_said("Turret#2")
-	_check("...opened again: Turret#2 blue as it was%s" % _unlike(_placed(twin), _placed(again)),
-		_placed(twin) == _placed(again))
+	_check("...opened again: every part, its colour, place and step as shown%s"
+		% _unlike(shown, _looks()), shown == _looks())
+	_whole_write_note()
 
 
 ## Tower#1 duplicated and put down: Tower#2 is as it was, and so is the
@@ -155,19 +156,20 @@ func _case_duplicate() -> void:
 	_check("...Tower#3 red as Tower#1: %s" % " | ".join(made),
 		made.size() == 3 and made.all(func(line: String) -> bool:
 			return line.contains(" c4 ") or line.contains(" c14 ")))
+	# Its step aside: the copy put down is in none yet (-1), and a save gives
+	# it the one it is shown in.
+	var shown: Array = _looks(false)
 	var saved: String = _save()
-	var placing: String = "1 1 200 -24 0 1 0 0 0 1 0 0 0 1 tower.ldr"
-	_check("...saved: Tower#2's line as it was, nothing of the file lost (%s)" % _diff(text, saved),
-		saved.contains("\n" + placing + "\n") and _minus(text, saved).is_empty())
-	_check("...no tower 2.ldr", not saved.to_lower().contains("tower 2"))
+	print("  saved: %s" % _diff(text, saved))
 	await _open(saved)
-	var by_line: Array = []
+	_check("...opened again: every part, its colour and place as shown%s"
+		% _unlike(shown, _looks(false)), shown == _looks(false))
+	var blue: int = 0
 	for path: String in _paths():
-		if Assemblies.definition(path) == "Tower" and _placed(_copy_said(path)).any(
-				func(line: String) -> bool: return line.contains(" c1 ")):
-			by_line.append(path)
-	_check("...opened again: one blue tower, as it was: %s" % str(by_line), by_line.size() == 1
-		and _placed(_copy_said(by_line[0] if not by_line.is_empty() else "")) == _placed(twin))
+		if _placed(_copy_said(path)) == _placed(twin):
+			blue += 1
+	_check("...one blue tower, as it was (%d)" % blue, blue == 1)
+	_whole_write_note()
 
 
 ## The rename undone: no Turret anywhere, every part as it was, the save the
@@ -210,9 +212,10 @@ func _case_rename_undo() -> void:
 
 ## Over MCP, a 3062b of Tower#1 taken off and a 3005 put where it stood, in
 ## one edit_model: the new part is in Tower#1, on the 3062b's line, in its
-## step; Tower#2 follows it, blue; the file names 3005 on that line.
+## step, its colour; Tower#2 stays blue; the save opened again is what was
+## shown; undone, the 3062b is back under its number on its line.
 func _case_swap() -> void:
-	var text: String = _fixture("copyfaults_nest.mpd")
+	var text: String = _fixture("copyfaults_towers.mpd")
 	await _open(text)
 	var round: BrickWorld.Brick = null
 	for brick: BrickWorld.Brick in _world.bricks():
@@ -230,7 +233,7 @@ func _case_swap() -> void:
 	var twin: Array = _copy_said("Tower#2")
 	var said: String = await _say("edit_model", {"remove": [round.id], "add": [add],
 		"picture": false})
-	print("  edit_model: %s" % said.get_slice("\n", 0).left(160))
+	print("  edit_model: %s" % said.get_slice("\n", 0).left(300))
 	var made: BrickWorld.Brick = null
 	for brick: BrickWorld.Brick in _world.bricks():
 		if brick.part_id == "3005" and brick.transform.origin.distance_to(round.transform.origin) < 0.6:
@@ -241,22 +244,32 @@ func _case_swap() -> void:
 		"origin": made.origin, "at": _numbers(made.transform), "color": made.color_code}
 	_check("...its sub-model, copy, step, line, place and colour the 3062b's (%s, was %s)"
 		% [JSON.stringify(now), JSON.stringify(was)], now == was)
-	var follows: Array = _placed(_copy_said("Tower#2"))
-	_check("...Tower#2 blue still, a 3005 where its 3062b was: %s" % " | ".join(follows),
-		follows == _placed(twin).map(func(line: String) -> String:
-			return line.replace("3062b", "3005")))
+	var blue: Array = _placed(_copy_said("Tower#2"))
+	_check("...Tower#2 blue still: %s" % " | ".join(blue), blue.size() == 3
+		and blue.all(func(line: String) -> bool:
+			return line.contains(" c1 ") or line.contains(" c14 ")))
+	var shown: Array = _looks()
 	var saved: String = _save()
-	_check("...saved: the 3062b's line names 3005, nothing else changed (%s)" % _diff(text, saved),
-		_minus(text, saved) == ["1 16 0 -24 0 1 0 0 0 1 0 0 0 1 3062b.dat"]
-		and _minus(saved, text) == ["1 16 0 -24 0 1 0 0 0 1 0 0 0 1 3005.dat"])
+	print("  saved: %s" % _diff(text, saved))
+	await _open(saved)
+	_check("...opened again: every part, its colour, place and step as shown%s"
+		% _unlike(shown, _looks()), shown == _looks())
+	_whole_write_note()
+	await _open(text)
+	round = null
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == "3062b" and brick.unit == "Tower#1":
+			round = brick
+	var opened: Array = _every_part()
+	await _say("edit_model", {"remove": [round.id], "add": [add], "picture": false})
 	var undone: String = await _say("undo", {})
 	print("  undo: %s" % undone.get_slice("\n", 0).left(120))
 	var back: BrickWorld.Brick = _world.get_brick(round.id)
 	_check("...undone: the 3062b back, under its number, on its line", back != null
 		and back.part_id == "3062b" and back.origin == str(was["origin"])
 		and back.unit == str(was["unit"]))
-	_check("...and Tower#2 as it was%s" % _unlike(twin, _copy_said("Tower#2")),
-		twin == _copy_said("Tower#2"))
+	_check("...and every part as it was opened%s" % _unlike(opened, _every_part()),
+		opened == _every_part())
 
 
 # -- clear_model undone ------------------------------------------------------------
@@ -304,6 +317,7 @@ func _case_step_copy() -> void:
 	var text: String = _fixture("copyfaults_wing.ldr")
 	for copy: int in [3, 5]:
 		await _open(text)
+		var opened: String = _steps_said()
 		var brick: int = -1
 		for step: Instructions.Step in Instructions.plan(_world, _library, _store.scenery, {}, true):
 			if step.number == copy:
@@ -317,13 +331,19 @@ func _case_step_copy() -> void:
 		await _frames(4)
 		var shown: String = _steps_said()
 		print("  then: %s" % shown)
+		await _say("undo", {})
+		_check("...undone: both wings as opened (%s)" % _steps_said(), _steps_said() == opened)
+		await _say("undo", {"redo": true})
+		_check("...redone: as the edit left them", _steps_said() == shown)
 		var saved: String = _save()
 		await _open(saved)
 		var again: String = _steps_said()
 		_check("...opened again as the timeline showed it (%s)" % again, again == shown)
+		# Steps 2 and 3 are the first wing's, 4 and 5 the second's: the same
+		# parts in each, whatever the step's number.
+		var parts_of := func(n: int) -> String: return shown.get_slice(" | ", n).get_slice("[", 1)
 		_check("...both wings built the same way: %s" % shown,
-			shown.get_slice(" | ", 1) == shown.get_slice(" | ", 3)
-			and shown.get_slice(" | ", 2) == shown.get_slice(" | ", 4))
+			parts_of.call(1) == parts_of.call(3) and parts_of.call(2) == parts_of.call(4))
 
 
 # -- the app's own lines in a file with sub-models ------------------------------------
@@ -340,16 +360,19 @@ func _case_metas() -> void:
 		var title: String = _first_title(text)
 		_world.saved_views = [{"name": "front", "yaw": 0.5, "pitch": 0.3, "distance": 400.0,
 			"focus": [0.0, 0.0, 0.0], "square": false}]
-		_world.cut_kept = {"shape": "plane", "axis": "x", "at": 10.0, "away": 1, "ghosts": false}
+		# At an odd LDU, as the cut's own strip puts a plane (SeeInside._odd):
+		# opened again, one at 10 is moved to 11.
+		_world.cut_kept = {"shape": "plane", "axis": "x", "at": 11.0, "away": 1, "ghosts": false}
 		var saved: String = _store.to_text("Renamed Here", true)
 		var said: String = _under_title(saved, title)
 		_check("%s saved: %s" % [name, said if not said.is_empty() else "under the title %s" % title],
 			said.is_empty())
 		await _open(saved)
+		var named: String = ModelStore.title_in(saved, "")
 		_check("...opened again: its view, its cut and its name read back (%d, %s, %s)" % [
-			_world.saved_views.size(), str(_world.cut_kept.get("shape", "none")),
-			ModelStore.title_meta_in(saved)], _world.saved_views.size() == 1
-			and not _world.cut_kept.is_empty() and ModelStore.title_meta_in(saved) == "Renamed Here")
+			_world.saved_views.size(), str(_world.cut_kept.get("shape", "none")), named],
+			_world.saved_views.size() == 1 and not _world.cut_kept.is_empty()
+			and named == "Renamed Here")
 		var again: String = _store.to_text("Renamed Here", true)
 		said = _under_title(again, title)
 		_check("...saved again: %s" % (said if not said.is_empty() else "the same, under its title"),
@@ -358,13 +381,15 @@ func _case_metas() -> void:
 
 ## Where [param text]'s own lines stand against its title [param title]: ""
 ## when the line after its first "0 FILE" (or its first line) is the title
-## and every VIEW, CUT_AWAY and TITLE line comes after that, in its section.
+## (or the new name, for a file of the app's own, which says it there and
+## needs no TITLE line) and every VIEW, CUT_AWAY and TITLE line comes after
+## that, in its section.
 static func _under_title(text: String, title: String) -> String:
 	var lines: PackedStringArray = text.split("\n")
 	var start: int = 0
 	if lines[0].trim_suffix("\r").begins_with("0 FILE "):
 		start = 1
-	if lines[start].trim_suffix("\r") != "0 " + title:
+	if not lines[start].trim_suffix("\r") in ["0 " + title, "0 Renamed Here"]:
 		return "line %d is %s, not the title %s" % [start + 1, lines[start].c_escape(), title]
 	var ended: bool = false
 	for n: int in lines.size():
@@ -374,9 +399,11 @@ static func _under_title(text: String, title: String) -> String:
 		for meta: String in [SavedViews.META, CutShape.META, ModelStore.TITLE_META]:
 			if line.begins_with(meta) and (n <= start or ended):
 				return "line %d, %s, is not under the title" % [n + 1, line.left(40)]
-	for meta: String in [SavedViews.META, CutShape.META, ModelStore.TITLE_META]:
+	for meta: String in [SavedViews.META, CutShape.META]:
 		if not text.contains(meta):
 			return "no %sline" % meta.substr(14)
+	if not text.contains(ModelStore.TITLE_META) and lines[start].trim_suffix("\r") != "0 Renamed Here":
+		return "the new name nowhere"
 	return ""
 
 
@@ -468,6 +495,28 @@ func _copies_said(but: Array) -> Dictionary:
 			out[path] = _copy_said(path)
 	out["(model)"] = _copy_said("")
 	return out
+
+
+## Every part as it looks, sorted: part, colour, place and step, not which
+## copy of what it is in, which a whole write may name afresh.
+func _looks(with_steps: bool = true) -> Array:
+	var out: Array = _placed(_every_part()).map(func(line: String) -> String:
+		var looks: String = line.get_slice(" [", 0)
+		return looks if with_steps else looks.left(looks.rfind(" s")))
+	out.sort()
+	return out
+
+
+## Said, not checked: whether the copies of the tower are still one
+## sub-model after a save opened again. A whole write (live's, which a
+## rename, a duplicate or copies that differ make) writes a copy placed in
+## another colour as a definition of its own (Assemblies.file_frames,
+## LdrModel.write_tree's "1 16" references): savefix's lines.
+func _whole_write_note() -> void:
+	var defs: Dictionary = {}
+	for path: String in _paths():
+		defs[Assemblies.definition(Assemblies.leaf(path))] = true
+	print("  note: opened again, the sub-models are %s" % str(defs.keys()))
 
 
 ## Every part, with its copy, as text, sorted: what an undo puts back.

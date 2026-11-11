@@ -675,6 +675,64 @@ func _begin_as(named: String, picture: Dictionary = {}) -> void:
 	begun.emit(title)
 
 
+## What the model on the baseplate is, beside its parts and the tables the
+## history keeps: what [method begin] begins afresh, the file it came from
+## and the world's views, cut and lights. A clear kept for its undo holds it
+## (Builder's "store" step, Main.clear_model), so the undo gives the model
+## back under its name, written into its file as before: undone, a session's
+## clear left the parts as an untitled model, its file's lines lost
+## (copyfaults).
+func identity() -> Dictionary:
+	return {"title": title, "emptied": emptied, "example": example, "share_id": share_id,
+		"remixed_from": remixed_from, "remixed_from_version": remixed_from_version,
+		"credit": credit.duplicate(true), "from_set": from_set,
+		"hidden_scheme": hidden_scheme.duplicate(true), "pins": pins,
+		"bin_sets": bin_sets.duplicate(), "views_kept": _views_kept,
+		"lights_kept": _lights_kept, "reference": reference.duplicate(true),
+		"made_with": made_with, "source": _live_source(),
+		"opened": world != null and world.generation() == _opened_in, "lifted_by": _lifted_by,
+		"lights_read": _lights_now(),
+		"views": world.saved_views.duplicate(true) if world != null else [],
+		"cut": world.cut_kept.duplicate(true) if world != null else {},
+		"lights": world.scene_lights.duplicate(true) if world != null else []}
+
+
+## The model made what [param kept] ([method identity]) says, in the world
+## as it now is; returns what it was, for the step that puts that back.
+func put_identity(kept: Dictionary) -> Dictionary:
+	var was: Dictionary = identity()
+	title = str(kept["title"])
+	example = bool(kept["example"])
+	share_id = str(kept["share_id"])
+	remixed_from = str(kept["remixed_from"])
+	remixed_from_version = int(kept["remixed_from_version"])
+	credit = (kept["credit"] as Dictionary).duplicate(true)
+	from_set = str(kept["from_set"])
+	hidden_scheme = (kept["hidden_scheme"] as Dictionary).duplicate(true)
+	pins = kept["pins"]
+	_views_kept = kept["views_kept"]
+	_lights_kept = kept["lights_kept"]
+	reference = (kept["reference"] as Dictionary).duplicate(true)
+	made_with = str(kept["made_with"])
+	# Opened from a file, it stands as that file was lifted to (lift), and is
+	# written back down by as much: undone, a clear's model was saved 16 LDU
+	# from where its file had it.
+	_source = kept["source"]
+	_opened_in = world.generation() if bool(kept["opened"]) else -1
+	_lifted_by = float(kept["lifted_by"])
+	_lights_read = kept["lights_read"]
+	_lights_in = world.generation() if not _lights_read.is_empty() else -1
+	world.saved_views = (kept["views"] as Array).duplicate(true)
+	world.cut_kept = (kept["cut"] as Dictionary).duplicate(true)
+	world.scene_lights = (kept["lights"] as Array).duplicate(true)
+	# Said as a model begun is, its name on the bar, and the picture to build
+	# over read again; then what a listener to that sets afresh, as it was.
+	begun.emit(title)
+	emptied = bool(kept["emptied"])
+	bin_sets = (kept["bin_sets"] as PackedStringArray).duplicate()
+	return was
+
+
 ## [param name], or it with a number after it when a saved model has it.
 static func _free_name(name: String) -> String:
 	var tried: String = name
@@ -1005,7 +1063,7 @@ static func retitled(text: String, name: String) -> String:
 	var first: String = (text if cut < 0 else text.left(cut)).strip_edges()
 	if not was.is_empty() and first == "0 " + was:
 		return "0 " + name + (text.substr(cut) if cut >= 0 else "\n")
-	return _after_first_line(text, TITLE_META + name)
+	return LdrModel.into_main(text, PackedStringArray([TITLE_META + name]))
 
 
 ## Replace what is on screen with a model from disk. Returns how many
@@ -2298,7 +2356,7 @@ static func _titled(asked: Dictionary, written: String) -> String:
 	var text: String = _without_app_lines(written)
 	var title_now: String = asked["title"]
 	if title_now != source.own_title and not title_now.is_empty():
-		text = _after_first_line(text, TITLE_META + title_now)
+		text = LdrModel.into_main(text, PackedStringArray([TITLE_META + title_now]))
 	return text
 
 
@@ -2397,13 +2455,6 @@ static func _without_app_lines(text: String) -> String:
 			continue
 		kept.append(line)
 	return "\n".join(kept)
-
-
-static func _after_first_line(text: String, line: String) -> String:
-	var cut: int = text.find("\n")
-	if cut < 0:
-		return text + "\n" + line + "\n"
-	return text.substr(0, cut + 1) + line + "\n" + text.substr(cut + 1)
 
 
 ## The name a save of someone else's file gave its model, or "".
@@ -3288,9 +3339,9 @@ static func _has_parts(text: String) -> bool:
 
 
 ## [param text] with the link it is shared at and the link it was copied
-## from, each on a line after its first (inside the model itself, for an
-## .mpd), and who laid its parts ([member made_with]) when that is known;
-## as it is for none.
+## from, each on a line under the model's title (LdrModel.into_main: inside
+## the model itself, for an .mpd, not above its title), and who laid its
+## parts ([member made_with]) when that is known; as it is for none.
 static func with_share(text: String, id: String, remix: String = "", remix_version: int = 0,
 		credited: Dictionary = {}, made: String = "") -> String:
 	var lines: String = (SHARE_META + id + "\n" if not id.is_empty() else "") \
@@ -3300,10 +3351,7 @@ static func with_share(text: String, id: String, remix: String = "", remix_versi
 		+ (MADE_META + made + "\n" if made in MADE_WAYS else "")
 	if lines.is_empty():
 		return text
-	var cut: int = text.find("\n")
-	if cut < 0:
-		return text + "\n" + lines
-	return text.substr(0, cut + 1) + lines + text.substr(cut + 1)
+	return LdrModel.into_main(text, lines.trim_suffix("\n").split("\n"))
 
 
 ## Who a model's text says made it ([member credit]), or {}: each of by,

@@ -2836,6 +2836,15 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 	if not now.is_empty():
 		number = int(now[0])
 	builder.record(undo, words)
+	# The other copies of a sub-model built in steps of its own take the edit
+	# too, in the same undo (Assemblies.copies_follow), as a file writes the
+	# sub-model once: a part of one wing moved to the wing's other step showed
+	# on that wing alone, and opened again on both, or on neither (copyfaults).
+	if assemblies != null:
+		var made: int = (builder.last_step().get("steps", []) as Array).size()
+		assemblies.after_edit()
+		if (builder.last_step().get("steps", []) as Array).size() != made:
+			planned = Instructions.plan(world, library, skip, {}, true)
 	# Saved with the model, as any edit is (not _on_model_edited, which
 	# would work the timeline out a second time).
 	store.adopt()

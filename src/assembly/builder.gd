@@ -93,6 +93,11 @@ var pins_hook: Callable = Callable()
 ## returns how it was, for the steps that lay, move, size, fade, lock,
 ## replace or take it away. Unset, the step does nothing.
 var reference_hook: Callable = Callable()
+## Makes the model what a step kept of it beside its parts (ModelStore
+## .put_identity: its name, its file, its views) and returns what it was, for
+## the step a clear kept for its undo (Main.clear_model). Unset, the step does
+## nothing.
+var store_hook: Callable = Callable()
 
 signal placed(brick_id: int, part_id: String)
 signal removed(brick_id: int)
@@ -542,6 +547,11 @@ func _apply(step: Dictionary) -> Dictionary:
 	if step.get("undo", "") == "pins":
 		return {"undo": "pins", "pins": pins_hook.call(step["pins"]) if pins_hook.is_valid()
 			else step["pins"]}
+
+	# What the model is beside its parts, as it was: its own reverse.
+	if step.get("undo", "") == "store":
+		return {"undo": "store", "store": store_hook.call(step["store"]) if store_hook.is_valid()
+			else step["store"]}
 
 	# The picture to build over, as it was: its own reverse.
 	if step.get("undo", "") == "reference":
@@ -1953,7 +1963,11 @@ func extend_last(steps: Array) -> void:
 		_history[_history.size() - 1] = last
 	elif not last.has("words"):
 		last["words"] = _words_for(last)
-	(last["steps"] as Array).append_array(steps)
+	# Before what they followed, as a group's steps are kept, newest first
+	# ([method fold_since]): an undo takes them back first. After it, the
+	# rename's undo named its parts back to Tower#2, and the other copy built
+	# again from Turret#1 was then put back as Turret#2 over it (copyfaults).
+	last["steps"] = steps + (last["steps"] as Array)
 
 
 ## Everything kept since the history was [param depth] deep, as one step:
