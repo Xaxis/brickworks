@@ -115,7 +115,20 @@ Whether what you built is still there tomorrow, and still means the same thing.
   A model so emptied, its parts all in blocks nothing places, opens as an
   empty model, still theirs (`ModelStore._why_not_a_model` counts the
   model's own section's lines): it was refused as "there are no parts in
-  that file". The tables a
+  that file". The model is the file's first FILE section, empty or not, as
+  parse reads it (`ModelStore.count_in`, and `_has_parts` by
+  `LdrModel.main_span`), so the autosave of a model so emptied restores left
+  empty, its file kept for the next save (`ModelStore._restored`), not
+  "could not be opened: ." with the sample opened over it, and an empty
+  model with a kept block is refused over a saved model with parts as any
+  empty one is (sfreview F2). A model of no sub-model written whole is bare
+  text: what carries sections after it puts it in a FILE of its own first
+  (`SourceFile._as_sections`), or the kept block was the first FILE and
+  opened as the model (F1). The names of the sections a whole write carries
+  as the file has them are reserved before the model is written
+  (`SourceFile.kept_keys`, `LdrModel._main_file`): a placed sub-model titled
+  as one placed by nothing took its file name, and that one was skipped as
+  written already, its parts lost (F5). The tables a
   patch reads are filled as the source is made (`SourceFile.make`), so the
   autosave's worker and a save on the main thread never fill them at once
   (read on first use, that corrupted the heap). Any
