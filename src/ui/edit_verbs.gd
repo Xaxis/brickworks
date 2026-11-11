@@ -1160,10 +1160,27 @@ func drag_start(brick_id: int, copy: bool) -> bool:
 	return lift() > 0
 
 
+## 1 or 0 where a check says it is a Mac or not (as Phone._on), -1 to ask
+## the system.
+static var _mac: int = -1
+
+
 ## Whether this is a Mac, where Cmd is the held key and Ctrl-click is a
 ## right click — the browser's Mac as well as the desktop's.
 static func on_mac() -> bool:
+	if _mac >= 0:
+		return _mac == 1
 	return OS.has_feature("macos") or OS.has_feature("web_macos")
+
+
+## Ctrl and the left button on a Mac, which every Mac program reads as the
+## right button (a trackpad's one button needs it): the view's and a part's
+## (Main) and the model tree's rows (Outliner), by this one rule. The rows
+## took the right button alone, and a Ctrl-click on one opened no menu
+## (se4check).
+static func mac_right_click(button: InputEventMouseButton) -> bool:
+	return on_mac() and button.button_index == MOUSE_BUTTON_LEFT and button.ctrl_pressed \
+		and not button.meta_pressed and not button.alt_pressed
 
 
 ## The held key, as a Mac or anything else names it.

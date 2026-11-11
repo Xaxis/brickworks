@@ -104,11 +104,14 @@ const COMMANDS: Dictionary = {
 	# savedviews: View › Viewpoint › Render each saved view is render_queue's
 	# add view=NAME, a view at a time.
 	"render_views": "render_queue",
-	# comparesets (APP_UX6 #7): File, Compare two sets or models… is
+	# comparesets (APP_UX6 #7): File, Compare, Compare two sets or models… is
 	# parts_list which="compare".
 	"compare_sets": "parts_list",
 	# mcpsee3: View › Viewpoint › Save this view… (SavedViews.save_now).
 	"save_view": "save_view",
+	# subexport (APP_UX7 #19): File › Export › Each sub-model is
+	# export_model's submodels=true.
+	"export_submodels": "export_model",
 }
 
 ## The window's commands no tool does, each with why. A command that is
@@ -248,7 +251,7 @@ opens one. Over changes not saved it is refused unless discard_changes=true, \
 and undo brings back what it replaced. Each save is kept, the \
 last 20: name= with versions=true lists a model's, version=N opens one; \
 versions=true with version=N opens nothing and says what changed since that \
-save, part by part, as File, Compare with… draws it. \
+save, part by part, as File, Compare, Compare with… draws it. \
 link= opens a copy of a gallery model, as Open in Brickworks does; \
 library= opens LDraw's model of a real set (gallery library=true finds them).
  - parts_list: the model's parts by part and colour with element ids; \
@@ -862,7 +865,7 @@ func definitions() -> Array:
 				+ "saved models, the examples and the official models of real sets, ranked by "
 				+ "how much of each they own. "
 				# comparesets (APP_UX6 #7): Rebrickable's set compare.
-				+ "which=\"compare\" is File, Compare two sets or models…: a= and b= each a "
+				+ "which=\"compare\" is File, Compare, Compare two sets or models…: a= and b= each a "
 				+ "set number (\"7140\"), a saved model's or an example's name, or \"open\" for "
 				+ "the model open now; it says the parts in both and in only one, by part and "
 				+ "colour, each side's pieces counted once, and what to buy to build b from a. "
@@ -1094,7 +1097,10 @@ func definitions() -> Array:
 				+ "the answer is a job number at once, and job gives the result. A bricklink "
 				+ "wanted list takes condition, wanted_list and notify, as BrickLink's upload "
 				+ "reads them; what is not given is what the person chose last on the parts "
-				+ "list's BrickLink button. Nothing is uploaded: the person uploads the file."),
+				+ "list's BrickLink button. Nothing is uploaded: the person uploads the file."
+				+ " With format ldraw, submodels=true writes each sub-model as an LDraw file of its own, "
+				+ "with its own sub-models and steps, all in one .zip (File, Export, Each sub-model), "
+				+ "and submodel= just the one of that name in the model tree, as its row's menu does."),
 			"input_schema": {"type": "object", "additionalProperties": false,
 				"required": ["format"], "properties": {
 				"format": {"type": "string", "enum": ["ldraw", "studio", "glb", "gltf", "obj",
@@ -1104,6 +1110,9 @@ func definitions() -> Array:
 					"description": "bricklink: the condition wanted (CONDITION N or U; any leaves it out)"},
 				"wanted_list": {"type": "integer", "description": "bricklink: the ID of one of the person's wanted lists (WANTEDLISTID, the number after wantedMoreID= in its address); 0 for the main wanted list"},
 				"notify": {"type": "boolean", "description": "bricklink: BrickLink emails the person when a lot of a part is listed for sale (NOTIFY Y)"},
+				# subexport (APP_UX7 #19).
+				"submodels": {"type": "boolean", "description": "ldraw: each sub-model as an LDraw file of its own, with its own sub-models and steps, in one .zip"},
+				"submodel": {"type": "string", "description": "ldraw: only this sub-model as an LDraw file of its own, by its name in the model tree (Wing, Wing (copy 2), or a path Ship#1/Wing#2)"},
 			}},
 		},
 		{
@@ -3373,7 +3382,7 @@ func _open(input: Dictionary) -> String:
 
 
 ## open_model versions=true version=N: what changed in the model open now
-## since its save [param version] of [param kept], as File, Compare with…
+## since its save [param version] of [param kept], as File, Compare, Compare with…
 ## matches it (ModelDiff), and inside the sub-assembly the person is editing
 ## when they are; opening nothing and drawing nothing.
 func _compare(chosen: ModelStore.Entry, kept: Array[ModelVersions.Version], version: int) -> String:
@@ -3395,7 +3404,7 @@ func _compare(chosen: ModelStore.Entry, kept: Array[ModelVersions.Version], vers
 		ModelDiff.parts_of_world(app.get("_world"), store.scenery, store.lift(), store.awaited_now(),
 			inside))
 	return CompareView.said_of(diff, kept[version - 1], inside, library) \
-		+ "\nNothing was opened or changed. File, Compare with… shows the person the same."
+		+ "\nNothing was opened or changed. File, Compare, Compare with… shows the person the same."
 
 
 ## Why an open is refused: the person's changes would go, and a session
@@ -3675,7 +3684,7 @@ func _parts_list(input: Dictionary) -> String:
 # -- comparesets: two sets' or models' parts (APP_UX6 #7) ---------------------------
 
 
-## parts_list which="compare": a= against b=, as File, Compare two sets or
+## parts_list which="compare": a= against b=, as File, Compare, Compare two sets or
 ## models… shows them (PartsCompare), and with shop= the list to buy to build
 ## b from a written for that shop by the parts list's own writers.
 func _parts_compare(input: Dictionary) -> String:
@@ -4828,6 +4837,9 @@ func _export(input: Dictionary, work: Working.Job = null) -> String:
 			else "The person has no saved models yet."
 	if world.brick_count() - store.scenery.size() <= 0:
 		return "There is nothing on the baseplate to export yet."
+	# subexport (APP_UX7 #19): each sub-model, or one, as a file of its own.
+	if input.has("submodels") or input.has("submodel"):
+		return await _export_submodels(input, exports)
 	var said: String = ""
 	match str(input.get("format", "")):
 		"ldraw":
@@ -4857,11 +4869,66 @@ func _export(input: Dictionary, work: Working.Job = null) -> String:
 			var to: String = exports.folder if not exports.folder.is_empty() \
 				else Download.downloads()
 			said = await app.call("_export_booklet", "" if OS.has_feature("web") else
-				to.path_join(bar.model_name().to_snake_case() + "_instructions.html"), work)
+				to.path_join(SubmodelFile.titled(bar.model_name(), "_instructions.html")), work)
 		_:
 			return ("format is ldraw, studio, glb, gltf, obj, stl, 3mf, picture, bricklink, rebrickable, "
 				+ "pickabrick, instructions or all_models.")
 	return said.left(1).to_upper() + said.substr(1) + "." if not said.is_empty() else "Nothing written."
+
+
+# -- subexport (APP_UX7 #19) ----------------------------------------------------------
+
+
+## export_model's submodels=true: each sub-model as an LDraw file of its own,
+## with its own sub-models and steps, in one .zip (Exports.each_submodel);
+## submodel=NAME: that one, by its name in the model tree (Exports.submodel).
+func _export_submodels(input: Dictionary, exports: Exports) -> String:
+	if str(input.get("format", "")) != "ldraw":
+		return "submodels and submodel write LDraw files: give them with format ldraw."
+	# Both asked, one was written and the other not said (sereview F7).
+	if input.has("submodel") and bool(input.get("submodels", false)):
+		return "Give submodel=NAME or submodels=true, not both: submodel writes that one, submodels every one in a .zip."
+	var said: String = ""
+	if input.has("submodel"):
+		var paths: PackedStringArray = (app.get("_shell") as Shell).assemblies.paths()
+		var asked: String = str(input["submodel"]).strip_edges()
+		var path: String = submodel_named(asked, paths)
+		if path.is_empty():
+			var names := PackedStringArray()
+			for each: String in paths:
+				var name: String = Assemblies.label(each)
+				if not names.has(name) and names.size() < 30:
+					names.append(name)
+			if names.is_empty():
+				return "This model has no sub-models: format ldraw without submodel writes it whole."
+			return "No sub-model is called %s. The model tree's: %s." % [asked.left(80),
+				", ".join(names)]
+		said = await exports.submodel(path)
+	elif bool(input.get("submodels", false)):
+		said = await exports.each_submodel()
+	else:
+		said = await (app.get("_bar") as ModelBar).export_now(exports.folder)
+	return said.left(1).to_upper() + said.substr(1) + "." if not said.is_empty() else "Nothing written."
+
+
+## The path in [param paths] (the model tree's) that [param asked] names: the
+## path itself ("Ship#1/Wing#2"), the name its row shows ("Wing (copy 2)"),
+## or its definition ("Wing", its first copy), whatever the case; "" for none.
+static func submodel_named(asked: String, paths: PackedStringArray) -> String:
+	var wanted: String = asked.strip_edges().to_lower()
+	if wanted.is_empty():
+		return ""
+	for path: String in paths:
+		if path.to_lower() == wanted:
+			return path
+	for path: String in paths:
+		if Assemblies.label(path).to_lower() == wanted \
+				or Assemblies.leaf(path).to_lower() == wanted:
+			return path
+	for path: String in paths:
+		if Assemblies.definition(Assemblies.leaf(path)).to_lower() == wanted:
+			return path
+	return ""
 
 
 # -- brickify -----------------------------------------------------------------------

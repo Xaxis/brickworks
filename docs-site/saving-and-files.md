@@ -90,7 +90,7 @@ lib:model versions
 
 ## Compare with a save {#compare}
 
-**File › Compare with…**, or **Compare** on a row of **File › Versions…**, shows what changed since that save, on the model itself:
+**File › Compare › Compare with…**, or **Compare** on a row of **File › Versions…**, shows what changed since that save, on the model itself:
 
 - added since: green;
 - taken away: red ghosts where they stood;

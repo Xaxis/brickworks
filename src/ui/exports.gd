@@ -243,6 +243,89 @@ func all_models(asking: bool = false) -> String:
 	return line
 
 
+# -- subexport (APP_UX7 #19): a sub-model as a file of its own -----------------
+
+
+## The sub-model at [param path] in the model tree as a file of its own, with
+## its own sub-models and steps (SubmodelFile): the tree's menu, and
+## export_model's submodel over MCP. Its lines are the ones File › Export
+## writes for it in the whole model's file. Named as that file names it: a
+## plain .ldr, or an .mpd when it has sub-models of its own.
+func submodel(path: String, asking: bool = false) -> String:
+	var whole: SubmodelFile.Whole = await _whole_model("Exporting %s…" % Assemblies.label(path))
+	if whole == null:
+		return ""
+	var made: SubmodelFile.Made = SubmodelFile.cut(whole, path)
+	if made == null:
+		var none: String = "%s is not a sub-model of this model" % Assemblies.label(path)
+		say.call(none)
+		return none
+	var to: String = await _where(made.name, asking)
+	if to.is_empty():
+		return ""
+	var line: String = _give(made.text, to.get_file(), "text/plain", to.get_base_dir())
+	if line.begins_with("wrote ") or line.begins_with("downloaded "):
+		line += " — %s: %s" % [made.title, _made_words(made)]
+	say.call(line)
+	return line
+
+
+## Each sub-model of the model as a file of its own, each definition once, in
+## one .zip (NAME_submodels.zip): File › Export › Each sub-model, the tree's
+## menu, and export_model's submodels over MCP. One file, asked where on the
+## desktop, so nothing beside it is written over unasked; a browser downloads
+## one file where it would block many.
+func each_submodel(asking: bool = false) -> String:
+	if store == null or world.brick_count() - scenery.size() <= 0:
+		say.call("nothing to export")
+		return ""
+	var to: String = await _where(_file("zip", "_submodels"), asking)
+	if to.is_empty():
+		return ""
+	var whole: SubmodelFile.Whole = await _whole_model("Exporting each sub-model…")
+	if whole == null:
+		return ""
+	var made: Array[SubmodelFile.Made] = SubmodelFile.each(whole)
+	if made.is_empty():
+		var none: String = "this model has no sub-models: LDraw model writes it whole"
+		say.call(none)
+		return none
+	var members: Array = []
+	var names := PackedStringArray()
+	for one: SubmodelFile.Made in made:
+		members.append([one.name, one.text.to_utf8_buffer()])
+		names.append(one.name)
+	var line: String = _give_bytes(StudioIo.zip(members), to.get_file(), "application/zip",
+		to.get_base_dir())
+	if line.begins_with("wrote ") or line.begins_with("downloaded "):
+		line += " — %s, each with its own sub-models and steps: %s" % [
+			Counted.of(made.size(), "sub-model"), ", ".join(names)]
+	say.call(line)
+	return line
+
+
+## The model's file as File › Export writes it (ModelStore.text_for_file: a
+## big model's order worked out a slice at a time, [param doing] said), read
+## for cutting; null when there is nothing to export or it was cancelled.
+func _whole_model(doing: String) -> SubmodelFile.Whole:
+	if store == null or world.brick_count() - scenery.size() <= 0:
+		say.call("nothing to export")
+		return null
+	var text: String = await store.text_for_file(str(named.call()), doing)
+	if text.is_empty():
+		say.call("stopped exporting")
+		return null
+	return SubmodelFile.read(text, library.parts if library != null else {})
+
+
+## What a sub-model's file holds, in words: "24 parts, 6 steps, 2 sub-models".
+static func _made_words(made: SubmodelFile.Made) -> String:
+	var words: String = "%s, %s" % [Counted.of(made.parts, "part"), Counted.of(made.steps, "step")]
+	if made.inside > 0:
+		words += ", " + Counted.of(made.inside, "sub-model")
+	return words
+
+
 ## File, Export, 3D model…: which format, GLB unless another was chosen
 ## last, and what each is for and holds.
 func ask_model_3d() -> void:
@@ -389,11 +472,11 @@ func model_3d(format: String, asking: bool = false) -> String:
 	return line
 
 
+## The file named after the model, or [param named_as], by the one rule
+## for a file's name (SubmodelFile.titled).
 func _file(extension: String, suffix: String = "", named_as: String = "") -> String:
-	var base: String = (named_as if not named_as.is_empty() else str(named.call())).to_snake_case()
-	if base.is_empty():
-		base = "model"
-	return "%s%s.%s" % [base, suffix, extension]
+	return SubmodelFile.titled(named_as if not named_as.is_empty() else str(named.call()),
+		"%s.%s" % [suffix, extension])
 
 
 ## Where [param file_name] goes: on the desktop the path the person chose
