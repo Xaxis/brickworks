@@ -47,6 +47,9 @@ const WAS := &"touch_was"
 ## This, for a dialog that lays itself out round the keyboard (MinifigDialog).
 const SELF := &"touch_sizing"
 
+## The point a menu was opened at, and whether by a finger (popup_beside).
+const BESIDE := &"touch_beside"
+
 ## Every font size a control may have, by its theme's name for it.
 const FONTS: Array[StringName] = [&"font_size", &"normal_font_size", &"bold_font_size",
 	&"italics_font_size", &"bold_italics_font_size", &"mono_font_size",
@@ -134,6 +137,7 @@ func _window_shown(window: Window) -> void:
 	if not window.visible:
 		_open.erase(window)
 		window.remove_meta(&"touch_placed")
+		window.remove_meta(BESIDE)
 		return
 	if window not in _open:
 		_open.append(window)
@@ -715,6 +719,65 @@ static func _wrap_words(root: Node, across: float) -> bool:
 	return wrapped
 
 
+## [param menu] opened beside [param at], a point in the window it shows in
+## (a right click's, a finger's hold), never over it: a pointer's at the
+## menu's corner, the menu down and to the right of it, or up or to the left
+## where the window has no room there; a finger's above it, or below where
+## there is no room above, half a fingertip away, so that the finger
+## lifting chooses nothing and the hand hides none of it. On a phone or a
+## tablet the menu is sized for a finger as it shows (_size_window), and
+## placed by the same rule at the size it then has (_lay_window): placed
+## once from the desktop's size, the model tree's menu grew down over the
+## finger that held its row (se3check: on a phone placed 52 units tall above
+## the finger, it was 174 tall once sized, and the finger under it).
+static func popup_beside(menu: Popup, at: Vector2, by_finger: bool) -> void:
+	menu.set_meta(BESIDE, [at, by_finger])
+	menu.reset_size()
+	var view: Viewport = menu.get_parent().get_viewport()
+	# Only placed here: how tall a long menu may be is the menu's own.
+	menu.position = Vector2i(beside(Vector2(menu.size), at, by_finger, view.get_visible_rect(),
+		finger_gap(view)).position.round())
+	menu.popup()
+
+
+## Half a fingertip, in [param view]'s units: how far a menu stands from a
+## finger's point.
+static func finger_gap(view: Viewport) -> float:
+	return Phone.TARGET * 0.5 * Phone.per_point(view)
+
+
+## Where a menu of [param size] goes beside [param at] in [param space], and
+## how big it is there (popup_beside). Never over the point while either
+## side has room for it; one taller than both sides of a finger takes the
+## bigger side, at its height, and scrolls.
+static func beside(size: Vector2, at: Vector2, by_finger: bool, space: Rect2, gap: float) -> Rect2:
+	size = size.min(space.size)
+	var place: Vector2 = at
+	if by_finger:
+		var above: float = at.y - gap - space.position.y
+		var below: float = space.end.y - at.y - gap
+		if size.y <= above:
+			place.y = at.y - gap - size.y
+		elif size.y <= below:
+			place.y = at.y + gap
+		elif above >= below:
+			size.y = maxf(above, 0.0)
+			place.y = space.position.y
+		else:
+			size.y = maxf(below, 0.0)
+			place.y = at.y + gap
+	else:
+		# Turned back where it has no room on and has room back; slid in by
+		# the clamp where it has room on neither.
+		if at.x + size.x > space.end.x and at.x - size.x >= space.position.x:
+			place.x = at.x - size.x
+		if at.y + size.y > space.end.y and at.y - size.y >= space.position.y:
+			place.y = at.y - size.y
+	place.x = clampf(place.x, space.position.x, maxf(space.position.x, space.end.x - size.x))
+	place.y = clampf(place.y, space.position.y, maxf(space.position.y, space.end.y - size.y))
+	return Rect2(place, size)
+
+
 ## A Window placed for a finger: on a phone along the foot, as wide as the
 ## screen; on a tablet in the middle. Above the keyboard either way, and
 ## never taller than the room there.
@@ -728,8 +791,16 @@ func _lay_window(window: Window) -> void:
 	var size: Vector2 = Vector2(window.size)
 	var least: Vector2 = Vector2(window.get_contents_minimum_size())
 	if menu:
-		# A menu drops from what opened it: only kept on the screen.
 		size = size.max(least)
+		# One opened at a point stays beside it at the size it has now.
+		var beside_at: Variant = window.get_meta(BESIDE, null)
+		if beside_at is Array:
+			var placed: Rect2 = beside(size, beside_at[0], beside_at[1], space,
+				finger_gap(get_viewport()))
+			window.size = Vector2i(placed.size)
+			window.position = Vector2i(placed.position)
+			return
+		# A menu drops from what opened it: only kept on the screen.
 		size = Vector2(minf(size.x, space.size.x), minf(size.y, space.size.y))
 		var at: Vector2 = Vector2(window.position)
 		at.x = clampf(at.x, space.position.x, maxf(space.position.x, space.end.x - size.x))

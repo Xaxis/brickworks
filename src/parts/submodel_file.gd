@@ -34,13 +34,20 @@ extends RefCounted
 ## 255, with room for the folder an unzip puts it in.
 const MOST_BYTES := 200
 ## Names Windows keeps for its devices, whatever follows a dot ("CON.ldr"
-## opens the console): one is given a "_" ("CON_.ldr").
-const RESERVED: Array[String] = ["CON", "PRN", "AUX", "NUL",
+## opens the console; CONIN$ and CONOUT$ its two ends, as Python's
+## ntpath.isreserved has them): one is given a "_" ("CON_.ldr").
+const RESERVED: Array[String] = ["CON", "CONIN$", "CONOUT$", "PRN", "AUX", "NUL",
 	"COM0", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "COM¹", "COM²", "COM³",
 	"LPT0", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9", "LPT¹", "LPT²", "LPT³"]
 ## What Windows refuses in a name; "/" and "\" are folders, kept to what
 ## follows the last.
 const REFUSED := "<>:\"|?*"
+## The marks that turn the way text runs, which a name shows and no one
+## sees: "x\u202Eexe.ldr" reads "xrdl.exe" (se3check). Left-to-right and
+## right-to-left marks, the embeddings, overrides and isolates and their
+## ends, Arabic's letter mark, and the byte-order mark.
+const TURNS: Array[int] = [0x200E, 0x200F, 0x202A, 0x202B, 0x202C, 0x202D, 0x202E,
+	0x2066, 0x2067, 0x2068, 0x2069, 0x061C, 0xFEFF]
 
 
 ## One sub-model's file.
@@ -187,18 +194,28 @@ static func each(whole: Whole) -> Array[Made]:
 			continue
 		# Two of one name (a copy built in its parent's steps named as a
 		# section is, or two that one rule made one): the second "_2",
-		# whatever the case, as Windows and macOS see one name.
+		# whatever the case and the accents, as Windows and macOS see one
+		# name. "Café" written as one letter and as "e" and its accent were
+		# two members that every libarchive unzip (bsdtar, Windows' and
+		# macOS's tar) made one file, the second over the first, unsaid
+		# (se3check); a macOS disk takes them as one too.
 		var base: String = made.name.get_basename()
 		var name: String = made.name
 		var n: int = 1
-		while names.has(name.to_lower()):
+		while names.has(_one_key(name)):
 			n += 1
 			var suffix: String = "_%d.%s" % [n, made.name.get_extension()]
 			name = _capped(base, MOST_BYTES - suffix.to_utf8_buffer().size()) + suffix
-		names[name.to_lower()] = true
+		names[_one_key(name)] = true
 		made.name = name
 		out.append(made)
 	return out
+
+
+## What two names that a file system or an unzip takes as one have alike:
+## the letters without their accents, in lower case.
+static func _one_key(name: String) -> String:
+	return TextServerManager.get_primary_interface().strip_diacritics(name).to_lower()
 
 
 ## [param keys] and every section their lines place, at every depth, in the
@@ -338,16 +355,17 @@ static func file_name(named: String, many: bool) -> String:
 
 ## [param named] as a name every system takes as a file's, of at most
 ## [param room] UTF-8 bytes: what follows its last "/" or "\", without
-## control characters or [constant REFUSED], dots and spaces taken off its
-## ends (".." is the folder above; a name ending so Windows cannot open, one
-## starting with a dot macOS and Linux hide), a [constant RESERVED] one
-## given a "_", cut on a whole character; "submodel" when nothing is left.
-static func safe_name(named: String, room: int = MOST_BYTES) -> String:
+## control characters, [constant TURNS] or [constant REFUSED], dots and
+## spaces taken off its ends (".." is the folder above; a name ending so
+## Windows cannot open, one starting with a dot macOS and Linux hide), a
+## [constant RESERVED] one given a "_", cut on a whole character;
+## [param none] when nothing is left.
+static func safe_name(named: String, room: int = MOST_BYTES, none: String = "submodel") -> String:
 	var bare: String = named.replace("\\", "/").get_file()
 	var kept: String = ""
 	for n: int in bare.length():
 		var code: int = bare.unicode_at(n)
-		if code < 32 or (code >= 127 and code < 160) or REFUSED.contains(bare[n]):
+		if code < 32 or (code >= 127 and code < 160) or code in TURNS or REFUSED.contains(bare[n]):
 			continue
 		kept += bare[n]
 	kept = _trimmed(_capped(_trimmed(kept), room))
@@ -357,7 +375,23 @@ static func safe_name(named: String, room: int = MOST_BYTES) -> String:
 	var stem: String = kept.get_slice(".", 0).strip_edges()
 	if stem.to_upper() in RESERVED:
 		kept = _trimmed(_capped(stem + "_" + kept.substr(kept.get_slice(".", 0).length()), room))
-	return kept if not kept.is_empty() else "submodel"
+	return kept if not kept.is_empty() else none
+
+
+## The file the app writes named after [param title], a model's or a list's
+## (File › Export's of every kind, a picture, a render, the instructions, a
+## parts list), [param tail] its suffix and extension ("_submodels.zip",
+## ".ldr"): the title's words joined by "_" as every export has named them,
+## a "/" or "\" in it one of those too (a title's, not a folder's), made
+## [method safe_name] in the room [param tail] leaves; [param none] when
+## nothing is left. One rule for every file the app names, a sub-model's
+## too: "My: Castle?" was my:_castle?_submodels.zip, which Windows refuses
+## or keeps in a stream after the ":", and a title 300 letters long a name
+## of 314 bytes, which no file system takes and over MCP failed to write
+## (se3check).
+static func titled(title: String, tail: String, none: String = "model") -> String:
+	var words: String = title.to_snake_case().replace("\\", "_").replace("/", "_")
+	return safe_name(words, MOST_BYTES - tail.to_utf8_buffer().size(), none) + tail
 
 
 ## [param text] with the dots and spaces at its ends taken off.

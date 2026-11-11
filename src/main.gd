@@ -6936,7 +6936,7 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 		# is up (BookletMaker.warm): built in its first picture, it was a
 		# second of a frame on a first start.
 		_warm_booklet()
-		to = await SaveTo.ask(title.to_snake_case() + "_instructions.html", "",
+		to = await SaveTo.ask(SubmodelFile.titled(title, "_instructions.html"), "",
 			"Save the instructions")
 		if to.is_empty():
 			return ""
@@ -6961,7 +6961,7 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 		_store.scenery)
 	add_child(maker)
 	maker.progress.connect(func(_said: String) -> void: BookletTab.tell(job.line()))
-	var file_name: String = title.to_snake_case() + "_instructions.html"
+	var file_name: String = SubmodelFile.titled(title, "_instructions.html")
 	# Into its file and in front of the reader as it is drawn (BookletOut):
 	# the last booklet's pages, kept for its tab, go.
 	if is_instance_valid(_booklet_out):

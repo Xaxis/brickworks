@@ -711,7 +711,14 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   before `SaveTo` frees it): every loop over the open dialogs takes each
   untyped until it is checked, as a freed one put in a `Node` raised a script
   error and laid out nothing after it (timelinefit's tablet; `twist_probe`
-  section 6). A dialog already placed never moves under a finger
+  section 6). A menu opened at a point (`TouchSizing.popup_beside`: the
+  model tree's row menu, a part's right-click menu, File, Open's) keeps the
+  point (`BESIDE`) and is placed by it again at the size it is given here
+  (`TouchSizing.beside`): a pointer's at its corner, turned back where the
+  window has no room; a finger's above it or below it, half a fingertip away
+  (`finger_gap`), never over it. Placed once at the desktop's size, the tree's
+  menu grew down over the finger holding its row (se3check; proved by
+  `subexport_phone_probe` and `subexport_tablet_probe`). A dialog already placed never moves under a finger
   (`TouchSizing._place`, `finger_down`, press271): laid out again while a
   finger or a mouse button is down, it waits for the lift. Pressing Save or
   Rename takes the keys from the field, so the keyboard counted as gone and

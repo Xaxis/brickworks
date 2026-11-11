@@ -892,15 +892,28 @@ Whether what you built is still there tomorrow, and still means the same thing.
   is its lines out of the parent's, a step for each of the parent's steps it is
   in, in the parent's coordinates. Each file's name is made safe by one rule
   (`SubmodelFile.file_name`/`safe_name`): what follows the last / or \, no
-  control characters or `<>:"|?*`, no dots or spaces at its ends, Windows'
-  device names given a "_", at most 200 UTF-8 bytes; the zip flags its names
-  UTF-8 (`StudioIo.UTF8_NAMES`, every zip the app writes). Of two sections of
+  control characters, marks that turn the text (`SubmodelFile.TURNS`:
+  "x", U+202E, "exe.ldr" showed as "xrdl.exe") or `<>:"|?*`, no dots or spaces at its
+  ends, Windows' device names given a "_" (CONIN$ and CONOUT$ too), at most 200
+  UTF-8 bytes; two names alike but for case and accents are two files ("Café"
+  as one letter and as e and its accent: Café_2.ldr, `SubmodelFile._one_key`),
+  as libarchive's unzips and a macOS disk take them as one; the zip flags its
+  names UTF-8 (`StudioIo.UTF8_NAMES`, every zip the app writes). The same rule
+  names every file the app writes after a title (`SubmodelFile.titled`: the
+  zip itself, File, Export's every kind, a picture, a render, the instructions
+  and their PDF, a parts list, a sticker sheet, Save as's suggestion): "My:
+  Castle?" was my:_castle?_submodels.zip, and a title 300 letters long a name
+  of 314 bytes no file system takes (se3check). The share page's downloads
+  keep their own ASCII rule (`fileName` in `api/share.js`), Windows' device
+  names given a "_" the same way. Of two sections of
   one key ("dup.ldr", "sub\dup.ldr") each file carries the one the app builds
   the model of and the one LDView's rule finds by the reference's whole name
   (`LdrModel.files`, `SubModel.span`, `SubmodelFile._sections_of`), in the
   whole file's order, so each reads it as it reads the whole. The row menu is File, Export's: greyed
   where `Shell.can` refuses (shared to look at, still being laid); a finger
-  held still on a row (`FlingScroll.HOLD_MS`) opens it beside the finger.
+  held still on a row (`FlingScroll.HOLD_MS`) opens it beside the finger
+  (`TouchSizing.popup_beside`): on a phone or a tablet at the size it has once
+  sized for a finger, above the finger or below it, never over it.
   **Check:** `tools/probe.sh subexport_probe -- --shots=DIR` (signs in a
   throwaway account: needs .env; saves a model, so through probe.sh): first a
   line for each of sereview's findings (F1-F7: odd names, copies titled
@@ -914,7 +927,11 @@ Whether what you built is still there tomorrow, and still means the same thing.
   an author's steps; a copy titled `..\..\evil` keeps that title line, its
   names (zip entry, Name line) are evil.ldr; the whole model's file the
   same to the byte before and after; the tree's menu pictured at 1400 x 900 and
-  1280 x 720.
+  1280 x 720; se3check's lines (2-5: Café two ways, the marks that turn text,
+  CONIN$ and CONOUT$, "My: Castle?" and a 300-letter title through every export
+  over MCP). F5 on a phone and a tablet: `tools/probe.sh subexport_phone_probe`
+  (390 x 844) and `subexport_tablet_probe` (1180 x 820), F5 alone there and a
+  right click's menu beside the pointer.
 - `parts lists for shops` (`src/assembly/shop_lists.gd`, File, Export → BrickLink
   wanted list / Rebrickable parts list / LEGO® Pick a Brick list, and the same
   three buttons on the parts list): BrickLink's wanted-list XML (item, its

@@ -4869,7 +4869,7 @@ func _export(input: Dictionary, work: Working.Job = null) -> String:
 			var to: String = exports.folder if not exports.folder.is_empty() \
 				else Download.downloads()
 			said = await app.call("_export_booklet", "" if OS.has_feature("web") else
-				to.path_join(bar.model_name().to_snake_case() + "_instructions.html"), work)
+				to.path_join(SubmodelFile.titled(bar.model_name(), "_instructions.html")), work)
 		_:
 			return ("format is ldraw, studio, glb, gltf, obj, stl, 3mf, picture, bricklink, rebrickable, "
 				+ "pickabrick, instructions or all_models.")

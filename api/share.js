@@ -1955,11 +1955,13 @@ export function piecesIn(text, otherwise) {
 }
 
 /// A file name for [name]: its words in lower case, joined by hyphens,
-/// nothing a file system minds; [fallback] where none are left.
+/// nothing a file system minds; [fallback] where none are left. A Windows
+/// device's name ("con.mpd" is the console there) given a "_", as the app
+/// names its own files (SubmodelFile.safe_name).
 export function fileName(name, fallback) {
   const words = String(name || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
     .replace(/['’]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60).replace(/-+$/, "");
-  return words || fallback;
+  return /^(con|prn|aux|nul|com[0-9]|lpt[0-9])$/.test(words) ? `${words}_` : words || fallback;
 }
 
 /// /m/X.mpd, /m/X/parts.json, .xml and .csv: the file as it is stored, or

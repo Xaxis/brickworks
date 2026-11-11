@@ -770,9 +770,9 @@ func _on_hold() -> void:
 	open_row_menu(path, at, true)
 
 
-## The row menu for the row of [param path] ("" the model's), at [param at]
-## in the window; [param by_finger], above the finger (below it where there
-## is no room), so none of it is under the finger.
+## The row menu for the row of [param path] ("" the model's), beside
+## [param at] in the window, a finger's when [param by_finger]: none of it
+## under the point, at whatever size a phone gives it (TouchSizing.popup_beside).
 func open_row_menu(path: String, at: Vector2, by_finger: bool = false) -> void:
 	if row_menu == null:
 		row_menu = PopupMenu.new()
@@ -794,16 +794,7 @@ func open_row_menu(path: String, at: Vector2, by_finger: bool = false) -> void:
 		row_menu.set_item_tooltip(index, why if not why.is_empty() else
 			"As an LDraw file, with its own sub-models and steps" if id == MENU_ONE
 			else "Every sub-model as an LDraw file of its own, with its own sub-models and steps, in one .zip")
-	row_menu.reset_size()
-	var room: Vector2 = get_viewport().get_visible_rect().size
-	var corner := Vector2(minf(at.x, room.x - row_menu.size.x - 4.0),
-		minf(at.y, room.y - row_menu.size.y - 4.0))
-	if by_finger:
-		var above: float = at.y - row_menu.size.y - CadCamera.TAP_SLOP
-		corner.y = above if above >= 0.0 else minf(at.y + CadCamera.TAP_SLOP,
-			room.y - row_menu.size.y)
-	row_menu.position = Vector2i(corner.max(Vector2.ZERO))
-	row_menu.popup()
+	TouchSizing.popup_beside(row_menu, at, by_finger)
 
 
 ## An item chosen: asked again whether File › Export's own may run, as the

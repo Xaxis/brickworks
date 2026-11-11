@@ -1727,12 +1727,7 @@ func open_context(at: Vector2) -> void:
 	# Painting is with the colour in hand: which one, said.
 	context.set_item_text(item_index(context, "paint"),
 		"Paint with %s" % library.color(builder.held_color).name)
-	context.reset_size()
-	var room: Vector2 = app.get_viewport().get_visible_rect().size
-	var corner: Vector2 = Vector2(minf(at.x, room.x - context.size.x - 4.0),
-		minf(at.y, room.y - context.size.y - 4.0))
-	context.position = Vector2i(corner.max(Vector2.ZERO))
-	context.popup()
+	TouchSizing.popup_beside(context, at, false)
 
 
 ## Where a command is in one menu: each menu that lists a command has an
@@ -2033,8 +2028,8 @@ func _fill_history(menu: PopupMenu) -> void:
 func _ask_save_as() -> void:
 	# The desktop's is the platform's Save dialog, and a file where it says.
 	if not OS.has_feature("web"):
-		var path: String = await SaveTo.ask(ModelStore._safe_name(bar.model_name())
-			+ bar.ldraw_extension(), "", "Save as")
+		var path: String = await SaveTo.ask(SubmodelFile.safe_name(bar.model_name(),
+			SubmodelFile.MOST_BYTES - 4, "model") + bar.ldraw_extension(), "", "Save as")
 		if not path.is_empty():
 			await bar.save_to_file(path)
 		return

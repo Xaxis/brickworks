@@ -472,11 +472,11 @@ func model_3d(format: String, asking: bool = false) -> String:
 	return line
 
 
+## The file named after the model, or [param named_as], by the one rule
+## for a file's name (SubmodelFile.titled).
 func _file(extension: String, suffix: String = "", named_as: String = "") -> String:
-	var base: String = (named_as if not named_as.is_empty() else str(named.call())).to_snake_case()
-	if base.is_empty():
-		base = "model"
-	return "%s%s.%s" % [base, suffix, extension]
+	return SubmodelFile.titled(named_as if not named_as.is_empty() else str(named.call()),
+		"%s.%s" % [suffix, extension])
 
 
 ## Where [param file_name] goes: on the desktop the path the person chose

@@ -51,7 +51,17 @@
 ##   both items greyed as File › Export's are, and nothing written;
 ## - F5: a finger held still on a row opens its menu (a tap, or a finger
 ##   that moves, does not), beside the finger, its lift choosing nothing;
+##   on a phone and a tablet (subexport_phone_probe, subexport_tablet_probe,
+##   which run F5 alone) at the size the menu has there, and a right click's
+##   menu beside the pointer: sized for a finger once shown, the menu grew
+##   down over the finger that held the row (se3check 1);
 ## - F7: export_model with submodel= and submodels=true refused.
+## And se3check's (2026-11-11), on the odd names' model: "Café" written as
+## one letter and as "e" and its accent two files, as an unzip and a macOS
+## disk see one (2); no name keeping a mark that turns the text (3); CONIN$
+## and CONOUT$ given a "_" (4); and a model titled "My: Castle?", and one
+## 300 letters long, through every export over MCP: each file named by the
+## one rule, and written (5).
 ## --cases-only runs those alone.
 ## Pictures go to --shots=DIR, else user://subexport.
 extends SceneTree
@@ -85,6 +95,12 @@ func _initialize() -> void:
 	_run()
 
 
+## "phone" or "tablet" in the scripts that lay the app out for a finger and
+## run F5 alone there.
+func _finger() -> String:
+	return ""
+
+
 func _check(what: String, ok: bool) -> bool:
 	print("  %s  %s" % ["ok  " if ok else "FAIL", what])
 	if not ok:
@@ -106,6 +122,10 @@ func _run() -> void:
 	Download.folder = _files
 	Account.where = "user://probe_session.json"
 	Account._clear()
+	if not _finger().is_empty():
+		# The layout for a finger, as a phone's or a tablet's browser gets it.
+		Phone._on = 1
+		Phone._wide = _finger() == "tablet"
 	await process_frame
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
 	Engine.max_fps = 0
@@ -131,6 +151,10 @@ func _run() -> void:
 	_shell = _main.get("_shell")
 	_bar = _main.get("_bar")
 	_socket = (_main.get("_connector") as ClaudeConnector).rpc
+	if not _finger().is_empty():
+		await _by_finger()
+		await _finish()
+		return
 	await _review_cases()
 	for subject: Array in [] if _cases_only else SUBJECTS:
 		await _subject(subject)
@@ -332,6 +356,13 @@ const ODD_NAMES: Array[String] = ["../up.ldr", "C:\\win.ldr", "/abs.ldr", "..", 
 	"<>:|?*.ldr", "\"|\"", "end..", "x. .", "a?b.ldr", "ab.ldr", "Tårn.ldr", "城.ldr",
 	"Ferrari 150° Italia.ldr", "..\\..\\..\\evil.ldr"]
 const COLOURS: Array[int] = [1, 2, 4, 14, 15, 19, 25, 28, 70, 71, 72]
+## "Café" two ways: é as one letter, and as e and its accent.
+var CAFE_ONE: String = "Caf" + String.chr(0xE9)
+var CAFE_TWO: String = "Cafe" + String.chr(0x301)
+## The marks that turn the way text runs (SubmodelFile.TURNS, as Unicode
+## lists them).
+const TURNING: Array[int] = [0x200E, 0x200F, 0x202A, 0x202B, 0x202C, 0x202D, 0x202E,
+	0x2066, 0x2067, 0x2068, 0x2069, 0x061C, 0xFEFF]
 
 
 func _odd_names() -> Array[String]:
@@ -341,6 +372,11 @@ func _odd_names() -> Array[String]:
 	# A device's name made long: the "_" it is given must not take it past 200
 	# bytes.
 	names.append("aux." + "城".repeat(100) + ".ldr")
+	# se3check's: "Café" as one letter (NFC) and as "e" and its accent (NFD);
+	# a right-to-left mark first, an override that shows "xrdl.exe"; the
+	# console's two ends.
+	names.append_array([CAFE_ONE + ".ldr", CAFE_TWO + ".ldr", String.chr(0x200F) + "Right.ldr",
+		"x" + String.chr(0x202E) + "exe.ldr", "CONIN$.ldr", "conout$"])
 	return names
 
 
@@ -426,6 +462,28 @@ func _review_cases() -> void:
 	await _gates_case()
 	await _finger_case()
 	await _both_flags_case()
+	await _titled_case()
+
+
+## F5 laid out for a finger: a phone's, at a browser's scale, or a tablet's.
+func _by_finger() -> void:
+	# A phone draws at a browser's scale (Main.screen_factor, web), held there
+	# with the phone's layout's own look at it stopped (open_menu_reach_probe).
+	if not Phone.wide() and not OS.has_feature("web"):
+		(_main.get("_phone") as Node).set_process(false)
+		for link: Dictionary in root.size_changed.get_connections():
+			var call: Callable = link["callable"]
+			if call.get_method() == &"_match_screen_density":
+				root.size_changed.disconnect(call)
+		var main_script: GDScript = _main.get_script()
+		root.content_scale_factor = main_script.sized_factor(Room.across(), Room.down(), true,
+			ShellPrefs.interface_size(), true)
+	await _frames(20)
+	var room: Vector2 = root.get_visible_rect().size
+	print("\nF5 on a %s: a %d x %d window, %d x %d units" % [_finger(), DisplayServer.window_get_size().x,
+		DisplayServer.window_get_size().y, roundi(room.x), roundi(room.y)])
+	await _finger_case()
+	await _pointer_case()
 
 
 ## F6, F1's root, and F2: the odd names' model, each sub-model at once.
@@ -443,7 +501,7 @@ func _odd_names_case() -> void:
 		var why: String = _unsafe(name)
 		if not why.is_empty():
 			unsafe.append("%s: %s" % [_shown(name), why])
-		seen[name.to_lower()] = true
+		seen[_one_key(name)] = true
 	var names: Array = zip.keys()
 	names.sort()
 	_check("F6: %d sub-models named as no system takes a file, a .zip of %d, each name one every system takes, none twice: %s%s" % [
@@ -470,6 +528,19 @@ func _odd_names_case() -> void:
 	_check("F6: each of the %d rows by submodel= is named as the zip names it, one rule for both%s" % [
 		tree.size(), "" if differ.is_empty() else ": not " + ", ".join(differ.slice(0, 4))],
 		differ.is_empty() and not tree.is_empty())
+	# se3check 2-4.
+	var cafes: Array = zip.keys().filter(func(n: String) -> bool:
+		return _one_key(n).begins_with("cafe"))
+	_check("se3check 2: \"Café\" as one letter and as e and its accent are two files to every unzip and a macOS disk (%s), none of the %d names one with another but for accents and case (%d keys)" % [
+		", ".join(cafes.map(func(n: String) -> String: return n.c_escape())), zip.size(), seen.size()],
+		cafes.size() == 2 and _one_key(cafes[0]) != _one_key(cafes[1]) and seen.size() == zip.size())
+	var turned: Array = zip.keys().filter(func(n: String) -> bool: return _turns(n))
+	_check("se3check 3: no name keeps a mark that turns the text (%d do: %s); the marked two are Right.ldr (%s) and xexe.ldr (%s)" % [
+		turned.size(), ", ".join(turned.map(func(n: String) -> String: return n.c_escape())),
+		zip.has("Right.ldr"), zip.has("xexe.ldr")], turned.is_empty() and zip.has("Right.ldr")
+		and zip.has("xexe.ldr"))
+	_check("se3check 4: CONIN$ and conout$, the console's two ends on Windows, are CONIN$_.ldr (%s) and conout$_.ldr (%s)" % [
+		zip.has("CONIN$_.ldr"), zip.has("conout$_.ldr")], zip.has("CONIN$_.ldr") and zip.has("conout$_.ldr"))
 	_check("F2: the zip says its names are UTF-8 (bit 11) in all %d members' own headers (%d) and the directory's (%d), made on Unix (%d), so Tårn.ldr, 城.ldr, 150° read so: %s" % [
 		int(flags[0]), int(flags[1]), int(flags[2]), int(flags[3]), ", ".join(["Tårn.ldr", "城.ldr",
 		"Ferrari 150° Italia.ldr"].map(func(n: String) -> String: return "%s %s" % [n,
@@ -477,6 +548,19 @@ func _odd_names_case() -> void:
 		and int(flags[1]) == zip.size() and int(flags[2]) == zip.size()
 		and int(flags[3]) == zip.size() and zip.has("Tårn.ldr")
 		and zip.has("城.ldr") and zip.has("Ferrari 150° Italia.ldr"))
+
+
+## What two names a file system or an unzip takes as one have alike.
+static func _one_key(name: String) -> String:
+	return TextServerManager.get_primary_interface().strip_diacritics(name).to_lower()
+
+
+## Whether [param name] has a mark that turns the way text runs.
+static func _turns(name: String) -> bool:
+	for n: int in name.length():
+		if name.unicode_at(n) in TURNING:
+			return true
+	return false
 
 
 ## F1: copies built in their parent's steps, titled as no file is called.
@@ -600,17 +684,20 @@ func _gates_case() -> void:
 				and written.is_empty() and items.size() == 2)
 
 
-## F5: a finger on a row of the model tree. A tap, and a finger that moves,
-## open nothing; held still, the row's menu, beside the finger, its lift
-## choosing nothing; its first item then writes the row's file.
+## F5: a finger on a row of the model tree. A tap, a finger that moves and
+## a scroll open nothing; held still, the row's menu, wholly in the window
+## and none of it under the finger at the size it ends at (a layout for a
+## finger sizes it once shown), its lift choosing nothing; its first item
+## then writes the row's file.
 func _finger_case() -> void:
+	var on: String = "F5" + ("" if _finger().is_empty() else " " + _finger())
 	await _open(TWINS_MODEL, "twins")
 	var outliner: Outliner = _shell.outliner
 	await _show_tree()
 	var path: String = _path_named("Other", _shell.assemblies.paths())
 	var rects: Dictionary = await _row_in_sight(outliner, path)
 	if not rects.has(path):
-		_check("F5: the row of Other is in sight to hold a finger on", false)
+		_check("%s: the row of Other is in sight to hold a finger on" % on, false)
 		return
 	var at: Vector2 = (rects[path] as Rect2).get_center()
 	_clear_files()
@@ -631,29 +718,131 @@ func _finger_case() -> void:
 	await _frames(6)
 	if outliner.row_menu != null:
 		outliner.row_menu.hide()
-	# Held still.
+	# A fast drag up, as a scroll.
+	_touch(at, true)
+	await _frames(1)
+	for step: int in 12:
+		_finger_drag(at - Vector2(0.0, 20.0 * (step + 1)))
+		await _frames(1)
+	_touch(at - Vector2(0.0, 240.0), false)
+	await create_timer(0.8).timeout
+	var after_scroll: bool = outliner.row_menu != null and outliner.row_menu.visible
+	if outliner.row_menu != null:
+		outliner.row_menu.hide()
+	rects = await _row_in_sight(outliner, path)
+	if rects.has(path):
+		at = (rects[path] as Rect2).get_center()
+	# Held still, and the menu's place once it has stopped changing.
 	_touch(at, true)
 	await create_timer(0.8).timeout
 	var menu: PopupMenu = outliner.row_menu
 	var shown: bool = menu != null and menu.visible
+	var rect: Rect2 = await _settled_rect(menu)
 	var for_row: String = str(outliner.get("_menu_path"))
-	var under: bool = shown and Rect2(Vector2(menu.position), Vector2(menu.size)).has_point(at)
-	await _shot("finger_menu")
+	var room: Rect2 = root.get_visible_rect()
+	var under: bool = shown and rect.has_point(at)
+	var inside: bool = shown and room.grow(1.0).encloses(rect)
+	var apart: float = maxf(rect.position.y - at.y, at.y - rect.end.y) if shown else 0.0
+	await _shot("finger_menu" + ("" if _finger().is_empty() else "_" + _finger()))
 	_touch(at, false)
 	await _frames(20)
 	var still: bool = menu != null and menu.visible
 	var lifted: PackedStringArray = DirAccess.get_files_at(_files)
-	_check("F5: a finger held still on Other's row opens its menu (%s, for %s), beside the finger (under it: %s), and lifting chooses nothing (open still %s, written %s); a tap opens none (%s), nor a finger that moved (%s)" % [
-		shown, Assemblies.label(for_row) if not for_row.is_empty() else "the model", under, still,
-		Array(lifted), after_tap, after_move], shown and for_row == path and not under and still
-		and lifted.is_empty() and not after_tap and not after_move)
+	_check("%s: a finger held still on Other's row opens its menu (%s, for %s) at %s in a %s window, the finger at %s: wholly inside %s, under the finger %s, %d units above or below it; lifting chooses nothing (open still %s, written %s); a tap opens none (%s), nor a finger that moved (%s), nor a scroll (%s)" % [
+		on, shown, Assemblies.label(for_row) if not for_row.is_empty() else "the model", _rect_words(rect),
+		_rect_words(room), _point_words(at), inside, under, roundi(apart), still, Array(lifted), after_tap,
+		after_move, after_scroll], shown and for_row == path and inside and not under and still
+		and lifted.is_empty() and not after_tap and not after_move and not after_scroll)
 	if shown:
 		menu.id_pressed.emit(menu.get_item_id(0))
 		menu.hide()
 		await _until_file(["ldr", "mpd"])
 		var written: PackedStringArray = DirAccess.get_files_at(_files)
-		_check("F5: and its first item, chosen, writes Other's file (%s)" % ", ".join(written),
+		_check("%s: and its first item, chosen, writes Other's file (%s)" % [on, ", ".join(written)],
 			Array(written) == ["other.mpd"])
+
+
+## A right click on a row of the model tree laid out for a finger: its menu
+## beside the pointer, its corner where the pointer is, none of it over it,
+## at the size the layout gives it.
+func _pointer_case() -> void:
+	var on: String = "F5 " + _finger()
+	var outliner: Outliner = _shell.outliner
+	var path: String = _path_named("Other", _shell.assemblies.paths())
+	var menu: PopupMenu = await _right_click_row(outliner, path)
+	# Where the click was: the row's middle as _right_click_row sent it, to
+	# a whole pixel of the window, not the system's pointer, which a click
+	# sent to the window does not move.
+	var rects: Dictionary = outliner.row_rects()
+	var at: Vector2 = _from_event(_as_event((rects[path] as Rect2).get_center()).floor()) \
+		if rects.has(path) else Vector2.INF
+	var rect: Rect2 = await _settled_rect(menu)
+	var room: Rect2 = root.get_visible_rect()
+	# Its corner may be the pointer's point: none of the inside of it.
+	var over: bool = menu != null and rect.grow(-1.0).has_point(at)
+	_check("%s: a right click on Other's row opens its menu (%s) at %s, the pointer at %s: wholly inside the window %s, over the pointer %s" % [
+		on, menu != null, _rect_words(rect), _point_words(at), room.grow(1.0).encloses(rect), over],
+		menu != null and room.grow(1.0).encloses(rect) and not over)
+	if menu != null:
+		menu.hide()
+	await _frames(6)
+
+
+## Where [param menu] is once it has stayed put for 10 frames (a layout
+## for a finger sizes and places it again after it shows).
+func _settled_rect(menu: PopupMenu) -> Rect2:
+	if menu == null or not menu.visible:
+		return Rect2()
+	var last := Rect2(Vector2(menu.position), Vector2(menu.size))
+	var held: int = 0
+	for _n: int in 120:
+		await _frames(1)
+		var now := Rect2(Vector2(menu.position), Vector2(menu.size))
+		held = held + 1 if now == last else 0
+		last = now
+		if held >= 10:
+			break
+	return last
+
+
+static func _rect_words(rect: Rect2) -> String:
+	return "%d,%d %dx%d" % [roundi(rect.position.x), roundi(rect.position.y), roundi(rect.size.x),
+		roundi(rect.size.y)]
+
+
+static func _point_words(at: Vector2) -> String:
+	return "%d,%d" % [roundi(at.x), roundi(at.y)]
+
+
+## se3check 5: the model's own title names every file the app writes for
+## it, by the one rule a sub-model's file is named by: "My: Castle?" and a
+## title 300 letters long, through each export over MCP.
+func _titled_case() -> void:
+	var exports: Array = [{"format": "ldraw"}, {"format": "ldraw", "submodels": true},
+		{"format": "studio"}, {"format": "stl"}, {"format": "3mf"}, {"format": "glb"},
+		{"format": "bricklink"}, {"format": "rebrickable"}, {"format": "picture"}]
+	for title: String in ["My: Castle?", "Long ".repeat(60).strip_edges()]:
+		await _open(TWINS_MODEL, title)
+		var stem: String = "my_castle" if title.begins_with("My") else "long_long_long"
+		var wrong: Array[String] = []
+		var written: Array[String] = []
+		for asked: Dictionary in exports if title.begins_with("My") else exports.slice(0, 4):
+			_clear_files()
+			var said: String = await _say("export_model", asked)
+			await _frames(4)
+			var files: PackedStringArray = DirAccess.get_files_at(_files)
+			var one: String = files[0] if files.size() == 1 else ""
+			var why: String = _unsafe(one, false) if not one.is_empty() else "%d files (%s)" % [
+				files.size(), said.left(90)]
+			if why.is_empty() and not one.begins_with(stem):
+				why = "not named after the model"
+			if why.is_empty():
+				written.append("%s %s" % [_shown(one), "submodels" if asked.has("submodels") else asked["format"]])
+			else:
+				wrong.append("%s: %s, %s" % [JSON.stringify(asked), _shown(one), why])
+		_check("se3check 5: a model titled %s, each export over MCP written and named by the one rule: %s%s" % [
+			_shown(title), ", ".join(written), "" if wrong.is_empty() else "; not so: " + "; ".join(wrong)],
+			wrong.is_empty())
 
 
 ## F7: both flags at once.
@@ -735,7 +924,7 @@ static func _keep_section(out: Dictionary, name: String, lines: Array) -> void:
 ## folder above, a dot first (hidden), a control character, what Windows
 ## refuses or keeps, a dot or space at the end of it or of its stem, more
 ## than 200 UTF-8 bytes, not .ldr or .mpd.
-static func _unsafe(name: String) -> String:
+static func _unsafe(name: String, ldraw: bool = true) -> String:
 	if name.contains("/") or name.contains("\\"):
 		return "a folder in it"
 	if name.begins_with("."):
@@ -744,6 +933,8 @@ static func _unsafe(name: String) -> String:
 		var code: int = name.unicode_at(n)
 		if code < 32 or (code >= 127 and code < 160):
 			return "a control character"
+	if _turns(name):
+		return "a mark that turns the text"
 	for refused: String in ["<", ">", ":", "\"", "|", "?", "*"]:
 		if name.contains(refused):
 			return "Windows refuses " + refused
@@ -751,12 +942,12 @@ static func _unsafe(name: String) -> String:
 	if name.ends_with(".") or name.ends_with(" ") or stem.ends_with(".") or stem.ends_with(" "):
 		return "a dot or a space at its end"
 	var device: String = name.get_slice(".", 0).strip_edges().to_upper()
-	if device in ["CON", "PRN", "AUX", "NUL"] or (device.length() == 4
+	if device in ["CON", "CONIN$", "CONOUT$", "PRN", "AUX", "NUL"] or (device.length() == 4
 			and device.left(3) in ["COM", "LPT"] and "0123456789¹²³".contains(device.right(1))):
 		return "Windows keeps " + device
 	if name.to_utf8_buffer().size() > 200:
 		return "%d bytes" % name.to_utf8_buffer().size()
-	if not name.get_extension() in ["ldr", "mpd"]:
+	if ldraw and not name.get_extension() in ["ldr", "mpd"]:
 		return "not .ldr or .mpd"
 	return ""
 
@@ -1160,7 +1351,14 @@ func _file_export_each() -> Dictionary:
 ## it is folded, as a person opens it.
 func _show_tree() -> void:
 	var dock: Variant = _main.get("_props_dock")
-	if dock is SideDock and not (dock as SideDock).is_open():
+	if Phone.on():
+		# Its drawer, as se3touch_probe opens it.
+		if dock == null:
+			dock = _main.get("_bin_dock")
+		if dock is SideDock and not (dock as SideDock).is_open():
+			(dock as SideDock).set_open(true, false)
+			await _frames(20)
+	elif dock is SideDock and not (dock as SideDock).is_open():
 		var at: Vector2 = _as_event((dock as SideDock).rail().get_global_rect().get_center())
 		for down: bool in [true, false]:
 			var event := InputEventMouseButton.new()
@@ -1361,6 +1559,15 @@ func _as_event(at: Vector2) -> Vector2:
 	if window.x <= 0.0 or window.y <= 0.0 or DisplayServer.get_name() == "headless":
 		return at
 	return at * (window / rect)
+
+
+## A point in the window's pixels in its units again (_as_event's inverse).
+func _from_event(at: Vector2) -> Vector2:
+	var rect: Vector2 = root.get_visible_rect().size
+	var window := Vector2(DisplayServer.window_get_size())
+	if window.x <= 0.0 or window.y <= 0.0 or DisplayServer.get_name() == "headless":
+		return at
+	return at * (rect / window)
 
 
 func _frames(count: int) -> void:

@@ -354,9 +354,11 @@ static func _name_of(info: PartLibrary.PartInfo, part_id: String) -> String:
 	return "%s %s" % [part_id, " ".join(info.name.split(" ", false))]
 
 
+## The files' name before its end, by the one rule for a file's name
+## (SubmodelFile.titled), with room for the longest end one is given: the
+## browser's zip of an OBJ and its colours.
 static func _file_base(title: String) -> String:
-	var base: String = title.to_snake_case().replace("\\", "_").replace("/", "_")
-	return base if not base.is_empty() else "model"
+	return SubmodelFile.titled(title, "_obj.zip").trim_suffix("_obj.zip")
 
 
 # -- glTF -----------------------------------------------------------------------
