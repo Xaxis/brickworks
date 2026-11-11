@@ -409,6 +409,19 @@ static func placed(lights: Array, lift: Vector3) -> Array:
 	return out
 
 
+## [param light] carried by [param frame], its place and the way it shines:
+## a sub-model's taken apart, into the one it was in (Assemblies.ungroup).
+static func through(light: Dictionary, frame: Transform3D) -> Dictionary:
+	return _with(light, frame * at_of(light), frame.basis * aim_of(light))
+
+
+## The light a file's [param line] keeps ([constant META]), in its file's
+## coordinates and checked as an open checks one; empty when it is none.
+static func of_line(line: String) -> Dictionary:
+	var body: String = _body(line)
+	return checked(body)[0] if body.begins_with("{") else {}
+
+
 ## [param lights] moved [param by] with the model they light: it stood lower
 ## or higher once its parts arrived (ModelStore._settle).
 static func moved(lights: Array, by: Vector3) -> Array:

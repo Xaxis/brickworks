@@ -2935,8 +2935,15 @@ picture the assistant is shown.
   sub-model keeps its own lights and views, `LdrModel.section_lines`, held by
   its definition in `BrickWorld.section_lines` so a rename, a Make round it
   or the sub-model it is in taken apart keeps them in its section, undo and
-  redo too, `Assemblies.lines_renamed`; a line the model and a sub-model
-  both have is the model's in its own lines alone); numbers are rounded to a
+  redo too, `Assemblies.lines_renamed`; the step that leaves a sub-model no
+  copy takes them, `Assemblies.lines_follow` after a Delete, Cut, MCP
+  remove or a regroup, so no name a gone sub-model had keeps any; a copy
+  taken apart, `Assemblies._lines_apart`, puts its lights through its frame
+  into the one it was in, the model's own lights (`BrickWorld.scene_lights`,
+  a `scenelights` step) when that is the model, its last copy's views gone
+  and said; one `sectionlines` undo a step, `Assemblies.set_lines`; a line
+  the model and a sub-model both have is the model's in its own lines
+  alone); numbers are rounded to a
   thousandth before they are checked; a line not read stays in the file
   word for word and the open says how many and why. Strength 1 lights a face
   100 LDU from a lamp, or any face turned to a sun, as the window's key does.
@@ -3001,7 +3008,14 @@ picture the assistant is shown.
   taken apart, each saved, undone and saved, redone and saved: its light and
   view once each, in its section, the model's lamp alone in the model; a
   model whose sub-model holds its lamp's very line written whole, the lamp
-  still the model's, two lines in all, one light opened again. `-- --review`
+  still the model's, two lines in all, one light opened again. And
+  lightpaths2's (lpcheck s6, s12): Alpha and Beta taken apart, sections of
+  their names made over MCP and all undone, each its own light and view
+  again; B's lit Sub deleted and A's Sub pasted, none of B's lines in it; a
+  lit sub-model's one copy deleted by hand and over MCP, undone, redone; two
+  copies taken apart one by one, each light where it was among the model's
+  own, the last one's view gone and said, undone and redone twice; each
+  state saved, opened and saved again. `-- --review`
   runs only these review checks, nothing drawn (a minute, not the whole
   probe's renders). Then the car under 0 to 4 suns (each adding light)
   and the neon and white grids under 8 bulbs in the Dark light (the white

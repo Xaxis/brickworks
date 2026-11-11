@@ -2957,8 +2957,9 @@ static func _looks_into(text: String, looks: Dictionary, authored: bool,
 
 
 ## After an edit kept in the history: a step it took the last part off goes
-## with its look, in the same undo (BookletLooks.emptied), so an undo brings
-## both back. Called once each step of the history is made: by hand
+## with its look, in the same undo (BookletLooks.emptied), and a sub-model it
+## left no copy of with its own lights and views (Assemblies.lines_follow),
+## so an undo brings them back. Called once each step of the history is made: by hand
 ## (Main._on_model_edited), by a session (CommandSocket), by the assistant's
 ## change to a selection. Not for an undo or a redo, whose step has it in
 ## already (Builder.settled), nor while parts lifted off are held: put down,
@@ -2971,7 +2972,9 @@ func looks_follow_edit() -> void:
 	if step.is_empty() or is_same(step, builder.settled) or is_same(step, _looks_followed) \
 			or builder.is_carrying():
 		return
-	builder.extend_last(BookletLooks.emptied(world, step, scenery, _held_placements()))
+	var held: Array = _held_placements()
+	builder.extend_last(BookletLooks.emptied(world, step, scenery, held))
+	Assemblies.lines_follow(builder, step, held)
 	_looks_followed = builder.last_step()
 
 

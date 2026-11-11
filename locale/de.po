@@ -3060,6 +3060,21 @@ msgstr "ein Klick nimmt sie ganz, ein Doppelklick bearbeitet sie von innen"
 msgid "took %s apart"
 msgstr "%s aufgelöst"
 
+msgid "its light went with its parts"
+msgstr "ihr Licht ging mit ihren Teilen mit"
+
+msgid "its %d lights went with its parts"
+msgstr "ihre %d Lichter gingen mit ihren Teilen mit"
+
+msgid "%d of its lights went with it"
+msgstr "%d ihrer Lichter verschwanden mit ihr"
+
+msgid "its saved view went with it"
+msgstr "ihre gespeicherte Ansicht verschwand mit ihr"
+
+msgid "its %d saved views went with it"
+msgstr "ihre %d gespeicherten Ansichten verschwanden mit ihr"
+
 msgid "took 1 part out of its sub-assembly"
 msgstr "1 Teil aus seiner Baugruppe genommen"
 

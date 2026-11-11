@@ -302,7 +302,10 @@ var step_looks: Dictionary = {}
 ## .write_tree). By its definition, not a copy's path: a rename, a Make round
 ## it or the sub-model it is in taken apart moves the path, and the lines kept
 ## by it were lost (lreview3). A rename and a copy made one of its own carry
-## them (Assemblies.lines_renamed). Changed only by the history's steps.
+## them (Assemblies.lines_renamed); the step that leaves a sub-model no copy
+## takes them (Assemblies.lines_follow, Assemblies.ungroup), so no gone
+## sub-model's are kept for whatever next takes its name. Changed only by the
+## history's steps, a whole table each (Assemblies.set_lines).
 var section_lines: Dictionary = {}
 ## The model's own named movements (Motions: "Open the doors"), read from
 ## its file and written into it. Changed only by the history's steps.
@@ -318,9 +321,10 @@ var cut_kept: Dictionary = {}
 ## model is cleared.
 var saved_views: Array = []
 ## The lights placed in the model (SceneLights), in the window's coordinates:
-## Render's Lights in the model adds them and the model's file carries them
-## (ModelStore); none for a model with none, and none again when the model
-## is cleared.
+## Render's Lights in the model adds them, a sub-model taken apart into the
+## model gives it its own (Assemblies.ungroup, a step of the history), and
+## the model's file carries them (ModelStore); none for a model with none,
+## and none again when the model is cleared.
 var scene_lights: Array = []
 ## The sections broken out of the model to be worked on (Sections.break_out):
 ## a sub-assembly's path -> {"offset": Vector3, how far it was moved, LDU;

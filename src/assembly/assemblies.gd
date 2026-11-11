@@ -388,19 +388,27 @@ func make(name: String) -> String:
 		changes[brick_id] = path if rest.is_empty() else path + "/" + rest
 	if changes.is_empty():
 		return ""
-	if builder.regroup(changes, "made the sub-assembly %s of %s" % [definition(segment),
-			Builder._many(changes.size())], wrapped(changes),
-			made_steps(PackedStringArray([path]))) > 0:
-		builder.extend_last(lines_renamed(world, "", definition(segment), true))
+	builder.regroup(changes, "made the sub-assembly %s of %s" % [definition(segment),
+		Builder._many(changes.size())], wrapped(changes),
+		made_steps(PackedStringArray([path])))
 	changed.emit()
 	return path
+
+
+## What [method ungroup] last said of the lights and views it moved or let
+## go ([method _lines_apart]), for the status bar after "took … apart"; ""
+## when it moved none.
+var apart_said: String = ""
 
 
 ## Take an assembly apart one level: what was in it is in its parent. A
 ## copy built in steps of its own has them made its parent's, in the order
 ## they were built (AuthorSteps.inlined), and the looks of the steps with
-## them (BookletLooks.inlined).
+## them (BookletLooks.inlined). Its lights go with its parts, and its last
+## copy takes its definition's lights and views with it ([method
+## _lines_apart]), in the same step.
 func ungroup(path: String) -> int:
+	apart_said = ""
 	if path.is_empty():
 		return 0
 	var parent: String = parent_of(path)
@@ -414,16 +422,101 @@ func ungroup(path: String) -> int:
 		leave_to(parent)
 	var numbers: Dictionary = AuthorSteps.inlined(world, path, scenery)
 	var looks: Dictionary = BookletLooks.inlined(world, path, numbers)
+	# Read while the copy is still one: its frame is found from its parts.
+	var lit: Dictionary = _lines_apart(path)
 	var carry: Callable = func(at: String) -> Array:
 		if at == path:
 			return []
 		return [join(parent, at.substr(path.length() + 1))] if within(at, path) else [at]
-	if builder.regroup(changes, "took %s apart" % label(path), carry, numbers) > 0 \
-			and not looks.is_empty():
-		builder.extend_last([{"undo": "steplooks", "looks": world.step_looks}])
-		world.step_looks = looks
+	if builder.regroup(changes, "took %s apart" % label(path), carry, numbers) > 0:
+		if not looks.is_empty():
+			builder.extend_last([{"undo": "steplooks", "looks": world.step_looks}])
+			world.step_looks = looks
+		if not lit.is_empty():
+			set_lines(builder, lit["lines"])
+			if not (lit["lights"] as Array).is_empty():
+				builder.extend_last([{"undo": "scenelights", "take": lit["lights"], "put": []}])
+				world.scene_lights = world.scene_lights + (lit["lights"] as Array)
+			apart_said = lit["said"]
 	changed.emit()
 	return changes.size()
+
+
+## What taking the copy at [param path] apart does to the lines kept by
+## definition (BrickWorld.section_lines), read before its parts move. Each of
+## its definition's lights goes with its parts, placed through the copy's
+## frame as a save writes the copy (file_frames): into the lines of the one
+## it is in, or the model's own lights (BrickWorld.scene_lights) when that is
+## the model, as many as a model keeps (SceneLights.joins). Its last copy
+## takes its definition's lines with it: its views too, as a view of a
+## sub-model that is gone frames nothing. Returns {"lines": the table after,
+## "lights": those the model gains, in the window's coordinates, "said": the
+## words for it}, or {} when it has none. Up to 2026-11-11 the lines stayed
+## under its name, and a save wrote them in whatever next took the name
+## (lpcheck s6, s12); before that, taken apart, its lights went unsaid.
+func _lines_apart(path: String) -> Dictionary:
+	var def: String = definition(leaf(path))
+	if not world.section_lines.has(def):
+		return {}
+	var parent: String = parent_of(path)
+	var parent_def: String = definition(leaf(parent))
+	var last: bool = copies_of(path).is_empty()
+	var frames: Dictionary = file_frames()
+	# The file's coordinates of its definition, as written, to the window's
+	# (the copy's frame, file_frames'), and on to its parent's.
+	var flip := Transform3D(Basis.from_scale(LdrModel.FLIP), Vector3.ZERO)
+	var through: Transform3D = ((frames[path] as Dictionary)["frame"] as Transform3D) * flip
+	if not parent.is_empty():
+		through = flip * ((frames[parent] as Dictionary)["frame"] as Transform3D) \
+			.affine_inverse() * through
+	var lines: Dictionary = world.section_lines.duplicate()
+	var theirs := PackedStringArray(lines.get(parent_def, PackedStringArray()))
+	var gained: Array = []
+	var moved: int = 0
+	var lost: int = 0
+	var why: String = ""
+	var views: int = 0
+	for line: String in world.section_lines[def]:
+		var word: String = _meta_word(line)
+		if word != "LIGHT":
+			views += 1 if word == "VIEW" else 0
+			continue
+		var light: Dictionary = SceneLights.of_line(line)
+		var reason: String = "not a light's words" if light.is_empty() else ""
+		if reason.is_empty():
+			light = SceneLights.through(light, through)
+			if parent.is_empty():
+				reason = SceneLights.joins(world.scene_lights + gained, light)
+				if reason.is_empty():
+					gained.append(light)
+			else:
+				theirs.append(SceneLights.META + JSON.stringify(light))
+		if reason.is_empty():
+			moved += 1
+		else:
+			lost += 1
+			why = reason
+	if not parent.is_empty() and moved > 0:
+		lines[parent_def] = theirs
+	if last:
+		lines.erase(def)
+	var said := PackedStringArray()
+	if moved > 0:
+		said.append("its light went with its parts" if moved == 1
+			else "its %d lights went with its parts" % moved)
+	if lost > 0:
+		said.append("%d of its lights went with it" % lost)
+		said.append(why)
+	if last and views > 0:
+		said.append("its saved view went with it" if views == 1
+			else "its %d saved views went with it" % views)
+	return {"lines": lines, "lights": gained, "said": " — ".join(said)}
+
+
+## The word after "0 !BRICKWORKS" on [param line] ("LIGHT", "VIEW"), or "".
+static func _meta_word(line: String) -> String:
+	var words: PackedStringArray = line.strip_edges().replace("\t", " ").split(" ", false, 3)
+	return words[2] if words.size() > 2 and words[0] == "0" and words[1] == "!BRICKWORKS" else ""
 
 
 ## Call a definition something else, in every copy of it.
@@ -453,7 +546,7 @@ func rename(path: String, wanted: String) -> String:
 	# Its steps' looks are kept by its name, and so are its own lights and views.
 	if builder.regroup(changes, "renamed %s to %s" % [old, name], carry) > 0:
 		builder.extend_last(BookletLooks.renamed(world, old, name, true))
-		builder.extend_last(lines_renamed(world, old, name, true))
+		lines_renamed(builder, old, name, true)
 	if not was_entered.is_empty():
 		_set_entered(_renamed_path(was_entered, old, name))
 	changed.emit()
@@ -461,24 +554,100 @@ func rename(path: String, wanted: String) -> String:
 
 
 ## A sub-model's own lines (BrickWorld.section_lines) of [param from] given
-## to [param to] as well, or with [param moved] in their place, as
-## BookletLooks.renamed carries its looks: a rename takes them, a copy made
-## one of its own keeps them. [param to] is a name no sub-model has
-## ([method unused_name]), so what is kept under it is a gone sub-model's,
-## left by its last copy taken apart or off, and goes; [param from] "" (a
-## Make's new sub-assembly) gives it nothing else. Returns the undo, the
-## whole table as it was, or [] when nothing changed.
-static func lines_renamed(world: BrickWorld, from: String, to: String, moved: bool) -> Array:
-	var lines: Dictionary = world.section_lines
-	if to.is_empty() or from == to or not (lines.has(to) or lines.has(from)):
-		return []
-	var was: Dictionary = lines.duplicate(true)
-	lines.erase(to)
-	if lines.has(from):
-		lines[to] = PackedStringArray(lines[from])
-		if moved:
-			lines.erase(from)
-	return [{"undo": "sectionlines", "lines": was}]
+## to [param to] as well, or with [param moved] in their place, in the newest
+## step of the history ([method set_lines]), as BookletLooks.renamed carries
+## its looks: a rename takes them, a copy made one of its own keeps them.
+## [param to] is a name no sub-model has ([method unused_name]), and none
+## keeps lines: a sub-model's go with its last copy ([method lines_follow]).
+static func lines_renamed(builder: Builder, from: String, to: String, moved: bool) -> void:
+	var lines: Dictionary = builder.world.section_lines
+	if to.is_empty() or from == to or not lines.has(from):
+		return
+	var now: Dictionary = lines.duplicate()
+	now[to] = PackedStringArray(lines[from])
+	if moved:
+		now.erase(from)
+	set_lines(builder, now)
+
+
+## The world's lines by definition (BrickWorld.section_lines) made [param
+## lines], in the newest step of the history (Builder.extend_last). Its undo
+## is the table as that step found it, kept once however many of the step's
+## changes make them: a step's undos are applied in their order, so with two
+## kept the later won, and the Undo of a Sections accept that kept one for
+## each of two names left the first one's lights and views out (lpcheck s6).
+## A step folded of others (Builder.fold_since) holds theirs newest first,
+## and its oldest, put back last, is the table as the first found it.
+static func set_lines(builder: Builder, lines: Dictionary) -> void:
+	var world: BrickWorld = builder.world
+	if lines == world.section_lines:
+		return
+	if not _keeps_lines(builder.last_step()):
+		builder.extend_last([{"undo": "sectionlines", "lines": world.section_lines}])
+	world.section_lines = lines
+
+
+## Whether history [param step], or one in it, puts the world's lines back
+## ([method set_lines]).
+static func _keeps_lines(step: Dictionary) -> bool:
+	if str(step.get("undo", "")) == "sectionlines":
+		return true
+	for inner: Variant in step.get("steps", []):
+		if inner is Dictionary and _keeps_lines(inner):
+			return true
+	return false
+
+
+## After an edit kept in the history, [param step] (Builder.last_step): the
+## lines of each sub-model it left no copy of (BrickWorld.section_lines) gone,
+## in that step ([method set_lines]), so its Undo puts them back with the
+## copy: deleted, cut, taken off over MCP, or every part moved out of it. A
+## copy taken apart takes its own ([method ungroup]). A sub-model one of
+## [param held] is in (ModelStore's parts on their way and those the
+## catalogue lacks, which a save writes in their sub-models) is still there.
+## Kept under its name, a gone sub-model's lines were written in whatever
+## next took the name: a copy pasted from another model, a hose laid, a
+## Make, a Sections accept (lpcheck s12).
+static func lines_follow(builder: Builder, step: Dictionary, held: Array = []) -> void:
+	var world: BrickWorld = builder.world
+	if world.section_lines.is_empty() or step.is_empty():
+		return
+	var left: Dictionary = {}
+	_left_from(step, left)
+	var asked: Array = left.keys().filter(func(def: String) -> bool:
+		return world.section_lines.has(def))
+	if asked.is_empty():
+		return
+	var standing: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		for segment: String in segments(path_of(brick)):
+			standing[definition(segment)] = true
+	for item: Variant in held:
+		var placement: LdrModel.Placement = item
+		for segment: String in segments(path_from(placement.group, placement.unit)):
+			standing[definition(segment)] = true
+	var lines: Dictionary = world.section_lines.duplicate()
+	for def: String in asked:
+		if not standing.has(def):
+			lines.erase(def)
+	set_lines(builder, lines)
+
+
+## Into [param into], the definition of every copy history [param step] took
+## a part off or out of: each part taken off ("add", which puts it back) and
+## each moved in the tree ("regroup"), by the path it had.
+static func _left_from(step: Dictionary, into: Dictionary) -> void:
+	var kind: String = str(step.get("undo", ""))
+	if kind == "group":
+		for inner: Variant in step.get("steps", []):
+			if inner is Dictionary:
+				_left_from(inner, into)
+		return
+	if kind != "add" and kind != "regroup":
+		return
+	for segment: String in segments(path_from(str(step.get("group", "")),
+			str(step.get("unit", "")))):
+		into[definition(segment)] = true
 
 
 ## [param model]'s sub-models' own lines (LdrModel.section_lines), by the
@@ -591,7 +760,7 @@ func make_unique(path: String) -> String:
 		builder.extend_last(BookletLooks.renamed(world, definition(leaf(path)), name, false))
 	# And its own lights and views, built in its own steps or not.
 	if moved > 0:
-		builder.extend_last(lines_renamed(world, definition(leaf(path)), name, false))
+		lines_renamed(builder, definition(leaf(path)), name, false)
 	if within(entered, path):
 		_set_entered(fresh + entered.substr(path.length()))
 	changed.emit()

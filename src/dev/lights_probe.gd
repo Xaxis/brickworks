@@ -1222,6 +1222,355 @@ func _r_paths() -> void:
 		% [_lines_of(after).size(), _section_of(after, "sub.ldr").contains(lamp), _scene().size()],
 		own == 1 and _lines_of(after).size() == 2 and _section_of(after, "sub.ldr").contains(lamp)
 		and _scene().size() == 1)
+	await _r_gone()
+
+
+# -- a sub-model's lines go with its last copy (lpcheck, lightpaths2) ---------------
+
+
+## A sub-model's lights and views change in the step that leaves it no copy,
+## and nowhere else (lpcheck's s6 and s12, lightpaths2). Its last copy
+## deleted, by hand or over MCP: they go, and Undo brings them back with it.
+## Taken apart, a copy at a time: each copy's light goes with its parts, where
+## it was in the model, among the model's own lights; the last copy's view
+## goes, and the status bar says so; Undo and Redo through each. So no gone
+## sub-model's lines wait under its name: sections made over MCP under the
+## names of two taken apart, and all of it undone, leave each its own (s6);
+## a copy of another model's sub-model of the name pasted where one was
+## deleted takes none of its lines (s12). Each state saved, and opened and
+## saved again. Up to 2026-11-11 s6's Undo left Alpha without its light and
+## view, s12's paste wrote B's in A's, and a copy taken apart left its light
+## behind in a sub-model with no copy.
+func _r_gone() -> void:
+	await _r_gone_sections()
+	await _r_gone_pasted()
+	await _r_gone_deleted()
+	await _r_gone_apart()
+
+
+func _r_gone_sections() -> void:
+	var text: String = "\n".join(PackedStringArray(["0 FILE main.ldr", "0 Greek",
+		"0 Name: main.ldr", "0 Author: Brickworks", _light("point", [0, -60, 0]),
+		"1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat", "1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat",
+		"1 16 100 0 0 1 0 0 0 1 0 0 0 1 alpha.ldr", "1 16 -100 0 0 1 0 0 0 1 0 0 0 1 beta.ldr",
+		"0 NOFILE", "0 FILE alpha.ldr", "0 Alpha", "0 Name: alpha.ldr", "0 Author: Brickworks",
+		_light("point", [0, -50, 0], {"colour": "#ff0001"}), _view_line("alpha view"),
+		"1 14 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat", "0 NOFILE", "0 FILE beta.ldr", "0 Beta",
+		"0 Name: beta.ldr", "0 Author: Brickworks",
+		_light("point", [0, -50, 0], {"colour": "#ff0002"}), _view_line("beta view"),
+		"1 2 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat", "0 NOFILE", ""]))
+	await _opened(_put("gone_s6.mpd", text))
+	var assemblies: Assemblies = _shell.get("assemblies")
+	var said := PackedStringArray()
+	for definition: String in ["Alpha", "Beta"]:
+		said.append(await _taken_apart(_path_named(assemblies, definition)))
+	var sections: Sections = (_shell.get("sections") as Node).get("sections") as Sections
+	var ids: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		if not _store.scenery.has(brick.id):
+			ids.append(brick.id)
+	ids.sort()
+	var listed: Array[Sections.Suggestion] = []
+	for n: int in 2:
+		var one := Sections.Suggestion.new()
+		one.number = n + 1
+		one.name = ["Alpha", "Beta"][n]
+		one.ids = PackedInt64Array(ids.slice(0, 2) if n == 0 else ids.slice(2))
+		listed.append(one)
+	sections.suggested = listed
+	var made: String = await _mcp("make_sections", {"sections": [{"name": "Alpha", "from": [1]},
+		{"name": "Beta", "from": [2]}]})
+	var marks: Array = [await _saved_marks("gone_s6_a")]
+	for _n: int in 3:
+		_shell.call("run", "undo")
+		await _frames(10)
+	marks.append(await _saved_marks("gone_s6_b"))
+	var want: Array = [
+		["L#ffffff@model", "L#ff0001@model", "L#ff0002@model"],
+		["L#ffffff@model", "L#ff0001@alpha", "V'alpha view'@alpha", "L#ff0002@beta",
+			"V'beta view'@beta"]]
+	var again: Array = await _reopened_marks(["gone_s6_a", "gone_s6_b"])
+	_check("Alpha and Beta taken apart (%s), sections called Alpha and Beta made over MCP (%s): "
+		% [" | ".join(said), made.get_slice("\n", 0).left(60)] + "their lights the model's, "
+		+ "their views gone %s; all three undone, each its own light and view again %s; each "
+		% [marks[0], marks[1]] + "opened and saved again the same %s" % [again],
+		_same_marks(marks, want) and _same_marks(again, want))
+
+
+func _r_gone_pasted() -> void:
+	var a: String = "\n".join(PackedStringArray(["0 FILE main.ldr", "0 Model A",
+		"0 Name: main.ldr", "0 Author: Brickworks", "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat",
+		"1 16 100 0 0 1 0 0 0 1 0 0 0 1 sub.ldr", "0 NOFILE", "0 FILE sub.ldr", "0 Sub",
+		"0 Name: sub.ldr", "0 Author: Brickworks", "1 2 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat",
+		"0 NOFILE", ""]))
+	await _opened(_put("gone_s12_a_in.mpd", a))
+	var assemblies: Assemblies = _shell.get("assemblies")
+	var builder: Builder = _main.get("_builder")
+	_select(assemblies, _path_named(assemblies, "Sub"))
+	var copied: int = builder.copy_selection()
+	await _opened(_put("gone_s12_b_in.mpd", _lit_sub("Brickworks",
+		_light("point", [0, -50, 0], {"colour": "#130001"}), _view_line("s12 view"))))
+	_select(assemblies, _path_named(assemblies, "Sub"))
+	_shell.call("run", "delete")
+	await _frames(10)
+	var marks: Array = [await _saved_marks("gone_s12_a")]
+	builder.hold_copy(Carry.clipboard)
+	var put: int = await _put_down(builder)
+	await _frames(10)
+	marks.append(await _saved_marks("gone_s12_b"))
+	for _n: int in 2:
+		_shell.call("run", "undo")
+		await _frames(10)
+	marks.append(await _saved_marks("gone_s12_c"))
+	for _n: int in 2:
+		_shell.call("run", "redo")
+		await _frames(10)
+	marks.append(await _saved_marks("gone_s12_d"))
+	var none: Array = ["L#ffffff@model"]
+	var lit: Array = ["L#ffffff@model", "L#130001@sub", "V's12 view'@sub"]
+	var want: Array = [none, none, lit, none]
+	var again: Array = await _reopened_marks(["gone_s12_a", "gone_s12_b", "gone_s12_c",
+		"gone_s12_d"])
+	_check("B's lit Sub deleted %s, A's Sub (%d parts copied) pasted in (#%d) %s: none of B's " %
+		[marks[0], copied, put, marks[1]] + "light or view in it; both undone, Sub's own again %s; "
+		% [marks[2]] + "both redone %s; each opened and saved again the same %s" % [marks[3], again],
+		put != 0 and _same_marks(marks, want) and _same_marks(again, want))
+
+
+func _r_gone_deleted() -> void:
+	var sub_light: String = _light("point", [0, -50, 0], {"colour": SUB_GREEN})
+	var lit: Array = ["L#ffffff@model", "L%s@sub" % SUB_GREEN, "V'%s'@sub" % SUB_VIEW]
+	var none: Array = ["L#ffffff@model"]
+	for how: String in ["by hand", "over MCP"]:
+		await _opened(_put("gone_del.mpd", _lit_sub("Brickworks", sub_light,
+			_view_line(SUB_VIEW))))
+		var assemblies: Assemblies = _shell.get("assemblies")
+		var path: String = _path_named(assemblies, "Sub")
+		var said: String = ""
+		if how == "by hand":
+			_select(assemblies, path)
+			_shell.call("run", "delete")
+			await _frames(10)
+		else:
+			var ids: Array = Array(assemblies.ids_under(path))
+			said = (await _mcp("edit_model", {"remove": ids})).get_slice("\n", 0).left(50)
+		var tag: String = "gone_del_%s" % ("hand" if how == "by hand" else "mcp")
+		var marks: Array = [await _saved_marks(tag + "_a")]
+		_shell.call("run", "undo")
+		await _frames(10)
+		marks.append(await _saved_marks(tag + "_b"))
+		_shell.call("run", "redo")
+		await _frames(10)
+		marks.append(await _saved_marks(tag + "_c"))
+		var want: Array = [none, lit, none]
+		var again: Array = await _reopened_marks([tag + "_a", tag + "_b", tag + "_c"])
+		var asked: String = (" (%s)" % said) if not said.is_empty() else ""
+		_check("a lit sub-model's one copy deleted %s%s: its light and view gone %s; undone, "
+			% [how, asked, marks[0]] + "back in it %s; redone, gone %s; each opened and saved "
+			% [marks[1], marks[2]] + "again the same %s" % [again],
+			_same_marks(marks, want) and _same_marks(again, want))
+
+
+## Two copies of a lit Sub, as the app writes them: the first where its file
+## has its parts, the second turned a quarter about up and moved. Its light
+## at (100, -74, 0) shining +x, so the first copy's is at (100, -50, 0) in the
+## model shining +x, and the second's at (-200, -50, -60) shining -z.
+const APART_ONE := Vector3(100.0, -50.0, 0.0)
+const APART_TWO := Vector3(-200.0, -50.0, -60.0)
+
+
+func _r_gone_apart() -> void:
+	var text: String = "\n".join(PackedStringArray(["0 FILE main.ldr", "0 Lamps",
+		"0 Name: main.ldr", "0 Author: Brickworks", _light("point", [0, -60, 0]),
+		"1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat", "0 !BRICKWORKS COPY 1",
+		"1 16 0 24 0 1 0 0 0 1 0 0 0 1 sub.ldr", "0 !BRICKWORKS COPY 2",
+		"1 16 -200 24 40 0 0 1 0 1 0 -1 0 0 sub.ldr", "0 NOFILE", "0 FILE sub.ldr", "0 Sub",
+		"0 Name: sub.ldr", "0 Author: Brickworks",
+		_light("point", [100, -74, 0], {"colour": SUB_GREEN, "aim": [1, 0, 0]}),
+		_view_line(SUB_VIEW), "1 14 100 -24 0 1 0 0 0 1 0 0 0 1 3001.dat",
+		"1 4 120 -48 0 1 0 0 0 1 0 0 0 1 3003.dat", "0 NOFILE", ""]))
+	await _opened(_put("gone_apart.mpd", text))
+	var assemblies: Assemblies = _shell.get("assemblies")
+	var paths: PackedStringArray = assemblies.paths()
+	var said := PackedStringArray()
+	var marks: Array = []
+	var places: Array = []
+	for path: String in ["Sub#2", "Sub#1"]:
+		said.append("%s %s" % [path, await _taken_apart(path)])
+		marks.append(await _saved_marks("gone_apart_%d" % marks.size()))
+		places.append(_green_places("gone_apart_%d" % (marks.size() - 1)))
+	for step: String in ["undo", "undo", "redo", "redo"]:
+		_shell.call("run", step)
+		await _frames(10)
+		marks.append(await _saved_marks("gone_apart_%d" % marks.size()))
+		places.append(_green_places("gone_apart_%d" % (marks.size() - 1)))
+	var green: String = "L%s@" % SUB_GREEN
+	var view: String = "V'%s'@sub" % SUB_VIEW
+	var one: Array = ["L#ffffff@model", green + "model", green + "sub", view]
+	var both: Array = ["L#ffffff@model", green + "model", green + "model"]
+	var none: Array = ["L#ffffff@model", green + "sub", view]
+	var want: Array = [one, both, one, none, one, both]
+	var where: Array = [[APART_TWO], [APART_ONE, APART_TWO], [APART_TWO], [], [APART_TWO],
+		[APART_ONE, APART_TWO]]
+	var placed: bool = true
+	for n: int in where.size():
+		placed = placed and _at_places(places[n], where[n])
+	var names: Array = []
+	for n: int in want.size():
+		names.append("gone_apart_%d" % n)
+	var again: Array = await _reopened_marks(names)
+	await _opened(ModelStore.SAVE_DIR + "gone_apart_1.mpd")
+	var lit: Array = []
+	for light: Dictionary in _in_file():
+		lit.append(_at(light))
+	_check("a lit Sub's two copies (%s) taken apart one by one: %s; each copy's light where it was, "
+		% [paths, " | ".join(said)] + "the model's now, its view gone with the last; undone twice "
+		+ "and redone twice, saved after each %s, the lights at %s; each opened and saved again "
+		% [marks, places] + "the same %s; opened, the model lights %s" % [again, lit],
+		said.size() == 2 and said[0].contains("its light went with its parts")
+		and not said[0].contains("saved view") and said[1].contains("its light went with its parts")
+		and said[1].contains("its saved view went with it") and _same_marks(marks, want)
+		and _same_marks(again, want) and placed and lit.size() == 3)
+
+
+func _view_line(name: String) -> String:
+	return VIEW_META + JSON.stringify({"name": name, "yaw": 10, "pitch": -20, "distance": 300,
+		"focus": [0, 0, 0]})
+
+
+func _select(assemblies: Assemblies, path: String) -> void:
+	var selection: Dictionary = {}
+	for id: int in assemblies.ids_under(path):
+		selection[id] = true
+	(_main.get("_builder") as Builder).selection = selection
+
+
+## The copy at [param path] taken apart as a person does (Ungroup), and what
+## the status bar said.
+func _taken_apart(path: String) -> String:
+	_select(_shell.get("assemblies"), path)
+	_shell.call("run", "leave_submodel")
+	await _frames(10)
+	return (_main.get("_bar") as ModelBar).status_text()
+
+
+## A session's call, as the connector answers it (CommandSocket: one step).
+var _sent: int = 0
+
+
+func _mcp(tool: String, input: Dictionary) -> String:
+	_sent += 1
+	var socket: CommandSocket = (_main.get("_connector") as ClaudeConnector).rpc
+	var answer: Variant = await socket.answer_rpc({"jsonrpc": "2.0", "id": _sent,
+		"method": "tools/call", "params": {"name": tool, "arguments": input}})
+	await _frames(10)
+	var out := PackedStringArray()
+	for block: Variant in ((answer as Dictionary).get("result", {}) as Dictionary).get("content", []):
+		out.append(str((block as Dictionary).get("text", "")))
+	return " ".join(out)
+
+
+## What was held put down beside the model, as a click puts it.
+func _put_down(builder: Builder) -> int:
+	var carry: Carry = builder.carrying
+	var low := Vector3(INF, INF, INF)
+	var high := -low
+	for brick: BrickWorld.Brick in _world.bricks():
+		if not _store.scenery.has(brick.id):
+			low = low.min(brick.transform.origin)
+			high = high.max(brick.transform.origin)
+	carry.stand_where_lifted(builder.lattice, builder)
+	carry.pin()
+	for k: int in 6:
+		var by := Vector3(high.x - low.x + 4.0 * BrickLattice.STUD * (k + 1), 0.0, 0.0)
+		if carry.show_moved(Transform3D(Basis.IDENTITY, by), builder.lattice, builder):
+			var put: int = builder.place()
+			await _frames(4)
+			builder.cancel_carry()
+			return put
+	builder.cancel_carry()
+	return 0
+
+
+## Saved as [param name], each light (by its colour) and view (by its name) of
+## the file and the section it is in, sorted: "L#rrggbb@sub", "V'name'@sub",
+## the model's own section "model".
+func _saved_marks(name: String) -> PackedStringArray:
+	var path: String = ModelStore.SAVE_DIR + name + ".mpd"
+	_main.call("save_model", path)
+	return _marks(FileAccess.get_file_as_string(path))
+
+
+## Each of [param names] (saved by [method _saved_marks]) opened and saved
+## again, written whole: its marks.
+func _reopened_marks(names: Array) -> Array:
+	var out: Array = []
+	for name: String in names:
+		await _opened(ModelStore.SAVE_DIR + name + ".mpd")
+		out.append(await _saved_marks(name + "_again"))
+	return out
+
+
+static func _marks(text: String) -> PackedStringArray:
+	var out := PackedStringArray()
+	var own: int = LdrModel.main_end(text)
+	var section: String = "model"
+	var colour := RegEx.create_from_string("\"colour\":\"(#[0-9a-fA-F]{6})\"")
+	var named := RegEx.create_from_string("\"name\":\"([^\"]*)\"")
+	var at: int = 0
+	for line: String in text.split("\n"):
+		if at >= own and LdrModel.section_word(line) == "FILE":
+			section = line.strip_edges().substr(6).strip_edges().to_lower().trim_suffix(".ldr")
+		at += line.length() + 1
+		if line.begins_with(META):
+			var found: RegExMatch = colour.search(line)
+			out.append("L%s@%s" % [found.get_string(1) if found != null else "?", section])
+		elif line.begins_with(VIEW_META):
+			var found: RegExMatch = named.search(line)
+			out.append("V'%s'@%s" % [found.get_string(1) if found != null else "?", section])
+	out.sort()
+	return out
+
+
+static func _same_marks(got: Array, want: Array) -> bool:
+	if got.size() != want.size():
+		return false
+	for n: int in got.size():
+		var wanted := PackedStringArray(want[n])
+		wanted.sort()
+		if PackedStringArray(got[n]) != wanted:
+			return false
+	return true
+
+
+## Where each light of the sub-model's colour is in the model's own lines of
+## saved file [param name], and the way it shines: [at, aim] each.
+func _green_places(name: String) -> Array:
+	var text: String = FileAccess.get_file_as_string(ModelStore.SAVE_DIR + name + ".mpd")
+	var out: Array = []
+	for line: String in _lines_of(text.substr(0, LdrModel.main_end(text))):
+		var light: Variant = JSON.parse_string(line.substr(META.length()))
+		if light is Dictionary and str((light as Dictionary).get("colour", "")) == SUB_GREEN:
+			out.append([_at(light), _aim(light)])
+	return out
+
+
+## Whether [param places] (from [method _green_places]) are [param wanted],
+## in any order, each shining +x at [constant APART_ONE] and -z at [constant
+## APART_TWO].
+static func _at_places(places: Array, wanted: Array) -> bool:
+	if places.size() != wanted.size():
+		return false
+	for want: Vector3 in wanted:
+		var aim: Vector3 = Vector3(1, 0, 0) if want == APART_ONE else Vector3(0, 0, -1)
+		var found: bool = false
+		for place: Array in places:
+			if (place[0] as Vector3).distance_to(want) < 0.01 \
+					and (place[1] as Vector3).distance_to(aim) < 0.0001:
+				found = true
+		if not found:
+			return false
+	return true
 
 
 ## The app's own MPD (or [param whose]'s): the model's lamp in the model, and

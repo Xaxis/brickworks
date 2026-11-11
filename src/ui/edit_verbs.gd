@@ -483,7 +483,9 @@ func leave_submodel() -> int:
 			var count: int = assemblies.ungroup(path)
 			if count > 0:
 				edited.call()
-				say.call("took %s apart" % Assemblies.label(path))
+				# And what became of its lights and views (Assemblies._lines_apart).
+				say.call("took %s apart" % Assemblies.label(path) + ("" if assemblies.apart_said
+					.is_empty() else " — " + assemblies.apart_said))
 			return count
 		var changes: Dictionary = {}
 		for brick_id: int in builder.selection:

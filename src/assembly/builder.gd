@@ -625,6 +625,25 @@ func _apply(step: Dictionary) -> Dictionary:
 		world.section_lines = (step["lines"] as Dictionary).duplicate(true)
 		return {"undo": "sectionlines", "lines": lined}
 
+	# Lights of the model's own (BrickWorld.scene_lights) a step took out or
+	# put in: a sub-model's, taken apart into the model (Assemblies.ungroup).
+	# Each found by what it is, not where it is in the list, and the list made
+	# anew, as Render's are: a light placed or changed there, which keeps no
+	# step, is left as it is.
+	if step.get("undo", "") == "scenelights":
+		var lights: Array = world.scene_lights.duplicate()
+		var taken: Array = []
+		for light: Dictionary in step.get("take", []):
+			for n: int in lights.size():
+				if SceneLights.same([lights[n]], [light]):
+					taken.append(lights[n])
+					lights.remove_at(n)
+					break
+		var put: Array = step.get("put", [])
+		lights.append_array(put)
+		world.scene_lights = lights
+		return {"undo": "scenelights", "take": put, "put": taken}
+
 	# Which copy of someone else's file each path is: the table as it was,
 	# its own reverse.
 	if step.get("undo", "") == "unitchains":
