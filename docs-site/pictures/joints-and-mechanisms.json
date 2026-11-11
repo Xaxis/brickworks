@@ -35,8 +35,24 @@
      "after": 60
     },
     {
-     "run": "fit_model",
+     "run": "fit_selection",
      "after": 90
+    },
+    {
+     "key": "Minus",
+     "after": 20
+    },
+    {
+     "key": "Minus",
+     "after": 20
+    },
+    {
+     "key": "Minus",
+     "after": 20
+    },
+    {
+     "key": "Minus",
+     "after": 60
     }
    ],
    "crop": [
