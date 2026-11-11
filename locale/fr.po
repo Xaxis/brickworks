@@ -3388,11 +3388,11 @@ msgstr "%s tourne sur %s sur un connecteur à friction, avec %s g au-delà, %s f
 msgid "%s turns on %s on %d friction pins in a line with %s g past it, %sx its working load"
 msgstr "%s tourne sur %s sur %d connecteurs à friction alignés, avec %s g au-delà, %s fois leur charge de travail"
 
-msgid "%s turns on %s on a frictionless pin or axle with %s g past it, %sx its working load"
-msgstr "%s tourne sur %s sur un connecteur sans friction ou un axe, avec %s g au-delà, %s fois sa charge de travail"
+msgid "%s turns on %s on a frictionless pin or axle with %s g past it, and nothing holding it"
+msgstr "%s tourne sur %s sur un connecteur sans friction ou un axe, avec %s g au-delà, et rien ne le retient"
 
-msgid "%s turns on %s on %d frictionless pins or axles in a line with %s g past it, %sx its working load"
-msgstr "%s tourne sur %s sur %d connecteurs sans friction ou axes alignés, avec %s g au-delà, %s fois leur charge de travail"
+msgid "%s turns on %s on %d frictionless pins or axles in a line with %s g past it, and nothing holding it"
+msgstr "%s tourne sur %s sur %d connecteurs sans friction ou axes alignés, avec %s g au-delà, et rien ne le retient"
 
 msgid "%s g held by nothing stands on %s by touch alone, its weight %s studs past where it touches"
 msgstr "%s g tenus par rien reposent sur %s par simple contact, leur poids à %s tenons au-delà du contact"
@@ -3471,12 +3471,6 @@ msgstr "Élargissez-le de %d tenons côté %s"
 
 msgid "Widen it %d studs to the %s."
 msgstr "Élargissez-le de %d tenons côté %s."
-
-msgid "1 stud joint overloaded, in red."
-msgstr "1 liaison par tenons surchargée, en rouge."
-
-msgid "%d stud joints overloaded, in red."
-msgstr "%d liaisons par tenons surchargées, en rouge."
 
 msgid "left"
 msgstr "gauche"
@@ -12644,6 +12638,245 @@ msgstr "tenons sur trois côtés"
 
 msgid "studs on four sides"
 msgstr "tenons sur quatre côtés"
+
+# unit drive: a motion's path, where the whole model drives (pose_panel, motion_player)
+
+msgid "Where it drives"
+msgstr "Où il roule"
+
+msgid "Drive along a path"
+msgstr "Rouler le long d'un trajet"
+
+msgid "The whole model driven along the ground, its wheels turning as it goes: 32 studs, then round a corner"
+msgstr "Le modèle entier roule sur le sol, ses roues tournant en chemin : 32 tenons, puis un virage"
+
+msgid "Add a leg"
+msgstr "Ajouter un tronçon"
+
+msgid "Another leg at the path's end: straight on"
+msgstr "Un autre tronçon à la fin du trajet : tout droit"
+
+msgid "No path"
+msgstr "Aucun trajet"
+
+msgid "The model stays where it stands; its joints still move"
+msgstr "Le modèle reste où il est ; ses articulations bougent toujours"
+
+msgid "Over"
+msgstr "Durée"
+
+msgid "How long it takes, seconds"
+msgstr "Combien de temps cela prend, en secondes"
+
+msgid "It gathers speed at the start and slows to a stop at the end"
+msgstr "Il prend de la vitesse au départ et ralentit jusqu'à l'arrêt à la fin"
+
+msgid "Straight"
+msgstr "Tout droit"
+
+msgid "Straight on, or a turn to the left or the right"
+msgstr "Tout droit, ou un virage à gauche ou à droite"
+
+msgid "How far, studs (less than 0 backwards)"
+msgstr "Quelle distance, en tenons (moins de 0 en marche arrière)"
+
+msgid "How far round, degrees"
+msgstr "De combien il tourne, en degrés"
+
+msgid "How wide the turn is: its radius, studs, at the middle of the back axle"
+msgstr "La largeur du virage : son rayon, en tenons, au milieu de l'essieu arrière"
+
+msgid "Take this leg out of the path"
+msgstr "Retirer ce tronçon du trajet"
+
+msgid "It moves nothing but the path: Remove takes the motion out."
+msgstr "Il ne bouge rien d'autre que le trajet : « Retirer » enlève le mouvement."
+
+msgid "It drives %s."
+msgstr "Il roule %s."
+
+msgid "It drives %s. %s Play plays it."
+msgstr "Il roule %s. %s « Lire » le joue."
+
+msgid "%s studs straight"
+msgstr "%s tenons tout droit"
+
+msgid "%s studs backwards"
+msgstr "%s tenons en marche arrière"
+
+msgid "%s° left on a %s-stud radius"
+msgstr "%s° à gauche sur un rayon de %s tenons"
+
+msgid "%s° right on a %s-stud radius"
+msgstr "%s° à droite sur un rayon de %s tenons"
+
+msgid "%s, then %s"
+msgstr "%s, puis %s"
+
+msgid "1 wheel turns as it rolls (%s)"
+msgstr "1 roue tourne en roulant (%s)"
+
+msgid "1 wheel turns as it rolls (%s)."
+msgstr "1 roue tourne en roulant (%s)."
+
+msgid "%d wheels turn as it rolls (%s)"
+msgstr "%d roues tournent en roulant (%s)"
+
+msgid "%d wheels turn as it rolls (%s)."
+msgstr "%d roues tournent en roulant (%s)."
+
+msgid "%s, and %s steers it into the corners."
+msgstr "%s, et %s le dirige dans les virages."
+
+msgid "No wheel turns as it rolls: none stands on the ground on a level axle"
+msgstr "Aucune roue ne tourne en roulant : aucune ne repose au sol sur un essieu horizontal"
+
+msgid "No wheel turns as it rolls: none stands on the ground on a level axle."
+msgstr "Aucune roue ne tourne en roulant : aucune ne repose au sol sur un essieu horizontal."
+
+# unit drive, review fixes: refused motion lines said and kept, a joint's part gone, a contact of no studs
+
+msgid "1 motion line not read, kept in the file as it is"
+msgstr "1 ligne de mouvement non lue, gardée telle quelle dans le fichier"
+
+msgid "%d motion lines not read, kept in the file as they are"
+msgstr "%d lignes de mouvement non lues, gardées telles quelles dans le fichier"
+
+msgid "%s (%d lines): %s"
+msgstr "%s (%d lignes) : %s"
+
+msgid "a path has at most %d legs, not %d"
+msgstr "un trajet a au plus %d tronçons, pas %d"
+
+msgid "a turn of its path has no RADIUS"
+msgstr "un virage de son trajet n'a pas de RADIUS"
+
+msgid "its path has %s where a leg goes"
+msgstr "son trajet a %s là où va un tronçon"
+
+msgid "it has two path lines"
+msgstr "il a deux lignes de trajet"
+
+msgid "it has two steering lines"
+msgstr "il a deux lignes de direction"
+
+msgid "a wheel or steering line with no path read"
+msgstr "une ligne de roue ou de direction sans trajet lu"
+
+msgid "a wheel or steering line this does not read"
+msgstr "une ligne de roue ou de direction illisible ici"
+
+msgid "nothing it moves was read"
+msgstr "rien de ce qu'il bouge n'a été lu"
+
+msgid "a sequence plays motions, and moves nothing of its own"
+msgstr "une séquence joue des mouvements et ne bouge rien elle-même"
+
+msgid "its path line is not one this reads"
+msgstr "sa ligne de trajet est illisible ici"
+
+msgid "its MOTION line is not one this reads"
+msgstr "sa ligne MOTION est illisible ici"
+
+msgid "a track line this does not read"
+msgstr "une ligne de piste illisible ici"
+
+msgid "a driver line this does not read"
+msgstr "une ligne d'entraînement illisible ici"
+
+msgid "a key line this does not read"
+msgstr "une ligne de clé illisible ici"
+
+msgid "a key of a track it does not have"
+msgstr "une clé d'une piste qu'il n'a pas"
+
+msgid "a motion line with no motion's name"
+msgstr "une ligne de mouvement sans nom de mouvement"
+
+msgid "%s is not a motion line this reads"
+msgstr "%s n'est pas une ligne de mouvement lisible ici"
+
+msgid "a path takes %s to %d seconds, not %s"
+msgstr "un trajet dure de %s à %d secondes, pas %s"
+
+msgid "a straight goes 0.01 to %d studs (less than 0 backwards), not %s"
+msgstr "une ligne droite va de 0,01 à %d tenons (moins de 0 en arrière), pas %s"
+
+msgid "A straight goes 0.01 to %d studs (less than 0 backwards), not %s."
+msgstr "Une ligne droite va de 0,01 à %d tenons (moins de 0 en arrière), pas %s."
+
+msgid "a turn goes 0.01 to %d degrees, not %s"
+msgstr "un virage va de 0,01 à %d degrés, pas %s"
+
+msgid "A turn goes 0.01 to %d degrees, not %s."
+msgstr "Un virage va de 0,01 à %d degrés, pas %s."
+
+msgid "a turn's radius is %s to %d studs, not %s"
+msgstr "le rayon d'un virage va de %s à %d tenons, pas %s"
+
+msgid "A turn's radius is %s to %d studs, not %s."
+msgstr "Le rayon d'un virage va de %s à %d tenons, pas %s."
+
+msgid "a motion's joint has no part where it was, kept in the file as it was: %s"
+msgstr "une articulation d'un mouvement n'a plus de pièce là où elle était, gardée telle quelle dans le fichier : %s"
+
+msgid "%d motions' joints have no part where they were, kept in the file as they were: %s"
+msgstr "%d articulations de mouvements n'ont plus de pièce là où elles étaient, gardées telles quelles dans le fichier : %s"
+
+msgid "the %s touches with no stud in contact: nothing holds it there"
+msgstr "%s touche sans aucun tenon en contact : rien ne le tient là"
+
+msgid "on no stud"
+msgstr "sur aucun tenon"
+
+msgid "%s touches %s with no stud in contact, %s g past it: nothing holds it there"
+msgstr "%s touche %s sans aucun tenon en contact, %s g au-delà : rien ne le tient là"
+
+# drvcheck A-C: a pin or an axle said by its kind, refused motion lines an edit lets go
+
+msgid "the %s turns on a frictionless pin or axle with nothing holding it"
+msgstr "%s tourne sur un connecteur sans friction ou un axe, sans rien pour le retenir"
+
+msgid "the %s turns on %d frictionless pins or axles in a line with nothing holding it"
+msgstr "%s tourne sur %d connecteurs sans friction ou axes alignés, sans rien pour le retenir"
+
+msgid "the %s carries about %sx its working load on a friction pin"
+msgstr "%s porte environ %s fois sa charge de travail sur un connecteur à friction"
+
+msgid "the %s carries about %sx its working load on %d friction pins in a line"
+msgstr "%s porte environ %s fois sa charge de travail sur %d connecteurs à friction alignés"
+
+msgid "1 motion line not read let go, as the next open would read it into %s: %s"
+msgstr "1 ligne de mouvement non lue retirée, car la prochaine ouverture la lirait dans %s : %s"
+
+msgid "%d motion lines not read let go, as the next open would read them into %s: %s"
+msgstr "%d lignes de mouvement non lues retirées, car la prochaine ouverture les lirait dans %s : %s"
+
+# drive2 (drvrecheck F4, words): joints by their kind, and the standing line's start and studs
+
+msgid "1 joint overloaded, in red."
+msgstr "1 liaison surchargée, en rouge."
+
+msgid "%d joints overloaded, in red."
+msgstr "%d liaisons surchargées, en rouge."
+
+msgid "stands, %s studs inside the %s edge"
+msgstr "tient debout, à %s tenons en deçà du bord %s"
+
+msgid "would tip over to the %s, %s studs past its edge"
+msgstr "basculerait vers %s, à %s tenons au-delà de son bord"
+
+msgid "tips over to the %s, %s studs past its edge"
+msgstr "bascule vers %s, à %s tenons au-delà de son bord"
+
+msgid "the %s's 1 stud carries about %sx its working load"
+msgstr "le tenon de %s porte environ %s fois sa charge de travail"
+
+msgid "the %s's %d studs carry about %sx their working load"
+msgstr "les %2$d tenons de %1$s portent environ %3$s fois leur charge de travail"
+
+# end unit drive
+
 # A palette of the person's own, kept for every model (palettes, APP_UX6 21): the bin's
 # Palettes beside Favourites, an open palette's line, its menus and what they say.
 

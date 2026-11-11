@@ -706,7 +706,9 @@ func definitions() -> Array:
 				+ "it drives through gears, racks and linkages follows. Or sequence= the model's "
 				+ "motions by name, in order (\"Show it all\": [\"Open the dome\", \"Extend the "
 				+ "telescope\"]): a motion made of motions, each played from where the one before "
-				+ "left the model, backwards in reverse order. suggested=true keeps list_motions' "
+				+ "left the model, backwards in reverse order. Or path= the whole model driven along "
+				+ "the ground (legs: straight studs, left or right degrees), its wheels turning as they "
+				+ "roll and its steering into the corners. suggested=true keeps list_motions' "
 				+ "suggestion of that name; remove=true takes a motion out. It is saved with the model (its autosave, "
 				+ "a save, an export, a shared link), one undo step, and answers by playing it "
 				+ "once and putting the model back: where each joint ended, or stopped and on what."),
@@ -732,6 +734,23 @@ func definitions() -> Array:
 					}},
 				"sequence": {"type": "array", "items": {"type": "string"},
 					"description": "the model's motions it plays, by name, in order"},
+				# unit drive: the whole model driven along a path, its wheels turning.
+				"path": {"type": "object", "additionalProperties": false, "description": ("the whole model "
+					+ "driven along the ground from where it stands, its wheels turning as they roll and its "
+					+ "steering into the corners; with tracks= too, those joints move as it goes"), "properties": {
+						"legs": {"type": "array", "description": ("in order; a 32-stud straight and a quarter "
+							+ "turn left when omitted"), "items": {"type": "object", "additionalProperties": false,
+							"properties": {
+								"straight": {"type": "number", "description": "studs ahead; less than 0 backwards"},
+								"left": {"type": "number", "description": "degrees turned to the left"},
+								"right": {"type": "number", "description": "degrees turned to the right"},
+								"radius": {"type": "number", "description": ("a turn's radius, studs, at the "
+									+ "middle of the back axle; the tightest its steering takes well when omitted")},
+							}}},
+						"seconds": {"type": "number", "description": "how long; at 10 studs a second when omitted"},
+						"eased": {"type": "boolean", "description": "gathers speed and slows to a stop; true when omitted"},
+					}},
+				# end unit drive
 				"suggested": {"type": "boolean", "description": "keep list_motions' suggestion of this name"},
 				"remove": {"type": "boolean"},
 			}},
@@ -2599,7 +2618,7 @@ func _animate(input: Dictionary, work: Working.Job = null) -> Variant:
 		builder.record([{"undo": "motions", "motions": had}], "%s the motion %s" % [
 			"changed" if replaced else "made", Motions.quoted(ANIMATION)])
 		kept = (" Kept as the motion %s: the person plays it in Build, Motions…, and play_motion "
-			+ "plays it; one step: undo takes it out.") % Motions.quoted(ANIMATION)
+			+ "plays it; one step: undo takes it out.%s") % [Motions.quoted(ANIMATION), _let_go_said(motions)]
 	if not bool(input.get("render", true)):
 		return "Set %s.%s" % [said, kept]
 	if not StudioRender.possible():
@@ -2669,6 +2688,10 @@ func _list_motions(input: Dictionary) -> String:
 		lines.append("The model's motions, kept in its file (places from where it was built):")
 		for motion: Motions.Motion in motions.list:
 			lines.append_array(_motion_words(player, motion, true))
+	# Its file's motion lines this could not read, kept in it as they are.
+	if not motions.unread.is_empty():
+		var unread: String = motions.unread_words()
+		lines.append("%s%s." % [unread.left(1).to_upper(), unread.substr(1)])
 	if bool(input.get("suggest", true)):
 		var offered: Array = player.suggest().filter(func(one: Motions.Motion) -> bool:
 			return motions.named(one.name) == null)
@@ -2724,6 +2747,12 @@ func _motion_words(player: MotionPlayer, motion: Motions.Motion, kept: bool) -> 
 			out.append("    %s turned %s time%s in %s s, from where it stands, with what it drives."
 				% [player.joint_words(motion.driver), Motions.num(motion.turns, 2),
 				"" if is_equal_approx(absf(motion.turns), 1.0) else "s", Motions.num(motion.driver_seconds, 2)])
+	# unit drive
+	if motion.path != null:
+		out.append("    The whole model driven %s, over %s s%s, from where it stands. %s" % [motion.path.said(),
+			Motions.num(motion.path.seconds, 2), ", eased" if motion.path.how == "EASE" else "",
+			player.path_words(motion.path)])
+	# end unit drive
 	if kept:
 		var last: String = str(player.results.get(motion.name.to_lower(), ""))
 		out.append("    Last played: %s." % last if not last.is_empty()
@@ -2752,7 +2781,8 @@ func _define_motion(input: Dictionary) -> String:
 		var had: Motions = motions.copy()
 		motions.remove(name)
 		builder.record([{"undo": "motions", "motions": had}], "took the motion %s out" % Motions.quoted(name))
-		return "Took %s out of the model. One step: undo puts it back." % Motions.quoted(name)
+		return "Took %s out of the model. One step: undo puts it back.%s" % [Motions.quoted(name),
+			_let_go_said(motions)]
 	var motion: Motions.Motion = null
 	if bool(input.get("suggested", false)):
 		var offered: Array = player.suggest()
@@ -2766,7 +2796,7 @@ func _define_motion(input: Dictionary) -> String:
 			return "No suggestion called %s: %s." % [Motions.quoted(name), "list_motions suggests "
 				+ ", ".join(names) if not names.is_empty() else "nothing here is suggested"]
 	elif input.get("sequence") is Array:
-		if input.has("tracks") or input.has("driver"):
+		if input.has("tracks") or input.has("driver") or input.has("path"):
 			return ("A motion is its own tracks or driver, or a sequence of the model's motions: not both. "
 				+ "Nothing was kept.")
 		var made: Variant = _sequence_from(motions, name, input["sequence"])
@@ -2788,6 +2818,7 @@ func _define_motion(input: Dictionary) -> String:
 	var replaced: bool = motions.named(name) != null
 	var had: Motions = motions.copy()
 	motions.put(motion)
+	var let_go: String = _let_go_said(motions)
 	builder.record([{"undo": "motions", "motions": had}], "%s the motion %s" % [
 		"changed" if replaced else "made", Motions.quoted(name)])
 	# Checked where it begins in its sequence: after the motions it follows,
@@ -2807,11 +2838,11 @@ func _define_motion(input: Dictionary) -> String:
 		await verbs.press("undo")
 	var joints: int = motion.joints().size()
 	return ("%s %s in the model (%s s, %d joint%s): it is saved with it. Played once to check%s, and the "
-		+ "model put back: %s. play_motion plays it%s; one step: undo takes it out.") % [
+		+ "model put back: %s. play_motion plays it%s; one step: undo takes it out.%s") % [
 		"Changed" if replaced else "Kept", Motions.quoted(name), Motions.num(motion.length(), 2), joints,
 		"" if joints == 1 else "s", (" after %s, which it follows" % ", then ".join(first))
 		if not first.is_empty() else "", player.said(played), (" alone, from where the model stands, and "
-		+ "with sequence=true after %s" % ", then ".join(first)) if not first.is_empty() else ""]
+		+ "with sequence=true after %s" % ", then ".join(first)) if not first.is_empty() else "", let_go]
 
 
 ## A sequence called [param name] of the model's motions named in [param
@@ -2846,6 +2877,7 @@ func _define_sequence(player: MotionPlayer, motion: Motions.Motion) -> String:
 	var replaced: bool = motions.named(motion.name) != null
 	var had: Motions = motions.copy()
 	motions.put(motion)
+	var let_go: String = _let_go_said(motions)
 	builder.record([{"undo": "motions", "motions": had}], "%s the sequence %s" % [
 		"changed" if replaced else "made", Motions.quoted(motion.name)])
 	var drawn: MotionRender = MotionRender.frames_of(player, [motion], false, MotionPlayer.PLAY_FPS)
@@ -2853,9 +2885,15 @@ func _define_sequence(player: MotionPlayer, motion: Motions.Motion) -> String:
 	return ("%s %s in the model, a sequence of %d (%s s): %s, each from where the one before left the "
 		+ "model. It is saved with it. Played once to check, and the model put back: %s play_motion plays "
 		+ "it (reverse=true backwards, in reverse order), render_motion renders it whole; one step: undo "
-		+ "takes it out.") % ["Changed" if replaced else "Kept", Motions.quoted(motion.name),
+		+ "takes it out.%s") % ["Changed" if replaced else "Kept", Motions.quoted(motion.name),
 		motion.sequence.size(), Motions.num(motions.seconds_of(motion), 2), ", then ".join(Array(motion.sequence).map(
-		func(one: String) -> String: return Motions.quoted(one))), " ".join(drawn.lines)]
+		func(one: String) -> String: return Motions.quoted(one))), " ".join(drawn.lines), let_go]
+
+
+## What [param motions]' last change let go of the lines it did not read
+## (Motions.let_go_words), as a sentence after a reply's own; "" for none.
+static func _let_go_said(motions: Motions) -> String:
+	return "" if motions.let_go.is_empty() else " %s." % motions.let_go_words()
 
 
 ## A motion from define_motion's tracks= and driver=, or why not.
@@ -2900,9 +2938,18 @@ func _motion_from(player: MotionPlayer, name: String, input: Dictionary) -> Vari
 		motion.driver = joint
 		motion.turns = clampf(float(driver["turns"]), -100.0, 100.0)
 		motion.driver_seconds = clampf(float(driver.get("seconds", 4.0)), 0.1, Motions.MOST_SECONDS)
-	if motion.tracks.is_empty() and motion.driver == null:
-		return ("Give tracks= (each a joint and its keys) or driver= (a joint and how many times to "
-			+ "turn it); list_motions suggests some.")
+	# unit drive: the whole model driven along a path.
+	if input.has("path"):
+		if not (input["path"] is Dictionary):
+			return "path= is {\"legs\": [{\"straight\": 32}, {\"left\": 90}], \"seconds\": 7}."
+		var path: Variant = player.path_from(input["path"])
+		if path is String:
+			return "%s" % path
+		motion.path = path
+	# end unit drive
+	if motion.tracks.is_empty() and motion.driver == null and motion.path == null:
+		return ("Give tracks= (each a joint and its keys), driver= (a joint and how many times to "
+			+ "turn it) or path= (where the whole model drives); list_motions suggests some.")
 	return motion
 
 
@@ -3319,7 +3366,7 @@ func _compare(chosen: ModelStore.Entry, kept: Array[ModelVersions.Version], vers
 		else ""
 	var library: PartLibrary = app.get("_library")
 	var diff: ModelDiff = ModelDiff.between(ModelDiff.parts_of_text(text, library, inside),
-		ModelDiff.parts_of_world(app.get("_world"), store.scenery, store.lift(), store.awaited,
+		ModelDiff.parts_of_world(app.get("_world"), store.scenery, store.lift(), store.awaited_now(),
 			inside))
 	return CompareView.said_of(diff, kept[version - 1], inside, library) \
 		+ "\nNothing was opened or changed. File, Compare with… shows the person the same."

@@ -1203,7 +1203,11 @@ static func _write_one(placements: Array, title: String, author_name: String,
 
 ## The twelve numbers of a type-1 line for a placement.
 static func _line_numbers(at: Transform3D) -> String:
-	var v: PackedFloat64Array = from_transform(at)
+	return numbers_text(from_transform(at))
+
+
+## The twelve numbers of a type-1 line (x y z a b c d e f g h i), written.
+static func numbers_text(v: PackedFloat64Array) -> String:
 	var numbers := PackedStringArray()
 	for n: int in v.size():
 		var value: float = v[n]
