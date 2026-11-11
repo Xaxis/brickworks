@@ -40,10 +40,10 @@ lib:custom moulds
 
 ## Prints {#prints}
 
-![The print designer on a white 2 x 2 tile: the canvas in the middle with drawing tools beside it, Start from, Add a picture… and Layers, and the tile turning as it is drawn.](/docs/img/figures-print.webp "Print… in the parts bin draws on the part in hand.")
+![The print designer on a white 2 x 2 tile, started from a control panel: the drawing tools down the left, the canvas in the middle, the tile with the print on it at the top right with Start from, Add a picture… and Layers under it, and the colours along the foot.](/docs/img/figures-print.webp "Print… in the parts bin draws on the part in hand.")
 
 1. Hold a part, or select one in the model, and press **Print…** in the parts bin (or **Make › Print on a part…**). In the minifigure builder, **Draw a print…** does the same for a torso, a face or legs.
-2. Draw on its face with the brush, lines, boxes, ovals, a fill, words and an eraser, in LEGO® colours and on layers. Or **Start from** one of the LEGO Group's prints of the same part, or **Add a picture…** (PNG, JPEG, WebP, BMP or SVG): **Fit it** or **Cover**, and **LEGO® inks** keeps it to a few flat colours, as a real print is.
+2. Draw on its face with the brush, lines, boxes, ovals, a fill, words and an eraser, in LEGO® colours and on layers. Or **Start from** a starter (a dial, a screen, a sign, a number plate, a control panel, a face) or one of the LEGO Group's prints of the same part, or **Add a picture…** (PNG, JPEG, WebP, BMP or SVG): **Fit it** or **Cover**, and **LEGO® inks** keeps it to a few flat colours, as a real print is.
 3. **Save print**. The printed part goes under **My prints** and into your hand to place.
 
 <!-- covers
@@ -63,7 +63,7 @@ lib:sticker sheet
 
 ## Printed versions {#printed-versions}
 
-![Printed versions of a 2 x 2 tile: a grid of the printed tiles the LEGO Group made, each with its number, to swap the selected tile for.](/docs/img/figures-printed-versions.webp "Make › Printed versions… swaps a part for a print the LEGO Group made.")
+![Printed versions of a red 2 x 2 tile: a grid of the 433 printed and stickered tiles the LEGO Group made, each with its number and name, to swap the selected tile for.](/docs/img/figures-printed-versions.webp "Make › Printed versions… swaps a part for a print the LEGO Group made.")
 
 Select a part and choose **Make › Printed versions…** (or from its right-click menu, or Properties) to swap it for one of the printed or stickered versions the LEGO Group made. A BrickLink Studio model's own prints and stickers come in with it.
 
@@ -74,7 +74,7 @@ lib:studio decorations
 
 ## Make a part {#make-a-part}
 
-![The Make a part dialog with Wedge chosen among ten families: a wedge plate turning in the preview, its length and width, Left or right, Far corner cut flat ticked, and Add to parts.](/docs/img/figures-part-maker.webp "Make a part…: a wedge plate with its far corner cut flat.")
+![The Make a part dialog with Wedge chosen among its ten families: a red wedge plate in the preview, its width and length, which side is straight, and the words under them saying what it is, its far corner cut flat.](/docs/img/figures-part-maker.webp "Make a part…: a 2 x 4 wedge plate with its far corner cut flat.")
 
 1. Press **Make a part…** in the parts bin (or **Make › Part maker…**, which starts from the part in hand).
 2. Choose a family: **Brick**, **Slope**, **Curved**, **Inverted**, **Round**, **Bracket**, **Technic**, **Clip**, **Bar** or **Wedge**. Or type a part number: **Start from it** resizes it, **Change it** changes the part itself (longer, taller, studs off or on, a piece cut out).

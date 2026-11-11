@@ -20,8 +20,7 @@
    "marks": [
     {
      "at": "_bar",
-     "n": "1",
-     "side": "right"
+     "n": "1"
     },
     {
      "at": "_shell.toolbar",
@@ -33,7 +32,7 @@
      "n": "3"
     },
     {
-     "at": "_bin.#Colours",
+     "at": "_bin.colours",
      "n": "4"
     },
     {
@@ -76,8 +75,8 @@
    ],
    "crop": "@opened",
    "pad": 0,
-   "alt": "Settings: Invert zoom direction, Navigate like Studio, Keys like Brickworks, Interface size 100% and Language, Reduce motion and Say when a long job is done, New models start on, Assistant (AI) with AI: Claude…, and the version at the foot.",
-   "caption": "Tools › Settings… (,): everything you can change, on one page.",
+   "alt": "Settings: Invert zoom direction, Navigate like Studio, Keys like Brickworks and Graphics, Interface size 100% and Language, Reduce motion and Say when a long job is done, New models start on, Assistant (AI) with AI: Claude…, and the version and Updates at the foot.",
+   "caption": "Tools › Settings… (,) in the desktop app; a browser has no Graphics or Updates.",
    "features": [
     "ui:navigation presets",
     "ui:interface languages",
@@ -93,15 +92,15 @@
      "after": 40
     },
     {
-     "type": "hinge",
+     "type": "turn",
      "after": 40
     }
    ],
    "crop": "@opened",
    "pad": 0,
    "width": 1000,
-   "alt": "The keys sheet with hinge typed in its box: only the rows about hinges left, the Hinge tool and Swing on its hinge with their keys.",
-   "caption": "Help › Keys and controls (F1), searched for hinge.",
+   "alt": "The keys sheet with turn typed in its box: only the rows that say turn are left, each with its keys drawn as keys.",
+   "caption": "Help › Keys and controls (F1), searched for turn.",
    "features": [
     "ui:keys of one's own"
    ]

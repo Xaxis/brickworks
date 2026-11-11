@@ -11,7 +11,7 @@ Brickworks can be used with the keyboard alone, at a bigger size and with less o
 
 ## The keyboard alone {#keyboard}
 
-![The parts bin with one part's tile ringed in blue: the keyboard's focus, moved there with the arrow keys.](/docs/img/accessibility-keyboard.webp "The arrows move the keyboard's focus through the parts bin; Return takes the part.")
+![The parts bin with one part's tile ringed in blue: where the keys are, moved there with the arrows.](/docs/img/accessibility-keyboard.webp "The arrows move the keyboard's focus through the parts bin; Return takes the part.")
 
 1. Press [[F6]]: the keys go from the model into the window's controls.
 2. [[Tab]] and the arrows move through the toolbar, the parts bin, the colours and the view cube's buttons. A ring shows where you are. [[Enter]] or [[Space]] presses a button.
@@ -26,7 +26,7 @@ ui:accessibility
 
 ## What's This? {#whats-this}
 
-![What's This? over the toolbar: the Snap chooser outlined and a box beside it naming Snap and saying what it does.](/docs/img/accessibility-whats-this.webp "Help › What's This? (Shift+F1): the next click says what a control does instead of doing it.")
+![What's This? on the toolbar: the Snap chooser outlined, and a box under it naming Snap, saying what it does, and that it is off now.](/docs/img/accessibility-whats-this.webp "Help › What's This? (Shift+F1): the next click says what a control does instead of doing it.")
 
 Press [[Shift+F1]], or choose **Help › What's This?**, then click any button, field, chip or panel. Instead of doing what it does, it says so in a box beside it, with whether it is on now and why it is greyed when it is. Over the model, it says what the tool in use does there. [[Esc]], a right click or [[Shift+F1]] again stops asking.
 

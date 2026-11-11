@@ -5,21 +5,25 @@
    "source": "app",
    "setup": [
     {
-     "open": "res://tools/web/gallery_seeds/sleeping_dragon.ldr",
+     "open": "res://tools/web/gallery_seeds/moon_rover.ldr",
      "after": 60
     },
     {
-     "run": "fit_model",
-     "after": 40
+     "select": [
+      367,
+      368,
+      369,
+      370,
+      372,
+      373,
+      374,
+      375,
+      376,
+      377
+     ]
     },
     {
-     "select": {
-      "part": "44301a",
-      "nth": 0
-     }
-    },
-    {
-     "run": "mode_hinge",
+     "run": "swing",
      "after": 20
     },
     {
@@ -27,18 +31,22 @@
      "after": 20
     },
     {
-     "run": "swing",
-     "after": 40
+     "run": "show_properties",
+     "after": 60
     }
    ],
-   "crop": "_over_model",
-   "width": 1000,
+   "crop": [
+    "_over_model",
+    "_shell.inspector"
+   ],
+   "width": 1100,
    "settle": 40,
-   "alt": "The sleeping dragon with one wing swung up on its click hinge by the Hinge tool, the hinge's parts selected.",
-   "caption": "The Hinge tool: each click swings a part 15° about its hinge.",
+   "alt": "The moon rover with one solar panel and its hinge selected and swung up, and Properties beside it with the panel's Hinge angle.",
+   "caption": "Swing on its hinge (J): the panel, swung 15° a press; Properties says its angle.",
    "features": [
     "ui:swing on a hinge",
-    "ui:tool modes"
+    "ui:tool modes",
+    "ui:properties panel"
    ]
   },
   {
@@ -91,10 +99,13 @@
      "after": 90
     }
    ],
-   "crop": "_over_model",
-   "width": 1000,
+   "crop": [
+    "_simulate",
+    "_over_model"
+   ],
+   "width": 1200,
    "settle": 40,
-   "alt": "A kart's steering turned to full lock by Simulate mechanism: both front wheels turned, and the panel saying where the steering stops.",
+   "alt": "Simulate mechanism on a kart: the panel down the left saying what turns and how fast, and the kart with its steering wheel turned and its front wheels turned with it.",
    "caption": "Simulate mechanism turns the train from the part you choose, and finds where it stops.",
    "features": [
     "ui:simulate mechanism",
@@ -116,7 +127,7 @@
    ],
    "crop": "@opened",
    "pad": 0,
-   "alt": "The Motions panel listing the motions it suggests for a kart, each with Keep, and New motion and New sequence at its foot.",
+   "alt": "The Motions panel for a kart: no motions yet, two suggested from what moves (Steer left and right, Turn the gears), each with Keep, and New motion.",
    "caption": "Build › Motions… suggests motions from what moves in the model.",
    "features": [
     "ui:motions panel"

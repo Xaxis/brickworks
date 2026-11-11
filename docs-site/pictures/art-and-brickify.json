@@ -91,7 +91,7 @@
    "crop": "@opened",
    "pad": 0,
    "settle": 60,
-   "alt": "The Brickify panel for a fox model: the fox laid in bricks turning in a picture, Size 24 studs, Scale, Up, Hollow, A stand where it needs one, Surface, Colour and the Brickify button.",
+   "alt": "The Brickify panel for a fox model: the model turning in its preview, Size 24 studs, Scale, Up, what it comes to in studs, bricks and centimetres, Hollow, A stand where it needs one, Surface, Colour and Brickify.",
    "caption": "Make › Brickify a 3D model… (Ctrl+I): its choices, and what they come to.",
    "features": [
     "ui:brickify a 3d model"
@@ -120,7 +120,7 @@
    "crop": "_over_model",
    "width": 1000,
    "settle": 60,
-   "alt": "The fox brickified on the baseplate, in orange, white and black bricks with slopes along its back, and Booklet, BrickLink, Rebrickable and What do I need? in the panel.",
+   "alt": "The fox brickified on the baseplate in orange, brown, white and black, on a black stand, and the panel saying it is down: 235 parts in 13 steps, with Booklet, BrickLink, Rebrickable and Done.",
    "caption": "The fox, brickified at 24 studs.",
    "features": [
     "ui:brickify a 3d model",

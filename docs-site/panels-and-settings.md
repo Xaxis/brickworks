@@ -93,7 +93,7 @@ ui:colour keys
 
 ## Settings {#settings}
 
-![Settings: Invert zoom direction, Navigate like Studio, Keys like Brickworks, Interface size 100% and Language, Reduce motion and Say when a long job is done, New models start on, Assistant (AI) with AI: Claude…, and the version at the foot.](/docs/img/panels-settings.webp "Tools › Settings… (,): everything you can change, on one page.")
+![Settings: Invert zoom direction, Navigate like Studio, Keys like Brickworks and Graphics, Interface size 100% and Language, Reduce motion and Say when a long job is done, New models start on, Assistant (AI) with AI: Claude…, and the version and Updates at the foot.](/docs/img/panels-settings.webp "Tools › Settings… (,) in the desktop app; a browser has no Graphics or Updates.")
 
 - **Invert zoom direction**, and **Navigate like** Studio, Blender or Mecabricks ([The view](/docs/the-view#presets)).
 - **Keys like** (above).
@@ -111,9 +111,9 @@ ui:a long job says when it is done
 
 ## The keys sheet {#keys-sheet}
 
-![The keys sheet with hinge typed in its box: only the rows about hinges left, the Hinge tool and Swing on its hinge with their keys.](/docs/img/panels-keys.webp "Help › Keys and controls (F1), searched for hinge.")
+![The keys sheet with turn typed in its box: only the rows that say turn are left, each with its keys drawn as keys.](/docs/img/panels-keys.webp "Help › Keys and controls (F1), searched for turn.")
 
-**Help › Keys and controls** ([[F1]]) lists every key and mouse move, drawn as keys and pictures of the mouse. Type in its box and only the rows that say it stay: *hinge*, *undo*, *Ctrl*. [[Esc]] closes it. Every key is also on [Keyboard shortcuts](/docs/shortcuts).
+**Help › Keys and controls** ([[F1]]) lists every key and mouse move, drawn as keys and pictures of the mouse. Type in its box and only the rows that say it stay: *turn*, *hinge*, *Ctrl*. [[Esc]] closes it. Every key is also on [Keyboard shortcuts](/docs/shortcuts).
 
 ## How the app's dialogs look {#dialogs}
 

@@ -45,14 +45,14 @@ ui:LEGO Art designed by Claude
 
 ## Brickify a 3D model {#brickify}
 
-![The Brickify panel for a fox model: the fox laid in bricks turning in a picture, Size 24 studs, Scale, Up, Hollow, A stand where it needs one, Surface, Colour and the Brickify button.](/docs/img/art-brickify.webp "Make › Brickify a 3D model… (Ctrl+I): its choices, and what they come to.")
+![The Brickify panel for a fox model: the model turning in its preview, Size 24 studs, Scale, Up, what it comes to in studs, bricks and centimetres, Hollow, A stand where it needs one, Surface, Colour and Brickify.](/docs/img/art-brickify.webp "Make › Brickify a 3D model… (Ctrl+I): its choices, and what they come to.")
 
 1. **Make › Brickify a 3D model…** ([[Ctrl+I]]) or **File › Import › 3D model to brickify**, and choose a sculpt, a scan or any 3D file: OBJ, STL, PLY, 3MF, VOX, FBX, glTF or GLB.
 2. Set its **Size**, 6 to 64 studs along its longest side, and which way is **Up** if it lies on its side. The panel says what it comes to in studs, bricks and centimetres.
 3. Choose **Hollow** or solid; **A stand where it needs one** (on unless you untick it) for a model that would tip; **Surface**, **Smooth** (slopes, curves, tiles and studs sideways) or **Plain bricks and plates**; and **Colour**: its own, one colour, or its own in at most so many (1 to 12). **Lay it from my collection** uses the parts you own first.
 4. **Brickify**.
 
-It goes down beside the model as one sub-assembly named after the file, of real parts that hold together, built in steps from the ground up. The panel then offers its **Booklet**, a **BrickLink** or **Rebrickable** list, and **What do I need?**.
+It goes down beside the model as one sub-assembly named after the file, of real parts that hold together, built in steps from the ground up. The panel then offers its **Booklet** and a **BrickLink** or **Rebrickable** list, and, laid from your collection, **What do I need?**.
 
 <!-- covers
 ui:brickify a 3d model
@@ -62,7 +62,7 @@ lib:brickify from a collection
 lib:brickify steps
 -->
 
-![The fox brickified on the baseplate, in orange, white and black bricks with slopes along its back, and Booklet, BrickLink, Rebrickable and What do I need? in the panel.](/docs/img/art-brickified.webp "The fox, brickified at 24 studs.")
+![The fox brickified on the baseplate in orange, brown, white and black, on a black stand, and the panel saying it is down: 235 parts in 13 steps, with Booklet, BrickLink, Rebrickable and Done.](/docs/img/art-brickified.webp "The fox, brickified at 24 studs.")
 
 ### From a link {#brickify-link}
 

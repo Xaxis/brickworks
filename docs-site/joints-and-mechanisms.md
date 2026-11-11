@@ -16,16 +16,16 @@ Brickworks knows how parts are joined: studs, Technic pins and axles, hinges, cl
 
 ## Swing on a hinge {#hinge}
 
-![The sleeping dragon with one wing swung up on its click hinge by the Hinge tool, the hinge's parts selected.](/docs/img/joints-hinge.webp "The Hinge tool: each click swings a part 15° about its hinge.")
+![The moon rover with one solar panel and its hinge selected and swung up, and Properties beside it with the panel's Hinge angle.](/docs/img/joints-hinge.webp "Swing on its hinge (J): the panel, swung 15° a press; Properties says its angle.")
 
 1. Choose the **Hinge** tool ([[Shift+I]], or **Tools › Hinge tool**).
-2. Click a part that hangs on a hinge, a clip or a turntable. Each click swings it 15° and everything built on it comes along; [[Shift]]-click swings it back.
+2. Click a part that hangs on a hinge, a clip or a turntable. Each click swings it 15°; [[Shift]]-click swings it back.
 
-With any tool, select the part and press [[J]] ([[Shift+J]] back), or right-click it and choose **Swing on its hinge**. For an exact angle, type it in the **Hinge** field of [Properties](/docs/panels-and-settings#properties).
+What swings is what is selected. To swing a lid and what is built on it, select them all (or make them a sub-assembly), then press [[J]] with any tool ([[Shift+J]] back), or right-click and choose **Swing on its hinge**. For an exact angle, type it in the **Hinge** field of [Properties](/docs/panels-and-settings#properties). A swing that would run into another part is not made.
 
 ## Meet on hinges {#meet}
 
-Select a part and the part it should meet across a chain of hinges, clips or turntables, then press **Meet** in Properties. Every joint between them swings, as little as it can, so a free end of one takes the other: a hinge's finger into its fork, a clip onto a bar. Eight hinged plates close into a ring, 45° each. A click hinge stops on its clicks. It is one step to undo; when no swing makes them meet, nothing moves and the status bar says what is in the way.
+Select a part and the part it should meet across a chain of hinges, clips or turntables, then press **Meet** in Properties. Every joint between them swings, as little as it can, so a free end of one takes the other: a hinge's finger into its fork, a clip onto a bar. A click hinge stops on its clicks. It is one step to undo; when no swing makes them meet, nothing moves and the status bar says what is in the way.
 
 <!-- covers
 ui:meet on hinges
@@ -80,7 +80,7 @@ ui:bands and springs by hand
 
 ## Check stability {#stability}
 
-**Tools › Check stability** ([[Alt+K]]) weighs the model: where its centre of mass is against its footprint, whether it stands, and which joints carry more than they hold. Those parts are selected, so you can see what to brace. [View › Stress](/docs/the-view#stress) shows the same on every part as you build, and with the assistant on, a weak part's right-click menu has **Ask Claude to brace this…**.
+**Tools › Check stability** ([[Alt+K]]) weighs the model: where its centre of mass is against its footprint, whether it stands, and which joints carry more than they hold. Those parts are selected. [View › Stress](/docs/the-view#stress) shows the same on every part as you build, and with the assistant on, a weak part's right-click menu has **Ask Claude to brace this…**.
 
 <!-- covers
 lib:stability
@@ -92,7 +92,7 @@ ui:balance readout
 
 ## Simulate a mechanism {#simulate}
 
-![A kart's steering turned to full lock by Simulate mechanism: both front wheels turned, and the panel saying where the steering stops.](/docs/img/joints-steering.webp "Simulate mechanism turns the train from the part you choose, and finds where it stops.")
+![Simulate mechanism on a kart: the panel down the left saying what turns and how fast, and the kart with its steering wheel turned and its front wheels turned with it.](/docs/img/joints-steering.webp "Simulate mechanism turns the train from the part you choose, and finds where it stops.")
 
 1. Select the part to drive (a crank, a steering wheel, a motor's axle), or none.
 2. **Tools › Simulate mechanism…** ([[Alt+U]]). The train turns from it; click another axle or crank to drive that instead.
@@ -108,7 +108,7 @@ lib:gear ratio search
 
 ## Motions {#motions}
 
-![The Motions panel listing the motions it suggests for a kart, each with Keep, and New motion and New sequence at its foot.](/docs/img/joints-motions.webp "Build › Motions… suggests motions from what moves in the model.")
+![The Motions panel for a kart: no motions yet, two suggested from what moves (Steer left and right, Turn the gears), each with Keep, and New motion.](/docs/img/joints-motions.webp "Build › Motions… suggests motions from what moves in the model.")
 
 A model can keep named movements in its file: *Open the doors*, *Steer left and right*. **Build › Motions…** ([[Alt+O]]) lists them, and suggests more from what moves.
 
@@ -128,7 +128,7 @@ lib:keyframed animation
 
 ## Hidden colours {#hidden-colours}
 
-**Tools › Colour the hidden parts…** gives the parts nobody sees in the finished model a colour for each section or side, as big sets do, so a builder finds their place. It knows what can be seen through a gap or a window, and shows a preview before it changes anything.
+**Tools › Colour the hidden parts…** gives the parts nobody sees in the finished model a colour for each section or side, as big sets do, so a builder finds their place. It knows what shows through a gap or a window, and shows a preview first.
 
 <!-- covers
 ui:colour the hidden parts
