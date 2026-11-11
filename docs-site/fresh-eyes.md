@@ -36,7 +36,7 @@ The answer comes before anything else: until it is given, the next calls wait, a
 
 ![A chameleon built in bricks without fresh eyes: a boxy green body striped in orange and blue on a brown branch, its tail a flat squared-off spiral and its pink tongue held straight out.](/docs/img/fresh-eyes-without.webp "Without fresh eyes.")
 
-![The same brief designed with fresh eyes: a slimmer chameleon with turret eyes and a crest along its back, its tail curled in a round spiral and its tongue out to a fly, on a twisting branch.](/docs/img/fresh-eyes-with.webp "With fresh eyes: the same brief.")
+![The same brief designed with fresh eyes: a slimmer chameleon with a turret eye and a crest along its back, its tail curled down in a hook and its pink tongue out to a fly, on a branch over leafy plants.](/docs/img/fresh-eyes-with.webp "With fresh eyes: the same brief.")
 
 The same brief, *a chameleon on a twisty branch, catching a fly with its tongue shot out*, designed once without the fresh look and once with it. In our tests a judge shown pairs like these, not told which was which, chose the one with fresh eyes two times in three. A second AI asked the same question did no better than the designer looking again itself, so the eyes are the designer's own.
 

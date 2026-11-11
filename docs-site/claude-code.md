@@ -12,7 +12,7 @@ Claude Code builds in Brickworks through the same connector claude.ai uses, into
 
 ## Add Brickworks to Claude Code {#connector}
 
-![Connect your AI after Claude Code is pressed: Copied, with what to do next, and the command claude mcp add --transport http brickworks https://brickworks.diy/api/mcp with a Copy button.](/docs/img/claude-code-command.webp "Connect your AI, Claude Code: the command to add Brickworks, copied.")
+![Connect your AI after Claude Code is pressed: Copied, run it in a terminal, then /mcp, brickworks and Authenticate; below, the start of the command, claude mcp add --transport http, with a Copy button.](/docs/img/claude-code-command.webp "Connect your AI, Claude Code: the command to add Brickworks, copied.")
 
 1. In Brickworks, **Tools › Connect your AI…**, then **Claude Code** under **Connect Claude** (or choose **Claude Code** under **Your AI** and press **Connect Claude Code**). The command is copied:
 

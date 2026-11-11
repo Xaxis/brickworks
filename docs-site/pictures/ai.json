@@ -48,8 +48,8 @@
      "after": 30
     }
    ],
-   "crop": "@opened",
-   "pad": 4,
+   "crop": "_shell.context",
+   "pad": 0,
    "alt": "A part's right-click menu with the assistant on: Ask Claude about this…, with its key Ctrl+K, at the top, above the menu's other commands.",
    "caption": "Right-click a part: Ask Claude about this…",
    "features": [

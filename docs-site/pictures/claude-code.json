@@ -26,7 +26,7 @@
     "_chat._connector_form._code_box"
    ],
    "pad": 6,
-   "alt": "Connect your AI after Claude Code is pressed: Copied, with what to do next, and the command claude mcp add --transport http brickworks https://brickworks.diy/api/mcp with a Copy button.",
+   "alt": "Connect your AI after Claude Code is pressed: Copied, run it in a terminal, then /mcp, brickworks and Authenticate; below, the start of the command, claude mcp add --transport http, with a Copy button.",
    "caption": "Connect your AI, Claude Code: the command to add Brickworks, copied.",
    "features": [
     "ui:connect your AI"

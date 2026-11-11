@@ -49,9 +49,9 @@ lib:recall our own scored designs
 
 ## It sees what you see {#sees}
 
-![The red car as the AI sees it, from a corner, with studs counted along two edges of its base so the AI can read sizes off the picture.](/docs/img/how-ai-works-view.webp "What the AI sees of its own work: the model, with its studs counted.")
+![The red car as the AI sees it, from a corner, with two rulers along its base, x and z, numbered in studs, so the AI can read where things are off the picture.](/docs/img/how-ai-works-view.webp "What the AI sees of its own work: the model, with rulers in studs.")
 
-The AI looks at its work in pictures, with the studs counted along the edges, so it can read sizes off them rather than guess. It can look from any side, from up to six sides in one picture, with chosen parts picked out or the parts in front made see-through, at the model as built to a step, or at a page of the booklet as it prints; and it can ask what you are looking at: the step you are on, the part in your hand, what you have selected. Looking changes nothing. Then every new design gets [fresh eyes](/docs/fresh-eyes), a look at it as a stranger sees it.
+The AI looks at its work in pictures with rulers in studs along two edges of the base, so it can read where things are off them rather than guess. It can look from any side, from up to six sides in one picture, with chosen parts picked out or the parts in front made see-through, at the model as built to a step, or at a page of the booklet as it prints; and it can ask what you are looking at: the step you are on, the part in your hand, what you have selected. Looking changes nothing. Then every new design gets [fresh eyes](/docs/fresh-eyes), a look at it as a stranger sees it.
 
 <!-- covers
 lib:renders for the critique

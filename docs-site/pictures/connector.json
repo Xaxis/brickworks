@@ -91,7 +91,7 @@
     }
    ],
    "crop": "_account_panel._claude_box",
-   "pad": 12,
+   "pad": 4,
    "alt": "Account's Your AI: Claude connected since 4 Oct and last used 1 Nov, this tab's name k7qd to say to Claude, no chat working in it yet, New chat for this tab, Open in Claude and Disconnect Claude.",
    "caption": "Account: your AI apps, this tab's name and a new chat for it.",
    "features": [
