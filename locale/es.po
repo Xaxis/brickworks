@@ -6974,6 +6974,33 @@ msgstr "omitidos: %s"
 msgid "no inventory is known for %s"
 msgstr "no se conoce el inventario de %s"
 
+msgid "%s marked missing came to more than the copies kept hold, and the rest is no longer marked: %s%s"
+msgstr "%s marcado(s) como que faltan: más de lo que tienen las copias guardadas, y el resto ya no está marcado: %s%s"
+
+msgid "%s: %d of %s in colour %d"
+msgstr "%s: %d de %s en color %d"
+
+msgid "the inventory of %s could not be read"
+msgstr "no se pudo leer el inventario de %s"
+
+msgid "the inventories of %s could not be read"
+msgstr "no se pudieron leer los inventarios de %s"
+
+msgid "its marks are kept as they were"
+msgstr "sus marcas se mantienen como estaban"
+
+msgid "their marks are kept as they were"
+msgstr "sus marcas se mantienen como estaban"
+
+msgid "%s is no longer in your Rebrickable lists: it went, with its %s marked missing"
+msgstr "%s ya no está en tus listas de Rebrickable: se quitó, con sus %s marcadas como que faltan"
+
+msgid "%s are no longer in your Rebrickable lists: they went, with their %s marked missing"
+msgstr "%s ya no están en tus listas de Rebrickable: se quitaron, con sus %s marcadas como que faltan"
+
+msgid "%s are no longer in your Rebrickable lists: they went, with the parts marked missing in them"
+msgstr "%s ya no están en tus listas de Rebrickable: se quitaron, con las piezas marcadas como que faltan"
+
 msgid "building from the parts of %s"
 msgstr "construyendo con las piezas de %s"
 
@@ -13324,6 +13351,56 @@ msgstr "Las piezas fabricadas por primera vez en %d o %d, las más recientes pri
 msgid "%s first made in %d or %d, the newest first"
 msgstr "%s fabricadas por primera vez en %d o %d, las más recientes primero"
 
+# subexport (APP_UX7 #19): each sub-model as a file of its own, from File, Export
+# and the model tree's menu.
+
+msgid "Each sub-model as its own file (.zip)"
+msgstr "Cada submodelo como su propio archivo (.zip)"
+
+msgid "Every sub-model as an LDraw file of its own, with its own sub-models and steps, in one .zip"
+msgstr "Cada submodelo como su propio archivo LDraw, con sus propios submodelos y pasos, en un solo .zip"
+
+msgid "Make a sub-model first"
+msgstr "Crea primero un submodelo"
+
+msgid "Export “%s” as its own file…"
+msgstr "Exportar «%s» como su propio archivo…"
+
+msgid "As an LDraw file, with its own sub-models and steps"
+msgstr "Como archivo LDraw, con sus propios submodelos y pasos"
+
+msgid "Export each sub-model (.zip)…"
+msgstr "Exportar cada submodelo (.zip)…"
+
+msgid "Exporting %s…"
+msgstr "Exportando %s…"
+
+msgid "Exporting each sub-model…"
+msgstr "Exportando cada submodelo…"
+
+msgid "stopped exporting"
+msgstr "exportación detenida"
+
+msgid "this model has no sub-models: LDraw model writes it whole"
+msgstr "este modelo no tiene submodelos: Modelo LDraw lo escribe entero"
+
+msgid "%s is not a sub-model of this model"
+msgstr "%s no es un submodelo de este modelo"
+
+msgid "%s, each with its own sub-models and steps: %s"
+msgstr "%s, cada uno con sus propios submodelos y pasos: %s"
+
+msgid "%d steps"
+msgstr "%d pasos"
+
+msgid "1 step"
+msgstr "1 paso"
+
+msgid "%d sub-models"
+msgstr "%d submodelos"
+
+msgid "1 sub-model"
+msgstr "1 submodelo"
 # Names a screen reader says, with no words on screen of their own: those Access
 # gives Godot's file dialog, the choices named where they are made, and every
 # accessibility_name of the interface (a11ynames, a11y_names_probe).

@@ -873,17 +873,16 @@ func _export(shop: String) -> void:
 		_say("nothing is short, so there is nothing to order")
 		return
 	var short: Inventory = Collection.shortfall_stock(_need_stock, _need_plan, library)
-	var title: String = _need_name().to_snake_case()
-	if title.is_empty():
-		title = "model"
 	var made: Dictionary
 	var line: String
 	if shop == "bricklink":
 		made = ShopLists.bricklink_xml(short, library)
-		line = await Download.save(str(made["text"]), title + "_wanted.xml", "application/xml")
+		line = await Download.save(str(made["text"]), SubmodelFile.titled(_need_name(), "_wanted.xml"),
+			"application/xml")
 	else:
 		made = ShopLists.rebrickable_csv(short)
-		line = await Download.save(str(made["text"]), title + "_wanted.csv", "text/csv")
+		line = await Download.save(str(made["text"]), SubmodelFile.titled(_need_name(), "_wanted.csv"),
+			"text/csv")
 	if line.is_empty():
 		return
 	var notes: String = ""
@@ -1073,8 +1072,8 @@ func _report(result: Dictionary, source: String) -> void:
 		line += " — no inventory is known for %s" % ", ".join(unknown)
 	if not str(result.get("clamped", "")).is_empty():
 		line += " — " + str(result["clamped"])
-	if not str(result.get("unkept", "")).is_empty():
-		line += " — " + str(result["unkept"])
+	if not str(result.get("marks", "")).is_empty():
+		line += " — " + str(result["marks"])
 	_say(line)
 
 

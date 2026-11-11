@@ -14,10 +14,10 @@ eight keys2 gave.
 
 | Preset | Commands | Without a key before keys | After keys | Before keys2 | After |
 |---|---|---|---|---|---|
-| Brickworks | 225 | 115 | 110 | 112 | 108 |
-| Studio | 225 | 118 | 113 | 115 | 111 |
-| Mecabricks | 225 | 116 | 111 | 113 | 109 |
-| LDCad | 225 | 118 | 114 | 116 | 112 |
+| Brickworks | 226 | 115 | 110 | 112 | 109 |
+| Studio | 226 | 118 | 113 | 115 | 112 |
+| Mecabricks | 226 | 116 | 111 | 113 | 110 |
+| LDCad | 226 | 118 | 114 | 116 | 113 |
 
 The menus had 201 commands when keys counted. Cut away by a box, a sphere or a cylinder
 (APP_UX4 8) added five, each with no key. The Pick a Brick list added one
@@ -31,8 +31,10 @@ a key under every preset, and Render each saved view with none: 221, 105 without
 under the app's keys. Compare two sets or models… (comparesets, APP_UX6 #7) added one more
 with none: 222, 106 without a key under the app's keys. View › Edges and studs
 (edges, APP_UX6 #19) added two, Edges and Studs, each with none: 224, 108 without a key
-under the app's keys. Report a bug… (bugreport, 2026-11-09) added one with a key under every
-preset: 225 now, 108 without a key, 117 with one.
+under the app's keys. File › Export › Each sub-model as its own file (subexport, APP_UX7
+#19) added one more with none: 225, 109 without a key. Report a bug… (bugreport, 2026-11-09)
+added one with a key under every preset: 226 now, 109 without a key under the app's keys,
+117 with one.
 
 APP_UX3 counted 110 with the app's keys on 2026-10-30. Eight came since with none (the
 booklet's Pull out, Colour guide, 1:1 guide and Sub-model preview; Render queue; Check for
@@ -142,8 +144,8 @@ its key.
 | `import_lxf` | File › Import › LEGO® Digital Designer model (.lxf) | — | — | — | once a model | all | a file chosen once, from File › Import |
 | `import_mesh` | File › Import › 3D model to brickify (.obj, .stl, .ply, .3mf, .vox, .fbx, .gltf, .glb) | — | — | — | once a model | all | a file chosen once, from File › Import |
 | `versions` | File › Versions | — | — | — | rarely | all | an older save, looked for now and then |
-| `compare` | File › Compare with | — | — | — | rarely | all | two versions side by side, now and then |
-| `compare_sets` | File › Compare two sets or models | — | — | — | rarely | all | two sets or models side by side, now and then |
+| `compare` | File › Compare › Compare with | — | — | — | rarely | all | two versions side by side, now and then |
+| `compare_sets` | File › Compare › Compare two sets or models | — | — | — | rarely | all | two sets or models side by side, now and then |
 | `export_ldraw` | File › Export › LDraw model (.ldr, or .mpd with its sub-models) | — | — | — | once a model | all | made once a model is done |
 | `export_io` | File › Export › BrickLink Studio model (.io) | — | — | — | once a model | all | made once a model is done |
 | `export_3d` | File › Export › 3D model (.glb, .gltf, .obj, .stl) | — | — | — | once a model | all | made once a model is done |
@@ -151,6 +153,7 @@ its key.
 | `export_bricklink` | File › Export › BrickLink wanted list (.xml) | — | — | — | once a model | all | made once a model is done |
 | `export_all` | File › Export › All my models (.zip) | — | — | — | once a model | all | made once a model is done |
 | `export_rebrickable` | File › Export › Rebrickable parts list (.csv) | — | — | — | once a model | all | made once a model is done |
+| `export_submodels` | File › Export › Each sub-model as its own file (.zip) | — | — | — | once a model | all | made once a model is done; one sub-model alone is the model tree's right-click |
 | `share` | File › Share | — | — | — | once a model | all | a link once a model is done |
 | `together` | File › Build together | — | — | — | rarely | all | a session started once |
 | `comments` | File › Comments | — | — | — | rarely | all | read when someone comments |

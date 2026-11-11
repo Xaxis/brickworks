@@ -1517,10 +1517,20 @@ func contents_by_path() -> Dictionary:
 ## Whether ``a`` lies exactly on ``b``, as [method best_match] says it, but
 ## asking only that: the same parts in the same colours first, and each way
 ## of laying one on the other given up at its first part that lands on
-## nothing. {"at", "mirrored", "exact"}.
+## nothing. {"at", "mirrored", "exact", "bases"}: "bases" when each part
+## then lies turned as it is, not only filling the cells it fills.
+##
+## Of a fit laid as it is and a mirrored one, the one laying each part
+## turned as it is: a mirrored copy of parts that look the same turned a
+## half (twice_mirror's wing, a plate and a tile) lies on the first copy
+## turned a half too, filling the same cells, and was written so, by a
+## matrix that turns. Opened again, each of its parts came back turned a
+## half from where the model had it (kt5check F2): a part read through a
+## reflecting matrix is put down in its reflection (unmirror), and only the
+## mirror lays each part back as it was.
 func exact_match(a: Array, b: Array) -> Dictionary:
 	var none: Dictionary = {"at": Transform3D.IDENTITY, "mirrored": false, "score": 0,
-		"exact": false}
+		"exact": false, "bases": false}
 	if a.is_empty() or a.size() != b.size():
 		return none
 	var tally: Dictionary = {}
@@ -1534,10 +1544,13 @@ func exact_match(a: Array, b: Array) -> Dictionary:
 			return _exact_mirrored(a, b)
 		tally[key] = int(tally[key]) - 1
 	var found: Dictionary = _rigid_match(a, b, true)
-	if bool(found["exact"]):
-		found["mirrored"] = false
+	found["mirrored"] = false
+	if bool(found["exact"]) and bool(found["bases"]):
 		return found
-	return _exact_mirrored(a, b)
+	var mirrored: Dictionary = _exact_mirrored(a, b)
+	if bool(mirrored["exact"]) and (bool(mirrored["bases"]) or not bool(found["exact"])):
+		return mirrored
+	return found if bool(found["exact"]) else mirrored
 
 
 func _exact_mirrored(a: Array, b: Array) -> Dictionary:
@@ -1689,17 +1702,24 @@ func _mirrored(item: Dictionary) -> Dictionary:
 ## exact when every part of each lies on one of the other, in its colour.
 func best_match(a: Array, b: Array) -> Dictionary:
 	var best: Dictionary = {"at": Transform3D.IDENTITY, "mirrored": false, "score": 0,
-		"exact": false}
+		"exact": false, "bases": false}
 	for mirrored: bool in [false, true]:
-		# Laid exactly as it is, a mirrored fit could only tie, and a tie
-		# does not replace it.
-		if mirrored and bool(best["exact"]):
+		# Laid exactly as it is, each part turned as it is, a mirrored fit
+		# could only tie, and a tie does not replace it.
+		if mirrored and bool(best["exact"]) and bool(best["bases"]):
 			break
 		var from: Array = a.map(func(item: Dictionary) -> Dictionary:
 			return _mirrored(item)) if mirrored else a
 		var found: Dictionary = _rigid_match(from, b)
-		if int(found["score"]) > int(best["score"]) or (int(found["score"]) == int(best["score"])
-				and bool(found["exact"]) and not bool(best["exact"])):
+		# As many laid either way: the exact one, then the one laying each
+		# part turned as it is (exact_match). A mirrored copy of parts that
+		# look the same turned a half was taken for one turned, and a part
+		# added to the first copy went into it turned, not in its other hand.
+		var tie: bool = int(found["score"]) == int(best["score"])
+		if int(found["score"]) > int(best["score"]) or tie and (
+				(bool(found["exact"]) and not bool(best["exact"]))
+				or (bool(found["exact"]) == bool(best["exact"])
+					and bool(found["bases"]) and not bool(best["bases"]))):
 			best = found
 			best["mirrored"] = mirrored
 	return best
@@ -1707,7 +1727,7 @@ func best_match(a: Array, b: Array) -> Dictionary:
 
 func _rigid_match(a: Array, b: Array, exact_only: bool = false) -> Dictionary:
 	var best: Dictionary = {"at": Transform3D.IDENTITY, "score": 0, "exact": false,
-		"colours": false}
+		"colours": false, "bases": false}
 	if a.is_empty() or b.is_empty():
 		return best
 	# b by part, for the candidates and the look-ups.
@@ -1726,6 +1746,11 @@ func _rigid_match(a: Array, b: Array, exact_only: bool = false) -> Dictionary:
 			< (by_part.get(y["part"], []) as Array).size())
 	var half := Transform3D(Basis(Vector3.UP, PI), Vector3.ZERO)
 	var tried: int = 0
+	# Every part laid in its colour, some only filling the cells their
+	# match fills: only a way laying each turned as it is can do better,
+	# and only that is looked for after it, given up at a part that does
+	# not lie so (cheap: no part's cells are asked for).
+	var laid: bool = false
 	for anchor: Dictionary in anchors.slice(0, 3):
 		var mates: Array = by_part.get(anchor["part"], [])
 		for mate: Dictionary in mates:
@@ -1733,56 +1758,79 @@ func _rigid_match(a: Array, b: Array, exact_only: bool = false) -> Dictionary:
 				var at: Transform3D = (mate["at"] as Transform3D) * spin \
 					* (anchor["at"] as Transform3D).affine_inverse()
 				at = Transform3D(at.basis.orthonormalized(), at.origin)
-				var scored: Dictionary = _score(at, a, by_part, exact_only)
+				var scored: Dictionary = _score(at, a, by_part, exact_only or laid, laid)
 				tried += 1
+				if laid:
+					if int(scored["score"]) == a.size() and bool(scored["colours"]):
+						best = scored
+						best["at"] = at
+						best["exact"] = a.size() == b.size()
+						return best
+					continue
 				if int(scored["score"]) > int(best["score"]) or (
 						int(scored["score"]) == int(best["score"])
-						and bool(scored["colours"]) and not bool(best["colours"])):
+						and ((bool(scored["colours"]) and not bool(best["colours"]))
+							or (bool(scored["colours"]) == bool(best["colours"])
+								and bool(scored["bases"]) and not bool(best["bases"])))):
 					best = scored
 					best["at"] = at
-				# Every part laid, in its colour: nothing can lay more, and a
-				# tie never replaces it, so the rest of the search would end
-				# with this one. It went on through every anchor's every
-				# mate, 400 tries, for each of a model's copies.
+				# Every part laid, in its colour, each turned as it is: nothing
+				# can lay more, and a tie never replaces it, so the rest of the
+				# search would end with this one. It went on through every
+				# anchor's every mate, 400 tries, for each of a model's copies.
 				if int(best["score"]) == a.size() and bool(best["colours"]):
 					best["exact"] = a.size() == b.size()
-					return best
+					if bool(best["bases"]):
+						return best
+					laid = true
 			if tried > 400:
 				break
+	if laid:
+		return best
 	best["exact"] = int(best["score"]) == a.size() and a.size() == b.size() \
 		and bool(best["colours"])
 	return best
 
 
 ## How many of a's parts, laid by ``at``, land on a part of b: the same
-## part, at the same place, filling the same cells.
+## part, at the same place, filling the same cells. {"score", "colours":
+## each in its colour, "bases": each turned as the one it lands on}; with
+## [param turned_alike], a part lands only on one turned as it is.
 func _score(at: Transform3D, a: Array, by_part: Dictionary,
-		exact_only: bool = false) -> Dictionary:
+		exact_only: bool = false, turned_alike: bool = false) -> Dictionary:
 	var score: int = 0
 	var colours: bool = true
+	var bases: bool = true
 	var used: Dictionary = {}
 	for item: Dictionary in a:
 		var to: Transform3D = at * (item["at"] as Transform3D)
 		var hit: Dictionary = {}
+		var alike: bool = false
 		for other: Dictionary in by_part.get(item["part"], []):
 			if used.has(other["id"]):
 				continue
 			if (other["at"] as Transform3D).origin.distance_to(to.origin) > 0.6:
 				continue
-			if not _same_place(str(item["part"]), to, other["at"]):
-				continue
-			hit = other
-			break
+			if (other["at"] as Transform3D).basis.is_equal_approx(to.basis):
+				hit = other
+				alike = true
+				break
+			# Filling the same cells turned otherwise: taken where none
+			# there is turned as it is.
+			if hit.is_empty() and not turned_alike \
+					and _same_place(str(item["part"]), to, other["at"]):
+				hit = other
 		if hit.is_empty():
 			# Asked only whether it lies exactly: it does not.
 			if exact_only:
-				return {"score": score, "colours": false}
+				return {"score": score, "colours": false, "bases": false}
 			continue
 		used[hit["id"]] = true
 		score += 1
+		bases = bases and alike
 		if int(hit["color"]) != int(item["color"]):
 			colours = false
-	return {"score": score, "colours": colours}
+	return {"score": score, "colours": colours, "bases": bases and score > 0}
 
 
 ## Which part of the copy at [param to] each part of the copy at [param

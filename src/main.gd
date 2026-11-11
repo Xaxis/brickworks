@@ -6938,7 +6938,7 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 		# is up (BookletMaker.warm): built in its first picture, it was a
 		# second of a frame on a first start.
 		_warm_booklet()
-		to = await SaveTo.ask(title.to_snake_case() + "_instructions.html", "",
+		to = await SaveTo.ask(SubmodelFile.titled(title, "_instructions.html"), "",
 			"Save the instructions")
 		if to.is_empty():
 			return ""
@@ -6963,7 +6963,7 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 		_store.scenery)
 	add_child(maker)
 	maker.progress.connect(func(_said: String) -> void: BookletTab.tell(job.line()))
-	var file_name: String = title.to_snake_case() + "_instructions.html"
+	var file_name: String = SubmodelFile.titled(title, "_instructions.html")
 	# Into its file and in front of the reader as it is drawn (BookletOut):
 	# the last booklet's pages, kept for its tab, go.
 	if is_instance_valid(_booklet_out):
@@ -9407,13 +9407,6 @@ func _start_left_nav(verb: String, at: Vector2) -> void:
 	_camera.begin_drag(MOUSE_BUTTON_LEFT, at, verb)
 
 
-## Ctrl and the left button on a Mac, which every Mac program reads as the
-## right button — a trackpad's one button needs it.
-func _mac_right_click(button: InputEventMouseButton) -> bool:
-	return EditVerbs.on_mac() and button.ctrl_pressed and not button.meta_pressed \
-		and not button.alt_pressed
-
-
 ## A right click: lets go of what is in hand and goes back to Select, as
 ## Studio's does. It takes nothing off the model (Delete does, or the Delete
 ## tool) — the right button is for looking.
@@ -9863,7 +9856,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 		# Ctrl-click on a Mac is a right click: a click lets go of what
 		# is in hand, a drag turns the view, as the right button's do.
-		if _mac_right_click(button):
+		if EditVerbs.mac_right_click(button):
 			_pending_left = true
 			_pending_verb = "turn"
 			_pending_alt = false

@@ -1646,7 +1646,7 @@
       "kind": "cli",
       "label": "part facts",
       "entry": "tools/web/part_facts.mjs",
-      "reach": "node tools/web/part_facts.mjs OUT.json   (deploy.sh writes _part_facts.json beside /api/share)",
+      "reach": "node tools/web/part_facts.mjs OUT.json   (tools/package_api.sh writes _part_facts.json once and puts it beside every function)",
       "area": "web"
     },
     {
@@ -2262,7 +2262,7 @@
       "kind": "cli",
       "label": "fidelity probe",
       "entry": "src/dev/fidelity_probe.gd",
-      "reach": "godot --headless --path . --script src/dev/fidelity_probe.gd -- vendor/omr/files/3315-1.mpd vendor/omr/files/42082-1.mpd   (someone else's file saved untouched is the same file; a part recoloured, moved, taken away and added is written as such and nothing else changes; written whole, still the author's; FILEs saved untouched and compared line for line)",
+      "reach": "godot --headless --path . --script src/dev/fidelity_probe.gd -- vendor/omr/files/3315-1.mpd vendor/omr/files/42082-1.mpd   (someone else's file saved untouched is the same file; a part recoloured, moved, taken away and added is written as such and nothing else changes; written whole, still the author's; a mirrored copy written whole by a matrix that reflects, opened again turned as it was, its copies following mirrored; the last copy's COPY line taken off with it; a sub-model placed by nothing keeping its block in a patch, live's write, taken apart, written whole (with what it places) and an emptied model saved, opened and saved again, renaming no copy of one called the same; a CRLF file with no line break at its end ending so after an edit to its last line; FILEs saved untouched and compared line for line)",
       "area": "model-io"
     },
     {
@@ -4236,7 +4236,7 @@
       "kind": "ui",
       "label": "compare with a save",
       "entry": "src/ui/compare_view.gd",
-      "reach": "tools/probe.sh compare_probe   (File, Compare with…, or Compare on a row of Versions…: added green, removed a red ghost, moved or turned amber with a faint ghost, recoloured violet, the rest faded; the panel's counts, Previous and Next; Esc or Close puts the view back)",
+      "reach": "tools/probe.sh compare_probe   (File, Compare, Compare with…, or Compare on a row of Versions…: added green, removed a red ghost, moved or turned amber with a faint ghost, recoloured violet, the rest faded; the panel's counts, Previous and Next; Esc or Close puts the view back)",
       "area": "model-io"
     },
     {
@@ -4647,6 +4647,20 @@
     },
     {
       "kind": "ui",
+      "label": "each sub-model as its own file",
+      "entry": "src/parts/submodel_file.gd",
+      "reach": "godot --path .  (the model tree: right-click a sub-model's row, Export “NAME” as its own file…, or the model's row, Export each sub-model (.zip)…; File, Export, Each sub-model as its own file (.zip))  /  export_model format=ldraw submodels=true, or submodel=NAME",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "subexport probe",
+      "entry": "src/dev/subexport_probe.gd",
+      "reach": "tools/probe.sh subexport_probe -- --shots=DIR",
+      "area": "model-io"
+    },
+    {
+      "kind": "ui",
       "label": "cut away by a shape",
       "entry": "src/render/cut_shape.gd",
       "reach": "tools/probe.sh cutshapes && PROBE_SIZE=1280x720 tools/probe.sh cutshapes && tools/probe.sh cutshapes_kept   (by hand: View, Cut away by, A box; drag a knob, or the wheel over it; Grow, Shrink; A sphere or A cylinder in the strip; save, open)",
@@ -4852,7 +4866,7 @@
       "kind": "ui",
       "label": "compare two sets or models",
       "entry": "src/ui/compare_view.gd",
-      "reach": "tools/probe.sh comparesets_probe -- --shots=DIR   (File, Compare two sets or models…: A and B each a set by its number, a saved model or the model open now; In both, Only in A and Only in B by part and colour, adding up to each side's pieces; Swap; the list to buy to build B from A to BrickLink, Rebrickable or LEGO® Pick a Brick)",
+      "reach": "tools/probe.sh comparesets_probe -- --shots=DIR   (File, Compare, Compare two sets or models…: A and B each a set by its number, a saved model or the model open now; In both, Only in A and Only in B by part and colour, adding up to each side's pieces; Swap; the list to buy to build B from A to BrickLink, Rebrickable or LEGO® Pick a Brick)",
       "area": "collection"
     },
     {
@@ -4913,13 +4927,6 @@
     },
     {
       "kind": "cli",
-      "label": "localbricks probe",
-      "entry": "src/dev/localbricks_probe.gd",
-      "reach": "tools/relay_probe.sh localbricks   (a window, 1280x720; PROBE_SIZE=1400x900; -- --shots=DIR: through the sign-in screen with a password, 7140-1's lots marked by edit_collection missing= (each said was N, now M; none=true refused while marked) and refused past its inventory, Build from it 282 of 285, a restart and another device, two tabs at once one refused, a tab a newer build followed leaving the copy on this device, two copies 566 of 570 and one of them 284 of 285, signed out nothing held, the words in de/fr/es)",
-      "area": "collection"
-    },
-    {
-      "kind": "cli",
       "label": "print3mf probe",
       "entry": "src/dev/print3mf_probe.gd",
       "reach": "tools/probe.sh print3mf_probe [-- --hashes=FILE | --same-as=FILE]   (headless; the car as a 3MF from File, Export, 3D model… and export_model, read by tools/print3mf/check_3mf.py; every object closed (lib3mf IsManifoldAndOriented, every edge two triangles going opposite ways; as drawn, with Mesh3mf.close_up off, none), its triangles at most twice its parts'; a printed tile, a mirrored brick and a part with no BFC; the reader refusing a turned triangle, a colour that is none and a corner past its vertices; --hashes/--same-as compare the car's GLB and STL with another build's)",
@@ -4976,13 +4983,6 @@
     },
     {
       "kind": "cli",
-      "label": "the docs' pictures",
-      "entry": "tools/docs_shots.py",
-      "reach": "python3 tools/docs_shots.py [--only=ID,ID] [--app | --site] [--affected]   (docs-site/pictures/<page>.json: the app's through tools/probe.sh docs_shots_probe on the GPU from a locked snapshot, the site's by tools/web/docs_shots_flow.mjs; into docs-site/img/, with diff/index.html of what changed; tools/docs_site.py --check fails on one missing or not made by it)",
-      "area": "web"
-    },
-    {
-      "kind": "cli",
       "label": "fetchparts browser flow",
       "entry": "tools/web/fetchparts_flow.mjs",
       "reach": "node tools/web/fetchparts_flow.mjs --url=http://127.0.0.1:9821 [--base=http://127.0.0.1:9822 --rounds=2] [--house=H0useFl0w1] --out=DIR   (after tools/export.sh web and tools/web/serve.py build/web 9821 --parts assets/generated/parts --delay 0 --compressed --share F3tchP4rts=vendor/omr/files/42022-1_Rally-Racer.mpd --share H0useFl0w1=HOUSE (play_flow.mjs --write-house=HOUSE), and the build before likewise on 9822; local only: no part file by the engine's HTTPRequest, both whole, each longest frame no longer than the base's, the car's shapes in half the base's time)",
@@ -5022,6 +5022,13 @@
       "entry": "src/dev/video2_probe.gd",
       "reach": "tools/probe.sh video2 [OUT_DIR]; PROBE_SIZE=1400x900 tools/probe.sh video2 OUT_DIR   (windowed, on the GPU, signed in as a throwaway account: Pods' building video by hand and over MCP, the first step's parts 40% or more of the frame's height off its alpha, the last frame the whole model as a picture draws it; the car's 36-frame turntable kept as a GIF by hand and over MCP: GIF89a, 256 colours, looping, 8 MB or less, played by Chromium (tools/web/gif_plays.mjs) 36 frames that change, its first frame within a few levels of the frame it was made of; Kept as in sight; pictures in OUT_DIR)",
       "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "the docs' pictures",
+      "entry": "tools/docs_shots.py",
+      "reach": "python3 tools/docs_shots.py [--only=ID,ID] [--app | --site] [--affected]   (docs-site/pictures/<page>.json: the app's through tools/probe.sh docs_shots_probe on the GPU from a locked snapshot, the site's by tools/web/docs_shots_flow.mjs; into docs-site/img/, with diff/index.html of what changed; tools/docs_site.py --check fails on one missing or not made by it)",
+      "area": "web"
     },
     {
       "kind": "ui",
@@ -5190,6 +5197,20 @@
       "entry": "src/dev/drive_probe.gd",
       "reach": "tools/probe.sh drive_probe [-- OUT_DIR]; PROBE_SIZE=1280x720 tools/probe.sh drive_probe [-- OUT_DIR]   (windowed, on the GPU: 8808-1 driven 32 studs and a quarter circle left from the Motions panel and over MCP; its path, wheels' turns and roll read from the frames alone; the file byte for byte; kept, backwards, undone; rendered; a ?motion= link driving it; pictures in shots/drive/)",
       "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "localbricks probe",
+      "entry": "src/dev/localbricks_probe.gd",
+      "reach": "tools/relay_probe.sh localbricks   (a window, 1280x720; PROBE_SIZE=1400x900; -- --shots=DIR: through the sign-in screen with a password, 7140-1's lots marked by edit_collection missing= (each said was N, now M; none=true refused while marked) and refused past its inventory, Build from it 282 of 285, a restart and another device, two tabs at once one refused, a tab a newer build followed leaving the copy on this device, two copies 566 of 570 and one of them 284 of 285, signed out nothing held, the words in de/fr/es)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
+      "label": "function packaging",
+      "entry": "tools/package_api.sh",
+      "reach": "tools/package_api.sh OUT [--export=build/web] [ROUTE...]   (deploy.sh's functions, each with the catalogue's facts beside it, checked by tools/web/packaged_facts.mjs; tests/test_packaged_facts.py)",
+      "area": "web"
     }
   ]
 }

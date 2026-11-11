@@ -6974,6 +6974,33 @@ msgstr "laissés de côté : %s"
 msgid "no inventory is known for %s"
 msgstr "aucun inventaire n'est connu pour %s"
 
+msgid "%s marked missing came to more than the copies kept hold, and the rest is no longer marked: %s%s"
+msgstr "%s indiqué(s) comme manquant(s) : plus que ce que contiennent les exemplaires gardés, et le reste n'est plus indiqué : %s%s"
+
+msgid "%s: %d of %s in colour %d"
+msgstr "%s : %d de %s en couleur %d"
+
+msgid "the inventory of %s could not be read"
+msgstr "l'inventaire de %s n'a pas pu être lu"
+
+msgid "the inventories of %s could not be read"
+msgstr "les inventaires de %s n'ont pas pu être lus"
+
+msgid "its marks are kept as they were"
+msgstr "ses indications sont gardées telles quelles"
+
+msgid "their marks are kept as they were"
+msgstr "leurs indications sont gardées telles quelles"
+
+msgid "%s is no longer in your Rebrickable lists: it went, with its %s marked missing"
+msgstr "%s n'est plus dans vos listes Rebrickable : il a été retiré, avec ses %s indiquées comme manquantes"
+
+msgid "%s are no longer in your Rebrickable lists: they went, with their %s marked missing"
+msgstr "%s ne sont plus dans vos listes Rebrickable : ils ont été retirés, avec leurs %s indiquées comme manquantes"
+
+msgid "%s are no longer in your Rebrickable lists: they went, with the parts marked missing in them"
+msgstr "%s ne sont plus dans vos listes Rebrickable : ils ont été retirés, avec les pièces indiquées comme manquantes"
+
 msgid "building from the parts of %s"
 msgstr "construction avec les pièces de %s"
 
@@ -13324,6 +13351,56 @@ msgstr "Les pièces fabriquées pour la première fois en %d ou %d, les plus ré
 msgid "%s first made in %d or %d, the newest first"
 msgstr "%s fabriquées pour la première fois en %d ou %d, les plus récentes d'abord"
 
+# subexport (APP_UX7 #19): each sub-model as a file of its own, from File, Export
+# and the model tree's menu.
+
+msgid "Each sub-model as its own file (.zip)"
+msgstr "Chaque sous-modèle dans son propre fichier (.zip)"
+
+msgid "Every sub-model as an LDraw file of its own, with its own sub-models and steps, in one .zip"
+msgstr "Chaque sous-modèle dans son propre fichier LDraw, avec ses propres sous-modèles et étapes, dans un seul .zip"
+
+msgid "Make a sub-model first"
+msgstr "Créez d’abord un sous-modèle"
+
+msgid "Export “%s” as its own file…"
+msgstr "Exporter « %s » dans son propre fichier…"
+
+msgid "As an LDraw file, with its own sub-models and steps"
+msgstr "En fichier LDraw, avec ses propres sous-modèles et étapes"
+
+msgid "Export each sub-model (.zip)…"
+msgstr "Exporter chaque sous-modèle (.zip)…"
+
+msgid "Exporting %s…"
+msgstr "Export de %s…"
+
+msgid "Exporting each sub-model…"
+msgstr "Export de chaque sous-modèle…"
+
+msgid "stopped exporting"
+msgstr "export arrêté"
+
+msgid "this model has no sub-models: LDraw model writes it whole"
+msgstr "ce modèle n’a pas de sous-modèles : Modèle LDraw l’écrit en entier"
+
+msgid "%s is not a sub-model of this model"
+msgstr "%s n’est pas un sous-modèle de ce modèle"
+
+msgid "%s, each with its own sub-models and steps: %s"
+msgstr "%s, chacun avec ses propres sous-modèles et étapes : %s"
+
+msgid "%d steps"
+msgstr "%d étapes"
+
+msgid "1 step"
+msgstr "1 étape"
+
+msgid "%d sub-models"
+msgstr "%d sous-modèles"
+
+msgid "1 sub-model"
+msgstr "1 sous-modèle"
 # Names a screen reader says, with no words on screen of their own: those Access
 # gives Godot's file dialog, the choices named where they are made, and every
 # accessibility_name of the interface (a11ynames, a11y_names_probe).
