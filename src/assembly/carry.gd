@@ -102,7 +102,9 @@ static func gather(world: BrickWorld, from: PartLibrary,
 
 ## Parts given where they stand in the model ({part, color, at, ...}, ``at``
 ## in the world), each put in a frame of their own about their pivot
-## ([method pivot_of]), with the pivot kept as ``pivot``.
+## ([method pivot_of]), with the pivot kept as ``pivot``, and where it stood
+## when it was first gathered as ``was`` (what [method moved] measures
+## from, however it is turned, typed or framed again since).
 static func framed(placed: Array, from: PartLibrary) -> Array:
 	if placed.is_empty():
 		return []
@@ -122,6 +124,8 @@ static func framed(placed: Array, from: PartLibrary) -> Array:
 		var mine: Dictionary = item.duplicate()
 		mine["at"] = Transform3D(at.basis, at.origin - pivot)
 		mine["pivot"] = pivot
+		if not mine.get("was") is Transform3D:
+			mine["was"] = at
 		out.append(mine)
 	return out
 
@@ -562,13 +566,19 @@ func hide_ghost() -> void:
 ## into its first, and one duplicated inside a copy within another into a
 ## new copy of the outermost (keeptext2).
 ## How the parts held are moved from where they were gathered to where
-## [method placements] puts them now: the carry's frame after the pivot they
-## were gathered about. What a paste's sub-model lines are carried by
-## (Assemblies.lines_pasted).
+## [method placements] puts them now: where the first is put against where
+## it stood when gathered (``was``), the group moved as one. What a paste's
+## and a move's sub-model lines are carried by (Assemblies.lines_pasted,
+## frames_carried). Up to 2026-11-11 it was the carry's frame after the pivot
+## alone, and missed what a typed move or a turn did to the parts inside it:
+## a moved copy's light stayed where it had been (lights_probe, pcfix).
 func moved() -> Transform3D:
-	var pivot: Vector3 = Vector3.ZERO
-	if not items.is_empty() and (items[0] as Dictionary).get("pivot") is Vector3:
-		pivot = (items[0] as Dictionary)["pivot"]
+	if items.is_empty():
+		return Transform3D.IDENTITY
+	var first: Dictionary = items[0]
+	if first.get("was") is Transform3D:
+		return _frame * (first["at"] as Transform3D) * (first["was"] as Transform3D).affine_inverse()
+	var pivot: Vector3 = first["pivot"] if first.get("pivot") is Vector3 else Vector3.ZERO
 	return _frame * Transform3D(Basis.IDENTITY, -pivot)
 
 
