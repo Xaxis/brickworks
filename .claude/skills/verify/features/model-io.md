@@ -909,7 +909,10 @@ Whether what you built is still there tomorrow, and still means the same thing.
   hold, both flags refused; `--cases-only` runs those alone); then 7140-1, the
   castle and the castle with its steps its own; each file's sections against
   the whole file's, line for line; each opened alone to the same parts within
-  0.001 LDU, colours, tree and an author's steps; the whole model's file the
+  0.001 LDU, colours, tree (by shape: a file alone numbers its copies from 1,
+  or as its COPY lines say, where the whole model numbers them across it) and
+  an author's steps; a copy titled `..\..\evil` keeps that title line, its
+  names (zip entry, Name line) are evil.ldr; the whole model's file the
   same to the byte before and after; the tree's menu pictured at 1400 x 900 and
   1280 x 720.
 - `parts lists for shops` (`src/assembly/shop_lists.gd`, File, Export → BrickLink
