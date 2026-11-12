@@ -726,7 +726,10 @@ Whether what you built is still there tomorrow, and still means the same thing.
   Duplicate, bring a copy's held parts into the new copy
   (`Carry.clipboard_held`, `Builder.held_carry`/`held_put`,
   `ModelStore._held_carried`/`_held_put`, keyed by
-  `LdrModel.Placement.held_key`), in the paste's undo step; Duplicate
+  `LdrModel.Placement.held_key`), in the paste's undo step (one that landed
+  since is taken off and put back as its brick, Builder's `"held"` step's
+  `bricks`, and one put back on its way after its part came lands at once,
+  `ModelStore._land_arrived`: pc2attack H_r1, H_r2); Duplicate
   brings a lit copy's lines and frame too (live's Q). `lights_probe --
   --review` checks both (`_r_held_pasted`, `_r_duplicated`). Someone else's
   file keeps such a part's line in the copy's section, and the copy with it
