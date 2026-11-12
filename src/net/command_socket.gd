@@ -931,7 +931,9 @@ func _run(name: String, input: Dictionary, work: Working.Job, chat: String = "",
 	assistant.chat = ""
 	assistant.who = CLAUDE
 	_at_work -= 1
-	_one_step(name, before, chat, who)
+	var followed: Array = _one_step(name, before, chat, who)
+	# Its count as the copies that followed it left the model.
+	answer = assistant.recounted(answer, int(followed[0]), int(followed[1]))
 	_hand_and_view_back(held)
 	return answer
 
@@ -975,10 +977,10 @@ func _before_change(name: String) -> Dictionary:
 ## Claude's edit standing. A call that keeps its own history (the window's
 ## commands, an edit about a selection) has its steps folded into one, with
 ## whatever it changed that they do not name; any other has the difference
-## made one step.
-func _one_step(name: String, before: Dictionary, chat: String = "", who: String = CLAUDE) -> void:
+## made one step. Returns what followed it ([method _copies_follow]).
+func _one_step(name: String, before: Dictionary, chat: String = "", who: String = CLAUDE) -> Array:
 	if before.is_empty():
-		return
+		return [0, 0]
 	var builder: Builder = assistant.builder
 	if builder.history_depth() > int(before["depth"]):
 		# A session's first design lays its parts with no step and then keeps
@@ -993,33 +995,40 @@ func _one_step(name: String, before: Dictionary, chat: String = "", who: String 
 			"generation": before["generation"], "words": "%s's %s" % [who, name.replace("_", " ")]},
 			int(before["depth"]))
 		builder.fold_since(int(before["depth"]))
-		_copies_follow()
+		var followed: Array = _copies_follow()
 		_mark(builder, chat)
 		_laid(builder.last_step())
 		_looks_follow()
-		return
+		return followed
 	var last: Dictionary = builder.last_step()
 	if not last.is_empty() and is_same(last, before["last"]) \
 			and (last.get("steps", []) as Array).size() != int(before["size"]):
-		return
+		return [0, 0]
 	var steps: Array = SelectionScope.steps_back(before["was"], assistant.world,
 		assistant.scenery)
-	if not steps.is_empty():
-		builder.record(steps, "%s's %s (%s)" % [who, name.replace("_", " "),
-			SelectionScope.words_for(steps)])
-		_copies_follow()
-		_mark(builder, chat)
-		_laid(builder.last_step())
-		_looks_follow()
+	if steps.is_empty():
+		return [0, 0]
+	builder.record(steps, "%s's %s (%s)" % [who, name.replace("_", " "),
+		SelectionScope.words_for(steps)])
+	var followed: Array = _copies_follow()
+	_mark(builder, chat)
+	_laid(builder.last_step())
+	_looks_follow()
+	return followed
 
 
 ## The other copies of each sub-model the call changed take the change too,
 ## in its step, as they take one made by hand (Assemblies.after_edit). Kept
 ## here after the edit, the step was never one after_edit saw: a session's
 ## edit_model to one of two posts left the other as it was (copyfaults2).
-func _copies_follow() -> void:
-	if assistant.assemblies != null:
-		assistant.assemblies.after_edit()
+## Returns how many copies followed and the parts they put down less those
+## they took off, for the call's reply (Assistant.recounted).
+func _copies_follow() -> Array:
+	if assistant.assemblies == null:
+		return [0, 0]
+	var had: int = assistant.world.brick_count()
+	var followed: int = assistant.assemblies.after_edit()
+	return [followed, assistant.world.brick_count() - had]
 
 
 ## A step the call took the last part off goes with its booklet look, in the
