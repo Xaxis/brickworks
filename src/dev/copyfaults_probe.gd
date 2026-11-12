@@ -50,7 +50,8 @@
 ##   placing colour), after the edit, Undo, Redo, Save and open again, and
 ##   a second save the same file. A 3024 put down in Car#1/Wheel#1 went into
 ##   Car#2/Wheel#3 once with the wheel's copies and again with the car's;
-##   three deep, once more with each copy round it;
+##   three deep, once more with each copy round it. A session's edit says
+##   the count of parts the follow left (cffix2);
 ## - clear_redo: a clear's undo landed a part on its way after the step, and
 ##   its redo left it on the bare baseplate.
 ## Each case opens its file (src/dev/fixtures/copyfaults_*, and for metas
@@ -891,6 +892,14 @@ func _case_twin_every() -> void:
 					or _tables() != tables):
 				continue
 			_agree("%s, made" % label)
+			# A session's edit says the count the copies that followed it
+			# left: "Done. 4 bricks now." of the 3 a removal from one of two
+			# copies left (pc2check, cffix2).
+			var count: RegExMatch = RegEx.create_from_string("Done\\. (\\d+) bricks now").search(said)
+			if count != null:
+				_check("...%s: its reply counts the parts the follow left (said %s, %d stand)"
+					% [label, count.get_string(1), _every_part().size()],
+					int(count.get_string(1)) == _every_part().size())
 			await _round_of(label, opened, tables, func(stage: String) -> void:
 				if stage == "reopened":
 					var again: String = _read_copies()

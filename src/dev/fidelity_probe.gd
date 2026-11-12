@@ -824,7 +824,10 @@ func _mirrored_copy() -> void:
 	_builder.register(added, wedge, at)
 	_world.get_brick(added).unit = "Wing#1"
 	_world.get_brick(added).group = "Wing"
-	tree.copies_follow({"Wing#1": true})
+	# Followed by the step that put it down, as Builder.place keeps it: the
+	# copies follow an edit's step (copyfaults), and asked of the paths it
+	# touched, as before, nothing followed.
+	tree.copies_follow({"undo": "remove", "brick": added})
 	var parts: Array = _of_unit("Wing#2").map(func(brick: BrickWorld.Brick) -> String:
 		return brick.part_id)
 	_expect(parts.has(other) and not parts.has(wedge),

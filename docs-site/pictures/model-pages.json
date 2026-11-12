@@ -1,0 +1,102 @@
+{
+ "shots": [
+  {
+   "id": "model-page",
+   "source": "site",
+   "route": "/m/DocsSprt01",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account"
+   ],
+   "wait": "a.picture img",
+   "alt": "A model's page: the model's picture with View in 3D, the tabs About, Parts, Comments, Builds and Remixes under it, and beside it its name and designer, Build it, Open in Brickworks, Download, and the bar of Like, Save, Share, Comment and Built.",
+   "caption": "A shared model's page.",
+   "features": [
+    "ui:shared model page and card",
+    "ui:model page action bar"
+   ]
+  },
+  {
+   "id": "model-share",
+   "source": "site",
+   "route": "/m/DocsSprt01",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account"
+   ],
+   "steps": [
+    {
+     "click": "[aria-controls=\"share-sheet\"]"
+    },
+    {
+     "wait": "#share-sheet"
+    }
+   ],
+   "crop": "#share-sheet",
+   "pad": 12,
+   "alt": "The Share sheet of a model's page: its link with Copy link, Post it to Reddit, Bluesky, Pinterest, X, Facebook and Email, and Embed it in a page with Copy code.",
+   "caption": "Share, on a model's page.",
+   "features": [
+    "ui:model page action bar"
+   ]
+  },
+  {
+   "id": "build-it",
+   "source": "app",
+   "view": "DocsSprt01",
+   "answers": {
+    "fetch": {
+     "code": 200,
+     "body": {
+      "id": "DocsSprt01",
+      "name": "Sports car and its driver",
+      "author": "Test builder",
+      "parts": 187,
+      "url": "https://brickworks.diy/m/DocsSprt01"
+     },
+     "model_file": "res://models/sports_car.ldr"
+    }
+   },
+   "setup": [
+    {
+     "call": "_enter_build",
+     "after": 60
+    },
+    {
+     "click": "_build_mode._one_part",
+     "after": 20
+    },
+    {
+     "call": "_build_go",
+     "args": [
+      19,
+      false,
+      3
+     ],
+     "after": 60
+    }
+   ],
+   "crop": "window",
+   "width": 1000,
+   "alt": "Build it a part at a time: the model built so far, faded, with the next part outlined in its colours, and under it the part's picture with 3 of 8 in this step, its name, One part chosen over Whole step, and Back and Next.",
+   "caption": "Build it, One part.",
+   "features": [
+    "ui:build it step player"
+   ]
+  }
+ ]
+}

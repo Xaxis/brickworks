@@ -1,13 +1,17 @@
 ---
-ai: The monthly challenge at /challenge: a theme with rules, entries from people's own shared models, votes, and winners named when the month ends.
+ai: The monthly challenge at /challenge: a theme with rules Brickworks checks, entries from people's own shared models in two groups (built by hand, built with the assistant), a vote in each group, and winners named when the month ends.
 rules:
   - A model that breaks a rule is refused with each broken rule named.
 title: The monthly challenge
 nav: The monthly challenge
-description: Each month's theme, how to enter a model, how voting works, and how a month ends.
+description: Each month's theme and rules, how to enter a model of yours by hand or with the assistant, how voting works, and how a month ends.
 ---
 
-[brickworks.diy/challenge](/challenge) is this month's challenge: a theme and its rules, the entries so far, and the votes. **Share** under its brief opens the sheet a model's page has, with the challenge's own link (`/challenge?id=<n>`), which still opens this challenge after the next one begins. Pasted into a chat or a post, that link shows the challenge's own title, brief and days, and once it ends its winner's picture.
+Each month Brickworks sets a building challenge: a theme, a brief and rules it checks on every model, such as at most so many parts, only the parts of one real set, or marked Tested. Enter a model of yours, and vote for the best. It is at [brickworks.diy/challenge](/challenge), linked from the gallery.
+
+The page has the brief and its days, **The rules**, **How to enter**, and the entries in two groups, **Built by hand** and **Built with the assistant**, judged apart.
+
+![This month's challenge page: its title, its days and brief with Share, The rules Brickworks checks, How to enter, and the entries under Built by hand and Built with the assistant, each card with Vote for it.](/docs/img/challenge-page.webp "brickworks.diy/challenge.")
 
 <!-- covers
 ui:this month's challenge page
@@ -16,15 +20,23 @@ lib:the monthly challenge's rules
 
 ## Enter {#enter}
 
-Signed in, on your own model's page, **Enter this month's challenge** sits under Like. A model that breaks a rule is refused with each broken rule named, so you can fix it and enter again. **Withdraw** takes your entry out.
+1. [Share the model](/docs/sharing#share) with **List it in the gallery** and **Show who made it** ticked.
+2. Signed in, open its page. Under its buttons it says *This month's challenge is …, open until …*: press **Enter this month's challenge**.
+3. The card lists the rules it will check. Under **How did you build it?**, choose **By hand** or **With the assistant**, and press **Enter it**.
+
+![Entering a challenge: Enter and the challenge's title, the rules Brickworks checks on the model as shared, How did you build it? The two are judged apart, with By hand and With the assistant, and Enter it and Cancel.](/docs/img/challenge-enter.webp "Enter this month's challenge, on your own model's page.")
+
+Brickworks checks the rules on the model as you shared it. If it breaks one, it says *It does not keep the rules yet:* and lists each broken rule, so you can fix the model, share it again and enter again. In, it says *It is in, built by hand*. Up to three of your models can be in one challenge.
+
+It is checked again while the challenge runs: an entry whose newer version breaks a rule says so, and is not counted. **Take it out**, beside the line saying it is in, takes your entry out while the challenge is open; its votes go with it.
 
 ## Vote {#vote}
 
-Everyone signed in can vote for the entries they like, in the challenge's two groups.
+Signed in and 13 or over, press **Vote for it** on the entry you like best in each group: one vote for **Built by hand** and one for **Built with the assistant**. A vote cannot be changed; your pick then says *Your vote*, and the others in that group *You voted in this group*. You cannot vote for your own entry, or for one that breaks a rule. The votes are counted when it ends, and only then shown.
 
 ## Between months {#between}
 
-When a month ends its winners are named on the page, and the next month's theme begins. The year's themes are set ahead of time.
+When a month ends, the most voted entry in each group wins, and **The winners** names them (*Winner, built by hand*, with its votes). The next month's theme begins, and **Coming next** and **Past challenges** are on the page; the year's themes are set ahead of time. **Share** under the brief copies the challenge's own link (`/challenge?id=<n>`), which still opens it after the next begins and, pasted into a chat or a post, shows its title, brief and days, and once it ends its winner's picture.
 
 <!-- covers
 lib:challenges between months
