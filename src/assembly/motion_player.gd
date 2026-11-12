@@ -744,6 +744,9 @@ class Paced extends RefCounted:
 	## for none; and whether it was, once.
 	var task: int = -1
 	var off_frame: bool = false
+	## Whether parts that arrive are held back until it is one step
+	## (ModelStore.hold_landings).
+	var holding: bool = false
 
 
 func pace(order: Array, reverse: bool, words: String, fps: int = PLAY_FPS) -> Paced:
@@ -782,6 +785,8 @@ func pace_on(paced: Paced, budget_ms: float) -> bool:
 					paced.run.frames.append_array(frames)
 				if paced.keep:
 					builder.fold_since(paced.depth, paced.words)
+				# One step now: what arrived while it was made is put down.
+				_let_landings_go(paced)
 				paced.done = true
 				break
 			var held_at: int = Time.get_ticks_usec()
@@ -799,6 +804,13 @@ func pace_on(paced: Paced, budget_ms: float) -> bool:
 		paced.run.each.append(paced.playing.frames)
 		paced.playing = null
 		paced.at += 1
+		# Kept, with more to come in the same step: a part put down before
+		# the next is kept would be moved by it as one of the parts that
+		# step moves itself, and its undo would leave it where it landed
+		# (ModelStore.hold_landings).
+		if paced.keep and paced.at < paced.order.size() and store != null and not paced.holding:
+			paced.holding = true
+			store.hold_landings(true)
 	var spent: float = (Time.get_ticks_usec() - began) / 1000.0
 	paced.slices += 1
 	paced.longest_ms = maxf(paced.longest_ms, spent)
@@ -845,9 +857,22 @@ func pace_off_frame(paced: Paced, budget_ms: float) -> bool:
 	return false
 
 
+## Parts held back while [param paced] was being made put down, now that it
+## is one step or is dropped.
+func _let_landings_go(paced: Paced) -> void:
+	if paced.holding:
+		paced.holding = false
+		if store != null:
+			store.hold_landings(false)
+
+
 ## [param paced]'s worker, if it has one, waited for and let go: what it
-## read may change again. Before anything changes the model under it.
+## read may change again. Before anything changes the model under it. And
+## what arrived while it was being made put down: dropped, its steps are
+## taken back after this, and an undo carries what landed late.
 func drop(paced: Paced) -> void:
+	if paced != null:
+		_let_landings_go(paced)
 	if paced == null or paced.task < 0:
 		return
 	WorkerTasks.collect(paced.task)

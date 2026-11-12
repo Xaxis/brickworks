@@ -2634,8 +2634,9 @@ func awaited_now() -> Array:
 ## goes into [param landed_into] as [its brick, its placement].
 func place_awaited(part_id: String, landed_into: Array = []) -> int:
 	# Not into a model still being laid: what arrived meanwhile is put down
-	# once it is whole (_open_into).
-	if awaited.is_empty() or laying:
+	# once it is whole (_open_into). Nor into a step still being made of
+	# motions played one after another (hold_landings).
+	if awaited.is_empty() or laying or _holding_in == world.generation():
 		return 0
 	if world.generation() != _awaited_in:
 		awaited.clear()
@@ -2670,6 +2671,40 @@ func place_awaited(part_id: String, landed_into: Array = []) -> int:
 	if awaited.is_empty():
 		_settle()
 	return landed
+
+
+## The model this holds what arrives in awaited for (its world's
+## generation), -1 for none: motions played one after another and kept as
+## one step are being played (MotionPlayer.pace_on, a sequence or a link's
+## press of one, a slice a frame).
+var _holding_in: int = -1
+
+## Signalled with how many parts were put down once a hold let go of them
+## ([method hold_landings]), as they would have been as they came.
+signal held_landed(count: int)
+
+
+## With [param on], what arrives waits in [member awaited] until this is
+## called again without, and is put down then: a run of motions kept as one
+## step is being made. Put down between two of its motions, a part was
+## moved by the second as the parts that step moves itself are, so its undo
+## took it back only to where it had landed, a whole drive from its tyre,
+## and an undone sequence's racer was saved with its rims out of its tyres
+## (drvcheck3 L1). Put down once the step is whole, the step has none of it,
+## and an undo or a redo carries it as it carries every part that landed
+## late (_follow_motions). Held for the model open now only: one opened
+## meanwhile lands its parts as they come. Returns how many it put down.
+func hold_landings(on: bool) -> int:
+	if on:
+		_holding_in = world.generation()
+		return 0
+	if _holding_in < 0:
+		return 0
+	_holding_in = -1
+	var landed: Array = _land_arrived()
+	if not landed.is_empty():
+		held_landed.emit(landed.size())
+	return landed.size()
 
 
 ## The parts put down after the model opened ([method place_awaited]), id ->
