@@ -706,6 +706,7 @@
         "tests/test_release_train.py",
         "tests/test_run_probes.py",
         "tests/test_thumbnail_check.py",
+        "tests/test_timing_judge.py",
         "tests/test_worktree_links_ignored.py"
       ]
     },
@@ -851,6 +852,7 @@
         "tests/test_release_train.py",
         "tests/test_run_probes.py",
         "tests/test_thumbnail_check.py",
+        "tests/test_timing_judge.py",
         "tests/test_worktree_links_ignored.py"
       ]
     },
@@ -2193,6 +2195,7 @@
         "tests/test_release_train.py",
         "tests/test_run_probes.py",
         "tests/test_thumbnail_check.py",
+        "tests/test_timing_judge.py",
         "tests/test_worktree_links_ignored.py"
       ]
     },
@@ -2569,6 +2572,7 @@
         "tests/test_release_train.py",
         "tests/test_run_probes.py",
         "tests/test_thumbnail_check.py",
+        "tests/test_timing_judge.py",
         "tests/test_worktree_links_ignored.py"
       ]
     },

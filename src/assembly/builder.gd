@@ -93,6 +93,11 @@ var pins_hook: Callable = Callable()
 ## returns how it was, for the steps that lay, move, size, fade, lock,
 ## replace or take it away. Unset, the step does nothing.
 var reference_hook: Callable = Callable()
+## Makes the model what a step kept of it beside its parts (ModelStore
+## .put_identity: its name, its file, its views) and returns what it was, for
+## the step a clear kept for its undo (Main.clear_model). Unset, the step does
+## nothing.
+var store_hook: Callable = Callable()
 
 signal placed(brick_id: int, part_id: String)
 signal removed(brick_id: int)
@@ -416,7 +421,7 @@ func undo() -> bool:
 	var words: String = _words_for(step)
 	_motions_before = null
 	var back: Dictionary = _apply(step)
-	_follow_motions(step)
+	_follow_motions(back)
 	back["words"] = words
 	_redo.append(back)
 	settled = _history.back() if not _history.is_empty() else {}
@@ -432,7 +437,7 @@ func redo() -> bool:
 	var step: Dictionary = _redo.pop_back()
 	_motions_before = null
 	var again: Dictionary = _apply(step)
-	_follow_motions(step)
+	_follow_motions(again)
 	if step.has("words"):
 		again["words"] = step["words"]
 	_history.append(again)
@@ -441,10 +446,10 @@ func redo() -> bool:
 	return true
 
 
-## Once [param step] is undone or redone: if it put the model's motions
-## back, what it did not move itself told where the model now stands
-## ([member motions_hook]), after all of it, so the joints are looked for
-## with every part where the step leaves it.
+## Once a step is undone or redone, [param step] the one that reverses it:
+## if it put the model's motions back, what it did not move itself told
+## where the model now stands ([member motions_hook]), after all of it, so
+## the joints are looked for with every part where the step leaves it.
 func _follow_motions(step: Dictionary) -> void:
 	var before: Motions = _motions_before
 	_motions_before = null
@@ -456,7 +461,9 @@ func _follow_motions(step: Dictionary) -> void:
 
 
 ## Into [param into], each part [param step] moves, takes off or puts
-## down, by its id now.
+## down, by its id now: of a step that reverses one, the parts that one
+## changed, and the parts on their way it put down (ModelStore.put_identity,
+## "landed"), where the motions it put back stand them already.
 func _moved_by(step: Dictionary, into: Dictionary) -> void:
 	match str(step.get("undo", "")):
 		"group":
@@ -467,6 +474,9 @@ func _moved_by(step: Dictionary, into: Dictionary) -> void:
 		"add":
 			if step.has("was"):
 				into[_live(int(step["was"]))] = true
+		"store":
+			for landed: Variant in (step["store"] as Dictionary).get("landed", []):
+				into[_live(int((landed as Array)[0]))] = true
 
 
 ## Move [param brick_id] to [param to] with no step of its own: one an undo
@@ -543,6 +553,11 @@ func _apply(step: Dictionary) -> Dictionary:
 	if step.get("undo", "") == "pins":
 		return {"undo": "pins", "pins": pins_hook.call(step["pins"]) if pins_hook.is_valid()
 			else step["pins"]}
+
+	# What the model is beside its parts, as it was: its own reverse.
+	if step.get("undo", "") == "store":
+		return {"undo": "store", "store": store_hook.call(step["store"]) if store_hook.is_valid()
+			else step["store"]}
 
 	# The picture to build over, as it was: its own reverse.
 	if step.get("undo", "") == "reference":
@@ -2005,7 +2020,11 @@ func extend_last(steps: Array) -> void:
 		_history[_history.size() - 1] = last
 	elif not last.has("words"):
 		last["words"] = _words_for(last)
-	(last["steps"] as Array).append_array(steps)
+	# Before what they followed, as a group's steps are kept, newest first
+	# ([method fold_since]): an undo takes them back first. After it, the
+	# rename's undo named its parts back to Tower#2, and the other copy built
+	# again from Turret#1 was then put back as Turret#2 over it (copyfaults).
+	last["steps"] = steps + (last["steps"] as Array)
 
 
 ## Everything kept since the history was [param depth] deep, as one step:

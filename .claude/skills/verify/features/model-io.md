@@ -216,7 +216,15 @@ Whether what you built is still there tomorrow, and still means the same thing.
   (bench/results/kt4review-2026-11-07). Probes: `paint_string` (a person
   paints 42079-1's rope, saves, opens another file, comes back to it
   yellow), `keep_text` and `kt3r` (each save a patch keeping every line
-  the edit did not touch, or live's write), `patch_rules` (kt5review's six:
+  the edit did not touch, or live's write), `copyfaults` (a copy renamed,
+  duplicated, swapped over MCP or given a step edit leaves its twin as it
+  was, or both alike, and one moved or painted moves or paints only the
+  twin's part it pairs with (copyfaults2, with `cfcheck`), saved and opened as shown;
+  a part put down in the placing colour of copies placed in two colours is
+  one line in 16, not two lines and a whole write (`SourceFile._fresh_lines`,
+  `cf2check` post16); the app's own lines under
+  the model's title, `LdrModel.into_main`, in ten files with sub-models;
+  a clear undone gives back the file's lines), `patch_rules` (kt5review's six:
   names kept, the gate as written, comment pairs, deletes that go to (B), the
   patch on two threads at once), and kt4review's
   `kt4r_probe.gd`/`kt4r_gate.gd` with its specs and analyzers.

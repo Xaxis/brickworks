@@ -17,8 +17,8 @@
 ## against another is found by matching their parts (best_match): which
 ## rigid turn and shift, mirrored or not, lays one on the other. So a copy
 ## moved, turned or mirrored as a whole needs no bookkeeping, and after an
-## edit to one copy the others are built again from it (after_edit) —
-## change one wing and the other follows, mirrored.
+## edit to one copy the others take the same change, part by part
+## (after_edit) — change one wing and the other follows, mirrored.
 class_name Assemblies
 extends RefCounted
 
@@ -551,6 +551,11 @@ func rename(path: String, wanted: String) -> String:
 		lines_renamed(builder, old, name, true)
 	if not was_entered.is_empty():
 		_set_entered(_renamed_path(was_entered, old, name))
+	# Every copy renamed alike: none changed against another, so none is
+	# built again from another. Built again, the blue Tower#2 came back red,
+	# its parts new ones made from Tower#1's, and the save wrote it as a
+	# sub-model of its own (copyfaults).
+	no_copies_follow()
 	changed.emit()
 	return name
 
@@ -928,31 +933,36 @@ func _is_figure(path: String) -> bool:
 
 
 ## After an edit made by hand: every assembly it touched that has other
-## copies, and those copies built again from it, as part of the same undo
-## step. A copy moved, turned or mirrored whole still lies on the others
-## exactly, and is left as it is.
+## copies, and those copies given the same change (copies_follow), as part
+## of the same undo step. A copy moved, turned or mirrored whole still lies
+## on the others exactly, and is left as it is.
 func after_edit() -> int:
 	if _syncing:
 		return 0
 	var step: Dictionary = builder.last_step()
 	# An undo or a redo changed the model by a step whose copies already
-	# followed it, inside it (Builder.settled): nothing to build again. Asked
+	# followed it, inside it (Builder.settled): nothing to follow. Asked
 	# again, the undo of a move of everything matched every copy of every
 	# sub-model against the others once more, and the step left newest by
 	# an undo had its copies built again into it, long after it was made.
 	if step.is_empty() or is_same(step, _seen) or is_same(step, builder.settled):
 		return 0
 	_seen = step
-	var followed: Array = copies_follow(builder.touched_groups(step), _moved_by(step))
+	var followed: Array = copies_follow(step)
 	var steps: Array = followed[0]
 	if not steps.is_empty():
 		builder.extend_last(steps)
+		# The step as it is kept now: a step of one entry is made a group to
+		# take them, a step after_edit had not seen, and asked again it
+		# followed the edit a second time (a part put down in one post put
+		# two down in the other, copyfaults2).
+		_seen = builder.last_step()
 		changed.emit()
 	return int(followed[1])
 
 
 ## The newest step changed where parts are in the tree and not one part's
-## shape or place (Sections.accept): no copy is built again for it. Copies a
+## shape or place (Sections.accept): no copy follows it. Copies a
 ## file holds that were never alike (31037's, 10179's) were rebuilt from
 ## one of them when sections were made round them, 1,115 parts of 10179-1
 ## swapped for others (2026-10-17).
@@ -960,58 +970,615 @@ func no_copies_follow() -> void:
 	_seen = builder.last_step()
 
 
-## Every other copy of the assemblies at [param touched] (paths, and
-## what they are in) built again from the one that changed. Returns
-## [history steps, copies rebuilt]; the caller keeps the steps with the
-## change that caused them, so one undo takes back both. Claude's change
-## to a selection gathers into a step of its own (Assistant.focus), which
-## after_edit, looking once at the newest step, would not see again.
-## [param moved]: brick id -> how a step moved it ([method _moved_by]). An
-## assembly all of whose parts moved alike is the same shape as before, and
-## is left as it is: moving everything matched every copy of every
-## sub-model against the others, and on a 4,139-part set that was most of
-## a second whenever the copies were alike, and seconds when some were not.
-func copies_follow(touched: Dictionary, moved: Dictionary = {}) -> Array:
+## Every other copy of what [param step] (a history step) changed takes the
+## same change, part by part, as every reference to a file's sub-model shows
+## a change to it. Returns [history steps, copies that followed]; the caller
+## keeps the steps with the change that caused them, newest first, so one
+## undo takes back both. Claude's change to a selection gathers into a step
+## of its own (Assistant.focus), which after_edit, looking once at the newest
+## step, would not see again.
+##
+## Each copy is laid on the other as both stood before the step, by shape
+## ([method best_match]: a sub-model placed in red and in blue differs only
+## in the colour it hands its parts of colour 16), and each part of the one
+## changed is paired with the part of the other it lay on. That part takes
+## the change: a move or a turn moves it; a paint paints it where the two
+## were one colour, the part's own, and else it keeps its copy's placing
+## colour; a part taken off goes from it; a part put down is put down in it,
+## in its placing colour where it went down in this copy's, else in its own;
+## a step changed is its step too where the copies share their definition's
+## steps (neither is built in the steps of the one round it). Nothing else of
+## it changes: its other parts keep their numbers, order, colours, steps and
+## lines. Built again whole from the copy changed, a blue post came back red,
+## every part a new number, for one part of the red moved a stud or put in
+## the next step, and an undo of a paint in a car's wheel left the second
+## car with both its old wheels and the new (cfcheck).
+##
+## A copy the step changed whole (every part moved alike, or moved, turned
+## and mirrored so that it lies on itself as it was) is the shape it was, and
+## nothing follows it: moving everything matched every copy of every
+## sub-model against the others, and on a 4,139-part set that was most of a
+## second. Nor does one the step put down whole, a duplicate or a paste:
+## Tower#1 duplicated, the blue Tower#2 was built again from the red copy put
+## down (copyfaults). A copy the step took parts off and put parts down in is
+## not new: a session's edit_model laying Post#1 again where it stood left
+## Post#2 as it was, and the save wrote two posts (cfcheck).
+func copies_follow(step: Dictionary) -> Array:
 	var paths_touched: Dictionary = {}
-	for group: String in touched:
+	for group: String in builder.touched_groups(step):
 		var path: String = ""
 		for segment: String in segments(group):
 			path = join(path, segment)
 			paths_touched[path] = true
-	# Innermost first: a wing's copies follow the wing, and then the car's
-	# copies already match the car.
+	# Innermost first: a wheel's copies take a change to the wheel, and the
+	# car's copies then find those parts given it already.
 	var order: Array = paths_touched.keys()
 	order.sort_custom(func(a: String, b: String) -> bool:
 		return segments(a).size() > segments(b).size())
-	# No copy of any of them, nothing to build again: asked of the model's
-	# paths alone first. A replace of Orthanc touched ten sub-models, none
-	# with a copy, and each was read out whole for nothing.
+	# No copy of any of them, nothing to follow: asked of the model's paths
+	# alone first. A replace of Orthanc touched ten sub-models, none with a
+	# copy, and each was read out whole for nothing.
 	if not _any_copied(order):
 		return [[], 0]
-	var steps: Array = []
-	var rebuilt: int = 0
+	var then: Dictionary = _before(step)
+	var moved: Dictionary = _moved_by(step)
+	var units: Dictionary = _units_named(step)
+	_from_ensured(step, then, units)
+	# Every pair laid first, on the copies as they stood before the step;
+	# then every change made. Laid as each changed, a car's copy, its wheels
+	# given the change already, no longer lay on the car as it was.
+	var plans: Array = []
 	_syncing = true
 	_begin_pass()
 	for path: String in order:
 		if not moved.is_empty() and _moved_alike(path, moved):
 			continue
-		var source: Array = content(path)
-		if source.is_empty():
+		var made: Dictionary = _made_in(path, then, units)
+		if made.is_empty():
 			continue
+		var was: Array = made["then"]
 		for other: String in copies_of(path):
-			var target: Array = content(other)
-			if target.is_empty():
+			var twin: Array = _content_then(other, then)
+			if twin.size() != was.size():
 				continue
-			var fit: Dictionary = best_match(source, target)
-			if bool(fit["exact"]) or int(fit["score"]) == 0:
+			var fit: Dictionary = best_match(was, twin)
+			if int(fit["score"]) != was.size():
 				continue
-			steps.append_array(realize(path, other, fit["at"], bool(fit["mirrored"])))
-			# The model changed: read again at the next question.
-			_indexed = false
-			rebuilt += 1
+			var pairs: Dictionary = _laid_on(was, twin, fit)
+			if pairs.size() == was.size():
+				plans.append([path, other, fit, pairs, made, twin])
 	_end_pass()
+	var back: Array = []
+	var claimed: Dictionary = {}
+	var followed: Dictionary = {}
+	_fresh_names.clear()
+	for plan: Array in plans:
+		var took: Array = _follow(plan, then, units, claimed)
+		if not took.is_empty():
+			back = took + back
+			followed[plan[1]] = true
+	# The model changed: read again at the next question.
+	_indexed = false
 	_syncing = false
-	return [steps, rebuilt]
+	return [back, followed.size()]
+
+
+## What [param undo], AuthorSteps.ensure's for a step edit, gave: the steps
+## the model has from it, {"bricks": brick -> its step, "units": copy ->
+## its step, or -1 for none}, {} for nothing. Kept with the edit's step as
+## "ensured" ([method _from_ensured]).
+static func ensured(world: BrickWorld, undo: Array) -> Dictionary:
+	if undo.is_empty():
+		return {}
+	var bricks: Dictionary = {}
+	var units: Dictionary = {}
+	for entry: Dictionary in undo:
+		match str(entry.get("undo", "")):
+			"restep":
+				var brick: BrickWorld.Brick = world.get_brick(int(entry["brick"]))
+				if brick != null:
+					bricks[brick.id] = brick.step
+			"unitstep":
+				units[str(entry["unit"])] = int(world.unit_steps.get(str(entry["unit"]), -1))
+	return {"bricks": bricks, "units": units}
+
+
+## A step edit on a model with no steps of its own gives every part and copy
+## the worked-out ones first, in its step (AuthorSteps.ensure, the step's
+## "ensured"): the edit starts from those, which are no change it made to
+## the other copies. Read as its own, every twin kept the number ensure gave
+## it, and a part of one wheel put in a step of its own, or the car's 3001,
+## stayed so in that copy alone; saved, every wheel had it (cffix). So
+## [param then] ([method _before]) reads each part ensure stepped in that
+## step, and [param units] ([method _units_named]) leaves out each copy
+## whose step is still ensure's.
+func _from_ensured(step: Dictionary, then: Dictionary, units: Dictionary) -> void:
+	var ensured: Dictionary = step.get("ensured", {})
+	if ensured.is_empty():
+		return
+	var bricks: Dictionary = ensured["bricks"]
+	for brick_id: int in bricks:
+		var was: Variant = then.get(brick_id)
+		if was is Dictionary:
+			(was as Dictionary)["step"] = int(bricks[brick_id])
+	var given: Dictionary = ensured["units"]
+	for unit: String in given:
+		if units.has(unit) and int(world.unit_steps.get(unit, -1)) == int(given[unit]):
+			units.erase(unit)
+
+
+## Each brick [param step] names as it was before it, by its number now, or
+## for one it took off the number it had (below 0 where another holds that):
+## {"part", "color", "at", "group", "unit", "step", "origin"}, or null for one
+## it put down. Read backwards, as an undo carries it out, newest first.
+func _before(step: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	_undone_into(step, out, [-1])
+	return out
+
+
+func _undone_into(step: Dictionary, out: Dictionary, unnumbered: Array) -> void:
+	var kind: String = str(step.get("undo", ""))
+	if kind == "group":
+		for inner: Variant in step.get("steps", []):
+			if inner is Dictionary:
+				_undone_into(inner, out, unnumbered)
+		return
+	if kind == "add":
+		var number: int = int(step.get("was", 0))
+		if number <= 0 or out.get(number) != null:
+			number = int(unnumbered[0])
+			unnumbered[0] = number - 1
+		out[number] = {"part": str(step.get("part", "")), "color": int(step.get("color", 0)),
+			"at": step.get("transform", Transform3D.IDENTITY), "group": str(step.get("group", "")),
+			"unit": str(step.get("unit", "")), "step": int(step.get("step", -1)),
+			"origin": world.gone_origin(number) if number > 0 else ""}
+		return
+	if not step.has("brick") or not kind in ["move", "recolor", "restep", "regroup", "remove"]:
+		return
+	var brick_id: int = builder._live(int(step["brick"]))
+	if not out.has(brick_id):
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		out[brick_id] = null if brick == null else {"part": brick.part_id,
+			"color": brick.color_code, "at": brick.transform, "group": brick.group,
+			"unit": brick.unit, "step": brick.step, "origin": brick.origin}
+	var was: Variant = out[brick_id]
+	if was == null:
+		return
+	match kind:
+		"move":
+			(was as Dictionary)["at"] = step["transform"]
+		"recolor":
+			(was as Dictionary)["color"] = int(step["color"])
+		"restep":
+			(was as Dictionary)["step"] = int(step["step"])
+		"regroup":
+			(was as Dictionary)["group"] = str(step["group"])
+			if step.has("unit"):
+				(was as Dictionary)["unit"] = str(step["unit"])
+		"remove":
+			out[brick_id] = null
+
+
+## The copies [param step] gives a step of their own ("unitstep"), path ->
+## true.
+static func _units_named(step: Dictionary, out: Dictionary = {}) -> Dictionary:
+	if step.get("undo", "") == "group":
+		for inner: Variant in step.get("steps", []):
+			if inner is Dictionary:
+				_units_named(inner, out)
+	elif step.get("undo", "") == "unitstep":
+		out[str(step["unit"])] = true
+	return out
+
+
+## The parts of the copy at [param path] as they stood before the step
+## [param then] reads ([method _before]), as [method content] lists them:
+## those it does not name as they are, and those it does as they were, those
+## it took off among them.
+func _content_then(path: String, then: Dictionary) -> Array:
+	var out: Array = []
+	for brick: BrickWorld.Brick in bricks_under(path):
+		if not then.has(brick.id):
+			out.append({"part": brick.part_id, "color": brick.color_code, "at": brick.transform,
+				"rest": path_of(brick).substr(path.length()).trim_prefix("/"), "id": brick.id,
+				"step": brick.step, "origin": brick.origin})
+	for brick_id: int in then:
+		var was: Variant = then[brick_id]
+		if was == null:
+			continue
+		var at: String = path_from(str(was["group"]), str(was["unit"]))
+		if at.is_empty() or not within(at, path):
+			continue
+		out.append({"part": was["part"], "color": was["color"], "at": was["at"],
+			"rest": at.substr(path.length()).trim_prefix("/"), "id": brick_id,
+			"step": was["step"], "origin": was["origin"]})
+	return out
+
+
+## What the step [param then] reads ([method _before]) made of the copy at
+## [param path]: its parts before ("then", as [method content] lists them)
+## and each change to them, "moved", "painted", "stepped" and "regrouped"
+## ([before, now] each), "gone" (before), "fresh" (now) and "swapped"
+## ([before, now]: one put down where one taken off stood). {} when it
+## changed nothing of it, nor the step of any copy inside it ([param units],
+## [method _units_named]: those [method _follow] gives the others); when it
+## is new, nothing of it there before; when nothing of it is left; and when
+## it changed it whole, no part standing where it stood and the copy lying
+## on itself as it was.
+func _made_in(path: String, then: Dictionary, units: Dictionary = {}) -> Dictionary:
+	var now: Array = content(path)
+	var was: Array = _content_then(path, then)
+	if now.is_empty() or was.is_empty():
+		return {}
+	var now_of: Dictionary = {}
+	for item: Dictionary in now:
+		now_of[int(item["id"])] = item
+	var made: Dictionary = {"then": was, "moved": [], "painted": [], "stepped": [],
+		"regrouped": [], "gone": [], "fresh": [], "swapped": []}
+	var standing: int = 0         ## parts before that stand where they stood
+	var was_of: Dictionary = {}
+	for item: Dictionary in was:
+		var brick_id: int = int(item["id"])
+		was_of[brick_id] = true
+		var here: Variant = now_of.get(brick_id)
+		if here == null:
+			(made["gone"] as Array).append(item)
+			continue
+		if not then.has(brick_id):
+			standing += 1
+			continue
+		var pair: Array = [item, here]
+		if _alike(item["at"], (here as Dictionary)["at"]):
+			standing += 1
+		else:
+			(made["moved"] as Array).append(pair)
+		if int(item["color"]) != int(here["color"]):
+			(made["painted"] as Array).append(pair)
+		if int(item["step"]) != int(here["step"]):
+			(made["stepped"] as Array).append(pair)
+		if str(item["rest"]) != str(here["rest"]):
+			(made["regrouped"] as Array).append(pair)
+	for item: Dictionary in now:
+		if not was_of.has(int(item["id"])):
+			(made["fresh"] as Array).append(item)
+	_swaps_in(made)
+	var changed: bool = false
+	for kind: String in ["moved", "painted", "stepped", "regrouped", "gone", "fresh", "swapped"]:
+		changed = changed or not (made[kind] as Array).is_empty()
+	if not changed:
+		# A copy inside it put in another step, and nothing else: the wheel
+		# the car puts on in its own step, which every car does.
+		for unit: String in units:
+			if unit != path and within(unit, path):
+				return made
+		return {}
+	if standing == 0 and was.size() == now.size() \
+			and int(best_match(was, now)["score"]) == was.size():
+		return {}
+	return made
+
+
+## Each part [param made] put down that stands where one it took off stood
+## (its middle in the other's box, or the other's in its, in the same copy
+## inside), out of "fresh" and "gone" into "swapped" as [before, now]: a part
+## replaced, or the same put down again. The nearest first.
+func _swaps_in(made: Dictionary) -> void:
+	var gone: Array = made["gone"]
+	var fresh: Array = made["fresh"]
+	if gone.is_empty() or fresh.is_empty():
+		return
+	var boxes: Array = gone.map(func(item: Dictionary) -> AABB:
+		return Later.script(&"SelectionScope").box_of(str(item["part"]), item["at"], library))
+	for item: Dictionary in fresh.duplicate():
+		var box: AABB = Later.script(&"SelectionScope").box_of(str(item["part"]), item["at"], library)
+		var middle: Vector3 = box.get_center()
+		var best: int = -1
+		for n: int in gone.size():
+			var there: AABB = boxes[n]
+			if str(gone[n]["rest"]) != str(item["rest"]) or not (there.grow(0.5).has_point(middle)
+					or box.grow(0.5).has_point(there.get_center())):
+				continue
+			if best < 0 or (boxes[best] as AABB).get_center().distance_to(middle) \
+					> there.get_center().distance_to(middle):
+				best = n
+		if best < 0:
+			continue
+		(made["swapped"] as Array).append([gone[best], item])
+		gone.remove_at(best)
+		boxes.remove_at(best)
+		fresh.erase(item)
+
+
+## The copy [param plan] names ([path, other, fit, pairs, made, its parts
+## before]) given what the step made of the one at path ([method _made_in]),
+## part by part. Returns the history steps that take it back, newest first.
+## [param claimed]: what each brick has been given by this follow already,
+## brick id -> {"at", "color", "step", "path" or "gone": true}, which another
+## copy of a copy round it does not give it again; nor what the step itself
+## changed of it ([param then]); and "laid" for each part this follow put
+## down, which no later plan puts down again ([method _put_already]).
+func _follow(plan: Array, then: Dictionary, units: Dictionary, claimed: Dictionary) -> Array:
+	var path: String = plan[0]
+	var other: String = plan[1]
+	var fit: Dictionary = plan[2]
+	var pairs: Dictionary = plan[3]
+	var made: Dictionary = plan[4]
+	var twin: Dictionary = {}       ## its brick -> as it stood before the step
+	for item: Dictionary in plan[5]:
+		twin[int(item["id"])] = item
+	# Copies built in steps of their own share them, as a file writes the
+	# sub-model once; one built in the steps of the one round it has its own.
+	var shared: bool = not AuthorSteps.in_parent(world, path) \
+		and not AuthorSteps.in_parent(world, other)
+	var inner: Dictionary = _inner_names(made["then"], pairs, twin)
+	var matched: Dictionary = {}    ## parts put down already that this plan has
+	var back: Array = []
+	for pair: Array in made["moved"]:
+		var brick_id: int = int(pairs[int(pair[0]["id"])])
+		if _free(brick_id, "at", twin, other, then, claimed):
+			var laid: Array = _laid(fit, str(pair[1]["part"]), pair[1]["at"])
+			back.push_front(builder._apply({"undo": "move", "brick": brick_id,
+				"transform": laid[1]}))
+	for pair: Array in made["painted"] + made["swapped"].filter(func(one: Array) -> bool:
+			return _put_back(one)):
+		var brick_id: int = int(pairs[int(pair[0]["id"])])
+		# Its own colour where both copies had it; else the copy's placing
+		# colour, which this copy keeps its own of.
+		if int(pair[0]["color"]) != int(pair[1]["color"]) \
+				and int(twin[brick_id]["color"]) == int(pair[0]["color"]) \
+				and _free(brick_id, "color", twin, other, then, claimed):
+			back.push_front(builder._apply({"undo": "recolor", "brick": brick_id,
+				"color": int(pair[1]["color"])}))
+	if shared:
+		for pair: Array in made["stepped"] + made["swapped"].filter(func(one: Array) -> bool:
+				return _put_back(one)):
+			var brick_id: int = int(pairs[int(pair[0]["id"])])
+			if int(pair[0]["step"]) != int(pair[1]["step"]) \
+					and _free(brick_id, "step", twin, other, then, claimed):
+				back.push_front(builder._apply({"undo": "restep", "brick": brick_id,
+					"step": int(pair[1]["step"])}))
+	for pair: Array in made["regrouped"]:
+		var brick_id: int = int(pairs[int(pair[0]["id"])])
+		var to: String = _named_in(other, str(pair[1]["rest"]), inner)
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick != null and path_of(brick) != to \
+				and _free(brick_id, "path", twin, other, then, claimed):
+			back.push_front(builder._apply({"undo": "regroup", "brick": brick_id,
+				"group": group_of(to), "unit": to}))
+	var off := PackedInt64Array()
+	var on: Array = []
+	for pair: Array in made["swapped"]:
+		var brick_id: int = int(pairs[int(pair[0]["id"])])
+		if _put_back(pair) or not _free(brick_id, "gone", twin, other, then, claimed):
+			continue
+		var was: Dictionary = twin[brick_id]
+		var laid: Array = _laid(fit, str(pair[1]["part"]), pair[1]["at"])
+		if _put_already(other, laid, then, claimed, matched):
+			continue
+		off.append(brick_id)
+		# In the colour it is given where both copies had the one it replaces
+		# in one colour; else in this copy's colour for it. On the line of the
+		# one it replaces where the edited copy's is (a Replace, _swap), else
+		# on a line of its own.
+		on.append({"part": laid[0], "at": laid[1],
+			"color": int(pair[1]["color"]) if int(was["color"]) == int(pair[0]["color"])
+				else int(was["color"]),
+			"path": _named_in(other, str(pair[1]["rest"]), inner),
+			"step": int(pair[1]["step"]) if shared else int(was["step"]),
+			"origin": "" if str(pair[1].get("origin", "")).is_empty()
+				else str(was.get("origin", ""))})
+	for item: Dictionary in made["gone"]:
+		var brick_id: int = int(pairs[int(item["id"])])
+		if _free(brick_id, "gone", twin, other, then, claimed):
+			off.append(brick_id)
+	var placing: Array = _placing(made["then"], pairs, twin)
+	var votes: Dictionary = {} if shared else _step_votes(made["then"], pairs, twin)
+	for item: Dictionary in made["fresh"]:
+		var laid: Array = _laid(fit, str(item["part"]), item["at"])
+		if _put_already(other, laid, then, claimed, matched):
+			continue
+		var colour: int = int(item["color"])
+		if not placing.is_empty() and colour == int(placing[0]):
+			colour = int(placing[1])
+		on.append({"part": laid[0], "at": laid[1], "color": colour,
+			"path": _named_in(other, str(item["rest"]), inner),
+			"step": int(item["step"]) if shared or int(item["step"]) < 0
+				else _voted(votes, int(item["step"])), "origin": ""})
+	if not off.is_empty() or not on.is_empty():
+		var swapped: Array = builder.swap_bricks(off, on)
+		for step: Dictionary in swapped:
+			if step["undo"] == "remove":
+				claimed[int(step["brick"])] = {"laid": true}
+		back = swapped + back
+	if shared:
+		for unit: String in units:
+			if unit == path or not within(unit, path):
+				continue
+			var to: String = _named_in(other, unit.substr(path.length() + 1), inner)
+			var kept: bool = world.unit_steps.has(unit)
+			var wanted: int = int(world.unit_steps.get(unit, -1))
+			if units.has(to) or (world.unit_steps.has(to) == kept
+					and int(world.unit_steps.get(to, -1)) == wanted):
+				continue
+			back.push_front(builder._apply({"undo": "unitstep", "unit": to, "step": wanted,
+				"kept": kept}))
+	return back
+
+
+## Whether the part [param laid] ([its part, its place], [method _laid]) is
+## down in the copy at [param other] already, put down in this pass: by the
+## step [param then] reads (a step folded with what followed it, asked
+## again), or by the follow of another copy of a definition it is in, at any
+## depth ([param claimed] "laid"). Then this plan has it ([param matched]),
+## once. Each edit goes once into each copy of each definition: a 3024 put
+## down in Car#1/Wheel#1 went into Car#2/Wheel#3 with the wheel's copies and
+## again with the car's, and three deep once more with each copy round it
+## (cf2check).
+func _put_already(other: String, laid: Array, then: Dictionary, claimed: Dictionary,
+		matched: Dictionary) -> bool:
+	var at: Transform3D = laid[1]
+	for brick: BrickWorld.Brick in bricks_under(other):
+		var put: bool = (then.has(brick.id) and then[brick.id] == null) \
+			or (claimed.get(brick.id, {}) as Dictionary).has("laid")
+		if not put or matched.has(brick.id) or brick.part_id != str(laid[0]) \
+				or brick.transform.origin.distance_to(at.origin) > 0.6 \
+				or not _same_place(brick.part_id, brick.transform, at):
+			continue
+		matched[brick.id] = true
+		return true
+	return false
+
+
+## Whether [param pair] ([before, now], swapped) is the same part put down
+## again where it stood: a paint or a step at most, not a part replaced.
+func _put_back(pair: Array) -> bool:
+	return str(pair[0]["part"]) == str(pair[1]["part"]) \
+		and (pair[0]["at"] as Transform3D).origin.distance_to((pair[1]["at"] as Transform3D).origin) \
+			< 0.6 and _same_place(str(pair[0]["part"]), pair[0]["at"], pair[1]["at"])
+
+
+## Whether the brick [param brick_id] of the copy at [param other] (a part of
+## [param twin], as it stood before the step) may be given [param what] by
+## this follow: it is still there, the step did not change that of it itself,
+## and no copy has given it that already. Taken, it is [param claimed].
+func _free(brick_id: int, what: String, twin: Dictionary, other: String, then: Dictionary,
+		claimed: Dictionary) -> bool:
+	var brick: BrickWorld.Brick = world.get_brick(brick_id)
+	var given: Dictionary = claimed.get(brick_id, {})
+	if brick == null or given.has("gone") or given.has(what):
+		return false
+	if then.has(brick_id):
+		var was: Dictionary = twin[brick_id]
+		var same: bool = true
+		match what:
+			"at":
+				same = _alike(was["at"], brick.transform)
+			"color":
+				same = int(was["color"]) == brick.color_code
+			"step":
+				same = int(was["step"]) == brick.step
+			"path", "gone":
+				same = path_of(brick) == _named_in(other, str(was["rest"]), {})
+		if not same:
+			return false
+	given[what] = true
+	claimed[brick_id] = given
+	return true
+
+
+## Where [param at] (a part's place in the copy that changed) lays a part
+## [param part] in the other copy by [param fit] ([method best_match]),
+## mirrored where the fit is: [its part, its place].
+func _laid(fit: Dictionary, part: String, at: Transform3D) -> Array:
+	var placed: Dictionary = _mirrored({"part": part, "color": 0, "at": at}) \
+		if bool(fit["mirrored"]) else {"part": part, "at": at}
+	var laid: Transform3D = (fit["at"] as Transform3D) * (placed["at"] as Transform3D)
+	return [str(placed["part"]), Builder._tidy(laid, BrickLattice.is_square_to_grid(laid.basis))]
+
+
+## Each copy inside the one that changed, by its place there (its parts'
+## "rest"), named as the copy it lies on inside the other ([param pairs],
+## [param twin]): rest -> rest.
+func _inner_names(was: Array, pairs: Dictionary, twin: Dictionary) -> Dictionary:
+	var out: Dictionary = {"": ""}
+	for item: Dictionary in was:
+		var mate: Dictionary = twin[int(pairs[int(item["id"])])]
+		var from: PackedStringArray = segments(str(item["rest"]))
+		var to: PackedStringArray = segments(str(mate["rest"]))
+		if from.size() != to.size():
+			continue
+		for n: int in from.size():
+			out["/".join(from.slice(0, n + 1))] = "/".join(to.slice(0, n + 1))
+	return out
+
+
+## The path in the copy at [param other] of the place [param rest] has in
+## the copy that changed, by [param inner] ([method _inner_names]); a copy
+## inside it the step made is a new copy inside the other, numbered after
+## every copy of its definition, and kept in [param inner] for the next.
+func _named_in(other: String, rest: String, inner: Dictionary) -> String:
+	if rest.is_empty():
+		return other
+	var mapped: String = ""
+	var key: String = ""
+	for segment: String in segments(rest):
+		key = join(key, segment)
+		if inner.has(key):
+			mapped = str(inner[key])
+			continue
+		if inner.is_empty():
+			return join(other, rest)
+		var kind: String = definition(segment)
+		var number: int = maxi(copy_of(next_copy(kind)), int(_fresh_names.get(kind, 0)) + 1)
+		_fresh_names[kind] = number
+		mapped = join(mapped, "%s#%d" % [kind, number])
+		inner[key] = mapped
+	return join(other, mapped)
+
+
+## The copies a follow has numbered so far, definition -> its highest
+## ([method _named_in]): not yet in the model when the next is numbered.
+var _fresh_names: Dictionary = {}
+
+
+## The colour the copy that changed hands its parts of colour 16, and the
+## colour the other hands them, read where their parts lay on each other in
+## two colours ([param pairs], [param twin]), the commonest such pair: [its,
+## the other's], or [] where every part is one colour in both.
+func _placing(was: Array, pairs: Dictionary, twin: Dictionary) -> Array:
+	var counted: Dictionary = {}
+	for item: Dictionary in was:
+		var theirs: int = int(twin[int(pairs[int(item["id"])])]["color"])
+		if theirs != int(item["color"]):
+			var key: Vector2i = Vector2i(int(item["color"]), theirs)
+			counted[key] = int(counted.get(key, 0)) + 1
+	var best: Variant = null
+	for key: Vector2i in counted:
+		if best == null or int(counted[key]) > int(counted[best]):
+			best = key
+	return [] if best == null else [(best as Vector2i).x, (best as Vector2i).y]
+
+
+## Which step of the other copy each step of the one that changed is, by
+## how many of its parts lie on parts there ([param pairs]): a step of
+## its -> {the other's step: how many}, for [method _voted].
+func _step_votes(was: Array, pairs: Dictionary, twin: Dictionary) -> Dictionary:
+	var votes: Dictionary = {}
+	for item: Dictionary in was:
+		var theirs: int = int(twin[int(pairs[int(item["id"])])]["step"])
+		if int(item["step"]) < 0 or theirs < 0:
+			continue
+		var tally: Dictionary = votes.get(int(item["step"]), {})
+		tally[theirs] = int(tally.get(theirs, 0)) + 1
+		votes[int(item["step"])] = tally
+	return votes
+
+
+## Which part of [param b] each part of [param a] lies on, laid by [param
+## fit] ([method best_match]): id -> id, of those that land on one, the same
+## part at the same place filling the same cells, whatever its colour.
+func _laid_on(a: Array, b: Array, fit: Dictionary) -> Dictionary:
+	var at: Transform3D = fit["at"]
+	var by_part: Dictionary = {}
+	for item: Dictionary in b:
+		if not by_part.has(item["part"]):
+			by_part[item["part"]] = []
+		(by_part[item["part"]] as Array).append(item)
+	var out: Dictionary = {}
+	var used: Dictionary = {}
+	for item: Dictionary in a:
+		var laid: Dictionary = _mirrored(item) if bool(fit["mirrored"]) else item
+		var there: Transform3D = at * (laid["at"] as Transform3D)
+		for other: Dictionary in by_part.get(laid["part"], []):
+			if used.has(other["id"]) \
+					or (other["at"] as Transform3D).origin.distance_to(there.origin) > 0.6 \
+					or not _same_place(str(laid["part"]), there, other["at"]):
+				continue
+			out[int(item["id"])] = int(other["id"])
+			used[other["id"]] = true
+			break
+	return out
 
 
 ## Whether any of [param asked] (paths) has a copy, as [method copies_of]
@@ -1253,107 +1820,10 @@ func content(path: String) -> Array:
 	return out
 
 
-## The copy at ``to`` built again from the one at ``from``: its parts taken
-## off, and ``from``'s put down where ``at`` (and a mirror, when
-## ``mirrored``) lays them. Returns the history steps, newest last.
-##
-## A copy built in its parent's steps (AuthorSteps.IN_PARENT) has steps of
-## its own, not its definition's, so each part goes in the step of the one it
-## takes the place of: the same part where it stood (painted, it is the same
-## part), else whatever stood there; one put where nothing stood, in the step
-## most of its step's parts went to. Given the steps of the copy it followed,
-## the castle's second north-east tower, built elsewhere in the castle's
-## steps, had all of its parts put in the first tower's steps when one part
-## of that was painted (stepsiblings). Copies built in steps of their own
-## share them, as a file writes the sub-model once: they take the steps of
-## the one they follow.
-func realize(from: String, to: String, at: Transform3D, mirrored: bool) -> Array:
-	var own: bool = (AuthorSteps.in_parent(world, from) or AuthorSteps.in_parent(world, to)) \
-		and AuthorSteps.any(world, scenery)
-	var stood: Dictionary = _steps_where(content(to)) if own else {}
-	# Each part of someone else's file on its own line in this copy: the
-	# line of the part it follows, in the copy this one is (SourceFile).
-	# Built again with none, a copy's parts were all new to a save, and the
-	# copy came back as another sub-model of its own (keeptext4).
-	var from_chain: String = str(world.unit_chains.get(from, ""))
-	var to_chain: String = str(world.unit_chains.get(to, ""))
-	var chained: bool = not from_chain.is_empty() and not to_chain.is_empty() \
-		and not from_chain.contains("|") and not to_chain.contains("|")
-	# And a part put back where the same part of this copy stood is that
-	# part, on its line: a copy following one with no lines of its own (put
-	# down new) lost every line it had.
-	var lined: Dictionary = {}      ## place -> [[part, origin], ...] of to's
-	for item: Dictionary in content(to):
-		if not str(item.get("origin", "")).is_empty():
-			var key: String = _place_key(str(item["rest"]), (item["at"] as Transform3D).origin)
-			if not lined.has(key):
-				lined[key] = []
-			(lined[key] as Array).append([str(item["part"]), str(item["origin"])])
-	var votes: Dictionary = {}      ## a step of from's -> {the step of to's it is: how many}
-	var unplaced: Array = []        ## [an add with none where it goes, its step in from]
-	var adds: Array = []
-	for item: Dictionary in content(from):
-		var placed: Dictionary = _mirrored(item) if mirrored else item
-		var rest: String = str(item["rest"])
-		var laid: Transform3D = Builder._tidy(at * (placed["at"] as Transform3D),
-			BrickLattice.is_square_to_grid((at * (placed["at"] as Transform3D)).basis))
-		var add: Dictionary = {"part": placed["part"], "color": item["color"], "at": laid,
-			"path": to if rest.is_empty() else to + "/" + rest, "step": item["step"]}
-		var origin: String = str(item.get("origin", ""))
-		if chained and origin.begins_with(from_chain + "/"):
-			add["origin"] = to_chain + origin.substr(from_chain.length())
-		else:
-			var stood_here: Array = lined.get(_place_key(rest, laid.origin), [])
-			for n: int in stood_here.size():
-				if str(stood_here[n][0]) == str(placed["part"]):
-					add["origin"] = str(stood_here[n][1])
-					stood_here.remove_at(n)
-					break
-		adds.append(add)
-		if not own or int(item["step"]) < 0:
-			continue
-		var there: Array = stood.get(_place_key(rest, laid.origin), [])
-		var found: int = -1
-		for n: int in there.size():
-			if str(there[n][0]) == str(placed["part"]):
-				found = n
-				break
-		if found < 0 and not there.is_empty():
-			found = 0
-		if found < 0:
-			unplaced.append([add, int(item["step"])])
-			continue
-		var step: int = int(there[found][1])
-		there.remove_at(found)
-		add["step"] = step
-		var tally: Dictionary = votes.get(int(item["step"]), {})
-		tally[step] = int(tally.get(step, 0)) + 1
-		votes[int(item["step"])] = tally
-	for one: Array in unplaced:
-		(one[0] as Dictionary)["step"] = _voted(votes, int(one[1]))
-	return builder.swap_bricks(ids_under(to), adds)
-
-
-## [param items] (content's) by where each stands: [method _place_key] ->
-## [[part, step], ...].
-static func _steps_where(items: Array) -> Dictionary:
-	var out: Dictionary = {}
-	for item: Dictionary in items:
-		var key: String = _place_key(str(item["rest"]), (item["at"] as Transform3D).origin)
-		if not out.has(key):
-			out[key] = []
-		(out[key] as Array).append([str(item["part"]), int(item["step"])])
-	return out
-
-
-## Where a part stands in a copy, to half an LDU.
-static func _place_key(rest: String, at: Vector3) -> String:
-	return "%s|%d,%d,%d" % [rest, roundi(at.x * 2.0), roundi(at.y * 2.0), roundi(at.z * 2.0)]
-
-
-## The step of the copy built again that most of the parts of [param step]
-## of the one it follows went to ([param votes]), or of its nearest step
-## that any went to; [param step] itself when none did.
+## The step of a copy built in the steps of the one round it that most of
+## the parts of [param step] of the copy it follows lie on ([param votes],
+## Assemblies._step_votes), or of its nearest step that any lie on; [param
+## step] itself when none do: where a part put down in one goes in the other.
 static func _voted(votes: Dictionary, step: int) -> int:
 	var nearest: int = -1
 	for one: int in votes:
