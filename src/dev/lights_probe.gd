@@ -825,8 +825,13 @@ func _in_file() -> Array:
 	return _lights.call("in_file", _scene(), _store.lift())
 
 
+## The lights a saved file holds, read as the open reads them: off the one
+## index of the app's lines (MetaIndex, metalines). SceneLights.read went
+## with mlfix, and the probe's every "light line in" check called it.
 func _read(path: String) -> Array:
-	return _lights.call("read", FileAccess.get_file_as_string(path))
+	var metas: Variant = load("res://src/parts/meta_index.gd").call("of_text",
+		FileAccess.get_file_as_string(path))
+	return (_lights.call("read_from", metas) as Dictionary)["lights"]
 
 
 func _same(a: Array, b: Array) -> bool:
