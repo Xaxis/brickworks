@@ -5928,6 +5928,7 @@ func _build_ui() -> void:
 	# The colours at the foot of the column, under the model tree and the
 	# properties: what those do moves the parts grid's foot, never them.
 	_stack.add_section(_bin.colours)
+	_stack.never_fills(_bin.colours)
 	_bin.column = _stack
 	_counts = _shell.status.counts
 
