@@ -1,0 +1,39 @@
+{
+ "shots": [
+  {
+   "id": "plans-page",
+   "source": "site",
+   "route": "/plans",
+   "viewport": [
+    1280,
+    1000
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "answers": {
+    "/api/plans?op=beta_spots": {
+     "beta": "off"
+    },
+    "/api/plans": {
+     "status": 405,
+     "body": {
+      "error": "POST {email, plan, billing, note} or {email, forget: true}"
+     }
+    }
+   },
+   "wait": "#pro",
+   "crop": [
+    "#free",
+    "#pro"
+   ],
+   "pad": 24,
+   "alt": "",
+   "caption": "brickworks.diy/plans, with Pro still to come.",
+   "features": [
+    "ui:plans page"
+   ]
+  }
+ ]
+}

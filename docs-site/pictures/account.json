@@ -1,0 +1,79 @@
+{
+ "shots": [
+  {
+   "id": "account-sign-in",
+   "source": "site",
+   "route": "/settings",
+   "viewport": [
+    1280,
+    900
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "answers": {
+    "/api/account": {
+     "enabled": true,
+     "url": "https://sign-in.example",
+     "key": "docs",
+     "assistant": "own_key",
+     "parts_url": null,
+     "orangecheck": {
+      "ready": true,
+      "everyone": true,
+      "connect": true,
+      "native": {
+       "project": "pk_docs",
+       "auth": "https://ochk.io",
+       "audience": "https://brickworks.diy"
+      }
+     },
+     "signed_in": false
+    }
+   },
+   "steps": [
+    {
+     "click": "#sign-in"
+    },
+    {
+     "wait": "dialog.sign-in .elsewhere:not([hidden])"
+    },
+    {
+     "wait": "dialog.sign-in .consent:not([hidden])"
+    }
+   ],
+   "crop": "dialog.sign-in",
+   "pad": 0,
+   "alt": "The site's Sign in to Brickworks dialog: the Email box with Email me a code and Not now, then Sign in with orangecheck with what it takes, and the box Also create my orangecheck account with what it means.",
+   "caption": "Signing in on the site: a code by email, or orangecheck.",
+   "features": [
+    "lib:site sign-in",
+    "ui:sign in with orangecheck"
+   ]
+  },
+  {
+   "id": "account-panel",
+   "source": "app",
+   "setup": [
+    {
+     "assistant": true
+    },
+    {
+     "frames": 30
+    },
+    {
+     "run": "account",
+     "after": 30
+    }
+   ],
+   "crop": "@opened",
+   "pad": 0,
+   "alt": "",
+   "caption": "Account, from the top bar.",
+   "features": [
+    "ui:account panel"
+   ]
+  }
+ ]
+}

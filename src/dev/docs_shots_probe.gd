@@ -30,6 +30,9 @@
 ##   {"click": "path"}                      or the middle of a control,
 ##   {"click": {"part": "3001"}}            or the top of a part
 ##   {"right_click": ...}                   the same with the other button
+##   {"drag": "path", "from": [0.2, 0.3], "to": [0.6, 0.7]}  the left button held
+##                                          from one point to another of a control,
+##                                          each a share of its width and height
 ##   {"over": {"part": "3001", "nth": 0, "lift": 1}}  the pointer over a part
 ##                                          (lift: plates above its top),
 ##   {"over": {"at": [0, 0, 0]}}            or a point in the model (LDU)
@@ -573,6 +576,14 @@ func _do(step: Dictionary) -> void:
 		var at: Variant = _point(step["right_click"] if right else step["click"])
 		if at != null:
 			await _click(at, MOUSE_BUTTON_RIGHT if right else MOUSE_BUTTON_LEFT, int(step.get("times", 1)))
+	elif step.has("drag"):
+		var rect: Variant = _rect_of(str(step["drag"]))
+		if rect != null:
+			var box: Rect2 = rect
+			var from: Array = step.get("from", [0.25, 0.25])
+			var to: Array = step.get("to", [0.75, 0.75])
+			await _drag(box.position + box.size * Vector2(float(from[0]), float(from[1])),
+				box.position + box.size * Vector2(float(to[0]), float(to[1])))
 	elif step.has("over"):
 		var at: Variant = _over(step["over"])
 		if at != null:
@@ -777,6 +788,38 @@ func _click(at: Vector2, button: MouseButton, times: int) -> void:
 		release.button_mask = 0
 		Input.parse_input_event(release)
 		await _frames(2)
+	await _frames(4)
+
+
+## The left button pressed at [param from], the pointer carried to [param to]
+## in a few moves, as a hand does, and let go there.
+func _drag(from: Vector2, to: Vector2) -> void:
+	_move(from)
+	await _frames(3)
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.position = from
+	press.global_position = from
+	press.pressed = true
+	press.button_mask = MOUSE_BUTTON_MASK_LEFT
+	Input.parse_input_event(press)
+	await process_frame
+	for n: int in range(1, 9):
+		var at: Vector2 = from.lerp(to, n / 8.0)
+		_pointer_at = at
+		Input.warp_mouse(at)
+		var motion := InputEventMouseMotion.new()
+		motion.position = at
+		motion.global_position = at
+		motion.button_mask = MOUSE_BUTTON_MASK_LEFT
+		Input.parse_input_event(motion)
+		await process_frame
+	var release: InputEventMouseButton = press.duplicate()
+	release.position = to
+	release.global_position = to
+	release.pressed = false
+	release.button_mask = 0
+	Input.parse_input_event(release)
 	await _frames(4)
 
 
