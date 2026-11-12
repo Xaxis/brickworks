@@ -1383,21 +1383,22 @@ func _round_of(what: String, opened: Array, tables: String, each: Callable = Cal
 	if again != saved and _as_kept(again) == _as_kept(saved):
 		print("  note: saved again, %s; the same once those are set aside" % _first_unlike(saved,
 			again).strip_edges())
-	_check("...saved again: the same file%s" % _first_unlike(_as_kept(saved), _as_kept(again)),
-		_as_kept(saved) == _as_kept(again))
+	if not _check("...saved again: the same file%s" % _first_unlike(_as_kept(saved),
+			_as_kept(again)), _as_kept(saved) == _as_kept(again)):
+		print("    saved: %s\n    again: %s" % [saved.left(240).c_escape(), again.left(240).c_escape()])
 
 
 ## [param text] as a reopened whole write of it keeps it, as 7e6cb1aec wrote
-## it too: without a title line it gains ("0 !BRICKWORKS TITLE", metalines'
-## to fix), and its sub-models' sections in any order (so each without the
-## line end after it), without a first copy's line. A copy written as a sub-model of its own, "wing 2", opens again as
+## it too: its sub-models' sections in any order (so each without the line
+## end after it), without a first copy's line. (A title line it gained,
+## "0 !BRICKWORKS TITLE", was left out too until metalines wrote none.) A copy written as a sub-model of its own, "wing 2", opens again as
 ## "wing 2#1", which sorts before "wing#1", and is written first, saying it
 ## is copy 1 (cfc_wing2.ldr, any edit or none).
 static func _as_kept(text: String) -> String:
 	var kept := PackedStringArray()
 	for line: String in text.split("\n"):
 		var bare: String = line.trim_suffix("\r")
-		if not bare.begins_with("0 !BRICKWORKS TITLE ") and bare != "0 !BRICKWORKS COPY 1":
+		if bare != "0 !BRICKWORKS COPY 1":
 			kept.append(line)
 	var sections: PackedStringArray = "\n".join(kept).split("\n0 FILE ")
 	var rest: Array = []

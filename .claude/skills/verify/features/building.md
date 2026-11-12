@@ -1354,7 +1354,11 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   files made elsewhere, Brickworks' own of each floor and from before floors,
   6689-1 on its own plate, View, Floor's baseplate under a set (one undo,
   saved with the copy), and holds the status bar's verdict on the grid to the
-  baseplate's (6043-1). Pictures are of the model: renders, Export picture, the
+  baseplate's (6043-1). A set's autosave and what a joiner is sent say no
+  floor line, as the set's file, since metalines (an unedited save of someone
+  else's file gains no `FLOOR GRID`): the grid goes beside the autosave
+  (`ModelStore._floor_unsaid`) and in the snapshot's `~floor`, and both come
+  back on the grid. Pictures are of the model: renders, Export picture, the
   share card, the Studio thumbnail, the booklet and the designer's own pictures
   show a baseplate only when it is part of the model (it is in the box), on the
   studio's clean floor otherwise, and never the grid or the shadow's ground;

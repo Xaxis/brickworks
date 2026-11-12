@@ -252,7 +252,8 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 	var model := LdrModel.new()
 	model.name = source_name
 
-	var all: PackedStringArray = text.split("\n")
+	# Past a byte-order mark (text_of): its first line is a line as any other.
+	var all: PackedStringArray = text.trim_prefix(bom()).split("\n")
 	# A plain .ldr has no FILE lines and is one implicit sub-model.
 	var current: SubModel = SubModel.new()
 	current.name = source_name
@@ -515,6 +516,30 @@ static func main_span(text: String) -> Vector2i:
 	return Vector2i(maxi(start, 0), text.length())
 
 
+## [param bytes], a model file's, as its text, the file's byte-order mark
+## kept as its first character when it has one: the engine's UTF-8 reading
+## drops the mark, so a save of a file that had one wrote it without
+## (cfcheck's cfc_bom.mpd). The open reads past it ([method parse],
+## ModelStore._open_into) and the save writes it back.
+static func text_of(bytes: PackedByteArray) -> String:
+	var text: String = bytes.get_string_from_utf8()
+	if text.is_empty() or bytes.size() < 3 or bytes[0] != 0xEF or bytes[1] != 0xBB \
+			or bytes[2] != 0xBF:
+		return text
+	return bom() + text
+
+
+## The byte-order mark, made as the script runs. Never a "\ufeff" literal:
+## an exported script (the web build, every release) keeps its strings as
+## UTF-8, and the engine's reading of UTF-8 drops a leading mark, so there
+## the literal was "", which every text begins with. Each file opened in a
+## browser lost its first character, and with it its first line's meaning
+## (mlfix's preview: "0 FILE" read as " FILE"; the steps, booklet and .io
+## flows red). tests/test_bom_literal.py holds the rule.
+static func bom() -> String:
+	return String.chr(0xFEFF)
+
+
 ## Where [param text]'s own model's lines end ([method main_span]).
 static func main_end(text: String) -> int:
 	return main_span(text).y
@@ -528,11 +553,22 @@ static func into_main(text: String, lines: PackedStringArray) -> String:
 	if lines.is_empty():
 		return text
 	var span: Vector2i = main_span(text)
-	var at: int = span.x
-	if at < span.y:
-		var stop: int = text.find("\n", at)
-		at = text.length() if stop < 0 else stop + 1
-	return lines_at(text, at, lines)
+	return lines_at(text, title_end(text, span.x, span.y), lines)
+
+
+## Where a writer puts a line under the title of the section whose lines run
+## from [param at] to [param end]: after its first line, the title or
+## whatever line it begins with, which stays its first (a byte-order mark
+## stays the file's first); at [param at] when it has none or begins with
+## its 0 NOFILE. Every writer's rule (MetaIndex too): ModelFloor put its line
+## at a title-less main's top and into_main after its first line, so the
+## second save of cfc_noheader.mpd differed from the first (cfcheck).
+static func title_end(text: String, at: int, end: int) -> int:
+	if at >= end:
+		return at
+	var stop: int = text.find("\n", at)
+	var next: int = text.length() if stop < 0 else stop + 1
+	return at if section_word(text.substr(at, next - at)) == "NOFILE" else mini(next, end)
 
 
 ## [param text] with [param lines] put in at [param at], where a line of it

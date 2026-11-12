@@ -2732,11 +2732,14 @@ func save_model(path: String) -> bool:
 	# A second design's saves stay with it, out of the person's models: the
 	# one kept is theirs once it is put down (BestOfTwo).
 	var second_of: String = Later.script(&"BestOfTwo").second_of()
+	# Under the model's own name: up to metalines "Model", which is not
+	# someone else's file's name, so each save wrote "0 !BRICKWORKS TITLE
+	# Model" into it (hscheck).
 	if not second_of.is_empty():
-		return _store.export_to(second_of.path_join(path.get_file()), "Model")
+		return _store.export_to(second_of.path_join(path.get_file()), _store.title)
 	if path.begins_with(ModelStore.SAVE_DIR):
-		return _store.save_file(path, "Model")
-	return _store.export_to(path, "Model")
+		return _store.save_file(path, _store.title)
+	return _store.export_to(path, _store.title)
 
 
 ## Open the local port that lets a session outside the app drive it.

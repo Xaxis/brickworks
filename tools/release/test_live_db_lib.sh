@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# The lock's settings are read by the sourced library, and r and s by the
+# checks' eval.
+# shellcheck disable=SC2034
 # test_live_db_lib.sh: a unit's check waits its turn behind other units but
 # gives way to a release within LIVE_GIVE_WAY. Runs on a scratch lock, not
 # the repository's, so it never touches a real battery's slots.

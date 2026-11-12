@@ -149,6 +149,62 @@ Whether what you built is still there tomorrow, and still means the same thing.
   light before it (`SceneLights.written_with`), in a patch as in (B), and a
   sub-model's light lines are kept with its section's lines. The share,
   set bin and trace lines `ModelStore._write` adds pass through the same.
+  Every `0 !BRICKWORKS` line is found and written by one layer since
+  metalines (2026-11-11; `src/parts/meta_index.gd`, `MetaIndex`): the
+  text read once (each such line by section and word, any case of FILE,
+  any spaces and tabs, the file's line end, each section's title and head),
+  each feature reading only its own lines of the model's own section
+  (`*.read_from`) and marking those it took; every writer gives its lines
+  as a family (`ModelStore._meta_families`) and `MetaIndex.write` keeps the
+  file's line, byte for byte, where one says the same (its words one space
+  apart, its JSON as what it says), changes one in place, puts a new one
+  after the one before it, and writes back where it was each line no
+  reader could read (`MetaIndex.lines_for`: a later build's VIEW, a refused
+  MOTION_KEY between its neighbours), every line ended as the file's are.
+  One head rule for every writer (`LdrModel.title_end`, `into_main` and
+  `MetaIndex` alike): a new line goes after the model's first line, whatever
+  it is, so a title-less main saves twice the same; a file's byte-order mark
+  is kept from the open (`LdrModel.text_of`, the engine's reading drops it),
+  read past (`ModelStore._open_into`) and written back (`_write`). A name
+  the file says on its title line is its own, so a reopened whole write
+  gains no `TITLE` line (`SourceFile.said_title`). The index keeps the lines
+  as columns and makes a `MetaIndex.Line` only for a word a reader or writer
+  asks for: lights' 200,000 unreadable lines save within 1.5 times the same
+  file of comments (`lights_probe --review`). A step's look lines stay where the file has them in their step
+  (`BookletLooks._place_lines`); a file's own empty step with a look of its
+  own is kept through a step edit (`AuthorSteps._tidy`; one an earlier edit
+  emptied lost its look and is numbered out); a page picture given the model's default
+  name while a sub-model's page has one of it takes a free name
+  (`BookletSheet.free_name`). `metalines_probe` (headless, 14 cases, each
+  but castle and bom red on its base 7bce03d88; `METALINES_CASES=a,b`, `METALINES_OUT=DIR`
+  keeps every save) opens each fixture of `src/dev/fixtures/metalines/`
+  over MCP, edits it by the feature owning the line, saves by the bar, over
+  MCP and by Save As, opens and saves again: a later build's view kept and
+  said, 30 CRLF saves with no line ending LF alone, a sub-model's picture
+  and lines its own, an empty step kept, a step named once, an open undone
+  with its unread light, no TITLE or FLOOR GRID added to an unedited save,
+  tabs read, a byte-order mark kept through 4 edits, the castle's whole
+  write timed (`METALINES_CASTLE_MS_PER_MB`).
+  Each app line the open saw is in one of three states, marked by the
+  reader that read it on its `MetaIndex.Line` by place, never told again
+  from text (mlfix, 2026-11-12): taken (what the feature holds; the
+  feature's lines now go in their places), beaten (a reader could read it,
+  and an earlier line of the same view, pin, floor or picture won: kept
+  only while the feature says what the open read, so an unedited save is
+  the file and an edit drops it rather than let the next open read it), and
+  unread (no reader could: a later build's word, a ZOOM that is no number,
+  a refused motion key; kept always, where it was, through every edit and
+  in their step for a step's look lines, `BookletLooks` "unread"). Lights
+  are read from the index as every family is (`SceneLights.read_from`),
+  so the open and the save cannot place a line apart; a family that is
+  not JSON (FLOOR, TITLE, FROM_SET, SHARE, BIN, ...) is compared by its
+  reader's value, so `0 !brickworks floor` stays as the file has it.
+  `mi_fuzz` (headless, `--n=4000 --seed=S`, twins, tabs, any case, CRLF,
+  both writers, motions' own unread list against an exact oracle) and
+  `mlattack_probe` (headless; cases dupsame, dups, unread, features,
+  badlooks, files over `src/dev/fixtures/mlattack/`, 66 files of other
+  programs and by hand, each saved unedited byte for byte) are mlcheck's
+  attack kept.
   A part of a mirrored copy agrees with its line only as it was opened (an
   edit to one is (B)); a step edit moves the lines of the parts it moved to
   the end of their new steps, and one that leaves a step of the file with

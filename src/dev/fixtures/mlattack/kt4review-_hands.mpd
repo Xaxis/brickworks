@@ -1,0 +1,16 @@
+0 FILE hands.mpd
+0 Handed Wings
+0 Name: hands.mpd
+0 Author: Wanda Wing
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 16 -60 0 0 -1 0 0 0 1 0 0 0 1 side.ldr
+1 16 60 0 0 1 0 0 0 1 0 0 0 1 side.ldr
+0 STEP
+0 NOFILE
+0 FILE side.ldr
+0 Side
+0 Name: side.ldr
+0 Author: Wanda Wing
+1 4 40 -8 0 1 0 0 0 1 0 0 0 1 41769.dat
+1 1 20 -16 0 1 0 0 0 1 0 0 0 1 3024.dat
+0 NOFILE

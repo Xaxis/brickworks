@@ -55,6 +55,27 @@ func _initialize() -> void:
 	_run()
 
 
+## A view line a later build wrote, one this cannot read: kept byte for byte
+## where the file has it over a save, and said where the open says what it
+## kept (metalines: it went at the next save, unsaid).
+func _newer_views() -> void:
+	print("\n== A view line a later build wrote")
+	var later: String = "0 !BRICKWORKS VIEW {\"name\":\"orbit\",\"kind\":\"orbit\",\"speed\":2}"
+	var text: String = "0 Later views\n0 Name: later_views.ldr\n0 Author: Someone Else\n" \
+		+ SavedViews.META + "{\"distance\":400,\"focus\":[0,0,0],\"name\":\"main\",\"pitch\":-25,\"yaw\":30}\n" \
+		+ later + "\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n"
+	_store.open_text(text, "Later views")
+	for _n: int in 10:
+		await process_frame
+	_check("the open says one view line is kept unread (\"%s\")" % _store.views_unread_words,
+		_store.views_unread_words.begins_with("1 view line"))
+	var saved: String = _store.to_text(_store.title, true)
+	var lines: PackedStringArray = saved.split("\n")
+	var at: int = lines.find(later)
+	_check("...written back byte for byte, after the view before it (%d)" % at, at > 0
+		and lines[at - 1].contains("\"name\":\"main\""))
+
+
 func _check(what: String, ok: bool) -> void:
 	print("  %s  %s" % ["ok  " if ok else "FAIL", what])
 	if not ok:
@@ -93,6 +114,7 @@ func _run() -> void:
 		await _queued()
 		await _sessions()
 		await _preset()
+		await _newer_views()
 		var keep: String = _argument("--keep")
 		if not keep.is_empty():
 			_leave_in(keep)

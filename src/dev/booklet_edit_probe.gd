@@ -180,6 +180,8 @@ func _run() -> void:
 	var missing: Array = menu.filter(func(id: String) -> bool: return not _shell._commands.has(id))
 	_check("the assistant off, Build, Booklet page has its %d commands" % menu.size(),
 		menu.size() > 20 and missing.is_empty() and not _shell.assistant_shown)
+	if _only.is_empty() or _only == "lines":
+		await _lines_in_place()
 	if not FileAccess.file_exists(str(SETS[0][0])):
 		print("booklet edit: vendor/omr is not in this checkout; nothing judged")
 		quit(0)
@@ -1179,6 +1181,31 @@ func _open(path: String) -> void:
 	_check("opened %s: %d parts, %s" % [path.get_file(), _world.brick_count(),
 		"the author's steps" if AuthorSteps.any(_world, _store.scenery) else "no steps of its own"],
 		_world.brick_count() > 10 and _store.awaited.is_empty())
+
+
+## A step's look lines where the file has them: someone else's file saved
+## with nothing changed is the file, its ZOOM above its STEP_NAME still;
+## the zoom changed, on the line the file had it on (metalines: every look
+## line was written again at the step's end, hscheck).
+func _lines_in_place() -> void:
+	var text: String = FileAccess.get_file_as_string("res://src/dev/fixtures/metalines/F_theirs_lf.ldr")
+	_main.call("clear_model")
+	await _frames(4)
+	_store.open_text(text, "F_theirs_lf")
+	await _frames(20)
+	var path: String = _out.path_join("lines_in_place.ldr")
+	_store.call("_write", path, _store.title, true)
+	var saved: String = FileAccess.get_file_as_string(path)
+	_check("someone else's file saved unedited: the file, byte for byte, its ZOOM above its "
+		+ "STEP_NAME (%d bytes of %d)" % [saved.length(), text.length()], saved == text)
+	BookletLooks.change(_world, BookletLooks.key("", 1), {"zoom": 2.0})
+	_store.call("_write", path, _store.title, true)
+	saved = FileAccess.get_file_as_string(path)
+	var lines: PackedStringArray = saved.split("\n")
+	var at: int = lines.find("0 !BRICKWORKS ZOOM 2")
+	_check("...its zoom changed, on the line the file had it on (%d, was %d)" % [at,
+		text.split("\n").find("0 !BRICKWORKS ZOOM 1.5")], at >= 0
+		and at == text.split("\n").find("0 !BRICKWORKS ZOOM 1.5") and saved.count("ZOOM") == 1)
 
 
 func _timeline() -> void:

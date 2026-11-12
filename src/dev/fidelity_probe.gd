@@ -361,7 +361,10 @@ func _untouched() -> void:
 	var saved: String = _store.to_text(_store.title, true)
 	var differ: Array = _differ(FILE, saved)
 	_expect(differ.is_empty(), "the same file, line for line: %s" % ["; ".join(differ)])
-	_expect(saved.contains("0 !BRICKWORKS FLOOR"), "the floor said in the app's own line")
+	# Someone else's file that says nothing of a floor stands on the grid, and
+	# an unedited save says nothing of it either: up to metalines it gained
+	# "0 !BRICKWORKS FLOOR GRID" (hscheck).
+	_expect(not saved.contains("0 !BRICKWORKS FLOOR"), "no floor line put in: the file said none")
 
 
 func _edits() -> void:
