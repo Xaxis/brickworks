@@ -57,6 +57,8 @@ ui:the panel asked for last in front
 
 The model tree lists the model's sub-assemblies and sections by name, one inside another. Click one to select it, double-click to edit inside it.
 
+Drag one onto another to put it inside that one, or onto **Model** to bring it back to the top. The row it would go into is outlined as you carry it, and none is where it cannot go (into itself, where it already is, or into what is inside it). Hold it at the tree's top or bottom edge to scroll to a row out of sight. Each drop is one step of **Undo**. A suggested section dragged onto another merges them. On a phone or a tablet, hold the row a moment, then drag it: a finger that moves at once scrolls the tree. A model shared to look at, or one still opening, takes no drop.
+
 <!-- covers
 ui:model tree
 -->

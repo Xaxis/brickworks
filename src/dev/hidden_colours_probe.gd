@@ -327,8 +327,7 @@ func _castle() -> void:
 	var recolours: bool = steps.all(func(one: Dictionary) -> bool:
 		return str(one.get("undo", "")) == "recolor")
 	var assemblies: Assemblies = (_main.get("_verbs") as EditVerbs).assemblies
-	var rebuilt: int = int(assemblies.copies_follow(_builder.touched_groups(
-		_builder.last_step()))[1])
+	var rebuilt: int = int(assemblies.copies_follow(_builder.last_step())[1])
 	_check("...and no copy of a sub-assembly was built again for it: the step is %d recolours, "
 		% steps.size() + "and the copies all match still (%d to rebuild)" % rebuilt,
 		recolours and steps.size() == changed.size() and rebuilt == 0)

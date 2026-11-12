@@ -203,14 +203,15 @@ func unshown(placements: Array) -> Dictionary:
 ## could not show carried into it, so a model written whole loses nothing it
 ## could not show either: a sub-model that is nothing but such parts (a
 ## flexible part) placed where each copy of it was, and its section as the
-## file had it; any other such part placed where it was, in the model's own
+## file had it; any other such part the text has not got in its own step and
+## sub-model ([method in_own_steps]) placed where it was, in the model's own
 ## section; and every section of the file those name. [param waiting] are
 ## parts still on their way, in the file's coordinates. [param place] says
 ## where a place the file has stands now, in them (ModelStore.held_place:
 ## where the drives kept since moved the model), as the file has it when
 ## not given.
 func carried_into(text: String, waiting: Array, place: Callable = Callable()) -> String:
-	var parts: Array = not_shown + waiting
+	var parts: Array = _to_carry(waiting)
 	if parts.is_empty():
 		return text
 	var carried: Array = _carried(parts, place)
@@ -233,13 +234,62 @@ func carried_into(text: String, waiting: Array, place: Callable = Callable()) ->
 	return out
 
 
+## Of [param parts], what the app cannot show and what is on its way (as
+## [member not_shown] holds them, in the file's coordinates), those a model
+## written whole writes with the parts it shows, each in its own step and its
+## own sub-model as the file has it (ModelStore._text_into): all but one of a
+## sub-model nothing of which is shown, which goes as the file has it, and
+## one whose line names a section of the file or anything but the part
+## ([method carried_into]). Up to 2026-11-11 every one was carried, at the
+## end of the model's own section, out of its step and its sub-model
+## (hscheck Sa), where an open of the file had it in both.
+func in_own_steps(parts: Array) -> Array:
+	var shown: Dictionary = _shown_sections()
+	return parts.filter(func(placement: LdrModel.Placement) -> bool:
+		return _in_own_step(placement, shown))
+
+
+## [method in_own_steps] for one, [param shown] the sections the model
+## shows a part of ([method _shown_sections]).
+func _in_own_step(placement: LdrModel.Placement, shown: Dictionary) -> bool:
+	if not _outermost_unshown(placement.unit, shown).is_empty():
+		return false
+	var reference: String = _reference_of(placement)
+	return not sections.has(LdrModel._key(reference)) \
+		and reference.to_lower() == (placement.part_id + ".dat").to_lower()
+
+
+## What of [member not_shown] and [param waiting] [method carried_into]
+## carries: those a model written whole has not got ([method in_own_steps]).
+func _to_carry(waiting: Array) -> Array:
+	var shown: Dictionary = _shown_sections()
+	return (not_shown + waiting).filter(func(placement: LdrModel.Placement) -> bool:
+		return not _in_own_step(placement, shown))
+
+
+## The sections a part of which the model shows: each that a line of a part
+## on the baseplate is in.
+func _shown_sections() -> Dictionary:
+	var out: Dictionary = {}
+	for line: int in by_line:
+		out[_section_at(line)] = true
+	return out
+
+
+## The name the file's line places [param placement] by, or its part's.
+func _reference_of(placement: LdrModel.Placement) -> String:
+	if placement.line >= 0 and placement.line < lines.size():
+		var words: PackedStringArray = LdrModel._fields(lines[placement.line].strip_edges())
+		if words.size() >= 15:
+			return " ".join(words.slice(14))
+	return placement.part_id + ".dat"
+
+
 ## What [method carried_into] puts in for [param parts]: [the lines placing
 ## them, in the model's section, and each section of the file those name and
 ## what those draw on, key -> true].
 func _carried(parts: Array, place: Callable = Callable()) -> Array:
-	var shown_sections: Dictionary = {}
-	for line: int in by_line:
-		shown_sections[_section_at(line)] = true
+	var shown_sections: Dictionary = _shown_sections()
 	var refs := PackedStringArray()
 	var placed_units: Dictionary = {}
 	var needed: Dictionary = {}    ## section key -> true
@@ -257,11 +307,7 @@ func _carried(parts: Array, place: Callable = Callable()) -> Array:
 				LdrModel._line_numbers(place.call(frame) if place.is_valid() else frame),
 				_file_name(section)])
 			continue
-		var reference: String = placement.part_id + ".dat"
-		if placement.line >= 0:
-			var words: PackedStringArray = LdrModel._fields(lines[placement.line].strip_edges())
-			if words.size() >= 15:
-				reference = " ".join(words.slice(14))
+		var reference: String = _reference_of(placement)
 		if sections.has(LdrModel._key(reference)):
 			needed[LdrModel._key(reference)] = true
 		refs.append("1 %s %s %s" % [_colour_token(placement.color_code),
@@ -308,7 +354,7 @@ func _as_sections(text: String) -> String:
 ## (sfreview F5).
 func kept_keys(waiting: Array, origins: Array) -> Dictionary:
 	var out: Dictionary = {}
-	var parts: Array = not_shown + waiting
+	var parts: Array = _to_carry(waiting)
 	if not parts.is_empty():
 		out.merge(_carried(parts)[1])
 	for key: String in _unplaced(origins):
@@ -451,10 +497,11 @@ func header() -> PackedStringArray:
 ## class. [param bricks] are the model's parts (BrickWorld.Brick, the floor
 ## left out), [param lift] how far the model was moved to stand on the
 ## ground, [param waiting] the lines whose parts are still on their way
-## ("line|unit"). Null when the change cannot be written into the file as it
-## is.
+## ("line|unit") -> the step each is in now, [param held_at] the step each
+## part the app cannot show is in now, by origin ([method held_steps]). Null when
+## the change cannot be written into the file as it is.
 func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibrary,
-		unit_steps_now: Dictionary) -> Variant:
+		unit_steps_now: Dictionary, held_at: Dictionary = {}) -> Variant:
 	# A copy the file never placed, or steps given to a model that had none.
 	# A copy put in another step is written with the rest of the steps of
 	# the sub-model that places it (_restep).
@@ -543,11 +590,17 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 			if left.is_empty() or gone.is_empty():
 				break
 
-	# A section whose parts' steps changed is written again a step at a time.
+	# A section whose parts' steps changed is written again a step at a time:
+	# those the model holds and does not show too, whose steps a step edit
+	# numbers with the rest.
 	for line: int in by_line:
 		for origin: Read in by_line[line]:
 			if paired.has(origin) and (paired[origin][0] as BrickWorld.Brick).step != origin.step:
 				restepped[_section_of(origin.unit)] = true
+	var steps_held: Dictionary = held_steps(waiting, held_at)
+	for line: int in steps_held:
+		if line < _sec.size() and int(steps_held[line]) != _step_at[line]:
+			restepped[_sec[line]] = true
 
 	# Each line: as it was, rewritten, or taken out.
 	var replace: Dictionary = {}    ## line -> its new text, or "" to take it out
@@ -637,7 +690,7 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 	var eol_now: String = "\r" if not lines.is_empty() and lines[0].ends_with("\r") else ""
 	for section: String in restepped:
 		if not _restep(section, replace, inserts, added.get(section, []), paired,
-				unit_steps_now, eol_now):
+				unit_steps_now, eol_now, steps_held):
 			return null
 
 	# A line written here ends as the file's lines do (Studio's in "\r\n").
@@ -659,16 +712,48 @@ func write(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 	return "\n".join(_ended_as_begun(out, tail, lines, eol))
 
 
+## The step each part the model holds and does not show is in now, by its
+## line ([method patch], [method write]): [param held] is each part the app
+## cannot show, by origin -> its step (ModelStore reads them as the model
+## stands, BrickWorld.held), else its placement's own; [param waiting] each
+## on its way, by origin or by "line|unit" -> its step (true for one not
+## said). -2 for a line whose copies are in different steps. None for a file
+## whose steps are not its author's, which has no steps to keep.
+func held_steps(waiting: Dictionary, held: Dictionary = {}) -> Dictionary:
+	var out: Dictionary = {}
+	if not authored:
+		return out
+	for origin: String in unshown_origins:
+		_held_line(out, origin.get_slice("/", origin.get_slice_count("/") - 1).to_int(),
+			int(held.get(origin, (unshown_origins[origin] as LdrModel.Placement).step)))
+	for key: Variant in waiting:
+		if waiting[key] is int and not str(key).is_empty():
+			var said: String = str(key)
+			_held_line(out, said.get_slice("|", 0).to_int() if said.contains("|")
+				else said.get_slice("/", said.get_slice_count("/") - 1).to_int(), int(waiting[key]))
+	return out
+
+
+static func _held_line(out: Dictionary, line: int, step: int) -> void:
+	if line < 0 or step < 0:
+		return
+	out[line] = step if int(out.get(line, step)) == step else -2
+
+
 ## A section whose steps changed, written again a step at a time: each
 ## line in the step its part, or the copy of a sub-model it places, is in
 ## now, and the notes between them with the step most of theirs went to;
 ## each step ended by the line that ended the last of the file's steps
 ## that went into it, so a merge takes one STEP line out, a split puts one
 ## in, a reorder moves whole steps with their ROTSTEP, and every line
-## nobody changed is the file's, byte for byte. False when a line's copies
-## are now in different steps: one line cannot be in two.
+## nobody changed is the file's, byte for byte. A part the model holds and
+## does not show is in the step [param steps_held] says, by its line
+## ([method held_steps]): put with the step before it, a step of only such a
+## part went into that one, and its zoom and name with it (heldsteps). False
+## when a line's copies are now in different steps: one line cannot be in two.
 func _restep(section: String, replace: Dictionary, inserts: Dictionary, added: Array,
-		paired: Dictionary, unit_steps_now: Dictionary, eol: String) -> bool:
+		paired: Dictionary, unit_steps_now: Dictionary, eol: String,
+		steps_held: Dictionary = {}) -> bool:
 	if not sections.has(section):
 		return false
 	var span: Array = sections[section]
@@ -723,6 +808,11 @@ func _restep(section: String, replace: Dictionary, inserts: Dictionary, added: A
 				if now != -2 and now != step:
 					return false
 				now = step
+			if steps_held.has(n):
+				var kept_in: int = int(steps_held[n])
+				if kept_in == -2 or now != -2 and now != kept_in:
+					return false
+				now = kept_in
 			if now >= 0:
 				line_step[n] = now
 				latest = maxi(latest, now)
@@ -901,6 +991,61 @@ func _rewritten(line: int, live: Array, paired: Dictionary, library: PartLibrary
 			return null
 		text = said
 	return text
+
+
+## The lines [param plan]'s parts with no line take, each where it is in
+## its copy ([param frames]): key -> [section, text, step, [bricks]], or
+## {"": why} when one cannot be written. With [param placing], a part in
+## the colour its copy hands its parts of 16 ([member unit_colours]) is
+## written in 16.
+func _fresh_lines(plan: Plan, frames: Dictionary, dead_copies: Dictionary,
+		library: PartLibrary, placing: bool) -> Dictionary:
+	var groups: Dictionary = {}
+	for entry: Array in plan.fresh:
+		var brick: BrickWorld.Brick = entry[0]
+		if not brick.unit.is_empty() and not unit_sections.has(brick.unit):
+			return {"": "a new part is in a copy the file never placed"}
+		if dead_copies.has(brick.unit):
+			return {"": "a new part is in a copy taken off"}
+		if not brick.unit.is_empty() and brick.group != Assemblies.group_of(brick.unit):
+			return {"": "a new part's group is not its copy's"}
+		if brick.unit.is_empty() and not brick.group.is_empty():
+			return {"": "a new part is in a group of no copy"}
+		if not authored and brick.step >= 0:
+			return {"": "steps were given to a file that has none"}
+		var frame: Transform3D = frames.get(brick.unit, Transform3D.IDENTITY)
+		if frame.basis.determinant() < 0.0:
+			return {"": "a new part in a mirrored copy"}
+		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if library != null else null
+		if CustomParts.is_skin(brick.part_id) or info != null and info.custom \
+				and not sections.has(brick.part_id):
+			return {"": "a new part made here the file does not carry"}
+		var section: String = _section_of(brick.unit)
+		var local: Transform3D = frame.affine_inverse() * (entry[1] as Transform3D)
+		var colour: String = "16" if placing and not brick.unit.is_empty() \
+			and unit_colours.has(brick.unit) and int(unit_colours[brick.unit]) == brick.color_code \
+			else _colour_token(brick.color_code)
+		var text: String = "1 %s %s %s.dat" % [colour, _numbers_for(PackedStringArray(), local),
+			brick.part_id]
+		var key: String = "%s|%d|%s" % [section, brick.step, text]
+		if not groups.has(key):
+			groups[key] = [section, text, brick.step, []]
+		(groups[key][3] as Array).append(brick)
+	return groups
+
+
+## Whether each of [param groups] ([method _fresh_lines]) is one part in
+## every copy of its sub-model still placed, [param dead_copies] aside.
+func _one_each(groups: Dictionary, dead_copies: Dictionary) -> bool:
+	for key: String in groups:
+		var section: String = groups[key][0]
+		var copies_now: int = 1 if section == main_key else 0
+		for path: String in unit_sections:
+			if str(unit_sections[path]) == section and not dead_copies.has(path):
+				copies_now += 1
+		if (groups[key][3] as Array).size() != copies_now:
+			return false
+	return true
 
 
 static func _colour_token(code: int) -> String:
@@ -1232,10 +1377,12 @@ func _placed_from_main(gone: Dictionary) -> Dictionary:
 ## The patch of the file for the model as [param bricks] stand (see the
 ## class, (A)), or a [Plan] that says why there is none ([member Plan.why]).
 ## [param waiting] are the origins of parts still on their way, as they
-## were; [param steps_now] each copy's step (BrickWorld.unit_steps). Reads
-## only what it is given and this source: on any thread.
+## were, each -> the step it is in now; [param steps_now] each copy's step
+## (BrickWorld.unit_steps); [param held_at] the step each part the app
+## cannot show is in now, by origin ([method held_steps]). Reads only what it is
+## given and this source: on any thread.
 func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibrary,
-		steps_now: Dictionary) -> Plan:
+		steps_now: Dictionary, held_at: Dictionary = {}) -> Plan:
 	var plan := Plan.new()
 	if not _why_never.is_empty():
 		return _no(plan, _why_never)
@@ -1454,29 +1601,15 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 	var unplaced: String = _left_unplaced(plan.gone, plan.fresh.size())
 	if not unplaced.is_empty():
 		return _no(plan, unplaced)
-	# A part the app cannot show, or one still on its way, has no step in
-	# the model to follow: where every other part of its step goes to one
-	# other step (the steps numbered again), it would be left behind alone.
-	var behind: Array = []
-	for origin: String in unshown_origins:
-		behind.append(origin)
-	behind.append_array(waiting.keys())
-	for origin: Variant in behind:
-		var own: int = str(origin).get_slice("/", str(origin).get_slice_count("/") - 1).to_int()
-		if own < 0 or own >= _sec.size() or moves.has(own):
-			continue
-		var to: Dictionary = {}
-		var stays: bool = false
-		for other: int in by_line:
-			if other == own or plan.gone.has(other) or _sec[other] != _sec[own] \
-					or _step_at[other] != _step_at[own]:
-				continue
-			if moves.has(other):
-				to[int(moves[other])] = true
-			else:
-				stays = true
-		if not stays and to.size() == 1:
-			return _no(plan, "a part the app cannot show would be left out of its step (line %d)" % (own + 1))
+	# A part the app cannot show, or one still on its way, stays on its line:
+	# one a step edit put in another step (AuthorSteps numbers its step with
+	# the rest) is live's write, which moves its line (_restep). Up to
+	# 2026-11-11 it had no step to follow, and where every other part of its
+	# step went to one other step it was left behind alone (keeptext5).
+	var steps_held: Dictionary = held_steps(waiting, held_at)
+	for line: int in steps_held:
+		if line < _sec.size() and int(steps_held[line]) != _step_at[line]:
+			return _no(plan, "a part the app cannot show is in another step now (line %d)" % (line + 1))
 	# A step of the file every part went out of, and none came into: the
 	# steps numbered again (a merge, a step emptied), which moving lines
 	# cannot say. Each later part moved up a step left the file's STEP lines
@@ -1518,47 +1651,25 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 			var text: String = str(rewrites.get(k, "")) + _eol() if rewrites.has(k) else lines[k]
 			_add_to(inserts, to, [text, MOVE, k, []])
 	# The parts with no line: one line for one in every copy of its sub-model.
-	var groups: Dictionary = {}     ## key -> [section, text, step, [bricks]]
-	for entry: Array in plan.fresh:
-		var brick: BrickWorld.Brick = entry[0]
-		if not brick.unit.is_empty() and not unit_sections.has(brick.unit):
-			return _no(plan, "a new part is in a copy the file never placed")
-		if dead_copies.has(brick.unit):
-			return _no(plan, "a new part is in a copy taken off")
-		if not brick.unit.is_empty() and brick.group != Assemblies.group_of(brick.unit):
-			return _no(plan, "a new part's group is not its copy's")
-		if brick.unit.is_empty() and not brick.group.is_empty():
-			return _no(plan, "a new part is in a group of no copy")
-		if not authored and brick.step >= 0:
-			return _no(plan, "steps were given to a file that has none")
-		var frame: Transform3D = frames.get(brick.unit, Transform3D.IDENTITY)
-		if frame.basis.determinant() < 0.0:
-			return _no(plan, "a new part in a mirrored copy")
-		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if library != null else null
-		if CustomParts.is_skin(brick.part_id) or info != null and info.custom \
-				and not sections.has(brick.part_id):
-			return _no(plan, "a new part made here the file does not carry")
-		var section: String = _section_of(brick.unit)
-		var local: Transform3D = frame.affine_inverse() * (entry[1] as Transform3D)
-		var text: String = "1 %s %s %s.dat" % [_colour_token(brick.color_code),
-			_numbers_for(PackedStringArray(), local), brick.part_id]
-		var key: String = "%s|%d|%s" % [section, brick.step, text]
-		if not groups.has(key):
-			groups[key] = [section, text, brick.step, []]
-		(groups[key][3] as Array).append(brick)
+	# Each in its colour; or, where that takes a line for each copy, in 16
+	# where it is in the colour its copy hands its parts of 16: a plate put
+	# down red in the red post went down in the other post in that one's own,
+	# the two said two lines, and the file was written afresh, every 16 of
+	# the post written as the first post's colour (cf2check post16).
+	var groups: Dictionary = _fresh_lines(plan, frames, dead_copies, library, false)
+	if not groups.has("") and not _one_each(groups, dead_copies):
+		var in_16: Dictionary = _fresh_lines(plan, frames, dead_copies, library, true)
+		if _one_each(in_16, dead_copies):
+			groups = in_16
+	if groups.has(""):
+		return _no(plan, str(groups[""]))
+	if not _one_each(groups, dead_copies):
+		return _no(plan, "a new part in one copy of a sub-model and not another")
 	var keys: Array = groups.keys()
 	keys.sort()
 	for key: String in keys:
 		var group: Array = groups[key]
 		var section: String = group[0]
-		var copies_now: int = 0
-		for path: String in unit_sections:
-			if str(unit_sections[path]) == section and not dead_copies.has(path):
-				copies_now += 1
-		if section == main_key:
-			copies_now += 1
-		if (group[3] as Array).size() != copies_now:
-			return _no(plan, "a new part in one copy of a sub-model and not another")
 		var to: int = _end_of_step(section, int(group[2]))
 		if to < 0:
 			return _no(plan, "a new part is in a step the file has not got")
@@ -2081,13 +2192,16 @@ func _rewritten_as_written(plan: Plan, from: int, said: String, may_say: Diction
 
 ## Why [param said], a new line for the parts [param bricks], does not say
 ## them as written: each one's colour by its own code (a 16 at the top of a
-## file would read as 0), its number as "part.dat", the file's line end
-## unless it is the text's [param at_end]; "".
+## file would read as 0), or 16 in a copy that hands its parts of 16 that
+## colour ([method _fresh_lines]), its number as "part.dat", the file's line
+## end unless it is the text's [param at_end]; "".
 func _new_as_written(said: String, bricks: Array, at_end: bool) -> String:
 	var words: PackedStringArray = _words(said)
 	for item: Variant in bricks:
 		var brick: BrickWorld.Brick = item
-		if words[1] != _colour_token(brick.color_code):
+		var handed: bool = words[1] == "16" and not brick.unit.is_empty() \
+			and int(unit_colours.get(brick.unit, -999)) == brick.color_code
+		if words[1] != _colour_token(brick.color_code) and not handed:
 			return "a new line says colour %s, and its part is %s" % [words[1], _colour_token(brick.color_code)]
 		if _named_as_written(said) != brick.part_id + ".dat":
 			return "a new line names %s, and its part is %s" % [_named_as_written(said).left(60), brick.part_id]

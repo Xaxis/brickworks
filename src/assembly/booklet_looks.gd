@@ -688,8 +688,11 @@ static func first_copies(world: BrickWorld, skip: Dictionary = {}) -> Array:
 
 
 ## An item of AuthorSteps.items_of as [method items_by_step] names it: a part
-## by its id, a sub-model's copy by its name.
+## by its id, a sub-model's copy by its name, a part the model holds and does
+## not show by its placement, so its step's look goes where it goes.
 static func item_name(item: Dictionary) -> String:
+	if item.has("held"):
+		return AuthorSteps.held_name(item["held"])
 	return ("b%d" % int(item["brick"])) if item.has("brick") \
 		else "u" + Assemblies.leaf(str(item["unit"]))
 
@@ -1282,8 +1285,8 @@ static func emptied(world: BrickWorld, step: Dictionary, skip: Dictionary = {},
 	for item: Variant in held:
 		var placement: LdrModel.Placement = item
 		if placement.step >= 0:
-			(holding.get_or_add(definition_of(AuthorSteps.home(world, Assemblies.path_from(
-				placement.group, placement.unit))), {}) as Dictionary)[placement.step] = true
+			(holding.get_or_add(definition_of(AuthorSteps.home(world, world.held_path(
+				placement))), {}) as Dictionary)[placement.step] = true
 	gone = gone.filter(func(name: String) -> bool:
 		return not (holding.get(name.get_slice("|", 0), {}) as Dictionary) \
 			.has(name.get_slice("|", 1).to_int()))

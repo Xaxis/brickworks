@@ -18433,6 +18433,12 @@ func _apply_edit(model: Model) -> void:
 	# bricks the edit had just asked to keep, and then skipped them as
 	# missing.
 	var doomed := PackedInt64Array()
+	# What a part swapped keeps of the one it takes the place of: its
+	# sub-model, its copy, its step and its line in someone else's file, as
+	# Replace keeps them (Builder._swap). Taken off and put down, a session's
+	# swap made a part of nothing, on no line, and the save wrote it into the
+	# model at the file's top (copyfaults).
+	var kept_of: Dictionary = {}    ## placement -> the brick it swaps
 	for brick: BrickWorld.Brick in world.bricks():
 		if scenery.has(brick.id):
 			continue
@@ -18447,6 +18453,8 @@ func _apply_edit(model: Model) -> void:
 			doomed.append(brick.id)
 			fresh.append(placement)
 			wanted.erase(brick.id)
+			kept_of[placement] = brick
+	_swaps_found(model, fresh, doomed, kept_of)
 	for brick_id: int in doomed:
 		builder.lattice.release(brick_id)
 		world.remove_brick(brick_id)
@@ -18487,6 +18495,13 @@ func _apply_edit(model: Model) -> void:
 		var brick_id: int = world.add_brick(
 			placement.part, placement.color, at)
 		if brick_id != 0:
+			var was: BrickWorld.Brick = kept_of.get(placement)
+			if was != null:
+				var made: BrickWorld.Brick = world.get_brick(brick_id)
+				made.group = was.group
+				made.unit = was.unit
+				made.step = was.step
+				made.origin = was.origin
 			builder.register(brick_id, placement.part, at)
 			_changed_ids.append(brick_id)
 			_added_ids.append(brick_id)
@@ -18501,6 +18516,47 @@ func _apply_edit(model: Model) -> void:
 	_sketched_ids = PackedInt64Array()
 	fresh_ids = _changed_ids.duplicate()
 	built.emit(_placed_ids.size())
+
+
+## Each part an edit puts down where one it takes off stood, into
+## [param kept_of] (placement -> the brick it swaps): a swap, as a session
+## makes one with remove and add ("takes it off and adds this where it
+## stood", search_parts like=). Where it stood: the new part's middle in the
+## old one's box, or the old one's in the new one's, the nearest first; one
+## the edit puts in an assembly of its own is not one.
+func _swaps_found(model: Model, fresh: Array[Placement], doomed: PackedInt64Array,
+		kept_of: Dictionary) -> void:
+	var taken: Dictionary = {}
+	for placement: Placement in kept_of:
+		taken[(kept_of[placement] as BrickWorld.Brick).id] = true
+	var gone: Array = []            ## [brick, its box]
+	for brick_id: int in doomed:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick != null and not taken.has(brick_id):
+			gone.append([brick, SelectionScope.box_of(brick.part_id, brick.transform, library)])
+	if gone.is_empty():
+		return
+	for placement: Placement in fresh:
+		if kept_of.has(placement) or placement.id != 0 or not placement.group.is_empty() \
+				or not placement.unit.is_empty():
+			continue
+		var part: Lbm.PartMesh = library.mesh_for(placement.part)
+		if part == null:
+			continue
+		var box: AABB = SelectionScope.box_of(placement.part,
+			_transform(placement, part, model.section_for(placement)), library)
+		var middle: Vector3 = box.get_center()
+		var best: int = -1
+		for n: int in gone.size():
+			var there: AABB = gone[n][1]
+			if not (there.grow(0.5).has_point(middle) or box.grow(0.5).has_point(there.get_center())):
+				continue
+			if best < 0 or (gone[best][1] as AABB).get_center().distance_to(middle) \
+					> there.get_center().distance_to(middle):
+				best = n
+		if best >= 0:
+			kept_of[placement] = gone[best][0]
+			gone.remove_at(best)
 
 
 ## Put a model on the baseplate, replacing whatever the assistant built
@@ -23125,11 +23181,11 @@ func _gather_focus_step(was: Dictionary) -> String:
 	# of a model's two wings, the other stayed as it was.
 	var followed: Array = [[], 0]
 	if assemblies != null:
-		followed = assemblies.copies_follow(builder.touched_groups(
-			{"undo": "group", "steps": steps}))
+		followed = assemblies.copies_follow({"undo": "group", "steps": steps})
 	focus.followed = int(followed[1])
 	var own: Array = steps
-	steps = steps + (followed[0] as Array)
+	# What followed first, newest first as a group keeps them (Builder.extend_last).
+	steps = (followed[0] as Array) + steps
 	if not focus.step.is_empty() and is_same(builder.last_step(), focus.step):
 		focus.own_steps = own + focus.own_steps
 		focus.step["steps"] = steps + (focus.step["steps"] as Array)

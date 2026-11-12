@@ -258,7 +258,14 @@ that offers each system its own build. The cycle and its cadence are
   not); what still fails then runs on brickworks.diy as it is, after the
   battery and as a unit's check would (`ship.sh`, `SHIP_STALE`), and the
   train's mark on the live database goes once its battery is done
-  (`SHIP_LIVE_MARK`). `status` says each one's step, its checks and probes
+  (`SHIP_LIVE_MARK`). A timing check still failing runs instead by turns
+  on the preview and brickworks.diy, P L L P (`live_ab.sh`), judged by the
+  numbers it prints (`timing_judge.py`): it holds only where the preview's
+  mean is past live's by more than the wider spread of either side's runs
+  (and 2% of the bar), and is shipped past otherwise, both sides' numbers
+  in `TAG_ab_NAME.judge`, `TAG_accepted`, status and a commit on top of
+  the merge that main moves to (its tree the merge's, so the preview's
+  build stands for it: `deploy_reads.sh`). `status` says each one's step, its checks and probes
   passed of all, which of its failures already fail on brickworks.diy, and
   when it should serve, under what brickworks.diy serves and since when; `hold TAG`
   and `release TAG` set and lift a hold. Restaging a stopped TAG clears
@@ -606,9 +613,19 @@ whose size is one byte off is `FAIL ... answered '200 <size>'`.
 
 ```sh
 python3 tools/minitest.py tests/test_release_train.py
+python3 tools/minitest.py tests/test_timing_judge.py tests/test_deploy_reads.py
 ```
 
-Proves it when: `32 passed`, in about 85 s, and 8 copies at once all pass
+The second line: `7 passed`. The judge reads each timing check's real lines
+(play's drag frame and opens playing, frames' orbit and Next #N, grab's
+frames, progress's rows by their own work) with their bars and steady keys;
+rel-m287's P L L P ships past (`noise 594 ... no worse`), a preview clearly
+worse holds, one over the bar alike ships, a measure live never printed or
+a step failed only on the preview holds, no finished run on one side
+holds, and runs that timed nothing on either side (playwright missing in a
+worktree) hold; deploy_reads says a commit of words alone on a build stands for it.
+
+Proves it when: `33 passed`, in about 95 s, and 8 copies at once all pass
 (about 56 s each); the killed-train test passes 1000 runs of 16 at once at
 load 33 (4 of 300 failed so before 2026-11-03). Each test makes a repository with an origin and unit
 worktrees; train.sh, ship.sh, preview_lib.sh and retire_wt.sh are the real
@@ -627,8 +644,15 @@ check not (`SHIP: held, failed on the preview: progress`); what still fails
 runs on brickworks.diy only after the preview's battery, at no priority and
 with the train's mark gone (`check_how`), status saying `already failing
 there: people; failing there, changed since: light_render; passing there:
-keys`; `--accept` ships past progress where it fails there too, its merge
-message naming it, and is refused for keys, which passes there; a ship that ends first
+keys`; `--accept` ships past people where it fails there too, its merge
+message naming it, and is refused for keys, which passes there; a timing
+check (progress) failing on the preview runs P1 L2 L3 P4 on the preview and
+brickworks.diy, both at the release's priority, and ships past where no
+worse (`here 95 70 (mean 82.5), there 110 80 (mean 95) ...: no worse`, in
+`TAG_accepted`, status and main's commit `Ships past progress: ...`, whose
+parent is the merge with the same tree, brickworks.diy serving the merge's
+build), holds where worse (`failed 2 of 2, 0 of 2: worse`), ships past when
+both fail alike, and is not run when another check holds; a ship that ends first
 stops the probes beside it; preview_checks.sh runs 3 checks at once
 (`PC_AT_ONCE`) and begins none once the probes failed (`exit=125`); a tree left dirty or
 mid-merge is refused, and so is a probe with a FAIL line or a nonzero exit;

@@ -109,7 +109,7 @@ func _one(path: String, mode: String, stages: int, on_table: bool) -> Dictionary
 	made.pixel = measured.coarsest
 	HiddenColours.apply(made, _world, _builder, assemblies)
 	var after: Array = HiddenColours.bricks_of(_world, _store.scenery)
-	var rebuilt: int = assemblies.copies_follow(_builder.touched_groups(_builder.last_step()))[1]
+	var rebuilt: int = assemblies.copies_follow(_builder.last_step())[1]
 
 	var name: String = path.get_file().get_basename()
 	var into: String = SHOTS.path_join(name)

@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:the panel asked for last in front, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe, ui:a long job says when it is done, cli:donenote probe, lib:line art and comic looks, cli:lineart probe, ui:a step's name, cli:stepnames probe, lib:driving along a path, cli:drive probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:the panel asked for last in front, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, cli:heldsteps probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe, ui:a long job says when it is done, cli:donenote probe, lib:line art and comic looks, cli:lineart probe, ui:a step's name, cli:stepnames probe, lib:driving along a path, cli:drive probe -->
 
 ## Sub-features
 
@@ -1695,6 +1695,42 @@ picture the assistant is shown.
   (`SharedPages.attach_tested`), another reader (the file without the
   app's lines) builds every part in the same step, and the save opened
   again has every part in its step and every sub-model part for part.
+  A part the app holds but does not show (heldsteps, 2026-11-11: one the
+  catalogue lacks, `ModelStore._absent`, one on its way, `awaited`, or one
+  of someone else's file, `SourceFile.not_shown`) is in its step like any
+  other (`BrickWorld.held_parts`, `AuthorSteps.items_in` as an "unseen"
+  item): every step edit numbers it with the rest (`_tidy`, undone by
+  `Builder` "heldstep", which an awaited part that lands carries over by
+  `Placement.landed`) and its step keeps its looks (`BookletLooks.item_name`
+  "h<id>"). A step holding only such parts is not one an edit counts:
+  merge, move a step on or back and delete join the steps you see
+  (`AuthorSteps.steps_in`, `neighbour`), and the held part's step stays its
+  own. pkreview3's missing part, after a step merge, move or delete, was
+  saved in another part's step and its ZOOM was gone. Someone else's file
+  writes each held line in its step (`SourceFile.held_steps`; the patch
+  says "a part the app cannot show is in another step now" and live's
+  write re-steps by it). `heldsteps_probe` (headless) opens a five-step
+  model, own and someone else's, with its 3062b taken out of the library
+  and with it on its way from a local server, merges, moves and deletes
+  steps, takes a part off, saves and opens it again: the held part on its
+  own step, its STEP_NAME and ZOOM byte for byte, and every other step as
+  the same edit gives the model without it; with the part back the model
+  is as it was, and an edit made while it came is undone on it. hsfix
+  (2026-11-11, hscheck's findings): every reader of a step's items names a
+  held one alike (`AuthorSteps.name_of`, "h<id>"), so a sub-model dragged
+  in the tree into a copy holding one is renumbered with it, not stopped on
+  a script error (`rehomed`); a part moved on from the last step you see
+  opens a new step right after it, so a step of only held parts after it
+  keeps its place and a part alone in the last step stays put ("the steps
+  are as they were", `move`); a part moved, moved to a step or made a new
+  step in one copy of a sub-model placed twice is moved in every copy, part
+  for part (`AuthorSteps._moved`), as Merge, Delete, Earlier and Later
+  already were, so the copies, their held parts and the looks stay alike and
+  the save keeps an edit made in the second copy; and someone else's file
+  written whole writes each held part (missing or on its way) in its own
+  step and sub-model (`SourceFile.in_own_steps`), not at the end of the
+  model's last step, a wholly unshown sub-model still carried as the file
+  has it. `heldsteps_probe` section 6 drives each, own and someone else's.
 - `the booklet as a PDF and as PNG pages`: **Save as PDF** and **Save pages as PNG** sit beside Print in the
   booklet's bar (pdf249, 2026-10-24), shown where they work: on the desktop
   while the app serves the booklet (`Booklet.SAVE_SCRIPT` asks the app with

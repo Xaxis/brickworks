@@ -45,8 +45,12 @@ def test_a_build_stands_for_a_later_commit_only_when_nothing_the_deploy_reads_ch
     tools = _commit(repo, "tools/release/ship.sh", "#!/bin/bash\n")
     assert _stands(repo, built, checks)
     assert _stands(repo, built, tools)
-    # Nothing changed: the caller compares the commits itself.
+    # The same commit: the caller compares the commits itself.
     assert not _stands(repo, built, built)
+    # A commit of words alone, as a train's after an A/B says what it ships past.
+    _git(repo, "commit", "-q", "--allow-empty", "-m", "Ships past play")
+    words = _git(repo, "rev-parse", "--short", "HEAD")
+    assert _stands(repo, built, words) and _stands(repo, tools, words)
     # A file the deploy reads, after the checks that it does not.
     code = _commit(repo, "web/site.css", ":root {}\n")
     assert not _stands(repo, built, code)
