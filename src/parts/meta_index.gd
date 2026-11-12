@@ -206,7 +206,7 @@ static func of_text(text: String) -> MetaIndex:
 	var files: int = 0
 	var steps: int = 0         ## the model's own STEP and ROTSTEP lines so far
 	var model_end: int = -1    ## where its NOFILE line begins
-	var at: int = 1 if text.begins_with("﻿") else 0
+	var at: int = 1 if text.begins_with(LdrModel.bom()) else 0
 	if at >= size or text.unicode_at(at) != 48:
 		at = _next_zero(text, at)
 	while at >= 0:

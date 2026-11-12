@@ -253,7 +253,7 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 	model.name = source_name
 
 	# Past a byte-order mark (text_of): its first line is a line as any other.
-	var all: PackedStringArray = text.trim_prefix("\ufeff").split("\n")
+	var all: PackedStringArray = text.trim_prefix(bom()).split("\n")
 	# A plain .ldr has no FILE lines and is one implicit sub-model.
 	var current: SubModel = SubModel.new()
 	current.name = source_name
@@ -526,7 +526,18 @@ static func text_of(bytes: PackedByteArray) -> String:
 	if text.is_empty() or bytes.size() < 3 or bytes[0] != 0xEF or bytes[1] != 0xBB \
 			or bytes[2] != 0xBF:
 		return text
-	return "\ufeff" + text
+	return bom() + text
+
+
+## The byte-order mark, made as the script runs. Never a "\ufeff" literal:
+## an exported script (the web build, every release) keeps its strings as
+## UTF-8, and the engine's reading of UTF-8 drops a leading mark, so there
+## the literal was "", which every text begins with. Each file opened in a
+## browser lost its first character, and with it its first line's meaning
+## (mlfix's preview: "0 FILE" read as " FILE"; the steps, booklet and .io
+## flows red). tests/test_bom_literal.py holds the rule.
+static func bom() -> String:
+	return String.chr(0xFEFF)
 
 
 ## Where [param text]'s own model's lines end ([method main_span]).

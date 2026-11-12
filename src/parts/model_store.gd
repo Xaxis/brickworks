@@ -1538,7 +1538,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 		job: Working.Job) -> void:
 	open_phases = {}
 	_phase_at = Time.get_ticks_usec()
-	var bom: bool = text.begins_with("\ufeff")
+	var bom: bool = text.begins_with(LdrModel.bom())
 	text = text.substr(1) if bom else text
 	var model: LdrModel = parsed if parsed != null else LdrModel.parse(text, name)
 	_phase("parse")
@@ -1941,7 +1941,7 @@ static func _why_not_a_model(text: String) -> String:
 	var lines: int = 0
 	var drawn: bool = false
 	var files: int = 0
-	for raw: String in text.trim_prefix("\ufeff").split("\n"):
+	for raw: String in text.trim_prefix(LdrModel.bom()).split("\n"):
 		var line: String = raw.strip_edges()
 		if line.is_empty():
 			continue
@@ -3605,8 +3605,8 @@ func _write(path: String, title: String, with_steps: bool = false,
 			+ "Clear the baseplate first if it is meant to be empty.")
 		push_warning("kept %s: refused to write a model of no parts over it" % path)
 		return false
-	if _bom_opened and _metas_now() != null and not text.begins_with("\ufeff"):
-		text = "\ufeff" + text
+	if _bom_opened and _metas_now() != null and not text.begins_with(LdrModel.bom()):
+		text = LdrModel.bom() + text
 	return _store(path, text)
 
 
