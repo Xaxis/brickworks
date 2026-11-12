@@ -37,13 +37,17 @@
 ## had 4 of its 8 parts in other steps (tdcheck, 2026-11-11): opened, the
 ## steps were worked out again from parts numbered in the order the file's
 ## lines came, which the drop had changed, and the plan broke its ties
-## another way. Each edit of what holds what, as a person makes it (a drag
-## in the tree, Ungroup, Ctrl-G, Make unique, Rename, parts taken out, a
-## copy pasted into a sub-model, a copy deleted): every other part in the
-## step it was shown in; undone, the model nobody gave steps again; the
-## save opened again in the steps it showed and saved again the same file
-## (treerows). UNIT_STEPS_OUT=DIR keeps each case's orig.ldr, saved.ldr and
-## again.ldr there, for another LDraw reader (sf2check's readers.py).
+## another way. That is open: made the model's own before such an edit, the
+## steps froze, and a sub-assembly made after it was written in its
+## parent's steps, its mirrored copy read back unmirrored (assembly_flow,
+## treerows, 2026-11-12). Each edit, as a person makes it (a drag in the
+## tree, Ungroup, Ctrl-G, Make unique, Rename, parts taken out, a copy
+## pasted into a sub-model, a copy deleted), here: undone, every part's step
+## and the model nobody gave steps again; the save opened again with every
+## part where it was and the same tree, and how many parts the steps worked
+## out again moved, noted. UNIT_STEPS_OUT=DIR keeps each case's orig.ldr,
+## saved.ldr and again.ldr there, for another LDraw reader (sf2check's
+## readers.py).
 extends SceneTree
 
 const CASTLE := "res://models/castle.ldr"
@@ -248,7 +252,9 @@ func _authored(text: String) -> void:
 ## edit's own after it; "order" true compares the build's order, not the
 ## numbers (a copy that holds another now is built in more steps); "planned"
 ## true for parts put on or taken off a model nobody gave steps, planned
-## again as after any; "again" a name: the save opened again saved again
+## again as after any; "worked" true for an edit of what holds what in one,
+## planned again too, and opened again worked out again, its steps noted and
+## each part read back where it was; "again" a name: the save opened again saved again
 ## the same, its files kept under that name (UNIT_STEPS_OUT); "tested" why
 ## the steps test is said and not compared.
 func _edit(name: String, text: String, stepped: bool, what: String, edit: Callable,
@@ -299,12 +305,12 @@ func _edit(name: String, text: String, stepped: bool, what: String, edit: Callab
 	if opts.has("then"):
 		var own: Array = await (opts["then"] as Callable).call(state)
 		_check("...%s" % own[1], bool(own[0]))
-	if opts.get("planned", false):
-		# A model nobody gave steps is planned again after parts are put on
-		# or taken off, as after any: what is kept is what it shows then.
+	if opts.get("planned", false) or opts.get("worked", false):
+		# A model nobody gave steps is planned again after any edit: what is
+		# kept is what it shows then.
 		var moved: Array = _moved(before, after)
-		print("  ....planned again, as after any part put on or taken off: %d of %d parts in "
-			% [moved.size(), before.size()] + "another step")
+		print("  ....planned again, as after any edit of a model nobody gave steps: %d of %d "
+			% [moved.size(), before.size()] + "parts in another step")
 	elif opts.get("order", false):
 		var kept_out: Dictionary = {}
 		for brick_id: Variant in touched:
@@ -312,10 +318,6 @@ func _edit(name: String, text: String, stepped: bool, what: String, edit: Callab
 		var now: Array = _order(kept_out)
 		var then: Array = _order(kept_out, order_before)
 		var differ: int = _first_apart(then, now)
-		if differ >= 0:
-			print("  ....steps %d to %d before: %s\n  ....and now: %s" % [maxi(differ - 2, 0) + 1,
-				differ + 3, " | ".join(then.slice(maxi(differ - 2, 0), differ + 3)),
-				" | ".join(now.slice(maxi(differ - 2, 0), differ + 3))])
 		_check("...the rest built in the same order, %d steps of it, %s" % [now.size(),
 			"the same" if differ < 0 else "apart from step %d: %s / %s" % [differ + 1,
 			str(then[differ]).left(60) if differ < then.size() else "-",
@@ -386,6 +388,14 @@ func _edit(name: String, text: String, stepped: bool, what: String, edit: Callab
 	await _open(saved, name)
 	var reopened: Array = _placed(_numbers())
 	var apart: Array = _unmatched(edited, reopened)
+	if opts.get("worked", false):
+		# Worked out again on open, from parts numbered in the order the
+		# file's lines come, which the edit changed: the plan breaks its ties
+		# another way (tdcheck, 2026-11-11; open, treerows). Noted, and each
+		# part read back where it was.
+		print("  ....opened again and worked out again: %d of %d parts in another step" % [
+			apart.size(), edited.size()])
+		apart = _unmatched(_unstepped(edited), _unstepped(reopened))
 	_check("...saved (%d lines say a sub-model built in its parent's steps) and opened again: "
 		% _in_lines(saved) + "%d of %d parts not where they were, or in another step%s" % [
 		apart.size(), edited.size(), (": " + ", ".join(apart.slice(0, 3).map(
@@ -397,7 +407,10 @@ func _edit(name: String, text: String, stepped: bool, what: String, edit: Callab
 	if opts.has("again"):
 		var twice: String = _store.to_text(name, true)
 		var unlike: String = _unlike_files(saved, twice)
-		_check("...saved again: %s" % unlike, not unlike.begins_with("another"))
+		if opts.get("worked", false):
+			print("  ....saved again, as worked out again: %s" % unlike)
+		else:
+			_check("...saved again: %s" % unlike, not unlike.begins_with("another"))
 		var out: String = OS.get_environment("UNIT_STEPS_OUT")
 		if not out.is_empty():
 			var case: String = out.path_join(str(opts["again"]))
@@ -760,13 +773,13 @@ func _own(nested: String, set_text: String) -> void:
 	var same: Callable = func(units: Dictionary) -> Array: return _carried(units, {})
 	await _edit(name, nested, false, "Sub#1 dragged into Outer#1/Inner#1 in the tree",
 		func() -> String: return _drag_row("Sub#1", "Outer#1/Inner#1"), same, false,
-		{"order": true, "again": "nested_drop"})
+		{"worked": true, "again": "nested_drop"})
 	await _edit(name, nested, false, "Outer#1 taken apart by Ungroup",
 		func() -> String:
 			_select_assembly("Outer#1")
 			_shell.run("leave_submodel")
 			await _frames(2)
-			return "ungrouped Outer#1", same, false, {"again": "nested_apart"})
+			return "ungrouped Outer#1", same, false, {"worked": true, "again": "nested_apart"})
 	var base := func() -> Array:
 		var ids: Array = Array(_assemblies.ids_under("Sub#2"))
 		for brick: BrickWorld.Brick in _world.bricks():
@@ -780,13 +793,13 @@ func _own(nested: String, set_text: String) -> void:
 			await _frames(2)
 			return await _name_it("Base"),
 		func(units: Dictionary) -> Array: return _carried(units, {}, ["Base#1"]), false,
-		{"again": "nested_make"})
+		{"worked": true, "again": "nested_make"})
 	await _edit(name, nested, false, "Sub#2 made unique by the menu",
 		func() -> String:
 			_select_assembly("Sub#2")
 			_shell.run("make_unique")
 			await _frames(2)
-			return "made Sub#2 unique", same, false, {"again": "nested_unique"})
+			return "made Sub#2 unique", same, false, {"worked": true, "again": "nested_unique"})
 	await _edit(name, nested, false, "Sub renamed by its dialog",
 		func() -> String:
 			_select_assembly("Sub#1")
@@ -798,7 +811,7 @@ func _own(nested: String, set_text: String) -> void:
 			return Assemblies.path_of(_world.get_brick(brick_id)) == "Outer#1/Inner#1")
 	await _edit(name, nested, false, "Inner#1's own parts taken out of it by Ungroup",
 		func() -> String: return await _take_out("Outer#1/Inner#1", inner.call()), same, false,
-		{"touched": inner, "again": "nested_out"})
+		{"worked": true, "touched": inner, "again": "nested_out"})
 	await _edit(name, nested, false, "a copy of Sub#2 pasted into Outer#1",
 		func() -> String: return await _paste_into("Sub#2", "Outer#1"), same, false,
 		{"planned": true, "again": "nested_paste"})
@@ -830,15 +843,14 @@ func _own(nested: String, set_text: String) -> void:
 		return
 	await _edit(name, own, false, "Biggs dragged into the support vehicle in the tree",
 		func() -> String: return _drag_row(at["Biggs Darklighter"], at["Support Vehicle"]), same,
-		false, {"order": true, "again": "set_drop", "touched": func() -> Array:
-			return Array(_assemblies.ids_under(at["Biggs Darklighter"]))})
+		false, {"worked": true, "again": "set_drop"})
 	await _edit(name, own, false, "its upper left wing taken apart by Ungroup",
 		func() -> String:
 			_select_assembly(at["Upper Left Wing"])
 			_shell.run("leave_submodel")
 			await _frames(2)
 			return "ungrouped %s" % at["Upper Left Wing"], same, false,
-		{"order": true, "again": "set_apart"})
+		{"worked": true, "again": "set_apart"})
 	var crew := func() -> Array:
 		return Array(_assemblies.ids_under(at["Biggs Darklighter"])) \
 			+ Array(_assemblies.ids_under(at["Support Vehicle"]))
@@ -849,13 +861,13 @@ func _own(nested: String, set_text: String) -> void:
 			await _frames(2)
 			return await _name_it("Ground crew"),
 		func(units: Dictionary) -> Array: return _carried(units, {}, ["Ground crew#1"]), false,
-		{"order": true, "again": "set_make"})
+		{"worked": true, "again": "set_make"})
 	await _edit(name, own, false, "a rear engine made unique by the menu",
 		func() -> String:
 			_select_assembly(engines[1])
 			_shell.run("make_unique")
 			await _frames(2)
-			return "made %s unique" % engines[1], same, false, {"again": "set_unique"})
+			return "made %s unique" % engines[1], same, false, {"worked": true, "again": "set_unique"})
 	await _edit(name, own, false, "the rear engines renamed by their dialog",
 		func() -> String:
 			_select_assembly(engines[0])
@@ -868,7 +880,7 @@ func _own(nested: String, set_text: String) -> void:
 			return Assemblies.path_of(_world.get_brick(brick_id)) == ship).slice(0, 3)
 	await _edit(name, own, false, "three of the ship's own parts taken out of it by Ungroup",
 		func() -> String: return await _take_out(at["Ship"], loose.call()), same, false,
-		{"order": true, "touched": loose, "again": "set_out", "tested": "the parts taken out "
+		{"worked": true, "touched": loose, "again": "set_out", "tested": "the parts taken out "
 			+ "held one of the ship's: built alone, the ship has it in the air, as in 7140-1 as "
 			+ "its author stepped it"})
 	await _edit(name, own, false, "a rear engine pasted into the ship",
@@ -1291,6 +1303,12 @@ func _placed(numbers: Dictionary) -> Array:
 		var brick: BrickWorld.Brick = _world.get_brick(brick_id)
 		out.append(["%s/%d" % [brick.part_id, brick.color_code], brick.transform, str(numbers[brick_id])])
 	return out
+
+
+## [param placed] ([method _placed]) with no step: what each part is and
+## where, alone.
+static func _unstepped(placed: Array) -> Array:
+	return placed.map(func(one: Array) -> Array: return [one[0], one[1], ""])
 
 
 ## The parts of [param before] with none in [param after] alike, in the

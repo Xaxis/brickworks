@@ -492,11 +492,8 @@ func leave_submodel() -> int:
 			var brick: BrickWorld.Brick = world.get_brick(brick_id)
 			if brick != null:
 				changes[brick_id] = Assemblies.parent_of(Assemblies.path_of(brick))
-		# The steps shown kept (Assemblies.own_steps).
-		var kept: Array = assemblies.own_steps()
 		var moved: int = builder.regroup(changes, "took %s out of its sub-assembly"
 			% _parts(changes.size()))
-		assemblies.steps_kept(kept, moved)
 		if moved > 0:
 			edited.call()
 			say.call("took %s out of its sub-assembly" % _parts(moved))

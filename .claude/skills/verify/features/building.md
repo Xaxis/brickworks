@@ -1672,18 +1672,17 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   its twin keeps each part's step, a part it gains taking the step its
   neighbours were built in (`Assemblies._voted`), and a
   sub-model renamed to a gone one's name drops that one's looks
-  (`BookletLooks.renamed`). In a model nobody gave steps (an app's own file:
-  `0 Author: Brickworks`, no `AUTHORED_STEPS`) an edit of what holds what
-  (a drag in the tree, Ungroup, Ctrl-G, Sections' Accept, Make unique, parts
-  taken out) first makes the steps it shows its own (`Assemblies.own_steps`,
-  `AuthorSteps.adopt_plan`, last in the edit's undo: `steps_kept`), so it
-  changes only what it moves and a save opens in them: worked out again on
-  open, a nested drop came back with 4 of 8 parts in other steps (tdcheck,
-  treerows). A rename, a paste and a delete leave it worked out. Probe:
+  (`BookletLooks.renamed`). A model nobody gave steps (an app's own file:
+  `0 Author: Brickworks`, no `AUTHORED_STEPS`) is planned again after every
+  edit of what holds what, and again on open, from parts numbered in the
+  order the file's lines come: a nested drop saved and opened again showed
+  4 of its 8 parts in other steps (tdcheck; open, treerows). Probe:
   `unit_steps_probe` (headless; `UNIT_STEPS_ONLY=castle`, `copies`, `7140`,
-  `siblings` or `own` for one; own drives each of those edits on
+  `siblings` or `own` for one; own drives a drag in the tree, Ungroup,
+  Ctrl-G, Make unique, Rename, parts taken out, a paste and a delete on
   `tests/fixtures/steps/nested_own.ldr` and on 7140-1 as the app saves it
-  with its steps taken out, saved, opened again and saved again the same,
+  with its steps taken out: undone as it was, saved and opened again with
+  every part where it was, the steps it moved noted,
   `UNIT_STEPS_OUT=DIR` keeping each case's files for another LDraw reader;
   siblings
   drives the seven edits that reach a sibling's steps: a twin painted, a
