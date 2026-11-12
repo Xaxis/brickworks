@@ -259,6 +259,21 @@ static func pictures_named(kept: Variant) -> Array[String]:
 	return out
 
 
+## [param named], a page picture's name, or the first "-2", "-3"... of it
+## that none of [param taken] is (the pictures the file has, lower case),
+## but for those [param own] names (the model's own page's, which a picture
+## given replaces).
+static func free_name(named: String, taken: PackedStringArray, own: Array) -> String:
+	if not named in taken or named in own:
+		return named
+	var stem: String = named.get_basename()
+	var extension: String = named.get_extension()
+	var n: int = 2
+	while ("%s-%d.%s" % [stem, n, extension]) in taken:
+		n += 1
+	return "%s-%d.%s" % [stem, n, extension]
+
+
 ## A page set up as [param kept] says ([method said]'s fields, or a session's:
 ## size a paper's name, orientation "portrait" or "landscape"), each checked
 ## and kept in range; a field it does not have is the booklet's own.

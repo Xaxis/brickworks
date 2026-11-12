@@ -1,0 +1,52 @@
+{
+ "shots": [
+  {
+   "id": "together-dialog",
+   "source": "app",
+   "setup": [
+    {
+     "run": "together",
+     "after": 30
+    }
+   ],
+   "crop": "@opened",
+   "pad": 4,
+   "alt": "File › Build together…, before a session: what building together does, Start a session, and a box to paste a link someone sent you with Join.",
+   "caption": "File › Build together…",
+   "features": [
+    "ui:build together"
+   ]
+  },
+  {
+   "id": "build-party",
+   "source": "app",
+   "view": "DocsSprt01",
+   "answers": {
+    "fetch": {
+     "code": 200,
+     "body": {
+      "id": "DocsSprt01",
+      "name": "Sports car and its driver",
+      "author": "Test builder",
+      "parts": 187,
+      "url": "https://brickworks.diy/m/DocsSprt01"
+     },
+     "model_file": "res://models/sports_car.ldr"
+    }
+   },
+   "setup": [
+    {
+     "click": "_share_view._party_bar",
+     "after": 30
+    }
+   ],
+   "crop": "_share_view._party_card",
+   "pad": 8,
+   "alt": "Build together on a shared model's viewer: what it does, a box for your name, Start a build, and a box for a code with Join.",
+   "caption": "Build together, on a shared model's viewer.",
+   "features": [
+    "ui:build party"
+   ]
+  }
+ ]
+}

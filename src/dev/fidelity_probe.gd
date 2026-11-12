@@ -361,7 +361,10 @@ func _untouched() -> void:
 	var saved: String = _store.to_text(_store.title, true)
 	var differ: Array = _differ(FILE, saved)
 	_expect(differ.is_empty(), "the same file, line for line: %s" % ["; ".join(differ)])
-	_expect(saved.contains("0 !BRICKWORKS FLOOR"), "the floor said in the app's own line")
+	# Someone else's file that says nothing of a floor stands on the grid, and
+	# an unedited save says nothing of it either: up to metalines it gained
+	# "0 !BRICKWORKS FLOOR GRID" (hscheck).
+	_expect(not saved.contains("0 !BRICKWORKS FLOOR"), "no floor line put in: the file said none")
 
 
 func _edits() -> void:
@@ -838,7 +841,10 @@ func _mirrored_copy() -> void:
 	_builder.register(added, wedge, at)
 	_world.get_brick(added).unit = "Wing#1"
 	_world.get_brick(added).group = "Wing"
-	tree.copies_follow({"Wing#1": true})
+	# Followed by the step that put it down, as Builder.place keeps it: the
+	# copies follow an edit's step (copyfaults), and asked of the paths it
+	# touched, as before, nothing followed.
+	tree.copies_follow({"undo": "remove", "brick": added})
 	var parts: Array = _of_unit("Wing#2").map(func(brick: BrickWorld.Brick) -> String:
 		return brick.part_id)
 	_expect(parts.has(other) and not parts.has(wedge),

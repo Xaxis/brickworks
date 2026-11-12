@@ -415,7 +415,8 @@ func _autosaved() -> String:
 	unrestored = ""
 	left_empty = false
 	var path: String = autosave()
-	var text: String = FileAccess.get_file_as_string(path) if FileAccess.file_exists(path) else ""
+	var text: String = LdrModel.text_of(FileAccess.get_file_as_bytes(path)) \
+		if FileAccess.file_exists(path) else ""
 	if text.is_empty() or LdrModel.placing_at(text) >= 0:
 		return text
 	var name: String = title_in(text, "")
@@ -556,6 +557,24 @@ var _lights_kept: Array = []
 ## 2026-11-07).
 var _lights_read: Dictionary = {}
 var _lights_in: int = -1
+## The open's one reading of the app's own lines in the model's file
+## (MetaIndex), each line a reader took marked so: those none took are
+## written back as the file had them, where it had them, wherever the model
+## is written (MetaIndex.lines_for). The model's, kept for the world's
+## generation it was laid in as [member _lights_read] is ([method _metas_now]).
+var _metas_read: MetaIndex = null
+var _metas_in: int = -1
+## The line end of the file the model was opened from (MetaIndex.eol): the
+## app's own file, written whole, is written in it too.
+var _eol_opened: String = "\n"
+## Whether that file began with a byte-order mark (LdrModel.text_of): the
+## open reads past it, as every reader of the text does not, and a save of
+## the model writes it back first ([method _write]).
+var _bom_opened: bool = false
+## The floor's line as the open settled it (ModelFloor.to_meta), when the
+## file said none it could read: someone else's file is not given one while
+## the model stands on that (an unedited save is the file, hscheck).
+var _floor_unsaid: String = ""
 ## The light lines of the model on the baseplate its open could not read, in
 ## words (SceneLights.unread_words), for every way of opening to say: "" for
 ## none, and for a model that is not the one opened.
@@ -580,6 +599,33 @@ func _lights_now() -> Dictionary:
 	if world == null or world.generation() != _lights_in:
 		return {}
 	return _lights_read
+
+
+## The open's reading of the app's lines ([member _metas_read]) while the
+## model on the baseplate is the one it was read from; null once it is not.
+## The page pictures the file was opened with has (LDraw's !DATA named
+## brickworks-page-...), by name, lower case, every page's and not the
+## model's alone: a new one is given a name none of them has
+## (BookletSheet.free_name).
+func pictures_in_file() -> PackedStringArray:
+	var metas: MetaIndex = _metas_now()
+	return metas.pictures if metas != null else PackedStringArray()
+
+
+func _metas_now() -> MetaIndex:
+	if world == null or world.generation() != _metas_in:
+		return null
+	return _metas_read
+
+
+## The view lines of the model on the baseplate its open could not read,
+## kept in the file as they are, and those of a name an earlier one has
+## (SavedViews.unread_words): "" for none.
+var views_unread_words: String:
+	get:
+		var metas: MetaIndex = _metas_now()
+		return SavedViews.unread_words(metas.untaken(["VIEW"]), metas.beaten(["VIEW"])) \
+			if metas != null else ""
 
 
 ## The saved file the model on the baseplate is, as this tab or window last
@@ -719,6 +765,7 @@ func identity() -> Dictionary:
 		"awaited": awaited.duplicate() if world != null and world.generation() == _awaited_in
 			else null,
 		"lights_read": _lights_now(),
+		"metas": _metas_now(), "floor_unsaid": _floor_unsaid, "bom": _bom_opened,
 		"views": world.saved_views.duplicate(true) if world != null else [],
 		"cut": world.cut_kept.duplicate(true) if world != null else {},
 		"lights": world.scene_lights.duplicate(true) if world != null else []}
@@ -765,6 +812,11 @@ func put_identity(kept: Dictionary) -> Dictionary:
 	_lifted_by = float(kept["lifted_by"])
 	_lights_read = kept["lights_read"]
 	_lights_in = world.generation() if not _lights_read.is_empty() else -1
+	_metas_read = kept.get("metas")
+	_metas_in = world.generation() if _metas_read != null else -1
+	_eol_opened = _metas_read.eol if _metas_read != null else "\n"
+	_bom_opened = bool(kept.get("bom", false))
+	_floor_unsaid = str(kept.get("floor_unsaid", ""))
 	world.saved_views = (kept["views"] as Array).duplicate(true)
 	world.cut_kept = (kept["cut"] as Dictionary).duplicate(true)
 	world.scene_lights = (kept["lights"] as Array).duplicate(true)
@@ -1112,18 +1164,18 @@ static func _write_saved(path: String, text: String) -> bool:
 ## the name in its file, so a file renamed alone opened, and saved, under
 ## its old one: over the model that has it.
 static func retitled(text: String, name: String) -> String:
-	if not title_meta_in(text).is_empty():
-		var lines: PackedStringArray = text.split("\n")
-		for n: int in lines.size():
-			if lines[n].begins_with(TITLE_META):
-				lines[n] = TITLE_META + name
-		return "\n".join(lines)
+	var metas: MetaIndex = MetaIndex.of_text(text)
+	var named: MetaIndex.Family = MetaIndex.family(["TITLE"], PackedStringArray([TITLE_META + name]))
+	if not title_meta_from(metas).is_empty():
+		return metas.write(text, [named])
 	var was: String = title_in(text, "")
 	var cut: int = text.find("\n")
-	var first: String = (text if cut < 0 else text.left(cut)).strip_edges()
-	if not was.is_empty() and first == "0 " + was:
-		return "0 " + name + (text.substr(cut) if cut >= 0 else "\n")
-	return LdrModel.into_main(text, PackedStringArray([TITLE_META + name]))
+	var first: String = text if cut < 0 else text.left(cut)
+	if not was.is_empty() and first.strip_edges() == "0 " + was:
+		# Its line end kept: a CRLF file's first line came back in "\n" alone.
+		return "0 " + name + ("\r" if first.ends_with("\r") else "") \
+			+ (text.substr(cut) if cut >= 0 else "\n")
+	return metas.write(text, [named])
 
 
 ## Replace what is on screen with a model from disk. Returns how many
@@ -1166,7 +1218,7 @@ var not_opened: String = ""
 ## The text of the file at [param path]; "" with [member not_opened] saying
 ## why when there is none to open.
 func _file_text(path: String) -> String:
-	var text: String = FileAccess.get_file_as_string(path)
+	var text: String = LdrModel.text_of(FileAccess.get_file_as_bytes(path))
 	if not text.is_empty():
 		return text
 	not_opened = ("there is no such file" if not FileAccess.file_exists(path)
@@ -1251,11 +1303,22 @@ func _model_text(paced: bool) -> String:
 		await _text_into(made, title, false, {}, FramePace.new())
 		# Changed meanwhile: made again, as it is now.
 		if world.revision == revision:
-			return ReferenceImage.written_into(SetBin.written_into(with_share(str(made[0]),
-				share_id, remixed_from, remixed_from_version, credit, made_with), bin_sets),
-				reference)
-	return ReferenceImage.written_into(SetBin.written_into(with_share(to_text(title), share_id,
-		remixed_from, remixed_from_version, credit, made_with), bin_sets), reference)
+			return _with_identity(str(made[0]))
+	return _with_identity(to_text(title))
+
+
+## [param text] with what the model is beyond its parts written under its
+## title, in one go (MetaIndex): the picture to build over, the sets its bin
+## was built from, the link it is shared at and the one it was copied from,
+## who made it and who laid its parts; each line of them its open could not
+## read where the file had it. What a save writes, and the autosave; not an
+## export.
+func _with_identity(text: String) -> String:
+	var metas: MetaIndex = _metas_now()
+	return MetaIndex.written(text, [
+		_family(metas, ["REFERENCE", "REFERENCE_PICTURE"], ReferenceImage.lines_of(reference)),
+		_family(metas, ["BIN"], SetBin.lines_of(bin_sets), MetaIndex.TITLE, SetBin.said_in)]
+		+ _share_families(metas, share_id, remixed_from, remixed_from_version, credit, made_with))
 
 
 ## The copies of [param kept] past the newest [param leaving], deleted.
@@ -1310,7 +1373,7 @@ func reopen(again: bool = false, job: Working.Job = null) -> int:
 		return -1
 	var stack: Array[Dictionary] = undone_over if again else opened_over
 	var entry: Dictionary = stack.back()
-	var text: String = FileAccess.get_file_as_string(str(entry["path"]))
+	var text: String = LdrModel.text_of(FileAccess.get_file_as_bytes(str(entry["path"])))
 	if text.is_empty():
 		not_opened = "its copy could not be read"
 		return -1
@@ -1477,6 +1540,8 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 		job: Working.Job) -> void:
 	open_phases = {}
 	_phase_at = Time.get_ticks_usec()
+	var bom: bool = text.begins_with(LdrModel.bom())
+	text = text.substr(1) if bom else text
 	var model: LdrModel = parsed if parsed != null else LdrModel.parse(text, name)
 	_phase("parse")
 	if model == null:
@@ -1807,6 +1872,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	title = _title_of(model, name)
 	if source != null:
 		source.own_title = title
+		source.said_title = model.main.title if model.main != null else ""
 		var named: String = read["title"]
 		if not named.is_empty():
 			title = named
@@ -1817,6 +1883,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	made_with = read["made"]
 	var said: ModelFloor = read["floor"]
 	model_floor = said if said != null else ModelFloor.unsaid(foreign)
+	_floor_unsaid = model_floor.to_meta() if said == null else ""
 	from_set = read["set"]
 	hidden_scheme = read["hidden"]
 	world.cut_kept = read["cut"]
@@ -1833,6 +1900,12 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	_lights_kept = world.scene_lights
 	_lights_read = lit
 	_lights_in = _opened_in
+	# Every app line it has, each its reader took marked so: those none took
+	# go back as they are, where they were (MetaIndex.lines_for).
+	_metas_read = read["metas"]
+	_metas_in = _opened_in
+	_eol_opened = _metas_read.eol
+	_bom_opened = bom
 	pins = read["pins"]
 	bin_sets = read["bin"]
 	reference = read["reference"]
@@ -1857,7 +1930,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 		"waiting": asked_for.size(), "missing_ids": missing, "error": "",
 		"unshown": unshown, "kept": source != null or not _absent.is_empty(),
 		"unbuilt": unbuilt, "lights_unread": lights_unread_words,
-		"motions_unread": motions_unread_words})
+		"motions_unread": motions_unread_words, "views_unread": views_unread_words})
 
 
 ## Why [param text], which places no part, is not a model to open: "" for
@@ -1872,7 +1945,7 @@ static func _why_not_a_model(text: String) -> String:
 	var lines: int = 0
 	var drawn: bool = false
 	var files: int = 0
-	for raw: String in text.trim_prefix("\ufeff").split("\n"):
+	for raw: String in text.trim_prefix(LdrModel.bom()).split("\n"):
 		var line: String = raw.strip_edges()
 		if line.is_empty():
 			continue
@@ -1894,7 +1967,13 @@ static func _why_not_a_model(text: String) -> String:
 ## text and from nothing else, so on any thread.
 static func _read_text(text: String, model: LdrModel, known: Array, mirrored_lines: Dictionary,
 		authored: bool, absent: Array, foreign: bool) -> Dictionary:
+	# Every line of the app's own found once, by its section (MetaIndex), and
+	# each feature's taken from there: the model's own alone, a sub-model's
+	# its own (lightpaths). Each reader scanned the whole text, a dozen times
+	# over an open.
+	var metas: MetaIndex = MetaIndex.of_text(text)
 	return {
+		"metas": metas,
 		"source": SourceFile.make(text, model, known, mirrored_lines, authored, absent)
 			if foreign else null,
 		# A step's look is kept by its step's number, which means nothing
@@ -1905,22 +1984,22 @@ static func _read_text(text: String, model: LdrModel, known: Array, mirrored_lin
 		"looks": BookletLooks.read(text, model._assembly_names(), model.main_key)
 			if authored else BookletLooks.booklet_wide(BookletLooks.read(text,
 				model._assembly_names(), model.main_key)),
-		"title": title_meta_in(text) if foreign else "",
-		"share": share_in(text),
-		"remix": remix_in(text),
-		"remix_version": remix_version_in(text),
-		"credit": credit_in(text),
-		"made": made_in(text),
-		"floor": ModelFloor.read(text),
-		"set": set_in(text),
-		"bin": SetBin.read(text),
-		"reference": ReferenceImage.read(text),
-		"hidden": HiddenColours.read(text),
-		"cut": CutShape.read(text),
-		"views": SavedViews.read(text),
-		"lights": SceneLights.of_model(model),
-		"motions": Motions.read(text),
-		"pins": PinnedComments.read(text),
+		"title": title_meta_from(metas) if foreign else "",
+		"share": share_from(metas),
+		"remix": remix_from(metas),
+		"remix_version": remix_version_from(metas),
+		"credit": credit_from(metas),
+		"made": made_from(metas),
+		"floor": ModelFloor.read_from(metas),
+		"set": set_from(metas, text),
+		"bin": SetBin.read_from(metas),
+		"reference": ReferenceImage.read_from(metas),
+		"hidden": HiddenColours.read_from(metas),
+		"cut": CutShape.read_from(metas),
+		"views": SavedViews.read_from(metas),
+		"lights": SceneLights.read_from(metas),
+		"motions": Motions.read_from(metas),
+		"pins": PinnedComments.read_from(metas),
 	}
 
 
@@ -2250,7 +2329,9 @@ func _motion_lines() -> PackedStringArray:
 		joint.colour = lead.color_code
 		joint.place = (lead.transform.origin - back) * LdrModel.FLIP
 	motions_gone_words = _gone_words(motions, gone)
-	return motions.lines()
+	# Those it could not read are written where the file had them
+	# (_meta_families), not after the rest.
+	return motions.lines(false)
 
 
 ## Whether [param joint]'s part is one still on its way (the web fetches
@@ -2410,14 +2491,27 @@ func _source_asked(title_now: String) -> Dictionary:
 		"waiting_lines": waiting_lines, "held": unshown_steps, "moved": whole,
 		"library": library, "title": title_now,
 		"unit_steps": world.unit_steps.duplicate(true) if source.authored else {},
-		"floor": model_floor, "hidden": hidden_scheme.duplicate(true),
+		"looks": world.step_looks.duplicate(true),
+		"authored": AuthorSteps.any(world, scenery)}.merged(_metas_asked(source))
+
+
+## What the app's own lines in the model are written from (_meta_families),
+## copied as the model stands now: someone else's file's [param source], or
+## null for the app's own file.
+func _metas_asked(source: SourceFile) -> Dictionary:
+	return {"metas": _metas_now(), "elsewhere": source != null,
+		"own_title": source.own_title if source != null else "",
+		"said_title": source.said_title if source != null else "",
+		"floor": model_floor, "floor_unsaid": _floor_unsaid,
+		"hidden": hidden_scheme.duplicate(true),
 		"cut": world.cut_kept.duplicate(true),
 		"views": SavedViews.in_file(world.saved_views, _lift_now()),
 		"lights": SceneLights.in_file(world.scene_lights, _lift_now()),
 		"lights_read": _lights_now(),
-		"motions": _motion_lines(), "looks": world.step_looks.duplicate(true),
-		"pins": pins.lines(world, _lift_now()),
-		"authored": AuthorSteps.any(world, scenery), "set": from_set}
+		"motions": _motion_lines(),
+		"motions_unread": world.motions.unread.duplicate() if world.motions != null
+			else PackedStringArray(),
+		"pins": pins.lines(world, _lift_now()), "set": from_set}
 
 
 ## The source file with the parts [method _source_asked] copied written into
@@ -2427,17 +2521,6 @@ func _source_asked(title_now: String) -> Dictionary:
 static func _source_text_of(asked: Dictionary) -> Variant:
 	var written: Variant = _source_written(asked)
 	return null if written == null else str(written)
-
-
-## The file's own text for the change as the gate holds it ([param written],
-## a writer's), with the app's own taken out and the title written in.
-static func _titled(asked: Dictionary, written: String) -> String:
-	var source: SourceFile = asked["source"]
-	var text: String = _without_app_lines(written)
-	var title_now: String = asked["title"]
-	if title_now != source.own_title and not title_now.is_empty():
-		text = LdrModel.into_main(text, PackedStringArray([TITLE_META + title_now]))
-	return text
 
 
 ## Someone else's file written for the change, with what else the app keeps
@@ -2457,8 +2540,7 @@ static func _source_written(asked: Dictionary) -> Variant:
 		library, asked["unit_steps"], asked.get("held", {})) if patch_files else null
 	var why: String = plan.why if plan != null else "patches are off"
 	if why.is_empty():
-		var patched: String = source.app_lines_placed(
-			_written_with(asked, _titled(asked, "\n".join(plan.out))))
+		var patched: String = source.app_lines_placed(_written_with(asked, "\n".join(plan.out)))
 		why = source.gate(plan, patched, library, asked["waiting"], asked["unit_steps"])
 		if why.is_empty():
 			asked["whole"] = ""
@@ -2473,32 +2555,116 @@ static func _source_written(asked: Dictionary) -> Variant:
 	if written == null:
 		asked["whole"] = why + " (the model written whole)"
 		return null
-	var kept: String = _written_with(asked, _titled(asked, Motions.moved_into(str(written),
-		asked.get("moved", Transform3D.IDENTITY))))
+	var kept: String = _written_with(asked, Motions.moved_into(str(written),
+		asked.get("moved", Transform3D.IDENTITY)))
 	if not asked.get("drops_said", false):
 		asked["drops"] = source.left_out_of(kept)
 	return kept
 
 
 ## [param kept], the file with the change, and what else the app keeps in
-## it ([method _source_written]).
+## it ([method _source_written]): its own lines, written in one go
+## ([method _meta_families]), and the booklet's looks.
 static func _written_with(asked: Dictionary, kept: String) -> String:
 	# A hose LDCad laid, bent by a grab: its path where it now lies.
 	kept = LdcadPath.written_into(kept, asked["source"], asked["library"])
-	var ground: ModelFloor = asked["floor"]
-	kept = ground.written_into(kept) if ground != null else kept
-	kept = HiddenColours.written_into(kept, asked["hidden"])
-	kept = CutShape.written_into(kept, asked["cut"])
-	kept = SavedViews.written_into(kept, asked["views"])
-	kept = SceneLights.written_with(kept, asked["lights"], asked["lights_read"], false)
-	kept = Motions.written_into(kept, asked["motions"])
-	kept = PinnedComments.written_into(kept, asked["pins"])
-	kept = _looks_into(kept, asked["looks"], asked["authored"])
-	# Named by the file's own header (the LDraw model repository's) and by no
-	# line of the app's, it is the file's as it was.
+	var here: MetaIndex = MetaIndex.of_text(kept)
+	kept = here.write(kept, _meta_families(asked, here, kept))
+	return _looks_into(kept, asked["looks"], asked["authored"], Callable(), here)
+
+
+## The app's own lines in the model as [param asked] ([method _metas_asked])
+## says they are now, each feature's a family (MetaIndex.Family) in the order
+## a model the app writes whole has them: under its title the set it is, its
+## lights, views, cut, hidden colours and the name a save gave someone
+## else's file; at the end of its head the floor, the motions and the pins.
+## Each with the lines of it the open could not read where the file had them
+## (MetaIndex.lines_for). [param here] is the text [param text] being written,
+## read (MetaIndex.of_text). From what it is given alone, so on any thread.
+##
+## An app line is put in only where what it says is not what the file says
+## already: someone else's file says nothing of a floor, so it stands on the
+## grid, and an unedited save wrote "FLOOR GRID" into it; a name it has as
+## its own is not said again (hscheck).
+static func _meta_families(asked: Dictionary, here: MetaIndex, text: String) -> Array:
+	var metas: MetaIndex = asked.get("metas")
+	var elsewhere: bool = bool(asked.get("elsewhere", false))
+	var out: Array = []
+	# The set it is: named by the file's own header (the LDraw model
+	# repository's) and by no line of the app's, it is the file's as it was.
 	var number: String = asked["set"]
-	return kept if set_in(kept) == number and not kept.contains(SET_META) \
-		else with_set(kept, number)
+	if not number.is_empty() and (here.has(["FROM_SET"]) or _set_said(text) != number):
+		out.append(_family(metas, ["FROM_SET"], PackedStringArray([SET_META + number]),
+			MetaIndex.TITLE, _set_read))
+	# Each light read and not changed is its line as the file has it already
+	# (SceneLights.lines_now).
+	out.append(_family(metas, ["LIGHT"], SceneLights.lines_now(asked["lights"],
+		asked["lights_read"])))
+	out.append(_family(metas, ["VIEW"], SavedViews.lines_of(asked["views"]), MetaIndex.TITLE,
+		SavedViews._parsed))
+	var cut: Dictionary = asked["cut"]
+	out.append(_family(metas, ["CUT_AWAY"], PackedStringArray([CutShape.META
+		+ JSON.stringify(cut)]) if not cut.is_empty() else PackedStringArray(), MetaIndex.TITLE,
+		CutShape._parsed))
+	var hidden: Dictionary = asked["hidden"]
+	out.append(_family(metas, ["HIDDEN_COLOURS"], PackedStringArray([HiddenColours.META
+		+ JSON.stringify(hidden)]) if not (hidden.get("groups", []) as Array).is_empty()
+		else PackedStringArray(), MetaIndex.TITLE, HiddenColours.said_in))
+	if elsewhere:
+		# Said when the name is not one the file has as its own (its title
+		# line, or the name the open made of it), or when the file says it on
+		# a line of the app's already, which an unedited save keeps.
+		var title_now: String = asked["title"]
+		var said_now: bool = metas != null and metas.own(["TITLE"]).any(
+			func(line: MetaIndex.Line) -> bool: return line.said == title_now)
+		out.append(_family(metas, ["TITLE"], PackedStringArray([TITLE_META + title_now])
+			if not title_now.is_empty() and (said_now or not title_now in [
+				str(asked["own_title"]), str(asked.get("said_title", ""))])
+			else PackedStringArray(), MetaIndex.TITLE, _title_read))
+		# The steps a shared link carries (SharedPages) go: a save is no share.
+		out.append(MetaIndex.family(["PAGES", "PAGE"], PackedStringArray(), MetaIndex.TITLE, true))
+	var ground: ModelFloor = asked["floor"]
+	if ground != null:
+		var said: bool = metas != null and metas.own(["FLOOR"]).any(
+			func(line: MetaIndex.Line) -> bool: return line.taken)
+		var line: String = ground.to_meta()
+		out.append(_family(metas, ["FLOOR"], PackedStringArray() if elsewhere and not said
+			and line == str(asked.get("floor_unsaid", "")) else PackedStringArray([line]),
+			MetaIndex.HEAD, ModelFloor.said_in))
+	# The motions keep their own list of the lines they could not read, one
+	# let go once the next open would read it into a motion (Motions
+	# ._settle_unread).
+	out.append(_family(metas, ["MOTION*"], asked["motions"], MetaIndex.HEAD, Callable(),
+		asked["motions_unread"]))
+	# Pins are said by when each was made (PinnedComments._order), whatever
+	# order the file has them in.
+	out.append(_family(metas, ["PIN"], asked["pins"], MetaIndex.HEAD, PinnedComments.said_in,
+		null, true))
+	# And the lines of a word no reader here reads (a later build's): where
+	# the file has them, and at the end of the head of a model written whole.
+	if metas != null:
+		out.append(metas.unclaimed())
+	return out
+
+
+## A family of [param words] of [param now], with the lines of them
+## [param metas] (the open's reading, or null) had and did not take where
+## the file had them, as its readers marked them (MetaIndex.lines_for).
+## With [param read] (what a line says -> what its reader reads, null for
+## nothing) a line of [param now] that says what a line taken said is that
+## line as the file has it: "0 !BrickWorks floor baseplate 32 32 2" read
+## and said again in capitals is the file's line, and an unedited save is
+## the file (mlcheck F4). [param unread]: the feature's own list of the
+## lines it keeps unread (Motions.unread). [param any_order]: the feature
+## says its lines in an order of its own (MetaIndex.lines_for).
+static func _family(metas: MetaIndex, words: Array, now: PackedStringArray,
+		at: int = MetaIndex.TITLE, read: Callable = Callable(),
+		unread: Variant = null, any_order: bool = false) -> MetaIndex.Family:
+	if metas == null:
+		return MetaIndex.family(words, now, at)
+	if read.is_valid():
+		now = metas.as_written(words, now, read)
+	return MetaIndex.family(words, metas.lines_for(words, now, unread, any_order), at)
 
 
 ## Why each source was last written as live writes it, said on the console
@@ -2522,29 +2688,20 @@ static func _said_whole(source: SourceFile, why: String) -> void:
 			source.own_title if not source.own_title.is_empty() else "the model", why])
 
 
-## [param text] without the lines this app writes again on every save.
-static func _without_app_lines(text: String) -> String:
-	if not text.contains("0 !BRICKWORKS "):
-		return text
-	var kept := PackedStringArray()
-	for line: String in text.split("\n"):
-		if line.begins_with(SHARE_META) or line.begins_with(REMIX_META) \
-				or line.begins_with(REMIX_VERSION_META) or line.begins_with(CREDIT_META) \
-				or line.begins_with(MADE_META) or line.begins_with(SetBin.META) \
-				or line.begins_with(ReferenceImage.META) \
-				or line.begins_with(ReferenceImage.PICTURE_META) \
-				or line.begins_with(TITLE_META) or line.begins_with(SharedPages.PAGE) \
-				or line.begins_with(SharedPages.HEAD):
-			continue
-		kept.append(line)
-	return "\n".join(kept)
-
-
 ## The name a save of someone else's file gave its model, or "".
 static func title_meta_in(text: String) -> String:
-	var found: RegExMatch = RegEx.create_from_string(
-		"(?m)^0 !BRICKWORKS TITLE (.+?)\\s*$").search(text)
-	return found.get_string(1) if found != null else ""
+	return title_meta_from(MetaIndex.of_text(text))
+
+
+## [method title_meta_in] from the model's own lines read once (MetaIndex):
+## a sub-model's TITLE is its own.
+static func title_meta_from(metas: MetaIndex) -> String:
+	var found: Variant = metas.first_read("TITLE", _title_read)
+	return str(found) if found != null else ""
+
+
+static func _title_read(said: String) -> Variant:
+	return said if not said.is_empty() else null
 
 
 ## Placements whose geometry is on its way, put down as each part arrives.
@@ -3053,18 +3210,21 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 		text = LdcadPath.written_into(text, _live_source(), library)
 	# What it stands on goes with it, everywhere it goes: the autosave, a
 	# save, an export, a shared link. Another program reads past the line.
-	text = model_floor.written_into(text) if model_floor != null else text
-	text = HiddenColours.written_into(text, hidden_scheme)
-	text = CutShape.written_into(text, world.cut_kept)
-	text = SavedViews.written_into(text, SavedViews.in_file(world.saved_views, _lift_now()))
-	text = SceneLights.written_with(text, SceneLights.in_file(world.scene_lights, _lift_now()),
-		_lights_now(), true)
-	text = Motions.written_into(text, _motion_lines())
-	text = PinnedComments.written_into(text, pins.lines(world, _lift_now()))
-	text = _with_looks(text, true, steps)
+	# And every other line of the app's own, in one go (_meta_families), each
+	# its open could not read where the file had it. Written whole, the
+	# model's name is its first line, so none says it again.
+	var metas_asked: Dictionary = _metas_asked(_live_source())
+	metas_asked["title"] = title
+	metas_asked["own_title"] = title
+	var here: MetaIndex = MetaIndex.of_text(text)
+	text = here.write(text, _meta_families(metas_asked, here, text))
+	text = _with_looks(text, true, steps, here)
 	if model != world:
 		model.free()
-	text = with_set(text, from_set)
+	# In the line ends of the file it was opened from: a model of the app's
+	# own saved by Studio on Windows came back in "\n" alone.
+	if _eol_opened == "\r\n" and _metas_now() != null:
+		text = text.replace("\r\n", "\n").replace("\n", "\r\n")
 	# Someone else's file written whole: what of its own lines that leaves
 	# out, said once as it is edited.
 	var source: SourceFile = _live_source()
@@ -3086,10 +3246,11 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 ## written whole, each section's steps [param steps] (LdrModel.steps_written)
 ## one after another (BookletLooks.as_written), not written back over the
 ## file it came from.
-func _with_looks(text: String, whole: bool = false, steps: Dictionary = {}) -> String:
+func _with_looks(text: String, whole: bool = false, steps: Dictionary = {},
+		here: MetaIndex = null) -> String:
 	var written: Callable = func() -> Dictionary: return BookletLooks.as_written(world, steps)
 	return _looks_into(text, world.step_looks, AuthorSteps.any(world, scenery),
-		written if whole else Callable())
+		written if whole else Callable(), here)
 
 
 ## [method _with_looks] on any thread: [param looks] as the world has them,
@@ -3097,8 +3258,9 @@ func _with_looks(text: String, whole: bool = false, steps: Dictionary = {}) -> S
 ## [param written] what gives the looks written, worked out only when they
 ## are; [param looks] when not given.
 static func _looks_into(text: String, looks: Dictionary, authored: bool,
-		written: Callable = Callable()) -> String:
-	if looks.is_empty() and not BookletLooks._written_in(text):
+		written: Callable = Callable(), here: MetaIndex = null) -> String:
+	if looks.is_empty() and not BookletLooks.written_in(here if here != null
+			else MetaIndex.of_text(text)):
 		return text
 	# Steps not the author's: the app has only the whole booklet's looks
 	# (_read_text), and each step's own, its notes and their pictures, stay
@@ -3188,23 +3350,32 @@ static func _with_header(text: String, header: PackedStringArray, authored: bool
 static func with_set(text: String, number: String) -> String:
 	if number.is_empty():
 		return text
-	if text.contains(SET_META):
-		var kept := PackedStringArray()
-		for line: String in text.split("\n"):
-			if not line.begins_with(SET_META):
-				kept.append(line)
-		text = "\n".join(kept)
-	return LdrModel.into_main(text, PackedStringArray([SET_META + number]))
+	return MetaIndex.written(text, [MetaIndex.family(["FROM_SET"],
+		PackedStringArray([SET_META + number]))])
 
 
 ## The real set a model's text is, or empty: its own line, else the
 ## LDraw model repository's header ("0 !LDRAW_ORG Model", "0 Name: 10182 -
 ## Main Model.ldr"), read from the head of the file only.
 static func set_in(text: String) -> String:
-	var kept: RegExMatch = RegEx.create_from_string(
-		"(?m)^0 !BRICKWORKS FROM_SET ([0-9A-Za-z-]{1,20})\\s*$").search(text)
+	return set_from(MetaIndex.of_text(text), text)
+
+
+## [method set_in] with the model's own lines read once (MetaIndex).
+static func set_from(metas: MetaIndex, text: String) -> String:
+	var kept: Variant = metas.first_read("FROM_SET", _set_read)
 	if kept != null:
-		return kept.get_string(1)
+		return str(kept)
+	return _set_said(text)
+
+
+static func _set_read(said: String) -> Variant:
+	return said if RegEx.create_from_string("^[0-9A-Za-z-]{1,20}$").search(said) != null else null
+
+
+## The set the head of [param text] says it is, as the LDraw model
+## repository's files say it, or "".
+static func _set_said(text: String) -> String:
 	var head: String = text.left(4000)
 	if not RegEx.create_from_string("(?m)^0 !LDRAW_ORG (Unofficial_)?Model\\b").search(head):
 		return ""
@@ -3419,9 +3590,8 @@ func _write(path: String, title: String, with_steps: bool = false,
 	if not NewerBuild.may_write(path):
 		refused = NewerBuild.REFUSAL
 		return false
-	var text: String = ReferenceImage.written_into(SetBin.written_into(with_share(
-		written if not written.is_empty() else to_text(title, with_steps), share_id,
-		remixed_from, remixed_from_version, credit, made_with), bin_sets), reference)
+	var text: String = _with_identity(written if not written.is_empty()
+		else to_text(title, with_steps))
 	# A patch of someone else's file: the lines just put in end as its
 	# lines do, above any line that says what the next part is, as the
 	# patch's own (SourceFile.app_lines_placed); each came with "\n" alone
@@ -3440,6 +3610,8 @@ func _write(path: String, title: String, with_steps: bool = false,
 			+ "Clear the baseplate first if it is meant to be empty.")
 		push_warning("kept %s: refused to write a model of no parts over it" % path)
 		return false
+	if _bom_opened and _metas_now() != null and not text.begins_with(LdrModel.bom()):
+		text = LdrModel.bom() + text
 	return _store(path, text)
 
 
@@ -3478,31 +3650,52 @@ static func _has_parts(text: String) -> bool:
 
 
 ## [param text] with the link it is shared at and the link it was copied
-## from, each on a line under the model's title (LdrModel.into_main: inside
-## the model itself, for an .mpd, not above its title), and who laid its
-## parts ([member made_with]) when that is known; as it is for none.
+## from, each on a line under the model's title (MetaIndex: inside the
+## model itself, for an .mpd, not above its title), and who laid its parts
+## ([member made_with]) when that is known; in place of any it had, each
+## kept where it was when it says the same.
 static func with_share(text: String, id: String, remix: String = "", remix_version: int = 0,
 		credited: Dictionary = {}, made: String = "") -> String:
-	var lines: String = (SHARE_META + id + "\n" if not id.is_empty() else "") \
-		+ (REMIX_META + remix + "\n" if not remix.is_empty() else "") \
-		+ (REMIX_VERSION_META + str(remix_version) + "\n" if not remix.is_empty() and remix_version > 0 else "") \
-		+ (CREDIT_META + JSON.stringify(credited) + "\n" if not credited.is_empty() else "") \
-		+ (MADE_META + made + "\n" if made in MADE_WAYS else "")
-	if lines.is_empty():
-		return text
-	return LdrModel.into_main(text, lines.trim_suffix("\n").split("\n"))
+	return MetaIndex.written(text, _share_families(null, id, remix, remix_version, credited,
+		made))
+
+
+## The families of [method with_share]'s lines, with those of them
+## [param metas] (the open's reading, or null) could not read.
+static func _share_families(metas: MetaIndex, id: String, remix: String, remix_version: int,
+		credited: Dictionary, made: String) -> Array:
+	return [
+		_family(metas, ["SHARE"], PackedStringArray([SHARE_META + id]) if not id.is_empty()
+			else PackedStringArray(), MetaIndex.TITLE, _link_read),
+		_family(metas, ["REMIX"], PackedStringArray([REMIX_META + remix])
+			if not remix.is_empty() else PackedStringArray(), MetaIndex.TITLE, _link_read),
+		_family(metas, ["REMIX_VERSION"], PackedStringArray([REMIX_VERSION_META + str(remix_version)])
+			if not remix.is_empty() and remix_version > 0 else PackedStringArray(), MetaIndex.TITLE,
+			_version_read),
+		_family(metas, ["CREDIT"], PackedStringArray([CREDIT_META + JSON.stringify(credited)])
+			if not credited.is_empty() else PackedStringArray(), MetaIndex.TITLE, _credit_read),
+		_family(metas, ["MADE"], PackedStringArray([MADE_META + made]) if made in MADE_WAYS
+			else PackedStringArray(), MetaIndex.TITLE, _made_read),
+	]
 
 
 ## Who a model's text says made it ([member credit]), or {}: each of by,
 ## licence, page and from a line of words, the page an https address.
 static func credit_in(text: String) -> Dictionary:
-	var found: RegExMatch = RegEx.create_from_string(
-		"(?m)^0 !BRICKWORKS CREDIT (\\{.*\\})\\s*$").search(text)
-	if found == null:
-		return {}
+	return credit_from(MetaIndex.of_text(text))
+
+
+## [method credit_in] from the model's own lines read once (MetaIndex).
+static func credit_from(metas: MetaIndex) -> Dictionary:
+	var found: Variant = metas.first_read("CREDIT", _credit_read)
+	return found if found != null else {}
+
+
+## What a CREDIT line says ([member credit]), or null for one it is not.
+static func _credit_read(said: String) -> Variant:
 	var json := JSON.new()
-	if json.parse(found.get_string(1)) != OK or not json.data is Dictionary:
-		return {}
+	if not said.begins_with("{") or json.parse(said) != OK or not json.data is Dictionary:
+		return null
 	var out: Dictionary = {}
 	for key: String in ["by", "licence", "page", "from"]:
 		var value: Variant = (json.data as Dictionary).get(key)
@@ -3516,30 +3709,60 @@ static func credit_in(text: String) -> Dictionary:
 ## Who a model's text says laid its parts ([member made_with]), or empty
 ## when it does not say.
 static func made_in(text: String) -> String:
-	var found: RegExMatch = RegEx.create_from_string(
-		"(?m)^0 !BRICKWORKS MADE ([a-z]+)\\s*$").search(text)
-	return found.get_string(1) if found != null and found.get_string(1) in MADE_WAYS else ""
+	return made_from(MetaIndex.of_text(text))
+
+
+static func made_from(metas: MetaIndex) -> String:
+	var found: Variant = metas.first_read("MADE", _made_read)
+	return str(found) if found != null else ""
+
+
+static func _made_read(said: String) -> Variant:
+	return said if said in MADE_WAYS else null
 
 
 ## The link a model's text says it is shared at, or empty.
 static func share_in(text: String) -> String:
-	var found: RegExMatch = RegEx.create_from_string(
-		"(?m)^0 !BRICKWORKS SHARE ([A-Za-z0-9]{10})\\s*$").search(text)
-	return found.get_string(1) if found != null else ""
+	return share_from(MetaIndex.of_text(text))
+
+
+static func share_from(metas: MetaIndex) -> String:
+	return _link_from(metas, "SHARE")
 
 
 ## Which version of that link a model's text says it was copied from, or 0.
 static func remix_version_in(text: String) -> int:
-	var found: RegExMatch = RegEx.create_from_string(
-		"(?m)^0 !BRICKWORKS REMIX_VERSION ([1-9][0-9]{0,5})\\s*$").search(text)
-	return found.get_string(1).to_int() if found != null else 0
+	return remix_version_from(MetaIndex.of_text(text))
+
+
+static func remix_version_from(metas: MetaIndex) -> int:
+	var found: Variant = metas.first_read("REMIX_VERSION", _version_read)
+	return int(found) if found != null else 0
+
+
+static func _version_read(said: String) -> Variant:
+	return said.to_int() if RegEx.create_from_string("^[1-9][0-9]{0,5}$").search(said) != null \
+		else null
 
 
 ## The link a model's text says it was copied from, or empty.
 static func remix_in(text: String) -> String:
-	var found: RegExMatch = RegEx.create_from_string(
-		"(?m)^0 !BRICKWORKS REMIX ([A-Za-z0-9]{10})\\s*$").search(text)
-	return found.get_string(1) if found != null else ""
+	return remix_from(MetaIndex.of_text(text))
+
+
+static func remix_from(metas: MetaIndex) -> String:
+	return _link_from(metas, "REMIX")
+
+
+## The first of the model's own lines of [param word] that says a link's ten
+## letters and digits, or "".
+static func _link_from(metas: MetaIndex, word: String) -> String:
+	var found: Variant = metas.first_read(word, _link_read)
+	return str(found) if found != null else ""
+
+
+static func _link_read(said: String) -> Variant:
+	return said if RegEx.create_from_string("^[A-Za-z0-9]{10}$").search(said) != null else null
 
 
 ## [param name], or the first of "name (copy)", "name (copy 2)"… that no

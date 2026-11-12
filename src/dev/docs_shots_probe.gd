@@ -30,6 +30,9 @@
 ##   {"click": "path"}                      or the middle of a control,
 ##   {"click": {"part": "3001"}}            or the top of a part
 ##   {"right_click": ...}                   the same with the other button
+##   {"drag": "path", "from": [0.2, 0.3], "to": [0.6, 0.7]}  the left button held
+##                                          from one point to another of a control,
+##                                          each a share of its width and height
 ##   {"over": {"part": "3001", "nth": 0, "lift": 1}}  the pointer over a part
 ##                                          (lift: plates above its top),
 ##   {"over": {"at": [0, 0, 0]}}            or a point in the model (LDU)
@@ -45,6 +48,12 @@
 ##                                          models saved here before, at fixed
 ##                                          times (_seed_saved)
 ##   {"frames": 30}
+##   {"until": "path.property", "is": v, "frames": 600}   waits for it, at most so long
+## What the server answers, the app's own code drawing it as the site's
+## pictures are their pages with their server's answers: "answers"
+## ({"fetch": {"code": 200, "body": {...}}, "publish": {...}}; a fetch's
+## "model_file" is read into its body's model), and "view": an id, the app
+## opened as that link (/app?view=<id>), its model the answer to fetch.
 ## Each starts as someone who has been here before (Build your first model
 ## skipped, the offer of the assistant closed) unless "first_visit": true.
 ## And the picture: "crop" ("window", a path, "@opened" for the panel or
@@ -78,6 +87,28 @@ var _out: String = ""
 var _manifest: String = MANIFEST
 var _main: Node
 var _shell: Shell
+
+
+## The server, as the picture's "answers" say: what a link opens with and
+## what Publish is told; the rest as nobody's server would answer.
+class Answered extends SharedModels:
+	var said: Dictionary = {}
+
+	func fetch(_id: String, _version: int = 0) -> Dictionary:
+		await (Engine.get_main_loop() as SceneTree).process_frame
+		return said.get("fetch", {"code": 404, "body": {"error": "no such link"}})
+
+	func publish(_token: String, _body: Dictionary) -> Dictionary:
+		await (Engine.get_main_loop() as SceneTree).process_frame
+		return said.get("publish", {"code": 503, "body": {"error": "no answer given"}})
+
+	func built(_id: String, _device: String, _version: int = 1) -> Dictionary:
+		await (Engine.get_main_loop() as SceneTree).process_frame
+		return {"code": 200, "body": {"counted": true, "builds": 1}}
+
+	func comments(_id: String, _version: int = 0, _token: String = "") -> Dictionary:
+		await (Engine.get_main_loop() as SceneTree).process_frame
+		return {"code": 200, "body": {"comments": [], "open": true, "you": {"signed_in": true}}}
 var _failed: PackedStringArray = PackedStringArray()
 ## The panels and windows in sight before the setup (the "@opened" crop).
 var _shown_before: Dictionary = {}
@@ -260,15 +291,38 @@ func _take(shot: Dictionary) -> void:
 		Phone._wide = false
 	_main = load("res://src/main.tscn").instantiate()
 	_main.set("gate_for_probe", true)
+	var viewing: String = str(shot.get("view", ""))
+	if shot.has("answers") or not viewing.is_empty():
+		var server := Answered.new()
+		server.said = (shot.get("answers", {}) as Dictionary).duplicate(true)
+		var fetched: Variant = server.said.get("fetch")
+		if fetched is Dictionary and (fetched as Dictionary).has("model_file"):
+			var body: Dictionary = (fetched as Dictionary).get("body", {})
+			body["model"] = FileAccess.get_file_as_string(str(fetched["model_file"]))
+			fetched["body"] = body
+		_main.set("_shared", server)
+	if not viewing.is_empty():
+		_main.set("_viewing", viewing)
 	root.add_child(_main)
 	var world: BrickWorld = null
-	for _n: int in 900:
+	for _n: int in 1800 if not viewing.is_empty() else 900:
 		await process_frame
 		world = _main.get("_world")
 		_shell = _main.get("_shell")
-		if world != null and world.brick_count() > 1 and _shell != null and _main.get("_bin") != null:
+		var view: Variant = _main.get("_share_view")
+		if not viewing.is_empty():
+			if view != null and str((view as Object).get("state")) in ["ready", "failed", "gone"]:
+				break
+		elif world != null and world.brick_count() > 1 and _shell != null and _main.get("_bin") != null:
 			break
-	if world == null or world.brick_count() <= 1:
+	if not viewing.is_empty():
+		var view: Variant = _main.get("_share_view")
+		if view == null or str((view as Object).get("state")) != "ready":
+			_say(id, {"ok": false, "why": "the link %s did not open (%s)" % [viewing,
+				str((view as Object).get("state")) if view != null else "no viewer"]})
+			quit(1)
+			return
+	elif world == null or world.brick_count() <= 1:
 		_say(id, {"ok": false, "why": "no model came up on the baseplate"})
 		quit(1)
 		return
@@ -281,7 +335,8 @@ func _take(shot: Dictionary) -> void:
 	# the offer of the assistant closed, as their buttons do, unless the
 	# picture is of a first visit.
 	if not bool(shot.get("first_visit", false)):
-		_press(_shell.first_build.get("_skip"))
+		if _shell != null and _shell.first_build != null:
+			_press(_shell.first_build.get("_skip"))
 		_press(_main.get("_offer_close"))
 		await _frames(10)
 	# The pointer off the window, as a person's is while the window is read:
@@ -521,6 +576,14 @@ func _do(step: Dictionary) -> void:
 		var at: Variant = _point(step["right_click"] if right else step["click"])
 		if at != null:
 			await _click(at, MOUSE_BUTTON_RIGHT if right else MOUSE_BUTTON_LEFT, int(step.get("times", 1)))
+	elif step.has("drag"):
+		var rect: Variant = _rect_of(str(step["drag"]))
+		if rect != null:
+			var box: Rect2 = rect
+			var from: Array = step.get("from", [0.25, 0.25])
+			var to: Array = step.get("to", [0.75, 0.75])
+			await _drag(box.position + box.size * Vector2(float(from[0]), float(from[1])),
+				box.position + box.size * Vector2(float(to[0]), float(to[1])))
 	elif step.has("over"):
 		var at: Variant = _over(step["over"])
 		if at != null:
@@ -559,6 +622,18 @@ func _do(step: Dictionary) -> void:
 		_seed_saved(step["saved"])
 	elif step.has("frames"):
 		await _frames(int(step["frames"]))
+	elif step.has("until"):
+		var path: String = step["until"]
+		var waited: int = 0
+		while waited < int(step.get("frames", 600)):
+			var target: Variant = _node(path.get_basename())
+			if target != null and (target as Object).get(path.get_extension()) == step.get("is"):
+				break
+			await process_frame
+			waited += 1
+		var at: Variant = _node(path.get_basename())
+		if at == null or (at as Object).get(path.get_extension()) != step.get("is"):
+			_failed.append("%s was never %s" % [path, str(step.get("is"))])
 	else:
 		_failed.append("a step this probe does not know: %s" % JSON.stringify(step))
 
@@ -713,6 +788,38 @@ func _click(at: Vector2, button: MouseButton, times: int) -> void:
 		release.button_mask = 0
 		Input.parse_input_event(release)
 		await _frames(2)
+	await _frames(4)
+
+
+## The left button pressed at [param from], the pointer carried to [param to]
+## in a few moves, as a hand does, and let go there.
+func _drag(from: Vector2, to: Vector2) -> void:
+	_move(from)
+	await _frames(3)
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.position = from
+	press.global_position = from
+	press.pressed = true
+	press.button_mask = MOUSE_BUTTON_MASK_LEFT
+	Input.parse_input_event(press)
+	await process_frame
+	for n: int in range(1, 9):
+		var at: Vector2 = from.lerp(to, n / 8.0)
+		_pointer_at = at
+		Input.warp_mouse(at)
+		var motion := InputEventMouseMotion.new()
+		motion.position = at
+		motion.global_position = at
+		motion.button_mask = MOUSE_BUTTON_MASK_LEFT
+		Input.parse_input_event(motion)
+		await process_frame
+	var release: InputEventMouseButton = press.duplicate()
+	release.position = to
+	release.global_position = to
+	release.pressed = false
+	release.button_mask = 0
+	Input.parse_input_event(release)
 	await _frames(4)
 
 
