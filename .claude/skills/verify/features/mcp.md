@@ -1043,7 +1043,10 @@ All of these are in `tools/check.sh`.
   (`Main.clear_model(true, …)`, not the difference): every part under its own
   number (`BrickWorld.clear(keep_numbers)`), the floor, the step looks, the
   copies' steps and chains, each sub-model's own lights and views
-  (`BrickWorld.section_lines`), motions, sections broken out and the model's
+  (`BrickWorld.section_lines`) with the frame each copy holds them in
+  (`section_frames`), so a copy moved after the undo takes its lights with it
+  (pcfix), where each part not on the baseplate is in the tree
+  (`held_paths`), motions, sections broken out and the model's
   name, file and lift (`ModelStore.identity`, Builder's "store" step), the
   parts it holds but does not show and those still being fetched, which land
   in the undo's own step (`identity`'s "awaited", `ModelStore._land_arrived`,

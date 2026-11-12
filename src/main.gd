@@ -2671,7 +2671,13 @@ func _clear_undone() -> Array:
 	back.append({"undo": "steplooks", "looks": _world.step_looks.duplicate(true)})
 	# Each sub-model's own lights and views (BrickWorld.section_lines): undone,
 	# a clear gave back the sub-model without them, and its save left them out.
-	back.append({"undo": "sectionlines", "lines": _world.section_lines.duplicate(true)})
+	# And where each copy's frame of them stands (section_frames), and where
+	# each part not on the baseplate is in the tree (held_paths): undone
+	# without them, a copy moved after was moved without its lights, and a
+	# part on its way after a rename landed in a copy under the old name.
+	back.append({"undo": "sectionlines", "lines": _world.section_lines.duplicate(true),
+		"frames": _world.section_frames.duplicate(true)})
+	back.append({"undo": "heldpaths", "paths": _world.held_paths.duplicate()})
 	back.append({"undo": "unitchains", "chains": _world.unit_chains.duplicate()})
 	for unit: String in _world.unit_steps:
 		var step: int = int(_world.unit_steps[unit])
