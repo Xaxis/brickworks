@@ -2672,6 +2672,10 @@ func _clear_undone() -> Array:
 	# Each sub-model's own lights and views (BrickWorld.section_lines): undone,
 	# a clear gave back the sub-model without them, and its save left them out.
 	back.append({"undo": "sectionlines", "lines": _world.section_lines.duplicate(true)})
+	# And the name each section was read under (BrickWorld.section_files):
+	# undone, a clear named the model's own after its title, and Save wrote
+	# "0 FILE cf_2_saved_as.ldr" over the file's "0 FILE model.ldr".
+	back.append({"undo": "sectionfiles", "files": _world.section_files.duplicate()})
 	back.append({"undo": "unitchains", "chains": _world.unit_chains.duplicate()})
 	for unit: String in _world.unit_steps:
 		var step: int = int(_world.unit_steps[unit])
