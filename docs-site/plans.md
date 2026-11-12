@@ -12,7 +12,7 @@ description: Free for personal and educational use, with AI never limited; Pro, 
 
 Brickworks has two plans, **Free** and **Pro**. Pro is coming soon, and nothing takes money yet. The [plans page](/plans) sets them out with Pro's price, and it is the word on them; this page says the same.
 
-![The plans page: Free at $0 with Open the app and what it has, and Pro, marked Coming soon, at $80 a year with Tell me when it's ready and what it adds.](/docs/img/plans-page.webp "brickworks.diy/plans, Pro still to come.")
+![The plans page's two plans: Free at $0 with Open the app and all it has, and Pro, marked Coming soon, at $80 a year ($6.67 a month, two months free) with Tell me when it's ready and what Pro adds.](/docs/img/plans-page.webp "brickworks.diy/plans, with Pro still to come.")
 
 <!-- covers
 ui:plans page

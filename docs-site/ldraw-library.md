@@ -30,13 +30,13 @@ ui:library search
 
 [brickworks.diy/library](/library), the gallery's **Sets** tab and **Sets** in every page's footer, lists every LEGO® set in [Rebrickable](https://rebrickable.com/)'s catalogue, about 28,000, and marks **3D** the 1,260 or so that LDraw has modelled.
 
-![The gallery's Sets tab searching fire with Only with a 3D model chosen: the search box, the theme pills, Filters with one on, and cards of fire sets, each with its picture, name, number, theme, year and the 3D mark.](/docs/img/ldraw-library-sets.webp "brickworks.diy/library, the sets LDraw has modelled in 3D.")
+![The gallery's Sets tab searching fire, with one filter on, Only with a 3D model: the search box, the theme pills, 23 sets of 28,441, and eight cards of fire stations, trucks and a plane, each marked 3D with its picture, name, who modelled it, part count, number, theme and year.](/docs/img/ldraw-library-sets.webp "brickworks.diy/library: the fire sets LDraw has modelled in 3D.")
 
 1. Search by a set's number (`10497` finds 10497-1 first; `7519`, the sets whose number starts so), its name, its theme or who modelled it.
 2. Press a theme's pill to keep to it. **Filters** sets the order, the size, the years and the year within them, the theme inside the one chosen, only the sets with a 3D model, and minifigures.
 3. Open a card for the set's page.
 
-![The Sets tab's Filters open: Order, Size, Decade, Year, Inside the theme, 3D model set to Only with a 3D model, and Minifigures.](/docs/img/ldraw-library-filters.webp "Filters, on the Sets tab.")
+![The Sets tab's Filters open: Order (Best match while words are typed), Size, Years, Inside the theme, Year in the decade, 3D model set to Only with a 3D model, Minifigures, and Clear the filters.](/docs/img/ldraw-library-filters.webp "Filters, on the Sets tab.")
 
 The search reads words as people type them: a misspelling (`milenium falcon` says **Showing sets for millennium falcon**), words run together or apart (`deathstar`, `xwing`), plurals, a word without its accents (`pokemon`), a year (`castle 1978`) and builders' short names (`UCS`, `LOTR`). While words are typed the order is **Best match**: a set's number, then a set whose name you typed, then sets with every word in the name, then every word anywhere. A theme's name alone (`city`, `trains`) lists that theme first. Real sets come before books, gear and promotions unless you ask (`harry potter book`). When no set has every word, the list shows the nearest and says so. Browsing leaves out what has no parts, such as key rings; a search finds those too.
 

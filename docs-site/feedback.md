@@ -27,7 +27,7 @@ api:sending feedback
 
 **Help › Report a bug…** ([[Alt+Shift+R]]) opens over what you were doing, with a picture of the window already taken.
 
-![The app's Report a bug dialog over the model: what went wrong and what you expected, the window's picture with a red box drawn on it, the line counting the marks with Clear the marks and Leave the picture out, what will be sent, and Send report.](/docs/img/feedback-report.webp "Help › Report a bug…, with the spot marked.")
+![The app's Report a bug dialog: Something is wrong chosen and what happened typed; beside it the window's picture with a red box drawn round the car's front, 1 mark with Clear the marks and Leave the picture out, the version and system ticked, the model and log lines not, and Send report.](/docs/img/feedback-report.webp "Help › Report a bug…, with the spot marked.")
 
 1. Say what went wrong, and what you expected to happen.
 2. **Drag on the picture to mark the spot**: each drag draws a red box, up to six. **Clear the marks** takes them off; **Leave the picture out** sends it without one.
@@ -61,7 +61,7 @@ Pictures are made smaller (at most 1600 pixels wide) and drawn again, so nothing
 
 Signed in, every report you sent, from the app or the site, is under **Your reports** on [your settings page](/settings#feedback), newest first, with its number and where it stands: **Received**, **Read**, **Planned**, **Fixed** or **Not planned**. Our answer is emailed to you and shown under the report. Signed out, the answer comes by email only.
 
-![Your reports on the settings page: three reports with their numbers, kinds and where each stands, Fixed, Planned and Read, the words sent, and our answer under the first.](/docs/img/feedback-yours.webp "Settings › Your reports.")
+![Your reports on the settings page, with Send feedback: three reports, each with its number, its kind and where it stands, Fixed, Planned and Read, its date and what was sent, and our answer under the first.](/docs/img/feedback-yours.webp "Settings › Your reports.")
 
 Signed in, you can send ten reports an hour; signed out, a few.
 

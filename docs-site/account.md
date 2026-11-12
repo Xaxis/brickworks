@@ -20,7 +20,7 @@ There is no password. The app asks the first time it opens; on the site, **Sign 
 
 Or press **Sign in with orangecheck**: it opens its own window and takes a Bitcoin wallet, email, Google or GitHub, and Brickworks gets an id for you, not your address. On the site, ticking **Also create my orangecheck account** under it makes you an orangecheck account as you sign in by code; it stays with orangecheck until you claim it at ochk.app.
 
-![The site's Sign in to Brickworks dialog: the email box with Email me a code and Not now, Sign in with orangecheck with what it takes, and the box to also create an orangecheck account.](/docs/img/account-sign-in.webp "Signing in on the site.")
+![The site's Sign in to Brickworks dialog: the Email box with Email me a code and Not now, then Sign in with orangecheck with what it takes, and the box Also create my orangecheck account with what it means.](/docs/img/account-sign-in.webp "Signing in on the site: a code by email, or orangecheck.")
 
 You stay signed in on that device until you sign out. To sign in with orangecheck as well as your email, [Settings](/settings) › **orangecheck** › **Link orangecheck**; it first sends a code to your email, to be sure it is you ([Settings](/docs/profiles#settings)).
 
@@ -45,7 +45,7 @@ api:POST /api/account?op=age
 
 **Account** on the top bar opens it; a number beside the word (*Account · 3*) is what came into your feed since you last looked.
 
-![The Account panel over the model: Signed in as you@example.com, where your models are kept, Your AI with Connect Claude, the chats of this tab, and Sign out and Done at its foot.](/docs/img/account-panel.webp "Account, from the top bar.")
+![The Account panel: Signed in as you@example.com, signed in on this device until you sign out, where your models are kept, then Your AI: not connected, with Connect Claude, and Sign out and Done at its foot.](/docs/img/account-panel.webp "Account, from the top bar, with the assistant on.")
 
 - who is signed in, and where your models are kept: on this device and with your account, and whether the browser has agreed not to clear them;
 - with the assistant on (**Tools › Settings…**, *Assistant (AI)*), **Your AI**: the AI apps connected to your account, since when and when last used, with **Connect** (**Open in Claude** once Claude is connected) and **Disconnect**; once connected, this tab's name to say to your AI, its chats, and **New chat for this tab** ([the connector](/docs/connector#tabs)). With the assistant off, nothing here speaks of AI;

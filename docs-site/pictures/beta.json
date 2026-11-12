@@ -5,13 +5,16 @@
    "source": "site",
    "route": "/beta",
    "viewport": [
-    1280,
-    1200
+    1024,
+    1300
    ],
    "themes": [
     "dark",
     "light"
    ],
+   "storage": {
+    "brickworks.betabar.hidden": 4102444800000
+   },
    "answers": {
     "/api/plans?op=beta_spots": {
      "beta": "open",
