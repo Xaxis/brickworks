@@ -67,7 +67,7 @@
      "after": 30
     }
    ],
-   "crop": "@opened",
+   "crop": "_account_panel",
    "pad": 0,
    "alt": "",
    "caption": "Account, from the top bar.",
