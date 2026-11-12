@@ -1608,9 +1608,30 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   (view.md's `centred on the model's column`), a click takes one part, a part put
   down goes into it — and `Esc` steps out a level. `Ctrl-D`/`Ctrl-C` of one is
   another copy of the same definition (`Wing#2`), and after any edit the other
-  copies are built again from the edited one, mirrored where they were
-  mirrored, in the same undo step (`Assemblies.after_edit`, matched by
-  `best_match`). An assembly every part of which the edit moved alike (all of
+  copies follow it part by part, mirrored where they were mirrored, in the
+  same undo step (`Assemblies.after_edit`, each part paired with its twin's by
+  `best_match` and `_laid_on`, colour-blind): a part moved or turned moves its
+  twin's, one painted paints its twin's only if the two were one colour (a
+  part in the placing colour, 16, keeps each copy's own), one taken off goes
+  from the twin, and one put down goes in the twin's placing colour if it was
+  put down in the copy's, else in its own; a step edit changes the twins'
+  steps only, and no other part of a twin changes number, colour or order
+  (`copyfaults_probe` twin_*, `cfcheck_probe`). One pass makes each edit
+  once in each copy of each definition, however deep: every part a follow
+  lays is claimed for the pass (`Assemblies._follow`, `_put_already`), so a
+  plate put down on Car#1/Wheel#1 is one plate on Car#2/Wheel#3, not one for
+  the wheel's plan and one more for each car's (cffix, cf2check's F1). The
+  first step edit on a model with no steps follows too (its steps made and
+  the edit in one step: `Assemblies.ensured`, the step's "ensured"), and the
+  copies inside copies get their steps by read order
+  (`AuthorSteps._copies_alike`), so Car#2's wheels, Wheel#3 and #4, step as
+  Car#1's. `copyfaults_probe` twin_every checks it as one invariant: every
+  edit kind, by hand and over MCP, in a copy at depth 1, 2 and 3
+  (cf2_nest_same, cfc_nested, cf2_axles), leaves every copy of each
+  definition the same parts (count, part, colour rule, place in its own
+  frame, step) over undo, redo, save, open and a second save;
+  `cf2check_probe` is cf2check's attack, kept. A session's `edit_model`
+  is followed the same way (`CommandSocket._one_step`). An assembly every part of which the edit moved alike (all of
   it nudged or turned) is the shape it was, and its copies are left alone; an
   undo or redo brings its copies' steps with it and builds none again. The
   pass reads the model once (`Assemblies._begin_pass`), not once an assembly. Make unique cuts a copy loose (a session's `make_unique`,
@@ -1640,7 +1661,8 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   into another section goes in the step that one built it in, or after its
   last (`AuthorSteps.rehomed`, from `Builder.regroup`): a sub-model dragged
   out of its parent, parts taken out by Ungroup. A copy following an edit of
-  its twin keeps each part's step by its place (`Assemblies.realize`), and a
+  its twin keeps each part's step, a part it gains taking the step its
+  neighbours were built in (`Assemblies._voted`), and a
   sub-model renamed to a gone one's name drops that one's looks
   (`BookletLooks.renamed`). Probe: `unit_steps_probe` (headless;
   `UNIT_STEPS_ONLY=castle`, `copies`, `7140` or `siblings` for one; siblings
