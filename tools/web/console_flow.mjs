@@ -122,6 +122,12 @@ async function open(pathname, { width = 1280, theme = "light", who = null, label
   const phone = width < 600;
   const context = await browser.newContext({ viewport: { width, height: phone ? 844 : 900 }, colorScheme: theme,
     extraHTTPHeaders: headers, ...(phone ? { deviceScaleFactor: 2, isMobile: true, hasTouch: true } : {}) });
+  // The owner's account keeps a theme of its own (web/theme-account.js),
+  // which a signed-in page takes up over the browser's: kept from here, so
+  // each picture is in the theme it is named for, and nothing is sent to
+  // the account.
+  await context.route(/\/theme-account\.js(?:\?.*)?$/, (route) => route.fulfill({ status: 200,
+    contentType: "text/javascript", body: "export async function follow() {}" }));
   if (who) {
     const access = JSON.stringify({ token: who.access_token, until: Date.now() + 50 * 60 * 1000, email: who.kept.email });
     await context.addInitScript(([key, value, token]) => {

@@ -368,14 +368,14 @@ async function loadPeople() {
     if (one.handle) who.append(make("br"), make("small", "faint", `@${one.handle}${one.name ? ` · ${one.name}` : ""}`));
     who.dataset.value = one.email || "";
     row.append(who);
-    cell(row, day(one.joined)).dataset.value = one.joined || "";
-    const seen = cell(row, one.last_sign_in ? ago(one.last_sign_in) : "never", one.last_sign_in ? "" : "faint");
+    cell(row, day(one.joined), "line").dataset.value = one.joined || "";
+    const seen = cell(row, one.last_sign_in ? ago(one.last_sign_in) : "never", one.last_sign_in ? "line" : "line faint");
     seen.dataset.value = one.last_sign_in || "";
     if (one.last_sign_in) seen.title = when(one.last_sign_in);
     cell(row, make("span", "", one.plan?.name || "—", one.plan?.said ? make("small", "faint", ` · ${one.plan.said}`) : ""));
     const app = one.beta?.application;
     cell(row, one.beta ? `${BETA[one.beta.state] || one.beta.state}${app ? `; month ${app.status}` : ""}` : "—", one.beta ? "" : "faint");
-    const models = cell(row, one.models ? `${one.models}${one.listed ? ` (${one.listed} listed)` : ""}` : "—", one.models ? "n" : "n faint");
+    const models = cell(row, one.models ? `${one.models}${one.listed ? ` (${one.listed} listed)` : ""}` : "—", one.models ? "n line" : "n faint");
     models.dataset.value = String(one.models);
     const tabs = cell(row, one.connectors ? String(one.connectors) : "—", one.connectors ? "n" : "n faint");
     tabs.dataset.value = String(one.connectors);

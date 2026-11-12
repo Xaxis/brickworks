@@ -67,7 +67,7 @@
   .tools input[type="search"] { flex: 1 1 260px; max-width: 420px; }
   .tools .push { margin-left: auto; }
   @media (width < 600px) { .tools .segmented { width: 100%; overflow-x: auto; } .tools .push { margin-left: 0; } }
-  .part + .part { margin-top: var(--s-7); }
+  .card + .part, .part + .part { margin-top: var(--s-7); }
   .part h3 { margin: 0 0 var(--s-2); }
   h3 + .note { margin: 0 0 var(--s-3); }
   .note.bad { color: var(--bad); }
@@ -78,6 +78,7 @@
   .table td.acts button + button { margin-left: var(--s-2); }
   .table td.about { min-width: 160px; max-width: 320px; overflow-wrap: anywhere; }
   .table td.when { min-width: 96px; }
+  .table td.line { white-space: nowrap; }
   .table td.said { min-width: 200px; max-width: 360px; overflow-wrap: anywhere; white-space: pre-line; }
   .table tr[hidden] { display: none; }
   /* A queue's acts stacked, and its addresses broken where they must be, so
