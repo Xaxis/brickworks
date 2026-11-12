@@ -47,20 +47,40 @@ Whether what you built is still there tomorrow, and still means the same thing.
   fourteenth field, each with C's space trimmed (space, tab, line ends,
   vertical tab, form feed) and nothing else, two spaces in a row kept; the two
   are one name in any case with "\" as "/". A reference with a FILE of its
-  name is that sub-model, whatever library part its number is; one with none
-  is a part, by its number (`LdrModel.stem`: no folder, no extension). Of two
-  blocks of one name the first is the one, as LDView's "already loaded"
-  says; a later one is read as nothing (`twin_key`) and kept as the file has
-  it, as a block nothing places (someone else's file; the app's own is
-  written from the model). Every reader takes this rule: the open, the Open
-  list's count (`ModelStore.count_in`), SourceFile's sections and patch, the
-  booklet's, Studio's and LDCad's readers, a made part's, SubmodelFile, and
-  the server's (`api/_subfiles.js` for `api/_parts.js`, `_versions.js`,
-  `share.js`, `models.js`). Reduced to a bare stem, as it was until then,
+  name is that sub-model, whatever library part its number is, but for a
+  block that says it is a library file (its `!LDRAW_ORG` a part, shortcut or
+  primitive: `declares_library_file`) under a number the library has, which
+  is that part (`LdrModel.sub_model_of`, `api/_parts.js subModelOf`; ofcheck
+  F1: 10251-1's shortcut 60797c02, the door, was a sub-model of its two
+  pieces and left the parts list, the shop lists and the price, 2,391 of
+  2,392). A shortcut under a name the library has not ("10265 -
+  42716c01.dat", 171 blocks in 73 OMR files) stays a sub-model, as LDView
+  reads it. A reference with no FILE of its name is a part, by its number
+  (`LdrModel.stem`: no folder, no extension). Of two blocks of one name the
+  first is the one, as LDView's "already loaded" says; a later one is read
+  as nothing (`twin_key`) and kept as the file has it, as a block nothing
+  places (someone else's file; the app's own is written from the model).
+  The model's own block is in no table (`LdrModel.MAIN_KEY`, `main_key`), so
+  a later block of the main file's name is the one its references mean
+  (ofcheck F4: the app drew 1 part of 3 and share refused the model as
+  placing itself). Lines are split on any of LDraw's space, tabs too (F3:
+  `models.js partsIn` counted 2 of a tabbed file's 4). Every reader takes
+  this rule: the open, the Open list's count (`ModelStore.count_in`),
+  SourceFile's sections and patch, the booklet's, Studio's and LDCad's
+  readers, a made part's, SubmodelFile, the server's (`api/_subfiles.js` for
+  `api/_parts.js`, `_versions.js`, `share.js`, `models.js`) and the Python
+  tools' (`tools/ldraw/subfiles.py` for `tools/omr.py`, which never
+  followed a "s\..." sub-file: 7 of 1,576 OMR files counted otherwise than
+  LDView, 42125-1 6,169 of 6,721). `count_in` and `partsIn` read the text
+  alone, with no library, so they count a library's shortcut block as its
+  pieces (10251-1: 2,393). Reduced to a bare stem, as it was until then,
   "Castle.ldr" placed by "castle.mpd" was the model itself, "Gate .ldr" was
   "Gate.ldr", "parts\twin.ldr" "twin.ldr", a FILE named in control
   characters none (se3check), and two blocks of a name read the last
-  (sf2check). Written whole, each section keeps the name it was read with
+  (sf2check). Written whole, sections go in the order the model writes
+  their first reference (`LdrModel._in_written_order`), never the last
+  open's lowest brick id (ofcheck F2: a step edit's save wrote zeta, alpha
+  and the next save alpha, zeta). Each section keeps the name it was read with
   (`BrickWorld.section_files`, `LdrModel._file_names`), the model's own too;
   a new one is named after its title, an extension never doubled
   (`new_file_name`), never a name a read one, a kept block or a library part
@@ -71,16 +91,21 @@ Whether what you built is still there tomorrow, and still means the same thing.
   saying it is copy 1, so a save of it opened again is the same file
   (copyfaults2 cfc_wing2); a renamed copy is never written into a deleted
   one's kept block (`SourceFile._copies_are_the_files`, co_del_rename_tail).
-  **Check:** `tools/probe.sh openfaults_probe` (headless, ~3 min): 17 cases,
+  **Check:** `tools/probe.sh openfaults_probe` (headless, ~4 min): 24 cases,
   each as someone else's file and as the app's own: LDView's rule, read in the
-  probe apart from LdrModel, draws the parts the app has (number, colour,
-  place; a mirrored part by its place), the file saved unedited is itself,
-  every way it is written (Save, the autosave, export, share, the copy kept
-  for Undo, Save As, MCP save_model) reads so again, keeps the names and lines
-  each case names, opens again to the same parts, colours, places, copies and
-  steps, and saves again to the byte. `OPENFAULTS_OUT=DIR` keeps the texts;
-  sf2check's `readers.py DIR CASE...` reads them as LDView does. Fails on
-  pre261 39d6311ca in 13 of its 17 cases (121 checks).
+  probe apart from LdrModel (with the app's one rule for a library's shortcut
+  block), draws the parts the app has (number, colour, place; a mirrored part
+  by its place), the Open list's count is what LDView draws from the text
+  alone, the file saved unedited is itself, every way it is written (Save,
+  the autosave, export, share, the copy kept for Undo, Save As, MCP
+  save_model) reads so again, keeps the names and lines each case names,
+  opens again to the same parts, colours, places, copies and steps, and saves
+  again to the byte. `OPENFAULTS_OUT=DIR` keeps the texts; sf2check's
+  `readers.py DIR CASE...` reads them as LDView does. Fails on pre261
+  39d6311ca in 13 of its first 17 cases (121 checks), and on ead8b1d06 in
+  5 of the 7 ofcheck added (shortcut, order, mainname; 29 checks). The
+  server's and the Python tools' readers: `python3 tools/minitest.py
+  tests/test_subfile_readers.py` (4 tests, 2 s; all 4 fail on ead8b1d06).
 - `someone else's file kept` (`src/parts/source_file.gd`, `SourceFile`;
   `ModelStore._source_text`, 2026-10-16): a file whose `0 Author:` is not
   Brickworks (the LDraw model repository, Studio, LDCad, LeoCAD, an `.io`)

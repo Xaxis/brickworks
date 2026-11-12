@@ -27,6 +27,8 @@
 ## - the app has every part LDView draws, read here by LDView's rule apart
 ##   from LdrModel (the reader checked is not the checker): its number,
 ##   colour and place;
+## - the Open list's count (ModelStore.count_in, which reads the text alone)
+##   is the parts LDView draws from the text with no library to ask;
 ## - unedited, someone else's file saves byte for byte;
 ## - every way the model is written (Save, the autosave, export, share, the
 ##   copy kept for Undo, Save As and MCP save_model) is read by LDView's
@@ -223,6 +225,10 @@ func _case(case: Dictionary) -> void:
 	var opened: Dictionary = _state()
 	_write("opened_state.txt", "\n".join(opened["parts"]) + "\n" + str(opened["units"]))
 	_drawn_alike("opened: the parts LDView draws", _ldview(text, _library.parts), _shown())
+	var listed: int = ModelStore.count_in(text)
+	var alone: int = (_ldview(text, {})["full"] as Array).size()
+	_check("the Open list's count, %d, is the parts LDView draws from the text alone, %d" % [listed, alone],
+		listed == alone)
 	_check("...someone else's file kept (%s)" % (_store.get("_source") != null),
 		(_store.get("_source") != null) != bool(case["own"]))
 	if not bool(case["own"]):

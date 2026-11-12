@@ -124,7 +124,9 @@ export function modelOf(sent) {
 /// model the first FILE section, its lines split on any space (a file of
 /// tabs counted 2 of the 4 the app counts, ofcheck F3), a part a section
 /// that says it is one. Up to 2026-11-12 a shortcut or a primitive was a
-/// part too, and 10265-1 was 1,357 parts here and 1,362 in the app.
+/// part too, and 10265-1 was 1,357 parts here and 1,362 in the app. A
+/// leading byte order mark is no part of the first line, as every reader
+/// here takes it: 4558-1 was 85 parts of 856.
 export function partsIn(text) {
   const refs = new Map();
   const isPart = new Map();
@@ -135,7 +137,7 @@ export function partsIn(text) {
   let model = null;
   let lines = [];
   let head = [];
-  for (const raw of `${text}\n0 NOFILE`.split("\n")) {
+  for (const raw of `${String(text).replace(/^﻿/, "")}\n0 NOFILE`.split("\n")) {
     const line = trimSpace(raw);
     const words = line.split(/\s+/);
     const word = words[0] === "0" && words.length >= 2 ? words[1].toUpperCase() : "";
