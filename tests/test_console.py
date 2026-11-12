@@ -177,6 +177,10 @@ def test_the_beta_switch_flips_where_the_console_is_and_nowhere_else() -> None:
     assert got["flip_bad"]["status"] == 422
     assert got["flip_on"]["json"]["was"] == "off" and got["spots_preview_on"]["beta"] == "open"
     assert got["switch_after"]["source"] == "console" and got["switch_after"]["set_by"] == "owner@example.com"
+    # Another instance's flip is read at once on the owner's next request,
+    # not after this instance's few seconds (console1, 2026-11-12: the
+    # console said Open just after Off was pressed, and Open did nothing).
+    assert got["switch_elsewhere"]["mode"] == "off" and got["switch_elsewhere"]["set_by"] == "other@example.com"
 
 
 def test_every_act_is_kept_in_the_audit_whatever_came_of_it() -> None:

@@ -382,8 +382,11 @@ try {
     await shot(page, "7-switch-off-1280.png", false);
     await page.click('#beta-switch button[data-beta="open"]');
     check("Open again: the console says so", await until(page, () => /The beta is open here/.test(document.getElementById("beta-switch-note").textContent)));
-    check("...and beta_spots and op=beta follow: open", await follows("open"));
-    flipped = switchBefore.mode !== "open";
+    const reopened = await follows("open");
+    check("...and beta_spots and op=beta follow: open", reopened);
+    // Put back at the end unless it is as it was: a failed Open left this
+    // preview's beta off for every check after it (2026-11-12).
+    flipped = !reopened || switchBefore.mode !== "open";
   }
 
   // --- 8. Feedback and the audit ----------------------------------------------------

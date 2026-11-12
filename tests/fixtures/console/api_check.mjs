@@ -74,6 +74,12 @@ try {
   out.flip_on = await askAdmin({ method: "POST", query: { op: "beta_switch" }, headers: as(owner), body: { mode: "open" } });
   out.spots_preview_on = (await askPlans({ query: { op: "beta_spots" }, headers: { host: preview } })).json;
   out.switch_after = (await askAdmin({ query: { op: "switches" }, headers: as(owner) })).json?.beta;
+  // Flipped from another instance of the function (the owner's next request
+  // can land on any): this one read the switch a moment ago, and the owner
+  // still reads it as it is now.
+  await db.rpc("site_setting_set", { p_name: "beta", p_scope: preview, p_value: "off", p_by: "other@example.com" });
+  out.switch_elsewhere = (await askAdmin({ query: { op: "switches" }, headers: as(owner) })).json?.beta;
+  await db.rpc("site_setting_set", { p_name: "beta", p_scope: preview, p_value: "open", p_by: "owner@example.com" });
 
   // A tester's application put on the waitlist by hand, then approved.
   await db.rpc("beta_apply", { p_account: bobId, p_build: "A tall lighthouse with a turning lamp inside it", p_ai: "claude",

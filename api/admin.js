@@ -139,6 +139,7 @@ import { originOf } from "./_oauth.js";
 import { betaDecide, betaGrant, betaQueue, betaSwitchRoute, betaTesters, betaWaitlist } from "./_beta.js";
 import { audited, auditRoute, overview, people, person, switches } from "./_console.js";
 import { feedbackFile, feedbackInbox, feedbackReply, feedbackTriage } from "./_feedback.js";
+import { forgetSettings } from "./_settings.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -188,6 +189,11 @@ export default async function handler(request, response) {
     // surface and that they are simply not it.
     return response.status(404).json({ error: "not found" });
   }
+  // The owner reads the switches as they are now. An instance keeps a
+  // reading a few seconds (api/_settings.js), and the owner's next request
+  // may land on another instance than the one that flipped it: the console
+  // then drew Open just after Off was pressed (console1, 2026-11-12).
+  forgetSettings();
   const op = String(request.query?.op || "");
   const acts = { unlist, bar, unbar, dismiss, untest, uncomment, remove_photo: takePhotoOut,
     remove_avatar: takeAvatarOut, pick, unpick, challenge: setChallenge, end_challenge: endChallenge, plan: planYear,
