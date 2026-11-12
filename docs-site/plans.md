@@ -40,7 +40,7 @@ The whole of Brickworks, for personal and educational use:
 *Coming soon*, at $8 a month or $80 a year (two months free). Everything in Free, and:
 
 - **any number of models kept with your account**;
-- **commercial use**: selling instructions, kits, renders or builds made to order, under [Pro's licence](/terms#commercial-use). It covers Brickworks alone: never a LEGO® set's own instructions, other people's models, or the LEGO Group's marks;
+- **commercial use**: selling instructions, kits, renders or builds made to order, under [Pro's licence](/terms#commercial-use). It covers Brickworks alone, not a LEGO® set's instructions, other people's models or the LEGO Group's marks;
 - later, a longer history of every model's versions.
 
 30 days free, with no card, when you first reach 25 models. Free for students and teachers.

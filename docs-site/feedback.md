@@ -1,5 +1,5 @@
 ---
-ai: Send feedback is in the app's Brickworks menu (the mark at the left of the menu bar), in every site page's footer and the account menu, and at brickworks.diy/feedback; Help › Report a bug… (Alt+Shift+R) opens the app's bug report, over the window with its picture taken to mark the spot on. Both send something wrong, an idea or a question to the people who make Brickworks, with only what the person ticks: a picture, the app's version and system, the open model, the app's last log lines. Signed in, the reports and our answers are on the settings page; signed out, Send feedback asks an email address. While the beta is open (not yet on brickworks.diy), Report a bug is also beside Account on the app's top bar, on its error notices as Report this, and in the site's beta bar. No tool sends feedback; send the person to Brickworks › Send feedback…, Help › Report a bug… or /feedback.
+ai: Send feedback is in the app's Brickworks menu (the mark at the left of the menu bar), in every site page's footer and the account menu, and at brickworks.diy/feedback; Help › Report a bug… (Alt+Shift+R) opens the app's bug report, over the window with its picture taken to mark the spot on. Both send something wrong, an idea or a question to the people who make Brickworks, with only what the person ticks: a picture, the app's version and system, the open model, the app's last log lines. Signed in, the reports and our answers are on the settings page; signed out, Send feedback asks an email address. While the beta is open, as it is on brickworks.diy, Report a bug is also beside Account on the app's top bar, on its error notices as Report this, and in the site's beta bar. No tool sends feedback; send the person to Brickworks › Send feedback…, Help › Report a bug… or /feedback.
 rules:
   - Nothing goes with a report unless the person chooses it, and they can see all of it first.
   - Only the people who make Brickworks read reports; answers come by email and are kept with the report.
@@ -72,7 +72,7 @@ lib:feedback kept and answered
 
 ## The beta hub {#beta-hub}
 
-Once the beta opens, its page, [/beta](/beta), is its hub, with **Beta hub** in a tester's account menu and the app's Brickworks menu. It shows what is new this week, from the [changelog](/changelog), how to report a bug, and for a [tester](/docs/beta) what is new to try, what we already know is wrong, and the early features on your account.
+While the beta is open, its page, [/beta](/beta), is its hub, with **Beta hub** in a tester's account menu and the app's Brickworks menu. It shows what is new this week, from the [changelog](/changelog), how to report a bug, and for a [tester](/docs/beta) what is new to try, what we already know is wrong, and the early features on your account.
 
 While the beta is open, a slim bar floats at the foot of every page of the site: **Open beta**, which opens the hub; **Report a bug**; and **Join**, or once you have joined, that you are a tester. Its × hides it for a day.
 

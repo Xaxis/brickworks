@@ -109,18 +109,17 @@ whole cycle.
   one notification. The browser asks whether it may at the first long job,
   never as the page opens, and **Say when a long job is done** in Settings
   turns it off.
-- **The open beta, ready for when it opens.** A new account is asked once,
-  after its first sign-in, whether to join the testers, with nothing chosen
-  for it, and the Beta row in the site's Settings or the app's Account joins
-  or leaves in one press. A bar on every page of the site, the homepage and
-  /beta, the testers' hub, invite people in, and there a tester can ask for
-  one of 100 free months of Pro. The beta stays off on brickworks.diy until
-  it opens.
-- **Report a bug**, while the beta is open: in the app's top bar beside
-  Account, **Help › Report a bug…** or Alt+Shift+R, and in the site's beta
-  bar. It opens over what you were doing with a picture of it taken; drag on
-  the picture to mark the spot. Sent, it gives its number, and Your reports
-  on your settings page follows it.
+- **The open beta.** A new account is asked once, after its first sign-in,
+  whether to join the testers, with nothing chosen for it, and the Beta row
+  in the site's Settings or the app's Account joins or leaves in one press.
+  A bar on every page of the site, the homepage and /beta, the testers'
+  hub, invite people in, and there a tester can ask for one of 100 free
+  months of Pro.
+- **Help › Report a bug…** (Alt+Shift+R) opens over what you were doing
+  with a picture of it taken; drag on the picture to mark the spot. Sent,
+  it gives its number, and Your reports on your settings page follows it.
+  While the beta is open it is also beside Account in the app's top bar
+  and in the site's beta bar.
 - **Pictures of your models in the file manager**, for the desktop app,
   which is coming soon: on Linux, from its .deb, an .ldr, .mpd or .io file
   shows its model from the front corner, as Brickworks' corner view draws

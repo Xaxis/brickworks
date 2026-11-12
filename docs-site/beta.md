@@ -1,18 +1,15 @@
 ---
-ai: The beta is not open on brickworks.diy yet (BRICKWORKS_BETA is off until the owner opens it); until then /beta says it is coming soon and takes no one. Once open, any signed-in account joins as a tester in one press, and leaves in one: the welcome after its first sign-in, /beta, the beta bar, or the Beta row of the site's Settings or the app's Account. Separately, the first 100 testers the owner approves get 30 days of Pro, free and once: no card, nothing renews; a tester asks for it with "Tell us about you" on /beta. When the month ends the account is on Free and nothing is deleted. No tool joins or applies; send the person to /beta.
+ai: The beta is open on brickworks.diy. Any signed-in account joins as a tester in one press, and leaves in one: the welcome after its first sign-in, /beta, the beta bar, or the Beta row of the site's Settings or the app's Account. Separately, the first 100 testers the owner approves get 30 days of Pro, free and once: no card, nothing renews; a tester asks for it with "Tell us about you" on /beta. When the month ends the account is on Free and nothing is deleted. Switched off (BRICKWORKS_BETA not open), /beta says it is coming soon and takes no one. No tool joins or applies; send the person to /beta.
 rules:
   - AI is never limited, tester or not: people bring their own.
   - An account made before 29 October 2026 has Pro already and takes none of the 100 spots.
   - Never say the beta is open while /beta says it is coming soon.
 title: The beta
 nav: The beta
-description: The Brickworks beta: what it says until it opens, how to join once it does, what testers get, the month of Pro for 100 of them, and what happens when it ends.
+description: The Brickworks beta: how to join, what testers get, the month of Pro for the first 100 approved, and what happens when it ends.
 ---
 
 The [beta](/beta) is how Brickworks finds people to use it for real and tell us honestly how it goes. Testers try new features first, and the first 100 we approve get **30 days of Pro**, free: no card, nothing to pay and nothing to cancel.
-
-> [!NOTE]
-> The beta is not open yet. Until it opens, [/beta](/beta) says *Coming soon: the beta opens here shortly*, with what testers will get and the questions, and takes no one; nothing on the site or in the app asks you to join. **Send feedback** and **Help › Report a bug…** work as ever ([Feedback](/docs/feedback)).
 
 <!-- covers
 ui:beta page
@@ -23,11 +20,13 @@ lib:the beta's spots and months
 
 ## Joining {#join}
 
-Once it opens, a new account is asked once, right after its first sign-in, on the site and in the app: **Join the beta testers** or **Not now**. Nothing is chosen for you, and **Not now** is kept: the question never comes again. Any account can also join:
+The beta is open. A new account is asked once, right after its first sign-in, on the site and in the app: **Join the beta testers** or **Not now**. Nothing is chosen for you, and **Not now** is kept: the question never comes again. Any account can also join:
 
 1. Open [/beta](/beta), **Open beta** on the homepage, or **Join** in the beta bar at the foot of every page.
 2. Signed out, **Sign up and join** signs you in first (signing in makes your account if you have none).
 3. Signed in, **Join the beta**: you are a tester at once.
+
+![The beta's page signed out: Open beta, Help shape Brickworks, 100 of 100 free months of Pro left, Sign up and join and What testers get, then What testers get's three cards: New things first, A month of Pro, free, and Heard and answered.](/docs/img/beta-page.webp "brickworks.diy/beta, signed out.")
 
 Joining agrees to the [beta's terms](/terms#beta) and to emails about the beta. The **Beta** row of [Settings](/settings) on the site, or of **Account** in the app, says whether you are a tester, with **Join the beta testers** or **Leave the beta**. Leaving takes nothing away: a month of Pro already given stays yours.
 
@@ -69,6 +68,10 @@ It has Pro already, free and with no end date ([Plans and billing](/docs/plans#e
 ## If you are not chosen {#declined}
 
 We email you, and you can ask again 30 days later.
+
+## When the beta is closed {#closed}
+
+The beta can be switched off. Then [/beta](/beta) says *Coming soon: the beta opens here shortly*, with what testers get and the questions, and takes no one, and nothing on the site or in the app asks you to join. **Send feedback** and **Help › Report a bug…** work as ever ([Feedback](/docs/feedback)), and a month of Pro already given stays.
 
 ## Your application {#privacy}
 
