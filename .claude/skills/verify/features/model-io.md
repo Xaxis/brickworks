@@ -103,7 +103,8 @@ Whether what you built is still there tomorrow, and still means the same thing.
   again to the byte. `OPENFAULTS_OUT=DIR` keeps the texts; sf2check's
   `readers.py DIR CASE...` reads them as LDView does. Fails on pre261
   39d6311ca in 13 of its first 17 cases (121 checks), and on ead8b1d06 in
-  5 of the 7 ofcheck added (shortcut, order, mainname; 29 checks). The
+  7 of 24 (33 checks: shortcut, order, mainname, and names2's Open list
+  count, 31 of 32). The
   server's and the Python tools' readers: `python3 tools/minitest.py
   tests/test_subfile_readers.py` (4 tests, 2 s; all 4 fail on ead8b1d06).
 - `someone else's file kept` (`src/parts/source_file.gd`, `SourceFile`;
