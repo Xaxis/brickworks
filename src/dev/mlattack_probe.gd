@@ -5,7 +5,7 @@
 ## edits; and 66 files of other programs and by hand saved unedited, byte for
 ## byte (src/dev/fixtures/mlattack). Every save copied to MLA_OUT for a byte
 ## diff by the file's readers.
-##   tools/probe.sh mlattack_probe
+##   godot --headless --path . --script src/dev/mlattack_probe.gd
 ##   MLA_CASES=dupsame,dups,unread,features,badlooks,files   MLA_OUT=/abs/dir
 ##   MLA_FILES=/abs/dir (default the fixtures)   MLA_AUTHORS=own   MLA_EDITS=move,make
 extends SceneTree

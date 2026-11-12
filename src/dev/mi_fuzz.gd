@@ -426,7 +426,9 @@ func _motion_case(text: String, why: PackedStringArray) -> void:
 	# The read keys said again, some changed; or a refused one renamed (not
 	# the file's), the rest as they were.
 	var renamed: String = ""
-	if _rng.randf() < 0.2:
+	# Only a key of a motion is renamed: a junk line of the word (MOTION_KEY
+	# GRID) names none, and "renamed" it was its own line still.
+	if _rng.randf() < 0.2 and keep[0].contains("\"Lift\""):
 		renamed = keep[0].replace("Lift", "Raise")
 		keep[0] = renamed
 		_saw("motion renamed")
