@@ -22,22 +22,9 @@ const TABS = { gallery: ["reported", "comments", "listed", "pick", "challenges",
   beta: ["applications", "testers"] };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// /beta-admin?tests=1 redirects to /admin#beta with its query after the
-// hash (Vercel puts a redirect's query at the end of where it goes): put
-// back where the page reads it, before anything does.
-{
-  const [hash, query] = location.hash.split("?");
-  if (query !== undefined) {
-    const asked = new URLSearchParams(location.search);
-    for (const [name, value] of new URLSearchParams(query)) asked.set(name, value);
-    history.replaceState(null, "", `${location.pathname}?${asked}${hash}`);
-    if (!TESTS && asked.get("tests") === "1") location.reload();
-  }
-}
-
 /// Where the address points: {section, tab, account, asked}.
 function route() {
-  const hash = location.hash.slice(1).split("?")[0];
+  const hash = location.hash.slice(1);
   if (/^report-\d+$/.test(hash)) return { section: "gallery", tab: "reported", asked: hash };
   if (/^comment-\d+$/.test(hash)) return { section: "gallery", tab: "comments", asked: hash };
   if (/^feedback(-\d+)?$/.test(hash)) return { section: "feedback" };

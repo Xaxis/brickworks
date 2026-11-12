@@ -270,6 +270,8 @@ try {
   for (const [tab, body, none] of [["comments", "comments", "comments-note"], ["pick", "week", "pick-note"], ["challenges", "challenges", "challenge-note"],
     ["tested", "tested", "tested-note"], ["barred", "barred", "barred-note"]]) {
     await page.click(`a[data-tab-link="${tab}"]`);
+    // The tab is shown by the address it sets, once the page hears it.
+    await until(page, (id) => document.getElementById(id).closest("[data-tab]").hidden === false, body, 10000);
     const said = await page.evaluate(([id, note]) => ({ shown: !document.getElementById(id).closest("[data-tab]").hidden,
       rows: document.getElementById(id).rows.length, note: document.getElementById(note)?.textContent || "" }), [body, none]);
     check(`${tab}: shown, ${said.rows} rows${said.note ? ` ("${said.note.slice(0, 50)}")` : ""}`, said.shown && (said.rows > 0 || said.note.length > 0));
@@ -304,7 +306,8 @@ try {
   const relisted = await api("/api/share", { method: "POST", token: m.access_token,
     body: { name: `Console Back ${rand}`, model: `0 Back ${rand}\r\n1 2 0 0 0 1 0 0 0 1 0 0 0 1 3010.dat\r\n`, image: picture, listed: true } });
   if (relisted.json?.id) ids.push(relisted.json.id);
-  check(`...and M lists again: ${relisted.status} ${relisted.json?.id || relisted.json?.error}`, relisted.status === 200 && Boolean(relisted.json?.id));
+  check(`...and M lists again: ${relisted.status} ${relisted.json?.id || relisted.json?.error}`,
+    [200, 201].includes(relisted.status) && Boolean(relisted.json?.id));
   await page.keyboard.press("Escape");
   check("Escape closes the panel, and the address goes back to People", await until(page, () => !document.querySelector("dialog.sheet[open]")
     && location.hash === "#people"));
@@ -350,14 +353,25 @@ try {
     const live = [await spots("https://brickworks.diy"), await heard("https://brickworks.diy")].join("/");
     check(`...brickworks.diy's as it was: ${live}, before ${liveBefore}`, live === liveBefore);
     {
-      const visitor = await open("/beta", { width: 1280, label: "beta off" });
-      // Its line under the title, as beta.js drew it (the eyebrow's Coming
-      // soon is on the page either way, hidden while open).
-      const off = await until(visitor.page, () => document.documentElement.dataset.betaPage
-        && /^Coming soon/.test(document.getElementById("spots").textContent.trim()), null, 60000);
-      check(`...and its /beta says "${(await visitor.page.textContent("#spots")).trim()}"`, off);
-      await shot(visitor.page, "7-beta-off-1280.png", false);
-      await visitor.context.close();
+      // Signed out, /beta hears the beta from beta_spots, which the CDN
+      // keeps a minute and then answers once more as it was while it asks
+      // again: a visitor sees Coming soon within about a minute, so a new
+      // visitor (the bar keeps what it heard ten minutes in a browser) comes
+      // every ten seconds until one does, for two minutes at most.
+      const at = Date.now();
+      let said = "";
+      for (;;) {
+        const visitor = await open("/beta", { width: 1280, label: "beta off" });
+        await until(visitor.page, () => document.documentElement.dataset.betaPage
+          && document.getElementById("spots").textContent.trim(), null, 30000);
+        said = (await visitor.page.textContent("#spots")).trim();
+        const done = /^Coming soon/.test(said) || Date.now() - at > 120000;
+        if (done) await shot(visitor.page, "7-beta-off-1280.png", false);
+        await visitor.context.close();
+        if (done) break;
+        await wait(10000);
+      }
+      check(`...and its /beta says "${said}" (${Math.round((Date.now() - at) / 1000)} s after it was heard here)`, /^Coming soon/.test(said));
     }
     await shot(page, "7-switch-off-1280.png", false);
     await page.click('#beta-switch button[data-beta="open"]');

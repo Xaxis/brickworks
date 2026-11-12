@@ -382,8 +382,11 @@ async function resolves(href, from) {
     const id = url.hash.slice(1);
     const target = url.pathname === "/" ? pageHtml["/"] : (pageHtml[url.pathname] || (await get(url.pathname)).body);
     const made = MADE_BY[`${url.pathname.replace(COPY, "")}#${id}`];
+    const [section, tab] = id.split("/");
     const there = new RegExp(`id="${id}"`).test(target || "")
-      || (made && new RegExp(`\\.id = "${id}";`).test((await get(made)).body || ""));
+      || (made && new RegExp(`\\.id = "${id}";`).test((await get(made)).body || ""))
+      || (ROUTED.has(url.pathname) && new RegExp(`data-section="${section}"`).test(target || "")
+        && (!tab || new RegExp(`data-tab="${tab}"`).test(target || "")));
     if (!there) fail(`${from} links to ${url.pathname}${url.hash}, and there is no such id`);
   }
 }
@@ -394,6 +397,10 @@ async function resolves(href, from) {
 // joined PAGES (rel-m240). A copy (/de/settings) runs the same scripts, so
 // it is looked up by its English address.
 const MADE_BY = { "/settings#plan": "/plan.js" };
+// A page whose address after # is where its script goes, not an element's
+// id: the owner's console (web/admin.js route()), #<section>[/<tab>], one
+// of its [data-section]s and a [data-tab] in it.
+const ROUTED = new Set(["/admin"]);
 const COPY = new RegExp(`^/(?:${readdirSync(new URL("../../web/_lang/", import.meta.url))
   .filter((name) => name.endsWith(".json")).map((name) => name.slice(0, -5)).join("|")})(?=/)`);
 for (const page of [...PAGES.map((p) => p.path), "/no-such-page"]) {
