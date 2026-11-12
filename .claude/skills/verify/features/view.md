@@ -3667,7 +3667,11 @@ PROBE_SIZE=1280x720 tools/probe.sh motions_panel_probe -- bench/results/motions5
 # undone, landed, redone, each rim in its tyre (0.00 LDU) and 4 of 4 joints,
 # and so saved and opened again; the app's own file with a part the
 # catalogue lacks, driven and kept, writes it with the part it stood with
-# (drvrecheck F1, F3). Pictures in OUT_DIR, named by the window's size.
+# (drvrecheck F1, F3); and the drive played twice as one step a slice a
+# frame (MotionPlayer.pace, as a link's press plays a sequence), the rims
+# arriving between its two keeps: undone, redone, undone again and saved,
+# each rim 0.00 LDU in its tyre with 4 of 4 joints (drvcheck3 L1; 3 fail on
+# pre261 ee8773128). Pictures in OUT_DIR, named by the window's size.
 tools/probe.sh drive_probe -- bench/results/drive-2026-11-07
 PROBE_SIZE=1280x720 tools/probe.sh drive_probe -- bench/results/drive-2026-11-07
 # What the animation audit found broken, on real sets (docs/ANIMATION.md;

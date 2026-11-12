@@ -34,13 +34,29 @@
 ## {seq, hash, waiting} to --out=FILE twice a second until the session ends;
 ## its account is --email (signed in by the password grant).
 ##
+## Then a model that drives (drvcheck3 T): the racer, its drive kept,
+## undone and redone on each side, with its rims still on their way to the
+## one that joined (its own parts fetched from a host here, the rims held
+## back past the 90 s a join waits): every rim lands once, in its tyre, on
+## both, its wheel joints found, and the same file on both. --only=drive runs
+## that alone.
+##
 ## Not in the suite: it needs the relay with .env's keys (tools/suite/out.txt).
 extends SceneTree
+
+const RACER := "res://vendor/omr/files/8808-1.mpd"
+const RIM := "3482"
+const HOST_PORT := 9862
 
 var _failures: int = 0
 var _library: PartLibrary
 var _api: String = ""
 var _rng := RandomNumberGenerator.new()
+var _host := TCPServer.new()
+var _host_port: int = 0
+var _host_peers: Array[Dictionary] = []
+var _held_back: Dictionary = {}
+var _held_peers: Array = []
 
 
 func _initialize() -> void:
@@ -75,6 +91,10 @@ func _run() -> void:
 	_rng.seed = int(_arg("--seed")) if not _arg("--seed").is_empty() else 233
 	if not _arg("--join").is_empty():
 		await _join_alone()
+	elif _arg("--only") == "drive":
+		await _drive_together()
+		var gone: int = await SignInHelper.delete_accounts("delivered+bwtogether", root)
+		print("  (%d throwaway accounts deleted)" % gone)
 	else:
 		await _pair()
 	print("")
@@ -84,17 +104,19 @@ func _run() -> void:
 
 ## One copy of the app, headless: its world, builder, store, view and
 ## Together; [param signed] an account already signed in, else one made.
-func _side(email: String, signed: Account = null) -> Dictionary:
+func _side(email: String, signed: Account = null, library: PartLibrary = null) -> Dictionary:
+	if library == null:
+		library = _library
 	var world := BrickWorld.new()
-	world.library = _library
+	world.library = library
 	root.add_child(world)
 	var builder := Builder.new()
 	builder.world = world
-	builder.library = _library
+	builder.library = library
 	root.add_child(builder)
 	var store := ModelStore.new()
 	store.world = world
-	store.library = _library
+	store.library = library
 	store.builder = builder
 	store.keeps = false
 	var account: Account = signed if signed != null else await _signed_in(email)
@@ -313,6 +335,7 @@ func _pair() -> void:
 	_check("the other side is told, and keeps what was built", not tb.live
 		and (b["world"] as BrickWorld).brick_count() == (a["world"] as BrickWorld).brick_count(), tb.ended_words)
 	await _again(a, b)
+	await _drive_together()
 	if _arg("--big") != "no":
 		await _big(a, b)
 	var gone: int = await SignInHelper.delete_accounts("delivered+bwtogether", root)
@@ -626,3 +649,320 @@ func _join_alone() -> void:
 		file.close()
 	_check("made %d edits of its own, and was told the session ended" % made, made == edits and not together.live,
 		together.ended_words)
+
+
+# -- a model that drives, its rims on their way to one side (drvcheck3 T) ------
+
+
+## What plays [param side]'s motions, as Main makes it (_make_motions).
+func _player(side: Dictionary) -> MotionPlayer:
+	var world: BrickWorld = side["world"]
+	var store: ModelStore = side["store"]
+	var drag := GrabDrag.new()
+	drag.world = world
+	drag.builder = side["builder"]
+	drag.library = world.library
+	drag.camera = side["camera"]
+	drag.scenery = store.scenery
+	var assemblies := Assemblies.new()
+	assemblies.world = world
+	drag.assemblies = assemblies
+	root.add_child(drag)
+	var player := MotionPlayer.new()
+	player.world = world
+	player.builder = side["builder"]
+	player.library = world.library
+	player.store = store
+	player.grabbing = drag
+	store.motion_rebase = func(joint: Motions.Joint) -> void: player.rebase(joint)
+	return player
+
+
+## Each rim of [param side]'s model, how far it stands from the nearest part
+## that is no rim (its tyre), sorted.
+static func _rims_in_tyres(side: Dictionary) -> Array:
+	var world: BrickWorld = side["world"]
+	var scenery: Dictionary = (side["store"] as ModelStore).scenery
+	var out: Array = []
+	for rim: BrickWorld.Brick in world.bricks():
+		if rim.part_id != RIM:
+			continue
+		var nearest: float = INF
+		for other: BrickWorld.Brick in world.bricks():
+			if other.part_id != RIM and not scenery.has(other.id):
+				nearest = minf(nearest, other.transform.origin.distance_to(rim.transform.origin))
+		out.append(snappedf(nearest, 0.01))
+	out.sort()
+	return out
+
+
+static func _same_list(one: Array, other: Array) -> bool:
+	if one.size() != other.size() or one.is_empty():
+		return false
+	for n: int in one.size():
+		if absf(float(one[n]) - float(other[n])) > 0.05:
+			return false
+	return true
+
+
+## The drive's joints [param player] finds parts for, of how many.
+static func _joints_found(player: MotionPlayer) -> Array:
+	var motion: Motions.Motion = player.motions().named(MotionPlayer.DRIVE_NAME)
+	if motion == null:
+		return [0, 0]
+	var joints: Array = motion.joints()
+	return [joints.filter(func(one: Motions.Joint) -> bool: return not player.parts_of(one).is_empty()).size(),
+		joints.size()]
+
+
+## Where the drive's parts stand on [param side]: every part, every rim, how
+## far each rim is from its tyre, the drive's joints found.
+func _standing(name: String, side: Dictionary, player: MotionPlayer) -> String:
+	var world: BrickWorld = side["world"]
+	var rims: int = world.bricks().filter(func(one: BrickWorld.Brick) -> bool: return one.part_id == RIM).size()
+	var found: Array = _joints_found(player)
+	return "%s: %d parts, %d rims (%d on their way), rims from their tyres %s, joints %d of %d" % [name,
+		world.brick_count(), rims, (side["together"] as Together).get("_awaiting").size(),
+		", ".join(_rims_in_tyres(side).map(func(n: float) -> String: return "%.2f" % n)), found[0], found[1]]
+
+
+func _host_up() -> bool:
+	_host_port = HOST_PORT
+	while _host.listen(_host_port, "127.0.0.1") != OK:
+		_host_port += 1
+		if _host_port > 9869:
+			return false
+	process_frame.connect(_host_tick)
+	return true
+
+
+func _host_tick() -> void:
+	while _host.is_connection_available():
+		_host_peers.append({"peer": _host.take_connection(), "got": PackedByteArray()})
+	for client: Dictionary in _host_peers.duplicate():
+		var peer: StreamPeerTCP = client["peer"]
+		peer.poll()
+		if peer.get_status() != StreamPeerTCP.STATUS_CONNECTED:
+			_host_peers.erase(client)
+			continue
+		var available: int = peer.get_available_bytes()
+		if available > 0:
+			client["got"] = (client["got"] as PackedByteArray) + (peer.get_data(available)[1] as PackedByteArray)
+		var text: String = (client["got"] as PackedByteArray).get_string_from_ascii()
+		if not text.contains("\r\n\r\n"):
+			continue
+		_host_peers.erase(client)
+		var file: String = text.get_slice(" ", 1).get_file()
+		if _held_back.has(file):
+			_held_peers.append([peer, file])
+		else:
+			_host_answer(peer, file)
+
+
+func _host_answer(peer: StreamPeerTCP, file: String) -> void:
+	var folder: String = "parts/" if file.ends_with(".lbm") else "exact/"
+	var body: PackedByteArray = FileAccess.get_file_as_bytes("res://assets/generated/" + folder + file)
+	var how: int = 200 if not body.is_empty() else 404
+	peer.put_data(("HTTP/1.1 %d %s\r\nContent-Length: %d\r\nConnection: close\r\n\r\n" % [how,
+		"OK" if how == 200 else "Not Found", body.size()]).to_ascii_buffer())
+	if not body.is_empty():
+		peer.put_data(body)
+	peer.disconnect_from_host()
+
+
+## How many of [param a]'s parts [param b] has elsewhere, or not at all: a
+## part on its way to [param b] where its session state has it.
+static func _apart(a: Dictionary, b: Dictionary) -> int:
+	var ta: Together = a["together"]
+	var tb: Together = b["together"]
+	var waiting: Dictionary = tb.get("_awaiting")
+	var count: int = 0
+	for brick: BrickWorld.Brick in (a["world"] as BrickWorld).bricks():
+		var uid: String = ta.uid_of(brick.id)
+		var there: BrickWorld.Brick = (b["world"] as BrickWorld).get_brick(tb.brick_of(uid))
+		var at: Variant = there.transform if there != null \
+			else (Together.transform_of((waiting[uid] as Array)[2]) if waiting.has(uid) else null)
+		if at == null or not (at as Transform3D).is_equal_approx(brick.transform):
+			count += 1
+	return count
+
+
+## Where one part (the owner's first) and the whole move stand on each side.
+static func _where_both(a: Dictionary, b: Dictionary) -> String:
+	var ta: Together = a["together"]
+	var tb: Together = b["together"]
+	var uid: String = ta.uid_of((a["world"] as BrickWorld).bricks()[0].id)
+	var out := PackedStringArray()
+	for side: Dictionary in [a, b]:
+		var together: Together = side["together"]
+		var world: BrickWorld = side["world"]
+		var brick: BrickWorld.Brick = world.get_brick(together.brick_of(uid))
+		var moved: Transform3D = world.motions.moved if world.motions != null else Transform3D.IDENTITY
+		out.append("%s at %s, moved %s %s, base %s" % [uid, brick.transform.origin if brick != null else "nowhere",
+			moved.basis.x, moved.origin, (together.get("_moved_base") as Transform3D).origin])
+	return " | ".join(out)
+
+
+## The parts [param together]'s next redo would leave: as it has each, and as
+## the redo wants it.
+static func _print_left(together: Together) -> void:
+	var steps: Array = together.get("_redo")
+	if steps.is_empty():
+		print("    (no redo step)")
+		return
+	var step: Dictionary = steps.back()
+	var shown: Dictionary = together.get("_shown")
+	var left := PackedStringArray()
+	for uid: String in step["back"]:
+		if shown.get(uid) != (step["forward"] as Dictionary)[uid]:
+			left.append("%s: %s | %s" % [uid, str(shown.get(uid)).left(160), str((step["forward"] as Dictionary)[uid]).left(160)])
+	print("    the redo would leave %d of %d: %s" % [left.size(), (step["back"] as Dictionary).size(), "; ".join(left)])
+
+
+## The first lines [param a] and [param b] differ in, said.
+static func _differ(a: String, b: String) -> String:
+	var one: PackedStringArray = a.split("\n")
+	var other: PackedStringArray = b.split("\n")
+	var said := PackedStringArray()
+	for n: int in maxi(one.size(), other.size()):
+		var x: String = one[n] if n < one.size() else "(none)"
+		var y: String = other[n] if n < other.size() else "(none)"
+		if x != y:
+			said.append("line %d: %s | %s" % [n + 1, x, y])
+			if said.size() >= 6:
+				break
+	return "; ".join(said)
+
+
+## The racer with its drive opened by one side and started; the other, its
+## own parts fetched from a host here, joining with the rims held back past
+## the wait of a join, so they are on their way to it all through: the drive
+## kept, undone and redone by the one they are on their way to, then by the
+## owner; then the rims let go. Building together's undo put the motions
+## back without the drive's whole move, so after a redo the rims landed where
+## the model had stood (drvcheck3 T); and each rim was put down twice where it
+## came late, once by the model's own file and once by the session.
+func _drive_together() -> void:
+	print("7. a drive kept, undone and redone together, its rims on their way to the one who joined")
+	var stamp: int = int(Time.get_unix_time_from_system())
+	var theirs := PartLibrary.new()
+	if not theirs.load_catalogue() or not _host_up():
+		_check("a library of its own and a parts host for the one who joins", false)
+		return
+	theirs._root = "user://no_parts/"
+	theirs.set_fetch_host(root)
+	theirs.remote_parts = "http://127.0.0.1:%d/" % _host_port
+	_held_back[(theirs.parts[RIM] as PartLibrary.PartInfo).mesh_hash + ".lbm"] = true
+	var a: Dictionary = await _side("delivered+bwtogetherc%d@resend.dev" % stamp)
+	var b: Dictionary = await _side("delivered+bwtogetherd%d@resend.dev" % stamp, null, theirs)
+	var sb: ModelStore = b["store"]
+	theirs.fetched.connect(func(part_id: String) -> void: sb.place_awaited(part_id))
+	var ta: Together = a["together"]
+	var tb: Together = b["together"]
+	var pa: MotionPlayer = _player(a)
+	var pb: MotionPlayer = _player(b)
+	var sa: ModelStore = a["store"]
+	var opened: Dictionary = sa.open_text(FileAccess.get_file_as_string(RACER), "Racer")
+	sa.title = "Racer"
+	while sa.laying:
+		await process_frame
+	var drive: Motions.Motion = null
+	for one: Motions.Motion in pa.suggest():
+		if one.name == MotionPlayer.DRIVE_NAME:
+			drive = one
+	if drive == null:
+		_check("the racer opens and is offered its drive", false, str(opened.get("placed", 0)))
+		return
+	pa.motions().put(drive)
+	var whole: int = (a["world"] as BrickWorld).brick_count()
+	var in_tyres: Array = _rims_in_tyres(a)
+	print("    the owner's racer: %d parts, rims from their tyres %s" % [whole,
+		", ".join(in_tyres.map(func(n: float) -> String: return "%.2f" % n))])
+	var trouble: String = await ta.start()
+	_check("the owner starts a session on the racer and its drive", trouble.is_empty() and ta.live, trouble)
+	var began: int = Time.get_ticks_msec()
+	trouble = await tb.join(ta.link)
+	await _settle([a, b])
+	var waiting: int = (b["world"] as BrickWorld).bricks().filter(func(one: BrickWorld.Brick) -> bool:
+		return one.part_id == RIM).size()
+	_check("the other joins in %d s with its %d rims still on their way (%d of %d parts down)" % [
+		(Time.get_ticks_msec() - began) / 1000, in_tyres.size(), (b["world"] as BrickWorld).brick_count(), whole],
+		trouble.is_empty() and tb.live and waiting == 0
+		and (b["world"] as BrickWorld).brick_count() == whole - in_tyres.size(), trouble)
+	var start: Transform3D = Transform3D.IDENTITY
+	for keeper: Array in [["the one who joined", b, pb, tb], ["the owner", a, pa, ta]]:
+		var player: MotionPlayer = keeper[2]
+		var together: Together = keeper[3]
+		player.play(player.motions().named(MotionPlayer.DRIVE_NAME), false, MotionPlayer.PLAY_FPS, true)
+		await _settle([a, b])
+		print("    kept by %s: %s; %s" % [keeper[0], _standing("the owner", a, pa), _standing("the other", b, pb)])
+		print("    %s" % _where_both(a, b))
+		var went: Transform3D = (a["world"] as BrickWorld).motions.moved
+		var apart: int = _apart(a, b)
+		_check("T: kept by %s, the owner's rims are in their tyres, the model where it went on both (%d apart)"
+			% [keeper[0], apart], _same_list(_rims_in_tyres(a), in_tyres) and apart == 0
+			and not went.is_equal_approx(start))
+		start = went
+		var undone: Dictionary = await together.check_edit({"op": "undo"})
+		await _settle([a, b])
+		print("    undone (%s): %s; %s" % [undone.get("words", ""), _standing("the owner", a, pa),
+			_standing("the other", b, pb)])
+		print("    %s" % _where_both(a, b))
+		_print_left(together)
+		var redone: Dictionary = await together.check_edit({"op": "redo"})
+		await _settle([a, b])
+		print("    %s" % _where_both(a, b))
+		print("    redone (%s): %s; %s" % [redone.get("words", ""), _standing("the owner", a, pa),
+			_standing("the other", b, pb)])
+		apart = _apart(a, b)
+		_check("T: undone and redone by %s (%s), the owner's rims in their tyres, the model where it went on both (%d apart)"
+			% [keeper[0], redone.get("words", ""), apart], bool(undone.get("ok", false))
+			and bool(redone.get("ok", false)) and not str(redone.get("words", "")).contains("left")
+			and _same_list(_rims_in_tyres(a), in_tyres) and apart == 0
+			and (a["world"] as BrickWorld).motions.moved.is_equal_approx(went))
+		# Past Together.OVERTAKEN_MS before the other's turn.
+		var calm: int = Time.get_ticks_msec() + Together.OVERTAKEN_MS + 500
+		while Time.get_ticks_msec() < calm:
+			await process_frame
+	# The rims let go: each lands once, in its tyre, on the side it was
+	# on its way to, and the owner has no more than it had.
+	_held_back.clear()
+	for held: Array in _held_peers:
+		_host_answer(held[0], str(held[1]))
+	_held_peers.clear()
+	var until: int = Time.get_ticks_msec() + 60000
+	while Time.get_ticks_msec() < until and (not tb.get("_awaiting").is_empty() or not sb.awaited.is_empty()):
+		await process_frame
+	await _settle([a, b])
+	for side: Array in [["the owner", a, pa], ["the one who joined", b, pb]]:
+		var found: Array = _joints_found(side[2])
+		var world: BrickWorld = (side[1] as Dictionary)["world"]
+		print("    the rims landed: %s" % _standing(side[0], side[1], side[2]))
+		_check("T: %s has the racer's %d parts, each rim once and in its tyre, and the drive's %d joints"
+			% [side[0], whole, found[1]], world.brick_count() == whole
+			and _same_list(_rims_in_tyres(side[1]), in_tyres) and found[0] == found[1] and found[1] > 0,
+			"%d parts, joints %d of %d" % [world.brick_count(), found[0], found[1]])
+	var text_a: String = ta.model_text()
+	var text_b: String = tb.model_text()
+	_check("T: the same file on both", text_a == text_b, _differ(text_a, text_b))
+	if text_a != text_b:
+		var apart := PackedStringArray()
+		for brick: BrickWorld.Brick in (a["world"] as BrickWorld).bricks():
+			var uid: String = ta.uid_of(brick.id)
+			var there: BrickWorld.Brick = (b["world"] as BrickWorld).get_brick(tb.brick_of(uid))
+			if there == null or not there.transform.is_equal_approx(brick.transform):
+				apart.append("%s %s %s | %s" % [uid, brick.part_id, brick.transform.origin,
+					there.transform.origin if there != null else "none"])
+		print("    parts not alike on both: %d: %s" % [apart.size(), "; ".join(apart.slice(0, 6))])
+		# Where each stands: one part by its uid, and the whole move, on each.
+		for side: Array in [["the owner", a], ["the one who joined", b]]:
+			var together: Together = (side[1] as Dictionary)["together"]
+			var world: BrickWorld = (side[1] as Dictionary)["world"]
+			var uid: String = ta.uid_of((a["world"] as BrickWorld).bricks()[0].id)
+			var brick: BrickWorld.Brick = world.get_brick(together.brick_of(uid))
+			print("    %s: %s at %s, Motions.moved %s, lift %s" % [side[0], uid,
+				brick.transform.origin if brick != null else "nowhere",
+				world.motions.moved if world.motions != null else "none", ((side[1] as Dictionary)["store"] as ModelStore).lift()])
+	await ta.end()
+	process_frame.disconnect(_host_tick)
+	_host.stop()

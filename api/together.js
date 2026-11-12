@@ -38,8 +38,10 @@
 // besides its parts, each a key of its own with its words as the file has
 // them: "~title", "~floor", "~hidden" (the colours of hidden parts),
 // "~motions", "~looks" (the booklet's), "~unit_steps", "~broken" (sections
-// broken out), "~lights" (the lights placed in it), and "~part:<id>" for a
-// part made in the app, its LDraw files, so the other side can put it down.
+// broken out), "~lights" (the lights placed in it), "~moved" (the whole
+// model's move by the drives kept since the session began, 12 numbers, which
+// no file has), and "~part:<id>" for a part made in the app, its LDraw
+// files, so the other side can put it down.
 //
 // Chat: an op of "~chat" alone, a line of words, kept in the same log. The
 // rule is comments' (supabase/comments.sql comments_guard): an account that
@@ -102,7 +104,9 @@ const WHO = /^[0-9a-f]{8}$/;
 const META = { "~title": 120, "~floor": 200, "~hidden": 50_000, "~motions": 200_000, "~looks": 200_000,
   "~unit_steps": 50_000, "~broken": 200_000,
   // lights (APP_UX5 #7): at most 8 lights of about 250 characters each.
-  "~lights": 8_000 };
+  "~lights": 8_000,
+  // drive3 (drvcheck3 T): 12 numbers of a move, each at most 6 decimals.
+  "~moved": 400 };
 const MADE_PART = /^~part:[A-Za-z0-9_.-]{1,80}$/;
 const MADE_PART_MOST = 1_000_000;
 const PIN = /^~pin:[a-z0-9]{1,16}$/;

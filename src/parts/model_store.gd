@@ -1608,6 +1608,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	builder.forget_history()
 	scenery.clear()
 	awaited.clear()
+	_session_puts.clear()
 	_told_not_coming = false
 	_phase("clear")
 	_source = source
@@ -2640,11 +2641,13 @@ func place_awaited(part_id: String, landed_into: Array = []) -> int:
 		return 0
 	if world.generation() != _awaited_in:
 		awaited.clear()
+		_session_puts.clear()
 		return 0
 	var still: Array[LdrModel.Placement] = []
 	var landed: int = 0
 	for placement: LdrModel.Placement in awaited:
-		if placement.part_id != part_id:
+		# One a session puts down, where the session has it (Together).
+		if placement.part_id != part_id or _session_puts.has(placement):
 			still.append(placement)
 			continue
 		var at: Transform3D = awaited_at(placement)
@@ -2671,6 +2674,28 @@ func place_awaited(part_id: String, landed_into: Array = []) -> int:
 	if awaited.is_empty():
 		_settle()
 	return landed
+
+
+## Those of [member awaited] a live session puts down as they come, where
+## the session has them then (Together._held_by_store): placement -> true.
+## Still on their way here, and written so, until it does.
+var _session_puts: Dictionary = {}
+
+
+## [param placement], one of [member awaited], put down by a session as it
+## comes ([param on]) or here again, where the model stands then.
+func session_puts(placement: LdrModel.Placement, on: bool) -> void:
+	if on:
+		_session_puts[placement] = true
+	else:
+		_session_puts.erase(placement)
+
+
+## [param placement] no more on its way: a session put it down or took it
+## off, or the session's model never had it.
+func drop_awaited(placement: LdrModel.Placement) -> void:
+	awaited.erase(placement)
+	_session_puts.erase(placement)
 
 
 ## The model this holds what arrives in awaited for (its world's
