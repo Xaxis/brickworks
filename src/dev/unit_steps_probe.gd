@@ -312,6 +312,10 @@ func _edit(name: String, text: String, stepped: bool, what: String, edit: Callab
 		var now: Array = _order(kept_out)
 		var then: Array = _order(kept_out, order_before)
 		var differ: int = _first_apart(then, now)
+		if differ >= 0:
+			print("  ....steps %d to %d before: %s\n  ....and now: %s" % [maxi(differ - 2, 0) + 1,
+				differ + 3, " | ".join(then.slice(maxi(differ - 2, 0), differ + 3)),
+				" | ".join(now.slice(maxi(differ - 2, 0), differ + 3))])
 		_check("...the rest built in the same order, %d steps of it, %s" % [now.size(),
 			"the same" if differ < 0 else "apart from step %d: %s / %s" % [differ + 1,
 			str(then[differ]).left(60) if differ < then.size() else "-",
@@ -826,7 +830,8 @@ func _own(nested: String, set_text: String) -> void:
 		return
 	await _edit(name, own, false, "Biggs dragged into the support vehicle in the tree",
 		func() -> String: return _drag_row(at["Biggs Darklighter"], at["Support Vehicle"]), same,
-		false, {"order": true, "again": "set_drop"})
+		false, {"order": true, "again": "set_drop", "touched": func() -> Array:
+			return Array(_assemblies.ids_under(at["Biggs Darklighter"]))})
 	await _edit(name, own, false, "its upper left wing taken apart by Ungroup",
 		func() -> String:
 			_select_assembly(at["Upper Left Wing"])
@@ -968,14 +973,28 @@ static func _unlike_files(a: String, b: String) -> String:
 		var ys: PackedStringArray = y.split(" ", false)
 		var near: bool = xs.size() == ys.size()
 		for k: int in xs.size() if near else 0:
-			if xs[k] != ys[k] and not (xs[k].is_valid_float() and ys[k].is_valid_float()
-					and absf(xs[k].to_float() - ys[k].to_float()) < 0.000001 * maxf(1.0,
-					absf(xs[k].to_float()))):
+			if xs[k] != ys[k] and not _last_place_apart(xs[k], ys[k]):
 				near = false
 		if not near:
 			return "another file: line %d: %s / %s" % [n + 1, x.left(70), y.left(70)]
 		noisy += 1
 	return "the same file but for %d lines' numbers, a float's last digits apart" % noisy
+
+
+## Two numbers a save wrote, one of them to 3 places or more, apart by a
+## float's own noise or by one in the last place both have: a sub-model's
+## place worked out again from floats on each save (0.9902681 then
+## 0.9902683; -28.2843 then -28.2842, a float near the half rounded the other
+## way), not an edit. Both to fewer places are numbers kept as written (a
+## colour, a step).
+static func _last_place_apart(x: String, y: String) -> bool:
+	if not (x.is_valid_float() and y.is_valid_float()):
+		return false
+	var px: int = x.length() - x.find(".") - 1 if x.contains(".") else 0
+	var py: int = y.length() - y.find(".") - 1 if y.contains(".") else 0
+	var apart: float = absf(x.to_float() - y.to_float())
+	return maxi(px, py) >= 3 and (apart <= 0.000001 * maxf(1.0, absf(x.to_float()))
+		or apart <= 1.5 * pow(10.0, -maxi(mini(px, py), 3)))
 
 
 func _with_second_tower(text: String) -> String:

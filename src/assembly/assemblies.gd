@@ -827,18 +827,20 @@ func own_steps() -> Array:
 	return AuthorSteps.adopt_plan(world, library, scenery)
 
 
-## [param undo] ([method own_steps]) in the edit's undo, last of all its
-## steps, so one Undo takes both back in turn (a group's steps are undone
-## in the order kept); or put back now when the edit moved nothing
-## ([param moved] 0). Called after everything else the edit folds in.
+## [param undo] ([method own_steps]) in the edit's undo, as what came before
+## it, so one Undo takes the edit back and then the steps (a group's steps
+## are undone in the order kept, newest first); or put back now when the edit
+## moved nothing ([param moved] 0).
 func steps_kept(undo: Array, moved: int) -> void:
 	if undo.is_empty():
 		return
+	var back: Array = undo.duplicate()
+	back.reverse()
 	if moved > 0:
-		builder.extend_last(undo)
+		builder.extend_last_before(back)
 		return
-	for index: int in range(undo.size() - 1, -1, -1):
-		builder._apply(undo[index])
+	for step: Dictionary in back:
+		builder._apply(step)
 
 
 ## The steps of sub-assemblies [param made] from parts of a model with steps

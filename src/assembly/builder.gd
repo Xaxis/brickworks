@@ -2027,6 +2027,19 @@ func extend_last(steps: Array) -> void:
 	last["steps"] = steps + (last["steps"] as Array)
 
 
+## Fold [param steps] into the newest step as what was done before all of
+## it, so an undo takes them back last: what made the model ready for the
+## edit (Assemblies.own_steps). Folded in as what followed it (extend_last),
+## they were undone first and the edit's own undo then put back what they had
+## given: Sub#1, dragged and undone, kept a step it never had (unit_steps).
+func extend_last_before(steps: Array) -> void:
+	if steps.is_empty():
+		return
+	extend_last(steps)
+	var last: Dictionary = _history.back()
+	last["steps"] = (last["steps"] as Array).slice(steps.size()) + steps
+
+
 ## Everything kept since the history was [param depth] deep, as one step:
 ## one call of a session's tool is one undo, however many of the window's
 ## own commands it took (AppTools). The newest first, as they are undone.
