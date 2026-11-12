@@ -486,7 +486,7 @@ func _siblings(castle: String, authored: String) -> void:
 	var tower: String = "north-east tower#1"
 	var twin: String = "north-east tower#2"
 
-	print("\n1. a copy built again from the one that changed (Assemblies.realize)")
+	print("\n1. a copy following the one that changed (Assemblies.copies_follow)")
 	var red_in := func(path: String) -> int:
 		return Array(_assemblies.ids_under(path)).filter(func(brick_id: int) -> bool:
 			return _world.get_brick(brick_id).color_code == 4).size()
@@ -885,7 +885,8 @@ func _numbers(place: bool = false) -> Dictionary:
 
 
 ## A part by what it is and where, not its number, nor its colour: the
-## copy that follows another is built again of new parts (Assemblies.realize).
+## copy that follows another was built again of new parts (Assemblies.realize,
+## until copyfaults2).
 func _key_of(brick_id: int) -> String:
 	var brick: BrickWorld.Brick = _world.get_brick(brick_id)
 	if brick == null:

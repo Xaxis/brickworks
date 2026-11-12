@@ -778,11 +778,9 @@ static func written_into(text: String, kept: Dictionary) -> String:
 	var picture: String = str(kept.get("picture", ""))
 	if picture.is_empty():
 		return text
-	var lines: String = META + JSON.stringify(_settings(kept)) + "\n" + PICTURE_META + picture + "\n"
-	var cut: int = text.find("\n")
-	if cut < 0:
-		return text + "\n" + lines
-	return text.substr(0, cut + 1) + lines + text.substr(cut + 1)
+	# Under the model's title, in its own section (CutShape.written_into).
+	return LdrModel.into_main(text, PackedStringArray([META + JSON.stringify(_settings(kept)),
+		PICTURE_META + picture]))
 
 
 ## Whether [param one] and [param other] ([method said], or [method read]
