@@ -14,7 +14,7 @@ description: Design one model with other people, live, each in their own browser
 There are two ways to build with other people:
 
 - **Design together**: everyone works on the same model in the app at once, each in their own browser. **File › Build together…**.
-- **Build a shared model together** in real bricks: each of you on your own phone gets a share of it to build, with no account. **Build together** on [its viewer](/docs/model-pages#build-together).
+- **Build a shared model together** in real bricks: each of you on your own phone gets a share of it to build, with no account. **Build together** on [its viewer](/docs/model-pages#viewer).
 
 ## Design together {#design}
 

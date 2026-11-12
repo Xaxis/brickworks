@@ -40,7 +40,6 @@
     "test-account"
    ],
    "phone": true,
-   "scale": 2,
    "wait": "#models article.model",
    "steps": [
     {
