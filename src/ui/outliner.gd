@@ -968,7 +968,8 @@ func _drop(at: Vector2, data: Variant) -> void:
 ## where it was has the row's own (its menu). As on iOS, a held finger that
 ## then moves lifts the row even where its hold has put up the row's menu:
 ## the window hears the finger first (_heard), because a menu, put up in the
-## window, takes all of the window's input after it.
+## window, takes all of the window's input after it. Moved onto that menu,
+## or on its way there, the finger is the menu's (_on_menu).
 var _pressed: bool = false
 var _press_meta: String = ""
 ## Where the press came down, in the window.
@@ -1040,11 +1041,27 @@ func _heard(event: InputEvent) -> void:
 	if drag == null or drag.index != _press_index:
 		return
 	var at: Vector2 = get_window().get_final_transform().affine_inverse() * drag.position
-	if _press_at.distance_to(at) <= CadCamera.TAP_SLOP:
+	if _press_at.distance_to(at) <= CadCamera.TAP_SLOP or _on_menu(at):
 		return
 	_pressed = false
 	if _press_hold.held_ms() >= FlingScroll.HOLD_MS:
 		_carry()
+
+
+## Whether [param at], in the window, is on the menu the finger's hold put
+## up or on its way there: the box holding the menu and the place the finger
+## came down, a tap's slop around. A finger slid there is choosing from the
+## menu, which stays up, its lift there choosing nothing (TouchSizing.chosen);
+## the row lifts once the finger leaves the box. The carry put the menu away
+## as the finger set off for it, and the keys then had none to choose from
+## (subexport F5, after treedrag's carry, 2026-11-11).
+func _on_menu(at: Vector2) -> bool:
+	for child: Node in get_children():
+		var menu: Popup = child as Popup
+		if menu != null and menu.visible:
+			return Rect2(Vector2(menu.position), Vector2(menu.size)).expand(_press_at) \
+				.grow(CadCamera.TAP_SLOP).has_point(at)
+	return false
 
 
 ## Escape puts a row being carried back where it was, as every drag is put

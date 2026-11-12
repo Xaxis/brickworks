@@ -1,0 +1,12 @@
+0 FILE castle.mpd
+0 Castle [v2] (MOC) {draft}
+0 Name: castle.mpd
+0 Author: Cas Tle [ctle]
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 16 0 -24 0 1 0 0 0 1 0 0 0 1 tower.ldr
+0 NOFILE
+0 FILE tower.ldr
+0 Tower [left]
+0 Name: tower.ldr
+1 1 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat
+0 NOFILE

@@ -993,6 +993,61 @@ func _rewritten(line: int, live: Array, paired: Dictionary, library: PartLibrary
 	return text
 
 
+## The lines [param plan]'s parts with no line take, each where it is in
+## its copy ([param frames]): key -> [section, text, step, [bricks]], or
+## {"": why} when one cannot be written. With [param placing], a part in
+## the colour its copy hands its parts of 16 ([member unit_colours]) is
+## written in 16.
+func _fresh_lines(plan: Plan, frames: Dictionary, dead_copies: Dictionary,
+		library: PartLibrary, placing: bool) -> Dictionary:
+	var groups: Dictionary = {}
+	for entry: Array in plan.fresh:
+		var brick: BrickWorld.Brick = entry[0]
+		if not brick.unit.is_empty() and not unit_sections.has(brick.unit):
+			return {"": "a new part is in a copy the file never placed"}
+		if dead_copies.has(brick.unit):
+			return {"": "a new part is in a copy taken off"}
+		if not brick.unit.is_empty() and brick.group != Assemblies.group_of(brick.unit):
+			return {"": "a new part's group is not its copy's"}
+		if brick.unit.is_empty() and not brick.group.is_empty():
+			return {"": "a new part is in a group of no copy"}
+		if not authored and brick.step >= 0:
+			return {"": "steps were given to a file that has none"}
+		var frame: Transform3D = frames.get(brick.unit, Transform3D.IDENTITY)
+		if frame.basis.determinant() < 0.0:
+			return {"": "a new part in a mirrored copy"}
+		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if library != null else null
+		if CustomParts.is_skin(brick.part_id) or info != null and info.custom \
+				and not sections.has(brick.part_id):
+			return {"": "a new part made here the file does not carry"}
+		var section: String = _section_of(brick.unit)
+		var local: Transform3D = frame.affine_inverse() * (entry[1] as Transform3D)
+		var colour: String = "16" if placing and not brick.unit.is_empty() \
+			and unit_colours.has(brick.unit) and int(unit_colours[brick.unit]) == brick.color_code \
+			else _colour_token(brick.color_code)
+		var text: String = "1 %s %s %s.dat" % [colour, _numbers_for(PackedStringArray(), local),
+			brick.part_id]
+		var key: String = "%s|%d|%s" % [section, brick.step, text]
+		if not groups.has(key):
+			groups[key] = [section, text, brick.step, []]
+		(groups[key][3] as Array).append(brick)
+	return groups
+
+
+## Whether each of [param groups] ([method _fresh_lines]) is one part in
+## every copy of its sub-model still placed, [param dead_copies] aside.
+func _one_each(groups: Dictionary, dead_copies: Dictionary) -> bool:
+	for key: String in groups:
+		var section: String = groups[key][0]
+		var copies_now: int = 1 if section == main_key else 0
+		for path: String in unit_sections:
+			if str(unit_sections[path]) == section and not dead_copies.has(path):
+				copies_now += 1
+		if (groups[key][3] as Array).size() != copies_now:
+			return false
+	return true
+
+
 static func _colour_token(code: int) -> String:
 	return "0x%07X" % code if LdrModel.is_direct_colour(code) else str(code)
 
@@ -1596,47 +1651,25 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 			var text: String = str(rewrites.get(k, "")) + _eol() if rewrites.has(k) else lines[k]
 			_add_to(inserts, to, [text, MOVE, k, []])
 	# The parts with no line: one line for one in every copy of its sub-model.
-	var groups: Dictionary = {}     ## key -> [section, text, step, [bricks]]
-	for entry: Array in plan.fresh:
-		var brick: BrickWorld.Brick = entry[0]
-		if not brick.unit.is_empty() and not unit_sections.has(brick.unit):
-			return _no(plan, "a new part is in a copy the file never placed")
-		if dead_copies.has(brick.unit):
-			return _no(plan, "a new part is in a copy taken off")
-		if not brick.unit.is_empty() and brick.group != Assemblies.group_of(brick.unit):
-			return _no(plan, "a new part's group is not its copy's")
-		if brick.unit.is_empty() and not brick.group.is_empty():
-			return _no(plan, "a new part is in a group of no copy")
-		if not authored and brick.step >= 0:
-			return _no(plan, "steps were given to a file that has none")
-		var frame: Transform3D = frames.get(brick.unit, Transform3D.IDENTITY)
-		if frame.basis.determinant() < 0.0:
-			return _no(plan, "a new part in a mirrored copy")
-		var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if library != null else null
-		if CustomParts.is_skin(brick.part_id) or info != null and info.custom \
-				and not sections.has(brick.part_id):
-			return _no(plan, "a new part made here the file does not carry")
-		var section: String = _section_of(brick.unit)
-		var local: Transform3D = frame.affine_inverse() * (entry[1] as Transform3D)
-		var text: String = "1 %s %s %s.dat" % [_colour_token(brick.color_code),
-			_numbers_for(PackedStringArray(), local), brick.part_id]
-		var key: String = "%s|%d|%s" % [section, brick.step, text]
-		if not groups.has(key):
-			groups[key] = [section, text, brick.step, []]
-		(groups[key][3] as Array).append(brick)
+	# Each in its colour; or, where that takes a line for each copy, in 16
+	# where it is in the colour its copy hands its parts of 16: a plate put
+	# down red in the red post went down in the other post in that one's own,
+	# the two said two lines, and the file was written afresh, every 16 of
+	# the post written as the first post's colour (cf2check post16).
+	var groups: Dictionary = _fresh_lines(plan, frames, dead_copies, library, false)
+	if not groups.has("") and not _one_each(groups, dead_copies):
+		var in_16: Dictionary = _fresh_lines(plan, frames, dead_copies, library, true)
+		if _one_each(in_16, dead_copies):
+			groups = in_16
+	if groups.has(""):
+		return _no(plan, str(groups[""]))
+	if not _one_each(groups, dead_copies):
+		return _no(plan, "a new part in one copy of a sub-model and not another")
 	var keys: Array = groups.keys()
 	keys.sort()
 	for key: String in keys:
 		var group: Array = groups[key]
 		var section: String = group[0]
-		var copies_now: int = 0
-		for path: String in unit_sections:
-			if str(unit_sections[path]) == section and not dead_copies.has(path):
-				copies_now += 1
-		if section == main_key:
-			copies_now += 1
-		if (group[3] as Array).size() != copies_now:
-			return _no(plan, "a new part in one copy of a sub-model and not another")
 		var to: int = _end_of_step(section, int(group[2]))
 		if to < 0:
 			return _no(plan, "a new part is in a step the file has not got")
@@ -2159,13 +2192,16 @@ func _rewritten_as_written(plan: Plan, from: int, said: String, may_say: Diction
 
 ## Why [param said], a new line for the parts [param bricks], does not say
 ## them as written: each one's colour by its own code (a 16 at the top of a
-## file would read as 0), its number as "part.dat", the file's line end
-## unless it is the text's [param at_end]; "".
+## file would read as 0), or 16 in a copy that hands its parts of 16 that
+## colour ([method _fresh_lines]), its number as "part.dat", the file's line
+## end unless it is the text's [param at_end]; "".
 func _new_as_written(said: String, bricks: Array, at_end: bool) -> String:
 	var words: PackedStringArray = _words(said)
 	for item: Variant in bricks:
 		var brick: BrickWorld.Brick = item
-		if words[1] != _colour_token(brick.color_code):
+		var handed: bool = words[1] == "16" and not brick.unit.is_empty() \
+			and int(unit_colours.get(brick.unit, -999)) == brick.color_code
+		if words[1] != _colour_token(brick.color_code) and not handed:
 			return "a new line says colour %s, and its part is %s" % [words[1], _colour_token(brick.color_code)]
 		if _named_as_written(said) != brick.part_id + ".dat":
 			return "a new line names %s, and its part is %s" % [_named_as_written(said).left(60), brick.part_id]

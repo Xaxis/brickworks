@@ -234,13 +234,19 @@ func state() -> String:
 ## a new colour (AppTools set_floor) came back elsewhere: the step making it
 ## part of the model again found no plate, and it stayed the floor.
 func put(to: Variant) -> Variant:
-	var was: Array = [state(), _laid(), area]
+	var was: Array = held()
 	var exact: Array = to as Array if to is Array else [to, [], AABB()]
 	var chosen: ModelFloor = ModelFloor.parse(str(exact[0]))
 	if chosen != null:
 		store.model_floor = chosen
 	lay(_now(), exact[1], exact[2])
 	return was
+
+
+## The floor as [method put] takes it: its words, the plates laid for it
+## and where they lie. A clear kept for its undo holds it (Main.clear_model).
+func held() -> Array:
+	return [state(), _laid(), area]
 
 
 ## The plates laid for the floor, as [method _plates_for] gives them; none
