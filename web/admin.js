@@ -460,7 +460,8 @@ async function person(account, again = false, told = "") {
       const to = make("a", "", m.name || m.id);
       to.href = `/m/${encodeURIComponent(m.id)}`;
       const state = m.barred ? "taken out" : m.listed ? "in the gallery" : m.published ? "published" : "not published";
-      return make("li", "", to, make("small", "faint", `${Number(m.parts).toLocaleString()} parts · ${state} · ${day(m.created_at)}`));
+      return make("li", "", to, make("small", "faint", `${Number(m.parts).toLocaleString()} ${Number(m.parts) === 1 ? "part" : "parts"} · ${state}`
+        + ` · ${day(m.created_at)}`));
     })));
   } else {
     models.append(make("p", "note", "None shared."));
