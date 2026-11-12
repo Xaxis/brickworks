@@ -391,10 +391,12 @@ func _review() -> void:
 	# a step (pkreview's third review).
 	await _review_case("spread", _fixture("spread"), {"a|0": _pulled(["3003"])}, "",
 		["a.ldr step 1: 0 !BRICKWORKS PULL 2 3003"])
+	# Its sections written whole in the order the model builds them, the
+	# side pod's first (LdrModel._tree_of, copyfaults2 cfc_wing2).
 	await _review_case("pods_pull3003", _fixture("pods_pull3003"), {"side pod|0":
 		_pulled(["41770a", "41769a"]), "grey block|0": _pulled(["3003"])}, "",
-		["grey_block.ldr step 1: 0 !BRICKWORKS PULL 2 3003",
-		"side_pod.ldr step 1: 0 !BRICKWORKS PULL 2 41770a 41769a"])
+		["side_pod.ldr step 1: 0 !BRICKWORKS PULL 2 41770a 41769a",
+		"grey_block.ldr step 1: 0 !BRICKWORKS PULL 2 3003"])
 	# A step whose one part the catalogue has not got: its zoom stays on it,
 	# and the steps after it keep theirs.
 	await _review_case("absent_only", _fixture("absent_only"), {"|1": {"zoom": 1.5},
