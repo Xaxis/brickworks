@@ -862,6 +862,10 @@ func move_into(path: String, into: String) -> String:
 		return [fresh + at.substr(path.length())] if within(at, path) else [at]
 	builder.regroup(changes, "put %s in %s" % [label(path),
 		"the model" if into.is_empty() else label(into)], carry)
+	# Being edited inside, it is still: the path it is edited by is the new
+	# one, as make_unique's is (an old path names nothing now).
+	if within(entered, path):
+		_set_entered(fresh + entered.substr(path.length()))
 	changed.emit()
 	return fresh
 

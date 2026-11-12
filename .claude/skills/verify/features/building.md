@@ -411,15 +411,23 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   over another in one strip, one of the two showing; opening one while the
   other shows swaps them where they stand). In one column with the bin the
   tree and the properties left it 8 parts in sight at 1280 x 720 and the
-  properties X and Y. The colours are as tall as the column says
+  properties X and Y. The colours are as tall as the column says, and never
+  fill it (`PanelStack.never_fills`: a phone's drawer, with no bin, had the
+  colours at 995 of its 1558 units and one row of the tree in sight)
   (`PartsBin._fit_palette`: 14% of it, two category rows from a 700-unit
   column; under that, on a desktop, a row and a half of colours and one
   row of categories, so a laptop's 1280 x 720 has four rows of six parts
   in sight), so a part taken into hand moves the parts grid's foot and never
-  the palette. In the right column the tree has its dragged height and the
-  properties the rest, all they hold in sight (`PanelStack.keep_whole`);
-  with nothing selected the tree has the column (`PanelStack._filler`). The
-  bar between two drags the height of the one that does not fill. The tree
+  the palette. In the right column a choice never moves the split: with
+  nothing selected the tree has the column (`PanelStack._filler`); the first
+  time the properties fill they get only the room under the tree's last row
+  (`Outliner.spare_height`, `PanelStack._first_fill`), and from then on, or
+  once a bar was dragged on any visit (`PanelStack._split`), the tree keeps
+  its height and the properties the rest. Taking the tree's height to show
+  every field (`keep_whole`) moved a chosen row 128 to 557 px from under the
+  pointer and a double click then opened its parent (tdcheck); the
+  properties under the bin, where nothing else is, are still kept whole.
+  The bar between two drags the height of the one that does not fill. The tree
   comes out of its fold once, the first time a device has the right column
   (`right_column`): folded, the column was an empty Properties. The model's
   part of the window is what is left, with nothing over it but the view cube:
@@ -1664,8 +1672,19 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   its twin keeps each part's step, a part it gains taking the step its
   neighbours were built in (`Assemblies._voted`), and a
   sub-model renamed to a gone one's name drops that one's looks
-  (`BookletLooks.renamed`). Probe: `unit_steps_probe` (headless;
-  `UNIT_STEPS_ONLY=castle`, `copies`, `7140` or `siblings` for one; siblings
+  (`BookletLooks.renamed`). A model nobody gave steps (an app's own file:
+  `0 Author: Brickworks`, no `AUTHORED_STEPS`) is planned again after every
+  edit of what holds what, and again on open, from parts numbered in the
+  order the file's lines come: a nested drop saved and opened again showed
+  4 of its 8 parts in other steps (tdcheck; open, treerows). Probe:
+  `unit_steps_probe` (headless; `UNIT_STEPS_ONLY=castle`, `copies`, `7140`,
+  `siblings` or `own` for one; own drives a drag in the tree, Ungroup,
+  Ctrl-G, Make unique, Rename, parts taken out, a paste and a delete on
+  `tests/fixtures/steps/nested_own.ldr` and on 7140-1 as the app saves it
+  with its steps taken out: undone as it was, saved and opened again with
+  every part where it was, the steps it moved noted,
+  `UNIT_STEPS_OUT=DIR` keeping each case's files for another LDraw reader;
+  siblings
   drives the seven edits that reach a sibling's steps: a twin painted, a
   rename, a drag in the tree, a partway Ungroup, Ctrl-G, a reused name's
   looks, a figure taken apart) renames, ungroups, makes and cuts loose copies
@@ -1695,7 +1714,19 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   it (`Outliner._follow`); held at the tree's top or bottom edge, a carry scrolls it
   (`Outliner._edge_scroll`; Godot's own is off: 4 units deep, and never at
   the top of a tree below its header); a model shared to look
-  at or being laid takes none (`Shell.why_frozen`). Probe: `treedrag_probe`
+  at or being laid takes none (`Shell.why_frozen`); Escape while carrying a
+  row puts it back with nothing changed and the selection kept
+  (`Outliner._input`, ahead of Main's Escape). The menu key or Shift+F10
+  opens the chosen row's menu beside its name (`Outliner._menu_by_keys`),
+  the arrows and Enter choosing in it, and choosing a row partly out of
+  sight scrolls the tree only when its middle is out of sight
+  (`Outliner._in_sight`). A sub-model carried into another while edited
+  inside is still the one edited (`Assemblies.move_into` carries `entered`,
+  as `make_unique` does). Probe: `tree_rows_probe` (headless; 7140-1 at
+  1280x720, 1400x900 and 1920x1080: a row at the top, middle and bottom,
+  scrolled or not, chosen and then a second, 0 px moved and a double click
+  editing inside it; a small model's first choice; Escape mid-carry; the
+  menu key and Shift+F10; `--phone`, and `--tablet` held upright). Probe: `treedrag_probe`
   (headless: the mouse's drops with Undo, Redo, Save and a reopen,
   sereview's scrolled row drags at 1400x900 and 1280x720 (alone with
   `--rows`), the gates; by hand `--phone` and `--tablet`: a finger's,
