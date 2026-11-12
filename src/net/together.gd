@@ -1438,7 +1438,10 @@ func _overtook(uid: String) -> bool:
 	var made: Variant = (mine as Dictionary)["now"]
 	var was: Variant = (mine as Dictionary)["was"]
 	var theirs: Variant = _confirmed.get(uid)
-	if theirs == made:
+	# What mine made new (a part put down, a comment pinned, a sub-model's
+	# lines first given) another changes only once they have it: on top of
+	# mine. Resolving a comment just pinned was said as overtaking it.
+	if theirs == made or was == null or (was is String and (was as String).is_empty()):
 		return false
 	if uid.begins_with("~") or not made is Array or not theirs is Array or not was is Array \
 			or (was as Array).size() != (made as Array).size():
