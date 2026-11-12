@@ -262,7 +262,9 @@ that offers each system its own build. The cycle and its cadence are
   on the preview and brickworks.diy, P L L P (`live_ab.sh`), judged by the
   numbers it prints (`timing_judge.py`): it holds only where the preview's
   mean is past live's by more than the wider spread of either side's runs
-  (and 2% of the bar), and is shipped past otherwise, both sides' numbers
+  (and 2% of the bar), and is shipped past otherwise; a reship of the same
+  preview judges its runs with the earlier rounds' (`TAG_ab_NAME.kept`,
+  `tests/test_live_ab.py`), a new preview starts over; both sides' numbers
   in `TAG_ab_NAME.judge`, `TAG_accepted`, status and a commit on top of
   the merge that main moves to (its tree the merge's, so the preview's
   build stands for it: `deploy_reads.sh`). `status` says each one's step, its checks and probes

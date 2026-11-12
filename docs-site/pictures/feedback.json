@@ -1,0 +1,116 @@
+{
+ "shots": [
+  {
+   "id": "feedback-report",
+   "source": "app",
+   "setup": [
+    {
+     "run": "report_bug",
+     "after": 30
+    },
+    {
+     "click": "_shell._feedback._words"
+    },
+    {
+     "type": "The front wheels stopped turning after I mirrored the axle."
+    },
+    {
+     "drag": "_shell._feedback._marker",
+     "from": [
+      0.34,
+      0.42
+     ],
+     "to": [
+      0.62,
+      0.78
+     ]
+    },
+    {
+     "frames": 20
+    }
+   ],
+   "crop": "@opened",
+   "pad": 0,
+   "alt": "The app's Report a bug dialog: Something is wrong chosen and what happened typed; beside it the window's picture with a red box drawn round the car's front, 1 mark with Clear the marks and Leave the picture out, the version and system ticked, the model and log lines not, and Send report.",
+   "caption": "Help › Report a bug…, with the spot marked.",
+   "features": [
+    "ui:report a bug in the app"
+   ]
+  },
+  {
+   "id": "feedback-yours",
+   "source": "site",
+   "route": "/settings#feedback",
+   "viewport": [
+    1280,
+    1100
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in"
+   ],
+   "answers": {
+    "/api/plans?op=feedback": {
+     "beta": false,
+     "reports": [
+      {
+       "id": 214,
+       "kind": "bug",
+       "status": "fixed",
+       "at": "2026-11-03T10:00:00Z",
+       "beta": false,
+       "picture": true,
+       "model": true,
+       "words": "The 1 x 2 hinge plate turns the wrong way when I press R with it in hand.",
+       "replies": [
+        {
+         "at": "2026-11-05T09:30:00Z",
+         "words": "Thank you: R now turns a hinge plate the way its studs face. It is in the app now."
+        }
+       ]
+      },
+      {
+       "id": 198,
+       "kind": "idea",
+       "status": "planned",
+       "at": "2026-10-30T10:00:00Z",
+       "beta": false,
+       "picture": false,
+       "model": false,
+       "words": "Could the booklet put a part list on every page, not only at the end?",
+       "replies": []
+      },
+      {
+       "id": 187,
+       "kind": "question",
+       "status": "seen",
+       "at": "2026-10-28T10:00:00Z",
+       "beta": false,
+       "picture": false,
+       "model": false,
+       "words": "Can I open a Studio file with its own instructions?",
+       "replies": []
+      }
+     ]
+    }
+   },
+   "wait": "#reports li.report",
+   "steps": [
+    {
+     "scroll": "#feedback"
+    }
+   ],
+   "crop": "#feedback",
+   "pad": 12,
+   "alt": "Your reports on the settings page, with Send feedback: three reports, each with its number, its kind and where it stands, Fixed, Planned and Read, its date and what was sent, and our answer under the first.",
+   "caption": "Settings › Your reports.",
+   "features": [
+    "ui:your feedback on settings"
+   ]
+  }
+ ]
+}
