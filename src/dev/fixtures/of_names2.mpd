@@ -1,0 +1,229 @@
+0 FILE names2.ldr
+0 Odd names 2
+0 Name: names2.ldr
+0 Author: se3check
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 <>:"|?*
+1 16 40 0 0 1 0 0 0 1 0 0 0 1 
+1 16 80 0 0 1 0 0 0 1 0 0 0 1 ..
+1 16 120 0 0 1 0 0 0 1 0 0 0 1 . .
+1 16 160 0 0 1 0 0 0 1 0 0 0 1 a:b.ldr
+1 16 200 0 0 1 0 0 0 1 0 0 0 1 a|b.ldr
+1 16 240 0 0 1 0 0 0 1 0 0 0 1 Tower..ldr
+1 16 280 0 0 1 0 0 0 1 0 0 0 1 Tower.ldr
+1 16 320 0 0 1 0 0 0 1 0 0 0 1 Gate .ldr
+1 16 360 0 0 1 0 0 0 1 0 0 0 1 Gate.ldr
+1 16 400 0 0 1 0 0 0 1 0 0 0 1 con.txt
+1 16 440 0 0 1 0 0 0 1 0 0 0 1 Com1.ldr
+1 16 480 0 0 1 0 0 0 1 0 0 0 1 lpt9
+1 16 520 0 0 1 0 0 0 1 0 0 0 1 CONIN$.ldr
+1 16 560 0 0 1 0 0 0 1 0 0 0 1 conout$
+1 16 600 0 0 1 0 0 0 1 0 0 0 1 nul .txt
+1 16 640 0 0 1 0 0 0 1 0 0 0 1 COM¹.ldr
+1 16 680 0 0 1 0 0 0 1 0 0 0 1 Aux.
+1 16 720 0 0 1 0 0 0 1 0 0 0 1 PRN  
+1 16 760 0 0 1 0 0 0 1 0 0 0 1 clock$
+1 16 800 0 0 1 0 0 0 1 0 0 0 1 Café.ldr
+1 16 840 0 0 1 0 0 0 1 0 0 0 1 Café.ldr
+1 16 880 0 0 1 0 0 0 1 0 0 0 1 ‏Right.ldr
+1 16 920 0 0 1 0 0 0 1 0 0 0 1 x‮exe.ldr
+1 16 960 0 0 1 0 0 0 1 0 0 0 1 Ends.
+1 16 1000 0 0 1 0 0 0 1 0 0 0 1 Ends2 
+1 16 1040 0 0 1 0 0 0 1 0 0 0 1 Ends3 
+1 16 1080 0 0 1 0 0 0 1 0 0 0 1 a城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城
+1 16 1120 0 0 1 0 0 0 1 0 0 0 1 aa城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城
+1 16 1160 0 0 1 0 0 0 1 0 0 0 1 a😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀
+1 16 1200 0 0 1 0 0 0 1 0 0 0 1 éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé
+1 16 1240 0 0 1 0 0 0 1 0 0 0 1 ＣＯＮ
+0 NOFILE
+0 FILE <>:"|?*
+0 Odd 0
+0 Name: <>:"|?*
+0 Author: se3check
+1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE 
+0 Odd 1
+0 Name: 
+0 Author: se3check
+1 2 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE ..
+0 Odd 2
+0 Name: ..
+0 Author: se3check
+1 3 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE . .
+0 Odd 3
+0 Name: . .
+0 Author: se3check
+1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE a:b.ldr
+0 Odd 4
+0 Name: a:b.ldr
+0 Author: se3check
+1 5 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE a|b.ldr
+0 Odd 5
+0 Name: a|b.ldr
+0 Author: se3check
+1 6 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE Tower..ldr
+0 Odd 6
+0 Name: Tower..ldr
+0 Author: se3check
+1 7 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE Tower.ldr
+0 Odd 7
+0 Name: Tower.ldr
+0 Author: se3check
+1 8 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE Gate .ldr
+0 Odd 8
+0 Name: Gate .ldr
+0 Author: se3check
+1 9 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE Gate.ldr
+0 Odd 9
+0 Name: Gate.ldr
+0 Author: se3check
+1 10 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE con.txt
+0 Odd 10
+0 Name: con.txt
+0 Author: se3check
+1 11 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE Com1.ldr
+0 Odd 11
+0 Name: Com1.ldr
+0 Author: se3check
+1 12 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE lpt9
+0 Odd 12
+0 Name: lpt9
+0 Author: se3check
+1 13 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE CONIN$.ldr
+0 Odd 13
+0 Name: CONIN$.ldr
+0 Author: se3check
+1 14 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE conout$
+0 Odd 14
+0 Name: conout$
+0 Author: se3check
+1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE nul .txt
+0 Odd 15
+0 Name: nul .txt
+0 Author: se3check
+1 2 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE COM¹.ldr
+0 Odd 16
+0 Name: COM¹.ldr
+0 Author: se3check
+1 3 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE Aux.
+0 Odd 17
+0 Name: Aux.
+0 Author: se3check
+1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE PRN  
+0 Odd 18
+0 Name: PRN  
+0 Author: se3check
+1 5 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE clock$
+0 Odd 19
+0 Name: clock$
+0 Author: se3check
+1 6 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE Café.ldr
+0 Odd 20
+0 Name: Café.ldr
+0 Author: se3check
+1 7 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE Café.ldr
+0 Odd 21
+0 Name: Café.ldr
+0 Author: se3check
+1 8 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE ‏Right.ldr
+0 Odd 22
+0 Name: ‏Right.ldr
+0 Author: se3check
+1 9 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE x‮exe.ldr
+0 Odd 23
+0 Name: x‮exe.ldr
+0 Author: se3check
+1 10 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE Ends.
+0 Odd 24
+0 Name: Ends.
+0 Author: se3check
+1 11 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE Ends2 
+0 Odd 25
+0 Name: Ends2 
+0 Author: se3check
+1 12 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE Ends3 
+0 Odd 26
+0 Name: Ends3 
+0 Author: se3check
+1 13 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE a城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城
+0 Odd 27
+0 Name: a城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城
+0 Author: se3check
+1 14 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE aa城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城
+0 Odd 28
+0 Name: aa城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城城
+0 Author: se3check
+1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE a😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀
+0 Odd 29
+0 Name: a😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀
+0 Author: se3check
+1 2 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé
+0 Odd 30
+0 Name: éééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééééé
+0 Author: se3check
+1 3 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE ＣＯＮ
+0 Odd 31
+0 Name: ＣＯＮ
+0 Author: se3check
+1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE

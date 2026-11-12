@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, ui:library search, cli:library search probe, cli:library browser flow, lib:model versions, ui:versions of a model, ui:compare with a save, lib:model diff, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, lib:a plan's limit on models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:a line placing a part at no size, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe, cli:picklist probe, cli:direct colour probe, cli:print3mf probe, cli:3mf strict reader, ui:each sub-model as its own file, cli:subexport probe -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, ui:library search, cli:library search probe, cli:library browser flow, lib:model versions, ui:versions of a model, ui:compare with a save, lib:model diff, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, lib:a plan's limit on models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:a line placing a part at no size, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe, cli:picklist probe, cli:direct colour probe, cli:print3mf probe, cli:3mf strict reader, ui:each sub-model as its own file, cli:subexport probe, cli:open faults probe -->
 
 ## Sub-features
 
@@ -40,6 +40,73 @@ Whether what you built is still there tomorrow, and still means the same thing.
   since all open through `open_text`: see "the author's steps" in
   [view](view.md). They were read and dropped, and saving wrote Brickworks's
   own order over them.
+- `sub-file names` (`LdrModel._key`, `file_name_of`, `reference_of`,
+  `section_key`; openfaults, 2026-11-11): a file's sub-files are read as
+  LDView reads them (LDLModel::readComment, LDLModelLine). A FILE section's
+  name is its line's text after "0 FILE", a reference's its text after the
+  fourteenth field, each with C's space trimmed (space, tab, line ends,
+  vertical tab, form feed) and nothing else, two spaces in a row kept; the two
+  are one name in any case with "\" as "/". A reference with a FILE of its
+  name is that sub-model, whatever library part its number is, but for a
+  block that says it is a library file (its `!LDRAW_ORG` a part, shortcut or
+  primitive: `declares_library_file`) under a number the library has, which
+  is that part (`LdrModel.sub_model_of`, `api/_parts.js subModelOf`; ofcheck
+  F1: 10251-1's shortcut 60797c02, the door, was a sub-model of its two
+  pieces and left the parts list, the shop lists and the price, 2,391 of
+  2,392). A shortcut under a name the library has not ("10265 -
+  42716c01.dat", 171 blocks in 73 OMR files) stays a sub-model, as LDView
+  reads it. A reference with no FILE of its name is a part, by its number
+  (`LdrModel.stem`: no folder, no extension). Of two blocks of one name the
+  first is the one, as LDView's "already loaded" says; a later one is read
+  as nothing (`twin_key`) and kept as the file has it, as a block nothing
+  places (someone else's file; the app's own is written from the model).
+  The model's own block is in no table (`LdrModel.MAIN_KEY`, `main_key`), so
+  a later block of the main file's name is the one its references mean
+  (ofcheck F4: the app drew 1 part of 3 and share refused the model as
+  placing itself). Lines are split on any of LDraw's space, tabs too (F3:
+  `models.js partsIn` counted 2 of a tabbed file's 4). Every reader takes
+  this rule: the open, the Open list's count (`ModelStore.count_in`),
+  SourceFile's sections and patch, the booklet's, Studio's and LDCad's
+  readers, a made part's, SubmodelFile, the server's (`api/_subfiles.js` for
+  `api/_parts.js`, `_versions.js`, `share.js`, `models.js`) and the Python
+  tools' (`tools/ldraw/subfiles.py` for `tools/omr.py`, which never
+  followed a "s\..." sub-file: 7 of 1,576 OMR files counted otherwise than
+  LDView, 42125-1 6,169 of 6,721). `count_in` and `partsIn` read the text
+  alone, with no library, so they count a library's shortcut block as its
+  pieces (10251-1: 2,393). Reduced to a bare stem, as it was until then,
+  "Castle.ldr" placed by "castle.mpd" was the model itself, "Gate .ldr" was
+  "Gate.ldr", "parts\twin.ldr" "twin.ldr", a FILE named in control
+  characters none (se3check), and two blocks of a name read the last
+  (sf2check). Written whole, sections go in the order the model writes
+  their first reference (`LdrModel._in_written_order`), never the last
+  open's lowest brick id (ofcheck F2: a step edit's save wrote zeta, alpha
+  and the next save alpha, zeta). Each section keeps the name it was read with
+  (`BrickWorld.section_files`, `LdrModel._file_names`), the model's own too;
+  a new one is named after its title, an extension never doubled
+  (`new_file_name`), never a name a read one, a kept block or a library part
+  has ("_" before the extension, `_another`): "0 FILE hssub.ldr" titled
+  "hssub.ldr", as MLCad writes one, went out as "hssub.ldr.ldr", and the next
+  open drew its copies as a part nobody has (hscheck). A copy written as a
+  definition of its own ("wing 2") is written after the one it came from,
+  saying it is copy 1, so a save of it opened again is the same file
+  (copyfaults2 cfc_wing2); a renamed copy is never written into a deleted
+  one's kept block (`SourceFile._copies_are_the_files`, co_del_rename_tail).
+  **Check:** `tools/probe.sh openfaults_probe` (headless, ~4 min): 24 cases,
+  each as someone else's file and as the app's own: LDView's rule, read in the
+  probe apart from LdrModel (with the app's one rule for a library's shortcut
+  block), draws the parts the app has (number, colour, place; a mirrored part
+  by its place), the Open list's count is what LDView draws from the text
+  alone, the file saved unedited is itself, every way it is written (Save,
+  the autosave, export, share, the copy kept for Undo, Save As, MCP
+  save_model) reads so again, keeps the names and lines each case names,
+  opens again to the same parts, colours, places, copies and steps, and saves
+  again to the byte. `OPENFAULTS_OUT=DIR` keeps the texts; sf2check's
+  `readers.py DIR CASE...` reads them as LDView does. Fails on pre261
+  39d6311ca in 13 of its first 17 cases (121 checks), and on ead8b1d06 in
+  7 of 24 (33 checks: shortcut, order, mainname, and names2's Open list
+  count, 31 of 32). The
+  server's and the Python tools' readers: `python3 tools/minitest.py
+  tests/test_subfile_readers.py` (4 tests, 2 s; all 4 fail on ead8b1d06).
 - `someone else's file kept` (`src/parts/source_file.gd`, `SourceFile`;
   `ModelStore._source_text`, 2026-10-16): a file whose `0 Author:` is not
   Brickworks (the LDraw model repository, Studio, LDCad, LeoCAD, an `.io`)
@@ -73,7 +140,7 @@ Whether what you built is still there tomorrow, and still means the same thing.
   byte for byte in its order: a part's own line rewritten (colour, place,
   part, its own number kept, and what it names after its 15th field as the
   file wrote it, a sub-model named with two spaces in a row or a tab in it
-  too, `SourceFile._named_as_written`; a flexible part's colour on the line
+  too, `LdrModel.reference_of`; a flexible part's colour on the line
   placing its path's sub-model, as LDCad paints a path), a part's line taken
   out with the lines bound to it (`_binds_next`) and a pair it leaves empty
   (only the pairs other programs write, `SourceFile.PAIRS`: LSynth, LPub,
@@ -1033,11 +1100,12 @@ Whether what you built is still there tomorrow, and still means the same thing.
   hyphens, letters and numbers in any script (がっこう, which was "model"),
   sent in `filename*` with an ASCII `filename` beside it (`attachment`), a
   Windows device's "_" looked for in the whole name (con_.mpd, con-v2.mpd;
-  `tests/test_download_names.py`). Of two sections of
-  one key ("dup.ldr", "sub\dup.ldr") each file carries the one the app builds
-  the model of and the one LDView's rule finds by the reference's whole name
-  (`LdrModel.files`, `SubModel.span`, `SubmodelFile._sections_of`), in the
-  whole file's order, so each reads it as it reads the whole. The row menu is File, Export's: greyed
+  `tests/test_download_names.py`). A reference's
+  section is the one of its name, as the app and LDView read it (`sub-file
+  names` above: "dup.ldr" and "sub\dup.ldr" are two, of two blocks of one
+  name the first), `LdrModel.files`, `SubModel.span`,
+  `SubmodelFile._sections_of`, in the whole file's order, so each file reads
+  as the whole does. The row menu is File, Export's: greyed
   where `Shell.can` refuses (shared to look at, still being laid); a finger
   held still on a row (`FlingScroll.HOLD_MS`) opens it beside the finger
   (`TouchSizing.popup_beside`): on a phone or a tablet at the size it has once

@@ -417,7 +417,7 @@ func _autosaved() -> String:
 	var path: String = autosave()
 	var text: String = LdrModel.text_of(FileAccess.get_file_as_bytes(path)) \
 		if FileAccess.file_exists(path) else ""
-	if text.is_empty() or _part_line_at(text, 0) >= 0:
+	if text.is_empty() or LdrModel.placing_at(text) >= 0:
 		return text
 	var name: String = title_in(text, "")
 	# A picture laid to build over comes back with it: the first thing a
@@ -987,8 +987,8 @@ func _placed_lines(text: String) -> PackedStringArray:
 static func _brick_lines(text: String) -> PackedStringArray:
 	var lines := PackedStringArray()
 	for line: String in text.split("\n"):
-		if line.begins_with("1 "):
-			lines.append(line.strip_edges())
+		if LdrModel.is_placing(line):
+			lines.append(line.lstrip(LdrModel.SPACE).rstrip(LdrModel.SPACE))
 	lines.sort()
 	return lines
 
@@ -1451,11 +1451,13 @@ static func title_in(text: String, file_name: String) -> String:
 		var said: String = line.strip_edges()
 		if said.is_empty():
 			continue
-		if not said.begins_with("0 ") or said.begins_with("0 FILE "):
-			if said.begins_with("0 FILE "):
-				continue
+		# Its words however they are spaced: "0\tFILE" is a FILE line.
+		var words: PackedStringArray = LdrModel._fields(said)
+		if words[0] != "0":
 			break
-		said = said.substr(2).strip_edges()
+		if words.size() > 1 and words[1].to_upper() == "FILE":
+			continue
+		said = said.substr(1).strip_edges()
 		# A meta line is never the title, and the app writes its own (share,
 		# remix, credit, made with) after a file's first line: for an .mpd
 		# that is its 0 FILE, so they stood before the title, and a model a
@@ -1703,6 +1705,8 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	# A sub-model's own lights and views, by its definition, wherever an
 	# edit takes its copies (BrickWorld.section_lines).
 	world.section_lines = Assemblies.lines_of(model)
+	# And each section's name in the file, a whole write's again.
+	world.section_files = model.file_names()
 	# Stood on the ground before anything is placed, from every part in it;
 	# and brought down onto it, when another tool drew it up in the air.
 	var up: Vector3 = lift_for(known, foreign)
@@ -1977,9 +1981,9 @@ static func _read_text(text: String, model: LdrModel, known: Array, mirrored_lin
 		# set up and guides with it, is the whole booklet's either way. Read
 		# only with the author's steps, a model of the app's own steps lost
 		# its page setup at every open (pagesetup2, 2026-11-06).
-		"looks": BookletLooks.read(text, model._assembly_names(), LdrModel._key(model.main.name))
+		"looks": BookletLooks.read(text, model._assembly_names(), model.main_key)
 			if authored else BookletLooks.booklet_wide(BookletLooks.read(text,
-				model._assembly_names(), LdrModel._key(model.main.name))),
+				model._assembly_names(), model.main_key)),
 		"title": title_meta_from(metas) if foreign else "",
 		"share": share_from(metas),
 		"remix": remix_from(metas),
@@ -3184,9 +3188,10 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 			LdrModel.steps_written(placements, instances, unit_steps))
 	# A sub-model's own lights and views in its own section, by its definition.
 	var text: String = LdrModel.write_tree(placements, title, "Brickworks", instances, embedded,
-		unit_steps, known, steps, Assemblies.lines_written(world, instances)) \
+		unit_steps, known, steps, Assemblies.lines_written(world, instances), world.section_files) \
 		if not instances.is_empty() \
-		else LdrModel.write_ldr(placements, title, "Brickworks", figures, embedded, known, steps)
+		else LdrModel.write_ldr(placements, title, "Brickworks", figures, embedded, known, steps,
+			world.section_files)
 	if authored:
 		text = with_authored_steps(text)
 	# Someone else's model written whole: still theirs, under their terms,
@@ -3268,7 +3273,7 @@ static func _looks_into(text: String, looks: Dictionary, authored: bool,
 		return text
 	var parsed: LdrModel = LdrModel.parse(text, "model")
 	var names: Dictionary = parsed._assembly_names()
-	var main_key: String = LdrModel._key(parsed.main.name)
+	var main_key: String = parsed.main_key
 	if not authored:
 		looks = BookletLooks.with_booklet_wide(BookletLooks.read(text, names, main_key), looks)
 	return BookletLooks.written_into(text, written.call() if written.is_valid() else looks,
@@ -3640,22 +3645,8 @@ func _store(path: String, text: String) -> bool:
 ## write.
 static func _has_parts(text: String) -> bool:
 	var span: Vector2i = LdrModel.main_span(text)
-	var at: int = _part_line_at(text, span.x)
+	var at: int = LdrModel.placing_at(text, maxi(span.x - 1, 0))
 	return at >= 0 and at < span.y
-
-
-## Where the first line of type 1 at or after [param from] begins, -1 for
-## none: "1" and a space or a tab, as LDraw reads its words. Up to metalines
-## only "1 " was one, so a file of tabs' autosave came back as an empty
-## model, its parts unsaid (sf2check).
-static func _part_line_at(text: String, from: int) -> int:
-	if from == 0 and (text.begins_with("1 ") or text.begins_with("1\t")):
-		return 0
-	var spaced: int = text.find("\n1 ", maxi(from - 1, 0))
-	var tabbed: int = text.find("\n1\t", maxi(from - 1, 0))
-	if spaced < 0 and tabbed < 0:
-		return -1
-	return (tabbed if spaced < 0 or (tabbed >= 0 and tabbed < spaced) else spaced) + 1
 
 
 ## [param text] with the link it is shared at and the link it was copied
@@ -3836,29 +3827,35 @@ static func count_in(text: String) -> int:
 	var model: Variant = null   ## the first FILE section's name
 	var lines := PackedStringArray()
 	var head := PackedStringArray()
+	var blocks: Dictionary = {}
 	for raw: String in (text + "\n0 NOFILE").split("\n"):
-		var line: String = raw.strip_edges()
-		# Its words as LDraw reads them, any spaces and tabs between: up to
-		# metalines a file of tabs counted none (sf2check).
-		var section: String = LdrModel.section_word(line) if line.begins_with("0") else ""
-		if section == "FILE" or section == "NOFILE":
+		# Trimmed of LDraw's space alone, as LdrModel.parse trims a line: by
+		# the engine's strip_edges, a reference to a sub-model named in
+		# control characters lost its name, and its parts were not counted
+		# (ofcheck F3: names2, 31 of the 32 the open has).
+		var line: String = raw.lstrip(LdrModel.SPACE).rstrip(LdrModel.SPACE)
+		# Each section keyed as the open keys it (LdrModel.section_key): the
+		# first block of a name the one a reference means, and the model's
+		# own by none, so a later block of its name is that one.
+		var word: String = LdrModel.section_word(raw) if line.begins_with("0") else ""
+		if word == "FILE" or word == "NOFILE":
 			if (named or not lines.is_empty()) and not refs.has(name):
 				refs[name] = lines
 				is_part[name] = LdrModel.declares_part(head)
 				order.append(name)
 			if named and model == null:
 				model = name
-			named = section == "FILE"
-			name = LdrModel._key(" ".join(LdrModel._fields(line).slice(2))) if named else ""
+			named = word == "FILE"
+			name = LdrModel.section_key(raw, blocks) if named else ""
 			lines = PackedStringArray()
 			head = PackedStringArray()
 			continue
 		if head.size() < 16:
 			head.append(line)
-		if line.begins_with("1 ") or line.begins_with("1\t"):
+		if line.begins_with("1"):
 			var fields: PackedStringArray = LdrModel._fields(line)
-			if fields.size() >= 15:
-				lines.append(LdrModel._key(" ".join(fields.slice(14))))
+			if fields.size() >= 15 and fields[0] == "1":
+				lines.append(LdrModel._key(LdrModel.reference_of(raw)))
 	if model != null:
 		return _bricks_in(model, refs, is_part, 0)
 	if order.is_empty():
