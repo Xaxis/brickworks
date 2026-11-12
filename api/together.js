@@ -39,10 +39,11 @@
 // them: "~title", "~floor", "~hidden" (the colours of hidden parts),
 // "~motions", "~looks" (the booklet's), "~unit_steps", "~broken" (sections
 // broken out), "~lights" (the lights placed in it), "~sublines:<name>" (a
-// sub-model's own lights and views, and where the frame they are in stands for
-// each of its copies: a key each, so two people changing two sub-models' at
-// once both keep theirs), and "~part:<id>" for a part made in the app, its
-// LDraw files, so the other side can put it down.
+// sub-model's own lights and views: a key each, so two people changing two
+// sub-models' at once both keep theirs), "~frame:<path>" (where those stand
+// for one copy of it, a key each, so two people moving two copies at once
+// both keep theirs), and "~part:<id>" for a part made in the app, its LDraw
+// files, so the other side can put it down.
 //
 // Chat: an op of "~chat" alone, a line of words, kept in the same log. The
 // rule is comments' (supabase/comments.sql comments_guard): an account that
@@ -106,10 +107,16 @@ const META = { "~title": 120, "~floor": 200, "~hidden": 50_000, "~motions": 200_
   "~unit_steps": 50_000, "~broken": 200_000,
   // lights (APP_UX5 #7): at most 8 lights of about 250 characters each.
   "~lights": 8_000 };
-// pcfix: one sub-model's own lights and views and its copies' frames
-// (Together._sublines_words), by its name: no control character, "/" or "#".
+// pcfix: one sub-model's own lights and views (Together._sublines_words), by
+// its name: no control character, "/" or "#".
 const SUBLINES = /^~sublines:[^\u0000-\u001f\u007f/#]{1,200}$/;
 const SUBLINES_MOST = 200_000;
+// pcredesign: where the frame those are in stands for one copy of it
+// (Together._frame_words), by the copy's path ("Box#1/Sub#2", as a part's
+// unit is), as Godot writes a Transform3D: twelve finite numbers.
+const FRAME = /^~frame:[^\u0000-\u001f\u007f]{1,400}$/;
+const FRAME_MOST = 400;
+const FRAME_WORDS = /^Transform3D\(\s*(-?[0-9][0-9.e+-]*\s*,\s*){11}-?[0-9][0-9.e+-]*\s*\)$/;
 const MADE_PART = /^~part:[A-Za-z0-9_.-]{1,80}$/;
 const MADE_PART_MOST = 1_000_000;
 const PIN = /^~pin:[a-z0-9]{1,16}$/;
@@ -291,13 +298,30 @@ function checkState(state) {
     && Number.isInteger(step);
 }
 
-// Whether [key] is the model's own state besides its parts, set to [value].
+// How long a value of the model's own state [key] may be; 0 for no key a
+// session carries.
+function metaMost(key) {
+  if (META[key]) return META[key];
+  if (MADE_PART.test(key)) return MADE_PART_MOST;
+  if (PIN.test(key)) return PIN_MOST;
+  if (SUBLINES.test(key)) return SUBLINES_MOST;
+  if (FRAME.test(key)) return FRAME_MOST;
+  return 0;
+}
+
+// Whether [key] is the model's own state besides its parts, set to [value]:
+// "ok", "long" for a value longer than it may be, or "no". Up to 2026-11-12
+// a value too long was refused as no state at all, and a client stopped
+// sending every key of its kind (pc2check T9).
 function checkMeta(key, value) {
-  if (META[key]) return value === null || (typeof value === "string" && value.length <= META[key]);
-  if (MADE_PART.test(key)) return typeof value === "string" && value.length <= MADE_PART_MOST;
-  if (PIN.test(key)) return value === null || (typeof value === "string" && value.length <= PIN_MOST);
-  if (SUBLINES.test(key)) return value === null || (typeof value === "string" && value.length <= SUBLINES_MOST);
-  return false;
+  const most = metaMost(key);
+  if (!most) return "no";
+  if (value === null) return MADE_PART.test(key) ? "no" : "ok";
+  if (typeof value !== "string") return "no";
+  if (value.length > most) return "long";
+  if (FRAME.test(key) && value !== "" && !(FRAME_WORDS.test(value) && value.slice(12, -1).split(",")
+    .every((n) => Number.isFinite(Number(n))))) return "no";
+  return "ok";
 }
 
 // The ops' shape; whether any is a chat line or a pinned comment's words.
@@ -320,7 +344,10 @@ function checkOps(ops) {
     }
     for (const [uid, state] of Object.entries(op.changes)) {
       parts += 1;
-      const ok = uid.startsWith("~") ? checkMeta(uid, state) : UID.test(uid) && checkState(state);
+      const meta = uid.startsWith("~") ? checkMeta(uid, state) : "";
+      // Named whole, so the client leaves out that one change (Together._drop_long).
+      if (meta === "long") throw new Refusal(400, `that is too long to carry: ${uid}`);
+      const ok = uid.startsWith("~") ? meta === "ok" : UID.test(uid) && checkState(state);
       if (!ok) throw new Refusal(400, `that is not a part's state: ${uid.slice(0, 20)}`);
       if (PIN.test(uid) && state) chat = true;
     }

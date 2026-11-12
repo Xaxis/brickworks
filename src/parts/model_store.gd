@@ -142,7 +142,14 @@ var world: BrickWorld:
 		if value != null:
 			value.held = _held_placements
 var library: PartLibrary
-var builder: Builder
+## A copy and a paste bring what a copy holds that is not on the baseplate
+## ([method _held_carried], [method _held_put]).
+var builder: Builder:
+	set(value):
+		builder = value
+		if value != null:
+			value.held_carry = _held_carried
+			value.held_put = _held_put
 
 ## Bricks that are scenery rather than model — the baseplate. They are
 ## not saved, because a model that carries its own baseplate grows a
@@ -2688,9 +2695,9 @@ func place_awaited(part_id: String, landed_into: Array = []) -> int:
 			world.get_brick(brick_id).unit = placement.unit
 			# In its copy where that is now (BrickWorld.held_path): a rename or
 			# a Make round it since the open moved it.
-			var open: String = Assemblies.path_from(placement.group, placement.unit)
+			var open: String = BrickWorld.held_key(placement)
 			var now: String = world.held_path(placement)
-			if now != open:
+			if now != Assemblies.path_from(placement.group, placement.unit):
 				world.get_brick(brick_id).unit = now
 				world.get_brick(brick_id).group = Assemblies.group_of(now)
 			if not open.is_empty():
@@ -2992,7 +2999,18 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	tree.library = library
 	tree.scenery = scenery
 	var figures: Dictionary = figure_frames(model)
-	var instances: Dictionary = tree.file_frames(figures)
+	# What is not on the baseplate and goes out in its copy too: each copy
+	# compared by what it holds of them as well (Assemblies.file_frames).
+	var coming: Array = []
+	var unseen: Array = []
+	var holding: Array = []
+	if world.generation() == _awaited_in:
+		var source: SourceFile = _live_source()
+		coming = awaited if source == null else source.in_own_steps(awaited)
+		unseen = _absent if source == null else source.in_own_steps(source.not_shown)
+		for placement: LdrModel.Placement in coming + unseen:
+			holding.append([world.held_path(placement), placement.part_id, placement.color_code])
+	var instances: Dictionary = tree.file_frames(figures, holding)
 	if pace != null and pace.due():
 		await pace.next()
 	# Every frame moved with the parts, so each part is where it was in it.
@@ -3017,9 +3035,6 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 		# in the file's coordinates. Both where the model now stands
 		# (held_place): kept, a drive left them where it had been (drvrecheck F3).
 		var held_at: Array = []
-		var source: SourceFile = _live_source()
-		var coming: Array = awaited if source == null else source.in_own_steps(awaited)
-		var unseen: Array = _absent if source == null else source.in_own_steps(source.not_shown)
 		for waiting: LdrModel.Placement in coming:
 			held_at.append([waiting, back * awaited_at(waiting)])
 		for absent: LdrModel.Placement in unseen:
@@ -3219,6 +3234,114 @@ func _held_go_with(step: Dictionary) -> bool:
 	return true
 
 
+## What a copy of [param parts] (Carry.gather's: copied, cut, duplicated)
+## brings of the parts not on the baseplate (awaited, _absent, someone else's
+## file's SourceFile.not_shown): those in each copy every part of which is
+## among them, each {path: the copy it is in, part, color, at: where it
+## stands in the world, step, kind: "awaited", "absent" or "unseen"}. A copy
+## of some of a sub-model's parts brings only those.
+func _held_carried(parts: Array) -> Array:
+	var out: Array = []
+	var held: Array = _held_kinds()
+	if held.is_empty() or parts.is_empty():
+		return out
+	var given: Dictionary = {}
+	for item: Dictionary in parts:
+		var at: String = ""
+		for segment: String in Assemblies.segments(Assemblies.path_from(str(item.get("group", "")),
+				str(item.get("unit", "")))):
+			at = Assemblies.join(at, segment)
+			given[at] = int(given.get(at, 0)) + 1
+	if given.is_empty():
+		return out
+	var standing: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		if scenery.has(brick.id):
+			continue
+		var at: String = ""
+		for segment: String in Assemblies.segments(Assemblies.path_of(brick)):
+			at = Assemblies.join(at, segment)
+			standing[at] = int(standing.get(at, 0)) + 1
+	var whole: Array = given.keys().filter(func(path: String) -> bool:
+		return int(given[path]) >= int(standing.get(path, 0)))
+	for pair: Array in held:
+		var placement: LdrModel.Placement = pair[0]
+		var path: String = world.held_path(placement)
+		if not whole.any(func(copy: String) -> bool: return Assemblies.within(path, copy)):
+			continue
+		out.append({"path": path, "part": placement.part_id, "color": placement.color_code,
+			"at": _held_world(placement, str(pair[1])), "step": placement.step, "kind": pair[1]})
+	return out
+
+
+## Each of [param into] ([[one of _held_carried's, the path of the copy a
+## paste put down that holds it]]) put in that copy, where [param moved]
+## (Carry.moved) puts it, as one of the kind it was: kept in what a save
+## writes, and one on its way landing there. In the paste's step, so its
+## Undo takes them out with the copy and its Redo puts them back. None into a
+## model that is not the one opened (a Clear kept for its undo holds that
+## one's): the pasted copy's parts on the baseplate alone, as before.
+func _held_put(into: Array, moved: Transform3D) -> void:
+	if into.is_empty() or world == null or world.generation() != _awaited_in:
+		return
+	var source: SourceFile = _live_source()
+	var added: Array = []
+	var paths: Dictionary = world.held_paths.duplicate()
+	for pair: Array in into:
+		var one: Dictionary = pair[0]
+		var path: String = str(pair[1])
+		var kind: String = str(one["kind"])
+		if path.is_empty() or (kind == "unseen" and source == null):
+			continue
+		var placement := LdrModel.Placement.new(str(one["part"]), int(one["color"]),
+			_held_from_world(moved * (one["at"] as Transform3D), kind), int(one["step"]))
+		placement.group = Assemblies.group_of(path)
+		placement.unit = path
+		placement.held_key = "%s@%d" % [path, placement.get_instance_id()]
+		paths[placement.held_key] = path
+		added.append([placement, kind])
+	if added.is_empty():
+		return
+	builder.held_hook = _held_undo
+	_held_undo({"undo": "held", "put": added})
+	builder.extend_last([{"undo": "held", "take": added},
+		{"undo": "heldpaths", "paths": world.held_paths}])
+	world.held_paths = paths
+
+
+## The parts not on the baseplate of the model opened, each [placement, its
+## kind] ([method _held_go_with]'s kinds); none for another model.
+func _held_kinds() -> Array:
+	var out: Array = []
+	if world == null or world.generation() != _awaited_in:
+		return out
+	var source: SourceFile = _live_source()
+	for pair: Array in [[awaited, "awaited"], [_absent, "absent"],
+			[source.not_shown if source != null else [], "unseen"]]:
+		for placement: LdrModel.Placement in pair[0]:
+			out.append([placement, pair[1]])
+	return out
+
+
+## Where [param placement], of [param kind], stands in the world now: one on
+## its way as it lands (awaited_at), one the catalogue lacks where a save
+## writes it (held_place), lifted as the model is.
+func _held_world(placement: LdrModel.Placement, kind: String) -> Transform3D:
+	if kind == "awaited":
+		return awaited_at(placement)
+	return Transform3D(Basis.IDENTITY, _lift_now()) * held_place(placement.transform)
+
+
+## The place a placement of [param kind] keeps for standing at [param at] in
+## the world now: [method _held_world] undone.
+func _held_from_world(at: Transform3D, kind: String) -> Transform3D:
+	var lifted := Transform3D(Basis.IDENTITY, _lift_now())
+	var whole: Transform3D = world.motions.moved if world.motions != null else Transform3D.IDENTITY
+	if kind == "awaited":
+		return lifted * whole.affine_inverse() * lifted.affine_inverse() * at
+	return whole.affine_inverse() * lifted.affine_inverse() * at
+
+
 ## A history step's "held" ([method _held_go_with]): the parts not on the
 ## baseplate it names put back ("put") or taken out ("take"), each [placement,
 ## "awaited", "absent" or "unseen"]. Returns its reverse (Builder.held_hook).
@@ -3236,7 +3359,8 @@ func _held_undo(step: Dictionary) -> Dictionary:
 			"unseen":
 				if source != null:
 					source.not_shown.erase(placement)
-					source.unshown_origins.erase(placement.origin)
+					if not placement.origin.is_empty():
+						source.unshown_origins.erase(placement.origin)
 	for pair: Variant in step.get("put", []):
 		var placement: LdrModel.Placement = (pair as Array)[0]
 		match str((pair as Array)[1]):
@@ -3249,7 +3373,9 @@ func _held_undo(step: Dictionary) -> Dictionary:
 			"unseen":
 				if source != null and not source.not_shown.has(placement):
 					source.not_shown.append(placement)
-					source.unshown_origins[placement.origin] = placement
+					# One a paste put down was read from no line of the file.
+					if not placement.origin.is_empty():
+						source.unshown_origins[placement.origin] = placement
 	return {"undo": "held", "put": step.get("take", []), "take": step.get("put", [])}
 
 

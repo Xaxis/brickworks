@@ -102,6 +102,13 @@ var store_hook: Callable = Callable()
 ## A step's parts not on the baseplate put back or taken out (ModelStore
 ## ._held_undo: those a delete took with their copy), (step) -> its reverse.
 var held_hook: Callable = Callable()
+## What a copy of parts (Carry.gather's) brings of those not on the baseplate,
+## (parts) -> [{path, part, color, at, step, kind}] (ModelStore._held_carried),
+## and those put down with the copy a paste put down, ([[that, its path
+## now]], how the paste moved them) (ModelStore._held_put). Unset, a copy
+## brings none.
+var held_carry: Callable = Callable()
+var held_put: Callable = Callable()
 
 signal placed(brick_id: int, part_id: String)
 signal removed(brick_id: int)
@@ -2382,6 +2389,7 @@ func copy_selection() -> int:
 	Carry.clipboard = Carry.gather(world, library, Array(alive))
 	Carry.clipboard_lines = Assemblies.lines_held(world, Carry.clipboard)
 	Carry.clipboard_frames = Assemblies.frames_held(world, Carry.clipboard)
+	Carry.clipboard_held = held_carry.call(Carry.clipboard) if held_carry.is_valid() else []
 	return Carry.clipboard.size()
 
 
@@ -2511,12 +2519,23 @@ func _put_carried() -> int:
 		for brick_id: int in ids:
 			moved[brick_id] = carrying.moved()
 		Assemblies.frames_carried(self, moved)
+	# And what its copies hold that is not on the baseplate, in the copies it
+	# put down, moved as it moved them, in the same step (ModelStore
+	# ._held_put). Up to 2026-11-12 none came, and a save wrote the pasted
+	# copy as the sub-model: the part the catalogue lacks in the first was in
+	# no file (pc2check A2, H).
+	if not carrying.lifted and not carrying.held.is_empty() and copy_group.is_valid() \
+			and held_put.is_valid():
+		var into: Array = []
+		for one: Dictionary in carrying.held:
+			into.append([one, copy_group.call(str(one["path"]), renamed)])
+		held_put.call(into, carrying.moved())
 	# A clone or a duplicate: another copy in hand for the next, as it
 	# was before anything was typed for this one, R's turn kept, and the
 	# sub-models' lights and views it brings.
 	var again: Array = carrying.base_items() if carrying.repeats else []
 	var turned: int = carrying.turns
-	var brought: Array = [carrying.lines, carrying.frames]
+	var brought: Array = [carrying.lines, carrying.frames, carrying.held]
 	carrying.drop()
 	if not again.is_empty():
 		carrying.hold(again, false)
@@ -2524,6 +2543,7 @@ func _put_carried() -> int:
 		carrying.repeats = true
 		carrying.lines = brought[0]
 		carrying.frames = brought[1]
+		carrying.held = brought[2]
 	selection.clear()
 	for brick_id: int in ids:
 		selection[brick_id] = true

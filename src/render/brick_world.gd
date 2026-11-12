@@ -403,8 +403,18 @@ func held_parts() -> Array:
 ## as the placement itself is the one a step edit numbers (AuthorSteps
 ## .held_name), so it keeps the path it was read in.
 func held_path(placement: LdrModel.Placement) -> String:
-	var open: String = Assemblies.path_from(placement.group, placement.unit)
-	return str(held_paths.get(open, open))
+	var open: String = held_key(placement)
+	return str(held_paths.get(open, Assemblies.path_from(placement.group, placement.unit)))
+
+
+## What [member held_paths] keeps [param placement] by: the path the file had
+## it in, or for one a paste put down, a name of its own (Placement.held_key):
+## a copy pasted under a name a copy the file had went by before a rename
+## would otherwise be taken for that one.
+static func held_key(placement: LdrModel.Placement) -> String:
+	if not placement.held_key.is_empty():
+		return placement.held_key
+	return Assemblies.path_from(placement.group, placement.unit)
 
 
 ## How many times the world has been cleared: what was placed in one

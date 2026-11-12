@@ -2459,12 +2459,24 @@ static func in_file_order(found: Array) -> Array:
 ## 42043-1 (7,909 parts, sub-models five deep) took 718 s, nearly all of it
 ## here, scanning every part for each copy and scoring up to 400 ways one
 ## copy might lie on another that could not lie on it at all.
-func file_frames(figures: Dictionary = {}) -> Dictionary:
+##
+## A copy is what it holds: its parts on the baseplate, and those the model
+## has that are not ([param held]: [path, part, colour] each, ModelStore's
+## on their way and those the catalogue lacks, by the copy they are in now,
+## BrickWorld.held_path). A copy holding others of those than the first is
+## a definition of its own too, so each is written with what it holds. Which
+## of them, not where: they keep their place as the file had it while their
+## copy moves (awaited_at), and a moved copy is still the same sub-model.
+## Up to 2026-11-12 its parts alone were compared, and the definition went
+## out from the first copy only: a copy pasted beside one holding a part the
+## catalogue lacks came first, and that part was in no file (pc2check A2, H).
+func file_frames(figures: Dictionary = {}, held: Array = []) -> Dictionary:
 	var out: Dictionary = {}
 	var masters: Dictionary = {}
 	var taken: Dictionary = {}
 	var ordered: Array = in_file_order(Array(paths()))
 	var contents: Dictionary = contents_by_path()
+	var holding: Dictionary = held_by_path(held)
 	for path: String in ordered:
 		taken[definition(leaf(path))] = true
 	for path: String in ordered:
@@ -2474,7 +2486,8 @@ func file_frames(figures: Dictionary = {}) -> Dictionary:
 			out[path] = {"frame": _figure_frame(figures, path), "def": def}
 			continue
 		var master: String = masters[def]
-		var fit: Dictionary = exact_match(contents.get(master, []), contents.get(path, []))
+		var fit: Dictionary = exact_match(contents.get(master, []), contents.get(path, [])) \
+			if holding.get(master, {}) == holding.get(path, {}) else {"exact": false}
 		if bool(fit["exact"]):
 			var reflect: Transform3D = LdrModel.REFLECT_X if bool(fit["mirrored"]) \
 				else Transform3D.IDENTITY
@@ -2487,6 +2500,28 @@ func file_frames(figures: Dictionary = {}) -> Dictionary:
 		taken[own] = true
 		masters[own] = path
 		out[path] = {"frame": _figure_frame(figures, path), "def": own}
+	return out
+
+
+## What each copy holds of [param held] ([path, part, colour] each, the parts
+## not on the baseplate by the copy they are in), at any depth: path -> how
+## many of each, by the definitions of the copies below it it is in, its part
+## and its colour ("Sub|3003|14"), so two copies whose inner copies are
+## numbered apart hold alike.
+static func held_by_path(held: Array) -> Dictionary:
+	var out: Dictionary = {}
+	for one: Variant in held:
+		var own: PackedStringArray = segments(str((one as Array)[0]))
+		var path: String = ""
+		for n: int in own.size():
+			path = join(path, own[n])
+			var below := PackedStringArray()
+			for segment: String in own.slice(n + 1):
+				below.append(definition(segment))
+			var key: String = "%s|%s|%d" % ["/".join(below), (one as Array)[1], int((one as Array)[2])]
+			if not out.has(path):
+				out[path] = {}
+			(out[path] as Dictionary)[key] = int((out[path] as Dictionary).get(key, 0)) + 1
 	return out
 
 

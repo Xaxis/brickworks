@@ -4847,6 +4847,22 @@ msgstr "un comentario fijado a una pieza"
 msgid "the model's settings"
 msgstr "los ajustes del modelo"
 
+# Build together (pcredesign): where a copy's lights stand, what is too long, an undo held back.
+msgid "where the lights and views of %s stand"
+msgstr "dónde están las luces y las vistas de %s"
+
+msgid "This session can't carry sub-models' lights and views yet: everything else still reaches the others, but on their side a sub-model's lights and views stay where they were when you move, rename or make one here."
+msgstr "Esta sesión aún no puede transmitir las luces y las vistas de los submodelos: todo lo demás sigue llegando a los demás, pero en su lado las luces y las vistas de un submodelo se quedan donde estaban cuando mueves, cambias de nombre o creas uno aquí."
+
+msgid "This session can't carry %s, longer than it takes: everything else still reaches the others, but on their side those stay as they were."
+msgstr "Esta sesión no puede transmitir %s, más largo de lo que admite: todo lo demás sigue llegando a los demás, pero en su lado eso se queda como estaba."
+
+msgid "undid nothing: somebody else changed %s since"
+msgstr "no se deshizo nada: otra persona cambió %s desde entonces"
+
+msgid "redid nothing: somebody else changed %s since"
+msgstr "no se rehízo nada: otra persona cambió %s desde entonces"
+
 
 msgid "A comment on %s, kept with the model: in its file, the autosave and a shared link, and seen by whoever builds it with you."
 msgstr "Un comentario sobre %s, guardado con el modelo: en su archivo, el autoguardado y un enlace compartido, y visible para quien lo construya contigo."

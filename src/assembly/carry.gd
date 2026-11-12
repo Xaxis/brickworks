@@ -36,6 +36,10 @@ static var clipboard_lines: Dictionary = {}
 ## (BrickWorld.section_frames), so a paste puts them where the copy it puts
 ## down stands (Assemblies.frames_held).
 static var clipboard_frames: Dictionary = {}
+## And what the copies copied whole hold that is not on the baseplate (parts
+## on their way, parts the catalogue lacks: ModelStore._held_carried), each
+## where it stands, so the copy a paste puts down holds them too.
+static var clipboard_held: Array = []
 
 var library: PartLibrary
 
@@ -59,6 +63,8 @@ var repeats: bool = false
 var lines: Dictionary = {}
 ## And the frame each is in (clipboard_frames).
 var frames: Dictionary = {}
+## And what its copies hold that is not on the baseplate (clipboard_held).
+var held: Array = []
 
 var _ghost: Node3D
 ## The ghost's one material: its "valid" says whether the group fits.
@@ -178,6 +184,7 @@ func hold(parts: Array, came_off_the_model: bool) -> void:
 	lifted = came_off_the_model
 	lines = {}
 	frames = {}
+	held = []
 	_pinned = false
 	_base = []
 	var phase: float = phase_of(items[0].get("pivot", Vector3(10, 0, 10))) \
@@ -196,6 +203,7 @@ func drop() -> void:
 	repeats = false
 	lines = {}
 	frames = {}
+	held = []
 	_pinned = false
 	_base = []
 	_covers.clear()

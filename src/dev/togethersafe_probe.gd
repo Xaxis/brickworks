@@ -31,7 +31,8 @@ var _failures: int = 0
 
 const PARTS_DIR := "user://togethersafe_parts/"
 const OUTSIDE_DIR := "user://togethersafe_outside/"
-const KINDS: Array[String] = ["~hidden", "~looks", "~unit_steps", "~broken", "~sublines:Sub"]
+const KINDS: Array[String] = ["~hidden", "~looks", "~unit_steps", "~broken", "~sublines:Sub",
+	"~frame:House#1/Sub#1", "~frame:Sub#2"]
 const UIDS: Array[String] = ["probe1.0", "probe1.1", "probe1.2"]
 
 
@@ -212,7 +213,7 @@ static func _state_of(side: Dictionary, key: String) -> Variant:
 			return (side["world"] as BrickWorld).unit_steps
 		"~broken":
 			return (side["world"] as BrickWorld).broken_out
-		_ when key.begins_with("~sublines:"):
+		_ when key.begins_with("~sublines:") or key.begins_with("~frame:"):
 			return [(side["world"] as BrickWorld).section_lines, (side["world"] as BrickWorld).section_frames]
 	return null
 
@@ -256,6 +257,7 @@ func _objects_refused(side: Dictionary, state: Dictionary) -> void:
 			+ "\"touching\": @}}", "RefCounted", "broken out"),
 		"~sublines:Sub": _with_object("{\"lines\": [@], \"frames\": {\"Sub#1\": @}}", "RefCounted",
 			"sub-model lines"),
+		"~frame:Sub#2": _with_object("@", "RefCounted", "a copy's frame"),
 	}
 	for key: String in crafted:
 		# Its good words first, as the session had them.
@@ -277,6 +279,7 @@ func _objects_refused(side: Dictionary, state: Dictionary) -> void:
 	# a part's line, a FILE line or one with a line end in it are none of
 	# them, so no other side writes them into this one's file.
 	var light: String = SceneLights.META + "{\"kind\": \"point\"}"
+	var framed: Dictionary = world.section_frames.duplicate()
 	together._put_meta("~sublines:Sub", var_to_str({"lines": PackedStringArray([
 		"1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat", "0 FILE evil.ldr",
 		SceneLights.META + "{}\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat", light]),
@@ -284,9 +287,18 @@ func _objects_refused(side: Dictionary, state: Dictionary) -> void:
 	together._put_meta("~sublines:Bad/Name", var_to_str({"lines": PackedStringArray([light])}))
 	_check("~sublines: only a light's or a view's line is kept, on one line, under a sub-model's name",
 		world.section_lines == {"Sub": PackedStringArray([light])}, str(world.section_lines))
-	_check("...and only a frame that is one, of a copy of that sub-model", world.section_frames.is_empty(),
-		str(world.section_frames))
+	_check("...and only a frame that is one, of a copy of that sub-model, as an older build sends it",
+		world.section_frames == framed, str(world.section_frames))
+	# Where one copy's stand, by its path: a place and a turn of the model's
+	# space, or none.
+	together._put_meta("~frame:Sub#2", var_to_str(Transform3D(Basis() * 0.0, Vector3.ZERO)))
+	together._put_meta("~frame:Sub#3", "Vector3(1, 2, 3)")
+	together._put_meta("~frame:Bad\nPath#1", var_to_str(Transform3D.IDENTITY))
+	framed.erase("Sub#2")
+	_check("~frame: only a place and a turn is a copy's frame, by a path a copy can have",
+		world.section_frames == framed, str(world.section_frames))
 	together._put_meta("~sublines:Sub", words["~sublines:Sub"])
+	together._put_meta("~frame:Sub#2", words["~frame:Sub#2"])
 	# A made part's files: a Node is made and left where it is, so it is counted.
 	var orphans: int = int(Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT))
 	_put(side, "~part:bw-togethersafe-a", _with_object("{\"bw-togethersafe-a.dat\": \"0 a part\\n\", "

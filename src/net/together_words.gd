@@ -120,6 +120,10 @@ static func state_named(key: String) -> String:
 	if key.begins_with("~sublines:"):
 		var def: String = key.substr("~sublines:".length())
 		return "%s's lights and views" % def if not def.is_empty() else "sub-models' lights and views"
+	if key.begins_with("~frame:"):
+		var copy: String = Assemblies.label(key.substr("~frame:".length()))
+		return "where the lights and views of %s stand" % copy if not copy.is_empty() \
+			else "sub-models' lights and views"
 	if key.begins_with("~pin:"):
 		return "a comment pinned to a part"
 	match key:
@@ -146,8 +150,19 @@ static func state_named(key: String) -> String:
 ## start of a key of the model's own state: "~sublines:"), as Together
 ## leaves it out from then: what the others' side cannot be sent.
 static func not_carried(kind: String) -> String:
-	var what: String = "sub-models' lights and views" if kind == "~sublines:" else state_named(kind)
-	return "This session can't carry %s yet: the others keep theirs as they were, and everything else still reaches them." % what
+	# A sub-model's lights and views do not follow on the other side what
+	# changes their sub-model here: renamed, its parts go into one with none.
+	# Up to 2026-11-12 the words said they kept theirs as they were, and the
+	# other side lost a renamed sub-model's light (pc2check T1_1).
+	if kind == "~sublines:" or kind == "~frame:":
+		return "This session can't carry sub-models' lights and views yet: everything else still reaches the others, but on their side a sub-model's lights and views stay where they were when you move, rename or make one here."
+	return "This session can't carry %s yet: the others keep theirs as they were, and everything else still reaches them." % state_named(kind)
+
+
+## Said once for [param key], the model's own state the session's server
+## keeps, but not as long as this side has it (Together._drop_long).
+static func too_long(key: String) -> String:
+	return "This session can't carry %s, longer than it takes: everything else still reaches the others, but on their side those stay as they were." % state_named(key)
 
 
 ## Said when another side's change came after this side's own to the same
@@ -663,6 +678,22 @@ static func sublines(def: String, raw: Dictionary, dropped: PackedStringArray) -
 		else:
 			dropped.append("a frame of %s" % def.left(40))
 	return {"lines": kept, "frames": frames}
+
+
+## Where the frame of the copy at [param path] stands, as another side sent
+## it (Together._frame_words: a Transform3D as Godot writes one), or null for
+## words that are not one, or a path no copy can have, said in the log.
+static func frame(path: String, words: String) -> Variant:
+	if path.is_empty() or path.length() > 400 or _control.search(path) != null \
+			or Assemblies.segments(path).size() > 32:
+		left_out("where a sub-model's lights and views stand", "a copy %s" % path.left(40))
+		return null
+	var got: Array = read(words)
+	if not bool(got[0]) or not _frame(got[1]):
+		left_out("where a sub-model's lights and views stand", "%s: %s" % [path.left(40),
+			str(got[1]) if not bool(got[0]) else "not a place"])
+		return null
+	return got[1]
 
 
 ## Whether [param at] is a place and a turn of the model's space.

@@ -1607,6 +1607,109 @@ func _r_frames() -> void:
 	# and a paste goes into it.
 	assemblies.leave_to("")
 	await _r_held_copy()
+	await _r_held_pasted()
+	await _r_duplicated()
+
+
+## pc2check A2: a lit Sub holding a part the catalogue lacks, copied and
+## pasted beside itself, then a Make round the first copy: each copy is what
+## it holds, the pasted one the part too, so the file has it in both and a
+## reopen has it twice; undone, the paste takes its own out with it. Up to
+## 2026-11-12 the paste brought none, the writer compared copies by their
+## parts on the baseplate alone, and wrote the sub-model from the pasted copy:
+## the part was in no file.
+func _r_held_pasted() -> void:
+	var file: String = _lit_sub("Brickworks", _light("point", [0, -50, 0], {"colour": SUB_GREEN}),
+		_view_line(SUB_VIEW)).replace("1 14 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat",
+		"1 14 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat\n1 2 0 -24 0 1 0 0 0 1 0 0 0 1 zz_nosuch_part.dat")
+	await _opened(_put("held_pasted.mpd", file))
+	var assemblies: Assemblies = _shell.get("assemblies")
+	var builder: Builder = _main.get("_builder")
+	var first: String = _path_named(assemblies, "Sub")
+	_select(assemblies, first)
+	_shell.call("run", "copy")
+	await _frames(10)
+	builder.clear_selection()
+	var pasted: Dictionary = await _pasted(builder)
+	_select(assemblies, first)
+	var made: String = assemblies.make("Box")
+	_main.call("_on_model_edited")
+	await _frames(10)
+	var text: String = await _saved_text("held_pasted_a")
+	var flat: Dictionary = _composed(text)
+	var lacking: Array = (flat["parts"] as Array).filter(func(one: Array) -> bool:
+		return str(one[0]) == "zz_nosuch_part.dat")
+	var bricks: Array = (flat["parts"] as Array).filter(func(one: Array) -> bool:
+		return str(one[0]) == "3003.dat")
+	# Each copy's part the catalogue lacks one plate above its 3003, as the file had it.
+	var beside: bool = lacking.size() == 2 and bricks.size() == 2 and lacking.all(func(one: Array) -> bool:
+		return bricks.any(func(brick: Array) -> bool:
+			return ((one[1] as Vector3) - (brick[1] as Vector3)).is_equal_approx(Vector3(0, -24, 0))))
+	await _opened(ModelStore.SAVE_DIR + "held_pasted_a.mpd")
+	var absent: int = (_store.get("_absent") as Array).size()
+	var again: String = await _saved_text("held_pasted_b")
+	_check("a lit Sub holding a part the catalogue lacks pasted beside itself (#%d) and a %s made "
+		% [int(pasted["at"]), made] + "round the first: the part in each copy's file %d times, each with "
+		% lacking.size() + "its copy's 3003 (%s); reopened it holds %d, saved again the same (%s)"
+		% [beside, absent, again == text], int(pasted["at"]) != 0 and not made.is_empty() and beside
+		and absent == 2 and again == text)
+	# Undone, the paste's own goes with it: the file the open read, one of each.
+	await _opened(_put("held_pasted.mpd", file))
+	assemblies = _shell.get("assemblies")
+	_select(assemblies, _path_named(assemblies, "Sub"))
+	_shell.call("run", "copy")
+	await _frames(10)
+	builder.clear_selection()
+	await _pasted(builder)
+	var with_paste: int = _composed(await _saved_text("held_pasted_c"))["parts"].filter(
+		func(one: Array) -> bool: return str(one[0]) == "zz_nosuch_part.dat").size()
+	_shell.call("run", "undo")
+	await _frames(10)
+	var undone: int = _composed(await _saved_text("held_pasted_d"))["parts"].filter(
+		func(one: Array) -> bool: return str(one[0]) == "zz_nosuch_part.dat").size()
+	_shell.call("run", "redo")
+	await _frames(10)
+	var redone: int = _composed(await _saved_text("held_pasted_e"))["parts"].filter(
+		func(one: Array) -> bool: return str(one[0]) == "zz_nosuch_part.dat").size()
+	_check("...pasted alone: written %d times; the paste undone %d; redone %d" % [with_paste, undone,
+		redone], with_paste == 2 and undone == 1 and redone == 2)
+
+
+## pc2check Q (live too): a lit Sub's copy duplicated (Edit, Duplicate) and
+## put down beside: the copy's light and view stand with its parts, as a
+## paste's do. Up to 2026-11-12 a duplicate brought no lines nor their frame,
+## and its light was written where the file had had it.
+func _r_duplicated() -> void:
+	var file: String = _lit_sub("Brickworks", _light("point", [0, -50, 0], {"colour": SUB_GREEN}),
+		_view_line(SUB_VIEW))
+	var want: Array = _offsets(file)
+	await _opened(_put("duplicated.mpd", file))
+	var assemblies: Assemblies = _shell.get("assemblies")
+	var builder: Builder = _main.get("_builder")
+	_select(assemblies, _path_named(assemblies, "Sub"))
+	var held: int = (_main.get("_verbs") as Object).call("duplicate_selection", false)
+	await _frames(5)
+	var put: int = await _put_down(builder)
+	_main.call("_on_model_edited")
+	await _frames(10)
+	var text: String = await _saved_text("duplicated_a")
+	var flat: Dictionary = _composed(text)
+	var parts: Array = (flat["parts"] as Array).filter(func(one: Array) -> bool:
+		return str(one[0]) == "3003.dat")
+	var lights: Array = (flat["lights"] as Array).filter(func(one: Array) -> bool:
+		return str(one[0]) == SUB_GREEN)
+	var views: Array = (flat["views"] as Array).filter(func(one: Array) -> bool:
+		return str(one[0]) == SUB_VIEW)
+	var with_parts: bool = parts.size() == 2 and lights.size() == 2 and views.size() == 2
+	for n: int in (parts.size() if with_parts else 0):
+		var at: Vector3 = parts[n][1]
+		with_parts = with_parts and lights.any(func(one: Array) -> bool:
+			return ((one[1] as Vector3) - at).distance_to(want[0][0]) < 0.01) \
+			and views.any(func(one: Array) -> bool: return ((one[1] as Vector3) - at).distance_to(want[1]) < 0.01)
+	_check("a lit Sub duplicated (%d parts held, put #%d): each copy's light and view with its parts "
+		% [held, put] + "(%s, %s against %s)" % [lights.map(func(one: Array) -> Vector3: return one[1]),
+		views.map(func(one: Array) -> Vector3: return one[1]), parts.map(func(one: Array) -> Vector3:
+			return one[1])], put != 0 and with_parts)
 
 
 ## HB2: A's lit Sub pasted into B, whose Sub has lines of its own and one part,
