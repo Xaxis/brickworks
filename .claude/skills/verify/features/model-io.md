@@ -703,7 +703,9 @@ Whether what you built is still there tomorrow, and still means the same thing.
   fetched late, and two bricks drawn 76 LDU up, by another tool and by this one.
   A part still on its way, or one the app's own file has that the catalogue
   lacks, is in its copy wherever every change since took it
-  (`BrickWorld.held_paths`, carried by `Builder._carry`; `ModelStore.held_path`):
+  (`BrickWorld.held_paths`, carried by `Builder._carry`; `BrickWorld.held_path`,
+  which every reader of one goes through, as a step edit changes the placement
+  itself):
   `joints_probe` ("a part on its way, or one the catalogue lacks, in its
   sub-model") renames its Sub Engine, and makes a Box round it, before the
   part lands: saved before and after it lands it is in that sub-model, it
@@ -712,7 +714,11 @@ Whether what you built is still there tomorrow, and still means the same thing.
   last parts takes its held ones with it in the same step
   (`ModelStore._held_go_with`, `Assemblies.copies_emptied`, a `held` undo
   through `Builder.held_hook`), so no file keeps the copy for a part on its
-  way alone (pccheck HA_5).
+  way alone (pccheck HA_5). Taking a copy apart takes its held ones into the
+  one round it, numbered in its steps with the rest and their step's look
+  with them (`AuthorSteps.inlined`; hscheck R_own_ungroup). Someone else's
+  file keeps such a part's line in the copy's section, and the copy with it
+  (`SourceFile.patch`).
   A part a
   file carries is built from its carried subparts and primitives as well (see
   [elements](elements.md), `made parts in the library and in files`). There were two ways: the app's own opened

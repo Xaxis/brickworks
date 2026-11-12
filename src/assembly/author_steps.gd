@@ -731,11 +731,19 @@ static func inlined(world: BrickWorld, path: String, skip: Dictionary = {}) -> D
 		return {}
 	var outer: String = home(world, Assemblies.parent_of(path))
 	var read: Dictionary = items_in(world, [path, outer], skip)
-	# What the copy holds and does not show stays in the copy, which a save
-	# writes still (ModelStore._hold_unit); the steps it is in go with the
-	# rest of the section round it.
-	read[path] = (read[path] as Array).filter(func(item: Dictionary) -> bool:
-		return not item.has("unseen"))
+	# What the copy holds and does not show goes with the rest of its parts
+	# (Builder._carry: BrickWorld.held_paths), so it is numbered with them,
+	# and its step's look with it. Not in a copy of someone else's file
+	# (BrickWorld.unit_chains), whose save keeps that part's line in the
+	# copy's section and with it the copy (SourceFile.patch); the steps it is
+	# in go with the rest of the section round it. Up to 2026-11-11 it was
+	# kept out in the app's own file too: written in a copy of its own, which
+	# an open read as a part the catalogue lacks, and then, its path carried,
+	# in the step of the copy's first part, its step's look lost (hscheck
+	# R_own_ungroup).
+	if world.unit_chains.has(path):
+		read[path] = (read[path] as Array).filter(func(item: Dictionary) -> bool:
+			return not item.has("unseen"))
 	var at: int = -1
 	for item: Dictionary in read[outer]:
 		if str(item.get("unit", "")) == path:
