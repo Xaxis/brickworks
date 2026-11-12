@@ -34,9 +34,12 @@ extends RefCounted
 
 ## The word every line of the app's own begins with, after "0".
 const WORD := "!BRICKWORKS"
+## How nearly every one of them begins, as the app writes them: read past
+## without a walk over its letters ([method of_text]).
+const LEAD := "0 !BRICKWORKS "
 ## Where a family's lines go in the model when the file has none of them:
-## under its title (the line after its 0 FILE), as LdrModel.into_main put
-## them...
+## under its title, after the model's first line whatever it is
+## (LdrModel.title_end, into_main's rule too)...
 const TITLE := 0
 ## ...or at the end of its head, after its name and author lines, before its
 ## first part, step or blank line (where ModelFloor put its line).
@@ -64,7 +67,7 @@ class Line extends RefCounted:
 
 	## The line as a writer writes it: one space between its words.
 	func clean() -> String:
-		return MetaIndex.clean_of(word, said)
+		return raw if MetaIndex._plain(raw) else MetaIndex.clean_of(word, said)
 
 
 ## A section of the file: the model's own, or a sub-model's 0 FILE.
@@ -77,8 +80,8 @@ class Section extends RefCounted:
 	var file: int = -1
 	var body: int = 0
 	var end: int = 0
-	## Where a line under its title goes: after its first line when that is
-	## a title, else its first line's place.
+	## Where a line under its title goes: after its first line, whatever it
+	## is (LdrModel.title_end).
 	var title_end: int = 0
 	## Where its head ends: before its first part, step, section line or
 	## blank line, and before the lines that say what the line after them is
@@ -109,8 +112,25 @@ var size: int = 0
 var eol: String = "\n"
 ## Its sections, the model's own first.
 var sections: Array[Section] = []
-## Every line of the app's own, in the file's order.
-var lines: Array[Line] = []
+## Every line of the app's own, in the file's order, kept as columns: where
+## it begins, ends before its CR and the next begins; the section it is in;
+## its word; where in it what it says begins; the line. Its [Line] is made
+## when a reader or writer asks for its word's lines ([method own]), once,
+## so its [member Line.taken] stays: 200,000 light lines no reader can read
+## cost each save of them a [Line] apiece, 2 s of a save of 3.7 (lights'
+## _r_junk).
+var _start := PackedInt32Array()
+var _stop := PackedInt32Array()
+var _next := PackedInt32Array()
+var _section := PackedInt32Array()
+var _said_at := PackedInt32Array()
+var _word := PackedStringArray()
+var _raw := PackedStringArray()
+## Each one's [Line] once asked for, else null.
+var _made: Array = []
+## Their places in those columns by their word, each word's in the file's
+## order: what a feature asks for is found without a look at the rest.
+var _by_word: Dictionary = {}
 ## How many ROTSTEP lines it has, and each page's picture it embeds
 ## (LDraw's !DATA named brickworks-page-...), by its name, lower case: what
 ## the booklet's looks look for (BookletLooks._written_in).
@@ -153,6 +173,17 @@ static func of_text(text: String) -> MetaIndex:
 		var end: int = stop
 		if end > at and text.unicode_at(end - 1) == 13:
 			end -= 1
+		var raw: String = text.substr(at, end - at)
+		if raw.begins_with(LEAD):
+			# As the app writes one: its word up to the next space.
+			var e: int = raw.find(" ", LEAD.length())
+			if e < 0:
+				e = raw.length()
+			var word: String = raw.substr(LEAD.length(), e - LEAD.length())
+			if not word.is_empty() and not word.contains("\t"):
+				out._add(at, end, next, within, word.to_upper(), e, raw)
+				at = _next_zero(text, stop)
+				continue
 		var k: int = _past_blanks(text, at + 1, end)
 		if k > at + 1 and k < end:
 			var w: int = _to_blank(text, k, end)
@@ -161,15 +192,7 @@ static func of_text(text: String) -> MetaIndex:
 			if keyword == WORD:
 				var m: int = _past_blanks(text, w, end)
 				var e: int = _to_blank(text, m, end)
-				var line := Line.new()
-				line.start = at
-				line.stop = end
-				line.next = next
-				line.word = text.substr(m, e - m).to_upper()
-				line.said = text.substr(e, end - e).strip_edges()
-				line.raw = text.substr(at, end - at)
-				line.section = within
-				out.lines.append(line)
+				out._add(at, end, next, within, text.substr(m, e - m).to_upper(), e - at, raw)
 			elif keyword == "FILE":
 				files += 1
 				if files == 1:
@@ -205,60 +228,119 @@ static func of_text(text: String) -> MetaIndex:
 	return out
 
 
+func _add(start: int, stop: int, next: int, section: int, word: String, said_at: int,
+		raw: String) -> void:
+	var n: int = _raw.size()
+	_start.append(start)
+	_stop.append(stop)
+	_next.append(next)
+	_section.append(section)
+	_said_at.append(said_at)
+	_word.append(word)
+	_raw.append(raw)
+	_made.append(null)
+	var same: Variant = _by_word.get(word)
+	if same == null:
+		_by_word[word] = [n]
+	else:
+		(same as Array).append(n)
+
+
+## The [Line] of the app's line [param n], made once.
+func _line(n: int) -> Line:
+	var made: Variant = _made[n]
+	if made != null:
+		return made
+	var line := Line.new()
+	line.start = _start[n]
+	line.stop = _stop[n]
+	line.next = _next[n]
+	line.section = _section[n]
+	line.word = _word[n]
+	line.raw = _raw[n]
+	line.said = line.raw.substr(_said_at[n]).strip_edges()
+	_made[n] = line
+	return line
+
+
+## Where the lines of any of [param words] are (a word ending "*" any word
+## beginning so), every section's, in the file's order.
+func _of_words(words: Array) -> Array:
+	var lists: Array = []
+	var seen: Dictionary = {}
+	for one: String in words:
+		if one.ends_with("*"):
+			var stem: String = one.left(-1)
+			for word: String in _by_word:
+				if word.begins_with(stem) and not seen.has(word):
+					seen[word] = true
+					lists.append(_by_word[word])
+		elif _by_word.has(one) and not seen.has(one):
+			seen[one] = true
+			lists.append(_by_word[one])
+	if lists.size() == 1:
+		return lists[0]
+	var all: Array = []
+	for list: Array in lists:
+		all.append_array(list)
+	if lists.size() > 1:
+		all.sort()
+	return all
+
+
+## The lines of [param words] as the file has them, the model's own or with
+## [param everywhere] every section's, made into no [Line].
+func _raws_of(words: Array, everywhere: bool) -> PackedStringArray:
+	var out := PackedStringArray()
+	for n: int in _of_words(words):
+		if everywhere or _section[n] == 0:
+			out.append(_raw[n])
+	return out
+
+
 ## The lines of the model's own section whose word is one of [param words]
 ## (a word ending "*" any word beginning so), in the file's order.
 func own(words: Array) -> Array[Line]:
 	var out: Array[Line] = []
-	var wanted := PackedStringArray(words)
-	for line: Line in lines:
-		if line.section == 0 and matches(line.word, wanted):
-			out.append(line)
+	for n: int in _of_words(words):
+		if _section[n] == 0:
+			out.append(_line(n))
 	return out
 
 
 ## [method own], every section's.
 func anywhere(words: Array) -> Array[Line]:
 	var out: Array[Line] = []
-	var wanted := PackedStringArray(words)
-	for line: Line in lines:
-		if matches(line.word, wanted):
-			out.append(line)
+	for n: int in _of_words(words):
+		out.append(_line(n))
 	return out
 
 
 ## Whether the model's own section has a line of any of [param words].
 func has(words: Array) -> bool:
-	var wanted := PackedStringArray(words)
-	for line: Line in lines:
-		if line.section == 0 and matches(line.word, wanted):
+	for n: int in _of_words(words):
+		if _section[n] == 0:
 			return true
 	return false
 
 
 ## Whether any section has a line of any of [param words].
 func has_anywhere(words: Array) -> bool:
-	var wanted := PackedStringArray(words)
-	for line: Line in lines:
-		if matches(line.word, wanted):
-			return true
-	return false
+	return not _of_words(words).is_empty()
 
 
 ## The model's own lines of [param words] as the file has them.
 func raws(words: Array) -> PackedStringArray:
-	var out := PackedStringArray()
-	for line: Line in own(words):
-		out.append(line.raw)
-	return out
+	return _raws_of(words, false)
 
 
 ## The model's own lines of [param words] no reader took, as the file has
 ## them: written back as they are, where they are ([method lines_for]).
 func untaken(words: Array) -> PackedStringArray:
 	var out := PackedStringArray()
-	for line: Line in own(words):
-		if not line.taken:
-			out.append(line.raw)
+	for n: int in _of_words(words):
+		if _section[n] == 0 and (_made[n] == null or not (_made[n] as Line).taken):
+			out.append(_raw[n])
 	return out
 
 
@@ -320,6 +402,8 @@ static func matches(word: String, words: PackedStringArray) -> bool:
 ## and what it says, one space between; [param line] as it is for any
 ## other.
 static func clean(line: String) -> String:
+	if _plain(line):
+		return line
 	var end: int = line.length()
 	if end > 0 and line.unicode_at(end - 1) == 13:
 		end -= 1
@@ -333,6 +417,19 @@ static func clean(line: String) -> String:
 	var m: int = _past_blanks(line, w, end)
 	var e: int = _to_blank(line, m, end)
 	return clean_of(line.substr(m, e - m).to_upper(), line.substr(e, end - e).strip_edges())
+
+
+## Whether [param line] is one of the app's as [method clean] gives it:
+## "0 !BRICKWORKS", a word in capitals and what it says, each one space
+## apart, no JSON, its ends bare. Most are, and are told apart as they are.
+static func _plain(line: String) -> bool:
+	if not line.begins_with(LEAD) or line.contains("\t") or line.contains("  ") \
+			or line.contains("{") or line.contains("[") or line.ends_with(" ") \
+			or line.ends_with("\r"):
+		return false
+	var e: int = line.find(" ", LEAD.length())
+	var word: String = line.substr(LEAD.length(), (line.length() if e < 0 else e) - LEAD.length())
+	return not word.is_empty() and word == word.to_upper()
 
 
 ## The line of [param word] that says [param said] as two lines are told
@@ -364,6 +461,11 @@ static func lines_for(had: PackedStringArray, now: PackedStringArray,
 		unread: PackedStringArray) -> PackedStringArray:
 	if unread.is_empty():
 		return now
+	if unread == had:
+		# None of the file's was read: each stays, and what is said follows.
+		var out: PackedStringArray = had.duplicate()
+		out.append_array(now)
+		return out
 	var left: Dictionary = {}       ## clean -> how many of it are unread
 	for line: String in unread:
 		var key: String = clean(line)
@@ -474,6 +576,9 @@ func write(text: String, families: Array) -> String:
 	var put: Array = []            ## [where, order, line]
 	var order: int = 0
 	for family: Family in families:
+		# Each line as the file has it, in its order: nothing to do.
+		if _raws_of(family.words, family.anywhere) == family.lines:
+			continue
 		var had: Array[Line] = anywhere(family.words) if family.anywhere else own(family.words)
 		var had_clean := PackedStringArray()
 		for line: Line in had:
@@ -565,19 +670,13 @@ func write(text: String, families: Array) -> String:
 
 ## [param section]'s title and head ends, read from its first lines.
 static func _head_of(text: String, section: Section) -> void:
-	var at: int = section.body
-	section.title_end = at
-	section.head_end = at
-	if at >= section.end:
-		return
-	var next: int = _next_line(text, at)
-	if _is_title(LdrModel._fields(text.substr(at, next - at))):
-		section.title_end = next
-		at = next
+	section.title_end = LdrModel.title_end(text, section.body, section.end)
+	section.head_end = section.title_end
+	var at: int = section.title_end
 	var run: int = -1
 	var count: int = 0
 	while at < section.end and count < 400:
-		next = _next_line(text, at)
+		var next: int = _next_line(text, at)
 		var line: String = text.substr(at, next - at)
 		var words: PackedStringArray = LdrModel._fields(line)
 		if words.is_empty() or words[0] != "0":
@@ -592,16 +691,6 @@ static func _head_of(text: String, section: Section) -> void:
 		at = next
 		count += 1
 	section.head_end = run if run >= 0 else at
-
-
-## Whether a line of [param words] is a model's title, as LdrModel.parse
-## takes one: a comment that is no meta command.
-static func _is_title(words: PackedStringArray) -> bool:
-	if words.size() < 2 or words[0] != "0":
-		return false
-	var keyword: String = words[1].to_upper()
-	return not keyword.begins_with("!") and not words[1].begins_with("//") \
-		and not keyword in ["BFC", "NAME:", "AUTHOR:", "FILE", "NOFILE", "STEP", "ROTSTEP"]
 
 
 static func _next_line(text: String, at: int) -> int:

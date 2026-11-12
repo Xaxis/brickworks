@@ -289,10 +289,12 @@ static func _changes(world: BrickWorld, entry: Dictionary) -> bool:
 
 ## Number a section's steps 0, 1, 2… in the order they were, with no gaps:
 ## after an edit has emptied one, or made one between two. A step the file
-## has empty, between two that had parts before the edit ([param undo] keeps
-## what each part's step was), is the author's, a page of its own, and is
-## kept among them: up to metalines a part moved on a step took it out, and
-## its page's look with it (pkreview3; BookletLooks._empty_to).
+## has empty with a look of its own (a page of notes or pictures), between
+## two that had parts before the edit ([param undo] keeps what each part's
+## step was), is the author's, and is kept among them: up to metalines a part
+## moved on a step took it out, and its page's look with it (pkreview3;
+## BookletLooks._empty_to). One an earlier edit emptied has lost its look
+## with its last part (BookletLooks.emptied), and is numbered out.
 static func _tidy(world: BrickWorld, section: String, skip: Dictionary, undo: Array) -> void:
 	var items: Array = items_of(world, section, skip)
 	var was: Dictionary = {}        ## a part or copy -> its step before the edit
@@ -312,7 +314,8 @@ static func _tidy(world: BrickWorld, section: String, skip: Dictionary, undo: Ar
 			before[then] = true
 	if not before.is_empty():
 		for step: int in int(before.keys().max()):
-			if not before.has(step) and not used.has(step):
+			if not before.has(step) and not used.has(step) \
+					and not BookletLooks.of(world, section, step).is_empty():
 				used[step] = true
 	var order: Array = used.keys()
 	order.sort()

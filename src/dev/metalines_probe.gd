@@ -36,6 +36,9 @@
 ##   or TITLE added and no look line moved (hscheck);
 ## - tabs: tabs between the words, a CR in a file of LF and "0 FiLe" read
 ##   as LDraw reads them, and a line changed where it was;
+## - bom: a file that begins with a byte-order mark, opened from the
+##   person's models, edited 4 ways and saved: the mark kept and the rest as
+##   the same edit of the file without one (cfcheck's cfc_bom.mpd);
 ## - castle: a whole write of the castle, in ms and ms per MB, said for the
 ##   cost (METALINES_CASTLE_MS_PER_MB: the most it may be).
 ##
@@ -46,7 +49,7 @@ extends SceneTree
 const MODELS := "user://models/"
 const FX := "res://src/dev/fixtures/metalines/"
 const CASES: Array = ["newer_view", "motions", "crlf30", "pictures", "empty_step", "name_twice",
-	"undo_open", "sub_lines", "no_title", "name_bump", "unedited", "tabs", "castle"]
+	"undo_open", "sub_lines", "no_title", "name_bump", "unedited", "tabs", "bom", "castle"]
 const WATCHDOG := 2400.0
 const ORBIT := "0 !BRICKWORKS VIEW {\"name\":\"orbit\",\"path\":[[0,0,0],[40,0,0]],\"kind\":\"orbit\",\"speed\":2}"
 const SPRING := "0 !BRICKWORKS MOTION_KEY \"Lift\" 1 1 45 SPRING"
@@ -117,6 +120,7 @@ func _run() -> void:
 			"name_bump": await _case_name_bump()
 			"unedited": await _case_unedited()
 			"tabs": await _case_tabs()
+			"bom": await _case_bom()
 			"castle": await _case_castle()
 			_: _check("no such case %s" % name, false)
 		print("CASE %s: %s" % [name, "green" if _failures == before
@@ -489,7 +493,8 @@ func _case_unedited() -> void:
 	var all: int = 0
 	for entry: Array in [["F_theirs_lf", _fixture("F_theirs_lf.ldr")], ["F_theirs_crlf", crlf],
 			["apps", _fixture("apps.mpd")], ["drive", _fixture("drive.ldr")],
-			["merge_theirs_five", _fixture("merge_theirs_five.ldr")]]:
+			["merge_theirs_five", _fixture("merge_theirs_five.ldr")],
+			["F_theirs_bom", "\ufeff" + _fixture("F_theirs_lf.ldr")]]:
 		var name: String = entry[0]
 		var text: String = entry[1]
 		await _open("ml_unedited_" + name, text)
@@ -502,7 +507,7 @@ func _case_unedited() -> void:
 		await _open("ml_unedited_%s_in" % name, text)
 		print("  save_model: %s" % (await _say("save_model", {"name": "ml_unedited_%s_mcp.ldr" % name}))
 			.get_slice("\n", 0).left(100))
-		var mcp_saved: String = FileAccess.get_file_as_string(MODELS + "ml_unedited_%s_mcp.ldr" % name)
+		var mcp_saved: String = _text_kept(MODELS + "ml_unedited_%s_mcp.ldr" % name)
 		_keep("unedited_%s_mcp.ldr" % name, mcp_saved)
 		all += 1
 		if mcp_saved == text:
@@ -538,6 +543,25 @@ func _case_tabs() -> void:
 		and _index_of(lines, "FLOOR BASEPLATE 16") == 4)
 	_check("...the pin and the view lines as they were", saved.contains(text.get_slice("\n", 5))
 		and saved.contains(text.get_slice("\n", 6)))
+
+
+## apps.mpd with a byte-order mark before its first line, opened from the
+## person's models as open_model opens it, edited and saved from the bar,
+## each edit beside the same edit of the file without the mark: the mark
+## kept, and every other byte the same.
+func _case_bom() -> void:
+	var text: String = _with_hinge(_fixture("apps.mpd"))
+	for edit: String in ["none", "floor", "view", "step_name", "light"]:
+		var outs: Array = []
+		for marked: bool in [false, true]:
+			await _open("ml_bom_" + edit, ("\ufeff" if marked else "") + text)
+			outs.append(await _crlf_edit(edit, "ml_bom_%s%s" % [edit, "_marked" if marked else ""])
+				if edit != "none" else await _bar_save("bom_none%s" % ("_marked" if marked else "")))
+		var plain: String = outs[0]
+		var marked_out: String = outs[1]
+		_check("%s: the mark kept (%s), the rest as without it%s" % [edit,
+			str(marked_out.begins_with("\ufeff")), _first_unlike(plain, marked_out.trim_prefix("\ufeff"))],
+			marked_out.begins_with("\ufeff") and marked_out.substr(1) == plain)
 
 
 ## The cost: the castle written whole, five times, its median in ms and ms
@@ -584,6 +608,14 @@ func _fixture(name: String) -> String:
 	return FileAccess.get_file_as_string(FX + name)
 
 
+## The file at [param path] as the app's open reads it: its byte-order mark
+## kept, which the engine's reading of a file drops.
+static func _text_kept(path: String) -> String:
+	var raw: PackedByteArray = FileAccess.get_file_as_bytes(path)
+	var bom: bool = raw.size() >= 3 and raw[0] == 0xEF and raw[1] == 0xBB and raw[2] == 0xBF
+	return ("\ufeff" if bom else "") + raw.get_string_from_utf8()
+
+
 func _put(name: String, text: String) -> void:
 	var file: FileAccess = FileAccess.open(MODELS + name + ".ldr", FileAccess.WRITE)
 	file.store_string(text)
@@ -614,7 +646,7 @@ func _bar_save(label: String) -> String:
 	var bar: ModelBar = _main.get("_bar")
 	var ok: bool = await bar._on_save()
 	await _frames(4)
-	var text: String = FileAccess.get_file_as_string(MODELS + bar.model_name() + ".ldr")
+	var text: String = _text_kept(MODELS + bar.model_name() + ".ldr")
 	print("  bar save %s as %s: %s (%d bytes)" % [label, bar.model_name(), ok, text.length()])
 	_keep(label + ".ldr", text)
 	return text

@@ -87,6 +87,11 @@ var not_shown: Array = []
 ## What the model is called by the file itself: a save under another name
 ## says that name on a line of its own (ModelStore.TITLE_META).
 var own_title: String = ""
+## And its title line as the file says it: a name the open reads past as no
+## one's ("model", "Untitled Model": ModelStore._title_of) is its own too,
+## so a save under it says no more (cfcheck: a reopened whole write gained
+## "0 !BRICKWORKS TITLE model" on its next save).
+var said_title: String = ""
 
 
 ## [param placements] are what the model opened as: every part put down or

@@ -161,19 +161,30 @@ Whether what you built is still there tomorrow, and still means the same thing.
   after the one before it, and writes back where it was each line no
   reader could read (`MetaIndex.lines_for`: a later build's VIEW, a refused
   MOTION_KEY between its neighbours), every line ended as the file's are.
-  A step's look lines stay where the file has them in their step
-  (`BookletLooks._place_lines`); a file's own empty step is kept through a
-  step edit (`AuthorSteps._tidy`); a page picture given the model's default
+  One head rule for every writer (`LdrModel.title_end`, `into_main` and
+  `MetaIndex` alike): a new line goes after the model's first line, whatever
+  it is, so a title-less main saves twice the same; a file's byte-order mark
+  is kept from the open (`LdrModel.text_of`, the engine's reading drops it),
+  read past (`ModelStore._open_into`) and written back (`_write`). A name
+  the file says on its title line is its own, so a reopened whole write
+  gains no `TITLE` line (`SourceFile.said_title`). The index keeps the lines
+  as columns and makes a `MetaIndex.Line` only for a word a reader or writer
+  asks for: lights' 200,000 unreadable lines save within 1.5 times the same
+  file of comments (`lights_probe --review`). A step's look lines stay where the file has them in their step
+  (`BookletLooks._place_lines`); a file's own empty step with a look of its
+  own is kept through a step edit (`AuthorSteps._tidy`; one an earlier edit
+  emptied lost its look and is numbered out); a page picture given the model's default
   name while a sub-model's page has one of it takes a free name
-  (`BookletSheet.free_name`). `metalines_probe` (headless, 13 cases, each
-  red on its base 7bce03d88; `METALINES_CASES=a,b`, `METALINES_OUT=DIR`
+  (`BookletSheet.free_name`). `metalines_probe` (headless, 14 cases, each
+  but castle and bom red on its base 7bce03d88; `METALINES_CASES=a,b`, `METALINES_OUT=DIR`
   keeps every save) opens each fixture of `src/dev/fixtures/metalines/`
   over MCP, edits it by the feature owning the line, saves by the bar, over
   MCP and by Save As, opens and saves again: a later build's view kept and
   said, 30 CRLF saves with no line ending LF alone, a sub-model's picture
   and lines its own, an empty step kept, a step named once, an open undone
   with its unread light, no TITLE or FLOOR GRID added to an unedited save,
-  tabs read, the castle's whole write timed (`METALINES_CASTLE_MS_PER_MB`).
+  tabs read, a byte-order mark kept through 4 edits, the castle's whole
+  write timed (`METALINES_CASTLE_MS_PER_MB`).
   A part of a mirrored copy agrees with its line only as it was opened (an
   edit to one is (B)); a step edit moves the lines of the parts it moved to
   the end of their new steps, and one that leaves a step of the file with

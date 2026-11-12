@@ -415,7 +415,8 @@ func _autosaved() -> String:
 	unrestored = ""
 	left_empty = false
 	var path: String = autosave()
-	var text: String = FileAccess.get_file_as_string(path) if FileAccess.file_exists(path) else ""
+	var text: String = LdrModel.text_of(FileAccess.get_file_as_bytes(path)) \
+		if FileAccess.file_exists(path) else ""
 	if text.is_empty() or _part_line_at(text, 0) >= 0:
 		return text
 	var name: String = title_in(text, "")
@@ -566,6 +567,10 @@ var _metas_in: int = -1
 ## The line end of the file the model was opened from (MetaIndex.eol): the
 ## app's own file, written whole, is written in it too.
 var _eol_opened: String = "\n"
+## Whether that file began with a byte-order mark (LdrModel.text_of): the
+## open reads past it, as every reader of the text does not, and a save of
+## the model writes it back first ([method _write]).
+var _bom_opened: bool = false
 ## The floor's line as the open settled it (ModelFloor.to_meta), when the
 ## file said none it could read: someone else's file is not given one while
 ## the model stands on that (an unedited save is the file, hscheck).
@@ -758,7 +763,7 @@ func identity() -> Dictionary:
 		"awaited": awaited.duplicate() if world != null and world.generation() == _awaited_in
 			else null,
 		"lights_read": _lights_now(),
-		"metas": _metas_now(), "floor_unsaid": _floor_unsaid,
+		"metas": _metas_now(), "floor_unsaid": _floor_unsaid, "bom": _bom_opened,
 		"views": world.saved_views.duplicate(true) if world != null else [],
 		"cut": world.cut_kept.duplicate(true) if world != null else {},
 		"lights": world.scene_lights.duplicate(true) if world != null else []}
@@ -808,6 +813,7 @@ func put_identity(kept: Dictionary) -> Dictionary:
 	_metas_read = kept.get("metas")
 	_metas_in = world.generation() if _metas_read != null else -1
 	_eol_opened = _metas_read.eol if _metas_read != null else "\n"
+	_bom_opened = bool(kept.get("bom", false))
 	_floor_unsaid = str(kept.get("floor_unsaid", ""))
 	world.saved_views = (kept["views"] as Array).duplicate(true)
 	world.cut_kept = (kept["cut"] as Dictionary).duplicate(true)
@@ -1210,7 +1216,7 @@ var not_opened: String = ""
 ## The text of the file at [param path]; "" with [member not_opened] saying
 ## why when there is none to open.
 func _file_text(path: String) -> String:
-	var text: String = FileAccess.get_file_as_string(path)
+	var text: String = LdrModel.text_of(FileAccess.get_file_as_bytes(path))
 	if not text.is_empty():
 		return text
 	not_opened = ("there is no such file" if not FileAccess.file_exists(path)
@@ -1365,7 +1371,7 @@ func reopen(again: bool = false, job: Working.Job = null) -> int:
 		return -1
 	var stack: Array[Dictionary] = undone_over if again else opened_over
 	var entry: Dictionary = stack.back()
-	var text: String = FileAccess.get_file_as_string(str(entry["path"]))
+	var text: String = LdrModel.text_of(FileAccess.get_file_as_bytes(str(entry["path"])))
 	if text.is_empty():
 		not_opened = "its copy could not be read"
 		return -1
@@ -1530,6 +1536,8 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 		job: Working.Job) -> void:
 	open_phases = {}
 	_phase_at = Time.get_ticks_usec()
+	var bom: bool = text.begins_with("\ufeff")
+	text = text.substr(1) if bom else text
 	var model: LdrModel = parsed if parsed != null else LdrModel.parse(text, name)
 	_phase("parse")
 	if model == null:
@@ -1858,6 +1866,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	title = _title_of(model, name)
 	if source != null:
 		source.own_title = title
+		source.said_title = model.main.title if model.main != null else ""
 		var named: String = read["title"]
 		if not named.is_empty():
 			title = named
@@ -1890,6 +1899,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	_metas_read = read["metas"]
 	_metas_in = _opened_in
 	_eol_opened = _metas_read.eol
+	_bom_opened = bom
 	pins = read["pins"]
 	bin_sets = read["bin"]
 	reference = read["reference"]
@@ -2485,6 +2495,7 @@ func _source_asked(title_now: String) -> Dictionary:
 func _metas_asked(source: SourceFile) -> Dictionary:
 	return {"metas": _metas_now(), "elsewhere": source != null,
 		"own_title": source.own_title if source != null else "",
+		"said_title": source.said_title if source != null else "",
 		"floor": model_floor, "floor_unsaid": _floor_unsaid,
 		"hidden": hidden_scheme.duplicate(true),
 		"cut": world.cut_kept.duplicate(true),
@@ -2594,9 +2605,15 @@ static func _meta_families(asked: Dictionary, here: MetaIndex, text: String) -> 
 		+ JSON.stringify(hidden)]) if not (hidden.get("groups", []) as Array).is_empty()
 		else PackedStringArray()))
 	if elsewhere:
+		# Said when the name is not one the file has as its own (its title
+		# line, or the name the open made of it), or when the file says it on
+		# a line of the app's already, which an unedited save keeps.
 		var title_now: String = asked["title"]
+		var said_now: bool = metas != null and metas.own(["TITLE"]).any(
+			func(line: MetaIndex.Line) -> bool: return line.said == title_now)
 		out.append(_family(metas, ["TITLE"], PackedStringArray([TITLE_META + title_now])
-			if title_now != str(asked["own_title"]) and not title_now.is_empty()
+			if not title_now.is_empty() and (said_now or not title_now in [
+				str(asked["own_title"]), str(asked.get("said_title", ""))])
 			else PackedStringArray()))
 		# The steps a shared link carries (SharedPages) go: a save is no share.
 		out.append(MetaIndex.family(["PAGES", "PAGE"], PackedStringArray(), MetaIndex.TITLE, true))
@@ -3566,6 +3583,8 @@ func _write(path: String, title: String, with_steps: bool = false,
 			+ "Clear the baseplate first if it is meant to be empty.")
 		push_warning("kept %s: refused to write a model of no parts over it" % path)
 		return false
+	if _bom_opened and _metas_now() != null and not text.begins_with("\ufeff"):
+		text = "\ufeff" + text
 	return _store(path, text)
 
 
