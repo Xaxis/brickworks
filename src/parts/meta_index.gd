@@ -129,6 +129,13 @@ class Family extends RefCounted:
 	## Its lines anywhere in the file, not in the model's section alone: the
 	## steps a shared link carries at the file's end (SharedPages).
 	var anywhere: bool = false
+	## For each of its lines, empty for none: the step of the model's own it
+	## was in, as the number of STEP lines before it (-1 for one in the
+	## head). Written into a text that has none of its lines (a model written
+	## whole) each goes back to the end of that step, not to the head
+	## ([method unclaimed]: a later build's word in step 2, the model made
+	## into a group, went up to the head).
+	var steps: PackedInt32Array = PackedInt32Array()
 
 
 ## The text's length when it was read.
@@ -152,6 +159,9 @@ var _section := PackedInt32Array()
 var _said_at := PackedInt32Array()
 var _word := PackedStringArray()
 var _raw := PackedStringArray()
+## The number of STEP and ROTSTEP lines of the model's own before it, -1
+## for a line of another section.
+var _step := PackedInt32Array()
 ## Each one's [Line] once asked for, else null.
 var _made: Array = []
 ## Their places in those columns by their word, each word's in the file's
@@ -162,6 +172,9 @@ var _by_word: Dictionary = {}
 ## the booklet's looks look for (BookletLooks._written_in).
 var rotsteps: int = 0
 var pictures: PackedStringArray = PackedStringArray()
+## Where each STEP and ROTSTEP line of the model's own begins, and then
+## where the last of its steps ends: at its NOFILE, or its section's end.
+var step_ends: PackedInt32Array = PackedInt32Array()
 
 
 static func family(words: Array, lines: PackedStringArray, at: int = TITLE,
@@ -188,6 +201,8 @@ static func of_text(text: String) -> MetaIndex:
 	out.sections.append(model)
 	var within: int = 0
 	var files: int = 0
+	var steps: int = 0         ## the model's own STEP and ROTSTEP lines so far
+	var model_end: int = -1    ## where its NOFILE line begins
 	var at: int = 1 if text.begins_with("﻿") else 0
 	if at >= size or text.unicode_at(at) != 48:
 		at = _next_zero(text, at)
@@ -207,7 +222,8 @@ static func of_text(text: String) -> MetaIndex:
 				e = raw.length()
 			var word: String = raw.substr(LEAD.length(), e - LEAD.length())
 			if not word.is_empty() and not word.contains("\t"):
-				out._add(at, end, next, within, word.to_upper(), e, raw)
+				out._add(at, end, next, within, word.to_upper(), e, raw,
+					steps if within == 0 else -1)
 				at = _next_zero(text, stop)
 				continue
 		var k: int = _past_blanks(text, at + 1, end)
@@ -218,7 +234,8 @@ static func of_text(text: String) -> MetaIndex:
 			if keyword == WORD:
 				var m: int = _past_blanks(text, w, end)
 				var e: int = _to_blank(text, m, end)
-				out._add(at, end, next, within, text.substr(m, e - m).to_upper(), e - at, raw)
+				out._add(at, end, next, within, text.substr(m, e - m).to_upper(), e - at, raw,
+					steps if within == 0 else -1)
 			elif keyword == "FILE":
 				files += 1
 				if files == 1:
@@ -237,6 +254,8 @@ static func of_text(text: String) -> MetaIndex:
 					out.sections.append(section)
 					within = out.sections.size() - 1
 			elif keyword == "NOFILE":
+				if within == 0:
+					model_end = at
 				if within >= 0:
 					out.sections[within].end = next
 				within = -1
@@ -247,16 +266,22 @@ static func of_text(text: String) -> MetaIndex:
 				var named: String = text.substr(w, end - w).strip_edges().get_file().to_lower()
 				if named.begins_with("brickworks-page-"):
 					out.pictures.append(named)
-			elif keyword == "ROTSTEP":
-				out.rotsteps += 1
+			elif keyword == "ROTSTEP" or keyword == "STEP":
+				if keyword == "ROTSTEP":
+					out.rotsteps += 1
+				if within == 0:
+					steps += 1
+					out.step_ends.append(at)
 		at = _next_zero(text, stop)
 	_head_of(text, model)
+	out.step_ends.append(model_end if model_end >= 0 else model.end)
 	return out
 
 
 func _add(start: int, stop: int, next: int, section: int, word: String, said_at: int,
-		raw: String) -> void:
+		raw: String, step: int) -> void:
 	var n: int = _raw.size()
+	_step.append(step)
 	_start.append(start)
 	_stop.append(stop)
 	_next.append(next)
@@ -418,7 +443,8 @@ func take(words: Array, which: PackedInt32Array) -> void:
 ## The model's own lines of a word no reader of the app's reads (a later
 ## build's, "0 !BRICKWORKS FUTURE_KIND ..."): one family of them all, as
 ## the file has them, in its order. Written back where the file had them,
-## and, in a model written whole, at the end of its head. Up to mlfix such a
+## and, in a model written whole, at the end of its head, or of its step for
+## one in a step ([member Family.steps]). Up to mlfix such a
 ## line was lost at every save of the app's own file, and at a Make or a
 ## sub-model renamed in someone else's (mlcheck).
 func unclaimed() -> Family:
@@ -427,9 +453,14 @@ func unclaimed() -> Family:
 		if not (word in READ_WORDS or word in BookletLooks.WORDS or word.begins_with("MOTION")):
 			words.append(word)
 	var lines := PackedStringArray()
-	if not words.is_empty():
-		lines = _raws_of(Array(words), false)
-	return family(Array(words), lines, HEAD)
+	var steps := PackedInt32Array()
+	for n: int in _of_words(Array(words)):
+		if _section[n] == 0:
+			lines.append(_raw[n])
+			steps.append(_step[n] if _start[n] >= sections[0].head_end else -1)
+	var out: Family = family(Array(words), lines, HEAD)
+	out.steps = steps
+	return out
 
 
 ## [param now], a feature's lines of [param words] as it says them, each
@@ -803,6 +834,20 @@ func write(text: String, families: Array) -> String:
 		if _raws_of(family.words, family.anywhere) == family.lines:
 			continue
 		var had: Array[Line] = anywhere(family.words) if family.anywhere else own(family.words)
+		if had.is_empty() and family.steps.size() == family.lines.size() \
+				and not family.anywhere:
+			# None of its lines here (a model written whole): each in the
+			# head where its family goes, and each of a step at that step's
+			# end, before its STEP line.
+			for j: int in family.lines.size():
+				var k: int = family.steps[j]
+				var where: int = sections[0].head_end if family.at == HEAD \
+					else sections[0].title_end
+				if k >= 0:
+					where = step_ends[mini(k, step_ends.size() - 1)]
+				put.append([where, order, family.lines[j]])
+				order += 1
+			continue
 		var had_clean := PackedStringArray()
 		var had_raw := PackedStringArray()
 		for line: Line in had:
