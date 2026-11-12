@@ -1687,7 +1687,10 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   past the window's drag threshold, a finger held still `FlingScroll.HOLD_MS`
   and then moved (moved at once, it scrolls the tree), heard by the window
   first (`Outliner._heard`), as a menu its hold puts up takes the window's
-  input; that menu goes as the row lifts, and as Godot then lets go of the
+  input; a finger moved onto that menu, or on its way there, is the menu's:
+  it stays up and the lift there chooses nothing (`Outliner._on_menu`;
+  `subexport_probe`'s F5 slide, then the keys choosing from it); moved
+  anywhere else, the menu goes as the row lifts, and as Godot then lets go of the
   mouse it makes of the finger, the finger's moves and lift carry and drop
   it (`Outliner._follow`); held at the tree's top or bottom edge, a carry scrolls it
   (`Outliner._edge_scroll`; Godot's own is off: 4 units deep, and never at
