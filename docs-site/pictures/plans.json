@@ -6,7 +6,7 @@
    "route": "/plans",
    "viewport": [
     1280,
-    1000
+    1800
    ],
    "themes": [
     "dark",
@@ -29,7 +29,7 @@
     "#pro"
    ],
    "pad": 24,
-   "alt": "",
+   "alt": "The plans page's two plans: Free at $0 with Open the app and all it has, and Pro, marked Coming soon, at $80 a year ($6.67 a month, two months free) with Tell me when it's ready and what Pro adds.",
    "caption": "brickworks.diy/plans, with Pro still to come.",
    "features": [
     "ui:plans page"

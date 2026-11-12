@@ -48,7 +48,7 @@ api:POST /api/account?op=age
 ![The Account panel over the model: Signed in as you@example.com, where your models are kept, Your AI with Connect Claude, the chats of this tab, and Sign out and Done at its foot.](/docs/img/account-panel.webp "Account, from the top bar.")
 
 - who is signed in, and where your models are kept: on this device and with your account, and whether the browser has agreed not to clear them;
-- with the assistant on (**Tools › Settings…**, *Assistant (AI)*), **Your AI**: the AI apps connected to your account, since when and when last used, with **Connect** (**Open in Claude** once Claude is connected) and **Disconnect**, and this tab's chats with **New chat for this tab** ([the connector](/docs/connector#tabs)). With the assistant off, nothing here speaks of AI;
+- with the assistant on (**Tools › Settings…**, *Assistant (AI)*), **Your AI**: the AI apps connected to your account, since when and when last used, with **Connect** (**Open in Claude** once Claude is connected) and **Disconnect**; once connected, this tab's name to say to your AI, its chats, and **New chat for this tab** ([the connector](/docs/connector#tabs)). With the assistant off, nothing here speaks of AI;
 - what is new in your feed, and **Open your feed**;
 - while the [beta](/docs/beta) is open, **Beta**: join or leave in one press;
 - **Sign out**, which signs this device out and keeps your models on it, and **Done**.

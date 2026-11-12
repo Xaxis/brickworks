@@ -31,7 +31,7 @@
    ],
    "crop": "@opened",
    "pad": 0,
-   "alt": "",
+   "alt": "The app's Report a bug dialog: Something is wrong chosen and what happened typed; beside it the window's picture with a red box drawn round the car's front, 1 mark with Clear the marks and Leave the picture out, the version and system ticked, the model and log lines not, and Send report.",
    "caption": "Help › Report a bug…, with the spot marked.",
    "features": [
     "ui:report a bug in the app"
@@ -106,7 +106,7 @@
    ],
    "crop": "#feedback",
    "pad": 12,
-   "alt": "",
+   "alt": "Your reports on the settings page, with Send feedback: three reports, each with its number, its kind and where it stands, Fixed, Planned and Read, its date and what was sent, and our answer under the first.",
    "caption": "Settings › Your reports.",
    "features": [
     "ui:your feedback on settings"

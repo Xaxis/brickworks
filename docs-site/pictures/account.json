@@ -65,12 +65,21 @@
     {
      "run": "account",
      "after": 30
+    },
+    {
+     "call": "_account_panel.connector._set_connections",
+     "args": [
+      []
+     ]
+    },
+    {
+     "frames": 10
     }
    ],
    "crop": "_account_panel",
    "pad": 0,
-   "alt": "",
-   "caption": "Account, from the top bar.",
+   "alt": "The Account panel: Signed in as you@example.com, signed in on this device until you sign out, where your models are kept, then Your AI: not connected, with Connect Claude, and Sign out and Done at its foot.",
+   "caption": "Account, from the top bar, with the assistant on.",
    "features": [
     "ui:account panel"
    ]
