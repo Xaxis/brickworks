@@ -637,7 +637,8 @@ func _sub_lines(a: Dictionary, b: Dictionary) -> void:
 ## LDU off its parts on both sides (pc2check T6), and the undos left the
 ## taken-apart copy's light in the model's beside its sub-model's (T7).
 func _copies_at_once(a: Dictionary, b: Dictionary) -> void:
-	print("5d. two copies of a lit sub-model, one moved on each side at once; one taken apart while the other moves")
+	print("5d. two copies of a lit sub-model, one moved on each side at once; one taken apart while the other moves;"
+		+ " one taken apart on each side")
 	var ta: Together = a["together"]
 	var tb: Together = b["together"]
 	var green: String = "0 !BRICKWORKS LIGHT " + JSON.stringify({"kind": "point", "at": [0, -50, 0],
@@ -650,7 +651,7 @@ func _copies_at_once(a: Dictionary, b: Dictionary) -> void:
 	var heard: Array = []
 	var hear: Callable = func(words: String) -> void: heard.append(words)
 	ta.said.connect(hear)
-	for round: int in 2:
+	for round: int in 3:
 		(a["store"] as ModelStore).open_text(text, "Together copies")
 		(a["store"] as ModelStore).title = "Together copies"
 		var trouble: String = await ta.start()
@@ -685,6 +686,32 @@ func _copies_at_once(a: Dictionary, b: Dictionary) -> void:
 				and not followed.has(false) and ta.model_hash() == tb.model_hash(), trouble
 				if not trouble.is_empty() else "%s; apart at %s" % [followed, _apart(ta.model_text(),
 				tb.model_text())])
+		elif round == 2:
+			# One after the other: the first undone finds the model's lights
+			# changed since, and goes back whole or not at all, said; the
+			# second's goes. Up to 2026-11-12 its parts went back without its
+			# lights, and the light was there twice (pc2check T7_3).
+			var first: int = (trees[0] as Assemblies).ungroup(str(copies[0][0]))
+			(a["store"] as ModelStore).looks_follow_edit()
+			await _settle([a, b], 30000)
+			var second: int = (trees[1] as Assemblies).ungroup(str(copies[1][1]))
+			(b["store"] as ModelStore).looks_follow_edit()
+			await _settle([a, b], 30000)
+			var said: String = ta.undo()
+			await _settle([a, b], 30000)
+			var held: Array = [_subs(trees[0]).size(), _subs(trees[1]).size()]
+			var again: String = tb.undo()
+			await _settle([a, b], 30000)
+			var lit: Array = [ta.model_text().count("#00ff00"), tb.model_text().count("#00ff00")]
+			_check("a copy taken apart on each side, one after the other (%d, %d parts), the first undone: "
+				% [first, second] + "held back whole and said (%s), its parts still apart (%s copies of Sub); "
+				% [said, held] + "the second undone (%s): Sub's light and the first's, the two files one"
+				% again, trouble.is_empty() and first > 0 and second > 0
+				and said == "undid nothing: somebody else changed %s since" % TogetherWords.state_named("~lights")
+				and held == [0, 0] and again.begins_with("undid") and not again.begins_with("undid nothing")
+				and _subs(trees[0]).size() == 1 and _subs(trees[1]).size() == 1 and lit == [2, 2]
+				and ta.model_hash() == tb.model_hash(), trouble if not trouble.is_empty()
+				else "%s lights; apart at %s" % [lit, _apart(ta.model_text(), tb.model_text())])
 		else:
 			var gone: int = (trees[0] as Assemblies).ungroup(str(copies[0][0]))
 			(a["store"] as ModelStore).looks_follow_edit()

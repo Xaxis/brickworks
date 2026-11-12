@@ -4851,8 +4851,8 @@ msgstr "les réglages du modèle"
 msgid "where the lights and views of %s stand"
 msgstr "l'emplacement des lumières et des vues de %s"
 
-msgid "This session can't carry sub-models' lights and views yet: everything else still reaches the others, but on their side a sub-model's lights and views stay where they were when you move, rename or make one here."
-msgstr "Cette session ne peut pas encore transmettre les lumières et les vues des sous-modèles : tout le reste parvient toujours aux autres, mais chez eux les lumières et les vues d'un sous-modèle restent où elles étaient quand vous en déplacez, renommez ou créez un ici."
+msgid "This session can't carry sub-models' lights and views yet: everything else still reaches the others, but on their side a sub-model's lights and views stay where they were when you move or make one here, and one you rename here has none there."
+msgstr "Cette session ne peut pas encore transmettre les lumières et les vues des sous-modèles : tout le reste parvient toujours aux autres, mais chez eux les lumières et les vues d'un sous-modèle restent où elles étaient quand vous en déplacez ou en créez un ici, et celui que vous renommez ici n'en a aucune là-bas."
 
 msgid "This session can't carry %s, longer than it takes: everything else still reaches the others, but on their side those stay as they were."
 msgstr "Cette session ne peut pas transmettre %s, plus long que ce qu'elle accepte : tout le reste parvient toujours aux autres, mais chez eux cela reste tel quel."

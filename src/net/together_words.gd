@@ -155,7 +155,7 @@ static func not_carried(kind: String) -> String:
 	# Up to 2026-11-12 the words said they kept theirs as they were, and the
 	# other side lost a renamed sub-model's light (pc2check T1_1).
 	if kind == "~sublines:" or kind == "~frame:":
-		return "This session can't carry sub-models' lights and views yet: everything else still reaches the others, but on their side a sub-model's lights and views stay where they were when you move, rename or make one here."
+		return "This session can't carry sub-models' lights and views yet: everything else still reaches the others, but on their side a sub-model's lights and views stay where they were when you move or make one here, and one you rename here has none there."
 	return "This session can't carry %s yet: the others keep theirs as they were, and everything else still reaches them." % state_named(kind)
 
 
