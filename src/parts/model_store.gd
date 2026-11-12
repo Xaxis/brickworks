@@ -3361,12 +3361,17 @@ func _held_undo(step: Dictionary) -> Dictionary:
 					source.not_shown.erase(placement)
 					if not placement.origin.is_empty():
 						source.unshown_origins.erase(placement.origin)
+	var waiting: bool = false
 	for pair: Variant in step.get("put", []):
 		var placement: LdrModel.Placement = (pair as Array)[0]
+		# One that had landed is put back as its brick (Builder "held").
+		if placement.landed != 0:
+			continue
 		match str((pair as Array)[1]):
 			"awaited":
 				if not awaited.has(placement):
 					awaited.append(placement)
+					waiting = true
 			"absent":
 				if not _absent.has(placement):
 					_absent.append(placement)
@@ -3376,6 +3381,11 @@ func _held_undo(step: Dictionary) -> Dictionary:
 					# One a paste put down was read from no line of the file.
 					if not placement.origin.is_empty():
 						source.unshown_origins[placement.origin] = placement
+	# Put back on its way after its part came: it lands now, in this step,
+	# so its reverse takes it off (Builder "held"). Up to 2026-11-12 it
+	# waited for a part that had come, and was shown nowhere (pcredesign H_u2).
+	if waiting:
+		_land_arrived()
 	return {"undo": "held", "put": step.get("take", []), "take": step.get("put", [])}
 
 

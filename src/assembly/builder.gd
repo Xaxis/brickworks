@@ -570,10 +570,26 @@ func _apply(step: Dictionary) -> Dictionary:
 		return {"undo": "store", "store": store_hook.call(step["store"]) if store_hook.is_valid()
 			else step["store"]}
 
-	# Parts not on the baseplate a copy deleted took with it, put back, or
-	# taken out again (ModelStore._held_go_with).
+	# Parts not on the baseplate a copy deleted took with it, or a paste
+	# brought, put back or taken out again (ModelStore._held_go_with,
+	# _held_put). One that has landed since (ModelStore.place_awaited) is a
+	# brick: taken off with the rest, and put back as the brick it was
+	# ("bricks"). Up to 2026-11-12 it stayed: a paste undone after its part
+	# landed left that part in a copy of nothing else, and redone put a
+	# second one beside it (pcredesign H_r1, H_r2).
 	if step.get("undo", "") == "held":
-		return held_hook.call(step) if held_hook.is_valid() else step
+		var gone: Array = []
+		for pair: Variant in step.get("take", []):
+			var placement: LdrModel.Placement = (pair as Array)[0]
+			if placement.landed != 0:
+				var off: Dictionary = _apply({"undo": "remove", "brick": placement.landed})
+				if off.get("undo", "") == "add":
+					gone.append(off)
+		for brick_step: Dictionary in step.get("bricks", []):
+			_apply(brick_step)
+		var back: Dictionary = (held_hook.call(step) if held_hook.is_valid() else step).duplicate()
+		back["bricks"] = gone
+		return back
 
 	# The picture to build over, as it was: its own reverse.
 	if step.get("undo", "") == "reference":
