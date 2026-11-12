@@ -3187,21 +3187,26 @@ func looks_follow_edit() -> void:
 	_looks_followed = builder.last_step()
 
 
-## The parts not on the baseplate (awaited, _absent) in a copy [param step]
-## took the last parts of off the model taken out with them, in that step,
-## so its Undo puts them back ("held", [method _held_undo]): a copy deleted
-## is gone whole. Up to 2026-11-11 they stayed, and a save wrote the copy
-## still, its part on its way alone in it, under its name, and the pasted
-## copy that took its place went by another (pccheck HA_5); landed, the part
-## made the copy again. Whether any went.
+## The parts not on the baseplate (awaited, _absent, and someone else's
+## file's SourceFile.not_shown) in a copy [param step] took the last parts of
+## off the model taken out with them, in that step, so its Undo puts them
+## back ("held", [method _held_undo]): a copy deleted is gone whole. Up to
+## 2026-11-11 they stayed, and a save wrote the copy still, its part on its
+## way alone in it, under its name, and the pasted copy that took its place
+## went by another (pccheck HA_5); landed, the part made the copy again.
+## Someone else's file's stayed in the steps and, written whole, in the file.
+## Whether any went.
 func _held_go_with(step: Dictionary) -> bool:
-	if world.generation() != _awaited_in or (awaited.is_empty() and _absent.is_empty()):
+	var source: SourceFile = _live_source()
+	var unseen: Array = source.not_shown if source != null else []
+	if world.generation() != _awaited_in \
+			or (awaited.is_empty() and _absent.is_empty() and unseen.is_empty()):
 		return false
 	var emptied: Array = Assemblies.copies_emptied(builder, step)
 	if emptied.is_empty():
 		return false
 	var gone: Array = []
-	for pair: Array in [[awaited, "awaited"], [_absent, "absent"]]:
+	for pair: Array in [[awaited, "awaited"], [_absent, "absent"], [unseen, "unseen"]]:
 		for placement: LdrModel.Placement in pair[0]:
 			var path: String = world.held_path(placement)
 			if emptied.any(func(copy: String) -> bool: return Assemblies.within(path, copy)):
@@ -3216,15 +3221,35 @@ func _held_go_with(step: Dictionary) -> bool:
 
 ## A history step's "held" ([method _held_go_with]): the parts not on the
 ## baseplate it names put back ("put") or taken out ("take"), each [placement,
-## "awaited" or "absent"]. Returns its reverse (Builder.held_hook).
+## "awaited", "absent" or "unseen"]. Returns its reverse (Builder.held_hook).
+## Someone else's file's go from its place too (SourceFile.unshown_origins),
+## so its save neither steps their line nor keeps the section for them.
 func _held_undo(step: Dictionary) -> Dictionary:
+	var source: SourceFile = _live_source()
 	for pair: Variant in step.get("take", []):
-		var list: Array = awaited if str((pair as Array)[1]) == "awaited" else _absent
-		list.erase((pair as Array)[0])
+		var placement: LdrModel.Placement = (pair as Array)[0]
+		match str((pair as Array)[1]):
+			"awaited":
+				awaited.erase(placement)
+			"absent":
+				_absent.erase(placement)
+			"unseen":
+				if source != null:
+					source.not_shown.erase(placement)
+					source.unshown_origins.erase(placement.origin)
 	for pair: Variant in step.get("put", []):
-		var list: Array = awaited if str((pair as Array)[1]) == "awaited" else _absent
-		if not list.has((pair as Array)[0]):
-			list.append((pair as Array)[0])
+		var placement: LdrModel.Placement = (pair as Array)[0]
+		match str((pair as Array)[1]):
+			"awaited":
+				if not awaited.has(placement):
+					awaited.append(placement)
+			"absent":
+				if not _absent.has(placement):
+					_absent.append(placement)
+			"unseen":
+				if source != null and not source.not_shown.has(placement):
+					source.not_shown.append(placement)
+					source.unshown_origins[placement.origin] = placement
 	return {"undo": "held", "put": step.get("take", []), "take": step.get("put", [])}
 
 

@@ -714,7 +714,8 @@ Whether what you built is still there tomorrow, and still means the same thing.
   last parts takes its held ones with it in the same step
   (`ModelStore._held_go_with`, `Assemblies.copies_emptied`, a `held` undo
   through `Builder.held_hook`), so no file keeps the copy for a part on its
-  way alone (pccheck HA_5). Taking a copy apart takes its held ones into the
+  way alone (pccheck HA_5); someone else's file's (`SourceFile.not_shown`,
+  and its line's place, `unshown_origins`) go too. Taking a copy apart takes its held ones into the
   one round it, numbered in its steps with the rest and their step's look
   with them (`AuthorSteps.inlined`; hscheck R_own_ungroup). Someone else's
   file keeps such a part's line in the copy's section, and the copy with it
