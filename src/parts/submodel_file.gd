@@ -126,7 +126,7 @@ static func read(text: String, known: Dictionary = {}) -> Whole:
 		whole.sections[""] = [0, whole.lines.size()]
 		whole.order.append("")
 	else:
-		whole.main_key = LdrModel._key(whole.model.main.name)
+		whole.main_key = whole.model.main_key
 		whole.sections[whole.main_key] = [whole.model.main.span.x, whole.model.main.span.y]
 		whole.order.sort_custom(func(a: String, b: String) -> bool:
 			return int(whole.sections[a][0]) < int(whole.sections[b][0]))

@@ -41,3 +41,25 @@ export function afterFields(line, count) {
   const at = new RegExp(`^(?:[^ \\t\\n\\v\\f\\r]+[ \\t\\n\\v\\f\\r]+){${count}}`).exec(rest);
   return at ? rest.slice(at[0].length) : "";
 }
+
+/// The key the model's own section goes by in a file of FILE sections, the
+/// first FILE's: one no reference gives, a name never being space at its
+/// ends (LdrModel.MAIN_KEY). LDView puts the model's own block in no table,
+/// so a later block of its name is the one a reference to the name means.
+export const MAIN_KEY = " ";
+
+/// The key of the section a FILE line naming [name] begins, [blocks] the
+/// count of each name's blocks so far (a Map, from empty for a file's first
+/// FILE line): the model's own by MAIN_KEY, the first block of a name by its
+/// name (keyOf), and a later one by a key no reference gives
+/// (LdrModel.section_key).
+export function sectionKey(name, blocks) {
+  if (blocks.size === 0) {
+    blocks.set(MAIN_KEY, 1);
+    return MAIN_KEY;
+  }
+  const key = keyOf(name);
+  const seen = (blocks.get(key) || 0) + 1;
+  blocks.set(key, seen);
+  return seen === 1 ? key : `${key}\n${seen}`;
+}

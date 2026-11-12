@@ -255,7 +255,7 @@ import {
 // A model's parts list from its file, as the app's (site278).
 import { PICK_A_BRICK_LINES, PICK_A_BRICK_MOST, inventoryOf, inventoryOfLots, namesOf, paletteOf, partNames, partsTable,
   pickABrick, rebrickableCsv, roomOf, sceneOf, wantedList } from "./_parts.js";
-import { afterFields, keyOf } from "./_subfiles.js";
+import { afterFields, keyOf, sectionKey } from "./_subfiles.js";
 import { checkTested, markOf, ownerMark, publicMark } from "./_tested.js";
 import { changedOf, changesBetween, lotSaid, readChanges, saidOf } from "./_versions.js";
 import { countSaid, sideSaid, stepCount, stepsSaid } from "./_steps.js";
@@ -420,11 +420,14 @@ export function checkModel(text) {
       order.push(current.name);
     }
   };
-  // Each file by its name as LDraw compares it (keyOf): its first block is
-  // the one a reference means, as LDView reads a file (keep).
+  // Each file keyed as the app keys it (sectionKey): its first block the
+  // one a reference means, as LDView reads a file (keep), and the model's own
+  // by a key no reference gives, so a later block of its name is that one,
+  // not the model placing itself (ofcheck F4).
+  const blocks = new Map();
   const start = (name) => {
-    current = { name: keyOf(name), placed: [], colours: [], isPart: /\.dat$/i.test(name), steps: 0, open: false,
-      author: "" };
+    current = { name: sectionKey(name, blocks), placed: [], colours: [], isPart: /\.dat$/i.test(name), steps: 0,
+      open: false, author: "" };
     keep();
   };
 
@@ -3185,7 +3188,10 @@ async function publish(request, response) {
     const before = await getFile(`${id}.mpd`);
     if (before) {
       await putFile(`${id}.v${last.n}.mpd`, before, "text/plain");
-      changes = changesBetween(before.toString("utf8"), body.model);
+      // Read as the app reads them: a library's shortcut is its part.
+      const table = partsTable();
+      changes = changesBetween(before.toString("utf8"), body.model,
+        (id) => Boolean(table && Object.prototype.hasOwnProperty.call(table.parts, id)));
     }
     const picturedBefore = last.has_image ? await getFile(`${id}.png`) : null;
     if (picturedBefore) await putFile(`${id}.v${last.n}.png`, picturedBefore, "image/png");

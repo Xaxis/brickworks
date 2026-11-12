@@ -39,7 +39,7 @@ static func written_into(text: String, source: SourceFile, library: PartLibrary)
 	var changed: bool = false
 	for n: int in lines.size() + 1:
 		var line: String = lines[n] if n < lines.size() else ""
-		var starts: bool = n == lines.size() or line.strip_edges().begins_with("0 FILE ")
+		var starts: bool = n == lines.size() or LdrModel.section_word(line) == "FILE"
 		if starts and not section.is_empty():
 			var key: String = _match(section[0], paths)
 			if not key.is_empty():
@@ -179,7 +179,7 @@ static func _section_again(section: PackedStringArray, path: Dictionary,
 	# part, where LDCad has them.
 	var placed: bool = false
 	for line: String in section:
-		if not placed and line.strip_edges().begins_with("1 "):
+		if not placed and LdrModel.is_placing(line):
 			for one: String in meta:
 				out.append(one + eol)
 			out.append(str(path["generated"]) + eol)

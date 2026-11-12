@@ -100,6 +100,12 @@ class SubModel extends RefCounted:
 	## Its lines of the file: its FILE line and the line after its last (its
 	## NOFILE line in it where it has one); a file with no FILE line, all.
 	var span := Vector2i(-1, -1)
+	## Its header says it is one of a library's files and not a model: a
+	## shortcut, a primitive ([method LdrModel.declares_library_file]). One
+	## that says it is a part is no sub-model at all ([member
+	## LdrModel.embedded_parts]); this one is read as the library's part of
+	## its number where the library has one ([method LdrModel.sub_model_of]).
+	var library_file: bool = false
 
 
 var name: String = ""
@@ -230,6 +236,10 @@ var section_lines: Dictionary = {}
 ## Whether the file has FILE sections, its model the first of them: whose
 ## name [method file_names] gives the model's own.
 var has_file_lines: bool = false
+## The key [member main] goes by in [member submodels] and [member files]:
+## [constant MAIN_KEY] in a file of FILE sections (section_key), else the
+## name the text was read as.
+var main_key: String = ""
 
 
 ## Whether the steps in the file are an author's, to keep: there are steps,
@@ -269,6 +279,7 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 	current.span = Vector2i(0, all.size())
 	model.submodels[_key(source_name)] = current
 	model.main = current
+	model.main_key = _key(source_name)
 	# The FILE section whose span has not ended yet.
 	var open: SubModel = null
 	## The key the sub-model being read goes by ([method _key]): a later
@@ -361,6 +372,7 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 					# rest are parts of it.
 					model.submodels.erase(_key(source_name))
 					model.main = current
+					model.main_key = current_key
 					model.has_file_lines = true
 					first_file = false
 				# The first block of a name is the one a reference to it
@@ -459,12 +471,11 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 	if not data_name.is_empty():
 		model.embedded_data[data_name] = Marshalls.base64_to_raw("".join(data))
 	model.light_lines = own_lights
-	var main_key: String = _key(model.main.name)
 	for file_name: String in sections:
 		var lines := PackedStringArray(sections[file_name])
 		# The first section is the model itself, whatever it is called; and a
 		# later block of a name an earlier one has is read as nothing.
-		if file_name == main_key or is_twin(file_name):
+		if file_name == model.main_key or is_twin(file_name):
 			continue
 		var body: String = "\n".join(lines).strip_edges() + "\n"
 		model.section_texts[file_name] = body
@@ -472,6 +483,8 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 		if declares_library_file(lines):
 			model.embedded_sources[key] = body
 			_by_bare_name(model.embedded_sources, key, body)
+			if model.submodels.has(file_name):
+				(model.submodels[file_name] as SubModel).library_file = true
 		if not _is_part(file_name, lines):
 			continue
 		_by_bare_name(model.embedded_parts, key, body)
@@ -715,12 +728,28 @@ static func twin_key(key: String, seen: int) -> String:
 	return "%s\n%d" % [key, seen]
 
 
+## The key the model's own section goes by in a file of FILE sections, the
+## first FILE's: one no reference gives, since a name is never space at its
+## ends ([method _key]). LDView puts the model's own block in no table, so a
+## later block of its name is the one a reference to the name means; keyed
+## by its name, the model took that name, a reference to the block was read
+## as the model placing itself, and one part was drawn of LDView's three
+## (ofcheck F4).
+const MAIN_KEY := " "
+
+
 ## The key of the section FILE line [param line] begins, as [method parse]
 ## keys it, [param blocks] the count of each name's blocks read before it
-## (counted on): the first block of a name by its name ([method _key]), a
-## later one by a key of its own ([method twin_key]). What every reader of a
-## file's sections keys them by, so each reads the block a reference means.
+## (counted on, from {} for a file's first FILE line): the model's own, the
+## first, by [constant MAIN_KEY]; the first block of a name by its name
+## ([method _key]); a later one by a key of its own ([method twin_key]).
+## What every reader of a file's sections keys them by, so each reads the
+## block a reference means. A reader of a file of parts, which has no model
+## of its own, starts with {MAIN_KEY: 1} (StudioDecor.sections).
 static func section_key(line: String, blocks: Dictionary) -> String:
+	if blocks.is_empty():
+		blocks[MAIN_KEY] = 1
+		return MAIN_KEY
 	var key: String = _key(file_name_of(line))
 	var seen: int = int(blocks.get(key, 0)) + 1
 	blocks[key] = seen
@@ -762,6 +791,29 @@ static func _after_fields(line: String, count: int) -> String:
 
 static func _is_space(c: int) -> bool:
 	return c == 32 or (c >= 9 and c <= 13)
+
+
+## Whether [param line] places something, a part or a sub-model: a line of
+## type 1, its first field "1" however it is spaced. A file of tabs ("1\t4\t0
+## 0 ...") was read as one of no parts where a line was looked for as "1 ",
+## and a save of it refused as one of an empty baseplate (ofcheck F3).
+static func is_placing(line: String) -> bool:
+	var at: int = 0
+	var size: int = line.length()
+	while at < size and _is_space(line.unicode_at(at)):
+		at += 1
+	return at + 1 < size and line.unicode_at(at) == 49 and _is_space(line.unicode_at(at + 1))
+
+
+## Where a line of type 1 begins in [param text] at or after [param from]
+## and before [param to] (any spacing, [method is_placing]), or -1. Searched
+## for, not split into lines: the autosave asks on every write.
+static func placing_at(text: String, from: int = 0, to: int = -1) -> int:
+	var found: RegExMatch = _PLACING.search(text, from, to)
+	return found.get_start() if found != null else -1
+
+
+static var _PLACING := RegEx.create_from_string("(?m)^[ \\t\\v\\f]*1[ \\t\\v\\f]")
 
 
 ## The fields of a line, split on any run of whitespace (space, tab, a
@@ -850,12 +902,13 @@ func file_names() -> Dictionary:
 ## the two. Recursion is bounded because a model that contains itself is
 ## malformed and would otherwise hang the loader.
 ##
-## [param _known_parts], the parts a reader knows, is no longer asked: a
-## reference is a sub-model where the file has a FILE of its name, a part
-## where it has none ([method _inline]), whatever the library holds. Taken
-## still, so every reader that passes its library reads as it did.
-func flatten(_known_parts: Dictionary = {}) -> Array[Placement]:
+## [param known_parts], the parts the reader's library has: a reference is a
+## sub-model where the file has a FILE of its name, a part where it has none,
+## and the library's part where the FILE says it is a library's file of a
+## number the library has ([method sub_model_of]).
+func flatten(known_parts: Dictionary = {}) -> Array[Placement]:
 	var out: Array[Placement] = []
+	_known = known_parts
 	_names = _assembly_names()
 	unit_steps.clear()
 	unit_frames.clear()
@@ -875,6 +928,28 @@ const REFLECT_X := Transform3D(Basis(Vector3(-1, 0, 0), Vector3(0, 1, 0), Vector
 
 ## Sub-model key -> the name its assembly goes by.
 var _names: Dictionary = {}
+## The parts the reader's library has, as the last [method flatten] was given.
+var _known: Dictionary = {}
+
+
+## The sub-model of the file [param placement] places, or null where it
+## places a part: the FILE of the name it gives ([member Placement
+## .reference]), the file's before the library's, as LDView reads a file;
+## but not one whose header says it is one of a library's files ([member
+## SubModel.library_file]: a shortcut) under a number the library has (the
+## known parts [method flatten] was given): that is the library's part, as
+## the file says. Read as a sub-model, 10251-1's door (a shortcut block,
+## 60797c02.dat) was two parts of no number, gone from the parts list and
+## its price, and a save wrote it as a sub-model of the two (ofcheck F1).
+## Where the library has no part of the number the block is drawn as it is:
+## 10265-1's "10265 - 42716c01.dat" is a sub-model, as LDView reads it. The
+## rule every reader of a file's references takes, the server's too
+## (api/_parts.js subModelOf).
+func sub_model_of(placement: Placement) -> SubModel:
+	var nested: SubModel = submodels.get(placement.reference)
+	if nested != null and nested.library_file and _known.has(placement.part_id):
+		return null
+	return nested
 
 
 ## What each sub-model's assembly is called: its title, or its file name
@@ -900,7 +975,7 @@ func _assembly_names() -> Dictionary:
 			continue
 		placed[sub] = true
 		for placement: Placement in sub.placements:
-			var nested: SubModel = submodels.get(placement.reference)
+			var nested: SubModel = sub_model_of(placement)
 			if nested != null and not placed.has(nested):
 				todo.append(nested)
 	# A sub-model with no title goes by its file name's stem ("roof" for
@@ -947,15 +1022,17 @@ func _inline(
 	copies: Dictionary,
 	chain: String
 ) -> void:
-	if depth > 32 or visiting.has(_key(sub.name)):
+	# By the sub-model, not its name: a block of the model's own name is
+	# another (MAIN_KEY).
+	if depth > 32 or visiting.has(sub):
 		push_warning("ldr: %s contains itself; not expanding further" % sub.name)
 		return
-	visiting[_key(sub.name)] = true
+	visiting[sub] = true
 	## Each copy built in this one's steps (Placement.within) -> its path.
 	var made: Dictionary = {}
 
 	for placement: Placement in sub.placements:
-		var nested: SubModel = submodels.get(placement.reference)
+		var nested: SubModel = sub_model_of(placement)
 		# In a copy built in this one's steps: that copy's, as a reference
 		# makes one, numbered as the file says where that number is free.
 		var own_group: String = group
@@ -967,7 +1044,8 @@ func _inline(
 
 		# A reference to a FILE of its name is that sub-model, whatever part
 		# its stem is the number of, as LDView reads it (a file's sub-file
-		# before the library's). Matched by a bare stem, a part's reference
+		# before the library's), unless the FILE says it is the library's
+		# part (sub_model_of). Matched by a bare stem, a part's reference
 		# could be read as a sub-model of that stem, and was kept a part by
 		# whether the library had it; matched by the name, "3001.dat" is not
 		# "3001.ldr", and the file decides.
@@ -1024,7 +1102,7 @@ func _inline(
 			placed.frame = at * REFLECT_X
 		out.append(placed)
 
-	visiting.erase(_key(sub.name))
+	visiting.erase(sub)
 
 
 ## The path of the copy [param within] names (IN_META), built in the steps
@@ -1335,23 +1413,6 @@ static func _tree_of(instances: Dictionary, unit_steps: Dictionary) -> Dictionar
 		if not masters.has(def):
 			masters[def] = path
 			defs.append(def)
-	# Written in the order the model builds them, as their references are
-	# ("first", below), at each depth: by name, a copy that went its own way
-	# ("wing 2", of Wing#2) was written after the wing, and read again,
-	# before it ("wing 2#1" before "wing#1"), and a second save was not the
-	# first (copyfaults2: cfc_wing2).
-	var at_of: Dictionary = {}
-	for n: int in defs.size():
-		at_of[defs[n]] = n
-	var latest: int = 1 << 62
-	defs.sort_custom(func(a: String, b: String) -> bool:
-		var path_a: String = masters[a]
-		var path_b: String = masters[b]
-		if path_a.count("/") != path_b.count("/"):
-			return path_a.count("/") < path_b.count("/")
-		var first_a: int = int((instances[path_a] as Dictionary).get("first", latest))
-		var first_b: int = int((instances[path_b] as Dictionary).get("first", latest))
-		return first_a < first_b if first_a != first_b else int(at_of[a]) < int(at_of[b]))
 	var children: Dictionary = {}    ## the section placing it -> Array of paths
 	var placed_within: Dictionary = {}     ## path -> the copy it is placed in there, IN_META
 	for path: String in ordered:
@@ -1373,7 +1434,54 @@ static func _tree_of(instances: Dictionary, unit_steps: Dictionary) -> Dictionar
 			var at_a: int = int((instances[a] as Dictionary).get("first", last))
 			var at_b: int = int((instances[b] as Dictionary).get("first", last))
 			return at_a < at_b if at_a != at_b else a.naturalnocasecmp_to(b) < 0)
-	return {"masters": masters, "defs": defs, "children": children, "within": placed_within}
+	return {"masters": masters, "defs": _in_written_order(defs, masters, instances, children,
+		placed_within, unit_steps), "children": children, "within": placed_within}
+
+
+## [param defs] in the order their sections are written: each by where its
+## first reference is, the model's own section's references in the order
+## [method _write_one] writes them (by step, then by the copy built in steps
+## each is placed in, then as [param children] has them), then each section
+## so found's in turn. A file read again builds its parts in that order, so
+## a second save writes the sections in the order the first did. By the copy's
+## first part ("first"), they went in the order of the last open's parts: a
+## step edit putting Alpha before Zeta wrote zeta, alpha, and the next save
+## alpha, zeta (ofcheck F2: order_own3, 60067-1's Speedboat and Bush).
+static func _in_written_order(defs: Array[String], masters: Dictionary, instances: Dictionary,
+		children: Dictionary, placed_within: Dictionary, unit_steps: Dictionary) -> Array[String]:
+	var out: Array[String] = []
+	var seen: Dictionary = {}
+	var sections: Array[String] = [""]
+	var next: int = 0
+	while next < sections.size():
+		var placing: Array = (children.get(sections[next], []) as Array).duplicate()
+		next += 1
+		var at: Dictionary = {}
+		for n: int in placing.size():
+			at[placing[n]] = n
+		placing.sort_custom(func(a: String, b: String) -> bool:
+			var step_a: int = int(unit_steps.get(a, 0))
+			var step_b: int = int(unit_steps.get(b, 0))
+			if step_a != step_b:
+				return step_a < step_b
+			var within_a: String = str(placed_within.get(a, ""))
+			var within_b: String = str(placed_within.get(b, ""))
+			if within_a != within_b:
+				return within_a < within_b
+			return int(at[a]) < int(at[b]))
+		for path: String in placing:
+			var def: String = str((instances[path] as Dictionary)["def"])
+			if seen.has(def):
+				continue
+			seen[def] = true
+			out.append(def)
+			sections.append(str(masters[def]))
+	# One whose copies are all in sections not written (none, as a tree is
+	# laid): after, as they were.
+	for def: String in defs:
+		if not seen.has(def):
+			out.append(def)
+	return out
 
 
 ## The section the parts directly in [param path] are written in: its own,

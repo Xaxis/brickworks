@@ -95,21 +95,25 @@ class StudioTexture extends RefCounted:
 ## The sections of an MPD text: each by its name as LDraw compares it
 ## (LdrModel._key) -> its lines, the FILE and NOFILE lines left out; a later
 ## block of a name an earlier one has by a key no reference gives
-## (LdrModel.section_key), as the open reads it.
+## (LdrModel.section_key), as the open reads it. The first by its name too:
+## read as a library of files (Studio's parts, a Part Designer file whose
+## first FILE is the part), not as a model whose own block is in no table.
 static func sections(text: String) -> Dictionary:
 	var out: Dictionary = {}
 	var current: String = ""
 	var lines: Array = []
-	var blocks: Dictionary = {}
+	var blocks: Dictionary = {LdrModel.MAIN_KEY: 1}
 	for raw: String in text.split("\n"):
 		var line: String = raw.strip_edges()
-		if line.begins_with("0 FILE "):
+		# The words however they are spaced, as the open reads them.
+		var word: String = LdrModel.section_word(raw) if line.begins_with("0") else ""
+		if word == "FILE":
 			if not current.is_empty():
 				out[current] = PackedStringArray(lines)
 			current = LdrModel.section_key(raw, blocks)
 			lines = []
 			continue
-		if line.begins_with("0 NOFILE"):
+		if word == "NOFILE":
 			if not current.is_empty():
 				out[current] = PackedStringArray(lines)
 			current = ""
@@ -205,7 +209,7 @@ static func carried(model: String, model2: String, custom: Dictionary,
 		return {"text": model, "read": read, "notes": notes}
 	var head: String = model.strip_edges()
 	# A model.ldr with no FILE line of its own (Studio 2.2) is one first.
-	if not head.begins_with("0 FILE"):
+	if LdrModel.section_word(head.get_slice("\n", 0)) != "FILE":
 		head = "0 FILE model.ldr\n" + head + "\n0 NOFILE"
 	return {"text": head + "\n" + "\n".join(appended) + "\n", "read": read, "notes": notes}
 

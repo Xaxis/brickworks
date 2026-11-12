@@ -26,7 +26,7 @@
 import { createHash } from "node:crypto";
 import { COLOUR_NAMES, directOf, isDirect } from "./_colours.js";
 import { counted, number, say } from "./_card.js";
-import { afterFields, keyOf, stemOf, trimSpace } from "./_subfiles.js";
+import { afterFields, keyOf, sectionKey, stemOf, trimSpace } from "./_subfiles.js";
 
 const HEAD = "0 !BRICKWORKS PAGES ";
 const PAGE = "0 !BRICKWORKS PAGE ";
@@ -75,6 +75,7 @@ function read(text) {
   let first = true;
   let inData = false;
   let header = 0;
+  const blocks = new Map();
   for (const raw of String(text).replace(/^﻿/, "").split("\n")) {
     // LDraw's space trimmed, not every control character: a reference to a
     // sub-model named in them lost its name, and the line placed nothing.
@@ -90,19 +91,23 @@ function read(text) {
       if (keyword === "!DATA") {
         inData = true;
       } else if (keyword === "FILE") {
-        const key = keyOf(afterFields(raw, 2));
-        current = { key, placements: [] };
+        // Keyed as the app keys it (sectionKey): the model's own by a key no
+        // reference gives, and a later block of a name read as nothing.
+        const key = sectionKey(afterFields(raw, 2), blocks);
+        current = { key, placements: [], libraryFile: false, org: false };
         if (first) {
           subs.delete("model");
           main = current;
           first = false;
         }
-        // A later block of a name is read as nothing.
-        if (!subs.has(key)) subs.set(key, current);
+        if (!key.includes("\n")) subs.set(key, current);
         header = 0;
-      } else if (keyword === "!LDRAW_ORG" && header < 16 && /part/i.test(line)
-          && subs.get(current.key) === current) {
-        declared.set(current.key, true);
+      } else if (keyword === "!LDRAW_ORG" && header < 16 && subs.get(current.key) === current) {
+        if (/part/i.test(line)) declared.set(current.key, true);
+        // Its first such line says whether it is a library's file, not a
+        // model (LdrModel.declares_library_file).
+        if (!current.org) current.libraryFile = !/model/i.test(line);
+        current.org = true;
       }
       header += 1;
       continue;
@@ -140,8 +145,11 @@ const round = (n, places) => {
 
 /// Every part the file puts down, in the order the app puts them down
 /// (LdrModel.flatten): [{part, colour, key}], key being the part, its
-/// colour and where it stands, to the hundredth of an LDU.
-export function partsOf(text) {
+/// colour and where it stands, to the hundredth of an LDU. [known] says
+/// whether the library has a part of a number: a FILE that says it is a
+/// library's file (a shortcut) of one is that part, as the app reads it
+/// (LdrModel.sub_model_of, api/_parts.js subModelOf); with none, the block.
+export function partsOf(text, known = () => false) {
   const { main, subs } = read(text);
   const out = [];
   const visit = (sub, at, colour, depth, visiting) => {
@@ -151,7 +159,7 @@ export function partsOf(text) {
       const placed = compose(at, one.m);
       const resolved = one.colour === 16 ? colour : one.colour;
       const nested = subs.get(one.ref);
-      if (nested && nested !== sub) {
+      if (nested && nested !== sub && !(nested.libraryFile && known(one.part))) {
         visit(nested, placed, resolved, depth + 1, new Set(visiting));
         continue;
       }
@@ -237,9 +245,11 @@ const sameSteps = (a, b) => a.length === b.length && [...a].sort().join("\n") ==
 ///   first            the first step that differs, or null for none
 ///   compared         whether the steps could be compared at all
 ///   parts, steps     the new one's counts
-export function changesBetween(before, after) {
-  const was = partsOf(before);
-  const now = partsOf(after);
+///
+/// [known] as partsOf takes it.
+export function changesBetween(before, after, known = () => false) {
+  const was = partsOf(before, known);
+  const now = partsOf(after, known);
   const added = more(lots(now.map((p) => p.key)), lots(was.map((p) => p.key)));
   const removed = more(lots(was.map((p) => p.key)), lots(now.map((p) => p.key)));
   const oldSteps = stepsOf(before, was);

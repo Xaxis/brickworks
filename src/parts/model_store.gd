@@ -416,7 +416,7 @@ func _autosaved() -> String:
 	left_empty = false
 	var path: String = autosave()
 	var text: String = FileAccess.get_file_as_string(path) if FileAccess.file_exists(path) else ""
-	if text.is_empty() or text.begins_with("1 ") or text.contains("\n1 "):
+	if text.is_empty() or LdrModel.placing_at(text) >= 0:
 		return text
 	var name: String = title_in(text, "")
 	# A picture laid to build over comes back with it: the first thing a
@@ -935,8 +935,8 @@ func _placed_lines(text: String) -> PackedStringArray:
 static func _brick_lines(text: String) -> PackedStringArray:
 	var lines := PackedStringArray()
 	for line: String in text.split("\n"):
-		if line.begins_with("1 "):
-			lines.append(line.strip_edges())
+		if LdrModel.is_placing(line):
+			lines.append(line.lstrip(LdrModel.SPACE).rstrip(LdrModel.SPACE))
 	lines.sort()
 	return lines
 
@@ -1388,11 +1388,13 @@ static func title_in(text: String, file_name: String) -> String:
 		var said: String = line.strip_edges()
 		if said.is_empty():
 			continue
-		if not said.begins_with("0 ") or said.begins_with("0 FILE "):
-			if said.begins_with("0 FILE "):
-				continue
+		# Its words however they are spaced: "0\tFILE" is a FILE line.
+		var words: PackedStringArray = LdrModel._fields(said)
+		if words[0] != "0":
 			break
-		said = said.substr(2).strip_edges()
+		if words.size() > 1 and words[1].to_upper() == "FILE":
+			continue
+		said = said.substr(1).strip_edges()
 		# A meta line is never the title, and the app writes its own (share,
 		# remix, credit, made with) after a file's first line: for an .mpd
 		# that is its 0 FILE, so they stood before the title, and a model a
@@ -1900,9 +1902,9 @@ static func _read_text(text: String, model: LdrModel, known: Array, mirrored_lin
 		# set up and guides with it, is the whole booklet's either way. Read
 		# only with the author's steps, a model of the app's own steps lost
 		# its page setup at every open (pagesetup2, 2026-11-06).
-		"looks": BookletLooks.read(text, model._assembly_names(), LdrModel._key(model.main.name))
+		"looks": BookletLooks.read(text, model._assembly_names(), model.main_key)
 			if authored else BookletLooks.booklet_wide(BookletLooks.read(text,
-				model._assembly_names(), LdrModel._key(model.main.name))),
+				model._assembly_names(), model.main_key)),
 		"title": title_meta_in(text) if foreign else "",
 		"share": share_in(text),
 		"remix": remix_in(text),
@@ -3109,7 +3111,7 @@ static func _looks_into(text: String, looks: Dictionary, authored: bool,
 		return text
 	var parsed: LdrModel = LdrModel.parse(text, "model")
 	var names: Dictionary = parsed._assembly_names()
-	var main_key: String = LdrModel._key(parsed.main.name)
+	var main_key: String = parsed.main_key
 	if not authored:
 		looks = BookletLooks.with_booklet_wide(BookletLooks.read(text, names, main_key), looks)
 	return BookletLooks.written_into(text, written.call() if written.is_valid() else looks,
@@ -3471,9 +3473,7 @@ func _store(path: String, text: String) -> bool:
 ## write.
 static func _has_parts(text: String) -> bool:
 	var span: Vector2i = LdrModel.main_span(text)
-	if span.x == 0 and text.begins_with("1 "):
-		return true
-	var at: int = text.find("\n1 ", maxi(span.x - 1, 0))
+	var at: int = LdrModel.placing_at(text, maxi(span.x - 1, 0))
 	return at >= 0 and at < span.y
 
 
@@ -3604,10 +3604,16 @@ static func count_in(text: String) -> int:
 	var model: Variant = null   ## the first FILE section's name
 	var lines := PackedStringArray()
 	var head := PackedStringArray()
+	var blocks: Dictionary = {}
 	for raw: String in (text + "\n0 NOFILE").split("\n"):
-		var line: String = raw.strip_edges()
-		# Each section by its name as LDraw compares it (LdrModel._key), the
-		# first block of a name the one a reference means, as the open reads it.
+		# Trimmed of LDraw's space alone, as LdrModel.parse trims a line: by
+		# the engine's strip_edges, a reference to a sub-model named in
+		# control characters lost its name, and its parts were not counted
+		# (ofcheck F3: names2, 31 of the 32 the open has).
+		var line: String = raw.lstrip(LdrModel.SPACE).rstrip(LdrModel.SPACE)
+		# Each section keyed as the open keys it (LdrModel.section_key): the
+		# first block of a name the one a reference means, and the model's
+		# own by none, so a later block of its name is that one.
 		var word: String = LdrModel.section_word(raw) if line.begins_with("0") else ""
 		if word == "FILE" or word == "NOFILE":
 			if (named or not lines.is_empty()) and not refs.has(name):
@@ -3617,7 +3623,7 @@ static func count_in(text: String) -> int:
 			if named and model == null:
 				model = name
 			named = word == "FILE"
-			name = LdrModel._key(LdrModel.file_name_of(raw)) if named else ""
+			name = LdrModel.section_key(raw, blocks) if named else ""
 			lines = PackedStringArray()
 			head = PackedStringArray()
 			continue

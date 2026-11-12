@@ -1726,7 +1726,8 @@ static func _pulls_follow_parts(text: String, looks: Dictionary, names: Dictiona
 			var keyword: String = words[1].to_upper() if words.size() >= 2 else ""
 			if keyword == "FILE":
 				var file_key: String = LdrModel.section_key(raw, file_blocks)
-				definition = "" if file_key == main_key else str(names.get(file_key, file_key))
+				definition = "" if file_key == main_key or file_key == LdrModel.MAIN_KEY \
+					else str(names.get(file_key, file_key))
 				definition_by[file_key] = definition
 				step = 0
 			elif keyword == "STEP" or keyword == "ROTSTEP":

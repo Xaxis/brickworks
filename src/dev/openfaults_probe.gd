@@ -15,7 +15,11 @@
 ## was written into a deleted one's section, the author's lines of it lost
 ## (co_del_rename_tail); and a copy gone its own way was written first at
 ## the next save, saying COPY 1, a file of its own each save (copyfaults2
-## cfc_wing2).
+## cfc_wing2). Then ofcheck: read so, a shortcut block named as a library
+## part was a sub-model of the part's pieces (10251-1's door left its parts
+## list and price), sections were written in the last open's order (a step
+## edit's save and the next one's differed), and a sub-model named as the
+## main file drew 1 part of 3.
 ##
 ## Each case opens its file (src/dev/fixtures/of_*) as the app opens one,
 ## as someone else's file or as the app's own ("Author: Brickworks", which
@@ -107,6 +111,37 @@ const CASES: Array = [
 		"edits": [{"op": "unique", "sel": {"copy": "wing#2"}}]},
 	{"name": "wing2_unique_theirs", "file": "of_wing2.ldr", "own": false,
 		"edits": [{"op": "unique", "sel": {"copy": "wing#2"}}]},
+	# 7 (ofcheck F1): a block named as a part the library has, that says it
+	# is a library file (a shortcut here), is that part: 10251-1's door
+	# 60797c02, in the parts list and the price. A shortcut of a name the
+	# library has not ("10265 - 42716c01.dat", as 73 OMR files have them)
+	# is a sub-model, drawn as it is.
+	{"name": "shortcut_theirs", "file": "of_shortcut.mpd", "own": false,
+		"edits": [{"op": "paint", "sel": {"part": "3001"}, "colour": 2}],
+		"keep": [" 60797c02.dat\n", "0 FILE 60797c02.dat\n", " 10265 - 42716c01.dat\n"]},
+	{"name": "shortcut_own", "file": "of_shortcut.mpd", "own": true,
+		"edits": [{"op": "rebase"}, {"op": "paint", "sel": {"part": "3001"}, "colour": 2}],
+		"keep": [" 60797c02.dat\n", " 10265 - 42716c01.dat\n", "0 FILE 10265 - 42716c01.dat\n"]},
+	# 8 (ofcheck F2): sections in the order the model builds, never the
+	# last open's: a step edit putting Alpha's part first, saved, opened
+	# and saved again.
+	{"name": "order_own", "file": "of_order.mpd", "own": true,
+		"edits": [{"op": "rebase"}, {"op": "step_first", "sel": {"part": "3004"}},
+			{"op": "mcp", "tool": "edit_steps", "args": {"op": "list"}}]},
+	# 9 (ofcheck F4): a sub-model named as the main file. LDView never puts
+	# the model's own block in its table, so the later block is the one
+	# the references mean.
+	{"name": "mainname_theirs", "file": "of_mainname.mpd", "own": false,
+		"edits": [{"op": "paint", "sel": {"part": "3001"}, "colour": 2}],
+		"keep": ["0 FILE Keep.ldr\n", "0 Keep Sub\n"]},
+	{"name": "mainname_own", "file": "of_mainname.mpd", "own": true,
+		"edits": [{"op": "rebase"}, {"op": "paint", "sel": {"part": "3001"}, "colour": 2}]},
+	# 10 (ofcheck F3): CRLF lines, tabs between fields, a name in two cases.
+	{"name": "crlf_theirs", "file": "of_crlf.mpd", "own": false,
+		"edits": [{"op": "paint", "sel": {"part": "3010"}, "colour": 2}],
+		"keep": ["0 FILE spare.ldr\r\n", "0 FILE Upper.LDR\r\n", "0 Upper twin\r\n", "\t3001.dat\r\n"]},
+	{"name": "crlf_own", "file": "of_crlf.mpd", "own": true,
+		"edits": [{"op": "rebase"}, {"op": "paint", "sel": {"part": "3010"}, "colour": 2}]},
 ]
 
 var _failures: int = 0
@@ -187,7 +222,7 @@ func _case(case: Dictionary) -> void:
 	await _open(text)
 	var opened: Dictionary = _state()
 	_write("opened_state.txt", "\n".join(opened["parts"]) + "\n" + str(opened["units"]))
-	_drawn_alike("opened: the parts LDView draws", _ldview(text), _shown())
+	_drawn_alike("opened: the parts LDView draws", _ldview(text, _library.parts), _shown())
 	_check("...someone else's file kept (%s)" % (_store.get("_source") != null),
 		(_store.get("_source") != null) != bool(case["own"]))
 	if not bool(case["own"]):
@@ -274,7 +309,7 @@ func _read_back(how: String, text: String, shown: Dictionary, case: Dictionary) 
 	if text.is_empty():
 		_check("%s: written" % how, false)
 		return
-	_drawn_alike("%s: LDView draws the model as the app has it" % how, _ldview(text), shown)
+	_drawn_alike("%s: LDView draws the model as the app has it" % how, _ldview(text, _library.parts), shown)
 	var missing: Array = []
 	for kept: Variant in case.get("keep", []):
 		if not text.contains(str(kept)):
@@ -301,12 +336,18 @@ const SPACE := " \t\n\u000b\u000c\r"
 ## one model); a section's name is its text after "0 FILE", a reference its
 ## text after the fourteenth field, each with C's space trimmed, and the two
 ## are one name in any case, "\" and "/" the same; the first block of a name
-## is the one read (a later one is "already loaded"); a reference naming no
-## section is a part. Each part drawn: "number colour at place", as
-## [method _seen] says them.
-static func _ldview(text: String) -> Dictionary:
+## is the one read (a later one is "already loaded"); the model's own block
+## is in no table, so a later block of the model's name is the one its
+## references mean (ofcheck F4); a reference naming no section is a part.
+## One rule is the app's, not LDView's: a block that says it is a library
+## file (its !LDRAW_ORG a part, shortcut or primitive, no model) under a
+## number [param known] has is that part, as the library draws it (LDView
+## draws the block, the part's own pieces: ofcheck F1, 10251-1's door).
+## Each part drawn: "number colour at place", as [method _seen] says them.
+static func _ldview(text: String, known: Dictionary) -> Dictionary:
+	# A trimmed name never starts with a space: no block is named so.
+	const MAIN := " (the model)"
 	var sections: Dictionary = {}
-	var main: String = ""
 	var any_file: bool = false
 	var into: Variant = null
 	var loose: Array = []
@@ -315,9 +356,7 @@ static func _ldview(text: String) -> Dictionary:
 		if words.size() >= 2 and words[0] == "0" and words[1].to_upper() in ["FILE", "NOFILE", "!DATA"]:
 			into = null
 			if words[1].to_upper() == "FILE":
-				var key: String = _name_key(_after(raw, 2))
-				if not any_file:
-					main = key
+				var key: String = MAIN if not any_file else _name_key(_after(raw, 2))
 				any_file = true
 				if not sections.has(key):
 					sections[key] = []
@@ -328,10 +367,33 @@ static func _ldview(text: String) -> Dictionary:
 		elif not any_file:
 			loose.append(raw)
 	if not any_file:
-		sections[main] = loose
+		sections[MAIN] = loose
+	for key: String in sections.keys():
+		if key != MAIN and known.has(_number(key)) and _says_library_file(sections[key]):
+			sections.erase(key)
 	var out: Array = []
-	_draw(sections, main, PackedFloat64Array([0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1]), 16, out, {})
+	_draw(sections, MAIN, PackedFloat64Array([0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1]), 16, out, {})
 	return _seen(out)
+
+
+## Whether a block's header (its first 16 lines) has an !LDRAW_ORG line of
+## a library file's kind: Part, Subpart, Shortcut, a Primitive, each maybe
+## Unofficial_, never a Model.
+static func _says_library_file(lines: Array) -> bool:
+	for raw: Variant in lines.slice(0, 16):
+		var words: PackedStringArray = _words(str(raw))
+		if words.size() >= 3 and words[0] == "0" and words[1].to_upper() == "!LDRAW_ORG":
+			return not words[2].to_lower().contains("model")
+	return false
+
+
+## A reference's part number: its last folder's name, its extension off.
+static func _number(ref: String) -> String:
+	var number: String = ref.get_slice("/", ref.get_slice_count("/") - 1)
+	for suffix: String in [".dat", ".ldr", ".mpd"]:
+		if number.ends_with(suffix):
+			return number.trim_suffix(suffix)
+	return number
 
 
 static func _draw(sections: Dictionary, key: String, at: PackedFloat64Array, colour: int,
@@ -354,12 +416,7 @@ static func _draw(sections: Dictionary, key: String, at: PackedFloat64Array, col
 			if not within.has(ref):
 				_draw(sections, ref, placed, c, out, within)
 			continue
-		var number: String = ref.get_slice("/", ref.get_slice_count("/") - 1)
-		for suffix: String in [".dat", ".ldr", ".mpd"]:
-			if number.ends_with(suffix):
-				number = number.trim_suffix(suffix)
-				break
-		out.append([number, c, LdrModel.to_transform(placed)])
+		out.append([_number(ref), c, LdrModel.to_transform(placed)])
 	within.erase(key)
 
 
@@ -594,6 +651,19 @@ func _do(edit: Dictionary) -> String:
 			return "nothing selected"
 		_select_only(ids)
 	match op:
+		"rebase":
+			# The app's own file as the app writes it, opened: what the
+			# next saves of it are held to.
+			var written: String = _text(_title())
+			_write("base.ldr", written)
+			await _open(written)
+			return "rebased: the app's own text, %d lines" % written.count("\n")
+		"step_first":
+			var picked: Array = _builder.selection.keys()
+			var first: Instructions.Step = Instructions.plan(_world, _library, _store.scenery, {}, true)[0]
+			var moved: String = _shell.change_steps("to", picked, first)
+			await _frames(4)
+			return moved.get_slice("\n", 0)
 		"delete":
 			_shell.run("delete")
 			await _frames(4)
