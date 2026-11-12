@@ -313,6 +313,8 @@ func _pair() -> void:
 	_check("the other side is told, and keeps what was built", not tb.live
 		and (b["world"] as BrickWorld).brick_count() == (a["world"] as BrickWorld).brick_count(), tb.ended_words)
 	await _again(a, b)
+	await _sub_lines(a, b)
+	await _copies_at_once(a, b)
 	if _arg("--big") != "no":
 		await _big(a, b)
 	var gone: int = await SignInHelper.delete_accounts("delivered+bwtogether", root)
@@ -545,6 +547,248 @@ func _again(a: Dictionary, b: Dictionary) -> void:
 			await process_frame
 	ta.parts_above = 3_500_000
 	ta.part_chars = 2_000_000
+
+
+## A sub-model's own lights and views (BrickWorld.section_lines) are both
+## sides': renamed on one side, the other writes them in it too, as each
+## side's save writes the whole model; its last copy taken off on one side,
+## both let them go with it, so a sub-model made again of that name on the
+## other has none of them. Up to 2026-11-11 nothing carried them: a sub-model
+## renamed on one side was written unlit on the other, and the lines of one
+## taken off waited there for whatever next took its name.
+func _sub_lines(a: Dictionary, b: Dictionary) -> void:
+	print("5c. a sub-model's lights and views, renamed and taken off on one side")
+	var ta: Together = a["together"]
+	var tb: Together = b["together"]
+	var green: String = "0 !BRICKWORKS LIGHT " + JSON.stringify({"kind": "point", "at": [0, -50, 0],
+		"aim": [0, 1, 0], "colour": "#00ff00", "strength": 1, "size": 4, "shadows": true})
+	var blue: String = green.replace("#00ff00", "#0000aa")
+	var view: String = "0 !BRICKWORKS VIEW " + JSON.stringify({"name": "sub view", "yaw": 10,
+		"pitch": -20, "distance": 300, "focus": [0, 0, 0]})
+	var text: String = "\n".join(PackedStringArray(["0 FILE main.ldr", "0 Together lit",
+		"0 Name: main.ldr", "0 Author: Brickworks", "1 16 100 0 0 1 0 0 0 1 0 0 0 1 sub.ldr",
+		"1 16 -100 0 0 1 0 0 0 1 0 0 0 1 lamp.ldr", "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat", "0 NOFILE",
+		"0 FILE sub.ldr", "0 Sub", "0 Name: sub.ldr", "0 Author: Brickworks", green, view,
+		"1 14 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat", "0 NOFILE", "0 FILE lamp.ldr", "0 Lamp",
+		"0 Name: lamp.ldr", "0 Author: Brickworks", blue, "1 2 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat",
+		"0 NOFILE", ""]))
+	# Main's own part after its copies, as the app writes it: each side
+	# numbers its parts in the order it read them, and the order a file lists
+	# copies follows those numbers (AuthorSteps.first_under), so a Make on one
+	# side of a file read in another order lists its copies the other way.
+	(a["store"] as ModelStore).open_text(text, "Together lit")
+	(a["store"] as ModelStore).title = "Together lit"
+	var trouble: String = await ta.start()
+	if trouble.is_empty():
+		trouble = await tb.join(ta.link)
+	await _settle([a, b])
+	var tree := Assemblies.new()
+	tree.world = a["world"]
+	tree.builder = a["builder"]
+	tree.library = _library
+	tree.scenery = (a["store"] as ModelStore).scenery
+	var sub: String = ""
+	for path: String in tree.paths():
+		if Assemblies.definition(path) == "Sub":
+			sub = path
+	tree.rename(sub, "Engine")
+	await _settle([a, b])
+	var theirs: String = tb.model_text()
+	var engine: String = theirs.substr(theirs.find("0 FILE engine.ldr"))
+	_check("Sub renamed Engine on the owner's side: the other writes its light and view in Engine, "
+		+ "and the two files are one", trouble.is_empty() and theirs.find("0 FILE engine.ldr") > 0
+		and engine.contains("#00ff00") and engine.contains("sub view") and not theirs.contains("0 FILE sub.ldr")
+		and ta.model_hash() == tb.model_hash(), trouble if not trouble.is_empty()
+		else "%d light lines on the other side" % theirs.count("!BRICKWORKS LIGHT"))
+	# Lamp's one part taken off on the other side, as Delete takes it.
+	var gone: Dictionary = {}
+	for brick: BrickWorld.Brick in (b["world"] as BrickWorld).bricks():
+		if brick.color_code == 2:
+			gone = await tb.check_edit({"op": "delete", "uid": tb.uid_of(brick.id)})
+	await _settle([a, b])
+	var held: Dictionary = {}
+	for brick: BrickWorld.Brick in (a["world"] as BrickWorld).bricks():
+		if brick.color_code == 4:
+			held[brick.id] = true
+	(a["builder"] as Builder).selection = held
+	var made: String = tree.make("Lamp")
+	await _settle([a, b])
+	var lamp_lit: Array = [ta.model_text().contains("#0000aa"), tb.model_text().contains("#0000aa"),
+		(a["world"] as BrickWorld).section_lines.has("Lamp"), (b["world"] as BrickWorld).section_lines.has("Lamp")]
+	_check("Lamp's last copy taken off on the other side (%s): a Lamp made of another part on the "
+		% str(gone.get("ok", false)) + "owner's (%s) has none of its light, on either side" % made,
+		bool(gone.get("ok", false)) and made == "Lamp#1" and not lamp_lit[0] and not lamp_lit[1]
+		and ta.model_hash() == tb.model_hash(), "its light in the owner's file and the other's %s, "
+		% [lamp_lit.slice(0, 2)] + "Lamp's lines kept on each side %s, the files apart at %s"
+		% [lamp_lit.slice(2), _apart(ta.model_text(), tb.model_text())])
+	await ta.end()
+	var until: int = Time.get_ticks_msec() + 30000
+	while tb.live and Time.get_ticks_msec() < until:
+		await process_frame
+
+
+## Each copy of a lit sub-model is its own: where its lights stand goes with
+## it ("~frame:<path>", Together._frame_words), so two people moving two
+## copies at once both keep theirs, on both sides; a copy taken apart on one
+## side while the other copy moves on the other, both undone, leaves one
+## light; and a sub-model's lines longer than a session takes are said once,
+## the rest still sent. Up to 2026-11-12 one key held every copy's frame:
+## the later move put the other copy's lights back where they had been, 12
+## LDU off its parts on both sides (pc2check T6), and the undos left the
+## taken-apart copy's light in the model's beside its sub-model's (T7).
+func _copies_at_once(a: Dictionary, b: Dictionary) -> void:
+	print("5d. two copies of a lit sub-model, one moved on each side at once; one taken apart while the other moves;"
+		+ " one taken apart on each side")
+	var ta: Together = a["together"]
+	var tb: Together = b["together"]
+	var green: String = "0 !BRICKWORKS LIGHT " + JSON.stringify({"kind": "point", "at": [0, -50, 0],
+		"aim": [0, 1, 0], "colour": "#00ff00", "strength": 1, "size": 4, "shadows": true})
+	var text: String = "\n".join(PackedStringArray(["0 FILE main.ldr", "0 Together copies",
+		"0 Name: main.ldr", "0 Author: Brickworks", "1 16 0 0 0 1 0 0 0 1 0 0 0 1 sub.ldr",
+		"1 16 0 0 400 -1 0 0 0 1 0 0 0 1 sub.ldr", "1 4 -600 0 0 1 0 0 0 1 0 0 0 1 3001.dat", "0 NOFILE",
+		"0 FILE sub.ldr", "0 Sub", "0 Name: sub.ldr", "0 Author: Brickworks", green,
+		"1 14 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat", "1 15 60 0 40 1 0 0 0 1 0 0 0 1 3001.dat", "0 NOFILE", ""]))
+	var heard: Array = []
+	var hear: Callable = func(words: String) -> void: heard.append(words)
+	ta.said.connect(hear)
+	for round: int in 3:
+		(a["store"] as ModelStore).open_text(text, "Together copies")
+		(a["store"] as ModelStore).title = "Together copies"
+		var trouble: String = await ta.start()
+		if trouble.is_empty():
+			trouble = await tb.join(ta.link)
+		await _settle([a, b])
+		var trees: Array = []
+		for side: Dictionary in [a, b]:
+			var tree := Assemblies.new()
+			tree.world = side["world"]
+			tree.builder = side["builder"]
+			tree.library = _library
+			tree.scenery = (side["store"] as ModelStore).scenery
+			trees.append(tree)
+		var copies: Array = [_subs(trees[0]), _subs(trees[1])]
+		if round == 0:
+			var was: Dictionary = (a["world"] as BrickWorld).section_frames.duplicate()
+			var parts_was: Dictionary = _yellow_at(trees[0])
+			_nudge(a, trees[0], str(copies[0][1]), Vector3i(6, 0, 0))
+			_nudge(b, trees[1], str(copies[1][0]), Vector3i(0, 0, -6))
+			await _settle([a, b], 30000)
+			var parts_now: Dictionary = _yellow_at(trees[0])
+			var followed: Array = []
+			for side: Dictionary in [a, b]:
+				var frames: Dictionary = (side["world"] as BrickWorld).section_frames
+				for path: String in was:
+					followed.append(frames.has(path) and parts_now.has(path) and ((frames[path] as Transform3D)
+						.origin - (was[path] as Transform3D).origin).is_equal_approx(
+						(parts_now[path] as Vector3) - (parts_was[path] as Vector3)))
+			_check("each side moves one copy at once: on both sides each copy's lights stand where its "
+				+ "own parts went, the two files one", trouble.is_empty() and followed.size() == 4
+				and not followed.has(false) and ta.model_hash() == tb.model_hash(), trouble
+				if not trouble.is_empty() else "%s; apart at %s" % [followed, _apart(ta.model_text(),
+				tb.model_text())])
+		elif round == 2:
+			# One after the other: the first undone finds the model's lights
+			# changed since, and goes back whole or not at all, said; the
+			# second's goes. Up to 2026-11-12 its parts went back without its
+			# lights, and the light was there twice (pc2check T7_3).
+			var first: int = (trees[0] as Assemblies).ungroup(str(copies[0][0]))
+			(a["store"] as ModelStore).looks_follow_edit()
+			await _settle([a, b], 30000)
+			var second: int = (trees[1] as Assemblies).ungroup(str(copies[1][1]))
+			(b["store"] as ModelStore).looks_follow_edit()
+			await _settle([a, b], 30000)
+			var said: String = ta.undo()
+			await _settle([a, b], 30000)
+			var held: Array = [_subs(trees[0]).size(), _subs(trees[1]).size()]
+			var again: String = tb.undo()
+			await _settle([a, b], 30000)
+			var lit: Array = [ta.model_text().count("#00ff00"), tb.model_text().count("#00ff00")]
+			_check("a copy taken apart on each side, one after the other (%d, %d parts), the first undone: "
+				% [first, second] + "held back whole and said (%s), its parts still apart (%s copies of Sub); "
+				% [said, held] + "the second undone (%s): Sub's light and the first's, the two files one"
+				% again, trouble.is_empty() and first > 0 and second > 0
+				and said == "undid nothing: somebody else changed %s since" % TogetherWords.state_named("~lights")
+				and held == [0, 0] and again.begins_with("undid") and not again.begins_with("undid nothing")
+				and _subs(trees[0]).size() == 1 and _subs(trees[1]).size() == 1 and lit == [2, 2]
+				and ta.model_hash() == tb.model_hash(), trouble if not trouble.is_empty()
+				else "%s lights; apart at %s" % [lit, _apart(ta.model_text(), tb.model_text())])
+		else:
+			var gone: int = (trees[0] as Assemblies).ungroup(str(copies[0][0]))
+			(a["store"] as ModelStore).looks_follow_edit()
+			_nudge(b, trees[1], str(copies[1][1]), Vector3i(6, 0, 0))
+			await _settle([a, b], 30000)
+			var undone: Array = [tb.undo()]
+			await _settle([a, b], 30000)
+			undone.append(ta.undo())
+			await _settle([a, b], 30000)
+			var lit: Array = [ta.model_text().count("#00ff00"), tb.model_text().count("#00ff00")]
+			_check("a copy taken apart on one side (%d parts) while the other moves on the other, both "
+				% gone + "undone (%s): one light, on both sides, the two files one" % [undone], trouble.is_empty()
+				and gone > 0 and lit == [1, 1] and ta.model_hash() == tb.model_hash(),
+				trouble if not trouble.is_empty() else "%s lights; apart at %s" % [lit,
+				_apart(ta.model_text(), tb.model_text())])
+			# Its lines past what a session takes: said once, a part moved with
+			# them still reaches the other side.
+			var big := PackedStringArray((a["world"] as BrickWorld).section_lines["Sub"])
+			for n: int in 64:
+				big.append("0 !BRICKWORKS VIEW " + JSON.stringify({"distance": 300, "focus": [0, 0, n],
+					"name": "view %d %s" % [n, "x".repeat(3300)], "pitch": -20, "yaw": 10}))
+			heard.clear()
+			Assemblies.set_lines(a["builder"], {"Sub": big})
+			_nudge(a, trees[0], str(_subs(trees[0])[0]), Vector3i(0, 0, 6))
+			await _settle([a, b], 30000)
+			var long_said: Array = heard.filter(func(words: String) -> bool:
+				return words == TogetherWords.too_long("~sublines:Sub"))
+			_check("Sub's lines past what a session takes: said once (%d), a move made with them still "
+				% long_said.size() + "reaches the other side", long_said.size() == 1
+				and _yellow_at(trees[0]) == _yellow_at(trees[1]) and not heard.any(func(words: String) -> bool:
+					return words.begins_with("Could not reach")), str(heard))
+		await ta.end()
+		var until: int = Time.get_ticks_msec() + 30000
+		while tb.live and Time.get_ticks_msec() < until:
+			await process_frame
+	ta.said.disconnect(hear)
+
+
+## The copies of Sub in [param tree], by path.
+static func _subs(tree: Assemblies) -> Array:
+	var out: Array = Array(tree.paths()).filter(func(path: String) -> bool:
+		return Assemblies.definition(Assemblies.leaf(path)) == "Sub")
+	out.sort()
+	return out
+
+
+## Where each copy of Sub's yellow 3003 stands, by the copy's path.
+static func _yellow_at(tree: Assemblies) -> Dictionary:
+	var out: Dictionary = {}
+	for path: String in _subs(tree):
+		for brick: BrickWorld.Brick in tree.bricks_under(path):
+			if brick.color_code == 14:
+				out[path] = brick.transform.origin
+	return out
+
+
+## The copy at [param path] on [param side] moved by [param by], as the arrow keys move it.
+static func _nudge(side: Dictionary, tree: Assemblies, path: String, by: Vector3i) -> void:
+	var builder: Builder = side["builder"]
+	var selection: Dictionary = {}
+	for id: int in tree.ids_under(path):
+		selection[id] = true
+	builder.selection = selection
+	builder.move_selection(by)
+	(side["store"] as ModelStore).looks_follow_edit()
+	builder.clear_selection()
+
+
+## Where [param mine] and [param theirs] first differ: "line N: mine / theirs",
+## or "none".
+static func _apart(mine: String, theirs: String) -> String:
+	var a: PackedStringArray = mine.split("\n")
+	var b: PackedStringArray = theirs.split("\n")
+	for n: int in maxi(a.size(), b.size()):
+		if n >= a.size() or n >= b.size() or a[n] != b[n]:
+			return "line %d: %s / %s" % [n, a[n] if n < a.size() else "-", b[n] if n < b.size() else "-"]
+	return "none"
 
 
 ## A model whose snapshot is over 4 MB starts a session, in parts.

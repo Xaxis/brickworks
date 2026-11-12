@@ -1428,6 +1428,13 @@ func _keep_driven(played: Played, words: String) -> int:
 	var had: Motions = motions().copy()
 	var moved: int = moving.commit(words)
 	if moved > 0:
+		# And the frames its sub-models' lights and views are in, with its
+		# parts, in their step (Assemblies.frames_carried): the step after it
+		# is the motions', which a following edit looks at.
+		var driven: Dictionary = {}
+		for brick_id: int in moving.placed:
+			driven[brick_id] = whole
+		Assemblies.frames_carried(builder, driven)
 		# Where the model went, kept with its motions: an undo takes both back.
 		motions().moved = in_file * motions().moved
 		builder.record([{"undo": "motions", "motions": had}], words)

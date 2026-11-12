@@ -487,16 +487,13 @@ func leave_submodel() -> int:
 				say.call("took %s apart" % Assemblies.label(path) + ("" if assemblies.apart_said
 					.is_empty() else " — " + assemblies.apart_said))
 			return count
-		var changes: Dictionary = {}
-		for brick_id: int in builder.selection:
-			var brick: BrickWorld.Brick = world.get_brick(brick_id)
-			if brick != null:
-				changes[brick_id] = Assemblies.parent_of(Assemblies.path_of(brick))
-		var moved: int = builder.regroup(changes, "took %s out of its sub-assembly"
-			% _parts(changes.size()))
+		# A copy it leaves empty is taken apart, its lights with its parts
+		# (Assemblies.take_out).
+		var moved: int = assemblies.take_out(builder.selection.keys())
 		if moved > 0:
 			edited.call()
-			say.call("took %s out of its sub-assembly" % _parts(moved))
+			say.call("took %s out of its sub-assembly" % _parts(moved) + (""
+				if assemblies.apart_said.is_empty() else " — " + assemblies.apart_said))
 		return moved
 	var gone: int = builder.name_group("")
 	if gone > 0:
@@ -753,6 +750,8 @@ func paste() -> int:
 	# The app's own copy brings its sub-models' lights and views with it.
 	if is_same(parts, Carry.clipboard):
 		builder.carrying.lines = Carry.clipboard_lines
+		builder.carrying.frames = Carry.clipboard_frames
+		builder.carrying.held = Carry.clipboard_held
 	aim_again.call()
 	say.call(Keymap.filled("holding %s — click to put down, {rotate_held|turns}, Esc puts away")
 		% _parts(parts.size()))
@@ -787,6 +786,14 @@ func duplicate_selection(again: bool = true) -> int:
 	builder.cancel_carry()
 	builder.hold_copy(parts)
 	builder.carrying.repeats = again
+	# What a copy and a paste bring, it brings: its sub-models' lights and
+	# views, the frame they are in, and what its copies hold that is not on
+	# the baseplate. Up to 2026-11-12 it brought none, and a duplicate of a
+	# lit copy was written with its light where the file had had it (pc2check
+	# Q, live too).
+	builder.carrying.lines = Assemblies.lines_held(world, parts)
+	builder.carrying.frames = Assemblies.frames_held(world, parts)
+	builder.carrying.held = builder.held_carry.call(parts) if builder.held_carry.is_valid() else []
 	aim_again.call()
 	say.call(Keymap.filled("holding a copy of %s — each click puts one down, {rotate_held|turns}, Esc or a right click stops"
 		if again else "holding a copy of %s — click to put it down, {rotate_held|turns}, Esc puts away")
