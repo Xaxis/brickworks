@@ -88,6 +88,34 @@ def test_a_sub_model_named_as_the_main_file_is_the_one_its_references_mean() -> 
     assert python_parts((FX / "of_mainname.mpd").read_text()) == ["3001.dat", "3003.dat", "3004.dat"]
 
 
+def shared(text: str) -> str | None:
+    """What share's checkModel says of [text]: its part count, or its refusal."""
+    if shutil.which("node") is None:
+        return None
+    script = (
+        "const { checkModel } = await import('./api/share.js');"
+        f"const text = {json.dumps(text)};"
+        "try { console.log(String(checkModel(text).parts)); } catch (e) { console.log(`refused: ${e.message}`); }"
+    )
+    done = subprocess.run(["node", "--input-type=module", "-e", script], cwd=ROOT, capture_output=True, text=True,
+                          timeout=180, check=True)
+    return done.stdout.strip().splitlines()[-1]
+
+
+def test_a_loop_is_sub_models_placing_each_other() -> None:
+    # The model's own block is in no table, so a sub-model that places the
+    # main file's name places a file the text does not have, as LDView
+    # reads it, not the model: share_probe's "inside itself" was that.
+    line = "1 4 0 0 0 1 0 0 0 1 0 0 0 1 "
+    own = shared(f"0 FILE a.ldr\n{line}b.ldr\n0 FILE b.ldr\n{line}a.ldr\n")
+    if own is None:
+        return
+    assert not own.startswith("refused")
+    loop = "refused: that model places itself inside itself"
+    assert shared(f"0 FILE a.ldr\n{line}b.ldr\n0 FILE b.ldr\n{line}c.ldr\n0 FILE c.ldr\n{line}b.ldr\n") == loop
+    assert shared(f"0 FILE a.ldr\n{line}b.ldr\n0 FILE b.ldr\n{line}B.LDR\n") == loop
+
+
 def test_a_line_is_split_on_any_space() -> None:
     said = server("of_crlf.mpd")
     if said is None:
