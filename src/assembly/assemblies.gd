@@ -388,9 +388,11 @@ func make(name: String) -> String:
 		changes[brick_id] = path if rest.is_empty() else path + "/" + rest
 	if changes.is_empty():
 		return ""
-	builder.regroup(changes, "made the sub-assembly %s of %s" % [definition(segment),
-		Builder._many(changes.size())], wrapped(changes),
-		made_steps(PackedStringArray([path])))
+	# Read once the steps are the model's: made, it is built in its parent's.
+	var kept: Array = own_steps()
+	steps_kept(kept, builder.regroup(changes, "made the sub-assembly %s of %s" % [
+		definition(segment), Builder._many(changes.size())], wrapped(changes),
+		made_steps(PackedStringArray([path]))))
 	changed.emit()
 	return path
 
@@ -420,6 +422,7 @@ func ungroup(path: String) -> int:
 		return 0
 	if within(entered, path) and entered != parent:
 		leave_to(parent)
+	var kept: Array = own_steps()
 	var numbers: Dictionary = AuthorSteps.inlined(world, path, scenery)
 	var looks: Dictionary = BookletLooks.inlined(world, path, numbers)
 	# Read while the copy is still one: its frame is found from its parts.
@@ -428,7 +431,8 @@ func ungroup(path: String) -> int:
 		if at == path:
 			return []
 		return [join(parent, at.substr(path.length() + 1))] if within(at, path) else [at]
-	if builder.regroup(changes, "took %s apart" % label(path), carry, numbers) > 0:
+	var moved: int = builder.regroup(changes, "took %s apart" % label(path), carry, numbers)
+	if moved > 0:
 		if not looks.is_empty():
 			builder.extend_last([{"undo": "steplooks", "looks": world.step_looks}])
 			world.step_looks = looks
@@ -438,6 +442,7 @@ func ungroup(path: String) -> int:
 				builder.extend_last([{"undo": "scenelights", "take": lit["lights"], "put": []}])
 				world.scene_lights = world.scene_lights + (lit["lights"] as Array)
 			apart_said = lit["said"]
+	steps_kept(kept, moved)
 	changed.emit()
 	return changes.size()
 
@@ -801,6 +806,36 @@ func wrapped(changes: Dictionary) -> Callable:
 		return out
 
 
+## Before an edit of what holds what in a model nobody gave steps: the
+## steps it shows made its own (AuthorSteps.adopt_plan), so the edit keeps
+## every other part in the step it was shown in, and a save writes them as
+## its own and opens in them, as in a model with steps of its own. Worked
+## out again on open, the steps of a model of the app's own whose sub-model
+## was dragged into another came back with 4 of its 8 parts in other steps
+## (tdcheck, 2026-11-11): its file's lines were in another order, and the
+## plan broke its ties another way. What the person saw is what is kept,
+## as a step edit keeps it (AuthorSteps.ensure). Returns the undo for it,
+## for [method steps_kept].
+func own_steps() -> Array:
+	if library == null or AuthorSteps.any(world, scenery):
+		return []
+	return AuthorSteps.adopt_plan(world, library, scenery)
+
+
+## [param undo] ([method own_steps]) in the edit's undo, last of all its
+## steps, so one Undo takes both back in turn (a group's steps are undone
+## in the order kept); or put back now when the edit moved nothing
+## ([param moved] 0). Called after everything else the edit folds in.
+func steps_kept(undo: Array, moved: int) -> void:
+	if undo.is_empty():
+		return
+	if moved > 0:
+		builder.extend_last(undo)
+		return
+	for index: int in range(undo.size() - 1, -1, -1):
+		builder._apply(undo[index])
+
+
 ## The steps of sub-assemblies [param made] from parts of a model with steps
 ## of its own, as Builder.regroup takes them: each built in the steps of the
 ## one round it (AuthorSteps.IN_PARENT), so the parts stay in the steps the
@@ -826,18 +861,20 @@ func make_unique(path: String) -> String:
 	var changes: Dictionary = {}
 	for brick: BrickWorld.Brick in bricks_under(path):
 		changes[brick.id] = fresh + path_of(brick).substr(path.length())
-	var own_steps: bool = not AuthorSteps.in_parent(world, path)
+	var kept: Array = own_steps()
+	var built_whole: bool = not AuthorSteps.in_parent(world, path)
 	var carry: Callable = func(at: String) -> Array:
 		return [fresh + at.substr(path.length())] if within(at, path) else [at]
 	var moved: int = builder.regroup(changes, "made %s a sub-assembly of its own" % label(path),
 		carry)
 	# Built in steps of its own, it is shown as it was: its steps' looks,
 	# kept by the name it had, are its new name's too.
-	if own_steps and moved > 0:
+	if built_whole and moved > 0:
 		builder.extend_last(BookletLooks.renamed(world, definition(leaf(path)), name, false))
 	# And its own lights and views, built in its own steps or not.
 	if moved > 0:
 		lines_renamed(builder, definition(leaf(path)), name, false)
+	steps_kept(kept, moved)
 	if within(entered, path):
 		_set_entered(fresh + entered.substr(path.length()))
 	changed.emit()
@@ -855,8 +892,13 @@ func move_into(path: String, into: String) -> String:
 		changes[brick.id] = fresh + path_of(brick).substr(path.length())
 	var carry: Callable = func(at: String) -> Array:
 		return [fresh + at.substr(path.length())] if within(at, path) else [at]
-	builder.regroup(changes, "put %s in %s" % [label(path),
-		"the model" if into.is_empty() else label(into)], carry)
+	var kept: Array = own_steps()
+	steps_kept(kept, builder.regroup(changes, "put %s in %s" % [label(path),
+		"the model" if into.is_empty() else label(into)], carry))
+	# Being edited inside, it is still: the path it is edited by is the new
+	# one, as make_unique's is (an old path names nothing now).
+	if within(entered, path):
+		_set_entered(fresh + entered.substr(path.length()))
 	changed.emit()
 	return fresh
 
