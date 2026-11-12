@@ -1675,6 +1675,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	builder.forget_history()
 	scenery.clear()
 	awaited.clear()
+	_session_puts.clear()
 	_told_not_coming = false
 	_phase("clear")
 	_source = source
@@ -2331,7 +2332,7 @@ func _motion_lines() -> PackedStringArray:
 	motions_gone_words = _gone_words(motions, gone)
 	# Those it could not read are written where the file had them
 	# (_meta_families), not after the rest.
-	return motions.lines(false)
+	return motions.lines({}, false)
 
 
 ## Whether [param joint]'s part is one still on its way (the web fetches
@@ -2795,16 +2796,19 @@ func awaited_now() -> Array:
 ## goes into [param landed_into] as [its brick, its placement].
 func place_awaited(part_id: String, landed_into: Array = []) -> int:
 	# Not into a model still being laid: what arrived meanwhile is put down
-	# once it is whole (_open_into).
-	if awaited.is_empty() or laying:
+	# once it is whole (_open_into). Nor into a step still being made of
+	# motions played one after another (hold_landings).
+	if awaited.is_empty() or laying or _holding_in == world.generation():
 		return 0
 	if world.generation() != _awaited_in:
 		awaited.clear()
+		_session_puts.clear()
 		return 0
 	var still: Array[LdrModel.Placement] = []
 	var landed: int = 0
 	for placement: LdrModel.Placement in awaited:
-		if placement.part_id != part_id:
+		# One a session puts down, where the session has it (Together).
+		if placement.part_id != part_id or _session_puts.has(placement):
 			still.append(placement)
 			continue
 		var at: Transform3D = awaited_at(placement)
@@ -2831,6 +2835,62 @@ func place_awaited(part_id: String, landed_into: Array = []) -> int:
 	if awaited.is_empty():
 		_settle()
 	return landed
+
+
+## Those of [member awaited] a live session puts down as they come, where
+## the session has them then (Together._held_by_store): placement -> true.
+## Still on their way here, and written so, until it does.
+var _session_puts: Dictionary = {}
+
+
+## [param placement], one of [member awaited], put down by a session as it
+## comes ([param on]) or here again, where the model stands then.
+func session_puts(placement: LdrModel.Placement, on: bool) -> void:
+	if on:
+		_session_puts[placement] = true
+	else:
+		_session_puts.erase(placement)
+
+
+## [param placement] no more on its way: a session put it down or took it
+## off, or the session's model never had it.
+func drop_awaited(placement: LdrModel.Placement) -> void:
+	awaited.erase(placement)
+	_session_puts.erase(placement)
+
+
+## The model this holds what arrives in awaited for (its world's
+## generation), -1 for none: motions played one after another and kept as
+## one step are being played (MotionPlayer.pace_on, a sequence or a link's
+## press of one, a slice a frame).
+var _holding_in: int = -1
+
+## Signalled with how many parts were put down once a hold let go of them
+## ([method hold_landings]), as they would have been as they came.
+signal held_landed(count: int)
+
+
+## With [param on], what arrives waits in [member awaited] until this is
+## called again without, and is put down then: a run of motions kept as one
+## step is being made. Put down between two of its motions, a part was
+## moved by the second as the parts that step moves itself are, so its undo
+## took it back only to where it had landed, a whole drive from its tyre,
+## and an undone sequence's racer was saved with its rims out of its tyres
+## (drvcheck3 L1). Put down once the step is whole, the step has none of it,
+## and an undo or a redo carries it as it carries every part that landed
+## late (_follow_motions). Held for the model open now only: one opened
+## meanwhile lands its parts as they come. Returns how many it put down.
+func hold_landings(on: bool) -> int:
+	if on:
+		_holding_in = world.generation()
+		return 0
+	if _holding_in < 0:
+		return 0
+	_holding_in = -1
+	var landed: Array = _land_arrived()
+	if not landed.is_empty():
+		held_landed.emit(landed.size())
+	return landed.size()
 
 
 ## The parts put down after the model opened ([method place_awaited]), id ->

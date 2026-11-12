@@ -5246,6 +5246,8 @@ func _build_ui() -> void:
 	_store.builder = _builder
 	# A drive undone or redone takes what landed after it was kept with it.
 	_builder.motions_hook = _store._follow_motions
+	# And what landed once a sequence played as one step let it.
+	_store.held_landed.connect(func(_count: int) -> void: _on_landed())
 
 	# What the model stands on: src/render/floor_layer.gd.
 	_floor = FloorLayer.new()
@@ -8403,12 +8405,18 @@ func _on_part_fetched(part_id: String) -> void:
 	# Not there yet is not the same as not there: a model opened on the
 	# web before its parts were fetched gets them as they come.
 	if _store.place_awaited(part_id) > 0:
-		_on_model_changed()
-		if _store.awaited.is_empty():
-			_bar.say("%d bricks" % Inventory.pieces_in(_world, _library, _store.scenery))
+		_on_landed()
 	if _builder.held_part == part_id:
 		_refresh_preview()
 		_bar.say("%s ready" % part_id)
+
+
+## Parts on their way put down: as each arrives, or once motions kept as one
+## step, which held them back while it was made, are (ModelStore.hold_landings).
+func _on_landed() -> void:
+	_on_model_changed()
+	if _store.awaited.is_empty():
+		_bar.say("%d bricks" % Inventory.pieces_in(_world, _library, _store.scenery))
 
 
 ## A part that could not be fetched, asked again too (PartLibrary.RETRY_AFTER).

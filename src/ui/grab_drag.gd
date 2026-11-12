@@ -849,9 +849,11 @@ func _standing_words(weighed: Balance.Report, live: bool) -> String:
 	if weighed.margin >= 0.0:
 		out = "stands, %s studs inside the %s edge" % [Balance.studs(weighed.margin), weighed.edge]
 	elif live:
-		out = "would tip over to the %s, %s studs past its edge" % [weighed.edge, Balance.studs(-weighed.margin)]
+		out = "would tip over %s, %s studs past its edge" % [Balance.toward(weighed.edge),
+			Balance.studs(-weighed.margin)]
 	else:
-		out = "tips over to the %s, %s studs past its edge" % [weighed.edge, Balance.studs(-weighed.margin)]
+		out = "tips over %s, %s studs past its edge" % [Balance.toward(weighed.edge),
+			Balance.studs(-weighed.margin)]
 	for one: Balance.JointLoad in weighed.joints:
 		if one.ratio <= 1.0:
 			break
