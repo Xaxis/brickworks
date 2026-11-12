@@ -3442,8 +3442,9 @@ func _held_carried(parts: Array) -> Array:
 
 
 ## Each of [param into] ([[one of _held_carried's, the path of the copy a
-## paste put down that holds it]]) put in that copy, where [param moved]
-## (Carry.moved) puts it, as one of the kind it was: kept in what a save
+## paste put down that holds it, and how that copy was moved when the copies
+## were each moved apart: a Pattern's]]) put in that copy, where its move or
+## [param moved] (Carry.moved) puts it, as one of the kind it was: kept in what a save
 ## writes, and one on its way landing there. In the paste's step, so its
 ## Undo takes them out with the copy and its Redo puts them back. None into a
 ## model that is not the one opened (a Clear kept for its undo holds that
@@ -3460,8 +3461,9 @@ func _held_put(into: Array, moved: Transform3D) -> void:
 		var kind: String = str(one["kind"])
 		if path.is_empty() or (kind == "unseen" and source == null):
 			continue
+		var move: Transform3D = pair[2] if pair.size() > 2 else moved
 		var placement := LdrModel.Placement.new(str(one["part"]), int(one["color"]),
-			_held_from_world(moved * (one["at"] as Transform3D), kind), int(one["step"]))
+			_held_from_world(move * (one["at"] as Transform3D), kind), int(one["step"]))
 		placement.group = Assemblies.group_of(path)
 		placement.unit = path
 		placement.held_key = "%s@%d" % [path, placement.get_instance_id()]

@@ -844,9 +844,14 @@ Whether what you built is still there tomorrow, and still means the same thing.
   tells copies apart by their held parts as well as their bricks
   (`Assemblies.file_frames(figures, held)`, `Assemblies.held_by_path`:
   which parts and colours, not where, since held parts do not follow a
-  copy's move), so a copy holding none of its master's is a sub-model of
-  its own and none is lost (pc2check A2, H). Copy and Paste, and
-  Duplicate, bring a copy's held parts into the new copy
+  copy's move), so a copy holding any its master does not is a sub-model of
+  its own and none is lost (pc2check A2, H); one holding fewer is the
+  master's (`Assemblies._holds_within`), as live writes it, since a held part
+  leaves a copy only with the copy (pc3check KP: split, a Pattern's copies
+  lost the sub-model's lights). Copy and Paste, Duplicate, and Edit,
+  Pattern (the window, the copies a put-down copy repeats, the AI's
+  `pattern_parts`: `Pattern.put`, a move per copy) bring a copy's held parts
+  into each new copy
   (`Carry.clipboard_held`, `Builder.held_carry`/`held_put`,
   `ModelStore._held_carried`/`_held_put`, keyed by
   `LdrModel.Placement.held_key`), in the paste's undo step (one that landed
