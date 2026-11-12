@@ -1,0 +1,12 @@
+0 FILE hand.ldr
+0 Hand written
+0 Name: hand.ldr
+0 Author: Hand Writer
+0 !BrickWorks floor baseplate 32 32 2
+0 !brickworks view {"distance":400,"focus":[0,0,0],"name":"v","pitch":-25,"yaw":30}
+0 !BRICKWORKS light {"aim":[0,1,0],"at":[0,-200,0],"colour":"#ffffff","cone":30,"kind":"spot","shadows":true,"size":4,"strength":1}
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3003.dat
+0 STEP
+0 NOFILE

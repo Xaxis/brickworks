@@ -151,23 +151,39 @@ func tally(used: Dictionary, library: PartLibrary) -> Dictionary:
 
 ## The sets a model's [param text] says its bin was built from, or none.
 static func read(text: String) -> PackedStringArray:
-	var found: RegExMatch = RegEx.create_from_string(
-		"(?m)^0 !BRICKWORKS BIN ([0-9A-Za-z. -]{1,600})\\s*$").search(text)
+	return read_from(MetaIndex.of_text(text))
+
+
+## The sets the model's own lines say (MetaIndex), the first line that
+## reads, taken.
+static func read_from(metas: MetaIndex) -> PackedStringArray:
+	var found: Variant = metas.first_read("BIN", said_in)
+	return found if found != null else PackedStringArray()
+
+
+## The sets a BIN line's [param said] names, or null for one this cannot
+## read.
+static func said_in(said: String) -> Variant:
+	if RegEx.create_from_string("^[0-9A-Za-z. \t-]{1,600}$").search(said) == null:
+		return null
 	var out := PackedStringArray()
-	if found == null:
-		return out
-	for word: String in found.get_string(1).split(" ", false):
+	for word: String in LdrModel._fields(said):
 		var number: String = SetInventories.normal(word)
-		if RegEx.create_from_string("^[0-9a-z.]+-[0-9]+$").search(number) != null and out.size() < 50:
+		if RegEx.create_from_string("^[0-9a-z.]+-[0-9]+$").search(number) != null \
+				and out.size() < 50:
 			out.append(number)
 	return out
 
 
-## [param text] with [param numbers] on a line after its first, inside
-## the model itself for an .mpd, as ModelStore.with_share writes its own;
-## as it is for none.
+## The line [param numbers] are kept on, none for none.
+static func lines_of(numbers: PackedStringArray) -> PackedStringArray:
+	return PackedStringArray([META + " ".join(numbers)]) if not numbers.is_empty() \
+		else PackedStringArray()
+
+
+## [param text] with [param numbers] on a line under its model's title
+## (MetaIndex), in place of the one it had; as it is for none.
 static func written_into(text: String, numbers: PackedStringArray) -> String:
 	if numbers.is_empty():
 		return text
-	# Under the model's title, in its own section (CutShape.written_into).
-	return LdrModel.into_main(text, PackedStringArray([META + " ".join(numbers)]))
+	return MetaIndex.written(text, [MetaIndex.family(["BIN"], lines_of(numbers))])
