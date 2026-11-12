@@ -13043,6 +13043,14 @@ msgstr "Mover la cremallera"
 msgid "Drive and turn left"
 msgstr "Avanzar y girar a la izquierda"
 
+# drive3: a suggested motion said whole (PosePanel._suggestion_words), its drive's words a place
+
+msgid "%s: %s, over %s s"
+msgstr "%s: %s, en %s s"
+
+msgid "driven %s"
+msgstr "avanza %s"
+
 # end unit drive
 
 # A palette of the person's own, kept for every model (palettes, APP_UX6 21): the bin's
