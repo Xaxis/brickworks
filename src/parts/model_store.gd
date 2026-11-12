@@ -619,11 +619,13 @@ func _metas_now() -> MetaIndex:
 
 
 ## The view lines of the model on the baseplate its open could not read,
-## kept in the file as they are (SavedViews.unread_words): "" for none.
+## kept in the file as they are, and those of a name an earlier one has
+## (SavedViews.unread_words): "" for none.
 var views_unread_words: String:
 	get:
 		var metas: MetaIndex = _metas_now()
-		return SavedViews.unread_words(metas.untaken(["VIEW"])) if metas != null else ""
+		return SavedViews.unread_words(metas.untaken(["VIEW"]), metas.beaten(["VIEW"])) \
+			if metas != null else ""
 
 
 ## The saved file the model on the baseplate is, as this tab or window last
@@ -1315,7 +1317,7 @@ func _with_identity(text: String) -> String:
 	var metas: MetaIndex = _metas_now()
 	return MetaIndex.written(text, [
 		_family(metas, ["REFERENCE", "REFERENCE_PICTURE"], ReferenceImage.lines_of(reference)),
-		_family(metas, ["BIN"], SetBin.lines_of(bin_sets))]
+		_family(metas, ["BIN"], SetBin.lines_of(bin_sets), MetaIndex.TITLE, SetBin.said_in)]
 		+ _share_families(metas, share_id, remixed_from, remixed_from_version, credit, made_with))
 
 
@@ -1991,7 +1993,7 @@ static func _read_text(text: String, model: LdrModel, known: Array, mirrored_lin
 		"hidden": HiddenColours.read_from(metas),
 		"cut": CutShape.read_from(metas),
 		"views": SavedViews.read_from(metas),
-		"lights": SceneLights.of_model(model),
+		"lights": SceneLights.read_from(metas),
 		"motions": Motions.read_from(metas),
 		"pins": PinnedComments.read_from(metas),
 	}
@@ -2588,22 +2590,22 @@ static func _meta_families(asked: Dictionary, here: MetaIndex, text: String) -> 
 	# repository's) and by no line of the app's, it is the file's as it was.
 	var number: String = asked["set"]
 	if not number.is_empty() and (here.has(["FROM_SET"]) or _set_said(text) != number):
-		out.append(_family(metas, ["FROM_SET"], PackedStringArray([SET_META + number])))
-	var lit: Dictionary = asked["lights_read"]
-	out.append(MetaIndex.family(["LIGHT"], MetaIndex.lines_for(_had(metas, ["LIGHT"]),
-		SceneLights.lines_now(asked["lights"], lit),
-		lit.get("unread", PackedStringArray()))))
-	var views: PackedStringArray = SavedViews.lines_of(asked["views"])
-	if metas != null:
-		views = metas.as_written(["VIEW"], views, SavedViews._parsed)
-	out.append(_family(metas, ["VIEW"], views))
+		out.append(_family(metas, ["FROM_SET"], PackedStringArray([SET_META + number]),
+			MetaIndex.TITLE, _set_read))
+	# Each light read and not changed is its line as the file has it already
+	# (SceneLights.lines_now).
+	out.append(_family(metas, ["LIGHT"], SceneLights.lines_now(asked["lights"],
+		asked["lights_read"])))
+	out.append(_family(metas, ["VIEW"], SavedViews.lines_of(asked["views"]), MetaIndex.TITLE,
+		SavedViews._parsed))
 	var cut: Dictionary = asked["cut"]
 	out.append(_family(metas, ["CUT_AWAY"], PackedStringArray([CutShape.META
-		+ JSON.stringify(cut)]) if not cut.is_empty() else PackedStringArray()))
+		+ JSON.stringify(cut)]) if not cut.is_empty() else PackedStringArray(), MetaIndex.TITLE,
+		CutShape._parsed))
 	var hidden: Dictionary = asked["hidden"]
 	out.append(_family(metas, ["HIDDEN_COLOURS"], PackedStringArray([HiddenColours.META
 		+ JSON.stringify(hidden)]) if not (hidden.get("groups", []) as Array).is_empty()
-		else PackedStringArray()))
+		else PackedStringArray(), MetaIndex.TITLE, HiddenColours.said_in))
 	if elsewhere:
 		# Said when the name is not one the file has as its own (its title
 		# line, or the name the open made of it), or when the file says it on
@@ -2614,7 +2616,7 @@ static func _meta_families(asked: Dictionary, here: MetaIndex, text: String) -> 
 		out.append(_family(metas, ["TITLE"], PackedStringArray([TITLE_META + title_now])
 			if not title_now.is_empty() and (said_now or not title_now in [
 				str(asked["own_title"]), str(asked.get("said_title", ""))])
-			else PackedStringArray()))
+			else PackedStringArray(), MetaIndex.TITLE, _title_read))
 		# The steps a shared link carries (SharedPages) go: a save is no share.
 		out.append(MetaIndex.family(["PAGES", "PAGE"], PackedStringArray(), MetaIndex.TITLE, true))
 	var ground: ModelFloor = asked["floor"]
@@ -2624,26 +2626,41 @@ static func _meta_families(asked: Dictionary, here: MetaIndex, text: String) -> 
 		var line: String = ground.to_meta()
 		out.append(_family(metas, ["FLOOR"], PackedStringArray() if elsewhere and not said
 			and line == str(asked.get("floor_unsaid", "")) else PackedStringArray([line]),
-			MetaIndex.HEAD))
-	out.append(MetaIndex.family(["MOTION*"], MetaIndex.lines_for(_had(metas, ["MOTION*"]),
-		asked["motions"], asked["motions_unread"]), MetaIndex.HEAD))
-	out.append(_family(metas, ["PIN"], asked["pins"], MetaIndex.HEAD))
+			MetaIndex.HEAD, ModelFloor.said_in))
+	# The motions keep their own list of the lines they could not read, one
+	# let go once the next open would read it into a motion (Motions
+	# ._settle_unread).
+	out.append(_family(metas, ["MOTION*"], asked["motions"], MetaIndex.HEAD, Callable(),
+		asked["motions_unread"]))
+	# Pins are said by when each was made (PinnedComments._order), whatever
+	# order the file has them in.
+	out.append(_family(metas, ["PIN"], asked["pins"], MetaIndex.HEAD, PinnedComments.said_in,
+		null, true))
+	# And the lines of a word no reader here reads (a later build's): where
+	# the file has them, and at the end of the head of a model written whole.
+	if metas != null:
+		out.append(metas.unclaimed())
 	return out
 
 
 ## A family of [param words] of [param now], with the lines of them
-## [param metas] (the open's reading, or null) had and no reader took, where
-## the file had them.
+## [param metas] (the open's reading, or null) had and did not take where
+## the file had them, as its readers marked them (MetaIndex.lines_for).
+## With [param read] (what a line says -> what its reader reads, null for
+## nothing) a line of [param now] that says what a line taken said is that
+## line as the file has it: "0 !BrickWorks floor baseplate 32 32 2" read
+## and said again in capitals is the file's line, and an unedited save is
+## the file (mlcheck F4). [param unread]: the feature's own list of the
+## lines it keeps unread (Motions.unread). [param any_order]: the feature
+## says its lines in an order of its own (MetaIndex.lines_for).
 static func _family(metas: MetaIndex, words: Array, now: PackedStringArray,
-		at: int = MetaIndex.TITLE) -> MetaIndex.Family:
+		at: int = MetaIndex.TITLE, read: Callable = Callable(),
+		unread: Variant = null, any_order: bool = false) -> MetaIndex.Family:
 	if metas == null:
 		return MetaIndex.family(words, now, at)
-	return MetaIndex.family(words, MetaIndex.lines_for(metas.raws(words), now,
-		metas.untaken(words)), at)
-
-
-static func _had(metas: MetaIndex, words: Array) -> PackedStringArray:
-	return metas.raws(words) if metas != null else PackedStringArray()
+	if read.is_valid():
+		now = metas.as_written(words, now, read)
+	return MetaIndex.family(words, metas.lines_for(words, now, unread, any_order), at)
 
 
 ## Why each source was last written as live writes it, said on the console
@@ -2675,9 +2692,12 @@ static func title_meta_in(text: String) -> String:
 ## [method title_meta_in] from the model's own lines read once (MetaIndex):
 ## a sub-model's TITLE is its own.
 static func title_meta_from(metas: MetaIndex) -> String:
-	var found: Variant = metas.first_read("TITLE", func(said: String) -> Variant:
-		return said if not said.is_empty() else null)
+	var found: Variant = metas.first_read("TITLE", _title_read)
 	return str(found) if found != null else ""
+
+
+static func _title_read(said: String) -> Variant:
+	return said if not said.is_empty() else null
 
 
 ## Placements whose geometry is on its way, put down as each part arrives.
@@ -3338,12 +3358,14 @@ static func set_in(text: String) -> String:
 
 ## [method set_in] with the model's own lines read once (MetaIndex).
 static func set_from(metas: MetaIndex, text: String) -> String:
-	var kept: Variant = metas.first_read("FROM_SET", func(said: String) -> Variant:
-		return said if RegEx.create_from_string("^[0-9A-Za-z-]{1,20}$").search(said) != null \
-			else null)
+	var kept: Variant = metas.first_read("FROM_SET", _set_read)
 	if kept != null:
 		return str(kept)
 	return _set_said(text)
+
+
+static func _set_read(said: String) -> Variant:
+	return said if RegEx.create_from_string("^[0-9A-Za-z-]{1,20}$").search(said) != null else null
 
 
 ## The set the head of [param text] says it is, as the LDraw model
@@ -3653,15 +3675,16 @@ static func _share_families(metas: MetaIndex, id: String, remix: String, remix_v
 		credited: Dictionary, made: String) -> Array:
 	return [
 		_family(metas, ["SHARE"], PackedStringArray([SHARE_META + id]) if not id.is_empty()
-			else PackedStringArray()),
+			else PackedStringArray(), MetaIndex.TITLE, _link_read),
 		_family(metas, ["REMIX"], PackedStringArray([REMIX_META + remix])
-			if not remix.is_empty() else PackedStringArray()),
+			if not remix.is_empty() else PackedStringArray(), MetaIndex.TITLE, _link_read),
 		_family(metas, ["REMIX_VERSION"], PackedStringArray([REMIX_VERSION_META + str(remix_version)])
-			if not remix.is_empty() and remix_version > 0 else PackedStringArray()),
+			if not remix.is_empty() and remix_version > 0 else PackedStringArray(), MetaIndex.TITLE,
+			_version_read),
 		_family(metas, ["CREDIT"], PackedStringArray([CREDIT_META + JSON.stringify(credited)])
-			if not credited.is_empty() else PackedStringArray()),
+			if not credited.is_empty() else PackedStringArray(), MetaIndex.TITLE, _credit_read),
 		_family(metas, ["MADE"], PackedStringArray([MADE_META + made]) if made in MADE_WAYS
-			else PackedStringArray()),
+			else PackedStringArray(), MetaIndex.TITLE, _made_read),
 	]
 
 
@@ -3673,19 +3696,23 @@ static func credit_in(text: String) -> Dictionary:
 
 ## [method credit_in] from the model's own lines read once (MetaIndex).
 static func credit_from(metas: MetaIndex) -> Dictionary:
-	var found: Variant = metas.first_read("CREDIT", func(said: String) -> Variant:
-		var json := JSON.new()
-		if not said.begins_with("{") or json.parse(said) != OK or not json.data is Dictionary:
-			return null
-		var out: Dictionary = {}
-		for key: String in ["by", "licence", "page", "from"]:
-			var value: Variant = (json.data as Dictionary).get(key)
-			if value is String and not (value as String).is_empty():
-				out[key] = (value as String).replace("\n", " ").left(200)
-		if not str(out.get("page", "")).begins_with("https://"):
-			out.erase("page")
-		return out)
+	var found: Variant = metas.first_read("CREDIT", _credit_read)
 	return found if found != null else {}
+
+
+## What a CREDIT line says ([member credit]), or null for one it is not.
+static func _credit_read(said: String) -> Variant:
+	var json := JSON.new()
+	if not said.begins_with("{") or json.parse(said) != OK or not json.data is Dictionary:
+		return null
+	var out: Dictionary = {}
+	for key: String in ["by", "licence", "page", "from"]:
+		var value: Variant = (json.data as Dictionary).get(key)
+		if value is String and not (value as String).is_empty():
+			out[key] = (value as String).replace("\n", " ").left(200)
+	if not str(out.get("page", "")).begins_with("https://"):
+		out.erase("page")
+	return out
 
 
 ## Who a model's text says laid its parts ([member made_with]), or empty
@@ -3695,9 +3722,12 @@ static func made_in(text: String) -> String:
 
 
 static func made_from(metas: MetaIndex) -> String:
-	var found: Variant = metas.first_read("MADE", func(said: String) -> Variant:
-		return said if said in MADE_WAYS else null)
+	var found: Variant = metas.first_read("MADE", _made_read)
 	return str(found) if found != null else ""
+
+
+static func _made_read(said: String) -> Variant:
+	return said if said in MADE_WAYS else null
 
 
 ## The link a model's text says it is shared at, or empty.
@@ -3715,10 +3745,13 @@ static func remix_version_in(text: String) -> int:
 
 
 static func remix_version_from(metas: MetaIndex) -> int:
-	var found: Variant = metas.first_read("REMIX_VERSION", func(said: String) -> Variant:
-		return said.to_int() if RegEx.create_from_string("^[1-9][0-9]{0,5}$").search(said) != null \
-			else null)
+	var found: Variant = metas.first_read("REMIX_VERSION", _version_read)
 	return int(found) if found != null else 0
+
+
+static func _version_read(said: String) -> Variant:
+	return said.to_int() if RegEx.create_from_string("^[1-9][0-9]{0,5}$").search(said) != null \
+		else null
 
 
 ## The link a model's text says it was copied from, or empty.
@@ -3733,9 +3766,12 @@ static func remix_from(metas: MetaIndex) -> String:
 ## The first of the model's own lines of [param word] that says a link's ten
 ## letters and digits, or "".
 static func _link_from(metas: MetaIndex, word: String) -> String:
-	var found: Variant = metas.first_read(word, func(said: String) -> Variant:
-		return said if RegEx.create_from_string("^[A-Za-z0-9]{10}$").search(said) != null else null)
+	var found: Variant = metas.first_read(word, _link_read)
 	return str(found) if found != null else ""
+
+
+static func _link_read(said: String) -> Variant:
+	return said if RegEx.create_from_string("^[A-Za-z0-9]{10}$").search(said) != null else null
 
 
 ## [param name], or the first of "name (copy)", "name (copy 2)"… that no

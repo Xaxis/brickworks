@@ -885,10 +885,14 @@ static func read(text: String) -> Dictionary:
 ## The scheme the model's own lines carry (MetaIndex), the first that reads,
 ## taken; {} for none.
 static func read_from(metas: MetaIndex) -> Dictionary:
-	var found: Variant = metas.first_read("HIDDEN_COLOURS", func(said: String) -> Variant:
-		var scheme: Dictionary = typed(JSON.parse_string(said))
-		return scheme if not (scheme.get("groups", []) as Array).is_empty() else null)
+	var found: Variant = metas.first_read("HIDDEN_COLOURS", said_in)
 	return found if found != null else {}
+
+
+## The scheme a line's [param said] carries, or null for none.
+static func said_in(said: String) -> Variant:
+	var scheme: Dictionary = typed(JSON.parse_string(said))
+	return scheme if not (scheme.get("groups", []) as Array).is_empty() else null
 
 
 ## [param raw], a scheme a file's line or another side of Build together

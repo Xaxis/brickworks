@@ -55,16 +55,21 @@ static func read(text: String) -> Array:
 
 ## The views the model's own lines keep (MetaIndex: a sub-model's views are
 ## its own, and stay in it), in their order, each line read taken. A line
-## this cannot read, a newer build's say, and a name kept twice after the
-## first, are not taken: they stay in the file as they are, where they are
-## (MetaIndex.lines_for), and are said ([method unread_words]). Up to
-## metalines a save left them out, unsaid.
+## this cannot read, a newer build's say, stays in the file as it is, where
+## it is (MetaIndex.lines_for), and is said ([method unread_words]); up to
+## metalines a save left it out, unsaid. A view of a name an earlier one has
+## is beaten (MetaIndex.Line.beaten): kept while the views are as the open
+## read them, and let go once they change, or it came back as the view of
+## that name once the first was taken out (mlcheck F2).
 static func read_from(metas: MetaIndex) -> Array:
 	var out: Array = []
 	var taken: Dictionary = {}
 	for line: MetaIndex.Line in metas.own(["VIEW"]):
 		var view: Dictionary = _parsed(line.said)
-		if view.is_empty() or taken.has(_key(view["name"])):
+		if view.is_empty():
+			continue
+		if taken.has(_key(view["name"])):
+			line.beaten = true
 			continue
 		taken[_key(view["name"])] = true
 		line.taken = true
@@ -81,14 +86,21 @@ static func lines_of(views: Array) -> PackedStringArray:
 	return lines
 
 
-## [param unread], view lines an open could not read, in words for where an
-## open says what it kept: "1 view line not read, kept in the file as it
-## is"; "" for none.
-static func unread_words(unread: PackedStringArray) -> String:
-	if unread.is_empty():
-		return ""
-	return "1 view line not read, kept in the file as it is" if unread.size() == 1 \
-		else "%d view lines not read, kept in the file as they are" % unread.size()
+## [param unread], view lines an open could not read, and [param beaten],
+## those of a name an earlier line has, in words for where an open says
+## what it kept: "1 view line not read, kept in the file as it is"; "" for
+## none. One of a name another has is kept only until the views change.
+static func unread_words(unread: PackedStringArray,
+		beaten: PackedStringArray = PackedStringArray()) -> String:
+	var said := PackedStringArray()
+	if not unread.is_empty():
+		said.append("1 view line not read, kept in the file as it is" if unread.size() == 1
+			else "%d view lines not read, kept in the file as they are" % unread.size())
+	if not beaten.is_empty():
+		said.append(("1 view line names a view an earlier one has: not read, and kept "
+			+ "until the views change") if beaten.size() == 1 else ("%d view lines name "
+			+ "views earlier ones have: not read, and kept until the views change") % beaten.size())
+	return " — ".join(said)
 
 
 ## [param text] with [param views] (the file's coordinates) written into it

@@ -423,12 +423,55 @@ func _case_sub_lines() -> void:
 	await _reopen_same("sub_lines", saved)
 
 
+## cfcheck's cfc_noheader.mpd and cfc_nested.mpd, here so the case runs on a
+## build that has not got them: read from a file it lacks, the open failed
+## on an empty text and every check passed on nothing (mlcheck).
+const NO_TITLE := {
+	"cfc_noheader.mpd": """0 FILE main.ldr
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 16 0 -24 0 1 0 0 0 1 0 0 0 1 sub.ldr
+0 NOFILE
+0 FILE sub.ldr
+0 Sub
+1 1 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat
+0 NOFILE
+""",
+	"cfc_nested.mpd": """0 FILE nested.mpd
+0 Two Cars
+0 Name: nested.mpd
+0 Author: Ned Nest [nnest]
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 car.ldr
+1 1 0 0 200 1 0 0 0 1 0 0 0 1 car.ldr
+0 NOFILE
+0 FILE car.ldr
+0 Car
+0 Name: car.ldr
+0 Author: Ned Nest [nnest]
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 16 -30 -24 -10 1 0 0 0 1 0 0 0 1 wheel.ldr
+1 16 30 -24 -10 1 0 0 0 1 0 0 0 1 wheel.ldr
+0 NOFILE
+0 FILE wheel.ldr
+0 Wheel
+0 Name: wheel.ldr
+0 Author: Ned Nest [nnest]
+1 0 0 0 0 1 0 0 0 1 0 0 0 1 3062b.dat
+1 16 0 -24 0 1 0 0 0 1 0 0 0 1 4073.dat
+0 NOFILE
+""",
+}
+
+
 ## cfcheck: a model with no title line, and one with sub-models: written
 ## whole, opened again and written whole again, one file, no TITLE added.
+## Each must open with its parts, or nothing here was checked.
 func _case_no_title() -> void:
-	for name: String in ["cfc_noheader.mpd", "cfc_nested.mpd"]:
-		var text: String = FileAccess.get_file_as_string("res://src/dev/fixtures/" + name)
+	for name: String in NO_TITLE:
+		var text: String = NO_TITLE[name]
 		await _open("ml_no_title_" + name.get_basename(), text)
+		if not _check("%s: opened, %d parts" % [name, _world.brick_count()],
+				_world.brick_count() > 0):
+			continue
 		_world.saved_views = [{"name": "front", "yaw": 0.5, "pitch": 0.3, "distance": 400.0,
 			"focus": [0.0, 0.0, 0.0], "square": false}]
 		_world.cut_kept = {"shape": "plane", "axis": "x", "at": 11.0, "away": 1, "ghosts": false}

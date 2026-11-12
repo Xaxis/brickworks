@@ -24,7 +24,17 @@
 ## where the one it replaces was, a line added after the one before it, and
 ## lines the file had none of under the model's title or at the end of its
 ## head. A line a feature cannot read stays where the file has it, as it is
-## ([member Line.taken], [method lines_for]).
+## ([member Line.taken], [method lines_for]); so does a line of a word no
+## feature reads ([method unclaimed]).
+##
+## Each line is in one of three states once the open has read it: taken (a
+## reader read it into what its feature holds), beaten (a reader could read
+## it, and another line won: a second FLOOR, a second view of one name) or
+## unread (no reader could). Which is decided where it is read, by its place
+## among its word's lines, and a save goes by those marks alone: up to
+## mlfix it worked out again from the text which line had been read, and of
+## two lines the same it kept the first and changed the second, so the next
+## open read the old one again (mlcheck F1).
 ##
 ## Lines are found by the engine's search for a line beginning "0", so
 ## the cost is in the type 0 lines and not the parts: a line indented
@@ -44,6 +54,17 @@ const TITLE := 0
 ## ...or at the end of its head, after its name and author lines, before its
 ## first part, step or blank line (where ModelFloor put its line).
 const HEAD := 1
+## The words a reader of the app's reads in a model's file, besides the
+## booklet's (BookletLooks.WORDS) and the motions' ("MOTION..."): a line of
+## any other word is a later build's, kept as the file has it
+## ([method unclaimed]). Each feature's reader is named beside its word.
+const READ_WORDS: Array[String] = [
+	"TITLE", "FROM_SET", "SHARE", "REMIX", "REMIX_VERSION", "CREDIT", "MADE", # ModelStore
+	"FLOOR", "VIEW", "LIGHT", "CUT_AWAY", "HIDDEN_COLOURS", "PIN", "BIN", # each its own class
+	"REFERENCE", "REFERENCE_PICTURE", # ReferenceImage
+	"AUTHORED_STEPS", "WORKED_STEPS", "COPY", "IN", # LdrModel
+	"PAGES", "PAGE", # SharedPages
+]
 
 
 ## One of the app's lines as the file has it.
@@ -64,6 +85,11 @@ class Line extends RefCounted:
 	## A reader read it into what its feature holds: a line none took is
 	## kept as the file has it ([method untaken]).
 	var taken: bool = false
+	## A reader could read it, and took another line of its word in its
+	## place: a second FLOOR, a second view of a name another has, a second
+	## pin of one id. Kept while its feature says what the open read, and let
+	## go once that changes ([method lines_for]).
+	var beaten: bool = false
 
 	## The line as a writer writes it: one space between its words.
 	func clean() -> String:
@@ -334,26 +360,76 @@ func raws(words: Array) -> PackedStringArray:
 	return _raws_of(words, false)
 
 
-## The model's own lines of [param words] no reader took, as the file has
-## them: written back as they are, where they are ([method lines_for]).
+## The model's own lines of [param words] no reader could read, as the file
+## has them: written back as they are, where they are ([method lines_for]).
 func untaken(words: Array) -> PackedStringArray:
 	var out := PackedStringArray()
 	for n: int in _of_words(words):
-		if _section[n] == 0 and (_made[n] == null or not (_made[n] as Line).taken):
+		if _section[n] == 0 and (_made[n] == null
+				or not ((_made[n] as Line).taken or (_made[n] as Line).beaten)):
+			out.append(_raw[n])
+	return out
+
+
+## The model's own lines of [param words] a reader could read and another
+## line beat ([member Line.beaten]), as the file has them.
+func beaten(words: Array) -> PackedStringArray:
+	var out := PackedStringArray()
+	for n: int in _of_words(words):
+		if _section[n] == 0 and _made[n] != null and (_made[n] as Line).beaten:
 			out.append(_raw[n])
 	return out
 
 
 ## The first of the model's own lines of [param word] that [param read]
 ## (what it says -> a value, or null for none it reads) reads, taken, and
-## its value; null when none is read. The others stay untaken.
+## its value; null when none is read. Each later one it reads is beaten
+## ([member Line.beaten]), and one it cannot read is left unread.
 func first_read(word: String, read: Callable) -> Variant:
+	var found: Variant = null
 	for line: Line in own([word]):
 		var value: Variant = read.call(line.said)
-		if value != null:
+		if value == null:
+			continue
+		if found == null:
 			line.taken = true
-			return value
-	return null
+			found = value
+		else:
+			line.beaten = true
+	return found
+
+
+## The model's own lines of [param words] at [param which] (their places
+## among them, as [method raws] gives them) marked taken, each made into a
+## [Line] and no other: for a reader that reads from the lines as the file
+## has them (SceneLights.read_from), so 200,000 light lines past the most it
+## tries cost no [Line] apiece.
+func take(words: Array, which: PackedInt32Array) -> void:
+	if which.is_empty():
+		return
+	var places := PackedInt32Array()
+	for n: int in _of_words(words):
+		if _section[n] == 0:
+			places.append(n)
+	for k: int in which:
+		_line(places[k]).taken = true
+
+
+## The model's own lines of a word no reader of the app's reads (a later
+## build's, "0 !BRICKWORKS FUTURE_KIND ..."): one family of them all, as
+## the file has them, in its order. Written back where the file had them,
+## and, in a model written whole, at the end of its head. Up to mlfix such a
+## line was lost at every save of the app's own file, and at a Make or a
+## sub-model renamed in someone else's (mlcheck).
+func unclaimed() -> Family:
+	var words := PackedStringArray()
+	for word: String in _by_word:
+		if not (word in READ_WORDS or word in BookletLooks.WORDS or word.begins_with("MOTION")):
+			words.append(word)
+	var lines := PackedStringArray()
+	if not words.is_empty():
+		lines = _raws_of(Array(words), false)
+	return family(Array(words), lines, HEAD)
 
 
 ## [param now], a feature's lines of [param words] as it says them, each
@@ -450,36 +526,92 @@ static func clean_of(word: String, said: String) -> String:
 # -- writing ----------------------------------------------------------------------
 
 
-## [param now], the lines a feature says, with [param unread] (lines it
-## keeps without reading them, as the file had them) each where it was among
-## [param had] (the family's lines as the file was opened, [method raws]):
-## after the line read before it, so a refused motion key stays between the
-## keys either side of it (kt5check F1). A line read that is gone gives its
-## place to the next line said that is new. An unread line the file did not
-## have goes after the rest.
-static func lines_for(had: PackedStringArray, now: PackedStringArray,
-		unread: PackedStringArray) -> PackedStringArray:
-	if unread.is_empty():
-		return now
-	if unread == had:
-		# None of the file's was read: each stays, and what is said follows.
-		var out: PackedStringArray = had.duplicate()
-		out.append_array(now)
-		return out
-	var left: Dictionary = {}       ## clean -> how many of it are unread
-	for line: String in unread:
-		var key: String = clean(line)
-		left[key] = int(left.get(key, 0)) + 1
-	var kept := PackedStringArray()     ## each line of had, unread as it is, else ""
-	var reads := PackedStringArray()    ## the clean lines of had that were read
-	for line: String in had:
-		var key: String = clean(line)
-		if int(left.get(key, 0)) > 0:
-			left[key] = int(left[key]) - 1
-			kept.append(line)
-		else:
-			kept.append("")
-			reads.append(key)
+## The lines a save writes of [param words] in the model: [param now], what
+## its feature says, with each of the model's own lines of them the open did
+## not take kept as the file has it, where it was among them: after the line
+## before it, so a refused motion key stays between the keys either side of
+## it (kt5check F1). A line read that is gone gives its place to the next
+## line said that is new.
+##
+## Which stay is told by each line's place and its reader's mark, never by
+## its text: of two lines the same, the first taken and the second not, the
+## second is the one kept and the change goes where the first was (mlcheck
+## F1: two FLOOR GRID lines, the floor changed, and the next open read the
+## one kept). A line no reader could read stays always. One a reader could
+## read and another beat ([member Line.beaten]) stays only while [param now]
+## says what the open read, so a save with nothing changed is the file; once
+## the family changes it goes, or the next open would read it in place of
+## what was saved (F2: every view taken out, and a second view named A came
+## back).
+##
+## [param unread], when given, is the feature's own list of the lines it
+## keeps unread (Motions.unread, which lets one go when the next open would
+## read it): each is the first line not taken of its text, and one the file
+## has none of (a motion renamed) goes after the rest. [param any_order]: the
+## feature reads its lines in any order and says them in its own (pins, by
+## when each was made), so [param now] saying the lines taken in another
+## order says the same, and they stay in the file's.
+func lines_for(words: Array, now: PackedStringArray, unread: Variant = null,
+		any_order: bool = false) -> PackedStringArray:
+	var places := PackedInt32Array()
+	for n: int in _of_words(words):
+		if _section[n] == 0:
+			places.append(n)
+	var keeps := PackedByteArray()      ## 1 for each of places kept as the file has it
+	keeps.resize(places.size())
+	keeps.fill(0)
+	var after := PackedStringArray()    ## the feature's unread lines the file has not
+	var any: bool = false
+	if unread == null:
+		var read := PackedStringArray()
+		for n: int in places:
+			var line: Line = _made[n]
+			if line != null and line.taken:
+				read.append(_raw[n])
+		var same: bool = _same(read, now, any_order)
+		if same and any_order:
+			now = read
+		for k: int in places.size():
+			var line: Line = _made[places[k]]
+			if line == null or not (line.taken or (line.beaten and not same)):
+				keeps[k] = 1
+				any = true
+	else:
+		var free: Dictionary = {}       ## a line as the file has it -> its places, none taken
+		for k: int in places.size():
+			var line: Line = _made[places[k]]
+			if line == null or not line.taken:
+				var raw: String = _raw[places[k]]
+				if not free.has(raw):
+					free[raw] = []
+				(free[raw] as Array).append(k)
+		for line: String in unread as PackedStringArray:
+			var at: Array = free.get(line, [])
+			if at.is_empty():
+				after.append(line)
+			else:
+				keeps[int(at.pop_front())] = 1
+				any = true
+	if not any:
+		if after.is_empty():
+			return now
+		var all: PackedStringArray = now.duplicate()
+		all.append_array(after)
+		return all
+	# Paired by what they say and where they are, and only with a line taken:
+	# one not taken and not kept (beaten, or a motion renamed) goes, and its
+	# place is the next new line's, never a line of now that says the same,
+	# which is the one taken (mi_fuzz: a refused key renamed, and the key it
+	# had the words of, read further on, moved up into its place). A line of
+	# now the same byte for byte as a twin of the one it was read from (a
+	# motion written again as the app writes it) is not that twin's.
+	var reads := PackedStringArray()    ## the clean lines of those not kept
+	for k: int in places.size():
+		if keeps[k] == 0:
+			var line: Line = _made[places[k]]
+			# A line end is in no clean line, so this pairs with nothing.
+			reads.append(clean(_raw[places[k]]) if line != null and line.taken
+				else "\n%d" % k)
 	var said := PackedStringArray()
 	for line: String in now:
 		said.append(clean(line))
@@ -493,14 +625,14 @@ static func lines_for(had: PackedStringArray, now: PackedStringArray,
 	var out := PackedStringArray()
 	var j: int = 0
 	var r: int = 0
-	for n: int in had.size():
-		if not kept[n].is_empty():
-			out.append(kept[n])
+	for k: int in places.size():
+		if keeps[k] == 1:
+			out.append(_raw[places[k]])
 			continue
-		var k: int = keep[r]
+		var m: int = keep[r]
 		r += 1
-		if k >= 0:
-			while j <= k:
+		if m >= 0:
+			while j <= m:
 				out.append(now[j])
 				j += 1
 		elif j < now.size() and stays[j] == 0:
@@ -509,24 +641,50 @@ static func lines_for(had: PackedStringArray, now: PackedStringArray,
 	while j < now.size():
 		out.append(now[j])
 		j += 1
-	# Unread lines the file did not have (a motion renamed): after the rest.
-	for line: String in unread:
-		var key: String = clean(line)
-		if int(left.get(key, 0)) > 0:
-			left[key] = int(left[key]) - 1
-			out.append(line)
+	# The feature's unread lines the file did not have (a motion renamed):
+	# after the rest.
+	out.append_array(after)
 	return out
+
+
+## Whether [param now] says what [param read] (the lines taken) does, each
+## the same words, in its order or with [param any_order] in any.
+static func _same(read: PackedStringArray, now: PackedStringArray, any_order: bool) -> bool:
+	if read.size() != now.size():
+		return false
+	if not any_order:
+		for n: int in read.size():
+			if read[n] != now[n] and clean(read[n]) != clean(now[n]):
+				return false
+		return true
+	var count: Dictionary = {}
+	for line: String in read:
+		var key: String = clean(line)
+		count[key] = int(count.get(key, 0)) + 1
+	for line: String in now:
+		var key: String = clean(line)
+		if int(count.get(key, 0)) == 0:
+			return false
+		count[key] = int(count[key]) - 1
+	return true
 
 
 ## For each of [param had] the line of [param now] it is, the same words in
 ## the same order, -1 for none: each matched to the first unmatched one
-## after the last matched, as a line diff matches lines.
-static func aligned(had: PackedStringArray, now: PackedStringArray) -> PackedInt32Array:
+## after the last matched, as a line diff matches lines. Where a line is
+## there twice, the most lines matched, and of those the pairs the same
+## byte for byte as [param had_raw] and [param now_raw] have them (when
+## given), and then the nearest each other in place ([method _aligned_twins]).
+static func aligned(had: PackedStringArray, now: PackedStringArray,
+		had_raw := PackedStringArray(), now_raw := PackedStringArray()) -> PackedInt32Array:
 	var keep := PackedInt32Array()
 	keep.resize(had.size())
 	keep.fill(-1)
 	if had.is_empty() or now.is_empty():
 		return keep
+	if had.size() * now.size() <= TWINS_MOST and (_twice(had) or _twice(now)):
+		return _aligned_twins(had, now, had_raw if had_raw.size() == had.size() else had,
+			now_raw if now_raw.size() == now.size() else now)
 	var where: Dictionary = {}     ## a line -> its places in now, in order
 	for j: int in now.size():
 		if not where.has(now[j]):
@@ -547,6 +705,71 @@ static func aligned(had: PackedStringArray, now: PackedStringArray) -> PackedInt
 		if n < at.size():
 			keep[i] = at[n]
 			from = at[n] + 1
+	return keep
+
+
+## What pairing had's line [param i] with now's [param j] (from 1, the same
+## words) is worth in [method _aligned_twins].
+static func _pair(i: int, j: int, had_raw: PackedStringArray, now_raw: PackedStringArray) -> int:
+	return (1 << 40) + ((1 << 20) if had_raw[i - 1] == now_raw[j - 1] else 0) - absi(i - j)
+
+
+## The most pairs of lines [method aligned] works out with a table, past
+## which it matches the first after the last, as for lines said once each.
+const TWINS_MOST := 65536
+
+
+## Whether [param lines] has a line twice.
+static func _twice(lines: PackedStringArray) -> bool:
+	var seen: Dictionary = {}
+	for line: String in lines:
+		if seen.has(line):
+			return true
+		seen[line] = true
+	return false
+
+
+## [method aligned] where a line is there twice: the longest run of lines
+## both have in one order; of those the one with the most pairs the same
+## byte for byte ([param had_raw], [param now_raw]); and of those the one
+## whose pairs are nearest each other in place. Matched first after last,
+## two lines the same, the first read and changed and the second not, the
+## second was paired with the first's new line and everything between moved
+## past it (mi_fuzz, mlfix).
+static func _aligned_twins(had: PackedStringArray, now: PackedStringArray,
+		had_raw: PackedStringArray, now_raw: PackedStringArray) -> PackedInt32Array:
+	var rows: int = had.size() + 1
+	var cols: int = now.size() + 1
+	# Each cell: the lines matched in had[..i] and now[..j], how many of them
+	# byte for byte, and how far apart their pairs are in all, as
+	# matched * BIG + exact * MID - apart, the more the better.
+	const BIG := 1 << 40
+	const MID := 1 << 20
+	var best := PackedInt64Array()
+	best.resize(rows * cols)
+	best.fill(0)
+	for i: int in range(1, rows):
+		for j: int in range(1, cols):
+			var value: int = maxi(best[(i - 1) * cols + j], best[i * cols + j - 1])
+			if had[i - 1] == now[j - 1]:
+				value = maxi(value, best[(i - 1) * cols + j - 1] + _pair(i, j, had_raw, now_raw))
+			best[i * cols + j] = value
+	var keep := PackedInt32Array()
+	keep.resize(had.size())
+	keep.fill(-1)
+	var i: int = had.size()
+	var j: int = now.size()
+	while i > 0 and j > 0:
+		var here: int = best[i * cols + j]
+		if had[i - 1] == now[j - 1] \
+				and here == best[(i - 1) * cols + j - 1] + _pair(i, j, had_raw, now_raw):
+			keep[i - 1] = j - 1
+			i -= 1
+			j -= 1
+		elif here == best[(i - 1) * cols + j]:
+			i -= 1
+		else:
+			j -= 1
 	return keep
 
 
@@ -581,12 +804,14 @@ func write(text: String, families: Array) -> String:
 			continue
 		var had: Array[Line] = anywhere(family.words) if family.anywhere else own(family.words)
 		var had_clean := PackedStringArray()
+		var had_raw := PackedStringArray()
 		for line: Line in had:
 			had_clean.append(line.clean())
+			had_raw.append(line.raw)
 		var said := PackedStringArray()
 		for line: String in family.lines:
 			said.append(clean(line))
-		var keep: PackedInt32Array = aligned(had_clean, said)
+		var keep: PackedInt32Array = aligned(had_clean, said, had_raw, family.lines)
 		var stays_as := PackedInt32Array()
 		stays_as.resize(family.lines.size())
 		stays_as.fill(-1)

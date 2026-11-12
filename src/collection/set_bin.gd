@@ -157,17 +157,22 @@ static func read(text: String) -> PackedStringArray:
 ## The sets the model's own lines say (MetaIndex), the first line that
 ## reads, taken.
 static func read_from(metas: MetaIndex) -> PackedStringArray:
-	var found: Variant = metas.first_read("BIN", func(said: String) -> Variant:
-		if RegEx.create_from_string("^[0-9A-Za-z. \t-]{1,600}$").search(said) == null:
-			return null
-		var out := PackedStringArray()
-		for word: String in LdrModel._fields(said):
-			var number: String = SetInventories.normal(word)
-			if RegEx.create_from_string("^[0-9a-z.]+-[0-9]+$").search(number) != null \
-					and out.size() < 50:
-				out.append(number)
-		return out)
+	var found: Variant = metas.first_read("BIN", said_in)
 	return found if found != null else PackedStringArray()
+
+
+## The sets a BIN line's [param said] names, or null for one this cannot
+## read.
+static func said_in(said: String) -> Variant:
+	if RegEx.create_from_string("^[0-9A-Za-z. \t-]{1,600}$").search(said) == null:
+		return null
+	var out := PackedStringArray()
+	for word: String in LdrModel._fields(said):
+		var number: String = SetInventories.normal(word)
+		if RegEx.create_from_string("^[0-9a-z.]+-[0-9]+$").search(number) != null \
+				and out.size() < 50:
+			out.append(number)
+	return out
 
 
 ## The line [param numbers] are kept on, none for none.

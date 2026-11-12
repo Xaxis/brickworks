@@ -75,61 +75,37 @@ const WARM := "#fff1d6"
 # -- kept with the model --------------------------------------------------------
 
 
-## What the one reading of a model's file (LdrModel.parse) holds of its
-## lights, sorted: "lights" those it keeps, in its order, up to [constant
-## MOST] of them and [constant SUNS] suns (the file's coordinates); "why" how
-## many of its lines it could not read, by reason; "read" each kept light's
-## line as the file has it and "twins" how many lines the same as it come
-## before it, so a save finds it again; "unread" the model's other light
-## lines, as they are, in their order. A sub-model's lights are its own, and
-## stay in it: the world keeps them by its definition (BrickWorld
-## .section_lines), wherever an edit takes its copies.
+## What the one reading of a model's file (MetaIndex) holds of its lights,
+## sorted: "lights" those it keeps, in its order, up to [constant MOST] of
+## them and [constant SUNS] suns (the file's coordinates); "why" how many of
+## its lines it could not read, by reason; "read" each kept light's line as
+## the file has it and "twins" how many lines the same as it come before it,
+## so a save finds it again; "unread" the model's other light lines, as they
+## are, in their order. Each line read is taken (MetaIndex.take): a save
+## keeps the rest where the file has them (MetaIndex.lines_for). A
+## sub-model's lights are its own, and stay in it: the world keeps them by
+## its definition (BrickWorld.section_lines), wherever an edit takes its
+## copies.
 ##
-## It belongs to the model it was read from: ModelStore keeps it for the
-## world's generation the model was laid in, and nothing else reads the file
-## again for it.
-static func of_model(model: LdrModel) -> Dictionary:
-	return _sorting(model.light_lines)
-
-
-## [method of_model] of [param text] alone, read as an open reads it: for
-## what has only a text (a test, a probe). The app reads a model's lights as
-## it opens it, once, and never this way.
-static func of_text(text: String) -> Dictionary:
-	if not text.contains(_WORD):
-		return _sorting(PackedStringArray())
-	return of_model(LdrModel.parse(text))
-
-
-## The lights [param text] keeps ([method of_text]).
-static func read(text: String) -> Array:
-	return of_text(text)["lights"]
-
-
-## [param text]'s lights and how many lines it could not read, by reason
-## ([method of_text]).
-static func sorted(text: String) -> Dictionary:
-	var read_now: Dictionary = of_text(text)
-	return {"lights": read_now["lights"], "why": read_now["why"]}
-
-
-## The model's light lines of [param text] it could not read, as they are
-## ([method of_text]).
-static func unread(text: String) -> PackedStringArray:
-	return of_text(text)["unread"]
-
-
-## Where [param text]'s own model's lines end (LdrModel.main_span).
-static func main_end(text: String) -> int:
-	return LdrModel.main_end(text)
+## Read off the index the save writes by, so the open and the save read one
+## set of lines: up to mlfix the open read them through LdrModel.parse, a
+## word in capitals alone and a line after the model's NOFILE as the
+## model's, and the save wrote the index's, so a light after the NOFILE was
+## written again at each save (1, 2, 3 lights) and "0 !BRICKWORKS light"
+## went at the first (mlcheck F3).
+static func read_from(metas: MetaIndex) -> Dictionary:
+	var sorted: Dictionary = _sorting(metas.raws([_WORD]))
+	metas.take([_WORD], sorted["taken"])
+	sorted.erase("taken")
+	return sorted
 
 
 ## The word after "0 !BRICKWORKS" on a light's line.
 const _WORD := "LIGHT"
 
 
-## [param lines] (a model's light lines, as LdrModel.light_lines has them)
-## sorted as [method of_model] says. Only a
+## [param lines] (a model's light lines, as the file has them) sorted as
+## [method read_from] says, and "taken" the places of those read. Only a
 ## line whose words begin as a light's do ("{") is tried, and only the first
 ## [constant TRIES] of those: past them the rest are kept as they are,
 ## unread, uncounted but for how many. Every line is the file's own, read
@@ -181,12 +157,13 @@ static func _sorting(lines: PackedStringArray) -> Dictionary:
 			from = at + 1
 		unread_lines.append_array(lines.slice(from))
 	return {"lights": lights, "why": why, "read": read_lines, "twins": twins,
-		"unread": unread_lines}
+		"unread": unread_lines, "taken": taken}
 
 
 ## The words of a light's [param line] after its word: "{...}" for a light.
 static func _body(line: String) -> String:
-	var at: int = line.find(_WORD, line.findn("!BRICKWORKS") + 11)
+	# In any case, as the index reads the word ("0 !BRICKWORKS light {...}").
+	var at: int = line.findn(_WORD, line.findn("!BRICKWORKS") + 11)
 	return line.substr(at + _WORD.length()).strip_edges() if at >= 0 else ""
 
 
@@ -206,7 +183,7 @@ static func joins(lights: Array, light: Dictionary) -> String:
 	return ""
 
 
-## What an open left out of [param why] (as [method of_model] counts them),
+## What an open left out of [param why] (as [method read_from] counts them),
 ## in words for the status bar, each reason a part of its own as the bar's
 ## parts are (" — "): "2 light lines not read, kept in the file as they are
 ## — of a kind there is not (...) — a model keeps at most 4 suns: ..."; ""
@@ -222,50 +199,9 @@ static func unread_words(why: Dictionary) -> String:
 	return " — ".join(PackedStringArray([said]) + PackedStringArray(why.keys()))
 
 
-## [param text] with [param lights] (the file's coordinates) written into it
-## in place of the light lines it has that were read ([method of_text]), and
-## the lines of [param carried] it lacks after them, as they are. For what
-## has only a text; the app writes with [method written_with].
-static func written_into(text: String, lights: Array,
-		carried: PackedStringArray = PackedStringArray()) -> String:
-	var had: Dictionary = of_text(text)
-	var unread: PackedStringArray = had["unread"]
-	if not carried.is_empty():
-		var has: Dictionary = {}
-		for line: String in unread:
-			has[line] = int(has.get(line, 0)) + 1
-		unread = unread.duplicate()
-		for line: String in carried:
-			if int(has.get(line, 0)) > 0:
-				has[line] = int(has[line]) - 1
-			else:
-				unread.append(line)
-	return _written(text, lines_now(lights, had), unread)
-
-
-## [param text], the model's file as it is being written, with [param
-## lights] (the file's coordinates) written into it as [param read] (the open's
-## reading, [method of_model]) says ([method lines_now]), and the lines it
-## could not read each where it was among them (MetaIndex.lines_for); in the
-## model's own lines alone, a sub-model's are its own (lreview3 F2). With
-## [param whole] (the text written whole, none of the file's light lines in
-## it) they go in as a block under the model's title. Each line ends as the
-## text's do.
-static func written_with(text: String, lights: Array, read: Dictionary, _whole: bool) -> String:
-	return _written(text, lines_now(lights, read), read.get("unread", PackedStringArray()))
-
-
-static func _written(text: String, now: PackedStringArray, unread: PackedStringArray) -> String:
-	if now.is_empty() and unread.is_empty() and not text.contains(_WORD):
-		return text
-	var index: MetaIndex = MetaIndex.of_text(text)
-	return index.write(text, [MetaIndex.family(["LIGHT"],
-		MetaIndex.lines_for(index.raws(["LIGHT"]), now, unread))])
-
-
 ## The lines [param lights] (the file's coordinates) are kept on, up to
 ## [constant MOST]: each light [param read] (the open's reading, [method
-## of_model]) read and not changed since, the line it was read from as the
+## read_from]) read and not changed since, the line it was read from as the
 ## file has it, the first after the last so kept whose light is the same, so
 ## a save finds it again where it is; each other as it is written now.
 static func lines_now(lights: Array, read: Dictionary) -> PackedStringArray:

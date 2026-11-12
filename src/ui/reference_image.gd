@@ -745,7 +745,9 @@ static func read(text: String) -> Dictionary:
 
 
 ## [method read] of the model's own lines read once (MetaIndex): its first
-## line of each, both taken when they read.
+## line of each, both taken when they read. A later pair that reads is
+## beaten (MetaIndex.Line.beaten): with the first gone it would be the
+## picture, so it goes when the picture changes.
 static func read_from(metas: MetaIndex) -> Dictionary:
 	var settings_lines: Array[MetaIndex.Line] = metas.own(["REFERENCE"])
 	var picture_lines: Array[MetaIndex.Line] = metas.own(["REFERENCE_PICTURE"])
@@ -755,6 +757,10 @@ static func read_from(metas: MetaIndex) -> Dictionary:
 	if not kept.is_empty():
 		settings_lines[0].taken = true
 		picture_lines[0].taken = true
+		for n: int in range(1, mini(settings_lines.size(), picture_lines.size())):
+			if not _read(settings_lines[n].said, picture_lines[n].said).is_empty():
+				settings_lines[n].beaten = true
+				picture_lines[n].beaten = true
 	return kept
 
 

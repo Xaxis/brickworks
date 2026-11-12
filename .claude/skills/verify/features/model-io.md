@@ -185,6 +185,26 @@ Whether what you built is still there tomorrow, and still means the same thing.
   with its unread light, no TITLE or FLOOR GRID added to an unedited save,
   tabs read, a byte-order mark kept through 4 edits, the castle's whole
   write timed (`METALINES_CASTLE_MS_PER_MB`).
+  Each app line the open saw is in one of three states, marked by the
+  reader that read it on its `MetaIndex.Line` by place, never told again
+  from text (mlfix, 2026-11-12): taken (what the feature holds; the
+  feature's lines now go in their places), beaten (a reader could read it,
+  and an earlier line of the same view, pin, floor or picture won: kept
+  only while the feature says what the open read, so an unedited save is
+  the file and an edit drops it rather than let the next open read it), and
+  unread (no reader could: a later build's word, a ZOOM that is no number,
+  a refused motion key; kept always, where it was, through every edit and
+  in their step for a step's look lines, `BookletLooks` "unread"). Lights
+  are read from the index as every family is (`SceneLights.read_from`),
+  so the open and the save cannot place a line apart; a family that is
+  not JSON (FLOOR, TITLE, FROM_SET, SHARE, BIN, ...) is compared by its
+  reader's value, so `0 !brickworks floor` stays as the file has it.
+  `mi_fuzz` (headless, `--n=4000 --seed=S`, twins, tabs, any case, CRLF,
+  both writers, motions' own unread list against an exact oracle) and
+  `mlattack_probe` (headless; cases dupsame, dups, unread, features,
+  badlooks, files over `src/dev/fixtures/mlattack/`, 66 files of other
+  programs and by hand, each saved unedited byte for byte) are mlcheck's
+  attack kept.
   A part of a mirrored copy agrees with its line only as it was opened (an
   edit to one is (B)); a step edit moves the lines of the parts it moved to
   the end of their new steps, and one that leaves a step of the file with

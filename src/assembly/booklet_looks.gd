@@ -111,6 +111,10 @@ const META := "0 !BRICKWORKS "
 const WORDS: Array[String] = ["PAGE", "ZOOM", "SIZE", "PARTS", "CALLOUT", "PER_PAGE",
 	"HIGHLIGHT", "PLACE", "TEXT", "IMAGE", "PANEL", "ARROW", "TURN_SIGN", "NOTE", "GUIDE",
 	"PULL", "COLOURS", "ACTUAL_SIZE", "PREVIEW", "SECTION", "PAGE_SETUP", "PAGE_TEXT", "STEP_NAME"]
+## The most of a step's look lines this cannot read another copy of the app
+## takes over Build together ("unread", [method typed]): a file's are all
+## kept.
+const MOST_UNREAD := 64
 ## How far a step's parts are pulled out by default, in studs (Studio's
 ## buffer exchange), and the most.
 const PULL_STUDS := 2.0
@@ -944,7 +948,7 @@ static func follow(world: BrickWorld, before: Dictionary, skip: Dictionary = {},
 				# it joined; its turn is _turns_follow's, as its parts were
 				# seen.
 				for field: String in look.keys():
-					if not field in ["notes", "arrows", "panel", "turn", "how"]:
+					if not field in ["notes", "arrows", "panel", "turn", "how", "unread"]:
 						look.erase(field)
 				if not look.has("notes") and not look.has("arrows"):
 					look.erase("panel")
@@ -961,7 +965,7 @@ static func follow(world: BrickWorld, before: Dictionary, skip: Dictionary = {},
 			if kept.has("panel") and look.has("panel"):
 				look = rebased(look, rect_of(kept["panel"]))
 			for field: String in look:
-				if field in ["notes", "arrows"] and kept.has(field):
+				if field in ["notes", "arrows", "unread"] and kept.has(field):
 					kept[field] = (kept[field] as Array) + (look[field] as Array)
 				elif field == "name_more" and not named:
 					continue
@@ -1531,31 +1535,43 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 		if keyword == "STEP":
 			step += 1
 			continue
-		if keyword != "!BRICKWORKS" or words.size() < 3 or not words[2] in WORDS:
+		if keyword != "!BRICKWORKS" or words.size() < 3 or not words[2].to_upper() in WORDS:
 			continue
 		var value: String = words[3].to_upper() if words.size() > 3 else ""
-		match words[2]:
+		# Whether the line says something this reads: one that does not (a
+		# later build's "ZOOM banana", "PAGE FUTURE 3") is kept with its
+		# step as the file has it ("unread"), and written back with it. Up
+		# to mlfix a save left it out (mlcheck).
+		var took: bool = false
+		match words[2].to_upper():
 			"PAGE":
 				if value in ["NEW", "ALONE"]:
 					_put_in(out, key(definition, step), "page", value.to_lower())
+					took = true
 			"ZOOM":
 				if value.is_valid_float() and value.to_float() > 0.0:
 					_put_in(out, key(definition, step), "zoom", clampf(value.to_float(), 0.25, 4.0))
+					took = true
 			"SIZE":
 				if value.is_valid_float() and value.to_float() > 0.0:
 					_put_in(out, key(definition, step), "size", clampf(value.to_float(), 0.4, 3.0))
+					took = true
 			"PARTS":
 				if value == "OFF":
 					_put_in(out, key(definition, step), "parts", false)
+					took = true
 			"CALLOUT":
 				if value == "OFF" and not definition.is_empty():
 					_put_in(out, definition + "|*", "callout", false)
+					took = true
 			"PER_PAGE":
 				if value.is_valid_int() and value.to_int() in [1, 2, 4]:
 					_put_in(out, BOOKLET, "per_page", value.to_int())
+					took = true
 			"HIGHLIGHT":
 				if value == "OFF":
 					_put_in(out, BOOKLET, "highlight", false)
+					took = true
 			"PLACE":
 				var item: String = value.to_lower()
 				var numbers: Array = _numbers(words, 4, int(ITEMS.get(item, 0)))
@@ -1564,21 +1580,25 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 					var place: Dictionary = (out.get(name, {}) as Dictionary).get("place", {})
 					place[item] = numbers
 					_put_in(out, name, "place", place)
+					took = true
 			"TEXT":
 				var at: Array = _numbers(words, 3, 5)
 				if not at.is_empty():
 					var said: String = _rest_after(line, 8).replace("\\n", "\n")
 					_note_in(out, key(definition, step), {"text": said,
 						"at": at.slice(0, 4), "size": clampf(float(at[4]), 1.5, 40.0)})
+					took = true
 			"IMAGE":
 				var at: Array = _numbers(words, 3, 4)
 				if not at.is_empty() and words.size() > 7:
 					_note_in(out, key(definition, step), {"image": words[7].to_lower(),
 						"at": at})
+					took = true
 			"PANEL":
 				var at: Array = _numbers(words, 3, 4)
 				if not at.is_empty():
 					_put_in(out, key(definition, step), "panel", at)
+					took = true
 			"ARROW":
 				var colour: String = value.to_lower()
 				if ARROW_COLOURS.has(colour) and words.size() > 4 and words[4].is_valid_float():
@@ -1591,30 +1611,39 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 					if not points.is_empty():
 						_note_in(out, key(definition, step), {"at": points, "colour": colour,
 							"width": arrow_width(words[4].to_float())}, "arrows")
+						took = true
 			"TURN_SIGN":
 				if value == "OFF":
 					_put_in(out, key(definition, step), "sign", false)
+					took = true
 			"PULL":
 				if value.is_valid_float() and value.to_float() > 0.0:
 					_put_in(out, key(definition, step), "pull", {"studs": clampf(value.to_float(),
 						0.5, PULL_MOST), "parts": Array(words.slice(4)).map(
 							func(id: String) -> String: return id.to_lower())})
+					took = true
 			"COLOURS":
 				if value == "ALL":
 					_put_in(out, BOOKLET, "colours_all", true)
+					took = true
 				elif value in ["ON", "OFF"]:
 					_put_in(out, key(definition, step), "colours", value == "ON")
+					took = true
 			"ACTUAL_SIZE":
 				if value in ["ON", "OFF"]:
 					_put_in(out, key(definition, step), "actual_size", value == "ON")
+					took = true
 				elif words.size() > 3:
 					_put_in(out, key(definition, step), "actual_size", Array(words.slice(3)).map(
 						func(id: String) -> String: return id.to_lower()))
+					took = true
 			"PREVIEW":
 				if value == "OFF":
 					_put_in(out, key(definition, step), "preview", false)
+					took = true
 			"SECTION":
 				_put_in(out, key(definition, step), "section", _rest_after(line, 3))
+				took = true
 			"STEP_NAME":
 				# The words as written, to the line's end (stepnames). Of two
 				# in a step the first is its name, as a merge keeps the first
@@ -1622,6 +1651,9 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 				# written back with it (written_into). Up to 2026-11-09 the
 				# last was the name and the first went at the next save
 				# (snreview).
+				# Every name line stays in its step as written, one that names
+				# nothing too (_settle_names).
+				took = true
 				var named: String = name_of(_rest_after(line, 3))
 				var into: Dictionary = out.get(key(definition, step), {})
 				if named.is_empty():
@@ -1635,13 +1667,12 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 			"NOTE":
 				# The words or picture just before it, turned and faded.
 				var notes: Array = (out.get(key(definition, step), {}) as Dictionary).get("notes", [])
-				if notes.is_empty():
-					continue
-				var note: Dictionary = notes[-1]
+				var note: Dictionary = notes[-1] if not notes.is_empty() else {}
 				for at: int in range(3, words.size() - 1):
 					var number: String = words[at + 1]
-					if not number.is_valid_float():
+					if notes.is_empty() or not number.is_valid_float():
 						continue
+					took = took or words[at].to_upper() in ["TURN", "OPACITY"]
 					match words[at].to_upper():
 						"TURN":
 							var turn: float = turn_of({"turn": number.to_float()})
@@ -1658,16 +1689,22 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 					(kept[value.to_lower()] as Array).append(snappedf(clampf(words[4].to_float(),
 						0.0, BookletSheet.LONGEST), 0.1))
 					_put_in(out, BOOKLET, "guides", kept)
+					took = true
 			"PAGE_SETUP", "PAGE_TEXT":
 				# The booklet's page is the main model's: a sub-model's own
 				# lines are its, passed through as they are (written_into).
 				# Up to 2026-11-07 a pod's TITLE titled the booklet (blreview).
+				took = true
 				if not definition.is_empty():
 					continue
 				var sheet: Dictionary = BookletSheet.read_line(words[2], words.slice(3),
 					_rest_after(line, 4), (out.get(BOOKLET, {}) as Dictionary).get("sheet", {}))
 				if not sheet.is_empty():
 					_put_in(out, BOOKLET, "sheet", sheet)
+		if not took:
+			var unread: Array = (out.get(key(definition, step), {}) as Dictionary).get("unread", [])
+			unread.append(raw.trim_suffix("\r"))
+			_put_in(out, key(definition, step), "unread", unread)
 	if not data_name.is_empty():
 		pictures[data_name] = "".join(data)
 	pictures = kept_pictures(pictures)
@@ -1955,6 +1992,20 @@ static func _typed_field(field: String, value: Variant) -> Variant:
 						or LdrModel._fields((line as String).strip_edges())[2] != "STEP_NAME":
 					return null
 			return (value as Array).duplicate()
+		"unread":
+			# The step's look lines this could not read, as its file wrote
+			# them (read): each a line of one of the booklet's words.
+			if not value is Array or (value as Array).is_empty() \
+					or (value as Array).size() > MOST_UNREAD:
+				return null
+			for line: Variant in value:
+				if not line is String or (line as String).length() > 400 \
+						or (line as String).contains("\n") or (line as String).contains("\r") \
+						or _keyword(line) != "!BRICKWORKS" \
+						or LdrModel._fields((line as String).strip_edges()).size() < 3 \
+						or not LdrModel._fields((line as String).strip_edges())[2].to_upper() in WORDS:
+					return null
+			return (value as Array).duplicate()
 		"zoom":
 			return _typed_number(value, 0.25, 4.0)
 		"size":
@@ -2194,13 +2245,17 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 		if not section_open and not first_file:
 			out.append(raw)
 			continue
-		if keyword == "!BRICKWORKS" and words.size() >= 3 and words[2] in WORDS:
+		if keyword == "!BRICKWORKS" and words.size() >= 3 and words[2].to_upper() in WORDS:
+			var word: String = words[2].to_upper()
 			# The page's lines are the main model's, written again from the
 			# looks; a sub-model's are left where they are, as they are.
-			if not definition.is_empty() and words[2] in ["PAGE_SETUP", "PAGE_TEXT"]:
+			if not definition.is_empty() and word in ["PAGE_SETUP", "PAGE_TEXT"]:
 				out.append(raw)
-			elif words[2] == "STEP_NAME":
+			elif word == "STEP_NAME":
 				pending.append([out.size(), raw])
+				out.append(raw)
+			elif _unread_here(looks, key(definition, step), raw, wrote):
+				# One its open could not read: where it is, as it is.
 				out.append(raw)
 			else:
 				placed.append([out.size(), raw])
@@ -2402,6 +2457,26 @@ const _DROPPED := "\u0001dropped"
 ## In written_into's wrote, under the step's key: its name line was left in
 ## the step's text, and these of its other name lines were not there.
 const NAMED := "@named "
+## And these of the look lines its open could not read ("unread") were not
+## in the step's text: written at its end ([method _step_lines]).
+const UNREAD := "@unread "
+
+
+## Whether [param raw], a look line of step [param name] (a key) in the text
+## being written, is one of the lines its open could not read (read's
+## "unread"): kept where it is, as it is, once for each time the look has
+## it. Those the text has not got are left in [param wrote] for the step's
+## end.
+static func _unread_here(looks: Dictionary, name: String, raw: String, wrote: Dictionary) -> bool:
+	var left: Variant = wrote.get(UNREAD + name)
+	if left == null:
+		left = ((looks.get(name, {}) as Dictionary).get("unread", []) as Array).duplicate()
+		wrote[UNREAD + name] = left
+	var at: int = (left as Array).find(raw.trim_suffix("\r"))
+	if at < 0:
+		return false
+	(left as Array).remove_at(at)
+	return true
 
 
 ## The name lines of step [param name] (a key) in the file's text,
@@ -2512,6 +2587,10 @@ static func _step_lines(out: PackedStringArray, looks: Dictionary, definition: S
 			out.append(META + "STEP_NAME " + name_of(look["name"]) + eol)
 		for other: Variant in wrote.get(named, look.get("name_more", [])):
 			out.append(str(other) + eol)
+	# The lines its open could not read that the step's text had not got (a
+	# model written whole): here, as they were written.
+	for other: Variant in wrote.get(UNREAD + key(definition, step), look.get("unread", [])):
+		out.append(str(other) + eol)
 	if look.has("page"):
 		out.append(META + "PAGE " + str(look["page"]).to_upper() + eol)
 	if look.has("zoom"):

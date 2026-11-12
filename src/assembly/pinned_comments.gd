@@ -110,18 +110,31 @@ static func read(text: String) -> PinnedComments:
 
 ## The pins the model's own lines carry (MetaIndex: a sub-model's PIN is its
 ## own, and stays in it, whatever its id), each line read taken. One this
-## cannot read, and a second of one id, stay in the file as they are.
+## cannot read stays in the file as it is; a second of one id is beaten
+## (MetaIndex.Line.beaten), kept while the pins are as the open read them.
 static func read_from(metas: MetaIndex) -> PinnedComments:
 	var out := PinnedComments.new()
 	var seen: Dictionary = {}
 	for line: MetaIndex.Line in metas.own(["PIN"]):
 		var pin: Pin = pin_from(JSON.parse_string(line.said))
-		if pin != null and not seen.has(pin.id):
-			seen[pin.id] = true
-			line.taken = true
-			out.list.append(pin)
+		if pin == null:
+			continue
+		if seen.has(pin.id):
+			line.beaten = true
+			continue
+		seen[pin.id] = true
+		line.taken = true
+		out.list.append(pin)
 	out._order()
 	return out
+
+
+## What a PIN line's [param said] says, as the app writes it, or null for
+## one this cannot read: a pin the file has, saved again where it is, keeps
+## the file's line.
+static func said_in(said: String) -> Variant:
+	var pin: Pin = pin_from(JSON.parse_string(said))
+	return pin.fields() if pin != null else null
 
 
 func _order() -> void:

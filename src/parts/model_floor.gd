@@ -135,6 +135,15 @@ static func read_from(metas: MetaIndex) -> ModelFloor:
 	return metas.first_read("FLOOR", func(said: String) -> Variant: return parse(said)) as ModelFloor
 
 
+## What a FLOOR line's [param said] says, as the app writes it, or null for
+## one this cannot read: two lines are the same floor by it, so a file's
+## "0 !BrickWorks floor baseplate 32 32 2" is kept as it is by a save that
+## says BASEPLATE 32 32 2 (mlcheck F4).
+static func said_in(said: String) -> Variant:
+	var read: ModelFloor = parse(said)
+	return read.to_meta() if read != null else null
+
+
 ## [param text] with the floor's line in the head of its model (MetaIndex
 ## .HEAD: after the title, the name and the author, before the first blank
 ## line, part or step), or where the model's floor line was. A model's own
