@@ -68,7 +68,12 @@ main moves to (`Ships past play: no worse here than on brickworks.diy beyond
 the noise, by turns`). The merge's own message cannot change after its
 preview, as its commit names the build; the commit on top has the merge's
 tree, so that build stands for it (`deploy_reads.sh`) and brickworks.diy
-serves the one the checks passed. The lines, in `<tag>_ab_<check>.judge`:
+serves the one the checks passed. A reship on the same preview judges its
+runs together with the earlier rounds' (their logs kept as
+`<tag>_ab_<check>_r<k><run>_<check>.log`, listed in `<tag>_ab_<check>.kept`):
+two runs a side cannot see a check's own swing, and rel-m290's play flipped
+between sizes on them while brickworks.diy alone swung 1956 ms. A new
+preview starts over. The lines, in `<tag>_ab_<check>.judge`:
 
 ```
 ships past: the preview no worse than brickworks.diy beyond the noise (2 runs on the preview, 2 on brickworks.diy)
