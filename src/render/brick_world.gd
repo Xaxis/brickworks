@@ -282,6 +282,15 @@ var history: Array = []
 ## step. Kept here and not on the bricks, so it outlives taking a copy's
 ## parts off and putting them back. See [member Brick.step].
 var unit_steps: Dictionary = {}
+## The parts of the model that are not here and that a save writes back in
+## their steps (ModelStore: those on their way, and those the catalogue has
+## not got), LdrModel.Placement each, as a Callable gives them; unset for
+## none. A step edit numbers their steps with the rest (AuthorSteps.items_in),
+## so each stays in its own step, and the step's look with it. Up to
+## 2026-11-11 only the parts here were numbered again: after a merge, a move
+## or a step taken out such a part was written in another step, and its
+## step's zoom and name were lost (pkreview3).
+var held: Callable = Callable()
 ## Each copy of a sub-model of someone else's file by its path now -> its
 ## place in the file (LdrModel.unit_chains): carried wherever a change to
 ## the tree takes the path (Builder.regroup), so a save knows which copy
@@ -354,6 +363,11 @@ func _note(event: Dictionary) -> void:
 	history.append(event)
 	if history.size() > HISTORY_MOST:
 		history = history.slice(history.size() - HISTORY_MOST * 9 / 10)
+
+
+## [member held]'s parts now: none when it is unset.
+func held_parts() -> Array:
+	return held.call() if held.is_valid() else []
 
 
 ## How many times the world has been cleared: what was placed in one
@@ -552,8 +566,22 @@ func recolor_brick(brick_id: int, color_code: int) -> bool:
 	return true
 
 
-func clear() -> void:
+## Take everything off. [param keep_numbers] for a clear the history keeps
+## (Main.clear_model): the numbers go on from where they were, and the lines
+## of a file each part was are kept as a part taken off keeps them, so its
+## undo puts the parts back under their own numbers and the steps before it
+## still name them. Begun again at 1, the baseplate laid after it took the
+## number of a part cleared, and the undo's redo took the wrong parts off
+## (copyfaults).
+func clear(keep_numbers: bool = false) -> void:
 	_stop_reveal()
+	if keep_numbers:
+		for brick: Brick in _bricks.values():
+			if not brick.origin.is_empty():
+				_gone_origins[brick.id] = brick.origin
+	else:
+		_next_id = 1
+		_gone_origins.clear()
 	for key: String in _batches:
 		var batch: Batch = _batches[key]
 		batch.instance.queue_free()
@@ -570,11 +598,9 @@ func clear() -> void:
 	_painted.clear()
 	_spans.clear()
 	_drawn.clear()
-	_next_id = 1
 	_out_of_order = false
 	unit_steps.clear()
 	unit_chains.clear()
-	_gone_origins.clear()
 	step_looks.clear()
 	section_lines.clear()
 	motions = null
@@ -800,6 +826,7 @@ func copy_at_home(at_home: bool = true) -> BrickWorld:
 	var copy := BrickWorld.new()
 	copy.library = library
 	copy.keeps_history = false
+	copy.held = held
 	copy.unit_steps = unit_steps.duplicate()
 	copy.step_looks = step_looks.duplicate(true)
 	copy.motions = motions

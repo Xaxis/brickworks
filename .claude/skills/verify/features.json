@@ -706,6 +706,7 @@
         "tests/test_release_train.py",
         "tests/test_run_probes.py",
         "tests/test_thumbnail_check.py",
+        "tests/test_timing_judge.py",
         "tests/test_worktree_links_ignored.py"
       ]
     },
@@ -851,6 +852,7 @@
         "tests/test_release_train.py",
         "tests/test_run_probes.py",
         "tests/test_thumbnail_check.py",
+        "tests/test_timing_judge.py",
         "tests/test_worktree_links_ignored.py"
       ]
     },
@@ -1409,6 +1411,14 @@
       "entry": "src/dev/held_items_probe.gd",
       "reach": "tools/probe.sh held_items_probe   (a figure holding a hammer and a cup, a pole and a wrench, a torch and a camera, each pair by one add_minifig: each thing joined to a hand by BrickNet's connectors and through nothing, Tested's whole test passed, the Minifigure builder's figure alike; a sack, which BrickNet gives no bar, said not held when put in the hand)",
       "area": "minifig",
+      "tests": []
+    },
+    {
+      "id": "cli:heldsteps probe",
+      "kind": "cli",
+      "entry": "src/dev/heldsteps_probe.gd",
+      "reach": "tools/probe.sh heldsteps_probe   (headless: a five-step model, own and someone else's, its 3062b missing from the library and then on its way from a local server; step merges, moves, deletes and a part taken off, saved and opened again: the held part on its own step with its STEP_NAME and ZOOM byte for byte, every other step as the same edit gives the model without it, and with the part back the model as it was; then a sub-model dragged in the tree into one holding it, a part moved on from the last step it follows, a part moved in the second copy of a sub-model placed twice, and someone else's file written whole, each with the held part alone in its own step and sub-model; HELDSTEPS_OUT=dir for the saves)",
+      "area": "view",
       "tests": []
     },
     {
@@ -2177,6 +2187,7 @@
         "tests/test_release_train.py",
         "tests/test_run_probes.py",
         "tests/test_thumbnail_check.py",
+        "tests/test_timing_judge.py",
         "tests/test_worktree_links_ignored.py"
       ]
     },
@@ -2553,6 +2564,7 @@
         "tests/test_release_train.py",
         "tests/test_run_probes.py",
         "tests/test_thumbnail_check.py",
+        "tests/test_timing_judge.py",
         "tests/test_worktree_links_ignored.py"
       ]
     },

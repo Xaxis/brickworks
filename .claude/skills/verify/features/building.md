@@ -1608,9 +1608,30 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   (view.md's `centred on the model's column`), a click takes one part, a part put
   down goes into it — and `Esc` steps out a level. `Ctrl-D`/`Ctrl-C` of one is
   another copy of the same definition (`Wing#2`), and after any edit the other
-  copies are built again from the edited one, mirrored where they were
-  mirrored, in the same undo step (`Assemblies.after_edit`, matched by
-  `best_match`). An assembly every part of which the edit moved alike (all of
+  copies follow it part by part, mirrored where they were mirrored, in the
+  same undo step (`Assemblies.after_edit`, each part paired with its twin's by
+  `best_match` and `_laid_on`, colour-blind): a part moved or turned moves its
+  twin's, one painted paints its twin's only if the two were one colour (a
+  part in the placing colour, 16, keeps each copy's own), one taken off goes
+  from the twin, and one put down goes in the twin's placing colour if it was
+  put down in the copy's, else in its own; a step edit changes the twins'
+  steps only, and no other part of a twin changes number, colour or order
+  (`copyfaults_probe` twin_*, `cfcheck_probe`). One pass makes each edit
+  once in each copy of each definition, however deep: every part a follow
+  lays is claimed for the pass (`Assemblies._follow`, `_put_already`), so a
+  plate put down on Car#1/Wheel#1 is one plate on Car#2/Wheel#3, not one for
+  the wheel's plan and one more for each car's (cffix, cf2check's F1). The
+  first step edit on a model with no steps follows too (its steps made and
+  the edit in one step: `Assemblies.ensured`, the step's "ensured"), and the
+  copies inside copies get their steps by read order
+  (`AuthorSteps._copies_alike`), so Car#2's wheels, Wheel#3 and #4, step as
+  Car#1's. `copyfaults_probe` twin_every checks it as one invariant: every
+  edit kind, by hand and over MCP, in a copy at depth 1, 2 and 3
+  (cf2_nest_same, cfc_nested, cf2_axles), leaves every copy of each
+  definition the same parts (count, part, colour rule, place in its own
+  frame, step) over undo, redo, save, open and a second save;
+  `cf2check_probe` is cf2check's attack, kept. A session's `edit_model`
+  is followed the same way (`CommandSocket._one_step`). An assembly every part of which the edit moved alike (all of
   it nudged or turned) is the shape it was, and its copies are left alone; an
   undo or redo brings its copies' steps with it and builds none again. The
   pass reads the model once (`Assemblies._begin_pass`), not once an assembly. Make unique cuts a copy loose (a session's `make_unique`,
@@ -1640,7 +1661,8 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   into another section goes in the step that one built it in, or after its
   last (`AuthorSteps.rehomed`, from `Builder.regroup`): a sub-model dragged
   out of its parent, parts taken out by Ungroup. A copy following an edit of
-  its twin keeps each part's step by its place (`Assemblies.realize`), and a
+  its twin keeps each part's step, a part it gains taking the step its
+  neighbours were built in (`Assemblies._voted`), and a
   sub-model renamed to a gone one's name drops that one's looks
   (`BookletLooks.renamed`). Probe: `unit_steps_probe` (headless;
   `UNIT_STEPS_ONLY=castle`, `copies`, `7140` or `siblings` for one; siblings
@@ -1658,7 +1680,27 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   model and its sub-assemblies inside one another with their part counts. A
   row selects its parts, a double-click edits inside it, `F2` renames it in
   place, its eye and lock hide and lock it whole, and dragging a row onto
-  another nests it there (onto Model, back to the top). Folded or open as it
+  another nests it there (onto Model, back to the top), one undo step, the
+  row it would go into outlined (none where it may not: itself, its parent,
+  a row inside it); a suggestion dragged onto another merges them. The drag
+  begins from the row the press was on (`Outliner._carry_input`): the mouse
+  past the window's drag threshold, a finger held still `FlingScroll.HOLD_MS`
+  and then moved (moved at once, it scrolls the tree), heard by the window
+  first (`Outliner._heard`), as a menu its hold puts up takes the window's
+  input; a finger moved onto that menu, or on its way there, is the menu's:
+  it stays up and the lift there chooses nothing (`Outliner._on_menu`;
+  `subexport_probe`'s F5 slide, then the keys choosing from it); moved
+  anywhere else, the menu goes as the row lifts, and as Godot then lets go of the
+  mouse it makes of the finger, the finger's moves and lift carry and drop
+  it (`Outliner._follow`); held at the tree's top or bottom edge, a carry scrolls it
+  (`Outliner._edge_scroll`; Godot's own is off: 4 units deep, and never at
+  the top of a tree below its header); a model shared to look
+  at or being laid takes none (`Shell.why_frozen`). Probe: `treedrag_probe`
+  (headless: the mouse's drops with Undo, Redo, Save and a reopen,
+  sereview's scrolled row drags at 1400x900 and 1280x720 (alone with
+  `--rows`), the gates; by hand `--phone` and `--tablet`: a finger's,
+  held with a menu of the tree's own put up and then moved too).
+  Folded or open as it
   was left (`outliner_open`). It looks again at every redraw of the world and
   twice a second, and works itself out again only when what it is made from
   has changed: the model's revision and undo history, how many parts are

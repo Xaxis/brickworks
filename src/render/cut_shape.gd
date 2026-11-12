@@ -109,8 +109,9 @@ static func written_into(text: String, scheme: Dictionary) -> String:
 			kept.append(line)
 	if scheme.is_empty():
 		return "\n".join(kept)
-	kept.insert(mini(1, kept.size()), META + JSON.stringify(scheme))
-	return "\n".join(kept)
+	# Under the model's title, in its own section: after an .mpd's first
+	# line, its 0 FILE, it stood above the title (copyfaults).
+	return LdrModel.into_main("\n".join(kept), PackedStringArray([META + JSON.stringify(scheme)]))
 
 
 ## The cut [param text] keeps, as [method written_into] was given it; empty

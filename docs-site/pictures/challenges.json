@@ -1,0 +1,58 @@
+{
+ "shots": [
+  {
+   "id": "challenge-page",
+   "source": "site",
+   "route": "/challenge",
+   "viewport": [
+    1280,
+    1400
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account"
+   ],
+   "wait": ".card",
+   "alt": "This month's challenge page: its title, its days and brief with Share, The rules Brickworks checks, How to enter, and the entries under Built by hand and Built with the assistant, each card with Vote for it.",
+   "caption": "brickworks.diy/challenge.",
+   "features": [
+    "ui:this month's challenge page"
+   ]
+  },
+  {
+   "id": "challenge-enter",
+   "source": "site",
+   "route": "/m/DocsSprt01",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in"
+   ],
+   "steps": [
+    {
+     "click": "text=Enter this month’s challenge"
+    },
+    {
+     "wait": "dialog.enter"
+    }
+   ],
+   "crop": "dialog.enter",
+   "pad": 12,
+   "alt": "Entering a challenge: Enter and the challenge's title, the rules Brickworks checks on the model as shared, How did you build it? The two are judged apart, with By hand and With the assistant, and Enter it and Cancel.",
+   "caption": "Enter this month's challenge, on your own model's page.",
+   "features": [
+    "ui:enter this month's challenge"
+   ]
+  }
+ ]
+}

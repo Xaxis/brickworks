@@ -927,6 +927,18 @@ func can(name: String) -> bool:
 	return not found.can.is_valid() or bool(found.can.call())
 
 
+## Why the model may not be changed now, in why_not's words: it is shared
+## to look at, or still being laid. "" when it may. The two refusals can()
+## and why_not() give first for every command that changes the model,
+## asked by the model tree's drag, which is no command (Outliner).
+func why_frozen() -> String:
+	if read_only:
+		return "This model is shared to look at"
+	if store != null and store.laying:
+		return "The model is still opening"
+	return ""
+
+
 ## Why a command cannot be used now, in a few words: "Select a part
 ## first". "" when it can. Find a command shows it beside a greyed row
 ## rather than leave the row out.
@@ -2758,6 +2770,7 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 	# (AuthorSteps.adopt_plan): those are read after.
 	var looked: Dictionary = BookletLooks.items_by_step(world, skip)
 	var undo: Array = AuthorSteps.ensure(world, library, skip)
+	var ensured: Dictionary = Assemblies.ensured(world, undo)
 	if looked.is_empty():
 		looked = BookletLooks.items_by_step(world, skip)
 	var where: Array = _step_at(at)
@@ -2775,10 +2788,10 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 		_take_back(undo)
 		return _not_in_step(number, str(where[0]), ids, level, skip)
 	# What the edit takes out of its step: a step keeps its look with the
-	# parts it keeps.
+	# parts it keeps. In every copy of a sub-model, as the edit moves them.
 	var taken: Dictionary = {}
 	if op in ["prev", "next", "new", "to"]:
-		for items: Variant in AuthorSteps._selected(world, ids, level, skip).values():
+		for items: Variant in AuthorSteps._moved(world, ids, level, skip).values():
 			for item: Dictionary in items:
 				taken[BookletLooks.item_name(item)] = true
 	elif op == "delete" and int(where[1]) >= 0:
@@ -2851,6 +2864,17 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 	if not now.is_empty():
 		number = int(now[0])
 	builder.record(undo, words)
+	if not ensured.is_empty():
+		builder.last_step()["ensured"] = ensured
+	# The other copies of a sub-model built in steps of its own take the edit
+	# too, in the same undo (Assemblies.copies_follow), as a file writes the
+	# sub-model once: a part of one wing moved to the wing's other step showed
+	# on that wing alone, and opened again on both, or on neither (copyfaults).
+	if assemblies != null:
+		var made: int = (builder.last_step().get("steps", []) as Array).size()
+		assemblies.after_edit()
+		if (builder.last_step().get("steps", []) as Array).size() != made:
+			planned = Instructions.plan(world, library, skip, {}, true)
 	# Saved with the model, as any edit is (not _on_model_edited, which
 	# would work the timeline out a second time).
 	store.adopt()
