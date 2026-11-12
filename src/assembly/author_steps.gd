@@ -288,12 +288,32 @@ static func _changes(world: BrickWorld, entry: Dictionary) -> bool:
 
 
 ## Number a section's steps 0, 1, 2… in the order they were, with no gaps:
-## after an edit has emptied one, or made one between two.
+## after an edit has emptied one, or made one between two. A step the file
+## has empty, between two that had parts before the edit ([param undo] keeps
+## what each part's step was), is the author's, a page of its own, and is
+## kept among them: up to metalines a part moved on a step took it out, and
+## its page's look with it (pkreview3; BookletLooks._empty_to).
 static func _tidy(world: BrickWorld, section: String, skip: Dictionary, undo: Array) -> void:
 	var items: Array = items_of(world, section, skip)
+	var was: Dictionary = {}        ## a part or copy -> its step before the edit
+	for entry: Variant in undo:
+		if not entry is Dictionary or not str((entry as Dictionary).get("undo", "")) in [
+				"restep", "heldstep", "unitstep"]:
+			continue
+		var key: Variant = _moved_key(entry)
+		if key != null and not was.has(key):
+			was[key] = int(entry["step"])
 	var used: Dictionary = {}
+	var before: Dictionary = {}     ## the steps in use before the edit
 	for item: Dictionary in items:
 		used[int(item["step"])] = true
+		var then: int = int(was.get(_moved_key(item), int(item["step"])))
+		if then >= 0:
+			before[then] = true
+	if not before.is_empty():
+		for step: int in int(before.keys().max()):
+			if not before.has(step) and not used.has(step):
+				used[step] = true
 	var order: Array = used.keys()
 	order.sort()
 	var place: Dictionary = {}
@@ -301,6 +321,19 @@ static func _tidy(world: BrickWorld, section: String, skip: Dictionary, undo: Ar
 		place[order[index]] = index
 	for item: Dictionary in items:
 		_put(world, item, int(place[int(item["step"])]), undo)
+
+
+## What an item of [method items_of], or an undo entry of [method _put],
+## moves: a part by its id, a copy by its path, a part the model holds and
+## does not show by its placement; null for an entry of anything else.
+static func _moved_key(entry: Dictionary) -> Variant:
+	if entry.has("brick"):
+		return "b%d" % int(entry["brick"])
+	if entry.has("held"):
+		return entry["held"]
+	if entry.has("unit"):
+		return "u" + str(entry["unit"])
+	return null
 
 
 ## The steps in a section a person sees, in order: those with anything here

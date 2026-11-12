@@ -229,152 +229,63 @@ static func unread_words(why: Dictionary) -> String:
 static func written_into(text: String, lights: Array,
 		carried: PackedStringArray = PackedStringArray()) -> String:
 	var had: Dictionary = of_text(text)
-	var lacking := PackedStringArray()
+	var unread: PackedStringArray = had["unread"]
 	if not carried.is_empty():
 		var has: Dictionary = {}
-		for line: String in had["unread"]:
+		for line: String in unread:
 			has[line] = int(has.get(line, 0)) + 1
+		unread = unread.duplicate()
 		for line: String in carried:
 			if int(has.get(line, 0)) > 0:
 				has[line] = int(has[line]) - 1
 			else:
-				lacking.append(line)
-	return _written(text, lights, had, lacking)
+				unread.append(line)
+	return _written(text, lines_now(lights, had), unread)
 
 
 ## [param text], the model's file as it is being written, with [param
 ## lights] (the file's coordinates) written into it as [param read] (the open's
-## reading, [method of_model]) says. Each light read and not changed since
-## keeps its line as the file had it, where it had it; a light changed is
-## written in the place of the line it was read from, one added after the
-## light before it, and a line read whose light is gone taken out. Every
-## other line is left where it is. With [param whole] (the text written
-## whole, none of the file's light lines in it) the lines it could not read
-## go in after the lights, as they are. Each line ends as the text's do.
-static func written_with(text: String, lights: Array, read: Dictionary, whole: bool) -> String:
-	return _written(text, lights, read,
-		read.get("unread", PackedStringArray()) if whole else PackedStringArray())
+## reading, [method of_model]) says ([method lines_now]), and the lines it
+## could not read each where it was among them (MetaIndex.lines_for); in the
+## model's own lines alone, a sub-model's are its own (lreview3 F2). With
+## [param whole] (the text written whole, none of the file's light lines in
+## it) they go in as a block under the model's title. Each line ends as the
+## text's do.
+static func written_with(text: String, lights: Array, read: Dictionary, _whole: bool) -> String:
+	return _written(text, lines_now(lights, read), read.get("unread", PackedStringArray()))
 
 
-## [method written_with]'s work: [param adding] go in after the lights.
-static func _written(text: String, lights: Array, read: Dictionary,
-		adding: PackedStringArray) -> String:
-	var lines_read: PackedStringArray = read.get("read", PackedStringArray())
-	var count: int = mini(lights.size(), MOST)
-	if count == 0 and adding.is_empty() and lines_read.is_empty():
+static func _written(text: String, now: PackedStringArray, unread: PackedStringArray) -> String:
+	if now.is_empty() and unread.is_empty() and not text.contains(_WORD):
 		return text
+	var index: MetaIndex = MetaIndex.of_text(text)
+	return index.write(text, [MetaIndex.family(["LIGHT"],
+		MetaIndex.lines_for(index.raws(["LIGHT"]), now, unread))])
+
+
+## The lines [param lights] (the file's coordinates) are kept on, up to
+## [constant MOST]: each light [param read] (the open's reading, [method
+## of_model]) read and not changed since, the line it was read from as the
+## file has it, the first after the last so kept whose light is the same, so
+## a save finds it again where it is; each other as it is written now.
+static func lines_now(lights: Array, read: Dictionary) -> PackedStringArray:
+	var lines_read: PackedStringArray = read.get("read", PackedStringArray())
 	var said: Array = read.get("lights", [])
-	var twins: PackedInt32Array = read.get("twins", PackedInt32Array())
-	# Where each line read is now: its start, its end, the next line's start;
-	# in the model's own lines alone, as they were read (LdrModel.main_span).
-	# Found anywhere, a sub-model's line the same as the model's lamp was
-	# taken for it, and a whole write left the model without it (lreview3 F2).
-	var spans: Array[Vector3i] = []
 	var words_read := PackedStringArray()
-	var own_end: int = LdrModel.main_end(text) if not lines_read.is_empty() else 0
-	for m: int in lines_read.size():
-		spans.append(_line_at(text, lines_read[m], twins[m], own_end))
-		words_read.append(_words(said[m]))
-	# Each light kept as it was keeps its line: the first line after the last
-	# so kept whose light is the same. A light changed takes a line read whose
-	# light is gone, between the lights round it; one added follows the light
-	# before it.
-	var own := PackedInt32Array()
-	own.resize(count)
-	own.fill(-1)
-	var used: Dictionary = {}
+	for light: Dictionary in said:
+		words_read.append(_words(light))
+	var out := PackedStringArray()
 	var last: int = -1
-	for n: int in count:
+	for n: int in mini(lights.size(), MOST):
 		var words: String = _words(lights[n])
-		for m: int in range(last + 1, lines_read.size()):
-			if spans[m].x >= 0 and not used.has(m) and words_read[m] == words:
-				own[n] = m
-				used[m] = true
+		var line: String = META + JSON.stringify(lights[n])
+		for m: int in range(last + 1, mini(lines_read.size(), words_read.size())):
+			if words_read[m] == words:
+				line = lines_read[m]
 				last = m
 				break
-	## A line read -> the lines written in its place: an Array, which is
-	## appended to where it is (a packed array read out is a copy).
-	var into: Dictionary = {}
-	var first := PackedStringArray()        ## those before every line read
-	var at: int = -1
-	var placed: bool = false
-	for n: int in count:
-		var line: String = META + JSON.stringify(lights[n])
-		if own[n] >= 0:
-			at = own[n]
-			line = lines_read[at]
-		else:
-			var upper: int = lines_read.size()
-			for k: int in range(n + 1, count):
-				if own[k] >= 0:
-					upper = own[k]
-					break
-			for m: int in range(at + 1, upper):
-				if spans[m].x >= 0 and not used.has(m):
-					used[m] = true
-					at = m
-					break
-		if at < 0:
-			first.append(line)
-			continue
-		if not into.has(at):
-			into[at] = []
-		(into[at] as Array).append(line)
-		placed = true
-	if placed:
-		(into[at] as Array).append_array(Array(adding))
-	else:
-		first.append_array(adding)
-	var eol: String = LdrModel.eol_of(text)
-	var pieces := PackedStringArray()
-	var from: int = 0
-	var trim: bool = false
-	for m: int in lines_read.size():
-		var span: Vector3i = spans[m]
-		if span.x < 0:
-			continue
-		pieces.append(text.substr(from, span.x - from))
-		var here := PackedStringArray()
-		if not first.is_empty():
-			here = first
-			first = PackedStringArray()
-		here.append_array(PackedStringArray(into.get(m, [])))
-		# Its own line end, "" for the text's last line when it had none.
-		var ending: String = text.substr(span.y, span.z - span.y)
-		trim = here.is_empty() and ending.is_empty()
-		if not here.is_empty():
-			pieces.append(eol.join(here) + ending)
-		from = span.z
-	pieces.append(text.substr(from))
-	var out: String = "".join(pieces)
-	if trim and from >= text.length():
-		# The text's last line taken out: the line end before it goes too.
-		out = out.trim_suffix("\n").trim_suffix("\r")
-	# No line read is there (the text written whole): after the model's first.
-	return LdrModel.into_main(out, first)
-
-
-## Where the [param twin]th line after the first that is [param line] whole
-## is in [param text] before [param before]: its start, its end before its
-## line end, and where the next line starts; x -1 when it is not there.
-static func _line_at(text: String, line: String, twin: int, before: int) -> Vector3i:
-	var from: int = 0
-	var count: int = 0
-	while true:
-		var at: int = text.find(line, from)
-		if at < 0 or at >= before:
-			return Vector3i(-1, -1, -1)
-		var end: int = at + line.length()
-		var starts: bool = at == 0 or text[at - 1] == "\n"
-		var ends: bool = end == text.length() or text[end] == "\n" \
-			or (text[end] == "\r" and (end + 1 == text.length() or text[end + 1] == "\n"))
-		if starts and ends:
-			if count == twin:
-				var next: int = text.find("\n", end)
-				return Vector3i(at, end, text.length() if next < 0 else next + 1)
-			count += 1
-		from = at + 1
-	return Vector3i(-1, -1, -1)
+		out.append(line)
+	return out
 
 
 ## [param light] in words to compare, as a file keeps it: -0 written as 0.

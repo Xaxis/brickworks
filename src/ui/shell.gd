@@ -3472,16 +3472,24 @@ func page_setup(fields: Dictionary) -> String:
 		style.erase("cover_lost")
 		sheet.change(style)
 		words = "the page style \"%s\"" % name
+	# A picture given under a name the file has another page's picture by
+	# (a sub-model's page, a later build's words kept as written): one of its
+	# own. Up to metalines the model's new picture behind its pages took the
+	# name, and the sub-model's pages showed it at the next open, their own
+	# lost (booklook2).
+	var others: PackedStringArray = store.pictures_in_file() if store != null else PackedStringArray()
 	if given.has("picture_data"):
 		var named: String = str(given.get("picture", BookletSheet.PICTURE_NAME + ".jpg")).to_lower()
 		if not named.begins_with(BookletLooks.IMAGE_PREFIX):
 			named = BookletSheet.PICTURE_NAME + "." + named.get_extension()
+		named = BookletSheet.free_name(named, others, [was.picture, was.cover_picture])
 		pictures[named] = str(given["picture_data"])
 		given["picture"] = named
 	# booklook: the cover's picture of the person's own, named as it is.
 	if given.has("cover_picture_data"):
 		var named: String = str(given.get("cover_picture", BookletSheet.COVER_NAME + ".jpg")).to_lower()
 		named = BookletSheet.COVER_NAME + "." + ("png" if named.get_extension() == "png" else "jpg")
+		named = BookletSheet.free_name(named, others, [was.picture, was.cover_picture])
 		pictures[named] = str(given["cover_picture_data"])
 		given["cover_picture"] = named
 	for field: String in ["usual", "style", "save_as", "picture_data", "remove_style",

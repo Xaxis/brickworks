@@ -48,50 +48,56 @@ const COMMAND := "saved_view_"
 
 
 ## The views [param text] keeps, in its order, as [method written_into] wrote
-## them (the file's coordinates). A line this cannot read is passed over, and
-## a name kept twice is the first one's. Only the main model's lines, as
-## LdrModel reads which model a line is of (LdrModel.main_span): a
-## sub-model's views are its own, and stay in it.
+## them (the file's coordinates).
 static func read(text: String) -> Array:
+	return read_from(MetaIndex.of_text(text))
+
+
+## The views the model's own lines keep (MetaIndex: a sub-model's views are
+## its own, and stay in it), in their order, each line read taken. A line
+## this cannot read, a newer build's say, and a name kept twice after the
+## first, are not taken: they stay in the file as they are, where they are
+## (MetaIndex.lines_for), and are said ([method unread_words]). Up to
+## metalines a save left them out, unsaid.
+static func read_from(metas: MetaIndex) -> Array:
 	var out: Array = []
-	if not text.contains(META):
-		return out
 	var taken: Dictionary = {}
-	for line: String in text.substr(0, LdrModel.main_end(text)).split("\n"):
-		if not line.begins_with(META):
-			continue
-		var view: Dictionary = _parsed(line.substr(META.length()).strip_edges())
+	for line: MetaIndex.Line in metas.own(["VIEW"]):
+		var view: Dictionary = _parsed(line.said)
 		if view.is_empty() or taken.has(_key(view["name"])):
 			continue
 		taken[_key(view["name"])] = true
+		line.taken = true
 		out.append(view)
 	return out
 
 
-## [param text] with [param views] (the file's coordinates) written into it
-## after its main model's first line (LdrModel.into_main), in their order,
-## each ending as the text's lines do, and any its main model had taken out;
-## with none, only taken out. A sub-model's lines are left as they are: up
-## to 2026-11-07 a view kept in one was moved into the main model at the
-## first save (lreview).
-static func written_into(text: String, views: Array) -> String:
-	if views.is_empty() and not text.contains(META):
-		return text
-	# The main model's lines, and its sub-models' after them as they are.
-	var end: int = LdrModel.main_end(text)
-	var kept := PackedStringArray()
-	var all: PackedStringArray = text.substr(0, end).split("\n")
-	for line: String in all:
-		if not line.begins_with(META):
-			kept.append(line)
-	var out: String = "\n".join(kept)
-	# The text's last line taken out: the line end before it goes too.
-	if end == text.length() and not all.is_empty() and all[all.size() - 1].begins_with(META):
-		out = out.trim_suffix("\r")
+## The lines [param views] (the file's coordinates) are kept on, in their
+## order.
+static func lines_of(views: Array) -> PackedStringArray:
 	var lines := PackedStringArray()
 	for view: Dictionary in views:
 		lines.append(META + JSON.stringify(view))
-	return LdrModel.into_main(out + text.substr(end), lines)
+	return lines
+
+
+## [param unread], view lines an open could not read, in words for where an
+## open says what it kept: "1 view line not read, kept in the file as it
+## is"; "" for none.
+static func unread_words(unread: PackedStringArray) -> String:
+	if unread.is_empty():
+		return ""
+	return "1 view line not read, kept in the file as it is" if unread.size() == 1 \
+		else "%d view lines not read, kept in the file as they are" % unread.size()
+
+
+## [param text] with [param views] (the file's coordinates) written into it
+## (MetaIndex): each its main model has that says one kept where it is, the
+## rest under its first line, and any it had that is not one taken out. A
+## sub-model's lines are left as they are: up to 2026-11-07 a view kept in
+## one was moved into the main model at the first save (lreview).
+static func written_into(text: String, views: Array) -> String:
+	return MetaIndex.written(text, [MetaIndex.family(["VIEW"], lines_of(views))])
 
 
 ## [param views] as the window holds them, in the file's coordinates: the

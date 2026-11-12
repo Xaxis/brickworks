@@ -342,6 +342,15 @@ func _as_sections(text: String) -> String:
 	var name: String = (own_title if not own_title.is_empty() else "model").to_snake_case()
 	while sections.has(LdrModel._key(name)) and LdrModel._key(name) != main_key:
 		name += "_"
+	# Its "0 Name:" the name its FILE line gives it, as LDraw has them: up to
+	# metalines one named apart from a section of the file's kept the
+	# section's name there (sf2check, named_like.mpd).
+	var head: int = text.find("\n\n")
+	var named: int = text.find("\n0 Name: ")
+	if named >= 0 and (head < 0 or named < head):
+		var end: int = text.find("\n", named + 1)
+		text = text.substr(0, named + 1) + "0 Name: %s.ldr" % name \
+			+ (text.substr(end) if end >= 0 else "")
 	return "0 FILE %s.ldr\n%s%s0 NOFILE\n" % [name, text, "" if text.ends_with("\n") else "\n"]
 
 
@@ -483,12 +492,24 @@ func header() -> PackedStringArray:
 	var span: Array = sections[main_key]
 	for n: int in range(int(span[0]), mini(int(span[1]), int(span[0]) + 40)):
 		var line: String = lines[n].strip_edges()
-		if line.begins_with("1 ") or _is_step(line):
-			break
-		for kept: String in ["0 Author:", "0 !LICENSE", "0 !LDRAW_ORG", "0 !HISTORY",
-				"0 !THEME", "0 !CATEGORY", "0 !KEYWORDS", "0 !HELP"]:
-			if line.begins_with(kept):
-				out.append(line)
+		# Its words read as LDraw reads them, any spaces and tabs between
+		# (metalines: "0\tAuthor:" was not the author).
+		var words: PackedStringArray = LdrModel._fields(line)
+		if words.is_empty() or words[0] == "1" or _is_step(line):
+			if not words.is_empty():
+				break
+			continue
+		if words.size() < 2 or words[0] != "0":
+			continue
+		# And LDCad's groups, which the parts written whole are not in but
+		# the file named: up to metalines the definitions went (sf2check).
+		if words[1] == "!LDCAD" and words.size() > 2 and words[2] == "GROUP_DEF":
+			out.append(line)
+			continue
+		for kept: String in ["Author:", "!LICENSE", "!LDRAW_ORG", "!HISTORY",
+				"!THEME", "!CATEGORY", "!KEYWORDS", "!HELP"]:
+			if words[1].begins_with(kept):
+				out.append(line if words[1] != "Author:" else "0 Author: " + " ".join(words.slice(2)))
 				break
 	return out
 
@@ -1089,7 +1110,8 @@ func _step_lines(section: String, step: int) -> Array:
 
 
 static func _is_step(line: String) -> bool:
-	var words: PackedStringArray = line.strip_edges().split(" ", false)
+	# Any run of spaces and tabs between the words, as LDraw reads them.
+	var words: PackedStringArray = LdrModel._fields(line.strip_edges())
 	return words.size() >= 2 and words[0] == "0" \
 		and (words[1].to_upper() == "STEP" or words[1].to_upper() == "ROTSTEP")
 

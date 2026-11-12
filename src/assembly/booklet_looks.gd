@@ -525,6 +525,16 @@ static func change(world: BrickWorld, name: String, change: Dictionary) -> Array
 			look[field] = value
 			if field == "turn":
 				look.erase("line")
+			# A step named as one of its other name lines says: that line is
+			# its name now, and not another. Up to metalines it stayed in
+			# "name_more", and the name was written twice (sncheck N1).
+			if field == "name" and look.has("name_more"):
+				var more: Array = (look["name_more"] as Array).filter(func(line: Variant) -> bool:
+					return name_of(_rest_after(str(line).strip_edges(), 3)) != name_of(value))
+				if more.is_empty():
+					look.erase("name_more")
+				else:
+					look["name_more"] = more
 	if look.is_empty():
 		world.step_looks.erase(name)
 	else:
@@ -993,8 +1003,9 @@ static func _went_to(then: Dictionary, now: Dictionary, taken: Dictionary, step:
 ## on as it was, when it came after the last; between two, as many on from
 ## where the step before it went, while no step holds parts there. -1 when
 ## none is left for it: the edit numbered the steps round it again and the
-## steps either side are neighbours now (AuthorSteps._tidy), or every part
-## of the section went. Up to 2026-11-09 every such look went at any step
+## steps either side are neighbours now, or every part of the section went.
+## A part moved on past it leaves it where it was (AuthorSteps._tidy keeps
+## the file's own empty steps, metalines). Up to 2026-11-09 every such look went at any step
 ## edit (snreview).
 static func _empty_to(then: Dictionary, now: Dictionary, step: int) -> int:
 	if then == now:
@@ -2084,23 +2095,16 @@ static func _typed_words(value: Variant) -> Variant:
 
 ## Whether [param text] has any of the lines these are written as.
 static func _written_in(text: String) -> bool:
-	if text.contains("ROTSTEP") or text.contains("rotstep") \
-			or text.contains("0 !DATA " + IMAGE_PREFIX):
-		return true
-	for word: String in WORDS:
-		if text.contains(META + word):
-			return true
-	# A line with tabs between its fields says it as well (pullkept).
-	if text.contains("\t"):
-		for line: String in text.split("\n"):
-			if not line.contains("\t"):
-				continue
-			var words: PackedStringArray = LdrModel._fields(line)
-			if words.size() >= 3 and words[0] == "0" and (words[1].to_upper() == "!BRICKWORKS"
-					and words[2] in WORDS or words[1].to_upper() == "!DATA"
-					and words[2].to_lower().begins_with(IMAGE_PREFIX)):
-				return true
-	return false
+	return written_in(MetaIndex.of_text(text))
+
+
+## Whether the text [param metas] read has any of the lines these are
+## written as: a ROTSTEP, a page's picture, a line of the app's of the
+## booklet's words, in any section and with any spaces and tabs between its
+## words (pullkept). Read off the one reading of the text: up to metalines
+## each of the words was a search of the whole text, a big model's every save.
+static func written_in(metas: MetaIndex) -> bool:
+	return metas.rotsteps > 0 or not metas.pictures.is_empty() or metas.has_anywhere(WORDS)
 
 
 ## [param text], a model written out, with [param looks] in it: each step's
@@ -2147,6 +2151,10 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 	var block: Array = []
 	## The step's name lines so far, settled at its end: [index in out, raw].
 	var pending: Array = []
+	## The step's other look lines so far, as the file has them, each kept
+	## where it is when the step's look says it still: [index in out, raw]
+	## ([method _place_lines]).
+	var placed: Array = []
 	for raw: String in lines:
 		var line: String = raw.strip_edges()
 		if skipping:
@@ -2159,7 +2167,7 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 		var keyword: String = words[1].to_upper() if words.size() >= 2 else ""
 		if keyword in ["FILE", "NOFILE", "!DATA"]:
 			if section_open or (first_file and any_part):
-				_close_section(out, looks, definition, step, any_part, eol, wrote, pending)
+				_close_section(out, looks, definition, step, any_part, eol, wrote, pending, placed)
 				if not section_open:
 					# The model's own lines, in a file of no FILE lines, are done.
 					first_file = false
@@ -2180,6 +2188,7 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 				any_part = false
 			out.append(raw)
 			pending.clear()
+			placed.clear()
 			continue
 		# After a NOFILE, until the next FILE: in no step, as read reads it.
 		if not section_open and not first_file:
@@ -2193,12 +2202,18 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 			elif words[2] == "STEP_NAME":
 				pending.append([out.size(), raw])
 				out.append(raw)
+			else:
+				placed.append([out.size(), raw])
+				out.append(raw)
 			continue
 		if keyword == "STEP" or keyword == "ROTSTEP":
 			_settle_names(out, pending, looks, key(definition, step), eol, wrote)
 			# Settled once: the next step's are its own.
 			pending.clear()
-			_step_lines(out, looks, definition, step, any_part, eol, wrote)
+			var said := PackedStringArray()
+			_step_lines(said, looks, definition, step, any_part, eol, wrote)
+			_place_lines(out, placed, said, out.size())
+			placed.clear()
 			out.append(_ending(raw, looks, definition, step + 1, eol))
 			step += 1
 			any_part = false
@@ -2211,7 +2226,7 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 			any_part = true
 		out.append(raw)
 	if section_open or first_file:
-		_close_section(out, looks, definition, step, any_part, eol, wrote, pending)
+		_close_section(out, looks, definition, step, any_part, eol, wrote, pending, placed)
 	# The name lines settled out of the steps go (_settle_names).
 	if out.has(_DROPPED):
 		var kept := PackedStringArray()
@@ -2290,6 +2305,67 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 	return "\n".join(out)
 
 
+## A step's look lines [param said] ([method _step_lines], each ending as
+## the file's lines do) into [param out], the file's lines, where the step
+## had [param had] ([index in out, the line as the file has it]): a line the
+## file has that says the same stays as it is, where it is; one it has that
+## the look no longer says goes; a new one goes in the place of one gone
+## between its neighbours, else after the one before it, else before the
+## one after it, else at [param end], the step's end, where every one went
+## up to metalines. Up to then each was written again at the step's end,
+## so a file's ZOOM above its STEP_NAME moved below it at a save with
+## nothing changed (hscheck), its spaces and tabs lost.
+static func _place_lines(out: PackedStringArray, had: Array, said: PackedStringArray,
+		end: int) -> void:
+	var had_clean := PackedStringArray()
+	for entry: Array in had:
+		had_clean.append(MetaIndex.clean(str(entry[1])))
+	var said_clean := PackedStringArray()
+	for line: String in said:
+		said_clean.append(MetaIndex.clean(line))
+	var keep: PackedInt32Array = MetaIndex.aligned(had_clean, said_clean)
+	var stays_as := PackedInt32Array()
+	stays_as.resize(said.size())
+	stays_as.fill(-1)
+	for i: int in had.size():
+		if keep[i] >= 0:
+			stays_as[keep[i]] = i
+		else:
+			out[int(had[i][0])] = _DROPPED
+	var put: Array = []     ## [where in out, order, line]
+	var used: Dictionary = {}
+	var last: int = -1
+	var after: int = -1
+	for j: int in said.size():
+		if stays_as[j] >= 0:
+			last = stays_as[j]
+			after = int(had[last][0]) + 1
+			continue
+		var upto: int = had.size()
+		for k: int in range(j + 1, said.size()):
+			if stays_as[k] >= 0:
+				upto = stays_as[k]
+				break
+		var slot: int = -1
+		for i: int in range(last + 1, upto):
+			if keep[i] < 0 and not used.has(i):
+				slot = i
+				break
+		if slot >= 0:
+			used[slot] = true
+			last = slot
+			out[int(had[slot][0])] = said[j]
+			after = int(had[slot][0]) + 1
+			continue
+		var where: int = after if after >= 0 else (int(had[upto][0]) if upto < had.size() else end)
+		put.append([where, j, said[j]])
+	# From the last place back, so each place is still where it was.
+	put.sort_custom(func(a: Array, b: Array) -> bool:
+		return int(a[0]) > int(b[0]) or (int(a[0]) == int(b[0]) and int(a[1]) > int(b[1])))
+	for entry: Array in put:
+		out.insert(int(entry[0]), str(entry[2]))
+
+
 ## [param block], lines each ending as the file's do, put into [param out]
 ## (a file's lines split at "\n") at [param at]: the one way the lines
 ## said in more than one place go in (a section's end, the model's head,
@@ -2358,6 +2434,8 @@ static func _settle_names(out: PackedStringArray, pending: Array, looks: Diction
 		if not placed:
 			if said[index] == named:
 				placed = true
+				# Its name now, so not one of its other lines (sncheck N1).
+				more.erase(str(pending[index][1]).trim_suffix("\r"))
 			elif said.slice(index + 1).has(named):
 				out[at] = _DROPPED
 			else:
@@ -2377,7 +2455,8 @@ static func _settle_names(out: PackedStringArray, pending: Array, looks: Diction
 ## ending it, said before the trailing blank lines, with a line to end it
 ## where it is turned.
 static func _close_section(out: PackedStringArray, looks: Dictionary, definition: String,
-		step: int, any_part: bool, eol: String, wrote: Dictionary, pending: Array = []) -> void:
+		step: int, any_part: bool, eol: String, wrote: Dictionary, pending: Array = [],
+		placed: Array = []) -> void:
 	_settle_names(out, pending, looks, key(definition, step), eol, wrote)
 	pending.clear()
 	# Before the lines that end the section: blank ones, and "0" alone, which
@@ -2397,7 +2476,8 @@ static func _close_section(out: PackedStringArray, looks: Dictionary, definition
 			and not wrote.has(definition + "|*"):
 		extra.append(META + "CALLOUT OFF" + eol)
 		wrote[definition + "|*"] = true
-	_put_lines(out, trailing, extra)
+	_place_lines(out, placed, extra, trailing)
+	placed.clear()
 
 
 ## The app's own lines for one step, before the line that ends it. A

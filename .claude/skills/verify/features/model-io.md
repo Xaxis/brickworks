@@ -149,6 +149,31 @@ Whether what you built is still there tomorrow, and still means the same thing.
   light before it (`SceneLights.written_with`), in a patch as in (B), and a
   sub-model's light lines are kept with its section's lines. The share,
   set bin and trace lines `ModelStore._write` adds pass through the same.
+  Every `0 !BRICKWORKS` line is found and written by one layer since
+  metalines (2026-11-11; `src/parts/meta_index.gd`, `MetaIndex`): the
+  text read once (each such line by section and word, any case of FILE,
+  any spaces and tabs, the file's line end, each section's title and head),
+  each feature reading only its own lines of the model's own section
+  (`*.read_from`) and marking those it took; every writer gives its lines
+  as a family (`ModelStore._meta_families`) and `MetaIndex.write` keeps the
+  file's line, byte for byte, where one says the same (its words one space
+  apart, its JSON as what it says), changes one in place, puts a new one
+  after the one before it, and writes back where it was each line no
+  reader could read (`MetaIndex.lines_for`: a later build's VIEW, a refused
+  MOTION_KEY between its neighbours), every line ended as the file's are.
+  A step's look lines stay where the file has them in their step
+  (`BookletLooks._place_lines`); a file's own empty step is kept through a
+  step edit (`AuthorSteps._tidy`); a page picture given the model's default
+  name while a sub-model's page has one of it takes a free name
+  (`BookletSheet.free_name`). `metalines_probe` (headless, 13 cases, each
+  red on its base 7bce03d88; `METALINES_CASES=a,b`, `METALINES_OUT=DIR`
+  keeps every save) opens each fixture of `src/dev/fixtures/metalines/`
+  over MCP, edits it by the feature owning the line, saves by the bar, over
+  MCP and by Save As, opens and saves again: a later build's view kept and
+  said, 30 CRLF saves with no line ending LF alone, a sub-model's picture
+  and lines its own, an empty step kept, a step named once, an open undone
+  with its unread light, no TITLE or FLOOR GRID added to an unedited save,
+  tabs read, the castle's whole write timed (`METALINES_CASTLE_MS_PER_MB`).
   A part of a mirrored copy agrees with its line only as it was opened (an
   edit to one is (B)); a step edit moves the lines of the parts it moved to
   the end of their new steps, and one that leaves a step of the file with

@@ -102,27 +102,31 @@ static func set_into(material: ShaderMaterial, plane: Plane, shape: CutShape) ->
 ## [param text] with the cut [param scheme] says written into it, and any it
 ## had taken out; with an empty scheme, only taken out.
 static func written_into(text: String, scheme: Dictionary) -> String:
-	var lines: PackedStringArray = text.split("\n")
-	var kept := PackedStringArray()
-	for line: String in lines:
-		if not line.begins_with(META):
-			kept.append(line)
-	if scheme.is_empty():
-		return "\n".join(kept)
-	# Under the model's title, in its own section: after an .mpd's first
-	# line, its 0 FILE, it stood above the title (copyfaults).
-	return LdrModel.into_main("\n".join(kept), PackedStringArray([META + JSON.stringify(scheme)]))
+	# Under the model's title, in its own section (MetaIndex): after an .mpd's
+	# first line, its 0 FILE, it stood above the title (copyfaults).
+	return MetaIndex.written(text, [MetaIndex.family(["CUT_AWAY"],
+		PackedStringArray([META + JSON.stringify(scheme)]) if not scheme.is_empty()
+		else PackedStringArray())])
 
 
 ## The cut [param text] keeps, as [method written_into] was given it; empty
 ## when it keeps none, or one this cannot read.
 static func read(text: String) -> Dictionary:
-	var at: int = text.find(META)
-	if at < 0:
-		return {}
-	var end: int = text.find("\n", at)
-	var raw: Variant = JSON.parse_string(text.substr(at + META.length(),
-		(end if end >= 0 else text.length()) - at - META.length()).strip_edges())
+	return read_from(MetaIndex.of_text(text))
+
+
+## The cut the model's own lines keep (MetaIndex), the first that reads,
+## taken; empty for none.
+static func read_from(metas: MetaIndex) -> Dictionary:
+	var found: Variant = metas.first_read("CUT_AWAY", func(said: String) -> Variant:
+		var cut: Dictionary = _parsed(said)
+		return cut if not cut.is_empty() else null)
+	return found if found != null else {}
+
+
+## The cut a line says after its word, or empty for one this cannot read.
+static func _parsed(words: String) -> Dictionary:
+	var raw: Variant = JSON.parse_string(words)
 	if not (raw is Dictionary):
 		return {}
 	var said: Dictionary = raw

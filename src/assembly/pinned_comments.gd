@@ -105,17 +105,20 @@ static func pin_from(given: Variant) -> Pin:
 
 ## The pins a model's text carries. On any thread.
 static func read(text: String) -> PinnedComments:
+	return read_from(MetaIndex.of_text(text))
+
+
+## The pins the model's own lines carry (MetaIndex: a sub-model's PIN is its
+## own, and stays in it, whatever its id), each line read taken. One this
+## cannot read, and a second of one id, stay in the file as they are.
+static func read_from(metas: MetaIndex) -> PinnedComments:
 	var out := PinnedComments.new()
-	if not text.contains(META):
-		return out
 	var seen: Dictionary = {}
-	for raw: String in text.split("\n"):
-		var line: String = raw.strip_edges()
-		if not line.begins_with(META.strip_edges()):
-			continue
-		var pin: Pin = pin_from(JSON.parse_string(line.substr(META.length() - 1).strip_edges()))
+	for line: MetaIndex.Line in metas.own(["PIN"]):
+		var pin: Pin = pin_from(JSON.parse_string(line.said))
 		if pin != null and not seen.has(pin.id):
 			seen[pin.id] = true
+			line.taken = true
 			out.list.append(pin)
 	out._order()
 	return out
@@ -135,34 +138,12 @@ func lines(world: BrickWorld, lift: Vector3) -> PackedStringArray:
 	return out
 
 
-## [param text] with [param pin_lines] in the head of its main model, after
-## its motions and its floor where it has them, in place of any pin lines it
-## had: written the same every time, so a model saved twice is one file.
+## [param text] with [param pin_lines] in the head of its main model
+## (MetaIndex.HEAD: after its motions and its floor), in place of any pin
+## lines it had, each it had kept where it is: written the same every time,
+## so a model saved twice is one file. A sub-model's are its own.
 static func written_into(text: String, pin_lines: PackedStringArray) -> String:
-	if pin_lines.is_empty() and not text.contains(META):
-		return text
-	var kept := PackedStringArray()
-	for line: String in text.split("\n"):
-		if not line.begins_with(META):
-			kept.append(line)
-	if pin_lines.is_empty():
-		return "\n".join(kept)
-	var at: int = -1
-	for n: int in kept.size():
-		if kept[n].begins_with(Motions.META) or kept[n].begins_with(ModelFloor.META):
-			at = n + 1
-	if at < 0:
-		at = kept.size()
-		for n: int in kept.size():
-			var line: String = kept[n].strip_edges()
-			if n > 0 and (line.is_empty() or line.begins_with("1 ") or line.begins_with("0 FILE")
-					or line == "0 STEP" or line.to_upper().begins_with("0 ROTSTEP")):
-				at = n
-				break
-	var head: PackedStringArray = kept.slice(0, at)
-	head.append_array(pin_lines)
-	head.append_array(kept.slice(at))
-	return "\n".join(head)
+	return MetaIndex.written(text, [MetaIndex.family(["PIN"], pin_lines, MetaIndex.HEAD)])
 
 
 ## [param pin]'s part here: the one it is on while that is still its part,
