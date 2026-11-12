@@ -4318,7 +4318,9 @@
       "entry": "supabase/play.sql",
       "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/play.sql --dry --try=tools/play_try.sql --table=shared_models   (the words held together by tests/test_play.py; the card in web/gallery.js; api/share.js checkMoves)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_live_ab.py"
+      ]
     },
     {
       "id": "lib:who modelled a shared model",
