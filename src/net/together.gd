@@ -1055,6 +1055,10 @@ func _queue(changes: Dictionary) -> void:
 	var pins: Dictionary = {}
 	for key: String in changes:
 		if key.begins_with("~") and not _carried_here(key):
+			# Kept here alone ([method _drop_unknown]). Up to 2026-11-11 an
+			# undo found no state of it before the step and put none: undoing
+			# a Make took the sub-model's lights out of this side's own file.
+			_confirm(key, changes[key])
 			continue
 		if key.begins_with(PIN_KEY):
 			pins[key] = changes[key]
@@ -1183,13 +1187,17 @@ func _drop_unknown(named: String) -> bool:
 		return false
 	var kind: String = named.substr(0, named.find(":") + 1) if named.contains(":") else named
 	var dropped: bool = false
-	for n: int in range(_pending.size() - 1, _in_flight - 1, -1):
+	for n: int in range(_in_flight, _pending.size()):
 		var changes: Dictionary = (_pending[n] as Dictionary)["changes"]
 		for key: String in changes.keys():
 			if key.begins_with(kind):
+				# Kept here alone from now: as it is here is as the session has
+				# it, so an undo puts back what it was here (_was).
+				_confirm(key, changes[key])
 				changes.erase(key)
 				dropped = true
-		if changes.is_empty():
+	for n: int in range(_pending.size() - 1, _in_flight - 1, -1):
+		if ((_pending[n] as Dictionary)["changes"] as Dictionary).is_empty():
 			_pending.remove_at(n)
 	if not dropped:
 		return false
