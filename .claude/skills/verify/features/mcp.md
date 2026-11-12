@@ -1036,7 +1036,11 @@ All of these are in `tools/check.sh`.
   sub-model it changed then follow in the same step
   (`CommandSocket._copies_follow`, `Assemblies.after_edit`; before copyfaults2
   a session's edit was recorded after after_edit had run, so no twin
-  followed it). The socket's own tools too:
+  followed it). The answer is counted again once they have followed
+  (`Assistant.recounted`): "Done. 3 bricks now; 1 other copy of its
+  sub-assembly followed it." where it said "4 bricks now" of the 3 a removal
+  from one of two copies left (cffix2; `copyfaults_probe` twin_every checks
+  every session edit's count). The socket's own tools too:
   review_model with a feature lays a piece, save_model can hand the next
   feature back laid, and clear_model begins a new model as New does, its one
   step putting the old one back. That step is the clear's own

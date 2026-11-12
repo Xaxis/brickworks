@@ -3164,6 +3164,7 @@ func _stop(ok: bool, summary: String) -> void:
 ## one is (see [method _feature_brief]).
 func _run_tool(block: Dictionary) -> Variant:
 	follow_renumbering()
+	_done_said = ""
 	var before: int = world.brick_count() if world != null else 0
 	var answer: Variant = await _tool_answer(block)
 	if str(block.get("name", "")) == "find_techniques":
@@ -3568,9 +3569,9 @@ func _tool_answer(block: Dictionary) -> Variant:
 			_edited = true
 			progress.emit("changed it: %d bricks%s"
 				% [edited.placements.size(), _shorthand_used(args)])
-			var said: String = "Done. %d bricks now." % edited.placements.size()
-			if past_count():
-				said = "Done. %s." % parts_said().replace(" parts,", " bricks now,")
+			var said: String = _done_words(edited.placements.size()) + "."
+			_done_said = said
+			_done_count = edited.placements.size()
 			if not _made_said.is_empty():
 				said += " " + _made_said
 			if not _unknown.is_empty():
@@ -3583,7 +3584,11 @@ func _tool_answer(block: Dictionary) -> Variant:
 			if not resting.is_empty():
 				said += "\n" + resting
 			if scoped:
+				var had: int = world.brick_count()
 				var words: String = _gather_focus_step(standing_was)
+				# Counted as the copies that followed it left the model, which
+				# the words after it name.
+				said = str(recounted(said, focus.followed, world.brick_count() - had, false))
 				# What held is known for the edit as it landed; copies that
 				# followed it are new parts, and asked about afresh.
 				_hanging_before = [world.revision] + _hanging_after \
@@ -23206,6 +23211,49 @@ func _gather_focus_step(was: Dictionary) -> String:
 	builder.selection = focus.ids.duplicate()
 	builder.selection_changed.emit(builder.selection.size())
 	return words
+
+
+## How an edit's reply opens, with [param count] bricks: "Done. 4 bricks
+## now", or the count against the brief's.
+func _done_words(count: int) -> String:
+	if past_count():
+		return "Done. %s" % parts_said().replace(" parts,", " bricks now,")
+	return "Done. %d bricks now" % count
+
+
+## The sentence the last edit's reply opened with ([method _done_words]) and
+## its count, for [method recounted]; "" once said again, and from the start
+## of every other call.
+var _done_said: String = ""
+var _done_count: int = 0
+
+
+## [param answer], the reply to an edit, opening with its count as the model
+## stands once [param followed] other copies of a sub-assembly took the edit
+## too, which put down [param more] parts more than it took off. The follow
+## comes after the reply is made (CommandSocket._one_step): a session's
+## removal of one copy's 3010 took the other's too, and the reply said "Done.
+## 4 bricks now." of the 3 left (pc2check). [param named] says that they
+## followed, where nothing after it does. Read once: [member _done_said] is
+## let go.
+func recounted(answer: Variant, followed: int, more: int, named: bool = true) -> Variant:
+	var head: String = _done_said
+	_done_said = ""
+	if followed <= 0 or head.is_empty():
+		return answer
+	var now: String = _done_words(_done_count + more) + ("; %d other cop%s of its "
+		% [followed, "y" if followed == 1 else "ies"] + "sub-assembly followed it."
+		if named else ".")
+	if answer is String and (answer as String).begins_with(head):
+		return now + (answer as String).substr(head.length())
+	if answer is Array and not (answer as Array).is_empty() and (answer as Array)[0] is Dictionary \
+			and str((answer as Array)[0].get("text", "")).begins_with(head):
+		var blocks: Array = (answer as Array).duplicate()
+		var first: Dictionary = (blocks[0] as Dictionary).duplicate()
+		first["text"] = now + str(first["text"]).substr(head.length())
+		blocks[0] = first
+		return blocks
+	return answer
 
 
 ## The answer to an edit about the selection: what it changed, and the
