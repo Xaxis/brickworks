@@ -58,7 +58,9 @@ preview failed, in its battery or by turns, is judged: it holds the release
 only where the preview's mean is past live's by more than the noise, the
 wider of the two sides' spreads (max - min of their runs) and at least 2% of
 the bar; a FAIL line with no figure, only where the preview failed it in
-more runs than live; a measure live never printed, always. Otherwise the
+more runs than live; a measure live never printed, always; and the whole
+check, when no measure was timed on both sides (runs that could not start
+fail alike, and are no load: a worktree with no `node_modules`). Otherwise the
 release ships past it, failing there as much or not at all, as `--accept`
 does, with no reason needed: `<tag>_accepted`, the train's log and status
 say both sides' numbers, and so does a commit on top of the merge, which

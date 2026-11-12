@@ -621,8 +621,9 @@ The second line: `7 passed`. The judge reads each timing check's real lines
 frames, progress's rows by their own work) with their bars and steady keys;
 rel-m287's P L L P ships past (`noise 594 ... no worse`), a preview clearly
 worse holds, one over the bar alike ships, a measure live never printed or
-a step failed only on the preview holds, and no finished run on one side
-holds; deploy_reads says a commit of words alone on a build stands for it.
+a step failed only on the preview holds, no finished run on one side
+holds, and runs that timed nothing on either side (playwright missing in a
+worktree) hold; deploy_reads says a commit of words alone on a build stands for it.
 
 Proves it when: `33 passed`, in about 95 s, and 8 copies at once all pass
 (about 56 s each); the killed-train test passes 1000 runs of 16 at once at

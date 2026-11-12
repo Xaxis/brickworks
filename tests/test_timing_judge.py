@@ -98,13 +98,19 @@ def test_a_preview_clearly_worse_holds_and_one_over_the_bar_alike_ships():
 def test_what_cannot_be_compared_holds():
     battery = tj.read_log(_log(_opens(3324)), 1)
     # brickworks.diy never printed the measure (its build lacks what the check does).
-    bare = ("L", 1, tj.read_log(_log("  FAIL  the link went on to the viewer with its motion: /m/x?motion=y"), 1))
+    bare = ("L", 1, tj.read_log(_log(PLAY_DRAG.format(31), "  FAIL  the link went on to the viewer with its motion: "
+                                      "/m/x?motion=y"), 1))
     held, lines = tj.judge(battery, [_run("P", 2000), bare, bare, _run("P", 2100)])
     assert not held and "brickworks.diy never printed it" in lines[1], lines
     # A step that failed on the preview only, counted.
     step = ("P", 1, tj.read_log(_log(_opens(2000), "  FAIL  its button lit, and the pill says how to stop it: \"undefined\""), 1))
     held, lines = tj.judge(battery, [step, _run("L", 2000), _run("L", 2100), _run("P", 2000)])
     assert not held and any(line.endswith("failed 1 of 2, 0 of 2: worse") for line in lines), lines
+    # Runs that timed nothing anywhere, failing alike: a flow that could not
+    # start (no node_modules in a worktree) is no load.
+    crash = tj.read_log("Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'playwright'\nNode.js v24.21.0", 1)
+    held, lines = tj.judge(battery, [("P", 1, crash), ("L", 1, crash), ("L", 1, crash), ("P", 1, crash)])
+    assert not held and lines[0].startswith("holds: no measure was timed on both sides"), lines
     # No run on one side finished: the live database stayed busy each time (exit 75).
     busy = ("L", 75, [])
     held, lines = tj.judge(battery, [_run("P", 2000), busy, busy, _run("P", 2100)])

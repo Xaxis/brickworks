@@ -23,10 +23,12 @@ the noise: its mean past live's by more than the wider of the two sides'
 spreads (their runs' max - min), and by at least 2% of the bar (of live's
 mean, with no bar), so that two sides failing alike by a hair are alike; a
 counted line, failed in more of the preview's runs than live's; a measure
-live never printed, always. One run a side is luck:
-rel-m287's play held twice on the phone's 3000 ms bar, 3324 and 3685 against
-live's 1267 and 1953, and played P L L P P L the preview was no slower (2511
-vs 2809 ms mean); live failed the same bar in 1 run of 3 (2026-11-11).
+live never printed, always; and the whole check, when no measure was timed
+on both sides (runs that could not start fail alike, and are no load). One
+run a side is luck: rel-m287's play held twice on the phone's 3000 ms bar,
+3324 and 3685 against live's 1267 and 1953, and played P L L P P L the
+preview was no slower (2511 vs 2809 ms mean); live failed the same bar in 1
+run of 3 (2026-11-11).
 
 Prints the verdict ("ships past: ..." or "holds: ..."), then a line a
 measure judged; exits 0 to ship past, 1 to hold, 2 when it cannot read.
@@ -141,6 +143,12 @@ def judge(battery: list[Line], runs: list[tuple[str, int, list[Line]]]) -> tuple
     for side in ("P", "L"):
         if not sides[side].runs:
             return False, ["holds: no run on %s finished, so there is nothing to compare" % SIDES[side]]
+    # Runs that timed nothing on one side or the other measured nothing: a
+    # flow that could not start (a worktree with no node_modules) fails on
+    # both alike, and is no load.
+    if not any(l.values.get(key) for key in p.values):
+        return False, ["holds: no measure was timed on both sides, so there is nothing to compare (%d runs on "
+                       "the preview, %d on brickworks.diy)" % (p.runs, l.runs)]
     first = {line.key: line.value for line in battery if line.value is not None}
     out, worse = [], []
     for key in order:
