@@ -255,8 +255,36 @@ export function sitePages({ remote = "" } = {}) {
         }
         return [];
       } },
+    // The owner's console (web/admin.html, docs/ADMIN.md): each section at
+    // its address, the account's panel opened from People, signed in as the
+    // owner; signed out, the gate.
     { name: "admin", path: "/admin", admin: true,
-      ready: (page, { signedIn }) => (signedIn ? until(page, () => !document.querySelector("#view")?.classList.contains("hide")) : true) },
+      ready: (page, { signedIn }) => (signedIn ? until(page, () => !document.getElementById("view")?.hidden
+        && document.querySelectorAll("#needs li").length > 0) : true) },
+    { name: "admin-people", path: "/admin#people", admin: true, signedInOnly: true,
+      ready: (page) => until(page, () => document.querySelectorAll("#people tr[data-account]").length > 0),
+      open: async (page) => {
+        await page.click("#people tr[data-account] th a");
+        const opened = await until(page, () => document.querySelector("dialog.sheet[open] .facts"));
+        return [[opened ? "account" : "account (missing)", "dialog.sheet"]];
+      } },
+    { name: "admin-gallery", path: "/admin#gallery/reported", admin: true, signedInOnly: true,
+      ready: (page) => until(page, () => document.querySelectorAll("#reports tr").length > 0) },
+    { name: "admin-challenges", path: "/admin#gallery/challenges", admin: true, signedInOnly: true,
+      ready: (page) => until(page, () => document.querySelectorAll("#challenges tr").length > 0) },
+    { name: "admin-beta", path: "/admin#beta", admin: true, signedInOnly: true,
+      ready: (page) => until(page, () => document.querySelectorAll("#apps li.app").length > 0) },
+    { name: "admin-testers", path: "/admin#beta/testers", admin: true, signedInOnly: true,
+      ready: (page) => until(page, () => document.querySelectorAll("#testers tr.tester").length > 0) },
+    { name: "admin-feedback", path: "/admin#feedback", admin: true, signedInOnly: true,
+      ready: (page) => until(page, () => document.querySelectorAll("#fb-list > li").length > 0) },
+    { name: "admin-audit", path: "/admin#audit", admin: true, signedInOnly: true,
+      ready: (page) => until(page, () => document.querySelectorAll("#audit tr").length > 0),
+      open: async (page) => {
+        await page.click("#audit tr button");
+        const opened = await until(page, () => document.querySelector("dialog.sheet[open] dl"));
+        return [[opened ? "act" : "act (missing)", "dialog.sheet"]];
+      } },
     // The beta's hub (web/beta.html): a tester's, with what we know is
     // wrong, signed in; signed out, Sign up and join's dialog, as a person
     // opens it.
@@ -268,8 +296,6 @@ export function sitePages({ remote = "" } = {}) {
         const opened = await until(page, () => document.querySelector("dialog.sign-in[open]"));
         return [[opened ? "sign in" : "sign in (missing)", "dialog.sign-in"]];
       } },
-    { name: "beta-admin", path: "/beta-admin", admin: true,
-      ready: (page, { signedIn }) => (signedIn ? until(page, () => document.getElementById("view")?.hidden === false) : true) },
     { name: "authorize", path: AUTHORIZE,
       ready: (page) => until(page, () => [...document.querySelectorAll("main section")].some((s) => !s.classList.contains("hide"))) },
     // The review sign-in (web/review.html), signed out: the form.

@@ -1,746 +1,521 @@
-// The admin page's half: the app's session in this browser (web/account.js),
-// /api/admin asked with it, and what comes back drawn. See admin.html.
+// The owner's console (admin.html, docs/ADMIN.md): the session in this
+// browser (web/account.js), /api/admin asked with it, and each section
+// drawn when it is opened. This file is the console itself: its gate, its
+// sections and their addresses, the Overview, People with an account's
+// panel, and the Audit log. The Gallery is admin-gallery.js, the Beta
+// admin-beta.js, Feedback admin-feedback.js.
 //
-// Everything is put on the page as text, never as markup: the list is of
-// addresses people typed, and an address is not something to let a
-// browser interpret.
-import { signedIn, token as tabToken } from "/account.js";
+// Everything is put on the page as text, never as markup: the addresses,
+// names and words are what people typed.
+import { email as signedInAs } from "/account.js";
+import { $, TESTS, act, adminJson, ago, cell, count, day, emptyRow, make, post, resort, rowAct, say, segmented, sift, sortable, timeCell,
+  when }
+  from "/admin-kit.js";
+import { keepInView, loadGallery, whenChanged as galleryChanged } from "/admin-gallery.js";
+import { loadBeta, whenChanged as betaChanged } from "/admin-beta.js";
+import { loadFeedback } from "/admin-feedback.js";
 // Its tables scroll as every scroller on the site does; it has no kit.
 import "/scroller.js";
 
-const $ = (id) => document.getElementById(id);
+const SECTIONS = ["overview", "people", "gallery", "beta", "feedback", "audit"];
+const TABS = { gallery: ["reported", "comments", "listed", "pick", "challenges", "tested", "barred"],
+  beta: ["applications", "testers"] };
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function say(where, text, bad = false) {
-  const el = $(where);
-  el.textContent = text;
-  el.classList.toggle("bad", bad);
+/// Where the address points: {section, tab, account, asked}.
+function route() {
+  const hash = location.hash.slice(1);
+  if (/^report-\d+$/.test(hash)) return { section: "gallery", tab: "reported", asked: hash };
+  if (/^comment-\d+$/.test(hash)) return { section: "gallery", tab: "comments", asked: hash };
+  if (/^feedback(-\d+)?$/.test(hash)) return { section: "feedback" };
+  const [section, rest = ""] = hash.split("/");
+  if (section === "people") return { section, account: UUID.test(rest) ? rest.toLowerCase() : null };
+  if (TABS[section]) return { section, tab: TABS[section].includes(rest) ? rest : TABS[section][0] };
+  return { section: SECTIONS.includes(section) ? section : "overview" };
 }
 
-/// An access token for the app's kept session: the tab's, as every page
-/// has it (web/account.js), renewed once an hour and not on every call. A
-/// renewal for each call took three of Supabase's renewals for one End it
-/// now, and the page said the sign-in had ended when one was refused.
-async function accessToken() {
-  if (!signedIn()) throw new Error("You are not signed in to Brickworks in this browser.");
-  const access = await tabToken();
-  if (!access) throw new Error("Your sign-in has ended. Sign in to Brickworks again.");
-  return access;
-}
+// Each section read once it is first opened, and again on Refresh.
+const loaders = {
+  overview: () => loadOverview(),
+  people: () => loadPeople(),
+  gallery: () => loadGallery(),
+  beta: () => loadBeta(),
+  feedback: () => loadFeedback(),
+  audit: () => loadAudit(),
+};
+const loaded = new Set();
 
-// /admin?tests=1: the flows' test challenges too (supabase/challenges.sql),
-// and one set here is a test one, which only a page asked with tests=1 shows.
-const TESTS = new URLSearchParams(location.search).get("tests") === "1" ? "tests=1" : "";
-
-// The token the page was last drawn with, for the photos it shows: renewing
-// replaces the refresh token, so it is not renewed once per photo.
-let drawnWith = "";
-
-async function load() {
-  const token = await accessToken();
-  drawnWith = token;
-  const reply = await fetch(`/api/admin${TESTS ? `?${TESTS}` : ""}`, { headers: { authorization: `Bearer ${token}` } });
-  if (reply.status === 404) {
-    // What every account but the owner's sees. Said plainly here, because
-    // the person reading it is the one signed in.
-    throw new Error("This account cannot see this page.");
+async function show() {
+  const at = route();
+  for (const part of document.querySelectorAll("[data-section]")) part.hidden = part.dataset.section !== at.section;
+  for (const go of document.querySelectorAll("[data-go]")) {
+    if (go.dataset.go === at.section) go.setAttribute("aria-current", "true");
+    else go.removeAttribute("aria-current");
   }
-  if (!reply.ok) throw new Error(`The server said ${reply.status}.`);
-  return reply.json();
-}
-
-const when = (iso) => iso
-  ? new Date(iso).toLocaleString(undefined, {
-    year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
-  })
-  : "—";
-
-function cell(row, text, className) {
-  const td = document.createElement("td");
-  td.textContent = text;
-  if (className) td.className = className;
-  row.append(td);
-}
-
-function draw(data) {
-  $("n-accounts").textContent = data.accounts.toLocaleString();
-  $("n-week").textContent = data.signed_in_this_week.toLocaleString();
-  $("n-connectors").textContent = data.connectors.toLocaleString();
-
-  const borrowing = data.email?.borrowing;
-  $("email-warning").classList.toggle("hide", !borrowing);
-  if (borrowing) {
-    $("email-detail").textContent =
-      `${data.email.sender} is not verified with Resend, so codes are sent as `
-      + `${borrowing}. Verify brickworks.diy with Resend (a key with domain `
-      + `access, and the DNS records it issues), then remove EMAIL_FROM_FALLBACK `
-      + `from the project.`;
-  }
-
-  const rows = $("people");
-  rows.replaceChildren();
-  for (const person of data.people) {
-    const row = document.createElement("tr");
-    cell(row, person.email ?? "no address", person.email ? "" : "faint");
-    cell(row, when(person.joined));
-    cell(row, when(person.last_sign_in));
-    cell(row, String(person.connectors), "n");
-    cell(row, when(person.connector_seen), person.connector_seen ? "" : "faint");
-    rows.append(row);
-  }
-
-  // The gallery: names strangers chose, so text and never markup.
-  const listed = $("gallery");
-  listed.replaceChildren();
-  for (const model of data.gallery || []) {
-    const row = document.createElement("tr");
-    const name = document.createElement("td");
-    name.className = "model";
-    const link = document.createElement("a");
-    link.href = `/m/${encodeURIComponent(model.id)}`;
-    link.textContent = model.name;
-    name.append(link);
-    row.append(name);
-    cell(row, model.author ?? "nobody", model.author ? "" : "faint");
-    cell(row, model.email ?? "—", model.email ? "" : "faint");
-    cell(row, Number(model.parts).toLocaleString(), "n");
-    cell(row, when(model.listed_at));
-    const act = document.createElement("td");
-    act.className = "acts";
-    const out = document.createElement("button");
-    out.textContent = "Take out";
-    out.addEventListener("click", () => takeOut(model, out));
-    act.append(out);
-    if (data.picks) act.append(pickButton(model.id, model.name));
-    row.append(act);
-    listed.append(row);
-  }
-  say("gallery-note", data.gallery?.length ? "" : "Nothing is listed.");
-
-  drawPicks(data.picks);
-  drawChallenges(data.challenges);
-  drawYear(data.challenges, data.year === true);
-
-  // Marked Tested: the app's finding, to clear when it should not be there.
-  const tested = $("tested");
-  tested.replaceChildren();
-  for (const mark of data.tested || []) {
-    const row = document.createElement("tr");
-    const name = document.createElement("td");
-    name.className = "model";
-    const link = document.createElement("a");
-    link.href = `/m/${encodeURIComponent(mark.model)}`;
-    link.textContent = mark.name || mark.model;
-    name.append(link);
-    row.append(name);
-    cell(row, String(mark.n), "n");
-    cell(row, String(mark.app));
-    cell(row, Number(mark.parts).toLocaleString(), "n");
-    cell(row, Number(mark.steps).toLocaleString(), "n");
-    cell(row, when(mark.at));
-    const act = document.createElement("td");
-    const clear = document.createElement("button");
-    clear.textContent = "Clear the mark";
-    clear.addEventListener("click", () => confirm(`Clear the Tested mark of version ${mark.n}?`)
-      && post(`op=untest&id=${encodeURIComponent(mark.model)}&v=${encodeURIComponent(mark.n)}`,
-        "tested-note", "Cleared: it is not marked Tested anywhere now."));
-    act.append(clear);
-    row.append(act);
-    tested.append(row);
-  }
-  say("tested-note", data.tested?.length ? "" : "Nothing is marked Tested.");
-
-  // What was reported: strangers' words again, so text and never markup.
-  const reports = $("reports");
-  reports.replaceChildren();
-  for (const report of data.reports || []) {
-    const row = document.createElement("tr");
-    // Where the owner's email of reports links each one (api/_trust.js).
-    if (Number.isInteger(report.id)) row.id = `report-${report.id}`;
-    cell(row, when(report.at));
-    const about = document.createElement("td");
-    about.className = "model";
-    const link = document.createElement("a");
-    if (report.comment) {
-      // A comment: its words, and the model it is on.
-      link.href = `/m/${encodeURIComponent(report.model)}#comment-${encodeURIComponent(report.comment.id)}`;
-      link.textContent = `A comment on ${report.name ?? report.model}`;
-    } else if (report.photo) {
-      // A photo of a build (supabase/builds.sql): the photo itself, asked for
-      // with the owner's sign-in, since it may be hidden from everybody else.
-      row.dataset.photo = report.photo.id;
-      link.href = `/m/${encodeURIComponent(report.model)}#photo-${encodeURIComponent(report.photo.id)}`;
-      link.textContent = `A photo of a build of ${report.name ?? report.model}`;
-      const said = [report.photo.words ? `“${report.photo.words}”` : "", report.photo.hidden ? "hidden by the model's owner" : "",
-        report.photo.email ? `posted by ${report.photo.email}` : ""].filter(Boolean).join(" · ");
-      if (said) {
-        const line = document.createElement("small");
-        line.className = "faint photo-said";
-        line.textContent = said;
-        about.append(line, document.createElement("br"));
-      }
-      if (!report.photo.removed) about.prepend(photoOf(report.photo.id), document.createElement("br"));
-    } else if (report.model) {
-      link.href = `/m/${encodeURIComponent(report.model)}`;
-      link.textContent = report.name ?? report.model;
-    } else if (report.handle) {
-      link.href = `/u/${encodeURIComponent(report.handle)}`;
-      link.textContent = `@${report.handle}`;
-      // The picture the profile shows as its avatar, if one of its own
-      // (supabase/avatars.sql), to look at before taking it out.
-      if (/^\/api\/people\?op=avatar&id=[A-Za-z0-9]{10}$/.test(String(report.picture || ""))) {
-        const img = document.createElement("img");
-        img.className = "reported-photo reported-avatar";
-        img.alt = "The picture this profile shows as its avatar";
-        img.width = 96;
-        img.height = 96;
-        img.src = report.picture;
-        row.dataset.picture = report.handle;
-        about.append(img, document.createElement("br"));
-      }
-    } else {
-      link.href = `/c/${encodeURIComponent(report.collection)}`;
-      link.textContent = `collection ${report.collection}`;
+  const part = document.querySelector(`[data-section="${at.section}"]`);
+  if (at.tab) {
+    for (const tab of part.querySelectorAll("[data-tab]")) tab.hidden = tab.dataset.tab !== at.tab;
+    for (const to of part.querySelectorAll("[data-tab-link]")) {
+      if (to.dataset.tabLink === at.tab) to.setAttribute("aria-current", "true");
+      else to.removeAttribute("aria-current");
     }
-    about.append(link);
-    if (report.comment && report.comment.body) {
-      const words = document.createElement("q");
-      words.className = "comment-said";
-      words.textContent = report.comment.body;
-      about.append(document.createElement("br"), words);
+  }
+  document.title = `${part.querySelector("h2")?.textContent || "Console"} · Console · Brickworks`;
+  if (!loaded.has(at.section)) {
+    loaded.add(at.section);
+    await loaders[at.section]().catch((problem) => {
+      loaded.delete(at.section);
+      say("note", problem.message, true);
+    });
+  }
+  if (at.asked && !show.kept) {
+    const row = document.getElementById(at.asked);
+    if (row) {
+      show.kept = true;
+      keepInView(row);
     }
-    row.append(about);
-    cell(row, report.reason);
-    cell(row, report.note ?? "—", report.note ? "said" : "faint");
-    cell(row, report.contact ?? "—", report.contact ? "" : "faint");
-    cell(row, report.email ?? "—", report.email ? "" : "faint");
-    const acts = document.createElement("td");
-    acts.className = "acts";
-    if (report.comment) {
-      acts.append(act("Remove the comment", () => confirm("Take this comment off its page for good?")
-        && post(`op=uncomment&comment=${encodeURIComponent(report.comment.id)}`, "reports-note", "The comment is removed.")));
-    } else if (report.photo) {
-      acts.append(act("Take the photo out", () => confirm("Take this photo out? Its file is deleted, and it is shown nowhere again.")
-        && post(`op=remove_photo&photo=${encodeURIComponent(report.photo.id)}`, "reports-note",
-          "The photo is out, and its file deleted.")));
-    } else if (report.handle && report.picture) {
-      acts.append(act("Take the picture out", () => confirm("Take this profile's picture out? Its file is deleted, "
-        + "and its avatar is made from its handle again.")
-        && post(`op=remove_avatar&handle=${encodeURIComponent(report.handle)}`, "reports-note",
-          "The picture is out, and its file deleted.")));
-    } else if (report.model) {
-      acts.append(act("Take out", () => confirm(`Take this model out of the gallery for good?`)
-        && post(`op=unlist&id=${encodeURIComponent(report.model)}`, "reports-note", "Taken out.")));
-      acts.append(act("Take out the account", () => confirm("Take every model of this account out of the gallery, and keep them out?")
-        && post(`op=bar&id=${encodeURIComponent(report.model)}`, "reports-note", "The account is out.")));
-    }
-    acts.append(act("Let it go", () => post(`op=dismiss&report=${encodeURIComponent(report.id)}`, "reports-note", "Let go.")));
-    row.append(acts);
-    reports.append(row);
   }
-  say("reports-note", data.reports?.length ? "" : "Nothing is reported.");
-  // Opened from that email: the report it named, marked (and put in view
-  // once the page shows, by refresh).
-  const named = /^#report-\d+$/.test(location.hash) ? document.getElementById(location.hash.slice(1)) : null;
-  if (named) {
-    named.classList.add("asked");
-  } else if (/^#report-\d+$/.test(location.hash)) {
-    say("reports-note", "The report that email named is no longer open: it was settled.");
-  }
-
-  // Comments: strangers' words, so text and never markup.
-  const comments = $("comments");
-  comments.replaceChildren();
-  for (const one of data.comments || []) {
-    const row = document.createElement("tr");
-    row.id = `comment-${one.id}`;
-    cell(row, when(one.at));
-    const on = document.createElement("td");
-    on.className = "model";
-    const link = document.createElement("a");
-    link.href = `/m/${encodeURIComponent(one.model)}#comment-${encodeURIComponent(one.id)}`;
-    link.textContent = one.name ?? one.model;
-    on.append(link, document.createTextNode(`${one.step ? `, step ${one.step} of version ${one.version}`
-      : `, version ${one.version}`}${one.parent ? ", a reply" : ""}`));
-    row.append(on);
-    cell(row, one.body, "said");
-    cell(row, one.handle ? `@${one.handle}` : one.email ?? "—", one.handle || one.email ? "" : "faint");
-    cell(row, one.removed ? `removed by ${one.removed_by === "admin" ? "you" : "its author"}`
-      : one.hidden ? "hidden by its builder" : one.edited_at ? "edited" : "shown", one.removed ? "faint" : "");
-    const acts = document.createElement("td");
-    acts.className = "acts";
-    if (!one.removed) {
-      acts.append(act("Remove", () => confirm("Take this comment off its page for good?")
-        && post(`op=uncomment&comment=${encodeURIComponent(one.id)}`, "comments-note", "Removed.")));
-    }
-    row.append(acts);
-    comments.append(row);
-  }
-  say("comments-note", data.comments?.length ? "" : "Nobody has commented yet.");
-
-  const barred = $("barred");
-  barred.replaceChildren();
-  for (const one of data.barred || []) {
-    const row = document.createElement("tr");
-    cell(row, one.email ?? one.account);
-    cell(row, when(one.at));
-    cell(row, one.reason ?? "—", one.reason ? "" : "faint");
-    const acts = document.createElement("td");
-    acts.append(act("Let back in", () => post(`op=unbar&account=${encodeURIComponent(one.account)}`, "barred-note", "Let back in.")));
-    row.append(acts);
-    barred.append(row);
-  }
-  say("barred-note", data.barred?.length ? "" : "Nobody is taken out.");
-}
-
-/// A reported photo, small, fetched with the owner's sign-in and shown from
-/// memory (a blob: address, which this page's policy allows).
-function photoOf(id) {
-  const img = document.createElement("img");
-  img.className = "reported-photo";
-  img.alt = "The reported photo";
-  img.width = 160;
-  (async () => {
-    try {
-      const reply = await fetch(`/api/admin?op=photo&photo=${encodeURIComponent(id)}`,
-        { headers: { authorization: `Bearer ${drawnWith}` } });
-      if (!reply.ok) throw new Error(String(reply.status));
-      img.src = URL.createObjectURL(await reply.blob());
-    } catch {
-      img.alt = "The photo could not be shown";
-    }
-  })();
-  return img;
-}
-
-/// Make it the pick (api/admin.js ?op=pick), for a week.
-function pickButton(id, name) {
-  return act("Make it the pick", () => confirm(`Make "${name}" this week's pick, for seven days?`)
-    && post(`op=pick&id=${encodeURIComponent(id)}&days=7`, "pick-note", `"${name}" is this week's pick.`));
-}
-
-/// This week's pick: what visitors see now, the choices still open, and
-/// the week worked out. Names strangers chose, so text and never markup.
-function drawPicks(picks) {
-  const now = $("pick-now");
-  now.replaceChildren();
-  const said = document.createElement("span");
-  if (!picks) {
-    said.className = "note";
-    said.textContent = "Not open yet: supabase/discovery.sql is not applied.";
-    now.append(said);
-  } else if (!picks.now || !picks.now.model) {
-    said.textContent = "No pick this week: nothing in the gallery was built, remixed or listed Tested in the past seven days.";
-    now.append(said);
-  } else {
-    const link = document.createElement("a");
-    link.href = `/m/${encodeURIComponent(picks.now.model.id)}`;
-    link.textContent = picks.now.model.name;
-    const week = picks.now.week || {};
-    said.textContent = picks.now.chosen ? ` — chosen, until ${when(picks.now.until)}` : ` — worked out: built ${
-      week.builds || 0} this week, remixed ${week.remixes || 0}${week.tested ? ", Tested" : ""} (score ${week.score || 0})`;
-    const lead = document.createElement("b");
-    lead.textContent = "Visitors see ";
-    now.append(lead, link, said);
-    now.dataset.model = picks.now.model.id;
-    now.dataset.chosen = picks.now.chosen ? "yes" : "no";
-  }
-  const choices = $("choices");
-  choices.replaceChildren();
-  for (const one of picks?.choices || []) {
-    const row = document.createElement("tr");
-    row.dataset.pick = String(one.pick);
-    row.dataset.model = String(one.model);
-    const name = document.createElement("td");
-    name.className = "model";
-    const link = document.createElement("a");
-    link.href = `/m/${encodeURIComponent(one.model)}`;
-    link.textContent = one.name || one.model;
-    name.append(link);
-    row.append(name);
-    cell(row, when(one.chosen_at));
-    cell(row, when(one.until));
-    cell(row, one.shown ? "yes" : one.test ? "no: a test account's" : "no: not in the gallery now", one.shown ? "" : "faint");
-    const acts = document.createElement("td");
-    acts.append(act("End", () => post(`op=unpick&pick=${encodeURIComponent(one.pick)}`, "pick-note",
-      "Ended: back to the pick worked out.")));
-    row.append(acts);
-    choices.append(row);
-  }
-  const week = $("week");
-  week.replaceChildren();
-  for (const one of picks?.week || []) {
-    if (!one.model) continue;
-    const row = document.createElement("tr");
-    const name = document.createElement("td");
-    name.className = "model";
-    const link = document.createElement("a");
-    link.href = `/m/${encodeURIComponent(one.model.id)}`;
-    link.textContent = one.model.name;
-    name.append(link);
-    row.append(name);
-    cell(row, String(one.week?.builds ?? 0), "n");
-    cell(row, String(one.week?.remixes ?? 0), "n");
-    cell(row, one.week?.tested ? "yes" : "no", one.week?.tested ? "" : "faint");
-    cell(row, String(one.week?.score ?? 0), "n");
-    const acts = document.createElement("td");
-    acts.append(pickButton(one.model.id, one.model.name));
-    row.append(acts);
-    week.append(row);
-  }
-  if (picks && !(picks.week || []).length && !(picks.choices || []).length) {
-    say("pick-note", "Nothing chosen, and nothing in the past seven days to work one out from.");
-  }
-}
-
-const DAY = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
-const dayOf = (iso) => DAY.format(new Date(`${String(iso).slice(0, 10)}T00:00:00Z`));
-
-/// The challenges, the ones not yet ended first and then the ended ones,
-/// the one that ended last first (supabase/challenge_list_order.sql), each with its entries, votes and winners,
-/// and End it now on one not ended. Titles the owner typed, names strangers
-/// chose: text, never markup.
-function drawChallenges(list) {
-  const rows = $("challenges");
-  rows.replaceChildren();
-  const form = $("challenge-form");
-  form.hidden = list === null;
-  if (list === null || list === undefined) {
-    say("challenge-note", "");
-    const row = document.createElement("tr");
-    cell(row, "Not open yet: supabase/challenges.sql is not applied.", "faint");
-    rows.append(row);
-    return;
-  }
-  for (const one of list) {
-    const row = document.createElement("tr");
-    row.dataset.challenge = String(one.id);
-    row.dataset.state = one.state;
-    cell(row, `${one.title}${one.test ? " (a test's)" : ""}`, "model");
-    cell(row, `${dayOf(one.starts_on)} to ${dayOf(one.ends_on)}`);
-    const rules = [];
-    if (one.rules?.most_parts) rules.push(`at most ${Number(one.rules.most_parts).toLocaleString()} parts`);
-    if (one.rules?.set_number) rules.push(`set ${one.rules.set_number}${one.rules.set_name ? `, ${one.rules.set_name}` : ""}`);
-    if (one.rules?.tested) rules.push("Tested");
-    cell(row, rules.join("; ") || "none", rules.length ? "said" : "faint");
-    // One to come is told to visitors from its announced_at (a year's themes,
-    // supabase/challenge_year.sql), or at once.
-    const told = one.state === "upcoming" && one.announced_at && Date.parse(one.announced_at) > Date.now()
-      ? `, told from ${dayOf(one.announced_at)}` : "";
-    cell(row, one.state === "open" ? "open" : one.state === "upcoming" ? `to come${told}` : "ended");
-    // Each count once there is one: a challenge to come has none yet.
-    for (const way of ["hand", "assistant"]) {
-      const [entered, votes] = [Number(one.entries?.[way]) || 0, Number(one.votes?.[way]) || 0];
-      cell(row, entered ? `${entered} in${votes ? `, ${votes} ${votes === 1 ? "vote" : "votes"}` : ""}` : "—", entered ? "n" : "n faint");
-    }
-    const won = document.createElement("td");
-    won.className = "model";
-    for (const w of one.winners || []) {
-      const link = document.createElement("a");
-      link.href = `/m/${encodeURIComponent(w.model)}`;
-      link.textContent = w.name || w.model;
-      if (won.childElementCount) won.append(document.createElement("br"));
-      won.append(link, document.createTextNode(` (${w.way === "hand" ? "by hand" : "assistant"}, ${w.votes})`));
-    }
-    if (!won.childElementCount) {
-      won.textContent = one.state === "ended" ? (one.settled ? "none" : "counted when shown") : "—";
-      won.classList.add("faint");
-    }
-    row.append(won);
-    const acts = document.createElement("td");
-    acts.className = "acts";
-    if (one.state !== "ended") {
-      acts.append(act("End it now", () => confirm(`End "${one.title}" now? No more entries or votes.`)
-        && post(`op=end_challenge&challenge=${encodeURIComponent(one.id)}${TESTS ? `&${TESTS}` : ""}`, "challenge-note",
-          `"${one.title}" has ended.`)));
-    }
-    row.append(acts);
-    rows.append(row);
-  }
-  if (!list.length) {
-    const row = document.createElement("tr");
-    cell(row, "None set yet.", "faint");
-    rows.append(row);
-  }
-}
-
-const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
-  "November", "December"];
-
-/// Each of the form's days as three dropdowns, day, month and year (this
-/// one and the next), the way the site asks every date (site.css
-/// fieldset.date): each named [date]_day, [date]_month, [date]_year.
-function dateDropdowns() {
-  const year = new Date().getUTCFullYear();
-  for (const set of document.querySelectorAll("#challenge-form fieldset.date")) {
-    const date = set.dataset.date;
-    const words = set.querySelector("legend").textContent;
-    const choose = (part, said, choices) => {
-      const label = document.createElement("label");
-      const hidden = document.createElement("span");
-      hidden.className = "visually-hidden";
-      hidden.textContent = `${words}: ${said.toLowerCase()}`;
-      const select = document.createElement("select");
-      select.name = `${date}_${part}`;
-      select.required = true;
-      // Chosen until a choice is made: else the browser chooses the first.
-      const none = new Option(said, "", true, true);
-      none.disabled = true;
-      none.hidden = true;
-      select.append(none, ...choices.map(([value, text]) => new Option(text, String(value))));
-      label.append(hidden, select);
-      return label;
-    };
-    set.querySelector(".dropdowns").replaceChildren(
-      choose("day", "Day", Array.from({ length: 31 }, (_, at) => [at + 1, String(at + 1)])),
-      choose("month", "Month", MONTHS.map((name, at) => [at + 1, name])),
-      choose("year", "Year", [[year, String(year)], [year + 1, String(year + 1)]]));
-  }
-}
-
-/// [date]'s dropdowns as YYYY-MM-DD, or "" while one is not chosen; a day
-/// the month does not have (31 April) is null.
-function dateOf(form, date) {
-  const [day, month, year] = ["day", "month", "year"].map((part) => Number(form.elements[`${date}_${part}`].value));
-  if (!day || !month || !year) return "";
-  const made = new Date(Date.UTC(year, month - 1, day));
-  if (made.getUTCDate() !== day) return null;
-  return made.toISOString().slice(0, 10);
-}
-
-function setDate(form, date, when) {
-  form.elements[`${date}_day`].value = String(when.getUTCDate());
-  form.elements[`${date}_month`].value = String(when.getUTCMonth() + 1);
-  form.elements[`${date}_year`].value = String(when.getUTCFullYear());
-}
-
-/// The form's first day today and its last the month's last, until changed.
-function datesFirst() {
-  const form = $("challenge-form");
-  const now = new Date();
-  if (!dateOf(form, "starts_on")) setDate(form, "starts_on", now);
-  if (!dateOf(form, "ends_on")) setDate(form, "ends_on", new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)));
+  if (at.section === "people") await person(at.account);
 }
 
 // ---------------------------------------------------------------------------
-// A year of themes (supabase/challenge_year.sql): from a first month, twelve
-// rows, each its month's title and brief; the empty ones skipped.
+// The gate: the overview answers only the owner.
 
-const MONTH_SAID = new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
-
-/// The year's first month, as YYYY-MM: the form's, or the month after the
-/// last day of any challenge not ended, else next month.
-function yearFrom(list) {
-  const form = $("year-form");
-  const month = Number(form.elements.year_from_month?.value);
-  const year = Number(form.elements.year_from_year?.value);
-  if (month && year) return [year, month];
-  const last = (list || []).filter((one) => !one.test === !TESTS && one.state !== "ended").map((one) => String(one.ends_on).slice(0, 10))
-    .sort().pop();
-  const after = last ? new Date(`${last}T00:00:00Z`) : new Date();
-  return [after.getUTCFullYear() + (after.getUTCMonth() === 11 ? 1 : 0), (after.getUTCMonth() + 1) % 12 + 1];
-}
-
-/// The twelve months' rows, from [year]-[month], each its words kept when
-/// the first month changes.
-function yearRows([year, month]) {
-  const box = $("year-months");
-  const kept = [...box.querySelectorAll("fieldset")].map((set) => ({
-    title: set.querySelector("input").value, brief: set.querySelector("textarea").value }));
-  box.replaceChildren(...Array.from({ length: 12 }, (_, at) => {
-    const when = new Date(Date.UTC(year, month - 1 + at, 1));
-    const set = document.createElement("fieldset");
-    set.dataset.month = when.toISOString().slice(0, 7);
-    const legend = document.createElement("legend");
-    legend.textContent = MONTH_SAID.format(when);
-    const title = document.createElement("label");
-    const input = document.createElement("input");
-    input.name = `theme_${at}_title`;
-    input.maxLength = 80;
-    input.value = kept[at]?.title || "";
-    title.append("Title", input);
-    const brief = document.createElement("label");
-    const area = document.createElement("textarea");
-    area.name = `theme_${at}_brief`;
-    area.maxLength = 600;
-    area.rows = 2;
-    area.value = kept[at]?.brief || "";
-    brief.append("The brief", area);
-    set.append(legend, title, brief);
-    return set;
-  }));
-}
-
-/// The year's form: its first month as two dropdowns, and its rows; hidden
-/// with challenges.sql, and saying so before challenge_year.sql.
-function drawYear(list, ready) {
-  const form = $("year-form");
-  form.hidden = list === null || list === undefined;
-  $("year-not-yet").hidden = ready;
-  form.querySelector('button[type="submit"]').disabled = !ready;
-  const set = form.querySelector('fieldset[data-date="year_from"] .dropdowns');
-  if (!set.childElementCount) {
-    const [year, month] = yearFrom(list);
-    const choose = (part, said, choices, value) => {
-      const label = document.createElement("label");
-      const hidden = document.createElement("span");
-      hidden.className = "visually-hidden";
-      hidden.textContent = `The first month: ${said.toLowerCase()}`;
-      const select = document.createElement("select");
-      select.name = `year_from_${part}`;
-      select.append(...choices.map(([v, text]) => new Option(text, String(v), v === value, v === value)));
-      select.addEventListener("change", () => yearRows(yearFrom(list)));
-      label.append(hidden, select);
-      return label;
-    };
-    const now = new Date().getUTCFullYear();
-    set.append(choose("month", "Month", MONTHS.map((name, at) => [at + 1, name]), month),
-      choose("year", "Year", [[now, String(now)], [now + 1, String(now + 1)]], year));
-    yearRows([year, month]);
-  }
-}
-
-$("year-form").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const form = event.currentTarget;
-  const send = form.querySelector('button[type="submit"]');
-  const themes = [...form.querySelectorAll("#year-months fieldset")].map((set) => ({ month: set.dataset.month,
-    title: set.querySelector("input").value.trim(), brief: set.querySelector("textarea").value.trim(),
-    said: set.querySelector("legend").textContent })).filter((one) => one.title || one.brief);
-  if (!themes.length) return say("year-note", "Give at least one month a theme.", true);
-  const half = themes.find((one) => !one.title || !one.brief);
-  if (half) return say("year-note", `${half.said}: give it a title and a brief.`, true);
-  send.disabled = true;
+async function start() {
   try {
-    const token = await accessToken();
-    const reply = await fetch(`/api/admin?op=plan${TESTS ? `&${TESTS}` : ""}`, { method: "POST",
-      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-      body: JSON.stringify({ themes: themes.map(({ month, title, brief }) => ({ month, title, brief })) }) });
-    const said = await reply.json().catch(() => ({}));
-    if (!reply.ok) throw new Error(said.error || `The server said ${reply.status}.`);
-    for (const field of form.querySelectorAll("#year-months input, #year-months textarea")) field.value = "";
-    await refresh();
-    const planned = said.planned || [];
-    say("year-note", `Set: ${planned.length} ${planned.length === 1 ? "theme" : "themes"}, from ${dayOf(planned[0].starts_on)} `
-      + `to ${dayOf(planned[planned.length - 1].ends_on)}. Each is told a month before it opens.`);
-  } catch (problem) {
-    say("year-note", problem.message, true);
-  } finally {
-    send.disabled = false;
-  }
-});
-
-$("challenge-form").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const form = event.currentTarget;
-  const send = form.querySelector('button[type="submit"]');
-  const days = { starts_on: dateOf(form, "starts_on"), ends_on: dateOf(form, "ends_on") };
-  const missing = Object.keys(days).find((date) => !days[date]);
-  if (missing) {
-    const words = form.querySelector(`fieldset[data-date="${missing}"] legend`).textContent.toLowerCase();
-    const month = Number(form.elements[`${missing}_month`].value);
-    const most = new Date(Date.UTC(Number(form.elements[`${missing}_year`].value), month, 0)).getUTCDate();
-    return say("challenge-note", `The ${words} is not on the calendar: ${MONTHS[month - 1]} has ${most} days.`, true);
-  }
-  const body = { title: form.elements.title.value, brief: form.elements.brief.value, ...days, tested: form.tested.checked };
-  if (form.has_most.checked) body.most_parts = Number(form.most_parts.value);
-  if (form.has_set.checked) body.set_number = form.set_number.value;
-  send.disabled = true;
-  try {
-    const token = await accessToken();
-    const reply = await fetch(`/api/admin?op=challenge${TESTS ? `&${TESTS}` : ""}`, { method: "POST",
-      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" }, body: JSON.stringify(body) });
-    const said = await reply.json().catch(() => ({}));
-    if (!reply.ok) throw new Error(said.error || `The server said ${reply.status}.`);
-    form.reset();
-    datesFirst();
-    await refresh();
-    say("challenge-note", `Set, from ${dayOf(said.starts_on)} to ${dayOf(said.ends_on)}${said.set
-      ? `, with set ${said.set.number} (${said.set.name}, ${said.set.lots} lots)` : ""}.`);
-  } catch (problem) {
-    say("challenge-note", problem.message, true);
-  } finally {
-    send.disabled = false;
-  }
-});
-dateDropdowns();
-datesFirst();
-
-function act(words, run) {
-  const button = document.createElement("button");
-  button.textContent = words;
-  button.addEventListener("click", async () => {
-    button.disabled = true;
-    const done = await run();
-    if (!done) button.disabled = false;
-  });
-  return button;
-}
-
-/// One of the owner's acts (api/admin.js), then the page drawn again.
-async function post(query, where, said) {
-  try {
-    const token = await accessToken();
-    const reply = await fetch(`/api/admin?${query}`, { method: "POST", headers: { authorization: `Bearer ${token}` } });
-    // What the server said, in its words when it gave some (a pick refused).
-    if (!reply.ok) throw new Error((await reply.json().catch(() => ({}))).error || `The server said ${reply.status}.`);
-    await refresh();
-    say(where, said);
-    return true;
-  } catch (problem) {
-    say(where, problem.message, true);
-    return false;
-  }
-}
-
-/// Out of the gallery for good (api/admin.js ?op=unlist), asked first.
-async function takeOut(model, button) {
-  if (!confirm(`Take "${model.name}" out of the gallery? Its owner will not be able to list it again.`)) return;
-  button.disabled = true;
-  try {
-    const token = await accessToken();
-    const reply = await fetch(`/api/admin?op=unlist&id=${encodeURIComponent(model.id)}`, {
-      method: "POST", headers: { authorization: `Bearer ${token}` } });
-    if (!reply.ok) throw new Error(`The server said ${reply.status}.`);
-    await refresh();
-    say("gallery-note", `"${model.name}" is out of the gallery.`);
-  } catch (problem) {
-    button.disabled = false;
-    say("gallery-note", problem.message, true);
-  }
-}
-
-// The report an email named, kept in view while the page above it settles:
-// pictures and sections that came in after it was centred pushed it out of
-// view (digest_flow, 2026-10-19). Only until the person scrolls themselves.
-function keepInView(row) {
-  row.scrollIntoView({ block: "center" });
-  let mine = true;
-  const observer = new ResizeObserver(() => { if (mine) row.scrollIntoView({ block: "center" }); });
-  const stop = () => { mine = false; observer.disconnect(); };
-  observer.observe(document.body);
-  for (const kind of ["wheel", "touchstart", "keydown", "mousedown"]) {
-    addEventListener(kind, stop, { once: true, passive: true });
-  }
-  setTimeout(stop, 10000);
-}
-
-async function refresh() {
-  try {
-    draw(await load());
-    $("view").classList.remove("hide");
-    $("gate").classList.add("hide");
-    const asked = document.querySelector("#reports tr.asked");
-    if (asked && !refresh.shown) {
-      refresh.shown = true;
-      keepInView(asked);
-    }
-    say("note", `Updated ${new Date().toLocaleTimeString()}`);
+    await loadOverview();
+    loaded.add("overview");
   } catch (problem) {
     $("view").classList.add("hide");
-    $("gate").classList.remove("hide");
+    $("view").hidden = true;
+    $("gate").hidden = false;
     say("gate-note", problem.message, true);
+    return;
+  }
+  $("gate").hidden = true;
+  $("view").classList.remove("hide");
+  $("view").hidden = false;
+  $("meta-who").textContent = `Signed in as ${signedInAs() || "the owner"}${TESTS ? " · the checks' own (?tests=1)" : ""}`;
+  addEventListener("hashchange", show);
+  await show();
+  say("note", `Updated ${new Date().toLocaleTimeString()}`);
+}
+
+$("again").addEventListener("click", async () => {
+  const at = route().section;
+  $("again").disabled = true;
+  try {
+    await Promise.all([loadOverview(), at === "overview" ? null : loaders[at]()]);
+    if (at === "people" && route().account) await person(route().account, true);
+    say("note", `Updated ${new Date().toLocaleTimeString()}`);
+  } catch (problem) {
+    say("note", problem.message, true);
+  } finally {
+    $("again").disabled = false;
+  }
+});
+
+// After an act elsewhere, the overview's counts again, and the sections
+// that show the same things read afresh when next opened.
+async function changed(except) {
+  for (const one of ["people", "audit", "gallery", "beta"]) if (one !== except) loaded.delete(one);
+  await loadOverview().catch(() => null);
+}
+galleryChanged(() => changed("gallery"));
+betaChanged(() => changed("beta"));
+
+// ---------------------------------------------------------------------------
+// The Overview.
+
+function badge(id, n) {
+  const el = $(id);
+  el.hidden = !n;
+  el.textContent = n ? String(n) : "";
+}
+
+async function loadOverview() {
+  const o = await adminJson({ op: "overview" });
+  const needs = [];
+  const need = (n, words, href, warn = false) => { if (n) needs.push({ n, words, href, warn }); };
+  need(o.reports?.open, o.reports?.open === 1 ? "report open" : "reports open", "#gallery/reported", true);
+  need(o.beta?.applications?.new, o.beta?.applications?.new === 1 ? "application for a month of Pro" : "applications for a month of Pro",
+    "#beta/applications");
+  need(o.feedback?.new, o.feedback?.new === 1 ? "feedback report unread" : "feedback reports unread", "#feedback");
+  need(o.beta?.applications?.pending, o.beta?.applications?.pending === 1 ? "month of Pro still to give" : "months of Pro still to give",
+    "#beta/applications");
+  const failed = (o.mail?.beta?.failed || 0) + (o.mail?.answers?.failed || 0);
+  // Where each is said: a feedback answer's on its report, a beta mail's on its application.
+  need(failed, failed === 1 ? "email that did not go this week" : "emails that did not go this week",
+    o.mail?.answers?.failed ? "#feedback" : "#beta/applications", true);
+  if (o.switches?.mail?.borrowing) needs.push({ n: "!", words: `Sign-in codes go out as ${o.switches.mail.borrowing}, a borrowed sender`, warn: true });
+  $("needs").replaceChildren(...needs.map((one) => {
+    const to = make(one.href ? "a" : "div", "", make("b", "", String(one.n)), make("span", "", one.words));
+    if (one.href) to.href = one.href;
+    return make("li", one.warn ? "warn" : "", to);
+  }));
+  say("needs-said", needs.length ? "What is waiting on you, each a press from where it is done." : "Nothing needs you now.");
+  badge("nav-gallery", o.reports?.open);
+  badge("nav-beta", o.beta?.applications?.new);
+  badge("nav-feedback", o.feedback?.new);
+
+  const a = o.accounts || {};
+  $("n-accounts").textContent = count(a.all);
+  say("n-accounts-said", TESTS ? "the checks' own" : "");
+  $("n-joined-day").textContent = count(a.joined_day);
+  say("n-joined-week", `${count(a.joined_week)} in 7 days`);
+  $("n-week").textContent = count(a.signed_in_week);
+  const pool = o.beta?.pool;
+  $("n-ov-testers").textContent = o.beta?.testers === null || o.beta?.testers === undefined ? "—" : count(o.beta.testers);
+  say("n-ov-months", pool ? `${pool.given} of ${pool.cap} months given` : "");
+  $("n-published").textContent = count(o.models?.published);
+  say("n-published-said", `${count(o.models?.listed)} in the gallery, ${count(o.models?.published_week)} this week`);
+  $("n-reports").textContent = count(o.reports?.open);
+  $("n-feedback").textContent = o.feedback ? count(o.feedback.new) : "—";
+  const sent = o.mail ? (o.mail.beta?.sent || 0) + (o.mail.answers?.sent || 0) : null;
+  $("n-mail").textContent = count(sent);
+  say("n-mail-said", o.mail ? `${failed} did not go; ${(o.mail.beta?.dry || 0) + (o.mail.answers?.dry || 0)} kept for a test inbox. `
+    + "Delivered and bounced: Resend's to say." : "Not counted yet: supabase/console.sql is not applied.");
+  say("stands-said", TESTS ? "The site's checks' own accounts, models and mail (?tests=1)." : "");
+
+  drawSwitches(o.switches);
+  drawLatest(o.audit);
+  return o;
+}
+
+let version = null;
+async function drawSwitches(set) {
+  const facts = $("switches");
+  const fact = (term, ...value) => facts.append(make("dt", "", term), make("dd", "", ...value));
+  facts.replaceChildren();
+  if (!set) return fact("Switches", "could not be read just now");
+  const beta = set.beta;
+  const toBeta = make("a", "", beta.mode === "open" ? "open" : "off");
+  toBeta.href = "#beta";
+  fact("The beta", toBeta, beta.source === "console" ? `, set from the console ${ago(beta.set_at)} by ${beta.set_by}`
+    : `, as the project says (BRICKWORKS_BETA)`);
+  fact("Billing", `${set.billing?.mode || "—"}: changed only outside the console`);
+  fact("Sign-in mail", set.mail?.key ? `sent as ${set.mail.sender}` : "no mail key here: codes and answers are not sent",
+    set.mail?.borrowing ? `; borrowing ${set.mail.borrowing}` : "");
+  if (set.mail?.reply_to) fact("Answers go to", set.mail.reply_to);
+  const services = set.services || {};
+  const NAMES = { database: "the database", mail: "mail (Resend)", admission: "plans (Admission)", orangecheck: "orangecheck",
+    crons: "the crons" };
+  const have = Object.keys(NAMES).filter((one) => services[one]).map((one) => NAMES[one]);
+  const lack = Object.keys(NAMES).filter((one) => !services[one]).map((one) => NAMES[one]);
+  fact("Keys here", have.length ? have.join(", ") : "none", lack.length ? `; none for ${lack.join(", ")}` : "");
+  version ||= await fetch("/version.json", { cache: "no-store" }).then((reply) => (reply.ok ? reply.json() : null)).catch(() => null);
+  fact("This site", version ? `commit ${version.commit}, deployed ${when(version.deployed)} (${ago(version.deployed)})` : "—");
+  say("meta-build", version ? `Commit ${version.commit}, deployed ${ago(version.deployed)}` : "");
+}
+
+// ---------------------------------------------------------------------------
+// The audit's words.
+
+const OPS = { unlist: "Took a model out", bar: "Took an account out", unbar: "Let an account back in", dismiss: "Let a report go",
+  untest: "Cleared a Tested mark", uncomment: "Removed a comment", remove_photo: "Took a photo out",
+  remove_avatar: "Took a profile's picture out", pick: "Made a model the pick", unpick: "Ended a pick",
+  challenge: "Set a challenge", end_challenge: "Ended a challenge", plan: "Set a year of themes",
+  beta_decide: "Decided an application", beta_waitlist: "Put an application on the waitlist",
+  beta_grant: "Gave the months still to give", beta_switch: "Flipped the beta", feedback_triage: "Marked feedback",
+  feedback_reply: "Answered feedback" };
+
+function opSaid(row) {
+  const asked = row.detail?.asked || {};
+  if (row.op === "beta_decide" && asked.decision) return asked.decision === "approve" ? "Approved an application" : "Declined an application";
+  if (row.op === "beta_switch" && asked.mode) return asked.mode === "open" ? "Opened the beta" : "Turned the beta off";
+  return OPS[row.op] || row.op;
+}
+
+/// What an act was on, as a link where it has a place.
+function targetOf(row) {
+  const t = String(row.target ?? "");
+  const to = (href, text) => { const a = make("a", "", text); a.href = href; return a; };
+  switch (row.target_kind) {
+    case "account": return UUID.test(t) ? to(`#people/${t}`, row.email || t) : row.email || t;
+    case "model": return to(`/m/${encodeURIComponent(t)}`, t);
+    case "report": return to(`#report-${encodeURIComponent(t)}`, `report ${t}`);
+    case "comment": return to(`#comment-${encodeURIComponent(t)}`, `comment ${t}`);
+    case "feedback": return to(`#feedback-${encodeURIComponent(t)}`, `feedback #${t}`);
+    case "profile": return to(`/u/${encodeURIComponent(t)}`, `@${t}`);
+    case "setting": return t === "beta" ? `the beta, on ${row.scope === "live" ? "brickworks.diy" : row.scope}` : t;
+    case "challenge": return `challenge ${t}`;
+    case "photo": return `photo ${t}`;
+    case "pick": return `pick ${t}`;
+    default: return t || "—";
   }
 }
 
-$("again").addEventListener("click", refresh);
-refresh();
+function outcome(row) {
+  const ok = row.status >= 200 && row.status < 300;
+  return make("span", ok ? "pill good" : "pill", ok ? "Done" : `Refused, ${row.status}${row.said ? `: ${row.said}` : ""}`);
+}
+
+function drawLatest(rows) {
+  const list = $("latest");
+  list.replaceChildren(...(rows || []).map((row) => {
+    const on = targetOf(row);
+    return make("li", "", make("span", "", `${opSaid(row)}: `, on), make("small", "", `${when(row.at)} · ${row.actor}`), outcome(row));
+  }));
+  $("latest-none").hidden = Boolean(rows?.length);
+  if (rows === null) say("latest-none", "Not kept yet: supabase/console.sql is not applied.");
+}
+
+// ---------------------------------------------------------------------------
+// The Audit log.
+
+let auditRows = [];
+let auditTimer = 0;
+
+$("audit-act").append(...Object.entries(OPS).map(([op, words]) => new Option(words, op)));
+$("audit-act").addEventListener("change", () => loadAudit());
+$("audit-q").addEventListener("input", () => {
+  clearTimeout(auditTimer);
+  auditTimer = setTimeout(() => loadAudit(), 300);
+});
+$("audit-more").addEventListener("click", () => loadAudit(auditRows.at(-1)?.id));
+
+async function loadAudit(before = null) {
+  const query = { op: "audit" };
+  if ($("audit-act").value) query.act = $("audit-act").value;
+  if ($("audit-q").value.trim()) query.q = $("audit-q").value.trim();
+  if (before) query.before = String(before);
+  const listed = await adminJson(query);
+  const body = $("audit");
+  if (!before) {
+    body.replaceChildren();
+    auditRows = [];
+  }
+  auditRows.push(...listed.rows);
+  for (const row of listed.rows) {
+    const tr = make("tr");
+    tr.dataset.audit = String(row.id);
+    tr.dataset.op = row.op;
+    timeCell(tr, row.at);
+    cell(tr, opSaid(row));
+    cell(tr, targetOf(row), "about");
+    cell(tr, outcome(row));
+    cell(tr, row.actor);
+    const acts = make("td", "acts");
+    acts.append(rowAct("Details", async () => { openAct(row); return false; }));
+    tr.append(acts);
+    body.append(tr);
+  }
+  $("audit-more").hidden = !listed.more;
+  const none = $("audit-none");
+  none.hidden = listed.ready !== false && auditRows.length > 0;
+  none.textContent = listed.ready === false ? "Not kept yet: supabase/console.sql is not applied."
+    : query.act || query.q ? "No act like that." : "Nothing done from the console yet.";
+  say("audit-note", auditRows.length ? `${auditRows.length} shown${TESTS ? ", the checks' own" : ""}.` : "");
+}
+
+/// An act's panel: everything kept of it.
+function openAct(row) {
+  const facts = make("dl", "facts");
+  const fact = (term, ...value) => facts.append(make("dt", "", term), make("dd", "", ...value));
+  fact("When", when(row.at));
+  fact("What", `${opSaid(row)} (${row.op})`);
+  fact("On", targetOf(row));
+  fact("Outcome", outcome(row));
+  fact("By", row.actor);
+  fact("Where", row.scope === "live" ? "brickworks.diy" : row.scope || "—");
+  if (row.test) fact("A test's", "yes: done on the checks' own");
+  for (const [part, words] of [["asked", "Asked"], ["said", "Answered"]]) {
+    for (const [name, value] of Object.entries(row.detail?.[part] || {})) fact(`${words}: ${name.replace(/_/g, " ")}`, String(value));
+  }
+  openSheet(`Act ${row.id}`, facts);
+}
+
+// ---------------------------------------------------------------------------
+// People.
+
+let peopleShown = "";
+
+function siftPeople() {
+  const keep = {
+    "": () => true,
+    tester: (row) => row.dataset.beta === "tester",
+    models: (row) => Number(row.dataset.models) > 0,
+    connector: (row) => Number(row.dataset.connectors) > 0,
+    barred: (row) => row.dataset.barred === "yes",
+  }[peopleShown];
+  const n = sift($("people"), $("people-q").value, keep);
+  say("people-note", `${n} of ${$("people").rows.length} shown.`);
+}
+$("people-q").addEventListener("input", siftPeople);
+segmented(document.querySelector('[data-filter="people"]'), (value) => { peopleShown = value; siftPeople(); });
+
+const BETA = { tester: "Tester", left: "Left", not_now: "Not now" };
+
+async function loadPeople() {
+  const listed = await adminJson({ op: "people" });
+  const body = $("people");
+  body.replaceChildren();
+  for (const one of listed.people) {
+    const row = make("tr");
+    row.dataset.account = one.id;
+    row.dataset.beta = one.beta?.state || "";
+    row.dataset.models = String(one.models);
+    row.dataset.connectors = String(one.connectors);
+    row.dataset.barred = one.barred ? "yes" : "no";
+    row.dataset.find = [one.email, one.handle, one.name].filter(Boolean).join(" ");
+    const who = make("th");
+    who.scope = "row";
+    const to = make("a", "", one.email || "no address");
+    to.href = `#people/${one.id}`;
+    who.append(to);
+    if (one.owner) who.append(" ", make("span", "badge accent", "You"));
+    if (one.barred) who.append(" ", make("span", "badge", "Taken out"));
+    if (one.handle) who.append(make("br"), make("small", "faint", `@${one.handle}${one.name ? ` · ${one.name}` : ""}`));
+    who.dataset.value = one.email || "";
+    row.append(who);
+    cell(row, day(one.joined), "line").dataset.value = one.joined || "";
+    const seen = cell(row, one.last_sign_in ? ago(one.last_sign_in) : "never", one.last_sign_in ? "line" : "line faint");
+    seen.dataset.value = one.last_sign_in || "";
+    if (one.last_sign_in) seen.title = when(one.last_sign_in);
+    cell(row, make("span", "", one.plan?.name || "—", one.plan?.said ? make("small", "faint", ` · ${one.plan.said}`) : ""));
+    const app = one.beta?.application;
+    cell(row, one.beta ? `${BETA[one.beta.state] || one.beta.state}${app ? `; month ${app.status}` : ""}` : "—", one.beta ? "" : "faint");
+    const models = cell(row, one.models ? `${one.models}${one.listed ? ` (${one.listed} listed)` : ""}` : "—", one.models ? "n line" : "n faint");
+    models.dataset.value = String(one.models);
+    const tabs = cell(row, one.connectors ? String(one.connectors) : "—", one.connectors ? "n" : "n faint");
+    tabs.dataset.value = String(one.connectors);
+    if (one.connector_seen) tabs.title = `last heard ${when(one.connector_seen)}`;
+    body.append(row);
+  }
+  if (!listed.people.length) emptyRow(body, "Nobody yet.");
+  resort(body.closest("table"));
+  siftPeople();
+  say("people-said", `${TESTS ? "The site's checks' own accounts (?tests=1). " : ""}Everyone with an account, newest sign-in `
+    + `first. Open one for all of it.${listed.beta_known ? "" : " The beta's states are not known here yet."}`);
+}
+
+/// An account whole, in the panel: when the address names one. [told]:
+/// what the act that drew it again came to.
+async function person(account, again = false, told = "") {
+  if (!account) {
+    if ($("sheet").open && $("sheet").dataset.kind === "person") $("sheet").close();
+    return;
+  }
+  if (!again && $("sheet").open && $("sheet").dataset.account === account) return;
+  openSheet("Looking…", make("p", "note", "Reading the account…"), { kind: "person", account });
+  let one;
+  try {
+    one = await adminJson({ op: "person", account });
+  } catch (problem) {
+    return openSheet("No such account", make("p", "note bad", problem.message), { kind: "person", account });
+  }
+  const parts = [];
+  const facts = make("dl", "facts");
+  const fact = (term, ...value) => facts.append(make("dt", "", term), make("dd", "", ...value));
+  fact("Joined", when(one.joined));
+  fact("Last signed in", one.last_sign_in ? `${when(one.last_sign_in)} (${ago(one.last_sign_in)})` : "never");
+  fact("Signs in with", `${one.signs_in_with || "—"}${one.confirmed ? "" : ", address not confirmed"}`);
+  if (one.profile?.handle) {
+    const to = make("a", "", `@${one.profile.handle}`);
+    to.href = `/u/${encodeURIComponent(one.profile.handle)}`;
+    fact("Profile", to, one.profile.name ? ` · ${one.profile.name}` : "");
+  } else {
+    fact("Profile", "none");
+  }
+  const plan = one.plan || {};
+  fact("Plan", plan.name ? `${plan.name}${plan.said ? ` (${plan.said})` : ""}`
+    : `${plan.plan || plan.standing || "—"}${plan.subscription?.status ? `, ${plan.subscription.status}` : ""}`, ` · billing ${one.billing}`);
+  const b = one.beta;
+  fact("Beta", b ? `${BETA[b.state] || b.state || "—"}${b.joined_at ? ` since ${day(b.joined_at)}` : ""}${b.application
+    ? `; month ${b.application.status}${b.application.spot ? `, spot ${b.application.spot}` : ""}` : ""}` : "—");
+  fact("Connectors", one.connectors.length ? `${one.connectors.length}, last heard ${ago(one.connectors.map((c) => c.seen_at).sort().at(-1))}` : "none");
+  if (one.barred) fact("Taken out", `${when(one.barred.at)}${one.barred.reason ? `: ${one.barred.reason}` : ""}`);
+  if (one.test) fact("A test's", "an account of the site's checks (resend.dev)");
+  parts.push(facts);
+
+  // Take out the account, or let it back in.
+  const doing = make("div", "part");
+  const said = make("p", "note", told);
+  said.setAttribute("role", "status");
+  if (!one.owner) {
+    if (one.barred) {
+      doing.append(make("div", "row", act("Let back in", () => post({ op: "unbar", account }, said, "Let back in.",
+        { after: () => afterPerson(account, "Let back in: they can list again.") }))));
+    } else {
+      const reason = make("input");
+      reason.name = "reason";
+      reason.maxLength = 200;
+      const form = make("form", "console-form", make("label", "", "Why ", make("small", "", "for you; kept with it"), reason));
+      form.append(make("div", "row", act("Take out the account", () => (confirm(`Take every model of ${one.email} out of the gallery, `
+        + "and keep them out? Their profile and public collections go too.")
+        ? post({ op: "bar", account }, said, "The account is out.", { body: { reason: reason.value },
+          after: () => afterPerson(account, "The account is out: none of its models is listed.") })
+        : Promise.resolve(false)), "cta ghost small")));
+      form.addEventListener("submit", (event) => event.preventDefault());
+      doing.append(form);
+    }
+    doing.append(said);
+    parts.push(doing);
+  }
+
+  // Their models.
+  const models = make("div", "part", make("h3", "", `Models (${one.models.length})`));
+  if (one.models.length) {
+    models.append(make("ul", "models-of", ...one.models.map((m) => {
+      const to = make("a", "", m.name || m.id);
+      to.href = `/m/${encodeURIComponent(m.id)}`;
+      const state = m.barred ? "taken out" : m.listed ? "in the gallery" : m.published ? "published" : "not published";
+      return make("li", "", to, make("small", "faint", `${Number(m.parts).toLocaleString()} ${Number(m.parts) === 1 ? "part" : "parts"} · ${state}`
+        + ` · ${day(m.created_at)}`));
+    })));
+  } else {
+    models.append(make("p", "note", "None shared."));
+  }
+  parts.push(models);
+
+  if (one.feedback.length) {
+    parts.push(make("div", "part", make("h3", "", `Feedback (${one.feedback.length})`), make("ul", "models-of",
+      ...one.feedback.map((f) => {
+        const to = make("a", "", `#${f.id} ${f.kind}`);
+        to.href = `#feedback-${f.id}`;
+        return make("li", "", to, make("small", "faint", `${f.status} · ${day(f.at)} · ${f.words}`));
+      }))));
+  }
+
+  const acts = make("div", "part", make("h3", "", "Acts on this account"));
+  if (one.audit?.length) {
+    acts.append(make("ul", "acts-list", ...one.audit.map((row) => make("li", "", make("span", "", opSaid(row)),
+      make("small", "", `${when(row.at)} · ${row.actor}`), outcome(row)))));
+  } else {
+    acts.append(make("p", "note", one.audit === null ? "Not kept yet: supabase/console.sql is not applied." : "None yet."));
+  }
+  parts.push(acts);
+  openSheet(one.email || "no address", parts, { kind: "person", account });
+}
+
+/// After an act on an account: the list, the counts and its panel again,
+/// saying what came of it.
+async function afterPerson(account, told) {
+  loaded.delete("gallery");
+  loaded.delete("audit");
+  await Promise.all([loadPeople(), loadOverview()]);
+  await person(account, true, told);
+}
+
+// ---------------------------------------------------------------------------
+// The panel (dialog.sheet): an account or an act, over the list it is in.
+
+function openSheet(title, body, { kind = "act", account = "" } = {}) {
+  const sheet = $("sheet");
+  $("sheet-title").textContent = title;
+  $("sheet-body").replaceChildren(...[body].flat());
+  sheet.dataset.kind = kind;
+  sheet.dataset.account = account;
+  if (!sheet.open) sheet.showModal();
+}
+
+$("sheet-close").addEventListener("click", () => $("sheet").close());
+$("sheet").addEventListener("click", (event) => { if (event.target === $("sheet")) $("sheet").close(); });
+$("sheet").addEventListener("close", () => {
+  // Closed, an account's address goes back to the list's.
+  if ($("sheet").dataset.kind === "person" && route().account) history.replaceState(null, "", `${location.pathname}${location.search}#people`);
+  $("sheet").dataset.account = "";
+});
+
+for (const table of document.querySelectorAll("table[data-sortable]")) sortable(table);
+start();

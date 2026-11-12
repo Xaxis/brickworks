@@ -212,7 +212,9 @@ def test_off_the_page_says_coming_and_the_api_takes_nothing() -> None:
         return
     assert got["off_get"] == {"status": 200, "json": {"beta": "off"}}
     assert got["off_post"]["status"] == 403 and got["off_post"]["json"]["beta"] == "off"
-    assert got["off_calls"] == []
+    # Nothing asked of the database but the switch itself: the owner's, from
+    # the console (supabase/console.sql site_setting), over BRICKWORKS_BETA.
+    assert set(got["off_calls"]) <= {"POST https://db.test/rest/v1/rpc/site_setting"}
 
 
 def test_the_spots_are_public_cached_and_say_nothing_of_anyone() -> None:
@@ -330,7 +332,9 @@ def test_admissions_refusals_are_said_and_granted_later_once() -> None:
     assert "API comps limit (100)" in got["comps_off"]["json"]["month"]["said"]
     assert "limit is reached" in got["comps_full"]["json"]["month"]["said"]
     assert got["comps_off"]["json"]["application"]["comp"] == "pending"
-    assert got["grant"]["json"] == {"mode": "test", "granted": 2, "pending": 0, "said": []}
+    # An owner's act answers with its place in the console's audit too
+    # (api/_console.js audited): none here, where console.sql is not applied.
+    assert got["grant"]["json"] == {"mode": "test", "granted": 2, "pending": 0, "said": [], "audit": None}
     assert got["grant_mail"] == ["Your month of Brickworks Pro has started"] * 2
     assert got["grant_again"]["json"]["granted"] == 0
     assert got["queue_pending"]["pending"] == 0
