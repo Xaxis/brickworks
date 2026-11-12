@@ -32,12 +32,18 @@ app, joined by a link (docs/TOGETHER.md).
   once), per-person undo/redo (puts a part back only where it is still as
   the step left it). The model's own state as keys of their own
   (`_meta_now`: `~title`, `~floor`, `~hidden`, `~motions`, `~looks`,
-  `~unit_steps`, `~broken`, `~lights`, and `~sublines:<def>` a key per
-  sub-model: its own lights and views with where their frame stands for
-  each of its copies by path, read at the edge by `TogetherWords.sublines`,
-  a light's or a view's line alone, a frame only for a copy of it, the relay
-  allowing the key in `api/together.js` SUBLINES; `Together.undo` puts back
-  `~lights` and the `~sublines:` keys one step moved as one or none),
+  `~unit_steps`, `~broken`, `~lights`, `~sublines:<def>` a key per
+  sub-model holding its own lights' and views' lines alone (read at the
+  edge by `TogetherWords.sublines`), and `~frame:<path>` a key per copy
+  holding where its lights and views stand (`Together.FRAME_KEY`,
+  `_frame_words`, read by `TogetherWords.frame`: a place and a turn, a
+  path of at most 400 characters), so two people moving two copies at once
+  each keep the other's (pcredesign T6); the relay allows them in
+  `api/together.js` SUBLINES and FRAME. `Together.undo` puts back `~lights`
+  and the `~sublines:` and `~frame:` keys one step moved as one or none,
+  and when somebody else changed one since, the whole step is held back,
+  its parts too, said as `undid nothing: somebody else changed <what>
+  since` (T7)),
   read every 250 ms and on each
   builder step, so a rename or Make on one side and the lines it carries go
   in one op; a change `check_edit` makes as the keys and the mouse do is
@@ -46,7 +52,11 @@ app, joined by a link (docs/TOGETHER.md).
   a part made in the app sent as `~part:<id>` with its files. A 400 naming a
   `~` key the relay does not know (an older relay) drops that kind from what
   is unsent and from then on, said once (`_drop_unknown`,
-  `TogetherWords.not_carried`), never a retry loop. Another's change that
+  `TogetherWords.not_carried`; the `~sublines:` and `~frame:` keys one
+  kind, said as what stays where it was on the others' side), never a
+  retry loop. A 400 saying a value is too long to carry (`checkMeta`
+  "long", `metaMost`) drops that key alone, keeps it here, and says so once
+  (`_drop_long`, `TogetherWords.too_long`, T9). Another's change that
   undid one of mine within `OVERTAKEN_MS` is said by what it changed
   (`_overtook`, `TogetherWords.overtaken`: a part, N parts, the model's
   lights, a sub-model's lights and views), and only then. Chat as

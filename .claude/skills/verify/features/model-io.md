@@ -717,7 +717,18 @@ Whether what you built is still there tomorrow, and still means the same thing.
   way alone (pccheck HA_5); someone else's file's (`SourceFile.not_shown`,
   and its line's place, `unshown_origins`) go too. Taking a copy apart takes its held ones into the
   one round it, numbered in its steps with the rest and their step's look
-  with them (`AuthorSteps.inlined`; hscheck R_own_ungroup). Someone else's
+  with them (`AuthorSteps.inlined`; hscheck R_own_ungroup). The writer
+  tells copies apart by their held parts as well as their bricks
+  (`Assemblies.file_frames(figures, held)`, `Assemblies.held_by_path`:
+  which parts and colours, not where, since held parts do not follow a
+  copy's move), so a copy holding none of its master's is a sub-model of
+  its own and none is lost (pc2check A2, H). Copy and Paste, and
+  Duplicate, bring a copy's held parts into the new copy
+  (`Carry.clipboard_held`, `Builder.held_carry`/`held_put`,
+  `ModelStore._held_carried`/`_held_put`, keyed by
+  `LdrModel.Placement.held_key`), in the paste's undo step; Duplicate
+  brings a lit copy's lines and frame too (live's Q). `lights_probe --
+  --review` checks both (`_r_held_pasted`, `_r_duplicated`). Someone else's
   file keeps such a part's line in the copy's section, and the copy with it
   (`SourceFile.patch`).
   A part a
