@@ -71,6 +71,7 @@
       "reach": "curl -s https://brickworks.diy/api/account",
       "area": "web",
       "tests": [
+        "tests/fixtures/console/db_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_gallery_builds.py",
@@ -116,8 +117,10 @@
       "reach": "curl -s 'https://brickworks.diy/api/people?op=profile&handle=<handle>'   (and /u/<handle>, /c/<id>; ?op=me, like, favourite, collection, collect with a session)",
       "area": "web",
       "tests": [
+        "tests/fixtures/console/api_check.mjs",
         "tests/test_challenge_notices.py",
         "tests/test_comment_mentions.py",
+        "tests/test_console.py",
         "tests/test_gallery_builds.py",
         "tests/test_release_train.py",
         "tests/test_share_unknowns.py",
@@ -148,6 +151,7 @@
       "reach": "curl -s -X POST -H 'authorization: Bearer <session>' -d '{\"month\":3,\"year\":2000}' https://brickworks.diy/api/account?op=age",
       "area": "account",
       "tests": [
+        "tests/fixtures/console/db_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_gallery_builds.py",
@@ -225,6 +229,7 @@
       "reach": "python3 tools/minitest.py tests/test_account_erase.py   (POST /api/account?op=delete {confirm}: with BRICKWORKS_BILLING test or live the customer is erased at Admission and a subscription ended first, and nothing is deleted when Admission cannot; off, Admission is never asked; billing_flow.mjs --stand-in deletes a paying account from /settings)",
       "area": "web",
       "tests": [
+        "tests/fixtures/console/db_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_gallery_builds.py",
@@ -259,9 +264,12 @@
       "reach": "curl -s '<deployment>/api/plans?op=beta'; curl -s '<deployment>/api/plans?op=beta_spots' (signed out, cached a minute: {beta, cap, left}); POST it signed in with {build, ai, background, background_line, link, terms, emails}   (off: {beta: off} and POST 403; open: 401 signed out, 422 with why, 409 a second time; python3 tools/minitest.py tests/test_beta.py)",
       "area": "web",
       "tests": [
+        "tests/fixtures/console/api_check.mjs",
+        "tests/fixtures/console/db_check.mjs",
         "tests/test_beta.py",
         "tests/test_beta_join.py",
         "tests/test_billing_pay.py",
+        "tests/test_console.py",
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
@@ -980,6 +988,14 @@
       "entry": "src/dev/connect_probe.gd",
       "reach": "godot --path . --resolution 1400x900 --script src/dev/connect_probe.gd  (8841-1's column on its pins in 6 actions or fewer, and the same aim without Connect; a 1 x 16 by its fourth hole on a pin in a brick turned 30 and tilted 25 degrees; the toolbar's Connect on a part down, one undo, Esc puts it back; 8841-1's joint parts by Connect and the walk's actions a part; -- only=column|turned|model|walk; PROBE_SIZE=1280x720)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "cli:console browser flow",
+      "kind": "cli",
+      "entry": "tools/web/console_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/console_flow.mjs --url=<preview> --out=DIR   (MASTER_EMAIL's session minted: the gate, Gallery, People, Beta and its switch, Feedback, the audit log, /beta-admin, every section at 390/1280 light/dark; throwaways deleted, the switch and the checks' pool put back; preview check [console], run alone)",
+      "area": "web",
       "tests": []
     },
     {
@@ -1861,6 +1877,14 @@
       "tests": []
     },
     {
+      "id": "cli:open faults probe",
+      "kind": "cli",
+      "entry": "src/dev/openfaults_probe.gd",
+      "reach": "tools/probe.sh openfaults_probe   (a file opens as LDView reads it: a sub-model's name is its FILE line's text, a reference's its text after the 14th field, compared in any case with \\ as /, the first block of a name the one; hscheck's sub-model titled with its file name, se3check's castle, odd names and twins by folder, sf2check's two blocks of one name, co_del_rename_tail and cfc_wing2, each as someone else's file and as the app's own; Save, autosave, export, share, the copy kept for Undo, Save As and MCP save_model each read so again; opened again the same parts, colours, places, copies and steps; saved again the same file; OPENFAULTS_OUT=DIR keeps the texts for sf2check's readers.py)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "cli:open list time probe",
       "kind": "cli",
       "entry": "src/dev/open_list_time_probe.gd",
@@ -2217,6 +2241,7 @@
       "reach": "python3 tools/site.py /tmp/site",
       "area": "web",
       "tests": [
+        "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/feedback/api_check.mjs",
         "tests/test_beta_join.py",
         "tests/test_coming_soon.py",
@@ -3196,6 +3221,7 @@
       "reach": "BRICKWORKS_API=http://127.0.0.1:8790 godot --headless --path . --script src/dev/account_probe.gd   (with tools/web/relay_server.mjs 8790 and .env)",
       "area": "account",
       "tests": [
+        "tests/fixtures/console/db_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_gallery_builds.py",
@@ -3595,7 +3621,9 @@
       "entry": "supabase/beta_join.sql",
       "reach": "python3 tools/minitest.py tests/test_beta_join.py   (tests/fixtures/beta/join_check.mjs: the API over beta.sql, feedback.sql and beta_join.sql in a Postgres of its own; welcome, join, Not now, leave, the month untouched, the owner's list, off, and before the file); PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/beta_join.sql --dry --table=beta_testers",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/fixtures/console/api_check.mjs"
+      ]
     },
     {
       "id": "lib:keep a run to a list of parts",
@@ -4035,6 +4063,7 @@
       "reach": "imported by model-page.js and profile.js: the app's session in this browser, or a code by email in a dialog",
       "area": "web",
       "tests": [
+        "tests/fixtures/console/db_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_gallery_builds.py",
@@ -4158,6 +4187,22 @@
       "entry": "src/ai/exact_check.gd",
       "reach": "godot --headless --path . --script src/dev/exact_probe.gd  (and src/dev/joint_check_probe.gd, src/dev/exact_cost_probe.gd, src/dev/exact_dump.gd -- --out=F MODEL.ldr, src/dev/joint_collisions.gd -- --out=F [SET.mpd ...], src/dev/replay_calls.gd -- --calls=F)",
       "area": "assistant",
+      "tests": []
+    },
+    {
+      "id": "lib:the console's reads and audit",
+      "kind": "lib",
+      "entry": "api/_console.js",
+      "reach": "python3 tools/minitest.py tests/test_console.py   (the gate, overview, people, person, audit and every act kept in admin_audit, supabase/console.sql against a real Postgres)",
+      "area": "account",
+      "tests": []
+    },
+    {
+      "id": "lib:the console's switches",
+      "kind": "lib",
+      "entry": "api/_settings.js",
+      "reach": "python3 tools/minitest.py tests/test_console.py tests/test_beta.py   (site_settings by scope: brickworks.diy is live, a deployment its host; the beta's switch over BRICKWORKS_BETA)",
+      "area": "account",
       "tests": []
     },
     {
@@ -4318,7 +4363,9 @@
       "entry": "supabase/play.sql",
       "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/play.sql --dry --try=tools/play_try.sql --table=shared_models   (the words held together by tests/test_play.py; the card in web/gallery.js; api/share.js checkMoves)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_live_ab.py"
+      ]
     },
     {
       "id": "lib:who modelled a shared model",
@@ -4427,8 +4474,10 @@
       "reach": "https://brickworks.diy/u/<handle of somebody with a model in the gallery>   (or a local relay_server.mjs --hold=model_opens, /u/<handle>?tests=1 for a test account's; the tiles, Start with their most built, Built by others, the cards by Top builds)",
       "area": "web",
       "tests": [
+        "tests/fixtures/console/api_check.mjs",
         "tests/test_challenge_notices.py",
         "tests/test_comment_mentions.py",
+        "tests/test_console.py",
         "tests/test_gallery_builds.py",
         "tests/test_release_train.py",
         "tests/test_share_unknowns.py",
@@ -4549,8 +4598,10 @@
       "reach": "https://brickworks.diy/u/<handle> and /profile: ul.awards under the numbers, a challenge won then a level a track (achievementsOf, levelAwards; GET /api/people?op=profile says achievements and levels); the profile browser flow",
       "area": "web",
       "tests": [
+        "tests/fixtures/console/api_check.mjs",
         "tests/test_challenge_notices.py",
         "tests/test_comment_mentions.py",
+        "tests/test_console.py",
         "tests/test_gallery_builds.py",
         "tests/test_release_train.py",
         "tests/test_share_unknowns.py",
@@ -4562,7 +4613,7 @@
       "id": "ui:admin page",
       "kind": "ui",
       "entry": "web/admin.html",
-      "reach": "https://brickworks.diy/admin   (signed in to the app as MASTER_EMAIL)",
+      "reach": "https://brickworks.diy/admin   (signed in to the app as MASTER_EMAIL; ?tests=1 the checks' own): the owner's console, one page of sections by address: #overview (what needs you, how things stand, the switches, the latest acts; GET /api/admin?op=overview), #people (every account, searched, filtered, sorted; #people/<account> its panel with Take out the account and Let back in; ?op=people, ?op=person&account=U), #gallery/<tab> (reported, comments, listed, pick, challenges, tested, barred), #beta/<tab> (applications, testers; the beta's switch, POST ?op=beta_switch {mode}), #feedback, #audit (every act, newest first; ?op=audit&act&q&before)",
       "area": "account",
       "tests": [
         "tests/test_packaged_facts.py"
@@ -4631,8 +4682,11 @@
       "reach": "<deployment>/beta   (the beta's hub, web/beta.js; BRICKWORKS_BETA off: Coming soon, no way in, no count; open: the months of Pro left, the way in for each visitor (signed out Sign up and join, signed in Join the beta, a tester Report a bug and Your reports), what testers get, how to report, this week's releases from /changelog.json, the questions; a tester: what to try, known issues, early features from GET /api/plans?op=beta_hub, and #about, \"tell us about you\", the month of Pro's form or where it stands (GET/POST ?op=beta); /beta-hub answers 308 here; tools/web/beta_flow.mjs, tools/web/betahome_flow.mjs)",
       "area": "web",
       "tests": [
+        "tests/fixtures/console/api_check.mjs",
+        "tests/fixtures/console/db_check.mjs",
         "tests/test_beta.py",
         "tests/test_beta_join.py",
+        "tests/test_console.py",
         "tests/test_feedback.py",
         "tests/test_site_lang.py"
       ]
@@ -4914,6 +4968,7 @@
       "reach": "every page of brickworks.diy: its controls (fields, checkboxes, buttons, dialog, card) in one place (docs/DESIGN_SYSTEM.md)",
       "area": "web",
       "tests": [
+        "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/feedback/api_check.mjs",
         "tests/test_beta_join.py",
         "tests/test_coming_soon.py",
@@ -5563,8 +5618,10 @@
       "reach": "https://brickworks.diy/u/<handle> (?tab=builds or collections, ?page=N; links, banner and pins from supabase/profile_shows.sql, chosen in Edit profile on /profile)  and  /c/<id>   (made by api/people.js with the site's header and footer)",
       "area": "web",
       "tests": [
+        "tests/fixtures/console/api_check.mjs",
         "tests/test_challenge_notices.py",
         "tests/test_comment_mentions.py",
+        "tests/test_console.py",
         "tests/test_gallery_builds.py",
         "tests/test_release_train.py",
         "tests/test_share_unknowns.py",
@@ -5678,6 +5735,7 @@
       "reach": "https://brickworks.diy/m/<id>, /u/<handle>, /c/<id>   (Report it opens a dialog; /api/people?op=report)",
       "area": "web",
       "tests": [
+        "tests/fixtures/console/db_check.mjs",
         "tests/test_beta.py",
         "tests/test_comment_mentions.py",
         "tests/test_feedback.py"
@@ -5821,6 +5879,7 @@
       "reach": "https://brickworks.diy/profile signed out, Sign in, then Sign in with orangecheck",
       "area": "account",
       "tests": [
+        "tests/fixtures/console/db_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_gallery_builds.py",
@@ -6021,8 +6080,8 @@
     {
       "id": "ui:the beta's owner queue",
       "kind": "ui",
-      "entry": "web/beta-admin.html",
-      "reach": "<deployment>/beta-admin as MASTER_EMAIL (?tests=1 the checks' pool): GET /api/admin?op=beta, POST ?op=beta_decide&account=U {decision, note}, POST ?op=beta_grant",
+      "entry": "web/admin-beta.js",
+      "reach": "<deployment>/admin#beta as MASTER_EMAIL (?tests=1 the checks' pool; /beta-admin answers 308 to it): GET /api/admin?op=beta, ?op=beta_testers, ?op=switches; POST ?op=beta_decide&account=U {decision, note}, ?op=beta_waitlist&account=U {note}, ?op=beta_grant, ?op=beta_switch {mode: open|off} (this deployment alone, kept in site_settings)",
       "area": "web",
       "tests": []
     },
@@ -6415,7 +6474,8 @@
       "reach": "https://brickworks.diy/settings#feedback signed in   (Your reports: each report with its number (#N, anchored report-N), where it stands, a tester's marked, our answers; never the owner's note)",
       "area": "web",
       "tests": [
-        "tests/test_billing_pay.py"
+        "tests/test_billing_pay.py",
+        "tests/test_console.py"
       ]
     },
     {
@@ -6480,7 +6540,8 @@
       "reach": "https://brickworks.diy/settings   (settings.js: Profile, Appearance, Email, Privacy, Claude, Your reports, Sign out, Delete account)",
       "area": "web",
       "tests": [
-        "tests/test_billing_pay.py"
+        "tests/test_billing_pay.py",
+        "tests/test_console.py"
       ]
     }
   ]

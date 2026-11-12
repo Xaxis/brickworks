@@ -268,6 +268,29 @@ func is_open() -> bool:
 	return _open
 
 
+## The room under the tree's last row, which shows nothing: what it gives
+## Properties as they first fill under it (PanelStack._first_fill). None
+## while its rows scroll, every one of them being in that room or under it.
+func spare_height() -> float:
+	if _tree == null or not _tree.is_visible_in_tree() or _tree.get_root() == null:
+		return 0.0
+	if _bar == null:
+		for child: Node in _tree.get_children(true):
+			if child is VScrollBar:
+				_bar = child
+	if _bar != null and _bar.visible:
+		return 0.0
+	var last: TreeItem = _tree.get_root()
+	var next: TreeItem = last.get_next_visible()
+	while next != null:
+		last = next
+		next = last.get_next_visible()
+	var bottom: float = _tree.get_item_area_rect(last).end.y
+	var panel: StyleBox = _tree.get_theme_stylebox(&"panel")
+	var margin: float = panel.get_margin(SIDE_BOTTOM) if panel != null else 0.0
+	return maxf(0.0, _tree.size.y - margin - bottom)
+
+
 ## [param made] the shell's sections, made now: its suggestions shown here.
 func use_sections(made: Node) -> void:
 	sections = made
@@ -518,9 +541,19 @@ func _mark_selected() -> void:
 	_tree.deselect_all()
 	if row != null:
 		row.select(0)
-		_tree.scroll_to_item(row)
+		# Scrolled to only when it is out of sight: a row chosen where it is
+		# seen stays there, under the pointer that chose it. Brought fully in,
+		# one cut by the tree's edge moved 2 to 4 px (treerows).
+		if not _in_sight(row):
+			_tree.scroll_to_item(row)
 	_marking = false
 	_update_strip()
+
+
+## Whether [param row]'s middle is in the tree's room.
+func _in_sight(row: TreeItem) -> bool:
+	var rect: Rect2 = _tree.get_item_area_rect(row)
+	return rect.has_area() and Rect2(Vector2.ZERO, _tree.size).has_point(rect.get_center())
 
 
 func _find(item: TreeItem, path: String) -> TreeItem:
@@ -728,6 +761,17 @@ func _on_tree_input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch or event is InputEventScreenDrag:
 		_held(event)
 		return
+	# The menu key, and Shift+F10, open the chosen row's menu beside it, as
+	# they open a file manager's for the item chosen; the keys then choose
+	# in it (tdcheck: neither did anything).
+	var key: InputEventKey = event as InputEventKey
+	if key != null:
+		if key.pressed and not key.echo and (key.keycode == KEY_MENU
+				or (key.keycode == KEY_F10 and key.shift_pressed and not key.ctrl_pressed
+				and not key.alt_pressed and not key.meta_pressed)):
+			_tree.accept_event()
+			_menu_by_keys()
+		return
 	var click: InputEventMouseButton = event as InputEventMouseButton
 	if click == null or not click.pressed or (click.button_index != MOUSE_BUTTON_RIGHT
 			and not EditVerbs.mac_right_click(click)):
@@ -741,6 +785,20 @@ func _on_tree_input(event: InputEvent) -> void:
 	# After the tree has chosen the row (allow_rmb_select), as a file
 	# manager highlights the row its menu is for.
 	open_row_menu.call_deferred(path, _tree.get_global_transform_with_canvas() * click.position)
+
+
+## The chosen row's menu, opened by a key: under the row, at its name.
+func _menu_by_keys() -> void:
+	var row: TreeItem = _tree.get_selected()
+	if row == null:
+		return
+	var path: String = str(row.get_metadata(0))
+	if path == SUGGESTED or path.begins_with(SUGGESTION):
+		return
+	_tree.scroll_to_item(row)
+	var rect: Rect2 = _tree.get_item_area_rect(row)
+	var at := Vector2(rect.position.x + minf(24.0, rect.size.x * 0.5), rect.end.y)
+	open_row_menu(path, _tree.get_global_transform_with_canvas() * at)
 
 
 ## A finger on the tree: down on a row, its hold begins; moved past a tap's
@@ -1006,6 +1064,21 @@ func _on_menu(at: Vector2) -> bool:
 	return false
 
 
+## Escape puts a row being carried back where it was, as every drag is put
+## down by it: nothing moved, no undo step, and nothing else Escape does
+## (the selection kept). Heard before the window's own Escape (Main._input
+## clears the selection), which a descendant's _input is; the window's
+## input signal is too, but what it marks handled the window hears anyway.
+## tdcheck: the carry went on after it and dropped where it was let go.
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.is_action_pressed(&"ui_cancel") \
+			and get_viewport().gui_is_dragging() and _carried_now():
+		get_viewport().gui_cancel_drag()
+		_pressed = false
+		_following = -1
+		get_viewport().set_input_as_handled()
+
+
 ## What a row carries: its assembly, a suggestion's number, or null for one
 ## that is not carried (the model's row, the suggestions' heading).
 func _carried(meta: String) -> Variant:
@@ -1014,6 +1087,13 @@ func _carried(meta: String) -> Variant:
 	if meta.begins_with(SUGGESTION):
 		return {"suggestion": meta.trim_prefix(SUGGESTION).to_int()}
 	return {"assembly": meta}
+
+
+## Whether the window's drag under way is a row of this tree's.
+func _carried_now() -> bool:
+	var data: Variant = get_viewport().gui_get_drag_data()
+	return data is Dictionary and ((data as Dictionary).has("assembly")
+		or (data as Dictionary).has("suggestion"))
 
 
 func _carry() -> void:

@@ -1,0 +1,24 @@
+0 FILE header.mpd
+0 Header Notes
+0 Name: header.mpd
+0 Author: Hedda Note
+0 // Designed for the 2026 village contest; please credit me
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 4 80 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+0 // now the roof
+1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 1 80 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+1 16 0 -48 0 1 0 0 0 1 0 0 0 1 chimney.ldr
+0 STEP
+0 NOFILE
+0 FILE chimney.ldr
+0 Chimney
+0 Name: chimney.ldr
+0 Author: Hedda Note
+0 // the chimney is two bricks; swap the top for a cone if you like
+0 ROTATION CENTER 0 0 0 1 "Custom"
+1 0 0 0 0 1 0 0 0 1 0 0 0 1 3005.dat
+1 0 0 -24 0 1 0 0 0 1 0 0 0 1 3005.dat
+0 NOFILE

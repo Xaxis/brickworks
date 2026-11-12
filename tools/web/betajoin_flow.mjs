@@ -28,8 +28,8 @@
 //      tester; signed in again by the dialog, never welcomed again;
 //      Settings offers Join, and one press makes it a tester, and one more
 //      leaves.
-//   3. The owner's /beta-admin?tests=1: the testers, newest first, where
-//      each joined from, and the month's queue under them.
+//   3. The owner's console, its Beta's testers (/admin?tests=1#beta/testers):
+//      newest first, where each joined from, and the month's queue beside them.
 //   4. --off, the beta off: a new account signed in by the dialog is not
 //      welcomed, Settings has no Beta row, op=beta_join answers 403.
 //   5. --before, the commit before, also off: every page reads as it did,
@@ -329,7 +329,7 @@ try {
   if (args.owner) {
     console.log("3. The owner's list of testers");
     const owner = await mintSession(String(args.owner), { welcome: false });
-    const { page, context } = await open(site, "/beta-admin?tests=1", { width: 1280, who: owner, label: "owner" });
+    const { page, context } = await open(site, "/admin?tests=1#beta/testers", { width: 1280, who: owner, label: "owner" });
     const shown = await until(page, () => document.getElementById("view")?.hidden === false
       && document.querySelectorAll("#testers .tester").length > 0, null, 30000);
     const listed = await page.evaluate(() => ({

@@ -1,0 +1,17 @@
+0 FILE main.ldr
+0 Main
+0 Name: main.ldr
+0 Author: Jane Builder [jbuilder]
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 wing.ldr
+0 NOFILE
+0 FILE wing.ldr
+0 Old Wing
+0 Name: wing.ldr
+1 1 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE wing.ldr
+0 Wing
+0 Name: wing.ldr
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3020.dat
+1 4 0 -8 0 1 0 0 0 1 0 0 0 1 3023.dat
+0 NOFILE

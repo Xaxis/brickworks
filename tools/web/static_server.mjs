@@ -15,7 +15,7 @@ import { readFile } from "node:fs/promises";
 import { extname, join, normalize, resolve } from "node:path";
 
 const TYPES = {
-  ".html": "text/html; charset=utf-8", ".css": "text/css", ".js": "text/javascript",
+  ".html": "text/html; charset=utf-8", ".css": "text/css", ".js": "text/javascript", ".mjs": "text/javascript",
   ".json": "application/json", ".png": "image/png", ".webp": "image/webp",
   ".svg": "image/svg+xml", ".xml": "application/xml", ".txt": "text/plain",
   ".webmanifest": "application/manifest+json",

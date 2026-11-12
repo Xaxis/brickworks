@@ -75,61 +75,37 @@ const WARM := "#fff1d6"
 # -- kept with the model --------------------------------------------------------
 
 
-## What the one reading of a model's file (LdrModel.parse) holds of its
-## lights, sorted: "lights" those it keeps, in its order, up to [constant
-## MOST] of them and [constant SUNS] suns (the file's coordinates); "why" how
-## many of its lines it could not read, by reason; "read" each kept light's
-## line as the file has it and "twins" how many lines the same as it come
-## before it, so a save finds it again; "unread" the model's other light
-## lines, as they are, in their order. A sub-model's lights are its own, and
-## stay in it: the world keeps them by its definition (BrickWorld
-## .section_lines), wherever an edit takes its copies.
+## What the one reading of a model's file (MetaIndex) holds of its lights,
+## sorted: "lights" those it keeps, in its order, up to [constant MOST] of
+## them and [constant SUNS] suns (the file's coordinates); "why" how many of
+## its lines it could not read, by reason; "read" each kept light's line as
+## the file has it and "twins" how many lines the same as it come before it,
+## so a save finds it again; "unread" the model's other light lines, as they
+## are, in their order. Each line read is taken (MetaIndex.take): a save
+## keeps the rest where the file has them (MetaIndex.lines_for). A
+## sub-model's lights are its own, and stay in it: the world keeps them by
+## its definition (BrickWorld.section_lines), wherever an edit takes its
+## copies.
 ##
-## It belongs to the model it was read from: ModelStore keeps it for the
-## world's generation the model was laid in, and nothing else reads the file
-## again for it.
-static func of_model(model: LdrModel) -> Dictionary:
-	return _sorting(model.light_lines)
-
-
-## [method of_model] of [param text] alone, read as an open reads it: for
-## what has only a text (a test, a probe). The app reads a model's lights as
-## it opens it, once, and never this way.
-static func of_text(text: String) -> Dictionary:
-	if not text.contains(_WORD):
-		return _sorting(PackedStringArray())
-	return of_model(LdrModel.parse(text))
-
-
-## The lights [param text] keeps ([method of_text]).
-static func read(text: String) -> Array:
-	return of_text(text)["lights"]
-
-
-## [param text]'s lights and how many lines it could not read, by reason
-## ([method of_text]).
-static func sorted(text: String) -> Dictionary:
-	var read_now: Dictionary = of_text(text)
-	return {"lights": read_now["lights"], "why": read_now["why"]}
-
-
-## The model's light lines of [param text] it could not read, as they are
-## ([method of_text]).
-static func unread(text: String) -> PackedStringArray:
-	return of_text(text)["unread"]
-
-
-## Where [param text]'s own model's lines end (LdrModel.main_span).
-static func main_end(text: String) -> int:
-	return LdrModel.main_end(text)
+## Read off the index the save writes by, so the open and the save read one
+## set of lines: up to mlfix the open read them through LdrModel.parse, a
+## word in capitals alone and a line after the model's NOFILE as the
+## model's, and the save wrote the index's, so a light after the NOFILE was
+## written again at each save (1, 2, 3 lights) and "0 !BRICKWORKS light"
+## went at the first (mlcheck F3).
+static func read_from(metas: MetaIndex) -> Dictionary:
+	var sorted: Dictionary = _sorting(metas.raws([_WORD]))
+	metas.take([_WORD], sorted["taken"])
+	sorted.erase("taken")
+	return sorted
 
 
 ## The word after "0 !BRICKWORKS" on a light's line.
 const _WORD := "LIGHT"
 
 
-## [param lines] (a model's light lines, as LdrModel.light_lines has them)
-## sorted as [method of_model] says. Only a
+## [param lines] (a model's light lines, as the file has them) sorted as
+## [method read_from] says, and "taken" the places of those read. Only a
 ## line whose words begin as a light's do ("{") is tried, and only the first
 ## [constant TRIES] of those: past them the rest are kept as they are,
 ## unread, uncounted but for how many. Every line is the file's own, read
@@ -181,12 +157,13 @@ static func _sorting(lines: PackedStringArray) -> Dictionary:
 			from = at + 1
 		unread_lines.append_array(lines.slice(from))
 	return {"lights": lights, "why": why, "read": read_lines, "twins": twins,
-		"unread": unread_lines}
+		"unread": unread_lines, "taken": taken}
 
 
 ## The words of a light's [param line] after its word: "{...}" for a light.
 static func _body(line: String) -> String:
-	var at: int = line.find(_WORD, line.findn("!BRICKWORKS") + 11)
+	# In any case, as the index reads the word ("0 !BRICKWORKS light {...}").
+	var at: int = line.findn(_WORD, line.findn("!BRICKWORKS") + 11)
 	return line.substr(at + _WORD.length()).strip_edges() if at >= 0 else ""
 
 
@@ -206,7 +183,7 @@ static func joins(lights: Array, light: Dictionary) -> String:
 	return ""
 
 
-## What an open left out of [param why] (as [method of_model] counts them),
+## What an open left out of [param why] (as [method read_from] counts them),
 ## in words for the status bar, each reason a part of its own as the bar's
 ## parts are (" — "): "2 light lines not read, kept in the file as they are
 ## — of a kind there is not (...) — a model keeps at most 4 suns: ..."; ""
@@ -222,159 +199,29 @@ static func unread_words(why: Dictionary) -> String:
 	return " — ".join(PackedStringArray([said]) + PackedStringArray(why.keys()))
 
 
-## [param text] with [param lights] (the file's coordinates) written into it
-## in place of the light lines it has that were read ([method of_text]), and
-## the lines of [param carried] it lacks after them, as they are. For what
-## has only a text; the app writes with [method written_with].
-static func written_into(text: String, lights: Array,
-		carried: PackedStringArray = PackedStringArray()) -> String:
-	var had: Dictionary = of_text(text)
-	var lacking := PackedStringArray()
-	if not carried.is_empty():
-		var has: Dictionary = {}
-		for line: String in had["unread"]:
-			has[line] = int(has.get(line, 0)) + 1
-		for line: String in carried:
-			if int(has.get(line, 0)) > 0:
-				has[line] = int(has[line]) - 1
-			else:
-				lacking.append(line)
-	return _written(text, lights, had, lacking)
-
-
-## [param text], the model's file as it is being written, with [param
-## lights] (the file's coordinates) written into it as [param read] (the open's
-## reading, [method of_model]) says. Each light read and not changed since
-## keeps its line as the file had it, where it had it; a light changed is
-## written in the place of the line it was read from, one added after the
-## light before it, and a line read whose light is gone taken out. Every
-## other line is left where it is. With [param whole] (the text written
-## whole, none of the file's light lines in it) the lines it could not read
-## go in after the lights, as they are. Each line ends as the text's do.
-static func written_with(text: String, lights: Array, read: Dictionary, whole: bool) -> String:
-	return _written(text, lights, read,
-		read.get("unread", PackedStringArray()) if whole else PackedStringArray())
-
-
-## [method written_with]'s work: [param adding] go in after the lights.
-static func _written(text: String, lights: Array, read: Dictionary,
-		adding: PackedStringArray) -> String:
+## The lines [param lights] (the file's coordinates) are kept on, up to
+## [constant MOST]: each light [param read] (the open's reading, [method
+## read_from]) read and not changed since, the line it was read from as the
+## file has it, the first after the last so kept whose light is the same, so
+## a save finds it again where it is; each other as it is written now.
+static func lines_now(lights: Array, read: Dictionary) -> PackedStringArray:
 	var lines_read: PackedStringArray = read.get("read", PackedStringArray())
-	var count: int = mini(lights.size(), MOST)
-	if count == 0 and adding.is_empty() and lines_read.is_empty():
-		return text
 	var said: Array = read.get("lights", [])
-	var twins: PackedInt32Array = read.get("twins", PackedInt32Array())
-	# Where each line read is now: its start, its end, the next line's start;
-	# in the model's own lines alone, as they were read (LdrModel.main_span).
-	# Found anywhere, a sub-model's line the same as the model's lamp was
-	# taken for it, and a whole write left the model without it (lreview3 F2).
-	var spans: Array[Vector3i] = []
 	var words_read := PackedStringArray()
-	var own_end: int = LdrModel.main_end(text) if not lines_read.is_empty() else 0
-	for m: int in lines_read.size():
-		spans.append(_line_at(text, lines_read[m], twins[m], own_end))
-		words_read.append(_words(said[m]))
-	# Each light kept as it was keeps its line: the first line after the last
-	# so kept whose light is the same. A light changed takes a line read whose
-	# light is gone, between the lights round it; one added follows the light
-	# before it.
-	var own := PackedInt32Array()
-	own.resize(count)
-	own.fill(-1)
-	var used: Dictionary = {}
+	for light: Dictionary in said:
+		words_read.append(_words(light))
+	var out := PackedStringArray()
 	var last: int = -1
-	for n: int in count:
+	for n: int in mini(lights.size(), MOST):
 		var words: String = _words(lights[n])
-		for m: int in range(last + 1, lines_read.size()):
-			if spans[m].x >= 0 and not used.has(m) and words_read[m] == words:
-				own[n] = m
-				used[m] = true
+		var line: String = META + JSON.stringify(lights[n])
+		for m: int in range(last + 1, mini(lines_read.size(), words_read.size())):
+			if words_read[m] == words:
+				line = lines_read[m]
 				last = m
 				break
-	## A line read -> the lines written in its place: an Array, which is
-	## appended to where it is (a packed array read out is a copy).
-	var into: Dictionary = {}
-	var first := PackedStringArray()        ## those before every line read
-	var at: int = -1
-	var placed: bool = false
-	for n: int in count:
-		var line: String = META + JSON.stringify(lights[n])
-		if own[n] >= 0:
-			at = own[n]
-			line = lines_read[at]
-		else:
-			var upper: int = lines_read.size()
-			for k: int in range(n + 1, count):
-				if own[k] >= 0:
-					upper = own[k]
-					break
-			for m: int in range(at + 1, upper):
-				if spans[m].x >= 0 and not used.has(m):
-					used[m] = true
-					at = m
-					break
-		if at < 0:
-			first.append(line)
-			continue
-		if not into.has(at):
-			into[at] = []
-		(into[at] as Array).append(line)
-		placed = true
-	if placed:
-		(into[at] as Array).append_array(Array(adding))
-	else:
-		first.append_array(adding)
-	var eol: String = LdrModel.eol_of(text)
-	var pieces := PackedStringArray()
-	var from: int = 0
-	var trim: bool = false
-	for m: int in lines_read.size():
-		var span: Vector3i = spans[m]
-		if span.x < 0:
-			continue
-		pieces.append(text.substr(from, span.x - from))
-		var here := PackedStringArray()
-		if not first.is_empty():
-			here = first
-			first = PackedStringArray()
-		here.append_array(PackedStringArray(into.get(m, [])))
-		# Its own line end, "" for the text's last line when it had none.
-		var ending: String = text.substr(span.y, span.z - span.y)
-		trim = here.is_empty() and ending.is_empty()
-		if not here.is_empty():
-			pieces.append(eol.join(here) + ending)
-		from = span.z
-	pieces.append(text.substr(from))
-	var out: String = "".join(pieces)
-	if trim and from >= text.length():
-		# The text's last line taken out: the line end before it goes too.
-		out = out.trim_suffix("\n").trim_suffix("\r")
-	# No line read is there (the text written whole): after the model's first.
-	return LdrModel.into_main(out, first)
-
-
-## Where the [param twin]th line after the first that is [param line] whole
-## is in [param text] before [param before]: its start, its end before its
-## line end, and where the next line starts; x -1 when it is not there.
-static func _line_at(text: String, line: String, twin: int, before: int) -> Vector3i:
-	var from: int = 0
-	var count: int = 0
-	while true:
-		var at: int = text.find(line, from)
-		if at < 0 or at >= before:
-			return Vector3i(-1, -1, -1)
-		var end: int = at + line.length()
-		var starts: bool = at == 0 or text[at - 1] == "\n"
-		var ends: bool = end == text.length() or text[end] == "\n" \
-			or (text[end] == "\r" and (end + 1 == text.length() or text[end + 1] == "\n"))
-		if starts and ends:
-			if count == twin:
-				var next: int = text.find("\n", end)
-				return Vector3i(at, end, text.length() if next < 0 else next + 1)
-			count += 1
-		from = at + 1
-	return Vector3i(-1, -1, -1)
+		out.append(line)
+	return out
 
 
 ## [param light] in words to compare, as a file keeps it: -0 written as 0.

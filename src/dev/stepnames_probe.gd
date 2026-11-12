@@ -292,8 +292,12 @@ func _editor() -> void:
 	_check("...saved, each STEP_NAME line in its step (%s)" % ", ".join(lines),
 		lines == ["step 2: 0 !BRICKWORKS STEP_NAME " + BRICK,
 			"step 3: 0 !BRICKWORKS STEP_NAME " + COCKPIT])
-	_check("...and the file byte for byte (%s)" % ("the same" if kept == fixture
-		else _first_difference(fixture, kept)), kept == fixture)
+	# Under the model's name, as the bar's Save writes it: up to metalines
+	# save_model wrote "Model" into every file, whatever the model's name.
+	var named_as: String = "0 %s\n0 Name: %s.ldr\n" % [_store.title, _store.title.to_snake_case()] \
+		+ fixture.substr(fixture.find("\n", fixture.find("\n") + 1) + 1)
+	_check("...and the file byte for byte, under the model's name (%s)" % ("the same"
+		if kept == named_as else _first_difference(named_as, kept)), kept == named_as)
 	# Someone else's file (its author not Brickworks), which every build
 	# writes back as it was with what changed (ModelStore._source_written).
 	var theirs: String = FileAccess.get_file_as_string(NAMED_THEIRS)

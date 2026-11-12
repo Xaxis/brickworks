@@ -633,8 +633,8 @@ func _file_steps(text: String) -> Dictionary:
 		var sub: LdrModel.SubModel = model.submodels[key]
 		var steps: Dictionary = {}
 		for placement: LdrModel.Placement in sub.placements:
-			var said: String = ("→" + LdrModel._key(placement.part_id)
-				if model.submodels.has(LdrModel._key(placement.part_id))
+			var said: String = ("→" + placement.reference
+				if model.submodels.has(placement.reference)
 				else "%s/%d" % [placement.part_id, placement.color_code])
 			if not steps.has(placement.step):
 				steps[placement.step] = []

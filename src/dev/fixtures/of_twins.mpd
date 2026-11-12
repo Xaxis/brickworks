@@ -1,0 +1,29 @@
+0 FILE twinsmain.ldr
+0 Twins main
+0 Name: twinsmain.ldr
+0 Author: se3check
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 parts\twin.ldr
+1 16 100 0 0 1 0 0 0 1 0 0 0 1 twin.ldr
+1 16 200 0 0 1 0 0 0 1 0 0 0 1 Twin.LDR
+0 NOFILE
+0 FILE parts\twin.ldr
+0 Twin in a folder
+0 Name: parts\twin.ldr
+0 Author: se3check
+1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE twin.ldr
+0 Twin bare
+0 Name: twin.ldr
+0 Author: se3check
+1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3003.dat
+0 STEP
+1 16 0 -48 0 1 0 0 0 1 0 0 0 1 leaf.ldr
+0 NOFILE
+0 FILE leaf.ldr
+0 Leaf
+0 Name: leaf.ldr
+0 Author: se3check
+1 2 0 -8 0 1 0 0 0 1 0 0 0 1 3024.dat
+1 2 20 -8 0 1 0 0 0 1 0 0 0 1 3024.dat
+0 NOFILE

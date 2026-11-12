@@ -459,6 +459,18 @@ declare -A CMD=(
   # file. 390 and 1280 px, light and dark; the accounts deleted after.
   [avatar]="tools/web/avatar_flow.mjs --url=$P --out=$S/${TAG}_avatar"
   [moderation]="tools/web/moderation_flow.mjs --url=$P --out=$S/${TAG}_moderation"
+  # The owner's console (/admin, console1, docs/ADMIN.md): every op it
+  # added refused signed out (401) and to anybody else (404); as the owner
+  # (MASTER_EMAIL's session minted, never its sign-in), on the checks' own
+  # (?tests=1): the Overview; a throwaway's model taken out from In the
+  # gallery and its report let go; the account found in People, taken out
+  # from its panel and let back in; three applications approved (not with
+  # billing test), waitlisted and declined; the beta's switch turned off on
+  # this deployment alone (its /beta and API follow, brickworks.diy's as it
+  # was) and open again; every act in the audit log; /beta-admin landing
+  # on the Beta; each section at 390 and 1280, light and dark. Throwaway
+  # accounts, deleted after; the switch and the checks' pool put back.
+  [console]="tools/web/console_flow.mjs --url=$P --out=$S/${TAG}_console"
   [reload]="tools/web/reload_flow.mjs --url=$P/app $B --out=$S/${TAG}_reload"
   [keep]="tools/web/keep_flow.mjs --url=$P/app $B --out=$S/${TAG}_keep"
   # A signed-in person's models kept with their account (supabase/account_models.sql):
@@ -664,7 +676,9 @@ live() { grep -qE 'deleteAccount\(|auth/v1/admin/users' "${CMD[$1]%% *}" 2>/dev/
 # - beta, on a deployment with the beta open (a unit's --beta-open): one
 #   test pool of 100 spots, judged by its absolute numbers. Off, as on every
 #   release's preview, it writes nothing another run reads.
-ALONE_DB=" discovery first_steps challenges "
+# - console: turns this deployment's beta off for a minute, which every
+#   beta check beside it would read, and takes a spot of the checks' pool.
+ALONE_DB=" discovery first_steps challenges console "
 case " $NAMES " in
   *" beta "*)
     curl -s --max-time 20 -H "x-vercel-protection-bypass: $VERCEL_BYPASS" "$P/api/plans?op=beta" \
@@ -682,7 +696,7 @@ run() {
   if live "$name"; then
     alone "$name" && how=alone
     if ! take_live_db "$how"; then
-      echo "$name exit=75 fails=1 $(( $(date +%s) - t0 ))s :: FAIL the live database stayed busy (LIVE_WAIT, $(( ${LIVE_WAIT:-3600} / 60 )) min): $(tail -1 "$LIVE_DB.log")" >> "$S/$TAG.out"
+      echo "$name exit=75 fails=1 $(( $(date +%s) - t0 ))s :: FAIL the live database stayed busy (gave way to a release after LIVE_GIVE_WAY, $(( ${LIVE_GIVE_WAY:-0} / 60 )) min, or waited LIVE_WAIT, $(( ${LIVE_WAIT:-3600} / 60 )) min): $(tail -1 "$LIVE_DB.log")" >> "$S/$TAG.out"
       return
     fi
     echo "$(date '+%F %T') took $TAG $name after $(( $(date +%s) - t0 ))s ($LIVE_DB_HOW)" >> "$LIVE_DB.log"

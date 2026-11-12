@@ -1,0 +1,14 @@
+0 Direct colours and LeoCAD pieces
+0 Name: dcol.ldr
+0 Author: Dee Col
+1 0x2FF8800 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 4 80 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+0 !LEOCAD PIECE STEP_HIDE 3
+1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 1 80 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+1 2 0 -48 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 2 0 -48 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+0 The END

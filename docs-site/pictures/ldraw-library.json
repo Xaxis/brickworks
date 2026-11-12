@@ -1,0 +1,110 @@
+{
+ "shots": [
+  {
+   "id": "ldraw-library-sets",
+   "source": "site",
+   "route": "/library?q=fire&model=3d",
+   "viewport": [
+    1280,
+    1100
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "answers": {
+    "/api/share?op=library": {
+     "file": "docs-site/pictures/files/library-fire-3d.json"
+    },
+    "/library/omr-10197-1.webp": {
+     "file": "docs-site/pictures/files/omr-10197-1.webp"
+    },
+    "/library/omr-60216-1.webp": {
+     "file": "docs-site/pictures/files/omr-60216-1.webp"
+    },
+    "/library/omr-8289-1.webp": {
+     "file": "docs-site/pictures/files/omr-8289-1.webp"
+    },
+    "/library/omr-42040-1.webp": {
+     "file": "docs-site/pictures/files/omr-42040-1.webp"
+    },
+    "/library/omr-4208-1.webp": {
+     "file": "docs-site/pictures/files/omr-4208-1.webp"
+    },
+    "/library/omr-6382-1.webp": {
+     "file": "docs-site/pictures/files/omr-6382-1.webp"
+    },
+    "/library/omr-6389-1.webp": {
+     "file": "docs-site/pictures/files/omr-6389-1.webp"
+    },
+    "/library/omr-374-1.webp": {
+     "file": "docs-site/pictures/files/omr-374-1.webp"
+    }
+   },
+   "wait": "#models article img",
+   "alt": "The gallery's Sets tab searching fire, with one filter on, Only with a 3D model: the search box, the theme pills, 23 sets of 28,441, and eight cards of fire stations, trucks and a plane, each marked 3D with its picture, name, who modelled it, part count, number, theme and year.",
+   "caption": "brickworks.diy/library: the fire sets LDraw has modelled in 3D.",
+   "features": [
+    "ui:LDraw library page"
+   ]
+  },
+  {
+   "id": "ldraw-library-filters",
+   "source": "site",
+   "route": "/library?q=fire&model=3d",
+   "viewport": [
+    1280,
+    1000
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "answers": {
+    "/api/share?op=library": {
+     "file": "docs-site/pictures/files/library-fire-3d.json"
+    },
+    "/library/omr-10197-1.webp": {
+     "file": "docs-site/pictures/files/omr-10197-1.webp"
+    },
+    "/library/omr-60216-1.webp": {
+     "file": "docs-site/pictures/files/omr-60216-1.webp"
+    },
+    "/library/omr-8289-1.webp": {
+     "file": "docs-site/pictures/files/omr-8289-1.webp"
+    },
+    "/library/omr-42040-1.webp": {
+     "file": "docs-site/pictures/files/omr-42040-1.webp"
+    },
+    "/library/omr-4208-1.webp": {
+     "file": "docs-site/pictures/files/omr-4208-1.webp"
+    },
+    "/library/omr-6382-1.webp": {
+     "file": "docs-site/pictures/files/omr-6382-1.webp"
+    },
+    "/library/omr-6389-1.webp": {
+     "file": "docs-site/pictures/files/omr-6389-1.webp"
+    },
+    "/library/omr-374-1.webp": {
+     "file": "docs-site/pictures/files/omr-374-1.webp"
+    }
+   },
+   "wait": "#set-filters",
+   "steps": [
+    {
+     "click": "#set-filters > summary"
+    },
+    {
+     "wait": "#set-filters .sheet"
+    }
+   ],
+   "crop": "#set-filters .sheet",
+   "pad": 12,
+   "alt": "The Sets tab's Filters open: Order (Best match while words are typed), Size, Years, Inside the theme, Year in the decade, 3D model set to Only with a 3D model, Minifigures, and Clear the filters.",
+   "caption": "Filters, on the Sets tab.",
+   "features": [
+    "ui:LDraw library page"
+   ]
+  }
+ ]
+}

@@ -707,6 +707,13 @@ func _apply(step: Dictionary) -> Dictionary:
 		world.held_paths = paths
 		return {"undo": "heldpaths", "paths": had}
 
+	# The name each section was read under (BrickWorld.section_files): the
+	# whole table as it was, its own reverse.
+	if step.get("undo", "") == "sectionfiles":
+		var named: Dictionary = world.section_files
+		world.section_files = (step["files"] as Dictionary).duplicate()
+		return {"undo": "sectionfiles", "files": named}
+
 	# Lights of the model's own (BrickWorld.scene_lights) a step took out or
 	# put in: a sub-model's, taken apart into the model (Assemblies.ungroup).
 	# Each found by what it is, not where it is in the list, and the list made

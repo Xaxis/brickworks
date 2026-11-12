@@ -39,7 +39,7 @@ static func written_into(text: String, source: SourceFile, library: PartLibrary)
 	var changed: bool = false
 	for n: int in lines.size() + 1:
 		var line: String = lines[n] if n < lines.size() else ""
-		var starts: bool = n == lines.size() or line.strip_edges().begins_with("0 FILE ")
+		var starts: bool = n == lines.size() or LdrModel.section_word(line) == "FILE"
 		if starts and not section.is_empty():
 			var key: String = _match(section[0], paths)
 			if not key.is_empty():
@@ -88,7 +88,7 @@ static func _paths_of(source: SourceFile) -> Dictionary:
 ## ("pneumatic_hose_lq_12.ldr" for "42080 - pneumaticHoseLQ-12.ldr"), when
 ## one and only one source path ends so. "" for none.
 static func _match(file_line: String, paths: Dictionary) -> String:
-	var name: String = LdrModel._key(file_line.strip_edges().substr(7).strip_edges())
+	var name: String = LdrModel._key(LdrModel.file_name_of(file_line))
 	if paths.has(name):
 		return name
 	var plain: String = _letters(name)
@@ -123,7 +123,7 @@ static func _section_again(section: PackedStringArray, path: Dictionary,
 		var numbers := PackedFloat64Array()
 		for k: int in range(2, 14):
 			numbers.append(float(words[k]))
-		var part: String = library.resolve(LdrModel._key(" ".join(words.slice(14))))
+		var part: String = library.resolve(LdrModel.stem(LdrModel.reference_of(line)))
 		var its: String = Flex.strung(library, part)
 		if kind.is_empty():
 			kind = its
@@ -179,7 +179,7 @@ static func _section_again(section: PackedStringArray, path: Dictionary,
 	# part, where LDCad has them.
 	var placed: bool = false
 	for line: String in section:
-		if not placed and line.strip_edges().begins_with("1 "):
+		if not placed and LdrModel.is_placing(line):
 			for one: String in meta:
 				out.append(one + eol)
 			out.append(str(path["generated"]) + eol)

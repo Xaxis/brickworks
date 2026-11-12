@@ -405,7 +405,7 @@ static func moved_into(text: String, whole: Transform3D) -> String:
 		if numbers.size() != 12:
 			continue
 		lines[n] = "1 %s %s %s%s" % [words[1], LdrModel.numbers_text(_composed(w, numbers)),
-			" ".join(words.slice(14)), "\r" if lines[n].ends_with("\r") else ""]
+			LdrModel.reference_of(lines[n]), "\r" if lines[n].ends_with("\r") else ""]
 	return "\n".join(lines)
 
 
@@ -690,8 +690,9 @@ func moved_place(joint: Joint) -> Vector3:
 	return (moved * (joint.place * LdrModel.FLIP)) * LdrModel.FLIP
 
 
-## The motion lines, without line breaks, in the order they are written.
-func lines() -> PackedStringArray:
+## The motion lines, without line breaks, in the order they are written;
+## those this could not read last, unless not [param with_unread].
+func lines(with_unread: bool = true) -> PackedStringArray:
 	var out := PackedStringArray()
 	for motion: Motion in list:
 		if motion.is_sequence():
@@ -722,47 +723,20 @@ func lines() -> PackedStringArray:
 			if motion.path.steer != null:
 				out.append("%s_STEER %s AT %s JOINT %s" % [META, quoted(motion.name),
 					num(motion.path.steer.at, 2), _ref_written(motion.path.steer)])
-	# And the lines this could not read, as the file had them.
-	out.append_array(unread)
+	# And the lines this could not read, as the file had them: after the rest
+	# here; a save puts each where the file had it (ModelStore, MetaIndex
+	# .lines_for), and a refused key stays between the keys either side.
+	if with_unread:
+		out.append_array(unread)
 	return out
 
 
-## [param text] with [param lines] in the head of its main model, after its
-## floor's line (ModelFloor) where it has one, in place of any motion lines
-## it had: written the same every time, so a model saved twice is the same
-## file.
+## [param text] with [param motion_lines] in the head of its main model
+## (MetaIndex.HEAD: with the floor's line), in place of the motion lines it
+## had, each it had kept where it is: written the same every time, so a
+## model saved twice is the same file. A sub-model's lines are its own.
 static func written_into(text: String, motion_lines: PackedStringArray) -> String:
-	if motion_lines.is_empty() and not text.contains(META):
-		return text
-	# Each line ended as the file's are: a CRLF file's motion lines went out
-	# in LF alone (drivereview, keeptext5 note e).
-	var eol: String = "\r" if text.split("\n", true, 1)[0].ends_with("\r") else ""
-	var kept := PackedStringArray()
-	for line: String in text.split("\n"):
-		if not line.strip_edges().begins_with(META):
-			kept.append(line)
-	if motion_lines.is_empty():
-		return "\n".join(kept)
-	var ended := PackedStringArray()
-	for line: String in motion_lines:
-		ended.append(line + eol)
-	var at: int = -1
-	for n: int in kept.size():
-		if kept[n].begins_with(ModelFloor.META):
-			at = n + 1
-			break
-	if at < 0:
-		at = kept.size()
-		for n: int in kept.size():
-			var line: String = kept[n].strip_edges()
-			if n > 0 and (line.is_empty() or line.begins_with("1 ") or line.begins_with("0 FILE")
-					or line == "0 STEP" or line.to_upper().begins_with("0 ROTSTEP")):
-				at = n
-				break
-	var head: PackedStringArray = kept.slice(0, at)
-	head.append_array(ended)
-	head.append_array(kept.slice(at))
-	return "\n".join(head)
+	return MetaIndex.written(text, [MetaIndex.family(["MOTION*"], motion_lines, MetaIndex.HEAD)])
 
 
 ## The motions a model's text carries, read at the edge. A line this
@@ -773,20 +747,25 @@ static func written_into(text: String, motion_lines: PackedStringArray) -> Strin
 ## is read after every track and path, so the order the lines are in does
 ## not matter (F4).
 static func read(text: String) -> Motions:
+	if not text.contains("MOTION"):
+		return Motions.new()
+	return read_from(MetaIndex.of_text(text))
+
+
+## [method read] of the model's own lines read once (MetaIndex): a
+## sub-model's motion lines are its own, and stay in it as they are. Each
+## line read taken.
+static func read_from(metas: MetaIndex) -> Motions:
 	var out := Motions.new()
-	if not text.contains(META):
-		return out
 	var tracks: Dictionary = {}   ## "motion|n" -> Track
 	var later: Array = []         ## [n, line, words]: keys, wheels and steering
 	var lines_of: Dictionary = {} ## Motion -> [[n, line, part]]: the lines read into it
 	var refused: Array = []       ## [n, line, motion name, why, rank]
-	var text_lines: PackedStringArray = text.split("\n")
-	for n: int in text_lines.size():
-		var raw: String = text_lines[n].trim_suffix("\r")
-		var line: String = raw.strip_edges()
-		if not line.begins_with(META):
-			continue
-		# 0 !BRICKWORKS MOTION_TRACK "name" ...
+	var own: Array[MetaIndex.Line] = metas.own(["MOTION*"])
+	for n: int in own.size():
+		var raw: String = own[n].raw
+		# 0 !BRICKWORKS MOTION_TRACK "name" ..., its words as one space apart.
+		var line: String = own[n].clean()
 		var words: PackedStringArray = tokens(line)
 		if words.size() < 4 or words[3].strip_edges().is_empty():
 			refused.append([n, raw, "", "a motion line with no motion's name", 0])
@@ -891,6 +870,12 @@ static func read(text: String) -> Motions:
 		return not one.tracks.is_empty() or one.driver != null or one.path != null or one.is_sequence())
 	out._tidy_joints()
 	refused.sort_custom(func(a: Array, b: Array) -> bool: return int(a[0]) < int(b[0]))
+	# Each line read into a motion taken; one refused is kept as it is.
+	var not_read: Dictionary = {}
+	for one: Array in refused:
+		not_read[int(one[0])] = true
+	for n: int in own.size():
+		own[n].taken = not not_read.has(n)
 	# Each motion's lines said once, by the first of its own reasons.
 	var why_of: Dictionary = {}   ## name -> [rank, why]
 	var count_of: Dictionary = {} ## name -> lines

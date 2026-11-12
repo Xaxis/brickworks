@@ -343,6 +343,14 @@ var held_paths: Dictionary = {}
 ## -> the path the file had it in, so the undo of a change made before it
 ## landed takes it back with the rest (Builder._apply's "heldpaths").
 var held_landed: Dictionary = {}
+## The name each sub-model's section had in the file the model was opened
+## from, by its definition, and the model's own by "" (LdrModel.file_names):
+## a whole write writes each under it again (LdrModel.write_tree), as LDCad
+## and Studio keep a file's names. Named again from its title at every save,
+## "0 FILE hssub.ldr" titled "hssub.ldr" went out as "hssub.ldr.ldr", and the
+## next open lost it (hscheck). A definition renamed is not in it, and is
+## named from its new name.
+var section_files: Dictionary = {}
 ## The model's own named movements (Motions: "Open the doors"), read from
 ## its file and written into it. Changed only by the history's steps.
 var motions: Motions = null
@@ -654,6 +662,7 @@ func clear(keep_numbers: bool = false) -> void:
 	section_frames = {}
 	held_paths = {}
 	held_landed = {}
+	section_files.clear()
 	motions = null
 	cut_kept = {}
 	saved_views = []

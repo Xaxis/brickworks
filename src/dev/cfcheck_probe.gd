@@ -3,14 +3,15 @@
 ##
 ## Kept by copyfaults2 as cfcheck wrote it (bench/results/cfcheck-2026-11-11)
 ## but for these: cap, stepdelname and replaceall run by default, as its later
-## runs ran them, and metas2 only when asked (CFCHECK_CASES=metas2), red on
-## 7e6cb1aec and live for metalines to fix; the name clearautosave restores
+## runs ran them, and metas2, red on 7e6cb1aec and live and green since
+## metalines; the name clearautosave restores
 ## is the one a restore with no clear gives (its control); a twin follows part by part (Assemblies
 ## .copies_follow), so a part in its copy's placing colour painted in one
 ## copy leaves the other's (twinpaint) and a step edit is on both copies of
 ## a sub-model built in its own steps (stepcolour); and "saved again" leaves
 ## out what a reopened whole write changes as 7e6cb1aec writes it too
-## (copyfaults_probe._as_kept: its TITLE line, metalines' to fix).
+## (copyfaults_probe._as_kept). metas2 is metalines' bar now and runs by
+## default.
 ##
 ##   godot --headless --path . --script src/dev/cfcheck_probe.gd
 ##
@@ -19,7 +20,7 @@ extends "res://src/dev/copyfaults_probe.gd"
 
 const MINE: Array = ["owncolour", "own16", "ownstep", "mirror", "nested", "twinpaint",
 	"relay", "stepcolour", "wing2steps", "ungroup", "makeunique", "emptystep", "clearids",
-	"clearabsent", "clearautosave", "cap", "stepdelname", "replaceall"]
+	"clearabsent", "clearautosave", "cap", "stepdelname", "replaceall", "metas2"]
 
 
 func _run() -> void:
@@ -682,7 +683,7 @@ func _c_metas2() -> void:
 		var renamed: String = "Renamed [x] (y)"
 		var path: String = "user://cfc_metas_%s" % name.get_file()
 		var wrote: bool = _store.call("_write", path, renamed, true)
-		var saved: String = FileAccess.get_file_as_string(path)
+		var saved: String = _text_kept(path)
 		if name == "cfc_bom.mpd":
 			text = "\ufeff" + text
 			await _open(text)
@@ -693,7 +694,7 @@ func _c_metas2() -> void:
 			_store.share_id = "abc123share"
 			_store.bin_sets = PackedStringArray(["10497-1"])
 			_store.call("_write", path, renamed, true)
-			saved = FileAccess.get_file_as_string(path)
+			saved = _text_kept(path)
 			var raw: PackedByteArray = FileAccess.get_file_as_bytes(path)
 			print("  bom fixture: written %d bytes, starts %s" % [raw.size(), str(raw.slice(0, 4))])
 		print("  wrote %s: %s" % [path, str(wrote)])
@@ -721,8 +722,17 @@ func _c_metas2() -> void:
 		_check("...every part, colour, place and step as opened%s" % _unlike(shown, _looks()),
 			shown == _looks())
 		_store.call("_write", path, renamed, true)
-		var again: String = FileAccess.get_file_as_string(path)
+		var again: String = _text_kept(path)
 		_check("...saved again byte for byte%s" % _first_unlike(saved, again), again == saved)
+
+
+## The text of the file at [param path] as the app's open reads it, its
+## byte-order mark kept (the engine's reading drops it, so the check above
+## read a file that had one as without).
+static func _text_kept(path: String) -> String:
+	var raw: PackedByteArray = FileAccess.get_file_as_bytes(path)
+	var bom: bool = raw.size() >= 3 and raw[0] == 0xEF and raw[1] == 0xBB and raw[2] == 0xBF
+	return ("\ufeff" if bom else "") + raw.get_string_from_utf8()
 
 
 ## Where an app line (0 !BRICKWORKS) of [param text] is not in its model's

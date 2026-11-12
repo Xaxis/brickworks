@@ -1,15 +1,15 @@
 ---
-ai: The beta gives each of 100 approved testers 30 days of Pro, free and once: no card, nothing renews. Any account joins in one press, at once, at brickworks.diy/beta or in a new account's welcome; the owner approves the first 100 testers' month. When the month ends the account is on Free and nothing is deleted. No tool applies; send the person to /beta.
-ai: While the beta is open, any signed-in account joins as a tester in one press, and leaves in one: the welcome after its first sign-in, the Beta row of the site's Settings, or the Beta row of the app's Account. Separately, 100 approved testers get 30 days of Pro, free and once: no card, nothing renews. A tester tells us what they build once at brickworks.diy/beta, and the owner reads and decides each one. When the month ends the account is on Free and nothing is deleted. No tool joins or applies; send the person to Settings or /beta.
+ai: The beta is open on brickworks.diy. Any signed-in account joins as a tester in one press, and leaves in one: the welcome after its first sign-in, /beta, the beta bar, or the Beta row of the site's Settings or the app's Account. Separately, the first 100 testers the owner approves get 30 days of Pro, free and once: no card, nothing renews; a tester asks for it with "Tell us about you" on /beta. When the month ends the account is on Free and nothing is deleted. Switched off (BRICKWORKS_BETA not open), /beta says it is coming soon and takes no one. No tool joins or applies; send the person to /beta.
 rules:
   - AI is never limited, tester or not: people bring their own.
   - An account made before 29 October 2026 has Pro already and takes none of the 100 spots.
+  - Never say the beta is open while /beta says it is coming soon.
 title: The beta
 nav: The beta
-description: 100 testers get 30 days of Pro, free. What you get, what we ask, how to join and what happens when the month ends.
+description: The Brickworks beta: how to join, what testers get, the month of Pro for the first 100 approved, and what happens when it ends.
 ---
 
-The [beta](/beta) is how Brickworks finds people to use it for real and tell us honestly how it goes. Anyone can join as a tester, in one press. The first 100 we pick also get **30 days of Pro**, free: no card, nothing to pay and nothing to cancel.
+The [beta](/beta) is how Brickworks finds people to use it for real and tell us honestly how it goes. Testers try new features first, and the first 100 we approve get **30 days of Pro**, free: no card, nothing to pay and nothing to cancel.
 
 <!-- covers
 ui:beta page
@@ -20,18 +20,15 @@ lib:the beta's spots and months
 
 ## Joining {#join}
 
-While the beta is open, a new account is asked once, right after its first sign-in, on the site and in the app: **Join the beta testers** or **Not now**. Nothing is chosen for you. Joining agrees to the [beta's terms](/terms#beta) and to emails about the beta.
+The beta is open. A new account is asked once, right after its first sign-in, on the site and in the app: **Join the beta testers** or **Not now**. Nothing is chosen for you, and **Not now** is kept: the question never comes again. Any account can also join:
 
-- **Join the beta testers** makes you a tester at once, and says where to report what is wrong.
-- **Not now** is kept: the question never comes again.
+1. Open [/beta](/beta), **Open beta** on the homepage, or **Join** in the beta bar at the foot of every page.
+2. Signed out, **Sign up and join** signs you in first (signing in makes your account if you have none).
+3. Signed in, **Join the beta**: you are a tester at once.
 
-Any account can also join from the beta's own page:
+![The beta's page signed out: Open beta, Help shape Brickworks, 100 of 100 free months of Pro left, Sign up and join and What testers get, then What testers get's three cards: New things first, A month of Pro, free, and Heard and answered.](/docs/img/beta-page.webp "brickworks.diy/beta, signed out.")
 
-1. Open [/beta](/beta), the homepage's **Open beta**, or **Join** in the beta bar at the foot of any page.
-2. Signed out, **Sign up and join** signs you in with your email first (signing in makes your account if you have none), and a new account's welcome asks whether to join.
-3. Signed in, **Join the beta**: you are a tester at once. Joining agrees to the [beta's terms](/terms#beta) and to emails about the beta; leave any time in Settings.
-
-Either way you can change your mind in one press: the **Beta** row of [Settings](/settings) on the site, or of **Account** in the app, says whether you are a tester, with **Join the beta testers** or **Leave the beta**. Leaving takes nothing away: a month of Pro already given stays yours.
+Joining agrees to the [beta's terms](/terms#beta) and to emails about the beta. The **Beta** row of [Settings](/settings) on the site, or of **Account** in the app, says whether you are a tester, with **Join the beta testers** or **Leave the beta**. Leaving takes nothing away: a month of Pro already given stays yours.
 
 <!-- covers
 ui:the beta's welcome at sign-up
@@ -41,26 +38,24 @@ lib:joining the beta's testers
 
 ## What testers get {#get}
 
-Every tester tries new features first, with the [beta hub](/docs/feedback#beta-hub). The first 100 we pick also get 30 days of Pro on their account:
+- **New features first**: early features turn on for your account when you sign in, in the app and on the site, and simply stay when they open to everyone.
+- **A hub**: [/beta](/beta) shows what changed this week, and for a tester what is new to try, what we already know is wrong, and your early features ([the beta hub](/docs/feedback#beta-hub)).
+- **Report a bug from anywhere**: beside **Account** in the app's top bar, and in the beta bar on every page of the site ([Report a bug](/docs/feedback#report)). A tester's reports are marked as a tester's.
+- **For the first 100 we approve, 30 days of Pro**: every model kept with your account, without a limit (Free keeps 25), and commercial use: for the month, selling what you make under [Pro's licence](/terms#commercial-use).
 
-- **every model kept with your account**, without a limit (Free keeps 25);
-- **commercial use**: for the month, sell what you make with Brickworks (instructions, kits, renders or builds made to order) under Pro's terms.
-
-The desktop app is free to everyone, with Pro or without ([Plans](/docs/plans)). Your AI is your own on every plan: your Claude through the connector or Claude Code, or an Anthropic API key, in any browser; in the desktop app, your own key for OpenAI, Gemini and others too. Brickworks never counts it.
-
-The month starts the day you are approved, or the day Pro launches if that is later. You get an email when it starts, and another three days before it ends.
+The month starts the day you are approved, or the day Pro launches if that is later. You get an email when it starts, and another three days before it ends. Your AI is your own on every plan, tester or not, and Brickworks never counts it ([Plans](/docs/plans#ai)).
 
 ## What we ask {#ask}
 
-Use Brickworks for real, on things you want to build, and tell us honestly what works and what does not: **Send feedback** in the app's Brickworks menu or the site's footer, whenever something is wrong or you have an idea. While the beta is open, **Report a bug** is on every page of the site, in the beta bar at the foot of the window, and [/beta](/beta) is your [hub](/docs/feedback#beta-hub): what is new to try and what we know is wrong.
+Use Brickworks for real, on things you want to build, and tell us honestly what works and what does not, whenever something is wrong or you have an idea: **Report a bug**, or **Send feedback** in the app's Brickworks menu and the site's footer.
 
 ## Asking for the month of Pro {#apply}
 
 1. Join, as above. Then [/beta](/beta) shows you **Tell us about you**; the welcome's thank-you and Settings link straight to it.
-2. Say what you would build, which AI you use (Claude, ChatGPT, your own key, or not sure), your LEGO® or CAD background, and a link to your work if you like (Rebrickable, BrickLink, Flickr, GitHub or a portfolio).
+2. Say what you would build (a sentence or two), which AI you use (Claude, ChatGPT, your own API key, or not sure yet), your LEGO® or CAD background, and, if you like, a line about it and a link to your work (Rebrickable, BrickLink, Flickr, GitHub or a portfolio).
 3. Press **Send**. There are no boxes to tick: joining agreed to the terms and the emails. The same place then says where it stands.
 
-The month of Pro goes to the first 100 testers we approve, and we email you when yours is. The beta's page counts the months left as they go; once all 100 are given, joining stays open.
+We read every one ourselves; nothing is decided by a machine. We email you when yours is approved. The beta's page counts the months left; once all 100 are given, joining stays open.
 
 ## When the month ends {#ends}
 
@@ -68,11 +63,15 @@ You are back on Free. Nothing is charged, no card is asked for, and nothing is d
 
 ## An account from before 29 October 2026 {#early}
 
-It has Pro already, free and with no end date ([Plans and billing](/docs/plans)). You can still join as a tester; you will not take one of the 100 spots.
+It has Pro already, free and with no end date ([Plans and billing](/docs/plans#existing-accounts)). You can still join as a tester, and you take none of the 100 months.
 
 ## If you are not chosen {#declined}
 
-We email you, and you can apply again 30 days later.
+We email you, and you can ask again 30 days later.
+
+## When the beta is closed {#closed}
+
+The beta can be switched off. Then [/beta](/beta) says *Coming soon: the beta opens here shortly*, with what testers get and the questions, and takes no one, and nothing on the site or in the app asks you to join. **Send feedback** and **Help › Report a bug…** work as ever ([Feedback](/docs/feedback)), and a month of Pro already given stays.
 
 ## Your application {#privacy}
 

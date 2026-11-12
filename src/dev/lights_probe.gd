@@ -825,8 +825,13 @@ func _in_file() -> Array:
 	return _lights.call("in_file", _scene(), _store.lift())
 
 
+## The lights a saved file holds, read as the open reads them: off the one
+## index of the app's lines (MetaIndex, metalines). SceneLights.read went
+## with mlfix, and the probe's every "light line in" check called it.
 func _read(path: String) -> Array:
-	return _lights.call("read", FileAccess.get_file_as_string(path))
+	var metas: Variant = load("res://src/parts/meta_index.gd").call("of_text",
+		FileAccess.get_file_as_string(path))
+	return (_lights.call("read_from", metas) as Dictionary)["lights"]
 
 
 func _same(a: Array, b: Array) -> bool:
@@ -950,6 +955,7 @@ func _review() -> void:
 	await _r_cleared()
 	await _r_whole_mpd()
 	await _r_crlf_last()
+	await _r_crlf_unread()
 	await _r_sections()
 	await _r_paths()
 	await _r_junk()
@@ -1126,6 +1132,29 @@ func _r_crlf_last() -> void:
 		% [alone, _lines_of(after).size()] + "lines (2), the change in it (%s)"
 		% after.contains("#00ff00"), alone == 0 and _lines_of(after).size() == 2
 		and after.contains("#00ff00"))
+
+
+## A CRLF file with a light this cannot read between two it can, a light
+## added and saved: no line ends LF alone, and the unread one is where it
+## was (metalines: lines the writers put in ended LF, and the unread ones
+## went after the rest).
+func _r_crlf_unread() -> void:
+	var laser: String = _light("laser", [0, 0, 0])
+	var text: String = "0 Crlf unread\r\n0 Name: crlf_unread.ldr\r\n0 Author: Someone\r\n" \
+		+ _light("point", [0, -60, 0]) + "\r\n" + laser + "\r\n" \
+		+ _light("point", [0, -90, 0], {"colour": "#00ff00"}) + "\r\n" \
+		+ "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\r\n"
+	await _opened(_put("crlf_unread.ldr", text))
+	await _tools.run("light_model", {"op": "add", "kind": "point"})
+	await _tools.run("set_floor", {"kind": "baseplate", "across": 16})
+	var saved: String = ModelStore.SAVE_DIR + "crlf_unread_saved.ldr"
+	_main.call("save_model", saved)
+	var after: String = FileAccess.get_file_as_string(saved)
+	var lf: int = after.count("\n") - after.count("\r\n")
+	var lines: PackedStringArray = _lines_of(after)
+	_check("a CRLF file, a light added and the floor set: %d lines end LF alone (0), " % lf
+		+ "the light it cannot read second of 4 as it was (%d)" % lines.find(laser),
+		lf == 0 and lines.size() == 4 and lines.find(laser) == 1)
 
 
 ## Which model a light is of, as LdrModel reads it: an MPD whose 0 FILE lines

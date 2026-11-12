@@ -735,7 +735,7 @@ static func unreached_by(library: PartLibrary, model: LdrModel) -> PackedStringA
 			var sub: LdrModel.SubModel = model.submodels.get(key)
 			if sub == null:
 				continue
-			var body: String = str(model.section_texts.get(sub.name.to_lower(), ""))
+			var body: String = str(model.section_texts.get(key, ""))
 			var seen: Array = _skins_of_body.get(body, [])
 			if not seen.is_empty() and (str(seen[0]).is_empty() or library.parts.has(seen[0])):
 				continue
@@ -1023,7 +1023,7 @@ static func begin_skins(library: PartLibrary, model: LdrModel,
 		var sub: LdrModel.SubModel = model.submodels.get(key)
 		if sub == null:
 			continue
-		var body: String = str(model.section_texts.get(sub.name.to_lower(), ""))
+		var body: String = str(model.section_texts.get(key, ""))
 		# A sub-model seen before this session is not read again: its skin,
 		# or that it has none (42058's hose is 15,760 lines: read again on
 		# every open, 40 ms of a 150 ms one).
@@ -1105,7 +1105,7 @@ static func end_skins(library: PartLibrary, model: LdrModel, begun: Array,
 			drawn_from[id] = needs(text, entry["sources"])
 		var kept: Array[LdrModel.Placement] = []
 		for placement: LdrModel.Placement in sub.placements:
-			if _is_piece(library, model, LdrModel._key(placement.part_id), entry["pieces"]):
+			if _is_piece(library, model, _named(placement), entry["pieces"]):
 				kept.append(placement)
 		var at: Array = model.generated[key]
 		var piece := LdrModel.Placement.new(id, 16, Transform3D.IDENTITY, int(at[1]))
@@ -1129,7 +1129,7 @@ static func put_skins(library: PartLibrary, model: LdrModel) -> void:
 		var sub: LdrModel.SubModel = model.submodels.get(key)
 		if sub == null:
 			continue
-		var body: String = str(model.section_texts.get(sub.name.to_lower(), ""))
+		var body: String = str(model.section_texts.get(key, ""))
 		var id: String = ""
 		var seen: Array = _skins_of_body.get(body, [])
 		if not seen.is_empty():
@@ -1142,7 +1142,7 @@ static func put_skins(library: PartLibrary, model: LdrModel) -> void:
 			continue
 		var kept: Array[LdrModel.Placement] = []
 		for placement: LdrModel.Placement in sub.placements:
-			if _is_piece(library, model, LdrModel._key(placement.part_id), pieces):
+			if _is_piece(library, model, _named(placement), pieces):
 				kept.append(placement)
 		var at: Array = model.generated[key]
 		var piece := LdrModel.Placement.new(id, 16, Transform3D.IDENTITY, int(at[1]))
@@ -1253,7 +1253,7 @@ static func _skin_text(library: PartLibrary, model: LdrModel, sub: LdrModel.SubM
 			var words: PackedStringArray = line.replace("\t", " ").split(" ", false)
 			if words.size() < 15:
 				continue
-			if _is_piece(library, model, LdrModel._key(" ".join(words.slice(14))), pieces):
+			if _is_piece(library, model, LdrModel._key(LdrModel.reference_of(line)), pieces):
 				with_pieces = true
 				# An INVERTNEXT goes with the reference it stood before.
 				if not kept.is_empty() and kept[kept.size() - 1].to_upper() \
@@ -1270,10 +1270,10 @@ static func _skin_text(library: PartLibrary, model: LdrModel, sub: LdrModel.SubM
 		# The path is the whole flexible part's, its ends with it: not this.
 		kept = PackedStringArray(Array(kept).filter(func(l: String) -> bool:
 			return not l.begins_with("0 !LDCAD")))
-	var title: String = sub.title if not sub.title.is_empty() else LdrModel._key(sub.name)
+	var title: String = sub.title if not sub.title.is_empty() else LdrModel.stem(sub.name)
 	var head := PackedStringArray([
 		"0 %s (flexible)" % title,
-		"0 Name: %s-flex.dat" % LdrModel._key(sub.name),
+		"0 Name: %s-flex.dat" % LdrModel.stem(sub.name),
 		"0 Author: %s" % (author if not author.is_empty() else "LDCad"),
 		"0 !LDRAW_ORG Unofficial_Part"])
 	if not licence.is_empty():
@@ -1294,9 +1294,9 @@ static func is_skin_text(text: String) -> bool:
 
 
 ## An id for a sub-model's skin no other part has, unless it is this very
-## skin: its key and "-flex".
+## skin: its file name's stem and "-flex" ("hose-flex" for "hose.ldr").
 static func _skin_id(library: PartLibrary, key: String, text: String) -> String:
-	var base: String = key + "-flex"
+	var base: String = LdrModel.stem(key) + "-flex"
 	var id: String = base
 	var n: int = 1
 	while library.parts.has(id) and library.custom_source(id) != text:
@@ -1306,26 +1306,38 @@ static func _skin_id(library: PartLibrary, key: String, text: String) -> String:
 
 
 ## Whether a reference in a flexible part's sub-model is a piece of its own
-## rather than skin: a part (the library's, or one the file carries), a
-## sub-model with a part in it, or another skin. A primitive, a donor
-## section of nothing but drawing, or a file nobody has, is skin.
+## rather than skin: another skin, a sub-model with a part in it, or a part
+## (the library's, or one the file carries). [param key] is what it names, as
+## LDraw compares names (LdrModel._key): a sub-model of the file of that name
+## before a part of its number, as the open reads it (LdrModel._inline). A
+## primitive, a donor section of nothing but drawing, or a file nobody has, is
+## skin.
 static func _is_piece(library: PartLibrary, model: LdrModel, key: String,
 		pieces: Dictionary, depth: int = 0) -> bool:
 	if pieces.has(key):
 		return pieces[key]
 	var piece: bool = false
-	if library.parts.has(key) or model.embedded_parts.has(key + ".dat"):
+	var number: String = LdrModel.stem(key)
+	if model.generated.has(key) and model.submodels.has(key):
 		piece = true
-	elif model.generated.has(key) and model.submodels.has(key):
+	elif model.submodels.has(key):
+		if depth < 16:
+			pieces[key] = false     # a section that refers to itself
+			for placement: LdrModel.Placement in (model.submodels[key] as LdrModel.SubModel).placements:
+				if _is_piece(library, model, _named(placement), pieces, depth + 1):
+					piece = true
+					break
+	elif library.parts.has(number) or model.embedded_parts.has(number + ".dat"):
 		piece = true
-	elif model.submodels.has(key) and depth < 16:
-		pieces[key] = false     # a section that refers to itself
-		for placement: LdrModel.Placement in (model.submodels[key] as LdrModel.SubModel).placements:
-			if _is_piece(library, model, LdrModel._key(placement.part_id), pieces, depth + 1):
-				piece = true
-				break
 	pieces[key] = piece
 	return piece
+
+
+## What [param placement] names, as [method _is_piece] takes it: its line's
+## reference, or for one the open put in (a skin) its part's file name.
+static func _named(placement: LdrModel.Placement) -> String:
+	return placement.reference if not placement.reference.is_empty() \
+		else LdrModel._key(placement.part_id + ".dat")
 
 
 ## The parts [param texts] holds (file name -> LDraw text), drawn from
@@ -1427,8 +1439,8 @@ static func needs(text: String, carried: Dictionary) -> Dictionary:
 			var words: PackedStringArray = LdrModel._fields(line)
 			if words.size() < 15 or words[0] != "1":
 				continue
-			var named: String = " ".join(words.slice(14))
-			var key: String = named.replace("\\", "/").to_lower()
+			var named: String = LdrModel.reference_of(line)
+			var key: String = LdrModel._key(named)
 			if out.has(named):
 				continue
 			var found: Variant = carried.get(key, carried.get(key.get_file(), null))
