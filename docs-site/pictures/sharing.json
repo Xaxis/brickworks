@@ -24,7 +24,16 @@
      "click": "_share_panel._tags"
     },
     {
-     "type": "car, sports, minifigure"
+     "type": "car, sports, racing"
+    },
+    {
+     "click": "_share_panel._about"
+    },
+    {
+     "type": "A red two-seater with its driver, and a steering wheel that turns the front wheels."
+    },
+    {
+     "click": "_share_panel._credit"
     },
     {
      "click": "_share_panel._list"
@@ -34,8 +43,8 @@
     }
    ],
    "crop": "@opened",
-   "pad": 4,
-   "alt": "The Share this model panel: Name, Show who made it, About it, Tags and Kind side by side, Licence with what it lets others do, List it in the gallery, then Publish and the guidelines.",
+   "pad": 0,
+   "alt": "The Share this model panel: Name, Show who made it with the name to credit, About it, Tags and Kind side by side, Licence with what it lets others do, List it in the gallery, then Publish and the guidelines.",
    "caption": "File › Share…, before it is published.",
    "features": [
     "ui:share panel"
@@ -83,7 +92,16 @@
      "click": "_share_panel._tags"
     },
     {
-     "type": "car, sports, minifigure"
+     "type": "car, sports, racing"
+    },
+    {
+     "click": "_share_panel._about"
+    },
+    {
+     "type": "A red two-seater with its driver, and a steering wheel that turns the front wheels."
+    },
+    {
+     "click": "_share_panel._credit"
     },
     {
      "click": "_share_panel._list"
@@ -101,8 +119,8 @@
     }
    ],
    "crop": "@opened",
-   "pad": 4,
-   "alt": "The Share panel once published: the line Shared at this link and listed in the gallery, the link with Copy link, Copy embed code and Open, Unpublish, What changed? for the next version, and Publish now reading Update the link.",
+   "pad": 0,
+   "alt": "The Share panel once published: Publish now reading Update the link, then the line Shared at this link and listed in the gallery with its Tested mark, the link, Copy link, Copy embed code and Open, and Unpublish.",
    "caption": "The panel once the model is published.",
    "features": [
     "ui:share panel",

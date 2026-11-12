@@ -92,7 +92,7 @@
    ],
    "crop": "window",
    "width": 1000,
-   "alt": "Build it a part at a time: the model built so far, faded, with the next part in its colours, and on the card the part's picture, its name and 3 of 8 in this step, with One part chosen over Whole step, and Back and Next.",
+   "alt": "Build it a part at a time: the model built so far, faded, with the next part outlined in its colours, and under it the part's picture with 3 of 8 in this step, its name, One part chosen over Whole step, and Back and Next.",
    "caption": "Build it, One part.",
    "features": [
     "ui:build it step player"

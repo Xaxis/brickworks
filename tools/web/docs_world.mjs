@@ -22,7 +22,7 @@ const TB = "d0c5d0c5-d0c5-4d0c-8d0c-d0c5d0c5d0c5";
 const BY = { handle: "test-builder", name: "Test builder" };
 const EMAIL = "you@example.com";
 const M = [
-  ["DocsSprt01", "sports_car", "Sports car and its driver", 187, 35, "vehicle", ["car", "sports", "minifigure"],
+  ["DocsSprt01", "sports_car", "Sports car and its driver", 187, 35, "vehicle", ["car", "sports", "racing"],
     { tested: true, made_with: "hand", builds: 14, likes: 23, remixes: 2, comments: 3, moves: ["steering"],
       description: "A red two-seater with its driver, and a steering wheel that turns the front wheels. "
         + "Built to be built: each step stands on its own." }],
