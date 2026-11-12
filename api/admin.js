@@ -94,6 +94,26 @@
 //                                        to visitors a month before it opens
 //                                        (supabase/challenge_year.sql); all or
 //                                        none; &tests=1 as for one
+//   GET  /api/admin?op=overview[&tests=1]  the console's Overview: what needs
+//                                        the owner now and how things stand
+//                                        (api/_console.js)
+//   GET  /api/admin?op=people[&tests=1]  every account, with its profile,
+//                                        models, connectors, beta and plan
+//   GET  /api/admin?op=person&account=U  one account whole, with the acts
+//                                        of the audit on it
+//   GET  /api/admin?op=audit[&before=N][&act=OP][&kind=K&target=T][&q=W][&tests=1]
+//                                        every act of the owner's, newest
+//                                        first (supabase/console.sql)
+//   GET  /api/admin?op=switches          the beta's switch where this is
+//                                        open, billing's mode, the mail
+//   POST /api/admin?op=beta_switch       {mode: open | off}: the beta's switch
+//                                        here (on brickworks.diy the site's,
+//                                        on a preview that preview's)
+//   POST /api/admin?op=beta_waitlist&account=U  {note}: a new application
+//                                        on the waitlist, by hand
+//
+// The console (2026-11-12, docs/ADMIN.md): every POST above is kept in the
+// audit (api/_console.js audited), whatever came of it, before it answers.
 //
 // Challenges (2026-10-19, supabase/challenges.sql): GET lists them, newest
 // first, with their entries, votes and winners (&tests=1: the flows' test
@@ -116,8 +136,10 @@ import { AvatarRefusal, removeAvatar } from "./_avatars.js";
 import { facesOf, pictureAt } from "./_faces.js";
 import { keyed, readShard, shardOf } from "./_owned.js";
 import { originOf } from "./_oauth.js";
-import { betaDecide, betaGrant, betaQueue, betaTesters } from "./_beta.js";
+import { betaDecide, betaGrant, betaQueue, betaSwitchRoute, betaTesters, betaWaitlist } from "./_beta.js";
+import { audited, auditRoute, overview, people, person, switches } from "./_console.js";
 import { feedbackFile, feedbackInbox, feedbackReply, feedbackTriage } from "./_feedback.js";
+import { forgetSettings } from "./_settings.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -167,23 +189,42 @@ export default async function handler(request, response) {
     // surface and that they are simply not it.
     return response.status(404).json({ error: "not found" });
   }
+  // The owner reads the switches as they are now. An instance keeps a
+  // reading a few seconds (api/_settings.js), and the owner's next request
+  // may land on another instance than the one that flipped it: the console
+  // then drew Open just after Off was pressed (console1, 2026-11-12).
+  forgetSettings();
   const op = String(request.query?.op || "");
   const acts = { unlist, bar, unbar, dismiss, untest, uncomment, remove_photo: takePhotoOut,
     remove_avatar: takeAvatarOut, pick, unpick, challenge: setChallenge, end_challenge: endChallenge, plan: planYear,
-    beta_decide: betaDecide, beta_grant: betaGrant, feedback_triage: feedbackTriage, feedback_reply: feedbackReply };
+    beta_decide: betaDecide, beta_grant: betaGrant, beta_waitlist: betaWaitlist, beta_switch: betaSwitchRoute,
+    feedback_triage: feedbackTriage, feedback_reply: feedbackReply };
   if (request.method === "POST" && acts[op]) {
-    try {
-      return await acts[op](request, response, claims);
-    } catch (error) {
-      return response.status(error instanceof AuthError || error instanceof BuildRefusal
-        || error instanceof AvatarRefusal ? error.status : 502)
-        .json({ error: error.message });
-    }
+    return audited(op, acts[op], request, response, claims, (error) => (error instanceof AuthError
+      || error instanceof BuildRefusal || error instanceof AvatarRefusal ? error.status : 502));
   }
   if (request.method !== "GET") {
     return response.status(405).json({ error: "GET, or POST ?op=unlist, bar, unbar, dismiss, untest, uncomment, remove_photo, "
-      + "remove_avatar, pick, unpick, challenge, end_challenge, plan, beta_decide, beta_grant, feedback_triage or "
-      + "feedback_reply" });
+      + "remove_avatar, pick, unpick, challenge, end_challenge, plan, beta_decide, beta_grant, beta_waitlist, beta_switch, "
+      + "feedback_triage or feedback_reply" });
+  }
+  const tests = String(request.query?.tests || "") === "1";
+  const reads = {
+    overview: () => overview(request, tests),
+    people: () => people(tests),
+    switches: () => switches(request),
+  };
+  if (reads[op] || op === "person" || op === "audit") {
+    try {
+      if (op === "audit") return await auditRoute(request, response);
+      if (op === "person") {
+        const one = await person(String(request.query?.account || ""), tests);
+        return one ? response.status(200).json(one) : response.status(404).json({ error: "no such account" });
+      }
+      return response.status(200).json(await reads[op]());
+    } catch (error) {
+      return response.status(error instanceof AuthError ? error.status : 502).json({ error: error.message });
+    }
   }
   if (op === "beta" || op === "beta_testers") {
     try {

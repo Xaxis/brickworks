@@ -24,12 +24,12 @@
 //      and "tell us about you" shows: sent empty, it says what to fix;
 //      filled and sent as a person would, the page says Applied. A second
 //      is refused (409).
-//   3. The owner, on /beta-admin?tests=1 at 1280: the application with what
-//      was read of it (email confirmed, the account's age, its domain, the
-//      same inbox, models kept and shared, the form). Approve: the next
-//      spot, and with billing test the month given at Admission's test
-//      mode, the page then saying the month's days; or, before that, the
-//      month pending.
+//   3. The owner, on the console's Beta (/admin?tests=1#beta) at 1280: the
+//      application with what was read of it (email confirmed, the account's
+//      age, its domain, the same inbox, models kept and shared, the form).
+//      Approve: the next spot, and with billing test the month given at
+//      Admission's test mode, the page then saying the month's days; or,
+//      before that, the month pending.
 //   4. The approved email: kept, and on a deployment with a mail key,
 //      delivered to the throwaway's inbox (Resend's own word, last_event);
 //      on a unit's preview, which has none, kept as dry.
@@ -318,7 +318,7 @@ try {
     // --- 3. The owner ------------------------------------------------------------
     console.log("3. The owner's queue, and an approval");
     owner = await mintSession(process.env.MASTER_EMAIL, { age: false, welcome: false });
-    ({ page, context } = await open("/beta-admin?tests=1", { width: 1280, who: owner, label: "queue" }));
+    ({ page, context } = await open("/admin?tests=1#beta", { width: 1280, who: owner, label: "queue" }));
     check("the queue shown to the owner", await until(page, () => document.getElementById("view")?.hidden === false, null, 30000));
     const card = page.locator("li.app", { hasText: address("a") });
     const read = (await card.innerText().catch(() => "")).replace(/\s+/g, " ");

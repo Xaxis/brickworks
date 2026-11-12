@@ -4,7 +4,7 @@ Everyone who uses Brickworks signs in, on the web and the desktop, with an
 email address and a code sent to it. Nothing in the builder can be used until
 they have. A Claude connector belongs to the account that switched it on.
 
-<!-- covers: ui:sign-in screen, cli:made with probe, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:review sign-in page, cli:review sign-in flow, cli:ChatGPT connector flow, cli:every assistant's sign-in, ui:share panel, api:POST /api/account?op=age, api:POST /api/orangecheck, ui:sign in with orangecheck, cli:orangecheck check, cli:orangecheck browser flow, ui:sign in with orangecheck on the desktop, cli:orangecheck desktop flow, cli:orangecheck desktop probe, cli:orangecheck listener probe, cli:orangecheck window answered, cli:signup check, api:GET /api/otp/canary, cli:canary check -->
+<!-- covers: ui:sign-in screen, cli:made with probe, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, lib:the console's reads and audit, lib:the console's switches, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:review sign-in page, cli:review sign-in flow, cli:ChatGPT connector flow, cli:every assistant's sign-in, ui:share panel, api:POST /api/account?op=age, api:POST /api/orangecheck, ui:sign in with orangecheck, cli:orangecheck check, cli:orangecheck browser flow, ui:sign in with orangecheck on the desktop, cli:orangecheck desktop flow, cli:orangecheck desktop probe, cli:orangecheck listener probe, cli:orangecheck window answered, cli:signup check, api:GET /api/otp/canary, cli:canary check -->
 
 ## Sub-features
 
@@ -151,15 +151,47 @@ they have. A Claude connector belongs to the account that switched it on.
   with what it is about, its reason, note and contact, and the model's
   account's address; never who reported) and `barred` (account, when, why,
   address).
-- `admin page` (`web/admin.html`, `web/admin.js`): uses the app's session in
+- `admin page` (`web/admin.html`, `web/admin.js` the shell, `web/admin-kit.js`
+  what its parts share, `web/admin-gallery.js`, `web/admin-beta.js`,
+  `web/admin-feedback.js`; console1, 2026-11-12, designed in docs/ADMIN.md):
+  the owner's console, one page for all of the site. Uses the app's session in
   that browser (renews it and puts the renewed one back), so there is one
-  sign-in, in the app. Text only, never markup, for addresses people typed and
-  names they chose. In the gallery: the listed models, each a link to its page,
-  with Take out (asks first, then `?op=unlist` and the page again). Above it,
-  Reported: each open report with a link to what it is about, why, what was
-  said, the way to reach them and the account, and Take out, Take out the
-  account (each asking first) and Let it go; and Accounts taken out, each with
-  Let back in. Proven by the moderation browser flow ([web](web.md)).
+  sign-in, in the app; signed out it says so, anybody else "This account
+  cannot see this page." Text only, never markup, for addresses people typed
+  and names they chose. A side list of sections, each its own address:
+  Overview (`#overview`: what needs you with links, how things stand, the
+  switches with the build, the latest acts), People (`#people`: every
+  account, searched, filtered by tester, taken out or with a connector,
+  sorted by any column; `#people/<account>` its panel: the account whole,
+  its models, feedback and acts, Take out the account with why, Let back
+  in), Gallery (`#gallery/<tab>`: Reported, Comments, In the gallery, This
+  week's pick, Challenges, Tested, Taken out, each with its acts as before:
+  Take out, Take out the account, Let it go, Remove, Let back in), Beta
+  (`#beta/applications`, `#beta/testers`, and the beta's switch: Open or
+  Off for this deployment alone, asked first; billing shown, never
+  changed), Feedback (`#feedback`) and the Audit log (`#audit`: every act,
+  newest first, filtered by act and words, each act's panel). `?tests=1`
+  shows and acts on the site's checks' own instead. Proven by the console
+  browser flow ([web](web.md)), and moderation's, comments', beta's and
+  feedback's on their sections.
+- `the console's reads and audit` (`api/_console.js`, `supabase/console.sql`
+  admin_audit): `GET /api/admin?op=overview` (counts, what needs the owner,
+  the switches, the newest acts), `?op=people` (every account with its
+  models, beta, connectors and barred), `?op=person&account=U` (one whole,
+  with its acts), `?op=audit[&act&kind&target&q&before]` (50 a page,
+  newest first, `{ready, rows, more}`); every act of admin.js run through
+  `audited()`, which keeps who, what, on what, what was asked and answered,
+  the status and why refused, a test's marked, and where (scope). Before
+  console.sql: the reads answer `ready: false`, the acts still run, their
+  answer says `audit: null`. Prove: `python3 tools/minitest.py
+  tests/test_console.py` (a real Postgres).
+- `the console's switches` (`api/_settings.js`, `supabase/console.sql`
+  site_settings): a setting kept for one scope, "live" (brickworks.diy) or
+  a deployment's host, read a few seconds per instance; the beta's switch
+  (`POST /api/admin?op=beta_switch {mode}`, api/_beta.js betaSwitch) wins
+  over BRICKWORKS_BETA there, so a preview's check flips its preview alone.
+  `GET ?op=switches` says the beta's (mode, source, by, when, scope, ready)
+  and billing's mode.
 - The connector's half is in [web](web.md) (`POST /api/mcp`): hello needs the
   session, records `relay_tabs.owner`, refuses another account's address
   (403), and work goes only to a tab with an owner.
