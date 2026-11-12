@@ -216,6 +216,8 @@ for (const [from, to] of [
   // The testers' hub became the beta's own page (betahome).
   ["/beta-hub", "/beta"],
   ["/de/beta-hub", "/de/beta"],
+  // The owner's beta page became the console's Beta (console1).
+  ["/beta-admin", "/admin#beta"],
 ]) {
   const r = await get(from);
   const where = (r.headers.get("location") || "").replace(base, "").replace(SITE, "");

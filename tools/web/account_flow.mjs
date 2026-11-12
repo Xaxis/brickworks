@@ -250,8 +250,8 @@ try {
     const { kept: owner } = await mintSession(process.env.MASTER_EMAIL);
     const theirs = await context.newPage();
     await theirs.addInitScript(([k, v]) => localStorage.setItem(k, v), [STORAGE_KEY, JSON.stringify(owner)]);
-    await theirs.goto(`${origin}/admin`, { waitUntil: "domcontentloaded", timeout: 60000 });
-    await theirs.waitForSelector("#view:not(.hide)", { timeout: 30000 }).catch(() => {});
+    await theirs.goto(`${origin}/admin#people`, { waitUntil: "domcontentloaded", timeout: 60000 });
+    await theirs.waitForSelector("#people tr[data-account]", { timeout: 30000 }).catch(() => {});
     const listed = await theirs.evaluate(() => ({
       shown: !document.getElementById("view").classList.contains("hide"),
       accounts: document.getElementById("n-accounts").textContent,

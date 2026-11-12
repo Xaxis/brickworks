@@ -188,6 +188,14 @@ Overview, People, Gallery, Beta (with its switch), Feedback, the Audit log;
 billing's mode shown, never changed (real money stays the owner's yes,
 outside the console).
 
+Proven by `tests/test_console.py` (the gate, every read and every act kept,
+console.sql against a real Postgres) and, on a deployment,
+`tools/web/console_flow.mjs` (preview check `console`, run alone): the
+owner's session minted, never signed in; throwaways at resend.dev acted on
+in every section on the checks' own (`?tests=1`); the switch turned off on
+that deployment alone and open again; every act found in the audit; every
+section at 390 and 1280, light and dark.
+
 ## Part B: next
 
 Each its own section, read from the service named, through a new op of

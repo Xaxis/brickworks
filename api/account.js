@@ -186,7 +186,7 @@ export default async function handler(request, response) {
   let age = null;
   let tester = false;
   let welcome = false;
-  const open = betaMode() === "open";
+  const open = await betaMode(request) === "open";
   if (dbConfigured()) {
     const [kept, isTester] = await Promise.allSettled([ageOf(claims.sub),
       open ? memberOf(claims.sub).catch(() => asTester(claims.sub)) : asTester(claims.sub)]);

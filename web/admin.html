@@ -1,28 +1,41 @@
 <!doctype html>
 <html lang="en">
 <!--
-  The owner's view of who has an account and whose Claude connectors
-  there are.
+  The owner's console (console1, 2026-11-12; docs/ADMIN.md): every part of
+  brickworks.diy that is the owner's to look after, in one place. The
+  owner: "a cohesive admin interface (for me) with a highly organized
+  ui/ux where I can manage ALL aspects of our system".
 
-  A page rather than a panel in the app, because it is a table and a
-  browser is better at tables than a game engine is — and because
-  nothing here belongs in a build that everybody downloads.
+  A left list of sections, as the best consoles have (Stripe, Vercel,
+  Supabase Studio, Shopify, Discourse): Overview first, what needs the
+  owner now and how things stand; then People, Gallery (what was
+  reported, comments, what is listed, the pick, the challenges, the
+  Tested marks, the accounts taken out), Beta (its switch, the
+  applications and the testers), Feedback and the Audit log of every act.
+  Each section a table or a list with search, filters, sort and a detail
+  panel, and the acts beside what they act on. Its address says what is
+  open (#people, #people/<account>, #gallery/comments, #beta/testers,
+  #audit), so Back goes back and a link opens it; the old ones still land
+  (#report-N, #feedback, #feedback-N, and /beta-admin, which redirects to
+  #beta).
 
   The page is public; what it can show is not. Every figure comes from
   /api/admin, which verifies the token and checks the address against
-  MASTER_EMAIL before it reads a single row. Anyone else gets a 404 —
-  the same answer as a route that does not exist.
+  MASTER_EMAIL before it reads a single row. Anyone else gets a 404, the
+  same answer as a route that does not exist. Every act is kept in the
+  audit (supabase/console.sql) before it answers.
 
-  It signs in with the app's own session in this browser (sign in at
-  /app first): there is one sign-in, in the app, and this page renews
-  that session and puts the renewed one back where the app keeps it.
-  The script is admin.js, not inline: the site's security policy allows
-  no inline script it does not know the hash of.
+  It signs in with the session the site and the app keep in this browser
+  (web/account.js). No site header, as the app's own pages have none: its
+  own bar instead. The scripts are admin.js (the console), admin-beta.js
+  and admin-feedback.js, not inline: the site's security policy allows no
+  inline script it does not know the hash of. ?tests=1 shows the site's
+  checks' own accounts, models, applications and acts instead.
 -->
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>Brickworks — accounts</title>
+<title>Console · Brickworks</title>
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
 <meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">
@@ -30,322 +43,565 @@
 <script src="/theme.js"></script>
 <link rel="stylesheet" href="/site.css">
 <style>
-  /* The site's colours, type and controls (site.css); here only this
-     page's layout. Its head, its numbers (.stats) and its panels are
-     site.css's, as every page's are (site359). */
-  .page-hero .mark { display: flex; width: fit-content; margin: 0 0 var(--s-5); min-height: var(--control-h); }
-  .card { padding: 20px; }
-  .card p + p { margin-top: 8px; }
-  .row { display: flex; gap: 9px; align-items: center; margin-top: 16px; }
-  .note { margin: 0; font-size: var(--t-tiny); color: var(--ink-soft); }
+  /* The console's layout alone: its controls, tables, tabs, pills, stats
+     and the detail sheet are site.css's (docs/DESIGN_SYSTEM.md). */
+  .console-bar { border-bottom: 1px solid var(--line); background: var(--bg); }
+  .console-bar .wrap { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-4); align-items: center;
+    justify-content: space-between; min-height: 61px; }
+  .console-bar .mark { min-height: var(--control-h); }
+  .console-bar .who { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-3); align-items: center;
+    color: var(--ink-soft); font-size: var(--t-small); }
+  .console-bar .who b { color: var(--ink); font-weight: 600; overflow-wrap: anywhere; }
+  /* Room at the foot for the beta's bar (web/betabar.js), which floats over the page's last rows. */
+  .console-grid { padding-top: var(--s-6); padding-bottom: calc(var(--s-8) + var(--s-7)); }
+  .console-nav .scroller li a { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); }
+  .console-nav .end { display: grid; gap: var(--s-3); margin-top: var(--s-5); }
+  @media (width < 900px) { .console-nav .end { display: none; } }
+  .console-col { min-width: 0; }
+  .console-col > #view > section > h2:first-child { margin-top: 0; }
+  .lead { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-4); align-items: baseline; justify-content: space-between;
+    margin: 0 0 var(--s-4); }
+  .lead h2 { margin: 0; }
+  .lead .note { margin: 0; max-width: 70ch; }
+  .tools { display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: center; margin: 0 0 var(--s-4); }
+  .tools input[type="search"] { flex: 1 1 260px; max-width: 420px; }
+  .tools .push { margin-left: auto; }
+  @media (width < 600px) { .tools .segmented { width: 100%; overflow-x: auto; } .tools .push { margin-left: 0; } }
+  .part + .part { margin-top: var(--s-7); }
+  .part h3 { margin: 0 0 var(--s-2); }
+  h3 + .note { margin: 0 0 var(--s-3); }
   .note.bad { color: var(--bad); }
-  .admin .stats { margin: 0 0 22px; }
-  /* A table wider than a phone scrolls inside its card, a .card.scroller:
-     the site's scroller as a box (site.css). */
-  table { width: 100%; border-collapse: collapse; font-size: var(--t-small); }
-  th { text-align: left; color: var(--ink-soft); font-weight: 600; font-size: var(--t-micro);
-       text-transform: uppercase; letter-spacing: .05em;
-       padding: 9px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
-  td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
-  td.n { text-align: right; font-variant-numeric: tabular-nums; }
   .faint { color: var(--ink-faint); }
   .hide { display: none; }
-  .warn { border-color: var(--accent-edge); background: color-mix(in srgb, var(--accent) 12%, transparent); margin-bottom: 14px; }
-  .foot { margin-top: 30px; color: var(--ink-faint); font-size: var(--t-micro); }
-  .admin > div > h2 { margin: var(--s-7) 0 4px; padding-top: var(--s-5); border-top: 1px solid var(--line); }
-  h2 + .note { margin: 0 0 12px; }
-  td.model { max-width: 320px; overflow-wrap: anywhere; }
-  td.said { min-width: 200px; max-width: 320px; overflow-wrap: anywhere; white-space: pre-line; }
-  table.queue { min-width: 1100px; }
-  table.queue td.model { min-width: 170px; }
-  td.acts { white-space: nowrap; }
-  td.acts button + button { margin-left: 6px; }
-  td.acts button { min-height: 36px; padding: 6px 12px; font-size: var(--t-small); }
-/* Feedback (admin-feedback.js): the filters in a row, then a card a report:
-   its marks, its words, what came with it, where it stands and the answers. */
-.fb-filters { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 10px; }
-.fb-list { display: grid; gap: 14px; margin: 12px 0 0; padding: 0; list-style: none; }
-.fb-list > li { padding: 16px 18px; border: 1px solid var(--line); border-radius: var(--r-2); background: var(--panel); }
-.fb-list .marks { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 8px; }
-.fb-list .words { white-space: pre-line; overflow-wrap: anywhere; margin: 0 0 8px; }
-.fb-list dl { display: grid; grid-template-columns: max-content 1fr; gap: 2px 12px; margin: 0 0 8px; font-size: var(--t-small); }
-.fb-list dt { color: var(--ink-faint); }
-.fb-list dd { margin: 0; overflow-wrap: anywhere; }
-.fb-list pre { max-height: 260px; overflow: auto; font-size: var(--t-tiny); background: var(--panel-hi); padding: 8px 10px; border-radius: var(--r-1); white-space: pre-wrap; }
-.fb-list .picture { max-width: min(100%, 640px); height: auto; border: 1px solid var(--line); border-radius: var(--r-1); display: block; margin: 0 0 8px; }
-.fb-list .answer { margin: 8px 0 0; padding: 8px 12px; border-left: 3px solid var(--accent-edge); background: var(--panel-hi); white-space: pre-line; }
-.fb-list form { display: grid; gap: 8px; margin-top: 12px; }
-.fb-list form .row { margin-top: 0; flex-wrap: wrap; }
-/* The report an email of reports named (#report-N). */
-#reports tr.asked td { background: color-mix(in srgb, var(--accent) 14%, transparent); }
-#reports tr.asked td:first-child { box-shadow: inset 3px 0 0 var(--accent-edge); }
-/* A reported photo of a build, to look at before taking it out. */
-#reports .reported-photo { max-width: 160px; height: auto; border-radius: var(--r-1); display: block; margin-bottom: 4px; }
-#reports .reported-avatar { border-radius: 50%; }
-/* The challenge's form (supabase/challenges.sql): its fields stacked, the days side by side. */
-#challenge-form { display: grid; gap: 12px; max-width: 640px; margin-top: 12px; }
-#challenge-form h3 { margin: 0; }
-#challenge-form label { display: grid; gap: 4px; }
-#challenge-form fieldset.rules { display: grid; gap: 4px; margin: 0; padding: 0; border: 0; }
-#challenge-form fieldset.rules legend { padding: 0; margin: 0 0 6px; font-size: var(--t-small); color: var(--ink-soft); }
-#challenge-form fieldset.rules label { display: flex; flex-wrap: wrap; align-items: center; }
-#challenge-form fieldset.rules label input:not([type="checkbox"]) { width: 9em; }
-#challenge-form .days { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
-#challenge-form .row { margin-top: 0; flex-wrap: wrap; }
-/* A year of themes (supabase/challenge_year.sql): a month a row, its title and its brief. */
-#year-form { display: grid; gap: 12px; max-width: 640px; margin-top: 12px; }
-#year-form h3 { margin: 0; }
-#year-form label { display: grid; gap: 4px; }
-#year-form .row { margin-top: 0; flex-wrap: wrap; }
-#year-form fieldset.date .dropdowns { grid-template-columns: minmax(0, 4fr) minmax(88px, 3fr); max-width: 360px; }
-#year-months { display: grid; gap: 16px; }
-#year-months fieldset { display: grid; gap: 8px; min-width: 0; margin: 0; padding: 0; border: 0; }
-#year-months legend { padding: 0; margin: 0 0 6px; font-weight: 600; }
+  .table { margin: 0; }
+  .table td.acts { white-space: nowrap; }
+  .table td.acts button + button { margin-left: var(--s-2); }
+  .table td.about { min-width: 160px; max-width: 320px; overflow-wrap: anywhere; }
+  .table td.when { min-width: 96px; }
+  .table td.said { min-width: 200px; max-width: 360px; overflow-wrap: anywhere; white-space: pre-line; }
+  .table tr[hidden] { display: none; }
+  /* A queue's acts stacked, and its addresses broken where they must be, so
+     the whole row fits a laptop's width and its buttons are never scrolled
+     out of sight. */
+  table.queue td.acts { white-space: normal; }
+  table.queue td.acts button { display: block; width: 100%; }
+  table.queue td.acts button + button { margin: var(--s-2) 0 0; }
+  .table td.who { max-width: 220px; overflow-wrap: break-word; }
+  /* Overview: what needs you, then how things stand. */
+  .needs { display: grid; gap: var(--s-3); grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); margin: 0 0 var(--s-7);
+    padding: 0; list-style: none; }
+  .needs li > * { display: grid; gap: var(--s-1); height: 100%; padding: var(--s-4); border: 1px solid var(--accent-edge);
+    border-radius: var(--radius); background: var(--panel); color: var(--ink); text-decoration: none; box-shadow: var(--highlight); }
+  .needs a:hover { background: var(--panel-hi); }
+  .needs b { font-size: var(--t-h2); font-variant-numeric: tabular-nums; }
+  .needs span { color: var(--ink-soft); font-size: var(--t-small); }
+  .needs .warn > * { border-color: var(--bad); }
+  .stats { margin: 0 0 var(--s-7); }
+  .stat small { display: block; margin-top: var(--s-1); color: var(--ink-faint); font-size: var(--t-tiny); }
+  .stat a { color: inherit; }
+  .facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--s-2) var(--s-5); margin: 0;
+    font-size: var(--t-small); }
+  .facts dt { color: var(--ink-faint); }
+  .facts dd { margin: 0; overflow-wrap: anywhere; }
+  @media (width < 600px) { .facts { grid-template-columns: minmax(0, 1fr); gap: 2px; } .facts dd { margin-bottom: var(--s-2); } }
+  .acts-list { display: grid; margin: 0; padding: 0; list-style: none; border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--panel); }
+  .acts-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px var(--s-4); padding: var(--s-3) var(--s-4); }
+  .acts-list li + li { border-top: 1px solid var(--line); }
+  .acts-list small { color: var(--ink-faint); font-size: var(--t-tiny); }
+  .acts-list .pill { grid-row: 1 / span 2; grid-column: 2; align-self: center; }
+  .switch-card { display: grid; gap: var(--s-3); margin: 0 0 var(--s-5); }
+  .switch-card h3 { margin: 0; }
+  .switch-card .row { display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: center; }
+  /* Beta's applications, a card each (admin-beta.js). */
+  .apps { display: grid; gap: var(--s-4); margin: var(--s-4) 0 0; padding: 0; list-style: none; }
+  .app h3 { margin: 0; overflow-wrap: anywhere; }
+  .app .top { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; justify-content: space-between; margin-bottom: var(--s-3); }
+  .app dl { display: grid; gap: var(--s-2) var(--s-4); margin: 0; }
+  @media (width >= 600px) { .app dl { grid-template-columns: 11em minmax(0, 1fr); } }
+  .app dt { color: var(--ink-soft); font-size: var(--t-small); }
+  .app dd { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
+  .signals { display: grid; gap: var(--s-1); margin: 0; padding: 0; list-style: none; }
+  .signals .flag { color: var(--bad); font-weight: 600; }
+  .app form { display: grid; gap: var(--s-3); margin-top: var(--s-4); }
+  .app .actions { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+  .said { margin: 0; min-height: 1.5em; color: var(--ink); }
+  /* Feedback (admin-feedback.js): a card a report. */
+  .fb-list { display: grid; gap: var(--s-4); margin: var(--s-3) 0 0; padding: 0; list-style: none; }
+  .fb-list > li { padding: var(--s-4) var(--s-5); border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+  .fb-list .marks { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; margin: 0 0 var(--s-2); }
+  .fb-list .words { white-space: pre-line; overflow-wrap: anywhere; margin: 0 0 var(--s-2); }
+  .fb-list dl { display: grid; grid-template-columns: max-content 1fr; gap: 2px var(--s-3); margin: 0 0 var(--s-2); font-size: var(--t-small); }
+  .fb-list dt { color: var(--ink-faint); }
+  .fb-list dd { margin: 0; overflow-wrap: anywhere; }
+  .fb-list pre { max-height: 260px; overflow: auto; font-size: var(--t-tiny); background: var(--panel-hi); padding: var(--s-2) var(--s-3);
+    border-radius: var(--r-1); white-space: pre-wrap; }
+  .fb-list .picture { max-width: min(100%, 640px); height: auto; border: 1px solid var(--line); border-radius: var(--r-1);
+    display: block; margin: 0 0 var(--s-2); }
+  .fb-list .answer { margin: var(--s-2) 0 0; padding: var(--s-2) var(--s-3); border-left: 3px solid var(--accent-edge);
+    background: var(--panel-hi); white-space: pre-line; }
+  .fb-list form { display: grid; gap: var(--s-2); margin-top: var(--s-3); }
+  .fb-list form .row { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; }
+  /* A reported photo or picture, to look at before taking it out. */
+  .reported-photo { max-width: 160px; height: auto; border-radius: var(--r-1); display: block; margin-bottom: var(--s-1); }
+  .reported-avatar { border-radius: 50%; }
+  /* The challenge's forms (supabase/challenges.sql, challenge_year.sql). */
+  .console-form { display: grid; gap: var(--s-3); max-width: 640px; margin-top: var(--s-4); }
+  .console-form h3 { margin: 0; }
+  .console-form label { display: grid; gap: var(--s-1); }
+  .console-form .row { display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: center; }
+  #challenge-form fieldset.rules { display: grid; gap: var(--s-1); margin: 0; padding: 0; border: 0; }
+  #challenge-form fieldset.rules legend { padding: 0; margin: 0 0 var(--s-2); font-size: var(--t-small); color: var(--ink-soft); }
+  #challenge-form fieldset.rules label { display: flex; flex-wrap: wrap; align-items: center; }
+  #challenge-form fieldset.rules label input:not([type="checkbox"]) { width: 9em; }
+  #challenge-form .days { display: grid; gap: var(--s-3); grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+  #year-form fieldset.date .dropdowns { grid-template-columns: minmax(0, 4fr) minmax(88px, 3fr); max-width: 360px; }
+  #year-months { display: grid; gap: var(--s-4); }
+  #year-months fieldset { display: grid; gap: var(--s-2); min-width: 0; margin: 0; padding: 0; border: 0; }
+  #year-months legend { padding: 0; margin: 0 0 var(--s-2); font-weight: 600; }
+  .sheet .models-of { display: grid; gap: var(--s-2); margin: 0; padding: 0; list-style: none; }
+  .sheet .models-of li { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; justify-content: space-between; }
 </style>
-
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="console-bar">
+  <div class="wrap wide">
+    <a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+    <div class="who">
+      <span id="meta-who">Owner console</span>
+      <span id="note" role="status"></span>
+      <button id="again" type="button" class="cta ghost small">Refresh</button>
+    </div>
+  </div>
+</header>
 <main id="main">
-  <div class="page-hero">
-    <div class="wrap">
-      <a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
-      <p class="eyebrow">Admin</p>
-      <h1>Accounts</h1>
-      <p class="lede">Everyone who uses Brickworks signs in with their email
-         address. This is who has, and whose Claude connectors there are.</p>
-      <p class="hero-meta"><span><a href="/beta-admin">Beta testers</a>: the beta’s applications, to approve or decline.</span>
-        <span><a href="#feedback">Feedback</a>: what people sent, to read, mark and answer.</span></p>
-    </div>
-  </div>
-  <div class="wrap page-body admin">
-
-  <div id="gate" class="card">
-    <p id="gate-note" class="note">Checking your sign-in…</p>
-    <p class="note">This page uses your sign-in to the app in this browser.
-       <a href="/app">Open Brickworks</a> and sign in there, then come
-       back.</p>
-  </div>
-
-  <div id="view" class="hide">
-    <div class="stats">
-      <div class="stat"><b id="n-accounts">—</b><span>accounts</span></div>
-      <div class="stat"><b id="n-week">—</b><span>signed in this week</span></div>
-      <div class="stat"><b id="n-connectors">—</b><span>Claude connectors</span></div>
-    </div>
-    <div id="email-warning" class="card warn hide">
-      <b>Sign-in codes are going out under a borrowed sender.</b>
-      <div id="email-detail" class="note" style="margin-top:6px"></div>
-    </div>
-    <div class="card scroller" tabindex="0" role="region" aria-label="Who has signed in" style="padding:4px 4px 0">
-      <table>
-        <thead><tr>
-          <th>Email</th><th>Joined</th><th>Last signed in</th>
-          <th class="n">Connectors</th><th>Connector last heard</th>
-        </tr></thead>
-        <tbody id="people"></tbody>
-      </table>
-    </div>
-    <div class="row">
-      <button id="again">Refresh</button>
-      <span class="note" id="note"></span>
-    </div>
-
-    <h2 id="feedback">Feedback</h2>
-    <p class="note">What people sent from the app’s Send feedback and the site’s, newest first
-       (api/_feedback.js). Mark where each stands; the note is yours alone. An answer is emailed to the
-       person<span id="fb-from"></span> and kept with the report, which they see on their settings page.</p>
-    <div class="fb-filters" id="fb-filters">
-      <div class="segmented" role="group" aria-label="What" data-filter="kind">
-        <button type="button" data-value="" aria-pressed="true">All</button>
-        <button type="button" data-value="bug" aria-pressed="false">Bugs</button>
-        <button type="button" data-value="idea" aria-pressed="false">Ideas</button>
-        <button type="button" data-value="question" aria-pressed="false">Questions</button>
+  <div class="wrap wide page-grid console-grid">
+    <nav class="page-toc console-nav" aria-labelledby="nav-title">
+      <p class="page-toc-title" id="nav-title">Console</p>
+      <ul class="scroller">
+        <li><a href="#overview" data-go="overview">Overview</a></li>
+        <li><a href="#people" data-go="people">People</a></li>
+        <li><a href="#gallery" data-go="gallery">Gallery <span class="badge accent" id="nav-gallery" hidden></span></a></li>
+        <li><a href="#beta" data-go="beta">Beta <span class="badge accent" id="nav-beta" hidden></span></a></li>
+        <li><a href="#feedback" data-go="feedback">Feedback <span class="badge accent" id="nav-feedback" hidden></span></a></li>
+        <li><a href="#audit" data-go="audit">Audit log</a></li>
+      </ul>
+      <div class="end">
+        <p class="note" id="meta-build"></p>
+        <div class="theme-choice"><span aria-hidden="true">Theme</span>
+          <div class="segmented" role="group" aria-label="Theme">
+            <button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+            <button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+            <button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+          </div>
+        </div>
       </div>
-      <div class="segmented" role="group" aria-label="Where it stands" data-filter="status">
-        <button type="button" data-value="open" aria-pressed="true">Open</button>
-        <button type="button" data-value="new" aria-pressed="false">New</button>
-        <button type="button" data-value="planned" aria-pressed="false">Planned</button>
-        <button type="button" data-value="fixed" aria-pressed="false">Fixed</button>
-        <button type="button" data-value="wont_fix" aria-pressed="false">Won’t fix</button>
-        <button type="button" data-value="" aria-pressed="false">All</button>
+    </nav>
+
+    <div class="console-col">
+      <div id="gate" class="card">
+        <p id="gate-note" class="note">Checking your sign-in…</p>
+        <p class="note">The console uses your sign-in to Brickworks in this browser. <a href="/profile">Sign in</a>
+          with the owner's account, then come back.</p>
       </div>
-      <div class="segmented" role="group" aria-label="From" data-filter="beta">
-        <button type="button" data-value="" aria-pressed="true">Everyone</button>
-        <button type="button" data-value="1" aria-pressed="false">Testers</button>
-        <button type="button" data-value="0" aria-pressed="false">Others</button>
+
+      <div id="view" class="hide" hidden>
+        <!-- Overview ------------------------------------------------------------------>
+        <section data-section="overview" aria-labelledby="h-overview" hidden>
+          <h1 class="visually-hidden">Console</h1>
+          <div class="lead"><h2 id="h-overview">Needs you now</h2>
+            <p class="note" id="needs-said">What is waiting on you, each a press from where it is done.</p></div>
+          <ul class="needs" id="needs"></ul>
+          <div class="lead"><h2 id="h-stands">How things stand</h2>
+            <p class="note" id="stands-said"></p></div>
+          <div class="stats" id="stands">
+            <div class="stat"><b id="n-accounts">—</b><span>accounts</span><small id="n-accounts-said"></small></div>
+            <div class="stat"><b id="n-joined-day">—</b><span>signed up in 24 hours</span><small id="n-joined-week"></small></div>
+            <div class="stat"><b id="n-week">—</b><span>signed in this week</span></div>
+            <div class="stat"><b id="n-ov-testers">—</b><span>beta testers</span><small id="n-ov-months"></small></div>
+            <div class="stat"><b id="n-published">—</b><span>models published</span><small id="n-published-said"></small></div>
+            <div class="stat"><b id="n-reports">—</b><span>reports open</span></div>
+            <div class="stat"><b id="n-feedback">—</b><span>feedback unread</span></div>
+            <div class="stat"><b id="n-mail">—</b><span>emails sent this week</span><small id="n-mail-said"></small></div>
+          </div>
+          <div class="lead"><h2 id="h-switches">Switches</h2>
+            <p class="note">What is on, here. The beta is flipped from <a href="#beta">Beta</a>; billing is changed
+              only outside the console.</p></div>
+          <div class="card"><dl class="facts" id="switches"></dl></div>
+          <div class="part">
+            <div class="lead"><h2 id="h-latest">Latest acts</h2><p class="note"><a href="#audit">The whole audit log</a></p></div>
+            <ul class="acts-list" id="latest" aria-labelledby="h-latest"></ul>
+            <p class="state" id="latest-none" hidden>Nothing done from the console yet.</p>
+          </div>
+        </section>
+
+        <!-- People ------------------------------------------------------------------>
+        <section data-section="people" aria-labelledby="h-people" hidden>
+          <div class="lead"><h2 id="h-people">People</h2>
+            <p class="note" id="people-said">Everyone with an account, newest sign-in first. Open one for all of it.</p></div>
+          <div class="tools">
+            <input type="search" id="people-q" placeholder="Search by address, handle or name" aria-label="Search people">
+            <div class="segmented" role="group" aria-label="Show" data-filter="people">
+              <button type="button" data-value="" aria-pressed="true">Everyone</button>
+              <button type="button" data-value="tester" aria-pressed="false">Testers</button>
+              <button type="button" data-value="models" aria-pressed="false">With models</button>
+              <button type="button" data-value="connector" aria-pressed="false">With a connector</button>
+              <button type="button" data-value="barred" aria-pressed="false">Taken out</button>
+            </div>
+          </div>
+          <div class="table" tabindex="0" role="region" aria-labelledby="h-people">
+            <table data-sortable>
+              <thead><tr>
+                <th scope="col" data-sort="text">Account</th><th scope="col" data-sort="time">Joined</th>
+                <th scope="col" data-sort="time" aria-sort="descending">Last signed in</th><th scope="col" data-sort="text">Plan</th>
+                <th scope="col" data-sort="text">Beta</th><th scope="col" class="n" data-sort="number">Models</th>
+                <th scope="col" class="n" data-sort="number">Connectors</th>
+              </tr></thead>
+              <tbody id="people"></tbody>
+            </table>
+          </div>
+          <p class="note" id="people-note" role="status"></p>
+        </section>
+
+        <!-- Gallery and moderation ---------------------------------------------------->
+        <section data-section="gallery" aria-labelledby="h-gallery" hidden>
+          <div class="lead"><h2 id="h-gallery">Gallery</h2>
+            <p class="note">What visitors reported, what people said, what the gallery shows and features, and who is kept out of it.</p></div>
+          <nav class="tabs" aria-label="Gallery">
+            <a href="#gallery/reported" data-tab-link="reported">Reported <span class="n" id="tab-reported"></span></a>
+            <a href="#gallery/comments" data-tab-link="comments">Comments</a>
+            <a href="#gallery/listed" data-tab-link="listed">In the gallery <span class="n" id="tab-listed"></span></a>
+            <a href="#gallery/pick" data-tab-link="pick">This week’s pick</a>
+            <a href="#gallery/challenges" data-tab-link="challenges">Challenges</a>
+            <a href="#gallery/tested" data-tab-link="tested">Tested</a>
+            <a href="#gallery/barred" data-tab-link="barred">Taken out <span class="n" id="tab-barred"></span></a>
+          </nav>
+
+          <div data-tab="reported" hidden>
+            <p class="note">What visitors said should not be in the gallery, newest first (the Report button on every
+              model's, profile's and collection's page, and <a href="/takedown">/takedown</a>). Take out takes the model out
+              for good, at its link and any other with the same file; Take out the account takes every model of it out and
+              keeps it out; a report about a comment says what it said and Remove the comment takes it off its page; Let it
+              go closes the report.</p>
+            <div class="tools"><input type="search" data-search="reports" placeholder="Search what was reported"
+              aria-label="Search what was reported"></div>
+            <div class="table" tabindex="0" role="region" aria-label="Reported">
+              <table class="queue" data-sortable>
+                <thead><tr>
+                  <th scope="col" data-sort="time" aria-sort="descending">When</th><th scope="col" data-sort="text">About</th>
+                  <th scope="col" data-sort="text">Why</th><th scope="col">Said</th>
+                  <th scope="col" data-sort="text">Account</th><th scope="col"><span class="visually-hidden">What to do</span></th>
+                </tr></thead>
+                <tbody id="reports"></tbody>
+              </table>
+            </div>
+            <p class="note" id="reports-note" role="status"></p>
+          </div>
+
+          <div data-tab="comments" hidden>
+            <p class="note">The newest comments on shared models, removed ones marked, and every one reported, newest
+              first. Remove takes a comment off every page for good: it is kept, shown to nobody, and what was reported
+              about it is settled. Its author and the model's builder can no longer bring it back.</p>
+            <div class="tools"><input type="search" data-search="comments" placeholder="Search comments"
+              aria-label="Search comments"></div>
+            <div class="table" tabindex="0" role="region" aria-label="Comments">
+              <table class="queue" data-sortable>
+                <thead><tr>
+                  <th scope="col" data-sort="time" aria-sort="descending">When</th><th scope="col" data-sort="text">On</th>
+                  <th scope="col">Said</th><th scope="col" data-sort="text">By</th><th scope="col" data-sort="text">State</th>
+                  <th scope="col"><span class="visually-hidden">What to do</span></th>
+                </tr></thead>
+                <tbody id="comments"></tbody>
+              </table>
+            </div>
+            <p class="note" id="comments-note" role="status"></p>
+          </div>
+
+          <div data-tab="listed" hidden>
+            <p class="note">What anyone can see at <a href="/gallery">/gallery</a>. Take out takes a model out of it for
+              good: its link goes on working, and its owner cannot list it again.</p>
+            <div class="tools"><input type="search" data-search="gallery" placeholder="Search by name, credit or account"
+              aria-label="Search the gallery"></div>
+            <div class="table" tabindex="0" role="region" aria-label="In the gallery">
+              <table data-sortable>
+                <thead><tr>
+                  <th scope="col" data-sort="text">Model</th><th scope="col" data-sort="text">Credited to</th>
+                  <th scope="col" data-sort="text">Account</th><th scope="col" class="n" data-sort="number">Parts</th>
+                  <th scope="col" data-sort="time" aria-sort="descending">Listed</th>
+                  <th scope="col"><span class="visually-hidden">What to do</span></th>
+                </tr></thead>
+                <tbody id="gallery"></tbody>
+              </table>
+            </div>
+            <p class="note" id="gallery-note" role="status"></p>
+          </div>
+
+          <div data-tab="pick" hidden>
+            <p class="note">The model at the top of <a href="/gallery">/gallery</a>. Worked out from the past seven days:
+              a build finished counts 3, a remix 2 and the Tested mark 5. Make it the pick, here or beside any model In
+              the gallery, puts one there for a week instead; End goes back to the one worked out.</p>
+            <div class="card" id="pick-now"><span class="note">—</span></div>
+            <div class="part">
+              <h3>Chosen</h3>
+              <div class="table" tabindex="0" role="region" aria-label="Picks chosen">
+                <table>
+                  <thead><tr>
+                    <th scope="col">Chosen</th><th scope="col">From</th><th scope="col">Until</th>
+                    <th scope="col">Shown to visitors</th><th scope="col"><span class="visually-hidden">What to do</span></th>
+                  </tr></thead>
+                  <tbody id="choices"></tbody>
+                </table>
+              </div>
+            </div>
+            <div class="part">
+              <h3>Worked out this week</h3>
+              <div class="table" tabindex="0" role="region" aria-label="Worked out this week">
+                <table>
+                  <thead><tr>
+                    <th scope="col">Model</th><th scope="col" class="n">Built</th><th scope="col" class="n">Remixed</th>
+                    <th scope="col">Tested</th><th scope="col" class="n">Score</th>
+                    <th scope="col"><span class="visually-hidden">What to do</span></th>
+                  </tr></thead>
+                  <tbody id="week"></tbody>
+                </table>
+              </div>
+            </div>
+            <p class="note" id="pick-note" role="status"></p>
+          </div>
+
+          <div data-tab="challenges" hidden>
+            <p class="note">One at a time, at <a href="/challenge">/challenge</a>, and a line on the gallery's front.
+              Brickworks checks the rules you choose on each model as it is entered. Designers enter from a model's page,
+              built by hand or with the assistant, judged apart; people 13 and over vote once in each group, and when it
+              ends the most voted in each wins. End it now closes it today.</p>
+            <div class="table" tabindex="0" role="region" aria-label="Challenges">
+              <table class="queue">
+                <thead><tr>
+                  <th scope="col">Challenge</th><th scope="col">Days</th><th scope="col">Rules</th><th scope="col">State</th>
+                  <th scope="col" class="n">By hand</th><th scope="col" class="n">Assistant</th><th scope="col">Winners</th>
+                  <th scope="col"><span class="visually-hidden">What to do</span></th>
+                </tr></thead>
+                <tbody id="challenges"></tbody>
+              </table>
+            </div>
+            <form id="challenge-form" class="card console-form">
+              <h3>Set a challenge</h3>
+              <label>Title
+                <input name="title" maxlength="80" required></label>
+              <label>The brief: what to build, in a line or two
+                <textarea name="brief" maxlength="600" rows="3" required></textarea></label>
+              <div class="days">
+                <fieldset class="date" data-date="starts_on">
+                  <legend>First day</legend>
+                  <div class="dropdowns"></div>
+                </fieldset>
+                <fieldset class="date" data-date="ends_on">
+                  <legend>Last day</legend>
+                  <div class="dropdowns"></div>
+                </fieldset>
+              </div>
+              <fieldset class="rules">
+                <legend>Rules, up to three</legend>
+                <label class="choice"><input type="checkbox" name="has_most"> At most
+                  <input type="number" name="most_parts" min="1" max="200000" value="200" aria-label="How many parts at most"> parts</label>
+                <label class="choice"><input type="checkbox" name="has_set"> Only the parts of set
+                  <input name="set_number" maxlength="30" placeholder="6080-1" aria-label="The set's number"></label>
+                <label class="choice"><input type="checkbox" name="tested"> Marked Tested</label>
+              </fieldset>
+              <div class="row"><button type="submit" class="cta">Set it</button><span class="note" id="challenge-note" role="status"></span></div>
+            </form>
+            <form id="year-form" class="card console-form">
+              <h3>Set a year of themes</h3>
+              <p class="note">A theme a month, each running its whole month with no rule but its brief. Visitors are told
+                of each a month before it opens, so the next is known while one runs, and the rest stay yours. Leave a
+                month empty to skip it. All are set, or none.</p>
+              <p class="note" id="year-not-yet" hidden>Not open yet: supabase/challenge_year.sql is not applied.</p>
+              <fieldset class="date" data-date="year_from">
+                <legend>The first month</legend>
+                <div class="dropdowns"></div>
+              </fieldset>
+              <div id="year-months"></div>
+              <div class="row"><button type="submit" class="cta">Set the year</button><span class="note" id="year-note" role="status"></span></div>
+            </form>
+          </div>
+
+          <div data-tab="tested" hidden>
+            <p class="note">Models whose newest version the app said passed its four tests as it was published: it stands
+              at every step, every step can be reached, every part is made in its colour, nothing is loose. The app's
+              finding, which the server cannot check. Clear the mark takes it off that version everywhere.</p>
+            <div class="tools"><input type="search" data-search="tested" placeholder="Search marked models"
+              aria-label="Search the Tested marks"></div>
+            <div class="table" tabindex="0" role="region" aria-label="Marked Tested">
+              <table data-sortable>
+                <thead><tr>
+                  <th scope="col" data-sort="text">Model</th><th scope="col" class="n" data-sort="number">Version</th>
+                  <th scope="col" data-sort="text">App</th><th scope="col" class="n" data-sort="number">Parts</th>
+                  <th scope="col" class="n" data-sort="number" title="Every step the step player turns to, the steps of what is built on the side among them">Pages</th>
+                  <th scope="col" data-sort="time" aria-sort="descending">Tested</th>
+                  <th scope="col"><span class="visually-hidden">What to do</span></th>
+                </tr></thead>
+                <tbody id="tested"></tbody>
+              </table>
+            </div>
+            <p class="note" id="tested-note" role="status"></p>
+          </div>
+
+          <div data-tab="barred" hidden>
+            <p class="note">None of their models can be listed, and they have no profile or public collection. Let back in
+              lets them list again; what was taken out stays out until listed again by hand. Take an account out from
+              its report, or from <a href="#people">People</a>.</p>
+            <div class="table" tabindex="0" role="region" aria-label="Accounts taken out">
+              <table data-sortable>
+                <thead><tr><th scope="col" data-sort="text">Account</th><th scope="col" data-sort="time" aria-sort="descending">Since</th>
+                  <th scope="col">Why</th><th scope="col"><span class="visually-hidden">What to do</span></th></tr></thead>
+                <tbody id="barred"></tbody>
+              </table>
+            </div>
+            <p class="note" id="barred-note" role="status"></p>
+          </div>
+        </section>
+
+        <!-- Beta ---------------------------------------------------------------------->
+        <section data-section="beta" aria-labelledby="h-beta" hidden>
+          <div class="lead"><h2 id="h-beta">Beta</h2>
+            <p class="note">Its switch, the months of Pro and who asked for one, and everybody who joined.</p></div>
+          <div class="card switch-card" id="beta-switch-card">
+            <h3 id="beta-switch-h">The beta is <span id="beta-mode">—</span></h3>
+            <p class="note" id="beta-switch-said"></p>
+            <div class="row">
+              <div class="segmented" role="group" aria-labelledby="beta-switch-h" id="beta-switch">
+                <button type="button" data-beta="open" aria-pressed="false">Open</button>
+                <button type="button" data-beta="off" aria-pressed="false">Off</button>
+              </div>
+              <span class="note" id="beta-switch-note" role="status"></span>
+            </div>
+            <p class="note" id="billing-said"></p>
+          </div>
+          <div class="stats">
+            <div class="stat"><b id="n-testers">—</b><span>testers</span></div>
+            <div class="stat"><b id="n-welcome">—</b><span>joined at sign-up</span></div>
+            <div class="stat"><b id="n-left">—</b><span>left</span></div>
+            <div class="stat"><b id="n-not-now">—</b><span>said Not now</span></div>
+          </div>
+          <nav class="tabs" aria-label="Beta">
+            <a href="#beta/applications" data-tab-link="applications">Months of Pro <span class="n" id="tab-applications"></span></a>
+            <a href="#beta/testers" data-tab-link="testers">Testers <span class="n" id="tab-testers"></span></a>
+          </nav>
+          <div data-tab="applications" hidden>
+            <h3 id="months-h">Months of Pro</h3>
+            <div class="stats">
+              <div class="stat"><b id="n-given">—</b><span>spots given</span></div>
+              <div class="stat"><b id="n-spots-left">—</b><span>spots left</span></div>
+              <div class="stat"><b id="n-new">—</b><span>new</span></div>
+              <div class="stat"><b id="n-waitlist">—</b><span>on the waitlist</span></div>
+              <div class="stat"><b id="n-pending">—</b><span>months still to give</span></div>
+            </div>
+            <p class="note" id="months"></p>
+            <div class="tools">
+              <div class="segmented" role="group" aria-label="Show" data-filter="applications">
+                <button type="button" data-status="new" aria-pressed="true">New</button>
+                <button type="button" data-status="waitlist" aria-pressed="false">Waitlist</button>
+                <button type="button" data-status="approved" aria-pressed="false">Approved</button>
+                <button type="button" data-status="declined" aria-pressed="false">Declined</button>
+                <button type="button" data-status="" aria-pressed="false">All</button>
+              </div>
+              <input type="search" id="apps-q" placeholder="Search applications" aria-label="Search applications">
+              <button class="cta ghost small push" type="button" id="grant">Grant pending months</button>
+            </div>
+            <p class="said" id="said" role="status"></p>
+            <ol class="apps" id="apps"></ol>
+            <p class="state" id="empty" hidden>No applications here.</p>
+          </div>
+          <div data-tab="testers" hidden>
+            <p class="note" id="testers-said">Newest first, then who left, then who said Not now.</p>
+            <div class="tools">
+              <input type="search" id="testers-q" placeholder="Search testers" aria-label="Search testers">
+              <div class="segmented" role="group" aria-label="Show" data-filter="testers">
+                <button type="button" data-value="" aria-pressed="true">Everyone</button>
+                <button type="button" data-value="tester" aria-pressed="false">Testers</button>
+                <button type="button" data-value="left" aria-pressed="false">Left</button>
+                <button type="button" data-value="not_now" aria-pressed="false">Not now</button>
+              </div>
+            </div>
+            <div class="table" tabindex="0" role="region" aria-label="Testers">
+              <table data-sortable>
+                <thead><tr><th scope="col" data-sort="text">Account</th><th scope="col" data-sort="text">State</th>
+                  <th scope="col" data-sort="time" aria-sort="descending">Joined</th><th scope="col">What happened</th>
+                  <th scope="col" data-sort="text">Month of Pro</th></tr></thead>
+                <tbody id="testers"></tbody>
+              </table>
+            </div>
+            <p class="state" id="testers-empty" hidden>Nobody has joined yet.</p>
+          </div>
+        </section>
+
+        <!-- Feedback ------------------------------------------------------------------>
+        <section data-section="feedback" aria-labelledby="h-feedback" hidden>
+          <div class="lead"><h2 id="h-feedback">Feedback</h2>
+            <p class="note">What people sent from the app's Send feedback and the site's, newest first. Mark where each
+              stands; the note is yours alone. An answer is emailed to the person<span id="fb-from"></span> and kept with
+              the report, which they see on their settings page.</p></div>
+          <div class="tools" id="fb-filters">
+            <input type="search" id="fb-q" placeholder="Search what was sent" aria-label="Search feedback">
+            <div class="segmented" role="group" aria-label="What" data-filter="kind">
+              <button type="button" data-value="" aria-pressed="true">All</button>
+              <button type="button" data-value="bug" aria-pressed="false">Bugs</button>
+              <button type="button" data-value="idea" aria-pressed="false">Ideas</button>
+              <button type="button" data-value="question" aria-pressed="false">Questions</button>
+            </div>
+            <div class="segmented" role="group" aria-label="Where it stands" data-filter="status">
+              <button type="button" data-value="open" aria-pressed="true">Open</button>
+              <button type="button" data-value="new" aria-pressed="false">New</button>
+              <button type="button" data-value="planned" aria-pressed="false">Planned</button>
+              <button type="button" data-value="fixed" aria-pressed="false">Fixed</button>
+              <button type="button" data-value="wont_fix" aria-pressed="false">Won’t fix</button>
+              <button type="button" data-value="" aria-pressed="false">All</button>
+            </div>
+            <div class="segmented" role="group" aria-label="From" data-filter="beta">
+              <button type="button" data-value="" aria-pressed="true">Everyone</button>
+              <button type="button" data-value="1" aria-pressed="false">Testers</button>
+              <button type="button" data-value="0" aria-pressed="false">Others</button>
+            </div>
+          </div>
+          <p class="note" id="fb-note" role="status"></p>
+          <ol class="fb-list" id="fb-list"></ol>
+        </section>
+
+        <!-- Audit log ------------------------------------------------------------------>
+        <section data-section="audit" aria-labelledby="h-audit" hidden>
+          <div class="lead"><h2 id="h-audit">Audit log</h2>
+            <p class="note">Every act from the console, newest first: who, what, on what, when, and what came of it,
+              refusals too. Kept for good.</p></div>
+          <div class="tools">
+            <input type="search" id="audit-q" placeholder="Search acts" aria-label="Search the audit log">
+            <select id="audit-act" aria-label="Only one kind of act">
+              <option value="">Every act</option>
+            </select>
+          </div>
+          <div class="table" tabindex="0" role="region" aria-labelledby="h-audit">
+            <table class="queue">
+              <thead><tr><th scope="col">When</th><th scope="col">What</th><th scope="col">On</th>
+                <th scope="col">Outcome</th><th scope="col">By</th><th scope="col"><span class="visually-hidden">Details</span></th></tr></thead>
+              <tbody id="audit"></tbody>
+            </table>
+          </div>
+          <p class="state" id="audit-none" hidden></p>
+          <div class="tools"><button type="button" id="audit-more" hidden>Older acts</button>
+            <span class="note" id="audit-note" role="status"></span></div>
+        </section>
       </div>
     </div>
-    <p class="note" id="fb-note" role="status"></p>
-    <ol class="fb-list" id="fb-list"></ol>
-
-    <h2>Reported</h2>
-    <p class="note">What visitors said should not be in the gallery, newest
-       first (the Report button on every model's, profile's and collection's
-       page, and <a href="/takedown">/takedown</a>). Take out takes the model
-       out for good, at its link and any other with the same file; Take out
-       the account takes every model of it out and keeps it out; a report
-       about a comment says what it said and Remove the comment takes it
-       off its page; Let it go closes the report.</p>
-    <div class="card scroller" tabindex="0" role="region" aria-label="Reported" style="padding:4px 4px 0">
-      <table class="queue">
-        <thead><tr>
-          <th>When</th><th>About</th><th>Why</th><th>Said</th><th>Reach them</th>
-          <th>Account</th><th><span class="visually-hidden">What to do</span></th>
-        </tr></thead>
-        <tbody id="reports"></tbody>
-      </table>
-    </div>
-    <p class="note" id="reports-note"></p>
-
-    <h2>Comments</h2>
-    <p class="note">The newest comments on shared models, removed ones
-       marked, and every one reported, newest first. Remove takes a comment off every page for
-       good: it is kept, shown to nobody, and what was reported about it is
-       settled. Its author and the model's builder can no longer bring it
-       back.</p>
-    <div class="card scroller" tabindex="0" role="region" aria-label="Comments" style="padding:4px 4px 0">
-      <table class="queue">
-        <thead><tr>
-          <th>When</th><th>On</th><th>Said</th><th>By</th><th>State</th><th><span class="visually-hidden">What to do</span></th>
-        </tr></thead>
-        <tbody id="comments"></tbody>
-      </table>
-    </div>
-    <p class="note" id="comments-note"></p>
-
-    <h2>Accounts taken out</h2>
-    <p class="note">None of their models can be listed, and they have no
-       profile or public collection. Let back in lets them list again; what
-       was taken out stays out until listed again by hand.</p>
-    <div class="card scroller" tabindex="0" role="region" aria-label="Accounts taken out" style="padding:4px 4px 0">
-      <table>
-        <thead><tr><th>Account</th><th>Since</th><th>Why</th><th><span class="visually-hidden">What to do</span></th></tr></thead>
-        <tbody id="barred"></tbody>
-      </table>
-    </div>
-    <p class="note" id="barred-note"></p>
-
-    <h2>This week’s pick</h2>
-    <p class="note">The model at the top of <a href="/gallery">/gallery</a>.
-       Worked out from the past seven days: a build finished counts 3, a
-       remix 2 and the Tested mark 5. Make it the pick, here or beside any
-       model in the gallery below, puts one there for a week instead; End
-       goes back to the one worked out.</p>
-    <div class="card" id="pick-now"><span class="note">—</span></div>
-    <div class="card scroller" tabindex="0" role="region" aria-label="Picks chosen" style="padding:4px 4px 0; margin-top:12px">
-      <table>
-        <thead><tr>
-          <th>Chosen</th><th>From</th><th>Until</th><th>Shown to visitors</th><th><span class="visually-hidden">What to do</span></th>
-        </tr></thead>
-        <tbody id="choices"></tbody>
-      </table>
-    </div>
-    <div class="card scroller" tabindex="0" role="region" aria-label="Worked out this week" style="padding:4px 4px 0; margin-top:12px">
-      <table>
-        <thead><tr>
-          <th>Worked out this week</th><th class="n">Built</th><th class="n">Remixed</th>
-          <th>Tested</th><th class="n">Score</th><th><span class="visually-hidden">What to do</span></th>
-        </tr></thead>
-        <tbody id="week"></tbody>
-      </table>
-    </div>
-    <p class="note" id="pick-note"></p>
-
-    <h2>This month’s challenge</h2>
-    <p class="note">One at a time, at <a href="/challenge">/challenge</a>, and
-       a line on the gallery's front. Brickworks checks the rules you choose
-       on each model as it is entered. Designers enter from a model's page,
-       built by hand or with the assistant, judged apart; people 13 and over
-       vote once in each group, and when it ends the most voted in each wins.
-       End it now closes it today.</p>
-    <div class="card scroller" tabindex="0" role="region" aria-label="Challenges" style="padding:4px 4px 0">
-      <table>
-        <thead><tr>
-          <th>Challenge</th><th>Days</th><th>Rules</th><th>State</th>
-          <th class="n">By hand</th><th class="n">Assistant</th><th>Winners</th><th><span class="visually-hidden">What to do</span></th>
-        </tr></thead>
-        <tbody id="challenges"></tbody>
-      </table>
-    </div>
-    <form id="challenge-form" class="card">
-      <h3>Set a challenge</h3>
-      <label>Title
-        <input name="title" maxlength="80" required></label>
-      <label>The brief: what to build, in a line or two
-        <textarea name="brief" maxlength="600" rows="3" required></textarea></label>
-      <div class="days">
-        <fieldset class="date" data-date="starts_on">
-          <legend>First day</legend>
-          <div class="dropdowns"></div>
-        </fieldset>
-        <fieldset class="date" data-date="ends_on">
-          <legend>Last day</legend>
-          <div class="dropdowns"></div>
-        </fieldset>
-      </div>
-      <fieldset class="rules">
-        <legend>Rules, up to three</legend>
-        <label class="choice"><input type="checkbox" name="has_most"> At most
-          <input type="number" name="most_parts" min="1" max="200000" value="200" aria-label="How many parts at most"> parts</label>
-        <label class="choice"><input type="checkbox" name="has_set"> Only the parts of set
-          <input name="set_number" maxlength="30" placeholder="6080-1" aria-label="The set's number"></label>
-        <label class="choice"><input type="checkbox" name="tested"> Marked Tested</label>
-      </fieldset>
-      <div class="row"><button type="submit">Set it</button><span class="note" id="challenge-note"></span></div>
-    </form>
-    <form id="year-form" class="card">
-      <h3>Set a year of themes</h3>
-      <p class="note">A theme a month, each running its whole month with no rule
-         but its brief. Visitors are told of each a month before it opens, so
-         the next is known while one runs, and the rest stay yours. Leave a
-         month empty to skip it. All are set, or none.</p>
-      <p class="note" id="year-not-yet" hidden>Not open yet: supabase/challenge_year.sql is not applied.</p>
-      <fieldset class="date" data-date="year_from">
-        <legend>The first month</legend>
-        <div class="dropdowns"></div>
-      </fieldset>
-      <div id="year-months"></div>
-      <div class="row"><button type="submit">Set the year</button><span class="note" id="year-note"></span></div>
-    </form>
-
-    <h2>In the gallery</h2>
-    <p class="note">What anyone can see at <a href="/gallery">/gallery</a>.
-       Take out takes a model out of it for good: its link goes on
-       working, and its owner cannot list it again.</p>
-    <div class="card scroller" tabindex="0" role="region" aria-label="In the gallery" style="padding:4px 4px 0">
-      <table>
-        <thead><tr>
-          <th>Model</th><th>Credited to</th><th>Account</th>
-          <th class="n">Parts</th><th>Listed</th><th><span class="visually-hidden">What to do</span></th>
-        </tr></thead>
-        <tbody id="gallery"></tbody>
-      </table>
-    </div>
-    <p class="note" id="gallery-note"></p>
-
-    <h2>Marked Tested</h2>
-    <p class="note">Models whose newest version the app said passed its four
-       tests as it was published: it stands at every step, every step can be
-       reached, every part is made in its colour, nothing is loose. The app's
-       finding, which the server cannot check. Clear the mark takes it off
-       that version everywhere.</p>
-    <div class="card scroller" tabindex="0" role="region" aria-label="Marked Tested" style="padding:4px 4px 0">
-      <table>
-        <thead><tr>
-          <th>Model</th><th class="n">Version</th><th>App</th>
-          <th class="n">Parts</th><th class="n" title="Every step the step player turns to, the steps of what is built on the side among them">Pages</th><th>Tested</th><th><span class="visually-hidden">What to do</span></th>
-        </tr></thead>
-        <tbody id="tested"></tbody>
-      </table>
-    </div>
-    <p class="note" id="tested-note"></p>
-  </div>
-
-  <p class="foot">
-    <a href="/">Brickworks</a> · this page is not indexed and shows nothing
-    to anyone but the owner's account.
-  </p>
   </div>
 </main>
 
+<!-- The detail of a row: an account, an act. -->
+<dialog class="sheet" id="sheet" aria-labelledby="sheet-title">
+  <div class="sheet-head">
+    <h2 id="sheet-title">—</h2>
+    <button type="button" class="icon-btn" id="sheet-close" aria-label="Close"><svg class="icon" aria-hidden="true"><use href="/icons.svg#close"/></svg></button>
+  </div>
+  <div class="sheet-body" id="sheet-body"></div>
+</dialog>
+
 <script type="module" src="/admin.js"></script>
-<script type="module" src="/admin-feedback.js"></script>
 </html>

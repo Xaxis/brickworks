@@ -508,7 +508,7 @@ async function deployed() {
     check(`reported: ${r.status}`, r.status === 200 || r.status === 201);
     if (process.env.MASTER_EMAIL) {
       const master = await mintSession(process.env.MASTER_EMAIL, { age: false });
-      const { page, context } = await open("/admin", { width: 1280, theme: "light", label: "admin",
+      const { page, context } = await open("/admin#gallery/reported", { width: 1280, theme: "light", label: "admin",
         session: [STORAGE_KEY, JSON.stringify(master.kept), JSON.stringify({ token: master.access_token,
           until: Date.now() + 50 * 60 * 1000, email: master.kept.email })] });
       const row = page.locator(`tr[data-picture="${ADA}"]`);
