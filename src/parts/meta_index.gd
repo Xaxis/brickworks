@@ -164,6 +164,9 @@ var _raw := PackedStringArray()
 var _step := PackedInt32Array()
 ## Each one's [Line] once asked for, else null.
 var _made: Array = []
+## The words a [Line] was made of: none of another's lines can be taken or
+## beaten ([method lines_for] keeps them all at the cost of a copy).
+var _words_made: Dictionary = {}
 ## Their places in those columns by their word, each word's in the file's
 ## order: what a feature asks for is found without a look at the rest.
 var _by_word: Dictionary = {}
@@ -311,6 +314,7 @@ func _line(n: int) -> Line:
 	line.raw = _raw[n]
 	line.said = line.raw.substr(_said_at[n]).strip_edges()
 	_made[n] = line
+	_words_made[line.word] = true
 	return line
 
 
@@ -584,6 +588,14 @@ static func clean_of(word: String, said: String) -> String:
 ## order says the same, and they stay in the file's.
 func lines_for(words: Array, now: PackedStringArray, unread: Variant = null,
 		any_order: bool = false) -> PackedStringArray:
+	if unread == null and not _any_made(words):
+		# No line of them taken or beaten: each kept, what is said after.
+		# 200,000 light lines no reader could read went a line at a time
+		# through the loops below, a save 1.27 times the base's (lights'
+		# _r_junk, mlfix).
+		var all: PackedStringArray = _raws_of(words, false)
+		all.append_array(now)
+		return all
 	var places := PackedInt32Array()
 	for n: int in _of_words(words):
 		if _section[n] == 0:
@@ -676,6 +688,19 @@ func lines_for(words: Array, now: PackedStringArray, unread: Variant = null,
 	# after the rest.
 	out.append_array(after)
 	return out
+
+
+## Whether a [Line] was made of any of [param words] (a word ending "*" any
+## word beginning so).
+func _any_made(words: Array) -> bool:
+	for one: String in words:
+		if one.ends_with("*"):
+			for word: String in _words_made:
+				if word.begins_with(one.left(-1)):
+					return true
+		elif _words_made.has(one):
+			return true
+	return false
 
 
 ## Whether [param now] says what [param read] (the lines taken) does, each
