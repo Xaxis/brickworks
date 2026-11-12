@@ -624,5 +624,7 @@ func _join_alone() -> void:
 		file.store_string(JSON.stringify({"live": false, "seq": together.seq, "hash": together.model_hash(),
 			"made": made, "ended": together.ended_words, "text": together.model_text()}))
 		file.close()
-	_check("made %d edits of its own, and was told the session ended" % made, made == edits and not together.live,
-		together.ended_words)
+	# Ended by the owner, not refused: refused, it still had its edits made
+	# and passed, and only the flow's checks after said the desktop was gone.
+	_check("made %d edits of its own, and was told the owner ended the session" % made, made == edits
+		and not together.live and together.ended_words.begins_with("The owner ended the session"), together.ended_words)
