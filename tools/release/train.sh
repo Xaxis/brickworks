@@ -688,7 +688,7 @@ work() {
     finish "not live: ship.sh ended exit $code: $(grep '^SHIP:' "$RO/${TAG}_lead.out" | tail -1 | cut -c1-160)"
   fi
   if [ -s "$RO/${TAG}_accepted" ]; then
-    say "shipped past what fails on brickworks.diy too:"; sed 's/^/  /' "$RO/${TAG}_accepted"
+    say "shipped past what fails on brickworks.diy too, or is no worse there by turns:"; sed 's/^/  /' "$RO/${TAG}_accepted"
   fi
   step "live; retiring"
   retire
@@ -847,7 +847,7 @@ stale_line() {
     done < "$RO/$t.train/accept"
   fi
   if [ -s "$RO/${t}_accepted" ]; then
-    echo "  ships past what fails on $SITE too:"; sed 's/^/    /' "$RO/${t}_accepted"
+    echo "  ships past what fails on $SITE too, or is no worse there by turns:"; sed 's/^/    /' "$RO/${t}_accepted"
   fi
   return 0
 }

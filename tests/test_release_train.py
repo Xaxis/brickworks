@@ -1167,9 +1167,9 @@ def test_it_ships_past_a_check_only_where_brickworks_diy_fails_it_too(tmp_path):
         record = y.text("t-m2_accepted")
         assert record.startswith("people: %s\n  here: people exit=1 " % reason), record
         assert "FAIL alone too" in record and "  there: people exit=1 fails=1 1s :: FAIL on the live site" in record
-        assert "shipped past what fails on brickworks.diy too:\n  people: " + reason in y.text("t-m2_train.out")
+        assert "shipped past what fails on brickworks.diy too, or is no worse there by turns:\n  people: " + reason in y.text("t-m2_train.out")
         status = y.train("status", "t-m2").stdout
-        assert "ships past what fails on https://brickworks.diy too:\n    people: " + reason in status, status
+        assert "ships past what fails on https://brickworks.diy too, or is no worse there by turns:\n    people: " + reason in status, status
         assert "      there: people exit=1" in status, status
 
         # Given when staged: shipped past where it fails there too, held where it passes there.
@@ -1229,7 +1229,7 @@ def test_a_timing_check_failing_on_the_preview_runs_by_turns_with_brickworks_diy
         assert y.git(y.r, "rev-parse", "main^{tree}") == y.git(y.r, "rev-parse", "main^^{tree}")
         assert y.git(y.r, "log", "-1", "--format=%an <%ae>", "main") == "Xaxis <william.neeley@gmail.com>"
         assert "/b/%s/" % merge in y.live.read_text() and y.text("t-m2_preview.sha").strip() == merge
-        assert "shipped past what fails on brickworks.diy too:\n  progress: by turns" in y.text("t-m2_train.out")
+        assert "shipped past what fails on brickworks.diy too, or is no worse there by turns:\n  progress: by turns" in y.text("t-m2_train.out")
         status = y.train("status", "t-m2").stdout
         assert "by turns with https://brickworks.diy, progress ships past: the preview no worse" in status, status
         assert "    " + measure in status, status
