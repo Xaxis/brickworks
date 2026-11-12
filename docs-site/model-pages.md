@@ -44,7 +44,7 @@ ui:the model in your room
 
 A step whose parts go on from below is shown turned over, as its booklet page is. A comment's step pill opens Build it at that step (`/app?view=<id>&step=<n>`).
 
-![Build it a part at a time: the model built so far, faded, with the next part in its colours, and on the card the part's picture, its name and 3 of 8 in this step, with One part chosen over Whole step, and Back and Next.](/docs/img/build-it.webp "Build it, One part.")
+![Build it a part at a time: the model built so far, faded, with the next part outlined in its colours, and under it the part's picture with 3 of 8 in this step, its name, One part chosen over Whole step, and Back and Next.](/docs/img/build-it.webp "Build it, One part.")
 
 <!-- covers
 ui:build it step player

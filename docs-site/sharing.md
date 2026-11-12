@@ -21,7 +21,7 @@ Sharing gives a model a link anyone can open with no account: the model in 3D, i
 6. Tick **List it in the gallery** to put it in [the gallery](/docs/gallery) as well. Unticked, only people you send the link to find it.
 7. Press **Publish**. Publishing means you agree to the [guidelines](/guidelines).
 
-![The Share this model panel: Name, Show who made it, About it, Tags and Kind side by side, Licence with what it lets others do, List it in the gallery, then Publish and the guidelines.](/docs/img/sharing-panel.webp "File › Share…, before it is published.")
+![The Share this model panel: Name, Show who made it with the name to credit, About it, Tags and Kind side by side, Licence with what it lets others do, List it in the gallery, then Publish and the guidelines.](/docs/img/sharing-panel.webp "File › Share…, before it is published.")
 
 <!-- covers
 ui:share panel
@@ -29,7 +29,7 @@ ui:share panel
 
 Its link is `brickworks.diy/m/<id>`. Once it is published the panel shows the link, with **Copy link**, **Copy embed code** (a frame to paste into a page of your own; see [the embed](/docs/model-pages#actions)) and **Open**, and the line under Publish says what was shared: *Shared at this link, 187 parts*, and whether it is listed in the gallery and marked Tested.
 
-![The Share panel once published: the line Shared at this link and listed in the gallery, the link with Copy link, Copy embed code and Open, Unpublish, What changed? for the next version, and Publish now reading Update the link.](/docs/img/sharing-published.webp "The panel once the model is published.")
+![The Share panel once published: Publish now reading Update the link, then the line Shared at this link and listed in the gallery with its Tested mark, the link, Copy link, Copy embed code and Open, and Unpublish.](/docs/img/sharing-published.webp "The panel once the model is published.")
 
 Its build steps, its booklet's layout, its motions and what moves in it go with it, so whoever opens the link can step through it, read its booklet and play it. A model with motions of its own has **Opens** in the link box: **Still**, or **Playing** one of its motions, and the link then [opens with that motion playing](/docs/model-pages#play).
 
