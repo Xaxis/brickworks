@@ -33,10 +33,11 @@
 //      window's picture attached, the version ticked; sent, and the server
 //      kept a JPEG and the details.
 //   4. Throwaway B applies to the beta and the owner approves it (the beta
-//      open): B's account menu has Beta hub, /beta-hub draws what's new, the
-//      known issues and the early features, and B's report is a tester's.
-//      A, not a tester, is told the hub is for testers; signed out, asked to
-//      sign in. Anybody but the owner asking for the inbox gets a 404.
+//      open): B's account menu has Beta hub, the beta's page (/beta, where
+//      /beta-hub now lands) draws what to try, the known issues and the
+//      early features, and B's report from its Report a bug is a tester's.
+//      A, not a tester, and anybody signed out, see none of a tester's
+//      parts. Anybody but the owner asking for the inbox gets a 404.
 //   5. The owner's inbox (/admin?tests=1#feedback): every report, the
 //      filters, the picture shown; A's bug planned with a note, and an
 //      answer emailed to A's test inbox. A's settings then say Planned and
@@ -45,7 +46,7 @@
 //      and their reports and files with them.
 //
 // Pictures in --out. It passes when it ends "feedback: all ok".
-import { clickStill, launch, typeInMenu } from "./browser.mjs";
+import { answerWelcome, clickStill, launch, typeInMenu } from "./browser.mjs";
 import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
@@ -175,7 +176,7 @@ const sessions = {};
 async function throwaway(who) {
   const email = address(who);
   made.push(email);
-  const session = await mintSession(email);
+  const session = await mintSession(email, { welcome: false });
   sessions[email] = session;
   return session;
 }
@@ -338,6 +339,10 @@ try {
     const press = (name) => clickStill(page, name, { seconds: 60, optional: true, after: 400 });
     const signedIn = await until(page, () => (window.brickworksAccount || {}).state === "signed_in", null, 240000);
     check("the app is up, signed in as A", signedIn);
+    // A new account, with the beta open, is welcomed to it over the
+    // builder first; A says Not now, as a person come to send feedback would.
+    const welcome = await answerWelcome(page, { site, headers, token: A.access_token });
+    check(`the beta's welcome, when due: ${welcome}`, welcome === "Not now" || welcome === "not due");
     check("A's early features: none", await page.evaluate(() => (window.brickworksAccount?.early || []).length === 0));
     // In the app's menu, the mark's at the menu bar's far left.
     const markUp = await until(page, () => Boolean((window.brickworksControls || {}).app_menu), null, 120000);
@@ -391,20 +396,18 @@ try {
   console.log("4. The beta hub");
   {
     const { page, context } = await open("/beta-hub", { width: 1280, label: "hub signed out" });
-    check("signed out, the hub asks for a sign-in", await until(page, () => document.getElementById("signed-out")?.hidden === false));
+    const drawn = await until(page, () => document.documentElement.dataset.betaPage, null, 30000);
+    check(`signed out, /beta-hub lands on the beta's page, with no tester's part: ${new URL(page.url()).pathname}`,
+      drawn && new URL(page.url()).pathname === "/beta" && await page.evaluate(() => document.getElementById("testers").hidden));
     await context.close();
   }
   {
-    const { page, context } = await open("/beta-hub", { width: 1280, who: A, label: "hub A" });
-    const shown = await until(page, () => document.getElementById("state")?.textContent
-      && (document.getElementById("not-tester")?.hidden === false || /not open|did not load/i.test(document.getElementById("state").textContent)), null, 30000);
-    if (applied) {
-      check("A, not a tester, is told the hub is for testers, and how to tell us anyway",
-        shown && await page.evaluate(() => document.getElementById("not-tester").hidden === false
-          && Boolean(document.querySelector('#not-tester a[data-feedback]'))));
-    } else {
-      check(`A is told the hub did not load: "${await page.locator("#state").textContent()}"`, shown);
-    }
+    const { page, context } = await open("/beta", { width: 1280, who: A, label: "hub A" });
+    const drawn = await until(page, () => document.documentElement.dataset.betaPage, null, 30000);
+    const said = await page.evaluate(() => ({ visitor: document.documentElement.dataset.betaPage,
+      testers: !document.getElementById("testers").hidden }));
+    check(`A, not a tester, sees the way in (${said.visitor}) and none of a tester's parts`, drawn && !said.testers
+      && ["in", "off"].includes(said.visitor));
     await shot(page, "4-hub-not-tester.png");
     await context.close();
   }
@@ -414,7 +417,7 @@ try {
   } else if (beta.json?.beta !== "open" || !ownerAddress) {
     skip(`a tester's hub and report: needs the beta open (${beta.json?.beta}) and --owner`);
   } else {
-    owner = await mintSession(ownerAddress);
+    owner = await mintSession(ownerAddress, { welcome: false });
     made.push(ownerAddress);
     B = await throwaway("b");
     const form = { build: "A Technic tower crane with a working slewing ring and a two-speed winch.", ai: "claude",
@@ -427,22 +430,22 @@ try {
     const who = await api("/api/account", { token: B.access_token });
     check(`B's account says tester, with the beta hub early (${JSON.stringify(who.json?.beta)})`,
       who.json?.beta?.tester === true && who.json.beta.early.includes("beta_hub"));
-    const { page, context } = await open("/beta-hub", { width: 1280, theme: "dark", who: B, label: "hub B" });
-    check("B's hub draws what's new, the known issues and the early features", await until(page, () =>
-      document.getElementById("hub")?.hidden === false && document.querySelectorAll("#new li").length > 0
+    const { page, context } = await open("/beta", { width: 1280, theme: "dark", who: B, label: "hub B" });
+    check("B's hub draws what to try, the known issues and the early features", await until(page, () =>
+      document.getElementById("testers")?.hidden === false && document.querySelectorAll("#try li").length > 0
       && document.querySelectorAll("#known li").length > 0 && document.querySelectorAll("#early li").length > 0, null, 30000));
     await page.locator(".site-head .account-menu summary").click();
     check("B's account menu has Beta hub", await until(page, () =>
       Boolean(document.querySelector('.site-head .account-menu [data-place="beta-hub"]')), null, 15000));
     await shot(page, "4-hub-tester.png", true);
     await page.keyboard.press("Escape");
-    await page.locator('#hub a.cta[data-feedback="bug"]').click();
+    await page.locator("#beta-acts [data-visitor=tester] [data-beta-report]").click();
     await until(page, () => document.querySelector("dialog.feedback[open]"));
     const dialog = page.locator("dialog.feedback[open]");
     await dialog.locator('textarea[name="words"]').fill(`Snapping a hinge plate rotates the wrong way. (feedback flow ${rand})`);
     const said = await sendIt(page);
     sentIds.b = Number(said?.sent);
-    check("the hub's Send feedback sends B's bug", sentIds.b > 0);
+    check("the hub's Report a bug sends B's bug", sentIds.b > 0);
     await context.close();
     const mineB = await api("/api/plans?op=feedback", { token: B.access_token });
     check("B's report is marked a tester's", mineB.json?.beta === true && mineB.json.reports?.[0]?.beta === true);
@@ -456,7 +459,7 @@ try {
   if (!applied || !ownerAddress) {
     skip(applied ? "the inbox itself: needs --owner (never the site's real owner)" : "the inbox itself: once feedback.sql is applied");
   } else {
-    owner ??= await mintSession(ownerAddress);
+    owner ??= await mintSession(ownerAddress, { welcome: false });
     if (!made.includes(ownerAddress)) made.push(ownerAddress);
     const { page, context } = await open("/admin?tests=1#feedback", { width: 1280, who: owner, label: "inbox" });
     const listed = () => page.evaluate(() => [...document.querySelectorAll("#fb-list > li")].map((li) => ({

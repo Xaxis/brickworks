@@ -1,0 +1,38 @@
+{
+ "shots": [
+  {
+   "id": "beta-page",
+   "source": "site",
+   "route": "/beta",
+   "viewport": [
+    1024,
+    1300
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "storage": {
+    "brickworks.betabar.hidden": 4102444800000
+   },
+   "answers": {
+    "/api/plans?op=beta_spots": {
+     "beta": "open",
+     "cap": 100,
+     "left": 100
+    }
+   },
+   "wait": "#beta-acts > [data-visitor=\"out\"] [data-beta-join]",
+   "crop": [
+    ".beta-head",
+    "#get"
+   ],
+   "pad": 0,
+   "alt": "The beta's page signed out: Open beta, Help shape Brickworks, 100 of 100 free months of Pro left, Sign up and join and What testers get, then What testers get's three cards: New things first, A month of Pro, free, and Heard and answered.",
+   "caption": "brickworks.diy/beta, signed out.",
+   "features": [
+    "ui:beta page"
+   ]
+  }
+ ]
+}

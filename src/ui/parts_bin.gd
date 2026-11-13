@@ -1204,25 +1204,40 @@ func _mark_swatches() -> void:
 	if library == null:
 		return
 	var info: PartLibrary.PartInfo = _subject()
+	# A part's sets in each colour come a file at a time on the web: the
+	# tooltips are said again when its file is in.
+	if not library.colour_sets_came.is_connected(_mark_swatches):
+		library.colour_sets_came.connect(_mark_swatches)
 	for code: int in _swatches:
 		var swatch: Swatch = _swatches[code]
 		var made: int = 0
+		var sets: int = library.sets_in_colour(info.id, code) if info != null else -1
 		if info != null and info.availability_known():
 			if info.colors.has(code):
 				made = 1
 			elif info.never_made_in(code):
 				made = -1
+		# A set that has it is the proof the join lacked: 7049b's black is
+		# in 108 sets, and its colour list said it was never made in it. A
+		# rubber colour reads its plain one's sets, and is then no more than
+		# not never made, as for a part whose list has the plain colour.
+		if made < 0 and sets > 0:
+			made = 1 if swatch.color.plain_code == code else 0
 		if swatch.made_in != made:
 			swatch.made_in = made
 			swatch.queue_redraw()
-		swatch.tooltip_text = _swatch_tip(swatch.color, info, made)
+		swatch.tooltip_text = _swatch_tip(swatch.color, info, made, sets)
 		swatch.accessibility_description = swatch.tooltip_text.trim_prefix(swatch.color.name) \
 			.strip_edges()
 	_say_colour()
 
 
+## [param sets]: in how many sets the part comes in the colour
+## (PartLibrary.sets_in_colour), said after "comes in it", and three or
+## fewer as rare in it (rarity). None said for 0, which is silence, or -1,
+## still to come.
 func _swatch_tip(color: PartLibrary.BrickColor, info: PartLibrary.PartInfo,
-		made: int) -> String:
+		made: int, sets: int = -1) -> String:
 	var tip: String = "%s (%d), %s" % [color.name, color.code, color.finish_name()]
 	if not library.is_current(color.code) and library.recent_since > 0:
 		if library.colour_use(color.code).y > 0:
@@ -1230,7 +1245,13 @@ func _swatch_tip(color: PartLibrary.BrickColor, info: PartLibrary.PartInfo,
 		else:
 			tip += "\nin no set inventory"
 	if info != null:
-		if made > 0:
+		if sets > PartLibrary.RARE_IN:
+			tip += "\n%s comes in it, in %s sets" % [info.id, Working.comma(sets)]
+		elif sets == 1:
+			tip += "\n%s comes in it, in 1 set: rare in this colour" % info.id
+		elif sets > 0:
+			tip += "\n%s comes in it, in %d sets: rare in this colour" % [info.id, sets]
+		elif made > 0:
 			tip += "\n%s comes in it" % info.id
 		elif made < 0:
 			tip += "\n%s was never made in it" % info.id
@@ -1257,12 +1278,12 @@ func _say_colour() -> void:
 		text = "%s%s, selected: a colour clicked paints %s" % [what, colour,
 			"it" if count == 1 else "them"]
 		if info != null and info.availability_known():
-			text += ". A dot marks the %s it comes in" % Counted.of(info.colors.size(), "colour")
+			text += ". A dot marks the %s it comes in" % Counted.of(_dotted(info), "colour")
 	else:
 		var color: PartLibrary.BrickColor = library.color(_selected_color)
 		text = "%s, %s" % [color.name, color.finish_name()]
 		if info != null and info.availability_known():
-			text += ". A dot marks the %s %s comes in" % [Counted.of(info.colors.size(), "colour"),
+			text += ". A dot marks the %s %s comes in" % [Counted.of(_dotted(info), "colour"),
 				info.id]
 			if not info.colors_partial:
 				text += "; it was made in no other"
@@ -1270,6 +1291,19 @@ func _say_colour() -> void:
 	_colour_note.tooltip_text = text
 	_only_made.tooltip_text = ("Only parts made in %s, as set inventories have them: the bin "
 		+ "lists no other while this is ticked") % library.color(_selected_color).name
+
+
+## How many colours a dot marks for [param info]: its colour list's, and
+## each a set has that the list says it was never made in, as
+## _mark_swatches dots it (7049b's Black, in 108 sets). A rubber colour is
+## counted as its plain one, so a tyre's Black is not counted twice.
+func _dotted(info: PartLibrary.PartInfo) -> int:
+	var count: int = info.colors.size()
+	for code: int in library.colors:
+		if (library.colors[code] as PartLibrary.BrickColor).plain_code == code \
+				and info.never_made_in(code) and library.sets_in_colour(info.id, code) > 0:
+			count += 1
+	return count
 
 
 ## One colour in the palette, drawn as what it is: see-through over a
@@ -4592,6 +4626,9 @@ var _telling: ConfirmationDialog
 ## null for the whole library. Chosen by [method build_from]; kept with the
 ## model ([member ModelStore.bin_sets]) and followed when another is opened.
 var _set_bin: SetBin = null
+## The records [member _set_bin] was made from, to make it again as the
+## person's marks change ([method follow_marks]).
+var _set_records: Dictionary = {}
 var _set_line: HBoxContainer
 var _set_words: Label
 var _set_count: Label
@@ -4680,6 +4717,7 @@ func build_from(numbers: PackedStringArray, booklet: String = "") -> int:
 	print("set bin: %s, %d kinds of part, looked up in %d ms" % [bin.title, bin.order.size(), looked_up_ms])
 	_offer = {}
 	_set_bin = bin
+	_set_records = records
 	_booklet = null
 	_step_keys = PackedStringArray()
 	if store != null:
@@ -4803,6 +4841,24 @@ func _follow_step(relist: bool) -> void:
 		_list_set(_search.text.strip_edges())
 
 
+## The person's marks changed (CollectionStore.changed: a mark made here, by
+## a session, on another device, or read after start-up): a bin built from a
+## set is made again from the same sets and records, so what its copies are
+## marked missing is left out at once, and recounted (lbfix, lbreview F5).
+## The booklet stays: a step still puts in a part that is missing.
+func follow_marks() -> void:
+	if _set_bin == null:
+		return
+	var bin: SetBin = SetBin.make(_set_bin.sets, _set_records, library)
+	if bin == null or (bin.have == _set_bin.have and bin.left_out == _set_bin.left_out):
+		return
+	_set_bin = bin
+	_count_chips()
+	_recount(false)
+	if _listing_set:
+		_list_set(_search.text.strip_edges())
+
+
 ## Back to the whole library: the set's counts go with it.
 func leave_set() -> void:
 	_drop_set()
@@ -4812,6 +4868,7 @@ func leave_set() -> void:
 ## The set bin let go, and the model's choice with it.
 func _drop_set() -> void:
 	_set_bin = null
+	_set_records = {}
 	_booklet = null
 	_step_keys = PackedStringArray()
 	_used = {}

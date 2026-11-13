@@ -465,9 +465,8 @@ func write_list(kind: String, asking: bool = false) -> String:
 	# Export, made here if nothing has made it yet (Later): a section's list
 	# is not worth its compile in the first use of Suggest.
 	var exports: Node = shell.app.get("_exports")
-	var base: String = (shell.bar.model_name() + " " + _evaluated_name).to_snake_case()
-	var to: String = await exports._where(
-		base + ("_bricklink.xml" if kind == "bricklink" else "_parts.txt"), asking)
+	var to: String = await exports._where(SubmodelFile.titled(shell.bar.model_name() + " " + _evaluated_name,
+		"_bricklink.xml" if kind == "bricklink" else "_parts.txt"), asking)
 	if to.is_empty():
 		return ""
 	if kind == "bricklink":

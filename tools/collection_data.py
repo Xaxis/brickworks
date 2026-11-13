@@ -14,6 +14,9 @@ Written as 256 shards and an index under assets/generated/sets/:
                   sets, and the shard rule
     NNN.json      {"sets": {"10237-1": {"n": name, "y": year,
                   "p": [[part, colour, qty], ...], "s": [...spares]}}}
+    colours_NN.json  {"parts": {"3001": [colour, sets, colour, sets, ...]}}:
+                  in how many sets each part comes in each colour, the
+                  parts bin's "rare in this colour" (PartLibrary.sets_in_colour)
 
 Sharded because the whole thing is several megabytes and a person types
 one set number at a time. The desktop reads the shards from its own
@@ -45,6 +48,8 @@ the inventory written here.
     tools/collection_data.py --check      say what would be written
     tools/collection_data.py --bricklink  rewrite only the index's BrickLink
                                           colours, from colors.json
+    tools/collection_data.py --colours    rewrite only the colours_NN.json, from
+                                          the shards written
 """
 
 from __future__ import annotations
@@ -78,6 +83,95 @@ def shard_of(set_num: str) -> int:
     for byte in set_num.strip().lower().encode("utf-8"):
         h = (h * 31 + byte) % 1_000_003
     return h % SHARDS
+
+
+COLOUR_SHARDS = 64
+
+
+def colour_shard_of(part: str) -> int:
+    """Which colours file a part is in: shard_of's sum over its number, in 64
+    files. PartLibrary.colour_shard_of in the app is the same sum."""
+    h = 0
+    for byte in part.strip().lower().encode("utf-8"):
+        h = (h * 31 + byte) % 1_000_003
+    return h % COLOUR_SHARDS
+
+
+## Rebrickable's "Database Sets" (theme 746): "2001 - Unused Parts Database
+## Set" and the like, which hold the parts no set has. Not sets: 3001 in
+## Bright Green read "in 1 set" through one.
+NOT_SETS = {"746"}
+
+
+def _what_sets_are() -> tuple[set[str], dict[str, list[str]]]:
+    """The set numbers that are not sets (NOT_SETS), and each set that packs
+    others -> the sets packed in it, by their first inventories, lowercased
+    as the shards key them."""
+    skip = {r["set_num"].lower() for r in rb._rows("sets") if r["theme_id"] in NOT_SETS}
+    first: dict[str, tuple[int, str]] = {}
+    for row in rb._rows("inventories"):
+        version = int(row["version"] or 1)
+        if row["set_num"] not in first or version < first[row["set_num"]][0]:
+            first[row["set_num"]] = (version, row["id"])
+    owner = {inventory: number.lower() for number, (_v, inventory) in first.items()}
+    packs: dict[str, list[str]] = defaultdict(list)
+    for row in rb._rows("inventory_sets"):
+        pack = owner.get(row["inventory_id"])
+        if pack is not None:
+            packs[pack].append(row["set_num"].lower())
+    return skip, packs
+
+
+def colour_sets(shards: dict, known: set[str], skip: set[str],
+                packs: dict[str, list[str]]) -> dict[int, dict[str, list[int]]]:
+    """Colours file -> {part: [colour, sets, colour, sets, ...]}: in how many
+    sets each part the catalogue has comes in each colour, colours in order.
+
+    A set counts once however many it holds, its own parts and its figures',
+    as its shard has them; a spare alone does not count, as part_usage.py
+    counts. A set that packs others (a co-pack, a value pack) counts only
+    for what is not in the sets packed in it, which count themselves: 4740
+    in Brown is in 7126 and 7171, and in VP-4 because it packs 7171. And
+    Rebrickable's database sets (NOT_SETS) are none. BrickMissing says a
+    part and colour in three sets or fewer is rare, and that is what a
+    person replacing a lost piece asks (APP_UX7 rarity). The catalogue's
+    in_sets counts sets per part only.
+
+    In the app's first screen they would be 104 kB (brotli) more for every
+    visit, for a tooltip: so beside the shards, fetched a part's file at a
+    time on the web, as a typed set's shard is."""
+    records: dict[str, dict] = {}
+    for sets in shards.values():
+        records.update(sets)
+
+    def pairs(number: str) -> set[tuple[str, int]]:
+        return {(p, c) for p, c, _q in records.get(number, {}).get("p", ())}
+
+    counted: dict[tuple[str, int], int] = defaultdict(int)
+    for number in records:
+        if number in skip:
+            continue
+        own = pairs(number)
+        for packed in packs.get(number, ()):
+            own -= pairs(packed)
+        for part, colour in own:
+            if part in known:
+                counted[(part, colour)] += 1
+    out: dict[int, dict[str, list[int]]] = defaultdict(dict)
+    for (part, colour), sets_in in sorted(counted.items()):
+        out[colour_shard_of(part)].setdefault(part, []).extend((colour, sets_in))
+    return out
+
+
+def write_colour_sets(shards: dict, known: set[str]) -> None:
+    files = colour_sets(shards, known, *_what_sets_are())
+    pairs = 0
+    for number in range(COLOUR_SHARDS):
+        parts = files.get(number, {})
+        pairs += sum(len(row) // 2 for row in parts.values())
+        (OUT / f"colours_{number:02d}.json").write_text(json.dumps({"parts": parts},
+            separators=(",", ":")))
+    print(f"  {pairs:,} parts in a colour counted, in {COLOUR_SHARDS} colours files")
 
 
 def bricklink_colours(colours: list[dict]) -> dict[int, int]:
@@ -315,7 +409,16 @@ def main() -> int:
     parser.add_argument("--check", action="store_true", help="write nothing")
     parser.add_argument("--bricklink", action="store_true",
                         help="rewrite only index.json's bricklink_colours, from colors.json")
+    parser.add_argument("--colours", action="store_true",
+                        help="rewrite only the colours_NN.json, from the shards written")
     args = parser.parse_args()
+    known = {entry["id"] for entry in
+             json.loads((GENERATED / "catalogue.json").read_text())["parts"]}
+    if args.colours:
+        shards = {int(path.stem): json.loads(path.read_text())["sets"]
+                  for path in sorted(OUT.glob("[0-9][0-9][0-9].json"))}
+        write_colour_sets(shards, known)
+        return 0
     if args.bricklink:
         # The shards and the part join are left as they were built: a new
         # colour number changes neither.
@@ -341,6 +444,7 @@ def main() -> int:
         (OUT / f"{number:03d}.json").write_text(
             json.dumps({"sets": sets}, separators=(",", ":")))
     (OUT / "index.json").write_text(json.dumps(index, separators=(",", ":")))
+    write_colour_sets(shards, known)
     print(f"  wrote {OUT}")
     return 0
 

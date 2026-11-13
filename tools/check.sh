@@ -47,7 +47,7 @@ listed=$({ printf '%s\n' "${headless[@]%%:*}" "${windowed[@]%%:*}" "${out[@]}"
   # and those run by hand below, each by its script
   grep -v '^\s*#' tools/check.sh | grep -oE 'src/dev/[a-z0-9_]+_probe\.gd' \
     | sed 's#^src/dev/##; s#_probe\.gd$##'
-  grep -oE '^\s*probe [a-z0-9_]+' tools/check.sh | awk '{print $2}'
+  grep -oE '^\s*([A-Z_]+=[^ ]+ )*probe [a-z0-9_]+' tools/check.sh | awk '{print $NF}'
 } | sort -u)
 unlisted=$(comm -23 <(echo "$probes") <(echo "$listed"))
 unknown=$(comm -13 <(echo "$probes") <(echo "$listed"))
@@ -87,10 +87,17 @@ done
 # Brickworks, their models and settings): a Godot left to the default
 # XDG_DATA_HOME reads and writes there. doctor.sh's parse check ran so
 # (2026-10-20), and check.sh relied on whoever called it. A run here gets
-# a data folder of its own unless it was given one.
-if [ -z "${XDG_DATA_HOME:-}" ] || [ "$XDG_DATA_HOME" = "$HOME/.local/share" ]; then
+# a data folder of its own unless it was given one, and removes it when it
+# ends: 25 left in /tmp, some 230 MB, filled the disk (2026-11-10). heavy
+# runs this script again in its slot (below), so the folder is made in the
+# run that does the work, whose exit removes it.
+if [ -z "${BOX_HEAVY_HELD:-}" ] && [ -x "$HOME/.claude/claude-core/bin/heavy" ] && [ "$dry" = 0 ]; then
+  :
+elif [ -z "${XDG_DATA_HOME:-}" ] || [ "$XDG_DATA_HOME" = "$HOME/.local/share" ]; then
   XDG_DATA_HOME="$(mktemp -d "${TMPDIR:-/tmp}/brickworks-check-data.XXXXXX")"
   export XDG_DATA_HOME
+  check_data=$XDG_DATA_HOME
+  trap 'rm -rf -- "$check_data"' EXIT
   echo "  (app data for this run: $XDG_DATA_HOME)"
 fi
 # Nor the person's desktop, which this shell may carry: a run here opens no
@@ -486,14 +493,29 @@ run "a session drives the app" python3 tools/mcp_check.py
 
 if [ "$network" = 1 ]; then
   echo "── network ──"
-  probe remote
-  probe reference_lookup
-  run "open (over the wire)" godot --path . --script src/dev/open_probe.gd
-  # The model library as the app opens it, from the store (.env's PARTS_URL),
-  # and the gallery as a session reads it, from the hosted gallery.
+  # The store (.env's PARTS_URL) as this machine's copy of it serves it, over
+  # HTTP as the bucket does: each object from Supabase at most once, which
+  # bills every byte it serves (tools/web/storage_mirror.mjs).
   parts_url=$(sed -n 's/^PARTS_URL=//p' .env 2>/dev/null | tr -d "\"'")
+  if [ "$dry" = 0 ]; then
+    mirror_said=$(mktemp "${TMPDIR:-/tmp}/storage-mirror.XXXXXX")
+    node tools/web/storage_mirror.mjs serve > "$mirror_said" 2>&1 < /dev/null &
+    mirror=$!
+    for _ in $(seq 100); do grep -q '^http' "$mirror_said" && break; sleep 0.1; done
+    mirrored=$(grep -m1 '^http' "$mirror_said")
+    [ -n "$mirrored" ] && parts_url=$mirrored || echo "  (no copy of the store: $(head -c 300 "$mirror_said"); the bucket itself)"
+  fi
+  PARTS_URL=$parts_url probe remote
+  probe reference_lookup
+  PARTS_URL=$parts_url run "open (over the wire)" godot --path . --script src/dev/open_probe.gd
+  # The model library as the app opens it, from the store, and the gallery as
+  # a session reads it, from the hosted gallery.
   run "the library from the store" godot --headless --path . \
     --script src/dev/library_open_probe.gd -- --base="$parts_url"
+  if [ "$dry" = 0 ]; then
+    kill "$mirror" 2>/dev/null; wait "$mirror" 2>/dev/null
+    grep 'storage mirror:' "$mirror_said"; rm -f "$mirror_said"
+  fi
   probe gallery_tool
 fi
 

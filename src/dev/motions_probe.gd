@@ -87,6 +87,7 @@ func _run() -> void:
 	await _chassis()
 	await _windscreen()
 	await _ldr()
+	await _refused_key()
 	await _assembly()
 	await _observatory()
 	print("")
@@ -339,6 +340,33 @@ func _ldr() -> void:
 	_print(said)
 	_check("a sequence plays in order: %s" % said.get_slice("\n", 0).left(80),
 		said.find("Swing the flap") < said.find("Swing back") and said.find("Swing back") > 0)
+
+
+## A key this build cannot read ("SPRING", a later build's way between
+## keys) between two it can: kept byte for byte between them over another
+## motion defined and a save (metalines; kt5check F1: it went after the
+## keys read).
+func _refused_key() -> void:
+	print("── a key this cannot read, between two it can ──")
+	var file: String = _out.path_join("hinge_refused.ldr")
+	var refused: String = "0 !BRICKWORKS MOTION_KEY \"Swing\" 1 1 10 SPRING"
+	_write(file, "0 Hinge refused\n0 Name: hinge_refused.ldr\n0 Author: Someone Else\n"
+		+ "0 !BRICKWORKS MOTION \"Swing\" AFTER \"\" SECONDS 2\n"
+		+ "0 !BRICKWORKS MOTION_TRACK \"Swing\" 1 TURN AT 0 JOINT PART 3938 71 0 -24 0\n"
+		+ "0 !BRICKWORKS MOTION_KEY \"Swing\" 1 0 0 EASE\n" + refused + "\n"
+		+ "0 !BRICKWORKS MOTION_KEY \"Swing\" 1 2 20 EASE\n"
+		+ "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\n"
+		+ "1 71 0 -24 0 1 0 0 0 1 0 0 0 1 3937.dat\n"
+		+ "1 71 0 -24 0 1 0 0 0 1 0 0 0 1 3938.dat\n")
+	if not await _open(file):
+		return
+	var said: String = await _say("define_motion", {"name": "Swing back", "tracks": [
+		{"joint": "#%d" % _lead("3938"), "keys": [{"t": 0, "place": 20}, {"t": 1, "place": 0}]}]})
+	_print(said)
+	var lines: PackedStringArray = _store.to_text(_store.title, true).split("\n")
+	var at: int = lines.find(refused)
+	_check("the refused key kept between the keys either side of it (line %d)" % at, at > 0
+		and lines[at - 1].ends_with("1 0 0 EASE") and lines[at + 1].ends_with("1 2 20 EASE"))
 
 
 ## A flap that is a sub-assembly of its own in an .mpd: a motion on a part

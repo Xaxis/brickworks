@@ -306,7 +306,7 @@ def test_a_link_to_any_page_with_copies_as_english_writes_it_is_caught() -> None
                  'a.href = "/settings#plan";', 'link.href = `/challenge${tests ? "?tests=1" : ""}`;'):
         assert site_lang.unled(link) != [], link
     # languages7: the account menu's pages, the footer's and the consent page too.
-    for link in ('a.href = "/takedown";', 'href="/terms#notices"', 'a.href = "/feed";', 'a.href = "/beta-hub";',
+    for link in ('a.href = "/takedown";', 'href="/terms#notices"', 'a.href = "/feed";', 'a.href = "/beta";',
                  '`<a href="/changelog">`', 'location.href = "/oauth/authorize?" + query;'):
         assert site_lang.unled(link) != [], link
     for link in ("a.href = `${langAt()}/collections`;", "a.href = `${langAt()}/settings#plan`;", 'img.src = "/m/X.png";',
@@ -495,7 +495,7 @@ def test_the_feed_and_the_notifications_say_their_lines_in_the_language() -> Non
 def test_the_account_and_rule_pages_scripts_say_every_word() -> None:
     # A word left in English in the scripts these pages run fails the check
     # (SAID_ALL), and an answer shown as the server wrote it (untold).
-    for path in ("web/feed.js", "web/notifications.js", "web/builds.js", "web/beta.js", "web/beta-hub.js",
+    for path in ("web/feed.js", "web/notifications.js", "web/builds.js", "web/beta.js", "web/betabar.js",
                  "web/authorize.js", "web/takedown.js"):
         text = site_lang.scope(path, site_lang.SAID_ALL[path])
         assert len(text) > 500 and site_lang.unsaid(text) == [] and site_lang.untold(text) == [], path

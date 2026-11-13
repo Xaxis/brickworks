@@ -208,7 +208,7 @@ stage() {
   # the release staged after it that this one had ended (m178 held on
   # m177's, 2026-10-26). So would what it shipped past and how its failures
   # fared on brickworks.diy.
-  rm -f "$RO/$tag.done" "$RO/$tag.gave_up" "$RO/${tag}_accepted" "$RO/${tag}"_stale.{out,asked,build,changed,failing}
+  rm -f "$RO/$tag.done" "$RO/$tag.gave_up" "$RO/${tag}_accepted" "$RO/${tag}"_stale.{out,asked,build,changed,failing} "$RO/${tag}_ab.asked"
   for log in lead train; do
     [ -e "$RO/${tag}_$log.out" ] && mv -f "$RO/${tag}_$log.out" "$RO/${tag}_$log.prev.out"
   done
@@ -622,7 +622,7 @@ killed() {
 }
 
 work() {
-  local code out ship ended="" bad="" reshipping="" served made
+  local code out ship ended="" bad="" reshipping="" served made head
   # The merge's import and gates at the release's priority, as its probes
   # and ship.sh are: rel-m231's merge waited behind an agent's solo checks
   # (2026-10-31).
@@ -678,16 +678,23 @@ work() {
   served=$(cat "$SPEC/sha")
   made=$(cat "$RO/${TAG}_preview.sha" 2>/dev/null) && made=$(git -C "$W" rev-parse --short "$made" 2>/dev/null) \
     && [ -n "$reshipping" ] && served="($served|$made)"
+  # Or the commit ship.sh put on top to say what it shipped past after an
+  # A/B, built afresh should the preview's promotion not go.
+  head=$(git -C "$W" rev-parse --short HEAD 2>/dev/null) && [ "$head" != "$(cat "$SPEC/sha")" ] \
+    && served="($served|$head)"
   if ! grep -qE "^SHIP: deploy: brickworks.diy serves $served\b" "$RO/${TAG}_lead.out"; then
     bad=$(sed -n 's/^failed://p' "$RO/$TAG.probes" 2>/dev/null)
     [ -z "$bad" ] || finish "stopped: probes failed:$bad (${TAG}_probe_NAME.log)"
     finish "not live: ship.sh ended exit $code: $(grep '^SHIP:' "$RO/${TAG}_lead.out" | tail -1 | cut -c1-160)"
   fi
   if [ -s "$RO/${TAG}_accepted" ]; then
-    say "shipped past what fails on brickworks.diy too:"; sed 's/^/  /' "$RO/${TAG}_accepted"
+    say "shipped past what fails on brickworks.diy too, or is no worse there by turns:"; sed 's/^/  /' "$RO/${TAG}_accepted"
   fi
   step "live; retiring"
   retire
+  # Old releases' output to the archive (moved, never deleted): release-out
+  # held 61 GB in 25,000 entries at 93% of the disk (2026-11-11).
+  say "$(bash "$HERE/archive_out.sh" 2>&1 | tail -1)"
   # Live, whatever the live checks after said: main has it and brickworks.diy serves it.
   [ "$code" = 0 ] || say "live, but ship.sh ended exit $code: its live checks ($RO/${TAG}_live.out)"
   finish live
@@ -823,13 +830,24 @@ stale_line() {
     fi
     echo "  on $SITE${build:+ (serving $build)}: $(printf '%s; ' "${parts[@]}" | sed 's/; $//') (${t}_stale_NAME.log)"
   fi
+  # A timing check run by turns on the preview and there (live_ab.sh): its
+  # runs as they end, then the verdict and both sides' numbers.
+  for n in $(cat "$RO/${t}_ab.asked" 2>/dev/null); do
+    f=$RO/${t}_ab_$n
+    if [ -s "$f.judge" ]; then
+      echo "  by turns with $SITE, $n $(head -1 "$f.judge")"; sed '1d; s/^/    /' "$f.judge"
+    else
+      echo "  by turns with $SITE, $n: $(grep -c . "$f.runs" 2>/dev/null) of $(wc -w < "$f.order" 2>/dev/null || echo "?") run ($(cat "$f.order" 2>/dev/null))"
+      sed 's/^/    /' "$f.runs" 2>/dev/null
+    fi
+  done
   if [ -s "$RO/$t.train/accept" ]; then
     while IFS=$'\t' read -r n why; do
       grep -q "^$n: " "$RO/${t}_accepted" 2>/dev/null || echo "  may ship past $n should it fail on $SITE too: $why"
     done < "$RO/$t.train/accept"
   fi
   if [ -s "$RO/${t}_accepted" ]; then
-    echo "  ships past what fails on $SITE too:"; sed 's/^/    /' "$RO/${t}_accepted"
+    echo "  ships past what fails on $SITE too, or is no worse there by turns:"; sed 's/^/    /' "$RO/${t}_accepted"
   fi
   return 0
 }

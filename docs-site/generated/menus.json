@@ -158,16 +158,22 @@
 					"tip": "The last 20 saves of this model, to open one again or compare it with"
 				},
 				{
-					"name": "compare",
-					"words": "Compare with…",
-					"key": "",
-					"tip": "What changed since one of this model's saves: added green, removed red, moved amber"
-				},
-				{
-					"name": "compare_sets",
-					"words": "Compare two sets or models…",
-					"key": "",
-					"tip": "The parts a set, a saved model or this one shares with another, the parts in only one, and what to buy to build one from the other"
+					"submenu": "compares",
+					"words": "Compare",
+					"items": [
+						{
+							"name": "compare",
+							"words": "Compare with…",
+							"key": "",
+							"tip": "What changed since one of this model's saves: added green, removed red, moved amber"
+						},
+						{
+							"name": "compare_sets",
+							"words": "Compare two sets or models…",
+							"key": "",
+							"tip": "The parts a set, a saved model or this one shares with another, the parts in only one, and what to buy to build one from the other"
+						}
+					]
 				},
 				{
 					"line": true
@@ -238,6 +244,12 @@
 						},
 						{
 							"line": true
+						},
+						{
+							"name": "export_submodels",
+							"words": "Each sub-model as its own file (.zip)",
+							"key": "",
+							"tip": "Every sub-model as an LDraw file of its own, with its own sub-models and steps, in one .zip"
 						},
 						{
 							"name": "export_all",
@@ -1023,6 +1035,15 @@
 							"words": "Delete the step",
 							"key": "Alt+Delete",
 							"tip": "Take out the step the timeline is on; its parts join the step before"
+						},
+						{
+							"line": true
+						},
+						{
+							"name": "step_name",
+							"words": "Name the step…",
+							"key": "Shift+F2",
+							"tip": "What the step the timeline is on is called (\"Build the cockpit\"): said beside its number on the timeline, in Build it and in the booklet"
 						}
 					]
 				},
@@ -1513,6 +1534,15 @@
 					"line": true
 				},
 				{
+					"name": "report_bug",
+					"words": "Report a bug…",
+					"key": "Alt+Shift+R",
+					"tip": "Tell us what went wrong, with a picture of the window to mark the spot on"
+				},
+				{
+					"line": true
+				},
+				{
 					"name": "check_updates",
 					"words": "Check for updates…",
 					"key": "",
@@ -1754,6 +1784,7 @@
 		"export_all": "",
 		"export_rebrickable": "",
 		"export_pickabrick": "alt-L",
+		"export_submodels": "",
 		"render": "F9",
 		"render_queue": "shift-F9",
 		"pose": "alt-O",
@@ -1805,6 +1836,7 @@
 		"step_merge": "alt-E",
 		"step_delete": "alt-Delete",
 		"step_to": "alt-T",
+		"step_name": "shift-F2",
 		"booklet_turn_left": "",
 		"booklet_turn_right": "",
 		"booklet_tilt_up": "",
@@ -1955,6 +1987,7 @@
 		"website": "",
 		"beta_hub": "",
 		"feedback": "",
+		"report_bug": "alt-shift-R",
 		"about": "",
 		"back_to_site": ""
 	}

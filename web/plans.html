@@ -17,10 +17,12 @@
 
   AI is never limited, on any plan, because people bring their own, and
   this page says only what works: any AI app through the connector (the
-  FAQ's cards, from assets/assistants.json), or an Anthropic key on the web
-  (the web's security policy lets a page call api.anthropic.com and no
-  other AI, tools/deploy.sh); in the desktop app, a key for OpenAI, Gemini
-  and the others in Settings, AI too. It leads
+  FAQ's cards, from assets/assistants.json), or a key for any provider
+  Settings, AI lists, in any browser: the app's security policy lets a page
+  reach each of their addresses (tools/deploy.sh, from
+  src/ai/provider_settings.gd), and each answers a page at brickworks.diy
+  (CORS, checked without a key 2026-11-12, webwords1). Only a server not
+  on that list needs the desktop app, coming soon. It leads
   with the CAD, not the AI (the owner, 2026-11-02).
 
   Built on the design system (site356, 2026-10-29): Monthly or Yearly
@@ -234,7 +236,7 @@ dialog .done .actions { margin-top: var(--s-4); }
 						<tr><th scope="row">Physics: whether it stands, and joints that move</th><td><span class="has"><span class="visually-hidden">Yes</span></span></td><td><span class="has"><span class="visually-hidden">Yes</span></span></td></tr>
 						<tr><th scope="row">Find a part from a photo</th><td><span class="has"><span class="visually-hidden">Yes</span></span></td><td><span class="has"><span class="visually-hidden">Yes</span></span></td></tr>
 						<tr><th scope="row">AI, on your own AI app or key</th><td>No limit</td><td>No limit</td></tr>
-						<tr><th scope="row">AI on your own key for OpenAI, Gemini and others (the desktop app)</th><td>No limit</td><td>No limit</td></tr>
+						<tr><th scope="row">AI on your own key for OpenAI, Anthropic, Google Gemini, OpenRouter and others, in any browser</th><td>No limit</td><td>No limit</td></tr>
 						<tr><th scope="row">Fresh eyes on every new AI design</th><td><span class="has"><span class="visually-hidden">Yes</span></span></td><td><span class="has"><span class="visually-hidden">Yes</span></span></td></tr>
 						<tr class="group"><th scope="rowgroup" colspan="3">Making and sharing</th></tr>
 						<tr><th scope="row">Booklets to print or save as PDF, renders and exports</th><td><span class="has"><span class="visually-hidden">Yes</span></span></td><td><span class="has"><span class="visually-hidden">Yes</span></span></td></tr>
@@ -271,7 +273,7 @@ dialog .done .actions { margin-top: var(--s-4); }
 				<p class="what">Pro keeps every model with your account and adds a licence for commercial use. It takes nothing out of Free, which keeps all of this, for personal and educational use:</p>
 				<ul class="keep">
 					<li><b>The web app and the desktop app.</b> In any browser, on a computer, a tablet or a phone; and, once the desktop app is out, on Windows, macOS and Linux, offline.</li>
-					<li><b>Building by hand, and AI, without a limit.</b> Bring your own AI: the AI app you use through the connector, Claude or another, or an Anthropic API key, in any browser; in the desktop app, your own key for OpenAI, Gemini and others too.</li>
+					<li><b>Building by hand, and AI, without a limit.</b> Bring your own AI: the AI app you use through the connector, Claude or another, or your own API key for OpenAI, Anthropic, Google Gemini, OpenRouter, Mistral and others, in any browser.</li>
 					<li><b>Everything else the app does today.</b> Saving to your device, 25 models kept with your account, Build together, booklets and PDFs, renders, exports, photo search, parts lists, publishing, the gallery and challenges.</li>
 					<li><b>Your models.</b> Nothing is ever deleted or locked: on any plan, or none, the app opens, edits and exports everything you made. With more than 25 kept with your account you keep every one; a new one goes there once you are under 25 again.</li>
 				</ul>
@@ -292,7 +294,7 @@ dialog .done .actions { margin-top: var(--s-4); }
 			</details>
 			<details class="qa" id="ai">
 				<summary>Is AI limited on Free?</summary>
-				<div><p>No. AI has no limit on any plan, because you bring your own: the AI app you use through the connector, Claude or another, or your own Anthropic API key; in the desktop app, your own key for OpenAI, Gemini and others too. Brickworks never meters it or pays for its tokens.</p></div>
+				<div><p>No. AI has no limit on any plan, because you bring your own: the AI app you use through the connector, Claude or another, or your own API key for OpenAI, Anthropic, Google Gemini, OpenRouter, Mistral and others, in any browser. Brickworks never meters it or pays for its tokens.</p></div>
 			</details>
 			<details class="qa">
 				<summary>Why Pro at all?</summary>

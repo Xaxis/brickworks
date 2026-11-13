@@ -61,7 +61,7 @@ func _ready() -> void:
 
 
 func open() -> void:
-	visible = true
+	HudFront.show_panel(self)
 	refresh()
 
 
@@ -161,7 +161,7 @@ func _save(kind: String) -> void:
 	if items.is_empty():
 		_status.text = "There are no stickers in this model to print."
 		return
-	var name: String = "%s stickers.%s" % [title, kind]
+	var name: String = _file_name(kind)
 	var bytes: PackedByteArray = sheet_bytes(kind)
 	if OS.has_feature("web"):
 		JavaScriptBridge.download_buffer(bytes, name, "application/pdf" if kind == "pdf"
@@ -171,12 +171,18 @@ func _save(kind: String) -> void:
 	await save_sheet(kind, bytes)
 
 
+## The sheet's file, "NAME stickers.pdf": named by the one rule for a
+## file's name, the title as it is written (SubmodelFile.named).
+func _file_name(kind: String) -> String:
+	return SubmodelFile.named(title + " stickers", "." + kind, "stickers")
+
+
 ## The sheet's [param bytes] written where the person chooses, on the
 ## desktop: the Save dialog every export opens (SaveTo), in the folder the
 ## last file went to, asking before it writes over one. It had a chooser
 ## of its own that opened in the app's install folder (walk256 DS1).
 func save_sheet(kind: String, bytes: PackedByteArray) -> void:
-	var name: String = "%s stickers.%s" % [title, kind]
+	var name: String = _file_name(kind)
 	var path: String = await SaveTo.ask(name, "", "Save the sticker sheet")
 	if path.is_empty():
 		return

@@ -1,0 +1,23 @@
+0 FILE main.ldr
+0 !BRICKWORKS VIEW {"name":"front","yaw":0.5,"pitch":0.3,"distance":400.0,"focus":[0.0,0.0,0.0],"square":false}
+0 Studio export
+0 Name: main.ldr
+0 Author: Stu Dio
+0 CustomBrick
+0 NumOfBricks:  6
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 PE_TEX_PATH -1
+0 PE_TEX_INFO iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==
+1 15 0 -24 0 1 0 0 0 1 0 0 0 1 3068b.dat
+1 4 0 -32 0 1 0 0 0 1 0 0 0 1 sub.ldr
+1 1 100 -32 0 1 0 0 0 1 0 0 0 1 sub.ldr
+0 STEP
+0 NOFILE
+0 FILE sub.ldr
+0 Sub
+0 Name: sub.ldr
+0 Author: Stu Dio
+0 CustomBrick
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 16 0 -24 0 1 0 0 0 1 0 0 0 1 3004.dat
+0 NOFILE

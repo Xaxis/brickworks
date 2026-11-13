@@ -1,0 +1,50 @@
+{
+ "shots": [
+  {
+   "id": "render-dialog",
+   "source": "app",
+   "setup": [
+    {"run": "render", "after": 30},
+    {"frames": 60}
+   ],
+   "settle": 60,
+   "crop": "@opened",
+   "pad": 0,
+   "alt": "The Render dialog: a draft of the car on the left with the four Render buttons under it, and on the right its Preset, Quality, Look, Size, Background, Light and Lights in the model.",
+   "caption": "File › Render… (F9): the draft on the left is what Render draws.",
+   "features": ["ui:photo-real render"]
+  },
+  {
+   "id": "render-line-art",
+   "source": "app",
+   "setup": [
+    {"run": "render", "after": 30},
+    {"click": "_render._looks.2", "after": 30},
+    {"frames": 90}
+   ],
+   "settle": 60,
+   "crop": "_render._preview",
+   "pad": 0,
+   "alt": "The car drawn by the Line art look: black lines on white, thickest round the outline, the shading in halftone dots and its shadow on the floor in dots too.",
+   "caption": "Look › Line art: the model inked, to print or colour in.",
+   "features": ["lib:line art and comic looks"]
+  },
+  {
+   "id": "render-lights",
+   "source": "app",
+   "setup": [
+    {"run": "render", "after": 30},
+    {"call": "_render._light.select", "args": [4]},
+    {"call": "_render._light.emit_signal", "args": ["item_selected", 4], "after": 20},
+    {"click": "_render._lamp_adds.0", "after": 30},
+    {"frames": 90}
+   ],
+   "settle": 60,
+   "crop": "@opened",
+   "pad": 0,
+   "alt": "The Render dialog with Light set to Dark and one bulb added under Lights in the model: the draft shows the car lit by the bulb alone, and the bulb's strength, size, shadows and where it hangs are on the right.",
+   "caption": "Lights in the model, Add › Bulb, with Light on Dark.",
+   "features": ["ui:lights in the model"]
+  }
+ ]
+}

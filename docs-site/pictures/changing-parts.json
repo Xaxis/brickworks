@@ -1,0 +1,97 @@
+{
+ "shots": [
+  {
+   "id": "building-rotate",
+   "source": "app",
+   "setup": [
+    {
+     "select": {
+      "part": "3004",
+      "nth": 1
+     }
+    },
+    {
+     "run": "mode_rotate",
+     "after": 20
+    }
+   ],
+   "crop": "_over_model",
+   "alt": "The red car with one brick selected and the Rotate tool's three rings round it, one for each way it can turn.",
+   "caption": "The Rotate tool: drag a ring to turn the selection, in the toolbar's turn step.",
+   "features": [
+    "ui:handles on the selection",
+    "ui:tool modes"
+   ]
+  },
+  {
+   "id": "building-move",
+   "source": "app",
+   "setup": [
+    {
+     "select": {
+      "part": "3004",
+      "nth": 1
+     }
+    },
+    {
+     "run": "mode_move",
+     "after": 20
+    }
+   ],
+   "crop": "_over_model",
+   "alt": "The red car with one brick selected and the Move tool's three arrows on it, red, green and blue.",
+   "caption": "The Move tool: drag an arrow to slide the selection along it.",
+   "features": [
+    "ui:handles on the selection",
+    "ui:move and turn a selection"
+   ]
+  },
+  {
+   "id": "building-pattern",
+   "source": "app",
+   "setup": [
+    {
+     "run": "new",
+     "after": 30
+    },
+    {
+     "take": {
+      "part": "3001",
+      "colour": 4
+     },
+     "after": 20
+    },
+    {
+     "click": {
+      "at": [
+       0,
+       0,
+       0
+      ]
+     },
+     "after": 20
+    },
+    {
+     "key": "Escape",
+     "after": 10
+    },
+    {
+     "select": {
+      "part": "3001"
+     }
+    },
+    {
+     "run": "pattern",
+     "after": 30
+    }
+   ],
+   "crop": "@opened",
+   "pad": 0,
+   "alt": "The Pattern dialog: In a row, In a grid, Round and Along a hose; In all 4, counting the selection; along x every 4.0 studs; 3 copies, each 4 studs along x, each with room; Cancel and Put them down.",
+   "caption": "Edit › Pattern… copies the selection in a line, a grid or round a circle.",
+   "features": [
+    "ui:patterns"
+   ]
+  }
+ ]
+}

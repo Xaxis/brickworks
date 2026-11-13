@@ -85,6 +85,15 @@ var master: bool = false
 ## deployment says, the app only shows ([method early_on]).
 var tester: bool = false
 var early: Array[String] = []
+## The beta (betajoin, 2026-11-09), as the deployment said at sign-in:
+## whether it is open (Account's Beta row), and whether this account's
+## welcome is due (a new account, not yet asked whether to join its
+## testers), which the sign-in screen shows once the age question is
+## answered ([method join_beta], [method leave_beta]).
+## The top bar's Report a bug and the error notices' Report this show
+## while it is open (bugreport). The deployment says, the app only shows.
+var beta_open: bool = false
+var beta_welcome: bool = false
 ## Signed in from what this device kept, because Supabase could not be
 ## reached to confirm it.
 var offline: bool = false
@@ -483,11 +492,52 @@ func _ask_who(hold: bool = false) -> void:
 				return
 		var beta: Variant = said.get("beta")
 		tester = beta is Dictionary and bool((beta as Dictionary).get("tester", false))
+		beta_open = beta is Dictionary and bool((beta as Dictionary).get("open", false))
+		beta_welcome = beta_open and bool((beta as Dictionary).get("welcome", false))
 		early.clear()
 		if beta is Dictionary and (beta as Dictionary).get("early") is Array:
 			for key: Variant in (beta as Dictionary)["early"]:
 				early.append(str(key))
 	changed.emit()
+
+
+## Join the beta's testers, at once (POST /api/plans?op=beta_join):
+## [param via] is where the press was ("app" for the welcome, "app_settings"
+## for Account), as the owner's list counts it. Empty when the account is a
+## tester now, or something to show. The early features follow from the
+## deployment's next word on who this is.
+func join_beta(via: String) -> String:
+	return await _beta("beta_join", {"via": via})
+
+
+## Not a tester: a tester leaves, anybody else said Not now to the welcome
+## (POST /api/plans?op=beta_leave). Either way the welcome is not asked
+## again. Empty when it was taken, or something to show.
+func leave_beta() -> String:
+	return await _beta("beta_leave", {})
+
+
+func _beta(op: String, body: Dictionary) -> String:
+	var token: String = await access_token()
+	if token.is_empty():
+		return "Sign in again to carry on."
+	var reply: Dictionary = await _fetch(Deployment.api_base() + "/api/plans?op=" + op,
+		PackedStringArray(["content-type: application/json", "authorization: Bearer " + token]),
+		HTTPClient.METHOD_POST, JSON.stringify(body))
+	var said: Variant = reply.get("body")
+	var code: int = int(reply.get("code", 0))
+	if code == 200 and said is Dictionary:
+		tester = bool((said as Dictionary).get("tester", false))
+		beta_welcome = false
+		changed.emit()
+		# The early features a tester may use, as the deployment says them.
+		_ask_who()
+		return ""
+	if said is Dictionary and (said as Dictionary).has("error"):
+		return str((said as Dictionary)["error"])
+	if code == 0:
+		return "Could not reach Brickworks. Check your connection and try again."
+	return "Brickworks could not take that just now (%d). Try again in a minute." % code
 
 
 ## Whether the early feature [param key] is on for this account: a beta
@@ -616,7 +666,10 @@ func _forget(why: String) -> void:
 	user_id = ""
 	master = false
 	tester = false
+	beta_open = false
 	early.clear()
+	beta_open = false
+	beta_welcome = false
 	offline = false
 	age_ask = false
 	over_13 = null

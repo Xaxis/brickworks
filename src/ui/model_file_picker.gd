@@ -72,7 +72,7 @@ static func read(bytes: PackedByteArray, file_name: String, parts: PartLibrary) 
 			var ldd: Dictionary = LddLxf.read(bytes, file_name.get_basename())
 			return {"text": str(ldd.get("text", "")), "note": str(ldd.get("note", "")),
 				"error": str(ldd["error"])}
-	return {"text": bytes.get_string_from_utf8(), "note": "", "error": ""}
+	return {"text": LdrModel.text_of(bytes), "note": "", "error": ""}
 
 
 func _ask_browser() -> void:

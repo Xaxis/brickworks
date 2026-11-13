@@ -1,0 +1,60 @@
+{
+ "shots": [
+  {
+   "id": "ai-assistant",
+   "source": "app",
+   "setup": [
+    {
+     "assistant": true,
+     "after": 30
+    },
+    {
+     "set": "_chat._use_claude_code.visible",
+     "value": false,
+     "optional": true
+    },
+    {
+     "set": "_chat._use_copilot.visible",
+     "value": false,
+     "optional": true
+    },
+    {
+     "frames": 30
+    }
+   ],
+   "crop": "_chat",
+   "pad": 0,
+   "alt": "The assistant panel beside the parts bin: a box to describe what to build, Build it with Sketch first ticked, the model and how hard it thinks, a place for your Anthropic key, and Connect your AI at its foot.",
+   "caption": "The assistant panel: say what to build, then Build it.",
+   "features": [
+    "ui:assistant on or off",
+    "ui:sketch first",
+    "lib:model and effort settings"
+   ]
+  },
+  {
+   "id": "ai-ask",
+   "source": "app",
+   "setup": [
+    {
+     "assistant": true,
+     "after": 30
+    },
+    {
+     "right_click": {
+      "part": "3004",
+      "nth": 0
+     },
+     "after": 30
+    }
+   ],
+   "crop": "_shell.context",
+   "pad": 0,
+   "alt": "A part's right-click menu with the assistant on: Ask Claude about this…, with its key Ctrl+K, at the top, above the menu's other commands.",
+   "caption": "Right-click a part: Ask Claude about this…",
+   "features": [
+    "ui:ask claude about the selection"
+   ]
+  }
+ ]
+}

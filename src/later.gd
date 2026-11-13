@@ -128,6 +128,9 @@ const PATHS: Dictionary[StringName, String] = {
 	# seeing2: View, Stud directions, made on its first use (Shell.stud_map)
 	# or a session's view_board studs (SeeTools).
 	&"StudMap": "res://src/ui/stud_map.gd",
+	# donenote: a long job says when it is done, made with the first job
+	# or Render's dialog (Main._done_note).
+	&"DoneNote": "res://src/ui/done_note.gd",
 }
 
 ## How long each one took to load, in ms, by name, from the first ask:
