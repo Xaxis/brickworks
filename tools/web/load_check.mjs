@@ -64,7 +64,10 @@
 //   net          when the last byte of the build's own files (the engine's
 //                script, wasm and pack) arrived;
 //   main thread  its CPU before interactive (Chrome's own ThreadTime),
-//                which the box's load does not stretch, and its long tasks
+//                which the box's load stretches too, if less than the wall
+//                clock: one build's was 5.7 s at load 18-31 and 9.2 s at
+//                33-43 (webstart9, 2026-11-09), so two builds are compared
+//                at the same moments (start_abba.mjs); and its long tasks
 //                by the page's clock; all threads, the engine's and the wasm
 //                compiler's too (ProcessTime). The wall clock past the
 //                network and the main thread is mostly the drawing, done

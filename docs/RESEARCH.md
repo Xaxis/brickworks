@@ -328,6 +328,63 @@ means none was found, and it is within reach.
   Studio calls its own "very conservative" [st-stab], and BrickBench's
   check leaves the holding force of studs unmodelled [bb]. This turns Brickworks' central claim
   into a number, on a CPU, in one unit.
+- *Done (2026-11-09, unit stabletruth).* `tools/stablelego_ldr.py` turns
+  StableLego's built structures and a sample of StableText2Brick into LDraw
+  (`tests/fixtures/stability/`); `src/dev/stabletruth_probe.gd` opens each as
+  a person opens a file and weighs it as the status bar does. A structure
+  comes apart, by the check, where a joint's moment passes where its studs
+  let go (Tested's line), and what comes down is all that joint holds up.
+
+  StableLego's builds, each brick judged as built:
+
+  | Structure, as built [stablelego-repo] | Built | At 3 N a stud (until now) | Now | A stud needed, worst joint |
+  |---|---|---|---|---|
+  | stair of 19 levels, 2 x 4s two studs on | stood | stands | stands | 1.84 N |
+  | stair of 20 | came apart under brick 2 | **stands** | apart under brick 2, 19 bricks down | 2.06 N |
+  | stair of 20, braced | stood | stands | stands | 1.84 N |
+  | stick of 1-wide bricks, two loads | stood | stands | stands | 2.90 N |
+  | stick, three loads | came apart under brick 2 | apart under brick 2 | apart under brick 2, 13 down | 3.21 N |
+  | stick, three loads, braced | stood | stands | stands | 2.93 N |
+  | 200 g on a stair of 3 | stood | stands | stands | 0.99 N |
+  | 200 g on a stair of 4 | came apart under brick 2 | **stands** | apart under brick 2, 151 down | 2.00 N |
+  | **judged as built** | | 6 of 8; 235 of 405 bricks; stairs 20 of 39 | **8 of 8; 405 of 405; stairs 39 of 39** | |
+
+  No single clutch fits both families: the stairs need a stud to let go
+  between 1.84 and 2.00 N, the sticks between 2.93 and 3.21 N. A stud is
+  gripped at three points in a part two studs wide and at four in a part a
+  stud wide [stablelego]; their contact layout, levered as the check levers
+  a joint two studs deep (every joint these broke at), holds 1.6 times as
+  much in the narrow part. So a stud now lets go at **1.92 N into a part
+  two studs wide or more and 3.07 N into one a stud wide**, inside both
+  windows; the second is the first times the layout's 1.6, not fitted. Both
+  are 1.02 N a contact point on that layout, against their measured 0.98 N.
+  The working load stays 1 N a stud, so the status bar's weak joints, the
+  car's "stands up" and the walk's 13 g wall are as they were, and the 19
+  models `tested_models` weighs, the 30 seeds of `tested_seeds` and
+  `tested`'s cases come out as before (rel-m282's runs, line for line).
+
+  StableText2Brick's sample [s2b], 100 structures by a hash of their ids and
+  the 50 most stressed by their scores. Every one holds by their analysis,
+  so a brick whose own joint the check lets go is a false alarm (a score is
+  how much of a brick's own joint its load leaves):
+
+  | Sample | Structures | Bricks | Agree | False alarms | Left standing | Status bar says weak |
+  |---|---|---|---|---|---|---|
+  | by hash | 100 | 10,372 | 100.0% | 0 | 100.0% | 0 |
+  | most stressed | 50 | 6,250 | 100.0% | 3, in 3 structures | 90.2% (612 brought down) | 12 |
+  | both | 150 | 16,622 | **100.0%** | 3 | 96.3% | 12 |
+
+  The 3 false alarms are one joint each, at the foot of 204 bricks, in
+  three structures two of which are the same bricks; they score that brick
+  fully held. The same 3 come out at 3 N: the change added none.
+- *What it does not say.* Scores are computed, not built: they test
+  agreement, not truth. The other way round agrees less: of the 140 bricks
+  they score past half their clutch, the check has 5 past its working load,
+  since a joint that shares its load with others is never weighed
+  (statics alone cannot split it). The fit rests on joints two studs deep:
+  for one stud deep, StableLego's own layout holds far less than the check,
+  and for four, more. BrickSim's 150 labelled builds [bricksim] would test
+  both; they have not been asked for yet.
 
 **6. Racks and steering in Simulate.**
 - *What.* A prismatic joint for a rack driven by a pinion, which

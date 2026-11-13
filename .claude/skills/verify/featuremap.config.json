@@ -2372,6 +2372,13 @@
     },
     {
       "kind": "cli",
+      "label": "askfirst probe",
+      "entry": "src/dev/askfirst_probe.gd",
+      "reach": "tools/probe.sh askfirst_probe   (headless: geometry served by a local server on 9947 under names the build has not got, the LDraw library withheld and served slowed beside it; an open with no job (the viewer's, start-up's) has every part not to hand on its way while its carried part's file is fetched, the model before still down, then lays it whole, each part asked once; a part that 404s before the lay is asked once, held, named in the open's answer and words and saved, one failing after it said by not_coming; a 212-part model opened with the bar's job has its parts on their way before its first slice, is laid in the file's order, and names the part not there, asked once; a save while parts are on their way writes every part)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
       "label": "carried parts in a browser",
       "entry": "tools/web/carried_flow.mjs",
       "reach": "node tools/web/carried_flow.mjs --url=http://127.0.0.1:8840/ --out=shots/carried MODEL.mpd   (a local export served by tools/web/serve.py DIR 8840 --parts-url \"$PARTS_URL\": each file opened through Open… > From a file, none of the parts it carries said not shown, the LDraw files it fetched and the open time said, a picture each)",
@@ -5274,6 +5281,34 @@
       "entry": "src/dev/stepnames2_probe.gd",
       "reach": "tools/probe.sh stepnames2_probe   (headless; SN2_ONLY=letters,refuse,undo,sub,held: name_of letter by letter, a letter of a hundred accents keeping four, 80 letters with an emoji or accents, zero-width and direction characters alone no name; such a name refused over MCP and in Name the step…, which stays up saying why; 14 name edits, MCP and by hand, each one undo, undone to the steps and the file as the plain save; the same name again no undo; sub.ldr's \"Both wings on\" on the first step built in it in the plan, caption, Build it, list and booklet; a stepless file's first step edit numbering its held part with the part before it, undone to the stepless file)",
       "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "two builds' first visits at an equal load",
+      "entry": "tools/web/start_abba.mjs",
+      "reach": "heavy node tools/web/start_abba.mjs --arm=base=SNAP/build/web --arm=new=SNAP2/build/web --blocks=4 --out=DIR   (with .env sourced; an arm may be a URL; --summary --out=DIR says the table again; python3 tools/minitest.py tests/test_start_abba.py)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "put a model into this one",
+      "entry": "src/parts/into_model.gd",
+      "reach": "godot --path .  (File, Import, Into this model…: a saved model, an example, a file from this computer or the library; the library's Put in this model on a card; a click puts it down as one sub-assembly with its steps, its names made its own, its maker credited, one Undo takes it out)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "into model probe",
+      "entry": "src/dev/intomodel_probe.gd",
+      "reach": "tools/probe.sh intomodel_probe   (a window, 1400x900; PROBE_SIZE=1280x720 for the small one: File, Import, Into this model… with a saved model and with a file, the library's Put in this model on 6596-1, and open_model into=true, each put down with a click into a host of someone else's or the app's own; one Undo key takes it out, Redo puts it back; saved and reopened, every host part and exactly the brought parts in place, colour, sub-assembly and step, the ones the app cannot show among them, no names shared, its maker in its header; `-- case,case` runs only those)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "into model review probes",
+      "entry": "src/dev/im2review_probe.gd",
+      "reach": "tools/probe.sh imreview_probe; tools/probe.sh im2review_probe; tools/probe.sh into_kept_probe; tools/probe.sh ic3_probe   (headless: the three reviews of putting one model into another and its kept-parts cases, each saved and reopened: parts the app cannot show kept in their sub-model and step, the host's own lines kept, renamed and moved copies, names, credits, a part landing late, a file with no FILE line given a model of its own name, no part file from another model, the file as it was once the last model put in is taken out, motions and views kept in the sub-model; `-- case,case` runs only those)",
+      "area": "model-io"
     }
   ]
 }

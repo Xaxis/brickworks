@@ -4091,6 +4091,9 @@ msgstr "%d non affichées, conservées dans le fichier (%s)"
 msgid "%d not in the library, left out (%s)"
 msgstr "%d absentes de la bibliothèque, laissées de côté (%s)"
 
+msgid "%d could not be loaded, kept in the file (%s)"
+msgstr "%d n'ont pas pu être chargées, conservées dans le fichier (%s)"
+
 msgid "%d are still arriving, open it again in a moment"
 msgstr "%d arrivent encore, rouvrez-le dans un instant"
 
@@ -11267,14 +11270,35 @@ msgstr "son étape gardée"
 msgid "its %d steps kept"
 msgstr "ses %d étapes gardées"
 
+msgid "not shown, kept: %s"
+msgstr "non affiché, gardé : %s"
+
+msgid "its motion kept in it, played only where it is the model"
+msgstr "son mouvement gardé dedans, joué seulement là où il est le modèle"
+
+msgid "its %d motions kept in it, played only where it is the model"
+msgstr "ses %d mouvements gardés dedans, joués seulement là où il est le modèle"
+
+msgid "named anew, as this model has those names: %s"
+msgstr "renommé, car ce modèle a déjà ces noms : %s"
+
+msgid "%s as %s"
+msgstr "%s en %s"
+
+msgid "no model is open"
+msgstr "aucun modèle n'est ouvert"
+
+msgid "that is not an LDraw file"
+msgstr "ce n'est pas un fichier LDraw"
+
 msgid "left out, not in the library: %s"
 msgstr "laissées de côté, absentes de la bibliothèque : %s"
 
 msgid "Put in this model"
 msgstr "Mettre dans ce modèle"
 
-msgid "In your hand in this model as one sub-assembly with its steps, then a click where it goes; credit its maker"
-msgstr "En main dans ce modèle, comme un seul sous-ensemble avec ses étapes, puis un clic où il va ; créditez son auteur"
+msgid "In your hand in this model as one sub-assembly with its steps, then a click where it goes; its maker credited in it"
+msgstr "En main dans ce modèle, comme un seul sous-ensemble avec ses étapes, puis un clic où il va ; son auteur y est crédité"
 
 msgid "Its maker kept every right to it: Open builds it, and it cannot go into another model without their leave"
 msgstr "Son auteur en garde tous les droits : Ouvrir permet de le construire, et il ne peut aller dans un autre modèle sans son accord"

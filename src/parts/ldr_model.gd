@@ -201,6 +201,9 @@ const _IN_WORD := "IN"
 ## (SavedViews), which a sub-model keeps as it keeps a light.
 const _LIGHT_WORD := "LIGHT"
 const _VIEW_WORD := "VIEW"
+## And its motions' lines ("MOTION", "MOTION_TRACK"...): a sub-model's are
+## its own, kept as its file has them (Motions reads the model's).
+const _MOTION_WORD := "MOTION"
 ## The unit step of such a copy (AuthorSteps reads it from here): kept here,
 ## where the file is read, so reading one names no class of the app's and
 ## compiles alone, which is what a file browser's picture of a model waits
@@ -230,7 +233,7 @@ var skin_texts: Dictionary = {}
 ## of is decided where every part's is: a sub-model's are [member
 ## section_lines]'s.
 var light_lines := PackedStringArray()
-## A sub-model's own light and view lines, by its key (as [member
+## A sub-model's own light, view and motion lines, by its key (as [member
 ## unit_sections] names the section each copy is of) -> Array of the lines as
 ## the file has them, without a line's CR, in its order: what the app's
 ## whole write would not make again in its section (BrickWorld
@@ -416,6 +419,12 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 				# A sub-model's view: its own (the model's are SavedViews.read's).
 				model._section_line(current_key, raw)
 			elif keyword == "!BRICKWORKS" and tokens.size() > 2 \
+					and tokens[2].begins_with(_MOTION_WORD) and current != model.main:
+				# A sub-model's motions: its own, as a model put into another
+				# brings them (ModelStore.held_from), written back with it. Read
+				# as nothing, a save and an open of the app's own lost them.
+				model._section_line(current_key, raw)
+			elif keyword == "!BRICKWORKS" and tokens.size() > 2 \
 					and tokens[2] == _IN_WORD:
 				# A path's names may hold spaces: the rest of the line.
 				within = line.substr(line.to_upper().find(keyword) + keyword.length()).strip_edges() \
@@ -423,6 +432,17 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 			elif keyword == "!LDCAD" and tokens.size() > 2 and tokens[2] == "GENERATED" \
 					and not model.generated.has(current_key):
 				model.generated[current_key] = [index, step]
+			elif keyword == "AUTHOR:" and current != model.main and not model.author.is_empty() \
+					and current.placements.is_empty() and step == 0 \
+					and not " ".join(tokens.slice(2)) in [model.author, "Brickworks"]:
+				# A sub-model's own author, where it is not the model's nor
+				# the app's, and its licence below: whose that section is,
+				# kept with it (a model put into another, a section of
+				# another's file by someone else).
+				model._section_line(current_key, raw)
+			elif keyword == "!LICENSE" and current != model.main and step == 0 \
+					and current.placements.is_empty() and model.section_lines.has(current_key):
+				model._section_line(current_key, raw)
 			elif keyword == "AUTHOR:" and model.author.is_empty():
 				model.author = " ".join(tokens.slice(2))
 			elif (current.title.is_empty() and current.placements.is_empty()
@@ -650,6 +670,14 @@ static func lines_at(text: String, at: int, lines: PackedStringArray) -> String:
 static func eol_of(text: String) -> String:
 	var first: int = text.find("\n")
 	return "\r\n" if first > 0 and text[first - 1] == "\r" else "\n"
+
+
+## Whether [param line] says whose a file is or on what terms ("0 Author:",
+## "0 !LICENSE"), as LDraw's header does.
+static func is_credit_line(line: String) -> bool:
+	var words: PackedStringArray = _fields(line.strip_edges())
+	return words.size() >= 2 and words[0] == "0" \
+		and (words[1].to_upper() == "AUTHOR:" or words[1].to_upper() == "!LICENSE")
 
 
 ## [param raw], a line of sub-model [param key]'s section, kept as its own
@@ -1624,10 +1652,20 @@ static func _write_one(placements: Array, title: String, author_name: String,
 		kept: PackedStringArray = PackedStringArray()) -> String:
 	var lines := PackedStringArray()
 	lines.append("0 " + title)
-	lines.append_array(kept)
+	# Whose a section is and on what terms, where it is someone else's
+	# (section_lines: a model put into this one, a section of another's
+	# file): under its name, in place of the writer's, as LDraw heads a file.
+	var credit := PackedStringArray()
+	for line: String in kept:
+		if is_credit_line(line):
+			credit.append(line)
+		else:
+			lines.append(line)
 	lines.append("0 Name: " + (file_name if not file_name.is_empty()
 		else new_file_name(title)))
-	if not author_name.is_empty():
+	if not credit.is_empty():
+		lines.append_array(credit)
+	elif not author_name.is_empty():
 		lines.append("0 Author: " + author_name)
 	lines.append("")
 

@@ -15,7 +15,11 @@ each /parts/<hash>.lbm is read from that directory after --delay
 milliseconds and up to as much again. A line "part <name>" is printed
 for each one served, so a browser check can tell the network was used.
 A part's exact shape, /parts/<hash>.bwx, is read from exact/ beside that
-directory, as the bucket has it beside the geometry ("exact <name>").
+directory, as the bucket has it beside the geometry ("exact <name>"). And
+/parts/ldraw/parts/<file>, what a file's carried part is drawn from, from
+this checkout's vendor/ldraw/parts, as tools/storage_ldraw.py puts it in the
+bucket ("ldraw <file>"): without it a file that carries parts opened here
+built none of them, where the deployment builds them.
 
 With --parts-url it stands in for the deployment as it is: /api/account
 names that URL, as the deployment names PARTS_URL, so a local export reads
@@ -92,6 +96,10 @@ from pathlib import Path
 from urllib.parse import parse_qs
 
 
+# The LDraw library's parts, as tools/storage_ldraw.py puts them in the bucket.
+LDRAW_PARTS = Path(__file__).resolve().parents[2] / "vendor" / "ldraw" / "parts"
+
+
 class Handler(SimpleHTTPRequestHandler):
     extensions_map = {
         **SimpleHTTPRequestHandler.extensions_map,
@@ -155,6 +163,16 @@ class Handler(SimpleHTTPRequestHandler):
             host = self.headers.get("Host", "127.0.0.1")
             self._send(200, "application/json",
                        json.dumps({"parts_url": f"http://{host}/parts/", **self.accounts}).encode())
+            return
+        if self.parts is not None and path.startswith("/parts/ldraw/parts/"):
+            time.sleep(self.delay * (1.0 + random.random()))
+            rest = path[len("/parts/ldraw/parts/"):]
+            source = LDRAW_PARTS / rest
+            if ".." in rest or not source.is_file():
+                self._send(404, "text/plain", b"")
+                return
+            print(f"ldraw {rest}", flush=True)
+            self._send(200, "text/plain", source.read_bytes())
             return
         if self.parts is not None and path.startswith("/parts/") and path.endswith((".lbm", ".bwx")):
             time.sleep(self.delay * (1.0 + random.random()))

@@ -567,7 +567,10 @@ static func _load_later(library: PartLibrary, texts: Dictionary,
 ## The parts a model file carries, added to the library so the model can
 ## be opened. A part the library already has as one of LEGO's is left to
 ## the library: a file cannot redefine 3001. Returns {"added": [ids],
-## "problems": [sentences], "unbuilt": {id: why}}.
+## "problems": [sentences], "unbuilt": {id: why}, "files": {id: each file of
+## one that could not be built as the file has it, its own and those it is
+## drawn from that the file carries, by name -> text}}: the model that holds
+## it unshown writes them for it (ModelStore._held_files), and no other does.
 static func take_from(library: PartLibrary, model: LdrModel) -> Dictionary:
 	var out: Array = []
 	take_into(out, library, model, null)
@@ -585,6 +588,7 @@ static func take_into(out: Array, library: PartLibrary, model: LdrModel,
 	# The carried parts that could not be built, by id: why, for the open to
 	# say (ModelBar.left_out_words).
 	var unbuilt: Dictionary = {}
+	var unbuilt_files: Dictionary = {}
 	# Everything a part may be drawn from: the other parts, and the subparts
 	# and primitives the file carries for them (LdrModel.embedded_sources).
 	var carried: Dictionary = model.embedded_parts.duplicate()
@@ -638,8 +642,14 @@ static func take_into(out: Array, library: PartLibrary, model: LdrModel,
 		else:
 			unbuilt[id] = _with_why(str(result["problem"]))
 			problems.append("%s: %s" % [id, unbuilt[id]])
+			# Kept as the file has it, with what it is drawn from that the file
+			# carries: a model written whole carries it still.
+			var kept: Dictionary = {file_name: text}
+			kept.merge(needs(text, carried))
+			unbuilt_files[id] = kept
 	var flexible: PackedStringArray = end_skins(library, model, skins_begun, problems)
-	out.append({"added": added, "problems": problems, "unbuilt": unbuilt, "skins": flexible})
+	out.append({"added": added, "problems": problems, "unbuilt": unbuilt, "files": unbuilt_files,
+		"skins": flexible})
 
 
 ## The parts [param model] carries that [method take_from] builds, by file
