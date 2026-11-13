@@ -6081,6 +6081,223 @@ Why it fell short:
   `ad4c2c42` and `fd409b69`. refholdout's `of_lego` stays as it landed on
   pre261 (`9945c3fb`).
 
+### Likeness: the model's outline laid over the real thing's, from the photograph's own side (2026-11-09, design20, `7b8321b5b`, NO-GO)
+
+**Why.** design19 gave each feature's shares as numbers beside the
+photograph's, and sessions kept 9 of 10 of the differences. A box's share
+cannot see a taper, and a stud's line hides a plate. Its next lever was the
+silhouette: the outline at each tenth, read off the photograph and measured
+off the model, side by side. This gives the session the shape, not numbers
+about boxes (docs/APP_UX8.md, unit 2).
+
+**The change** (`5d21c537c`, the band `3cc66e89f`, the probe `7b8321b5b`):
+
+- `review_model` takes `outline=`: the real thing's outline that the session
+  reads off a photograph from one side (front, back, left or right of the
+  model). It gives either the top's height at 5 to 41 places along the length,
+  with the underside under each if it likes, or the width at each place up the
+  height. Each is a share of the whole, with `above=` for what stands above
+  the top (a spire) and the picture's name.
+- `src/ai/silhouette.gd` (`Silhouette`) reads the model's own outline from
+  that side off the lattice, with no GPU. It scales the reading to the
+  model's length or height and lays it reversed when that fits better (the
+  photograph taken from the other end). Each sample reads the model over
+  2 cells either side, a fifth of a stud, as an eye reads a photograph.
+- The answer leads with the silhouette, before anything else in the whole
+  review and in each build's review after it:
+  - a picture: the model's outline in its colours, the reading's line laid
+    over it, where they differ hatched;
+  - where they differ by 2 plates or more in height, or a stud or more in
+    width, largest first, at which tenth and at what x, z or plates;
+  - each sample, the outline's beside the model's;
+  - "Bring each to the outline with edit_model, or keep it and say why. A keep
+    for minifigure scale or the parts names the stretch it keeps and by how
+    much".
+- Each build's next steps name it as the first step. The first whole review
+  without one asks for it, once a subject. A wrong reading is refused, saying
+  what is wrong, and nothing else is done. A new design on a bare baseplate
+  is a new subject.
+- **The holdout.** The session reads a photograph of the real thing, which
+  find_reference finds as before. No set's picture or outline is used, so
+  none can leak.
+
+**Proof in the app.**
+
+- `silhouette_probe` (headless): 68 checks, all passed at `901a2074e`. Red on
+  pre261: `Silhouette` is not declared there, and `review()` takes 3
+  arguments, not 4.
+  - Five sets from LDraw's model repository (40148, 41587, 42061, 21051,
+    21034) against their own LDraw models: 0 plates off at every tenth along,
+    and 0 studs off up (at most 0.3 LDU).
+  - Each with 2 plates a stud wider at 3/10 to 4/10 up: "a stud wider than the
+    outline", at the plates it was widened at.
+  - Each with a 1 x 1 brick on top at 6/10: "its top 3 plates taller", at its
+    z.
+  - Readings given the other way round are laid reversed in 5 of 5.
+  - 11 wrong readings are refused, each saying what is wrong.
+  - The session's path: asked once, read, and leading the review and the next
+    build, with its picture.
+- The band (`3cc66e89f`) adds a sheep check: a plate-thin wing one row off a
+  sample reads at the samples within 2 cells. Its probe fix (`7b8321b5b`)
+  places the brick on the top the sample reads. There `silhouette_probe`
+  passed all 70 checks (2026-11-12, from a locked snapshot), so the lever
+  `7b8321b5b` holds is ready for a paired run as it is.
+- Also passed: `mcp_sync` 14, `mcp` 75, and ci_gate (1,648 python tests).
+
+**Smoke.** Two locked snapshots, each imported first. `snapd20base` is at
+`ece47b769` (pre261's code), and `snapd20lev2` is at `3cc66e89f`. One job
+each on the owner's path (`--via relay --no-claude-code --instructions
+none`), on design16-19's 5 subjects. The arms ran one after the other
+(08:55-10:33 and 12:47-14:16).
+
+- The holdout held in all ten. `held_out_said` is true for every design.
+- Two base sessions searched the library for their own set: "21031",
+  "Burj Khalifa" and "9469 Gandalf Arrives". All three found nothing. No
+  lever session searched with its set's number. Its Burj's "Burj Khalifa" went
+  to find_reference, which returns no picture of bricks.
+
+Verdicts won, of 10 a dimension:
+
+| dimension | d19base | d19lev | d20base | d20lev |
+|---|---|---|---|---|
+| likeness | 1 | 0 | 1 | 1 |
+| surface | 1 | 3 | 3 | 2 |
+| colour | 3 | 3 | 2 | 4 |
+| technique | 0 | 0 | 0 | 1 |
+| creativity | 4 | 3 | 2 | 4 |
+| overall | 1 | 0 | 0 | 1 |
+| lost likeness naming a defining feature wrong, by hand | 9 of 10 | 8 of 8 judged | 9 of 10 | 9 of 10 |
+
+The orders agreed in 28 of 30 for the base and 25 of 30 for the lever.
+
+By subject (likeness, overall, creativity), base then lever. The lever's
+column says whether the silhouette reached it.
+
+| subject | d20base | d20lev | silhouette |
+|---|---|---|---|
+| Gandalf | 0 0 0 | 1 1 0 | asked once, no real counterpart |
+| the roller | 0 0 0 | 0 0 0 | asked twice, not given |
+| the Burj | 0 0 2 | 0 0 2 | given, shown twice |
+| Air Mail | 0 0 0 | 0 0 2 | asked twice, not given |
+| the Charger | 1 0 0 | 0 0 0 | given, shown twice |
+
+Every lever win came from a subject the silhouette did not reach: Gandalf
+(likeness, overall, surface 2, colour, technique) and Air Mail (colour,
+creativity 2). On the two it reached, the lever won 4 verdicts against the
+base's 6 (the Burj's colour and creativity in both arms; the base's Charger
+also won likeness and surface once).
+
+The judge's shape words, lever:
+- The Burj: "stubby and wide with only a few big steps and a rocket-like cone
+  top"; "a stubbier stack of square blocks".
+- The Charger: "a slab-sided black box with no windows and a vague
+  roofline"; "flat-sided, boxy hull with a stubby blower block".
+- Air Mail: "a stubby, boxy white fuselage with short, thick red wings";
+  "a short, boxy stack of white bricks that looks squat from every view".
+- The roller: "'drum' is a row of four black tyres under a boxy frame".
+- Gandalf, the verdict lost: "a generic wizard in glasses and a curly-haired
+  villager".
+
+The base's:
+- The Burj: "a square, boxy stepped tower with a capsule-like top".
+- The Charger: "a long black slab with a boxy cabin and a stepped roof".
+- Air Mail: "a boxy brick fuselage with slab wings and a blunt nose".
+- The roller: "a small half-hidden cylinder boxed in yellow walls".
+- Gandalf: "a generic grey wizard with glasses", "a crude brown brick cart".
+
+**Reach** (scratch `py/reach20.py`):
+
+- **Asked: 5 of 5**, in the first build's next steps. Air Mail and the
+  roller were asked again by their whole review.
+- **Given: 2 of 4 subjects with a real counterpart**, each after its first
+  build's steps asked for it.
+  - The Burj: widths up its height, from the front, with a spire 3 plates
+    above, off "Dubai Skyline and Burj Khalifa - 25072008.jpg".
+  - The Charger: heights and undersides along its length, off a photograph
+    found with "1970 Dodge Charger side view".
+- **Asked twice, not given: 2.** Air Mail and the roller went on without it.
+- **Gandalf** made no whole review. A fictional cart has no outline to read.
+- **Differences shown.**
+  - The Burj (studs of width, the outline's / the model's, ground up):
+    8/12, 7/8, 6/6, 5/4, 4/4, 3/3, 2.5/2, 2/2, 1/2, 0.5/1, 0/0.5. That is 3
+    runs: the bottom tenth 1 to 4 studs wider (its display base), 3/10 a stud
+    narrower, 8/10 a stud wider.
+  - The Charger (plates of height along it): 20.5/17.5, 24/24, 24.5/24,
+    25.5/25, 31.5/27, 35/33, 35/33, 31/31, 26/27, 25.5/24, 23.5/17.5. The
+    undersides: the photograph's 4 plates up, and the model's 0 from 2/10 to
+    7/10. Its body reaches the ground there. That is 6 runs, largest the
+    tail 6 plates low.
+- **Settled: none.**
+  - The Burj said nothing of the three. It went on to restyle its tower in
+    ribs and add glass fins. Its next build's silhouette showed the same
+    three runs.
+  - The Charger wrote "I raised the nose and tail to match a reference
+    photo". Its next silhouette moved one sample by a plate (9/10, 24 to
+    25). The nose and tail stayed 3 and 6 plates low, and the underside
+    stayed on the ground.
+
+Each subject, front and corner renders, base then lever (scratch
+`renders.png`):
+
+- **The Burj.** Both are slender grey stepped towers on a 12-stud black
+  base, with a long spire. The base's is white-grey with even steps. The
+  lever's has light blue glass, a fuller lower third and fewer, bigger steps.
+  Beside the reading, the lever's is within a stud above its base. The
+  judge's "stubby" is the steps and the plan (no Y), not the outline at a
+  tenth.
+- **The Charger.** Both are long black cars on grey wheels. The base's has a
+  tan glasshouse and a blower. The lever's has a flat roof with no windows
+  in it, a blower block and a red tail-light bar. Its sides go down to the
+  ground between the wheels, which is what the undersides said.
+- **Air Mail.** The base's is a white low-wing plane with a red nose. The
+  lever's is a red and white high-wing plane with a mail cart and two
+  figures.
+- **The roller.** The base's has a grey drum in a yellow housing at the
+  front. The lever's front shows four black tyres for its drum, under a boxy
+  yellow frame.
+- **Gandalf.** Both have a brown cart, a horse and Gandalf with lanterns.
+  The lever's seats him in the cart with fireworks and a curly-haired
+  figure beside it.
+
+**NO-GO.** By design19's rule for a paired 44, all three must hold:
+- likeness or overall wins more: overall went 0 → 1, and likeness stayed 1.
+  Both lever wins were Gandalf's, which the silhouette never reached;
+- creativity is no worse: 2 → 4, from the Burj in both arms and Air Mail's
+  2, which was not given an outline;
+- the judge names a defining feature wrong clearly less: 9 of 10 in both.
+  This one fails.
+
+On the two subjects it reached, the lever won 4 verdicts to the base's 6. So
+the paired 44 was not run. `7b8321b5b` holds the lever for the lead to run it
+on, if wanted.
+
+Why it fell short:
+- **Reach is half, and given means nothing settled.** 2 of 4 sessions with a
+  real counterpart gave an outline. The other 2 were asked twice and went on
+  without one. Neither session that saw differences brought one to the
+  outline. The Charger said it had and had not: one sample moved one plate.
+- **The tenths matched where the judge says they do not.** The Burj's tower
+  is within a stud of its own reading at every tenth above its base. The
+  judge's "stubby, a few big steps, rocket-like cone" is the steps' size,
+  the plan and the top: things the outline at a tenth does not see.
+- **What the outline did find, the session kept.** The Charger's body
+  reaching the ground between its wheels is the "slab-sided black box".
+  The underside said it, 4 plates, at 6 of 11 places, and nothing moved.
+- **Three NO-GOs say the same thing.** A session given a difference, as a
+  photograph (design18), shares (design19) or the shape (design20), keeps
+  its model. Each lever that hands it a measure and waits for an edit loses
+  at the edit.
+- **Next.**
+  - Build to the outline, not toward it after: the reading is asked with
+    `plan_scale`, before the first build. The app's own shapes (the extrude
+    the Charger was built with, the tower's tiers) take it as their profile,
+    so the first mass has the outline and no edit is needed.
+  - Read the steps and the plan too: how many setbacks and how tall each is,
+    and the plan's shape from above (Y, T, round). These were the judge's
+    words where the tenths matched.
+- The change is taken back out on this branch (`8e2954cc1`), so nothing of
+  it ships. `7b8321b5b` holds it.
+
 ## Against an outside ruler: BrickBench (2026-10-14)
 
 Everything below is our own judge. [BRICKBENCH.md](BRICKBENCH.md) puts the
