@@ -806,11 +806,8 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 }
 @media (width >= 600px) { .models.scroller { grid-auto-columns: clamp(180px, (100% - 2 * var(--s-4)) / 2.5, 300px); } }
 @media (width >= 900px) { .models.scroller { grid-auto-columns: clamp(180px, (100% - 4 * var(--s-5)) / 4.5, 300px); } }
-/* Beside a rail or in a narrower column: more to a row. Cards that each
-   carry a button under them (a challenge's entries): fewer, one to a row
-   on a phone, so the button's words fit. */
+/* Beside a rail or in a narrower column: more to a row. */
 .models.compact { grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); }
-.models.wide { grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); }
 
 /* A list's pages (web/pager.js; one markup, pagerHtml, for the server's
    pages and the browser's): Show earlier over a page opened by its
