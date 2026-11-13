@@ -2250,13 +2250,40 @@ plan with Claude as the client.
 - `this month's challenge page` (`web/challenge.html`, `web/challenge.js`):
   `/challenge`, drawn from `GET /api/people?op=challenge` (with the sign-in
   `you`: `voted`, `entries`, `may_vote`, `why_not`; then `private,
-  no-store`, else 30 s at the CDN): `#title`, `#days`, `#brief`, `#rules
-  li`, `#how`, `#winners` (`#winner-cards .kept`), `#groups
-  section#group-hand` and `#group-assistant`, each entry a `.kept[data-entry]
-  [data-way]` with the gallery's card, `.challenge-said` lines (Winner, N
-  votes, No longer keeps the rules) and a button (Vote for it, Your vote,
-  You voted in this group, Your entry). `dataset.challenge` is `open`,
-  `upcoming`, `ended`, `none`, `not-yet` or `broken`. The gallery's front
+  no-store`, else 30 s at the CDN). Laid out as the best contest pages are
+  (challengepage, 2026-11-13): the head `.challenge-head` has `#status` (a
+  badge: Open, Opens soon, Ended), `#title`, `#brief`, the rules as ticks
+  (`#rules li`), `#enter` (Enter a model: signed out `askToSignIn`, else a
+  `dialog.enter-pick` of your models in the gallery from `op=me`
+  `showcase.models`, radios `model` and `way`, `POST op=enter`; a refusal
+  lists `[data-rule]` and sets `dataset.challengeRefused`, once in
+  `dataset.challengeEntered` the model) beside `#share`; and `#clock`:
+  `#clock-h` (Ends in, Opens in, Final results), `#countdown` (`role=timer`,
+  four `b[data-unit]` days/hours/minutes/seconds ticking each second, its
+  `aria-label` "Ends in N days, N hours"), `#days` ("… · day N of M",
+  "Ran …"), `#reach` and `#numbers li[data-number]` (entries, designers,
+  votes once ended; never a nought). Then `#winners` once ended (each
+  `.winner[data-entry][data-way]`, `.winner-h` "Winner, built by hand" and
+  its votes, over the winner's card), before `#entries`: `#sort`
+  (`.segmented`, `data-sort` newest/oldest, votes/newest once ended;
+  `?sort=`), `#group-tabs` (`role=tablist`, `#tab-hand`/`#tab-assistant`
+  with `span.n` counts, arrows/Home/End; `?group=assistant`), `#vote-said`
+  (your vote named, or what you may do), `#groups` with
+  `.group#group-hand`/`#group-assistant` panels (both drawn, one shown;
+  each paged by `web/pager.js`, `?hand-page=`/`?assistant-page=`), each
+  entry the gallery's card `.model[data-entry][data-way]` (classes `voted`,
+  `mine`, `won`) with a `.vote-line` at its foot: badges Winner, Your vote,
+  Your entry, `small.votes` once ended, `small.broken`, or
+  `button.vote` (Vote, then `dialog.vote-confirm` before it is cast);
+  `.why-not` once over the groups. Then `#how` (three `ol.steps`, two
+  `details.qa`), `#next` (`.next-one`) and `#past` (`article.past-card
+  [data-past]`: a mosaic of its winners, `h3 a` to its own page, days and
+  entries, `.past-won span[data-entry]`). `tools/web/challenge_page.mjs`
+  reads it (`drawn`) and says what each state should show (`judged`).
+  `dataset.challenge` is `open`,
+  `upcoming`, `ended`, `none` (Start building), `not-yet`, `gone` (a
+  number with none: This month's challenge) or `broken` (`#again`, Try
+  again, in the head's actions). The gallery's front
   line is `#challenge-line` (`web/gallery.js` `sayChallenge`); a card that
   won has `small.won` (`data-won`). `/challenge?id=N` (tools/deploy.sh routes it,
   after the site's own headers, to `/api/people?op=challenge_page`; the
@@ -5673,6 +5700,24 @@ ok, 2026-10-24; against base code 2 failed (no year form, no achievements).
 On a preview before the file: the year's form says it is not open yet, and
 the hub is read as before (62 checks, all ok); with it applied (2026-10-24),
 the year path above on the unit's preview: 62 checks, all ok.
+
+The page laid out as the best contest pages are (challengepage,
+2026-11-13): step 4 and 6 judge it with `tools/web/challenge_page.mjs`
+(`drawn`, `judged`): the status, a countdown that ticks, the day of how
+many, the numbers, Enter a model beside Share, the groups as tabs with
+counts (a tab and the left arrow between them, `?group=assistant`), Vote on
+each card for a visitor, Vote and Enter a model asking to sign in; Bob
+enters his shed from `/challenge`'s own Enter a model
+(`4a_enter_from_challenge-1280.png`); Ed's votes each asked in
+`dialog.vote-confirm` (`7a_vote_confirm-390.png`), then Your vote on the
+card and named over the cards; ended, the winners first; Past challenges'
+card, its winners' pictures and names. With `--held` the notices and the
+Challenger level, which the database makes from its own tables, are not
+asked, as the feed is not. 121 of 122 ok against the held relay
+(2026-11-13), the one a 500 from `/api/admin` (`rpc/gallery_pick` 401)
+before anything of the page; the same judgements on fixtures (the unit's
+scratch `shots.mjs --judge`) are 160 ok, and on pre261's page 37 of 40
+fail.
 
 The list, asked hard (reads only):
 

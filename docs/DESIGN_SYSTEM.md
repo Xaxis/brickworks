@@ -335,9 +335,12 @@ is on the page, `hidden`, for the script to show.
   `.models` (a grid: two to a row on a phone, three from 600 px and four
   from 900 px up, the owner's four a row on a desktop, 2026-10-29, so a
   page of 24 is whole rows at every width), `.models.compact` (more to a
-  row, beside a rail), `.models.wide` (fewer, one to a row on a phone, for
-  cards that carry a button under them) or `.models.scroller` (one row of
-  them, a Scroller).
+  row, beside a rail) or `.models.scroller` (one row of them, a
+  Scroller). A card that carries an action keeps it inside, at its foot
+  over the card's link as the designer's name is (a collection's Follow, a
+  challenge's Vote), never in a row of its own under the card: so
+  `.models.wide`, one to a row on a phone for a button under each card,
+  went with the challenge's old entries (challengepage, 2026-11-13).
   A set of the LDraw library (`/library`, library333) is the same card:
   its name the link to `/library/<id>`, its cover (the app's own
   renderer's, the model on nothing), "Modelled by" whoever modelled it for
@@ -759,14 +762,36 @@ is on the page, `hidden`, for the script to show.
   number in words, `.to-next` in `--ink` ("13 more to reach Designer · 25
   models.") and `.how`, the way there, a link where a page helps. A track
   not begun is dashed on no panel.
-- **A challenge** (`/challenge`, site357): its name, days and brief in
-  `.challenge-hero.halo`, a panel lit as a landing page's last offer is;
-  then the rules and how to enter, each a panel, side by side from 900 px.
+- **A challenge** (`/challenge`, site357; laid out as the best contest
+  pages are, challengepage 2026-11-13): a `.page-hero` whose
+  `.challenge-top` is two columns from 900 px. On the left a status
+  `.badge` (`.good` Open, `.accent` Opens soon, plain Ended) beside the
+  `.eyebrow`, the name, the brief as the `.lede`, the rules Brickworks
+  checks as `.ticks` in a `.rules-box`, and one primary `.cta.big` (Enter a
+  model) beside Share as `.cta.ghost.big`. On the right `.challenge-clock`,
+  a panel edged in `--accent-edge`: what it counts to, a `.countdown` of
+  four boxes (days, hours, minutes, seconds; the number at `--t-h1`,
+  tabular), the days and how far through them as a `.reach` bar, and
+  `.numbers` (entries, designers, votes once counted; a nought never
+  said). Under the hero, a column at `--s-8`: once ended the winners first
+  (`.winners`, two tiles a row from 600 px, each its `.winner-h` line, the
+  award in a `.glyph`, over the winner's card lit in the accent); the
+  entries, their groups as `.tabs` with counts and the order as a
+  `.segmented`, the line over the cards saying your vote, then the
+  gallery's cards in `.models` with each card's vote line at its foot (a
+  `.badge` Winner, Your vote, Your entry, or `.cta.ghost.small` Vote, asked
+  once in a `dialog.report`); How it works as three `ol.steps` and two
+  `details.qa`; Coming next and Past challenges.
 - **A challenge, between months** (`/challenge`, docs/SOCIAL.md U12):
-  under the one shown, Coming next (`#next`, a `.card` of its theme and
-  days) and Past challenges (`#past`, each an `article.past-one`: its name
-  a link to its own page, its days, its winners as `.models` cards); its own
-  page (`?id=N`) is the same page under the `.crumbs` back to the hub.
+  under the one shown, Coming next (`#next`, a `.next-one` panel: an
+  `.accent` badge of the day it opens, its theme and days) and Past
+  challenges (`#past`, a `.models` grid of `article.model.past-card`: a
+  `.mosaic` of its winners' pictures, its name a link to its own page, its
+  days and entries, each winner named with the award icon). Its own page
+  (`?id=N`) is the same page under the `.crumbs` back to the hub. With no
+  challenge, the hero says so and offers Start building; with none at a
+  number, This month's challenge; when it did not load, Try again: each in
+  the hero's own actions, never a dead end.
 - **Your profile** (`/profile`, `web/profile.html`, docs/SOCIAL.md U6):
   your page as a person's page draws it (the same `.profile-head`,
   `.numbers`, `.pinned` and `.tabs`), with Edit profile, Settings, Share
