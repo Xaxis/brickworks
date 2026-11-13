@@ -1963,7 +1963,10 @@ picture the assistant is shown.
   turn is LDraw's `0 ROTSTEP x y z REL|ABS|ADD` ending the step before (it
   turns the step after it, as MLCad reads it and LDraw's model repository
   writes it, and holds until another or `0 ROTSTEP END`; a sub-model's
-  first step's goes before its first part); the rest are the app's own
+  first step's goes before its first part; one that ends the last step, a
+  turn of the step after it, is written after the last part, where a whole
+  write dropped it: `BookletLooks._close_section`, and `as_written` keeps
+  it past an emptied step, im3check; `whole_write_probe`); the rest are the app's own
   lines inside the step (`0 !BRICKWORKS PAGE NEW|ALONE`, `ZOOM`, `SIZE`,
   `PARTS OFF`, `CALLOUT OFF` in a sub-model, `PER_PAGE` in the model),
   written by `BookletLooks.written_into` on every save and read on open.

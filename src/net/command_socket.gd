@@ -870,7 +870,12 @@ func _call(name: String, input: Dictionary, entry: ToolJobs.Entry = null, chat: 
 			assistant.chat = ""
 			assistant.who = CLAUDE
 			_at_work -= 1
-			_one_step(name, before, chat, who)
+			var followed: Array = _one_step(name, before, chat, who)
+			# Said of the model as the copies that followed it left it, as
+			# _run's answers are: a review lays a piece with edit_model.
+			assistant.chat = chat
+			said = await assistant.followed_answer(said, int(followed[0]), int(followed[1]))
+			assistant.chat = ""
 			_hand_and_view_back(held)
 			return said, doing, entry), true]
 	if not await _take_a_turn():
@@ -932,8 +937,11 @@ func _run(name: String, input: Dictionary, work: Working.Job, chat: String = "",
 	assistant.who = CLAUDE
 	_at_work -= 1
 	var followed: Array = _one_step(name, before, chat, who)
-	# Its count as the copies that followed it left the model.
-	answer = assistant.recounted(answer, int(followed[0]), int(followed[1]))
+	# Counted and judged as the copies that followed it left the model; its
+	# sizes as told to the chat that asked.
+	assistant.chat = chat
+	answer = await assistant.followed_answer(answer, int(followed[0]), int(followed[1]))
+	assistant.chat = ""
 	_hand_and_view_back(held)
 	return answer
 
