@@ -153,18 +153,29 @@ static func key(definition: String, step: int) -> String:
 	return "%s|%d" % [definition, step]
 
 
-## The most characters a step's name keeps: a line of a page, not a page.
+## The most letters a step's name keeps, each as a reader sees it (a letter
+## and its accents, an emoji of several): a line of a page, not a page.
 const NAME_MOST := 80
+## The most marks one letter of a name keeps (accents, points, tone marks),
+## and the most code points it is in all (an emoji of several faces joined).
+## Counted in code points, one letter of a hundred accents ("Zalgo") was
+## past the 80 alone and cut to nothing (sncheck N3).
+const MARKS_MOST := 4
+const LETTER_MOST := 16
 
 
 ## [param value] as a step's name is kept: words on one line, spaces run
-## together, at most NAME_MOST characters; "" for none. A line break in it
+## together, at most NAME_MOST letters; "" for none. A line break in it
 ## would end the file's line, and the rest would be read as a line of its
 ## own. Every space and line break Unicode has is one ([method _is_space]):
 ## up to 2026-11-09 only tab, CR and LF were, so a name with a vertical
 ## tab, NEL or U+2028 kept it, a line break to another reader, and one of
-## ideographic spaces alone was a name of nothing to see (snreview). A long
-## name is cut between letters as a reader sees them ([method cut]).
+## ideographic spaces alone was a name of nothing to see (snreview). A word
+## of only what draws nothing (zero-width spaces and joiners, direction
+## marks, the byte-order mark, accents with no letter: the rule a file's
+## name has, SubmodelFile._shows) is none: a name of only those was kept and
+## showed as nothing (sncheck N2). A long name is cut after its 80th letter
+## as a reader sees it, each of at most MARKS_MOST marks ([method _letters]).
 static func name_of(value: Variant) -> String:
 	if not value is String:
 		return ""
@@ -176,11 +187,69 @@ static func name_of(value: Variant) -> String:
 	for at: int in text.length() + 1:
 		var space: bool = at == text.length() or _is_space(text.unicode_at(at))
 		if space and start >= 0:
-			words.append(text.substr(start, at - start))
+			var word: String = text.substr(start, at - start)
+			if SubmodelFile._shows(word):
+				words.append(word)
 			start = -1
 		elif not space and start < 0:
 			start = at
-	return cut(" ".join(words), NAME_MOST).strip_edges()
+	return _letters(" ".join(words), NAME_MOST)
+
+
+## Why [param value] cannot be a step's name, or "" when it can be: one of
+## only what draws nothing ([method name_of] makes it none) is refused,
+## said so, as where it was typed it showed as something. Nothing, or
+## spaces alone, takes the name off (sncheck N2).
+static func name_refused(value: Variant) -> String:
+	var text: String = value if value is String else ""
+	if not name_of(text).is_empty():
+		return ""
+	for at: int in text.length():
+		if not _is_space(text.unicode_at(at)):
+			return "that name has only characters that draw nothing (zero-width spaces, " \
+				+ "joiners, direction marks): give it a letter or sign you can see"
+	return ""
+
+
+## [param text]'s first [param most] letters as a reader sees them (an emoji
+## of several, a letter and its accents, each one: TextServer's grapheme
+## breaks), each of at most MARKS_MOST marks and LETTER_MOST code points.
+static func _letters(text: String, most: int) -> String:
+	if text.is_empty():
+		return ""
+	var server: TextServer = TextServerManager.get_primary_interface()
+	if server == null:
+		return text.left(most)
+	var out: String = ""
+	var from: int = 0
+	var count: int = 0
+	for end: int in server.string_get_character_breaks(text, "en"):
+		if count == most:
+			break
+		out += _letter(text.substr(from, end - from), server)
+		from = end
+		count += 1
+	return out
+
+
+## One letter as a reader sees it, [param letter], its marks past
+## MARKS_MOST and its code points past LETTER_MOST let go: never the letter
+## they sit on. A mark is one strip_diacritics takes away whole, as a file's
+## name reads one (SubmodelFile._one_key).
+static func _letter(letter: String, server: TextServer) -> String:
+	if letter.length() <= MARKS_MOST + 1:
+		return letter
+	var out: String = letter[0]
+	var marks: int = 0
+	for at: int in range(1, letter.length()):
+		if out.length() >= LETTER_MOST:
+			break
+		if server.strip_diacritics(letter[at]).is_empty():
+			marks += 1
+			if marks > MARKS_MOST:
+				continue
+		out += letter[at]
+	return out
 
 
 ## Whether [param code] is a space or a line break of Unicode's (its
