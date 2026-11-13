@@ -471,6 +471,28 @@ notes). It is listed so the plan is whole, not as a new unit.
   compared at the same moments. The 5% more source (exact_check.gd
   90 KB, parts_bin.gd 41 KB, scene_lights.gd 30 KB the most) is about
   0.1 s of compile. The bar stays 10 s cold and 4 s warm.
+- **Again, three days on** (webstart9, 2026-11-12,
+  `bench/results/webstart9-2026-11-09/abba_merged` and `abba_later`):
+  m276's own deployment against previews, each read through the parts
+  mirror, four blocks of A B B A. Paired by block:
+
+  | | pre261 373f62920, load 31-69 | four features behind Later, load 48-66 |
+  |---|---|---|
+  | usable, cold | x0.99 | x1.09 |
+  | usable, warm | x1.09 | x1.03 |
+  | compile, cold | x1.09 | x1.25 |
+  | compile, warm | x1.18 | x1.12 |
+  | first screen's source | 6.49 MB, 210 scripts | 6.18 MB, 203 |
+  | index.pck sent | 2.36 MB | 2.24 MB |
+
+  m276's first screen was 5.67 MB and its index.pck 2.06. The growth is
+  the model's core (source_file.gd, assemblies.gd, model_store.gd and
+  the new meta_index.gd and submodel_file.gd), which the start needs.
+  ExactCheck, Booklet, Linkage and HingeAlign, which it named only for a
+  rarer moment, are reached through Later now. At load 50 a block's
+  compile ratio swings 0.97 to 1.28, more than the 5% that moved: the
+  compile stays over 10% by this measure. The data pack the start waits
+  for grew 5.06 MB sent to 5.93, most of it the booklet PDF's emoji font.
 
 **Step 2 plan** (firstscreen, 2026-11-05). The first screen compiles 228
 scripts, 6.18 MB of the app's 10.73 (`tools/web/start_closure.py`). Each

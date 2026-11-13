@@ -928,6 +928,24 @@ two days. drive changes 39 lines of it today.
   4.0 s compile, where APP_UX7 read 10.2, 6.0 and 2.2 at load 18 to 31.
   The first screen's source grew 5% (5.67 to 5.95 MB), about 0.1 s at
   0.37 s a MB. Nothing moved; A13's target stands (APP_UX.md, A13).
+- **Measured again (2026-11-12), after pre261 took 541 more commits.**
+  m276's own deployment against previews, four blocks of A B B A.
+  pre261 at 373f62920 (load 31 to 69): usable x0.99 cold, x1.09 warm;
+  compile x1.09 cold, x1.18 warm, over the bar. The first screen's source
+  had grown 14%, 5.67 MB to 6.49: the model's core (source_file.gd +87 KB,
+  assemblies.gd +74, model_store.gd +51, the new meta_index.gd 39 and
+  submodel_file.gd 29). That is the model, and it stays. Four rarer
+  features it named went behind Later: ExactCheck (Builder.room_for),
+  Booklet (BookletLooks.layout_said), Linkage (Grab) and HingeAlign
+  (Meet). The first screen is 6.18 MB (+9%), index.pck 2.24 MB sent
+  where it was 2.36 (m276 2.06). Measured again at load 48 to 66: usable
+  x1.09 cold, x1.03 warm; compile x1.25 cold, x1.12 warm. At that load
+  a block's compile ratio swung 0.97 to 1.28, more than the 5% moved.
+  The usable times are inside the bar in both runs; the compile is not.
+  The data pack, which the start waits for at its "data" stage, grew
+  5.06 MB sent to 5.93: NotoEmoji-Regular.ttf (619 KB, for the booklet's
+  PDF, 11-09) is most of it. A pack of its own, read when a PDF is made,
+  would take it off the start.
 
 **2. design20: the silhouette, the next lever for set quality.**
 - **Change.** The session sees its model's outline from the reference's
