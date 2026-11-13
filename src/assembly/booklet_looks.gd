@@ -1300,8 +1300,8 @@ static func emptied(world: BrickWorld, step: Dictionary, skip: Dictionary = {},
 	for item: Variant in held:
 		var placement: LdrModel.Placement = item
 		if placement.step >= 0:
-			(holding.get_or_add(definition_of(AuthorSteps.home(world, Assemblies.path_from(
-				placement.group, placement.unit))), {}) as Dictionary)[placement.step] = true
+			(holding.get_or_add(definition_of(AuthorSteps.home(world, world.held_path(
+				placement))), {}) as Dictionary)[placement.step] = true
 	gone = gone.filter(func(name: String) -> bool:
 		return not (holding.get(name.get_slice("|", 0), {}) as Dictionary) \
 			.has(name.get_slice("|", 1).to_int()))

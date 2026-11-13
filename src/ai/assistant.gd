@@ -402,6 +402,11 @@ signal built(brick_count: int)
 ## the selection: the model is one made with the assistant
 ## (ModelStore.made_with), whatever it was before.
 signal laid_parts
+## A request's change was kept as one step of the history (ClaudeStep.record):
+## what follows an edit by hand follows it, in that step (Main connects
+## ModelStore.looks_follow_edit). Up to 2026-11-11 nothing did, and a
+## sub-model a design run left no copy of kept its lights and views.
+signal run_kept
 ## The design standing calls itself this: the name submit_design gave it.
 signal titled(name: String)
 ## A design is going down, a sketch or the whole model (submit_design),
@@ -1500,7 +1505,10 @@ var _run_mark: Dictionary = {}
 func _record_run() -> void:
 	var mark: Dictionary = _run_mark
 	_run_mark = {}
-	if ClaudeStep.record(builder, world, scenery, mark) and ClaudeStep.lays(builder.last_step()):
+	if not ClaudeStep.record(builder, world, scenery, mark):
+		return
+	run_kept.emit()
+	if ClaudeStep.lays(builder.last_step()):
 		laid_parts.emit()
 
 

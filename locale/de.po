@@ -3069,6 +3069,9 @@ msgstr "ihre %d Lichter gingen mit ihren Teilen mit"
 msgid "%d of its lights went with it"
 msgstr "%d ihrer Lichter verschwanden mit ihr"
 
+msgid "one of its lights went with it"
+msgstr "eines ihrer Lichter verschwand mit ihr"
+
 msgid "its saved view went with it"
 msgstr "ihre gespeicherte Ansicht verschwand mit ihr"
 
@@ -4791,6 +4794,72 @@ msgstr "Erledigte zeigen (%d)"
 
 msgid "Comments in a session are for people 13 and over, as chat is."
 msgstr "Kommentare in einer Sitzung sind wie der Chat für Menschen ab 13."
+
+# Build together (pcfix): what another's change overtook, and what a session can't carry yet.
+msgid "%s changed a part you had just changed; theirs came after yours, so it stands."
+msgstr "%s hat ein Teil geändert, das du gerade geändert hattest; die Änderung kam nach deiner und gilt."
+
+msgid "%s changed %d parts you had just changed; theirs came after yours, so they stand."
+msgstr "%s hat %d Teile geändert, die du gerade geändert hattest; die Änderungen kamen nach deinen und gelten."
+
+msgid "%s changed %s just after you did; theirs came after yours, so it stands."
+msgstr "%s hat %s direkt nach dir geändert; die Änderung kam nach deiner und gilt."
+
+msgid "This session can't carry %s yet: the others keep theirs as they were, and everything else still reaches them."
+msgstr "Diese Sitzung kann %s noch nicht übertragen: Die anderen behalten ihre, wie sie waren, und alles andere erreicht sie weiterhin."
+
+msgid "%s's lights and views"
+msgstr "die Lichter und Ansichten von %s"
+
+msgid "sub-models' lights and views"
+msgstr "die Lichter und Ansichten der Untermodelle"
+
+msgid "the model's name"
+msgstr "den Namen des Modells"
+
+msgid "what the model stands on"
+msgstr "das, worauf das Modell steht"
+
+msgid "the hidden colours"
+msgstr "die ausgeblendeten Farben"
+
+msgid "the model's motions"
+msgstr "die Bewegungen des Modells"
+
+msgid "the booklet's looks"
+msgstr "das Aussehen der Bauanleitung"
+
+msgid "the steps of sub-assembly copies"
+msgstr "die Schritte der Baugruppen-Kopien"
+
+msgid "the sections broken out"
+msgstr "die herausgelösten Abschnitte"
+
+msgid "the model's lights"
+msgstr "die Lichter des Modells"
+
+msgid "a comment pinned to a part"
+msgstr "einen an ein Teil gehefteten Kommentar"
+
+msgid "the model's settings"
+msgstr "die Einstellungen des Modells"
+
+# Build together (pcredesign): where a copy's lights stand, what is too long, an undo held back.
+msgid "where the lights and views of %s stand"
+msgstr "wo die Lichter und Ansichten von %s stehen"
+
+msgid "This session can't carry sub-models' lights and views yet: everything else still reaches the others, but on their side a sub-model's lights and views stay where they were when you move or make one here, and one you rename here has none there."
+msgstr "Diese Sitzung kann die Lichter und Ansichten der Untermodelle noch nicht übertragen: Alles andere erreicht die anderen weiterhin, aber bei ihnen bleiben die Lichter und Ansichten eines Untermodells, wo sie waren, wenn du hier eines verschiebst oder erstellst, und eines, das du hier umbenennst, hat dort keine."
+
+msgid "This session can't carry %s, longer than it takes: everything else still reaches the others, but on their side those stay as they were."
+msgstr "Diese Sitzung kann %s nicht übertragen, länger als sie aufnimmt: Alles andere erreicht die anderen weiterhin, aber bei ihnen bleiben diese, wie sie waren."
+
+msgid "undid nothing: somebody else changed %s since"
+msgstr "nichts rückgängig gemacht: jemand anderes hat seitdem %s geändert"
+
+msgid "redid nothing: somebody else changed %s since"
+msgstr "nichts wiederhergestellt: jemand anderes hat seitdem %s geändert"
+
 
 msgid "A comment on %s, kept with the model: in its file, the autosave and a shared link, and seen by whoever builds it with you."
 msgstr "Ein Kommentar zu %s, beim Modell gespeichert: in seiner Datei, der automatischen Sicherung und einem geteilten Link, und sichtbar für alle, die mit dir bauen."

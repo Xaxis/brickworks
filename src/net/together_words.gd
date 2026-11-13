@@ -113,6 +113,76 @@ static func left_out(what: String, why: String) -> void:
 static var _said: Dictionary = {}
 
 
+## What the model's own state of key [param key] (Together._meta_now) is, in
+## words: "the model's lights", "Engine's lights and views". A part's uid
+## is "a part".
+static func state_named(key: String) -> String:
+	if key.begins_with("~sublines:"):
+		var def: String = key.substr("~sublines:".length())
+		return "%s's lights and views" % def if not def.is_empty() else "sub-models' lights and views"
+	if key.begins_with("~frame:"):
+		var copy: String = Assemblies.label(key.substr("~frame:".length()))
+		return "where the lights and views of %s stand" % copy if not copy.is_empty() \
+			else "sub-models' lights and views"
+	if key.begins_with("~pin:"):
+		return "a comment pinned to a part"
+	match key:
+		"~title":
+			return "the model's name"
+		"~floor":
+			return "what the model stands on"
+		"~hidden":
+			return "the hidden colours"
+		"~motions":
+			return "the model's motions"
+		"~looks":
+			return "the booklet's looks"
+		"~unit_steps":
+			return "the steps of sub-assembly copies"
+		"~broken":
+			return "the sections broken out"
+		"~lights":
+			return "the model's lights"
+	return "a part" if not key.begins_with("~") else "the model's settings"
+
+
+## Said once when the session's server would not take [param kind] (the
+## start of a key of the model's own state: "~sublines:"), as Together
+## leaves it out from then: what the others' side cannot be sent.
+static func not_carried(kind: String) -> String:
+	# A sub-model's lights and views do not follow on the other side what
+	# changes their sub-model here: renamed, its parts go into one with none.
+	# Up to 2026-11-12 the words said they kept theirs as they were, and the
+	# other side lost a renamed sub-model's light (pc2check T1_1).
+	if kind == "~sublines:" or kind == "~frame:":
+		return "This session can't carry sub-models' lights and views yet: everything else still reaches the others, but on their side a sub-model's lights and views stay where they were when you move or make one here, and one you rename here has none there."
+	return "This session can't carry %s yet: the others keep theirs as they were, and everything else still reaches them." % state_named(kind)
+
+
+## Said once for [param key], the model's own state the session's server
+## keeps, but not as long as this side has it (Together._drop_long).
+static func too_long(key: String) -> String:
+	return "This session can't carry %s, longer than it takes: everything else still reaches the others, but on their side those stay as they were." % state_named(key)
+
+
+## Said when another side's change came after this side's own to the same
+## thing and undid it (Together._take): [param name] who, [param keys] what
+## of it (a part's uid, or a key of the model's own state).
+static func overtaken(name: String, keys: Array) -> PackedStringArray:
+	var out := PackedStringArray()
+	var parts: int = keys.filter(func(key: String) -> bool: return not key.begins_with("~")).size()
+	if parts == 1:
+		out.append("%s changed a part you had just changed; theirs came after yours, so it stands." % name)
+	elif parts > 1:
+		out.append("%s changed %d parts you had just changed; theirs came after yours, so they stand."
+			% [name, parts])
+	for key: String in keys:
+		if key.begins_with("~"):
+			out.append("%s changed %s just after you did; theirs came after yours, so it stands."
+				% [name, state_named(key)])
+	return out
+
+
 ## [method left_out] for each of [param dropped], in one line; nothing for none.
 static func left_out_each(what: String, dropped: PackedStringArray) -> void:
 	if dropped.is_empty():
@@ -569,6 +639,69 @@ static func broken(raw: Dictionary, dropped: PackedStringArray) -> Dictionary:
 			record["touching"] = touching
 		out[section] = record
 	return out
+
+
+## One sub-model's own lights and views, [param def]'s, and where the frame
+## they are in stands for each of its copies, as Together._sublines_words
+## sends them: {"lines": its LIGHT and VIEW lines, "frames": {path:
+## Transform3D}}. Made {"lines": PackedStringArray, "frames": {path:
+## Transform3D}} (BrickWorld.section_lines' and section_frames' for it, in
+## the file's coordinates), or {} for a name no sub-model could have or no
+## line taken. A line is taken only as a sub-model keeps one: a light's or a
+## view's, on one line, so no other side writes parts, files or anything
+## else into this one's; a frame only for a path of one of its own copies,
+## and only of a place and a turn (a mirrored copy's reflects).
+static func sublines(def: String, raw: Dictionary, dropped: PackedStringArray) -> Dictionary:
+	if def.is_empty() or def.length() > 200 or def.contains("/") or def.contains("#") \
+			or _control.search(def) != null:
+		dropped.append("sub-model %s" % def.left(40))
+		return {}
+	var kept := PackedStringArray()
+	var said: Variant = raw.get("lines")
+	for line: Variant in (said if said is PackedStringArray or said is Array else []):
+		if line is String and (line as String).length() <= 4000 and kept.size() < 256 \
+				and _control.search(line) == null and ((line as String).begins_with(SceneLights.META)
+				or (line as String).begins_with(SavedViews.META)):
+			kept.append(line)
+		else:
+			dropped.append("a line of %s" % def.left(40))
+	if kept.is_empty():
+		return {}
+	var frames: Dictionary = {}
+	var given: Variant = raw.get("frames", {})
+	for path: Variant in (given if given is Dictionary else {}):
+		var at: Variant = (given as Dictionary)[path]
+		if path is String and (path as String).length() <= 400 and _control.search(path) == null \
+				and Assemblies.definition(Assemblies.leaf(path)) == def \
+				and Assemblies.segments(path).size() <= 32 and frames.size() < 1000 and _frame(at):
+			frames[path] = at
+		else:
+			dropped.append("a frame of %s" % def.left(40))
+	return {"lines": kept, "frames": frames}
+
+
+## Where the frame of the copy at [param path] stands, as another side sent
+## it (Together._frame_words: a Transform3D as Godot writes one), or null for
+## words that are not one, or a path no copy can have, said in the log.
+static func frame(path: String, words: String) -> Variant:
+	if path.is_empty() or path.length() > 400 or _control.search(path) != null \
+			or Assemblies.segments(path).size() > 32:
+		left_out("where a sub-model's lights and views stand", "a copy %s" % path.left(40))
+		return null
+	var got: Array = read(words)
+	if not bool(got[0]) or not _frame(got[1]):
+		left_out("where a sub-model's lights and views stand", "%s: %s" % [path.left(40),
+			str(got[1]) if not bool(got[0]) else "not a place"])
+		return null
+	return got[1]
+
+
+## Whether [param at] is a place and a turn of the model's space.
+static func _frame(at: Variant) -> bool:
+	return at is Transform3D and _place((at as Transform3D).origin) \
+		and (at as Transform3D).basis.x.is_finite() and (at as Transform3D).basis.y.is_finite() \
+		and (at as Transform3D).basis.z.is_finite() \
+		and absf((at as Transform3D).basis.determinant()) > 0.000001
 
 
 static func _place(at: Variant) -> bool:

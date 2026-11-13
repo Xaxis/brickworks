@@ -390,6 +390,14 @@ func put(ids: Array, moves: Array, words: String) -> PackedInt64Array:
 	if not refusal(ids, moves).is_empty():
 		return made
 	var parts: Array = parts_of(ids)
+	# What the copies copied whole hold that is not on the baseplate (parts
+	# on their way, parts the catalogue lacks), each copy put down holding
+	# them too, as a paste's does (Builder._put_carried). Up to 2026-11-12
+	# none came: the copies were written as sub-models of their own, without
+	# that part or the sub-model's lights and views (pc3check KP, KPw, KPs).
+	var held: Array = builder.held_carry.call(parts) \
+		if builder.held_carry.is_valid() and builder.copy_group.is_valid() else []
+	var held_into: Array = []
 	var steps: Array = []
 	for move: Transform3D in moves:
 		# Each copy of a named assembly or a minifigure another one of it,
@@ -407,7 +415,12 @@ func put(ids: Array, moves: Array, words: String) -> PackedInt64Array:
 		for step: Dictionary in put_down:
 			made.append(int(step["brick"]))
 		steps.append_array(put_down)
+		for one: Dictionary in held:
+			held_into.append([one, builder.copy_group.call(str(one["path"]), renamed), move])
 	builder.record(steps, words)
+	# In the same step, so its Undo takes them out with the copies.
+	if not held_into.is_empty() and builder.held_put.is_valid():
+		builder.held_put.call(held_into, Transform3D.IDENTITY)
 	builder.selection.clear()
 	for brick_id: int in made:
 		builder.selection[brick_id] = true

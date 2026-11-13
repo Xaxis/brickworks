@@ -316,6 +316,33 @@ var step_looks: Dictionary = {}
 ## sub-model's are kept for whatever next takes its name. Changed only by the
 ## history's steps, a whole table each (Assemblies.set_lines).
 var section_lines: Dictionary = {}
+## Where the frame those lines are in stands for each copy of a sub-model
+## with lines, by the copy's path, in the window's coordinates (a mirrored
+## copy's reflecting): a definition's lines are in its own frame, and each
+## copy places it. Set at the open from the file's references, every copy's
+## (Assemblies.frames_read), and from then carried with the copy by each
+## change through the transform the change applies: a move, a turn, a tip, a
+## drag (Assemblies.frames_moved), a mirror, a paste, a rename or a Make (by
+## its path: Builder._carry), a take-apart, a delete, and Undo and Redo of
+## each, in the same step (Assemblies.set_lines). Never found again from the
+## parts. Up to 2026-11-11 the lines were written as read, so a light stayed
+## where its copy had been (lp2check M, P, P_moved; lpcheck s7); then a few
+## of the first copy's parts were kept and matched where they stood, and no
+## match saw a mirrored copy, a copy deleted, or a turn of one whose parts
+## look the same turned (pccheck FW, FX, FY).
+var section_frames: Dictionary = {}
+## Where each part not on the baseplate that the file has is in the tree:
+## those on their way and those the catalogue lacks (ModelStore.awaited,
+## _absent), by the path the file had them in -> the path every change since
+## gave it (Builder._carry), so a rename or a Make round their copy takes them
+## too. Up to 2026-11-11 they kept the path they were read in, and landed in,
+## or were written in, a second sub-model under the old name. Changed only by
+## the history's steps.
+var held_paths: Dictionary = {}
+## Those of them that have landed since (ModelStore.place_awaited): brick id
+## -> the path the file had it in, so the undo of a change made before it
+## landed takes it back with the rest (Builder._apply's "heldpaths").
+var held_landed: Dictionary = {}
 ## The name each sub-model's section had in the file the model was opened
 ## from, by its definition, and the model's own by "" (LdrModel.file_names):
 ## a whole write writes each under it again (LdrModel.write_tree), as LDCad
@@ -376,6 +403,26 @@ func _note(event: Dictionary) -> void:
 ## [member held]'s parts now: none when it is unset.
 func held_parts() -> Array:
 	return held.call() if held.is_valid() else []
+
+
+## The path in the tree of [param placement], one of [member held]'s parts:
+## where every change since the open took the copy the file had it in
+## ([member held_paths]). Read through this by everything that places one,
+## as the placement itself is the one a step edit numbers (AuthorSteps
+## .held_name), so it keeps the path it was read in.
+func held_path(placement: LdrModel.Placement) -> String:
+	var open: String = held_key(placement)
+	return str(held_paths.get(open, Assemblies.path_from(placement.group, placement.unit)))
+
+
+## What [member held_paths] keeps [param placement] by: the path the file had
+## it in, or for one a paste put down, a name of its own (Placement.held_key):
+## a copy pasted under a name a copy the file had went by before a rename
+## would otherwise be taken for that one.
+static func held_key(placement: LdrModel.Placement) -> String:
+	if not placement.held_key.is_empty():
+		return placement.held_key
+	return Assemblies.path_from(placement.group, placement.unit)
 
 
 ## How many times the world has been cleared: what was placed in one
@@ -611,6 +658,10 @@ func clear(keep_numbers: bool = false) -> void:
 	unit_chains.clear()
 	step_looks.clear()
 	section_lines.clear()
+	# Tables, not cleared in place: a history step may hold the one it found.
+	section_frames = {}
+	held_paths = {}
+	held_landed = {}
 	section_files.clear()
 	motions = null
 	cut_kept = {}

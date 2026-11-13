@@ -418,6 +418,7 @@ func _initialize() -> void:
 			+ "as a desktop opens it (%.0f), and held (%s)") % [opened, settled, desktop,
 			held["summary"]])
 	_clear()
+	_held_in_tree()
 	# And a model another tool drew up in the air comes down onto the ground:
 	# its origin is that tool's. 30285's dinosaur is drawn 21 LDU up, and
 	# stood there every part of it floated. One this app saved keeps its height.
@@ -877,6 +878,101 @@ func _height_of(part_id: String) -> float:
 		if brick.part_id == part_id:
 			return brick.transform.origin.y
 	return NAN
+
+
+## A part still on its way, and one the catalogue lacks, are in the sub-model
+## the file has them in wherever an edit takes it: renamed, or made part of
+## another (Make), the one on its way lands in it and a save writes both in
+## it, through the edit's Undo and Redo. Up to 2026-11-11 each kept the path
+## the open read, and landed in or was written into a second sub-model of the
+## old name (lightpaths): a model of two sub-models where it had one.
+func _held_in_tree() -> void:
+	print("\na part on its way, or one the catalogue lacks, in its sub-model")
+	var text: String = "\n".join(PackedStringArray(["0 FILE main.ldr", "0 Held", "0 Name: main.ldr",
+		"0 Author: Brickworks", "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat",
+		"1 16 100 0 0 1 0 0 0 1 0 0 0 1 sub.ldr", "0 NOFILE", "0 FILE sub.ldr", "0 Sub",
+		"0 Name: sub.ldr", "0 Author: Brickworks", "1 14 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat",
+		"1 2 0 -24 0 1 0 0 0 1 0 0 0 1 3003.dat", "0 NOFILE", ""]))
+	var tree := Assemblies.new()
+	tree.world = _world
+	tree.builder = _builder
+	tree.library = _library
+	tree.scenery = _store.scenery
+	var root: String = _library._root
+	for edit: String in ["rename", "make"]:
+		_clear()
+		_store.open_text(text, "held")
+		_clear()
+		_library._mesh_cache.erase(_library.parts["3003"].mesh_hash)
+		_library._root = "user://no-parts-here/"
+		_store.open_text(text, "held")
+		var waiting: int = _store.awaited.size()
+		_library._root = root
+		var named: String = "Engine"
+		if edit == "rename":
+			tree.rename(_path_of("3001", 14), "Engine")
+		else:
+			for brick: BrickWorld.Brick in _world.bricks():
+				_builder.selection[brick.id] = true
+			tree.make("Box")
+			named = "Box"
+		_store.looks_follow_edit()
+		var written: String = _store.to_text("held")
+		_store.place_awaited("3003")
+		var landed: String = _path_of("3003", 2)
+		var beside: String = _path_of("3001", 14)
+		var after: String = _store.to_text("held")
+		_builder.undo()
+		var undone: Array = [_path_of("3003", 2), _path_of("3001", 14)]
+		_builder.redo()
+		var redone: Array = [_path_of("3003", 2), _path_of("3001", 14)]
+		_ok(waiting == 1 and landed == beside and not landed.begins_with("Sub#")
+			and _written_with(written, "3003.dat", "3001.dat")
+			and _written_with(after, "3003.dat", "3001.dat") and undone[0] == undone[1]
+			and redone[0] == redone[1] and redone[0] == landed,
+			("%s (%s) with 3003 on its way (%d): it lands in %s beside the rest (%s); a save before "
+				+ "it came and one after write it in their sub-model (%s, %s); undone %s, redone %s")
+				% [edit, named, waiting, landed, beside, _written_with(written, "3003.dat", "3001.dat"),
+				_written_with(after, "3003.dat", "3001.dat"), undone, redone])
+	# One the catalogue lacks, in the app's own file: written where its
+	# sub-model is now, renamed.
+	_clear()
+	_store.open_text(text.replace("3003.dat", "zz_nosuch_part.dat"), "lacks")
+	tree.rename(_path_of("3001", 14), "Engine")
+	_store.looks_follow_edit()
+	var lacks: String = _store.to_text("lacks")
+	_builder.undo()
+	var lacks_undone: String = _store.to_text("lacks")
+	_ok(_written_with(lacks, "zz_nosuch_part.dat", "3001.dat") and lacks.contains("0 FILE engine.ldr")
+		and not lacks.contains("0 FILE sub.ldr") and _written_with(lacks_undone, "zz_nosuch_part.dat",
+		"3001.dat") and lacks_undone.contains("0 FILE sub.ldr"),
+		"a part the catalogue lacks is written in its sub-model renamed Engine (%s), and in Sub undone (%s)"
+			% [_written_with(lacks, "zz_nosuch_part.dat", "3001.dat"), _written_with(lacks_undone,
+			"zz_nosuch_part.dat", "3001.dat")])
+	_clear()
+
+
+## The path of the first brick of [param part_id] in [param colour].
+func _path_of(part_id: String, colour: int) -> String:
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == part_id and brick.color_code == colour:
+			return Assemblies.path_of(brick)
+	return "(none)"
+
+
+## Whether [param text] has the sub-model's [param one] (any colour but 4)
+## and its yellow 3001 ([param other]) once each, in one section that is not
+## the model's own.
+static func _written_with(text: String, one: String, other: String) -> bool:
+	var found: Array = []
+	var section: int = -1
+	for line: String in text.split("\n"):
+		if line.begins_with("0 FILE "):
+			section += 1
+		elif (line.begins_with("1 14 ") and line.ends_with(" " + other)) \
+				or (not line.begins_with("1 4 ") and line.begins_with("1 ") and line.ends_with(" " + one)):
+			found.append(section)
+	return found.size() == 2 and found[0] == found[1] and int(found[0]) > 0
 
 
 func _clear() -> void:

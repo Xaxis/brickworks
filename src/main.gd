@@ -2671,7 +2671,13 @@ func _clear_undone() -> Array:
 	back.append({"undo": "steplooks", "looks": _world.step_looks.duplicate(true)})
 	# Each sub-model's own lights and views (BrickWorld.section_lines): undone,
 	# a clear gave back the sub-model without them, and its save left them out.
-	back.append({"undo": "sectionlines", "lines": _world.section_lines.duplicate(true)})
+	# And where each copy's frame of them stands (section_frames), and where
+	# each part not on the baseplate is in the tree (held_paths): undone
+	# without them, a copy moved after was moved without its lights, and a
+	# part on its way after a rename landed in a copy under the old name.
+	back.append({"undo": "sectionlines", "lines": _world.section_lines.duplicate(true),
+		"frames": _world.section_frames.duplicate(true)})
+	back.append({"undo": "heldpaths", "paths": _world.held_paths.duplicate()})
 	# And the name each section was read under (BrickWorld.section_files):
 	# undone, a clear named the model's own after its title, and Save wrote
 	# "0 FILE cf_2_saved_as.ldr" over the file's "0 FILE model.ldr".
@@ -6226,6 +6232,8 @@ func _make_assistant() -> void:
 	# same undo, as one by hand does (pullkept).
 	_assistant_made.focus_edited.connect(func(_words: String, _before: Image,
 			_after: Image) -> void: _store.looks_follow_edit())
+	# And a request's run, kept as one step, as the one by hand does.
+	_assistant_made.run_kept.connect(_store.looks_follow_edit)
 	# So a snapshot does not carry the baseplate off with it.
 	_assistant_made.scenery = _store.scenery
 	# And what the model stands on, read when asked: on a bare floor what only
