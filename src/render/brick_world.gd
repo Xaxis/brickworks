@@ -291,6 +291,12 @@ var unit_steps: Dictionary = {}
 ## or a step taken out such a part was written in another step, and its
 ## step's zoom and name were lost (pkreview3).
 var held: Callable = Callable()
+## The names the model's file holds that nothing here shows (ModelStore
+## .names_held): its sections kept as the file has them, the parts it
+## carries and what they are drawn from, their pictures. Read by every place
+## that decides whether a name is taken (Assemblies.names_taken). Unset for
+## none.
+var names_held: Callable = Callable()
 ## Each copy of a sub-model of someone else's file by its path now -> its
 ## place in the file (LdrModel.unit_chains): carried wherever a change to
 ## the tree takes the path (Builder.regroup), so a save knows which copy
@@ -423,6 +429,11 @@ static func held_key(placement: LdrModel.Placement) -> String:
 	if not placement.held_key.is_empty():
 		return placement.held_key
 	return Assemblies.path_from(placement.group, placement.unit)
+
+
+## [member names_held]'s names now: none when it is unset.
+func names_held_now() -> Array:
+	return names_held.call() if names_held.is_valid() else []
 
 
 ## How many times the world has been cleared: what was placed in one

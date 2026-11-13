@@ -5171,11 +5171,15 @@
       "readOnlyHint": false,
       "title": "Open a model"
     },
-    "description": "The person's saved models and the examples that come with the app, with their part counts; name= opens one in place of what is on the baseplate, as File, Open does. Each save is kept as a version, the last 20, as File, Versions… shows: versions=true lists name='s, newest first, and version=N opens the Nth; versions=true with version=N opens nothing and says what changed in the model open now since that save, as Compare draws it: each part added, removed, moved or turned, and recoloured, by number. link= a gallery model's link id (gallery) opens a copy of it saved in the person's models, as Open in Brickworks on its page does. library= an id from gallery library=true (\"omr-10179-1\") opens LDraw's model of that real set, credited to whoever made it, as File, Library… does. The person's work is never lost: while the model on the baseplate has changes not saved, opening is refused unless discard_changes=true, and an open is undone like any change (undo brings back the model it replaced).",
+    "description": "The person's saved models and the examples that come with the app, with their part counts; name= opens one in place of what is on the baseplate, as File, Open does. Each save is kept as a version, the last 20, as File, Versions… shows: versions=true lists name='s, newest first, and version=N opens the Nth; versions=true with version=N opens nothing and says what changed in the model open now since that save, as Compare draws it: each part added, removed, moved or turned, and recoloured, by number. link= a gallery model's link id (gallery) opens a copy of it saved in the person's models, as Open in Brickworks on its page does. library= an id from gallery library=true (\"omr-10179-1\") opens LDraw's model of that real set, credited to whoever made it, as File, Library… does. The person's work is never lost: while the model on the baseplate has changes not saved, opening is refused unless discard_changes=true, and an open is undone like any change (undo brings back the model it replaced). into=true puts name= (or library=, link=) into the model open now as one sub-assembly with its author's steps, beside the model or at x= z=, as File, Import, Into this model… does: nothing is replaced, every part and name of both kept, and one undo takes it out.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
         "discard_changes": {
+          "type": "boolean"
+        },
+        "into": {
+          "description": "put name= (or library=, link=) into the model open now as one sub-assembly with its own steps, as File, Import, Into this model… does, in place of opening it; nothing is replaced",
           "type": "boolean"
         },
         "library": {
@@ -5190,6 +5194,10 @@
           "description": "a model's name from the list",
           "type": "string"
         },
+        "turn": {
+          "description": "with into: quarter turns about the vertical, 0 to 3",
+          "type": "integer"
+        },
         "version": {
           "description": "open this save of name=, 1 the newest; with versions=true, compare the model open now with it",
           "type": "integer"
@@ -5197,6 +5205,14 @@
         "versions": {
           "description": "list name='s saves kept as versions",
           "type": "boolean"
+        },
+        "x": {
+          "description": "with into: studs across to its low corner, on the ground; beside the model when omitted",
+          "type": "number"
+        },
+        "z": {
+          "description": "with into: studs deep to its low corner",
+          "type": "number"
         }
       },
       "type": "object"

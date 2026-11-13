@@ -1759,6 +1759,149 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 	return plan
 
 
+## [param text], the file as the patch of its own parts wrote it ([param
+## plan]), with each model put into it whole ([param roots]: each copy's
+## path at the model's top level that no line of the file places, of a
+## sub-model the file has not got: ModelStore.held_from's) grafted in: its
+## sections as the model written whole ([param whole_text]) has them,
+## appended, and the one line placing it put at the end of its step
+## ([param steps_now]) in the model's own section, as a part put down is.
+## Every line of the file stays where it was, as the patch left it. A file
+## of one model is made a file of sections, its model the first. The text,
+## or why there is none (a String starting "why:"), for the model written
+## whole: a step the file has not got, a section named as one of the file's
+## that is not the same, or a text that does not read back as the patch's
+## parts and the model's put in. Up to 2026-11-12 a model put into someone
+## else's file had it written whole, and 181 of OMR 6596-1's 900 lines went
+## (im2review real, lodge).
+func grafted(text: String, plan: Plan, roots: Dictionary, whole_text: String,
+		steps_now: Dictionary, known: Dictionary) -> String:
+	var whole: SubmodelFile.Whole = SubmodelFile.read(whole_text.replace("\r\n", "\n"), known)
+	var eol: String = _eol()
+	var refs: Dictionary = {}       ## out index -> [lines placing a model put in]
+	var appended := PackedStringArray()
+	var added: Dictionary = {}
+	var under: Dictionary = {}      ## the copies a model put in places, by path
+	var paths: Array = roots.keys()
+	paths.sort()
+	for root: String in paths:
+		if not whole.model.unit_lines.has(root):
+			return "why: a model put in is not in the model written whole"
+		var ref: String = whole.lines[int(whole.model.unit_lines[root])].strip_edges()
+		var step: int = int(steps_now.get(root, -1)) if authored else -1
+		var to: int = _end_of_step(main_key, step)
+		var ends: Array = _ends.get(main_key, [])
+		# In a step after the file's last, which the file did not end with a
+		# STEP: that step ended first.
+		if to < 0 and step == ends.size() + 1:
+			to = int(_tail.get(main_key, -1))
+			ref = "0 STEP" + eol + "\n" + ref
+		if to < 0:
+			return "why: a model put in is in a step the file has not got"
+		if not _stack_before(main_key, to).is_empty():
+			return "why: a model put in goes inside a pair"
+		var at: int = plan.out.size()
+		for n: int in plan.from.size():
+			if plan.from[n] >= to and plan.how[n] != NEW:
+				at = n
+				break
+		if not refs.has(at):
+			refs[at] = []
+		(refs[at] as Array).append(ref + eol)
+		var key: String = SubmodelFile._section_of_copy(whole, root)
+		if key.is_empty():
+			return "why: a model put in has no section in the model written whole"
+		var keys: Array[String] = [key]
+		for each: String in SubmodelFile._placed_from(keys, whole):
+			if added.has(each):
+				continue
+			added[each] = true
+			var span: Array = whole.sections[each]
+			var section := PackedStringArray(whole.lines.slice(int(span[0]), int(span[1])))
+			if sections.has(each):
+				# A part file the model put in shares with the file, word for
+				# word, is the file's (IntoModel): not written twice.
+				var own := PackedStringArray(lines.slice(int(sections[each][0]),
+					int(sections[each][1])))
+				if ModelStore._plain_section("\n".join(own)) == ModelStore._plain_section(
+						"\n".join(section)):
+					continue
+				return "why: a section put in is named as one of the file's (%s)" % each
+			while not section.is_empty() and section[section.size() - 1].strip_edges().is_empty():
+				section.remove_at(section.size() - 1)
+			if section.is_empty() or LdrModel.section_word(section[section.size() - 1]) != "NOFILE":
+				section.append("0 NOFILE")
+			appended.append_array(section)
+		for path: String in whole.model.unit_steps:
+			if path == root or path.begins_with(root + "/"):
+				under[path] = true
+	appended.append_array(SubmodelFile._data_for(appended, whole))
+	# Each line placing one where the patch's line it goes before now is:
+	# counted from the end, as the app's own lines go in under the title.
+	var final: PackedStringArray = text.split("\n")
+	var into: Dictionary = {}       ## final line -> lines put before it
+	for at: int in refs:
+		var where: int = final.size()
+		if at < plan.out.size():
+			var same: int = 0
+			for n: int in range(at + 1, plan.out.size()):
+				if plan.out[n] == plan.out[at]:
+					same += 1
+			where = -1
+			for n: int in range(final.size() - 1, -1, -1):
+				if final[n] == plan.out[at]:
+					if same == 0:
+						where = n
+						break
+					same -= 1
+			if where < 0:
+				return "why: the line a model put in goes before is not where the patch left it"
+		into[where] = refs[at]
+	var out := PackedStringArray()
+	var any_file: bool = false
+	for line: String in original:
+		if _keyword(line) == "FILE":
+			any_file = true
+			break
+	if not any_file:
+		out.append("0 FILE " + LdrModel.new_file_name(own_title if not own_title.is_empty()
+			else "model") + eol)
+	for n: int in final.size() + 1:
+		if into.has(n):
+			out.append_array(PackedStringArray(into[n]))
+		if n < final.size():
+			out.append(final[n])
+	while not out.is_empty() and out[out.size() - 1].strip_edges().is_empty():
+		out.remove_at(out.size() - 1)
+	if not any_file:
+		out.append("0 NOFILE" + eol)
+	for line: String in appended:
+		out.append(line.trim_suffix("\r") + eol)
+	var written: String = "\n".join(out) + "\n"
+	# Read back: the patch's parts, and the parts of the models put in.
+	var want: Dictionary = _counted(LdrModel.parse(text, "model"), known)
+	for placement: LdrModel.Placement in whole.placed:
+		var path: String = Assemblies.path_from(placement.group, placement.unit)
+		if under.has(path):
+			var key: String = "%s|%d" % [placement.part_id, placement.color_code]
+			want[key] = int(want.get(key, 0)) + 1
+	var have: Dictionary = _counted(LdrModel.parse(written, "model"), known)
+	if have != want:
+		return "why: the file with a model put in does not read back as its parts"
+	return written
+
+
+## Each part [param model] places, by "part|colour" -> how many.
+static func _counted(model: LdrModel, known: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	if model == null:
+		return out
+	for placement: LdrModel.Placement in model.flatten(known):
+		var key: String = "%s|%d" % [placement.part_id, placement.color_code]
+		out[key] = int(out.get(key, 0)) + 1
+	return out
+
+
 func _eol() -> String:
 	return "\r" if _crlf else ""
 
