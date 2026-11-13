@@ -71,7 +71,11 @@
 ## - held_copy_step: a copy made only of held parts moved to step 1 on save
 ##   (hscheck E5_own);
 ## - paint_copy: painting one of two copies renamed the other on reopen
-##   ("Wing 2#1"), and a second save differed (ofcheck ofc_two).
+##   ("Wing 2#1"), and a second save differed (ofcheck ofc_two);
+## - fixed_colours (cf3check): a wing's fixed blue tile went out in 16, the
+##   section written from another copy than the one its colours were read
+##   from; parts the catalogue lacks in red of their own went out in 16; and
+##   8143-1's yellow wheel parts came back red.
 ## Each case opens its file (src/dev/fixtures/copyfaults_*, and for metas
 ## ten files with sub-models), makes its edit as a person or a session makes
 ## it, saves as Save saves, opens the save again, and compares parts,
@@ -86,7 +90,7 @@ const FX := "res://src/dev/fixtures/"
 const CASES: Array = ["rename", "duplicate", "rename_undo", "swap", "clear_undo", "step_copy",
 	"metas", "numbers", "twin_steps", "twin_moves", "twin_paints", "clear_held", "twin_relaid",
 	"clear_file", "twin_nested", "clear_lit", "twin_every", "clear_redo", "colour_copies",
-	"apart_inside", "placing_put", "mirror_copy", "held_copy_step", "paint_copy"]
+	"apart_inside", "placing_put", "mirror_copy", "held_copy_step", "paint_copy", "fixed_colours"]
 ## twin_every's files and the copy edited in each, one at each depth.
 const EVERY: Array = [["cf2_nest_same.mpd", "Car#1"], ["cf2_nest_same.mpd", "Car#1/Wheel#1"],
 	["cfc_nested.mpd", "Car#1"], ["cfc_nested.mpd", "Car#1/Wheel#1"],
@@ -179,6 +183,7 @@ func _run() -> void:
 			"mirror_copy": await _case_mirror_copy()
 			"held_copy_step": await _case_held_copy_step()
 			"paint_copy": await _case_paint_copy()
+			"fixed_colours": await _case_fixed_colours()
 			_: _check("no such case %s" % name, false)
 	print("\ncopyfaults probe: %s" % ("all checks passed" if _failures == 0
 		else "%d checks failed" % _failures))
@@ -1726,6 +1731,69 @@ func _case_paint_copy() -> void:
 		await _open(again)
 		_check("...opened again: the same sub-models (%s)" % " | ".join(_defs_now()),
 			_defs_now() == reopened)
+
+
+## A part of a copy in a colour of its own keeps it through a whole write
+## (cf3check): a wing in two red cars, green and blue loose, with a blue tile
+## of its own, the green one's 3003 and 3023 painted (no copy follows that),
+## so the cars' wings are one sub-model the blue wing lies on; parts the
+## catalogue lacks in red of their own and in 16 in cars placed red and
+## blue; and 8143-1, its trucks' wheels in yellow, written as the app's own.
+func _case_fixed_colours() -> void:
+	for own: bool in [true, false]:
+		var text: String = _fixture("cf3_fixed_wings.mpd")
+		await _open(text if own else text.replace("0 Author: Brickworks", "0 Author: A. Builder"))
+		var green: String = ""
+		for path: String in _paths():
+			if not path.contains("/") and path.begins_with("Wing#"):
+				green = path
+				break
+		_pick([_brick_of(green, "3003").id])
+		_builder.paint_selection(15)
+		await _edited()
+		_pick([_brick_of(green, "3023b").id])
+		_builder.paint_selection(14)
+		await _edited()
+		var shown: Array = _looks(false)
+		await _open(_save())
+		_check("%s, %s's 3003 white and 3023 yellow: saved and opened again, every part, colour and place as shown%s"
+			% ["the app's own" if own else "someone else's", green, _unlike(shown, _looks(false))],
+			shown == _looks(false))
+	await _open(_fixture("cf3_held_fixed.mpd"))
+	var held: Array = _held_colours()
+	var shown_held: Array = _looks(false)
+	await _open(_save())
+	_check("parts the catalogue lacks, in red of their own and in 16, in cars red and blue: saved and opened again, each in its colour (%s; now %s), and every part shown%s"
+		% [", ".join(held), ", ".join(_held_colours()), _unlike(shown_held, _looks(false))],
+		held == _held_colours() and shown_held == _looks(false))
+	await _open(_own_text(FileAccess.get_file_as_string("res://vendor/omr/files/8143-1.mpd")))
+	var colours: Dictionary = _colours_counted()
+	await _open(_save())
+	var now: Dictionary = _colours_counted()
+	var unlike: Array = colours.keys().filter(func(key: String) -> bool:
+		return int(colours[key]) != int(now.get(key, 0)))
+	_check("8143-1 as the app's own, saved and opened again: as many of each part in each colour (%d kinds; %s unlike)"
+		% [colours.size(), str(unlike.slice(0, 4))], unlike.is_empty() and now.size() == colours.size())
+
+
+## Each part not shown, "part cN", sorted: what each copy holds, by colour.
+func _held_colours() -> Array:
+	var out: Array = []
+	for item: Variant in _world.held_parts():
+		out.append("%s c%d" % [(item as LdrModel.Placement).part_id,
+			(item as LdrModel.Placement).color_code])
+	out.sort()
+	return out
+
+
+## How many of each part in each colour the model has, "part cN" -> count.
+func _colours_counted() -> Dictionary:
+	var out: Dictionary = {}
+	for brick: BrickWorld.Brick in _world.bricks():
+		if not _store.scenery.has(brick.id):
+			var key: String = "%s c%d" % [brick.part_id, brick.color_code]
+			out[key] = int(out.get(key, 0)) + 1
+	return out
 
 
 ## [param text] opened, saved unedited, opened again and saved again: the
