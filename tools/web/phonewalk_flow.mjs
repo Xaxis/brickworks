@@ -535,6 +535,7 @@ function person(page, cdp, width, height, size, choosers) {
     // list scrolls beneath it), or where the title was once the whole panel
     // scrolls (Simulate's goes up with its list).
     const was = first ? first.y - first.h / 2 : height * 0.4;
+    let stuck = 0;
     for (let n = 0; ; n++) {
       const at = await where(name, n ? 4 : 15);
       const head = await where(top, 2);
@@ -542,11 +543,18 @@ function person(page, cdp, width, height, size, choosers) {
       if (DEBUG) said(`bringIn ${name}: at ${at ? `${Math.round(at.x)},${Math.round(at.y)} ${at.w}x${at.h}` : "none"}; ceiling ${Math.round(ceiling)}, floor ${Math.round(floor)}`);
       if (at && at.y - at.h / 2 >= ceiling - 1 && at.y + at.h / 2 <= floor + 1) return at;
       if (n >= tries) return null;
-      // From just inside the shown part's foot, up; or its top, down.
+      // From the middle of the shown part, up or down, as a person swipes a
+      // list; across, a little further each time a drag moved nothing (it
+      // began on a button, which keeps the finger).
       const up = !at || at.y > ceiling;
-      const from = { x: width * 0.15, y: up ? floor - 12 : ceiling + 12 };
+      const from = { x: width * [0.5, 0.2, 0.8][stuck % 3], y: (ceiling + floor) / 2 };
       await drag(from, { x: from.x, y: from.y + (up ? -1 : 1) * height * 0.045 }, 14, 400);
       if (tally) tally.brought.push(name);
+      const moved = await where(name, 2);
+      if (at && moved && Math.abs(moved.y - at.y) < 2) {
+        stuck += 1;
+        note(`a drag from ${Math.round(from.x)}, ${Math.round(from.y)} moved ${name}'s list nothing`);
+      }
       if (DEBUG) await picture(`bring_${name}_${n}`);
     }
   };
