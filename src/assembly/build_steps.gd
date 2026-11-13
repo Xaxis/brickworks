@@ -394,7 +394,9 @@ func pieces(page: int) -> int:
 
 
 ## "Step 3 of 24", as the timeline and the booklet number it; a callout's
-## steps say which, "Step 12 of 40 · Window (2x), 1 of 3". The cover says
+## steps say which, "Step 12 of 40 · Window (2x), 1 of 3"; and a step its
+## designer named says its name on a line after ("Step 3 of 24\nBuild the
+## cockpit"), which BuildMode puts under the number. The cover says
 ## how many, as the booklet and the model's page count them: "87 steps, and
 ## 12 sub-assemblies built on the side in 64 steps of their own"
 ## (Instructions.count). It said every page, 151, where its pages said "of 87".
@@ -402,7 +404,7 @@ func caption(page: int) -> String:
 	var step: Instructions.Step = step_of(page)
 	if step == null:
 		return Instructions.count_words(Instructions.count(steps))
-	return step.caption(steps[-1].number)
+	return step.caption(steps[-1].number, "\n")
 
 
 ## What else a person building it needs told, or nothing.

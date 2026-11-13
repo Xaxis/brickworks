@@ -181,6 +181,8 @@ class JointLoad extends RefCounted:
 	func held_on() -> String:
 		match kind:
 			"studs":
+				if studs == 0:
+					return "on no stud"
 				return "on %d stud%s" % [studs, "" if studs == 1 else "s"]
 			"axle":
 				return "on an axle keyed in its hole"
@@ -190,6 +192,14 @@ class JointLoad extends RefCounted:
 				return "on %s" % ("a friction pin" if pins == 1 else "%d friction pins in a line" % pins)
 		return "on %s" % ("a frictionless pin or axle" if pins == 1
 			else "%d frictionless pins or axles in a line" % pins)
+
+	## Whether nothing holds it against what it carries, so there is no
+	## working load to divide its load by: a contact of no studs, or pins
+	## with no friction ridges (or an axle in a round hole) on one line,
+	## free to turn about it. Divided by nothing, a steering arm on its axle
+	## read "0 studs carry about 3801304x" (drivereview F9, drvcheck A).
+	func holds_nothing() -> bool:
+		return (kind == "studs" and studs == 0) or kind == "free pin"
 
 
 class Report extends RefCounted:
@@ -276,9 +286,32 @@ class Report extends RefCounted:
 		elif needs_help() and widen > 0:
 			out += " Widen it %d stud%s to the %s." % [widen, "" if widen == 1 else "s",
 				widen_toward]
+		# Joints, not stud joints: a pin or an axle among them has no studs
+		# (drvrecheck F4).
 		if over > 0:
-			out += " %d stud joint%s overloaded, in red." % [over, "" if over == 1 else "s"]
+			out += " %d joint%s overloaded, in red." % [over, "" if over == 1 else "s"]
 		return out
+
+	## How to make the joints past their working load hold, by their kind:
+	## more studs only for those on studs; a pin tied in with a second off
+	## its line, as Brace this asks (StressView.brace_words).
+	func over_words() -> String:
+		var on_studs: int = 0
+		var on_pins: int = 0
+		for one: JointLoad in joints:
+			if one.ratio > 1.0:
+				if one.kind == "studs":
+					on_studs += 1
+				else:
+					on_pins += 1
+		var them: String = "it" if over == 1 else "them"
+		if on_pins == 0:
+			return "brace %s, give %s more studs, or move weight back over what holds %s" % [them, them, them]
+		if on_studs == 0:
+			return "brace %s, tie %s in with a second pin off %s line, or move weight back over what holds %s" % [
+				them, them, "its" if over == 1 else "their", them]
+		return ("brace them, give those on studs more studs and tie those on pins in with a second "
+			+ "pin off their line, or move weight back over what holds them")
 
 	## The numbers for a Claude session (check_design), compact, with what to
 	## do about them. [param namer] says a brick id the way the session
@@ -320,22 +353,35 @@ class Report extends RefCounted:
 			if not name_of.is_valid():
 				name_of = func(id: int) -> String: return "#%d" % id
 			for one: JointLoad in joints.slice(0, 3):
-				var line: String = "%s %s %s on %d stud%s: %s N·cm against %s (%sx; lets go at %s)" % [
-					str(name_of.call(one.beyond)), "hanging from" if one.hangs else "on",
-					str(name_of.call(one.held_by)), one.studs, "" if one.studs == 1 else "s",
-					Balance.tidy(one.moment), Balance.tidy(one.capacity), Balance.tidy(one.ratio),
-					Balance.tidy(one.ultimate)]
+				# Each joint by its kind (held_on): a pin or an axle has no
+				# studs to count (drvcheck B).
+				var who: String = "%s %s %s" % [str(name_of.call(one.beyond)),
+					"hanging from" if one.hangs else "on", str(name_of.call(one.held_by))]
+				var line: String
+				if one.kind == "studs" and one.studs == 0:
+					# No stud in contact: nothing to divide its load by.
+					line = "%s with no stud in contact: nothing holds it there" % who
+				elif one.holds_nothing():
+					line = "%s %s: it turns with nothing holding it%s" % [who, one.held_on(),
+						", %s N·cm about its line" % Balance.tidy(one.moment) if one.moment > 0.0 else ""]
+				elif is_inf(one.capacity):
+					line = "%s %s: it does not turn there" % [who, one.held_on()]
+				else:
+					line = "%s %s: %s N·cm against %s (%sx; lets go at %s)" % [who, one.held_on(),
+						Balance.tidy(one.moment), Balance.tidy(one.capacity), Balance.tidy(one.ratio),
+						Balance.tidy(one.ultimate)]
 				if one.hangs:
 					line += ", pulled %s N" % Balance.tidy(one.pull)
 				if not one.pose.is_empty():
 					line += ", %s" % one.pose
 				shown.append(line)
-			lines.append("Most loaded stud joints (1 N a stud working, 3 N lets go): "
+			# What a stud holds said only where one of them is on studs.
+			var studded: bool = joints.slice(0, 3).any(func(one: JointLoad) -> bool:
+				return one.kind == "studs" and one.studs > 0)
+			lines.append("Most loaded joints%s: " % (" (1 N a stud working, 3 N lets go)" if studded else "")
 				+ "; ".join(shown) + ".")
 			if over > 0:
-				lines.append(("%d past the working load: brace %s, give %s more studs, or "
-					+ "move weight back over what holds it.") % [over,
-					"it" if over == 1 else "them", "it" if over == 1 else "them"])
+				lines.append("%d past the working load: %s." % [over, over_words()])
 		return "\n".join(lines)
 
 
@@ -377,6 +423,21 @@ static func edge_name(way: Vector2) -> String:
 		"back-left", "back", "back-right"]
 	var sector: int = posmod(roundi(degrees / 45.0), 8)
 	return names[sector]
+
+
+## The way over [param edge] (edge_name's) a model tips, as said: "to the
+## left". Each its own words, whole, so a language says it as a way to go,
+## not as an edge's name: an edge's "left" is the bord gauche and the borde
+## izquierdo, and tipped over to it the model "bascule vers gauche" and "se
+## vuelca hacia izquierdo" (drvcheck3 W). "vers la gauche", "hacia la
+## izquierda" now.
+const TOWARD: Dictionary = {"left": "to the left", "right": "to the right", "front": "to the front",
+	"back": "to the back", "front-left": "to the front-left", "front-right": "to the front-right",
+	"back-left": "to the back-left", "back-right": "to the back-right"}
+
+
+static func toward(edge: String) -> String:
+	return str(TOWARD.get(edge, "to the %s" % edge))
 
 
 static func opposite(name: String) -> String:

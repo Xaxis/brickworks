@@ -45,6 +45,8 @@ def run(body: str) -> dict | None:
         "const names = (said) => ((said && said.result && said.result.tools) || []).map((t) => t.name);"
         f"const out = await (async () => {{ {body} }})();"
         "console.log(JSON.stringify(out));"
+        # Not kept waiting by a read a test left slow (world.trouble).
+        "process.exit(0);"
     )
     done = subprocess.run(["node", "--input-type=module", "-e", script], cwd=ROOT, capture_output=True, text=True,
                           timeout=60)
@@ -149,3 +151,102 @@ def test_every_tool_listed_has_its_title_on_it_and_in_its_annotations() -> None:
     assert out["listed"] == len(OWN) + len(RELAY)
     assert out["shown"] > out["listed"]
     assert out["bare"] == [] and out["bareShown"] == []
+
+
+# The guidance lookup: a read across every tab's hello, as against a tab's
+# own (helloOf, by its channel).
+LOOKUP = ("const lookup = (call) => call.startsWith('GET relay_tabs?') && call.includes('hello->')"
+          " && !call.includes('channel=eq.');")
+
+
+def test_a_guidance_lookup_that_fails_never_fails_the_handshake() -> None:
+    """The guidance is read on each cold instance of the relay, and a
+    database that failed that read failed the whole initialize: 502
+    {"error":"database GET relay_tabs: 500"} on a preview (2026-11-10), and a
+    client whose handshake fails is taken for one that shows no pages. The
+    handshake goes on without guidance, and the next one looks again."""
+    out = run(LOOKUP + """
+      w.tab({ owner: "stranger", hello: { instructions: "this build's guidance", tools: own } });
+      const token = w.connect("fresh");
+      w.trouble = (call) => (lookup(call) ? { status: 500 } : null);
+      const failing = await w.ask(token, "initialize", { protocolVersion: "2025-06-18" });
+      w.trouble = () => null;
+      const after = await w.ask(token, "initialize", { protocolVersion: "2025-06-18" });
+      return { failing, after: after.result && after.result.instructions,
+        tools: names(await w.ask(token, "tools/list")) };
+    """)
+    if out is None:
+        return
+    assert "result" in out["failing"], out["failing"]
+    assert out["failing"]["result"]["instructions"] == ""
+    assert out["after"] == "this build's guidance"
+    assert out["tools"] == OWN + RELAY
+
+
+def test_a_slow_guidance_lookup_is_not_waited_for() -> None:
+    """A lookup that takes ten seconds held the handshake those ten (9.2 s,
+    then the 502, on a preview): it is answered within a second without
+    guidance, and a lookup that lands later is kept for the next, not made
+    again."""
+    out = run(LOOKUP + """
+      w.tab({ owner: "stranger", hello: { instructions: "this build's guidance", tools: own } });
+      const token = w.connect("fresh");
+      const timed = async () => {
+        const began = Date.now();
+        const said = await w.ask(token, "initialize", { protocolVersion: "2025-06-18" });
+        return { ms: Date.now() - began, said };
+      };
+      w.trouble = (call) => (lookup(call) ? { ms: 10_000 } : null);
+      const stuck = await timed();
+      return { stuck };
+    """)
+    if out is None:
+        return
+    stuck = out["stuck"]
+    assert "result" in stuck["said"], stuck["said"]
+    assert stuck["ms"] < 1000, stuck["ms"]
+    assert stuck["said"]["result"]["instructions"] == ""
+
+    out = run(LOOKUP + """
+      w.tab({ owner: "stranger", hello: { instructions: "this build's guidance", tools: own } });
+      const token = w.connect("fresh");
+      w.trouble = (call) => (lookup(call) ? { ms: 1500 } : null);
+      const began = Date.now();
+      const first = await w.ask(token, "initialize", { protocolVersion: "2025-06-18" });
+      const ms = Date.now() - began;
+      await new Promise((resolve) => setTimeout(resolve, 1700));
+      const second = await w.ask(token, "initialize", { protocolVersion: "2025-06-18" });
+      return { ms, first: first.result && first.result.instructions,
+        second: second.result && second.result.instructions, lookups: w.calls.filter(lookup).length };
+    """)
+    if out is None:
+        return
+    assert out["ms"] < 1000, out["ms"]
+    assert out["first"] == ""
+    assert out["second"] == "this build's guidance"
+    assert out["lookups"] == 1, out["lookups"]
+
+
+def test_the_guidance_is_found_past_other_builds_hellos_without_reading_a_tool_list() -> None:
+    """It read the twenty latest hellos' whole tool lists, 4.3 MB taking
+    1.7 to 6 s, and on 2026-11-10 found nothing at all: this build's hellos
+    were the 21st and on, behind previews' and test builds'. Found by the
+    short hash of the tools each hello is kept with (list), whatever has
+    said hello since, and no tool list is read to find it."""
+    out = run(LOOKUP + """
+      w.tab({ owner: "stranger", seen_at: new Date(Date.now() - 3600_000).toISOString(),
+        hello: { instructions: "this build's guidance", tools: own } });
+      for (let i = 0; i < 25; i++) {
+        w.tab({ owner: `tester-${i}`, hello: { instructions: "a preview's guidance",
+          tools: [...own, tool(`extra_${i}`)] } });
+      }
+      const token = w.connect("fresh");
+      const greeted = await w.ask(token, "initialize", { protocolVersion: "2025-06-18" });
+      return { guidance: greeted.result.instructions,
+        reads: w.calls.filter(lookup), toolLists: w.calls.filter((call) => call.includes('hello->tools')) };
+    """)
+    if out is None:
+        return
+    assert out["guidance"] == "this build's guidance"
+    assert out["toolLists"] == [], out["toolLists"]
+    assert len(out["reads"]) == 1, out["reads"]

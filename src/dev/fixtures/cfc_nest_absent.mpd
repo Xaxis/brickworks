@@ -1,0 +1,61 @@
+0 FILE nest.mpd
+0 Nested Test
+0 Name: nest.mpd
+0 Author: Nora Nest [nnest]
+0 !LDRAW_ORG Unofficial_Model
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+0 BFC CERTIFY CCW
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 2 0 -100 0 1 0 0 0 1 0 0 0 1 zz9999.dat
+0 // the towers, one red one blue
+1 4 0 -24 0 1 0 0 0 1 0 0 0 1 tower.ldr
+1 1 200 -24 0 1 0 0 0 1 0 0 0 1 tower.ldr
+0 STEP
+1 16 0 0 200 -1 0 0 0 1 0 0 0 1 wing.ldr
+1 16 200 0 200 1 0 0 0 1 0 0 0 1 wing.ldr
+0 STEP
+1 16 400 0 0 1 0 0 0 1 0 0 0 1 empty.ldr
+1 16 400 0 0 1 0 0 0 1 0 0 0 1 level1.ldr
+0 STEP
+0 NOFILE
+0 FILE tower.ldr
+0 Tower
+0 Name: tower.ldr
+0 Author: Nora Nest [nnest]
+0 BFC CERTIFY CCW
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat
+0 // a round top
+1 16 0 -24 0 1 0 0 0 1 0 0 0 1 3062b.dat
+1 14 0 -48 0 1 0 0 0 1 0 0 0 1 4073.dat
+0 NOFILE
+0 FILE wing.ldr
+0 Wing
+0 Name: wing.ldr
+0 Author: Nora Nest [nnest]
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 3020.dat
+1 15 30 -8 0 1 0 0 0 1 0 0 0 1 3040b.dat
+1 4 -30 -8 0 1 0 0 0 1 0 0 0 1 3024.dat
+0 NOFILE
+0 FILE empty.ldr
+0 Empty
+0 Name: empty.ldr
+0 Author: Nora Nest [nnest]
+0 NOFILE
+0 FILE level1.ldr
+0 Level One
+0 Name: level1.ldr
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 16 0 -24 0 1 0 0 0 1 0 0 0 1 level2.ldr
+0 NOFILE
+0 FILE level2.ldr
+0 Level Two
+0 Name: level2.ldr
+1 2 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 16 0 -24 0 1 0 0 0 1 0 0 0 1 level3.ldr
+0 NOFILE
+0 FILE level3.ldr
+0 Level Three
+0 Name: level3.ldr
+1 14 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 16 0 -24 0 1 0 0 0 1 0 0 0 1 3005.dat
+0 NOFILE

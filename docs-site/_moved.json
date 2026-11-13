@@ -1,5 +1,23 @@
 {
-  "$comment": "A docs page that moved: its old name, its new. tools/deploy.sh answers the old address with a 308 to the new; tools/docs_site.py --check holds each new name to a page.",
+  "$comment": "A docs page that moved: its old name, its new. tools/deploy.sh answers the old address with a 308 to the new; tools/docs_site.py --check holds each new name to a page. A section that moved to another page while its page stayed is \"page#anchor\": a fragment never reaches the server, so the old page sends it on (tools/docs_site.py moved_here, web/docs.js).",
   "claude-builds": "how-ai-works",
-  "ai-builds": "how-ai-works"
+  "ai-builds": "how-ai-works",
+  "building": "placing-parts",
+  "exports#render": "render",
+  "exports#path-traced": "render#path-traced",
+  "exports#lights": "render#lights",
+  "exports#render-queue": "render#render-queue",
+  "exports#product-look": "render#product-look",
+  "exports#line-art": "render#line-art",
+  "exports#animation": "render#videos",
+  "exports#building": "render#videos",
+  "exports#gif": "render#gif",
+  "instructions#booklet-by-hand": "booklet-layout#booklet-by-hand",
+  "instructions#booklet-extras": "booklet-layout#booklet-extras",
+  "instructions#page-setup": "booklet-layout#page-setup",
+  "instructions#booklet-look": "booklet-layout#booklet-look",
+  "instructions#lay-out": "booklet-layout#lay-out",
+  "ai#key-custody": "connect#key-custody",
+  "ai#ask-provider": "claude-code#command-line",
+  "connector#chatgpt": "connect-chatgpt"
 }

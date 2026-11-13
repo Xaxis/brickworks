@@ -565,13 +565,32 @@ export async function askToSignIn(why) {
   });
 }
 
+// What /api/account said of the beta at the last age(): {tester, early,
+// open, welcome}, for the welcome that follows the age question.
+let beta = null;
+
 /// What the server keeps of this sign-in's age: {ask, over_13}, or null
 /// when nobody is signed in or it does not ask here.
 export async function age() {
   const access = await token();
   if (!access) return null;
   const said = await json(await fetch("/api/account", { headers: { authorization: `Bearer ${access}` } }));
+  beta = said.signed_in && said.beta ? said.beta : null;
   return said.signed_in && said.age ? said.age : null;
+}
+
+/// Whether the last age() heard the beta is open for this account: a page
+/// asks nothing more of the beta when it is not (billing_flow, beta off).
+export function betaOpen() {
+  return beta?.open === true;
+}
+
+/// The beta's welcome (web/beta-welcome.js), when the server says it is
+/// due: the beta open, a new account, not asked yet. Once a page.
+async function welcomeIfDue() {
+  if (!beta || beta.welcome !== true) return null;
+  beta = { ...beta, welcome: false };
+  return import("/beta-welcome.js").then((one) => one.betaWelcome()).catch(() => null);
 }
 
 /// The age question, if this account is to be asked it: resolves with
@@ -581,12 +600,19 @@ export async function age() {
 /// off. Answered 13 or over, this was a first sign-in, and First steps are
 /// offered before the page carries on ([pending]: it has something to do
 /// once signed in, so they end back on the page). A browser told before is
-/// not asked: the new account goes as an answer under 13 does.
+/// not asked: the new account goes as an answer under 13 does. While the
+/// beta is open, a new account is welcomed to it first, asked once whether
+/// to join its testers (betajoin, 2026-11-09), never before the age
+/// question and never for an account it deleted.
 export async function askAgeIfAsked({ pending = false } = {}) {
   const now = await age();
-  if (!now || !now.ask) return now;
+  if (!now || !now.ask) {
+    await welcomeIfDue();
+    return now;
+  }
   const kept = refusedHere() ? await refuseAgain() : await askAge();
   if (kept && kept.over_13 === true) {
+    await welcomeIfDue();
     await import("/first-steps.js").then((steps) => steps.firstSteps({ pending })).catch(() => null);
   }
   return kept;

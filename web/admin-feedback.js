@@ -1,10 +1,10 @@
-// The owner's feedback inbox, on /admin (#feedback; admin.html): every
-// report, newest first, filtered by what it is, where it stands and whether a
-// beta tester sent it; each with its words, who sent it, what came with it
-// (the picture shown, the model to download, the details and the log), where
-// it stands and a private note to change, and the answers, with one to send
-// (api/_feedback.js through /api/admin). /admin?tests=1: the site's checks'
-// own reports instead.
+// The console's Feedback (admin.html #feedback, #feedback-N): every report,
+// newest first, filtered by what it is, where it stands and whether a beta
+// tester sent it, and searched; each with its words, who sent it, what came
+// with it (the picture shown, the model to download, the details and the
+// log), where it stands and a private note to change, and the answers, with
+// one to send (api/_feedback.js through /api/admin). /admin?tests=1: the
+// site's checks' own reports instead.
 //
 // Everything is put on the page as text, never as markup: every word here
 // was typed by somebody else.
@@ -142,7 +142,7 @@ function card(report) {
     event.preventDefault();
     save.disabled = true;
     try {
-      const said = await askJson(`/api/admin?op=feedback_triage&id=${report.id}`, { method: "POST",
+      const said = await askJson(`/api/admin?op=feedback_triage&id=${report.id}${TESTS ? "&tests=1" : ""}`, { method: "POST",
         body: { status: stands.value, note: note.value } });
       item.replaceWith(card(said.report));
       $(`feedback-${report.id}`)?.querySelector("form span.note")?.append("Saved.");
@@ -170,7 +170,7 @@ function card(report) {
     send.disabled = true;
     sent.textContent = "Sending…";
     try {
-      const said = await askJson(`/api/admin?op=feedback_reply&id=${report.id}`, { method: "POST", body: { words: words.value } });
+      const said = await askJson(`/api/admin?op=feedback_reply&id=${report.id}${TESTS ? "&tests=1" : ""}`, { method: "POST", body: { words: words.value } });
       const fresh = card(said.report);
       item.replaceWith(fresh);
       fresh.querySelectorAll("form span.note")[1]?.append({ sent: "Emailed.", dry: "Kept: a test inbox, and no mail here.",
@@ -199,11 +199,22 @@ async function load() {
       + `${counts.new ?? 0} new, ${counts.seen ?? 0} seen, ${counts.planned ?? 0} planned, ${counts.fixed ?? 0} fixed, `
       + `${counts.wont_fix ?? 0} won’t fix; ${counts.beta ?? 0} from testers.`;
     $("fb-list").replaceChildren(...said.reports.map(card));
-    if (location.hash.startsWith("#feedback-")) document.querySelector(location.hash)?.scrollIntoView({ block: "start" });
+    siftCards();
+    if (/^#feedback-\d+$/.test(location.hash)) document.querySelector(location.hash)?.scrollIntoView({ block: "start" });
   } catch (trouble) {
     note.textContent = trouble.message;
   }
 }
+
+/// The cards shown where they hold every word searched for.
+function siftCards() {
+  const words = $("fb-q").value.toLowerCase().split(/\s+/).filter(Boolean);
+  for (const item of $("fb-list").children) {
+    const text = item.textContent.toLowerCase();
+    item.hidden = !words.every((word) => text.includes(word));
+  }
+}
+$("fb-q").addEventListener("input", siftCards);
 
 for (const group of document.querySelectorAll("#fb-filters [data-filter]")) {
   group.addEventListener("click", (event) => {
@@ -214,4 +225,5 @@ for (const group of document.querySelectorAll("#fb-filters [data-filter]")) {
     load();
   });
 }
-load();
+/// The inbox, read and drawn: when the console opens Feedback, and on Refresh.
+export { load as loadFeedback };

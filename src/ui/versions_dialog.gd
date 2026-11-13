@@ -7,7 +7,7 @@
 ## changes not saved the dialog says so, with Save beside it.
 ##
 ## Each row's Compare draws the model on the baseplate against that save
-## instead (CompareView), changing nothing; File, Compare with… opens the
+## instead (CompareView), changing nothing; File, Compare, Compare with… opens the
 ## list with Compare alone.
 class_name VersionsDialog
 extends AcceptDialog

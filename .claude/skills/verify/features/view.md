@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:the panel asked for last in front, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, cli:heldsteps probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe, ui:a long job says when it is done, cli:donenote probe, lib:line art and comic looks, cli:lineart probe, ui:a step's name, cli:stepnames probe, cli:stepnames2 probe, lib:driving along a path, cli:drive probe -->
 
 ## Sub-features
 
@@ -34,7 +34,8 @@ picture the assistant is shown.
   button only does that, the pointer says so, and `Esc` or `V` is Select
   again. Hiding moved to `Ctrl-H`. Two fingers on a trackpad turn (Shift
   slides) and a pinch zooms to the pointer (`WheelKind`); on a Mac, Ctrl-click
-  is a right click. The status bar's left line says what the mouse will do
+  is a right click (`EditVerbs.mac_right_click`, the model tree's rows too;
+  `EditVerbs._mac` says a check is on a Mac, as `Phone._on` a phone). The status bar's left line says what the mouse will do
   now (`EditVerbs.hint`: tool, keys held, part under the pointer). Mecabricks
   publishes no trackpad convention we could find, so two-finger turning
   follows SketchUp for Web's. `tools/web/nav_flow.mjs` does all of it with the
@@ -703,7 +704,10 @@ picture the assistant is shown.
   Known gaps: a part standing on the floor or a baseplate is held by the
   floor, so a tower's foot is not weighed; a clip, hinge, ball or turntable
   is not weighed. `tools/probe.sh stress_probe` (hand-worked cantilevers, a bonded
-  wall, the shipped models none red), `touch_probe` (walk180's tug bow amber
+  wall, the shipped models none red, and a joint of each kind past its load
+  said by its kind: a free pin "turns with nothing holding it", red, by no
+  ratio and no load it lets go at, "studs'" and more studs only for studs,
+  drvrecheck F2), `touch_probe` (walk180's tug bow amber
   at 0.86 with its ladder and without, a plate on a touch past it red and a
   weak joint, columns pressed down standing on studs and on a tile, and in
   the app the verdict, the view and `weakest_joints` agreeing) and
@@ -905,6 +909,32 @@ picture the assistant is shown.
   keeps 11 rows at 1400 x 900. Pictures in user://typingkeys (or --shots=DIR):
   the sheet, Render, Page setup and the box from each field, each field typed
   in, the sheet's "cut away".
+- `the panel asked for last in front` (`src/ui/hud_front.gd`, `src/main.gd`
+  `_add_to_hud`, the hudfront unit, 2026-11-09): every panel of the HUD (the
+  keys sheet, Render, Find's list, the minifigure builder and its print and
+  mould editors, the mosaic, Brickify, the part maker, Share, Account, My
+  collection, the Library, Print on a part, the sticker sheet, Printed
+  versions, the page laid out by hand, the viewer's Build it) comes to the
+  front of the HUD as it is shown, by a key, a menu, a button or MCP, and as
+  it is asked for again while it shows behind another (each panel's own open
+  shows it with `HudFront.show_panel`; Account and Share, which their buttons
+  open and close, close); as a press lands on it where it is in sight (before
+  the press goes on to what it is on); and as the keys go into it (Tab, F6).
+  Always under the sign-in screen; Render's veil comes with Render, so what is
+  behind Render stays veiled. Before, they stacked in the order they were
+  made, and the walk's F1 and F9 opened under Find's list.
+  `tools/probe.sh hudfront_probe` (1400 x 900; `PROBE_SIZE=1280x720` too; needs
+  .env for its throwaway account) goes through the sign-in screen, makes each
+  of 14 panels once with Find's list last, then the walk's Ctrl+F, "87087",
+  F1 and F9 (the keys sheet, then Render, takes a click at the middle of what
+  it shares with Find's list), then every pair each way round: the one opened
+  last takes the click at the middle of the area they share by hit-test and
+  by the window's hover, a click on the first where it is in sight brings it
+  forward, and the second asked for again comes forward again (Account and
+  Share close); then every panel open and
+  the account signed out: the sign-in screen takes a click at the middle of
+  each, and the keys sheet asked for and clicked then stays under it.
+  Pictures in user://hudfront (or --shots=DIR).
 - `what's this` (`src/ui/whats_this.gd`, Help, What's This?, Shift+F1, the
   whatsthis unit, APP_UX4 10): the next click on any control says what it does
   in a bubble beside it, and does nothing else, as LeoCAD's, Qt's and Windows'
@@ -1665,6 +1695,42 @@ picture the assistant is shown.
   (`SharedPages.attach_tested`), another reader (the file without the
   app's lines) builds every part in the same step, and the save opened
   again has every part in its step and every sub-model part for part.
+  A part the app holds but does not show (heldsteps, 2026-11-11: one the
+  catalogue lacks, `ModelStore._absent`, one on its way, `awaited`, or one
+  of someone else's file, `SourceFile.not_shown`) is in its step like any
+  other (`BrickWorld.held_parts`, `AuthorSteps.items_in` as an "unseen"
+  item): every step edit numbers it with the rest (`_tidy`, undone by
+  `Builder` "heldstep", which an awaited part that lands carries over by
+  `Placement.landed`) and its step keeps its looks (`BookletLooks.item_name`
+  "h<id>"). A step holding only such parts is not one an edit counts:
+  merge, move a step on or back and delete join the steps you see
+  (`AuthorSteps.steps_in`, `neighbour`), and the held part's step stays its
+  own. pkreview3's missing part, after a step merge, move or delete, was
+  saved in another part's step and its ZOOM was gone. Someone else's file
+  writes each held line in its step (`SourceFile.held_steps`; the patch
+  says "a part the app cannot show is in another step now" and live's
+  write re-steps by it). `heldsteps_probe` (headless) opens a five-step
+  model, own and someone else's, with its 3062b taken out of the library
+  and with it on its way from a local server, merges, moves and deletes
+  steps, takes a part off, saves and opens it again: the held part on its
+  own step, its STEP_NAME and ZOOM byte for byte, and every other step as
+  the same edit gives the model without it; with the part back the model
+  is as it was, and an edit made while it came is undone on it. hsfix
+  (2026-11-11, hscheck's findings): every reader of a step's items names a
+  held one alike (`AuthorSteps.name_of`, "h<id>"), so a sub-model dragged
+  in the tree into a copy holding one is renumbered with it, not stopped on
+  a script error (`rehomed`); a part moved on from the last step you see
+  opens a new step right after it, so a step of only held parts after it
+  keeps its place and a part alone in the last step stays put ("the steps
+  are as they were", `move`); a part moved, moved to a step or made a new
+  step in one copy of a sub-model placed twice is moved in every copy, part
+  for part (`AuthorSteps._moved`), as Merge, Delete, Earlier and Later
+  already were, so the copies, their held parts and the looks stay alike and
+  the save keeps an edit made in the second copy; and someone else's file
+  written whole writes each held part (missing or on its way) in its own
+  step and sub-model (`SourceFile.in_own_steps`), not at the end of the
+  model's last step, a wholly unshown sub-model still carried as the file
+  has it. `heldsteps_probe` section 6 drives each, own and someone else's.
 - `the booklet as a PDF and as PNG pages`: **Save as PDF** and **Save pages as PNG** sit beside Print in the
   booklet's bar (pdf249, 2026-10-24), shown where they work: on the desktop
   while the app serves the booklet (`Booklet.SAVE_SCRIPT` asks the app with
@@ -1698,9 +1764,9 @@ picture the assistant is shown.
   keeping their parts; CFF is written with only the glyphs used, their
   subroutines in place, each CID its old glyph number). A letter Liberation
   lacks goes in the system's face Godot draws the page's PNG in
-  (`BookletPdf._system`: the TextServer's fallback, its file from
+  (`BookletPdf._face`: the TextServer's fallback, its file from
   `OS.get_system_font_path`); none on the web. Only letters no face has
-  (a colour emoji) are "?" and named by the export (`missed_said`).
+  are "?" and named by the export (`missed_said`).
   `booklet_pdf_probe -- --words-only --into=DIR` signs in a throwaway account,
   gives booklook's dialog_a a Cyrillic title and Greek footer (page_setup)
   and a Japanese note (edit_booklet), presses Instructions and Save as PDF,
@@ -1710,6 +1776,28 @@ picture the assistant is shown.
   --into) writes its castle booklet's PDF again from its own file: every
   page the same at 300 dpi to the pixel (pdftoppm, sha1 a page), the file
   no more than 10% bigger. Look at DIR/words-pdf-*.png.
+- `the PDF's words right to left, and emoji` (pdfbidi, 2026-11-09): each
+  line is shaped by the TextServer as the page's is, left to right as the
+  page sets every line (`BookletPdf.shaped`, `DIRECTION_LTR`: the bidi
+  algorithm turns a Hebrew or Arabic run about, Arabic's letters joined).
+  A line that shapes to one glyph a letter left to right (`plain`) is
+  written a letter at a time as before (`_letters`); any other glyph by
+  glyph where the shaping puts it (`_glyphs`: TJ moves, Ts for a raised
+  mark), each glyph reading back as its letters (`_reads`, `PdfType
+  .use_text`). Shaped at 64 px in copies of the faces not hinted and placed
+  to a 64th of a pixel (`_shaper`). Emoji go in Noto Emoji, carried in
+  outline (`BookletPdf.EMOJI`, `assets/fonts/NotoEmoji-Regular.ttf`, 863 KB,
+  OFL, `Credits.LIST` "notoemoji"); one the engine took from a colour face
+  is shaped again in it (`_in_emoji`). `BookletPng` draws a spaced line
+  (a title, a step number) that is not plain glyph by glyph too, and every
+  line `DIRECTION_LTR`. `booklet_pdf_probe -- --words-only` also gives a
+  second dialog_a an Arabic title, Hebrew, mixed and emoji step words, and
+  compares each line's ink runs, the PDF drawn by poppler against
+  `BookletPng.page_image`, both at 12.5 px a mm (within 2 px a side); look
+  at DIR/bidi-*-page.png against DIR/bidi-*-pdf.png. pdftotext reads a
+  line mixing directions as poppler reads any PDF of what the page shows
+  (Chromium's own print too): "Step 3: 2 בנה...x4", the 2 set left of the
+  Hebrew by the bidi algorithm.
 - `the booklet`: build instructions laid out as a LEGO booklet, one HTML
   file that prints on A4 and Letter (landscape; `Booklet.PAGE` is 269 x 199 mm,
   inside both) and reads on screen (`--mm` scales the same millimetres to the
@@ -2265,6 +2353,90 @@ picture the assistant is shown.
   saves byte for byte. A session saves only over files it wrote
   (`save_model`), so each model opened over MCP is saved under a name of
   its own first.
+- `a step's name` and `stepnames probe` (APP_UX6 #9 stepnames;
+  `Instructions.Step.name`, `Instructions.names_kept`, `BookletLooks`
+  "name" and `name_of`, `Shell.change_look("name")`, `StepsBar.ask_step_name`,
+  `BuildMode._step_name`, `Booklet.name_rect`/`name_lines`): a step named as
+  Studio names one. Ways in: the timeline's Booklet row Name… (in the build
+  order and the author's steps), Build › Steps › Name the step…, Shift-F2
+  (beside F2, rename), and `edit_steps {"op": "name", "step": N, "name":
+  "..."}` over MCP (`""` takes it off). One undo each; a worked-out model
+  adopts the plan first in the same undo, as every look does. Said on the
+  timeline as "Step 3 of 24 · Build the cockpit · 3 of 24 bricks" (cut
+  between words at 40 characters with an ellipsis, `StepsBar.NAME_SHOWN`),
+  in Build it on a line of its own at 18 pt under "Step 3 of 24"
+  (`BuildSteps.caption` joins them with a line break; `page_state` "name"),
+  and on the booklet page beside the number, semibold 3.6 mm, 2 mm after
+  it, centred on its line, wrapped at 64 mm or the panel's room (the step's
+  header grows for it; the turn sign and guides go under both). A callout
+  box's own steps print no name; a sub-assembly on pages of its own does.
+  Names are one line, at most 80 letters as a reader sees them
+  (`BookletLooks.NAME_MOST`, TextServer's grapheme breaks: an emoji of
+  several or a letter and its accents is one), each letter at most 4 marks
+  and 16 code points (`MARKS_MOST`, `LETTER_MOST`: a letter of a hundred
+  accents keeps four, where it was cut to nothing, sncheck N3), every
+  Unicode space and line break made a space; a word of only what draws
+  nothing (`SubmodelFile._shows`: zero-width spaces and joiners, direction
+  marks, the byte-order mark, accents alone) is dropped, and a name of only
+  those is refused, saying why (`BookletLooks.name_refused`: Name the
+  step… stays up with the words under the field; over MCP the reply), no
+  undo step (sncheck N2); nothing or spaces alone take the name off. A step
+  of the model's that only puts on copies built where they stand has no
+  step in the plan: its name is said on the first step built in it,
+  before that step's own (`Step.within`, `Step.called`,
+  `Instructions._names_within`: "Step 2 of 6 · Both wings on · Wing plate"
+  on the timeline and its tip, in Build it, the booklet's heading and
+  `edit_steps`' list "(in the wing, 1 of 2; starts the step \"Both wings
+  on\")"; sncheck F8). A name edit that changes nothing, or a step edit
+  refused, is no undo step. The name is a look field, so it follows the step's
+  parts over step edits: on a merge the first step's wins; where a step
+  that kept none of its parts joins one that kept its own, the one that
+  kept them is the step, by its own name and zoom (the other's words,
+  pictures and arrows kept on its page); it goes when the step loses its
+  last part. A sub-model placed more than once has one set of steps, so a
+  name is every copy's, and the words say so ("in each of the 2 copies of
+  the wing", `BookletLooks.copies_of`). `edit_steps` names a callout's step
+  with `callout_step=`, as `edit_booklet` takes one. Shared links carry it
+  in the model's own lines (`SharedPages.read` names the carried steps). In
+  the file: `0 !BRICKWORKS STEP_NAME words` in its step, before PAGE and
+  ZOOM. Another author's lines are kept as written where they were (spaces,
+  tabs, a second line in a step, read as the first: `name_more`; one after
+  NOFILE; an empty last step's). An older
+  build (pre261, live m276) opens a named file whole; it keeps the line in
+  another author's file (written back as it was) and drops it from
+  Brickworks' own on a save, as every app line it does not know. Also: a
+  hand Delete that empties a step with a look undoes as "removed 1 part"
+  (`Builder.extend_last` words the step before grouping it).
+  `stepnames_probe` (a window; `PROBE_SIZE=1280x720`, `390x844` and
+  `1024x768` for Build it alone on a phone and a tablet): signed in through
+  the sign-in screen, steps4's step 3 named by Name… and typing, Return;
+  the timeline's words and one undo; Shift-F2 asks again with the name;
+  step 2 by `edit_steps`; saved with exactly two STEP_NAME lines more,
+  opened, saved again byte for byte; step 3's booklet page read back
+  (`BookletRead`) with the name beside the number and its ink in the 300
+  dpi PNG; `src/dev/fixtures/stepnames/named.ldr` and `named_theirs.ldr`
+  opened whole and saved with their lines; the hand Delete's undo words;
+  an 80-character name cut on the timeline and wrapped on the page; Build
+  it on a shared link, steps worked out and carried, the name under the
+  number; then snreview's repros on `src/dev/fixtures/stepnames/` (five,
+  row, theirs_odd LF and CRLF, sub; 7140-1.mpd's callout): which step keeps
+  its name and zoom over moves, deletes and merges, each saved, opened and
+  undone; every name line as written; `name_of`'s spaces and cut; quoted
+  words; the picture's alt escaped once; the copies' words; `callout_step=`.
+  Pictures in `shots/stepnames/<size>/`. `stepnames2_probe` (headless,
+  `SN2_ONLY=letters,refuse,undo,sub,held`): `name_of` letter by letter
+  (Zalgo, Thai tone marks, 80 letters with an emoji or accents, Devanagari,
+  a Persian ZWNJ, zero-width and direction characters alone); such a name
+  refused over MCP and in Name the step…, which stays up saying why; 14
+  name edits (set, renamed, taken off; MCP and by hand; five, row,
+  theirs_odd's two lines, a stepless file of the app's and another
+  author's, sub.ldr's copies) each one undo, undone to the steps and the
+  file as the plain save, redone to the edit's file; the same name again no
+  undo step; sub.ldr's "Both wings on" on step 2 alone in the plan, the
+  caption, Build it, the list and the booklet's headings, saved and
+  opened; the first step edit of a stepless file numbering its held part
+  with the 3020 before it (`AuthorSteps._held_as_filed`), undone to the
+  stepless file.
 - `the booklet's own cover and colours` and `booklook probe`
   (APP_UX6 #5 booklook; `BookletSheet`'s title, subtitle, cover_line,
   cover_picture, header, footer, box_frame, box_fill, box_corners,
@@ -2752,6 +2924,32 @@ picture the assistant is shown.
   its buttons going two rows, so it never lies over a tool's panel beside
   the model; Escape puts it away as a rung of Main's ladder after the parts list, before the
   tool and the selection (`Main._render_queue_up`).
+- `a long job says when it is done` (APP_UX7 #11 donenote; Settings, Say when
+  a long job is done, on Reduce motion's line; `src/ui/done_note.gd`, a Later
+  class `Main._done_note()` makes with the first job): a design, a change or
+  sketches asked in the assistant's panel (`ChatPanel.run_ended`, the person's
+  own runs only, not a session's, not one stopped), Render's picture at Best,
+  turntable, animation and build video (the dialog has no end signal and is
+  video2's: `DoneNote.follow_render` asks `is_rendering()` each frame, its
+  kind from `_working`, made or not from `_last`), and the render queue
+  drawn empty (`RenderQueue.began` / `emptied`, told to
+  `Main.follow_render_queue` by `RenderQueue.of`), ending while the window
+  is not looked at: on the desktop `DisplayServer.window_request_attention()`
+  and the title "Done · …" until the window has the focus again (asked every
+  500 ms while waiting); on the web one `Notification` (title the model's
+  name, body "Best render done" and so on, a click focusing the tab) and the
+  tab's title the same way (`Main._tell_page` through `DoneNote.titled`).
+  Focused, or turned off (ShellPrefs `done_note`), nothing. The browser's
+  permission is asked at the first long job's start, the press still fresh,
+  never on load, and not for a session's call (`CommandSocket.at_work`).
+  Check: `tools/probe.sh donenote_probe` (windowed, 1400 x 900, and
+  `PROBE_SIZE=1280x720`; signed in through the gate with a throwaway account
+  from .env; `DoneNote.stand_in` stands in for the focus, the attention and
+  the browser): each of the four unfocused 1 attention request and 1
+  notification, focused 0, off 0, the web asking nothing on load and once
+  at the first job; pictures of Settings with the row in `user://donenote`
+  (`-- --shots=DIR`). By hand on the web: a Best render started, another tab
+  looked at, a notification named after the model when it is done.
 - `saved views` (APP_UX5 #8; View › Viewpoint › Save this view… Alt-V, Saved
   view 1 to 9 Alt-Shift-1 to 9, Render each saved view; `src/ui/saved_views.gd`,
   `SavedViews`): where the window looks from, kept by a name with the model as
@@ -2800,7 +2998,41 @@ picture the assistant is shown.
   studio's 3, the sky and 4 are the 8 a renderer draws), refused with why
   on every way in (a file, light_model, Together, Render's Add buttons).
   Only the main model's lines are read (to an MPD's second section: a
-  sub-model keeps its own lights and views); numbers are rounded to a
+  sub-model keeps its own lights and views, `LdrModel.section_lines`, held by
+  its definition in `BrickWorld.section_lines` so a rename, a Make round it
+  or the sub-model it is in taken apart keeps them in its section, undo and
+  redo too, `Assemblies.lines_renamed`; the step that leaves a sub-model no
+  copy takes them, `Assemblies.lines_follow` after a Delete, Cut, MCP
+  remove or a regroup, so no name a gone sub-model had keeps any (a copy in
+  hand stands, `Assemblies._in_hand`); Copy and Cut put them on the clipboard
+  with the parts (`Carry.clipboard_lines`, `Assemblies.lines_held`) and a
+  paste's step puts them back where the model it lands in has none of its
+  own, into this model or another (`Assemblies.lines_pasted`): one it has
+  keeps its own, and the status line says so. Each definition's lines are
+  in one frame, and where it stands for each copy is kept by the copy's
+  path (`BrickWorld.section_frames`, path -> Transform3D, a mirrored copy's
+  reflecting): set once at the open from every copy's reference
+  (`Assemblies.frames_read`) and from then carried by the transform each
+  edit applies, never found again from parts: a move, turn or tip
+  (`Assemblies.lines_follow` -> `moves_in`, `frames_moved`: only a copy all
+  of whose parts moved alike), a lift put down (`Builder._put_carried`),
+  Mirror (`Builder.mirror_bricks`, the reflection), a drive kept
+  (`MotionPlayer._keep_driven`), a rename, Make or split with the paths
+  (`Builder._carry`), a paste (`Assemblies.lines_pasted`, the copied copy's
+  frame moved as the parts, `Carry.moved`, only where the lines here are the
+  copied ones), Undo and Redo through the step's `sectionlines`; a save
+  writes them re-based into the frame it writes the definition in from the
+  first written copy that has one (`Assemblies.lines_written`, `rebased`, a
+  view's through `SavedViews.through_line`, a light's `SceneLights.through`,
+  both taking a reflection), a copy taken apart sends its lights from its
+  frame into its parent's (pccheck FW, FW3, FX, FY: a frame re-found from
+  parts saw no mirror and no turn of a symmetric copy); a copy
+  taken apart, `Assemblies._lines_apart`, puts its lights through its frame
+  into the one it was in, the model's own lights (`BrickWorld.scene_lights`,
+  a `scenelights` step) when that is the model, its last copy's views gone
+  and said; one `sectionlines` undo a step, `Assemblies.set_lines`; a line
+  the model and a sub-model both have is the model's in its own lines
+  alone); numbers are rounded to a
   thousandth before they are checked; a line not read stays in the file
   word for word and the open says how many and why. Strength 1 lights a face
   100 LDU from a lamp, or any face turned to a sun, as the window's key does.
@@ -2855,11 +3087,44 @@ picture the assistant is shown.
   saved: no light line in the new file (the read and unread lines are the
   model's, kept against the world's generation); a CRLF file whose last line
   is a light, changed and saved, no lone CR; the app's own MPD saved, opened
-  and saved again with its sub-model's light in its sub-model and the
-  unread line once; an MPD whose `0 FILE` lines have a tab keeping its
+  and saved again with its sub-model's light in its sub-model, where it was
+  against its part, and the unread line once; an MPD whose `0 FILE` lines have a tab keeping its
   sub-model's light (sections are `LdrModel.parse`'s, never a regex of
   lights' own); a light added to a model with a comment before its `0 FILE`
-  inside its section. Then the car under 0 to 4 suns (each adding light)
+  inside its section. Its third (lreview3 F1-F3, lightpaths): a lit
+  sub-model with a view of its own renamed (the app's own MPD and someone
+  else's), everything made a sub-assembly round it, the sub-model it is in
+  taken apart, each saved, undone and saved, redone and saved: its light and
+  view once each, in its section, the model's lamp alone in the model; a
+  model whose sub-model holds its lamp's very line written whole, the lamp
+  still the model's, two lines in all, the sub-model's where it was against
+  its part, one light opened again. And
+  lightpaths2's (lpcheck s6, s12): Alpha and Beta taken apart, sections of
+  their names made over MCP and all undone, each its own light and view
+  again; B's lit Sub deleted and A's Sub pasted, none of B's lines in it; a
+  lit sub-model's one copy deleted by hand and over MCP, undone, redone; two
+  copies taken apart one by one, each light where it was among the model's
+  own, the last one's view gone and said, undone and redone twice; a lit Sub
+  cut and pasted in one model, copied and pasted beside itself (nothing
+  said), copied, deleted and pasted, cut from A and pasted into B, and into
+  C with a lit Sub of its own (C's kept, and said), each undone and redone;
+  one copy taken apart while the other is in hand (X), its light and view
+  kept for the one put down; each state saved, opened and saved again. And
+  pathcarry's (lp2check, `_r_frames`): the app's own file with its lit Sub
+  placed 100 LDU along (lpcheck s7_a) and turned a quarter, saved; its only
+  copy picked up and put down beside (P_moved), then taken apart (M), then
+  undone; copied from A and pasted into B (P); entered, all its parts taken
+  out (R: `Assemblies.take_out`, its light the model's and said); each
+  file's light and view checked where an LDraw reader composes them,
+  against the sub-model's part. And HB2: A's lit Sub pasted into B, whose
+  Sub's only part the catalogue lacks, is a copy of its own (`next_copy`
+  counts `BrickWorld.held_paths`), not written into the held one; B's Sub
+  is still written as sub.ldr (`ModelStore._hold_unit` names the pasted
+  copy "Sub 2"), its light and view in it once, where they were against its
+  part, and none in the pasted copy's (`Assemblies._lies_in`).
+  `-- --review`
+  runs only these review checks, nothing drawn (a minute, not the whole
+  probe's renders). Then the car under 0 to 4 suns (each adding light)
   and the neon and white grids under 8 bulbs in the Dark light (the white
   grid's floor rising; the neon grid's mean and far floor within 10% of no
   bulbs), on either renderer; `PROBE_COMPAT=1` runs it on Compatibility
@@ -3055,6 +3320,22 @@ picture the assistant is shown.
   nothing makes AFTER any more. play_motion's picture is from the view that
   sees most of what moves (`MotionRender.seen_from`, `best_view`: the
   lattice marched from each moving part toward each of StudioRender.VIEWS).
+- `driving along a path` (unit drive, APP_UX6 #12; `MotionPlayer.Drive`,
+  `drive_path`, `path_from`, `Motions.Path`): a motion's path, `0 !BRICKWORKS
+  MOTION_PATH "Drive and turn left" SECONDS 7 EASE STRAIGHT 32 LEFT 90 RADIUS 24`
+  with a `MOTION_WHEEL` line for each axle that rolls and a `MOTION_STEER`
+  line for the steering, written after the motion's other lines. The whole
+  model is driven along the ground, each leg straight so many studs (less
+  than 0 backwards) or left or right so many degrees on a radius measured at
+  the back axle's middle; each wheel's body is turned through Grab by the
+  distance its own middle travels over its tyre's radius, and the steering
+  is turned into each corner as far as its rack lets it, eased in and out.
+  Played as any motion: drawn only in the panel and on a link, kept by
+  play_motion as one step (Grab.commit of every part), backwards back to
+  where it began. Suggested as "Drive and turn left" when the model has a
+  wheel on a level axle on the ground. In the panel's editor, Where it
+  drives: Drive along a path, a row a leg, Add a leg, Over, Eased, No path.
+  Over MCP: define_motion path={legs:[{straight:32},{left:90}]}.
 - `render open check` (`tools/web/render_open_check.mjs`): the Render
   dialog's first open in a fresh browser, from the toolbar, every frame from
   the press to the first draft timed in the page (the engine's frame
@@ -3068,6 +3349,72 @@ picture the assistant is shown.
   (100); left alone first as a person leaves it, or pressed `--at-once`
   before that, or `--during` the making ready while it waits for someone
   using the window (it must wait, and the press must not).
+- `line art and comic looks` (APP_UX7 #22 lineart; File, Render…, Look,
+  Line art and Comic, on a row of their own under As in the window and
+  Product; `render_model` and `render_queue`'s `look lineart`/`comic`;
+  `src/render/line_art.gd`, `LineArt`, `line_art.gdshader`,
+  `line_normals.gdshader`; `RenderSettings.LOOKS`). StudioRender draws a
+  line look's shot in one frame whatever the grade (`LineArt.underneath`:
+  Quick, sharp, on nothing), the render's stage with its seam off
+  (`set_edges_shown(false)`): lit as the window lights it (for the floor's
+  shadow, its alpha), then flat (an even white ambient, no lamp, `room` 0:
+  the plastic's own colour, prints and all). A copy of the stage
+  (`LineArt.stage`, layer 1 << 18, shown only while it is drawn) is drawn
+  in `booklet_codes` numbers, in `line_normals` (view-space faces) and in
+  white clay (a matt StandardMaterial3D) in the set's light and the stage's
+  shadows, into three viewports of its own sharing the set's world and
+  camera. `line_art.gdshader` makes the picture: an outline 1.5 x a part's
+  line where the model meets the page, a line where the number changes
+  (one part meets the next), a third of it where one part's faces turn more
+  than 30° and, in Line art, round a print (the flat colour 0.2 apart
+  inside one part, not glass); the shade is the clay's linear light over
+  full light (`LineArt.full_light`: what 90% of the model's clay pixels are
+  darker than, the whole picture's clay drawn 256 across first), as
+  halftone dots on a 45° screen (cell 1/150 of the short side, line 1/450,
+  at least 2 px) from 0.9 of it down to 0.5, up to 0.6 of a cell, so a
+  black part and a white one in one light get the same dots (the window
+  lights black a third as much for its colour) and a model seen square on
+  has its faces to the eye clean; Line art white paper inside, Comic the flat colour, 0.82 of
+  it turned away, its dots 0.42 of it, black plastic lifted as the
+  booklet's; round the model the backdrop's colour or nothing, the contact
+  shadow (its alpha on nothing) in dots from 0.18 of it, its faint reaches
+  left as paper. Every piece of a big picture
+  drawn with a margin and on one screen (`origin`). An animation's moves
+  are made on the copy too (`LineArt.move`), and it is made again after
+  one. The window look and Product never reach any of it.
+- `lineart probe` (`src/dev/lineart_probe.gd`, `tools/probe.sh lineart`,
+  windowed on the GPU at 1400 x 900, `PROBE_SIZE=1280x720` too): through
+  the sign-in screen with a throwaway account (.env). First Render's
+  default (Good, window, 1080p) of the example car, the run's first
+  picture, kept as `default_render.png`, and a small scene's Quick window
+  (twice the same) and Product kept as `scene_window.png`,
+  `scene_product.png`; `-- --reference=DIR` (the same probe run on an
+  older build, its `--shots`) lays each beside the older's, byte for byte;
+  the Good default to the pixel or within what one build's own two runs
+  differ by (pre261 against itself: 19,682 to 29,551 of 2,073,600 pixels a
+  level or two apart, the mean within 0.003 of a level, seeded or not; its
+  light gathers over frames), so at most 2 levels, 5% of the pixels and a
+  mean of 0.02. A Good render keeps some of the light it gathered for the
+  next (a third render of the car a level darker all over), so only a
+  run's first is laid beside another's. The Look row clicked as a person clicks: each look in the
+  window with its words whole, the inked two on a row of their own, the
+  note and the draft following; Render picture in Comic writes a coloured
+  640 x 360 with black lines. The small scene (three red 1 x 2s in a wall, a
+  white 2 x 4 under a tile, a yellow slope, a black 2 x 2) at 1280 x 720:
+  Line art's paper white to the pixel more than 6 px from the model, only
+  greys, the outline dark round 95% of the edge, the wall's two seams inked
+  in 90% of their rows (front view), the white brick's face the window's
+  light leaves darker more than 6% dots in 3 or more spots and its top
+  under 3%; Comic red and yellow, outlined, seams inked, dots on the shaded
+  face; on nothing every pixel clear away from the model, the model solid,
+  its outline drawn over nothing, the contact shadow in 10+ dots; an
+  animation frame with the white brick sent away leaves no ink where it
+  stood; `render_model` lists both looks and draws `lineart`; a look there
+  is not is answered with all four. Then 10036-1 Pizza To Go in both looks
+  at 1080p (`lineart_set.png`, `comic_set.png`, `lineart_set_front.png`):
+  look at them, lines a person would draw. Pictures in `user://lineart` or
+  `--shots=DIR`, with `made_of_*.png`, the five pictures the scene's Line
+  art was made of (lit, flat, codes, normals, clay), to look at.
 
 ## How to reach it
 
@@ -3360,6 +3707,33 @@ tools/probe.sh pose_probe
 # Pictures of each state; and again in a 1280 x 720 window.
 tools/probe.sh motions_panel_probe -- bench/results/motions5-2026-10-20
 PROBE_SIZE=1280x720 tools/probe.sh motions_panel_probe -- bench/results/motions5-2026-10-20
+# The racer driven along a path (src/dev/drive_probe.gd): 8808-1's
+# suggested Drive and turn left kept from the Motions panel, Play driving it
+# in the window to where the path ends and Play backwards back, one step
+# each; its two legs in the editor and a corner made right written as RIGHT,
+# undone; define_motion path= a 32-stud
+# straight and a quarter turn left; read from its frames alone, the back
+# axle's middle goes 32 studs straight and round the file's radius within 0.1
+# stud, ending turned 90 ± 0.5°, and each axle turns once for each round of
+# its tyre (radius from the mesh) its middle travels, within 2%, rolling the
+# right way; the file's lines byte for byte and the same drive played from
+# it; play_motion kept on its floor, backwards back to the degree, two undos;
+# render_motion's frames draw it across the frame; a ?motion=drive-and-turn-left link drives it in the viewer, its
+# tyres turning. Section 10 (DRIVE_ONLY=arrive alone, DRIVE_PORT=N its parts
+# host's port): the rims held back on their way, the drive kept, each rim
+# put down in its tyre where the drive left the model, saved before and
+# after and opened again with every joint found; Compare with the save made
+# while they came finds nothing changed; kept, landed, undone and kept,
+# undone, landed, redone, each rim in its tyre (0.00 LDU) and 4 of 4 joints,
+# and so saved and opened again; the app's own file with a part the
+# catalogue lacks, driven and kept, writes it with the part it stood with
+# (drvrecheck F1, F3); and the drive played twice as one step a slice a
+# frame (MotionPlayer.pace, as a link's press plays a sequence), the rims
+# arriving between its two keeps: undone, redone, undone again and saved,
+# each rim 0.00 LDU in its tyre with 4 of 4 joints (drvcheck3 L1; 3 fail on
+# pre261 ee8773128). Pictures in OUT_DIR, named by the window's size.
+tools/probe.sh drive_probe -- bench/results/drive-2026-11-07
+PROBE_SIZE=1280x720 tools/probe.sh drive_probe -- bench/results/drive-2026-11-07
 # What the animation audit found broken, on real sets (docs/ANIMATION.md;
 # src/dev/animation_probe.gd):
 # 31070-1's back window posed out and back stands where it was built, Play

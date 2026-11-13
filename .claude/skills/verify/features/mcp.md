@@ -1032,10 +1032,34 @@ All of these are in `tools/check.sh`.
   look or file) and is not in `NOT_A_STEP` has its change made one
   step, "Claude's edit model (1 put down)": a call that keeps its own history
   (the window's commands, edit_selection) folded into one, any other as the
-  difference (`SelectionScope.steps_back`). The socket's own tools too:
+  difference (`SelectionScope.steps_back`), which the other copies of each
+  sub-model it changed then follow in the same step
+  (`CommandSocket._copies_follow`, `Assemblies.after_edit`; before copyfaults2
+  a session's edit was recorded after after_edit had run, so no twin
+  followed it). The answer is counted again once they have followed
+  (`Assistant.recounted`): "Done. 3 bricks now; 1 other copy of its
+  sub-assembly followed it." where it said "4 bricks now" of the 3 a removal
+  from one of two copies left (cffix2; `copyfaults_probe` twin_every checks
+  every session edit's count). The socket's own tools too:
   review_model with a feature lays a piece, save_model can hand the next
   feature back laid, and clear_model begins a new model as New does, its one
-  step putting the old one back.
+  step putting the old one back. That step is the clear's own
+  (`Main.clear_model(true, …)`, not the difference): every part under its own
+  number (`BrickWorld.clear(keep_numbers)`), the floor, the step looks, the
+  copies' steps and chains, each sub-model's own lights and views
+  (`BrickWorld.section_lines`) with the frame each copy holds them in
+  (`section_frames`), so a copy moved after the undo takes its lights with it
+  (pcfix), where each part not on the baseplate is in the tree
+  (`held_paths`), motions, sections broken out and the model's
+  name, file and lift (`ModelStore.identity`, Builder's "store" step), the
+  parts it holds but does not show and those still being fetched, which land
+  in the undo's own step (`identity`'s "awaited", `ModelStore._land_arrived`,
+  their numbers in its "landed"), so its redo takes them off again and back
+  on their way (`copyfaults_probe` clear_redo), and the
+  file Save as wrote (`Main._put_identity`, `ModelBar.on_disk`); as the
+  difference, the undo lost the steps and looks, put the parts back as an
+  Untitled model with no file, and its redo left a part behind
+  (`copyfaults_probe` clear_undo, clear_held, clear_file, clear_lit).
   `claude_undo_probe`: the person places a brick, a session edits, Undo takes
   the edit and keeps the brick, a second Undo takes the brick; then
   submit_design, review_model of a feature, edit_model (recolour, move,

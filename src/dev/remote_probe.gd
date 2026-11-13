@@ -106,7 +106,13 @@ func _run() -> void:
 	quit(1 if _failures else 0)
 
 
+## The environment's PARTS_URL first, as tools/web_pack.py reads it: tools/check.sh
+## --network names this machine's copy of the bucket there (tools/web/storage_mirror.mjs),
+## so a run fetches each object from Supabase at most once. Then .env's.
 static func _parts_url() -> String:
+	var named: String = OS.get_environment("PARTS_URL")
+	if not named.is_empty():
+		return named
 	var file: FileAccess = FileAccess.open("res://.env", FileAccess.READ)
 	if file == null:
 		return ""

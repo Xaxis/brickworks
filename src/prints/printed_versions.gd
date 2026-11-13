@@ -104,7 +104,7 @@ func open(plain: String, ids: PackedInt64Array, colour: int) -> void:
 	_status.text = ("Click one to swap %s for it, in %s colour, where it stands. Edit, Undo "
 		% ["the part" if ids.size() == 1 else "the %d parts" % ids.size(),
 			"its" if ids.size() == 1 else "each one's"] + "puts it back.")
-	visible = true
+	HudFront.show_panel(self)
 	_fill()
 
 

@@ -1,0 +1,30 @@
+0 FILE axles.mpd
+0 Two Trucks
+0 Name: axles.mpd
+0 Author: Cora Check [ccheck]
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 truck.ldr
+1 1 0 0 400 1 0 0 0 1 0 0 0 1 truck.ldr
+0 NOFILE
+0 FILE truck.ldr
+0 Truck
+0 Name: truck.ldr
+0 Author: Cora Check [ccheck]
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 16 0 0 -120 1 0 0 0 1 0 0 0 1 axle.ldr
+1 16 0 0 120 1 0 0 0 1 0 0 0 1 axle.ldr
+0 NOFILE
+0 FILE axle.ldr
+0 Axle
+0 Name: axle.ldr
+0 Author: Cora Check [ccheck]
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 3023.dat
+1 16 -60 0 0 1 0 0 0 1 0 0 0 1 wheel.ldr
+1 16 60 0 0 1 0 0 0 1 0 0 0 1 wheel.ldr
+0 NOFILE
+0 FILE wheel.ldr
+0 Wheel
+0 Name: wheel.ldr
+0 Author: Cora Check [ccheck]
+1 0 0 0 0 1 0 0 0 1 0 0 0 1 3062b.dat
+1 16 0 -24 0 1 0 0 0 1 0 0 0 1 4073.dat
+0 NOFILE

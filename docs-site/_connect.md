@@ -70,6 +70,8 @@ It copies Brickworks' address, for any app that takes a remote MCP server. Or co
 Your AI app sends you to Brickworks to sign in, with a code we email you, or straight on if this browser is signed in already. Brickworks asks whether to let it build, by the name the app gives itself. Press **Allow**.
 <!-- end -->
 
+![The Brickworks page your AI app opens, here for Claude: signed in as you@example.com, it asks Let Claude build in Brickworks?, lists what it will be able to do, and has Allow and Cancel buttons.](/docs/img/connect-allow.webp "The one question Brickworks asks, once for each app.")
+
 That is once for {called}: it stays connected, for every Brickworks tab you open, until you disconnect it.
 
 ## Build {#build}

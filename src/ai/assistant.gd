@@ -402,6 +402,11 @@ signal built(brick_count: int)
 ## the selection: the model is one made with the assistant
 ## (ModelStore.made_with), whatever it was before.
 signal laid_parts
+## A request's change was kept as one step of the history (ClaudeStep.record):
+## what follows an edit by hand follows it, in that step (Main connects
+## ModelStore.looks_follow_edit). Up to 2026-11-11 nothing did, and a
+## sub-model a design run left no copy of kept its lights and views.
+signal run_kept
 ## The design standing calls itself this: the name submit_design gave it.
 signal titled(name: String)
 ## A design is going down, a sketch or the whole model (submit_design),
@@ -1500,7 +1505,10 @@ var _run_mark: Dictionary = {}
 func _record_run() -> void:
 	var mark: Dictionary = _run_mark
 	_run_mark = {}
-	if ClaudeStep.record(builder, world, scenery, mark) and ClaudeStep.lays(builder.last_step()):
+	if not ClaudeStep.record(builder, world, scenery, mark):
+		return
+	run_kept.emit()
+	if ClaudeStep.lays(builder.last_step()):
 		laid_parts.emit()
 
 
@@ -3156,6 +3164,7 @@ func _stop(ok: bool, summary: String) -> void:
 ## one is (see [method _feature_brief]).
 func _run_tool(block: Dictionary) -> Variant:
 	follow_renumbering()
+	_done_said = ""
 	var before: int = world.brick_count() if world != null else 0
 	var answer: Variant = await _tool_answer(block)
 	if str(block.get("name", "")) == "find_techniques":
@@ -3560,9 +3569,9 @@ func _tool_answer(block: Dictionary) -> Variant:
 			_edited = true
 			progress.emit("changed it: %d bricks%s"
 				% [edited.placements.size(), _shorthand_used(args)])
-			var said: String = "Done. %d bricks now." % edited.placements.size()
-			if past_count():
-				said = "Done. %s." % parts_said().replace(" parts,", " bricks now,")
+			var said: String = _done_words(edited.placements.size()) + "."
+			_done_said = said
+			_done_count = edited.placements.size()
 			if not _made_said.is_empty():
 				said += " " + _made_said
 			if not _unknown.is_empty():
@@ -3575,7 +3584,11 @@ func _tool_answer(block: Dictionary) -> Variant:
 			if not resting.is_empty():
 				said += "\n" + resting
 			if scoped:
+				var had: int = world.brick_count()
 				var words: String = _gather_focus_step(standing_was)
+				# Counted as the copies that followed it left the model, which
+				# the words after it name.
+				said = str(recounted(said, focus.followed, world.brick_count() - had, false))
 				# What held is known for the edit as it landed; copies that
 				# followed it are new parts, and asked about afresh.
 				_hanging_before = [world.revision] + _hanging_after \
@@ -4454,11 +4467,17 @@ func _what_broke(report: Variant, model: Model) -> String:
 	for one: Balance.JointLoad in balance.joints:
 		if one.ratio <= 1.0 or bad.size() >= WORTH_SAYING:
 			continue
-		bad.append("%s %s %s on %d stud%s at %sx its working load (%s N·cm against %s; lets go at %s)"
-			% [str(name_of.call(one.beyond)), "hanging from" if one.hangs else "on",
-				str(name_of.call(one.held_by)), one.studs, "" if one.studs == 1 else "s",
-				Balance.tidy(one.ratio), Balance.tidy(one.moment), Balance.tidy(one.capacity),
-				Balance.tidy(one.ultimate)])
+		var who: String = "%s %s %s" % [str(name_of.call(one.beyond)), "hanging from" if one.hangs
+			else "on", str(name_of.call(one.held_by))]
+		# By its kind (Balance.JointLoad.held_on), and what nothing holds not
+		# divided by that nothing (drvcheck A).
+		if one.holds_nothing():
+			bad.append("%s with no stud in contact: nothing holds it there" % who if one.kind == "studs"
+				else "%s %s: it turns with nothing holding it" % [who, one.held_on()])
+			continue
+		bad.append("%s %s at %sx its working load (%s N·cm against %s; lets go at %s)"
+			% [who, one.held_on(), Balance.tidy(one.ratio), Balance.tidy(one.moment),
+				Balance.tidy(one.capacity), Balance.tidy(one.ultimate)])
 	if bad.is_empty():
 		return "It stands, and no stud joint is past its working load."
 	return ("As it stands now: %s. check_design edit= tries a fix on a copy first."
@@ -18419,6 +18438,12 @@ func _apply_edit(model: Model) -> void:
 	# bricks the edit had just asked to keep, and then skipped them as
 	# missing.
 	var doomed := PackedInt64Array()
+	# What a part swapped keeps of the one it takes the place of: its
+	# sub-model, its copy, its step and its line in someone else's file, as
+	# Replace keeps them (Builder._swap). Taken off and put down, a session's
+	# swap made a part of nothing, on no line, and the save wrote it into the
+	# model at the file's top (copyfaults).
+	var kept_of: Dictionary = {}    ## placement -> the brick it swaps
 	for brick: BrickWorld.Brick in world.bricks():
 		if scenery.has(brick.id):
 			continue
@@ -18433,6 +18458,8 @@ func _apply_edit(model: Model) -> void:
 			doomed.append(brick.id)
 			fresh.append(placement)
 			wanted.erase(brick.id)
+			kept_of[placement] = brick
+	_swaps_found(model, fresh, doomed, kept_of)
 	for brick_id: int in doomed:
 		builder.lattice.release(brick_id)
 		world.remove_brick(brick_id)
@@ -18473,6 +18500,13 @@ func _apply_edit(model: Model) -> void:
 		var brick_id: int = world.add_brick(
 			placement.part, placement.color, at)
 		if brick_id != 0:
+			var was: BrickWorld.Brick = kept_of.get(placement)
+			if was != null:
+				var made: BrickWorld.Brick = world.get_brick(brick_id)
+				made.group = was.group
+				made.unit = was.unit
+				made.step = was.step
+				made.origin = was.origin
 			builder.register(brick_id, placement.part, at)
 			_changed_ids.append(brick_id)
 			_added_ids.append(brick_id)
@@ -18487,6 +18521,47 @@ func _apply_edit(model: Model) -> void:
 	_sketched_ids = PackedInt64Array()
 	fresh_ids = _changed_ids.duplicate()
 	built.emit(_placed_ids.size())
+
+
+## Each part an edit puts down where one it takes off stood, into
+## [param kept_of] (placement -> the brick it swaps): a swap, as a session
+## makes one with remove and add ("takes it off and adds this where it
+## stood", search_parts like=). Where it stood: the new part's middle in the
+## old one's box, or the old one's in the new one's, the nearest first; one
+## the edit puts in an assembly of its own is not one.
+func _swaps_found(model: Model, fresh: Array[Placement], doomed: PackedInt64Array,
+		kept_of: Dictionary) -> void:
+	var taken: Dictionary = {}
+	for placement: Placement in kept_of:
+		taken[(kept_of[placement] as BrickWorld.Brick).id] = true
+	var gone: Array = []            ## [brick, its box]
+	for brick_id: int in doomed:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick != null and not taken.has(brick_id):
+			gone.append([brick, SelectionScope.box_of(brick.part_id, brick.transform, library)])
+	if gone.is_empty():
+		return
+	for placement: Placement in fresh:
+		if kept_of.has(placement) or placement.id != 0 or not placement.group.is_empty() \
+				or not placement.unit.is_empty():
+			continue
+		var part: Lbm.PartMesh = library.mesh_for(placement.part)
+		if part == null:
+			continue
+		var box: AABB = SelectionScope.box_of(placement.part,
+			_transform(placement, part, model.section_for(placement)), library)
+		var middle: Vector3 = box.get_center()
+		var best: int = -1
+		for n: int in gone.size():
+			var there: AABB = gone[n][1]
+			if not (there.grow(0.5).has_point(middle) or box.grow(0.5).has_point(there.get_center())):
+				continue
+			if best < 0 or (gone[best][1] as AABB).get_center().distance_to(middle) \
+					> there.get_center().distance_to(middle):
+				best = n
+		if best >= 0:
+			kept_of[placement] = gone[best][0]
+			gone.remove_at(best)
 
 
 ## Put a model on the baseplate, replacing whatever the assistant built
@@ -23111,11 +23186,11 @@ func _gather_focus_step(was: Dictionary) -> String:
 	# of a model's two wings, the other stayed as it was.
 	var followed: Array = [[], 0]
 	if assemblies != null:
-		followed = assemblies.copies_follow(builder.touched_groups(
-			{"undo": "group", "steps": steps}))
+		followed = assemblies.copies_follow({"undo": "group", "steps": steps})
 	focus.followed = int(followed[1])
 	var own: Array = steps
-	steps = steps + (followed[0] as Array)
+	# What followed first, newest first as a group keeps them (Builder.extend_last).
+	steps = (followed[0] as Array) + steps
 	if not focus.step.is_empty() and is_same(builder.last_step(), focus.step):
 		focus.own_steps = own + focus.own_steps
 		focus.step["steps"] = steps + (focus.step["steps"] as Array)
@@ -23136,6 +23211,49 @@ func _gather_focus_step(was: Dictionary) -> String:
 	builder.selection = focus.ids.duplicate()
 	builder.selection_changed.emit(builder.selection.size())
 	return words
+
+
+## How an edit's reply opens, with [param count] bricks: "Done. 4 bricks
+## now", or the count against the brief's.
+func _done_words(count: int) -> String:
+	if past_count():
+		return "Done. %s" % parts_said().replace(" parts,", " bricks now,")
+	return "Done. %d bricks now" % count
+
+
+## The sentence the last edit's reply opened with ([method _done_words]) and
+## its count, for [method recounted]; "" once said again, and from the start
+## of every other call.
+var _done_said: String = ""
+var _done_count: int = 0
+
+
+## [param answer], the reply to an edit, opening with its count as the model
+## stands once [param followed] other copies of a sub-assembly took the edit
+## too, which put down [param more] parts more than it took off. The follow
+## comes after the reply is made (CommandSocket._one_step): a session's
+## removal of one copy's 3010 took the other's too, and the reply said "Done.
+## 4 bricks now." of the 3 left (pc2check). [param named] says that they
+## followed, where nothing after it does. Read once: [member _done_said] is
+## let go.
+func recounted(answer: Variant, followed: int, more: int, named: bool = true) -> Variant:
+	var head: String = _done_said
+	_done_said = ""
+	if followed <= 0 or head.is_empty():
+		return answer
+	var now: String = _done_words(_done_count + more) + ("; %d other cop%s of its "
+		% [followed, "y" if followed == 1 else "ies"] + "sub-assembly followed it."
+		if named else ".")
+	if answer is String and (answer as String).begins_with(head):
+		return now + (answer as String).substr(head.length())
+	if answer is Array and not (answer as Array).is_empty() and (answer as Array)[0] is Dictionary \
+			and str((answer as Array)[0].get("text", "")).begins_with(head):
+		var blocks: Array = (answer as Array).duplicate()
+		var first: Dictionary = (blocks[0] as Dictionary).duplicate()
+		first["text"] = now + str(first["text"]).substr(head.length())
+		blocks[0] = first
+		return blocks
+	return answer
 
 
 ## The answer to an edit about the selection: what it changed, and the

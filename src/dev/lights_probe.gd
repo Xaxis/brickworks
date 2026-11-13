@@ -29,6 +29,8 @@
 ##                    Brickworks, which knows nothing of lights: each opens
 ##                    whole, and its light lines are as they were
 ##   -- --no-trace    the path-traced half left out (a second window size)
+##   -- --review      only what the reviews found, nothing drawn: the file's
+##                    lines through opens, edits and saves
 ##   -- --means=FILE  under Forward+ the Dark light's means under the model's
 ##                    suns written there; under Compatibility (the web's,
 ##                    on the card through zink: PROBE_COMPAT=1 tools/probe.sh
@@ -51,7 +53,12 @@
 ## as LdrModel reads them. And on this renderer, the car under 0 to 4 suns
 ## each adding light, and 8 bulbs over a grid of neon and of white bricks in
 ## the dark keeping the neon grid's mean and far floor within 10% of no bulbs
-## (on Compatibility too, and there within 10% of Forward+).
+## (on Compatibility too, and there within 10% of Forward+). Its third
+## (lreview3's F1-F3, lightpaths): a sub-model's light and view in its own
+## section through a rename (the app's own file and someone else's), a Make
+## round it and its outer sub-model taken apart, each undone and redone; and
+## a model whose sub-model holds its lamp's very line, written whole, keeping
+## its lamp.
 ##
 ## Leaves shots/lights/: Render with the spot, studio and dark; the spot's
 ## pictures and their maps (green changed inside, red changed outside, grey
@@ -133,6 +140,10 @@ func _run() -> void:
 	_tools = AppTools.new()
 	_tools.app = _main
 	_tools.assistant = _main.get("_assistant")
+	if OS.get_cmdline_user_args().has("--review"):
+		await _review()
+		_finish("lights: what the reviews found, and nothing drawn (--review)")
+		return
 	await _in_render()
 	await _kept_everywhere()
 	await _sessions()
@@ -814,8 +825,13 @@ func _in_file() -> Array:
 	return _lights.call("in_file", _scene(), _store.lift())
 
 
+## The lights a saved file holds, read as the open reads them: off the one
+## index of the app's lines (MetaIndex, metalines). SceneLights.read went
+## with mlfix, and the probe's every "light line in" check called it.
 func _read(path: String) -> Array:
-	return _lights.call("read", FileAccess.get_file_as_string(path))
+	var metas: Variant = load("res://src/parts/meta_index.gd").call("of_text",
+		FileAccess.get_file_as_string(path))
+	return (_lights.call("read_from", metas) as Dictionary)["lights"]
 
 
 func _same(a: Array, b: Array) -> bool:
@@ -939,7 +955,9 @@ func _review() -> void:
 	await _r_cleared()
 	await _r_whole_mpd()
 	await _r_crlf_last()
+	await _r_crlf_unread()
 	await _r_sections()
+	await _r_paths()
 	await _r_junk()
 
 
@@ -1089,11 +1107,12 @@ func _r_whole_mpd() -> void:
 	await _opened(saved)
 	_main.call("save_model", saved)
 	var after: String = FileAccess.get_file_as_string(saved)
-	var sub_at: int = after.find("0 FILE sub")
+	# In it, where it was against its part: written in the frame the save
+	# writes the sub-model in, not as read (Assemblies.lines_written).
 	_check("the app's own MPD, saved, opened and saved again: %d light lines (3), the "
-		% _lines_of(after).size() + "sub-model's in it (%s), the one it cannot read once (%d)"
-		% [sub_at > 0 and after.find(sub_light, sub_at) > 0, after.count("laser")],
-		_lines_of(after).size() == 3 and sub_at > 0 and after.find(sub_light, sub_at) > 0
+		% _lines_of(after).size() + "sub-model's in it where it was against its part (%s), the "
+		% _light_kept(text, after, "#00ff00") + "one it cannot read once (%d)" % after.count("laser"),
+		_lines_of(after).size() == 3 and _light_kept(text, after, "#00ff00")
 		and after.count("laser") == 1)
 
 
@@ -1113,6 +1132,29 @@ func _r_crlf_last() -> void:
 		% [alone, _lines_of(after).size()] + "lines (2), the change in it (%s)"
 		% after.contains("#00ff00"), alone == 0 and _lines_of(after).size() == 2
 		and after.contains("#00ff00"))
+
+
+## A CRLF file with a light this cannot read between two it can, a light
+## added and saved: no line ends LF alone, and the unread one is where it
+## was (metalines: lines the writers put in ended LF, and the unread ones
+## went after the rest).
+func _r_crlf_unread() -> void:
+	var laser: String = _light("laser", [0, 0, 0])
+	var text: String = "0 Crlf unread\r\n0 Name: crlf_unread.ldr\r\n0 Author: Someone\r\n" \
+		+ _light("point", [0, -60, 0]) + "\r\n" + laser + "\r\n" \
+		+ _light("point", [0, -90, 0], {"colour": "#00ff00"}) + "\r\n" \
+		+ "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat\r\n"
+	await _opened(_put("crlf_unread.ldr", text))
+	await _tools.run("light_model", {"op": "add", "kind": "point"})
+	await _tools.run("set_floor", {"kind": "baseplate", "across": 16})
+	var saved: String = ModelStore.SAVE_DIR + "crlf_unread_saved.ldr"
+	_main.call("save_model", saved)
+	var after: String = FileAccess.get_file_as_string(saved)
+	var lf: int = after.count("\n") - after.count("\r\n")
+	var lines: PackedStringArray = _lines_of(after)
+	_check("a CRLF file, a light added and the floor set: %d lines end LF alone (0), " % lf
+		+ "the light it cannot read second of 4 as it was (%d)" % lines.find(laser),
+		lf == 0 and lines.size() == 4 and lines.find(laser) == 1)
 
 
 ## Which model a light is of, as LdrModel reads it: an MPD whose 0 FILE lines
@@ -1144,6 +1186,1034 @@ func _r_sections() -> void:
 	_check("a light put in a model with a comment before its 0 FILE goes inside its section "
 		+ "(light at %d, FILE at %d)" % [written.find(META), written.find("0 FILE main.ldr")],
 		written.find(META) > written.find("0 FILE main.ldr") and written.find("0 FILE main.ldr") >= 0)
+
+
+## The sub-model's own light and view in the fixtures of [method _r_paths].
+const SUB_GREEN := "#00ff00"
+const SUB_VIEW := "sub view"
+
+
+## A sub-model's light and view follow it wherever its path goes, and stay
+## its own (lreview3's F1 and F3, lightpaths): it renamed, in the app's own
+## file and in someone else's (both written whole then); a Make round it;
+## the sub-model it is in taken apart. Each undone and redone, saved after
+## each. And F2: a model whose sub-model holds its lamp's very line, written
+## whole, keeps its lamp in itself. Up to 2026-11-10 each lost the line: the
+## open kept them by the copy's path, which every one of these changes.
+func _r_paths() -> void:
+	var assemblies: Assemblies = _shell.get("assemblies")
+	var sub_light: String = _light("point", [0, -50, 0], {"colour": SUB_GREEN})
+	var sub_view: String = VIEW_META + JSON.stringify({"name": SUB_VIEW, "yaw": 10, "pitch": -20,
+		"distance": 300, "focus": [0, 0, 0]})
+	for whose: String in ["Brickworks", "Someone"]:
+		await _opened(_put("paths_rename.mpd", _lit_sub(whose, sub_light, sub_view)))
+		assemblies.rename(_path_named(assemblies, "Sub"), "Engine")
+		await _frames(5)
+		var said: Array = await _saved_through("paths_rename", ["engine.ldr", "sub.ldr", "engine.ldr"])
+		_check("%s MPD, its lit sub-model renamed Engine, undone and redone, saved after each: "
+			% ("the app's own" if whose == "Brickworks" else "someone else's") + "its light and "
+			+ "view in its section each time (%s), the model's lamp in the model alone (%s)" % said,
+			said[0] == [true, true, true] and said[1] == [true, true, true])
+	await _opened(_put("paths_make.mpd", _lit_sub("Brickworks", sub_light, sub_view)))
+	var selection: Dictionary = {}
+	for brick: BrickWorld.Brick in _world.bricks():
+		selection[brick.id] = true
+	(_main.get("_builder") as Object).set("selection", selection)
+	assemblies.make("Box")
+	await _frames(5)
+	var made: Array = await _saved_through("paths_make", ["sub.ldr", "sub.ldr", "sub.ldr"])
+	_check("everything made a sub-assembly (Make), undone and redone, saved after each: the "
+		+ "sub-model's light and view in its section each time (%s), the lamp in the model (%s)"
+		% made, made[0] == [true, true, true] and made[1] == [true, true, true])
+	var nested: String = "\n".join(PackedStringArray(["0 FILE main.ldr", "0 Nested", "0 Name: main.ldr",
+		"0 Author: Brickworks", _light("point", [0, -60, 0]), "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat",
+		"1 16 100 0 0 1 0 0 0 1 0 0 0 1 outer.ldr", "0 NOFILE", "0 FILE outer.ldr", "0 Outer",
+		"0 Name: outer.ldr", "0 Author: Brickworks", "1 2 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat",
+		"1 16 0 -24 0 1 0 0 0 1 0 0 0 1 sub.ldr", "0 NOFILE", "0 FILE sub.ldr", "0 Sub",
+		"0 Name: sub.ldr", "0 Author: Brickworks", sub_light, sub_view,
+		"1 14 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat", "0 NOFILE", ""]))
+	await _opened(_put("paths_apart.mpd", nested))
+	assemblies.ungroup(_path_named(assemblies, "Outer"))
+	await _frames(5)
+	var apart: Array = await _saved_through("paths_apart", ["sub.ldr", "sub.ldr", "sub.ldr"])
+	_check("the sub-model it is in taken apart, undone and redone, saved after each: its light "
+		+ "and view in its section each time (%s), the lamp in the model (%s)" % apart,
+		apart[0] == [true, true, true] and apart[1] == [true, true, true])
+	# F2: the lamp's very line in the sub-model too.
+	var lamp: String = _light("point", [0, -60, 0])
+	var twin: String = _lit_sub("Brickworks", lamp, sub_view)
+	await _opened(_put("paths_twin.mpd", twin))
+	var saved: String = ModelStore.SAVE_DIR + "paths_twin_saved.mpd"
+	_main.call("save_model", saved)
+	var after: String = FileAccess.get_file_as_string(saved)
+	var own: int = _lines_of(after.substr(0, LdrModel.main_end(after))).size()
+	await _opened(saved)
+	_check("a model whose sub-model holds its lamp's very line, written whole: %d light line in "
+		% own + "the model (1), %d in all (2), the sub-model's in it (%s); opened again, %d light (1)"
+		% [_lines_of(after).size(), _light_kept(twin, after, "#ffffff"), _scene().size()],
+		own == 1 and _lines_of(after).size() == 2 and _light_kept(twin, after, "#ffffff")
+		and _scene().size() == 1)
+	await _r_gone()
+
+
+# -- a sub-model's lines go with its last copy (lpcheck, lightpaths2) ---------------
+
+
+## A sub-model's lights and views change in the step that leaves it no copy,
+## and nowhere else (lpcheck's s6 and s12, lightpaths2). Its last copy
+## deleted, by hand or over MCP: they go, and Undo brings them back with it.
+## Taken apart, a copy at a time: each copy's light goes with its parts, where
+## it was in the model, among the model's own lights; the last copy's view
+## goes, and the status bar says so; Undo and Redo through each. So no gone
+## sub-model's lines wait under its name: sections made over MCP under the
+## names of two taken apart, and all of it undone, leave each its own (s6);
+## a copy of another model's sub-model of the name pasted where one was
+## deleted takes none of its lines (s12). Each state saved, and opened and
+## saved again. Up to 2026-11-11 s6's Undo left Alpha without its light and
+## view, s12's paste wrote B's in A's, and a copy taken apart left its light
+## behind in a sub-model with no copy.
+func _r_gone() -> void:
+	await _r_gone_sections()
+	await _r_gone_pasted()
+	await _r_gone_deleted()
+	await _r_gone_apart()
+	await _r_gone_clipboard()
+	await _r_gone_apart_held()
+	await _r_frames()
+
+
+func _r_gone_sections() -> void:
+	var text: String = "\n".join(PackedStringArray(["0 FILE main.ldr", "0 Greek",
+		"0 Name: main.ldr", "0 Author: Brickworks", _light("point", [0, -60, 0]),
+		"1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat", "1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat",
+		"1 16 100 0 0 1 0 0 0 1 0 0 0 1 alpha.ldr", "1 16 -100 0 0 1 0 0 0 1 0 0 0 1 beta.ldr",
+		"0 NOFILE", "0 FILE alpha.ldr", "0 Alpha", "0 Name: alpha.ldr", "0 Author: Brickworks",
+		_light("point", [0, -50, 0], {"colour": "#ff0001"}), _view_line("alpha view"),
+		"1 14 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat", "0 NOFILE", "0 FILE beta.ldr", "0 Beta",
+		"0 Name: beta.ldr", "0 Author: Brickworks",
+		_light("point", [0, -50, 0], {"colour": "#ff0002"}), _view_line("beta view"),
+		"1 2 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat", "0 NOFILE", ""]))
+	await _opened(_put("gone_s6.mpd", text))
+	var assemblies: Assemblies = _shell.get("assemblies")
+	var said := PackedStringArray()
+	for definition: String in ["Alpha", "Beta"]:
+		said.append(await _taken_apart(_path_named(assemblies, definition)))
+	var sections: Sections = (_shell.get("sections") as Node).get("sections") as Sections
+	var ids: Array = []
+	for brick: BrickWorld.Brick in _world.bricks():
+		if not _store.scenery.has(brick.id):
+			ids.append(brick.id)
+	ids.sort()
+	var listed: Array[Sections.Suggestion] = []
+	for n: int in 2:
+		var one := Sections.Suggestion.new()
+		one.number = n + 1
+		one.name = ["Alpha", "Beta"][n]
+		one.ids = PackedInt64Array(ids.slice(0, 2) if n == 0 else ids.slice(2))
+		listed.append(one)
+	sections.suggested = listed
+	var made: String = await _mcp("make_sections", {"sections": [{"name": "Alpha", "from": [1]},
+		{"name": "Beta", "from": [2]}]})
+	var marks: Array = [await _saved_marks("gone_s6_a")]
+	for _n: int in 3:
+		_shell.call("run", "undo")
+		await _frames(10)
+	marks.append(await _saved_marks("gone_s6_b"))
+	var want: Array = [
+		["L#ffffff@model", "L#ff0001@model", "L#ff0002@model"],
+		["L#ffffff@model", "L#ff0001@alpha", "V'alpha view'@alpha", "L#ff0002@beta",
+			"V'beta view'@beta"]]
+	var again: Array = await _reopened_marks(["gone_s6_a", "gone_s6_b"])
+	_check("Alpha and Beta taken apart (%s), sections called Alpha and Beta made over MCP (%s): "
+		% [" | ".join(said), made.get_slice("\n", 0).left(60)] + "their lights the model's, "
+		+ "their views gone %s; all three undone, each its own light and view again %s; each "
+		% [marks[0], marks[1]] + "opened and saved again the same %s" % [again],
+		_same_marks(marks, want) and _same_marks(again, want))
+
+
+func _r_gone_pasted() -> void:
+	var a: String = "\n".join(PackedStringArray(["0 FILE main.ldr", "0 Model A",
+		"0 Name: main.ldr", "0 Author: Brickworks", "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat",
+		"1 16 100 0 0 1 0 0 0 1 0 0 0 1 sub.ldr", "0 NOFILE", "0 FILE sub.ldr", "0 Sub",
+		"0 Name: sub.ldr", "0 Author: Brickworks", "1 2 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat",
+		"0 NOFILE", ""]))
+	await _opened(_put("gone_s12_a_in.mpd", a))
+	var assemblies: Assemblies = _shell.get("assemblies")
+	var builder: Builder = _main.get("_builder")
+	_select(assemblies, _path_named(assemblies, "Sub"))
+	var copied: int = builder.copy_selection()
+	await _opened(_put("gone_s12_b_in.mpd", _lit_sub("Brickworks",
+		_light("point", [0, -50, 0], {"colour": "#130001"}), _view_line("s12 view"))))
+	_select(assemblies, _path_named(assemblies, "Sub"))
+	_shell.call("run", "delete")
+	await _frames(10)
+	var marks: Array = [await _saved_marks("gone_s12_a")]
+	builder.hold_copy(Carry.clipboard)
+	var put: int = await _put_down(builder)
+	await _frames(10)
+	marks.append(await _saved_marks("gone_s12_b"))
+	for _n: int in 2:
+		_shell.call("run", "undo")
+		await _frames(10)
+	marks.append(await _saved_marks("gone_s12_c"))
+	for _n: int in 2:
+		_shell.call("run", "redo")
+		await _frames(10)
+	marks.append(await _saved_marks("gone_s12_d"))
+	var none: Array = ["L#ffffff@model"]
+	var lit: Array = ["L#ffffff@model", "L#130001@sub", "V's12 view'@sub"]
+	var want: Array = [none, none, lit, none]
+	var again: Array = await _reopened_marks(["gone_s12_a", "gone_s12_b", "gone_s12_c",
+		"gone_s12_d"])
+	_check("B's lit Sub deleted %s, A's Sub (%d parts copied) pasted in (#%d) %s: none of B's " %
+		[marks[0], copied, put, marks[1]] + "light or view in it; both undone, Sub's own again %s; "
+		% [marks[2]] + "both redone %s; each opened and saved again the same %s" % [marks[3], again],
+		put != 0 and _same_marks(marks, want) and _same_marks(again, want))
+
+
+func _r_gone_deleted() -> void:
+	var sub_light: String = _light("point", [0, -50, 0], {"colour": SUB_GREEN})
+	var lit: Array = ["L#ffffff@model", "L%s@sub" % SUB_GREEN, "V'%s'@sub" % SUB_VIEW]
+	var none: Array = ["L#ffffff@model"]
+	for how: String in ["by hand", "over MCP"]:
+		await _opened(_put("gone_del.mpd", _lit_sub("Brickworks", sub_light,
+			_view_line(SUB_VIEW))))
+		var assemblies: Assemblies = _shell.get("assemblies")
+		var path: String = _path_named(assemblies, "Sub")
+		var said: String = ""
+		if how == "by hand":
+			_select(assemblies, path)
+			_shell.call("run", "delete")
+			await _frames(10)
+		else:
+			var ids: Array = Array(assemblies.ids_under(path))
+			said = (await _mcp("edit_model", {"remove": ids})).get_slice("\n", 0).left(50)
+		var tag: String = "gone_del_%s" % ("hand" if how == "by hand" else "mcp")
+		# What the model keeps for the name, not only what a save writes: a
+		# gone definition's lines kept under its name go to the next one
+		# that takes it (s12), and a save of the model alone never shows it.
+		var kept: Array = [_world.section_lines.has("Sub")]
+		var marks: Array = [await _saved_marks(tag + "_a")]
+		_shell.call("run", "undo")
+		await _frames(10)
+		kept.append(_world.section_lines.has("Sub"))
+		marks.append(await _saved_marks(tag + "_b"))
+		_shell.call("run", "redo")
+		await _frames(10)
+		kept.append(_world.section_lines.has("Sub"))
+		marks.append(await _saved_marks(tag + "_c"))
+		var want: Array = [none, lit, none]
+		var again: Array = await _reopened_marks([tag + "_a", tag + "_b", tag + "_c"])
+		var asked: String = (" (%s)" % said) if not said.is_empty() else ""
+		_check("a lit sub-model's one copy deleted %s%s: its light and view gone %s; undone, "
+			% [how, asked, marks[0]] + "back in it %s; redone, gone %s; each opened and saved "
+			% [marks[1], marks[2]] + "again the same %s; Sub's lines kept by the model "
+			% [again] + "deleted, undone, redone %s" % [kept],
+			_same_marks(marks, want) and _same_marks(again, want) and kept == [false, true, false])
+
+
+## A lit Sub's lights and views go on the clipboard with its parts, and come
+## back with a paste, in the paste's own step: cut and pasted in one model;
+## copied and pasted beside itself (nothing said: its lines are the model's
+## own), then copied, deleted and pasted; cut from A and pasted into B; and
+## pasted into C, which has a lit Sub of its own and keeps it, and says so.
+## Each saved and opened again after each step, Undo and Redo.
+func _r_gone_clipboard() -> void:
+	var sub_light: String = _light("point", [0, -50, 0], {"colour": SUB_GREEN})
+	var lit: Array = ["L#ffffff@model", "L%s@sub" % SUB_GREEN, "V'%s'@sub" % SUB_VIEW]
+	var none: Array = ["L#ffffff@model"]
+	var builder: Builder = _main.get("_builder")
+	# Cut and pasted in one model: the cut takes them, the paste brings them.
+	await _opened(_put("gone_cut.mpd", _lit_sub("Brickworks", sub_light, _view_line(SUB_VIEW))))
+	var assemblies: Assemblies = _shell.get("assemblies")
+	_select(assemblies, _path_named(assemblies, "Sub"))
+	_shell.call("run", "cut_parts")
+	await _frames(10)
+	var marks: Array = [await _saved_marks("gone_cut_a")]
+	var put: Array = [await _pasted(builder)]
+	marks.append(await _saved_marks("gone_cut_b"))
+	marks.append_array(await _undone_redone("gone_cut", 2))
+	var want: Array = [none, lit, none, lit, none, lit]
+	var names: Array = ["gone_cut_a", "gone_cut_b", "gone_cut_c", "gone_cut_d", "gone_cut_e",
+		"gone_cut_f"]
+	var again: Array = await _reopened_marks(names)
+	_check("a lit Sub cut %s and pasted back (%s) %s in one model; the paste undone %s, the "
+		% [marks[0], put[0], marks[1], marks[2]] + "cut undone %s; both redone %s %s; each "
+		% [marks[3], marks[4], marks[5]] + "opened and saved again the same %s" % [again],
+		put[0]["at"] != 0 and _same_marks(marks, want) and _same_marks(again, want))
+	# Copied and pasted beside itself, then copied, deleted and pasted.
+	await _opened(_put("gone_copy.mpd", _lit_sub("Brickworks", sub_light, _view_line(SUB_VIEW))))
+	assemblies = _shell.get("assemblies")
+	_select(assemblies, _path_named(assemblies, "Sub"))
+	_shell.call("run", "copy")
+	await _frames(10)
+	put = [await _pasted(builder)]
+	marks = [await _saved_marks("gone_copy_a")]
+	_shell.call("run", "undo")
+	await _frames(10)
+	_select(assemblies, _path_named(assemblies, "Sub"))
+	_shell.call("run", "delete")
+	await _frames(10)
+	marks.append(await _saved_marks("gone_copy_b"))
+	put.append(await _pasted(builder))
+	marks.append(await _saved_marks("gone_copy_c"))
+	marks.append_array(await _undone_redone("gone_copy", 2, "d"))
+	want = [lit, none, lit, none, lit, none, lit]
+	names = ["gone_copy_a", "gone_copy_b", "gone_copy_c", "gone_copy_d", "gone_copy_e",
+		"gone_copy_f", "gone_copy_g"]
+	again = await _reopened_marks(names)
+	_check("a lit Sub copied and pasted beside itself (%s) %s, nothing said of its lines; "
+		% [put[0], marks[0]] + "undone, the copy deleted %s, pasted (%s) %s; the paste undone "
+		% [marks[1], put[1], marks[2]] + "%s, the delete undone %s; both redone %s %s; each " %
+		[marks[3], marks[4], marks[5], marks[6]] + "opened and saved again the same %s"
+		% [again], put[0]["at"] != 0 and put[1]["at"] != 0
+		and not str(put[0]["said"]).contains("keeps its own")
+		and _same_marks(marks, want) and _same_marks(again, want))
+	# Cut from A and pasted into B; pasted again into C, lit Sub and all.
+	await _opened(_put("gone_move_a.mpd", _lit_sub("Brickworks", sub_light,
+		_view_line(SUB_VIEW))))
+	assemblies = _shell.get("assemblies")
+	_select(assemblies, _path_named(assemblies, "Sub"))
+	_shell.call("run", "cut_parts")
+	await _frames(10)
+	await _opened(_put("gone_move_b.mpd", "\n".join(PackedStringArray(["0 Model B",
+		"0 Name: gone_move_b.ldr", "0 Author: Brickworks", _light("point", [0, -60, 0]),
+		"1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat", ""]))))
+	put = [await _pasted(builder)]
+	marks = [await _saved_marks("gone_move_b_1")]
+	marks.append_array(await _undone_redone("gone_move_b", 1, "2"))
+	want = [lit, none, lit]
+	again = await _reopened_marks(["gone_move_b_1", "gone_move_b_2", "gone_move_b_3"])
+	var own_light: String = _light("point", [0, -50, 0], {"colour": "#140001"})
+	var theirs: Array = ["L#ffffff@model", "L#140001@sub", "V'c view'@sub"]
+	await _opened(_put("gone_move_c.mpd", _lit_sub("Brickworks", own_light, _view_line("c view"))))
+	put.append(await _pasted(builder))
+	var into_c: Array = [await _saved_marks("gone_move_c_1")]
+	into_c.append_array(await _undone_redone("gone_move_c", 1, "2"))
+	var c_again: Array = await _reopened_marks(["gone_move_c_1", "gone_move_c_2",
+		"gone_move_c_3"])
+	var c_want: Array = [theirs, theirs, theirs]
+	_check("a lit Sub cut from A and pasted into B (%s) %s; undone %s; redone %s; each opened "
+		% [put[0], marks[0], marks[1], marks[2]] + "and saved again the same %s; pasted into C, "
+		% [again] + "whose Sub is lit of its own (%s): C's kept %s, undone, redone %s; opened "
+		% [put[1], into_c[0], into_c.slice(1)] + "again %s" % [c_again],
+		put[0]["at"] != 0 and put[1]["at"] != 0 and _same_marks(marks, want)
+		and _same_marks(again, want) and _same_marks(into_c, c_want)
+		and _same_marks(c_again, c_want)
+		and str(put[1]["said"]).contains("Sub here keeps its own lights and views"))
+
+
+## Two copies of a lit Sub, one picked up to move (X) and the other taken
+## apart while it is in hand: the one in hand is still a copy, so Sub keeps
+## its light and view and nothing says its view went; put down, then all
+## three undone and redone, each saved and opened again.
+func _r_gone_apart_held() -> void:
+	var sub_light: String = _light("point", [0, -50, 0], {"colour": SUB_GREEN})
+	await _opened(_put("gone_held.mpd", "\n".join(PackedStringArray(["0 FILE main.ldr",
+		"0 Two lit", "0 Name: main.ldr", "0 Author: Brickworks", _light("point", [0, -60, 0]),
+		"1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat", "1 16 100 0 0 1 0 0 0 1 0 0 0 1 sub.ldr",
+		"1 16 -100 0 0 1 0 0 0 1 0 0 0 1 sub.ldr", "0 NOFILE", "0 FILE sub.ldr", "0 Sub",
+		"0 Name: sub.ldr", "0 Author: Brickworks", sub_light, _view_line(SUB_VIEW),
+		"1 14 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat", "0 NOFILE", ""]))))
+	var assemblies: Assemblies = _shell.get("assemblies")
+	var builder: Builder = _main.get("_builder")
+	var paths: PackedStringArray = assemblies.paths()
+	_select(assemblies, "Sub#2")
+	var lifted: int = builder.lift_selection()
+	var said: String = await _taken_apart("Sub#1")
+	var put: int = await _put_down(builder)
+	var marks: Array = [await _saved_marks("gone_held_a")]
+	for verb: String in ["undo", "redo"]:
+		for _n: int in 3:
+			_shell.call("run", verb)
+			await _frames(10)
+		marks.append(await _saved_marks("gone_held_" + ("b" if verb == "undo" else "c")))
+	var lit: Array = ["L#ffffff@model", "L%s@sub" % SUB_GREEN, "V'%s'@sub" % SUB_VIEW]
+	var apart: Array = lit + ["L%s@model" % SUB_GREEN]
+	var want: Array = [apart, lit, apart]
+	var again: Array = await _reopened_marks(["gone_held_a", "gone_held_b", "gone_held_c"])
+	_check("a lit Sub's copies %s: Sub#2 picked up (%d parts), Sub#1 taken apart (%s), "
+		% [paths, lifted, said] + "Sub#2 put down (#%d): Sub's light and view kept, Sub#1's "
+		% [put] + "light the model's %s; all three undone %s, redone %s; each opened and saved "
+		% [marks[0], marks[1], marks[2]] + "again the same %s" % [again],
+		lifted > 0 and put != 0 and not said.contains("view went with it")
+		and _same_marks(marks, want) and _same_marks(again, want))
+
+
+# -- a sub-model's lines stay with its parts, wherever they go (pathcarry) --------
+
+
+## A sub-model's lights and views are where its parts are, wherever they go:
+## each light's place and way and each view's focus, as an LDraw reader
+## composes the saved file, against the sub-model's part. The app's own file
+## whose copy is not where the app puts it (lpcheck s7_a), and turned; its only
+## copy moved and saved (lp2check P_moved), then taken apart and undone (M);
+## copied into another model away from where it was (P); every part taken out
+## of it from inside (R); a copy pasted into a model whose Sub is held by a
+## part the catalogue lacks is a copy of its own (HB2). Up to 2026-11-11 the
+## lines were written as the open read them, in the frame the file had then:
+## each of these left the light where the parts had been.
+func _r_frames() -> void:
+	var sub_light: String = _light("point", [0, -50, 0], {"colour": SUB_GREEN, "aim": [1, 0, 0]})
+	var sub_view: String = _view_line(SUB_VIEW)
+	var file: String = _lit_sub("Brickworks", sub_light, sub_view)
+	var want: Array = _offsets(file)
+	await _opened(_put("frames_s7.mpd", file))
+	var saved: Array = _offsets(await _saved_text("frames_s7_a"))
+	_check("the app's own file, its Sub placed 100 LDU along (s7_a), saved: the light %s (%s), "
+		% [saved[0], want[0]] + "the view %s (%s) against its part" % [saved[1], want[1]],
+		_same_offsets(saved, want))
+	var turned: String = file.replace("1 16 100 0 0 1 0 0 0 1 0 0 0 1 sub.ldr",
+		"1 16 100 0 0 0 0 1 0 1 0 -1 0 0 sub.ldr")
+	var want_turned: Array = _offsets(turned)
+	await _opened(_put("frames_turned.mpd", turned))
+	var turned_saved: Array = _offsets(await _saved_text("frames_turned_a"))
+	_check("...placed turned a quarter: the light %s (%s), the view %s (%s)" % [turned_saved[0],
+		want_turned[0], turned_saved[1], want_turned[1]], _same_offsets(turned_saved, want_turned))
+	# P_moved, then M: its only copy picked up and put down beside, saved; then
+	# taken apart, its light the model's where its parts are; undone.
+	await _opened(_put("frames_moved.mpd", file))
+	var assemblies: Assemblies = _shell.get("assemblies")
+	var builder: Builder = _main.get("_builder")
+	_select(assemblies, _path_named(assemblies, "Sub"))
+	var lifted: int = builder.lift_selection()
+	var put: int = await _put_down(builder)
+	var moved: String = await _saved_text("frames_moved_a")
+	var moved_at: Array = _offsets(moved)
+	_check("its only copy moved (%d parts, put #%d, part from %s to %s): the light %s (%s), "
+		% [lifted, put, _part_place(file), _part_place(moved), moved_at[0], want[0]]
+		+ "the view %s (%s)" % [moved_at[1], want[1]], put != 0
+		and _part_place(moved).distance_to(_part_place(file)) > 10.0
+		and _same_offsets(moved_at, want))
+	var said: String = await _taken_apart(_path_named(assemblies, "Sub"))
+	var apart: String = await _saved_text("frames_moved_b")
+	var lit: Array = _model_green(apart)
+	var light_at: Vector3 = _part_place(moved) + (want[0][0] as Vector3)
+	_check("...then taken apart (%s): its light the model's at %s (%s), shining %s" % [said, lit,
+		light_at, want[0][1]], lit.size() == 1 and (lit[0][0] as Vector3).distance_to(light_at) < 0.01
+		and (lit[0][1] as Vector3).distance_to(want[0][1]) < 0.0001)
+	_shell.call("run", "undo")
+	await _frames(10)
+	var back: Array = _offsets(await _saved_text("frames_moved_c"))
+	_check("...undone: its light and view in it, against its part %s, %s" % [back[0], back[1]],
+		_same_offsets(back, want))
+	# P: copied from one model and pasted into another, away from where it was.
+	await _opened(_put("frames_paste_a.mpd", file))
+	assemblies = _shell.get("assemblies")
+	_select(assemblies, _path_named(assemblies, "Sub"))
+	_shell.call("run", "copy")
+	await _frames(10)
+	await _opened(_put("frames_paste_b.mpd", "\n".join(PackedStringArray(["0 Model B",
+		"0 Name: frames_paste_b.ldr", "0 Author: Brickworks", _light("point", [0, -60, 0]),
+		"1 4 -200 0 40 1 0 0 0 1 0 0 0 1 3001.dat", ""]))))
+	var pasted: Dictionary = await _pasted(builder)
+	var into_b: Array = _offsets(await _saved_text("frames_paste_b_a"))
+	_check("copied from A and pasted into B (#%d): the light %s (%s), the view %s (%s)" % [
+		int(pasted["at"]), into_b[0], want[0], into_b[1], want[1]], int(pasted["at"]) != 0
+		and _same_offsets(into_b, want))
+	# R: inside it, every part of it selected and taken out (Ungroup).
+	await _opened(_put("frames_out.mpd", file))
+	assemblies = _shell.get("assemblies")
+	var path: String = _path_named(assemblies, "Sub")
+	assemblies.enter(path)
+	await _frames(5)
+	_select(assemblies, path)
+	_shell.call("run", "leave_submodel")
+	await _frames(10)
+	var out_said: String = (_main.get("_bar") as ModelBar).status_text()
+	var taken: String = await _saved_text("frames_out_a")
+	var out_lit: Array = _model_green(taken)
+	var out_at: Vector3 = _part_place(file) + (want[0][0] as Vector3)
+	_check("inside it, all its parts taken out of it (%s): its light the model's at %s (%s)"
+		% [out_said, out_lit, out_at], out_said.contains("its light went with its parts")
+		and out_lit.size() == 1 and (out_lit[0][0] as Vector3).distance_to(out_at) < 0.01)
+	_shell.call("run", "undo")
+	await _frames(10)
+	var out_back: Array = _offsets(await _saved_text("frames_out_b"))
+	_check("...undone: its light and view in it again %s, %s" % [out_back[0], out_back[1]],
+		_same_offsets(out_back, want) and _model_green(await _saved_text("frames_out_c")).is_empty())
+	# Out of it again, as Escape leaves one: what is entered outlasts an open,
+	# and a paste goes into it.
+	assemblies.leave_to("")
+	await _r_held_copy()
+	await _r_held_pasted()
+	await _r_duplicated()
+
+
+## pc2check A2: a lit Sub holding a part the catalogue lacks, copied and
+## pasted beside itself, then a Make round the first copy: each copy is what
+## it holds, the pasted one the part too, so the file has it in both and a
+## reopen has it twice; undone, the paste takes its own out with it. Up to
+## 2026-11-12 the paste brought none, the writer compared copies by their
+## parts on the baseplate alone, and wrote the sub-model from the pasted copy:
+## the part was in no file.
+func _r_held_pasted() -> void:
+	var file: String = _lit_sub("Brickworks", _light("point", [0, -50, 0], {"colour": SUB_GREEN}),
+		_view_line(SUB_VIEW)).replace("1 14 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat",
+		"1 14 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat\n1 2 0 -24 0 1 0 0 0 1 0 0 0 1 zz_nosuch_part.dat")
+	await _opened(_put("held_pasted.mpd", file))
+	var assemblies: Assemblies = _shell.get("assemblies")
+	var builder: Builder = _main.get("_builder")
+	var first: String = _path_named(assemblies, "Sub")
+	_select(assemblies, first)
+	_shell.call("run", "copy")
+	await _frames(10)
+	builder.clear_selection()
+	var pasted: Dictionary = await _pasted(builder)
+	_select(assemblies, first)
+	var made: String = assemblies.make("Box")
+	_main.call("_on_model_edited")
+	await _frames(10)
+	var text: String = await _saved_text("held_pasted_a")
+	var flat: Dictionary = _composed(text)
+	var lacking: Array = (flat["parts"] as Array).filter(func(one: Array) -> bool:
+		return str(one[0]) == "zz_nosuch_part.dat")
+	var bricks: Array = (flat["parts"] as Array).filter(func(one: Array) -> bool:
+		return str(one[0]) == "3003.dat")
+	# Each copy's part the catalogue lacks one plate above its 3003, as the file had it.
+	var beside: bool = lacking.size() == 2 and bricks.size() == 2 and lacking.all(func(one: Array) -> bool:
+		return bricks.any(func(brick: Array) -> bool:
+			return ((one[1] as Vector3) - (brick[1] as Vector3)).is_equal_approx(Vector3(0, -24, 0))))
+	await _opened(ModelStore.SAVE_DIR + "held_pasted_a.mpd")
+	var absent: int = (_store.get("_absent") as Array).size()
+	var again: String = await _saved_text("held_pasted_b")
+	_check("a lit Sub holding a part the catalogue lacks pasted beside itself (#%d) and a %s made "
+		% [int(pasted["at"]), made] + "round the first: the part in each copy's file %d times, each with "
+		% lacking.size() + "its copy's 3003 (%s); reopened it holds %d, saved again the same (%s)"
+		% [beside, absent, again == text], int(pasted["at"]) != 0 and not made.is_empty() and beside
+		and absent == 2 and again == text)
+	# Undone, the paste's own goes with it: the file the open read, one of each.
+	await _opened(_put("held_pasted.mpd", file))
+	assemblies = _shell.get("assemblies")
+	_select(assemblies, _path_named(assemblies, "Sub"))
+	_shell.call("run", "copy")
+	await _frames(10)
+	builder.clear_selection()
+	await _pasted(builder)
+	var with_paste: int = _composed(await _saved_text("held_pasted_c"))["parts"].filter(
+		func(one: Array) -> bool: return str(one[0]) == "zz_nosuch_part.dat").size()
+	_shell.call("run", "undo")
+	await _frames(10)
+	var undone: int = _composed(await _saved_text("held_pasted_d"))["parts"].filter(
+		func(one: Array) -> bool: return str(one[0]) == "zz_nosuch_part.dat").size()
+	_shell.call("run", "redo")
+	await _frames(10)
+	var redone: int = _composed(await _saved_text("held_pasted_e"))["parts"].filter(
+		func(one: Array) -> bool: return str(one[0]) == "zz_nosuch_part.dat").size()
+	_check("...pasted alone: written %d times; the paste undone %d; redone %d" % [with_paste, undone,
+		redone], with_paste == 2 and undone == 1 and redone == 2)
+
+
+## pc2check Q (live too): a lit Sub's copy duplicated (Edit, Duplicate) and
+## put down beside: the copy's light and view stand with its parts, as a
+## paste's do. Up to 2026-11-12 a duplicate brought no lines nor their frame,
+## and its light was written where the file had had it.
+func _r_duplicated() -> void:
+	var file: String = _lit_sub("Brickworks", _light("point", [0, -50, 0], {"colour": SUB_GREEN}),
+		_view_line(SUB_VIEW))
+	var want: Array = _offsets(file)
+	await _opened(_put("duplicated.mpd", file))
+	var assemblies: Assemblies = _shell.get("assemblies")
+	var builder: Builder = _main.get("_builder")
+	_select(assemblies, _path_named(assemblies, "Sub"))
+	var held: int = (_main.get("_verbs") as Object).call("duplicate_selection", false)
+	await _frames(5)
+	var put: int = await _put_down(builder)
+	_main.call("_on_model_edited")
+	await _frames(10)
+	var text: String = await _saved_text("duplicated_a")
+	var flat: Dictionary = _composed(text)
+	var parts: Array = (flat["parts"] as Array).filter(func(one: Array) -> bool:
+		return str(one[0]) == "3003.dat")
+	var lights: Array = (flat["lights"] as Array).filter(func(one: Array) -> bool:
+		return str(one[0]) == SUB_GREEN)
+	var views: Array = (flat["views"] as Array).filter(func(one: Array) -> bool:
+		return str(one[0]) == SUB_VIEW)
+	var with_parts: bool = parts.size() == 2 and lights.size() == 2 and views.size() == 2
+	for n: int in (parts.size() if with_parts else 0):
+		var at: Vector3 = parts[n][1]
+		with_parts = with_parts and lights.any(func(one: Array) -> bool:
+			return ((one[1] as Vector3) - at).distance_to(want[0][0]) < 0.01) \
+			and views.any(func(one: Array) -> bool: return ((one[1] as Vector3) - at).distance_to(want[1]) < 0.01)
+	_check("a lit Sub duplicated (%d parts held, put #%d): each copy's light and view with its parts "
+		% [held, put] + "(%s, %s against %s)" % [lights.map(func(one: Array) -> Vector3: return one[1]),
+		views.map(func(one: Array) -> Vector3: return one[1]), parts.map(func(one: Array) -> Vector3:
+			return one[1])], put != 0 and with_parts)
+
+
+## HB2: A's lit Sub pasted into B, whose Sub has lines of its own and one part,
+## which the catalogue lacks: the paste is a copy of its own, not more of the
+## copy B holds by that part. Up to 2026-11-11 it went into that copy (Sub#1),
+## and the save wrote the two as one.
+func _r_held_copy() -> void:
+	await _opened(_put("frames_held_a.mpd", _lit_sub("Brickworks", _light("point", [0, -50, 0],
+		{"colour": SUB_GREEN}), _view_line(SUB_VIEW))))
+	var assemblies: Assemblies = _shell.get("assemblies")
+	_select(assemblies, _path_named(assemblies, "Sub"))
+	_shell.call("run", "copy")
+	await _frames(10)
+	var b_text: String = "\n".join(PackedStringArray(["0 FILE main.ldr",
+		"0 Model HB2", "0 Name: main.ldr", "0 Author: Brickworks", "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat",
+		"1 16 0 0 200 1 0 0 0 1 0 0 0 1 sub.ldr", "0 NOFILE", "0 FILE sub.ldr", "0 Sub",
+		"0 Name: sub.ldr", "0 Author: Brickworks", _light("point", [0, -60, 0], {"colour": "#00bb01"}),
+		_view_line("b view"), "1 14 0 -24 0 1 0 0 0 1 0 0 0 1 zz_nosuch_part.dat", "0 NOFILE", ""]))
+	await _opened(_put("frames_held_b.mpd", b_text))
+	assemblies = _shell.get("assemblies")
+	var pasted: Dictionary = await _pasted(_main.get("_builder"))
+	var paths: PackedStringArray = assemblies.paths()
+	var text: String = await _saved_text("frames_held_b_a")
+	var sections: Array = []
+	for line: String in text.split("\n"):
+		if LdrModel.section_word(line) == "FILE":
+			sections.append([line.strip_edges().substr(7)])
+		elif line.begins_with("1 ") and not sections.is_empty():
+			(sections.back() as Array).append(line.get_slice(" ", 14))
+	var apart: bool = false
+	for section: Array in sections:
+		apart = apart or (section.has("zz_nosuch_part.dat") and not section.has("3003.dat"))
+	_check("A's lit Sub pasted into B, whose Sub is held by a part the catalogue lacks (%s): "
+		% pasted["said"] + "a copy of its own %s, not in the held one; written %s" % [paths, sections],
+		int(pasted["at"]) != 0 and not paths.has("Sub#1") and apart)
+	# B's Sub is still sub.ldr, its light and view in it where they were
+	# against its part, once; the pasted copy is one of its own, with none.
+	var was: Array = _against(_composed(b_text), "zz_nosuch_part.dat")
+	var now: Array = _against(_composed(text), "zz_nosuch_part.dat")
+	var held_named: bool = sections.any(func(section: Array) -> bool:
+		return str(section[0]) == "sub.ldr" and section.has("zz_nosuch_part.dat"))
+	_check("...B's Sub written as sub.ldr still (%s), its light and view there against its part, "
+		% held_named + "once: %s (%s), and none in the pasted copy's" % [now, was],
+		held_named and now == was and text.count("#00bb01") == 1 and text.count("b view") == 1
+		and not text.contains(SUB_GREEN))
+
+
+## [param flat] (_composed) against its [param part]'s place: each light and
+## view, [colour or name, its offset rounded, the section it is in], in order.
+static func _against(flat: Dictionary, part: String) -> Array:
+	var at: Vector3 = Vector3.INF
+	for one: Array in flat["parts"]:
+		if str(one[0]) == part:
+			at = one[1]
+	var out: Array = []
+	for one: Array in flat["lights"]:
+		out.append([str(one[0]), ((one[1] as Vector3) - at).snappedf(0.01), str(one[3])])
+	for one: Array in flat["views"]:
+		out.append([str(one[0]), ((one[1] as Vector3) - at).snappedf(0.01)])
+	return out
+
+
+## Saved as [param name]: the file's text.
+func _saved_text(name: String) -> String:
+	var path: String = ModelStore.SAVE_DIR + name + ".mpd"
+	_main.call("save_model", path)
+	return FileAccess.get_file_as_string(path)
+
+
+## [param text] as an LDraw reader composes it: every light of the sub-model's
+## colour ([constant SUB_GREEN]) and the view [constant SUB_VIEW], each against
+## the place of the sub-model's part (3003) in the world: [[light's offset,
+## its aim], [view focus's offset]], each [Vector3.INF] when it has none.
+static func _offsets(text: String) -> Array:
+	var flat: Dictionary = _composed(text)
+	var part: Vector3 = _part_place(text)
+	var light: Array = [Vector3.INF, Vector3.INF]
+	for one: Array in flat["lights"]:
+		if str(one[0]) == SUB_GREEN and not str(one[3]).is_empty():
+			light = [(one[1] as Vector3) - part, one[2]]
+	var view: Vector3 = Vector3.INF
+	for one: Array in flat["views"]:
+		if str(one[0]) == SUB_VIEW:
+			view = (one[1] as Vector3) - part
+	return [light, view]
+
+
+static func _same_offsets(got: Array, want: Array) -> bool:
+	return (got[0][0] as Vector3).distance_to(want[0][0]) < 0.01 \
+		and (got[0][1] as Vector3).distance_to(want[0][1]) < 0.0001 \
+		and (got[1] as Vector3).distance_to(want[1]) < 0.01
+
+
+## Whether [param after] keeps one light of [param colour] in a sub-model,
+## where [param before] has its one against the sub-model's part (3003): a
+## sub-model written whole has its lines in the frame the save writes it in
+## (Assemblies.lines_written), so its line's words may change.
+static func _light_kept(before: String, after: String, colour: String) -> bool:
+	var was: Array = _light_against(before, colour)
+	var now: Array = _light_against(after, colour)
+	return was.size() == 1 and now.size() == 1 \
+		and (was[0][0] as Vector3).distance_to(now[0][0]) < 0.01 \
+		and (was[0][1] as Vector3).distance_to(now[0][1]) < 0.0001
+
+
+## The lights of [param colour] in [param text]'s sub-models: [where against
+## the sub-model's part, the way it shines] each.
+static func _light_against(text: String, colour: String) -> Array:
+	var part: Vector3 = _part_place(text)
+	var out: Array = []
+	for one: Array in _composed(text)["lights"]:
+		if str(one[0]) == colour and not str(one[3]).is_empty():
+			out.append([(one[1] as Vector3) - part, one[2]])
+	return out
+
+
+## Where the sub-model's part (3003) is in the world of [param text].
+static func _part_place(text: String) -> Vector3:
+	for part: Array in _composed(text)["parts"]:
+		if str(part[0]) == "3003.dat":
+			return part[1]
+	return Vector3.INF
+
+
+## The lights of the sub-model's colour among the model's own: [at, aim] each.
+static func _model_green(text: String) -> Array:
+	var out: Array = []
+	for one: Array in _composed(text)["lights"]:
+		if str(one[0]) == SUB_GREEN and str(one[3]).is_empty():
+			out.append([one[1], one[2]])
+	return out
+
+
+## Every light, view and part of [param text] where an LDraw reader places it,
+## each section's lines through every reference to it: {"lights": [[colour,
+## at, aim, section]], "views": [[name, focus]], "parts": [[file, at]]}, the
+## section "" for the model's own. In the file's coordinates, as LDraw's.
+static func _composed(text: String) -> Dictionary:
+	var sections: Dictionary = {}
+	var order: Array = []
+	var current: String = ""
+	for raw: String in text.split("\n"):
+		var line: String = raw.strip_edges()
+		if LdrModel.section_word(line) == "FILE":
+			current = line.substr(7).strip_edges().to_lower()
+			if not sections.has(current):
+				sections[current] = []
+				order.append(current)
+			continue
+		if current.is_empty():
+			current = "(main)"
+			sections[current] = []
+			order.append(current)
+		(sections[current] as Array).append(line)
+	var out: Dictionary = {"lights": [], "views": [], "parts": []}
+	if not order.is_empty():
+		_compose(sections, str(order[0]), Transform3D.IDENTITY, "", out, 0)
+	return out
+
+
+static func _compose(sections: Dictionary, name: String, at: Transform3D, section: String,
+		out: Dictionary, depth: int) -> void:
+	if depth > 8:
+		return
+	for line: String in sections[name]:
+		if line.begins_with(META):
+			var light: Variant = JSON.parse_string(line.substr(META.length()))
+			if light is Dictionary:
+				(out["lights"] as Array).append([str((light as Dictionary).get("colour", "")),
+					at * _at(light), (at.basis * _aim(light)).normalized(), section])
+		elif line.begins_with(VIEW_META):
+			var view: Variant = JSON.parse_string(line.substr(VIEW_META.length()))
+			if view is Dictionary:
+				var focus: Array = (view as Dictionary).get("focus", [0, 0, 0])
+				(out["views"] as Array).append([str((view as Dictionary).get("name", "")),
+					at * Vector3(float(focus[0]), float(focus[1]), float(focus[2]))])
+		elif line.begins_with("1 "):
+			var words: PackedStringArray = line.split(" ", false)
+			if words.size() < 15:
+				continue
+			var v: Array = []
+			for n: int in range(2, 14):
+				v.append(float(words[n]))
+			var placed: Transform3D = at * Transform3D(Basis(Vector3(v[3], v[6], v[9]),
+				Vector3(v[4], v[7], v[10]), Vector3(v[5], v[8], v[11])), Vector3(v[0], v[1], v[2]))
+			var named: String = " ".join(words.slice(14)).to_lower()
+			if sections.has(named):
+				_compose(sections, named, placed, named, out, depth + 1)
+			else:
+				(out["parts"] as Array).append([named, placed.origin])
+
+
+## Paste (Edit, Paste) put down beside the model: the part it put and what
+## the status bar said.
+func _pasted(builder: Builder) -> Dictionary:
+	_shell.call("run", "paste")
+	await _frames(10)
+	var at: int = await _put_down(builder)
+	var said: String = (_main.get("_bar") as ModelBar).status_text()
+	await _frames(10)
+	return {"at": at, "said": said}
+
+
+## [param steps] undone one by one, then redone, each saved as [param tag]_
+## and the next letter (or number) from [param first]: the marks of each.
+func _undone_redone(tag: String, steps: int, first: String = "c") -> Array:
+	var out: Array = []
+	var next: int = first.unicode_at(0)
+	for verb: String in ["undo", "redo"]:
+		for _n: int in steps:
+			_shell.call("run", verb)
+			await _frames(10)
+			out.append(await _saved_marks("%s_%s" % [tag, String.chr(next)]))
+			next += 1
+	return out
+
+
+## Two copies of a lit Sub, as the app writes them: the first where its file
+## has its parts, the second turned a quarter about up and moved. Its light
+## at (100, -74, 0) shining +x, so the first copy's is at (100, -50, 0) in the
+## model shining +x, and the second's at (-200, -50, -60) shining -z.
+const APART_ONE := Vector3(100.0, -50.0, 0.0)
+const APART_TWO := Vector3(-200.0, -50.0, -60.0)
+
+
+func _r_gone_apart() -> void:
+	var text: String = "\n".join(PackedStringArray(["0 FILE main.ldr", "0 Lamps",
+		"0 Name: main.ldr", "0 Author: Brickworks", _light("point", [0, -60, 0]),
+		"1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat", "0 !BRICKWORKS COPY 1",
+		"1 16 0 24 0 1 0 0 0 1 0 0 0 1 sub.ldr", "0 !BRICKWORKS COPY 2",
+		"1 16 -200 24 40 0 0 1 0 1 0 -1 0 0 sub.ldr", "0 NOFILE", "0 FILE sub.ldr", "0 Sub",
+		"0 Name: sub.ldr", "0 Author: Brickworks",
+		_light("point", [100, -74, 0], {"colour": SUB_GREEN, "aim": [1, 0, 0]}),
+		_view_line(SUB_VIEW), "1 14 100 -24 0 1 0 0 0 1 0 0 0 1 3001.dat",
+		"1 4 120 -48 0 1 0 0 0 1 0 0 0 1 3003.dat", "0 NOFILE", ""]))
+	await _opened(_put("gone_apart.mpd", text))
+	var assemblies: Assemblies = _shell.get("assemblies")
+	var paths: PackedStringArray = assemblies.paths()
+	var said := PackedStringArray()
+	var marks: Array = []
+	var places: Array = []
+	for path: String in ["Sub#2", "Sub#1"]:
+		said.append("%s %s" % [path, await _taken_apart(path)])
+		marks.append(await _saved_marks("gone_apart_%d" % marks.size()))
+		places.append(_green_places("gone_apart_%d" % (marks.size() - 1)))
+	for step: String in ["undo", "undo", "redo", "redo"]:
+		_shell.call("run", step)
+		await _frames(10)
+		marks.append(await _saved_marks("gone_apart_%d" % marks.size()))
+		places.append(_green_places("gone_apart_%d" % (marks.size() - 1)))
+	var green: String = "L%s@" % SUB_GREEN
+	var view: String = "V'%s'@sub" % SUB_VIEW
+	var one: Array = ["L#ffffff@model", green + "model", green + "sub", view]
+	var both: Array = ["L#ffffff@model", green + "model", green + "model"]
+	var none: Array = ["L#ffffff@model", green + "sub", view]
+	var want: Array = [one, both, one, none, one, both]
+	var where: Array = [[APART_TWO], [APART_ONE, APART_TWO], [APART_TWO], [], [APART_TWO],
+		[APART_ONE, APART_TWO]]
+	var placed: bool = true
+	for n: int in where.size():
+		placed = placed and _at_places(places[n], where[n])
+	var names: Array = []
+	for n: int in want.size():
+		names.append("gone_apart_%d" % n)
+	var again: Array = await _reopened_marks(names)
+	await _opened(ModelStore.SAVE_DIR + "gone_apart_1.mpd")
+	var lit: Array = []
+	for light: Dictionary in _in_file():
+		lit.append(_at(light))
+	_check("a lit Sub's two copies (%s) taken apart one by one: %s; each copy's light where it was, "
+		% [paths, " | ".join(said)] + "the model's now, its view gone with the last; undone twice "
+		+ "and redone twice, saved after each %s, the lights at %s; each opened and saved again "
+		% [marks, places] + "the same %s; opened, the model lights %s" % [again, lit],
+		said.size() == 2 and said[0].contains("its light went with its parts")
+		and not said[0].contains("saved view") and said[1].contains("its light went with its parts")
+		and said[1].contains("its saved view went with it") and _same_marks(marks, want)
+		and _same_marks(again, want) and placed and lit.size() == 3)
+
+
+func _view_line(name: String) -> String:
+	return VIEW_META + JSON.stringify({"name": name, "yaw": 10, "pitch": -20, "distance": 300,
+		"focus": [0, 0, 0]})
+
+
+func _select(assemblies: Assemblies, path: String) -> void:
+	var selection: Dictionary = {}
+	for id: int in assemblies.ids_under(path):
+		selection[id] = true
+	(_main.get("_builder") as Builder).selection = selection
+
+
+## The copy at [param path] taken apart as a person does (Ungroup), and what
+## the status bar said.
+func _taken_apart(path: String) -> String:
+	_select(_shell.get("assemblies"), path)
+	_shell.call("run", "leave_submodel")
+	await _frames(10)
+	return (_main.get("_bar") as ModelBar).status_text()
+
+
+## A session's call, as the connector answers it (CommandSocket: one step).
+var _sent: int = 0
+
+
+func _mcp(tool: String, input: Dictionary) -> String:
+	_sent += 1
+	var socket: CommandSocket = (_main.get("_connector") as ClaudeConnector).rpc
+	var answer: Variant = await socket.answer_rpc({"jsonrpc": "2.0", "id": _sent,
+		"method": "tools/call", "params": {"name": tool, "arguments": input}})
+	await _frames(10)
+	var out := PackedStringArray()
+	for block: Variant in ((answer as Dictionary).get("result", {}) as Dictionary).get("content", []):
+		out.append(str((block as Dictionary).get("text", "")))
+	return " ".join(out)
+
+
+## What was held put down beside the model, as a click puts it.
+func _put_down(builder: Builder) -> int:
+	var carry: Carry = builder.carrying
+	var low := Vector3(INF, INF, INF)
+	var high := -low
+	for brick: BrickWorld.Brick in _world.bricks():
+		if not _store.scenery.has(brick.id):
+			low = low.min(brick.transform.origin)
+			high = high.max(brick.transform.origin)
+	carry.stand_where_lifted(builder.lattice, builder)
+	carry.pin()
+	for k: int in 6:
+		var by := Vector3(high.x - low.x + 4.0 * BrickLattice.STUD * (k + 1), 0.0, 0.0)
+		if carry.show_moved(Transform3D(Basis.IDENTITY, by), builder.lattice, builder):
+			var put: int = builder.place()
+			await _frames(4)
+			builder.cancel_carry()
+			return put
+	builder.cancel_carry()
+	return 0
+
+
+## Saved as [param name], each light (by its colour) and view (by its name) of
+## the file and the section it is in, sorted: "L#rrggbb@sub", "V'name'@sub",
+## the model's own section "model".
+func _saved_marks(name: String) -> PackedStringArray:
+	var path: String = ModelStore.SAVE_DIR + name + ".mpd"
+	_main.call("save_model", path)
+	return _marks(FileAccess.get_file_as_string(path))
+
+
+## Each of [param names] (saved by [method _saved_marks]) opened and saved
+## again, written whole: its marks.
+func _reopened_marks(names: Array) -> Array:
+	var out: Array = []
+	for name: String in names:
+		await _opened(ModelStore.SAVE_DIR + name + ".mpd")
+		out.append(await _saved_marks(name + "_again"))
+	return out
+
+
+static func _marks(text: String) -> PackedStringArray:
+	var out := PackedStringArray()
+	var own: int = LdrModel.main_end(text)
+	var section: String = "model"
+	var colour := RegEx.create_from_string("\"colour\":\"(#[0-9a-fA-F]{6})\"")
+	var named := RegEx.create_from_string("\"name\":\"([^\"]*)\"")
+	var at: int = 0
+	for line: String in text.split("\n"):
+		if at >= own and LdrModel.section_word(line) == "FILE":
+			section = line.strip_edges().substr(6).strip_edges().to_lower().trim_suffix(".ldr")
+		at += line.length() + 1
+		if line.begins_with(META):
+			var found: RegExMatch = colour.search(line)
+			out.append("L%s@%s" % [found.get_string(1) if found != null else "?", section])
+		elif line.begins_with(VIEW_META):
+			var found: RegExMatch = named.search(line)
+			out.append("V'%s'@%s" % [found.get_string(1) if found != null else "?", section])
+	out.sort()
+	return out
+
+
+static func _same_marks(got: Array, want: Array) -> bool:
+	if got.size() != want.size():
+		return false
+	for n: int in got.size():
+		var wanted := PackedStringArray(want[n])
+		wanted.sort()
+		if PackedStringArray(got[n]) != wanted:
+			return false
+	return true
+
+
+## Where each light of the sub-model's colour is in the model's own lines of
+## saved file [param name], and the way it shines: [at, aim] each.
+func _green_places(name: String) -> Array:
+	var text: String = FileAccess.get_file_as_string(ModelStore.SAVE_DIR + name + ".mpd")
+	var out: Array = []
+	for line: String in _lines_of(text.substr(0, LdrModel.main_end(text))):
+		var light: Variant = JSON.parse_string(line.substr(META.length()))
+		if light is Dictionary and str((light as Dictionary).get("colour", "")) == SUB_GREEN:
+			out.append([_at(light), _aim(light)])
+	return out
+
+
+## Whether [param places] (from [method _green_places]) are [param wanted],
+## in any order, each shining +x at [constant APART_ONE] and -z at [constant
+## APART_TWO].
+static func _at_places(places: Array, wanted: Array) -> bool:
+	if places.size() != wanted.size():
+		return false
+	for want: Vector3 in wanted:
+		var aim: Vector3 = Vector3(1, 0, 0) if want == APART_ONE else Vector3(0, 0, -1)
+		var found: bool = false
+		for place: Array in places:
+			if (place[0] as Vector3).distance_to(want) < 0.01 \
+					and (place[1] as Vector3).distance_to(aim) < 0.0001:
+				found = true
+		if not found:
+			return false
+	return true
+
+
+## The app's own MPD (or [param whose]'s): the model's lamp in the model, and
+## a sub-model "Sub" with [param sub_light] and [param sub_view] of its own.
+func _lit_sub(whose: String, sub_light: String, sub_view: String) -> String:
+	return "\n".join(PackedStringArray(["0 FILE main.ldr", "0 Lit sub", "0 Name: main.ldr",
+		"0 Author: " + whose, _light("point", [0, -60, 0]), "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat",
+		"1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat", "1 16 100 0 0 1 0 0 0 1 0 0 0 1 sub.ldr",
+		"0 NOFILE", "0 FILE sub.ldr", "0 Sub", "0 Name: sub.ldr", "0 Author: " + whose, sub_light,
+		sub_view, "1 14 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat", "0 NOFILE", ""]))
+
+
+## The path of the copy of [param definition] in the model.
+static func _path_named(assemblies: Assemblies, definition: String) -> String:
+	for path: String in assemblies.paths():
+		if Assemblies.definition(Assemblies.leaf(path)) == definition:
+			return path
+	return ""
+
+
+## Saved as the change left it, then undone and saved, then redone and saved
+## (named [param name]), each file's sub-model light and view looked for in
+## the section of [param sections] (in that order): [whether each was in it
+## once, the file's one copy of each], [whether the model kept its lamp
+## alone in its own lines].
+func _saved_through(name: String, sections: Array) -> Array:
+	var in_section: Array = []
+	var lamp_alone: Array = []
+	for n: int in 3:
+		if n == 1:
+			_shell.call("run", "undo")
+			await _frames(5)
+		elif n == 2:
+			_shell.call("run", "redo")
+			await _frames(5)
+		var saved: String = ModelStore.SAVE_DIR + "%s_%d.mpd" % [name, n]
+		_main.call("save_model", saved)
+		var text: String = FileAccess.get_file_as_string(saved)
+		var section: String = _section_of(text, str(sections[n]))
+		in_section.append(text.count(SUB_GREEN) == 1 and text.count(SUB_VIEW) == 1
+			and section.contains(SUB_GREEN) and section.contains(SUB_VIEW))
+		var own: String = text.substr(0, LdrModel.main_end(text))
+		lamp_alone.append(_lines_of(own).size() == 1 and not own.contains(SUB_GREEN)
+			and not own.contains(SUB_VIEW))
+	return [in_section, lamp_alone]
+
+
+## The lines of [param text]'s section [param file] (from its 0 FILE line to
+## the next), "" when it has none.
+static func _section_of(text: String, file: String) -> String:
+	var out := PackedStringArray()
+	var inside: bool = false
+	for line: String in text.split("\n"):
+		if LdrModel.section_word(line) == "FILE":
+			inside = line.strip_edges().to_lower().ends_with(" " + file)
+		if inside:
+			out.append(line)
+	return "\n".join(out)
 
 
 ## A value is rounded as a file keeps it before it is checked: a strength or

@@ -811,6 +811,7 @@ func _build() -> void:
 	_close = _button(header, "Close", close, "Back to building (Escape)")
 	_driver = _words(column, 12, 1.0)
 	_reference = OptionButton.new()
+	_reference.accessibility_name = "Measure periods against"
 	_reference.add_theme_font_size_override("font_size", 12)
 	_reference.focus_mode = Control.FOCUS_NONE
 	_reference.item_selected.connect(func(index: int) -> void:
@@ -834,6 +835,7 @@ func _build() -> void:
 	column.add_child(playing)
 	_play = _button(playing, "Play", play, "Turn the driver at the speed chosen (Escape closes)")
 	_speed = OptionButton.new()
+	_speed.accessibility_name = "Speed"
 	_speed.add_theme_font_size_override("font_size", 12)
 	_speed.focus_mode = Control.FOCUS_NONE
 	for each: float in SPEEDS:
@@ -870,6 +872,7 @@ func _build() -> void:
 		"Draw a turn of the reference (or of the driver) and keep it: an animated WebP, and on "
 			+ "the desktop the frames and an MP4")
 	_frames = OptionButton.new()
+	_frames.accessibility_name = "Frames"
 	_frames.add_theme_font_size_override("font_size", 12)
 	_frames.focus_mode = Control.FOCUS_NONE
 	for count: int in FRAME_CHOICES:

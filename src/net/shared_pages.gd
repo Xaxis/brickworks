@@ -214,6 +214,9 @@ static func read(text: String, world: BrickWorld, scenery: Dictionary) -> Dictio
 		steps.append(step)
 	if steps.size() != int(head.get("steps", -1)):
 		return {}
+	# Each step's name, as the model's own steps have it (the file's
+	# STEP_NAME lines, read with it): the steps carried say only which.
+	Instructions.names_kept(world, steps)
 	return {"mode": int(head.get("mode", 0)), "steps": steps}
 
 

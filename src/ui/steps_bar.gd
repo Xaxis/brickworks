@@ -90,6 +90,9 @@ var _edits: HFlowContainer
 ## The slider's least width, beside the step's words: narrower, the words
 ## go under it rather than the slider to a sliver.
 const SLIDER_LEAST := 120.0
+## The most of a step's name its words say, on one line beside the slider
+## (stepnames): a longer one is cut with an ellipsis, and Name… shows it whole.
+const NAME_SHOWN := 40
 ## How the booklet prints the step showing (BookletLooks): its own row.
 var _looks: HFlowContainer
 var _look_said: Label
@@ -375,6 +378,16 @@ func _build() -> void:
 	_per_page.pressed.connect(func() -> void: look_wanted.emit("per_page"))
 	_looks.add_child(_per_page)
 	_named["booklet_per_page"] = _per_page
+	# stepnames (APP_UX6 #9): the step showing named, as Studio names a step,
+	# said beside its number here, in Build it and in the booklet. First in
+	# the row, before how its picture is drawn: what a step is comes first.
+	var naming: Button = _button("Name…", "")
+	Keymap.tell(naming, "What this step is called (\"Build the cockpit\"): said beside its "
+		+ "number here, in Build it and in the booklet ({step_name})")
+	naming.pressed.connect(ask_step_name)
+	_looks.add_child(naming)
+	_looks.move_child(naming, 1)
+	_named["steps_name"] = naming
 	_look_said = Label.new()
 	_look_said.add_theme_font_size_override("font_size", 11)
 	_look_said.modulate = Color(1, 1, 1, 0.72)
@@ -894,7 +907,11 @@ func _show(count: int) -> void:
 		# 12 on the page: a callout's steps carry the number of the step
 		# its assembly goes on in, and are counted inside it.
 		var at: Instructions.Step = _steps[step]
-		_caption.text = "%s · %s" % [at.caption(_steps[-1].number), of]
+		# A person's words, as they wrote them in every language: each name
+		# said, the step's own and the one it starts (Step.called).
+		for name: String in at.shortened_name(NAME_SHOWN).split(" · ", false):
+			Language.keep_name(name)
+		_caption.text = "%s · %s" % [at.caption(_steps[-1].number, " · ", NAME_SHOWN), of]
 		if _shown == 0:
 			_pieces.text = "An empty baseplate" + (": the steps are the author's"
 				if _mode == AUTHORS else "")
@@ -1264,6 +1281,79 @@ func _move_asked() -> void:
 		shell.bar.say("there is no step %d: the steps run 1 to %d" % [number, _ask_steps[-1].number])
 		return
 	shell.bar.say(shell.change_steps("to", _ask_ids, at))
+
+
+## Name the step… (stepnames, APP_UX6 #9): the step the timeline is on given
+## a name, typed, as Studio names a step; said beside its number here, in
+## Build it and in the booklet, and kept in the file. The words start as its
+## name, chosen, so what is typed replaces it; Return names it, and an empty
+## name takes it off. One of only what draws nothing is refused where it was
+## typed: the dialog stays, saying why (sncheck N2).
+var _naming: ConfirmationDialog
+var _naming_field: LineEdit
+var _naming_words: Label
+var _naming_why: Label
+var _naming_step: Instructions.Step
+
+
+func ask_step_name() -> void:
+	if shell == null or shell.read_only or not editable:
+		return
+	var at: Instructions.Step = current_step()
+	if at == null:
+		shell.bar.say("go to a step on the timeline first")
+		return
+	if _naming == null:
+		_make_naming()
+	_naming_step = at
+	_naming_words.text = ("Step %d, %s %d of %d, is called" % [at.number, at.assembly,
+		at.callout_step, at.callout_steps]) if at.in_callout() else "Step %d is called" % at.number
+	_naming_field.text = at.name
+	_naming_why.visible = false
+	_naming.popup_centered()
+	_naming_field.grab_focus.call_deferred()
+	_naming_field.select_all.call_deferred()
+
+
+func _make_naming() -> void:
+	_naming = ConfirmationDialog.new()
+	_naming.title = "Name the step"
+	_naming.ok_button_text = "Save"
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 6)
+	_naming_words = Label.new()
+	column.add_child(_naming_words)
+	_naming_field = LineEdit.new()
+	_naming_field.placeholder_text = "Build the cockpit"
+	_naming_field.max_length = BookletLooks.NAME_MOST
+	_naming_field.custom_minimum_size = Vector2(320, 0)
+	_naming_field.accessibility_name = "The step's name"
+	column.add_child(_naming_field)
+	_naming_why = Label.new()
+	_naming_why.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_naming_why.custom_minimum_size = Vector2(320, 0)
+	_naming_why.visible = false
+	column.add_child(_naming_why)
+	_naming.add_child(column)
+	# Put away by hand once named, so a refused name keeps it up.
+	_naming.dialog_hide_on_ok = false
+	_naming.register_text_enter(_naming_field)
+	_naming.confirmed.connect(_name_asked)
+	shell.add_child(_naming)
+
+
+func _name_asked() -> void:
+	if _naming_step == null:
+		return
+	var refused: String = BookletLooks.name_refused(_naming_field.text)
+	_naming_why.text = refused
+	_naming_why.visible = not refused.is_empty()
+	if not refused.is_empty():
+		_naming_field.grab_focus()
+		_naming_field.select_all()
+		return
+	_naming.hide()
+	shell.bar.say(shell.change_look("name", _naming_step, {"name": _naming_field.text}))
 
 
 ## Its row of steps, for a check: each cell's place, and which are marked.

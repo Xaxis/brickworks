@@ -152,3 +152,33 @@
     if (choice) choose(choice.value);
   });
 })();
+
+// The beta (betahome, 2026-11-09): while it is open, a bar at the foot of
+// every page (web/betabar.js) with Report a bug and Join, and the landing
+// page's Open beta. What the site last heard of it is kept in this browser
+// ("brickworks.beta", betabar.js writes it): open in the last day,
+// <html data-beta="open"> is set here, before anything is drawn, so a part
+// held for it is in its place at the first frame; off in the last ten
+// minutes, the bar's script is not even asked for. Never on an embed's
+// card (someone else's page) or the connector's consent page, which
+// Claude opens.
+(() => {
+  const root = document.documentElement;
+  if (root.hasAttribute("data-embed") || /^\/(?:(?:de|fr|es)\/)?oauth\//.test(location.pathname)) return;
+  let heard = null;
+  try {
+    heard = JSON.parse(localStorage.getItem("brickworks.beta") || "null");
+  } catch {
+    heard = null;
+  }
+  const age = Date.now() - Number(heard?.at || 0);
+  if (heard?.beta === "open" && age < 86400000) root.dataset.beta = "open";
+  if (heard?.beta === "off" && age < 600000) {
+    // Said for the page's own scripts (web/landing.js), which then ask nothing.
+    window.brickworksBeta = "off";
+    return;
+  }
+  const load = () => import("/betabar.js").catch(() => null);
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", load);
+  else load();
+})();

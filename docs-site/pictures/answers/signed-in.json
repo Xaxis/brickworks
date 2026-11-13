@@ -1,0 +1,960 @@
+{
+ "$comment": "Signed in as the shared test account (you@example.com), over test-account.json. Written by tools/web/docs_world.mjs: change it there.",
+ "answers": {
+  "/api/account": {
+   "enabled": true,
+   "url": "https://sign-in.example",
+   "key": "docs",
+   "assistant": "own_key",
+   "parts_url": null,
+   "signed_in": true,
+   "email": "you@example.com",
+   "master": false,
+   "age": {
+    "ask": false,
+    "over_13": true
+   },
+   "beta": {
+    "tester": false,
+    "early": []
+   }
+  },
+  "https://sign-in.example/auth/v1/token": {
+   "access_token": "docs",
+   "token_type": "bearer",
+   "expires_in": 3600,
+   "refresh_token": "docs",
+   "user": {
+    "id": "d0c5d0c5-d0c5-4d0c-8d0c-d0c5d0c5d0c5",
+    "email": "you@example.com"
+   }
+  },
+  "/api/account?op=theme": {
+   "theme": "system",
+   "chosen": false,
+   "ready": true
+  },
+  "/api/people?op=feed_count": {
+   "count": 5,
+   "notifications": 2,
+   "feed": 3,
+   "signed_in": true,
+   "ready": true,
+   "me": {
+    "handle": "test-builder",
+    "name": "Test builder"
+   }
+  },
+  "/api/people?op=me": {
+   "profile": {
+    "handle": "test-builder",
+    "name": "Test builder",
+    "bio": "Cars, little shops and the odd owl, each with its steps.",
+    "created_at": "2026-05-11T09:00:00Z"
+   },
+   "collections": [
+    {
+     "id": "DocsList01",
+     "name": "Cars to build",
+     "public": true,
+     "updated_at": "2026-11-02T10:00:00Z",
+     "description": "Things with wheels, and a boat.",
+     "count": 4
+    },
+    {
+     "id": "DocsList02",
+     "name": "Small and quick",
+     "public": true,
+     "updated_at": "2026-11-02T10:00:00Z",
+     "description": "Under 100 parts each.",
+     "count": 4
+    },
+    {
+     "id": "DocsList03",
+     "name": "Town",
+     "public": true,
+     "updated_at": "2026-11-02T10:00:00Z",
+     "description": null,
+     "count": 3
+    },
+    {
+     "id": "DocsList04",
+     "name": "Ideas for later",
+     "public": false,
+     "updated_at": "2026-11-02T10:00:00Z",
+     "description": null,
+     "count": 1
+    }
+   ],
+   "mail": {
+    "comments": true,
+    "models": true,
+    "versions": false,
+    "photos": false,
+    "remixes": false,
+    "ready": true,
+    "kinds": true
+   },
+   "follows": {
+    "ready": true,
+    "shows_follows": false
+   },
+   "showcase": {
+    "ready": true,
+    "links": [],
+    "banner": "DocsSprt01",
+    "pins": [],
+    "models": [
+     {
+      "id": "DocsSprt01",
+      "name": "Sports car and its driver",
+      "picture": true
+     },
+     {
+      "id": "DocsShop01",
+      "name": "Corner shop",
+      "picture": true
+     },
+     {
+      "id": "DocsFire01",
+      "name": "Fire station",
+      "picture": true
+     },
+     {
+      "id": "DocsOwl001",
+      "name": "Barn owl",
+      "picture": true
+     },
+     {
+      "id": "DocsRckt01",
+      "name": "Three-core rocket",
+      "picture": true
+     },
+     {
+      "id": "DocsOrry01",
+      "name": "Orrery",
+      "picture": true
+     },
+     {
+      "id": "DocsKart01",
+      "name": "Technic go-kart",
+      "picture": true
+     },
+     {
+      "id": "DocsLite01",
+      "name": "Lighthouse",
+      "picture": true
+     },
+     {
+      "id": "DocsHous01",
+      "name": "Little house",
+      "picture": true
+     },
+     {
+      "id": "DocsTree01",
+      "name": "Tree",
+      "picture": true
+     },
+     {
+      "id": "DocsRock01",
+      "name": "Rocket",
+      "picture": true
+     },
+     {
+      "id": "DocsBoat01",
+      "name": "Boat",
+      "picture": true
+     }
+    ]
+   },
+   "avatar": {
+    "ready": true,
+    "picture": null,
+    "removed": false
+   },
+   "likes": {
+    "ready": true,
+    "shows_likes": false
+   }
+  },
+  "/api/people?op=profile&handle=test-builder": {
+   "handle": "test-builder",
+   "name": "Test builder",
+   "bio": "Cars, little shops and the odd owl, each with its steps.",
+   "since": "2026-05-11T09:00:00Z",
+   "models_count": 12,
+   "likes": 162,
+   "followers": 6,
+   "following": 0,
+   "designer": {
+    "models": 12,
+    "builds": 80,
+    "remixes": 5,
+    "comments": 10,
+    "tested": 8,
+    "likes": 162,
+    "builders": 9,
+    "followers": 6,
+    "photos": []
+   },
+   "collections": [
+    {
+     "id": "DocsList01",
+     "name": "Cars to build",
+     "description": "Things with wheels, and a boat.",
+     "count": 4
+    },
+    {
+     "id": "DocsList02",
+     "name": "Small and quick",
+     "description": "Under 100 parts each.",
+     "count": 4
+    },
+    {
+     "id": "DocsList03",
+     "name": "Town",
+     "description": null,
+     "count": 3
+    }
+   ],
+   "built": [],
+   "url": "/u/test-builder",
+   "page": 1,
+   "per_page": 24,
+   "more": false,
+   "models": [
+    {
+     "id": "DocsSprt01",
+     "name": "Sports car and its driver",
+     "author": "Test builder",
+     "parts": 187,
+     "listed_at": "2026-10-30T10:00:00Z",
+     "kind": "vehicle",
+     "tags": [
+      "car",
+      "sports",
+      "racing"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 35,
+     "own_steps": true,
+     "technic": false,
+     "tested": true,
+     "made_with": "hand",
+     "modelled_by": null,
+     "views": 0,
+     "likes": 23,
+     "remixes": 2,
+     "builds": 14,
+     "comments": 3,
+     "moves": [
+      "steering"
+     ],
+     "motions": [],
+     "by": {
+      "handle": "test-builder",
+      "name": "Test builder"
+     },
+     "url": "/m/DocsSprt01",
+     "image": "/m/DocsSprt01.png",
+     "thumb": "/m/DocsSprt01.webp?v=mvuswn40"
+    },
+    {
+     "id": "DocsShop01",
+     "name": "Corner shop",
+     "author": "Test builder",
+     "parts": 797,
+     "listed_at": "2026-10-29T10:00:00Z",
+     "kind": "town",
+     "tags": [
+      "modular",
+      "shop",
+      "town"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 104,
+     "own_steps": true,
+     "technic": false,
+     "tested": true,
+     "made_with": "hand",
+     "modelled_by": null,
+     "views": 0,
+     "likes": 31,
+     "remixes": 1,
+     "builds": 11,
+     "comments": 4,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "test-builder",
+      "name": "Test builder"
+     },
+     "url": "/m/DocsShop01",
+     "image": "/m/DocsShop01.png",
+     "thumb": "/m/DocsShop01.webp?v=mvtdgsg0"
+    },
+    {
+     "id": "DocsFire01",
+     "name": "Fire station",
+     "author": "Test builder",
+     "parts": 535,
+     "listed_at": "2026-10-28T10:00:00Z",
+     "kind": "town",
+     "tags": [
+      "fire",
+      "station",
+      "town"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 120,
+     "own_steps": true,
+     "technic": false,
+     "tested": true,
+     "made_with": "assistant",
+     "modelled_by": null,
+     "views": 0,
+     "likes": 19,
+     "remixes": 1,
+     "builds": 9,
+     "comments": 2,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "test-builder",
+      "name": "Test builder"
+     },
+     "url": "/m/DocsFire01",
+     "image": "/m/DocsFire01.png",
+     "thumb": "/m/DocsFire01.webp?v=mvry0xs0"
+    },
+    {
+     "id": "DocsOwl001",
+     "name": "Barn owl",
+     "author": "Test builder",
+     "parts": 1032,
+     "listed_at": "2026-10-27T10:00:00Z",
+     "kind": "nature",
+     "tags": [
+      "owl",
+      "bird",
+      "animal"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 130,
+     "own_steps": true,
+     "technic": false,
+     "tested": false,
+     "made_with": "assistant",
+     "modelled_by": null,
+     "views": 0,
+     "likes": 27,
+     "remixes": 0,
+     "builds": 7,
+     "comments": 1,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "test-builder",
+      "name": "Test builder"
+     },
+     "url": "/m/DocsOwl001",
+     "image": "/m/DocsOwl001.png",
+     "thumb": "/m/DocsOwl001.webp?v=mvqil340"
+    },
+    {
+     "id": "DocsRckt01",
+     "name": "Three-core rocket",
+     "author": "Test builder",
+     "parts": 353,
+     "listed_at": "2026-10-26T10:00:00Z",
+     "kind": "space",
+     "tags": [
+      "rocket",
+      "space"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 65,
+     "own_steps": true,
+     "technic": false,
+     "tested": true,
+     "made_with": "assistant",
+     "modelled_by": null,
+     "views": 0,
+     "likes": 15,
+     "remixes": 1,
+     "builds": 6,
+     "comments": 0,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "test-builder",
+      "name": "Test builder"
+     },
+     "url": "/m/DocsRckt01",
+     "image": "/m/DocsRckt01.png",
+     "thumb": "/m/DocsRckt01.webp?v=mvp358g0"
+    },
+    {
+     "id": "DocsOrry01",
+     "name": "Orrery",
+     "author": "Test builder",
+     "parts": 520,
+     "listed_at": "2026-10-25T10:00:00Z",
+     "kind": "mechanism",
+     "tags": [
+      "orrery",
+      "planets",
+      "technic"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 136,
+     "own_steps": true,
+     "technic": true,
+     "tested": false,
+     "made_with": "hand",
+     "modelled_by": null,
+     "views": 0,
+     "likes": 12,
+     "remixes": 0,
+     "builds": 5,
+     "comments": 0,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "test-builder",
+      "name": "Test builder"
+     },
+     "url": "/m/DocsOrry01",
+     "image": "/m/DocsOrry01.png",
+     "thumb": "/m/DocsOrry01.webp?v=mvnnpds0"
+    },
+    {
+     "id": "DocsKart01",
+     "name": "Technic go-kart",
+     "author": "Test builder",
+     "parts": 57,
+     "listed_at": "2026-10-24T10:00:00Z",
+     "kind": "vehicle",
+     "tags": [
+      "technic",
+      "kart"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 20,
+     "own_steps": true,
+     "technic": true,
+     "tested": true,
+     "made_with": "hand",
+     "modelled_by": null,
+     "views": 0,
+     "likes": 9,
+     "remixes": 0,
+     "builds": 8,
+     "comments": 0,
+     "moves": [
+      "steering"
+     ],
+     "motions": [],
+     "by": {
+      "handle": "test-builder",
+      "name": "Test builder"
+     },
+     "url": "/m/DocsKart01",
+     "image": "/m/DocsKart01.png",
+     "thumb": "/m/DocsKart01.webp?v=mvm89j40"
+    },
+    {
+     "id": "DocsLite01",
+     "name": "Lighthouse",
+     "author": "Test builder",
+     "parts": 84,
+     "listed_at": "2026-10-23T10:00:00Z",
+     "kind": "architecture",
+     "tags": [
+      "lighthouse",
+      "coast"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 12,
+     "own_steps": true,
+     "technic": false,
+     "tested": true,
+     "made_with": "hand",
+     "modelled_by": null,
+     "views": 0,
+     "likes": 8,
+     "remixes": 0,
+     "builds": 6,
+     "comments": 0,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "test-builder",
+      "name": "Test builder"
+     },
+     "url": "/m/DocsLite01",
+     "image": "/m/DocsLite01.png",
+     "thumb": "/m/DocsLite01.webp?v=mvkstog0"
+    },
+    {
+     "id": "DocsHous01",
+     "name": "Little house",
+     "author": "Test builder",
+     "parts": 71,
+     "listed_at": "2026-10-22T10:00:00Z",
+     "kind": "town",
+     "tags": [
+      "house",
+      "town"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 10,
+     "own_steps": true,
+     "technic": false,
+     "tested": false,
+     "made_with": "hand",
+     "modelled_by": null,
+     "views": 0,
+     "likes": 6,
+     "remixes": 0,
+     "builds": 5,
+     "comments": 0,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "test-builder",
+      "name": "Test builder"
+     },
+     "url": "/m/DocsHous01",
+     "image": "/m/DocsHous01.png",
+     "thumb": "/m/DocsHous01.webp?v=mvjddts0"
+    },
+    {
+     "id": "DocsTree01",
+     "name": "Tree",
+     "author": "Test builder",
+     "parts": 69,
+     "listed_at": "2026-10-21T10:00:00Z",
+     "kind": "nature",
+     "tags": [
+      "tree"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 9,
+     "own_steps": true,
+     "technic": false,
+     "tested": true,
+     "made_with": "hand",
+     "modelled_by": null,
+     "views": 0,
+     "likes": 5,
+     "remixes": 0,
+     "builds": 4,
+     "comments": 0,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "test-builder",
+      "name": "Test builder"
+     },
+     "url": "/m/DocsTree01",
+     "image": "/m/DocsTree01.png",
+     "thumb": "/m/DocsTree01.webp?v=mvhxxz40"
+    },
+    {
+     "id": "DocsRock01",
+     "name": "Rocket",
+     "author": "Test builder",
+     "parts": 68,
+     "listed_at": "2026-10-20T10:00:00Z",
+     "kind": "space",
+     "tags": [
+      "rocket",
+      "space"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 10,
+     "own_steps": true,
+     "technic": false,
+     "tested": true,
+     "made_with": "hand",
+     "modelled_by": null,
+     "views": 0,
+     "likes": 4,
+     "remixes": 0,
+     "builds": 3,
+     "comments": 0,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "test-builder",
+      "name": "Test builder"
+     },
+     "url": "/m/DocsRock01",
+     "image": "/m/DocsRock01.png",
+     "thumb": "/m/DocsRock01.webp?v=mvgii4g0"
+    },
+    {
+     "id": "DocsBoat01",
+     "name": "Boat",
+     "author": "Test builder",
+     "parts": 49,
+     "listed_at": "2026-10-19T10:00:00Z",
+     "kind": "vehicle",
+     "tags": [
+      "boat",
+      "water"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 8,
+     "own_steps": true,
+     "technic": false,
+     "tested": false,
+     "made_with": "hand",
+     "modelled_by": null,
+     "views": 0,
+     "likes": 3,
+     "remixes": 0,
+     "builds": 2,
+     "comments": 0,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "test-builder",
+      "name": "Test builder"
+     },
+     "url": "/m/DocsBoat01",
+     "image": "/m/DocsBoat01.png",
+     "thumb": "/m/DocsBoat01.webp?v=mvf329s0"
+    }
+   ],
+   "liked_count": null,
+   "banner": "DocsSprt01",
+   "pins": [],
+   "achievements": [
+    {
+     "id": "designer",
+     "level": 3,
+     "name": "Designer · ten models",
+     "said": "Level 3 of 6: 12 models listed in the gallery"
+    },
+    {
+     "id": "built",
+     "level": 3,
+     "name": "Built · fifty times",
+     "said": "Level 3 of 6: 80 builds finished to the last step"
+    },
+    {
+     "id": "tested",
+     "level": 2,
+     "name": "Tested · five models",
+     "said": "Level 2 of 4: 8 models marked Tested"
+    },
+    {
+     "id": "remixed",
+     "level": 2,
+     "name": "Remixed · five times",
+     "said": "Level 2 of 4: 5 remixes"
+    },
+    {
+     "id": "challenger",
+     "level": 1,
+     "name": "Challenger · first challenge",
+     "said": "Level 1 of 4: 2 challenges entered"
+    }
+   ],
+   "levels": [
+    {
+     "track": "designer",
+     "n": 12,
+     "level": 3,
+     "of": 6,
+     "reached": 10,
+     "next": 25
+    },
+    {
+     "track": "built",
+     "n": 80,
+     "level": 3,
+     "of": 6,
+     "reached": 50,
+     "next": 100
+    },
+    {
+     "track": "builder",
+     "n": 0,
+     "level": 0,
+     "of": 5,
+     "reached": 0,
+     "next": 1
+    },
+    {
+     "track": "remixed",
+     "n": 5,
+     "level": 2,
+     "of": 4,
+     "reached": 5,
+     "next": 25
+    },
+    {
+     "track": "tested",
+     "n": 8,
+     "level": 2,
+     "of": 4,
+     "reached": 5,
+     "next": 10
+    },
+    {
+     "track": "challenger",
+     "n": 2,
+     "level": 1,
+     "of": 4,
+     "reached": 1,
+     "next": 3
+    }
+   ]
+  },
+  "/api/people?op=favourites": {
+   "page": 1,
+   "per_page": 24,
+   "more": false,
+   "models": [
+    {
+     "id": "DocsShop01",
+     "name": "Corner shop",
+     "author": "Test builder",
+     "parts": 797,
+     "listed_at": "2026-10-29T10:00:00Z",
+     "kind": "town",
+     "tags": [
+      "modular",
+      "shop",
+      "town"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 104,
+     "own_steps": true,
+     "technic": false,
+     "tested": true,
+     "made_with": "hand",
+     "modelled_by": null,
+     "views": 0,
+     "likes": 31,
+     "remixes": 1,
+     "builds": 11,
+     "comments": 4,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "test-builder",
+      "name": "Test builder"
+     },
+     "url": "/m/DocsShop01",
+     "image": "/m/DocsShop01.png",
+     "thumb": "/m/DocsShop01.webp?v=mvtdgsg0"
+    },
+    {
+     "id": "DocsOwl001",
+     "name": "Barn owl",
+     "author": "Test builder",
+     "parts": 1032,
+     "listed_at": "2026-10-27T10:00:00Z",
+     "kind": "nature",
+     "tags": [
+      "owl",
+      "bird",
+      "animal"
+     ],
+     "licence": "cc-by-4.0",
+     "steps": 130,
+     "own_steps": true,
+     "technic": false,
+     "tested": false,
+     "made_with": "assistant",
+     "modelled_by": null,
+     "views": 0,
+     "likes": 27,
+     "remixes": 0,
+     "builds": 7,
+     "comments": 1,
+     "moves": [],
+     "motions": [],
+     "by": {
+      "handle": "test-builder",
+      "name": "Test builder"
+     },
+     "url": "/m/DocsOwl001",
+     "image": "/m/DocsOwl001.png",
+     "thumb": "/m/DocsOwl001.webp?v=mvqil340"
+    }
+   ]
+  },
+  "/api/people?op=following": {
+   "mine": true,
+   "ready": true,
+   "following": []
+  },
+  "/api/people?op=alike": {
+   "handle": "test-builder",
+   "name": "Test builder",
+   "designers": [],
+   "yours": true
+  },
+  "/api/people?op=follows&handle=test-builder": {
+   "handle": "test-builder",
+   "ready": true,
+   "followers": 6,
+   "following": 0,
+   "shows": true,
+   "you_follow": false,
+   "mine": true,
+   "may": false,
+   "why_not": "That is you.",
+   "signed_in": true
+  },
+  "/api/people?op=marks&id=DocsSprt01": {
+   "liked": false,
+   "favourite": true,
+   "collections": [
+    {
+     "id": "DocsList01",
+     "name": "Cars to build",
+     "public": true,
+     "has": true
+    },
+    {
+     "id": "DocsList02",
+     "name": "Small and quick",
+     "public": true,
+     "has": false
+    },
+    {
+     "id": "DocsList03",
+     "name": "Town",
+     "public": true,
+     "has": false
+    },
+    {
+     "id": "DocsList04",
+     "name": "Ideas for later",
+     "public": false,
+     "has": false
+    }
+   ]
+  },
+  "/api/people?op=challenge_entry&id=DocsSprt01": {
+   "mine": true,
+   "ready": true,
+   "challenge": {
+    "id": 7,
+    "title": "Wheels and tracks",
+    "starts_on": "2026-11-01",
+    "ends_on": "2026-11-30",
+    "days_said": "1 Nov 2026 to 30 Nov 2026",
+    "rules_said": [
+     "At most 1,500 parts",
+     "Marked Tested: it stands at every step, and every part is made in its colour"
+    ],
+    "rules": {
+     "most_parts": 1500,
+     "set_number": null,
+     "set_name": null,
+     "tested": true
+    }
+   },
+   "entry": null,
+   "entries": 0,
+   "in_gallery": true,
+   "keeps": true,
+   "broken": []
+  },
+  "/api/people?op=comments&id=DocsSprt01": {
+   "model": "DocsSprt01",
+   "ready": true,
+   "version": 1,
+   "newest": 1,
+   "open": true,
+   "replies": true,
+   "count": 0,
+   "comments": [],
+   "you": {
+    "signed_in": true,
+    "may_write": true,
+    "why_not": "",
+    "owner": true
+   }
+  },
+  "/api/share?op=bases&id=DocsSprt01": {
+   "bases": [],
+   "mine": true,
+   "ready": true
+  },
+  "/api/share?op=tested&id=DocsSprt01": {
+   "id": "DocsSprt01",
+   "version": 1,
+   "tested": {
+    "passed": true,
+    "by": "app",
+    "app": "0.3.0",
+    "at": "2026-10-30T10:00:00Z",
+    "steps": 35,
+    "parts": 187,
+    "n": 1,
+    "tests": {
+     "stands": {
+      "ok": true,
+      "why": "every step stands on what is under it",
+      "said": "Stands at every step"
+     },
+     "steps": {
+      "ok": true,
+      "why": "each part goes on from where it is shown",
+      "said": "every step reachable"
+     },
+     "parts": {
+      "ok": true,
+      "why": "every part is made in its colour",
+      "said": "every part made in its colour"
+     },
+     "whole": {
+      "ok": true,
+      "why": "every part holds on",
+      "said": "nothing loose"
+     }
+    },
+    "cleared": false,
+    "cleared_why": null
+   }
+  },
+  "/api/people?op=photos&id=DocsSprt01": {
+   "model": "DocsSprt01",
+   "owner": true,
+   "photos": [],
+   "mine": [],
+   "left": 3
+  },
+  "/api/orangecheck?op=status": {
+   "ready": true,
+   "did": false,
+   "only": false,
+   "fresh": false
+  },
+  "/api/oauth?op=connections": {
+   "connections": [],
+   "before": false
+  },
+  "/api/plans?op=feedback": {
+   "beta": false,
+   "reports": []
+  }
+ },
+ "storage": {
+  "brickworks.session": {
+   "refresh_token": "docs",
+   "email": "you@example.com",
+   "user_id": "d0c5d0c5-d0c5-4d0c-8d0c-d0c5d0c5d0c5",
+   "url": "https://sign-in.example",
+   "key": "docs"
+  }
+ }
+}

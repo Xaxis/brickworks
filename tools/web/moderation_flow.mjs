@@ -16,10 +16,11 @@
 //   3. /takedown: the page's address, what is wrong, what is theirs, how to
 //      reach them, Send, and "Sent".
 //   4. The site's owner (MASTER_EMAIL, signed in as the tests are) opens
-//      /admin: both reports, with what was said and the owner's account.
+//      the console's Reported (/admin#gallery/reported): both reports, with
+//      what was said and the owner's account.
 //      Take out: the model leaves the gallery, its reports leave the queue.
 //      The second model reported; Take out the account: it leaves too, the
-//      profile is gone, the account is listed as taken out; Let back in.
+//      profile is gone, the account is listed under Taken out; Let back in.
 //   5. /takedown and the report dialog at 390 and 1280 px: nothing
 //      sideways; no console error or refused request anywhere.
 //
@@ -156,7 +157,7 @@ try {
     [STORAGE_KEY, JSON.stringify(master.kept)]);
   const page = await admin.newPage();
   listen(page, "admin");
-  await page.goto(`${site}/admin`, { waitUntil: "load", timeout: 60000 });
+  await page.goto(`${site}/admin#gallery/reported`, { waitUntil: "load", timeout: 60000 });
   await page.waitForSelector("#reports tr", { timeout: 30000 });
   const rows = () => page.evaluate((id) => [...document.querySelectorAll("#reports tr")]
     .filter((row) => row.querySelector(`a[href="/m/${id}"]`)).map((row) => row.innerText), house1);
@@ -185,6 +186,7 @@ try {
   const relist = await api("/api/share", { method: "POST", token: owner.access_token,
     body: { name: `Moderated New ${rand}`, model: `0 New ${rand}\r\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat\r\n`, listed: true } });
   check(`its owner listing anything new: ${relist.status} "${relist.json?.error}"`, relist.status === 409);
+  await page.click('a[data-tab-link="barred"]');
   await shot(page, "4_admin_barred.png");
   await barredRow.locator("button", { hasText: "Let back in" }).click();
   await page.waitForFunction(() => /Let back in/.test(document.getElementById("barred-note").textContent), null, { timeout: 30000 }).catch(() => {});

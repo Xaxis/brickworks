@@ -1,0 +1,8 @@
+0 FILE one.ldr
+0 One
+0 Name: one.ldr
+0 Author: Sam Check
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 1 80 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 2 0 -24 0 1 0 0 0 1 0 0 0 1 zz9999.dat
+0 NOFILE

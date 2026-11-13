@@ -140,7 +140,8 @@ func attach(main: Node) -> void:
 	add_child(_picker)
 	_picker.picked.connect(_on_file)
 	_picker.failed.connect(func(why: String) -> void: _say(why))
-	main.get_node("HUD").add_child(self)
+	# In front of the other panels while it shows, under the sign-in screen.
+	main.call("_add_to_hud", self)
 	_fit()
 	get_viewport().size_changed.connect(_fit)
 	store.changed.connect(_on_store_changed)
@@ -160,7 +161,7 @@ func _ready() -> void:
 
 ## Open on one page: "own", "need" or "build".
 func open(page: String = "own") -> void:
-	visible = true
+	HudFront.show_panel(self)
 	_need_set = {}
 	_rb_note.text = _rebrickable_note()
 	_show(page)
@@ -357,7 +358,10 @@ func _own_page() -> Control:
 	var account := HBoxContainer.new()
 	account.add_theme_constant_override("separation", 6)
 	page.add_child(account)
-	account.add_child(_label("Rebrickable account", 12, 0.75))
+	# Its words whole, never clipped to nothing beside the fields.
+	var account_words: Label = _label("Rebrickable account", 12, 0.75)
+	account_words.clip_text = false
+	account.add_child(account_words)
 	_rb_key = _field(account, "Rebrickable API key", true, "collection_rb_key")
 	_rb_token = _field(account, "User token", true, "collection_rb_token")
 	_rb_user = _field(account, "or username", false, "collection_rb_user")
@@ -541,6 +545,12 @@ func _field(row: Container, hint: String, secret: bool, named: String) -> LineEd
 	field.secret = secret
 	field.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	field.add_theme_font_size_override("font_size", 12)
+	# As wide as its hint, so a row of them too wide for a phone is let
+	# flow onto two lines (TouchSizing._flow_rows), not squeezed till each
+	# says half its name: "Rebrickable", "and passwor" at 430 (11-10).
+	var font: Font = field.get_theme_font("font")
+	if font != null:
+		field.custom_minimum_size.x = ceilf(font.get_string_size(hint, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x) + 16.0
 	row.add_child(field)
 	_controls[named] = field
 	return field
@@ -863,17 +873,16 @@ func _export(shop: String) -> void:
 		_say("nothing is short, so there is nothing to order")
 		return
 	var short: Inventory = Collection.shortfall_stock(_need_stock, _need_plan, library)
-	var title: String = _need_name().to_snake_case()
-	if title.is_empty():
-		title = "model"
 	var made: Dictionary
 	var line: String
 	if shop == "bricklink":
 		made = ShopLists.bricklink_xml(short, library)
-		line = await Download.save(str(made["text"]), title + "_wanted.xml", "application/xml")
+		line = await Download.save(str(made["text"]), SubmodelFile.titled(_need_name(), "_wanted.xml"),
+			"application/xml")
 	else:
 		made = ShopLists.rebrickable_csv(short)
-		line = await Download.save(str(made["text"]), title + "_wanted.csv", "text/csv")
+		line = await Download.save(str(made["text"]), SubmodelFile.titled(_need_name(), "_wanted.csv"),
+			"text/csv")
 	if line.is_empty():
 		return
 	var notes: String = ""
@@ -1063,6 +1072,8 @@ func _report(result: Dictionary, source: String) -> void:
 		line += " — no inventory is known for %s" % ", ".join(unknown)
 	if not str(result.get("clamped", "")).is_empty():
 		line += " — " + str(result["clamped"])
+	if not str(result.get("marks", "")).is_empty():
+		line += " — " + str(result["marks"])
 	_say(line)
 
 
@@ -1084,8 +1095,13 @@ func _build_from(numbers: PackedStringArray) -> void:
 	if dock != null and not dock.is_open():
 		dock.set_open(true)
 	close()
+	# What the person's copies are marked as missing is not in the bin
+	# (SetBin.make, CollectionStore.marks): said, so the counts read right.
+	var made: Variant = bin.get("_set_bin")
+	var gone: int = int(made.get("left_out")) if made is Object and made.get("left_out") != null else 0
 	if bar != null:
-		bar.say("building from the parts of %s" % bin.set_showing())
+		bar.say("building from the parts of %s%s" % [bin.set_showing(),
+			"" if gone == 0 else ", less the %s marked missing" % Counted.of(gone, "piece")])
 
 
 # --- a loose part ---------------------------------------------------------

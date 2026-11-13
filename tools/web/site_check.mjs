@@ -213,6 +213,11 @@ for (const [from, to] of [
   ["/challenges", "/challenge"],
   ["/challenges/", "/challenge"],
   ["/challenges?id=3", "/challenge?id=3"],
+  // The testers' hub became the beta's own page (betahome).
+  ["/beta-hub", "/beta"],
+  ["/de/beta-hub", "/de/beta"],
+  // The owner's beta page became the console's Beta (console1).
+  ["/beta-admin", "/admin#beta"],
 ]) {
   const r = await get(from);
   const where = (r.headers.get("location") || "").replace(base, "").replace(SITE, "");
@@ -378,7 +383,8 @@ async function resolves(href, from) {
     const target = url.pathname === "/" ? pageHtml["/"] : (pageHtml[url.pathname] || (await get(url.pathname)).body);
     const made = MADE_BY[`${url.pathname.replace(COPY, "")}#${id}`];
     const there = new RegExp(`id="${id}"`).test(target || "")
-      || (made && new RegExp(`\\.id = "${id}";`).test((await get(made)).body || ""));
+      || (made && new RegExp(`\\.id = "${id}";`).test((await get(made)).body || ""))
+      || routedTo(url.pathname, id, target || "");
     if (!there) fail(`${from} links to ${url.pathname}${url.hash}, and there is no such id`);
   }
 }
@@ -389,6 +395,14 @@ async function resolves(href, from) {
 // joined PAGES (rel-m240). A copy (/de/settings) runs the same scripts, so
 // it is looked up by its English address.
 const MADE_BY = { "/settings#plan": "/plan.js" };
+// A page whose address after # is where its script goes, not an element's
+// id: the owner's console (web/admin.js route()), #<section>[/<tab>], one
+// of its [data-section]s and a [data-tab] in it.
+const ROUTED = new Set(["/admin"]);
+const routedTo = (pathname, id, html) => {
+  const [section, tab] = id.split("/");
+  return ROUTED.has(pathname) && html.includes(`data-section="${section}"`) && (!tab || html.includes(`data-tab="${tab}"`));
+};
 const COPY = new RegExp(`^/(?:${readdirSync(new URL("../../web/_lang/", import.meta.url))
   .filter((name) => name.endsWith(".json")).map((name) => name.slice(0, -5)).join("|")})(?=/)`);
 for (const page of [...PAGES.map((p) => p.path), "/no-such-page"]) {
@@ -416,7 +430,9 @@ for (const page of [...PAGES.map((p) => p.path), "/no-such-page"]) {
   for (const href of new Set(hrefs)) {
     if (href.startsWith("mailto:")) continue;
     if (href.startsWith("#")) {
-      if (href.length > 1 && !html.includes(`id="${href.slice(1)}"`)) fail(`${page} links to ${href}, and there is no such id`);
+      if (href.length > 1 && !html.includes(`id="${href.slice(1)}"`) && !routedTo(page, href.slice(1), html)) {
+        fail(`${page} links to ${href}, and there is no such id`);
+      }
       continue;
     }
     await resolves(href, page);

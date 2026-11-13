@@ -29,7 +29,9 @@
       "entry": "api/collection.js",
       "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/collection   (401 signed out; GET, POST an op or an import, DELETE with a session; PUT refused 409)",
       "area": "collection",
-      "tests": []
+      "tests": [
+        "tests/test_packaged_facts.py"
+      ]
     },
     {
       "id": "api:/api/models",
@@ -69,6 +71,7 @@
       "reach": "curl -s https://brickworks.diy/api/account",
       "area": "web",
       "tests": [
+        "tests/fixtures/console/db_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_gallery_builds.py",
@@ -82,7 +85,9 @@
       "entry": "api/admin.js",
       "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/admin   (401 signed out, 404 for anyone but MASTER_EMAIL)",
       "area": "account",
-      "tests": []
+      "tests": [
+        "tests/test_packaged_facts.py"
+      ]
     },
     {
       "id": "api:GET /api/otp/canary",
@@ -112,8 +117,10 @@
       "reach": "curl -s 'https://brickworks.diy/api/people?op=profile&handle=<handle>'   (and /u/<handle>, /c/<id>; ?op=me, like, favourite, collection, collect with a session)",
       "area": "web",
       "tests": [
+        "tests/fixtures/console/api_check.mjs",
         "tests/test_challenge_notices.py",
         "tests/test_comment_mentions.py",
+        "tests/test_console.py",
         "tests/test_gallery_builds.py",
         "tests/test_release_train.py",
         "tests/test_share_unknowns.py",
@@ -133,6 +140,7 @@
         "tests/test_gallery_crons.py",
         "tests/test_library_site.py",
         "tests/test_model_bases.py",
+        "tests/test_packaged_facts.py",
         "tests/test_release.py"
       ]
     },
@@ -143,6 +151,7 @@
       "reach": "curl -s -X POST -H 'authorization: Bearer <session>' -d '{\"month\":3,\"year\":2000}' https://brickworks.diy/api/account?op=age",
       "area": "account",
       "tests": [
+        "tests/fixtures/console/db_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_gallery_builds.py",
@@ -220,6 +229,7 @@
       "reach": "python3 tools/minitest.py tests/test_account_erase.py   (POST /api/account?op=delete {confirm}: with BRICKWORKS_BILLING test or live the customer is erased at Admission and a subscription ended first, and nothing is deleted when Admission cannot; off, Admission is never asked; billing_flow.mjs --stand-in deletes a paying account from /settings)",
       "area": "web",
       "tests": [
+        "tests/fixtures/console/db_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_gallery_builds.py",
@@ -242,6 +252,7 @@
         "tests/test_gallery_builds.py",
         "tests/test_library_site.py",
         "tests/test_model_bases.py",
+        "tests/test_packaged_facts.py",
         "tests/test_release.py",
         "tests/test_sets.py"
       ]
@@ -253,11 +264,16 @@
       "reach": "curl -s '<deployment>/api/plans?op=beta'; curl -s '<deployment>/api/plans?op=beta_spots' (signed out, cached a minute: {beta, cap, left}); POST it signed in with {build, ai, background, background_line, link, terms, emails}   (off: {beta: off} and POST 403; open: 401 signed out, 422 with why, 409 a second time; python3 tools/minitest.py tests/test_beta.py)",
       "area": "web",
       "tests": [
+        "tests/fixtures/console/api_check.mjs",
+        "tests/fixtures/console/db_check.mjs",
         "tests/test_beta.py",
+        "tests/test_beta_join.py",
         "tests/test_billing_pay.py",
+        "tests/test_console.py",
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
+        "tests/test_site_lang.py",
         "tests/test_site_shell.py"
       ]
     },
@@ -529,7 +545,23 @@
       "id": "cli:beta browser flow",
       "kind": "cli",
       "entry": "tools/web/beta_flow.mjs",
-      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/beta_flow.mjs --url=<preview> --out=DIR   (a preview from tools/deploy.sh --unit --billing-stand-in --beta-open, or the beta off: Coming soon and refused; preview check [beta])",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/beta_flow.mjs --url=<preview> --out=DIR   (a preview from tools/deploy.sh --unit --billing-stand-in --beta-open, or the beta off: Coming soon and refused; joining refused off, and an approved tester leaves and joins again with the month and spot as they were; preview check [beta])",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:betajoin browser flow",
+      "kind": "cli",
+      "entry": "tools/web/betajoin_flow.mjs",
+      "reach": "node tools/web/betajoin_flow.mjs --url=http://127.0.0.1:9960 --owner=<its MASTER_EMAIL> [--off=URL] [--before=URL] --out=DIR   (a local server with BRICKWORKS_BETA=open and --hold=feedback until beta_join.sql is applied; see its head)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:betajoin probe",
+      "kind": "cli",
+      "entry": "src/dev/betajoin_probe.gd",
+      "reach": "BRICKWORKS_API=http://127.0.0.1:9960 tools/probe.sh betajoin_probe [-- off]   (windowed, live: the real form, the welcome, Join, Account's Beta row, Not now never asked again; off: no welcome, no row, 403; skipped without BRICKWORKS_API)",
       "area": "web",
       "tests": []
     },
@@ -606,6 +638,22 @@
       "tests": []
     },
     {
+      "id": "cli:bugreport browser flow",
+      "kind": "cli",
+      "entry": "tools/web/bugreport_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/bugreport_flow.mjs --url=<deployment> --out=DIR   (the site at 390 and 1280: the report over the page, a box found in the kept picture within 2 px, Your reports; the app's top bar with the beta open, none with it shut; preview check [bugreport])",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:bugreport probe",
+      "kind": "cli",
+      "entry": "src/dev/bugreport_probe.gd",
+      "reach": "PROBE_SIZE=1280x720 tools/probe.sh bugreport_probe [--shots=DIR]   (windowed, signs a throwaway in: top bar, Help and Alt-Shift-R each open the report in one press; a drawn box in the sent JPEG within 2 px; Report this on an error; Escape and Cancel send nothing; the beta shut hides the button)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:build a model from its booklet's pages",
       "kind": "cli",
       "entry": "tools/bench/booklet_follow.py",
@@ -666,6 +714,7 @@
         "tests/test_release_train.py",
         "tests/test_run_probes.py",
         "tests/test_thumbnail_check.py",
+        "tests/test_timing_judge.py",
         "tests/test_worktree_links_ignored.py"
       ]
     },
@@ -789,6 +838,14 @@
       "tests": []
     },
     {
+      "id": "cli:carryrest probe",
+      "kind": "cli",
+      "entry": "src/dev/carryrest_probe.gd",
+      "reach": "tools/probe.sh carryrest_probe   (PROBE_SIZE=1280x720 too; carryrest_phone_probe and carryrest_tablet_probe by finger; --no-gate without an account; CARRYREST_OUT=DIR for its pictures)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:challenges browser flow",
       "kind": "cli",
       "entry": "tools/web/challenges_flow.mjs",
@@ -811,6 +868,7 @@
         "tests/test_release_train.py",
         "tests/test_run_probes.py",
         "tests/test_thumbnail_check.py",
+        "tests/test_timing_judge.py",
         "tests/test_worktree_links_ignored.py"
       ]
     },
@@ -941,6 +999,14 @@
       "tests": []
     },
     {
+      "id": "cli:console browser flow",
+      "kind": "cli",
+      "entry": "tools/web/console_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/console_flow.mjs --url=<preview> --out=DIR   (MASTER_EMAIL's session minted: the gate, Gallery, People, Beta and its switch, Feedback, the audit log, /beta-admin, every section at 390/1280 light/dark; throwaways deleted, the switch and the checks' pool put back; preview check [console], run alone)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:contrast probe",
       "kind": "cli",
       "entry": "src/dev/contrast_probe.gd",
@@ -1056,6 +1122,14 @@
       "tests": []
     },
     {
+      "id": "cli:donenote probe",
+      "kind": "cli",
+      "entry": "src/dev/donenote_probe.gd",
+      "reach": "tools/probe.sh donenote_probe -- --shots=DIR   (windowed, 1400x900 and PROBE_SIZE=1280x720, signed in through the gate with a throwaway account from .env; the focus, the window's attention and the browser's Notification a stand-in: a design in the panel on a stand-in API, Render picture at Best, the render queue's Add this view and Render building, each run to its end; unfocused 1 attention request or 1 notification each, focused 0, turned off by a click in Settings and kept 0; the web asks nothing on load and once at the first long job)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:download page check",
       "kind": "cli",
       "entry": "tools/web/download_check.mjs",
@@ -1068,6 +1142,14 @@
       "kind": "cli",
       "entry": "tools/web/drawn_flow.mjs",
       "reach": "node tools/web/drawn_flow.mjs --dir=build/web --out=shots/drawn   (or --url=<a preview>/app with BW_BYPASS; the build animation, a cut moved up and the booklet's pictures, each counted off the picture; a design, a stack of nine and a row of twelve, whole in the view as it ends)",
+      "area": "view",
+      "tests": []
+    },
+    {
+      "id": "cli:drive probe",
+      "kind": "cli",
+      "entry": "src/dev/drive_probe.gd",
+      "reach": "tools/probe.sh drive_probe [-- OUT_DIR]; PROBE_SIZE=1280x720 tools/probe.sh drive_probe [-- OUT_DIR]   (windowed, on the GPU: 8808-1 driven 32 studs and a quarter circle left from the Motions panel and over MCP; its path, wheels' turns and roll read from the frames alone; the file byte for byte; kept, backwards, undone; rendered; a ?motion= link driving it; pictures in shots/drive/)",
       "area": "view",
       "tests": []
     },
@@ -1207,7 +1289,7 @@
       "id": "cli:fidelity probe",
       "kind": "cli",
       "entry": "src/dev/fidelity_probe.gd",
-      "reach": "godot --headless --path . --script src/dev/fidelity_probe.gd -- vendor/omr/files/3315-1.mpd vendor/omr/files/42082-1.mpd   (someone else's file saved untouched is the same file; a part recoloured, moved, taken away and added is written as such and nothing else changes; written whole, still the author's; FILEs saved untouched and compared line for line)",
+      "reach": "godot --headless --path . --script src/dev/fidelity_probe.gd -- vendor/omr/files/3315-1.mpd vendor/omr/files/42082-1.mpd   (someone else's file saved untouched is the same file; a part recoloured, moved, taken away and added is written as such and nothing else changes; written whole, still the author's; a mirrored copy written whole by a matrix that reflects, opened again turned as it was, its copies following mirrored; the last copy's COPY line taken off with it; a sub-model placed by nothing keeping its block in a patch, live's write, taken apart, written whole (with what it places) and an emptied model saved, opened and saved again, renaming no copy of one called the same; a CRLF file with no line break at its end ending so after an edit to its last line; FILEs saved untouched and compared line for line)",
       "area": "model-io",
       "tests": []
     },
@@ -1300,6 +1382,14 @@
       "tests": []
     },
     {
+      "id": "cli:function packaging",
+      "kind": "cli",
+      "entry": "tools/package_api.sh",
+      "reach": "tools/package_api.sh OUT [--export=build/web] [ROUTE...]   (deploy.sh's functions, each with the catalogue's facts beside it, checked by tools/web/packaged_facts.mjs; tests/test_packaged_facts.py)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:gallery browser flow",
       "kind": "cli",
       "entry": "tools/web/gallery_flow.mjs",
@@ -1345,6 +1435,14 @@
       "entry": "src/dev/held_items_probe.gd",
       "reach": "tools/probe.sh held_items_probe   (a figure holding a hammer and a cup, a pole and a wrench, a torch and a camera, each pair by one add_minifig: each thing joined to a hand by BrickNet's connectors and through nothing, Tested's whole test passed, the Minifigure builder's figure alike; a sack, which BrickNet gives no bar, said not held when put in the hand)",
       "area": "minifig",
+      "tests": []
+    },
+    {
+      "id": "cli:heldsteps probe",
+      "kind": "cli",
+      "entry": "src/dev/heldsteps_probe.gd",
+      "reach": "tools/probe.sh heldsteps_probe   (headless: a five-step model, own and someone else's, its 3062b missing from the library and then on its way from a local server; step merges, moves, deletes and a part taken off, saved and opened again: the held part on its own step with its STEP_NAME and ZOOM byte for byte, every other step as the same edit gives the model without it, and with the part back the model as it was; then a sub-model dragged in the tree into one holding it, a part moved on from the last step it follows, a part moved in the second copy of a sub-model placed twice, and someone else's file written whole, each with the held part alone in its own step and sub-model; HELDSTEPS_OUT=dir for the saves)",
+      "area": "view",
       "tests": []
     },
     {
@@ -1465,7 +1563,15 @@
       "id": "cli:lights probe",
       "kind": "cli",
       "entry": "src/dev/lights_probe.gd",
-      "reach": "tools/probe.sh lights [-- --keep=DIR] [-- --no-trace]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720: a spot over the car by Render's Spot, 0 px changed outside its cone rasterised and path traced, the roof under it lighter by 15% and 10 levels, the two the same light within 35%; a Trans Neon Green 1 x 1 in the Dark light lighting the white plate round it 3 times as much as a Trans Green one, both ways; kept over save, Save as, the autosave, a step edit and Build together's words, back after an open; light_model over MCP; then --older=DIR on an older checkout opens each file whole, its light line left alone; pictures in shots/lights/)",
+      "reach": "tools/probe.sh lights [-- --keep=DIR] [-- --no-trace] [-- --review]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720: a spot over the car by Render's Spot, 0 px changed outside its cone rasterised and path traced, the roof under it lighter by 15% and 10 levels, the two the same light within 35%; a Trans Neon Green 1 x 1 in the Dark light lighting the white plate round it 3 times as much as a Trans Green one, both ways; kept over save, Save as, the autosave, a step edit and Build together's words, back after an open; light_model over MCP; then --older=DIR on an older checkout opens each file whole, its light line left alone; a sub-model's light and view kept in its section through a rename, a Make and its outer taken apart, undone and redone, and the model's lamp its own when a sub-model has its very line; --review runs only the review checks, nothing drawn; pictures in shots/lights/)",
+      "area": "view",
+      "tests": []
+    },
+    {
+      "id": "cli:lineart probe",
+      "kind": "cli",
+      "entry": "src/dev/lineart_probe.gd",
+      "reach": "tools/probe.sh lineart [-- --shots=DIR --reference=DIR]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720, through the sign-in screen with a throwaway account (.env): Render's default of the car and a scene's window and Product kept for an older build's run (--reference) byte for byte; the Look row clicked; Line art's paper, greys, outline, the wall's seams inked and dots where the light leaves a face; Comic's colours; on nothing; an animation's moved part leaves no line; render_model; 10036-1 in both looks to look at)",
       "area": "view",
       "tests": []
     },
@@ -1491,6 +1597,14 @@
       "entry": "tools/web/list_load.mjs",
       "reach": "node tools/web/list_load.mjs --url=<deployment> [--n=200] [--at-once=10]   (BW_BYPASS for a preview)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:localbricks probe",
+      "kind": "cli",
+      "entry": "src/dev/localbricks_probe.gd",
+      "reach": "tools/relay_probe.sh localbricks   (a window, 1280x720; PROBE_SIZE=1400x900; -- --shots=DIR: through the sign-in screen with a password, 7140-1's lots marked by edit_collection missing= (each said was N, now M; none=true refused while marked) and refused past its inventory, Build from it 282 of 285, a restart and another device, two tabs at once one refused, a tab a newer build followed leaving the copy on this device, two copies 566 of 570 and one of them 284 of 285, signed out nothing held, the words in de/fr/es)",
+      "area": "collection",
       "tests": []
     },
     {
@@ -1771,6 +1885,14 @@
       "tests": []
     },
     {
+      "id": "cli:open faults probe",
+      "kind": "cli",
+      "entry": "src/dev/openfaults_probe.gd",
+      "reach": "tools/probe.sh openfaults_probe   (a file opens as LDView reads it: a sub-model's name is its FILE line's text, a reference's its text after the 14th field, compared in any case with \\ as /, the first block of a name the one; hscheck's sub-model titled with its file name, se3check's castle, odd names and twins by folder, sf2check's two blocks of one name, co_del_rename_tail and cfc_wing2, each as someone else's file and as the app's own; Save, autosave, export, share, the copy kept for Undo, Save As and MCP save_model each read so again; opened again the same parts, colours, places, copies and steps; saved again the same file; OPENFAULTS_OUT=DIR keeps the texts for sf2check's readers.py)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "cli:open list time probe",
       "kind": "cli",
       "entry": "src/dev/open_list_time_probe.gd",
@@ -1823,6 +1945,14 @@
       "kind": "cli",
       "entry": "src/dev/oc_listener_probe.gd",
       "reach": "tools/probe.sh oc_listener_probe   (headless, nothing beyond 127.0.0.1; in tools/suite/headless.txt)",
+      "area": "account",
+      "tests": []
+    },
+    {
+      "id": "cli:orangecheck window answered",
+      "kind": "cli",
+      "entry": "tools/web/oc_echo_check.mjs",
+      "reach": "node tools/web/oc_echo_check.mjs   (no .env; nothing reached off this machine)",
       "area": "account",
       "tests": []
     },
@@ -1902,7 +2032,7 @@
       "id": "cli:part facts",
       "kind": "cli",
       "entry": "tools/web/part_facts.mjs",
-      "reach": "node tools/web/part_facts.mjs OUT.json   (deploy.sh writes _part_facts.json beside /api/share)",
+      "reach": "node tools/web/part_facts.mjs OUT.json   (tools/package_api.sh writes _part_facts.json once and puts it beside every function)",
       "area": "web",
       "tests": []
     },
@@ -1918,7 +2048,7 @@
       "id": "cli:parts page probe",
       "kind": "cli",
       "entry": "src/dev/parts_page_probe.gd",
-      "reach": "tools/probe.sh parts_page_probe [-- FILE.mpd ...]   (headless; the app's Inventory.of and ShopLists of four Library sets, or the files given, against the page's list, tools/web/parts_check.mjs, lot by lot and word for word)",
+      "reach": "tools/probe.sh parts_page_probe [-- FILE.mpd ...]   (headless; the app's Inventory.of and ShopLists of four Library sets and src/dev/fixtures/pickabrick_big.ldr, or the files given, against the page's list, tools/web/parts_check.mjs, lot by lot and its BrickLink, Rebrickable and Pick a Brick files word for word)",
       "area": "web",
       "tests": []
     },
@@ -2089,6 +2219,7 @@
         "tests/test_release_train.py",
         "tests/test_run_probes.py",
         "tests/test_thumbnail_check.py",
+        "tests/test_timing_judge.py",
         "tests/test_worktree_links_ignored.py"
       ]
     },
@@ -2118,8 +2249,11 @@
       "reach": "python3 tools/site.py /tmp/site",
       "area": "web",
       "tests": [
+        "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/test_beta_join.py",
         "tests/test_coming_soon.py",
+        "tests/test_docs_shots.py",
         "tests/test_feedback.py",
         "tests/test_release_train.py"
       ]
@@ -2130,6 +2264,14 @@
       "entry": "src/dev/quit_probe.gd",
       "reach": "godot --headless --path . --script src/dev/quit_probe.gd",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "cli:rarity probe",
+      "kind": "cli",
+      "entry": "src/dev/rarity_probe.gd",
+      "reach": "tools/probe.sh rarity_probe -- --shots=DIR   (windowed, 1400x900, signed in through the gate with a throwaway account from .env: at 1400x900 and 1280x720, 3001 typed and clicked, Red's and a rare colour's tooltips rested on and read against its colours file, every swatch in sight, 7049b's Black; the three sentences in de, fr and es); python3 tools/minitest.py tests/test_collection.py (ten parts in a colour counted straight off Rebrickable's tables)",
+      "area": "parts",
       "tests": []
     },
     {
@@ -2455,6 +2597,7 @@
         "tests/test_release_train.py",
         "tests/test_run_probes.py",
         "tests/test_thumbnail_check.py",
+        "tests/test_timing_judge.py",
         "tests/test_worktree_links_ignored.py"
       ]
     },
@@ -2491,6 +2634,22 @@
       "tests": []
     },
     {
+      "id": "cli:stepnames probe",
+      "kind": "cli",
+      "entry": "src/dev/stepnames_probe.gd",
+      "reach": "tools/probe.sh stepnames_probe   (a window, 1400x900; PROBE_SIZE=1280x720 the same, 390x844 and 1024x768 Build it alone: through the sign-in screen, steps4's step 3 named by Name\u2026 and typing, Shift-F2, step 2 by edit_steps, saved with two STEP_NAME lines more, opened and saved byte for byte, the booklet page's name beside its number in the HTML and the PNG, named.ldr and another author's named file saved with their lines, a hand Delete undone as \"removed 1 part\", an 80-character name cut on the timeline, Build it on a shared link worked out and carried; snreview's repros: which step keeps its name over moves and deletes, name lines kept as written, Unicode spaces, quoted words, the alt escaped once, a sub-model's copies, a callout's step named)",
+      "area": "view",
+      "tests": []
+    },
+    {
+      "id": "cli:stepnames2 probe",
+      "kind": "cli",
+      "entry": "src/dev/stepnames2_probe.gd",
+      "reach": "tools/probe.sh stepnames2_probe   (headless; SN2_ONLY=letters,refuse,undo,sub,held: name_of letter by letter, a letter of a hundred accents keeping four, 80 letters with an emoji or accents, zero-width and direction characters alone no name; such a name refused over MCP and in Name the step\u2026, which stays up saying why; 14 name edits, MCP and by hand, each one undo, undone to the steps and the file as the plain save; the same name again no undo; sub.ldr's \"Both wings on\" on the first step built in it in the plan, caption, Build it, list and booklet; a stepless file's first step edit numbering its held part with the part before it, undone to the stepless file)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:steps3 probe",
       "kind": "cli",
       "entry": "src/dev/steps3_probe.gd",
@@ -2512,6 +2671,14 @@
       "entry": "src/dev/steps_to_probe.gd",
       "reach": "tools/probe.sh steps_to_probe   (headless: parts of sub-models and of the model's own moved to step 1, a middle step and the last over MCP and by the steps panel's drop, read back off the plan and edit_steps's list)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "cli:subexport probe",
+      "kind": "cli",
+      "entry": "src/dev/subexport_probe.gd",
+      "reach": "tools/probe.sh subexport_probe -- --shots=DIR",
+      "area": "model-io",
       "tests": []
     },
     {
@@ -2597,6 +2764,14 @@
       "tests": []
     },
     {
+      "id": "cli:the beta's homepage and bar browser flow",
+      "kind": "cli",
+      "entry": "tools/web/betahome_flow.mjs",
+      "reach": "node tools/web/betahome_flow.mjs --out=DIR   (the stand-in: the bar on every page at 390 and 1280, light and dark, hidden for a day, its three presses; the homepage for each visitor; /beta as the hub; the beta off: nothing drawn; --url=<preview> with BW_BYPASS for a deployment; preview check [betahome])",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:the booklet by hand in a browser",
       "kind": "cli",
       "entry": "tools/web/booklet_edit_flow.mjs",
@@ -2613,10 +2788,18 @@
       "tests": []
     },
     {
+      "id": "cli:the docs' pictures",
+      "kind": "cli",
+      "entry": "tools/docs_shots.py",
+      "reach": "python3 tools/docs_shots.py [--only=ID,ID] [--app | --site] [--affected]   (docs-site/pictures/<page>.json: the app's through tools/probe.sh docs_shots_probe on the GPU from a locked snapshot, the site's by tools/web/docs_shots_flow.mjs; into docs-site/img/, with diff/index.html of what changed; tools/docs_site.py --check fails on one missing or not made by it)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:the feedback stand-in",
       "kind": "cli",
       "entry": "tools/web/feedback_stand_in.mjs",
-      "reach": "node tools/web/relay_server.mjs 9060 --static=build/web --hold=feedback   (supabase/beta.sql and feedback.sql in a Postgres of this machine's own, PG_BIN and PG_MODULE set; GET /__held/feedback)",
+      "reach": "node tools/web/relay_server.mjs 9060 --static=build/web --hold=feedback   (supabase/beta.sql, feedback.sql and beta_join.sql in a Postgres of this machine's own, PG_BIN and PG_MODULE set; GET /__held/feedback)",
       "area": "web",
       "tests": []
     },
@@ -2625,6 +2808,14 @@
       "kind": "cli",
       "entry": "src/dev/docs_menus.gd",
       "reach": "godot --headless --path . --script src/dev/docs_menus.gd -- --menus-to=docs-site/generated/menus.json   (tests/test_docs_site.py says when it is due)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:the parts bucket's copy for checks",
+      "kind": "cli",
+      "entry": "tools/web/storage_mirror.mjs",
+      "reach": "any flow under tools/web (browser.mjs imports it); node tools/web/storage_mirror.mjs serve [PORT] for a probe",
       "area": "web",
       "tests": []
     },
@@ -3062,6 +3253,7 @@
       "reach": "BRICKWORKS_API=http://127.0.0.1:8790 godot --headless --path . --script src/dev/account_probe.gd   (with tools/web/relay_server.mjs 8790 and .env)",
       "area": "account",
       "tests": [
+        "tests/fixtures/console/db_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_gallery_builds.py",
@@ -3270,7 +3462,9 @@
       "entry": "src/collection/collection.gd",
       "reach": "godot --headless --path . --script src/dev/collection_probe.gd",
       "area": "collection",
-      "tests": []
+      "tests": [
+        "tests/test_packaged_facts.py"
+      ]
     },
     {
       "id": "lib:command socket",
@@ -3353,6 +3547,14 @@
       "entry": "api/_directory.js",
       "reach": "imported by api/share.js: the gallery's question, what an owner says checked, part facts, views counted, the site's header and footer for a model's page; node tools/web/share_probe.mjs drives it",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "lib:driving along a path",
+      "kind": "lib",
+      "entry": "src/assembly/motion_player.gd",
+      "reach": "tools/probe.sh drive_probe   (a motion's path, 0 !BRICKWORKS MOTION_PATH, MOTION_WHEEL and MOTION_STEER lines: the whole model driven along the ground, legs straight so many studs or left or right so many degrees on a radius at the back axle's middle, its wheels each turned once a round of its tyre travelled and its steering into the corners; MotionPlayer.Drive, drive_path, path_from; define_motion path=, the Motions panel's Where it drives)",
+      "area": "view",
       "tests": []
     },
     {
@@ -3446,6 +3648,16 @@
       "tests": []
     },
     {
+      "id": "lib:joining the beta's testers",
+      "kind": "lib",
+      "entry": "supabase/beta_join.sql",
+      "reach": "python3 tools/minitest.py tests/test_beta_join.py   (tests/fixtures/beta/join_check.mjs: the API over beta.sql, feedback.sql and beta_join.sql in a Postgres of its own; welcome, join, Not now, leave, the month untouched, the owner's list, off, and before the file); PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/beta_join.sql --dry --table=beta_testers",
+      "area": "web",
+      "tests": [
+        "tests/fixtures/console/api_check.mjs"
+      ]
+    },
+    {
       "id": "lib:keep a run to a list of parts",
       "kind": "lib",
       "entry": "src/parts/parts_only.gd",
@@ -3475,6 +3687,14 @@
       "entry": "src/parts/ldr_model.gd",
       "reach": "godot --headless --path . --script src/dev/import_probe.gd",
       "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "lib:line art and comic looks",
+      "kind": "lib",
+      "entry": "src/render/line_art.gd",
+      "reach": "tools/probe.sh lineart && PROBE_SIZE=1280x720 tools/probe.sh lineart   (by hand: File, Render\u2026, Look, Line art or Comic, the draft drawn in it; render_model look=lineart|comic over MCP; with Background None on nothing)",
+      "area": "view",
       "tests": []
     },
     {
@@ -3585,6 +3805,7 @@
         "tests/test_gallery_builds.py",
         "tests/test_library_site.py",
         "tests/test_model_bases.py",
+        "tests/test_packaged_facts.py",
         "tests/test_release.py"
       ]
     },
@@ -3874,6 +4095,7 @@
       "reach": "imported by model-page.js and profile.js: the app's session in this browser, or a code by email in a dialog",
       "area": "web",
       "tests": [
+        "tests/fixtures/console/db_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_gallery_builds.py",
@@ -3997,6 +4219,22 @@
       "entry": "src/ai/exact_check.gd",
       "reach": "godot --headless --path . --script src/dev/exact_probe.gd  (and src/dev/joint_check_probe.gd, src/dev/exact_cost_probe.gd, src/dev/exact_dump.gd -- --out=F MODEL.ldr, src/dev/joint_collisions.gd -- --out=F [SET.mpd ...], src/dev/replay_calls.gd -- --calls=F)",
       "area": "assistant",
+      "tests": []
+    },
+    {
+      "id": "lib:the console's reads and audit",
+      "kind": "lib",
+      "entry": "api/_console.js",
+      "reach": "python3 tools/minitest.py tests/test_console.py   (the gate, overview, people, person, audit and every act kept in admin_audit, supabase/console.sql against a real Postgres)",
+      "area": "account",
+      "tests": []
+    },
+    {
+      "id": "lib:the console's switches",
+      "kind": "lib",
+      "entry": "api/_settings.js",
+      "reach": "python3 tools/minitest.py tests/test_console.py tests/test_beta.py   (site_settings by scope: brickworks.diy is live, a deployment its host; the beta's switch over BRICKWORKS_BETA)",
+      "area": "account",
       "tests": []
     },
     {
@@ -4157,7 +4395,9 @@
       "entry": "supabase/play.sql",
       "reach": "PG_MODULE=<pg>/lib/index.js node --env-file=.env tools/apply_sql.mjs supabase/play.sql --dry --try=tools/play_try.sql --table=shared_models   (the words held together by tests/test_play.py; the card in web/gallery.js; api/share.js checkMoves)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_live_ab.py"
+      ]
     },
     {
       "id": "lib:who modelled a shared model",
@@ -4223,7 +4463,8 @@
       "area": "web",
       "tests": [
         "tests/test_release_links.py",
-        "tests/test_site_lang.py"
+        "tests/test_site_lang.py",
+        "tests/test_storage_mirror.py"
       ]
     },
     {
@@ -4266,14 +4507,24 @@
       "reach": "https://brickworks.diy/u/<handle of somebody with a model in the gallery>   (or a local relay_server.mjs --hold=model_opens, /u/<handle>?tests=1 for a test account's; the tiles, Start with their most built, Built by others, the cards by Top builds)",
       "area": "web",
       "tests": [
+        "tests/fixtures/console/api_check.mjs",
         "tests/test_challenge_notices.py",
         "tests/test_comment_mentions.py",
+        "tests/test_console.py",
         "tests/test_gallery_builds.py",
         "tests/test_release_train.py",
         "tests/test_share_unknowns.py",
         "tests/test_site_lang.py",
         "tests/test_together_poll.py"
       ]
+    },
+    {
+      "id": "ui:a dragged part carries what rests on it",
+      "kind": "ui",
+      "entry": "src/assembly/carry.gd",
+      "reach": "godot --path .  (Select tool, drag a part: what rests on it and nothing else holds comes with it; Shift as you drag moves it alone, let go of Shift to take them up again; one undo; by finger the same)",
+      "area": "building",
+      "tests": []
     },
     {
       "id": "ui:a lighter look where frames are slow",
@@ -4300,6 +4551,14 @@
       "tests": []
     },
     {
+      "id": "ui:a long job says when it is done",
+      "kind": "ui",
+      "entry": "src/ui/done_note.gd",
+      "reach": "godot --path .  (Settings, Say when a long job is done, on Reduce motion's line: a design asked in the assistant's panel, Render's picture at Best, turntable, animation or build video, or the render queue drawn empty, ending while the window is not looked at: the window asks for attention and its title starts \"Done \u00b7 \" on the desktop; on the web one notification with the model's name and what finished, the permission asked at the first long job's start, never on load)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "ui:a model in 3D on its page",
       "kind": "ui",
       "entry": "tools/viewer/inline.js",
@@ -4311,7 +4570,7 @@
       "id": "ui:a model's parts and its download",
       "kind": "ui",
       "entry": "api/_parts.js",
-      "reach": "https://brickworks.diy/m/<id>#parts (Parts: by Colour or Kind, Show all; BrickLink XML /m/<id>/parts.xml, Rebrickable CSV /m/<id>/parts.csv, the list /m/<id>/parts.json; Download /m/<id>.mpd, /m/<id>/v/<n>.mpd)",
+      "reach": "https://brickworks.diy/m/<id>#parts (Parts: by Colour or Kind, Show all; BrickLink XML /m/<id>/parts.xml, Rebrickable CSV /m/<id>/parts.csv, LEGO\u00ae Pick a Brick CSV /m/<id>/parts-pab.csv (past 400 elements also parts-pab-2.csv and on; what it leaves off under the buttons), the list /m/<id>/parts.json; Download /m/<id>.mpd, /m/<id>/v/<n>.mpd)",
       "area": "web",
       "tests": []
     },
@@ -4332,6 +4591,14 @@
       "tests": []
     },
     {
+      "id": "ui:a step's name",
+      "kind": "ui",
+      "entry": "src/assembly/booklet_looks.gd",
+      "reach": "godot --path .  (Build \u203a Timeline, a step: the Booklet row's Name\u2026, Build \u203a Steps \u203a Name the step\u2026 or Shift-F2, a name typed, Return: \"Step 3 of 24 \u00b7 Build the cockpit\" on the timeline, cut at 40 characters; on its own line under \"Step 3 of 24\" in Build it; beside the step's number on the booklet page, wrapped at 64 mm; kept in the file as 0 !BRICKWORKS STEP_NAME in its step; edit_steps {\"op\": \"name\", \"step\": N, \"name\": \"...\"} over MCP, \"\" takes it off)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "ui:about and the licences",
       "kind": "ui",
       "entry": "src/ui/credits.gd",
@@ -4343,7 +4610,7 @@
       "id": "ui:accessibility",
       "kind": "ui",
       "entry": "src/ui/access.gd",
-      "reach": "godot --path .  (Tab from the model into the frame, Return on a part and Return again to put it down; Settings, Interface size and Reduce motion; with Orca running, each control said by its name)  /  tools/probe.sh a11y_modal_probe  (windowed: the app run where a screen reader is on, in a D-Bus session of its own, each window read over AT-SPI as Orca finds it, pointed at and from the focus: every dialog that holds the window MODAL, the Reference picture not, the focus inside the top dialog)",
+      "reach": "godot --path .  (Tab from the model into the frame, Return on a part and Return again to put it down; Settings, Interface size and Reduce motion; with Orca running, each control said by its name)  /  tools/probe.sh a11y_modal_probe  (windowed: the app run where a screen reader is on, in a D-Bus session of its own, each window read over AT-SPI as Orca finds it, pointed at and from the focus: every dialog that holds the window MODAL, the Reference picture not, the focus inside the top dialog)  /  tools/probe.sh a11y_tree_probe  (windowed, the same bus: browsing the window from its root reaches the menus, toolbar, parts bin, view, properties and status line in reading order; each panel put away gone from the tree the frame after, and Clear the baseplate's question found by pointing where it was; each dialog and menu said where it is drawn, within 2 px; src/ui/access_tree.gd)",
       "area": "building",
       "tests": [
         "tests/fixtures/relay/world.mjs"
@@ -4372,8 +4639,10 @@
       "reach": "https://brickworks.diy/u/<handle> and /profile: ul.awards under the numbers, a challenge won then a level a track (achievementsOf, levelAwards; GET /api/people?op=profile says achievements and levels); the profile browser flow",
       "area": "web",
       "tests": [
+        "tests/fixtures/console/api_check.mjs",
         "tests/test_challenge_notices.py",
         "tests/test_comment_mentions.py",
+        "tests/test_console.py",
         "tests/test_gallery_builds.py",
         "tests/test_release_train.py",
         "tests/test_share_unknowns.py",
@@ -4385,9 +4654,11 @@
       "id": "ui:admin page",
       "kind": "ui",
       "entry": "web/admin.html",
-      "reach": "https://brickworks.diy/admin   (signed in to the app as MASTER_EMAIL)",
+      "reach": "https://brickworks.diy/admin   (signed in to the app as MASTER_EMAIL; ?tests=1 the checks' own): the owner's console, one page of sections by address: #overview (what needs you, how things stand, the switches, the latest acts; GET /api/admin?op=overview), #people (every account, searched, filtered, sorted; #people/<account> its panel with Take out the account and Let back in; ?op=people, ?op=person&account=U), #gallery/<tab> (reported, comments, listed, pick, challenges, tested, barred), #beta/<tab> (applications, testers; the beta's switch, POST ?op=beta_switch {mode}), #feedback, #audit (every act, newest first; ?op=audit&act&q&before)",
       "area": "account",
-      "tests": []
+      "tests": [
+        "tests/test_packaged_facts.py"
+      ]
     },
     {
       "id": "ui:age question",
@@ -4449,11 +4720,16 @@
       "id": "ui:beta page",
       "kind": "ui",
       "entry": "web/beta.html",
-      "reach": "<deployment>/beta   (BRICKWORKS_BETA off: Coming soon, no form, no count; open: the spots left live, signed out Sign in to apply, signed in the form (web/beta.js), applied where it stands; tools/web/beta_flow.mjs)",
+      "reach": "<deployment>/beta   (the beta's hub, web/beta.js; BRICKWORKS_BETA off: Coming soon, no way in, no count; open: the months of Pro left, the way in for each visitor (signed out Sign up and join, signed in Join the beta, a tester Report a bug and Your reports), what testers get, how to report, this week's releases from /changelog.json, the questions; a tester: what to try, known issues, early features from GET /api/plans?op=beta_hub, and #about, \"tell us about you\", the month of Pro's form or where it stands (GET/POST ?op=beta); /beta-hub answers 308 here; tools/web/beta_flow.mjs, tools/web/betahome_flow.mjs)",
       "area": "web",
       "tests": [
+        "tests/fixtures/console/api_check.mjs",
+        "tests/fixtures/console/db_check.mjs",
         "tests/test_beta.py",
-        "tests/test_feedback.py"
+        "tests/test_beta_join.py",
+        "tests/test_console.py",
+        "tests/test_feedback.py",
+        "tests/test_site_lang.py"
       ]
     },
     {
@@ -4542,7 +4818,9 @@
       "entry": "web/changelog.html",
       "reach": "https://brickworks.diy/changelog   (filled from CHANGELOG.md by tools/site.py)",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_beta.py"
+      ]
     },
     {
       "id": "ui:check for updates reinstall and restart",
@@ -4566,7 +4844,9 @@
       "entry": "web/admin.js",
       "reach": "https://brickworks.diy/admin signed in as MASTER_EMAIL: This week's pick (what visitors see, the choices with End, the week worked out) and Make it the pick beside every model in the gallery",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_packaged_facts.py"
+      ]
     },
     {
       "id": "ui:collections directory",
@@ -4626,7 +4906,7 @@
       "id": "ui:compare two sets or models",
       "kind": "ui",
       "entry": "src/ui/compare_view.gd",
-      "reach": "tools/probe.sh comparesets_probe -- --shots=DIR   (File, Compare two sets or models\u2026: A and B each a set by its number, a saved model or the model open now; In both, Only in A and Only in B by part and colour, adding up to each side's pieces; Swap; the list to buy to build B from A to BrickLink, Rebrickable or LEGO\u00ae Pick a Brick)",
+      "reach": "tools/probe.sh comparesets_probe -- --shots=DIR   (File, Compare, Compare two sets or models\u2026: A and B each a set by its number, a saved model or the model open now; In both, Only in A and Only in B by part and colour, adding up to each side's pieces; Swap; the list to buy to build B from A to BrickLink, Rebrickable or LEGO\u00ae Pick a Brick)",
       "area": "collection",
       "tests": []
     },
@@ -4634,7 +4914,7 @@
       "id": "ui:compare with a save",
       "kind": "ui",
       "entry": "src/ui/compare_view.gd",
-      "reach": "tools/probe.sh compare_probe   (File, Compare with\u2026, or Compare on a row of Versions\u2026: added green, removed a red ghost, moved or turned amber with a faint ghost, recoloured violet, the rest faded; the panel's counts, Previous and Next; Esc or Close puts the view back)",
+      "reach": "tools/probe.sh compare_probe   (File, Compare, Compare with\u2026, or Compare on a row of Versions\u2026: added green, removed a red ghost, moved or turned amber with a faint ghost, recoloured violet, the rest faded; the panel's counts, Previous and Next; Esc or Close puts the view back)",
       "area": "model-io",
       "tests": []
     },
@@ -4729,8 +5009,11 @@
       "reach": "every page of brickworks.diy: its controls (fields, checkboxes, buttons, dialog, card) in one place (docs/DESIGN_SYSTEM.md)",
       "area": "web",
       "tests": [
+        "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/feedback/api_check.mjs",
+        "tests/test_beta_join.py",
         "tests/test_coming_soon.py",
+        "tests/test_docs_shots.py",
         "tests/test_feedback.py",
         "tests/test_release_train.py"
       ]
@@ -4775,6 +5058,14 @@
       "entry": "src/render/idle_draw.gd",
       "reach": "MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1280x860 --script src/dev/idle_probe.gd",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:each sub-model as its own file",
+      "kind": "ui",
+      "entry": "src/parts/submodel_file.gd",
+      "reach": "godot --path .  (the model tree: right-click a sub-model's row, Export \u201cNAME\u201d as its own file\u2026, or the model's row, Export each sub-model (.zip)\u2026; File, Export, Each sub-model as its own file (.zip))  /  export_model format=ldraw submodels=true, or submodel=NAME",
+      "area": "model-io",
       "tests": []
     },
     {
@@ -5025,7 +5316,9 @@
       "entry": "src/assembly/mirror.gd",
       "reach": "godot --path .  (select, Shift-M or Edit, Mirror)",
       "area": "building",
-      "tests": []
+      "tests": [
+        "tests/test_storage_mirror.py"
+      ]
     },
     {
       "id": "ui:model card",
@@ -5368,8 +5661,10 @@
       "reach": "https://brickworks.diy/u/<handle> (?tab=builds or collections, ?page=N; links, banner and pins from supabase/profile_shows.sql, chosen in Edit profile on /profile)  and  /c/<id>   (made by api/people.js with the site's header and footer)",
       "area": "web",
       "tests": [
+        "tests/fixtures/console/api_check.mjs",
         "tests/test_challenge_notices.py",
         "tests/test_comment_mentions.py",
+        "tests/test_console.py",
         "tests/test_gallery_builds.py",
         "tests/test_release_train.py",
         "tests/test_share_unknowns.py",
@@ -5391,6 +5686,14 @@
       "entry": "src/ui/inspector.gd",
       "reach": "godot --path . --resolution 1280x720  (the bin open, select a part: its name, colour, X, Y, Z, Turn, Tilt and Roll under the bin; More opens the rest down the right)",
       "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:rare colours in the bin",
+      "kind": "ui",
+      "entry": "src/ui/parts_bin.gd",
+      "reach": "godot --path .  (a part in hand, a swatch's tooltip says in how many sets it comes in that colour, \"3001 comes in it, in 1,011 sets\", and \"rare in this colour\" in three sets or fewer: PartLibrary.sets_in_colour, from assets/generated/sets/colours_NN.json, fetched from the deployment's /sets/ on the web)",
+      "area": "parts",
       "tests": []
     },
     {
@@ -5453,12 +5756,30 @@
       ]
     },
     {
+      "id": "ui:report a bug in the app",
+      "kind": "ui",
+      "entry": "src/ui/feedback_dialog.gd",
+      "reach": "godot --path .  (the beta open, signed in: Report a bug in the top bar beside Account, Help \u203a Report a bug\u2026 and Alt-Shift-R under every preset each open the report over the model with the window's picture; a drag marks the spot (PictureMarks), Leave the picture out, what will be sent in a line; Report this on an error notice (Main._on_script_error) ticks its log lines; sent, Report #N and Your reports; Help's row and its key with the beta shut too; tools/probe.sh bugreport_probe)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:report a bug on the site",
+      "kind": "ui",
+      "entry": "web/bugreport.js",
+      "reach": "window.brickworksReportBug({source: \"site\"}) on any page (the beta bar's Report a bug loads it): the page drawn to a picture by the page itself, web/feedback.js's report mode over the page with a box to drag on it; signed out, a sign-in first; sent, Report #N and Your reports (/settings#feedback); tools/web/bugreport_flow.mjs",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:report it",
       "kind": "ui",
       "entry": "web/report.js",
       "reach": "https://brickworks.diy/m/<id>, /u/<handle>, /c/<id>   (Report it opens a dialog; /api/people?op=report)",
       "area": "web",
       "tests": [
+        "tests/fixtures/console/db_check.mjs",
+        "tests/test_beta.py",
         "tests/test_comment_mentions.py",
         "tests/test_feedback.py"
       ]
@@ -5477,7 +5798,9 @@
       "entry": "src/ui/exports.gd",
       "reach": "godot --headless --path . --script src/dev/io_probe.gd   (by hand: File, Export, then BrickLink Studio model (.io))",
       "area": "model-io",
-      "tests": []
+      "tests": [
+        "tests/test_docs_site.py"
+      ]
     },
     {
       "id": "ui:save dialog on the desktop",
@@ -5564,7 +5887,9 @@
       "entry": "web/admin.js",
       "reach": "/admin as MASTER_EMAIL, This month's challenge (?tests=1 sets a test one): POST /api/admin?op=challenge, ?op=end_challenge&challenge=N; Set a year of themes: POST /api/admin?op=plan",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/test_packaged_facts.py"
+      ]
     },
     {
       "id": "ui:share panel",
@@ -5597,6 +5922,7 @@
       "reach": "https://brickworks.diy/profile signed out, Sign in, then Sign in with orangecheck",
       "area": "account",
       "tests": [
+        "tests/fixtures/console/db_check.mjs",
         "tests/fixtures/together/poll_check.mjs",
         "tests/test_feedback.py",
         "tests/test_gallery_builds.py",
@@ -5787,21 +6113,34 @@
       "tests": []
     },
     {
-      "id": "ui:the beta hub",
+      "id": "ui:the beta bar",
       "kind": "ui",
-      "entry": "web/beta-hub.html",
-      "reach": "<deployment>/beta-hub   (signed out: sign in; not a tester: for testers; a tester: what's new, known issues, early features, how to tell us; GET /api/plans?op=beta_hub; Help, Beta hub in the app for a tester)",
+      "entry": "web/betabar.js",
+      "reach": "<deployment>/ any page, with the beta open (tools/deploy.sh --unit --beta-open)   (web/theme.js asks for it; Open beta to /beta, Report a bug (window.brickworksReportBug of web/bugreport.js, else Send feedback as a bug), Join or You're a tester; its x hides it for a day; none with the beta off, on an embed or on the consent page; tools/web/betahome_flow.mjs)",
       "area": "web",
-      "tests": [
-        "tests/fixtures/feedback/api_check.mjs",
-        "tests/test_site_lang.py"
-      ]
+      "tests": []
     },
     {
       "id": "ui:the beta's owner queue",
       "kind": "ui",
-      "entry": "web/beta-admin.html",
-      "reach": "<deployment>/beta-admin as MASTER_EMAIL (?tests=1 the checks' pool): GET /api/admin?op=beta, POST ?op=beta_decide&account=U {decision, note}, POST ?op=beta_grant",
+      "entry": "web/admin-beta.js",
+      "reach": "<deployment>/admin#beta as MASTER_EMAIL (?tests=1 the checks' pool; /beta-admin answers 308 to it): GET /api/admin?op=beta, ?op=beta_testers, ?op=switches; POST ?op=beta_decide&account=U {decision, note}, ?op=beta_waitlist&account=U {note}, ?op=beta_grant, ?op=beta_switch {mode: open|off} (this deployment alone, kept in site_settings)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:the beta's welcome at sign-up",
+      "kind": "ui",
+      "entry": "web/beta-welcome.js",
+      "reach": "the beta open, a new account signs in by the dialog (web/account.js askAgeIfAsked, after the age question): Join the beta testers or Not now (POST /api/plans?op=beta_join, ?op=beta_leave); Settings' Beta row (#beta-part) joins or leaves in one press; tools/web/betajoin_flow.mjs",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:the beta's welcome in the app",
+      "kind": "ui",
+      "entry": "src/ui/sign_in_gate.gd",
+      "reach": "the beta open, a new account past the code and the age question: the sign-in screen's welcome (beta_join, beta_not_now, beta_start), and Account's Beta row (account_beta); tools/probe.sh betajoin_probe with BRICKWORKS_API",
       "area": "web",
       "tests": []
     },
@@ -5913,6 +6252,14 @@
       ]
     },
     {
+      "id": "ui:the homepage's open beta",
+      "kind": "ui",
+      "entry": "web/landing.js",
+      "reach": "<deployment>/ with the beta open   (#beta under the first screen: why to join, three points, the way in for each visitor, the months of Pro left from ?op=beta_spots; held from the first frame by <html data-beta>, else put in only while out of sight; tools/web/betahome_flow.mjs)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "ui:the hover drawn at the device's pace",
       "kind": "ui",
       "entry": "src/render/pointer_pace.gd",
@@ -5947,6 +6294,14 @@
       "entry": "web/admin-feedback.js",
       "reach": "<deployment>/admin#feedback as MASTER_EMAIL (?tests=1 the checks' own): GET /api/admin?op=feedback&kind&status&beta, ?op=feedback_file&id&file=picture|model, POST ?op=feedback_triage&id {status, note}, ?op=feedback_reply&id {words}",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:the panel asked for last in front",
+      "kind": "ui",
+      "entry": "src/ui/hud_front.gd",
+      "reach": "tools/probe.sh hudfront_probe   (Find with \"87087\", then F1 or F9: the keys sheet or Render opens over Find's list; any HUD panel shown by a key, a menu, a button or MCP, clicked, or given the keys comes to the front, under the sign-in screen; Render's veil comes with Render)",
+      "area": "view",
       "tests": []
     },
     {
@@ -6159,10 +6514,11 @@
       "id": "ui:your feedback on settings",
       "kind": "ui",
       "entry": "web/settings.js",
-      "reach": "https://brickworks.diy/settings#feedback signed in   (each report, where it stands, a tester's marked, our answers; never the owner's note)",
+      "reach": "https://brickworks.diy/settings#feedback signed in   (Your reports: each report with its number (#N, anchored report-N), where it stands, a tester's marked, our answers; never the owner's note)",
       "area": "web",
       "tests": [
-        "tests/test_billing_pay.py"
+        "tests/test_billing_pay.py",
+        "tests/test_console.py"
       ]
     },
     {
@@ -6225,10 +6581,11 @@
       "id": "ui:your settings page",
       "kind": "ui",
       "entry": "web/settings.html",
-      "reach": "https://brickworks.diy/settings   (settings.js: Profile, Appearance, Email, Privacy, Claude, Feedback, Sign out, Delete account)",
+      "reach": "https://brickworks.diy/settings   (settings.js: Profile, Appearance, Email, Privacy, Claude, Your reports, Sign out, Delete account)",
       "area": "web",
       "tests": [
-        "tests/test_billing_pay.py"
+        "tests/test_billing_pay.py",
+        "tests/test_console.py"
       ]
     }
   ]
