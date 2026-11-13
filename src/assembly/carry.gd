@@ -785,6 +785,7 @@ static func _resting(world: BrickWorld, lattice: BrickLattice, from: int, held: 
 	# Parts whose sub-assembly is asked for already, and whose sides are.
 	var units: Dictionary = {}
 	var sides: Dictionary = {}
+	var select_by: GDScript = null
 	var lowest_last: Callable = func(a: int, b: int) -> bool:
 		return _bottom(lattice, a) > _bottom(lattice, b)
 	while not staying:
@@ -819,20 +820,25 @@ static func _resting(world: BrickWorld, lattice: BrickLattice, from: int, held: 
 				if staying:
 					break
 			# What it is joined to above and below, the lowest asked first.
+			var boxes: PackedInt32Array = lattice.boxes_of(here)
 			var next: Array = Array(lattice.blockers_boxes(
-				SelectBy._shell(lattice.boxes_of(here), 1), here, held))
+				_slab(boxes, false) + _slab(boxes, true), here, held))
 			next.sort_custom(lowest_last)
 			for other: int in next:
 				if not found.has(other):
 					queue.append(other)
 		if staying:
 			break
-		# Nothing that stays above or below: then what is joined at the sides.
+		# Nothing that stays above or below: then what is joined at the sides,
+		# as Select by reads them. Reached through Later: Carry is compiled
+		# with the first screen, and SelectBy is not (tests/test_later.py).
+		if select_by == null:
+			select_by = Later.script(&"SelectBy")
 		for brick_id: int in found:
 			if sides.has(brick_id):
 				continue
 			sides[brick_id] = true
-			for other: int in SelectBy._joined_to(world, lattice, brick_id, [], held):
+			for other: int in select_by._joined_to(world, lattice, brick_id, [], held):
 				if not found.has(other):
 					queue.append(other)
 		if queue.is_empty():
