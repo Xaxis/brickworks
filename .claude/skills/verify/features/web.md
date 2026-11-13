@@ -1859,7 +1859,12 @@ plan with Claude as the client.
   2026-11-13; `tests/test_menu_admin.py`, console browser flow's section
   11) and `button.sign-out`. Under 600 px (860 and under before 2026-10-26) the avatar menu is hidden and
   `details.menu`'s summary becomes the avatar (`.account-btn`), its list
-  the site's links, the same `.account-part`, the theme and Sign out. Who
+  the site's links, the same `.account-part`, the theme and Sign out. Open,
+  a header menu is over the beta bar and at most the window's height,
+  scrolling in itself past it: Sign out in the window and nothing over it
+  at 390x844 and 375x667 with the bar shown (betahome browser flow, back;
+  Report a bug had put it under the bar, and at 375x667 it was past the
+  window before that; bugbar, 2026-11-13). Who
   you are and the counts come from `GET ?op=feed_count` (`me`,
   `notifications`, `feed`), kept in `localStorage["brickworks.me"]` (for
   the signed-in address) so the next page, a new tab and the next visit

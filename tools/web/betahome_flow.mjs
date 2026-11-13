@@ -24,7 +24,9 @@
 //   back   hidden, Settings' "Show the beta bar on every page" (signed out,
 //          its own row) is off; on, the bar is back at once and on the next
 //          page; off again, gone at once; and signed in, the account menu
-//          (Menu on a phone) has Report a bug, which opens the report;
+//          (Menu on a phone) has Report a bug, which opens the report; on
+//          a phone with the bar shown (and at 375x667), Menu's Sign out is
+//          in the window and not under the bar, the menu scrolled in itself;
 //   press  Open beta opens /beta; Report a bug opens a dialog over the page
 //          (web/bugreport.js's, or Send feedback's as a bug), the page not
 //          left; Join signed in makes a tester (POST ?op=beta_join with
@@ -124,9 +126,9 @@ const browser = await launch({ signedOut: true });
 /// A browser at [width] in [theme] as [who] ("out", "in", "tester"), the
 /// beta [beta] ("open" or "off"), serving [tree]'s web/. Its told: what
 /// the page asked of the beta, and the join's body.
-async function visitor({ width, theme = "light", who = "out", beta = "open", tree = root, motion = "no-preference" }) {
+async function visitor({ width, height = 0, theme = "light", who = "out", beta = "open", tree = root, motion = "no-preference" }) {
   const phone = width < 600;
-  const context = await browser.newContext({ viewport: { width, height: phone ? 844 : 800 }, colorScheme: theme,
+  const context = await browser.newContext({ viewport: { width, height: height || (phone ? 844 : 800) }, colorScheme: theme,
     reducedMotion: motion, extraHTTPHeaders: headers,
     ...(phone ? { deviceScaleFactor: 2, isMobile: true, hasTouch: true } : {}) });
   const told = { asked: [], joins: [], scripts: [] };
@@ -361,10 +363,34 @@ try {
     console.log("back: Settings shows it again; Report a bug in the menus");
     const rounds = remote ? [[1280, "light", "out"], [430, "dark", "out"]]
       : [[1280, "light", "in"], [1280, "dark", "in"], [430, "light", "in"], [430, "dark", "in"], [430, "dark", "out"], [1280, "light", "out"]];
+    // Signed in on a phone with the bar shown, Menu's foot: Sign out in the
+    // window and nothing over it, the menu scrolled in itself as far as it
+    // must. Report a bug in it put Sign out under the bar at 390x844, and
+    // at 375x667 it was past the window with the header sticky.
+    const reach = async (page, label, name) => {
+      await page.click(".site-head .menu > summary");
+      const drawn = await until(page, () => document.querySelector(".site-head .menu .sign-out")?.checkVisibility() === true, null, 10000);
+      const at = await page.evaluate(() => {
+        const out = document.querySelector(".site-head .menu .sign-out");
+        if (!out) return null;
+        out.scrollIntoView({ block: "nearest" });
+        const r = out.getBoundingClientRect();
+        const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        const list = document.querySelector(".site-head .menu .menu-list").getBoundingClientRect();
+        return { bottom: Math.round(r.bottom), list: Math.round(list.bottom), height: innerHeight,
+          on: out.contains(hit) ? "Sign out" : hit?.closest("#beta-bar") ? "the beta bar" : String(hit?.className || hit?.tagName),
+          bar: Boolean(document.querySelector("#beta-bar.shown")) };
+      });
+      await shot(page, name);
+      check(`${label}: with the bar shown, Menu's Sign out is in the window (${at?.bottom} of ${at?.height}, the menu to ${at?.list}) and pressed there is ${at?.on}`,
+        drawn && at?.bar && at.list <= at.height && at.bottom <= at.height && at.on === "Sign out");
+      await page.click(".site-head .menu > summary");
+    };
     for (const [width, theme, who] of rounds) {
       const { context, page, label } = await visitor({ width, theme, who });
       const phone = width < 600;
       await go(page, "/gallery");
+      if (phone && who !== "out") await reach(page, label, `menu-bar-${width}-${theme}-${who}.png`);
       await page.click("#beta-bar [data-beta-hide]");
       await until(page, () => !document.getElementById("beta-bar") && document.querySelector(".toast.act.shown"));
       await shot(page, `toast-${width}-${theme}-${who}.png`);
@@ -403,6 +429,12 @@ try {
         await page.keyboard.press("Escape");
         await until(page, () => !document.querySelector("dialog[open]"), null, 5000);
       }
+      await context.close();
+    }
+    if (!remote) {
+      const { context, page } = await visitor({ width: 375, height: 667, theme: "dark", who: "in" });
+      await go(page, "/gallery");
+      await reach(page, "375x667 dark in open", "menu-bar-375x667-dark-in.png");
       await context.close();
     }
   });

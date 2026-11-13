@@ -368,6 +368,13 @@ a:focus-visible { border-radius: var(--r-1); }
 /* Sign out last, a menu's button as any other, under a line. */
 .menu-list > :has(+ .sign-out) { padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .menu-list > .sign-out { margin-top: 6px; }
+/* A header's menu taller than the window scrolls in itself, its foot never
+   past the window's: the header is sticky, so the page's scroll never
+   brought Sign out up, and at 375 x 667 it was out of reach. Open, it is
+   over the beta bar, as it is over the page: the bar covered Sign out at
+   390 x 844 once Report a bug was in the menu (bugbar, 2026-11-13). */
+.site-head .menu-list { max-height: calc(100dvh - var(--head-h) - var(--s-4)); overflow-y: auto; overscroll-behavior: contain; }
+.site-head:has(details[open]) { z-index: 55; }
 /* Under 900 px the mark, Open the app and Menu fill the bar (the four
    links and Sign in are on Menu), and the last keeps the page's 16 px
    gutter (design_flow.mjs fails it closer). On a phone the bar's gaps

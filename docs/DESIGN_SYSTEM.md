@@ -806,7 +806,10 @@ is on the page, `hidden`, for the script to show.
   under a line, to /admin; drawn only from op=feed_count's `admin: true`,
   which nobody else is sent) and Sign out (`.menu-list > .sign-out`). At a phone's width
   Menu's summary is the avatar and its panel holds the site's links, then
-  the same. Open, the avatar is ringed in `--accent-edge`.
+  the same. Open, the avatar is ringed in `--accent-edge`, and the panel
+  is over the beta bar and never taller than the window: past it, it
+  scrolls in itself, so Sign out is always in reach (the header is sticky,
+  and the page's own scroll never brought it up).
 - **Notifications** (`/notifications`, `web/directory.css`): `.notices`,
   a list of `.notice` cards, one a model: its 4:3 `.pic`, its name as an
   `h2` at `--t-body`, and `.lines`, each a link with an avatar (who did
