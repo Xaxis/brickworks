@@ -442,7 +442,10 @@ func show_page(at: int, of: int, caption: String, note: String, lots: Array[Dict
 		else ""
 	_step_name.visible = not _step_name.text.is_empty()
 	if _step_name.visible:
+		# A person's words, whole and each name of them (Step.called).
 		Language.keep_name(_step_name.text)
+		for name: String in _step_name.text.split(" · ", false):
+			Language.keep_name(name)
 	_note.text = note if at > 0 else caption + ". Get the parts out, then press Start."
 	_note.visible = not _note.text.is_empty()
 	_progress.max_value = maxf(of, 1.0)

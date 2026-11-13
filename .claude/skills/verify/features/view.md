@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:the panel asked for last in front, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, cli:heldsteps probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe, ui:a long job says when it is done, cli:donenote probe, lib:line art and comic looks, cli:lineart probe, ui:a step's name, cli:stepnames probe, lib:driving along a path, cli:drive probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:the panel asked for last in front, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, cli:heldsteps probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe, ui:a long job says when it is done, cli:donenote probe, lib:line art and comic looks, cli:lineart probe, ui:a step's name, cli:stepnames probe, cli:stepnames2 probe, lib:driving along a path, cli:drive probe -->
 
 ## Sub-features
 
@@ -2370,9 +2370,25 @@ picture the assistant is shown.
   it, centred on its line, wrapped at 64 mm or the panel's room (the step's
   header grows for it; the turn sign and guides go under both). A callout
   box's own steps print no name; a sub-assembly on pages of its own does.
-  Names are one line, at most 80 characters (`BookletLooks.NAME_MOST`),
-  every Unicode space and line break made a space, cut on a whole letter
-  (`BookletLooks.cut`). The name is a look field, so it follows the step's
+  Names are one line, at most 80 letters as a reader sees them
+  (`BookletLooks.NAME_MOST`, TextServer's grapheme breaks: an emoji of
+  several or a letter and its accents is one), each letter at most 4 marks
+  and 16 code points (`MARKS_MOST`, `LETTER_MOST`: a letter of a hundred
+  accents keeps four, where it was cut to nothing, sncheck N3), every
+  Unicode space and line break made a space; a word of only what draws
+  nothing (`SubmodelFile._shows`: zero-width spaces and joiners, direction
+  marks, the byte-order mark, accents alone) is dropped, and a name of only
+  those is refused, saying why (`BookletLooks.name_refused`: Name the
+  step… stays up with the words under the field; over MCP the reply), no
+  undo step (sncheck N2); nothing or spaces alone take the name off. A step
+  of the model's that only puts on copies built where they stand has no
+  step in the plan: its name is said on the first step built in it,
+  before that step's own (`Step.within`, `Step.called`,
+  `Instructions._names_within`: "Step 2 of 6 · Both wings on · Wing plate"
+  on the timeline and its tip, in Build it, the booklet's heading and
+  `edit_steps`' list "(in the wing, 1 of 2; starts the step \"Both wings
+  on\")"; sncheck F8). A name edit that changes nothing, or a step edit
+  refused, is no undo step. The name is a look field, so it follows the step's
   parts over step edits: on a merge the first step's wins; where a step
   that kept none of its parts joins one that kept its own, the one that
   kept them is the step, by its own name and zoom (the other's words,
@@ -2407,7 +2423,20 @@ picture the assistant is shown.
   its name and zoom over moves, deletes and merges, each saved, opened and
   undone; every name line as written; `name_of`'s spaces and cut; quoted
   words; the picture's alt escaped once; the copies' words; `callout_step=`.
-  Pictures in `shots/stepnames/<size>/`.
+  Pictures in `shots/stepnames/<size>/`. `stepnames2_probe` (headless,
+  `SN2_ONLY=letters,refuse,undo,sub,held`): `name_of` letter by letter
+  (Zalgo, Thai tone marks, 80 letters with an emoji or accents, Devanagari,
+  a Persian ZWNJ, zero-width and direction characters alone); such a name
+  refused over MCP and in Name the step…, which stays up saying why; 14
+  name edits (set, renamed, taken off; MCP and by hand; five, row,
+  theirs_odd's two lines, a stepless file of the app's and another
+  author's, sub.ldr's copies) each one undo, undone to the steps and the
+  file as the plain save, redone to the edit's file; the same name again no
+  undo step; sub.ldr's "Both wings on" on step 2 alone in the plan, the
+  caption, Build it, the list and the booklet's headings, saved and
+  opened; the first step edit of a stepless file numbering its held part
+  with the 3020 before it (`AuthorSteps._held_as_filed`), undone to the
+  stepless file.
 - `the booklet's own cover and colours` and `booklook probe`
   (APP_UX6 #5 booklook; `BookletSheet`'s title, subtitle, cover_line,
   cover_picture, header, footer, box_frame, box_fill, box_corners,

@@ -733,7 +733,8 @@ func _entries(steps: Array[Instructions.Step], lots: Dictionary) -> Array[Bookle
 		entry.number_scale = _sheet.number_scale()
 		entry.awkward = step.unsupported
 		entry.section = step.section
-		entry.name = step.name
+		# Its name and the one of the step it starts (Step.called).
+		entry.name = step.called()
 		entry.set_meta("step", index)
 		# A section's hidden colour goes where the section starts: its
 		# banner (Booklet.lay_out puts one on the step that starts it).
@@ -1068,7 +1069,7 @@ func _callout(attach: Instructions.Step, built: Array[Instructions.Step],
 		entry.subject = callout.subject
 		entry.lots = _lots_of(built[at].shown_ids, lots)
 		# Printed where it has a page of its own, not in a callout's box.
-		entry.name = built[at].name
+		entry.name = built[at].called()
 		if first >= 0:
 			entry.set_meta("step", first + at)
 		# Laid out by hand when it has pages of its own: what its designer
