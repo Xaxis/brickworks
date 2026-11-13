@@ -1,0 +1,9 @@
+0 FILE hand.ldr
+0 Hand written
+0 Name: hand.ldr
+0 Author: Hand Writer
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3003.dat
+0 STEP
+0 !BRICKWORKS FLOOR BASEPLATE 32 32 2

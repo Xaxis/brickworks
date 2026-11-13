@@ -1,0 +1,26 @@
+0 FILE held fixed.mpd
+0 Held Fixed
+0 Name: held fixed.mpd
+0 Author: Brickworks
+1 7 0 0 0 1 0 0 0 1 0 0 0 1 3020.dat
+0 STEP
+1 4 0 -8 0 1 0 0 0 1 0 0 0 1 car.ldr
+1 1 200 -8 0 1 0 0 0 1 0 0 0 1 car.ldr
+0 STEP
+0 NOFILE
+0 FILE car.ldr
+0 Car
+0 Name: car.ldr
+0 Author: Brickworks
+1 16 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 16 0 -48 0 1 0 0 0 1 0 0 0 1 wing.ldr
+1 4 20 -48 0 1 0 0 0 1 0 0 0 1 cf3nosuch.dat
+1 16 -20 -48 0 1 0 0 0 1 0 0 0 1 cf3nosuch2.dat
+0 NOFILE
+0 FILE wing.ldr
+0 Wing
+0 Name: wing.ldr
+0 Author: Brickworks
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 4 0 -24 0 1 0 0 0 1 0 0 0 1 cf3nosuch.dat
+0 NOFILE

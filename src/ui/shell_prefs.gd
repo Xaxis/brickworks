@@ -85,6 +85,10 @@ const DEFAULTS: Dictionary = {
 	# Settings, Reduce motion: no model going up brick by brick, no light
 	# crossing a waiting picture, and the view goes where it is sent at once.
 	"reduce_motion": false,
+	# Settings, Say when a long job is done (DoneNote): a design, a Best
+	# render, the render queue or a build video ending while the window is
+	# not looked at asks for attention, or on the web notifies.
+	"done_note": true,
 	# The commands last run from Find a command (CommandPalette), the latest
 	# first: they come first there.
 	"palette_recent": [],

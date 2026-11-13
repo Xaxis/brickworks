@@ -1,0 +1,22 @@
+0 FILE towers.mpd
+0 Two Towers
+0 Name: towers.mpd
+0 Author: Tia Tower [ttower]
+0 !LDRAW_ORG Unofficial_Model
+0 BFC CERTIFY CCW
+1 2 0 0 0 1 0 0 0 1 0 0 0 1 3958.dat
+0 // the towers, one red one blue
+1 4 -40 -24 0 1 0 0 0 1 0 0 0 1 tower.ldr
+1 1 40 -24 0 1 0 0 0 1 0 0 0 1 tower.ldr
+0 STEP
+0 NOFILE
+0 FILE tower.ldr
+0 Tower
+0 Name: tower.ldr
+0 Author: Tia Tower [ttower]
+0 BFC CERTIFY CCW
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat
+0 // a round brick on one stud, a round plate on it
+1 16 -10 -24 -10 1 0 0 0 1 0 0 0 1 3062b.dat
+1 14 -10 -48 -10 1 0 0 0 1 0 0 0 1 4073.dat
+0 NOFILE

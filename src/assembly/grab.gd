@@ -148,7 +148,8 @@ var coupled: Dictionary = {}
 ## brick id -> carrier's id.
 var followers: Dictionary = {}
 ## A closed loop the grabbed joint is in, solved as it moves; null for none.
-var linkage: Linkage = null
+## A Linkage, reached through Later: the first screen does not compile it.
+var linkage: RefCounted = null
 ## The loop stopped it short of where the pointer asked.
 var loop_short: bool = false
 ## Free joints inside what moved that swung down too, said.
@@ -408,7 +409,7 @@ func _chosen() -> String:
 		from_rack = not couplings.is_empty()
 	linkage = null
 	_kingpin = Vector3.ZERO
-	var loop: Linkage = null
+	var loop: RefCounted = null
 	var other_words: String = ""
 	if not held.is_empty() or not geared.is_empty():
 		# Held at both ends: a closed loop, moved as it allows (Linkage).
@@ -419,11 +420,11 @@ func _chosen() -> String:
 			if _kingpin == Vector3.ZERO:
 				return _refuse("loop", ("%s is on a ball in a closed loop, and the loop moves it: take hold "
 					+ "of a part on one of the loop's turning joints (its crank).") % bodies.named([body]))
-		loop = Linkage.read(bodies, link, body, couplings, _kingpin, _built_now())
+		loop = Later.script(&"Linkage").read(bodies, link, body, couplings, _kingpin, _built_now())
 		if from_rack and not loop.why.is_empty():
 			# Too big with the train: the loop as it was, the train left still.
 			couplings = []
-			loop = Linkage.read(bodies, link, body, couplings, _kingpin, _built_now())
+			loop = Later.script(&"Linkage").read(bodies, link, body, couplings, _kingpin, _built_now())
 		# A gear the loop moves turns the gears it meshes, and they theirs: a
 		# telescope's cradle, tilted by its extension wheel's rack, is held by
 		# the tilt wheel's chain it meshes. Their meshes hold the loop too, by
@@ -436,7 +437,8 @@ func _chosen() -> String:
 			var more: Array = _meshes_moved(loop, couplings)
 			if more.is_empty():
 				break
-			var wider: Linkage = Linkage.read(bodies, link, body, couplings + more, _kingpin, _built_now())
+			var wider: RefCounted = Later.script(&"Linkage").read(bodies, link, body, couplings + more,
+					_kingpin, _built_now())
 			if not wider.why.is_empty() or wider.gear_meshes.size() <= loop.gear_meshes.size() \
 					or wider.links.size() <= loop.links.size() or not _only_bearings(loop, wider):
 				break
@@ -938,7 +940,8 @@ func _worm_holding(ours: Dictionary) -> Mechanism.Coupling:
 		if wheel < 0 or not ours.has(wheel) or ours.has(worm):
 			continue
 		if step.is_empty():
-			var small: float = Linkage.FREEDOM_SLIDE if linkage.is_slide() else Linkage.FREEDOM_TURN
+			var loops: GDScript = Later.script(&"Linkage")
+			var small: float = loops.FREEDOM_SLIDE if linkage.is_slide() else loops.FREEDOM_TURN
 			if absf(linkage.reach(linkage.kept_value() + small) - linkage.kept_value()) < small * 0.5:
 				linkage.reach(linkage.kept_value() - small)
 			step = linkage.places()
@@ -1031,7 +1034,7 @@ func _carried_by(body: int, carrying: Dictionary) -> bool:
 ## and the shafts it drives on, not what carries them. 42125-1's steering
 ## column turns its wheel through two universal joints and a cardan shaft;
 ## left out, the loop's gear turned and the one it meshes on the column stood.
-func _only_bearings(loop: Linkage, wider: Linkage) -> bool:
+func _only_bearings(loop: RefCounted, wider: RefCounted) -> bool:
 	var geared: Dictionary = {}
 	for gear: Mechanism.Gear in shared_mechanism.gears:
 		geared[int(bodies.body_of.get(gear.key, -1))] = true
@@ -1051,7 +1054,7 @@ func _only_bearings(loop: Linkage, wider: Linkage) -> bool:
 ## steered wheel) is left out: its mesh would part, and a steering pulled in
 ## a drivetrain's meshes with it (8062-1: 40 joints, the rack 4.45 LDU of
 ## 5.34 for 30°).
-func _meshes_moved(loop: Linkage, offered: Array) -> Array:
+func _meshes_moved(loop: RefCounted, offered: Array) -> Array:
 	var out: Array = []
 	if shared_mechanism == null:
 		return out

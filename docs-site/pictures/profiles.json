@@ -1,0 +1,85 @@
+{
+ "shots": [
+  {
+   "id": "profile-page",
+   "source": "site",
+   "route": "/profile",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in"
+   ],
+   "wait": "article.model",
+   "alt": "Your profile, signed in: the banner, your avatar, name and handle with Edit profile, Settings and Share, your numbers and achievements, and the tabs Models, Builds, Saved, Sets, Insights and Achievements over your models' cards.",
+   "caption": "brickworks.diy/profile, signed in.",
+   "features": [
+    "ui:your profile page",
+    "ui:achievements on a profile"
+   ]
+  },
+  {
+   "id": "profile-menu",
+   "source": "site",
+   "route": "/profile",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in"
+   ],
+   "wait": ".site-head .account-menu",
+   "steps": [
+    {
+     "click": ".site-head .account-menu > summary"
+    },
+    {
+     "wait": ".site-head .account-menu .menu-list"
+    }
+   ],
+   "crop": ".site-head .account-menu .menu-list",
+   "pad": 12,
+   "alt": "The account menu open under the avatar: your name and handle, Your profile, Notifications and Your feed with their counts, Saved, Settings, Send feedback, the theme as System, Light and Dark, and Sign out.",
+   "caption": "The account menu.",
+   "features": [
+    "ui:the account menu"
+   ]
+  },
+  {
+   "id": "settings-page",
+   "source": "site",
+   "route": "/settings",
+   "viewport": [
+    1280,
+    1100
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in"
+   ],
+   "wait": "#email-part",
+   "alt": "Settings: the contents list down the side, and Profile, Appearance with System, Light and Dark, and Email with its boxes for the daily email.",
+   "caption": "brickworks.diy/settings.",
+   "features": [
+    "ui:your settings page",
+    "ui:theme choice"
+   ]
+  }
+ ]
+}

@@ -50,6 +50,7 @@ import urllib.request
 from collections import Counter
 from pathlib import Path
 
+from ldraw import subfiles
 from ldraw.parser import read_text
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -147,15 +148,11 @@ def fetch(themes: list[str], least: int) -> int:
 
 
 def _submodels(text: str) -> dict[str, list[list[str]]]:
+    """Each block's part lines, split, by its name as written, the model's
+    first: the blocks LDView reads (ldraw.subfiles.blocks)."""
     files: dict[str, list[list[str]]] = {}
-    current = None
-    for line in text.splitlines():
-        bits = line.split()
-        if bits[:2] == ["0", "FILE"]:
-            current = " ".join(bits[2:])
-            files[current] = []
-        elif current is not None and len(bits) >= 15 and bits[0] == "1":
-            files[current].append(bits)
+    for name, lines in subfiles.blocks(text).values():
+        files[name] = [bits for bits in map(subfiles.fields, lines) if len(bits) >= 15 and bits[0] == "1"]
     return files
 
 
@@ -196,7 +193,7 @@ def harvest(wanted: list[str], out: Path, most: int = 20) -> int:
         licence = next((l[10:].strip() for l in lines if l.startswith("0 !LICENSE")), "?")
         number = path.name.split("_")[0].removesuffix(".mpd").removesuffix(".ldr")
         files = _submodels(text)
-        known = {name.lower() for name in files}
+        known = {subfiles.key(name) for name in files}
         for name, placed in files.items():
             # Whole words, a plural let in: as letters, "tree" took every
             # Street and "lamp" every Clamp.
@@ -204,7 +201,7 @@ def harvest(wanted: list[str], out: Path, most: int = 20) -> int:
             word = next((w for w in wanted if any(s in (w, w + "s", w + "es") for s in said)), None)
             if word is None or not 3 <= len(placed) <= most:
                 continue
-            if any(" ".join(b[14:]).lower() in known for b in placed):
+            if any(subfiles.key(" ".join(b[14:])) in known for b in placed):
                 continue
             if not all(abs(float(v)) in (0.0, 1.0) for b in placed for v in b[5:14]):
                 continue
@@ -266,37 +263,39 @@ def _compose(m: list[float], local: list[float]) -> list[float]:
 
 def _flatten(text: str) -> list[tuple[str, int, list[float], str]]:
     """Every part of the first model, sub-models followed: name, colour,
-    world transform and the sub-model it sits in."""
-    files: dict[str, list[list[str]]] = {}
+    world transform and the sub-model it sits in ("main" for the model's
+    own). Each block found as LDView finds it (ldraw.subfiles.blocks): by its
+    name whole, "\\" and "/" alike, the first of a name, the model's own in
+    no table. A block that says it is a part (not a subpart) is one."""
+    files: dict[str, list[tuple[list[str], str]]] = {}
     parts: set[str] = set()
-    current = "main"
-    for line in text.splitlines():
-        bits = line.split()
-        if bits[:2] == ["0", "FILE"]:
-            current = " ".join(bits[2:]).lower()
-            files.setdefault(current, [])
-        elif bits[:2] == ["0", "!LDRAW_ORG"] and "part" in line.lower() \
-                and "subpart" not in line.lower():
-            parts.add(current)      # an unofficial part carried in the file
-        elif len(bits) >= 15 and bits[0] == "1":
-            files.setdefault(current, []).append(bits)
+    for at, (_name, lines) in subfiles.blocks(text).items():
+        placed: list[tuple[list[str], str]] = []
+        for line in lines:
+            bits = subfiles.fields(line)
+            if bits[:2] == ["0", "!LDRAW_ORG"] and "part" in line.lower() \
+                    and "subpart" not in line.lower():
+                parts.add(at)       # an unofficial part carried in the file
+            elif len(bits) >= 15 and bits[0] == "1":
+                placed.append((bits, subfiles.key(subfiles.after_fields(line, 14))))
+        files[at] = placed
     out: list[tuple[str, int, list[float], str]] = []
 
     def walk(name: str, m: list[float], colour: int, depth: int) -> None:
-        for bits in files.get(name, []):
+        for bits, ref in files.get(name, []):
             try:
                 here = _compose(m, [float(v) for v in bits[2:14]])
                 tint = colour if bits[1] == "16" else int(bits[1], 0)
             except ValueError:
                 continue
-            ref = " ".join(bits[14:]).lower().replace("\\", "/")
-            if ref in files and ref not in parts and depth < 16:
+            # As deep as the app goes (LdrModel._inline): at 16, 10143-1's
+            # sphere, 23 deep, lost 218 of its 3,457 parts.
+            if ref in files and ref not in parts and depth < 32:
                 walk(ref, here, tint, depth + 1)
             else:
-                out.append((ref, tint, here, name))
+                out.append((ref, tint, here, "main" if name == subfiles.MAIN else name))
 
-    if files:
-        walk(next(iter(files)), [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1], 16, 0)
+    walk(subfiles.MAIN, [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1], 16, 0)
     return out
 
 

@@ -869,6 +869,101 @@ func _read_usage() -> void:
 			info.pieces = int(pair[1])
 
 
+## In how many sets each part comes in each colour, beside the set
+## inventories (tools/collection_data.py): 64 files of {"parts": {id:
+## [colour, sets, colour, sets, ...]}}, a part in the file [method
+## colour_shard_of] says. Not in the start: for every part they are 104 kB
+## (brotli) a first visit would wait for, for a tooltip. The desktop reads
+## a part's file from its own; the web fetches it from the deployment's
+## /sets/, as a typed set's shard is (SetInventories).
+const COLOUR_SETS := "res://assets/generated/sets/colours_%02d.json"
+const COLOUR_SHARDS := 64
+## A part and colour in this many sets or fewer is rare in it, as
+## BrickMissing has it: a lost one is hard to replace.
+const RARE_IN := 3
+
+## A part's colours file came in, or would not: ask again what was -1.
+signal colour_sets_came
+
+## File number -> {part id -> {colour -> sets}}; false while it is on its
+## way, or when it could not be had.
+var _colour_sets: Dictionary = {}
+
+
+## Which colours file a part is in: SetInventories.shard_of's sum, in 64.
+## tools/collection_data.py colour_shard_of is the same, and the two must
+## agree, or a part's counts are looked for in the wrong file and are none.
+static func colour_shard_of(part_id: String) -> int:
+	var h: int = 0
+	for byte: int in part_id.strip_edges().to_lower().to_utf8_buffer():
+		h = (h * 31 + byte) % 1000003
+	return h % COLOUR_SHARDS
+
+
+## In how many sets [param part_id] comes in [param code], by Rebrickable's
+## inventories: a set's own parts and its figures', not a spare alone, not
+## what a pack has only by holding another set, and none of Rebrickable's
+## database sets. A part moved to another number is counted as that one, and
+## a code as itself or its plain colour: a tyre in Rubber Black is in the
+## sets with a Black one. Not made_as's other leg: the counts are LDraw codes
+## already, and LDraw's Olive Green is Rebrickable's 326, which would give
+## Yellowish Green (326) Olive Green's sets. 0 when no set is known to have
+## it, which is silence, not evidence. -1 while its file is still to come: asked for
+## here, and [signal colour_sets_came] says when to ask again.
+func sets_in_colour(part_id: String, code: int) -> int:
+	var info: PartInfo = parts.get(part_id)
+	if info != null and info.is_redirect():
+		part_id = info.moved_to
+	var file: int = colour_shard_of(part_id)
+	var held: Variant = _colour_sets.get(file)
+	if held == null:
+		_read_colour_sets(file)
+		held = _colour_sets.get(file)
+	if not held is Dictionary:
+		return -1 if held == null or _colour_sets_out.has(file) else 0
+	var row: Dictionary = (held as Dictionary).get(part_id, {})
+	var most: int = int(row.get(code, 0))
+	var color: BrickColor = colors.get(code)
+	if color != null and color.plain_code != code:
+		most = maxi(most, int(row.get(color.plain_code, 0)))
+	return most
+
+
+## The colours files still on their way, by number.
+var _colour_sets_out: Dictionary = {}
+
+
+func _read_colour_sets(file: int) -> void:
+	var path: String = COLOUR_SETS % file
+	if not OS.has_feature("web") or FileAccess.file_exists(path):
+		_colour_sets[file] = _colour_rows(FileAccess.get_file_as_string(path).to_utf8_buffer())
+		return
+	_colour_sets[file] = false
+	_colour_sets_out[file] = true
+	var url: String = Deployment.api_base() + "/sets/" + path.get_file()
+	if not _ask(url, func(status: int, body: PackedByteArray) -> void:
+			_colour_sets_out.erase(file)
+			_colour_sets[file] = _colour_rows(body) if status == 200 else false
+			colour_sets_came.emit()):
+		_colour_sets_out.erase(file)
+
+
+## A colours file's parts, each {colour -> sets}; false for one that does not read.
+static func _colour_rows(body: PackedByteArray) -> Variant:
+	var raw: Variant = JSON.parse_string(body.get_string_from_utf8()) if not body.is_empty() else null
+	if not raw is Dictionary or not (raw as Dictionary).get("parts") is Dictionary:
+		return false
+	var out: Dictionary = {}
+	var rows: Dictionary = (raw as Dictionary)["parts"]
+	for id: Variant in rows:
+		var pairs: Array = rows[id] if rows[id] is Array else []
+		var row: Dictionary = {}
+		for at: int in range(0, pairs.size() - 1, 2):
+			row[int(pairs[at])] = int(pairs[at + 1])
+		out[str(id)] = row
+	return out
+
+
 ## A part with the number of another and cNN after it is that part made
 ## whole: 60593c01 the window 60593 with its glass, 56145c03 a rim with its
 ## tyre, 73194c01 a door with its glass. Only of a plain part LDraw keeps for
@@ -1099,8 +1194,10 @@ func mesh_for(part_id: String) -> Lbm.PartMesh:
 	var path: String = _on_disk(info.mesh_hash)
 	if path.is_empty():
 		# Not in this build. Start fetching it; the caller gets null now
-		# and a [signal fetched] shortly.
-		request_mesh(part_id)
+		# and a [signal fetched] shortly. Not one an open has heard fail
+		# ([member held_back]).
+		if not held_back.has(info.mesh_hash):
+			request_mesh(part_id)
 		return null
 
 	if _on_main_thread():
@@ -1301,6 +1398,14 @@ func set_fetch_host(host: Node) -> void:
 	_fetch_host = host
 	if not _for_later.is_empty():
 		_watch_later()
+
+
+## Geometry whose fetch failed while a model was being opened, by hash
+## (ModelStore._fetch_failed): not asked for again by a part that wants it
+## ([method mesh_for]) until that model is laid, as each part the open lays
+## asked for it again, and that open asks each part once. Asked for in
+## words ([method request_mesh], [method want]), it goes as ever.
+var held_back: Dictionary = {}
 
 
 ## True when this build has the part's geometry to hand.

@@ -1,0 +1,166 @@
+{
+ "shots": [
+  {
+   "id": "placing-parts-typed",
+   "source": "app",
+   "setup": [
+    {
+     "run": "new",
+     "after": 30
+    },
+    {
+     "take": {
+      "part": "3001",
+      "colour": 4
+     },
+     "after": 20
+    },
+    {
+     "mouse": {
+      "at": [
+       0,
+       0,
+       0
+      ]
+     }
+    },
+    {
+     "frames": 10
+    },
+    {
+     "mouse": {
+      "at": [
+       -20,
+       0,
+       10
+      ]
+     }
+    },
+    {
+     "frames": 10
+    },
+    {
+     "key": "Equal"
+    },
+    {
+     "key": "Equal"
+    },
+    {
+     "key": "Equal"
+    },
+    {
+     "key": "Equal"
+    },
+    {
+     "key": "Equal"
+    },
+    {
+     "key": "Equal"
+    },
+    {
+     "key": "Equal"
+    },
+    {
+     "key": "Equal",
+     "after": 20
+    },
+    {
+     "type": "3x",
+     "after": 30
+    }
+   ],
+   "settle": 40,
+   "crop": "@pointer",
+   "alt": "A red 2 x 4 brick in hand over an empty baseplate, seen through as a ghost, and the small field at the pointer reading 3x, with x +3 studs, Enter puts it down under it.",
+   "caption": "Type a number with a part in hand: the field opens at the pointer and the ghost shows where it goes.",
+   "features": [
+    "ui:type a number while moving"
+   ],
+   "pad": 200
+  },
+  {
+   "id": "placing-parts-connect",
+   "source": "app",
+   "setup": [
+    {
+     "run": "new",
+     "after": 30
+    },
+    {
+     "take": {
+      "part": "32524",
+      "colour": 71
+     },
+     "after": 30
+    },
+    {
+     "mouse": {
+      "at": [
+       0,
+       0,
+       0
+      ]
+     }
+    },
+    {
+     "frames": 10
+    },
+    {
+     "mouse": {
+      "at": [
+       -20,
+       0,
+       10
+      ]
+     }
+    },
+    {
+     "frames": 10
+    },
+    {
+     "key": "Equal"
+    },
+    {
+     "key": "Equal"
+    },
+    {
+     "key": "Equal"
+    },
+    {
+     "key": "Equal"
+    },
+    {
+     "key": "Equal"
+    },
+    {
+     "key": "Equal"
+    },
+    {
+     "key": "Equal"
+    },
+    {
+     "key": "Equal"
+    },
+    {
+     "key": "Equal"
+    },
+    {
+     "key": "Equal",
+     "after": 20
+    },
+    {
+     "key": "N",
+     "after": 30
+    }
+   ],
+   "settle": 40,
+   "crop": "@pointer",
+   "alt": "A Technic beam in hand over the baseplate, its pin holes lit in blue, each a point it can go on by.",
+   "caption": "Connect (N) lights a part's points: click the one it goes on by, then where it goes.",
+   "features": [
+    "ui:connect by a point"
+   ],
+   "pad": 180
+  }
+ ]
+}

@@ -26,6 +26,7 @@
 import { createHash } from "node:crypto";
 import { COLOUR_NAMES, directOf, isDirect } from "./_colours.js";
 import { counted, number, say } from "./_card.js";
+import { afterFields, keyOf, sectionKey, stemOf, trimSpace } from "./_subfiles.js";
 
 const HEAD = "0 !BRICKWORKS PAGES ";
 const PAGE = "0 !BRICKWORKS PAGE ";
@@ -52,16 +53,6 @@ export function fingerprint(text) {
   return sha256(kept.join("\n"));
 }
 
-/// A file's name as a reference to it is looked up (LdrModel._key).
-function keyOf(name) {
-  let text = strip(String(name).replace(/\\/g, "/")).toLowerCase();
-  text = text.slice(text.lastIndexOf("/") + 1);
-  for (const suffix of [".ldr", ".dat", ".mpd"]) {
-    if (text.endsWith(suffix)) return text.slice(0, -suffix.length);
-  }
-  return text;
-}
-
 /// A colour as LdrModel reads one: a number, or 0x2RRGGBB kept as the number
 /// it is; null for one it cannot read.
 function colourOf(token) {
@@ -71,8 +62,10 @@ function colourOf(token) {
 }
 
 /// The file's sub-models and parts, as LdrModel.parse reads them: {main,
-/// subs: Map(key -> placements)}, each placement {part, colour, m} with m
-/// LDraw's twelve numbers.
+/// subs: Map(key -> placements)}, each placement {part, ref, colour, m}
+/// with m LDraw's twelve numbers, ref the name it gives (keyOf) and part
+/// the part's number in it (stemOf). A section is found by its name whole,
+/// the first block of a name the one, as the app and LDView read it.
 function read(text) {
   const subs = new Map();
   const declared = new Map();
@@ -82,8 +75,11 @@ function read(text) {
   let first = true;
   let inData = false;
   let header = 0;
+  const blocks = new Map();
   for (const raw of String(text).replace(/^﻿/, "").split("\n")) {
-    const line = strip(raw);
+    // LDraw's space trimmed, not every control character: a reference to a
+    // sub-model named in them lost its name, and the line placed nothing.
+    const line = trimSpace(raw);
     if (inData) {
       if (line.startsWith("0 !:")) continue;
       inData = false;
@@ -95,17 +91,23 @@ function read(text) {
       if (keyword === "!DATA") {
         inData = true;
       } else if (keyword === "FILE") {
-        const key = keyOf(tokens.slice(2).join(" "));
-        current = { key, placements: [] };
-        subs.set(key, current);
-        header = 0;
+        // Keyed as the app keys it (sectionKey): the model's own by a key no
+        // reference gives, and a later block of a name read as nothing.
+        const key = sectionKey(afterFields(raw, 2), blocks);
+        current = { key, placements: [], libraryFile: false, org: false };
         if (first) {
           subs.delete("model");
           main = current;
           first = false;
         }
-      } else if (keyword === "!LDRAW_ORG" && header < 16 && /part/i.test(line)) {
-        declared.set(current.key, true);
+        if (!key.includes("\n")) subs.set(key, current);
+        header = 0;
+      } else if (keyword === "!LDRAW_ORG" && header < 16 && subs.get(current.key) === current) {
+        if (/part/i.test(line)) declared.set(current.key, true);
+        // Its first such line says whether it is a library's file, not a
+        // model (LdrModel.declares_library_file).
+        if (!current.org) current.libraryFile = !/model/i.test(line);
+        current.org = true;
       }
       header += 1;
       continue;
@@ -115,7 +117,8 @@ function read(text) {
     const colour = colourOf(tokens[1]);
     const m = tokens.slice(2, 14).map(Number);
     if (colour === null || m.some((n) => !Number.isFinite(n))) continue;
-    current.placements.push({ part: keyOf(tokens.slice(14).join(" ")), colour, m });
+    const ref = afterFields(raw, 14);
+    current.placements.push({ part: stemOf(ref), ref: keyOf(ref), colour, m });
   }
   // A section that says it is a part is a part, not an assembly to open.
   for (const key of declared.keys()) if (key !== main.key) subs.delete(key);
@@ -142,8 +145,11 @@ const round = (n, places) => {
 
 /// Every part the file puts down, in the order the app puts them down
 /// (LdrModel.flatten): [{part, colour, key}], key being the part, its
-/// colour and where it stands, to the hundredth of an LDU.
-export function partsOf(text) {
+/// colour and where it stands, to the hundredth of an LDU. [known] says
+/// whether the library has a part of a number: a FILE that says it is a
+/// library's file (a shortcut) of one is that part, as the app reads it
+/// (LdrModel.sub_model_of, api/_parts.js subModelOf); with none, the block.
+export function partsOf(text, known = () => false) {
   const { main, subs } = read(text);
   const out = [];
   const visit = (sub, at, colour, depth, visiting) => {
@@ -152,8 +158,8 @@ export function partsOf(text) {
     for (const one of sub.placements) {
       const placed = compose(at, one.m);
       const resolved = one.colour === 16 ? colour : one.colour;
-      const nested = subs.get(one.part);
-      if (nested && nested !== sub) {
+      const nested = subs.get(one.ref);
+      if (nested && nested !== sub && !(nested.libraryFile && known(one.part))) {
         visit(nested, placed, resolved, depth + 1, new Set(visiting));
         continue;
       }
@@ -239,9 +245,11 @@ const sameSteps = (a, b) => a.length === b.length && [...a].sort().join("\n") ==
 ///   first            the first step that differs, or null for none
 ///   compared         whether the steps could be compared at all
 ///   parts, steps     the new one's counts
-export function changesBetween(before, after) {
-  const was = partsOf(before);
-  const now = partsOf(after);
+///
+/// [known] as partsOf takes it.
+export function changesBetween(before, after, known = () => false) {
+  const was = partsOf(before, known);
+  const now = partsOf(after, known);
   const added = more(lots(now.map((p) => p.key)), lots(was.map((p) => p.key)));
   const removed = more(lots(was.map((p) => p.key)), lots(now.map((p) => p.key)));
   const oldSteps = stepsOf(before, was);

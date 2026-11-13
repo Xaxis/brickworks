@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, api:POST /api/mcp, cli:web build and deploy, cli:key leak browser flow, cli:the visit counter served from the site, cli:first visit load check, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, cli:each thread's CPU in a browser, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, ui:build party, cli:build party browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, api:a deleted account's plan ended at Admission, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, lib:the gallery's daily choice, lib:the weekly look at the OMR, cli:the weekly AI showcase, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:a link that opens playing, cli:playlink probe, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, cli:what the pointer moving costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, cli:buildturn probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:every set's page, lib:a set's picture drawn from its parts, cli:set catalogue, cli:sets browser flow, cli:set parts probe, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, cli:relay timing, ui:beta page, api:applying to the beta, lib:the beta's spots and months, ui:the beta's owner queue, cli:beta browser flow, ui:a list's pages, cli:paging browser flow, ui:send feedback, ui:send feedback in the app, api:sending feedback, lib:feedback kept and answered, ui:the owner's feedback inbox, ui:your feedback on settings, ui:the beta hub, lib:early features for beta testers, cli:feedback browser flow, cli:feedback probe, cli:the feedback stand-in, lib:achievements with levels, lib:challenge notices, lib:what a model is based on, cli:based on browser flow, ui:the embed in 3D, cli:embed browser flow, ui:your achievements tab, ui:a model in 3D on its page, lib:mentions in comments, cli:mentions browser flow, ui:the gallery's builds tab, lib:builds in the gallery, cli:gallery builds browser flow, lib:more like a designer, ui:more like on a profile, cli:more like browser flow, api:a set's own picture, cli:set pictures, cli:browse browser flow, cli:browse pages, api:POST /api/account?op=fetch, cli:link browser flow, ui:the model in your room, cli:room GLB probe, cli:room browser flow -->
+<!-- covers: api:GET /api/account, cli:console browser flow, api:POST /api/mcp, cli:web build and deploy, cli:the parts bucket's copy for checks, cli:key leak browser flow, cli:the visit counter served from the site, cli:first visit load check, cli:two builds' first visits at an equal load, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, cli:each thread's CPU in a browser, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, ui:build party, cli:build party browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:function packaging, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, api:a deleted account's plan ended at Admission, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, lib:the gallery's daily choice, lib:the weekly look at the OMR, cli:the weekly AI showcase, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:a link that opens playing, cli:playlink probe, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, cli:what the pointer moving costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, cli:buildturn probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:every set's page, lib:a set's picture drawn from its parts, cli:set catalogue, cli:sets browser flow, cli:set parts probe, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, cli:the docs' pictures, cli:relay timing, ui:beta page, ui:the beta bar, ui:the homepage's open beta, cli:the beta's homepage and bar browser flow, api:applying to the beta, lib:the beta's spots and months, ui:the beta's owner queue, cli:beta browser flow, ui:a list's pages, cli:paging browser flow, ui:send feedback, ui:send feedback in the app, api:sending feedback, lib:feedback kept and answered, ui:the owner's feedback inbox, ui:your feedback on settings, lib:early features for beta testers, cli:feedback browser flow, cli:feedback probe, cli:the feedback stand-in, lib:achievements with levels, lib:challenge notices, lib:what a model is based on, cli:based on browser flow, ui:the embed in 3D, cli:embed browser flow, ui:your achievements tab, ui:a model in 3D on its page, lib:mentions in comments, cli:mentions browser flow, ui:the gallery's builds tab, lib:builds in the gallery, cli:gallery builds browser flow, lib:more like a designer, ui:more like on a profile, cli:more like browser flow, api:a set's own picture, cli:set pictures, cli:browse browser flow, cli:browse pages, api:POST /api/account?op=fetch, cli:link browser flow, ui:the model in your room, cli:room GLB probe, cli:room browser flow, lib:joining the beta's testers, ui:the beta's welcome at sign-up, ui:the beta's welcome in the app, cli:betajoin browser flow, cli:betajoin probe, ui:report a bug in the app, ui:report a bug on the site, cli:bugreport browser flow, cli:bugreport probe -->
 
 ## Sub-features
 
@@ -227,7 +227,7 @@ plan with Claude as the client.
   that screen is not seen), when the bin was
   usable (its search and first tile told to the page, and `found`), when the
   build's last byte came (net), the main thread's CPU before then (Chrome's
-  ThreadTime, which load does not stretch), and the bytes before it.
+  ThreadTime, which the load stretches too, if less than the wall clock), and the bytes before it.
   `--profiles=broadband,slow --warm` for the full table; `--laps` prints
   every `brickworksBoot` mark; `--assistant` opens `/app?assistant=on` and
   counts it usable at the assistant's panel (its brief, or Connect Claude
@@ -275,6 +275,35 @@ plan with Claude as the client.
   and 0.3 (0.3-1.3) against 1.2 (0.7-1.6) warm, the later parts written
   0.1 s after the bin was first drawn in all ten, so no pick waited for
   them and none fetched 3039 alone.
+- `two builds' first visits at an equal load` (`tools/web/start_abba.mjs`,
+  webstart9, 2026-11-09): load_check's `--runs=1 --warm` on two or three
+  builds in turn, each block forward and back (A B B A, or A B C C B A),
+  the box's load read before and after each run, so a busy box weighs on
+  each alike. An arm is a build folder (a locked snapshot's `build/web`,
+  served by serve.py `--accounts --compressed --cached` on its own port,
+  one at a time and only for its own run) or a URL (live, or a preview
+  with `BW_BYPASS`). It says each run's bin usable, compile and main
+  thread, cold and warm, then each arm's median and range, then each arm
+  against the first, paired by block (each block's mean over the base's):
+  over `--bar` per cent (10) on the bin usable or the compile, cold or
+  warm, is a FAIL, exit 1, as is an arm with fewer than half its runs.
+  A13's target (10 s cold, 4 s warm) is said beside, not judged. For a
+  build folder in a checkout, the first screen's source is said too
+  (start_closure.py's reading of that tree). Run it as one heavy job:
+  ```sh
+  set -a; . ./.env; set +a
+  ~/.claude/claude-core/bin/heavy node tools/web/start_abba.mjs \
+    --arm=m276=../snapA/build/web --arm=pre261=../snapB/build/web --blocks=6 --out=DIR
+  node tools/web/start_abba.mjs --summary --out=DIR   # the table again
+  python3 tools/minitest.py tests/test_start_abba.py  # the order and the verdict
+  ```
+  About 37 s a run at load 35-45 (two arms, six blocks: 15 minutes).
+  Measured rel-m276 (de20e50df) against pre261 (858b82bca), local exports,
+  six blocks at load 33-43: pre261 x1.02 cold and x0.96 warm usable, the
+  compile x1.07 cold and x1.00 warm (plain medians x0.99 and x0.97), every
+  one within 10% (`bench/results/webstart9-2026-11-09/abba`). The same
+  m276 build read 16.9 s cold, 11.2 s warm and a 4.0 s compile here,
+  where APP_UX7 read 10.2, 6.0 and 2.2 s at load 18-31: the box.
 - `POST /api/account?op=fetch` (`api/_link.js`, urlfetch 2026-11-03) — a link
   fetched for the app in a browser, signed in: brickify `url=` and
   print_part `picture_url=` (`AppTools._fetch_through_site`). The page's
@@ -305,7 +334,10 @@ plan with Claude as the client.
   tool list from that tab once it has said hello, else the tools of the app
   build the deployment serves, `tools/mcp_tools.json` put beside the function
   by `deploy.sh` (`ownTools`), with the guidance of a hello of that same list
-  (`guidanceOf`), so Claude can add it before the app is opened; never
+  (`guidanceOf`, found by the `list` hash kept beside each hello, and never
+  waited on past half a second: a lookup that fails or is slow leaves that
+  handshake without guidance, not failed, 2026-11-10,
+  `tests/test_relay_hello.py`), so Claude can add it before the app is opened; never
   another tab's list, which had been a test build's: 69 tools for 68,
   2026-10-29, `tests/test_relay_hello.py`) — and one tab's private
   address (`/api/mcp?t=<token>`), the way from 2026-10-09, still answered for
@@ -1036,8 +1068,11 @@ plan with Claude as the client.
 - `a model's parts and its download` (`api/_parts.js`, `api/share.js`
   `partsSection`, `download`, `web/model-page.js` `startParts`, 2026-10-26,
   site278, docs/SOCIAL.md): on `/m/<id>`, a Parts tab (with the count) and
-  `#parts`: "N parts in M lots", Colour · Kind (`[data-group]`), BrickLink
-  XML and Rebrickable CSV (links that download), and `ul.lot-list`, asked
+  `#parts`: "N parts in M lots", Colour · Kind (`[data-group]`), the
+  shops' lists in `.parts-shops` (links that download: BrickLink XML,
+  Rebrickable CSV and LEGO® Pick a Brick CSV, sitepickabrick 2026-11-08),
+  `p.pab-note` under them only when Pick a Brick leaves something off, and
+  `ul.lot-list`, asked
   for (`/m/<id>/parts.json`) as the section comes within 800 px of the
   screen or its tab is chosen, drawn into a `min-height` kept for its first
   12 rows of 60 px, `li.group` (a colour's or kind's swatch, name and
@@ -1051,7 +1086,26 @@ plan with Claude as the client.
   file; the facts pill and the tab say its count, so they agree with the
   app. `wantedList` and `rebrickableCsv` are `ShopLists`' two exports, a
   made part or an unnumbered colour left off and counted (`left_out` in the
-  JSON). `?op=file` is the stored file as it is, `application/x-ldraw`,
+  JSON). `pickABrick` is its third (`ShopLists.pick_a_brick`):
+  `/m/<id>/parts-pab.csv` (`?op=parts&as=pab`; `/m/<id>/v/<n>/parts-pab.csv`
+  for an older version) is `elementId,quantity` joined by `\r\n` with none
+  after the last line, an element a line (two lots of one element, a tyre
+  in Rubber Black and in Black, one line; a direct colour as the element of
+  the colour it stands in as), 999 of an element at most, 400 lines a file:
+  past that `parts-pab-2.csv` and on (`as=pab-2`), one link each ("LEGO®
+  Pick a Brick CSV, 1 of 2"), named `<name>-pickabrick.csv` or
+  `-pickabrick-<n>.csv` each where there are more; a file past the last,
+  or a list with no element number known at all, is a 404. A lot with no
+  element number known, or a made part, is not on it: counted in
+  `left_out.pickabrick` and `pickabrick.left_out_pieces` (the JSON's
+  `pickabrick` is `{files, lines, pieces, left_out_pieces, over}`) and in
+  `p.pab-note` ("Not on the Pick a Brick list, with no LEGO® element number
+  known: 2 lots (5 parts)."), with each element past 999 and how many more
+  to add by hand. Checked by `parts page probe` (each file word for word
+  the app's, on `src/dev/fixtures/pickabrick_big.ldr` too: 432 elements in
+  two files, 1,005 of one), `tests/test_pick_a_brick_page.py` (the page,
+  the route and the note through the real handler) and `model_page_flow`
+  step 16. `?op=file` is the stored file as it is, `application/x-ldraw`,
   `attachment; filename="<name>.mpd"` (`-v<n>` for an older version);
   `?op=parts&as=json|xml|csv` likewise named; both signed out, kept by the
   CDN as the page (`SHARED_CACHE`), 404/410 as the viewer's answer. The
@@ -1189,9 +1243,11 @@ plan with Claude as the client.
   Pictures in `--out`; with no `--url` the stand-in's watchtower made of
   `models/car.ldr`.
 - `parts page probe`: `tools/probe.sh parts_page_probe` (headless, about a
-  minute once its class list is current): opens 6040-1, 10243-1, 42080-1
-  and 8880-1 in the app (or the files given after `--`), takes each one's
-  `Inventory.of` and `ShopLists` exports, and runs
+  minute once its class list is current): opens 6040-1, 10243-1, 42080-1,
+  8880-1 and `src/dev/fixtures/pickabrick_big.ldr` in the app (or the files
+  given after `--`), takes each one's `Inventory.of` and `ShopLists`
+  exports (BrickLink's, Rebrickable's and each Pick a Brick file, with the
+  lots and pieces it leaves off and those past 999), and runs
   `node tools/web/parts_check.mjs --app=<their JSON>`, which lists the same
   files with `api/_parts.js` and prints the app's and the page's pieces and
   lots side by side, every lot that differs, and whether each export is
@@ -1616,7 +1672,7 @@ plan with Claude as the client.
   deploy.sh routes it.
 - **Every page the site links to, in its language** (languages7, 2026-11-02):
   the account menu's `/feed`, `/notifications`, `/builds`, `/feedback`,
-  `/beta` and `/beta-hub`; the footer's `/terms`, `/privacy`,
+  `/beta` (the beta's hub; `/beta-hub` answers 308 there); the footer's `/terms`, `/privacy`,
   `/guidelines`, `/takedown` and `/changelog`; the page not found and the
   connector's consent page (`/de/oauth/authorize`, `web/de/oauth/
   authorize.html`). Only the docs stay English. The feed's and the
@@ -2821,6 +2877,8 @@ plan with Claude as the client.
   the CDN with a query of their own, and the browser flows load a page again
   until it shows what was done, for two minutes at most.
 - `moderation browser flow` (`tools/web/moderation_flow.mjs`): below.
+- `console browser flow` (`tools/web/console_flow.mjs`): the owner's
+  console ([account](account.md) `admin page`), below.
 - `directory` (`api/_directory.js`): what the list, a model's page and
   publishing share — `KINDS` (the same ids, in the same order, as
   `src/net/model_kinds.gd`), `LICENCES`, `SIZES`, `SORTS`; the edge's
@@ -2842,9 +2900,24 @@ plan with Claude as the client.
 - `part facts` (`tools/web/part_facts.mjs`): writes the Technic parts and
   the parts that make a model move (gears, worms, differentials, motors,
   actuators, chain links, pneumatics; never a "~" sub-part or a sticker)
-  from the catalogue; `deploy.sh` puts it beside `/api/share` as
-  `_part_facts.json`, and fails the deploy if the catalogue gives fewer than
-  500 and 50.
+  from the catalogue; `tools/package_api.sh` writes it once, with the owned
+  facts below, and puts it beside every function as `_part_facts.json`, and
+  fails the deploy if the catalogue gives fewer than 500 and 50.
+- `function packaging` (`tools/package_api.sh`): `OUT [--export=DIR]
+  [--stand-in] [ROUTE...]`, the serverless functions exactly as
+  `deploy.sh` ships them (deploy.sh calls it), each route's folder with every
+  shared module, `_part_facts.json` (every one, as rel-m285 gave it to
+  `/api/share` alone and `/api/collection`'s and `/api/admin`'s counted 4073
+  as 4073, not 6141: lb2check M2) and what each route reads; then
+  `tools/web/packaged_facts.mjs OUT ROUTE...` imports each packaged
+  function's own `_owned.js` from its folder and fails, naming the route,
+  unless it reads the catalogue's parts, moves and plain colours ("packaged
+  facts: N functions each read 23142 parts, 1161 moved ..."). Run by
+  `tests/test_packaged_facts.py` (ci_gate): the routes whose imports reach
+  `_owned.js` (collection, admin, share) packaged and read, 4073/256 read as
+  6141/0, and one packaged without the file failing the check. Everything
+  but `_part_facts.json` packages byte for byte as the loop it replaced
+  (bench/results/lbfix3-2026-11-11/pack_diff.log).
 - `list load test` (`tools/web/list_load.mjs`): N requests to the list (200 by
   default, 10 at a time), each a question a person could ask, timed; passes
   with no errors and nine in ten within `--most-ms` (2500).
@@ -3411,6 +3484,17 @@ plan with Claude as the client.
   clicks that column's rail as a person would, by `brickworksState.columns`.
 - `browser check`: `tools/web/check.mjs` loads the real URL in real Chromium and
   waits for the canvas to show something other than the loading colour.
+- `the parts bucket's copy for checks` (`tools/web/storage_mirror.mjs`): every
+  browser a script under tools/web starts (browser.mjs imports it) reads the
+  parts bucket from `~/.cache/brickworks-storage/` (`BW_STORAGE_MIRROR=DIR`;
+  `=off` for the bucket itself), each object fetched from Supabase once, which
+  bills it as cached egress; while the bucket refuses (402, 5xx) from the
+  uploaders' local folders. A run ends with `(storage mirror: N cache, N bucket,
+  N local …; the bucket asked N time(s))`, and each answer carries
+  `x-brickworks-mirror`. load_check alone reads the bucket (`realStore: true`):
+  it times a first visit. `tools/check.sh --network` gives its three probes the
+  copy over HTTP (`node tools/web/storage_mirror.mjs serve`, PARTS_URL).
+  `tests/test_storage_mirror.py` holds it.
 - `freeze check`: `tools/web/freeze_check.mjs` makes the design that froze the
   owner's computer — their 4,242-part Falcon Heavy, `src/dev/fixtures/
   falcon_heavy.json` — in a real browser, playing Claude over the connector
@@ -3913,20 +3997,27 @@ plan with Claude as the client.
 - `beta page` (`web/beta.html`, `web/beta.js`), `applying to the beta`
   (`api/plans.js` ?op=beta, ?op=beta_daily), `the beta's spots and months`
   (`api/_beta.js`, `supabase/beta.sql`), `the beta's owner queue`
-  (`web/beta-admin.html`, `web/beta-admin.js`, `api/admin.js` ?op=beta,
-  ?op=beta_decide, ?op=beta_grant) and `beta browser flow`
+  (`web/admin-beta.js` on the console's `/admin#beta`, `api/admin.js`
+  ?op=beta, ?op=beta_decide, ?op=beta_waitlist, ?op=beta_grant,
+  ?op=beta_switch; `/beta-admin` answers 308 to it) and `beta browser flow`
   (`tools/web/beta_flow.mjs`): the beta (2026-10-29, beta361), dark behind
   BRICKWORKS_BETA (off unless "open"; production's off). What testers get
   is what Pro is (2026-11-02, docs/PLANS.md): every model kept and
   commercial use; the desktop app is everyone's, so neither the page nor a
-  mail offers it as theirs, and the AI card says only Claude works in a
-  browser (the flow checks #get first, open or off). Off: /beta says
-  Coming soon with no form and no count, GET ?op=beta is `{beta: off}` and
-  asks nothing, POST is 403. Open: the spots left (`N of 100 spots left`),
-  signed out Sign in to apply (the sign-in dialog), signed in the form (what
-  you'd build 20-800, AI, background and a line up to 160, a link https up
-  to 300, two boxes), checked again at the edge (422 with why), one an
-  account (409; a declined one again after 30 days), then where it stands.
+  mail offers it as theirs (the flow checks #get first, open or off). Off:
+  /beta says Coming soon with no way in and no count, GET ?op=beta is
+  `{beta: off}` and asks nothing, POST is 403. Open, /beta is the beta's
+  hub (below); the application (what you'd build 20-800, AI, background
+  and a line up to 160, a link https up to 300, two boxes a tester need
+  not tick) is a tester's "tell us about you" there, at /beta#about
+  (betajoin: shown once joined, the old ids #apply-form, #f-build,
+  #apply-send, #apply-status; then where it stands), checked at the edge
+  as the API takes it (422 with why), one an account (409; a declined one
+  again after 30 days). beta_flow fills it by hand at 390, by keyboard
+  alone from /beta#about at 1280, and reads a decline's date there. A link
+  to /beta#about lands there, its title focused, once what is new and a
+  tester's parts above it are drawn (web/beta.js newsAsked, testersAsked):
+  landed before the hub's answer, its lists pushed the section 1297 px down.
   Spots 1-100 one at a time under the pool's row lock: proven on a
   throwaway Postgres (`tests/fixtures/beta/db_check.mjs`: two at once at
   99 give 100 and "full"; 120 from ten connections give 1-100 once each).
@@ -3953,6 +4044,75 @@ plan with Claude as the client.
   --url=<preview> --out=DIR` (ends "beta: all ok"); on any other deployment
   the same flow checks Coming soon and the refusal. Needs supabase/beta.sql
   applied.
+- `the beta bar` (`web/betabar.js`, asked for by `web/theme.js`), `the
+  homepage's open beta` (`web/index.html` #beta, `web/landing.js`) and
+  `beta page` as the hub (`web/beta.html`, `web/beta.js`): betahome,
+  2026-11-09, the owner's "elegantly update the homepage to advertise the
+  beta testing period". While BRICKWORKS_BETA is open, every page (the
+  server's /m/, /u/, /c/ too, by theme.js; never an embed or the consent
+  page) has a floating bar at the foot: Open beta (to /beta), Report a bug
+  (`window.brickworksReportBug({source: "site", from})` of web/bugreport.js,
+  loaded on the first press; without it Send feedback's dialog as a bug),
+  and Join (POST ?op=beta_join {via}; signed out the sign-in first, whose
+  welcome's answer stands) or You're a tester; its x hides it for a day
+  ("brickworks.betabar.hidden"). While it is shown, whatever is scrolled to
+  (Tab, a link, a page's script) stops clear above it
+  (`:root[data-betabar]` scroll-padding-bottom): Settings' Beta hub and
+  Leave were under it at 390. What the server said is kept ten minutes
+  ("brickworks.beta"): signed in GET ?op=beta, signed out ?op=beta_spots;
+  off, theme.js does not ask for the bar again for ten minutes, and nothing
+  is drawn. The homepage's #beta sits under the hero: why to join, three
+  points, and the way in for the visitor (signed out Sign up and join,
+  signed in Join the beta, a tester Report a bug and What's new), the
+  months of Pro left while any are; held from the first frame by
+  `<html data-beta="open">` (theme.js, from what was kept), else put in
+  only while its place is under the window, so nothing in view moves.
+  /beta: the line under the title (months left, or a tester thanked since
+  their day), the way in, what testers get, how to report, this week's
+  releases (`/changelog.json`, `tools/site.py --whats-new`, written beside
+  the changelog), the questions; a tester's what to try, known issues and
+  early features (GET ?op=beta_hub). Prove: `node
+  tools/web/betahome_flow.mjs --out=DIR` (the stand-in, beta open and off,
+  ends "betahome: all ok"), then on a `tools/deploy.sh --unit --beta-open`
+  preview `--url=<preview>` with `BW_BYPASS`: the months left are the
+  deployment's (?op=beta_spots), and Join's focus is read a frame after the
+  page has loaded and drawn, when web/beta.js puts it there.
+- `joining the beta's testers` (`supabase/beta_join.sql`, `api/_beta.js`
+  betaJoin, betaLeave, memberOf, betaTesters), `the beta's welcome at
+  sign-up` (`web/beta-welcome.js`, `web/account.js` askAgeIfAsked, Settings'
+  Beta row in `web/settings.html`/`settings.js`, the testers on
+  the console's `/admin#beta/testers`), `the beta's welcome in the app`
+  (`src/ui/sign_in_gate.gd`, `src/account/account.gd` join_beta, leave_beta,
+  `src/ui/account_panel.gd`), `betajoin browser flow`
+  (`tools/web/betajoin_flow.mjs`) and `betajoin probe`
+  (`src/dev/betajoin_probe.gd`): betajoin, 2026-11-09. Joining the beta is
+  a step of signing up. While BRICKWORKS_BETA is open, a new account (made
+  in the last 7 days, never answered, no application) sees one welcome right
+  after its code and the age question, on the site and in the app's sign-in
+  screen: what Brickworks is, that it is in beta, what a tester does and
+  gets, Join the beta testers (the default) or Not now, nothing ticked.
+  Join makes it a tester at once (`POST /api/plans?op=beta_join {via}`, no
+  approval, under the beta's terms); Not now (or Escape) is kept
+  (`?op=beta_leave`), so it is never asked again. `GET ?op=beta` signed in
+  adds `tester, state (tester|not_now|left|null), joined_at, welcome`, and
+  /api/account's `beta` adds `open, welcome` while open. Settings' Beta row
+  and the app's Account row say tester since, with Leave the beta or Join
+  the beta testers, a press each. The month of Pro is untouched: the 100,
+  owner-approved from the queue; telling us about you (POST ?op=beta) needs
+  no boxes ticked from a tester, and makes anybody else a tester. Off:
+  no welcome, no row, beta_join 403, leave allowed. The console's Beta lists
+  the testers in its Testers tab (`GET /api/admin?op=beta_testers[&tests=1]`).
+  Before beta_join.sql is applied: beta_join and the list answer 503, the
+  welcome is never due, everything else as before. Prove:
+  `python3 tools/minitest.py tests/test_beta_join.py`, then on a local
+  server holding it (`BRICKWORKS_BETA=open MASTER_EMAIL=<test owner> node
+  tools/web/relay_server.mjs 9960 --hold=feedback`, PG_BIN and PG_MODULE set)
+  `node tools/web/betajoin_flow.mjs --url=http://127.0.0.1:9960 --owner=...
+  --off=<a server without the switch> --before=<the same from the commit
+  before> --out=DIR` (ends "betajoin: all ok") and
+  `BRICKWORKS_API=http://127.0.0.1:9960 tools/probe.sh betajoin_probe`
+  (and `-- off` against the server without the switch), at 1400x900 and
+  1280x720 (PROBE_SIZE).
 - `send feedback` (`web/feedback.js`, `web/feedback.html`, the footer's
   and the account menu's Send feedback, `web/follow.js`), `send feedback in
   the app` (`src/ui/feedback_dialog.gd`, `src/ui/recent_log.gd`, Help in
@@ -3961,7 +4121,7 @@ plan with Claude as the client.
   `the owner's feedback inbox` (`web/admin-feedback.js` on /admin#feedback,
   `api/admin.js` ?op=feedback, feedback_file, feedback_triage,
   feedback_reply), `your feedback on settings` (`web/settings.js`
-  #feedback), `the beta hub` (`web/beta-hub.html`, `web/beta-hub.js`,
+  #feedback), the beta hub (a tester's part of `beta page`,
   `api/plans.js` ?op=beta_hub) and `early features for beta testers`
   (`api/_early.js`, `web/early.js`, `Account.early_on`,
   `Shell.EARLY_COMMANDS`; GET /api/account's `beta: {tester, early}`):
@@ -4002,6 +4162,56 @@ plan with Claude as the client.
   account menu at 390 and from the app's Help, B approved to the beta and
   its hub, the inbox's filters, picture, triage and answer, A's settings,
   and the deletions. Its head has the commands; it ends "feedback: all ok".
+- `report a bug in the app` (`src/ui/feedback_dialog.gd` open_report,
+  `src/ui/picture_marks.gd`, `Shell.report_bug` and its top-bar button,
+  `Main._offer_reports` and `_on_script_error`, `RestoreNotice.offer_report`,
+  `RecentLog.on_error`), `report a bug on the site` (`web/bugreport.js`,
+  `window.brickworksReportBug`, and `web/feedback.js`'s report mode), the
+  `bugreport probe` and the `bugreport browser flow`: bugreport, 2026-11-09.
+  While the beta is open (GET /api/account's `beta.open`, from
+  BRICKWORKS_BETA through `betaMode()`), a signed-in person has Report a bug
+  beside Account in the top bar; Help › Report a bug… and Alt-Shift-R
+  (every preset, docs/app_ux3/keys.md) are there with it shut too. Each
+  opens the report over the model in one press: a bug chosen, what
+  happened, what was expected (a bug's; api/_feedback.js writes it under the
+  words as "Expected: ..."), the window's picture large with a drag to mark
+  the spot (red with a white halo, drawn into the JPEG in the picture's
+  pixels; `details.marks` "x,y,w,h;..."), Leave the picture out, the
+  version ticked, the model and the log not, and "What will be sent" in a
+  line. A script error the engine logs (Logger SCRIPT, once each, at most
+  five a run, only with the beta open) is said above the model with Report
+  this, which opens the report with the log lines up to it ticked and the
+  error in `details.error`. Sent: "Thank you. Report #N is in." and Your
+  reports, /settings#feedback, where each is listed with its number and
+  where it stands. On the site, `brickworksReportBug()` (the beta bar loads
+  web/bugreport.js on its first press) draws the page itself to a canvas
+  (no screen-share prompt; images of other origins left out) and opens the
+  same report over the page; signed out it asks for a sign-in first. Prove:
+  `PROBE_SIZE=1280x720 tools/probe.sh bugreport_probe` and at 1400x900
+  (ends "bugreport probe: all ok"; a throwaway signed in through the
+  screen, a stand-in for the deployment, the sent JPEG read for the box);
+  `bugreport browser flow` (`tools/web/bugreport_flow.mjs`, preview check
+  [bugreport]) on a unit's preview with `tools/deploy.sh --unit
+  --beta-open`: the site at 390 and 1280, the kept picture read from the
+  bucket for the box (within 2 px), Your reports, Escape and Cancel; the
+  app's top bar; with the beta shut, no button. Ends "bugreport: all ok".
+  Its throwaway is a new account, so with the beta open the app shows the
+  beta's welcome over the builder first, and nothing else is pressable or
+  told to the page till it is answered: bugreport_flow and feedback_flow
+  answer it Not now with `answerWelcome` (`tools/web/browser.mjs`), which
+  asks GET /api/account whether it is due, so a welcome due and never
+  shown fails; their accounts are minted with `{ welcome: false }` so it
+  is left for them to meet. Every other flow needs nothing: each account
+  `mintSession` or `mintCode` makes (`tools/web/session.mjs`, so every
+  `signInContext` and `launch({ ownAccount: true })` too) has the welcome
+  answered Not now before a page asks who it is (`notNow`: the
+  deployment's own beta_leave, only when beta_member says it is due, never
+  for the owner), as `answerAge` answers the age question (welcomeall,
+  2026-11-10). The shared test account is never due (made long before the
+  seven days). beta_flow, betajoin_flow, bugreport_flow and feedback_flow
+  mint with `{ welcome: false }`; a new flow that means to meet the
+  welcome does the same. `tests/test_flow_accounts.py` holds which cases
+  answer it.
 - `compare media` (`tools/web/compare_media.mjs`): retakes every picture and clip
   of `/compare` from the live app in a real, headed Chromium window on
   SwiftShader, its tabs and address bar in the picture (ffmpeg's x11grab):
@@ -4342,6 +4552,35 @@ the second model reported and Take out the account — listed as out, its
 other model out, its profile 404, anything new 409 (`4_admin_barred.png`);
 Let back in; no console error or refused request anywhere.
 
+The owner's console, in a real browser on a deployment (throwaways at
+resend.dev; `MASTER_EMAIL`'s session minted as the tests mint it, never its
+sign-in; everything on the checks' own, `?tests=1`):
+
+```sh
+BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/console_flow.mjs --url=<deployment> --out=shots/console
+```
+
+Proves it when it ends "console: all ok": every op the console added
+(overview, people, person, audit, switches, beta_switch, beta_waitlist)
+401 signed out and 404 to anybody else, and the page saying so; the
+Overview's needs and numbers; In the gallery, a throwaway's model found by
+search and Take out (out of the gallery itself); its other model's report
+Let go; every Gallery tab drawn; People, the throwaway found by its
+address, its panel (`#people/<account>`), Take out the account (every model
+out, anything new 409) and Let back in (it lists again), Escape back to
+`#people`; Beta, three applications approved (skipped with billing test:
+that would give a month at Admission), waitlisted and declined, as each
+applicant hears it, and the testers; the beta's switch Off here (op=beta,
+beta_spots and /beta follow after the instances' 15 s, brickworks.diy's as
+it was) and Open again; Feedback; the Audit log keeping every act on its
+target with its status and scope, newest first, filtered by act, an act's
+panel; `/beta-admin` 308 to `/admin#beta`, and `?tests=1` landing on the
+checks' pool; each section at 390 and 1280, light and dark
+(`10-<section>-<width>-<theme>.png`), nothing sideways. It runs alone
+(ALONE_DB): it turns this deployment's beta off for a minute. At the end
+the throwaways are deleted, the switch put back as it was, and the checks'
+pool given back its spot.
+
 The ground rules (2026-10-18), against a local server standing in for
 `supabase/trust.sql` until it is applied (`--trust-stand-in`, which answers
 its five functions in memory and sends the rest to the real database), or a
@@ -4477,7 +4716,7 @@ live, 210 of 333 failed (none of the four pages had a copy, the
 challenge's link head English, the reasons' parts and colours English,
 "Bei Schritt 3: es ist ...").
 Then every other page the site links to (`--pages=feed,notifications,builds,
-feedback,beta,beta-hub,terms,privacy,guidelines,takedown,changelog,missing,consent`,
+feedback,beta,terms,privacy,guidelines,takedown,changelog,missing,consent`,
 languages7, 2026-11-02): the account menu's pages signed in in the browser
 only, every call answered by the stand-in, the feed and the notifications
 showing at least three of the server's lines with the name where the
@@ -6686,9 +6925,47 @@ reference in light and dark at 390 and 1400 px with nothing sideways and
 no error, Ctrl+K finding "fresh eyes" and "Build together" first and Enter
 going there, `/` and Escape, the pages list behind Browse the docs at 390
 and down the left at 1400 with the page marked, On this page following the
-scroll, and a deep link landing with its heading in view. Pictures in
+scroll, a deep link landing with its heading in view, and each section that
+moved to another page (a `"page#anchor"` in `docs-site/_moved.json`, sent on
+by `web/docs.js` from the old page's `data-moved`, since no fragment reaches
+the server) landing where it went from its old address. Pictures in
 `--out`. The app's way in is Help, Documentation (`src/ui/shell.gd`,
 command `docs`), which opens the page of the panel in front.
+
+#### The docs' pictures
+
+Every picture on a docs page is made, never taken by hand
+(docs/DOCS_PLAN.md, "The pictures"). Each page's are written down in
+`docs-site/pictures/<page>.json`: an id, the app's (`source: app`, a setup of
+menu commands, keys, clicks, a part in hand or the pointer over one, or
+models saved at fixed times, since File, Open and Versions say each save's time) or the
+site's (`source: site`, a route, what its server answers, its themes), the
+crop (a control by its path from Main, `@opened` for the dialog the setup
+opened, or a rectangle), numbered marks, its alt and caption, and the
+features it shows. `tools/docs_shots.py` makes them: the app's in a locked
+snapshot worktree of HEAD (`src/dev/docs_shots_probe.gd`, a window a
+picture with its own app data, offline and let in through the sign-in gate
+as you@example.com, read until two reads are the same pixels), the site's
+on a site built from the tree (`tools/web/docs_shots_flow.mjs`). A picture
+whose pixels hash to what `docs-site/img/shots.lock` says is left alone; a
+changed one is written as WebP (quality 84) and shown before, after and
+what differs in the run's `diff/index.html`. Pages show one as
+`![](/docs/img/<id>.webp)` and `docs_site.py --write` copies its words in;
+built, it is drawn at its own size, lazy, opening whole on a click, a site
+picture in the page's theme only.
+
+```sh
+python3 tools/docs_shots.py --check                 # the same as docs_site --check's picture lines
+python3 tools/docs_shots.py --affected              # pictures this branch may have changed
+python3 tools/docs_shots.py --only=parts-bin-search # one, from a fresh snapshot
+python3 tools/docs_shots.py                         # every one; run twice, the second says 0 changed
+python3 tools/minitest.py tests/test_docs_shots.py  # missing, hand-changed, stale feature, featureless page: each fails
+```
+
+The run ends "docs_shots: N picture(s): a the same, b changed, c new, 0
+failed; docs-site/img/ is X KB". Look at `diff/index.html` before
+committing `docs-site/img/`. The lead runs it on main after each release;
+a unit that changes what a person sees runs `--affected` and `--only`.
 
 #### One source for people and assistants
 

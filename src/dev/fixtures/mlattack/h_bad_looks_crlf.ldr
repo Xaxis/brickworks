@@ -1,0 +1,14 @@
+0 FILE looks.ldr
+0 Looks by hand
+0 Name: looks.ldr
+0 Author: Hand Writer
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 !BRICKWORKS ZOOM banana
+0 !BRICKWORKS PAGE FUTURE 3
+0 !BRICKWORKS STEP_NAME First
+0 STEP
+1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3003.dat
+0 !BRICKWORKS ZOOM 1.5
+0 !BRICKWORKS FUTURE_STEP_WORD x y
+0 STEP
+0 NOFILE

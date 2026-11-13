@@ -78,6 +78,7 @@ import { gunzipSync } from "node:zlib";
 import { AuthError, authConfigured, bearer, verify } from "./_auth.js";
 import { entitlementOf, keepsAny, mostModels, reportOwner } from "./_billing.js";
 import { db, dbConfigured, reach } from "./_db.js";
+import { afterFields, keyOf, sectionKey, trimSpace } from "./_subfiles.js";
 
 // As supabase/account_models.sql holds them.
 export const MOST_STORED = 4 * 1024 * 1024;
@@ -117,43 +118,55 @@ export function modelOf(sent) {
 
 /// How many parts a model's text opens as, counted as the app counts them
 /// (ModelStore.count_in): each copy of a sub-model as the parts in it, and
-/// not the lines inside a part the file carries.
+/// not the lines inside a part the file carries. Line for line its rule:
+/// each section keyed as the open keys it (sectionKey: the model's own by
+/// none, so a later block of its name is the one a reference means), the
+/// model the first FILE section, its lines split on any space (a file of
+/// tabs counted 2 of the 4 the app counts, ofcheck F3), a part a section
+/// that says it is one. Up to 2026-11-12 a shortcut or a primitive was a
+/// part too, and 10265-1 was 1,357 parts here and 1,362 in the app. A
+/// leading byte order mark is no part of the first line, as every reader
+/// here takes it: 4558-1 was 85 parts of 856.
 export function partsIn(text) {
   const refs = new Map();
   const isPart = new Map();
   const order = [];
+  const blocks = new Map();
   let name = "";
+  let named = false;
+  let model = null;
   let lines = [];
   let head = [];
-  const key = (file) => file.trim().toLowerCase().replace(/\\/g, "/");
-  for (const raw of `${text}\n0 NOFILE`.split("\n")) {
-    const line = raw.trim();
-    if (line.startsWith("0 FILE ") || line.startsWith("0 NOFILE")) {
-      if (lines.length && !refs.has(name)) {
+  for (const raw of `${String(text).replace(/^﻿/, "")}\n0 NOFILE`.split("\n")) {
+    const line = trimSpace(raw);
+    const words = line.split(/\s+/);
+    const word = words[0] === "0" && words.length >= 2 ? words[1].toUpperCase() : "";
+    if (word === "FILE" || word === "NOFILE") {
+      if ((named || lines.length) && !refs.has(name)) {
         refs.set(name, lines);
-        isPart.set(name, head.some((h) => /^0 !LDRAW_ORG\s+(Unofficial_)?(Part|Subpart|Primitive|Shortcut)/i.test(h)));
+        isPart.set(name, head.some((h) => h.startsWith("0 !LDRAW_ORG") && /part/i.test(h)));
         order.push(name);
       }
-      name = line.startsWith("0 FILE ") ? key(line.slice(7)) : "";
+      if (named && model === null) model = name;
+      named = word === "FILE";
+      name = named ? sectionKey(afterFields(raw, 2), blocks) : "";
       lines = [];
       head = [];
       continue;
     }
     if (head.length < 16) head.push(line);
-    if (line.startsWith("1 ")) {
-      const fields = line.split(/\s+/);
-      if (fields.length >= 15) lines.push(key(fields.slice(14).join(" ")));
-    }
+    if (words[0] === "1" && words.length >= 15) lines.push(keyOf(afterFields(raw, 14)));
   }
-  if (!order.length) return 0;
   const count = (section, depth) => {
     let n = 0;
-    for (const named of refs.get(section)) {
-      if (depth < 32 && refs.has(named) && named !== section && !isPart.get(named)) n += count(named, depth + 1);
+    for (const placed of refs.get(section)) {
+      if (depth < 32 && refs.has(placed) && placed !== section && !isPart.get(placed)) n += count(placed, depth + 1);
       else n += 1;
     }
     return n;
   };
+  if (model !== null) return count(model, 0);
+  if (!order.length) return 0;
   return count(order[0], 0);
 }
 

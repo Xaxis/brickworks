@@ -80,6 +80,12 @@ class Brick extends RefCounted:
 	## (Instructions.plan). A file's "0 STEP" lines were read and dropped,
 	## so a Studio model opened and saved here lost its designer's steps.
 	var step: int = -1
+	## The line of someone else's file it was read from, and the copies
+	## round it there (LdrModel.Placement.origin): kept through a move, a
+	## turn, a new colour, a step edit and any change to the tree of
+	## sub-models, so a save writes it back on its own line (SourceFile).
+	## "" for a part put down here, copied or pasted.
+	var origin: String = ""
 
 	func _init(brick_id: int, part: String, color: int, at: Transform3D) -> void:
 		id = brick_id
@@ -276,10 +282,75 @@ var history: Array = []
 ## step. Kept here and not on the bricks, so it outlives taking a copy's
 ## parts off and putting them back. See [member Brick.step].
 var unit_steps: Dictionary = {}
+## The parts of the model that are not here and that a save writes back in
+## their steps (ModelStore: those on their way, and those the catalogue has
+## not got), LdrModel.Placement each, as a Callable gives them; unset for
+## none. A step edit numbers their steps with the rest (AuthorSteps.items_in),
+## so each stays in its own step, and the step's look with it. Up to
+## 2026-11-11 only the parts here were numbered again: after a merge, a move
+## or a step taken out such a part was written in another step, and its
+## step's zoom and name were lost (pkreview3).
+var held: Callable = Callable()
+## Each copy of a sub-model of someone else's file by its path now -> its
+## place in the file (LdrModel.unit_chains): carried wherever a change to
+## the tree takes the path (Builder.regroup), so a save knows which copy
+## a renamed, ungrouped or moved one was (SourceFile).
+var unit_chains: Dictionary = {}
+## The origins of bricks taken off, by id: one put back under its number
+## (Builder's undo) is the line it was again.
+var _gone_origins: Dictionary = {}
 ## How the booklet shows each step, as its designer set it (BookletLooks):
 ## "<sub-model>|<step>" -> {turn, zoom, size, page, parts}, and the
 ## sub-models' and the booklet's own. Changed only by the history's steps.
 var step_looks: Dictionary = {}
+## The lines each sub-model keeps that are not its parts and that a whole
+## write would not make again: its own lights and views (SceneLights,
+## SavedViews), as its file has them, by its definition (Assemblies
+## .definition) -> PackedStringArray. Read at the open (LdrModel
+## .section_lines), written in its section wherever it is (LdrModel
+## .write_tree). By its definition, not a copy's path: a rename, a Make round
+## it or the sub-model it is in taken apart moves the path, and the lines kept
+## by it were lost (lreview3). A rename and a copy made one of its own carry
+## them (Assemblies.lines_renamed); the step that leaves a sub-model no copy
+## takes them (Assemblies.lines_follow, Assemblies.ungroup), so no gone
+## sub-model's are kept for whatever next takes its name. Changed only by the
+## history's steps, a whole table each (Assemblies.set_lines).
+var section_lines: Dictionary = {}
+## Where the frame those lines are in stands for each copy of a sub-model
+## with lines, by the copy's path, in the window's coordinates (a mirrored
+## copy's reflecting): a definition's lines are in its own frame, and each
+## copy places it. Set at the open from the file's references, every copy's
+## (Assemblies.frames_read), and from then carried with the copy by each
+## change through the transform the change applies: a move, a turn, a tip, a
+## drag (Assemblies.frames_moved), a mirror, a paste, a rename or a Make (by
+## its path: Builder._carry), a take-apart, a delete, and Undo and Redo of
+## each, in the same step (Assemblies.set_lines). Never found again from the
+## parts. Up to 2026-11-11 the lines were written as read, so a light stayed
+## where its copy had been (lp2check M, P, P_moved; lpcheck s7); then a few
+## of the first copy's parts were kept and matched where they stood, and no
+## match saw a mirrored copy, a copy deleted, or a turn of one whose parts
+## look the same turned (pccheck FW, FX, FY).
+var section_frames: Dictionary = {}
+## Where each part not on the baseplate that the file has is in the tree:
+## those on their way and those the catalogue lacks (ModelStore.awaited,
+## _absent), by the path the file had them in -> the path every change since
+## gave it (Builder._carry), so a rename or a Make round their copy takes them
+## too. Up to 2026-11-11 they kept the path they were read in, and landed in,
+## or were written in, a second sub-model under the old name. Changed only by
+## the history's steps.
+var held_paths: Dictionary = {}
+## Those of them that have landed since (ModelStore.place_awaited): brick id
+## -> the path the file had it in, so the undo of a change made before it
+## landed takes it back with the rest (Builder._apply's "heldpaths").
+var held_landed: Dictionary = {}
+## The name each sub-model's section had in the file the model was opened
+## from, by its definition, and the model's own by "" (LdrModel.file_names):
+## a whole write writes each under it again (LdrModel.write_tree), as LDCad
+## and Studio keep a file's names. Named again from its title at every save,
+## "0 FILE hssub.ldr" titled "hssub.ldr" went out as "hssub.ldr.ldr", and the
+## next open lost it (hscheck). A definition renamed is not in it, and is
+## named from its new name.
+var section_files: Dictionary = {}
 ## The model's own named movements (Motions: "Open the doors"), read from
 ## its file and written into it. Changed only by the history's steps.
 var motions: Motions = null
@@ -294,9 +365,10 @@ var cut_kept: Dictionary = {}
 ## model is cleared.
 var saved_views: Array = []
 ## The lights placed in the model (SceneLights), in the window's coordinates:
-## Render's Lights in the model adds them and the model's file carries them
-## (ModelStore); none for a model with none, and none again when the model
-## is cleared.
+## Render's Lights in the model adds them, a sub-model taken apart into the
+## model gives it its own (Assemblies.ungroup, a step of the history), and
+## the model's file carries them (ModelStore); none for a model with none,
+## and none again when the model is cleared.
 var scene_lights: Array = []
 ## The sections broken out of the model to be worked on (Sections.break_out):
 ## a sub-assembly's path -> {"offset": Vector3, how far it was moved, LDU;
@@ -326,6 +398,31 @@ func _note(event: Dictionary) -> void:
 	history.append(event)
 	if history.size() > HISTORY_MOST:
 		history = history.slice(history.size() - HISTORY_MOST * 9 / 10)
+
+
+## [member held]'s parts now: none when it is unset.
+func held_parts() -> Array:
+	return held.call() if held.is_valid() else []
+
+
+## The path in the tree of [param placement], one of [member held]'s parts:
+## where every change since the open took the copy the file had it in
+## ([member held_paths]). Read through this by everything that places one,
+## as the placement itself is the one a step edit numbers (AuthorSteps
+## .held_name), so it keeps the path it was read in.
+func held_path(placement: LdrModel.Placement) -> String:
+	var open: String = held_key(placement)
+	return str(held_paths.get(open, Assemblies.path_from(placement.group, placement.unit)))
+
+
+## What [member held_paths] keeps [param placement] by: the path the file had
+## it in, or for one a paste put down, a name of its own (Placement.held_key):
+## a copy pasted under a name a copy the file had went by before a rename
+## would otherwise be taken for that one.
+static func held_key(placement: LdrModel.Placement) -> String:
+	if not placement.held_key.is_empty():
+		return placement.held_key
+	return Assemblies.path_from(placement.group, placement.unit)
 
 
 ## How many times the world has been cleared: what was placed in one
@@ -406,6 +503,7 @@ func _place(part_id: String, color_code: int, at: Transform3D, as_id: int = 0) -
 		_next_id += 1
 	else:
 		_out_of_order = true
+		brick.origin = _gone_origins.get(number, "")
 	_bricks[brick.id] = brick
 
 	var keys := PackedStringArray()
@@ -434,6 +532,9 @@ func remove_brick(brick_id: int) -> bool:
 
 
 func _unplace(brick_id: int) -> void:
+	var going: Brick = _bricks.get(brick_id)
+	if going != null and not going.origin.is_empty():
+		_gone_origins[brick_id] = going.origin
 	for key: String in _brick_batches.get(brick_id, PackedStringArray()):
 		var batch: Batch = _batches.get(key)
 		if batch == null:
@@ -447,6 +548,11 @@ func _unplace(brick_id: int) -> void:
 	_bricks.erase(brick_id)
 	_spans.erase(brick_id)
 	_drawn.erase(brick_id)
+
+
+## The origin a brick taken off had (Brick.origin), "" for none.
+func gone_origin(brick_id: int) -> String:
+	return str(_gone_origins.get(brick_id, ""))
 
 
 func move_brick(brick_id: int, to: Transform3D) -> bool:
@@ -515,8 +621,22 @@ func recolor_brick(brick_id: int, color_code: int) -> bool:
 	return true
 
 
-func clear() -> void:
+## Take everything off. [param keep_numbers] for a clear the history keeps
+## (Main.clear_model): the numbers go on from where they were, and the lines
+## of a file each part was are kept as a part taken off keeps them, so its
+## undo puts the parts back under their own numbers and the steps before it
+## still name them. Begun again at 1, the baseplate laid after it took the
+## number of a part cleared, and the undo's redo took the wrong parts off
+## (copyfaults).
+func clear(keep_numbers: bool = false) -> void:
 	_stop_reveal()
+	if keep_numbers:
+		for brick: Brick in _bricks.values():
+			if not brick.origin.is_empty():
+				_gone_origins[brick.id] = brick.origin
+	else:
+		_next_id = 1
+		_gone_origins.clear()
 	for key: String in _batches:
 		var batch: Batch = _batches[key]
 		batch.instance.queue_free()
@@ -533,10 +653,16 @@ func clear() -> void:
 	_painted.clear()
 	_spans.clear()
 	_drawn.clear()
-	_next_id = 1
 	_out_of_order = false
 	unit_steps.clear()
+	unit_chains.clear()
 	step_looks.clear()
+	section_lines.clear()
+	# Tables, not cleared in place: a history step may hold the one it found.
+	section_frames = {}
+	held_paths = {}
+	held_landed = {}
+	section_files.clear()
 	motions = null
 	cut_kept = {}
 	saved_views = []
@@ -760,6 +886,7 @@ func copy_at_home(at_home: bool = true) -> BrickWorld:
 	var copy := BrickWorld.new()
 	copy.library = library
 	copy.keeps_history = false
+	copy.held = held
 	copy.unit_steps = unit_steps.duplicate()
 	copy.step_looks = step_looks.duplicate(true)
 	copy.motions = motions
@@ -773,8 +900,10 @@ func copy_at_home(at_home: bool = true) -> BrickWorld:
 		twin.unit = brick.unit
 		twin.step = brick.step
 		twin.hidden = brick.hidden
+		twin.origin = brick.origin
 		copy._bricks[brick_id] = twin
 	copy._next_id = _next_id
+	copy.unit_chains = unit_chains.duplicate()
 	return copy
 
 

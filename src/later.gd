@@ -128,6 +128,18 @@ const PATHS: Dictionary[StringName, String] = {
 	# seeing2: View, Stud directions, made on its first use (Shell.stud_map)
 	# or a session's view_board studs (SeeTools).
 	&"StudMap": "res://src/ui/stud_map.gd",
+	# donenote: a long job says when it is done, made with the first job
+	# or Render's dialog (Main._done_note).
+	&"DoneNote": "res://src/ui/done_note.gd",
+	# webstart9: what the first screen named only for a rarer moment: two
+	# parts that meet as the sets meet them (Builder.room_for), a booklet's
+	# pages said in words (BookletLooks.layout_said), a closed loop dragged
+	# (Grab) and Meet (Inspector). Three days of edits to the model's core grew
+	# the first screen 14%, 5.67 MB of source to 6.49, and its compile with it.
+	&"ExactCheck": "res://src/ai/exact_check.gd",
+	&"Booklet": "res://src/assembly/booklet.gd",
+	&"Linkage": "res://src/assembly/linkage.gd",
+	&"HingeAlign": "res://src/assembly/hinge_align.gd",
 }
 
 ## How long each one took to load, in ms, by name, from the first ask:

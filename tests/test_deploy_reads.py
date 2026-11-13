@@ -45,8 +45,12 @@ def test_a_build_stands_for_a_later_commit_only_when_nothing_the_deploy_reads_ch
     tools = _commit(repo, "tools/release/ship.sh", "#!/bin/bash\n")
     assert _stands(repo, built, checks)
     assert _stands(repo, built, tools)
-    # Nothing changed: the caller compares the commits itself.
+    # The same commit: the caller compares the commits itself.
     assert not _stands(repo, built, built)
+    # A commit of words alone, as a train's after an A/B says what it ships past.
+    _git(repo, "commit", "-q", "--allow-empty", "-m", "Ships past play")
+    words = _git(repo, "rev-parse", "--short", "HEAD")
+    assert _stands(repo, built, words) and _stands(repo, tools, words)
     # A file the deploy reads, after the checks that it does not.
     code = _commit(repo, "web/site.css", ":root {}\n")
     assert not _stands(repo, built, code)
@@ -67,11 +71,11 @@ def test_every_route_that_speaks_a_language_is_given_its_words():
     # rel-m245's /de/u/<handle> answered 404 on its preview: people.js asks
     # siteWords("de"), and the deploy copied _words_de.json into share's
     # function alone. The stand-in reads web/ itself, so locally it passed.
-    lines = (ROOT / "tools" / "deploy.sh").read_text().splitlines()
+    lines = (ROOT / "tools" / "package_api.sh").read_text().splitlines()
     copied = next(n for n, line in enumerate(lines) if '"$fn/_words_$lang.json"' in line)
     guard = next(lines[n] for n in range(copied, -1, -1) if lines[n].lstrip().startswith("if ["))
     given = set(re.findall(r'"\$route" = (\w+)', guard))
     speaking = {path.stem for path in (ROOT / "api").glob("*.js")
                 if not path.name.startswith("_") and "siteWords" in path.read_text()}
     assert speaking, "no route reads siteWords: the test reads the wrong thing"
-    assert speaking <= given, f"deploy.sh gives the words to {sorted(given)}, not {sorted(speaking - given)}"
+    assert speaking <= given, f"package_api.sh gives the words to {sorted(given)}, not {sorted(speaking - given)}"

@@ -6,8 +6,12 @@
 ## arithmetic, a tower on a 1x1, a part hung under another, a long arm on a
 ## small base with the counterweight its advice asks for put on and weighed
 ## again, the shipped models standing, a turntable arm swept round to the
-## pose where it tips, and check_design saying all of it. Exits non-zero
-## when an answer is wrong.
+## pose where it tips, and check_design saying all of it. And each joint
+## said by its kind: joints, not stud joints, overloaded; more studs only for
+## studs; and the standing line in German, French and Spanish
+## (drvrecheck F4), the way it tips over each edge and Stress's words for
+## a part pointed at with them (drvcheck3 W). Exits non-zero when an answer
+## is wrong.
 extends SceneTree
 
 var _failures: int = 0
@@ -44,6 +48,7 @@ func _run() -> void:
 	await _models_stand()
 	await _swept_round()
 	await _check_design_says_it()
+	await _said_by_kind()
 	print("")
 	if _failures == 0:
 		print("balance: the margins, the joints and the counterweight come out as worked by hand, "
@@ -442,7 +447,199 @@ func _check_design_says_it() -> void:
 		said.contains("TIPS OVER") and said.contains("0.5 studs past the right edge"))
 	_check("...what to add, and where", said.contains("add at least") and said.contains("g ("))
 	_check("...and the three most loaded joints, by the design's own numbers",
-		said.contains("Most loaded stud joints") and said.contains("brick 1 on brick 0"))
+		said.contains("Most loaded joints") and said.contains("brick 1 on brick 0"))
 	var unweighed: Dictionary = assistant._check(model)
 	_check("a check that does not ask is not weighed", not unweighed.has("balance"))
 	assistant.queue_free()
+
+
+## drvrecheck F4 and its words: a check's balance words for joints of each
+## kind past their working load. The status bar's line counts joints, not
+## stud joints; a session is told more studs only when every joint past
+## its load is on studs, else a second pin off its line; and the standing
+## line, studs and all, is said in every language.
+func _said_by_kind() -> void:
+	print("joints of each kind past their working load, in words")
+	var cases: Dictionary = {"free pin": ["free pin"], "studs": ["studs"], "both": ["studs", "friction pin"]}
+	var said_of: Dictionary = {}
+	for name: String in cases:
+		var report := Balance.Report.new()
+		report.empty = false
+		report.margin = 5.0
+		report.edge = "right"
+		report.tilt = 68.0
+		report.grams = 100.0
+		var n: int = 2
+		for kind: String in cases[name]:
+			var one := Balance.JointLoad.new()
+			one.beyond = n
+			one.held_by = 1
+			one.beyond_part = "4261"
+			one.held_part = "3705"
+			one.kind = kind
+			one.studs = 4 if kind == "studs" else 0
+			one.pins = 0 if kind == "studs" else 1
+			one.moment = 3.8
+			one.capacity = {"studs": 1.5, "friction pin": Balance.PIN_N_CM, "free pin": 0.0}[kind]
+			one.ultimate = {"studs": 4.5, "friction pin": Balance.PIN_LETS_GO_N_CM, "free pin": 0.0}[kind]
+			one.ratio = one.moment / maxf(one.capacity, 0.000001)
+			report.joints.append(one)
+			report.over += 1
+			n += 1
+		said_of[name] = [report.words(), report.said()]
+		print("    %s: %s | %s" % [name, report.words(), report.said().replace("\n", " / ")])
+	var free: Array = said_of["free pin"]
+	_check("a free pin past its load: \"1 joint overloaded\", no stud joint, no more studs, a second pin",
+		str(free[0]).contains("1 joint overloaded, in red.") and not (str(free[0]) + str(free[1])).contains("stud joint")
+		and not str(free[1]).contains("more studs") and str(free[1]).contains("a second pin off its line"))
+	_check("...studs alone are told more studs", str(said_of["studs"][1]).contains("give it more studs")
+		and str(said_of["studs"][0]).contains("1 joint overloaded"))
+	_check("...studs and a pin, each told its own", str(said_of["both"][0]).contains("2 joints overloaded")
+		and str(said_of["both"][1]).contains("more studs") and str(said_of["both"][1]).contains("a second pin"))
+	# The standing line as it is drawn, in each language: nothing left in
+	# English but a part's own name.
+	var drag := GrabDrag.new()
+	drag.library = _library
+	var lines: Array = []
+	for name: String in ["free pin", "studs", "one stud"]:
+		var report := Balance.Report.new()
+		report.empty = false
+		report.margin = 5.0
+		report.edge = "right"
+		var one := Balance.JointLoad.new()
+		one.beyond_part = "3005"
+		one.held_part = "3005"
+		one.kind = "free pin" if name == "free pin" else "studs"
+		one.studs = {"free pin": 0, "studs": 4, "one stud": 1}[name]
+		one.pins = 1 if name == "free pin" else 0
+		one.moment = 3.8
+		one.capacity = 0.0 if name == "free pin" else 1.5
+		one.ratio = one.moment / maxf(one.capacity, 0.000001)
+		report.joints = [one]
+		lines.append(str(drag.call("_standing_words", report, false)))
+	var tipping := Balance.Report.new()
+	tipping.empty = false
+	tipping.margin = -2.0
+	tipping.edge = "left"
+	lines.append(str(drag.call("_standing_words", tipping, true)))
+	lines.append(str(drag.call("_standing_words", tipping, false)))
+	drag.free()
+	var name_words: String = Bodies._short((_library.parts["3005"] as PartLibrary.PartInfo).name)
+	for code: String in ["de", "fr", "es"]:
+		Language.apply(code)
+		var english: Array = []
+		for line: String in lines:
+			# A line with no translation at all is all of it English.
+			var left: Array = Language.left_in_english(line).filter(func(words: String) -> bool:
+				return words != name_words) if not Language.says(line).is_empty() else [line]
+			print("    %s: %s -> %s%s" % [code, line, Language.says(line),
+				"" if left.is_empty() else "  (English: %s)" % ", ".join(left)])
+			english.append_array(left)
+		_check("%s: the standing line, its studs and its tipping said in %s (%d left in English)"
+			% [code, code, english.size()], english.is_empty())
+	Language.apply("en")
+	await _tips_toward()
+	await _pointed_at()
+
+
+## drvcheck3 W: tipped over, the way it goes said as a way, not as an edge's
+## name: "bascule vers gauche", "se vuelca hacia izquierdo" were the edge's
+## adjective after a preposition. Over each of the eight edges, standing and
+## dragged, in German, French and Spanish: the line as drawn, whole.
+func _tips_toward() -> void:
+	print("the way it tips, in each language")
+	var drag := GrabDrag.new()
+	drag.library = _library
+	var edges: Array = ["left", "right", "front", "back", "front-left", "front-right", "back-left", "back-right"]
+	var ways: Dictionary = {
+		"de": ["nach links", "nach rechts", "nach vorn", "nach hinten", "nach vorn links", "nach vorn rechts",
+			"nach hinten links", "nach hinten rechts"],
+		"fr": ["vers la gauche", "vers la droite", "vers l'avant", "vers l'arrière", "vers l'avant gauche",
+			"vers l'avant droit", "vers l'arrière gauche", "vers l'arrière droit"],
+		"es": ["hacia la izquierda", "hacia la derecha", "hacia delante", "hacia atrás",
+			"hacia delante a la izquierda", "hacia delante a la derecha", "hacia atrás a la izquierda",
+			"hacia atrás a la derecha"]}
+	var lines: Array = []
+	for edge: String in edges:
+		var tipping := Balance.Report.new()
+		tipping.empty = false
+		tipping.margin = -2.0
+		tipping.edge = edge
+		lines.append([edge, str(drag.call("_standing_words", tipping, false)),
+			str(drag.call("_standing_words", tipping, true))])
+	drag.free()
+	# Each line as it is drawn, whole: tipped, then dragged past its edge.
+	var whole: Dictionary = {
+		"de": ["Kippt %s, 2 Noppen jenseits seiner Kante", "Würde %s kippen, 2 Noppen jenseits seiner Kante"],
+		"fr": ["bascule %s, à 2 tenons au-delà de son bord", "basculerait %s, à 2 tenons au-delà de son bord"],
+		"es": ["se vuelca %s, a 2 espigas más allá de su borde", "se volcaría %s, a 2 espigas más allá de su borde"]}
+	for code: String in ["de", "fr", "es"]:
+		Language.apply(code)
+		var wrong := PackedStringArray()
+		for n: int in lines.size():
+			var row: Array = lines[n]
+			for k: int in [1, 2]:
+				var said: String = Language.says(str(row[k]))
+				if said != str((whole[code] as Array)[k - 1]) % str((ways[code] as Array)[n]):
+					wrong.append("%s -> %s" % [row[k], said])
+		var left: Array = lines[0]
+		print("    %s: %s -> %s; %s -> %s" % [code, left[1], Language.says(str(left[1])), left[2],
+			Language.says(str(left[2]))])
+		_check("%s: tipped over each of the 8 edges, standing and dragged, the way said whole (%d of 16 not)%s"
+			% [code, wrong.size(), "" if wrong.is_empty() else ": " + "; ".join(wrong)], wrong.is_empty())
+	Language.apply("en")
+
+
+## drvcheck3 W: Stress's words for the part pointed at (StressView.part_words)
+## had no entries in any language: each kind of joint, hung and not, and each
+## way a part is held without one, in German, French and Spanish, nothing
+## left in English but the part's own name.
+func _pointed_at() -> void:
+	print("Stress's words for the part pointed at, in each language")
+	await _fresh()
+	var id: int = _put("3005", 0.0, 0.0, 0.0)
+	var name_words: String = StressView._named(_library, "3005")
+	var lines: Array = []
+	var kinds: Array = [["studs", 4, 0, false, 1.5], ["studs", 1, 0, true, 1.5], ["studs", 2, 0, true, 1.5],
+		["studs", 0, 0, false, 0.0], ["axle", 0, 1, false, INF], ["two lines", 0, 2, false, 3.0],
+		["friction pin", 0, 1, false, Balance.PIN_N_CM], ["friction pin", 0, 3, false, Balance.PIN_N_CM],
+		["free pin", 0, 1, false, 0.0], ["free pin", 0, 2, false, 0.0]]
+	for kind: Array in kinds:
+		var weighed := Stability.Report.new()
+		var one := Balance.JointLoad.new()
+		one.beyond = id
+		one.beyond_part = "3005"
+		one.held_part = "3005"
+		one.kind = str(kind[0])
+		one.studs = int(kind[1])
+		one.pins = int(kind[2])
+		one.hangs = bool(kind[3])
+		one.grams = 12.0
+		one.moment = 0.8
+		one.capacity = float(kind[4])
+		one.ratio = one.moment / maxf(one.capacity, 0.000001)
+		weighed.margins[id] = one
+		lines.append(StressView.part_words(weighed, _world, _library, {}, id))
+	for held: String in ["floor", "other", "nothing", "rests", "tips off", "several"]:
+		var weighed := Stability.Report.new()
+		weighed.held[id] = held
+		lines.append(StressView.part_words(weighed, _world, _library, {} if held != "floor" else {99: true}, id))
+	var floor_only := Stability.Report.new()
+	floor_only.held[id] = "floor"
+	lines.append(StressView.part_words(floor_only, _world, _library, {}, id))
+	for code: String in ["de", "fr", "es"]:
+		Language.apply(code)
+		var english := PackedStringArray()
+		for line: String in lines:
+			var said: String = Language.says(line)
+			var left: Array = [line]
+			if not said.is_empty():
+				left = Language.left_in_english(line).filter(func(words: String) -> bool: return words != name_words)
+			if not left.is_empty():
+				english.append("%s (%s)" % [line, ", ".join(left)])
+		print("    %s: %s -> %s" % [code, lines[0], Language.says(str(lines[0]))])
+		print("    %s: %s -> %s" % [code, lines[8], Language.says(str(lines[8]))])
+		_check("%s: Stress's words for a part pointed at, %d ways, said in %s (%d left in English)%s" % [code,
+			lines.size(), code, english.size(), "" if english.is_empty() else ": " + "; ".join(english)],
+			english.is_empty())
+	Language.apply("en")

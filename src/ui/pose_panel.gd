@@ -391,7 +391,14 @@ func _suggestion_words(motion: Motions.Motion) -> String:
 	if motion.driver != null:
 		parts.append("%s turned %s time%s" % [player.joint_words(motion.driver),
 			Motions.num(motion.turns, 2), "" if is_equal_approx(motion.turns, 1.0) else "s"])
-	return "%s: %s, over %s s" % [motion.name, ", ".join(parts), Motions.num(motion.length(), 1)]
+	if motion.path != null:
+		parts.append("driven %s" % motion.path.said())
+	var out: String = "%s: %s, over %s s" % [motion.name, ", ".join(parts), Motions.num(motion.length(), 1)]
+	# What turns as it is driven, a sentence of its own, so each is said
+	# whole in every language: inside the first, the drive's words were
+	# left in English ("Rouler et tourner à gauche : driven 32 tenons"), and
+	# its stop came before ", over 7.9 s".
+	return out if motion.path == null else "%s. %s" % [out, player.path_words(motion.path)]
 
 
 ## Keep the suggestion called [param name] as one of the model's motions:
@@ -405,7 +412,7 @@ func keep_suggestion(name: String) -> void:
 			builder.record([{"undo": "motions", "motions": had}], "kept the motion %s" % Motions.quoted(name))
 			_chosen = name
 			_refresh()
-			_say("Kept %s. Play plays it; undo takes it out." % Motions.quoted(name))
+			_say(_with_let_go("Kept %s. Play plays it; undo takes it out." % Motions.quoted(name), motions))
 			return
 
 
@@ -439,7 +446,19 @@ func play(name: String, reverse: bool = false) -> void:
 	if not played.standing.is_empty():
 		_stop_words += " Now %s." % played.standing
 	_look = null
+	if played.drive != null:
+		_frame_drive(played)
 	_begin_playing(played.frames, button)
+
+
+## The view framed on all a path takes the model over, so it is seen
+## driving all the way rather than out of the window; left as it is when
+## all of it is in sight already (unit drive).
+func _frame_drive(played: MotionPlayer.Played) -> void:
+	var box: AABB = player.drive_box(played)
+	if eye == null or not eye.has_method("frame") or not box.has_volume() or MotionPlayer.box_in_view(eye, box):
+		return
+	eye.call("frame", box)
 
 
 ## The sequence [param motion] played, each of its motions from where the
@@ -620,7 +639,7 @@ func _change(words: String, edit_with: Callable) -> void:
 		return
 	edit_with.call(motion)
 	if _draft != null:
-		if motion.tracks.is_empty() and motion.driver == null:
+		if motion.tracks.is_empty() and motion.driver == null and motion.path == null:
 			return
 		motion.name = motions.free_name(motion.name.strip_edges() if not motion.name.strip_edges().is_empty()
 			else "New motion")
@@ -636,6 +655,9 @@ func _change(words: String, edit_with: Callable) -> void:
 	_look = null
 	_seen_history = _history_now()
 	_seen_motions = world.motions
+	# A refused line the change let go is said (Motions.let_go_words).
+	if not motions.let_go.is_empty():
+		_say(motions.let_go_words())
 
 
 func _fill_editor() -> void:
@@ -684,6 +706,7 @@ func _fill_editor() -> void:
 			player.joint_words(motion.driver), Motions.num(motion.turns, 2),
 			"" if is_equal_approx(absf(motion.turns), 1.0) else "s", Motions.num(motion.driver_seconds, 1)]
 	_show_key()
+	_fill_path(motion)
 	# Its rows changed: the lists as tall as they now need.
 	_fit_later()
 
@@ -1033,12 +1056,13 @@ func rename(words: String) -> void:
 			if one.sequence[n].to_lower() == was.to_lower():
 				one.sequence[n] = words
 	motion.name = words
+	motions.rename_unread(was, words)
 	builder.record([{"undo": "motions", "motions": had}], "renamed the motion %s %s" % [Motions.quoted(was),
 		Motions.quoted(words)])
 	_editing_name = words
 	_chosen = words
 	_refresh()
-	_say("Renamed %s. Undo gives it its old name." % Motions.quoted(words))
+	_say(_with_let_go("Renamed %s. Undo gives it its old name." % Motions.quoted(words), motions))
 
 
 ## Take the edited motion out of the model: one step to undo.
@@ -1052,7 +1076,13 @@ func remove_motion() -> void:
 	motions.remove(name)
 	builder.record([{"undo": "motions", "motions": had}], "took the motion %s out" % Motions.quoted(name))
 	back_to_list()
-	_say("Took %s out. Undo puts it back." % Motions.quoted(name))
+	_say(_with_let_go("Took %s out. Undo puts it back." % Motions.quoted(name), motions))
+
+
+## [param words], and after them what [param motions]' last change let go
+## of the lines it did not read (Motions.let_go_words), if anything.
+func _with_let_go(words: String, motions: Motions) -> String:
+	return words if motions.let_go.is_empty() else "%s %s." % [words, motions.let_go_words()]
 
 
 # -- sequences ----------------------------------------------------------------------------
@@ -1079,6 +1109,8 @@ func new_sequence() -> void:
 	_chosen = motion.name
 	_draft = null
 	_refresh()
+	if not motions.let_go.is_empty():
+		_say(motions.let_go_words())
 	_seq_name.grab_focus()
 	_seq_name.select_all()
 	_say("Kept %s: every motion, in order. Name it; Up and Down change the order. Undo takes it out."
@@ -1659,7 +1691,7 @@ func _set_buttons() -> void:
 				button.disabled = still or (key == "up" and n == 0) \
 					or (key == "down" and n == _seq_buttons.size() - 1)
 	var motion: Motions.Motion = _edited()
-	var empty: bool = motion == null or (motion.tracks.is_empty() and motion.driver == null)
+	var empty: bool = motion == null or (motion.tracks.is_empty() and motion.driver == null and motion.path == null)
 	_edit_play.disabled = busy or empty or (_playing and _stop_button != _edit_play)
 	_edit_reverse.disabled = busy or empty or (_playing and _stop_button != _edit_reverse)
 	_record.disabled = _working or _playing
@@ -1669,6 +1701,15 @@ func _set_buttons() -> void:
 	_time.editable = not (busy or _playing)
 	for part: Dictionary in _joint_parts:
 		(part["slider"] as HSlider).editable = not (busy or _playing)
+	for row: Array in _path_controls:
+		(row[0] as OptionButton).disabled = busy or _playing
+		(row[1] as SpinBox).editable = not (busy or _playing)
+		(row[2] as SpinBox).editable = not (busy or _playing)
+		(row[3] as Button).disabled = busy or _playing or _path_controls.size() <= 1
+	for button: Button in [_path_make, _path_add, _path_drop]:
+		button.disabled = busy or _playing
+	_path_seconds.editable = not (busy or _playing)
+	_path_eased.disabled = busy or _playing
 	var has: bool = _view == "edit" and not empty or _view != "edit" and not _chosen.is_empty()
 	_render.disabled = _working or _recording or _playing or not has
 	_cancel.visible = _working
@@ -1794,6 +1835,7 @@ func _build() -> void:
 	_rate.tooltip_text = "Frames a second"
 	rendering.add_child(_rate)
 	_size = OptionButton.new()
+	_size.accessibility_name = "Size"
 	_size.add_theme_font_size_override("font_size", 12)
 	_size.focus_mode = Control.FOCUS_NONE
 	for size: Array in SIZES:
@@ -1987,6 +2029,241 @@ func _build_editor(into: Control) -> void:
 	_driver_words.custom_minimum_size = Vector2(WIDE - 24, 0)
 	_driver_words.visible = false
 	_edit_box.add_child(_driver_words)
+	_build_path(_edit_box)
+
+
+# -- a path: where the whole model drives (unit drive) ---------------------------------------
+
+
+var _path_heading: Label
+var _path_rows: VBoxContainer
+var _path_make: Button
+var _path_add: Button
+var _path_drop: Button
+var _path_seconds: SpinBox
+var _path_eased: CheckBox
+var _path_words: Label
+var _path_timing: HBoxContainer
+var _path_controls: Array = []
+## Each leg's kind as its row offers it, Motions.LEGS's order.
+const LEG_WORDS: Array = ["Straight", "Left", "Right"]
+
+
+## The editor's path: Drive along a path when the motion has none; else
+## its legs, a row each (straight so many studs, or left or right so many
+## degrees on a radius), Add a leg, how long it takes and whether it gathers
+## speed and slows, what turns as it rolls, and No path.
+func _build_path(into: Control) -> void:
+	_path_heading = _heading(into, "Where it drives")
+	_path_rows = VBoxContainer.new()
+	_path_rows.add_theme_constant_override("separation", 4)
+	into.add_child(_path_rows)
+	var making := HBoxContainer.new()
+	making.add_theme_constant_override("separation", 6)
+	into.add_child(making)
+	_path_make = _button(making, "Drive along a path", drive_along,
+		"The whole model driven along the ground, its wheels turning as it goes: 32 studs, then round a corner")
+	_path_add = _button(making, "Add a leg", add_leg, "Another leg at the path's end: straight on")
+	_path_drop = _button(making, "No path", remove_path, "The model stays where it stands; its joints still move")
+	_path_timing = HBoxContainer.new()
+	_path_timing.add_theme_constant_override("separation", 6)
+	into.add_child(_path_timing)
+	var over := Label.new()
+	over.text = "Over"
+	over.add_theme_font_size_override("font_size", 12)
+	_path_timing.add_child(over)
+	_path_seconds = _spin(_path_timing, 0.5, Motions.MOST_SECONDS, 0.5, "s", "How long it takes, seconds")
+	_path_seconds.value_changed.connect(func(value: float) -> void:
+		if not _quiet:
+			set_path_seconds(value))
+	_path_eased = CheckBox.new()
+	_path_eased.text = "Eased"
+	_path_eased.tooltip_text = "It gathers speed at the start and slows to a stop at the end"
+	_path_eased.add_theme_font_size_override("font_size", 12)
+	_path_eased.focus_mode = Control.FOCUS_NONE
+	_path_eased.toggled.connect(func(on: bool) -> void:
+		if not _quiet:
+			set_path_eased(on))
+	_path_timing.add_child(_path_eased)
+	_path_words = Label.new()
+	_path_words.add_theme_font_size_override("font_size", 11)
+	_path_words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_path_words.custom_minimum_size = Vector2(WIDE - 24, 0)
+	_path_words.modulate = Color(1, 1, 1, 0.7)
+	into.add_child(_path_words)
+
+
+func _spin(into: Control, least: float, most: float, step: float, unit: String, tip: String) -> SpinBox:
+	var spin := SpinBox.new()
+	spin.min_value = least
+	spin.max_value = most
+	spin.step = step
+	spin.suffix = unit
+	spin.tooltip_text = tip
+	spin.select_all_on_focus = true
+	spin.custom_minimum_size = Vector2(78, 0)
+	spin.get_line_edit().add_theme_font_size_override("font_size", 12)
+	into.add_child(spin)
+	return spin
+
+
+## The path's rows as the edited motion has it.
+func _fill_path(motion: Motions.Motion) -> void:
+	_clear(_path_rows)
+	_path_controls.clear()
+	var path: Motions.Path = motion.path
+	_path_make.visible = path == null
+	_path_add.visible = path != null and path.legs.size() < Motions.MOST_LEGS
+	_path_drop.visible = path != null
+	_path_timing.visible = path != null
+	_path_words.visible = path != null
+	if path == null:
+		return
+	_quiet = true
+	for n: int in path.legs.size():
+		var leg: Array = path.legs[n]
+		var index: int = n
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 4)
+		_path_rows.add_child(row)
+		var kind := OptionButton.new()
+		kind.add_theme_font_size_override("font_size", 12)
+		kind.focus_mode = Control.FOCUS_NONE
+		for words: String in LEG_WORDS:
+			kind.add_item(words)
+		kind.select(Motions.LEGS.find(str(leg[0])))
+		kind.tooltip_text = "Straight on, or a turn to the left or the right"
+		row.add_child(kind)
+		var straight: bool = str(leg[0]) == "STRAIGHT"
+		var amount: SpinBox = _spin(row, -Motions.MOST_LEG_STUDS if straight else 1.0,
+			Motions.MOST_LEG_STUDS if straight else Motions.MOST_TURN_DEG, 1.0, "studs" if straight else "°",
+			"How far, studs (less than 0 backwards)" if straight else "How far round, degrees")
+		amount.set_value_no_signal(float(leg[1]))
+		var radius: SpinBox = _spin(row, Motions.LEAST_RADIUS, Motions.MOST_RADIUS, 1.0, "studs",
+			"How wide the turn is: its radius, studs, at the middle of the back axle")
+		radius.prefix = "r"
+		radius.custom_minimum_size = Vector2(92, 0)
+		radius.set_value_no_signal(float(leg[2]) if not straight else 0.0)
+		radius.visible = not straight
+		var out := _button(row, "Take out", func() -> void: remove_leg(index), "Take this leg out of the path")
+		out.disabled = path.legs.size() <= 1
+		kind.item_selected.connect(func(chosen: int) -> void:
+			var to: String = Motions.LEGS[chosen]
+			if to == str(path.legs[index][0]):
+				return
+			if to == "STRAIGHT":
+				set_leg(index, to, MotionPlayer.DRIVE_STRAIGHT)
+			else:
+				var was: Array = path.legs[index]
+				set_leg(index, to, MotionPlayer.DRIVE_CORNER if str(was[0]) == "STRAIGHT" else float(was[1]),
+					float(was[2]) if str(was[0]) != "STRAIGHT" else player.corner_radius(path)))
+		amount.value_changed.connect(func(value: float) -> void:
+			if not _quiet:
+				set_leg(index, str(path.legs[index][0]), value, float(path.legs[index][2])))
+		radius.value_changed.connect(func(value: float) -> void:
+			if not _quiet:
+				set_leg(index, str(path.legs[index][0]), float(path.legs[index][1]), value))
+		_path_controls.append([kind, amount, radius, out])
+	_path_seconds.set_value_no_signal(path.seconds)
+	_path_eased.set_pressed_no_signal(path.how == "EASE")
+	_path_words.text = player.path_words(path)
+	_quiet = false
+
+
+## The edited motion driven along a path: 32 studs straight and a quarter
+## turn to the left, at the tightest corner its steering takes well, its
+## wheels and steering found from the model as it stands. One step.
+func drive_along() -> void:
+	var motion: Motions.Motion = _edited()
+	if motion == null or motion.path != null or _recording or _playing or _working:
+		return
+	var path: Motions.Path = player.drive_path()
+	_change("drove %s along a path" % Motions.quoted(motion.name), func(edited: Motions.Motion) -> void:
+		edited.path = path)
+	_refresh()
+	_say(("It drives %s. %s Play plays it.") % [path.said(), player.path_words(path)])
+
+
+## Leg [param index] of the edited motion's path made [param kind]
+## ("STRAIGHT", "LEFT" or "RIGHT") of [param amount] (studs, or degrees on
+## [param radius] studs). One step; what does not fit a leg is said.
+func set_leg(index: int, kind: String, amount: float, radius: float = 0.0) -> void:
+	var motion: Motions.Motion = _edited()
+	if motion == null or motion.path == null or index < 0 or index >= motion.path.legs.size():
+		return
+	var leg: Variant = Motions.leg_of(kind, amount, radius)
+	if leg is String:
+		_say("%s%s." % [str(leg).left(1).to_upper(), str(leg).substr(1)])
+		_refresh()
+		return
+	if leg == motion.path.legs[index]:
+		return
+	_change("changed the path of %s" % Motions.quoted(motion.name), func(edited: Motions.Motion) -> void:
+		edited.path = edited.path.copy()
+		edited.path.legs[index] = leg)
+	_refresh()
+	_say("It drives %s." % motion.path.said())
+
+
+func add_leg() -> void:
+	var motion: Motions.Motion = _edited()
+	if motion == null or motion.path == null or motion.path.legs.size() >= Motions.MOST_LEGS:
+		return
+	_change("changed the path of %s" % Motions.quoted(motion.name), func(edited: Motions.Motion) -> void:
+		edited.path = edited.path.copy()
+		edited.path.legs.append(["STRAIGHT", MotionPlayer.DRIVE_STRAIGHT * 0.5, 0.0]))
+	_refresh()
+	_say("It drives %s." % motion.path.said())
+
+
+func remove_leg(index: int) -> void:
+	var motion: Motions.Motion = _edited()
+	if motion == null or motion.path == null or motion.path.legs.size() <= 1 or index < 0 \
+			or index >= motion.path.legs.size():
+		return
+	_change("changed the path of %s" % Motions.quoted(motion.name), func(edited: Motions.Motion) -> void:
+		edited.path = edited.path.copy()
+		edited.path.legs.remove_at(index))
+	_refresh()
+	_say("It drives %s." % motion.path.said())
+
+
+func set_path_seconds(seconds: float) -> void:
+	var motion: Motions.Motion = _edited()
+	if motion == null or motion.path == null or is_equal_approx(seconds, motion.path.seconds):
+		return
+	_change("changed the path of %s" % Motions.quoted(motion.name), func(edited: Motions.Motion) -> void:
+		edited.path = edited.path.copy()
+		edited.path.seconds = snappedf(clampf(seconds, 0.5, Motions.MOST_SECONDS), 0.001)
+		# Its length now its parts', as Record makes it: a file's MOTION
+		# line said 8 seconds of a path made 3 (drivereview F8).
+		edited.seconds = 0.0)
+	_refresh()
+
+
+func set_path_eased(on: bool) -> void:
+	var motion: Motions.Motion = _edited()
+	if motion == null or motion.path == null or (motion.path.how == "EASE") == on:
+		return
+	_change("changed the path of %s" % Motions.quoted(motion.name), func(edited: Motions.Motion) -> void:
+		edited.path = edited.path.copy()
+		edited.path.how = "EASE" if on else "LINEAR")
+	_refresh()
+
+
+## The edited motion no longer drives: its joints still move. One step; a
+## motion that then moves nothing is kept until it is removed.
+func remove_path() -> void:
+	var motion: Motions.Motion = _edited()
+	if motion == null or motion.path == null:
+		return
+	if motion.tracks.is_empty() and motion.driver == null:
+		_say("It moves nothing but the path: Remove takes the motion out.")
+		return
+	_change("took the path out of %s" % Motions.quoted(motion.name), func(edited: Motions.Motion) -> void:
+		edited.path = null
+		edited.seconds = 0.0)
+	_refresh()
 
 
 ## The sequence editor: its name, Play and Play backwards, its motions in

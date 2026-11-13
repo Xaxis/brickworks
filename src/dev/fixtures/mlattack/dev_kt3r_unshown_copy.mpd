@@ -1,0 +1,18 @@
+0 FILE cart.ldr
+0 Cart
+0 Name: cart.ldr
+0 Author: Jane Builder [jbuilder]
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3020.dat
+0 // the sign on top, with its sticker
+1 16 0 -8 0 1 0 0 0 1 0 0 0 1 sign.ldr
+0 NOFILE
+0 FILE sign.ldr
+0 Sign
+0 Name: sign.ldr
+0 Author: Jane Builder [jbuilder]
+1 15 0 0 0 1 0 0 0 1 0 0 0 1 3069b.dat
+1 15 0 -8 0 1 0 0 0 1 0 0 0 1 3070b.dat
+0 // the sticker, a part no library has
+1 16 0 -8 0 1 0 0 0 1 0 0 0 1 zz9001ps1.dat
+0 NOFILE

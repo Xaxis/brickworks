@@ -9,6 +9,12 @@
 //   const token = w.connect("acct-1");
 //   w.tab({ owner: "acct-1", hello: { instructions: "…", tools: [...] } });
 //   const listed = await w.ask(token, "tools/list");
+//
+// A tab's row carries the short hash of its tools (list) as the relay
+// writes it beside a hello (helloFromTab, supabase/relay_cost.sql). A test
+// can make the reads it names slow or failing: w.trouble = (call) =>
+// ({ ms, status }) or null, [call] being "GET relay_tabs?query"; a slow
+// one honours the request's own deadline, as the real one would.
 
 import { createHash, randomBytes } from "node:crypto";
 
@@ -54,6 +60,9 @@ export function world() {
   const self = {
     /// Every request, "METHOD table?query".
     calls: [],
+    /// What to make of a request: null, or { ms, status } to answer it
+    /// [ms] later with [status] (a database that is slow, or failing).
+    trouble: () => null,
     /// What each write sent, {table, body}.
     written: [],
     /// An access token for [owner]'s account.
@@ -71,8 +80,10 @@ export function world() {
     /// row itself, for a test to change as the tab would.
     tab(row) {
       const now = new Date().toISOString();
+      const tools = row.hello && Array.isArray(row.hello.tools) ? kept(row.hello.tools) : null;
       tables.relay_tabs.push({ channel: randomBytes(16).toString("hex"), seen_at: now, instance: "instance-1",
-        visible: true, open: true, owner: null, tab: "abcd", model: "a model", used_at: now, hello: null, ...row });
+        visible: true, open: true, owner: null, tab: "abcd", model: "a model", used_at: now, hello: null,
+        list: tools ? createHash("sha256").update(JSON.stringify(tools)).digest("hex").slice(0, 24) : null, ...row });
       return tables.relay_tabs.at(-1);
     },
     /// One MCP request through the handler, as Claude signed in sends it:
@@ -99,7 +110,16 @@ export function world() {
     const method = (init.method || "GET").toUpperCase();
     if (url.origin !== SUPABASE_URL) throw new TypeError(`nothing here answers ${url.origin}`);
     const table = url.pathname.replace("/rest/v1/", "");
-    self.calls.push(`${method} ${table}${url.search}`);
+    const call = `${method} ${table}${decodeURIComponent(url.search)}`;
+    self.calls.push(call);
+    const trouble = self.trouble(call);
+    if (trouble && trouble.ms) {
+      await new Promise((resolve, reject) => {
+        const timer = setTimeout(resolve, trouble.ms);
+        init.signal?.addEventListener("abort", () => { clearTimeout(timer); reject(init.signal.reason); });
+      });
+    }
+    if (trouble && trouble.status) return new Response(JSON.stringify({ message: "trouble" }), { status: trouble.status });
     if (method !== "GET") {
       self.written.push({ table, body: JSON.parse(String(init.body || "null")) });
       return new Response("", { status: 201 });
