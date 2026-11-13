@@ -673,9 +673,10 @@ live() { grep -qE 'deleteAccount\(|auth/v1/admin/users' "${CMD[$1]%% *}" 2>/dev/
 # - challenges: the test side keeps one open challenge and one year of
 #   themes; it ends any other open test challenge first, and another's
 #   overlapping it is refused.
-# - beta, on a deployment with the beta open (a unit's --beta-open): one
-#   test pool of 100 spots, judged by its absolute numbers. Off, as on every
-#   release's preview, it writes nothing another run reads.
+# - beta, on a deployment with the beta open (a unit's --beta-open, and every
+#   release's since the owner opened it on Production, 2026-11-12): one
+#   test pool of 100 spots, judged by its absolute numbers. Off (its own
+#   switch off, as console leaves it for a minute), it writes nothing another run reads.
 # - console: turns this deployment's beta off for a minute, which every
 #   beta check beside it would read, and takes a spot of the checks' pool.
 ALONE_DB=" discovery first_steps challenges console "
@@ -742,8 +743,11 @@ run() {
 # together measures how fast a change crosses between two browsers: with
 # placing beside it its plain p95 read 1,123 ms against 516-864 alone
 # (2026-10-24). buildparty times a part crossing between two phones the
-# same way, on the same relay.
-SOLO=" idle arrival progress cursor render_open render product_render grab share_steps frames play discovery oc together buildparty load "
+# same way, on the same relay. console turns this deployment's beta off for
+# a minute, and every page here reads that switch: beside it, betahome took
+# the beta for off and then found the bar on every page (rel-m294,
+# 2026-11-13), so it runs with nothing of this battery beside it.
+SOLO=" idle arrival progress cursor render_open render product_render grab share_steps frames play discovery oc together buildparty load console "
 PAIRED=""; ALONE=""
 for n in $NAMES; do case "$SOLO" in *" $n "*) ALONE="$ALONE $n";; *) PAIRED="$PAIRED $n";; esac; done
 # PC_AT_ONCE at a time, a slot taking the next check as soon as it is
