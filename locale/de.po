@@ -4091,6 +4091,9 @@ msgstr "%d nicht gezeigt, in der Datei behalten (%s)"
 msgid "%d not in the library, left out (%s)"
 msgstr "%d nicht in der Bibliothek, weggelassen (%s)"
 
+msgid "%d could not be loaded, kept in the file (%s)"
+msgstr "%d konnten nicht geladen werden, in der Datei behalten (%s)"
+
 msgid "%d are still arriving, open it again in a moment"
 msgstr "%d kommen noch, öffne es gleich noch einmal"
 

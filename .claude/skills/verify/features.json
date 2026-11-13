@@ -486,6 +486,14 @@
       "tests": []
     },
     {
+      "id": "cli:askfirst probe",
+      "kind": "cli",
+      "entry": "src/dev/askfirst_probe.gd",
+      "reach": "tools/probe.sh askfirst_probe   (headless: geometry served by a local server on 9947 under names the build has not got, the LDraw library withheld and served slowed beside it; an open with no job (the viewer's, start-up's) has every part not to hand on its way while its carried part's file is fetched, the model before still down, then lays it whole, each part asked once; a part that 404s before the lay is asked once, held, named in the open's answer and words and saved, one failing after it said by not_coming; a 212-part model opened with the bar's job has its parts on their way before its first slice, is laid in the file's order, and names the part not there, asked once; a save while parts are on their way writes every part)",
+      "area": "model-io",
+      "tests": []
+    },
+    {
       "id": "cli:audit connections in real sets",
       "kind": "cli",
       "entry": "tools/connection_audit.py",

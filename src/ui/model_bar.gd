@@ -813,6 +813,15 @@ static func left_out_words(result: Dictionary, again: bool = true) -> String:
 		var unbuilt: Dictionary = result.get("unbuilt", {})
 		if not unbuilt.is_empty():
 			note += " — " + ModelStore.unbuilt_words(unbuilt)
+	# A part whose geometry could not be fetched as it opened: held as one on
+	# its way is, so kept in the file (ModelStore.lost).
+	var lost: Dictionary = result.get("lost", {})
+	if not lost.is_empty():
+		var count: int = 0
+		for id: String in lost:
+			count += int(lost[id])
+		note += " — %d could not be loaded, kept in the file (%s)" % [count,
+			ModelStore.named_counts(lost)]
 	if again and int(result.get("waiting", 0)) > 0:
 		note += " — %d are still arriving, open it again in a moment" % int(result["waiting"])
 	# Light lines this could not read, kept in the file (SceneLights.of_model).
@@ -837,7 +846,7 @@ static func unshown_words(store: ModelStore) -> String:
 	if not store.not_opened.is_empty():
 		return ""
 	return left_out_words({"missing": store.unshown.size(), "unshown": store.unshown,
-		"kept": true, "lights_unread": store.lights_unread_words,
+		"kept": true, "lost": store.lost, "lights_unread": store.lights_unread_words,
 		"motions_unread": store.motions_unread_words,
 		"views_unread": store.views_unread_words}, false) + looks_words(store)
 
