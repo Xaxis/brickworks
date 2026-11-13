@@ -122,7 +122,7 @@ func _quit(code: int) -> void:
 func _ldraw() -> void:
 	print("\n  File, Export, LDraw model")
 	var name: String = _bar.model_name()
-	var wanted: String = name.to_snake_case() + _bar.ldraw_extension()
+	var wanted: String = SubmodelFile.titled(name, _bar.ldraw_extension())
 	var dialog: FileDialog = await _dialog_after("export_ldraw")
 	if not _check("pressing it opens a Save dialog", dialog != null):
 		return
@@ -217,7 +217,7 @@ func _io() -> void:
 	if not _check("pressing it opens the dialog", dialog != null):
 		return
 	_check("...named after the model (%s)" % dialog.current_file,
-		dialog.current_file == _bar.model_name().to_snake_case() + ".io")
+		dialog.current_file == SubmodelFile.titled(_bar.model_name(), ".io"))
 	var path: String = _out.path_join("other/my tug.io")
 	await _answer(dialog, path)
 	var said: String = await _said()
@@ -288,7 +288,7 @@ func _lists() -> void:
 		if not _check("%s opens the dialog" % each[0], dialog != null):
 			continue
 		_check("...named after the model (%s)" % dialog.current_file,
-			dialog.current_file == _bar.model_name().to_snake_case() + str(each[1]))
+			dialog.current_file == SubmodelFile.titled(_bar.model_name(), str(each[1])))
 		var path: String = _out.path_join("list" + str(each[1]))
 		await _answer(dialog, path)
 		var said: String = await _said()
@@ -335,7 +335,7 @@ func _save_as() -> void:
 		return
 	_check("...its title Save as (%s)" % dialog.title, dialog.title == "Save as")
 	_check("...named after the model (%s)" % dialog.current_file,
-		dialog.current_file == ModelStore._safe_name(_bar.model_name()) + _bar.ldraw_extension())
+		dialog.current_file == SubmodelFile.named(_bar.model_name(), _bar.ldraw_extension()))
 	await _shot("05_save_as_dialog")
 	var path: String = _out.path_join("Probe Tug" + _bar.ldraw_extension())
 	await _answer(dialog, path)

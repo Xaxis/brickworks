@@ -12,16 +12,29 @@
 ## bin, which at 1280 x 720 left it 8 parts in sight and the properties
 ## their X and Y, the rest behind a scroller (appux371, 2026-10-30).
 ##
-## The tree and the properties fold to their header (a click on its name),
-## and the properties fold themselves while nothing is selected, the tree
-## taking the column. The bar between two sections drags the height of the
-## one that does not fill. The section kept under no name fills what is left
-## (the bin); in a column with none, the lowest with something to show (the
-## properties, and the tree while nothing is selected). The colours are as
-## tall as the column says (PartsBin._fit_palette), never as anything else
-## does. A section kept whole (keep_whole) is never put behind its scroller
-## to keep another tall. The heights are remembered (ShellPrefs), as the
+## The tree and the properties fold to their header (a click on its name).
+## The bar between two sections drags the height of the one that does not
+## fill. The section kept under no name fills what is left (the bin); in a
+## column with none, the lowest open one. The colours are as tall as the
+## column says (PartsBin._fit_palette), never as anything else does, and
+## never fill (never_fills): a phone's drawer has no bin, and its colours
+## filled it, 995 px of 1558 with one row of the tree in sight over them
+## (treerows, 2026-11-11). The heights are remembered (ShellPrefs), as the
 ## folds are.
+##
+## A choice never moves the split: only the person's own drag of the bar
+## does. Properties filled in as a row was chosen and took the tree's height
+## for themselves, kept whole (keep_whole): the tree went from 425 px to 110
+## at 1280 x 720, the row chosen went up 128 px from under the pointer, and
+## a double click on it opened its parent or another sub-model (tdcheck,
+## 2026-11-11), as Blender's outliner and properties, Studio's and Unity's
+## panels never move for a selection. Until the split is set, the properties
+## are as tall as their header and what the model stands on while nothing
+## is selected, the tree having the rest; the first time they fill, they
+## have the room the tree has spare (none of its rows in sight), as far as
+## all of them (keep_whole), and that is the split from then on, a section
+## with nothing to show keeping its room (_split). A height dragged on an
+## earlier visit is the split from the start.
 class_name PanelStack
 extends Container
 
@@ -39,6 +52,13 @@ var _wanted: Dictionary = {}
 var _bars: Array[Bar] = []
 ## The sections kept whole: section -> true.
 var _whole: Dictionary = {}
+## Whether the split is set: by a drag of a bar, now or on an earlier visit,
+## or by a first fill (_first_fill). Set, the lowest open section fills
+## whether it has something to show or not, and none is made taller to be
+## kept whole: a choice moves nothing.
+var _split: bool = false
+## The sections that never fill: section -> true ([method never_fills]).
+var _least: Dictionary = {}
 
 
 func _init() -> void:
@@ -53,11 +73,15 @@ func add_section(section: Control, kept_as: String = "") -> void:
 	_kept_as[section] = kept_as
 	if not kept_as.is_empty():
 		_wanted[section] = float(ShellPrefs.value(kept_as))
+		# Only a drag writes it: other than its default, it is the person's.
+		if not is_equal_approx(float(ShellPrefs.value(kept_as)),
+				float(ShellPrefs.DEFAULTS.get(kept_as, 0.0))):
+			_split = true
 	add_child(section)
 	if section.has_signal("toggled"):
 		section.connect("toggled", func(_open: bool) -> void: queue_sort())
 	if section.has_signal("idled"):
-		section.connect("idled", func(_idle: bool) -> void: queue_sort())
+		section.connect("idled", func(idle: bool) -> void: _idled(section, idle))
 	_rebuild_bars()
 	queue_sort()
 
@@ -73,6 +97,13 @@ func sections() -> Array[Control]:
 ## a scroller.
 func keep_whole(section: Control) -> void:
 	_whole[section] = true
+	queue_sort()
+
+
+## [param section] is as tall as it says, never the one that fills what is
+## left: the colours, whose height is the column's to say.
+func never_fills(section: Control) -> void:
+	_least[section] = true
 	queue_sort()
 
 
@@ -132,20 +163,77 @@ func _rebuild_bars() -> void:
 
 
 ## The section that fills what is left: the one kept under no name, or
-## the lowest open one with something to show while that is folded, or
-## with none, the lowest open one. Properties with nothing selected give
-## the column to the model tree over them.
+## the lowest open one while that is folded. Until the split is set, the
+## lowest open one with something to show: Properties with nothing selected
+## give the column to the model tree over them.
 func _filler() -> Control:
+	return _filler_but(null)
+
+
+## [method _filler], [param idle] counted as having nothing to show.
+func _filler_but(idle: Control) -> Control:
 	for section: Control in _sections:
-		if str(_kept_as[section]).is_empty() and _is_open(section):
+		if str(_kept_as[section]).is_empty() and _is_open(section) and not _least.has(section):
 			return section
 	for n: int in range(_sections.size() - 1, -1, -1):
-		if _is_open(_sections[n]) and not _is_idle(_sections[n]):
-			return _sections[n]
+		var section: Control = _sections[n]
+		if _is_open(section) and not _least.has(section) \
+				and (_split or (section != idle and not _is_idle(section))):
+			return section
 	for n: int in range(_sections.size() - 1, -1, -1):
-		if _is_open(_sections[n]):
+		if _is_open(_sections[n]) and not _least.has(_sections[n]):
 			return _sections[n]
 	return null
+
+
+## [param section] has something to show now, or nothing ([param idle]).
+func _idled(section: Control, idle: bool) -> void:
+	if not idle and not _split:
+		_first_fill(section)
+	queue_sort()
+
+
+## The first time [param section] fills with the split not set, the one
+## that filled the column while it had nothing to show keeps the height it
+## has, less the bar that comes between them now, and that is the split
+## from then on: nothing in sight moves. Then, once [param section] has
+## filled in (the signal comes before its fields do), it is given the room
+## the other has spare (spare_height: the tree's under its last row), never
+## what it shows, as far as all of it (_give_spare). Only in a column laid
+## out where it is seen; where the filler is the same either way (the bin,
+## down the left), nothing changes.
+func _first_fill(section: Control) -> void:
+	var was: Control = _filler_but(section)
+	if was == null or was == section or _filler() != section or str(_kept_as[was]).is_empty() \
+			or not is_visible_in_tree() or was.size.y <= 0.0:
+		return
+	var bars_before: float = 0.0
+	for bar: Bar in _bars:
+		if bar.visible:
+			bars_before += BAR
+	_split = true
+	var filler: Control = _filler()
+	var bars_after: float = 0.0
+	for n: int in _bars.size():
+		if _shows_bar(n, filler):
+			bars_after += BAR
+	_wanted[was] = maxf(was.size.y - (bars_after - bars_before), was.get_combined_minimum_size().y)
+	_give_spare.call_deferred(was, section)
+
+
+func _give_spare(was: Control, section: Control) -> void:
+	if not is_instance_valid(was) or not is_instance_valid(section) or _filler() != section \
+			or _is_idle(section):
+		return
+	var room: float = heights(size.y)[_sections.find(section)]
+	var want: float = whole_height(section) if _whole.has(section) \
+		else float(_wanted.get(section, room))
+	var spare: float = float(was.call("spare_height")) if was.has_method("spare_height") else 0.0
+	var give: float = clampf(minf(spare, want - room), 0.0,
+		maxf(0.0, float(_wanted[was]) - was.get_combined_minimum_size().y))
+	if give > 0.0:
+		_wanted[was] = float(_wanted[was]) - give
+		queue_sort()
 
 
 ## The section the bar under section ``n`` resizes: the one on the far
@@ -173,7 +261,10 @@ func heights(room: float) -> Array[float]:
 	for n: int in _sections.size():
 		var section: Control = _sections[n]
 		var floor_of: float = section.get_combined_minimum_size().y if section.visible else 0.0
-		if _whole.has(section) and _is_open(section) and not _is_idle(section):
+		# Kept whole by the others' room, until the split is set: then the
+		# filler has what the split leaves it, its scroller the rest.
+		if _whole.has(section) and _is_open(section) and not _is_idle(section) \
+				and not (_split and section == filler):
 			floor_of = maxf(floor_of, whole_height(section))
 		least.append(floor_of)
 		if not section.visible:
@@ -260,6 +351,7 @@ func set_height(section: Control, height: float) -> void:
 		return
 	var least: float = section.get_combined_minimum_size().y
 	_wanted[section] = clampf(height, least, maxf(least, size.y - BAR))
+	_split = true
 	queue_sort()
 
 

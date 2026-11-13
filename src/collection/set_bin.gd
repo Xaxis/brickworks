@@ -33,6 +33,9 @@ var order: PackedStringArray = PackedStringArray()
 ## parts this build cannot draw.
 var pieces: int = 0
 var unshown: int = 0
+## How many pieces the person's own copies are marked as missing, left out
+## of [member have] (localbricks): a bin holds only what is there.
+var left_out: int = 0
 
 
 ## A bin of [param numbers]' parts, from their records ([param records]:
@@ -55,6 +58,30 @@ static func make(numbers: PackedStringArray, records: Dictionary, library: PartL
 			bin.pieces += int(lot[2])
 	if bin.sets.is_empty():
 		return null
+	# What the person's own copies of these sets are marked as missing is
+	# not there to build with (mysets' marks, CollectionStore.marks): left
+	# out (localbricks). Their copies beyond the bin's make up what these
+	# are missing first, and no more of a lot is left out than it holds.
+	for number: String in copies:
+		var marked: Dictionary = CollectionStore.marks.get(number, {})
+		var gone: Dictionary = marked.get("missing", {})
+		if gone.is_empty():
+			continue
+		var others: int = maxi(0, int(marked.get("copies", 0)) - int(copies[number]))
+		var one_copy: Dictionary = {}
+		for row: Variant in (records[number] as Dictionary).get("p", []):
+			if row is Array and (row as Array).size() >= 3:
+				var key: String = Collection.key_of(str(row[0]), int(row[1]), library)
+				one_copy[key] = int(one_copy.get(key, 0)) + int(row[2])
+		for key: String in gone:
+			var take: int = mini(int(gone[key]) - others * int(one_copy.get(key, 0)), int(bin.have.get(key, 0)))
+			if take <= 0:
+				continue
+			bin.have[key] = int(bin.have[key]) - take
+			if int(bin.have[key]) == 0:
+				bin.have.erase(key)
+			bin.pieces -= take
+			bin.left_out += take
 	var named := PackedStringArray()
 	for number: String in copies:
 		var words: String = ("%s %s" % [number, str((records[number] as Dictionary).get("n", ""))]).strip_edges()
@@ -124,26 +151,39 @@ func tally(used: Dictionary, library: PartLibrary) -> Dictionary:
 
 ## The sets a model's [param text] says its bin was built from, or none.
 static func read(text: String) -> PackedStringArray:
-	var found: RegExMatch = RegEx.create_from_string(
-		"(?m)^0 !BRICKWORKS BIN ([0-9A-Za-z. -]{1,600})\\s*$").search(text)
+	return read_from(MetaIndex.of_text(text))
+
+
+## The sets the model's own lines say (MetaIndex), the first line that
+## reads, taken.
+static func read_from(metas: MetaIndex) -> PackedStringArray:
+	var found: Variant = metas.first_read("BIN", said_in)
+	return found if found != null else PackedStringArray()
+
+
+## The sets a BIN line's [param said] names, or null for one this cannot
+## read.
+static func said_in(said: String) -> Variant:
+	if RegEx.create_from_string("^[0-9A-Za-z. \t-]{1,600}$").search(said) == null:
+		return null
 	var out := PackedStringArray()
-	if found == null:
-		return out
-	for word: String in found.get_string(1).split(" ", false):
+	for word: String in LdrModel._fields(said):
 		var number: String = SetInventories.normal(word)
-		if RegEx.create_from_string("^[0-9a-z.]+-[0-9]+$").search(number) != null and out.size() < 50:
+		if RegEx.create_from_string("^[0-9a-z.]+-[0-9]+$").search(number) != null \
+				and out.size() < 50:
 			out.append(number)
 	return out
 
 
-## [param text] with [param numbers] on a line after its first, inside
-## the model itself for an .mpd, as ModelStore.with_share writes its own;
-## as it is for none.
+## The line [param numbers] are kept on, none for none.
+static func lines_of(numbers: PackedStringArray) -> PackedStringArray:
+	return PackedStringArray([META + " ".join(numbers)]) if not numbers.is_empty() \
+		else PackedStringArray()
+
+
+## [param text] with [param numbers] on a line under its model's title
+## (MetaIndex), in place of the one it had; as it is for none.
 static func written_into(text: String, numbers: PackedStringArray) -> String:
 	if numbers.is_empty():
 		return text
-	var line: String = META + " ".join(numbers) + "\n"
-	var cut: int = text.find("\n")
-	if cut < 0:
-		return text + "\n" + line
-	return text.substr(0, cut + 1) + line + text.substr(cut + 1)
+	return MetaIndex.written(text, [MetaIndex.family(["BIN"], lines_of(numbers))])

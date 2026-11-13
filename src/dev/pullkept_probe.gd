@@ -295,9 +295,39 @@ func _pods_session() -> void:
 			"picture": false}],
 		["pattern_parts", {"bricks": [15], "columns": 4, "rows": 3, "levels": 2, "picture": false}],
 	]
+	# The walk's brick numbers are as its session read them after a clear
+	# that began them again at 1, its design's parts #2 to #6. A session's
+	# clear keeps them going now, so its undo puts each part back under its
+	# own number (copyfaults, BrickWorld.clear): the same parts, counted on
+	# from where the clear left the numbers.
+	var by: int = 0
 	for call: Array in calls:
-		var said: String = await _say(str(call[0]), call[1])
+		var said: String = await _say(str(call[0]), _renumbered(call[1], by))
 		print("    %s: %s" % [call[0], said.get_slice("\n", 0).left(110)])
+		if call[0] == "submit_design":
+			by = _first_number() - 2
+
+
+## [param arguments] with each brick number it names [param by] more.
+static func _renumbered(arguments: Dictionary, by: int) -> Dictionary:
+	var out: Dictionary = arguments.duplicate(true)
+	var on := func(numbers: Array) -> Array:
+		return numbers.map(func(one: Variant) -> Variant:
+			return int(one) + by if one is int else one)
+	if out.has("bricks"):
+		out["bricks"] = on.call(out["bricks"])
+	if out.get("pull") is Dictionary and (out["pull"] as Dictionary).has("parts"):
+		out["pull"]["parts"] = on.call(out["pull"]["parts"])
+	return out
+
+
+## The lowest number of a part of the model, not the floor's.
+func _first_number() -> int:
+	var lowest: int = 0
+	for brick: BrickWorld.Brick in _world.bricks():
+		if not _store.scenery.has(brick.id) and (lowest == 0 or brick.id < lowest):
+			lowest = brick.id
+	return lowest
 
 
 # -- 3. named on open ------------------------------------------------------------
@@ -391,10 +421,12 @@ func _review() -> void:
 	# a step (pkreview's third review).
 	await _review_case("spread", _fixture("spread"), {"a|0": _pulled(["3003"])}, "",
 		["a.ldr step 1: 0 !BRICKWORKS PULL 2 3003"])
+	# Its sections written whole in the order the model builds them, the
+	# side pod's first (LdrModel._tree_of, copyfaults2 cfc_wing2).
 	await _review_case("pods_pull3003", _fixture("pods_pull3003"), {"side pod|0":
 		_pulled(["41770a", "41769a"]), "grey block|0": _pulled(["3003"])}, "",
-		["grey_block.ldr step 1: 0 !BRICKWORKS PULL 2 3003",
-		"side_pod.ldr step 1: 0 !BRICKWORKS PULL 2 41770a 41769a"])
+		["side_pod.ldr step 1: 0 !BRICKWORKS PULL 2 41770a 41769a",
+		"grey_block.ldr step 1: 0 !BRICKWORKS PULL 2 3003"])
 	# A step whose one part the catalogue has not got: its zoom stays on it,
 	# and the steps after it keep theirs.
 	await _review_case("absent_only", _fixture("absent_only"), {"|1": {"zoom": 1.5},

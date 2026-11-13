@@ -1541,7 +1541,7 @@ func _edit_sections(row: Dictionary) -> void:
 		"builder.touched_groups": func() -> void: _builder.touched_groups(step),
 		"assemblies.copies_follow": func() -> void:
 			if assemblies != null:
-				assemblies.copies_follow(_builder.touched_groups(step)),
+				assemblies.copies_follow(step),
 		"assemblies.paths": func() -> void:
 			if assemblies != null:
 				assemblies.paths(),

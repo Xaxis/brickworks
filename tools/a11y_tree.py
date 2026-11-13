@@ -12,13 +12,17 @@ each ask_N.json the app writes in DIR is answered with tree_N.json.
   {"do": "away", "xid": X, "points": ...}
       the keys taken from X window X and given back, as a person
       switching to another program and back does; then a read
+  {"do": "browse", "points": ...}
+      every element reached walking the app's windows down through the
+      children each lists, in that order, as a screen reader browses
+      (src/dev/a11y_tree_probe.gd), and what is at each point
 
 Found by pointing and by the focus, as Orca finds them (its mouse review,
-and its focus events read up through the parents), not by listing a
-window's children: AccessKit 0.22 stops a list of children early where an
-element of no role and no children (a spacer) is followed by a hidden one
-that has children, and the app's top bar has one (Model name's spacer,
-then the hidden Claude tab), so its window lists only the menus.
+and its focus events read up through the parents), and by browsing, as
+Orca's flat review walks a window's children. AccessKit 0.22 stops a list
+of children early where an element of no role and no children (a spacer)
+is followed by a hidden one that has children; the app keeps such lists
+whole (src/ui/access_tree.gd), and a browse shows whether it does.
 
 Godot speaks to a screen reader through AccessKit, which on Linux is
 AT-SPI: a bus of its own (org.a11y.Bus) that the session bus names. The
@@ -116,7 +120,10 @@ def main() -> int:
         while time.monotonic() < until:
             GLib.MainContext.default().iteration(False)
             time.sleep(0.01)
-        answer = read(Atspi, app_run.pid)
+        if wanted.get("do") == "browse":
+            answer = browse(Atspi, app_run.pid)
+        else:
+            answer = read(Atspi, app_run.pid)
         answer["asked"] = wanted
         answer["hits"] = hits(Atspi, app_run.pid, wanted.get("points", []))
         answer["focus"] = chain(Atspi, focused[0]) if focused[0] is not None else None
@@ -149,6 +156,59 @@ def read(Atspi, pid: int) -> dict:
     found["app"] = app.get_name()
     found["ms"] = round((time.monotonic() - started) * 1000)
     return found
+
+
+def browse(Atspi, pid: int) -> dict:
+    """Every element browsing the app's windows reaches, in the order it
+    reaches them: from each window down through its children as listed,
+    the way a screen reader's browse (Orca's flat review, a structural walk)
+    goes. Each as [depth, role, name, [x, y, w, h] in its window, SHOWING,
+    how many children it lists]."""
+    started = time.monotonic()
+    desktop = Atspi.get_desktop(0)
+    app = None
+    for i in range(desktop.get_child_count()):
+        candidate = desktop.get_child_at_index(i)
+        if candidate is not None and (app is None or candidate.get_process_id() == pid):
+            app = candidate
+    if app is None:
+        return {"error": "no application in the tree", "reached": []}
+    Atspi.Accessible.set_cache_mask(app, Atspi.Cache.NONE)
+    app.clear_cache()
+    reached = []
+    gone = []
+
+    def go(node, depth: int) -> None:
+        if node is None or depth > DEEPEST or len(reached) >= MOST:
+            return
+        try:
+            count = node.get_child_count()
+            role = node.get_role_name()
+            name = node.get_name()
+            showing = node.get_state_set().contains(Atspi.StateType.SHOWING)
+        except Exception as ex:  # a node gone while read: said, not fatal
+            gone.append(str(ex))
+            return
+        # An element with no place on screen (no Component: AccessKit gives
+        # none to one without bounds) is still reached.
+        box = [0, 0, 0, 0]
+        try:
+            e = node.get_extents(Atspi.CoordType.WINDOW)
+            box = [e.x, e.y, e.width, e.height]
+        except Exception:
+            pass
+        reached.append([depth, role, name, box, showing, count])
+        for i in range(count):
+            try:
+                child = node.get_child_at_index(i)
+            except Exception as ex:
+                gone.append(str(ex))
+                continue
+            go(child, depth + 1)
+    for i in range(app.get_child_count()):
+        go(app.get_child_at_index(i), 0)
+    return {"reached": reached, "gone": gone, "nodes": len(reached),
+            "ms": round((time.monotonic() - started) * 1000)}
 
 
 def walk(Atspi, node, path: list, found: dict, depth: int) -> None:

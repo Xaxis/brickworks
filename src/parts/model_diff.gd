@@ -353,7 +353,8 @@ static func parts_of_text(text: String, library: PartLibrary, inside: String = "
 ## The model on the baseplate as its file would have it: every brick but the
 ## baseplate's ([param scenery]), where it stands in the model as built
 ## (BrickWorld.home_of) less [param lift], and the parts still on their way
-## ([param awaited], LdrModel.Placements, already lifted); only those inside
+## ([param awaited], LdrModel.Placements where they stand now, lifted:
+## ModelStore.awaited_now); only those inside
 ## [param inside] when it is not "".
 static func parts_of_world(world: BrickWorld, scenery: Dictionary, lift: Vector3,
 		awaited: Array = [], inside: String = "") -> Array:

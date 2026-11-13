@@ -1,0 +1,21 @@
+0 FILE house.ldr
+0 House
+0 Name: house.ldr
+0 Author: Jane Builder [jbuilder]
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3020.dat
+0 // the roof, a sub-model of its own
+1 16 0 -8 0 1 0 0 0 1 0 0 0 1 roof.ldr
+0 NOFILE
+0 FILE roof.ldr
+0 Roof
+0 Name: roof.ldr
+0 Author: Jane Builder [jbuilder]
+0 BFC CERTIFY CCW
+0 // two round tiles, under the number the author used
+1 14 0 0 0 1 0 0 0 1 0 0 0 1 4073.dat
+1 14 20 0 0 1 0 0 0 1 0 0 0 1 4073.dat
+0 // and a slope in MLCad's group of the roof
+0 MLCAD BTG Roof
+1 2 0 -8 0 1 0 0 0 1 0 0 0 1 3040.dat
+0 NOFILE

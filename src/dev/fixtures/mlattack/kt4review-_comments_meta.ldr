@@ -1,0 +1,18 @@
+0 Comments and unknown metas
+0 !BRICKWORKS VIEW {"name":"front","yaw":0.5,"pitch":0.3,"distance":400.0,"focus":[0.0,0.0,0.0],"square":false}
+0 Name: comments.ldr
+0 Author: Cam Mentor
+0 !FOOCAD SETTING GRID 10
+0 // the base
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 4 80 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 // the second course, blue
+0 FOOCAD MARK 7
+1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 1 80 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+
+0 // after a blank line
+1 2 0 -48 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 !TEXMAP NEXT PLANAR -40 -56 -20 40 -56 -20 -40 -56 20 sample.png
+1 2 80 -48 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 // the end

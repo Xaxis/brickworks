@@ -1,0 +1,59 @@
+{
+ "shots": [
+  {
+   "id": "gallery-top",
+   "source": "site",
+   "route": "/gallery",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account"
+   ],
+   "wait": "#models article.model img",
+   "alt": "The gallery's front on a computer: the Gallery heading and search, the tabs Top, New, Builds, Collections and Sets with All time beside them, Filters and the kinds as pills, then model cards, the first marked Week's pick, each with its picture, name, designer and part count.",
+   "caption": "The gallery's front: Top, all time.",
+   "features": [
+    "ui:gallery page",
+    "ui:model card",
+    "lib:model kinds"
+   ]
+  },
+  {
+   "id": "gallery-filters",
+   "source": "site",
+   "route": "/gallery",
+   "viewport": [
+    390,
+    844
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account"
+   ],
+   "phone": true,
+   "wait": "#models article.model",
+   "steps": [
+    {
+     "click": "#filters > summary"
+    },
+    {
+     "wait": "#filters .sheet"
+    }
+   ],
+   "alt": "The gallery on a phone with Filters open: Order Top builds, Top over All time, Size Any size, Made By hand or with the assistant, the ticks Has instructions, Technic or mechanism and Tested only, and Clear the filters.",
+   "caption": "Filters, on a phone.",
+   "features": [
+    "ui:gallery page"
+   ]
+  }
+ ]
+}

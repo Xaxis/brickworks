@@ -154,6 +154,13 @@ const PRESET_KEYS: Dictionary = {
 		"saved_view_5": ALT | SHIFT | KEY_5, "saved_view_6": ALT | SHIFT | KEY_6,
 		"saved_view_7": ALT | SHIFT | KEY_7, "saved_view_8": ALT | SHIFT | KEY_8,
 		"saved_view_9": ALT | SHIFT | KEY_9,
+		# bugreport (2026-11-09): Help, Report a bug…, Alt-Shift-R, Report
+		# beside Alt-R's Replace. Chrome's own Report an issue is Alt-Shift-I,
+		# which a browser keeps for itself; no browser keeps Alt-Shift-R.
+		"report_bug": ALT | SHIFT | KEY_R,
+		# stepnames (APP_UX6 #9): the step showing named, Shift-F2 beside F2,
+		# which renames a sub-assembly as F2 renames in every program.
+		"step_name": SHIFT | KEY_F2,
 	},
 	"studio": {
 		"mode_select": KEY_V, "mode_hinge": KEY_H, "mode_clone": KEY_C, "mode_hide": KEY_L,

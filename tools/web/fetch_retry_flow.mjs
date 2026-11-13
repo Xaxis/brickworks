@@ -109,7 +109,7 @@ const missing = JSON.stringify({ statusCode: "404", error: "not_found", message:
   code: "NoSuchKey" });
 await context.route(/\.lbm(\?|$)/, async (route) => {
   const at = route.request().url();
-  if (mode === "pass" || mode === "rare" && at !== rareAt) return route.continue();
+  if (mode === "pass" || mode === "rare" && at !== rareAt) return route.fallback();
   const n = (asks.get(at) || 0) + 1;
   asks.set(at, n);
   const given = mode === "absent" || mode === "rare" ? "404"
@@ -120,7 +120,7 @@ await context.route(/\.lbm(\?|$)/, async (route) => {
   if (given === "503") return route.fulfill({ status: 503, headers: open,
     body: JSON.stringify({ message: "Service Unavailable" }) });
   if (given === "404") return route.fulfill({ status: 404, headers: open, body: missing });
-  return route.continue();
+  return route.fallback();
 });
 
 let failed = 0;

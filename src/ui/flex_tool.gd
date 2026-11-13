@@ -1439,6 +1439,7 @@ func _build_panel() -> void:
 		kinds.add_child(button)
 		_kind_buttons[key] = button
 	_length_picker = OptionButton.new()
+	_length_picker.accessibility_name = "Length"
 	_length_picker.add_theme_font_size_override("font_size", 12)
 	_length_picker.focus_mode = Control.FOCUS_NONE
 	# As wide as the panel: a shock's name ("... Stiff with Spring with Tight

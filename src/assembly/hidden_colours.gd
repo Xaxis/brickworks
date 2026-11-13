@@ -870,27 +870,29 @@ static func ask_first(store: ModelStore) -> String:
 ## [param text] with [param scheme] on a line after its first, in place of
 ## any it had; as it is for none.
 static func written_into(text: String, scheme: Dictionary) -> String:
-	var lines: PackedStringArray = text.split("\n")
-	var kept := PackedStringArray()
-	for line: String in lines:
-		if not line.begins_with(META):
-			kept.append(line)
-	if scheme.is_empty() or (scheme.get("groups", []) as Array).is_empty():
-		return "\n".join(kept)
-	kept.insert(mini(1, kept.size()), META + JSON.stringify(scheme))
-	return "\n".join(kept)
+	# Under the model's title, in its own section (MetaIndex).
+	return MetaIndex.written(text, [MetaIndex.family(["HIDDEN_COLOURS"],
+		PackedStringArray([META + JSON.stringify(scheme)])
+		if not (scheme.get("groups", []) as Array).is_empty() else PackedStringArray())])
 
 
 ## The scheme a model's text carries, or {}: read at the edge and made
 ## precise, a line of the wrong shape is no scheme.
 static func read(text: String) -> Dictionary:
-	var at: int = text.find(META)
-	if at < 0:
-		return {}
-	var end: int = text.find("\n", at)
-	var scheme: Dictionary = typed(JSON.parse_string(text.substr(at + META.length(),
-		(end if end >= 0 else text.length()) - at - META.length())))
-	return scheme if not (scheme.get("groups", []) as Array).is_empty() else {}
+	return read_from(MetaIndex.of_text(text))
+
+
+## The scheme the model's own lines carry (MetaIndex), the first that reads,
+## taken; {} for none.
+static func read_from(metas: MetaIndex) -> Dictionary:
+	var found: Variant = metas.first_read("HIDDEN_COLOURS", said_in)
+	return found if found != null else {}
+
+
+## The scheme a line's [param said] carries, or null for none.
+static func said_in(said: String) -> Variant:
+	var scheme: Dictionary = typed(JSON.parse_string(said))
+	return scheme if not (scheme.get("groups", []) as Array).is_empty() else null
 
 
 ## [param raw], a scheme a file's line or another side of Build together

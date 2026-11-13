@@ -14,9 +14,8 @@
 ## finds a window: pointed at (the middle of its title bar and of its face)
 ## and read up through the parents of what is there, and from the element
 ## that took the focus: each window's role, name and its MODAL state.
-## Not by listing the window's children: AccessKit cuts that list short in
-## this app (tools/a11y_tree.py says where). Nothing on the person's own
-## bus is touched.
+## Browsing the window's lists is a11y_tree_probe's (a11ytree). Nothing on
+## the person's own bus is touched.
 ##
 ## Through the way in first, as a person comes: the sign-in screen up over
 ## the app (gate_for_probe), a throwaway account signed in (made with the
@@ -316,9 +315,9 @@ func _judge(way: String, tree: Dictionary, over: Array[Window]) -> void:
 			found_there.append(_said(at))
 			if node.is_empty():
 				node = _window_named(at, title)
-		# Pointed at, or else heard through the focus inside it: a panel put
-		# away stays in the tree (Godot does not tell AccessKit a Control
-		# was hidden), and over a dialog it is what the pointer finds.
+		# Pointed at, or else heard through the focus inside it (a panel put
+		# away was once left in the tree, and over a dialog it was what the
+		# pointer found: AccessTree tells it now, a11y_tree_probe).
 		var found_by: String = "pointed at"
 		if node.is_empty():
 			node = _window_named(focused, title)

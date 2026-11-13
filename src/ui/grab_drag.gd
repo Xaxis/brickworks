@@ -845,18 +845,35 @@ func _tell(line: String) -> void:
 ## mean): honest to a factor of two.
 func _standing_words(weighed: Balance.Report, live: bool) -> String:
 	var out: String
+	# Each its own words, whole, so each is said in every language.
 	if weighed.margin >= 0.0:
 		out = "stands, %s studs inside the %s edge" % [Balance.studs(weighed.margin), weighed.edge]
+	elif live:
+		out = "would tip over %s, %s studs past its edge" % [Balance.toward(weighed.edge),
+			Balance.studs(-weighed.margin)]
 	else:
-		out = "%s over to the %s, %s studs past its edge" % ["would tip" if live else "tips",
-			weighed.edge, Balance.studs(-weighed.margin)]
+		out = "tips over %s, %s studs past its edge" % [Balance.toward(weighed.edge),
+			Balance.studs(-weighed.margin)]
 	for one: Balance.JointLoad in weighed.joints:
 		if one.ratio <= 1.0:
 			break
 		var info: PartLibrary.PartInfo = library.parts.get(one.beyond_part)
 		var name: String = Bodies._short(info.name) if info != null else one.beyond_part
-		out += "; the %s's %d stud%s carry about %sx their working load" % [name, one.studs,
-			"" if one.studs == 1 else "s", Balance.tidy(one.ratio)]
+		# Each joint by its kind: a pin or an axle has no studs to count, and
+		# what nothing holds has no load to divide ("the Technic Steering
+		# Arm's 0 studs carry about 3801304x", drivereview F9, drvcheck A).
+		if one.kind == "studs" and one.studs == 0:
+			out += "; the %s touches with no stud in contact: nothing holds it there" % name
+		elif one.kind == "studs" and one.studs == 1:
+			out += "; the %s's 1 stud carries about %sx its working load" % [name, Balance.tidy(one.ratio)]
+		elif one.kind == "studs":
+			out += "; the %s's %d studs carry about %sx their working load" % [name, one.studs,
+				Balance.tidy(one.ratio)]
+		elif one.holds_nothing():
+			out += "; the %s turns %s with nothing holding it" % [name, one.held_on()]
+		else:
+			out += "; the %s carries about %sx its working load %s" % [name, Balance.tidy(one.ratio),
+				one.held_on()]
 		break
 	return out
 

@@ -101,7 +101,8 @@ func to_meta() -> String:
 ## What the meta line said after FLOOR, read back; null for anything that
 ## is not one, so a file edited by hand cannot leave a model on nothing.
 static func parse(words: String) -> ModelFloor:
-	var said: PackedStringArray = words.strip_edges().split(" ", false)
+	# Split as LDraw splits a line: a tab is a space (metalines).
+	var said: PackedStringArray = LdrModel._fields(words.strip_edges())
 	if said.is_empty():
 		return null
 	var what: String = said[0].to_lower()
@@ -124,31 +125,32 @@ func whole_words() -> String:
 
 ## The floor a model's text says it stands on, or null when it says none.
 static func read(text: String) -> ModelFloor:
-	var found: RegExMatch = RegEx.create_from_string(
-		"(?m)^0 !BRICKWORKS FLOOR (.*)$").search(text)
-	return parse(found.get_string(1)) if found != null else null
+	return read_from(MetaIndex.of_text(text))
 
 
-## [param text] with the floor's line in the head of its model: after the
-## title, the name and the author, before the first blank line (or the
-## first part, in a file written elsewhere). Any floor line it had goes.
-## Before a ROTSTEP that turns the first step, which the booklet's lines put
-## before the first part: after it, each save moved the line past it.
+## The floor the model's own lines say (MetaIndex: a sub-model's FLOOR is its
+## own, lightpaths), the first that reads, taken; null when none does. One it
+## cannot read stays in the file as it is.
+static func read_from(metas: MetaIndex) -> ModelFloor:
+	return metas.first_read("FLOOR", func(said: String) -> Variant: return parse(said)) as ModelFloor
+
+
+## What a FLOOR line's [param said] says, as the app writes it, or null for
+## one this cannot read: two lines are the same floor by it, so a file's
+## "0 !BrickWorks floor baseplate 32 32 2" is kept as it is by a save that
+## says BASEPLATE 32 32 2 (mlcheck F4).
+static func said_in(said: String) -> Variant:
+	var read: ModelFloor = parse(said)
+	return read.to_meta() if read != null else null
+
+
+## [param text] with the floor's line in the head of its model (MetaIndex
+## .HEAD: after the title, the name and the author, before the first blank
+## line, part or step), or where the model's floor line was. A model's own
+## alone: a sub-model's stays as it is.
 func written_into(text: String) -> String:
-	var lines: PackedStringArray = text.split("\n")
-	var kept := PackedStringArray()
-	for line: String in lines:
-		if not line.begins_with(META):
-			kept.append(line)
-	var at: int = kept.size()
-	for n: int in kept.size():
-		var line: String = kept[n].strip_edges()
-		if n > 0 and (line.is_empty() or line.begins_with("1 ") or line.begins_with("0 FILE")
-				or line == "0 STEP" or line.to_upper().begins_with("0 ROTSTEP")):
-			at = n
-			break
-	kept.insert(at, to_meta())
-	return "\n".join(kept)
+	return MetaIndex.written(text, [MetaIndex.family(["FLOOR"], PackedStringArray([to_meta()]),
+		MetaIndex.HEAD)])
 
 
 ## In words, for a menu or a line in the status bar.

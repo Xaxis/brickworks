@@ -1,0 +1,58 @@
+{
+ "shots": [
+  {
+   "id": "collections-save",
+   "source": "site",
+   "route": "/m/DocsSprt01",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account",
+    "signed-in"
+   ],
+   "steps": [
+    {
+     "click": "[aria-controls=\"save-panel\"]"
+    },
+    {
+     "wait": "#save-panel"
+    }
+   ],
+   "crop": "#save-panel",
+   "pad": 12,
+   "alt": "Save on a model's page, open: Save it to, with Favourites marked only you and ticked, your collections each marked public or only you, and a box for A new collection with Make it.",
+   "caption": "Save, on a model's page.",
+   "features": [
+    "ui:shared model page and card"
+   ]
+  },
+  {
+   "id": "collections-directory",
+   "source": "site",
+   "route": "/collections",
+   "viewport": [
+    1280,
+    860
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "use": [
+    "test-account"
+   ],
+   "wait": "article.collection-card",
+   "alt": "The gallery's Collections tab: the search, the pills Recently added to and Most followed, and collections as cards, each with a cover of four model pictures, its name, its owner, how many models and followers, and Follow.",
+   "caption": "brickworks.diy/collections.",
+   "features": [
+    "ui:collections directory"
+   ]
+  }
+ ]
+}

@@ -35,7 +35,10 @@
 //                            parts list counts it (api/_parts.js); as=xml
 //                            (/m/X/parts.xml) a BrickLink wanted list,
 //                            as=csv (/m/X/parts.csv) a Rebrickable parts
-//                            list, each to download; with v=N, version N's
+//                            list, as=pab (/m/X/parts-pab.csv; past 400
+//                            elements as=pab-2, /m/X/parts-pab-2.csv, and
+//                            on) a LEGO® Pick a Brick list, each to
+//                            download; with v=N, version N's
 //   GET  ?op=scene&id=X      /m/X/scene.json: the model packed for its page's
 //                            3D view (api/_parts.js sceneOf), every part's
 //                            place, turn and colour, its geometry in the
@@ -250,7 +253,9 @@ import {
   librarySets, searchSets, setCard, setModel, setTitle, themeOf, themes,
 } from "./_library.js";
 // A model's parts list from its file, as the app's (site278).
-import { inventoryOf, inventoryOfLots, namesOf, paletteOf, partNames, partsTable, rebrickableCsv, roomOf, sceneOf, wantedList } from "./_parts.js";
+import { PICK_A_BRICK_LINES, PICK_A_BRICK_MOST, inventoryOf, inventoryOfLots, namesOf, paletteOf, partNames, partsTable,
+  pickABrick, rebrickableCsv, roomOf, sceneOf, wantedList } from "./_parts.js";
+import { afterFields, keyOf, sectionKey } from "./_subfiles.js";
 import { checkTested, markOf, ownerMark, publicMark } from "./_tested.js";
 import { changedOf, changesBetween, lotSaid, readChanges, saidOf } from "./_versions.js";
 import { countSaid, sideSaid, stepCount, stepsSaid } from "./_steps.js";
@@ -415,9 +420,14 @@ export function checkModel(text) {
       order.push(current.name);
     }
   };
+  // Each file keyed as the app keys it (sectionKey): its first block the
+  // one a reference means, as LDView reads a file (keep), and the model's own
+  // by a key no reference gives, so a later block of its name is that one,
+  // not the model placing itself (ofcheck F4).
+  const blocks = new Map();
   const start = (name) => {
-    current = { name: name.toLowerCase(), placed: [], colours: [], isPart: /\.dat$/i.test(name), steps: 0, open: false,
-      author: "" };
+    current = { name: sectionKey(name, blocks), placed: [], colours: [], isPart: /\.dat$/i.test(name), steps: 0,
+      open: false, author: "" };
     keep();
   };
 
@@ -433,7 +443,7 @@ export function checkModel(text) {
     if (kind === "0") {
       const meta = (tokens[1] || "").toUpperCase();
       if (meta === "FILE") {
-        start(line.replace(/^0\s+FILE\s+/i, "").trim());
+        start(afterFields(raw, 2));
         inData = false;
       } else if (meta === "!DATA") {
         // An embedded picture: base64 in `0 !:` lines, not a model.
@@ -466,7 +476,7 @@ export function checkModel(text) {
         throw new Refusal(`that is not LDraw text: line ${lineNo} is not a well-formed part line`, 415);
       }
       keep();
-      current.placed.push(line.split(/\s+/).slice(14).join(" ").toLowerCase());
+      current.placed.push(keyOf(afterFields(raw, 14)));
       current.colours.push(tokens[1]);
       current.open = true;
     } else {
@@ -1426,7 +1436,7 @@ export const LOTS_SHOWN = 12;
 export const LOT_ROW = 60;
 
 /// Its parts (site278, docs/SOCIAL.md U4): how many in how many lots, the
-/// two shops' lists to download, and the list itself, which
+/// three shops' lists to download, and the list itself, which
 /// web/model-page.js asks for (/m/X/parts.json) as the section nears the
 /// screen, a row a lot under a row a colour, or a kind. Nothing where
 /// this deployment cannot list them. [at] is /m/X, or /m/X/v/N for an older
@@ -1435,6 +1445,7 @@ function partsSection(at, parts) {
   if (!parts || !parts.lots.length) return "";
   const colours = new Set(parts.lots.map((lot) => lot.colour)).size;
   const rows = Math.min(LOTS_SHOWN, parts.lots.length + colours);
+  const pab = pickABrick(parts);
   // Lean: every byte here is in the page's first bytes, and the list is not.
   return `<section class="parts" id="parts" aria-labelledby="parts-h" data-parts="${at}/parts.json">`
     + `<h2 id="parts-h">${asText(say("Parts"))}</h2><p class="note">${escapeHtml(say("{parts} in {lots}",
@@ -1442,12 +1453,50 @@ function partsSection(at, parts) {
     + `<div class="parts-bar"><div class="segmented" role="group" aria-label="${asText(say("Group them by"))}">`
     + `<button type="button" data-group="colour" aria-pressed="true">${asText(say("Colour"))}</button>`
     + `<button type="button" data-group="kind" aria-pressed="false">${asText(say("Kind"))}</button></div>`
-    + `<a class="cta ghost small" href="${at}/parts.xml" download>BrickLink XML</a>`
-    + `<a class="cta ghost small" href="${at}/parts.csv" download>Rebrickable CSV</a></div>`
+    // The shops' lists together: beside Colour and Kind where they fit, on
+    // a row of their own where not, so a phone's rows read shop by shop.
+    + `<div class="parts-shops"><a class="cta ghost small" href="${at}/parts.xml" download>BrickLink XML</a>`
+    + `<a class="cta ghost small" href="${at}/parts.csv" download>Rebrickable CSV</a>${pickABrickLinks(at, pab)}</div></div>`
+    + pickABrickNote(pab)
     + `<ul class="lot-list" style="min-height:${rows * LOT_ROW}px"></ul>`
     + (parts.lots.length + colours > LOTS_SHOWN ? `<button type="button" class="cta ghost small" data-all hidden>`
       + `${escapeHtml(say("Show all {lots}", { lots: counted(parts.lots.length, "lot") }))}</button>` : "")
     + `</section>`;
+}
+
+/// The parts' LEGO® Pick a Brick list ([made]: api/_parts.js pickABrick),
+/// beside the other two shops': /m/X/parts-pab.csv, and past
+/// PICK_A_BRICK_LINES elements a file each, as Pick a Brick's upload takes
+/// them (/m/X/parts-pab-2.csv, …), each saying which it is. None where no
+/// part has an element number known.
+function pickABrickLinks(at, made) {
+  const all = made.files.length;
+  const what = say("A list of LEGO® element numbers to upload at LEGO® Pick a Brick");
+  const why = all > 1 ? `. ${say("Pick a Brick takes {lines} elements a file.", { lines: number(PICK_A_BRICK_LINES) })}` : "";
+  return made.files.map((file, n) => `<a class="cta ghost small" href="${at}/parts-pab${n ? `-${n + 1}` : ""}.csv" download`
+    + ` title="${asText(`${what}${why}`)}">${asText(all > 1
+      ? say("LEGO® Pick a Brick CSV, {n} of {all}", { n: number(n + 1), all: number(all) })
+      : say("LEGO® Pick a Brick CSV"))}</a>`).join("");
+}
+
+/// What the Pick a Brick list ([made]) leaves for a person to find
+/// elsewhere, under the shops' buttons: the lots with no LEGO® element
+/// number known (a made part among them), counted, never guessed; and each
+/// element wanted more times than Pick a Brick takes, the rest to add by
+/// hand. Nothing where it leaves nothing.
+function pickABrickNote(made) {
+  const said = [];
+  if (made.missing.length) {
+    said.push(say("Not on the Pick a Brick list, with no LEGO® element number known: {lots} ({parts}).", {
+      lots: counted(made.missing.length, "lot"),
+      parts: counted(made.missing.reduce((n, lot) => n + lot.count, 0), "part") }));
+  }
+  const over = Object.entries(made.over);
+  if (over.length) {
+    said.push(say("Pick a Brick takes {most} of an element: add by hand {more}.", { most: number(PICK_A_BRICK_MOST),
+      more: over.map(([element, more]) => say("{n} more of {element}", { n: number(more), element })).join(", ") }));
+  }
+  return said.length ? `<p class="note pab-note">${said.map((one) => escapeHtml(one)).join(" ")}</p>` : "";
 }
 
 /// The public collections it is in (docs/SOCIAL.md U11, [PR-C]), each a card
@@ -1911,12 +1960,49 @@ export function piecesIn(text, otherwise) {
   }
 }
 
-/// A file name for [name]: its words in lower case, joined by hyphens,
-/// nothing a file system minds; [fallback] where none are left.
+/// A file name for [name]: its words in lower case, joined by hyphens, their
+/// letters and numbers in any script with their accents, as the app's own
+/// names keep them (SubmodelFile.titled); nothing a file system minds;
+/// [fallback] where none are left. At most 60 characters, cut between two
+/// as a reader sees them, so no accent is cut off its letter. It kept a to z
+/// and 0 to 9 alone, and named a Japanese title "model" and an Arabic one
+/// "1" (se4check). A Windows device's name is the whole file's to say
+/// ([attachment]).
 export function fileName(name, fallback) {
-  const words = String(name || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
-    .replace(/['’]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60).replace(/-+$/, "");
-  return words || fallback;
+  const words = String(name || "").normalize("NFKC").toLowerCase()
+    .replace(/['’]/g, "").replace(/[^\p{L}\p{M}\p{N}]+/gu, "-").replace(/^[-\p{M}]+|-+$/gu, "");
+  let cut = "";
+  for (const { segment } of new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(words)) {
+    if (cut.length + segment.length > 60) break;
+    cut += segment;
+  }
+  return cut.replace(/-+$/, "") || fallback;
+}
+
+/// The Content-Disposition of a download named [file] ("castle-v2.mpd"):
+/// its name as it is in filename* (RFC 6266, which every browser reads),
+/// and in filename, for one that reads only that, the same in ASCII ("café"
+/// as "cafe", a name of no Latin letter "model"). A name all ASCII has
+/// filename alone, as it always had. A Windows device's name ("con.mpd" is
+/// the console there) given a "_", looked for in the whole name as Windows
+/// does: con-v2.mpd and con-bricklink.xml are no device's, and were
+/// con_-v2.mpd (se4check), the app's rule the same (SubmodelFile.titled).
+export function attachment(file) {
+  const named = undeviced(file);
+  const ascii = undeviced(named.normalize("NFKD").replace(/\p{M}/gu, "").replace(/[^\x21-\x7e]+/g, "-")
+    .replace(/["\\;%]/g, "-").replace(/^-+(?=\.)/, "model").replace(/^-+/, "model-").replace(/-{2,}/g, "-")
+    .replace(/-+(?=\.[^.]*$)/, ""));
+  if (named === ascii) return `attachment; filename="${ascii}"`;
+  const encoded = encodeURIComponent(named).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${encoded}`;
+}
+
+/// [file] with a "_" after a Windows device's name that starts it, whatever
+/// follows its first dot: con.mpd is con_.mpd, as the app has it.
+function undeviced(file) {
+  const device = file.split(".")[0].replace(/ +$/, "");
+  return /^(con|conin\$|conout\$|prn|aux|nul|com[0-9¹²³]|lpt[0-9¹²³])$/i.test(device)
+    ? `${device}_${file.slice(device.length)}` : file;
 }
 
 /// /m/X.mpd, /m/X/parts.json, .xml and .csv: the file as it is stored, or
@@ -1938,7 +2024,7 @@ async function download(response, op, id, asked, as, lang = "en") {
   const file = await getFile(stored);
   if (!file) return fail(410, "This model is no longer shared.");
   const base = `${fileName(row.name, id)}${shown.n === newest ? "" : `-v${shown.n}`}`;
-  const named = (ext) => `attachment; filename="${base}.${ext}"`;
+  const named = (ext) => attachment(`${base}.${ext}`);
   response.setHeader("Cache-Control", SHARED_CACHE);
   response.setHeader("X-Content-Type-Options", "nosniff");
   if (op === "file") {
@@ -1962,19 +2048,34 @@ function partsAnswer(response, parts, base, as, said, lang = "en") {
   if (!parts) return fail(503, "This site cannot list a model's parts just now.");
   if (as === "xml") {
     response.setHeader("Content-Type", "application/xml; charset=utf-8");
-    response.setHeader("Content-Disposition", `attachment; filename="${base}-bricklink.xml"`);
+    response.setHeader("Content-Disposition", attachment(`${base}-bricklink.xml`));
     return response.status(200).end(wantedList(parts).text);
   }
   if (as === "csv") {
     response.setHeader("Content-Type", "text/csv; charset=utf-8");
-    response.setHeader("Content-Disposition", `attachment; filename="${base}-rebrickable.csv"`);
+    response.setHeader("Content-Disposition", attachment(`${base}-rebrickable.csv`));
     return response.status(200).end(rebrickableCsv(parts).text);
   }
-  if (as !== "json") return fail(400, `a parts list is json, xml or csv, not ${as}`);
+  // The LEGO® Pick a Brick list (pickABrick), a file of PICK_A_BRICK_LINES
+  // elements at most: pab the first, pab-2 the second, as the page links
+  // them; named as the app names them, -pickabrick.csv, or -pickabrick-N.csv
+  // each where there are more.
+  const asked = /^pab(?:-([1-9][0-9]{0,2}))?$/.exec(as);
+  if (asked) {
+    const { files } = pickABrick(parts);
+    const n = Number(asked[1] || 1);
+    if (!files.length) return fail(404, "No LEGO® element number is known for any part of this, so there is nothing for Pick a Brick.");
+    if (n > files.length) return fail(404, `Its Pick a Brick list is ${count(files.length, "file")}.`);
+    response.setHeader("Content-Type", "text/csv; charset=utf-8");
+    response.setHeader("Content-Disposition", attachment(`${base}-pickabrick${files.length > 1 ? `-${n}` : ""}.csv`));
+    return response.status(200).end(files[n - 1]);
+  }
+  if (as !== "json") return fail(400, `a parts list is json, xml, csv or pab, not ${as}`);
   // Each lot's picture is drawn by the page (web/part-pictures.js) from its
   // part's geometry (mesh), fetched from the store (root), in its colours.
   const root = storeRoot();
   const words = SITE_LANGS.includes(lang) ? partNames(lang) : null;
+  const pab = pickABrick(parts);
   return response.status(200).json({
     ...said, ...(words ? { lang } : {}), pieces: parts.pieces,
     lots: parts.lots.map((lot) => ({ part: lot.part, name: lot.name, category: lot.category, colour: lot.colour,
@@ -1982,10 +2083,17 @@ function partsAnswer(response, parts, base, as, said, lang = "en") {
       mesh: (root && lot.mesh) || null, ...namesOf(lot, words) })),
     root: root || null, colours: root ? paletteOf() : {},
     // What each shop's list leaves off: a made part, or a colour it has no
-    // number for; and the direct colours each lists in the nearest colour
-    // still made ("#FF0000 as Reddish Orange"), as no shop sells them.
-    left_out: { bricklink: wantedList(parts).left_out, rebrickable: rebrickableCsv(parts).left_out },
+    // number for (Pick a Brick's: a lot with no element number known); and
+    // the direct colours each lists in the nearest colour still made
+    // ("#FF0000 as Reddish Orange"), as no shop sells them.
+    left_out: { bricklink: wantedList(parts).left_out, rebrickable: rebrickableCsv(parts).left_out,
+      pickabrick: pab.missing.length },
     stand_ins: wantedList(parts).stand_ins,
+    // The Pick a Brick list: its files, its lines (an element each) and the
+    // pieces on it, the pieces of the lots it left off, and each element
+    // past what it takes, with how many more to add by hand.
+    pickabrick: { files: pab.files.length, lines: pab.lines, pieces: pab.pieces,
+      left_out_pieces: pab.missing.reduce((n, lot) => n + lot.count, 0), over: pab.over },
   });
 }
 
@@ -2243,6 +2351,12 @@ const libraryOf = (tests = false) => (tests ? { arrivals: () => db("rpc/library_
 /// changes a few times a year, so an hour, given while it asks again for a
 /// day. A cover a week: it is drawn again only when the index is built again.
 const SET_CACHE = "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400";
+/// A set's page, its parts and its 3D scene: each is made from the set's
+/// whole file (up to 36 MB) read from Supabase Storage, every read paid as
+/// egress, so the CDN keeps them a week and serves the old one a month while
+/// it asks again. Kept an hour, crawlers walking every set in every language
+/// read 10-25 GB a day and ran the organization past its quota (2026-11-12).
+const SET_PAGE_CACHE = "public, max-age=300, s-maxage=604800, stale-while-revalidate=2592000";
 const COVER_CACHE = "public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800";
 
 /// /library's sets (web/library.js), as askOf reads the query: {models (the
@@ -2288,7 +2402,7 @@ async function setPage(response, origin, id, tests = false, lang = "en") {
   const parts = text ? partsOf(entry.file, Buffer.from(text)) : null;
   const next = { by: [], like: setsBeside(await librarySets(libraryOf(tests)), entry), gallery: [] };
   return html(response, 200, speak(() => sharePage(origin, id, setModel(entry, { authors: authorsIn(text), steps: fileSteps(text) }),
-    [], null, null, [], next, null, undefined, parts, lang, words)), { cache: tests ? TESTS_CACHE : SET_CACHE });
+    [], null, null, [], next, null, undefined, parts, lang, words)), { cache: tests ? TESTS_CACHE : SET_PAGE_CACHE });
 }
 
 /// A set's pictures, each drawn by the app's own renderer
@@ -2339,7 +2453,7 @@ async function setParts(response, id, as, tests = false, lang = "en") {
     return response.status(404).setHeader("Cache-Control", "no-store").json({ error: "The LDraw library has no such set." });
   }
   const text = await storeFile(entry).catch(() => null);
-  response.setHeader("Cache-Control", SET_CACHE);
+  response.setHeader("Cache-Control", SET_PAGE_CACHE);
   response.setHeader("X-Content-Type-Options", "nosniff");
   return partsAnswer(response, text ? partsOf(entry.file, Buffer.from(text)) : null,
     fileName(setTitle(entry), entry.id), as, { id, version: 1, newest: 1 }, lang);
@@ -2354,7 +2468,7 @@ async function setScene(response, id, tests = false, kind = "scene") {
   }
   const text = await storeFile(entry).catch(() => null);
   if (!text) return response.status(503).setHeader("Cache-Control", "no-store").json({ error: "Its file could not be read just now." });
-  response.setHeader("Cache-Control", SET_CACHE);
+  response.setHeader("Cache-Control", SET_PAGE_CACHE);
   response.setHeader("X-Content-Type-Options", "nosniff");
   return sceneAnswer(response, entry.file, Buffer.from(text), `library:${entry.id}`, kind);
 }
@@ -3080,7 +3194,10 @@ async function publish(request, response) {
     const before = await getFile(`${id}.mpd`);
     if (before) {
       await putFile(`${id}.v${last.n}.mpd`, before, "text/plain");
-      changes = changesBetween(before.toString("utf8"), body.model);
+      // Read as the app reads them: a library's shortcut is its part.
+      const table = partsTable();
+      changes = changesBetween(before.toString("utf8"), body.model,
+        (id) => Boolean(table && Object.prototype.hasOwnProperty.call(table.parts, id)));
     }
     const picturedBefore = last.has_image ? await getFile(`${id}.png`) : null;
     if (picturedBefore) await putFile(`${id}.v${last.n}.png`, picturedBefore, "image/png");

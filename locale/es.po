@@ -2473,9 +2473,6 @@ msgstr "%s-arrastrar dibuja un recuadro"
 msgid "Select: click selects it"
 msgstr "Seleccionar: un clic la selecciona"
 
-msgid "drag moves it (on a joint, as the real part moves)"
-msgstr "arrastrar la mueve (en una articulación, como la pieza real)"
-
 msgid "%s-drag copies it"
 msgstr "%s-arrastrar la copia"
 
@@ -2765,6 +2762,9 @@ msgstr "ABAJO"
 # The model tree's sections
 msgid "Double-click to edit inside; drag onto another to nest"
 msgstr "Doble clic para editar dentro; arrastrar sobre otro para anidarlo"
+
+msgid "Double-tap to edit inside; hold one, then drag it onto another to nest"
+msgstr "Doble toque para editar dentro; mantener pulsado y arrastrar sobre otro para anidarlo"
 
 msgid "How a builder would split the model into sections, as a set into bags"
 msgstr "Cómo dividiría un constructor el modelo en secciones, como un set en bolsas"
@@ -3059,6 +3059,27 @@ msgstr "un clic lo toma entero, un doble clic lo edita por dentro"
 
 msgid "took %s apart"
 msgstr "%s deshecho"
+
+msgid "its light went with its parts"
+msgstr "su luz siguió a sus piezas"
+
+msgid "its %d lights went with its parts"
+msgstr "sus %d luces siguieron a sus piezas"
+
+msgid "%d of its lights went with it"
+msgstr "%d de sus luces se fueron con él"
+
+msgid "one of its lights went with it"
+msgstr "una de sus luces se fue con él"
+
+msgid "its saved view went with it"
+msgstr "su vista guardada se fue con él"
+
+msgid "its %d saved views went with it"
+msgstr "sus %d vistas guardadas se fueron con él"
+
+msgid "%s here keeps its own lights and views, not the copied ones"
+msgstr "%s conserva aquí sus propias luces y vistas, no las copiadas"
 
 msgid "took 1 part out of its sub-assembly"
 msgstr "1 pieza sacada de su subconjunto"
@@ -3388,11 +3409,11 @@ msgstr "%s gira sobre %s en un pasador con fricción, con %s g más allá, %s ve
 msgid "%s turns on %s on %d friction pins in a line with %s g past it, %sx its working load"
 msgstr "%s gira sobre %s en %d pasadores con fricción en línea, con %s g más allá, %s veces su carga de trabajo"
 
-msgid "%s turns on %s on a frictionless pin or axle with %s g past it, %sx its working load"
-msgstr "%s gira sobre %s en un pasador sin fricción o un eje, con %s g más allá, %s veces su carga de trabajo"
+msgid "%s turns on %s on a frictionless pin or axle with %s g past it, and nothing holding it"
+msgstr "%s gira sobre %s en un pasador sin fricción o un eje, con %s g más allá, y nada lo sujeta"
 
-msgid "%s turns on %s on %d frictionless pins or axles in a line with %s g past it, %sx its working load"
-msgstr "%s gira sobre %s en %d pasadores sin fricción o ejes en línea, con %s g más allá, %s veces su carga de trabajo"
+msgid "%s turns on %s on %d frictionless pins or axles in a line with %s g past it, and nothing holding it"
+msgstr "%s gira sobre %s en %d pasadores sin fricción o ejes en línea, con %s g más allá, y nada lo sujeta"
 
 msgid "%s g held by nothing stands on %s by touch alone, its weight %s studs past where it touches"
 msgstr "%s g sin nada que los sujete se apoyan en %s solo por contacto, su peso a %s espigas más allá del apoyo"
@@ -3471,12 +3492,6 @@ msgstr "Ensánchalo %d espigas por el lado %s"
 
 msgid "Widen it %d studs to the %s."
 msgstr "Ensánchalo %d espigas por el lado %s."
-
-msgid "1 stud joint overloaded, in red."
-msgstr "1 unión de espigas sobrecargada, en rojo."
-
-msgid "%d stud joints overloaded, in red."
-msgstr "%d uniones de espigas sobrecargadas, en rojo."
 
 msgid "left"
 msgstr "izquierdo"
@@ -4075,6 +4090,9 @@ msgstr "%d sin mostrar, conservadas en el archivo (%s)"
 
 msgid "%d not in the library, left out (%s)"
 msgstr "%d no están en la biblioteca, omitidas (%s)"
+
+msgid "%d could not be loaded, kept in the file (%s)"
+msgstr "%d no se pudieron cargar, conservadas en el archivo (%s)"
 
 msgid "%d are still arriving, open it again in a moment"
 msgstr "%d aún están llegando, ábrelo de nuevo en un momento"
@@ -4780,6 +4798,72 @@ msgstr "Mostrar resueltos (%d)"
 msgid "Comments in a session are for people 13 and over, as chat is."
 msgstr "Los comentarios de una sesión son para mayores de 13 años, como el chat."
 
+# Build together (pcfix): what another's change overtook, and what a session can't carry yet.
+msgid "%s changed a part you had just changed; theirs came after yours, so it stands."
+msgstr "%s cambió una pieza que acababas de cambiar; su cambio llegó después del tuyo, así que se mantiene."
+
+msgid "%s changed %d parts you had just changed; theirs came after yours, so they stand."
+msgstr "%s cambió %d piezas que acababas de cambiar; sus cambios llegaron después de los tuyos, así que se mantienen."
+
+msgid "%s changed %s just after you did; theirs came after yours, so it stands."
+msgstr "%s cambió %s justo después que tú; su cambio llegó después del tuyo, así que se mantiene."
+
+msgid "This session can't carry %s yet: the others keep theirs as they were, and everything else still reaches them."
+msgstr "Esta sesión aún no puede transmitir %s: los demás conservan los suyos como estaban y todo lo demás les sigue llegando."
+
+msgid "%s's lights and views"
+msgstr "las luces y las vistas de %s"
+
+msgid "sub-models' lights and views"
+msgstr "las luces y las vistas de los submodelos"
+
+msgid "the model's name"
+msgstr "el nombre del modelo"
+
+msgid "what the model stands on"
+msgstr "aquello sobre lo que se apoya el modelo"
+
+msgid "the hidden colours"
+msgstr "los colores ocultos"
+
+msgid "the model's motions"
+msgstr "los movimientos del modelo"
+
+msgid "the booklet's looks"
+msgstr "el aspecto de las instrucciones"
+
+msgid "the steps of sub-assembly copies"
+msgstr "los pasos de las copias de subconjuntos"
+
+msgid "the sections broken out"
+msgstr "las secciones separadas"
+
+msgid "the model's lights"
+msgstr "las luces del modelo"
+
+msgid "a comment pinned to a part"
+msgstr "un comentario fijado a una pieza"
+
+msgid "the model's settings"
+msgstr "los ajustes del modelo"
+
+# Build together (pcredesign): where a copy's lights stand, what is too long, an undo held back.
+msgid "where the lights and views of %s stand"
+msgstr "dónde están las luces y las vistas de %s"
+
+msgid "This session can't carry sub-models' lights and views yet: everything else still reaches the others, but on their side a sub-model's lights and views stay where they were when you move or make one here, and one you rename here has none there."
+msgstr "Esta sesión aún no puede transmitir las luces y las vistas de los submodelos: todo lo demás sigue llegando a los demás, pero en su lado las luces y las vistas de un submodelo se quedan donde estaban cuando mueves o creas uno aquí, y el que cambias de nombre aquí no tiene ninguna allí."
+
+msgid "This session can't carry %s, longer than it takes: everything else still reaches the others, but on their side those stay as they were."
+msgstr "Esta sesión no puede transmitir %s, más largo de lo que admite: todo lo demás sigue llegando a los demás, pero en su lado eso se queda como estaba."
+
+msgid "undid nothing: somebody else changed %s since"
+msgstr "no se deshizo nada: otra persona cambió %s desde entonces"
+
+msgid "redid nothing: somebody else changed %s since"
+msgstr "no se rehízo nada: otra persona cambió %s desde entonces"
+
+
 msgid "A comment on %s, kept with the model: in its file, the autosave and a shared link, and seen by whoever builds it with you."
 msgstr "Un comentario sobre %s, guardado con el modelo: en su archivo, el autoguardado y un enlace compartido, y visible para quien lo construya contigo."
 
@@ -5018,6 +5102,133 @@ msgstr "No se ha podido enviar ahora. Vuelve a intentarlo en un minuto."
 msgid "Thank you."
 msgstr "Gracias."
 
+# Report a bug (bugreport, 2026-11-09)
+msgid "Report a bug"
+msgstr "Informar de un error"
+
+msgid "Report a bug…"
+msgstr "Informar de un error…"
+
+msgid "Report this"
+msgstr "Informar"
+
+msgid "Tell us what went wrong, with a picture of the window to mark the spot on"
+msgstr "Cuéntanos qué ha fallado, con una imagen de la ventana para marcar el lugar"
+
+msgid "Tell us what went wrong, with a picture of the window to mark the spot on (%s)"
+msgstr "Cuéntanos qué ha fallado, con una imagen de la ventana para marcar el lugar (%s)"
+
+msgid "Share an idea"
+msgstr "Compartir una idea"
+
+msgid "Ask a question"
+msgstr "Hacer una pregunta"
+
+msgid "What happened?"
+msgstr "¿Qué ha pasado?"
+
+msgid "What would you like?"
+msgstr "¿Qué te gustaría?"
+
+msgid "What would you like to ask?"
+msgstr "¿Qué quieres preguntar?"
+
+msgid "What did you expect to happen? (optional)"
+msgstr "¿Qué esperabas que pasara? (opcional)"
+
+msgid "Tell us what went wrong. We read every report ourselves."
+msgstr "Cuéntanos qué ha fallado. Leemos cada informe nosotros mismos."
+
+msgid "Send report"
+msgstr "Enviar el informe"
+
+msgid "Clear the marks"
+msgstr "Borrar las marcas"
+
+msgid "Leave the picture out"
+msgstr "No incluir la imagen"
+
+msgid "Put the picture back"
+msgstr "Volver a incluir la imagen"
+
+msgid "Drag on the picture to mark the spot."
+msgstr "Arrastra sobre la imagen para marcar el lugar."
+
+msgid "1 mark. Drag again to add another."
+msgstr "1 marca. Arrastra otra vez para añadir otra."
+
+msgid "%d marks. Drag again to add another."
+msgstr "%d marcas. Arrastra otra vez para añadir otra."
+
+msgid "No picture goes with it."
+msgstr "No va ninguna imagen."
+
+msgid "The picture that goes with the report. Drag on it to mark the spot."
+msgstr "La imagen que va con el informe. Arrastra sobre ella para marcar el lugar."
+
+msgid "What will be sent"
+msgstr "Lo que se enviará"
+
+msgid "What you wrote"
+msgstr "Lo que has escrito"
+
+msgid "the picture"
+msgstr "la imagen"
+
+msgid "the picture, with 1 mark"
+msgstr "la imagen, con 1 marca"
+
+msgid "the picture, with %d marks"
+msgstr "la imagen, con %d marcas"
+
+msgid "the version and your system"
+msgstr "la versión y tu sistema"
+
+msgid "the model, as a file"
+msgstr "el modelo, como archivo"
+
+msgid "1 log line"
+msgstr "1 línea del registro"
+
+msgid "%d log lines"
+msgstr "%d líneas del registro"
+
+msgid "the error it said"
+msgstr "el mensaje de error"
+
+msgid "The app's log lines up to the error (%d), which say what it was doing"
+msgstr "Las líneas del registro de la aplicación hasta el error (%d), que dicen qué estaba haciendo"
+
+msgid "Say what happened."
+msgstr "Di qué ha pasado."
+
+msgid "Sign in to send a report: Account, at the top right."
+msgstr "Inicia sesión para enviar un informe: Cuenta, arriba a la derecha."
+
+msgid "Something went wrong in Brickworks. Report this, and what it was doing goes with it."
+msgstr "Algo ha fallado en Brickworks. Infórmanos, y lo que estaba haciendo irá con el informe."
+
+msgid "Thank you. Report #%d is in."
+msgstr "Gracias. El informe #%d ha llegado."
+
+msgid "Thank you. Your report is in."
+msgstr "Gracias. Tu informe ha llegado."
+
+msgid "We read every report ourselves. Follow it, and our answer, in Your reports."
+msgstr "Leemos cada informe nosotros mismos. Síguelo, y nuestra respuesta, en Tus mensajes."
+
+msgid "We read every report ourselves. Follow it, and our answer, in Your reports. The picture and the model did not go with it."
+msgstr "Leemos cada informe nosotros mismos. Síguelo, y nuestra respuesta, en Tus mensajes. La imagen y el modelo no fueron con él."
+
+msgid "We read every report ourselves. Follow it, and our answer, in Your reports. The picture did not go with it."
+msgstr "Leemos cada informe nosotros mismos. Síguelo, y nuestra respuesta, en Tus mensajes. La imagen no fue con él."
+
+msgid "We read every report ourselves. Follow it, and our answer, in Your reports. The model did not go with it."
+msgstr "Leemos cada informe nosotros mismos. Síguelo, y nuestra respuesta, en Tus mensajes. El modelo no fue con él."
+
+msgid "Your reports"
+msgstr "Tus mensajes"
+
 msgid "A complete CAD for LEGO® models, built by hand or with the assistant, on the web or on your own computer."
 msgstr "Un CAD completo para modelos de LEGO®, construidos a mano o con el asistente, en la web o en tu propio ordenador."
 
@@ -5086,6 +5297,12 @@ msgstr "La tipografía del PDF de un manual y de las imágenes de sus páginas, 
 
 msgid "The type's licence"
 msgstr "Licencia de la tipografía"
+
+msgid "The emoji a booklet's PDF prints, in outline, carried in the PDF"
+msgstr "Los emoji que imprime el PDF de un manual, en contorno, incluidos en el PDF"
+
+msgid "The emoji's licence"
+msgstr "Licencia de los emoji"
 
 msgid "LEGO® Digital Designer's part and colour numbers in LDraw's terms, for opening .lxf models"
 msgstr "Los números de piezas y colores de LEGO® Digital Designer en términos de LDraw, para abrir modelos .lxf"
@@ -6825,6 +7042,33 @@ msgstr "omitidos: %s"
 
 msgid "no inventory is known for %s"
 msgstr "no se conoce el inventario de %s"
+
+msgid "%s marked missing came to more than the copies kept hold, and the rest is no longer marked: %s%s"
+msgstr "%s marcado(s) como que faltan: más de lo que tienen las copias guardadas, y el resto ya no está marcado: %s%s"
+
+msgid "%s: %d of %s in colour %d"
+msgstr "%s: %d de %s en color %d"
+
+msgid "the inventory of %s could not be read"
+msgstr "no se pudo leer el inventario de %s"
+
+msgid "the inventories of %s could not be read"
+msgstr "no se pudieron leer los inventarios de %s"
+
+msgid "its marks are kept as they were"
+msgstr "sus marcas se mantienen como estaban"
+
+msgid "their marks are kept as they were"
+msgstr "sus marcas se mantienen como estaban"
+
+msgid "%s is no longer in your Rebrickable lists: it went, with its %s marked missing"
+msgstr "%s ya no está en tus listas de Rebrickable: se quitó, con sus %s marcadas como que faltan"
+
+msgid "%s are no longer in your Rebrickable lists: they went, with their %s marked missing"
+msgstr "%s ya no están en tus listas de Rebrickable: se quitaron, con sus %s marcadas como que faltan"
+
+msgid "%s are no longer in your Rebrickable lists: they went, with the parts marked missing in them"
+msgstr "%s ya no están en tus listas de Rebrickable: se quitaron, con las piezas marcadas como que faltan"
 
 msgid "building from the parts of %s"
 msgstr "construyendo con las piezas de %s"
@@ -12511,6 +12755,373 @@ msgstr "espigas en tres lados"
 
 msgid "studs on four sides"
 msgstr "espigas en cuatro lados"
+
+# unit drive: a motion's path, where the whole model drives (pose_panel, motion_player)
+
+msgid "Where it drives"
+msgstr "Por dónde va"
+
+msgid "Drive along a path"
+msgstr "Conducir por un recorrido"
+
+msgid "The whole model driven along the ground, its wheels turning as it goes: 32 studs, then round a corner"
+msgstr "El modelo entero conducido por el suelo, sus ruedas girando a su paso: 32 espigas y luego una curva"
+
+msgid "Add a leg"
+msgstr "Añadir un tramo"
+
+msgid "Another leg at the path's end: straight on"
+msgstr "Otro tramo al final del recorrido: recto"
+
+msgid "No path"
+msgstr "Sin recorrido"
+
+msgid "The model stays where it stands; its joints still move"
+msgstr "El modelo se queda donde está; sus articulaciones siguen moviéndose"
+
+msgid "Over"
+msgstr "Duración"
+
+msgid "How long it takes, seconds"
+msgstr "Cuánto tarda, en segundos"
+
+msgid "It gathers speed at the start and slows to a stop at the end"
+msgstr "Gana velocidad al principio y frena hasta pararse al final"
+
+msgid "Straight"
+msgstr "Recto"
+
+msgid "Straight on, or a turn to the left or the right"
+msgstr "Recto, o una curva a la izquierda o a la derecha"
+
+msgid "How far, studs (less than 0 backwards)"
+msgstr "Qué distancia, en espigas (menos de 0, marcha atrás)"
+
+msgid "How far round, degrees"
+msgstr "Cuánto gira, en grados"
+
+msgid "How wide the turn is: its radius, studs, at the middle of the back axle"
+msgstr "Lo abierta que es la curva: su radio, en espigas, en el centro del eje trasero"
+
+msgid "Take this leg out of the path"
+msgstr "Quitar este tramo del recorrido"
+
+msgid "It moves nothing but the path: Remove takes the motion out."
+msgstr "No mueve nada más que el recorrido: «Quitar» saca el movimiento."
+
+msgid "It drives %s."
+msgstr "Recorre %s."
+
+msgid "It drives %s. %s Play plays it."
+msgstr "Recorre %s. %s «Reproducir» lo reproduce."
+
+msgid "%s studs straight"
+msgstr "%s espigas recto"
+
+msgid "%s studs backwards"
+msgstr "%s espigas marcha atrás"
+
+msgid "%s° left on a %s-stud radius"
+msgstr "%s° a la izquierda con un radio de %s espigas"
+
+msgid "%s° right on a %s-stud radius"
+msgstr "%s° a la derecha con un radio de %s espigas"
+
+msgid "%s, then %s"
+msgstr "%s y luego %s"
+
+msgid "1 wheel turns as it rolls (%s)"
+msgstr "1 rueda gira al rodar (%s)"
+
+msgid "1 wheel turns as it rolls (%s)."
+msgstr "1 rueda gira al rodar (%s)."
+
+msgid "%d wheels turn as it rolls (%s)"
+msgstr "%d ruedas giran al rodar (%s)"
+
+msgid "%d wheels turn as it rolls (%s)."
+msgstr "%d ruedas giran al rodar (%s)."
+
+msgid "%s, and %s steers it into the corners."
+msgstr "%s, y %s lo dirige en las curvas."
+
+msgid "No wheel turns as it rolls: none stands on the ground on a level axle"
+msgstr "Ninguna rueda gira al rodar: ninguna está en el suelo sobre un eje horizontal"
+
+msgid "No wheel turns as it rolls: none stands on the ground on a level axle."
+msgstr "Ninguna rueda gira al rodar: ninguna está en el suelo sobre un eje horizontal."
+
+# unit drive, review fixes: refused motion lines said and kept, a joint's part gone, a contact of no studs
+
+msgid "1 motion line not read, kept in the file as it is"
+msgstr "1 línea de movimiento sin leer, guardada tal cual en el archivo"
+
+msgid "%d motion lines not read, kept in the file as they are"
+msgstr "%d líneas de movimiento sin leer, guardadas tal cual en el archivo"
+
+msgid "%s (%d lines): %s"
+msgstr "%s (%d líneas): %s"
+
+msgid "a path has at most %d legs, not %d"
+msgstr "un recorrido tiene como mucho %d tramos, no %d"
+
+msgid "a turn of its path has no RADIUS"
+msgstr "una curva de su recorrido no tiene RADIUS"
+
+msgid "its path has %s where a leg goes"
+msgstr "su recorrido tiene %s donde va un tramo"
+
+msgid "it has two path lines"
+msgstr "tiene dos líneas de recorrido"
+
+msgid "it has two steering lines"
+msgstr "tiene dos líneas de dirección"
+
+msgid "a wheel or steering line with no path read"
+msgstr "una línea de rueda o de dirección sin recorrido leído"
+
+msgid "a wheel or steering line this does not read"
+msgstr "una línea de rueda o de dirección que aquí no se lee"
+
+msgid "nothing it moves was read"
+msgstr "no se leyó nada de lo que mueve"
+
+msgid "a sequence plays motions, and moves nothing of its own"
+msgstr "una secuencia reproduce movimientos y no mueve nada por sí misma"
+
+msgid "its path line is not one this reads"
+msgstr "su línea de recorrido no se lee aquí"
+
+msgid "its MOTION line is not one this reads"
+msgstr "su línea MOTION no se lee aquí"
+
+msgid "a track line this does not read"
+msgstr "una línea de pista que aquí no se lee"
+
+msgid "a driver line this does not read"
+msgstr "una línea de accionamiento que aquí no se lee"
+
+msgid "a key line this does not read"
+msgstr "una línea de clave que aquí no se lee"
+
+msgid "a key of a track it does not have"
+msgstr "una clave de una pista que no tiene"
+
+msgid "a motion line with no motion's name"
+msgstr "una línea de movimiento sin nombre de movimiento"
+
+msgid "%s is not a motion line this reads"
+msgstr "%s no es una línea de movimiento que se lea aquí"
+
+msgid "a path takes %s to %d seconds, not %s"
+msgstr "un recorrido dura de %s a %d segundos, no %s"
+
+msgid "a straight goes 0.01 to %d studs (less than 0 backwards), not %s"
+msgstr "una recta va de 0,01 a %d espigas (menos de 0 hacia atrás), no %s"
+
+msgid "A straight goes 0.01 to %d studs (less than 0 backwards), not %s."
+msgstr "Una recta va de 0,01 a %d espigas (menos de 0 hacia atrás), no %s."
+
+msgid "a turn goes 0.01 to %d degrees, not %s"
+msgstr "una curva va de 0,01 a %d grados, no %s"
+
+msgid "A turn goes 0.01 to %d degrees, not %s."
+msgstr "Una curva va de 0,01 a %d grados, no %s."
+
+msgid "a turn's radius is %s to %d studs, not %s"
+msgstr "el radio de una curva va de %s a %d espigas, no %s"
+
+msgid "A turn's radius is %s to %d studs, not %s."
+msgstr "El radio de una curva va de %s a %d espigas, no %s."
+
+msgid "a motion's joint has no part where it was, kept in the file as it was: %s"
+msgstr "una articulación de un movimiento ya no tiene pieza donde estaba, guardada tal cual en el archivo: %s"
+
+msgid "%d motions' joints have no part where they were, kept in the file as they were: %s"
+msgstr "%d articulaciones de movimientos ya no tienen pieza donde estaban, guardadas tal cual en el archivo: %s"
+
+msgid "the %s touches with no stud in contact: nothing holds it there"
+msgstr "%s toca sin ninguna espiga en contacto: nada lo sujeta ahí"
+
+msgid "on no stud"
+msgstr "sobre ninguna espiga"
+
+msgid "%s touches %s with no stud in contact, %s g past it: nothing holds it there"
+msgstr "%s toca %s sin ninguna espiga en contacto, %s g más allá: nada lo sujeta ahí"
+
+# drvcheck A-C: a pin or an axle said by its kind, refused motion lines an edit lets go
+
+msgid "the %s turns on a frictionless pin or axle with nothing holding it"
+msgstr "%s gira en un pasador sin fricción o un eje, sin nada que lo sujete"
+
+msgid "the %s turns on %d frictionless pins or axles in a line with nothing holding it"
+msgstr "%s gira en %d pasadores sin fricción o ejes en línea, sin nada que lo sujete"
+
+msgid "the %s carries about %sx its working load on a friction pin"
+msgstr "%s soporta unas %s veces su carga de trabajo en un pasador con fricción"
+
+msgid "the %s carries about %sx its working load on %d friction pins in a line"
+msgstr "%s soporta unas %s veces su carga de trabajo en %d pasadores con fricción en línea"
+
+msgid "1 motion line not read let go, as the next open would read it into %s: %s"
+msgstr "1 línea de movimiento sin leer quitada, porque la próxima apertura la leería en %s: %s"
+
+msgid "%d motion lines not read let go, as the next open would read them into %s: %s"
+msgstr "%d líneas de movimiento sin leer quitadas, porque la próxima apertura las leería en %s: %s"
+
+# drive2 (drvrecheck F4, words): joints by their kind, and the standing line's start and studs
+
+msgid "1 joint overloaded, in red."
+msgstr "1 unión sobrecargada, en rojo."
+
+msgid "%d joints overloaded, in red."
+msgstr "%d uniones sobrecargadas, en rojo."
+
+msgid "stands, %s studs inside the %s edge"
+msgstr "se sostiene, a %s espigas dentro del borde %s"
+
+msgid "would tip over %s, %s studs past its edge"
+msgstr "se volcaría %s, a %s espigas más allá de su borde"
+
+msgid "tips over %s, %s studs past its edge"
+msgstr "se vuelca %s, a %s espigas más allá de su borde"
+
+msgid "the %s's 1 stud carries about %sx its working load"
+msgstr "la espiga de %s soporta unas %s veces su carga de trabajo"
+
+msgid "the %s's %d studs carry about %sx their working load"
+msgstr "las %2$d espigas de %1$s soportan unas %3$s veces su carga de trabajo"
+
+# drive3 (drvcheck3 W): the way a model tips said whole (Balance.toward), not as an edge's
+# name: an edge's left is the bord gauche, and tipped to it the model bascule vers la gauche
+
+msgid "to the left"
+msgstr "hacia la izquierda"
+
+msgid "to the right"
+msgstr "hacia la derecha"
+
+msgid "to the front"
+msgstr "hacia delante"
+
+msgid "to the back"
+msgstr "hacia atrás"
+
+msgid "to the front-left"
+msgstr "hacia delante a la izquierda"
+
+msgid "to the front-right"
+msgstr "hacia delante a la derecha"
+
+msgid "to the back-left"
+msgstr "hacia atrás a la izquierda"
+
+msgid "to the back-right"
+msgstr "hacia atrás a la derecha"
+
+# drive3: Stress's words for the part pointed at (StressView.part_words): what it carries,
+# on what (Balance.JointLoad.held_on), and its margin
+
+msgid "%s: carries %s g %s, %s"
+msgstr "%s: carga %s g %s, %s"
+
+msgid "on 1 stud"
+msgstr "sobre 1 espiga"
+
+msgid "on %d studs"
+msgstr "sobre %d espigas"
+
+msgid "on an axle keyed in its hole"
+msgstr "en un eje encajado en su agujero"
+
+msgid "on pins or axles on two lines"
+msgstr "en pasadores o ejes en dos líneas"
+
+msgid "on a friction pin"
+msgstr "en un pasador con fricción"
+
+msgid "on %d friction pins in a line"
+msgstr "en %d pasadores con fricción en línea"
+
+msgid "on a frictionless pin or axle"
+msgstr "en un pasador sin fricción o un eje"
+
+msgid "on %d frictionless pins or axles in a line"
+msgstr "en %d pasadores sin fricción o ejes en línea"
+
+msgid "hanging from 1 stud"
+msgstr "colgando de 1 espiga"
+
+msgid "hanging from %d studs"
+msgstr "colgando de %d espigas"
+
+msgid "hanging from no stud"
+msgstr "colgando de ninguna espiga"
+
+msgid "with nothing holding it"
+msgstr "sin nada que lo sujete"
+
+msgid "margin %s"
+msgstr "margen %s"
+
+msgid "%s: stands on the baseplate"
+msgstr "%s: se apoya en la placa base"
+
+msgid "%s: stands on the ground"
+msgstr "%s: se apoya en el suelo"
+
+msgid "%s: held by a clip, a hinge, a ball or a turntable, which are not weighed"
+msgstr "%s: sujeto por un clip, una bisagra, una rótula o una plataforma giratoria, que no se pesan"
+
+msgid "%s: held by nothing that can be weighed"
+msgstr "%s: sujeto por nada que se pueda pesar"
+
+msgid "%s: stands on what is under it, its weight over where they touch"
+msgstr "%s: se apoya en lo que tiene debajo, su peso sobre donde se tocan"
+
+msgid "%s: stands on a touch alone, its weight past where it touches"
+msgstr "%s: se apoya solo por contacto, su peso más allá de donde toca"
+
+msgid "%s: held more than one way, so no one joint carries it"
+msgstr "%s: sujeto de más de una forma, así que ninguna unión sola lo soporta"
+
+# drive3: the motions suggested from what moves (MotionPlayer.suggest), said in the language
+# where they are offered; kept, a motion's name is the file's, as it is written there
+
+msgid "Open the door"
+msgstr "Abrir la puerta"
+
+msgid "Open the doors"
+msgstr "Abrir las puertas"
+
+msgid "Steer left and right"
+msgstr "Girar a izquierda y derecha"
+
+msgid "Lift the boom"
+msgstr "Levantar la pluma"
+
+msgid "Turn the turntable"
+msgstr "Girar la plataforma giratoria"
+
+msgid "Turn the gears"
+msgstr "Girar los engranajes"
+
+msgid "Drive the rack"
+msgstr "Mover la cremallera"
+
+msgid "Drive and turn left"
+msgstr "Avanzar y girar a la izquierda"
+
+# drive3: a suggested motion said whole (PosePanel._suggestion_words), its drive's words a place
+
+msgid "%s: %s, over %s s"
+msgstr "%s: %s, en %s s"
+
+msgid "driven %s"
+msgstr "avanza %s"
+
+# end unit drive
+
 # A palette of the person's own, kept for every model (palettes, APP_UX6 21): the bin's
 # Palettes beside Favourites, an open palette's line, its menus and what they say.
 
@@ -12678,6 +13289,11 @@ msgstr "%s: una pieza se toma en la mano en su color, un subconjunto se sostiene
 
 msgid "Right-click a part to keep it in Favourites too"
 msgstr "Haz clic derecho en una pieza para guardarla también en Favoritas"
+
+# localbricks (APP_UX6 8): Build from it leaves out what a set is marked as missing.
+
+msgid "%s, less the %s marked missing"
+msgstr "%s, menos las %s marcadas como que faltan"
 
 # A mosaic cropped and coloured the person's way (APP_UX6 #10, mosaic2): Crop and Whole
 # picture over the picture, Colours (all, a set's, what I own), Mixed plate sizes, and the line under it.
@@ -12932,6 +13548,177 @@ msgstr "Las piezas fabricadas por primera vez en %d o %d, las más recientes pri
 msgid "%s first made in %d or %d, the newest first"
 msgstr "%s fabricadas por primera vez en %d o %d, las más recientes primero"
 
+# subexport (APP_UX7 #19): each sub-model as a file of its own, from File, Export
+# and the model tree's menu.
+
+msgid "Each sub-model as its own file (.zip)"
+msgstr "Cada submodelo como su propio archivo (.zip)"
+
+msgid "Every sub-model as an LDraw file of its own, with its own sub-models and steps, in one .zip"
+msgstr "Cada submodelo como su propio archivo LDraw, con sus propios submodelos y pasos, en un solo .zip"
+
+msgid "Make a sub-model first"
+msgstr "Crea primero un submodelo"
+
+msgid "Export “%s” as its own file…"
+msgstr "Exportar «%s» como su propio archivo…"
+
+msgid "As an LDraw file, with its own sub-models and steps"
+msgstr "Como archivo LDraw, con sus propios submodelos y pasos"
+
+msgid "Export each sub-model (.zip)…"
+msgstr "Exportar cada submodelo (.zip)…"
+
+msgid "Exporting %s…"
+msgstr "Exportando %s…"
+
+msgid "Exporting each sub-model…"
+msgstr "Exportando cada submodelo…"
+
+msgid "stopped exporting"
+msgstr "exportación detenida"
+
+msgid "this model has no sub-models: LDraw model writes it whole"
+msgstr "este modelo no tiene submodelos: Modelo LDraw lo escribe entero"
+
+msgid "%s is not a sub-model of this model"
+msgstr "%s no es un submodelo de este modelo"
+
+msgid "%s, each with its own sub-models and steps: %s"
+msgstr "%s, cada uno con sus propios submodelos y pasos: %s"
+
+msgid "%d steps"
+msgstr "%d pasos"
+
+msgid "1 step"
+msgstr "1 paso"
+
+msgid "%d sub-models"
+msgstr "%d submodelos"
+
+msgid "1 sub-model"
+msgstr "1 submodelo"
+# Names a screen reader says, with no words on screen of their own: those Access
+# gives Godot's file dialog, the choices named where they are made, and every
+# accessibility_name of the interface (a11ynames, a11y_names_probe).
+
+msgid "Kind of file"
+msgstr "Tipo de archivo"
+
+msgid "Drive"
+msgstr "Unidad"
+
+msgid "Move the favourite up"
+msgstr "Subir el favorito"
+
+msgid "Move the favourite down"
+msgstr "Bajar el favorito"
+
+msgid "Drag to share the room between the panes"
+msgstr "Arrastra para repartir el espacio entre los paneles"
+
+msgid "Create a new folder."
+msgstr "Crear una carpeta nueva."
+
+msgid "3D file format"
+msgstr "Formato de archivo 3D"
+
+msgid "Length"
+msgstr "Longitud"
+
+msgid "Speed"
+msgstr "Velocidad"
+
+msgid "Frames"
+msgstr "Fotogramas"
+
+msgid "Measure periods against"
+msgstr "Medir los períodos respecto a"
+
+msgid "Where the cut is"
+msgstr "Dónde está el corte"
+
+msgid "Studs across"
+msgstr "Espigas a lo ancho"
+
+msgid "Studs deep"
+msgstr "Espigas a lo largo"
+
+msgid "Find a key"
+msgstr "Buscar una tecla"
+
+msgid "%s: %s. Set its key"
+msgstr "%s: %s. Asignar su tecla"
+
+msgid "Search the LDraw sets"
+msgstr "Buscar en los sets de LDraw"
+
+msgid "The minifigure"
+msgstr "La minifigura"
+
+msgid "Commands"
+msgstr "Comandos"
+
+msgid "Show the parts as a list"
+msgstr "Mostrar las piezas en una lista"
+
+msgid "Find a colour by name or number"
+msgstr "Buscar un color por nombre o número"
+
+msgid "The part, turning"
+msgstr "La pieza, girando"
+
+msgid "The print, to draw on"
+msgstr "La impresión, para dibujar en ella"
+
+msgid "Brush size"
+msgstr "Tamaño del pincel"
+
+msgid "The part wearing the print"
+msgstr "La pieza que lleva la impresión"
+
+msgid "AI: who designs, provider, model and key"
+msgstr "IA: quién diseña, proveedor, modelo y clave"
+
+msgid "Show the key as it is typed"
+msgstr "Mostrar la clave mientras se escribe"
+
+msgid "Test the model: one tool call and one picture"
+msgstr "Probar el modelo: una llamada a una herramienta y una imagen"
+
+msgid "Models"
+msgstr "Modelos"
+
+msgid "API key"
+msgstr "Clave de API"
+
+msgid "Back to Settings"
+msgstr "Volver a los ajustes"
+
+msgid "Provider"
+msgstr "Proveedor"
+
+msgid "Reasoning effort"
+msgstr "Esfuerzo de razonamiento"
+
+msgid "Where in the cycle"
+msgstr "En qué punto del ciclo"
+
+msgid "View cube"
+msgstr "Cubo de vista"
+
+msgid "Turn the view up"
+msgstr "Girar la vista hacia arriba"
+
+msgid "Turn the view down"
+msgstr "Girar la vista hacia abajo"
+
+msgid "Slide the view: W, A, S and D"
+msgstr "Desplazar la vista: W, A, S y D"
+
+msgid "Step"
+msgstr "Paso"
+
 # View › Edges and studs (APP_UX6 #19 edges): the parts' seams and their studs, each drawn or not
 
 msgid "Edges and studs"
@@ -12948,6 +13735,80 @@ msgstr "Una línea fina donde cada pieza se une a la siguiente, para leer las hi
 
 msgid "Off, the parts are drawn without their studs, each in its place: the shapes alone, and a big model drawn faster"
 msgstr "Desactivado, las piezas se dibujan sin sus espigas, cada una en su sitio: solo las formas, y un modelo grande se dibuja más rápido"
+
+# The beta's welcome after signing up, and its row in Account (betajoin)
+msgid "Open beta"
+msgstr "Beta abierta"
+
+msgid "Welcome to Brickworks"
+msgstr "Te damos la bienvenida a Brickworks"
+
+msgid "A CAD for LEGO® models: every LDraw part, joined where the real ones join."
+msgstr "Un CAD para modelos de LEGO®: cada pieza de LDraw, unida donde se unen las de verdad."
+
+msgid "It is in open beta: it works, and it gets better every week with what builders tell us."
+msgstr "Está en beta abierta: funciona, y mejora cada semana con lo que nos cuentan quienes construyen."
+
+msgid "Testers try new features first and tell us what is wrong. The first 100 we pick get a month of Pro."
+msgstr "Quienes participan prueban antes lo nuevo y nos cuentan qué falla. Las primeras 100 personas que elijamos reciben un mes de Pro."
+
+msgid "Join the beta testers"
+msgstr "Participar en la beta"
+
+msgid "Joining agrees to the beta's terms and to emails about the beta. Leave any time in Account."
+msgstr "Al participar aceptas las condiciones de la beta y los correos sobre la beta. Puedes dejarla cuando quieras en Cuenta."
+
+msgid "You are a beta tester"
+msgstr "Ya participas en la beta"
+
+msgid "Thank you. Report a bug whenever something is wrong, from wherever you are. What you send, and our answers, are kept with your account."
+msgstr "Gracias. Informa de un fallo cuando algo no vaya bien, estés donde estés. Lo que envías, y nuestras respuestas, se guardan con tu cuenta."
+
+msgid "For a month of Pro, tell us what you build on the beta's page: it takes a minute."
+msgstr "Para un mes de Pro, cuéntanos qué construyes en la página de la beta: es un minuto."
+
+msgid "Tell us what you build"
+msgstr "Cuéntanos qué construyes"
+
+msgid "Beta"
+msgstr "Beta"
+
+msgid "You are a beta tester. Thank you."
+msgstr "Participas en la beta. Gracias."
+
+msgid "Brickworks is in open beta. Testers try new features first and tell us what is wrong; the first 100 we pick get a month of Pro."
+msgstr "Brickworks está en beta abierta. Quienes participan prueban antes lo nuevo y nos cuentan qué falla; las primeras 100 personas que elijamos reciben un mes de Pro."
+
+msgid "Leave the beta"
+msgstr "Dejar la beta"
+
+msgid "You left the beta. Join again any time."
+msgstr "Has dejado la beta. Puedes volver cuando quieras."
+
+msgid "Joined. You are a beta tester."
+msgstr "Hecho. Ya participas en la beta."
+# Render's Look, Line art and Comic (APP_UX7 #22 lineart): the model inked as a person draws it
+
+msgid "Line art"
+msgstr "Dibujo a línea"
+
+msgid "Comic"
+msgstr "Cómic"
+
+msgid "Black lines on white, as you would ink it, the shade in halftone dots: to colour over or print."
+msgstr "Líneas negras sobre blanco, como entintado a mano, las sombras en una trama de puntos: para colorear o imprimir."
+
+msgid "Bold lines over each part's own colour, flat, with halftone dots where the light leaves it."
+msgstr "Líneas marcadas sobre el color propio de cada pieza, plano, con una trama de puntos donde la luz lo deja."
+
+msgid "Drawn in one frame at any quality: the lines and the dots are the picture."
+msgstr "Se dibuja en un solo fotograma con cualquier calidad: las líneas y los puntos son la imagen."
+
+msgid "Line art and Comic are drawn sharp all through."
+msgstr "El dibujo a línea y el cómic se dibujan nítidos de principio a fin."
+
+msgid "inking"
+msgstr "entintando"
 
 # video2 (APP_UX6 #11): Render's Kept as, a WebP or a GIF.
 msgid "Kept as"
@@ -13008,3 +13869,118 @@ msgstr "%s existe en este color, en 1 set: raro en este color"
 
 msgid "%s comes in it, in %d sets: rare in this colour"
 msgstr "%s existe en este color, en %d sets: raro en este color"
+
+
+# A long job says when it is done: Settings' row, and what the note says
+# finished (APP_UX7 #11, donenote).
+
+msgid "Say when a long job is done"
+msgstr "Avisar cuando termine un trabajo largo"
+
+msgid "A design, a Best render, the render queue or a build video that finishes while you are in another window: the window asks for your attention, or in a browser, a notification says so."
+msgstr "Un diseño, un render en calidad Máxima, la cola de renderizado o un vídeo de construcción que termina mientras estás en otra ventana: la ventana pide tu atención, o en un navegador, lo dice una notificación."
+
+msgid "Design done"
+msgstr "Diseño terminado"
+
+msgid "Sketches ready to choose from"
+msgstr "Bocetos listos para elegir"
+
+msgid "Best render done"
+msgstr "Render en calidad Máxima terminado"
+
+msgid "Turntable done"
+msgstr "Plataforma giratoria terminada"
+
+msgid "Animation done"
+msgstr "Animación terminada"
+
+msgid "Build video done"
+msgstr "Vídeo de construcción terminado"
+
+msgid "Render queue done"
+msgstr "Cola de renderizado terminada"
+
+msgid "The design did not finish"
+msgstr "El diseño no terminó"
+
+msgid "The render did not finish"
+msgstr "El render no terminó"
+# Name the step (stepnames, APP_UX6 #9): the timeline's Name… button, the
+# Steps menu's row, its dialog and what the bar says of it.
+
+msgid "Name…"
+msgstr "Nombrar…"
+
+msgid "What this step is called (\"Build the cockpit\"): said beside its number here, in Build it and in the booklet (%s)"
+msgstr "Cómo se llama este paso («Construye la cabina»): aparece junto a su número aquí, en Construir y en el folleto (%s)"
+
+msgid "Name the step"
+msgstr "Nombrar el paso"
+
+msgid "Name the step…"
+msgstr "Nombrar el paso…"
+
+msgid "What the step the timeline is on is called (\"Build the cockpit\"): said beside its number on the timeline, in Build it and in the booklet"
+msgstr "Cómo se llama el paso en que está la línea de tiempo («Construye la cabina»): aparece junto a su número en la línea de tiempo, en Construir y en el folleto"
+
+msgid "Step %d is called"
+msgstr "El paso %d se llama"
+
+msgid "Step %d, %s %d of %d, is called"
+msgstr "El paso %d, %s %d de %d, se llama"
+
+msgid "Build the cockpit"
+msgstr "Construye la cabina"
+
+msgid "The step's name"
+msgstr "El nombre del paso"
+
+msgid "step %d named %s"
+msgstr "paso %d llamado %s"
+
+msgid "step %d's name taken off"
+msgstr "nombre del paso %d quitado"
+
+msgid "step %d's callout step %d named %s"
+msgstr "paso %d, paso %d del recuadro llamado %s"
+
+msgid "step %d's callout step %d's name taken off"
+msgstr "nombre del paso %d, paso %d del recuadro quitado"
+
+msgid "step %d named %s, in each of the %d copies of the %s"
+msgstr "paso %d llamado %s, en cada una de las %d copias de %s"
+
+msgid "step %d's name taken off, in each of the %d copies of the %s"
+msgstr "nombre del paso %d quitado, en cada una de las %d copias de %s"
+
+msgid "step %d's callout step %d named %s, in each of the %d copies of the %s"
+msgstr "paso %d, paso %d del recuadro llamado %s, en cada una de las %d copias de %s"
+
+msgid "step %d's callout step %d's name taken off, in each of the %d copies of the %s"
+msgstr "nombre del paso %d, paso %d del recuadro quitado, en cada una de las %d copias de %s"
+
+# A name of only characters that draw nothing, refused (sncheck N2,
+# stepnames2).
+msgid "that name has only characters that draw nothing (zero-width spaces, joiners, direction marks): give it a letter or sign you can see"
+msgstr "ese nombre solo tiene caracteres que no muestran nada (espacios de ancho cero, unidores, marcas de dirección): dale una letra o un signo que se vea"
+
+# A dragged part carries what rests on it, Shift as it goes moves it alone
+# (APP_UX7 #20, carryrest).
+msgid "drag moves it and what rests on it (on a joint, as the real part moves)"
+msgstr "arrastrar la mueve con lo que está encima (en una articulación, como la pieza real)"
+
+msgid "moving %s and the %s resting on it"
+msgstr "moviendo %s y las %s apoyadas encima"
+
+msgid "Shift moves it alone"
+msgstr "Shift la mueve sola"
+
+msgid "moving %s alone"
+msgstr "moviendo solo %s"
+
+msgid "let go of Shift for the %s on it too"
+msgstr "suelta Shift para llevar también las %s apoyadas encima"
+
+msgid "what rests on it stays, more than a drag can follow"
+msgstr "lo que está encima se queda: más de lo que un arrastre puede llevar"

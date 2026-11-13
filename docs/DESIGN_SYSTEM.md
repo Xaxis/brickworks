@@ -241,6 +241,13 @@ is on the page, `hidden`, for the script to show.
   keeps the keyboard in it (Tab from the last control comes round to the
   first) and, closed, gives the focus back to what opened it, or to the
   More menu's button when what opened it was folded away with the menu.
+- **Sheet**: `dialog.sheet`, a dialog at the window's right edge, the
+  window's height, holding one row of a list whole over the list it came
+  from (/admin's account and an act of its audit; Stripe's, Supabase
+  Studio's side panel): its `.sheet-head` the h2 and Close (an
+  `.icon-btn`), its `.sheet-body` scrolling inside it. The whole width of
+  a phone. Opened with `showModal()`; Escape, Close or a press beside it
+  closes it.
 - **Card**: `.card`, a panel of words.
 - **Badge**: `.badge`, a short label that says what kind (Recommended,
   Two months free): `.accent` on the accent's soft ground and edge,
@@ -281,8 +288,12 @@ is on the page, `hidden`, for the script to show.
   `.table.wide` is many columns, /compare's field: each at least 130 px,
   its headings in the ink, and each row's name kept in view on the page's
   ground while the rest scrolls past it on a phone. The FAQ's dimensions
-  and /compare's field (2026-10-24, from the FAQ's own copy); /admin's
-  tables still carry theirs, each in a `.card.scroller`.
+  and /compare's field (2026-10-24, from the FAQ's own copy). /admin's
+  are `.table` too (console1, 2026-11-12): a column that sorts has
+  `th[data-sort]` (text, number or time), made a `button.link.sort` in its
+  own words by `web/admin-kit.js`, `aria-sort` on the one sorted with an
+  arrow that says which way; a row asked for by its address
+  (`/admin#report-N`) is `tr.asked`, lit in the accent.
 - **Command**: `code.cmd`, a line to type in a terminal, in a box of its
   own that wraps, so a long one (a checksum check) never runs past the
   edge of a phone. The download page puts a Copy (`.cta.ghost.small`)
@@ -684,6 +695,18 @@ is on the page, `hidden`, for the script to show.
   (`role="status"`, on the page empty from its load, since a screen
   reader reads a region's change and not a region that arrives already
   speaking), gone in 2.4 s.
+- **Beta bar**: `aside.beta-bar` (`web/betabar.js`, asked for by
+  `web/theme.js` on every page while the beta is open): a floating pill
+  at the foot of the window, bottom left (centred under 600 px), above
+  the page and moving nothing in it: an accent `.badge` to /beta, a
+  ghost small `.cta` Report a bug, a small `.cta` Join (or a link that
+  says you're a tester, its check in `--green`) and an `.icon-btn` × that
+  hides it for a day. It rises and fades in after the page is drawn
+  (none with reduced motion). On a phone its badge says Beta, its parts
+  sit closer and a tester's has no third part; still too wide for the
+  window (a small phone, a long language), `.tight` drops the badge and
+  keeps Report a bug, Join and × whole. While shown, `<html data-betabar>`
+  lifts the toast over it and pads the footer, so nothing ends under it.
 - **More menu**: `details.more-menu`, an `.icon-btn` summary with the
   more icon and the header Menu's `.menu-list` panel of links and
   buttons (Report it, Takedown requests), opening along the row from the

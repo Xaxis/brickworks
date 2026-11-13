@@ -4626,6 +4626,9 @@ var _telling: ConfirmationDialog
 ## null for the whole library. Chosen by [method build_from]; kept with the
 ## model ([member ModelStore.bin_sets]) and followed when another is opened.
 var _set_bin: SetBin = null
+## The records [member _set_bin] was made from, to make it again as the
+## person's marks change ([method follow_marks]).
+var _set_records: Dictionary = {}
 var _set_line: HBoxContainer
 var _set_words: Label
 var _set_count: Label
@@ -4714,6 +4717,7 @@ func build_from(numbers: PackedStringArray, booklet: String = "") -> int:
 	print("set bin: %s, %d kinds of part, looked up in %d ms" % [bin.title, bin.order.size(), looked_up_ms])
 	_offer = {}
 	_set_bin = bin
+	_set_records = records
 	_booklet = null
 	_step_keys = PackedStringArray()
 	if store != null:
@@ -4837,6 +4841,24 @@ func _follow_step(relist: bool) -> void:
 		_list_set(_search.text.strip_edges())
 
 
+## The person's marks changed (CollectionStore.changed: a mark made here, by
+## a session, on another device, or read after start-up): a bin built from a
+## set is made again from the same sets and records, so what its copies are
+## marked missing is left out at once, and recounted (lbfix, lbreview F5).
+## The booklet stays: a step still puts in a part that is missing.
+func follow_marks() -> void:
+	if _set_bin == null:
+		return
+	var bin: SetBin = SetBin.make(_set_bin.sets, _set_records, library)
+	if bin == null or (bin.have == _set_bin.have and bin.left_out == _set_bin.left_out):
+		return
+	_set_bin = bin
+	_count_chips()
+	_recount(false)
+	if _listing_set:
+		_list_set(_search.text.strip_edges())
+
+
 ## Back to the whole library: the set's counts go with it.
 func leave_set() -> void:
 	_drop_set()
@@ -4846,6 +4868,7 @@ func leave_set() -> void:
 ## The set bin let go, and the model's choice with it.
 func _drop_set() -> void:
 	_set_bin = null
+	_set_records = {}
 	_booklet = null
 	_step_keys = PackedStringArray()
 	_used = {}

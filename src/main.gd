@@ -515,6 +515,14 @@ var _full_offer: AccountFullOffer
 var _restore_notice: RestoreNotice
 ## This computer runs the simpler graphics mode, said once (GraphicsMode).
 var _graphics_notice: RestoreNotice
+## Something went wrong in the app's own scripts, said above the model with
+## Report this while the beta is open (bugreport, _on_script_error); made
+## the first time.
+var _error_notice: RestoreNotice
+## Each error said so this run, by its line: once each, and at most
+## ERRORS_SAID, so a fault that repeats every frame says it once.
+var _errors_said: Dictionary = {}
+const ERRORS_SAID := 5
 ## When the files other tabs and windows share with this one were last
 ## looked at (_watch_other_tabs), in ticks.
 var _tabs_looked: int = 0
@@ -544,6 +552,10 @@ var _assistant: Node:
 ## The assistant if anything has made it, else null: for what has nothing
 ## to tell one that was never made (forgetting what it built, say).
 var _assistant_made: Node = null
+## A long job says when it is done (src/ui/done_note.gd, a Later class): made
+## with the first job that tells it, or Render's dialog (_done_note); null
+## until then.
+var _done_note_made: Node = null
 ## Set as _build_ui ends: what is made on first use is wired to what the
 ## window has, so it is made only once all of that is there.
 var _built: bool = false
@@ -862,8 +874,11 @@ func _tell_page() -> void:
 		JavaScriptBridge.eval("window.brickworksAskWords = false", true)
 		JavaScriptBridge.eval("window.brickworksWords = %s" % JSON.stringify(words_shown()), true)
 	if not _page_title.is_empty():
+		# "Done · " before it while a long job's end waits to be seen (DoneNote).
+		var titled: String = _page_title if _done_note_made == null \
+			else str(_done_note_made.call("titled", _page_title))
 		JavaScriptBridge.eval("if (document.title !== %s) document.title = %s"
-			% [JSON.stringify(_page_title), JSON.stringify(_page_title)], true)
+			% [JSON.stringify(titled), JSON.stringify(titled)], true)
 	# And how many parts are standing, so a browser check can tell that a
 	# click put something down rather than guess it from the pixels.
 	if _world != null:
@@ -1210,6 +1225,8 @@ func _page_controls() -> Dictionary:
 		named.merge(_full_offer.controls_by_name())
 	if _restore_notice != null:
 		named.merge(_restore_notice.controls_by_name())
+	if _error_notice != null:
+		named.merge(_error_notice.controls_by_name())
 	if _graphics_notice != null:
 		named.merge(_graphics_notice.controls_by_name())
 	if _brickify_made != null:
@@ -1737,6 +1754,7 @@ func _ready() -> void:
 		get_window().title = "Brickworks %s" % BuildInfo.version()
 	# The last log lines, for Help, Send feedback… to offer (RecentLog).
 	_log = RecentLog.new()
+	_log.on_error = _on_script_error
 	OS.add_logger(_log)
 	_boot_mark("ready")
 	# Which graphics mode this window draws in, and why, in every log
@@ -2612,8 +2630,16 @@ func ask_about_selection(words: String = "") -> void:
 ## Untitled, because what goes down next is something new: it kept the
 ## name of what was taken off, and Save would have written the lighthouse
 ## over the model it replaced. The design names it when it stands.
-func clear_model() -> void:
-	_world.clear()
+##
+## [param kept] makes it the one step of the history, named [param words]: a
+## session's clear (CommandSocket), which undo takes back whole. Kept as the
+## difference of what was on the baseplate, its undo gave back the parts and
+## nothing else of the model, under new numbers: its build steps' looks, its
+## name and its file's lines lost, and the redo after it left a part of the
+## model behind (copyfaults).
+func clear_model(kept: bool = false, words: String = "") -> void:
+	var back: Array = _clear_undone() if kept else []
+	_world.clear(kept)
 	_builder.lattice.clear()
 	_builder.clear_selection()
 	_builder.forget_history()
@@ -2623,6 +2649,66 @@ func clear_model() -> void:
 	_lay_baseplate()
 	_sample_untouched = false
 	_store.begin(ModelStore.UNTITLED)
+	if kept:
+		_builder.record(back, words)
+
+
+## The step that undoes a clear, kept before it: every part as it stood, the
+## world's tables and the model's name and file (ModelStore.identity). The
+## floor goes before the parts and comes back after them, so a baseplate of
+## the model's own is back before the floor is laid again round it.
+func _clear_undone() -> Array:
+	var back: Array = [{"undo": "floor", "floor": ModelFloor.NONE}]
+	for brick: BrickWorld.Brick in _world.bricks():
+		if _store.scenery.has(brick.id):
+			continue
+		back.append({"undo": "add", "part": brick.part_id, "color": brick.color_code,
+			"transform": brick.transform, "group": brick.group, "unit": brick.unit,
+			"step": brick.step, "was": brick.id,
+			"cover": _builder.lattice.cover_of(brick.id)})
+	if _floor != null:
+		back.append({"undo": "floor", "floor": _floor.held()})
+	back.append({"undo": "steplooks", "looks": _world.step_looks.duplicate(true)})
+	# Each sub-model's own lights and views (BrickWorld.section_lines): undone,
+	# a clear gave back the sub-model without them, and its save left them out.
+	# And where each copy's frame of them stands (section_frames), and where
+	# each part not on the baseplate is in the tree (held_paths): undone
+	# without them, a copy moved after was moved without its lights, and a
+	# part on its way after a rename landed in a copy under the old name.
+	back.append({"undo": "sectionlines", "lines": _world.section_lines.duplicate(true),
+		"frames": _world.section_frames.duplicate(true)})
+	back.append({"undo": "heldpaths", "paths": _world.held_paths.duplicate()})
+	# And the name each section was read under (BrickWorld.section_files):
+	# undone, a clear named the model's own after its title, and Save wrote
+	# "0 FILE cf_2_saved_as.ldr" over the file's "0 FILE model.ldr".
+	back.append({"undo": "sectionfiles", "files": _world.section_files.duplicate()})
+	back.append({"undo": "unitchains", "chains": _world.unit_chains.duplicate()})
+	for unit: String in _world.unit_steps:
+		var step: int = int(_world.unit_steps[unit])
+		back.append({"undo": "unitstep", "unit": unit, "step": step, "kept": step == -1})
+	if _world.motions != null:
+		back.append({"undo": "motions", "motions": _world.motions.copy()})
+	for section: String in _world.broken_out:
+		back.append({"undo": "sectionout", "path": section,
+			"record": (_world.broken_out[section] as Dictionary).duplicate(true)})
+	var kept: Dictionary = _store.identity()
+	kept["on_disk"] = _bar.on_disk if _bar != null else ""
+	back.append({"undo": "store", "store": kept})
+	return back
+
+
+## The model made what a clear kept of it ([method _clear_undone],
+## ModelStore.put_identity), and the file Save as wrote it to with it
+## (ModelBar.on_disk), which a model begun lets go: undone, a clear gave the
+## model its name back, and Save then wrote it only here, not to its file
+## (cfcheck). Returns what it was, for the step that puts that back.
+func _put_identity(kept: Dictionary) -> Dictionary:
+	var on_disk: String = _bar.on_disk if _bar != null else ""
+	var was: Dictionary = _store.put_identity(kept)
+	was["on_disk"] = on_disk
+	if _bar != null:
+		_bar.on_disk = str(kept.get("on_disk", ""))
+	return was
 
 
 ## Work is about to go down on the baseplate, and [param name] is what it is.
@@ -2656,11 +2742,14 @@ func save_model(path: String) -> bool:
 	# A second design's saves stay with it, out of the person's models: the
 	# one kept is theirs once it is put down (BestOfTwo).
 	var second_of: String = Later.script(&"BestOfTwo").second_of()
+	# Under the model's own name: up to metalines "Model", which is not
+	# someone else's file's name, so each save wrote "0 !BRICKWORKS TITLE
+	# Model" into it (hscheck).
 	if not second_of.is_empty():
-		return _store.export_to(second_of.path_join(path.get_file()), "Model")
+		return _store.export_to(second_of.path_join(path.get_file()), _store.title)
 	if path.begins_with(ModelStore.SAVE_DIR):
-		return _store.save_file(path, "Model")
-	return _store.export_to(path, "Model")
+		return _store.save_file(path, _store.title)
+	return _store.export_to(path, _store.title)
 
 
 ## Open the local port that lets a session outside the app drive it.
@@ -2718,12 +2807,52 @@ func _on_account_changed() -> void:
 	# A beta tester's early features in the menus (Account.early_on).
 	if _shell != null:
 		_shell.set_early(_account.early if _account.signed_in() else ([] as Array[String]))
+	_offer_reports()
 	# A viewer is nobody's session: no connector, ever.
 	if not _viewing.is_empty():
 		return
 	_maybe_copy()
 	_maybe_join_together()
 	_tell_connector_who()
+
+
+## While the beta is open (Account.beta_open), reporting a bug is one press
+## from anywhere (bugreport, 2026-11-09): Report a bug in the top bar beside
+## Account, and Report this on a notice of something gone wrong (the model
+## not opened at start-up, an error in the app's scripts), whose report
+## carries what the notice said. Help, Report a bug… is there whatever the
+## beta.
+func _offer_reports() -> void:
+	var open: bool = _account != null and _account.signed_in() and _account.beta_open \
+		and _viewing.is_empty()
+	if _shell != null:
+		_shell.set_beta_open(open)
+	if _restore_notice != null:
+		_restore_notice.offer_report(func() -> void:
+			_shell.report_bug("notice", _log.last() if _log != null else PackedStringArray(),
+				_restore_notice.words().left(RecentLog.WIDEST)) if open else Callable())
+	if _error_notice != null and not open:
+		_error_notice.dismiss()
+
+
+## An error in the app's own scripts (RecentLog.on_error): said above the
+## model while the beta is open, with Report this, which carries [param
+## said] and the log [param lines] up to it. Each error once a run, and at
+## most ERRORS_SAID.
+func _on_script_error(said: String, lines: PackedStringArray) -> void:
+	if not _built or _shell == null or _notices == null or _account == null \
+			or not (_account.signed_in() and _account.beta_open) or not _viewing.is_empty():
+		return
+	if _errors_said.has(said) or _errors_said.size() >= ERRORS_SAID:
+		return
+	_errors_said[said] = true
+	if _error_notice == null:
+		_error_notice = RestoreNotice.new()
+		_error_notice.key = "error_got_it"
+		_error_notice.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		_notices.get_child(0).add_child(_error_notice)
+	_error_notice.offer_report(func() -> void: _shell.report_bug("notice", lines, said))
+	_error_notice.tell("Something went wrong in Brickworks. Report this, and what it was doing goes with it.")
 
 
 ## The connector, if made, put back as it was once somebody is in, and off
@@ -2837,7 +2966,7 @@ func _enter_view() -> void:
 	_share_view.loading()
 	_build_mode = Later.make(&"BuildMode")
 	_build_mode.thumbnails = _thumbnails
-	$HUD.add_child(_build_mode)
+	_add_to_hud(_build_mode)
 	_build_mode.next_wanted.connect(_build_next)
 	_build_mode.back_wanted.connect(_build_back)
 	# A part at a time or the step whole, chosen on the page: the step it is
@@ -4638,6 +4767,8 @@ func _pace_motion() -> void:
 			_view_frame("moving")
 		_share_view.show_looping(motion.name)
 		_share_view.play_said("")
+	# unit drive: a path's whole way in sight and on the floor.
+	_show_drive(run)
 	# The model stands where it ends already: its first frame drawn at once.
 	_world.set_drawn(_motion_frames[0])
 
@@ -4822,7 +4953,7 @@ func _placed(coming: bool) -> Array:
 		out.append([brick.part_id, brick.transform, brick.color_code])
 	if coming:
 		for placement: LdrModel.Placement in _store.awaited:
-			out.append([placement.part_id, placement.transform, placement.color_code])
+			out.append([placement.part_id, _store.awaited_at(placement), placement.color_code])
 	return out
 
 
@@ -5119,6 +5250,10 @@ func _build_ui() -> void:
 	_store.world = _world
 	_store.library = _library
 	_store.builder = _builder
+	# A drive undone or redone takes what landed after it was kept with it.
+	_builder.motions_hook = _store._follow_motions
+	# And what landed once a sequence played as one step let it.
+	_store.held_landed.connect(func(_count: int) -> void: _on_landed())
 
 	# What the model stands on: src/render/floor_layer.gd.
 	_floor = FloorLayer.new()
@@ -5142,6 +5277,7 @@ func _build_ui() -> void:
 		_on_rebuilt(_world.brick_count(), _drawn[0], _drawn[1]))
 	_builder.scenery = _store.scenery
 	_builder.floor_hook = _floor.put
+	_builder.store_hook = _put_identity
 
 	_stability = Stability.new()
 	_stability.library = _library
@@ -5764,6 +5900,10 @@ func _build_ui() -> void:
 	add_child(_shell)
 	_shell.build(column, _side if _side != null else _stack, _notices.get_child(0) as Control,
 		_over_model)
+	# A bin built from a set follows the person's marks as they change
+	# (lbfix): what is marked missing is out of it at once.
+	if _shell.collection_store != null:
+		_shell.collection_store.changed.connect(_bin.follow_marks)
 	# Who designs, named in the commands that ask it (Settings, AI).
 	_shell.name_designer(ProviderSettings.designer_name())
 	if _side != null:
@@ -5803,6 +5943,7 @@ func _build_ui() -> void:
 	# The colours at the foot of the column, under the model tree and the
 	# properties: what those do moves the parts grid's foot, never them.
 	_stack.add_section(_bin.colours)
+	_stack.never_fills(_bin.colours)
 	_bin.column = _stack
 	_counts = _shell.status.counts
 
@@ -5859,6 +6000,12 @@ func _build_ui() -> void:
 	_restore_notice.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_notices.get_child(0).add_child(_restore_notice)
 	_store.not_restored.connect(_restore_notice.tell)
+	# Report this on it while the beta is open, should the account be known
+	# already (bugreport).
+	_offer_reports()
+	# Someone else's file an edit has written whole: how many of its own
+	# lines that leaves out, said once as it is edited (ModelStore).
+	_store.lines_left_out.connect(_bar.say)
 	# Graphics that cannot run the full mode started the simpler one by
 	# themselves: said once, above the model (GraphicsMode).
 	var graphics: String = GraphicsMode.to_say()
@@ -5984,7 +6131,7 @@ func _build_ui() -> void:
 	_account_panel.show_claude(ShellPrefs.assistant_shown())
 	if _connector_made != null:
 		_account_panel.use_connector(_connector_made)
-	$HUD.add_child(_account_panel)
+	_add_to_hud(_account_panel)
 	_inset(_account_panel, AccountPanel.WIDE, AccountPanel.TALL)
 	get_viewport().size_changed.connect(func() -> void:
 		_inset(_account_panel, AccountPanel.WIDE, AccountPanel.TALL))
@@ -6085,6 +6232,8 @@ func _make_assistant() -> void:
 	# same undo, as one by hand does (pullkept).
 	_assistant_made.focus_edited.connect(func(_words: String, _before: Image,
 			_after: Image) -> void: _store.looks_follow_edit())
+	# And a request's run, kept as one step, as the one by hand does.
+	_assistant_made.run_kept.connect(_store.looks_follow_edit)
 	# So a snapshot does not carry the baseplate off with it.
 	_assistant_made.scenery = _store.scenery
 	# And what the model stands on, read when asked: on a bare floor what only
@@ -6197,6 +6346,12 @@ func _make_chat() -> void:
 	chat.offers_hidden_colours = _offers_hidden_colours
 	chat.hidden_colours_wanted.connect(func() -> void: open_hidden_colours("sections"))
 	chat.asked.connect(_note_design_asked)
+	# A design, a change or sketches the person asked for here says when it
+	# is done, while nobody is looking (DoneNote): the ask is where the web
+	# asks whether it may notify, the press still fresh.
+	chat.asked.connect(func() -> void: _done_note().started("design"))
+	chat.run_ended.connect(func(ok: bool, what: String) -> void:
+		_done_note().finished(what, ok))
 	chat.designing.connect(func(brief: String) -> void:
 		_fresh_brief = brief
 		_make_room(ModelStore.name_for(brief))
@@ -6286,24 +6441,30 @@ static func _shown(panel: CanvasItem) -> bool:
 
 
 ## [param panel] over the window, under the sign-in screen, which _build_ui
-## adds last so that it is over everything.
+## adds last so that it is over everything; and in front of the other panels
+## whenever it is shown, clicked or given the keys (HudFront).
 func _add_to_hud(panel: Control) -> void:
-	var first: int = $HUD.get_child_count()
 	$HUD.add_child(panel)
-	_under_gates(first)
+	_hud_front.take(panel)
 
 
-## What was added to the HUD from child [param first] on, put back under
-## the sign-in screen.
-func _under_gates(first: int) -> void:
-	var under: int = $HUD.get_child_count()
-	if is_instance_valid(_gate) and _gate.get_parent() == $HUD and _gate.get_index() < first:
-		under = mini(under, _gate.get_index())
-	if under >= first:
-		return
-	for node: Node in $HUD.get_children().slice(first):
-		$HUD.move_child(node, under)
-		under += 1
+# -- the panel asked for last in front (hudfront) --------------------------------
+
+## Keeps the HUD's panels in the order they were last shown, clicked or given
+## the keys in, under the sign-in screen (src/ui/hud_front.gd): made with the
+## first panel added to the HUD.
+var _hud_front: HudFront:
+	get:
+		if _hud_front_made == null:
+			_hud_front_made = HudFront.new()
+			_hud_front_made.name = "HudFront"
+			_hud_front_made.hud = $HUD
+			_hud_front_made.control_at = _control_at
+			add_child(_hud_front_made)
+		return _hud_front_made
+var _hud_front_made: HudFront = null
+
+# -- end hudfront ------------------------------------------------------------------
 
 
 ## Whether the phone's layout has sized the tools' column's panels
@@ -6526,7 +6687,8 @@ func _make_studio() -> void:
 	add_child(studio)
 	var first: int = $HUD.get_child_count()
 	studio.setup($HUD)
-	_under_gates(first)
+	for made: Node in $HUD.get_children().slice(first):
+		_hud_front.take(made as Control)
 	studio.said.connect(func(words: String) -> void: _bar.say(words))
 	studio.made.connect(func(part_id: String) -> void:
 		_bin.populate()
@@ -6579,6 +6741,31 @@ func _make_render() -> void:
 	var fit: Callable = func() -> void: _inset(render, float(kind.WIDE), float(kind.TALL))
 	fit.call()
 	get_viewport().size_changed.connect(fit)
+	# A Best render, a turntable, an animation or a build video says when it
+	# is done, while nobody is looking (DoneNote).
+	_done_note().follow_render(render)
+
+
+## The done note (DoneNote), made the first time a job tells it something:
+## a long job says when it is done while nobody is looking.
+func _done_note() -> Node:
+	if _done_note_made == null:
+		_done_note_made = Later.make(&"DoneNote")
+		_done_note_made.name = "DoneNote"
+		_done_note_made.set("named", func() -> String:
+			return _bar.model_name() if _bar != null else "Model")
+		# What a session from outside asked for is said in its own chat.
+		_done_note_made.set("driven", func() -> bool: return _session_at_work())
+		add_child(_done_note_made)
+	return _done_note_made
+
+
+## File, Render queue…'s queue, as it is made (RenderQueue.of): its end said
+## by the done note while nobody is looking, whoever filled it.
+func follow_render_queue(queue: Node) -> void:
+	queue.connect(&"began", func() -> void: _done_note().started("queue"))
+	queue.connect(&"emptied", func(drawn: int, _failed: int) -> void:
+		_done_note().finished("queue", drawn > 0))
 
 
 ## When anything last reached the window, and when it last drew a frame:
@@ -6639,6 +6826,39 @@ func _make_motions() -> void:
 	motions.library = _library
 	motions.store = _store
 	motions.grabbing = _grab_drag
+	# unit drive: a path kept where it ends keeps the model on its floor,
+	# laid under all it went over, so neither the drive nor its undo
+	# leaves it hanging off the edge.
+	motions.driven = _floor_under
+	# end unit drive
+
+
+# unit drive
+## The floor laid under [param box] where it does not cover it already.
+func _floor_under(box: AABB) -> void:
+	if _floor != null and box.has_volume() and not _floor.covers(box):
+		_floor.lay(box)
+
+
+## A motion that drives the model along a path, about to be drawn on the
+## viewer: its floor laid under all the path goes over, and the view framed
+## on it where any of it is out of sight, so the model is seen driving all
+## the way rather than off the page.
+func _show_drive(run: RefCounted) -> void:
+	var box := AABB()
+	for played: RefCounted in run.played:
+		var one: AABB = _motions.drive_box(played)
+		if one.has_volume():
+			box = one if not box.has_volume() else box.merge(one)
+	if not box.has_volume():
+		return
+	_floor_under(box)
+	# Not MotionPlayer.box_in_view: main names no class it loads later.
+	for n: int in 8:
+		if not _camera.is_position_in_frustum(box.get_endpoint(n)):
+			_camera.frame(box)
+			return
+# end unit drive
 
 
 ## Tools, Colour the hidden parts…: the inside, cut open and coloured, in
@@ -6793,7 +7013,7 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 		# is up (BookletMaker.warm): built in its first picture, it was a
 		# second of a frame on a first start.
 		_warm_booklet()
-		to = await SaveTo.ask(title.to_snake_case() + "_instructions.html", "",
+		to = await SaveTo.ask(SubmodelFile.titled(title, "_instructions.html"), "",
 			"Save the instructions")
 		if to.is_empty():
 			return ""
@@ -6818,7 +7038,7 @@ func _export_booklet(to: String = "", job: Working.Job = null, skip: Variant = n
 		_store.scenery)
 	add_child(maker)
 	maker.progress.connect(func(_said: String) -> void: BookletTab.tell(job.line()))
-	var file_name: String = title.to_snake_case() + "_instructions.html"
+	var file_name: String = SubmodelFile.titled(title, "_instructions.html")
 	# Into its file and in front of the reader as it is drawn (BookletOut):
 	# the last booklet's pages, kept for its tab, go.
 	if is_instance_valid(_booklet_out):
@@ -8193,12 +8413,18 @@ func _on_part_fetched(part_id: String) -> void:
 	# Not there yet is not the same as not there: a model opened on the
 	# web before its parts were fetched gets them as they come.
 	if _store.place_awaited(part_id) > 0:
-		_on_model_changed()
-		if _store.awaited.is_empty():
-			_bar.say("%d bricks" % Inventory.pieces_in(_world, _library, _store.scenery))
+		_on_landed()
 	if _builder.held_part == part_id:
 		_refresh_preview()
 		_bar.say("%s ready" % part_id)
+
+
+## Parts on their way put down: as each arrives, or once motions kept as one
+## step, which held them back while it was made, are (ModelStore.hold_landings).
+func _on_landed() -> void:
+	_on_model_changed()
+	if _store.awaited.is_empty():
+		_bar.say("%d bricks" % Inventory.pieces_in(_world, _library, _store.scenery))
 
 
 ## A part that could not be fetched, asked again too (PartLibrary.RETRY_AFTER).
@@ -9262,13 +9488,6 @@ func _start_left_nav(verb: String, at: Vector2) -> void:
 	_camera.begin_drag(MOUSE_BUTTON_LEFT, at, verb)
 
 
-## Ctrl and the left button on a Mac, which every Mac program reads as the
-## right button — a trackpad's one button needs it.
-func _mac_right_click(button: InputEventMouseButton) -> bool:
-	return EditVerbs.on_mac() and button.ctrl_pressed and not button.meta_pressed \
-		and not button.alt_pressed
-
-
 ## A right click: lets go of what is in hand and goes back to Select, as
 ## Studio's does. It takes nothing off the model (Delete does, or the Delete
 ## tool) — the right button is for looking.
@@ -9562,12 +9781,15 @@ func _unhandled_input(event: InputEvent) -> void:
 				and moved.position.distance_to(_press_at) > DRAG_SLOP:
 			_grabbing = _grab_on_joint(_press_brick)
 			if not _grabbing:
-				_dragging_part = _verbs.drag_start(_press_brick, _press_copies)
+				_dragging_part = _verbs.drag_start(_press_brick, _press_copies,
+					moved.shift_pressed)
 			_press_brick = 0
 		if _grabbing:
 			_grab_drag.motion(moved.position)
 			return
 		if _dragging_part:
+			# With what rests on it, or alone while Shift is held (carryrest).
+			_verbs.drag_alone(moved.shift_pressed)
 			_refresh_preview(moved.position)
 			return
 		# A left press that moves is a drag, never a placement: past a few
@@ -9689,6 +9911,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	# A part being dragged, let go of where the drag ends: put down there
 	# if it fits, and back where it was if not.
 	if _dragging_part and not button.pressed:
+		_verbs.drag_alone(button.shift_pressed)
 		_drop_dragged(button.position)
 		return
 	# A click on a part with the Select tool that never became a drag.
@@ -9718,7 +9941,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 		# Ctrl-click on a Mac is a right click: a click lets go of what
 		# is in hand, a drag turns the view, as the right button's do.
-		if _mac_right_click(button):
+		if EditVerbs.mac_right_click(button):
 			_pending_left = true
 			_pending_verb = "turn"
 			_pending_alt = false
@@ -10586,6 +10809,12 @@ func _input(event: InputEvent) -> void:
 		_system_at = get_viewport().get_mouse_position()
 		_pointer_seen_ms = Time.get_ticks_msec()
 	var key: InputEventKey = event as InputEventKey
+	# Shift pressed or let go of with a part dragged: alone, or with what
+	# rests on it, at once rather than at the pointer's next move (carryrest).
+	if key != null and _dragging_part and key.keycode == KEY_SHIFT and not key.echo:
+		_verbs.drag_alone(key.pressed)
+		_refresh_preview(_pointer())
+		return
 	if key == null or key.keycode != KEY_ESCAPE or not key.pressed or key.echo:
 		return
 	var focused: Control = get_viewport().gui_get_focus_owner()

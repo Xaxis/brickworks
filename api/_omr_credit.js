@@ -74,9 +74,34 @@ export async function storeIndex() {
 /// it too (api/share.js), for its parts and steps.
 export async function storeFile(entry) {
   if (typeof entry.file !== "string" || !/^library\/omr\/[A-Za-z0-9._-]+\.mpd$/.test(entry.file)) return null;
+  const had = files.get(entry.file);
+  if (had && Date.now() - had.at < INDEX_FOR_MS) return had.text;
   // The largest is 36 MB.
   const bytes = await storeBytes(entry.file, { seconds: 120 });
-  return bytes ? bytes.toString("utf8") : null;
+  if (!bytes) return null;
+  keepFile(entry.file, bytes.toString("utf8"));
+  return files.get(entry.file).text;
+}
+
+/// The files this instance has read lately, oldest first, FILES_BYTES at
+/// most in all and each as long as the index: a set's page, its parts and
+/// its scene each ask for the same file, and every read of the store is
+/// Supabase egress.
+const FILES_BYTES = 128 * 1024 * 1024;
+const files = new Map();
+let filesBytes = 0;
+
+function keepFile(file, text) {
+  const was = files.get(file);
+  if (was) filesBytes -= was.text.length;
+  files.delete(file);
+  files.set(file, { at: Date.now(), text });
+  filesBytes += text.length;
+  for (const [old, kept] of files) {
+    if (filesBytes <= FILES_BYTES || old === file) break;
+    files.delete(old);
+    filesBytes -= kept.text.length;
+  }
 }
 
 /// The page the file's own credit line names, as a hint where to look; ""

@@ -548,6 +548,33 @@ dialog.feedback figure.attached { display: grid; grid-template-columns: 120px 1f
 dialog.feedback figure.attached canvas { grid-row: span 2; width: 120px; height: auto; border: 1px solid var(--line); border-radius: var(--r-1); }
 dialog.feedback figcaption { font-size: var(--t-small); color: var(--ink-soft); overflow-wrap: anywhere; }
 dialog.feedback .tick span { overflow-wrap: anywhere; }
+/* Report a bug (bugreport.js): wider, the page's picture large to mark the
+   spot on with a drag, and what will be sent in a line before Send. */
+dialog.feedback.report { width: min(960px, calc(100vw - 32px)); }
+dialog.feedback figure.marked { margin: 0 0 10px; }
+dialog.feedback figure.marked figcaption { margin: 0; padding: 0; }
+dialog.feedback canvas.marking {
+	display: block; max-width: 100%; max-height: 40vh; width: auto; height: auto; margin: 0 0 6px;
+	border: 1px solid var(--line); border-radius: var(--r-1); cursor: crosshair; touch-action: none;
+}
+dialog.feedback figure.marked .actions { margin: 6px 0 0; }
+dialog.feedback .sends-head { margin: 0 0 2px; font-size: var(--t-small); color: var(--ink-soft); }
+dialog.feedback .sends { margin: 0 0 4px; color: var(--ink); font-size: var(--t-small); }
+/* Send and Cancel stay in sight while the report scrolls, as a dialog's
+   footer does (GitHub's and Linear's new issue). */
+dialog.feedback.report form > .actions {
+	position: sticky; bottom: -24px; z-index: 1; margin: 0 -24px -24px; padding: 12px 24px 24px;
+	background: var(--panel); border-top: 1px solid var(--line);
+}
+/* Wide enough, the words on the left and the picture on the right, the
+   whole report in one screen. */
+@media (width >= 900px) {
+	dialog.feedback.report form { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); column-gap: 28px; align-items: start; }
+	dialog.feedback.report form > * { grid-column: 1; }
+	dialog.feedback.report form > fieldset.attach { grid-column: 2; grid-row: 1 / span 5; }
+	dialog.feedback.report form > .actions, dialog.feedback.report form > .said { grid-column: 1 / -1; }
+	dialog.feedback.report canvas.marking { max-height: 52vh; }
+}
 /* First steps after a first sign-in (first-steps.js): wider, for a row of
    pills and a grid of cards, its steps counted in the eyebrow. */
 dialog.first-steps { width: min(640px, calc(100vw - 32px)); }
@@ -561,6 +588,38 @@ dialog.first-steps .kinds { margin: 0 0 var(--s-5); }
 dialog.first-steps .models { margin: 0 0 var(--s-2); grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-3); }
 @media (width < 600px) { dialog.first-steps .models { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 dialog.first-steps .actions { margin-top: var(--s-5); }
+/* The beta's welcome after a first sign-in (beta-welcome.js): what
+   Brickworks is in the ink, the beta and the tester's part under it, the
+   two choices, and the terms in the quiet line last. */
+/* A sheet: a dialog at the window's edge holding one row of a list whole
+   (/admin's account, an act of its audit), over the list it came from.
+   Its head the title and Close; its body scrolls inside it. The whole
+   width of a phone. */
+dialog.sheet {
+	width: min(560px, 100vw); max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0 0 0 auto; padding: 0;
+	border-width: 0 0 0 1px; border-radius: 0;
+}
+dialog.sheet[open] { display: flex; flex-direction: column; }
+dialog.sheet .sheet-head {
+	display: flex; align-items: center; justify-content: space-between; gap: var(--s-3);
+	padding: var(--s-4) var(--s-5); border-bottom: 1px solid var(--line);
+}
+dialog.sheet .sheet-head h2 { margin: 0; overflow-wrap: anywhere; }
+dialog.sheet .sheet-body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: var(--s-5); }
+dialog.sheet .sheet-body > * + * { margin-top: var(--s-6); }
+dialog.sheet .sheet-body h3 { margin: 0 0 var(--s-3); }
+@media (width < 600px) { dialog.sheet { border-width: 0; } dialog.sheet .sheet-head, dialog.sheet .sheet-body { padding-inline: var(--s-4); } }
+dialog.beta-welcome { width: min(460px, calc(100vw - 32px)); }
+dialog.beta-welcome .eyebrow { margin-bottom: var(--s-2); }
+dialog.beta-welcome .what { color: var(--ink); font-size: var(--t-lede); line-height: 1.45; text-wrap: pretty; }
+dialog.beta-welcome .gets {
+	padding: 10px 12px; border-left: 3px solid var(--accent-edge); background: var(--panel-hi);
+	border-radius: 0 var(--r-1) var(--r-1) 0; color: var(--ink); text-wrap: pretty;
+}
+dialog.beta-welcome .actions { margin-top: var(--s-5); }
+dialog.beta-welcome .note { margin: var(--s-3) 0 0; }
+/* On a phone the two choices stack, each the dialog's width, Join on top. */
+@media (width < 600px) { dialog.beta-welcome .actions .cta { flex: 1 1 100%; } }
 
 /* A person to follow (the feed's designers, First steps): their avatar,
    their name and best models, and Follow. A list of them is .people-list. */
@@ -713,6 +772,16 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 .table.wide td, .table.wide thead th { min-width: 130px; }
 .table.wide thead th { color: var(--ink); font-size: var(--t-small); font-weight: 650; }
 .table.wide tr > :first-child { position: sticky; left: 0; z-index: 1; min-width: 120px; max-width: 150px; background: var(--bg); }
+/* A column that sorts (/admin): its head a button.link.sort, in the head's
+   words, the column sorted aria-sort with an arrow that says which way.
+   A row asked for by its address (/admin#report-N) is .asked, lit. */
+.table th .sort { color: inherit; text-decoration: none; text-align: inherit; }
+.table th .sort:hover { color: var(--ink); }
+.table th[aria-sort] .sort { color: var(--ink); }
+.table th[aria-sort="descending"] .sort::after { content: " \2193"; }
+.table th[aria-sort="ascending"] .sort::after { content: " \2191"; }
+.table tr.asked > * { background: var(--accent-soft); }
+.table tr.asked > :first-child { box-shadow: inset 3px 0 0 var(--accent-edge); }
 
 /* A model: the one card for a shared model, wherever one is listed (the
    gallery, the landing page, a profile, a collection, a model's remixes,
@@ -1093,6 +1162,60 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 .toast.shown { transform: translate(-50%, 0); opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
 
+/* The beta's bar (web/betabar.js), on every page while the beta is open:
+   Open beta, Report a bug and Join (or You're a tester), and its × that
+   hides it for a day. It floats at the window's foot, at its left and on a
+   phone in the middle, over the page and moving none of it: a strip over
+   the header that came with the server's answer pushed every page down
+   (Steady loads). Its corners round its buttons' at its padding's
+   distance, and it rises and fades in as a dialog does. */
+.beta-bar {
+	position: fixed; z-index: 50; left: var(--s-4); bottom: calc(var(--s-4) + env(safe-area-inset-bottom, 0px));
+	display: flex; align-items: center; gap: var(--s-1); max-width: calc(100vw - 32px);
+	padding: 4px; border: 1px solid var(--line-strong); border-radius: var(--r-3);
+	background: color-mix(in srgb, var(--panel) 88%, transparent);
+	backdrop-filter: saturate(1.6) blur(16px); -webkit-backdrop-filter: saturate(1.6) blur(16px);
+	box-shadow: var(--highlight), var(--shadow);
+	opacity: 0; transform: translateY(8px);
+	transition: opacity var(--motion-open) var(--ease), transform var(--motion-open) var(--ease);
+}
+.beta-bar.shown { opacity: 1; transform: none; }
+@media (width < 600px) { .beta-bar { right: 0; left: 0; width: max-content; margin-inline: auto; } }
+.beta-bar > * { flex: none; }
+.beta-bar > .badge { margin: 0 var(--s-1) 0 var(--s-1); }
+.beta-bar .short { display: none; }
+.beta-bar .icon-btn.small { padding: 0; border-color: transparent; border-radius: var(--control-radius); background: transparent; color: var(--ink-soft); }
+.beta-bar .icon-btn.small:hover { background: var(--panel-hi); color: var(--ink); }
+.beta-bar .third { display: contents; }
+.beta-bar .tester {
+	display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border-radius: var(--control-radius);
+	color: var(--ink); font-size: var(--t-small); font-weight: 600; text-decoration: none; white-space: nowrap;
+}
+.beta-bar .tester:hover { background: var(--panel-hi); }
+.beta-bar .tester .icon { width: 16px; height: 16px; color: var(--green); }
+@media (prefers-reduced-motion: reduce) { .beta-bar { transition: none; } }
+/* On a phone it is "Beta", Report a bug, Join and its ×, closer set; a
+   tester's has no third part (the hub says so). Still too wide for the
+   window, its label goes (.tight, web/betabar.js). */
+@media (width < 600px) {
+	.beta-bar { gap: 2px; }
+	.beta-bar .long, .beta-bar .third > a.tester { display: none; }
+	.beta-bar .short { display: inline; }
+	.beta-bar > .badge { padding: 0 10px; margin: 0 2px; }
+	.beta-bar .cta.small { padding-inline: 10px; }
+	.beta-bar .icon-btn.small { min-width: 40px; }
+}
+.beta-bar.tight > .badge { display: none; }
+/* While it is shown the toast speaks above it, and the footer ends past
+   it, so the page's last line is never under it. Whatever is scrolled to,
+   by Tab, a link or a page's own script, stops clear above it, as under
+   the header (scroll-padding-top): a tester tabbing down Settings at 390
+   came to its Beta row's Beta hub and Leave the beta under the bar
+   (betaopen, 2026-11-10). Its 52 px at most, 16 below it, 12 clear. */
+:root[data-betabar] { scroll-padding-bottom: calc(var(--s-4) + 64px + env(safe-area-inset-bottom, 0px)); }
+:root[data-betabar] .toast { bottom: calc(var(--s-5) + 60px); }
+:root[data-betabar] .site-foot { padding-bottom: calc(var(--s-6) + 64px); }
+
 /* The "more" menu: an icon button that opens a short list of what else
    can be done (Report it, Takedown requests), the header Menu's panel.
    A <details>, so it opens with no script; web/kit.js closes it on a click
@@ -1122,12 +1245,13 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 .setting p { margin: 0 0 6px; color: var(--ink-soft); font-size: var(--t-small); max-width: 70ch; }
 .setting .actions .said { margin: 0; }
 @media (width < 600px) { .setting { grid-template-columns: minmax(0, 1fr); } }
-/* Settings, Feedback: each report sent, its marks (what, where it stands,
+/* Settings, Your reports: each report sent, its number, its marks (what, where it stands,
    when), its words as written, and our answers under it. */
 .reports { display: grid; gap: var(--s-3); margin: var(--s-3) 0 0; padding: 0; list-style: none; }
 .reports .report { padding: var(--s-3) var(--s-4); border: 1px solid var(--line); border-radius: var(--r-2); background: var(--panel); }
 .reports .marks { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; margin: 0 0 var(--s-2); }
 .reports .marks small { color: var(--ink-faint); font-size: var(--t-tiny); }
+.reports .marks .number { font-variant-numeric: tabular-nums; color: var(--ink-soft); font-size: var(--t-small); }
 .reports .words { white-space: pre-line; overflow-wrap: anywhere; color: var(--ink); }
 .reports .answer { margin-top: var(--s-3); padding: var(--s-2) var(--s-3); border-left: 3px solid var(--accent-edge); background: var(--panel-hi); border-radius: 0 var(--r-1) var(--r-1) 0; }
 .reports .answer .who { margin: 0 0 4px; font-size: var(--t-tiny); color: var(--ink-faint); }
