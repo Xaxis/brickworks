@@ -368,24 +368,69 @@ func copies_of(path: String) -> PackedStringArray:
 	return out
 
 
-## A definition name no assembly uses yet: "Wing", else "Wing 2", "Wing 3".
-func unused_name(wanted: String) -> String:
-	var base: String = wanted.strip_edges().replace("/", "-").replace("#", "")
-	if base.is_empty():
-		base = "Sub-assembly"
+## A definition name the model has not got ([method names_taken]): "Wing",
+## else "Wing 2", "Wing 3" (Names.free_name). [param except], a definition being
+## renamed, is not counted: "roof" renamed "Roof" is "Roof".
+func unused_name(wanted: String, except: String = "") -> String:
+	var taken: Dictionary = names_taken()
+	if not except.is_empty() and not _names_besides(except).has(Names.key(except)):
+		taken.erase(Names.key(except))
+	return Names.free_name(wanted, taken)
+
+
+## Every name the model defines (Names.key -> true), in one namespace: the
+## definition of every copy of a sub-model on the baseplate and every figure,
+## of every copy a step or a part not on the baseplate is kept under
+## (BrickWorld.unit_steps, held_paths), of every sub-model with its own
+## lines (section_lines), the file names those and the model are written
+## under (section_files), the pictures its booklet shows, and what the
+## file it was opened from holds besides (BrickWorld.names_held: its
+## sections kept as the file has them, the parts it carries and what they
+## are drawn from, their pictures).
+func names_taken() -> Dictionary:
+	return names_in(world)
+
+
+## [method names_taken] of [param world].
+static func names_in(world: BrickWorld) -> Dictionary:
 	var taken: Dictionary = {}
-	for path: String in paths():
-		taken[definition(leaf(path))] = true
-	# And those only parts not on the baseplate are in (BrickWorld.held_paths).
-	for path: Variant in world.held_paths.values():
+	for brick: BrickWorld.Brick in world.bricks():
+		Names.take(brick.group, taken)
+		for segment: String in segments(path_of(brick)):
+			Names.take(definition(segment), taken)
+	for path: Variant in PackedStringArray(world.unit_steps.keys()) \
+			+ PackedStringArray(world.held_paths.values()):
 		for segment: String in segments(str(path)):
-			taken[definition(segment)] = true
-	if not taken.has(base):
-		return base
-	var n: int = 2
-	while taken.has("%s %d" % [base, n]):
-		n += 1
-	return "%s %d" % [base, n]
+			Names.take(definition(segment), taken)
+	for def: Variant in world.section_lines:
+		Names.take(str(def), taken)
+	# The file names a whole write gives the model and its sub-models: a
+	# sub-model taken apart keeps its entry, and takes no name with it
+	# (unit_steps 6).
+	for def: Variant in world.section_files:
+		if str(def).is_empty() or Names.is_taken(str(def), taken):
+			Names.take_file(str(world.section_files[def]), taken)
+	# A look a sub-model taken apart left takes no name: the next to take it
+	# takes its looks' place (unit_steps 6, Builder._brought_down).
+	for picture: Variant in world.step_looks.get(BookletLooks.DATA, {}):
+		Names.take(str(picture), taken)
+	for name: Variant in world.names_held_now():
+		Names.take(str(name), taken)
+	return taken
+
+
+## The names the model has but [param def]'s own sub-model: those of every
+## other definition, and of anything else under the same name.
+func _names_besides(def: String) -> Dictionary:
+	var taken: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		Names.take(brick.group, taken)
+		for segment: String in segments(path_of(brick)):
+			if definition(segment) != def:
+				Names.take(definition(segment), taken)
+	for name: Variant in world.names_held_now():
+		Names.take(str(name), taken)
+	return taken
 
 
 ## The next copy of a definition, numbered across the whole model as an
@@ -660,7 +705,7 @@ func rename(path: String, wanted: String) -> String:
 	var name: String = wanted.strip_edges().replace("/", "-").replace("#", "")
 	if name.is_empty() or name == old:
 		return old
-	name = unused_name(name)
+	name = unused_name(name, old)
 	Language.keep_name(name)
 	var changes: Dictionary = {}
 	for brick: BrickWorld.Brick in world.bricks():

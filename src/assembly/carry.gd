@@ -65,6 +65,17 @@ var lines: Dictionary = {}
 var frames: Dictionary = {}
 ## And what its copies hold that is not on the baseplate (clipboard_held).
 var held: Array = []
+## A model brought into this one whole (ModelStore.held_from): its parts go
+## down under the names they were read with, each in the step its author
+## gave it, and each copy of a sub-model in it, by its path in hand, on in
+## the step [member brought_units] says (the whole's after the model's
+## last: Builder._bring_steps). [member brought_data] is what else it
+## brings: its own copy's path ("root"), its steps' looks and its sections'
+## file names (Builder._brought_down), and whether the model it goes into is
+## someone else's file with no steps ("host_flat", Builder._bring_steps).
+var brought: bool = false
+var brought_units: Dictionary = {}
+var brought_data: Dictionary = {}
 
 var _ghost: Node3D
 ## The ghost's one material: its "valid" says whether the group fits.
@@ -185,6 +196,9 @@ func hold(parts: Array, came_off_the_model: bool) -> void:
 	lines = {}
 	frames = {}
 	held = []
+	brought = false
+	brought_units = {}
+	brought_data = {}
 	_pinned = false
 	_base = []
 	var phase: float = phase_of(items[0].get("pivot", Vector3(10, 0, 10))) \
@@ -204,6 +218,9 @@ func drop() -> void:
 	lines = {}
 	frames = {}
 	held = []
+	brought = false
+	brought_units = {}
+	brought_data = {}
 	_pinned = false
 	_base = []
 	_covers.clear()
@@ -277,6 +294,20 @@ func is_pinned() -> bool:
 ## the next copy.
 func base_items() -> Array:
 	return _base if _pinned else items
+
+
+## What is in hand is a model brought in whole ([param held], ModelStore
+## .held_from's): put down, it goes in as read ([member brought]), with its
+## sub-models' own lines and their frames, and what it holds that is not
+## shown.
+func bring(held: Dictionary) -> void:
+	brought = true
+	brought_units = held["units"]
+	brought_data = {"root": held["root"], "looks": held["looks"], "files": held["files"],
+		"host_flat": bool(held.get("host_flat", false))}
+	lines = held["lines"]
+	frames = held["frames"]
+	self.held = held["held"]
 
 
 ## Stop keeping it: the ghost follows the pointer again, the parts as they
@@ -588,6 +619,15 @@ func moved() -> Transform3D:
 		return _frame * (first["at"] as Transform3D) * (first["was"] as Transform3D).affine_inverse()
 	var pivot: Vector3 = first["pivot"] if first.get("pivot") is Vector3 else Vector3.ZERO
 	return _frame * Transform3D(Basis.IDENTITY, -pivot)
+
+
+## Whether the group, where it was last aimed, stands on the ground: its
+## lowest cell on the floor's, on no part (AppTools._into_spot). Its parts'
+## drawn bottoms say less: a tyre's is a little over the floor it stands on.
+func stands_on_ground(builder: Builder) -> bool:
+	var whole: PackedInt32Array = _covers_for(builder)[1]
+	return _aimed and not whole.is_empty() \
+		and _lowest(whole) + roundi(_frame.origin.y / BrickLattice.CELL) == Builder.GROUND_CELL
 
 
 func placements(builder: Builder) -> Array:

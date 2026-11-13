@@ -5288,6 +5288,27 @@
       "entry": "tools/web/start_abba.mjs",
       "reach": "heavy node tools/web/start_abba.mjs --arm=base=SNAP/build/web --arm=new=SNAP2/build/web --blocks=4 --out=DIR   (with .env sourced; an arm may be a URL; --summary --out=DIR says the table again; python3 tools/minitest.py tests/test_start_abba.py)",
       "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "put a model into this one",
+      "entry": "src/parts/into_model.gd",
+      "reach": "godot --path .  (File, Import, Into this model…: a saved model, an example, a file from this computer or the library; the library's Put in this model on a card; a click puts it down as one sub-assembly with its steps, its names made its own, its maker credited, one Undo takes it out)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "into model probe",
+      "entry": "src/dev/intomodel_probe.gd",
+      "reach": "tools/probe.sh intomodel_probe   (a window, 1400x900; PROBE_SIZE=1280x720 for the small one: File, Import, Into this model… with a saved model and with a file, the library's Put in this model on 6596-1, and open_model into=true, each put down with a click into a host of someone else's or the app's own; one Undo key takes it out, Redo puts it back; saved and reopened, every host part and exactly the brought parts in place, colour, sub-assembly and step, the ones the app cannot show among them, no names shared, its maker in its header; `-- case,case` runs only those)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "into model review probes",
+      "entry": "src/dev/im2review_probe.gd",
+      "reach": "tools/probe.sh imreview_probe; tools/probe.sh im2review_probe; tools/probe.sh into_kept_probe; tools/probe.sh ic3_probe   (headless: the three reviews of putting one model into another and its kept-parts cases, each saved and reopened: parts the app cannot show kept in their sub-model and step, the host's own lines kept, renamed and moved copies, names, credits, a part landing late, a file with no FILE line given a model of its own name, no part file from another model, the file as it was once the last model put in is taken out, motions and views kept in the sub-model; `-- case,case` runs only those)",
+      "area": "model-io"
     }
   ]
 }
