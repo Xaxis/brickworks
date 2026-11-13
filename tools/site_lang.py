@@ -104,7 +104,7 @@ LANGUAGES = {"de": "Deutsch", "fr": "Français", "es": "Español"}
 PAGES = {"index.html": "", "download.html": "download", "plans.html": "plans", "faq.html": "faq",
          "compare.html": "compare", "gallery.html": "gallery", "library.html": "library", "collections.html": "collections",
          "challenge.html": "challenge", "profile.html": "profile", "settings.html": "settings",
-         "feed.html": "feed", "notifications.html": "notifications", "builds.html": "builds",
+         "feed.html": "feed", "notifications.html": "notifications", "builds.html": "builds", "lists.html": "lists",
          "feedback.html": "feedback", "beta.html": "beta", "terms.html": "terms",
          "privacy.html": "privacy", "guidelines.html": "guidelines", "takedown.html": "takedown",
          "changelog.html": "changelog", "404.html": "404", "authorize.html": "oauth/authorize"}
@@ -164,7 +164,7 @@ COUNTED = re.compile(rf"\bcounted(?:Said)?\((?:[^,()]|\([^()]*\))+,\s*({STRING})
 TOLD = ("api/otp.js", "api/_trust.js", "api/_oc.js", "api/orangecheck.js", "api/people.js", "api/share.js",
         "api/_comments.js", "api/_follows.js", "api/_lists.js", "api/_challenges.js", "api/_bases.js",
         "api/_avatars.js", "api/account.js", "api/plans.js", "api/_feedback.js", "api/_beta.js",
-        "api/_notifications.js", "api/oauth.js")
+        "api/_notifications.js", "api/oauth.js", "api/_mylists.js")
 # And what a profile can be refused with, in First steps, the profile's own
 # page and settings, in the functions that refuse it: every sentence, ended
 # with a full stop or not.
@@ -184,7 +184,7 @@ SIGN_IN_WHY = re.compile(r'"(Sign in\b(?:[^"\\\n]|\\.)*\.)"')
 # say(), is English left on the page. Those no copy loads are read for
 # their words too: a set's page, which the server makes, and its scripts.
 SAID_ALL = {"web/account.js": (), "web/first-steps.js": (), "web/beta-welcome.js": (), "web/set-page.js": (),
-            "web/model-page.js": (), "api/_sets.js": ("setPage", "facts", "structured"),
+            "web/model-page.js": (), "api/_sets.js": ("setPage", "facts", "structured", "keepBarHtml"),
             "api/share.js": ("sharePage", "describe", "pageHead", "creditOf", "licenceWords", "setFacts", "testedMark", "madeFact",
                              "designerRow", "modelledLine", "nextRow", "actionBar", "shareSheet", "mediaStrip", "pageTabs",
                              "partsSection", "listsSection", "buildFigure", "buildsSection", "commentsSection",
@@ -193,9 +193,9 @@ SAID_ALL = {"web/account.js": (), "web/first-steps.js": (), "web/beta-welcome.js
             "api/_lists.js": ("listCardHtml",), "api/_directory.js": ("movesWords",),
             "api/_library.js": ("setModel",), "api/_challenges.js": ("wonSaid", "challengeHead"),
             "api/people.js": ("head", "page", "missingPage", "numbersHtml", "achievementsOf", "stripHtml", "tabSaid", "pastEnd",
-                              "profilePage", "profileHtml", "listPage", "listHtml"),
+                              "profilePage", "profileHtml", "listPage", "listHtml", "ownedPanel", "sizeSaid"),
             "web/card.js": ("iconButtonHtml", "shareTargets", "shareSheetHtml", "cardHtml", "buildCardHtml", "mosaicHtml",
-                            "collectionCardHtml", "basedHtml",
+                            "collectionCardHtml", "basedHtml", "keepHtml", "listCount",
                             "awardsHtml", "levelName", "levelAwards", "rulesSaid", "brokenSaid"),
             "web/start3d.js": (), "web/share-page.js": (), "web/share-sheet.js": (), "web/scroller.js": (),
             "web/report.js": (), "web/follow.js": (), "web/person.js": (), "web/designs.js": (), "web/pager.js": (),
@@ -205,6 +205,7 @@ SAID_ALL = {"web/account.js": (), "web/first-steps.js": (), "web/beta-welcome.js
             "web/challenge.js": (), "web/profile.js": (), "web/settings.js": (), "web/plan.js": (), "web/picture.js": (),
             "web/feedback.js": (), "web/follow.js": (), "web/kit.js": (),
             "web/feed.js": (), "web/notifications.js": (), "web/builds.js": (), "web/collections.js": (), "web/beta.js": (), "web/betabar.js": (),
+            "web/keep.js": (), "web/lists.js": (),
             "web/takedown.js": ("send", "claim", "counter"), "web/authorize.js": (),
             "api/_follows.js": ("feedSaid",), "api/_notifications.js": ("dateWords", "dayWords", "noticeSaid", "noticeGroups")}
 # And what the site is put together with says on a page (tools/site.py: the

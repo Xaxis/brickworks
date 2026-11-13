@@ -39,6 +39,7 @@ it answers.
 | `bar` | POST `&id=` or `&account=` | An account out whole: every model out, no profile, no public collection | barred_accounts, shared_models, barred_models |
 | `unbar` | POST `&account=` | Let back in: it can list again | barred_accounts |
 | `dismiss` | POST `&report=` | A report let go | reports |
+| `list_down` | POST `&id=` | A reported list taken down: private for good, kept for its owner with its name and words, its reports settled | model_collections, reports |
 | `untest` | POST `&id= &v=` | A version's Tested mark cleared | share_tests |
 | `uncomment` | POST `&comment=` | A comment off every page for good | admin_remove_comment, reports |
 | `remove_photo` | POST `&photo=` | A build's photo out, its files deleted | build_photos, storage |
@@ -144,10 +145,17 @@ px (a row of pills on a phone), and the section beside it.
 |---|---|---|---|
 | Overview | `#overview` | Needs you now (reports open, applications new, feedback unread, the borrowed sender); how things stand (accounts, sign-ups today and this week, signed in this week, testers of 100, models published, reports open, feedback unread, mail sent and failed, the live release and since when); the switches; the latest acts | Each card goes where it is done |
 | People | `#people`, `#people/<account>` | Every account: address, handle, joined, last sign-in, plan, beta, models, connectors, taken out. Search; Everyone, Testers, With models, With a connector, Taken out | A row opens the account whole in a panel: Take out the account, Let back in, its models, its acts |
-| Gallery | `#gallery/reported`, `comments`, `listed`, `pick`, `challenges`, `tested`, `barred` | Reported, Comments, In the gallery, This week's pick, Challenges, Tested, Taken out | Take out, Take out the account, Remove the comment, Take the photo or the picture out, Let it go, Make it the pick, End, Set a challenge, Set the year, End it now, Clear the mark, Let back in |
+| Gallery | `#gallery/reported`, `comments`, `listed`, `pick`, `challenges`, `tested`, `barred` | Reported, Comments, In the gallery, This week's pick, Challenges, Tested, Taken out | Take out, Take out the account, Remove the comment, Take the photo or the picture out, Take the list down, Let it go, Make it the pick, End, Set a challenge, Set the year, End it now, Clear the mark, Let back in |
 | Beta | `#beta`, `#beta/applications`, `#beta/testers` | The beta's switch and its places left, billing's mode; the months of Pro (spots given and left, new, waitlist, still to give), the applications by state; the testers | Open or Off; Approve, Waitlist, Decline with a note; Grant pending months |
 | Feedback | `#feedback`, `#feedback-N` | The inbox, by kind, where it stands and from whom | Where it stands, a note, an answer emailed |
 | Audit log | `#audit` | Every act: when, what, on what, the outcome, by whom | Filter by act, search |
+
+A reported list (a list of sets and models, or a wishlist) shows in
+Reported with its name and words as the owner typed them, whether it is
+public, and its owner's address. **Take the list down** makes it private
+for good: its page and its place in the directory go at once, its owner
+still sees it on Your lists marked *taken down*, and it cannot be made
+public again (`model_collections.taken_down_at`, docs/LISTS.md).
 
 The old addresses land: `/beta-admin` redirects to `/admin#beta` (and
 `?tests=1` with it), `#report-N` opens Reported with that report marked,

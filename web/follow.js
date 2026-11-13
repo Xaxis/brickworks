@@ -346,6 +346,7 @@ function accountPart(state) {
   const at = langAt();
   for (const [href, words, data] of [[`${at}/profile`, say("Your profile"), "profile"],
     [`${at}/notifications`, say("Notifications"), "notifications"], [`${at}/feed`, say("Your feed"), "feed"],
+    [`${at}/lists`, say("Your lists"), "lists"],
     [`${at}/profile?tab=saved`, say("Saved"), "saved"], [`${at}/settings`, say("Settings"), "settings"]]) {
     const link = document.createElement("a");
     link.href = href;

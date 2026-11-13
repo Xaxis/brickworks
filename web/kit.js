@@ -34,14 +34,40 @@ export function ago(iso) {
 /// reader reads a live region's change, not a region that arrives already
 /// saying something, so the toast is on the page empty from the first, and
 /// its words are put in a moment later; the same words twice are said twice.
-export function toast(words) {
+///
+/// [undo] (lists1): what puts back what was just done. The toast then holds
+/// an Undo button after its words and stays 8 s, held while the pointer or
+/// the keyboard is on it (a person reading it, or reaching for Undo, is
+/// never cut short); Undo runs [undo] once and takes the toast away. A
+/// later toast replaces it, its Undo gone with it: what it would undo was
+/// the last thing but one.
+export function toast(words, { undo = null } = {}) {
   const said = toastRegion();
   said.textContent = "";
+  said.classList.remove("acts");
   clearTimeout(toast.timer);
+  const hide = () => {
+    if (said.matches(":hover, :focus-within")) { toast.timer = setTimeout(hide, 1500); return; }
+    said.classList.remove("shown", "acts");
+  };
   toast.timer = setTimeout(() => {
     said.textContent = String(words);
+    if (typeof undo === "function") {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "undo";
+      button.textContent = say("Undo");
+      button.addEventListener("click", () => {
+        clearTimeout(toast.timer);
+        said.classList.remove("shown", "acts");
+        said.textContent = "";
+        undo();
+      }, { once: true });
+      said.append(" ", button);
+      said.classList.add("acts");
+    }
     said.classList.add("shown");
-    toast.timer = setTimeout(() => said.classList.remove("shown"), 2400);
+    toast.timer = setTimeout(hide, undo ? 8000 : 2400);
   }, 60);
 }
 

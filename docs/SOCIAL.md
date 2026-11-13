@@ -966,6 +966,14 @@ need the database's own function: about 4 ms on today's gallery, 0.6 s at
 line of what they share, and suggestions on your own page or in the feed
 from this (the feed's designers to follow are U9's, by Top builds).
 
+## 8. Sets and lists (2026-11-13)
+
+The owner asked for lists people make and manage in the gallery and a way
+to show off the sets they own. That work has its own research and plan:
+docs/LISTS.md (Own and Want on every set, Save on every gallery model,
+lists of your own holding both, Your lists at /lists, the profile's Sets
+tab; unit lists1, and what is left for lists2 in its order).
+
 ## Sources
 
 Read 2026-10-22. Where a site refused automated reading, the claim is

@@ -24,15 +24,23 @@
 //   {"from": "bricklink_xml",   "text": "<the file>", "mode": "add"}
 //   {"from": "rebrickable_api", "sets": [["10237-1", 1, true]],
 //                               "parts": [["3001", 4, 12]], "mode": "add"}
+//   {"from": "brickset_csv",    "text": "<the file>", "mode": "add"}
+//                                                      Brickset's My sets
+//                                                      (bricksetCsv): the
+//                                                      sets owned; those
+//                                                      wanted are the
+//                                                      wishlist's
+//                                                      (api/_mylists.js)
 //   {"from": "sets", "text": "10237-1, 6020"}          typed by number
 //   {"from": "figs", "figs": [{"fig": "sw0001a", "name": "Luke Skywalker"}]}
 //                                                      minifigures, by
 //                                                      BrickLink's number
 //
 // Every lot and set keeps where it came from ("src"): "hand" (added in My
-// collection, a set typed by number), "rebrickable" (the person's
-// Rebrickable data, fetched with their key or exported as a CSV: one
-// person's one list, however it came) or "bricklink_xml"; a lot a session
+// collection, a set typed by number, or owned on the website), "rebrickable"
+// (the person's Rebrickable data, fetched with their key or exported as a
+// CSV: one person's one list, however it came), "bricklink_xml" or
+// "brickset" (a Brickset export, its sets only); a lot a session
 // added says who instead ("by", the name the session goes by, "Claude")
 // and which of its chats ("chat"). Each is its own lot, apart from the
 // same part and colour from anywhere else, so "replace" (a Rebrickable
@@ -65,6 +73,14 @@
 //       a session's lots, at the counts the person saw, taken out
 //   {"op": "remove_set", "set": "6020-1", "src"?, "was": 1}
 //       a set, at the count the person saw, taken out
+//   {"op": "own", "set": "6020-1", "was": 0, "qty": 1}
+//       how many of a set the person owns, every copy from anywhere, from
+//       the count they saw to qty (0: none): the website's Own (lists1).
+//       More goes onto their own copy (src "hand"); fewer comes off theirs
+//       first, then off the other sources' copies. Answered with no more
+//       than a card needs: {done: {owned}, rev}, and a 409 {error, owned}
+//       with the count as it is now (a card asks it on every page, and the
+//       whole collection is thousands of lots)
 //   {"op": "start_over", "rev": <the rev the person saw>}
 //   {"op": "missing", "set": "7140-1", "src"?: "hand",
 //                     "lots": [{part, colour, was, qty}]}
@@ -166,7 +182,7 @@ export const HAND = "hand";
 export const REBRICKABLE = "rebrickable";
 export const SOURCE_OF = {
   sets: HAND, rebrickable_api: REBRICKABLE, rebrickable_csv: REBRICKABLE, bricklink_xml: "bricklink_xml",
-  figs: HAND,
+  figs: HAND, brickset_csv: "brickset",
 };
 const SOURCES = new Set(Object.values(SOURCE_OF));
 
@@ -318,6 +334,61 @@ export function rebrickableCsv(text) {
   }
   if (sets.length + parts.length === 0) throw new Refusal(400, "the file has a heading and nothing under it");
   return { sets, parts };
+}
+
+/// Yes in a spreadsheet's words: 1, true, yes, y, x.
+const YES = /^(1|true|yes|y|x)$/i;
+
+/// A Brickset export (My sets, as CSV): each set's number (Number, with its
+/// Variant where Number has none), how many the person owns (QtyOwned, or
+/// QtyOwnedNew and QtyOwnedUsed, or Own ticked: one) and whether they want
+/// it (Want). Matched by its headings, never by place: Brickset's columns
+/// moved twice since 2014 (docs/LISTS.md). OwnCount and WantCount are how
+/// many people on Brickset own and want it, never this person's, and are
+/// never read; nor SetID, Brickset's own row number. Returns {sets: [[set,
+/// qty, false]] owned, wanted: [set]}; a row neither owned nor wanted is
+/// left out. Anything else is refused with the line it went wrong on.
+export function bricksetCsv(text) {
+  const rows = csvRows(String(text || "").replace(/^﻿/, ""));
+  if (rows.length === 0) throw new Refusal(400, "the file is empty");
+  const headings = rows[0].map((h) => h.trim().toLowerCase().replace(/[\s_]+/g, ""));
+  const at = (...names) => headings.findIndex((h) => names.includes(h));
+  const number = at("number", "setnumber", "setno");
+  const variant = at("variant");
+  const qty = at("qtyowned");
+  const fresh = at("qtyownednew");
+  const used = at("qtyownedused");
+  const own = at("own", "owned");
+  const want = at("want", "wanted");
+  if (number < 0) throw new Refusal(400, "line 1: no Number column — is this a Brickset export?");
+  if (qty < 0 && fresh < 0 && used < 0 && own < 0 && want < 0) {
+    throw new Refusal(400, "line 1: no QtyOwned, Own or Want column — is this a Brickset export of your sets?");
+  }
+  const whole = (raw, line) => {
+    const said = String(raw ?? "").trim();
+    if (said === "") return 0;
+    if (!/^[0-9]+$/.test(said)) throw new Refusal(400, `${line}: the quantity "${said}" is not a whole number`);
+    return Math.min(Number(said), MAX_QTY);
+  };
+  const sets = [];
+  const wanted = [];
+  rows.slice(1).forEach((row, n) => {
+    const line = `line ${n + 2}`;
+    let raw = String(row[number] ?? "").trim();
+    const v = variant >= 0 ? String(row[variant] ?? "").trim() : "";
+    if (raw && !/-[0-9]{1,3}$/.test(raw) && /^[0-9]{1,3}$/.test(v)) raw = `${raw}-${v}`;
+    const set = setNumber(raw);
+    if (!set) throw new Refusal(400, `${line}: "${raw}" is not a set number`);
+    let owned = qty >= 0 ? whole(row[qty], line) : 0;
+    if (!owned && (fresh >= 0 || used >= 0)) {
+      owned = (fresh >= 0 ? whole(row[fresh], line) : 0) + (used >= 0 ? whole(row[used], line) : 0);
+    }
+    if (!owned && own >= 0 && YES.test(String(row[own] ?? "").trim())) owned = 1;
+    if (owned) sets.push([set, Math.min(owned, MAX_QTY), false]);
+    if (want >= 0 && YES.test(String(row[want] ?? "").trim())) wanted.push(set);
+  });
+  if (sets.length + wanted.length === 0) throw new Refusal(400, "the file lists no set you own or want");
+  return { sets, parts: [], wanted: [...new Set(wanted)] };
 }
 
 function tag(block, name) {
@@ -852,6 +923,39 @@ export function applyOp(have, body) {
     return { next: next(), done: { removed_sets: 1 } };
   }
 
+  if (op === "own") {
+    // How many of a set the person owns, from the count they saw ("was",
+    // every copy of it from anywhere, 0 for none) to qty (0: none): the
+    // website's one tap, Own and its count (lists1, docs/LISTS.md). More is
+    // added to their own copy (src "hand"); fewer comes off their own copy
+    // first, then off the other sources', the last kept first, a copy that
+    // goes taking its marks with it as remove_set's does. A figure is never
+    // one of its copies: a figure's number is never a set's.
+    const set = setNumber(body?.set);
+    if (!set) throw new Refusal(400, `"${body?.set}" is not a set number`);
+    const was = counted(body?.was, set, 0, "count seen");
+    const qty = counted(body?.qty, set, 0);
+    const copiesOf = () => sets.list.filter((s) => s.set === set && !s.fig);
+    const now = copiesOf().reduce((sum, s) => sum + (Number(s.qty) || 0), 0);
+    if (now !== was) throw new Conflict(`${set} is ${now} now, not the ${was} shown`, have);
+    if (qty === now) return { next: null, done: { owned: now } };
+    if (qty > now) {
+      sets.add({ set, qty: qty - now, spares: false, src: HAND }, qty - now);
+    } else {
+      let off = now - qty;
+      // Their own copy first, then the others from the last kept back.
+      const copies = copiesOf();
+      for (const held of [...copies.filter((s) => s.src === HAND), ...copies.filter((s) => s.src !== HAND).reverse()]) {
+        if (off === 0) break;
+        const take = Math.min(off, held.qty);
+        if (take >= held.qty) sets.take(held);
+        else held.qty -= take;
+        off -= take;
+      }
+    }
+    return { next: next(), done: { owned: qty } };
+  }
+
   if (op === "missing") {
     const set = setNumber(body?.set);
     if (!set) throw new Refusal(400, `"${body?.set}" is not a set number`);
@@ -897,8 +1001,8 @@ export function applyOp(have, body) {
     return { next: { sets: [], parts: [] }, done: { started_over: true } };
   }
 
-  throw new Refusal(400, "say what this is: op lots, set, keep, take_back, remove_set, missing or start_over, "
-    + "or from rebrickable_csv, bricklink_xml, rebrickable_api, sets or figs");
+  throw new Refusal(400, "say what this is: op lots, set, keep, take_back, remove_set, own, missing or start_over, "
+    + "or from rebrickable_csv, bricklink_xml, brickset_csv, rebrickable_api, sets or figs");
 }
 
 /// An import, as a change: {next, done}. What it imported and left out is
@@ -958,6 +1062,7 @@ export function parseImport(body) {
   let numbering = "rebrickable";
   if (from === "rebrickable_csv") parsed = rebrickableCsv(body.text);
   else if (from === "bricklink_xml") { parsed = bricklinkXml(body.text); numbering = "bricklink"; }
+  else if (from === "brickset_csv") parsed = bricksetCsv(body.text);
   else if (from === "sets") parsed = typedSets(body.text);
   else if (from === "figs") parsed = { sets: [], parts: [], figs: typedFigs(body.figs) };
   else if (from === "rebrickable_api") {
@@ -975,9 +1080,13 @@ export function parseImport(body) {
     if (sets.length + parts.length === 0) throw new Refusal(400, "Rebrickable sent back no sets and no parts");
     parsed = { sets, parts };
   } else {
-    throw new Refusal(400, "say what this is: from rebrickable_csv, bricklink_xml, rebrickable_api, sets or figs");
+    throw new Refusal(400, "say what this is: from rebrickable_csv, bricklink_xml, brickset_csv, rebrickable_api, sets or figs");
   }
-  return mapped(parsed, numbering, index);
+  const made = mapped(parsed, numbering, index);
+  // The sets a Brickset export marks wanted: not owned, so not kept here,
+  // but said back, for the website to put in the wishlist (api/_mylists.js).
+  if (parsed.wanted) made.wanted = parsed.wanted;
+  return made;
 }
 
 function within(collection) {
@@ -1063,6 +1172,15 @@ async function change(owner, make, id = "") {
     + "try again");
 }
 
+/// How many of the set [raw] names [row] holds, every copy from anywhere
+/// (a figure is never one): what an Own's 409 says.
+export function ownedOf(row, raw) {
+  const set = setNumber(raw);
+  if (!set) return 0;
+  return (Array.isArray(row?.sets) ? row.sets : []).filter((s) => s && !s.fig && s.set === set)
+    .reduce((sum, s) => sum + (Number(s.qty) || 0), 0);
+}
+
 function bodyOf(request) {
   try {
     const body = request.body;
@@ -1091,6 +1209,8 @@ export default async function handler(request, response) {
   // Somebody's own things: never kept by anything in between.
   response.setHeader("Cache-Control", "private, no-store");
 
+  // The set an Own asks about: its 409 says that set's count alone.
+  let owning = null;
   try {
     if (!authConfigured() || !dbConfigured()) throw new Refusal(503, "accounts are not configured here");
     let claims;
@@ -1131,6 +1251,7 @@ export default async function handler(request, response) {
     }
 
     const body = bodyOf(request);
+    if (body?.op === "own") owning = body.set;
     if (body && body.owner !== undefined && String(body.owner) !== owner) {
       throw new Refusal(403, "a collection is only ever its owner's");
     }
@@ -1152,11 +1273,12 @@ export default async function handler(request, response) {
       // never made twice, so it says which it is.
       if (body.op === "lots" && !id) throw new Refusal(400, "a change of lots says its id");
       const { row, done } = await change(owner, (have) => applyOp(have, body), id);
+      if (body.op === "own") return response.status(200).json({ done, rev: row.rev ?? null });
       return response.status(200).json({ ...shown(row), done });
     }
     if (!Object.hasOwn(SOURCE_OF, String(body?.from || ""))) {
-      throw new Refusal(400, "say what this is: from rebrickable_csv, bricklink_xml, rebrickable_api, sets or figs, "
-        + "or op lots, set, keep, take_back, remove_set, missing or start_over");
+      throw new Refusal(400, "say what this is: from rebrickable_csv, bricklink_xml, brickset_csv, rebrickable_api, sets or "
+        + "figs, or op lots, set, keep, take_back, remove_set, own, missing or start_over");
     }
     const imported = parseImport(body);
     const books = new Map();
@@ -1164,8 +1286,12 @@ export default async function handler(request, response) {
       await inventoriesFor(have, body, imported, books, originOf(request));
       return importing(have, body, imported, books);
     }, id);
-    return response.status(200).json({ ...shown(row), done, imported: done.imported, left_out: done.left_out || [] });
+    return response.status(200).json({ ...shown(row), done, imported: done.imported, left_out: done.left_out || [],
+      ...(imported.wanted ? { wanted: imported.wanted } : {}) });
   } catch (error) {
+    if (error instanceof Conflict && owning !== null) {
+      return response.status(409).json({ error: error.message, owned: ownedOf(error.row, owning) });
+    }
     if (error instanceof Conflict) return response.status(409).json({ error: error.message, ...shown(error.row) });
     if (error instanceof Refusal) return response.status(error.status).json({ error: error.message });
     // A database failure names the table and the status and nothing else.

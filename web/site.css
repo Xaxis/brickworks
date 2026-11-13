@@ -874,6 +874,85 @@ main > .wrap.page-head:first-child { padding-top: var(--page-top); }
 }
 .model .frame > .icon-btn:hover { background: var(--panel-hi); }
 .model .frame:has(> .icon-btn) .marks { right: 49px; }
+/* Own (a set) or Save (a model), and your lists: a split pill over the
+   picture's foot, on a ground of its own over any picture as the like has
+   (web/card.js keepHtml, web/keep.js, docs/LISTS.md). Its first half the
+   state, pressed while it is so: a plus, then a check and the accent edge
+   (a model's bookmark filled); how many once more than one. Its second
+   half opens the lists, a dot on it while the item is in one. */
+.keep {
+	display: inline-flex; align-items: stretch; overflow: hidden; border: 1px solid var(--line-strong); border-radius: var(--r-pill);
+	background: var(--panel); color: var(--ink); box-shadow: 0 1px 3px var(--shade);
+}
+.model .frame > .keep { position: absolute; right: var(--s-2); bottom: var(--s-2); z-index: 1; }
+.keep > button {
+	position: relative; display: inline-flex; align-items: center; gap: var(--s-1); min-height: 36px; margin: 0; padding: 0 10px;
+	border: 0; border-radius: 0; background: transparent; color: inherit; box-shadow: none;
+	font: inherit; font-size: var(--t-small); font-weight: 640; line-height: 1; cursor: pointer;
+}
+.keep > .keep-more { padding: 0 9px 0 7px; border-left: 1px solid var(--line); }
+.keep > button:hover { background: var(--panel-hi); }
+/* The pill clips its halves (one shape, its corners its own), so their
+   focus ring is drawn inside them. */
+.keep > button:focus-visible { outline-offset: -3px; }
+.keep .icon { width: 18px; height: 18px; }
+.keep:has(> [aria-pressed="true"]) { border-color: var(--accent-edge); }
+.keep .n { font-variant-numeric: tabular-nums; color: var(--ink-soft); }
+:is(.keep, .keep-bar) [aria-pressed="true"] > .off, :is(.keep, .keep-bar) [aria-pressed="false"] > .on { display: none; }
+:is(.keep, .keep-bar) :is(.off, .on) { display: inline-flex; }
+:is(.keep, .keep-bar) [aria-pressed="true"] > .icon { fill: currentColor; }
+.keep [data-in]::after, .keep-bar [data-keep-more][data-in] .word::after {
+	content: ""; display: inline-block; width: 7px; height: 7px; border-radius: var(--r-pill); background: var(--accent-edge);
+}
+.keep [data-in]::after { position: absolute; top: 6px; right: 5px; }
+.keep-bar [data-keep-more][data-in] .word::after { margin: 0 0 1px 6px; vertical-align: middle; }
+/* A small card's pill: the state's word only from a card's width up. */
+.models.compact .keep .word { display: none; }
+/* On a set's page, under its name: Own, Want and its lists, a row. */
+.keep-bar { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: 0 0 12px; }
+.keep-bar > .cta { flex: 1 1 auto; gap: 6px; }
+.keep-bar .icon { width: 18px; height: 18px; }
+.keep-bar .n { padding: 0 6px; border-radius: var(--r-pill); background: var(--accent-soft); font-size: var(--t-tiny); line-height: 20px; }
+/* The lists, a panel beside the button that opened it (a dialog, closed by
+   Escape, a tap outside or ×), or a sheet from the window's foot on a
+   phone: the item's name, I own (how many) and I want, or Saved; each list
+   of yours, ticked where it is in; New list… made there; the way to
+   manage them; and a line that says what each tick did. */
+dialog.keep-panel {
+	position: fixed; inset: auto; margin: 0; width: min(340px, calc(100vw - 32px)); max-height: min(600px, calc(100vh - 32px));
+	padding: 16px; overflow: auto; overscroll-behavior: contain;
+}
+dialog.keep-panel::backdrop { background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; }
+dialog.keep-panel.at-foot {
+	inset: auto 0 0 0; width: 100%; max-width: 100%; max-height: 85vh; border-bottom: 0;
+	border-radius: var(--r-4) var(--r-4) 0 0; padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+}
+dialog.keep-panel.at-foot::backdrop { background: var(--scrim); }
+.keep-panel .keep-head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s-2); margin: 0 0 6px; }
+.keep-panel .keep-head h2 { margin: 4px 0 0; min-width: 0; overflow-wrap: anywhere; }
+.keep-panel .keep-head .shut { flex: none; margin: -4px -6px 0 0; border-color: transparent; background: transparent; }
+.keep-panel h3 { margin: 12px 0 2px; padding-top: 12px; border-top: 1px solid var(--line); }
+.keep-panel .keep-rows { display: grid; }
+.keep-panel .keep-line { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); }
+.keep-panel .keep-row { align-items: center; min-height: 40px; padding: 4px 0; }
+.keep-panel .keep-row > input { margin-top: 0; }
+.keep-panel .keep-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.keep-panel .keep-row small { flex: none; color: var(--ink-faint); font-size: var(--t-tiny); }
+.keep-panel .keep-qty { display: inline-flex; align-items: center; gap: var(--s-1); flex: none; }
+.keep-panel .keep-qty output { min-width: 24px; text-align: center; font-weight: 640; font-variant-numeric: tabular-nums; }
+.keep-panel .note { margin: 4px 0; color: var(--ink-soft); font-size: var(--t-small); }
+.keep-panel .keep-new { display: grid; gap: var(--s-2); margin: 10px 0 0; }
+.keep-panel .keep-new label { margin: 0; }
+.keep-panel .keep-new-buttons { display: flex; gap: var(--s-2); }
+.keep-panel .keep-foot {
+	display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-2);
+	margin: 10px 0 0; padding-top: 10px; border-top: 1px solid var(--line);
+}
+.keep-panel .keep-new-open { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; }
+.keep-panel .keep-new-open .icon { width: 18px; height: 18px; }
+.keep-panel .keep-manage { font-size: var(--t-small); }
+.keep-panel .said { margin: 8px 0 0; color: var(--ink-soft); font-size: var(--t-small); }
+.keep-panel .said:empty { display: none; }
 /* On a phone the marks keep to the picture's left 60%: one, mostly, never
    more than 12% of it (two side by side on a pinned row's wider card were
    12.7%, site277). */
@@ -1160,6 +1239,15 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 	transform: translate(-50%, 12px); opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s;
 }
 .toast.shown { transform: translate(-50%, 0); opacity: 1; }
+/* A toast that can be undone (web/kit.js toast's undo): its Undo after
+   the words, underlined in the toast's own colours, a finger's target. */
+.toast.acts.shown { pointer-events: auto; display: flex; align-items: center; gap: var(--s-3); padding: 4px 6px 4px 18px; }
+.toast .undo {
+	min-height: 36px; padding: 0 12px; border: 0; border-radius: var(--r-pill); background: transparent; color: inherit;
+	font: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+}
+.toast .undo:hover { background: color-mix(in srgb, var(--bg) 16%, transparent); }
+.toast .undo:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
 
 /* The beta's bar (web/betabar.js), on every page while the beta is open:

@@ -694,7 +694,33 @@ is on the page, `hidden`, for the script to show.
   the screen, in the page's colours the other way round, read out
   (`role="status"`, on the page empty from its load, since a screen
   reader reads a region's change and not a region that arrives already
-  speaking), gone in 2.4 s.
+  speaking), gone in 2.4 s. `toast(words, { undo })` adds an Undo
+  button (`.toast.acts`): eight seconds, held while the pointer or the
+  keyboard is on it; every tap that keeps something has one.
+- **Own, Want and Save** (`web/card.js` `keepHtml`, `web/keep.js`,
+  docs/LISTS.md): `.keep`, a split pill over a card's picture's foot,
+  right: the main half Own (a set) or Save (a model), its icon a plus
+  then a check (a filled bookmark for Save), the accent edge when
+  pressed (`aria-pressed`; the words never change, so a voice names what
+  it sees), ×N when more than one is owned; the chevron opens the lists,
+  with a dot when the thing is in one. In a compact grid only the icons.
+  A set's page has the same as `.keep-bar`, three ghost `.cta`s: Own,
+  Want, Add to a list.
+- **A thing's lists**: `dialog.keep-panel`, a popover by the button that
+  opened it (a sheet at the foot under 600 px): its name, a `label.choice`
+  box for each built-in (I own it with − n + for how many, I want it, or
+  Saved) and each list (its note public, only you, taken down), New list…
+  inline (a name, Public, Make it, Cancel), Manage your lists, and a
+  `.said` status line. A box saves as it is ticked. It closes on
+  Escape, ×, a click outside, and keeps the keyboard where it was.
+- **Your lists** (`/lists`, `web/directory.css`): `.lists-layout`, a
+  240 px `nav.lists-rail` from 900 px (the one shown marked with the
+  accent edge, as Settings' sections) and a `select` above under it; a
+  list's head (`.view-head`: kind, name, words, counts and who sees it,
+  its actions), `.list-tools` (Newest first · Your order as a
+  `.segmented`, Select), a sticky `.bulk` bar while selecting, the cards
+  with `.moves` arrows in your order, and `dialog.lists-dialog` for New
+  list, Edit and Add sets.
 - **Beta bar**: `aside.beta-bar` (`web/betabar.js`, asked for by
   `web/theme.js` on every page while the beta is open): a floating pill
   at the foot of the window, bottom left (centred under 600 px), above

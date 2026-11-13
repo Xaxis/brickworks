@@ -3526,6 +3526,41 @@
       "area": "web"
     },
     {
+      "kind": "lib",
+      "label": "your sets and lists",
+      "entry": "api/_mylists.js",
+      "reach": "curl -s -H \"authorization: Bearer $TOKEN\" 'https://brickworks.diy/api/people?op=keeps&sets=6080-1&models='   (and ?op=lists, ?op=list_items&id=owned|want|saved|<id>, ?op=list_csv&id=; POST ?op=keep {key, list, on}, ?op=list_order {id, keys, sort}, ?op=owned_choice {shows}; POST /api/collection {op:'own', set, was, qty}; supabase/lists.sql, applied 2026-11-13; docs/LISTS.md)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "own want and save",
+      "entry": "web/keep.js",
+      "reach": "https://brickworks.diy/library (each set card's Own and its chevron), /library/set/6080-1 (the bar: Own, Want, Add to a list), /gallery (each model card's Save and its chevron): the panel (I own it with How many, I want it, Saved, each list, New list…), a sheet under 600 px; the toast's Undo; signed out it asks to sign in, then carries on (web/card.js keepHtml, api/_sets.js keepBarHtml)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "your lists page",
+      "entry": "web/lists.html",
+      "reach": "https://brickworks.diy/lists   (the account menu's Your lists; ?list=owned|want|saved|<id>: the rail, or a dropdown under 900 px; Share, Edit, Add sets (Rebrickable CSV, BrickLink XML, Brickset CSV, typed numbers), Download CSV; Newest first or Your order (drag, arrows, Undo); Select: Copy to, Move to, Take out; Show on my profile for I own; web/lists.js)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the sets you own on a profile",
+      "entry": "api/people.js",
+      "reach": "https://brickworks.diy/u/<handle>?tab=sets   (only once its owner shows them: Your lists, I own, Show on my profile; the numbers, the theme owned most, the cards, ?q= ?theme= ?decade= ?size= ?sort= ?page=; ownedPanel)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "lists browser flow",
+      "entry": "tools/web/lists_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/lists_flow.mjs --url=<preview> --out=DIR   (live project, throwaway accounts; preview check [lists]; or a local relay_server.mjs on a port of yours, never 10080, which fetch refuses)",
+      "area": "web"
+    },
+    {
       "kind": "cli",
       "label": "technic stress probe",
       "entry": "src/dev/technic_stress_probe.gd",

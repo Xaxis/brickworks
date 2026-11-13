@@ -214,6 +214,10 @@ import {
 } from "./_follows.js";
 import { feedCount, notifications, notificationsRead } from "./_notifications.js";
 import { DIRECTORY_PAGE, coversOf, directoryOf, getListFollows, listCardHtml, listFollow, listFollowsOf } from "./_lists.js";
+import {
+  ITEMS_PAGE, KEY, MOST_MODELS_IN_A_LIST, OWNED_SIZES, OWNED_SORTS, itemsOf, keep, keeps, listCsv, listItems, listOrder,
+  listShown, ownedChoice, ownedShowcase, ownedShown, setCounts, yourLists,
+} from "./_mylists.js";
 import { designerOf, designs } from "./_designers.js";
 import { designersAlike } from "./_alike.js";
 import {
@@ -224,7 +228,7 @@ import { withFaces } from "./_faces.js";
 // The one model card, the browser's too (web/card.js): the page needs no
 // script to show its models.
 // counted as countedSaid: "1 part", "1.234 Teile", in the page's language.
-import { FIRST_SCREEN, cardHtml, counted as countedSaid, marksOf, number, quietMarks, say, skeletonHtml } from "./_card.js";
+import { FIRST_SCREEN, cardHtml, counted as countedSaid, marksOf, number, quietMarks, say, skeletonHtml, themeSaid } from "./_card.js";
 // The kit, made in the card's file: an avatar made from a handle, the
 // icons and an icon button, drawn as a browser draws them.
 import { avatarHtml, awardsHtml, iconButtonHtml, iconHtml, langAt, levelAwards, mosaicHtml, photoAttrs, photoUrls, shareSheetHtml } from "./_card.js";
@@ -240,7 +244,7 @@ const MOST_PAGES = 400;
 // Kept briefly by the CDN, as the gallery's list is (api/share.js).
 const SHARED_CACHE = "public, max-age=0, s-maxage=30, stale-while-revalidate=30";
 export const MOST_LISTS = 50;
-export const MOST_IN_A_LIST = 500;
+export const MOST_IN_A_LIST = MOST_MODELS_IN_A_LIST;
 export const MOST_FAVOURITES = 2000;
 // How often a person may do each thing: [an hour, a day].
 export const LIMITS = { profile: [20, 60], like: [300, 2000], favourite: [300, 2000],
@@ -467,7 +471,7 @@ async function me(request, response) {
   const account = await signedIn(request);
   const [people, lists, mail, follows, shows, theirs, avatar, likes] = await Promise.all([
     db(`people?account=eq.${account}&select=handle,name,bio,created_at`),
-    db(`model_collections?owner=eq.${account}&select=id,name,description,public,updated_at&order=updated_at.desc`),
+    db(`model_collections?owner=eq.${account}&select=id,name,description,public,kind,updated_at&order=updated_at.desc`),
     mailChoice(account),
     followChoiceOf(account),
     showsOf(account),
@@ -740,7 +744,7 @@ async function listFor(id, account, tests = false) {
 
 async function ownList(id, account) {
   if (!ID.test(id || "")) return null;
-  const rows = await db(`model_collections?id=eq.${id}&owner=eq.${account}&select=id,name,public`);
+  const rows = await db(`model_collections?id=eq.${id}&owner=eq.${account}&select=id,name,public,kind,taken_down_at`);
   return rows[0] || null;
 }
 
@@ -756,6 +760,24 @@ async function saveList(request, response) {
   let id = body.id === undefined || body.id === null || body.id === "" ? "" : String(body.id);
   const was = id ? await ownList(id, account) : null;
   if (id && !was) throw new Refusal("there is no list of yours at that id", 404);
+  // Taken down by the site's owner (/admin, supabase/lists.sql): theirs
+  // still, and never public again.
+  if (was?.taken_down_at && body.public === true) {
+    throw new Refusal("Brickworks took this list down, so it stays private: it is still yours, with everything in it.", 403);
+  }
+  // Its order and the item it leads with (supabase/lists.sql), each kept
+  // when not given: the cover one of what is in it, or none (its first four).
+  if (body.sort !== undefined && body.sort !== "added" && body.sort !== "manual") throw new Refusal("sort is added or manual");
+  let cover;
+  if (body.cover === null || body.cover === "") cover = null;
+  else if (body.cover !== undefined) {
+    if (!id || !KEY.test(String(body.cover))) throw new Refusal("the cover is one of what is in the list");
+    const [kind, key] = String(body.cover).split(/:(.*)/);
+    const held = kind === "set" ? await db(`collection_sets?collection=eq.${id}&set_num=eq.${encodeURIComponent(key)}&select=set_num`)
+      : await db(`model_collection_items?collection=eq.${id}&model=eq.${key}&select=model`);
+    if (!held.length) throw new Refusal("the cover is one of what is in the list");
+    cover = String(body.cover);
+  }
   // Public, newly or still, and any at all for a row under 13: the age rule
   // (api/_trust.js).
   const young = await publicTrouble(account, { account: "kept", collection: body.public === true
@@ -766,6 +788,8 @@ async function saveList(request, response) {
   if (id) {
     const changed = { name, description, updated_at: now };
     if (body.public !== undefined) changed.public = body.public;
+    if (body.sort !== undefined) changed.sort = body.sort;
+    if (cover !== undefined) changed.cover = cover;
     await db(`model_collections?id=eq.${id}&owner=eq.${account}`, { method: "PATCH", body: changed });
   } else {
     const lists = await db(`model_collections?owner=eq.${account}&select=id&limit=${MOST_LISTS + 1}`);
@@ -774,9 +798,12 @@ async function saveList(request, response) {
     await db("model_collections", { method: "POST",
       body: { id, owner: account, name, description, public: body.public === true, updated_at: now } });
   }
-  const saved = await listFor(id, account);
+  const [saved, counts] = await Promise.all([listShown(id, account), setCounts([id])]);
+  const n = counts.get(id) || { sets: 0, models: 0 };
   return response.status(200).json({ id, name: saved.name, description: saved.description,
-    public: saved.public, count: saved.all, url: `${originOf(request)}/c/${id}` });
+    public: saved.public, kind: saved.kind === "want" ? "want" : null, sort: saved.sort, cover: saved.cover || null,
+    down: Boolean(saved.taken_down_at), sets: n.sets, models: n.models, count: n.sets + n.models,
+    url: `${originOf(request)}/c/${id}` });
 }
 
 async function dropList(request, response) {
@@ -1180,7 +1207,8 @@ ${paged}${scriptWords}${siteChrome(lang).head}
 <link rel="stylesheet" href="/site.css">
 <link rel="stylesheet" href="/directory.css">
 <script src="/report.js" type="module"></script>
-<script src="/follow.js" type="module"></script>${paged ? `
+<script src="/follow.js" type="module"></script>
+<script src="/keep.js" type="module"></script>${paged ? `
 <script src="/pager.js" type="module"></script>` : ""}${mine ? `
 <script src="/designs.js" type="module"></script>` : ""}${mine || share ? `
 <script src="/person.js" type="module"></script>` : ""}${photos ? `
@@ -1317,12 +1345,68 @@ function stripHtml(photos, { by = false } = {}) {
 }
 
 /// A profile's tabs, each a page of its own (?tab=): its work, its builds,
-/// its lists, and the models they liked when they chose to show them, each
-/// with its count once there is one.
-const TABS = ["models", "builds", "collections", "likes"];
+/// its lists, the sets they own and the models they liked, those two when
+/// they chose to show them, each with its count once there is one.
+const TABS = ["models", "builds", "collections", "sets", "likes"];
 /// A tab's name, in the page's language.
 function tabSaid(id) {
-  return { models: say("Models"), builds: say("Builds"), collections: say("Collections"), likes: say("Likes") }[id];
+  return { models: say("Models"), builds: say("Builds"), collections: say("Collections"), sets: say("Sets"), likes: say("Likes") }[id];
+}
+
+/// What the Sets tab is asked for (?q=&theme=&decade=&size=&sort=): each
+/// kept only when it is one, so an address made by hand asks nothing odd.
+function ownedAsked(query = {}) {
+  const text = (value, most) => String(value ?? "").replace(/[\u0000-\u001f\u007f]+/g, " ").trim().slice(0, most);
+  const decade = /^(19[4-9]0|20[0-9]0)$/.test(String(query.decade || "")) ? String(query.decade) : "";
+  return { q: text(query.q, 80), theme: text(query.theme, 120), decade,
+    size: Object.hasOwn(OWNED_SIZES, String(query.size || "")) ? String(query.size) : "",
+    sort: OWNED_SORTS.includes(String(query.sort || "")) ? String(query.sort) : "added" };
+}
+
+/// The sizes, as the Sets tab's filter says them.
+function sizeSaid(id) {
+  return { small: say("Under 200 parts"), medium: say("200 to 999 parts"), large: say("1,000 to 2,999 parts"),
+    huge: say("3,000 parts or more") }[id];
+}
+
+/// The Sets tab (lists1): the sets they own, shown because they chose to
+/// (profile_shows.owned): what they add up to, filters as a form that
+/// works with no script (a GET of this page), and a page of the sets.
+function ownedPanel({ owned, filters, at, person, query, pageHref, name }) {
+  const option = (value, words, chosen) => `<option value="${escapeHtml(value)}"${value === chosen ? " selected" : ""}>${escapeHtml(words)}</option>`;
+  const stat = (n, one, many) => `<li><b>${escapeHtml(number(n))}</b> ${escapeHtml(n === 1 ? say(one) : say(many))}</li>`;
+  const themes = owned.themes.map(([theme]) => option(theme, themeSaid(theme), filters.theme)).join("");
+  const decades = owned.decades.map(([decade]) => option(String(decade), say("{decade}s", { decade }), filters.decade)).join("");
+  const sizes = Object.keys(OWNED_SIZES).map((id) => option(id, sizeSaid(id), filters.size)).join("");
+  const sorts = [["added", say("Newest added")], ["year", say("Newest sets")], ["pieces", say("Most parts")], ["name", say("Name")]]
+    .map(([id, words]) => option(id, words, filters.sort)).join("");
+  const filtered = Boolean(filters.q || filters.theme || filters.decade || filters.size);
+  const pager = pagerHtml({ id: "models", first: owned.page, shown: owned.cards.length, more: owned.more, total: owned.total,
+    noun: ["set", "sets"], href: pageHref, source: "page", skeleton: skeletonHtml() });
+  const top = owned.themes.slice(0, 3).map(([theme]) => themeSaid(theme));
+  return `<section class="owned-sets" aria-labelledby="owned-h">
+    <h2 id="owned-h" class="visually-hidden">${sayHtml("The sets {name} owns", { name })}</h2>
+    <ul class="owned-stats">${stat(owned.sets, "set", "sets")}${stat(owned.pieces, "part", "parts")}${owned.figs ? stat(owned.figs, "minifigure", "minifigures") : ""}${stat(owned.themes.length, "theme", "themes")}</ul>
+    ${top.length ? `<p class="note">${asText(top.length === 1 ? say("Most of all: {a}.", { a: top[0] })
+      : top.length === 2 ? say("Most of all: {a} and {b}.", { a: top[0], b: top[1] })
+      : say("Most of all: {a}, {b} and {c}.", { a: top[0], b: top[1], c: top[2] }))}</p>` : ""}
+    <form class="owned-filters" method="get" action="${at}/u/${escapeHtml(person.handle)}" role="search" aria-label="${asText(say("Their sets"))}">
+      <input type="hidden" name="tab" value="sets">${query.tests ? '<input type="hidden" name="tests" value="1">' : ""}
+      <label class="grow">${asText(say("Search"))}<input type="search" name="q" value="${escapeHtml(filters.q)}" placeholder="${asText(say("A name or a number"))}" maxlength="80"></label>
+      <label>${asText(say("Theme"))}<select name="theme">${option("", say("Every theme"), filters.theme)}${themes}</select></label>
+      <label>${asText(say("Year"))}<select name="decade">${option("", say("Any year"), filters.decade)}${decades}</select></label>
+      <label>${asText(say("Size"))}<select name="size">${option("", say("Any size"), filters.size)}${sizes}</select></label>
+      <label>${asText(say("Order"))}<select name="sort">${sorts}</select></label>
+      <button class="cta ghost" type="submit">${asText(say("Show"))}</button>
+    </form>
+    ${owned.cards.length ? `${pager.earlier}
+    <div class="models" id="models" data-models data-page="${owned.page}">${owned.cards.map((card, i) => cardHtml(card, { eager: i < 4 })).join("")}</div>
+    ${pager.after}`
+      : owned.page > 1 ? pastEnd(owned.page, pageHref)
+      : filtered ? `<p class="state">${sayHtml("None of {name}’s sets is that. {all}.", { name,
+        all: `<a class="link" href="${at}/u/${escapeHtml(person.handle)}?tab=sets${query.tests ? "&amp;tests=1" : ""}">${asText(say("Every set they own"))}</a>` })}</p>`
+      : `<p class="state">${sayHtml("No sets yet. The sets {name} owns show here, as they chose.", { name })}</p>`}
+  </section>`;
 }
 
 /// How many a list has, as [n] says, when it agrees with a page of it
@@ -1383,7 +1467,7 @@ async function profilePage(request, response) {
   // beside them, and one not read is null (orUnknown): the page says
   // nothing of it, never none.
   const unknown = (read) => orUnknown("people", read);
-  const [shown, about, built, follows, following, designer, wins, shows, liked, levels] = await Promise.all([
+  const [shown, about, built, follows, following, designer, wins, shows, liked, levels, ownedOn] = await Promise.all([
     models(origin, { owner: person.account, tests, sort: "top" }, asked === "models" || !asked ? at : 1),
     unknown(db("rpc/profile_page", { method: "POST", body: { wanted: handle, tests } })),
     unknown(builtBy(origin, person, tests)),
@@ -1394,18 +1478,28 @@ async function profilePage(request, response) {
     unknown(showsOf(person.account)),
     likedShown(person.account, tests),
     unknown(levelsOf(person.account, tests)),
+    unknown(ownedShown(person.account)),
   ]);
+  // The sets they own, when they chose to show them (lists1): the page
+  // asked of them on their tab, the first page's numbers on any other.
+  const filters = ownedAsked(asked === "sets" ? request.query : {});
+  const owned = ownedOn === true
+    ? await unknown(ownedShowcase(person.account, { ...filters, page: asked === "sets" ? at : 1 })) : null;
   const showcase = (await unknown(showcaseOf(origin, person, shows, tests))) || { links: [], banner: null, pins: [] };
   // Their picture, and the faces of whom they follow, in one lookup.
   await withFaces([person, following]);
   const earned = designer && designer.ready && designer.models > 0 ? designer : null;
-  const lists = (about?.collections || []).filter((list) => ID.test(String(list.id)));
+  // Their public lists, each with how many sets it holds beside its models
+  // (lists1): a list of sets alone is "3 sets", never "0 models".
+  const listed = (about?.collections || []).filter((list) => ID.test(String(list.id)));
+  const setsIn = listed.length ? await unknown(setCounts(listed.map((list) => list.id), { models: false })) : null;
+  const lists = listed.map((list) => ({ ...list, sets: setsIn?.get(list.id)?.sets ?? 0 }));
   const theirs = earned ? earned.photos : [];
   const counts = { models: Number(about?.models) || 0, builds: (built?.length ?? 0) + theirs.length, collections: lists.length,
-    likes: liked ?? 0 };
-  // Likes only when they chose to show them: else no tab, and ?tab=likes
-  // is any other profile's first tab.
-  const tabs = TABS.filter((id) => id !== "likes" || liked !== null);
+    sets: owned?.unique ?? 0, likes: liked ?? 0 };
+  // Likes and sets only when they chose to show them: else no tab, and
+  // ?tab=likes is any other profile's first tab.
+  const tabs = TABS.filter((id) => (id !== "likes" || liked !== null) && (id !== "sets" || owned !== null));
   // The tab asked for; else the first with something in it.
   const tab = (tabs.includes(asked) ? asked : "") || tabs.find((id) => counts[id] > 0) || "models";
   // What the tab shows, each card with its faces and wins, before the page
@@ -1424,13 +1518,13 @@ async function profilePage(request, response) {
     covers = await coversOf(lists, tests);
   }
   return html(response, 200, speak(() => profileHtml(origin, { person, tests, asked, tab, tabs, counts, shown, about, built, theirs,
-    follows, following, earned, wins, levels, showcase, lists, cards, likedAt, covers, lang, words })), { tests });
+    follows, following, earned, wins, levels, showcase, lists, cards, likedAt, covers, owned, filters, lang, words })), { tests });
 }
 
 /// A person's page as profilePage gathered it, said in [lang]: its links to
 /// their pages, their models' and the people they follow in it too.
 function profileHtml(origin, { person, tests, asked, tab, tabs, counts, shown, about, built, theirs, follows, following, earned,
-  wins, levels, showcase, lists, cards, likedAt, covers, lang, words }) {
+  wins, levels, showcase, lists, cards, likedAt, covers, owned = null, filters = ownedAsked(), lang, words }) {
   const at = lang === "en" ? "" : `/${lang}`;
   const url = `${origin}${at}/u/${person.handle}`;
   // Its copies in each language, each naming the others; English for any other.
@@ -1529,6 +1623,14 @@ function profileHtml(origin, { person, tests, asked, tab, tabs, counts, shown, a
     ${pager.after}`
       : likedAt && likedAt.page > 1 ? pastEnd(likedAt.page, pageHref("likes"))
       : `<p class="state">${sayHtml("No likes yet. The models {name} likes in the gallery show here, as they chose.", { name })}</p>`;
+  } else if (tab === "sets" && owned) {
+    // Page n of their sets, as filtered.
+    const setsHref = (n) => `${at}/u/${person.handle}${query({ tab: "sets", ...(filters.q ? { q: filters.q } : {}),
+      ...(filters.theme ? { theme: filters.theme } : {}), ...(filters.decade ? { decade: filters.decade } : {}),
+      ...(filters.size ? { size: filters.size } : {}), ...(filters.sort !== "added" ? { sort: filters.sort } : {}), ...(n > 1 ? { page: n } : {}) })}`;
+    paged = pagerLinks({ at: owned.page, more: owned.more, href: setsHref });
+    panel = ownedPanel({ owned, filters, at, person, query: { tests }, pageHref: setsHref, name });
+    drawn.push(...owned.cards);
   } else {
     panel = lists.length ? `<div class="list-cards">${lists.map((list, i) => listCardHtml(list, covers, { eager: i < 4 })).join("")}</div>`
       : `<p class="state">${sayHtml("No collections yet. The lists of models {name} makes public show here.", { name })}</p>`;
@@ -1586,13 +1688,15 @@ function alternatesOf(origin, where) {
 }
 
 /// /c/X: a public list's page. A private one is not shown here to anybody;
-/// its owner sees it on /profile. Its head as a playlist's or a board's
-/// is (docs/SOCIAL.md U11): its cover, up to four of its models' pictures,
-/// beside its name, whose it is, its words and numbers, Follow, Share and
-/// More; then its models, the last put in first. How many follow it, never
-/// who; Follow is shown by web/follow.js once it knows who is asking. In
-/// German, French or Spanish at /de/c/X and so on, as a profile is: what
-/// its owner wrote as they wrote it.
+/// its owner sees it on /lists. Its head as a playlist's or a board's
+/// is (docs/SOCIAL.md U11): its cover, up to four of its pictures (or the
+/// one its owner chose), beside its name, whose it is, its words and
+/// numbers, Follow, Share and More; then what is in it, sets and models
+/// alike, in its owner's order or the last put in first (supabase/lists.sql).
+/// How many follow it, never who; Follow is shown by web/follow.js once it
+/// knows who is asking. In German, French or Spanish at /de/c/X and so on,
+/// as a profile is: what its owner wrote as they wrote it. A wishlist is
+/// a list like this, said to be one.
 async function listPage(request, response) {
   const origin = originOf(request);
   const id = String(request.query?.id || "");
@@ -1601,14 +1705,14 @@ async function listPage(request, response) {
   const words = lang === "en" ? null : siteWords(lang);
   if (lang !== "en" && !words) return html(response, 404, missingPage(origin, say("There is no collection here")), { tests });
   const speak = (draw) => inLanguage(lang, words, draw);
-  const list = await listFor(id, null, tests);
+  const list = await listShown(id, null);
   if (!list) return html(response, 404, speak(() => missingPage(origin, say("There is no collection here"), lang, words)), { tests });
   const asked = Number(request.query?.page ?? 1);
   const at = Number.isInteger(asked) && asked >= 1 && asked <= MOST_PAGES ? asked : 1;
-  // Its models are what was asked for; its cover and its follows are
-  // beside them, and drawn as none when they cannot be read (orUnknown).
+  // What is in it is what was asked for; its cover and its follows are
+  // beside it, and drawn as none when they cannot be read (orUnknown).
   const [shown, covers, follows] = await Promise.all([
-    withFaces(await models(origin, { collection: id, sort: "added", tests }, at)),
+    itemsOf(origin, list, { mine: false, tests, page: at }),
     orUnknown("people", coversOf([list], tests)).then((found) => found || new Map()),
     orUnknown("people", listFollowsOf(id)),
   ]);
@@ -1619,17 +1723,21 @@ async function listPage(request, response) {
 function listHtml(origin, { id, list, shown, covers, follows, at, tests, lang, words }) {
   const here = lang === "en" ? "" : `/${lang}`;
   const url = `${origin}${here}/c/${id}`;
-  // Page n of its models (web/pager.js).
+  const cards = shown.items.map((item) => item.card);
+  const wish = list.kind === "want";
+  // Page n of what is in it (web/pager.js).
   const pageHref = (n) => {
     const said = new URLSearchParams();
     if (n > 1) said.set("page", String(n));
     if (tests) said.set("tests", "1");
     return `${here}/c/${id}${said.size ? `?${said}` : ""}`;
   };
-  const pager = pagerHtml({ id: "models", first: shown.page, shown: shown.models.length, more: shown.more,
+  const pager = pagerHtml({ id: "models", first: shown.page, shown: cards.length, more: shown.more, total: shown.total,
     href: pageHref, source: "page", skeleton: skeletonHtml() });
   const by = list.by ? `<a href="${here}/u/${escapeHtml(list.by.handle)}">${escapeHtml(list.by.name)}</a>` : asText(say("a Brickworks builder"));
-  const first = shown.models[0];
+  // The picture it is shared with: the one it leads with, else its first.
+  const pictureOf = (card) => (card?.library?.picture ? `${origin}${card.library.picture}` : card?.image || "");
+  const image = pictureOf(cards[0]);
   const updated = Date.parse(list.updated_at || "");
   const stat = (kind, n, one, many, extra = "") => `<li data-stat="${kind}"${extra}${zero(n)}>`
     + `<b>${escapeHtml(number(Number(n) || 0))}</b> <span>${escapeHtml(Number(n) === 1 ? one : many)}</span></li>`;
@@ -1638,41 +1746,48 @@ function listHtml(origin, { id, list, shown, covers, follows, at, tests, lang, w
     + `${iconHtml("more")}</summary><div class="menu-list"><button type="button" data-report="${asText(say("this collection"))}" `
     + `data-report-collection="${id}" hidden>${asText(say("Report it"))}</button><a href="${langAt()}/takedown">${asText(say("Takedown requests"))}</a>`
     + "</div></details>";
-  const main = `<div class="wrap wide person list" data-id="${id}">
+  const counts = [shown.sets ? countedSaid(shown.sets, "set") : "", shown.models ? countedSaid(shown.models, "model") : ""]
+    .filter(Boolean).join(", ") || countedSaid(0, "model");
+  const main = `<div class="wrap wide person list" data-id="${id}"${wish ? ' data-kind="want"' : ""}>
   <header class="list-head">
     <div class="cover">${mosaicHtml(covers.get(id) || [], { eager: true })}</div>
     <div class="who">
-      <p class="eyebrow">${asText(say("Collection"))}</p>
+      <p class="eyebrow">${asText(wish ? say("Wishlist") : say("Collection"))}</p>
       <h1>${escapeHtml(list.name)}</h1>
       <p class="handle">${Number.isFinite(updated) ? sayHtml("Collected by {who} · updated {when}", { who: by, when: escapeHtml(daySaid(updated)) })
         : sayHtml("Collected by {who}", { who: by })}</p>
       ${list.description ? `<p class="bio">${escapeHtml(list.description)}</p>` : ""}
-      <ul class="numbers" aria-label="${asText(say("Its numbers"))}">${stat("models", list.count, say("model"), say("models"))}${ready
+      <ul class="numbers" aria-label="${asText(say("Its numbers"))}">${shown.sets ? stat("sets", shown.sets, say("set"), say("sets")) : ""}${
+        shown.models || !shown.sets ? stat("models", shown.models, say("model"), say("models")) : ""}${ready
         ? stat("followers", follows.followers, say("follower"), say("followers"), ` data-list-followers="${id}"`) : ""}</ul>
       <div class="acts">
         ${ready ? `<p class="follow-line"><button type="button" class="cta ghost follow" data-follow-list="${id}" hidden>`
           + `${asText(say("Follow"))}</button><span class="said" role="status"></span></p>` : ""}
         ${iconButtonHtml({ icon: "share", name: say("Share"),
           attrs: `data-share="${escapeHtml(url)}" aria-haspopup="dialog" aria-controls="share-sheet" hidden` })}
+        <a class="cta ghost small" href="/api/people?op=list_csv&amp;id=${id}" download data-list-csv>${asText(say("Download as CSV"))}</a>
         ${more}
       </div>
     </div>
   </header>
-  ${shown.models.length ? `${pager.earlier}
-  <div class="models" id="models">${shown.models.map((card, i) => cardHtml(card, { eager: i < FIRST_SCREEN })).join("")}</div>
+  ${cards.length ? `${pager.earlier}
+  <div class="models" id="models">${cards.map((card, i) => cardHtml(card, { eager: i < FIRST_SCREEN })).join("")}</div>
   ${pager.after}`
     : at > 1 ? pastEnd(at, pageHref)
     : `<p class="state">${asText(say("Nothing in it is in the gallery just now. The models put in it show here once they are."))}</p>`}
 </div>
-${shareSheetHtml({ url, name: list.name, text: say("{name}, a collection on Brickworks", { name: list.name }),
-    about: say("Its link opens this collection: the models in it, and who collected them."),
-    image: first && first.image ? first.image : "" })}`;
+${shareSheetHtml({ url, name: list.name, text: wish ? say("{name}: a wishlist on Brickworks", { name: list.name })
+    : say("{name}, a collection on Brickworks", { name: list.name }),
+    about: wish ? say("Its link opens this wishlist: the sets they want, to give or to know.")
+      : say("Its link opens this collection: the models in it, and who collected them."),
+    image })}`;
   return page(origin, {
-    title: say("{name} — a collection in the Brickworks gallery", { name: list.name }),
+    title: wish ? say("{name} — a wishlist on Brickworks", { name: list.name })
+      : say("{name} — a collection in the Brickworks gallery", { name: list.name }),
     about: list.description ? summary(list.description)
-      : list.by ? say("{models} built in Brickworks, collected by {name}.", { models: countedSaid(list.count, "model"), name: list.by.name })
-        : say("{models} built in Brickworks, collected by a builder.", { models: countedSaid(list.count, "model") }),
-    url, image: first && first.image ? first.image : "", main, share: true, cards: shown.models,
+      : list.by ? say("{things} on Brickworks, collected by {name}.", { things: counts, name: list.by.name })
+        : say("{things} on Brickworks, collected by a builder.", { things: counts }),
+    url, image, main, share: true, cards,
     paged: pagerLinks({ at: shown.page, more: shown.more, href: pageHref }), lang, words, alternates: alternatesOf(origin, `c/${id}`),
   });
 }
@@ -1697,7 +1812,10 @@ async function collections(request, response) {
   response.setHeader("Cache-Control", tests ? TESTS_CACHE : SHARED_CACHE);
   return response.status(200).json({ ready: listed.ready, searched: listed.searched, sort, page, total: listed.total,
     pages: Math.max(1, Math.ceil(listed.total / DIRECTORY_PAGE)),
+    // How many sets and models each holds (supabase/lists.sql list_directory;
+    // models alone from a database before it).
     collections: rows.map((list) => ({ id: list.id, name: String(list.name || ""), count: Number(list.count) || 0,
+      ...(list.sets === undefined ? {} : { sets: Number(list.sets) || 0, models: Number(list.models) || 0 }),
       followers: Number(list.followers) || 0, by: list.by || null, covers: covers.get(list.id) || [] })) });
 }
 
@@ -1742,6 +1860,11 @@ export default async function handler(request, response) {
       if (op === "designs") return await designs(request, response, { origin: originOf(request) });
       if (op === "challenge") return await challenge(request, response, { origin: originOf(request) });
       if (op === "challenge_entry") return await challengeEntry(request, response);
+      // Your lists (api/_mylists.js, supabase/lists.sql).
+      if (op === "keeps") return await keeps(request, response);
+      if (op === "lists") return await yourLists(request, response);
+      if (op === "list_items") return await listItems(request, response, { origin: originOf(request) });
+      if (op === "list_csv") return await listCsv(request, response, { origin: originOf(request) });
     } else if (request.method === "POST") {
       if (op === "photo_start") return await photoStart(request, response);
       if (op === "photo") return await photoKeep(request, response);
@@ -1770,6 +1893,9 @@ export default async function handler(request, response) {
       if (op === "enter") return await enter(request, response);
       if (op === "withdraw") return await withdraw(request, response);
       if (op === "vote") return await vote(request, response);
+      if (op === "keep") return await keep(request, response);
+      if (op === "list_order") return await listOrder(request, response);
+      if (op === "owned_choice") return await ownedChoice(request, response);
     } else {
       return response.status(405).json({ error: "GET or POST" });
     }

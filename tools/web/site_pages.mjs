@@ -170,6 +170,25 @@ export function sitePages({ remote = "" } = {}) {
           { timeout: 8000 }).then(() => true, () => false);
         return [[opened ? "account menu" : "account menu (missing)", where]];
       } },
+    // Your lists (docs/LISTS.md): signed in, a list of yours with its
+    // cards and each card's Save; its Edit and New list dialogs; and a
+    // card's panel of every list (web/keep.js). Signed out, the way in.
+    { name: "lists", path: remote ? "/lists" : "/lists?list=SamListAa1",
+      ready: (page, { signedIn }) => until(page, signedIn ? () => document.documentElement.dataset.lists === "ready"
+        : () => document.documentElement.dataset.lists === "signed-out"),
+      open: async (page, { signedIn, judge }) => {
+        if (!signedIn) return [];
+        await page.click((page.viewportSize()?.width || 1280) < 900 ? "#new-list-pick" : "#new-list");
+        const made = await until(page, () => document.querySelector("dialog.lists-dialog[open]"));
+        await page.waitForTimeout(200);
+        await judge(made ? "new list" : "new list (missing)", "dialog.lists-dialog");
+        if (made) await page.keyboard.press("Escape");
+        if (remote) return [];
+        await page.click("#items .model .keep [data-keep-more]");
+        const panel = await until(page, () => document.querySelector("dialog.keep-panel[open] .keep-row"));
+        await page.waitForTimeout(200);
+        return [[panel ? "a card's lists" : "a card's lists (missing)", "dialog.keep-panel"]];
+      } },
     // Your profile (docs/SOCIAL.md U6): your page's head and its first tab;
     // Edit profile's dialog; and the tabs only you see, each its own page.
     { name: "account", path: "/profile",

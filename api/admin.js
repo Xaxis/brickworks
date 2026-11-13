@@ -38,6 +38,11 @@
 //                                        of model X (the newest without v):
 //                                        the app's finding, which the server
 //                                        cannot check (supabase/tested.sql)
+//   POST /api/admin?op=list_down&id=X    take list X's name and description
+//                                        down (lists1, supabase/lists.sql):
+//                                        private, and never public again; still
+//                                        its owner's, with everything in it;
+//                                        the reports about it settled
 //   POST /api/admin?op=uncomment&comment=N  remove comment N, for good
 //   POST /api/admin?op=remove_photo&photo=P  take photo P of a build out: its
 //                                        file deleted from storage, that one
@@ -199,6 +204,8 @@ export default async function handler(request, response) {
     remove_avatar: takeAvatarOut, pick, unpick, challenge: setChallenge, end_challenge: endChallenge, plan: planYear,
     beta_decide: betaDecide, beta_grant: betaGrant, beta_waitlist: betaWaitlist, beta_switch: betaSwitchRoute,
     feedback_triage: feedbackTriage, feedback_reply: feedbackReply };
+  // A reported list's name and words taken down (lists1, docs/ADMIN.md).
+  acts.list_down = takeListDown;
   if (request.method === "POST" && acts[op]) {
     return audited(op, acts[op], request, response, claims, (error) => (error instanceof AuthError
       || error instanceof BuildRefusal || error instanceof AvatarRefusal ? error.status : 502));
@@ -305,6 +312,35 @@ async function uncomment(request, response) {
   if (removed !== true) return response.status(404).json({ error: "no such comment" });
   await settle(`comment=eq.${comment}`, "taken_out");
   return response.status(200).json({ comment, removed: true });
+}
+
+/// A list a stranger named or described as nobody should read, taken down
+/// (lists1): made private, and kept so (taken_down_at; the database refuses
+/// it public again, supabase/lists.sql), so its name and words are shown to
+/// nobody but its owner, who keeps it and everything in it. What was
+/// reported about it is settled.
+async function takeListDown(request, response) {
+  const id = String(request.query?.id || "");
+  if (!ID.test(id)) return response.status(400).json({ error: "name a list: ?id=<ten characters>" });
+  const rows = await db(`model_collections?id=eq.${id}`, { method: "PATCH",
+    body: { public: false, taken_down_at: new Date().toISOString() }, prefer: "return=representation" });
+  if (!Array.isArray(rows) || rows.length === 0) return response.status(404).json({ error: "no list at that id" });
+  await settle(`collection=eq.${id}`, "taken_out");
+  return response.status(200).json({ id, public: false, taken_down: true });
+}
+
+/// The lists [ids] reported, as the owner reads a report of one: its name,
+/// its words, whose and whether it is shown; none before lists.sql's
+/// columns, or a list gone.
+async function listsReported(ids) {
+  if (!ids.length) return new Map();
+  try {
+    const rows = await asServer(`/rest/v1/model_collections?id=in.(${ids.filter((id) => ID.test(id)).join(",")})`
+      + "&select=id,name,description,kind,public,owner,taken_down_at");
+    return new Map((rows || []).map((row) => [row.id, row]));
+  } catch {
+    return new Map();
+  }
 }
 
 /// Out of the gallery, and barred from it: listed false, and a republish
@@ -685,6 +721,8 @@ async function report(tests = false) {
   const photos = await photosReported(reports.map((one) => one.id)).catch(() => new Map());
   // The picture each reported profile shows as its avatar, if one of its own.
   const faces = await facesOf(reports.map((one) => one.handle).filter(Boolean));
+  // Each reported list as it is (lists1).
+  const listsAbout = await listsReported([...new Set(reports.map((one) => one.collection).filter(Boolean))]);
 
   // Whose connectors, and when each was last heard from.
   const connectors = new Map();
@@ -736,6 +774,9 @@ async function report(tests = false) {
         id, words, at, hidden: Boolean(hidden), removed: Boolean(removed), email: emails.get(account) || null,
       }))(photos.get(report.id)) : null,
       picture: report.handle && faces.has(report.handle) ? pictureAt(faces.get(report.handle)) : null,
+      list: report.collection && listsAbout.has(report.collection) ? (({ name, description, kind, public: shown, owner, taken_down_at: down }) => ({
+        name, description, wishlist: kind === "want", public: Boolean(shown), down: Boolean(down), email: emails.get(owner) || null,
+      }))(listsAbout.get(report.collection)) : null,
     })),
     // The newest comments and the reported ones, newest first; who wrote
     // each, for the owner of this page alone.

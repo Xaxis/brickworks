@@ -143,6 +143,7 @@ const NAMES = {
   },
   person: { any: [["button", /^Share/], ["button", /^More/]], local: [["button", /^Follow|^Following/]] },
   notifications: { in: [["button", /^Mark all read$/], ["link", /^Notifications/], ["link", /^Feed|^Your feed/]] },
+  lists: { in: [["button", /^New list$/]], out: [["button", /^Sign in/]] },
   feed: { in: [["button", /^Follow/]] },
   account: { in: [["button", /^Edit profile$/], ["link", /^Settings$/]], out: [["button", /^Sign in/]] },
   settings: { in: [["button", /^Sign out$/], ["button", /^System$/], ["button", /^Light$/], ["button", /^Dark$/]] },
