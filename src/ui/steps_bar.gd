@@ -907,9 +907,10 @@ func _show(count: int) -> void:
 		# 12 on the page: a callout's steps carry the number of the step
 		# its assembly goes on in, and are counted inside it.
 		var at: Instructions.Step = _steps[step]
-		if not at.name.is_empty():
-			# A person's words, as they wrote them in every language.
-			Language.keep_name(at.shortened_name(NAME_SHOWN))
+		# A person's words, as they wrote them in every language: each name
+		# said, the step's own and the one it starts (Step.called).
+		for name: String in at.shortened_name(NAME_SHOWN).split(" · ", false):
+			Language.keep_name(name)
 		_caption.text = "%s · %s" % [at.caption(_steps[-1].number, " · ", NAME_SHOWN), of]
 		if _shown == 0:
 			_pieces.text = "An empty baseplate" + (": the steps are the author's"
@@ -1286,10 +1287,12 @@ func _move_asked() -> void:
 ## a name, typed, as Studio names a step; said beside its number here, in
 ## Build it and in the booklet, and kept in the file. The words start as its
 ## name, chosen, so what is typed replaces it; Return names it, and an empty
-## name takes it off.
+## name takes it off. One of only what draws nothing is refused where it was
+## typed: the dialog stays, saying why (sncheck N2).
 var _naming: ConfirmationDialog
 var _naming_field: LineEdit
 var _naming_words: Label
+var _naming_why: Label
 var _naming_step: Instructions.Step
 
 
@@ -1306,6 +1309,7 @@ func ask_step_name() -> void:
 	_naming_words.text = ("Step %d, %s %d of %d, is called" % [at.number, at.assembly,
 		at.callout_step, at.callout_steps]) if at.in_callout() else "Step %d is called" % at.number
 	_naming_field.text = at.name
+	_naming_why.visible = false
 	_naming.popup_centered()
 	_naming_field.grab_focus.call_deferred()
 	_naming_field.select_all.call_deferred()
@@ -1325,7 +1329,14 @@ func _make_naming() -> void:
 	_naming_field.custom_minimum_size = Vector2(320, 0)
 	_naming_field.accessibility_name = "The step's name"
 	column.add_child(_naming_field)
+	_naming_why = Label.new()
+	_naming_why.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_naming_why.custom_minimum_size = Vector2(320, 0)
+	_naming_why.visible = false
+	column.add_child(_naming_why)
 	_naming.add_child(column)
+	# Put away by hand once named, so a refused name keeps it up.
+	_naming.dialog_hide_on_ok = false
 	_naming.register_text_enter(_naming_field)
 	_naming.confirmed.connect(_name_asked)
 	shell.add_child(_naming)
@@ -1334,6 +1345,14 @@ func _make_naming() -> void:
 func _name_asked() -> void:
 	if _naming_step == null:
 		return
+	var refused: String = BookletLooks.name_refused(_naming_field.text)
+	_naming_why.text = refused
+	_naming_why.visible = not refused.is_empty()
+	if not refused.is_empty():
+		_naming_field.grab_focus()
+		_naming_field.select_all()
+		return
+	_naming.hide()
 	shell.bar.say(shell.change_look("name", _naming_step, {"name": _naming_field.text}))
 
 

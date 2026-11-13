@@ -13957,6 +13957,11 @@ msgstr "Schritt %d, Nebenbau-Schritt %d %s genannt, in jeder der %d Kopien von %
 msgid "step %d's callout step %d's name taken off, in each of the %d copies of the %s"
 msgstr "Name von Schritt %d, Nebenbau-Schritt %d entfernt, in jeder der %d Kopien von %s"
 
+# A name of only characters that draw nothing, refused (sncheck N2,
+# stepnames2).
+msgid "that name has only characters that draw nothing (zero-width spaces, joiners, direction marks): give it a letter or sign you can see"
+msgstr "dieser Name hat nur Zeichen, die nichts zeigen (Leerzeichen ohne Breite, Verbinder, Richtungszeichen): gib ihm einen Buchstaben oder ein Zeichen, das man sieht"
+
 # A dragged part carries what rests on it, Shift as it goes moves it alone
 # (APP_UX7 #20, carryrest).
 msgid "drag moves it and what rests on it (on a joint, as the real part moves)"

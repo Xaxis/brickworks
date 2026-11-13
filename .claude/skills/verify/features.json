@@ -2642,6 +2642,14 @@
       "tests": []
     },
     {
+      "id": "cli:stepnames2 probe",
+      "kind": "cli",
+      "entry": "src/dev/stepnames2_probe.gd",
+      "reach": "tools/probe.sh stepnames2_probe   (headless; SN2_ONLY=letters,refuse,undo,sub,held: name_of letter by letter, a letter of a hundred accents keeping four, 80 letters with an emoji or accents, zero-width and direction characters alone no name; such a name refused over MCP and in Name the step\u2026, which stays up saying why; 14 name edits, MCP and by hand, each one undo, undone to the steps and the file as the plain save; the same name again no undo; sub.ldr's \"Both wings on\" on the first step built in it in the plan, caption, Build it, list and booklet; a stepless file's first step edit numbering its held part with the part before it, undone to the stepless file)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:steps3 probe",
       "kind": "cli",
       "entry": "src/dev/steps3_probe.gd",
@@ -2800,6 +2808,14 @@
       "kind": "cli",
       "entry": "src/dev/docs_menus.gd",
       "reach": "godot --headless --path . --script src/dev/docs_menus.gd -- --menus-to=docs-site/generated/menus.json   (tests/test_docs_site.py says when it is due)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:the parts bucket's copy for checks",
+      "kind": "cli",
+      "entry": "tools/web/storage_mirror.mjs",
+      "reach": "any flow under tools/web (browser.mjs imports it); node tools/web/storage_mirror.mjs serve [PORT] for a probe",
       "area": "web",
       "tests": []
     },
@@ -4439,7 +4455,8 @@
       "area": "web",
       "tests": [
         "tests/test_release_links.py",
-        "tests/test_site_lang.py"
+        "tests/test_site_lang.py",
+        "tests/test_storage_mirror.py"
       ]
     },
     {
@@ -5291,7 +5308,9 @@
       "entry": "src/assembly/mirror.gd",
       "reach": "godot --path .  (select, Shift-M or Edit, Mirror)",
       "area": "building",
-      "tests": []
+      "tests": [
+        "tests/test_storage_mirror.py"
+      ]
     },
     {
       "id": "ui:model card",

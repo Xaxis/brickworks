@@ -435,10 +435,64 @@ static func adopt_plan(world: BrickWorld, library: PartLibrary,
 		undo.append({"undo": "unitstep", "unit": path,
 			"step": int(world.unit_steps.get(path, -1))})
 		world.unit_steps[path] = int(units[path])
+	_held_as_filed(world, bricks, undo)
 	if not worked.is_empty():
 		undo.append_array(BookletLooks.mark_sections(world,
 			Instructions.adopted_plan(world, library, skip, worked)))
 	return squash(undo)
+
+
+## Each part the model holds and does not show (BrickWorld.held) given the
+## step of the part before it in the file, in its section, as [param
+## bricks] (id -> step) numbers them, or of the first after it, where it
+## is first: with the parts it came with, as a stepless file has them all
+## in one step. Left unnumbered by the first step edit of a file with no
+## steps, it was written in a step of its own before every other (hsfix
+## Sb). Each change kept in [param undo].
+static func _held_as_filed(world: BrickWorld, bricks: Dictionary, undo: Array) -> void:
+	var held: Array = world.held_parts().filter(func(item: Variant) -> bool:
+		return (item as LdrModel.Placement).step < 0)
+	if held.is_empty():
+		return
+	var filed: Dictionary = {}      ## section -> [[its place in the file, its step]]
+	for brick_id: int in bricks:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		if brick == null or brick.origin.is_empty():
+			continue
+		var section: String = home(world, Assemblies.path_of(brick))
+		if not filed.has(section):
+			filed[section] = []
+		(filed[section] as Array).append([_filed_at(brick.origin), int(bricks[brick_id])])
+	for item: Variant in held:
+		var placement: LdrModel.Placement = item
+		var at: PackedInt32Array = _filed_at(placement.origin)
+		var before: Array = []
+		var after: Array = []
+		for one: Array in filed.get(home(world, world.held_path(placement)), []):
+			if _filed_before(one[0], at):
+				if before.is_empty() or _filed_before(before[0], one[0]):
+					before = one
+			elif after.is_empty() or _filed_before(one[0], after[0]):
+				after = one
+		undo.append({"undo": "heldstep", "held": placement, "step": placement.step})
+		placement.step = int(before[1]) if not before.is_empty() \
+			else int(after[1]) if not after.is_empty() else 0
+
+
+## Where in the file a part's [param origin] (BrickWorld.Brick.origin,
+## "12/40/7") is: each line of it, outermost first.
+static func _filed_at(origin: String) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	for line: String in origin.split("/", false):
+		out.append(line.to_int())
+	return out
+
+
+static func _filed_before(a: PackedInt32Array, b: PackedInt32Array) -> bool:
+	for n: int in mini(a.size(), b.size()):
+		if a[n] != b[n]:
+			return a[n] < b[n]
+	return a.size() < b.size()
 
 
 ## The worked-out order as numbers the model can keep, and a file can
@@ -714,6 +768,21 @@ static func numbers_for_file(world: BrickWorld, library: PartLibrary,
 			units[path] = at
 		elif at >= 0:
 			units[path] = at
+			var parent: String = home(world, Assemblies.parent_of(path))
+			last[parent] = maxi(int(last.get(parent, 0)), at)
+	# And each copy nothing of which is here, made of what the model holds
+	# and does not show (BrickWorld.held), in its own step, as items_in
+	# numbers it. Left out, it was written in its section's first step, and
+	# the step it was in was left empty with its looks (hscheck E5_own).
+	var held_paths: Dictionary = {}
+	for item: Variant in world.held_parts():
+		held_paths[world.held_path(item as LdrModel.Placement)] = 0
+	for path: String in _up_paths(held_paths):
+		var at: int = int(world.unit_steps.get(path, -1))
+		if path.is_empty() or units.has(path) or at < 0 and at != IN_PARENT:
+			continue
+		units[path] = at
+		if at >= 0:
 			var parent: String = home(world, Assemblies.parent_of(path))
 			last[parent] = maxi(int(last.get(parent, 0)), at)
 	if loose.is_empty():

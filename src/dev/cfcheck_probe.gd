@@ -148,8 +148,13 @@ func _undo_redo(what: String, opened: Array, opened_tables: String, after: Array
 		_tables() == after_tables)
 
 
-func _saved_reopened(what: String, with_steps: bool = true) -> void:
+## Saved, opened again and saved again: every part as shown, the same file
+## twice, and the same sub-models with their copies as before the save, or
+## [param defs] where copies no longer agree.
+func _saved_reopened(what: String, with_steps: bool = true, defs: Array = []) -> void:
 	var shown: Array = _looks(with_steps)
+	if defs.is_empty():
+		defs = _defs_now()
 	var saved: String = _save()
 	await _open(saved)
 	_check("%s saved and opened again: every part, colour, place%s as shown%s" % [what,
@@ -158,7 +163,7 @@ func _saved_reopened(what: String, with_steps: bool = true) -> void:
 	var second: String = _save()
 	_check("...saved again: the same file%s" % _first_unlike(_as_kept(saved), _as_kept(second)),
 		_as_kept(second) == _as_kept(saved))
-	_whole_write_note()
+	_defs_kept(defs)
 
 
 # -- 1: the colour map ------------------------------------------------------------------
@@ -285,7 +290,12 @@ func _c_twinpaint() -> void:
 	_check("Tower#1 keeps its 3003 red, the placing colour's: %s" % str(t1),
 		t1 == ["3003 c4", "3062b c4", "6141 c14"])
 	await _undo_redo("the paint", opened, opened_tables, _every_part(), _tables())
-	await _saved_reopened("the paint")
+	# One tower's 3003 green, the other's in its placing colour, is two
+	# definitions in a file: tower.ldr's 3003 cannot be 16 and 2 at once.
+	var split: Array = _defs_now().map(func(line: String) -> String:
+		return "Tower: Tower#1" if line.begins_with("Tower: ") else line)
+	split.insert(split.find("Tower: Tower#1"), "Tower 2: Tower 2#1")
+	await _saved_reopened("the paint", true, split)
 	await _open(text)
 	var cap: BrickWorld.Brick = _part_in("Tower#2", "6141")
 	_select([cap.id])

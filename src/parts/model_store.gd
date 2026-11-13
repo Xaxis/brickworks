@@ -3231,7 +3231,8 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 		unseen = _absent if source == null else source.in_own_steps(source.not_shown)
 		for placement: LdrModel.Placement in coming + unseen:
 			holding.append([world.held_path(placement), placement.part_id, placement.color_code])
-	var instances: Dictionary = tree.file_frames(figures, holding)
+	# Laid on each other by the steps this save writes.
+	var instances: Dictionary = tree.file_frames(figures, holding, unit_steps)
 	if pace != null and pace.due():
 		await pace.next()
 	# Every frame moved with the parts, so each part is where it was in it.
