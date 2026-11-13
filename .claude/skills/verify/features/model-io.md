@@ -91,6 +91,31 @@ Whether what you built is still there tomorrow, and still means the same thing.
   saying it is copy 1, so a save of it opened again is the same file
   (copyfaults2 cfc_wing2); a renamed copy is never written into a deleted
   one's kept block (`SourceFile._copies_are_the_files`, co_del_rename_tail).
+  Written whole, a copy placed in another colour is a copy
+  (`Assemblies.file_frames`, `_copy_fit`): each copy's reference says its
+  colour ("1 4", "1 1") and the definition's parts of the first copy's colour
+  go out in 16 (`LdrModel.write_tree`, each instance's "colour"); before,
+  the blue tower went out as "Tower 2" after every whole write. A copy is its
+  copies inside too, each where the other's is, written as the same
+  definition and in the colour its reference then gives it: a car whose wing
+  was taken out by a change no copy followed is a sub-model of its own, and
+  the other car's wing, light and view are kept (lp2check N2). A copy that
+  lies on one written as a definition of its own is a copy of that one. A
+  mirrored copy of a sub-model with a hand (41770, a number the library moved
+  to 41770a) opens in its other hand (`Assemblies.unmirror` resolves first)
+  and is written by a mirror again; a copy made only of parts the catalogue
+  lacks keeps its step (`AuthorSteps.numbers_for_file`, hscheck E5_own).
+  Each definition goes out from the copy its others were laid on (its entry
+  "master"), whose colours say which parts are 16; copies are laid on each
+  other by the steps the save writes, so a copy built in its parent's steps
+  is never placed in a colour of its own; a part the catalogue lacks in the
+  first's placing colour must show the other's there, or the copy is a
+  sub-model of its own; and a copy is placed by a mirror only where each
+  part comes back within 0.02 LDU (`MIRROR_NEAR`; cf3check O2, H1, H3,
+  8143-1, 10256-1).
+  **Check:** `copyfaults_probe` colour_copies, apart_inside, mirror_copy,
+  held_copy_step, paint_copy, fixed_colours (and rename, duplicate, swap:
+  the sub-models opened again are the ones saved).
   **Check:** `tools/probe.sh openfaults_probe` (headless, ~4 min): 24 cases,
   each as someone else's file and as the app's own: LDView's rule, read in the
   probe apart from LdrModel (with the app's one rule for a library's shortcut
@@ -304,7 +329,7 @@ Whether what you built is still there tomorrow, and still means the same thing.
   twin's part it pairs with (copyfaults2, with `cfcheck`), saved and opened as shown;
   a part put down in the placing colour of copies placed in two colours is
   one line in 16, not two lines and a whole write (`SourceFile._fresh_lines`,
-  `cf2check` post16); the app's own lines under
+  `cf2check` post16, `copyfaults` placing_put); the app's own lines under
   the model's title, `LdrModel.into_main`, in ten files with sub-models;
   a clear undone gives back the file's lines), `patch_rules` (kt5review's six:
   names kept, the gate as written, comment pairs, deletes that go to (B), the
