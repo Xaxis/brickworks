@@ -102,6 +102,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { TYPES } from "./static_server.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -256,8 +257,6 @@ function arc(handle, degrees, steps) {
 // The gallery's page from this checkout, its list played: what a card says
 // of what moves, at [size].
 const WEB = path.join(root, "web");
-const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml",
-  ".png": "image/png", ".json": "application/json", ".webmanifest": "application/manifest+json" };
 async function galleryCards(size, shape) {
   const context = await browser.newContext({ ...shape });
   const page = await context.newPage();

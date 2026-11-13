@@ -255,6 +255,7 @@ import {
 // A model's parts list from its file, as the app's (site278).
 import { PICK_A_BRICK_LINES, PICK_A_BRICK_MOST, inventoryOf, inventoryOfLots, namesOf, paletteOf, partNames, partsTable,
   pickABrick, rebrickableCsv, roomOf, sceneOf, wantedList } from "./_parts.js";
+import { afterFields, keyOf, sectionKey } from "./_subfiles.js";
 import { checkTested, markOf, ownerMark, publicMark } from "./_tested.js";
 import { changedOf, changesBetween, lotSaid, readChanges, saidOf } from "./_versions.js";
 import { countSaid, sideSaid, stepCount, stepsSaid } from "./_steps.js";
@@ -419,9 +420,14 @@ export function checkModel(text) {
       order.push(current.name);
     }
   };
+  // Each file keyed as the app keys it (sectionKey): its first block the
+  // one a reference means, as LDView reads a file (keep), and the model's own
+  // by a key no reference gives, so a later block of its name is that one,
+  // not the model placing itself (ofcheck F4).
+  const blocks = new Map();
   const start = (name) => {
-    current = { name: name.toLowerCase(), placed: [], colours: [], isPart: /\.dat$/i.test(name), steps: 0, open: false,
-      author: "" };
+    current = { name: sectionKey(name, blocks), placed: [], colours: [], isPart: /\.dat$/i.test(name), steps: 0,
+      open: false, author: "" };
     keep();
   };
 
@@ -437,7 +443,7 @@ export function checkModel(text) {
     if (kind === "0") {
       const meta = (tokens[1] || "").toUpperCase();
       if (meta === "FILE") {
-        start(line.replace(/^0\s+FILE\s+/i, "").trim());
+        start(afterFields(raw, 2));
         inData = false;
       } else if (meta === "!DATA") {
         // An embedded picture: base64 in `0 !:` lines, not a model.
@@ -470,7 +476,7 @@ export function checkModel(text) {
         throw new Refusal(`that is not LDraw text: line ${lineNo} is not a well-formed part line`, 415);
       }
       keep();
-      current.placed.push(line.split(/\s+/).slice(14).join(" ").toLowerCase());
+      current.placed.push(keyOf(afterFields(raw, 14)));
       current.colours.push(tokens[1]);
       current.open = true;
     } else {
@@ -3188,7 +3194,10 @@ async function publish(request, response) {
     const before = await getFile(`${id}.mpd`);
     if (before) {
       await putFile(`${id}.v${last.n}.mpd`, before, "text/plain");
-      changes = changesBetween(before.toString("utf8"), body.model);
+      // Read as the app reads them: a library's shortcut is its part.
+      const table = partsTable();
+      changes = changesBetween(before.toString("utf8"), body.model,
+        (id) => Boolean(table && Object.prototype.hasOwnProperty.call(table.parts, id)));
     }
     const picturedBefore = last.has_image ? await getFile(`${id}.png`) : null;
     if (picturedBefore) await putFile(`${id}.v${last.n}.png`, picturedBefore, "image/png");

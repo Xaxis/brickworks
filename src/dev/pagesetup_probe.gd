@@ -186,7 +186,35 @@ func _run() -> void:
 	await _picture_bound()
 	await _styles_kept()
 	await _two_windows()
+	await _sub_picture_kept()
 	_quit()
+
+
+## A sub-model's own page picture, named as the model's picture behind its
+## pages is by default: kept, byte for byte, when the model is given one,
+## which goes in under a name of its own (metalines; booklook2: the model's
+## took the name, and the sub-model's pages showed it).
+func _sub_picture_kept() -> void:
+	print("\n== a sub-model's own page picture")
+	var text: String = FileAccess.get_file_as_string("res://src/dev/fixtures/metalines/sub_pic.mpd")
+	var path: String = _out.path_join("sub_pic.mpd")
+	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+	file.store_string(text)
+	file.close()
+	await _open(path, 3)
+	var block: String = text.substr(text.find("0 !DATA ")).strip_edges()
+	var image: Image = Image.create_empty(40, 30, false, Image.FORMAT_RGB8)
+	image.fill(Color(0.9, 0.6, 0.1))
+	var said: String = str(await _tools.run("page_setup", {"picture_data":
+		Marshalls.raw_to_base64(image.save_jpg_to_buffer(0.9))}))
+	var saved: String = _store.to_text(_store.title, true)
+	var names := PackedStringArray()
+	for line: String in saved.split("\n"):
+		if line.begins_with("0 !DATA "):
+			names.append(line.substr(8).strip_edges())
+	_check("the model given a picture (%s): the sub-model's kept byte for byte, " % said.left(40)
+		+ "two pictures under two names (%s)" % ", ".join(names), saved.contains(block)
+		and names.size() == 2 and names[0] != names[1])
 
 
 func _quit() -> void:

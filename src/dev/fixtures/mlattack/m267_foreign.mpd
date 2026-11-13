@@ -1,0 +1,41 @@
+0 FILE booklet3.ldr
+0 !BRICKWORKS TITLE foreign
+0 Booklet extras
+0 Name: booklet3.ldr
+0 Author: A. Builder
+0 !BRICKWORKS FLOOR GRID
+1 71 0 -9 0 0 1 0 -1 0 0 0 0 1 32524.dat
+0 !BRICKWORKS GUIDE Y 199
+0 STEP
+1 0 30 -9 -60 1 0 0 0 1 0 0 0 1 3705.dat
+0 STEP
+1 4 120 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 1 120 -32 -10 1 0 0 0 1 0 0 0 1 3023.dat
+1 14 190 -24 0 1 0 0 0 1 0 0 0 1 3005.dat
+0 STEP
+1 72 260 -24 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 72 300 -24 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 72 340 -24 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 72 380 -24 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 72 260 -24 40 1 0 0 0 1 0 0 0 1 3003.dat
+1 72 300 -24 40 1 0 0 0 1 0 0 0 1 3003.dat
+1 72 340 -24 40 1 0 0 0 1 0 0 0 1 3003.dat
+1 72 380 -24 40 1 0 0 0 1 0 0 0 1 3003.dat
+0 STEP
+1 16 260 -24 0 1 0 0 0 1 0 0 0 1 pod.ldr
+0 STEP
+0 NOFILE
+0 FILE pod.ldr
+0 Pod
+0 Name: pod.ldr
+0 Author: A. Builder
+1 14 0 -24 0 1 0 0 0 1 0 0 0 1 3003.dat
+0 STEP
+1 15 0 -48 0 1 0 0 0 1 0 0 0 1 3003.dat
+0 STEP
+1 2 0 -72 0 1 0 0 0 1 0 0 0 1 3003.dat
+0 STEP
+1 1 0 -96 0 1 0 0 0 1 0 0 0 1 3003.dat
+0 STEP
+1 4 0 -104 0 1 0 0 0 1 0 0 0 1 3022.dat
+0 NOFILE

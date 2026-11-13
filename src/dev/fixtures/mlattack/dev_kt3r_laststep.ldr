@@ -1,0 +1,9 @@
+0 Last Step Open
+0 Name: laststep.ldr
+0 Author: Jane Builder [jbuilder]
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 1 40 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 14 80 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 STEP
+1 2 0 -24 0 1 0 0 0 1 0 0 0 1 3001.dat

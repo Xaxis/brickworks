@@ -82,7 +82,7 @@ export async function startPostgres({ also = [] } = {}) {
     /// PostgREST's rpc for a public function: its named arguments, its answer.
     async rpc(name, args) {
       const names = Object.keys(args || {});
-      if (names.some((key) => !/^p_[a-z_]+$/.test(key)) || !/^(beta|feedback)_[a-z_]+$/.test(name)) throw new Error(`no rpc ${name}`);
+      if (names.some((key) => !/^p_[a-z_]+$/.test(key)) || !/^(beta_|feedback_|admin_audit_|admin_mail_|site_setting)[a-z_]*$/.test(name)) throw new Error(`no rpc ${name}`);
       const sql = `select public.${name}(${names.map((key, at) => `${key} => $${at + 1}`).join(", ")}) as answer`;
       const values = names.map((key) => (args[key] !== null && typeof args[key] === "object" ? JSON.stringify(args[key]) : args[key]));
       return (await q(sql, values))[0].answer;

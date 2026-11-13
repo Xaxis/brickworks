@@ -210,7 +210,7 @@ static func items_in(world: BrickWorld, sections: Array, skip: Dictionary = {}) 
 	var held_paths: Dictionary = {}
 	for item: Variant in world.held_parts():
 		var placement: LdrModel.Placement = item
-		var path: String = Assemblies.path_from(placement.group, placement.unit)
+		var path: String = world.held_path(placement)
 		held_paths[path] = 0
 		if placement.step < 0:
 			continue
@@ -288,12 +288,35 @@ static func _changes(world: BrickWorld, entry: Dictionary) -> bool:
 
 
 ## Number a section's steps 0, 1, 2… in the order they were, with no gaps:
-## after an edit has emptied one, or made one between two.
+## after an edit has emptied one, or made one between two. A step the file
+## has empty with a look of its own (a page of notes or pictures), between
+## two that had parts before the edit ([param undo] keeps what each part's
+## step was), is the author's, and is kept among them: up to metalines a part
+## moved on a step took it out, and its page's look with it (pkreview3;
+## BookletLooks._empty_to). One an earlier edit emptied has lost its look
+## with its last part (BookletLooks.emptied), and is numbered out.
 static func _tidy(world: BrickWorld, section: String, skip: Dictionary, undo: Array) -> void:
 	var items: Array = items_of(world, section, skip)
+	var was: Dictionary = {}        ## a part or copy -> its step before the edit
+	for entry: Variant in undo:
+		if not entry is Dictionary or not str((entry as Dictionary).get("undo", "")) in [
+				"restep", "heldstep", "unitstep"]:
+			continue
+		var key: Variant = _moved_key(entry)
+		if key != null and not was.has(key):
+			was[key] = int(entry["step"])
 	var used: Dictionary = {}
+	var before: Dictionary = {}     ## the steps in use before the edit
 	for item: Dictionary in items:
 		used[int(item["step"])] = true
+		var then: int = int(was.get(_moved_key(item), int(item["step"])))
+		if then >= 0:
+			before[then] = true
+	if not before.is_empty():
+		for step: int in int(before.keys().max()):
+			if not before.has(step) and not used.has(step) \
+					and not BookletLooks.of(world, section, step).is_empty():
+				used[step] = true
 	var order: Array = used.keys()
 	order.sort()
 	var place: Dictionary = {}
@@ -301,6 +324,19 @@ static func _tidy(world: BrickWorld, section: String, skip: Dictionary, undo: Ar
 		place[order[index]] = index
 	for item: Dictionary in items:
 		_put(world, item, int(place[int(item["step"])]), undo)
+
+
+## What an item of [method items_of], or an undo entry of [method _put],
+## moves: a part by its id, a copy by its path, a part the model holds and
+## does not show by its placement; null for an entry of anything else.
+static func _moved_key(entry: Dictionary) -> Variant:
+	if entry.has("brick"):
+		return "b%d" % int(entry["brick"])
+	if entry.has("held"):
+		return entry["held"]
+	if entry.has("unit"):
+		return "u" + str(entry["unit"])
+	return null
 
 
 ## The steps in a section a person sees, in order: those with anything here
@@ -688,7 +724,7 @@ static func numbers_for_file(world: BrickWorld, library: PartLibrary,
 	for item: Variant in world.held_parts():
 		var placement: LdrModel.Placement = item
 		if placement.step >= 0:
-			var section: String = home(world, Assemblies.path_from(placement.group, placement.unit))
+			var section: String = home(world, world.held_path(placement))
 			last[section] = maxi(int(last.get(section, 0)), placement.step)
 	# After the author's: in a step of their own, or the worked-out ones.
 	var order: Dictionary = {}
@@ -731,11 +767,19 @@ static func inlined(world: BrickWorld, path: String, skip: Dictionary = {}) -> D
 		return {}
 	var outer: String = home(world, Assemblies.parent_of(path))
 	var read: Dictionary = items_in(world, [path, outer], skip)
-	# What the copy holds and does not show stays in the copy, which a save
-	# writes still (ModelStore._hold_unit); the steps it is in go with the
-	# rest of the section round it.
-	read[path] = (read[path] as Array).filter(func(item: Dictionary) -> bool:
-		return not item.has("unseen"))
+	# What the copy holds and does not show goes with the rest of its parts
+	# (Builder._carry: BrickWorld.held_paths), so it is numbered with them,
+	# and its step's look with it. Not in a copy of someone else's file
+	# (BrickWorld.unit_chains), whose save keeps that part's line in the
+	# copy's section and with it the copy (SourceFile.patch); the steps it is
+	# in go with the rest of the section round it. Up to 2026-11-11 it was
+	# kept out in the app's own file too: written in a copy of its own, which
+	# an open read as a part the catalogue lacks, and then, its path carried,
+	# in the step of the copy's first part, its step's look lost (hscheck
+	# R_own_ungroup).
+	if world.unit_chains.has(path):
+		read[path] = (read[path] as Array).filter(func(item: Dictionary) -> bool:
+			return not item.has("unseen"))
 	var at: int = -1
 	for item: Dictionary in read[outer]:
 		if str(item.get("unit", "")) == path:

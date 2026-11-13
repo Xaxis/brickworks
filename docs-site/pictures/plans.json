@@ -1,0 +1,39 @@
+{
+ "shots": [
+  {
+   "id": "plans-page",
+   "source": "site",
+   "route": "/plans",
+   "viewport": [
+    1280,
+    1800
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "answers": {
+    "/api/plans?op=beta_spots": {
+     "beta": "off"
+    },
+    "/api/plans": {
+     "status": 405,
+     "body": {
+      "error": "POST {email, plan, billing, note} or {email, forget: true}"
+     }
+    }
+   },
+   "wait": "#pro",
+   "crop": [
+    "#free",
+    "#pro"
+   ],
+   "pad": 24,
+   "alt": "The plans page's two plans: Free at $0 with Open the app and all it has, and Pro, marked Coming soon, at $80 a year ($6.67 a month, two months free) with Tell me when it's ready and what Pro adds.",
+   "caption": "brickworks.diy/plans, with Pro still to come.",
+   "features": [
+    "ui:plans page"
+   ]
+  }
+ ]
+}

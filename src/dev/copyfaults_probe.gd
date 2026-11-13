@@ -798,9 +798,9 @@ func _case_clear_lit() -> void:
 	var first: String = _save()
 	_check("cfc_lit.mpd opened and saved: sub.ldr's light and view in its section (%s), none "
 		% str(_lit_lines(first, "sub.ldr")) + "in main.ldr's",
-		own.size() == 2 and _lit_lines(first, "sub.ldr") == own
+		own.size() == 2 and _same_lit(_lit_lines(first, "sub.ldr"), _lit_saved(own, text, first))
 		and _lit_lines(first, "main.ldr").filter(func(line: String) -> bool:
-			return own.has(line)).is_empty())
+			return line.contains("sub view") or line.contains("#00ff00")).is_empty())
 	await _say("clear_model", {})
 	_check("...cleared: no part, no sub-model's lines (%s)" % JSON.stringify(_world.section_lines),
 		_every_part().is_empty() and _world.section_lines.is_empty())
@@ -812,7 +812,8 @@ func _case_clear_lit() -> void:
 		_tables() == tables)
 	var undone: String = _save()
 	_check("...saved: sub.ldr's light and view in its own section (%s)"
-		% str(_lit_lines(undone, "sub.ldr")), _lit_lines(undone, "sub.ldr") == own)
+		% str(_lit_lines(undone, "sub.ldr")),
+		_same_lit(_lit_lines(undone, "sub.ldr"), _lit_saved(own, text, undone)))
 	_check("...the save as before the clear%s" % _first_unlike(first, undone), undone == first)
 	_shell.run("redo")
 	await _frames(6)
@@ -825,13 +826,81 @@ func _case_clear_lit() -> void:
 	await _open(undone)
 	var again: String = _save()
 	_check("...opened again and saved: sub.ldr's light and view in its own section (%s)"
-		% str(_lit_lines(again, "sub.ldr")), _lit_lines(again, "sub.ldr") == own)
+		% str(_lit_lines(again, "sub.ldr")),
+		_same_lit(_lit_lines(again, "sub.ldr"), _lit_saved(own, text, again)))
 	_check("...the same file%s" % _first_unlike(_as_kept(undone), _as_kept(again)),
 		_as_kept(again) == _as_kept(undone))
 
 
 ## The LIGHT and VIEW lines of [param text]'s section "0 FILE [param file]",
 ## in order, without line ends.
+## [param own], sub.ldr's lines as [param read] has them, where a save that
+## wrote [param saved] puts them: carried as its part is, from the frame the
+## file wrote sub.ldr in to the one the save writes it in, so each stays where
+## it was on the parts (Assemblies.lines_written, pcfix). A save writes the
+## first copy where it stands, and up to 2026-11-12 this asked for the lines
+## as read, which put the light 100 LDU off its part (lpcheck s7_a).
+static func _lit_saved(own: Array, read: String, saved: String) -> Array:
+	var was: Variant = _first_part(read, "sub.ldr")
+	var now: Variant = _first_part(saved, "sub.ldr")
+	if was == null or now == null:
+		return own
+	return Array(Assemblies.rebased(PackedStringArray(own),
+		(now as Transform3D) * (was as Transform3D).affine_inverse()))
+
+
+## The first part's line in [param file]'s section of [param text], as a
+## transform in the file's coordinates; null for none.
+static func _first_part(text: String, file: String) -> Variant:
+	var inside: bool = false
+	for line: String in text.split("\n"):
+		var bare: String = line.strip_edges()
+		if bare.begins_with("0 FILE "):
+			inside = bare == "0 FILE " + file
+		elif inside and bare.begins_with("1 "):
+			var f: PackedStringArray = bare.split(" ", false)
+			if f.size() < 15:
+				return null
+			var n: Array = []
+			for k: int in range(2, 14):
+				n.append(float(f[k]))
+			return Transform3D(Basis(Vector3(n[3], n[6], n[9]), Vector3(n[4], n[7], n[10]),
+				Vector3(n[5], n[8], n[11])), Vector3(n[0], n[1], n[2]))
+	return null
+
+
+## Whether two lists of LIGHT and VIEW lines say the same, numbers to 0.01.
+static func _same_lit(a: Array, b: Array) -> bool:
+	if a.size() != b.size():
+		return false
+	for n: int in a.size():
+		var one: String = str(a[n])
+		var other: String = str(b[n])
+		var cut: int = one.find("{")
+		if cut < 0 or other.left(cut) != one.left(cut) \
+				or not _about(JSON.parse_string(one.substr(cut)), JSON.parse_string(other.substr(cut))):
+			return false
+	return true
+
+
+static func _about(a: Variant, b: Variant) -> bool:
+	if (a is float or a is int) and (b is float or b is int):
+		return absf(float(a) - float(b)) < 0.01
+	if a is Array and b is Array:
+		if (a as Array).size() != (b as Array).size():
+			return false
+		for n: int in (a as Array).size():
+			if not _about(a[n], b[n]):
+				return false
+		return true
+	if a is Dictionary and b is Dictionary:
+		for key: Variant in (a as Dictionary).keys() + (b as Dictionary).keys():
+			if not _about((a as Dictionary).get(key), (b as Dictionary).get(key)):
+				return false
+		return true
+	return a == b
+
+
 static func _lit_lines(text: String, file: String) -> Array:
 	var out: Array = []
 	var inside: bool = false
@@ -1383,21 +1452,22 @@ func _round_of(what: String, opened: Array, tables: String, each: Callable = Cal
 	if again != saved and _as_kept(again) == _as_kept(saved):
 		print("  note: saved again, %s; the same once those are set aside" % _first_unlike(saved,
 			again).strip_edges())
-	_check("...saved again: the same file%s" % _first_unlike(_as_kept(saved), _as_kept(again)),
-		_as_kept(saved) == _as_kept(again))
+	if not _check("...saved again: the same file%s" % _first_unlike(_as_kept(saved),
+			_as_kept(again)), _as_kept(saved) == _as_kept(again)):
+		print("    saved: %s\n    again: %s" % [saved.left(240).c_escape(), again.left(240).c_escape()])
 
 
 ## [param text] as a reopened whole write of it keeps it, as 7e6cb1aec wrote
-## it too: without a title line it gains ("0 !BRICKWORKS TITLE", metalines'
-## to fix), and its sub-models' sections in any order (so each without the
-## line end after it), without a first copy's line. A copy written as a sub-model of its own, "wing 2", opens again as
+## it too: its sub-models' sections in any order (so each without the line
+## end after it), without a first copy's line. (A title line it gained,
+## "0 !BRICKWORKS TITLE", was left out too until metalines wrote none.) A copy written as a sub-model of its own, "wing 2", opens again as
 ## "wing 2#1", which sorts before "wing#1", and is written first, saying it
 ## is copy 1 (cfc_wing2.ldr, any edit or none).
 static func _as_kept(text: String) -> String:
 	var kept := PackedStringArray()
 	for line: String in text.split("\n"):
 		var bare: String = line.trim_suffix("\r")
-		if not bare.begins_with("0 !BRICKWORKS TITLE ") and bare != "0 !BRICKWORKS COPY 1":
+		if bare != "0 !BRICKWORKS COPY 1":
 			kept.append(line)
 	var sections: PackedStringArray = "\n".join(kept).split("\n0 FILE ")
 	var rest: Array = []

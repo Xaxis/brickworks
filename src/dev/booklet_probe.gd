@@ -466,8 +466,7 @@ func _telling() -> void:
 func _rotsteps() -> void:
 	var ldr: LdrModel = LdrModel.parse(_ROTSTEPS, "rotsteps.mpd")
 	var world: BrickWorld = _world_of(ldr, true)
-	world.step_looks = BookletLooks.read(_ROTSTEPS, ldr._assembly_names(),
-		LdrModel._key(ldr.main.name))
+	world.step_looks = BookletLooks.read(_ROTSTEPS, ldr._assembly_names(), ldr.main_key)
 	var made: Array = await _make(world, "rotsteps")
 	var maker: BookletMaker = made[0]
 	print("\n  every kind of ROTSTEP")

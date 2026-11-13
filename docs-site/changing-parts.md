@@ -39,6 +39,7 @@ lib:pattern's grid over mcp
 
 ## Lift, nudge and turn {#move}
 
+- Drag a part with the **Select** tool and it goes where you let go, with what rests on it: the bricks stacked on top come along, each where it was. A part held by something that stays, such as a plate across to a brick beside, stays with all that is on it, and what the part stands on never comes. Hold [[Shift]] as you drag to move it alone; let go of [[Shift]] to take the rest up again. One [[Ctrl+Z]] puts it all back. A finger's drag carries the same.
 - [[X]] lifts the selection: it follows the pointer, a click puts it down and [[Esc]] puts it back.
 - The arrow keys or [[W]] [[A]] [[S]] [[D]] nudge it a Snap step; [[Page Up]] and [[Page Down]] raise and lower it.
 - [[R]] turns it where it stands. With no room there, the parts in the way light up and it comes into hand turned: click where it fits, or [[Esc]].
@@ -47,6 +48,7 @@ Exact positions and angles are typed in [Properties](/docs/panels-and-settings#p
 
 <!-- covers
 ui:move and turn a selection
+ui:a dragged part carries what rests on it
 -->
 
 ## Drag rings and arrows {#handles}

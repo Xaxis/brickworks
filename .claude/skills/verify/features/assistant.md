@@ -667,9 +667,13 @@ fixing what it got wrong.
   person's Undo took back their own last part. What the person does while it
   runs keeps steps of its own: a part one of theirs names is left out of
   Claude's. A run that fails and puts the model back makes none; about a
-  selection, its edits gather into one already. `design_undo_probe` runs the
+  selection, its edits gather into one already. A run kept as a step is
+  followed as an edit by hand is (`Assistant.run_kept`, Main connects
+  `ModelStore.looks_follow_edit`): a sub-model it left no copy of takes its
+  own lights and views, in Claude's step. `design_undo_probe` runs the
   real loop against a stand-in for the API on this machine and fails on 480b81a
-  (12 failures: Undo took the person's brick and left the wall).
+  (12 failures: Undo took the person's brick and left the wall), and on
+  af90eb630 at "a run that takes a lit sub-model's last copy off".
 - `a design framed whole` (`Main._frame_for_design`): a design asked for in
   the panel is framed as Frame all frames it when it is laid and again as its
   run ends (the surface pass lays parts after), if it began from nothing (a

@@ -2671,7 +2671,17 @@ func _clear_undone() -> Array:
 	back.append({"undo": "steplooks", "looks": _world.step_looks.duplicate(true)})
 	# Each sub-model's own lights and views (BrickWorld.section_lines): undone,
 	# a clear gave back the sub-model without them, and its save left them out.
-	back.append({"undo": "sectionlines", "lines": _world.section_lines.duplicate(true)})
+	# And where each copy's frame of them stands (section_frames), and where
+	# each part not on the baseplate is in the tree (held_paths): undone
+	# without them, a copy moved after was moved without its lights, and a
+	# part on its way after a rename landed in a copy under the old name.
+	back.append({"undo": "sectionlines", "lines": _world.section_lines.duplicate(true),
+		"frames": _world.section_frames.duplicate(true)})
+	back.append({"undo": "heldpaths", "paths": _world.held_paths.duplicate()})
+	# And the name each section was read under (BrickWorld.section_files):
+	# undone, a clear named the model's own after its title, and Save wrote
+	# "0 FILE cf_2_saved_as.ldr" over the file's "0 FILE model.ldr".
+	back.append({"undo": "sectionfiles", "files": _world.section_files.duplicate()})
 	back.append({"undo": "unitchains", "chains": _world.unit_chains.duplicate()})
 	for unit: String in _world.unit_steps:
 		var step: int = int(_world.unit_steps[unit])
@@ -2732,11 +2742,14 @@ func save_model(path: String) -> bool:
 	# A second design's saves stay with it, out of the person's models: the
 	# one kept is theirs once it is put down (BestOfTwo).
 	var second_of: String = Later.script(&"BestOfTwo").second_of()
+	# Under the model's own name: up to metalines "Model", which is not
+	# someone else's file's name, so each save wrote "0 !BRICKWORKS TITLE
+	# Model" into it (hscheck).
 	if not second_of.is_empty():
-		return _store.export_to(second_of.path_join(path.get_file()), "Model")
+		return _store.export_to(second_of.path_join(path.get_file()), _store.title)
 	if path.begins_with(ModelStore.SAVE_DIR):
-		return _store.save_file(path, "Model")
-	return _store.export_to(path, "Model")
+		return _store.save_file(path, _store.title)
+	return _store.export_to(path, _store.title)
 
 
 ## Open the local port that lets a session outside the app drive it.
@@ -5239,6 +5252,8 @@ func _build_ui() -> void:
 	_store.builder = _builder
 	# A drive undone or redone takes what landed after it was kept with it.
 	_builder.motions_hook = _store._follow_motions
+	# And what landed once a sequence played as one step let it.
+	_store.held_landed.connect(func(_count: int) -> void: _on_landed())
 
 	# What the model stands on: src/render/floor_layer.gd.
 	_floor = FloorLayer.new()
@@ -5928,6 +5943,7 @@ func _build_ui() -> void:
 	# The colours at the foot of the column, under the model tree and the
 	# properties: what those do moves the parts grid's foot, never them.
 	_stack.add_section(_bin.colours)
+	_stack.never_fills(_bin.colours)
 	_bin.column = _stack
 	_counts = _shell.status.counts
 
@@ -6216,6 +6232,8 @@ func _make_assistant() -> void:
 	# same undo, as one by hand does (pullkept).
 	_assistant_made.focus_edited.connect(func(_words: String, _before: Image,
 			_after: Image) -> void: _store.looks_follow_edit())
+	# And a request's run, kept as one step, as the one by hand does.
+	_assistant_made.run_kept.connect(_store.looks_follow_edit)
 	# So a snapshot does not carry the baseplate off with it.
 	_assistant_made.scenery = _store.scenery
 	# And what the model stands on, read when asked: on a bare floor what only
@@ -8395,12 +8413,18 @@ func _on_part_fetched(part_id: String) -> void:
 	# Not there yet is not the same as not there: a model opened on the
 	# web before its parts were fetched gets them as they come.
 	if _store.place_awaited(part_id) > 0:
-		_on_model_changed()
-		if _store.awaited.is_empty():
-			_bar.say("%d bricks" % Inventory.pieces_in(_world, _library, _store.scenery))
+		_on_landed()
 	if _builder.held_part == part_id:
 		_refresh_preview()
 		_bar.say("%s ready" % part_id)
+
+
+## Parts on their way put down: as each arrives, or once motions kept as one
+## step, which held them back while it was made, are (ModelStore.hold_landings).
+func _on_landed() -> void:
+	_on_model_changed()
+	if _store.awaited.is_empty():
+		_bar.say("%d bricks" % Inventory.pieces_in(_world, _library, _store.scenery))
 
 
 ## A part that could not be fetched, asked again too (PartLibrary.RETRY_AFTER).
@@ -9757,12 +9781,15 @@ func _unhandled_input(event: InputEvent) -> void:
 				and moved.position.distance_to(_press_at) > DRAG_SLOP:
 			_grabbing = _grab_on_joint(_press_brick)
 			if not _grabbing:
-				_dragging_part = _verbs.drag_start(_press_brick, _press_copies)
+				_dragging_part = _verbs.drag_start(_press_brick, _press_copies,
+					moved.shift_pressed)
 			_press_brick = 0
 		if _grabbing:
 			_grab_drag.motion(moved.position)
 			return
 		if _dragging_part:
+			# With what rests on it, or alone while Shift is held (carryrest).
+			_verbs.drag_alone(moved.shift_pressed)
 			_refresh_preview(moved.position)
 			return
 		# A left press that moves is a drag, never a placement: past a few
@@ -9884,6 +9911,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	# A part being dragged, let go of where the drag ends: put down there
 	# if it fits, and back where it was if not.
 	if _dragging_part and not button.pressed:
+		_verbs.drag_alone(button.shift_pressed)
 		_drop_dragged(button.position)
 		return
 	# A click on a part with the Select tool that never became a drag.
@@ -10781,6 +10809,12 @@ func _input(event: InputEvent) -> void:
 		_system_at = get_viewport().get_mouse_position()
 		_pointer_seen_ms = Time.get_ticks_msec()
 	var key: InputEventKey = event as InputEventKey
+	# Shift pressed or let go of with a part dragged: alone, or with what
+	# rests on it, at once rather than at the pointer's next move (carryrest).
+	if key != null and _dragging_part and key.keycode == KEY_SHIFT and not key.echo:
+		_verbs.drag_alone(key.pressed)
+		_refresh_preview(_pointer())
+		return
 	if key == null or key.keycode != KEY_ESCAPE or not key.pressed or key.echo:
 		return
 	var focused: Control = get_viewport().gui_get_focus_owner()

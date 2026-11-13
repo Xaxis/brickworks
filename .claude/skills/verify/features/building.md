@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe -->
 
 ## Sub-features
 
@@ -241,6 +241,27 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   aim and a click). Half round (the
   properties panel's Turn of 180) goes round the middle on a half stud each
   way and lands on its own footprint, as Mirror does (`mirror_probe`).
+- `a dragged part carries what rests on it` (`Carry.riders`, `EditVerbs.drag_start`
+  and `drag_alone`, main.gd's drag; APP_UX7 #20 carryrest, after Brickyard): a
+  drag on a part with the Select tool that is no joint's lifts it with every
+  part resting on it that nothing else holds: what sits on its top, and all
+  joined to that (above, below and by side studs) leaving it out, unless any
+  of that reaches lower than its top less a stud (held from below: what it
+  stands on, and what is beside it), is the scenery, locked or hidden. A plate
+  across it to a brick beside stays, and so does all on that plate; a
+  sub-assembly comes whole or not at all (`Builder.takes`). Shift held as it
+  goes (the motion's or the key's) puts what rests on it back and carries it
+  alone; let go of, takes them up again; each switch is the drag's one lift,
+  so one undo puts all back. The bar says which ("moving 1 part and the 3
+  parts resting on it — Shift moves it alone", short enough for a 1280 window's
+  bar). Shift at the
+  press still slides the view; a Ctrl-drag copy is the selection alone; a
+  finger's drag carries as the mouse's. Escape, or a drop with no room, puts
+  them all back with the dragged part alone selected (`EditVerbs.put_away`). The look asks above and below, the
+  lowest first, and the sides only once nothing that stays is found: from one
+  part of 10179 it took 3.1 s asking every side, 52 ms at most now (p95
+  1.5 ms). Past 1,500 parts asked it stops, and what it had not finished
+  stays, the bar saying so. Probe: `carryrest_probe`.
 - `select by colour part or connection` (`src/assembly/select_by.gd`): the
   toolbar's Select by (and Edit, Select by) takes the same colour, the same part, both, everything
   joined by studs (a brick beside another is not joined; a sideways part is
@@ -411,15 +432,23 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   over another in one strip, one of the two showing; opening one while the
   other shows swaps them where they stand). In one column with the bin the
   tree and the properties left it 8 parts in sight at 1280 x 720 and the
-  properties X and Y. The colours are as tall as the column says
+  properties X and Y. The colours are as tall as the column says, and never
+  fill it (`PanelStack.never_fills`: a phone's drawer, with no bin, had the
+  colours at 995 of its 1558 units and one row of the tree in sight)
   (`PartsBin._fit_palette`: 14% of it, two category rows from a 700-unit
   column; under that, on a desktop, a row and a half of colours and one
   row of categories, so a laptop's 1280 x 720 has four rows of six parts
   in sight), so a part taken into hand moves the parts grid's foot and never
-  the palette. In the right column the tree has its dragged height and the
-  properties the rest, all they hold in sight (`PanelStack.keep_whole`);
-  with nothing selected the tree has the column (`PanelStack._filler`). The
-  bar between two drags the height of the one that does not fill. The tree
+  the palette. In the right column a choice never moves the split: with
+  nothing selected the tree has the column (`PanelStack._filler`); the first
+  time the properties fill they get only the room under the tree's last row
+  (`Outliner.spare_height`, `PanelStack._first_fill`), and from then on, or
+  once a bar was dragged on any visit (`PanelStack._split`), the tree keeps
+  its height and the properties the rest. Taking the tree's height to show
+  every field (`keep_whole`) moved a chosen row 128 to 557 px from under the
+  pointer and a double click then opened its parent (tdcheck); the
+  properties under the bin, where nothing else is, are still kept whole.
+  The bar between two drags the height of the one that does not fill. The tree
   comes out of its fold once, the first time a device has the right column
   (`right_column`): folded, the column was an empty Properties. The model's
   part of the window is what is left, with nothing over it but the view cube:
@@ -1346,7 +1375,11 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   files made elsewhere, Brickworks' own of each floor and from before floors,
   6689-1 on its own plate, View, Floor's baseplate under a set (one undo,
   saved with the copy), and holds the status bar's verdict on the grid to the
-  baseplate's (6043-1). Pictures are of the model: renders, Export picture, the
+  baseplate's (6043-1). A set's autosave and what a joiner is sent say no
+  floor line, as the set's file, since metalines (an unedited save of someone
+  else's file gains no `FLOOR GRID`): the grid goes beside the autosave
+  (`ModelStore._floor_unsaid`) and in the snapshot's `~floor`, and both come
+  back on the grid. Pictures are of the model: renders, Export picture, the
   share card, the Studio thumbnail, the booklet and the designer's own pictures
   show a baseplate only when it is part of the model (it is in the box), on the
   studio's clean floor otherwise, and never the grid or the shadow's ground;
@@ -1664,8 +1697,19 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   its twin keeps each part's step, a part it gains taking the step its
   neighbours were built in (`Assemblies._voted`), and a
   sub-model renamed to a gone one's name drops that one's looks
-  (`BookletLooks.renamed`). Probe: `unit_steps_probe` (headless;
-  `UNIT_STEPS_ONLY=castle`, `copies`, `7140` or `siblings` for one; siblings
+  (`BookletLooks.renamed`). A model nobody gave steps (an app's own file:
+  `0 Author: Brickworks`, no `AUTHORED_STEPS`) is planned again after every
+  edit of what holds what, and again on open, from parts numbered in the
+  order the file's lines come: a nested drop saved and opened again showed
+  4 of its 8 parts in other steps (tdcheck; open, treerows). Probe:
+  `unit_steps_probe` (headless; `UNIT_STEPS_ONLY=castle`, `copies`, `7140`,
+  `siblings` or `own` for one; own drives a drag in the tree, Ungroup,
+  Ctrl-G, Make unique, Rename, parts taken out, a paste and a delete on
+  `tests/fixtures/steps/nested_own.ldr` and on 7140-1 as the app saves it
+  with its steps taken out: undone as it was, saved and opened again with
+  every part where it was, the steps it moved noted,
+  `UNIT_STEPS_OUT=DIR` keeping each case's files for another LDraw reader;
+  siblings
   drives the seven edits that reach a sibling's steps: a twin painted, a
   rename, a drag in the tree, a partway Ungroup, Ctrl-G, a reused name's
   looks, a figure taken apart) renames, ungroups, makes and cuts loose copies
@@ -1695,7 +1739,19 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   it (`Outliner._follow`); held at the tree's top or bottom edge, a carry scrolls it
   (`Outliner._edge_scroll`; Godot's own is off: 4 units deep, and never at
   the top of a tree below its header); a model shared to look
-  at or being laid takes none (`Shell.why_frozen`). Probe: `treedrag_probe`
+  at or being laid takes none (`Shell.why_frozen`); Escape while carrying a
+  row puts it back with nothing changed and the selection kept
+  (`Outliner._input`, ahead of Main's Escape). The menu key or Shift+F10
+  opens the chosen row's menu beside its name (`Outliner._menu_by_keys`),
+  the arrows and Enter choosing in it, and choosing a row partly out of
+  sight scrolls the tree only when its middle is out of sight
+  (`Outliner._in_sight`). A sub-model carried into another while edited
+  inside is still the one edited (`Assemblies.move_into` carries `entered`,
+  as `make_unique` does). Probe: `tree_rows_probe` (headless; 7140-1 at
+  1280x720, 1400x900 and 1920x1080: a row at the top, middle and bottom,
+  scrolled or not, chosen and then a second, 0 px moved and a double click
+  editing inside it; a small model's first choice; Escape mid-carry; the
+  menu key and Shift+F10; `--phone`, and `--tablet` held upright). Probe: `treedrag_probe`
   (headless: the mouse's drops with Undo, Redo, Save and a reopen,
   sereview's scrolled row drags at 1400x900 and 1280x720 (alone with
   `--rows`), the gates; by hand `--phone` and `--tablet`: a finger's,
@@ -2783,6 +2839,18 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   says the angle to 0.1° and the distance between the hole middles; from a
   point on its top, no angle. `second`: View, Split from the top, the x-z pane
   dragged in the second view. Pictures in `shots/handles2/WxH/`.
+- `carryrest probe` (`src/dev/carryrest_probe.gd`): windowed 1400x900, about two
+  minutes, `PROBE_SIZE=1280x720` too; `carryrest_phone_probe` (390x844) and
+  `carryrest_tablet_probe` (1024x768) drive the same by finger (cases 1 only).
+  Through the sign-in screen with a throwaway account; `--no-gate` without one
+  (Supabase down). A 2 x 4 on a 2 x 4, a 2 x 2 brick, a 2 x 2 plate and a 1 x 1
+  stacked on it, a 2 x 4 plate across its other half to a black brick beside
+  with a 1 x 1 on the plate: dragged onto the ground, the three come 0.00 LDU
+  from where they were on it and the five others stay; one undo, one redo.
+  Shift from the start; Shift pressed and let go of half way (4, 1, 4 in
+  hand, still one undo); Escape half way (the brick alone selected again); then 10179's every third part asked
+  what rests on it (95% in 5 ms, the slowest in 100). Pictures in
+  `shots/carryrest/` or `CARRYREST_OUT`.
 - `handles probe` (`src/dev/handles_probe.gd`): windowed, about three minutes,
   `PROBE_SIZE=1280x720` for the small window. `rings`: a 2 x 4 turned 20° and
   tipped 10° turned about each of its own axes by 23.58, -41.2 and 67.5° (click,

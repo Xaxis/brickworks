@@ -50,6 +50,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path, { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { TYPES } from "./static_server.mjs";
 // What a notification says and how they are grouped (docs/SOCIAL.md U7):
 // pure, so the stand-in answers as the API does.
 import { noticeGroups } from "../../api/_notifications.js";
@@ -2052,6 +2053,54 @@ function betaTesters() {
       one("00000000-0000-4000-8000-0000000000b4", "cy@example.com", "not_now", "welcome", null)] };
 }
 
+// The console's switches and audit (api/_console.js): the beta set open
+// from the console, billing off, three acts kept, a refusal among them.
+const SWITCHES = { beta: { mode: "open", source: "console", set_by: "owner@example.com", set_at: BETA_AT, project: "open",
+  scope: "live", ready: true }, billing: { mode: "off" },
+  mail: { sender: "Brickworks <noreply@brickworks.diy>", borrowing: null, key: true, reply_to: "hello@brickworks.diy" },
+  services: { database: true, mail: true, admission: false, orangecheck: true, crons: true } };
+const AUDIT = [
+  { id: 3, at: "2026-10-30T09:00:00Z", actor: "owner@example.com", op: "beta_decide", target_kind: "account",
+    target: "00000000-0000-4000-8000-0000000000b2", email: "bo@example.com", status: 200, said: null, test: false, scope: "live",
+    detail: { asked: { decision: "approve", note: "Good crane" }, said: { status: "approved", spot: 1, mail: "sent" } } },
+  { id: 2, at: "2026-10-19T09:30:00Z", actor: "owner@example.com", op: "unlist", target_kind: "model", target: "DesignBrg1",
+    email: null, status: 200, said: null, test: false, scope: "live", detail: { asked: {}, said: { listed: false } } },
+  { id: 1, at: "2026-10-19T09:20:00Z", actor: "owner@example.com", op: "dismiss", target_kind: "report", target: "40",
+    email: null, status: 404, said: "no such report", test: false, scope: "live", detail: { asked: {}, said: {} } },
+];
+// The feedback inbox (api/_feedback.js feedback_inbox): one bug, new.
+const INBOX = { counts: { all: 1, new: 1, seen: 0, planned: 0, fixed: 0, wont_fix: 0, beta: 1 }, mail: true,
+  reply_to: "hello@brickworks.diy", reports: [{ id: 9, kind: "bug", status: "new", words: "The step list jumps to the top when I rename a step.",
+    email: "ada@example.com", signed_in: true, beta: true, at: "2026-10-30T08:00:00Z", source: "app", page: "Build",
+    details: { app: "0.19.0", os: "Linux" }, picture: false, model: false, log: null, note: null, replies: [] }] };
+
+/// Every account as the console lists it (api/_console.js people).
+function adminPeople() {
+  const everyone = [...PEOPLE, ...NO_PROFILE];
+  return { tests: false, billing: "off", beta_known: true, people: everyone.map((one) => {
+    const models = MODELS.filter((m) => m.owner === one.account);
+    const out = ADMIN.barred.find((b) => b.account === one.account);
+    return { id: one.account, email: one.email, owner: one.account === ME, joined: one.created_at, last_sign_in: one.last_sign_in,
+      confirmed: true, signs_in_with: "email", handle: one.handle ?? null, name: one.name ?? null, models: models.length,
+      listed: models.filter((m) => m.listed).length, connectors: ADMIN.connectors_of[one.account]?.[0] || 0,
+      connector_seen: ADMIN.connectors_of[one.account]?.[1] || null, barred: out ? { at: out.at, reason: out.reason } : null,
+      beta: one.account === ROBIN ? { state: "tester", joined_at: BETA_AT, via: "welcome", application: null } : null,
+      plan: one.account === ME ? { name: "Owner", said: "every feature, unlimited" } : { name: "Free", said: "plans are off" } };
+  }).sort(byTime("last_sign_in")) };
+}
+
+/// One account whole (api/_console.js person).
+function adminPerson(one) {
+  const models = MODELS.filter((m) => m.owner === one.id).map((m) => ({ id: m.id, name: m.name, parts: m.parts,
+    published: Boolean(m.published), listed: Boolean(m.listed), listed_at: m.listed_at ?? null, barred: Boolean(m.barred),
+    test: false, created_at: m.created_at || m.listed_at || BETA_AT }));
+  const person = PEOPLE.find((p) => p.account === one.id);
+  return { ...one, test: false, profile: person ? { handle: person.handle, name: person.name, bio: person.bio,
+    created_at: person.created_at } : null, models,
+  connectors: one.connectors ? [{ seen_at: one.connector_seen, open: false }] : [],
+  feedback: [], billing: "off", audit: AUDIT.filter((row) => row.target === one.id) };
+}
+
 /// /api/admin: the site's owner's page.
 function admin(method, params, who, state) {
   if (!who) return answer(401, { error: SIGN_IN });
@@ -2059,6 +2108,22 @@ function admin(method, params, who, state) {
   const op = params.get("op") || "";
   if (method === "GET" && op === "beta") return answer(200, betaQueue());
   if (method === "GET" && op === "beta_testers") return answer(200, betaTesters());
+  if (method === "GET" && op === "switches") return answer(200, SWITCHES);
+  if (method === "GET" && op === "audit") return answer(200, { ready: true, rows: AUDIT, more: false });
+  if (method === "GET" && op === "feedback") return answer(200, INBOX);
+  if (method === "GET" && op === "people") return answer(200, adminPeople());
+  if (method === "GET" && op === "person") {
+    const one = adminPeople().people.find((p) => p.id === params.get("account"));
+    return one ? answer(200, adminPerson(one)) : answer(404, { error: "no such account" });
+  }
+  if (method === "GET" && op === "overview") {
+    const shared = MODELS.filter((m) => m.published);
+    return answer(200, { tests: false, accounts: { all: ADMIN.accounts, joined_day: 3, joined_week: 19,
+      signed_in_week: ADMIN.signed_in_this_week }, models: { published: shared.length, listed: shared.filter((m) => m.listed).length,
+      published_week: 2 }, reports: { open: ADMIN.reports.length }, feedback: { new: 1, all: 1 },
+    beta: { testers: 1, pool: BETA_POOL, applications: { new: 1, waitlist: 0, pending: 1 } },
+    mail: { days: 7, beta: { sent: 6, dry: 0, failed: 1 }, answers: { sent: 1, dry: 0, failed: 0 } }, audit: AUDIT, switches: SWITCHES });
+  }
   if (method === "POST") return answer(200, { ok: true });
   // A reported photo, to look at: a picture, which the flow serves.
   if (op === "photo") return null;
@@ -2156,7 +2221,11 @@ function account(method, params, body, who, state) {
     return answer(200, { theme: state.theme || "system", chosen: Boolean(state.theme), ready: true });
   }
   if (method !== "GET") return answer(405, { error: "GET, or POST ?op=age" });
-  const base = { enabled: true, url: DB, key: PUBLISHABLE, assistant: "own_key", parts_url: null };
+  // orangecheck offered to everyone, with Connect's box, as brickworks.diy
+  // answers (api/_oc_config.js orangecheckOffer), so the sign-in dialog is
+  // judged as people see it; native is the desktop app's alone.
+  const base = { enabled: true, url: DB, key: PUBLISHABLE, assistant: "own_key", parts_url: null,
+    orangecheck: { ready: true, everyone: true, connect: true, native: null } };
   if (!who) return answer(200, { ...base, signed_in: false });
   // A new account (state.fresh) is asked until it answers.
   const ask = state.askAge === true || Boolean(state.fresh && !state.fresh.aged);
@@ -2236,9 +2305,6 @@ function answered({ url, method = "GET", body, state = {} }) {
 // ---------------------------------------------------------------------------
 // The site in a browser, as deploy.sh serves it.
 
-const TYPES = { ".html": "text/html; charset=utf-8", ".css": "text/css", ".js": "text/javascript",
-  ".json": "application/json", ".png": "image/png", ".webp": "image/webp", ".svg": "image/svg+xml",
-  ".xml": "application/xml", ".txt": "text/plain", ".webmanifest": "application/manifest+json" };
 const PICTURE = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "../../web/share.png"));
 
 /// The docs as tools/docs_site.py builds them for a deployment, built

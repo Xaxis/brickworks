@@ -2979,7 +2979,25 @@ picture the assistant is shown.
   with the parts (`Carry.clipboard_lines`, `Assemblies.lines_held`) and a
   paste's step puts them back where the model it lands in has none of its
   own, into this model or another (`Assemblies.lines_pasted`): one it has
-  keeps its own, and the status line says so; a copy
+  keeps its own, and the status line says so. Each definition's lines are
+  in one frame, and where it stands for each copy is kept by the copy's
+  path (`BrickWorld.section_frames`, path -> Transform3D, a mirrored copy's
+  reflecting): set once at the open from every copy's reference
+  (`Assemblies.frames_read`) and from then carried by the transform each
+  edit applies, never found again from parts: a move, turn or tip
+  (`Assemblies.lines_follow` -> `moves_in`, `frames_moved`: only a copy all
+  of whose parts moved alike), a lift put down (`Builder._put_carried`),
+  Mirror (`Builder.mirror_bricks`, the reflection), a drive kept
+  (`MotionPlayer._keep_driven`), a rename, Make or split with the paths
+  (`Builder._carry`), a paste (`Assemblies.lines_pasted`, the copied copy's
+  frame moved as the parts, `Carry.moved`, only where the lines here are the
+  copied ones), Undo and Redo through the step's `sectionlines`; a save
+  writes them re-based into the frame it writes the definition in from the
+  first written copy that has one (`Assemblies.lines_written`, `rebased`, a
+  view's through `SavedViews.through_line`, a light's `SceneLights.through`,
+  both taking a reflection), a copy taken apart sends its lights from its
+  frame into its parent's (pccheck FW, FW3, FX, FY: a frame re-found from
+  parts saw no mirror and no turn of a symmetric copy); a copy
   taken apart, `Assemblies._lines_apart`, puts its lights through its frame
   into the one it was in, the model's own lights (`BrickWorld.scene_lights`,
   a `scenelights` step) when that is the model, its last copy's views gone
@@ -3040,8 +3058,8 @@ picture the assistant is shown.
   saved: no light line in the new file (the read and unread lines are the
   model's, kept against the world's generation); a CRLF file whose last line
   is a light, changed and saved, no lone CR; the app's own MPD saved, opened
-  and saved again with its sub-model's light in its sub-model and the
-  unread line once; an MPD whose `0 FILE` lines have a tab keeping its
+  and saved again with its sub-model's light in its sub-model, where it was
+  against its part, and the unread line once; an MPD whose `0 FILE` lines have a tab keeping its
   sub-model's light (sections are `LdrModel.parse`'s, never a regex of
   lights' own); a light added to a model with a comment before its `0 FILE`
   inside its section. Its third (lreview3 F1-F3, lightpaths): a lit
@@ -3050,7 +3068,8 @@ picture the assistant is shown.
   taken apart, each saved, undone and saved, redone and saved: its light and
   view once each, in its section, the model's lamp alone in the model; a
   model whose sub-model holds its lamp's very line written whole, the lamp
-  still the model's, two lines in all, one light opened again. And
+  still the model's, two lines in all, the sub-model's where it was against
+  its part, one light opened again. And
   lightpaths2's (lpcheck s6, s12): Alpha and Beta taken apart, sections of
   their names made over MCP and all undone, each its own light and view
   again; B's lit Sub deleted and A's Sub pasted, none of B's lines in it; a
@@ -3061,7 +3080,19 @@ picture the assistant is shown.
   said), copied, deleted and pasted, cut from A and pasted into B, and into
   C with a lit Sub of its own (C's kept, and said), each undone and redone;
   one copy taken apart while the other is in hand (X), its light and view
-  kept for the one put down; each state saved, opened and saved again.
+  kept for the one put down; each state saved, opened and saved again. And
+  pathcarry's (lp2check, `_r_frames`): the app's own file with its lit Sub
+  placed 100 LDU along (lpcheck s7_a) and turned a quarter, saved; its only
+  copy picked up and put down beside (P_moved), then taken apart (M), then
+  undone; copied from A and pasted into B (P); entered, all its parts taken
+  out (R: `Assemblies.take_out`, its light the model's and said); each
+  file's light and view checked where an LDraw reader composes them,
+  against the sub-model's part. And HB2: A's lit Sub pasted into B, whose
+  Sub's only part the catalogue lacks, is a copy of its own (`next_copy`
+  counts `BrickWorld.held_paths`), not written into the held one; B's Sub
+  is still written as sub.ldr (`ModelStore._hold_unit` names the pasted
+  copy "Sub 2"), its light and view in it once, where they were against its
+  part, and none in the pasted copy's (`Assemblies._lies_in`).
   `-- --review`
   runs only these review checks, nothing drawn (a minute, not the whole
   probe's renders). Then the car under 0 to 4 suns (each adding light)
@@ -3667,7 +3698,11 @@ PROBE_SIZE=1280x720 tools/probe.sh motions_panel_probe -- bench/results/motions5
 # undone, landed, redone, each rim in its tyre (0.00 LDU) and 4 of 4 joints,
 # and so saved and opened again; the app's own file with a part the
 # catalogue lacks, driven and kept, writes it with the part it stood with
-# (drvrecheck F1, F3). Pictures in OUT_DIR, named by the window's size.
+# (drvrecheck F1, F3); and the drive played twice as one step a slice a
+# frame (MotionPlayer.pace, as a link's press plays a sequence), the rims
+# arriving between its two keeps: undone, redone, undone again and saved,
+# each rim 0.00 LDU in its tyre with 4 of 4 joints (drvcheck3 L1; 3 fail on
+# pre261 ee8773128). Pictures in OUT_DIR, named by the window's size.
 tools/probe.sh drive_probe -- bench/results/drive-2026-11-07
 PROBE_SIZE=1280x720 tools/probe.sh drive_probe -- bench/results/drive-2026-11-07
 # What the animation audit found broken, on real sets (docs/ANIMATION.md;

@@ -575,7 +575,7 @@
       "kind": "ui",
       "label": "admin page",
       "entry": "web/admin.html",
-      "reach": "https://brickworks.diy/admin   (signed in to the app as MASTER_EMAIL)",
+      "reach": "https://brickworks.diy/admin   (signed in to the app as MASTER_EMAIL; ?tests=1 the checks' own): the owner's console, one page of sections by address: #overview (what needs you, how things stand, the switches, the latest acts; GET /api/admin?op=overview), #people (every account, searched, filtered, sorted; #people/<account> its panel with Take out the account and Let back in; ?op=people, ?op=person&account=U), #gallery/<tab> (reported, comments, listed, pick, challenges, tested, barred), #beta/<tab> (applications, testers; the beta's switch, POST ?op=beta_switch {mode}), #feedback, #audit (every act, newest first; ?op=audit&act&q&before)",
       "area": "account"
     },
     {
@@ -3864,9 +3864,30 @@
     {
       "kind": "ui",
       "label": "the beta's owner queue",
-      "entry": "web/beta-admin.html",
-      "reach": "<deployment>/beta-admin as MASTER_EMAIL (?tests=1 the checks' pool): GET /api/admin?op=beta, POST ?op=beta_decide&account=U {decision, note}, POST ?op=beta_grant",
+      "entry": "web/admin-beta.js",
+      "reach": "<deployment>/admin#beta as MASTER_EMAIL (?tests=1 the checks' pool; /beta-admin answers 308 to it): GET /api/admin?op=beta, ?op=beta_testers, ?op=switches; POST ?op=beta_decide&account=U {decision, note}, ?op=beta_waitlist&account=U {note}, ?op=beta_grant, ?op=beta_switch {mode: open|off} (this deployment alone, kept in site_settings)",
       "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "console browser flow",
+      "entry": "tools/web/console_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/console_flow.mjs --url=<preview> --out=DIR   (MASTER_EMAIL's session minted: the gate, Gallery, People, Beta and its switch, Feedback, the audit log, /beta-admin, every section at 390/1280 light/dark; throwaways deleted, the switch and the checks' pool put back; preview check [console], run alone)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "the console's reads and audit",
+      "entry": "api/_console.js",
+      "reach": "python3 tools/minitest.py tests/test_console.py   (the gate, overview, people, person, audit and every act kept in admin_audit, supabase/console.sql against a real Postgres)",
+      "area": "account"
+    },
+    {
+      "kind": "lib",
+      "label": "the console's switches",
+      "entry": "api/_settings.js",
+      "reach": "python3 tools/minitest.py tests/test_console.py tests/test_beta.py   (site_settings by scope: brickworks.diy is live, a deployment its host; the beta's switch over BRICKWORKS_BETA)",
+      "area": "account"
     },
     {
       "kind": "cli",
@@ -5218,6 +5239,27 @@
       "entry": "src/dev/subexport_probe.gd",
       "reach": "tools/probe.sh subexport_probe -- --shots=DIR",
       "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "open faults probe",
+      "entry": "src/dev/openfaults_probe.gd",
+      "reach": "tools/probe.sh openfaults_probe   (a file opens as LDView reads it: a sub-model's name is its FILE line's text, a reference's its text after the 14th field, compared in any case with \\ as /, the first block of a name the one; hscheck's sub-model titled with its file name, se3check's castle, odd names and twins by folder, sf2check's two blocks of one name, co_del_rename_tail and cfc_wing2, each as someone else's file and as the app's own; Save, autosave, export, share, the copy kept for Undo, Save As and MCP save_model each read so again; opened again the same parts, colours, places, copies and steps; saved again the same file; OPENFAULTS_OUT=DIR keeps the texts for sf2check's readers.py)",
+      "area": "model-io"
+    },
+    {
+      "kind": "ui",
+      "label": "a dragged part carries what rests on it",
+      "entry": "src/assembly/carry.gd",
+      "reach": "godot --path .  (Select tool, drag a part: what rests on it and nothing else holds comes with it; Shift as you drag moves it alone, let go of Shift to take them up again; one undo; by finger the same)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "carryrest probe",
+      "entry": "src/dev/carryrest_probe.gd",
+      "reach": "tools/probe.sh carryrest_probe   (PROBE_SIZE=1280x720 too; carryrest_phone_probe and carryrest_tablet_probe by finger; --no-gate without an account; CARRYREST_OUT=DIR for its pictures)",
+      "area": "building"
     }
   ]
 }

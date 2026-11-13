@@ -1795,7 +1795,7 @@ static func words(found: Dictionary) -> String:
 ## feeds. A finding is the finding of exactly this file.
 static func fingerprint(text: String) -> String:
 	var kept := PackedStringArray()
-	for line: String in text.trim_prefix("﻿").replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+	for line: String in text.trim_prefix(LdrModel.bom()).replace("\r\n", "\n").replace("\r", "\n").split("\n"):
 		var trimmed: String = line.strip_edges()
 		if not trimmed.is_empty():
 			kept.append(trimmed)

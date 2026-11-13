@@ -635,7 +635,7 @@ try {
   const desk3 = await admin.newPage();
   listen(desk3, "admin");
   desk3.on("dialog", (dialog) => dialog.accept());
-  await desk3.goto(`${site}/admin`, { waitUntil: "load" });
+  await desk3.goto(`${site}/admin#gallery/reported`, { waitUntil: "load" });
   const row = await until(desk3, (one) => {
     const tr = document.querySelector(`#reports tr[data-photo="${one}"]`);
     const img = tr?.querySelector("img.reported-photo");
