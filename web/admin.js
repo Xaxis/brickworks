@@ -281,16 +281,23 @@ function targetOf(row) {
   }
 }
 
+/// How an act came out, in a pill; a refusal's words go beside it
+/// (refusal), where they wrap: in the pill, which never wraps, a long one
+/// pushed a phone's page sideways (console2, 2026-11-13).
 function outcome(row) {
   const ok = row.status >= 200 && row.status < 300;
-  return make("span", ok ? "pill good" : "pill", ok ? "Done" : `Refused, ${row.status}${row.said ? `: ${row.said}` : ""}`);
+  const pill = make("span", ok ? "pill good" : "pill", ok ? "Done" : `Refused, ${row.status}`);
+  if (!ok && row.said) pill.title = row.said;
+  return pill;
 }
+const refusal = (row) => ((row.status >= 200 && row.status < 300) || !row.said ? "" : make("small", "why faint", row.said));
 
 function drawLatest(rows) {
   const list = $("latest");
   list.replaceChildren(...(rows || []).map((row) => {
     const on = targetOf(row);
-    return make("li", "", make("span", "", `${opSaid(row)}: `, on), make("small", "", `${when(row.at)} · ${row.actor}`), outcome(row));
+    return make("li", "", make("span", "", `${opSaid(row)}: `, on), make("small", "", `${when(row.at)} · ${row.actor}`), outcome(row),
+      refusal(row));
   }));
   $("latest-none").hidden = Boolean(rows?.length);
   if (rows === null) say("latest-none", "Not kept yet: supabase/console.sql is not applied.");
@@ -329,7 +336,8 @@ async function loadAudit(before = null) {
     timeCell(tr, row.at);
     cell(tr, opSaid(row));
     cell(tr, targetOf(row), "about");
-    cell(tr, outcome(row));
+    const why = refusal(row);
+    cell(tr, why ? make("span", "", outcome(row), make("br"), why) : outcome(row));
     cell(tr, row.actor);
     const acts = make("td", "acts");
     acts.append(rowAct("Details", async () => { openAct(row); return false; }));
@@ -351,7 +359,7 @@ function openAct(row) {
   fact("When", when(row.at));
   fact("What", `${opSaid(row)} (${row.op})`);
   fact("On", targetOf(row));
-  fact("Outcome", outcome(row));
+  fact("Outcome", outcome(row), row.said && !(row.status >= 200 && row.status < 300) ? ` ${row.said}` : "");
   fact("By", row.actor);
   fact("Where", row.scope === "live" ? "brickworks.diy" : row.scope || "—");
   if (row.test) fact("A test's", "yes: done on the checks' own");
@@ -521,7 +529,7 @@ async function person(account, again = false, told = "") {
   const acts = make("div", "part", make("h3", "", "Acts on this account"));
   if (one.audit?.length) {
     acts.append(make("ul", "acts-list", ...one.audit.map((row) => make("li", "", make("span", "", opSaid(row)),
-      make("small", "", `${when(row.at)} · ${row.actor}`), outcome(row)))));
+      make("small", "", `${when(row.at)} · ${row.actor}`), outcome(row), refusal(row)))));
   } else {
     acts.append(make("p", "note", one.audit === null ? "Not kept yet: supabase/console.sql is not applied." : "None yet."));
   }
