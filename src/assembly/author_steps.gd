@@ -409,6 +409,25 @@ static func _all_given(world: BrickWorld, skip: Dictionary) -> bool:
 	return true
 
 
+## Someone else's file with no steps, as LDraw reads it once a model put
+## into it brings steps of its own: one step, every part, copy and part it
+## holds and does not show in it (0), as the file reopens (Builder
+## ._bring_steps). Returns the undo.
+static func one_step(world: BrickWorld, skip: Dictionary = {}) -> Array:
+	var undo: Array = []
+	for brick: BrickWorld.Brick in world.bricks():
+		if brick.step < 0 and not skip.has(brick.id):
+			_put(world, {"brick": brick.id, "step": -1}, 0, undo)
+	for path: String in paths_in(world, skip):
+		if not world.unit_steps.has(path):
+			_put(world, {"unit": path, "step": -1}, 0, undo)
+	for item: Variant in world.held_parts():
+		var placement: LdrModel.Placement = item
+		if placement.step < 0:
+			_put(world, {"held": placement, "step": -1}, 0, undo)
+	return squash(undo)
+
+
 ## The worked-out order made the author's: every part and every copy of a
 ## sub-model given the numbers the plan was shown in (numbers_from_plan),
 ## so the first step edit on a model nobody gave steps starts from what the

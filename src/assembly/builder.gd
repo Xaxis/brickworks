@@ -2653,11 +2653,11 @@ func _brought_stepped() -> bool:
 ## edit would: else its parts, numbered after the steps brought in, came
 ## after them, every step one later than the person had read it. Not into
 ## someone else's file with no steps ("host_flat"): given steps it is
-## written afresh and its own lines go, so its parts stay in its one step,
-## the model brought in built in its own steps in it, as LDraw reads such a
-## file (intomodel_probe menu_file). Each a step of [param steps], so the
-## one undo that takes its parts off takes these too. What the history
-## calls it.
+## written afresh and its own lines go, so it is the one step LDraw reads it
+## as once a part of it has steps, its parts and the model brought in on in
+## it, as it reopens (AuthorSteps.one_step; intomodel_probe menu_file,
+## imreview deep). Each a step of [param steps], so the one undo that takes
+## its parts off takes these too. What the history calls it.
 func _bring_steps(steps: Array, renamed: Dictionary, ids: PackedInt64Array) -> String:
 	var skip: Dictionary = {}
 	for brick_id: int in ids:
@@ -2665,9 +2665,13 @@ func _bring_steps(steps: Array, renamed: Dictionary, ids: PackedInt64Array) -> S
 	var stepped: bool = carrying.brought_units.values().any(
 		func(step: Variant) -> bool: return int(step) >= 0) or carrying.items.any(
 		func(item: Dictionary) -> bool: return int(item.get("step", -1)) >= 0)
-	if stepped and not bool(carrying.brought_data.get("host_flat", false)):
+	var flat: bool = stepped and bool(carrying.brought_data.get("host_flat", false))
+	if flat:
+		var besides: Dictionary = skip.merged(scenery)
+		steps.append_array(AuthorSteps.one_step(world, besides))
+	elif stepped:
 		steps.append_array(AuthorSteps.adopt_plan(world, library, skip))
-	var at: int = _brought_step(skip)
+	var at: int = 0 if flat else _brought_step(skip)
 	var stepped_in: bool = at >= 0 or stepped
 	var whole: String = ""
 	for path: String in carrying.brought_units:
@@ -2688,8 +2692,9 @@ func _bring_steps(steps: Array, renamed: Dictionary, ids: PackedInt64Array) -> S
 ## parts down (the newest), so its one Undo takes them out: how its booklet
 ## shows its steps (BookletLooks: a ROTSTEP's turn, its pages' pictures) and
 ## each of its sections' file names (BrickWorld.section_files), under the
-## names this put-down gave them ([param renamed]). A picture or a step
-## look this model has of its own is kept.
+## names this put-down gave them ([param renamed]). A picture this model has
+## of its own is kept; a look under one of those names, which a sub-model
+## taken apart left, is not.
 func _brought_down(renamed: Dictionary) -> void:
 	var data: Dictionary = carrying.brought_data
 	var named: Dictionary = {}
@@ -2700,6 +2705,14 @@ func _brought_down(renamed: Dictionary) -> void:
 	var brought_looks: Dictionary = data.get("looks", {})
 	if not brought_looks.is_empty():
 		var looks: Dictionary = world.step_looks.duplicate(true)
+		# Its sub-models' names are no copy's here (Assemblies.names_taken):
+		# looks under them are what a sub-model taken apart left, not theirs.
+		var defs: Dictionary = {}
+		for path: String in renamed:
+			defs[Assemblies.definition(Assemblies.leaf(str(renamed[path])))] = true
+		for key: String in looks.keys():
+			if key != BookletLooks.DATA and defs.has(key.get_slice("|", 0)):
+				looks.erase(key)
 		for key: String in brought_looks:
 			var look: Variant = brought_looks[key]
 			if key == BookletLooks.DATA:
@@ -2711,8 +2724,7 @@ func _brought_down(renamed: Dictionary) -> void:
 				continue
 			var kind: String = key.get_slice("|", 0)
 			var mine: String = str(named.get(kind, kind)) + key.substr(kind.length())
-			if not looks.has(mine):
-				looks[mine] = (look as Dictionary).duplicate(true) if look is Dictionary else look
+			looks[mine] = (look as Dictionary).duplicate(true) if look is Dictionary else look
 		undo.append(_apply({"undo": "steplooks", "looks": looks}))
 	var files: Dictionary = data.get("files", {})
 	if not files.is_empty():

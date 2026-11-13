@@ -2576,6 +2576,12 @@ func _source_asked(title_now: String) -> Dictionary:
 		_writing_whole = false
 		var own: Array = bricks.filter(func(brick: BrickWorld.Brick) -> bool:
 			return not roots.has(_top_of(Assemblies.path_of(brick))))
+		# A file with no steps is one step once the model put in has steps
+		# (AuthorSteps.one_step): its parts in it are in none of its own.
+		if not source.authored:
+			for brick: BrickWorld.Brick in own:
+				if brick.step == 0:
+					brick.step = -1
 		var own_steps: Dictionary = {}
 		for path: String in world.unit_steps:
 			if not roots.has(_top_of(path)):

@@ -376,8 +376,8 @@ func unused_name(wanted: String, except: String = "") -> String:
 ## definition of every copy of a sub-model on the baseplate and every figure,
 ## of every copy a step or a part not on the baseplate is kept under
 ## (BrickWorld.unit_steps, held_paths), of every sub-model with its own
-## lines, a step's look or a section's file name kept (section_lines,
-## step_looks, section_files), the pictures its booklet shows, and what the
+## lines (section_lines), the file names those and the model are written
+## under (section_files), the pictures its booklet shows, and what the
 ## file it was opened from holds besides (BrickWorld.names_held: its
 ## sections kept as the file has them, the parts it carries and what they
 ## are drawn from, their pictures).
@@ -398,17 +398,18 @@ static func names_in(world: BrickWorld) -> Dictionary:
 			Names.take(definition(segment), taken)
 	for def: Variant in world.section_lines:
 		Names.take(str(def), taken)
+	# The file names a whole write gives the model and its sub-models: a
+	# sub-model taken apart keeps its entry, and takes no name with it
+	# (unit_steps 6).
 	for def: Variant in world.section_files:
-		Names.take(str(def), taken)
-		Names.take_file(str(world.section_files[def]), taken)
-	for look: Variant in world.step_looks:
-		if str(look) == BookletLooks.DATA:
-			for picture: Variant in world.step_looks[look]:
-				Names.take(str(picture), taken)
-		elif not str(look).begins_with("|"):
-			Names.take(str(look).get_slice("|", 0), taken)
+		if str(def).is_empty() or Names.is_taken(str(def), taken):
+			Names.take_file(str(world.section_files[def]), taken)
+	# A look a sub-model taken apart left takes no name: the next to take it
+	# takes its looks' place (unit_steps 6, Builder._brought_down).
+	for picture: Variant in world.step_looks.get(BookletLooks.DATA, {}):
+		Names.take(str(picture), taken)
 	for name: Variant in world.names_held_now():
-		Names.take_file(str(name), taken)
+		Names.take(str(name), taken)
 	return taken
 
 
