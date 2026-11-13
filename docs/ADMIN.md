@@ -15,8 +15,8 @@ Vercel variable and a redeploy.
 The console is one page, `/admin`, with a section for each part of the
 site that is the owner's to look after. This file is its inventory (what
 there is to manage, and where each part lives), what it learned from the
-consoles people already know, its design, and what is in it now (part A)
-and what comes next (part B).
+consoles people already know, its design, and what is in it: part A
+(console1) and part B (console2, 2026-11-13).
 
 ## What there is to manage
 
@@ -54,6 +54,14 @@ it answers.
 | `feedback`, `feedback_file` | GET | The inbox, a report's picture or model | feedback_inbox, storage |
 | `feedback_triage`, `feedback_reply` | POST | Where a report stands and the owner's note; an answer emailed | feedback_triage, feedback_reply, Resend |
 | `photo` | GET | A reported photo, for the owner's eyes | storage |
+| `plans` | GET | Plans and revenue, read from Admission (part B) | Admission's `/v1/plans` (ADMISSION_KEY), admission_customers, `/v1/owner/metrics` and `/v1/owner/events` (ADMISSION_READ_TOKEN) |
+| `mail` | GET `&days=` | Every mail by kind and day and what became of each (part B) | admin_mail: mail_events, beta_mail, feedback_replies |
+| `connector` | GET `&account=` | Each account's Claudes, tabs, conversations and tool calls (part B) | relay_tabs, relay_picks, oauth_grants, relay_call_days |
+| `site` | GET | The live release and those before, each cron's last runs, Supabase's health (part B) | site_releases_list, cron_runs_of, canary_runs, Supabase's auth, rest and storage |
+
+Part B's four are reads: not kept in the audit, like the other GETs.
+`api/otp.js` takes one more op that is not the owner's: `POST
+?op=mail_event`, Resend's word on each mail (below).
 
 ### The owner's other ops
 
@@ -66,6 +74,9 @@ it answers.
 - `api/_tested.js`: the Tested mark kept and cleared.
 - `api/_trust.js`: reports and takedown requests; the owner's email of new
   reports, which links each to `/admin#report-N`.
+- `api/_console_plans.js`, `_console_mail.js`, `_console_connector.js`,
+  `_console_site.js`: part B's reads; `_console_mail.js` also Resend's
+  webhook.
 
 ### The deployment's switches (process.env)
 
@@ -79,12 +90,18 @@ Read by the API; each set in Vercel per environment (tools/deploy.sh).
 | `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `SUPABASE_PUBLISHABLE_KEY` | The database and sign-in |
 | `RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_FROM_FALLBACK`, `BETA_REPLY_TO`, `REPORT_MAIL`, `COMMENT_MAIL` | Mail: the key, the sender, a borrowed sender while the domain was unverified, where answers go, the owner's report and comment mail |
 | `ADMISSION_URL`, `ADMISSION_KEY`, `ADMISSION_WEBHOOK_SECRET` | Plans and payments (Admission) |
+| `ADMISSION_READ_TOKEN` | An owner read token limited to Brickworks (Admission's Access), for Plans' revenue and Admission's record; none on production yet |
+| `RESEND_WEBHOOK_SECRET` | The signing secret of Resend's webhook, for Mail (tools/web/resend_webhook.sh); a unit's preview has the checks' own |
 | `OC_PROJECT_KEY`, `OC_SIGNING_SECRET`, `OC_CONNECT_KEY`, `OC_ME_ORIGIN`, `OC_ISSUER`, `OC_AUDIENCE` | Sign in with orangecheck |
 | `CRON_SECRET` | The crons' own key |
 | `VIEW_SECRET`, `PARTS_URL`, `PUBLIC_ORIGIN` | Shared views, the parts' host, the site's address |
 | `VERCEL_ENV`, `VERCEL_URL`, `VERCEL_AUTOMATION_BYPASS_SECRET` | Vercel's own |
 
 ### The crons (tools/deploy.sh, kept in cron_runs)
+
+The pick and the OMR watch kept their runs in `cron_runs` before; since
+part B the sweep and the beta's round do too (`cronNoted`, api/_cron.js,
+through `cron_noted`), and the canary's are its own `canary_runs`.
 
 | Path | When (UTC) | What |
 |---|---|---|
@@ -147,6 +164,10 @@ px (a row of pills on a phone), and the section beside it.
 | Gallery | `#gallery/reported`, `comments`, `listed`, `pick`, `challenges`, `tested`, `barred` | Reported, Comments, In the gallery, This week's pick, Challenges, Tested, Taken out | Take out, Take out the account, Remove the comment, Take the photo or the picture out, Let it go, Make it the pick, End, Set a challenge, Set the year, End it now, Clear the mark, Let back in |
 | Beta | `#beta`, `#beta/applications`, `#beta/testers` | The beta's switch and its places left, billing's mode; the months of Pro (spots given and left, new, waitlist, still to give), the applications by state; the testers | Open or Off; Approve, Waitlist, Decline with a note; Grant pending months |
 | Feedback | `#feedback`, `#feedback-N` | The inbox, by kind, where it stands and from whom | Where it stands, a note, an answer emailed |
+| Plans and revenue | `#plans` | Billing's mode and keys; MRR, paying, comps, customers; the plans and what each includes; the customers and their plans; revenue by month; Admission's record | None: each part links to where it is changed at admission.sh |
+| Mail | `#mail` | Who sends and whether Resend's word comes; sent, delivered, bounced, spam, failed in 7, 30 or 90 days; by day and kind; every mail with its address, subject and what became of it | Filter by kind and fate, search |
+| Connector | `#connector`, `#connector/<account>` | Working now, tabs on, calls today; each account's Claudes, tabs, conversations, calls in 30 days, last call; the conversations live and lately | None: read only; an account's panel, from People too |
+| Site | `#site` | The live release and since when; Supabase's auth, rest and storage; each cron's last runs; the releases before with their units | None |
 | Audit log | `#audit` | Every act: when, what, on what, the outcome, by whom | Filter by act, search |
 
 The old addresses land: `/beta-admin` redirects to `/admin#beta` (and
@@ -196,23 +217,72 @@ in every section on the checks' own (`?tests=1`); the switch turned off on
 that deployment alone and open again; every act found in the audit; every
 section at 390 and 1280, light and dark.
 
-## Part B: next
+## Part B: in the console now
 
-Each its own section, read from the service named, through a new op of
-api/admin.js (Vercel's 12 functions are all used; nothing is a function of
-its own).
+Plans and revenue, Mail, Connector and Site, each a GET op of api/admin.js
+(Vercel's 12 functions are all used; nothing is a function of its own),
+behind part A's gate, read only. The tables are additive
+(`supabase/console2.sql`): `mail_events`, `site_releases`,
+`relay_call_days`, a `calls` column on `relay_picks`, and functions only the
+server may call.
 
-- **Plans and revenue**: plans, customers, comps, revenue, from Admission's
-  read API (`ADMISSION_URL` with `ADMISSION_KEY`: products, customers,
-  revenue, audit). Read-only: prices, trials and promotions stay with the
-  owner at Admission.
-- **Mail**: every email sent (codes, the beta's, answers, the owner's own),
-  delivered, bounced or complained, from Resend's API (`GET /emails`,
-  `GET /emails/{id}`) with `RESEND_API_KEY`, beside beta_mail and
-  feedback_replies.
-- **Connector**: the Claude connector's sessions, live and lately, from
-  relay_tabs and the relay's own state (api/mcp.js), by account.
-- **Site**: the deployments and which is live (Vercel's API,
-  `GET /v6/deployments` with a read token), each cron's last runs
-  (`cron_runs_of`), and health (`/version.json`, the OTP canary's last
-  answer).
+- **Plans and revenue** (api/_console_plans.js): billing off, as on
+  production, the section says so and nothing is asked of Admission. On,
+  the plans and what each includes come from `/v1/plans` with the product
+  key, and the customers and comps from Admission's own answers kept in
+  `admission_snapshots` (one database read, no call an account). Revenue by
+  month, MRR and Admission's record need an owner read token limited to
+  Brickworks (`ADMISSION_READ_TOKEN`, ADR-0014: `/v1/owner/metrics`,
+  `/v1/owner/events`), which production does not have; the section says
+  where it is made (admission.sh/access). Prices, trials, comps and
+  promotions stay the owner's at Admission, linked from each part.
+- **Mail** (api/_console_mail.js): production's `RESEND_API_KEY` may only
+  send (`GET /emails` answers 401 restricted_api_key, 2026-11-12), and a
+  key that can read is the full-access key of the Resend team, which nine
+  other products share: never put in a deployment. So Resend tells us: its
+  webhook POSTs each event (sent, delivered, delayed, bounced, complained,
+  failed, suppressed) to `/api/otp?op=mail_event`, an op of an existing
+  file, verified as Svix signs (HMAC-SHA256 of id, timestamp and body with
+  `RESEND_WEBHOOK_SECRET`, five minutes either way) and kept once by its
+  event id in `mail_events`, a year. The team's other products' mail reaches
+  the same webhook and is let go unread: only mail from brickworks.diy is
+  kept. Each send carries its kind as a Resend tag (sign_in_code, beta,
+  feedback_answer, digest, report_digest, canary_alarm, sign_in_notice);
+  older mail is told by its subject. Shown beside `beta_mail` and
+  `feedback_replies`, one row a mail. `tools/web/resend_webhook.sh` sets the
+  webhook up on that team, with its key given in the shell for that run
+  alone, once a release with the op is live; a unit's preview has the
+  checks' own public secret, which keeps only mail to resend.dev.
+- **Connector** (api/_console_connector.js): every account that let a
+  Claude in (`oauth_grants`) or switched a tab on (`relay_tabs`), with its
+  conversations (`relay_picks`: which tab each works in, its last call and
+  tool, its count of calls) and its calls by day (`relay_call_days`, counted
+  by `relay_call_note` from api/mcp.js's noteCall). Working now is a
+  conversation that called within 30 minutes in a tab heard within three.
+  `#connector/<account>` is an account's panel, linked from People's.
+  Nothing here ends or changes a session.
+- **Site** (api/_console_site.js): the release train writes each release
+  as brickworks.diy serves it (`tools/release/release_live.sh` from ship.sh:
+  the tag, the commit, its title and units into `site_releases`), so no
+  Vercel token is in production's env; this deployment's commit comes from
+  `/version.json`. Each cron's last five runs and whether it failed or is
+  late (no run in half again its period); the canary's last answer with
+  each check that failed. Supabase's auth, rest and storage asked at most
+  every 15 seconds an instance: a 402 or a restriction shows under the
+  Overview's Needs you now with where it is lifted (Supabase's dashboard,
+  the organization's Billing), and a sign-in Supabase refuses answers 503
+  with the same words. The Overview also shows the live release, a failed
+  or late cron and the week's bounces and complaints.
+
+Proven by `tests/test_console2.py` (console2.sql and the four ops and the
+webhook against a real Postgres: the gate, Resend's signature, each read)
+and, on a deployment, `tools/web/console2_flow.mjs` (preview check
+`console2`): the gate; Resend played with the deployment's secret, a
+delivered and a bounced mail shown with why; a throwaway's tab, Claude and
+two calls in Connector and its panel; Site's live release, crons and
+health; Plans as billing is there; every section at 390 and 1280, light and
+dark.
+
+Still to do: the webhook made at Resend and its secret in production's env
+(`tools/web/resend_webhook.sh`, after the release), and an
+`ADMISSION_READ_TOKEN` for production's revenue once billing is on.

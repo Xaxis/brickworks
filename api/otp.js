@@ -121,6 +121,8 @@ async function post(key, from, email, code) {
       html: letter(code),
       text: `Your Brickworks sign-in code is ${code}. `
         + `It works once and expires in ${TTL_MINUTES} minutes.`,
+      // What kind of mail it is, in Resend's word of it (/admin#mail).
+      tags: [{ name: "kind", value: "sign_in_code" }],
     }),
   });
 }
@@ -209,6 +211,12 @@ export default async function handler(request, response) {
   if (request.method === "GET" && request.query?.op === "canary") {
     const { canaryRoute } = await import("./_canary.js");
     return canaryRoute(request, response, { mint, deliver });
+  }
+  // Resend's word on each mail sent (its webhook, signed): kept for the
+  // owner's console (/admin#mail, api/_console_mail.js).
+  if (request.method === "POST" && request.query?.op === "mail_event") {
+    const { mailEventRoute } = await import("./_console_mail.js");
+    return mailEventRoute(request, response);
   }
   if (request.method !== "POST") {
     return response.status(405).json({ error: "POST only" });

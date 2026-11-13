@@ -278,6 +278,23 @@ export function sitePages({ remote = "" } = {}) {
       ready: (page) => until(page, () => document.querySelectorAll("#testers tr.tester").length > 0) },
     { name: "admin-feedback", path: "/admin#feedback", admin: true, signedInOnly: true,
       ready: (page) => until(page, () => document.querySelectorAll("#fb-list > li").length > 0) },
+    // Part B (console2): each read drawn, its rows or its own words.
+    { name: "admin-plans", path: "/admin#plans", admin: true, signedInOnly: true,
+      ready: (page) => until(page, () => document.getElementById("plans-setup").children.length > 0) },
+    { name: "admin-mail", path: "/admin#mail", admin: true, signedInOnly: true,
+      ready: (page) => until(page, () => document.querySelectorAll("#mail-list tr").length > 0
+        && document.getElementById("mail-setup").children.length > 0) },
+    { name: "admin-connector", path: "/admin#connector", admin: true, signedInOnly: true,
+      ready: (page) => until(page, () => document.querySelectorAll("#cx-accounts tr").length > 0),
+      open: async (page) => {
+        if (!(await page.$("#cx-accounts tr[data-account] th a"))) return [];
+        await page.click("#cx-accounts tr[data-account] th a");
+        const opened = await until(page, () => document.querySelector("dialog.sheet[open] .facts"));
+        return [[opened ? "connector" : "connector (missing)", "dialog.sheet"]];
+      } },
+    { name: "admin-site", path: "/admin#site", admin: true, signedInOnly: true,
+      ready: (page) => until(page, () => document.querySelectorAll("#crons tr[data-job]").length > 0
+        && document.querySelectorAll("#health tr").length > 0) },
     { name: "admin-audit", path: "/admin#audit", admin: true, signedInOnly: true,
       ready: (page) => until(page, () => document.querySelectorAll("#audit tr").length > 0),
       open: async (page) => {

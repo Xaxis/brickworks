@@ -102,6 +102,7 @@
 
 import { createHmac } from "node:crypto";
 import { AdmissionError, AdmissionUnavailable, verifyWebhook, WebhookError } from "./_admission.js";
+import { rawOf } from "./_raw.js";
 import { AuthError, bearer, verify } from "./_auth.js";
 import {
   admission, agreed, billingMode, charge, currentOffer, entitlementOf, mostModels, reportOwner, returnOrigin,
@@ -269,31 +270,6 @@ async function portal(request, response, claims) {
     ...(flow ? { flow } : {}),
   });
   return response.status(200).json({ url });
-}
-
-/// The body exactly as sent, as a signature is made over it, or null past
-/// [most] bytes. Vercel's helpers parse a JSON body, which loses its bytes,
-/// and leave them to read again as the request's data (@vercel/node
-/// restoreBody); a request made here with a string body is that string.
-function rawOf(request, most = 256 * 1024) {
-  if (typeof request.on !== "function") return Promise.resolve(typeof request.body === "string" ? request.body : null);
-  return new Promise((done) => {
-    const chunks = [];
-    let size = 0;
-    const timer = setTimeout(() => done(null), 5000);
-    request.on("data", (chunk) => {
-      size += chunk.length;
-      if (size <= most) chunks.push(Buffer.from(chunk));
-    });
-    request.on("end", () => {
-      clearTimeout(timer);
-      done(size > most ? null : Buffer.concat(chunks).toString("utf8"));
-    });
-    request.on("error", () => {
-      clearTimeout(timer);
-      done(null);
-    });
-  });
 }
 
 // Events heard on this instance, so one sent twice is acted on once.

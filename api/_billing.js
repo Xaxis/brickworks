@@ -149,6 +149,34 @@ export function admission() {
   return client.admission;
 }
 
+/// The stand-in's owner read token (STAND_IN_KEY's kind of all noughts).
+export const STAND_IN_READ_TOKEN = "adm_owner_00000000000000000000000000000000";
+
+/// Admission's owner read API as this deployment reaches it, for the
+/// console's Plans (api/_console_plans.js): {mode, base, read}, read(path)
+/// a GET answered as JSON or thrown. Null while billing is off or without
+/// ADMISSION_READ_TOKEN: a read token limited to Brickworks (Admission's
+/// ADR-0014, owner-token.ts --product brickworks --scope read), which reads
+/// the product's metrics and events and can change nothing.
+export function ownerReader() {
+  const mode = billingMode();
+  const token = String(process.env.ADMISSION_READ_TOKEN || "").trim();
+  if (mode === "off" || !/^adm_owner_[0-9A-Za-z]{32}$/.test(token)) return null;
+  const faked = standingIn(mode, String(process.env.ADMISSION_KEY).trim());
+  const base = faked ? "https://admission.test" : (process.env.ADMISSION_URL?.trim() || "https://admission.sh").replace(/\/+$/, "");
+  const ask = faked ? standInFetch : globalThis.fetch.bind(globalThis);
+  return {
+    mode,
+    base,
+    async read(path) {
+      const reply = await ask(`${base}${path}`, { headers: { authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(6000) });
+      const body = await reply.json().catch(() => null);
+      if (!reply.ok) throw new Error(`Admission ${path.split("?")[0]}: ${reply.status} ${body?.error?.code || ""}`.trim());
+      return body;
+    },
+  };
+}
+
 /// Tests: the next admission() makes a new client, as a cold instance does.
 export function forgetClient() {
   client = null;
