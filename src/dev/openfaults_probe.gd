@@ -103,11 +103,10 @@ const CASES: Array = [
 	{"name": "corner_own", "file": "of_corner.mpd", "own": true,
 		"edits": [{"op": "delete", "sel": {"copy": "Wing#1"}},
 			{"op": "rename", "sel": {"copy": "Tail#1"}, "name": "Wing"}]},
-	# 6: a copy gone its own way, by a step edit over MCP and by Make unique.
-	# The copy the step edit sends its own way is a sub-model of its own,
-	# "wing 2", its one copy wing 2#1 when the file is opened again.
+	# 6: a copy gone its own way, by Make unique; and a step edit over MCP
+	# on the main model, which leaves the wings copies of one sub-model, in
+	# red and in blue (copyfaults3: a whole write split them into "wing 2").
 	{"name": "wing2_steps", "file": "of_wing2.ldr", "own": true,
-		"renamed": {"wing#2": "wing 2#1"},
 		"edits": [{"op": "mcp", "tool": "edit_steps", "args": {"op": "delete", "step": 3}}]},
 	{"name": "wing2_unique", "file": "of_wing2.ldr", "own": true,
 		"edits": [{"op": "unique", "sel": {"copy": "wing#2"}}]},
