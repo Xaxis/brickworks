@@ -392,8 +392,13 @@ func _suggestion_words(motion: Motions.Motion) -> String:
 		parts.append("%s turned %s time%s" % [player.joint_words(motion.driver),
 			Motions.num(motion.turns, 2), "" if is_equal_approx(motion.turns, 1.0) else "s"])
 	if motion.path != null:
-		parts.append("driven %s. %s" % [motion.path.said(), player.path_words(motion.path)])
-	return "%s: %s, over %s s" % [motion.name, ", ".join(parts), Motions.num(motion.length(), 1)]
+		parts.append("driven %s" % motion.path.said())
+	var out: String = "%s: %s, over %s s" % [motion.name, ", ".join(parts), Motions.num(motion.length(), 1)]
+	# What turns as it is driven, a sentence of its own, so each is said
+	# whole in every language: inside the first, the drive's words were
+	# left in English ("Rouler et tourner à gauche : driven 32 tenons"), and
+	# its stop came before ", over 7.9 s".
+	return out if motion.path == null else "%s. %s" % [out, player.path_words(motion.path)]
 
 
 ## Keep the suggestion called [param name] as one of the model's motions:

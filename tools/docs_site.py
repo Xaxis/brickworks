@@ -903,7 +903,7 @@ def changelog() -> str:
         version = section["version"]
         if version.lower() == "unreleased":
             out.append("## On the web now {#web}\n")
-            out.append('<p class="note">In the app at <a href="/app">brickworks.diy/app</a>; in the next desktop release.</p>')
+            out.append('<p class="note">In the app at <a href="/app">brickworks.diy/app</a> now; the desktop app is coming soon.</p>')
         else:
             date = by_version.get(version, {}).get("date") or section["date"]
             out.append(f"## Brickworks {version} {{#v{version.replace('.', '-')}}}\n")

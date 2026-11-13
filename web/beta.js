@@ -79,7 +79,7 @@ function release(one) {
   const head = document.createElement("h3");
   head.textContent = one.version ? `Brickworks ${one.version}` : say("On the web now");
   const when = document.createElement("p");
-  when.textContent = one.date ? day(one.date) : say("In the app at brickworks.diy/app, and in the next desktop release");
+  when.textContent = one.date ? day(one.date) : say("In the app at brickworks.diy/app now; the desktop app is coming soon");
   const heads = document.createElement("ul");
   if (!english) heads.lang = "en";
   for (const words of one.heads || []) {

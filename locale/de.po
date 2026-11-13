@@ -12980,17 +12980,145 @@ msgstr "%d Verbindungen überlastet, rot markiert."
 msgid "stands, %s studs inside the %s edge"
 msgstr "Steht, %s Noppen innerhalb der Kante %s"
 
-msgid "would tip over to the %s, %s studs past its edge"
-msgstr "Würde nach %s kippen, %s Noppen jenseits seiner Kante"
+msgid "would tip over %s, %s studs past its edge"
+msgstr "Würde %s kippen, %s Noppen jenseits seiner Kante"
 
-msgid "tips over to the %s, %s studs past its edge"
-msgstr "Kippt nach %s, %s Noppen jenseits seiner Kante"
+msgid "tips over %s, %s studs past its edge"
+msgstr "Kippt %s, %s Noppen jenseits seiner Kante"
 
 msgid "the %s's 1 stud carries about %sx its working load"
 msgstr "die 1 Noppe von %s trägt etwa das %s-Fache ihrer Arbeitslast"
 
 msgid "the %s's %d studs carry about %sx their working load"
 msgstr "die %2$d Noppen von %1$s tragen etwa das %3$s-Fache ihrer Arbeitslast"
+
+# drive3 (drvcheck3 W): the way a model tips said whole (Balance.toward), not as an edge's
+# name: an edge's left is the bord gauche, and tipped to it the model bascule vers la gauche
+
+msgid "to the left"
+msgstr "nach links"
+
+msgid "to the right"
+msgstr "nach rechts"
+
+msgid "to the front"
+msgstr "nach vorn"
+
+msgid "to the back"
+msgstr "nach hinten"
+
+msgid "to the front-left"
+msgstr "nach vorn links"
+
+msgid "to the front-right"
+msgstr "nach vorn rechts"
+
+msgid "to the back-left"
+msgstr "nach hinten links"
+
+msgid "to the back-right"
+msgstr "nach hinten rechts"
+
+# drive3: Stress's words for the part pointed at (StressView.part_words): what it carries,
+# on what (Balance.JointLoad.held_on), and its margin
+
+msgid "%s: carries %s g %s, %s"
+msgstr "%s: trägt %s g %s, %s"
+
+msgid "on 1 stud"
+msgstr "auf 1 Noppe"
+
+msgid "on %d studs"
+msgstr "auf %d Noppen"
+
+msgid "on an axle keyed in its hole"
+msgstr "auf einer Achse, die in ihrem Loch sitzt"
+
+msgid "on pins or axles on two lines"
+msgstr "auf Pins oder Achsen in zwei Reihen"
+
+msgid "on a friction pin"
+msgstr "auf einem Reibungspin"
+
+msgid "on %d friction pins in a line"
+msgstr "auf %d Reibungspins in einer Reihe"
+
+msgid "on a frictionless pin or axle"
+msgstr "auf einem reibungslosen Pin oder einer Achse"
+
+msgid "on %d frictionless pins or axles in a line"
+msgstr "auf %d reibungslosen Pins oder Achsen in einer Reihe"
+
+msgid "hanging from 1 stud"
+msgstr "hängend an 1 Noppe"
+
+msgid "hanging from %d studs"
+msgstr "hängend an %d Noppen"
+
+msgid "hanging from no stud"
+msgstr "hängend an keiner Noppe"
+
+msgid "with nothing holding it"
+msgstr "und nichts hält es"
+
+msgid "margin %s"
+msgstr "Reserve %s"
+
+msgid "%s: stands on the baseplate"
+msgstr "%s: steht auf der Grundplatte"
+
+msgid "%s: stands on the ground"
+msgstr "%s: steht auf dem Boden"
+
+msgid "%s: held by a clip, a hinge, a ball or a turntable, which are not weighed"
+msgstr "%s: gehalten von einem Clip, einem Scharnier, einer Kugel oder einem Drehteller, die nicht gewogen werden"
+
+msgid "%s: held by nothing that can be weighed"
+msgstr "%s: von nichts gehalten, das sich wiegen lässt"
+
+msgid "%s: stands on what is under it, its weight over where they touch"
+msgstr "%s: steht auf dem, was darunter ist, sein Gewicht über der Berührung"
+
+msgid "%s: stands on a touch alone, its weight past where it touches"
+msgstr "%s: steht nur durch Berührung, sein Gewicht jenseits der Berührung"
+
+msgid "%s: held more than one way, so no one joint carries it"
+msgstr "%s: auf mehr als eine Weise gehalten, daher trägt es keine einzelne Verbindung"
+
+# drive3: the motions suggested from what moves (MotionPlayer.suggest), said in the language
+# where they are offered; kept, a motion's name is the file's, as it is written there
+
+msgid "Open the door"
+msgstr "Tür öffnen"
+
+msgid "Open the doors"
+msgstr "Türen öffnen"
+
+msgid "Steer left and right"
+msgstr "Nach links und rechts lenken"
+
+msgid "Lift the boom"
+msgstr "Ausleger heben"
+
+msgid "Turn the turntable"
+msgstr "Drehteller drehen"
+
+msgid "Turn the gears"
+msgstr "Zahnräder drehen"
+
+msgid "Drive the rack"
+msgstr "Zahnstange antreiben"
+
+msgid "Drive and turn left"
+msgstr "Fahren und links abbiegen"
+
+# drive3: a suggested motion said whole (PosePanel._suggestion_words), its drive's words a place
+
+msgid "%s: %s, over %s s"
+msgstr "%s: %s, über %s s"
+
+msgid "driven %s"
+msgstr "fährt %s"
 
 # end unit drive
 
