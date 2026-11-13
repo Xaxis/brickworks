@@ -322,14 +322,6 @@ var step_looks: Dictionary = {}
 ## sub-model's are kept for whatever next takes its name. Changed only by the
 ## history's steps, a whole table each (Assemblies.set_lines).
 var section_lines: Dictionary = {}
-## The name each sub-model's section had in the file the model was opened
-## from, by its definition, and the model's own by "" (LdrModel.file_names):
-## a whole write writes each under it again (LdrModel.write_tree), as LDCad
-## and Studio keep a file's names. Named again from its title at every save,
-## "0 FILE hssub.ldr" titled "hssub.ldr" went out as "hssub.ldr.ldr", and the
-## next open lost it (hscheck). A definition renamed is not in it, and is
-## named from its new name.
-var section_files: Dictionary = {}
 ## Where the frame those lines are in stands for each copy of a sub-model
 ## with lines, by the copy's path, in the window's coordinates (a mirrored
 ## copy's reflecting): a definition's lines are in its own frame, and each
@@ -357,6 +349,14 @@ var held_paths: Dictionary = {}
 ## -> the path the file had it in, so the undo of a change made before it
 ## landed takes it back with the rest (Builder._apply's "heldpaths").
 var held_landed: Dictionary = {}
+## The name each sub-model's section had in the file the model was opened
+## from, by its definition, and the model's own by "" (LdrModel.file_names):
+## a whole write writes each under it again (LdrModel.write_tree), as LDCad
+## and Studio keep a file's names. Named again from its title at every save,
+## "0 FILE hssub.ldr" titled "hssub.ldr" went out as "hssub.ldr.ldr", and the
+## next open lost it (hscheck). A definition renamed is not in it, and is
+## named from its new name.
+var section_files: Dictionary = {}
 ## The model's own named movements (Motions: "Open the doors"), read from
 ## its file and written into it. Changed only by the history's steps.
 var motions: Motions = null
@@ -669,11 +669,11 @@ func clear(keep_numbers: bool = false) -> void:
 	unit_chains.clear()
 	step_looks.clear()
 	section_lines.clear()
-	section_files.clear()
 	# Tables, not cleared in place: a history step may hold the one it found.
 	section_frames = {}
 	held_paths = {}
 	held_landed = {}
+	section_files.clear()
 	motions = null
 	cut_kept = {}
 	saved_views = []

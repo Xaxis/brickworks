@@ -2511,13 +2511,19 @@ static func in_file_order(found: Array) -> Array:
 ## A copy is what it holds: its parts on the baseplate, and those the model
 ## has that are not ([param held]: [path, part, colour] each, ModelStore's
 ## on their way and those the catalogue lacks, by the copy they are in now,
-## BrickWorld.held_path). A copy holding others of those than the first is
+## BrickWorld.held_path). A copy holding any of those the first does not is
 ## a definition of its own too, so each is written with what it holds. Which
 ## of them, not where: they keep their place as the file had it while their
 ## copy moves (awaited_at), and a moved copy is still the same sub-model.
 ## Up to 2026-11-12 its parts alone were compared, and the definition went
 ## out from the first copy only: a copy pasted beside one holding a part the
 ## catalogue lacks came first, and that part was in no file (pc2check A2, H).
+## A copy holding fewer of them than the first is the first's, as live writes
+## it: one goes out of a copy only with the copy (ModelStore._held_go_with),
+## so a copy without it is one a change put down without bringing it, and
+## the first's definition gives it back. Made a definition of its own, each
+## of three copies a Pattern laid was a sub-model without the sub-model's
+## lights and views, three on the next open (pc3check KP).
 func file_frames(figures: Dictionary = {}, held: Array = []) -> Dictionary:
 	var out: Dictionary = {}
 	var masters: Dictionary = {}
@@ -2535,7 +2541,7 @@ func file_frames(figures: Dictionary = {}, held: Array = []) -> Dictionary:
 			continue
 		var master: String = masters[def]
 		var fit: Dictionary = exact_match(contents.get(master, []), contents.get(path, [])) \
-			if holding.get(master, {}) == holding.get(path, {}) else {"exact": false}
+			if _holds_within(holding.get(path, {}), holding.get(master, {})) else {"exact": false}
 		if bool(fit["exact"]):
 			var reflect: Transform3D = LdrModel.REFLECT_X if bool(fit["mirrored"]) \
 				else Transform3D.IDENTITY
@@ -2549,6 +2555,15 @@ func file_frames(figures: Dictionary = {}, held: Array = []) -> Dictionary:
 		masters[own] = path
 		out[path] = {"frame": _figure_frame(figures, path), "def": own}
 	return out
+
+
+## Whether [param held] (one copy's, [method held_by_path]) is all within
+## [param of]: no kind more of it than [param of] has.
+static func _holds_within(held: Dictionary, of: Dictionary) -> bool:
+	for key: String in held:
+		if int(held[key]) > int(of.get(key, 0)):
+			return false
+	return true
 
 
 ## What each copy holds of [param held] ([path, part, colour] each, the parts

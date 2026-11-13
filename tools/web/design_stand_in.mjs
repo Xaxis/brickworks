@@ -50,6 +50,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path, { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { TYPES } from "./static_server.mjs";
 // What a notification says and how they are grouped (docs/SOCIAL.md U7):
 // pure, so the stand-in answers as the API does.
 import { noticeGroups } from "../../api/_notifications.js";
@@ -2220,7 +2221,11 @@ function account(method, params, body, who, state) {
     return answer(200, { theme: state.theme || "system", chosen: Boolean(state.theme), ready: true });
   }
   if (method !== "GET") return answer(405, { error: "GET, or POST ?op=age" });
-  const base = { enabled: true, url: DB, key: PUBLISHABLE, assistant: "own_key", parts_url: null };
+  // orangecheck offered to everyone, with Connect's box, as brickworks.diy
+  // answers (api/_oc_config.js orangecheckOffer), so the sign-in dialog is
+  // judged as people see it; native is the desktop app's alone.
+  const base = { enabled: true, url: DB, key: PUBLISHABLE, assistant: "own_key", parts_url: null,
+    orangecheck: { ready: true, everyone: true, connect: true, native: null } };
   if (!who) return answer(200, { ...base, signed_in: false });
   // A new account (state.fresh) is asked until it answers.
   const ask = state.askAge === true || Boolean(state.fresh && !state.fresh.aged);
@@ -2300,9 +2305,6 @@ function answered({ url, method = "GET", body, state = {} }) {
 // ---------------------------------------------------------------------------
 // The site in a browser, as deploy.sh serves it.
 
-const TYPES = { ".html": "text/html; charset=utf-8", ".css": "text/css", ".js": "text/javascript",
-  ".json": "application/json", ".png": "image/png", ".webp": "image/webp", ".svg": "image/svg+xml",
-  ".xml": "application/xml", ".txt": "text/plain", ".webmanifest": "application/manifest+json" };
 const PICTURE = readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "../../web/share.png"));
 
 /// The docs as tools/docs_site.py builds them for a deployment, built

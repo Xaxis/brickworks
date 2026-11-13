@@ -175,6 +175,14 @@ signed in as someone else.
   one place, each undo its own and one leaving a part changed since.
   Section 4f: a change held as the copy quits reaches the owner in the
   quit itself (`Build together: 1 change ... sent as the app quit: taken`).
+  Section 7 (`--only=drive` alone, about 10 minutes, the relay serving this
+  tree's `api/` for its `~moved` key): the racer's drive kept, undone and
+  redone by the one who joined and then by the owner, with its 8 rims held
+  on their way to the one who joined past the join's wait; after each step
+  the model where it went on both (0 parts apart), every redo whole (none
+  "left ... changed since"), then the rims let go: 92 parts and 4 of 4 drive
+  joints on both, each rim once and 0.00 LDU in its tyre, the same file on
+  both. On pre261 (ee8773128) 7 of its checks fail (drvcheck3 T).
 - A page closed with a change on its way, about 10 minutes for 30 rounds:
   `node tools/web/together_close.mjs --url=http://127.0.0.1:9011
   --rounds=30 --held --frame=600` (the relay holding the together tables).

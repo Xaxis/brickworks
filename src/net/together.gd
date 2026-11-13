@@ -87,6 +87,17 @@ var _in_flight: int = 0
 ## uid -> state of a part another side put down whose geometry is still on
 ## its way here (the web fetches what it has not got).
 var _awaiting: Dictionary = {}
+## uid -> the model store's own of a part on its way here as this side
+## joined (ModelStore.awaited, LdrModel.Placement): put down by the session
+## as it comes, where the session has it then, and the store's let go
+## (ModelStore.session_puts). Landed by both, each such part came twice
+## here, and the second copy went to every side as a part of this one's.
+var _held_by_store: Dictionary = {}
+## The whole model's move (Motions.moved) here as the session began here,
+## and as the session last had it: a drive kept here moves the parts on their
+## way with the model ([method _diff]), as it moves every part here.
+var _moved_base := Transform3D.IDENTITY
+var _moved_seen := Transform3D.IDENTITY
 ## Each person's own steps: [{forward: {uid: state}, back: {uid: state}}].
 var _undo: Array = []
 var _redo: Array = []
@@ -109,13 +120,17 @@ const OVERTAKEN_MS := 1500
 ## of its own with its words as the file has them (_meta_now): its name, the
 ## floor, the colours of hidden parts, motions, the booklet's looks, the
 ## steps of sub-assembly copies, sections broken out, and the lights placed
-## in it (SceneLights, as JSON in the file's coordinates). And "~part:<id>":
+## in it (SceneLights, as JSON in the file's coordinates); and the drives
+## kept since the session began, the whole model's move (_moved_words),
+## which no file has. And "~part:<id>":
 ## the LDraw files of a part made in the app, sent once with the first part
 ## of it put down, so the other side can draw it.
 const META_KEYS: Array[String] = ["~title", "~floor", "~hidden", "~motions", "~looks",
 	"~unit_steps", "~broken",
 	# lights (APP_UX5 #7): the lights placed in the model.
-	"~lights"]
+	"~lights",
+	# drive3 (drvcheck3 T): the whole model's move by the drives kept.
+	"~moved"]
 ## And each sub-model's own lights and views (BrickWorld.section_lines), a key
 ## each, "~sublines:<its name>", as a comment pinned to a part is: sent with
 ## the change that renames, makes or takes one apart, so both sides write the
@@ -320,7 +335,7 @@ func _heal() -> void:
 			continue
 		var brick_id: int = int(_ids.get(uid, 0))
 		var brick: BrickWorld.Brick = world.get_brick(brick_id) if brick_id != 0 else null
-		var now: Variant = state_of(brick) if brick != null else null
+		var now: Variant = state_of(brick) if brick != null else _awaiting.get(uid)
 		if now != wanted:
 			_put(uid, wanted)
 			mended.append(uid)
@@ -414,6 +429,8 @@ func _begin_own() -> Dictionary:
 	_generation = world.generation()
 	# What the lift settles to later would move every part, on every side.
 	store._lift_unsure = false
+	_moved_base = _moved_now()
+	_moved_seen = _moved_base
 	var bricks: Array = []
 	for brick: BrickWorld.Brick in world.bricks():
 		if store.scenery.has(brick.id):
@@ -737,6 +754,11 @@ func _reset() -> void:
 	_pending.clear()
 	_in_flight = 0
 	_awaiting.clear()
+	for uid: String in _held_by_store:
+		store.session_puts(_held_by_store[uid], false)
+	_held_by_store.clear()
+	_moved_base = Transform3D.IDENTITY
+	_moved_seen = Transform3D.IDENTITY
 	_undo.clear()
 	_redo.clear()
 	_open_back.clear()
@@ -770,10 +792,13 @@ static func _new_client() -> String:
 ## What a part is, as the session sends it: [part, colour, its transform as
 ## 12 numbers, group, unit, step].
 static func state_of(brick: BrickWorld.Brick) -> Array:
-	var t: Transform3D = brick.transform
-	return [brick.part_id, brick.color_code, [t.basis.x.x, t.basis.x.y, t.basis.x.z,
-		t.basis.y.x, t.basis.y.y, t.basis.y.z, t.basis.z.x, t.basis.z.y, t.basis.z.z,
-		t.origin.x, t.origin.y, t.origin.z], brick.group, brick.unit, brick.step]
+	return [brick.part_id, brick.color_code, numbers_of(brick.transform), brick.group, brick.unit, brick.step]
+
+
+## [param t]'s 12 numbers, in a state's order ([method transform_of]'s).
+static func numbers_of(t: Transform3D) -> Array:
+	return [t.basis.x.x, t.basis.x.y, t.basis.x.z, t.basis.y.x, t.basis.y.y, t.basis.y.z,
+		t.basis.z.x, t.basis.z.y, t.basis.z.z, t.origin.x, t.origin.y, t.origin.z]
 
 
 static func transform_of(numbers: Array) -> Transform3D:
@@ -798,11 +823,18 @@ static func _as_state(given: Variant) -> Variant:
 	var numbers: Array = []
 	for value: Variant in s[2]:
 		numbers.append(float(value))
+	var at: Transform3D = transform_of(numbers)
 	# A part at no size is no part (LdrModel.has_size): an older build that
 	# opened 42125-1 had five, and sent them on.
-	if not LdrModel.has_size(transform_of(numbers).basis):
+	if not LdrModel.has_size(at.basis):
 		return null
-	return [s[0], int(s[1]), numbers, s[3], s[4], int(s[5])]
+	# Its numbers as a part here holds them. JSON reads some back a hair
+	# off the ones sent (0.9879999756813049 as ...482), so a part tilted
+	# off the square, put down where the session had it, then read off,
+	# was not what it had been given: a redo after a drive's undo, for one
+	# who had joined, left a steering's four parts behind, "changed since"
+	# (drvcheck3 T).
+	return [s[0], int(s[1]), numbers_of(at), s[3], s[4], int(s[5])]
 
 
 func _map(uid: String, brick_id: int) -> void:
@@ -844,6 +876,16 @@ func _lay_snapshot(snapshot: Dictionary) -> void:
 			placed[where] = []
 		(placed[where] as Array).append(brick.id)
 	var taken: Dictionary = {}
+	# The parts the file has still on their way here, by kind, each where
+	# it stands as the model opened: the session's own, put down by it.
+	var waiting: Dictionary = {}
+	if store._awaited_in == world.generation():
+		for placement: LdrModel.Placement in store.awaited:
+			var key: String = "%s|%d|%s" % [placement.part_id, placement.color_code, placement.unit]
+			if not waiting.has(key):
+				waiting[key] = []
+			(waiting[key] as Array).append(placement)
+	var unmatched: Array = []
 	for entry: Variant in snapshot.get("bricks", []):
 		if not entry is Array or (entry as Array).size() != STATE_PARTS + 1 \
 				or not TogetherWords.uid(entry[0]):
@@ -875,8 +917,17 @@ func _lay_snapshot(snapshot: Dictionary) -> void:
 		if best != 0 and best_off < 2.0:
 			taken[best] = true
 			_map(uid, best)
+		else:
+			unmatched.append([uid, key, at])
 		_put(uid, state)
 		_confirmed[uid] = state
+	for one: Array in unmatched:
+		_pair_waiting(str(one[0]), waiting.get(one[1], []), one[2], lift_here, lift_there)
+	# What the file has on its way that the owner's model has not: off, as
+	# a part of it here is.
+	for key: String in waiting:
+		for placement: LdrModel.Placement in waiting[key]:
+			store.drop_awaited(placement)
 	# What the file had that the owner's model has not: off.
 	for key: String in candidates:
 		for brick_id: int in candidates[key]:
@@ -887,7 +938,10 @@ func _lay_snapshot(snapshot: Dictionary) -> void:
 	if store._opened_in == world.generation():
 		store._lifted_by = lift_there
 	# The model's own state as the owner had it, exactly: where each copy's
-	# lights stand as theirs do, none found here by reading the file.
+	# lights stand as theirs do, none found here by reading the file; the
+	# drives kept since the session began on the move this side opened with.
+	_moved_base = _moved_now()
+	_moved_seen = _moved_base
 	var meta: Dictionary = snapshot.get("meta", {}) as Dictionary
 	if meta.keys().any(func(key: Variant) -> bool: return str(key).begins_with(FRAME_KEY)):
 		world.section_frames = {}
@@ -898,6 +952,30 @@ func _lay_snapshot(snapshot: Dictionary) -> void:
 	var now: Dictionary = _meta_now()
 	for key: String in now:
 		_shown[key] = now[key]
+
+
+## [param uid], a part of the session's not found here as this side
+## joined, paired with the one of [param waiting] (the model store's parts of
+## its kind on their way, taken from it) nearest [param at]: the same part.
+## One the session is still waiting for, the session puts down; one it has
+## put down already, the store has no more on its way.
+func _pair_waiting(uid: String, waiting: Array, at: Transform3D, lift_here: float, lift_there: float) -> void:
+	var best: LdrModel.Placement = null
+	var nearest: float = INF
+	for placement: LdrModel.Placement in waiting:
+		var off: float = (store.awaited_at(placement).origin - Vector3(0, lift_here, 0)).distance_to(
+			at.origin - Vector3(0, lift_there, 0))
+		if off < nearest:
+			nearest = off
+			best = placement
+	if best == null:
+		return
+	waiting.erase(best)
+	if _awaiting.has(uid):
+		_held_by_store[uid] = best
+		store.session_puts(best, true)
+	else:
+		store.drop_awaited(best)
 
 
 # -- changes made here --------------------------------------------------------
@@ -995,6 +1073,7 @@ func _diff(touched: Variant) -> Dictionary:
 			_unmap(uid)
 		else:
 			_shown[uid] = changes[uid]
+	_follow_drive(changes)
 	# A part made in the app goes with its first part put down: its files.
 	var made: Array = []
 	for uid: String in changes:
@@ -1023,6 +1102,26 @@ func _diff(touched: Variant) -> Dictionary:
 				changes[key] = ""
 				_shown[key] = ""
 	return changes
+
+
+## A drive kept here since the session last had the model's whole move
+## (Motions.moved): each part still on its way here moved into [param
+## changes] by it, as the drive moved every part here. Left where they
+## were, they stayed where the model had stood on every side, and came
+## down there.
+func _follow_drive(changes: Dictionary) -> void:
+	var now: Transform3D = _moved_now()
+	if now.is_equal_approx(_moved_seen):
+		return
+	var lifted := Transform3D(Basis.IDENTITY, store.lift())
+	var by: Transform3D = lifted * now * _moved_seen.affine_inverse() * lifted.affine_inverse()
+	_moved_seen = now
+	for uid: String in _awaiting.keys():
+		var s: Array = (_awaiting[uid] as Array).duplicate()
+		s[2] = numbers_of(by * transform_of(s[2]))
+		_awaiting[uid] = s
+		_shown[uid] = s
+		changes[uid] = s
 
 
 ## [param changes] into the step this side's next undo takes back: what each
@@ -1553,6 +1652,7 @@ func _put(uid: String, state: Variant) -> void:
 	var brick: BrickWorld.Brick = world.get_brick(brick_id) if brick_id != 0 else null
 	if state == null:
 		_awaiting.erase(uid)
+		_let_store_go(uid)
 		if brick != null:
 			builder.lattice.release(brick_id)
 			world.remove_brick(brick_id)
@@ -1589,6 +1689,7 @@ func _put(uid: String, state: Variant) -> void:
 		brick.group = str(s[3])
 		brick.unit = str(s[4])
 		brick.step = int(s[5])
+		_let_store_go(uid, brick)
 		if builder.lattice.boxes_of(brick_id).is_empty():
 			builder.register(brick_id, brick.part_id, brick.transform)
 		_map(uid, brick_id)
@@ -1603,6 +1704,22 @@ func _put(uid: String, state: Variant) -> void:
 		brick.unit = str(s[4])
 		brick.step = int(s[5])
 	_shown[uid] = state_of(brick)
+
+
+## [param uid] put down by the session as [param brick], or taken off: the
+## model store has its own of it on its way no more ([member
+## _held_by_store]). Put down, it is the file's line, as the store would
+## have put it down (ModelStore.place_awaited): without its origin a save
+## wrote it as a part put down here, a line of its own.
+func _let_store_go(uid: String, brick: BrickWorld.Brick = null) -> void:
+	if not _held_by_store.has(uid):
+		return
+	var placement: LdrModel.Placement = _held_by_store[uid]
+	if brick != null:
+		brick.origin = placement.origin
+		placement.landed = brick.id
+	store.drop_awaited(placement)
+	_held_by_store.erase(uid)
 
 
 func _on_fetched(part_id: String) -> void:
@@ -1624,11 +1741,12 @@ func _meta_now() -> Dictionary:
 		"~title": store.title,
 		"~floor": store.model_floor.whole_words() if store.model_floor != null else "",
 		"~hidden": var_to_str(store.hidden_scheme),
-		# As kept, not as a save rebases them (ModelStore._motion_lines): that
+		# Not as a save rebases them (ModelStore._motion_lines): that
 		# measures each joint on the model, and four times a second it held
 		# a software-drawn browser's frames for seconds. Each side's save
 		# rebases the same motions on the same model the same way.
-		"~motions": "\n".join(world.motions.lines()) if world.motions != null else "",
+		"~motions": _motion_words(),
+		"~moved": _moved_words(),
 		"~looks": var_to_str(world.step_looks),
 		"~unit_steps": var_to_str(world.unit_steps),
 		"~broken": _broken_words(),
@@ -1658,6 +1776,48 @@ func _frame_words() -> Dictionary:
 	for path: String in world.section_frames:
 		out[FRAME_KEY + path] = var_to_str(back * (world.section_frames[path] as Transform3D))
 	return out
+
+
+## The model's motions as the session carries them: each joint of a part's
+## ref where its part stands as the session began, the drives kept since
+## taken off it (they go as "~moved", [method _moved_words]), so the words
+## are the same however far the model has been driven. As kept, a found
+## joint's ref was where its part stood when last saved, a fetched part's
+## where the drives had moved it, and read back every one was taken for
+## where the file had it, the whole move for none: after an undo and a redo
+## of a drive the rims on their way landed 1320 LDU from the model, and three
+## of its four wheel joints found nothing (drvcheck3 T).
+func _motion_words() -> String:
+	var motions: Motions = world.motions
+	if motions == null:
+		return ""
+	var back: Transform3D = (_moved_now() * _moved_base.affine_inverse()).affine_inverse()
+	var lift: Vector3 = store.lift()
+	var placed: Dictionary = {}
+	for joint: Motions.Joint in motions.joints:
+		if joint.by != "part":
+			continue
+		var lead: BrickWorld.Brick = world.get_brick(joint.lead) if joint.lead != 0 else null
+		var now: Vector3 = (lead.transform.origin - lift) * LdrModel.FLIP \
+			if lead != null and lead.part_id == joint.part else motions.moved_place(joint)
+		placed[joint] = (back * (now * LdrModel.FLIP)) * LdrModel.FLIP
+	return "\n".join(motions.lines(placed))
+
+
+## The drives kept since the session began, as a move of the whole model
+## in the file's coordinates (Motions.moved, on the move this side began
+## with): "" for none, else its 12 numbers (Together.state_of's order). The
+## same on every side, so each puts its own move back from it.
+func _moved_words() -> String:
+	var since: Transform3D = _moved_now() * _moved_base.affine_inverse()
+	if since.is_equal_approx(Transform3D.IDENTITY):
+		return ""
+	return " ".join(numbers_of(Motions.tidied(since)).map(func(n: float) -> String: return String.num(n, 6)))
+
+
+## The whole model's move here (Motions.moved).
+func _moved_now() -> Transform3D:
+	return world.motions.moved if world.motions != null else Transform3D.IDENTITY
 
 
 ## Each comment pinned to a part, a key of its own.
@@ -1705,7 +1865,9 @@ func _put_meta(key: String, words: String) -> void:
 			if store.hidden_scheme.is_empty() and not given.is_empty():
 				TogetherWords.left_out("hidden colours", "not a scheme")
 		"~motions":
-			world.motions = Motions.read(words) if not words.is_empty() else null
+			_put_motions(words)
+		"~moved":
+			_put_moved(words)
 		"~looks":
 			var dropped := PackedStringArray()
 			world.step_looks = BookletLooks.typed(TogetherWords.dictionary(words, "booklet looks"),
@@ -1787,6 +1949,46 @@ func _frame_from(path: String, words: String) -> void:
 
 ## Sections broken out, their parts named by uid rather than this side's
 ## numbers.
+## The model's motions put back from the session's words (_motion_words):
+## each joint's ref where the file here has it, the whole move here as it
+## was. The move is the session's own key (_put_moved): put back through
+## Motions.read, a drive's undo and redo here took it to none.
+func _put_motions(words: String) -> void:
+	var kept: Transform3D = _moved_now()
+	var motions: Motions = Motions.read(words) if not words.is_empty() \
+		else (Motions.new() if not kept.is_equal_approx(Transform3D.IDENTITY) else null)
+	if motions != null:
+		var home: Transform3D = _moved_base.affine_inverse()
+		for joint: Motions.Joint in motions.joints:
+			if joint.by == "part":
+				joint.place = (home * (joint.place * LdrModel.FLIP)) * LdrModel.FLIP
+		motions.moved = kept
+	world.motions = motions
+	_moved_seen = kept
+
+
+## The whole model's move put back from the session's words (_moved_words):
+## the drives kept since the session began, on the move this side began with.
+func _put_moved(words: String) -> void:
+	var since := Transform3D.IDENTITY
+	if not words.is_empty():
+		var given: PackedStringArray = words.split(" ", false)
+		var numbers: Array = Array(given).map(func(one: String) -> float: return one.to_float())
+		if given.size() != 12 or not Array(given).all(func(one: String) -> bool: return one.is_valid_float()) \
+				or not TogetherWords.numbers(numbers, 12) or not LdrModel.has_size(transform_of(numbers).basis):
+			TogetherWords.left_out("the whole model's move", "not twelve numbers of a move")
+			return
+		since = transform_of(numbers)
+	var moved: Transform3D = since * _moved_base
+	if world.motions == null:
+		if moved.is_equal_approx(Transform3D.IDENTITY):
+			_moved_seen = moved
+			return
+		world.motions = Motions.new()
+	world.motions.moved = moved
+	_moved_seen = moved
+
+
 func _broken_words() -> String:
 	var out: Dictionary = {}
 	for section: String in world.broken_out:

@@ -674,8 +674,14 @@ func free_name(words: String) -> String:
 ## read (its lead 0: one the web is still fetching) is written where the
 ## drives kept since have moved the whole model ([member moved]), as that
 ## part's own line is (drvcheck D): written where the file had it, the next
-## open found nothing there.
-func _ref_written(joint: Joint) -> String:
+## open found nothing there. One [param placed] has (Joint -> its place,
+## LDraw's coordinates) is written there: building together's words
+## (Together._motion_words).
+func _ref_written(joint: Joint, placed: Dictionary = {}) -> String:
+	if placed.has(joint):
+		var there: Joint = joint.copy()
+		there.place = placed[joint]
+		return there.ref_words()
 	if joint.by != "part" or joint.lead != 0 or moved.is_equal_approx(Transform3D.IDENTITY):
 		return joint.ref_words()
 	var now: Joint = joint.copy()
@@ -691,8 +697,10 @@ func moved_place(joint: Joint) -> Vector3:
 
 
 ## The motion lines, without line breaks, in the order they are written;
-## those this could not read last, unless not [param with_unread].
-func lines(with_unread: bool = true) -> PackedStringArray:
+## each joint [param placed] has written where it has it ([method
+## _ref_written]); those this could not read last, unless not
+## [param with_unread].
+func lines(placed: Dictionary = {}, with_unread: bool = true) -> PackedStringArray:
 	var out := PackedStringArray()
 	for motion: Motion in list:
 		if motion.is_sequence():
@@ -706,23 +714,23 @@ func lines(with_unread: bool = true) -> PackedStringArray:
 		for n: int in motion.tracks.size():
 			var track: Track = motion.tracks[n]
 			out.append("%s_TRACK %s %d %s AT %s JOINT %s" % [META, quoted(motion.name), n + 1,
-				track.joint.mode.to_upper(), num(track.joint.at, 2), _ref_written(track.joint)])
+				track.joint.mode.to_upper(), num(track.joint.at, 2), _ref_written(track.joint, placed)])
 			for key: Array in track.keys:
 				out.append("%s_KEY %s %d %s %s %s" % [META, quoted(motion.name), n + 1,
 					num(float(key[0]), 3), num(float(key[1]), 2), str(key[2])])
 		if motion.driver != null:
 			out.append("%s_DRIVER %s TURNS %s SECONDS %s AT %s JOINT %s" % [META, quoted(motion.name),
 				num(motion.turns, 3), num(motion.driver_seconds, 3), num(motion.driver.at, 2),
-				_ref_written(motion.driver)])
+				_ref_written(motion.driver, placed)])
 		if motion.path != null:
 			out.append("%s_PATH %s SECONDS %s %s %s" % [META, quoted(motion.name), num(motion.path.seconds, 3),
 				motion.path.how, motion.path.leg_words()])
 			for wheel: Joint in motion.path.wheels:
 				out.append("%s_WHEEL %s AT %s JOINT %s" % [META, quoted(motion.name), num(wheel.at, 2),
-					_ref_written(wheel)])
+					_ref_written(wheel, placed)])
 			if motion.path.steer != null:
 				out.append("%s_STEER %s AT %s JOINT %s" % [META, quoted(motion.name),
-					num(motion.path.steer.at, 2), _ref_written(motion.path.steer)])
+					num(motion.path.steer.at, 2), _ref_written(motion.path.steer, placed)])
 	# And the lines this could not read, as the file had them: after the rest
 	# here; a save puts each where the file had it (ModelStore, MetaIndex
 	# .lines_for), and a refused key stays between the keys either side.

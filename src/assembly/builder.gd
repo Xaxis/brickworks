@@ -104,9 +104,9 @@ var store_hook: Callable = Callable()
 var held_hook: Callable = Callable()
 ## What a copy of parts (Carry.gather's) brings of those not on the baseplate,
 ## (parts) -> [{path, part, color, at, step, kind}] (ModelStore._held_carried),
-## and those put down with the copy a paste put down, ([[that, its path
-## now]], how the paste moved them) (ModelStore._held_put). Unset, a copy
-## brings none.
+## and those put down with the copy a paste or a Pattern put down, ([[that,
+## its path now, and how its copy moved]], or how the paste moved them all)
+## (ModelStore._held_put). Unset, a copy brings none.
 var held_carry: Callable = Callable()
 var held_put: Callable = Callable()
 ## Moves those not on the baseplate with their copy, (brick id -> how it

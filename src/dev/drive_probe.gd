@@ -62,7 +62,10 @@
 ##     rim in its tyre and every joint found, and so once saved and opened
 ##     again (drvrecheck F1, F3). And the app's own file with a part the
 ##     catalogue has not got, driven and kept: that part goes with the one
-##     it stood with (drvrecheck F3).
+##     it stood with (drvrecheck F3). And the drive played twice as one
+##     step, a slice a frame, as a link's press plays a sequence, the rims
+##     arriving between its two keeps: undone, redone and undone again,
+##     each rim in its tyre and every joint found (drvcheck3 L1).
 ##
 ## It loads on a build from before (what is new is asked for by name), so
 ## that build fails its checks rather than failing to load. Pictures in
@@ -1218,6 +1221,7 @@ func _arrive() -> void:
 		var back: Array = _rims_in_tyres()
 		_check("F1: %s, saved and opened again: rims off %s LDU, joints %s" % [order, _tidy_list(back),
 			_found()], _same_list(back, whole) and _found_all())
+	await _twice_paced(whole, parts)
 	process_frame.disconnect(_host_tick)
 	_host.stop()
 	# F3 (drvrecheck): the app's own file with a part the catalogue has not
@@ -1246,6 +1250,59 @@ func _arrive() -> void:
 			+ "the one it stood with (%s | %s)" % [absent, beside], not absent.is_empty() and absent == beside)
 	else:
 		_check("F3: the app's own file with a part the catalogue has not got opens", false)
+
+
+## drvcheck3 L1: the drive played twice as one step, a slice a frame, as a
+## link's press plays a sequence (MotionPlayer.pace, Main._pace_motion), the
+## rims arriving between its two keeps. Landed then, the second keep moved
+## them as parts that step moves itself, and its undo left them where they
+## had landed, a whole drive from their tyres, three joints of four lost,
+## and saved so. Undone, redone and undone again, each rim in its tyre and
+## every joint found; and the save of it opened again so.
+func _twice_paced(whole: Array, parts: int) -> void:
+	if not await _held_open("ar_defined.mpd", whole.size(), parts):
+		return
+	var motion: Motions.Motion = _player.motions().named(NAME)
+	var paced: MotionPlayer.Paced = _player.pace([motion, motion], false, "played it twice")
+	var came_at: int = -1
+	var since: int = Time.get_ticks_msec()
+	while not paced.done and Time.get_ticks_msec() - since < 240_000:
+		_player.pace_on(paced, 2.0)
+		await process_frame
+		if came_at < 0 and paced.at >= 1 and not paced.done:
+			# Between the two: the rims' geometry let come, and waited for.
+			came_at = paced.at
+			_held_back.clear()
+			for held: Array in _held_peers:
+				_host_answer(held[0], str(held[1]))
+			_held_peers.clear()
+			var asked: int = Time.get_ticks_msec()
+			while not _library.is_resident(RIM) and Time.get_ticks_msec() - asked < 60_000:
+				await process_frame
+			await _frames(3)
+	var since_keep: int = Time.get_ticks_msec()
+	while not _store.awaited.is_empty() and Time.get_ticks_msec() - since_keep < 30_000:
+		await process_frame
+	await _frames(4)
+	var kept: Array = _rims_in_tyres()
+	_check("L1: played twice as one step, a slice a frame, its rims arriving between the two (%s): one step, "
+		% ("they did" if came_at >= 1 and _library.is_resident(RIM) else "they did NOT")
+		+ "each rim in its tyre (off %s LDU), joints %s" % [_tidy_list(kept), _found()],
+		came_at >= 1 and paced.done and _builder.history_depth() == 1 and _same_list(kept, whole) and _found_all())
+	for step: String in ["undone", "redone", "undone again"]:
+		if step == "redone":
+			_builder.redo()
+		else:
+			_builder.undo()
+		await _frames(4)
+		var now: Array = _rims_in_tyres()
+		_check("L1: %s, each rim in its tyre (off %s LDU), the drive's joints %s" % [step, _tidy_list(now),
+			_found()], _same_list(now, whole) and _found_all())
+	_saved("ar_twice_undone.mpd")
+	await _reopen("ar_twice_undone.mpd", parts)
+	var back: Array = _rims_in_tyres()
+	_check("L1: undone, saved and opened again: rims off %s LDU, joints %s" % [_tidy_list(back), _found()],
+		_same_list(back, whole) and _found_all())
 
 
 ## The racer's [param file] opened again with its rims held back on their

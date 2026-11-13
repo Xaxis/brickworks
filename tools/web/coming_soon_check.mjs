@@ -42,6 +42,7 @@ import { readFile, readdir, mkdir, mkdtemp, rm, stat } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join, extname, resolve, relative } from "node:path";
+import { TYPES } from "./static_server.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -55,9 +56,6 @@ const CSP = "default-src 'self'; script-src 'self'; "
   + "connect-src 'self' https://overlook.technology; "
   + "style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; object-src 'none'; "
   + "base-uri 'none'; form-action 'self'; frame-ancestors 'none'";
-const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".mjs": "text/javascript",
-  ".json": "application/json", ".png": "image/png", ".svg": "image/svg+xml", ".css": "text/css",
-  ".webp": "image/webp", ".xml": "application/xml", ".txt": "text/plain", ".webmanifest": "application/manifest+json" };
 
 // -- what offers an installer ------------------------------------------------------
 // A file a system installs from, by its name's end (the releases' own:
