@@ -838,6 +838,14 @@
       "tests": []
     },
     {
+      "id": "cli:carryrest probe",
+      "kind": "cli",
+      "entry": "src/dev/carryrest_probe.gd",
+      "reach": "tools/probe.sh carryrest_probe   (PROBE_SIZE=1280x720 too; carryrest_phone_probe and carryrest_tablet_probe by finger; --no-gate without an account; CARRYREST_OUT=DIR for its pictures)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:challenges browser flow",
       "kind": "cli",
       "entry": "tools/web/challenges_flow.mjs",
@@ -4484,6 +4492,14 @@
         "tests/test_site_lang.py",
         "tests/test_together_poll.py"
       ]
+    },
+    {
+      "id": "ui:a dragged part carries what rests on it",
+      "kind": "ui",
+      "entry": "src/assembly/carry.gd",
+      "reach": "godot --path .  (Select tool, drag a part: what rests on it and nothing else holds comes with it; Shift as you drag moves it alone, let go of Shift to take them up again; one undo; by finger the same)",
+      "area": "building",
+      "tests": []
     },
     {
       "id": "ui:a lighter look where frames are slow",
