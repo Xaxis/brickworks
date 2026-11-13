@@ -823,7 +823,7 @@ func _met() -> void:
 	if ids.size() != 2:
 		shell.bar.say("select the two parts that should meet")
 		return
-	var align := HingeAlign.new()
+	var align: RefCounted = Later.make(&"HingeAlign")
 	align.world = shell.world
 	align.builder = shell.builder
 	align.library = shell.library

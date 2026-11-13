@@ -2908,6 +2908,14 @@
       "tests": []
     },
     {
+      "id": "cli:two builds' first visits at an equal load",
+      "kind": "cli",
+      "entry": "tools/web/start_abba.mjs",
+      "reach": "heavy node tools/web/start_abba.mjs --arm=base=SNAP/build/web --arm=new=SNAP2/build/web --blocks=4 --out=DIR   (with .env sourced; an arm may be a URL; --summary --out=DIR says the table again; python3 tools/minitest.py tests/test_start_abba.py)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:two chats browser flow",
       "kind": "cli",
       "entry": "tools/web/tabpair_flow.mjs",
@@ -6560,7 +6568,8 @@
         "tests/test_booklet_follow.py",
         "tests/test_plans.py",
         "tests/test_realset.py",
-        "tests/test_saved_models_plan.py"
+        "tests/test_saved_models_plan.py",
+        "tests/test_start_abba.py"
       ]
     },
     {

@@ -447,6 +447,52 @@ notes). It is listed so the plan is whole, not as a new unit.
   bound; one that fails lets it go at once.
 - Left: the warm start's compile (above), the catalogue and the first frame;
   the engine's own wasm is 6.9 MB of the cold 8.9.
+- **At an equal load, m276 against pre261** (webstart9, 2026-11-09,
+  `tools/web/start_abba.mjs`, `bench/results/webstart9-2026-11-09/abba`).
+  APP_UX8 found every first-visit number nearly twice APP_UX7's. Both
+  builds exported from locked snapshots, served alike, six blocks of
+  A B B A at load 33-43, medians:
+
+  | | m276 (de20e50df) | pre261 (858b82bca) | pre261, paired by block |
+  |---|---|---|---|
+  | usable, cold | 16.87 s (14.66-19.82) | 16.83 (14.40-20.25) | x1.02 |
+  | usable, warm | 11.21 (9.83-13.27) | 10.53 (9.58-12.71) | x0.96 |
+  | compile, cold | 4.00 (3.28-4.80) | 3.98 (3.32-5.39) | x1.07 (plain medians x0.99) |
+  | compile, warm | 3.98 (3.28-4.71) | 3.88 (3.18-4.60) | x1.00 |
+  | main thread, cold | 9.22 (8.24-9.75) | 9.20 (8.66-9.94) | x1.03 |
+  | first screen's source | 5.67 MB, 200 scripts | 5.95 MB, 205 | |
+
+  The code did not do it. The same m276 build that APP_UX7 timed at
+  10.2 s cold, 6.0 warm and a 2.2 s compile at load 18-31 took 16.9,
+  11.2 and 4.0 here, and every stage of its start grew alike (the
+  catalogue 0.9 to 1.8 s, the interface 0.7 to 1.2). Its main thread's
+  CPU went from 5.7 to 9.2 s too: the load stretches CPU time as well as
+  the wall clock, so two days' numbers compare nothing. Builds are
+  compared at the same moments. The 5% more source (exact_check.gd
+  90 KB, parts_bin.gd 41 KB, scene_lights.gd 30 KB the most) is about
+  0.1 s of compile. The bar stays 10 s cold and 4 s warm.
+- **Again, three days on** (webstart9, 2026-11-12,
+  `bench/results/webstart9-2026-11-09/abba_merged` and `abba_later`):
+  m276's own deployment against previews, each read through the parts
+  mirror, four blocks of A B B A. Paired by block:
+
+  | | pre261 373f62920, load 31-69 | four features behind Later, load 48-66 |
+  |---|---|---|
+  | usable, cold | x0.99 | x1.09 |
+  | usable, warm | x1.09 | x1.03 |
+  | compile, cold | x1.09 | x1.25 |
+  | compile, warm | x1.18 | x1.12 |
+  | first screen's source | 6.49 MB, 210 scripts | 6.18 MB, 203 |
+  | index.pck sent | 2.36 MB | 2.24 MB |
+
+  m276's first screen was 5.67 MB and its index.pck 2.06. The growth is
+  the model's core (source_file.gd, assemblies.gd, model_store.gd and
+  the new meta_index.gd and submodel_file.gd), which the start needs.
+  ExactCheck, Booklet, Linkage and HingeAlign, which it named only for a
+  rarer moment, are reached through Later now. At load 50 a block's
+  compile ratio swings 0.97 to 1.28, more than the 5% that moved: the
+  compile stays over 10% by this measure. The data pack the start waits
+  for grew 5.06 MB sent to 5.93, most of it the booklet PDF's emoji font.
 
 **Step 2 plan** (firstscreen, 2026-11-05). The first screen compiles 228
 scripts, 6.18 MB of the app's 10.73 (`tools/web/start_closure.py`). Each
