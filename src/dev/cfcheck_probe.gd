@@ -150,6 +150,7 @@ func _undo_redo(what: String, opened: Array, opened_tables: String, after: Array
 
 func _saved_reopened(what: String, with_steps: bool = true) -> void:
 	var shown: Array = _looks(with_steps)
+	var defs: Array = _defs_now()
 	var saved: String = _save()
 	await _open(saved)
 	_check("%s saved and opened again: every part, colour, place%s as shown%s" % [what,
@@ -158,7 +159,7 @@ func _saved_reopened(what: String, with_steps: bool = true) -> void:
 	var second: String = _save()
 	_check("...saved again: the same file%s" % _first_unlike(_as_kept(saved), _as_kept(second)),
 		_as_kept(second) == _as_kept(saved))
-	_whole_write_note()
+	_defs_kept(defs)
 
 
 # -- 1: the colour map ------------------------------------------------------------------

@@ -1261,9 +1261,13 @@ static func write_ldr(
 
 ## The model as a tree of sub-models, one file section per definition:
 ## [param instances] is every assembly's path -> {"frame": Transform3D,
-## "def": its definition's name, and "first" where it is known: the id of
-## its first part, which orders the references of a section}, from
-## Assemblies.file_frames and ModelStore. A
+## "def": its definition's name, "first" where it is known: the id of its
+## first part, which orders the references of a section, and "colour" where
+## its definition's copies are placed in two: the colour its reference hands
+## the definition's parts of 16}, from Assemblies.file_frames and ModelStore.
+## The definition's parts in the colour its first copy is placed in are
+## written in 16, and each reference says its copy's colour, 16 where it is
+## the colour of the copy its section is written from. A
 ## definition is written once, from its first copy, in that copy's frame;
 ## every copy, that one included, is a reference placed by its own frame —
 ## a mirrored copy by a matrix that reflects, as LDraw allows. Parts
@@ -1297,9 +1301,14 @@ static func write_tree(
 	var file_of: Dictionary = _file_names(defs, main_file, parts, files)
 	var refs := func(parent: String, inverse: Transform3D) -> Array[String]:
 		var out: Array[String] = []
+		# A copy placed in the colour its section's own copy is placed in
+		# takes it, by 16; one placed in another, by that colour.
+		var hands: int = int((instances.get(parent, {}) as Dictionary).get("colour", -1))
 		for child: String in children.get(parent, []):
 			var entry: Dictionary = instances[child]
-			var line: String = "1 16 %s %s" % [_line_numbers(inverse
+			var colour: int = int(entry.get("colour", -1))
+			var line: String = "1 %s %s %s" % [colour_said(colour) if colour >= 0
+				and colour != hands else "16", _line_numbers(inverse
 				* (entry["frame"] as Transform3D)), str(file_of[str(entry["def"])])]
 			# Which copy it is, where it is a copy of the definition it
 			# places: one that went its own way (Assemblies.file_frames) is
@@ -1334,9 +1343,13 @@ static func write_tree(
 		var master: String = masters[def]
 		var inverse: Transform3D = ((instances[master] as Dictionary)["frame"] as Transform3D) \
 			.affine_inverse()
+		# Its parts in the colour its first copy is placed in, where its copies
+		# are placed in two, in 16: each copy shows them in its own.
+		var hands: int = int((instances[master] as Dictionary).get("colour", -1))
 		var own: Array = placements.filter(func(p: Placement) -> bool:
 			return _home_in(p.unit, unit_steps) == master).map(func(p: Placement) -> Placement:
-				var local := Placement.new(p.part_id, p.color_code, inverse * p.transform, p.step)
+				var local := Placement.new(p.part_id, 16 if hands >= 0 and p.unit == master
+					and p.color_code == hands else p.color_code, inverse * p.transform, p.step)
 				local.group = p.group
 				local.unit = p.unit
 				local.within = _within_of(p.unit, master)
@@ -1361,6 +1374,12 @@ static func write_tree(
 		for at: int in range(0, encoded.length(), 76):
 			text += "0 !: " + encoded.substr(at, 76) + "\n"
 	return text
+
+
+## [param code] as a line says it: a direct colour in the form it came in,
+## or it reads as an enormous palette index that nothing has.
+static func colour_said(code: int) -> String:
+	return "0x%07X" % code if is_direct_colour(code) else str(code)
 
 
 ## The file name the model's own section is written under: the one it was
@@ -1613,11 +1632,7 @@ static func _write_one(placements: Array, title: String, author_name: String,
 		items.append([at, 0, n, refs[n], str(ref_within[n]) if n < ref_within.size() else ""])
 	for n: int in placements.size():
 		var placement: Placement = placements[n]
-		# A direct colour goes back out in the form it came in, or it
-		# reads as an enormous palette index that nothing has.
-		var colour: String = ("0x%07X" % placement.color_code
-			if is_direct_colour(placement.color_code)
-			else str(placement.color_code))
+		var colour: String = colour_said(placement.color_code)
 		items.append([placement.step, 1, n, "1 %s %s %s.dat" % [
 			colour, _line_numbers(placement.transform), placement.part_id],
 			str(within[n]) if n < within.size() else ""])
