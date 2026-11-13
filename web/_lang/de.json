@@ -1038,7 +1038,10 @@
   "Brickworks checks every rule on the model as it was shared, when it is entered and again while the challenge runs. An entry whose newer version breaks one says so on its card, and is not counted.": "Brickworks prüft jede Regel am Modell, wie es geteilt wurde, beim Einreichen und erneut, solange der Wettbewerb läuft. Ein Beitrag, dessen neuere Version eine bricht, sagt das auf seiner Karte und wird nicht gezählt.",
   "Built by hand and built with the assistant are judged apart, each with its own winner.": "Von Hand gebaut und mit dem Assistenten gebaut werden getrennt bewertet, jedes mit eigenem Gewinner.",
   "Sort the entries": "Beiträge sortieren",
-  "Groups": "Gruppen"
+  "Groups": "Gruppen",
+  "Brickworks is in open beta. Its bar at the foot of every page has Report a bug and the way to join. Chosen for this browser.": "Brickworks ist in der offenen Beta. Ihre Leiste unten auf jeder Seite hat Fehler melden und den Weg zum Mitmachen. Gilt für diesen Browser.",
+  "<input type=\"checkbox\" data-beta-bar-show checked> Show the beta bar on every page": "<input type=\"checkbox\" data-beta-bar-show checked> Die Beta-Leiste auf jeder Seite zeigen",
+  "The bar at the foot of every page, with Report a bug. Chosen for this browser; Report a bug is in your account menu either way.": "Die Leiste unten auf jeder Seite, mit Fehler melden. Gilt für diesen Browser; Fehler melden steht so oder so in deinem Kontomenü."
  },
  "scripts": {
   "Copy": "Kopieren",
@@ -2560,7 +2563,6 @@
   "The Brickworks beta": "Die Brickworks-Beta",
   "Open beta": "Offene Beta",
   "Report a bug": "Fehler melden",
-  "Hide the beta bar for a day": "Beta-Leiste für einen Tag ausblenden",
   "You’re a tester. Thank you: your reports and our answers are in your account.": "Du testest mit, danke! Deine Meldungen und unsere Antworten stehen in deinem Konto.",
   "The first {cap} testers we approve get a month of Pro, free: {spots} left.": "Die ersten {cap} Tester, die wir bestätigen, bekommen einen Monat Pro, kostenlos: noch {spots} frei.",
   "spot": "Platz",
@@ -2672,6 +2674,11 @@
   "minutes": "Minuten",
   "min": "Min.",
   "sec": "Sek.",
-  "You have three models in it already: that is the most.": "Du hast schon drei Modelle darin: Das ist das Maximum."
+  "You have three models in it already: that is the most.": "Du hast schon drei Modelle darin: Das ist das Maximum.",
+  "Beta bar hidden. Show it again in {settings}. Report a bug is in your account menu.": "Beta-Leiste ausgeblendet. In den {settings} kannst du sie wieder zeigen. Fehler melden steht in deinem Kontomenü.",
+  "Beta bar hidden. Show it again in {settings}.": "Beta-Leiste ausgeblendet. In den {settings} kannst du sie wieder zeigen.",
+  "Undo": "Rückgängig",
+  "Hide the beta bar": "Beta-Leiste ausblenden",
+  "Admin": "Verwaltung"
  }
 }

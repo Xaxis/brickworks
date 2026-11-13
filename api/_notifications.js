@@ -36,7 +36,7 @@
 // ones: opening Notifications opens that feed, and what was seen is read.
 // A challenge's end needs the file.
 
-import { bearer, verify } from "./_auth.js";
+import { bearer, isMaster, verify } from "./_auth.js";
 import { db } from "./_db.js";
 import { withFaces } from "./_faces.js";
 import { Unacceptable, inLanguage, siteWords } from "./_directory.js";
@@ -321,12 +321,17 @@ export async function newCounts(asker) {
 
 export async function feedCount(request, response) {
   response.setHeader("Cache-Control", "private, no-store");
-  const asker = await who(request);
+  const claims = bearer(request) ? await verify(bearer(request), request) : null;
+  const asker = claims?.sub || null;
   if (!asker) return response.status(200).json({ count: 0, signed_in: false });
   const [counts, people] = await Promise.all([newCounts(asker),
     db(`people?account=eq.${asker}&select=handle,name`).catch(() => [])]);
   const person = people[0] || null;
-  // Their own picture, for the avatar in the header (api/_faces.js).
+  // Their own picture, for the avatar in the header (api/_faces.js). And
+  // for the site's owner alone, admin: the account menu's way to /admin
+  // (docs/ADMIN.md). Everybody else's answer has no such key, not even
+  // false: api/admin.js answers them as if there were no console, and this
+  // says nothing different (bugbar, 2026-11-13).
   return response.status(200).json(await withFaces({ ...counts, signed_in: true,
-    me: person ? { handle: person.handle, name: person.name } : null }));
+    me: person ? { handle: person.handle, name: person.name } : null, ...(isMaster(claims) ? { admin: true } : {}) }));
 }

@@ -693,18 +693,36 @@ is on the page, `hidden`, for the script to show.
   200 ms after typing stops, and the cards it will replace step back
   while it is asked (`[data-browse="asking"]`). Its styles are the
   page's own `<style>`, so it waits on no sheet more before it is drawn.
-- **Toast**: `web/kit.js` `toast("Link copied")`: one line at the foot of
-  the screen, in the page's colours the other way round, read out
-  (`role="status"`, on the page empty from its load, since a screen
-  reader reads a region's change and not a region that arrives already
-  speaking), gone in 2.4 s.
+- **Toast**: `web/kit.js` `toast("Link copied")` (made in `web/toast.js`):
+  one line at the foot of the screen, in the page's colours the other way
+  round, read out (`role="status"`, on the page empty from its load, since
+  a screen reader reads a region's change and not a region that arrives
+  already speaking), gone in 2.4 s. With an action, `toast(words,
+  {action: {label, run}, focus, back})`, it is a snackbar (`.toast.act`):
+  what was just done, a link to where it is changed again, and the action
+  (Undo) as a bordered button in the toast's own colours; it takes the
+  pointer, stays 8 s and while it is pointed at or holds the keyboard (4 s
+  more once left), Escape puts it away, and the keyboard goes back to
+  `back` if it was in the toast. The beta bar's × is the first.
 - **Beta bar**: `aside.beta-bar` (`web/betabar.js`, asked for by
   `web/theme.js` on every page while the beta is open): a floating pill
   at the foot of the window, bottom left (centred under 600 px), above
   the page and moving nothing in it: an accent `.badge` to /beta, a
   ghost small `.cta` Report a bug, a small `.cta` Join (or a link that
   says you're a tester, its check in `--green`) and an `.icon-btn` × that
-  hides it for a day. It rises and fades in after the page is drawn
+  hides it in this browser until it is shown again (bugbar, 2026-11-13;
+  before, for a day with nothing said). The × says so in a snackbar (the
+  Toast, with an action): "Beta bar hidden. Show it again in Settings."
+  (signed in, "Report a bug is in your account menu." after it), Settings
+  a link to `/settings#beta-part`, and Undo, which brings it back with
+  the keyboard on its ×. Settings' Beta row has the `.choice` "Show the
+  beta bar on every page" (signed out, a row of its own under the
+  sign-in), as it stands, shown or hidden at once with no reload and the
+  other tabs following; `localStorage` `brickworks.betabar.hidden` is
+  `"off"` while hidden (a number is a day's hiding from before, kept to
+  its end). Report a bug never needs the bar: the account menu and Menu
+  have it for everyone while the beta is open, and the footer has Send
+  feedback. It rises and fades in after the page is drawn
   (none with reduced motion). On a phone its badge says Beta, its parts
   sit closer and a tester's has no third part; still too wide for the
   window (a small phone, a long language), `.tight` drops the badge and
@@ -806,10 +824,17 @@ is on the page, `hidden`, for the script to show.
   new for you as the header's `.count` over its corner, opening a
   `details.more-menu.end.account-menu` with the header Menu's panel: who
   you are (`.menu-who`), your places (`.account-part nav`: Your profile,
-  Notifications and Your feed each with its `.count`, Saved, Settings),
-  the theme and Sign out (`.menu-list > .sign-out`). At a phone's width
+  Notifications and Your feed each with its `.count`, Saved, Settings,
+  Send feedback, and while the beta is open Report a bug for everyone,
+  `a[data-report-bug]`, its dialog over the page), the theme, for the
+  site's owner alone Admin (`.menu-owner`, the gauge icon before its name,
+  under a line, to /admin; drawn only from op=feed_count's `admin: true`,
+  which nobody else is sent) and Sign out (`.menu-list > .sign-out`). At a phone's width
   Menu's summary is the avatar and its panel holds the site's links, then
-  the same. Open, the avatar is ringed in `--accent-edge`.
+  the same. Open, the avatar is ringed in `--accent-edge`, and the panel
+  is over the beta bar and never taller than the window: past it, it
+  scrolls in itself, so Sign out is always in reach (the header is sticky,
+  and the page's own scroll never brought it up).
 - **Notifications** (`/notifications`, `web/directory.css`): `.notices`,
   a list of `.notice` cards, one a model: its 4:3 `.pic`, its name as an
   `h2` at `--t-body`, and `.lines`, each a link with an avatar (who did

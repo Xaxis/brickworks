@@ -19,7 +19,9 @@
 // new things there are for you, which opens the account menu: who you
 // are, Your profile, Notifications and Your feed (each with what is new in
 // it), Saved, Settings, Send feedback (and for a beta tester the beta
-// hub), the theme and Sign out. On a phone the header has
+// hub; while the beta is open Report a bug, for everyone, whether its bar
+// is shown or not), the theme, for the site's owner alone Admin (the
+// console, /admin), and Sign out. On a phone the header has
 // no room for a fifth thing, so Menu becomes your avatar and holds the
 // same. Which of the two it is is known in this browser at once
 // (account.js keeps the session), and who you are and the counts from the
@@ -39,7 +41,7 @@
 import { askToSignIn, call, email, madeUp, say, signOut, signedIn } from "/account.js";
 import { earlyOn } from "/early.js";
 import { alikeSaid, langAt } from "/card.js";
-import { avatarHtml, number } from "/kit.js";
+import { avatarHtml, iconHtml, number } from "/kit.js";
 
 // A follow sent and not yet answered, kept for this tab until it is
 // (web295): Follow is drawn at once and the server answers 260-390 ms
@@ -265,7 +267,8 @@ async function showAlike(box) {
 }
 
 // Who you are and what is new, from the last page, so the next is drawn at
-// once: {email, me, count, notifications, feed}. me is {handle, name,
+// once: {email, me, count, notifications, feed}, and admin: true for the
+// site's owner alone (the server says so to nobody else). me is {handle, name,
 // picture}, null for an account with no profile, and undefined until the
 // server has said. Kept in this browser, not only this tab: a new tab or
 // the next visit, with nothing kept, drew the address's letter until the
@@ -374,8 +377,39 @@ function accountPart(state) {
     if (location.pathname === hub.getAttribute("href")) hub.setAttribute("aria-current", "page");
     feedback.before(hub);
   }).catch(() => null);
+  // Report a bug while the beta is open, for everyone, tester or not, and
+  // there whether its bar is shown or hidden (bugbar, 2026-11-13): its
+  // dialog over the page (heard below). Asked of the bar's script only
+  // when theme.js asks for it too: heard off, neither is loaded.
+  if (window.brickworksBeta !== "off") {
+    import("/betabar.js").then(({ betaState }) => betaState()).then((heard) => {
+      if (heard.beta !== "open" || places.querySelector('[data-place="report-bug"]')) return;
+      const report = document.createElement("a");
+      report.href = `${at}/feedback`;
+      report.dataset.place = "report-bug";
+      report.dataset.reportBug = "";
+      report.append(say("Report a bug"));
+      feedback.after(report);
+    }).catch(() => null);
+  }
   part.append(whoIs, places);
   return part;
+}
+
+/// The owner's console (/admin, docs/ADMIN.md), at the menu's foot above
+/// Sign out, for the site's owner alone: drawn only when the server said
+/// so (op=feed_count's admin: true, a key nobody else's answer has).
+function adminPart(state) {
+  if (state.admin !== true) return [];
+  const part = document.createElement("div");
+  part.className = "menu-owner";
+  const link = document.createElement("a");
+  link.href = "/admin";
+  link.dataset.place = "admin";
+  link.innerHTML = iconHtml("gauge");
+  link.append(say("Admin"));
+  part.append(link);
+  return [part];
 }
 
 function signOutButton() {
@@ -409,7 +443,7 @@ function drawSignedOut() {
     link.textContent = say("Sign in");
     link.href = `${langAt()}/profile`;
   }
-  for (const made of document.querySelectorAll(".site-head .account-menu, .site-head .account-part, .site-head .menu .sign-out")) made.remove();
+  for (const made of document.querySelectorAll(".site-head .account-menu, .site-head .account-part, .site-head .menu .menu-owner, .site-head .menu .sign-out")) made.remove();
   for (const menu of document.querySelectorAll(".site-head .menu summary")) {
     menu.classList.remove("account-btn");
     menu.replaceChildren(say("Menu"));
@@ -443,7 +477,7 @@ function drawSignedIn(state) {
     if (n) summary.append(badge(n));
     const list = document.createElement("div");
     list.className = "menu-list";
-    list.append(accountPart(state), ...[themeChoice()].filter(Boolean), signOutButton());
+    list.append(accountPart(state), ...[themeChoice()].filter(Boolean), ...adminPart(state), signOutButton());
     menu.replaceChildren(summary, list);
     menu.open = open;
   }
@@ -456,9 +490,10 @@ function drawSignedIn(state) {
     summary.setAttribute("aria-label", n ? say("Menu and your account, {n} new", { n }) : say("Menu and your account"));
     const list = menu.querySelector(".menu-list");
     list.querySelector(".account-part")?.remove();
+    list.querySelector(".menu-owner")?.remove();
     list.querySelector(".sign-out")?.remove();
     list.querySelector("nav")?.after(accountPart(state));
-    list.append(signOutButton());
+    list.append(...adminPart(state), signOutButton());
   }
 }
 
@@ -478,7 +513,8 @@ export async function showFeedCount({ ask = true } = {}) {
   const answer = await call("/api/people?op=feed_count").catch(() => null);
   if (!answer || answer.status !== 200 || answer.body.signed_in === false) return kept;
   const state = { email: email(), me: answer.body.me || null, count: Number(answer.body.count) || 0,
-    notifications: answer.body.notifications ?? null, feed: answer.body.feed ?? null };
+    notifications: answer.body.notifications ?? null, feed: answer.body.feed ?? null,
+    ...(answer.body.admin === true ? { admin: true } : {}) };
   keepState(state);
   drawSignedIn(state);
   return state;
@@ -526,15 +562,19 @@ showFeedCount({ ask: ![`${langAt()}/feed`, `${langAt()}/notifications`].includes
 
 // Send feedback (web/feedback.js): the footer's link, the account menu's
 // and /feedback's buttons, each a[data-feedback] or button[data-feedback]
-// ("bug", "idea" or "question" chooses it first). Loaded when pressed, not
-// before; a click meant for a new tab still opens /feedback there.
+// ("bug", "idea" or "question" chooses it first). And the menus' Report a
+// bug (a[data-report-bug]), the beta bar's dialog with the page pictured
+// (web/betabar.js reportBug), the menu closed first so it is not in the
+// picture. Loaded when pressed, not before; a click meant for a new tab
+// still opens /feedback there.
 document.addEventListener("click", (event) => {
-  const asked = event.target instanceof Element ? event.target.closest("[data-feedback]") : null;
+  const asked = event.target instanceof Element ? event.target.closest("[data-feedback], [data-report-bug]") : null;
   if (!asked || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey
     || event.altKey) return;
   event.preventDefault();
   asked.closest("details")?.removeAttribute("open");
-  import("/feedback.js").then(({ openFeedback }) => openFeedback({ kind: asked.dataset.feedback || "" }))
-    .catch(() => { location.href = `${langAt()}/feedback`; });
+  const opened = "reportBug" in asked.dataset ? import("/betabar.js").then(({ reportBug }) => reportBug("menu"))
+    : import("/feedback.js").then(({ openFeedback }) => openFeedback({ kind: asked.dataset.feedback || "" }));
+  opened.catch(() => { location.href = `${langAt()}/feedback`; });
 });
 addEventListener("brickworks:signed-in", () => showFeedCount().catch(() => null));

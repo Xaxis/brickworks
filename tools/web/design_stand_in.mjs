@@ -1737,8 +1737,9 @@ function people(method, params, body, who, state) {
       const fresh = (rows) => rows.filter((row) => Date.parse(row.at) > Date.parse(FEED_SEEN)).length;
       const feed = fresh(FEED.filter((row) => !["comment", "remix"].includes(row.kind) && !row.yours));
       const me = personOf(ME);
+      // The owner alone is told admin (api/_notifications.js feedCount).
       return answer(200, { count: fresh(NOTICES) + feed, notifications: fresh(NOTICES), feed, signed_in: true, ready: true,
-        me: { handle: me.handle, name: me.name } });
+        me: { handle: me.handle, name: me.name }, ...(state.admin === true ? { admin: true } : {}) });
     }
     if (op === "notifications") {
       const rows = NOTICES.map((row) => {

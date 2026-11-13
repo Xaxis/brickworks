@@ -1038,7 +1038,10 @@
   "Brickworks checks every rule on the model as it was shared, when it is entered and again while the challenge runs. An entry whose newer version breaks one says so on its card, and is not counted.": "Brickworks vérifie chaque règle sur le modèle tel qu’il a été partagé, à l’inscription puis tant que le défi dure. Une participation dont une version plus récente en enfreint une le dit sur sa carte, et n’est pas comptée.",
   "Built by hand and built with the assistant are judged apart, each with its own winner.": "Construit à la main et construit avec l’assistant sont jugés à part, chacun avec son gagnant.",
   "Sort the entries": "Trier les participations",
-  "Groups": "Groupes"
+  "Groups": "Groupes",
+  "Brickworks is in open beta. Its bar at the foot of every page has Report a bug and the way to join. Chosen for this browser.": "Brickworks est en bêta ouverte. Sa barre en bas de chaque page propose Signaler un bug et le moyen de rejoindre la bêta. Choisi pour ce navigateur.",
+  "<input type=\"checkbox\" data-beta-bar-show checked> Show the beta bar on every page": "<input type=\"checkbox\" data-beta-bar-show checked> Afficher la barre de la bêta sur chaque page",
+  "The bar at the foot of every page, with Report a bug. Chosen for this browser; Report a bug is in your account menu either way.": "La barre en bas de chaque page, avec Signaler un bug. Choisi pour ce navigateur ; Signaler un bug est de toute façon dans le menu de votre compte."
  },
  "scripts": {
   "Copy": "Copier",
@@ -2560,7 +2563,6 @@
   "The Brickworks beta": "La bêta de Brickworks",
   "Open beta": "Bêta ouverte",
   "Report a bug": "Signaler un bug",
-  "Hide the beta bar for a day": "Masquer la barre de la bêta pendant un jour",
   "You’re a tester. Thank you: your reports and our answers are in your account.": "Vous testez la bêta, merci ! Vos messages et nos réponses sont dans votre compte.",
   "The first {cap} testers we approve get a month of Pro, free: {spots} left.": "Les {cap} premiers testeurs que nous approuvons reçoivent un mois de Pro offert : encore {spots}.",
   "spot": "place",
@@ -2672,6 +2674,11 @@
   "minutes": "minutes",
   "min": "min",
   "sec": "s",
-  "You have three models in it already: that is the most.": "Vous y avez déjà trois modèles : c’est le maximum."
+  "You have three models in it already: that is the most.": "Vous y avez déjà trois modèles : c’est le maximum.",
+  "Beta bar hidden. Show it again in {settings}. Report a bug is in your account menu.": "Barre de la bêta masquée. Affichez-la de nouveau dans les {settings}. Signaler un bug est dans le menu de votre compte.",
+  "Beta bar hidden. Show it again in {settings}.": "Barre de la bêta masquée. Affichez-la de nouveau dans les {settings}.",
+  "Undo": "Annuler",
+  "Hide the beta bar": "Masquer la barre de la bêta",
+  "Admin": "Administration"
  }
 }

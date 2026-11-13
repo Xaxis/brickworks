@@ -1851,10 +1851,20 @@ plan with Claude as the client.
   `count`), labelled "Your account, N new"; its `.menu-list` holds
   `.account-part` (`.menu-who`: avatar, name, @handle; then `nav` links
   `data-place` profile, notifications, feed, saved, settings, the two
-  with their own `.count`), the footer's theme choice and
-  `button.sign-out`. Under 600 px (860 and under before 2026-10-26) the avatar menu is hidden and
+  with their own `.count`; Send feedback; while the beta is open Report a
+  bug, `a[data-report-bug]`, for everyone), the footer's theme choice,
+  for the site's owner alone `.menu-owner` (Admin, the gauge icon, to
+  /admin: drawn only from `?op=feed_count`'s `admin: true`, which no other
+  answer has, not even false, and kept with who you are; bugbar,
+  2026-11-13; `tests/test_menu_admin.py`, console browser flow's section
+  11) and `button.sign-out`. Under 600 px (860 and under before 2026-10-26) the avatar menu is hidden and
   `details.menu`'s summary becomes the avatar (`.account-btn`), its list
-  the site's links, the same `.account-part`, the theme and Sign out. Who
+  the site's links, the same `.account-part`, the theme and Sign out. Open,
+  a header menu is over the beta bar and at most the window's height,
+  scrolling in itself past it: Sign out in the window and nothing over it
+  at 390x844 and 375x667 with the bar shown (betahome browser flow, back;
+  Report a bug had put it under the bar, and at 375x667 it was past the
+  window before that; bugbar, 2026-11-13). Who
   you are and the counts come from `GET ?op=feed_count` (`me`,
   `notifications`, `feed`), kept in `localStorage["brickworks.me"]` (for
   the signed-in address) so the next page, a new tab and the next visit
@@ -4088,8 +4098,19 @@ plan with Claude as the client.
   (`window.brickworksReportBug({source: "site", from})` of web/bugreport.js,
   loaded on the first press; without it Send feedback's dialog as a bug),
   and Join (POST ?op=beta_join {via}; signed out the sign-in first, whose
-  welcome's answer stands) or You're a tester; its x hides it for a day
-  ("brickworks.betabar.hidden"). While it is shown, whatever is scrolled to
+  welcome's answer stands) or You're a tester; its x hides it in this
+  browser until it is shown again ("brickworks.betabar.hidden" `"off"`; a
+  number is a day's hiding from before, kept to its end) and says so in a
+  snackbar (`web/toast.js`, `.toast.act`): "Beta bar hidden. Show it again
+  in Settings." with Settings a link to /settings#beta-part and Undo, the
+  keyboard on Undo, Escape putting it away (bugbar, 2026-11-13: before, a
+  day's timer with nothing said, and no way back). Settings' Beta row has
+  "Show the beta bar on every page" (`input[data-beta-bar-show]`; signed
+  out, `#beta-bar-out` under the sign-in), shown or hidden at once
+  (`showBar`, "brickworks:betabar" on window, the other tabs by the
+  storage). Report a bug is in the account menu and Menu for everyone while
+  the beta is open (`a[data-report-bug]`, `web/follow.js`), the bar shown
+  or not. While it is shown, whatever is scrolled to
   (Tab, a link, a page's script) stops clear above it
   (`:root[data-betabar]` scroll-padding-bottom): Settings' Beta hub and
   Leave were under it at 390. What the server said is kept ten minutes
@@ -4107,7 +4128,8 @@ plan with Claude as the client.
   the changelog), the questions; a tester's what to try, known issues and
   early features (GET ?op=beta_hub). Prove: `node
   tools/web/betahome_flow.mjs --out=DIR` (the stand-in, beta open and off,
-  ends "betahome: all ok"), then on a `tools/deploy.sh --unit --beta-open`
+  ends "betahome: all ok"; `--only=hide,back` for the x, its toast, Undo,
+  Settings' choice and the menus' Report a bug), then on a `tools/deploy.sh --unit --beta-open`
   preview `--url=<preview>` with `BW_BYPASS`: the months left are the
   deployment's (?op=beta_spots), and Join's focus is read a frame after the
   page has loaded and drawn, when web/beta.js puts it there.
@@ -4217,8 +4239,8 @@ plan with Claude as the client.
   this, which opens the report with the log lines up to it ticked and the
   error in `details.error`. Sent: "Thank you. Report #N is in." and Your
   reports, /settings#feedback, where each is listed with its number and
-  where it stands. On the site, `brickworksReportBug()` (the beta bar loads
-  web/bugreport.js on its first press) draws the page itself to a canvas
+  where it stands. On the site, `brickworksReportBug()` (the beta bar's and
+  the menus' Report a bug load web/bugreport.js on the first press) draws the page itself to a canvas
   (no screen-share prompt; images of other origins left out) and opens the
   same report over the page; signed out it asks for a sign-in first. Prove:
   `PROBE_SIZE=1280x720 tools/probe.sh bugreport_probe` and at 1400x900
@@ -4226,7 +4248,11 @@ plan with Claude as the client.
   screen, a stand-in for the deployment, the sent JPEG read for the box);
   `bugreport browser flow` (`tools/web/bugreport_flow.mjs`, preview check
   [bugreport]) on a unit's preview with `tools/deploy.sh --unit
-  --beta-open`: the site at 390 and 1280, the kept picture read from the
+  --beta-open`: the site at 390 and 1280, two boxes and Clear the marks
+  (none drawn, the count line and what will be sent say so; bugbar,
+  2026-11-13: it had no listener), Leave the picture out and put back, at
+  390 sent with no marks (no `details.marks`, none in the kept picture), at
+  1280 the kept picture read from the
   bucket for the box (within 2 px), Your reports, Escape and Cancel; the
   app's top bar; with the beta shut, no button. Ends "bugreport: all ok".
   Its throwaway is a new account, so with the beta open the app shows the
