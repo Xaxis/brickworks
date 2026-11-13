@@ -2473,9 +2473,6 @@ msgstr "%s-glisser trace un cadre"
 msgid "Select: click selects it"
 msgstr "Sélectionner : un clic la sélectionne"
 
-msgid "drag moves it (on a joint, as the real part moves)"
-msgstr "glisser la déplace (sur une articulation, comme la vraie pièce)"
-
 msgid "%s-drag copies it"
 msgstr "%s-glisser la copie"
 
@@ -13890,3 +13887,23 @@ msgstr "étape %d, étape %d de l'encadré nommée %s, dans chacune des %d copie
 
 msgid "step %d's callout step %d's name taken off, in each of the %d copies of the %s"
 msgstr "nom de l'étape %d, étape %d de l'encadré retiré, dans chacune des %d copies de %s"
+
+# A dragged part carries what rests on it, Shift as it goes moves it alone
+# (APP_UX7 #20, carryrest).
+msgid "drag moves it and what rests on it (on a joint, as the real part moves)"
+msgstr "glisser la déplace avec ce qui est posé dessus (sur une articulation, comme la vraie pièce)"
+
+msgid "moving %s and the %s resting on it"
+msgstr "déplacement de %s et des %s posées dessus"
+
+msgid "Shift moves it alone"
+msgstr "Shift la déplace seule"
+
+msgid "moving %s alone"
+msgstr "déplacement de %s seulement"
+
+msgid "let go of Shift for the %s on it too"
+msgstr "relâchez Shift pour emporter aussi les %s posées dessus"
+
+msgid "what rests on it stays, more than a drag can follow"
+msgstr "ce qui est posé dessus reste : plus qu'un glisser ne peut emporter"

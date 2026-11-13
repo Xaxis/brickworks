@@ -9773,12 +9773,15 @@ func _unhandled_input(event: InputEvent) -> void:
 				and moved.position.distance_to(_press_at) > DRAG_SLOP:
 			_grabbing = _grab_on_joint(_press_brick)
 			if not _grabbing:
-				_dragging_part = _verbs.drag_start(_press_brick, _press_copies)
+				_dragging_part = _verbs.drag_start(_press_brick, _press_copies,
+					moved.shift_pressed)
 			_press_brick = 0
 		if _grabbing:
 			_grab_drag.motion(moved.position)
 			return
 		if _dragging_part:
+			# With what rests on it, or alone while Shift is held (carryrest).
+			_verbs.drag_alone(moved.shift_pressed)
 			_refresh_preview(moved.position)
 			return
 		# A left press that moves is a drag, never a placement: past a few
@@ -9900,6 +9903,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	# A part being dragged, let go of where the drag ends: put down there
 	# if it fits, and back where it was if not.
 	if _dragging_part and not button.pressed:
+		_verbs.drag_alone(button.shift_pressed)
 		_drop_dragged(button.position)
 		return
 	# A click on a part with the Select tool that never became a drag.
@@ -10797,6 +10801,12 @@ func _input(event: InputEvent) -> void:
 		_system_at = get_viewport().get_mouse_position()
 		_pointer_seen_ms = Time.get_ticks_msec()
 	var key: InputEventKey = event as InputEventKey
+	# Shift pressed or let go of with a part dragged: alone, or with what
+	# rests on it, at once rather than at the pointer's next move (carryrest).
+	if key != null and _dragging_part and key.keycode == KEY_SHIFT and not key.echo:
+		_verbs.drag_alone(key.pressed)
+		_refresh_preview(_pointer())
+		return
 	if key == null or key.keycode != KEY_ESCAPE or not key.pressed or key.echo:
 		return
 	var focused: Control = get_viewport().gui_get_focus_owner()
