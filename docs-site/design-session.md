@@ -8,10 +8,10 @@ rules:
   - Each change is one undo step.
 title: How a design session works
 nav: A design session
-description: What an assistant does when it designs in Brickworks, the words it is given, each call, the limits, and what to do when something goes wrong.
+description: The brief every assistant designs from in Brickworks: the method, the exact words it is given, what it sees, its limits, and what to do when something goes wrong.
 ---
 
-Whichever assistant designs, Claude through the connector, ChatGPT, Claude Code, or an AI on your own key in the assistant panel, it works the same way, with the same tools, and the app holds every change to the same checks. This page is the method in plain words, then the words the assistant itself is given, which are made from this page, so the two cannot differ.
+This page is the brief every assistant designs from. Whichever designs, Claude through the connector, ChatGPT, Claude Code, or an AI on your own key in the assistant panel, it is given the words below, made from this page so the two cannot differ, and the app holds every change to the same checks. Read it to know what your AI is told; to design with one, see [Designing with AI](/docs/ai).
 
 ## The method {#method}
 
@@ -77,9 +77,11 @@ Through the connector, a chat that opens on the model already in its tab, with a
 
 - **One undo step a change.** Whatever a call changes, Undo takes back in one step; your own Undo takes back any step, and the assistant's `undo` stops at a step another chat made.
 - **Parts by number.** `look_at_model` lists the parts with a number each, and later calls name parts by those numbers (`brick`, `bricks`).
-- **Pictures.** A change is answered with a close look at what changed, and `view_model` looks from any side.
+- **Seeing.** A change is answered with a close look at what changed. `view_model` looks from any side; `view_board` from up to six sides in one picture, with chosen parts picked out, parts made see-through, or the model as built to a step; `booklet_page` shows a page of the booklet as it prints; `in_view` says what the person sees: their step, the part in their hand, what they have selected. Looking changes nothing.
 - **Long work is a job.** A client waits about three minutes for an answer, so a render, a turntable, a booklet, a Studio file, a picture, a brickify or a recording answers at once with a job number and goes on in the window. `job` waits up to 45 seconds a call and gives the answer, picture and all, once it is done.
 - **Its tab.** Through the connector, each chat's calls go to its own tab: see [Several tabs, several chats](/docs/connector#tabs).
+
+![What view_board answers an assistant with: the red car from the front, the left, the top and a corner, four labelled views in one picture.](/docs/img/design-session-board.webp "view_board: four sides of the model in one picture, as the assistant sees it.")
 
 ## Limits {#limits}
 

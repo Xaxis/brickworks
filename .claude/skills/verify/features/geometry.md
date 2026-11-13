@@ -241,7 +241,10 @@ can occupy the same millimetre.
   holds what (studs from `Stability.stud_joints`, pins, clips, hinges and
   turntables from `Joints`) carry everything beyond them: the moment about
   the edge they would turn on against M = Σ F·dᵢ at 1 N a stud (working) and
-  3 N (lets go), and the pull on a part hung under another. A bridge that
+  where a stud lets go (`Balance.lets_go`: 1.92 N into a part two studs wide
+  or more, 3.07 N into one a stud wide, set from StableLego's built
+  structures by `stabletruth_probe`; it was 3 N for both until 2026-11-09),
+  and the pull on a part hung under another. A bridge that
   pins or axles alone make (`Joints.through`'s lines between the two) is
   weighed as one fails (`Balance._pin_load`, docs/MECHANISMS.md §4): an axle
   keyed in its hole ("axle") or pins on two lines ("two lines") hold it
@@ -714,6 +717,9 @@ godot --headless --path . --script src/dev/section_probe.gd      # built square,
 godot --headless --path . --script src/dev/world_view_probe.gd   # parts drawn inside their footprint sit on studs
 godot --headless --path . --script src/dev/stability_probe.gd    # arrangements with known answers
 godot --headless --path . --script src/dev/balance_probe.gd      # margins, joints, counterweight, poses by hand
+godot --headless --path . --script src/dev/stabletruth_probe.gd  # how often the check is right: StableLego's builds, StableText2Brick's scores
+python3 tools/stablelego_ldr.py stablelego                        # the builds again from StableLego's pinned files (MIT)
+uv run --no-project --with pyarrow python3 -I tools/stablelego_ldr.py s2b --parquet FILE   # the sample again
 MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 \
   --script src/dev/balance_view_probe.gd                         # the readout and the floor marks, in shots/balance/
 godot --headless --path . --script src/dev/holds_probe.gd        # and whether the assistant is told
@@ -814,13 +820,22 @@ turntable's top on its base, a differential's planet on its casing's stub, a
 driving ring on its ridged joiner and in the clutch gear it is pushed into), the
 gears from `assets/ldraw/gears.json` (see [pipeline](pipeline.md), `check the gear
 table`), and solves one linear equation per coupling (spur, crown, bevel, worm,
-ring, chain) by sparse elimination:
+ring, chain, and a knob wheel with a knob wheel) by sparse elimination, an
+equation that repeats the ones before it to the file's rounding (`RANK_SLACK`, a
+part in a thousand) taken as a repeat. Gears at right angles mesh within
+`BEVEL_SLACK` (3.5 LDU, Kinebrick's); one met only past `LINE_SLACK` is doubtful,
+and gives way where it alone would lock the train (the probe's "cross shaft
+turned by two crowns": 2.5 LDU out it turns, set aside and said; standing true it
+locks):
 
 ```sh
 godot --headless --path . --script src/dev/mechanism_probe.gd       # the ratios
 MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 \
   --script src/dev/mechanism_probe.gd                                # and drawn, in shots/mechanism/
 godot --headless --path . --script src/dev/mechanism_sets.gd        # 42055 and 42082 read whole
+tools/probe.sh kinefuncs_probe                                      # n4: a train beside a bridge turns
+python3 tools/kinefuncs.py run LABEL --app=SNAPSHOT [--dump] [--drag]  # Kinebrick's 186 sets, ~2 h
+python3 tools/kinefuncs.py table LABEL --write                      # docs/KINEFUNCS.md
 ```
 
 The probe proves it when it ends on "mechanism: gear trains read off the parts …".
@@ -1039,6 +1054,37 @@ arm meets the beam at 140.54° (to 2°) and -148.23° back; the four-bar's crank
 25.400°, worked 25.400°, asked 14.67 N·cm against 11, and unloaded goes round at 397
 rpm. On stage225 before it, 19 checks fail. Pictures: `shots/motion/<W>x<H>_*.png`.
 
+Simulate on real sets' functions (docs/APP_UX8.md #7, kinefuncs): `tools/kinefuncs.py
+fetch` takes Kinebrick (github.com/erik-larsen/kinebrick, MIT, its data CC BY-SA) at
+its pinned commit and each set's OMR file into `bench/data/kinebrick`; `jobs` reads
+every function's parts as Kinebrick names them; `run LABEL --app=SNAPSHOT` opens each
+of its 186 sets headless under heavy, from a locked snapshot, and drives every
+function's controls in Simulate 1.5 radians each way, judged by Kinebrick's own rules
+(works, partly, no); `table LABEL --write` writes docs/KINEFUNCS.md beside Kinebrick's
+results. `--dump` keeps each set's gear reading (each part's body, the joints, gears
+and meshes, the drag's joints, what each drive turned) in
+`kinefuncs_LABEL_dump/SET.json` for reading why one failed; `--drag` drives each
+control by move_part's drag as well (row field `drag`). With nothing given,
+`tools/probe.sh kinefuncs_probe` is the MCP walk's n4 through the gate: a 24 driving
+an 8 in a Technic-brick frame built beside the walk's bridge, which
+`simulate_mechanism driver=` the 24 turns (the 8 three turns to its one, the other
+way, "a piece apart from it, held by its largest part"), move_part turns 30° and 90°
+and one undo puts back, a loose 24 still refused as floating; it ends "PASS: 0
+failed", and on pre261 926a97e3e fails 4 ("it is floating").
+
+Stability measured: `stabletruth_probe` ends on "every check passed". StableLego's
+eight structures (tests/fixtures/stability/stablelego, each on a 48 x 48 baseplate,
+its outcome and the brick it broke under in its comments) are each judged as built,
+brick by brick: the stairs of 19 and 20, 39 of 39 bricks; the sticks with two loads
+and with three; 200 g on stairs of 3 and 4 levels. It prints what each stud needed
+at the worst joint (stair_19 1.84 N, stair_20 2.06 N at brick 2, 200 g on 4 levels
+2.00 N; stick 2.93 N held, 3.21 N came apart) and fails if the let-go into a part a
+stud wide or wider is outside the window those allow. Then StableText2Brick's 150
+structures (100 by a hash of their ids, the 50 most stressed): at least 95% of their
+bricks agree, every brick the check brings down a false alarm; and the car still
+stands up. On pre261 before it, the stair of 20, the 200 g on four levels and the
+wide window fail.
+
 Balance: `balance_probe` ends on "balance: the margins, the joints and the
 counterweight come out as worked by hand, the shipped models stand, and the
 worst pose is found". Its cases and their answers by hand: a 1x8 plate on one
@@ -1055,7 +1101,16 @@ followed with 2x4 bricks, stands 0.6 inside, and Stability's own verdict says
 standing; a turntable arm over a 2x8 base, standing as built and 1.1 studs
 past the front edge at 90° of the 24-pose sweep, its middle-of-the-base
 counterweight m(1 + 2d) by hand, and the same pose found from a keyed
-animation; and check_design's words. On 2026-10-13 every check was made to
+animation; and check_design's words. And each joint said by its kind
+(drvrecheck F4): "1 joint overloaded", never "stud joint", for a pin; more
+studs only when every joint past its load is on studs, else a second pin off
+its line; the standing line ("stands, 5 studs inside the right edge", its
+studs' load, its tipping) left in English in de, fr and es by nothing but a
+part's name; tipped over each of the 8 edges, standing and dragged, the way
+said whole ("bascule vers la gauche", "se vuelca hacia la izquierda", not the
+edge's adjective after the preposition), and Stress's words for the part
+pointed at, 17 ways, said in each with nothing but the part's name left in
+English (drvcheck3 W; 5 fail on pre261 ee8773128). On 2026-10-13 every check was made to
 fail once by breaking the code it guards (moment about the edge, the tubes,
 Stability's tipping, the sweep's two ways, the floor, the ground edges, the
 links, the hull's sign, the worst-pose pick, the advice's spare, the widen,

@@ -11,6 +11,12 @@
 ## weighing the view draws (StressView.ranked), so it says what a session's
 ## weakest_joints says, and it costs nothing more than filling its rows when
 ## a weighing comes in.
+##
+## And for the one stepped to, past its working load or near it, the fewest
+## parts that make it hold (Strengthen): a plate across the seam, a brick
+## under it or a second pin, shown as a ghost where it would go, and put
+## down by Strengthen as one step to undo. With From my bricks, from the
+## parts the person owns, as the parts bin counts them.
 class_name StressPanel
 extends PanelContainer
 
@@ -28,6 +34,20 @@ const SAFE := Color(0.78, 0.76, 0.72)
 var view: StressView
 ## Main's: [param ids] selected, and framed with [param around] (part ids).
 var show_part: Callable = func(_ids: Array, _around: Array) -> void: pass
+## Main's: makes what finds a joint's fix and puts it down (Strengthen,
+## one of Later's, compiled the first time a fix is looked for); none where
+## the panel has no model to change.
+var make_fixer: Callable = Callable()
+## What [member make_fixer] made ([method fixer_now]).
+var fixer: RefCounted = null
+## Main's: called once a fix is down, as after an edit by hand.
+var edited: Callable = func() -> void: pass
+## Main's: what the person owns, "part/colour" -> count
+## (CollectionStore.on_hand); empty with no collection.
+var owned: Callable = func() -> Dictionary: return {}
+## The fix for the one stepped to, once found; null while it is looked for,
+## or when there is none.
+var fix: RefCounted = null
 
 ## What is listed, worst first (StressView.Weak), and the one stepped to,
 ## -1 for none.
@@ -51,6 +71,14 @@ var _at: Label
 var _chips: Dictionary = {}
 ## A row's looks, one of each for every row.
 var _faces: Dictionary = {}
+var _offer: Label
+var _strengthen: Button
+var _mine: CheckBox
+var _ghost: MeshInstance3D = null
+## The newest look for a fix: an older one coming in late is dropped.
+var _looking: int = 0
+## Whether a look for a fix is under way.
+var _finding: bool = false
 
 
 func _ready() -> void:
@@ -59,6 +87,9 @@ func _ready() -> void:
 	var parent: Control = get_parent() as Control
 	if parent != null:
 		parent.resized.connect(_fit_later)
+	visibility_changed.connect(func() -> void:
+		if not visible:
+			_forget_fix())
 
 
 ## The list of [param weak] (StressView.ranked), the count over it; empty
@@ -137,12 +168,109 @@ func _say_chosen() -> void:
 	_next.disabled = entries.is_empty()
 	_at.text = "%d of %d" % [chosen + 1, entries.size()] if one != null else ""
 	if one == null:
+		_forget_fix()
+		_offer.visible = false
+		_strengthen.visible = false
+		_mine.visible = false
 		return
 	_why.text = view.words(one.id) if view != null else ""
 	_fix.text = StressView.fix_words(one, view.library if view != null else null)
 	_fix.visible = not _fix.text.is_empty()
+	_look_for_fix(one)
 	# Its words take room from the list, not from under the key strip.
 	_fit_later()
+
+
+# -- Strengthen ------------------------------------------------------------------
+
+
+## Look for [param one]'s fix, past its working load or near it: the one
+## found for it is kept while the model is as it was.
+func _look_for_fix(one: StressView.Weak) -> void:
+	var wanted: bool = make_fixer.is_valid() and view != null and view.report != null \
+		and one.margin < StressView.CLOSE
+	var theirs: Dictionary = owned.call() if wanted else {}
+	_mine.visible = wanted and not theirs.is_empty()
+	_offer.visible = wanted
+	_strengthen.visible = wanted
+	if not wanted:
+		_forget_fix()
+		return
+	if fix != null and fix.weak == one.id and fix.revision == view.world.revision:
+		return
+	_forget_fix()
+	_looking += 1
+	var asked: int = _looking
+	_finding = true
+	_offer.text = "Looking for the fewest parts that make it hold…"
+	_strengthen.disabled = true
+	fixer_now()
+	fixer.scenery = view.scenery
+	fixer.owned = theirs if _mine.visible and _mine.button_pressed else {}
+	var found: RefCounted = await fixer.find(view.report, one)
+	if asked != _looking:
+		return
+	_finding = false
+	fix = found
+	if found == null:
+		_offer.text = "No fix of up to three parts has room here: %s" % (
+			"brace it by hand." if one.joint != null else "hold it with studs by hand.")
+		_fit_later()
+		return
+	_offer.text = "Strengthen adds %s. %s.%s" % [found.what, Later.script(&"Strengthen").held_words(found),
+		"" if fixer.owned.is_empty() else (" All from your bricks." if found.mine
+			else " Not all from your bricks: you have none of one left.")]
+	_strengthen.disabled = false
+	_show_ghost(found)
+	_fit_later()
+
+
+## The Strengthen that finds the fixes, made the first time one is wanted;
+## null where the panel has none.
+func fixer_now() -> RefCounted:
+	if fixer == null and make_fixer.is_valid():
+		fixer = make_fixer.call()
+	return fixer
+
+
+## Put the fix down, one step to undo, and the parts it adds selected.
+func strengthen() -> void:
+	if fix == null or fixer == null:
+		return
+	var put: RefCounted = fix
+	var made: PackedInt64Array = fixer.place(put)
+	_forget_fix()
+	if made.is_empty():
+		view.say.call("the model changed: its fix is looked for again")
+		var one: StressView.Weak = entries[chosen] if chosen >= 0 and chosen < entries.size() else null
+		if one != null:
+			_look_for_fix(one)
+		return
+	fixer.builder.selection.clear()
+	for id: int in made:
+		fixer.builder.selection[id] = true
+	fixer.builder.selection_changed.emit(fixer.builder.selection.size())
+	view.say.call(Keymap.filled("strengthened: %s — {undo|takes it back}") % put.what)
+	edited.call()
+
+
+func _show_ghost(found: RefCounted) -> void:
+	if _ghost == null:
+		_ghost = MeshInstance3D.new()
+		_ghost.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		fixer.builder.add_child(_ghost)
+	_ghost.mesh = Later.script(&"Strengthen").ghost_mesh(found.parts, view.library)
+	_ghost.visible = true
+
+
+func _forget_fix() -> void:
+	_looking += 1
+	_finding = false
+	fix = null
+	if _ghost != null:
+		_ghost.visible = false
+	if _strengthen != null:
+		_strengthen.disabled = true
 
 
 ## The row for the [param n]th listed.
@@ -279,6 +407,27 @@ func _build() -> void:
 	_more = _words(column, 11, 0.65)
 	_why = _words(column, 12, 0.95)
 	_fix = _words(column, 12, 0.8)
+	_offer = _words(column, 12, 0.95)
+	_offer.visible = false
+	var fixing := HBoxContainer.new()
+	fixing.add_theme_constant_override("separation", 10)
+	column.add_child(fixing)
+	_strengthen = _button(fixing, "Strengthen", strengthen,
+		"Put the parts shown down: the joint then holds. One step to undo")
+	_strengthen.visible = false
+	_strengthen.disabled = true
+	_mine = CheckBox.new()
+	_mine.text = "From my bricks"
+	_mine.tooltip_text = "Make the fix of parts you own, in colours you have one of left"
+	_mine.focus_mode = Control.FOCUS_NONE
+	_mine.add_theme_font_size_override("font_size", 12)
+	_mine.visible = false
+	_mine.toggled.connect(func(_on: bool) -> void:
+		_forget_fix()
+		var one: StressView.Weak = entries[chosen] if chosen >= 0 and chosen < entries.size() else null
+		if one != null:
+			_look_for_fix(one))
+	fixing.add_child(_mine)
 	var steps := HBoxContainer.new()
 	steps.add_theme_constant_override("separation", 8)
 	column.add_child(steps)
@@ -325,7 +474,9 @@ func fields() -> Dictionary:
 	return {"count": _count.text, "tips": _tips.text if _tips.visible else "", "of": _of.text,
 		"rows": rows, "more": _more.text if _more.visible else "",
 		"why": _why.text if _why.visible else "", "fix": _fix.text if _fix.visible else "",
-		"at": _at.text}
+		"at": _at.text, "offer": _offer.text if _offer.visible else "",
+		"strengthen": _strengthen.visible and not _strengthen.disabled,
+		"finding": _finding, "mine": _mine.visible and _mine.button_pressed}
 
 
 ## Where each control is, for a probe or a browser test to press.
@@ -333,7 +484,7 @@ func controls_by_name() -> Dictionary:
 	if not visible:
 		return {}
 	var out: Dictionary = {"stress_close": _close, "stress_previous": _previous,
-		"stress_next": _next}
+		"stress_next": _next, "stress_strengthen": _strengthen, "stress_mine": _mine}
 	for n: int in mini(entries.size(), 12):
 		out["stress_row_%d" % n] = _row_buttons[n]
 	return out

@@ -1,0 +1,97 @@
+0 FILE notes.ldr
+0 Notes Between Every Part
+0 Name: notes.ldr
+0 Author: Jane Builder [jbuilder]
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+0 !HISTORY 2026-11-05 [jbuilder] Every line of this file is the author's
+0 BFC CERTIFY CCW
+0 !LDCAD GROUP_DEF [topLevel=true] [LID=1] [GID=Nb0SPNsyhmwHoIF] [name=Base] [center=0 0 0]
+0 // The base: two plates, side by side
+1 4 0 0 -20 1 0 0 0 1 0 0 0 1 3020.dat
+0 // the second plate of the base, in the base's group
+0 !LDCAD GROUP_NXT [ids=1] [nrs=-1]
+1 4 0 0 20 1 0 0 0 1 0 0 0 1 3020.dat
+0 STEP
+
+0 // Two bricks stand on the base
+1 1 0 -24 -20 1 0 0 0 1 0 0 0 1 3001.dat
+0 // and the second beside the first, MLCad's group of bricks
+0 MLCAD BTG Bricks
+1 1 0 -24 20 1 0 0 0 1 0 0 0 1 3001.dat
+0 // a 1 x 2 brick on top, the author's favourite
+1 14 0 -48 0 1 0 0 0 1 0 0 0 1 3004.dat
+0 STEP
+0 // The wings go on either side
+1 16 -60 -24 0 1 0 0 0 1 0 0 0 1 notes - wing.ldr
+0 // the second wing, the same as the first
+1 16 60 -24 0 1 0 0 0 1 0 0 0 1 notes - wing.ldr
+0 STEP
+0 // The engine at the back
+1 16 0 -48 60 1 0 0 0 1 0 0 0 1 notes - engine.ldr
+0 // and the fin out in front, drawn once and mirrored, as an author draws a left and a right
+1 16 0 -8 -120 -1 0 0 0 1 0 0 0 1 notes - fin.ldr
+0 // an antenna on the right, drawn once and mirrored
+1 16 30 -80 -60 -1 0 0 0 1 0 0 0 1 notes - antenna.ldr
+0 // a last plate to finish it
+1 2 0 -72 0 1 0 0 0 1 0 0 0 1 3023.dat
+0 STEP
+0 NOFILE
+0 FILE notes - wing.ldr
+0 Wing
+0 Name: notes - wing.ldr
+0 Author: Jane Builder [jbuilder]
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+0 BFC CERTIFY CCW
+0 // A wing: a 2 x 2 plate
+1 7 0 0 0 1 0 0 0 1 0 0 0 1 3022.dat
+0 // a 1 x 2 plate on it
+1 15 0 -8 -10 1 0 0 0 1 0 0 0 1 3023.dat
+0 STEP
+0 // and a 1 x 1 at its tip
+1 15 0 -8 10 1 0 0 0 1 0 0 0 1 3024.dat
+0 STEP
+0 // a round 1 x 1 on the tip
+1 14 0 -16 10 1 0 0 0 1 0 0 0 1 4073.dat
+0 STEP
+0 // and one at the root to finish it
+1 14 0 -16 -10 1 0 0 0 1 0 0 0 1 4073.dat
+0 STEP
+0 NOFILE
+0 FILE notes - engine.ldr
+0 Engine
+0 Name: notes - engine.ldr
+0 Author: Jane Builder [jbuilder]
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+0 // An engine: a 2 x 2 plate
+1 0 0 0 0 1 0 0 0 1 0 0 0 1 3022.dat
+0 // a 1 x 1 brick on it
+1 72 0 -24 0 1 0 0 0 1 0 0 0 1 3005.dat
+0 STEP
+0 // with a 1 x 1 plate on top
+1 72 0 -32 0 1 0 0 0 1 0 0 0 1 3024.dat
+0 STEP
+0 NOFILE
+0 FILE notes - fin.ldr
+0 Fin
+0 Name: notes - fin.ldr
+0 Author: Jane Builder [jbuilder]
+0 BFC CERTIFY CCW
+0 // A fin: a 1 x 4 plate
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3710.dat
+0 // two 1 x 2 plates on it, the left one first
+1 4 -20 -8 0 1 0 0 0 1 0 0 0 1 3023.dat
+1 4 20 -8 0 1 0 0 0 1 0 0 0 1 3023.dat
+0 STEP
+0 // and a 1 x 1 at its left end, which the mirror puts at the right
+1 4 -30 -16 0 1 0 0 0 1 0 0 0 1 3024.dat
+0 STEP
+0 NOFILE
+0 FILE notes - antenna.ldr
+0 Antenna
+0 Name: notes - antenna.ldr
+0 Author: Jane Builder [jbuilder]
+0 // An antenna: one bar, its only part
+1 0 0 0 0 1 0 0 0 1 0 0 0 1 3957.dat
+0 // nothing else goes on the antenna
+0 STEP
+0 NOFILE

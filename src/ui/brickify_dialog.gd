@@ -263,7 +263,7 @@ func show_for(mesh: MeshFile) -> void:
 	_show_model()
 	_on_up_changed()
 	_on_colours_changed()
-	visible = true
+	HudFront.show_panel(self)
 	# While the size is chosen, Brickify compiles on a worker and the parts
 	# are on their way.
 	_prefetch()

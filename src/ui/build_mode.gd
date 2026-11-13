@@ -83,6 +83,9 @@ var _lots: Array[Dictionary] = []
 var _top: PanelContainer
 var _close: Button
 var _caption: Label
+## The step's name, under its number, where its designer gave it one
+## (Instructions.Step.name, stepnames).
+var _step_name: Label
 var _note: Label
 ## The model changed from this step since this builder's place was kept,
 ## while they are told so; 0 when it did not.
@@ -149,6 +152,11 @@ func _build_top() -> void:
 	_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_caption.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	words.add_child(_caption)
+	_step_name = Label.new()
+	_step_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_step_name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_step_name.visible = false
+	words.add_child(_step_name)
 	_note = Label.new()
 	_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -299,6 +307,7 @@ func _fit() -> void:
 	for row: Node in [_close.get_parent(), _next.get_parent()]:
 		(row as HBoxContainer).add_theme_constant_override("separation", roundi(10.0 * pt))
 	_caption.add_theme_font_size_override("font_size", roundi(24.0 * pt))
+	_step_name.add_theme_font_size_override("font_size", roundi(18.0 * pt))
 	_note.add_theme_font_size_override("font_size", roundi(16.0 * pt))
 	_changed_words.add_theme_font_size_override("font_size", roundi(16.0 * pt))
 	_changed_go.add_theme_font_size_override("font_size", roundi(16.0 * pt))
@@ -410,10 +419,11 @@ static func keep_by_part(on: bool) -> void:
 		_by_part_here = on
 
 
-## Put a page up: its caption ("Step 3 of 24"), what else to say, and its
-## parts. [param of] is the last page. A part at a time, [param at_part] of
-## [param of_parts] is the part put down, and [param lots] its one part (none
-## for a finished sub-assembly put on whole).
+## Put a page up: its caption ("Step 3 of 24", and on a line after it the
+## step's name where it has one, BuildSteps.caption), what else to say, and
+## its parts. [param of] is the last page. A part at a time, [param at_part]
+## of [param of_parts] is the part put down, and [param lots] its one part
+## (none for a finished sub-assembly put on whole).
 func show_page(at: int, of: int, caption: String, note: String, lots: Array[Dictionary],
 		at_part: int = 0, of_parts: int = 0) -> void:
 	# Told on one page and moved on from it: the builder has chosen.
@@ -421,12 +431,21 @@ func show_page(at: int, of: int, caption: String, note: String, lots: Array[Dict
 		_hide_changed()
 	page = at
 	last = of
-	_caption_text = caption if at > 0 else "Ready to build"
+	_caption_text = caption.get_slice("\n", 0) if at > 0 else "Ready to build"
 	_note_text = note
 	_lots = lots
 	part = at_part if at_part > 0 else 0
 	parts = of_parts if at_part > 0 else 0
 	_caption.text = _caption_text
+	# Under the number, smaller, as a booklet prints it beside the number.
+	_step_name.text = caption.substr(caption.find("\n") + 1) if at > 0 and caption.contains("\n") \
+		else ""
+	_step_name.visible = not _step_name.text.is_empty()
+	if _step_name.visible:
+		# A person's words, whole and each name of them (Step.called).
+		Language.keep_name(_step_name.text)
+		for name: String in _step_name.text.split(" · ", false):
+			Language.keep_name(name)
 	_note.text = note if at > 0 else caption + ". Get the parts out, then press Start."
 	_note.visible = not _note.text.is_empty()
 	_progress.max_value = maxf(of, 1.0)
@@ -573,7 +592,7 @@ func _hide_changed() -> void:
 
 
 func open() -> void:
-	visible = true
+	HudFront.show_panel(self)
 	_fit()
 
 
@@ -695,6 +714,7 @@ func page_state() -> Dictionary:
 			targets[name] = [snappedf(rect.size.x / _pt, 0.1), snappedf(rect.size.y / _pt, 0.1)]
 	var counted: Node = _strip.find_child("PartCount", true, false) if _strip != null else null
 	return {"open": visible, "page": page, "last": last, "caption": _caption_text,
+		"name": _step_name.text if _step_name.visible else "",
 		"note": _note.text if _note.visible else "", "told": _told.text if _told.visible else "",
 		"pictures_ms": _pictures_ms,
 		"lots": _lots.size(), "pictures": _tiles.filter(func(tile: ThumbTile) -> bool:
@@ -772,6 +792,7 @@ func show_party(board: Array, waiting: bool, joining: bool) -> void:
 	if waiting:
 		_caption_text = "Your part is built"
 		_caption.text = _caption_text
+		_step_name.visible = false
 		_note.text = _waiting_words(board)
 		_note.visible = true
 		_next.text = "Waiting"
@@ -783,6 +804,7 @@ func show_party(board: Array, waiting: bool, joining: bool) -> void:
 	elif joining:
 		_caption_text = "Put it together"
 		_caption.text = _caption_text
+		_step_name.visible = false
 		_note.text = "Everyone is done. The others' parts go on where they are outlined."
 		_note.visible = true
 		_next.disabled = false

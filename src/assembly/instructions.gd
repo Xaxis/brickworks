@@ -133,6 +133,17 @@ class Step extends RefCounted:
 	## a step worked out.
 	var authored_in: String = ""
 	var authored_step: int = -1
+	## What its designer called it ("Build the cockpit"), as Studio names a
+	## step: said beside its number on the timeline, in Build it and on
+	## its booklet page. Kept with the model's step (BookletLooks "name",
+	## [method names_kept]); "" for none, and for a step worked out.
+	var name: String = ""
+	## The name of the model's step this one is the first built in, where
+	## that step has no step of its own to say it beside: one that only puts
+	## on copies of sub-models built where they stand, in their own steps, is
+	## those steps. "" for none ([method Instructions._names_within]). Up to
+	## 2026-11-12 sub.ldr's "Both wings on" showed nowhere (sncheck F8).
+	var within: String = ""
 
 	## A step inside a callout box.
 	func in_callout() -> bool:
@@ -155,9 +166,21 @@ class Step extends RefCounted:
 			pieces.append("%d × %s" % [int(parts[part_id]), name])
 		return ", ".join(pieces)
 
+	## What the step is called where its number is shown: the name of the
+	## step it starts ([member within]), then its own: "Both wings on · Wing
+	## plate". Its own alone is what a name edit changes.
+	func called() -> String:
+		if within.is_empty():
+			return name
+		return within if name.is_empty() else within + " · " + name
+
 	## What the timeline says this step is, numbered as the booklet is:
-	## "Step 12 of 40 · Window (2x), 1 of 3".
-	func caption(main_steps: int) -> String:
+	## "Step 12 of 40 · Window (2x), 1 of 3", and its name after, where its
+	## designer gave it one, [param between] the two: "Step 3 of 24 · Build
+	## the cockpit", or on a line of its own in Build it. A name longer than
+	## [param name_most] characters is cut there, with an ellipsis: the
+	## timeline's one line (0: whole).
+	func caption(main_steps: int, between: String = " · ", name_most: int = 0) -> String:
 		var said: String = "Step %d of %d" % [number, main_steps]
 		if not assembly.is_empty():
 			var what: String = assembly + (" (%dx)" % times if times > 1 else "")
@@ -165,7 +188,22 @@ class Step extends RefCounted:
 				said += " · %s, %d of %d" % [what, callout_step, callout_steps]
 			else:
 				said += " · %s, put on" % what
+		if not called().is_empty():
+			said += between + shortened_name(name_most)
 		return said
+
+	## [method called], cut at [param most] characters with an ellipsis where
+	## it is longer (0: whole).
+	func shortened_name(most: int) -> String:
+		var whole: String = called()
+		if most <= 0 or whole.length() <= most:
+			return whole
+		# Cut between words where it can, never after a comma: "sides,…",
+		# and never inside a letter as a reader sees it (BookletLooks.cut).
+		var cut: String = BookletLooks.cut(whole, most - 1)
+		if cut.rfind(" ") > most / 2:
+			cut = cut.left(cut.rfind(" "))
+		return cut.strip_edges().rstrip(",;:·-–—") + "…"
 
 
 ## Where a brick sits and what it rests on.
@@ -4218,7 +4256,71 @@ static func _authored_from(nodes: Array[Node2], found: Array[Assembly], world: B
 		out[index].index = index + 1
 	if units == null:
 		_sections_kept(world, out)
+		names_kept(world, out)
 	return out
+
+
+## Each of [param steps] given the name its designer gave its step of the
+## model (BookletLooks "name"), kept as the model's look is: a step's name
+## goes with its parts over a step edit, as its zoom does. A step worked out
+## has none, and neither has one the booklet's look names nothing for. Also
+## for steps carried with a shared model (SharedPages.read), which name the
+## model's steps as these do. Read only, so on any thread: a plan runs on a
+## worker as the model's file is written.
+static func names_kept(world: BrickWorld, steps: Array[Step]) -> void:
+	if world == null or world.step_looks.is_empty():
+		return
+	var shown: Dictionary = {}      ## the look's key of each step the plan has
+	for step: Step in steps:
+		step.name = ""
+		step.within = ""
+		if step.authored_step >= 0:
+			step.name = str(BookletLooks.of(world, step.authored_in, step.authored_step)
+				.get("name", ""))
+			shown[BookletLooks.key(BookletLooks.definition_of(step.authored_in),
+				step.authored_step)] = true
+	_names_within(world, steps, shown)
+
+
+## Each name of a step of the model's that the plan has no step for, said
+## on the first step built in it ([member Step.within]): a step that puts on
+## only copies of sub-models built where they stand, in their own steps (not
+## in a callout, whose step putting it on is a step of its own), is those
+## steps. sub.ldr's main step 2, "Both wings on", puts on its two wings, and
+## its name was in the file and no plan, list or page (sncheck F8).
+## [param shown] is the look's key of every step the plan has.
+static func _names_within(world: BrickWorld, steps: Array[Step], shown: Dictionary) -> void:
+	# Read no further where every name is a step's: a model's usual case.
+	var unsaid: bool = false
+	for look: String in world.step_looks:
+		if not shown.has(look) and world.step_looks[look] is Dictionary \
+				and (world.step_looks[look] as Dictionary).has("name"):
+			unsaid = true
+			break
+	if not unsaid:
+		return
+	var lowest: Dictionary = AuthorSteps.lowest_under(world)
+	var said: Dictionary = {}       ## a section's path|step -> true, once said
+	for step: Step in steps:
+		if step.authored_step < 0 or step.callout > 0:
+			continue
+		var names := PackedStringArray()
+		var path: String = step.authored_in
+		# Each copy round it built in steps of its own, the innermost first:
+		# the step of the section round it it goes on in.
+		while not path.is_empty():
+			if not AuthorSteps.in_parent(world, path):
+				var outer: String = AuthorSteps.home(world, Assemblies.parent_of(path))
+				var at: int = AuthorSteps.unit_step(world, path, lowest)
+				var place: String = "%s|%d" % [outer, at]
+				if at >= 0 and not said.has(place) \
+						and not shown.has(BookletLooks.key(BookletLooks.definition_of(outer), at)):
+					said[place] = true
+					var named: String = str(BookletLooks.of(world, outer, at).get("name", ""))
+					if not named.is_empty():
+						names.insert(0, named)
+			path = Assemblies.parent_of(path)
+		step.within = " · ".join(names)
 
 
 ## [param steps]' sections as the marks kept on the model's steps say

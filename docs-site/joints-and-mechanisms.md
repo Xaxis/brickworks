@@ -12,19 +12,30 @@ nav: Joints and mechanisms
 description: Move parts on their real joints, turn gear trains, lay hoses and chains, check a model stands, and give it motions of its own.
 ---
 
-Brickworks knows how parts are joined: studs, Technic pins and axles, hinges, clips, ball joints, turntables and gears. That lets a model move as the real one would, and lets the app tell you whether it would stand.
+Brickworks knows how parts are joined: studs, Technic pins and axles, hinges, clips, ball joints, turntables and gears. So a model moves as the real one would, and the app can tell you whether it would stand. Joints are worked with the **Hinge** tool, a drag, the **Make** menu's hoses and chains, and **Tools › Check stability** and **Simulate mechanism…**.
+
+## Swing on a hinge {#hinge}
+
+![The moon rover's solar panel, hinge and all, selected and swung up beside the other lying flat, and Properties beside it saying the ten parts and their Hinge angle, -40.](/docs/img/joints-hinge.webp "Swing on its hinge (J): the panel, swung 15° a press; Properties says its angle.")
+
+1. Choose the **Hinge** tool ([[Shift+I]], or **Tools › Hinge tool**).
+2. Click a part that hangs on a hinge, a clip or a turntable. Each click swings it 15°; [[Shift]]-click swings it back.
+
+What swings is what is selected. To swing a lid and what is built on it, select them all (or make them a sub-assembly), then press [[J]] with any tool ([[Shift+J]] back), or right-click and choose **Swing on its hinge**. For an exact angle, type it in the **Hinge** field of [Properties](/docs/panels-and-settings#properties). A swing that would run into another part is not made.
+
+## Meet on hinges {#meet}
+
+Select a part and the part it should meet across a chain of hinges, clips or turntables, then press **Meet** in Properties. Every joint between them swings, as little as it can, so a free end of one takes the other: a hinge's finger into its fork, a clip onto a bar. A click hinge stops on its clicks. It is one step to undo; when no swing makes them meet, nothing moves and the status bar says what is in the way.
+
+<!-- covers
+ui:meet on hinges
+-->
 
 ## Grab and move on a joint {#grab}
 
-With the **Select** tool, drag a part that hangs on a hinge, a clip, a turntable, a pin, an axle, a ball or a round stud: it moves as the real part moves, about its joint, and whatever is built on it moves with it. [[Esc]] puts it back.
+With the **Select** tool, drag a part that hangs on a hinge, a clip, a turntable, a pin, an axle or a ball: it moves about its joint, and what is built on it comes too. [[Esc]] puts it back. To move a hand or a hook by its whole arm, hold the pointer still on it a moment, then drag.
 
-- **A chain of joints**: hold the pointer still on a part at the end of several joints (a minifigure's hand, a crane's hook) for a moment, then drag. The whole chain back to what stays moves to follow it.
-- **Closed loops**: a steering arm drags its tie rod and the other wheel with it; a rear wheel turns the engine it drives.
-- **Gears, racks and worms**: turn a gear and the train turns at its real ratios. A steering wheel turns the rack on the track rod and the wheels with it. A worm turns its gear an eighth a turn, and holds it: drag the gear and it will not go.
-- **Linear actuators** and pneumatic cylinders slide out and in.
-- **Free joints swing**: a beam on a pin without friction ridges, dragged out and let go, swings and comes to rest hanging. A gear or wheel flung round coasts, and stops against its bearing's friction.
-- **Hoses follow**: a pneumatic tube bends with what it is fitted to, and a drag the tube is too short for stops, the status bar naming the tube.
-- **Models fall**: on no floor, swing a section out past the model's edge and let go, and a model that would tip, tips.
+The rest of the model answers as the real one would. A steering arm drags its tie rod and the other wheel. Gears and racks turn at their real ratios, and a worm holds its gear. Actuators slide. A beam on a free pin swings and settles; a flung wheel coasts to a stop. A hose bends with what it is fitted to. With no floor, a model pushed past its edge tips over.
 
 <!-- covers
 ui:grab and move on a joint
@@ -46,7 +57,13 @@ lib:axles and gears on a line
 
 ## Hoses, tubes and chains {#flex}
 
-**Make › Hose, tube or chain…**, then click two pin holes (or two connectors) to lay a hose, a pneumatic tube, a string or a flexible axle between them along a natural curve; click round two sprockets for a chain. **Make › Reshape the hose or chain** drags a hose's bend, or puts a chain round other sprockets.
+![The Hose, tube or chain panel: buttons for a pneumatic tube, a ribbed hose, a Flex-system hose, a flexible axle, a string, a Technic chain, a tread, a rubber band and a spring or shock, with the length to use.](/docs/img/joints-flex.webp "Make › Hose, tube or chain… lays a flexible part between two connectors.")
+
+1. **Make › Hose, tube or chain…**, and choose what to lay and its length (or the shortest that fits).
+2. Click the pin hole or connector it starts on, then the one it ends on. For a chain or a tread, click the sprockets it goes round.
+3. Drag the bend points to shape it; **Add a bend** gives another, **Straighten** takes them out. **Done**.
+
+It is laid at the real part's length and saved as parts any LDraw program reads. **Make › Reshape the hose or chain** opens a laid one again. For track, see [Lay train track](/docs/placing-parts#tracks).
 
 <!-- covers
 ui:hoses and chains by hand
@@ -55,7 +72,7 @@ lib:flexible parts along a path
 
 ## Rubber bands and springs {#bands}
 
-Pick a rubber belt in the parts bin, then click the pulleys, wheels, bushes or axles it goes round, in order round the loop. It wraps each one in its groove, on the side the loop turns, and says how far it is stretched. Pick a shock absorber in the bin, or **Build › Hose, tube or chain…, Spring or shock**, and click the two pin holes or pins it goes between. Its coil keeps its turns as it is stretched or squeezed. Move a part a band or a spring is on and it follows, in the same undo step. Both save in the file as LDraw parts.
+For a band, choose **Rubber band** in the same panel (or a belt in the parts bin) and click the pulleys, wheels or axles it goes round, in order; it says how far it is stretched. For a spring, choose **Spring or shock** (or a shock absorber in the bin) and click the two pins it goes between. Move a part either is on and it follows, in the same undo step.
 
 <!-- covers
 ui:bands and springs by hand
@@ -63,7 +80,7 @@ ui:bands and springs by hand
 
 ## Check stability {#stability}
 
-**Tools › Check stability** ([[Alt+K]]) weighs the model: where its centre of mass is against its footprint, whether it would stand, and which joints carry more than they can hold. Those parts are selected and tinted, so you can see what to brace. [View › Stress](/docs/the-view#stress) shows the same for every part as you build.
+**Tools › Check stability** ([[Alt+K]]) weighs the model: where its centre of mass is against its footprint, whether it stands, and which joints carry more than they hold. Those parts are selected. [View › Stress](/docs/the-view#stress) shows the same on every part as you build, and with the assistant on, a weak part's right-click menu has **Ask Claude to brace this…**.
 
 <!-- covers
 lib:stability
@@ -75,9 +92,15 @@ ui:balance readout
 
 ## Simulate a mechanism {#simulate}
 
-**Tools › Simulate mechanism…** ([[Alt+U]]), then click an axle or a crank: the gear train turns from it, and the panel says how fast each part goes, each arm's period, what locks it, and whether the model stays standing as it turns. It reads the model as it is and changes nothing.
+![Simulate mechanism on a kart driven from its steering wheel: the panel down the left saying what turns and how fast, that the steering goes all the way round with nothing meeting, and whether the kart stands, and the kart with its footprint drawn on the floor.](/docs/img/joints-steering.webp "Simulate mechanism turns the train from the part you choose, and finds whether anything stops it.")
 
-It also says where the motion stops. Over the whole cycle it finds the first angle where two moving parts meet, names them and tints them red. It gives the range of a crank or a linkage in degrees. When a motor turns the train (Power Functions M, L or XL, an E-motor or a 9 V motor), it weighs the motor's torque against the load it lifts, and says where the motor stalls. Play and the slider stop there, and **Go to the stop** shows it.
+1. Select the part to drive (a crank, a steering wheel, a motor's axle), or none.
+2. **Tools › Simulate mechanism…** ([[Alt+U]]). The train turns from it; click another axle or crank to drive that instead.
+3. **Play**, or drag the slider through the cycle.
+
+The panel says how fast each part turns, what locks the train, and whether the model stays standing as it turns. It finds where the motion stops: the first two parts that meet, tinted red, a linkage's range, or where a motor stalls under its load. Play stops there, and **Go to the stop** shows it. Nothing in the model changes. An assistant can find gears for a ratio you need (`search_gear_ratio`).
+
+A part on a hinge, a click joint or a single stud turns too, as dragging it in the view turns it. A piece that stands apart from the rest, such as a gear train built beside a bridge, turns on its own frame, held by its largest part. Knob wheels turn each other, a pinion on a slanted steering column drives its rack, and a sub-assembly named Chassis or Frame holds still only what no joint turns.
 
 <!-- covers
 ui:simulate mechanism
@@ -85,25 +108,32 @@ lib:mechanisms
 lib:gear ratio search
 -->
 
-![Simulate mechanism turning an orrery's gear train.](/img/simulate-720.webp "Simulate mechanism on an orrery.")
-
-Claude can find a gear train for a ratio you need, from real gears on real axle spacings (`search_gear_ratio`).
-
 ## Motions {#motions}
 
-A model can keep its own named movements in its file: *Open the doors*, *Steer left and right*, *Lift the boom*. **Build › Motions…** ([[Alt+O]]) lists them, with suggestions from what moves in the model. Keep a suggestion, or press **New motion**, then **Record** and drag a part in the view, or set a joint's slider to put a key. **Play** and **Play backwards** run it. Anybody who opens your shared model can play them too.
+![The Motions panel for a kart: no motions yet, two suggested from what moves (Steer left and right, Turn the gears), each with Keep, and New motion.](/docs/img/joints-motions.webp "Build › Motions… suggests motions from what moves in the model.")
+
+A model can keep named movements in its file: *Open the doors*, *Steer left and right*. **Build › Motions…** ([[Alt+O]]) lists them, and suggests more from what moves.
+
+1. **Keep** a suggestion, or press **New motion** and name it.
+2. Press **Record** and drag the parts in the view, or set a joint's slider to put a key.
+3. **Play** or **Play backwards**. **Play all** runs them in turn.
+
+Anyone who opens your shared model can play them.
+
+A model on wheels can drive. Its suggestion *Drive and turn left* takes it 32 studs straight, then a quarter turn to the left. Under **Where it drives**, add a leg and pick **Straight**, **Left** or **Right**, with its length or its angle and radius in studs. As it drives, each wheel turns once for each round of its tyre, and the steering turns into the corners. **Play** leaves the model where the drive ends, as one undo step: the whole model moved, its wheels and steering at rest as they were, and a file from another program keeps every line but those that place its parts and sub-models. **Play backwards** drives it back the same way.
 
 <!-- covers
 ui:motions panel
 lib:motions
 lib:playing motions
+lib:driving along a path
 lib:posing joints
 lib:keyframed animation
 -->
 
 ## Hidden colours {#hidden-colours}
 
-**Tools › Colour the hidden parts…** gives the parts nobody sees in the finished model a colour for each section, stage or side, as big sets do, so a builder can find their place. It shows a preview before it changes anything. It knows which parts can be seen from outside, through a gap or a clear window.
+**Tools › Colour the hidden parts…** gives the parts nobody sees in the finished model a colour for each section or side, as big sets do, so a builder finds their place. It knows what shows through a gap or a window, and shows a preview first.
 
 <!-- covers
 ui:colour the hidden parts

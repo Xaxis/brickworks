@@ -64,7 +64,10 @@
 //   net          when the last byte of the build's own files (the engine's
 //                script, wasm and pack) arrived;
 //   main thread  its CPU before interactive (Chrome's own ThreadTime),
-//                which the box's load does not stretch, and its long tasks
+//                which the box's load stretches too, if less than the wall
+//                clock: one build's was 5.7 s at load 18-31 and 9.2 s at
+//                33-43 (webstart9, 2026-11-09), so two builds are compared
+//                at the same moments (start_abba.mjs); and its long tasks
 //                by the page's clock; all threads, the engine's and the wasm
 //                compiler's too (ProcessTime). The wall clock past the
 //                network and the main thread is mostly the drawing, done
@@ -523,7 +526,10 @@ function sayFiles(run) {
 // disk, signed in as a returning visitor; its warm load after in the same.
 async function visitor() {
   const dir = mkdtempSync(join(tmpdir(), "load_check-"));
-  const context = await chromium.launchPersistentContext(dir, { args: SOFTWARE, viewport: { width: 1280, height: 800 } });
+  // The bucket itself, not this machine's copy of it (storage_mirror.mjs): a
+  // first visit's parts come from there, and are part of what is timed.
+  const context = await chromium.launchPersistentContext(dir, { args: SOFTWARE, viewport: { width: 1280, height: 800 },
+    realStore: true });
   if (canSignIn()) await signInContext(context).catch((e) => console.log(`  (could not sign in: ${e.message})`));
   else console.log("  (not signed in: no Supabase keys in the environment, so the app shows its sign-in screen)");
   return { context, done: async () => { await context.close().catch(() => {}); rmSync(dir, { recursive: true, force: true }); } };

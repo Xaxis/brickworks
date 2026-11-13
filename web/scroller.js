@@ -129,7 +129,10 @@ if (typeof document !== "undefined" && "ResizeObserver" in window) {
   const sized = new ResizeObserver((entries) => {
     for (const entry of entries) later(entry.target);
   });
-  // What is in it changed: cards put in, a tab's count, a pill's words.
+  // What is in it changed: cards put in, a tab's count, a pill's words,
+  // an item shown or hidden, or restyled. The gallery's Following tab is
+  // shown (hidden off) once the signed-in answer comes; measured before
+  // it, the row said it had no more, unfaded, with Collections cut.
   const filled = new MutationObserver((changes) => {
     for (const change of changes) {
       const el = change.target.closest?.(SCROLLERS) || change.target.parentElement?.closest(SCROLLERS);
@@ -140,7 +143,7 @@ if (typeof document !== "undefined" && "ResizeObserver" in window) {
     if (started.has(el)) return;
     started.set(el, el.matches(".scroller:not(.card)") ? buttonsFor(el) : []);
     sized.observe(el);
-    filled.observe(el, { childList: true, subtree: true, characterData: true });
+    filled.observe(el, { childList: true, subtree: true, characterData: true, attributeFilter: ["hidden", "class"] });
     later(el);
   };
   document.addEventListener("scroll", (event) => {

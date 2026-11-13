@@ -30,21 +30,29 @@
 //      rules in the dialog, By hand, Enter it: it is in. On the tower's
 //      page the dialog says the set's rule, naming the red brick; the hall
 //      is refused for its parts and the set, the plain one for Tested, each
-//      in words. Bob enters his shed with the assistant; Cy, under 13, is
-//      refused.
+//      in words. Bob enters his shed with the assistant from /challenge's
+//      own Enter a model, at 1280 px: his models in the gallery to choose
+//      from; the page then shows that group, his shed marked Your entry.
+//      Cy, under 13, is refused.
 //      Ed, who follows Ada, finds it in his feed at 390 (light) and 1280
 //      (dark): "Ada entered “the house” in the challenge “…”, built by hand".
-//   4. /challenge signed out at 1280 (light) and 390 (dark): the brief, the
-//      three rules, the days, the house under Built by hand and the shed
-//      under Built with the assistant, each the gallery's card, Vote for it
-//      asking to sign in; and the gallery's front says it in one line.
-//   5. Ed, signed in at 390 (light) and 1280 (dark), votes for both: each
-//      button says Your vote. Bob votes for the house and is refused a
+//   4. /challenge signed out at 1280 (light) and 390 (dark), laid out as
+//      the best contest pages are (challengepage, tools/web/challenge_page.mjs
+//      judges it): the status Open, a live countdown that counts, the day
+//      it is of how many, the numbers, Enter a model beside Share, the
+//      three rules, the groups as tabs with their counts (the house under
+//      Built by hand, the shed under Built with the assistant, a tab and the
+//      arrow keys between them), each the gallery's card with Vote at its
+//      foot; Vote and Enter a model each ask to sign in; and the gallery's
+//      front says it in one line.
+//   5. Ed, signed in at 390 (light) and 1280 (dark), votes for both, each
+//      asked once in a dialog: each card is marked Your vote and the line
+//      over the cards names it. Bob votes for the house and is refused a
 //      second in its group; his own shed says Your entry; Ada may not vote
 //      for her own, nor Cy at all, and the page tells Cy why.
-//   6. The owner ends it on /admin: /challenge shows the winners, the house
-//      by hand with 2 votes and the shed with the assistant with 1, each
-//      entry's votes; Ada's designer page has the win as the first of her
+//   6. The owner ends it on /admin: /challenge shows the winners first, over
+//      the entries, the house by hand with 2 votes and the shed with the
+//      assistant with 1, each entry's votes; Ada's designer page has the win as the first of her
 //      achievements under her numbers (the house and its 2 votes on hover,
 //      docs/SOCIAL.md U13), and the house's card there and in the gallery
 //      says it won.
@@ -55,8 +63,8 @@
 // opens; in 4 the hub says the first as Coming next and never names the
 // others, whose pages are refused; in 6, once it ends, the hub shows the
 // first theme, or the owner's real challenge when one is open, and lists it
-// under Past challenges with both winners' cards, its name a link to its own
-// page, which shows the winners and votes. Before that file is applied, the
+// first under Past challenges as a card, both winners' pictures and names,
+// its name a link to its own page, which shows the winners and votes. Before that file is applied, the
 // year's form says it is not open yet, and 6 reads the hub as before.
 //
 // Who won is told (supabase/challenge_notices.sql, docs/SOCIAL.md section
@@ -70,6 +78,7 @@
 //
 // Pictures in --out.
 import { launch } from "./browser.mjs";
+import { drawn, judged } from "./challenge_page.mjs";
 import { deleteAccount, mintSession, answerAge, STORAGE_KEY } from "./session.mjs";
 import { mkdirSync, readFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
@@ -203,24 +212,6 @@ async function pictures(page, selector = ".model img") {
   await page.waitForTimeout(800);
 }
 
-/// /challenge as drawn.
-const drawn = (page) => page.evaluate(() => ({
-  state: document.documentElement.dataset.challenge || "",
-  title: document.getElementById("title")?.textContent || "",
-  days: document.getElementById("days")?.textContent || "",
-  brief: document.getElementById("brief")?.textContent || "",
-  rules: [...document.querySelectorAll("#rules li")].map((li) => li.textContent),
-  groups: Object.fromEntries([...document.querySelectorAll("#groups section")].map((s) => [s.id.replace("group-", ""), {
-    heading: s.querySelector("h2")?.textContent || "", note: s.querySelector(".note")?.textContent || "",
-    entries: [...s.querySelectorAll(".kept")].map((k) => ({ id: k.dataset.entry,
-      card: Boolean(k.querySelector(".model .frame") && k.querySelector(".model b")),
-      lines: [...k.querySelectorAll(".challenge-said")].map((x) => x.textContent),
-      button: k.querySelector("button")?.textContent || "", disabled: Boolean(k.querySelector("button")?.disabled) })) }])),
-  winners: [...document.querySelectorAll("#winner-cards .kept")].map((k) => ({ id: k.dataset.entry,
-    line: k.querySelector(".challenge-said")?.textContent || "" })),
-  winnersShown: !document.getElementById("winners")?.hidden,
-  why: [...document.querySelectorAll("#groups .why-not")].map((p) => p.textContent),
-}));
 
 let master = null;
 const who = {};
@@ -257,7 +248,7 @@ try {
     const admin = await adminContext.newPage();
     listen(admin, `admin at ${width} px`);
     admin.on("dialog", (dialog) => dialog.accept());
-    await admin.goto(`${site}/admin?tests=1`, { waitUntil: "load" });
+    await admin.goto(`${site}/admin?tests=1#gallery/challenges`, { waitUntil: "load" });
     await until(admin, () => !document.getElementById("view").classList.contains("hide"), "the admin page", 60);
     if (width === 1280) {
       await admin.fill('#challenge-form input[name="title"]', TITLE);
@@ -423,14 +414,47 @@ try {
     plain.status === 422 && (plain.body.broken || []).map((one) => one.rule).join(",") === "tested");
   const again = await api("/api/people?op=enter", { method: "POST", token: who.ada.access_token, body: { model: ids.house, way: "assistant" } });
   const notHers = await api("/api/people?op=enter", { method: "POST", token: who.ada.access_token, body: { model: ids.shed, way: "hand" } });
-  const shed = await api("/api/people?op=enter", { method: "POST", token: who.bob.access_token, body: { model: ids.shed, way: "assistant" } });
   const cys = await api("/api/people?op=enter", { method: "POST", token: who.cy.access_token, body: { model: ids.cys, way: "hand" } });
   const noWay = await api("/api/people?op=enter", { method: "POST", token: who.bob.access_token, body: { model: ids.shed, way: "robot" } });
   const signedOut = await api("/api/people?op=enter", { method: "POST", body: { model: ids.shed, way: "hand" } });
-  check(`the house again ${again.status}, Bob's shed by Ada ${notHers.status}, Bob's shed with the assistant ${shed.status}, `
+  check(`the house again ${again.status}, Bob's shed by Ada ${notHers.status}, `
     + `Cy ${cys.status} "${cys.body.error?.slice(0, 50)}", a way that is neither ${noWay.status}, signed out ${signedOut.status}`,
-  again.status === 409 && notHers.status === 403 && shed.status === 201 && cys.status === 422 && /13 and over/.test(cys.body.error || "")
+  again.status === 409 && notHers.status === 403 && cys.status === 422 && /13 and over/.test(cys.body.error || "")
     && noWay.status === 400 && signedOut.status === 401);
+  // Bob enters from /challenge itself (challengepage, 2026-11-13): Enter a
+  // model in its head, his models in the gallery to choose from, With the
+  // assistant, Enter it; the page then shows that group with the shed in it.
+  {
+    const bobs = await context({ as: who.bob, width: 1280, height: 900 });
+    const page = await bobs.newPage();
+    listen(page, "Bob entering");
+    await page.goto(`${site}/challenge?tests=1`, { waitUntil: "load" });
+    await until(page, () => document.documentElement.dataset.challenge === "open", "the challenge for Bob");
+    await page.click("#enter");
+    await page.waitForSelector("dialog.enter-pick[open]");
+    const offered = await page.evaluate(() => ({ title: document.querySelector("dialog.enter-pick h2")?.textContent,
+      models: [...document.querySelectorAll('dialog.enter-pick input[name="model"]')].map((one) => one.value) }));
+    check(`Bob's Enter a model: "${offered.title}", his models ${JSON.stringify(offered.models)}`, offered.title === `Enter “${TITLE}”`
+      && offered.models.length === 1 && offered.models[0] === ids.shed);
+    await page.check(`dialog.enter-pick input[value="${ids.shed}"]`);
+    await page.check('dialog.enter-pick input[value="assistant"]');
+    await shot(page, "4a_enter_from_challenge-1280.png", false);
+    await page.click('dialog.enter-pick button[type="submit"]');
+    await until(page, () => document.documentElement.dataset.challengeEntered || document.documentElement.dataset.challengeRefused,
+      "the shed entered");
+    const after = await page.evaluate(() => ({ entered: document.documentElement.dataset.challengeEntered || "",
+      said: document.querySelector("dialog.enter-pick p")?.textContent || "" }));
+    await page.click("dialog.enter-pick .cta");
+    const d = await drawn(page);
+    const shownWay = d.tabs.find((one) => one.selected)?.way;
+    const shed = (d.groups.assistant?.entries || []).find((one) => one.id === ids.shed);
+    check(`...entered: "${after.said}"; the page shows ${shownWay}, the shed ${JSON.stringify(shed)}`, after.entered === ids.shed
+      && /^It is in, built with the assistant/.test(after.said) && shownWay === "assistant" && d.groups.assistant.shown
+      && shed && shed.marks.includes("Your entry") && !shed.button);
+    const twice = await api("/api/people?op=enter", { method: "POST", token: who.bob.access_token, body: { model: ids.shed, way: "assistant" } });
+    check(`...and the shed asked again by the API: ${twice.status}`, twice.status === 409);
+    await bobs.close();
+  }
   const notYours = await api(`/api/people?op=challenge_entry&id=${ids.house}`, { token: who.bob.access_token });
   check(`the house's entry asked by Bob: ${JSON.stringify(notYours.body)}`, notYours.status === 200 && JSON.stringify(notYours.body) === '{"mine":false}');
 
@@ -469,15 +493,38 @@ try {
     await page.goto(`${site}/challenge?tests=1`, { waitUntil: "load" });
     await until(page, () => ["open", "upcoming", "ended", "none", "broken", "not-yet"].includes(document.documentElement.dataset.challenge), "the challenge drawn");
     const d = await drawn(page);
-    check(`at ${width} px: "${d.title}", ${d.state}, "${d.days}", ${d.rules.length} rules`, d.title === TITLE && d.state === "open"
-      && /^Open from .* the last day included$/.test(d.days) && d.rules.length === 3 && /Only parts of set 6075-2, Castle/.test(d.rules[1]));
+    check(`at ${width} px: "${d.title}", ${d.state}, ${d.rules.length} rules`, d.title === TITLE && d.state === "open"
+      && d.rules.length === 3 && /Only parts of set 6075-2, Castle/.test(d.rules[1]));
+    // The page as the best contest pages are (challengepage): its status, a
+    // live countdown, its numbers, Enter beside Share, the groups as tabs
+    // with their counts, Vote on each card.
+    for (const [what, ok] of judged(d, { state: "open", groups: { hand: 1, assistant: 1 }, signedIn: false })) check(`...${what}`, ok);
     const hand = d.groups.hand || { entries: [] };
     const helped = d.groups.assistant || { entries: [] };
     check(`...Built by hand: ${hand.entries.map((one) => one.id).join(",")}; with the assistant: ${helped.entries.map((one) => one.id).join(",")}; `
-      + `buttons "${hand.entries[0]?.button}"`, hand.heading === "Built by hand" && helped.heading === "Built with the assistant"
-      && hand.entries.length === 1 && hand.entries[0].id === ids.house && hand.entries[0].card && helped.entries.length === 1
-      && helped.entries[0].id === ids.shed && hand.entries[0].button === "Vote for it" && /Votes are counted when it ends/.test(hand.note));
+      + `over them "${d.voteSaid}"`, hand.entries[0]?.id === ids.house && hand.entries[0].card && helped.entries[0]?.id === ids.shed
+      && /Votes stay hidden until it ends/.test(d.voteSaid));
     check(`...nothing sideways at ${width} px`, !(await sideways(page)));
+    // The countdown runs: a second later its seconds are not what they were.
+    const ticks = await page.evaluate(async () => {
+      const read = () => document.querySelector('#countdown b[data-unit="seconds"]')?.textContent;
+      const first = read();
+      await new Promise((done) => setTimeout(done, 1300));
+      return [first, read()];
+    });
+    check(`...the countdown counts down: ${ticks.join(" then ")}`, ticks[0] !== ticks[1]);
+    if (width === 1280) {
+      // The other group's tab, by the pointer and back by the keyboard.
+      await page.click("#tab-assistant");
+      const other = await drawn(page);
+      const asked = page.url().replace(site, "");
+      await page.keyboard.press("ArrowLeft");
+      const back = await drawn(page);
+      check(`...the tab Built with the assistant shows the shed (${asked}); the left arrow, Built by hand again (${page.url().replace(site, "")})`,
+        other.groups.assistant.shown && !other.groups.hand.shown && other.tabs[1].selected && /[?&]group=assistant/.test(asked)
+        && back.groups.hand.shown && back.tabs[0].selected && !/group=/.test(page.url())
+        && await page.evaluate(() => document.activeElement?.id === "tab-hand"));
+    }
     if (year) {
       const next = await page.evaluate(() => ({ shown: !document.getElementById("next").hidden,
         title: document.getElementById("next-title").textContent, days: document.getElementById("next-days").textContent,
@@ -503,9 +550,13 @@ try {
     await shot(page, `5_challenge_share-${width}.png`, false);
     await page.keyboard.press("Escape");
     if (width === 390) {
-      await page.click(`.kept[data-entry="${ids.house}"] button`);
+      await page.click(`.model[data-entry="${ids.house}"] .vote-line button.vote`);
       const asked = await page.waitForSelector("dialog.sign-in[open]", { timeout: 10000 }).then(() => true).catch(() => false);
-      check("Vote for it, signed out, asks to sign in", asked);
+      check("Vote, signed out, asks to sign in", asked);
+    } else {
+      await page.click("#enter");
+      const asked = await page.waitForSelector("dialog.sign-in[open]", { timeout: 10000 }).then(() => true).catch(() => false);
+      check("Enter a model, signed out, asks to sign in", asked);
     }
     await visitor.close();
   }
@@ -555,15 +606,29 @@ try {
     await page.goto(`${site}/challenge?tests=1`, { waitUntil: "load" });
     await until(page, () => document.documentElement.dataset.challenge === "open", "the challenge for Ed");
     if (width === 390) {
-      for (const id of [ids.house, ids.shed]) {
-        await page.click(`.kept[data-entry="${id}"] button`);
-        await until(page, (one) => document.querySelector(`.kept[data-entry="${one}"] button`)?.textContent === "Your vote", "Your vote", 30, id);
+      for (const [way, id] of [["hand", ids.house], ["assistant", ids.shed]]) {
+        if (way === "assistant") await page.click("#tab-assistant");
+        await page.click(`.model[data-entry="${id}"] .vote-line button.vote`);
+        // A vote cannot be moved: asked once, in a dialog, before it is cast.
+        await page.waitForSelector("dialog.vote-confirm[open]");
+        const asked = await page.evaluate(() => document.querySelector("dialog.vote-confirm h2")?.textContent || "");
+        if (way === "hand") await shot(page, "7a_vote_confirm-390.png", false);
+        await page.click("dialog.vote-confirm .cta:not(.ghost)");
+        // Told once the server has it: the card is marked at once, before.
+        await until(page, ([one, name]) => document.querySelector(`.model[data-entry="${one}"]`)?.classList.contains("voted")
+          && (document.getElementById("said")?.textContent || "").startsWith(`Your vote is for “Challenge ${name}`), "Your vote", 30,
+        [id, way === "hand" ? "House" : "Shed"]);
+        const said = await page.evaluate(() => ({ line: document.getElementById("vote-said")?.textContent.replace(/\s+/g, " ").trim(),
+          told: document.getElementById("said")?.textContent }));
+        check(`Ed votes in ${way}: asked "${asked}"; over the cards "${said.line}"; told "${said.told}"`,
+          /^Vote for “Challenge (House|Shed) .*”\?$/.test(asked) && /^Your vote in this group is for “Challenge (House|Shed) /.test(said.line || ""));
       }
     }
     const d = await drawn(page);
-    check(`Ed at ${width} px: the house "${d.groups.hand.entries[0]?.button}", the shed "${d.groups.assistant.entries[0]?.button}"; said "${await page.textContent("#said")}"`,
-      d.groups.hand.entries[0]?.button === "Your vote" && d.groups.assistant.entries[0]?.button === "Your vote"
-        && d.groups.hand.entries[0].disabled && !(await sideways(page)));
+    // At 390 he voted in the assistant's group last, so its tab is the one chosen.
+    for (const [what, ok] of judged(d, { state: "open", groups: { hand: 1, assistant: 1 }, signedIn: true,
+      voted: { hand: ids.house, assistant: ids.shed }, shown: width === 390 ? "assistant" : "hand" })) check(`Ed at ${width} px: ${what}`, ok);
+    check(`...nothing sideways at ${width} px`, !(await sideways(page)));
     await pictures(page);
     await shot(page, `7_challenge_ed-${width}.png`);
     await eds.close();
@@ -586,8 +651,8 @@ try {
     await page.goto(`${site}/challenge?tests=1`, { waitUntil: "load" });
     await until(page, () => document.documentElement.dataset.challenge === "open", "the challenge for Bob");
     const d = await drawn(page);
-    check(`Bob sees the house "${d.groups.hand.entries[0]?.button}" and his shed "${d.groups.assistant.entries[0]?.button}"`,
-      d.groups.hand.entries[0]?.button === "Your vote" && d.groups.assistant.entries[0]?.button === "Your entry");
+    for (const [what, ok] of judged(d, { state: "open", groups: { hand: 1, assistant: 1 }, signedIn: true,
+      voted: { hand: ids.house }, mine: [ids.shed] })) check(`Bob: ${what}`, ok);
     await bobs.close();
     const cyc = await context({ as: who.cy, width: 390, height: 844, phone: true });
     const cyPage = await cyc.newPage();
@@ -618,7 +683,7 @@ try {
     const admin = await adminContext.newPage();
     listen(admin, "admin, ending");
     admin.on("dialog", (dialog) => dialog.accept());
-    await admin.goto(`${site}/admin?tests=1`, { waitUntil: "load" });
+    await admin.goto(`${site}/admin?tests=1#gallery/challenges`, { waitUntil: "load" });
     await until(admin, () => !document.getElementById("view").classList.contains("hide"), "the admin page", 60);
     const pressed = Date.now();
     await admin.click(`#challenges tr[data-challenge="${ids.challenge}"] button`);
@@ -643,19 +708,19 @@ try {
     if (year) {
       // The hub shows the first theme now (or the real one open), and this
       // one under Past challenges with its winners; its name opens its own page.
-      const hub = await page.evaluate((id) => {
-        const item = document.querySelector(`#past article[data-past="${id}"]`);
-        return { state: document.documentElement.dataset.challenge, title: document.getElementById("title").textContent,
-          href: item?.querySelector("h3 a")?.getAttribute("href") || "", days: item?.querySelector(".note")?.textContent || "",
-          winners: [...(item?.querySelectorAll(".kept") || [])].map((k) => ({ id: k.dataset.entry,
-            line: k.querySelector(".challenge-said")?.textContent || "", by: k.querySelector("a.who")?.getAttribute("href") || "" })),
-          first: document.querySelector("#past article")?.dataset.past };
-      }, ids.challenge);
-      check(`at ${width} px the hub shows "${hub.title}" (${hub.state}); under Past challenges, first, ${hub.days}: ${JSON.stringify(hub.winners)}`,
-        hub.title === hubWanted.title && hub.state === hubWanted.state && hub.first === String(ids.challenge)
-        && hub.href === `/challenge?id=${ids.challenge}&tests=1` && /2 entries/.test(hub.days)
-        && hub.winners.length === 2 && hub.winners[0].id === ids.house && hub.winners[0].line === "Winner, built by hand · 2 votes"
-        && hub.winners[0].by === `/u/${ADA}` && hub.winners[1].id === ids.shed && hub.winners[1].line === "Winner, built with the assistant · 1 vote");
+      const h = await drawn(page);
+      const card = h.past.find((one) => one.id === String(ids.challenge));
+      const pictured = await page.evaluate((id) => [...document.querySelectorAll(`#past article[data-past="${id}"] .frame img`)]
+        .map((img) => img.getAttribute("src")), ids.challenge);
+      // Past challenges as a grid of cards (challengepage): each its name, a
+      // link to its own page, its days and entries, and its winners named
+      // under their pictures.
+      check(`at ${width} px the hub shows "${h.title}" (${h.state}); under Past challenges, first, ${JSON.stringify(card)}, pictures ${pictured.join(" ")}`,
+        h.title === hubWanted.title && h.state === hubWanted.state && h.past[0]?.id === String(ids.challenge)
+        && card.href === `/challenge?id=${ids.challenge}&tests=1` && /2 entries/.test(card.days)
+        && card.won.length === 2 && card.won[0].id === ids.house && card.won[0].text === `“Challenge House ${rand}” by Ada Challenges, by hand`
+        && card.won[1].id === ids.shed && card.won[1].text === `“Challenge Shed ${rand}” by Bob Challenges, with the assistant`
+        && pictured.join() === `/m/${ids.house}.png,/m/${ids.shed}.png`);
       await pictures(page);
       await page.evaluate(() => document.getElementById("past").scrollIntoView());
       await shot(page, `9a_challenge_past-${width}.png`, false);
@@ -667,12 +732,11 @@ try {
       check(`...its own page, ${page.url().replace(site, "")}, under the crumbs to the hub`, crumbs && page.url().endsWith(`/challenge?id=${ids.challenge}&tests=1`));
     }
     const d = await drawn(page);
-    check(`at ${width} px: ${d.state}, "${d.days}"; winners ${JSON.stringify(d.winners)}`, d.state === "ended" && /it has ended/.test(d.days)
-      && d.winnersShown && d.winners.length === 2 && d.winners[0].id === ids.house && d.winners[0].line === "Winner, built by hand · 2 votes"
-      && d.winners[1].id === ids.shed && d.winners[1].line === "Winner, built with the assistant · 1 vote");
-    check(`...each entry's votes: ${JSON.stringify(d.groups.hand.entries[0]?.lines)}, no vote buttons, nothing sideways`,
-      d.groups.hand.entries[0]?.lines.join("|") === "Winner|2 votes" && d.groups.assistant.entries[0]?.lines.join("|") === "Winner|1 vote"
-        && Object.values(d.groups).every((g) => g.entries.every((one) => !one.button)) && !(await sideways(page)));
+    // Ended: the winners celebrated first, over the entries, each entry's
+    // votes said, and no Vote anywhere.
+    for (const [what, ok] of judged(d, { state: "ended", groups: { hand: 1, assistant: 1 },
+      winners: [[ids.house, "hand", 2], [ids.shed, "assistant", 1]] })) check(`at ${width} px: ${what}`, ok);
+    check(`...nothing sideways at ${width} px`, !(await sideways(page)));
     await pictures(page);
     await shot(page, `9_challenge_winners-${width}.png`);
     await visitor.close();
@@ -694,6 +758,11 @@ try {
       && badly.status === 400 && badly.body.error === "say which challenge, by its number");
     const groupOf = async (person) => ((await api("/api/people?op=notifications", { token: person.access_token })).body.groups || [])
       .find((one) => one.challenge === ids.challenge) || null;
+    // The database tells who won from its own challenges, which a relay
+    // holding them in memory has none of: asked of a deployment only, as
+    // the feed is.
+    if (held) console.log("  --    who won is told by the database from its own challenges, which this relay holds in memory: not asked");
+    else {
     const [eds, bobs, adas] = [await groupOf(who.ed), await groupOf(who.bob), await groupOf(who.ada)];
     check(`Ed's notifications: ${eds ? `"${eds.name}", ${eds.rows.map((row) => `${row.kind}: ${row.line}`).join(" | ")}` : "no group"}; `
       + `Bob's ${bobs ? "has" : "has none"}, Ada's ${adas ? "has" : "has none"}`, !bobs && !adas && (told
@@ -732,6 +801,7 @@ try {
         opened && after && !after.unread && kept && !kept.unread);
       await edsPage.close();
     }
+    }
   }
   {
     const visitor = await context({ width: 390, height: 844, phone: true });
@@ -750,7 +820,10 @@ try {
       card: [...document.querySelectorAll(`.model[data-id="${id}"] small.won`)].map((s) => s.textContent) }), ids.house);
     check(`Ada's designer page: ${JSON.stringify(won)}`, won.wins.length === 1 && won.wins[0].said === `Won “${TITLE}”, by hand`
       && won.wins[0].title === `Challenge House ${rand}: 2 votes` && won.wins[0].href === `/m/${ids.house}`
-      && (levelled ? /^won,designer,(.+,)?challenger$/.test(won.awards) && won.awards.includes(",tested,") : won.awards === "won,tested,listed")
+      // Challenger counts entries in the database's own table, which a relay
+      // holding the challenges in memory leaves empty: asked of a deployment.
+      && (levelled ? (held ? /^won,designer,/.test(won.awards) : /^won,designer,(.+,)?challenger$/.test(won.awards))
+        && won.awards.split(",").includes("tested") : won.awards === "won,tested,listed")
       && won.card.length === 1 && won.card[0] === `Won “${TITLE}”, by hand`);
     check("...nothing sideways at 390 px", !(await sideways(page)));
     await pictures(page);

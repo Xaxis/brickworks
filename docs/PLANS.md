@@ -85,7 +85,7 @@ The report's nine conditions, none optional. Where each stands on 2026-11-03 (go
 | 3 | Photo search: Brickognize's permission or paid credits, or off in paid use | Its terms allow personal, non-commercial use only, so Pro's licence leaves it out and the app says so (8.4); permission is the owner's to ask |
 | 4 | An "All rights reserved" licence (repos private only if the desktop is sold) | Done 2026-11-03: `LICENSE` (8.3) |
 | 5 | Signed builds for macOS and Windows | Open, and no longer a gate for Pro (8.6) |
-| 6 | Claims match the product on /plans, /faq, /download | Done 2026-11-02 (plans2): only Anthropic's key in a browser, other AIs' keys on the desktop; `.io` written but not yet opened in Studio; the beta shown only while open |
+| 6 | Claims match the product on /plans, /faq, /download | Done 2026-11-02 (plans2); corrected 2026-11-12 (webwords1): every provider Settings, AI lists takes a key in any browser (the app's CSP and each provider's CORS, checked without a key), only another server needs the desktop app; `.io` written but not yet opened in Studio; the beta shown only while open |
 | 7 | Billing and terms: live prices, seller terms that cover commercial use, consent to renewal (M7, built), cancelling from Settings, a refund policy | Terms, refunds, consent and Cancel Pro done 2026-11-03 (8.2), proven in test mode (8.1); live prices and live plans wait for the switch (8.8) |
 | 8 | An audience: about 2,000 monthly active designers, and a count of who nears 25 | Not met |
 | 9 | Proof of demand: 30 founding annual plans, or stay free | Not run |

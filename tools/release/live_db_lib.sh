@@ -86,16 +86,28 @@ older_waits() {
 # LIVE_DB_POLL seconds (1). Held by LIVE_DB_HOLD and
 # LIVE_DB_SLOT, open in this shell, until leave_live_db; LIVE_DB_HOW says
 # which, for live-db.log.
+# LIVE_GIVE_WAY=SECONDS gives up sooner, once it has waited that long while
+# a release waited: a unit gives way to a train within ten minutes, but
+# behind other units it keeps its place in line. With one ten-minute wait
+# for both, four units' previews at once left 20 of pcredesign's 52 checks
+# never run, and no train was staged (2026-11-12).
 take_live_db() {
   local alone="${1:-}" until=$(( EPOCHSECONDS + ${LIVE_WAIT:-3600} )) line=queue ticket i fd
+  local give="${LIVE_GIVE_WAY:-}" behind=0 last=$EPOCHSECONDS rel
   [ "${BOX_HEAVY_PRIORITY:-}" = 1 ] && line=release
   mkdir -p "$LIVE_DB.$line"; ticket="$(date +%s%N).$BASHPID"
   started "$BASHPID" > "$LIVE_DB.$line/$ticket"
   exec {LIVE_DB_HOLD}>>"$LIVE_DB.lock"
   LIVE_DB_SLOT=""; LIVE_DB_HOW=""
   while [ "$EPOCHSECONDS" -lt "$until" ]; do
+    rel=0; [ $line = queue ] && release_waits && rel=1
+    if [ $rel = 1 ] && [ -n "$give" ]; then
+      behind=$(( behind + EPOCHSECONDS - last ))
+      [ "$behind" -ge "$give" ] && break
+    fi
+    last=$EPOCHSECONDS
     if { [ $line = release ] && ! older_waits "$ticket" "$LIVE_DB.release"; } \
-        || { [ $line = queue ] && ! release_waits && ! older_waits "$ticket"; }; then
+        || { [ $line = queue ] && [ $rel = 0 ] && ! older_waits "$ticket"; }; then
       if [ -n "$alone" ]; then
         flock -x -n "$LIVE_DB_HOLD" && LIVE_DB_HOW="alone"
       elif flock -s -n "$LIVE_DB_HOLD"; then

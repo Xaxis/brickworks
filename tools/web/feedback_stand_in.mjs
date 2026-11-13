@@ -8,10 +8,12 @@
 //     node tools/web/relay_server.mjs 9060 --static=build/web --hold=feedback
 //
 // Unlike the other stand-ins, nothing is written again in JavaScript: the
-// files themselves answer, as PostgREST would call them. Every beta_* and
-// feedback_* function the server asks goes to that Postgres, so the beta's
-// applications and decisions are held here too, apart from the project's,
-// and the project's own spots are never touched. An account a function
+// files themselves answer, as PostgREST would call them. Every beta_*,
+// feedback_* and console function (supabase/console.sql: the switches, the
+// audit, the mail counted) the server asks goes to that Postgres, so the
+// beta's applications and decisions and the console's acts are held here
+// too, apart from the project's, and the project's own spots are never
+// touched. An account a function
 // names is copied from the project's auth.users (its id, address and when
 // it was made) the first time, so the real sign-ins work over it. The
 // private bucket 'feedback' is held in memory.
@@ -25,7 +27,7 @@ import { startPostgres } from "../../tests/fixtures/beta/pg.mjs";
 
 const SUPABASE = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
 const SECRET = process.env.SUPABASE_SECRET_KEY || "";
-const RPC = new RegExp(`^${SUPABASE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/rest/v1/rpc/((?:beta|feedback)_[a-z_]+)$`);
+const RPC = new RegExp(`^${SUPABASE.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/rest/v1/rpc/((?:beta_|feedback_|admin_audit_|admin_mail_|site_setting)[a-z_]*)$`);
 const BUCKET = `${SUPABASE}/storage/v1/object/feedback`;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
@@ -50,7 +52,7 @@ const json = (status, body) => new Response(JSON.stringify(body), { status, head
 
 export async function hold() {
   if (inner) return;
-  db = await startPostgres({ also: ["supabase/feedback.sql"] });
+  db = await startPostgres({ also: ["supabase/feedback.sql", "supabase/beta_join.sql", "supabase/console.sql"] });
   inner = globalThis.fetch;
   globalThis.fetch = async (url, init = {}) => {
     const where = String(url);

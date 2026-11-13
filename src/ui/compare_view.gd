@@ -1,4 +1,4 @@
-## File, Versions…'s Compare, and File, Compare with…: the model on the
+## File, Versions…'s Compare, and File, Compare, Compare with…: the model on the
 ## baseplate drawn against one of its saves. What was added since is green,
 ## what was taken away a red ghost where it stood, what was moved or turned
 ## amber with a faint ghost where it was, what was painted another colour
@@ -11,7 +11,7 @@
 ## (api/_versions.js). The matching is ModelDiff's: the fewest changes, so a
 ## part moved a stud is one part moved.
 ##
-## Its second mode, File, Compare two sets or models… (APP_UX6 #7,
+## Its second mode, File, Compare, Compare two sets or models… (APP_UX6 #7,
 ## comparesets), compares the parts of any two of a set, a saved model and the
 ## model open now, as Rebrickable's set compare does: the parts in both and in
 ## only one, by part and colour, and the list to buy to build the second from
@@ -196,7 +196,7 @@ func _input(event: InputEvent) -> void:
 
 
 func _compare() -> void:
-	var now: Array = ModelDiff.parts_of_world(world, store.scenery, store.lift(), store.awaited,
+	var now: Array = ModelDiff.parts_of_world(world, store.scenery, store.lift(), store.awaited_now(),
 		inside)
 	diff = ModelDiff.between(_was, now)
 	_revision = world.revision
@@ -605,7 +605,7 @@ var _asked: int = 0
 var comparing: bool = false
 
 
-## File, Compare two sets or models…: the sheet, with what was compared last
+## File, Compare, Compare two sets or models…: the sheet, with what was compared last
 ## time, or a set to type for A and the model open now for B; compared at once
 ## when both are there.
 func open_parts() -> void:

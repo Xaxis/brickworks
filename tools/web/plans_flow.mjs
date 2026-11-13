@@ -17,8 +17,8 @@
 //      (billing is off); AI without a limit and no AI builds anywhere,
 //      25 models kept with your account on Free and any number on Pro;
 //      the desktop app under Free and commercial use under Pro (the owner,
-//      2026-11-02, docs/PLANS.md), and no word that ChatGPT or any key but
-//      Anthropic's works in a browser; the beta's callout shown only while
+//      2026-11-02, docs/PLANS.md), no word of ChatGPT, and your own key for
+//      any listed AI said to work in a browser; the beta's callout shown only while
 //      the beta is open; accounts that exist keep everything; education
 //      free; what stays free; nothing sideways; the footer links /plans;
 //      the privacy page says what the form keeps.
@@ -155,9 +155,12 @@ try {
         table.some((one) => /^Works offline, with every part on disk \(the desktop app\) Yes Yes$/.test(one))
         && table.some((one) => /^Commercial use\b.* No Yes$/.test(one)));
       const sentences = body.split(/(?<=[.:;?!])\s+/);
-      const keyed = sentences.filter((one) => /OpenAI|Gemini|any provider|another AI/i.test(one) && !/desktop/i.test(one));
-      check(`${at}: no ChatGPT, and no other AI's key said to work in a browser (${keyed.join(" | ")})`,
-        !/ChatGPT/.test(body) && !keyed.length);
+      // Every listed AI's key works in a browser (webwords1, 2026-11-12): the
+      // page says so, and nowhere that a key needs the desktop app.
+      const keyed = sentences.filter((one) => /OpenAI|Gemini|any provider|another AI/i.test(one));
+      check(`${at}: no ChatGPT; your own key for OpenAI, Gemini and the others works in a browser, none said to need the desktop app (${keyed.join(" | ")})`,
+        !/ChatGPT/.test(body) && keyed.some((one) => /OpenAI/.test(one) && /Gemini/.test(one) && /browser/i.test(one))
+        && !keyed.some((one) => /(needs?|requires?|only (in|with|on))\b[^.]*desktop/i.test(one)));
       check(`${at}: accounts that exist keep everything`,
         /Every account made before 29 October 2026 gets Pro, free and with no end date/.test(body));
       check(`${at}: education is free`, /Education is free/.test(body));

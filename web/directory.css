@@ -205,7 +205,8 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 .model-page .earlier li { margin: 4px 0; overflow-wrap: anywhere; }
 .model-page .earlier a { color: var(--ink); }
 /* Its parts (api/share.js partsSection, web/model-page.js startParts): how
-   many in how many lots, Colour or Kind and the two shops' lists, then a
+   many in how many lots, Colour or Kind and the shops' lists (a model's
+   three: what LEGO® Pick a Brick leaves off said under them), then a
    row a colour (or a kind) and under it a row a lot: its picture, its name,
    its number and colour, and how many. Every row is LOT_ROW (api/share.js)
    tall and a name too long for its row ends in an ellipsis, so the space the
@@ -213,6 +214,9 @@ dialog.bases-dialog .actions { margin-top: 16px; }
 .model-page .parts .note { margin: 0 0 var(--s-3); color: var(--ink-soft); }
 .parts-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-3); }
 .parts-bar .segmented { margin-right: auto; }
+/* The shops' lists, one group: it wraps as a whole beside Colour and Kind
+   or under them, never one shop a row apart from the rest. */
+.parts-shops { display: flex; flex-wrap: wrap; gap: var(--s-2); }
 .lot-list { list-style: none; margin: 0 0 var(--s-3); padding: 0; }
 .lot-list li {
 	display: flex; align-items: center; gap: var(--s-3); height: 60px; min-width: 0;
@@ -254,33 +258,134 @@ dialog.bases-dialog .actions { margin-top: 16px; }
    pages adds: a button under it on your account (.kept). */
 .kept { display: grid; gap: 8px; align-content: start; }
 
-/* /challenge between months (docs/SOCIAL.md U12): the next one's theme in
-   a .card, and each challenge that ran, its name, its days and its winners'
-   cards, a section's space apart. */
-.challenge .next-one h3, .challenge .past-one h3 { margin: 0 0 var(--s-1); }
-.challenge .next-one > :last-child { margin-bottom: 0; }
-.challenge .past-one { margin: 0 0 var(--s-6); }
-.challenge .past-one .models { margin-top: var(--s-3); }
-/* The challenge's name, days and brief, a panel lit from above. */
-.challenge-hero {
-	margin: 0 0 var(--s-2); padding: clamp(24px, 4vw, 48px); border: 1px solid var(--line); border-radius: var(--r-4);
-	background-color: var(--panel); box-shadow: var(--highlight), var(--shadow-1);
+/* /challenge (challengepage, 2026-11-13; docs/DESIGN_SYSTEM.md "A
+   challenge"), laid out as the best contest pages are. Its head is the
+   inner page's .page-hero: the theme's words, its rules and the way in on
+   the left, and from 900 px a panel beside them with where it stands (its
+   status, a countdown, how far through its days, its numbers); under 900 px
+   the panel follows the words. */
+.challenge-top { display: grid; gap: var(--s-6); grid-template-columns: minmax(0, 1fr); align-items: start; }
+@media (width >= 900px) { .challenge-top { grid-template-columns: minmax(0, 1fr) minmax(320px, 380px); gap: var(--s-8); } }
+.challenge-head h1 { margin-bottom: var(--s-3); overflow-wrap: anywhere; }
+.challenge-head .lede { white-space: pre-line; overflow-wrap: anywhere; }
+.challenge-status { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); margin: 0 0 var(--s-3); }
+.challenge-status .eyebrow { margin: 0; }
+/* The rules, as the checks a model must pass, each with its tick. */
+.rules-box { margin: var(--s-5) 0 0; max-width: 60ch; }
+.rules-h, .clock-h {
+	margin: 0 0 var(--s-2); color: var(--ink-faint); font-size: var(--t-tiny); font-weight: 650;
+	letter-spacing: 0.06em; text-transform: uppercase;
 }
-.challenge-hero > :last-child { margin-bottom: 0; }
-.challenge-hero .share-line { margin: var(--s-3) 0 0; }
-/* The rules and how to enter, each a panel; side by side from 900 px,
-   under the brief, with everything else across the page. */
-.challenge #rules-part, .challenge #how {
-	padding: var(--s-4) var(--s-5); border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel);
-	box-shadow: var(--highlight);
+.rules-box .ticks { color: var(--ink); font-size: var(--t-body); }
+.rules-box .note { margin: 0; }
+.challenge-head .actions { margin-top: var(--s-5); }
+.challenge-head .actions .cta .icon { width: 20px; height: 20px; }
+.challenge-head .actions + .note { margin-top: var(--s-3); }
+/* Where it stands: a panel lit from above as the month's tile on the home is. */
+.challenge-clock {
+	padding: var(--s-5); border: 1px solid var(--accent-edge); border-radius: var(--r-4);
+	background-color: var(--panel); background-image: var(--glow), var(--studs); background-size: auto, 24px 24px;
+	box-shadow: var(--highlight), var(--shadow-1);
 }
-.challenge #rules-part h2, .challenge #how h2 { margin-top: 0; }
-.challenge #rules-part > :last-child, .challenge #how > :last-child { margin-bottom: 0; }
-@media (width >= 900px) {
-	.challenge { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: var(--s-5); align-items: start; }
-	.challenge > * { grid-column: 1 / -1; }
-	.challenge > #rules-part, .challenge > #how { grid-column: auto; align-self: stretch; }
+.challenge-clock[hidden] { display: none; }
+/* The countdown: days, hours, minutes and seconds, each a box of its own
+   in even figures, so nothing moves as it counts. */
+.countdown { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-2); margin: 0 0 var(--s-4); }
+.countdown[hidden] { display: none; }
+.countdown > span {
+	display: flex; flex-direction: column; align-items: center; padding: var(--s-3) var(--s-1);
+	border: 1px solid var(--line); border-radius: var(--r-2); background: var(--bg-soft);
 }
+.countdown b { color: var(--ink); font-size: var(--t-h1); font-weight: 760; line-height: 1.05; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.countdown small { color: var(--ink-soft); font-size: var(--t-tiny); }
+.challenge-clock .days { margin: 0; color: var(--ink-soft); font-size: var(--t-small); }
+/* How far through its days: the achievements' bar (.achievements-list .reach). */
+.challenge-clock .reach { height: 6px; margin: var(--s-2) 0 0; border-radius: var(--r-pill); background: var(--line); overflow: hidden; }
+.challenge-clock .reach[hidden] { display: none; }
+.challenge-clock .reach span { display: block; width: 0; height: 100%; border-radius: inherit; background: var(--accent-edge); }
+.challenge-clock .numbers { margin: var(--s-4) 0 0; padding-top: var(--s-4); border-top: 1px solid var(--line); }
+.challenge-clock .numbers[hidden] { display: none; }
+/* Under the head, its parts a section apart. */
+.challenge .page-body { display: flex; flex-direction: column; gap: var(--s-8); }
+.challenge-part > h2 { margin-bottom: var(--s-4); }
+/* The winners: one in each group, each its card under what it won, lit in
+   the accent; two side by side from 600 px. */
+.winners { display: grid; gap: var(--s-5); grid-template-columns: minmax(0, 1fr); max-width: 1000px; }
+@media (width >= 600px) { .winners { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.winners > .winner { display: flex; flex-direction: column; gap: var(--s-3); }
+.winner-h { display: flex; align-items: center; gap: var(--s-3); margin: 0; }
+.winner-h .words { display: flex; flex-direction: column; min-width: 0; }
+.winner-h b { color: var(--ink); font-size: var(--t-body); font-weight: 650; }
+.winner-h small { color: var(--ink-soft); font-size: var(--t-small); font-variant-numeric: tabular-nums; }
+.winners > .winner .model, .entries .model.won { border-color: var(--accent-edge); }
+.winners > .winner .model { flex: 1; }
+/* The entries: their head and order, the groups as tabs, a line of what
+   you may do, then the cards. */
+.entries-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--s-3); margin: 0 0 var(--s-3); }
+.entries-head h2 { margin: 0; }
+#group-tabs { margin: 0 0 var(--s-4); }
+.vote-said { display: flex; align-items: center; gap: var(--s-2); margin: 0 0 var(--s-4); color: var(--ink-soft); font-size: var(--t-small); }
+.vote-said[hidden] { display: none; }
+.vote-said.done { color: var(--ink); }
+.vote-said .icon { flex: none; width: 18px; height: 18px; color: var(--green); }
+.vote-said .said { min-width: 0; overflow-wrap: anywhere; }
+#groups .why-not { margin: 0 0 var(--s-4); }
+#groups .state p { margin: 0 0 var(--s-3); }
+#groups .state p:last-child { margin: 0; }
+/* What a card says of its entry, at its foot, level across a row: the
+   winner, your vote, your entry, its votes, and Vote, over the card's link
+   as the designer's name is. Your vote's card is edged in the accent. */
+.model .vote-line {
+	position: relative; z-index: 1; display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2);
+	margin: auto 0 0; padding-top: var(--s-2);
+}
+.model .vote-line .badge .icon { width: 14px; height: 14px; }
+.model .vote-line .vote .icon { width: 16px; height: 16px; }
+.model .vote-line small.votes { color: var(--ink); font-size: var(--t-small); font-weight: 640; }
+.model .vote-line small.broken { flex-basis: 100%; color: var(--bad); font-size: var(--t-tiny); }
+.entries .model.voted { border-color: var(--accent-edge); box-shadow: var(--highlight), var(--shadow-2); }
+/* How it works: three steps, and what only some need folded under them. */
+#how .steps { margin-bottom: var(--s-5); }
+/* The next one told: a panel lit as the month's tile on the home is. */
+.next-one {
+	max-width: 760px; padding: var(--s-5) var(--s-6); border: 1px solid var(--accent-edge); border-radius: var(--r-4);
+	background-color: var(--panel); background-image: var(--glow), var(--studs); background-size: auto, 24px 24px;
+	box-shadow: var(--highlight), var(--shadow-1);
+}
+.next-one h3 { margin: 0 0 var(--s-1); }
+.next-one p { margin: 0; color: var(--ink-soft); }
+.next-one .challenge-status { margin-bottom: var(--s-3); }
+.next-one .note { margin-top: var(--s-2); }
+/* The challenges that ran: cards in the gallery's grid, each its winners'
+   pictures, its name (the card's one link, to its own page), its days and
+   who won. */
+.past-card .frame > .mosaic { aspect-ratio: auto; width: 100%; height: 100%; }
+.past-card .frame.none .icon { width: 30%; height: auto; aspect-ratio: 1; color: var(--ink-faint); stroke-width: 1.4; }
+.past-card h3 { margin: 0; font-size: var(--t-h3); }
+.past-card .note { margin: 2px 0 0; }
+.past-card .past-won { display: grid; gap: 2px; margin: var(--s-2) 0 0; color: var(--ink-soft); font-size: var(--t-small); }
+.past-card .past-won [data-entry] { display: flex; align-items: flex-start; gap: var(--s-1); }
+.past-card .past-won .said { min-width: 0; overflow-wrap: anywhere; }
+/* A name in a line of words, not the card's two-line name. */
+.past-card .past-won b { display: inline; color: var(--ink); font-size: inherit; font-weight: 640; }
+.past-card .past-won .icon { flex: none; width: 16px; height: 16px; margin-top: 2px; color: var(--accent-ink); }
+/* The dialogs: Enter's list of your models, a row a model, its picture
+   small on a model's ground; and the vote asked once more. */
+dialog.enter-pick { width: min(560px, calc(100vw - 32px)); }
+.enter-pick .pick-list { display: grid; gap: var(--s-1); max-height: min(320px, 40vh); overflow: auto; overscroll-behavior: contain; padding: 2px; }
+.enter-pick label.pick {
+	display: flex; align-items: center; gap: var(--s-3); width: 100%; min-height: 60px; margin: 0; padding: var(--s-1) var(--s-2);
+	border: 1px solid var(--line); border-radius: var(--r-2); cursor: pointer;
+}
+.enter-pick label.pick:has(input:checked) { border-color: var(--accent-edge); background: var(--accent-soft); }
+.enter-pick label.pick:has(input:disabled) { cursor: default; opacity: 0.7; }
+.enter-pick .pick .pic { flex: none; width: 64px; height: 48px; overflow: hidden; border-radius: var(--r-1); background: var(--picture-ground); }
+.enter-pick .pick .pic img { width: 100%; height: 100%; object-fit: cover; }
+.enter-pick .pick .name { flex: 1; min-width: 0; color: var(--ink); font-weight: 600; overflow-wrap: anywhere; }
+.enter-pick .pick small { color: var(--ink-faint); font-size: var(--t-tiny); }
+.enter-pick .ways { display: flex; flex-wrap: wrap; column-gap: var(--s-5); }
+.enter-pick .ways legend { flex-basis: 100%; }
+.enter-pick .said ul { margin: var(--s-2) 0 0; padding-left: 20px; }
 
 /* A person, a collection, and your own page. */
 .person { padding: var(--page-top) 0 var(--section); }

@@ -294,118 +294,10 @@ fi
 # Its pages send their own
 # security policy; the app's below does not change, since the viewer talks
 # only to its own site.
-for handler in api/*.js; do
-  [ -f "$handler" ] || continue
-  route=$(basename "$handler" .js)
-  case "$route" in _*) continue ;; esac
-
-  fn=".vercel/output/functions/api/$route.func"
-  mkdir -p "$fn"
-  cp "$handler" "$fn/index.mjs"
-  for shared in api/_*.js; do
-    [ -f "$shared" ] && cp "$shared" "$fn/"
-  done
-  # The one model card (web/card.js), which api/_card.js passes through in
-  # a checkout: here the file itself, so a function needs no web/.
-  cp web/card.js "$fn/_card.js"
-  # And the one pager (web/pager.js), which api/_pager.js passes through.
-  cp web/pager.js "$fn/_pager.js"
-  # A part's geometry as the app reads it (web/lbm.js), which api/_lbm.js
-  # passes through in a checkout: the pictures the share function draws of
-  # a set's parts (api/_flatlay.js).
-  cp web/lbm.js "$fn/_lbm.js"
-  # The stand-in Admission, beside the function only on a preview that asks
-  # for it: no other deployment holds it at all.
-  if [ "$stand_in" = 1 ]; then cp tests/fixtures/billing/fake_admission.mjs "$fn/_admission_stand_in.mjs"; fi
-  if [ "$route" = collection ]; then
-    if [ ! -f assets/generated/sets/index.json ]; then
-      echo "deploy FAILED: no assets/generated/sets/index.json for /api/collection (tools/collection_data.py)"; exit 1
-    fi
-    cp assets/generated/sets/index.json "$fn/_collection_index.json"
-  fi
-  # The relay lists the tools of the app build it serves until a tab has
-  # said hello (api/mcp.js, ownTools): the app's own list, from this build.
-  if [ "$route" = mcp ] && ! cp tools/mcp_tools.json "$fn/_mcp_tools.json"; then
-    echo "deploy FAILED: no tools/mcp_tools.json for /api/mcp"; exit 1
-  fi
-  # A shared model's page, and what the gallery filters on (api/_directory.js):
-  # the site's header and footer, from the gallery's own page, so /m/<id> is a
-  # page of the site and changes when the site's do; and which parts are
-  # Technic and which make a model move, from the catalogue, counted when a
-  # model is published.
-  if [ "$route" = share ] || [ "$route" = people ]; then
-    cp web/gallery.html "$fn/_site.html"
-  fi
-  # A page in German, French or Spanish (/de/library/set/<n>, /de/m/<id>,
-  # /de/u/<handle>): the gallery's copy for its header and footer, and the
-  # words the site says in each language (tools/site_lang.py), as
-  # api/_directory.js reads them. Every route that asks siteWords: people's
-  # profiles went without until rel-m245's preview answered 404.
-  if [ "$route" = share ] || [ "$route" = people ]; then
-    for words in web/*/words.json; do
-      lang=$(basename "$(dirname "$words")")
-      cp "$words" "$fn/_words_$lang.json"
-      cp "web/$lang/gallery.html" "$fn/_site_$lang.html"
-    done
-  fi
-  # And a parts list's part, colour and category names in each, as the
-  # build's app says them (tools/export.sh, src/dev/write_part_names.gd).
-  if [ "$route" = share ]; then
-    for words in web/*/words.json; do
-      lang=$(basename "$(dirname "$words")")
-      if ! cp "$dir/part_names/part_names_$lang.json" "$fn/_part_names_$lang.json"; then
-        echo "deploy FAILED: no $dir/part_names/part_names_$lang.json (tools/export.sh web)"; exit 1
-      fi
-    done
-  fi
-  # /challenge?id=N is the challenge page with that challenge's own head
-  # (api/_challenges.js challengeHead), so a link to one shows it; and
-  # /de/challenge?id=N its copy's (tools/site_lang.py).
-  if [ "$route" = people ]; then
-    cp web/challenge.html "$fn/_challenge.html"
-    for copy in web/*/challenge.html; do
-      cp "$copy" "$fn/_challenge_$(basename "$(dirname "$copy")").html"
-    done
-  fi
-  if [ "$route" = share ]; then
-    # /sitemap.xml is made there: the site's own pages, from web/sitemap.xml,
-    # and every listed model, profile and public collection.
-    cp web/sitemap.xml "$fn/_sitemap.xml"
-    if ! node tools/web/part_facts.mjs "$fn/_part_facts.json" --parts="$fn/_parts_table.json" --scene="$fn/_scene_table.json" | sed 's/^/deploy: /'; then
-      echo "deploy FAILED: no part facts for /api/share (tools/web/part_facts.mjs)"; exit 1
-    fi
-    # Every set in Rebrickable's catalogue, a page each at /library/set/<n>
-    # (api/_sets.js): written from the vendored CSVs and the set shards,
-    # a few seconds, and only rewritten when it would change.
-    if ! python3 tools/set_catalog.py | sed 's/^/deploy: /' || [ ! -f assets/generated/set_catalog.json ]; then
-      echo "deploy FAILED: no set catalogue for /api/share (tools/set_catalog.py)"; exit 1
-    fi
-    cp assets/generated/set_catalog.json "$fn/_set_catalog.json"
-  fi
-  # The handler is .mjs and so is unambiguously a module; the shared
-  # files it imports are .js, which Node classifies by the nearest
-  # package.json — and a function bundle has none. Node 22 does detect
-  # module syntax and gets it right without this, so the marker is not
-  # load-bearing today; it is here so the answer does not depend on a
-  # heuristic that a runtime bump could change underneath us.
-  echo '{ "type": "module" }' > "$fn/package.json"
-  # Build together's poll answers a line at a time, who is in it and where
-  # each is working as it changes (api/together.js poll): without this
-  # Vercel holds every line until the last, and a pointer is seen up to
-  # 20 s late.
-  streams=false; [ "$route" = together ] && streams=true
-  cat > "$fn/.vc-config.json" <<JSON
-{
-  "runtime": "nodejs22.x",
-  "handler": "index.mjs",
-  "launcherType": "Nodejs",
-  "shouldAddHelpers": true,
-  "supportsResponseStreaming": $streams,
-  "maxDuration": 300
-}
-JSON
-  echo "deploy: packaged /api/$route"
-done
+# Packaged by tools/package_api.sh, as the checks that run a function as it
+# is deployed package it: each with the catalogue's facts beside it, checked.
+pack=("--export=$dir"); [ "$stand_in" = 1 ] && pack+=(--stand-in)
+tools/package_api.sh .vercel/output/functions "${pack[@]}" || exit 1
 
 # What is in every set, and the official models' parts lists, for My
 # collection (tools/collection_data.py, src/dev/collection_models.gd). Not in
@@ -505,10 +397,12 @@ for page in .vercel/output/static/docs/*.html; do
 done
 [ "$docs" -gt 0 ] || { echo "deploy FAILED: tools/site.py wrote no documentation pages (docs/)"; exit 1; }
 # A docs page that moved (docs-site/_moved.json) answers at its old address
-# with a 308 to its new one, so a link anyone kept still lands.
+# with a 308 to its new one, so a link anyone kept still lands. A section
+# that moved ("page#anchor") is the old page's to send on: no fragment
+# reaches the server.
 docs_moved=$(python3 -c 'import json; m = json.load(open("docs-site/_moved.json"))
 print("".join("    { \"src\": \"/docs/%s(/|[.]html)?\", \"status\": 308, \"headers\": { \"Location\": \"/docs/%s\" } },\n" % (a, b)
-               for a, b in sorted(m.items()) if not a.startswith("$")), end="")') || {
+               for a, b in sorted(m.items()) if not a.startswith("$") and "#" not in a), end="")') || {
   echo "deploy FAILED: could not read docs-site/_moved.json"; exit 1; }
 echo "deploy: $docs documentation pages at /docs/"
 
@@ -603,6 +497,10 @@ authorize_csp="default-src 'self'; script-src 'self'; connect-src 'self' ${signi
 # names the build; the build it names under /b/<sha>/ is cached forever.
 # /pricing, in English and each language, is the plans page's name before
 # the owner asked for Plans (2026-11-03), so a link that guessed it lands.
+# /beta-hub, in English and each language, was the testers' hub until it
+# became the beta's own page (betahome, 2026-11-09): kept links land there.
+# /beta-admin was the owner's page of the beta until the console took it in
+# (console1, 2026-11-12): it lands on the console's Beta.
 cat > .vercel/output/config.json <<EOF
 {
   "version": 3,
@@ -619,6 +517,9 @@ cat > .vercel/output/config.json <<EOF
     { "src": "/challenges/?", "status": 308, "headers": { "Location": "/challenge" } },
     { "src": "/pricing([.]html|/)?", "status": 308, "headers": { "Location": "/plans" } },
     { "src": "/($langs)/pricing([.]html|/)?", "status": 308, "headers": { "Location": "/\$1/plans" } },
+    { "src": "/beta-hub([.]html|/)?", "status": 308, "headers": { "Location": "/beta" } },
+    { "src": "/($langs)/beta-hub([.]html|/)?", "status": 308, "headers": { "Location": "/\$1/beta" } },
+    { "src": "/beta-admin([.]html|/)?", "status": 308, "headers": { "Location": "/admin#beta" } },
     { "src": "/([A-Za-z0-9_-]+)[.]html", "status": 308, "headers": { "Location": "/\$1" } },
 $docs_moved
     { "src": "/docs/([A-Za-z0-9_-]+)[.]html", "status": 308, "headers": { "Location": "/docs/\$1" } },
@@ -655,6 +556,7 @@ $docs_moved
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})/?", "dest": "/api/share?op=page&id=\$1&v=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})[.]mpd", "dest": "/api/share?op=file&id=\$1&v=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})/parts[.](json|xml|csv)", "dest": "/api/share?op=parts&id=\$1&v=\$2&as=\$3" },
+    { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})/parts-(pab|pab-[1-9][0-9]{0,2})[.]csv", "dest": "/api/share?op=parts&id=\$1&v=\$2&as=\$3" },
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})/scene[.]json", "dest": "/api/share?op=scene&id=\$1&v=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})/room[.]json", "dest": "/api/share?op=room&id=\$1&v=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})[.]png", "dest": "/api/share?op=image&id=\$1&v=\$2" },
@@ -665,6 +567,7 @@ $docs_moved
     { "src": "/m/([A-Za-z0-9]{10})[.]webp", "dest": "/api/share?op=thumb&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})[.]mpd", "dest": "/api/share?op=file&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})/parts[.](json|xml|csv)", "dest": "/api/share?op=parts&id=\$1&as=\$2" },
+    { "src": "/m/([A-Za-z0-9]{10})/parts-(pab|pab-[1-9][0-9]{0,2})[.]csv", "dest": "/api/share?op=parts&id=\$1&as=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/scene[.]json", "dest": "/api/share?op=scene&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})/room[.]json", "dest": "/api/share?op=room&id=\$1" },
     { "src": "/m/([A-Za-z0-9]{10})/embed/?", "dest": "/api/share?op=embed&id=\$1" },

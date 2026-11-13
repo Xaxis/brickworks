@@ -203,9 +203,15 @@ static func fix_words(weak: Weak, library: PartLibrary) -> String:
 		return "Hold it with studs, or move its weight back over where it touches."
 	if weak.margin >= CLOSE:
 		return ""
-	var how: String = "hold it up from below, or hang it from more studs" if one.hangs \
-		else "brace it, give it more studs, or move weight back over the %s" % _named(library,
-			one.held_part)
+	# By its kind: a pin has no studs to be given more of, and what nothing
+	# holds no hold to be times more of (drvrecheck F2).
+	if one.holds_nothing():
+		return ("Nothing holds it there: give it studs to stand on, or hold up what it carries."
+			if one.kind == "studs" else "It turns with nothing holding it: tie it in with a second "
+			+ "pin off its line, or hold up what it carries.")
+	var more: String = "give it more studs" if one.kind == "studs" else "tie it in with a second pin off its line"
+	var how: String = "hold it up from below, or hang it from more studs" if one.hangs and one.kind == "studs" \
+		else "brace it, %s, or move weight back over the %s" % [more, _named(library, one.held_part)]
 	if weak.margin < WEAK:
 		return "It needs %s times the hold it has: %s." % [Balance.tidy(one.ratio), how]
 	return "To hold it twice over, %s." % how
@@ -258,9 +264,11 @@ static func part_words(weighed: Stability.Report, world: BrickWorld, library: Pa
 	var name: String = _named(library, brick.part_id)
 	var one: Balance.JointLoad = weighed.margins.get(id)
 	if one != null:
-		return "%s: carries %s g %s, margin %s" % [name, Balance.tidy(one.grams),
+		# What nothing holds has no margin (drvrecheck F2).
+		return "%s: carries %s g %s, %s" % [name, Balance.tidy(one.grams),
 			"hanging from" + one.held_on().trim_prefix("on") if one.hangs else one.held_on(),
-			margin_words(1.0 / maxf(one.ratio, 0.000001))]
+			"with nothing holding it" if one.holds_nothing() and one.moment > 0.000001
+			else "margin " + margin_words(1.0 / maxf(one.ratio, 0.000001))]
 	match str(weighed.held.get(id, "")):
 		"floor":
 			return "%s: stands on the %s" % [name, "baseplate" if not scenery.is_empty() else "ground"]
@@ -280,13 +288,16 @@ func brace_words(id: int) -> String:
 	var one: Balance.JointLoad = report.margins.get(id) if report != null else null
 	if one == null:
 		return ""
-	return ("Brace this: the %s %s %s g %s of the %s, %s its %sworking "
-		+ "load (margin %s). Make that joint hold, by supporting what it carries or by "
-		+ "tying it in with %s, and change nothing else.") % [
+	# What nothing holds is past no working load by a margin: it has none
+	# (drvrecheck F2).
+	var how: String = "with nothing holding it" if one.holds_nothing() and one.moment > 0.000001 \
+		else "%s its %sworking load (margin %s)" % ["past" if margin_of(id) < WEAK else "near",
+			"studs' " if one.kind == "studs" else "", margin_words(margin_of(id))]
+	return ("Brace this: the %s %s %s g %s of the %s, %s. Make that joint hold, by supporting "
+		+ "what it carries or by tying it in with %s, and change nothing else.") % [
 		_name(one.beyond_part), "hangs" if one.hangs else "carries", Balance.tidy(one.grams),
 		"from" + one.held_on().trim_prefix("on") if one.hangs else one.held_on(),
-		_name(one.held_part), "past" if margin_of(id) < WEAK else "near",
-		"studs' " if one.kind == "studs" else "", margin_words(margin_of(id)),
+		_name(one.held_part), how,
 		"more studs" if one.kind == "studs" else "a second pin off its line"]
 
 
@@ -332,11 +343,13 @@ static func said(weighed: Stability.Report, world: BrickWorld, library: PartLibr
 		lines.append("No joint alone holds what is past it: every part is held more than one way.")
 	else:
 		lines.append(("%d joint%s each hold alone what is past them: on studs, levered about the "
-			+ "edge each would turn on (1 N a stud working, about 3 N lets go); on pins or axles "
+			+ "edge each would turn on (%s N a stud working; it lets go at about %s N, %s N into "
+			+ "a part a stud wide); on pins or axles "
 			+ "in a line, turned about it (a friction pin about 0.75 N·cm working, 1 slips; a "
 			+ "frictionless one nothing); an axle keyed in its hole or pins on two lines, held "
 			+ "square; the weakest:") % [
-			all, "" if all == 1 else "s"])
+			all, "" if all == 1 else "s", Balance.tidy(Balance.ALLOWABLE_N),
+			Balance.tidy(Balance.ULTIMATE_N), Balance.tidy(Balance.ULTIMATE_ONE_WIDE_N)])
 	# A piece on a touch past where it touches first: it falls.
 	for risk: Stability.Risk in weighed.risks:
 		if risk.kind == "rests on a touch":
@@ -344,9 +357,25 @@ static func said(weighed: Stability.Report, world: BrickWorld, library: PartLibr
 	for listed: Weak in joints.slice(0, count):
 		var one: Balance.JointLoad = listed.joint
 		var margin: float = listed.margin
+		var who: String = "  #%d %s %s #%d %s %s, %s g past it: " % [one.beyond,
+			_named(library, one.beyond_part), "hangs from" if one.hangs else "stands on", one.held_by,
+			_named(library, one.held_part), one.held_on(), Balance.tidy(one.grams)]
+		# What nothing holds has no working load to be a margin of, nor a
+		# load it lets go at: divided by that nothing, a steering arm free on
+		# its axle read "3801303x its working load" (drvrecheck F2).
+		if one.holds_nothing():
+			var said: String
+			if one.moment <= 0.000001:
+				said = "nothing levers it" if one.kind == "studs" else "nothing turns it about its line"
+			elif one.kind == "studs":
+				said = "nothing holds it there, red"
+			else:
+				said = "it turns with nothing holding it, %s N·cm about its line, red" % Balance.tidy(one.moment)
+			lines.append(who + said)
+			continue
 		var how: String
 		if margin < WEAK:
-			how = "past its studs' working load, red"
+			how = "past its %sworking load, red" % ("studs' " if one.kind == "studs" else "")
 		elif margin < CLOSE:
 			how = "within twice its working load, amber"
 		elif margin >= 100.0:
@@ -355,12 +384,10 @@ static func said(weighed: Stability.Report, world: BrickWorld, library: PartLibr
 				else "pressed straight down, nothing levers it")
 		else:
 			how = "holds it %s times over" % Balance.studs(margin)
-		lines.append("  #%d %s %s #%d %s %s, %s g past it: margin %s (%sx its working load), %s%s" % [
-			one.beyond, _named(library, one.beyond_part), "hangs from" if one.hangs else "stands on",
-			one.held_by, _named(library, one.held_part), one.held_on(),
-			Balance.tidy(one.grams), margin_words(margin), Balance.tidy(one.ratio), how,
+		lines.append(who + "margin %s (%sx its working load), %s%s" % [margin_words(margin),
+			Balance.tidy(one.ratio), how,
 			"; it lets go at about %s times this load" % Balance.tidy(
-				(one.ultimate / maxf(one.capacity, 0.000001) if one.kind != "studs" else 3.0) * margin)
+				one.ultimate / maxf(one.capacity, 0.000001) * margin)
 				if margin < 100.0 else ""])
 	var held: Dictionary = {}
 	for id: Variant in weighed.held:

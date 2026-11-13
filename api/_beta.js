@@ -7,20 +7,32 @@
 // with the account without a limit (Free keeps 25) and commercial use; the
 // desktop app is free to everyone (docs/PLANS.md, 2026-11-02).
 //
-// BRICKWORKS_BETA is the switch, read here (betaMode) and nowhere else:
-// "open" takes applications on /beta; anything else (unset, production's
-// until the owner says) is off, and /beta says it is coming, asks nothing
-// of the database and takes nothing. The owner's queue and the daily run
-// work either way: approved testers keep their month whatever the switch.
+// The beta's switch is read here (betaMode) and nowhere else: the owner's,
+// flipped from the console (/admin, Beta; api/_settings.js, the setting
+// "beta" of supabase/console.sql) where the request was made, else
+// BRICKWORKS_BETA, the project's. "open" takes applications on /beta;
+// anything else (unset, production's until the owner says) is off, and
+// /beta says it is coming, asks nothing of the database but the switch and
+// takes nothing. The owner's queue and the daily run work either way:
+// approved testers keep their month whatever the switch.
 //
 // Routes (each an op of an API file: Vercel's plan stops at 12 functions):
 //
-//   GET  /api/plans?op=beta        {beta: off} or {beta: open, pool, early,
-//                                  test, application}: the spots left and,
-//                                  signed in, where your application stands
-//   POST /api/plans?op=beta        signed in, the form (applicationOf): 200
-//                                  with the same, 401 signed out, 403 off,
-//                                  409 applied already, 422 with why
+//   GET  /api/plans?op=beta        {beta: off} or {beta: open, spots, pool,
+//                                  early, test, application}: the spots left
+//                                  and, signed in, where you stand: tester,
+//                                  state, joined_at, welcome, and the month
+//                                  (month: {pool, early, test, application})
+//   POST /api/plans?op=beta        signed in, the form (applicationOf), "tell
+//                                  us about you" since betajoin: it joins the
+//                                  testers too; 200 with the same, 401 signed
+//                                  out, 403 off, 409 sent already, 422 with why
+//   POST /api/plans?op=beta_join   signed in, {via}: a tester at once (betajoin,
+//                                  supabase/beta_join.sql); 200 with the
+//                                  same as GET, 401 signed out, 403 off
+//   POST /api/plans?op=beta_leave  signed in: not a tester (a tester leaves,
+//                                  anybody else said Not now); the welcome
+//                                  is never due again. Whatever the switch
 //   GET  /api/plans?op=beta_spots  {beta: off} or {beta: open, cap, left}:
 //                                  signed out, cached a minute, for the
 //                                  pricing and home pages' callouts
@@ -33,6 +45,17 @@
 //   GET  /api/admin?op=beta        the owner's queue (api/admin.js gates it)
 //   POST /api/admin?op=beta_decide&account=U   {decision, note}
 //   POST /api/admin?op=beta_grant  every month still to give, given
+//   GET  /api/admin?op=beta_testers[&tests=1]  every tester, who left and who
+//                                  said Not now, with their month's place
+//
+// Joining is a step of signing up (betajoin, 2026-11-09): while the beta is
+// open a new account is welcomed right after its code (web/beta-welcome.js,
+// the app's SignInGate), and Join the beta testers makes it one at once, no
+// approval; Not now, and the welcome is never shown again. The month of Pro
+// is as it was: the first 100, approved by the owner from the queue, given
+// at Admission once billing is live. The form is "tell us about you" after
+// joining, never a gate to being a tester; sent by a tester, its boxes for
+// the terms and the emails were agreed to when it joined.
 //
 // The vetting is light, and only ever advice: the server works out what
 // the owner reads beside each application (signalsOf here, and what the
@@ -53,10 +76,23 @@ import { admission, billingMode } from "./_billing.js";
 import { isCron } from "./_cron.js";
 import { db, dbConfigured } from "./_db.js";
 import { EARLY, KNOWN, NEW } from "./_early.js";
+import { setSetting, settingOf } from "./_settings.js";
 
-/// "open" or "off".
-export function betaMode(env = process.env) {
-  return String(env.BRICKWORKS_BETA || "").trim().toLowerCase() === "open" ? "open" : "off";
+/// "open" or "off" where [request] was made: the owner's switch from the
+/// console there, else the project's (BRICKWORKS_BETA).
+export async function betaMode(request, env = process.env) {
+  return (await betaSwitch(request, env)).mode;
+}
+
+/// The beta's switch where [request] was made: {mode, source: "console" |
+/// "project", set_by, set_at, project (BRICKWORKS_BETA's own mode)}.
+export async function betaSwitch(request, env = process.env) {
+  const project = String(env.BRICKWORKS_BETA || "").trim().toLowerCase() === "open" ? "open" : "off";
+  const set = await settingOf("beta", request);
+  if (set?.value === "open" || set?.value === "off") {
+    return { mode: set.value, source: "console", set_by: set.set_by ?? null, set_at: set.set_at ?? null, project };
+  }
+  return { mode: project, source: "project", set_by: null, set_at: null, project };
 }
 
 /// The version of the beta's terms an application agrees to (web/terms.html#beta).
@@ -116,8 +152,9 @@ export function linkOf(raw) {
 
 /// What a POST to /api/plans?op=beta asks, checked at the edge: {build,
 /// ai, background, background_line, link}, or a Refusal in words a
-/// person can act on.
-export function applicationOf(body) {
+/// person can act on. [joined]: sent by a tester, who agreed to the terms
+/// and the emails when it joined.
+export function applicationOf(body, { joined = false } = {}) {
   if (!body || typeof body !== "object") throw new Refusal(422, "Fill in the form.");
   for (const field of ["build", "background_line", "link"]) {
     if (body[field] !== undefined && body[field] !== null && typeof body[field] !== "string") {
@@ -140,8 +177,9 @@ export function applicationOf(body) {
     throw new Refusal(422, `The line about your background is at most ${MOST.line} characters; that is ${backgroundLine.length}.`);
   }
   const link = linkOf(body.link);
-  if (body.terms !== true) throw new Refusal(422, "Tick the box to agree to the beta's terms.");
-  if (body.emails !== true) throw new Refusal(422, "Tick the box to agree that we email you about the beta.");
+  // A tester agreed to both when it joined.
+  if (!joined && body.terms !== true) throw new Refusal(422, "Tick the box to agree to the beta's terms.");
+  if (!joined && body.emails !== true) throw new Refusal(422, "Tick the box to agree that we email you about the beta.");
   return { build, ai, background, background_line: backgroundLine, link };
 }
 
@@ -248,7 +286,7 @@ function wordsOf(kind, data, origin) {
           + "more, it is read with the others."] : []),
         `What you told us is kept with your account and deleted with it: ${origin}/privacy#beta.`,
       ],
-      action: { label: "See your application", href: `${origin}/beta#apply` },
+      action: { label: "See your application", href: `${origin}/beta#about` },
     };
   }
   if (kind === "approved" && data.early) {
@@ -490,10 +528,42 @@ async function claimsOf(request) {
   return verify(bearer(request), request);
 }
 
+/// Where the press to join was, as the owner's list counts them: the
+/// welcome after a first sign-in on the site or in the app, Settings (the
+/// site's or the app's), the homepage, the beta hub or page, the beta bar,
+/// or somewhere else on the site.
+export const VIA = Object.freeze(["welcome", "app", "settings", "app_settings", "home", "hub", "beta", "bar", "site"]);
+
+/// Where [account] stands with the testers (supabase/beta_join.sql
+/// beta_member): {tester, state, joined_at, via, welcome}. Before that file
+/// is applied, or not answered, as it was before it (before: true): a
+/// tester is an approved application (beta_tester), and nobody is welcomed.
+export async function memberOf(account) {
+  try {
+    return await db("rpc/beta_member", { method: "POST", body: { p_account: account } });
+  } catch (trouble) {
+    if (!notYet(trouble)) console.error(`beta: member: ${String(trouble?.message || trouble).slice(0, 120)}`);
+    const tester = await db("rpc/beta_tester", { method: "POST", body: { p_account: account } }).catch(() => false);
+    return { tester: tester === true, state: tester === true ? "tester" : null, joined_at: null, via: null,
+      welcome: false, before: true };
+  }
+}
+
+/// What GET op=beta answers somebody signed in: where they stand with the
+/// testers, and the month as beta_status says it, under month and, for the
+/// pages that read it there, at the top as before.
+function standing(member, status) {
+  return { beta: "open", signed_in: true, tester: member.tester === true, state: member.state ?? null,
+    joined_at: member.joined_at ?? null, welcome: member.welcome === true,
+    spots: { cap: status.pool?.cap ?? null, left: status.pool?.left ?? null },
+    month: { pool: status.pool, early: status.early, test: status.test, application: status.application },
+    ...status };
+}
+
 /// GET or POST /api/plans?op=beta.
 export async function betaRoute(request, response) {
   response.setHeader("Cache-Control", "no-store");
-  const mode = betaMode();
+  const mode = await betaMode(request);
   if (request.method === "GET" && mode === "off") return response.status(200).json({ beta: "off" });
   if (request.method === "POST" && mode === "off") return say(response, 403, "The beta is not open yet.", { beta: "off" });
   if (!["GET", "POST"].includes(request.method)) return say(response, 405, "GET, or POST the form signed in");
@@ -508,16 +578,88 @@ export async function betaRoute(request, response) {
   }
   try {
     if (request.method === "GET") {
-      const status = await db("rpc/beta_status", { method: "POST", body: { p_account: claims?.sub ?? null } });
-      return response.status(200).json({ beta: "open", signed_in: Boolean(claims), ...status });
+      const [status, member] = await Promise.all([
+        db("rpc/beta_status", { method: "POST", body: { p_account: claims?.sub ?? null } }),
+        claims ? memberOf(claims.sub) : null]);
+      if (!claims) {
+        return response.status(200).json({ beta: "open", signed_in: false,
+          spots: { cap: status.pool?.cap ?? null, left: status.pool?.left ?? null }, ...status });
+      }
+      return response.status(200).json(standing(member, status));
     }
     if (!claims) return say(response, 401, "Sign in to apply.");
     return await apply(request, response, claims);
   } catch (trouble) {
-    if (trouble instanceof Refusal) return say(response, trouble.status, trouble.message, trouble.extra);
-    console.error(`beta: ${String(trouble?.message || trouble).slice(0, 160)}`);
-    if (notYet(trouble)) return say(response, 503, "The beta is not open here yet.");
-    return say(response, 503, "That did not go just now. Try again in a minute.");
+    return refused(response, trouble);
+  }
+}
+
+/// A Refusal said, or anything else said as the database's trouble.
+function refused(response, trouble) {
+  if (trouble instanceof Refusal) return say(response, trouble.status, trouble.message, trouble.extra);
+  console.error(`beta: ${String(trouble?.message || trouble).slice(0, 160)}`);
+  if (notYet(trouble)) return say(response, 503, "The beta is not open here yet.");
+  return say(response, 503, "That did not go just now. Try again in a minute.");
+}
+
+/// The signed-in claims of a POST to join or leave, or the answer already
+/// sent: 401 signed out ([signIn], in words), 405 for anything but a POST,
+/// 503 with nowhere to keep it.
+async function poster(request, response, signIn) {
+  if (request.method !== "POST") return void say(response, 405, "POST, signed in");
+  if (!dbConfigured()) return void say(response, 503, "The beta is not open here yet.");
+  try {
+    const claims = await claimsOf(request);
+    if (!claims) return void say(response, 401, signIn);
+    if (claims.email_verified === false) return void say(response, 403, "Confirm your email address first: sign in with a code.");
+    return claims;
+  } catch (trouble) {
+    if (!(trouble instanceof AuthError)) throw trouble;
+    return void say(response, trouble.status, trouble.message);
+  }
+}
+
+/// [account] made a tester from [via] (one of VIA; "site" for any other),
+/// under today's terms: beta_member, or a Refusal.
+async function join(account, via) {
+  const where = VIA.includes(via) ? via : "site";
+  const made = await db("rpc/beta_join", { method: "POST", body: { p_account: account, p_via: where, p_terms: TERMS } });
+  if (made?.refused === "nobody") throw new Refusal(401, "Sign in again: this account is not there any more.");
+  return made;
+}
+
+/// POST /api/plans?op=beta_join {via}: a tester at once, while the beta is
+/// open. Answers what GET op=beta does.
+export async function betaJoin(request, response) {
+  response.setHeader("Cache-Control", "no-store");
+  if (await betaMode(request) === "off") return say(response, 403, "The beta is not open yet.", { beta: "off" });
+  const claims = await poster(request, response, "Sign in to join the beta.");
+  if (!claims) return response;
+  try {
+    const member = await join(claims.sub, String(bodyOf(request)?.via || ""));
+    const status = await db("rpc/beta_status", { method: "POST", body: { p_account: claims.sub } });
+    return response.status(200).json(standing(member, status));
+  } catch (trouble) {
+    return refused(response, trouble);
+  }
+}
+
+/// POST /api/plans?op=beta_leave: not a tester (left, or Not now for one
+/// who never joined), and never welcomed again; the month as it was.
+/// Whatever the switch: anybody may always leave. Answers what GET op=beta
+/// does, or {beta: off, tester, state} with the beta off.
+export async function betaLeave(request, response) {
+  response.setHeader("Cache-Control", "no-store");
+  const claims = await poster(request, response, "Sign in to leave the beta.");
+  if (!claims) return response;
+  try {
+    const member = await db("rpc/beta_leave", { method: "POST", body: { p_account: claims.sub } });
+    if (member?.refused === "nobody") throw new Refusal(401, "Sign in again: this account is not there any more.");
+    if (await betaMode(request) === "off") return response.status(200).json({ beta: "off", tester: false, state: member.state });
+    const status = await db("rpc/beta_status", { method: "POST", body: { p_account: claims.sub } });
+    return response.status(200).json(standing(member, status));
+  } catch (trouble) {
+    return refused(response, trouble);
   }
 }
 
@@ -553,7 +695,7 @@ export async function betaHub(request, response) {
 /// may be kept a minute by any cache.
 export async function betaSpots(request, response) {
   response.setHeader("Cache-Control", "public, max-age=60, s-maxage=60, stale-while-revalidate=300");
-  if (betaMode() === "off" || !dbConfigured()) return response.status(200).json({ beta: "off" });
+  if (!dbConfigured() || await betaMode(request) === "off") return response.status(200).json({ beta: "off" });
   try {
     const { pool } = await db("rpc/beta_status", { method: "POST", body: { p_account: null } });
     return response.status(200).json({ beta: "open", cap: pool.cap, left: pool.left });
@@ -580,7 +722,10 @@ async function apply(request, response, claims) {
       + "with your email to apply.");
   }
   if (claims.email_verified === false) throw new Refusal(403, "Confirm your email address first: sign in with a code.");
-  const app = applicationOf(bodyOf(request));
+  // Telling us about you is a tester's: one who has not joined joins with it.
+  const member = await memberOf(claims.sub);
+  const app = applicationOf(bodyOf(request), { joined: member.tester === true });
+  if (member.tester !== true && !member.before) await join(claims.sub, "beta");
   const made = await db("rpc/beta_apply", { method: "POST", body: { p_account: claims.sub, p_build: app.build,
     p_ai: app.ai, p_background: app.background, p_background_line: app.background_line, p_link: app.link ?? "",
     p_terms: TERMS, p_signals: signalsOf(app, email) } });
@@ -645,7 +790,7 @@ export async function betaQueue(request, response) {
   try {
     const queue = await db("rpc/beta_queue", { method: "POST", body: { p_status: status || null, p_tests: tests,
       p_limit: 500 } });
-    return response.status(200).json({ beta: betaMode(), months: monthsHere(), tests, ...queue });
+    return response.status(200).json({ beta: await betaMode(request), months: monthsHere(), tests, ...queue });
   } catch (trouble) {
     if (notYet(trouble)) return say(response, 503, "Not open yet: supabase/beta.sql is not applied.");
     throw trouble;
@@ -691,6 +836,60 @@ export async function betaDecide(request, response, claims) {
     out.mail = (await sendMail("declined", who, { again_at: app.may_apply_again_at })).state;
   }
   return response.status(200).json(out);
+}
+
+/// POST /api/admin?op=beta_waitlist&account=U {note}: a new application put
+/// on the waitlist by hand (supabase/console.sql): no spot and no email;
+/// Approve and Decline work from there as from New.
+export async function betaWaitlist(request, response, claims) {
+  const account = String(request.query?.account || "");
+  if (!UUID.test(account)) return say(response, 400, "name an application: ?account=<id>");
+  const note = line(bodyOf(request)?.note).slice(0, MOST.note);
+  let said;
+  try {
+    said = await db("rpc/beta_waitlist", { method: "POST", body: { p_account: account, p_note: note || null,
+      p_by: String(claims.email || "the owner").slice(0, 320) } });
+  } catch (trouble) {
+    if (notYet(trouble)) return say(response, 503, "Not open yet: supabase/console.sql is not applied.");
+    throw trouble;
+  }
+  if (said?.refused === "none") return say(response, 404, "There is no such application.");
+  if (said?.refused === "status") {
+    return say(response, 409, `Only a new application goes on the waitlist: this one is ${said.status}.`,
+      { refused: "status", status: said.status });
+  }
+  return response.status(200).json({ application: said.application, pool: said.pool, test: said.test === true });
+}
+
+/// POST /api/admin?op=beta_switch {mode: open | off}: the beta's switch
+/// flipped where the console is open (api/_settings.js): on brickworks.diy
+/// the site's, on a preview that preview's alone.
+export async function betaSwitchRoute(request, response, claims) {
+  const mode = String(bodyOf(request)?.mode || "");
+  if (mode !== "open" && mode !== "off") return say(response, 422, "Open or off.");
+  let made;
+  try {
+    made = await setSetting("beta", mode, request, claims.email);
+  } catch (trouble) {
+    if (notYet(trouble)) return say(response, 503, "The switch is not open yet: supabase/console.sql is not applied.");
+    throw trouble;
+  }
+  return response.status(200).json({ beta: await betaSwitch(request), was: made.was ?? null, value: made.value,
+    scope: made.scope });
+}
+
+/// GET /api/admin?op=beta_testers[&tests=1]: every tester of the 100's pool
+/// (or the checks', accounts at resend.dev), who left, who said Not now,
+/// and each one's place in the month's queue.
+export async function betaTesters(request, response) {
+  const tests = String(request.query?.tests || "") === "1";
+  try {
+    const listed = await db("rpc/beta_testers_list", { method: "POST", body: { p_tests: tests, p_limit: 1000 } });
+    return response.status(200).json({ beta: await betaMode(request), tests, ...listed });
+  } catch (trouble) {
+    if (notYet(trouble)) return say(response, 503, "Not open yet: supabase/beta_join.sql is not applied.");
+    throw trouble;
+  }
 }
 
 /// POST /api/admin?op=beta_grant: every month still to give, given.

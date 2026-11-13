@@ -9,7 +9,7 @@
 //   [--widths=1280,390]  [--langs=en,de,fr,es]
 //   [--pages=home,download,plans,faq,compare,gallery,library,set,model,sitemaps,signin,firststeps,
 //            profile,ldraw,embed,viewer,server,challenge,collections,account,
-//            feed,notifications,builds,feedback,beta,beta-hub,terms,privacy,guidelines,takedown,
+//            feed,notifications,builds,feedback,beta,terms,privacy,guidelines,takedown,
 //            changelog,missing,consent]
 //
 // The landing page and the download page, and the app's loading page
@@ -125,13 +125,14 @@
 // And the last English pages the site linked to (2026-11-02, languages7),
 // each in the language at each width, no English left but what people
 // wrote and the release notes:
-//   feed, notifications, beta, beta-hub, feedback, consent
+//   feed, notifications, beta, feedback, consent
 //                the account menu's pages and the connector's consent page
 //                (/oauth/authorize, asking to let Claude build), signed in
 //                only in the browser as account's are, every call answered
 //                here; the feed's and the notifications' lines said whole
-//                by the server in the language; the beta's form's refusal,
-//                the feedback dialog, and the beta hub's cards as we wrote
+//                by the server in the language; the beta's page (its hub:
+//                a tester's since a day the language writes), the feedback
+//                dialog, and the hub's cards and release notes as we wrote
 //                them (lang="en");
 //   builds       every photo of a real build, signed out;
 //   terms, privacy, guidelines, takedown
@@ -1420,8 +1421,11 @@ async function serverSaid(browser, code, width, at) {
 
 // The pages languages6 put in each language. What people wrote on them,
 // and the names they say: as they wrote them. A challenge's title and
-// brief are the owner's, written in English for every visitor.
-const THEIRS_CHALLENGE = "#title, #crumb, #brief, #next-title, #next-brief, .past-one h3, .winner-cards .words";
+// brief are the owner's, written in English for every visitor; an entry's
+// name in the line over the cards (#vote-said b) is its designer's. Cards,
+// the entries', the winners' and the past challenges', are skipped whole
+// (readable's article.model .words).
+const THEIRS_CHALLENGE = "#title, #crumb, #brief, #next-title, #next-brief, #vote-said b";
 const THEIRS_LIST = ".list-head h1, .list-head .handle a, .list-head .bio";
 const THEIRS_COLLECTIONS = ".collection-card a.open b, .collection-card a.who";
 const THEIRS_OWN = "#title, #handle-line, #bio-shown, #links-shown, .list-card .name, .list-card .who, .people-list .name, "
@@ -1624,8 +1628,8 @@ const SEVENTH = [
     theirs: "figure.build q, figure.build figcaption a" },
   { name: "feedback", file: "feedback.html", at: "/feedback", signedIn: true, drawn: () => true, theirs: "" },
   { name: "beta", file: "beta.html", at: "/beta", signedIn: true,
-    drawn: () => document.getElementById("apply-wait")?.hidden && !document.querySelector("#spots .bone"), theirs: "" },
-  { name: "beta-hub", file: "beta-hub.html", at: "/beta-hub", signedIn: true, drawn: () => !document.getElementById("hub")?.hidden,
+    drawn: () => document.documentElement.dataset.betaPage && !document.querySelector("#spots .bone")
+      && !document.getElementById("testers").hidden && !document.querySelector("#news .skeleton"),
     theirs: "[lang='en']" },
   ...["terms", "privacy", "guidelines", "takedown"].map((name) => ({ name, file: `${name}.html`, at: `/${name}`, binds: true,
     drawn: () => true, theirs: "" })),
@@ -1730,12 +1734,13 @@ async function seventhSaid(browser, code, width, one) {
       check(lines.length >= 3, `${where}: ${lines.length} lines, first "${lines[0]?.slice(0, 90)}"`);
     }
     if (one.name === "beta") {
-      // The form's refusal, said by its script in the language.
-      await tab.locator("#apply-send").click();
-      await tab.waitForFunction(() => document.getElementById("apply-said")?.textContent.trim(), null, { timeout: 10000 });
-      const said = (await tab.locator("#apply-said").textContent()).trim();
-      const want = script(code, "Say what you would build, in a sentence or two: at least {n} characters.", { n: 20 });
-      check(said === want, `${where}: an empty form is told "${said}"`);
+      // Sam, a tester since the day the beta opened (the stand-in), thanked
+      // by its script in the language, the day as the language writes it.
+      const said = (await tab.locator("#spots").textContent()).trim();
+      const day = new Intl.DateTimeFormat(code === "en" ? "en-GB" : code, { day: "numeric", month: "long", year: "numeric",
+        timeZone: "UTC" }).format(new Date(stand.BETA_AT));
+      const want = script(code, "You’ve been a tester since {day}. Thank you!", { day });
+      check(said === want, `${where}: a tester is told "${said}"`);
     }
     if (one.name === "feedback") {
       // The feedback dialog, opened from the page, in the language.

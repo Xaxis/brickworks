@@ -171,7 +171,7 @@ func _the_bow() -> void:
 		var said: String = balance.said(func(id: int) -> String:
 			var placement: Assistant.Placement = model.placements[id - 1]
 			return "brick %d (%s at %s)" % [id - 1, placement.part, placement.where()])
-		var first: String = said.get_slice("Most loaded stud joints (1 N a stud working, 3 N lets go): ", 1)
+		var first: String = said.get_slice("Most loaded joints (", 1).get_slice("): ", 1)
 		_check("%s: check_design names the forecastle's joint first: %s" % [
 			"with the ladder" if ladder else "without it", first.get_slice(";", 0)],
 			first.begins_with("brick 48 (3034 at 18,3,5) hanging from brick 30 (92438 at 4,4,2) on 4 studs"))

@@ -15,11 +15,247 @@ whole cycle.
 
 ### Added
 
-- **Pictures of your models in the file manager**, on Linux from the .deb:
-  an .ldr, .mpd or .io file shows its model from the front corner, as
-  Brickworks' corner view draws it, where it showed the type's icon. Parts
-  the library has not got are left out of the picture; a file with none it
-  knows keeps the icon. Windows comes next.
+- **Loose parts**, in File › My collection…: a tub of bricks, a lot at a time.
+  Type a part's number or a few words (*red 2x4 brick*), find it from a
+  photo, or take it in the parts bin. Each change is made on the server one
+  at a time, so two tabs or two devices never lose each other's.
+- **Your sets as they really are.** In My collection, **Photo…** finds a set
+  from a photo of its box, its booklet's cover or a minifigure and offers
+  the three likeliest; the photo goes to Brickognize, and Brickworks says so
+  the first time. **Missing parts…** beside a set marks what it is short of,
+  and What do I need? and What can I build? then count only what is there.
+  **Closest to whole** lists the sets nearest to complete first. A
+  Rebrickable fetch keeps the marks, never more than your copies hold.
+- **Palettes of your own**, in the parts bin: parts in their colours and
+  whole sub-assemblies, named and kept for every model. **New palette**
+  makes one, **Add** keeps the part in hand, the selection or the selection
+  as one sub-assembly, and a sub-assembly goes down whole in any model.
+- **A New shelf and rare colours**, in the parts bin. New lists the parts
+  first made in the catalogue's latest two years, 282 from 2025 and 2026,
+  the newest first. With a part in hand, a colour's tooltip says how many
+  sets have the part in that colour, or that it is rare in three or fewer,
+  so you know whether a lost piece can be replaced.
+- **File › Compare › Compare two sets or models…**: what two share, and what
+  to buy to build one from the other, with BrickLink, Rebrickable and LEGO®
+  Pick a Brick lists of it.
+- **View › Stud directions** colours each part by where its studs point,
+  green up, red down and so on, with a legend that counts each. **View ›
+  Edges and studs** hides the line where parts meet, or every stud, to see
+  the shapes alone, and a big model draws faster. Renders, booklets and
+  shared pictures still draw both.
+- **The model's size and weight on the status bar**: how many parts, whether
+  it stands, its weight in grams, and its size in studs, plates and
+  centimetres. Select some parts and it gives their size instead.
+- **View › Viewpoint › Save this view…** (Alt+V) keeps a view by a name in
+  the model's file. Alt+Shift+1 to 9 look from the first nine, Render's
+  Camera offers each, and **Render each saved view** queues them all.
+  Render's **Preset** keeps all its choices by a name on this device, for
+  any model.
+- **Lights in the model**, in Render: up to eight bulbs, spots, suns or
+  light panels, hung over the parts you select, kept in the model's file and
+  drawn in every render. Render's new **Dark** light leaves only them, and
+  Trans Neon and Glow In Dark plastics light the parts round them. A
+  sub-model keeps its lights through rename, take-apart, copy and paste.
+- **Render's Line art and Comic looks**: the model inked in black lines on
+  white with its shade in halftone dots, to print or colour in, or the same
+  lines and dots over each part's own colour. **Kept as** can make a moving
+  render a GIF that plays anywhere, chats and mail included, and a build
+  video now keeps close on what is built so far.
+- **A model drives on its wheels**, from **Build › Motions…** (Alt+O). Under
+  Where it drives, add legs, Straight, Left or Right, so many studs or
+  degrees on a radius; each wheel turns once for each round of its tyre and
+  the steering turns into the corners. A car is offered *Drive and turn
+  left*. A kept drive is in the file, and a shared link plays it.
+- **Build › Build steps › Name the step…** (Shift+F2): the name shows beside
+  the step's number on the timeline, in Build it and on the booklet page,
+  and stays with the step's parts through every step edit.
+- **Page setup's Cover and Steps tabs.** Build › Booklet page › Page setup…
+  (Ctrl+Shift+B) now gives a booklet your own cover (its title, a line under
+  it, a picture, a line of your words), a header and footer on every page,
+  and your colours for the step numbers, the parts boxes and the outline
+  round new parts. A style keeps the look, never the title, and **Remove…**
+  takes a style away.
+- **Make › Part maker…** makes a clip plate, a bar and a wedge plate:
+  **Clip**, vertical or horizontal, **Bar**, and **Wedge**, left or right,
+  with **Far corner cut flat**. At the real parts' sizes they match 60897,
+  61252, 87994, the 41769 and 41770 wedge plates and 54383, connector for
+  connector, so a made clip grips a made bar and seats on its stud.
+- **Each sub-model as its own file.** Right-click a sub-model in the model
+  tree, or hold a finger on it, for **Export “its name” as its own file…**,
+  or choose **File › Export › Each sub-model as its own file (.zip)**. Each
+  opens alone in any LDraw program, nothing in it moved or renamed. **File ›
+  Export › 3D model…** also writes a 3MF for printing in colour: an object
+  for each colour, every part a closed solid a slicer need not repair.
+- **A model's page** offers **In your room** on a phone or a tablet, which
+  puts the model on your floor or table at its real size: AR Quick Look on
+  an iPhone or iPad, the browser's own AR on Android. It also offers a LEGO®
+  Pick a Brick file beside the BrickLink and Rebrickable lists. A link can
+  open playing: Share's **Opens** chooses one of the model's motions, and
+  the page plays it until you press its button. It moves within 1.2 s of its
+  parts on a laptop and 1.7 s on a phone.
+- **Build together on phones.** On a model's page, **Build together** gives
+  a short code, and up to four people join on their own phones,
+  tablets or computers, with no account. The model is dealt out, each builds
+  their share a part at a time with everyone's progress along the top, and
+  the last step puts it together.
+- **Keys** under every preset for Render (F9), the render queue (Shift+F9),
+  a cut-away box, sphere and cylinder (Alt+X, Alt+Z, Alt+Y), Page setup
+  (Ctrl+Shift+B), the LEGO® Pick a Brick list (Alt+L) and the Library
+  (Ctrl+Shift+O). Keys work while you type in a field: F1, F9, Ctrl+S and
+  the other function keys and keys with Ctrl or Alt reach their commands,
+  while the field keeps the keys it types and edits with.
+- **A note when a long job is done**: a design, a Best render, the render
+  queue or a build video that ends while you are in another tab says so in
+  one notification. The browser asks whether it may at the first long job,
+  never as the page opens, and **Say when a long job is done** in Settings
+  turns it off.
+- **The open beta.** A new account is asked once, after its first sign-in,
+  whether to join the testers, with nothing chosen for it, and the Beta row
+  in the site's Settings or the app's Account joins or leaves in one press.
+  A bar on every page of the site, the homepage and /beta, the testers'
+  hub, invite people in, and there a tester can ask for one of 100 free
+  months of Pro.
+- **Help › Report a bug…** (Alt+Shift+R) opens over what you were doing
+  with a picture of it taken; drag on the picture to mark the spot. Sent,
+  it gives its number, and Your reports on your settings page follows it.
+  While the beta is open it is also beside Account in the app's top bar
+  and in the site's beta bar.
+- **Pictures of your models in the file manager**, for the desktop app,
+  which is coming soon: on Linux, from its .deb, an .ldr, .mpd or .io file
+  shows its model from the front corner, as Brickworks' corner view draws
+  it, where it showed the type's icon. Parts the library has not got are
+  left out of the picture; a file with none it knows keeps the icon. Windows
+  comes next.
+- **Your Claude sees how parts join.** `view_board` with `studs=true`
+  colours parts as Stud directions does; `highlight=` and `xray=` take part
+  numbers, colours and steps, quoted any way; `check_design` pictures the
+  parts its findings name; and a build, a turntable or a motion answers with
+  six frames. It reads a part's size as the bin shows it, so 87087 is
+  a 1 × 1 with a stud on one side, not 1 × 2.
+- **Your Claude can do what is new here.** `save_view` keeps a view, and
+  `view_model` and `render_model` look from one; `light_model` places the
+  model's lights; `palettes` and `edit_palette` read and make your palettes;
+  `edit_steps` names a step; a motion takes `path=` to drive; `page_setup`
+  sets the cover, header and footer; `parts_list` compares two sets;
+  `make_part` makes clips, bars and wedge plates; and `export_model` writes
+  a 3MF and each sub-model alone.
+- **Your Claude keeps your collection.** Show it a photo of your pile and it
+  adds the loose parts it sees, marked as its own until you **Keep them** or
+  take them back. Tell it what a set is missing and it marks one count a
+  part for all your copies, says each change as it was and as it is, and
+  makes a big set whole again in one call.
+
+### Changed
+
+- **The desktop app is coming soon.** Every page of the site, in all four
+  languages, says so and opens Brickworks in your browser where it offered
+  an installer, and the app's own hints that pointed to the desktop app say
+  the same.
+- **A save writes back only what you changed.** Someone else's file keeps
+  every other line as they wrote it: notes, sub-models' names, line ends and
+  steps. Renaming or copying a sub-model, or taking a copy of one off, no
+  longer writes the whole file again (7140-1 lost 572 of its lines to each),
+  a save is never refused, and a turn is written as its author wrote it,
+  0.806 and not 0.80599999.
+- **Edit › Mirror** (Shift+M) turns each part into its mirror image, read
+  off its shape, so a headlight brick faces out on both sides and a cheese
+  slope falls the right way. A part with no mirror image is named on the
+  status bar. When you build with your own Claude, `mirror_parts` and a
+  design's mirror pattern do the same.
+- **Every menu fits the window, and the panel you open comes to the front.**
+  A step's view rows are under **Build › Booklet page › Step's view**, the
+  five panels under **View › Panels**, and the two compares under **File ›
+  Compare**, every key kept. Panels stack as windows do: asking for one
+  again or clicking it brings it forward, and the sign-in screen stays over
+  them all.
+- **Two fingers turned turn the view** on a phone or a tablet, as a map
+  does, and a pinch only zooms. A twist or a pinch begun on a part never
+  moves or selects it.
+- **The parts bin's shelves are always in sight**, wrapping in a narrow bin,
+  so Like this, Fits and Techniques stay a click away with Stress open at
+  1280 × 720. "plate 1 x 1" finds the plain 3024 first, then the round 6141,
+  and a side-stud brick's tooltip says its studs: 87087 is "1 x 1, a stud on
+  one side".
+- **Make › Mosaic from a picture…**: **Crop** builds the part of the picture
+  you drag, **Colours** keeps to one set's colours or to what you own, and
+  **Mixed plate sizes** lays a Classic mosaic's runs of one colour in plates
+  up to 8 × 8, for far fewer parts. The parts list has what to buy, with a
+  Pick a Brick file.
+- **A booklet's PDF** prints Cyrillic, Greek, Hebrew and Arabic as you typed
+  them, and emoji in outline. A letter no font here has (Japanese, on the
+  web) prints as ? and is named. Latin booklets look the same to the pixel
+  and the file is smaller.
+- **A model's parts come in a third of the time** on the web, through the
+  page's own fetch, with no frame longer than before.
+- **On the site**, Based on finds a set by its name as you type ("X-wing
+  Fighter" finds 7140-1), @ in a comment offers anyone whose profile may be
+  named, your own profile offers Designers like you, and a card loads a
+  picture its size, not the whole photo.
+- **The docs are written again**: they start where you do, say what each
+  control is for and where it is, and every way to bring your own AI, in
+  fewer words with new pictures from the app. Old links land where their
+  sections went. The site has its own now too: the gallery, sharing, a
+  model's page, profiles, collections, challenges and Build together, as
+  they really work, with a picture of each.
+
+### Fixed
+
+- With the bin, Stress and the assistant open at 1280 × 720, the timeline's
+  Done and Instructions, Account and the status bar were past the window's
+  edge. They stay inside it now, and the model keeps 400 px. Cut away's
+  strip stays inside the model's room at every size too.
+- A web page could freeze for good, spinning a core and never answering
+  again, on a fault in the engine's web build. It no longer can.
+- A technique typed under Techniques was pushed 2,600 px down under the last
+  search's parts and could not be held. It is in sight and can be held
+  again.
+- A part in a direct colour (LDraw's 0x2RRGGBB) is drawn and exported in its
+  own colour, not magenta, and shop lists order it in the nearest colour
+  still made, saying so.
+- Every moulded animal goes on its studs by hand, 63 of 63, saddles sit on
+  their horses, and a 4740 dish goes onto a lone stud by its tube, as the
+  sets have it. The build check passes how real sets put parts together: 963
+  of 1,056 real sets' sub-models build, up from 957.
+- A save keeps a booklet's lines on their own steps when it makes
+  sub-models, a page picture a kept line names, and a sub-model nothing
+  places; a model emptied of its parts opens again as empty.
+- A file named from a model's title keeps every letter, in any script, and
+  never takes a name Windows or a disk refuses: AC/DC was offered as DC.mpd.
+  On a phone, a menu a finger holds open sits beside the finger and is
+  chosen from by a tap, not by the lift. On a Mac, Control-click opens a
+  row's menu. The model tree is filled the moment its panel shows.
+- With the assistant off, My collection and Account say nothing of Claude,
+  and Brick Art says "1 star", not "1 stars", in every language.
+- Your AI's connector always connects, however slow the server is to find
+  what it tells your AI. A dish your Claude puts on a round plate sits on it
+  at any turn, where a quarter turn was refused.
+- A row of the model tree can be dragged into another again, with the mouse
+  or with a finger held still a moment and then moved, as a phone lifts a
+  list's row. The row it would go into is outlined, holding at the tree's
+  edge scrolls to rows out of sight, and one undo takes the drop back. A
+  finger slid onto the menu its hold opened keeps the menu up, and the keys
+  choose from it. A model shared to look at, or still opening, takes no drop.
+- A part the app holds but cannot show (one the catalogue lacks, one still on
+  its way, or a line of someone else's file it cannot draw) keeps its step
+  and its looks through every step edit, a drag in the tree, an edit in
+  another copy of its sub-model and a save that writes the whole file. It
+  could be saved in another part's step, or at the end of the model.
+- Copies of a sub-model follow an edit as they should. A plate put down on a
+  wheel of one car goes once into each wheel of each car, not again for
+  every car round it; renaming or duplicating one tower no longer turns the
+  other red; a step edit on one copy reaches the others; and each copy keeps
+  the colour it was placed in. Undo and Redo of **Clear** give back each
+  sub-model's lights and views and leave nothing behind. When you build with
+  your own Claude, its edits to one copy reach the others too, and its answer
+  counts the parts after they follow: taking a 3010 off one of two copies
+  said "4 bricks now" of the 3 left.
+- In a file with sub-models, the app's own lines and the set it came from go
+  under the title, in the model's own section, and stay there, so two saves
+  of one file are the same.
+- The plans, the FAQ and the privacy page say that your own key for OpenAI,
+  Google Gemini, OpenRouter, Mistral, Groq, Together, DeepSeek or xAI works
+  in any browser, as it does, where they said it needed the desktop app. The
+  changelog and the beta's page say the desktop app is coming soon.
 
 ## [0.19.0] - 2026-11-07
 

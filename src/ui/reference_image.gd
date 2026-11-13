@@ -741,8 +741,30 @@ func _line(words: String, field: Control, after: String) -> HBoxContainer:
 ## gives it, or {} when it keeps none or what it keeps is not one. The
 ## picture is checked when it is shown ([method _use]).
 static func read(text: String) -> Dictionary:
-	var settings: String = _line_of(text, META)
-	var picture: String = _line_of(text, PICTURE_META)
+	return read_from(MetaIndex.of_text(text))
+
+
+## [method read] of the model's own lines read once (MetaIndex): its first
+## line of each, both taken when they read. A later pair that reads is
+## beaten (MetaIndex.Line.beaten): with the first gone it would be the
+## picture, so it goes when the picture changes.
+static func read_from(metas: MetaIndex) -> Dictionary:
+	var settings_lines: Array[MetaIndex.Line] = metas.own(["REFERENCE"])
+	var picture_lines: Array[MetaIndex.Line] = metas.own(["REFERENCE_PICTURE"])
+	if settings_lines.is_empty() or picture_lines.is_empty():
+		return {}
+	var kept: Dictionary = _read(settings_lines[0].said, picture_lines[0].said)
+	if not kept.is_empty():
+		settings_lines[0].taken = true
+		picture_lines[0].taken = true
+		for n: int in range(1, mini(settings_lines.size(), picture_lines.size())):
+			if not _read(settings_lines[n].said, picture_lines[n].said).is_empty():
+				settings_lines[n].beaten = true
+				picture_lines[n].beaten = true
+	return kept
+
+
+static func _read(settings: String, picture: String) -> Dictionary:
 	if settings.is_empty() or picture.is_empty() or picture.length() > MOST_KEPT:
 		return {}
 	var parsed: Variant = JSON.parse_string(settings)
@@ -775,14 +797,19 @@ static func read(text: String) -> Dictionary:
 ## after its first, inside the model itself for an .mpd, as SetBin and
 ## ModelStore.with_share write theirs; as it is for none.
 static func written_into(text: String, kept: Dictionary) -> String:
+	if str(kept.get("picture", "")).is_empty():
+		return text
+	# Under the model's title, in its own section (MetaIndex).
+	return MetaIndex.written(text, [MetaIndex.family(["REFERENCE", "REFERENCE_PICTURE"],
+		lines_of(kept))])
+
+
+## The two lines [param kept] is kept on, none for none.
+static func lines_of(kept: Dictionary) -> PackedStringArray:
 	var picture: String = str(kept.get("picture", ""))
 	if picture.is_empty():
-		return text
-	var lines: String = META + JSON.stringify(_settings(kept)) + "\n" + PICTURE_META + picture + "\n"
-	var cut: int = text.find("\n")
-	if cut < 0:
-		return text + "\n" + lines
-	return text.substr(0, cut + 1) + lines + text.substr(cut + 1)
+		return PackedStringArray()
+	return PackedStringArray([META + JSON.stringify(_settings(kept)), PICTURE_META + picture])
 
 
 ## Whether [param one] and [param other] ([method said], or [method read]
@@ -797,14 +824,3 @@ static func _settings(kept: Dictionary) -> Dictionary:
 	settings.erase("picture")
 	return settings
 
-
-## What follows [param meta] on its own line of [param text], or "".
-static func _line_of(text: String, meta: String) -> String:
-	var begins: int = 0 if text.begins_with(meta) else text.find("\n" + meta)
-	if begins < 0:
-		return ""
-	if text[begins] == "\n":
-		begins += 1
-	begins += meta.length()
-	var ends: int = text.find("\n", begins)
-	return text.substr(begins, (ends if ends >= 0 else text.length()) - begins).strip_edges()

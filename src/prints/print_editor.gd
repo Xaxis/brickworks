@@ -113,7 +113,7 @@ func open(part_id: String, for_slot: String, colour: int, with_parts: Dictionary
 	slot = for_slot
 	colour_code = colour
 	with = with_parts
-	visible = true
+	HudFront.show_panel(self)
 	base = PartPrints.mould_of(library, part_id)
 	_name.text = ""
 	var needed: Array = [base]
@@ -140,7 +140,7 @@ func open_sticker(face: Stickers.Face, title: String = "") -> void:
 	base = ""
 	with = {}
 	colour_code = Stickers.FILM
-	visible = true
+	HudFront.show_panel(self)
 	_name.text = title
 	_save.text = "Save sticker"
 	var size: Vector2 = face.sticker_size()

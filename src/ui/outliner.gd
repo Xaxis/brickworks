@@ -99,12 +99,21 @@ func _ready() -> void:
 	_tree.add_theme_font_size_override("font_size", 12)
 	_tree.add_theme_constant_override("button_margin", 2)
 	_tree.drop_mode_flags = Tree.DROP_MODE_ON_ITEM
+	# A carry scrolls the tree at its edges by _edge_scroll, not Godot's.
+	_tree.add_theme_constant_override("scroll_speed", 0)
 	_tree.item_selected.connect(_on_selected)
 	_tree.item_activated.connect(_on_activated)
 	_tree.item_edited.connect(_on_edited)
 	_tree.button_clicked.connect(_on_button)
+	# subexport: a right click on a row, its menu.
+	_tree.gui_input.connect(_on_tree_input)
 	_tree.set_drag_forwarding(_drag_data, _can_drop, _drop)
 	column.add_child(_tree)
+
+	# A row's drag begins from the press that chose it (_carry_input), a
+	# finger's from its move as the window hears it (_heard).
+	_tree.gui_input.connect(_carry_input)
+	get_window().window_input.connect(_heard)
 	# A name typed over ends in item_edited; Esc ends it with nothing said,
 	# and the tree then stood as it was (refreshes held for the typing)
 	# until the next rename. Its editor going is heard as well.
@@ -114,7 +123,10 @@ func _ready() -> void:
 
 	var hint := Label.new()
 	_hint = hint
-	hint.text = "Double-click to edit inside; drag onto another to nest"
+	# A finger lifts a row by holding it first (_carry_input).
+	hint.text = "Double-tap to edit inside; hold one, then drag it onto another to nest" \
+		if DisplayServer.is_touchscreen_available() \
+		else "Double-click to edit inside; drag onto another to nest"
 	hint.add_theme_font_size_override("font_size", 11)
 	hint.modulate = Color(1, 1, 1, 0.55)
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -256,6 +268,29 @@ func is_open() -> bool:
 	return _open
 
 
+## The room under the tree's last row, which shows nothing: what it gives
+## Properties as they first fill under it (PanelStack._first_fill). None
+## while its rows scroll, every one of them being in that room or under it.
+func spare_height() -> float:
+	if _tree == null or not _tree.is_visible_in_tree() or _tree.get_root() == null:
+		return 0.0
+	if _bar == null:
+		for child: Node in _tree.get_children(true):
+			if child is VScrollBar:
+				_bar = child
+	if _bar != null and _bar.visible:
+		return 0.0
+	var last: TreeItem = _tree.get_root()
+	var next: TreeItem = last.get_next_visible()
+	while next != null:
+		last = next
+		next = last.get_next_visible()
+	var bottom: float = _tree.get_item_area_rect(last).end.y
+	var panel: StyleBox = _tree.get_theme_stylebox(&"panel")
+	var margin: float = panel.get_margin(SIDE_BOTTOM) if panel != null else 0.0
+	return maxf(0.0, _tree.size.y - margin - bottom)
+
+
 ## [param made] the shell's sections, made now: its suggestions shown here.
 func use_sections(made: Node) -> void:
 	sections = made
@@ -280,7 +315,20 @@ func set_open(open: bool) -> void:
 	_refresh(true)
 
 
+## Shown (its panel opened, the phone's sheet it is in): the tree filled
+## before the frame is drawn. Filled only while it is shown, and looked at
+## again only twice a second, it stood empty for up to half a second each
+## time its panel opened (se4check).
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_VISIBILITY_CHANGED and shell != null and is_visible_in_tree():
+		_refresh.call_deferred(false)
+
+
 func _process(_delta: float) -> void:
+	if _pressed and _press_finger and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		_press_hold.saw()
+	if get_viewport().gui_is_dragging() and _tree.is_visible_in_tree():
+		_edge_scroll(get_process_delta_time())
 	var now: int = Time.get_ticks_msec()
 	if now - _looked_at < 500:
 		return
@@ -493,9 +541,19 @@ func _mark_selected() -> void:
 	_tree.deselect_all()
 	if row != null:
 		row.select(0)
-		_tree.scroll_to_item(row)
+		# Scrolled to only when it is out of sight: a row chosen where it is
+		# seen stays there, under the pointer that chose it. Brought fully in,
+		# one cut by the tree's edge moved 2 to 4 px (treerows).
+		if not _in_sight(row):
+			_tree.scroll_to_item(row)
 	_marking = false
 	_update_strip()
+
+
+## Whether [param row]'s middle is in the tree's room.
+func _in_sight(row: TreeItem) -> bool:
+	var rect: Rect2 = _tree.get_item_area_rect(row)
+	return rect.has_area() and Rect2(Vector2.ZERO, _tree.size).has_point(rect.get_center())
 
 
 func _find(item: TreeItem, path: String) -> TreeItem:
@@ -665,22 +723,197 @@ func _on_button(row: TreeItem, _column: int, id: int, _mouse: int) -> void:
 	_refresh(true)
 
 
+# -- subexport (APP_UX7 #19): the row's menu ------------------------------------
+
+
+## The menu a right click on a row opens, or a finger held still on it: the
+## sub-model as a file of its own, with its own sub-models and steps, and
+## each sub-model so in one .zip (Exports.submodel, each_submodel), as
+## Studio's and LDCad's model trees export a sub-model. On the model's row,
+## each sub-model only. Each is File › Export's, and greyed when Shell.can
+## says File › Export's is (a model shared to look at, one still being
+## laid): the menu wrote what File › Export refused (sereview F4).
+var row_menu: PopupMenu
+## The row the menu is for: its path.
+var _menu_path: String = ""
+const MENU_ONE := 0
+const MENU_EACH := 1
+## The command each item is File › Export's of.
+const MENU_COMMANDS: Dictionary = {MENU_ONE: "export_ldraw", MENU_EACH: "export_submodels"}
+
+## A finger held still on a row opens its menu, as a right click does, a
+## finger having no second button (sereview F5): held as long as a finger's
+## hold on a part (FlingScroll.HOLD_MS, Main's), moved no further than a
+## tap may (CadCamera.TAP_SLOP). The finger, where it came down in the
+## tree, and the row there.
+var _hold: Timer
+var _hold_finger: int = -1
+var _hold_at := Vector2.ZERO
+var _hold_path: String = ""
+
+
+## The row under a right click (on a Mac a Ctrl-click too, EditVerbs'
+## rule), from the click's own place: the tree's item_mouse_selected gives
+## the pointer's place as the system has it, which a click sent to the
+## window (a check's, a remote session's) does not move. And a finger held
+## still on a row.
+func _on_tree_input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch or event is InputEventScreenDrag:
+		_held(event)
+		return
+	# The menu key, and Shift+F10, open the chosen row's menu beside it, as
+	# they open a file manager's for the item chosen; the keys then choose
+	# in it (tdcheck: neither did anything).
+	var key: InputEventKey = event as InputEventKey
+	if key != null:
+		if key.pressed and not key.echo and (key.keycode == KEY_MENU
+				or (key.keycode == KEY_F10 and key.shift_pressed and not key.ctrl_pressed
+				and not key.alt_pressed and not key.meta_pressed)):
+			_tree.accept_event()
+			_menu_by_keys()
+		return
+	var click: InputEventMouseButton = event as InputEventMouseButton
+	if click == null or not click.pressed or (click.button_index != MOUSE_BUTTON_RIGHT
+			and not EditVerbs.mac_right_click(click)):
+		return
+	var row: TreeItem = _tree.get_item_at_position(click.position)
+	if row == null:
+		return
+	var path: String = str(row.get_metadata(0))
+	if path == SUGGESTED or path.begins_with(SUGGESTION):
+		return
+	# After the tree has chosen the row (allow_rmb_select), as a file
+	# manager highlights the row its menu is for.
+	open_row_menu.call_deferred(path, _tree.get_global_transform_with_canvas() * click.position)
+
+
+## The chosen row's menu, opened by a key: under the row, at its name.
+func _menu_by_keys() -> void:
+	var row: TreeItem = _tree.get_selected()
+	if row == null:
+		return
+	var path: String = str(row.get_metadata(0))
+	if path == SUGGESTED or path.begins_with(SUGGESTION):
+		return
+	_tree.scroll_to_item(row)
+	var rect: Rect2 = _tree.get_item_area_rect(row)
+	var at := Vector2(rect.position.x + minf(24.0, rect.size.x * 0.5), rect.end.y)
+	open_row_menu(path, _tree.get_global_transform_with_canvas() * at)
+
+
+## A finger on the tree: down on a row, its hold begins; moved past a tap's
+## slop or lifted, it ends. The tree has the finger's emulated click as
+## well, which chooses the row, as a right click does.
+func _held(event: InputEvent) -> void:
+	var touch: InputEventScreenTouch = event as InputEventScreenTouch
+	if touch != null:
+		if not touch.pressed:
+			if touch.index == _hold_finger:
+				_end_hold()
+			return
+		if _hold_finger >= 0:
+			# A second finger: a pinch, not a hold.
+			_end_hold()
+			return
+		var row: TreeItem = _tree.get_item_at_position(touch.position)
+		var path: String = str(row.get_metadata(0)) if row != null else ""
+		if row == null or path == SUGGESTED or path.begins_with(SUGGESTION):
+			return
+		if _hold == null:
+			_hold = Timer.new()
+			_hold.one_shot = true
+			_hold.wait_time = FlingScroll.HOLD_MS / 1000.0
+			_hold.timeout.connect(_on_hold)
+			add_child(_hold)
+		_hold_finger = touch.index
+		_hold_at = touch.position
+		_hold_path = path
+		_hold.start()
+		return
+	var drag: InputEventScreenDrag = event as InputEventScreenDrag
+	if drag != null and drag.index == _hold_finger \
+			and drag.position.distance_to(_hold_at) > CadCamera.TAP_SLOP:
+		_end_hold()
+
+
+func _end_hold() -> void:
+	_hold_finger = -1
+	if _hold != null:
+		_hold.stop()
+
+
+## Held long enough: the row's menu, beside the finger, never under it, so
+## the finger lifting chooses nothing.
+func _on_hold() -> void:
+	var path: String = _hold_path
+	var at: Vector2 = _tree.get_global_transform_with_canvas() * _hold_at
+	_hold_finger = -1
+	if not _tree.is_visible_in_tree():
+		return
+	open_row_menu(path, at, true)
+
+
+## The row menu for the row of [param path] ("" the model's), beside
+## [param at] in the window, a finger's when [param by_finger]: none of it
+## under the point, at whatever size a phone gives it (TouchSizing.popup_beside).
+func open_row_menu(path: String, at: Vector2, by_finger: bool = false) -> void:
+	if row_menu == null:
+		row_menu = PopupMenu.new()
+		row_menu.name = "ModelTreeMenu"
+		row_menu.add_theme_font_size_override("font_size", 13)
+		row_menu.id_pressed.connect(_on_row_menu)
+		add_child(row_menu)
+	_menu_path = path
+	row_menu.clear()
+	if not path.is_empty():
+		row_menu.add_item("Export “%s” as its own file…" % Assemblies.label(path), MENU_ONE)
+	row_menu.add_item("Export each sub-model (.zip)…", MENU_EACH)
+	for id: int in [MENU_ONE, MENU_EACH]:
+		var index: int = row_menu.get_item_index(id)
+		if index < 0:
+			continue
+		var why: String = shell.why_not(MENU_COMMANDS[id])
+		row_menu.set_item_disabled(index, not shell.can(MENU_COMMANDS[id]))
+		row_menu.set_item_tooltip(index, why if not why.is_empty() else
+			"As an LDraw file, with its own sub-models and steps" if id == MENU_ONE
+			else "Every sub-model as an LDraw file of its own, with its own sub-models and steps, in one .zip")
+	TouchSizing.popup_beside(row_menu, at, by_finger)
+
+
+## An item chosen: asked again whether File › Export's own may run, as the
+## menu may have stood open while the model became one shared to look at.
+func _on_row_menu(id: int) -> void:
+	# The finger that held the row lifting off an item chooses nothing: a tap does.
+	if not TouchSizing.chosen(row_menu):
+		return
+	var exports: Node = shell.app.get("_exports")
+	if exports == null or not MENU_COMMANDS.has(id) or not shell.can(MENU_COMMANDS[id]):
+		return
+	if id == MENU_ONE and not _menu_path.is_empty():
+		await exports.call("submodel", _menu_path, true)
+	elif id == MENU_EACH:
+		await exports.call("each_submodel", true)
+
+
 func _drag_data(at: Vector2) -> Variant:
-	var row: TreeItem = _tree.get_item_at_position(at)
-	if row == null or str(row.get_metadata(0)).is_empty() or str(row.get_metadata(0)) == SUGGESTED:
+	# The engine's own drag, once the pointer has moved by its relative
+	# motion: the row the mouse's press chose, which [param at] (where the
+	# press was) may no longer be over (_carry_input, which begins it when
+	# that motion is not said). A finger's press is the tree's scroll until
+	# it has been held, and AccessKit's drag has no place (an infinite one).
+	if not at.is_finite() or not _pressed or _press_finger:
 		return null
-	if str(row.get_metadata(0)).begins_with(SUGGESTION):
-		var shown := Label.new()
-		shown.text = row.get_text(0)
-		_tree.set_drag_preview(shown)
-		return {"suggestion": str(row.get_metadata(0)).trim_prefix(SUGGESTION).to_int()}
-	var words := Label.new()
-	words.text = row.get_text(0)
-	_tree.set_drag_preview(words)
-	return {"assembly": str(row.get_metadata(0))}
+	_pressed = false
+	var lifted: Array = _lift()
+	if lifted.is_empty():
+		return null
+	_tree.set_drag_preview(lifted[1])
+	return lifted[0]
 
 
 func _can_drop(at: Vector2, data: Variant) -> bool:
+	if not shell.why_frozen().is_empty():
+		return false
 	if data is Dictionary and (data as Dictionary).has("suggestion"):
 		var onto: TreeItem = _tree.get_item_at_position(at)
 		return onto != null and str(onto.get_metadata(0)).begins_with(SUGGESTION) \
@@ -698,7 +931,9 @@ func _can_drop(at: Vector2, data: Variant) -> bool:
 
 func _drop(at: Vector2, data: Variant) -> void:
 	var row: TreeItem = _tree.get_item_at_position(at)
-	if row == null:
+	# Asked again: the model may have become one to look at, or begun
+	# opening another, since the drop was last asked about.
+	if row == null or not _can_drop(at, data):
 		return
 	var into: String = str(row.get_metadata(0))
 	if (data as Dictionary).has("suggestion"):
@@ -710,6 +945,289 @@ func _drop(at: Vector2, data: Variant) -> void:
 	shell.bar.say("%s is in %s now" % [Assemblies.label(moved),
 		"the model" if into.is_empty() else Assemblies.label(into)])
 	_refresh(true)
+
+
+# -- a row's drag ---------------------------------------------------------------
+
+
+## A row carried onto another puts it inside that one (onto the model's, at
+## the top), a suggestion onto another merges them: begun here, from the row
+## the press was on. The engine begins a drag where the press was once the
+## pointer has moved, and that place had changed under it: the press chose
+## the row, choosing it filled Properties under the tree, and the tree shrank
+## from the column's height to its least and scrolled to the row (657 to 120
+## px on 7140-1), so the place pressed was under another row or off the tree,
+## and every row's drag carried nothing (treedrag, 2026-11-11). It never
+## started for a row not already chosen, which is the one a person drags.
+##
+## The mouse carries it once past the window's drag threshold, as anything
+## in the window is dragged. A finger holds it still first, as long as a
+## finger's hold on a part, and then moves: a row is lifted from a phone's
+## list so (iOS's and Android's lists alike), because a finger that moves at
+## once is scrolling the list, in any direction, and one held and lifted
+## where it was has the row's own (its menu). As on iOS, a held finger that
+## then moves lifts the row even where its hold has put up the row's menu:
+## the window hears the finger first (_heard), because a menu, put up in the
+## window, takes all of the window's input after it. Moved onto that menu,
+## or on its way there, the finger is the menu's (_on_menu).
+var _pressed: bool = false
+var _press_meta: String = ""
+## Where the press came down, in the window.
+var _press_at := Vector2.ZERO
+var _press_finger: bool = false
+## The touch the finger's press is, once the window has heard it; -1 before.
+var _press_index: int = -1
+## How long the finger has been held still, by what the frames saw: on a
+## page drawing a frame a second, a swipe's down and move come a frame
+## apart and timed by the clock would read as a hold (PressHold).
+const PressHold := preload("res://src/ui/press_hold.gd")
+var _press_hold := PressHold.new()
+
+
+func _carry_input(event: InputEvent) -> void:
+	var click: InputEventMouseButton = event as InputEventMouseButton
+	if click != null and click.button_index == MOUSE_BUTTON_LEFT:
+		_pressed = false
+		if not click.pressed or click.double_click:
+			return
+		var row: TreeItem = _tree.get_item_at_position(click.position)
+		if row == null or _carried(str(row.get_metadata(0))) == null \
+				or _tree.get_button_id_at_position(click.position) >= 0:
+			return
+		_pressed = true
+		_press_meta = str(row.get_metadata(0))
+		_press_at = _tree.get_global_transform_with_canvas() * click.position
+		_press_finger = click.device == InputEvent.DEVICE_ID_EMULATION
+		_press_index = -1
+		_press_hold.start()
+		return
+	var motion: InputEventMouseMotion = event as InputEventMouseMotion
+	if motion == null:
+		return
+	if get_viewport().gui_is_dragging():
+		# Where it would land, before the tree draws the row under it: an
+		# outline on a row it may go into, none where it may not.
+		_tree.drop_mode_flags = Tree.DROP_MODE_ON_ITEM \
+			if _can_drop(motion.position, get_viewport().gui_get_drag_data()) else Tree.DROP_MODE_DISABLED
+		return
+	if not _pressed or _press_finger or motion.button_mask & MOUSE_BUTTON_MASK_LEFT == 0:
+		return
+	var moved: float = _press_at.distance_to(_tree.get_global_transform_with_canvas() * motion.position)
+	if moved <= float(get_viewport().gui_drag_threshold):
+		return
+	_pressed = false
+	_carry()
+
+
+## A finger pressed on a row, as the window hears it, before anything in it:
+## moved past a tap's slop, it lifts the row if it was held long enough and
+## is the tree's scroll if not; lifted, or joined by a second (a pinch), it
+## carries nothing.
+func _heard(event: InputEvent) -> void:
+	if _following >= 0 and _follow(event):
+		return
+	if not _pressed or not _press_finger:
+		return
+	var touch: InputEventScreenTouch = event as InputEventScreenTouch
+	if touch != null:
+		# The window hears the press after the click made of it (Input
+		# sends the emulated click first), so the press is the first touch.
+		if touch.pressed and _press_index < 0:
+			_press_index = touch.index
+		elif touch.index != _press_index or not touch.pressed:
+			_pressed = false
+		return
+	var drag: InputEventScreenDrag = event as InputEventScreenDrag
+	if drag == null or drag.index != _press_index:
+		return
+	var at: Vector2 = get_window().get_final_transform().affine_inverse() * drag.position
+	if _press_at.distance_to(at) <= CadCamera.TAP_SLOP or _on_menu(at):
+		return
+	_pressed = false
+	if _press_hold.held_ms() >= FlingScroll.HOLD_MS:
+		_carry()
+
+
+## Whether [param at], in the window, is on the menu the finger's hold put
+## up or on its way there: the box holding the menu and the place the finger
+## came down, a tap's slop around. A finger slid there is choosing from the
+## menu, which stays up, its lift there choosing nothing (TouchSizing.chosen);
+## the row lifts once the finger leaves the box. The carry put the menu away
+## as the finger set off for it, and the keys then had none to choose from
+## (subexport F5, after treedrag's carry, 2026-11-11).
+func _on_menu(at: Vector2) -> bool:
+	for child: Node in get_children():
+		var menu: Popup = child as Popup
+		if menu != null and menu.visible:
+			return Rect2(Vector2(menu.position), Vector2(menu.size)).expand(_press_at) \
+				.grow(CadCamera.TAP_SLOP).has_point(at)
+	return false
+
+
+## Escape puts a row being carried back where it was, as every drag is put
+## down by it: nothing moved, no undo step, and nothing else Escape does
+## (the selection kept). Heard before the window's own Escape (Main._input
+## clears the selection), which a descendant's _input is; the window's
+## input signal is too, but what it marks handled the window hears anyway.
+## tdcheck: the carry went on after it and dropped where it was let go.
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.is_action_pressed(&"ui_cancel") \
+			and get_viewport().gui_is_dragging() and _carried_now():
+		get_viewport().gui_cancel_drag()
+		_pressed = false
+		_following = -1
+		get_viewport().set_input_as_handled()
+
+
+## What a row carries: its assembly, a suggestion's number, or null for one
+## that is not carried (the model's row, the suggestions' heading).
+func _carried(meta: String) -> Variant:
+	if meta.is_empty() or meta == SUGGESTED:
+		return null
+	if meta.begins_with(SUGGESTION):
+		return {"suggestion": meta.trim_prefix(SUGGESTION).to_int()}
+	return {"assembly": meta}
+
+
+## Whether the window's drag under way is a row of this tree's.
+func _carried_now() -> bool:
+	var data: Variant = get_viewport().gui_get_drag_data()
+	return data is Dictionary and ((data as Dictionary).has("assembly")
+		or (data as Dictionary).has("suggestion"))
+
+
+func _carry() -> void:
+	var lifted: Array = _lift()
+	if lifted.is_empty():
+		return
+	# A menu of the tree's own that the hold put up (the row's) goes as the
+	# row lifts, as iOS's context menu does: put up in the window, it would
+	# take every move of the carry.
+	for child: Node in get_children():
+		if child is Popup and (child as Popup).visible:
+			(child as Popup).hide()
+	if _press_finger and DisplayServer.is_touchscreen_available():
+		# A finger on a touch screen's tree is its scroll, and Godot's Tree
+		# takes no drop while that lasts (drag_touching); it ends when the
+		# tree is hidden, so it is, for no frame at all.
+		var focused: bool = _tree.has_focus()
+		_tree.hide()
+		_tree.show()
+		if focused:
+			_tree.grab_focus()
+	_tree.force_drag(lifted[0], lifted[1])
+	_following = _press_index if _press_finger else -1
+
+
+## The finger a carry it lifted follows, -1 for none. Godot carries a drag
+## by the mouse it makes of a finger (emulate_mouse_from_touch), and lets
+## that mouse go, with the finger still down, when a menu put up in the
+## window goes: the row's menu a hold put up, put away as the row lifts
+## (_carry). The mouse let go is never pressed again and moves no more, so
+## the carry stood still at the row it left and the finger's lift dropped
+## nothing (treedrag on subexport, 2026-11-11). While it is let go, the
+## finger's moves and its lift are given to the window as the mouse's.
+var _following: int = -1
+
+
+## [param event] given as the mouse's while Godot's is let go, the carry's
+## (true), or not the carry's: the carry has ended, or it is another touch.
+func _follow(event: InputEvent) -> bool:
+	if not get_viewport().gui_is_dragging():
+		_following = -1
+		return false
+	var drag: InputEventScreenDrag = event as InputEventScreenDrag
+	var touch: InputEventScreenTouch = event as InputEventScreenTouch
+	var index: int = drag.index if drag != null else touch.index if touch != null else -2
+	if index != _following:
+		return false
+	if touch != null and not touch.pressed:
+		_following = -1
+	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		# Godot's own mouse still has the finger: it moves and drops it.
+		return true
+	if drag != null:
+		var move := InputEventMouseMotion.new()
+		move.device = InputEvent.DEVICE_ID_EMULATION
+		move.position = drag.position
+		move.global_position = drag.position
+		move.relative = drag.relative
+		move.screen_relative = drag.screen_relative
+		move.velocity = drag.velocity
+		move.screen_velocity = drag.screen_velocity
+		move.button_mask = MOUSE_BUTTON_MASK_LEFT
+		Input.parse_input_event(move)
+	elif touch.canceled:
+		get_viewport().gui_cancel_drag()
+	elif not touch.pressed:
+		var up := InputEventMouseButton.new()
+		up.device = InputEvent.DEVICE_ID_EMULATION
+		up.button_index = MOUSE_BUTTON_LEFT
+		up.position = touch.position
+		up.global_position = touch.position
+		Input.parse_input_event(up)
+	return true
+
+
+## How deep the tree's top and bottom edges are, where a carry held scrolls
+## it, units (at most a sixth of the tree), and how fast it goes at the very
+## edge and beyond, units a second (a row a tenth of a second).
+const EDGE := 20.0
+const EDGE_SPEED := 240.0
+var _bar: VScrollBar
+
+
+## A carry held at the tree's top or bottom scrolls it to the rows out of
+## sight, faster the nearer the edge. Once a row is chosen the tree is at
+## its least height (Properties fills the column under it), four rows on a
+## desktop and two on a tablet, so the row to put it in is most often out
+## of sight. Godot's own scroll at a drag's edge is 4 units deep at 12 a
+## second, too thin for a finger and too slow for anyone, and never at the
+## top of a tree below its header: it compares the pointer in the tree with
+## the tree's place in the column (Tree's get_rect).
+func _edge_scroll(delta: float) -> void:
+	if _bar == null:
+		for child: Node in _tree.get_children(true):
+			if child is VScrollBar:
+				_bar = child
+	if _bar == null or not _bar.visible:
+		return
+	var at: Vector2 = _tree.get_local_mouse_position()
+	var tall: float = _tree.size.y
+	var edge: float = minf(EDGE, tall / 6.0)
+	if at.x < 0.0 or at.x > _tree.size.x or at.y < -edge or at.y > tall + edge:
+		return
+	var by: float = 0.0
+	if at.y < edge:
+		by = -minf((edge - at.y) / edge, 1.0)
+	elif at.y > tall - edge:
+		by = minf((at.y - (tall - edge)) / edge, 1.0)
+	if by != 0.0:
+		_bar.value += by * EDGE_SPEED * delta
+
+
+## The pressed row's carry and what is drawn of it by the pointer, or none
+## (said why) while the model may not be changed.
+func _lift() -> Array:
+	var refused: String = shell.why_frozen()
+	if not refused.is_empty():
+		shell.bar.say(refused)
+		return []
+	var data: Variant = _carried(_press_meta)
+	if data == null or not _tree.is_visible_in_tree():
+		return []
+	var row: TreeItem = _find(_tree.get_root(), _press_meta)
+	var words := Label.new()
+	# A sub-model's name as its builder wrote it, in any language (_fill).
+	words.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+	words.text = row.get_text(0) if row != null else Assemblies.label(_press_meta)
+	words.add_theme_font_size_override("font_size", 12)
+	# Beside the pointer, and above a finger, which covers what is under it.
+	var shown := Control.new()
+	shown.add_child(words)
+	words.position = Vector2(-24.0, -56.0) if _press_finger else Vector2(14.0, 6.0)
+	_tree.drop_mode_flags = Tree.DROP_MODE_ON_ITEM
+	return [data, shown]
 
 
 func controls_by_name() -> Dictionary:
@@ -737,7 +1255,11 @@ func row_rects() -> Dictionary:
 	if asked == _rows_asked:
 		return _rows
 	_rows_asked = asked
-	var shift: Vector2 = area.position - Vector2(0, _tree.get_scroll().y)
+	# get_item_area_rect is already where the row is drawn, scrolled: taking
+	# the scroll off again put every row a scroll too high, and a click at
+	# a row's middle in a scrolled tree chose a row above it (subexport,
+	# 2026-11-08; main._audit_tree adds none either).
+	var shift: Vector2 = area.position
 	var stack: Array = [_tree.get_root()]
 	while not stack.is_empty():
 		var row: TreeItem = stack.pop_back()

@@ -54,6 +54,20 @@ const FLOAT_SLACK := 0.001
 const PLANE_SLACK := 6.0
 ## A shaft is on a hole's line to within this, LDU, and reaches it to this.
 const LINE_SLACK := 1.5
+## What is left of a joint's equation, once the equations before it are
+## taken out, under this part of what it was, repeats them ([method
+## _eliminate]): a planar linkage moves only because its joints' equations
+## repeat each other, and an LDraw file gives its parts' turns to three
+## places (0.896, 0.444), its loops closing to a part in a thousand. Read
+## tighter, 42032-1's loader arms, a crank either side of the 24 its worm
+## turns, locked: "the couplings ask for two different turns at once".
+const RANK_SLACK := 1e-3
+## Gears at right angles mesh when each stands this close to where its
+## teeth meet the other's, from where the axles cross, LDU: a bevel's teeth
+## overlap a tooth's depth along its cone. 42063-1's rear wheel stands its
+## 20 tooth bevel 17 from the crossing for 20, and its 12 meshes it there,
+## turning the boxer (Kinebrick's BEVEL_TOLERANCE, 3.5).
+const BEVEL_SLACK := 3.5
 const REACH_SLACK := 2.0
 ## A stud is in a socket when they are this close.
 const STUD_SLACK := 1.5
@@ -215,6 +229,9 @@ class Coupling extends RefCounted:
 	## whether they mesh depends on these; the ratio is the teeth's.
 	var apart: float = 0.0
 	var ideal: float = 0.0
+	## Met only within BEVEL_SLACK, not LINE_SLACK: such a mesh gives way
+	## where it alone would lock the train ([method solve]).
+	var doubtful: bool = false
 
 	func said() -> String:
 		return "%s %d-%d" % [how, one.teeth if one.kind != "worm" else 1,
@@ -279,7 +296,14 @@ var chains: Array[Chain] = []
 var joints: Array[Joint] = []    ## every joint between two bodies
 var tree: Array[Joint] = []      ## the ones the tree is grown along, root first
 var closing: Array[Joint] = []   ## the ones that close a loop
-var floating: Array = []         ## bodies no joint reaches from the ground
+## The frame of each other piece: a piece of the model joined to the ground
+## by no joint (a gear train in its own Technic frame beside a bridge) is
+## held by its largest body, as a person holds it, and what turns in it
+## turns against that, as [member ground] is for the rest (Bodies gives each
+## piece its anchor so). Each has no joint of its own, as the ground has
+## none. A body alone, with no joint at all, is no piece's frame: it floats.
+var roots: Array = []
+var floating: Array = []         ## bodies no joint reaches from the ground or a root
 ## Gears the table gives a hole that the part's connectors do not have
 ## on its axis: a part whose hole is drawn without the primitive, or a
 ## catalogue built before connectivity.py read it. [key, what].
@@ -288,6 +312,8 @@ var unseated: Array = []
 ## or 0 for neither].
 var shifts: Array = []
 var _up: Dictionary = {}         ## union-find
+## Each join that made two bodies one, as it was made: [key, key, why].
+var joined_by: Array = []
 var _joint_of: Dictionary = {}   ## body -> its Joint in the tree
 var _paths: Dictionary = {}      ## body -> Array[Joint], ground first
 
@@ -327,11 +353,12 @@ func body_of(key: int) -> int:
 	return at
 
 
-func _join(one: int, other: int) -> bool:
+func _join(one: int, other: int, why: String = "") -> bool:
 	var a: int = body_of(one)
 	var b: int = body_of(other)
 	if a == b:
 		return false
+	joined_by.append([one, other, why])
 	# The smaller key stays the root, so a body's name does not depend on
 	# the order things were joined in.
 	if a < b:
@@ -435,7 +462,7 @@ func _build() -> void:
 	for name: String in held:
 		var it: Array = held[name]
 		if it[0] == "keyed":
-			_join(it[3], it[4])
+			_join(it[3], it[4], "keyed in its axle hole")
 		else:
 			if not shafts_turning.has(it[3]):
 				shafts_turning[it[3]] = []
@@ -449,7 +476,7 @@ func _build() -> void:
 				continue
 			if (socket[3] as Vector3).dot(stud[2]) < 0.95:
 				continue
-			_join(stud[0], socket[0])
+			_join(stud[0], socket[0], "a stud in its socket")
 	# And so is a part standing on studs that records no socket for them: a
 	# turntable's base on a plate, a beam's holes over a plate's studs.
 	_rest_on_studs(studs)
@@ -470,7 +497,7 @@ func _build() -> void:
 		var keyed_to_something: bool = int(sizes.get(body_of(shaft), 1)) > 1
 		var what: String = (parts[shaft] as Piece).part
 		if pin_only and not keyed_to_something:
-			_join(shaft, holders[0][0])
+			_join(shaft, holders[0][0], "a pin in the first thing it is in")
 			for n: int in range(1, holders.size()):
 				lines.append([holders[0][0], holders[n][0], holders[n][1], holders[n][2], what])
 		else:
@@ -499,7 +526,7 @@ func _build() -> void:
 					and absf((there.basis * Y).normalized().dot((at.basis * Y).normalized())) > 0.99:
 				lines.append([key, other, at.origin, (at.basis * Y).normalized(), "turntable"])
 	for key: int in grounded:
-		_join(grounded[0], key)
+		_join(grounded[0], key, "held")
 	# Two joints between the same two bodies on different lines hold them
 	# together: two pins through two beams.
 	var changed: bool = true
@@ -520,7 +547,7 @@ func _build() -> void:
 			var first: Array = found[0]
 			for line: Array in found:
 				if not _same_line(first[2], first[3], line[2], line[3]):
-					changed = _join(first[0], first[1]) or changed
+					changed = _join(first[0], first[1], "two joints on two lines") or changed
 					break
 	joints.clear()
 	var seen: Dictionary = {}
@@ -589,7 +616,7 @@ func _rest_on_studs(studs: Array) -> void:
 								and _stands_on(piece.mesh, inverse, stud[2], stud[3]) \
 								and (_entry("gears", piece.reads).is_empty()
 									or _in_a_hole(gear_holes, inverse, stud[2], stud[3])):
-							_join(key, stud[0])
+							_join(key, stud[0], "standing on its stud")
 
 
 ## Whether a stud at [param foot] pointing [param way] is on the line of one
@@ -698,7 +725,9 @@ func _rims() -> void:
 			var carrier: Joint = _joint_of.get(coupling.other.body)
 			var joint := Joint.new()
 			joint.a = coupling.one.body
-			joint.b = carrier.parent if carrier != null else ground
+			# What carries the gear; with no joint of its own, the gear is in a
+			# frame (the ground's, or another piece's) and the ring turns on it.
+			joint.b = carrier.parent if carrier != null else coupling.other.body
 			joint.point = coupling.one.centre
 			joint.way = coupling.one.axis
 			joint.what = "rim"
@@ -741,8 +770,31 @@ func _grow() -> void:
 				touching[end] = []
 			(touching[end] as Array).append(joint)
 	var reached: Dictionary = {ground: true}
-	var frontier: Array = [ground]
 	var used: Dictionary = {}
+	_grow_from(ground, touching, reached, used)
+	# Each piece the ground's joints do not reach, but that holds together by
+	# joints of its own, grown from its frame (n4: a session's 24 and 8 in a
+	# Technic frame beside its bridge read floating, while a drag turned them).
+	roots.clear()
+	var keys: Array = bodies.keys()
+	keys.sort()
+	for body: int in keys:
+		if reached.has(body) or not touching.has(body):
+			continue
+		var frame: int = _frame_of(_piece_from(body, touching))
+		roots.append(frame)
+		reached[frame] = true
+		_grow_from(frame, touching, reached, used)
+	floating.clear()
+	for body: int in bodies:
+		if not reached.has(body):
+			floating.append(body)
+
+
+## Grow the tree breadth first out from [param from], through the joints
+## [param touching] each body, those [param used] taken already.
+func _grow_from(from: int, touching: Dictionary, reached: Dictionary, used: Dictionary) -> void:
+	var frontier: Array = [from]
 	while not frontier.is_empty():
 		var body: int = frontier.pop_front()
 		for joint: Joint in touching.get(body, []):
@@ -760,10 +812,80 @@ func _grow() -> void:
 			tree.append(joint)
 			_joint_of[other] = joint
 			frontier.append(other)
-	floating.clear()
-	for body: int in bodies:
-		if not reached.has(body):
-			floating.append(body)
+
+
+## The bodies [param body]'s joints reach, it among them.
+static func _piece_from(body: int, touching: Dictionary) -> Array:
+	var seen: Dictionary = {body: true}
+	var frontier: Array = [body]
+	while not frontier.is_empty():
+		var at: int = frontier.pop_back()
+		for joint: Joint in touching.get(at, []):
+			for end: int in [joint.a, joint.b]:
+				if not seen.has(end):
+					seen[end] = true
+					frontier.append(end)
+	return seen.keys()
+
+
+## A piece's frame: its body with the most parts, as the ground is the
+## model's ([method _largest]); of two the same size, the lower key, so the
+## reading does not depend on the order the joints were found in.
+func _frame_of(piece: Array) -> int:
+	var best: int = -1
+	for body: int in piece:
+		var size: int = (bodies.get(body, []) as Array).size()
+		var best_size: int = (bodies.get(best, []) as Array).size() if best >= 0 else -1
+		if size > best_size or (size == best_size and body < best):
+			best = body
+	return best
+
+
+## Whether [param body] stands still by the reading's own choice: the ground,
+## or another piece's frame.
+func is_frame(body: int) -> bool:
+	return body == ground or roots.has(body)
+
+
+## Why [param key] is in the body it is in: the joins from it to the part
+## the body is named by, each "#a part, why, #b part", or "" for one alone.
+func why_held(key: int) -> String:
+	var root: int = body_of(key)
+	var edges: Dictionary = {}   ## key -> Array of [other, why]
+	for join: Array in joined_by:
+		for end: int in 2:
+			var here: int = join[end]
+			if not edges.has(here):
+				edges[here] = []
+			(edges[here] as Array).append([join[1 - end], join[2]])
+	var came: Dictionary = {key: null}
+	var frontier: Array = [key]
+	while not frontier.is_empty() and not came.has(root):
+		var at: int = frontier.pop_front()
+		for edge: Array in edges.get(at, []):
+			if not came.has(int(edge[0])):
+				came[int(edge[0])] = [at, edge[1]]
+				frontier.append(int(edge[0]))
+	if not came.has(root) or root == key:
+		return ""
+	var said := PackedStringArray()
+	var at: int = root
+	while came[at] != null:
+		var step: Array = came[at]
+		said.append("#%d %s, %s, #%d %s" % [int(step[0]), (parts[int(step[0])] as Piece).part, step[1], at,
+			(parts[at] as Piece).part])
+		at = int(step[0])
+	said.reverse()
+	return "; ".join(said)
+
+
+## The frame [param body] turns from: the ground, or another piece's frame
+## (its own, for a frame); -1 for a body no joint reaches.
+func frame_under(body: int) -> int:
+	if is_frame(body):
+		return body
+	var steps: Array = path(body)
+	return (steps[0] as Joint).parent if not steps.is_empty() else -1
 
 
 func _find_gears() -> void:
@@ -814,7 +936,7 @@ static func gear_of(piece: Piece, spec: Dictionary) -> Gear:
 			gear.length = absf((piece.mesh.bounds.size * local_axis).length())
 	else:
 		gear.teeth = int(spec.get("circle", spec.get("teeth", 0)))
-		gear.radius = float(table().get("ldu_per_tooth", 1.25)) * float(gear.teeth)
+		gear.radius = float(spec.get("radius", float(table().get("ldu_per_tooth", 1.25)) * float(gear.teeth)))
 	if spec.has("arc"):
 		var arc: Array = spec["arc"]
 		gear.arc_middle = (at.basis * Vector3(float(arc[0]), float(arc[1]),
@@ -872,7 +994,7 @@ func _gear_mesh(one: Gear, other: Gear) -> Coupling:
 	var dot: float = one.axis.dot(other.axis)
 	var gap: Vector3 = other.centre - one.centre
 	if absf(dot) > 0.999:
-		if one.kind == "bevel" or other.kind == "bevel":
+		if one.kind in ["bevel", "knob"] or other.kind in ["bevel", "knob"]:
 			return null
 		var along: float = gap.dot(one.axis)
 		if absf(along) > PLANE_SLACK:
@@ -899,10 +1021,12 @@ func _gear_mesh(one: Gear, other: Gear) -> Coupling:
 		return mesh
 	if absf(dot) > 0.02:
 		return null
-	# At right angles: a bevel with a bevel, or a crown with a spur.
+	# At right angles: a bevel with a bevel, a crown with a spur, or a knob
+	# wheel with a knob wheel (its knobs are no other gear's teeth).
 	var faces: bool = (one.kind in ["bevel", "double"] and other.kind in ["bevel", "double"]) \
 		or (one.kind == "crown" and other.kind in ["spur", "double"]) \
-		or (other.kind == "crown" and one.kind in ["spur", "double"])
+		or (other.kind == "crown" and one.kind in ["spur", "double"]) \
+		or (one.kind == "knob" and other.kind == "knob")
 	if not faces:
 		return null
 	var normal: Vector3 = one.axis.cross(other.axis).normalized()
@@ -915,8 +1039,8 @@ func _gear_mesh(one: Gear, other: Gear) -> Coupling:
 	var d_other: float = other.centre.distance_to(cross)
 	var face_one: float = one.face if one.kind != "spur" else 0.0
 	var face_other: float = other.face if other.kind != "spur" else 0.0
-	if absf(d_one - other.radius - face_one) > LINE_SLACK \
-			or absf(d_other - one.radius - face_other) > LINE_SLACK:
+	if absf(d_one - other.radius - face_one) > BEVEL_SLACK \
+			or absf(d_other - one.radius - face_other) > BEVEL_SLACK:
 		return null
 	var toward_one: Vector3 = (one.centre - cross).normalized()
 	var toward_other: Vector3 = (other.centre - cross).normalized()
@@ -933,6 +1057,7 @@ func _gear_mesh(one: Gear, other: Gear) -> Coupling:
 	else:
 		mesh.apart = d_other
 		mesh.ideal = one.radius + face_other
+	mesh.doubtful = absf(mesh.apart - mesh.ideal) > LINE_SLACK
 	mesh.point = cross + toward_one * other.radius + toward_other * one.radius
 	mesh.along = one.axis.cross(mesh.point - one.centre).normalized()
 	mesh.point_other = mesh.point
@@ -944,7 +1069,7 @@ func _gear_mesh(one: Gear, other: Gear) -> Coupling:
 ## meeting on the ring's pitch circle, where the ring's arc reaches.
 ## Both turn the same way.
 func _ring_mesh(ring: Gear, gear: Gear) -> Coupling:
-	if gear.kind in ["ring", "bevel", "worm"] or absf(ring.axis.dot(gear.axis)) < 0.999:
+	if gear.kind in ["ring", "bevel", "worm", "knob"] or absf(ring.axis.dot(gear.axis)) < 0.999:
 		return null
 	var gap: Vector3 = gear.centre - ring.centre
 	var along: float = gap.dot(ring.axis)
@@ -973,7 +1098,7 @@ func _ring_mesh(ring: Gear, gear: Gear) -> Coupling:
 
 
 func _worm_mesh(worm: Gear, wheel: Gear) -> Coupling:
-	if wheel.kind in ["worm", "ring"] or absf(worm.axis.dot(wheel.axis)) > 0.02:
+	if wheel.kind in ["worm", "ring", "knob"] or absf(worm.axis.dot(wheel.axis)) > 0.02:
 		return null
 	var gap: Vector3 = worm.centre - wheel.centre
 	if absf(gap.dot(wheel.axis)) > 3.0:
@@ -1157,7 +1282,7 @@ func _shift() -> void:
 			var there: Transform3D = (parts[carrier] as Piece).at
 			var its: Vector2 = _span_on(there, other, at.origin, way)
 			if its != Vector2.INF and its.x < span.y and its.y > span.x:
-				_join(ring, carrier)
+				_join(ring, carrier, "a driving ring on its carrier")
 		var driven: int = 0
 		for gear: int in clutch_keys:
 			var other: Dictionary = _entry("clutch_gears", (parts[gear] as Piece).reads)
@@ -1168,7 +1293,7 @@ func _shift() -> void:
 			# The ring's teeth reach into the gear's clutch past its face.
 			var into: float = minf(span.y, its.y) - maxf(span.x, its.x)
 			if into >= float(spec.get("engage", 1.0)):
-				_join(ring, gear)
+				_join(ring, gear, "a driving ring in its clutch gear")
 				driven = gear
 		shifts.append([ring, driven])
 
@@ -1470,6 +1595,47 @@ func join_universals(found: Array, with: Bodies) -> void:
 			"pin_other": ends[1][1], "end_one": int(ends[0][0]), "end_other": int(ends[1][0])})
 
 
+## The joints a drag reads ([param with]) for the bodies this reading has
+## none for: each body read floating, held to another by a hinge, a click
+## hinge, a clip, a stud, or an axle or a pin the drag finds and this reading
+## does not, turns on that joint's line. A loader's bucket on its click hinge
+## then rides its arms, and an 8 on a cross axle the reading found no hole
+## for turns with the crown gear it meshes (8020-1's steering). A joint that
+## only slides, or a ball, which turns every way, is left out.
+func join_floating(with: Bodies) -> void:
+	if floating.is_empty():
+		return
+	var loose: Dictionary = {}
+	for body: int in floating:
+		loose[body] = true
+	var added: Dictionary = {}   ## Vector2i(a, b) -> true
+	var grew: bool = false
+	for link: Bodies.Link in with.links:
+		if not link.turns or link.axis == Vector3.ZERO or link.pairs.is_empty():
+			continue
+		var pair: Array = link.pairs[0]
+		if not parts.has(int(pair[0])) or not parts.has(int(pair[1])):
+			continue
+		var a: int = body_of(int(pair[0]))
+		var b: int = body_of(int(pair[1]))
+		if a == b or not (loose.has(a) or loose.has(b)):
+			continue
+		var key := Vector2i(mini(a, b), maxi(a, b))
+		if added.has(key):
+			continue
+		added[key] = true
+		var joint := Joint.new()
+		joint.a = a
+		joint.b = b
+		joint.point = link.point
+		joint.way = link.axis.normalized()
+		joint.what = "a drag's %s" % link.kind
+		joints.append(joint)
+		grew = true
+	if grew:
+		_grow()
+
+
 ## A universal joint's equation, as {column: coefficient}: the two shafts
 ## turn alike about their lines, the way the turn goes through.
 func _universal_row(joint: Dictionary) -> Dictionary:
@@ -1490,7 +1656,7 @@ func _universal_row(joint: Dictionary) -> Dictionary:
 ## it, as friction would have it: sails threaded on an axle go round with it.
 func solve(drivers: Dictionary) -> Dictionary:
 	var out: Dictionary = {"ok": false, "locked": false, "said": "", "culprits": [], "meshes": [],
-		"free": [], "freedoms": 0}
+		"free": [], "freedoms": 0, "set_aside": []}
 	var fixed: Array = []   ## [row, rhs]
 	for body: int in drivers:
 		var joint: Joint = _joint_of.get(body)
@@ -1521,19 +1687,41 @@ func solve(drivers: Dictionary) -> Dictionary:
 	for joint: Joint in tree:
 		depth[joint.column] = path(joint.child).size()
 	var answer: Dictionary = _eliminate(fixed + held + rows, depth)
+	var aside: Array = []   ## indices into used, set aside
 	if not answer["consistent"]:
-		out["locked"] = true
+		var culprits: Array = []   ## indices into used
 		for n: int in used.size():
 			var fewer: Array = rows.duplicate()
 			fewer.remove_at(n)
 			if _eliminate(fixed + held + fewer, depth)["consistent"]:
+				culprits.append(n)
+		# A real set's train turns, so a lock is a misreading, and a doubtful
+		# mesh is the likeliest one: the meshes BEVEL_SLACK let in locked
+		# 852-1's rotors and 8854-1's crane, where Kinebrick turns them.
+		# Those give way; any other lock stands.
+		for n: int in culprits:
+			if used[n].doubtful:
+				aside.append(n)
+		if not aside.is_empty():
+			var kept: Array = []
+			for n: int in rows.size():
+				if not aside.has(n):
+					kept.append(rows[n])
+			var again: Dictionary = _eliminate(fixed + held + kept, depth)
+			if again["consistent"]:
+				answer = again
+			else:
+				aside.clear()
+		if not answer["consistent"]:
+			out["locked"] = true
+			for n: int in culprits:
 				(out["culprits"] as Array).append(used[n].said())
 				(out["meshes"] as Array).append([used[n].one.key, used[n].other.key])
-		out["said"] = "locked: the couplings ask for two different turns at once"
-		for one: Joint in tree:
-			one.rate = 0.0
-			one.free = false
-		return out
+			out["said"] = "locked: the couplings ask for two different turns at once"
+			for one: Joint in tree:
+				one.rate = 0.0
+				one.free = false
+			return out
 	var pivots: Array = answer["pivots"]
 	var rates: Dictionary = _back(pivots, {})
 	# What nothing decides: every column no pivot is, and every column a
@@ -1572,6 +1760,11 @@ func solve(drivers: Dictionary) -> Dictionary:
 	out["freedoms"] = freedoms
 	out["said"] = "%d of %d joints turn; %s left, %s undecided, following what carries them" \
 		% [moving, tree.size(), _counted(freedoms, "freedom"), _counted(free.size(), "body")]
+	for n: int in aside:
+		(out["set_aside"] as Array).append(used[n].said())
+	if not aside.is_empty():
+		out["said"] += "; taken as not meshing, or the train would lock: %s (%s)" \
+			% [", ".join(PackedStringArray(out["set_aside"])), used[aside[0]].off_said()]
 	return out
 
 
@@ -1602,7 +1795,10 @@ static func _back(pivots: Array, given: Dictionary, homogeneous: bool = false) -
 ## furthest from the ground by [param depth] among those not much smaller
 ## than its largest, so the columns left free, at 0, are the ones nearest
 ## the ground: an idle axle stays still and what it carries turns on it,
-## rather than the axle turning back under a driven arm.
+## rather than the axle turning back under a driven arm. A row whose rest,
+## once the rows before it are taken out, is under [constant RANK_SLACK] of
+## what it was says nothing more: it repeats them, give or take the file's
+## rounding.
 static func _eliminate(rows: Array, depth: Dictionary = {}) -> Dictionary:
 	var pivots: Array = []        ## [column, row, rhs]
 	for given: Array in rows:
@@ -1636,14 +1832,14 @@ static func _eliminate(rows: Array, depth: Dictionary = {}) -> Dictionary:
 				size = maxf(size, absf(float(row[c])))
 		var best: int = -1
 		for c: int in row:
-			if size < 1e-9 or absf(float(row[c])) < size * 0.1:
+			if size < RANK_SLACK or absf(float(row[c])) < size * 0.1:
 				continue
 			if best < 0 or int(depth.get(c, 0)) > int(depth.get(best, 0)) \
 					or (int(depth.get(c, 0)) == int(depth.get(best, 0))
 						and absf(float(row[c])) > absf(float(row[best]))):
 				best = c
 		if best < 0:
-			if absf(rhs) > 1e-7:
+			if absf(rhs) > RANK_SLACK:
 				return {"consistent": false, "pivots": []}
 			continue
 		var scale: float = float(row[best])
@@ -1676,7 +1872,7 @@ func worms_back_driven(driver: int) -> Array[Coupling]:
 			if coupling.how == "worm" and coupling.other.body == at and not reached.has(next):
 				out.append(coupling)
 				continue
-			if next == ground or floating.has(next) or reached.has(next):
+			if is_frame(next) or floating.has(next) or reached.has(next):
 				continue
 			reached[next] = true
 			queue.append(next)
@@ -1806,7 +2002,8 @@ func describe() -> String:
 	var lines: PackedStringArray = []
 	for body: int in bodies:
 		var joint: Joint = _joint_of.get(body)
-		var how: String = "the ground" if body == ground else ("floating" if joint == null
+		var how: String = "the ground" if body == ground else ("a piece's own frame"
+			if roots.has(body) else "floating" if joint == null
 			else "on %d about %s at %s (%s), rate %.4f%s" % [joint.parent,
 			joint.way.snapped(Vector3.ONE * 0.001), joint.point.snapped(Vector3.ONE * 0.1),
 			joint.what, joint.rate, " (free)" if joint.free else ""])
@@ -1817,5 +2014,7 @@ func describe() -> String:
 func summary() -> String:
 	return "%d parts, %d bodies (the ground %d parts), %d joints in the tree, %d closing loops, " \
 		% [parts.size(), bodies.size(), (bodies.get(ground, []) as Array).size(), tree.size(),
-		closing.size()] + "%d floating (%d with a gear); %d gears, %d couplings" % [floating.size(),
+		closing.size()] + "%s%d floating (%d with a gear); %d gears, %d couplings" % [
+		"" if roots.is_empty() else "%d other piece%s on its own frame, " % [roots.size(),
+			"" if roots.size() == 1 else "s"], floating.size(),
 		floating_gears().size(), gears.size(), couplings.size()]

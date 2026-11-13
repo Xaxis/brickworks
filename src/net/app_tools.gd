@@ -95,6 +95,8 @@ const COMMANDS: Dictionary = {
 	# The window's hand tools on the parts a session names (HandTools).
 	"mirror": "mirror_parts", "split_parts": "split_parts", "merge_parts": "merge_parts",
 	"measure": "measure",
+	# A model put into this one whole (open_model into=true, intomodel).
+	"import_into": "open_model",
 	# picklist: LEGO's Pick a Brick list (export_model format=pickabrick).
 	"export_pickabrick": "export_model",
 	# pagesetup: Build, Booklet page, Page setup… (BookletSheet).
@@ -104,11 +106,14 @@ const COMMANDS: Dictionary = {
 	# savedviews: View › Viewpoint › Render each saved view is render_queue's
 	# add view=NAME, a view at a time.
 	"render_views": "render_queue",
-	# comparesets (APP_UX6 #7): File, Compare two sets or models… is
+	# comparesets (APP_UX6 #7): File, Compare, Compare two sets or models… is
 	# parts_list which="compare".
 	"compare_sets": "parts_list",
 	# mcpsee3: View › Viewpoint › Save this view… (SavedViews.save_now).
 	"save_view": "save_view",
+	# subexport (APP_UX7 #19): File › Export › Each sub-model is
+	# export_model's submodels=true.
+	"export_submodels": "export_model",
 }
 
 ## The window's commands no tool does, each with why. A command that is
@@ -165,6 +170,8 @@ const WINDOW_ONLY: Dictionary = {
 	"about": "help for the person",
 	"back_to_site": "leaves the web app for the website in the person's tab, ending the session's connection",
 	"feedback": "a report from the person to the people who make Brickworks, in their own words",
+	# bugreport: the same, a bug's, with a picture of the window the person marks.
+	"report_bug": "a report from the person to the people who make Brickworks, in their own words, with a picture of their window",
 	"beta_hub": "help for the person",
 	"check_updates": "the person's own copy of the app: a new version is theirs to take, and taking it restarts the app the session is driving",
 	"reinstall": "puts a fresh copy of the app in place and restarts it, ending the session's connection",
@@ -197,7 +204,7 @@ a part and makes it step 1 of the booklet.
  - edit_steps: the build steps the booklet and the timeline follow. With \
 no op it lists them; "to" puts parts in any step by its number, "next"/"prev" \
 move them a step, "new" makes a step of them, "earlier"/"later"/"merge"/\
-"delete" act on a step by its number.
+"delete" act on a step by its number, "name" names one ("Build the cockpit").
  - booklet_layout reads the booklet's pages and how each step is printed, \
 changing nothing; edit_booklet sets one step's view (turn=, tilt=, \
 "usual"), zoom=, size=, page= ("new", "alone"), parts=, callout= and the \
@@ -246,7 +253,7 @@ opens one. Over changes not saved it is refused unless discard_changes=true, \
 and undo brings back what it replaced. Each save is kept, the \
 last 20: name= with versions=true lists a model's, version=N opens one; \
 versions=true with version=N opens nothing and says what changed since that \
-save, part by part, as File, Compare with… draws it. \
+save, part by part, as File, Compare, Compare with… draws it. \
 link= opens a copy of a gallery model, as Open in Brickworks does; \
 library= opens LDraw's model of a real set (gallery library=true finds them).
  - parts_list: the model's parts by part and colour with element ids; \
@@ -258,7 +265,8 @@ the parts in both and in one only, and what to buy to build b from a.
 I own keeps them. add= lots seen in a photo of their pile (part, colour, \
 count), all in one call, each marked as the session's for the person to \
 keep or take back; remove= takes the session's own lots off; with neither \
-it reads the collection back. Their sets and their own lots are never changed.
+it reads the collection back; missing= marks a set's missing parts, each \
+change said as was N, now M. Nothing else of theirs is changed.
  - render_model: a picture or a turntable worth keeping, Quick, Good or \
 Best, up to 4K, as the window draws it or as a product shot, or kind="build" \
 the model built up step by step as a video, saved where Render saves; a \
@@ -334,8 +342,10 @@ all or nothing, one undo step; a copy with no room is said by its column, row \
 and level and the part in its way. Answered with the copies pictured.
  - weakest_joints: what gives first in the whole model as it stands, \
 read-only, as View, Stress weighs it: each joint that alone holds what is \
-past it, weakest first, with its margin against its studs' working load. \
-Ask it what breaks first, rather than rebuilding the model in check_design.
+past it, weakest first, with its margin against its studs' working load, \
+and for each past or near it the fewest parts that fix it as an edit_model \
+call to make as given. Ask it what breaks first, rather than rebuilding the \
+model in check_design.
  - colour_hidden_parts: the parts nobody sees in the finished model, \
 coloured by section, build stage or side as big sets are inside, so a \
 builder finds their place; measured from every side, so nothing seen \
@@ -401,13 +411,21 @@ func definitions() -> Array:
 				+ "step later or earlier; \"new\" makes a new step of bricks=; \"earlier\", "
 				+ "\"later\", \"merge\" (with the next) and \"delete\" act on step=, a number "
 				+ "from the list. A model with no steps of its own is given the worked-out "
-				+ "ones first, in the same undo step."),
+				+ "ones first, in the same undo step."
+				# stepnames: a step named, in a block of its own.
+				+ " \"name\" gives step= a name= (\"Build the cockpit\"), said beside its "
+				+ "number on the timeline, in Build it and in the booklet; name= \"\" takes it "
+				+ "off. callout_step= with step= names a step inside the callout step= puts on. "
+				+ "A sub-model placed more than once has one set of steps: a name given to one "
+				+ "of its steps is every copy's."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"op": {"type": "string", "enum": ["list", "to", "next", "prev", "new", "earlier",
-					"later", "merge", "delete"]},
+					"later", "merge", "delete", "name"]},
+				"name": {"type": "string", "description": "for name: what the step is called, up to 80 characters; \"\" takes it off"},
+				"callout_step": {"type": "integer", "description": "for name: a step inside the callout step= puts on, from 1, as edit_booklet takes it"},
 				"bricks": {"type": "array", "items": {"type": "integer"},
 					"description": "part numbers from look_at_model, for to, next, prev and new"},
-				"step": {"type": "integer", "description": "a step's number, for to, earlier, later, merge and delete"},
+				"step": {"type": "integer", "description": "a step's number, for to, earlier, later, merge, delete and name"},
 				"from": {"type": "integer", "description": "list from this step; 1 when omitted"},
 			}},
 		},
@@ -696,7 +714,9 @@ func definitions() -> Array:
 				+ "it drives through gears, racks and linkages follows. Or sequence= the model's "
 				+ "motions by name, in order (\"Show it all\": [\"Open the dome\", \"Extend the "
 				+ "telescope\"]): a motion made of motions, each played from where the one before "
-				+ "left the model, backwards in reverse order. suggested=true keeps list_motions' "
+				+ "left the model, backwards in reverse order. Or path= the whole model driven along "
+				+ "the ground (legs: straight studs, left or right degrees), its wheels turning as they "
+				+ "roll and its steering into the corners. suggested=true keeps list_motions' "
 				+ "suggestion of that name; remove=true takes a motion out. It is saved with the model (its autosave, "
 				+ "a save, an export, a shared link), one undo step, and answers by playing it "
 				+ "once and putting the model back: where each joint ended, or stopped and on what."),
@@ -722,6 +742,23 @@ func definitions() -> Array:
 					}},
 				"sequence": {"type": "array", "items": {"type": "string"},
 					"description": "the model's motions it plays, by name, in order"},
+				# unit drive: the whole model driven along a path, its wheels turning.
+				"path": {"type": "object", "additionalProperties": false, "description": ("the whole model "
+					+ "driven along the ground from where it stands, its wheels turning as they roll and its "
+					+ "steering into the corners; with tracks= too, those joints move as it goes"), "properties": {
+						"legs": {"type": "array", "description": ("in order; a 32-stud straight and a quarter "
+							+ "turn left when omitted"), "items": {"type": "object", "additionalProperties": false,
+							"properties": {
+								"straight": {"type": "number", "description": "studs ahead; less than 0 backwards"},
+								"left": {"type": "number", "description": "degrees turned to the left"},
+								"right": {"type": "number", "description": "degrees turned to the right"},
+								"radius": {"type": "number", "description": ("a turn's radius, studs, at the "
+									+ "middle of the back axle; the tightest its steering takes well when omitted")},
+							}}},
+						"seconds": {"type": "number", "description": "how long; at 10 studs a second when omitted"},
+						"eased": {"type": "boolean", "description": "gathers speed and slows to a stop; true when omitted"},
+					}},
+				# end unit drive
 				"suggested": {"type": "boolean", "description": "keep list_motions' suggestion of this name"},
 				"remove": {"type": "boolean"},
 			}},
@@ -813,7 +850,11 @@ func definitions() -> Array:
 				+ "model of that real set, credited to whoever made it, as File, Library… does. "
 				+ "The person's work is never lost: while the model on the baseplate has "
 				+ "changes not saved, opening is refused unless discard_changes=true, and an "
-				+ "open is undone like any change (undo brings back the model it replaced)."),
+				+ "open is undone like any change (undo brings back the model it replaced). "
+				+ "into=true puts name= (or library=, link=) into the model open now as one "
+				+ "sub-assembly with its author's steps, beside the model or at x= z=, as File, "
+				+ "Import, Into this model… does: nothing is replaced, every part and name of "
+				+ "both kept, and one undo takes it out."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"name": {"type": "string", "description": "a model's name from the list"},
 				"link": {"type": "string", "description": "a gallery model's link id, or its /m/ address"},
@@ -821,6 +862,10 @@ func definitions() -> Array:
 				"versions": {"type": "boolean", "description": "list name='s saves kept as versions"},
 				"version": {"type": "integer", "description": "open this save of name=, 1 the newest; with versions=true, compare the model open now with it"},
 				"discard_changes": {"type": "boolean"},
+				"into": {"type": "boolean", "description": "put name= (or library=, link=) into the model open now as one sub-assembly with its own steps, as File, Import, Into this model… does, in place of opening it; nothing is replaced"},
+				"x": {"type": "number", "description": "with into: studs across to its low corner, on the ground; beside the model when omitted"},
+				"z": {"type": "number", "description": "with into: studs deep to its low corner"},
+				"turn": {"type": "integer", "description": "with into: quarter turns about the vertical, 0 to 3"},
 			}},
 		},
 		{
@@ -832,7 +877,7 @@ func definitions() -> Array:
 				+ "saved models, the examples and the official models of real sets, ranked by "
 				+ "how much of each they own. "
 				# comparesets (APP_UX6 #7): Rebrickable's set compare.
-				+ "which=\"compare\" is File, Compare two sets or models…: a= and b= each a "
+				+ "which=\"compare\" is File, Compare, Compare two sets or models…: a= and b= each a "
 				+ "set number (\"7140\"), a saved model's or an example's name, or \"open\" for "
 				+ "the model open now; it says the parts in both and in only one, by part and "
 				+ "colour, each side's pieces counted once, and what to buy to build b from a. "
@@ -861,8 +906,17 @@ func definitions() -> Array:
 				+ "take back with one button. remove=[{part, color, count}] takes pieces off "
 				+ "lots this chat added (count omitted: the whole lot). With neither, it reads "
 				+ "the collection back, this chat's lots apart. Their sets and their own lots "
-				+ "are theirs: this never changes them. parts_list which=\"need\" then measures "
-				+ "the model against it, and which=\"buildable\" ranks what they can build."),
+				+ "are theirs: add= and remove= never change them; missing= changes only the marks it "
+				+ "names, each said as was N, now M. parts_list which=\"need\" then measures "
+				+ "the model against it, and which=\"buildable\" ranks what they can build. "
+				# localbricks (APP_UX6 #8): a set's marks.
+				+ "missing={set, lots: [{part, color, count}]} puts how many of each named part a set they "
+				+ "own is missing to count, all its copies together (0 unmarks it), as its Missing parts… "
+				+ "page does; the reply says each change as was N, now M, to put back. none=true says a set "
+				+ "has nothing missing: refused while anything is marked, naming it; then name those lots, "
+				+ "count 0, or send none=true with marked= the number of lots it said, to unmark them all. "
+				+ "Send missing= alone, not with add= or remove=. What do I need?, the pool and a bin built "
+				+ "from the set then count only what is there."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"add": {"type": "array", "description": "loose lots to add", "items": {
 					"type": "object", "additionalProperties": false, "required": ["part", "color", "count"],
@@ -879,6 +933,22 @@ func definitions() -> Array:
 						"count": {"type": "integer", "description": "how many to take off; the whole lot when omitted"},
 					}}},
 				"limit": {"type": "integer", "description": "how many lots the read back lists; 60 when omitted"},
+				# localbricks (APP_UX6 #8): a set's missing lots marked and unmarked.
+				"missing": {"type": "object", "additionalProperties": false, "required": ["set"],
+					"description": "a set they own, and how many of each of its parts are missing", "properties": {
+						"set": {"type": "string", "description": "the set's number, like 7140-1"},
+						"lots": {"type": "array", "items": {"type": "object", "additionalProperties": false,
+							"required": ["part", "color", "count"], "properties": {
+								"part": {"type": "string", "description": "the part's LDraw number, as the set's inventory lists it"},
+								"color": {"type": "integer", "description": "LDraw colour code"},
+								"count": {"type": "integer",
+									"description": "how many of it are missing, all the set's copies together; 0 unmarks it"},
+							}}},
+						"none": {"type": "boolean",
+							"description": "the set has nothing missing; refused while any lot is marked (name those, count 0, or send marked=)"},
+						"marked": {"type": "integer",
+							"description": "with none=true: how many lots its refusal said were marked; all of them unmarked while that is still so"},
+					}},
 			}},
 		},
 		{
@@ -896,6 +966,11 @@ func definitions() -> Array:
 				+ "keep is answered with those it does. look product is a product shot's: glossy "
 				+ "plastic with rounded edges, clear parts that bend the light, a key, fill "
 				+ "and rim over a softbox studio (window, the default, is the window's own). "
+				# lineart (APP_UX7 #22).
+				+ "look lineart is the model inked: black lines round it, where each part meets "
+				+ "the next and where a part turns a corner, on white, the shade in halftone dots; "
+				+ "comic the same lines and dots over each part's own flat colour; with backdrop "
+				+ "none on nothing. "
 				+ "backdrop white, gradient, grey, dark or none (as Render last had it when "
 				+ "omitted). depth_of_field blurs what is nearer and farther than the "
 				+ "model's middle, as a lens at f/4 does, and is drawn at best. light studio "
@@ -911,7 +986,7 @@ func definitions() -> Array:
 				"quality": {"type": "string", "enum": ["quick", "good", "best"]},
 				"size": {"type": "string", "enum": ["720p", "1080p", "4k", "square"]},
 				"view": {"type": "string", "description": "hero, front, side, back, low or top, or a view saved with the model, by its name"},
-				"look": {"type": "string", "enum": ["window", "product"]},
+				"look": {"type": "string", "enum": RenderSettings.LOOKS.keys()},
 				"backdrop": {"type": "string", "enum": ["white", "gradient", "grey", "dark",
 					"none"]},
 				"depth_of_field": {"type": "boolean"},
@@ -947,7 +1022,7 @@ func definitions() -> Array:
 				"size": {"type": "string", "enum": ["720p", "1080p", "4k", "square"]},
 				"samples": {"type": "integer", "description": "Best's samples, 1 to 4096"},
 				"view": {"type": "string", "description": "current, hero, front, side, back, low or top, or a view saved with the model, by its name"},
-				"look": {"type": "string", "enum": ["window", "product"]},
+				"look": {"type": "string", "enum": RenderSettings.LOOKS.keys()},
 				"backdrop": {"type": "string", "enum": ["white", "gradient", "grey", "dark",
 					"none"]},
 				"depth_of_field": {"type": "boolean"},
@@ -1034,7 +1109,10 @@ func definitions() -> Array:
 				+ "the answer is a job number at once, and job gives the result. A bricklink "
 				+ "wanted list takes condition, wanted_list and notify, as BrickLink's upload "
 				+ "reads them; what is not given is what the person chose last on the parts "
-				+ "list's BrickLink button. Nothing is uploaded: the person uploads the file."),
+				+ "list's BrickLink button. Nothing is uploaded: the person uploads the file."
+				+ " With format ldraw, submodels=true writes each sub-model as an LDraw file of its own, "
+				+ "with its own sub-models and steps, all in one .zip (File, Export, Each sub-model), "
+				+ "and submodel= just the one of that name in the model tree, as its row's menu does."),
 			"input_schema": {"type": "object", "additionalProperties": false,
 				"required": ["format"], "properties": {
 				"format": {"type": "string", "enum": ["ldraw", "studio", "glb", "gltf", "obj",
@@ -1044,6 +1122,9 @@ func definitions() -> Array:
 					"description": "bricklink: the condition wanted (CONDITION N or U; any leaves it out)"},
 				"wanted_list": {"type": "integer", "description": "bricklink: the ID of one of the person's wanted lists (WANTEDLISTID, the number after wantedMoreID= in its address); 0 for the main wanted list"},
 				"notify": {"type": "boolean", "description": "bricklink: BrickLink emails the person when a lot of a part is listed for sale (NOTIFY Y)"},
+				# subexport (APP_UX7 #19).
+				"submodels": {"type": "boolean", "description": "ldraw: each sub-model as an LDraw file of its own, with its own sub-models and steps, in one .zip"},
+				"submodel": {"type": "string", "description": "ldraw: only this sub-model as an LDraw file of its own, by its name in the model tree (Wing, Wing (copy 2), or a path Ship#1/Wing#2)"},
 			}},
 		},
 		{
@@ -1225,16 +1306,23 @@ func definitions() -> Array:
 				+ "foot), levered about the edge it would turn on, weakest first, each with the "
 				+ "part that would come off, what it hangs from or stands on, its studs, the "
 				+ "weight past it and its margin against the studs' working load (1 N a stud: "
-				+ "under 1 is past it, under 2 within twice it; it lets go at about three "
-				+ "times). A touch, one face resting on another with no stud between, carries "
+				+ "under 1 is past it, under 2 within twice it; it lets go at about 1.9 times "
+				+ "it, 3.1 times into a part a stud wide). A touch, one face resting on another "
+				+ "with no stud between, carries "
 				+ "only what stands on it, so it never shares a joint's load; a piece standing "
 				+ "on touches alone past where it touches is said too. Read this instead of "
-				+ "rebuilding the model in check_design to weigh it. part= one part's number "
-				+ "(look_at_model) for what holds it; count= how many joints (8). Changes "
+				+ "rebuilding the model in check_design to weigh it. Each joint past or near its "
+				+ "working load comes with its fix, as Stress's Strengthen finds it: the fewest "
+				+ "parts (up to three: a plate across the seam, a brick under it, a second pin) "
+				+ "checked for room and weighed with the model, and the edit_model call that "
+				+ "puts them down as one undo step; make that call as given. part= one part's "
+				+ "number (look_at_model) for what holds it; count= how many joints (8); "
+				+ "mine=true the fixes of the person's own parts (Parts, My bricks). Changes "
 				+ "nothing."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"part": {"type": "integer"},
 				"count": {"type": "integer"},
+				"mine": {"type": "boolean"},
 			}},
 		},
 		GalleryTool.definition(),
@@ -1599,7 +1687,25 @@ func _edit_steps(input: Dictionary) -> String:
 				return "There is no step %d: the steps run 1 to %d." % [int(input["step"]),
 					steps[steps.size() - 1].number]
 			return shell.change_steps(op, [], at)
-	return "op is one of list, to, next, prev, new, earlier, later, merge, delete."
+		"name":
+			# stepnames: one call, one undo (Shell.change_look "name").
+			if not input.has("step") or not input.has("name"):
+				return "Give step= a step's number from edit_steps's list, and name= what it is called (\"\" takes it off)."
+			var named: Instructions.Step = _step_numbered(steps, int(input["step"]))
+			if named == null:
+				return "There is no step %d: the steps run 1 to %d." % [int(input["step"]),
+					steps[steps.size() - 1].number]
+			# A callout's step as edit_booklet takes one (snreview F5).
+			if input.has("callout_step"):
+				var inside: Instructions.Step = _step_numbered(steps, named.number,
+					maxi(1, int(input["callout_step"])))
+				if inside == null or int(input["callout_step"]) < 1:
+					return ("Step %d puts on no sub-assembly built in a callout." % named.number) \
+						if not named.attaches() or named.callout_steps <= 0 \
+						else "Step %d's callout has steps 1 to %d." % [named.number, named.callout_steps]
+				named = inside
+			return _sentence(shell.change_look("name", named, {"name": str(input["name"])}))
+	return "op is one of list, to, next, prev, new, earlier, later, merge, delete, name."
 
 
 # -- the booklet, by hand --------------------------------------------------------
@@ -2216,7 +2322,16 @@ func _list_steps(steps: Array[Instructions.Step], from: int) -> String:
 		elif not step.copies.is_empty():
 			where = " (puts on the %s%s)" % [step.assembly,
 				" x%d" % step.copies.size() if step.copies.size() > 1 else ""]
+		# The step it starts, which has no step of its own to be named in
+		# (Step.within): the model's step that puts the copies on.
+		if not step.within.is_empty():
+			where = where.trim_suffix(")") + ("; " if not where.is_empty() else " (") \
+				+ "starts the step %s)" % Motions.quoted(step.within)
 		var line: String = "  %d%s: %s" % [step.number, where, " ".join(numbers)]
+		if not step.name.is_empty():
+			# stepnames: its name, as the timeline says it.
+			line = "  %d%s %s: %s" % [step.number, where, Motions.quoted(step.name),
+				" ".join(numbers)]
 		characters += line.length()
 		if characters > 6000:
 			said.append("  ... edit_steps {\"from\": %d} for the rest." % step.number)
@@ -2562,7 +2677,7 @@ func _animate(input: Dictionary, work: Working.Job = null) -> Variant:
 		builder.record([{"undo": "motions", "motions": had}], "%s the motion %s" % [
 			"changed" if replaced else "made", Motions.quoted(ANIMATION)])
 		kept = (" Kept as the motion %s: the person plays it in Build, Motions…, and play_motion "
-			+ "plays it; one step: undo takes it out.") % Motions.quoted(ANIMATION)
+			+ "plays it; one step: undo takes it out.%s") % [Motions.quoted(ANIMATION), _let_go_said(motions)]
 	if not bool(input.get("render", true)):
 		return "Set %s.%s" % [said, kept]
 	if not StudioRender.possible():
@@ -2632,6 +2747,10 @@ func _list_motions(input: Dictionary) -> String:
 		lines.append("The model's motions, kept in its file (places from where it was built):")
 		for motion: Motions.Motion in motions.list:
 			lines.append_array(_motion_words(player, motion, true))
+	# Its file's motion lines this could not read, kept in it as they are.
+	if not motions.unread.is_empty():
+		var unread: String = motions.unread_words()
+		lines.append("%s%s." % [unread.left(1).to_upper(), unread.substr(1)])
 	if bool(input.get("suggest", true)):
 		var offered: Array = player.suggest().filter(func(one: Motions.Motion) -> bool:
 			return motions.named(one.name) == null)
@@ -2687,6 +2806,12 @@ func _motion_words(player: MotionPlayer, motion: Motions.Motion, kept: bool) -> 
 			out.append("    %s turned %s time%s in %s s, from where it stands, with what it drives."
 				% [player.joint_words(motion.driver), Motions.num(motion.turns, 2),
 				"" if is_equal_approx(absf(motion.turns), 1.0) else "s", Motions.num(motion.driver_seconds, 2)])
+	# unit drive
+	if motion.path != null:
+		out.append("    The whole model driven %s, over %s s%s, from where it stands. %s" % [motion.path.said(),
+			Motions.num(motion.path.seconds, 2), ", eased" if motion.path.how == "EASE" else "",
+			player.path_words(motion.path)])
+	# end unit drive
 	if kept:
 		var last: String = str(player.results.get(motion.name.to_lower(), ""))
 		out.append("    Last played: %s." % last if not last.is_empty()
@@ -2715,7 +2840,8 @@ func _define_motion(input: Dictionary) -> String:
 		var had: Motions = motions.copy()
 		motions.remove(name)
 		builder.record([{"undo": "motions", "motions": had}], "took the motion %s out" % Motions.quoted(name))
-		return "Took %s out of the model. One step: undo puts it back." % Motions.quoted(name)
+		return "Took %s out of the model. One step: undo puts it back.%s" % [Motions.quoted(name),
+			_let_go_said(motions)]
 	var motion: Motions.Motion = null
 	if bool(input.get("suggested", false)):
 		var offered: Array = player.suggest()
@@ -2729,7 +2855,7 @@ func _define_motion(input: Dictionary) -> String:
 			return "No suggestion called %s: %s." % [Motions.quoted(name), "list_motions suggests "
 				+ ", ".join(names) if not names.is_empty() else "nothing here is suggested"]
 	elif input.get("sequence") is Array:
-		if input.has("tracks") or input.has("driver"):
+		if input.has("tracks") or input.has("driver") or input.has("path"):
 			return ("A motion is its own tracks or driver, or a sequence of the model's motions: not both. "
 				+ "Nothing was kept.")
 		var made: Variant = _sequence_from(motions, name, input["sequence"])
@@ -2751,6 +2877,7 @@ func _define_motion(input: Dictionary) -> String:
 	var replaced: bool = motions.named(name) != null
 	var had: Motions = motions.copy()
 	motions.put(motion)
+	var let_go: String = _let_go_said(motions)
 	builder.record([{"undo": "motions", "motions": had}], "%s the motion %s" % [
 		"changed" if replaced else "made", Motions.quoted(name)])
 	# Checked where it begins in its sequence: after the motions it follows,
@@ -2770,11 +2897,11 @@ func _define_motion(input: Dictionary) -> String:
 		await verbs.press("undo")
 	var joints: int = motion.joints().size()
 	return ("%s %s in the model (%s s, %d joint%s): it is saved with it. Played once to check%s, and the "
-		+ "model put back: %s. play_motion plays it%s; one step: undo takes it out.") % [
+		+ "model put back: %s. play_motion plays it%s; one step: undo takes it out.%s") % [
 		"Changed" if replaced else "Kept", Motions.quoted(name), Motions.num(motion.length(), 2), joints,
 		"" if joints == 1 else "s", (" after %s, which it follows" % ", then ".join(first))
 		if not first.is_empty() else "", player.said(played), (" alone, from where the model stands, and "
-		+ "with sequence=true after %s" % ", then ".join(first)) if not first.is_empty() else ""]
+		+ "with sequence=true after %s" % ", then ".join(first)) if not first.is_empty() else "", let_go]
 
 
 ## A sequence called [param name] of the model's motions named in [param
@@ -2809,6 +2936,7 @@ func _define_sequence(player: MotionPlayer, motion: Motions.Motion) -> String:
 	var replaced: bool = motions.named(motion.name) != null
 	var had: Motions = motions.copy()
 	motions.put(motion)
+	var let_go: String = _let_go_said(motions)
 	builder.record([{"undo": "motions", "motions": had}], "%s the sequence %s" % [
 		"changed" if replaced else "made", Motions.quoted(motion.name)])
 	var drawn: MotionRender = MotionRender.frames_of(player, [motion], false, MotionPlayer.PLAY_FPS)
@@ -2816,9 +2944,15 @@ func _define_sequence(player: MotionPlayer, motion: Motions.Motion) -> String:
 	return ("%s %s in the model, a sequence of %d (%s s): %s, each from where the one before left the "
 		+ "model. It is saved with it. Played once to check, and the model put back: %s play_motion plays "
 		+ "it (reverse=true backwards, in reverse order), render_motion renders it whole; one step: undo "
-		+ "takes it out.") % ["Changed" if replaced else "Kept", Motions.quoted(motion.name),
+		+ "takes it out.%s") % ["Changed" if replaced else "Kept", Motions.quoted(motion.name),
 		motion.sequence.size(), Motions.num(motions.seconds_of(motion), 2), ", then ".join(Array(motion.sequence).map(
-		func(one: String) -> String: return Motions.quoted(one))), " ".join(drawn.lines)]
+		func(one: String) -> String: return Motions.quoted(one))), " ".join(drawn.lines), let_go]
+
+
+## What [param motions]' last change let go of the lines it did not read
+## (Motions.let_go_words), as a sentence after a reply's own; "" for none.
+static func _let_go_said(motions: Motions) -> String:
+	return "" if motions.let_go.is_empty() else " %s." % motions.let_go_words()
 
 
 ## A motion from define_motion's tracks= and driver=, or why not.
@@ -2863,9 +2997,18 @@ func _motion_from(player: MotionPlayer, name: String, input: Dictionary) -> Vari
 		motion.driver = joint
 		motion.turns = clampf(float(driver["turns"]), -100.0, 100.0)
 		motion.driver_seconds = clampf(float(driver.get("seconds", 4.0)), 0.1, Motions.MOST_SECONDS)
-	if motion.tracks.is_empty() and motion.driver == null:
-		return ("Give tracks= (each a joint and its keys) or driver= (a joint and how many times to "
-			+ "turn it); list_motions suggests some.")
+	# unit drive: the whole model driven along a path.
+	if input.has("path"):
+		if not (input["path"] is Dictionary):
+			return "path= is {\"legs\": [{\"straight\": 32}, {\"left\": 90}], \"seconds\": 7}."
+		var path: Variant = player.path_from(input["path"])
+		if path is String:
+			return "%s" % path
+		motion.path = path
+	# end unit drive
+	if motion.tracks.is_empty() and motion.driver == null and motion.path == null:
+		return ("Give tracks= (each a joint and its keys), driver= (a joint and how many times to "
+			+ "turn it) or path= (where the whole model drives); list_motions suggests some.")
 	return motion
 
 
@@ -3185,6 +3328,8 @@ func _undo(input: Dictionary) -> String:
 
 
 func _open(input: Dictionary) -> String:
+	if bool(input.get("into", false)):
+		return await _open_into(input)
 	var store: ModelStore = app.get("_store")
 	var bar: ModelBar = app.get("_bar")
 	var saved: Array[ModelStore.Entry] = store.list_saved()
@@ -3263,7 +3408,7 @@ func _open(input: Dictionary) -> String:
 
 
 ## open_model versions=true version=N: what changed in the model open now
-## since its save [param version] of [param kept], as File, Compare with…
+## since its save [param version] of [param kept], as File, Compare, Compare with…
 ## matches it (ModelDiff), and inside the sub-assembly the person is editing
 ## when they are; opening nothing and drawing nothing.
 func _compare(chosen: ModelStore.Entry, kept: Array[ModelVersions.Version], version: int) -> String:
@@ -3282,10 +3427,10 @@ func _compare(chosen: ModelStore.Entry, kept: Array[ModelVersions.Version], vers
 		else ""
 	var library: PartLibrary = app.get("_library")
 	var diff: ModelDiff = ModelDiff.between(ModelDiff.parts_of_text(text, library, inside),
-		ModelDiff.parts_of_world(app.get("_world"), store.scenery, store.lift(), store.awaited,
+		ModelDiff.parts_of_world(app.get("_world"), store.scenery, store.lift(), store.awaited_now(),
 			inside))
 	return CompareView.said_of(diff, kept[version - 1], inside, library) \
-		+ "\nNothing was opened or changed. File, Compare with… shows the person the same."
+		+ "\nNothing was opened or changed. File, Compare, Compare with… shows the person the same."
 
 
 ## Why an open is refused: the person's changes would go, and a session
@@ -3417,6 +3562,185 @@ func _library_id_of(books: ModelLibrary, said: String) -> String:
 ## as open_model name= opens one, credited to whoever made it
 ## (ModelStore.credit). Not saved: it is the person's to save, as a set
 ## opened from the window is.
+# -- a model into this one ----------------------------------------------------------
+
+
+## open_model into=true: a saved model, an example (name=), LDraw's model of
+## a real set (library=) or a gallery model (link=) put into the model open
+## now as one sub-assembly with its author's steps, as File, Import, Into this
+## model… and the library's Put in this model do, in one call: put down
+## beside the model, or with its low corner at x= and z= studs, turned turn=
+## quarter turns, on whatever is under it there. Nothing is replaced, so
+## nothing unsaved is asked after; one undo takes it all out. A set or a
+## gallery model goes in only where its licence lets it be built on
+## (LibraryDialog.may_build_on), its maker credited in its sub-model's header.
+func _open_into(input: Dictionary) -> String:
+	var store: ModelStore = app.get("_store")
+	var builder: Builder = app.get("_builder")
+	var name: String = str(input.get("name", "")).strip_edges().trim_suffix(".ldr")
+	var text: String = ""
+	var called: String = ""
+	var credit: String = ""
+	var credited: Dictionary = {}
+	var file: String = ""
+	if not str(input.get("library", "")).strip_edges().is_empty():
+		var books: ModelLibrary = app.get("_model_library")
+		if books == null:
+			return "This app has no library."
+		var id: String = str(input["library"]).strip_edges()
+		if not ModelLibrary.is_id(id):
+			id = await _library_id_of(books, id)
+			if id.is_empty():
+				return "LDraw's library has no 3D model of %s. gallery library=true q= finds a set." \
+					% str(input["library"])
+		var entry: Dictionary = await books.find(id)
+		if entry.is_empty():
+			return books.trouble + " gallery library=true q= finds a set."
+		if not LibraryDialog.may_build_on(str(entry["licence"])):
+			return "%s's licence (%s) does not let it be put in another model." % [
+				ModelLibrary.title_of(entry), entry["licence"]]
+		var got: Dictionary = await books.model_text(entry)
+		if not str(got["error"]).is_empty():
+			return "Could not fetch %s: %s" % [ModelLibrary.title_of(entry), got["error"]]
+		text = str(got["text"])
+		called = ModelLibrary.title_of(entry)
+		file = str(entry["file"]).get_file()
+		credited = ModelLibrary.credit_of(entry)
+		credit = ModelBar.credit_words(credited) + (" (%s)" % entry["page"]
+			if not str(entry["page"]).is_empty() else "")
+	elif not str(input.get("link", "")).strip_edges().is_empty():
+		var link: String = str(input["link"]).strip_edges()
+		var id: String = link.get_slice("/m/", 1).get_slice("/", 0).get_slice("?", 0).get_slice(".", 0) \
+			if link.contains("/m/") else link
+		var shared: SharedModels = app.get("_shared")
+		if not SharedModels.is_id(id) or shared == null:
+			return ("link is a gallery model's link id, ten letters and digits (gallery lists them), "
+				+ "or its address, https://brickworks.diy/m/<id>.")
+		var answer: Dictionary = await shared.fetch(id)
+		if int(answer["code"]) != 200 or not answer["body"] is Dictionary:
+			return "Could not fetch %s: %s." % [id, SharedModels.trouble(answer, "the gallery did not answer")]
+		var body: Dictionary = answer["body"]
+		if GalleryTool.held(body):
+			return GalleryTool.held_words(body, id)
+		called = str(body.get("name", "Shared model"))
+		if not LibraryDialog.may_build_on(str(body.get("licence", ""))):
+			return ("%s's builder kept every right to it (%s): open_model link= opens a copy to "
+				+ "build; it cannot go into another model without their leave.") % [called,
+				GalleryTool._licence_name(body.get("licence"))]
+		text = str(body.get("model", ""))
+		file = id + ".ldr"
+		credited = SharedModels.credit_of(body, id)
+		credit = ModelBar.credit_words(credited) + " (%s)" % str(
+			body.get("url", SharedModels.link_for(id)))
+	else:
+		var chosen: ModelStore.Entry = null
+		for entry: ModelStore.Entry in store.list_saved() + store.list_examples():
+			if chosen == null and not name.is_empty() and (entry.name.to_lower() == name.to_lower()
+					or entry.example and entry.path.get_file().get_basename() == name.to_lower()):
+				chosen = entry
+		if chosen == null:
+			return ("%s open_model with no name lists the saved models and the examples; "
+				+ "into=true with name= puts one in this model, library= a real set's.") % (
+				"No model called %s." % name if not name.is_empty() else "Which model? name= one.")
+		text = store._file_text(chosen.path)
+		if text.is_empty():
+			return "Could not read %s: %s." % [chosen.name, store.not_opened]
+		called = chosen.name
+		file = chosen.path.get_file()
+	var held: Dictionary = await store.held_from(text, file, null, called, credited)
+	if not str(held["error"]).is_empty():
+		return "Could not put %s in this model: %s. The model is as it was." % [called, held["error"]]
+	builder.cancel_carry()
+	builder.hold_copy(held["items"])
+	builder.carrying.bring(held)
+	builder.carrying.turn(clampi(int(input.get("turn", 0)), 0, 3))
+	var spot: Variant = _into_spot(builder, input)
+	if spot == null:
+		builder.cancel_carry()
+		return ("There is no room for %s %s. x= and z= put its low corner somewhere clear; the "
+			+ "model is as it was.") % [held["name"], "there" if input.has("x") or input.has("z")
+				else "beside the model"]
+	var first: int = builder.place()
+	if first == 0:
+		builder.cancel_carry()
+		return "Could not put %s down. The model is as it was." % held["name"]
+	var world: BrickWorld = app.get("_world")
+	var path: String = Assemblies.path_of(world.get_brick(first))
+	var box := AABB()
+	var count: int = 0
+	for brick_id: int in builder.selection:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		var mesh: Lbm.PartMesh = (app.get("_library") as PartLibrary).mesh_for(brick.part_id)
+		if mesh == null:
+			continue
+		var here: AABB = (brick.transform * mesh.bounds).abs()
+		box = here if count == 0 else box.merge(here)
+		count += 1
+	var whole: String = str(held["root"])
+	for segment_end: int in range(Assemblies.segments(path).size()):
+		var at: String = "/".join(Assemblies.segments(path).slice(0, segment_end + 1))
+		if Assemblies.leaf(at) == str(held["root"]):
+			whole = at
+			break
+	var said: String = ("Put %s in the model as one sub-assembly, %s: %s, its low corner at x=%s "
+		+ "y=%s z=%s, %s x %s studs and %s plates tall%s. Its parts are selected; undo takes it "
+		+ "all out.") % [held["name"], whole, Builder._many(builder.selection.size()),
+		_num(box.position.x / 20.0), _num(box.position.y / 8.0),
+		_num(box.position.z / 20.0), _num(box.size.x / 20.0), _num(box.size.z / 20.0),
+		_num(box.size.y / 8.0), ModelBar.held_words(held).replace(" — ", "; ")]
+	if not credit.is_empty():
+		said += " Its maker is credited in its sub-model's header: %s." % credit
+	return said + " look_at_model to see it."
+
+
+## Where a model brought in goes down for a session: its low corner on the
+## ground at the studs [param input] gives, else beside the model, 2 studs clear of it on
+## its right, stepped further out until it fits; the group aimed there from
+## above, standing on whatever is under it (Carry.aim). Null where it
+## cannot go.
+func _into_spot(builder: Builder, input: Dictionary) -> Variant:
+	var world: BrickWorld = app.get("_world")
+	var library: PartLibrary = app.get("_library")
+	var store: ModelStore = app.get("_store")
+	var held := AABB()
+	var first: bool = true
+	for item: Dictionary in builder.carrying.items:
+		var mesh: Lbm.PartMesh = library.mesh_for(str(item["part"]))
+		if mesh == null:
+			continue
+		var turned := Transform3D(Basis(Vector3.UP, builder.carrying.turns * PI * 0.5), Vector3.ZERO)
+		var here: AABB = ((turned * (item["at"] as Transform3D)) * mesh.bounds).abs()
+		held = here if first else held.merge(here)
+		first = false
+	var model := AABB()
+	var any: bool = false
+	for brick: BrickWorld.Brick in world.bricks():
+		var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
+		if store.scenery.has(brick.id) or mesh == null:
+			continue
+		var here: AABB = (brick.transform * mesh.bounds).abs()
+		model = here if not any else model.merge(here)
+		any = true
+	var given: bool = input.has("x") or input.has("z")
+	var corner := Vector3(float(input.get("x", 0.0)) * 20.0, 0.0, float(input.get("z", 0.0)) * 20.0)
+	if not given and any:
+		corner = Vector3(model.end.x + 40.0, 0.0, model.position.z)
+	var top: float = (model.end.y if any else 0.0) + 400.0
+	for tries: int in (1 if given else 24):
+		var at: Vector3 = corner + Vector3(40.0 * tries, 0.0, 0.0) - held.position
+		builder.carrying.aim(builder.lattice, builder, Vector3(at.x, top, at.z), Vector3.DOWN)
+		# A corner given is on the ground: over the model there is no room,
+		# not the model put on top of it (imreview mcp_args).
+		if builder.carrying.can_place() and (not given or builder.carrying.stands_on_ground(builder)):
+			return at
+	return null
+
+
+
+static func _num(value: float) -> String:
+	return str(snappedf(value, 0.1)).trim_suffix(".0")
+
+
 func _open_library(id: String, discard: bool) -> String:
 	var store: ModelStore = app.get("_store")
 	var bar: ModelBar = app.get("_bar")
@@ -3565,7 +3889,7 @@ func _parts_list(input: Dictionary) -> String:
 # -- comparesets: two sets' or models' parts (APP_UX6 #7) ---------------------------
 
 
-## parts_list which="compare": a= against b=, as File, Compare two sets or
+## parts_list which="compare": a= against b=, as File, Compare, Compare two sets or
 ## models… shows them (PartsCompare), and with shop= the list to buy to build
 ## b from a written for that shop by the parts list's own writers.
 func _parts_compare(input: Dictionary) -> String:
@@ -3623,6 +3947,9 @@ func _edit_collection(input: Dictionary) -> String:
 	if account == null or not account.signed_in():
 		return ("The person is not signed in, and a collection is kept with their account: "
 			+ "they sign in (Account), then it can be read and added to.")
+	# localbricks (APP_UX6 #8): a set's missing lots marked and unmarked.
+	if input.get("missing") != null:
+		return await _collection_marks(mine, library, input)
 	var adding: Variant = input.get("add", [])
 	var removing: Variant = input.get("remove", [])
 	if not adding is Array or not removing is Array:
@@ -3697,15 +4024,8 @@ func _edit_collection(input: Dictionary) -> String:
 	if not own.is_empty():
 		return "Nothing was changed: %s. edit_collection with nothing reads back what is there." % "; ".join(own)
 	var done: Dictionary = await mine.change_lots(add_lots, down_lots)
-	if done["kind"] == CollectionStore.UNREACHED:
-		return ("No answer came, so it may have been made (%s). edit_collection with nothing reads back "
-			+ "what is there: read it before sending this again.") % done["said"]
-	if done["kind"] == CollectionStore.CONFLICT:
-		return ("Nothing was changed: %s. The collection changed since this chat was shown it; "
-			+ "edit_collection with nothing reads back what is there now.") \
-			% str((done["body"] as Dictionary).get("error", done["said"]))
 	if done["kind"] != CollectionStore.DONE:
-		return "Nothing was changed: %s." % done["said"]
+		return _not_made(done, "this chat was shown it")
 	var said := PackedStringArray()
 	if not add_lots.is_empty():
 		var pieces: int = 0
@@ -3747,44 +4067,66 @@ static func _chats(lot: Dictionary, who: String, chat: String) -> bool:
 	return str(lot.get("by", "")) == who and str(lot.get("chat", "")) == chat
 
 
-## One lot as a session gives it, checked: {"part", "colour", "qty"}, or why
-## not, in words. The part by its LDraw number, or BrickLink's
-## (PartLibrary.by_shop); the colour by its LDraw code, or its name.
+## One lot as a session gives it for add= or remove=, checked: {"part",
+## "colour", "qty"}, or why not, in words ([method _lot_given]); the part one
+## anybody owns on its own.
 static func _collection_lot(given: Variant, library: PartLibrary, adding: bool) -> Variant:
+	var lot: Variant = _lot_given(given, library, 1 if adding else 0, null if adding else 0)
+	if lot is String:
+		return lot
+	if str(lot["part"]).is_empty():
+		return _no_part(str(lot["asked"]))
+	if not Collection.ownable(str(lot["part"]), library):
+		return "%s is not a part anyone owns on its own (a sticker, or a piece of a bigger part)" % lot["part"]
+	(lot as Dictionary).erase("asked")
+	return lot
+
+
+## One lot as a session gives it, checked at the edge: {"part", "asked",
+## "colour", "qty"}, or why not, in words. Its colour and its count first,
+## before anything is looked up (lbfix, lbreview F4): the colour an LDraw
+## code (or a colour's name), the count a whole number from [param least]
+## to 100,000, [param omitted] when none is given (null: one must be). Then
+## the part, by its LDraw number or BrickLink's (PartLibrary.by_shop):
+## "part" is "" when the library has none numbered so, "asked" what was
+## named, which a set's marks match to the set's own rows before "part".
+static func _lot_given(given: Variant, library: PartLibrary, least: int, omitted: Variant) -> Variant:
 	if not given is Dictionary:
 		return "a lot is {part, color, count}"
 	var asked: String = str((given as Dictionary).get("part", "")).strip_edges().to_lower().trim_suffix(".dat")
 	if asked.is_empty():
 		return "no part"
-	var id: String = library.resolve(asked)
-	if not library.parts.has(id):
-		id = library.by_shop(asked)
-	if id.is_empty() or not library.parts.has(id):
-		return "no part numbered %s (search_parts finds it by its words)" % asked
-	if not Collection.ownable(id, library):
-		return "%s is not a part anyone owns on its own (a sticker, or a piece of a bigger part)" % id
 	var colour: Variant = (given as Dictionary).get("color", (given as Dictionary).get("colour"))
 	var code: int = -1
-	if colour is float or colour is int:
+	if colour is int or (colour is float and float(colour) == floorf(float(colour)) and absf(float(colour)) < 1e9):
 		code = int(colour)
-	elif colour is String and (colour as String).is_valid_int():
-		code = int(colour)
+	elif colour is String and (colour as String).strip_edges().is_valid_int():
+		code = int((colour as String).strip_edges())
 	elif colour is String:
 		var named: Array[PartLibrary.BrickColor] = PartsBin.colours_named(library, colour)
 		code = named[0].code if not named.is_empty() else -1
 	if code in PartsBin.NOT_A_COLOUR or not library.colors.has(code):
 		return "colour %s is not an LDraw colour code" % str(colour)
-	var count: Variant = (given as Dictionary).get("count", (given as Dictionary).get("qty", 0 if not adding else null))
+	var count: Variant = (given as Dictionary).get("count", (given as Dictionary).get("qty", omitted))
 	if count == null or not (count is float or count is int) or float(count) != floorf(float(count)) \
-			or int(count) < (1 if adding else 0) or int(count) > 100000:
-		return "count is a whole number from 1 to 100,000"
-	return {"part": id, "colour": code, "qty": int(count)}
+			or float(count) < least or float(count) > 100000:
+		return "count is a whole number from %d to 100,000" % least
+	var id: String = library.resolve(asked)
+	if not library.parts.has(id):
+		id = library.by_shop(asked)
+	if id.is_empty() or not library.parts.has(id):
+		id = ""
+	return {"part": id, "asked": asked, "colour": code, "qty": int(count)}
+
+
+static func _no_part(asked: String) -> String:
+	return "no part numbered %s (search_parts finds it by its words)" % asked
 
 
 static func _lot_words(lot: Dictionary, library: PartLibrary) -> String:
 	var info: PartLibrary.PartInfo = library.parts.get(str(lot["part"]))
 	var colour: PartLibrary.BrickColor = library.color(int(lot["colour"]))
-	return "%s %s, %s (%d)" % [lot["part"], Inventory._tidy(info.name) if info != null else "",
+	return "%s%s, %s (%d)" % [lot["part"], " " + Inventory._tidy(info.name) if info != null else "",
 		colour.name.replace("_", " ") if colour != null else "colour", int(lot["colour"])]
 
 
@@ -3799,13 +4141,28 @@ func _collection_said(mine: CollectionStore, library: PartLibrary, limit: int) -
 		return not _chats(lot, who, mark))
 	var own: Array = held.own_lots()
 	var said := PackedStringArray()
-	var sets := PackedStringArray()
+	# Each set once, all its copies together (typed, fetched, a list), and
+	# what it is marked as missing: one count a part (lbfix).
+	var marks: Dictionary = held.marks(library)
+	var copies: Dictionary = {}
+	var numbers: Array = []
 	for entry: Dictionary in held.sets:
-		var record: Dictionary = mine.records.get(str(entry["set"]), {})
-		sets.append("%s%s%s" % [entry["set"], " " + str(record["n"]) if record.has("n") else "",
-			" x%d" % int(entry["qty"]) if int(entry["qty"]) > 1 else ""])
+		var number: String = str(entry["set"])
+		if not copies.has(number):
+			copies[number] = 0
+			numbers.append(number)
+		copies[number] = int(copies[number]) + maxi(1, int(entry.get("qty", 1)))
+	var sets := PackedStringArray()
+	for number: String in numbers:
+		var record: Dictionary = mine.records.get(number, {})
+		var gone: int = 0
+		var its: Dictionary = (marks.get(number, {}) as Dictionary).get("missing", {})
+		for key: String in its:
+			gone += int(its[key])
+		sets.append("%s%s%s%s" % [number, " " + str(record["n"]) if record.has("n") else "",
+			" x%d" % int(copies[number]) if int(copies[number]) > 1 else "", ", %d missing" % gone if gone > 0 else ""])
 	said.append("The person's collection%s: %s%s, %s of their own, %s this chat added%s; %s on hand in all."
-		% [" (the copy on this device)" if mine.offline else "", Counted.of(held.sets.size(), "set"),
+		% [" (the copy on this device)" if mine.offline else "", Counted.of(numbers.size(), "set"),
 			(" (" + ", ".join(sets.slice(0, 20)) + (", …" if sets.size() > 20 else "") + ")") if not sets.is_empty() else "",
 			Counted.of(own.size(), "loose lot"), Counted.of(ours.size(), "lot"),
 			", %s other chats added" % Counted.of(others.size(), "lot") if not others.is_empty() else "",
@@ -3823,9 +4180,428 @@ func _collection_said(mine: CollectionStore, library: PartLibrary, limit: int) -
 			listed += 1
 			said.append("  %d x %s" % [int(lot["qty"]), _lot_words(lot, library)])
 	var total: int = ours.size() + others.size() + own.size()
+	# The marks, by set: what missing= changes, a count a part.
+	var shown_marks: int = 0
+	for number: String in numbers:
+		if not marks.has(number):
+			continue
+		var its: Dictionary = marks[number]["missing"]
+		total += its.size()
+		for key: String in _sorted_keys(its):
+			if listed >= limit:
+				break
+			if shown_marks == 0:
+				said.append("Marked missing on their sets (missing= puts any to a count, all a set's copies together):")
+			listed += 1
+			shown_marks += 1
+			said.append("  %s: %d x %s" % [number, int(its[key]), _lot_words({"part": Collection.part_of(key),
+				"colour": Collection.colour_of(key)}, library)])
 	if total > listed:
 		said.append("  and %d more lots: limit= for more." % (total - listed))
 	return "\n".join(said)
+
+
+# -- localbricks: a set's missing parts, for a session (APP_UX6 #8) --------------------
+
+
+## How a session names a set's lots, said after a refusal.
+const NAME_LOTS := ("Name each part as the set's inventory lists it (search_parts finds a number); colours "
+	+ "are LDraw codes; count is how many of it are missing, all the set's copies together.")
+
+
+## edit_collection missing=: how many of each part a set the person owns is
+## missing, at the account (api/collection.js op "missing"), made again
+## after two reviews (lbfix, lbreview F1-F6):
+##
+##   One count per part per set: every entry of the set's number the person
+##   owns together (typed, fetched from Rebrickable, a BrickLink list), each
+##   mark by Collection.key_of, so a mark kept under an older number (179 for
+##   6141) is the same mark (Collection.marks). Read and written through
+##   that one count: a write is one op per entry, the count spread over the
+##   entries as far as each holds the part (the marks already there kept
+##   first), under the number the inventory has, the part's other numbers in
+##   that entry put to 0 in the same op.
+##
+##   Changed only as named, and said: each lot named is put to the count
+##   asked, and the reply lists each change "was N, now M", so the person or
+##   their AI can put it back, and what of "now" another device or tab made
+##   meanwhile. none=true says a set has nothing missing, and is refused
+##   while anything is marked, naming it: the lots are named to unmark them,
+##   or none=true sent again with marked= the number of lots it named, which
+##   unmarks them all while that is still so (lbcheck L2). Every reply lists
+##   at most SHOWN_LOTS lots, then counts the rest, as the read back does.
+##
+##   Validated at the edge: every colour and count checked before anything is
+##   looked up (_lot_given). A number is matched to the set's own rows first,
+##   then as the library resolves it (an old number, BrickLink's): the set's
+##   inventory is the truth for a mark (lbcheck M1). Every refusal names the
+##   number asked.
+##
+##   One thing per call: with add= or remove= it is refused.
+func _collection_marks(mine: CollectionStore, library: PartLibrary, input: Dictionary) -> String:
+	for other: String in ["add", "remove"]:
+		var also: Variant = input.get(other)
+		if also != null and not (also is Array and (also as Array).is_empty()):
+			return ("Nothing was changed: missing= changes a set's marks and %s= loose lots, one thing a call: "
+				+ "send them in separate calls.") % other
+	var asked: Variant = input["missing"]
+	if not asked is Dictionary:
+		return "missing is {set, lots: [{part, color, count}]}, or {set, none: true}."
+	var number: String = SetInventories.normal(str((asked as Dictionary).get("set", "")).strip_edges())
+	if number.is_empty():
+		return "missing.set is a set's number, like 7140-1."
+	var none: Variant = (asked as Dictionary).get("none")
+	var given: Variant = (asked as Dictionary).get("lots")
+	var seen: Variant = (asked as Dictionary).get("marked")
+	if none != null and not none is bool:
+		return "missing.none is true or false."
+	if none == true and given != null:
+		return ("Nothing was changed: none=true says the set has nothing missing and takes no lots; send one or "
+			+ "the other.")
+	if seen != null and (none != true or not (seen is int or seen is float) or float(seen) != floorf(float(seen))
+			or float(seen) < 0 or float(seen) > 100000):
+		return ("Nothing was changed: missing.marked goes with none=true, the number of lots its refusal said were "
+			+ "marked.")
+	var named: Array = []
+	if none != true:
+		if not given is Array or (given as Array).is_empty():
+			return "missing.lots is a list of {part, color, count}, or none=true says the set has nothing missing."
+		if (given as Array).size() > MOST_LOTS:
+			return "At most %d lots a call; send the rest in another." % MOST_LOTS
+		var bad := PackedStringArray()
+		for n: int in (given as Array).size():
+			var lot: Variant = _lot_given(given[n], library, 0, null)
+			if lot is String:
+				var part: String = str((given[n] as Dictionary).get("part", "")).strip_edges() \
+					if given[n] is Dictionary else ""
+				bad.append("lot %d%s: %s" % [n + 1, " (%s)" % part if not part.is_empty() else "", lot])
+			else:
+				named.append(lot)
+		if not bad.is_empty():
+			return "Nothing was changed: %s. %s" % ["; ".join(bad), NAME_LOTS]
+	var trouble_read: String = await mine.load_collection()
+	var entries: Array = mine.collection.entries_of(number)
+	if entries.is_empty():
+		return ("Nothing was changed: %s is not a set in the person's collection%s. edit_collection with nothing "
+			+ "reads back their sets.") % [number, "" if trouble_read.is_empty() else " (" + trouble_read + ")"]
+	var record: Dictionary = mine.records.get(number, {})
+	if record.is_empty():
+		record = (await mine.inventories.lookup(PackedStringArray([number]))).get(number, {})
+	if record.is_empty():
+		return "Nothing was changed: no inventory of %s is known here, so its parts cannot be marked." % number
+	var title: String = ("%s %s" % [number, str(record.get("n", ""))]).strip_edges()
+	# One copy's lots in the pool's spelling: key -> [part, colour, how many],
+	# the part and colour as the inventory has them.
+	var per_copy: Dictionary = {}
+	for row: Variant in record.get("p", []):
+		if not row is Array or (row as Array).size() < 3:
+			continue
+		var key: String = Collection.key_of(str(row[0]), int(row[1]), library)
+		if per_copy.has(key):
+			per_copy[key][2] = int(per_copy[key][2]) + int(row[2])
+		else:
+			per_copy[key] = [str(row[0]), int(row[1]), int(row[2])]
+	var copies: int = 0
+	for entry: Dictionary in entries:
+		copies += maxi(1, int(entry.get("qty", 1)))
+	# What is marked now, one count a part, and the number each is written
+	# under: the inventory's, or for a part it no longer lists, as it is kept.
+	var marked: Dictionary = (mine.collection.marks(library).get(number, {}) as Dictionary).get("missing", {})
+	var spelled: Dictionary = {}
+	for key: String in per_copy:
+		spelled[key] = [per_copy[key][0], per_copy[key][1]]
+	for entry: Dictionary in entries:
+		for lot: Dictionary in Collection.missing_lots(entry):
+			var key: String = Collection.key_of(str(lot["part"]), int(lot["colour"]), library)
+			if not spelled.has(key):
+				spelled[key] = [str(lot["part"]), int(lot["colour"])]
+	var wanted: Dictionary = {}
+	var order: Array = []
+	var bad := PackedStringArray()
+	if none == true:
+		if marked.is_empty():
+			return "Nothing to change: %s has nothing marked missing." % title
+		# Made whole in one call once what is marked was shown: the count of
+		# lots it was refused with sent back (lbcheck L2). Refused otherwise,
+		# naming what is marked now, bounded as the read back is.
+		if seen == null or int(seen) != marked.size():
+			var pieces: int = 0
+			for key: String in marked:
+				pieces += int(marked[key])
+			var said := PackedStringArray()
+			said.append("Nothing was changed: %s has %s marked missing%s, %s:" % [title, Counted.of(marked.size(), "lot"),
+				"" if seen == null else " now, not the %d sent" % int(seen), Counted.of(pieces, "piece")])
+			var lots: Array = []
+			for key: String in _sorted_keys(marked):
+				lots.append(["  %s: %d" % [_marked_words(key, spelled, library), int(marked[key])], int(marked[key])])
+			said.append_array(_bounded(lots))
+			said.append(("none=true says a set has nothing missing once what is marked was shown: send none=true "
+				+ "with marked=%d to unmark all %s in one call, or name the lots to unmark, each with count 0. The "
+				+ "reply says what was marked.") % [marked.size(), Counted.of(marked.size(), "lot")])
+			return "\n".join(said)
+		for key: String in _sorted_keys(marked):
+			wanted[key] = 0
+			order.append(key)
+	else:
+		# Each lot named, matched to the set by its key, at a count its copies hold.
+		for n: int in named.size():
+			var lot: Dictionary = named[n]
+			var asked_for: String = str(lot["asked"])
+			var key: String = _set_key(lot, spelled, library)
+			if key.is_empty():
+				bad.append("lot %d: %s" % [n + 1, _no_part(asked_for) if str(lot["part"]).is_empty()
+					else "%s%s in colour %d is not in %s's inventory" % [asked_for, " (LDraw's %s)" % lot["part"]
+					if str(lot["part"]) != asked_for else "", int(lot["colour"]), number]])
+				continue
+			var as_asked: String = asked_for if str(spelled[key][0]) == asked_for \
+				else "%s (its inventory's %s)" % [asked_for, spelled[key][0]]
+			var most: int = int(per_copy[key][2]) * copies if per_copy.has(key) else int(marked.get(key, 0))
+			if int(lot["qty"]) > most:
+				bad.append("lot %d: %s has %d of %s in colour %d%s, so from 0 to %d of it can be missing" % [n + 1,
+					number, most, as_asked, int(lot["colour"]),
+					" in its %d copies" % copies if copies > 1 and per_copy.has(key) else "", most])
+				continue
+			if wanted.has(key):
+				bad.append("lot %d: %s in colour %d is named twice" % [n + 1, as_asked, int(lot["colour"])])
+				continue
+			wanted[key] = int(lot["qty"])
+			order.append(key)
+	if not bad.is_empty():
+		return "Nothing was changed: %s. %s" % ["; ".join(bad), NAME_LOTS]
+	# Each entry's lots to write, by key: [key, lots, how many more or fewer
+	# it marks there].
+	var writes: Array = []
+	for _entry: Dictionary in entries:
+		writes.append([])
+	var before: Dictionary = {}
+	for key: String in order:
+		var held: Array = []
+		var room: Array = []
+		var total: int = 0
+		for entry: Dictionary in entries:
+			var now: int = int(Collection.missing_keys(entry, library).get(key, 0))
+			held.append(now)
+			total += now
+			room.append(int(per_copy[key][2]) * maxi(1, int(entry.get("qty", 1))) if per_copy.has(key) else now)
+		before[key] = total
+		if total == int(wanted[key]):
+			continue
+		var after: Array = held.duplicate()
+		if int(wanted[key]) > total:
+			var more: int = int(wanted[key]) - total
+			for e: int in entries.size():
+				var put: int = mini(more, maxi(0, int(room[e]) - int(after[e])))
+				after[e] = int(after[e]) + put
+				more -= put
+		else:
+			var less: int = total - int(wanted[key])
+			for e: int in range(entries.size() - 1, -1, -1):
+				var take: int = mini(less, int(after[e]))
+				after[e] = int(after[e]) - take
+				less -= take
+		for e: int in entries.size():
+			if int(after[e]) != int(held[e]):
+				(writes[e] as Array).append([key, _mark_writes(entries[e], key, int(after[e]), spelled[key], library),
+					int(after[e]) - int(held[e])])
+	# One op an entry, or several for more lots than an op takes, each
+	# whole keys.
+	var ops: Array = []
+	for e: int in entries.size():
+		var lots: Array = []
+		var moved: Dictionary = {}
+		for group: Array in writes[e]:
+			if not lots.is_empty() and lots.size() + (group[1] as Array).size() > MOST_MARK_CHANGES:
+				ops.append([e, lots, moved])
+				lots = []
+				moved = {}
+			lots.append_array(group[1])
+			moved[group[0]] = group[2]
+		if not lots.is_empty():
+			ops.append([e, lots, moved])
+	if ops.is_empty():
+		var lines: Array = []
+		for key: String in order:
+			lines.append(["  %s: %d" % [_marked_words(key, spelled, library), int(before[key])], int(before[key])])
+		return "Nothing to change: %s is marked so already:\n%s" % [title, "\n".join(_bounded(lines))]
+	var stopped: Dictionary = {}
+	var stopped_on: Dictionary = {}
+	var made: int = 0
+	## key -> how many more (or fewer) this call's ops that were made marked.
+	var ours: Dictionary = {}
+	for op: Array in ops:
+		var body: Dictionary = {"op": "missing", "set": number, "lots": op[1]}
+		var src: String = str((entries[op[0]] as Dictionary).get("src", ""))
+		if not src.is_empty():
+			body["src"] = src
+		var done: Dictionary = await mine.change(body)
+		if done["kind"] != CollectionStore.DONE:
+			stopped = done
+			stopped_on = entries[op[0]]
+			break
+		made += 1
+		for key: String in op[2]:
+			ours[key] = int(ours.get(key, 0)) + int(op[2][key])
+	if made == 0:
+		return _not_made(stopped, "it was read", true)
+	# Said from the collection as the account now has it: what each lot was,
+	# and what it is; and what of that came from somewhere else meanwhile
+	# (another device, a tab, the person's own page), apart from this call's.
+	var now_marked: Dictionary = (mine.collection.marks(library).get(number, {}) as Dictionary).get("missing", {})
+	var changed: Array = []
+	var already: Array = []
+	for key: String in order:
+		var was: int = int(before[key])
+		var now: int = int(now_marked.get(key, 0))
+		var theirs: int = now - was - int(ours.get(key, 0))
+		if was != now:
+			changed.append(["  %s: was %d, now %d%s" % [_marked_words(key, spelled, library), was, now,
+				"" if theirs == 0 else " (%d of it marked meanwhile by another device or tab, not this call)" % theirs
+				if theirs > 0 else " (%d of it unmarked meanwhile by another device or tab, not this call)" % -theirs],
+				now, was])
+		elif now == int(wanted[key]):
+			already.append(["  %s: %d" % [_marked_words(key, spelled, library), now], now])
+	var said := PackedStringArray()
+	said.append("%s what %s is marked missing (%s):" % ["Changed" if stopped.is_empty()
+		else "Changed only part of", title, "its %d copies together" % copies if copies > 1 else "its one copy"])
+	said.append_array(_bounded(changed))
+	if not already.is_empty():
+		said.append("Already so:")
+		said.append_array(_bounded(already))
+	if not stopped.is_empty():
+		said.append("The rest was not changed: %s. edit_collection with nothing reads back what is there; send the rest again from it."
+			% _stopped_words(stopped, stopped_on, entries.size() > 1))
+	var whole: Dictionary = mine.collection.wholeness(_as_one_entry(number, copies, now_marked), record, library)
+	said.append(("%d of its %d pieces are marked missing now%s%s. To put any back, send its count as it was. What do "
+		+ "I need? for it (My collection, Closest to whole) lists what to find; the pool, What do I need?, What can I "
+		+ "build? and a bin built from it count only what is there.") % [int(whole["marked"]), int(whole["pieces"]),
+		"" if int(whole["loose"]) == 0 else ", %d of them made up by their loose parts" % int(whole["loose"]),
+		"" if int(whole["marked"]) > 0 else ": it is whole"])
+	return "\n".join(said)
+
+
+## The most lots one "missing" op changes (api/collection.js MOST_LOT_CHANGES).
+const MOST_MARK_CHANGES := 2000
+
+
+## How many lots a reply lists before it counts the rest, as the read back does.
+const SHOWN_LOTS := 60
+
+
+## A reply's lots, each [line, how many marked now, and before when it
+## changed]: the first SHOWN_LOTS of them, then how many more and their
+## pieces, as the read back counts what it does not list (lbcheck L2).
+static func _bounded(lots: Array) -> PackedStringArray:
+	var out := PackedStringArray()
+	var pieces: int = 0
+	var was: int = 0
+	for n: int in lots.size():
+		if n < SHOWN_LOTS:
+			out.append(str(lots[n][0]))
+			continue
+		pieces += int(lots[n][1])
+		was += int(lots[n][2]) if (lots[n] as Array).size() > 2 else int(lots[n][1])
+	if lots.size() > SHOWN_LOTS:
+		out.append("  and %d more %s, %s%s: edit_collection with nothing, limit=, lists what is marked" % [
+			lots.size() - SHOWN_LOTS, "lot" if lots.size() - SHOWN_LOTS == 1 else "lots", Counted.of(pieces, "piece"),
+			"" if was == pieces else " now, %d before" % was])
+	return out
+
+
+## What the account said when it did not make an op, in a session's words:
+## its own error, without the op's lot number, which is not the session's.
+static func _account_said(done: Dictionary, strip_lot: bool) -> String:
+	var error: String = str((done.get("body", {}) as Dictionary).get("error", done["said"])) \
+		if done.get("body") is Dictionary else str(done["said"])
+	return RegEx.create_from_string("^lot \\d+: ").sub(error, "") if strip_lot else error
+
+
+## A change the account did not make, said to a session (the lots and the
+## marks alike): nothing was changed, or it may have been, and why; the
+## collection changed since [param since].
+static func _not_made(done: Dictionary, since: String, strip_lot: bool = false) -> String:
+	if done["kind"] == CollectionStore.UNREACHED:
+		return ("No answer came, so it may have been made (%s). edit_collection with nothing reads back what is "
+			+ "there: read it before sending this again.") % done["said"]
+	if done["kind"] == CollectionStore.CONFLICT:
+		return ("Nothing was changed: %s. The collection changed since %s; edit_collection with nothing reads back "
+			+ "what is there now.") % [_account_said(done, strip_lot), since]
+	if done.get("offline", false):
+		return OFFLINE
+	return "Nothing was changed: %s." % done["said"]
+
+
+## Said once, with what to do (lbcheck L4: the store's screen words said it twice).
+const OFFLINE := ("Nothing was changed: Brickworks could not be reached. Send it again once it answers; "
+	+ "edit_collection with nothing reads back the copy on this device.")
+
+
+## Why the op on [param entry] was not made, after others were: on which
+## copy, when the set has [param several], and in the account's words.
+static func _stopped_words(done: Dictionary, entry: Dictionary, several: bool) -> String:
+	var copy: String = ""
+	if several:
+		copy = "on its copy %s, " % {"hand": "typed in", "rebrickable": "from Rebrickable",
+			"bricklink_xml": "from a BrickLink list"}.get(str(entry.get("src", "")), "brought in before")
+	if done["kind"] == CollectionStore.CONFLICT:
+		return "%s%s: another device or tab changed it since it was read" % [copy, _account_said(done, true)]
+	if done["kind"] == CollectionStore.UNREACHED:
+		return "%sno answer came, so it may have been made (%s)" % [copy, done["said"]]
+	if done.get("offline", false):
+		return "%sBrickworks could not be reached" % copy
+	return copy + str(done["said"])
+
+
+## Which of a set's lots ([param rows]: key -> anything) a lot named for
+## its marks ([method _lot_given]) is, or "" for none. The set's own row
+## first: a number its inventory lists is that row, whatever else the
+## library makes of the number (lbcheck M1: 3048c is BrickLink's keyword for
+## 3048b, 2909c03 its 74741-f1); then the part the number resolves to, an
+## old number or BrickLink's.
+static func _set_key(lot: Dictionary, rows: Dictionary, library: PartLibrary) -> String:
+	var key: String = Collection.key_of(str(lot["asked"]), int(lot["colour"]), library)
+	if rows.has(key):
+		return key
+	if str(lot["part"]).is_empty():
+		return ""
+	key = Collection.key_of(str(lot["part"]), int(lot["colour"]), library)
+	return key if rows.has(key) else ""
+
+
+## The lots to write in [param entry] so it is marked [param count] of
+## [param key]: under [param spelling] (the inventory's number and colour),
+## the part's other numbers there put to 0, each from the count kept now.
+static func _mark_writes(entry: Dictionary, key: String, count: int, spelling: Array, library: PartLibrary) -> Array:
+	var out: Array = []
+	for lot: Dictionary in Collection.missing_lots(entry):
+		if Collection.key_of(str(lot["part"]), int(lot["colour"]), library) != key:
+			continue
+		if str(lot["part"]) == str(spelling[0]) and int(lot["colour"]) == int(spelling[1]):
+			continue
+		out.append({"part": str(lot["part"]), "colour": int(lot["colour"]), "was": int(lot["qty"]), "qty": 0})
+	var was: int = Collection.missing_count(entry, str(spelling[0]), int(spelling[1]))
+	if was != count:
+		out.append({"part": str(spelling[0]), "colour": int(spelling[1]), "was": was, "qty": count})
+	return out
+
+
+## A set's marks as one entry of all its copies, for Collection.wholeness.
+static func _as_one_entry(number: String, copies: int, marked: Dictionary) -> Dictionary:
+	var lots: Array = []
+	for key: String in marked:
+		lots.append({"part": Collection.part_of(key), "colour": Collection.colour_of(key), "qty": int(marked[key])})
+	return {"set": number, "qty": copies, "missing": lots}
+
+
+## A marked lot in words, by the number the set's inventory has it under.
+static func _marked_words(key: String, spelled: Dictionary, library: PartLibrary) -> String:
+	var spelling: Array = spelled.get(key, [Collection.part_of(key), Collection.colour_of(key)])
+	return _lot_words({"part": spelling[0], "colour": spelling[1]}, library)
+
+
+static func _sorted_keys(counts: Dictionary) -> Array:
+	var keys: Array = counts.keys()
+	keys.sort()
+	return keys
 
 
 # -- rendering and exporting ---------------------------------------------------------
@@ -3870,7 +4646,7 @@ func _render(input: Dictionary, work: Working.Job = null) -> Variant:
 		chosen.keep_view(world.saved_views[at], app.get("_camera") as Camera3D)
 	var look: String = str(input.get("look", "window"))
 	if not RenderSettings.LOOKS.has(look):
-		return "look is window or product."
+		return "look is %s." % LineArt.looks_in_words()
 	chosen.look = look
 	if input.has("backdrop"):
 		var backdrop: String = str(input["backdrop"])
@@ -4266,6 +5042,9 @@ func _export(input: Dictionary, work: Working.Job = null) -> String:
 			else "The person has no saved models yet."
 	if world.brick_count() - store.scenery.size() <= 0:
 		return "There is nothing on the baseplate to export yet."
+	# subexport (APP_UX7 #19): each sub-model, or one, as a file of its own.
+	if input.has("submodels") or input.has("submodel"):
+		return await _export_submodels(input, exports)
 	var said: String = ""
 	match str(input.get("format", "")):
 		"ldraw":
@@ -4295,11 +5074,66 @@ func _export(input: Dictionary, work: Working.Job = null) -> String:
 			var to: String = exports.folder if not exports.folder.is_empty() \
 				else Download.downloads()
 			said = await app.call("_export_booklet", "" if OS.has_feature("web") else
-				to.path_join(bar.model_name().to_snake_case() + "_instructions.html"), work)
+				to.path_join(SubmodelFile.titled(bar.model_name(), "_instructions.html")), work)
 		_:
 			return ("format is ldraw, studio, glb, gltf, obj, stl, 3mf, picture, bricklink, rebrickable, "
 				+ "pickabrick, instructions or all_models.")
 	return said.left(1).to_upper() + said.substr(1) + "." if not said.is_empty() else "Nothing written."
+
+
+# -- subexport (APP_UX7 #19) ----------------------------------------------------------
+
+
+## export_model's submodels=true: each sub-model as an LDraw file of its own,
+## with its own sub-models and steps, in one .zip (Exports.each_submodel);
+## submodel=NAME: that one, by its name in the model tree (Exports.submodel).
+func _export_submodels(input: Dictionary, exports: Exports) -> String:
+	if str(input.get("format", "")) != "ldraw":
+		return "submodels and submodel write LDraw files: give them with format ldraw."
+	# Both asked, one was written and the other not said (sereview F7).
+	if input.has("submodel") and bool(input.get("submodels", false)):
+		return "Give submodel=NAME or submodels=true, not both: submodel writes that one, submodels every one in a .zip."
+	var said: String = ""
+	if input.has("submodel"):
+		var paths: PackedStringArray = (app.get("_shell") as Shell).assemblies.paths()
+		var asked: String = str(input["submodel"]).strip_edges()
+		var path: String = submodel_named(asked, paths)
+		if path.is_empty():
+			var names := PackedStringArray()
+			for each: String in paths:
+				var name: String = Assemblies.label(each)
+				if not names.has(name) and names.size() < 30:
+					names.append(name)
+			if names.is_empty():
+				return "This model has no sub-models: format ldraw without submodel writes it whole."
+			return "No sub-model is called %s. The model tree's: %s." % [asked.left(80),
+				", ".join(names)]
+		said = await exports.submodel(path)
+	elif bool(input.get("submodels", false)):
+		said = await exports.each_submodel()
+	else:
+		said = await (app.get("_bar") as ModelBar).export_now(exports.folder)
+	return said.left(1).to_upper() + said.substr(1) + "." if not said.is_empty() else "Nothing written."
+
+
+## The path in [param paths] (the model tree's) that [param asked] names: the
+## path itself ("Ship#1/Wing#2"), the name its row shows ("Wing (copy 2)"),
+## or its definition ("Wing", its first copy), whatever the case; "" for none.
+static func submodel_named(asked: String, paths: PackedStringArray) -> String:
+	var wanted: String = asked.strip_edges().to_lower()
+	if wanted.is_empty():
+		return ""
+	for path: String in paths:
+		if path.to_lower() == wanted:
+			return path
+	for path: String in paths:
+		if Assemblies.label(path).to_lower() == wanted \
+				or Assemblies.leaf(path).to_lower() == wanted:
+			return path
+	for path: String in paths:
+		if Assemblies.definition(Assemblies.leaf(path)).to_lower() == wanted:
+			return path
+	return ""
 
 
 # -- brickify -----------------------------------------------------------------------
@@ -4832,8 +5666,98 @@ func _weakest_joints(input: Dictionary) -> String:
 		return "The parts' shapes were still coming in; ask again in a moment."
 	if world.generation() != generation:
 		return "Another model was opened while this one was weighed; ask again."
-	return StressView.said(report, world, app.get("_library"), store.scenery,
+	var said: String = StressView.said(report, world, app.get("_library"), store.scenery,
 		clampi(int(input.get("count", 8)), 1, 40), int(input.get("part", 0)))
+	return said + await _strengthen_words(report, input)
+
+
+# -- strengthen: each weak joint's fix, as a call -----------------------------------
+
+
+## Each joint [param report] has past its working load or near it, with the
+## fewest parts that make it hold, as View, Stress's Strengthen finds and
+## puts them down (Strengthen), and the edit_model call that puts down the
+## same parts: a session fixes a joint in one call, as the panel does in one
+## press. mine=true, of the person's own parts (Parts, My bricks).
+func _strengthen_words(report: Stability.Report, input: Dictionary) -> String:
+	var shell: Shell = app.get("_shell")
+	var panel: StressPanel = shell.stress.panel if shell != null and shell.stress != null else null
+	var fixer: RefCounted = panel.fixer_now() if panel != null else null
+	if fixer == null:
+		return ""
+	var store: ModelStore = app.get("_store")
+	var world: BrickWorld = app.get("_world")
+	var count: int = clampi(int(input.get("count", 8)), 1, 40)
+	var part: int = int(input.get("part", 0))
+	var wanted: Array = StressView.ranked(report, world, store.scenery, count).filter(
+		func(one: StressView.Weak) -> bool:
+			return one.margin < StressView.CLOSE and (part == 0 or one.id == part))
+	if wanted.is_empty():
+		return ""
+	var theirs: Dictionary = panel.owned.call() if bool(input.get("mine", false)) else {}
+	var lines := PackedStringArray(["Strengthen, as View, Stress offers it: for each joint past "
+		+ "or near its working load, the fewest parts that make it hold (a plate across the "
+		+ "seam, a brick under it, a second pin), checked for room and weighed with the model, "
+		+ "and the edit_model call that puts them down as one undo step:"])
+	if bool(input.get("mine", false)):
+		lines.append("  From your bricks: %s." % ("each part one you own with one left over the "
+			+ "model's own" if not theirs.is_empty() else "you have no collection yet (Parts, My "
+			+ "bricks), so these are of any parts"))
+	fixer.scenery = store.scenery
+	fixer.owned = theirs
+	var revision: int = world.revision
+	var given: Dictionary = {}
+	for one: StressView.Weak in wanted:
+		var fix: RefCounted = await fixer.find(report, one)
+		if world.revision != revision:
+			lines.append("  The model changed while its fixes were looked for; ask again.")
+			break
+		if fix == null:
+			lines.append("  #%d: no fix of up to three parts has room there: %s." % [one.id,
+				"brace it by hand" if one.joint != null else "hold it with studs by hand"])
+			continue
+		var call: String = _fix_call(fix)
+		if given.has(call):
+			lines.append("  #%d: the same fix as #%d, which holds it too." % [one.id, given[call]])
+			continue
+		given[call] = one.id
+		lines.append("  #%d: %s. %s.%s Call edit_model %s" % [one.id, fix.what,
+			Later.script(&"Strengthen").held_words(fix), "" if theirs.is_empty() else (" All from your bricks."
+				if fix.mine else " Not all from your bricks: you have none of one left."), call])
+	return "\n" + "\n".join(lines)
+
+
+## The edit_model input that puts [param fix]'s parts down where Strengthen
+## would: each by its low corner in studs and plates, its face and its turn,
+## as edit_model reads a part added (Assistant._square_transform).
+func _fix_call(fix: RefCounted) -> String:
+	if assistant == null:
+		return "(no call: this app has no assistant to make it)"
+	var library: PartLibrary = app.get("_library")
+	var adds: Array = []
+	for item: Dictionary in fix.parts:
+		var part_id: String = str(item["part"])
+		var at: Transform3D = item["at"]
+		var basis: Basis = BrickLattice.snap_basis(at.basis)
+		var corner: Vector3 = BrickLattice.to_ldu(BrickLattice.grid_cell(at.origin)
+			+ assistant._corner_cell(library.mesh_for(part_id), part_id, basis))
+		var face: String = BrickLattice.face_of(basis)
+		var spec: Dictionary = {"part": part_id, "color": int(item["color"]),
+			"x": _tidy_number(corner.x / Assistant.STUD), "y": _tidy_number(corner.y / Assistant.PLATE),
+			"z": _tidy_number(corner.z / Assistant.STUD)}
+		if face != "up":
+			spec["face"] = face
+		var rot: int = BrickLattice.turns_about(basis, face)
+		if rot != 0:
+			spec["rot"] = rot
+		adds.append(spec)
+	return JSON.stringify({"add": adds, "picture": false})
+
+
+## A number as a call writes it: 3, not 3.0; 10.75 as it is.
+static func _tidy_number(value: float) -> Variant:
+	var snapped: float = snappedf(value, 0.01)
+	return int(snapped) if is_equal_approx(snapped, roundf(snapped)) else snapped
 
 
 # -- making a copy unique ---------------------------------------------------------------

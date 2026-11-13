@@ -1,0 +1,112 @@
+{
+ "shots": [
+  {
+   "id": "connect-allow",
+   "source": "site",
+   "route": "/oauth/authorize?response_type=code&client_id=https%3A%2F%2Fclaude.ai%2Foauth%2Fmcp-oauth-client-metadata&redirect_uri=https%3A%2F%2Fclaude.ai%2Fapi%2Fmcp%2Fauth_callback&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256&state=docs",
+   "viewport": [
+    1280,
+    1000
+   ],
+   "themes": [
+    "dark",
+    "light"
+   ],
+   "answers": {
+    "/api/oauth?op=check": {
+     "client": "Claude",
+     "claude": true,
+     "client_name": "Claude",
+     "return_to": "claude.ai",
+     "loopback": false
+    },
+    "/api/account": {
+     "enabled": true,
+     "url": "https://sign-in.example",
+     "key": "docs"
+    },
+    "https://sign-in.example/auth/v1/token": {
+     "access_token": "docs",
+     "refresh_token": "docs",
+     "user": {
+      "email": "you@example.com",
+      "id": "docs"
+     }
+    },
+    "/api/oauth?op=remembered": {
+     "status": 200,
+     "body": {}
+    }
+   },
+   "storage": {
+    "brickworks.session": {
+     "refresh_token": "docs",
+     "email": "you@example.com",
+     "user_id": "docs",
+     "url": "https://sign-in.example",
+     "key": "docs"
+    }
+   },
+   "wait": "#allow-step:not(.hide)",
+   "crop": ".card",
+   "pad": 16,
+   "alt": "The Brickworks page your AI app opens, here for Claude: signed in as you@example.com, it asks Let Claude build in Brickworks?, lists what it will be able to do, and has Allow and Cancel buttons.",
+   "caption": "The one question Brickworks asks, once for each app.",
+   "features": [
+    "ui:connect Claude sign-in page"
+   ]
+  },
+  {
+   "id": "connect-your-ai",
+   "source": "app",
+   "setup": [
+    {
+     "assistant": true,
+     "after": 30
+    },
+    {
+     "run": "connector",
+     "after": 30
+    },
+    {
+     "frames": 30
+    }
+   ],
+   "crop": "_chat._connector_form",
+   "pad": 4,
+   "alt": "Or connect your AI, at the foot of the assistant panel: Your AI set to Claude, what each Claude plan needs, and the Connect Claude button.",
+   "caption": "Tools › Connect your AI…: choose your app, then Connect.",
+   "features": [
+    "ui:connect your AI"
+   ]
+  },
+  {
+   "id": "connect-other-ai",
+   "source": "app",
+   "setup": [
+    {
+     "run": "settings",
+     "after": 30
+    },
+    {
+     "click": "_controls.ai_open",
+     "after": 30
+    },
+    {
+     "click": "_controls.ai.who_key",
+     "after": 30
+    }
+   ],
+   "crop": [
+    "_controls.ai.who_claude",
+    "_controls.ai.remember"
+   ],
+   "pad": 8,
+   "alt": "Settings' AI page with Another AI, on your own API key chosen: the provider, OpenAI, a box to paste its API key with Show, and Remember on this device.",
+   "caption": "Tools › Settings…, AI: Claude…, then Another AI.",
+   "features": [
+    "ui:choose the AI that designs"
+   ]
+  }
+ ]
+}

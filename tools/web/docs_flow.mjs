@@ -19,7 +19,9 @@
 //   5. The pages list: at 390 px hidden behind Browse the docs, which opens
 //      it, and a link in it goes to its page; at 1400 px down the left, with
 //      the page being read marked; what is on this page marks the section
-//      scrolled to; a deep link lands with its heading in view.
+//      scrolled to; a deep link lands with its heading in view; and a
+//      section that moved to another page (docs-site/_moved.json
+//      "page#anchor") lands where it went from its old address.
 //
 // Pictures in --out: docs_<width>_<theme>.png and search_<width>_<theme>.png.
 import { launch } from "./browser.mjs";
@@ -87,7 +89,7 @@ if (remote) {
   check("/docs/shortcuts.html answers 308 to /docs/shortcuts", old.status === 308 && old.location.endsWith("/docs/shortcuts"), `${old.status} ${old.location}`);
   // A page that moved (docs-site/_moved.json) lands at its new address.
   const moved = JSON.parse(readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "../../docs-site/_moved.json"), "utf8"));
-  for (const [was, now] of Object.entries(moved).filter(([k]) => !k.startsWith("$"))) {
+  for (const [was, now] of Object.entries(moved).filter(([k]) => !k.startsWith("$") && !k.includes("#"))) {
     const answer = await get(`/docs/${was}`, "manual");
     check(`/docs/${was}, moved, answers 308 to /docs/${now}`, answer.status === 308 && answer.location.endsWith(`/docs/${now}`), `${answer.status} ${answer.location}`);
   }
@@ -158,8 +160,8 @@ for (const width of [390, 1400]) {
       check(`${address} at ${width} ${theme}: drawn in the theme, nothing sideways, no error`,
         bg === want && (await sideways(page)) <= 0 && !errors.length,
         `background ${bg}, ${await sideways(page)} px sideways, ${errors.join("; ")}`);
-      if (address === "/docs") await page.screenshot({ path: `${out}/docs_${width}_${theme}.png`, fullPage: false });
-      if (address === LONG && width === 1400 && !dark) await page.screenshot({ path: `${out}/shortcuts_${width}_${theme}.png` });
+      if (address === "/docs") await page.screenshot({ timeout: 120000, path: `${out}/docs_${width}_${theme}.png`, fullPage: false });
+      if (address === LONG && width === 1400 && !dark) await page.screenshot({ timeout: 120000, path: `${out}/shortcuts_${width}_${theme}.png` });
       await context.close();
     }
   }
@@ -168,7 +170,7 @@ for (const width of [390, 1400]) {
 console.log("docs_flow: search");
 for (const [width, dark] of [[1400, false], [390, true]]) {
   const theme = dark ? "dark" : "light";
-  const { page, context } = await open("/docs/building", { width, dark });
+  const { page, context } = await open("/docs/placing-parts", { width, dark });
   await page.keyboard.press("Control+K");
   const opened = await page.waitForFunction(() => document.querySelector("dialog.docs-search")?.open
     && document.activeElement === document.querySelector("dialog.docs-search input"), null, { timeout: 4000 }).then(() => true, () => false);
@@ -196,8 +198,8 @@ for (const [width, dark] of [[1400, false], [390, true]]) {
       && document.querySelector(".docs-results li a")?.getAttribute("href"), query, { timeout: 6000 })
       .then((h) => h.jsonValue(), () => "");
     check(`"${query}" finds ${want} first`, first.split("#")[0] === want, first);
-    if (query === "fresh eyes" && width === 1400) await page.screenshot({ path: `${out}/search_${width}_${theme}.png` });
-    if (query === "fresh eyes" && width === 390) await page.screenshot({ path: `${out}/search_${width}_${theme}.png` });
+    if (query === "fresh eyes" && width === 1400) await page.screenshot({ timeout: 120000, path: `${out}/search_${width}_${theme}.png` });
+    if (query === "fresh eyes" && width === 390) await page.screenshot({ timeout: 120000, path: `${out}/search_${width}_${theme}.png` });
   }
   await page.keyboard.press("Enter");
   await page.waitForURL(/\/docs\/build-together/, { timeout: 8000 }).catch(() => {});
@@ -218,7 +220,7 @@ console.log("docs_flow: the pages list and what is on this page");
   const shown = await page.evaluate(() => getComputedStyle(document.getElementById("docs-side")).display !== "none"
     && document.querySelector(".docs-menu-button").getAttribute("aria-expanded") === "true");
   check("390 px: the pages list folded behind Browse the docs, which opens it", hidden && shown);
-  await page.screenshot({ path: `${out}/docs_390_light_menu.png` });
+  await page.screenshot({ timeout: 120000, path: `${out}/docs_390_light_menu.png` });
   await page.click('#docs-side a[href="/docs/the-view"]');
   await page.waitForURL(/\/docs\/the-view$/, { timeout: 8000 }).catch(() => {});
   check("a link in it goes to its page", new URL(page.url()).pathname === "/docs/the-view", page.url());
@@ -246,6 +248,22 @@ console.log("docs_flow: the pages list and what is on this page");
   }, heads[1]);
   check(`a deep link (#${heads[1]}) lands with its heading in view`, inView);
   await deep.context.close();
+}
+{
+  // A section that moved to another page (docs-site/_moved.json "page#anchor"):
+  // its old address lands on its new one, as a desktop app's Help opens it.
+  const moved = JSON.parse(readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "../../docs-site/_moved.json"), "utf8"));
+  const sections = Object.entries(moved).filter(([k]) => k.includes("#"));
+  const missed = [];
+  for (const [was, now] of sections) {
+    const { page, context } = await open(`/docs/${was}`, { width: 1400, dark: false });
+    const want = `/docs/${now}`;
+    await page.waitForURL((u) => u.pathname + u.hash === want, { timeout: 8000 }).catch(() => {});
+    const at = new URL(page.url());
+    if (at.pathname + at.hash !== want) missed.push(`${was}: ${at.pathname}${at.hash}`);
+    await context.close();
+  }
+  check(`each of ${sections.length} sections that moved lands where it went from its old address`, missed.length === 0, missed.join("; "));
 }
 
 await browser.close();

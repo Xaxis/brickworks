@@ -405,7 +405,7 @@ func _small(row: Container, words: String, tip: String) -> Button:
 func _guess_kind() -> void:
 	if _kind_chosen or _kind == null:
 		return
-	var guessed: String = ModelKinds.guess("%s %s %s" % [_name.text, _tags.text.replace(",", " "), _about.text])
+	var guessed: String = ModelKinds.guess_from(_name.text, _tags.text, _about.text)
 	_kind.select(ModelKinds.ids().find(guessed) + 1)
 
 

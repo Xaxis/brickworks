@@ -186,9 +186,14 @@ func _a_set_every_way() -> void:
 	# Its autosave, as the next start brings it back.
 	_store.touch()
 	var kept: String = _store.write_now()
+	# Someone else's file says no floor of the app's (hscheck: an unedited
+	# save is the file, with no FLOOR GRID added), and the grid it got for
+	# saying none is kept beside the autosave (ModelStore._floor_unsaid):
+	# the autosave says the grid or nothing, and comes back on the grid.
 	var said_floor: ModelFloor = ModelFloor.read(FileAccess.get_file_as_string(kept))
 	_check("its autosave written, saying %s" % (said_floor.to_meta() if said_floor != null
-		else "nothing of its floor"), said_floor != null)
+		else "nothing of its floor, as the set's file"), said_floor == null
+		or said_floor.kind == ModelFloor.GRID)
 	await _start_clear()
 	var back: int = await _store.restore_fetched()
 	_main.call("_lay_baseplate")
@@ -332,7 +337,9 @@ func _a_plate_chosen() -> void:
 		_store.model_floor.same_as(plate) and _store.scenery.size() == 1)
 	_check("saved as the person's copy, %s" % COPY, _store.save_as(COPY))
 	var saved: String = FileAccess.get_file_as_string(ModelStore.saved_path(COPY))
-	_check("...its file says %s" % plate.to_meta(), saved.contains(plate.to_meta() + "\n"))
+	# A save keeps the file's own line ends (keeptext5): the set's OMR file
+	# has CRLF, so the line is read whole, not by a bare "\n" after it.
+	_check("...its file says %s" % plate.to_meta(), plate.to_meta() in saved.replace("\r\n", "\n").split("\n"))
 	await _start_clear()
 	var placed: int = await _bar.open_with_progress(ModelStore.saved_path(COPY))
 	_bar.opened.emit(placed)
@@ -354,10 +361,12 @@ func _together() -> void:
 	var together: Together = _main.get("_together")
 	var meta: Dictionary = together.call("_meta_now")
 	var text: String = together.model_text()
+	# The floor goes in the snapshot's meta (~floor); the set's text, as its
+	# file, says none, or the grid.
 	_check("what a joiner is sent says the grid: ~floor %s, %s" % [meta.get("~floor", ""),
 		ModelFloor.read(text).to_meta() if ModelFloor.read(text) != null else "no floor line"],
-		str(meta.get("~floor", "")).begins_with("GRID") and ModelFloor.read(text) != null
-		and ModelFloor.read(text).kind == ModelFloor.GRID)
+		str(meta.get("~floor", "")).begins_with("GRID") and (ModelFloor.read(text) == null
+		or ModelFloor.read(text).kind == ModelFloor.GRID))
 	# The joiner: the session's text opened as Together opens it, and its
 	# floor put as the snapshot's meta puts it (Together._lay_snapshot).
 	await _start_clear()

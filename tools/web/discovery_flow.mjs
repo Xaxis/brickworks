@@ -31,9 +31,10 @@
 //      this week's pick is Tower, "Built twice this week"; Small builds
 //      has Tower, then Wall, and not Hall; nothing scrolls sideways. A
 //      search hides the shelves.
-//   4. The site's owner, on /admin: Make it the pick beside Shed; the
-//      front's pick is Shed, "Chosen by Brickworks"; the model by link
-//      only is refused, in words. End: Tower again.
+//   4. The site's owner, on the console's gallery (/admin#gallery/listed):
+//      Make it the pick beside Shed; the front's pick is Shed, "Chosen by
+//      Brickworks"; the model by link only is refused, in words. End, on
+//      This week's pick: Tower again.
 //   5. Bob keeps a collection: a real set (10760-1, expanded through its
 //      inventory), a set no inventory has, three red bricks, a blue, a
 //      yellow and a white. Each card says what he has of it (Tower and
@@ -318,8 +319,8 @@ try {
   const admin = await adminContext.newPage();
   listen(admin, "admin");
   admin.on("dialog", (dialog) => dialog.accept());
-  await admin.goto(`${site}/admin`, { waitUntil: "load" });
-  await until(admin, () => !document.getElementById("view").classList.contains("hide"), "the admin page", 60);
+  await admin.goto(`${site}/admin#gallery/listed`, { waitUntil: "load" });
+  await until(admin, () => document.querySelectorAll("#gallery tr[data-model]").length > 0, "the console's gallery", 60);
   const button = admin.locator(`#gallery tr:has(a[href="/m/${ids.shed}"]) button`, { hasText: "Make it the pick" });
   check("Make it the pick beside Shed in the gallery's table", (await button.count()) === 1);
   await button.click();
@@ -331,8 +332,9 @@ try {
   chosen.push(Number(row.pick));
   check(`chosen for a week, and said not shown to visitors, being a test account's: "${row.text}"`,
     /a test account's/.test(row.text) && new RegExp(NAMES.shed).test(row.text));
+  await admin.click('a[data-tab-link="pick"]');
   await shot(admin.locator("#pick-now"), "4_admin_pick_now.png");
-  await shot(admin.locator("#choices").locator("xpath=ancestor::div[contains(@class,'card')]"), "5_admin_choices.png");
+  await shot(admin.locator("#choices").locator("xpath=ancestor::div[contains(@class,'table')]"), "5_admin_choices.png");
   const nowChosen = await api("/api/share?op=shelves&tests=1");
   check(`the front's pick is Shed now, chosen until ${nowChosen.body.pick?.until}`,
     nowChosen.body.pick?.model?.id === ids.shed && nowChosen.body.pick?.chosen === true

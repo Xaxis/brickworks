@@ -29,13 +29,15 @@
 ## -----------
 ## A stud joint holds a moment about the edge it would turn on by the
 ## rigid-plastic bound M = Σ F·dᵢ, each stud pulling F at its distance dᵢ
-## from that edge (a 2x2 at 1 N a stud holds 3.2 N·cm). Nobody has published
-## a measured clutch force: the book the LEGO Group published says "the
-## ideal strength's value must remain secret" (The Secret Life of LEGO®
-## Bricks, p. 22), and StableLego
-## measured 0.98 N per contact point, three or four contact points to a stud
-## (arXiv 2402.10711). So F is 1 N a stud for the working load and 3 N for
-## where it lets go, and the answer is honest to a factor of two or so.
+## from that edge (a 2x2 at 1 N a stud holds 3.2 N·cm). The LEGO Group keeps
+## its clutch figure to itself ("the ideal strength's value must remain
+## secret", The Secret Life of LEGO® Bricks, p. 22). Where a stud lets go is
+## measured from what StableLego built (arXiv 2402.10711) and weighed here
+## as it is built (src/dev/stabletruth_probe.gd, docs/RESEARCH.md unit 3):
+## [constant ULTIMATE_N] into a part two studs wide or more, and more into
+## one a stud wide ([constant ULTIMATE_ONE_WIDE_N]). The working load, the
+## line past which the status bar calls a joint weak, is a margin under
+## that, not a measure: 1 N a stud.
 ##
 ## What a joint carries is everything beyond it: the parts that come off with
 ## it. That is only well defined where the joint is the one thing holding
@@ -69,9 +71,28 @@ extends RefCounted
 ## m/s².
 const GRAVITY := 9.81
 const MM_PER_LDU := 0.4
-## A stud's working load and where it lets go, N (see above).
+## A stud's working load, N: what the status bar holds a joint to, and calls
+## it weak past. A margin, never measured; about half of where a stud lets
+## go into a part two studs wide, a third into one a stud wide.
 const ALLOWABLE_N := 1.0
-const ULTIMATE_N := 3.0
+## Where a stud lets go, N, levered about the edge it would turn on as
+## [method _load] weighs it, into a part two studs wide or more: Tested lets
+## a part fall past it. Measured against the structures StableLego built and
+## saw stand or fall (stabletruth_probe): stairs of 2 x 4 bricks two studs
+## on each, of 19 levels, which stood, needing 1.84 N a stud at their weakest
+## joint, of 20, which came apart there at 2.06 N, and 200 g on stairs of 4
+## levels, which came apart at 2.00 N. 3 N, the figure this was until then,
+## read the 20 levels and the 200 g as standing.
+const ULTIMATE_N := 1.92
+## ...and into a part a stud wide: each stud is gripped at four points
+## round it, not three as in a wider part's tube and walls, and they sit
+## further from the edge it turns on. StableLego's contact points, levered as
+## [method _load] levers a joint two studs deep (every joint their builds
+## broke at), hold 1.6 times as much there. That puts it at 3.07 N, between
+## what its stick of 1-wide bricks needed where it held, 2.93 N, and where it
+## came apart, 3.21 N; at 1.92 N it read both sticks as coming apart. Both
+## are 1.02 N a contact point on that layout, against StableLego's 0.98 N.
+const ULTIMATE_ONE_WIDE_N := ULTIMATE_N * 1.6
 ## Within this of the lowest cell a part counts as standing on the floor, in
 ## cells: half a plate, so a tyre's rounded foot does and a chassis above it
 ## does not.
@@ -181,6 +202,8 @@ class JointLoad extends RefCounted:
 	func held_on() -> String:
 		match kind:
 			"studs":
+				if studs == 0:
+					return "on no stud"
 				return "on %d stud%s" % [studs, "" if studs == 1 else "s"]
 			"axle":
 				return "on an axle keyed in its hole"
@@ -190,6 +213,14 @@ class JointLoad extends RefCounted:
 				return "on %s" % ("a friction pin" if pins == 1 else "%d friction pins in a line" % pins)
 		return "on %s" % ("a frictionless pin or axle" if pins == 1
 			else "%d frictionless pins or axles in a line" % pins)
+
+	## Whether nothing holds it against what it carries, so there is no
+	## working load to divide its load by: a contact of no studs, or pins
+	## with no friction ridges (or an axle in a round hole) on one line,
+	## free to turn about it. Divided by nothing, a steering arm on its axle
+	## read "0 studs carry about 3801304x" (drivereview F9, drvcheck A).
+	func holds_nothing() -> bool:
+		return (kind == "studs" and studs == 0) or kind == "free pin"
 
 
 class Report extends RefCounted:
@@ -276,9 +307,32 @@ class Report extends RefCounted:
 		elif needs_help() and widen > 0:
 			out += " Widen it %d stud%s to the %s." % [widen, "" if widen == 1 else "s",
 				widen_toward]
+		# Joints, not stud joints: a pin or an axle among them has no studs
+		# (drvrecheck F4).
 		if over > 0:
-			out += " %d stud joint%s overloaded, in red." % [over, "" if over == 1 else "s"]
+			out += " %d joint%s overloaded, in red." % [over, "" if over == 1 else "s"]
 		return out
+
+	## How to make the joints past their working load hold, by their kind:
+	## more studs only for those on studs; a pin tied in with a second off
+	## its line, as Brace this asks (StressView.brace_words).
+	func over_words() -> String:
+		var on_studs: int = 0
+		var on_pins: int = 0
+		for one: JointLoad in joints:
+			if one.ratio > 1.0:
+				if one.kind == "studs":
+					on_studs += 1
+				else:
+					on_pins += 1
+		var them: String = "it" if over == 1 else "them"
+		if on_pins == 0:
+			return "brace %s, give %s more studs, or move weight back over what holds %s" % [them, them, them]
+		if on_studs == 0:
+			return "brace %s, tie %s in with a second pin off %s line, or move weight back over what holds %s" % [
+				them, them, "its" if over == 1 else "their", them]
+		return ("brace them, give those on studs more studs and tie those on pins in with a second "
+			+ "pin off their line, or move weight back over what holds them")
 
 	## The numbers for a Claude session (check_design), compact, with what to
 	## do about them. [param namer] says a brick id the way the session
@@ -320,22 +374,37 @@ class Report extends RefCounted:
 			if not name_of.is_valid():
 				name_of = func(id: int) -> String: return "#%d" % id
 			for one: JointLoad in joints.slice(0, 3):
-				var line: String = "%s %s %s on %d stud%s: %s N·cm against %s (%sx; lets go at %s)" % [
-					str(name_of.call(one.beyond)), "hanging from" if one.hangs else "on",
-					str(name_of.call(one.held_by)), one.studs, "" if one.studs == 1 else "s",
-					Balance.tidy(one.moment), Balance.tidy(one.capacity), Balance.tidy(one.ratio),
-					Balance.tidy(one.ultimate)]
+				# Each joint by its kind (held_on): a pin or an axle has no
+				# studs to count (drvcheck B).
+				var who: String = "%s %s %s" % [str(name_of.call(one.beyond)),
+					"hanging from" if one.hangs else "on", str(name_of.call(one.held_by))]
+				var line: String
+				if one.kind == "studs" and one.studs == 0:
+					# No stud in contact: nothing to divide its load by.
+					line = "%s with no stud in contact: nothing holds it there" % who
+				elif one.holds_nothing():
+					line = "%s %s: it turns with nothing holding it%s" % [who, one.held_on(),
+						", %s N·cm about its line" % Balance.tidy(one.moment) if one.moment > 0.0 else ""]
+				elif is_inf(one.capacity):
+					line = "%s %s: it does not turn there" % [who, one.held_on()]
+				else:
+					line = "%s %s: %s N·cm against %s (%sx; lets go at %s)" % [who, one.held_on(),
+						Balance.tidy(one.moment), Balance.tidy(one.capacity), Balance.tidy(one.ratio),
+						Balance.tidy(one.ultimate)]
 				if one.hangs:
 					line += ", pulled %s N" % Balance.tidy(one.pull)
 				if not one.pose.is_empty():
 					line += ", %s" % one.pose
 				shown.append(line)
-			lines.append("Most loaded stud joints (1 N a stud working, 3 N lets go): "
+			# What a stud holds said only where one of them is on studs.
+			var studded: bool = joints.slice(0, 3).any(func(one: JointLoad) -> bool:
+				return one.kind == "studs" and one.studs > 0)
+			lines.append("Most loaded joints%s: " % ((" (%s N a stud working; it lets go at %s N, "
+				+ "%s N into a part a stud wide)") % [Balance.tidy(ALLOWABLE_N),
+					Balance.tidy(ULTIMATE_N), Balance.tidy(ULTIMATE_ONE_WIDE_N)] if studded else "")
 				+ "; ".join(shown) + ".")
 			if over > 0:
-				lines.append(("%d past the working load: brace %s, give %s more studs, or "
-					+ "move weight back over what holds it.") % [over,
-					"it" if over == 1 else "them", "it" if over == 1 else "them"])
+				lines.append("%d past the working load: %s." % [over, over_words()])
 		return "\n".join(lines)
 
 
@@ -377,6 +446,21 @@ static func edge_name(way: Vector2) -> String:
 		"back-left", "back", "back-right"]
 	var sector: int = posmod(roundi(degrees / 45.0), 8)
 	return names[sector]
+
+
+## The way over [param edge] (edge_name's) a model tips, as said: "to the
+## left". Each its own words, whole, so a language says it as a way to go,
+## not as an edge's name: an edge's "left" is the bord gauche and the borde
+## izquierdo, and tipped over to it the model "bascule vers gauche" and "se
+## vuelca hacia izquierdo" (drvcheck3 W). "vers la gauche", "hacia la
+## izquierda" now.
+const TOWARD: Dictionary = {"left": "to the left", "right": "to the right", "front": "to the front",
+	"back": "to the back", "front-left": "to the front-left", "front-right": "to the front-right",
+	"back-left": "to the back-left", "back-right": "to the back-right"}
+
+
+static func toward(edge: String) -> String:
+	return str(TOWARD.get(edge, "to the %s" % edge))
 
 
 static func opposite(name: String) -> String:
@@ -1445,10 +1529,21 @@ func _load(bridge: Dictionary, moved: Transform3D, grams: float, carried: Vector
 	var to_cm: float = MM_PER_LDU / 10.0
 	one.moment = maxf(bending.length() - pressed * reach, 0.0) * to_cm
 	one.capacity = ALLOWABLE_N * lever * to_cm
-	one.ultimate = ULTIMATE_N * lever * to_cm
+	# The studs are in the upper part's underside, or pointing into it from
+	# the side (_find_bridges): how wide it is says how hard they are held.
+	one.ultimate = lets_go(_meshes[upper] if upper < _meshes.size() else null) * lever * to_cm
 	one.ratio = one.moment / maxf(one.capacity, 0.000001)
 	one.at = joint
 	return one
+
+
+## Where a stud lets go into a part of [param mesh], N: [constant
+## ULTIMATE_ONE_WIDE_N] into a part a stud wide across its own footprint,
+## [constant ULTIMATE_N] into any other or one with no shape.
+static func lets_go(mesh: Lbm.PartMesh) -> float:
+	if mesh != null and minf(mesh.bounds.size.x, mesh.bounds.size.z) < BrickLattice.STUD * 1.5:
+		return ULTIMATE_ONE_WIDE_N
+	return ULTIMATE_N
 
 
 ## A joint pins or axles alone make, weighed as one fails (docs/MECHANISMS.md
@@ -1646,3 +1741,27 @@ func _counterweight(weighed: Array, place: Vector2, spare: float) -> float:
 		else:
 			low = mid
 	return high
+
+
+## What comes off with the joint that alone holds [param id] (its
+## JointLoad.beyond), [param id] among them, once [method prepare] has read
+## the joints: the part's side of the tree grown from the floor, which past a
+## bridge is everything that joint alone holds up. What Strengthen ties back
+## to the rest. Empty for a part not read.
+func past(id: int) -> PackedInt64Array:
+	var out := PackedInt64Array()
+	var from: int = _index_of.get(id, -1)
+	if from < 0 or _parent.size() <= from:
+		return out
+	var inside := PackedByteArray()
+	inside.resize(_parent.size())
+	inside[from] = 1
+	out.append(id)
+	# Depth first from the floor, so a part's parent comes before it.
+	for v: int in _reached:
+		var p: int = _parent[v]
+		if v != from and p >= 0 and inside[p] == 1:
+			inside[v] = 1
+			if v < _ids.size():
+				out.append(_ids[v])
+	return out

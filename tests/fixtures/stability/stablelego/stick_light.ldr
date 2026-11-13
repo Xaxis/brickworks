@@ -1,0 +1,33 @@
+0 StableLego stick_light
+0 Name: stick_light.ldr
+0 Author: Brickworks, from StableLego (MIT, Intelligent Control Lab)
+0 // a stick of 1-wide bricks with two 1 x 4 loads at its end: stands (Fig. 1(4), README)
+0 // source: https://raw.githubusercontent.com/intelligent-control-lab/StableLego/0fe57b608838d7e503b6acf6c8ca00db774734ac/test_lego/stick_light.json
+0 // built: stands
+1 2 0 0 0 1 0 0 0 1 0 0 0 1 4186.dat
+0 // brick 1
+1 4 -400 -24 10 1 0 0 0 1 0 0 0 1 3008.dat
+0 // brick 2
+1 4 -320 -48 10 1 0 0 0 1 0 0 0 1 3010.dat
+0 // brick 13
+1 4 -280 -72 10 1 0 0 0 1 0 0 0 1 3010.dat
+0 // brick 3
+1 4 -200 -96 10 1 0 0 0 1 0 0 0 1 3008.dat
+0 // brick 4
+1 4 -80 -72 10 1 0 0 0 1 0 0 0 1 3008.dat
+0 // brick 5
+1 4 20 -96 10 1 0 0 0 1 0 0 0 1 3009.dat
+0 // brick 6
+1 4 100 -72 10 1 0 0 0 1 0 0 0 1 3009.dat
+0 // brick 7
+1 4 180 -96 10 1 0 0 0 1 0 0 0 1 3009.dat
+0 // brick 8
+1 4 260 -72 10 1 0 0 0 1 0 0 0 1 3009.dat
+0 // brick 9
+1 4 340 -96 10 1 0 0 0 1 0 0 0 1 3009.dat
+0 // brick 10
+1 4 420 -72 10 1 0 0 0 1 0 0 0 1 3009.dat
+0 // brick 11
+1 4 440 -96 10 1 0 0 0 1 0 0 0 1 3010.dat
+0 // brick 12
+1 4 440 -120 10 1 0 0 0 1 0 0 0 1 3010.dat

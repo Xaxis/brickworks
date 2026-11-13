@@ -15,9 +15,12 @@ web/releases.json, so it can never say something the release notes do not;
 and each language's copy of it (web/de/changelog.html, tools/site_lang.py),
 its heads, links and dates in the language from its words
 (web/<code>/words.json), the notes as written, in English (lang="en").
+Beside it, changelog.json: the newest releases' heads, for the beta's
+page to say what is new this week (web/beta.js) without the whole page.
 And the documentation at /docs is made from docs-site/ (tools/docs_site.py).
 
     tools/site.py --changelog=CODE   the changelog page in CODE's language
+    tools/site.py --whats-new        changelog.json
 """
 
 from __future__ import annotations
@@ -130,7 +133,7 @@ def render(found: list[dict], releases: dict, say=english, code: str = "en") -> 
         parts.append('<div class="release-head">')
         if unreleased:
             parts.append(f'<h2 id="{anchor}-h">{html.escape(say("On the web now"))}</h2>')
-            where = html.escape(say("In the app at {app}; in the next desktop release.")).replace(
+            where = html.escape(say("In the app at {app} now; the desktop app is coming soon.")).replace(
                 "{app}", f'<a href="{app}">brickworks.diy/app</a>')
             parts.append(f'<p class="when">{where}</p>')
         else:
@@ -176,9 +179,39 @@ def changelog_page(code: str = "en") -> str:
     return template.replace(MARK, body)
 
 
+# How many releases changelog.json names, and how many of each one's heads.
+NEWEST = 4
+HEADS = 6
+
+
+def whats_new() -> str:
+    """The newest releases as the beta's page shows them (web/beta.js): each
+    one's place on /changelog (#web for what is on the web and in no
+    desktop release yet), its version, its date, and the heads of its notes
+    (each item's words in bold), as written, in English."""
+    found = sections((ROOT / "CHANGELOG.md").read_text(encoding="utf-8"))
+    releases = json.loads((WEB / "releases.json").read_text(encoding="utf-8"))
+    by_version = {r["version"]: r for r in releases.get("releases", [])}
+    newest = []
+    for section in found:
+        version = section["version"]
+        heads = [re.sub(r"`([^`]+)`", r"\1", bold.group(1)).strip() for kind, text in section["blocks"]
+                 if kind == "li" and (bold := re.match(r"\*\*([^*]+)\*\*", text))]
+        if not heads:
+            continue
+        unreleased = version.lower() == "unreleased"
+        newest.append({"anchor": "web" if unreleased else "v" + version, "version": "" if unreleased else version,
+                       "date": "" if unreleased else (by_version.get(version, {}).get("date") or section["date"]),
+                       "heads": heads[:HEADS], "more": max(0, len(heads) - HEADS)})
+        if len(newest) == NEWEST:
+            break
+    return json.dumps({"releases": newest}, ensure_ascii=False, indent=1) + "\n"
+
+
 def build(out: Path) -> int:
     out.mkdir(parents=True, exist_ok=True)
-    count = 0
+    (out / "changelog.json").write_text(whats_new(), encoding="utf-8")
+    count = 1
     for item in sorted(WEB.rglob("*")):
         rel = item.relative_to(WEB)
         if any(part.startswith(("_", ".")) for part in rel.parts) or not item.is_file():
@@ -196,6 +229,9 @@ def build(out: Path) -> int:
 
 
 if __name__ == "__main__":
+    if sys.argv[1:] == ["--whats-new"]:
+        sys.stdout.write(whats_new())
+        sys.exit(0)
     if len(sys.argv) == 2 and sys.argv[1].startswith("--changelog="):
         sys.stdout.write(changelog_page(sys.argv[1].split("=", 1)[1]))
         sys.exit(0)

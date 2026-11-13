@@ -1194,8 +1194,10 @@ func mesh_for(part_id: String) -> Lbm.PartMesh:
 	var path: String = _on_disk(info.mesh_hash)
 	if path.is_empty():
 		# Not in this build. Start fetching it; the caller gets null now
-		# and a [signal fetched] shortly.
-		request_mesh(part_id)
+		# and a [signal fetched] shortly. Not one an open has heard fail
+		# ([member held_back]).
+		if not held_back.has(info.mesh_hash):
+			request_mesh(part_id)
 		return null
 
 	if _on_main_thread():
@@ -1396,6 +1398,14 @@ func set_fetch_host(host: Node) -> void:
 	_fetch_host = host
 	if not _for_later.is_empty():
 		_watch_later()
+
+
+## Geometry whose fetch failed while a model was being opened, by hash
+## (ModelStore._fetch_failed): not asked for again by a part that wants it
+## ([method mesh_for]) until that model is laid, as each part the open lays
+## asked for it again, and that open asks each part once. Asked for in
+## words ([method request_mesh], [method want]), it goes as ever.
+var held_back: Dictionary = {}
 
 
 ## True when this build has the part's geometry to hand.
