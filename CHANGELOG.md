@@ -194,7 +194,9 @@ whole cycle.
 - **The docs are written again**: they start where you do, say what each
   control is for and where it is, and every way to bring your own AI, in
   fewer words with new pictures from the app. Old links land where their
-  sections went.
+  sections went. The site has its own now too: the gallery, sharing, a
+  model's page, profiles, collections, challenges and Build together, as
+  they really work, with a picture of each.
 
 ### Fixed
 
@@ -227,6 +229,33 @@ whole cycle.
 - Your AI's connector always connects, however slow the server is to find
   what it tells your AI. A dish your Claude puts on a round plate sits on it
   at any turn, where a quarter turn was refused.
+- A row of the model tree can be dragged into another again, with the mouse
+  or with a finger held still a moment and then moved, as a phone lifts a
+  list's row. The row it would go into is outlined, holding at the tree's
+  edge scrolls to rows out of sight, and one undo takes the drop back. A
+  finger slid onto the menu its hold opened keeps the menu up, and the keys
+  choose from it. A model shared to look at, or still opening, takes no drop.
+- A part the app holds but cannot show (one the catalogue lacks, one still on
+  its way, or a line of someone else's file it cannot draw) keeps its step
+  and its looks through every step edit, a drag in the tree, an edit in
+  another copy of its sub-model and a save that writes the whole file. It
+  could be saved in another part's step, or at the end of the model.
+- Copies of a sub-model follow an edit as they should. A plate put down on a
+  wheel of one car goes once into each wheel of each car, not again for
+  every car round it; renaming or duplicating one tower no longer turns the
+  other red; a step edit on one copy reaches the others; and each copy keeps
+  the colour it was placed in. Undo and Redo of **Clear** give back each
+  sub-model's lights and views and leave nothing behind. When you build with
+  your own Claude, its edits to one copy reach the others too, and its answer
+  counts the parts after they follow: taking a 3010 off one of two copies
+  said "4 bricks now" of the 3 left.
+- In a file with sub-models, the app's own lines and the set it came from go
+  under the title, in the model's own section, and stay there, so two saves
+  of one file are the same.
+- The plans, the FAQ and the privacy page say that your own key for OpenAI,
+  Google Gemini, OpenRouter, Mistral, Groq, Together, DeepSeek or xAI works
+  in any browser, as it does, where they said it needed the desktop app. The
+  changelog and the beta's page say the desktop app is coming soon.
 
 ## [0.19.0] - 2026-11-07
 
