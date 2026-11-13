@@ -551,6 +551,7 @@ static func steps_for(steps: Array[Instructions.Step], share: Dictionary,
 		page.authored_in = step.authored_in
 		page.authored_step = step.authored_step
 		page.name = step.name
+		page.within = step.within
 		if step.in_callout() or puts_own_on:
 			page.assembly = step.assembly
 			page.callout = step.callout

@@ -1152,9 +1152,10 @@ func pick_at(at: Vector2) -> bool:
 
 ## A left drag that began on a part with the Select tool: the part (with
 ## the selection, if it is in it) picked up to follow the pointer and be
-## let go where the drag ends — or, with Ctrl, a copy of it. False when
-## there was nothing it could take.
-func drag_start(brick_id: int, copy: bool) -> bool:
+## let go where the drag ends, with what rests on it (Carry.riders), or
+## alone with Shift held ([param alone]) — or, with Ctrl, a copy of it.
+## False when there was nothing it could take.
+func drag_start(brick_id: int, copy: bool, alone: bool = false) -> bool:
 	if builder.is_locked(brick_id):
 		say.call(Keymap.filled("that part is locked — {unlock|unlocks everything}"))
 		return false
@@ -1164,7 +1165,74 @@ func drag_start(brick_id: int, copy: bool) -> bool:
 		return false
 	if copy:
 		return duplicate_selection(false) > 0
-	return lift() > 0
+	# carryrest: what rests on it comes with it, Shift as it goes leaves it.
+	_dragged = builder.selection.keys()
+	var found: Dictionary = Carry.riders(world, builder.lattice, _dragged, scenery,
+		builder.takes, builder.locked)
+	_riders = found["riders"]
+	_riders_cut = bool(found["cut"])
+	_alone = true
+	return _drag_lift(alone)
+
+
+# -- carryrest: a dragged part carries what rests on it ------------------------
+
+
+## What the drag under way took (the selection it began from) and what rests
+## on it (Carry.riders), each by the id it had then; whether it goes alone
+## now, and whether the look for what rests on it stopped short.
+var _dragged: Array = []
+var _riders: Array = []
+var _alone: bool = true
+var _riders_cut: bool = false
+## What the drag's lift put in hand (Carry.items, by reference): whether what
+## is in hand is still the drag's (put_away).
+var _drag_items: Array = []
+
+
+## Shift pressed or let go of while a part is dragged (Main): what rests on
+## it put back where it stands and the part carried on alone, or picked up
+## with it again. Both are the one lift a drag is, so its one undo puts all
+## back.
+func drag_alone(alone: bool) -> void:
+	if _riders.is_empty() or alone == _alone or not builder.is_carrying() \
+			or not builder.carrying.lifted:
+		return
+	builder.cancel_carry()
+	_drag_lift(alone)
+
+
+## The drag's parts lifted, with what rests on them unless [param alone],
+## and the bar saying which and how to change it.
+func _drag_lift(alone: bool) -> bool:
+	_select_live(_dragged + ([] if alone else _riders))
+	_alone = alone or _riders.is_empty()
+	var count: int = lift()
+	if count == 0:
+		return false
+	_drag_items = builder.carrying.items
+	var those: String = _parts(_riders.size())
+	if not _riders.is_empty() and not alone:
+		say.call("moving %s and the %s resting on it — Shift moves it alone"
+			% [_parts(count - _riders.size()), those])
+	elif not _riders.is_empty():
+		say.call("moving %s alone — let go of Shift for the %s on it too"
+			% [_parts(count), those])
+	elif _riders_cut:
+		say.call("moving %s — what rests on it stays, more than a drag can follow"
+			% _parts(count))
+	return true
+
+
+## These bricks selected, each by the id it has now: put back by an undo,
+## a brick comes back under another when its own is taken (Builder._live).
+func _select_live(ids: Array) -> void:
+	builder.selection.clear()
+	for brick_id: int in ids:
+		var live: int = builder._live(brick_id)
+		if world.get_brick(live) != null:
+			builder.selection[live] = true
+	builder.selection_changed.emit(builder.selection.size())
 
 
 ## 1 or 0 where a check says it is a Mac or not (as Phone._on), -1 to ask
@@ -1217,7 +1285,7 @@ func hint() -> String:
 			if builder.is_carrying():
 				return "Select: a click puts it down · type a number to move it exactly · %s · Esc puts it back" % look
 			if over != 0:
-				return "Select: click selects it · drag moves it (on a joint, as the real part moves) · %s-drag copies it · double-click edits inside a sub-assembly" % held
+				return "Select: click selects it · drag moves it and what rests on it (on a joint, as the real part moves) · %s-drag copies it · double-click edits inside a sub-assembly" % held
 			return "Select: click lets go of the selection · %s · %s-drag draws a box" % [look, held]
 		"place":
 			var info: PartLibrary.PartInfo = library.parts.get(builder.held_part) \
@@ -1673,7 +1741,11 @@ func _copies_put(what: Dictionary) -> bool:
 ## Put away what is held. A selection that was being moved goes back.
 func put_away() -> void:
 	var lifted: bool = builder.carrying.lifted
+	# A drag's: what rested on it goes back unselected, as it was (carryrest).
+	var dragged: bool = lifted and not _alone and is_same(builder.carrying.items, _drag_items)
 	builder.cancel_carry()
+	if dragged:
+		_select_live(_dragged)
 	if lifted:
 		edited.call()
 	aim_again.call()

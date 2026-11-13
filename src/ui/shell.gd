@@ -3052,6 +3052,11 @@ func change_look(op: String, at: Instructions.Step, fields: Dictionary = {}) -> 
 		return "this model is open to look at, not to change"
 	if at == null:
 		return "go to a step on the timeline first"
+	# A name of only what draws nothing is refused, before the model is
+	# given steps for it (sncheck N2).
+	var refused: String = BookletLooks.name_refused(fields.get("name", "")) if op == "name" else ""
+	if not refused.is_empty():
+		return refused
 	var steps: StepsBar = app.get("_steps")
 	var number: int = at.number
 	var skip: Dictionary = store.scenery

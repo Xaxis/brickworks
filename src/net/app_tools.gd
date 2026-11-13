@@ -2313,6 +2313,11 @@ func _list_steps(steps: Array[Instructions.Step], from: int) -> String:
 		elif not step.copies.is_empty():
 			where = " (puts on the %s%s)" % [step.assembly,
 				" x%d" % step.copies.size() if step.copies.size() > 1 else ""]
+		# The step it starts, which has no step of its own to be named in
+		# (Step.within): the model's step that puts the copies on.
+		if not step.within.is_empty():
+			where = where.trim_suffix(")") + ("; " if not where.is_empty() else " (") \
+				+ "starts the step %s)" % Motions.quoted(step.within)
 		var line: String = "  %d%s: %s" % [step.number, where, " ".join(numbers)]
 		if not step.name.is_empty():
 			# stepnames: its name, as the timeline says it.

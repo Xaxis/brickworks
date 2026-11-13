@@ -523,7 +523,10 @@ function sayFiles(run) {
 // disk, signed in as a returning visitor; its warm load after in the same.
 async function visitor() {
   const dir = mkdtempSync(join(tmpdir(), "load_check-"));
-  const context = await chromium.launchPersistentContext(dir, { args: SOFTWARE, viewport: { width: 1280, height: 800 } });
+  // The bucket itself, not this machine's copy of it (storage_mirror.mjs): a
+  // first visit's parts come from there, and are part of what is timed.
+  const context = await chromium.launchPersistentContext(dir, { args: SOFTWARE, viewport: { width: 1280, height: 800 },
+    realStore: true });
   if (canSignIn()) await signInContext(context).catch((e) => console.log(`  (could not sign in: ${e.message})`));
   else console.log("  (not signed in: no Supabase keys in the environment, so the app shows its sign-in screen)");
   return { context, done: async () => { await context.close().catch(() => {}); rmSync(dir, { recursive: true, force: true }); } };

@@ -2473,9 +2473,6 @@ msgstr "%s-Ziehen zieht einen Rahmen auf"
 msgid "Select: click selects it"
 msgstr "Auswählen: Ein Klick wählt es aus"
 
-msgid "drag moves it (on a joint, as the real part moves)"
-msgstr "Ziehen bewegt es (an einem Gelenk wie das echte Teil)"
-
 msgid "%s-drag copies it"
 msgstr "%s-Ziehen kopiert es"
 
@@ -13980,3 +13977,28 @@ msgstr "Schritt %d, Nebenbau-Schritt %d %s genannt, in jeder der %d Kopien von %
 
 msgid "step %d's callout step %d's name taken off, in each of the %d copies of the %s"
 msgstr "Name von Schritt %d, Nebenbau-Schritt %d entfernt, in jeder der %d Kopien von %s"
+
+# A name of only characters that draw nothing, refused (sncheck N2,
+# stepnames2).
+msgid "that name has only characters that draw nothing (zero-width spaces, joiners, direction marks): give it a letter or sign you can see"
+msgstr "dieser Name hat nur Zeichen, die nichts zeigen (Leerzeichen ohne Breite, Verbinder, Richtungszeichen): gib ihm einen Buchstaben oder ein Zeichen, das man sieht"
+
+# A dragged part carries what rests on it, Shift as it goes moves it alone
+# (APP_UX7 #20, carryrest).
+msgid "drag moves it and what rests on it (on a joint, as the real part moves)"
+msgstr "Ziehen bewegt es und was darauf liegt (an einem Gelenk wie das echte Teil)"
+
+msgid "moving %s and the %s resting on it"
+msgstr "%s und die %s darauf werden verschoben"
+
+msgid "Shift moves it alone"
+msgstr "Shift verschiebt es allein"
+
+msgid "moving %s alone"
+msgstr "nur %s wird verschoben"
+
+msgid "let go of Shift for the %s on it too"
+msgstr "Shift loslassen, um die %s darauf mitzunehmen"
+
+msgid "what rests on it stays, more than a drag can follow"
+msgstr "was darauf liegt, bleibt: mehr, als ein Ziehen mitnehmen kann"

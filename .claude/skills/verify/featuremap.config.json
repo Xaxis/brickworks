@@ -5267,6 +5267,34 @@
       "entry": "src/dev/openfaults_probe.gd",
       "reach": "tools/probe.sh openfaults_probe   (a file opens as LDView reads it: a sub-model's name is its FILE line's text, a reference's its text after the 14th field, compared in any case with \\ as /, the first block of a name the one; hscheck's sub-model titled with its file name, se3check's castle, odd names and twins by folder, sf2check's two blocks of one name, co_del_rename_tail and cfc_wing2, each as someone else's file and as the app's own; Save, autosave, export, share, the copy kept for Undo, Save As and MCP save_model each read so again; opened again the same parts, colours, places, copies and steps; saved again the same file; OPENFAULTS_OUT=DIR keeps the texts for sf2check's readers.py)",
       "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "the parts bucket's copy for checks",
+      "entry": "tools/web/storage_mirror.mjs",
+      "reach": "any flow under tools/web (browser.mjs imports it); node tools/web/storage_mirror.mjs serve [PORT] for a probe",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "a dragged part carries what rests on it",
+      "entry": "src/assembly/carry.gd",
+      "reach": "godot --path .  (Select tool, drag a part: what rests on it and nothing else holds comes with it; Shift as you drag moves it alone, let go of Shift to take them up again; one undo; by finger the same)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "carryrest probe",
+      "entry": "src/dev/carryrest_probe.gd",
+      "reach": "tools/probe.sh carryrest_probe   (PROBE_SIZE=1280x720 too; carryrest_phone_probe and carryrest_tablet_probe by finger; --no-gate without an account; CARRYREST_OUT=DIR for its pictures)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "stepnames2 probe",
+      "entry": "src/dev/stepnames2_probe.gd",
+      "reach": "tools/probe.sh stepnames2_probe   (headless; SN2_ONLY=letters,refuse,undo,sub,held: name_of letter by letter, a letter of a hundred accents keeping four, 80 letters with an emoji or accents, zero-width and direction characters alone no name; such a name refused over MCP and in Name the step…, which stays up saying why; 14 name edits, MCP and by hand, each one undo, undone to the steps and the file as the plain save; the same name again no undo; sub.ldr's \"Both wings on\" on the first step built in it in the plan, caption, Build it, list and booklet; a stepless file's first step edit numbering its held part with the part before it, undone to the stepless file)",
+      "area": "view"
     }
   ]
 }

@@ -2351,6 +2351,12 @@ const libraryOf = (tests = false) => (tests ? { arrivals: () => db("rpc/library_
 /// changes a few times a year, so an hour, given while it asks again for a
 /// day. A cover a week: it is drawn again only when the index is built again.
 const SET_CACHE = "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400";
+/// A set's page, its parts and its 3D scene: each is made from the set's
+/// whole file (up to 36 MB) read from Supabase Storage, every read paid as
+/// egress, so the CDN keeps them a week and serves the old one a month while
+/// it asks again. Kept an hour, crawlers walking every set in every language
+/// read 10-25 GB a day and ran the organization past its quota (2026-11-12).
+const SET_PAGE_CACHE = "public, max-age=300, s-maxage=604800, stale-while-revalidate=2592000";
 const COVER_CACHE = "public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800";
 
 /// /library's sets (web/library.js), as askOf reads the query: {models (the
@@ -2396,7 +2402,7 @@ async function setPage(response, origin, id, tests = false, lang = "en") {
   const parts = text ? partsOf(entry.file, Buffer.from(text)) : null;
   const next = { by: [], like: setsBeside(await librarySets(libraryOf(tests)), entry), gallery: [] };
   return html(response, 200, speak(() => sharePage(origin, id, setModel(entry, { authors: authorsIn(text), steps: fileSteps(text) }),
-    [], null, null, [], next, null, undefined, parts, lang, words)), { cache: tests ? TESTS_CACHE : SET_CACHE });
+    [], null, null, [], next, null, undefined, parts, lang, words)), { cache: tests ? TESTS_CACHE : SET_PAGE_CACHE });
 }
 
 /// A set's pictures, each drawn by the app's own renderer
@@ -2447,7 +2453,7 @@ async function setParts(response, id, as, tests = false, lang = "en") {
     return response.status(404).setHeader("Cache-Control", "no-store").json({ error: "The LDraw library has no such set." });
   }
   const text = await storeFile(entry).catch(() => null);
-  response.setHeader("Cache-Control", SET_CACHE);
+  response.setHeader("Cache-Control", SET_PAGE_CACHE);
   response.setHeader("X-Content-Type-Options", "nosniff");
   return partsAnswer(response, text ? partsOf(entry.file, Buffer.from(text)) : null,
     fileName(setTitle(entry), entry.id), as, { id, version: 1, newest: 1 }, lang);
@@ -2462,7 +2468,7 @@ async function setScene(response, id, tests = false, kind = "scene") {
   }
   const text = await storeFile(entry).catch(() => null);
   if (!text) return response.status(503).setHeader("Cache-Control", "no-store").json({ error: "Its file could not be read just now." });
-  response.setHeader("Cache-Control", SET_CACHE);
+  response.setHeader("Cache-Control", SET_PAGE_CACHE);
   response.setHeader("X-Content-Type-Options", "nosniff");
   return sceneAnswer(response, entry.file, Buffer.from(text), `library:${entry.id}`, kind);
 }

@@ -16,7 +16,8 @@
 ##      is drawn, "Build the cockpit" typed, Return. The timeline says
 ##      "Step 3 of 4 · Build the cockpit", inside the window; Undo names it,
 ##      one undo step. Build › Steps › Name the step… is a row, Shift-F2
-##      asks again with the name in the field.
+##      asks again with the name in the field; zero-width characters alone
+##      and Return: still asked, saying why, nothing changed (sncheck N2).
 ##   3. edit_steps {"op": "name", "step": 2, "name": "The first brick"}: one
 ##      call names step 2, and edit_steps' list says both names.
 ##   4. Saved: the file is the file saved before the names with exactly two
@@ -53,11 +54,14 @@
 ##      lines kept; saved, every name line as written where it was (spaces,
 ##      a tab, the header's, an empty last step's, one after NOFILE), and so
 ##      after a step edit, in LF and CRLF. F7: name_of's Unicode spaces and
-##      its cut on a whole letter. F4: a name with quotes said quoted in the
-##      reply, Undo and the list. F6: the step picture's alt escaped once.
-##      F8: sub.ldr's wing step named, said for both copies; its "Both wings
-##      on" shows nowhere, its line kept. F5: edit_steps names a callout's
-##      step by callout_step=.
+##      its cut after 80 letters as a reader sees them, a letter of a hundred
+##      accents kept with four (sncheck N3), zero-width characters alone no
+##      name (N2). F4: a name with quotes said quoted in the reply, Undo and
+##      the list. F6: the step picture's alt escaped once. F8: sub.ldr's
+##      wing step named, said for both copies; its "Both wings on", a step
+##      with no step of its own, said on the first step built in it, its
+##      line kept (sncheck F8). F5: edit_steps names a callout's step by
+##      callout_step=.
 ##
 ## At a phone's and a tablet's size (a window under 1200 wide) the layout
 ## for a finger, and 9 alone: Build it is what a phone has of the steps.
@@ -237,6 +241,16 @@ func _editor() -> void:
 		_check("Shift-F2 asks again, the name in the field to type over (\"%s\")" % _field_text(),
 			dialog.visible and _field_text() == COCKPIT)
 		if dialog.visible:
+			# sncheck N2: zero-width characters alone, Return: refused where
+			# typed, the dialog up, saying why, nothing changed.
+			(_steps.get("_naming_field") as LineEdit).text = "\u200B\u200D\u200B"
+			await _key(KEY_ENTER)
+			var why: Label = _steps.get("_naming_why")
+			_check("...zero-width characters alone, Return: still asked (%s), saying why (\"%s\"), nothing changed"
+				% ["up" if dialog.visible else "gone", why.text if why != null and why.visible else ""],
+				dialog.visible and why != null and why.visible and why.text.contains("draw nothing")
+				and _builder.history_depth() == depth + 1)
+			await _shot("2_refused")
 			await _key(KEY_ESCAPE)
 			_check("...and Escape puts it away, nothing changed (%s)" % _caption(),
 				not dialog.visible and _builder.history_depth() == depth + 1)
@@ -630,24 +644,31 @@ func _review_lines() -> void:
 
 
 ## F7: every Unicode space and line separator is a space, a name of only those
-## is none, and 80 characters cut between two of a person's letters.
+## is none, and a name is cut after its 80th letter as a reader sees it (an
+## emoji of several, a letter and its accent, each one), never inside one.
+## sncheck N3: a letter of a hundred accents keeps four, where counted in
+## code points it was cut to nothing; N2: zero-width characters alone are
+## no name.
 func _review_name_of() -> void:
-	print("\n10. F7: a name's spaces and its cut")
+	print("\n10. F7, N2, N3: a name's spaces, its letters and its cut")
 	var family: String = "\U01F468‍\U01F469‍\U01F467"
 	var cases: Array = [
 		["A B C", "A B C"], ["A\u0085B", "A B"], ["A\vB\fC", "A B C"],
 		["x　y z w", "x y z w"], ["　   \t", ""],
-		["a".repeat(79) + family, "a".repeat(79)], ["a".repeat(79) + "é", "a".repeat(79)],
-		["a".repeat(78) + family, "a".repeat(78)],
+		["a".repeat(80) + family, "a".repeat(80)], ["a".repeat(80) + "é", "a".repeat(80)],
+		["a".repeat(79) + family, "a".repeat(79) + family], ["a".repeat(79) + "é", "a".repeat(79) + "é"],
+		# sncheck N3, N2: a letter of a hundred accents keeps four; zero-width
+		# characters alone are no name.
+		["Z" + "\u0301".repeat(100), "Z" + "\u0301".repeat(4)], ["\u200B\u200B", ""],
 	]
 	for case: Array in cases:
 		var got: String = BookletLooks.name_of(case[0])
 		_check("name_of(%s) is %s (%d characters)" % [str(case[0]).c_escape().left(40),
 			("\"%s\"" % got.left(20) + ("..." if got.length() > 20 else "")) if not got.is_empty() else "no name",
 			got.length()], got == str(case[1]))
-	var whole: String = BookletLooks.name_of("a".repeat(75) + family + "b")
-	_check("...and a whole emoji kept where it fits (%d characters, ends with it: %s)" % [whole.length(),
-		whole.ends_with(family)], whole == "a".repeat(75) + family)
+	var whole: String = BookletLooks.name_of("a".repeat(79) + family + "b")
+	_check("...and a whole emoji kept as the 80th letter (%d characters, ends with it: %s)" % [whole.length(),
+		whole.ends_with(family)], whole == "a".repeat(79) + family)
 
 
 ## F4: a name quoted as a motion's is, in the reply, the list and Undo.
@@ -696,7 +717,8 @@ func _review_alt() -> void:
 
 
 ## F8: a name given to a step of a sub-model placed twice says it is every
-## copy's; the main model's step that puts the wings on shows nowhere.
+## copy's; the main model's step that puts the wings on, which has no step of
+## its own, is said on the first step built in it (sncheck F8).
 func _review_copies() -> void:
 	print("\n10. F8: sub.ldr, a wing placed twice, built where it stands")
 	var fixture: String = FileAccess.get_file_as_string(FIX + "sub.ldr")
@@ -720,10 +742,13 @@ func _review_copies() -> void:
 		said == "step 4 named \"Second wing plate\", in each of the 2 copies of the wing")
 	_shell.run("undo")
 	await _settled()
-	var shown: bool = opened.contains("Both wings on")
-	_check("the main model's step 2, \"Both wings on\", puts on the wings built where they stand and shows nowhere (%s); its line kept: %s"
-		% ["shown" if shown else "no step for it", (await _save("r_sub_saved.ldr")).contains(META + " Both wings on")],
-		not shown)
+	# sncheck F8: the main model's step 2 has no step of its own, and its
+	# name is said on the first step built in it.
+	var second: Instructions.Step = plan[1] if plan.size() > 1 else null
+	var started: String = second.called() if second != null else ""
+	var kept: bool = (await _save("r_sub_saved.ldr")).contains(META + " Both wings on")
+	_check("the main model's step 2, \"Both wings on\", puts on the wings built where they stand: said on step 2, the first built in it (\"%s\"); its line kept: %s"
+		% [started, kept], started == "Both wings on · Wing plate" and kept)
 
 
 ## F5: edit_steps names a callout's step, as edit_booklet takes one.

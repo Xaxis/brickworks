@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe -->
 
 ## Sub-features
 
@@ -241,6 +241,27 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   aim and a click). Half round (the
   properties panel's Turn of 180) goes round the middle on a half stud each
   way and lands on its own footprint, as Mirror does (`mirror_probe`).
+- `a dragged part carries what rests on it` (`Carry.riders`, `EditVerbs.drag_start`
+  and `drag_alone`, main.gd's drag; APP_UX7 #20 carryrest, after Brickyard): a
+  drag on a part with the Select tool that is no joint's lifts it with every
+  part resting on it that nothing else holds: what sits on its top, and all
+  joined to that (above, below and by side studs) leaving it out, unless any
+  of that reaches lower than its top less a stud (held from below: what it
+  stands on, and what is beside it), is the scenery, locked or hidden. A plate
+  across it to a brick beside stays, and so does all on that plate; a
+  sub-assembly comes whole or not at all (`Builder.takes`). Shift held as it
+  goes (the motion's or the key's) puts what rests on it back and carries it
+  alone; let go of, takes them up again; each switch is the drag's one lift,
+  so one undo puts all back. The bar says which ("moving 1 part and the 3
+  parts resting on it — Shift moves it alone", short enough for a 1280 window's
+  bar). Shift at the
+  press still slides the view; a Ctrl-drag copy is the selection alone; a
+  finger's drag carries as the mouse's. Escape, or a drop with no room, puts
+  them all back with the dragged part alone selected (`EditVerbs.put_away`). The look asks above and below, the
+  lowest first, and the sides only once nothing that stays is found: from one
+  part of 10179 it took 3.1 s asking every side, 52 ms at most now (p95
+  1.5 ms). Past 1,500 parts asked it stops, and what it had not finished
+  stays, the bar saying so. Probe: `carryrest_probe`.
 - `select by colour part or connection` (`src/assembly/select_by.gd`): the
   toolbar's Select by (and Edit, Select by) takes the same colour, the same part, both, everything
   joined by studs (a brick beside another is not joined; a sideways part is
@@ -2818,6 +2839,18 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   says the angle to 0.1° and the distance between the hole middles; from a
   point on its top, no angle. `second`: View, Split from the top, the x-z pane
   dragged in the second view. Pictures in `shots/handles2/WxH/`.
+- `carryrest probe` (`src/dev/carryrest_probe.gd`): windowed 1400x900, about two
+  minutes, `PROBE_SIZE=1280x720` too; `carryrest_phone_probe` (390x844) and
+  `carryrest_tablet_probe` (1024x768) drive the same by finger (cases 1 only).
+  Through the sign-in screen with a throwaway account; `--no-gate` without one
+  (Supabase down). A 2 x 4 on a 2 x 4, a 2 x 2 brick, a 2 x 2 plate and a 1 x 1
+  stacked on it, a 2 x 4 plate across its other half to a black brick beside
+  with a 1 x 1 on the plate: dragged onto the ground, the three come 0.00 LDU
+  from where they were on it and the five others stay; one undo, one redo.
+  Shift from the start; Shift pressed and let go of half way (4, 1, 4 in
+  hand, still one undo); Escape half way (the brick alone selected again); then 10179's every third part asked
+  what rests on it (95% in 5 ms, the slowest in 100). Pictures in
+  `shots/carryrest/` or `CARRYREST_OUT`.
 - `handles probe` (`src/dev/handles_probe.gd`): windowed, about three minutes,
   `PROBE_SIZE=1280x720` for the small window. `rings`: a 2 x 4 turned 20° and
   tipped 10° turned about each of its own axes by 23.58, -41.2 and 67.5° (click,

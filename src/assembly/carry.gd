@@ -781,3 +781,189 @@ static func from_ldraw(text: String, from: PartLibrary) -> Array:
 		out.append({"part": placement.part_id, "color": placement.color_code,
 			"at": placement.transform, "group": placement.group})
 	return framed(out, from)
+
+
+# -- what rests on it ---------------------------------------------------------
+
+
+## How many parts a look for what rests on a dragged part asks about before it
+## stops: what it has not finished with stays where it is.
+const RIDERS_MOST := 1500
+
+
+## The parts resting on [param moving] and held by nothing else: what a part
+## dragged in the view carries with it (Brickyard's drag; docs/APP_UX7.md,
+## carryrest). A drag moved the part alone and left the bricks on it hanging
+## in the air, a wall's whole upper courses floating where the brick under
+## them had been.
+##
+## A part rests on it when its underside sits on the top of one of [param
+## moving]. It comes with them, and so does all it is joined to (studs above
+## and below, and a side's studs, as Select by, Everything connected reads
+## them: SelectBy._joined_to) leaving [param moving] out, however far, unless
+## any of that reaches a part that stays: one reaching lower than the top of
+## [param moving] (held from below, not from above), the scenery, a locked or
+## a hidden part. So the bricks stacked on a 2 x 4 come with it, a
+## plate across it and a brick beside it keeps the plate and all on it where
+## they are, and what the 2 x 4 itself sits on never comes. A sub-assembly
+## comes whole or not at all ([param takes]: Builder.takes, empty for a locked
+## part).
+##
+## Returns {"riders": the ids, "cut": true when the look stopped at
+## [constant RIDERS_MOST] parts with some of it unread}.
+static func riders(world: BrickWorld, lattice: BrickLattice, moving: Array,
+		scenery: Dictionary, takes: Callable, locked: Dictionary) -> Dictionary:
+	var held: Dictionary = {}
+	# How low a part resting on them may reach: the lowest of their tops, less
+	# a stud's height, which a part on its studs reaches down round them. A
+	# pin or an axle through one of them reaches lower and is no part on it.
+	var level: int = 1 << 30
+	for brick_id: Variant in moving:
+		if world.get_brick(int(brick_id)) != null:
+			held[int(brick_id)] = true
+			var bound: PackedInt32Array = lattice._bounds.get(int(brick_id), PackedInt32Array())
+			if not bound.is_empty():
+				level = mini(level, bound[4] - STUD_CELLS)
+	# Each part looked at -> whether it stays (true) or comes (false).
+	var stays: Dictionary = {}
+	var out: Array = []
+	var asked: Array = [0]
+	for brick_id: int in held:
+		for other: int in lattice.blockers_boxes(_slab(lattice.boxes_of(brick_id), true),
+				brick_id, held):
+			if stays.has(other):
+				continue
+			out.append_array(_resting(world, lattice, other, held, level, scenery, takes,
+				locked, stays, asked))
+	out.sort()
+	return {"riders": out, "cut": asked[0] > RIDERS_MOST}
+
+
+## A stud's height in cells (4 LDU).
+const STUD_CELLS := 2
+
+
+## Everything joined to [param from] but [param held], if none of it stays
+## ([method riders]); empty if any does. Each part read is noted in [param
+## stays], so the next look from another part on top reads no part twice.
+##
+## Read by what is above and below each part first, the lowest first, and
+## only once that finds nothing that stays, by what is beside each: a side's
+## look is two of every three a part costs (SelectBy._joined_to), and most
+## looks end at the first part reaching too low. From one part of the
+## Millennium Falcon (10179) the first look took 3.1 s, every joint asked of
+## every part, down to the ground through its hull and legs.
+static func _resting(world: BrickWorld, lattice: BrickLattice, from: int, held: Dictionary,
+		level: int, scenery: Dictionary, takes: Callable, locked: Dictionary,
+		stays: Dictionary, asked: Array) -> Array:
+	var found: Dictionary = {}
+	var queue: Array = [from]
+	var staying: bool = false
+	# Parts whose sub-assembly is asked for already, and whose sides are.
+	var units: Dictionary = {}
+	var sides: Dictionary = {}
+	var select_by: GDScript = null
+	var lowest_last: Callable = func(a: int, b: int) -> bool:
+		return _bottom(lattice, a) > _bottom(lattice, b)
+	while not staying:
+		while not queue.is_empty() and not staying:
+			var here: int = queue.pop_back()
+			if found.has(here) or held.has(here):
+				continue
+			if stays.has(here):
+				# Read already by another look: one that stays, as this would.
+				staying = bool(stays[here])
+				continue
+			found[here] = true
+			asked[0] += 1
+			if asked[0] > RIDERS_MOST or _stays_put(world, lattice, here, level, scenery,
+					locked):
+				staying = true
+				break
+			# A sub-assembly is one thing: the rest of it with it, all of it
+			# looked at before any is gone into.
+			if not units.has(here):
+				var whole: PackedInt64Array = takes.call(here) if takes.is_valid() \
+					else PackedInt64Array([here])
+				staying = whole.is_empty()
+				for other: int in whole:
+					units[other] = true
+					if held.has(other) or found.has(other):
+						continue
+					if _stays_put(world, lattice, other, level, scenery, locked):
+						staying = true
+						break
+					queue.append(other)
+				if staying:
+					break
+			# What it is joined to above and below, the lowest asked first.
+			var boxes: PackedInt32Array = lattice.boxes_of(here)
+			var next: Array = Array(lattice.blockers_boxes(
+				_slab(boxes, false) + _slab(boxes, true), here, held))
+			next.sort_custom(lowest_last)
+			for other: int in next:
+				if not found.has(other):
+					queue.append(other)
+		if staying:
+			break
+		# Nothing that stays above or below: then what is joined at the sides,
+		# as Select by reads them. Reached through Later: Carry is compiled
+		# with the first screen, and SelectBy is not (tests/test_later.py).
+		if select_by == null:
+			select_by = Later.script(&"SelectBy")
+		for brick_id: int in found:
+			if sides.has(brick_id):
+				continue
+			sides[brick_id] = true
+			for other: int in select_by._joined_to(world, lattice, brick_id, [], held):
+				if not found.has(other):
+					queue.append(other)
+		if queue.is_empty():
+			break
+	for brick_id: int in found:
+		stays[brick_id] = staying
+	if staying:
+		return []
+	return found.keys()
+
+
+## The lowest cell a part reaches.
+static func _bottom(lattice: BrickLattice, brick_id: int) -> int:
+	var bound: PackedInt32Array = lattice._bounds.get(brick_id, PackedInt32Array())
+	return bound[1] if not bound.is_empty() else -(1 << 30)
+
+
+## Whether a part stays where it is whatever is dragged: it reaches lower than
+## [param level] (what the dragged part stands on does, and what is beside it),
+## it stands on the ground, it is the scenery, or it is locked or hidden.
+static func _stays_put(world: BrickWorld, lattice: BrickLattice, brick_id: int,
+		level: int, scenery: Dictionary, locked: Dictionary) -> bool:
+	if scenery.has(brick_id) or locked.has(brick_id) or lattice.unseen.has(brick_id):
+		return true
+	var brick: BrickWorld.Brick = world.get_brick(brick_id)
+	if brick == null or brick.hidden:
+		return true
+	var bottom: int = _bottom(lattice, brick_id)
+	return bottom < level or bottom <= Builder.GROUND_CELL
+
+
+## The one-cell slab on top of each box ([param up]), or under it, inset a
+## cell round its edges where there is room, as SelectBy._shell's are: two
+## parts meeting only at an edge are not one on the other.
+static func _slab(boxes: PackedInt32Array, up: bool) -> PackedInt32Array:
+	var out := PackedInt32Array()
+	out.resize(boxes.size())
+	var n: int = 0
+	while n < boxes.size():
+		for k: int in [0, 2]:
+			var low: int = boxes[n + k]
+			var high: int = boxes[n + k + 3]
+			if high - low > 2:
+				low += 1
+				high -= 1
+			out[n + k] = low
+			out[n + k + 3] = high
+		out[n + 1] = boxes[n + 4] if up else boxes[n + 1] - 1
+		out[n + 4] = out[n + 1] + 1
+		n += 6
+	return out

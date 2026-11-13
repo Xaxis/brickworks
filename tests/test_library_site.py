@@ -274,3 +274,18 @@ def test_the_routes_send_library_addresses_to_share() -> None:
     # The gallery's Sets tab, and linked from the site's footer.
     assert '<a href="/library" data-tab="sets">Sets</a>' in (ROOT / "web/gallery.html").read_text()
     assert '<a href="/library">Sets</a>' in (ROOT / "web/_shell.html").read_text()
+
+
+def test_a_set_s_page_parts_and_scene_share_one_read_and_are_kept_a_week() -> None:
+    # Every read of the store is Supabase egress and a set's file runs to
+    # 36 MB: kept an hour, they ran the organization past its quota.
+    said = node(SITE + """
+const page = await call({ op: "set", id: "omr-10179-1" });
+await call({ op: "set_parts", id: "omr-10179-1" });
+await call({ op: "set_scene", id: "omr-10179-1" });
+await call({ op: "set_room", id: "omr-10179-1" });
+console.log(JSON.stringify({ page: [page.status, page.headers], reads: asked.filter((path) => path === "library/omr/10179-1.mpd").length }));""")
+    # Parts and scene answer 503 here (no part geometry in this store), but
+    # each still asked for the file: four answers, one read.
+    assert said["reads"] == 1
+    assert said["page"][0] == 200 and "s-maxage=604800" in said["page"][1]["cache-control"]

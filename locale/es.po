@@ -2473,9 +2473,6 @@ msgstr "%s-arrastrar dibuja un recuadro"
 msgid "Select: click selects it"
 msgstr "Seleccionar: un clic la selecciona"
 
-msgid "drag moves it (on a joint, as the real part moves)"
-msgstr "arrastrar la mueve (en una articulación, como la pieza real)"
-
 msgid "%s-drag copies it"
 msgstr "%s-arrastrar la copia"
 
@@ -13980,3 +13977,28 @@ msgstr "paso %d, paso %d del recuadro llamado %s, en cada una de las %d copias d
 
 msgid "step %d's callout step %d's name taken off, in each of the %d copies of the %s"
 msgstr "nombre del paso %d, paso %d del recuadro quitado, en cada una de las %d copias de %s"
+
+# A name of only characters that draw nothing, refused (sncheck N2,
+# stepnames2).
+msgid "that name has only characters that draw nothing (zero-width spaces, joiners, direction marks): give it a letter or sign you can see"
+msgstr "ese nombre solo tiene caracteres que no muestran nada (espacios de ancho cero, unidores, marcas de dirección): dale una letra o un signo que se vea"
+
+# A dragged part carries what rests on it, Shift as it goes moves it alone
+# (APP_UX7 #20, carryrest).
+msgid "drag moves it and what rests on it (on a joint, as the real part moves)"
+msgstr "arrastrar la mueve con lo que está encima (en una articulación, como la pieza real)"
+
+msgid "moving %s and the %s resting on it"
+msgstr "moviendo %s y las %s apoyadas encima"
+
+msgid "Shift moves it alone"
+msgstr "Shift la mueve sola"
+
+msgid "moving %s alone"
+msgstr "moviendo solo %s"
+
+msgid "let go of Shift for the %s on it too"
+msgstr "suelta Shift para llevar también las %s apoyadas encima"
+
+msgid "what rests on it stays, more than a drag can follow"
+msgstr "lo que está encima se queda: más de lo que un arrastre puede llevar"
