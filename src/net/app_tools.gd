@@ -342,8 +342,10 @@ all or nothing, one undo step; a copy with no room is said by its column, row \
 and level and the part in its way. Answered with the copies pictured.
  - weakest_joints: what gives first in the whole model as it stands, \
 read-only, as View, Stress weighs it: each joint that alone holds what is \
-past it, weakest first, with its margin against its studs' working load. \
-Ask it what breaks first, rather than rebuilding the model in check_design.
+past it, weakest first, with its margin against its studs' working load, \
+and for each past or near it the fewest parts that fix it as an edit_model \
+call to make as given. Ask it what breaks first, rather than rebuilding the \
+model in check_design.
  - colour_hidden_parts: the parts nobody sees in the finished model, \
 coloured by section, build stage or side as big sets are inside, so a \
 builder finds their place; measured from every side, so nothing seen \
@@ -1309,12 +1311,18 @@ func definitions() -> Array:
 				+ "with no stud between, carries "
 				+ "only what stands on it, so it never shares a joint's load; a piece standing "
 				+ "on touches alone past where it touches is said too. Read this instead of "
-				+ "rebuilding the model in check_design to weigh it. part= one part's number "
-				+ "(look_at_model) for what holds it; count= how many joints (8). Changes "
+				+ "rebuilding the model in check_design to weigh it. Each joint past or near its "
+				+ "working load comes with its fix, as Stress's Strengthen finds it: the fewest "
+				+ "parts (up to three: a plate across the seam, a brick under it, a second pin) "
+				+ "checked for room and weighed with the model, and the edit_model call that "
+				+ "puts them down as one undo step; make that call as given. part= one part's "
+				+ "number (look_at_model) for what holds it; count= how many joints (8); "
+				+ "mine=true the fixes of the person's own parts (Parts, My bricks). Changes "
 				+ "nothing."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"part": {"type": "integer"},
 				"count": {"type": "integer"},
+				"mine": {"type": "boolean"},
 			}},
 		},
 		GalleryTool.definition(),
@@ -5658,8 +5666,98 @@ func _weakest_joints(input: Dictionary) -> String:
 		return "The parts' shapes were still coming in; ask again in a moment."
 	if world.generation() != generation:
 		return "Another model was opened while this one was weighed; ask again."
-	return StressView.said(report, world, app.get("_library"), store.scenery,
+	var said: String = StressView.said(report, world, app.get("_library"), store.scenery,
 		clampi(int(input.get("count", 8)), 1, 40), int(input.get("part", 0)))
+	return said + await _strengthen_words(report, input)
+
+
+# -- strengthen: each weak joint's fix, as a call -----------------------------------
+
+
+## Each joint [param report] has past its working load or near it, with the
+## fewest parts that make it hold, as View, Stress's Strengthen finds and
+## puts them down (Strengthen), and the edit_model call that puts down the
+## same parts: a session fixes a joint in one call, as the panel does in one
+## press. mine=true, of the person's own parts (Parts, My bricks).
+func _strengthen_words(report: Stability.Report, input: Dictionary) -> String:
+	var shell: Shell = app.get("_shell")
+	var panel: StressPanel = shell.stress.panel if shell != null and shell.stress != null else null
+	var fixer: RefCounted = panel.fixer_now() if panel != null else null
+	if fixer == null:
+		return ""
+	var store: ModelStore = app.get("_store")
+	var world: BrickWorld = app.get("_world")
+	var count: int = clampi(int(input.get("count", 8)), 1, 40)
+	var part: int = int(input.get("part", 0))
+	var wanted: Array = StressView.ranked(report, world, store.scenery, count).filter(
+		func(one: StressView.Weak) -> bool:
+			return one.margin < StressView.CLOSE and (part == 0 or one.id == part))
+	if wanted.is_empty():
+		return ""
+	var theirs: Dictionary = panel.owned.call() if bool(input.get("mine", false)) else {}
+	var lines := PackedStringArray(["Strengthen, as View, Stress offers it: for each joint past "
+		+ "or near its working load, the fewest parts that make it hold (a plate across the "
+		+ "seam, a brick under it, a second pin), checked for room and weighed with the model, "
+		+ "and the edit_model call that puts them down as one undo step:"])
+	if bool(input.get("mine", false)):
+		lines.append("  From your bricks: %s." % ("each part one you own with one left over the "
+			+ "model's own" if not theirs.is_empty() else "you have no collection yet (Parts, My "
+			+ "bricks), so these are of any parts"))
+	fixer.scenery = store.scenery
+	fixer.owned = theirs
+	var revision: int = world.revision
+	var given: Dictionary = {}
+	for one: StressView.Weak in wanted:
+		var fix: RefCounted = await fixer.find(report, one)
+		if world.revision != revision:
+			lines.append("  The model changed while its fixes were looked for; ask again.")
+			break
+		if fix == null:
+			lines.append("  #%d: no fix of up to three parts has room there: %s." % [one.id,
+				"brace it by hand" if one.joint != null else "hold it with studs by hand"])
+			continue
+		var call: String = _fix_call(fix)
+		if given.has(call):
+			lines.append("  #%d: the same fix as #%d, which holds it too." % [one.id, given[call]])
+			continue
+		given[call] = one.id
+		lines.append("  #%d: %s. %s.%s Call edit_model %s" % [one.id, fix.what,
+			Later.script(&"Strengthen").held_words(fix), "" if theirs.is_empty() else (" All from your bricks."
+				if fix.mine else " Not all from your bricks: you have none of one left."), call])
+	return "\n" + "\n".join(lines)
+
+
+## The edit_model input that puts [param fix]'s parts down where Strengthen
+## would: each by its low corner in studs and plates, its face and its turn,
+## as edit_model reads a part added (Assistant._square_transform).
+func _fix_call(fix: RefCounted) -> String:
+	if assistant == null:
+		return "(no call: this app has no assistant to make it)"
+	var library: PartLibrary = app.get("_library")
+	var adds: Array = []
+	for item: Dictionary in fix.parts:
+		var part_id: String = str(item["part"])
+		var at: Transform3D = item["at"]
+		var basis: Basis = BrickLattice.snap_basis(at.basis)
+		var corner: Vector3 = BrickLattice.to_ldu(BrickLattice.grid_cell(at.origin)
+			+ assistant._corner_cell(library.mesh_for(part_id), part_id, basis))
+		var face: String = BrickLattice.face_of(basis)
+		var spec: Dictionary = {"part": part_id, "color": int(item["color"]),
+			"x": _tidy_number(corner.x / Assistant.STUD), "y": _tidy_number(corner.y / Assistant.PLATE),
+			"z": _tidy_number(corner.z / Assistant.STUD)}
+		if face != "up":
+			spec["face"] = face
+		var rot: int = BrickLattice.turns_about(basis, face)
+		if rot != 0:
+			spec["rot"] = rot
+		adds.append(spec)
+	return JSON.stringify({"add": adds, "picture": false})
+
+
+## A number as a call writes it: 3, not 3.0; 10.75 as it is.
+static func _tidy_number(value: float) -> Variant:
+	var snapped: float = snappedf(value, 0.01)
+	return int(snapped) if is_equal_approx(snapped, roundf(snapped)) else snapped
 
 
 # -- making a copy unique ---------------------------------------------------------------

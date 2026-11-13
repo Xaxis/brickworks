@@ -128,6 +128,9 @@ const PATHS: Dictionary[StringName, String] = {
 	# seeing2: View, Stud directions, made on its first use (Shell.stud_map)
 	# or a session's view_board studs (SeeTools).
 	&"StudMap": "res://src/ui/stud_map.gd",
+	# strengthen: View, Stress's fix for a weak joint, made the first time
+	# one is looked for (StressPanel.fixer_now), in the window or over MCP.
+	&"Strengthen": "res://src/assembly/strengthen.gd",
 	# donenote: a long job says when it is done, made with the first job
 	# or Render's dialog (Main._done_note).
 	&"DoneNote": "res://src/ui/done_note.gd",

@@ -1741,3 +1741,27 @@ func _counterweight(weighed: Array, place: Vector2, spare: float) -> float:
 		else:
 			low = mid
 	return high
+
+
+## What comes off with the joint that alone holds [param id] (its
+## JointLoad.beyond), [param id] among them, once [method prepare] has read
+## the joints: the part's side of the tree grown from the floor, which past a
+## bridge is everything that joint alone holds up. What Strengthen ties back
+## to the rest. Empty for a part not read.
+func past(id: int) -> PackedInt64Array:
+	var out := PackedInt64Array()
+	var from: int = _index_of.get(id, -1)
+	if from < 0 or _parent.size() <= from:
+		return out
+	var inside := PackedByteArray()
+	inside.resize(_parent.size())
+	inside[from] = 1
+	out.append(id)
+	# Depth first from the floor, so a part's parent comes before it.
+	for v: int in _reached:
+		var p: int = _parent[v]
+		if v != from and p >= 0 and inside[p] == 1:
+			inside[v] = 1
+			if v < _ids.size():
+				out.append(_ids[v])
+	return out
