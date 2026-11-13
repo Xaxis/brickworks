@@ -6139,7 +6139,9 @@ about boxes (docs/APP_UX8.md, unit 2).
     build, with its picture.
 - The band (`3cc66e89f`) adds a sheep check: a plate-thin wing one row off a
   sample reads at the samples within 2 cells. Its probe fix (`7b8321b5b`)
-  places the brick on the top the sample reads.
+  places the brick on the top the sample reads. There `silhouette_probe`
+  passed all 70 checks (2026-11-12, from a locked snapshot), so the lever
+  `7b8321b5b` holds is ready for a paired run as it is.
 - Also passed: `mcp_sync` 14, `mcp` 75, and ci_gate (1,648 python tests).
 
 **Smoke.** Two locked snapshots, each imported first. `snapd20base` is at
