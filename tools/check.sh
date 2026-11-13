@@ -47,7 +47,7 @@ listed=$({ printf '%s\n' "${headless[@]%%:*}" "${windowed[@]%%:*}" "${out[@]}"
   # and those run by hand below, each by its script
   grep -v '^\s*#' tools/check.sh | grep -oE 'src/dev/[a-z0-9_]+_probe\.gd' \
     | sed 's#^src/dev/##; s#_probe\.gd$##'
-  grep -oE '^\s*probe [a-z0-9_]+' tools/check.sh | awk '{print $2}'
+  grep -oE '^\s*([A-Z_]+=[^ ]+ )*probe [a-z0-9_]+' tools/check.sh | awk '{print $NF}'
 } | sort -u)
 unlisted=$(comm -23 <(echo "$probes") <(echo "$listed"))
 unknown=$(comm -13 <(echo "$probes") <(echo "$listed"))
