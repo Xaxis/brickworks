@@ -148,6 +148,13 @@ if (!target) {
       return response.end(JSON.stringify({ pick: null,
         small: { size: "small", label: "Small, under 200 parts", most: 200, models: [], more: false } }));
     }
+    // The beta's bar asks on every page whether the beta is open (web/betabar.js,
+    // since 2026-11-09). Off here: the bar is betahome_flow's to judge, and
+    // unanswered, every page logged a 404.
+    if (path === "/api/plans" && url.searchParams.get("op") === "beta_spots") {
+      response.writeHead(200, { ...headers, "Content-Type": "application/json" });
+      return response.end(JSON.stringify({ beta: "off" }));
+    }
     if (/^\/m\/[A-Za-z0-9]{10}\.png$/.test(path)) {
       response.writeHead(200, { ...headers, "Content-Type": "image/png" });
       return response.end(picture);
