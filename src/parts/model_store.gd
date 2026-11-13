@@ -3297,16 +3297,19 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 		for brick: BrickWorld.Brick in world.bricks():
 			if not scenery.has(brick.id) and not brick.origin.is_empty():
 				origins.append(brick.origin)
-		# And each sub-model it places, by the first line of the section
-		# it was read from: a copy whose parts were all laid again, a hose
-		# a grab bent, has none read through it and is placed all the same.
-		# Taken for one placed by nothing, its section was written again
-		# as the file had it, its old path with it, and the model's own
-		# under a name of its own (grab_probe 42080-1, smalls1).
+		# And each LDCad path it places, by the first line of the section
+		# it was read from: its pieces are what LDCad generated along the
+		# path, and a hose a grab bent has them all laid anew (FlexFollow),
+		# none read through the file, and is the file's hose still, its path
+		# written where it now lies (LdcadPath). Taken for one placed by
+		# nothing, its section was written again as the file had it, the
+		# old path with it, beside the model's under a name of its own
+		# (grab_probe 42080-1, smalls1). A sub-model emptied by hand and
+		# filled again is not one: its block is kept (fidelity_probe).
 		for path: Variant in instances:
 			var read: String = LdrModel._key(str(world.section_files.get(
 				(instances[path] as Dictionary)["def"], "")))
-			if _live_source().sections.has(read):
+			if _live_source().flexible.has(read) and _live_source().sections.has(read):
 				origins.append(str(int((_live_source().sections[read] as Array)[0])))
 		# The sections it carries as it has them keep their names: no
 		# sub-model the model places is named as one, or that one is taken
