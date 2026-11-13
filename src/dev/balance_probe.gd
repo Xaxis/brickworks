@@ -160,8 +160,11 @@ func _t_on_one_stud() -> void:
 		return
 	_check("its moment is the plate's weight on 3 studs: %.4f N·cm, by hand %.4f"
 		% [joint.moment, want_moment], _near(joint.moment, want_moment, want_moment * 0.01))
-	_check("...against 0.4 N·cm working and 1.2 letting go (%.3f, %.3f)" % [joint.capacity,
-		joint.ultimate], _near(joint.capacity, 0.4, 0.001) and _near(joint.ultimate, 1.2, 0.001))
+	# The stud is in the plate's underside, a stud wide: held as a 1-wide part holds one.
+	var lets_go: float = 0.4 * Balance.ULTIMATE_ONE_WIDE_N
+	_check("...against 0.4 N·cm working and %.3f letting go (%.3f, %.3f)" % [lets_go,
+		joint.capacity, joint.ultimate], _near(joint.capacity, 0.4, 0.001)
+		and _near(joint.ultimate, lets_go, 0.001))
 	var x: float = (_grams("3460") * 70.0) / (_grams("3460") + _grams("3005"))
 	var want_margin: float = (10.0 - x) / 20.0
 	_check("and the whole tips off its 1x1: %.3f studs past the right edge, by hand %.3f"

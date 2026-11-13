@@ -1,0 +1,45 @@
+0 StableLego stair_19
+0 Name: stair_19.ldr
+0 Author: Brickworks, from StableLego (MIT, Intelligent Control Lab)
+0 // 19 levels of 2 x 4, each two studs on: stands (Fig. 1(1), README)
+0 // source: https://raw.githubusercontent.com/intelligent-control-lab/StableLego/0fe57b608838d7e503b6acf6c8ca00db774734ac/test_lego/stair_19.json
+0 // built: stands
+1 2 0 0 0 1 0 0 0 1 0 0 0 1 4186.dat
+0 // brick 1
+1 0 -360 -24 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 // brick 2
+1 0 -320 -48 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 // brick 3
+1 0 -280 -72 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 // brick 4
+1 0 -240 -96 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 // brick 5
+1 0 -200 -120 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 // brick 6
+1 0 -160 -144 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 // brick 7
+1 0 -120 -168 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 // brick 8
+1 0 -80 -192 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 // brick 9
+1 0 -40 -216 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 // brick 10
+1 0 0 -240 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 // brick 11
+1 0 40 -264 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 // brick 12
+1 0 80 -288 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 // brick 13
+1 0 120 -312 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 // brick 14
+1 0 160 -336 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 // brick 15
+1 0 200 -360 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 // brick 16
+1 0 240 -384 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 // brick 17
+1 0 280 -408 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 // brick 18
+1 0 320 -432 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 // brick 19
+1 0 360 -456 0 1 0 0 0 1 0 0 0 1 3001.dat

@@ -343,11 +343,13 @@ static func said(weighed: Stability.Report, world: BrickWorld, library: PartLibr
 		lines.append("No joint alone holds what is past it: every part is held more than one way.")
 	else:
 		lines.append(("%d joint%s each hold alone what is past them: on studs, levered about the "
-			+ "edge each would turn on (1 N a stud working, about 3 N lets go); on pins or axles "
+			+ "edge each would turn on (%s N a stud working; it lets go at about %s N, %s N into "
+			+ "a part a stud wide); on pins or axles "
 			+ "in a line, turned about it (a friction pin about 0.75 N·cm working, 1 slips; a "
 			+ "frictionless one nothing); an axle keyed in its hole or pins on two lines, held "
 			+ "square; the weakest:") % [
-			all, "" if all == 1 else "s"])
+			all, "" if all == 1 else "s", Balance.tidy(Balance.ALLOWABLE_N),
+			Balance.tidy(Balance.ULTIMATE_N), Balance.tidy(Balance.ULTIMATE_ONE_WIDE_N)])
 	# A piece on a touch past where it touches first: it falls.
 	for risk: Stability.Risk in weighed.risks:
 		if risk.kind == "rests on a touch":
@@ -385,7 +387,7 @@ static func said(weighed: Stability.Report, world: BrickWorld, library: PartLibr
 		lines.append(who + "margin %s (%sx its working load), %s%s" % [margin_words(margin),
 			Balance.tidy(one.ratio), how,
 			"; it lets go at about %s times this load" % Balance.tidy(
-				(one.ultimate / maxf(one.capacity, 0.000001) if one.kind != "studs" else 3.0) * margin)
+				one.ultimate / maxf(one.capacity, 0.000001) * margin)
 				if margin < 100.0 else ""])
 	var held: Dictionary = {}
 	for id: Variant in weighed.held:
