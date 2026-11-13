@@ -201,6 +201,9 @@ const _IN_WORD := "IN"
 ## (SavedViews), which a sub-model keeps as it keeps a light.
 const _LIGHT_WORD := "LIGHT"
 const _VIEW_WORD := "VIEW"
+## And its motions' lines ("MOTION", "MOTION_TRACK"...): a sub-model's are
+## its own, kept as its file has them (Motions reads the model's).
+const _MOTION_WORD := "MOTION"
 ## The unit step of such a copy (AuthorSteps reads it from here): kept here,
 ## where the file is read, so reading one names no class of the app's and
 ## compiles alone, which is what a file browser's picture of a model waits
@@ -230,7 +233,7 @@ var skin_texts: Dictionary = {}
 ## of is decided where every part's is: a sub-model's are [member
 ## section_lines]'s.
 var light_lines := PackedStringArray()
-## A sub-model's own light and view lines, by its key (as [member
+## A sub-model's own light, view and motion lines, by its key (as [member
 ## unit_sections] names the section each copy is of) -> Array of the lines as
 ## the file has them, without a line's CR, in its order: what the app's
 ## whole write would not make again in its section (BrickWorld
@@ -414,6 +417,12 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 			elif keyword == "!BRICKWORKS" and tokens.size() > 2 \
 					and tokens[2] == _VIEW_WORD and current != model.main:
 				# A sub-model's view: its own (the model's are SavedViews.read's).
+				model._section_line(current_key, raw)
+			elif keyword == "!BRICKWORKS" and tokens.size() > 2 \
+					and tokens[2].begins_with(_MOTION_WORD) and current != model.main:
+				# A sub-model's motions: its own, as a model put into another
+				# brings them (ModelStore.held_from), written back with it. Read
+				# as nothing, a save and an open of the app's own lost them.
 				model._section_line(current_key, raw)
 			elif keyword == "!BRICKWORKS" and tokens.size() > 2 \
 					and tokens[2] == _IN_WORD:

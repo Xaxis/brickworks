@@ -350,6 +350,21 @@ func _carried(parts: Array, place: Callable = Callable()) -> Array:
 	return [refs, needed]
 
 
+## The name the model of a file with no FILE line goes by once the file is
+## written as sections (a model put into it, a section carried after it):
+## its title's ("car.ldr" for the car), and none of [param besides]'s keys
+## but the model's own. Up to 2026-11-12 a model put into the car whose file
+## was car.ldr too was written under that name beside it: two sections
+## called car.ldr, the model placing itself, and the parts put in out of
+## every other program's reach (im3check). The names a model put in takes
+## leave it out ([method ModelStore.names_held]).
+func main_file(besides: Dictionary = {}) -> String:
+	var name: String = LdrModel.new_file_name(own_title if not own_title.is_empty() else "model")
+	while besides.has(LdrModel._key(name)) and LdrModel._key(name) != main_key:
+		name = LdrModel._another(name)
+	return name
+
+
 ## [param text], the model written whole, as a file of sections, the model's
 ## first: one with no FILE line (LdrModel.write_ldr's, of a model with no
 ## sub-model) is put in one, named as none of the file's other sections is,
@@ -360,9 +375,7 @@ func _carried(parts: Array, place: Callable = Callable()) -> Array:
 func _as_sections(text: String) -> String:
 	if LdrModel.section_word(text.get_slice("\n", 0)) == "FILE":
 		return text
-	var name: String = LdrModel.new_file_name(own_title if not own_title.is_empty() else "model")
-	while sections.has(LdrModel._key(name)) and LdrModel._key(name) != main_key:
-		name = LdrModel._another(name)
+	var name: String = main_file(sections)
 	# Its "0 Name:" the name its FILE line gives it, as LDraw has them: up to
 	# metalines one named apart from a section of the file's kept the
 	# section's name there (sf2check, named_like.mpd).
@@ -1864,8 +1877,7 @@ func grafted(text: String, plan: Plan, roots: Dictionary, whole_text: String,
 			any_file = true
 			break
 	if not any_file:
-		out.append("0 FILE " + LdrModel.new_file_name(own_title if not own_title.is_empty()
-			else "model") + eol)
+		out.append("0 FILE " + main_file(added.merged(sections)) + eol)
 	for n: int in final.size() + 1:
 		if into.has(n):
 			out.append_array(PackedStringArray(into[n]))

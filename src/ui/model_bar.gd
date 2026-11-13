@@ -986,7 +986,8 @@ func hold_text(text: String, file_name: String, called: String = "",
 
 
 ## What else a model brought in comes with: its steps, what of it is kept
-## and not shown, and the names given to what this model had already.
+## and not shown, its motions, which its sub-model keeps and this model does
+## not play, and the names given to what this model had already.
 static func held_words(held: Dictionary) -> String:
 	var said: String = ""
 	if int(held["steps"]) > 0:
@@ -995,6 +996,10 @@ static func held_words(held: Dictionary) -> String:
 	var unshown: Dictionary = held["unshown"]
 	if not unshown.is_empty():
 		said += " — " + "not shown, kept: %s" % ModelStore.named_counts(unshown)
+	var motions: int = int(held.get("motions", 0))
+	if motions > 0:
+		said += " — " + ("its motion kept in it, played only where it is the model" if motions == 1
+			else "its %d motions kept in it, played only where it is the model" % motions)
 	var renamed: Dictionary = held.get("renamed", {})
 	if not renamed.is_empty():
 		var pairs := PackedStringArray()

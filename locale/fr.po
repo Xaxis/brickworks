@@ -11273,6 +11273,12 @@ msgstr "ses %d étapes gardées"
 msgid "not shown, kept: %s"
 msgstr "non affiché, gardé : %s"
 
+msgid "its motion kept in it, played only where it is the model"
+msgstr "son mouvement gardé dedans, joué seulement là où il est le modèle"
+
+msgid "its %d motions kept in it, played only where it is the model"
+msgstr "ses %d mouvements gardés dedans, joués seulement là où il est le modèle"
+
 msgid "named anew, as this model has those names: %s"
 msgstr "renommé, car ce modèle a déjà ces noms : %s"
 

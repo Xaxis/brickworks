@@ -1465,7 +1465,7 @@
       "id": "cli:into model review probes",
       "kind": "cli",
       "entry": "src/dev/im2review_probe.gd",
-      "reach": "tools/probe.sh imreview_probe; tools/probe.sh im2review_probe; tools/probe.sh into_kept_probe   (headless: the two reviews of putting one model into another and its kept-parts cases, each saved and reopened: parts the app cannot show kept in their sub-model and step, the host's own lines kept, renamed and moved copies, names, credits, a part landing late; `-- case,case` runs only those)",
+      "reach": "tools/probe.sh imreview_probe; tools/probe.sh im2review_probe; tools/probe.sh into_kept_probe; tools/probe.sh ic3_probe   (headless: the three reviews of putting one model into another and its kept-parts cases, each saved and reopened: parts the app cannot show kept in their sub-model and step, the host's own lines kept, renamed and moved copies, names, credits, a part landing late, a file with no FILE line given a model of its own name, no part file from another model, the file as it was once the last model put in is taken out, motions and views kept in the sub-model; `-- case,case` runs only those)",
       "area": "model-io",
       "tests": []
     },

@@ -567,7 +567,10 @@ static func _load_later(library: PartLibrary, texts: Dictionary,
 ## The parts a model file carries, added to the library so the model can
 ## be opened. A part the library already has as one of LEGO's is left to
 ## the library: a file cannot redefine 3001. Returns {"added": [ids],
-## "problems": [sentences], "unbuilt": {id: why}}.
+## "problems": [sentences], "unbuilt": {id: why}, "files": {id: each file of
+## one that could not be built as the file has it, its own and those it is
+## drawn from that the file carries, by name -> text}}: the model that holds
+## it unshown writes them for it (ModelStore._held_files), and no other does.
 static func take_from(library: PartLibrary, model: LdrModel) -> Dictionary:
 	var out: Array = []
 	take_into(out, library, model, null)
@@ -585,6 +588,7 @@ static func take_into(out: Array, library: PartLibrary, model: LdrModel,
 	# The carried parts that could not be built, by id: why, for the open to
 	# say (ModelBar.left_out_words).
 	var unbuilt: Dictionary = {}
+	var unbuilt_files: Dictionary = {}
 	# Everything a part may be drawn from: the other parts, and the subparts
 	# and primitives the file carries for them (LdrModel.embedded_sources).
 	var carried: Dictionary = model.embedded_parts.duplicate()
@@ -644,7 +648,8 @@ static func take_into(out: Array, library: PartLibrary, model: LdrModel,
 			kept.merge(needs(text, carried))
 			unbuilt_files[id] = kept
 	var flexible: PackedStringArray = end_skins(library, model, skins_begun, problems)
-	out.append({"added": added, "problems": problems, "unbuilt": unbuilt, "skins": flexible})
+	out.append({"added": added, "problems": problems, "unbuilt": unbuilt, "files": unbuilt_files,
+		"skins": flexible})
 
 
 ## The parts [param model] carries that [method take_from] builds, by file
@@ -1423,12 +1428,6 @@ static func _build_ended(going: Array) -> Dictionary:
 ## saved here carried 3315's parts without what they are drawn from, and
 ## they were gone when it was opened again (docs/CADTASK.md, 2026-10-16).
 static var drawn_from: Dictionary = {}
-## The parts files carried that could not be built ([method take_into]), by
-## id: each file of it as the file had it, its own and those it is drawn
-## from that the file carries, by name -> text. The model holds such a part
-## unshown, and a model written whole carries these for it
-## ([method sources_for]).
-static var unbuilt_files: Dictionary = {}
 
 
 ## The files of [param carried] (LdrModel.embedded_sources) that [param
@@ -1469,13 +1468,6 @@ static func sources_for(library: PartLibrary, part_ids: Array) -> Dictionary:
 	var out: Dictionary = {}
 	for part_id: Variant in part_ids:
 		var text: String = library.custom_source(str(part_id))
-		# One a file carries that could not be built goes out as the file had
-		# it, with what it is drawn from that the file carries
-		# ([member unbuilt_files]).
-		if text.is_empty() and not library.parts.has(str(part_id)) \
-				and unbuilt_files.has(str(part_id)):
-			out.merge(unbuilt_files[str(part_id)])
-			continue
 		if not text.is_empty():
 			out[str(part_id) + ".dat"] = text
 			var needed: Dictionary = drawn_from.get(str(part_id), {})

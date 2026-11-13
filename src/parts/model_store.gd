@@ -775,6 +775,7 @@ func identity() -> Dictionary:
 			else null,
 		"absent": _absent.duplicate() if world != null and world.generation() == _awaited_in
 			else null,
+		"held_files": _held_files.duplicate(),
 		"lights_read": _lights_now(),
 		"metas": _metas_now(), "floor_unsaid": _floor_unsaid, "bom": _bom_opened,
 		"views": world.saved_views.duplicate(true) if world != null else [],
@@ -826,6 +827,7 @@ func put_identity(kept: Dictionary) -> Dictionary:
 	var absent: Variant = kept.get("absent")
 	if absent is Array:
 		_absent = (absent as Array).duplicate()
+	_held_files = (kept.get("held_files", {}) as Dictionary).duplicate()
 	_lifted_by = float(kept["lifted_by"])
 	_lights_read = kept["lights_read"]
 	_lights_in = world.generation() if not _lights_read.is_empty() else -1
@@ -1684,6 +1686,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 		unshown = _unshown_of(absent)
 	# The app's own file carries them itself (_text_into).
 	_absent = absent if source == null else []
+	_held_files = (carried["files"] as Dictionary).duplicate()
 
 	# Which copy of the file each copy is, by its path, wherever an edit
 	# takes it (Builder.regroup): its parts' lines (SourceFile.patch).
@@ -2874,6 +2877,14 @@ var _awaited_in: int = -1
 ## (SourceFile). Until 2026-10-20 they went from the app's own: a save, or an
 ## autosave once the model was edited, wrote it without them.
 var _absent: Array = []
+## The files of the parts this model's file carried that could not be built,
+## and of those a model put into it carried, by part id -> {name -> text}
+## (CustomParts.take_into's "files"): a whole write carries them for the
+## parts it holds unshown ([method _part_files]). This model's alone: up to
+## 2026-11-12 they were the app's, kept from every file opened, and a model
+## of the app's own placing a part named as one the lab carried was saved
+## with the lab's file of it (im3check leak).
+var _held_files: Dictionary = {}
 ## Whether [method not_coming] has said this model's count.
 var _told_not_coming: bool = false
 
@@ -3328,7 +3339,7 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 		used[(item as LdrModel.Placement).part_id] = true
 	for item: Variant in _held_placements():
 		used[(item as LdrModel.Placement).part_id] = true
-	var embedded: Dictionary = CustomParts.sources_for(library, used.keys())
+	var embedded: Dictionary = _part_files(used.keys())
 	# Sub-assemblies, nested or copied, go out as a tree of sub-models: each
 	# definition once, every copy a reference to it (LdrModel.write_tree).
 	var tree := Assemblies.new()
@@ -3547,9 +3558,57 @@ func looks_follow_edit() -> void:
 	builder.extend_last(BookletLooks.emptied(world, step, scenery, held))
 	if _held_go_with(step):
 		held = _held_placements()
+	_steps_follow_grafts(step)
 	_held_follow(Assemblies.moves_in(builder, step))
 	Assemblies.lines_follow(builder, step, held)
 	_looks_followed = builder.last_step()
+
+
+## After [param step] took the last model put into someone else's file with
+## no steps off it: the file's parts out of the one step that model's steps
+## put them in (AuthorSteps.one_step, Builder._bring_steps), in the same
+## undo, so the model is the file's again and a save keeps the file as it
+## was. Up to 2026-11-12 they stayed in that step, and the car, the shed put
+## into it deleted, was written whole: its header and 8 comments lost, and
+## AUTHORED_STEPS gained (im3check delete_undo). Not while a model put in
+## stays, nor once a step past the first is made.
+func _steps_follow_grafts(step: Dictionary) -> void:
+	var source: SourceFile = _live_source()
+	if source == null or source.authored or not AuthorSteps.any(world, scenery) \
+			or Assemblies.copies_emptied(builder, step).is_empty() \
+			or not _graft_roots(source).is_empty():
+		return
+	var back: Array = []
+	for brick: BrickWorld.Brick in world.bricks():
+		if scenery.has(brick.id):
+			continue
+		if brick.step > 0:
+			return
+		if brick.step == 0:
+			back.append({"undo": "restep", "brick": brick.id, "step": -1})
+	# A copy the edit took off keeps its entry, which no write reads: the
+	# shed's roof, on in its second step, is no step of the car's.
+	var standing: Dictionary = AuthorSteps.paths_in(world, scenery)
+	for item: Variant in _held_placements():
+		var at: String = ""
+		for segment: String in Assemblies.segments(world.held_path(item as LdrModel.Placement)):
+			at = Assemblies.join(at, segment)
+			standing[at] = true
+	for path: String in world.unit_steps:
+		if not standing.has(path):
+			continue
+		if int(world.unit_steps[path]) > 0 or int(world.unit_steps[path]) < -1:
+			return
+		if int(world.unit_steps[path]) == 0:
+			back.append({"undo": "unitstep", "unit": path, "step": -1})
+	for item: Variant in _held_placements():
+		var placement: LdrModel.Placement = item
+		if placement.step > 0:
+			return
+		if placement.step == 0:
+			back.append({"undo": "heldstep", "held": placement, "step": -1})
+	builder.extend_last(back.map(func(entry: Dictionary) -> Dictionary:
+		return builder._apply(entry)))
 
 
 ## The parts not on the baseplate (awaited, _absent, and someone else's
@@ -3653,6 +3712,9 @@ func _held_put(into: Array, moved: Transform3D) -> void:
 		# own written with it.
 		if kind == "brought":
 			kind = "unseen" if source != null else "absent"
+			# Its file as the model put in carried it: this model's now.
+			if not (one.get("files", {}) as Dictionary).is_empty():
+				_held_files[str(one["part"])] = one["files"]
 		if path.is_empty() or (kind == "unseen" and source == null):
 			continue
 		var move: Transform3D = pair[2] if pair.size() > 2 else moved
@@ -3777,7 +3839,7 @@ func _held_placements() -> Array:
 
 ## The names this model's file holds that nothing on the baseplate shows
 ## (BrickWorld.names_held, Assemblies.names_taken): someone else's file's
-## every section, the files of every part the model carries, a part the app
+## every section and the name its model is written under, the files of every part the model carries, a part the app
 ## cannot show or still on its way, and what each is drawn from. A brought
 ## model's part named as one of these is given another name (IntoModel).
 func names_held() -> Array:
@@ -3788,6 +3850,10 @@ func names_held() -> Array:
 	if source != null:
 		for key: String in source.sections:
 			out.append(key)
+		# A file with no FILE line: the name its model is written under once
+		# a model goes into it (SourceFile.main_file).
+		if source.main_key.is_empty():
+			out.append(source.main_file())
 	for name: String in _files_carried().keys():
 		out.append(name)
 	for placement: LdrModel.Placement in _held_placements():
@@ -3804,7 +3870,21 @@ func _files_carried() -> Dictionary:
 		used[brick.part_id] = true
 	for placement: LdrModel.Placement in _held_placements():
 		used[placement.part_id] = true
-	return CustomParts.sources_for(library, used.keys())
+	return _part_files(used.keys())
+
+
+## The files a whole write of this model carries for [param part_ids]: those
+## of the parts made here or carried by a file (CustomParts.sources_for), and
+## of one it holds that could not be built, as the file it came in had them
+## ([member _held_files]): this model's own, never another's.
+func _part_files(part_ids: Array) -> Dictionary:
+	var out: Dictionary = CustomParts.sources_for(library, part_ids)
+	if world == null or world.generation() != _awaited_in:
+		return out
+	for part_id: Variant in part_ids:
+		if not library.parts.has(str(part_id)) and _held_files.has(str(part_id)):
+			out.merge(_held_files[str(part_id)])
+	return out
 
 
 ## This model's lists of what it holds and does not show made its own, when
@@ -3817,6 +3897,7 @@ func _claim_held() -> void:
 	_awaited_in = world.generation()
 	awaited.clear()
 	_absent = []
+	_held_files = {}
 
 
 ## [param text], a model's file called [param file_name], read to be put
@@ -3834,7 +3915,8 @@ func _claim_held() -> void:
 ## .held_put), "lines" (each sub-model's own lines, its header's author and
 ## licence among them), "frames" (where each copy's lines' frame stands),
 ## "looks" (its steps' booklet looks), "files" (each section's file name),
-## "parts", "steps", "missing" (part -> how many the library has not got),
+## "parts", "steps", "motions" (how many of its own model's motions its
+## sub-model keeps), "missing" (part -> how many the library has not got),
 ## "unshown" (part -> how many it cannot show), "renamed" (each name given
 ## another), "error"}.
 func held_from(text: String, file_name: String, job: Working.Job = null,
@@ -3912,7 +3994,7 @@ func held_from(text: String, file_name: String, job: Working.Job = null,
 		held.append({"path": path, "part": placement.part_id, "color": placement.color_code,
 			"at": placement.transform, "step": placement.step,
 			"kind": "awaited" if library.parts.has(placement.part_id) else "brought",
-			"brought": true})
+			"brought": true, "files": (took[0]["files"] as Dictionary).get(placement.part_id, {})})
 		unshown[placement.part_id] = int(unshown.get(placement.part_id, 0)) + 1
 	if placed.is_empty():
 		out["error"] = "none of its parts could be drawn"
@@ -3940,6 +4022,15 @@ func held_from(text: String, file_name: String, job: Working.Job = null,
 		credit = credit_lines(credited)
 	own.append_array(credit)
 	own.append_array(model.light_lines)
+	# And its views and motions, its sub-model's own here as its lights are:
+	# a view one of the sub-model's, a motion kept in it as its file has it,
+	# played where it is the model (held_words says so). Up to 2026-11-12
+	# they were left out without a word (im3check: the observatory's 4
+	# motions went).
+	var motions: int = 0
+	for line: MetaIndex.Line in MetaIndex.of_text(str(named["text"])).own(["VIEW", "MOTION*"]):
+		own.append(line.raw)
+		motions += 1 if line.word == "MOTION" else 0
 	if not own.is_empty():
 		lines[def] = own
 	# Each of its sub-models whose header names no one is its model's
@@ -3994,6 +4085,7 @@ func held_from(text: String, file_name: String, job: Working.Job = null,
 	out.merge({"items": Carry.framed(placed, library), "name": def, "root": root,
 		"units": units, "held": held, "lines": lines, "frames": frames, "looks": looks,
 		"files": files, "parts": placed.size() + held.size(), "steps": own_steps.size(),
+		"motions": motions,
 		"missing": missing, "unshown": unshown, "renamed": renamed,
 		"host_flat": source != null and not source.authored}, true)
 	return out
