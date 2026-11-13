@@ -48,6 +48,46 @@ brickworks.diy (295 ms against 158), on a booklet delay the release did not
 touch, and the lead could ship past it only by reshipping with `site` alone,
 which recorded nothing (2026-11-02).
 
+A timing check (frames, play, progress, placing, grab) that fails on the
+preview is not run once on brickworks.diy but by turns on both, P L L P
+(`live_ab.sh`: `AB_ROUNDS` pairs, 2; each run the check as the battery runs
+it, from the release's tree, under heavy, solo), and judged by the numbers
+it prints (`timing_judge.py`). A measure is a line the check says ok or FAIL
+on with a figure in ms, its bar what the line holds it to. Every line the
+preview failed, in its battery or by turns, is judged: it holds the release
+only where the preview's mean is past live's by more than the noise, the
+wider of the two sides' spreads (max - min of their runs) and at least 2% of
+the bar; a FAIL line with no figure, only where the preview failed it in
+more runs than live; a measure live never printed, always; and the whole
+check, when no measure was timed on both sides (runs that could not start
+fail alike, and are no load: a worktree with no `node_modules`). Otherwise the
+release ships past it, failing there as much or not at all, as `--accept`
+does, with no reason needed: `<tag>_accepted`, the train's log and status
+say both sides' numbers, and so does a commit on top of the merge, which
+main moves to (`Ships past play: no worse here than on brickworks.diy beyond
+the noise, by turns`). The merge's own message cannot change after its
+preview, as its commit names the build; the commit on top has the merge's
+tree, so that build stands for it (`deploy_reads.sh`) and brickworks.diy
+serves the one the checks passed. A reship on the same preview judges its
+runs together with the earlier rounds' (their logs kept as
+`<tag>_ab_<check>_r<k><run>_<check>.log`, listed in `<tag>_ab_<check>.kept`):
+two runs a side cannot see a check's own swing, and rel-m290's play flipped
+between sizes on them while brickworks.diy alone swung 1956 ms. A new
+preview starts over. The lines, in `<tag>_ab_<check>.judge`:
+
+```
+ships past: the preview no worse than brickworks.diy beyond the noise (2 runs on the preview, 2 on brickworks.diy)
+it opens playing "Open the gates", # ms (bar 3000): here 3229 2635 (mean 2932), there 2617 3054 (mean 2835.5) (in the battery 3324); noise 594; failed 1 of 2, 1 of 2: no worse
+```
+
+One run there was luck: at load ~35 brickworks.diy fails play's phone bar 1
+run in 3. rel-m287 held twice on play (3324 and 3685 ms against 3000) while
+brickworks.diy passed it (1267, 1953), and passed on its third run; the
+lead's A/B by hand, P L L P P L, found the preview no slower (2511 against
+2809 ms mean). m142's and rel-m249's were the same (2026-11-11). A check
+that is not a timing one runs there first: if one holds the release, the
+A/B, an hour of solo runs, is not run.
+
 The train waits detached until `rel-m218_lead.out` says `SHIP: deploy:
 brickworks.diy serves`, never on rel-m218's process: its live checks after
 that touch only the live site. It stops if rel-m218 held, failed or never
@@ -228,7 +268,9 @@ What each one guards against, all learned the hard way on 2026-10-13:
   rel-m249's progress, a timing check, kept keys, library, model_page and
   together from theirs, and the lead reshipped them by hand (2026-11-02).
   Its last line names what still fails: `SHIP: held, failed on the
-  preview: X Y (failing on brickworks.diy too: X)`.
+  preview: X Y (failing on brickworks.diy too: X)`, or for a timing check
+  judged worse by turns with brickworks.diy, `SHIP: held, failed on the
+  preview: play (by turns with brickworks.diy: <tag>_ab_NAME.judge)`.
 - `SHIP_REUSE=1 ship.sh <worktree> <tag> <check…>` reuses the preview that
   tag made, only if it was made from the same commit (`<tag>_preview.sha`),
   and runs the named checks on it again; each must still pass. A timing
@@ -239,7 +281,11 @@ What each one guards against, all learned the hard way on 2026-10-13:
   timing failure's cause: the change, or the load. It serves both builds'
   `build/web` and runs the flow on each in turn, so the load weighs on both
   alike. m142's phone drag failed its preview twice; the live m141 failed
-  the same bar 2 runs in 3 beside it (2026-10-22).
+  the same bar 2 runs in 3 beside it (2026-10-22). A train does the same
+  for a deployment itself: `live_ab.sh <worktree> <tag> <check> <preview>`
+  runs the check on the preview and on brickworks.diy by turns (`AB_LIVE`
+  names another), and `timing_judge.py --battery LOG --run P|L EXIT LOG...`
+  judges any runs' logs.
 - `ship.sh` runs the merge gates itself, once for every unit merged, under
   the release's priority: the parse gate on every GDScript file changed since
   main, and the tool list against the app. Run per merge without priority,
@@ -385,6 +431,14 @@ runs), one with a process inside, one with uncommitted tracked edits, or one
 whose branch is not on main. "Its commit is on main" alone also describes a
 running agent that has not committed yet, and two agents lost their work to
 a cleanup that checked only that (2026-10-16).
+
+`tools/release/archive_out.sh [--dry]` moves release-out's old output, never
+deleting it: the releases older than the newest 8 (`RELEASE_KEEP`) and any
+other entry untouched for 3 days (`RELEASE_IDLE_DAYS`) go to
+`~/brickworks-archive/release-out` (`RELEASE_ARCHIVE`), on the root disk, and
+`release-out/archive` links there. A running train's output, a hold and the
+archive stay. train.sh runs it once a release is live: release-out had grown to
+61 GB in 25,000 entries with /mnt/Projects at 93% (2026-11-11).
 
 A mesh sub-build ships on the staging worktree's own copy of the
 catalogue (`ln -sfn <copy> <worktree>/assets/generated`). Merge it into the

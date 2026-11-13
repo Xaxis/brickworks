@@ -12,7 +12,10 @@
 //               as kept ({ask, over_13}: supabase/trust.sql), which is
 //               what puts the age question after a first sign-in; and
 //               whether it is a beta tester, with the early features it
-//               may use ({tester, early}: api/_early.js).
+//               may use ({tester, early}: api/_early.js), whether the beta
+//               is open, and whether its welcome is due: a new account not
+//               yet asked to join (open, welcome: api/_beta.js memberOf),
+//               which the site and the app show after the age question.
 //
 //   POST ?op=age, with a token and {month, year}: the answer to the age
 //   question (2026-10-18). Worked out here into whether that is 13 or over
@@ -92,6 +95,7 @@
 
 import { AuthError, authConfigured, bearer, isMaster, verify } from "./_auth.js";
 import { db, dbConfigured, reach } from "./_db.js";
+import { betaMode, memberOf } from "./_beta.js";
 import { earlyFor } from "./_early.js";
 import { linkFetch } from "./_link.js";
 import { orangecheckOffer } from "./_oc_config.js";
@@ -177,17 +181,22 @@ export default async function handler(request, response) {
   // reach, or trust.sql not applied) asks nothing. And whether this is a
   // beta tester, and so which early features it may use (api/_early.js),
   // asked at the same time: not knowing (feedback.sql not applied) is not
-  // one.
+  // one. While the beta is open, where it stands with the testers instead,
+  // which says that too, and whether its welcome is due.
   let age = null;
   let tester = false;
+  let welcome = false;
+  const open = await betaMode(request) === "open";
   if (dbConfigured()) {
     const [kept, isTester] = await Promise.allSettled([ageOf(claims.sub),
-      db("rpc/beta_tester", { method: "POST", body: { p_account: claims.sub } })]);
+      open ? memberOf(claims.sub).catch(() => asTester(claims.sub)) : asTester(claims.sub)]);
     if (kept.status === "fulfilled" && kept.value.ready) age = { ask: kept.value.ask, over_13: kept.value.over_13 };
     if (kept.status === "rejected") {
       console.error(`account: no age: ${String(kept.reason?.message || kept.reason).slice(0, 120)}`);
     }
-    tester = isTester.status === "fulfilled" && isTester.value === true;
+    const said = isTester.status === "fulfilled" ? isTester.value : null;
+    tester = said?.tester === true;
+    welcome = open && said?.welcome === true;
   }
 
   return response.status(200).json({
@@ -195,9 +204,17 @@ export default async function handler(request, response) {
     signed_in: true,
     email: claims.email || null,
     master: isMaster(claims),
-    beta: { tester, early: earlyFor(tester) },
+    // open: the beta's switch, so the app shows its top bar's Report a bug
+    // while it is (bugreport); welcome only while it is open (betajoin).
+    beta: { tester, early: earlyFor(tester), open, ...(open ? { welcome } : {}) },
     ...(age ? { age } : {}),
   });
+}
+
+/// Whether [account] is a beta tester, as feedback.sql's beta_tester says
+/// (beta_join.sql's once applied): {tester}.
+async function asTester(account) {
+  return { tester: (await db("rpc/beta_tester", { method: "POST", body: { p_account: account } })) === true };
 }
 
 /// The age question's answer. The month and year are read, turned into

@@ -105,8 +105,11 @@ func _run() -> void:
 		% _store.made_with)
 	_ok(ModelStore.made_in("0 FILE x.ldr\n0 !BRICKWORKS MADE robots\n") == "",
 		"a line saying something else is not believed")
-	_ok(ModelStore._without_app_lines(text).find("!BRICKWORKS MADE") < 0,
-		"...and someone else's file written back gets the line once, not twice")
+	var again: String = ModelStore.with_share(ModelStore.with_share(text, "", "", 0, {}, "assistant"),
+		"", "", 0, {}, "assistant")
+	_ok(again.count("!BRICKWORKS MADE") == 1,
+		"...and someone else's file written back gets the line once, not twice (%d)"
+		% again.count("!BRICKWORKS MADE"))
 
 	print("\nBrickify and the assistant")
 	_main.call("clear_model")

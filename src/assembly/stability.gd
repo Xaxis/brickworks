@@ -58,10 +58,10 @@ const CUBIC_LDU_PER_CM3 := 15625.0
 ##
 ## The LEGO Group does not publish its clutch figure ("the ideal strength's
 ## value must remain secret", The Secret Life of LEGO® Bricks, p. 22). StableLego
-## measured 0.98 N per contact point, three or four to a stud, so a stud
-## lets go at about 3-4 N (arXiv 2402.10711). 80 g is 0.78 N, about a
-## quarter of that. Balance takes 1 N a stud as the working load and 3 N as
-## where it lets go (docs/MECHANISMS.md §4).
+## measured 0.98 N per contact point, three or four to a stud (arXiv 2402.10711).
+## Their stairs and sticks, built for real, put where a stud lets go on our
+## lever (Balance.ULTIMATE_N, stabletruth_probe, docs/RESEARCH.md unit 3).
+## 80 g is 0.78 N, under Balance's working load of 1 N a stud.
 const GRAMS_PER_STUD := 80.0
 
 ## How far outside the footprint the centre of mass may sit before the
@@ -264,6 +264,14 @@ func _weigh_margins(bricks: Array, graph: Dictionary, report: Report) -> void:
 			one.beyond_part, ("hangs from" if one.hangs else "is levered off") if one.kind == "studs"
 				else "turns on", one.held_part, one.held_on(), Balance.tidy(one.grams),
 			Balance.tidy(one.ratio), "studs' " if one.kind == "studs" else ""]
+		if one.kind == "studs" and one.studs == 0:
+			# No stud in contact: nothing holds it, and no load to divide.
+			risk.message = "%s touches %s with no stud in contact, %s g past it: nothing holds it there" % [
+				one.beyond_part, one.held_part, Balance.tidy(one.grams)]
+		elif one.holds_nothing():
+			# Free to turn on its line: no working load to divide by either.
+			risk.message = "%s turns on %s %s with %s g past it, and nothing holding it" % [
+				one.beyond_part, one.held_part, one.held_on(), Balance.tidy(one.grams)]
 		report.risks.append(risk)
 	for piece: Dictionary in weighed.tipping:
 		var risk := Risk.new()

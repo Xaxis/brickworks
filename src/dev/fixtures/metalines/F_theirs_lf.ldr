@@ -1,0 +1,28 @@
+0 FILE F_theirs_lf.ldr
+0 Held steps check
+0 Name: F_theirs_lf.ldr
+0 Author: Someone Else
+
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3020.dat
+0 STEP
+1 2 -30 -8 10 1 0 0 0 1 0 0 0 1 3024.dat
+1 14 300 -24 10 1 0 0 0 1 0 0 0 1 hsnosuch.dat
+0 !BRICKWORKS ZOOM 1.5
+0 !BRICKWORKS STEP_NAME The held step
+0 STEP
+1 1 120 -16 0 1 0 0 0 1 0 0 0 1 3003.dat
+0 !BRICKWORKS TEXT 20 20 60 12 5 Step three
+1 14 300 -24 10 1 0 0 0 1 0 0 0 1 hsnosuch.dat
+0 STEP
+1 4 120 -40 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 16 0 -100 0 1 0 0 0 1 0 0 0 1 hsub.ldr
+0 !BRICKWORKS PAGE NEW
+0 NOFILE
+0 FILE hsub.ldr
+0 hsub.ldr
+0 Name: hsub.ldr
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3004.dat
+0 STEP
+1 1 0 -24 0 1 0 0 0 1 0 0 0 1 3004.dat
+1 15 400 -24 10 1 0 0 0 1 0 0 0 1 hsnosuch2.dat
+0 NOFILE

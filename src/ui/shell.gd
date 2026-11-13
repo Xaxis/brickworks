@@ -92,7 +92,7 @@ var versions: Window:
 			_make_versions()
 		return _versions
 var _versions: Window = null
-## Compare with a save, from Versions… or File, Compare with…:
+## Compare with a save, from Versions… or File, Compare, Compare with…:
 ## src/ui/compare_view.gd.
 var compare: Control:
 	get:
@@ -196,12 +196,14 @@ const ALT := KEY_MASK_ALT
 ## do I need? beside the parts list. Then Build › Booklet page reached 27
 ## rows with Page setup…, and View 482 of 470 units with Stud map, so the
 ## step's turns, tilts and zoom went into Booklet page's own Step's view,
-## and the five panels into View › Panels (menurows).
+## and the five panels into View › Panels (menurows). Then File was 482 of
+## 470 units with Compare two sets or models…, so the two compares, each
+## used now and then, went into File › Compare beside Versions… (subexport).
 const MENUS: Array = [
 	["File", ["new", "new_window", "open", "library", "collection", "collection_build", ">recent",
-		">import", "-", "save", "save_as", "versions", "compare",
-		# comparesets (APP_UX6 #7): any two of a set, a saved model or the open one.
-		"compare_sets",
+		">import", "-", "save", "save_as", "versions",
+		# subexport: Compare with… and Compare two sets or models… (APP_UX6 #7).
+		">compares",
 		"-", "share", "together",
 		"comments", ">export", "render", "render_queue", "-", "clear", "quit"]],
 	["Edit", ["undo", "redo", ">history", "-", "cut_parts", "copy", "paste", "duplicate",
@@ -224,7 +226,7 @@ const MENUS: Array = [
 		"mode_connect", "mode_clone", "mode_paint", "mode_hide", "mode_delete", "-", "rotate_held",
 		"tip_held", "-", "measure", "stability", "simulate", "hidden_colours", "reseat", "-",
 		"ask_claude", "connector", "settings"]],
-	["Help", ["keys", "whats_this", "tour", "-", "check_updates", "reinstall", "restart"]],
+	["Help", ["keys", "whats_this", "tour", "-", "report_bug", "-", "check_updates", "reinstall", "restart"]],
 ]
 
 ## The app's own menu, opened from the mark at the far left of the menu
@@ -262,11 +264,14 @@ const EARLY_COMMANDS: Dictionary = {"beta_hub": "beta_hub"}
 var early: Array[String] = []
 
 const SUBMENUS: Dictionary = {
-	"import": ["import_ldraw", "import_io", "import_lxf", "import_mesh"],
+	"import": ["import_into", "-", "import_ldraw", "import_io", "import_lxf", "import_mesh"],
 	"export": ["export_ldraw", "export_io", "export_3d", "export_picture", "export_bricklink",
 		"export_rebrickable",
 		"export_pickabrick",
-		"-", "export_all"],
+		"-",
+		# subexport (APP_UX7 #19): each sub-model as a file of its own.
+		"export_submodels",
+		"export_all"],
 	"select_by": ["select_colour", "select_part", "select_alike", "select_find",
 		"select_connected", "select_submodel", "select_inverse"],
 	"viewpoint": ["view_default", "view_front", "view_back", "view_left", "view_right",
@@ -280,7 +285,9 @@ const SUBMENUS: Dictionary = {
 		"cut_grow", "cut_shrink", "-", "cut_flip", "cut_ghosts"],
 	# Next step (E) is in Build itself, over these.
 	"steps": ["step_prev", "step_next", "step_to", "step_new", "-", "step_earlier", "step_later",
-		"step_merge", "step_delete"],
+		"step_merge", "step_delete",
+		# stepnames: the step the timeline is on, given a name.
+		"-", "step_name"],
 	# The step's picture first: its view, folded (menurows), and its size on
 	# the page.
 	"booklet": [">booklet_view", "booklet_bigger", "booklet_smaller", "-", "booklet_new_page",
@@ -301,6 +308,8 @@ const SUBMENUS: Dictionary = {
 		"floor_grid", "floor_none", "-", "floor_part", "floor_default"],
 	# edges (APP_UX6 #19): View › Edges and studs.
 	"edges_studs": ["edges", "studs"],
+	# subexport: File › Compare, a save's changes and two sets' parts.
+	"compares": ["compare", "compare_sets"],
 	"floor_colour": ["floor_colour_2", "floor_colour_10", "floor_colour_288",
 		"floor_colour_19", "floor_colour_28", "floor_colour_71", "floor_colour_72",
 		"floor_colour_378", "floor_colour_1", "floor_colour_15", "floor_colour_0",
@@ -314,7 +323,9 @@ const SUBMENU_WORDS: Dictionary = {"recent": "Open recent", "import": "Import",
 	"steps": "Build steps", "booklet": "Booklet page", "booklet_view": "Step's view",
 	"floor": "Floor", "floor_colour": "Baseplate colour",
 	# edges (APP_UX6 #19).
-	"edges_studs": "Edges and studs"}
+	"edges_studs": "Edges and studs",
+	# subexport.
+	"compares": "Compare"}
 
 
 ## Everything put on screen: the menus into the bar, the toolbar under it,
@@ -340,6 +351,8 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	verbs.assemblies = assemblies
 	builder.unit_of = assemblies.unit_of
 	builder.copy_group = assemblies.group_for_copy
+	# A model put into this one comes in hand as a paste does (intomodel).
+	bar.hold_parts = verbs.hold
 	# Whatever replaces the model leaves no assembly being edited.
 	bar.started_new.connect(func() -> void: assemblies.enter(""))
 	bar.cleared.connect(func() -> void: assemblies.enter(""))
@@ -462,6 +475,9 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	add_child(guard)
 	# And names for the parts of Godot's own dialogs it leaves unnamed.
 	add_child(Access.new())
+	# And the window's tree whole, as it is drawn, where the engine tells it
+	# otherwise: src/ui/access_tree.gd.
+	add_child(AccessTree.new())
 
 	_save_as = ConfirmationDialog.new()
 	_save_as.title = "Save as"
@@ -620,6 +636,8 @@ func _run_now(name: String) -> void:
 ## said when it cannot be: Alt-C with nothing selected says to select a
 ## part first, where it said nothing.
 func run_key(action: String) -> void:
+	if action == "report_bug":
+		_report_from = "key"
 	if ColourKeys.owns(action):
 		ColourKeys.press(action, self)
 	elif action == "select_cycle":
@@ -757,7 +775,8 @@ func doing(name: String) -> String:
 ## never put off a frame to say so first. (The clipboard is not among
 ## them: in a browser the app keeps its own, EditVerbs.copy.)
 const IN_THE_PRESS: Array[String] = ["open", "import_ldraw", "import_io", "import_lxf",
-	"import_mesh", "mosaic", "brickify", "full_screen", "docs", "website", "beta_hub", "quit", "new_window"]
+	"import_mesh", "mosaic", "brickify", "full_screen", "docs", "website", "beta_hub", "quit", "new_window",
+	"import_into"]
 
 ## The commands that open a tab of their own in a browser (BookletMaker):
 ## run at once there, as those above are.
@@ -768,7 +787,9 @@ const OPENS_A_TAB: Array[String] = ["instructions"]
 ## so no "Exporting…" bar sits under the dialog while the person chooses.
 ## The shop lists are counted before they ask, and are said first as ever.
 const ASKS_WHERE: Array[String] = ["save_as", "export_ldraw", "export_io", "export_picture",
-	"export_all", "instructions"]
+	"export_all", "instructions",
+	# subexport (APP_UX7 #19).
+	"export_submodels"]
 
 ## Laying a floor again under a big model: its plates cover more ground.
 const FLOOR_SLOW_FROM := 3000
@@ -909,6 +930,18 @@ func can(name: String) -> bool:
 	return not found.can.is_valid() or bool(found.can.call())
 
 
+## Why the model may not be changed now, in why_not's words: it is shared
+## to look at, or still being laid. "" when it may. The two refusals can()
+## and why_not() give first for every command that changes the model,
+## asked by the model tree's drag, which is no command (Outliner).
+func why_frozen() -> String:
+	if read_only:
+		return "This model is shared to look at"
+	if store != null and store.laying:
+		return "The model is still opening"
+	return ""
+
+
 ## Why a command cannot be used now, in a few words: "Select a part
 ## first". "" when it can. Find a command shows it beside a greyed row
 ## rather than leave the row out.
@@ -953,6 +986,8 @@ const NEEDS: Dictionary = {
 	"back_to_site": "In a browser only",
 	"check_updates": "In the desktop app only: the site updates itself",
 	"reinstall": "In the desktop app only", "restart": "Reload the tab instead",
+	# subexport (APP_UX7 #19).
+	"export_submodels": "Make a sub-model first",
 }
 
 
@@ -967,14 +1002,14 @@ var read_only: bool = false
 const LOOKING: Array[String] = ["view_default", "view_front", "view_back",
 	"view_left", "view_right", "view_top", "view_bottom", "view_iso", "fit",
 	"fit_model", "ortho", "full_screen", "timeline", "parts_list", "instructions",
-	"docs", "website", "beta_hub", "feedback", "about", "back_to_site", "palette"]
+	"docs", "website", "beta_hub", "feedback", "report_bug", "about", "back_to_site", "palette"]
 
 
 ## What may be done while a model is being laid (ModelStore.laying): look
 ## at what is down from another side, and nothing that reads the model.
 const WHILE_LAYING: Array[String] = ["view_default", "view_front", "view_back",
 	"view_left", "view_right", "view_top", "view_bottom", "view_iso", "fit",
-	"ortho", "full_screen", "docs", "website", "beta_hub", "feedback", "about", "back_to_site",
+	"ortho", "full_screen", "docs", "website", "beta_hub", "feedback", "report_bug", "about", "back_to_site",
 	"palette"]
 
 
@@ -1065,6 +1100,10 @@ func _define() -> void:
 	_add("import_mesh", "3D model to brickify (.obj, .stl, .ply, .3mf, .vox, .fbx, .gltf, .glb)…", 0,
 		func() -> void: bar.brickify_wanted.emit(), Callable(),
 		"A sculpt, a scan or any 3D model, laid in bricks")
+	# A model put into this one whole, as a sub-assembly with its own steps
+	# (ModelBar.into_model, APP_UX4 intomodel).
+	_add("import_into", "Into this model…", 0, bar.into_model, Callable(),
+		"A saved model, an example, a file or one from the library, put in this model as a sub-assembly with its own steps: chosen, then a click where it goes")
 	_add("save", "Save", CTRL | KEY_S, bar._on_save, something,
 		"Keep this model under its name")
 	_add("save_as", "Save as…", CTRL | SHIFT | KEY_S, _ask_save_as, something,
@@ -1106,6 +1145,13 @@ func _define() -> void:
 		func() -> void: await app.get("_exports").shop_list("pickabrick", {}, true),
 		something, "LEGO® element numbers and how many of each, to upload at LEGO® Pick a "
 			+ "Brick, 400 to a file; the parts with no number known are named")
+	# subexport (APP_UX7 #19): each sub-model as a file of its own, in one
+	# .zip (src/ui/exports.gd, src/parts/submodel_file.gd); one from the model
+	# tree's menu (src/ui/outliner.gd).
+	_add("export_submodels", "Each sub-model as its own file (.zip)", 0,
+		func() -> void: await app.get("_exports").each_submodel(true),
+		func() -> bool: return something.call() and not assemblies.paths().is_empty(),
+		"Every sub-model as an LDraw file of its own, with its own sub-models and steps, in one .zip")
 	_add("render", "Render…", 0, func() -> void: app.call("open_render"), something,
 		"A photo-real picture or turntable of the model, on a backdrop, in studio light")
 	# src/ui/render_queue.gd, loaded the first time it is asked for.
@@ -1263,6 +1309,13 @@ func _define() -> void:
 		if timeline != null:
 			timeline.ask_step_to(), selected,
 		"The selected parts into any step, its number typed")
+	# stepnames (APP_UX6 #9): the step the timeline is on named, as Studio
+	# names a step; said beside its number on the timeline, in Build it and
+	# in the booklet, and kept in the file.
+	_add("step_name", "Name the step…", 0, func() -> void:
+		if timeline != null:
+			timeline.ask_step_name(), on_a_step,
+		"What the step the timeline is on is called (\"Build the cockpit\"): said beside its number on the timeline, in Build it and in the booklet")
 	# How the booklet prints the step the timeline is on (BookletLooks), as
 	# Studio's Instruction Maker sets each step's view and page.
 	for look: Array in [
@@ -1620,6 +1673,10 @@ func _define() -> void:
 		"For beta testers: what to try, what we know is wrong, and how to tell us")
 	_add("feedback", "Send feedback…", 0, _show_feedback, Callable(),
 		"Something wrong, an idea or a question, to the people who make Brickworks")
+	# bugreport (2026-11-09): a bug, with the window's picture to mark the
+	# spot on. Its key is the keymap's (Alt-Shift-R, Keymap.PRESET_KEYS).
+	_add("report_bug", "Report a bug…", 0, func() -> void: report_bug(_report_from_now()), Callable(),
+		"Tell us what went wrong, with a picture of the window to mark the spot on")
 	_add("about", "About Brickworks", 0, _show_about)
 	# The web app had no way back to the site but the browser's own Back
 	# (brand373). This tab, the site's own address: a preview's on a preview.
@@ -1689,12 +1746,7 @@ func open_context(at: Vector2) -> void:
 	# Painting is with the colour in hand: which one, said.
 	context.set_item_text(item_index(context, "paint"),
 		"Paint with %s" % library.color(builder.held_color).name)
-	context.reset_size()
-	var room: Vector2 = app.get_viewport().get_visible_rect().size
-	var corner: Vector2 = Vector2(minf(at.x, room.x - context.size.x - 4.0),
-		minf(at.y, room.y - context.size.y - 4.0))
-	context.position = Vector2i(corner.max(Vector2.ZERO))
-	context.popup()
+	TouchSizing.popup_beside(context, at, false)
 
 
 ## Where a command is in one menu: each menu that lists a command has an
@@ -1995,8 +2047,8 @@ func _fill_history(menu: PopupMenu) -> void:
 func _ask_save_as() -> void:
 	# The desktop's is the platform's Save dialog, and a file where it says.
 	if not OS.has_feature("web"):
-		var path: String = await SaveTo.ask(ModelStore._safe_name(bar.model_name())
-			+ bar.ldraw_extension(), "", "Save as")
+		var path: String = await SaveTo.ask(SubmodelFile.named(bar.model_name(),
+			bar.ldraw_extension()), "", "Save as")
 		if not path.is_empty():
 			await bar.save_to_file(path)
 		return
@@ -2241,6 +2293,79 @@ func _show_feedback() -> void:
 	feedback.account = app.get("_account")
 	feedback.recent = app.get("_log")
 	feedback.open(window)
+
+
+# -- bugreport (2026-11-09): reporting a bug is one press from anywhere -------
+
+## Report a bug, in the top bar beside Account, while the beta is open
+## ([method set_beta_open]): as Linear's and Figma's betas keep theirs in
+## sight, the one place a tester looks. Help, Report a bug… and its key are
+## there whatever the beta.
+var report_button: Button = null
+## Whether the beta is open for the account signed in (Account.beta_open).
+var beta_open: bool = false
+## Where the next Report a bug… was asked from: the key says so, and the
+## top bar's button; the menus are "menu".
+var _report_from: String = "menu"
+
+
+## The top bar's Report a bug, beside Account, hidden until the beta is open.
+func _make_report_button() -> void:
+	var account: Control = bar.controls_by_name().get("account")
+	if account == null:
+		return
+	var row: Container = account.get_parent()
+	report_button = bar._button(row, "Report a bug", func() -> void:
+		_report_from = "bar"
+		run("report_bug"),
+		"Tell us what went wrong, with a picture of the window to mark the spot on (%s)"
+		% Keymap.written("report_bug"))
+	report_button.name = "report_bug"
+	report_button.accessibility_name = "Report a bug"
+	row.move_child(report_button, account.get_index())
+	report_button.visible = _report_shown()
+
+
+## The beta open, or not, for the account signed in: the top bar's Report a
+## bug and the error notices' Report this are there while it is (Main).
+func set_beta_open(on: bool) -> void:
+	beta_open = on
+	if report_button == null and bar != null:
+		_make_report_button()
+	if report_button != null:
+		report_button.visible = _report_shown()
+
+
+## In the top bar while the beta is open; a phone's bar has no room for it,
+## and More holds Help's Report a bug… there.
+func _report_shown() -> bool:
+	return beta_open and not Phone.on()
+
+
+func _report_from_now() -> String:
+	var where: String = _report_from
+	_report_from = "menu"
+	return where
+
+
+## Report a bug…: the window pictured as it is, once a menu has gone from
+## it and before the dialog covers it, and the report opened over the model.
+## From an error notice ([param where] "notice"), [param error] is what it
+## said and [param lines] the log up to it.
+func report_bug(where: String, lines: PackedStringArray = PackedStringArray(), error: String = "") -> void:
+	# A report already open keeps what was written in it; Send feedback open
+	# goes, so the picture is of the window and not of it.
+	if _feedback != null and _feedback.visible:
+		if bool(_feedback.get("reporting")):
+			_feedback.grab_focus()
+			return
+		_feedback.hide()
+	for _n: int in 2:
+		await get_tree().process_frame
+	var window: Image = get_viewport().get_texture().get_image()
+	feedback.account = app.get("_account")
+	feedback.recent = app.get("_log")
+	feedback.open_report(window, where, lines, error)
 
 
 func _show_about() -> void:
@@ -2652,6 +2777,7 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 	# (AuthorSteps.adopt_plan): those are read after.
 	var looked: Dictionary = BookletLooks.items_by_step(world, skip)
 	var undo: Array = AuthorSteps.ensure(world, library, skip)
+	var ensured: Dictionary = Assemblies.ensured(world, undo)
 	if looked.is_empty():
 		looked = BookletLooks.items_by_step(world, skip)
 	var where: Array = _step_at(at)
@@ -2669,10 +2795,10 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 		_take_back(undo)
 		return _not_in_step(number, str(where[0]), ids, level, skip)
 	# What the edit takes out of its step: a step keeps its look with the
-	# parts it keeps.
+	# parts it keeps. In every copy of a sub-model, as the edit moves them.
 	var taken: Dictionary = {}
 	if op in ["prev", "next", "new", "to"]:
-		for items: Variant in AuthorSteps._selected(world, ids, level, skip).values():
+		for items: Variant in AuthorSteps._moved(world, ids, level, skip).values():
 			for item: Dictionary in items:
 				taken[BookletLooks.item_name(item)] = true
 	elif op == "delete" and int(where[1]) >= 0:
@@ -2745,6 +2871,17 @@ func change_steps(op: String, ids: Array, at: Instructions.Step) -> String:
 	if not now.is_empty():
 		number = int(now[0])
 	builder.record(undo, words)
+	if not ensured.is_empty():
+		builder.last_step()["ensured"] = ensured
+	# The other copies of a sub-model built in steps of its own take the edit
+	# too, in the same undo (Assemblies.copies_follow), as a file writes the
+	# sub-model once: a part of one wing moved to the wing's other step showed
+	# on that wing alone, and opened again on both, or on neither (copyfaults).
+	if assemblies != null:
+		var made: int = (builder.last_step().get("steps", []) as Array).size()
+		assemblies.after_edit()
+		if (builder.last_step().get("steps", []) as Array).size() != made:
+			planned = Instructions.plan(world, library, skip, {}, true)
 	# Saved with the model, as any edit is (not _on_model_edited, which
 	# would work the timeline out a second time).
 	store.adopt()
@@ -2915,6 +3052,11 @@ func change_look(op: String, at: Instructions.Step, fields: Dictionary = {}) -> 
 		return "this model is open to look at, not to change"
 	if at == null:
 		return "go to a step on the timeline first"
+	# A name of only what draws nothing is refused, before the model is
+	# given steps for it (sncheck N2).
+	var refused: String = BookletLooks.name_refused(fields.get("name", "")) if op == "name" else ""
+	if not refused.is_empty():
+		return refused
 	var steps: StepsBar = app.get("_steps")
 	var number: int = at.number
 	var skip: Dictionary = store.scenery
@@ -3124,6 +3266,32 @@ func change_look(op: String, at: Instructions.Step, fields: Dictionary = {}) -> 
 				notes.append({"image": file, "at": spot})
 				words = "a picture put on step %d's page" % number
 			change = {"notes": notes}
+		"name":
+			# stepnames: what the step is called, beside its number on the
+			# timeline, in Build it and in the booklet (BookletLooks "name");
+			# name= the words, "" to take it off.
+			var named: String = BookletLooks.name_of(fields.get("name", ""))
+			change = {"name": named if not named.is_empty() else null}
+			# Quoted as a motion's name is (Motions.quoted), kept as written in
+			# every language. A callout's step is said as the timeline numbers
+			# it, and a sub-model placed more than once has one set of steps,
+			# so its name is every copy's: said, with how many (snreview F4,
+			# F5, F8).
+			var quoted: String = Motions.quoted(named)
+			var copies: int = BookletLooks.copies_of(world, section, skip)
+			var whose: String = Instructions._name_of(section)
+			if at.in_callout():
+				words = ("step %d's callout step %d named %s" % [number, at.callout_step, quoted]) \
+					if not named.is_empty() \
+					else "step %d's callout step %d's name taken off" % [number, at.callout_step]
+			else:
+				words = ("step %d named %s" % [number, quoted]) if not named.is_empty() \
+					else "step %d's name taken off" % number
+			if copies > 1:
+				words += ", in each of the %d copies of the %s" % [copies, whose]
+				Language.keep_name(whose)
+			if not named.is_empty():
+				Language.keep_name(quoted)
 		"sign":
 			# The turn sign taken off the step, or put back (BookletLooks
 			# "sign"); sign= says which, else it turns over.
@@ -3316,16 +3484,24 @@ func page_setup(fields: Dictionary) -> String:
 		style.erase("cover_lost")
 		sheet.change(style)
 		words = "the page style \"%s\"" % name
+	# A picture given under a name the file has another page's picture by
+	# (a sub-model's page, a later build's words kept as written): one of its
+	# own. Up to metalines the model's new picture behind its pages took the
+	# name, and the sub-model's pages showed it at the next open, their own
+	# lost (booklook2).
+	var others: PackedStringArray = store.pictures_in_file() if store != null else PackedStringArray()
 	if given.has("picture_data"):
 		var named: String = str(given.get("picture", BookletSheet.PICTURE_NAME + ".jpg")).to_lower()
 		if not named.begins_with(BookletLooks.IMAGE_PREFIX):
 			named = BookletSheet.PICTURE_NAME + "." + named.get_extension()
+		named = BookletSheet.free_name(named, others, [was.picture, was.cover_picture])
 		pictures[named] = str(given["picture_data"])
 		given["picture"] = named
 	# booklook: the cover's picture of the person's own, named as it is.
 	if given.has("cover_picture_data"):
 		var named: String = str(given.get("cover_picture", BookletSheet.COVER_NAME + ".jpg")).to_lower()
 		named = BookletSheet.COVER_NAME + "." + ("png" if named.get_extension() == "png" else "jpg")
+		named = BookletSheet.free_name(named, others, [was.picture, was.cover_picture])
 		pictures[named] = str(given["cover_picture_data"])
 		given["cover_picture"] = named
 	for field: String in ["usual", "style", "save_as", "picture_data", "remove_style",
@@ -3720,6 +3896,8 @@ func controls_by_name() -> Dictionary:
 		out["save_as_cancel"] = _save_as.get_cancel_button()
 	if _feedback != null:
 		out.merge(_feedback.controls_by_name())
+	if report_button != null and report_button.is_visible_in_tree():
+		out["report_bug"] = report_button
 	# About's links to the licences in full, and the licence open.
 	if _about != null and _about.visible:
 		out["about_ok"] = _about.get_ok_button()

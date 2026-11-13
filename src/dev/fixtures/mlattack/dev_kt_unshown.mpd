@@ -1,0 +1,25 @@
+0 FILE cabin.ldr
+0 Cabin With A Custom Part
+0 Name: cabin.ldr
+0 Author: Jane Builder [jbuilder]
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+1 4 0 0 -20 1 0 0 0 1 0 0 0 1 3020.dat
+1 4 0 0 20 1 0 0 0 1 0 0 0 1 3020.dat
+1 1 0 -24 -20 1 0 0 0 1 0 0 0 1 3001.dat
+1 1 0 -24 20 1 0 0 0 1 0 0 0 1 3001.dat
+1 14 0 -48 0 1 0 0 0 1 0 0 0 1 3004.dat
+0 // the roof, with the author's own sign on it
+1 16 0 -48 60 1 0 0 0 1 0 0 0 1 cabin - roof.ldr
+1 2 0 -72 0 1 0 0 0 1 0 0 0 1 3023.dat
+0 NOFILE
+0 FILE cabin - roof.ldr
+0 Roof
+0 Name: cabin - roof.ldr
+0 Author: Jane Builder [jbuilder]
+0 // a 2 x 2 plate
+1 0 0 0 0 1 0 0 0 1 0 0 0 1 3022.dat
+0 // the author's own sign, a part no library has
+1 4 0 -8 0 1 0 0 0 1 0 0 0 1 zzsign99.dat
+0 // a 1 x 1 brick on it
+1 72 0 -24 10 1 0 0 0 1 0 0 0 1 3005.dat
+0 NOFILE

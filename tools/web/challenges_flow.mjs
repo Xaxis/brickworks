@@ -257,7 +257,7 @@ try {
     const admin = await adminContext.newPage();
     listen(admin, `admin at ${width} px`);
     admin.on("dialog", (dialog) => dialog.accept());
-    await admin.goto(`${site}/admin?tests=1`, { waitUntil: "load" });
+    await admin.goto(`${site}/admin?tests=1#gallery/challenges`, { waitUntil: "load" });
     await until(admin, () => !document.getElementById("view").classList.contains("hide"), "the admin page", 60);
     if (width === 1280) {
       await admin.fill('#challenge-form input[name="title"]', TITLE);
@@ -618,7 +618,7 @@ try {
     const admin = await adminContext.newPage();
     listen(admin, "admin, ending");
     admin.on("dialog", (dialog) => dialog.accept());
-    await admin.goto(`${site}/admin?tests=1`, { waitUntil: "load" });
+    await admin.goto(`${site}/admin?tests=1#gallery/challenges`, { waitUntil: "load" });
     await until(admin, () => !document.getElementById("view").classList.contains("hide"), "the admin page", 60);
     const pressed = Date.now();
     await admin.click(`#challenges tr[data-challenge="${ids.challenge}"] button`);

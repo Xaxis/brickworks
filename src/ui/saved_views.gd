@@ -48,50 +48,68 @@ const COMMAND := "saved_view_"
 
 
 ## The views [param text] keeps, in its order, as [method written_into] wrote
-## them (the file's coordinates). A line this cannot read is passed over, and
-## a name kept twice is the first one's. Only the main model's lines, as
-## LdrModel reads which model a line is of (LdrModel.main_span): a
-## sub-model's views are its own, and stay in it.
+## them (the file's coordinates).
 static func read(text: String) -> Array:
+	return read_from(MetaIndex.of_text(text))
+
+
+## The views the model's own lines keep (MetaIndex: a sub-model's views are
+## its own, and stay in it), in their order, each line read taken. A line
+## this cannot read, a newer build's say, stays in the file as it is, where
+## it is (MetaIndex.lines_for), and is said ([method unread_words]); up to
+## metalines a save left it out, unsaid. A view of a name an earlier one has
+## is beaten (MetaIndex.Line.beaten): kept while the views are as the open
+## read them, and let go once they change, or it came back as the view of
+## that name once the first was taken out (mlcheck F2).
+static func read_from(metas: MetaIndex) -> Array:
 	var out: Array = []
-	if not text.contains(META):
-		return out
 	var taken: Dictionary = {}
-	for line: String in text.substr(0, LdrModel.main_end(text)).split("\n"):
-		if not line.begins_with(META):
+	for line: MetaIndex.Line in metas.own(["VIEW"]):
+		var view: Dictionary = _parsed(line.said)
+		if view.is_empty():
 			continue
-		var view: Dictionary = _parsed(line.substr(META.length()).strip_edges())
-		if view.is_empty() or taken.has(_key(view["name"])):
+		if taken.has(_key(view["name"])):
+			line.beaten = true
 			continue
 		taken[_key(view["name"])] = true
+		line.taken = true
 		out.append(view)
 	return out
 
 
-## [param text] with [param views] (the file's coordinates) written into it
-## after its main model's first line (LdrModel.into_main), in their order,
-## each ending as the text's lines do, and any its main model had taken out;
-## with none, only taken out. A sub-model's lines are left as they are: up
-## to 2026-11-07 a view kept in one was moved into the main model at the
-## first save (lreview).
-static func written_into(text: String, views: Array) -> String:
-	if views.is_empty() and not text.contains(META):
-		return text
-	# The main model's lines, and its sub-models' after them as they are.
-	var end: int = LdrModel.main_end(text)
-	var kept := PackedStringArray()
-	var all: PackedStringArray = text.substr(0, end).split("\n")
-	for line: String in all:
-		if not line.begins_with(META):
-			kept.append(line)
-	var out: String = "\n".join(kept)
-	# The text's last line taken out: the line end before it goes too.
-	if end == text.length() and not all.is_empty() and all[all.size() - 1].begins_with(META):
-		out = out.trim_suffix("\r")
+## The lines [param views] (the file's coordinates) are kept on, in their
+## order.
+static func lines_of(views: Array) -> PackedStringArray:
 	var lines := PackedStringArray()
 	for view: Dictionary in views:
 		lines.append(META + JSON.stringify(view))
-	return LdrModel.into_main(out + text.substr(end), lines)
+	return lines
+
+
+## [param unread], view lines an open could not read, and [param beaten],
+## those of a name an earlier line has, in words for where an open says
+## what it kept: "1 view line not read, kept in the file as it is"; "" for
+## none. One of a name another has is kept only until the views change.
+static func unread_words(unread: PackedStringArray,
+		beaten: PackedStringArray = PackedStringArray()) -> String:
+	var said := PackedStringArray()
+	if not unread.is_empty():
+		said.append("1 view line not read, kept in the file as it is" if unread.size() == 1
+			else "%d view lines not read, kept in the file as they are" % unread.size())
+	if not beaten.is_empty():
+		said.append(("1 view line names a view an earlier one has: not read, and kept "
+			+ "until the views change") if beaten.size() == 1 else ("%d view lines name "
+			+ "views earlier ones have: not read, and kept until the views change") % beaten.size())
+	return " — ".join(said)
+
+
+## [param text] with [param views] (the file's coordinates) written into it
+## (MetaIndex): each its main model has that says one kept where it is, the
+## rest under its first line, and any it had that is not one taken out. A
+## sub-model's lines are left as they are: up to 2026-11-07 a view kept in
+## one was moved into the main model at the first save (lreview).
+static func written_into(text: String, views: Array) -> String:
+	return MetaIndex.written(text, [MetaIndex.family(["VIEW"], lines_of(views))])
 
 
 ## [param views] as the window holds them, in the file's coordinates: the
@@ -119,6 +137,48 @@ static func moved(views: Array, by: Vector3) -> Array:
 	for view: Dictionary in views:
 		out.append(_with_focus(view, focus_of(view) + by))
 	return out
+
+
+## A sub-model's view [param line] carried by [param through], from the file's
+## coordinates of one frame of its definition to another's (Assemblies
+## .rebased): the point it looks at, and the way it looks turned with it, a
+## turn about the model's up as its yaw and any other as its frame. A
+## reflection (a mirrored copy's frame) is a mirror across the x axis and
+## then a turn: the view looks the mirrored way, its yaw the other way round
+## and its frame mirrored, from the mirrored place; up to 2026-11-11 only its
+## point was carried, and it looked the way it had (pccheck FW, FX). A line
+## this cannot read is as it was.
+static func through_line(line: String, through: Transform3D) -> String:
+	if not line.begins_with(META):
+		return line
+	var view: Dictionary = _parsed(line.substr(META.length()).strip_edges())
+	if view.is_empty():
+		return line
+	var out: Dictionary = _with_focus(view, through * focus_of(view))
+	var flip: Basis = Basis.from_scale(LdrModel.FLIP)
+	var turn: Basis = (flip * through.basis * flip).orthonormalized()
+	var yaw: float = float(view["yaw"])
+	var own: Basis = _frame_of(view)
+	if turn.determinant() < 0.0:
+		var across := Basis.from_scale(Vector3(-1.0, 1.0, 1.0))
+		turn = turn * across
+		yaw = -yaw
+		own = across * own * across
+		out["yaw"] = snappedf(yaw, 0.000001)
+		if view.has("frame"):
+			out["frame"] = _quaternion_words(own.get_rotation_quaternion())
+	if not turn.is_equal_approx(Basis.IDENTITY):
+		if not view.has("frame") and (turn * Vector3.UP).is_equal_approx(Vector3.UP):
+			var ahead: Vector3 = turn * Vector3.BACK
+			out["yaw"] = snappedf(yaw + atan2(ahead.x, ahead.z), 0.000001)
+		else:
+			out["frame"] = _quaternion_words((turn * own).get_rotation_quaternion())
+	return META + JSON.stringify(out)
+
+
+static func _quaternion_words(q: Quaternion) -> Array:
+	return [snappedf(q.x, 0.000001), snappedf(q.y, 0.000001), snappedf(q.z, 0.000001),
+		snappedf(q.w, 0.000001)]
 
 
 ## Whether [param a] and [param b] are the same views, to a hundredth of an

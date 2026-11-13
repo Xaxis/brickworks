@@ -1,0 +1,22 @@
+{
+ "shots": [
+  {
+   "id": "shortcuts-keys",
+   "source": "app",
+   "setup": [
+    {
+     "run": "keys",
+     "after": 40
+    }
+   ],
+   "crop": "@opened",
+   "pad": 0,
+   "width": 1000,
+   "alt": "The keys sheet: a box to search it and Keys like Brickworks, then the keys for building and for the view, each drawn as keys and mouse buttons beside what it does.",
+   "caption": "Help › Keys and controls (F1): the same list as this page.",
+   "features": [
+    "ui:controls panel and hint"
+   ]
+  }
+ ]
+}

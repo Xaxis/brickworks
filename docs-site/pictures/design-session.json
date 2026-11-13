@@ -1,0 +1,31 @@
+{
+ "shots": [
+  {
+   "id": "design-session-board",
+   "source": "app",
+   "setup": [
+    {
+     "assistant": true,
+     "after": 30
+    }
+   ],
+   "tool": {
+    "name": "view_board",
+    "arguments": {
+     "views": [
+      "front",
+      "left",
+      "top",
+      "corner"
+     ]
+    }
+   },
+   "width": 900,
+   "alt": "What view_board answers an assistant with: the red car from the front, the left, the top and a corner, four labelled views in one picture.",
+   "caption": "view_board: four sides of the model in one picture, as the assistant sees it.",
+   "features": [
+    "lib:what a session sees over mcp"
+   ]
+  }
+ ]
+}

@@ -211,6 +211,9 @@ func _add_scrim() -> void:
 	_scrim.visible = visible
 	parent.add_child(_scrim)
 	parent.move_child(_scrim, get_index())
+	# Just under the panel wherever it goes: Render brought to the front
+	# brings its veil (HudFront).
+	_scrim.set_meta(HudFront.UNDER, self)
 
 
 ## Whether nobody can see the window, as Main decides it (Main._watch_view):
@@ -238,7 +241,7 @@ func open() -> void:
 	# lights (APP_UX5 #7): the model's lights as it keeps them now.
 	_list_lamps(0)
 	_describe()
-	visible = true
+	HudFront.show_panel(self)
 	if _scrim != null:
 		_scrim.visible = true
 	# The window's own model is behind the veil: not drawing it while the
@@ -522,6 +525,7 @@ func _build() -> void:
 			settings.look = str(RenderSettings.LOOKS.keys()[n])
 			_describe()
 			_ask_preview())
+	_drawn_looks_below()
 	_look_note = _note(right)
 	_look_note.custom_minimum_size.y = 30
 
@@ -954,6 +958,9 @@ func _describe() -> void:
 	else:
 		_lens_note.text = "At f/%d, sharp %d%% of the way back, and softer either side." % [
 			roundi(settings.f_stop), roundi(settings.focus * 100.0)]
+	# lineart (APP_UX7 #22): the line looks' words, and what of the grade
+	# and the lens they keep.
+	_say_line_look()
 	var seconds: float = float(settings.frames) / float(settings.fps)
 	var kept: String = "a GIF" if _as_gif else "an animated WebP"
 	_kept_note.text = ("A GIF plays anywhere a picture goes, chats, forums and mail included: "
@@ -978,6 +985,38 @@ func _describe() -> void:
 		chosen_motion(), length, settings.fps,
 		"framed on what its parts sweep through" if _on_what_moves else "the camera as the picture is",
 		kept, "" if OS.has_feature("web") else ", the frames, and an MP4 where ffmpeg is installed"]
+
+
+# -- lineart (APP_UX7 #22): the Line art and Comic looks' words --------------
+
+
+## The looks drawn in ink (LineArt) on a row of their own under the
+## photographed ones, one choice across the two: four in one row did not fit
+## the column in French ("Comme dans la fenêtre", "Photo produit", "Dessin au
+## trait", "BD").
+func _drawn_looks_below() -> void:
+	var first: Control = _looks[0].get_parent()
+	var second := HBoxContainer.new()
+	second.add_theme_constant_override("separation", 2)
+	first.add_sibling(second)
+	var keys: Array = RenderSettings.LOOKS.keys()
+	for n: int in _looks.size():
+		if LineArt.drawn_in_lines(str(keys[n])):
+			_looks[n].reparent(second, false)
+
+
+## What a line look (LineArt) is, in the Look row's note; and, since the
+## lines and the dots are the picture, that it is drawn in one frame at any
+## grade, and sharp through any lens.
+func _say_line_look() -> void:
+	if not LineArt.drawn_in_lines(settings.look):
+		return
+	_look_note.text = ("Black lines on white, as you would ink it, the shade in halftone dots: "
+		+ "to colour over or print." if settings.look == "lineart" else
+		"Bold lines over each part's own colour, flat, with halftone dots where the light leaves it.")
+	_quality_note.text = "Drawn in one frame at any quality: the lines and the dots are the picture."
+	if settings.f_stop > 0.0:
+		_lens_note.text = "Line art and Comic are drawn sharp all through."
 
 
 ## The motions [param name] plays, in order.

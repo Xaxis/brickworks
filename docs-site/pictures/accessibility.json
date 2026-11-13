@@ -1,0 +1,98 @@
+{
+ "shots": [
+  {
+   "id": "accessibility-keyboard",
+   "source": "app",
+   "setup": [
+    {
+     "call": "_bin._prints.grab_focus",
+     "after": 10
+    },
+    {
+     "key": "Up",
+     "after": 10
+    },
+    {
+     "key": "Up",
+     "after": 10
+    },
+    {
+     "key": "Left",
+     "after": 10
+    },
+    {
+     "key": "Left",
+     "after": 30
+    }
+   ],
+   "crop": "_bin",
+   "pad": 0,
+   "alt": "The parts bin with one part's tile ringed in blue: where the keys are, moved there with the arrows.",
+   "caption": "The arrows move the keyboard's focus through the parts bin; Enter takes the part.",
+   "features": [
+    "ui:accessibility",
+    "ui:parts bin"
+   ]
+  },
+  {
+   "id": "accessibility-whats-this",
+   "source": "app",
+   "setup": [
+    {
+     "run": "whats_this",
+     "after": 20
+    },
+    {
+     "click": "_shell.toolbar._snap",
+     "after": 30
+    }
+   ],
+   "crop": [
+    "@opened",
+    "_shell.toolbar._snap"
+   ],
+   "pad": 12,
+   "alt": "What's This? on the toolbar: the Snap chooser outlined, and a box under it naming Snap, saying what it does, and that it is off now.",
+   "caption": "Help › What's This? (Shift+F1): the next click says what a control does instead of doing it.",
+   "features": [
+    "ui:what's this"
+   ]
+  },
+  {
+   "id": "accessibility-size",
+   "source": "app",
+   "setup": [
+    {
+     "run": "settings",
+     "after": 30
+    },
+    {
+     "call": "_controls.interface_choice.select",
+     "args": [
+      4
+     ]
+    },
+    {
+     "call": "_controls.interface_choice.emit_signal",
+     "args": [
+      "item_selected",
+      4
+     ],
+     "after": 60
+    },
+    {
+     "key": "Escape",
+     "after": 60
+    }
+   ],
+   "crop": "window",
+   "width": 1200,
+   "settle": 60,
+   "alt": "The Brickworks window at Interface size 150%: the menus, the toolbar, the parts bin's tiles and the words all half as big again, the model as before.",
+   "caption": "Settings, Interface size 150%: every control and word bigger.",
+   "features": [
+    "ui:accessibility"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,15 @@
+0 FILE own.mpd
+0 Own Colours
+0 Name: own.mpd
+0 Author: Olive Own [oown]
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 post.ldr
+1 1 200 0 0 1 0 0 0 1 0 0 0 1 post.ldr
+0 NOFILE
+0 FILE post.ldr
+0 Post
+0 Name: post.ldr
+0 Author: Olive Own [oown]
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 4 0 -24 0 1 0 0 0 1 0 0 0 1 3003.dat
+1 16 -10 -48 -10 1 0 0 0 1 0 0 0 1 3005.dat
+0 NOFILE

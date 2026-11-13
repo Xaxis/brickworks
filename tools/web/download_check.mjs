@@ -54,6 +54,7 @@ import { launch, allPictures } from "./browser.mjs";
 import { createServer } from "node:http";
 import { readFile, mkdir } from "node:fs/promises";
 import { resolve, join, extname } from "node:path";
+import { TYPES } from "./static_server.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -67,9 +68,6 @@ const CSP = "default-src 'self'; script-src 'self'; "
   + "connect-src 'self' https://overlook.technology; "
   + "style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; "
   + "base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
-const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript",
-  ".json": "application/json", ".png": "image/png", ".svg": "image/svg+xml",
-  ".css": "text/css", ".webp": "image/webp" };
 
 const CHROME = "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0";
 const brands = [{ brand: "Chromium", version: "130" }, { brand: "Not?A_Brand", version: "99" }];
@@ -149,6 +147,13 @@ if (!target) {
       response.writeHead(200, { ...headers, "Content-Type": "application/json" });
       return response.end(JSON.stringify({ pick: null,
         small: { size: "small", label: "Small, under 200 parts", most: 200, models: [], more: false } }));
+    }
+    // The beta's bar asks on every page whether the beta is open (web/betabar.js,
+    // since 2026-11-09). Off here: the bar is betahome_flow's to judge, and
+    // unanswered, every page logged a 404.
+    if (path === "/api/plans" && url.searchParams.get("op") === "beta_spots") {
+      response.writeHead(200, { ...headers, "Content-Type": "application/json" });
+      return response.end(JSON.stringify({ beta: "off" }));
     }
     if (/^\/m\/[A-Za-z0-9]{10}\.png$/.test(path)) {
       response.writeHead(200, { ...headers, "Content-Type": "image/png" });

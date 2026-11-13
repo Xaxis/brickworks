@@ -91,20 +91,13 @@ static func make(path: String, size: int) -> Dictionary:
 	if not str(read.get("error", "")).is_empty():
 		return read
 	var model: LdrModel = LdrModel.parse(str(read["text"]), path.get_file())
+	# A reference is a sub-model where the file has a FILE of its name and a
+	# part where it has none, as the app reads it (LdrModel._inline).
 	var placed: Array[LdrModel.Placement] = model.flatten()
-	# Every part placed and every sub-model's name: a sub-model named after
-	# a part is the part, as the app reads it (LdrModel.flatten's known
-	# parts), and the file is read again so where one is.
 	var named: Dictionary = {}
 	for placement: LdrModel.Placement in placed:
 		named[placement.part_id] = true
-	for key: String in model.submodels:
-		named[key] = true
 	var meshes: Dictionary = mesh_names(PackedStringArray(named.keys()))
-	for key: String in model.submodels:
-		if meshes.has(key):
-			placed = model.flatten(meshes)
-			break
 	if placed.is_empty():
 		return {"error": "there are no parts in %s" % path.get_file()}
 	var shapes: Dictionary = _shapes(placed, meshes)

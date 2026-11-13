@@ -642,15 +642,17 @@ func _save_then_new() -> void:
 ## sooner told a person their work was safe while closing the tab lost it.
 func _say_when_stored(name: String) -> void:
 	var path: String = ModelStore.SAVE_DIR + ModelStore._safe_name(name) + ".ldr"
+	# A joint of a motion whose part is gone, written as it was.
+	var gone: String = " — " + store.motions_gone_words if not store.motions_gone_words.is_empty() else ""
 	if ModelStore.stored(path):
-		_say("saved “%s”" % name)
+		_say("saved “%s”%s" % [name, gone])
 		return
 	_status.text = "saving “%s” in this browser…" % name
 	for _n: int in 240:
 		await get_tree().create_timer(0.5).timeout
 		if ModelStore.stored(path):
 			break
-	_say("saved “%s”" % name if ModelStore.stored(path)
+	_say("saved “%s”%s" % [name, gone] if ModelStore.stored(path)
 		else "“%s” is not in this browser's storage yet — keep this tab open" % name)
 
 
@@ -689,9 +691,8 @@ func _on_open() -> void:
 			for example: ModelStore.Entry in examples:
 				_saves.add_item(example.describe(), _entries.size())
 				_entries.append(example)
-	_saves.reset_size()
-	_saves.position = Vector2i(get_global_mouse_position()) + Vector2i(0, 8)
-	_saves.popup()
+	# Beside the pointer, at whatever size a phone gives it.
+	TouchSizing.popup_beside(_saves, get_global_mouse_position(), false)
 
 
 func _on_pick(id: int) -> void:
@@ -812,11 +813,27 @@ static func left_out_words(result: Dictionary, again: bool = true) -> String:
 		var unbuilt: Dictionary = result.get("unbuilt", {})
 		if not unbuilt.is_empty():
 			note += " — " + ModelStore.unbuilt_words(unbuilt)
+	# A part whose geometry could not be fetched as it opened: held as one on
+	# its way is, so kept in the file (ModelStore.lost).
+	var lost: Dictionary = result.get("lost", {})
+	if not lost.is_empty():
+		var count: int = 0
+		for id: String in lost:
+			count += int(lost[id])
+		note += " — %d could not be loaded, kept in the file (%s)" % [count,
+			ModelStore.named_counts(lost)]
 	if again and int(result.get("waiting", 0)) > 0:
 		note += " — %d are still arriving, open it again in a moment" % int(result["waiting"])
 	# Light lines this could not read, kept in the file (SceneLights.of_model).
 	if not str(result.get("lights_unread", "")).is_empty():
 		note += " — " + str(result["lights_unread"])
+	# And motion lines (Motions.unread_words), kept in it the same way.
+	if not str(result.get("motions_unread", "")).is_empty():
+		note += " — " + str(result["motions_unread"])
+	# And view lines (SavedViews.unread_words): up to metalines one a later
+	# build wrote went at the next save, unsaid.
+	if not str(result.get("views_unread", "")).is_empty():
+		note += " — " + str(result["views_unread"])
 	return note
 
 
@@ -829,7 +846,9 @@ static func unshown_words(store: ModelStore) -> String:
 	if not store.not_opened.is_empty():
 		return ""
 	return left_out_words({"missing": store.unshown.size(), "unshown": store.unshown,
-		"kept": true, "lights_unread": store.lights_unread_words}, false) + looks_words(store)
+		"kept": true, "lost": store.lost, "lights_unread": store.lights_unread_words,
+		"motions_unread": store.motions_unread_words,
+		"views_unread": store.views_unread_words}, false) + looks_words(store)
 
 
 ## What of the booklet as its designer set it the model just opened shows on
@@ -873,6 +892,130 @@ func open_version(version: ModelVersions.Version, name: String = "") -> int:
 	_say("opened “%s” as saved %s, %d parts — Save makes it the newest save"
 		% [name, version.when(), version.parts])
 	return placed
+
+
+# -- a model into this one ------------------------------------------------------
+
+## Puts parts whole in the person's hand, to put down by a click
+## (EditVerbs.hold, which Shell sets): (parts, what) -> how many.
+var hold_parts: Callable = Callable()
+## File, Import, Into this model…'s list, and the saves and examples it lists.
+var _into: PopupMenu
+var _into_entries: Array[ModelStore.Entry] = []
+var _into_picker: ModelFilePicker
+
+
+## File, Import, Into this model…: the person's saved models and the
+## examples, listed as Open lists them, with a file from this computer and
+## the library; the one chosen comes in hand as one sub-assembly with its
+## own steps, put down by a click and taken out by one undo
+## (ModelStore.held_from). Two actions, as LeoCAD's Files category takes:
+## here it was open, select all, copy, switch, paste (APP_UX4, intomodel).
+func into_model() -> void:
+	if store == null:
+		return
+	if _into == null:
+		_into = PopupMenu.new()
+		_into.id_pressed.connect(_on_into)
+		add_child(_into)
+	_into_entries = store.list_saved()
+	var examples: Array[ModelStore.Entry] = store.list_examples()
+	_into.clear()
+	_into.add_item("From a file on this computer (LDraw, Studio .io, LDD .lxf)…", IMPORT)
+	_into.add_item("From the library: real sets and the community's models…", LIBRARY)
+	_into.add_separator("Put in this model, then click where it goes")
+	for n: int in _into_entries.size():
+		_into.add_item(_into_entries[n].describe(), n)
+	if not examples.is_empty():
+		_into.add_separator("Examples")
+		for example: ModelStore.Entry in examples:
+			_into.add_item(example.describe(), _into_entries.size())
+			_into_entries.append(example)
+	_into.reset_size()
+	_into.position = Vector2i(get_global_mouse_position()) + Vector2i(0, 8)
+	_into.popup()
+
+
+func _on_into(id: int) -> void:
+	if id == IMPORT:
+		_into_file()
+		return
+	if id == LIBRARY:
+		library_wanted.emit()
+		return
+	if id < 0 or id >= _into_entries.size():
+		return
+	var entry: ModelStore.Entry = _into_entries[id]
+	var text: String = store._file_text(entry.path)
+	if text.is_empty():
+		_say("could not read “%s”: %s" % [entry.name, store.not_opened])
+		return
+	await hold_text(text, entry.path.get_file(), entry.name)
+
+
+## A file from this computer into this model. Asked in the click itself, as
+## [method _import] is, or a browser opens no picker.
+func _into_file() -> void:
+	if _into_picker == null:
+		_into_picker = ModelFilePicker.new()
+		_into_picker.library = store.library
+		add_child(_into_picker)
+		_into_picker.picked.connect(func(text: String, file_name: String) -> void:
+			await hold_text(text, file_name))
+		_into_picker.failed.connect(func(why: String) -> void: _say(why))
+	_into_picker.ask()
+
+
+## [param text], a model's file, in the person's hand whole, as one
+## sub-assembly named [param called] (else as the file calls it), its
+## author's steps kept, to put down by a click (ModelStore.held_from).
+## [param credited] ({by, licence, page}) says whose it is where its file
+## does not, kept in its sub-model's header and said with it. How many
+## parts are in hand.
+func hold_text(text: String, file_name: String, called: String = "",
+		credited: Dictionary = {}) -> int:
+	var job: Working.Job = Working.begin("Reading %s…" % (called if not called.is_empty()
+		else file_name.get_file()))
+	await job.shown()
+	var held: Dictionary = await store.held_from(text, file_name, job, called, credited)
+	job.end()
+	if not str(held["error"]).is_empty():
+		_say("could not put it in this model: %s" % held["error"])
+		return 0
+	var count: int = int(hold_parts.call(held["items"], str(held["name"]))) \
+		if hold_parts.is_valid() else 0
+	if count == 0:
+		return 0
+	store.builder.carrying.bring(held)
+	var by: String = str(credited.get("by", "")).strip_edges()
+	_say(Keymap.filled("holding %s, %s — click where it goes, {rotate_held|turns}, Esc puts away")
+		% [held["name"], Builder._many(count)] + held_words(held)
+		+ (" — by " + by if not by.is_empty() else ""))
+	return count
+
+
+## What else a model brought in comes with: its steps, what of it is kept
+## and not shown, its motions, which its sub-model keeps and this model does
+## not play, and the names given to what this model had already.
+static func held_words(held: Dictionary) -> String:
+	var said: String = ""
+	if int(held["steps"]) > 0:
+		said += " — " + ("its 1 step kept" if int(held["steps"]) == 1
+			else "its %d steps kept" % int(held["steps"]))
+	var unshown: Dictionary = held["unshown"]
+	if not unshown.is_empty():
+		said += " — " + "not shown, kept: %s" % ModelStore.named_counts(unshown)
+	var motions: int = int(held.get("motions", 0))
+	if motions > 0:
+		said += " — " + ("its motion kept in it, played only where it is the model" if motions == 1
+			else "its %d motions kept in it, played only where it is the model" % motions)
+	var renamed: Dictionary = held.get("renamed", {})
+	if not renamed.is_empty():
+		var pairs := PackedStringArray()
+		for was: Variant in renamed:
+			pairs.append("%s as %s" % [was, renamed[was]])
+		said += " — " + "named anew, as this model has those names: %s" % ", ".join(pairs)
+	return said
 
 
 ## Somebody else's .ldr, from wherever they keep it.
@@ -927,7 +1070,7 @@ func _on_export() -> void:
 func export_now(into: String = "", asking: bool = false) -> String:
 	if world.brick_count() == 0:
 		return "nothing to export"
-	var file_name: String = model_name().to_snake_case() + ldraw_extension()
+	var file_name: String = SubmodelFile.titled(model_name(), ldraw_extension())
 	if OS.has_feature("web"):
 		if await store.export_paced(file_name, model_name()):
 			return "downloaded %s" % file_name

@@ -437,7 +437,7 @@ try {
     [STORAGE_KEY, JSON.stringify(master.kept)]);
   page = await desk.newPage();
   listen(page, "admin");
-  await page.goto(`${site}/admin`, { waitUntil: "load", timeout: 60000 });
+  await page.goto(`${site}/admin#gallery/reported`, { waitUntil: "load", timeout: 60000 });
   await page.waitForSelector("#reports tr", { timeout: 30000 });
   const reportRow = page.locator("#reports tr").filter({ has: page.locator(`a[href^="/m/${id}#comment-"]`) });
   const rowText = (await reportRow.count()) ? await reportRow.first().innerText() : "";
@@ -452,6 +452,7 @@ try {
   await page.waitForFunction(() => /comment is removed/.test(document.getElementById("reports-note").textContent), null, { timeout: 30000 }).catch(() => {});
   check("Remove the comment: the report leaves the queue",
     (await page.locator("#reports tr").filter({ has: page.locator(`a[href^="/m/${id}#comment-"]`) }).count()) === 0);
+  await page.click('a[data-tab-link="comments"]');
   const removedText = await page.locator("#comments tr").filter({ hasText: ON_STEP }).filter({ has: ours })
     .first().innerText().catch(() => "");
   check(`...the list says "${removedText.match(/removed by \w+/)?.[0] || removedText.slice(0, 40)}"`, /removed by you/.test(removedText));

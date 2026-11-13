@@ -19,16 +19,20 @@
 // (tools/web/part_facts.mjs) and worked out of assets/generated in a checkout,
 // so the two cannot say different things.
 //
-// The exports are the two the app makes (src/assembly/shop_lists.gd): a
+// The exports are the three the app makes (src/assembly/shop_lists.gd): a
 // BrickLink wanted list (BrickLink's XML: ITEMTYPE, ITEMID, COLOR, MINQTY in
-// <INVENTORY>) and a Rebrickable parts list (its CSV import: Part, Color,
+// <INVENTORY>), a Rebrickable parts list (its CSV import: Part, Color,
 // Quantity), a lot left off where the shop has no number for its colour, and
-// a made part, which no shop sells; a part in a direct colour (0x2RRGGBB)
-// listed in the nearest colour still made, as the app lists it (standIn).
+// a made part, which no shop sells; and the LEGO® Pick a Brick list (its upload:
+// elementId, quantity), a lot with no element number known left off and
+// counted, never guessed. A part in a direct colour (0x2RRGGBB) is listed in
+// the nearest colour still made, as the app lists it (standIn).
 
 import { existsSync, readFileSync } from "node:fs";
 import { deflateSync } from "node:zlib";
 import { directOf, isDirect } from "./_colours.js";
+// A sub-file's name as LDraw compares it (LdrModel._key).
+import { afterFields, keyOf, sectionKey, stemOf } from "./_subfiles.js";
 
 let table = null;
 
@@ -282,17 +286,6 @@ function finishOf(finish, name, materialKind) {
 // ---------------------------------------------------------------------------
 // The file, read as the app reads it (LdrModel.parse).
 
-/// A reference's or a FILE's name as the other finds it: no folder, no
-/// extension, lower case (LdrModel._key).
-function keyOf(name) {
-  let text = String(name).replace(/\\/g, "/").trim().toLowerCase();
-  text = text.slice(text.lastIndexOf("/") + 1);
-  for (const suffix of [".ldr", ".dat", ".mpd"]) {
-    if (text.endsWith(suffix)) return text.slice(0, -suffix.length);
-  }
-  return text;
-}
-
 const fileOf = (path) => path.slice(path.lastIndexOf("/") + 1);
 const baseOf = (name) => (name.lastIndexOf(".") > 0 ? name.slice(0, name.lastIndexOf(".")) : name);
 
@@ -309,10 +302,20 @@ const NUMBER = /^[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?$/;
 const declaresPart = (lines) => lines.slice(0, 16)
   .some((raw) => raw.trim().startsWith("0 !LDRAW_ORG") && raw.trim().toLowerCase().includes("part"));
 
+/// Whether a section says it is one of a library's files, not a model: a
+/// part, a shortcut, a primitive (LdrModel.declares_library_file).
+const declaresLibraryFile = (lines) => {
+  const org = lines.slice(0, 16).map((raw) => raw.trim()).find((line) => line.startsWith("0 !LDRAW_ORG"));
+  return org !== undefined && !org.toLowerCase().includes("model");
+};
+
 /// [text] as its sub-models, the parts it carries and its LDCad-generated
 /// sections: {main, submodels: key -> {name, title, placements}, carried:
-/// file name -> text, sections: name -> text, generated: Set of keys}. Each
-/// placement {part, colour, m, copy, within}: [copy] the copy of a sub-model
+/// file name -> text, sections: name -> text, generated: Set of keys}, each
+/// sub-model by its name as LDraw compares it (keyOf), the first block of a
+/// name the one a reference means, as LDView reads it, and a later one read
+/// as nothing (LdrModel.parse). Each placement {part, ref, colour, m, copy,
+/// within}: [ref] what it names (keyOf), [copy] the copy of a sub-model
 /// a reference is (`0 !BRICKWORKS COPY n` before it, 0 where none says),
 /// [within] the copy built in its sub-model's steps it is in (`0 !BRICKWORKS
 /// IN path`, to the next or the step's end), as LdrModel.parse reads them.
@@ -322,9 +325,12 @@ function parse(text) {
   submodels.set("model", implicit);
   let main = implicit;
   let current = implicit;
+  let currentKey = "model";
+  let mainKey = "model";
   let firstFile = true;
   let section = "";
   const sections = new Map();
+  const blocks = new Map();
   let inData = false;
   const generated = new Set();
   let author = "";
@@ -341,7 +347,7 @@ function parse(text) {
       inData = true;
       continue;
     }
-    const spaced = line.split(" ").filter(Boolean);
+    const spaced = line.split(/\s+/).filter(Boolean);
     const fileLine = spaced.length >= 2 && spaced[0] === "0" && /^(FILE|NOFILE|!DATA)$/i.test(spaced[1]);
     if (section && !fileLine) sections.get(section).push(raw.replace(/\r$/, ""));
     if (line === "") continue;
@@ -351,18 +357,19 @@ function parse(text) {
       const keyword = tokens[1].toUpperCase();
       if (keyword === "NOFILE") section = "";
       if (keyword === "FILE") {
-        const name = tokens.slice(2).join(" ").trim();
-        section = name.toLowerCase();
+        const name = afterFields(raw, 2);
+        currentKey = sectionKey(name, blocks);
+        section = currentKey;
         sections.set(section, []);
         current = { name, title: "", placements: [] };
-        submodels.set(keyOf(name), current);
         within = "";
         if (firstFile) {
           main = current;
+          mainKey = currentKey;
           submodels.delete("model");
-          if (keyOf(name) === "model") submodels.set("model", current);
           firstFile = false;
         }
+        if (!currentKey.includes("\n")) submodels.set(currentKey, current);
       } else if (keyword === "STEP" || keyword === "ROTSTEP") {
         // Steps say nothing of what is in it, but end a copy built in them.
         within = "";
@@ -370,8 +377,8 @@ function parse(text) {
         copyNext = Math.max(Number.parseInt(tokens[3], 10) || 0, 0);
       } else if (keyword === "!BRICKWORKS" && tokens[2] === "IN") {
         within = line.slice(line.toUpperCase().indexOf(keyword) + keyword.length).trim().slice(2).trim();
-      } else if (keyword === "!LDCAD" && tokens[2] === "GENERATED" && !generated.has(keyOf(current.name))) {
-        generated.add(keyOf(current.name));
+      } else if (keyword === "!LDCAD" && tokens[2] === "GENERATED" && !generated.has(currentKey)) {
+        generated.add(currentKey);
       } else if (keyword === "AUTHOR:" && !author) {
         author = tokens.slice(2).join(" ");
       } else if (!current.title && current.placements.length === 0 && !keyword.startsWith("!") && keyword !== "BFC"
@@ -385,20 +392,22 @@ function parse(text) {
     if (colour === null) continue;
     if (!tokens.slice(2, 14).every((t) => NUMBER.test(t))) continue;
     const numbers = tokens.slice(2, 14).map(Number);
-    let part = fileOf(tokens.slice(14).join(" ").trim().replace(/\\/g, "/").toLowerCase());
+    const named = afterFields(raw, 14);
+    let part = fileOf(named.replace(/\\/g, "/").toLowerCase());
     if (part.endsWith(".dat") || part.endsWith(".ldr")) part = part.slice(0, -4);
-    current.placements.push({ part, colour, m: numbers, copy: copyNext, within });
+    current.placements.push({ part, ref: keyOf(named), colour, m: numbers, copy: copyNext, within });
     copyNext = 0;
   }
   const carried = new Map();
   const texts = new Map();
   for (const [name, lines] of sections) {
-    if (name === main.name.toLowerCase()) continue;
+    if (name === mainKey || name.includes("\n")) continue;
     texts.set(name, lines.join("\n").trim() + "\n");
+    if (declaresLibraryFile(lines) && submodels.has(name)) submodels.get(name).libraryFile = true;
     if (!declaresPart(lines)) continue;
     const key = name.endsWith(".dat") ? name : `${name}.dat`;
-    carried.set(fileOf(key.replace(/\\/g, "/")), texts.get(name));
-    submodels.delete(keyOf(name));
+    if (fileOf(key) === key || !carried.has(fileOf(key))) carried.set(fileOf(key), texts.get(name));
+    submodels.delete(name);
   }
   return { main, submodels, carried, sections: texts, generated, author };
 }
@@ -452,15 +461,17 @@ function isPiece(library, id) {
 function takeInto(library, model) {
   // The skins first, judged against the library as it was.
   const pieces = new Map();
+  // A sub-model of the file of the name before a part of its number, as the
+  // open reads it (CustomParts._is_piece).
   const piece = (key, depth = 0) => {
     if (pieces.has(key)) return pieces.get(key);
     let found = false;
-    if (library.has(key) || model.carried.has(`${key}.dat`)) found = true;
-    else if (model.generated.has(key) && model.submodels.has(key)) found = true;
-    else if (model.submodels.has(key) && depth < 16) {
+    const number = stemOf(key);
+    if (model.generated.has(key) && model.submodels.has(key)) found = true;
+    else if (model.submodels.has(key)) {
       pieces.set(key, false);
-      found = model.submodels.get(key).placements.some((one) => piece(keyOf(one.part), depth + 1));
-    }
+      found = depth < 16 && model.submodels.get(key).placements.some((one) => piece(refOf(one), depth + 1));
+    } else if (library.has(number) || model.carried.has(`${number}.dat`)) found = true;
     pieces.set(key, found);
     return found;
   };
@@ -468,7 +479,7 @@ function takeInto(library, model) {
   for (const key of model.generated) {
     const sub = model.submodels.get(key);
     if (!sub) continue;
-    const body = model.sections.get(sub.name.toLowerCase()) || "";
+    const body = model.sections.get(key) || "";
     let faces = 0;
     for (const raw of body.split("\n")) {
       const line = raw.trim();
@@ -477,7 +488,7 @@ function takeInto(library, model) {
       if (kind === "1") {
         const words = line.replace(/\t/g, " ").split(" ").filter(Boolean);
         if (words.length < 15) continue;
-        if (piece(keyOf(words.slice(14).join(" ")))) continue;
+        if (piece(keyOf(afterFields(line, 14)))) continue;
         faces += 1;
       } else if (kind === "3" || kind === "4") faces += 1;
     }
@@ -514,13 +525,28 @@ function takeInto(library, model) {
       flexible: false, moved: "", bricklink: "", rebrickable: "", custom: true, copy_of: copyOf });
   }
   for (const [key, sub] of skins) {
-    const id = `${key}-flex`;
-    const title = sub.title || keyOf(sub.name);
+    const id = `${stemOf(key)}-flex`;
+    const title = sub.title || stemOf(sub.name);
     library.custom.set(id, { name: `${title} (flexible)`, category: "Flexible", flexible: false, moved: "",
       bricklink: "", rebrickable: "", custom: true });
-    sub.placements = [...sub.placements.filter((one) => piece(keyOf(one.part))),
+    sub.placements = [...sub.placements.filter((one) => piece(refOf(one))),
       { part: id, colour: 16, m: [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1] }];
   }
+}
+
+/// What a placement names (keyOf): its line's reference, or for one the open
+/// put in (a skin) its part's file name.
+const refOf = (one) => one.ref || keyOf(`${one.part}.dat`);
+
+/// The sub-model of the file placement [one] places, or undefined where it
+/// places a part: the FILE of the name it gives, the file's before the
+/// library's, but not one that says it is a library's file (a shortcut)
+/// under a number [library] has, which is that part (LdrModel.sub_model_of):
+/// 10251-1's door is 60797c02, not two parts of no number.
+function subModelOf(model, one, library) {
+  const nested = model.submodels.get(refOf(one));
+  if (nested && nested.libraryFile && library && library.has(one.part)) return undefined;
+  return nested;
 }
 
 /// [a] then [b], as LDraw's twelve numbers: x y z and a row-major 3 x 3.
@@ -541,14 +567,17 @@ const IDENTITY = [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1];
 function flatten(model, library) {
   const out = [];
   let copies = 0;
+  // Each by the sub-model, not its name: a block of the model's own name is
+  // another (MAIN_KEY).
   const inline = (sub, at, colour, visiting, depth, unit) => {
-    const key = keyOf(sub.name);
-    if (depth > 32 || visiting.has(key)) return;
-    const inside = new Set(visiting).add(key);
+    if (depth > 32 || visiting.has(sub)) return;
+    const inside = new Set(visiting).add(sub);
     for (const one of sub.placements) {
-      const nested = model.submodels.get(keyOf(one.part));
+      // A sub-model where the file has a FILE of the name, whatever part its
+      // stem numbers, unless it says it is the library's (subModelOf).
+      const nested = subModelOf(model, one, library);
       const placedIn = one.colour === 16 ? colour : one.colour;
-      if (nested && !library.has(one.part)) {
+      if (nested) {
         copies += 1;
         inline(nested, compose(at, one.m), placedIn, inside, depth + 1, `${copies}`);
         continue;
@@ -676,6 +705,18 @@ function lotMaker(library, given) {
   const lots = [];
   const byKey = new Map();
   let pieces = 0;
+  // A part's LEGO element number in a colour (PartLibrary.element_for): its
+  // plain colour's (a tyre in Rubber Black is sold as a Black one), and
+  // cloth's by its flat number; "" where none is known.
+  const elementOf = (part, code) => {
+    const plain = library.colour(code).plain;
+    const found = given.elements[`${part}/${plain}`] || "";
+    const info = library.info(part);
+    if (!found && info && info.name.includes("(Formed") && /c\d\d$/.test(part)) {
+      return given.elements[`${part.slice(0, -3)}/${plain}`] || "";
+    }
+    return found;
+  };
   const add = (part, code, n = 1) => {
     const key = `${part}:${code}`;
     let lot = byKey.get(key);
@@ -683,15 +724,11 @@ function lotMaker(library, given) {
       const info = library.info(part);
       const colour = library.colour(code);
       const plain = library.colour(colour.plain);
-      let element = given.elements[`${part}/${colour.plain}`] || "";
-      // Cloth is listed by its flat number (PartLibrary.element_for).
-      if (!element && info && info.name.includes("(Formed") && /c\d\d$/.test(part)) {
-        element = given.elements[`${part.slice(0, -3)}/${colour.plain}`] || "";
-      }
       lot = {
         part, name: tidy(info ? info.name : part) + (info && info.custom ? " (custom element)" : ""),
         category: info ? info.category : "", colour: code, colour_name: colour.name, hex: colour.hex,
-        lego_colour: plain.lego, count: 0, element, custom: Boolean(info && info.custom), copy_of: (info && info.copy_of) || "",
+        lego_colour: plain.lego, count: 0, element: elementOf(part, code), custom: Boolean(info && info.custom),
+        copy_of: (info && info.copy_of) || "",
         bricklink: shopPart(info, part, "bricklink"), bricklink_colour: plain.bricklink,
         rebrickable: shopPart(info, part, "rebrickable"), rebrickable_colour: plain.rebrickable,
         mesh: (info && info.mesh) || "", stand_in: null,
@@ -701,7 +738,8 @@ function lotMaker(library, given) {
       const instead = standIn(code, given);
       if (instead >= 0) {
         const stood = library.colour(instead);
-        lot.stand_in = { colour: instead, name: stood.name, bricklink: stood.bricklink, rebrickable: stood.rebrickable };
+        lot.stand_in = { colour: instead, name: stood.name, bricklink: stood.bricklink, rebrickable: stood.rebrickable,
+          element: elementOf(part, instead) };
       }
       byKey.set(key, lot);
       lots.push(lot);
@@ -796,6 +834,52 @@ export function rebrickableCsv(inventory) {
     rows.push(`${part},${colour},${lot.count}`);
   }
   return { text: `${rows.join("\n")}\n`, lots: inventory.lots.length - left, left_out: left, stand_ins: standIns };
+}
+
+/// LEGO® Pick a Brick takes up to 400 lines a file, and up to 999 of an
+/// element (ShopLists.PICK_A_BRICK_LINES, PICK_A_BRICK_MOST).
+export const PICK_A_BRICK_LINES = 400;
+export const PICK_A_BRICK_MOST = 999;
+
+/// The LEGO® Pick a Brick list (ShopLists.pick_a_brick), word for word the
+/// app's: `elementId,quantity` as the LEGO Group's own template writes it, line ends
+/// and all, a line an element, in files of PICK_A_BRICK_LINES lines:
+/// {files, lines, pieces, lots, missing, over, stand_ins}. A lot with no
+/// element number known, or a made part, is not on it: [missing] holds those
+/// lots, counted, never guessed. Two lots of one element (a tyre in Rubber
+/// Black and one in Black) are one line. An element wanted more than
+/// PICK_A_BRICK_MOST times is asked for that many, and the rest is in
+/// [over]: {element: how many more}. A part in a direct colour is the
+/// element of the part in the colour it stands in as, named in [stand_ins].
+export function pickABrick(inventory) {
+  const wanted = new Map();
+  const missing = [];
+  const standIns = [];
+  let pieces = 0;
+  for (const lot of inventory.lots) {
+    const element = lot.stand_in ? lot.stand_in.element : lot.element;
+    if (lot.custom || !element) {
+      missing.push(lot);
+      continue;
+    }
+    if (lot.stand_in) noteStandIn(standIns, lot);
+    wanted.set(element, (wanted.get(element) || 0) + lot.count);
+    pieces += lot.count;
+  }
+  const files = [];
+  const over = {};
+  const elements = [...wanted.keys()];
+  for (let start = 0; start < elements.length; start += PICK_A_BRICK_LINES) {
+    const rows = ["elementId,quantity"];
+    for (const element of elements.slice(start, start + PICK_A_BRICK_LINES)) {
+      const count = wanted.get(element);
+      if (count > PICK_A_BRICK_MOST) over[element] = count - PICK_A_BRICK_MOST;
+      rows.push(`${element},${Math.min(count, PICK_A_BRICK_MOST)}`);
+    }
+    files.push(rows.join("\r\n"));
+  }
+  return { files, lines: elements.length, pieces, lots: inventory.lots.length - missing.length, missing, over,
+    stand_ins: standIns };
 }
 
 /// What a page needs to draw each lot's picture itself (web/part-pictures.js,
@@ -1019,15 +1103,22 @@ export function sceneOf(text, root, of = "", given = partsTable(), table = scene
 /// title, or its file name where it has none, and the file name too where
 /// two share a title; never with a "/" or a "#", which a path uses.
 function assemblyNames(model) {
+  // One with no title by its file name's stem, and two of one stem by their
+  // names whole (LdrModel._assembly_names).
+  const stems = new Map();
+  for (const key of model.submodels.keys()) stems.set(stemOf(key), (stems.get(stemOf(key)) || 0) + 1);
+  const plain = (key) => (stems.get(stemOf(key)) === 1 ? stemOf(key) : key);
   const byTitle = new Map();
   for (const [key, sub] of model.submodels) {
-    const title = (sub.title || key).replace(/\//g, "-").replace(/#/g, "").trim();
+    const title = (sub.title || plain(key)).replace(/\//g, "-").replace(/#/g, "").trim();
     if (!byTitle.has(title)) byTitle.set(title, []);
     byTitle.get(title).push(key);
   }
   const out = new Map();
   for (const [title, keys] of byTitle) {
-    for (const key of keys) out.set(key, keys.length === 1 ? title : `${title} (${key})`);
+    for (const key of keys) {
+      out.set(key, keys.length === 1 ? title : `${title} (${plain(key).replace(/\//g, "-").replace(/#/g, "")})`);
+    }
   }
   return out;
 }
@@ -1069,15 +1160,14 @@ function flattenUnits(model, library) {
     return path;
   };
   const inline = (sub, at, colour, visiting, depth, unit) => {
-    const key = keyOf(sub.name);
-    if (depth > 32 || visiting.has(key)) return;
-    const inside = new Set(visiting).add(key);
+    if (depth > 32 || visiting.has(sub)) return;
+    const inside = new Set(visiting).add(sub);
     const made = new Map();
     for (const one of sub.placements) {
-      const nested = model.submodels.get(keyOf(one.part));
+      const nested = subModelOf(model, one, library);
       const ownUnit = one.within ? builtWithin(one.within, unit, made) : unit;
       const placedIn = one.colour === 16 ? colour : one.colour;
-      if (nested && !library.has(one.part)) {
+      if (nested) {
         const kind = names.get(keyOf(nested.name)) || keyOf(nested.name);
         const copy = numbered(kind, one.copy || 0);
         inline(nested, compose(at, one.m), placedIn, inside, depth + 1, ownUnit ? `${ownUnit}/${copy}` : copy);

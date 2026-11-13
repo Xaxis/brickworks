@@ -2,16 +2,20 @@
 ##
 ##   godot --headless --path . --script src/dev/parts_page_probe.gd -- [FILE.mpd ...]
 ##
-## site278: /m/<id> lists a model's parts, and exports them for BrickLink and
-## Rebrickable, from the stored .mpd (api/_parts.js), so every model already
-## shared has a list without its owner publishing again. It is a port of the
-## app's count, and a port drifts. Here, for each file (by default a small
-## castle set, a modular building of sub-models and two Technic sets with
-## hoses, pneumatic tubes, LDCad skins and stickers): the model opened in the
-## app, its Inventory.of and ShopLists, and the page's own list of the same
-## file (tools/web/parts_check.mjs), lot by lot and the two exports word for
-## word, and each lot's picture drawn from the geometry the app draws its part
-## from (site304). And each lot's names in German, French and Spanish as the
+## site278: /m/<id> lists a model's parts, and exports them for BrickLink,
+## Rebrickable and LEGO® Pick a Brick, from the stored .mpd (api/_parts.js),
+## so every model already shared has a list without its owner publishing
+## again. It is a port of the app's count, and a port drifts. Here, for each
+## file (by default a small castle set, a modular building of sub-models, two
+## Technic sets with hoses, pneumatic tubes, LDCad skins and stickers, and a
+## made-up model whose Pick a Brick list is two files, with an element past
+## 999, two colours of one element, two direct colours and a brick no element
+## number is known for): the model opened in the app, its Inventory.of and
+## ShopLists, and the page's own list of the same file
+## (tools/web/parts_check.mjs), lot by lot and the three exports word for
+## word (sitepickabrick: each Pick a Brick file, and the lots and pieces it
+## leaves off and past 999), and each lot's picture drawn from the geometry
+## the app draws its part from (site304). And each lot's names in German, French and Spanish as the
 ## app says them (the bin's tile, the palette's colour, the category's chip)
 ## against the page's, from the names the site is deployed with
 ## (src/dev/write_part_names.gd). Exits non-zero when one differs.
@@ -19,6 +23,8 @@ extends SceneTree
 
 const OMR := "res://vendor/omr/files/"
 const SETS: Array[String] = ["6040-1", "10243-1", "42080-1", "8880-1"]
+## A Pick a Brick list of two files (sitepickabrick).
+const PICK_A_BRICK := "res://src/dev/fixtures/pickabrick_big.ldr"
 
 var _failures: int = 0
 
@@ -53,6 +59,7 @@ func _run() -> void:
 	if files.is_empty():
 		for number: String in SETS:
 			files.append(ProjectSettings.globalize_path(OMR + number + ".mpd"))
+		files.append(ProjectSettings.globalize_path(PICK_A_BRICK))
 	var out: Dictionary = {}
 	var infos: Dictionary = {}
 	for path: String in files:
@@ -70,9 +77,18 @@ func _run() -> void:
 			lots.append([lot.part_id, lot.color_code, lot.count, lot.name, lot.bricklink_id,
 				library.bricklink_colour(lot.color_code), lot.rebrickable_id, lot.rebrickable_colour,
 				lot.element, lot.custom, info.mesh_hash if info != null else ""])
+		# And LEGO's Pick a Brick list (sitepickabrick): each file as the app
+		# writes it, and what it leaves off, by lots and pieces, and past 999.
+		var pab: Dictionary = ShopLists.pick_a_brick(stock)
+		var left_pieces: int = 0
+		for lot: Inventory.Lot in pab["missing"]:
+			left_pieces += lot.count
 		out[path] = {"pieces": stock.pieces, "lots": lots,
 			"xml": str(ShopLists.bricklink_xml(stock, library)["text"]),
-			"csv": str(ShopLists.rebrickable_csv(stock)["text"])}
+			"csv": str(ShopLists.rebrickable_csv(stock)["text"]),
+			"pab": {"files": Array(pab["files"]), "lines": pab["lines"], "pieces": pab["pieces"],
+				"left_out": (pab["missing"] as Array).size(), "left_out_pieces": left_pieces,
+				"over": pab["over"], "stand_ins": Array(pab["stand_ins"])}}
 	# Each lot's names as the app says them in each language (its tile's,
 	# and the English one it falls back to; its colour's and its kind's, ""
 	# where they have none), and the site's names for the same, written as

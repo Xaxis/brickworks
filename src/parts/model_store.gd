@@ -134,9 +134,24 @@ class Entry extends RefCounted:
 		return "%s — %d bricks, %s" % [name, bricks, ModelVersions.when_saved(modified)]
 
 
-var world: BrickWorld
+## What the model holds and does not show is numbered with its steps
+## ([method _held_placements], BrickWorld.held).
+var world: BrickWorld:
+	set(value):
+		world = value
+		if value != null:
+			value.held = _held_placements
+			value.names_held = names_held
 var library: PartLibrary
-var builder: Builder
+## A copy and a paste bring what a copy holds that is not on the baseplate
+## ([method _held_carried], [method _held_put]).
+var builder: Builder:
+	set(value):
+		builder = value
+		if value != null:
+			value.held_carry = _held_carried
+			value.held_put = _held_put
+			value.held_follow = _held_follow
 
 ## Bricks that are scenery rather than model — the baseplate. They are
 ## not saved, because a model that carries its own baseplate grows a
@@ -400,14 +415,18 @@ func restore_fetched() -> int:
 
 
 ## The working model's text from the last session, or "". "" too for one
-## with no parts, which is begun again as it was left, under its name
-## ([member left_empty]).
+## with no parts anywhere, which is begun again as it was left, under its
+## name ([member left_empty]). One whose model places nothing, with a
+## sub-model the file keeps that nothing places (its last copy taken off,
+## kt5check F5), is opened, so the next save keeps that too
+## ([method _restored]).
 func _autosaved() -> String:
 	unrestored = ""
 	left_empty = false
 	var path: String = autosave()
-	var text: String = FileAccess.get_file_as_string(path) if FileAccess.file_exists(path) else ""
-	if text.is_empty() or _has_parts(text):
+	var text: String = LdrModel.text_of(FileAccess.get_file_as_bytes(path)) \
+		if FileAccess.file_exists(path) else ""
+	if text.is_empty() or LdrModel.placing_at(text) >= 0:
 		return text
 	var name: String = title_in(text, "")
 	# A picture laid to build over comes back with it: the first thing a
@@ -435,8 +454,20 @@ func _restored(text: String, result: Dictionary) -> int:
 		_opened_whole = -1
 		_autosave_is_model = true
 	var back: int = int(result["placed"]) + (awaited.size() if opened else 0)
-	if back == 0 and count_in(text) > 0:
-		_keep_unopened(text, str(result["error"]))
+	if back > 0:
+		return back
+	var parts: int = count_in(text)
+	if parts > 0:
+		# Never said with no reason: "could not be opened: ." was all one
+		# whose sub-model nothing placed was told (sfreview F2).
+		var why: String = str(result["error"])
+		_keep_unopened(text, why if not why.is_empty()
+			else "none of its %d parts came back" % parts)
+	elif opened:
+		# A model that places nothing, as the person left it: begun again so,
+		# its file kept for the next save, the blocks it keeps with it, not
+		# the sample in its place (sfreview F2).
+		left_empty = true
 	return back
 
 
@@ -535,6 +566,24 @@ var _lights_kept: Array = []
 ## 2026-11-07).
 var _lights_read: Dictionary = {}
 var _lights_in: int = -1
+## The open's one reading of the app's own lines in the model's file
+## (MetaIndex), each line a reader took marked so: those none took are
+## written back as the file had them, where it had them, wherever the model
+## is written (MetaIndex.lines_for). The model's, kept for the world's
+## generation it was laid in as [member _lights_read] is ([method _metas_now]).
+var _metas_read: MetaIndex = null
+var _metas_in: int = -1
+## The line end of the file the model was opened from (MetaIndex.eol): the
+## app's own file, written whole, is written in it too.
+var _eol_opened: String = "\n"
+## Whether that file began with a byte-order mark (LdrModel.text_of): the
+## open reads past it, as every reader of the text does not, and a save of
+## the model writes it back first ([method _write]).
+var _bom_opened: bool = false
+## The floor's line as the open settled it (ModelFloor.to_meta), when the
+## file said none it could read: someone else's file is not given one while
+## the model stands on that (an unedited save is the file, hscheck).
+var _floor_unsaid: String = ""
 ## The light lines of the model on the baseplate its open could not read, in
 ## words (SceneLights.unread_words), for every way of opening to say: "" for
 ## none, and for a model that is not the one opened.
@@ -543,12 +592,49 @@ var lights_unread_words: String:
 		return SceneLights.unread_words(_lights_now().get("why", {}))
 
 
+## The motion lines of the model on the baseplate its open could not read,
+## kept to be written back (Motions.unread_words): "" for none.
+var motions_unread_words: String:
+	get:
+		return world.motions.unread_words() if world != null and world.motions != null else ""
+## What the last write said of the joints of the model's motions whose part
+## is gone ([method _motion_lines]): "" for none.
+var motions_gone_words: String = ""
+
+
 ## The open's reading of the model's lights ([member _lights_read]) while the
 ## model on the baseplate is the one it was read with; {} once it is not.
 func _lights_now() -> Dictionary:
 	if world == null or world.generation() != _lights_in:
 		return {}
 	return _lights_read
+
+
+## The open's reading of the app's lines ([member _metas_read]) while the
+## model on the baseplate is the one it was read from; null once it is not.
+## The page pictures the file was opened with has (LDraw's !DATA named
+## brickworks-page-...), by name, lower case, every page's and not the
+## model's alone: a new one is given a name none of them has
+## (BookletSheet.free_name).
+func pictures_in_file() -> PackedStringArray:
+	var metas: MetaIndex = _metas_now()
+	return metas.pictures if metas != null else PackedStringArray()
+
+
+func _metas_now() -> MetaIndex:
+	if world == null or world.generation() != _metas_in:
+		return null
+	return _metas_read
+
+
+## The view lines of the model on the baseplate its open could not read,
+## kept in the file as they are, and those of a name an earlier one has
+## (SavedViews.unread_words): "" for none.
+var views_unread_words: String:
+	get:
+		var metas: MetaIndex = _metas_now()
+		return SavedViews.unread_words(metas.untaken(["VIEW"]), metas.beaten(["VIEW"])) \
+			if metas != null else ""
 
 
 ## The saved file the model on the baseplate is, as this tab or window last
@@ -663,6 +749,119 @@ func _begin_as(named: String, picture: Dictionary = {}) -> void:
 	_source = null
 	_opened_in = -1
 	begun.emit(title)
+
+
+## What the model on the baseplate is, beside its parts and the tables the
+## history keeps: what [method begin] begins afresh, the file it came from
+## and the world's views, cut and lights. A clear kept for its undo holds it
+## (Builder's "store" step, Main.clear_model), so the undo gives the model
+## back under its name, written into its file as before: undone, a session's
+## clear left the parts as an untitled model, its file's lines lost
+## (copyfaults). And what it holds that is not on the baseplate ("awaited":
+## the parts on their way, [member awaited], or null when it holds none of
+## them, nor [member _absent]): undone, a clear of the app's own file with a
+## part the catalogue lacks saved without it, and so did the autosave
+## (cfcheck).
+func identity() -> Dictionary:
+	return {"title": title, "emptied": emptied, "example": example, "share_id": share_id,
+		"remixed_from": remixed_from, "remixed_from_version": remixed_from_version,
+		"credit": credit.duplicate(true), "from_set": from_set,
+		"hidden_scheme": hidden_scheme.duplicate(true), "pins": pins,
+		"bin_sets": bin_sets.duplicate(), "views_kept": _views_kept,
+		"lights_kept": _lights_kept, "reference": reference.duplicate(true),
+		"made_with": made_with, "source": _live_source(),
+		"opened": world != null and world.generation() == _opened_in, "lifted_by": _lifted_by,
+		"awaited": awaited.duplicate() if world != null and world.generation() == _awaited_in
+			else null,
+		"absent": _absent.duplicate() if world != null and world.generation() == _awaited_in
+			else null,
+		"held_files": _held_files.duplicate(),
+		"lights_read": _lights_now(),
+		"metas": _metas_now(), "floor_unsaid": _floor_unsaid, "bom": _bom_opened,
+		"views": world.saved_views.duplicate(true) if world != null else [],
+		"cut": world.cut_kept.duplicate(true) if world != null else {},
+		"lights": world.scene_lights.duplicate(true) if world != null else []}
+
+
+## The model made what [param kept] ([method identity]) says, in the world
+## as it now is; returns what it was, for the step that puts that back.
+func put_identity(kept: Dictionary) -> Dictionary:
+	# The parts the step this reverses put down as they landed ("landed",
+	# below): taken off again and on their way once more, in what it was. A
+	# redo of a clear left the part that had landed at its undo on the bare
+	# baseplate (cf2check).
+	for landed: Array in kept.get("landed", []):
+		var brick_id: int = builder._live(int(landed[0]))
+		if world.get_brick(brick_id) != null:
+			builder._apply({"undo": "remove", "brick": brick_id})
+			awaited.append(landed[1])
+	var was: Dictionary = identity()
+	title = str(kept["title"])
+	example = bool(kept["example"])
+	share_id = str(kept["share_id"])
+	remixed_from = str(kept["remixed_from"])
+	remixed_from_version = int(kept["remixed_from_version"])
+	credit = (kept["credit"] as Dictionary).duplicate(true)
+	from_set = str(kept["from_set"])
+	hidden_scheme = (kept["hidden_scheme"] as Dictionary).duplicate(true)
+	pins = kept["pins"]
+	_views_kept = kept["views_kept"]
+	_lights_kept = kept["lights_kept"]
+	reference = (kept["reference"] as Dictionary).duplicate(true)
+	made_with = str(kept["made_with"])
+	# Opened from a file, it stands as that file was lifted to (lift), and is
+	# written back down by as much: undone, a clear's model was saved 16 LDU
+	# from where its file had it.
+	_source = kept["source"]
+	_opened_in = world.generation() if bool(kept["opened"]) else -1
+	# What it holds that is not on the baseplate is this model's again: kept
+	# in what a save writes, and a part still on its way put down here when
+	# it lands (place_awaited); one that landed since the clear, at the end.
+	var waiting: Variant = kept.get("awaited")
+	_awaited_in = world.generation() if waiting is Array else -1
+	if waiting is Array:
+		awaited.assign(waiting)
+	# And what the catalogue has not got: a model put into another one begun
+	# empty holds its own there (_claim_held), and an undo past it gives the
+	# one before its own back.
+	var absent: Variant = kept.get("absent")
+	if absent is Array:
+		_absent = (absent as Array).duplicate()
+	_held_files = (kept.get("held_files", {}) as Dictionary).duplicate()
+	_lifted_by = float(kept["lifted_by"])
+	_lights_read = kept["lights_read"]
+	_lights_in = world.generation() if not _lights_read.is_empty() else -1
+	_metas_read = kept.get("metas")
+	_metas_in = world.generation() if _metas_read != null else -1
+	_eol_opened = _metas_read.eol if _metas_read != null else "\n"
+	_bom_opened = bool(kept.get("bom", false))
+	_floor_unsaid = str(kept.get("floor_unsaid", ""))
+	world.saved_views = (kept["views"] as Array).duplicate(true)
+	world.cut_kept = (kept["cut"] as Dictionary).duplicate(true)
+	world.scene_lights = (kept["lights"] as Array).duplicate(true)
+	# Said as a model begun is, its name on the bar, and the picture to build
+	# over read again; then what a listener to that sets afresh, as it was.
+	begun.emit(title)
+	emptied = bool(kept["emptied"])
+	bin_sets = (kept["bin_sets"] as PackedStringArray).duplicate()
+	# Put down in this step, not after it, so its reverse takes them off.
+	was["landed"] = _land_arrived()
+	return was
+
+
+## Put down each part of [member awaited] the catalogue has to hand now:
+## those that arrived while the model was cleared, given back by its undo
+## (put_identity), which place_awaited let go of then. Returns each as
+## [its brick, its placement].
+func _land_arrived() -> Array:
+	var parts: Dictionary = {}
+	for placement: LdrModel.Placement in awaited:
+		if library != null and library.is_resident(placement.part_id):
+			parts[placement.part_id] = true
+	var landed: Array = []
+	for part_id: String in parts:
+		place_awaited(part_id, landed)
+	return landed
 
 
 ## [param name], or it with a number after it when a saved model has it.
@@ -807,8 +1006,8 @@ func _placed_lines(text: String) -> PackedStringArray:
 static func _brick_lines(text: String) -> PackedStringArray:
 	var lines := PackedStringArray()
 	for line: String in text.split("\n"):
-		if line.begins_with("1 "):
-			lines.append(line.strip_edges())
+		if LdrModel.is_placing(line):
+			lines.append(line.lstrip(LdrModel.SPACE).rstrip(LdrModel.SPACE))
 	lines.sort()
 	return lines
 
@@ -984,18 +1183,18 @@ static func _write_saved(path: String, text: String) -> bool:
 ## the name in its file, so a file renamed alone opened, and saved, under
 ## its old one: over the model that has it.
 static func retitled(text: String, name: String) -> String:
-	if not title_meta_in(text).is_empty():
-		var lines: PackedStringArray = text.split("\n")
-		for n: int in lines.size():
-			if lines[n].begins_with(TITLE_META):
-				lines[n] = TITLE_META + name
-		return "\n".join(lines)
+	var metas: MetaIndex = MetaIndex.of_text(text)
+	var named: MetaIndex.Family = MetaIndex.family(["TITLE"], PackedStringArray([TITLE_META + name]))
+	if not title_meta_from(metas).is_empty():
+		return metas.write(text, [named])
 	var was: String = title_in(text, "")
 	var cut: int = text.find("\n")
-	var first: String = (text if cut < 0 else text.left(cut)).strip_edges()
-	if not was.is_empty() and first == "0 " + was:
-		return "0 " + name + (text.substr(cut) if cut >= 0 else "\n")
-	return _after_first_line(text, TITLE_META + name)
+	var first: String = text if cut < 0 else text.left(cut)
+	if not was.is_empty() and first.strip_edges() == "0 " + was:
+		# Its line end kept: a CRLF file's first line came back in "\n" alone.
+		return "0 " + name + ("\r" if first.ends_with("\r") else "") \
+			+ (text.substr(cut) if cut >= 0 else "\n")
+	return metas.write(text, [named])
 
 
 ## Replace what is on screen with a model from disk. Returns how many
@@ -1038,7 +1237,7 @@ var not_opened: String = ""
 ## The text of the file at [param path]; "" with [member not_opened] saying
 ## why when there is none to open.
 func _file_text(path: String) -> String:
-	var text: String = FileAccess.get_file_as_string(path)
+	var text: String = LdrModel.text_of(FileAccess.get_file_as_bytes(path))
 	if not text.is_empty():
 		return text
 	not_opened = ("there is no such file" if not FileAccess.file_exists(path)
@@ -1123,11 +1322,22 @@ func _model_text(paced: bool) -> String:
 		await _text_into(made, title, false, {}, FramePace.new())
 		# Changed meanwhile: made again, as it is now.
 		if world.revision == revision:
-			return ReferenceImage.written_into(SetBin.written_into(with_share(str(made[0]),
-				share_id, remixed_from, remixed_from_version, credit, made_with), bin_sets),
-				reference)
-	return ReferenceImage.written_into(SetBin.written_into(with_share(to_text(title), share_id,
-		remixed_from, remixed_from_version, credit, made_with), bin_sets), reference)
+			return _with_identity(str(made[0]))
+	return _with_identity(to_text(title))
+
+
+## [param text] with what the model is beyond its parts written under its
+## title, in one go (MetaIndex): the picture to build over, the sets its bin
+## was built from, the link it is shared at and the one it was copied from,
+## who made it and who laid its parts; each line of them its open could not
+## read where the file had it. What a save writes, and the autosave; not an
+## export.
+func _with_identity(text: String) -> String:
+	var metas: MetaIndex = _metas_now()
+	return MetaIndex.written(text, [
+		_family(metas, ["REFERENCE", "REFERENCE_PICTURE"], ReferenceImage.lines_of(reference)),
+		_family(metas, ["BIN"], SetBin.lines_of(bin_sets), MetaIndex.TITLE, SetBin.said_in)]
+		+ _share_families(metas, share_id, remixed_from, remixed_from_version, credit, made_with))
 
 
 ## The copies of [param kept] past the newest [param leaving], deleted.
@@ -1182,7 +1392,7 @@ func reopen(again: bool = false, job: Working.Job = null) -> int:
 		return -1
 	var stack: Array[Dictionary] = undone_over if again else opened_over
 	var entry: Dictionary = stack.back()
-	var text: String = FileAccess.get_file_as_string(str(entry["path"]))
+	var text: String = LdrModel.text_of(FileAccess.get_file_as_bytes(str(entry["path"])))
 	if text.is_empty():
 		not_opened = "its copy could not be read"
 		return -1
@@ -1260,11 +1470,13 @@ static func title_in(text: String, file_name: String) -> String:
 		var said: String = line.strip_edges()
 		if said.is_empty():
 			continue
-		if not said.begins_with("0 ") or said.begins_with("0 FILE "):
-			if said.begins_with("0 FILE "):
-				continue
+		# Its words however they are spaced: "0\tFILE" is a FILE line.
+		var words: PackedStringArray = LdrModel._fields(said)
+		if words[0] != "0":
 			break
-		said = said.substr(2).strip_edges()
+		if words.size() > 1 and words[1].to_upper() == "FILE":
+			continue
+		said = said.substr(1).strip_edges()
 		# A meta line is never the title, and the app writes its own (share,
 		# remix, credit, made with) after a file's first line: for an .mpd
 		# that is its 0 FILE, so they stood before the title, and a model a
@@ -1295,7 +1507,9 @@ static func title_in(text: String, file_name: String) -> String:
 ## has it, so it is not parsed twice.
 func open_text(text: String, name: String = "model", parsed: LdrModel = null) -> Dictionary:
 	var out: Array = []
+	var asking: int = _asking()
 	_open_into(out, text, name, parsed, null)
+	_asked(asking)
 	not_opened = str(out[0]["error"])
 	return out[0]
 
@@ -1347,6 +1561,8 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 		job: Working.Job) -> void:
 	open_phases = {}
 	_phase_at = Time.get_ticks_usec()
+	var bom: bool = text.begins_with(LdrModel.bom())
+	text = text.substr(1) if bom else text
 	var model: LdrModel = parsed if parsed != null else LdrModel.parse(text, name)
 	_phase("parse")
 	if model == null:
@@ -1372,31 +1588,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	# The author's steps go on to every part; steps Brickworks worked out
 	# and wrote are no one's, and are worked out again (LdrModel).
 	var authored: bool = model.steps_are_authored()
-	# A mirrored copy's parts: each put where its reflection is, in its
-	# other hand where it has one.
-	var mirrored_lines: Dictionary = {}
-	for item: Variant in flattened:
-		var placement: LdrModel.Placement = item
-		if not authored:
-			placement.step = -1
-		placement.part_id = studio_part(placement.part_id, library)
-		if placement.mirrored:
-			mirrored_lines["%d|%s" % [placement.line, placement.unit]] = true
-			Assemblies.unmirror(placement, library)
-		# A retired number as the part it became, where its stub puts it
-		# (PartLibrary.moved_by), before the lift is worked out from it and
-		# before it waits for geometry by the right name.
-		var real: String = library.resolve(placement.part_id)
-		if real != placement.part_id:
-			placement.transform = placement.transform * library.moved_by(placement.part_id)
-			placement.part_id = real
-		# A part LDraw draws in one colour only, kept for old files, as the
-		# part it draws in that colour (303923, 3039 in blue): drawn the same,
-		# and the parts list and a BrickLink order name a part made now.
-		var colour: int = library.current_colour(placement.part_id)
-		if colour >= 0:
-			placement.part_id = library.current(placement.part_id)
-			placement.color_code = colour
+	var mirrored_lines: Dictionary = _as_placed(flattened, library, authored)
 	# A model saved with no parts opens as that: an empty model under its
 	# name. It was refused as "no parts", and the model before it was left
 	# on the baseplate for a save to write under this one's name.
@@ -1436,6 +1628,13 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 			known.append(placement)
 		else:
 			known.append(placement)
+	# Each asked for now, by the name it is laid under, before anything is
+	# laid: on its way while the rest of the open goes on, and joined, not
+	# asked again, by the part laid that wants it (PartLibrary.request_mesh).
+	# Most were asked as the file was read (ask_geometry); this is a mirrored
+	# part's other hand, and an open of text read here. Not one whose fetch
+	# failed since this open asked: it is not coming.
+	library.want(waiting.keys().filter(func(id: String) -> bool: return not _gave_up.has(id)))
 
 	_phase("known")
 	# Why each part the file carries that is not here could not be drawn.
@@ -1452,9 +1651,6 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 		return
 
 	var paced: bool = job != null and known.size() >= LAID_IN_SLICES_FROM
-	if paced and not waiting.is_empty():
-		await _await_geometry(waiting, job)
-		_phase("geometry")
 	var foreign: bool = model.author.strip_edges() != "Brickworks"
 	# Someone else's file is kept, so a save writes back what nobody changed
 	# as it was (SourceFile); the app's own are written whole, as always.
@@ -1467,7 +1663,14 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 		return _read_text(text, model, known, mirrored_lines, authored, absent, foreign)
 	var read: Dictionary
 	if paced:
-		read = await _off_frame(reading)
+		# Read while the geometry on its way comes, as neither needs the
+		# other: read after it, a big file's read (0.3 s of 10297-1's open,
+		# 0.65 s of 8466-1's) began only once the last part had come.
+		var geometry: Callable = func() -> void:
+			if not waiting.is_empty():
+				await _await_geometry(waiting, job)
+				_phase("geometry")
+		read = await _off_frame(reading, geometry)
 	else:
 		read = reading.call()
 	var source: SourceFile = read["source"]
@@ -1480,6 +1683,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	builder.forget_history()
 	scenery.clear()
 	awaited.clear()
+	_session_puts.clear()
 	_told_not_coming = false
 	_phase("clear")
 	_source = source
@@ -1495,7 +1699,12 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 		unshown = _unshown_of(absent)
 	# The app's own file carries them itself (_text_into).
 	_absent = absent if source == null else []
+	_held_files = (carried["files"] as Dictionary).duplicate()
 
+	# Which copy of the file each copy is, by its path, wherever an edit
+	# takes it (Builder.regroup): its parts' lines (SourceFile.patch).
+	if source != null:
+		world.unit_chains = model.unit_chains.duplicate()
 	# Each sub-model copy's step in the one that places it, by its path.
 	if authored:
 		world.unit_steps = model.unit_steps.duplicate()
@@ -1503,6 +1712,11 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	# lines (BookletLooks); where the steps are not the author's, only the
 	# whole booklet's, its page set up and guides (_read_text).
 	world.step_looks = read["looks"]
+	# A sub-model's own lights and views, by its definition, wherever an
+	# edit takes its copies (BrickWorld.section_lines).
+	world.section_lines = Assemblies.lines_of(model)
+	# And each section's name in the file, a whole write's again.
+	world.section_files = model.file_names()
 	# Stood on the ground before anything is placed, from every part in it;
 	# and brought down onto it, when another tool drew it up in the air.
 	var up: Vector3 = lift_for(known, foreign)
@@ -1562,6 +1776,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 			world.get_brick(brick_id).group = placement.group
 			world.get_brick(brick_id).unit = placement.unit
 			world.get_brick(brick_id).step = placement.step
+			world.get_brick(brick_id).origin = placement.origin
 			placed += 1
 		if paced and job.due():
 			job.count(down.size())
@@ -1625,15 +1840,16 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 				if not library.is_resident(placement.part_id):
 					still.append(placement)
 					continue
-				var brick_id: int = world.add_brick(
-					placement.part_id, placement.color_code, placement.transform)
+				var at: Transform3D = awaited_at(placement)
+				var brick_id: int = world.add_brick(placement.part_id, placement.color_code, at)
 				if brick_id == 0:
 					still.append(placement)
 					continue
 				world.get_brick(brick_id).group = placement.group
 				world.get_brick(brick_id).unit = placement.unit
 				world.get_brick(brick_id).step = placement.step
-				builder.register(brick_id, placement.part_id, placement.transform)
+				world.get_brick(brick_id).origin = placement.origin
+				builder.register(brick_id, placement.part_id, at)
 				placed += 1
 				landing = true
 				if job.due():
@@ -1652,13 +1868,26 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 			_settle()
 	_phase("place")
 
-	# Ask for the ones that were not to hand, and put each down as it
-	# arrives (place_awaited).
+	# The ones that were not to hand are on their way, asked for before any
+	# was laid, and each is put down as it arrives (place_awaited): asked
+	# again here, each is moved ahead of the bin's pictures, never fetched
+	# twice. One whose fetch failed since this open asked for it is not
+	# coming, and is named ([member lost]).
 	var asked_for: Dictionary = {}
+	lost = {}
+	var coming: bool = false
 	for placement: LdrModel.Placement in awaited:
-		if not asked_for.has(placement.part_id):
-			asked_for[placement.part_id] = true
-			library.request_mesh(placement.part_id, true)
+		var part_id: String = placement.part_id
+		if _gave_up.has(part_id) and not library.is_on_its_way(part_id):
+			lost[part_id] = int(lost.get(part_id, 0)) + 1
+			continue
+		coming = true
+		if not asked_for.has(part_id):
+			asked_for[part_id] = true
+			library.request_mesh(part_id, true)
+	# Said here, with the open: not_coming says it of a part whose fetch
+	# fails from now, once none is on its way.
+	_told_not_coming = not lost.is_empty() and not coming
 
 	# A model from a file: nobody emptied the baseplate. Unless the file
 	# itself is empty: then it is kept so, as one begun empty is (begin).
@@ -1666,6 +1895,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	title = _title_of(model, name)
 	if source != null:
 		source.own_title = title
+		source.said_title = model.main.title if model.main != null else ""
 		var named: String = read["title"]
 		if not named.is_empty():
 			title = named
@@ -1676,6 +1906,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	made_with = read["made"]
 	var said: ModelFloor = read["floor"]
 	model_floor = said if said != null else ModelFloor.unsaid(foreign)
+	_floor_unsaid = model_floor.to_meta() if said == null else ""
 	from_set = read["set"]
 	hidden_scheme = read["hidden"]
 	world.cut_kept = read["cut"]
@@ -1692,6 +1923,12 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	_lights_kept = world.scene_lights
 	_lights_read = lit
 	_lights_in = _opened_in
+	# Every app line it has, each its reader took marked so: those none took
+	# go back as they are, where they were (MetaIndex.lines_for).
+	_metas_read = read["metas"]
+	_metas_in = _opened_in
+	_eol_opened = _metas_read.eol
+	_bom_opened = bom
 	pins = read["pins"]
 	bin_sets = read["bin"]
 	reference = read["reference"]
@@ -1701,9 +1938,29 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 		# here, so a door saved open is known to be open (Motions.Joint.at).
 		for brick: BrickWorld.Brick in world.bricks():
 			world.motions.snapshot[brick.id] = brick.transform
+		_find_joints()
 	example = false
 	_opened_whole = world.generation()
 	_opened_parts = _parts_with_awaited()
+	# Where each part not on the baseplate is in the tree, carried by every
+	# change from now (BrickWorld.held_paths): a rename or a Make round its
+	# copy takes it with it (place_awaited, _text_into).
+	var held: Dictionary = {}
+	for placement: LdrModel.Placement in _held_placements():
+		var open: String = Assemblies.path_from(placement.group, placement.unit)
+		if not open.is_empty():
+			held[open] = open
+	world.held_paths = held
+	# And the frame each sub-model's own lines are in, for each of its copies
+	# as the file placed it, carried with it from now (BrickWorld
+	# .section_frames).
+	if not world.section_lines.is_empty():
+		var tree := Assemblies.new()
+		tree.world = world
+		tree.builder = builder
+		tree.library = library
+		tree.scenery = scenery
+		world.section_frames = tree.frames_read(model, up)
 	_phase("meta")
 	loaded.emit(title, placed)
 	_phase("loaded")
@@ -1712,27 +1969,70 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	# Studio file opened there said "4 are still arriving" of parts it had
 	# drawn.
 	out.append({"placed": placed, "missing": missing.size(),
-		"waiting": asked_for.size(), "missing_ids": missing, "error": "",
+		"waiting": asked_for.size(), "missing_ids": missing, "error": "", "lost": lost,
 		"unshown": unshown, "kept": source != null or not _absent.is_empty(),
-		"unbuilt": unbuilt, "lights_unread": lights_unread_words})
+		"unbuilt": unbuilt, "lights_unread": lights_unread_words,
+		"motions_unread": motions_unread_words, "views_unread": views_unread_words})
+
+
+## A file's placements made what this library puts down, in place: Studio's
+## names as LDraw's, a retired number as the part it became, a part drawn
+## in one colour only as the part it draws, and a mirrored copy's parts each
+## where its reflection is, in its other hand where it has one. Steps the
+## file's author did not give are cleared ([param authored]). The mirrored
+## placements' lines ("line|unit" -> true), for SourceFile. What an open and
+## a model put into this one ([method held_from]) both read a file as.
+static func _as_placed(flattened: Array, library: PartLibrary, authored: bool) -> Dictionary:
+	var mirrored_lines: Dictionary = {}
+	for item: Variant in flattened:
+		var placement: LdrModel.Placement = item
+		if not authored:
+			placement.step = -1
+		placement.part_id = studio_part(placement.part_id, library)
+		if placement.mirrored:
+			mirrored_lines["%d|%s" % [placement.line, placement.unit]] = true
+			Assemblies.unmirror(placement, library)
+		# A retired number as the part it became, where its stub puts it
+		# (PartLibrary.moved_by), before the lift is worked out from it and
+		# before it waits for geometry by the right name.
+		var real: String = library.resolve(placement.part_id)
+		if real != placement.part_id:
+			placement.transform = placement.transform * library.moved_by(placement.part_id)
+			placement.part_id = real
+		# A part LDraw draws in one colour only, kept for old files, as the
+		# part it draws in that colour (303923, 3039 in blue): drawn the same,
+		# and the parts list and a BrickLink order name a part made now.
+		var colour: int = library.current_colour(placement.part_id)
+		if colour >= 0:
+			placement.part_id = library.current(placement.part_id)
+			placement.color_code = colour
+	return mirrored_lines
 
 
 ## Why [param text], which places no part, is not a model to open: "" for
-## an LDraw model with nothing in it, every line of it a comment or a meta
-## line as a model saved empty is, here or by any LDraw tool. A file of
-## anything else places nothing because it is not a model, and opening it
-## would put an empty baseplate where the person's model was.
+## an LDraw model with nothing in it, every line of its model a comment or a
+## meta line as a model saved empty is, here or by any LDraw tool, its
+## sub-models' parts placed by nothing (the last copy of its one sub-model
+## taken off and saved: its block is kept, kt5check F5, and the file was
+## refused at the next open). A file of anything else places nothing because
+## it is not a model, and opening it would put an empty baseplate where the
+## person's model was.
 static func _why_not_a_model(text: String) -> String:
 	var lines: int = 0
 	var drawn: bool = false
-	for raw: String in text.trim_prefix("\ufeff").split("\n"):
+	var files: int = 0
+	for raw: String in text.trim_prefix(LdrModel.bom()).split("\n"):
 		var line: String = raw.strip_edges()
 		if line.is_empty():
 			continue
 		lines += 1
 		if line[0] not in "012345" or (line.length() > 1 and line[1] not in " \t"):
 			return "that is not an LDraw file"
-		drawn = drawn or line[0] != "0"
+		if LdrModel.section_word(line) == "FILE":
+			files += 1
+		# A line drawn in a sub-model's section, after the first FILE, is
+		# one nothing placed: the model itself still has nothing in it.
+		drawn = drawn or (line[0] != "0" and files <= 1)
 	if lines == 0:
 		return "it is empty"
 	return "there are no parts in that file" if drawn else ""
@@ -1743,7 +2043,13 @@ static func _why_not_a_model(text: String) -> String:
 ## text and from nothing else, so on any thread.
 static func _read_text(text: String, model: LdrModel, known: Array, mirrored_lines: Dictionary,
 		authored: bool, absent: Array, foreign: bool) -> Dictionary:
+	# Every line of the app's own found once, by its section (MetaIndex), and
+	# each feature's taken from there: the model's own alone, a sub-model's
+	# its own (lightpaths). Each reader scanned the whole text, a dozen times
+	# over an open.
+	var metas: MetaIndex = MetaIndex.of_text(text)
 	return {
+		"metas": metas,
 		"source": SourceFile.make(text, model, known, mirrored_lines, authored, absent)
 			if foreign else null,
 		# A step's look is kept by its step's number, which means nothing
@@ -1751,34 +2057,37 @@ static func _read_text(text: String, model: LdrModel, known: Array, mirrored_lin
 		# set up and guides with it, is the whole booklet's either way. Read
 		# only with the author's steps, a model of the app's own steps lost
 		# its page setup at every open (pagesetup2, 2026-11-06).
-		"looks": BookletLooks.read(text, model._assembly_names(), LdrModel._key(model.main.name))
+		"looks": BookletLooks.read(text, model._assembly_names(), model.main_key)
 			if authored else BookletLooks.booklet_wide(BookletLooks.read(text,
-				model._assembly_names(), LdrModel._key(model.main.name))),
-		"title": title_meta_in(text) if foreign else "",
-		"share": share_in(text),
-		"remix": remix_in(text),
-		"remix_version": remix_version_in(text),
-		"credit": credit_in(text),
-		"made": made_in(text),
-		"floor": ModelFloor.read(text),
-		"set": set_in(text),
-		"bin": SetBin.read(text),
-		"reference": ReferenceImage.read(text),
-		"hidden": HiddenColours.read(text),
-		"cut": CutShape.read(text),
-		"views": SavedViews.read(text),
-		"lights": SceneLights.of_model(model),
-		"motions": Motions.read(text),
-		"pins": PinnedComments.read(text),
+				model._assembly_names(), model.main_key)),
+		"title": title_meta_from(metas) if foreign else "",
+		"share": share_from(metas),
+		"remix": remix_from(metas),
+		"remix_version": remix_version_from(metas),
+		"credit": credit_from(metas),
+		"made": made_from(metas),
+		"floor": ModelFloor.read_from(metas),
+		"set": set_from(metas, text),
+		"bin": SetBin.read_from(metas),
+		"reference": ReferenceImage.read_from(metas),
+		"hidden": HiddenColours.read_from(metas),
+		"cut": CutShape.read_from(metas),
+		"views": SavedViews.read_from(metas),
+		"lights": SceneLights.read_from(metas),
+		"motions": Motions.read_from(metas),
+		"pins": PinnedComments.read_from(metas),
 	}
 
 
 ## [param work] done on a worker, the frames going on meanwhile: what it
-## returns.
-static func _off_frame(work: Callable) -> Variant:
+## returns. [param meanwhile], a coroutine, is awaited on this thread while
+## the worker works.
+static func _off_frame(work: Callable, meanwhile: Callable = Callable()) -> Variant:
 	var done: Array = [null]
 	var task: int = WorkerTasks.add(func() -> void: done[0] = work.call(), false,
 		"read a model's text")
+	if meanwhile.is_valid():
+		await meanwhile.call()
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
 	while not WorkerThreadPool.is_task_completed(task):
 		await tree.process_frame
@@ -1850,8 +2159,12 @@ func open_text_fetched(text: String, name: String = "model", parsed: LdrModel = 
 		model = LdrModel.parse(text, name)
 	if model == null:
 		return open_text(text, name)
-	if job != null:
-		ask_geometry(model)
+	# Every open, with a job or not: the viewer of a shared link, the working
+	# model put back at start-up, a session's open_model, Together. Asked only
+	# with a job, a file's own parts waited for its carried parts' LDraw files
+	# and their copies' geometry (fetch_sources) before any was asked.
+	var asking: int = _asking()
+	ask_geometry(model)
 	if job != null and not model.generated.is_empty():
 		await CustomParts.warm_skins(library, model)
 	var parsed_in: float = (Time.get_ticks_usec() - began) / 1000.0
@@ -1868,6 +2181,7 @@ func open_text_fetched(text: String, name: String = "model", parsed: LdrModel = 
 		await _open_into(out, text, name, model, job)
 	else:
 		_open_into(out, text, name, model, null)
+	_asked(asking)
 	not_opened = str(out[0]["error"])
 	open_phases["parse"] = parsed_in
 	open_phases["fetch"] = fetched_in
@@ -1889,9 +2203,10 @@ func ask_geometry(model: LdrModel) -> void:
 	library.want(CustomParts.copied_parts(library, model), true)
 
 
-## Every part [param model] places, by the library's name for it, each once:
-## what its open asks the geometry of. A sub-model's name is among them, and
-## asks for nothing.
+## Every part [param model] places, by the name it is laid under
+## ([method _open_into]: Studio's, a retired number's, a part LDraw draws in
+## one colour as the part it draws), each once: what its open asks the
+## geometry of. A sub-model's name is among them, and asks for nothing.
 func _parts_named_in(model: LdrModel) -> Array:
 	var named: Dictionary = {}
 	for sub: LdrModel.SubModel in model.submodels.values():
@@ -1899,8 +2214,54 @@ func _parts_named_in(model: LdrModel) -> Array:
 			named[placement.part_id] = true
 	var out: Dictionary = {}
 	for part_id: String in named:
-		out[library.resolve(studio_part(part_id, library))] = true
+		var real: String = library.resolve(studio_part(part_id, library))
+		if library.current_colour(real) >= 0:
+			real = library.current(real)
+		out[real] = true
 	return out.keys()
+
+
+## The parts whose geometry could not be fetched since the open on the
+## baseplate asked for it, id -> why (PartLibrary.fetch_failed). Its lay does
+## not ask for them again (PartLibrary.held_back), and its answer names those
+## it holds ("lost"): a fetch that failed while a big model was being laid
+## was said by nothing (not_coming waits for the laying), and one that failed
+## before was asked for again by every part laid that wanted it.
+var _gave_up: Dictionary = {}
+## The model on the baseplate's parts whose geometry could not be fetched as
+## it opened, id -> how many, held as [member awaited] are: kept in the file
+## a save writes, and said with the open (ModelBar.left_out_words).
+var lost: Dictionary = {}
+## Which open is asking, and whether one is, between its first ask and the
+## end of its lay ([method _asking], [method _asked]).
+var _asks: int = 0
+var _asking_now: bool = false
+
+
+## An open begins asking: what the last one heard fail forgotten. Its number.
+func _asking() -> int:
+	_asks += 1
+	_asking_now = true
+	_gave_up.clear()
+	library.held_back.clear()
+	if not library.fetch_failed.is_connected(_fetch_failed):
+		library.fetch_failed.connect(_fetch_failed)
+	return _asks
+
+
+## Open [param asking] is laid: what failed meanwhile may be asked for again,
+## unless another open has begun asking since.
+func _asked(asking: int) -> void:
+	if asking == _asks:
+		_asking_now = false
+		library.held_back.clear()
+
+
+func _fetch_failed(part_id: String, why: String) -> void:
+	_gave_up[part_id] = why
+	var info: PartLibrary.PartInfo = library.parts.get(part_id)
+	if _asking_now and info != null:
+		library.held_back[info.mesh_hash] = true
 
 
 ## The most a big model's open waits for the geometry on its way before it
@@ -1918,7 +2279,6 @@ const GEOMETRY_STALL_MS := 4000
 ## software, two a second, and 10297-1's last 126 parts took 55 s to come
 ## so (walk180, A8).
 func _await_geometry(waiting: Dictionary, job: Working.Job) -> void:
-	library.want(waiting.keys())
 	var began: int = Time.get_ticks_msec()
 	var came_at: int = began
 	var left: int = waiting.size()
@@ -1995,7 +2355,12 @@ static func _unshown_of(placements: Array) -> Dictionary:
 ## where they are not, at [param frame] as the rest are: a sub-model with
 ## nothing of it on the baseplate (Assemblies.file_frames finds none) whose
 ## parts the file is written with still. Each a definition of its own, as a
-## copy that went its own way is.
+## copy that went its own way is; and the file's own copy keeps its name:
+## copies with parts on the baseplate under that name were put down since (a
+## paste of another model's Sub, HB2), and go by a name of their own, as
+## file_frames names a copy that went its own way. Up to 2026-11-11 the
+## file's own went as "Sub+", and its lights and views were written with the
+## pasted copy's parts.
 static func _hold_unit(instances: Dictionary, unit: String, frame: Transform3D) -> void:
 	var path: String = ""
 	for leaf: String in unit.split("/", false):
@@ -2003,9 +2368,20 @@ static func _hold_unit(instances: Dictionary, unit: String, frame: Transform3D) 
 		if instances.has(path):
 			continue
 		var def: String = Assemblies.definition(leaf)
-		while instances.values().any(func(entry: Dictionary) -> bool: return str(entry["def"]) == def):
-			def += "+"
-		instances[path] = {"frame": frame, "def": def}
+		var named: Callable = func(name: String) -> Array:
+			return instances.keys().filter(func(other: String) -> bool:
+				return str((instances[other] as Dictionary)["def"]) == name)
+		var placed: Array = named.call(def)
+		if placed.any(func(other: String) -> bool: return bool((instances[other] as Dictionary).get("held", false))):
+			while not (named.call(def) as Array).is_empty():
+				def += "+"
+		elif not placed.is_empty():
+			var own: String = "%s %d" % [def, Assemblies.copy_of(Assemblies.leaf(str(placed[0])))]
+			while not (named.call(own) as Array).is_empty():
+				own += "+"
+			for other: String in placed:
+				(instances[other] as Dictionary)["def"] = own
+		instances[path] = {"frame": frame, "def": def, "held": true}
 
 
 ## The LDraw part a Studio model means by [param part_id].
@@ -2052,21 +2428,94 @@ func _live_source() -> SourceFile:
 var motion_rebase: Callable = Callable()
 
 
+## The part each joint of the model's motions takes hold of, found once
+## its parts are where the file put them: as the model opens, and as parts
+## still on their way arrive. Found later, by where the file had it, a part
+## a drive or a hand had moved first was not found, and its joint was
+## written stale: the door and the wheels were gone at the next open
+## (drivereview F1).
+func _find_joints() -> void:
+	var motions: Motions = world.motions
+	if motions == null:
+		return
+	for joint: Motions.Joint in motions.joints:
+		if joint.by == "part" and world.get_brick(joint.lead) == null:
+			# Only a part found: a lead of 0 is a joint not found since the
+			# file was read, its place the file's (Motions.part_at).
+			var found: int = Motions.part_at(joint, world, _lift_now())
+			if found != 0:
+				joint.lead = found
+
+
 ## The model's motions as lines (Motions.lines), each joint's ref and where
-## it stands written as the model now is: its part's place, in the file's
-## coordinates, and how far it stands from where it was built.
+## it stands written as the model now is: its part's number, colour and
+## place as it stands, in the file's coordinates, and how far it stands from
+## where it was built. A joint whose part is gone is written as it was, and
+## said ([member motions_gone_words]).
 func _motion_lines() -> PackedStringArray:
 	var motions: Motions = world.motions
-	if motions == null or motions.is_empty():
+	motions_gone_words = ""
+	if motions == null or not motions.has_lines():
 		return PackedStringArray()
 	var back: Vector3 = _lift_now()
+	var gone: Array = []
 	for joint: Motions.Joint in motions.joints:
 		if motion_rebase.is_valid():
 			motion_rebase.call(joint)
+		if joint.by != "part":
+			continue
 		var lead: BrickWorld.Brick = world.get_brick(joint.lead) if joint.lead != 0 else null
-		if joint.by == "part" and lead != null and lead.part_id == joint.part:
-			joint.place = (lead.transform.origin - back) * LdrModel.FLIP
-	return motions.lines()
+		if lead == null or lead.part_id != joint.part:
+			lead = world.get_brick(Motions.part_at(joint, world, back))
+		if lead == null:
+			if not _awaits(joint, back):
+				gone.append(joint)
+			continue
+		joint.lead = lead.id
+		joint.colour = lead.color_code
+		joint.place = (lead.transform.origin - back) * LdrModel.FLIP
+	motions_gone_words = _gone_words(motions, gone)
+	# Those it could not read are written where the file had them
+	# (_meta_families), not after the rest.
+	return motions.lines({}, false)
+
+
+## Whether [param joint]'s part is one still on its way (the web fetches
+## some after the model opens): not gone, only not here yet.
+func _awaits(joint: Motions.Joint, back: Vector3) -> bool:
+	if world.generation() != _awaited_in:
+		return false
+	# Both where the model now stands: a joint not found since the file was
+	# read where the drives kept since moved it (Motions.part_at), the part
+	# where they moved it (awaited_at).
+	var place: Vector3 = world.motions.moved_place(joint) if joint.lead == 0 and world.motions != null \
+		else joint.place
+	var want: Vector3 = place * LdrModel.FLIP + back
+	for placement: LdrModel.Placement in awaited:
+		if placement.part_id == joint.part and placement.color_code == joint.colour \
+				and awaited_at(placement).origin.distance_to(want) < Motions.PLACE_SLACK:
+			return true
+	return false
+
+
+## What a save says of [param gone], joints whose part the model no longer
+## has: each motion that moves one, by name, and the part, kept in the file
+## where it was. "" for none.
+func _gone_words(motions: Motions, gone: Array) -> String:
+	if gone.is_empty():
+		return ""
+	var said := PackedStringArray()
+	for joint: Motions.Joint in gone:
+		var names := PackedStringArray()
+		for motion: Motions.Motion in motions.list:
+			if motion.joints().has(joint):
+				names.append(Motions.quoted(motion.name))
+		var info: PartLibrary.PartInfo = library.parts.get(joint.part) if library != null else null
+		said.append("%s (%s, %s, colour %d)" % [", ".join(names), Inventory._tidy(info.name) if info != null
+			else "part", joint.part, joint.colour])
+	return ("a motion's joint has no part where it was, kept in the file as it was: %s" if gone.size() == 1
+		else "%d motions' joints have no part where they were, kept in the file as they were: %s") % (
+		[", ".join(said)] if gone.size() == 1 else [gone.size(), "; ".join(said)])
 
 
 ## How far the model was lifted to stand on the ground as it opened: a
@@ -2079,6 +2528,55 @@ func _lift_now() -> Vector3:
 	if world == null or world.generation() != _opened_in:
 		return Vector3.ZERO
 	return Vector3(0.0, _lifted_by, 0.0)
+
+
+## Someone else's file an edit has it written whole (live's write, not a
+## patch: SourceFile.patch), with [param words] saying how many of its own
+## lines of which kind that leaves out. Said once for each file opened, as
+## the edit is made, never as a refusal: the model saves all the same
+## (main.gd puts it on the bar).
+signal lines_left_out(words: String)
+## How the last write of someone else's file was made: "" a patch of it,
+## else why it was written as live writes it (a probe's to read).
+var last_whole: String = ""
+## Whether someone else's file is patched at all: false writes it as live
+## does, for a probe to hold the two side by side.
+static var patch_files: bool = true
+## The sources [signal lines_left_out] was said for, by instance id.
+var _left_out_said: Dictionary = {}
+
+
+func _say_left_out(source: SourceFile, drops: Dictionary) -> void:
+	if drops.is_empty() or _left_out_said.has(source.get_instance_id()):
+		return
+	_left_out_said[source.get_instance_id()] = true
+	var words: String = left_out_words(title, drops)
+	print("Brickworks: " + words)
+	lines_left_out.emit(words)
+
+
+## What [signal lines_left_out] says of the model [param name], whose
+## written text leaves out [param drops] (SourceFile.left_out_of).
+static func left_out_words(name: String, drops: Dictionary) -> String:
+	var count: int = 0
+	var kinds := PackedStringArray()
+	var named: Array = drops.keys()
+	named.sort_custom(func(a: String, b: String) -> bool:
+		return int(drops[a]) > int(drops[b]) or int(drops[a]) == int(drops[b]) and a < b)
+	for kind: String in named:
+		var many: int = drops[kind]
+		count += many
+		match kind:
+			"comment":
+				kinds.append(("%d comment" if many == 1 else "%d comments") % many)
+			"header":
+				kinds.append(("%d header line" if many == 1 else "%d header lines") % many)
+			"other":
+				kinds.append(("%d other line" if many == 1 else "%d other lines") % many)
+			_:
+				kinds.append(("%d %s line" if many == 1 else "%d %s lines") % [many, kind])
+	return "After this change, saving “%s” writes it afresh: %d of its file's lines won't be kept (%s)" \
+		% [name, count, "; ".join(kinds)]
 
 
 ## The source file with the model on the baseplate written into it, or null
@@ -2096,6 +2594,14 @@ func _source_asked(title_now: String) -> Dictionary:
 	var source: SourceFile = _live_source()
 	if source == null:
 		return {}
+	# The kept drives' rigid move of the whole model (Motions.moved) taken
+	# off the parts, so the file pairs them as they were and keeps every
+	# sub-model's lines, then put on its main model's lines alone
+	# ([method _source_written]): a drive kept rewrote every line of a file,
+	# and one with a sub-model placed twice was written whole (drivereview F2).
+	var whole: Transform3D = world.motions.moved if world.motions != null else Transform3D.IDENTITY
+	var lifted := Transform3D(Basis.IDENTITY, _lift_now())
+	var unmoved: Transform3D = lifted * whole.affine_inverse() * lifted.affine_inverse()
 	var bricks: Array = []
 	for brick: BrickWorld.Brick in world.bricks():
 		if scenery.has(brick.id):
@@ -2103,103 +2609,336 @@ func _source_asked(title_now: String) -> Dictionary:
 		# A section broken out is written where it was pulled from: its
 		# parts as they stand there (BrickWorld.home_of).
 		var home := BrickWorld.Brick.new(brick.id, brick.part_id, brick.color_code,
-			brick.transform if world.broken_out.is_empty() else world.home_of(brick))
+			unmoved * (brick.transform if world.broken_out.is_empty() else world.home_of(brick)))
 		home.group = brick.group
 		home.unit = brick.unit
 		home.step = brick.step
 		home.hidden = brick.hidden
+		home.origin = brick.origin
 		bricks.append(home)
 	# In an order of their own, not the world's: which line a part is paired
 	# with and where a part put down goes in the file follow it, and two
 	# copies of a model built in another order (Together) wrote two files.
 	bricks = _in_brick_order(bricks)
+	# What is on its way: by its line and copy for the whole write
+	# (SourceFile.write), by its place in the file for a patch; each -> the
+	# step it is in now, as is each part the app cannot show (BrickWorld.held):
+	# read here, as the model stands, for a write on a worker.
 	var waiting: Dictionary = {}
+	var waiting_lines: Dictionary = {}
 	if world.generation() == _awaited_in:
 		for placement: LdrModel.Placement in awaited:
-			waiting["%d|%s" % [placement.line, placement.unit]] = true
-	return {"source": source, "bricks": bricks, "lift": _lift_now(), "waiting": waiting,
+			waiting_lines["%d|%s" % [placement.line, placement.unit]] = placement.step
+			waiting[placement.origin] = placement.step
+	var unshown_steps: Dictionary = {}
+	for placement: LdrModel.Placement in source.not_shown:
+		# One a paste or a model put in brought was read from no line.
+		if not placement.origin.is_empty():
+			unshown_steps[placement.origin] = placement.step
+	var asked: Dictionary = {"source": source, "bricks": bricks, "lift": _lift_now(),
+		"waiting": waiting, "waiting_lines": waiting_lines, "held": unshown_steps, "moved": whole,
 		"library": library, "title": title_now,
 		"unit_steps": world.unit_steps.duplicate(true) if source.authored else {},
-		"floor": model_floor, "hidden": hidden_scheme.duplicate(true),
+		"looks": world.step_looks.duplicate(true),
+		"authored": AuthorSteps.any(world, scenery)}.merged(_metas_asked(source))
+	# A model put into it whole (held_from) is grafted into the patch of the
+	# file's own parts: its sections as the model written whole has them
+	# (SourceFile.grafted). Written whole here, on this thread.
+	var roots: Dictionary = _graft_roots(source) if whole.is_equal_approx(Transform3D.IDENTITY) \
+		else {}
+	# One the app cannot show that no line of the file placed, out of every
+	# model put in (one taken apart): the patch has no line for it, and it
+	# went from the save (im2review ungrouped).
+	for placement: LdrModel.Placement in _held_placements():
+		if placement.origin.is_empty() and not roots.has(_top_of(world.held_path(placement))):
+			asked["unpatched"] = "a part the app cannot show, put in, is out of the model put in"
+			break
+	if not roots.is_empty():
+		_writing_whole = true
+		var written: String = to_text(title_now)
+		_writing_whole = false
+		var own: Array = bricks.filter(func(brick: BrickWorld.Brick) -> bool:
+			return not roots.has(_top_of(Assemblies.path_of(brick))))
+		# A file with no steps is one step once the model put in has steps
+		# (AuthorSteps.one_step): its parts in it are in none of its own.
+		if not source.authored:
+			for brick: BrickWorld.Brick in own:
+				if brick.step == 0:
+					brick.step = -1
+		var own_steps: Dictionary = {}
+		for path: String in world.unit_steps:
+			if not roots.has(_top_of(path)):
+				own_steps[path] = world.unit_steps[path]
+		asked["grafts"] = {"roots": roots, "whole": written, "bricks": own,
+			"unit_steps": own_steps if source.authored else {},
+			"steps_now": world.unit_steps.duplicate(true)}
+	return asked
+
+
+## Whether a write of the model is the whole one a model put into someone
+## else's file is grafted from ([method _source_asked]): not the file's.
+var _writing_whole: bool = false
+
+
+## The first copy of [param path], "" for none.
+static func _top_of(path: String) -> String:
+	return Assemblies.segments(path)[0] if not path.is_empty() else ""
+
+
+## The copies at the model's top level that are models put into someone
+## else's file ([param source]) whole: no part in them read from the file,
+## no line of the file placing them, and no sub-model in them the file has
+## (SourceFile.grafted). Each path -> true.
+func _graft_roots(source: SourceFile) -> Dictionary:
+	var file_defs: Dictionary = {}
+	for path: String in source.unit_sections:
+		file_defs[Assemblies.definition(Assemblies.leaf(path))] = true
+	var may: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		if scenery.has(brick.id):
+			continue
+		_graft_may(may, Assemblies.path_of(brick), brick.origin, file_defs)
+	for placement: LdrModel.Placement in _held_placements():
+		_graft_may(may, world.held_path(placement), placement.origin, file_defs)
+	var out: Dictionary = {}
+	for top: String in may:
+		if bool(may[top]) and not source.unit_lines.has(top) and not source.unit_sections.has(top):
+			out[top] = true
+	return out
+
+
+static func _graft_may(may: Dictionary, path: String, origin: String, file_defs: Dictionary) -> void:
+	if path.is_empty():
+		return
+	var top: String = _top_of(path)
+	var fresh: bool = origin.is_empty()
+	for segment: String in Assemblies.segments(path):
+		if file_defs.has(Assemblies.definition(segment)):
+			fresh = false
+	may[top] = bool(may.get(top, true)) and fresh
+
+
+## What the app's own lines in the model are written from (_meta_families),
+## copied as the model stands now: someone else's file's [param source], or
+## null for the app's own file.
+func _metas_asked(source: SourceFile) -> Dictionary:
+	return {"metas": _metas_now(), "elsewhere": source != null,
+		"own_title": source.own_title if source != null else "",
+		"said_title": source.said_title if source != null else "",
+		"floor": model_floor, "floor_unsaid": _floor_unsaid,
+		"hidden": hidden_scheme.duplicate(true),
 		"cut": world.cut_kept.duplicate(true),
 		"views": SavedViews.in_file(world.saved_views, _lift_now()),
 		"lights": SceneLights.in_file(world.scene_lights, _lift_now()),
 		"lights_read": _lights_now(),
-		"motions": _motion_lines(), "looks": world.step_looks.duplicate(true),
-		"pins": pins.lines(world, _lift_now()),
-		"authored": AuthorSteps.any(world, scenery), "set": from_set}
+		"motions": _motion_lines(),
+		"motions_unread": world.motions.unread.duplicate() if world.motions != null
+			else PackedStringArray(),
+		"pins": pins.lines(world, _lift_now()), "set": from_set}
 
 
 ## The source file with the parts [method _source_asked] copied written into
-## it, or null when the change cannot be written into it as it is. Reads
-## only what it is given, so on any thread.
+## it, or null when the model is written whole: the patch of the file
+## (SourceFile.patch) where the gate passes it, else what live wrote
+## (SourceFile.write). Reads only what it is given, so on any thread.
 static func _source_text_of(asked: Dictionary) -> Variant:
-	var source: SourceFile = asked["source"]
-	var written: Variant = source.write(asked["bricks"], asked["lift"], asked["waiting"],
-		asked["library"], asked["unit_steps"])
-	if written == null:
-		return null
-	var text: String = _without_app_lines(str(written))
-	var title_now: String = asked["title"]
-	if title_now != source.own_title and not title_now.is_empty():
-		text = _after_first_line(text, TITLE_META + title_now)
-	return text
+	var written: Variant = _source_written(asked)
+	return null if written == null else str(written)
 
 
-## [method _source_text_of], and what else the app keeps in someone else's
-## file written into it: a hose's path, the floor, the hidden colours, the
-## motions, the booklet's looks and the set it is. On any thread: the
-## autosave makes it on a worker ([method _text_into]).
+## Someone else's file written for the change, with what else the app keeps
+## in it: a hose's path, the floor, the hidden colours, the motions, the
+## booklet's looks and the set it is. A patch of the file where the edit is
+## one (SourceFile.patch) and the gate passes what is written
+## (SourceFile.gate); else what live wrote, the file with the change
+## (SourceFile.write), or null for the model written whole. Never refused:
+## keeptext4 refused what its gate did not pass, and the work went with the
+## next open (kt4review). On any thread: the autosave makes it on a worker
+## ([method _text_into]). Says in [param asked] "whole", why it was not a
+## patch, and "drops", what of the file's lines live's write leaves out.
 static func _source_written(asked: Dictionary) -> Variant:
-	var from_source: Variant = _source_text_of(asked)
-	if from_source == null:
+	var source: SourceFile = asked["source"]
+	var library: PartLibrary = asked["library"]
+	# A model put in whole: the file's own parts patched, then it grafted in.
+	var grafts: Dictionary = asked.get("grafts", {})
+	var own: Array = grafts["bricks"] if not grafts.is_empty() else asked["bricks"]
+	var own_steps: Dictionary = grafts["unit_steps"] if not grafts.is_empty() else asked["unit_steps"]
+	var unpatched: String = asked.get("unpatched", "")
+	var plan: SourceFile.Plan = source.patch(own, asked["lift"], asked["waiting"],
+		library, own_steps, asked.get("held", {})) if patch_files and unpatched.is_empty() else null
+	var why: String = plan.why if plan != null else unpatched if not unpatched.is_empty() \
+		else "patches are off"
+	if why.is_empty():
+		var patched: String = source.app_lines_placed(_written_with(asked, "\n".join(plan.out)))
+		why = source.gate(plan, patched, library, asked["waiting"], own_steps)
+		if why.is_empty():
+			# The kept drives' rigid move put on the main model's lines once
+			# the gate has passed the patch of the parts as they were
+			# ([method _source_asked]).
+			var kept: String = Motions.moved_into(patched, asked.get("moved", Transform3D.IDENTITY))
+			if grafts.is_empty():
+				asked["whole"] = ""
+				return kept
+			var grafted: String = source.grafted(kept, plan, grafts["roots"], grafts["whole"],
+				grafts["steps_now"], library.parts)
+			if not grafted.begins_with("why: "):
+				asked["whole"] = ""
+				return grafted
+			why = grafted.trim_prefix("why: ")
+	asked["whole"] = why
+	_said_whole(source, why)
+	var written: Variant = source.write(asked["bricks"], asked["lift"], asked["waiting_lines"],
+		library, asked["unit_steps"], asked.get("held", {}))
+	if written == null:
+		asked["whole"] = why + " (the model written whole)"
 		return null
-	var kept: String = str(from_source)
+	var kept: String = _written_with(asked, Motions.moved_into(str(written),
+		asked.get("moved", Transform3D.IDENTITY)))
+	if not asked.get("drops_said", false):
+		asked["drops"] = source.left_out_of(kept)
+	return kept
+
+
+## [param kept], the file with the change, and what else the app keeps in
+## it ([method _source_written]): its own lines, written in one go
+## ([method _meta_families]), and the booklet's looks.
+static func _written_with(asked: Dictionary, kept: String) -> String:
 	# A hose LDCad laid, bent by a grab: its path where it now lies.
 	kept = LdcadPath.written_into(kept, asked["source"], asked["library"])
-	var ground: ModelFloor = asked["floor"]
-	kept = ground.written_into(kept) if ground != null else kept
-	kept = HiddenColours.written_into(kept, asked["hidden"])
-	kept = CutShape.written_into(kept, asked["cut"])
-	kept = SavedViews.written_into(kept, asked["views"])
-	kept = SceneLights.written_with(kept, asked["lights"], asked["lights_read"], false)
-	kept = Motions.written_into(kept, asked["motions"])
-	kept = PinnedComments.written_into(kept, asked["pins"])
-	kept = _looks_into(kept, asked["looks"], asked["authored"])
+	var here: MetaIndex = MetaIndex.of_text(kept)
+	kept = here.write(kept, _meta_families(asked, here, kept))
+	return _looks_into(kept, asked["looks"], asked["authored"], Callable(), here)
+
+
+## The app's own lines in the model as [param asked] ([method _metas_asked])
+## says they are now, each feature's a family (MetaIndex.Family) in the order
+## a model the app writes whole has them: under its title the set it is, its
+## lights, views, cut, hidden colours and the name a save gave someone
+## else's file; at the end of its head the floor, the motions and the pins.
+## Each with the lines of it the open could not read where the file had them
+## (MetaIndex.lines_for). [param here] is the text [param text] being written,
+## read (MetaIndex.of_text). From what it is given alone, so on any thread.
+##
+## An app line is put in only where what it says is not what the file says
+## already: someone else's file says nothing of a floor, so it stands on the
+## grid, and an unedited save wrote "FLOOR GRID" into it; a name it has as
+## its own is not said again (hscheck).
+static func _meta_families(asked: Dictionary, here: MetaIndex, text: String) -> Array:
+	var metas: MetaIndex = asked.get("metas")
+	var elsewhere: bool = bool(asked.get("elsewhere", false))
+	var out: Array = []
+	# The set it is: named by the file's own header (the LDraw model
+	# repository's) and by no line of the app's, it is the file's as it was.
 	var number: String = asked["set"]
-	return kept if set_in(kept) == number else with_set(kept, number)
+	if not number.is_empty() and (here.has(["FROM_SET"]) or _set_said(text) != number):
+		out.append(_family(metas, ["FROM_SET"], PackedStringArray([SET_META + number]),
+			MetaIndex.TITLE, _set_read))
+	# Each light read and not changed is its line as the file has it already
+	# (SceneLights.lines_now).
+	out.append(_family(metas, ["LIGHT"], SceneLights.lines_now(asked["lights"],
+		asked["lights_read"])))
+	out.append(_family(metas, ["VIEW"], SavedViews.lines_of(asked["views"]), MetaIndex.TITLE,
+		SavedViews._parsed))
+	var cut: Dictionary = asked["cut"]
+	out.append(_family(metas, ["CUT_AWAY"], PackedStringArray([CutShape.META
+		+ JSON.stringify(cut)]) if not cut.is_empty() else PackedStringArray(), MetaIndex.TITLE,
+		CutShape._parsed))
+	var hidden: Dictionary = asked["hidden"]
+	out.append(_family(metas, ["HIDDEN_COLOURS"], PackedStringArray([HiddenColours.META
+		+ JSON.stringify(hidden)]) if not (hidden.get("groups", []) as Array).is_empty()
+		else PackedStringArray(), MetaIndex.TITLE, HiddenColours.said_in))
+	if elsewhere:
+		# Said when the name is not one the file has as its own (its title
+		# line, or the name the open made of it), or when the file says it on
+		# a line of the app's already, which an unedited save keeps.
+		var title_now: String = asked["title"]
+		var said_now: bool = metas != null and metas.own(["TITLE"]).any(
+			func(line: MetaIndex.Line) -> bool: return line.said == title_now)
+		out.append(_family(metas, ["TITLE"], PackedStringArray([TITLE_META + title_now])
+			if not title_now.is_empty() and (said_now or not title_now in [
+				str(asked["own_title"]), str(asked.get("said_title", ""))])
+			else PackedStringArray(), MetaIndex.TITLE, _title_read))
+		# The steps a shared link carries (SharedPages) go: a save is no share.
+		out.append(MetaIndex.family(["PAGES", "PAGE"], PackedStringArray(), MetaIndex.TITLE, true))
+	var ground: ModelFloor = asked["floor"]
+	if ground != null:
+		var said: bool = metas != null and metas.own(["FLOOR"]).any(
+			func(line: MetaIndex.Line) -> bool: return line.taken)
+		var line: String = ground.to_meta()
+		out.append(_family(metas, ["FLOOR"], PackedStringArray() if elsewhere and not said
+			and line == str(asked.get("floor_unsaid", "")) else PackedStringArray([line]),
+			MetaIndex.HEAD, ModelFloor.said_in))
+	# The motions keep their own list of the lines they could not read, one
+	# let go once the next open would read it into a motion (Motions
+	# ._settle_unread).
+	out.append(_family(metas, ["MOTION*"], asked["motions"], MetaIndex.HEAD, Callable(),
+		asked["motions_unread"]))
+	# Pins are said by when each was made (PinnedComments._order), whatever
+	# order the file has them in.
+	out.append(_family(metas, ["PIN"], asked["pins"], MetaIndex.HEAD, PinnedComments.said_in,
+		null, true))
+	# And the lines of a word no reader here reads (a later build's): where
+	# the file has them, and at the end of the head of a model written whole.
+	if metas != null:
+		out.append(metas.unclaimed())
+	return out
 
 
-## [param text] without the lines this app writes again on every save.
-static func _without_app_lines(text: String) -> String:
-	if not text.contains("0 !BRICKWORKS "):
-		return text
-	var kept := PackedStringArray()
-	for line: String in text.split("\n"):
-		if line.begins_with(SHARE_META) or line.begins_with(REMIX_META) \
-				or line.begins_with(REMIX_VERSION_META) or line.begins_with(CREDIT_META) \
-				or line.begins_with(MADE_META) or line.begins_with(SetBin.META) \
-				or line.begins_with(ReferenceImage.META) \
-				or line.begins_with(ReferenceImage.PICTURE_META) \
-				or line.begins_with(TITLE_META) or line.begins_with(SharedPages.PAGE) \
-				or line.begins_with(SharedPages.HEAD):
-			continue
-		kept.append(line)
-	return "\n".join(kept)
+## A family of [param words] of [param now], with the lines of them
+## [param metas] (the open's reading, or null) had and did not take where
+## the file had them, as its readers marked them (MetaIndex.lines_for).
+## With [param read] (what a line says -> what its reader reads, null for
+## nothing) a line of [param now] that says what a line taken said is that
+## line as the file has it: "0 !BrickWorks floor baseplate 32 32 2" read
+## and said again in capitals is the file's line, and an unedited save is
+## the file (mlcheck F4). [param unread]: the feature's own list of the
+## lines it keeps unread (Motions.unread). [param any_order]: the feature
+## says its lines in an order of its own (MetaIndex.lines_for).
+static func _family(metas: MetaIndex, words: Array, now: PackedStringArray,
+		at: int = MetaIndex.TITLE, read: Callable = Callable(),
+		unread: Variant = null, any_order: bool = false) -> MetaIndex.Family:
+	if metas == null:
+		return MetaIndex.family(words, now, at)
+	if read.is_valid():
+		now = metas.as_written(words, now, read)
+	return MetaIndex.family(words, metas.lines_for(words, now, unread, any_order), at)
 
 
-static func _after_first_line(text: String, line: String) -> String:
-	var cut: int = text.find("\n")
-	if cut < 0:
-		return text + "\n" + line + "\n"
-	return text.substr(0, cut + 1) + line + "\n" + text.substr(cut + 1)
+## Why each source was last written as live writes it, said on the console
+## once for each reason: the autosave writes it again a second after each
+## change. Written from workers, so under a lock.
+static var _whole_said: Dictionary = {}
+static var _whole_lock: Mutex = Mutex.new()
+
+
+static func _said_whole(source: SourceFile, why: String) -> void:
+	var key: String = "%d|%s" % [source.get_instance_id(), why]
+	_whole_lock.lock()
+	var said: bool = _whole_said.has(key)
+	if not said:
+		if _whole_said.size() > 200:
+			_whole_said.clear()
+		_whole_said[key] = true
+	_whole_lock.unlock()
+	if not said:
+		print("Brickworks: %s is written as live writes it, not a patch: %s" % [
+			source.own_title if not source.own_title.is_empty() else "the model", why])
 
 
 ## The name a save of someone else's file gave its model, or "".
 static func title_meta_in(text: String) -> String:
-	var found: RegExMatch = RegEx.create_from_string(
-		"(?m)^0 !BRICKWORKS TITLE (.+?)\\s*$").search(text)
-	return found.get_string(1) if found != null else ""
+	return title_meta_from(MetaIndex.of_text(text))
+
+
+## [method title_meta_in] from the model's own lines read once (MetaIndex):
+## a sub-model's TITLE is its own.
+static func title_meta_from(metas: MetaIndex) -> String:
+	var found: Variant = metas.first_read("TITLE", _title_read)
+	return str(found) if found != null else ""
+
+
+static func _title_read(said: String) -> Variant:
+	return said if not said.is_empty() else null
 
 
 ## Placements whose geometry is on its way, put down as each part arrives.
@@ -2218,6 +2957,14 @@ var _awaited_in: int = -1
 ## (SourceFile). Until 2026-10-20 they went from the app's own: a save, or an
 ## autosave once the model was edited, wrote it without them.
 var _absent: Array = []
+## The files of the parts this model's file carried that could not be built,
+## and of those a model put into it carried, by part id -> {name -> text}
+## (CustomParts.take_into's "files"): a whole write carries them for the
+## parts it holds unshown ([method _part_files]). This model's alone: up to
+## 2026-11-12 they were the app's, kept from every file opened, and a model
+## of the app's own placing a part named as one the lab carried was saved
+## with the lab's file of it (im3check leak).
+var _held_files: Dictionary = {}
 ## Whether [method not_coming] has said this model's count.
 var _told_not_coming: bool = false
 
@@ -2240,34 +2987,192 @@ func not_coming(part_id: String) -> int:
 	return awaited.size()
 
 
+## The one answer to where a part of the open model's file stands now that
+## the world does not hold, or did not when the model opened: one on its way
+## ([member awaited], [method awaited_at]), one the catalogue has not got
+## ([member _absent], someone else's SourceFile.not_shown), one that landed
+## late ([method _follow_motions]). [param in_file]: where the file has it,
+## in the file's coordinates (LdrModel.to_transform's, the model not
+## lifted); answered in them, moved with the whole model by the drives kept
+## since it opened (Motions.moved), as every part here was. Read where the
+## file had them, a drive kept while the web was still fetching left them
+## where the model had been (drvcheck D), and so did a save of a part the
+## catalogue lacks, Compare, and an undo or a redo of the drive once they
+## had landed (drvrecheck F1, F3).
+func held_place(in_file: Transform3D) -> Transform3D:
+	var whole: Transform3D = world.motions.moved if world.motions != null else Transform3D.IDENTITY
+	if whole.is_equal_approx(Transform3D.IDENTITY):
+		return in_file
+	return whole * in_file
+
+
+## Where [param placement], one of [member awaited], stands now in the
+## world ([method held_place]): its place is the world's as the model
+## opened, lifted.
+func awaited_at(placement: LdrModel.Placement) -> Transform3D:
+	var lifted := Transform3D(Basis.IDENTITY, _lift_now())
+	var in_file: Transform3D = lifted.affine_inverse() * placement.transform
+	var now: Transform3D = held_place(in_file)
+	return placement.transform if now == in_file else lifted * now
+
+
+## [member awaited], copies, each where it stands now ([method
+## awaited_at]): what Compare holds the parts on their way as
+## (ModelDiff.parts_of_world). Compared where the file had them, a drive
+## kept while they came said every one of them moved (drvrecheck F3).
+func awaited_now() -> Array:
+	var out: Array = []
+	if world.generation() != _awaited_in:
+		return out
+	for placement: LdrModel.Placement in awaited:
+		var now := LdrModel.Placement.new(placement.part_id, placement.color_code,
+			awaited_at(placement), placement.step)
+		now.unit = world.held_path(placement)
+		now.group = Assemblies.group_of(now.unit)
+		now.line = placement.line
+		now.origin = placement.origin
+		out.append(now)
+	return out
+
+
 ## Put down what was waiting for [param part_id]. Returns how many landed;
-## none once the world has been cleared since the model opened.
-func place_awaited(part_id: String) -> int:
+## none once the world has been cleared since the model opened. Each landed
+## goes into [param landed_into] as [its brick, its placement].
+func place_awaited(part_id: String, landed_into: Array = []) -> int:
 	# Not into a model still being laid: what arrived meanwhile is put down
-	# once it is whole (_open_into).
-	if awaited.is_empty() or laying:
+	# once it is whole (_open_into). Nor into a step still being made of
+	# motions played one after another (hold_landings).
+	if awaited.is_empty() or laying or _holding_in == world.generation():
 		return 0
 	if world.generation() != _awaited_in:
 		awaited.clear()
+		_session_puts.clear()
 		return 0
 	var still: Array[LdrModel.Placement] = []
 	var landed: int = 0
 	for placement: LdrModel.Placement in awaited:
-		if placement.part_id != part_id:
+		# One a session puts down, where the session has it (Together).
+		if placement.part_id != part_id or _session_puts.has(placement):
 			still.append(placement)
 			continue
-		var brick_id: int = world.add_brick(
-			placement.part_id, placement.color_code, placement.transform)
+		var at: Transform3D = awaited_at(placement)
+		var brick_id: int = world.add_brick(placement.part_id, placement.color_code, at)
 		if brick_id != 0:
 			world.get_brick(brick_id).group = placement.group
 			world.get_brick(brick_id).unit = placement.unit
+			# In its copy where that is now (BrickWorld.held_path): a rename or
+			# a Make round it since the open moved it.
+			var open: String = BrickWorld.held_key(placement)
+			var now: String = world.held_path(placement)
+			if now != Assemblies.path_from(placement.group, placement.unit):
+				world.get_brick(brick_id).unit = now
+				world.get_brick(brick_id).group = Assemblies.group_of(now)
+			if not open.is_empty():
+				world.held_landed[brick_id] = open
 			world.get_brick(brick_id).step = placement.step
-			builder.register(brick_id, placement.part_id, placement.transform)
+			world.get_brick(brick_id).origin = placement.origin
+			# A step edit made while it came is undone on it (Builder "heldstep").
+			placement.landed = brick_id
+			builder.register(brick_id, placement.part_id, at)
 			landed += 1
+			landed_into.append([brick_id, placement])
+			# Landed after the steps the history holds were made: none of
+			# their moves carries it (_follow_motions).
+			if _late_in != world.generation():
+				_late.clear()
+				_late_in = world.generation()
+			_late[brick_id] = true
 	awaited = still
+	if landed > 0:
+		_find_joints()
 	if awaited.is_empty():
 		_settle()
 	return landed
+
+
+## Those of [member awaited] a live session puts down as they come, where
+## the session has them then (Together._held_by_store): placement -> true.
+## Still on their way here, and written so, until it does.
+var _session_puts: Dictionary = {}
+
+
+## [param placement], one of [member awaited], put down by a session as it
+## comes ([param on]) or here again, where the model stands then.
+func session_puts(placement: LdrModel.Placement, on: bool) -> void:
+	if on:
+		_session_puts[placement] = true
+	else:
+		_session_puts.erase(placement)
+
+
+## [param placement] no more on its way: a session put it down or took it
+## off, or the session's model never had it.
+func drop_awaited(placement: LdrModel.Placement) -> void:
+	awaited.erase(placement)
+	_session_puts.erase(placement)
+
+
+## The model this holds what arrives in awaited for (its world's
+## generation), -1 for none: motions played one after another and kept as
+## one step are being played (MotionPlayer.pace_on, a sequence or a link's
+## press of one, a slice a frame).
+var _holding_in: int = -1
+
+## Signalled with how many parts were put down once a hold let go of them
+## ([method hold_landings]), as they would have been as they came.
+signal held_landed(count: int)
+
+
+## With [param on], what arrives waits in [member awaited] until this is
+## called again without, and is put down then: a run of motions kept as one
+## step is being made. Put down between two of its motions, a part was
+## moved by the second as the parts that step moves itself are, so its undo
+## took it back only to where it had landed, a whole drive from its tyre,
+## and an undone sequence's racer was saved with its rims out of its tyres
+## (drvcheck3 L1). Put down once the step is whole, the step has none of it,
+## and an undo or a redo carries it as it carries every part that landed
+## late (_follow_motions). Held for the model open now only: one opened
+## meanwhile lands its parts as they come. Returns how many it put down.
+func hold_landings(on: bool) -> int:
+	if on:
+		_holding_in = world.generation()
+		return 0
+	if _holding_in < 0:
+		return 0
+	_holding_in = -1
+	var landed: Array = _land_arrived()
+	if not landed.is_empty():
+		held_landed.emit(landed.size())
+	return landed.size()
+
+
+## The parts put down after the model opened ([method place_awaited]), id ->
+## true, while it is the one open ([member _late_in]): an undo or a redo
+## of a drive kept before they came moves the model and not them.
+var _late: Dictionary = {}
+var _late_in: int = -1
+
+
+## An undo or a redo put the model's motions back (Builder.motions_hook):
+## each part that landed late and that it did not move itself goes where
+## the model now stands, from where it stood under [param had], the whole
+## move (Motions.moved) the motions had before; and the joints the
+## motions put back look for their parts again. Left where they were, the
+## racer's rims stood a whole drive from their tyres and three of its four
+## wheel joints found nothing, and a save kept them there (drvrecheck F1).
+func _follow_motions(had: Transform3D, moved_itself: Dictionary) -> void:
+	if _late_in == world.generation():
+		var lifted := Transform3D(Basis.IDENTITY, _lift_now())
+		var unmoved: Transform3D = had.affine_inverse() * lifted.affine_inverse()
+		for id: Variant in _late:
+			var now_id: int = builder._live(int(id))
+			var brick: BrickWorld.Brick = world.get_brick(now_id)
+			if brick == null or moved_itself.has(now_id) or scenery.has(now_id):
+				continue
+			var to: Transform3D = lifted * held_place(unmoved * brick.transform)
+			if not to.is_equal_approx(brick.transform):
+				builder.put_at(now_id, to)
+	_find_joints()
 
 
 ## How far the model was lifted when it opened, and whether that was worked
@@ -2307,6 +3212,11 @@ func _settle() -> void:
 	# And the lights placed in it light it where it now stands (SceneLights).
 	world.scene_lights = SceneLights.moved(world.scene_lights, Vector3(0.0, by, 0.0))
 	_lights_kept = SceneLights.moved(_lights_kept, Vector3(0.0, by, 0.0))
+	# And the frames its sub-models' lines are in, with their copies.
+	var framed: Dictionary = {}
+	for path: String in world.section_frames:
+		framed[path] = (world.section_frames[path] as Transform3D).translated(Vector3(0.0, by, 0.0))
+	world.section_frames = framed
 	for brick: BrickWorld.Brick in model:
 		var to: Transform3D = brick.transform.translated(Vector3(0.0, by, 0.0))
 		builder.lattice.release(brick.id)
@@ -2437,14 +3347,17 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	# worker with a [param pace], the frames going on: made in one,
 	# 8466-1's 36 MB were 1.3 to 3 s of a browser's after every part that
 	# arrived as it opened.
-	var asked: Dictionary = _source_asked(title)
+	var asked: Dictionary = {} if _writing_whole else _source_asked(title)
 	if not asked.is_empty():
+		asked["drops_said"] = _left_out_said.has((asked["source"] as SourceFile).get_instance_id())
 		var kept: Variant
 		if pace != null:
 			kept = await WorkerTasks.awaited(func() -> Variant:
 				return ModelStore._source_written(asked), "write the model's file", library)
 		else:
 			kept = _source_written(asked)
+		_say_left_out(asked["source"], asked.get("drops", {}))
+		last_whole = str(asked.get("whole", ""))
 		if kept != null:
 			made.append(kept)
 			return
@@ -2496,11 +3409,17 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	if pace != null and pace.due():
 		await pace.next()
 	# A made part goes out inside the file, or the file means nothing
-	# anywhere the part was not made.
+	# anywhere the part was not made: and so does one the file carries that
+	# could not be built, which the model holds unshown (below), as the file
+	# had it (CustomParts.unbuilt). Written from the parts here alone, a model
+	# of the app's own lost the file of such a part at its first save, and
+	# kept a reference to nothing.
 	var used: Dictionary = {}
 	for item: Variant in placements:
 		used[(item as LdrModel.Placement).part_id] = true
-	var embedded: Dictionary = CustomParts.sources_for(library, used.keys())
+	for item: Variant in _held_placements():
+		used[(item as LdrModel.Placement).part_id] = true
+	var embedded: Dictionary = _part_files(used.keys())
 	# Sub-assemblies, nested or copied, go out as a tree of sub-models: each
 	# definition once, every copy a reference to it (LdrModel.write_tree).
 	var tree := Assemblies.new()
@@ -2509,7 +3428,19 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	tree.library = library
 	tree.scenery = scenery
 	var figures: Dictionary = figure_frames(model)
-	var instances: Dictionary = tree.file_frames(figures)
+	# What is not on the baseplate and goes out in its copy too: each copy
+	# compared by what it holds of them as well (Assemblies.file_frames).
+	var coming: Array = []
+	var unseen: Array = []
+	var holding: Array = []
+	if world.generation() == _awaited_in:
+		var source: SourceFile = _live_source()
+		coming = awaited if source == null else source.in_own_steps(awaited)
+		unseen = _absent if source == null else source.in_own_steps(source.not_shown)
+		for placement: LdrModel.Placement in coming + unseen:
+			holding.append([world.held_path(placement), placement.part_id, placement.color_code])
+	# Laid on each other by the steps this save writes.
+	var instances: Dictionary = tree.file_frames(figures, holding, unit_steps)
 	if pace != null and pace.due():
 		await pace.next()
 	# Every frame moved with the parts, so each part is where it was in it.
@@ -2524,32 +3455,65 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 			entry["first"] = int(first[path])
 	# What has not arrived, or could not be fetched, goes out last, where the
 	# file had it, and so does what the catalogue has not got. Someone else's
-	# file carries them below (carried_into); the app's own was saved without
-	# them: a model saved on a phone that lost a part's fetch lost the part
-	# (fetch_retry_probe, 2026-10-20).
-	if _live_source() == null and world.generation() == _awaited_in:
+	# file carries below what it cannot write so (carried_into); the app's own
+	# was saved without them: a model saved on a phone that lost a part's
+	# fetch lost the part (fetch_retry_probe, 2026-10-20). Each in its step
+	# and its sub-model, someone else's file's too (SourceFile.in_own_steps):
+	# carried, theirs went in the model's last step (hscheck Sa).
+	if world.generation() == _awaited_in:
 		# Awaited parts were stood on the ground with the rest; the absent are
-		# as the file had them.
+		# in the file's coordinates. Both where the model now stands
+		# (held_place): kept, a drive left them where it had been (drvrecheck F3).
 		var held_at: Array = []
-		for waiting: LdrModel.Placement in awaited:
-			held_at.append([waiting, back * waiting.transform])
-		for absent: LdrModel.Placement in _absent:
-			held_at.append([absent, absent.transform])
+		for waiting: LdrModel.Placement in coming:
+			held_at.append([waiting, back * awaited_at(waiting)])
+		for absent: LdrModel.Placement in unseen:
+			held_at.append([absent, held_place(absent.transform)])
 		for pair: Array in held_at:
 			var waiting: LdrModel.Placement = pair[0]
+			# One of no step is in its section's one step, as its parts are
+			# written: written in a step of its own before theirs, it opened
+			# again as a step someone gave it.
 			var held := LdrModel.Placement.new(waiting.part_id, waiting.color_code,
-				pair[1], waiting.step)
+				pair[1], maxi(waiting.step, 0))
 			held.group = waiting.group
 			# In its sub-model, as the file had it: one with nothing on the
 			# baseplate (a band whose pieces could not be made) is written
 			# still, not its parts loose in the model.
-			var unit: String = Assemblies.path_from(waiting.group, waiting.unit)
+			var unit: String = world.held_path(waiting)
 			_hold_unit(instances, unit, back)
+			held.group = Assemblies.group_of(unit)
 			held.unit = unit
 			placements.append(held)
 	for group: Variant in figures:
 		figures[group] = back * (figures[group] as Transform3D)
 	var known: Dictionary = library.parts if library != null else {}
+	# Someone else's file written whole: what it holds that is not on the
+	# baseplate, kept (SourceFile.carried_into), in the file's coordinates...
+	var waiting: Array = []
+	# ...and the places in the file of what the model holds, which say what
+	# of the file's sub-models nothing in the model is read through
+	# (SourceFile.unplaced_into).
+	var origins: Array = []
+	if _live_source() != null:
+		if world.generation() == _awaited_in:
+			for placement: LdrModel.Placement in awaited:
+				var held := LdrModel.Placement.new(placement.part_id, placement.color_code,
+					Transform3D(Basis.IDENTITY, -_lift_now()) * placement.transform,
+					placement.step)
+				held.unit = placement.unit
+				held.line = placement.line
+				waiting.append(held)
+				origins.append(placement.origin)
+		for brick: BrickWorld.Brick in world.bricks():
+			if not scenery.has(brick.id) and not brick.origin.is_empty():
+				origins.append(brick.origin)
+		# The sections it carries as it has them keep their names: no
+		# sub-model the model places is named as one, or that one is taken
+		# for it and lost (SourceFile.kept_keys).
+		var kept: Dictionary = _live_source().kept_keys(waiting, origins)
+		if not kept.is_empty():
+			known = known.merged(kept)
 	# One list of each section's steps, from the parts as they are written,
 	# what has not arrived and what the catalogue has not got among them: the
 	# writer writes those, and the booklet's looks go on them
@@ -2559,44 +3523,60 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	if authored and BookletLooks.any_step_look(world):
 		steps = BookletLooks.with_kept_steps(world.step_looks,
 			LdrModel.steps_written(placements, instances, unit_steps))
-	# A sub-model's light lines in its own section (SceneLights.kept_in).
+	# A sub-model's own lights and views in its own section, by its definition.
 	var text: String = LdrModel.write_tree(placements, title, "Brickworks", instances, embedded,
-		unit_steps, known, steps, SceneLights.kept_in(_lights_now(), instances)) \
+		unit_steps, known, steps, tree.lines_written(world, instances, back), world.section_files) \
 		if not instances.is_empty() \
-		else LdrModel.write_ldr(placements, title, "Brickworks", figures, embedded, known, steps)
+		else LdrModel.write_ldr(placements, title, "Brickworks", figures, embedded, known, steps,
+			world.section_files)
 	if authored:
 		text = with_authored_steps(text)
 	# Someone else's model written whole: still theirs, under their terms,
 	# its steps still no one's when Brickworks worked them out.
 	if _live_source() != null:
 		text = _with_header(text, _live_source().header(), authored)
-		# And what it holds that is not on the baseplate, kept.
-		var waiting: Array = []
-		if world.generation() == _awaited_in:
-			for placement: LdrModel.Placement in awaited:
-				var held := LdrModel.Placement.new(placement.part_id, placement.color_code,
-					Transform3D(Basis.IDENTITY, -_lift_now()) * placement.transform,
-					placement.step)
-				held.unit = placement.unit
-				held.line = placement.line
-				waiting.append(held)
-		text = _live_source().carried_into(text, waiting)
+		# And what it holds that is not on the baseplate, kept: each where
+		# the model now stands (held_place), those the app cannot show as
+		# well as those on their way.
+		text = _live_source().carried_into(text, waiting, held_place)
+		# And each sub-model of the file nothing in the model is read
+		# through, as the file had it: one it never placed, and one whose
+		# last copy was taken off (kt5check F5).
+		text = _live_source().unplaced_into(text, origins)
 		# And LDCad's hoses keep their paths, where they now lie.
 		text = LdcadPath.written_into(text, _live_source(), library)
 	# What it stands on goes with it, everywhere it goes: the autosave, a
 	# save, an export, a shared link. Another program reads past the line.
-	text = model_floor.written_into(text) if model_floor != null else text
-	text = HiddenColours.written_into(text, hidden_scheme)
-	text = CutShape.written_into(text, world.cut_kept)
-	text = SavedViews.written_into(text, SavedViews.in_file(world.saved_views, _lift_now()))
-	text = SceneLights.written_with(text, SceneLights.in_file(world.scene_lights, _lift_now()),
-		_lights_now(), true)
-	text = Motions.written_into(text, _motion_lines())
-	text = PinnedComments.written_into(text, pins.lines(world, _lift_now()))
-	text = _with_looks(text, true, steps)
+	# And every other line of the app's own, in one go (_meta_families), each
+	# its open could not read where the file had it. Written whole, the
+	# model's name is its first line, so none says it again.
+	var metas_asked: Dictionary = _metas_asked(_live_source())
+	metas_asked["title"] = title
+	metas_asked["own_title"] = title
+	var here: MetaIndex = MetaIndex.of_text(text)
+	text = here.write(text, _meta_families(metas_asked, here, text))
+	text = _with_looks(text, true, steps, here)
 	if model != world:
 		model.free()
-	made.append(with_set(text, from_set))
+	# In the line ends of the file it was opened from: a model of the app's
+	# own saved by Studio on Windows came back in "\n" alone.
+	if _eol_opened == "\r\n" and _metas_now() != null:
+		text = text.replace("\r\n", "\n").replace("\n", "\r\n")
+	# Someone else's file written whole: what of its own lines that leaves
+	# out, said once as it is edited.
+	var source: SourceFile = _live_source()
+	# Not the whole write a model put into it is grafted from: the file is
+	# patched, its lines kept (SourceFile.grafted).
+	if source != null and not _writing_whole and not _left_out_said.has(source.get_instance_id()):
+		var whole: String = text
+		var drops: Variant
+		if pace != null:
+			drops = await WorkerTasks.awaited(func() -> Variant:
+				return source.left_out_of(whole), "read what the file leaves out", library)
+		else:
+			drops = source.left_out_of(whole)
+		_say_left_out(source, drops)
+	made.append(text)
 
 
 ## [param text] with how the booklet shows each step written into it
@@ -2605,10 +3585,11 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 ## written whole, each section's steps [param steps] (LdrModel.steps_written)
 ## one after another (BookletLooks.as_written), not written back over the
 ## file it came from.
-func _with_looks(text: String, whole: bool = false, steps: Dictionary = {}) -> String:
+func _with_looks(text: String, whole: bool = false, steps: Dictionary = {},
+		here: MetaIndex = null) -> String:
 	var written: Callable = func() -> Dictionary: return BookletLooks.as_written(world, steps)
 	return _looks_into(text, world.step_looks, AuthorSteps.any(world, scenery),
-		written if whole else Callable())
+		written if whole else Callable(), here)
 
 
 ## [method _with_looks] on any thread: [param looks] as the world has them,
@@ -2616,8 +3597,9 @@ func _with_looks(text: String, whole: bool = false, steps: Dictionary = {}) -> S
 ## [param written] what gives the looks written, worked out only when they
 ## are; [param looks] when not given.
 static func _looks_into(text: String, looks: Dictionary, authored: bool,
-		written: Callable = Callable()) -> String:
-	if looks.is_empty() and not BookletLooks._written_in(text):
+		written: Callable = Callable(), here: MetaIndex = null) -> String:
+	if looks.is_empty() and not BookletLooks.written_in(here if here != null
+			else MetaIndex.of_text(text)):
 		return text
 	# Steps not the author's: the app has only the whole booklet's looks
 	# (_read_text), and each step's own, its notes and their pictures, stay
@@ -2630,7 +3612,7 @@ static func _looks_into(text: String, looks: Dictionary, authored: bool,
 		return text
 	var parsed: LdrModel = LdrModel.parse(text, "model")
 	var names: Dictionary = parsed._assembly_names()
-	var main_key: String = LdrModel._key(parsed.main.name)
+	var main_key: String = parsed.main_key
 	if not authored:
 		looks = BookletLooks.with_booklet_wide(BookletLooks.read(text, names, main_key), looks)
 	return BookletLooks.written_into(text, written.call() if written.is_valid() else looks,
@@ -2638,8 +3620,9 @@ static func _looks_into(text: String, looks: Dictionary, authored: bool,
 
 
 ## After an edit kept in the history: a step it took the last part off goes
-## with its look, in the same undo (BookletLooks.emptied), so an undo brings
-## both back. Called once each step of the history is made: by hand
+## with its look, in the same undo (BookletLooks.emptied), and a sub-model it
+## left no copy of with its own lights and views (Assemblies.lines_follow),
+## so an undo brings them back. Called once each step of the history is made: by hand
 ## (Main._on_model_edited), by a session (CommandSocket), by the assistant's
 ## change to a selection. Not for an undo or a redo, whose step has it in
 ## already (Builder.settled), nor while parts lifted off are held: put down,
@@ -2652,8 +3635,264 @@ func looks_follow_edit() -> void:
 	if step.is_empty() or is_same(step, builder.settled) or is_same(step, _looks_followed) \
 			or builder.is_carrying():
 		return
-	builder.extend_last(BookletLooks.emptied(world, step, scenery, _held_placements()))
+	var held: Array = _held_placements()
+	builder.extend_last(BookletLooks.emptied(world, step, scenery, held))
+	if _held_go_with(step):
+		held = _held_placements()
+	_steps_follow_grafts(step)
+	_held_follow(Assemblies.moves_in(builder, step))
+	Assemblies.lines_follow(builder, step, held)
 	_looks_followed = builder.last_step()
+
+
+## After [param step] took the last model put into someone else's file with
+## no steps off it: the file's parts out of the one step that model's steps
+## put them in (AuthorSteps.one_step, Builder._bring_steps), in the same
+## undo, so the model is the file's again and a save keeps the file as it
+## was. Up to 2026-11-12 they stayed in that step, and the car, the shed put
+## into it deleted, was written whole: its header and 8 comments lost, and
+## AUTHORED_STEPS gained (im3check delete_undo). Not while a model put in
+## stays, nor once a step past the first is made.
+func _steps_follow_grafts(step: Dictionary) -> void:
+	var source: SourceFile = _live_source()
+	if source == null or source.authored or not AuthorSteps.any(world, scenery) \
+			or Assemblies.copies_emptied(builder, step).is_empty() \
+			or not _graft_roots(source).is_empty():
+		return
+	var back: Array = []
+	for brick: BrickWorld.Brick in world.bricks():
+		if scenery.has(brick.id):
+			continue
+		if brick.step > 0:
+			return
+		if brick.step == 0:
+			back.append({"undo": "restep", "brick": brick.id, "step": -1})
+	# A copy the edit took off keeps its entry, which no write reads: the
+	# shed's roof, on in its second step, is no step of the car's.
+	var standing: Dictionary = AuthorSteps.paths_in(world, scenery)
+	for item: Variant in _held_placements():
+		var at: String = ""
+		for segment: String in Assemblies.segments(world.held_path(item as LdrModel.Placement)):
+			at = Assemblies.join(at, segment)
+			standing[at] = true
+	for path: String in world.unit_steps:
+		if not standing.has(path):
+			continue
+		if int(world.unit_steps[path]) > 0 or int(world.unit_steps[path]) < -1:
+			return
+		if int(world.unit_steps[path]) == 0:
+			back.append({"undo": "unitstep", "unit": path, "step": -1})
+	for item: Variant in _held_placements():
+		var placement: LdrModel.Placement = item
+		if placement.step > 0:
+			return
+		if placement.step == 0:
+			back.append({"undo": "heldstep", "held": placement, "step": -1})
+	builder.extend_last(back.map(func(entry: Dictionary) -> Dictionary:
+		return builder._apply(entry)))
+
+
+## The parts not on the baseplate (awaited, _absent, and someone else's
+## file's SourceFile.not_shown) in a copy [param step] took the last parts of
+## off the model taken out with them, in that step, so its Undo puts them
+## back ("held", [method _held_undo]): a copy deleted is gone whole. Up to
+## 2026-11-11 they stayed, and a save wrote the copy still, its part on its
+## way alone in it, under its name, and the pasted copy that took its place
+## went by another (pccheck HA_5); landed, the part made the copy again.
+## Someone else's file's stayed in the steps and, written whole, in the file.
+## Whether any went.
+func _held_go_with(step: Dictionary) -> bool:
+	var source: SourceFile = _live_source()
+	var unseen: Array = source.not_shown if source != null else []
+	if world.generation() != _awaited_in \
+			or (awaited.is_empty() and _absent.is_empty() and unseen.is_empty()):
+		return false
+	var emptied: Array = Assemblies.copies_emptied(builder, step)
+	if emptied.is_empty():
+		return false
+	var gone: Array = []
+	for pair: Array in [[awaited, "awaited"], [_absent, "absent"], [unseen, "unseen"]]:
+		for placement: LdrModel.Placement in pair[0]:
+			var path: String = world.held_path(placement)
+			if emptied.any(func(copy: String) -> bool: return Assemblies.within(path, copy)):
+				gone.append([placement, pair[1]])
+	if gone.is_empty():
+		return false
+	builder.held_hook = _held_undo
+	_held_undo({"undo": "held", "take": gone})
+	builder.extend_last([{"undo": "held", "put": gone}])
+	return true
+
+
+## What a copy of [param parts] (Carry.gather's: copied, cut, duplicated)
+## brings of the parts not on the baseplate (awaited, _absent, someone else's
+## file's SourceFile.not_shown): those in each copy every part of which is
+## among them, each {path: the copy it is in, part, color, at: where it
+## stands in the world, step, kind: "awaited", "absent" or "unseen"}. A copy
+## of some of a sub-model's parts brings only those.
+func _held_carried(parts: Array) -> Array:
+	var out: Array = []
+	var held: Array = _held_kinds()
+	if held.is_empty() or parts.is_empty():
+		return out
+	var given: Dictionary = {}
+	for item: Dictionary in parts:
+		var at: String = ""
+		for segment: String in Assemblies.segments(Assemblies.path_from(str(item.get("group", "")),
+				str(item.get("unit", "")))):
+			at = Assemblies.join(at, segment)
+			given[at] = int(given.get(at, 0)) + 1
+	if given.is_empty():
+		return out
+	var standing: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		if scenery.has(brick.id):
+			continue
+		var at: String = ""
+		for segment: String in Assemblies.segments(Assemblies.path_of(brick)):
+			at = Assemblies.join(at, segment)
+			standing[at] = int(standing.get(at, 0)) + 1
+	var whole: Array = given.keys().filter(func(path: String) -> bool:
+		return int(given[path]) >= int(standing.get(path, 0)))
+	for pair: Array in held:
+		var placement: LdrModel.Placement = pair[0]
+		var path: String = world.held_path(placement)
+		if not whole.any(func(copy: String) -> bool: return Assemblies.within(path, copy)):
+			continue
+		out.append({"path": path, "part": placement.part_id, "color": placement.color_code,
+			"at": _held_world(placement, str(pair[1])), "step": placement.step, "kind": pair[1]})
+	return out
+
+
+## Each of [param into] ([[one of _held_carried's, the path of the copy a
+## paste put down that holds it, and how that copy was moved when the copies
+## were each moved apart: a Pattern's]]) put in that copy, where its move or
+## [param moved] (Carry.moved) puts it, as one of the kind it was: kept in what a save
+## writes, and one on its way landing there. In the paste's step, so its
+## Undo takes them out with the copy and its Redo puts them back. None into a
+## model that is not the one opened (a Clear kept for its undo holds that
+## one's): the pasted copy's parts on the baseplate alone, as before.
+func _held_put(into: Array, moved: Transform3D) -> void:
+	if into.is_empty() or world == null:
+		return
+	# A model put into this one holds its own (held_from), whatever this one
+	# held before.
+	if into.any(func(pair: Array) -> bool: return bool((pair[0] as Dictionary).get("brought", false))):
+		_claim_held()
+	if world.generation() != _awaited_in:
+		return
+	var source: SourceFile = _live_source()
+	var added: Array = []
+	var paths: Dictionary = world.held_paths.duplicate()
+	for pair: Array in into:
+		var one: Dictionary = pair[0]
+		var path: String = str(pair[1])
+		var kind: String = str(one["kind"])
+		# A part of a model put in that the library has not got: held as
+		# this model holds its own, someone else's file's in it, the app's
+		# own written with it.
+		if kind == "brought":
+			kind = "unseen" if source != null else "absent"
+			# Its file as the model put in carried it: this model's now.
+			if not (one.get("files", {}) as Dictionary).is_empty():
+				_held_files[str(one["part"])] = one["files"]
+		if path.is_empty() or (kind == "unseen" and source == null):
+			continue
+		var move: Transform3D = pair[2] if pair.size() > 2 else moved
+		var placement := LdrModel.Placement.new(str(one["part"]), int(one["color"]),
+			_held_from_world(move * (one["at"] as Transform3D), kind), int(one["step"]))
+		placement.group = Assemblies.group_of(path)
+		placement.unit = path
+		placement.held_key = "%s@%d" % [path, placement.get_instance_id()]
+		paths[placement.held_key] = path
+		added.append([placement, kind])
+	if added.is_empty():
+		return
+	builder.held_hook = _held_undo
+	_held_undo({"undo": "held", "put": added})
+	builder.extend_last([{"undo": "held", "take": added},
+		{"undo": "heldpaths", "paths": world.held_paths}])
+	world.held_paths = paths
+
+
+## The parts not on the baseplate of the model opened, each [placement, its
+## kind] ([method _held_go_with]'s kinds); none for another model.
+func _held_kinds() -> Array:
+	var out: Array = []
+	if world == null or world.generation() != _awaited_in:
+		return out
+	var source: SourceFile = _live_source()
+	for pair: Array in [[awaited, "awaited"], [_absent, "absent"],
+			[source.not_shown if source != null else [], "unseen"]]:
+		for placement: LdrModel.Placement in pair[0]:
+			out.append([placement, pair[1]])
+	return out
+
+
+## Where [param placement], of [param kind], stands in the world now: one on
+## its way as it lands (awaited_at), one the catalogue lacks where a save
+## writes it (held_place), lifted as the model is.
+func _held_world(placement: LdrModel.Placement, kind: String) -> Transform3D:
+	if kind == "awaited":
+		return awaited_at(placement)
+	return Transform3D(Basis.IDENTITY, _lift_now()) * held_place(placement.transform)
+
+
+## The place a placement of [param kind] keeps for standing at [param at] in
+## the world now: [method _held_world] undone.
+func _held_from_world(at: Transform3D, kind: String) -> Transform3D:
+	var lifted := Transform3D(Basis.IDENTITY, _lift_now())
+	var whole: Transform3D = world.motions.moved if world.motions != null else Transform3D.IDENTITY
+	if kind == "awaited":
+		return lifted * whole.affine_inverse() * lifted.affine_inverse() * at
+	return whole.affine_inverse() * lifted.affine_inverse() * at
+
+
+## A history step's "held" ([method _held_go_with]): the parts not on the
+## baseplate it names put back ("put") or taken out ("take"), each [placement,
+## "awaited", "absent" or "unseen"]. Returns its reverse (Builder.held_hook).
+## Someone else's file's go from its place too (SourceFile.unshown_origins),
+## so its save neither steps their line nor keeps the section for them.
+func _held_undo(step: Dictionary) -> Dictionary:
+	var source: SourceFile = _live_source()
+	for pair: Variant in step.get("take", []):
+		var placement: LdrModel.Placement = (pair as Array)[0]
+		match str((pair as Array)[1]):
+			"awaited":
+				awaited.erase(placement)
+			"absent":
+				_absent.erase(placement)
+			"unseen":
+				if source != null:
+					source.not_shown.erase(placement)
+					if not placement.origin.is_empty():
+						source.unshown_origins.erase(placement.origin)
+	var waiting: bool = false
+	for pair: Variant in step.get("put", []):
+		var placement: LdrModel.Placement = (pair as Array)[0]
+		# One that had landed is put back as its brick (Builder "held").
+		if placement.landed != 0:
+			continue
+		match str((pair as Array)[1]):
+			"awaited":
+				if not awaited.has(placement):
+					awaited.append(placement)
+					waiting = true
+			"absent":
+				if not _absent.has(placement):
+					_absent.append(placement)
+			"unseen":
+				if source != null and not source.not_shown.has(placement):
+					source.not_shown.append(placement)
+					# One a paste put down was read from no line of the file.
+					if not placement.origin.is_empty():
+						source.unshown_origins[placement.origin] = placement
+	# Put back on its way after its part came: it lands now, in this step,
+	# so its reverse takes it off (Builder "held"). Up to 2026-11-12 it
+	# waited for a part that had come, and was shown nowhere (pcredesign H_u2).
+	if waiting:
+		_land_arrived()
+	return {"undo": "held", "put": step.get("take", []), "take": step.get("put", [])}
 
 
 ## The history step [method looks_follow_edit] last asked about.
@@ -2661,14 +3900,376 @@ var _looks_followed: Dictionary = {}
 
 
 ## What the file has that is not on the baseplate and is written back in its
-## steps: parts on their way, and the app's own file's parts the catalogue
-## has not got. This model's only while it is the one opened.
+## steps: parts on their way, and the parts the catalogue has not got, the
+## app's own file's and someone else's (SourceFile.not_shown). This model's
+## only while it is the one opened. A step edit numbers their steps with the
+## rest (BrickWorld.held).
 func _held_placements() -> Array:
 	var out: Array = []
-	if world.generation() == _awaited_in:
+	if world != null and world.generation() == _awaited_in:
 		out.append_array(awaited)
 		out.append_array(_absent)
+		var source: SourceFile = _live_source()
+		if source != null:
+			out.append_array(source.not_shown)
 	return out
+
+
+# -- a model put into this one ------------------------------------------------
+
+
+## The names this model's file holds that nothing on the baseplate shows
+## (BrickWorld.names_held, Assemblies.names_taken): someone else's file's
+## every section and the name its model is written under, the files of every part the model carries, a part the app
+## cannot show or still on its way, and what each is drawn from. A brought
+## model's part named as one of these is given another name (IntoModel).
+func names_held() -> Array:
+	var out: Array = []
+	if world == null:
+		return out
+	var source: SourceFile = _live_source()
+	if source != null:
+		for key: String in source.sections:
+			out.append(key)
+		# A file with no FILE line: the name its model is written under once
+		# a model goes into it (SourceFile.main_file).
+		if source.main_key.is_empty():
+			out.append(source.main_file())
+	for name: String in _files_carried().keys():
+		out.append(name)
+	for placement: LdrModel.Placement in _held_placements():
+		out.append(placement.part_id + ".dat")
+	return out
+
+
+## The part files a whole write of this model carries ([method _text_into]),
+## by name -> text: those of the parts made here or carried by the file, on
+## the baseplate or held (CustomParts.sources_for).
+func _files_carried() -> Dictionary:
+	var used: Dictionary = {}
+	for brick: BrickWorld.Brick in world.bricks():
+		used[brick.part_id] = true
+	for placement: LdrModel.Placement in _held_placements():
+		used[placement.part_id] = true
+	return _part_files(used.keys())
+
+
+## The files a whole write of this model carries for [param part_ids]: those
+## of the parts made here or carried by a file (CustomParts.sources_for), and
+## of one it holds that could not be built, as the file it came in had them
+## ([member _held_files]): this model's own, never another's.
+func _part_files(part_ids: Array) -> Dictionary:
+	var out: Dictionary = CustomParts.sources_for(library, part_ids)
+	if world == null or world.generation() != _awaited_in:
+		return out
+	for part_id: Variant in part_ids:
+		if not library.parts.has(str(part_id)) and _held_files.has(str(part_id)):
+			out.merge(_held_files[str(part_id)])
+	return out
+
+
+## This model's lists of what it holds and does not show made its own, when
+## it has none yet: a model begun by New, or emptied, holds the parts of a
+## model put into it that the app cannot show as an open holds its own.
+## What another model's lists held is not this one's.
+func _claim_held() -> void:
+	if world == null or world.generation() == _awaited_in:
+		return
+	_awaited_in = world.generation()
+	awaited.clear()
+	_absent = []
+	_held_files = {}
+
+
+## [param text], a model's file called [param file_name], read to be put
+## into this one whole (File, Import, Into this model…; the library's Put in
+## this model; open_model into=true): as an open reads it, every name it
+## defines free here first (IntoModel.renamed), its own model a sub-model
+## named [param called] (else as it is titled), its parts the parts in hand
+## (Carry.framed), each where its file has it. [param credited] ({by,
+## licence, page}) says whose it is where the file does not, in its
+## sub-model's header (credit_lines). With a [param job] it is a coroutine.
+## {"items", "name" (its sub-model's name), "root" (its copy's path in
+## hand), "units" (each copy's step in the one that places it, by path in
+## hand; the whole's -1), "held" (its parts the app cannot show:
+## [{path, part, color, at, step, kind}], put in with it, Builder
+## .held_put), "lines" (each sub-model's own lines, its header's author and
+## licence among them), "frames" (where each copy's lines' frame stands),
+## "looks" (its steps' booklet looks), "files" (each section's file name),
+## "parts", "steps", "motions" (how many of its own model's motions its
+## sub-model keeps), "missing" (part -> how many the library has not got),
+## "unshown" (part -> how many it cannot show), "renamed" (each name given
+## another), "error"}.
+func held_from(text: String, file_name: String, job: Working.Job = null,
+		called: String = "", credited: Dictionary = {}) -> Dictionary:
+	var out: Dictionary = {"items": [], "name": "", "root": "", "units": {}, "held": [],
+		"lines": {}, "frames": {}, "looks": {}, "files": {}, "parts": 0, "steps": 0,
+		"missing": {}, "unshown": {}, "renamed": {}, "error": ""}
+	if world == null or library == null:
+		out["error"] = "no model is open"
+		return out
+	var carried: Dictionary = {}
+	var files_here: Dictionary = _files_carried()
+	for name: String in files_here:
+		carried[LdrModel._key(name)] = _plain_section(str(files_here[name]))
+	var shares: Callable = func(name: String, content: String) -> bool:
+		return carried.get(LdrModel._key(name), null) == _plain_section(content)
+	var named: Dictionary = IntoModel.renamed(text, file_name, Assemblies.names_in(world),
+		called, shares)
+	if not str(named["error"]).is_empty():
+		out["error"] = named["error"]
+		return out
+	var model: LdrModel = LdrModel.parse(str(named["text"]), str(named["file"]))
+	if model == null or model.main == null:
+		out["error"] = "that is not an LDraw file"
+		return out
+	# The parts it carries join the library first, as an open's do.
+	var took: Array = []
+	if job != null:
+		await CustomParts.readers_done(library)
+		await CustomParts.take_into(took, library, model, job)
+	else:
+		CustomParts.take_into(took, library, model, null)
+	var flattened: Array = model.flatten(library.parts)
+	var authored: bool = model.steps_are_authored()
+	_as_placed(flattened, library, authored)
+	var missing: Dictionary = {}
+	var waiting: Dictionary = {}
+	for item: Variant in flattened:
+		var placement: LdrModel.Placement = item
+		if not library.parts.has(placement.part_id):
+			missing[placement.part_id] = int(missing.get(placement.part_id, 0)) + 1
+		elif not library.is_resident(placement.part_id):
+			waiting[placement.part_id] = true
+	if flattened.is_empty():
+		out["error"] = "it has no parts"
+		return out
+	if missing.size() > 0 and flattened.all(func(p: LdrModel.Placement) -> bool:
+			return missing.has(p.part_id)):
+		out["error"] = "none of the %d parts in it are in the library (%s)" % [
+			missing.size(), named_counts(missing)]
+		return out
+	# Carry frames the hand by every part's box: what is on its way is
+	# waited for, as a big open waits.
+	if not waiting.is_empty():
+		await _await_geometry(waiting, job if job != null else Working.Job.new())
+	var def: String = str(named["def"])
+	var root: String = def + "#1"
+	var placed: Array = []
+	var held: Array = []
+	var unshown: Dictionary = {}
+	var own_steps: Dictionary = {}
+	for item: Variant in flattened:
+		var placement: LdrModel.Placement = item
+		var inner: String = Assemblies.path_from(placement.group, placement.unit)
+		var path: String = root if inner.is_empty() else Assemblies.join(root, inner)
+		if inner.is_empty() and placement.step >= 0:
+			own_steps[placement.step] = true
+		if library.parts.has(placement.part_id) and library.mesh_for(placement.part_id) != null:
+			placed.append({"part": placement.part_id, "color": placement.color_code,
+				"at": placement.transform, "group": Assemblies.group_of(path), "unit": path,
+				"step": placement.step})
+			continue
+		# Kept, in its sub-model and step, where its file has it: written
+		# whole, someone else's, or on its way (ModelStore._held_put).
+		held.append({"path": path, "part": placement.part_id, "color": placement.color_code,
+			"at": placement.transform, "step": placement.step,
+			"kind": "awaited" if library.parts.has(placement.part_id) else "brought",
+			"brought": true, "files": (took[0]["files"] as Dictionary).get(placement.part_id, {})})
+		unshown[placement.part_id] = int(unshown.get(placement.part_id, 0)) + 1
+	if placed.is_empty():
+		out["error"] = "none of its parts could be drawn"
+		return out
+	# Each copy's step in the one that places it; none where its author gave
+	# none (Builder._bring_steps puts it in its parent's first where the
+	# model it goes into has steps).
+	var units: Dictionary = {root: -1}
+	for unit: String in model.unit_steps:
+		var step: int = int(model.unit_steps[unit]) if authored else -1
+		units[Assemblies.join(root, unit)] = step
+		if not unit.contains("/") and step >= 0:
+			own_steps[step] = true
+	Language.keep_name(def)
+	var defs: Dictionary = named["defs"]
+	for kind: Variant in defs.values():
+		Language.keep_name(str(kind))
+	# Each sub-model's own lines, its header's author and licence among them
+	# (LdrModel.section_lines); its own model's lights and whose it is, its
+	# sub-model's here.
+	var lines: Dictionary = Assemblies.lines_of(model)
+	var own := PackedStringArray()
+	var credit: PackedStringArray = _main_credit(str(named["text"]), model)
+	if credit.is_empty():
+		credit = credit_lines(credited)
+	own.append_array(credit)
+	own.append_array(model.light_lines)
+	# And its views and motions, its sub-model's own here as its lights are:
+	# a view one of the sub-model's, a motion kept in it as its file has it,
+	# played where it is the model (held_words says so). Up to 2026-11-12
+	# they were left out without a word (im3check: the observatory's 4
+	# motions went).
+	var motions: int = 0
+	for line: MetaIndex.Line in MetaIndex.of_text(str(named["text"])).own(["VIEW", "MOTION*"]):
+		own.append(line.raw)
+		motions += 1 if line.word == "MOTION" else 0
+	if not own.is_empty():
+		lines[def] = own
+	# Each of its sub-models whose header names no one is its model's
+	# author's: written under their name, not this model's.
+	if not credit.is_empty():
+		for kind: Variant in defs:
+			var sub: String = str(defs[kind])
+			if str(kind).is_empty() or sub == def:
+				continue
+			var had: PackedStringArray = lines.get(sub, PackedStringArray())
+			if not Array(had).any(func(line: String) -> bool:
+					return line.to_upper().begins_with("0 AUTHOR:")):
+				lines[sub] = credit + had
+	# Where each copy's lines' frame stands, in hand as its file has it.
+	var frames: Dictionary = {}
+	for unit: String in model.unit_frames:
+		frames[Assemblies.join(root, unit)] = model.unit_frames[unit]
+	frames[root] = Transform3D.IDENTITY
+	# The booklet looks of its steps, its own model's as its sub-model's
+	# here; the whole booklet's (its pages, its guides) are this model's.
+	var looks: Dictionary = {}
+	if authored:
+		var read: Dictionary = BookletLooks.read(str(named["text"]), model._assembly_names(),
+			model.main_key)
+		for key: String in read:
+			if key == BookletLooks.DATA:
+				looks[key] = read[key]
+				continue
+			if key == BookletLooks.BOOKLET:
+				continue
+			var kind: String = key.get_slice("|", 0)
+			var rest: String = key.substr(kind.length())
+			if kind.is_empty():
+				if not rest.substr(1).is_valid_int():
+					continue
+				kind = def
+			looks[kind + rest] = read[key]
+	# Each section's file name, a whole write's again.
+	var files: Dictionary = model.file_names()
+	if files.has(""):
+		files[def] = files[""]
+		files.erase("")
+	var renamed: Dictionary = {}
+	for kind: Variant in defs:
+		if not str(kind).is_empty() and str(defs[kind]) != str(kind):
+			renamed[kind] = defs[kind]
+	for key: Variant in named["files"]:
+		renamed[key] = named["files"][key]
+	# Into someone else's file nobody gave steps: given steps, it would be
+	# written afresh, its own lines lost (Builder._bring_steps).
+	var source: SourceFile = _live_source()
+	out.merge({"items": Carry.framed(placed, library), "name": def, "root": root,
+		"units": units, "held": held, "lines": lines, "frames": frames, "looks": looks,
+		"files": files, "parts": placed.size() + held.size(), "steps": own_steps.size(),
+		"motions": motions,
+		"missing": missing, "unshown": unshown, "renamed": renamed,
+		"host_flat": source != null and not source.authored}, true)
+	return out
+
+
+## A section's text compared as content: its lines, no FILE, NOFILE or
+## blank ones, without their ends.
+static func _plain_section(text: String) -> String:
+	var out := PackedStringArray()
+	for raw: String in text.replace("\r\n", "\n").split("\n"):
+		var line: String = raw.strip_edges()
+		var word: String = LdrModel.section_word(line)
+		if line.is_empty() or word == "FILE" or word == "NOFILE":
+			continue
+		out.append(line)
+	return "\n".join(out)
+
+
+## Whose [param model]'s own model is and on what terms, as its header says
+## ("0 Author:", "0 !LICENSE"): none when it is the app's.
+static func _main_credit(text: String, model: LdrModel) -> PackedStringArray:
+	var out := PackedStringArray()
+	var span: Vector2i = model.main.span if model.main != null else Vector2i(0, 0)
+	var lines: PackedStringArray = text.split("\n")
+	for n: int in range(span.x, mini(span.y, lines.size())):
+		var line: String = lines[n].strip_edges()
+		if LdrModel.is_placing(line) or SourceFile._is_step(line):
+			break
+		var words: PackedStringArray = LdrModel._fields(line)
+		if words.size() < 2 or words[0] != "0":
+			continue
+		var word: String = words[1].to_upper()
+		if word == "AUTHOR:" or word == "!LICENSE":
+			out.append(" ".join(words))
+	for line: String in out:
+		if line.to_upper().begins_with("0 AUTHOR:") and line.substr(9).strip_edges() == "Brickworks":
+			return PackedStringArray()
+	return out
+
+
+## [param credited] ({by, licence, page}: ModelLibrary.credit_of,
+## SharedModels.credit_of) as LDraw's header says it: "0 Author: <by>",
+## "0 !LICENSE Licensed under <licence> : see <page>". None without a name.
+static func credit_lines(credited: Dictionary) -> PackedStringArray:
+	var out := PackedStringArray()
+	var by: String = str(credited.get("by", "")).strip_edges()
+	if by.is_empty():
+		return out
+	out.append("0 Author: " + by)
+	var licence: String = str(credited.get("licence", "")).strip_edges()
+	var page: String = str(credited.get("page", "")).strip_edges()
+	if not licence.is_empty():
+		out.append("0 !LICENSE Licensed under %s%s" % [licence,
+			" : see " + page if not page.is_empty() else ""])
+	return out
+
+
+## After an edit that moved parts ([param moves]: brick id -> how it moved,
+## Assemblies.moves_in; Builder's put-down of a move): each part the model
+## holds and does not show moved with its copy where every part of that
+## copy on the baseplate moved alike, in the same step, so its Undo puts it
+## back. A copy only some of whose parts moved, or not alike, is the same
+## sub-model changed: the part stays. Up to 2026-11-12 it stayed whatever
+## moved, and a save wrote it where its copy had been (im2review moved).
+func _held_follow(moves: Dictionary) -> void:
+	if moves.is_empty() or world == null:
+		return
+	var kinds: Array = _held_kinds()
+	if kinds.is_empty():
+		return
+	var how: Dictionary = {}     ## a copy's path -> its parts' one move, or null
+	for brick: BrickWorld.Brick in world.bricks():
+		if scenery.has(brick.id):
+			continue
+		var at: String = ""
+		for segment: String in Assemblies.segments(Assemblies.path_of(brick)):
+			at = Assemblies.join(at, segment)
+			var moved: Variant = moves.get(brick.id)
+			if moved == null:
+				how[at] = null
+			elif not how.has(at):
+				how[at] = moved
+			elif how[at] != null and not (how[at] as Transform3D).is_equal_approx(moved):
+				how[at] = null
+	var changes: Array = []
+	for pair: Array in kinds:
+		var placement: LdrModel.Placement = pair[0]
+		var path: String = world.held_path(placement)
+		var moved: Variant = null
+		while not path.is_empty():
+			if how.has(path):
+				moved = how[path]
+				break
+			path = Assemblies.parent_of(path)
+		if moved == null:
+			continue
+		var kind: String = pair[1]
+		var now: Transform3D = _held_from_world((moved as Transform3D) * _held_world(placement, kind),
+			kind)
+		changes.append([placement, now])
+	if changes.is_empty():
+		return
+	builder.extend_last([builder._apply({"undo": "heldmoved", "moves": changes})])
 
 
 ## [param text], written whole, under [param header] (SourceFile.header)
@@ -2691,24 +4292,40 @@ static func _with_header(text: String, header: PackedStringArray, authored: bool
 	return text.substr(0, at + 1) + "\n".join(lines) + "\n" + rest
 
 
-## [param text] with the set it came from on a line after its first.
+## [param text] with the set it came from on a line under the model's title
+## (LdrModel.into_main), and any it had taken out: after an .mpd's first
+## line, its 0 FILE, it stood above the title, as the app's other lines did;
+## and a file's own, left where it was, went below the lines the next save
+## put in above it, so no two saves were the same (copyfaults).
 static func with_set(text: String, number: String) -> String:
-	if number.is_empty() or text.contains(SET_META):
+	if number.is_empty():
 		return text
-	var cut: int = text.find("\n")
-	if cut < 0:
-		return text + "\n" + SET_META + number + "\n"
-	return text.substr(0, cut + 1) + SET_META + number + "\n" + text.substr(cut + 1)
+	return MetaIndex.written(text, [MetaIndex.family(["FROM_SET"],
+		PackedStringArray([SET_META + number]))])
 
 
 ## The real set a model's text is, or empty: its own line, else the
 ## LDraw model repository's header ("0 !LDRAW_ORG Model", "0 Name: 10182 -
 ## Main Model.ldr"), read from the head of the file only.
 static func set_in(text: String) -> String:
-	var kept: RegExMatch = RegEx.create_from_string(
-		"(?m)^0 !BRICKWORKS FROM_SET ([0-9A-Za-z-]{1,20})\\s*$").search(text)
+	return set_from(MetaIndex.of_text(text), text)
+
+
+## [method set_in] with the model's own lines read once (MetaIndex).
+static func set_from(metas: MetaIndex, text: String) -> String:
+	var kept: Variant = metas.first_read("FROM_SET", _set_read)
 	if kept != null:
-		return kept.get_string(1)
+		return str(kept)
+	return _set_said(text)
+
+
+static func _set_read(said: String) -> Variant:
+	return said if RegEx.create_from_string("^[0-9A-Za-z-]{1,20}$").search(said) != null else null
+
+
+## The set the head of [param text] says it is, as the LDraw model
+## repository's files say it, or "".
+static func _set_said(text: String) -> String:
 	var head: String = text.left(4000)
 	if not RegEx.create_from_string("(?m)^0 !LDRAW_ORG (Unofficial_)?Model\\b").search(head):
 		return ""
@@ -2850,13 +4467,17 @@ static func _turn_key(column: Vector3) -> int:
 
 
 ## [param text] saying its steps are its author's, under the model's own
-## header (after its Author line), where LdrModel looks for it.
+## header (after its Author line), where LdrModel looks for it; with no
+## Author line in the model's own section, under its title (LdrModel
+## .into_main), not after an .mpd's 0 FILE nor in a sub-model's header.
 static func with_authored_steps(text: String) -> String:
-	var at: int = text.find("\n0 Author: ")
-	var cut: int = text.find("\n", at + 1) if at >= 0 else text.find("\n")
-	if cut < 0:
-		return text + "\n" + LdrModel.AUTHORED_META + "\n"
-	return text.substr(0, cut + 1) + LdrModel.AUTHORED_META + "\n" + text.substr(cut + 1)
+	var span: Vector2i = LdrModel.main_span(text)
+	var at: int = text.find("\n0 Author: ", maxi(span.x - 1, 0))
+	if at < 0 or at >= span.y:
+		return LdrModel.into_main(text, PackedStringArray([LdrModel.AUTHORED_META]))
+	var cut: int = text.find("\n", at + 1)
+	return LdrModel.lines_at(text, text.length() if cut < 0 else cut + 1,
+		PackedStringArray([LdrModel.AUTHORED_META]))
 
 
 ## Each minifigure in the model, by its group, and the frame it stands
@@ -2919,9 +4540,15 @@ func _write(path: String, title: String, with_steps: bool = false,
 	if not NewerBuild.may_write(path):
 		refused = NewerBuild.REFUSAL
 		return false
-	var text: String = ReferenceImage.written_into(SetBin.written_into(with_share(
-		written if not written.is_empty() else to_text(title, with_steps), share_id,
-		remixed_from, remixed_from_version, credit, made_with), bin_sets), reference)
+	var text: String = _with_identity(written if not written.is_empty()
+		else to_text(title, with_steps))
+	# A patch of someone else's file: the lines just put in end as its
+	# lines do, above any line that says what the next part is, as the
+	# patch's own (SourceFile.app_lines_placed); each came with "\n" alone
+	# into a CRLF file (keep_text's metas). Live's write is left as live's.
+	var source: SourceFile = _live_source()
+	if source != null and last_whole.is_empty():
+		text = source.app_lines_placed(text)
 	# Never a model of no parts over a file that has some, unless the person
 	# emptied the baseplate ([member emptied]). The autosave fires on its
 	# own a few seconds after any change, so whatever left the baseplate
@@ -2933,6 +4560,8 @@ func _write(path: String, title: String, with_steps: bool = false,
 			+ "Clear the baseplate first if it is meant to be empty.")
 		push_warning("kept %s: refused to write a model of no parts over it" % path)
 		return false
+	if _bom_opened and _metas_now() != null and not text.begins_with(LdrModel.bom()):
+		text = LdrModel.bom() + text
 	return _store(path, text)
 
 
@@ -2958,41 +4587,65 @@ func _store(path: String, text: String) -> bool:
 	return true
 
 
-## Whether LDraw [param text] places anything: a line of type 1 anywhere.
-## Read without parsing it, since the autosave asks on every write.
+## Whether LDraw [param text]'s model places anything: a line of type 1 in
+## its own section (LdrModel.main_span), as parse reads it. Not one in a
+## block the file keeps that nothing places (kt5check F5): a model emptied
+## by accident, kept with one, went over the saved model it emptied
+## (sfreview F2). Read without parsing it, since the autosave asks on every
+## write.
 static func _has_parts(text: String) -> bool:
-	return text.begins_with("1 ") or text.find("\n1 ") >= 0
+	var span: Vector2i = LdrModel.main_span(text)
+	var at: int = LdrModel.placing_at(text, maxi(span.x - 1, 0))
+	return at >= 0 and at < span.y
 
 
 ## [param text] with the link it is shared at and the link it was copied
-## from, each on a line after its first (inside the model itself, for an
-## .mpd), and who laid its parts ([member made_with]) when that is known;
-## as it is for none.
+## from, each on a line under the model's title (MetaIndex: inside the
+## model itself, for an .mpd, not above its title), and who laid its parts
+## ([member made_with]) when that is known; in place of any it had, each
+## kept where it was when it says the same.
 static func with_share(text: String, id: String, remix: String = "", remix_version: int = 0,
 		credited: Dictionary = {}, made: String = "") -> String:
-	var lines: String = (SHARE_META + id + "\n" if not id.is_empty() else "") \
-		+ (REMIX_META + remix + "\n" if not remix.is_empty() else "") \
-		+ (REMIX_VERSION_META + str(remix_version) + "\n" if not remix.is_empty() and remix_version > 0 else "") \
-		+ (CREDIT_META + JSON.stringify(credited) + "\n" if not credited.is_empty() else "") \
-		+ (MADE_META + made + "\n" if made in MADE_WAYS else "")
-	if lines.is_empty():
-		return text
-	var cut: int = text.find("\n")
-	if cut < 0:
-		return text + "\n" + lines
-	return text.substr(0, cut + 1) + lines + text.substr(cut + 1)
+	return MetaIndex.written(text, _share_families(null, id, remix, remix_version, credited,
+		made))
+
+
+## The families of [method with_share]'s lines, with those of them
+## [param metas] (the open's reading, or null) could not read.
+static func _share_families(metas: MetaIndex, id: String, remix: String, remix_version: int,
+		credited: Dictionary, made: String) -> Array:
+	return [
+		_family(metas, ["SHARE"], PackedStringArray([SHARE_META + id]) if not id.is_empty()
+			else PackedStringArray(), MetaIndex.TITLE, _link_read),
+		_family(metas, ["REMIX"], PackedStringArray([REMIX_META + remix])
+			if not remix.is_empty() else PackedStringArray(), MetaIndex.TITLE, _link_read),
+		_family(metas, ["REMIX_VERSION"], PackedStringArray([REMIX_VERSION_META + str(remix_version)])
+			if not remix.is_empty() and remix_version > 0 else PackedStringArray(), MetaIndex.TITLE,
+			_version_read),
+		_family(metas, ["CREDIT"], PackedStringArray([CREDIT_META + JSON.stringify(credited)])
+			if not credited.is_empty() else PackedStringArray(), MetaIndex.TITLE, _credit_read),
+		_family(metas, ["MADE"], PackedStringArray([MADE_META + made]) if made in MADE_WAYS
+			else PackedStringArray(), MetaIndex.TITLE, _made_read),
+	]
 
 
 ## Who a model's text says made it ([member credit]), or {}: each of by,
 ## licence, page and from a line of words, the page an https address.
 static func credit_in(text: String) -> Dictionary:
-	var found: RegExMatch = RegEx.create_from_string(
-		"(?m)^0 !BRICKWORKS CREDIT (\\{.*\\})\\s*$").search(text)
-	if found == null:
-		return {}
+	return credit_from(MetaIndex.of_text(text))
+
+
+## [method credit_in] from the model's own lines read once (MetaIndex).
+static func credit_from(metas: MetaIndex) -> Dictionary:
+	var found: Variant = metas.first_read("CREDIT", _credit_read)
+	return found if found != null else {}
+
+
+## What a CREDIT line says ([member credit]), or null for one it is not.
+static func _credit_read(said: String) -> Variant:
 	var json := JSON.new()
-	if json.parse(found.get_string(1)) != OK or not json.data is Dictionary:
-		return {}
+	if not said.begins_with("{") or json.parse(said) != OK or not json.data is Dictionary:
+		return null
 	var out: Dictionary = {}
 	for key: String in ["by", "licence", "page", "from"]:
 		var value: Variant = (json.data as Dictionary).get(key)
@@ -3006,30 +4659,60 @@ static func credit_in(text: String) -> Dictionary:
 ## Who a model's text says laid its parts ([member made_with]), or empty
 ## when it does not say.
 static func made_in(text: String) -> String:
-	var found: RegExMatch = RegEx.create_from_string(
-		"(?m)^0 !BRICKWORKS MADE ([a-z]+)\\s*$").search(text)
-	return found.get_string(1) if found != null and found.get_string(1) in MADE_WAYS else ""
+	return made_from(MetaIndex.of_text(text))
+
+
+static func made_from(metas: MetaIndex) -> String:
+	var found: Variant = metas.first_read("MADE", _made_read)
+	return str(found) if found != null else ""
+
+
+static func _made_read(said: String) -> Variant:
+	return said if said in MADE_WAYS else null
 
 
 ## The link a model's text says it is shared at, or empty.
 static func share_in(text: String) -> String:
-	var found: RegExMatch = RegEx.create_from_string(
-		"(?m)^0 !BRICKWORKS SHARE ([A-Za-z0-9]{10})\\s*$").search(text)
-	return found.get_string(1) if found != null else ""
+	return share_from(MetaIndex.of_text(text))
+
+
+static func share_from(metas: MetaIndex) -> String:
+	return _link_from(metas, "SHARE")
 
 
 ## Which version of that link a model's text says it was copied from, or 0.
 static func remix_version_in(text: String) -> int:
-	var found: RegExMatch = RegEx.create_from_string(
-		"(?m)^0 !BRICKWORKS REMIX_VERSION ([1-9][0-9]{0,5})\\s*$").search(text)
-	return found.get_string(1).to_int() if found != null else 0
+	return remix_version_from(MetaIndex.of_text(text))
+
+
+static func remix_version_from(metas: MetaIndex) -> int:
+	var found: Variant = metas.first_read("REMIX_VERSION", _version_read)
+	return int(found) if found != null else 0
+
+
+static func _version_read(said: String) -> Variant:
+	return said.to_int() if RegEx.create_from_string("^[1-9][0-9]{0,5}$").search(said) != null \
+		else null
 
 
 ## The link a model's text says it was copied from, or empty.
 static func remix_in(text: String) -> String:
-	var found: RegExMatch = RegEx.create_from_string(
-		"(?m)^0 !BRICKWORKS REMIX ([A-Za-z0-9]{10})\\s*$").search(text)
-	return found.get_string(1) if found != null else ""
+	return remix_from(MetaIndex.of_text(text))
+
+
+static func remix_from(metas: MetaIndex) -> String:
+	return _link_from(metas, "REMIX")
+
+
+## The first of the model's own lines of [param word] that says a link's ten
+## letters and digits, or "".
+static func _link_from(metas: MetaIndex, word: String) -> String:
+	var found: Variant = metas.first_read(word, _link_read)
+	return str(found) if found != null else ""
+
+
+static func _link_read(said: String) -> Variant:
+	return said if RegEx.create_from_string("^[A-Za-z0-9]{10}$").search(said) != null else null
 
 
 ## [param name], or the first of "name (copy)", "name (copy 2)"… that no
@@ -3082,30 +4765,49 @@ static func _count_bricks(path: String) -> int:
 ## twenty-odd references to studs and tubes, and one brick.
 static func count_in(text: String) -> int:
 	# Each section by its name: the files its lines refer to, and whether
-	# it declares a part. The first with any lines is the model.
+	# it declares a part. The model is the first FILE section, empty or not,
+	# as LdrModel.parse reads it, or the lines of a file with none: the first
+	# with any lines, it was a sub-model nothing places, after a model left
+	# empty, and a model of no parts was counted as that one's (sfreview F2).
 	var refs: Dictionary = {}
 	var is_part: Dictionary = {}
 	var order: Array[String] = []
 	var name: String = ""
+	var named: bool = false     ## the section being read is a FILE section
+	var model: Variant = null   ## the first FILE section's name
 	var lines := PackedStringArray()
 	var head := PackedStringArray()
+	var blocks: Dictionary = {}
 	for raw: String in (text + "\n0 NOFILE").split("\n"):
-		var line: String = raw.strip_edges()
-		if line.begins_with("0 FILE ") or line.begins_with("0 NOFILE"):
-			if not lines.is_empty() and not refs.has(name):
+		# Trimmed of LDraw's space alone, as LdrModel.parse trims a line: by
+		# the engine's strip_edges, a reference to a sub-model named in
+		# control characters lost its name, and its parts were not counted
+		# (ofcheck F3: names2, 31 of the 32 the open has).
+		var line: String = raw.lstrip(LdrModel.SPACE).rstrip(LdrModel.SPACE)
+		# Each section keyed as the open keys it (LdrModel.section_key): the
+		# first block of a name the one a reference means, and the model's
+		# own by none, so a later block of its name is that one.
+		var word: String = LdrModel.section_word(raw) if line.begins_with("0") else ""
+		if word == "FILE" or word == "NOFILE":
+			if (named or not lines.is_empty()) and not refs.has(name):
 				refs[name] = lines
 				is_part[name] = LdrModel.declares_part(head)
 				order.append(name)
-			name = LdrModel._key(line.substr(7)) if line.begins_with("0 FILE ") else ""
+			if named and model == null:
+				model = name
+			named = word == "FILE"
+			name = LdrModel.section_key(raw, blocks) if named else ""
 			lines = PackedStringArray()
 			head = PackedStringArray()
 			continue
 		if head.size() < 16:
 			head.append(line)
-		if line.begins_with("1 "):
-			var fields: PackedStringArray = line.split(" ", false)
-			if fields.size() >= 15:
-				lines.append(LdrModel._key(" ".join(fields.slice(14))))
+		if line.begins_with("1"):
+			var fields: PackedStringArray = LdrModel._fields(line)
+			if fields.size() >= 15 and fields[0] == "1":
+				lines.append(LdrModel._key(LdrModel.reference_of(raw)))
+	if model != null:
+		return _bricks_in(model, refs, is_part, 0)
 	if order.is_empty():
 		return 0
 	return _bricks_in(order[0], refs, is_part, 0)

@@ -1,7 +1,8 @@
 #!/bin/bash
 # ship.sh WORKTREE TAG CHECK... : a release from a staging worktree.
 # Preview deploy, the browser checks named, and only if every one passes
-# (or fails on brickworks.diy too, where a train accepts it: SHIP_ACCEPT),
+# (or fails on brickworks.diy too, where a train accepts it: SHIP_ACCEPT,
+# or, a timing check, is no worse there run by turns with it: live_ab.sh),
 # and every probe a train runs beside it (SHIP_PROBES): main fast-forwarded
 # and pushed, that very preview promoted, the live site checked. Release
 # jobs take BOX_HEAVY_PRIORITY, as other projects' do.
@@ -118,9 +119,11 @@ probes_failed && exit 1
 # hand. Each one does, whatever else failed: one timing check among rel-m249's
 # five kept keys, library, model_page and together from theirs, and the lead
 # reshipped them by hand (2026-11-02). Timing checks never get a second go:
-# alone they would pass what the load showed. One that wrote no line gets
-# its first. Both answers are kept: TAG_pv.out keeps the first, and
-# TAG_alone_NAME.out the second.
+# alone they would pass what the load showed (they run by turns with
+# brickworks.diy instead, below). One that wrote no line gets its first.
+# Both answers are kept: TAG_pv.out keeps the first, and TAG_alone_NAME.out
+# the second.
+TIMING=" frames play progress placing grab "
 still=""; again=""
 for name in "$@"; do
   line=$(grep -m1 "^$name exit=" $S/${TAG}_pv.out)
@@ -128,7 +131,7 @@ for name in "$@"; do
   if [ -z "$line" ]; then
     echo "SHIP: $name did not run; once, alone"
   else
-    case "$name" in frames|play|progress|placing|grab) still="$still $name"; continue ;; esac
+    case "$TIMING" in *" $name "*) still="$still $name"; continue ;; esac
     echo "SHIP: $name failed beside others; once more, alone"
   fi
   probes_failed && exit 1
@@ -156,39 +159,96 @@ done
 # TAG_stale.failing: those that ran there and failed, as the same script
 # (live's build has it unchanged), which a train may ship past
 # (SHIP_ACCEPT: CHECK<TAB>REASON lines).
+# A timing check runs on the preview and on brickworks.diy by turns
+# instead, P L L P, judged by the numbers it prints (live_ab.sh,
+# timing_judge.py): it holds the release only where the preview is worse
+# than live beyond the noise, and is shipped past otherwise, its numbers in
+# TAG_accepted and in a commit on top of the merge. One run there was luck:
+# rel-m287 held twice on play while live passed it, and the lead's A/B by
+# hand found the preview no slower; m142 and rel-m249 were the same
+# (2026-11-11). The others run there first: one that holds the release
+# saves the A/B its hour.
 if [ -n "$still" ] && [ -n "${SHIP_STALE:-}" ]; then
-  still=${still# }
-  echo "SHIP: failed here: $still; each runs on brickworks.diy as it is now"
-  rm -f $S/${TAG}_stale.{out,failing}
-  echo "$still" > $S/${TAG}_stale.asked
-  built=$(curl -s --max-time 20 https://brickworks.diy/app | grep -o '/b/[^/"]*/' | head -1)
-  echo "$built" > $S/${TAG}_stale.build; built=${built#/b/}; built=${built%/}
+  timed=""; other=""
   for name in $still; do
-    script=$(sed -n "s/^[[:space:]]*\[$name\]=\"\([^ \"]*\).*/\1/p" tools/release/preview_checks.sh | head -1)
-    [ -n "$script" ] && [ -n "$built" ] && git cat-file -e "$built^{commit}" 2>/dev/null \
-      && ! git diff --quiet "$built" HEAD -- "$script" 2>/dev/null && echo "$name"
-  done > $S/${TAG}_stale.changed
-  env -u BOX_HEAVY_PRIORITY "$HERE/preview_checks.sh" https://brickworks.diy "$W" ${TAG}_stale $still >/dev/null 2>&1
-  for name in $still; do
-    case "$(grep -m1 "^$name exit=" $S/${TAG}_stale.out)" in
-      ""|*" exit=0 "*|*" exit=75 "*|*" exit=125 "*|*" exit=127 "*) ;;
-      *) grep -qx "$name" $S/${TAG}_stale.changed || echo "$name" ;;
-    esac
-  done > $S/${TAG}_stale.failing
-  held=""
-  for name in $still; do
-    why=$(awk -F'\t' -v n="$name" '$1 == n {print $2; exit}' "${SHIP_ACCEPT:-/dev/null}" 2>/dev/null)
-    if [ -n "$why" ] && grep -qx "$name" $S/${TAG}_stale.failing; then
-      here=$(grep -m1 "^$name exit=" $S/${TAG}_alone_$name.out 2>/dev/null || grep -m1 "^$name exit=" $S/${TAG}_pv.out)
-      printf '%s: %s\n  here: %s\n  there: %s\n' "$name" "$why" "$(cut -c1-200 <<< "$here")" \
-        "$(grep -m1 "^$name exit=" $S/${TAG}_stale.out | cut -c1-200)" >> $S/${TAG}_accepted
-      echo "SHIP: ships past $name, which fails on brickworks.diy too: $why"
+    case "$TIMING" in *" $name "*) timed="$timed $name" ;; *) other="$other $name" ;; esac
+  done
+  timed=${timed# }; other=${other# }
+  held=""; there=""
+  rm -f $S/${TAG}_ab.asked
+  if [ -n "$other" ]; then
+    echo "SHIP: failed here: $other; each runs on brickworks.diy as it is now"
+    rm -f $S/${TAG}_stale.{out,failing}
+    echo "$other" > $S/${TAG}_stale.asked
+    built=$(curl -s --max-time 20 https://brickworks.diy/app | grep -o '/b/[^/"]*/' | head -1)
+    echo "$built" > $S/${TAG}_stale.build; built=${built#/b/}; built=${built%/}
+    for name in $other; do
+      script=$(sed -n "s/^[[:space:]]*\[$name\]=\"\([^ \"]*\).*/\1/p" tools/release/preview_checks.sh | head -1)
+      [ -n "$script" ] && [ -n "$built" ] && git cat-file -e "$built^{commit}" 2>/dev/null \
+        && ! git diff --quiet "$built" HEAD -- "$script" 2>/dev/null && echo "$name"
+    done > $S/${TAG}_stale.changed
+    env -u BOX_HEAVY_PRIORITY "$HERE/preview_checks.sh" https://brickworks.diy "$W" ${TAG}_stale $other >/dev/null 2>&1
+    for name in $other; do
+      case "$(grep -m1 "^$name exit=" $S/${TAG}_stale.out)" in
+        ""|*" exit=0 "*|*" exit=75 "*|*" exit=125 "*|*" exit=127 "*) ;;
+        *) grep -qx "$name" $S/${TAG}_stale.changed || echo "$name" ;;
+      esac
+    done > $S/${TAG}_stale.failing
+    for name in $other; do
+      why=$(awk -F'\t' -v n="$name" '$1 == n {print $2; exit}' "${SHIP_ACCEPT:-/dev/null}" 2>/dev/null)
+      if [ -n "$why" ] && grep -qx "$name" $S/${TAG}_stale.failing; then
+        here=$(grep -m1 "^$name exit=" $S/${TAG}_alone_$name.out 2>/dev/null || grep -m1 "^$name exit=" $S/${TAG}_pv.out)
+        printf '%s: %s\n  here: %s\n  there: %s\n' "$name" "$why" "$(cut -c1-200 <<< "$here")" \
+          "$(grep -m1 "^$name exit=" $S/${TAG}_stale.out | cut -c1-200)" >> $S/${TAG}_accepted
+        echo "SHIP: ships past $name, which fails on brickworks.diy too: $why"
+      else
+        held="$held $name"
+      fi
+    done
+    there=$(grep -xF -f $S/${TAG}_stale.failing <<< "$(tr ' ' '\n' <<< "${held# }")" | paste -sd' ')
+  fi
+  if [ -n "$held" ]; then
+    [ -z "$timed" ] || echo "SHIP: $timed not run by turns with brickworks.diy: the release holds on$held"
+    echo "SHIP: held, failed on the preview:$held${timed:+ $timed}${there:+ (failing on brickworks.diy too: $there)}"; exit 1
+  fi
+  past=""
+  [ -z "$timed" ] || echo "$timed" > $S/${TAG}_ab.asked
+  for name in $timed; do
+    probes_failed && exit 1
+    echo "SHIP: $name failed here, a timing check: it runs on the preview and on brickworks.diy by turns (live_ab.sh)"
+    "$HERE/live_ab.sh" "$W" "$TAG" "$name" "$URL" >/dev/null 2>&1; code=$?
+    probes_failed && exit 1
+    said=$(head -1 $S/${TAG}_ab_$name.judge 2>/dev/null)
+    if [ "$code" = 0 ]; then
+      why=$(awk -F'\t' -v n="$name" '$1 == n {print $2; exit}' "${SHIP_ACCEPT:-/dev/null}" 2>/dev/null)
+      { echo "$name: by turns with brickworks.diy, $said${why:+; $why}"
+        sed '1d; s/^/  /' $S/${TAG}_ab_$name.judge; } >> $S/${TAG}_accepted
+      past="$past $name"
+      echo "SHIP: $name $said"
     else
       held="$held $name"
+      echo "SHIP: $name ${said:-could not be judged (live_ab.sh ended exit $code)}"
     fi
   done
-  there=$(grep -xF -f $S/${TAG}_stale.failing <<< "$(tr ' ' '\n' <<< "${held# }")" | paste -sd' ')
-  [ -z "$held" ] || { echo "SHIP: held, failed on the preview:$held${there:+ (failing on brickworks.diy too: $there)}"; exit 1; }
+  [ -z "$held" ] || { echo "SHIP: held, failed on the preview:$held (by turns with brickworks.diy: ${TAG}_ab_NAME.judge)"; exit 1; }
+  # Its numbers in the commit main moves to, on top of the merge: the
+  # merge's own words cannot change now, as its commit names the build the
+  # checks passed. This one's tree is the merge's, so that build stands for
+  # it (deploy_reads.sh) and is the one brickworks.diy will serve.
+  if [ -n "$past" ]; then
+    { echo "Ships past$past: no worse here than on brickworks.diy beyond the noise, by turns"
+      for name in $past; do
+        echo; awk -v n="$name: by turns" 'index($0, n) == 1 {on = 1; print; next} on && /^  / {print; next} {on = 0}' $S/${TAG}_accepted
+      done
+    } > $S/${TAG}_ab.msg
+    made=${PREVIEW_MADE:-$SHA}
+    # HEAD's own tree, whatever the index holds.
+    words=$(git -c user.name=Xaxis -c user.email=william.neeley@gmail.com commit-tree "HEAD^{tree}" -p HEAD \
+      -F $S/${TAG}_ab.msg) && git reset -q --soft "$words" \
+      || { echo "SHIP: could not commit what it ships past in $W"; exit 1; }
+    SHA=$(git rev-parse --short HEAD); PREVIEW_MADE=$made
+    echo "SHIP: $SHA says what it ships past, on top of the merge; brickworks.diy will serve $made, the build its checks passed"
+  fi
 elif [ -n "$still" ]; then
   echo "SHIP: held, failed on the preview:$still"; exit 1
 fi

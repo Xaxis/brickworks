@@ -12,8 +12,9 @@
 ## that are actually well connected". A bonded wall reads plain, every part
 ## of it. The view tints what it says and nothing else: the paint, the
 ## history and the model's revision are as they were, on and off. And the
-## models that ship stand, with no part red. Exits non-zero when an answer is
-## wrong.
+## models that ship stand, with no part red. A joint of each kind past its
+## working load is said by its kind: a free pin turns with nothing holding
+## it, by no ratio (drvrecheck F2). Exits non-zero when an answer is wrong.
 extends SceneTree
 
 var _failures: int = 0
@@ -46,6 +47,7 @@ func _run() -> void:
 	await _bonded_wall()
 	await _drawn_not_painted()
 	await _models_stand()
+	await _joints_by_kind()
 	print("")
 	if _failures == 0:
 		print("stress: the loaded cantilever's root reads red on 1x1s and plain on 2x2s, a bare "
@@ -141,6 +143,79 @@ func _view(report: Stability.Report) -> StressView:
 
 func _grams(part_id: String) -> float:
 	return Stability.grams(_library.parts.get(part_id))
+
+
+## drvrecheck F2: what a session reads (weakest_joints) and what the panel's
+## fix says, for a joint of each kind past its working load. A free pin,
+## which nothing holds, turns with nothing holding it, red: no margin of a
+## load it has none of, no times it, no load it lets go at; "studs'" only
+## for studs; more studs only for studs.
+func _joints_by_kind() -> void:
+	print("joints of each kind past their working load, as a session and the panel read them")
+	await _fresh()
+	var held: int = _put("3005", 0, 0, 0)
+	var ids: Dictionary = {}
+	for kind: String in ["studs", "friction pin", "free pin"]:
+		ids[kind] = _put("3005", 40.0 * (ids.size() + 1), 0, 0)
+	var report := Stability.Report.new()
+	for kind: String in ids:
+		var one := Balance.JointLoad.new()
+		one.beyond = int(ids[kind])
+		one.held_by = held
+		one.beyond_part = "3005"
+		one.held_part = "3005"
+		one.kind = kind
+		one.studs = 2 if kind == "studs" else 0
+		one.pins = 0 if kind == "studs" else 1
+		one.grams = 12.0
+		one.moment = 3.8
+		one.capacity = {"studs": 1.5, "friction pin": Balance.PIN_N_CM, "free pin": 0.0}[kind]
+		one.ultimate = {"studs": 4.5, "friction pin": Balance.PIN_LETS_GO_N_CM, "free pin": 0.0}[kind]
+		one.ratio = one.moment / maxf(one.capacity, 0.000001)
+		report.margins[one.beyond] = one
+	var said: String = StressView.said(report, _world, _library, {})
+	var lines: Dictionary = {}
+	for line: String in said.split("\n"):
+		for kind: String in ids:
+			if line.begins_with("  #%d " % int(ids[kind])):
+				lines[kind] = line.strip_edges()
+	for kind: String in ids:
+		print("    %s: %s" % [kind, lines.get(kind, "(not said)")])
+	var free: String = str(lines.get("free pin", ""))
+	_check("a free pin past its load turns with nothing holding it, red, by no ratio and no load it lets go at",
+		free.contains("it turns with nothing holding it") and free.ends_with("red")
+		and not free.contains("x its working load") and not free.contains("lets go") and not free.contains("margin")
+		and not free.contains("studs"))
+	var pin: String = str(lines.get("friction pin", ""))
+	_check("a friction pin past its load: past its working load, not its studs'",
+		pin.contains("past its working load, red") and not pin.contains("studs'"))
+	_check("...and studs past theirs, their studs'", str(lines.get("studs", "")).contains("past its studs' working load, red"))
+	var fixes: Dictionary = {}
+	for weak: StressView.Weak in StressView.ranked(report, _world, {}):
+		for kind: String in ids:
+			if weak.id == int(ids[kind]):
+				fixes[kind] = StressView.fix_words(weak, _library)
+	for kind: String in ids:
+		print("    fix, %s: %s" % [kind, fixes.get(kind, "(none)")])
+	_check("the panel's fix for a free pin: a second pin off its line, no times the hold, no studs",
+		str(fixes.get("free pin", "")).contains("a second pin off its line")
+		and not str(fixes.get("free pin", "")).contains("times") and not str(fixes.get("free pin", "")).contains("stud"))
+	var free_id: int = int(ids["free pin"])
+	var pointed: String = StressView.part_words(report, _world, _library, {}, free_id)
+	var view := StressView.new()
+	view.world = _world
+	view.library = _library
+	view.report = report
+	var brace: String = view.brace_words(free_id)
+	view.free()
+	print("    pointing at the free pin: %s\n    Brace this: %s" % [pointed, brace])
+	_check("pointing at a free pin, and Brace this: with nothing holding it, no margin",
+		pointed.contains("with nothing holding it") and not pointed.contains("margin")
+		and brace.contains("with nothing holding it") and not brace.contains("margin"))
+	_check("...for a friction pin a second pin too, and more studs only for studs",
+		str(fixes.get("friction pin", "")).contains("a second pin off its line")
+		and not str(fixes.get("friction pin", "")).contains("more studs")
+		and str(fixes.get("studs", "")).contains("give it more studs"))
 
 
 func _near(got: float, want: float, within: float) -> bool:

@@ -34,13 +34,10 @@ func where() -> String:
 	return folder if not folder.is_empty() else Download.downloads()
 
 
-## A file name from a model's name: its last part only, so no title can
-## put a file outside the folder.
+## A file name from a model's name, by the one rule for a file's name
+## (SubmodelFile.titled), which no title can make a path outside the folder.
 static func file_name(model: String, suffix: String, extension: String) -> String:
-	var base: String = model.replace("\\", "/").get_file().to_snake_case()
-	if base.is_empty():
-		base = "model"
-	return "%s%s.%s" % [base, suffix, extension]
+	return SubmodelFile.titled(model, "%s.%s" % [suffix, extension])
 
 
 ## Keep a picture as a PNG, encoded on a worker. Returns the line to show.

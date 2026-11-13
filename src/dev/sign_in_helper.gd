@@ -19,11 +19,21 @@ extends RefCounted
 ## delivered nowhere, so a code that is really sent costs nobody an inbox
 ## and the sender no bounce.
 const TEST_DOMAIN := "resend.dev"
+## No run of a probe lasts a day: an account at a probe's address made longer
+## ago than this is one a run stopped before its end left behind.
+const LEFT_BEHIND_S := 24 * 60 * 60
+
+## The addresses this run was given ([method throwaway]), made accounts at
+## or minted codes for ([method admin], [method mint]), lower case: the only
+## fresh ones [method delete_accounts] may take.
+static var _made: PackedStringArray = PackedStringArray()
 
 
-## A throwaway address for one run of a probe.
+## A throwaway address for one run of a probe, this run's to delete.
 static func throwaway(label: String) -> String:
-	return "delivered+bw%s%d@%s" % [label, Time.get_unix_time_from_system(), TEST_DOMAIN]
+	var email: String = "delivered+bw%s%d@%s" % [label, Time.get_unix_time_from_system(), TEST_DOMAIN]
+	_mine(email)
+	return email
 
 
 ## Sign [param account] in as [param email], creating it if new.
@@ -42,6 +52,8 @@ static func mint(email: String, host: Node) -> String:
 	var secret: String = env("SUPABASE_SECRET_KEY")
 	if url.is_empty() or secret.is_empty():
 		return "!no SUPABASE_URL / SUPABASE_SECRET_KEY in .env"
+	# The link makes the account if there is none.
+	_mine(email)
 	var got: Dictionary = await admin(host, HTTPClient.METHOD_POST,
 		"/auth/v1/admin/generate_link",
 		JSON.stringify({"type": "magiclink", "email": email}))
@@ -53,29 +65,55 @@ static func mint(email: String, host: Node) -> String:
 	return code if not code.is_empty() else "!no code in the reply"
 
 
-## The accounts a probe made, gone: every address that starts with
-## [param prefix]. Returns how many.
+## The accounts a probe made, gone: those at an address that starts with
+## [param prefix] and that this run made ([member _made]), and any made over
+## a day ago (a run stopped before its end left them). Returns how many.
+##
+## Never another run's that is still going, though its address starts the
+## same: other units run the same probe, and a flow's addresses can begin
+## with a probe's prefix. together_probe's cleanup of delivered+bwtogether
+## took together_flow.mjs's desktop, delivered+bwtogetherd…, in the middle of
+## its session; the cascade took its place in the session with it, and the
+## flow failed every check of the desktop after (2026-11-12).
 static func delete_accounts(prefix: String, host: Node) -> int:
 	if not prefix.begins_with("delivered+bw"):
 		return 0
 	var listed: Dictionary = await admin(host, HTTPClient.METHOD_GET,
-		"/auth/v1/admin/users?page=1&per_page=1000", "")
+		"/auth/v1/admin/users?page=1&per_page=1000&filter=" + prefix.uri_encode(), "")
 	var body: Variant = listed.get("body")
 	if typeof(body) != TYPE_DICTIONARY:
 		return 0
+	var now: float = Time.get_unix_time_from_system()
 	var gone: int = 0
 	for user: Variant in (body as Dictionary).get("users", []) as Array:
-		var address: String = str((user as Dictionary).get("email", ""))
-		if address.begins_with(prefix):
-			var done: Dictionary = await admin(host, HTTPClient.METHOD_DELETE,
-				"/auth/v1/admin/users/" + str((user as Dictionary).get("id", "")), "")
-			if int(done.get("code", 0)) == 200:
-				gone += 1
+		var address: String = str((user as Dictionary).get("email", "")).to_lower()
+		if not address.begins_with(prefix.to_lower()):
+			continue
+		# "2026-11-12T19:15:16.587226Z": the seconds, in UTC.
+		var made_at: String = str((user as Dictionary).get("created_at", "")).left(19)
+		var left_behind: bool = made_at.length() == 19 \
+			and now - Time.get_unix_time_from_datetime_string(made_at) > LEFT_BEHIND_S
+		if not _made.has(address) and not left_behind:
+			continue
+		var done: Dictionary = await admin(host, HTTPClient.METHOD_DELETE,
+			"/auth/v1/admin/users/" + str((user as Dictionary).get("id", "")), "")
+		if int(done.get("code", 0)) == 200:
+			gone += 1
 	return gone
 
 
-## A request to the project as the server: [code, parsed body].
+static func _mine(email: String) -> void:
+	if not _made.has(email.to_lower()):
+		_made.append(email.to_lower())
+
+
+## A request to the project as the server: [code, parsed body]. An account
+## made through it is this run's ([method delete_accounts]).
 static func admin(host: Node, method: int, path: String, body: String) -> Dictionary:
+	if method == HTTPClient.METHOD_POST and path == "/auth/v1/admin/users":
+		var asked: Variant = JSON.parse_string(body)
+		if asked is Dictionary and (asked as Dictionary).has("email"):
+			_mine(str((asked as Dictionary)["email"]))
 	var secret: String = env("SUPABASE_SECRET_KEY")
 	var request := HTTPRequest.new()
 	request.timeout = 30.0

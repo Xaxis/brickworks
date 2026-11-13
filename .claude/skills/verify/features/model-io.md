@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, ui:library search, cli:library search probe, cli:library browser flow, lib:model versions, ui:versions of a model, ui:compare with a save, lib:model diff, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, lib:a plan's limit on models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:a line placing a part at no size, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe, cli:picklist probe, cli:direct colour probe, cli:print3mf probe, cli:3mf strict reader -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, ui:put a model into this one, cli:into model probe, cli:into model review probes, ui:library search, cli:library search probe, cli:library browser flow, lib:model versions, ui:versions of a model, ui:compare with a save, lib:model diff, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, lib:a plan's limit on models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:a line placing a part at no size, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe, cli:picklist probe, cli:direct colour probe, cli:print3mf probe, cli:3mf strict reader, ui:each sub-model as its own file, cli:subexport probe, cli:open faults probe, cli:askfirst probe -->
 
 ## Sub-features
 
@@ -40,6 +40,98 @@ Whether what you built is still there tomorrow, and still means the same thing.
   since all open through `open_text`: see "the author's steps" in
   [view](view.md). They were read and dropped, and saving wrote Brickworks's
   own order over them.
+- `sub-file names` (`LdrModel._key`, `file_name_of`, `reference_of`,
+  `section_key`; openfaults, 2026-11-11): a file's sub-files are read as
+  LDView reads them (LDLModel::readComment, LDLModelLine). A FILE section's
+  name is its line's text after "0 FILE", a reference's its text after the
+  fourteenth field, each with C's space trimmed (space, tab, line ends,
+  vertical tab, form feed) and nothing else, two spaces in a row kept; the two
+  are one name in any case with "\" as "/". A reference with a FILE of its
+  name is that sub-model, whatever library part its number is, but for a
+  block that says it is a library file (its `!LDRAW_ORG` a part, shortcut or
+  primitive: `declares_library_file`) under a number the library has, which
+  is that part (`LdrModel.sub_model_of`, `api/_parts.js subModelOf`; ofcheck
+  F1: 10251-1's shortcut 60797c02, the door, was a sub-model of its two
+  pieces and left the parts list, the shop lists and the price, 2,391 of
+  2,392). A shortcut under a name the library has not ("10265 -
+  42716c01.dat", 171 blocks in 73 OMR files) stays a sub-model, as LDView
+  reads it. A reference with no FILE of its name is a part, by its number
+  (`LdrModel.stem`: no folder, no extension). Of two blocks of one name the
+  first is the one, as LDView's "already loaded" says; a later one is read
+  as nothing (`twin_key`) and kept as the file has it, as a block nothing
+  places (someone else's file; the app's own is written from the model).
+  The model's own block is in no table (`LdrModel.MAIN_KEY`, `main_key`), so
+  a later block of the main file's name is the one its references mean
+  (ofcheck F4: the app drew 1 part of 3 and share refused the model as
+  placing itself). Lines are split on any of LDraw's space, tabs too (F3:
+  `models.js partsIn` counted 2 of a tabbed file's 4). Every reader takes
+  this rule: the open, the Open list's count (`ModelStore.count_in`),
+  SourceFile's sections and patch, the booklet's, Studio's and LDCad's
+  readers, a made part's, SubmodelFile, the server's (`api/_subfiles.js` for
+  `api/_parts.js`, `_versions.js`, `share.js`, `models.js`) and the Python
+  tools' (`tools/ldraw/subfiles.py` for `tools/omr.py`, which never
+  followed a "s\..." sub-file: 7 of 1,576 OMR files counted otherwise than
+  LDView, 42125-1 6,169 of 6,721). `count_in` and `partsIn` read the text
+  alone, with no library, so they count a library's shortcut block as its
+  pieces (10251-1: 2,393). Reduced to a bare stem, as it was until then,
+  "Castle.ldr" placed by "castle.mpd" was the model itself, "Gate .ldr" was
+  "Gate.ldr", "parts\twin.ldr" "twin.ldr", a FILE named in control
+  characters none (se3check), and two blocks of a name read the last
+  (sf2check). Written whole, sections go in the order the model writes
+  their first reference (`LdrModel._in_written_order`), never the last
+  open's lowest brick id (ofcheck F2: a step edit's save wrote zeta, alpha
+  and the next save alpha, zeta). Each section keeps the name it was read with
+  (`BrickWorld.section_files`, `LdrModel._file_names`), the model's own too;
+  a new one is named after its title, an extension never doubled
+  (`new_file_name`), never a name a read one, a kept block or a library part
+  has ("_" before the extension, `_another`): "0 FILE hssub.ldr" titled
+  "hssub.ldr", as MLCad writes one, went out as "hssub.ldr.ldr", and the next
+  open drew its copies as a part nobody has (hscheck). A copy written as a
+  definition of its own ("wing 2") is written after the one it came from,
+  saying it is copy 1, so a save of it opened again is the same file
+  (copyfaults2 cfc_wing2); a renamed copy is never written into a deleted
+  one's kept block (`SourceFile._copies_are_the_files`, co_del_rename_tail).
+  Written whole, a copy placed in another colour is a copy
+  (`Assemblies.file_frames`, `_copy_fit`): each copy's reference says its
+  colour ("1 4", "1 1") and the definition's parts of the first copy's colour
+  go out in 16 (`LdrModel.write_tree`, each instance's "colour"); before,
+  the blue tower went out as "Tower 2" after every whole write. A copy is its
+  copies inside too, each where the other's is, written as the same
+  definition and in the colour its reference then gives it: a car whose wing
+  was taken out by a change no copy followed is a sub-model of its own, and
+  the other car's wing, light and view are kept (lp2check N2). A copy that
+  lies on one written as a definition of its own is a copy of that one. A
+  mirrored copy of a sub-model with a hand (41770, a number the library moved
+  to 41770a) opens in its other hand (`Assemblies.unmirror` resolves first)
+  and is written by a mirror again; a copy made only of parts the catalogue
+  lacks keeps its step (`AuthorSteps.numbers_for_file`, hscheck E5_own).
+  Each definition goes out from the copy its others were laid on (its entry
+  "master"), whose colours say which parts are 16; copies are laid on each
+  other by the steps the save writes, so a copy built in its parent's steps
+  is never placed in a colour of its own; a part the catalogue lacks in the
+  first's placing colour must show the other's there, or the copy is a
+  sub-model of its own; and a copy is placed by a mirror only where each
+  part comes back within 0.02 LDU (`MIRROR_NEAR`; cf3check O2, H1, H3,
+  8143-1, 10256-1).
+  **Check:** `copyfaults_probe` colour_copies, apart_inside, mirror_copy,
+  held_copy_step, paint_copy, fixed_colours (and rename, duplicate, swap:
+  the sub-models opened again are the ones saved).
+  **Check:** `tools/probe.sh openfaults_probe` (headless, ~4 min): 24 cases,
+  each as someone else's file and as the app's own: LDView's rule, read in the
+  probe apart from LdrModel (with the app's one rule for a library's shortcut
+  block), draws the parts the app has (number, colour, place; a mirrored part
+  by its place), the Open list's count is what LDView draws from the text
+  alone, the file saved unedited is itself, every way it is written (Save,
+  the autosave, export, share, the copy kept for Undo, Save As, MCP
+  save_model) reads so again, keeps the names and lines each case names,
+  opens again to the same parts, colours, places, copies and steps, and saves
+  again to the byte. `OPENFAULTS_OUT=DIR` keeps the texts; sf2check's
+  `readers.py DIR CASE...` reads them as LDView does. Fails on pre261
+  39d6311ca in 13 of its first 17 cases (121 checks), and on ead8b1d06 in
+  7 of 24 (33 checks: shortcut, order, mainname, and names2's Open list
+  count, 31 of 32). The
+  server's and the Python tools' readers: `python3 tools/minitest.py
+  tests/test_subfile_readers.py` (4 tests, 2 s; all 4 fail on ead8b1d06).
 - `someone else's file kept` (`src/parts/source_file.gd`, `SourceFile`;
   `ModelStore._source_text`, 2026-10-16): a file whose `0 Author:` is not
   Brickworks (the LDraw model repository, Studio, LDCad, LeoCAD, an `.io`)
@@ -67,6 +159,182 @@ Whether what you built is still there tomorrow, and still means the same thing.
   `0 !BRICKWORKS TITLE` line, the author's first line untouched. The app's own
   lines (floor, share, set) are the only lines added. A file Brickworks wrote
   (`0 Author: Brickworks`) is written whole, as before.
+  Since keeptext5 (2026-11-08) a save is exactly one of two things, never
+  refused: (A) a patch of the file (`SourceFile.patch`), the file as opened
+  with four line operations, each bound to an edited part, every other line
+  byte for byte in its order: a part's own line rewritten (colour, place,
+  part, its own number kept, and what it names after its 15th field as the
+  file wrote it, a sub-model named with two spaces in a row or a tab in it
+  too, `LdrModel.reference_of`; a flexible part's colour on the line
+  placing its path's sub-model, as LDCad paints a path), a part's line taken
+  out with the lines bound to it (`_binds_next`) and a pair it leaves empty
+  (only the pairs other programs write, `SourceFile.PAIRS`: LSynth, LPub,
+  TEXMAP, MLCad's SKIP and BUFEXCHG, LeoCAD; a comment "0 Engine START" is a
+  comment), a new part's line at the end of its step outside every pair, and a
+  part's line moved to the end of another step where the pairs round it are
+  the same at both places; or (B) what live writes (`SourceFile.write`, else
+  the model whole). Each part knows its line (`LdrModel.Placement.origin`,
+  `BrickWorld.Brick.origin`, `BrickWorld.unit_chains`). The patch goes over
+  the file only when its gate passes it (`SourceFile.gate`): the text
+  written, the app's own lines aside, diffed line by line against the file
+  as opened (`_as_written`, `_aligned`), each line kept byte for byte in
+  order, each changed, moved, added or left out one of the four for a part
+  actually edited, every part line in the pairs it was in, and the text read
+  back as an open reads it to the model, part by part by its line and each
+  in the copy of its path. A line rewritten or added is held to the file as
+  written, not as an open reads it (`_rewritten_as_written`,
+  `_new_as_written`): its colour code the file's or the painted colour's own
+  (a top-level 16 reads as 0), its name the file's byte for byte or a swapped
+  part's "part.dat", its place's and turn's numbers the file's unless they say
+  another place or turn, its line end the file's. A delete that would leave
+  no part at all (`_left_unplaced`), or that takes off a copy of a sub-model
+  with a later copy left, which an open numbers one less (`_renumbered`:
+  Wing#2 opens as Wing#1, and a motion's JOINT ASSEMBLY or a copy's step
+  names it by its path), is (B). A sub-model no line places any more keeps
+  its block, placed by nothing, as the author made it and as Studio and
+  LDCad keep one, however the save is written: the patch takes out only the
+  lines placing it, live's write the same (`SourceFile._unplace_emptied`),
+  and the model written whole carries each section of the file nothing in
+  the model is read through, as the file had it, after its own
+  (`SourceFile.unplaced_into`, by the parts' origins: a sub-model the file
+  never placed too, and each section a kept block places, the model's own
+  ones too, since the whole write names and frames those anew). It went to
+  live's write, which took the block out, and the last copy taken off lost
+  the sub-model (kt5check F5). A block placed by nothing titled as one the
+  model places renames none of its copies at the next open: only placed
+  sub-models share a title (`LdrModel._assembly_names`; 5540's flexhose,
+  carried for the sub04b taken off, opened its copies under other names).
+  A model so emptied, its parts all in blocks nothing places, opens as an
+  empty model, still theirs (`ModelStore._why_not_a_model` counts the
+  model's own section's lines): it was refused as "there are no parts in
+  that file". The model is the file's first FILE section, empty or not, as
+  parse reads it (`ModelStore.count_in`, and `_has_parts` by
+  `LdrModel.main_span`), so the autosave of a model so emptied restores left
+  empty, its file kept for the next save (`ModelStore._restored`), not
+  "could not be opened: ." with the sample opened over it, and an empty
+  model with a kept block is refused over a saved model with parts as any
+  empty one is (sfreview F2). A model of no sub-model written whole is bare
+  text: what carries sections after it puts it in a FILE of its own first
+  (`SourceFile._as_sections`), or the kept block was the first FILE and
+  opened as the model (F1). The names of the sections a whole write carries
+  as the file has them are reserved before the model is written
+  (`SourceFile.kept_keys`, `LdrModel._main_file`): a placed sub-model titled
+  as one placed by nothing took its file name, and that one was skipped as
+  written already, its parts lost (F5). The tables a
+  patch reads are filled as the source is made (`SourceFile.make`), so the
+  autosave's worker and a save on the main thread never fill them at once
+  (read on first use, that corrupted the heap). Any
+  failure writes (B), says why once on the console ("written as live writes
+  it, not a patch: ..."; `ModelStore.last_whole`), and where (B) leaves out
+  lines of the file the bar says so once, as the edit is made
+  (`ModelStore.lines_left_out`, `left_out_words`: how many of which kind).
+  In a patch the app's own lines end as the file's lines do and go above a
+  line saying what the next part is (`SourceFile.app_lines_placed`); one
+  the file already has keeps its text, even with its JSON fields in another
+  order (a hand-written VIEW), and stays where the file has it within the
+  step (the stretch between two STEP, ROTSTEP, FILE or NOFILE lines) its
+  writer puts it in (`SourceFile._in_file_places`): since pre261 a VIEW is
+  written under the main model's title, under its 0 FILE before, and a
+  step's look at the step's end, so an older build's file or a look put at
+  a step's top by hand moved on a save with nothing changed (`app_lines`).
+  A light line read stays where it is, changed in place, a new one after the
+  light before it (`SceneLights.written_with`), in a patch as in (B), and a
+  sub-model's light lines are kept with its section's lines. The share,
+  set bin and trace lines `ModelStore._write` adds pass through the same.
+  Every `0 !BRICKWORKS` line is found and written by one layer since
+  metalines (2026-11-11; `src/parts/meta_index.gd`, `MetaIndex`): the
+  text read once (each such line by section and word, any case of FILE,
+  any spaces and tabs, the file's line end, each section's title and head),
+  each feature reading only its own lines of the model's own section
+  (`*.read_from`) and marking those it took; every writer gives its lines
+  as a family (`ModelStore._meta_families`) and `MetaIndex.write` keeps the
+  file's line, byte for byte, where one says the same (its words one space
+  apart, its JSON as what it says), changes one in place, puts a new one
+  after the one before it, and writes back where it was each line no
+  reader could read (`MetaIndex.lines_for`: a later build's VIEW, a refused
+  MOTION_KEY between its neighbours), every line ended as the file's are.
+  One head rule for every writer (`LdrModel.title_end`, `into_main` and
+  `MetaIndex` alike): a new line goes after the model's first line, whatever
+  it is, so a title-less main saves twice the same; a file's byte-order mark
+  is kept from the open (`LdrModel.text_of`, the engine's reading drops it),
+  read past (`ModelStore._open_into`) and written back (`_write`). A name
+  the file says on its title line is its own, so a reopened whole write
+  gains no `TITLE` line (`SourceFile.said_title`). The index keeps the lines
+  as columns and makes a `MetaIndex.Line` only for a word a reader or writer
+  asks for: lights' 200,000 unreadable lines save within 1.5 times the same
+  file of comments (`lights_probe --review`). A step's look lines stay where the file has them in their step
+  (`BookletLooks._place_lines`); a file's own empty step with a look of its
+  own is kept through a step edit (`AuthorSteps._tidy`; one an earlier edit
+  emptied lost its look and is numbered out); a page picture given the model's default
+  name while a sub-model's page has one of it takes a free name
+  (`BookletSheet.free_name`). `metalines_probe` (headless, 14 cases, each
+  but castle and bom red on its base 7bce03d88; `METALINES_CASES=a,b`, `METALINES_OUT=DIR`
+  keeps every save) opens each fixture of `src/dev/fixtures/metalines/`
+  over MCP, edits it by the feature owning the line, saves by the bar, over
+  MCP and by Save As, opens and saves again: a later build's view kept and
+  said, 30 CRLF saves with no line ending LF alone, a sub-model's picture
+  and lines its own, an empty step kept, a step named once, an open undone
+  with its unread light, no TITLE or FLOOR GRID added to an unedited save,
+  tabs read, a byte-order mark kept through 4 edits, the castle's whole
+  write timed (`METALINES_CASTLE_MS_PER_MB`).
+  Each app line the open saw is in one of three states, marked by the
+  reader that read it on its `MetaIndex.Line` by place, never told again
+  from text (mlfix, 2026-11-12): taken (what the feature holds; the
+  feature's lines now go in their places), beaten (a reader could read it,
+  and an earlier line of the same view, pin, floor or picture won: kept
+  only while the feature says what the open read, so an unedited save is
+  the file and an edit drops it rather than let the next open read it), and
+  unread (no reader could: a later build's word, a ZOOM that is no number,
+  a refused motion key; kept always, where it was, through every edit and
+  in their step for a step's look lines, `BookletLooks` "unread"). Lights
+  are read from the index as every family is (`SceneLights.read_from`),
+  so the open and the save cannot place a line apart; a family that is
+  not JSON (FLOOR, TITLE, FROM_SET, SHARE, BIN, ...) is compared by its
+  reader's value, so `0 !brickworks floor` stays as the file has it.
+  `mi_fuzz` (headless, `--n=4000 --seed=S`, twins, tabs, any case, CRLF,
+  both writers, motions' own unread list against an exact oracle) and
+  `mlattack_probe` (headless; cases dupsame, dups, unread, features,
+  badlooks, files over `src/dev/fixtures/mlattack/`, 66 files of other
+  programs and by hand, each saved unedited byte for byte) are mlcheck's
+  attack kept.
+  A part of a mirrored copy agrees with its line only as it was opened (an
+  edit to one is (B)); a step edit moves the lines of the parts it moved to
+  the end of their new steps, and one that leaves a step of the file with
+  no part (a merge, a step emptied: the steps numbered again) is (B), which
+  takes that step's line out, where a patch moved every later line up a
+  step and left a STEP after the last (booklet_edit); a part the app cannot show
+  that would be left behind its step-mates makes the save (B).
+  Written whole, a copy is placed on its definition's first copy by the fit
+  that lays each part turned as it is (`Assemblies.exact_match`, its
+  "bases"), mirrored where only a mirror does: a mirrored copy of parts that
+  look the same turned a half (a plate and a tile) also lies on the first
+  turned a half, filling the same cells, and was written so, by a matrix
+  that turns, and opened again with each part turned a half (kt5check F2).
+  Copies follow an edit by the same fit (`best_match`), so a wedge put in the
+  first copy goes into the mirrored one in its other hand. A copy's
+  `0 !BRICKWORKS COPY n` line is bound to the reference after it
+  (`_binds_next`) and goes, or moves, with it (F3). A file that ended with no
+  line break ends so again, in a patch and in (B)
+  (`SourceFile._ended_as_begun`): its last line rewritten was given the
+  file's line end, a CRLF file ending in a bare CR (F4). `fidelity_probe`
+  checks the three.
+  keeptext4 wrote every edit into the file and refused what its gate did not
+  pass, which trapped the work and lost it on the next open
+  (bench/results/kt4review-2026-11-07). Probes: `paint_string` (a person
+  paints 42079-1's rope, saves, opens another file, comes back to it
+  yellow), `keep_text` and `kt3r` (each save a patch keeping every line
+  the edit did not touch, or live's write), `copyfaults` (a copy renamed,
+  duplicated, swapped over MCP or given a step edit leaves its twin as it
+  was, or both alike, and one moved or painted moves or paints only the
+  twin's part it pairs with (copyfaults2, with `cfcheck`), saved and opened as shown;
+  a part put down in the placing colour of copies placed in two colours is
+  one line in 16, not two lines and a whole write (`SourceFile._fresh_lines`,
+  `cf2check` post16, `copyfaults` placing_put); the app's own lines under
+  the model's title, `LdrModel.into_main`, in ten files with sub-models;
+  a clear undone gives back the file's lines), `patch_rules` (kt5review's six:
+  names kept, the gate as written, comment pairs, deletes that go to (B), the
+  patch on two threads at once), and kt4review's
+  `kt4r_probe.gd`/`kt4r_gate.gd` with its specs and analyzers.
 - `parts the app cannot show` (`ModelStore.unshown`, `SourceFile.unshown`):
   a part of the file the library has not got, a part the file carries that
   cannot be built (on the web, one drawn from an official part or subpart,
@@ -75,7 +343,11 @@ Whether what you built is still there tomorrow, and still means the same thing.
   file and is saved back, and File, Open says how many and which, a flexible
   part once by its sub-model ("… (ropeLQ-1 (flexible))"). `fidelity_probe`
   checks it, and the cad task test counts a part lost on open only when it
-  is neither shown nor kept.
+  is neither shown nor kept. It keeps its step and that step's looks
+  through step edits (heldsteps, 2026-11-11; view.md, the author's steps):
+  a save writes its line in the step it is in now, the patch only when that
+  is the step the file had it in (else live's write, which re-steps it,
+  `SourceFile.held_steps`). `heldsteps_probe` checks it.
 - `flexible parts drawn` (`CustomParts.begin_skins`, `PartForge.build_skin`):
   LDCad writes a hose's, a rope's or a band's skin after `0 !LDCAD
   GENERATED` in its sub-model (primitives bent a segment at a time, a donor
@@ -454,6 +726,41 @@ Whether what you built is still there tomorrow, and still means the same thing.
   stand-in: the real deployment and its store, all 1,575 models with covers,
   and 8466-1 (36 MB, the biggest) found and opened in the probe's window,
   timed: 13.9 s from the press, 1,234 parts, credited (dcf6e538).
+- `put a model into this one` (`IntoModel`, `ModelStore.held_from`,
+  `Builder._put_carried`, `SourceFile.grafted`): File › Import › Into this
+  model… lists the saved models and the examples, a file from this computer
+  and the library; the library's cards have Put in this model (licences that
+  allow it, `LibraryDialog.MAY_BUILD_ON`); a session's `open_model into=true`
+  (name=, library= or link=; x= z= its low corner on the ground, turn=). The
+  model comes into the hand whole, as one sub-assembly; a click puts it down.
+  Its sub-models, part files and pictures named as the host has a name are
+  named anew (`Names.free_name`, against `Assemblies.names_in`, which takes
+  every section, carried part file and held part's file of the host, a
+  sub-model file's name without its extension too); its author's steps come
+  with it, its root in the step it was put down in where the host has steps;
+  its parts the app cannot show are kept in their sub-model and step
+  (`ModelStore._held_put`, kinds `unseen`/`absent`/`awaited`) and move, copy
+  and undo with it; its maker is written in its sub-model's header (the
+  file's `0 Author:`/`0 !LICENSE`, else the library's or gallery's credit);
+  one Undo takes all of it out. Into someone else's file it is grafted: the
+  file's own lines kept as the patch leaves them, the brought sections
+  appended, one line placing it (`SourceFile.grafted`); where that cannot be
+  (a held part of it taken out of it, a step the file has not got) the save
+  says the file is written afresh. Up to 2026-11-12 a model brought in lost
+  the parts the app could not show, took the host's names, and someone
+  else's host lost 181 of 900 lines (imreview, im2review).
+- `into model probe`: `tools/probe.sh intomodel_probe` (a window, 1400 x 900)
+  and `PROBE_SIZE=1280x720 tools/probe.sh intomodel_probe`. Each way in, as a
+  person: the File menu's Import submenu, its list, a click on a clear spot
+  of the view, the Undo and Redo keys. Saved and reopened, compared part by
+  part with the host and the brought model each opened alone: every host
+  part in place, colour, sub-assembly and step, exactly the brought parts at
+  one placement in theirs, unshown parts among both; names, makers, no two
+  sections under one name; saved and reopened again the same.
+- `into model review probes`: `tools/probe.sh imreview_probe`,
+  `im2review_probe`, `into_kept_probe` (headless). Two independent reviews and
+  the kept-parts cases. imreview's `paste_nested` is paste's, not this
+  feature's (a copied nested window put down as a third House).
 - `library search`: the Library's search, first under the shelves' buttons,
   edged in `Look.OUTLINE` with a magnifier (`assets/ui/tools/search.svg`) that
   gives way to the field's × once something is typed. Matches a set's name,
@@ -577,6 +884,44 @@ Whether what you built is still there tomorrow, and still means the same thing.
   this app saved keeps its height. `joints_probe` ("stood on the ground by its
   shape") opens a wheel spun 16 degrees on its axle both ways and with its tyre
   fetched late, and two bricks drawn 76 LDU up, by another tool and by this one.
+  A part still on its way, or one the app's own file has that the catalogue
+  lacks, is in its copy wherever every change since took it
+  (`BrickWorld.held_paths`, carried by `Builder._carry`; `BrickWorld.held_path`,
+  which every reader of one goes through, as a step edit changes the placement
+  itself):
+  `joints_probe` ("a part on its way, or one the catalogue lacks, in its
+  sub-model") renames its Sub Engine, and makes a Box round it, before the
+  part lands: saved before and after it lands it is in that sub-model, it
+  lands beside the rest, and Undo and Redo take it with them; a part the
+  catalogue lacks is written in Engine, and in Sub undone. Deleting a copy's
+  last parts takes its held ones with it in the same step
+  (`ModelStore._held_go_with`, `Assemblies.copies_emptied`, a `held` undo
+  through `Builder.held_hook`), so no file keeps the copy for a part on its
+  way alone (pccheck HA_5); someone else's file's (`SourceFile.not_shown`,
+  and its line's place, `unshown_origins`) go too. Taking a copy apart takes its held ones into the
+  one round it, numbered in its steps with the rest and their step's look
+  with them (`AuthorSteps.inlined`; hscheck R_own_ungroup). The writer
+  tells copies apart by their held parts as well as their bricks
+  (`Assemblies.file_frames(figures, held)`, `Assemblies.held_by_path`:
+  which parts and colours, not where, since held parts do not follow a
+  copy's move), so a copy holding any its master does not is a sub-model of
+  its own and none is lost (pc2check A2, H); one holding fewer is the
+  master's (`Assemblies._holds_within`), as live writes it, since a held part
+  leaves a copy only with the copy (pc3check KP: split, a Pattern's copies
+  lost the sub-model's lights). Copy and Paste, Duplicate, and Edit,
+  Pattern (the window, the copies a put-down copy repeats, the AI's
+  `pattern_parts`: `Pattern.put`, a move per copy) bring a copy's held parts
+  into each new copy
+  (`Carry.clipboard_held`, `Builder.held_carry`/`held_put`,
+  `ModelStore._held_carried`/`_held_put`, keyed by
+  `LdrModel.Placement.held_key`), in the paste's undo step (one that landed
+  since is taken off and put back as its brick, Builder's `"held"` step's
+  `bricks`, and one put back on its way after its part came lands at once,
+  `ModelStore._land_arrived`: pc2attack H_r1, H_r2); Duplicate
+  brings a lit copy's lines and frame too (live's Q). `lights_probe --
+  --review` checks both (`_r_held_pasted`, `_r_duplicated`). Someone else's
+  file keeps such a part's line in the copy's section, and the copy with it
+  (`SourceFile.patch`).
   A part a
   file carries is built from its carried subparts and primitives as well (see
   [elements](elements.md), `made parts in the library and in files`). There were two ways: the app's own opened
@@ -585,6 +930,22 @@ Whether what you built is still there tomorrow, and still means the same thing.
   the store's lifted it and dropped parts still arriving. `project_probe` opens
   every shipped model as a first visit does and checks its lowest occupied cell
   is on the ground; `open_probe` (network) opens them all over the wire.
+- `parts asked for before the lay` (`ModelStore.ask_geometry`, `_open_into`):
+  Every open asks for the geometry it has not got before anything is laid
+  (`ModelStore.ask_geometry` as the file is read, in `open_text_fetched` with
+  a job or none, and `PartLibrary.want` of the exact names after the known
+  pass in `_open_into`): until askfirst (2026-11-12) only an open with the
+  bar's job did, and the viewer of a shared link, start-up's restore,
+  open_model link= and Together asked as each part was laid, after a file's
+  carried parts' LDraw files and their copies had come
+  (`CustomParts.fetch_sources`). A big model opened with a job reads its text
+  on a worker while that geometry comes (`_off_frame`'s meanwhile), then lays
+  in the file's order. A part whose fetch fails while the model opens is not
+  asked again by its lay (`PartLibrary.held_back`, which `mesh_for` respects),
+  is held in `awaited` and saved, and is named with the open
+  (`ModelStore.lost`, `ModelBar.left_out_words`: "— 2 could not be loaded,
+  kept in the file (3008 ×2)"); one that fails after the lay is said by
+  `not_coming` as before. `askfirst_probe` drives all four.
 - `export a model`: `--model=<in> --out=<out>` opens, re-exports and quits, which
   is also the shortest round-trip proof there is. A session's export, the
   booklet and the parts list are written to Downloads under the model's name
@@ -807,6 +1168,86 @@ Whether what you built is still there tomorrow, and still means the same thing.
   sizes. `centring_probe` measures all three, with either column folded. In a
   browser, `share_flow.mjs` on a local export (2026-10-13) got a card
   (`og_image.png`) with the car's middle 0.0% off the picture's, filling 88%.
+- `each sub-model as its own file` (`src/parts/submodel_file.gd`, `Exports.submodel`
+  and `each_submodel` in `src/ui/exports.gd`, the model tree's row menu in
+  `src/ui/outliner.gd`; APP_UX7 #19): a right click on a sub-model's row in the
+  model tree, Export “NAME” as its own file…, writes that sub-model with its own
+  sub-models and steps (a plain .ldr, an .mpd when it has sub-models); on the
+  model's row, Export each sub-model (.zip)…, and File, Export, Each sub-model as
+  its own file (.zip), write one file a sub-model, each definition once, in
+  NAME_submodels.zip. Over MCP `export_model format=ldraw submodels=true`, or
+  `submodel=NAME` (the row's name, "Wing (copy 2)", or a path). Each file is
+  cut from the text File, Export, LDraw model writes, never written again: its
+  section and every section it places, line for line, with the model's own
+  AUTHORED_STEPS or WORKED_STEPS line put in after its author, so an author's
+  steps stay the author's when it is opened alone. A copy built in its parent's
+  steps (the castle's towers, `AuthorSteps.IN_PARENT`) has no section: its file
+  is its lines out of the parent's, a step for each of the parent's steps it is
+  in, in the parent's coordinates. Each file's name is made safe by one rule
+  (`SubmodelFile._safe_name`; a FILE line's name by `file_name`, what follows
+  its last / or \, a folder there): no control characters, marks that turn
+  the text (`SubmodelFile.TURNS`: "x", U+202E, "exe.ldr" showed as
+  "xrdl.exe") or `<>:"|?*`, a / or \ in a title a "_" (a title's, never a
+  folder's), no dots or spaces at its ends, nor a character that draws
+  nothing first (`UNSEEN`) or a joiner last (`LOOSE_ENDS`), a title of
+  nothing to see named "model" (a sub-model "submodel"), Windows' device
+  names given a "_" looked for in the whole name with its tail (CON is
+  con_.mpd, con_instructions.html no device's; CONIN$ and CONOUT$ too), at
+  most 200 UTF-8 bytes cut between two characters as a reader sees them
+  (TextServer's grapheme breaks: が as か and its mark, é as e and its
+  accent, a family of faces kept whole); two names one to a disk or an
+  unzip (case aside, once each letter is its canonical decomposition:
+  "Café" as one letter and as e and its accent, `SubmodelFile._one_key`
+  with `src/parts/canonical_forms.gd`, written by
+  `tools/canonical_forms.py`) are a name and its "_2", as libarchive's
+  unzips and a macOS disk take them as one; Cafe and Café, Ma, Má and Mạ,
+  かっこう and がっこう stay apart (se4check); the zip flags its
+  names UTF-8 (`StudioIo.UTF8_NAMES`, every zip the app writes). The same rule
+  names every file the app writes after a title (`SubmodelFile.titled`: the
+  zip itself, File, Export's every kind, a picture, a render, the instructions
+  and their PDF, a parts list), and as the title is written, case and spaces
+  kept, where a person names it (`SubmodelFile.named`: Save as's suggestion,
+  the sticker sheet; "AC/DC" is AC_DC.mpd, which was DC.mpd): "My:
+  Castle?" was my:_castle?_submodels.zip, and a title 300 letters long a name
+  of 314 bytes no file system takes (se3check). The share page's downloads
+  keep their own rule (`fileName` in `api/share.js`): its words joined by
+  hyphens, letters and numbers in any script (がっこう, which was "model"),
+  sent in `filename*` with an ASCII `filename` beside it (`attachment`), a
+  Windows device's "_" looked for in the whole name (con_.mpd, con-v2.mpd;
+  `tests/test_download_names.py`). A reference's
+  section is the one of its name, as the app and LDView read it (`sub-file
+  names` above: "dup.ldr" and "sub\dup.ldr" are two, of two blocks of one
+  name the first), `LdrModel.files`, `SubModel.span`,
+  `SubmodelFile._sections_of`, in the whole file's order, so each file reads
+  as the whole does. The row menu is File, Export's: greyed
+  where `Shell.can` refuses (shared to look at, still being laid); a finger
+  held still on a row (`FlingScroll.HOLD_MS`) opens it beside the finger
+  (`TouchSizing.popup_beside`): on a phone or a tablet at the size it has once
+  sized for a finger, above the finger or below it, never over it; its lift
+  chooses nothing, slid onto an item or not, and a tap chooses
+  (`TouchSizing.chosen`).
+  **Check:** `tools/probe.sh subexport_probe -- --shots=DIR` (signs in a
+  throwaway account: needs .env; saves a model, so through probe.sh): first a
+  line for each of sereview's findings (F1-F7: odd names, copies titled
+  `..\..\evil`, the UTF-8 flag in both headers and in All my models' zip, FILE
+  twins by folder and 345-1's House opened alone and read by LDraw's own rule, the menu's gates, a finger's
+  hold, both flags refused; `--cases-only` runs those alone); then 7140-1, the
+  castle and the castle with its steps its own; each file's sections against
+  the whole file's, line for line; each opened alone to the same parts within
+  0.001 LDU, colours, tree (by shape: a file alone numbers its copies from 1,
+  or as its COPY lines say, where the whole model numbers them across it) and
+  an author's steps; a copy titled `..\..\evil` keeps that title line, its
+  names (zip entry, Name line) are evil.ldr; the whole model's file the
+  same to the byte before and after; the tree's menu pictured at 1400 x 900 and
+  1280 x 720; se3check's lines (2-5: Café two ways, the marks that turn text,
+  CONIN$ and CONOUT$, "My: Castle?" and a 300-letter title through every export
+  over MCP); se4check's lines (1-8: Save as and the sticker sheet keep a title
+  whole, the keyboard chooses from a menu a hold left open, the zip's twins only
+  where a disk sees one name, a Ctrl-click on a row on a Mac, titles of nothing
+  to see, the cut between characters, CON's tail, the tree filled as its panel
+  opens). F5 on a phone and a tablet: `tools/probe.sh subexport_phone_probe`
+  (390 x 844) and `subexport_tablet_probe` (1180 x 820), F5 alone there and a
+  right click's menu beside the pointer.
 - `parts lists for shops` (`src/assembly/shop_lists.gd`, File, Export → BrickLink
   wanted list / Rebrickable parts list / LEGO® Pick a Brick list, and the same
   three buttons on the parts list): BrickLink's wanted-list XML (item, its
@@ -923,7 +1364,7 @@ Whether what you built is still there tomorrow, and still means the same thing.
   (`version=N`). File, Export, All my models (`Exports.all_models`,
   `export_model all_models`) downloads every saved model in one .zip.
 - `compare with a save` and `model diff` (2026-10-30, compare, B10;
-  `src/ui/compare_view.gd`, `src/parts/model_diff.gd`): File, Compare with…
+  `src/ui/compare_view.gd`, `src/parts/model_diff.gd`): File, Compare, Compare with…
   (the versions list with Compare alone) or Compare on a row of Versions…
   draws the model on the baseplate against that save: added green, removed
   a Trans-Red ghost where it stood, moved or turned amber with an x-ray

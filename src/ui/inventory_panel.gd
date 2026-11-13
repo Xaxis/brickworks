@@ -237,7 +237,7 @@ func show_for(world: BrickWorld, from_library: PartLibrary,
 		_rows.add_child(row)
 	_sight.forget()
 
-	visible = true
+	HudFront.show_panel(self)
 	# Where it was, when it is the same model's list again: the way to find
 	# one part, look at it, and come back for the next.
 	var of: String = "%s %d %d" % [title, _stock.pieces, _stock.lot_count()]
@@ -504,7 +504,7 @@ func ask_bricklink() -> void:
 func _on_csv() -> void:
 	if _stock == null:
 		return
-	var file_name: String = _title.to_snake_case() + "_parts.csv"
+	var file_name: String = SubmodelFile.titled(_title, "_parts.csv")
 	var line: String = await Download.save(_stock.to_csv(), file_name, "text/csv")
 	tell(line)
 	if not line.is_empty():

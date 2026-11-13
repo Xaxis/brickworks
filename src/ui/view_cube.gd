@@ -292,6 +292,11 @@ func _notification(what: int) -> void:
 		queue_redraw()
 	elif what == NOTIFICATION_TRANSLATION_CHANGED:
 		queue_redraw()
+	elif what == NOTIFICATION_ACCESSIBILITY_UPDATE:
+		# The view's own controls, as a screen reader finds them in the view:
+		# a plain Control is a container AccessKit passes by, its name
+		# unheard, so the view had nothing in it to reach (a11ytree).
+		AccessibilityServer.update_set_role(get_accessibility_element(), AccessibilityServer.ROLE_PANEL)
 
 
 ## One of the buttons round the cube: turn, slide, zoom or fit. A click is a
@@ -329,6 +334,23 @@ class NavButton extends Control:
 		mouse_exited.connect(func() -> void:
 			_hover = false
 			queue_redraw())
+
+	func _notification(what: int) -> void:
+		if what != NOTIFICATION_ACCESSIBILITY_UPDATE:
+			return
+		# A button to a screen reader, pressed as Return presses it; the pad,
+		# slid by a drag, the words that say its keys.
+		var element: RID = get_accessibility_element()
+		if kind == "pan":
+			# Text is read by its value, as a Label's is.
+			AccessibilityServer.update_set_role(element, AccessibilityServer.ROLE_STATIC_TEXT)
+			AccessibilityServer.update_set_value(element, atr(accessibility_name))
+			return
+		AccessibilityServer.update_set_role(element, AccessibilityServer.ROLE_BUTTON)
+		AccessibilityServer.update_add_action(element, AccessibilityServer.ACTION_CLICK, _pressed_by_reader)
+
+	func _pressed_by_reader(_data: Variant) -> void:
+		_step(Vector2.ZERO)
 
 	func _process(delta: float) -> void:
 		# Held without moving: keep going, at the keys' rate.
