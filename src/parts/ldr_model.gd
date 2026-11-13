@@ -1264,11 +1264,13 @@ static func write_ldr(
 ## "def": its definition's name, "first" where it is known: the id of its
 ## first part, which orders the references of a section, and "colour" where
 ## its definition's copies are placed in two: the colour its reference hands
-## the definition's parts of 16}, from Assemblies.file_frames and ModelStore.
+## the definition's parts of 16, and "master" on the copy the definition is
+## written from}, from Assemblies.file_frames and ModelStore.
 ## The definition's parts in the colour its first copy is placed in are
 ## written in 16, and each reference says its copy's colour, 16 where it is
 ## the colour of the copy its section is written from. A
-## definition is written once, from its first copy, in that copy's frame;
+## definition is written once, from its first copy (the one marked "master",
+## else the outermost), in that copy's frame;
 ## every copy, that one included, is a reference placed by its own frame —
 ## a mirrored copy by a matrix that reflects, as LDraw allows. Parts
 ## directly in an assembly are in its section; assemblies inside it are
@@ -1465,11 +1467,18 @@ static func _tree_of(instances: Dictionary, unit_steps: Dictionary) -> Dictionar
 		if depth_a != depth_b:
 			return depth_a < depth_b
 		return a.naturalnocasecmp_to(b) < 0)
+	# Each definition from the copy marked "master" (Assemblies.file_frames:
+	# the one its others were laid on, its colours the ones read for 16),
+	# else from its outermost.
+	var marked: Dictionary = {}      ## def -> path
+	for path: String in ordered:
+		if bool((instances[path] as Dictionary).get("master", false)):
+			marked[str((instances[path] as Dictionary)["def"])] = path
 	var masters: Dictionary = {}     ## def -> path
 	var defs: Array[String] = []
 	for path: String in ordered:
 		var def: String = str((instances[path] as Dictionary)["def"])
-		if not masters.has(def):
+		if not masters.has(def) and str(marked.get(def, path)) == path:
 			masters[def] = path
 			defs.append(def)
 	var children: Dictionary = {}    ## the section placing it -> Array of paths

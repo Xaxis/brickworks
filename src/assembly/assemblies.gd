@@ -22,6 +22,12 @@
 class_name Assemblies
 extends RefCounted
 
+## How far, LDU, a part of a copy a save places by a mirror may lie from
+## where the reflection of the first's puts it: none, but what 32-bit
+## transforms and a part file's 1/64 LDU keep (Mirror.NEAR). Opened again,
+## it is where the reflection puts it, so anything further moves it.
+const MIRROR_NEAR := 0.02
+
 var world: BrickWorld
 var builder: Builder
 var library: PartLibrary
@@ -2499,9 +2505,23 @@ static func in_file_order(found: Array) -> Array:
 ## second car's wing was in no sub-model the file placed, and gone at the
 ## next open (lp2check N2). So the copies inside a copy are settled first
 ## ([method _written_as]).
-func file_frames(figures: Dictionary = {}, held: Array = []) -> Dictionary:
+##
+## Each definition is written from the copy its others were laid on, marked
+## "master" (LdrModel.write_tree writes its section from that one): which of
+## its parts are written in 16 is read from that copy's colours. Written
+## from the outermost copy instead, a blue wing laid on a red car's, its
+## fixed blue tile went out in 16, and both cars' tiles came back red
+## (cf3check O2). [param units] is each copy's step as the save writes it
+## (BrickWorld.unit_steps' form, the world's own where null): a copy built
+## in the steps of the one round it has no section of its own, its parts
+## written by their colours in that one's, so no copy laid on it, and none
+## round it, is placed in a colour of its own. Read from the world's steps
+## while the save wrote the plan's, a truck in another colour wrote its
+## wheels' yellow parts red (cf3check, 8143-1).
+func file_frames(figures: Dictionary = {}, held: Array = [], units: Variant = null) -> Dictionary:
 	var ctx: Dictionary = {"contents": contents_by_path(), "holding": held_by_path(held),
-		"figures": figures, "ordered": in_file_order(Array(paths())), "own": {}}
+		"figures": figures, "ordered": in_file_order(Array(paths())), "own": {},
+		"units": world.unit_steps if units == null else units}
 	# A copy laid on another before the colour its inner copies are placed in
 	# was settled is written as a definition of its own where that colour,
 	# settled, has the first's reference place one of them otherwise.
@@ -2545,6 +2565,10 @@ func _frames_pass(ctx: Dictionary) -> void:
 		var entry: Dictionary = out[path]
 		if hands.has(entry["def"]) and not entry.has("colour"):
 			entry["colour"] = int(hands[entry["def"]])
+	# Each written definition's first: the one its copies were laid on.
+	for def: String in masters:
+		for master: String in masters[def]:
+			(out[master] as Dictionary)["master"] = true
 
 
 ## How the copy at [param path] is written, into [param ctx]'s "out": as a
@@ -2595,13 +2619,21 @@ func _copy_fit(master: String, path: String, ctx: Dictionary) -> Dictionary:
 	if a.is_empty() or a.size() != b.size():
 		return none
 	var out: Dictionary = ctx["out"]
+	var units: Dictionary = ctx["units"]
 	var swap: Vector2i = _colour_swap(a, b,
 		int((ctx["hands"] as Dictionary).get((out[master] as Dictionary)["def"], -1)))
 	if swap.x == -2:
 		return none
+	# A copy built in the steps of the one round it has no reference to say a
+	# colour by: its parts go out in theirs.
+	if swap.x >= 0 and (AuthorSteps.in_parent(world, master, units)
+			or AuthorSteps.in_parent(world, path, units)):
+		return none
+	# What it holds that is not shown, as the first's are written: each of
+	# those in the colour the first is placed in in 16, so in this copy's
+	# (cf3check H1, H3: a part held in fixed red written in 16 came back blue).
 	var holding: Dictionary = ctx["holding"]
-	if not _holds_within(_held_recoloured(holding.get(path, {}), swap),
-			_held_recoloured(holding.get(master, {}), swap)):
+	if not _holds_within(holding.get(path, {}), _held_handed(holding.get(master, {}), swap)):
 		return none
 	var laid_a: Array = _recoloured(a, swap)
 	var laid_b: Array = _recoloured(b, swap)
@@ -2612,9 +2644,14 @@ func _copy_fit(master: String, path: String, ctx: Dictionary) -> Dictionary:
 	fit["inner"] = {}
 	var nested: bool = a.any(func(item: Dictionary) -> bool: return not str(item["rest"]).is_empty()) \
 		or b.any(func(item: Dictionary) -> bool: return not str(item["rest"]).is_empty())
-	if swap.x < 0 and not nested:
+	var mirrored: bool = bool(fit["mirrored"])
+	if swap.x < 0 and not nested and not mirrored:
 		return fit
-	var pairs: Array = _laid_pairs(laid_a, laid_b, fit)
+	# Placed by a mirror, each part comes back where the reflection of the
+	# first's puts it: only where that is where it is. Within the tolerance
+	# a copy is matched by, 10256-1's headlight bricks and arches came back
+	# half an LDU from where they stood (cf3check).
+	var pairs: Array = _laid_pairs(laid_a, laid_b, fit, MIRROR_NEAR if mirrored else 0.6)
 	if pairs.is_empty():
 		return none
 	# Each copy inside the one where the other's is, one for one, and each
@@ -2638,7 +2675,7 @@ func _copy_fit(master: String, path: String, ctx: Dictionary) -> Dictionary:
 				return none
 			inner[in_a] = in_b
 			back[in_b] = in_a
-			home = home and AuthorSteps.in_parent(world, join(master, in_a))
+			home = home and AuthorSteps.in_parent(world, join(master, in_a), units)
 		if home and int(two.get("shown", two["color"])) \
 				!= _handed(int(one.get("shown", one["color"])), swap):
 			return none
@@ -2651,14 +2688,14 @@ func _copy_fit(master: String, path: String, ctx: Dictionary) -> Dictionary:
 	for in_a: String in inner:
 		var whole_a: String = join(master, in_a)
 		var whole_b: String = join(path, str(inner[in_a]))
-		if swap.x >= 0 and (AuthorSteps.in_parent(world, whole_a)
-				or AuthorSteps.in_parent(world, whole_b)):
+		if swap.x >= 0 and (AuthorSteps.in_parent(world, whole_a, units)
+				or AuthorSteps.in_parent(world, whole_b, units)):
 			return none
 		_written_as(whole_a, ctx)
 		_written_as(whole_b, ctx)
 		if str((out[whole_a] as Dictionary)["def"]) != str((out[whole_b] as Dictionary)["def"]):
 			return none
-		if not _placed_from(master, in_a):
+		if not _placed_from(master, in_a, units):
 			continue
 		placed[whole_a] = whole_b
 		if _hands_of(whole_b, ctx) != _handed(_hands_of(whole_a, ctx), swap):
@@ -2684,13 +2721,14 @@ func _placed_otherwise(ctx: Dictionary) -> Array:
 
 ## Whether the section of the copy at [param master] places the copy
 ## [param inside] it ("Wing#1", "Wing#1/Bolt#2"): it is directly in it, or
-## each copy between is built in the steps of the one round it.
-func _placed_from(master: String, inside: String) -> bool:
+## each copy between is built in the steps of the one round it ([param
+## units], as the save writes them).
+func _placed_from(master: String, inside: String, units: Dictionary) -> bool:
 	var below: PackedStringArray = segments(inside)
 	var path: String = master
 	for n: int in below.size() - 1:
 		path = join(path, below[n])
-		if not AuthorSteps.in_parent(world, path):
+		if not AuthorSteps.in_parent(world, path, units):
 			return false
 	return true
 
@@ -2755,24 +2793,24 @@ static func _recoloured(items: Array, swap: Vector2i) -> Array:
 		return one)
 
 
-## [param held] ([method held_by_path]'s, for one copy) with [param swap]'s
-## second colour counted as its first.
-static func _held_recoloured(held: Dictionary, swap: Vector2i) -> Dictionary:
+## [param held] ([method held_by_path]'s, for the first of two copies) as
+## the second shows it ([method _handed]): each in [param swap]'s first
+## colour, which the first's definition is written with in 16, in its second.
+static func _held_handed(held: Dictionary, swap: Vector2i) -> Dictionary:
 	if swap.x < 0:
 		return held
 	var out: Dictionary = {}
 	for key: String in held:
 		var cut: int = key.rfind("|")
-		var colour: int = key.substr(cut + 1).to_int()
-		var as_key: String = key.substr(0, cut + 1) + str(swap.x if colour == swap.y else colour)
+		var as_key: String = key.substr(0, cut + 1) + str(_handed(key.substr(cut + 1).to_int(), swap))
 		out[as_key] = int(out.get(as_key, 0)) + int(held[key])
 	return out
 
 
 ## Each part of [param a] with the part of [param b] it lies on by [param
-## fit] ([method exact_match]'s), in its colour, [one, other] each; [] where
-## one lies on none.
-func _laid_pairs(a: Array, b: Array, fit: Dictionary) -> Array:
+## fit] ([method exact_match]'s), in its colour, no further than [param
+## near] LDU from it, [one, other] each; [] where one lies on none.
+func _laid_pairs(a: Array, b: Array, fit: Dictionary, near: float) -> Array:
 	var at: Transform3D = fit["at"]
 	var mirrored: bool = bool(fit["mirrored"])
 	var turned: bool = not bool(fit.get("bases", false))
@@ -2789,7 +2827,7 @@ func _laid_pairs(a: Array, b: Array, fit: Dictionary) -> Array:
 		var hit: Dictionary = {}
 		for other: Dictionary in by_part.get(laid["part"], []):
 			if used.has(other["id"]) or int(other["color"]) != int(item["color"]) \
-					or (other["at"] as Transform3D).origin.distance_to(there.origin) > 0.6:
+					or (other["at"] as Transform3D).origin.distance_to(there.origin) > near:
 				continue
 			if (other["at"] as Transform3D).basis.is_equal_approx(there.basis):
 				hit = other
