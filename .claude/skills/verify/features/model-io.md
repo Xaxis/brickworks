@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, ui:library search, cli:library search probe, cli:library browser flow, lib:model versions, ui:versions of a model, ui:compare with a save, lib:model diff, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, lib:a plan's limit on models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:a line placing a part at no size, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe, cli:picklist probe, cli:direct colour probe, cli:print3mf probe, cli:3mf strict reader, ui:each sub-model as its own file, cli:subexport probe, cli:open faults probe -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, ui:put a model into this one, cli:into model probe, cli:into model review probes, ui:library search, cli:library search probe, cli:library browser flow, lib:model versions, ui:versions of a model, ui:compare with a save, lib:model diff, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, lib:a plan's limit on models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:a line placing a part at no size, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe, cli:picklist probe, cli:direct colour probe, cli:print3mf probe, cli:3mf strict reader, ui:each sub-model as its own file, cli:subexport probe, cli:open faults probe, cli:askfirst probe -->
 
 ## Sub-features
 
@@ -726,6 +726,41 @@ Whether what you built is still there tomorrow, and still means the same thing.
   stand-in: the real deployment and its store, all 1,575 models with covers,
   and 8466-1 (36 MB, the biggest) found and opened in the probe's window,
   timed: 13.9 s from the press, 1,234 parts, credited (dcf6e538).
+- `put a model into this one` (`IntoModel`, `ModelStore.held_from`,
+  `Builder._put_carried`, `SourceFile.grafted`): File › Import › Into this
+  model… lists the saved models and the examples, a file from this computer
+  and the library; the library's cards have Put in this model (licences that
+  allow it, `LibraryDialog.MAY_BUILD_ON`); a session's `open_model into=true`
+  (name=, library= or link=; x= z= its low corner on the ground, turn=). The
+  model comes into the hand whole, as one sub-assembly; a click puts it down.
+  Its sub-models, part files and pictures named as the host has a name are
+  named anew (`Names.free_name`, against `Assemblies.names_in`, which takes
+  every section, carried part file and held part's file of the host, a
+  sub-model file's name without its extension too); its author's steps come
+  with it, its root in the step it was put down in where the host has steps;
+  its parts the app cannot show are kept in their sub-model and step
+  (`ModelStore._held_put`, kinds `unseen`/`absent`/`awaited`) and move, copy
+  and undo with it; its maker is written in its sub-model's header (the
+  file's `0 Author:`/`0 !LICENSE`, else the library's or gallery's credit);
+  one Undo takes all of it out. Into someone else's file it is grafted: the
+  file's own lines kept as the patch leaves them, the brought sections
+  appended, one line placing it (`SourceFile.grafted`); where that cannot be
+  (a held part of it taken out of it, a step the file has not got) the save
+  says the file is written afresh. Up to 2026-11-12 a model brought in lost
+  the parts the app could not show, took the host's names, and someone
+  else's host lost 181 of 900 lines (imreview, im2review).
+- `into model probe`: `tools/probe.sh intomodel_probe` (a window, 1400 x 900)
+  and `PROBE_SIZE=1280x720 tools/probe.sh intomodel_probe`. Each way in, as a
+  person: the File menu's Import submenu, its list, a click on a clear spot
+  of the view, the Undo and Redo keys. Saved and reopened, compared part by
+  part with the host and the brought model each opened alone: every host
+  part in place, colour, sub-assembly and step, exactly the brought parts at
+  one placement in theirs, unshown parts among both; names, makers, no two
+  sections under one name; saved and reopened again the same.
+- `into model review probes`: `tools/probe.sh imreview_probe`,
+  `im2review_probe`, `into_kept_probe` (headless). Two independent reviews and
+  the kept-parts cases. imreview's `paste_nested` is paste's, not this
+  feature's (a copied nested window put down as a third House).
 - `library search`: the Library's search, first under the shelves' buttons,
   edged in `Look.OUTLINE` with a magnifier (`assets/ui/tools/search.svg`) that
   gives way to the field's × once something is typed. Matches a set's name,
@@ -895,6 +930,22 @@ Whether what you built is still there tomorrow, and still means the same thing.
   the store's lifted it and dropped parts still arriving. `project_probe` opens
   every shipped model as a first visit does and checks its lowest occupied cell
   is on the ground; `open_probe` (network) opens them all over the wire.
+- `parts asked for before the lay` (`ModelStore.ask_geometry`, `_open_into`):
+  Every open asks for the geometry it has not got before anything is laid
+  (`ModelStore.ask_geometry` as the file is read, in `open_text_fetched` with
+  a job or none, and `PartLibrary.want` of the exact names after the known
+  pass in `_open_into`): until askfirst (2026-11-12) only an open with the
+  bar's job did, and the viewer of a shared link, start-up's restore,
+  open_model link= and Together asked as each part was laid, after a file's
+  carried parts' LDraw files and their copies had come
+  (`CustomParts.fetch_sources`). A big model opened with a job reads its text
+  on a worker while that geometry comes (`_off_frame`'s meanwhile), then lays
+  in the file's order. A part whose fetch fails while the model opens is not
+  asked again by its lay (`PartLibrary.held_back`, which `mesh_for` respects),
+  is held in `awaited` and saved, and is named with the open
+  (`ModelStore.lost`, `ModelBar.left_out_words`: "— 2 could not be loaded,
+  kept in the file (3008 ×2)"); one that fails after the lay is said by
+  `not_coming` as before. `askfirst_probe` drives all four.
 - `export a model`: `--model=<in> --out=<out>` opens, re-exports and quits, which
   is also the shortest round-trip proof there is. A session's export, the
   booklet and the parts list are written to Downloads under the model's name

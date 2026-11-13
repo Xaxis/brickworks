@@ -58,10 +58,10 @@ const CUBIC_LDU_PER_CM3 := 15625.0
 ##
 ## The LEGO Group does not publish its clutch figure ("the ideal strength's
 ## value must remain secret", The Secret Life of LEGO® Bricks, p. 22). StableLego
-## measured 0.98 N per contact point, three or four to a stud, so a stud
-## lets go at about 3-4 N (arXiv 2402.10711). 80 g is 0.78 N, about a
-## quarter of that. Balance takes 1 N a stud as the working load and 3 N as
-## where it lets go (docs/MECHANISMS.md §4).
+## measured 0.98 N per contact point, three or four to a stud (arXiv 2402.10711).
+## Their stairs and sticks, built for real, put where a stud lets go on our
+## lever (Balance.ULTIMATE_N, stabletruth_probe, docs/RESEARCH.md unit 3).
+## 80 g is 0.78 N, under Balance's working load of 1 N a stud.
 const GRAMS_PER_STUD := 80.0
 
 ## How far outside the footprint the centre of mass may sit before the
