@@ -530,11 +530,10 @@ static func _worn_by_a_figure(info: PartLibrary.PartInfo) -> bool:
 static func flat_of(info: PartLibrary.PartInfo) -> String:
 	if info == null or not info.name.contains("(Formed"):
 		return ""
-	if not _patterns.has("formed"):
-		var expression := RegEx.new()
-		expression.compile("^(.+)c\\d\\d$")
-		_patterns["formed"] = expression
-	var found: RegExMatch = (_patterns["formed"] as RegEx).search(info.id)
+	# Compiled under the lock as every pattern is (_regex): made here
+	# unlocked while a worker made another, the table was freed twice
+	# (s1r_flat_race_probe, smalls1 review).
+	var found: RegExMatch = _regex("^(.+)c\\d\\d$").search(info.id)
 	return found.get_string(1) if found != null else ""
 
 
@@ -977,8 +976,12 @@ func left_leg(library: PartLibrary = null) -> String:
 ## off the builder is fetched with the pairs it will really be put
 ## together with (20461bp00's left leg is 20460bp00, not 3817c).
 func part_ids(library: PartLibrary = null) -> PackedStringArray:
-	if library == null and _indexed != null:
-		library = _indexed.get_ref() as PartLibrary
+	if library == null:
+		# Read under the lock: _publish puts a new one in on any thread.
+		_lock.lock()
+		var indexed: WeakRef = _indexed
+		_lock.unlock()
+		library = indexed.get_ref() as PartLibrary if indexed != null else null
 	var out := PackedStringArray()
 	for placed: Dictionary in assemble(library):
 		if not out.has(str(placed["part"])):

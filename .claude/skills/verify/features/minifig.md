@@ -242,7 +242,9 @@ the model, and the design assistant doing the same with `add_minifig`.
   ("Invalid access to property or key '3816cpde'", minifig.gd:1277).
   `tools/probe.sh figure_index_probe`: 12 rounds of the paced index, a
   worker making it whole and another reading it; never a missing key, every
-  table the whole index's (smalls1).
+  table the whole index's (smalls1). `s1r_flat_race_probe`: flat_of's
+  pattern compiled on the main thread while a worker compiles others, never a
+  wrong answer or a double free (smalls1 review).
 - `custom moulds` (`src/minifig/mould.gd`, `Mould`): a part's shape sculpted
   into another with its connection exactly where it was. `of_part` welds the
   part's built mesh into one surface (positions on a 1/1000 LDU key, LDraw's
