@@ -116,7 +116,7 @@ export async function loadSite() {
     timeCell(row, one.live_at);
     cell(row, make("code", "", one.sha.slice(0, 9)));
     cell(row, one.units?.length ? one.units.join(", ") : "—", one.units?.length ? "units" : "units faint");
-    cell(row, one.title || "—", "title said");
+    cell(row, one.title || "—", "brought said");
     releases.append(row);
   }
   if (!releases.rows.length) {

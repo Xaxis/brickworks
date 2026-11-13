@@ -345,6 +345,13 @@ try {
     document.getElementById("site-live-h").textContent.length > 1
     && document.querySelectorAll("#health tr").length === 3 && [...document.querySelectorAll("#health tr")].every((tr) => /Answers/.test(tr.textContent))
     && document.querySelectorAll("#crons tr[data-job]").length === 5 && document.querySelectorAll("#releases tr[data-release]").length > 0));
+  // Each release's words at the table's own size: its cell once took the
+  // site's .title, a section heading's size.
+  const sizes = await page.evaluate(() => {
+    const row = document.querySelector("#releases tr[data-release]");
+    return row ? [...row.querySelectorAll("td")].map((one) => getComputedStyle(one).fontSize) : [];
+  });
+  check(`...a release's row at one size: ${[...new Set(sizes)].join(", ")}`, sizes.length > 3 && new Set(sizes).size === 1);
   const liveLine = await page.textContent("#site-live-said");
   check(`...the live line says: "${liveLine.slice(0, 140)}"`, /rel-m\d+|commit/.test(liveLine));
   await go(page, "overview");
