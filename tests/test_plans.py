@@ -181,14 +181,24 @@ def test_the_page_takes_no_money_and_keeps_its_promises() -> None:
     assert "AI without a limit" in plain
     # The plans name Claude and "another" AI app: which of ChatGPT's plans
     # can connect is its own page's to say (assets/assistants.json), so no
-    # ChatGPT here but the footer's notice of whose mark it is. Another AI's
-    # key is the desktop app's (tools/deploy.sh: the web's policy lets in
-    # api.anthropic.com alone).
+    # ChatGPT here but the footer's notice of whose mark it is. A key for
+    # any provider Settings, AI lists works in any browser: the app's policy
+    # lets in each one's address (tools/deploy.sh, from provider_settings.gd)
+    # and each answers a page at brickworks.diy (CORS, checked without a key
+    # 2026-11-12). So a provider named here is one the app lists, and no
+    # sentence sends its key to the desktop app.
     said = re.sub(r'<footer class="site-foot">.*?</footer>', "", plain)
     assert "ChatGPT" not in said
+    listed = re.findall(r'"name": "([^"]+)", "adapter": "[^"]+",\s*"base": "https://',
+                        (ROOT / "src/ai/provider_settings.gd").read_text())
+    named = re.findall(r"OpenAI|Anthropic|Google Gemini|OpenRouter|Mistral|Groq|Together|DeepSeek|xAI",
+                       re.sub(r"<[^>]+>", "", said))
+    assert "OpenAI" in named and "Google Gemini" in named
+    for name in named:
+        assert any(one.startswith(name) for one in listed), f"{name} is not a provider the app lists"
     for sentence in re.split(r"(?<=[.:;])\s", re.sub(r"<[^>]+>", "", said)):
         if re.search(r"OpenAI|Gemini|any provider|another AI", sentence):
-            assert "desktop" in sentence, sentence
+            assert "desktop" not in sentence and "any browser" in sentence, sentence
     # Free says the models its plan keeps with an account, as Admission's
     # fallback has it; Pro any number, and the table says both.
     most = int(re.search(r'free: \{[^}]*savedModels: (\d+)', BILLING).group(1))

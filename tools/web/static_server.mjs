@@ -14,7 +14,10 @@ import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { extname, join, normalize, resolve } from "node:path";
 
-const TYPES = {
+// What each file is sent as, as deploy.sh's Vercel sends it; the site's
+// other local stand-ins serve by this table too. A module (.mjs, orangecheck's
+// button) sent as anything else is refused by the browser.
+export const TYPES = {
   ".html": "text/html; charset=utf-8", ".css": "text/css", ".js": "text/javascript", ".mjs": "text/javascript",
   ".json": "application/json", ".png": "image/png", ".webp": "image/webp",
   ".svg": "image/svg+xml", ".xml": "application/xml", ".txt": "text/plain",

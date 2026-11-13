@@ -334,8 +334,12 @@ async function main() {
   check(r.status === 415, `a part line cut short: 415 (${r.status}) "${r.json?.error}"`);
   r = await call("/api/share", { method: "POST", token: tokenA, body: { name: "Nothing", model: "0 Nothing\r\n0 Author: nobody\r\n" } });
   check(r.status === 415, `no parts: 415 (${r.status}) "${r.json?.error}"`);
+  // Two sub-models placing each other. The model's own block is in no table
+  // (ofcheck F4, as LDView reads a file), so b.ldr placing "a.ldr" would
+  // place a file the text does not have, not the model.
   r = await call("/api/share", { method: "POST", token: tokenA, body: { name: "Loop",
-    model: "0 FILE a.ldr\r\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 b.ldr\r\n0 FILE b.ldr\r\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 a.ldr\r\n" } });
+    model: "0 FILE a.ldr\r\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 b.ldr\r\n0 FILE b.ldr\r\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 c.ldr\r\n"
+      + "0 FILE c.ldr\r\n1 4 0 0 0 1 0 0 0 1 0 0 0 1 b.ldr\r\n" } });
   check(r.status === 415, `a model inside itself: 415 (${r.status}) "${r.json?.error}"`);
   r = await call("/api/share", { method: "POST", token: tokenA,
     body: { name: "Bad picture", model: MODEL, image: Buffer.from("GIF89a....").toString("base64") } });

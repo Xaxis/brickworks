@@ -133,7 +133,7 @@ def render(found: list[dict], releases: dict, say=english, code: str = "en") -> 
         parts.append('<div class="release-head">')
         if unreleased:
             parts.append(f'<h2 id="{anchor}-h">{html.escape(say("On the web now"))}</h2>')
-            where = html.escape(say("In the app at {app}; in the next desktop release.")).replace(
+            where = html.escape(say("In the app at {app} now; the desktop app is coming soon.")).replace(
                 "{app}", f'<a href="{app}">brickworks.diy/app</a>')
             parts.append(f'<p class="when">{where}</p>')
         else:

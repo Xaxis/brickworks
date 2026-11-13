@@ -1060,7 +1060,11 @@ animation; and check_design's words. And each joint said by its kind
 studs only when every joint past its load is on studs, else a second pin off
 its line; the standing line ("stands, 5 studs inside the right edge", its
 studs' load, its tipping) left in English in de, fr and es by nothing but a
-part's name. On 2026-10-13 every check was made to
+part's name; tipped over each of the 8 edges, standing and dragged, the way
+said whole ("bascule vers la gauche", "se vuelca hacia la izquierda", not the
+edge's adjective after the preposition), and Stress's words for the part
+pointed at, 17 ways, said in each with nothing but the part's name left in
+English (drvcheck3 W; 5 fail on pre261 ee8773128). On 2026-10-13 every check was made to
 fail once by breaking the code it guards (moment about the edge, the tubes,
 Stability's tipping, the sweep's two ways, the floor, the ground edges, the
 links, the hull's sign, the worst-pose pick, the advice's spare, the widen,

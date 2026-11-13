@@ -1300,8 +1300,8 @@ static func emptied(world: BrickWorld, step: Dictionary, skip: Dictionary = {},
 	for item: Variant in held:
 		var placement: LdrModel.Placement = item
 		if placement.step >= 0:
-			(holding.get_or_add(definition_of(AuthorSteps.home(world, Assemblies.path_from(
-				placement.group, placement.unit))), {}) as Dictionary)[placement.step] = true
+			(holding.get_or_add(definition_of(AuthorSteps.home(world, world.held_path(
+				placement))), {}) as Dictionary)[placement.step] = true
 	gone = gone.filter(func(name: String) -> bool:
 		return not (holding.get(name.get_slice("|", 0), {}) as Dictionary) \
 			.has(name.get_slice("|", 1).to_int()))
@@ -1382,7 +1382,7 @@ static func unmatched_words(world: BrickWorld, library: PartLibrary,
 		if not skip.has(brick.id) and brick.step >= 0:
 			var at: String = key(definition_of(AuthorSteps.home(world, Assemblies.path_of(brick))),
 				brick.step)
-			own.get_or_add(at, {})[LdrModel._key(brick.part_id)] = true
+			own.get_or_add(at, {})[LdrModel.stem(brick.part_id)] = true
 	var names: Array = world.step_looks.keys().filter(func(name: String) -> bool:
 		var pull: Variant = (world.step_looks[name] as Dictionary).get("pull") \
 			if world.step_looks[name] is Dictionary else null
@@ -1481,6 +1481,7 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 	# written again and its usual page left the old line in (pagesetup).
 	var first_file: bool = true
 	var outside: bool = false
+	var file_blocks: Dictionary = {}    ## each FILE name -> its blocks so far (LdrModel.section_key)
 	for raw: String in text.split("\n"):
 		var line: String = raw.strip_edges()
 		if not data_name.is_empty():
@@ -1502,7 +1503,7 @@ static func read(text: String, names: Dictionary, main_key: String) -> Dictionar
 				data = PackedStringArray()
 			continue
 		if keyword == "FILE":
-			var file_key: String = LdrModel._key(" ".join(words.slice(2)))
+			var file_key: String = LdrModel.section_key(raw, file_blocks)
 			definition = "" if first_file or file_key == main_key \
 				else str(names.get(file_key, file_key))
 			first_file = false
@@ -1758,19 +1759,23 @@ static func _pulls_follow_parts(text: String, looks: Dictionary, names: Dictiona
 	if pulled.is_empty():
 		return
 	# Each section's steps as the file has them: every file each puts in,
-	# parts and sub-models alike, by its key ({file: true}), and in order.
-	var steps: Dictionary = {}       ## definition -> [{"put": {file: true}, "order": [file]}]
+	# parts and sub-models alike, by its part's number ({file: true}), as a
+	# pull names its parts, and in order by its name as a section is keyed
+	# (LdrModel._key): "a.ldr", never "a", is the sub-model a.ldr.
+	var steps: Dictionary = {}       ## definition -> [{"put": {number: true}, "order": [key]}]
 	var definition_by: Dictionary = {}   ## file key -> definition
 	var definition: String = ""
 	var step: int = 0
+	var file_blocks: Dictionary = {}    ## each FILE name -> its blocks so far (LdrModel.section_key)
 	for raw: String in text.split("\n"):
 		var line: String = raw.strip_edges()
 		if _of_type(line, "0"):
 			var words: PackedStringArray = LdrModel._fields(line)
 			var keyword: String = words[1].to_upper() if words.size() >= 2 else ""
 			if keyword == "FILE":
-				var file_key: String = LdrModel._key(" ".join(words.slice(2)))
-				definition = "" if file_key == main_key else str(names.get(file_key, file_key))
+				var file_key: String = LdrModel.section_key(raw, file_blocks)
+				definition = "" if file_key == main_key or file_key == LdrModel.MAIN_KEY \
+					else str(names.get(file_key, file_key))
 				definition_by[file_key] = definition
 				step = 0
 			elif keyword == "STEP" or keyword == "ROTSTEP":
@@ -1781,13 +1786,13 @@ static func _pulls_follow_parts(text: String, looks: Dictionary, names: Dictiona
 		var fields: PackedStringArray = LdrModel._fields(line)
 		if fields.size() < 15:
 			continue
-		var file: String = LdrModel._key(" ".join(fields.slice(14)))
+		var reference: String = LdrModel.reference_of(line)
 		var of: Array = steps.get(definition, [])
 		while of.size() <= step:
 			of.append({"put": {}, "order": []})
 		steps[definition] = of
-		(of[step]["put"] as Dictionary)[file] = true
-		(of[step]["order"] as Array).append(file)
+		(of[step]["put"] as Dictionary)[LdrModel.stem(reference)] = true
+		(of[step]["order"] as Array).append(LdrModel._key(reference))
 	for name: String in pulled:
 		var look: Dictionary = looks[name]
 		var named: Array = look["pull"]["parts"]
@@ -2202,6 +2207,7 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 	var block: Array = []
 	## The step's name lines so far, settled at its end: [index in out, raw].
 	var pending: Array = []
+	var file_blocks: Dictionary = {}    ## each FILE name -> its blocks so far (LdrModel.section_key)
 	## The step's other look lines so far, as the file has them, each kept
 	## where it is when the step's look says it still: [index in out, raw]
 	## ([method _place_lines]).
@@ -2231,7 +2237,7 @@ static func written_into(text: String, looks: Dictionary, names: Dictionary,
 				as_written[data_name] = block
 				continue
 			if keyword == "FILE":
-				var file_key: String = LdrModel._key(" ".join(words.slice(2)))
+				var file_key: String = LdrModel.section_key(raw, file_blocks)
 				definition = "" if first_file or file_key == main_key \
 					else str(names.get(file_key, file_key))
 				first_file = false

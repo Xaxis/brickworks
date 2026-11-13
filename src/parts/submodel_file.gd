@@ -94,7 +94,7 @@ class Whole extends RefCounted:
 	## Every placement, its copy's path and the line it is read from.
 	var placed: Array[LdrModel.Placement] = []
 	## Each FILE section as LdrModel.parse read it, by its whole name
-	## (LdrModel.whole_name) -> [its FILE line, the line after its last] (its
+	## (LdrModel._key) -> [its FILE line, the line after its last] (its
 	## NOFILE line in it where it has one); a file of no FILE line, "".
 	var sections: Dictionary = {}
 	## Its names in the order the file has them.
@@ -126,7 +126,7 @@ static func read(text: String, known: Dictionary = {}) -> Whole:
 		whole.sections[""] = [0, whole.lines.size()]
 		whole.order.append("")
 	else:
-		whole.main_key = LdrModel.whole_name(whole.model.main.name)
+		whole.main_key = whole.model.main_key
 		whole.sections[whole.main_key] = [whole.model.main.span.x, whole.model.main.span.y]
 		whole.order.sort_custom(func(a: String, b: String) -> bool:
 			return int(whole.sections[a][0]) < int(whole.sections[b][0]))
@@ -314,49 +314,44 @@ static func _placed_from(keys: Array[String], whole: Whole) -> Array[String]:
 
 ## What a line places, as it names it ("1 16 0 0 0 1 0 0 0 1 0 0 0 1
 ## wing.ldr" -> "wing.ldr"), a line hidden by MLCad, LPub's ghost or a
-## picture's fallback geometry too; "" for any other line.
+## picture's fallback geometry too; "" for any other line. Its name as
+## written (LdrModel.reference_of), so "wing  part.ldr" is not "wing part.ldr".
 static func _placed_by(raw: String) -> String:
-	var line: String = raw.strip_edges()
+	var line: String = raw.lstrip(LdrModel.SPACE).rstrip(LdrModel.SPACE)
 	for before: String in ["0 !:", "0 MLCAD HIDE", "0 GHOST"]:
 		if line.to_upper().begins_with(before):
-			line = line.substr(before.length()).strip_edges()
+			line = line.substr(before.length()).lstrip(LdrModel.SPACE)
 			break
 	if not line.begins_with("1"):
 		return ""
 	var fields: PackedStringArray = LdrModel._fields(line)
 	if fields.size() < 15 or fields[0] != "1":
 		return ""
-	return " ".join(fields.slice(14))
+	return LdrModel.reference_of(line)
 
 
 ## The sections of the whole file a reference to [param reference] is read
-## as, each reader's, so the cut reads as the whole does in each: the app's
-## (a sub-model the one LdrModel keeps for its key, of "dup.ldr" and
-## "sub\dup.ldr" the last; a part's own file by its whole name), and
-## LDraw's own (LDView's, LDCad's: the section of its whole name, case
-## aside, "\" as "/"). Else the last of its file name, as the app falls
-## back (CustomParts.needs), or of its key. In the file's order, so of two
-## of one key the app's is still the last. [] for none.
+## as: the section of its name (LdrModel._key: as written, in any case, "\"
+## as "/"), the first block of a name, as the app's open, LDView and LDCad
+## all read it now. Else a part's own file the file carries under another
+## folder, the last of its file name, as the app finds one (CustomParts.needs),
+## or of its number. [] for none.
 static func _sections_of(whole: Whole, reference: String) -> Array[String]:
 	var out: Array[String] = []
 	if reference.is_empty():
 		return out
-	var sub: LdrModel.SubModel = whole.model.submodels.get(LdrModel._key(reference))
-	if sub != null and whole.sections.has(LdrModel.whole_name(sub.name)):
-		out.append(LdrModel.whole_name(sub.name))
-	var named: String = LdrModel.whole_name(reference)
-	if whole.sections.has(named) and not out.has(named):
+	var named: String = LdrModel._key(reference)
+	if whole.sections.has(named):
 		out.append(named)
-	if not out.is_empty():
 		return out
 	var found: String = ""
 	for each: String in whole.order:
 		if each.get_file() == named.get_file():
 			found = each
 	if found.is_empty():
-		var key: String = LdrModel._key(reference)
+		var number: String = LdrModel.stem(reference)
 		for each: String in whole.order:
-			if LdrModel._key(each) == key:
+			if LdrModel.stem(each) == number:
 				found = each
 	if not found.is_empty():
 		out.append(found)
@@ -369,7 +364,7 @@ static func _sections_of(whole: Whole, reference: String) -> Array[String]:
 static func _section_of_copy(whole: Whole, path: String) -> String:
 	var sub: LdrModel.SubModel = whole.model.submodels.get(
 		str(whole.model.unit_sections.get(path, "")))
-	return LdrModel.whole_name(sub.name) if sub != null else ""
+	return LdrModel._key(sub.name) if sub != null else ""
 
 
 ## Each !DATA block a line of [param lines] names (a picture a print is

@@ -2473,9 +2473,6 @@ msgstr "%s-arrastrar dibuja un recuadro"
 msgid "Select: click selects it"
 msgstr "Seleccionar: un clic la selecciona"
 
-msgid "drag moves it (on a joint, as the real part moves)"
-msgstr "arrastrar la mueve (en una articulación, como la pieza real)"
-
 msgid "%s-drag copies it"
 msgstr "%s-arrastrar la copia"
 
@@ -3071,6 +3068,9 @@ msgstr "sus %d luces siguieron a sus piezas"
 
 msgid "%d of its lights went with it"
 msgstr "%d de sus luces se fueron con él"
+
+msgid "one of its lights went with it"
+msgstr "una de sus luces se fue con él"
 
 msgid "its saved view went with it"
 msgstr "su vista guardada se fue con él"
@@ -4794,6 +4794,72 @@ msgstr "Mostrar resueltos (%d)"
 
 msgid "Comments in a session are for people 13 and over, as chat is."
 msgstr "Los comentarios de una sesión son para mayores de 13 años, como el chat."
+
+# Build together (pcfix): what another's change overtook, and what a session can't carry yet.
+msgid "%s changed a part you had just changed; theirs came after yours, so it stands."
+msgstr "%s cambió una pieza que acababas de cambiar; su cambio llegó después del tuyo, así que se mantiene."
+
+msgid "%s changed %d parts you had just changed; theirs came after yours, so they stand."
+msgstr "%s cambió %d piezas que acababas de cambiar; sus cambios llegaron después de los tuyos, así que se mantienen."
+
+msgid "%s changed %s just after you did; theirs came after yours, so it stands."
+msgstr "%s cambió %s justo después que tú; su cambio llegó después del tuyo, así que se mantiene."
+
+msgid "This session can't carry %s yet: the others keep theirs as they were, and everything else still reaches them."
+msgstr "Esta sesión aún no puede transmitir %s: los demás conservan los suyos como estaban y todo lo demás les sigue llegando."
+
+msgid "%s's lights and views"
+msgstr "las luces y las vistas de %s"
+
+msgid "sub-models' lights and views"
+msgstr "las luces y las vistas de los submodelos"
+
+msgid "the model's name"
+msgstr "el nombre del modelo"
+
+msgid "what the model stands on"
+msgstr "aquello sobre lo que se apoya el modelo"
+
+msgid "the hidden colours"
+msgstr "los colores ocultos"
+
+msgid "the model's motions"
+msgstr "los movimientos del modelo"
+
+msgid "the booklet's looks"
+msgstr "el aspecto de las instrucciones"
+
+msgid "the steps of sub-assembly copies"
+msgstr "los pasos de las copias de subconjuntos"
+
+msgid "the sections broken out"
+msgstr "las secciones separadas"
+
+msgid "the model's lights"
+msgstr "las luces del modelo"
+
+msgid "a comment pinned to a part"
+msgstr "un comentario fijado a una pieza"
+
+msgid "the model's settings"
+msgstr "los ajustes del modelo"
+
+# Build together (pcredesign): where a copy's lights stand, what is too long, an undo held back.
+msgid "where the lights and views of %s stand"
+msgstr "dónde están las luces y las vistas de %s"
+
+msgid "This session can't carry sub-models' lights and views yet: everything else still reaches the others, but on their side a sub-model's lights and views stay where they were when you move or make one here, and one you rename here has none there."
+msgstr "Esta sesión aún no puede transmitir las luces y las vistas de los submodelos: todo lo demás sigue llegando a los demás, pero en su lado las luces y las vistas de un submodelo se quedan donde estaban cuando mueves o creas uno aquí, y el que cambias de nombre aquí no tiene ninguna allí."
+
+msgid "This session can't carry %s, longer than it takes: everything else still reaches the others, but on their side those stay as they were."
+msgstr "Esta sesión no puede transmitir %s, más largo de lo que admite: todo lo demás sigue llegando a los demás, pero en su lado eso se queda como estaba."
+
+msgid "undid nothing: somebody else changed %s since"
+msgstr "no se deshizo nada: otra persona cambió %s desde entonces"
+
+msgid "redid nothing: somebody else changed %s since"
+msgstr "no se rehízo nada: otra persona cambió %s desde entonces"
+
 
 msgid "A comment on %s, kept with the model: in its file, the autosave and a shared link, and seen by whoever builds it with you."
 msgstr "Un comentario sobre %s, guardado con el modelo: en su archivo, el autoguardado y un enlace compartido, y visible para quien lo construya contigo."
@@ -12911,17 +12977,145 @@ msgstr "%d uniones sobrecargadas, en rojo."
 msgid "stands, %s studs inside the %s edge"
 msgstr "se sostiene, a %s espigas dentro del borde %s"
 
-msgid "would tip over to the %s, %s studs past its edge"
-msgstr "se volcaría hacia %s, a %s espigas más allá de su borde"
+msgid "would tip over %s, %s studs past its edge"
+msgstr "se volcaría %s, a %s espigas más allá de su borde"
 
-msgid "tips over to the %s, %s studs past its edge"
-msgstr "se vuelca hacia %s, a %s espigas más allá de su borde"
+msgid "tips over %s, %s studs past its edge"
+msgstr "se vuelca %s, a %s espigas más allá de su borde"
 
 msgid "the %s's 1 stud carries about %sx its working load"
 msgstr "la espiga de %s soporta unas %s veces su carga de trabajo"
 
 msgid "the %s's %d studs carry about %sx their working load"
 msgstr "las %2$d espigas de %1$s soportan unas %3$s veces su carga de trabajo"
+
+# drive3 (drvcheck3 W): the way a model tips said whole (Balance.toward), not as an edge's
+# name: an edge's left is the bord gauche, and tipped to it the model bascule vers la gauche
+
+msgid "to the left"
+msgstr "hacia la izquierda"
+
+msgid "to the right"
+msgstr "hacia la derecha"
+
+msgid "to the front"
+msgstr "hacia delante"
+
+msgid "to the back"
+msgstr "hacia atrás"
+
+msgid "to the front-left"
+msgstr "hacia delante a la izquierda"
+
+msgid "to the front-right"
+msgstr "hacia delante a la derecha"
+
+msgid "to the back-left"
+msgstr "hacia atrás a la izquierda"
+
+msgid "to the back-right"
+msgstr "hacia atrás a la derecha"
+
+# drive3: Stress's words for the part pointed at (StressView.part_words): what it carries,
+# on what (Balance.JointLoad.held_on), and its margin
+
+msgid "%s: carries %s g %s, %s"
+msgstr "%s: carga %s g %s, %s"
+
+msgid "on 1 stud"
+msgstr "sobre 1 espiga"
+
+msgid "on %d studs"
+msgstr "sobre %d espigas"
+
+msgid "on an axle keyed in its hole"
+msgstr "en un eje encajado en su agujero"
+
+msgid "on pins or axles on two lines"
+msgstr "en pasadores o ejes en dos líneas"
+
+msgid "on a friction pin"
+msgstr "en un pasador con fricción"
+
+msgid "on %d friction pins in a line"
+msgstr "en %d pasadores con fricción en línea"
+
+msgid "on a frictionless pin or axle"
+msgstr "en un pasador sin fricción o un eje"
+
+msgid "on %d frictionless pins or axles in a line"
+msgstr "en %d pasadores sin fricción o ejes en línea"
+
+msgid "hanging from 1 stud"
+msgstr "colgando de 1 espiga"
+
+msgid "hanging from %d studs"
+msgstr "colgando de %d espigas"
+
+msgid "hanging from no stud"
+msgstr "colgando de ninguna espiga"
+
+msgid "with nothing holding it"
+msgstr "sin nada que lo sujete"
+
+msgid "margin %s"
+msgstr "margen %s"
+
+msgid "%s: stands on the baseplate"
+msgstr "%s: se apoya en la placa base"
+
+msgid "%s: stands on the ground"
+msgstr "%s: se apoya en el suelo"
+
+msgid "%s: held by a clip, a hinge, a ball or a turntable, which are not weighed"
+msgstr "%s: sujeto por un clip, una bisagra, una rótula o una plataforma giratoria, que no se pesan"
+
+msgid "%s: held by nothing that can be weighed"
+msgstr "%s: sujeto por nada que se pueda pesar"
+
+msgid "%s: stands on what is under it, its weight over where they touch"
+msgstr "%s: se apoya en lo que tiene debajo, su peso sobre donde se tocan"
+
+msgid "%s: stands on a touch alone, its weight past where it touches"
+msgstr "%s: se apoya solo por contacto, su peso más allá de donde toca"
+
+msgid "%s: held more than one way, so no one joint carries it"
+msgstr "%s: sujeto de más de una forma, así que ninguna unión sola lo soporta"
+
+# drive3: the motions suggested from what moves (MotionPlayer.suggest), said in the language
+# where they are offered; kept, a motion's name is the file's, as it is written there
+
+msgid "Open the door"
+msgstr "Abrir la puerta"
+
+msgid "Open the doors"
+msgstr "Abrir las puertas"
+
+msgid "Steer left and right"
+msgstr "Girar a izquierda y derecha"
+
+msgid "Lift the boom"
+msgstr "Levantar la pluma"
+
+msgid "Turn the turntable"
+msgstr "Girar la plataforma giratoria"
+
+msgid "Turn the gears"
+msgstr "Girar los engranajes"
+
+msgid "Drive the rack"
+msgstr "Mover la cremallera"
+
+msgid "Drive and turn left"
+msgstr "Avanzar y girar a la izquierda"
+
+# drive3: a suggested motion said whole (PosePanel._suggestion_words), its drive's words a place
+
+msgid "%s: %s, over %s s"
+msgstr "%s: %s, en %s s"
+
+msgid "driven %s"
+msgstr "avanza %s"
 
 # end unit drive
 
@@ -13762,3 +13956,23 @@ msgstr "paso %d, paso %d del recuadro llamado %s, en cada una de las %d copias d
 
 msgid "step %d's callout step %d's name taken off, in each of the %d copies of the %s"
 msgstr "nombre del paso %d, paso %d del recuadro quitado, en cada una de las %d copias de %s"
+
+# A dragged part carries what rests on it, Shift as it goes moves it alone
+# (APP_UX7 #20, carryrest).
+msgid "drag moves it and what rests on it (on a joint, as the real part moves)"
+msgstr "arrastrar la mueve con lo que está encima (en una articulación, como la pieza real)"
+
+msgid "moving %s and the %s resting on it"
+msgstr "moviendo %s y las %s apoyadas encima"
+
+msgid "Shift moves it alone"
+msgstr "Shift la mueve sola"
+
+msgid "moving %s alone"
+msgstr "moviendo solo %s"
+
+msgid "let go of Shift for the %s on it too"
+msgstr "suelta Shift para llevar también las %s apoyadas encima"
+
+msgid "what rests on it stays, more than a drag can follow"
+msgstr "lo que está encima se queda: más de lo que un arrastre puede llevar"

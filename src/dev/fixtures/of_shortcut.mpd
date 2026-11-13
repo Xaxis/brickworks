@@ -1,0 +1,29 @@
+0 FILE of_shortcut.ldr
+0 Shortcut Door
+0 Name: of_shortcut.ldr
+0 Author: A. Builder [abuilder]
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+1 0 -65 -12 109 0 0 1 0 -1 0 1 0 0 60797c02.dat
+1 72 80 -24 0 1 0 0 0 1 0 0 0 1 10265 - 42716c01.dat
+0 FILE 60797c02.dat
+0 60797c02
+0 Name: 60797c02.dat
+0 Author: Owen Burgoyne [C3POwen]
+0 !LDRAW_ORG Unofficial_Shortcut
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+
+0 BFC CERTIFY CCW
+
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 u9086.dat
+1 40 0 0 0 1 0 0 0 1 0 0 0 1 u9087.dat
+0 FILE 10265 - 42716c01.dat
+0 Wheel 20 x 30 "Torq Thurst" with Tyre 20/ 48 x 30
+0 Name: 10265 - 42716c01.dat
+0 Author: Ulrich Roeder [UR]
+0 !LDRAW_ORG Unofficial_Shortcut
+0 !LICENSE Redistributable under CCAL version 2.0 : see CAreadme.txt
+
+0 BFC CERTIFY CCW
+
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 42716.dat
+1 256 0 0 0 1 0 0 0 1 0 0 0 1 15413.dat

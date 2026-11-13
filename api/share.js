@@ -255,6 +255,7 @@ import {
 // A model's parts list from its file, as the app's (site278).
 import { PICK_A_BRICK_LINES, PICK_A_BRICK_MOST, inventoryOf, inventoryOfLots, namesOf, paletteOf, partNames, partsTable,
   pickABrick, rebrickableCsv, roomOf, sceneOf, wantedList } from "./_parts.js";
+import { afterFields, keyOf, sectionKey } from "./_subfiles.js";
 import { checkTested, markOf, ownerMark, publicMark } from "./_tested.js";
 import { changedOf, changesBetween, lotSaid, readChanges, saidOf } from "./_versions.js";
 import { countSaid, sideSaid, stepCount, stepsSaid } from "./_steps.js";
@@ -419,9 +420,14 @@ export function checkModel(text) {
       order.push(current.name);
     }
   };
+  // Each file keyed as the app keys it (sectionKey): its first block the
+  // one a reference means, as LDView reads a file (keep), and the model's own
+  // by a key no reference gives, so a later block of its name is that one,
+  // not the model placing itself (ofcheck F4).
+  const blocks = new Map();
   const start = (name) => {
-    current = { name: name.toLowerCase(), placed: [], colours: [], isPart: /\.dat$/i.test(name), steps: 0, open: false,
-      author: "" };
+    current = { name: sectionKey(name, blocks), placed: [], colours: [], isPart: /\.dat$/i.test(name), steps: 0,
+      open: false, author: "" };
     keep();
   };
 
@@ -437,7 +443,7 @@ export function checkModel(text) {
     if (kind === "0") {
       const meta = (tokens[1] || "").toUpperCase();
       if (meta === "FILE") {
-        start(line.replace(/^0\s+FILE\s+/i, "").trim());
+        start(afterFields(raw, 2));
         inData = false;
       } else if (meta === "!DATA") {
         // An embedded picture: base64 in `0 !:` lines, not a model.
@@ -470,7 +476,7 @@ export function checkModel(text) {
         throw new Refusal(`that is not LDraw text: line ${lineNo} is not a well-formed part line`, 415);
       }
       keep();
-      current.placed.push(line.split(/\s+/).slice(14).join(" ").toLowerCase());
+      current.placed.push(keyOf(afterFields(raw, 14)));
       current.colours.push(tokens[1]);
       current.open = true;
     } else {
@@ -2345,6 +2351,12 @@ const libraryOf = (tests = false) => (tests ? { arrivals: () => db("rpc/library_
 /// changes a few times a year, so an hour, given while it asks again for a
 /// day. A cover a week: it is drawn again only when the index is built again.
 const SET_CACHE = "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400";
+/// A set's page, its parts and its 3D scene: each is made from the set's
+/// whole file (up to 36 MB) read from Supabase Storage, every read paid as
+/// egress, so the CDN keeps them a week and serves the old one a month while
+/// it asks again. Kept an hour, crawlers walking every set in every language
+/// read 10-25 GB a day and ran the organization past its quota (2026-11-12).
+const SET_PAGE_CACHE = "public, max-age=300, s-maxage=604800, stale-while-revalidate=2592000";
 const COVER_CACHE = "public, max-age=86400, s-maxage=604800, stale-while-revalidate=604800";
 
 /// /library's sets (web/library.js), as askOf reads the query: {models (the
@@ -2390,7 +2402,7 @@ async function setPage(response, origin, id, tests = false, lang = "en") {
   const parts = text ? partsOf(entry.file, Buffer.from(text)) : null;
   const next = { by: [], like: setsBeside(await librarySets(libraryOf(tests)), entry), gallery: [] };
   return html(response, 200, speak(() => sharePage(origin, id, setModel(entry, { authors: authorsIn(text), steps: fileSteps(text) }),
-    [], null, null, [], next, null, undefined, parts, lang, words)), { cache: tests ? TESTS_CACHE : SET_CACHE });
+    [], null, null, [], next, null, undefined, parts, lang, words)), { cache: tests ? TESTS_CACHE : SET_PAGE_CACHE });
 }
 
 /// A set's pictures, each drawn by the app's own renderer
@@ -2441,7 +2453,7 @@ async function setParts(response, id, as, tests = false, lang = "en") {
     return response.status(404).setHeader("Cache-Control", "no-store").json({ error: "The LDraw library has no such set." });
   }
   const text = await storeFile(entry).catch(() => null);
-  response.setHeader("Cache-Control", SET_CACHE);
+  response.setHeader("Cache-Control", SET_PAGE_CACHE);
   response.setHeader("X-Content-Type-Options", "nosniff");
   return partsAnswer(response, text ? partsOf(entry.file, Buffer.from(text)) : null,
     fileName(setTitle(entry), entry.id), as, { id, version: 1, newest: 1 }, lang);
@@ -2456,7 +2468,7 @@ async function setScene(response, id, tests = false, kind = "scene") {
   }
   const text = await storeFile(entry).catch(() => null);
   if (!text) return response.status(503).setHeader("Cache-Control", "no-store").json({ error: "Its file could not be read just now." });
-  response.setHeader("Cache-Control", SET_CACHE);
+  response.setHeader("Cache-Control", SET_PAGE_CACHE);
   response.setHeader("X-Content-Type-Options", "nosniff");
   return sceneAnswer(response, entry.file, Buffer.from(text), `library:${entry.id}`, kind);
 }
@@ -3182,7 +3194,10 @@ async function publish(request, response) {
     const before = await getFile(`${id}.mpd`);
     if (before) {
       await putFile(`${id}.v${last.n}.mpd`, before, "text/plain");
-      changes = changesBetween(before.toString("utf8"), body.model);
+      // Read as the app reads them: a library's shortcut is its part.
+      const table = partsTable();
+      changes = changesBetween(before.toString("utf8"), body.model,
+        (id) => Boolean(table && Object.prototype.hasOwnProperty.call(table.parts, id)));
     }
     const picturedBefore = last.has_image ? await getFile(`${id}.png`) : null;
     if (picturedBefore) await putFile(`${id}.v${last.n}.png`, picturedBefore, "image/png");

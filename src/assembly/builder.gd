@@ -99,6 +99,17 @@ var reference_hook: Callable = Callable()
 ## nothing.
 var store_hook: Callable = Callable()
 
+## A step's parts not on the baseplate put back or taken out (ModelStore
+## ._held_undo: those a delete took with their copy), (step) -> its reverse.
+var held_hook: Callable = Callable()
+## What a copy of parts (Carry.gather's) brings of those not on the baseplate,
+## (parts) -> [{path, part, color, at, step, kind}] (ModelStore._held_carried),
+## and those put down with the copy a paste or a Pattern put down, ([[that,
+## its path now, and how its copy moved]], or how the paste moved them all)
+## (ModelStore._held_put). Unset, a copy brings none.
+var held_carry: Callable = Callable()
+var held_put: Callable = Callable()
+
 signal placed(brick_id: int, part_id: String)
 signal removed(brick_id: int)
 signal preview_changed(part_id: String, valid: bool)
@@ -559,6 +570,27 @@ func _apply(step: Dictionary) -> Dictionary:
 		return {"undo": "store", "store": store_hook.call(step["store"]) if store_hook.is_valid()
 			else step["store"]}
 
+	# Parts not on the baseplate a copy deleted took with it, or a paste
+	# brought, put back or taken out again (ModelStore._held_go_with,
+	# _held_put). One that has landed since (ModelStore.place_awaited) is a
+	# brick: taken off with the rest, and put back as the brick it was
+	# ("bricks"). Up to 2026-11-12 it stayed: a paste undone after its part
+	# landed left that part in a copy of nothing else, and redone put a
+	# second one beside it (pcredesign H_r1, H_r2).
+	if step.get("undo", "") == "held":
+		var gone: Array = []
+		for pair: Variant in step.get("take", []):
+			var placement: LdrModel.Placement = (pair as Array)[0]
+			if placement.landed != 0:
+				var off: Dictionary = _apply({"undo": "remove", "brick": placement.landed})
+				if off.get("undo", "") == "add":
+					gone.append(off)
+		for brick_step: Dictionary in step.get("bricks", []):
+			_apply(brick_step)
+		var back: Dictionary = (held_hook.call(step) if held_hook.is_valid() else step).duplicate()
+		back["bricks"] = gone
+		return back
+
 	# The picture to build over, as it was: its own reverse.
 	if step.get("undo", "") == "reference":
 		return {"undo": "reference", "reference": reference_hook.call(step["reference"])
@@ -652,8 +684,35 @@ func _apply(step: Dictionary) -> Dictionary:
 	# whole table as it was, its own reverse.
 	if step.get("undo", "") == "sectionlines":
 		var lined: Dictionary = world.section_lines
+		var framed: Dictionary = world.section_frames
 		world.section_lines = (step["lines"] as Dictionary).duplicate(true)
-		return {"undo": "sectionlines", "lines": lined}
+		# And the frame each is in (BrickWorld.section_frames), with them.
+		world.section_frames = (step.get("frames", framed) as Dictionary).duplicate(true)
+		return {"undo": "sectionlines", "lines": lined, "frames": framed}
+
+	# Where the parts not on the baseplate are in the tree (BrickWorld
+	# .held_paths): the table as it was, and each of them that landed since
+	# the change, where the table had it, with it (BrickWorld.held_landed). A
+	# rename undone after its part on its way had landed left that part in a
+	# copy of the new name.
+	if step.get("undo", "") == "heldpaths":
+		var had: Dictionary = world.held_paths
+		var paths: Dictionary = (step["paths"] as Dictionary).duplicate()
+		for id: Variant in world.held_landed:
+			var landed: BrickWorld.Brick = world.get_brick(_live(int(id)))
+			var open: String = str(world.held_landed[id])
+			if landed != null and paths.has(open) \
+					and Assemblies.path_of(landed) == str(had.get(open, open)):
+				set_path(landed, str(paths[open]))
+		world.held_paths = paths
+		return {"undo": "heldpaths", "paths": had}
+
+	# The name each section was read under (BrickWorld.section_files): the
+	# whole table as it was, its own reverse.
+	if step.get("undo", "") == "sectionfiles":
+		var named: Dictionary = world.section_files
+		world.section_files = (step["files"] as Dictionary).duplicate()
+		return {"undo": "sectionfiles", "files": named}
 
 	# Lights of the model's own (BrickWorld.scene_lights) a step took out or
 	# put in: a sub-model's, taken apart into the model (Assemblies.ungroup).
@@ -1790,6 +1849,19 @@ func mirror_bricks(alive: PackedInt64Array, axis: int, across: float = NAN,
 	_history.append({"undo": "group", "steps": steps,
 		"words": ("mirrored a copy of %s" if copy else "mirrored %s") % _many(made.size())})
 	_redo.clear()
+	# Each copy mirrored whole is its mirror image, and so is the frame its
+	# sub-model's lines are in: its lights and views go mirrored with it
+	# (Assemblies.frames_carried). Up to 2026-11-11 its light was found again
+	# from its parts and left where no reflection put it (pccheck FX).
+	if not copy and not world.section_frames.is_empty():
+		var flip := Basis.IDENTITY
+		flip[axis] = -flip[axis]
+		var reflect := Transform3D(flip, Vector3.ZERO)
+		reflect.origin[axis] = 2.0 * across
+		var moved: Dictionary = {}
+		for brick_id: int in made:
+			moved[brick_id] = reflect
+		Assemblies.frames_carried(self, moved)
 	return made
 
 
@@ -1972,6 +2044,30 @@ func _carry(carry: Callable) -> Array:
 		if chains != world.unit_chains:
 			undo.append({"undo": "unitchains", "chains": world.unit_chains})
 			world.unit_chains = chains
+	# Where the frame each copy's sub-model lines are in stands
+	# (BrickWorld.section_frames, by its path): with the copy, renamed, made
+	# part of another or split; none for one taken apart, whose lines its
+	# take-apart places (Assemblies.ungroup).
+	if not world.section_frames.is_empty():
+		var frames: Dictionary = {}
+		for path: String in world.section_frames:
+			for to: String in carry.call(path):
+				if not frames.has(to) or to == path:
+					frames[to] = world.section_frames[path]
+		if frames != world.section_frames:
+			undo.append({"undo": "sectionlines", "lines": world.section_lines,
+				"frames": world.section_frames})
+			world.section_frames = frames
+	# Where each part on its way, or one the catalogue lacks, is in the tree
+	# (BrickWorld.held_paths): with the copy round it, so it lands in it, and
+	# a save writes it in it, under the name it has now (Assemblies.carried).
+	if not world.held_paths.is_empty():
+		var paths: Dictionary = {}
+		for open: String in world.held_paths:
+			paths[open] = Assemblies.carried(carry, str(world.held_paths[open]))
+		if paths != world.held_paths:
+			undo.append({"undo": "heldpaths", "paths": world.held_paths})
+			world.held_paths = paths
 	return undo
 
 
@@ -2315,6 +2411,8 @@ func copy_selection() -> int:
 		return 0
 	Carry.clipboard = Carry.gather(world, library, Array(alive))
 	Carry.clipboard_lines = Assemblies.lines_held(world, Carry.clipboard)
+	Carry.clipboard_frames = Assemblies.frames_held(world, Carry.clipboard)
+	Carry.clipboard_held = held_carry.call(Carry.clipboard) if held_carry.is_valid() else []
 	return Carry.clipboard.size()
 
 
@@ -2426,23 +2524,49 @@ func _put_carried() -> int:
 	if ids.is_empty():
 		return 0
 	var words: String = "pasted %s" % _many(ids.size())
-	if carrying.lifted and _lift_on_top():
+	var lifted: bool = carrying.lifted and _lift_on_top()
+	if lifted:
 		# One move: what picked it up and what put it down undo together.
 		steps.append_array(_history.pop_back()["steps"])
 		words = "moved %s" % _many(ids.size())
 	_history.append({"undo": "group", "steps": steps, "words": words})
 	_redo.clear()
 	if lines_in:
-		pasted_said = Assemblies.lines_pasted(self, carrying.lines, pasted, had)
+		pasted_said = Assemblies.lines_pasted(self, carrying.lines, pasted, had, carrying.frames,
+			carrying.moved())
+	elif lifted:
+		# Each copy lifted whole goes where its parts went, the frame its
+		# sub-model's lines are in with it (Assemblies.frames_carried): its
+		# parts are put down anew, not moved, so no "move" says so.
+		var moved: Dictionary = {}
+		for brick_id: int in ids:
+			moved[brick_id] = carrying.moved()
+		Assemblies.frames_carried(self, moved)
+	# And what its copies hold that is not on the baseplate, in the copies it
+	# put down, moved as it moved them, in the same step (ModelStore
+	# ._held_put). Up to 2026-11-12 none came, and a save wrote the pasted
+	# copy as the sub-model: the part the catalogue lacks in the first was in
+	# no file (pc2check A2, H).
+	if not carrying.lifted and not carrying.held.is_empty() and copy_group.is_valid() \
+			and held_put.is_valid():
+		var into: Array = []
+		for one: Dictionary in carrying.held:
+			into.append([one, copy_group.call(str(one["path"]), renamed)])
+		held_put.call(into, carrying.moved())
 	# A clone or a duplicate: another copy in hand for the next, as it
-	# was before anything was typed for this one, R's turn kept.
+	# was before anything was typed for this one, R's turn kept, and the
+	# sub-models' lights and views it brings.
 	var again: Array = carrying.base_items() if carrying.repeats else []
 	var turned: int = carrying.turns
+	var brought: Array = [carrying.lines, carrying.frames, carrying.held]
 	carrying.drop()
 	if not again.is_empty():
 		carrying.hold(again, false)
 		carrying.turns = turned
 		carrying.repeats = true
+		carrying.lines = brought[0]
+		carrying.frames = brought[1]
+		carrying.held = brought[2]
 	selection.clear()
 	for brick_id: int in ids:
 		selection[brick_id] = true

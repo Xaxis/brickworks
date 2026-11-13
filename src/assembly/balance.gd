@@ -425,6 +425,21 @@ static func edge_name(way: Vector2) -> String:
 	return names[sector]
 
 
+## The way over [param edge] (edge_name's) a model tips, as said: "to the
+## left". Each its own words, whole, so a language says it as a way to go,
+## not as an edge's name: an edge's "left" is the bord gauche and the borde
+## izquierdo, and tipped over to it the model "bascule vers gauche" and "se
+## vuelca hacia izquierdo" (drvcheck3 W). "vers la gauche", "hacia la
+## izquierda" now.
+const TOWARD: Dictionary = {"left": "to the left", "right": "to the right", "front": "to the front",
+	"back": "to the back", "front-left": "to the front-left", "front-right": "to the front-right",
+	"back-left": "to the back-left", "back-right": "to the back-right"}
+
+
+static func toward(edge: String) -> String:
+	return str(TOWARD.get(edge, "to the %s" % edge))
+
+
 static func opposite(name: String) -> String:
 	var swap: Dictionary = {"front": "back", "back": "front", "left": "right",
 		"right": "left"}
