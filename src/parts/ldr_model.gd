@@ -78,6 +78,10 @@ class Placement extends RefCounted:
 	## (ModelStore.place_awaited); 0 before. A step edit made while it was on
 	## its way gave it its step (AuthorSteps), and is undone on that brick.
 	var landed: int = 0
+	## For one of the parts not on the baseplate a paste put down
+	## (ModelStore._held_put), the name BrickWorld.held_paths keeps where it
+	## is by; "" for one read from a file, kept by the path it was read in.
+	var held_key: String = ""
 
 	func _init(id: String, color: int, at: Transform3D, in_step: int) -> void:
 		part_id = id

@@ -222,6 +222,50 @@ func _run() -> void:
 	_ok(_builder.history_depth() == depth, "...and no step was made (%d): %s" % [
 		_builder.history_depth(), _newest()])
 
+	# A run's step is an edit as one by hand is (ModelStore.looks_follow_edit):
+	# a sub-model it leaves no copy of takes its own lights and views with it,
+	# in Claude's step, and its Undo brings them back. Up to 2026-11-11 they
+	# stayed under its name, and a sub-model made of that name next had them.
+	print("\na run that takes a lit sub-model's last copy off")
+	assistant.forget_conversation()
+	_world.clear()
+	_builder.lattice.clear()
+	_builder.forget_history()
+	var green: String = "0 !BRICKWORKS LIGHT " + JSON.stringify({"kind": "point",
+		"at": [0, -50, 0], "aim": [0, 1, 0], "colour": "#00ff00", "strength": 1, "size": 4,
+		"shadows": true})
+	_store.open_text("\n".join(PackedStringArray(["0 FILE main.ldr", "0 Lit", "0 Name: main.ldr",
+		"0 Author: Brickworks", "1 4 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat",
+		"1 16 100 0 0 1 0 0 0 1 0 0 0 1 sub.ldr", "0 NOFILE", "0 FILE sub.ldr", "0 Sub",
+		"0 Name: sub.ldr", "0 Author: Brickworks", green, "1 14 0 0 0 1 0 0 0 1 0 0 0 1 3003.dat",
+		"0 NOFILE", ""])), "Lit")
+	for _n: int in 10:
+		await process_frame
+	var lit: Array = []
+	var loose: Dictionary = {}
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.unit.begins_with("Sub#"):
+			lit.append(brick.id)
+		elif not _store.scenery.has(brick.id):
+			loose[brick.id] = true
+	_api.replies = [_reply([_tool("edit_model", {"remove": lit})])]
+	await _ask(chat, "take the yellow brick off", ended)
+	var after_run: bool = _world.section_lines.has("Sub")
+	var assemblies: Assemblies = main.get("_shell").get("assemblies")
+	_builder.selection = loose
+	var made: String = assemblies.make("Sub")
+	var remade: String = _store.to_text("Lit")
+	_builder.undo()
+	_builder.undo()
+	var undone: String = _store.to_text("Lit")
+	undone = undone.substr(maxi(undone.find("0 FILE sub.ldr"), 0)) if undone.contains("0 FILE sub.ldr") else ""
+	_ok(lit.size() == 1 and _parts() == 2 and not after_run and made == "Sub#1"
+		and not remade.contains("#00ff00") and undone.contains("#00ff00"),
+		("Claude's step took Sub's last copy (%d part) and its light (%s); a Sub made next of "
+			+ "another part (%s) has none of it (%s), and Undo puts the light back in its Sub (%s)")
+			% [lit.size(), "kept" if after_run else "gone", made, remade.contains("#00ff00"),
+			undone.contains("#00ff00")])
+
 	OwnKey._this_visit = ""
 	print("")
 	if _failures > 0:

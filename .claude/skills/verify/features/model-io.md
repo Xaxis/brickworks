@@ -824,6 +824,44 @@ Whether what you built is still there tomorrow, and still means the same thing.
   this app saved keeps its height. `joints_probe` ("stood on the ground by its
   shape") opens a wheel spun 16 degrees on its axle both ways and with its tyre
   fetched late, and two bricks drawn 76 LDU up, by another tool and by this one.
+  A part still on its way, or one the app's own file has that the catalogue
+  lacks, is in its copy wherever every change since took it
+  (`BrickWorld.held_paths`, carried by `Builder._carry`; `BrickWorld.held_path`,
+  which every reader of one goes through, as a step edit changes the placement
+  itself):
+  `joints_probe` ("a part on its way, or one the catalogue lacks, in its
+  sub-model") renames its Sub Engine, and makes a Box round it, before the
+  part lands: saved before and after it lands it is in that sub-model, it
+  lands beside the rest, and Undo and Redo take it with them; a part the
+  catalogue lacks is written in Engine, and in Sub undone. Deleting a copy's
+  last parts takes its held ones with it in the same step
+  (`ModelStore._held_go_with`, `Assemblies.copies_emptied`, a `held` undo
+  through `Builder.held_hook`), so no file keeps the copy for a part on its
+  way alone (pccheck HA_5); someone else's file's (`SourceFile.not_shown`,
+  and its line's place, `unshown_origins`) go too. Taking a copy apart takes its held ones into the
+  one round it, numbered in its steps with the rest and their step's look
+  with them (`AuthorSteps.inlined`; hscheck R_own_ungroup). The writer
+  tells copies apart by their held parts as well as their bricks
+  (`Assemblies.file_frames(figures, held)`, `Assemblies.held_by_path`:
+  which parts and colours, not where, since held parts do not follow a
+  copy's move), so a copy holding any its master does not is a sub-model of
+  its own and none is lost (pc2check A2, H); one holding fewer is the
+  master's (`Assemblies._holds_within`), as live writes it, since a held part
+  leaves a copy only with the copy (pc3check KP: split, a Pattern's copies
+  lost the sub-model's lights). Copy and Paste, Duplicate, and Edit,
+  Pattern (the window, the copies a put-down copy repeats, the AI's
+  `pattern_parts`: `Pattern.put`, a move per copy) bring a copy's held parts
+  into each new copy
+  (`Carry.clipboard_held`, `Builder.held_carry`/`held_put`,
+  `ModelStore._held_carried`/`_held_put`, keyed by
+  `LdrModel.Placement.held_key`), in the paste's undo step (one that landed
+  since is taken off and put back as its brick, Builder's `"held"` step's
+  `bricks`, and one put back on its way after its part came lands at once,
+  `ModelStore._land_arrived`: pc2attack H_r1, H_r2); Duplicate
+  brings a lit copy's lines and frame too (live's Q). `lights_probe --
+  --review` checks both (`_r_held_pasted`, `_r_duplicated`). Someone else's
+  file keeps such a part's line in the copy's section, and the copy with it
+  (`SourceFile.patch`).
   A part a
   file carries is built from its carried subparts and primitives as well (see
   [elements](elements.md), `made parts in the library and in files`). There were two ways: the app's own opened
