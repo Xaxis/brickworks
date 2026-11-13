@@ -2555,8 +2555,15 @@ static func _figure_frame(figures: Dictionary, path: String) -> Transform3D:
 
 
 ## A part read from a mirrored reference, made one that can be built: its
-## other hand where it has one, where its reflection is.
+## other hand where it has one, where its reflection is. A number LDraw has
+## moved is the part it became first, where its stub puts it: the stub's
+## name ("~Moved to 43722a") names no hand, and a mirrored wing's 43722 came
+## out a right wing turned, where the left one, 43723a, goes (im3check).
 static func unmirror(placement: LdrModel.Placement, library: PartLibrary) -> void:
+	var real: String = library.resolve(placement.part_id)
+	if real != placement.part_id:
+		placement.local = placement.local * library.moved_by(placement.part_id)
+		placement.part_id = real
 	var image: Dictionary = Later.script(&"Mirror").image(library, placement.part_id,
 		placement.local, 0, 0.0)
 	placement.part_id = image["part"]

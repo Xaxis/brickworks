@@ -1596,7 +1596,10 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   own undoing weighed both ways so it mirrors back where it was, and named,
   never done in silence: the bar ("1 has no mirror image, turned as near as it goes: ...")
   and mirror_parts' answer (`Builder.no_image`). A file's mirrored reference is
-  put down the same way (`Assemblies.unmirror`). `tools/probe.sh mirrorparts`
+  put down the same way (`Assemblies.unmirror`), a moved number resolved
+  first: 43722 ("~Moved to 43722a"), a right wing, in a reflected copy is
+  43723a, not 43722a turned (im3check; `whole_write_probe` opens, saves whole
+  and as a patch, and opens again). `tools/probe.sh mirrorparts`
   (windowed, `PROBE_SIZE=1280x720` too): the walk's pod by submit_design and
   mirror_parts, every corner on its reflection to 0.01 LDU, the headlight's face
   and the slope's fall out on both pods, one undo; the car's left half by Mirror

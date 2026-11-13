@@ -173,7 +173,13 @@ Whether what you built is still there tomorrow, and still means the same thing.
   the model is read through, as the file had it, after its own
   (`SourceFile.unplaced_into`, by the parts' origins: a sub-model the file
   never placed too, and each section a kept block places, the model's own
-  ones too, since the whole write names and frames those anew). It went to
+  ones too, since the whole write names and frames those anew). A
+  sub-model the model still places counts as read through, by the section
+  each copy was read from (`BrickWorld.section_files`, in
+  `ModelStore`'s whole write): a hose a grab bent has every piece laid
+  anew, none with an origin, and its section was carried again, old path
+  and all, the live one renamed `pneumatic_hose_lq_12.ldr` beside it
+  (grab_probe 42080-1's "4 caps", smalls1). It went to
   live's write, which took the block out, and the last copy taken off lost
   the sub-model (kt5check F5). A block placed by nothing titled as one the
   model places renames none of its copies at the next open: only placed

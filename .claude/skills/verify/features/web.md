@@ -2863,11 +2863,18 @@ plan with Claude as the client.
   a page made by a function is a page of the site and changes when the
   site's do.
 - `model kinds` (`src/net/model_kinds.gd`): `ModelKinds.KINDS` and
-  `guess(text)`, the Share panel's first guess at a kind from the name, the
-  tags and the description, read with the design loop's vocabularies
-  (`Style.GROUP_WORDS`, `Style.TRAITS`) as whole words (`SubjectWords`), the
-  narrow before the broad: a mechanism, space, castles and fantasy, figures,
-  art, vehicles, architecture, town, robots, nature.
+  `guess_from(name, tags, about)`, the Share panel's first guess at a kind,
+  read with the design loop's vocabularies (`Style.GROUP_WORDS`,
+  `Style.TRAITS`) as whole words (`SubjectWords`). The name's subject first,
+  the words before what it carries ("with", "and", "carrying", ...), then
+  the description's, then any kind the three name, the narrow before the
+  broad: a mechanism, space, castles and fantasy, vehicles, architecture,
+  town, robots, nature, and figures and art last. Figures came before
+  vehicles, so a car tagged "minifigure" was filed under Figures and
+  characters (docs5). `tools/probe.sh model_kinds_probe [-- --sets=FILE]`:
+  phrases, the three boxes, and the gallery fixture (40 of 49 as their
+  makers chose, none filed a figure or art its maker did not call one; 32
+  before, smalls1).
 - `part facts` (`tools/web/part_facts.mjs`): writes the Technic parts and
   the parts that make a model move (gears, worms, differentials, motors,
   actuators, chain links, pneumatics; never a "~" sub-part or a sticker)
