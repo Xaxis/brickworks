@@ -17,6 +17,9 @@
 // in an hour or a day, such as publishing: its pages are signed in as an
 // account of the run's own, deleted when the run ends (session.mjs).
 import { steadyShots } from "./steady_shots.mjs";
+// Every browser any script here starts reads the parts bucket from this
+// machine's copy (storage_mirror.mjs), each object from Supabase at most once.
+import "./storage_mirror.mjs";
 import { chromium } from "playwright";
 import { canSignIn, endOwnAccount, ownAccount, signInContext, TEST_EMAIL } from "./session.mjs";
 

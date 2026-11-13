@@ -2771,6 +2771,14 @@
       "tests": []
     },
     {
+      "id": "cli:the parts bucket's copy for checks",
+      "kind": "cli",
+      "entry": "tools/web/storage_mirror.mjs",
+      "reach": "any flow under tools/web (browser.mjs imports it); node tools/web/storage_mirror.mjs serve [PORT] for a probe",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:the same plans from two checkouts",
       "kind": "cli",
       "entry": "tools/plan_diff.py",
@@ -4386,7 +4394,8 @@
       "area": "web",
       "tests": [
         "tests/test_release_links.py",
-        "tests/test_site_lang.py"
+        "tests/test_site_lang.py",
+        "tests/test_storage_mirror.py"
       ]
     },
     {
@@ -5222,7 +5231,9 @@
       "entry": "src/assembly/mirror.gd",
       "reach": "godot --path .  (select, Shift-M or Edit, Mirror)",
       "area": "building",
-      "tests": []
+      "tests": [
+        "tests/test_storage_mirror.py"
+      ]
     },
     {
       "id": "ui:model card",

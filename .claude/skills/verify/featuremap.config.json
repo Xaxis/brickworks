@@ -265,6 +265,13 @@
     },
     {
       "kind": "cli",
+      "label": "the parts bucket's copy for checks",
+      "entry": "tools/web/storage_mirror.mjs",
+      "reach": "any flow under tools/web (browser.mjs imports it); node tools/web/storage_mirror.mjs serve [PORT] for a probe",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
       "label": "build the meshes",
       "entry": "tools/build_meshes.py",
       "reach": "tools/build_meshes.py   (~45 min, needs vendor/ldraw)",
