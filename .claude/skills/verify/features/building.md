@@ -709,6 +709,26 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   window; `-- --phone` the phone's): settled, at most a frame a second standing
   still; a new colour in hand drawn, its picture the new colour; words over the
   model drawn, then still again. On the base standing still draws every frame.
+- `the walk by finger` (`tools/web/phonewalk_flow.mjs`, APP_UX8 unit 6,
+  2026-11-13): a measure, not a check (local only in preview_checks.sh: its
+  two sizes take about 25 minutes). The desktop walk's acts done by touch
+  alone at 390 x 844 (3x) and 1024 x 768 (2x), signed in as an account of the
+  run's own: a part to the last step, Render, a booklet page, Like this,
+  Check stability, Cut away, My collection, Measure, the page editor (open,
+  move, resize, words, Done), split and merge, a 15° turn, the wall of eight
+  and three painted, Motions (play, record, a joint's slider) and Simulate
+  (play, scrub, driver). Each is counted in taps beside the desktop's presses;
+  what a finger cannot do, or needs over twice the presses for, is named with
+  the file its touch belongs in. Every result is read from the app
+  (`brickworksState`, `brickworksMotions`, `brickworksSimulate`,
+  `brickworksControls`, `brickworksAskPhone`), never a picture. Run it on a
+  preview through heavy: `BW_BYPASS=$VERCEL_BYPASS heavy node
+  tools/web/phonewalk_flow.mjs --url=<preview>/app --out=DIR` (`--only=ACT,…`,
+  `--sizes=`, `PHONEWALK_DEBUG=1` for a picture per drag); it writes
+  DIR/phonewalk.md and .json. Exit 1 only when an act could not run; `--bar`
+  fails on any act not done by finger in twice the presses (phonepanels' and
+  fingertools' bar). Its table of 2026-11-13 is
+  `docs/app_ux8/phonewalk.md`.
 - `touch dialogs` (`src/ui/touch_sizing.gd`, `TouchSizing`, 2026-10-24): on a
   phone or a tablet (`Phone.on`) every dialog and panel over the model takes
   the layout's sizing, one rule for all as `Access` is for the keys: its text
