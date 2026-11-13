@@ -138,5 +138,4 @@ On a phone or a tablet, Measure is in **More › Tools**: tap two points. Each t
 
 <!-- covers
 ui:measure
-ui:measure and handles by finger
 -->
