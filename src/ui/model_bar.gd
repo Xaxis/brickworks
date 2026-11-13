@@ -894,6 +894,130 @@ func open_version(version: ModelVersions.Version, name: String = "") -> int:
 	return placed
 
 
+# -- a model into this one ------------------------------------------------------
+
+## Puts parts whole in the person's hand, to put down by a click
+## (EditVerbs.hold, which Shell sets): (parts, what) -> how many.
+var hold_parts: Callable = Callable()
+## File, Import, Into this model…'s list, and the saves and examples it lists.
+var _into: PopupMenu
+var _into_entries: Array[ModelStore.Entry] = []
+var _into_picker: ModelFilePicker
+
+
+## File, Import, Into this model…: the person's saved models and the
+## examples, listed as Open lists them, with a file from this computer and
+## the library; the one chosen comes in hand as one sub-assembly with its
+## own steps, put down by a click and taken out by one undo
+## (ModelStore.held_from). Two actions, as LeoCAD's Files category takes:
+## here it was open, select all, copy, switch, paste (APP_UX4, intomodel).
+func into_model() -> void:
+	if store == null:
+		return
+	if _into == null:
+		_into = PopupMenu.new()
+		_into.id_pressed.connect(_on_into)
+		add_child(_into)
+	_into_entries = store.list_saved()
+	var examples: Array[ModelStore.Entry] = store.list_examples()
+	_into.clear()
+	_into.add_item("From a file on this computer (LDraw, Studio .io, LDD .lxf)…", IMPORT)
+	_into.add_item("From the library: real sets and the community's models…", LIBRARY)
+	_into.add_separator("Put in this model, then click where it goes")
+	for n: int in _into_entries.size():
+		_into.add_item(_into_entries[n].describe(), n)
+	if not examples.is_empty():
+		_into.add_separator("Examples")
+		for example: ModelStore.Entry in examples:
+			_into.add_item(example.describe(), _into_entries.size())
+			_into_entries.append(example)
+	_into.reset_size()
+	_into.position = Vector2i(get_global_mouse_position()) + Vector2i(0, 8)
+	_into.popup()
+
+
+func _on_into(id: int) -> void:
+	if id == IMPORT:
+		_into_file()
+		return
+	if id == LIBRARY:
+		library_wanted.emit()
+		return
+	if id < 0 or id >= _into_entries.size():
+		return
+	var entry: ModelStore.Entry = _into_entries[id]
+	var text: String = store._file_text(entry.path)
+	if text.is_empty():
+		_say("could not read “%s”: %s" % [entry.name, store.not_opened])
+		return
+	await hold_text(text, entry.path.get_file(), entry.name)
+
+
+## A file from this computer into this model. Asked in the click itself, as
+## [method _import] is, or a browser opens no picker.
+func _into_file() -> void:
+	if _into_picker == null:
+		_into_picker = ModelFilePicker.new()
+		_into_picker.library = store.library
+		add_child(_into_picker)
+		_into_picker.picked.connect(func(text: String, file_name: String) -> void:
+			await hold_text(text, file_name))
+		_into_picker.failed.connect(func(why: String) -> void: _say(why))
+	_into_picker.ask()
+
+
+## [param text], a model's file, in the person's hand whole, as one
+## sub-assembly named [param called] (else as the file calls it), its
+## author's steps kept, to put down by a click (ModelStore.held_from).
+## [param credited] ({by, licence, page}) says whose it is where its file
+## does not, kept in its sub-model's header and said with it. How many
+## parts are in hand.
+func hold_text(text: String, file_name: String, called: String = "",
+		credited: Dictionary = {}) -> int:
+	var job: Working.Job = Working.begin("Reading %s…" % (called if not called.is_empty()
+		else file_name.get_file()))
+	await job.shown()
+	var held: Dictionary = await store.held_from(text, file_name, job, called, credited)
+	job.end()
+	if not str(held["error"]).is_empty():
+		_say("could not put it in this model: %s" % held["error"])
+		return 0
+	var count: int = int(hold_parts.call(held["items"], str(held["name"]))) \
+		if hold_parts.is_valid() else 0
+	if count == 0:
+		return 0
+	store.builder.carrying.bring(held)
+	var by: String = str(credited.get("by", "")).strip_edges()
+	_say(Keymap.filled("holding %s, %s — click where it goes, {rotate_held|turns}, Esc puts away")
+		% [held["name"], Builder._many(count)] + held_words(held)
+		+ (" — by " + by if not by.is_empty() else ""))
+	return count
+
+
+## What else a model brought in comes with: its steps, what of it is kept
+## and not shown, its motions, which its sub-model keeps and this model does
+## not play, and the names given to what this model had already.
+static func held_words(held: Dictionary) -> String:
+	var said: String = ""
+	if int(held["steps"]) > 0:
+		said += " — " + ("its 1 step kept" if int(held["steps"]) == 1
+			else "its %d steps kept" % int(held["steps"]))
+	var unshown: Dictionary = held["unshown"]
+	if not unshown.is_empty():
+		said += " — " + "not shown, kept: %s" % ModelStore.named_counts(unshown)
+	var motions: int = int(held.get("motions", 0))
+	if motions > 0:
+		said += " — " + ("its motion kept in it, played only where it is the model" if motions == 1
+			else "its %d motions kept in it, played only where it is the model" % motions)
+	var renamed: Dictionary = held.get("renamed", {})
+	if not renamed.is_empty():
+		var pairs := PackedStringArray()
+		for was: Variant in renamed:
+			pairs.append("%s as %s" % [was, renamed[was]])
+		said += " — " + "named anew, as this model has those names: %s" % ", ".join(pairs)
+	return said
+
+
 ## Somebody else's .ldr, from wherever they keep it.
 ##
 ## The picker has to be asked while the click that opened the menu is

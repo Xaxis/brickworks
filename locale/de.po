@@ -11270,14 +11270,35 @@ msgstr "sein 1 Bauschritt bleibt erhalten"
 msgid "its %d steps kept"
 msgstr "seine %d Bauschritte bleiben erhalten"
 
+msgid "not shown, kept: %s"
+msgstr "nicht angezeigt, behalten: %s"
+
+msgid "its motion kept in it, played only where it is the model"
+msgstr "seine Bewegung bleibt darin erhalten, abgespielt nur dort, wo es das Modell ist"
+
+msgid "its %d motions kept in it, played only where it is the model"
+msgstr "seine %d Bewegungen bleiben darin erhalten, abgespielt nur dort, wo es das Modell ist"
+
+msgid "named anew, as this model has those names: %s"
+msgstr "neu benannt, da dieses Modell diese Namen schon hat: %s"
+
+msgid "%s as %s"
+msgstr "%s als %s"
+
+msgid "no model is open"
+msgstr "kein Modell ist geöffnet"
+
+msgid "that is not an LDraw file"
+msgstr "das ist keine LDraw-Datei"
+
 msgid "left out, not in the library: %s"
 msgstr "weggelassen, nicht in der Bibliothek: %s"
 
 msgid "Put in this model"
 msgstr "In dieses Modell setzen"
 
-msgid "In your hand in this model as one sub-assembly with its steps, then a click where it goes; credit its maker"
-msgstr "In deiner Hand in diesem Modell, als eine Baugruppe mit ihren Bauschritten, dann ein Klick dorthin, wo sie hin soll; nenne ihren Urheber"
+msgid "In your hand in this model as one sub-assembly with its steps, then a click where it goes; its maker credited in it"
+msgstr "In deiner Hand in diesem Modell, als eine Baugruppe mit ihren Bauschritten, dann ein Klick dorthin, wo sie hin soll; ihr Urheber darin genannt"
 
 msgid "Its maker kept every right to it: Open builds it, and it cannot go into another model without their leave"
 msgstr "Sein Urheber behält alle Rechte daran: Öffnen baut es, und ohne seine Erlaubnis kommt es in kein anderes Modell"

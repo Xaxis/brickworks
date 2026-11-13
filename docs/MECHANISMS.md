@@ -453,15 +453,16 @@ taken at rest only.
 | Stud friction capacity | **0.98 N per contact point**. A stud has 3 contact points under a 2×N part and 4 under a 1×N part, so about 3–4 N per stud to pull off. The method is not described; the code's `"T": 100` is grams-force. | [StableLego paper](https://arxiv.org/html/2402.10711v2), [config](https://github.com/intelligent-control-lab/StableLego/blob/main/config.json) |
 | Stud pull-off, simulated | 53.1 N for a 2×4 on a 2×4 (6.6 N per stud). FEM, not a bench test. Stud shear yield ~311 N, so shear never governs. | [Faria 2018, Porto MSc](https://repositorio-aberto.up.pt/bitstream/10216/116072/2/291826.pdf) |
 | Moment a stud joint holds | Not measured anywhere found. Rigid-plastic bound: M = Σ F·dᵢ about the compressed edge. A 2×2 joint at 1 N per stud holds about 3.2 N·cm. | derived from StableLego's force model |
+| Where a stud lets go, on that bound | **1.92 N a stud into a part two studs wide or more, 3.07 N into one a stud wide**, set between what StableLego's built structures needed where they stood and where they came apart (stairs 1.84 / 2.06 N, 200 g on stairs 2.00 N, sticks 2.93 / 3.21 N). On their contact layout, levered our way for a joint two studs deep (every joint the builds broke at), both are 1.02 N per contact point, against their 0.98 N. | [RESEARCH.md](RESEARCH.md) unit 3, `src/dev/stabletruth_probe.gd` (2026-11-09) |
 | Friction pin 2780 | No torque published. Arm-hanging test: 4.5 vs 3 bricks before slipping (old vs new pin), lever unreported. Placeholder 0.5–1 N·cm, to measure. | [Rambling Brick](https://ramblingbrick.com/2021/01/27/what-if-they-introduced-a-new-technic-pin-and-nobody-noticed/) |
 | Axle in torsion | twists from 30 N·cm, permanent at 50, breaks at 70 | [Brick Experiment Channel](https://brickexperimentchannel.wordpress.com/2023/11/15/characteristics-of-lego-parts/) |
 | Gear teeth | 8t fails at 40–60 N·cm, 40t at ~200 N·cm. 24t clutch gear slips at 3.9–4.7 N·cm (stamped 2.5–5). | same; [TechnicBricks](http://www.technicbricks.com/2008/02/tbs-technugets-01-inside-technic-clutch.html) |
 | ABS | E 2.1–2.8 GPa, yield 35–50 MPa, 1.03–1.06 g/cm³ | [Faria 2018](https://repositorio-aberto.up.pt/bitstream/10216/116072/2/291826.pdf) |
 | Motors at 9 V (no-load rpm, stall N·cm) | PF M 405/11, PF L 390/18, PF XL 220/40, Control+ L 315/26, EV3 L 175/43, SPIKE M 228/13.5, SPIKE L 213/33.5. Philo calls stall values "VERY imprecise". Run at most half stall continuously; peak power is at half stall and half speed. | [Philo](https://web.archive.org/web/2024/https://www.philohome.com/motors/motorcomp.htm), [SPIKE sheet](https://assets.education.lego.com/v3/assets/blt293eea581807678a/bltb9abb42596a7f1b3/5f8801b5f4c5ce0e93db1587/le_spike-prime_tech-fact-sheet_45602_1hy19.pdf) |
 
-The current 80 g allowable is defensible as a working load, about a quarter of
-StableLego's ultimate. It should carry a margin, not a verdict, and cite the
-source.
+The current 80 g allowable is defensible as a working load, about two fifths of
+where a stud lets go into a wide part as StableLego's builds measure it. It
+should carry a margin, not a verdict, and cite the source.
 
 **Static tipping (S1).**
 
@@ -491,7 +492,11 @@ source.
 - **Stud joints.** Every stud joint in the model (Stability already finds them)
   gets the moment and pull it carries from everything beyond it, at every
   frame. That is compared with M = Σ F·dᵢ for its studs, at 1 N per stud for
-  the allowable and 3 N for the ultimate.
+  the allowable and, for the ultimate, where StableLego's built structures
+  put a stud letting go: 1.92 N into a part two studs wide or more, 3.07 N
+  into one a stud wide ([RESEARCH.md](RESEARCH.md) unit 3). Until 2026-11-09
+  the ultimate was 3 N for both, which read a stair of 20 levels that came
+  apart as standing.
 - **Pin and axle joints.** Pins carry moments by bearing, which is not the
   weak point. What fails in practice is a friction pin slipping under an arm's
   weight, so those are compared with the pin's friction torque once it is
