@@ -16,9 +16,11 @@
   the account and a licence for commercial use. AI is never limited on any
   plan (the owner, 2026-10-29): people bring their own, and this page says
   only what works and was seen to: any AI app through the connector, each
-  as its row says (docs/ANY_ASSISTANT.md); a key on the web, Anthropic's
-  alone (tools/deploy.sh lets a page call api.anthropic.com and no other
-  AI); another AI's key in the desktop app. A Brickworks .io has not been opened in Studio yet, and
+  as its row says (docs/ANY_ASSISTANT.md); a key for any provider
+  Settings, AI lists, in any browser (tools/deploy.sh lets the app reach
+  each, and each answers a page at brickworks.diy: CORS, checked without a
+  key 2026-11-12, webwords1); only a server not on that list needs the
+  desktop app, coming soon. A Brickworks .io has not been opened in Studio yet, and
   the page says so. The CAD comes first, the AI after (the owner,
   2026-11-02): plans, files, your account and sharing, then your AI.
 -->
@@ -142,7 +144,7 @@
 				</details>
 				<details class="qa" id="ai">
 					<summary>Is AI limited on any plan?</summary>
-					<div><p>No, never, on any plan. You bring your own AI: the AI app you use through the connector, Claude or another, or your own Anthropic API key; in the desktop app, your own key for OpenAI, Gemini and others too. Its maker bills your plan or key for what it does, never Brickworks, so Brickworks never counts it or pays for it. The desktop app can also start Claude Code for you.</p></div>
+					<div><p>No, never, on any plan. You bring your own AI: the AI app you use through the connector, Claude or another, or your own API key for OpenAI, Anthropic, Google Gemini, OpenRouter, Mistral and others, in any browser. Its maker bills your plan or key for what it does, never Brickworks, so Brickworks never counts it or pays for it. The desktop app, coming soon, can also start Claude Code for you.</p></div>
 				</details>
 				<details class="qa" id="had-account">
 					<summary>I made my account before 29 October 2026. What changes?</summary>
@@ -303,12 +305,12 @@
 					<div class="card way">
 						<span class="glyph" aria-hidden="true"><svg class="icon"><use href="/icons.svg#gear"/></svg></span>
 						<h3>Your own API key</h3>
-						<p class="for">Pay as you go · Anthropic’s key, or in the desktop app another AI’s</p>
+						<p class="for">Pay as you go · a key from Anthropic, OpenAI, Google or another provider, in any browser</p>
 						<ol>
 							<li>Make a key at <a href="https://console.anthropic.com/settings/keys">console.anthropic.com</a>, safest in a workspace of its own, with a spend limit, set to expire.</li>
 							<li>Paste it into <a href="/app?assistant=on">the app’s assistant</a>. It is checked with Anthropic before it is kept, in your browser or for this visit only.</li>
 							<li>Describe what you want and press <b>Build it</b>. Choose the model and how hard it thinks.</li>
-							<li>In the desktop app, <b>Settings, AI</b> also takes a key for OpenAI, Gemini and others. Its <b>Test</b> says whether a model can call tools and see pictures, which designing needs. In a browser, only Anthropic’s key works.</li>
+							<li><b>Settings, AI</b> also takes a key for OpenAI, Google Gemini, OpenRouter, Mistral, Groq, Together, DeepSeek or xAI, in any browser, or Ollama, LM Studio or vLLM on your own computer once it allows brickworks.diy. Its <b>Test</b> says whether a model can call tools and see pictures, which designing needs. Only a server not on its list needs the desktop app, coming soon.</li>
 						</ol>
 						<p class="cost">Measured at the default setting: a small house took 11 minutes and $2.40, a castle 45 minutes and $5–10. Medium effort costs about a third.</p>
 					</div>
@@ -331,7 +333,7 @@
 				</details>
 				<details class="qa">
 					<summary>Does Brickworks see my API key?</summary>
-					<div><p>No. It stays in your browser or on your computer, or only for the visit if you choose, and is sent only to the AI you chose: in a browser, Anthropic. The page's security policy refuses to send anything anywhere but its own short list, so a key has nowhere else to go. More on <a href="/privacy">what Brickworks keeps</a>.</p></div>
+					<div><p>No. It stays in your browser or on your computer, or only for the visit if you choose, and is sent only to the provider you chose, never to Brickworks. The page's security policy refuses to send anything anywhere but its own short list, so a key has nowhere else to go. More on <a href="/privacy">what Brickworks keeps</a>.</p></div>
 				</details>
 				<details class="qa" id="new-tools">
 					<summary>Claude can’t see a new Brickworks tool. What now?</summary>
@@ -431,14 +433,14 @@
 	"mainEntity": [
 		{ "@type": "Question", "name": "Why Brickworks, when BrickLink Studio exists?", "acceptedAnswer": { "@type": "Answer", "text": "Studio is the community's standard and does a lot well. Brickworks runs in any browser, a tablet's or a phone's too, with nothing to install; weighs balance and joint strength, and lists the weakest joints; turns gear trains at their real ratios; opens Studio .io; exports STL, OBJ and GLB; and builds one model with others, live. brickworks.diy/compare sets it beside Studio, Mecabricks, LeoCAD and LDCad, with where each of them still leads." } },
 		{ "@type": "Question", "name": "Is Brickworks free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes, for personal and educational use: the web app and the desktop app, with building together, instructions, renders, exports and share links, AI never limited, and up to 25 models kept with your account. Saving to your device and exporting are never limited. Pro, coming soon at $8 a month or $80 a year, keeps any number of models with your account and adds a licence for commercial use. Nothing takes money yet." } },
-		{ "@type": "Question", "name": "Is AI limited on any plan?", "acceptedAnswer": { "@type": "Answer", "text": "No, never, on any plan. You bring your own AI: the AI app you use through the connector, Claude or another, or your own Anthropic API key; in the desktop app, your own key for OpenAI, Gemini and others too. Its maker bills your plan or key for what it does, never Brickworks, so Brickworks never counts it or pays for it." } },
+		{ "@type": "Question", "name": "Is AI limited on any plan?", "acceptedAnswer": { "@type": "Answer", "text": "No, never, on any plan. You bring your own AI: the AI app you use through the connector, Claude or another, or your own API key for OpenAI, Anthropic, Google Gemini, OpenRouter, Mistral and others, in any browser. Its maker bills your plan or key for what it does, never Brickworks, so Brickworks never counts it or pays for it." } },
 		{ "@type": "Question", "name": "I made my account before 29 October 2026. What changes?", "acceptedAnswer": { "@type": "Answer", "text": "Nothing you have is taken away. Every account made before 29 October 2026 keeps Pro, free and with no end date: any number of models kept with your account, and commercial use." } },
 		{ "@type": "Question", "name": "Can I sell what I make?", "acceptedAnswer": { "@type": "Answer", "text": "Free is for personal and educational use. Selling what you make with Brickworks, such as instructions, kits, renders or builds made to order, comes with Pro, under its licence in the terms. It covers Brickworks alone, not anyone else’s trademarks or designs." } },
 		{ "@type": "Question", "name": "How do I cancel Pro, and can I have my money back?", "acceptedAnswer": { "@type": "Answer", "text": "On your Settings page, under Plan, choose Cancel Pro, then confirm on the page it opens. Or cancel at link.com. Pro stays on to the end of what you have paid for, and you are not charged again. Refunds are as Atypic’s refund policy says, and Link, which sells Pro and emails your receipts, may refund within 60 days of a purchase." } },
 		{ "@type": "Question", "name": "How do I sign in?", "acceptedAnswer": { "@type": "Answer", "text": "With a code we email you, or with orangecheck: its own window, with a Bitcoin wallet, email, Google or GitHub. Either way there is no password to keep. The desktop app signs in by the emailed code, and with orangecheck from 0.8.0." } },
 		{ "@type": "Question", "name": "Can children use Brickworks?", "acceptedAnswer": { "@type": "Answer", "text": "With a parent or guardian. Brickworks accounts are for people 13 and over, so a younger builder builds on the adult's account, signed in with the adult's own email. Everyone is asked once when they were born; an answer under 13 deletes the account just made, with its email address, and the date is never kept." } },
 		{ "@type": "Question", "name": "Do I need a Claude subscription?", "acceptedAnswer": { "@type": "Answer", "text": "No. Everything but the assistant works without one, and the assistant is off until you turn it on in Settings, Assistant, or open brickworks.diy/app?assistant=on: build entirely by hand and there is no AI anywhere in the window. To bring an AI in, turn it on, then connect the AI app you use, Claude or another, or paste an API key from the Anthropic Console." } },
-		{ "@type": "Question", "name": "Does Brickworks see my API key?", "acceptedAnswer": { "@type": "Answer", "text": "No. It stays in your browser or on your computer, or only for the visit if you choose, and is sent only to the AI you chose: in a browser, Anthropic. The page's security policy refuses to send anything anywhere but its own short list." } },
+		{ "@type": "Question", "name": "Does Brickworks see my API key?", "acceptedAnswer": { "@type": "Answer", "text": "No. It stays in your browser or on your computer, or only for the visit if you choose, and is sent only to the provider you chose, never to Brickworks. The page's security policy refuses to send anything anywhere but its own short list." } },
 		{ "@type": "Question", "name": "Where are my models saved?", "acceptedAnswer": { "@type": "Answer", "text": "In your browser, or on your computer in the desktop app, and kept privately with your account too, so they open in File › Open wherever you sign in. Export them as LDraw .ldr. Nobody else sees a model until you share it." } },
 		{ "@type": "Question", "name": "Can I build a model with someone else?", "acceptedAnswer": { "@type": "Answer", "text": "Yes, live. File › Build together… gives a link to your model, and whoever opens it, signed in, builds it with you at the same time in their browser (the desktop app from 0.8.0). Each of you sees the other's parts go down, move and change colour as it happens, and their pointer with their name; Undo takes back only your own changes, and there is a short chat for people 13 and over. You end the session, and the model stays yours." } },
 		{ "@type": "Question", "name": "What do the buttons on a shared model’s page do?", "acceptedAnswer": { "@type": "Answer", "text": "Build it opens it in 3D: turn it, step through its build, and get its booklet and parts list, with no account. Open in Brickworks copies it into your own models, to change and make yours. You can also like it, save it to your favourites or a collection, share its link, comment on it or one of its steps, and say I built it with a photo of your build. More copies the code to embed it in a page of your own, and is where to report it." } },

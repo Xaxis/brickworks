@@ -54,6 +54,7 @@ import { launch, allPictures } from "./browser.mjs";
 import { createServer } from "node:http";
 import { readFile, mkdir } from "node:fs/promises";
 import { resolve, join, extname } from "node:path";
+import { TYPES } from "./static_server.mjs";
 
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
   const [k, ...rest] = a.replace(/^--/, "").split("=");
@@ -67,9 +68,6 @@ const CSP = "default-src 'self'; script-src 'self'; "
   + "connect-src 'self' https://overlook.technology; "
   + "style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; "
   + "base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
-const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript",
-  ".json": "application/json", ".png": "image/png", ".svg": "image/svg+xml",
-  ".css": "text/css", ".webp": "image/webp" };
 
 const CHROME = "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0";
 const brands = [{ brand: "Chromium", version: "130" }, { brand: "Not?A_Brand", version: "99" }];
