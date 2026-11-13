@@ -545,9 +545,11 @@ function person(page, cdp, width, height, size, choosers) {
       if (n >= tries) return null;
       // From the middle of the shown part, up or down, as a person swipes a
       // list; across, a little further each time a drag moved nothing (it
-      // began on a button, which keeps the finger).
+      // began on a button, which keeps the finger). The panel runs from the
+      // screen's left to its Close (on a tablet it is a column at the left).
       const up = !at || at.y > ceiling;
-      const from = { x: width * [0.5, 0.2, 0.8][stuck % 3], y: (ceiling + floor) / 2 };
+      const right = head ? Math.min(width, head.x + head.w / 2) : first ? Math.min(width, first.x + first.w / 2) : width;
+      const from = { x: right * [0.5, 0.2, 0.8][stuck % 3], y: (ceiling + floor) / 2 };
       await drag(from, { x: from.x, y: from.y + (up ? -1 : 1) * height * 0.045 }, 14, 400);
       if (tally) tally.brought.push(name);
       const moved = await where(name, 2);
