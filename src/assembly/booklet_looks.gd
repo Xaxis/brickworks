@@ -2939,11 +2939,11 @@ static func arrow_width(width: float) -> float:
 ## The pages a booklet lays out (BookletMaker.lay_out_only), as a session
 ## reads them: a line a page from [param from], each step with how its
 ## designer set it.
-static func layout_said(world: BrickWorld, pages: Array[Booklet.Page], from: int = 2) -> String:
+static func layout_said(world: BrickWorld, pages: Array, from: int = 2) -> String:
 	var told := PackedStringArray()
 	var steps: int = 0
 	var kinds: Dictionary = {}
-	for page: Booklet.Page in pages:
+	for page: RefCounted in pages:
 		kinds[page.kind] = int(kinds.get(page.kind, 0)) + 1
 		if page.kind == "steps":
 			steps += page.entries.size()
@@ -2972,14 +2972,14 @@ static func layout_said(world: BrickWorld, pages: Array[Booklet.Page], from: int
 		told.append("Guides on every page, never printed: %s." % ", ".join(each))
 	var characters: int = 0
 	var off: Dictionary = {}
-	for page: Booklet.Page in pages:
-		for entry: Booklet.Entry in page.entries:
+	for page: RefCounted in pages:
+		for entry: RefCounted in page.entries:
 			if entry.callout != null and entry.callout.own_pages:
 				off[entry.callout.name] = true
 		if page.number < from:
 			continue
 		var each := PackedStringArray()
-		for entry: Booklet.Entry in page.entries:
+		for entry: RefCounted in page.entries:
 			var how := PackedStringArray()
 			if not entry.name.is_empty():
 				how.append("named %s" % Motions.quoted(entry.name))
@@ -3007,7 +3007,7 @@ static func layout_said(world: BrickWorld, pages: Array[Booklet.Page], from: int
 				how.append("its new parts at %s" % adds_said(entry.adds))
 			if entry.callout != null:
 				var posed := PackedStringArray()
-				for sub: Booklet.Entry in entry.callout.steps if entry.callout.inline else []:
+				for sub: RefCounted in entry.callout.steps if entry.callout.inline else []:
 					if sub.fixed and not sub.look.is_empty():
 						posed.append("its step %d %s" % [sub.number, turn_said(world,
 							sub.look.get_slice("|", 0), sub.look.get_slice("|", 1).to_int())])
@@ -3022,7 +3022,7 @@ static func layout_said(world: BrickWorld, pages: Array[Booklet.Page], from: int
 			(" (the %s, built on its own)" % page.name) if page.kind == "callout" else "",
 			"" if page.entries.size() == 1 else "s", ", ".join(each)]
 		if not page.overlaps.is_empty():
-			line += "; overlapping: " + Booklet.overlaps_said(page)
+			line += "; overlapping: " + Later.script(&"Booklet").overlaps_said(page)
 		characters += line.length()
 		if characters > 6000:
 			told.append("  ... booklet_layout {\"from\": %d} for the rest." % page.number)

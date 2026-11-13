@@ -3520,7 +3520,7 @@ func _fits_as_sets(mine: String, at: Transform3D, theirs: String, there: Transfo
 		return false
 	var a := Exact.Item.new(one, at)
 	var b := Exact.Item.new(other, there)
-	if not ExactCheck.meet_as_sets(a, mine, b, theirs):
+	if not Later.script(&"ExactCheck").meet_as_sets(a, mine, b, theirs):
 		return false
 	return maxf(Exact.sunk(a, b), Exact.sunk(b, a)) <= Joints.STUD_REACH
 
