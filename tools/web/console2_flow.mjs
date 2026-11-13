@@ -319,12 +319,19 @@ try {
   }));
   check(`...at its own address: ${await page.evaluate(() => location.hash)}`, await page.evaluate((id) => location.hash === `#connector/${id}`, c.kept.user_id));
   await shot(page, "3-connector-panel-1280.png", false);
+  // Each panel opens the other on the same account (each once kept the
+  // other's open, as though it were already showing).
+  await page.click(`#sheet-body a[href="#people/${c.kept.user_id}"]`);
+  check("C's panel links to its account in People, which opens", await until(page, (email) =>
+    document.querySelector("dialog.sheet[open]")?.dataset.kind === "person"
+    && document.getElementById("sheet-title").textContent === email, c.kept.email));
   await page.keyboard.press("Escape");
   await go(page, `people/${c.kept.user_id}`);
   check("C's account in People links to its connector", await until(page, (id) => document.querySelector("dialog.sheet[open]")
     && document.querySelector(`#sheet-body a[href="#connector/${id}"]`), c.kept.user_id));
   await page.click(`#sheet-body a[href="#connector/${c.kept.user_id}"]`);
-  check("...and the link opens C's connector", await until(page, () => /Conversations \(1\)/.test(document.getElementById("sheet-body")?.textContent || "")));
+  check("...and the link opens C's connector", await until(page, () => document.querySelector("dialog.sheet[open]")?.dataset.kind === "connector"
+    && /Conversations \(1\)/.test(document.getElementById("sheet-body")?.textContent || "")));
   await page.keyboard.press("Escape");
 
   // --- 4. Site ---------------------------------------------------------------------

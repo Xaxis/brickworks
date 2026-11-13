@@ -432,7 +432,8 @@ async function person(account, again = false, told = "") {
     if ($("sheet").open && $("sheet").dataset.kind === "person") $("sheet").close();
     return;
   }
-  if (!again && $("sheet").open && $("sheet").dataset.account === account) return;
+  // Already open on this account's own panel; its connector's is another.
+  if (!again && $("sheet").open && $("sheet").dataset.kind === "person" && $("sheet").dataset.account === account) return;
   openSheet("Looking…", make("p", "note", "Reading the account…"), { kind: "person", account });
   let one;
   try {
@@ -534,7 +535,7 @@ async function connectorPanel(account, again = false) {
     if ($("sheet").open && $("sheet").dataset.kind === "connector") $("sheet").close();
     return;
   }
-  if (!again && $("sheet").open && $("sheet").dataset.account === account) return;
+  if (!again && $("sheet").open && $("sheet").dataset.kind === "connector" && $("sheet").dataset.account === account) return;
   openSheet("Looking…", make("p", "note", "Reading the connector…"), { kind: "connector", account });
   try {
     const { title, parts } = await connectorOf(account);
