@@ -1507,7 +1507,9 @@ static func title_in(text: String, file_name: String) -> String:
 ## has it, so it is not parsed twice.
 func open_text(text: String, name: String = "model", parsed: LdrModel = null) -> Dictionary:
 	var out: Array = []
+	var asking: int = _asking()
 	_open_into(out, text, name, parsed, null)
+	_asked(asking)
 	not_opened = str(out[0]["error"])
 	return out[0]
 
@@ -1626,6 +1628,13 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 			known.append(placement)
 		else:
 			known.append(placement)
+	# Each asked for now, by the name it is laid under, before anything is
+	# laid: on its way while the rest of the open goes on, and joined, not
+	# asked again, by the part laid that wants it (PartLibrary.request_mesh).
+	# Most were asked as the file was read (ask_geometry); this is a mirrored
+	# part's other hand, and an open of text read here. Not one whose fetch
+	# failed since this open asked: it is not coming.
+	library.want(waiting.keys().filter(func(id: String) -> bool: return not _gave_up.has(id)))
 
 	_phase("known")
 	# Why each part the file carries that is not here could not be drawn.
@@ -1642,9 +1651,6 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 		return
 
 	var paced: bool = job != null and known.size() >= LAID_IN_SLICES_FROM
-	if paced and not waiting.is_empty():
-		await _await_geometry(waiting, job)
-		_phase("geometry")
 	var foreign: bool = model.author.strip_edges() != "Brickworks"
 	# Someone else's file is kept, so a save writes back what nobody changed
 	# as it was (SourceFile); the app's own are written whole, as always.
@@ -1657,7 +1663,14 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 		return _read_text(text, model, known, mirrored_lines, authored, absent, foreign)
 	var read: Dictionary
 	if paced:
-		read = await _off_frame(reading)
+		# Read while the geometry on its way comes, as neither needs the
+		# other: read after it, a big file's read (0.3 s of 10297-1's open,
+		# 0.65 s of 8466-1's) began only once the last part had come.
+		var geometry: Callable = func() -> void:
+			if not waiting.is_empty():
+				await _await_geometry(waiting, job)
+				_phase("geometry")
+		read = await _off_frame(reading, geometry)
 	else:
 		read = reading.call()
 	var source: SourceFile = read["source"]
@@ -1855,13 +1868,26 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 			_settle()
 	_phase("place")
 
-	# Ask for the ones that were not to hand, and put each down as it
-	# arrives (place_awaited).
+	# The ones that were not to hand are on their way, asked for before any
+	# was laid, and each is put down as it arrives (place_awaited): asked
+	# again here, each is moved ahead of the bin's pictures, never fetched
+	# twice. One whose fetch failed since this open asked for it is not
+	# coming, and is named ([member lost]).
 	var asked_for: Dictionary = {}
+	lost = {}
+	var coming: bool = false
 	for placement: LdrModel.Placement in awaited:
-		if not asked_for.has(placement.part_id):
-			asked_for[placement.part_id] = true
-			library.request_mesh(placement.part_id, true)
+		var part_id: String = placement.part_id
+		if _gave_up.has(part_id) and not library.is_on_its_way(part_id):
+			lost[part_id] = int(lost.get(part_id, 0)) + 1
+			continue
+		coming = true
+		if not asked_for.has(part_id):
+			asked_for[part_id] = true
+			library.request_mesh(part_id, true)
+	# Said here, with the open: not_coming says it of a part whose fetch
+	# fails from now, once none is on its way.
+	_told_not_coming = not lost.is_empty() and not coming
 
 	# A model from a file: nobody emptied the baseplate. Unless the file
 	# itself is empty: then it is kept so, as one begun empty is (begin).
@@ -1943,7 +1969,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	# Studio file opened there said "4 are still arriving" of parts it had
 	# drawn.
 	out.append({"placed": placed, "missing": missing.size(),
-		"waiting": asked_for.size(), "missing_ids": missing, "error": "",
+		"waiting": asked_for.size(), "missing_ids": missing, "error": "", "lost": lost,
 		"unshown": unshown, "kept": source != null or not _absent.is_empty(),
 		"unbuilt": unbuilt, "lights_unread": lights_unread_words,
 		"motions_unread": motions_unread_words, "views_unread": views_unread_words})
@@ -2054,11 +2080,14 @@ static func _read_text(text: String, model: LdrModel, known: Array, mirrored_lin
 
 
 ## [param work] done on a worker, the frames going on meanwhile: what it
-## returns.
-static func _off_frame(work: Callable) -> Variant:
+## returns. [param meanwhile], a coroutine, is awaited on this thread while
+## the worker works.
+static func _off_frame(work: Callable, meanwhile: Callable = Callable()) -> Variant:
 	var done: Array = [null]
 	var task: int = WorkerTasks.add(func() -> void: done[0] = work.call(), false,
 		"read a model's text")
+	if meanwhile.is_valid():
+		await meanwhile.call()
 	var tree: SceneTree = Engine.get_main_loop() as SceneTree
 	while not WorkerThreadPool.is_task_completed(task):
 		await tree.process_frame
@@ -2130,8 +2159,12 @@ func open_text_fetched(text: String, name: String = "model", parsed: LdrModel = 
 		model = LdrModel.parse(text, name)
 	if model == null:
 		return open_text(text, name)
-	if job != null:
-		ask_geometry(model)
+	# Every open, with a job or not: the viewer of a shared link, the working
+	# model put back at start-up, a session's open_model, Together. Asked only
+	# with a job, a file's own parts waited for its carried parts' LDraw files
+	# and their copies' geometry (fetch_sources) before any was asked.
+	var asking: int = _asking()
+	ask_geometry(model)
 	if job != null and not model.generated.is_empty():
 		await CustomParts.warm_skins(library, model)
 	var parsed_in: float = (Time.get_ticks_usec() - began) / 1000.0
@@ -2148,6 +2181,7 @@ func open_text_fetched(text: String, name: String = "model", parsed: LdrModel = 
 		await _open_into(out, text, name, model, job)
 	else:
 		_open_into(out, text, name, model, null)
+	_asked(asking)
 	not_opened = str(out[0]["error"])
 	open_phases["parse"] = parsed_in
 	open_phases["fetch"] = fetched_in
@@ -2169,9 +2203,10 @@ func ask_geometry(model: LdrModel) -> void:
 	library.want(CustomParts.copied_parts(library, model), true)
 
 
-## Every part [param model] places, by the library's name for it, each once:
-## what its open asks the geometry of. A sub-model's name is among them, and
-## asks for nothing.
+## Every part [param model] places, by the name it is laid under
+## ([method _open_into]: Studio's, a retired number's, a part LDraw draws in
+## one colour as the part it draws), each once: what its open asks the
+## geometry of. A sub-model's name is among them, and asks for nothing.
 func _parts_named_in(model: LdrModel) -> Array:
 	var named: Dictionary = {}
 	for sub: LdrModel.SubModel in model.submodels.values():
@@ -2179,8 +2214,54 @@ func _parts_named_in(model: LdrModel) -> Array:
 			named[placement.part_id] = true
 	var out: Dictionary = {}
 	for part_id: String in named:
-		out[library.resolve(studio_part(part_id, library))] = true
+		var real: String = library.resolve(studio_part(part_id, library))
+		if library.current_colour(real) >= 0:
+			real = library.current(real)
+		out[real] = true
 	return out.keys()
+
+
+## The parts whose geometry could not be fetched since the open on the
+## baseplate asked for it, id -> why (PartLibrary.fetch_failed). Its lay does
+## not ask for them again (PartLibrary.held_back), and its answer names those
+## it holds ("lost"): a fetch that failed while a big model was being laid
+## was said by nothing (not_coming waits for the laying), and one that failed
+## before was asked for again by every part laid that wanted it.
+var _gave_up: Dictionary = {}
+## The model on the baseplate's parts whose geometry could not be fetched as
+## it opened, id -> how many, held as [member awaited] are: kept in the file
+## a save writes, and said with the open (ModelBar.left_out_words).
+var lost: Dictionary = {}
+## Which open is asking, and whether one is, between its first ask and the
+## end of its lay ([method _asking], [method _asked]).
+var _asks: int = 0
+var _asking_now: bool = false
+
+
+## An open begins asking: what the last one heard fail forgotten. Its number.
+func _asking() -> int:
+	_asks += 1
+	_asking_now = true
+	_gave_up.clear()
+	library.held_back.clear()
+	if not library.fetch_failed.is_connected(_fetch_failed):
+		library.fetch_failed.connect(_fetch_failed)
+	return _asks
+
+
+## Open [param asking] is laid: what failed meanwhile may be asked for again,
+## unless another open has begun asking since.
+func _asked(asking: int) -> void:
+	if asking == _asks:
+		_asking_now = false
+		library.held_back.clear()
+
+
+func _fetch_failed(part_id: String, why: String) -> void:
+	_gave_up[part_id] = why
+	var info: PartLibrary.PartInfo = library.parts.get(part_id)
+	if _asking_now and info != null:
+		library.held_back[info.mesh_hash] = true
 
 
 ## The most a big model's open waits for the geometry on its way before it
@@ -2198,7 +2279,6 @@ const GEOMETRY_STALL_MS := 4000
 ## software, two a second, and 10297-1's last 126 parts took 55 s to come
 ## so (walk180, A8).
 func _await_geometry(waiting: Dictionary, job: Working.Job) -> void:
-	library.want(waiting.keys())
 	var began: int = Time.get_ticks_msec()
 	var came_at: int = began
 	var left: int = waiting.size()
@@ -3359,7 +3439,8 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 		unseen = _absent if source == null else source.in_own_steps(source.not_shown)
 		for placement: LdrModel.Placement in coming + unseen:
 			holding.append([world.held_path(placement), placement.part_id, placement.color_code])
-	var instances: Dictionary = tree.file_frames(figures, holding)
+	# Laid on each other by the steps this save writes.
+	var instances: Dictionary = tree.file_frames(figures, holding, unit_steps)
 	if pace != null and pace.due():
 		await pace.next()
 	# Every frame moved with the parts, so each part is where it was in it.

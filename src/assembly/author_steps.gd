@@ -789,6 +789,21 @@ static func numbers_for_file(world: BrickWorld, library: PartLibrary,
 			units[path] = at
 			var parent: String = home(world, Assemblies.parent_of(path))
 			last[parent] = maxi(int(last.get(parent, 0)), at)
+	# And each copy nothing of which is here, made of what the model holds
+	# and does not show (BrickWorld.held), in its own step, as items_in
+	# numbers it. Left out, it was written in its section's first step, and
+	# the step it was in was left empty with its looks (hscheck E5_own).
+	var held_paths: Dictionary = {}
+	for item: Variant in world.held_parts():
+		held_paths[world.held_path(item as LdrModel.Placement)] = 0
+	for path: String in _up_paths(held_paths):
+		var at: int = int(world.unit_steps.get(path, -1))
+		if path.is_empty() or units.has(path) or at < 0 and at != IN_PARENT:
+			continue
+		units[path] = at
+		if at >= 0:
+			var parent: String = home(world, Assemblies.parent_of(path))
+			last[parent] = maxi(int(last.get(parent, 0)), at)
 	if loose.is_empty():
 		return {"bricks": bricks, "units": units}
 	# After the steps of what the model holds and does not show too, which

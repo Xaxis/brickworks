@@ -5295,6 +5295,13 @@
       "entry": "src/dev/stepnames2_probe.gd",
       "reach": "tools/probe.sh stepnames2_probe   (headless; SN2_ONLY=letters,refuse,undo,sub,held: name_of letter by letter, a letter of a hundred accents keeping four, 80 letters with an emoji or accents, zero-width and direction characters alone no name; such a name refused over MCP and in Name the step…, which stays up saying why; 14 name edits, MCP and by hand, each one undo, undone to the steps and the file as the plain save; the same name again no undo; sub.ldr's \"Both wings on\" on the first step built in it in the plan, caption, Build it, list and booklet; a stepless file's first step edit numbering its held part with the part before it, undone to the stepless file)",
       "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "askfirst probe",
+      "entry": "src/dev/askfirst_probe.gd",
+      "reach": "tools/probe.sh askfirst_probe   (headless: geometry served by a local server on 9947 under names the build has not got, the LDraw library withheld and served slowed beside it; an open with no job (the viewer's, start-up's) has every part not to hand on its way while its carried part's file is fetched, the model before still down, then lays it whole, each part asked once; a part that 404s before the lay is asked once, held, named in the open's answer and words and saved, one failing after it said by not_coming; a 212-part model opened with the bar's job has its parts on their way before its first slice, is laid in the file's order, and names the part not there, asked once; a save while parts are on their way writes every part)",
+      "area": "model-io"
     }
   ]
 }

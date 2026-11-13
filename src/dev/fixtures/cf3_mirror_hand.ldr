@@ -1,0 +1,23 @@
+0 FILE cf3_mirror_hand.ldr
+0 Mirrored hand
+0 Name: cf3_mirror_hand.ldr
+0 Author: Brickworks
+0 !BRICKWORKS AUTHORED_STEPS
+
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3020.dat
+0 STEP
+1 16 200 0 0 1 0 0 0 1 0 0 0 1 hand.ldr
+0 STEP
+1 16 -200 0 0 -1 0 0 0 1 0 0 0 1 hand.ldr
+0 !BRICKWORKS ZOOM 2
+0 STEP
+0 NOFILE
+0 FILE hand.ldr
+0 Hand
+0 Name: hand.ldr
+1 4 0 0 0 1 0 0 0 1 0 0 0 1 3020.dat
+0 STEP
+1 1 20 -8 0 1 0 0 0 1 0 0 0 1 3040b.dat
+1 14 -30 -8 -10 1 0 0 0 1 0 0 0 1 3024.dat
+1 71 0 -16 0 1 0 0 0 1 0 0 0 1 41770.dat
+0 NOFILE
