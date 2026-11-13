@@ -265,13 +265,6 @@
     },
     {
       "kind": "cli",
-      "label": "the parts bucket's copy for checks",
-      "entry": "tools/web/storage_mirror.mjs",
-      "reach": "any flow under tools/web (browser.mjs imports it); node tools/web/storage_mirror.mjs serve [PORT] for a probe",
-      "area": "web"
-    },
-    {
-      "kind": "cli",
       "label": "build the meshes",
       "entry": "tools/build_meshes.py",
       "reach": "tools/build_meshes.py   (~45 min, needs vendor/ldraw)",
@@ -2368,13 +2361,6 @@
       "label": "carried fetch probe",
       "entry": "src/dev/carried_fetch_probe.gd",
       "reach": "godot --headless --path . --script src/dev/carried_fetch_probe.gd -- vendor/omr/files/21321-1.mpd   (a file's carried parts built on the web's path with the library withheld, its LDraw files fetched over HTTP from python's http.server on 8841: the same faces and bounds as the desktop's, nothing fetched twice or for a file that carries nothing, a file not there and a web page refused and said; -- --census OUT.json counts what vendor/omr's files need)",
-      "area": "model-io"
-    },
-    {
-      "kind": "cli",
-      "label": "askfirst probe",
-      "entry": "src/dev/askfirst_probe.gd",
-      "reach": "tools/probe.sh askfirst_probe   (headless: geometry served by a local server on 9947 under names the build has not got, the LDraw library withheld and served slowed beside it; an open with no job (the viewer's, start-up's) has every part not to hand on its way while its carried part's file is fetched, the model before still down, then lays it whole, each part asked once; a part that 404s before the lay is asked once, held, named in the open's answer and words and saved, one failing after it said by not_coming; a 212-part model opened with the bar's job has its parts on their way before its first slice, is laid in the file's order, and names the part not there, asked once; a save while parts are on their way writes every part)",
       "area": "model-io"
     },
     {
@@ -4534,13 +4520,6 @@
       "area": "view"
     },
     {
-      "kind": "cli",
-      "label": "heldsteps probe",
-      "entry": "src/dev/heldsteps_probe.gd",
-      "reach": "tools/probe.sh heldsteps_probe   (headless: a five-step model, own and someone else's, its 3062b missing from the library and then on its way from a local server; step merges, moves, deletes and a part taken off, saved and opened again: the held part on its own step with its STEP_NAME and ZOOM byte for byte, every other step as the same edit gives the model without it, and with the part back the model as it was; then a sub-model dragged in the tree into one holding it, a part moved on from the last step it follows, a part moved in the second copy of a sub-model placed twice, and someone else's file written whole, each with the held part alone in its own step and sub-model; HELDSTEPS_OUT=dir for the saves)",
-      "area": "view"
-    },
-    {
       "kind": "lib",
       "label": "a person's own keys kept in the system's keychain",
       "entry": "src/ai/key_store.gd",
@@ -4934,13 +4913,6 @@
     },
     {
       "kind": "cli",
-      "label": "localbricks probe",
-      "entry": "src/dev/localbricks_probe.gd",
-      "reach": "tools/relay_probe.sh localbricks   (a window, 1280x720; PROBE_SIZE=1400x900; -- --shots=DIR: through the sign-in screen with a password, 7140-1's lots marked by edit_collection missing= (each said was N, now M; none=true refused while marked) and refused past its inventory, Build from it 282 of 285, a restart and another device, two tabs at once one refused, a tab a newer build followed leaving the copy on this device, two copies 566 of 570 and one of them 284 of 285, signed out nothing held, the words in de/fr/es)",
-      "area": "collection"
-    },
-    {
-      "kind": "cli",
       "label": "print3mf probe",
       "entry": "src/dev/print3mf_probe.gd",
       "reach": "tools/probe.sh print3mf_probe [-- --hashes=FILE | --same-as=FILE]   (headless; the car as a 3MF from File, Export, 3D model… and export_model, read by tools/print3mf/check_3mf.py; every object closed (lib3mf IsManifoldAndOriented, every edge two triangles going opposite ways; as drawn, with Mesh3mf.close_up off, none), its triangles at most twice its parts'; a printed tile, a mirrored brick and a part with no BFC; the reader refusing a turned triangle, a colour that is none and a corner past its vertices; --hashes/--same-as compare the car's GLB and STL with another build's)",
@@ -4997,13 +4969,6 @@
     },
     {
       "kind": "cli",
-      "label": "the docs' pictures",
-      "entry": "tools/docs_shots.py",
-      "reach": "python3 tools/docs_shots.py [--only=ID,ID] [--app | --site] [--affected]   (docs-site/pictures/<page>.json: the app's through tools/probe.sh docs_shots_probe on the GPU from a locked snapshot, the site's by tools/web/docs_shots_flow.mjs; into docs-site/img/, with diff/index.html of what changed; tools/docs_site.py --check fails on one missing or not made by it)",
-      "area": "web"
-    },
-    {
-      "kind": "cli",
       "label": "fetchparts browser flow",
       "entry": "tools/web/fetchparts_flow.mjs",
       "reach": "node tools/web/fetchparts_flow.mjs --url=http://127.0.0.1:9821 [--base=http://127.0.0.1:9822 --rounds=2] [--house=H0useFl0w1] --out=DIR   (after tools/export.sh web and tools/web/serve.py build/web 9821 --parts assets/generated/parts --delay 0 --compressed --share F3tchP4rts=vendor/omr/files/42022-1_Rally-Racer.mpd --share H0useFl0w1=HOUSE (play_flow.mjs --write-house=HOUSE), and the build before likewise on 9822; local only: no part file by the engine's HTTPRequest, both whole, each longest frame no longer than the base's, the car's shapes in half the base's time)",
@@ -5032,6 +4997,20 @@
     },
     {
       "kind": "ui",
+      "label": "strengthen a weak joint",
+      "entry": "src/assembly/strengthen.gd",
+      "reach": "tools/probe.sh strengthen && PROBE_SIZE=1280x720 tools/probe.sh strengthen   (by hand: View, Stress; press a red or amber row: the fewest parts that make it hold, a plate across the seam, a brick under it or a second pin, drawn as a ghost; Strengthen puts them down, one undo; From my bricks, shown with a collection, makes it of the person's parts; a session: weakest_joints answers each such joint with its fix as an edit_model call, mine=true of their parts)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "strengthen probe",
+      "entry": "src/dev/strengthen_probe.gd",
+      "reach": "tools/probe.sh strengthen [-- --shots=DIR]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720, through the sign-in screen with a throwaway account (.env): ten models with a weak joint each, its row pressed, the fix offered and drawn as a ghost, Strengthen adds 1 to 3 parts with room and Stress weighs the joint above its working load with no new red, one undo back to the byte, weakest_joints' edit_model call made as given gives the same model to the byte; a tie, a prop and a pin among them; From my bricks with a collection; a picture of each ghost in user://strengthen or DIR)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
       "label": "moving renders kept as a GIF",
       "entry": "src/render/animated_gif.gd",
       "reach": "tools/probe.sh video2   (by hand: File, Render…, Kept as GIF, then Render turntable, Render animation or Render building: one 256-colour palette for the whole video, an ordered dither, at most 640 px across and made to fit 8 MB by fewer frames a second then a smaller picture; render_model format=gif over MCP; node tools/web/gif_plays.mjs FILE.gif says what Chromium decodes)",
@@ -5057,6 +5036,41 @@
       "entry": "src/dev/rarity_probe.gd",
       "reach": "tools/probe.sh rarity_probe -- --shots=DIR   (windowed, 1400x900, signed in through the gate with a throwaway account from .env: at 1400x900 and 1280x720, 3001 typed and clicked, Red's and a rare colour's tooltips rested on and read against its colours file, every swatch in sight, 7049b's Black; the three sentences in de, fr and es); python3 tools/minitest.py tests/test_collection.py (ten parts in a colour counted straight off Rebrickable's tables)",
       "area": "parts"
+    },
+    {
+      "kind": "cli",
+      "label": "the parts bucket's copy for checks",
+      "entry": "tools/web/storage_mirror.mjs",
+      "reach": "any flow under tools/web (browser.mjs imports it); node tools/web/storage_mirror.mjs serve [PORT] for a probe",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "askfirst probe",
+      "entry": "src/dev/askfirst_probe.gd",
+      "reach": "tools/probe.sh askfirst_probe   (headless: geometry served by a local server on 9947 under names the build has not got, the LDraw library withheld and served slowed beside it; an open with no job (the viewer's, start-up's) has every part not to hand on its way while its carried part's file is fetched, the model before still down, then lays it whole, each part asked once; a part that 404s before the lay is asked once, held, named in the open's answer and words and saved, one failing after it said by not_coming; a 212-part model opened with the bar's job has its parts on their way before its first slice, is laid in the file's order, and names the part not there, asked once; a save while parts are on their way writes every part)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "heldsteps probe",
+      "entry": "src/dev/heldsteps_probe.gd",
+      "reach": "tools/probe.sh heldsteps_probe   (headless: a five-step model, own and someone else's, its 3062b missing from the library and then on its way from a local server; step merges, moves, deletes and a part taken off, saved and opened again: the held part on its own step with its STEP_NAME and ZOOM byte for byte, every other step as the same edit gives the model without it, and with the part back the model as it was; then a sub-model dragged in the tree into one holding it, a part moved on from the last step it follows, a part moved in the second copy of a sub-model placed twice, and someone else's file written whole, each with the held part alone in its own step and sub-model; HELDSTEPS_OUT=dir for the saves)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "localbricks probe",
+      "entry": "src/dev/localbricks_probe.gd",
+      "reach": "tools/relay_probe.sh localbricks   (a window, 1280x720; PROBE_SIZE=1400x900; -- --shots=DIR: through the sign-in screen with a password, 7140-1's lots marked by edit_collection missing= (each said was N, now M; none=true refused while marked) and refused past its inventory, Build from it 282 of 285, a restart and another device, two tabs at once one refused, a tab a newer build followed leaving the copy on this device, two copies 566 of 570 and one of them 284 of 285, signed out nothing held, the words in de/fr/es)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
+      "label": "the docs' pictures",
+      "entry": "tools/docs_shots.py",
+      "reach": "python3 tools/docs_shots.py [--only=ID,ID] [--app | --site] [--affected]   (docs-site/pictures/<page>.json: the app's through tools/probe.sh docs_shots_probe on the GPU from a locked snapshot, the site's by tools/web/docs_shots_flow.mjs; into docs-site/img/, with diff/index.html of what changed; tools/docs_site.py --check fails on one missing or not made by it)",
+      "area": "web"
     },
     {
       "kind": "ui",

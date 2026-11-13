@@ -13757,6 +13757,119 @@ msgstr "Eine feine Linie, wo ein Teil an das nächste stößt, damit Reihen und 
 msgid "Off, the parts are drawn without their studs, each in its place: the shapes alone, and a big model drawn faster"
 msgstr "Aus: die Teile ohne ihre Noppen gezeichnet, jedes an seinem Platz: nur die Formen, und ein großes Modell schneller gezeichnet"
 
+# View, Stress's Strengthen (APP_UX8 #8, strengthen): the fewest parts that make a weak
+# joint hold, offered, drawn as a ghost and put down as one step; From my bricks.
+
+msgid "Strengthen"
+msgstr "Verstärken"
+
+msgid "Put the parts shown down: the joint then holds. One step to undo"
+msgstr "Die gezeigten Teile setzen: dann hält die Verbindung. Ein Schritt zum Rückgängigmachen"
+
+msgid "From my bricks"
+msgstr "Aus meinen Steinen"
+
+msgid "Make the fix of parts you own, in colours you have one of left"
+msgstr "Die Verstärkung aus Teilen, die du hast, in Farben, von denen dir eins übrig ist"
+
+msgid "Looking for the fewest parts that make it hold…"
+msgstr "Die wenigsten Teile werden gesucht, mit denen sie hält…"
+
+msgid "No fix of up to three parts has room here: brace it by hand."
+msgstr "Keine Verstärkung aus bis zu drei Teilen hat hier Platz: stütze sie von Hand ab."
+
+msgid "No fix of up to three parts has room here: hold it with studs by hand."
+msgstr "Keine Verstärkung aus bis zu drei Teilen hat hier Platz: halte sie von Hand mit Noppen."
+
+msgid "Strengthen adds %s"
+msgstr "Verstärken setzt %s"
+
+msgid "Then it holds about %s times its working load"
+msgstr "Dann hält sie etwa das %s-Fache ihrer Arbeitslast"
+
+msgid "Then it holds about %s times its working load."
+msgstr "Dann hält sie etwa das %s-Fache ihrer Arbeitslast."
+
+msgid "Then nothing levers it"
+msgstr "Dann hebelt sie nichts mehr ab"
+
+msgid "Then nothing levers it."
+msgstr "Dann hebelt sie nichts mehr ab."
+
+msgid "Then it is held square, on pins on two lines"
+msgstr "Dann sitzt sie fest, auf Pins in zwei Reihen"
+
+msgid "Then it is held square, on pins on two lines."
+msgstr "Dann sitzt sie fest, auf Pins in zwei Reihen."
+
+msgid "All from your bricks."
+msgstr "Alles aus deinen Steinen."
+
+msgid "Not all from your bricks: you have none of one left."
+msgstr "Nicht alles aus deinen Steinen: von einem hast du keins mehr übrig."
+
+msgid "a %s through the next two holes in line"
+msgstr "%s durch die nächsten zwei Löcher in einer Reihe"
+
+msgid "a %s under it, down to the ground"
+msgstr "%s darunter, bis zum Boden"
+
+msgid "a %s and a %s under it, down to the ground"
+msgstr "%s und %s darunter, bis zum Boden"
+
+msgid "a %s, a %s and a %s under it, down to the ground"
+msgstr "%s, %s und %s darunter, bis zum Boden"
+
+msgid "a %s under it, down to the baseplate"
+msgstr "%s darunter, bis zur Grundplatte"
+
+msgid "a %s and a %s under it, down to the baseplate"
+msgstr "%s und %s darunter, bis zur Grundplatte"
+
+msgid "a %s, a %s and a %s under it, down to the baseplate"
+msgstr "%s, %s und %s darunter, bis zur Grundplatte"
+
+msgid "a %s under it, down to the %s under it"
+msgstr "%s darunter, bis auf %s darunter"
+
+msgid "a %s and a %s under it, down to the %s under it"
+msgstr "%s und %s darunter, bis auf %s darunter"
+
+msgid "a %s, a %s and a %s under it, down to the %s under it"
+msgstr "%s, %s und %s darunter, bis auf %s darunter"
+
+msgid "a %s across the seam, onto the %s beside it"
+msgstr "%s quer über die Fuge, auf %s daneben"
+
+msgid "a %s across the seam, onto the %s beside it, on a %s"
+msgstr "%s quer über die Fuge, auf %s daneben, auf %s"
+
+msgid "a %s across the seam, onto the %s beside it, on a %s and a %s"
+msgstr "%s quer über die Fuge, auf %s daneben, auf %s und %s"
+
+msgid "a %s over the seam, onto the %s beside it"
+msgstr "%s über der Fuge, auf %s daneben"
+
+msgid "a %s over the seam, onto the %s beside it, on a %s"
+msgstr "%s über der Fuge, auf %s daneben, auf %s"
+
+msgid "a %s over the seam, onto the %s beside it, on a %s and a %s"
+msgstr "%s über der Fuge, auf %s daneben, auf %s und %s"
+
+msgid "a %s under the seam, into the %s beside it"
+msgstr "%s unter der Fuge, in %s daneben"
+
+msgid "strengthened: %s"
+msgstr "verstärkt: %s"
+
+msgid "%s takes it back"
+msgstr "%s nimmt es zurück"
+
+msgid "Strengthen: %s"
+msgstr "Verstärken: %s"
+
+msgid "the model changed: its fix is looked for again"
+msgstr "das Modell hat sich geändert: die Verstärkung wird neu gesucht"
 # The beta's welcome after signing up, and its row in Account (betajoin)
 msgid "Open beta"
 msgstr "Offene Beta"

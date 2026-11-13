@@ -109,8 +109,17 @@ ui:x-ray
 
 **View › Stress** colours each part by how near its weakest joint is to giving way: red past what its studs hold, amber close. Point at a part to read what it carries; the panel lists the weakest, worst first. With the assistant on, a red part's right-click menu has **Ask Claude to brace this…**.
 
+### Strengthen {#strengthen}
+
+Choose a red or amber joint in Stress's panel and it looks for the fewest parts that make that joint hold, the way a builder fixes one: a plate across the seam onto the part beside it, a brick or a short column under it down to the ground, or a second pin through the next two holes in line. The parts are drawn as a ghost where they would go, with what they do: "Strengthen adds a Plate 1 x 2 across the seam, onto the Brick 1 x 4 beside it. Then it holds about 2.6 times its working load." Press **Strengthen** to put them down; one undo takes them off again. Each fix has room where it goes and is weighed with the whole model before it is offered, so it never makes another joint weak. When a joint has no fix of up to three parts, the panel says so.
+
+If you have a collection, **From my bricks** makes the fix of parts you own, in colours you still have one of after the model's own, and says when a part is not yours.
+
+An assistant gets the same fixes from weakest_joints: each red or amber joint comes with its fix and the edit_model call that puts it down, and `"mine": true` makes them of your parts.
+
 <!-- covers
 ui:stress view
+ui:strengthen a weak joint
 -->
 
 ## Stud directions {#studs}

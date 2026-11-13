@@ -108,6 +108,12 @@ var scenery_ids: Dictionary = {}
 var travels: Dictionary = {}
 ## Grab's degrees for a turn of the driver here: its line may run the other way.
 var _grab_sign: float = 1.0
+## Body -> a drag holding it on a joint this reading has no equation for (a
+## hinge, a click hinge, a clip on a bar, a stud), or null where a drag does
+## not turn it: read once a body is asked about ([method can_drive]).
+var _drags: Dictionary = {}
+## The joint readings whose universal joints this reading has taken in.
+var _universals_from: Dictionary = {}
 ## Each motor's brick id -> its part, and each body a motor turns -> the
 ## motor's brick id.
 var motors: Dictionary = {}
@@ -154,9 +160,24 @@ static func read(bricks: Array, from: PartLibrary, scenery: Dictionary = {}) -> 
 			else "what is held on it"
 		if named_base:
 			out.base_said += ", with the sub-assemblies named as its frame"
+	out._base_head = out.base_said
+	out._say_roots()
 	out._name_bodies(labels)
 	out._find_motors()
 	return out
+
+
+## [member base_said] with the pieces that stand apart from the base, each on
+## a frame of its own.
+func _say_roots() -> void:
+	base_said = _base_head
+	if not model.roots.is_empty():
+		base_said += "; %s apart from it, %s" % [
+			"a piece" if model.roots.size() == 1 else "%d pieces" % model.roots.size(),
+			"held by its largest part" if model.roots.size() == 1 else "each held by its largest part"]
+
+
+var _base_head: String = ""
 
 
 ## [param mesh] with a motor's output, the axle hole in its face, read as a
@@ -209,11 +230,18 @@ func _find_motors() -> void:
 ## to the frame only by a pin or an axle the frame lists, which turns in it
 ## with what is on it. The telescope's Stand lists the friction pin its
 ## tilt chain's idler is read fixed to (docs/MECHANISMS.md, section 27):
-## held whole, the frame held the idler, and the chain read locked.
+## held whole, the frame held the idler, and the chain read locked. Nor a
+## body that turns on a joint the parts record: the name holds what the
+## parts do not (a turntable's base on a studless beam), and does not
+## overrule an axle in a round hole. A real set's "Chassis" is a stage of
+## its build, gears, steering and wheels and all: held body by body, 8448-1's
+## steering and gearbox stood still with it (APP_UX8 kinefuncs).
 static func _frame_held(list: Array, held: Array, framed: Dictionary, from: PartLibrary) -> Array:
 	var loose: Mechanism = Mechanism.build(list, held)
 	var out: Array = held.duplicate()
 	for body: int in loose.bodies:
+		if loose.joint_of(body) != null:
+			continue
 		var keys: Array = loose.bodies[body]
 		var holds: bool = false
 		var all_framed: bool = true
@@ -356,9 +384,41 @@ static func planet_in(name: String) -> String:
 # -- driving ------------------------------------------------------------------------
 
 
-## Whether a body can be driven: it turns on a joint of its own.
+## Whether a body can be driven: it turns on a joint of its own, in this
+## reading or, held as a drag holds it ([method hold_with]), on a hinge, a
+## clip or a stud a drag turns it on, as a person's drag on it would.
 func can_drive(body: int) -> bool:
-	return body >= 0 and body != model.ground and model.joint_of(body) != null
+	return _on_joint(body) or (body >= 0 and not model.is_frame(body) and _drag_of(body) != null)
+
+
+## Whether [param body] turns on a joint of this reading's own.
+func _on_joint(body: int) -> bool:
+	return body >= 0 and not model.is_frame(body) and model.joint_of(body) != null
+
+
+## The drag that turns [param body] where this reading has no joint for it:
+## its part taken hold of as a person's drag takes it, turning on its line;
+## null when a drag would not turn it, or nothing is held ([method hold_with]).
+func _drag_of(body: int) -> Grab:
+	if _drags.has(body):
+		return _drags[body]
+	_drags[body] = null
+	if world == null or builder == null or bodies == null or not model.bodies.has(body):
+		return null
+	for key: int in model.bodies[body]:
+		if not bodies.body_of.has(key) or world.get_brick(key) == null:
+			continue
+		var held := Grab.new()
+		held.world = world
+		held.builder = builder
+		held.library = library
+		held.bodies = bodies
+		held.shared_mechanism = model
+		held.begin(key, world.get_brick(key).transform.origin)
+		if held.state == "moves" and held.mode == "turn":
+			_drags[body] = held
+		break
+	return _drags[body]
 
 
 ## The body the model marks as its driver: what a motor's output turns, else
@@ -368,11 +428,9 @@ func marked() -> int:
 		if can_drive(body):
 			return body
 	for body: int in names:
-		if not can_drive(body):
-			continue
 		var lower: String = str(names[body]).to_lower()
 		for mark: String in MARKS:
-			if lower.contains(mark):
+			if lower.contains(mark) and can_drive(body):
 				return body
 	return -1
 
@@ -389,7 +447,7 @@ func best() -> int:
 	var locked: int = -1
 	for gear: Mechanism.Gear in model.gears:
 		var body: int = gear.body
-		if tried.has(body) or not can_drive(body):
+		if tried.has(body) or not _on_joint(body):
 			continue
 		tried[body] = true
 		if tried.size() > 24:
@@ -423,16 +481,20 @@ func drive(body: int) -> Dictionary:
 	rates.clear()
 	turning.clear()
 	moving.clear()
+	followers.clear()
+	holds.clear()
 	if not can_drive(body):
 		solved = {"ok": false, "locked": false, "said": "that part turns on nothing",
 			"culprits": [], "meshes": [], "free": [], "freedoms": 0}
 		return solved
+	if not _on_joint(body):
+		return _drive_by_drag(body)
 	solved = model.solve({body: 1.0})
 	var unit: float = model.spin(body, axis_of(body))
 	if absf(unit) < 1e-12:
 		unit = 1.0
 	for one: int in model.bodies:
-		if one == model.ground or model.floating.has(one):
+		if model.is_frame(one) or model.floating.has(one):
 			continue
 		var rate: float = model.spin(one, axis_of(one)) / unit
 		rates[one] = rate
@@ -441,10 +503,211 @@ func drive(body: int) -> Dictionary:
 	turning.sort_custom(func(a: int, b: int) -> bool:
 		return absf(float(rates[a])) > absf(float(rates[b])))
 	for one: int in model.bodies:
-		if one != model.ground and not model.floating.has(one) and model.omega(one).length() > STILL:
+		if not model.is_frame(one) and not model.floating.has(one) and model.omega(one).length() > STILL:
 			moving.append_array(model.bodies[one])
 	_take_hold(body)
+	if grab == null:
+		_hold_train(body)
+		_follow(body)
 	return solved
+
+
+## The loops the gear train turns on beyond its driver, each held by a drag
+## on the turning body that closes it: a crankshaft's rods and pistons, a
+## pinion's rack and what the rack steers, an actuator's rod on the screw a
+## gear turns. The gear reading turns the train and cannot close them: the
+## wheels of 42063-1's bike turned and its boxer's pistons stood, the
+## steering wheel turned and the rack stood (APP_UX8 kinefuncs). Each
+## {grab, sign (the grab's degrees for a turn of the driver, over 360),
+## rates (the tree's [rate, free] as the grab solved it), keys (brick id ->
+## true: what its loop places)}.
+var holds: Array = []
+## Drags asked at most this many bodies of a train, and for no longer than
+## this, ms: each reads its section and its loop.
+const HOLDS_MOST := 6
+const HOLDS_MS := 3000.0
+
+
+## [member holds] for a drive of [param driver_body] by the gear reading.
+func _hold_train(driver_body: int) -> void:
+	holds.clear()
+	if world == null or builder == null or bodies == null or not bool(solved.get("ok", false)):
+		return
+	var turns: Callable = func(one: int) -> bool:
+		return not model.is_frame(one) and not model.floating.has(one) \
+			and model.omega(one).length() > STILL
+	# The body a loop is driven by, from a body in it: the one turning
+	# against something that does not turn (a crank, not its rod), as a
+	# person would take hold of it.
+	var input_of: Callable = func(one: int) -> int:
+		for _n: int in 16:
+			var joint: Mechanism.Joint = model.joint_of(one)
+			if joint == null or not bool(turns.call(joint.parent)):
+				break
+			one = joint.parent
+		return one if bool(turns.call(one)) else -1
+	# The bodies a drag would hold a loop by: a pinion's whose rack the
+	# reading leaves standing (an actuator's screw is one), and an end of a
+	# joint that closes a loop where the drag's joints read it.
+	var asked: Array = []
+	for mesh: Racks.Pinion in bodies.racks():
+		if not model.parts.has(mesh.gear) or not model.parts.has(mesh.rack) \
+				or bool(turns.call(model.body_of(mesh.rack))):
+			continue
+		var one: int = int(input_of.call(model.body_of(mesh.gear)))
+		if one >= 0 and one != driver_body and not asked.has(one):
+			asked.append(one)
+	for link: Bodies.Link in bodies.closing:
+		for pair: Array in link.pairs:
+			for key: int in pair:
+				if not model.parts.has(key):
+					continue
+				var one: int = int(input_of.call(model.body_of(key)))
+				if one >= 0 and one != driver_body and not asked.has(one):
+					asked.append(one)
+	if asked.is_empty():
+		return
+	var began: int = Time.get_ticks_msec()
+	var driver_rates: Array = _tree_rates()
+	var placed_by: Dictionary = {}   ## brick id -> true, held already
+	for one: int in asked:
+		if holds.size() >= HOLDS_MOST or float(Time.get_ticks_msec() - began) > HOLDS_MS:
+			break
+		var joint: Mechanism.Joint = model.joint_of(one)
+		if joint == null:
+			continue
+		var rate: float = joint.rate
+		var part: int = -1
+		for key: int in model.bodies.get(one, []):
+			if bodies.body_of.has(key) and world.get_brick(key) != null and not placed_by.has(key):
+				part = key
+				break
+		if part < 0:
+			continue
+		var held := Grab.new()
+		held.world = world
+		held.builder = builder
+		held.library = library
+		held.bodies = bodies
+		held.shared_mechanism = model
+		held.begin(part, world.get_brick(part).transform.origin)
+		var held_rates: Array = _tree_rates()
+		_set_tree_rates(driver_rates)
+		if held.state != "moves" or held.mode != "turn" or held.linkage == null \
+				or not Bodies._same_line(held.pivot, held.axis.normalized(), joint.point, joint.way.normalized()):
+			continue
+		var sign: float = rate * (1.0 if held.axis.dot(joint.way) > 0.0 else -1.0)
+		var hold: Dictionary = {"grab": held, "sign": sign, "rates": held_rates, "keys": {}}
+		# What its loop places that the gear reading does not place so: the
+		# drag's own section, its loop and what hangs on them, not the train
+		# the gear reading turns with it.
+		var step: Dictionary = _hold_pose(hold, 1.0 / 72.0)
+		for key: Variant in step.keys():
+			if not model.rest.has(key):
+				step.erase(key)
+		var gear_at: Dictionary = model.pose_of(TAU / 72.0, step)
+		for key: Variant in step:
+			if held.coupled.has(key) or placed_by.has(key):
+				continue
+			var one_at: Transform3D = step[key]
+			var other_at: Transform3D = gear_at[key]
+			var turned: Basis = one_at.basis.orthonormalized() * other_at.basis.orthonormalized().inverse()
+			if one_at.origin.distance_to(other_at.origin) > 0.05 or turned.get_rotation_quaternion().get_angle() > 0.002:
+				(hold["keys"] as Dictionary)[key] = true
+		if (hold["keys"] as Dictionary).is_empty():
+			continue
+		# The whole of what it moves is its, as one: a rod it swings with the
+		# piston it pushes.
+		for key: Variant in step:
+			if not held.coupled.has(key) and not placed_by.has(key):
+				(hold["keys"] as Dictionary)[key] = true
+				placed_by[key] = true
+		holds.append(hold)
+	for hold: Dictionary in holds:
+		for key: Variant in hold["keys"]:
+			if not moving.has(key):
+				moving.append(key)
+
+
+## The tree's joints' rates as solved: [rate, free] for each, in order.
+func _tree_rates() -> Array:
+	var out: Array = []
+	for joint: Mechanism.Joint in model.tree:
+		out.append([joint.rate, joint.free])
+	return out
+
+
+func _set_tree_rates(rates: Array) -> void:
+	for n: int in mini(rates.size(), model.tree.size()):
+		model.tree[n].rate = float(rates[n][0])
+		model.tree[n].free = bool(rates[n][1])
+
+
+## Where [param hold]'s drag places what it moves with the driver [param
+## turns] turns: the gear reading solved as that drag solved it while it is
+## asked, and put back after.
+func _hold_pose(hold: Dictionary, turns: float) -> Dictionary:
+	var held: Grab = hold["grab"]
+	var mine: Array = _tree_rates()
+	_set_tree_rates(hold["rates"])
+	var degrees: float = turns * 360.0 * float(hold["sign"])
+	_walk_loop(deg_to_rad(degrees), held.linkage)
+	var out: Dictionary = held.transforms_at(degrees)
+	_set_tree_rates(mine)
+	return out
+
+
+## What hangs on a body the gear reading turns by a joint it has no equation
+## for, each with the moving part that carries it: brick id -> carrier's id.
+## A loader's bucket on its click hinge at the arms' ends, a flap on a clip:
+## the gear reading reads such a part floating, or as a piece of its own,
+## and left it where it was built while the arms rose (8260-1, 8418-1); it
+## goes round with what carries it, as a drag carries it (Grab's followers).
+var followers: Dictionary = {}
+
+
+## [member followers] for a drive of [param body], from the joints a drag
+## reads: the rest of each moving part's rigid body, and every body hung
+## beyond it, but what the gear reading itself places on the driver's piece
+## (its frame, a gear it holds still), and nothing beyond that.
+func _follow(body: int) -> void:
+	followers.clear()
+	if bodies == null or moving.is_empty():
+		return
+	var piece: int = model.frame_under(body)
+	var mine: Dictionary = {}
+	var carrier_of: Dictionary = {}   ## Bodies body -> a moving part in it
+	for key: int in moving:
+		mine[key] = true
+		var one: int = int(bodies.body_of.get(key, -1))
+		if one >= 0 and not carrier_of.has(one):
+			carrier_of[one] = key
+	var rides: Callable = func(key: int) -> bool:
+		if mine.has(key):
+			return true
+		if not model.rest.has(key):
+			return false
+		var under: int = model.frame_under(model.body_of(key))
+		return under < 0 or under != piece
+	for one: int in carrier_of:
+		var carrier: int = carrier_of[one]
+		var stack: Array = [one]
+		while not stack.is_empty():
+			var at: int = stack.pop_back()
+			for key: int in bodies.members.get(at, PackedInt64Array()):
+				if not mine.has(key) and not followers.has(key) and bool(rides.call(key)):
+					followers[key] = carrier
+			for kid: int in bodies.children.get(at, []):
+				if carrier_of.has(kid):
+					continue
+				var all_ride: bool = true
+				for key: int in bodies.members.get(kid, PackedInt64Array()):
+					if model.rest.has(key) and not bool(rides.call(key)):
+						all_ride = false
+						break
+				if all_ride:
+					stack.append(kid)
+	moving.append_array(followers.keys())
 
 
 # -- Grab's model --------------------------------------------------------------------
@@ -457,10 +720,38 @@ func hold_with(in_world: BrickWorld, by: Builder, joints: Bodies = null) -> void
 	world = in_world
 	builder = by
 	bodies = joints
+	_drags.clear()
 	if bodies == null and world != null and builder != null:
 		bodies = Bodies.read(world, library, builder.lattice, scenery_ids, builder.locked.duplicate())
 		bodies.racks()
 		bodies.revision = world.revision
+	# The universal joints a drag's joints find, in this reading as GrabDrag
+	# puts them in its own: a drive shaft through two of them turns what is at
+	# its far end (42063-1's boxer, its pistons at the end of the swing arm's
+	# shaft, stood while the wheel turned).
+	if bodies != null and model.universals.is_empty() and not _universals_from.has(bodies):
+		_universals_from[bodies] = true
+		model.join_universals(bodies.universals(), bodies)
+		model.join_floating(bodies)
+		_say_roots()
+
+
+## Drive [param body] as a drag on it turns it, on a joint this reading has
+## no equation for (a door on its hinge, a flap on a clip): every pose is the
+## drag's, gears it drives turning by their teeth, a loop it closes as the
+## loop allows, and every rate read off those poses.
+func _drive_by_drag(body: int) -> Dictionary:
+	grab = _drag_of(body)
+	grab_note = ""
+	travels.clear()
+	_grab_sign = 1.0
+	solved = {"ok": true, "locked": false, "said": "", "culprits": [], "meshes": [], "free": [],
+		"freedoms": 0}
+	moving = (_grab_pose(0.01) as Dictionary).keys()
+	_read_loop(body)
+	solved["said"] = "turned as a drag turns it, %s" % (grab.link.words() if grab.link != null
+		else "on its joint")
+	return solved
 
 
 ## Take hold of [param body] as a drag would: through this gear reading, on
@@ -548,8 +839,9 @@ func _grab_pose(turns: float) -> Dictionary:
 ## A loop is solved from the pose last kept, in steps: kept on the way to
 ## [param value] (radians), a step at most [constant LOOP_LEG], so a scrub
 ## across the cycle follows the loop round as a drag does.
-func _walk_loop(value: float) -> void:
-	var loop: Linkage = grab.linkage
+func _walk_loop(value: float, loop: Linkage = null) -> void:
+	if loop == null:
+		loop = grab.linkage
 	for _n: int in 4096:
 		var from: float = loop.kept_value()
 		if absf(value - from) <= LOOP_LEG:
@@ -575,17 +867,22 @@ func _read_loop(body: int) -> void:
 	var turned: Dictionary = {}   ## body -> [least, most] turn
 	var along: Dictionary = {}    ## body -> [least, most, last] LDU on its line
 	var reached: float = 0.0
-	var start: Array = grab.linkage.kept_state()
+	var by_joint: bool = _on_joint(body)
+	var loop: Linkage = grab.linkage
+	var start: Array = loop.kept_state() if loop != null else []
 	for n: int in frames + 1:
 		var turns: float = float(n) / float(frames)
 		var at: Dictionary = _grab_pose(turns)
-		var got: float = absf(grab.linkage.reach(deg_to_rad(turns * 360.0 * _grab_sign)))
+		var got: float = absf(loop.reach(deg_to_rad(turns * 360.0 * _grab_sign))) if loop != null \
+			else absf(deg_to_rad(turns * 360.0))
 		if n > 0 and got < absf(deg_to_rad(turns * 360.0)) - 1e-4:
 			# The loop stops there: a rack at the end of its rod.
 			break
 		reached = turns
 		for one: int in model.bodies:
-			if one == model.ground or model.floating.has(one):
+			# A drag moves what this reading reads floating too: a door on its
+			# hinge, and what it carries.
+			if model.is_frame(one) or (model.floating.has(one) and by_joint):
 				continue
 			var key: int = model.bodies[one][0]
 			if not at.has(key):
@@ -604,7 +901,8 @@ func _read_loop(body: int) -> void:
 				if model.joint_of(one) != null else 0.0
 			var reach_span: Array = along.get(one, [0.0, 0.0, 0.0])
 			along[one] = [minf(reach_span[0], slid), maxf(reach_span[1], slid), slid]
-	grab.linkage.restore_kept(start)
+	if loop != null:
+		loop.restore_kept(start)
 	rates.clear()
 	turning.clear()
 	var unit: float = maxf(reached, 1.0 / float(frames))
@@ -645,13 +943,18 @@ func _read_loop(body: int) -> void:
 		solved["locked"] = false
 		solved["meshes"] = []
 		solved["culprits"] = []
-	solved["said"] = "moved as a drag moves it: %s" % grab.linkage.said()
+	if loop != null:
+		solved["said"] = "moved as a drag moves it: %s" % loop.said()
 
 
 ## A body's line, read one way for every body: pointing up, else right,
 ## else towards the front, so that two on parallel lines read alike.
 func axis_of(body: int) -> Vector3:
 	var way: Vector3 = model.joint_axis(body).normalized()
+	if model.joint_of(body) == null and grab != null and not _on_joint(driver):
+		# Driven by a drag on a joint this reading has none for: what it moves
+		# with no joint here turns on the drag's line.
+		way = grab.axis.normalized()
 	for n: int in [1, 0, 2]:
 		if absf(way[n]) > 1e-4:
 			return way if way[n] > 0.0 else -way
@@ -728,7 +1031,19 @@ func placed(turns: float) -> Dictionary:
 	var all: Dictionary = model.pose(turns * TAU)
 	var out: Dictionary = {}
 	for key: int in moving:
-		out[key] = all[key]
+		if not followers.has(key) and all.has(key):
+			out[key] = all[key]
+	for hold: Dictionary in holds:
+		var at: Dictionary = _hold_pose(hold, turns)
+		for key: Variant in hold["keys"]:
+			if at.has(key):
+				out[key] = at[key]
+	for key: int in followers:
+		var carrier: int = followers[key]
+		if not out.has(carrier):
+			continue
+		out[key] = ((out[carrier] as Transform3D) * (model.rest[carrier] as Transform3D).affine_inverse()) \
+			* (model.rest[key] as Transform3D)
 	return out
 
 

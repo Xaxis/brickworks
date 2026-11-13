@@ -1040,7 +1040,13 @@ All of these are in `tools/check.sh`.
   (`Assistant.recounted`): "Done. 3 bricks now; 1 other copy of its
   sub-assembly followed it." where it said "4 bricks now" of the 3 a removal
   from one of two copies left (cffix2; `copyfaults_probe` twin_every checks
-  every session edit's count). The socket's own tools too:
+  every session edit's count). And judged again: whether it stands, what
+  broke and its sizes are of the model the follow left, not the one copy
+  edited (`Assistant.followed_answer`, `_judged_again`; smalls1), where
+  "it tips over" was said of a model balanced again once the other arm
+  followed: `tools/probe.sh follow_reply_probe` (edit_model on one of two
+  arms; 3 parts, nothing tips, the sizes `_measured` gives, and
+  check_design after it agrees). The socket's own tools too:
   review_model with a feature lays a piece, save_model can hand the next
   feature back laid, and clear_model begins a new model as New does, its one
   step putting the old one back. That step is the clear's own
