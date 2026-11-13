@@ -1,8 +1,13 @@
 // The beta's bar (betahome, 2026-11-09), on every page while the beta is
 // open: Open beta (/beta, the hub), Report a bug, and Join (to the hub's
-// way in, where what joining agrees to is said) or "You’re a tester";
-// hidden for a day by its ×. It floats at the window's foot and moves
-// nothing (docs/DESIGN_SYSTEM.md, Beta bar). web/theme.js asks for it on
+// way in, where what joining agrees to is said) or "You’re a tester". It
+// floats at the window's foot and moves nothing (docs/DESIGN_SYSTEM.md,
+// Beta bar). Its × hides it in this browser until the person shows it
+// again (bugbar, 2026-11-13: before, a day went by with nothing to say
+// where it went): a toast says so, with Undo and the way to Settings,
+// whose Beta row has "Show the beta bar on every page"; Report a bug stays
+// in the account menu and Menu (web/follow.js) and the footer's Send
+// feedback. web/theme.js asks for it on
 // every page, server pages too, but not on an embed's card, the consent
 // page, or for ten minutes after the beta was heard off. The homepage
 // (web/landing.js) and the hub (web/beta.js) take the beta from here:
@@ -18,15 +23,21 @@
 //   reportBug(from)  web/bugreport.js's dialog over the page
 //                    (window.brickworksReportBug), loaded on the first
 //                    press; without it, Send feedback's, as a bug
+//   barShown()       whether this browser shows the bar while the beta is
+//                    open: not hidden by its × or in Settings
+//   showBar(on)      shown or hidden, at once, here and in the other tabs;
+//                    told on window as "brickworks:betabar" {shown}
 //
 // Every word goes on the page as text.
 import { askToSignIn, call, email, signedIn } from "/account.js";
 import { iconHtml, langAt, say, told } from "/card.js";
+import { toast } from "/toast.js";
 
 const KEY = "brickworks.beta";
+// "off": hidden by its × or in Settings, until shown again. A number is a
+// day's hiding from before (the time it ended), kept to its end.
 const HIDDEN = "brickworks.betabar.hidden";
 const FRESH = 10 * 60 * 1000;
-const DAY = 24 * 60 * 60 * 1000;
 const root = document.documentElement;
 
 function read(key) {
@@ -197,7 +208,39 @@ export async function reportBug(from = "bar") {
 
 // -- the bar --------------------------------------------------------------
 
-const hiddenNow = () => Number(read(HIDDEN) || 0) > Date.now();
+/// Whether this browser shows the bar while the beta is open.
+export function barShown() {
+  const hidden = read(HIDDEN);
+  return !(hidden === "off" || (typeof hidden === "number" && hidden > Date.now()));
+}
+
+/// The bar shown ([on]) or hidden in this browser, at once: drawn or taken
+/// away on this page, the other tabs told by the storage, and this page's
+/// parts (Settings' switch) by "brickworks:betabar".
+export function showBar(on) {
+  write(HIDDEN, on ? null : "off");
+  dispatchEvent(new CustomEvent("brickworks:betabar", { detail: { shown: Boolean(on) } }));
+  return betaState().then(drawBar);
+}
+
+/// Hidden from its ×: said in a toast, with Undo and where to show it
+/// again, and the keyboard on Undo (or the page, once the toast is gone).
+function hideFromBar() {
+  const main = document.getElementById("main");
+  if (main) {
+    main.tabIndex = -1;
+    main.focus({ preventScroll: true });
+  }
+  showBar(false);
+  const settings = made("a", { href: `${langAt()}/settings#beta-part`, textContent: say("Settings") });
+  const said = signedIn() ? say("Beta bar hidden. Show it again in {settings}. Report a bug is in your account menu.")
+    : say("Beta bar hidden. Show it again in {settings}.");
+  const words = said.split(/(\{settings\})/).filter(Boolean).map((piece) => (piece === "{settings}" ? settings : piece));
+  toast(words, { focus: true, back: main, action: { label: say("Undo"), run: async () => {
+    await showBar(true);
+    document.querySelector("#beta-bar [data-beta-hide]")?.focus({ preventScroll: true });
+  } } });
+}
 
 function made(tag, props = {}, ...children) {
   const one = Object.assign(document.createElement(tag), props);
@@ -223,7 +266,7 @@ function third(heard) {
 
 function drawBar(heard) {
   let bar = document.getElementById("beta-bar");
-  if (heard.beta !== "open" || hiddenNow()) {
+  if (heard.beta !== "open" || !barShown()) {
     bar?.remove();
     delete root.dataset.betabar;
     return;
@@ -241,18 +284,10 @@ function drawBar(heard) {
     report.addEventListener("click", () => reportBug("bar"));
     const hide = made("button", { type: "button", className: "icon-btn small" });
     hide.innerHTML = iconHtml("close");
-    hide.setAttribute("aria-label", say("Hide the beta bar for a day"));
+    hide.setAttribute("aria-label", say("Hide the beta bar"));
+    hide.title = say("Hide the beta bar");
     hide.dataset.betaHide = "";
-    hide.addEventListener("click", () => {
-      write(HIDDEN, Date.now() + DAY);
-      // Its × gone with it, the keyboard carries on from the page.
-      const main = document.getElementById("main");
-      if (main) {
-        main.tabIndex = -1;
-        main.focus({ preventScroll: true });
-      }
-      drawBar(heard);
-    });
+    hide.addEventListener("click", hideFromBar);
     bar.append(badge, report, made("span", { className: "third" }), hide);
     document.body.append(bar);
     root.dataset.betabar = "shown";
@@ -283,8 +318,9 @@ async function start() {
   };
   addEventListener("resize", refit, { passive: true });
   document.fonts?.ready.then(refit);
-  // Another tab joined, signed in or out, or hid the bar.
+  // Another tab joined, signed in or out, or hid or showed the bar.
   addEventListener("storage", (event) => {
+    if (event.key === HIDDEN) dispatchEvent(new CustomEvent("brickworks:betabar", { detail: { shown: barShown() } }));
     if (event.key === KEY || event.key === HIDDEN) betaState().then(drawBar);
   });
 }

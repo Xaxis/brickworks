@@ -360,6 +360,11 @@ a:focus-visible { border-radius: var(--r-1); }
 .account-part nav a { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); }
 .account-part nav a[aria-current="page"] { color: var(--ink); background: var(--panel-hi); }
 .menu .account-part { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
+/* The console, for the site's owner alone (web/follow.js adminPart): at
+   the menu's foot above Sign out, under a line, its gauge before its name. */
+.menu-owner { display: grid; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
+.menu-owner a { display: flex; align-items: center; gap: var(--s-2); }
+.menu-owner .icon { width: 18px; height: 18px; }
 /* Sign out last, a menu's button as any other, under a line. */
 .menu-list > :has(+ .sign-out) { padding-bottom: 12px; border-bottom: 1px solid var(--line); }
 .menu-list > .sign-out { margin-top: 6px; }
@@ -1160,6 +1165,22 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 	transform: translate(-50%, 12px); opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s;
 }
 .toast.shown { transform: translate(-50%, 0); opacity: 1; }
+/* With an action (web/toast.js, a snackbar): what was just done, a link to
+   where it is changed again, and Undo, a button of the toast's own colours;
+   it takes the pointer while it is shown, and wraps on a phone. */
+.toast.act {
+	display: flex; align-items: center; gap: var(--s-2) var(--s-3); width: max-content; padding: 6px 6px 6px 18px;
+	border-radius: var(--r-3); font-weight: 500; line-height: 1.4;
+}
+.toast.act.shown { pointer-events: auto; }
+.toast.act .words { flex: 1 1 auto; min-width: 0; }
+.toast.act a { color: inherit; font-weight: 650; text-decoration: underline; text-underline-offset: 2px; }
+.toast-act {
+	flex: none; min-height: 36px; padding: 0 14px; border: 1px solid color-mix(in srgb, var(--bg) 45%, transparent);
+	border-radius: var(--control-radius); background: transparent; color: inherit; font: inherit; font-weight: 700; cursor: pointer;
+}
+.toast-act:hover { background: color-mix(in srgb, var(--bg) 16%, transparent); }
+.toast.act :focus-visible { outline: 2px solid var(--bg); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
 
 /* The beta's bar (web/betabar.js), on every page while the beta is open:

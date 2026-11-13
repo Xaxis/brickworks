@@ -1,5 +1,6 @@
 // Your settings, /settings (settings.html): the beta while it is open (join
-// its testers in one press, or leave in one: api/_beta.js), the theme, what Brickworks
+// its testers in one press, or leave in one: api/_beta.js; and whether its
+// bar is shown on every page, signed out too: web/betabar.js), the theme, what Brickworks
 // emails you, orangecheck linked or not (api/orangecheck.js), your age
 // answer, whom your profile shows you follow and whether it shows the
 // models you liked (supabase/avatars.sql), the AI apps that may work
@@ -273,10 +274,32 @@ function monthSaid({ early, application } = {}) {
   return say("We have what you told us, and email you once we decide on your month of Pro.");
 }
 
-/// The beta's row asked for and drawn.
+/// The beta's row asked for and drawn, its choice of the bar with it.
 async function beta() {
   const answer = await call("/api/plans?op=beta");
   drawBeta(answer.status === 200 ? answer.body : null);
+  if (!$("beta-part").hidden) await barChoice();
+}
+
+// The beta's bar (web/betabar.js), shown on every page or not in this
+// browser (bugbar, 2026-11-13): the Beta row's choice signed in, a row of
+// its own signed out, each as it stands now and following the bar's × and
+// the other tabs. Asked for only while the beta may be open, as theme.js
+// asks for the bar: heard off, this page loads none of it.
+let barKit = null;
+function barChoice() {
+  if (window.brickworksBeta === "off") return Promise.resolve(null);
+  barKit ||= import("/betabar.js").then((kit) => {
+    const boxes = [...document.querySelectorAll("input[data-beta-bar-show]")];
+    const draw = () => {
+      for (const box of boxes) box.checked = kit.barShown();
+    };
+    for (const box of boxes) box.addEventListener("change", () => kit.showBar(box.checked));
+    addEventListener("brickworks:betabar", draw);
+    draw();
+    return kit;
+  }).catch(() => null);
+  return barKit;
 }
 
 /// Join or leave from the row, in one press: [op] beta_join or beta_leave.
@@ -324,6 +347,9 @@ async function load() {
     $("signed-out").hidden = false;
     $("signed-in").hidden = true;
     document.documentElement.dataset.settings = "signed-out";
+    // The bar's own row, under the sign-in, while the beta is open.
+    const kit = await barChoice();
+    $("beta-bar-out").hidden = !kit || (await kit.betaState()).beta !== "open";
     return;
   }
   const ageNow = age().catch(() => null);

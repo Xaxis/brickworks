@@ -2,7 +2,7 @@
 // 2026-11-09; web/betabar.js, web/landing.js, web/beta.js), as a person
 // meets them, in a real browser:
 //
-//   node tools/web/betahome_flow.mjs [--root=DIR] [--before=DIR] [--out=DIR] [--only=bar,hide,press,home,hub,off,same,weight]
+//   node tools/web/betahome_flow.mjs [--root=DIR] [--before=DIR] [--out=DIR] [--only=bar,hide,back,press,home,hub,off,same,weight]
 //   BW_BYPASS=$VERCEL_BYPASS node tools/web/betahome_flow.mjs --url=<deployment> --out=DIR
 //
 // By default the design stand-in (tools/web/design_stand_in.mjs) serves
@@ -15,8 +15,16 @@
 //          1280x800, light and dark: the bar there, in the window, its
 //          four parts, in the page's language, nothing sideways, and at the
 //          page's end not over the footer's links;
-//   hide   its x hides it, the focus kept on the page, for a day: not on
-//          the next page or after a reload, back once the day is over;
+//   hide   its x hides it until it is shown again (bugbar, 2026-11-13:
+//          before, for a day with nothing said), and a toast says so, with
+//          Settings and Undo, the keyboard on Undo; Undo brings it back,
+//          the keyboard on its x; Escape puts the toast away, the keyboard
+//          on the page; not on the next page or after a reload; a day's
+//          hiding from before kept to its end;
+//   back   hidden, Settings' "Show the beta bar on every page" (signed out,
+//          its own row) is off; on, the bar is back at once and on the next
+//          page; off again, gone at once; and signed in, the account menu
+//          (Menu on a phone) has Report a bug, which opens the report;
 //   press  Open beta opens /beta; Report a bug opens a dialog over the page
 //          (web/bugreport.js's, or Send feedback's as a bug), the page not
 //          left; Join signed in makes a tester (POST ?op=beta_join with
@@ -39,8 +47,8 @@
 //
 // With --url, a deployment's pages and API, signed out: off (every
 // release's preview) checks nothing is drawn; open (tools/deploy.sh --unit
-// --beta-open) the bar, hide, Join's and Report a bug's dialogs, the
-// homepage's Sign up and join and /beta's hub. Pictures in --out. It
+// --beta-open) the bar, hide, back (Settings' own row signed out), Join's
+// and Report a bug's dialogs, the homepage's Sign up and join and /beta's hub. Pictures in --out. It
 // passes when it ends "betahome: all ok".
 import { launch } from "./browser.mjs";
 import * as stand from "./design_stand_in.mjs";
@@ -140,6 +148,15 @@ async function visitor({ width, theme = "light", who = "out", beta = "open", tre
       await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
     });
     if (who !== "out") {
+      // GET /api/account says the beta is open for the account, as the
+      // deployment does (Settings' Beta row is drawn only then).
+      await context.route(/\/api\/account(?:\?.*)?$/, async (route) => {
+        const url = new URL(route.request().url());
+        if (route.request().method() !== "GET" || url.searchParams.get("op")) return route.fallback();
+        const said = stand.apiAnswer({ url: new URL(url.pathname + url.search, stand.ORIGIN), method: "GET", state: { signedIn: true } });
+        const body = { ...said.json, ...(beta === "open" ? { beta: { open: true, tester, early: false, welcome: false } } : {}) };
+        await route.fulfill({ status: said.status, contentType: "application/json", body: JSON.stringify(body) });
+      });
       const kept = stand.signedInStorage();
       await context.addInitScript(([session, access]) => {
         try {
@@ -292,26 +309,102 @@ try {
 
   // --- hide ---------------------------------------------------------------
   if (open && asked("hide")) await section("hide", async () => {
-    console.log("hide: for a day");
-    const { context, page } = await visitor({ width: 1280, who: remote ? "out" : "in" });
+    console.log("hide: until shown again, said in a toast with Undo");
+    const who = remote ? "out" : "in";
+    const { context, page } = await visitor({ width: 1280, who });
     await go(page, "/gallery");
     await page.click("#beta-bar [data-beta-hide]");
     const gone = await until(page, () => !document.getElementById("beta-bar") && !document.documentElement.hasAttribute("data-betabar"));
+    const told = await until(page, () => document.querySelector(".toast.act.shown .toast-act") === document.activeElement, null, 5000);
+    const toast = await page.evaluate(() => {
+      const shown = document.querySelector(".toast.act");
+      return { words: shown?.querySelector(".words")?.textContent.trim() || "", to: shown?.querySelector(".words a")?.getAttribute("href") || "",
+        undo: shown?.querySelector(".toast-act")?.textContent.trim() || "", focus: document.activeElement?.className || document.activeElement?.tagName,
+        kept: localStorage.getItem("brickworks.betabar.hidden") };
+    });
+    check(`its x hides it and says so: "${toast.words}", ${toast.undo}, Settings at ${toast.to}, the keyboard on Undo (${toast.focus})`,
+      gone && told && /^Beta bar hidden\. Show it again in Settings\./.test(toast.words) && toast.to === "/settings#beta-part"
+      && toast.undo === "Undo");
+    check(`kept until shown again, not for a day: ${toast.kept}`, toast.kept === '"off"');
+    await shot(page, `toast-1280-light-${who}.png`);
+    await page.click(".toast .toast-act");
+    const back = await until(page, () => document.querySelector("#beta-bar.shown"));
+    await page.waitForTimeout(300);
+    const after = await page.evaluate(() => ({ focus: Boolean(document.activeElement?.matches("#beta-bar [data-beta-hide]")),
+      kept: localStorage.getItem("brickworks.betabar.hidden"), toast: Boolean(document.querySelector(".toast.shown")) }));
+    check(`Undo brings it back at once, the keyboard on its x, the toast gone (${JSON.stringify(after)})`, back && after.focus
+      && JSON.parse(after.kept || "null") === null && !after.toast);
+    await page.click("#beta-bar [data-beta-hide]");
+    await until(page, () => document.querySelector(".toast.act.shown .toast-act") === document.activeElement, null, 5000);
+    await page.keyboard.press("Escape");
+    const away = await until(page, () => !document.querySelector(".toast.shown"), null, 3000);
     const focus = await page.evaluate(() => document.activeElement?.id || document.activeElement?.tagName);
-    const until_ = await page.evaluate(() => Number(localStorage.getItem("brickworks.betabar.hidden")));
-    const day = until_ - Date.now();
-    check(`its x hides it, the focus on the page (${focus}), for ${Math.round(day / 60000)} minutes`, gone && focus === "main"
-      && Math.abs(day - 86400000) < 120000);
+    check(`Escape puts the toast away, the keyboard on the page (${focus})`, away && focus === "main");
     await go(page, "/");
     const next = await barOf(page);
     await page.reload({ waitUntil: "load" });
     await page.waitForTimeout(1500);
     const reloaded = await barOf(page);
     check("not on the next page, nor after a reload", !next.there && !reloaded.there);
+    // A day's hiding from before (the time it ended) is kept to its end.
+    await page.evaluate(() => localStorage.setItem("brickworks.betabar.hidden", String(Date.now() + 3600000)));
+    await go(page, "/");
+    const within = (await barOf(page)).there;
     await page.evaluate(() => localStorage.setItem("brickworks.betabar.hidden", String(Date.now() - 1000)));
     await go(page, "/");
-    check("back once the day is over", (await barOf(page)).there);
+    check("a day's hiding from before kept to its end, and the bar back after it", !within && (await barOf(page)).there);
     await context.close();
+  });
+
+  // --- back ---------------------------------------------------------------
+  if (open && asked("back")) await section("back", async () => {
+    console.log("back: Settings shows it again; Report a bug in the menus");
+    const rounds = remote ? [[1280, "light", "out"], [430, "dark", "out"]]
+      : [[1280, "light", "in"], [1280, "dark", "in"], [430, "light", "in"], [430, "dark", "in"], [430, "dark", "out"], [1280, "light", "out"]];
+    for (const [width, theme, who] of rounds) {
+      const { context, page, label } = await visitor({ width, theme, who });
+      const phone = width < 600;
+      await go(page, "/gallery");
+      await page.click("#beta-bar [data-beta-hide]");
+      await until(page, () => !document.getElementById("beta-bar") && document.querySelector(".toast.act.shown"));
+      await shot(page, `toast-${width}-${theme}-${who}.png`);
+      // Signed in, the Beta row's choice; signed out, a row of its own.
+      const box = who === "out" ? "#beta-bar-out input[data-beta-bar-show]" : "#beta-part input[data-beta-bar-show]";
+      await go(page, "/settings");
+      const seen = await until(page, (at) => document.querySelector(at)?.checkVisibility() === true, box, 20000);
+      const was = seen ? await page.isChecked(box) : null;
+      if (seen) await page.locator(box).scrollIntoViewIfNeeded();
+      await shot(page, `settings-${width}-${theme}-${who}.png`);
+      if (seen) await page.check(box);
+      const shownNow = seen && await until(page, () => document.querySelector("#beta-bar.shown"));
+      check(`${label}: Settings has "Show the beta bar on every page", off after the x (${was}); turned on, the bar is back at once`,
+        seen && was === false && shownNow);
+      await go(page, "/faq");
+      check(`${label}: ...and on the next page`, (await barOf(page)).there);
+      await go(page, "/settings");
+      const again = await until(page, (at) => document.querySelector(at)?.checkVisibility() === true, box, 20000);
+      const on = again ? await page.isChecked(box) : null;
+      if (again) await page.uncheck(box);
+      const goneNow = again && await until(page, () => !document.getElementById("beta-bar"));
+      await go(page, "/faq");
+      check(`${label}: on as it is (${on}); turned off, gone at once and on the next page`, on === true && goneNow && !(await barOf(page)).there);
+      if (who !== "out") {
+        await page.click(phone ? ".site-head .menu > summary" : ".site-head .account-menu > summary");
+        const item = phone ? ".site-head .menu a[data-report-bug]" : ".site-head .account-menu a[data-report-bug]";
+        const there = await until(page, (at) => document.querySelector(at)?.checkVisibility() === true, item, 10000);
+        const words = there ? (await page.textContent(item)).trim() : "";
+        await shot(page, `menu-${width}-${theme}-${who}.png`);
+        if (there) await page.click(item);
+        const opened = there && await until(page, () => document.querySelector("dialog[open]"), null, 20000);
+        const which = await page.evaluate(() => ({ dialog: document.querySelector("dialog[open]")?.className || "",
+          menu: Boolean(document.querySelector(".site-head details[open]")) }));
+        check(`${label}: ${phone ? "Menu" : "the account menu"} has "${words}" with the bar hidden, and it opens the report`
+          + ` (${which.dialog}), the menu closed`, there && words === "Report a bug" && opened && /\bfeedback\b/.test(which.dialog) && !which.menu);
+        await page.keyboard.press("Escape");
+        await until(page, () => !document.querySelector("dialog[open]"), null, 5000);
+      }
+      await context.close();
+    }
   });
 
   // --- press --------------------------------------------------------------

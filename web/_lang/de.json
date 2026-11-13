@@ -1020,7 +1020,10 @@
   "A link to your work <small>Optional: Rebrickable, BrickLink, Flickr, GitHub or a portfolio</small> <input name=\"link\" id=\"f-link\" inputmode=\"url\" maxlength=\"300\" placeholder=\"https://\" autocomplete=\"url\">": "Ein Link zu deinen Arbeiten <small>Optional: Rebrickable, BrickLink, Flickr, GitHub oder ein Portfolio</small> <input name=\"link\" id=\"f-link\" inputmode=\"url\" maxlength=\"300\" placeholder=\"https://\" autocomplete=\"url\">",
   "Send": "Senden",
   "What you send is kept with your account, read only by the site’s owner, and deleted with your account (<a href=\"/privacy#beta\">privacy</a>).": "Was du schickst, wird mit deinem Konto gespeichert, nur vom Betreiber der Website gelesen und mit deinem Konto gelöscht (<a href=\"/privacy#beta\">Datenschutz</a>).",
-  "https://": "https://"
+  "https://": "https://",
+  "Brickworks is in open beta. Its bar at the foot of every page has Report a bug and the way to join. Chosen for this browser.": "Brickworks ist in der offenen Beta. Ihre Leiste unten auf jeder Seite hat Fehler melden und den Weg zum Mitmachen. Gilt für diesen Browser.",
+  "<input type=\"checkbox\" data-beta-bar-show checked> Show the beta bar on every page": "<input type=\"checkbox\" data-beta-bar-show checked> Die Beta-Leiste auf jeder Seite zeigen",
+  "The bar at the foot of every page, with Report a bug. Chosen for this browser; Report a bug is in your account menu either way.": "Die Leiste unten auf jeder Seite, mit Fehler melden. Gilt für diesen Browser; Fehler melden steht so oder so in deinem Kontomenü."
  },
  "scripts": {
   "Copy": "Kopieren",
@@ -2542,7 +2545,6 @@
   "The Brickworks beta": "Die Brickworks-Beta",
   "Open beta": "Offene Beta",
   "Report a bug": "Fehler melden",
-  "Hide the beta bar for a day": "Beta-Leiste für einen Tag ausblenden",
   "You’re a tester. Thank you: your reports and our answers are in your account.": "Du testest mit, danke! Deine Meldungen und unsere Antworten stehen in deinem Konto.",
   "The first {cap} testers we approve get a month of Pro, free: {spots} left.": "Die ersten {cap} Tester, die wir bestätigen, bekommen einen Monat Pro, kostenlos: noch {spots} frei.",
   "spot": "Platz",
@@ -2602,6 +2604,11 @@
   "We read every report ourselves. Follow it, and our answer, in Your reports.": "Wir lesen jede Meldung selbst. Verfolge sie und unsere Antwort unter Deine Meldungen.",
   "Your reports": "Deine Meldungen",
   "Sign in to report a bug: your reports, and our answers, are kept with your account.": "Melde dich an, um einen Fehler zu melden: deine Meldungen und unsere Antworten bleiben bei deinem Konto.",
-  "Sign in again to tell us about you.": "Melde dich noch einmal an, um uns von dir zu erzählen."
+  "Sign in again to tell us about you.": "Melde dich noch einmal an, um uns von dir zu erzählen.",
+  "Beta bar hidden. Show it again in {settings}. Report a bug is in your account menu.": "Beta-Leiste ausgeblendet. In den {settings} kannst du sie wieder zeigen. Fehler melden steht in deinem Kontomenü.",
+  "Beta bar hidden. Show it again in {settings}.": "Beta-Leiste ausgeblendet. In den {settings} kannst du sie wieder zeigen.",
+  "Undo": "Rückgängig",
+  "Hide the beta bar": "Beta-Leiste ausblenden",
+  "Admin": "Verwaltung"
  }
 }
