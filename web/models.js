@@ -293,8 +293,9 @@ export function modelsList(page) {
     if (kept >= 0) (chips.children[Math.min(kept, chips.children.length - 1)] || q).focus();
   }
 
-  /// A card of the list, its like a button; [eager] for the first screen's.
-  const card = (model, eager = false) => modelCard(model, { like: true, eager });
+  /// A card of the list, its like a button, and Save and your lists over
+  /// its picture's foot (web/keep.js); [eager] for the first screen's.
+  const card = (model, eager = false) => modelCard(model, { like: true, eager, keep: true });
 
   /// The shelves, drawn from [front]: the pick as the first card and the
   /// shelves after the first rows, on the gallery's front alone.

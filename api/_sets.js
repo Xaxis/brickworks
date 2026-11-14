@@ -41,7 +41,7 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { SIZES, SITE_LANGS, asText, count, escapeHtml, sayHtml } from "./_directory.js";
-import { counted, say, themeSaid } from "./_card.js";
+import { counted, iconHtml, say, themeSaid } from "./_card.js";
 import { SET_SORTS } from "./_library.js";
 import { byKey, search } from "./_search.js";
 
@@ -407,6 +407,24 @@ function structured(origin, entry, picture, description, at) {
 /// A set's page (/library/set/X). [chrome] the site's head, header and
 /// footer (api/_directory.js siteChrome); [held] LDraw's models of it
 /// (modelsBySet); [inside] the sets packed in it that the catalogue has;
+/// Own, Want and the lists, under a set's name on its page (lists1,
+/// web/keep.js, docs/LISTS.md): drawn the same for everybody, as the page
+/// is kept by the CDN; the person's own is asked by web/keep.js and
+/// pressed there. Each button says its own name (a toggle's stays), the
+/// group the set's.
+export function keepBarHtml(entry) {
+  const key = `set:${String(entry.set).toLowerCase()}`;
+  return `<div class="keep-bar" data-keep="${escapeHtml(key)}" data-name="${escapeHtml(entry.name)}" role="group" `
+    + `aria-label="${asText(say("{name} in your sets and lists", { name: entry.name }))}">`
+    + `<button type="button" class="cta ghost" data-keep-main aria-pressed="false">`
+    + `<span class="off">${iconHtml("plus")}</span><span class="on">${iconHtml("check")}</span>`
+    + `<span class="word">${asText(say("Own"))}</span><span class="n" aria-hidden="true" hidden></span></button>`
+    + `<button type="button" class="cta ghost" data-keep-want aria-pressed="false">${iconHtml("like")}`
+    + `<span class="word">${asText(say("Want"))}</span></button>`
+    + `<button type="button" class="cta ghost" data-keep-more aria-haspopup="dialog" aria-expanded="false">`
+    + `<span class="word">${asText(say("Add to a list"))}</span>${iconHtml("down")}</button></div>`;
+}
+
 /// [next] cards (catalogCard) of its theme, drawn with [cardHtml]; [lots]
 /// its parts list's lots, for the assistant's brief; [origin] the site.
 /// In [lang] (/de/library/set/X: made inside api/_directory.js inLanguage,
@@ -513,6 +531,8 @@ ${scriptWords}${chrome.head}
 <link rel="stylesheet" href="/view3d.css">
 <script src="/model-page.js" type="module"></script>
 <script src="/set-page.js" type="module"></script>
+<script src="/keep.js" type="module"></script>
+<script src="/follow.js" type="module"></script>
 ${structured(origin, entry, small, description, at)}
 </head>
 <body data-set="${escapeHtml(entry.set)}">
@@ -532,6 +552,7 @@ ${chrome.header}
       <h1>${escapeHtml(entry.name)}</h1>
       <p class="modelled">${escapeHtml(entry.year ? say("LEGO® set {set}, from {year}", { set: entry.set, year: entry.year })
         : say("LEGO® set {set}", { set: entry.set }))}</p>
+      ${keepBarHtml(entry)}
       <div class="actions">
         ${model ? `<a class="cta" href="${escapeHtml(viewer)}" data-build3d title="${asText(say("Open LDraw's 3D model of it in Brickworks: turn it, step through its build, change it"))}">${asText(say("Build it in 3D"))}</a>` : ""}
         ${entry.lots ? `<a class="cta${model ? " ghost" : ""}" href="${escapeHtml(binLink(entry))}" data-bin title="${asText(say("Open Brickworks with this set's parts in its parts bin"))}">${asText(say("Open its parts in Brickworks"))}</a>

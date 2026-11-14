@@ -114,6 +114,17 @@ declare -A CMD=(
   # never; Follow from the card at 390 px dark; most followed; 390 and 1280
   # px in both themes; made private, gone. Throwaway accounts, deleted after.
   [collections]="tools/web/collections_flow.mjs --url=$P --out=$S/${TAG}_collections"
+  # Your sets and lists (docs/LISTS.md, supabase/lists.sql): signed out,
+  # Own asks to sign in; Own from a set's card (Undo, the server agreeing,
+  # My collection holding it), Own and Want on its page, a new list from
+  # its panel; a gallery model into the same list; /lists: the order by
+  # arrow and its Undo, public (Bob and a visitor see /c/, Share's sheet,
+  # its social card) then private (404 to both, out of the directory); the
+  # profile's Sets tab once chosen, a theme and a search; a Rebrickable CSV
+  # in, the CSV out; at 430 px with touch the panel as a sheet and How
+  # many; 1280 and 430 in both themes, nothing sideways. Throwaway
+  # accounts, deleted after with everything of theirs.
+  [lists]="tools/web/lists_flow.mjs --url=$P --out=$S/${TAG}_lists"
   # Notifications apart from the feed (docs/SOCIAL.md U7): your avatar in
   # the header with what is new, its menu (Menu at 390 px); a comment, a
   # photo and ten likes on a throwaway designer's model as one group with

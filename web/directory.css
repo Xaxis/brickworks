@@ -840,3 +840,90 @@ dialog.share-sheet { width: min(520px, calc(100vw - 32px)); }
 .collections .page-head { margin-bottom: var(--s-4); }
 .collections .page-head h1 { margin: 0; letter-spacing: -0.03em; }
 .collections .page-head .lede { margin-top: var(--s-2); color: var(--ink-soft); }
+
+/* Your lists (/lists, web/lists.js, lists1): the lists down a rail beside
+   the one shown, the rail a dropdown under 900 px; the list's head (what
+   it is, its words, its numbers, its actions), its order and Select, the
+   bar of what is selected, then its cards. */
+.lists-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-5); }
+@media (width >= 900px) { .lists-layout { grid-template-columns: 240px minmax(0, 1fr); gap: var(--s-6); } }
+.lists-rail { display: none; }
+@media (width >= 900px) {
+	.lists-rail { display: block; position: sticky; top: calc(var(--head-h) + var(--s-4)); align-self: start; }
+}
+.lists-rail .rail-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.lists-rail .rail-list a {
+	display: flex; align-items: center; gap: var(--s-2); min-height: 40px; padding: 6px 12px; border-radius: var(--control-radius);
+	border-left: 3px solid transparent; color: var(--ink-soft); text-decoration: none; font-size: var(--t-small); font-weight: 600;
+}
+.lists-rail .rail-list a:hover { background: var(--panel); color: var(--ink); }
+.lists-rail .rail-list a[aria-current="page"] { background: var(--panel); color: var(--ink); border-left-color: var(--accent-edge); }
+.lists-rail .rail-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.lists-rail .rail-note { color: var(--ink-faint); font-size: var(--t-tiny); font-weight: 500; }
+.lists-rail .n { color: var(--ink-faint); font-weight: 500; font-variant-numeric: tabular-nums; }
+.lists-rail .rail-h { margin: var(--s-4) 0 var(--s-1); padding: 0 12px; color: var(--ink-faint); font-size: var(--t-tiny); font-weight: 650; }
+.lists-rail > .cta { margin: var(--s-3) 0 0 12px; }
+.lists-skeleton .lists-rail { display: grid; gap: var(--s-3); }
+.list-pick { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--s-2) var(--s-3); }
+.list-pick label { flex: 1 1 14em; }
+@media (width >= 900px) { .list-pick { display: none; } }
+.view-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--s-3) var(--s-5); margin: 0 0 var(--s-4); }
+.view-title { min-width: 0; flex: 1 1 22em; }
+.view-title .eyebrow { margin-bottom: var(--s-1); }
+.view-title h2 { margin: 0 0 var(--s-1); overflow-wrap: anywhere; }
+.view-title .list-about { margin: 0 0 var(--s-1); max-width: 62ch; color: var(--ink-soft); overflow-wrap: anywhere; white-space: pre-line; }
+.view-title .list-meta { margin: 0; color: var(--ink-faint); font-size: var(--t-small); font-variant-numeric: tabular-nums; }
+.view-head .actions { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: 0; }
+.list-view .shows-owned { flex-wrap: wrap; row-gap: 0; margin: 0 0 var(--s-3); }
+/* Its note on a line of its own under the words, never squeezed beside them. */
+.list-view .shows-owned small { flex-basis: calc(100% - 28px); margin-left: 28px; line-height: 18px; color: var(--ink-faint); font-size: var(--t-tiny); }
+.list-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); margin: 0 0 var(--s-3); }
+.list-tools .segmented { margin: 0; }
+/* What is selected, and what can be done with it: under the header as the
+   page scrolls, so it is at hand over a long list. */
+.list-view .bulk {
+	position: sticky; top: calc(var(--head-h) + var(--s-2)); z-index: 5;
+	display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2) var(--s-3); margin: 0 0 var(--s-3); padding: var(--s-2) var(--s-3);
+	border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--panel); box-shadow: var(--shadow-1);
+}
+.list-view .bulk[hidden] { display: none; }
+.list-view .bulk-n { font-size: var(--t-small); font-weight: 650; color: var(--ink); margin-right: auto; }
+.list-view .bulk-to { display: flex; align-items: center; gap: var(--s-2); font-size: var(--t-small); }
+.list-view .bulk-to select { min-width: 10em; }
+/* Selecting: the whole card a box to tick, its box at the picture's
+   corner; one ticked has the accent edge. */
+.list-items .model .pick {
+	position: absolute; inset: 0; z-index: 2; display: block; cursor: pointer; border-radius: var(--radius);
+}
+.list-items .model .pick input {
+	position: absolute; top: var(--s-2); left: var(--s-2); width: 22px; height: 22px;
+	box-shadow: 0 1px 3px var(--shade);
+}
+.list-items.selecting .model .keep { visibility: hidden; }
+.list-items .model.picked { border-color: var(--accent-edge); box-shadow: 0 0 0 1px var(--accent-edge), var(--shadow-1); }
+/* In your own order: each card's arrows at its picture's corner, and a card
+   dragged over another marks where it goes. */
+.list-items .model .moves { position: absolute; top: var(--s-2); left: var(--s-2); z-index: 1; display: flex; gap: var(--s-1); }
+.list-items .model .moves .icon-btn { background: var(--panel); box-shadow: 0 1px 3px var(--shade); }
+.list-items .model .moves .icon-btn:disabled { visibility: hidden; }
+.list-items.ordering .model[draggable="true"] { cursor: grab; }
+.list-items .model.dragging { opacity: 0.5; }
+.list-items .model.drop-here { box-shadow: -4px 0 0 var(--accent-edge), var(--shadow-1); }
+.list-items.ordering .model .marks { left: 92px; }
+.list-view .more-row { justify-content: center; margin: var(--s-4) 0 0; }
+.list-view .more-row .cta[hidden] { display: none; }
+dialog.lists-dialog { width: min(480px, calc(100vw - 32px)); }
+dialog.lists-dialog textarea { resize: vertical; }
+dialog.lists-dialog .actions { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-4); }
+dialog.lists-dialog .actions .danger { margin-left: auto; }
+
+/* The sets a person owns, on their profile's Sets tab (api/people.js
+   ownedPanel, lists1): what they add up to, a form of filters (a GET of
+   the page, so it works with no script), then a page of the sets. */
+.owned-sets .owned-stats { list-style: none; display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-5); margin: 0 0 var(--s-2); padding: 0; }
+.owned-sets .owned-stats li { color: var(--ink-soft); font-size: var(--t-small); }
+.owned-sets .owned-stats b { display: block; color: var(--ink); font-size: var(--t-h3); font-variant-numeric: tabular-nums; }
+.owned-sets > .note { margin: 0 0 var(--s-4); color: var(--ink-soft); }
+.owned-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--s-2) var(--s-3); margin: 0 0 var(--s-4); }
+.owned-filters label { flex: 0 1 11em; min-width: 9em; }
+.owned-filters label.grow { flex: 1 1 16em; }
