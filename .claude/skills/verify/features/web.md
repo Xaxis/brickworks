@@ -2819,7 +2819,12 @@ plan with Claude as the client.
   `read` with their `reading`, the motion `pressed`, `moving` at the first
   frame drawn off; `asked` [ms, how many] as the model was first shown,
   `shapes_here` [here, of] once every part was, `frames` [frame, drawn] each
-  phase came in, `longest` [ms, phase] the app's longest frame, its drawing
+  phase came in, `page` the page's clock (performance.now) at each, on the
+  web, by which `tools/web/play_flow.mjs` holds the app's own work from
+  `parts` to `moving` (its frames less their WebGL, plus `reading` and the
+  motion's ms when `off_frame`) under APP_UX5's 2 s, 3 s on a phone, the
+  clock said beside it (webfaults, 2026-11-14: brickworks.diy missed 2 s by
+  the clock in 3 rounds of 4 at load 30-62 drawing in software), `longest` [ms, phase] the app's longest frame, its drawing
   too, from the parts to 3 s after it moves, `reread`, `needs`); the motion's own
   `off_frame`; the panel's `link`, `playing`, `opens`.
 - `playlink probe` (`src/dev/playlink_probe.gd`): below.

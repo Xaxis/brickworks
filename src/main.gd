@@ -3157,11 +3157,18 @@ func _view_longest() -> void:
 
 
 ## The frame a viewer's phase came in, and the frames drawn by then: its
-## phases' "frames", so a page can tell work paced a frame at a time.
+## phases' "frames", so a page can tell work paced a frame at a time. On the
+## web, and when by the page's own clock (performance.now), its "page": a
+## check times the page's own work between two phases by the frames it ran
+## then (tools/web/play_flow.mjs), not by a clock a loaded box stretches.
 func _view_frame(phase: String) -> void:
 	if not _view_phases.has("frames"):
 		_view_phases["frames"] = {}
 	_view_phases["frames"][phase] = [Engine.get_process_frames(), Engine.get_frames_drawn()]
+	if OS.has_feature("web"):
+		if not _view_phases.has("page"):
+			_view_phases["page"] = {}
+		_view_phases["page"][phase] = snappedf(float(JavaScriptBridge.eval("performance.now()", true)), 0.1)
 
 
 ## Fetch the shared model and open it, read-only.
