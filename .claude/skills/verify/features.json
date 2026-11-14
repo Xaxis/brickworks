@@ -2703,6 +2703,14 @@
       "tests": []
     },
     {
+      "id": "cli:smalls2 probe",
+      "kind": "cli",
+      "entry": "src/dev/smalls2_probe.gd",
+      "reach": "tools/probe.sh smalls2_probe   (windowed, 390x844 by its header; no sign-in; pictures in --shots=DIR; --only=more,timeline,select,line,words)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:smoke a package",
       "kind": "cli",
       "entry": "tools/release.py",
@@ -5545,6 +5553,14 @@
       "entry": "web/follow.js",
       "reach": "https://brickworks.diy/u/<handle>   (More like <name>, under their work: up to six designers with Follow in place, hidden when nobody is close; api/people.js profilePage section#alike, follow.js showAlike)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:more's first rows and adding to a selection by finger",
+      "kind": "ui",
+      "entry": "src/ui/phone_shell.gd",
+      "reach": "on a phone or a tablet: More opens on its first rows two to a line (Save, Instructions, Timeline, Render, Measure, Cut away, Check stability, Simulate, Pose, Select all; PhoneShell.QUICK), each two taps; Select tapped while lit adds a part with each tap and takes one out (EditVerbs.adding, the pointer with a plus), Select or another tool ends it; the timeline's buttons a fingertip, its rows of choices sliding sideways on a phone held upright, Lay out the page\u2026 first; every English line drawn says tap and hold (Phone.speak_to_a_finger)  (tools/probe.sh smalls2_probe)",
+      "area": "building",
       "tests": []
     },
     {

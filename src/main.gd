@@ -7805,7 +7805,11 @@ func _model_rect() -> Rect2:
 const SIMULATE_WIDTH := 360.0
 ## On a touch screen held upright, the tools' sheet's share of the height
 ## under the model to the model's 1: the model keeps a little over half.
-const PHONE_SHEET := 0.8
+## 0.9 since the column keeps clear of the phone's bars at a browser's scale
+## (Main._phone_bars_room): at 0.8 Motions' sheet came out 20 points shorter
+## than it was laid out for, when its foot lay under the row of tools, and a
+## suggestion's Keep went under the list's edge as it opened (smalls2).
+const PHONE_SHEET := 0.9
 
 
 ## A panel in the column opened or closed: the column shown while any is.

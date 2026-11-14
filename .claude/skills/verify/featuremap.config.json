@@ -5354,6 +5354,20 @@
     },
     {
       "kind": "ui",
+      "label": "more's first rows and adding to a selection by finger",
+      "entry": "src/ui/phone_shell.gd",
+      "reach": "on a phone or a tablet: More opens on its first rows two to a line (Save, Instructions, Timeline, Render, Measure, Cut away, Check stability, Simulate, Pose, Select all; PhoneShell.QUICK), each two taps; Select tapped while lit adds a part with each tap and takes one out (EditVerbs.adding, the pointer with a plus), Select or another tool ends it; the timeline's buttons a fingertip, its rows of choices sliding sideways on a phone held upright, Lay out the page… first; every English line drawn says tap and hold (Phone.speak_to_a_finger)  (tools/probe.sh smalls2_probe)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "smalls2 probe",
+      "entry": "src/dev/smalls2_probe.gd",
+      "reach": "tools/probe.sh smalls2_probe   (windowed, 390x844 by its header; no sign-in; pictures in --shots=DIR; --only=more,timeline,select,line,words)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
       "label": "page editor motions and simulate by finger",
       "entry": "src/ui/page_editor.gd",
       "reach": "on a phone or a tablet: the timeline's Lay out the page… (buttons and fields 44 points or more, the corner, the knob, an arrow's handles and the rulers a fingertip each, the words field's select-all kept by the tap that brings the keyboard up); Motions (Record beside the name at the editor's top, its joint sliders' strips a fingertip tall, each view opened at its top, a part dragged while recording opens no actions sheet); Simulate (Play, the cycle's slider and the angle under its title)  (PageEditor._lay_for_a_finger, PosePanel._for_a_finger, SimulatePanel._for_a_finger, Main._on_phone_hold; tools/probe.sh phonepanels_probe)",

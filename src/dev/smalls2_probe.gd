@@ -328,6 +328,9 @@ func _timeline() -> void:
 
 
 func _select() -> void:
+	# "opened Car — 61 bricks" is the line over the model for its 4 s
+	# (PhoneShell.say), and the hint after it.
+	await create_timer(4.5).timeout
 	var parts: Array = _parts_on_screen(3)
 	if not _check("three parts of the car on the screen apart (%d)" % parts.size(), parts.size() >= 3):
 		return
@@ -339,7 +342,7 @@ func _select() -> void:
 	_check("a tap selects one (%d)" % _builder.selection.size(), _builder.selection.size() == 1
 		and _builder.selection.has(ids[0]))
 	await _tap(_middle(_named("phone_select")))
-	var adding: bool = bool(_verbs.get("adding"))
+	var adding: bool = (_verbs.get("adding") == true)
 	var hint: String = str((_phone.call("state") as Dictionary).get("hint", ""))
 	_check("Select, tapped while lit, adds by tap: the line says \"%s\"" % hint,
 		adding and "add" in hint and "Select" in hint)
@@ -371,7 +374,7 @@ func _select() -> void:
 	_check("a tap on nothing keeps them (%d selected)" % _builder.selection.size(),
 		_builder.selection.size() == 2)
 	await _tap(_middle(_named("phone_select")))
-	_check("Select again ends it", not bool(_verbs.get("adding")))
+	_check("Select again ends it", not (_verbs.get("adding") == true))
 	await _tap(parts[2][1])
 	_check("then a tap selects one alone (%d)" % _builder.selection.size(),
 		_builder.selection.size() == 1 and _builder.selection.has(ids[2]))
