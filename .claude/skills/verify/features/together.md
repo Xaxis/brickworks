@@ -271,8 +271,10 @@ signed in as someone else.
 - Two tabs, the bar itself (`tools/web/pointat_flow.mjs`, the preview
   check `pointat`, about 6 minutes, two SwiftShader browsers): `node
   tools/web/pointat_flow.mjs --url=http://127.0.0.1:9011 --out=DIR` (the
-  relay serving a web export of this tree) or `--url=<preview>` with
-  `BW_BYPASS`. Expect `pointat_flow: all ok`: the owner's panel, grown by
+  relay serving a web export of this tree; its timed lines fail there, as
+  the relay answers a poll whole, never a line at a time) or
+  `--url=<preview>` with `BW_BYPASS` (the bar's own). Expect
+  `pointat_flow: all ok`: the owner's panel, grown by
   Start, keeps Close in the window and closes; 20 Alt+W over parts, each
   shown in the owner's tab at once and drawn in the second within 500 ms
   at p95 by the owner's name, or (this box drawing in software under load)

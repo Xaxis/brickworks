@@ -25,7 +25,12 @@
 //      500 ms or with their trip (the key handled to the line had: the send,
 //      the server, the network both ways) within 500 ms less a frame each
 //      side. This box draws in software at a load of 30-60, and a page
-//      held by its own frame is the box's, not the trip's.
+//      held by its own frame is the box's, not the trip's. On the local
+//      relay the bar is not met and not meant to be: it answers a poll
+//      whole, never a line at a time (api/together.js, streams), so each
+//      point waits for the second page to ask again, and the trip to the
+//      server saying it was 500-600 ms at p50 there where the send itself
+//      was answered in 160 (2026-11-13). The bar is a deployment's.
 //   2. The outline read off the second tab's pixels: the owner's colour
 //      more than before by an outline's worth.
 //   3. One alone: it stays 4.5 s and is gone 5 s after (by 5.7 s) on both
@@ -258,7 +263,11 @@ try {
   check("Start a session gives a link", Boolean(started.link), started.link);
   // Grown by the session, the panel stays inside the window: its Close ran
   // off the foot of a 720-pixel one, and the panel stayed over the view.
-  const grown = (await controls(owner.page)).together_close;
+  // Read once the page has laid the grown panel out: read at once, it had
+  // not yet said where its Close was (none).
+  await wait(500);
+  const grown = await until(async () => (await controls(owner.page)).together_close, "the panel's Close", 10)
+    .catch(() => null);
   check(`...the panel, grown by it, keeps Close inside the window (${grown ? `${Math.round(grown.x)}, ${Math.round(grown.y)}` : "none"})`,
     Boolean(grown) && grown.y > 0 && grown.y < height && grown.x > 0 && grown.x < width);
   await clickStill(owner.page, "together_close", { seconds: 20, after: 400 }).catch(() => {});
@@ -312,6 +321,16 @@ try {
   const rows = [];
   let last = null;
   let firstPicture = null;
+  // The owner's page's op=point sends, as the browser made them: when each
+  // was asked, how long it waited for a connection, and when its answer
+  // came (ms after it was asked).
+  const pointSends = [];
+  owner.page.on("requestfinished", (request) => {
+    if (!request.url().includes("op=point")) return;
+    const timing = request.timing();
+    pointSends.push({ asked: Math.round(timing.startTime), waited: Math.round(timing.requestStart),
+      answered: Math.round(timing.responseStart) });
+  });
   for (let n = 0; n < ROUNDS; n++) {
     const spots = laid.filter((one) => one.brick !== last);
     const aim = spots[n % spots.length];
@@ -347,10 +366,16 @@ try {
     }
     await wait(500);
   }
-  writeFileSync(path.join(out, "rounds.json"), JSON.stringify(rows, null, 1));
+  for (const row of rows) {
+    const send = pointSends.filter((one) => one.asked >= row.t0 + (row.looked ?? 0) - 5)
+      .sort((a, b) => a.asked - b.asked)[0];
+    if (send) Object.assign(row, { asked: send.asked - row.t0, waited: send.waited, answered: send.answered });
+  }
+  writeFileSync(path.join(out, "rounds.json"), JSON.stringify({ rows, pointSends }, null, 1));
   for (const row of rows) {
     console.log(`        ${String(row.n).padStart(2)} ${row.part}: key handled ${row.looked}, sent ${row.sent},`
-      + ` own drawn ${row.own}; server said ${row.said}, heard ${row.heard}, drawn ${row.drawn},`
+      + ` own drawn ${row.own}; its send asked ${row.asked}, waited ${row.waited} for a connection, answered`
+      + ` ${row.answered} after; server said ${row.said}, heard ${row.heard}, drawn ${row.drawn},`
       + ` read ${row.seen} ms; "${row.name}"`);
   }
   const p = percentile;
