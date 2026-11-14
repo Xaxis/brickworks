@@ -32,6 +32,7 @@
 //     the same copy over HTTP for a headless probe: prints its URL, which
 //     stands for PARTS_URL (tools/check.sh --network)
 import { chromium } from "playwright";
+import { pageRoute } from "./page_routes.mjs";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, readFileSync, renameSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import http from "node:http";
@@ -203,25 +204,24 @@ export function object(path, url) {
 const PREFLIGHT = { "access-control-allow-origin": "*", "access-control-allow-methods": "GET, HEAD, OPTIONS",
   "access-control-allow-headers": "*", "access-control-max-age": "3600" };
 
-async function routed(route) {
-  const request = route.request();
-  const url = new URL(request.url());
+async function routed({ url: asked, method }) {
+  const url = new URL(asked);
   try {
-    if (request.method() === "OPTIONS") return await route.fulfill({ status: 204, headers: PREFLIGHT });
-    if (!["GET", "HEAD"].includes(request.method())) return await route.fallback();
-    return await route.fulfill(await object(url.pathname.slice(PUBLIC.length), `${url.origin}${url.pathname}`));
+    if (method === "OPTIONS") return { status: 204, headers: PREFLIGHT, body: "" };
+    if (!["GET", "HEAD"].includes(method)) return null;
+    return await object(url.pathname.slice(PUBLIC.length), `${url.origin}${url.pathname}`);
   } catch (trouble) {
-    if (/closed|disposed/i.test(String(trouble.message))) return undefined;
     if (!complained) console.log(`  (storage mirror: ${trouble.message}; from the bucket instead)`);
     complained = true;
-    return route.fallback().catch(() => {});
+    return null;
   }
 }
 
-/// [context] reads the parts bucket from the mirror.
+/// [context] reads the parts bucket from the mirror. Only the bucket's
+/// requests are stopped (page_routes.mjs): a Playwright route held every
+/// request of the page to the end of the task that asked for it.
 export async function mirrored(context) {
-  await context.route((url) => url.hostname.endsWith(".supabase.co") && url.pathname.startsWith(PUBLIC), routed);
-  return context;
+  return pageRoute(context, [`https://*.supabase.co${PUBLIC}*`], routed);
 }
 
 // Every browser this process starts, whichever script starts it.
