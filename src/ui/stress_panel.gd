@@ -92,6 +92,9 @@ var _lift: Button
 var _legend: VBoxContainer
 var _lift_legend: VBoxContainer
 var _lift_rows: Array = []
+## The part the lift shown is by: 0 while none is (a car lifted by its roof
+## may list no row at all).
+var _lifted_by: int = 0
 
 
 func _ready() -> void:
@@ -219,6 +222,7 @@ func show_lift(result: RefCounted) -> void:
 	chosen = -1
 	entries = []
 	_lift_rows = []
+	_lifted_by = int(result.get("by")) if result != null else 0
 	if result == null or int(result.get("by")) == 0:
 		_count.text = str(result.get("problem")) if result != null else "Click the part to lift the model by."
 		_of.text = "Lift again sets it down."
@@ -264,6 +268,7 @@ func _lifted_look(on: bool) -> void:
 	_lift_legend.visible = on
 	if not on:
 		_lift_rows = []
+		_lifted_by = 0
 
 
 ## A lifted row: what it is, then the part's name, as the standing rows put
@@ -602,7 +607,7 @@ func fields() -> Dictionary:
 		"at": _at.text, "offer": _offer.text if _offer.visible else "",
 		"strengthen": _strengthen.visible and not _strengthen.disabled,
 		"finding": _finding, "mine": _mine.visible and _mine.button_pressed,
-		"lift": _lift.button_pressed, "lifted": not _lift_rows.is_empty(),
+		"lift": _lift.button_pressed, "lifted": _lifted_by != 0,
 		"kinds": _lift_rows.map(func(row: Dictionary) -> String: return str(row["kind"]))}
 
 

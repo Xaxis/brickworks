@@ -337,13 +337,14 @@ func _set_down() -> void:
 
 
 ## The wall: two courses of [param count] 1 x 4 bricks, the lower a stud
-## along, on the ground.
+## along, on the ground; grey on tan, so no brick's own colour reads as
+## Stress's red or blue.
 static func _wall(count: int) -> String:
 	var lines := PackedStringArray(["0 wall", "0 Name: wall.ldr", "0 Author: Brickworks"])
 	for k: int in count:
-		lines.append("1 4 %d -48 0 %s 3010.dat" % [80 * k + 40, UP])
+		lines.append("1 71 %d -48 0 %s 3010.dat" % [80 * k + 40, UP])
 	for k: int in count:
-		lines.append("1 1 %d -24 0 %s 3010.dat" % [80 * k + 60, UP])
+		lines.append("1 19 %d -24 0 %s 3010.dat" % [80 * k + 60, UP])
 	return "\n".join(lines) + "\n"
 
 
