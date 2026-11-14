@@ -634,6 +634,15 @@ func _hold_train(driver_body: int) -> void:
 		if one == driver_body or (drivers_joint != null and model.path(one).has(drivers_joint)):
 			for key: int in model.bodies[one]:
 				placed_by[key] = true
+	# Nor what the gear reading turns at a rate it decides: a drag's loop
+	# turns no gear, and a 16 on a shaft the train turned stood where the
+	# loop put it (42049-1's claw, 8275-1's tracks, kinefix).
+	var by_gears: Dictionary = {}   ## brick id -> true
+	var undecided: Array = solved.get("free", [])
+	for one: int in model.bodies:
+		if not undecided.has(one) and not model.is_frame(one) and model.omega(one).length() > STILL:
+			for key: int in model.bodies[one]:
+				by_gears[key] = true
 	for one: int in asked:
 		if holds.size() >= HOLDS_MOST or float(Time.get_ticks_msec() - began) > HOLDS_MS:
 			break
@@ -671,7 +680,7 @@ func _hold_train(driver_body: int) -> void:
 				step.erase(key)
 		var gear_at: Dictionary = model.pose_of(TAU / 72.0, step)
 		for key: Variant in step:
-			if held.coupled.has(key) or placed_by.has(key):
+			if held.coupled.has(key) or placed_by.has(key) or by_gears.has(key):
 				continue
 			var one_at: Transform3D = step[key]
 			var other_at: Transform3D = gear_at[key]
@@ -683,7 +692,7 @@ func _hold_train(driver_body: int) -> void:
 		# The whole of what it moves is its, as one: a rod it swings with the
 		# piston it pushes.
 		for key: Variant in step:
-			if not held.coupled.has(key) and not placed_by.has(key):
+			if not held.coupled.has(key) and not placed_by.has(key) and not by_gears.has(key):
 				(hold["keys"] as Dictionary)[key] = true
 				placed_by[key] = true
 		holds.append(hold)

@@ -1716,6 +1716,39 @@ func solve(drivers: Dictionary) -> Dictionary:
 	var depth: Dictionary = {}
 	for joint: Joint in tree:
 		depth[joint.column] = path(joint.child).size()
+	# What the reading is sure of: a mesh within LINE_SLACK between bodies
+	# the parts' own joints reach from the ground, and a loop those joints
+	# close. The rest, ranked: a loop or a mesh reached through a joint only
+	# a drag read ([method join_floating]) or on a piece held by its largest
+	# part (roots), a doubtful mesh, the nearest its ideal first, and a
+	# universal joint, read surely but not always what it turns. Before
+	# kinefuncs each of these read floating or not at all (kinefix).
+	var sure: Array = fixed.duplicate()
+	var sure_from: Array = []   ## [kind, index] of each sure row: -1 fixed, 0 held, 1 rows
+	for n: int in fixed.size():
+		sure_from.append([-1, n])
+	var order: Array = []       ## [rank, how far off, kind, index] of the rest
+	for n: int in held.size():
+		if _guessed_loop(held_by[n]):
+			order.append([0, 0.0, 0, n])
+		else:
+			sure.append(held[n])
+			sure_from.append([0, n])
+	for n: int in rows.size():
+		if n >= used.size():
+			order.append([3, 0.0, 1, n])
+		elif used[n].doubtful:
+			order.append([2, absf(used[n].off()), 1, n])
+		elif _guessed_body(used[n].one.body) or _guessed_body(used[n].other.body):
+			order.append([1, 0.0, 1, n])
+		else:
+			sure.append(rows[n])
+			sure_from.append([1, n])
+	order.sort_custom(func(x: Array, y: Array) -> bool:
+		for i: int in 4:
+			if x[i] != y[i]:
+				return x[i] < y[i]
+		return false)
 	var answer: Dictionary = _eliminate(fixed + held + rows, depth)
 	var aside: Array = []   ## indices into rows, set aside
 	var loops_aside: Array[Joint] = []   ## loops let go
@@ -1744,46 +1777,14 @@ func solve(drivers: Dictionary) -> Dictionary:
 			else:
 				aside.clear()
 		# Locks no one row frees are read the same way: what the reading is
-		# least sure of gives way, and what is sure stands. Sure: a mesh
-		# within LINE_SLACK, between bodies the parts' own joints reach from
-		# the ground, and a loop those joints close. Less so, in this order,
-		# each taken back unless it locks the train: a loop or a mesh reached
-		# through a joint only a drag read ([method join_floating]) or on a
-		# piece held by its largest part (roots), a doubtful mesh, the nearest
-		# its ideal first, and a universal joint, read surely but not always
-		# what it turns (42076-1's ramp gears each turn a linear actuator's
-		# screw through one, the screw read as one piece with its case). A
-		# row that, give or take the file's rounding, repeats the rows before
-		# it says nothing of its own and gives way too (42115-1's steering).
-		# Before kinefuncs each of these read floating or not at all, and the
-		# trains turned (kinefix).
+		# sure of stands, and the rest is taken back in its order, each
+		# unless it locks the train (42076-1's ramp gears each turn a linear
+		# actuator's screw through a universal joint, the screw read as one
+		# piece with its case; 42123-1, 42124-1, 42125-1, 8049-1, 8854-1 and
+		# 8865-1 locked on loops through a drag's hinge). A row that, give or
+		# take the file's rounding, repeats the rows before it says nothing
+		# of its own and gives way too (42115-1's steering).
 		if not answer["consistent"]:
-			var sure: Array = fixed.duplicate()
-			var sure_from: Array = []   ## [kind, index] of each sure row: 0 held, 1 rows
-			for n: int in fixed.size():
-				sure_from.append([-1, n])
-			var order: Array = []       ## [rank, how far off, kind, index]
-			for n: int in held.size():
-				if _guessed_loop(held_by[n]):
-					order.append([0, 0.0, 0, n])
-				else:
-					sure.append(held[n])
-					sure_from.append([0, n])
-			for n: int in rows.size():
-				if n >= used.size():
-					order.append([3, 0.0, 1, n])
-				elif used[n].doubtful:
-					order.append([2, absf(used[n].off()), 1, n])
-				elif _guessed_body(used[n].one.body) or _guessed_body(used[n].other.body):
-					order.append([1, 0.0, 1, n])
-				else:
-					sure.append(rows[n])
-					sure_from.append([1, n])
-			order.sort_custom(func(x: Array, y: Array) -> bool:
-				for i: int in 4:
-					if x[i] != y[i]:
-						return x[i] < y[i]
-				return false)
 			var trying: Array = sure.duplicate()
 			for one: Array in order:
 				trying.append((held if int(one[2]) == 0 else rows)[int(one[3])])
@@ -1817,6 +1818,61 @@ func solve(drivers: Dictionary) -> Dictionary:
 				one.rate = 0.0
 				one.free = false
 			return out
+	# Nor does it stop what the sure rows turn: a body they turn, if only as
+	# what carries it turns, that the rest would hold still, keeps turning,
+	# and the rows of the rest on it give way. 42075-1's differential, a
+	# gear the drag's joints reach meshed with it, stood; 8466-1's 12 at
+	# the foot of its steering column, a doubtful mesh with a 20 that
+	# stands, stood (kinefix).
+	var kept_rest: Array = []   ## the rest's [kind, index] still in
+	for one: Array in order:
+		var n: int = int(one[3])
+		if (int(one[2]) == 0 and not loops_aside.has(held_by[n])) or (int(one[2]) == 1 and not aside.has(n)):
+			kept_rest.append([int(one[2]), n])
+	if not kept_rest.is_empty():
+		var by_sure: Dictionary = _eliminate(sure, depth, sure.size())
+		if by_sure["consistent"]:
+			var was: Dictionary = _turning(by_sure["pivots"])
+			for _round: int in 4:
+				var now: Dictionary = _turning(answer["pivots"])
+				var stopped: Dictionary = {}
+				for body: int in was:
+					if not now.has(body):
+						stopped[body] = true
+				if stopped.is_empty():
+					break
+				var left: Array = []
+				for one: Array in kept_rest:
+					var n: int = int(one[1])
+					var ends: Array = []
+					if int(one[0]) == 0:
+						ends = [held_by[n].a, held_by[n].b]
+					elif n < used.size():
+						ends = [used[n].one.body, used[n].other.body]
+					else:
+						var joint: Dictionary = universals[n - used.size()]
+						ends = [int(joint["one"]), int(joint["other"])]
+					if not (stopped.has(int(ends[0])) or stopped.has(int(ends[1]))):
+						left.append(one)
+					elif int(one[0]) == 0:
+						if not loops_aside.has(held_by[n]):
+							loops_aside.append(held_by[n])
+					else:
+						aside.append(n)
+				if left.size() == kept_rest.size():
+					break
+				kept_rest = left
+				var kept: Array = fixed.duplicate()
+				for n: int in held.size():
+					if not loops_aside.has(held_by[n]):
+						kept.append(held[n])
+				for n: int in rows.size():
+					if not aside.has(n):
+						kept.append(rows[n])
+				var again: Dictionary = _eliminate(kept, depth)
+				if not again["consistent"]:
+					break
+				answer = again
 	var pivots: Array = answer["pivots"]
 	var rates: Dictionary = _back(pivots, {})
 	# What nothing decides: every column no pivot is, and every column a
@@ -1868,16 +1924,16 @@ func solve(drivers: Dictionary) -> Dictionary:
 			(out["set_aside"] as Array).append("universal joint #%d" % int(
 				(universals[n - used.size()]["cross"] as Array)[0]))
 	if not meshes_aside.is_empty():
-		out["said"] += "; taken as not meshing, or the train would lock: %s (%s)" \
+		out["said"] += "; taken as not meshing, or the train would lock or stand: %s (%s)" \
 			% [", ".join(meshes_aside), used[first_mesh].off_said()]
 	if universals_aside > 0:
-		out["said"] += "; %s taken as not turning what is past %s, or the train would lock" % [
+		out["said"] += "; %s taken as not turning what is past %s, or the train would lock or stand" % [
 			"a universal joint" if universals_aside == 1 else "%d universal joints" % universals_aside,
 			"it" if universals_aside == 1 else "them"]
 	for loop: Joint in loops_aside:
 		(out["set_aside"] as Array).append("a loop closed by %s #%d-#%d" % [loop.what, loop.a, loop.b])
 	if not loops_aside.is_empty():
-		out["said"] += "; %s taken as not closing, or the train would lock" % (
+		out["said"] += "; %s taken as not closing, or the train would lock or stand" % (
 			"a loop a drag's reading closes" if loops_aside.size() == 1
 			else "%d loops a drag's reading closes" % loops_aside.size())
 	return out
@@ -1899,6 +1955,21 @@ func _guessed_body(body: int) -> bool:
 ## of: closed by a joint only a drag read, or through such a joint.
 func _guessed_loop(joint: Joint) -> bool:
 	return joint.guessed or _guessed_body(joint.a) or _guessed_body(joint.b)
+
+
+## The bodies that turn by [param pivots], each turn it carries counted:
+## body -> true.
+func _turning(pivots: Array) -> Dictionary:
+	var rates: Dictionary = _back(pivots, {})
+	var spin: Dictionary = {ground: Vector3.ZERO}
+	var out: Dictionary = {}
+	for joint: Joint in tree:
+		var here: Vector3 = (spin.get(joint.parent, Vector3.ZERO) as Vector3) \
+			+ joint.way * float(rates.get(joint.column, 0.0))
+		spin[joint.child] = here
+		if here.length() > 1e-6:
+			out[joint.child] = true
+	return out
 
 
 static func _counted(n: int, what: String) -> String:
