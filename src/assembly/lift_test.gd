@@ -207,7 +207,8 @@ class Result extends RefCounted:
 
 	## What the panel lists, in order: each thing that comes away, then the
 	## joints left past their working load and those that swing, then the
-	## nearest letting go of the rest to make [param least]. Each {"kind":
+	## nearest letting go of the rest to make [param least], of those within
+	## a hundred times of it. Each {"kind":
 	## "lets go", "loose", "falls", "strained", "swings" or "holds", "id": the
 	## part said and selected, "ids": all it takes with it, "around": what
 	## holds it, framed with it, "give": how near letting go, "why": its
@@ -224,7 +225,9 @@ class Result extends RefCounted:
 		for one: Balance.JointLoad in joints:
 			var kind: String = "swings" if swings.has(one) else ("strained"
 				if one.kind == "studs" and one.ratio > 1.0 else "holds")
-			if kind == "holds" and out.size() >= least:
+			# Those that hold it a hundred times over and more say nothing, as
+			# in said(): a car's wheels on their pins, under its own weight.
+			if kind == "holds" and (out.size() >= least or LiftTest.give_of(one) < 0.01):
 				continue
 			out.append({"kind": kind, "id": one.beyond, "ids": [one.beyond], "around": one.held_by,
 				"give": LiftTest.give_of(one), "why": joint_words(one)})

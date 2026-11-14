@@ -30,7 +30,7 @@
    "setup": [
     {"run": "stress", "after": 30},
     {"click": "_shell.stress.panel._lift"},
-    {"select": {"part": "4073", "nth": 0}},
+    {"select": {"part": "6141", "nth": 0}},
     {"frames": 40}
    ],
    "crop": ["_over_model", "_shell.stress.panel"],

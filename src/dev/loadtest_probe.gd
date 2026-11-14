@@ -406,9 +406,9 @@ func _open(name: String, text: String) -> void:
 	var result: Dictionary = _store.open_text(text, name)
 	(_main.get("_bar") as ModelBar).opened.emit(int(result["placed"]))
 	await _frames(30)
+	await _weighed()
 	_camera.frame(_model_box(), 1.3)
 	await _settled()
-	await _weighed()
 
 
 ## Stress on, Lift pressed when it is not, and a click on part [param id]
@@ -508,16 +508,17 @@ func _courses() -> Array:
 func _part(part_id: String) -> int:
 	for item: Variant in _world.bricks():
 		var brick: BrickWorld.Brick = item
-		if brick.part_id == part_id and not _store.scenery.has(brick.id):
+		if brick.part_id.get_basename() == part_id and not _store.scenery.has(brick.id):
 			return brick.id
 	return 0
 
 
-## A headlight brick's 1 x 1 round plate: the first 4073 on a 4070.
+## A headlight brick's 1 x 1 round plate: the car's first, a 6141 (4073's
+## other number) on the side stud of a 4070.
 func _headlight_plate() -> int:
 	for item: Variant in _world.bricks():
 		var brick: BrickWorld.Brick = item
-		if brick.part_id == "4073" and not _store.scenery.has(brick.id):
+		if brick.part_id.get_basename() in ["6141", "4073"] and not _store.scenery.has(brick.id):
 			return brick.id
 	return 0
 
