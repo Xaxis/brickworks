@@ -602,8 +602,11 @@ func new_motion() -> void:
 	_key_index = -1
 	_look = null
 	_refresh()
-	_name.grab_focus()
-	_name.select_all()
+	# A phone's keyboard would come up over the sheet and its Record: the
+	# name is typed over by a tap in it there.
+	if not Phone.on():
+		_name.grab_focus()
+		_name.select_all()
 	_say("Name it, then press Record and drag the parts that move in the view. Or set it here: "
 		+ "a joint's slider puts a key at the time above.")
 
@@ -2041,8 +2044,8 @@ func _build_editor(into: Control) -> void:
 	_edit_box.add_child(_driver_words)
 	_build_path(_edit_box)
 	if Phone.on():
-		_for_a_finger([top, joints_heading, _joint_rows, _more, _key_row, playing, timing, naming],
-			recording)
+		_for_a_finger([top, joints_heading, _joint_rows, _more, _key_row, playing, timing],
+			recording, naming, gap)
 
 
 ## The editor laid out for a finger (the phone's layout or a tablet's): in a
@@ -2051,12 +2054,19 @@ func _build_editor(into: Control) -> void:
 ## swipes down, 5 to 7 taps against the desktop's 1 (phonewalk, APP_UX8
 ## phonepanels). So Record goes up beside All motions, where it stays in
 ## sight while the parts are dragged and Stop is pressed, and the joints come
-## next; Play, the time and the name follow them. What Record's line says
-## the status line says once it is pressed. The desktop keeps its order.
-func _for_a_finger(order: Array, recording: HBoxContainer) -> void:
+## next; Play and the time follow them. The name takes the room between All
+## motions and Record, in sight with them. What Record's line says the status
+## line says once it is pressed. The desktop keeps its order.
+func _for_a_finger(order: Array, recording: HBoxContainer, naming: HBoxContainer,
+		gap: Control) -> void:
 	var top: HBoxContainer = order[0]
+	_name.reparent(top, false)
+	top.move_child(_name, 1)
+	_name.select_all_on_focus = true
+	gap.visible = false
+	naming.visible = false
 	_record.reparent(top, false)
-	top.move_child(_record, 1)
+	top.move_child(_record, 2)
 	recording.visible = false
 	for n: int in order.size():
 		_edit_box.move_child(order[n] as Control, n)

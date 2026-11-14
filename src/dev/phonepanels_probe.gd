@@ -21,10 +21,13 @@
 ##    sized by its corner (its tap, if not selected, and a drag that begins
 ##    on the fingertip round the corner, outside the item); words added:
 ##    Add words, a tap in their field to bring the keyboard up, "Hi", in no
-##    more than 6 presses (the desktop's 3), the field reading "Hi" and the
-##    page's words "Hi" once Done; Done closes it. Every control, the corner,
-##    the knob, an arrow's handles and the rulers 44 points or more across.
-## 2. Motions, on 1484-1's doors: New motion, Record, a door swung by a
+##    more than 6 presses (the desktop's 3), the field reading "Hi"; an arrow
+##    drawn by Draw an arrow and a drag (4 at most), which sets the words as
+##    the selection leaves them; the page's words "Hi" once Done and opened
+##    again; Done closes it. Every control on the screen; every control, the
+##    corner, the knob, an arrow's handles and the rulers 44 points or more.
+## 2. Motions, on 1484-1's doors: New motion (its name and Record in sight,
+##    no keyboard asked for), Record, a door swung by a
 ##    finger as the walk swings one (10 moves 40 ms apart, still 0.2 s),
 ##    Stop, in no more than 8 presses (the desktop's 4): the drag recorded,
 ##    no part's actions opened over the panel and the selection as it was.
@@ -309,16 +312,32 @@ func _page_editor() -> void:
 	_measure("page_turn_knob", editor.controls_by_name().get("page_turn_knob"))
 	await _shot("1_page_words_typed")
 
-	# An arrow's handles.
-	var arrow_said: String = await editor.add_arrow(Vector2(40, 40), Vector2(90, 70))
+	# An arrow drawn by a finger: Draw an arrow, then a drag on the page. The
+	# words typed are set as the selection leaves them.
+	_presses = 0
+	var arrows: int = (editor.page_state().get("arrows", {}) as Dictionary).size()
+	await _tap(_middle(editor.controls_by_name()["page_add_arrow"]))
+	await _until(func() -> bool: return not bool(editor.page_state().get("laying", false)), 10.0)
+	var page: Rect2 = (editor.controls_by_name()["page_canvas"] as Control).get_global_rect()
+	await _finger_drag(page.position + page.size * Vector2(0.12, 0.62),
+		page.position + page.size * Vector2(0.32, 0.8))
+	var drawn: Callable = func() -> bool:
+		var now_state: Dictionary = editor.page_state()
+		return (now_state.get("arrows", {}) as Dictionary).size() > arrows \
+			and not bool(now_state.get("laying", false))
+	await _until(drawn, 10.0)
 	await _frames(10)
 	var arrow: int = -1
 	for n: int in editor._items.size():
 		if editor._items[n]["kind"] == "arrow":
 			arrow = n
-	if _check("an arrow drawn on the page to measure its handles (%s)" % arrow_said, arrow >= 0):
-		editor._select(arrow)
-		await _frames(4)
+	if _check("Draw an arrow and a finger's drag on the page draw one, in %d (%d arrows, were %d)" % [
+			_presses, (editor.page_state().get("arrows", {}) as Dictionary).size(), arrows],
+			arrow >= 0 and _presses <= 4):
+		_act("the page editor: an arrow drawn", 2)
+		if editor.page_state().get("selected", "") != editor._item_name(arrow):
+			editor._select(arrow)
+			await _frames(4)
 		var handles: Dictionary = editor.controls_by_name()
 		var points: int = 0
 		for name: String in handles:
@@ -402,6 +421,13 @@ func _motions() -> void:
 	await _until(func() -> bool: return panel._view == "edit", 6.0)
 	_check("New motion opens the editor", panel._view == "edit")
 	await _frames(10)
+	# Its name and Record in sight as it opens, and no keyboard asked for
+	# (the name not focused: a phone's keyboard would cover the sheet).
+	var name_seen: bool = _shown_in(panel._name).grow(1.0).encloses(panel._name.get_global_rect()) \
+		and panel._name.get_global_rect().size.x >= 60.0 * _pt()
+	var record_seen: bool = _shown_in(panel._record).grow(1.0).encloses(panel._record.get_global_rect())
+	_check("its name (%.0f points across) and Record in sight as it opens, the name not focused"
+		% (panel._name.get_global_rect().size.x / _pt()), name_seen and record_seen and not panel._name.has_focus())
 	await _shot("2_motions_new")
 	await _press(panel._record)
 	_check("Record listens", panel.is_recording())
@@ -580,7 +606,8 @@ func _gear_train() -> bool:
 	await _frames(5)
 	_camera.frame(AABB(Vector3(-50, t, -40), Vector3(100, 60, 80)), 1.2)
 	await _settle()
-	return _check("a gear train put down (%d parts)" % _world.brick_count(), _world.brick_count() == 5)
+	var parts: int = _world.brick_count() - _store.scenery.size()
+	return _check("a gear train put down (%d parts besides the floor)" % parts, parts == 5)
 
 
 func _top_of_floor() -> float:

@@ -438,6 +438,12 @@ func _lay_out(number: int) -> void:
 	if _laying:
 		return
 	_laying = true
+	# The history this lay-out reads, taken before it reads it: a change made
+	# while it runs (one lay-out at a time; the second asked is dropped) is
+	# then newer than what it shows, and _process lays the page out again.
+	# Taken at its end, the page kept showing what was there before the change.
+	var builder: Builder = app.get("_builder")
+	_seen_history = [builder._history.size(), builder._redo.size()]
 	_say_soft("Laying the page out…")
 	_sheet = BookletSheet.of(_world)
 	if _sheet.picture_uri != _behind_uri:
@@ -484,8 +490,6 @@ func _lay_out(number: int) -> void:
 	for index: int in _pages.size():
 		if _pages[index].kind == "callout" and _pages[index].number == _callout_shown:
 			_at = index
-	var builder: Builder = app.get("_builder")
-	_seen_history = [builder._history.size(), builder._redo.size()]
 	_guide_lines = BookletLooks.guides(_world)
 	_laying = false
 	_show_page()
