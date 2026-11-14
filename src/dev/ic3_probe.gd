@@ -602,6 +602,9 @@ func _case_lines_stepless() -> void:
 	print("    MCP: " + (await _say("open_model", {"into": true, "name": "Observatory"})).left(200))
 	var texts: Array = await _save_twice("ic3 lines stepless")
 	print("    sections: %s; IN lines %d" % [_sections(texts[0]), (texts[0] as String).count("0 !BRICKWORKS IN ")])
+	# Kept for another build to open (lines_back's --back=).
+	if not _out.is_empty():
+		_write(_out.path_join("lines_stepless.ldr"), texts[0])
 	_lines_kept("lines_stepless", texts)
 	await _invariant("lines_stepless", "Clash Host", ["Observatory"], texts[0], tops)
 	_same_again("lines_stepless", texts)
