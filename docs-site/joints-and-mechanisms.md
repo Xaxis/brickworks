@@ -92,15 +92,13 @@ ui:balance readout
 
 ## Simulate a mechanism {#simulate}
 
-![Simulate mechanism on a kart driven from its steering wheel: the panel down the left saying what turns and how fast, that the steering goes all the way round with nothing meeting, and whether the kart stands, and the kart with its footprint drawn on the floor.](/docs/img/joints-steering.webp "Simulate mechanism turns the train from the part you choose, and finds whether anything stops it.")
+![Simulate mechanism on a kart driven from its steering wheel: the panel down the left saying what turns and how fast, where the steering stops and whether the kart stands, and the kart with its footprint drawn on the floor.](/docs/img/joints-steering.webp "Simulate mechanism turns the train from the part you choose, and finds where it stops.")
 
 1. Select the part to drive (a crank, a steering wheel, a motor's axle), or none.
 2. **Tools › Simulate mechanism…** ([[Alt+U]]). The train turns from it; click another axle or crank to drive that instead.
 3. **Play**, or drag the slider through the cycle.
 
 The panel says how fast each part turns, what locks the train, and whether the model stays standing as it turns. It finds where the motion stops: the first two parts that meet, tinted red, a linkage's range, or where a motor stalls under its load. Play stops there, and **Go to the stop** shows it. Nothing in the model changes. An assistant can find gears for a ratio you need (`search_gear_ratio`).
-
-A part on a hinge, a click joint or a single stud turns too, as dragging it in the view turns it. A piece that stands apart from the rest, such as a gear train built beside a bridge, turns on its own frame, held by its largest part. Knob wheels turn each other, a pinion on a slanted steering column drives its rack, and a sub-assembly named Chassis or Frame holds still only what no joint turns.
 
 <!-- covers
 ui:simulate mechanism

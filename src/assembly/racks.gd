@@ -27,11 +27,6 @@ const ACROSS_SLACK := 1.0
 const ALONG_SLACK := 4.0
 ## Its axis square to the rack's teeth and along their width, to this.
 const SQUARE := 0.99
-## How far its axis may tip about the rack's line from along the teeth's
-## width, radians: the 1972-1 Go-Kart's slanted steering column meets its
-## 3743 at 26 degrees, its 16's lowest tooth 2 LDU over the pitch line
-## (Kinebrick's RACK_TILT, 0.55).
-const TILT := 0.55
 
 
 ## A pinion in a rack: where each stands, and how far the rack goes for a
@@ -240,20 +235,11 @@ static func _fit(spec: Dictionary, rack_at: Transform3D, centre: Vector3, axis: 
 			return []
 		off = across.length() - (float(spec["pitch_line"]) + radius)
 	else:
-		# Square to the rack's line, and tipped about it at most TILT: the
-		# tooth that meets the teeth is the pitch circle's lowest, in the
-		# pinion's own plane, and stands on the pitch line where it meets.
-		if absf(local_axis.x) > sqrt(1.0 - SQUARE * SQUARE) or absf(local_axis.z) < cos(TILT):
+		if absf(local_axis.z) < SQUARE:
 			return []
-		var down: Vector3 = Vector3.DOWN - local_axis * Vector3.DOWN.dot(local_axis)
-		if down.length() < 0.001:
-			return []
-		down = down.normalized()
-		out_way = -down
-		var meets: Vector3 = local + down * radius
-		off = meets.y - float(spec["pitch_line"])
+		off = local.y - (float(spec["pitch_line"]) + radius)
 		var z: Array = spec.get("z", [-10.0, 10.0])
-		if meets.z < float(z[0]) - ACROSS_SLACK or meets.z > float(z[1]) + ACROSS_SLACK:
+		if local.z < float(z[0]) - ACROSS_SLACK or local.z > float(z[1]) + ACROSS_SLACK:
 			return []
 	if absf(off) > PITCH_SLACK:
 		return []

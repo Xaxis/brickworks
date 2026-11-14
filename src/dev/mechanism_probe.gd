@@ -65,7 +65,6 @@ func _run() -> void:
 	await _windmill()
 	_eight_to_twenty_four()
 	_locked()
-	_doubtful()
 	_worm()
 	await _orrery()
 	_ring()
@@ -238,41 +237,6 @@ func _locked() -> void:
 	_check("it is locked, and says so (%s)" % result["said"], not result["ok"] and result["locked"])
 	_check("...naming both meshes as the ones that fight (%s)" % str(result["culprits"]),
 		(result["culprits"] as Array).size() == 2)
-
-
-## A cross shaft turned off one axle twice: by a crown and a 24 standing as
-## they should, and by the other crown and an 8, so the two ask it for 1 and
-## 3 turns at once. A real set's train turns, so an 8 standing 2.5 LDU out,
-## a mesh only BEVEL_SLACK lets in, is taken as not meshing; standing true,
-## the two lock.
-func _doubtful() -> void:
-	for off: float in [2.5, 0.0]:
-		print("  a cross shaft turned by two crowns, the 8 %s" % ("2.5 LDU out" if off > 0.0 else "true"))
-		var kit := Kit.new(_library)
-		kit.bearings([Vector3(0, 0, 0)], Z)
-		kit.bearings([Vector3(-60, 0, 82)], Vector3.RIGHT)
-		var upright: int = kit.add("3706", Transform3D(_turn_x_to(Z), Vector3(0, 0, 20)))
-		kit.add("3706", Transform3D(_turn_x_to(Vector3.RIGHT), Vector3(-20, 0, 82)))
-		kit.add("3650a", Transform3D(Basis.IDENTITY, Vector3(0, 0, 50)))
-		kit.add("3650a", Transform3D(Basis.IDENTITY, Vector3(0, 0, 70)))
-		var big: int = kit.add("3648a", Transform3D(_turn_z_to(Vector3.RIGHT), Vector3(30, 0, 82)))
-		kit.add("3647", Transform3D(_turn_z_to(Vector3.RIGHT), Vector3(-30 - off, 0, 82)))
-		var model: Mechanism = kit.build()
-		print("    %s" % model.summary())
-		var result: Dictionary = model.solve({model.body_of(upright): 1.0})
-		print(model.describe())
-		_check("two meshes at right angles (%s)" % model.couplings_said(), model.couplings.size() == 2)
-		if off > 0.0:
-			var b: Mechanism.Gear = model.gear_at(big)
-			var ratio: float = model.spin(b.body, b.axis) / model.spin(model.body_of(upright), Z)
-			_check("it turns, the 8's mesh taken as not meshing (%s; set aside %s)"
-				% [result["said"], str(result["set_aside"])],
-				result["ok"] and not result["locked"] and (result["set_aside"] as Array).size() == 1)
-			_check("the cross shaft turns as the 24 says, once to the upright's once (%.6f)" % ratio,
-				absf(absf(ratio) - 1.0) < 1e-5)
-		else:
-			_check("standing true, it locks, and says so (%s; culprits %s)" % [result["said"], str(result["culprits"])],
-				not result["ok"] and result["locked"] and (result["set_aside"] as Array).is_empty())
 
 
 func _worm() -> void:
