@@ -2306,6 +2306,10 @@ static func _marker(name: String, colour: Color) -> Node3D:
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	label.offset = Vector2(DOT_PIXELS * 0.6, 0)
 	label.render_priority = 11
+	# Its dark edge just under it, after the scene's own see-through things:
+	# left at -1 it went before them, and a name over a windscreen or the
+	# floor lost its edge there (pointat's pictures, 2026-11-13).
+	label.outline_render_priority = 10
 	marker.add_child(label)
 	return marker
 
@@ -2506,6 +2510,21 @@ func _show_looks() -> void:
 		if by_claude:
 			name = "Your Claude" if key.begins_with(MINE + ":") else "%s's Claude" % name
 		_add_look(key, str(said_look[0]), name, said_look[2], bricks, int(said_look[4]), by_claude)
+	_name_pointers()
+
+
+## A person's pointer without its name while their point is shown: the point
+## names them over the part, and with their pointer on that part, as Alt-W
+## has it, the two names were drawn over each other (pointat_flow's
+## pictures, 2026-11-13). The dot stays, in their colour.
+func _name_pointers() -> void:
+	var pointing: Dictionary = {}
+	for key: String in _looks:
+		pointing[str((_looks[key] as Dictionary).get("who", ""))] = true
+	for who: String in _markers:
+		var marker: Variant = _markers[who]
+		if is_instance_valid(marker):
+			((marker as Node3D).get_child(1) as Label3D).visible = not pointing.has(who)
 
 
 ## A point drawn: its parts outlined in [param colour], its name over them,
@@ -2556,6 +2575,7 @@ func _drop_look(key: String) -> void:
 		if node is Node and is_instance_valid(node):
 			(node as Node).queue_free()
 	timing["look_gone"] = _unix_ms()
+	_name_pointers()
 
 
 ## The points whose time is up taken off; this person's own forgotten then.
@@ -2597,6 +2617,7 @@ static func _look_marker(name: String, colour: Color) -> Node3D:
 	label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	label.offset = Vector2(0, DOT_PIXELS * 0.5)
 	label.render_priority = 11
+	label.outline_render_priority = 10
 	marker.add_child(label)
 	return marker
 

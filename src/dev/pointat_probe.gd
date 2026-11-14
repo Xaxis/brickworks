@@ -24,11 +24,14 @@
 ## with her name over it, read off the pixels, none before; the status bar
 ## says she points at it; still there at 4 s, gone after 5; one 3 s old when
 ## heard gone 2 s later; one put away by Esc not shown again while the
-## server still says it; her Claude's named "Ann's Claude". And the
+## server still says it; her Claude's named "Ann's Claude"; with her pointer
+## on the part, its dot kept and its name put away while the point names
+## her. And the
 ## person's own Claude: point_at in one call, through the connector's own
 ## answer (CommandSocket), outlines it here as "Your Claude" and sends it
 ## named as Claude's. The panel says how to point (its key as the keymap has
-## it).
+## it), and opened before a session, then grown by it, stays inside the
+## window.
 ##
 ## Each fails when the thing it looks at did nothing: no row, no pixels in
 ## the colour, a look sent that was not, one shown past its time.
@@ -133,9 +136,25 @@ func _own() -> void:
 	_check("three parts in sight", three.size() == 3)
 	if three.size() < 3:
 		return
+	# The panel opened before the session, as a person opens it to start one,
+	# then grown by it (the link, who is in it, how to point): it stays inside
+	# the window. It grew down from where it was centred, and Close ran off
+	# the foot of a 720-pixel window (pointat_flow, 2026-11-13).
+	_check("File, Build together… runs before the session", _shell.run("together"))
+	await _frames(10)
+	var dialog: TogetherDialog = _main.get("_together_dialog")
+	var short: int = dialog.size.y
 	_together.check_alone([{"who": ANN, "name": "Ann", "here": true, "owner": false,
 		"at": null, "sel": [], "view": null}])
 	await _frames(10)
+	var title: int = dialog.get_theme_constant("title_height")
+	var whole := Rect2(Vector2(dialog.position) - Vector2(0, title), Vector2(dialog.size) + Vector2(0, title))
+	var room: Rect2 = root.get_visible_rect()
+	_check("...and grown by the session (%d to %d tall), still inside the window (%s in %s)"
+		% [short, dialog.size.y, str(whole), str(room)], dialog.size.y > short and room.encloses(whole))
+	await _shot("panel_grown")
+	dialog.hide()
+	await _frames(5)
 	var mine: Color = _together.colour_of("00000000")
 	var before: Image = await _picture()
 	var box: Rect2 = _screen_box([three[0]])
@@ -198,7 +217,7 @@ func _own() -> void:
 	# The panel says how.
 	_check("File, Build together… runs", _shell.run("together"))
 	await _frames(20)
-	var dialog: TogetherDialog = _main.get("_together_dialog")
+	dialog = _main.get("_together_dialog")
 	var note: String = str(dialog.page_state().get("note", ""))
 	var key: String = Keymap.written("together_point")
 	_check("its panel says how to point a part out, with its key (%s)" % key,
@@ -283,6 +302,23 @@ func _others() -> void:
 	await _frames(5)
 	_check("taken back by her (no look in what the server says): gone here", _together.looks_shown().is_empty())
 
+	# Her pointer on the part she points at, as Alt-W has it: its dot kept,
+	# its name put away while the point names her, and back after.
+	_ann_points(n + 4, target, 0, false, true)
+	await _frames(10)
+	var marker: Node3D = (_together.get("_markers") as Dictionary).get(ANN)
+	_check("her pointer on the part keeps its dot and puts its name away while the point names her",
+		marker != null and (marker.get_child(0) as Node3D).visible
+		and not (marker.get_child(1) as Label3D).visible and _together.looks_shown().size() == 1)
+	await _shot("ann_pointer")
+	var at: Vector3 = _world.get_brick(target).transform.origin
+	_together.check_alone([{"who": ANN, "name": "Ann", "here": true, "owner": false, "at": [at.x, at.y, at.z],
+		"sel": [], "view": null}])
+	await _frames(5)
+	marker = (_together.get("_markers") as Dictionary).get(ANN)
+	_check("...and names her again once the point is gone",
+		marker != null and (marker.get_child(1) as Label3D).visible and _together.looks_shown().is_empty())
+
 
 func _picture_gone(box: Rect2, colour: Color, was: int) -> void:
 	var picture: Image = await _picture()
@@ -291,9 +327,10 @@ func _picture_gone(box: Rect2, colour: Color, was: int) -> void:
 
 
 ## Ann, as a poll says her: pointing [param target] out, [param age] ms ago.
-func _ann_points(n: int, target: int, age: int, by_claude: bool = false) -> void:
+func _ann_points(n: int, target: int, age: int, by_claude: bool = false, pointer: bool = false) -> void:
 	var at: Vector3 = _world.get_brick(target).transform.origin
-	_together.check_alone([{"who": ANN, "name": "Ann", "here": true, "owner": false, "at": null, "sel": [],
+	_together.check_alone([{"who": ANN, "name": "Ann", "here": true, "owner": false,
+		"at": [at.x, at.y, at.z] if pointer else null, "sel": [],
 		"view": null, "look": {"n": n, "sel": [_together.uid_of(target)], "at": [at.x, at.y, at.z],
 		"claude": by_claude, "age": age}}])
 

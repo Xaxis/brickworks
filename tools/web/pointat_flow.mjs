@@ -248,7 +248,14 @@ try {
     return now.live && now.link ? now : null;
   }, "the session's link", 60);
   check("Start a session gives a link", Boolean(started.link), started.link);
+  // Grown by the session, the panel stays inside the window: its Close ran
+  // off the foot of a 720-pixel one, and the panel stayed over the view.
+  const grown = (await controls(owner.page)).together_close;
+  check(`...the panel, grown by it, keeps Close inside the window (${grown ? `${Math.round(grown.x)}, ${Math.round(grown.y)}` : "none"})`,
+    Boolean(grown) && grown.y > 0 && grown.y < height && grown.x > 0 && grown.x < width);
   await clickStill(owner.page, "together_close", { seconds: 20, after: 400 }).catch(() => {});
+  const shut = await soon(async () => !(await controls(owner.page)).together_close, 5000);
+  check("...and Close puts it away", Boolean(shut));
   await guest.page.goto(started.link, { waitUntil: "domcontentloaded", timeout: 180000 });
   await until(async () => {
     const asked = (await controls(guest.page)).replace_discard;
@@ -388,8 +395,11 @@ try {
     const mine = theirs(await looks(guest.page), ownerWho);
     return mine && mine.name === `${ownerName}'s Claude`;
   }, 5000);
-  check(`point_at in ${mcpSent - sentBefore} call: "${words.slice(0, 60)}…"`, called[0] === 200
-    && mcpSent - sentBefore === 1 && words.startsWith(`Pointed out part ${target.brick}`));
+  // The chat's first answer leads with how to work here; the point's words
+  // follow it.
+  const pointed = words.indexOf(`Pointed out part ${target.brick}`);
+  check(`point_at in ${mcpSent - sentBefore} call: "${words.slice(Math.max(pointed, 0), Math.max(pointed, 0) + 90)}…"`,
+    called[0] === 200 && mcpSent - sentBefore === 1 && pointed >= 0);
   check(`...shown in the second tab as "${ownerName}'s Claude" ${shownAt ? shownAt - answered : "never"} ms after`
     + ` the answer (${shownAt ? shownAt - t2 : "-"} ms after the call)`, Boolean(shownAt) && shownAt - answered <= BAR_MS);
   await shot(guest.page, "6_claude_guest.png");

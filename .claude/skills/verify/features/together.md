@@ -264,12 +264,16 @@ signed in as someone else.
   it instead; Esc takes it back and the selection stays; Ann's outlined in
   her colour with her name off the pixels, said on the bar, there at 4 s
   and gone after 5, 3 s old gone 2 s later, put away by Esc for good, her
-  Claude's named; point_at in one call as "Your Claude"; 999999 refused.
+  Claude's named; her pointer on the part keeps its dot with its name put
+  away until the point goes; point_at in one call as "Your Claude"; 999999
+  refused; the panel opened before a session and grown by it stays inside
+  the window (`TogetherDialog._keep_inside`).
 - Two tabs, the bar itself (`tools/web/pointat_flow.mjs`, the preview
   check `pointat`, about 6 minutes, two SwiftShader browsers): `node
   tools/web/pointat_flow.mjs --url=http://127.0.0.1:9011 --out=DIR` (the
   relay serving a web export of this tree) or `--url=<preview>` with
-  `BW_BYPASS`. Expect `pointat_flow: all ok`: 20 Alt+W over parts, each
+  `BW_BYPASS`. Expect `pointat_flow: all ok`: the owner's panel, grown by
+  Start, keeps Close in the window and closes; 20 Alt+W over parts, each
   shown in the owner's tab at once and drawn in the second within 500 ms
   at p95 by the owner's name (each round's stages in `DIR/rounds.json`);
   the owner's colour off the second tab's pixels; still there at 4.5 s,
