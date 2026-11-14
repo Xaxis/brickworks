@@ -705,14 +705,18 @@ above. 41 in all on 2026-10-13, with `job`, `brickify`, `print_part` and `make_u
   read_guide("app")'s first lines: n7 of the MCP walk said there was no such
   feature. `export_model format=pdf` draws the booklet into user data, writes
   only the PDF where Export writes (booklet_pdf.gd, its fonts carried) and
-  says any letter its type cannot print; on the web it refuses and points to
+  says any letter its type cannot print, with its cover pictured as the PDF
+  prints it (the walk's x2 session looked again in a fourth call without it);
+  on the web it refuses and points to
   the booklet tab's own Save as PDF. Every write nobody was asked about takes
   the next free name with "_2" (pods_render_2.png; a turntable's .webp, .gif,
   .mp4 and frames' folder one stem) and the answer says the first is kept; the
   person's save dialog is as it was (Godot's own "replace?" first). A 3MF's
   answer says each object is a closed solid, checked after closing, not
   assumed; an STL's says it is not, per part (LDraw as drawn), and that a 3MF
-  closes every part. Red on cdc640d3e: 26 checks.
+  closes every part. Red on cdc640d3e: 25 checks, before the cover check. Probes that keep their
+  files between runs read the name a write took, never the name asked
+  (render, lineart, animation).
 
 ## How to reach it
 
