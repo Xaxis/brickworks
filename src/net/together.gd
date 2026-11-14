@@ -2443,6 +2443,7 @@ func take_back_look() -> bool:
 		return false
 	_look = {}
 	_look_due = true
+	timing["look_taken"] = _unix_ms()
 	_show_looks()
 	_point()
 	return true
@@ -2556,6 +2557,10 @@ func _add_look(key: String, who: String, name: String, colour: Color, bricks: Di
 	timing["look_shown"] = _unix_ms()
 	if not RenderingServer.frame_post_draw.is_connected(_look_drawn):
 		RenderingServer.frame_post_draw.connect(_look_drawn, CONNECT_ONE_SHOT)
+	# A check reads the page as it comes, not at the next line heard: this
+	# person's own was read a whole trip late (pointat_flow).
+	if OS.has_feature("web"):
+		_tell_page()
 	if who != MINE:
 		said.emit("%s points at %s. Esc puts it away." % [name, _parts_words(bricks)])
 	elif by_claude:
@@ -2576,6 +2581,8 @@ func _drop_look(key: String) -> void:
 			(node as Node).queue_free()
 	timing["look_gone"] = _unix_ms()
 	_name_pointers()
+	if OS.has_feature("web"):
+		_tell_page()
 
 
 ## The points whose time is up taken off; this person's own forgotten then.

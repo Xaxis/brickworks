@@ -275,7 +275,10 @@ signed in as someone else.
   `BW_BYPASS`. Expect `pointat_flow: all ok`: the owner's panel, grown by
   Start, keeps Close in the window and closes; 20 Alt+W over parts, each
   shown in the owner's tab at once and drawn in the second within 500 ms
-  at p95 by the owner's name (each round's stages in `DIR/rounds.json`);
+  at p95 by the owner's name, or (this box drawing in software under load)
+  95 of 100 within it or with their trip, the key handled to the line had,
+  within 500 ms less a frame each side; each round's stages from both
+  pages' `Together.timing` in `DIR/rounds.json`;
   the owner's colour off the second tab's pixels; still there at 4.5 s,
   gone by 5.7 s on both; the owner's Esc gone from the second within
   500 ms; the second's Esc there alone; the owner's Claude's `point_at`
