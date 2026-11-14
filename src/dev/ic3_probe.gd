@@ -272,6 +272,8 @@ var _socket: Variant
 var _rpc_id: int = 0
 var _only: PackedStringArray = PackedStringArray()
 var _out: String = ""
+## A file another build saved, for lines_back (--back=PATH).
+var _back: String = ""
 
 
 func _initialize() -> void:
@@ -289,6 +291,8 @@ func _run() -> void:
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with("--ic3dir="):
 			_out = arg.substr(9)
+		elif arg.begins_with("--back="):
+			_back = arg.substr(7)
 		else:
 			_only = arg.split(",", false)
 	await process_frame
@@ -315,14 +319,16 @@ func _run() -> void:
 			["Clasher", CLASHER], ["Tower", TOWER], ["Home Two", HOME2], ["Lab", LAB], ["Ref", REF],
 			["Mirror", MIRROR], ["Car", _file(CAR)], ["Observatory", _file(OBS)],
 			["Nested", _file(NESTED)], ["Other Car", OTHERCAR], ["Plain Car", PLAINCAR],
-			["Own Name", OWNNAME], ["Own Car", OWNCAR], ["Own Steps", OWNSTEPS]]:
+			["Own Name", OWNNAME], ["Own Car", OWNCAR], ["Own Steps", OWNSTEPS],
+			["Observatory Tabs", _crlf_tabs(_file(OBS))]]:
 		_keep(pair[0], pair[1])
 	await _make_plains()
 	for case: String in ["twice", "clash", "selfclash", "nested2", "flat", "lodge_edits",
 			"lodge_twice", "undo_redo", "pattern", "motions", "mirror", "leak", "delete_undo",
 			"lodge_nested", "lodge_ungroup", "menu", "nested_own", "same_name", "self_car", "self_lodge",
 			"lodge_save_edit", "carname", "carname_plain", "ownname", "selfclash_edit", "owncar",
-			"motions_own"]:
+			"motions_own", "lines_stepless", "lines_twice_mirrored", "lines_emptied_step",
+			"lines_crlf_tabs", "lines_undo_redo", "lines_back"]:
 		if not _only.is_empty() and not _only.has(case):
 			continue
 		await call("_case_" + case)
@@ -550,6 +556,154 @@ func _case_motions_own() -> void:
 		if _world.motions != null else 0), _world.motions == null or _world.motions.list.is_empty())
 	await _invariant("motions_own", "Own Steps", ["Observatory"], texts[0], tops)
 	_same_again("motions_own", texts)
+
+
+## smalls2 (intomodel3's open item): the observatory into Clash Host, a model
+## of the app's own whose steps nobody gave, where the plan builds every copy
+## in its parent's steps and a copy so built had no section for its own
+## lines: its 20 motion lines were dropped on the first save. Each case
+## saves, reopens and saves again: the observatory's motion lines, as its
+## own save writes them, in both saves; the host plays none of them.
+func _lines_kept(case: String, texts: Array, times: int = 1) -> void:
+	var plain: Array = _motion_lines(_plain_save("Observatory"))
+	var now: Array = _motion_lines(texts[0])
+	var again: Array = _motion_lines(texts[1])
+	var each: bool = plain.all(func(line: String) -> bool: return now.count(line) >= times)
+	_check("%s: the observatory's %d motion lines (its own save's) in the save: %d, every one %s; again: %d"
+		% [case, plain.size(), now.size(), "kept" if each else "NOT kept", again.size()],
+		plain.size() > 0 and each and now.size() == plain.size() * times and again == now)
+	_check("%s: the host plays none of them (%d motions)" % [case, _world.motions.list.size()
+		if _world.motions != null else 0], _world.motions == null or _world.motions.list.is_empty())
+
+
+## The motion lines of [param text], each with its tabs as spaces and
+## without its CR, in the order written.
+static func _motion_lines(text: String) -> Array:
+	var out: Array = []
+	for line: String in text.split("\n"):
+		var plain: String = " ".join(line.strip_edges().replace("\t", " ").split(" ", false))
+		if plain.begins_with("0 !BRICKWORKS MOTION"):
+			out.append(plain)
+	return out
+
+
+## [param text] with CRLF ends and a tab between the words of every line.
+static func _crlf_tabs(text: String) -> String:
+	var out: PackedStringArray = []
+	for line: String in text.replace("\r", "").split("\n"):
+		out.append("\t".join(line.split(" ", true)) if not line.is_empty() else line)
+	return "\r\n".join(out)
+
+
+func _case_lines_stepless() -> void:
+	print("\nlines_stepless: the small observatory (motions) into Clash Host, the app's own, no steps given")
+	await _open_saved("Clash Host")
+	var tops: Array = _tops()
+	print("    MCP: " + (await _say("open_model", {"into": true, "name": "Observatory"})).left(200))
+	var texts: Array = await _save_twice("ic3 lines stepless")
+	print("    sections: %s; IN lines %d" % [_sections(texts[0]), (texts[0] as String).count("0 !BRICKWORKS IN ")])
+	_lines_kept("lines_stepless", texts)
+	await _invariant("lines_stepless", "Clash Host", ["Observatory"], texts[0], tops)
+	_same_again("lines_stepless", texts)
+
+
+## Twice, the second mirrored left to right where it stands.
+func _case_lines_twice_mirrored() -> void:
+	print("\nlines_twice_mirrored: the observatory into Clash Host twice, the second mirrored")
+	await _open_saved("Clash Host")
+	print("    MCP: " + (await _say("open_model", {"into": true, "name": "Observatory"})).left(120))
+	print("    MCP: " + (await _say("open_model", {"into": true, "name": "Observatory"})).left(120))
+	var ids: Array = _under(_path_to("Observatory", 2))
+	print("    mirror: " + (await _say("mirror_parts", {"bricks": ids, "axis": "x", "picture": false})).left(200))
+	var texts: Array = await _save_twice("ic3 lines twice")
+	print("    sections: %s" % [_sections(texts[0])])
+	var plain: int = _motion_lines(_plain_save("Observatory")).size()
+	var now: int = _motion_lines(texts[0]).size()
+	_check("lines_twice_mirrored: the observatory's %d motion lines in the save, for each definition written: %d, again %d"
+		% [plain, now, _motion_lines(texts[1]).size()], now >= plain and now % plain == 0
+		and _motion_lines(texts[1]) == _motion_lines(texts[0]))
+	_unique_files("lines_twice_mirrored", texts[0])
+	_same_again("lines_twice_mirrored", texts)
+
+
+## The host's own first step emptied: its 3001 taken off.
+func _case_lines_emptied_step() -> void:
+	print("\nlines_emptied_step: the observatory into Clash Host, the host's first step emptied")
+	await _open_saved("Clash Host")
+	print("    MCP: " + (await _say("open_model", {"into": true, "name": "Observatory"})).left(120))
+	var own: Array = _model().filter(func(b: BrickWorld.Brick) -> bool:
+		return Assemblies.path_of(b).is_empty() and b.part_id == "3001").map(func(b: BrickWorld.Brick) -> int:
+			return b.id)
+	_select(own)
+	_shell.run("delete")
+	await _frames(4)
+	_edited()
+	print("    took off %d; %d parts left" % [own.size(), _model().size()])
+	var texts: Array = await _save_twice("ic3 lines emptied")
+	_lines_kept("lines_emptied_step", texts)
+	_check("lines_emptied_step: the 3001 is gone (%d)" % (texts[0] as String).count(" 3001.dat"),
+		not (texts[0] as String).contains(" 3001.dat"))
+	_same_again("lines_emptied_step", texts)
+
+
+## The observatory's file with CRLF ends and tabs between every line's words.
+func _case_lines_crlf_tabs() -> void:
+	print("\nlines_crlf_tabs: the observatory, CRLF and tabs, into Clash Host")
+	await _open_saved("Clash Host")
+	print("    MCP: " + (await _say("open_model", {"into": true, "name": "Observatory Tabs"})).left(200))
+	var texts: Array = await _save_twice("ic3 lines tabs")
+	_lines_kept("lines_crlf_tabs", texts)
+	_same_again("lines_crlf_tabs", texts)
+
+
+## Brought, undone, redone, undone, redone.
+func _case_lines_undo_redo() -> void:
+	print("\nlines_undo_redo: the observatory into Clash Host, undo, redo, undo, redo")
+	await _open_saved("Clash Host")
+	print("    MCP: " + (await _say("open_model", {"into": true, "name": "Observatory"})).left(120))
+	await _undo()
+	var mid: Array = await _save_twice("ic3 lines undone")
+	_check("lines_undo_redo: undone, no motion line in the save (%d)" % _motion_lines(mid[0]).size(),
+		_motion_lines(mid[0]).is_empty())
+	await _open_saved("Clash Host")
+	print("    MCP: " + (await _say("open_model", {"into": true, "name": "Observatory"})).left(120))
+	for _n: int in 2:
+		await _undo()
+		await _redo()
+	var texts: Array = await _save_twice("ic3 lines redone")
+	_lines_kept("lines_undo_redo", texts)
+	_same_again("lines_undo_redo", texts)
+
+
+## A file another build saved (--back=PATH): the live app's save of
+## lines_stepless, or this one's opened by the live app: opened here, saved
+## twice; what its motion lines come to said, and the second save the first.
+func _case_lines_back() -> void:
+	if _back.is_empty():
+		print("\nlines_back: no --back=PATH given; not run")
+		return
+	print("\nlines_back: %s, saved by another build, opened and saved here" % _back.get_file())
+	var given: String = _file(_back)
+	_keep("Back", given)
+	await _open_saved("Back")
+	var texts: Array = await _save_twice("ic3 lines back")
+	print("    its motion lines: %d as given, %d saved here, %d again" % [_motion_lines(given).size(),
+		_motion_lines(texts[0]).size(), _motion_lines(texts[1]).size()])
+	_check("lines_back: every motion line it was given kept (%d of %d)" % [
+		_motion_lines(texts[0]).filter(func(l: String) -> bool: return _motion_lines(given).has(l)).size(),
+		_motion_lines(given).size()], _motion_lines(given).all(func(l: String) -> bool:
+			return _motion_lines(texts[0]).has(l)))
+	_check("lines_back: its parts kept (%s)" % _difference(_counts(given), _counts(texts[0])),
+		_counts(given) == _counts(texts[0]))
+	_same_again("lines_back", texts)
+
+
+static func _sections(text: String) -> Array:
+	var out: Array = []
+	for line: String in text.split("\n"):
+		if line.begins_with("0 FILE "):
+			out.append(line.substr(7).strip_edges())
+	return out
 
 
 ## A model with a mirrored copy and a mirrored part into the car.
