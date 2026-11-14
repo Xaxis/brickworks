@@ -71,12 +71,15 @@ async function show() {
     }
   }
   document.title = `${part.querySelector("h2")?.textContent || "Console"} · Console · Brickworks`;
+  let went = true;
   if (!loaded.has(at.section)) {
     loaded.add(at.section);
-    await loaders[at.section]().catch((problem) => {
+    went = await loaders[at.section]().then(() => true, (problem) => {
       loaded.delete(at.section);
       say("note", problem.message, true);
+      return problem;
     });
+    failedIn(part, went === true ? "" : went.message);
   }
   if (at.asked && !show.kept) {
     const row = document.getElementById(at.asked);
@@ -87,6 +90,22 @@ async function show() {
   }
   if (at.section === "people") await person(at.account);
   if (at.section === "connector") await connectorPanel(at.account);
+  return went === true;
+}
+
+/// A section whose read failed says so in its own place, under its title:
+/// it drew nothing else, and the header's note is soon "Updated" again
+/// (rel-m298: Connector read nothing on the design check, said nowhere).
+function failedIn(part, words) {
+  let line = part.querySelector(":scope > p[data-failed]");
+  if (!words) return line?.remove();
+  if (!line) {
+    line = make("p", "note bad");
+    line.dataset.failed = "";
+    line.setAttribute("role", "alert");
+    (part.querySelector(":scope > .lead") || part.firstElementChild).after(line);
+  }
+  line.textContent = `This section could not be read: ${words}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -108,15 +127,18 @@ async function start() {
   $("view").hidden = false;
   $("meta-who").textContent = `Signed in as ${signedInAs() || "the owner"}${TESTS ? " · the checks' own (?tests=1)" : ""}`;
   addEventListener("hashchange", show);
-  await show();
-  say("note", `Updated ${new Date().toLocaleTimeString()}`);
+  if (await show()) say("note", `Updated ${new Date().toLocaleTimeString()}`);
 }
 
 $("again").addEventListener("click", async () => {
   const at = route().section;
   $("again").disabled = true;
   try {
-    await Promise.all([loadOverview(), at === "overview" ? null : loaders[at]()]);
+    const part = document.querySelector(`[data-section="${at}"]`);
+    await Promise.all([loadOverview(), at === "overview" ? null : loaders[at]().then(() => failedIn(part, ""), (problem) => {
+      failedIn(part, problem.message);
+      throw problem;
+    })]);
     if (at === "people" && route().account) await person(route().account, true);
     if (at === "connector" && route().account) await connectorPanel(route().account, true);
     say("note", `Updated ${new Date().toLocaleTimeString()}`);
