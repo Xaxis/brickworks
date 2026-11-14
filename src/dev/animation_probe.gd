@@ -260,6 +260,14 @@ func _mp4() -> void:
 		return
 	var folder: String = _out.path_join("mp4")
 	DirAccess.make_dir_recursive_absolute(folder)
+	# A run before this one left its files: emptied, so the first takes the
+	# name asked and the second the next.
+	for frames: String in DirAccess.get_directories_at(folder):
+		for name: String in DirAccess.get_files_at(folder.path_join(frames)):
+			DirAccess.remove_absolute(folder.path_join(frames).path_join(name))
+		DirAccess.remove_absolute(folder.path_join(frames))
+	for name: String in DirAccess.get_files_at(folder):
+		DirAccess.remove_absolute(folder.path_join(name))
 	# The second takes the next free name (mcpreach: nothing written over
 	# unasked), so each is read by the name it took.
 	var bases := PackedStringArray()
