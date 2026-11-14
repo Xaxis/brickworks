@@ -217,13 +217,8 @@ func comment(token: String, body: Dictionary) -> Dictionary:
 	return await _fetch("/api/people?op=comment", HTTPClient.METHOD_POST, token, JSON.stringify(body))
 
 
-## One request on a throwaway node, as Account._fetch does: an
-## HTTPRequest takes one call at a time.
+## One request, as Account._fetch makes it (PageFetch).
 func _fetch(path: String, method: int, token: String, body: String) -> Dictionary:
-	var http := HTTPRequest.new()
-	# A model and its picture, up to about 3 MB, on a slow line.
-	http.timeout = 90.0
-	add_child(http)
 	var headers := PackedStringArray(["content-type: application/json"])
 	if not token.is_empty():
 		headers.append("authorization: Bearer " + token)
@@ -232,11 +227,8 @@ func _fetch(path: String, method: int, token: String, body: String) -> Dictionar
 	# the browser's own goes, and cannot be changed.
 	if not OS.has_feature("web"):
 		headers.append("User-Agent: Brickworks/%s (desktop)" % BuildInfo.version())
-	if http.request(Deployment.api_base() + path, headers, method, body) != OK:
-		http.queue_free()
-		return {"code": 0, "body": null}
-	var result: Array = await http.request_completed
-	http.queue_free()
+	# A model and its picture, up to about 3 MB, on a slow line.
+	var result: Array = await PageFetch.ask(self, Deployment.api_base() + path, headers, method, body, 90.0)
 	if int(result[0]) != HTTPRequest.RESULT_SUCCESS:
 		return {"code": 0, "body": null}
 	var json := JSON.new()

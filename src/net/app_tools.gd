@@ -5330,15 +5330,8 @@ func _fetch(url: String, most: int) -> Dictionary:
 			% host}
 	if OS.has_feature("web"):
 		return await _fetch_through_site(url, host, most)
-	var request := HTTPRequest.new()
-	request.body_size_limit = most
-	request.timeout = FETCH_SECONDS
-	app.add_child(request)
-	if request.request(url, ["User-Agent: " + ReferenceFinder.AGENT]) != OK:
-		request.queue_free()
-		return {"error": "Could not ask %s for it." % host}
-	var got: Array = await request.request_completed
-	request.queue_free()
+	var got: Array = await PageFetch.ask(app, url, PackedStringArray(["User-Agent: " + ReferenceFinder.AGENT]),
+		HTTPClient.METHOD_GET, "", FETCH_SECONDS, most)
 	var result: int = int(got[0])
 	var code: int = int(got[1])
 	if result == HTTPRequest.RESULT_BODY_SIZE_LIMIT_EXCEEDED:
@@ -5362,16 +5355,9 @@ func _fetch_through_site(url: String, host: String, most: int) -> Dictionary:
 	var token: String = await account.access_token() if account != null else ""
 	if token.is_empty():
 		return {"error": "Sign in to Brickworks to bring in a picture or a model from a link."}
-	var request := HTTPRequest.new()
-	request.body_size_limit = most
-	request.timeout = SITE_FETCH_SECONDS
-	app.add_child(request)
-	if request.request(Deployment.api_base() + "/api/account?op=fetch", ["authorization: Bearer " + token,
-			"content-type: application/json"], HTTPClient.METHOD_POST, JSON.stringify({"url": url})) != OK:
-		request.queue_free()
-		return {"error": "Could not ask Brickworks's site to fetch %s." % host}
-	var got: Array = await request.request_completed
-	request.queue_free()
+	var got: Array = await PageFetch.ask(app, Deployment.api_base() + "/api/account?op=fetch",
+		PackedStringArray(["authorization: Bearer " + token, "content-type: application/json"]),
+		HTTPClient.METHOD_POST, JSON.stringify({"url": url}), SITE_FETCH_SECONDS, most)
 	var result: int = int(got[0])
 	if result != HTTPRequest.RESULT_SUCCESS:
 		return {"error": "Could not fetch %s: %s." % [url.left(100), FetchWords.of(result,

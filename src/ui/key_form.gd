@@ -170,21 +170,13 @@ func _say(text: String, wrong: bool) -> void:
 ## the question to ask. Straight to Anthropic, as every request with the
 ## key is, and never anywhere else.
 func _ask_anthropic(key: String, done: Callable) -> void:
-	var http := HTTPRequest.new()
-	# Generous: a slow phone, or a browser drawing in software on a busy
-	# machine, took longer than fifteen seconds to hear the answer, and a
-	# check that gives up keeps the key unchecked.
-	http.timeout = 30.0
-	add_child(http)
-	http.request_completed.connect(func(result: int, code: int,
-			_headers: PackedStringArray, _body: PackedByteArray) -> void:
-		http.queue_free()
-		done.call(code if result == HTTPRequest.RESULT_SUCCESS else 0))
 	var headers := PackedStringArray(["x-api-key: " + key,
 		"anthropic-version: 2023-06-01"])
 	if OS.has_feature("web"):
 		headers.append("anthropic-dangerous-direct-browser-access: true")
-	if http.request("https://api.anthropic.com/v1/models?limit=1",
-			headers) != OK:
-		http.queue_free()
-		done.call(0)
+	# Generous: a slow phone, or a browser drawing in software on a busy
+	# machine, took longer than fifteen seconds to hear the answer, and a
+	# check that gives up keeps the key unchecked.
+	var got: Array = await PageFetch.ask(self, "https://api.anthropic.com/v1/models?limit=1", headers,
+		HTTPClient.METHOD_GET, "", 30.0)
+	done.call(int(got[1]) if int(got[0]) == HTTPRequest.RESULT_SUCCESS else 0)

@@ -678,20 +678,13 @@ func _ask(method: String, route: String, body: String = "") -> Dictionary:
 	var token: String = await account.access_token()
 	if token.is_empty():
 		return {"code": 401, "body": null}
-	var http := HTTPRequest.new()
-	http.timeout = 60.0
-	http.body_size_limit = 8 * 1024 * 1024
-	add_child(http)
 	var headers := PackedStringArray(["authorization: Bearer " + token])
 	if method == "POST":
 		headers.append("content-type: application/json")
 	var how: int = {"POST": HTTPClient.METHOD_POST, "DELETE": HTTPClient.METHOD_DELETE}.get(
 		method, HTTPClient.METHOD_GET)
-	if http.request(Deployment.api_base() + route, headers, how, body) != OK:
-		http.queue_free()
-		return {"code": 0, "body": null}
-	var result: Array = await http.request_completed
-	http.queue_free()
+	var result: Array = await PageFetch.ask(self, Deployment.api_base() + route, headers, how, body, 60.0,
+		8 * 1024 * 1024)
 	if int(result[0]) != HTTPRequest.RESULT_SUCCESS:
 		return {"code": 0, "body": null}
 	var json := JSON.new()

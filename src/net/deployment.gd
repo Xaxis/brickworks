@@ -89,14 +89,8 @@ func _ask() -> void:
 	for tries: int in RETRY_AFTER.size() + 1:
 		if tries > 0:
 			await get_tree().create_timer(RETRY_AFTER[tries - 1], true, false, true).timeout
-		var http := HTTPRequest.new()
-		http.timeout = 20.0
-		add_child(http)
-		if http.request(api_base() + "/api/account") != OK:
-			http.queue_free()
-			break
-		var result: Array = await http.request_completed
-		http.queue_free()
+		var result: Array = await PageFetch.ask(self, api_base() + "/api/account", PackedStringArray(),
+			HTTPClient.METHOD_GET, "", 20.0)
 		if _read(result) or not PartLibrary.may_pass(int(result[0]), int(result[1])):
 			break
 	_finish()

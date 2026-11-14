@@ -186,8 +186,6 @@ var _instance: String = ""
 ## wake on the next one's answer and answer it twice.
 var _generation: int = 0
 var _troubled: bool = false
-var _http: HTTPRequest
-var _reply: HTTPRequest
 ## When the request for work now waiting went out, in ticks, or 0. The
 ## relay answers one within 25 s; one outstanding far longer died while the
 ## page slept, and the loop waiting on it is replaced rather than left to
@@ -214,13 +212,6 @@ func _ready() -> void:
 			base_url = str(here)
 	else:
 		base_url = Deployment.api_base()
-	_http = HTTPRequest.new()
-	# The relay holds a request for work for 25 s; wait a little longer.
-	_http.timeout = 40.0
-	add_child(_http)
-	_reply = HTTPRequest.new()
-	_reply.timeout = 30.0
-	add_child(_reply)
 	_beat = HTTPRequest.new()
 	_beat.timeout = 10.0
 	add_child(_beat)
@@ -247,7 +238,7 @@ func _process(_delta: float) -> void:
 		return
 	if now - _asking_since > STALLED_MS:
 		_asking_since = 0
-		_http.cancel_request()
+		PageFetch.cancel(_next_tag())
 		_generation += 1
 		_listen()
 
@@ -728,12 +719,7 @@ static func _unix(iso: String) -> int:
 
 ## A POST of its own, beside the request waiting for work: [result, code, body].
 func _ask_aside(url: String) -> Array:
-	var http := HTTPRequest.new()
-	http.timeout = 20.0
-	add_child(http)
-	var got: Array = await _ask(http, url, "{}")
-	http.queue_free()
-	return got
+	return await _ask(url, "{}", PackedStringArray(), 20.0)
 
 
 ## Where [method connect_claude] has sent the person and what to do there,
@@ -827,16 +813,11 @@ func _set_connections(now: Array) -> void:
 
 ## One request to the deployment with the session: [status, parsed body].
 func _fetch(method: int, path: String, session: String) -> Array:
-	var http := HTTPRequest.new()
-	http.timeout = 20.0
-	add_child(http)
-	if http.request(base_url + path, PackedStringArray([
+	var done: Array = await PageFetch.ask(self, base_url + path, PackedStringArray([
 			"authorization: Bearer " + session, "content-type: application/json"]),
-			method, "" if method == HTTPClient.METHOD_GET else "{}") != OK:
-		http.queue_free()
+			method, "" if method == HTTPClient.METHOD_GET else "{}", 20.0)
+	if int(done[0]) != HTTPRequest.RESULT_SUCCESS:
 		return [0, null]
-	var done: Array = await http.request_completed
-	http.queue_free()
 	var json := JSON.new()
 	var text: String = (done[3] as PackedByteArray).get_string_from_utf8()
 	return [int(done[1]), json.data if json.parse(text) == OK else null]
@@ -880,7 +861,7 @@ func stop(by_hand: bool = false) -> void:
 func _hang_up() -> void:
 	_on = false
 	_generation += 1
-	_http.cancel_request()
+	PageFetch.cancel(_next_tag())
 	listening.emit(false, address())
 	_watch_the_page()
 	# No chat reaches a tab that is not listening.
@@ -928,12 +909,7 @@ func forget() -> void:
 func _tell(op: String) -> void:
 	if _token.is_empty():
 		return
-	var note := HTTPRequest.new()
-	add_child(note)
-	note.request_completed.connect(func(_a: int, _b: int,
-			_c: PackedStringArray, _d: PackedByteArray) -> void:
-		note.queue_free())
-	note.request("%s/api/mcp?t=%s&i=%s&op=%s" % [base_url, _token, _instance, op],
+	PageFetch.ask(self, "%s/api/mcp?t=%s&i=%s&op=%s" % [base_url, _token, _instance, op],
 		PackedStringArray(), HTTPClient.METHOD_POST, "")
 
 
@@ -1171,9 +1147,9 @@ func _hello() -> int:
 		"tools": ((listed as Dictionary).get("result", {}) as Dictionary).get("tools", []),
 	}
 	body["model"] = _model()
-	var got: Array = await _ask(_http, "%s/api/mcp?t=%s&i=%s&tab=%s&used=%d&op=hello" % [
+	var got: Array = await _ask("%s/api/mcp?t=%s&i=%s&tab=%s&used=%d&op=hello" % [
 		base_url, _token, _instance, tab(), _used_ago()], JSON.stringify(body),
-		PackedStringArray(["authorization: Bearer " + session]))
+		PackedStringArray(["authorization: Bearer " + session]), ASK_S, _next_tag())
 	return int(got[1]) if got[0] == HTTPRequest.RESULT_SUCCESS else 0
 
 
@@ -1222,8 +1198,9 @@ func _listen() -> void:
 		await get_tree().create_timer(3.0).timeout
 	while mine == _generation:
 		_asking_since = Time.get_ticks_msec()
-		var got: Array = await _ask(_http, "%s/api/mcp?t=%s&i=%s&used=%d&model=%s&op=next" % [
-			base_url, token, _instance, _used_ago(), _model().uri_encode()], "")
+		var got: Array = await _ask("%s/api/mcp?t=%s&i=%s&used=%d&model=%s&op=next" % [
+			base_url, token, _instance, _used_ago(), _model().uri_encode()], "", PackedStringArray(),
+			ASK_S, _next_tag())
 		if mine != _generation:
 			return
 		_asking_since = 0
@@ -1331,8 +1308,9 @@ func _answer(token: String, work: Dictionary) -> void:
 		meta["brickworks/tab"] = tab()
 		meta["brickworks/model"] = _model()
 		carried["_meta"] = meta
-	await _ask(_reply, "%s/api/mcp?t=%s&op=answer&id=%d" % [base_url, token,
-		int(work.get("id", 0))], JSON.stringify(answer if sitting.is_empty() else _taught(sitting, tool, answer)))
+	await _ask("%s/api/mcp?t=%s&op=answer&id=%d" % [base_url, token,
+		int(work.get("id", 0))], JSON.stringify(answer if sitting.is_empty() else _taught(sitting, tool, answer)),
+		PackedStringArray(), ANSWER_S)
 	if looking:
 		return
 	var result: Dictionary = (answer as Dictionary).get("result", {}) as Dictionary
@@ -1344,13 +1322,24 @@ func _answer(token: String, work: Dictionary) -> void:
 		and not (answer as Dictionary).has("error"), "\n".join(said))
 
 
-## A POST, awaited: [result, code, body].
-func _ask(http: HTTPRequest, url: String, body: String,
-		more: PackedStringArray = PackedStringArray()) -> Array:
+## The relay holds a request for work for 25 s; it is waited for a little
+## longer. An answer is waited for 30 s.
+const ASK_S := 40.0
+const ANSWER_S := 30.0
+
+
+## A POST, awaited: [result, code, body]. It leaves when asked, in a
+## browser too, and is answered between frames (PageFetch); [param tag]
+## names it for PageFetch.cancel.
+func _ask(url: String, body: String, more: PackedStringArray = PackedStringArray(),
+		timeout: float = ANSWER_S, tag: String = "") -> Array:
 	var headers := PackedStringArray(["content-type: application/json"])
 	headers.append_array(more)
-	PageFetch.asked(url)
-	if http.request(url, headers, HTTPClient.METHOD_POST, body) != OK:
-		return [HTTPRequest.RESULT_CANT_CONNECT, 0, PackedByteArray()]
-	var done: Array = await http.request_completed
+	var done: Array = await PageFetch.ask(self, url, headers, HTTPClient.METHOD_POST, body, timeout, -1, tag)
 	return [done[0], done[1], done[3]]
+
+
+## The tag of this page's request for work, and its hello: the one
+## stopped when it is replaced or the connector goes off.
+func _next_tag() -> String:
+	return "relay_next:" + _instance
