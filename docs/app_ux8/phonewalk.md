@@ -55,7 +55,7 @@ unit's branch, against pre261 at 905153126 in brackets: 0 of 54 targets under
 | the page editor: words added | 3 | 4 | 4, but "Your wordsHi" |
 | the page editor: an arrow drawn | 2 | 2 | 2 |
 | the page editor: Done | 1 | 1 | 1 |
-| Motions: a motion recorded by dragging | 4 | 6 | 7, and 152 parts' actions opened |
+| Motions: a motion recorded by dragging | 4 | 5 | 7, and 152 parts' actions opened |
 | Motions: a joint set by its slider | 1 | 1 | 4 |
 | Simulate: played, from its panel | 1 | 1 | 3 |
 | Simulate: the cycle scrubbed | 1 | 1 | 4 |
@@ -66,7 +66,10 @@ is still More, its menu, a swipe and the row, so Simulate played is about 5
 against the desktop's 2. That depth is phone_shell.gd's, and is left for the
 small-faults unit, as is adding to a selection by finger. The timeline's own
 controls are still about 13 points tall (Lay out the page… 51 x 13 on a phone),
-and steps_bar.gd is not one of these panels. Since kinefuncs (922dab426) the
+and steps_bar.gd is not one of these panels. In a fresh model's Build order the
+timeline hides its Booklet row, Lay out the page… with it, until the page editor
+has been opened once from More: the web walk on this branch's preview counted
+the page editor opened in 9 for that. Since kinefuncs (922dab426) the
 orrery fixture reads locked, so the probe drives Simulate on simulate_probe's
 gear train instead.
 

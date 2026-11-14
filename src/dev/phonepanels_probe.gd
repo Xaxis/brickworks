@@ -356,7 +356,13 @@ func _page_editor() -> void:
 	_check("Done closes the page editor in %d" % _presses, not editor.is_open() and _presses == 1)
 	_act("the page editor: Done", 1)
 	# The words kept on the page, opened again.
-	await _lay_out_page(editor)
+	var again: Dictionary = await _lay_out_page(editor)
+	print("    opened again on page %s, its steps %s" % [again.get("page", "none"), again.get("steps", [])])
+	if not (again.get("items", {}) as Dictionary).has(words_item):
+		# The timeline's step since moved: the page the words were put on.
+		await editor._lay_out(int(words_item.split("_")[2]))
+		again = await _page_laid(editor)
+		print("    laid out the words' page, %s, its steps %s" % [again.get("page", "none"), again.get("steps", [])])
 	var kept: String = ""
 	for n: int in editor._items.size():
 		if editor._item_name(n) == words_item:
@@ -391,9 +397,13 @@ func _lay_out_page(editor: PageEditor) -> Dictionary:
 		var r: Rect2 = own.get_global_rect()
 		print("    the timeline's Lay out the page… is shown, %.0f x %.0f points; tapped" % [r.size.x / _pt(), r.size.y / _pt()])
 		await _tap(r.get_center())
+		await _until(editor.is_open, 3.0)
+		if not editor.is_open():
+			print("    the tap on it opened nothing; run as More runs it")
 	else:
 		print("    the timeline shows no Lay out the page… (its Booklet row hidden, order %s); run as More runs it"
 			% str(steps.page_state().get("order", "")))
+	if not editor.is_open():
 		_check("Lay out the page… runs", _shell.run("booklet_lay_out"))
 	return await _page_laid(editor)
 
