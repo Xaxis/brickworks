@@ -3349,7 +3349,9 @@ picture the assistant is shown.
   (`PageEditor._select`: a tap on another item or Draw an arrow dropped
   them), and a change made while the page lays out is laid out again (the
   history is read before the lay-out, `_seen_history`). Motions: New motion
-  and New sequence head the list by finger (`_build_list`), and in the editor
+  and New sequence stand in the panel's header by finger, in the list view
+  only (`PosePanel._build`: at the list's head they pushed Keep and Play below
+  the fold, at its foot they were swipes down), and in the editor
   (`PosePanel._for_a_finger`) All motions, the name, Record and Remove are in one
   row at the editor's top (New motion does not focus the name there: a
   phone's keyboard would cover the sheet; a tap selects it to type over), the
@@ -3372,7 +3374,8 @@ picture the assistant is shown.
   added and typed over (6 presses at most), an arrow drawn by Draw an arrow
   and a drag (4 at most), Done, and opened again the words kept; every
   control, the corner, the knob and an arrow's handles measured. 2: 1484-1's
-  doors: a suggestion kept, then New motion (its name and Record in sight, the
+  doors: New motion and a suggestion's Keep in sight with no swipe, the
+  suggestion kept and its Play in sight, then New motion (its name and Record in sight, the
   name not focused), Record, a door swung by a finger, Stop (8 at most): no
   sheet, the selection as it was, the keys kept; the editor opened again, a
   joint's slider in sight in a drag at most and dragged. 3: simulate_probe's

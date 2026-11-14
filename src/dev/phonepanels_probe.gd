@@ -438,12 +438,21 @@ func _motions() -> void:
 
 	# A suggested motion kept first, as the walk does before it records: the
 	# list then holds a motion and the suggestions above where New motion was.
+	# New motion, a suggestion's Keep and then the kept motion's Play, each
+	# in sight with no swipe: New motion at the list's head once pushed the
+	# other two below the fold (the walk: 11 taps to keep and play against 3).
 	var keeps: Dictionary = panel.controls_by_name()
-	if keeps.has("motion_keep_0"):
-		await _press(keeps["motion_keep_0"] as Control)
+	var keep: Control = keeps.get("motion_keep_0") as Control
+	_check("New motion and a suggestion's Keep in sight as Motions opens",
+		_in_sight(panel._new) and keep != null and _in_sight(keep))
+	if keep != null:
+		await _press(keep)
 		await _frames(10)
 	_check("a suggested motion kept (%d in the model)" % panel._motions().list.size(),
 		panel._motions().list.size() >= 1)
+	var play: Control = panel.controls_by_name().get("motion_play_0") as Control
+	_check("the kept motion's Play and New motion in sight",
+		play != null and _in_sight(play) and _in_sight(panel._new))
 
 	# New motion, Record, a door swung, Stop.
 	_presses = 0
@@ -778,6 +787,12 @@ func _shown_in(control: Control) -> Rect2:
 			clip = clip.intersection((up as Control).get_global_rect())
 		up = up.get_parent()
 	return clip
+
+
+## [param control] shown whole, on the screen and in every list round it.
+func _in_sight(control: Control) -> bool:
+	return control.is_visible_in_tree() \
+		and _shown_in(control).grow(1.0).encloses(control.get_global_rect())
 
 
 ## The innermost list round [param control] that cuts it off.

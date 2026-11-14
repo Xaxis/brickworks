@@ -99,6 +99,8 @@ var _suggest_heading: Label
 var _suggest_rows: VBoxContainer
 var _new: Button
 var _new_sequence: Button
+## New motion and New sequence, in the list's foot or, by finger, the header.
+var _making: HBoxContainer
 var _edit_box: VBoxContainer
 var _seq_box: VBoxContainer
 var _seq_back: Button
@@ -308,6 +310,7 @@ func _refresh() -> void:
 		_body.scroll_vertical = 0
 	_scrolled_for = _view
 	_list_box.visible = _view == "list"
+	_making.visible = _view == "list"
 	_edit_box.visible = _view == "edit"
 	_seq_box.visible = _view == "sequence"
 	if _view == "list":
@@ -1832,6 +1835,15 @@ func _build() -> void:
 	inner.add_theme_constant_override("separation", 6)
 	_body.add_child(inner)
 	_build_list(inner)
+	# By finger, New motion and New sequence stand in the header, in sight
+	# however far the list is scrolled and pushing none of it down. At the
+	# list's foot they were five swipes down a phone's sheet (the phone walk:
+	# 10 taps to record against the desktop's 4); at its head they pushed the
+	# suggestions' Keep and a motion's Play below the fold (11 to keep and
+	# play against 3).
+	if Phone.on():
+		_making.reparent(header, false)
+		header.move_child(_making, 1)
 	_build_editor(inner)
 	_build_sequence(inner)
 	column.add_child(HSeparator.new())
@@ -1922,19 +1934,13 @@ func _build_list(into: Control) -> void:
 	_suggest_rows = VBoxContainer.new()
 	_suggest_rows.add_theme_constant_override("separation", 3)
 	_list_box.add_child(_suggest_rows)
-	var making := HBoxContainer.new()
-	making.add_theme_constant_override("separation", 6)
-	_list_box.add_child(making)
-	_new = _button(making, "New motion", new_motion,
+	_making = HBoxContainer.new()
+	_making.add_theme_constant_override("separation", 6)
+	_list_box.add_child(_making)
+	_new = _button(_making, "New motion", new_motion,
 		"Make a motion: name it, then Record and drag the parts, or set its joints one by one")
-	_new_sequence = _button(making, "New sequence", new_sequence,
+	_new_sequence = _button(_making, "New sequence", new_sequence,
 		"A motion made of the model's motions, in an order you choose: Show it all")
-	# By finger, New motion and New sequence head the list, in sight however
-	# many motions and suggestions it holds: under a kept one and the
-	# suggestions they were five swipes down a phone's sheet (the phone walk
-	# on the phonepanels preview: 10 taps to record against the desktop's 4).
-	if Phone.on():
-		_list_box.move_child(making, 0)
 
 
 func _build_editor(into: Control) -> void:

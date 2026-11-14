@@ -43,7 +43,7 @@ On a touch screen the app is laid out for a finger: one row of tools, and the pa
 - **Drag** turns the view, and so do two fingers; **pinch** zooms. Two fingers turned about each other turn the model round as far as they turn, as a map does.
 - The Brickworks mark along the top opens the same menu as on a computer. With the assistant on, its button sits beside the model's name.
 - In the parts sheet the search and the chips scroll with the parts, and the count, **Prints** and **List** stay at its foot, whichever way the phone is held.
-- **Motions** puts **Record** beside the motion's name, and each joint's keys are a fingertip tall. **Simulate** puts **Play** and the cycle's slider under its title. A part swung on its joint while recording opens nothing over the panel.
+- **Motions** keeps **New motion** in its header, in sight however far its list is scrolled, and puts **Record** beside the motion's name, and each joint's keys are a fingertip tall. **Simulate** puts **Play** and the cycle's slider under its title. A part swung on its joint while recording opens nothing over the panel.
 - The booklet's **Lay out the page…** gives its buttons, an item's corner, the knob and an arrow's ends a fingertip each. A tap in the words field keeps its words selected to type over.
 
 <!-- covers
