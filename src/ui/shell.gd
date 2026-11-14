@@ -299,7 +299,7 @@ const SUBMENUS: Dictionary = {
 	# The window's panels, each shown or put away: set once a session, so
 	# folded beside Split view and Full screen (menurows).
 	"panels": ["panel_parts", "panel_assistant", "panel_properties", "panel_outliner",
-		"panel_keys"],
+		"panel_colour", "panel_keys", "-", "reset_panels"],
 	# Where the step's picture is seen from: its turns, its tilts and its zoom.
 	"booklet_view": ["booklet_turn_left", "booklet_turn_right", "booklet_tilt_up",
 		"booklet_tilt_down", "booklet_this_view", "booklet_usual_view", "-", "booklet_zoom_in",
@@ -565,6 +565,8 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 ## column folded, the column opens with it open (a narrow window folds the
 ## other side to make room); else it folds or opens.
 func _toggle_section(section: Control) -> void:
+	if section == null:
+		return
 	var dock: SideDock = SideDock.of(section)
 	if not dock.is_open():
 		section.call("set_open", true)
@@ -574,7 +576,23 @@ func _toggle_section(section: Control) -> void:
 
 
 func _section_shown(section: Control) -> bool:
-	return SideDock.of(section).is_open() and bool(section.call("is_open"))
+	return section != null and SideDock.of(section) != null and SideDock.of(section).is_open() \
+		and bool(section.call("is_open"))
+
+
+## The colours under the parts bin, a section of its column (PanelStack).
+func _colours() -> Control:
+	var bin: PartsBin = app.get("_bin")
+	return bin.colours if bin != null else null
+
+
+## Every section of every column open again, at its first height (View,
+## Panels, Reset panel layout).
+func reset_panels() -> void:
+	for column: String in ["_stack", "_side"]:
+		var stack: PanelStack = app.get(column)
+		if stack != null:
+			stack.reset()
 
 
 ## Define one command.
@@ -1571,6 +1589,13 @@ func _define() -> void:
 	_add("panel_outliner", "Model tree", 0, func() -> void: _toggle_section(outliner),
 		Callable(), "The model's sub-assemblies by name, inside one another")
 	_ticked("panel_outliner", func() -> bool: return _section_shown(outliner))
+	# The colours under the parts bin fold and size as every section does
+	# (PanelStack), and a reset puts every section back.
+	_add("panel_colour", "Colour", 0, func() -> void: _toggle_section(_colours()), Callable(),
+		"The colour in hand: for the part put down next, or to paint what is selected")
+	_ticked("panel_colour", func() -> bool: return _section_shown(_colours()))
+	_add("reset_panels", "Reset panel layout", 0, reset_panels, Callable(),
+		"Every panel open again and as tall as at first: the parts bin, Colour, the model tree and the properties")
 	_add("minifig", "Minifigure builder…", KEY_M, func() -> void: bar.minifig_wanted.emit(),
 		Callable(), "Make a minifigure from real parts and stand it in the model")
 	_add("mosaic", "Mosaic from a picture…", 0,

@@ -34,9 +34,11 @@ var assemblies: Assemblies
 var sections: Node = null
 
 var _open: bool = true
+## Its header, as every section of a column wears (PanelStack.Head): the
+## chevron, "Model tree" and how many sub-assemblies, a click folding it.
+var section_head: PanelStack.Head
 var _header: Button
 var _count: Label
-var _arrow: Inspector.Arrow
 var _tree: Tree
 var _shown: String = ""
 var _looked_at: int = 0
@@ -55,29 +57,12 @@ func _ready() -> void:
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 4)
 	add_child(column)
-	var head := HBoxContainer.new()
-	column.add_child(head)
-	_header = Button.new()
-	_header.flat = true
-	_header.text = "Model tree"
-	_header.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_header.focus_mode = Control.FOCUS_NONE
-	_header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_header.add_theme_font_size_override("font_size", 13)
-	_header.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	_header.tooltip_text = "The model's sub-assemblies. Fold this away, or open it"
-	_header.pressed.connect(func() -> void: set_open(not _open))
-	head.add_child(_header)
-	_count = Label.new()
-	_count.add_theme_font_size_override("font_size", 12)
-	_count.modulate = Color(1, 1, 1, 0.6)
-	head.add_child(_count)
-	# Which way it is folded, as the properties under it say theirs.
-	_arrow = Inspector.Arrow.new()
-	_arrow.custom_minimum_size = Vector2(14, 14)
-	_arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_arrow.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	head.add_child(_arrow)
+	section_head = PanelStack.Head.new("Model tree",
+		"The model's sub-assemblies by name, inside one another")
+	section_head.pressed.connect(func() -> void: set_open(not _open))
+	column.add_child(section_head)
+	_header = section_head.button
+	_count = section_head.count
 
 	_tree = Tree.new()
 	_tree.accessibility_name = "Model tree"
@@ -307,8 +292,7 @@ func set_open(open: bool) -> void:
 				(child as Label).visible = open
 		if _strip != null:
 			_strip.visible = open
-		_arrow.down = open
-		_arrow.queue_redraw()
+		section_head.show_open(open)
 	ShellPrefs.put("outliner_open", open)
 	toggled.emit(open)
 	# Folded, the tree was not kept up to date.

@@ -14118,3 +14118,38 @@ msgstr "suelta Shift para llevar también las %s apoyadas encima"
 
 msgid "what rests on it stays, more than a drag can follow"
 msgstr "lo que está encima se queda: más de lo que un arrastre puede llevar"
+
+# panelfold: every section of a column folds and sizes one way (PanelStack).
+
+msgid "Fold %s"
+msgstr "Plegar %s"
+
+msgid "Unfold %s"
+msgstr "Desplegar %s"
+
+msgid "Click to fold it to its header"
+msgstr "Haz clic para plegarlo a su encabezado"
+
+msgid "Click to open it"
+msgstr "Haz clic para abrirlo"
+
+msgid "Every part there is, by shelf and category, to search, take in hand or drag into the model"
+msgstr "Todas las piezas, por estante y categoría, para buscar, tomar en la mano o arrastrar al modelo"
+
+msgid "The colour in hand: for the part put down next, or to paint what is selected"
+msgstr "El color en la mano: para la próxima pieza que pongas, o para pintar lo seleccionado"
+
+msgid "Double-click to put it back as it was at first"
+msgstr "Doble clic para dejarla como al principio"
+
+msgid "Resize %s"
+msgstr "Cambiar el tamaño de %s"
+
+msgid "Resize the panels"
+msgstr "Cambiar el tamaño de los paneles"
+
+msgid "Reset panel layout"
+msgstr "Restablecer los paneles"
+
+msgid "Every panel open again and as tall as at first: the parts bin, Colour, the model tree and the properties"
+msgstr "Cada panel abierto de nuevo y tan alto como al principio: la caja de piezas, Color, el árbol del modelo y las propiedades"
