@@ -178,6 +178,19 @@ static func speak_to_a_finger() -> void:
 	_finger = TouchWords.new()
 	_finger.locale = "en"
 	TranslationServer.add_translation(_finger)
+	# Taken out again as the window closes: a script's translation left in
+	# the server past the scripts' end aborts the engine on its way out
+	# (exit 134 after every check of a phone had passed), as Language's
+	# words would (Language._exit_tree).
+	var tree: SceneTree = Engine.get_main_loop() as SceneTree
+	if tree != null:
+		tree.root.tree_exiting.connect(_speak_no_more, CONNECT_ONE_SHOT)
+
+
+static func _speak_no_more() -> void:
+	if _finger != null:
+		TranslationServer.remove_translation(_finger)
+		_finger = null
 
 
 ## What [param text] is drawn as for a finger: for a check of the words.
