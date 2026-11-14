@@ -71,6 +71,8 @@ static func named(gear: Mechanism.Gear) -> String:
 			return "the %d double bevel" % gear.teeth
 		"crown":
 			return "the %d crown" % gear.teeth
+		"knob":
+			return "the knob wheel"
 	return "the %d" % gear.teeth
 
 
@@ -146,8 +148,9 @@ static func shifts(mine: Mechanism.Gear, way: Vector3, theirs: Mechanism.Gear,
 			if absf(t) > theirs.length * 0.5 + Mechanism.REACH_SLACK:
 				theirs_off = "its middle stands %s LDU along its axle from this one's" % Mechanism._tidy(absf(t))
 	elif absf(dot) > 0.999:
-		if mine.kind == "bevel" or theirs.kind == "bevel":
-			return {"why": "a bevel gear meshes only one square to it, and these are parallel"}
+		if mine.kind in ["bevel", "knob"] or theirs.kind in ["bevel", "knob"]:
+			return {"why": "a %s meshes only one square to it, and these are parallel" % (
+				"knob wheel" if "knob" in [mine.kind, theirs.kind] else "bevel gear")}
 		var across: float = (gap - mine.axis * gap.dot(mine.axis)).length()
 		var ideal: float = mine.radius + theirs.radius
 		if mine.kind == "ring" or theirs.kind == "ring":
@@ -158,10 +161,11 @@ static func shifts(mine: Mechanism.Gear, way: Vector3, theirs: Mechanism.Gear,
 	elif absf(dot) < 0.02:
 		var squares: bool = (mine.kind in ["bevel", "double"] and theirs.kind in ["bevel", "double"]) \
 			or (mine.kind == "crown" and theirs.kind in ["spur", "double"]) \
-			or (theirs.kind == "crown" and mine.kind in ["spur", "double"])
+			or (theirs.kind == "crown" and mine.kind in ["spur", "double"]) \
+			or (mine.kind == "knob" and theirs.kind == "knob")
 		if not squares:
 			return {"why": ("its axle is square to this one's, and gears like these mesh only on parallel "
-				+ "axles: at right angles it takes two bevels, or a crown and a spur")}
+				+ "axles: at right angles it takes two bevels, a crown and a spur, or two knob wheels")}
 		var normal: Vector3 = mine.axis.cross(theirs.axis).normalized()
 		var off: float = absf(gap.dot(normal))
 		if off > Mechanism.LINE_SLACK:
