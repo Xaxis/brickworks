@@ -280,6 +280,8 @@ func _exports(out: String) -> void:
 		_check("so is a render: %s" % said.left(70), said.contains("without a window"))
 		said = await _say("export_model", {"format": "instructions"})
 		_check("and the booklet: %s" % said.left(70), said.contains("without a window"))
+		said = await _say("export_model", {"format": "pdf"})
+		_check("and its PDF: %s" % said.left(70), said.contains("without a window"))
 	else:
 		said = await _say("export_model", {"format": "picture"})
 		_check("a picture of the model: %s" % said, said.contains(out) and said.contains(".png")
@@ -294,7 +296,7 @@ func _exports(out: String) -> void:
 		said = await _say("export_model", {"format": "instructions"})
 		_check("the building instructions as a booklet: %s" % said, said.contains("_instructions.html")
 			and FileAccess.get_file_as_string(said.trim_prefix("Wrote ").get_slice(",", 0)).contains("<html"))
-	said = await _say("export_model", {"format": "pdf"})
+	said = await _say("export_model", {"format": "dxf"})
 	_check("a format there is not is refused with the formats", said.begins_with("format is"))
 
 
