@@ -133,7 +133,13 @@ app, joined by a link (docs/TOGETHER.md).
   the signature takes its n, and is as it was with none), read at the
   edge by `TogetherWords.look`. Shown here until 5 s after it was pointed
   out less its age when heard (`_show_looks`, `_expire_looks`); a key
-  heard is never shown again (`_looks_heard`). Esc while one is shown
+  heard is never shown again (`_looks_heard`). Sent before it is drawn
+  here (`point_at` draws it the frame after, `_show_looks_next_frame`: a
+  browser's fetch goes out only once its frame is over), and drawn by one
+  outline per person kept hidden between points (`_look_outlines`, let go
+  of after `LOOK_KEPT_MS` 60 s without one or at the session's end): a new
+  outline's targets held the frame that drew it 200-600 ms on a preview
+  under load. Esc while one is shown
   (`Together._input`, before Main's) puts them away and nothing else: the
   pointer's own taken back from everyone (`take_back_look`, a point
   without it), another's on this screen alone. MCP `point_at` (part= or
@@ -261,12 +267,14 @@ signed in as someone else.
   to start or join one, no right-click row, point_at says so; in one the
   row under Comment on it…, pressed, the part outlined in this person's
   colour off the pixels and sent by uid; Alt-W over another part points
-  it instead; Esc takes it back and the selection stays; Ann's outlined in
+  it instead, by the same outline; Esc takes it back and the selection
+  stays, the outline hidden and kept; Ann's outlined in
   her colour with her name off the pixels, said on the bar, there at 4 s
   and gone after 5, 3 s old gone 2 s later, put away by Esc for good, her
   Claude's named; her pointer on the part keeps its dot with its name put
   away until the point goes; point_at in one call as "Your Claude"; 999999
-  refused; the panel opened before a session and grown by it stays inside
+  refused; the session over, the outlines let go of; the panel opened
+  before a session and grown by it stays inside
   the window (`TogetherDialog._keep_inside`).
 - Two tabs, the bar itself (`tools/web/pointat_flow.mjs`, the preview
   check `pointat`, about 6 minutes, two SwiftShader browsers): `node

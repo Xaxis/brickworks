@@ -182,6 +182,7 @@ func _own() -> void:
 		now >= 80 and now > was * 3 + 40)
 	_check("...and the status bar says to whom: %s" % _bar_words(), _bar_words().contains("Ann"))
 	await _shot("own_pointed", after)
+	var outline: Variant = _together._look_outlines.get("me")
 
 	# Alt-W with the pointer on another part points that one instead.
 	_builder.clear_selection()
@@ -197,6 +198,9 @@ func _own() -> void:
 	_check("...outlined there: %d pixels round it, the first part's line gone (%d, %d before)" % [
 		_near(picture, second, mine, 0.1), _near(picture, box, mine, 0.1), was],
 		_near(picture, second, mine, 0.1) >= 80 and _near(picture, box, mine, 0.1) <= was + 20)
+	_check("...by the same outline as the first, kept between points: no new targets (%d outlines)"
+		% _together._look_outlines.size(),
+		outline != null and _together._look_outlines.get("me") == outline and _together._look_outlines.size() == 1)
 	await _shot("own_alt_w", picture)
 
 	# Esc takes it back, and nothing else: the selection stays.
@@ -207,6 +211,8 @@ func _own() -> void:
 	_check("Esc takes it back: nothing shown, nothing sent (%s)" % str(_together.looks_shown()),
 		_together.looks_shown().is_empty() and _together._pointer_now().get("look") == null)
 	_check("...and nothing else: the selection is still there", _builder.selection.has(three[2]))
+	_check("...its outline hidden, kept for the next point",
+		is_instance_valid(outline) and not (outline as CanvasLayer).visible)
 	picture = await _picture()
 	_check("...its line gone off the window (%d pixels)" % _near(picture, second, mine, 0.1),
 		_near(picture, second, mine, 0.1) <= was + 20)
@@ -343,6 +349,8 @@ func _claude() -> void:
 	if parts.size() < 3:
 		return
 	var answer: String = await _tool("point_at", {"part": parts[2]})
+	# Drawn here in the frame after the one that sends it (Together.point_at).
+	await _frames(3)
 	var looks: Array = _together.looks_shown()
 	_check("point_at in one call: %s" % answer, answer.begins_with("Pointed out part %d" % parts[2])
 		and answer.contains("Ann"))
@@ -357,7 +365,8 @@ func _claude() -> void:
 	_check("a number in no part is refused, said (%s)" % answer, answer.begins_with("No part 999999"))
 	_together._stop("")
 	await _frames(5)
-	_check("the session over: nothing shown", _together.looks_shown().is_empty())
+	_check("the session over: nothing shown, the points' outlines let go of (%d)" % _together._look_outlines.size(),
+		_together.looks_shown().is_empty() and _together._look_outlines.is_empty())
 
 
 # -- helpers ------------------------------------------------------------------------

@@ -778,6 +778,8 @@ func _reset() -> void:
 	_look_due = false
 	for key: String in _looks.keys():
 		_drop_look(key)
+	for who: String in _look_outlines.keys():
+		_let_go_of_look_outline(who)
 	_looks_heard.clear()
 	following = ""
 	_catch_up_to = 0
@@ -2378,6 +2380,19 @@ var _look_due: bool = false
 ## away or gone is never shown again while the server still says it.
 var _looks: Dictionary = {}
 var _looks_heard: Dictionary = {}
+## Each person's outline for their points, kept between them: who ->
+## a SelectionOutline; and since when one has outlined nothing (ticks).
+## A new outline makes three window-sized targets, and a browser waits for
+## the card to finish everything asked of it before it makes one: on a
+## preview under load the frames that first drew a point took 200-600 ms
+## on both pages, every point (pointat_flow, 2026-11-13). Hidden between
+## points and reused, a point is drawn in a frame like any other. Let go of
+## after LOOK_KEPT_MS without one: a point is a few seconds, and points come
+## in runs while people talk a model through; a person's targets are 60 MB
+## of a 2x window's card memory (SelectionOutline._size_targets).
+var _look_outlines: Dictionary = {}
+var _look_idle: Dictionary = {}
+const LOOK_KEPT_MS := 60000
 ## Who this side is, in a key of a point of its own.
 const MINE := "me"
 
@@ -2411,9 +2426,22 @@ func point_at(bricks: Array, by_claude: bool = false) -> String:
 	_look_at = Time.get_ticks_msec()
 	_look_due = true
 	timing["looked"] = _unix_ms()
-	_show_looks()
+	# Sent before it is drawn here. In a browser the page's fetch goes out
+	# only once the frame that asked it is over, and drawn in the same frame
+	# the point waited for that frame: 200-600 ms on a preview under load,
+	# more than half the bar's (pointat_flow, 2026-11-13: its send asked
+	# 13 ms after the frame that drew it here, every round).
 	_point()
+	_show_looks_next_frame()
 	return ""
+
+
+## This person's own point drawn in the frame after this one, which only
+## asks for it to go (point_at).
+func _show_looks_next_frame() -> void:
+	await RenderingServer.frame_post_draw
+	await get_tree().process_frame
+	_show_looks()
 
 
 ## What the status bar says once this person pointed a part out: to whom.
@@ -2532,12 +2560,17 @@ func _name_pointers() -> void:
 ## and, someone else's, said on the status bar.
 func _add_look(key: String, who: String, name: String, colour: Color, bricks: Dictionary, left_ms: int,
 		by_claude: bool) -> void:
-	var outline := SelectionOutline.new()
-	outline.world = world
-	outline.library = builder.library
-	outline.colour = colour
-	outline.width = LOOK_WIDTH
-	add_child(outline)
+	var kept: Variant = _look_outlines.get(who)
+	var outline: SelectionOutline = kept if is_instance_valid(kept) else null
+	if outline == null:
+		outline = SelectionOutline.new()
+		outline.world = world
+		outline.library = builder.library
+		outline.colour = colour
+		outline.width = LOOK_WIDTH
+		add_child(outline)
+		_look_outlines[who] = outline
+	_look_idle.erase(who)
 	outline.show_selection(bricks)
 	var box := AABB()
 	var first: bool = true
@@ -2576,9 +2609,14 @@ func _look_drawn() -> void:
 func _drop_look(key: String) -> void:
 	var shown: Dictionary = _looks.get(key, {})
 	_looks.erase(key)
-	for node: Variant in [shown.get("outline"), shown.get("marker")]:
-		if node is Node and is_instance_valid(node):
-			(node as Node).queue_free()
+	var marker: Variant = shown.get("marker")
+	if marker is Node and is_instance_valid(marker):
+		(marker as Node).queue_free()
+	# Hidden, its targets kept for this person's next point (_look_outlines).
+	var outline: Variant = shown.get("outline")
+	if is_instance_valid(outline) and outline is SelectionOutline:
+		(outline as SelectionOutline).visible = false
+		_look_idle[str(shown.get("who", ""))] = Time.get_ticks_msec()
 	timing["look_gone"] = _unix_ms()
 	_name_pointers()
 	if OS.has_feature("web"):
@@ -2593,6 +2631,18 @@ func _expire_looks() -> void:
 	for key: String in _looks.keys():
 		if now >= int((_looks[key] as Dictionary)["ends"]):
 			_drop_look(key)
+	for who: String in _look_idle.keys():
+		if now - int(_look_idle[who]) >= LOOK_KEPT_MS:
+			_let_go_of_look_outline(who)
+
+
+## [param who]'s point outline freed, and its targets with it.
+func _let_go_of_look_outline(who: String) -> void:
+	var outline: Variant = _look_outlines.get(who)
+	if is_instance_valid(outline):
+		(outline as Node).queue_free()
+	_look_outlines.erase(who)
+	_look_idle.erase(who)
 
 
 ## The parts of a point, as the status bar names them: "Red Brick 2 x 4", or
