@@ -618,9 +618,9 @@ plan with Claude as the client.
   `[result, code, headers, body]` as `request_completed`, a timeout, a
   most-bytes limit, and `PageFetch.cancel(tag)`, whose asker wakes after
   it returns. Sent as the engine's fetch sent it: the body handed over as
-  an argument (6 MB costs the asking frame what the engine's did, not
-  230 ms of escaping), its UTF-8 bytes or none, so no Content-Type the app
-  did not give; headers as pairs, so one given twice goes twice; a refused
+  an argument, not escaped into a script (6 MB held the asking frame 198
+  ms, from 370, on a loaded box), its UTF-8 bytes or none, so no
+  Content-Type the app did not give; headers as pairs, so one given twice goes twice; a refused
   or offline fetch `RESULT_CONNECTION_ERROR` (ffreview's rig, 2026-11-14,
   `bench/results/ffreview-2026-11-14/rig`).
 - `ask to leave timing` (`tools/web/framefetch_flow.mjs`, `--url=` a local
