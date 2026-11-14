@@ -607,19 +607,27 @@ plan with Claude as the client.
 - `a request asked of the page` (`src/net/page_fetch.gd`, `PageFetch.ask`):
   every request the app makes of a server but Together's and a part's
   (which ask the page their own way) and the few kept by
-  `tests/test_page_fetch.py`, which fails on any other `HTTPRequest.new()`
-  under `src/`. In a browser the page's own fetch is asked at once and its
+  `tests/test_page_fetch.py`, which fails on any other HTTPRequest or
+  HTTPClient under `src/`: made (`.new()`, `ClassDB.instantiate`), named
+  (a type, an alias), a node in a scene, or handed out by a kept file
+  (only `RESULT_*` and `METHOD_*` may be named anywhere). In a browser the page's own fetch is asked at once and its
   answer handed back from the page's callback between frames, so a request
   waits for no frame; an HTTPRequest is polled once a frame and took one
   frame per state (resolving, connecting, then the fetch) and two or three
   more to read its answer. Off the web it is an HTTPRequest. Same
   `[result, code, headers, body]` as `request_completed`, a timeout, a
-  most-bytes limit, and `PageFetch.cancel(tag)`.
+  most-bytes limit, and `PageFetch.cancel(tag)`, whose asker wakes after
+  it returns. Sent as the engine's fetch sent it: the body handed over as
+  an argument (6 MB costs the asking frame what the engine's did, not
+  230 ms of escaping), its UTF-8 bytes or none, so no Content-Type the app
+  did not give; headers as pairs, so one given twice goes twice; a refused
+  or offline fetch `RESULT_CONNECTION_ERROR` (ffreview's rig, 2026-11-14,
+  `bench/results/ffreview-2026-11-14/rig`).
 - `ask to leave timing` (`tools/web/framefetch_flow.mjs`, `--url=` a local
   relay run with `--arrivals`, `--busy=250`, `--rounds=8`): how long a send
   waits in the tab before it leaves, with every frame made 250 ms long by
   work added after the app's own (a software-drawn or phone frame). The
-  page notes when each send was asked (`window.brickworksAsked`, from
+  page notes when each send was asked (`window.brickworksSends`, from
   `PageFetch.asked` and `Together._ask_page`), the relay when it came
   (`/__arrived`); Together's place and chat sends, then a Claude call
   (`gallery`) and its `/api/people` fetch, op=answer and op=next. Fails on
@@ -635,7 +643,11 @@ plan with Claude as the client.
   4934 ms to 2396. A check that routes requests itself still holds them
   all (Playwright's routes stop every request): its first route hands
   `pageRoute`'s over as Playwright routes beneath its own, so fetch_retry
-  still cuts a part before the mirror answers it.
+  still cuts a part before the mirror answers it. `pageRoute` stops them
+  on a session of the whole browser, so a tab the page opens is stopped
+  from its first request (a page's own session joined too late for a
+  popup's first two), and each page of a routed context keeps no HTTP
+  cache, as under a Playwright route.
 - `two windows probe` (`src/dev/tabpair_probe.gd -- 8790`): the desktop's side
   — two windows as two of the app's connectors in one process, each with its
   own world and socket and a fresh `TabSession` id: the three links and the

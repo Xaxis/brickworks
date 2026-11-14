@@ -28,6 +28,7 @@ static var _the: PageFetch = null
 static var _tagged: Dictionary = {}
 
 var _callback: JavaScriptObject = null
+var _window: JavaScriptObject = null
 var _asked: int = 0
 var _answers: Dictionary = {}
 signal _answered(id: int)
@@ -62,13 +63,16 @@ static func ask(host: Node, url: String, headers: PackedStringArray = PackedStri
 
 
 ## Stop the request [method ask] was given [param tag] for, if it is out.
+## Its asker wakes after this returns, as it does in a browser: woken
+## within, the connector's loop that a stalled request was cancelled for
+## read the cancel as the relay gone (ffreview, 2026-11-14).
 static func cancel(tag: String) -> void:
 	var going: Variant = _tagged.get(tag)
 	_tagged.erase(tag)
 	if going is HTTPRequest and is_instance_valid(going):
 		(going as HTTPRequest).cancel_request()
-		(going as HTTPRequest).request_completed.emit(HTTPRequest.RESULT_REQUEST_FAILED, 0,
-			PackedStringArray(), PackedByteArray())
+		(going as HTTPRequest).call_deferred(&"emit_signal", &"request_completed",
+			HTTPRequest.RESULT_REQUEST_FAILED, 0, PackedStringArray(), PackedByteArray())
 	elif going is int:
 		JavaScriptBridge.eval("window.brickworksFetchStop(%d)" % int(going), true)
 
@@ -79,13 +83,14 @@ static func _untag(tag: String, going: Variant) -> void:
 
 
 ## When a send was asked (unix ms), kept for the page in
-## window.brickworksAsked: tools/web/framefetch_flow.mjs reads it beside the
+## window.brickworksSends: tools/web/framefetch_flow.mjs reads it beside the
 ## server's own time of arrival, and the difference is how long a send
-## waited before it left.
+## waited before it left. A name of its own: dialogs_flow keeps booleans in
+## window.brickworksAsked (ffreview, 2026-11-14).
 static func asked(url: String) -> void:
 	if not OS.has_feature("web"):
 		return
-	JavaScriptBridge.eval(("(() => { const a = window.brickworksAsked = window.brickworksAsked || [];"
+	JavaScriptBridge.eval(("(() => { const a = window.brickworksSends = window.brickworksSends || [];"
 		+ " a.push(%s); if (a.length > %d) a.shift(); })()") % [JSON.stringify({"url": url,
 		"at": int(Time.get_unix_time_from_system() * 1000.0)}), KEPT_ASKS], true)
 
@@ -94,15 +99,21 @@ static func _page() -> PageFetch:
 	if _the == null:
 		_the = PageFetch.new()
 		_the._callback = JavaScriptBridge.create_callback(_the._on_answer)
-		JavaScriptBridge.get_interface("window").brickworksFetched = _the._callback
+		_the._window = JavaScriptBridge.get_interface("window")
+		_the._window.brickworksFetched = _the._callback
 		JavaScriptBridge.eval(_PAGE % [HTTPRequest.RESULT_BODY_SIZE_LIMIT_EXCEEDED, HTTPRequest.RESULT_SUCCESS,
-			HTTPRequest.RESULT_TIMEOUT, HTTPRequest.RESULT_REQUEST_FAILED, HTTPRequest.RESULT_CANT_CONNECT], true)
+			HTTPRequest.RESULT_TIMEOUT, HTTPRequest.RESULT_REQUEST_FAILED, HTTPRequest.RESULT_CONNECTION_ERROR], true)
 	return _the
 
 
 ## The page's end: brickworksFetch(id, url, method, headers, body, wait ms,
 ## most bytes) fetches and keeps the answer's bytes and headers by its id,
-## then says (id, result, status, size) to brickworksFetched;
+## then says (id, result, status, size) to brickworksFetched. The headers
+## are [name, value] pairs, as JSON, so one given twice goes twice; the body
+## is text, sent as its UTF-8 bytes, or null for none: as the engine's
+## fetch sent them, with no Content-Type the app did not give. A fetch that
+## fails (refused, offline, or a site that does not let a browser read it)
+## is RESULT_CONNECTION_ERROR, as the engine's was, and FetchWords says so;
 ## brickworksFetchTake(id) hands the headers over, then the bytes, once, as a
 ## Uint8Array, which JavaScriptBridge.eval gives the app as a
 ## PackedByteArray in one copy; brickworksFetchStop(id) stops one.
@@ -119,7 +130,8 @@ const _PAGE := """(function () {
 			kept.set(id, [heads || '', bytes || new Uint8Array()]);
 			window.brickworksFetched(id, result, status, bytes ? bytes.byteLength : 0);
 		};
-		fetch(url, {method: method, headers: headers, body: body === null ? undefined : body, signal: stop.signal})
+		fetch(url, {method: method, headers: JSON.parse(headers), signal: stop.signal,
+			body: body === null || body === undefined ? undefined : new TextEncoder().encode(body)})
 			.then(function (answer) {
 				return answer.arrayBuffer().then(function (buffer) {
 					const heads = [];
@@ -148,14 +160,17 @@ func _ask_page(url: String, headers: PackedStringArray, method: int, body: Strin
 	var id: int = _asked
 	if not tag.is_empty():
 		_tagged[tag] = id
-	var named: Dictionary = {}
+	var pairs: Array = []
 	for line: String in headers:
-		if line.find(":") > 0:
-			named[line.get_slice(":", 0).strip_edges()] = line.substr(line.find(":") + 1).strip_edges()
+		var colon: int = line.find(":")
+		if colon > 0:
+			pairs.append([line.substr(0, colon).strip_edges(), line.substr(colon + 1).strip_edges()])
 	var verb: String = _METHODS[method] if method >= 0 and method < _METHODS.size() else "GET"
-	var sent: String = "null" if verb in ["GET", "HEAD"] else JSON.stringify(body)
-	JavaScriptBridge.eval("window.brickworksFetch(%d, %s, %s, %s, %s, %d, %d)" % [id, JSON.stringify(url),
-		JSON.stringify(verb), JSON.stringify(named), sent, int(timeout * 1000.0), most], true)
+	# Handed over as an argument, not written into a script to eval: a 6 MB
+	# body escaped and parsed so held the frame that asked 230-357 ms, where
+	# the engine's took 11-18 (ffreview, 2026-11-14).
+	var sent: Variant = null if verb in ["GET", "HEAD"] or body.is_empty() else body
+	_window.call(&"brickworksFetch", id, url, verb, JSON.stringify(pairs), sent, int(timeout * 1000.0), most)
 	while not _answers.has(id):
 		await _answered
 	var got: Array = _answers[id]

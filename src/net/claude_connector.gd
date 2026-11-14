@@ -238,8 +238,11 @@ func _process(_delta: float) -> void:
 		return
 	if now - _asking_since > STALLED_MS:
 		_asking_since = 0
-		PageFetch.cancel(_next_tag())
+		# The old loop is told it is replaced before its request is stopped,
+		# as _hang_up does: woken by the cancel, it went on to say the relay
+		# could not be reached (ffreview, 2026-11-14).
 		_generation += 1
+		PageFetch.cancel(_next_tag())
 		_listen()
 
 

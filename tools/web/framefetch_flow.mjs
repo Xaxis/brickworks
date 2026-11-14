@@ -8,7 +8,7 @@
 //   node tools/web/framefetch_flow.mjs --url=http://127.0.0.1:10101 --out=DIR
 //
 // The page says when each send was asked (PageFetch.asked, unix ms, in
-// window.brickworksAsked) and the server when each arrived (relay_server
+// window.brickworksSends) and the server when each arrived (relay_server
 // --arrivals), on this box's one clock; the difference is the wait. Every
 // frame of the app is made --busy ms longer (250), as a phone's or a
 // software-drawn frame is: the work runs in the app's own frame, after it.
@@ -131,7 +131,7 @@ async function mcp(token, session, method, params) {
 // The sends the page asked for since [from] matched to the server's
 // arrivals: [{key, asked, left}], left null for one that never arrived.
 async function waits(page, from, keep) {
-  const asked = (await page.evaluate(() => window.brickworksAsked || [])).filter((one) => one.at >= from);
+  const asked = (await page.evaluate(() => window.brickworksSends || [])).filter((one) => one.at >= from);
   const arrived = await (await fetch(`${site}/__arrived?since=${from - 1000}`)).json();
   const taken = new Set();
   const rows = [];
