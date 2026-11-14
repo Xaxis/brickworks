@@ -383,7 +383,18 @@ func _lay_out_page(editor: PageEditor) -> Dictionary:
 		await _until(func() -> bool: return steps.current_step() != null, 8.0)
 	if not _check("the timeline is on a step", steps.current_step() != null):
 		return {}
-	_check("Lay out the page… runs", _shell.run("booklet_lay_out"))
+	await _frames(10)
+	# Its own Lay out the page… where its Booklet row shows (steps_bar.gd's,
+	# not this unit's: said, not checked), else the command as More runs it.
+	var own: Control = steps.controls_by_name().get("booklet_lay_out") as Control
+	if own != null and own.is_visible_in_tree():
+		var r: Rect2 = own.get_global_rect()
+		print("    the timeline's Lay out the page… is shown, %.0f x %.0f points; tapped" % [r.size.x / _pt(), r.size.y / _pt()])
+		await _tap(r.get_center())
+	else:
+		print("    the timeline shows no Lay out the page… (its Booklet row hidden, order %s); run as More runs it"
+			% str(steps.page_state().get("order", "")))
+		_check("Lay out the page… runs", _shell.run("booklet_lay_out"))
 	return await _page_laid(editor)
 
 
@@ -414,6 +425,15 @@ func _motions() -> void:
 		return
 	await _frames(20)
 	await _shot("2_motions_list")
+
+	# A suggested motion kept first, as the walk does before it records: the
+	# list then holds a motion and the suggestions above where New motion was.
+	var keeps: Dictionary = panel.controls_by_name()
+	if keeps.has("motion_keep_0"):
+		await _press(keeps["motion_keep_0"] as Control)
+		await _frames(10)
+	_check("a suggested motion kept (%d in the model)" % panel._motions().list.size(),
+		panel._motions().list.size() >= 1)
 
 	# New motion, Record, a door swung, Stop.
 	_presses = 0

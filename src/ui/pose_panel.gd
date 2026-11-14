@@ -1929,6 +1929,12 @@ func _build_list(into: Control) -> void:
 		"Make a motion: name it, then Record and drag the parts, or set its joints one by one")
 	_new_sequence = _button(making, "New sequence", new_sequence,
 		"A motion made of the model's motions, in an order you choose: Show it all")
+	# By finger, New motion and New sequence head the list, in sight however
+	# many motions and suggestions it holds: under a kept one and the
+	# suggestions they were five swipes down a phone's sheet (the phone walk
+	# on the phonepanels preview: 10 taps to record against the desktop's 4).
+	if Phone.on():
+		_list_box.move_child(making, 0)
 
 
 func _build_editor(into: Control) -> void:

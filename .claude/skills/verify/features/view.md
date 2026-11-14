@@ -3348,8 +3348,9 @@ picture the assistant is shown.
   On every screen, words typed are set as the selection leaves them
   (`PageEditor._select`: a tap on another item or Draw an arrow dropped
   them), and a change made while the page lays out is laid out again (the
-  history is read before the lay-out, `_seen_history`). Motions
-  (`PosePanel._for_a_finger`): All motions, the name, Record and Remove in one
+  history is read before the lay-out, `_seen_history`). Motions: New motion
+  and New sequence head the list by finger (`_build_list`), and in the editor
+  (`PosePanel._for_a_finger`) All motions, the name, Record and Remove are in one
   row at the editor's top (New motion does not focus the name there: a
   phone's keyboard would cover the sheet; a tap selects it to type over), the
   joints next, then keys, play and timing; a joint's key strip a fingertip
@@ -3365,17 +3366,22 @@ picture the assistant is shown.
   laid out for a phone at a browser's scale, through the sign-in screen with
   a throwaway account (.env), about four minutes; each act's presses counted
   as phonewalk_flow.mjs counts them and printed against the desktop's.
-  1: the car's page from the timeline's Lay out the page…: an item dragged,
-  one sized by its corner from outside it, words added and typed over
-  (6 presses at most), Done, and opened again the words kept; every control,
-  the corner, the knob and an arrow's handles measured. 2: 1484-1's doors:
-  New motion, Record, a door swung by a finger, Stop (8 at most): no sheet,
-  the selection as it was, the keys kept; the editor opened again, a joint's
-  slider in sight in a drag at most and dragged. 3: simulate_probe's gear
-  train (an 8 driving a 24, put down by the probe: the orrery fixture reads
-  locked since kinefuncs): Play in sight and tapped, the cycle scrubbed, the
-  other gear made the driver by a tap. 4: Measure's words. Every target in each panel 44 points or more,
-  those under printed. Pictures in `--shots=DIR`.
+  1: the car's page from the timeline's Lay out the page… (tapped where its
+  Booklet row shows, else run as More runs it): every control and the page on
+  the screen; an item dragged, one sized by its corner from outside it, words
+  added and typed over (6 presses at most), an arrow drawn by Draw an arrow
+  and a drag (4 at most), Done, and opened again the words kept; every
+  control, the corner, the knob and an arrow's handles measured. 2: 1484-1's
+  doors: a suggestion kept, then New motion (its name and Record in sight, the
+  name not focused), Record, a door swung by a finger, Stop (8 at most): no
+  sheet, the selection as it was, the keys kept; the editor opened again, a
+  joint's slider in sight in a drag at most and dragged. 3: simulate_probe's
+  gear train (an 8 driving a 24, put down by the probe: the orrery fixture
+  reads locked since kinefuncs): Play in sight and tapped, the cycle
+  scrubbed, the other gear made the driver by a tap. 4: Measure's words.
+  Every target in each panel 44 points or more, those under printed.
+  `--only=page,motions,simulate,measure` runs those sections. Pictures in
+  `--shots=DIR`.
 - `motions` and `playing motions` (`src/assembly/motions.gd`,
   `src/assembly/motion_player.gd`; docs/MOTIONS.md): a model's own named
   movements, "Open the doors", kept in its file as `0 !BRICKWORKS MOTION`,
