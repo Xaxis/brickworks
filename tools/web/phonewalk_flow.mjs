@@ -541,6 +541,9 @@ function person(page, cdp, width, height, size, choosers) {
       const head = await where(top, 2);
       const ceiling = head && Math.abs(head.y - first.y) < 2 ? head.y + head.h / 2 : was;
       if (DEBUG) said(`bringIn ${name}: at ${at ? `${Math.round(at.x)},${Math.round(at.y)} ${at.w}x${at.h}` : "none"}; ceiling ${Math.round(ceiling)}, floor ${Math.round(floor)}`);
+      // A control in the panel's own header, level with its Close (Motions'
+      // New motion by finger), is in sight however the list under it scrolls.
+      if (at && head && Math.abs(at.y - head.y) < head.h / 2) return at;
       if (at && at.y - at.h / 2 >= ceiling - 1 && at.y + at.h / 2 <= floor + 1) return at;
       if (n >= tries) return null;
       // From the middle of the shown part, up or down, as a person swipes a
