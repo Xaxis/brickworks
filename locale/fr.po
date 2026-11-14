@@ -14128,6 +14128,47 @@ msgstr "relâchez Shift pour emporter aussi les %s posées dessus"
 msgid "what rests on it stays, more than a drag can follow"
 msgstr "ce qui est posé dessus reste : plus qu'un glisser ne peut emporter"
 
+# A part pointed out to everyone in a Build together session (APP_UX8
+# #17, pointat).
+msgid "Point it out to the others"
+msgstr "Le montrer aux autres"
+
+msgid "Everyone in your Build together session sees the part under the pointer, or the parts selected, outlined in your colour with your name for 5 seconds; Esc takes it back"
+msgstr "Tous ceux de votre session Construire ensemble voient la pièce sous le pointeur, ou les pièces sélectionnées, entourée de votre couleur avec votre nom pendant 5 secondes ; Échap l'annule"
+
+msgid "Start or join a session first: File › Build together…"
+msgstr "Démarrez ou rejoignez d'abord une session : Fichier › Construire ensemble…"
+
+msgid "Point a part out in a Build together session: start or join one from File, Build together…."
+msgstr "On montre une pièce dans une session Construire ensemble : démarrez-en ou rejoignez-en une depuis Fichier, Construire ensemble…."
+
+msgid "Put the pointer on a part, or select it, to point it out."
+msgstr "Placez le pointeur sur une pièce, ou sélectionnez-la, pour la montrer."
+
+msgid "Pointed out for 5 seconds, but nobody else is here now."
+msgstr "Montré pendant 5 secondes, mais personne d'autre n'est là pour l'instant."
+
+msgid "Pointed out to %s for 5 seconds. Esc takes it back."
+msgstr "Montré à %s pendant 5 secondes. Échap l'annule."
+
+msgid "%s points at %s. Esc puts it away."
+msgstr "%s montre %s. Échap le masque."
+
+msgid "Your Claude points out %s to the others. Esc takes it back."
+msgstr "Votre Claude montre %s aux autres. Échap l'annule."
+
+msgid "%s's Claude"
+msgstr "Claude de %s"
+
+msgid "You"
+msgstr "Vous"
+
+msgid "Your Claude"
+msgstr "Votre Claude"
+
+msgid "To show the others a part, put the pointer on it and press %s, or right-click it: Point it out to the others."
+msgstr "Pour montrer une pièce aux autres, placez le pointeur dessus et appuyez sur %s, ou faites un clic droit dessus : Le montrer aux autres."
+
 # panelfold: every section of a column folds and sizes one way (PanelStack).
 
 msgid "Fold %s"

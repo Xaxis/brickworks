@@ -764,8 +764,9 @@ static func number(given: Variant, most: float = FARTHEST) -> bool:
 
 ## Who is in the session as the server said it, each made precise: {who,
 ## name, owner, me, here, at: [x, y, z] or null, sel: [uid], view: {yaw,
-## pitch, distance, size, focus: [x, y, z], frame} or null}. One that is not
-## a person is left out.
+## pitch, distance, size, focus: [x, y, z], frame} or null}, and look: the
+## part they pointed out ([method look]), or null. One that is not a person
+## is left out.
 static func people(raw: Variant) -> Array:
 	var out: Array = []
 	var who_shape := RegEx.create_from_string(WHO)
@@ -783,8 +784,33 @@ static func people(raw: Variant) -> Array:
 			"owner": given.get("owner") == true, "me": given.get("me") == true,
 			"here": given.get("here") == true,
 			"at": [float(at[0]), float(at[1]), float(at[2])] if numbers(at, 3) else null,
-			"sel": sel, "view": _view(given.get("view"))})
+			"sel": sel, "view": _view(given.get("view")), "look": look(given.get("look"))})
 	return out
+
+
+## pointat (APP_UX8 #17): a part a person pointed out, as a poll gives it
+## (api/together.js lookOut), made precise: {n, sel: [uid], at: [x, y, z] or
+## null, claude, age (ms)}; null for none, or for one not of that shape.
+const LOOK_PARTS := 50
+const LOOK_MS := 5000
+
+
+static func look(given: Variant) -> Variant:
+	if not given is Dictionary:
+		return null
+	var said: Dictionary = given
+	if not number(said.get("n"), 9.0e15) or float(said["n"]) < 0.0 or not number(said.get("age"), 1.0e9):
+		return null
+	var sel: Array = []
+	for one: Variant in (said.get("sel") if said.get("sel") is Array else []):
+		if uid(one) and sel.size() < LOOK_PARTS:
+			sel.append(one)
+	if sel.is_empty():
+		return null
+	var at: Variant = said.get("at")
+	return {"n": int(said["n"]), "sel": sel,
+		"at": [float(at[0]), float(at[1]), float(at[2])] if numbers(at, 3) else null,
+		"claude": said.get("claude") == true, "age": clampi(int(said["age"]), 0, LOOK_MS)}
 
 
 ## [param given] when it is an array of [param count] numbers.
