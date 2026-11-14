@@ -420,6 +420,18 @@ func _asked() -> void:
 	dialog.current_file = "car.3mf"
 	await _frames(2)
 	dialog.get_ok_button().pressed.emit()
+	# The dialog asks first whether to replace what is there, as it always
+	# has: the person's yes is the second press.
+	var replace: ConfirmationDialog = null
+	for _n: int in 600:
+		await process_frame
+		replace = _replace_asked(dialog)
+		if replace != null:
+			break
+	_check("...asking first whether to replace car.3mf: \"%s\""
+		% (replace.dialog_text if replace != null else "-"), replace != null)
+	if replace != null:
+		replace.get_ok_button().pressed.emit()
 	for _n: int in 3600:
 		if not str(line[0]).is_empty():
 			break
@@ -427,6 +439,14 @@ func _asked() -> void:
 	_check("...and writes over it when the person says so, no second file: \"%s\"" % str(line[0]).left(120),
 		str(line[0]).begins_with("wrote " + there + " — ") and not str(line[0]).contains("was there already")
 		and DirAccess.get_files_at(_out).size() == before)
+
+
+## The file dialog's own "replace it?" question, once it shows.
+static func _replace_asked(dialog: FileDialog) -> ConfirmationDialog:
+	for child: Node in dialog.get_children(true):
+		if child is ConfirmationDialog and (child as ConfirmationDialog).visible:
+			return child
+	return null
 
 
 # -- helpers -----------------------------------------------------------------------------

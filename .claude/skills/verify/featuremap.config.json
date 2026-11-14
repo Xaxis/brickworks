@@ -3254,6 +3254,13 @@
     },
     {
       "kind": "cli",
+      "label": "mcpreach probe",
+      "entry": "src/dev/mcpreach_probe.gd",
+      "reach": "tools/probe.sh mcpreach_probe   (windowed: godot --path . --resolution 1400x900 --script src/dev/mcpreach_probe.gd; PROBE_SIZE=1280x720. APP_UX8 #11: export_model's description and read_guide app's first lines name Build together, Share, Import and Comments with where each is, and no tool opens them; export_model pdf with a Russian and Greek cover in 3 calls, read back as typed by pdftotext; every unasked write takes the next free name (pods_render_2.png, pods_2.3mf, pods_turntable_4) and keeps the first byte for byte; a 3MF's and an STL's answer say which objects are closed solids, agreeing with lib3mf; File › Export with its save dialog still writes over when the person says so)",
+      "area": "mcp"
+    },
+    {
+      "kind": "cli",
       "label": "replay calls",
       "entry": "src/dev/replay_calls.gd",
       "reach": "godot --path . --script src/dev/replay_calls.gd -- --calls=FILE --open=LDR [--ids=FILE] [--answers=FILE] [--png=DIR]   (a session's calls made again on its own model through answer_rpc, each answer's time, words and pictures; without --open, the design calls on an empty baseplate)",
