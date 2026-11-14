@@ -14203,3 +14203,20 @@ msgstr "Bereiche zurücksetzen"
 
 msgid "Every panel open again and as tall as at first: the parts bin, Colour, the model tree and the properties"
 msgstr "Jeder Bereich wieder offen und so hoch wie anfangs: der Teilekasten, Farbe, der Modellbaum und die Eigenschaften"
+
+# A file written where nobody was asked takes the next free name, and an STL's
+# or a 3MF's line says whether each object is a closed solid (APP_UX8 #11, mcpreach).
+msgid "%s was there already, and is kept"
+msgstr "%s war schon da und bleibt erhalten"
+
+msgid "every object a closed solid, with nothing for a slicer to repair"
+msgstr "jedes Objekt ein geschlossener Körper, nichts für einen Slicer zu reparieren"
+
+msgid "%d of %d objects closed solids; not closed: %s, from %s, which a slicer repairs"
+msgstr "%d von %d Objekten geschlossene Körper; nicht geschlossen: %s, durch %s, was ein Slicer repariert"
+
+msgid "every part a closed solid, with nothing for a slicer to repair"
+msgstr "jedes Teil ein geschlossener Körper, nichts für einen Slicer zu reparieren"
+
+msgid "not a closed solid: %d of %d parts are open as LDraw draws them (%s), which a slicer repairs as it loads them; a 3MF closes every part"
+msgstr "kein geschlossener Körper: %d von %d Teilen sind offen, wie LDraw sie zeichnet (%s), was ein Slicer beim Laden repariert; ein 3MF schließt jedes Teil"
