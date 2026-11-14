@@ -528,6 +528,14 @@
       "tests": []
     },
     {
+      "id": "cli:ask to leave timing",
+      "kind": "cli",
+      "entry": "tools/web/framefetch_flow.mjs",
+      "reach": "tools/export.sh web; node tools/web/relay_server.mjs 10102 --static=build/web --arrivals --hold=together_sessions,together_ops,together_people,together_snapshot_parts, then node tools/web/framefetch_flow.mjs --url=http://127.0.0.1:10102 --out=DIR [--busy=250] [--rounds=8]   (with .env sourced)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:askfirst probe",
       "kind": "cli",
       "entry": "src/dev/askfirst_probe.gd",
@@ -3302,6 +3310,14 @@
       "entry": "src/collection/rebrickable_account.gd",
       "reach": "godot --headless --path . --script src/dev/collection_probe.gd   (against tests/fixtures/collection/fake_rebrickable.py)",
       "area": "collection",
+      "tests": []
+    },
+    {
+      "id": "lib:a request asked of the page",
+      "kind": "lib",
+      "entry": "src/net/page_fetch.gd",
+      "reach": "python3 -m pytest tests/test_page_fetch.py  /  the ask to leave timing flow",
+      "area": "web",
       "tests": []
     },
     {

@@ -3793,6 +3793,20 @@
     },
     {
       "kind": "cli",
+      "label": "ask to leave timing",
+      "entry": "tools/web/framefetch_flow.mjs",
+      "reach": "tools/export.sh web; node tools/web/relay_server.mjs 10102 --static=build/web --arrivals --hold=together_sessions,together_ops,together_people,together_snapshot_parts, then node tools/web/framefetch_flow.mjs --url=http://127.0.0.1:10102 --out=DIR [--busy=250] [--rounds=8]   (with .env sourced)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "a request asked of the page",
+      "entry": "src/net/page_fetch.gd",
+      "reach": "python3 -m pytest tests/test_page_fetch.py  /  the ask to leave timing flow",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
       "label": "ChatGPT connector flow",
       "entry": "tools/web/chatgpt_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/chatgpt_flow.mjs --url=<deployment or relay_server> [--out=shots/chatgpt]   (with .env sourced)",
