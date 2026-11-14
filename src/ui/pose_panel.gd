@@ -87,6 +87,8 @@ const WIDE := 344
 var _title: Label
 var _close: Button
 var _body: ScrollContainer
+## The view the body was last scrolled for: a finger starts each view at its top.
+var _scrolled_for := ""
 var _list_box: VBoxContainer
 var _motion_rows: VBoxContainer
 var _picks := ButtonGroup.new()
@@ -301,6 +303,10 @@ func _refresh() -> void:
 	_seen_revision = world.revision
 	if _frame_for != world.generation():
 		_frame.visible = false
+	if Phone.on() and _view != _scrolled_for:
+		# The list's scroll left the editor's Record below the fold (phonewalk: 8 taps to record).
+		_body.scroll_vertical = 0
+	_scrolled_for = _view
 	_list_box.visible = _view == "list"
 	_edit_box.visible = _view == "edit"
 	_seq_box.visible = _view == "sequence"

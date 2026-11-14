@@ -16,7 +16,8 @@
 ## (a tap, a drag, a key, and each drag that brings a control into sight in
 ## its panel, 4.5% of the screen's height as the walk's), from its panel
 ## open; the More rows that open a panel are the walk's to count.
-## 1. the page editor, on the car's page: an item dragged by a finger; one
+## 1. the page editor, from the timeline's Lay out the page… on the car's
+##    page: an item dragged by a finger; one
 ##    sized by its corner (its tap, if not selected, and a drag that begins
 ##    on the fingertip round the corner, outside the item); words added:
 ##    Add words, a tap in their field to bring the keyboard up, "Hi", in no
@@ -208,9 +209,8 @@ func _sign_in(account: Account, email: String) -> String:
 
 func _page_editor() -> void:
 	_check("the car is on the baseplate (%d parts)" % _world.brick_count(), _world.brick_count() > 20)
-	_shell.run("booklet_lay_out")
 	var editor: PageEditor = _main.get("_page_editor")
-	var state: Dictionary = await _page_laid(editor)
+	var state: Dictionary = await _lay_out_page(editor)
 	if not _check("Lay out the page… opens the page editor on a page (%s)" % state.get("page", "none"),
 			int(state.get("page", 0)) > 0 and not (state.get("items", {}) as Dictionary).is_empty()):
 		return
@@ -311,8 +311,7 @@ func _page_editor() -> void:
 	_check("Done closes the page editor in %d" % _presses, not editor.is_open() and _presses == 1)
 	_act("the page editor: Done", 1)
 	# The words kept on the page, opened again.
-	_shell.run("booklet_lay_out")
-	await _page_laid(editor)
+	await _lay_out_page(editor)
 	var kept: String = ""
 	for n: int in editor._items.size():
 		if editor._item_name(n) == words_item:
@@ -320,6 +319,21 @@ func _page_editor() -> void:
 	_check("opened again, the page's words read \"%s\"" % kept, kept == "Hi")
 	editor.close()
 	await _frames(6)
+	if (_main.get("_steps") as StepsBar).visible:
+		_shell.run("timeline")
+		await _frames(10)
+
+
+## Lay out the page…, as a person reaches it: from the timeline, on its step.
+func _lay_out_page(editor: PageEditor) -> Dictionary:
+	var steps: StepsBar = _main.get("_steps")
+	if steps.current_step() == null:
+		_shell.run("timeline")
+		await _until(func() -> bool: return steps.current_step() != null, 8.0)
+	if not _check("the timeline is on a step", steps.current_step() != null):
+		return {}
+	_check("Lay out the page… runs", _shell.run("booklet_lay_out"))
+	return await _page_laid(editor)
 
 
 ## The page laid out and its pictures asked for.
@@ -416,8 +430,12 @@ func _motions() -> void:
 	await _finger_drag(Vector2(r.position.x + r.size.x * 0.25, r.get_center().y),
 		Vector2(r.position.x + r.size.x * 0.7, r.get_center().y))
 	await _frames(10)
+	# Letting go fills the rows again: the slider read is the new row's.
+	var after: float = place
+	if not panel._joint_parts.is_empty() and is_instance_valid(panel._joint_parts[0]["slider"]):
+		after = (panel._joint_parts[0]["slider"] as HSlider).value
 	_check("its first joint's slider in sight in %d drags, and a finger's drag along it moves the joint: %.0f to %.0f, in %d"
-		% [brought, place, slider.value, _presses], brought <= 1 and not is_equal_approx(slider.value, place)
+		% [brought, place, after, _presses], brought <= 1 and not is_equal_approx(after, place)
 		and _presses <= 2)
 	_act("Motions: a joint set by its slider", 1)
 	await _shot("2_motions_slider")
@@ -451,7 +469,11 @@ func _simulate() -> void:
 		return
 	_shell.run("simulate")
 	var panel: SimulatePanel = _main.get("_simulate")
-	await _until(func() -> bool: return panel.visible and panel.sim != null and not panel._reading, 60.0)
+	# Read, then driven: the Working bar says "Turning the mechanism…" until the driver is said.
+	var driven: Callable = func() -> bool:
+		return panel.visible and panel.sim != null and not panel._reading \
+			and not panel._driving and not str(panel.said().get("driver", "")).is_empty()
+	await _until(driven, 60.0)
 	if not _check("Simulate opens, its mechanism read (%s)" % panel.said().get("driver", ""),
 			panel.visible and panel.sim != null):
 		return
@@ -706,7 +728,6 @@ func _open(path: String) -> bool:
 		if _store.awaited.is_empty() and _world.brick_count() > 0 and not _store.laying:
 			break
 	await _frames(10)
-	(_main.get("_bar") as ModelBar).opened.emit(_world.brick_count())
 	await _frames(30)
 	_camera.frame(_world_box(), 1.1)
 	await _settle()

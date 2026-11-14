@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:the panel asked for last in front, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, ui:strengthen a weak joint, cli:strengthen probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, cli:heldsteps probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe, ui:a long job says when it is done, cli:donenote probe, lib:line art and comic looks, cli:lineart probe, ui:a step's name, cli:stepnames probe, cli:stepnames2 probe, lib:driving along a path, cli:drive probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:the panel asked for last in front, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, ui:strengthen a weak joint, cli:strengthen probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, cli:heldsteps probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe, ui:a long job says when it is done, cli:donenote probe, lib:line art and comic looks, cli:lineart probe, ui:a step's name, cli:stepnames probe, cli:stepnames2 probe, lib:driving along a path, cli:drive probe, ui:page editor motions and simulate by finger, cli:phonepanels probe -->
 
 ## Sub-features
 
@@ -3333,6 +3333,41 @@ picture the assistant is shown.
   lights are put on too), the card left to finish each (`GpuFence`) before
   the next; and every picture is read back only once the card has finished
   it (`_read`), so a read-back no longer holds the page while it rasterises.
+- `page editor motions and simulate by finger` (`src/ui/page_editor.gd`,
+  `src/ui/pose_panel.gd`, `src/ui/simulate_panel.gd`, `src/main.gd`, APP_UX8
+  #14 phonepanels, against docs/app_ux8/phonewalk.md's counts): on a phone or
+  a tablet (`Phone.on`) only; the desktop's layout and sizes are as before.
+  The page editor (`PageEditor._lay_for_a_finger`, on its first open): its
+  buttons and fields sized by `TouchSizing` (44 points or more, words at a
+  phone's least), the corner that sizes an item a fingertip square on the
+  corner (half outside the item, a 12-point mark drawn), the knob, its stem
+  30 points, an arrow's handles and the rulers 44 points each; its words in
+  taps (`Phone.touch_words`); the words field's select-all kept by the tap
+  that brings a phone's keyboard up (`_keep_words_selected`). Motions
+  (`PosePanel._for_a_finger`): Record beside the name at the editor's top, the
+  joints next, then keys, play, timing and naming; a joint's key strip a
+  fingertip tall, a key taken within half a fingertip; each view (list, edit,
+  sequence) opened at its top. Simulate (`SimulatePanel._for_a_finger`): Play,
+  the cycle's slider and its angle under the title, the driver line after.
+  A part dragged by a finger (a Grab on its joint, or a part dragged) stops
+  the phone's hold timer (`Main._on_phone_hold`): a door swung while Motions
+  records no longer opens 152 parts' actions over the panel. Measure's words
+  to a finger are its own ("Measuring: tap a point, then another",
+  `EditVerbs.ruler`). Probe: `phonepanels_probe`.
+- `phonepanels probe` (`src/dev/phonepanels_probe.gd`): windowed, 390 x 844
+  laid out for a phone at a browser's scale, through the sign-in screen with
+  a throwaway account (.env), about four minutes; each act's presses counted
+  as phonewalk_flow.mjs counts them and printed against the desktop's.
+  1: the car's page from the timeline's Lay out the page…: an item dragged,
+  one sized by its corner from outside it, words added and typed over
+  (6 presses at most), Done, and opened again the words kept; every control,
+  the corner, the knob and an arrow's handles measured. 2: 1484-1's doors:
+  New motion, Record, a door swung by a finger, Stop (8 at most): no sheet,
+  the selection as it was, the keys kept; the editor opened again, a joint's
+  slider in sight in a drag at most and dragged. 3: the two-planet orrery:
+  Play in sight and tapped, the cycle scrubbed, another part made the driver
+  by a tap. 4: Measure's words. Every target in each panel 44 points or more,
+  those under printed. Pictures in `--shots=DIR`.
 - `motions` and `playing motions` (`src/assembly/motions.gd`,
   `src/assembly/motion_player.gd`; docs/MOTIONS.md): a model's own named
   movements, "Open the doors", kept in its file as `0 !BRICKWORKS MOTION`,
