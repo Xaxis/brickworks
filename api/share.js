@@ -233,7 +233,7 @@
 import { randomBytes } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { AuthError, bearer, isTestAccount, verify } from "./_auth.js";
-import { isCron, sweepHeld } from "./_cron.js";
+import { cronNoted, isCron, sweepHeld } from "./_cron.js";
 import { db, dbConfigured, orUnknown, reach } from "./_db.js";
 import { originOf } from "./_oauth.js";
 import {
@@ -3315,6 +3315,19 @@ const SWEEP_AGE_MS = 60 * 60 * 1000;
 async function sweep(request, response) {
   response.setHeader("Cache-Control", "no-store");
   if (!isCron(request)) return response.status(401).json({ error: "the sweep is the cron's" });
+  // The cron's run written down, however it ends (/admin#site); a check's
+  // scoped one (?only=, ?photos=) is the check's, not the cron's.
+  const started = new Date().toISOString();
+  const scoped = Boolean(request.query?.only || request.query?.photos);
+  try {
+    return await sweepRun(request, response, scoped ? null : started);
+  } catch (trouble) {
+    if (!scoped) await cronNoted(request, "share_sweep", started, "failed", { error: String(trouble?.message || trouble).slice(0, 200) });
+    throw trouble;
+  }
+}
+
+async function sweepRun(request, response, started) {
   // ?only=A,B looks at those links alone, whatever their files' age: how
   // share_probe proves an orphan goes without waiting an hour. ?photos=P,Q
   // the same for photos' files; either alone looks at nothing else.
@@ -3367,8 +3380,14 @@ async function sweep(request, response) {
       photoFiles = { trouble: said };
     }
   }
-  return response.status(200).json({ looked_at: files.length, kept: files.length - (held ? 0 : gone.length),
-    removed: held ? [] : gone, ...(held ? { held } : {}), originals, photos: photoFiles });
+  const answer = { looked_at: files.length, kept: files.length - (held ? 0 : gone.length),
+    removed: held ? [] : gone, ...(held ? { held } : {}), originals, photos: photoFiles };
+  if (started) {
+    await cronNoted(request, "share_sweep", started, held || photoFiles?.trouble ? "failed" : "done", {
+      looked_at: files.length, removed: held ? 0 : gone.length, originals, ...(held ? { held: held.slice(0, 300) } : {}),
+      ...(photoFiles?.trouble ? { photos: photoFiles.trouble } : {}) });
+  }
+  return response.status(200).json(answer);
 }
 
 // The front's daily choice (api/_featured.js) and the weekly look at the OMR

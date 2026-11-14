@@ -375,7 +375,7 @@ export async function feedbackReply(request, response, claims) {
   if (!report) return say(response, 404, "There is no such report.");
   const replyTo = String(process.env.BETA_REPLY_TO || "").trim();
   const mail = replyMail(report, words, siteOrigin(), replyTo);
-  const sent = await resend(report.email, mail, "feedback answer");
+  const sent = await resend(report.email, mail, "feedback answer", "feedback_answer");
   const said = await db("rpc/feedback_reply", { method: "POST", body: { p_id: id, p_words: words,
     p_by: String(claims?.email || "the owner").slice(0, 320), p_mail: sent.state, p_sent_id: sent.id } });
   return response.status(200).json({ report: said, mail: sent.state, subject: mail.subject });

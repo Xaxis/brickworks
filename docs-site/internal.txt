@@ -66,6 +66,12 @@ ui:the beta's owner queue  # the owner's own page: the beta's applications, deci
 ui:the owner's feedback inbox  # the owner's own page: reports read, triaged and answered by hand (what a sender sees is in feedback.md)
 lib:the console's reads and audit  # the owner's console's own reads and its log of the owner's acts
 lib:the console's switches  # the switches the owner flips from the console; what a visitor meets (the beta open or coming soon) is in the docs
+lib:the console's part B reads  # the owner's console's reads of plans, mail, the connector and the site
+api:Resend's word on each mail  # Resend's webhook, for the owner's Mail; nobody calls it
+ui:the console's plans and revenue  # the owner's, on the admin page
+ui:the console's mail  # the owner's, on the admin page
+ui:the console's connector  # the owner's, on the admin page (a person's own connector is in the docs)
+ui:the console's site  # the owner's, on the admin page
 ui:review sign-in page  # an app directory's reviewer's, linked from nowhere: the review account's password sign-in (docs/directory/claude.md); everyone else signs in by a code
 cli:browse pages  # tools/browse_pages.py writes the gallery tabs' pages (/library, /builds, /collections) from web/gallery.html; a visitor meets the gallery, not it
 entry:tools/keyring_session.sh  # a keyring of its own for the keychain probe: how the app is tested

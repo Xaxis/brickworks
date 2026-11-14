@@ -286,7 +286,7 @@ export async function sendDigest({ origin, stream = "owner", report = null }) {
       method: "POST",
       headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
       body: JSON.stringify({ from: process.env.EMAIL_FROM || SENDER, to: [to],
-        subject: email.subject, html: email.html, text: email.text }),
+        subject: email.subject, html: email.html, text: email.text, tags: [{ name: "kind", value: "report_digest" }] }),
       signal: AbortSignal.timeout(10000),
     });
     sent = reply.ok;

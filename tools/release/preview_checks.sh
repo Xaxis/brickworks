@@ -476,6 +476,16 @@ declare -A CMD=(
   # on the Beta; each section at 390 and 1280, light and dark. Throwaway
   # accounts, deleted after; the switch and the checks' pool put back.
   [console]="tools/web/console_flow.mjs --url=$P --out=$S/${TAG}_console"
+  # The console's part B (console2, docs/ADMIN.md): plans, mail, connector
+  # and site refused signed out (401) and to anybody else (404), and
+  # Resend's op an unsigned event; playing Resend with this deployment's
+  # secret, a code delivered and a beta mail bounced at resend.dev shown in
+  # Mail with why, another product's let go; a throwaway's tab and Claude
+  # (OAuth) and a conversation's two calls in Connector and its panel, from
+  # People too; Site's live release, crons, releases and Supabase health;
+  # Plans off where billing is; each at 390 and 1280, light and dark.
+  # Read only; the throwaways deleted after.
+  [console2]="tools/web/console2_flow.mjs --url=$P --out=$S/${TAG}_console2"
   [reload]="tools/web/reload_flow.mjs --url=$P/app $B --out=$S/${TAG}_reload"
   [keep]="tools/web/keep_flow.mjs --url=$P/app $B --out=$S/${TAG}_keep"
   # A signed-in person's models kept with their account (supabase/account_models.sql):
