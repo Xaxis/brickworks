@@ -10172,6 +10172,21 @@ func _on_touch_tool(what: String) -> void:
 				_bar.say("nothing to redo")
 
 
+## The room the phone's bars take along the top and the foot, kept clear by
+## the model's column and the drawers' rails: set again each time the bars
+## are laid out in other points to the unit (PhoneShell.laid_out). Set once,
+## as it was, a browser's scale set after the layout left the room the
+## desktop's 43 points tall under a foot row of 72: the timeline's Booklet
+## row lay under the row of tools, and a tap on Lay out the page… was the
+## row's (phonepanels, smalls2).
+func _phone_bars_room() -> void:
+	_bar.custom_minimum_size.y = _phone.top_height()
+	_hint_area.custom_minimum_size.y = _phone.foot_height()
+	var rail: float = Phone.px(get_viewport(), Phone.TARGET)
+	_bin_dock.set_phone_rail(rail, float(_phone.foot_height()))
+	_chat_dock.set_phone_rail(rail, float(_phone.foot_height()))
+
+
 ## The desktop's bars put away for the phone's own (PhoneShell): the menus,
 ## the toolbar, the key strip and the status line, whose room the phone's
 ## bars take, and the view cube, whose turns are two fingers there. The
@@ -10182,7 +10197,6 @@ func _dress_for_phone() -> void:
 		if child is Control:
 			(child as Control).visible = false
 	_bar.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
-	_bar.custom_minimum_size.y = _phone.top_height()
 	_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_bar.said.connect(Callable(_phone, &"say"))
 	# Every line drawn in a mouse's words said for a finger: the panels'
@@ -10191,7 +10205,6 @@ func _dress_for_phone() -> void:
 	_shell.toolbar.visible = false
 	_shell.status.only_the_work()
 	_hint.visible = false
-	_hint_area.custom_minimum_size.y = _phone.foot_height()
 	# The busy line over the room the foot's row of tools keeps, not under
 	# the row: there its Cancel was where the row took the finger
 	# (dialogs_1024, uifix).
@@ -10203,9 +10216,13 @@ func _dress_for_phone() -> void:
 	# And as a drawer, the parts or the column itself comes and goes beside
 	# the model on a tablet: the room the column would leave the model.
 	(_over_model.get_parent() as Control).resized.connect(_place_tool_column, CONNECT_DEFERRED)
-	var rail: float = Phone.px(get_viewport(), Phone.TARGET)
-	_bin_dock.set_phone_rail(rail, float(_phone.foot_height()))
-	_chat_dock.set_phone_rail(rail, float(_phone.foot_height()))
+	_phone_bars_room()
+	_phone.laid_out.connect(_phone_bars_room)
+	# The timeline's buttons a fingertip each way, as a panel over the model
+	# is: they were the desktop's, Lay out the page… 51 x 13 points
+	# (phonewalk). On a phone held upright its rows of choices slide
+	# sideways (StepsBar._line).
+	_touch.size_panel(_steps)
 	_camera.phone = true
 	_camera.touch_over = _over_panel_at
 	# The model tree and the properties, in the drawer down the left, sized

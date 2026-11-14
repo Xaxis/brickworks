@@ -277,6 +277,15 @@ func _timeline() -> void:
 	var r: Rect2 = lay.get_global_rect()
 	_check("Lay out the page… is a fingertip each way (%.0f x %.0f points)" % [r.size.x / _pt(),
 		r.size.y / _pt()], minf(r.size.x, r.size.y) / _pt() >= LEAST)
+	# The timeline above the phone's row of tools, and Lay out the page… on
+	# the screen in it: under the row, a tap on it was the row's.
+	var foot: Control = _phone.get("_row") as Control
+	var bottom: float = steps.get_global_rect().end.y
+	_check("the timeline ends above the row of tools (%.0f, the row from %.0f points)" % [bottom / _pt(),
+		foot.get_global_rect().position.y / _pt()], bottom <= foot.get_global_rect().position.y + 1.0)
+	_check("Lay out the page… is on the screen, over nothing (%.0f, %.0f points)" % [r.get_center().x / _pt(),
+		r.get_center().y / _pt()], root.get_visible_rect().has_point(r.get_center())
+		and not _phone.call("covers", r.get_center()))
 	var editor: PageEditor = _main.get("_page_editor")
 	_presses = 0
 	var heard: Array = [false]
@@ -290,6 +299,19 @@ func _timeline() -> void:
 	if not editor.is_open():
 		print("    the button heard the press: %s; what takes a press there: %s" % [heard[0],
 			_who_at(r.get_center())])
+	# Where the timeline lies against the foot's row: its own room and what
+	# it wants, each row of it, and the column round it.
+	var column: Control = steps.get_parent_control()
+	print("    window %s; the column %s; the timeline %s wanting %s" % [root.get_visible_rect().size,
+		column.get_global_rect(), steps.get_global_rect(), steps.get_combined_minimum_size()])
+	for child: Node in column.get_children():
+		if child is Control and (child as Control).visible:
+			print("      %s %s wants %s" % [child.name, (child as Control).get_global_rect(),
+				(child as Control).get_combined_minimum_size()])
+	for line: Node in steps.get_child(0).get_children():
+		if line is Control and (line as Control).visible:
+			print("      timeline: %s %s wants %s" % [line.get_class(), (line as Control).get_global_rect(),
+				(line as Control).get_combined_minimum_size()])
 	await _frames(20)
 	await _shot("2_page_editor")
 	if editor.is_open():

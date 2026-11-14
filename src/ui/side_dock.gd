@@ -70,6 +70,8 @@ func open_width() -> float:
 ## its way out, and is a fingertip wide. Folded, the phone's own bars lead
 ## to the panel. Nothing changes on a desktop, which never calls this.
 var _phone_rail: float = 0.0
+## The room under the rail the phone's row of tools takes (set_phone_rail).
+var _rail_foot: Control = null
 
 
 ## The panel and its rail also stop [param foot] above the screen's foot,
@@ -79,10 +81,16 @@ var _phone_rail: float = 0.0
 func set_phone_rail(width: float, foot: float = 0.0) -> void:
 	_phone_rail = width
 	content.offset_bottom = -foot
-	var under := Control.new()
-	under.custom_minimum_size.y = foot
-	under.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_rails.add_child(under)
+	# One room under the rail, made the first time and its height set each
+	# time after: the phone's bars are laid out again in other points to the
+	# unit (Main._phone_bars_room). Gone with a strip given up to another
+	# panel's (share_edge), it stays gone.
+	if _rail_foot == null:
+		_rail_foot = Control.new()
+		_rail_foot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_rails.add_child(_rail_foot)
+	if is_instance_valid(_rail_foot):
+		_rail_foot.custom_minimum_size.y = foot
 	_update_rail()
 
 

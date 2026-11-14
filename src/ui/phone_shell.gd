@@ -38,6 +38,11 @@ extends Control
 
 var app: Node
 var shell: Shell
+## Laid out again in other points to the unit (a phone turned, a browser's
+## zoom, a check that sets a browser's scale): the bars are another height
+## in units, and Main's column keeps clear of them by this (Main
+## ._phone_bars_room).
+signal laid_out
 var bin: PartsBin
 ## Laid out wide, for a tablet (Phone.wide).
 var wide: bool = false
@@ -293,6 +298,7 @@ func _build() -> void:
 	_more = _sheet("More", true)
 	_context = _sheet("This part", true)
 	_lay_pill()
+	laid_out.emit()
 
 
 ## Anchors left, top, right, bottom and the offsets from them, as

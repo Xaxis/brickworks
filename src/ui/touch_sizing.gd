@@ -529,12 +529,14 @@ static func _lets_drags_by(control: Control) -> bool:
 			or control is TabContainer)
 
 
-## Whether something round [param control] scrolls up and down.
+## Whether something round [param control] scrolls up and down, or slides
+## sideways only (StepsBar._line: the timeline's rows of choices on a phone).
 static func _scrolls_round(control: Control) -> bool:
 	var up: Node = control.get_parent()
 	while up != null and not up is Window:
 		var scroll := up as ScrollContainer
-		if scroll != null and scroll.vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED:
+		if scroll != null and (scroll.vertical_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED
+				or scroll.horizontal_scroll_mode != ScrollContainer.SCROLL_MODE_DISABLED):
 			return true
 		up = up.get_parent()
 	return false
