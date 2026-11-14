@@ -1460,6 +1460,12 @@ func _set_note(field: String, value: float) -> String:
 
 
 func _select(at: int) -> void:
+	# Words typed and not yet set (by Enter, or by the field let go) are set
+	# before the selection moves off them: a tap on another item, or Draw an
+	# arrow, put the next item's words in the field over them, and they were
+	# gone. On a phone the keyboard stays up, so nothing else sets them.
+	if at != _selected and _words.has_focus():
+		_reword()
 	_selected = at
 	var note: bool = at >= 0 and _items[at]["kind"] == "text"
 	_words.editable = note

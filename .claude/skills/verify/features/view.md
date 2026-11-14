@@ -3364,9 +3364,10 @@ picture the assistant is shown.
   the corner, the knob and an arrow's handles measured. 2: 1484-1's doors:
   New motion, Record, a door swung by a finger, Stop (8 at most): no sheet,
   the selection as it was, the keys kept; the editor opened again, a joint's
-  slider in sight in a drag at most and dragged. 3: the two-planet orrery:
-  Play in sight and tapped, the cycle scrubbed, another part made the driver
-  by a tap. 4: Measure's words. Every target in each panel 44 points or more,
+  slider in sight in a drag at most and dragged. 3: simulate_probe's gear
+  train (an 8 driving a 24, put down by the probe: the orrery fixture reads
+  locked since kinefuncs): Play in sight and tapped, the cycle scrubbed, the
+  other gear made the driver by a tap. 4: Measure's words. Every target in each panel 44 points or more,
   those under printed. Pictures in `--shots=DIR`.
 - `motions` and `playing motions` (`src/assembly/motions.gd`,
   `src/assembly/motion_player.gd`; docs/MOTIONS.md): a model's own named

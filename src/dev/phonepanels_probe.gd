@@ -31,7 +31,8 @@
 ##    The editor opened again: its first joint's slider in sight in no more
 ##    than one drag, and dragged by a finger it moves its joint. Every
 ##    target in the panel, its keys' strips too, 44 points or more.
-## 3. Simulate, on the two-planet orrery: Play in sight as it opens, and a
+## 3. Simulate, on simulate_probe's gear train (an 8 driving a 24, put down
+##    here; the orrery fixture reads locked since kinefuncs, 2026-11-14): Play in sight as it opens, and a
 ##    tap plays it; the cycle's slider in sight in no more than one drag, and
 ##    dragged by a finger it moves the cycle; a tap on another part makes it
 ##    the driver in no more than 2. Every target 44 points or more.
@@ -41,7 +42,6 @@
 extends SceneTree
 
 const DOORS := "res://vendor/omr/files/1484-1.mpd"
-const ORRERY := "res://src/dev/fixtures/orrery_two_planets.ldr"
 ## A fingertip, points: Phone.TARGET, read to half a point.
 const LEAST := Phone.TARGET - 0.5
 ## A drag that brings a control into sight, as the walk's: this much of the
@@ -54,6 +54,9 @@ const PAGE_CONTROLS: Array[String] = ["page_prev", "page_next", "page_add_text",
 	"page_ruler_top", "page_ruler_left"]
 
 var _failures: int = 0
+## The sections to run (--only=page,motions,simulate,measure); all when empty.
+var _only: PackedStringArray = []
+var _item_name: RegEx = RegEx.create_from_string("^page_[a-z]+_\\d+_\\d+$")
 var _main: Node
 var _camera: CadCamera
 var _world: BrickWorld
@@ -91,6 +94,8 @@ func _run() -> void:
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with("--shots="):
 			_out = arg.trim_prefix("--shots=")
+		elif arg.begins_with("--only="):
+			_only = arg.trim_prefix("--only=").split(",")
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(_out))
 	ShellPrefs.kept_by_a_check = _own_data_folder()
 	Phone._on = 1
@@ -140,15 +145,19 @@ func _run() -> void:
 	_store.keeps = false
 	await _frames(30)
 
-	print("\n1. the page editor, on the car's page")
-	await _page_editor()
-	await _put_away_page_editor()
-	print("\n2. Motions, on 1484-1's doors")
-	await _motions()
-	print("\n3. Simulate, on the two-planet orrery")
-	await _simulate()
-	print("\n4. Measure's words, to a finger")
-	await _measure_words()
+	if _runs("page"):
+		print("\n1. the page editor, on the car's page")
+		await _page_editor()
+		await _put_away_page_editor()
+	if _runs("motions"):
+		print("\n2. Motions, on 1484-1's doors")
+		await _motions()
+	if _runs("simulate"):
+		print("\n3. Simulate, on a gear train")
+		await _simulate()
+	if _runs("measure"):
+		print("\n4. Measure's words, to a finger")
+		await _measure_words()
 	print("")
 	print("  act                                   desktop  here  most")
 	for act: Array in _acts:
@@ -159,6 +168,10 @@ func _run() -> void:
 		int(Phone.TARGET), ", ".join(small.map(func(t: Array) -> String:
 			return "%s %.0f x %.0f" % t))])
 	await _finish()
+
+
+func _runs(section: String) -> bool:
+	return _only.is_empty() or _only.has(section)
 
 
 ## The sign-in screen up, a throwaway account signed in, the screen gone.
@@ -309,7 +322,9 @@ func _page_editor() -> void:
 		var handles: Dictionary = editor.controls_by_name()
 		var points: int = 0
 		for name: String in handles:
-			if name.begins_with("page_arrow_") and name != "page_arrow_colour" and name != "page_arrow_width":
+			# Its handles; not the arrow itself (page_arrow_N_I, an item drawn its own size).
+			if name.begins_with("page_arrow_") and name != "page_arrow_colour" and name != "page_arrow_width" \
+					and _item_name.search(name) == null:
 				_measure(name, handles[name])
 				points += 1
 		_check("its %d handles measured" % points, points >= 3)
@@ -482,7 +497,7 @@ func _doors(grab: GrabDrag, panel: Control) -> Array:
 
 
 func _simulate() -> void:
-	if not await _open(ORRERY):
+	if not await _gear_train():
 		return
 	_shell.run("simulate")
 	var panel: SimulatePanel = _main.get("_simulate")
@@ -498,9 +513,15 @@ func _simulate() -> void:
 	await _shot("3_simulate_open")
 	_presses = 0
 	var brought: int = await _bring(panel._play)
+	var heard: Array[String] = []
+	var hear: Callable = func() -> void: heard.append("pressed")
+	panel._play.pressed.connect(hear)
 	await _press(panel._play)
+	var turns_then: float = panel.turns
 	await _frames(6)
-	_check("Play in sight as it opens (%d drags), and a tap plays it, in %d" % [brought, _presses],
+	panel._play.pressed.disconnect(hear)
+	_check("Play in sight as it opens (%d drags), and a tap plays it, in %d (Play heard %d, it says \"%s\", status \"%s\", %.3f to %.3f turns)"
+		% [brought, _presses, heard.size(), panel._play.text, panel.said().get("status", ""), turns_then, panel.turns],
 		brought == 0 and panel.playing and _presses == 1)
 	_act("Simulate: played (from its panel)", 1)
 	await _shot("3_simulate_playing")
@@ -527,9 +548,13 @@ func _simulate() -> void:
 	var grab: GrabDrag = _main.get("_grab_drag")
 	await _until(func() -> bool: return grab != null and grab.is_ready(), 30.0)
 	var parts: Array = _doors(grab, panel) if grab != null and grab.is_ready() else []
+	var driving: Array = panel.sim.model.bodies.get(panel.sim.driver, []) if panel.sim != null else []
 	for spot: Dictionary in parts:
 		if str(panel.said().get("driver", "")) != driver or _presses >= 3:
 			break
+		# A part that is not the driver's, as a person taps the other gear.
+		if driving.has(int(spot.get("part", -1))):
+			continue
 		await _tap(spot["screen"] as Vector2)
 		await _frames(10)
 	var now: String = str(panel.said().get("driver", ""))
@@ -539,6 +564,71 @@ func _simulate() -> void:
 	_measure_panel(panel, "simulate")
 	panel.close()
 	await _frames(6)
+
+
+## simulate_probe's train, put down as it puts it: an 8 on one axle meshing a
+## 24 on another, both upright through a Technic plate on the floor.
+func _gear_train() -> bool:
+	_main.call("clear_model")
+	await _frames(10)
+	var t: float = _top_of_floor()
+	_flat("3709b", Vector3(0, t + 8, 0), 71)
+	_upright("3705", Vector3(-20, t + 0.5, 0), 0)
+	_upright("3705", Vector3(20, t + 0.5, 0), 0)
+	_gear("3647", Vector3(-20, t + 24, 0), 14)
+	_gear("3648a", Vector3(20, t + 24, 0), 72)
+	await _frames(5)
+	_camera.frame(AABB(Vector3(-50, t, -40), Vector3(100, 60, 80)), 1.2)
+	await _settle()
+	return _check("a gear train put down (%d parts)" % _world.brick_count(), _world.brick_count() == 5)
+
+
+func _top_of_floor() -> float:
+	var library: Variant = _main.get("_library")
+	var top: float = -INF
+	for id: Variant in _store.scenery:
+		var brick: BrickWorld.Brick = _world.get_brick(int(id))
+		if brick == null:
+			continue
+		var box: AABB = (brick.transform * library.mesh_for(brick.part_id).bounds).abs()
+		var studs: float = 4.0 if library.parts[brick.part_id].stud_count > 0 else 0.0
+		top = maxf(top, box.end.y - studs)
+	return top if top > -INF else 0.0
+
+
+func _flat(part_id: String, at: Vector3, colour: int) -> int:
+	return _place(part_id, Transform3D(Basis.IDENTITY, at), colour)
+
+
+func _upright(part_id: String, foot: Vector3, colour: int) -> int:
+	var bounds: AABB = (_main.get("_library")).mesh_for(part_id).bounds
+	var basis := Basis.IDENTITY
+	var longest: int = 0
+	for n: int in 3:
+		if bounds.size[n] > bounds.size[longest]:
+			longest = n
+	if longest == 0:
+		basis = Basis(Vector3(0, 1, 0), Vector3(-1, 0, 0), Vector3(0, 0, 1))
+	elif longest == 2:
+		basis = Basis(Vector3(1, 0, 0), Vector3(0, 0, -1), Vector3(0, 1, 0))
+	var box: AABB = (Transform3D(basis, Vector3.ZERO) * bounds).abs()
+	var middle: Vector3 = box.get_center()
+	return _place(part_id, Transform3D(basis, Vector3(foot.x - middle.x, foot.y - box.position.y,
+		foot.z - middle.z)), colour)
+
+
+func _gear(part_id: String, at: Vector3, colour: int) -> int:
+	var spec: Dictionary = Mechanism.spec_of(part_id)
+	var basis := Basis(Vector3(1, 0, 0), Vector3(0, 0, -1), Vector3(0, 1, 0))
+	if str(spec.get("axis", "z")) == "y":
+		basis = Basis.IDENTITY
+	return _place(part_id, Transform3D(basis, at), colour)
+
+
+func _place(part_id: String, at: Transform3D, colour: int) -> int:
+	var id: int = _world.add_brick(part_id, colour, at)
+	_builder.register(id, part_id, at)
+	return id
 
 
 # -- 4. Measure ----------------------------------------------------------------------
