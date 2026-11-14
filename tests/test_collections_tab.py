@@ -21,20 +21,27 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def asked(query: dict, directory: dict | None = None) -> dict | None:
+def asked(query: dict, directory: dict | None = None, lists_sql: bool = False) -> dict | None:
     """What the API answers [query] with: {status, cache, json}. With
     [directory] {status, json}, the database answers collection_directory
-    with it instead of the stand-in's own."""
+    with it instead of the stand-in's own. Without [lists_sql], a database
+    before supabase/lists.sql: list_directory is not there, so the
+    directory is collection_directory's (and its search's) as before."""
     if shutil.which("node") is None:
         return None
     script = (
         "const s = await import('./tools/web/design_stand_in.mjs');"
         "await s.serverAsk('api', { name: 'people', query: { op: 'collections' } });"
         f"const directory = {json.dumps(directory)};"
-        "if (directory) { const real = globalThis.fetch;"
-        "  globalThis.fetch = async (input, init) => /rpc\\/collection_directory$/.test(String(input.url || input))"
-        "    ? new Response(JSON.stringify(directory.json), { status: directory.status,"
-        "        headers: { 'content-type': 'application/json' } }) : real(input, init); }"
+        f"const listsSql = {json.dumps(lists_sql)};"
+        "const real = globalThis.fetch;"
+        "const answer = (json, status) => new Response(JSON.stringify(json), { status,"
+        "  headers: { 'content-type': 'application/json' } });"
+        "globalThis.fetch = async (input, init) => {"
+        "  const url = String(input.url || input);"
+        "  if (!listsSql && /rpc\\/list_directory$/.test(url)) return answer({ code: 'PGRST202' }, 404);"
+        "  if (directory && /rpc\\/collection_directory$/.test(url)) return answer(directory.json, directory.status);"
+        "  return real(input, init); };"
         f"const r = await s.serverAsk('api', {{ name: 'people', query: {json.dumps(query)} }});"
         "console.log(JSON.stringify({ status: r.status, cache: r.headers['cache-control'], json: JSON.parse(r.html) }));"
     )
@@ -92,6 +99,21 @@ def test_a_database_without_the_directory_lists_none() -> None:
         return
     assert said["status"] == 200
     assert said["json"]["ready"] is False and said["json"]["collections"] == []
+
+
+def test_with_lists_sql_the_directory_counts_sets_and_models() -> None:
+    # supabase/lists.sql's list_directory (docs/LISTS.md): lists of sets
+    # beside lists of models, each card saying how many of each; never a
+    # wishlist or a list taken down (its SQL, tools/lists_try.sql).
+    said = asked({"op": "collections"}, lists_sql=True)
+    if said is None:
+        return
+    answer = said["json"]
+    assert said["status"] == 200 and answer["ready"] is True and answer["searched"] is True
+    assert ids(said) == ["SamListAa1", "ListAbcde1", "ListSmall1"]
+    castles = answer["collections"][1]
+    assert castles["models"] == 3 and castles["sets"] == 0 and castles["count"] == 3
+    assert "SamListBb2" not in json.dumps(answer)
 
 
 def card(list_: dict) -> str:

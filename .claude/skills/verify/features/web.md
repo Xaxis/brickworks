@@ -6,7 +6,7 @@ connector's relay. Everyone signs in (see [account](account.md)); the assistant
 runs on the person's own key, sent only to Anthropic, or on their own Claude
 plan with Claude as the client.
 
-<!-- covers: api:GET /api/account, cli:console browser flow, api:POST /api/mcp, cli:web build and deploy, cli:the parts bucket's copy for checks, cli:key leak browser flow, cli:the visit counter served from the site, cli:first visit load check, cli:two builds' first visits at an equal load, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, cli:each thread's CPU in a browser, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, ui:build party, cli:build party browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:function packaging, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, api:a deleted account's plan ended at Admission, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, lib:the gallery's daily choice, lib:the weekly look at the OMR, cli:the weekly AI showcase, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:a link that opens playing, cli:playlink probe, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, cli:what the pointer moving costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, cli:buildturn probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:every set's page, lib:a set's picture drawn from its parts, cli:set catalogue, cli:sets browser flow, cli:set parts probe, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, cli:the docs' pictures, cli:relay timing, ui:beta page, ui:the beta bar, ui:the homepage's open beta, cli:the beta's homepage and bar browser flow, api:applying to the beta, lib:the beta's spots and months, ui:the beta's owner queue, cli:beta browser flow, ui:a list's pages, cli:paging browser flow, ui:send feedback, ui:send feedback in the app, api:sending feedback, lib:feedback kept and answered, ui:the owner's feedback inbox, ui:your feedback on settings, lib:early features for beta testers, cli:feedback browser flow, cli:feedback probe, cli:the feedback stand-in, lib:achievements with levels, lib:challenge notices, lib:what a model is based on, cli:based on browser flow, ui:the embed in 3D, cli:embed browser flow, ui:your achievements tab, ui:a model in 3D on its page, lib:mentions in comments, cli:mentions browser flow, ui:the gallery's builds tab, lib:builds in the gallery, cli:gallery builds browser flow, lib:more like a designer, ui:more like on a profile, cli:more like browser flow, api:a set's own picture, cli:set pictures, cli:browse browser flow, cli:browse pages, api:POST /api/account?op=fetch, cli:link browser flow, ui:the model in your room, cli:room GLB probe, cli:room browser flow, lib:joining the beta's testers, ui:the beta's welcome at sign-up, ui:the beta's welcome in the app, cli:betajoin browser flow, cli:betajoin probe, ui:report a bug in the app, ui:report a bug on the site, cli:bugreport browser flow, cli:bugreport probe, cli:console2 browser flow, cli:Resend's webhook set up -->
+<!-- covers: api:GET /api/account, cli:console browser flow, api:POST /api/mcp, cli:web build and deploy, cli:the parts bucket's copy for checks, cli:key leak browser flow, cli:the visit counter served from the site, cli:first visit load check, cli:two builds' first visits at an equal load, cli:browser check, cli:freeze check, cli:progress check, cli:arrival check, cli:redraw check, cli:idle check, cli:each thread's CPU in a browser, api:GET/POST /api/share, cli:share probe, ui:shared model viewer, ui:shared model page and card, cli:share view probe, cli:share browser flow, ui:gallery page, cli:seed the gallery, ui:landing page, ui:changelog page, ui:404 page, ui:FAQ page, ui:compare page, cli:compare media, ui:privacy page, cli:put the website together, cli:site check, ui:build it step player, lib:build pages, cli:build steps probe, cli:step count probe, cli:build browser flow, cli:share steps browser flow, ui:build party, cli:build party browser flow, cli:versions browser flow, lib:versions of a shared model, lib:steps carried with a shared model, cli:share pages probe, lib:directory, lib:model kinds, cli:part facts, cli:function packaging, cli:list load test, api:GET/POST /api/people, ui:profile and collection pages, ui:collections directory, cli:collections browser flow, ui:plans page, api:POST /api/plans, cli:plans browser flow, cli:plan interest counts, lib:plans from Admission, lib:the Admission client, api:GET /api/plans, api:paying for Pro, ui:your plan on settings, cli:billing browser flow, cli:the stand-in Admission, api:a deleted account's plan ended at Admission, ui:your profile page, ui:model page action bar, ui:model page pictures and tabs, lib:site sign-in, cli:people browser flow, lib:names filter, ui:report it, ui:takedown page, cli:moderation browser flow, cli:tabs probe, ui:this tab and its claude chats, cli:two chats probe, cli:two chats browser flow, cli:two windows probe, ui:newer build banner, lib:newer build, cli:update probe, cli:reload browser flow, cli:list changed check, cli:page places probe, ui:open a tab by link, ui:terms and guidelines, ui:age question, cli:age browser flow, cli:report digest browser flow, lib:the Tested mark's four tests, cli:tested probe, lib:the Tested mark kept and shown, cli:tested browser flow, lib:real builds: finishes counted and photos of builds, lib:a build photo made safe, cli:builds browser flow, lib:comments on a shared model, ui:comments on a step, cli:comments browser flow, lib:follows and the feed, ui:your feed page, ui:follow a person and the count on Account, ui:the account menu, ui:the app's Account count, cli:follows browser flow, lib:notifications apart from the feed, ui:notifications page, cli:notifications browser flow, lib:latest on Brickworks and designers to follow, cli:feed browser flow, lib:Top builds and this week's pick, ui:the gallery's front shelves, lib:the gallery's daily choice, lib:the weekly look at the OMR, cli:the weekly AI showcase, ui:choosing this week's pick, lib:build with what I own, cli:needs backfill, cli:parts count backfill, cli:discovery browser flow, lib:designers' numbers, ui:a designer's page, ui:your models as a designer, cli:designers browser flow, cli:profile browser flow, cli:gallery browser flow, ui:play in a shared model, lib:what moves in a model, lib:what moves on a gallery card, cli:share play probe, cli:play browser flow, ui:a link that opens playing, cli:playlink probe, ui:design system, cli:design browser flow, cli:accessibility browser flow, cli:keyboard browser flow, ui:theme choice, cli:theme browser flow, cli:what a frame costs in a browser, cli:what the pointer moving costs in a browser, lib:the monthly challenge's rules, ui:this month's challenge page, ui:enter this month's challenge, ui:setting the monthly challenge, cli:challenges browser flow, ui:component kit, ui:model card, cli:picture themes check, cli:card check, lib:more by and similar models, ui:a model's parts and its download, cli:parts page probe, cli:model page browser flow, ui:your settings page, cli:account page browser flow, lib:replies to a comment, ui:comment threads on a model page, ui:open a shared model at a step, cli:step link probe, cli:buildturn probe, ui:first steps after a first sign-in, lib:the house's profile, lib:who modelled a shared model, cli:first steps browser flow, ui:your own picture as your avatar, ui:likes on a profile, cli:avatar browser flow, lib:challenges between months, ui:achievements on a profile, ui:LDraw library page, ui:an LDraw set's page, cli:LDraw library browser flow, ui:every set's page, lib:a set's picture drawn from its parts, cli:set catalogue, cli:sets browser flow, cli:set parts probe, ui:documentation, cli:put the documentation together, cli:docs browser flow, cli:the menus written for the docs, cli:the docs' pictures, cli:relay timing, ui:beta page, ui:the beta bar, ui:the homepage's open beta, cli:the beta's homepage and bar browser flow, api:applying to the beta, lib:the beta's spots and months, ui:the beta's owner queue, cli:beta browser flow, ui:a list's pages, cli:paging browser flow, ui:send feedback, ui:send feedback in the app, api:sending feedback, lib:feedback kept and answered, ui:the owner's feedback inbox, ui:your feedback on settings, lib:early features for beta testers, cli:feedback browser flow, cli:feedback probe, cli:the feedback stand-in, lib:achievements with levels, lib:challenge notices, lib:what a model is based on, cli:based on browser flow, ui:the embed in 3D, cli:embed browser flow, ui:your achievements tab, ui:a model in 3D on its page, lib:mentions in comments, cli:mentions browser flow, ui:the gallery's builds tab, lib:builds in the gallery, cli:gallery builds browser flow, lib:more like a designer, ui:more like on a profile, cli:more like browser flow, api:a set's own picture, cli:set pictures, cli:browse browser flow, cli:browse pages, api:POST /api/account?op=fetch, cli:link browser flow, ui:the model in your room, cli:room GLB probe, cli:room browser flow, lib:joining the beta's testers, ui:the beta's welcome at sign-up, ui:the beta's welcome in the app, cli:betajoin browser flow, cli:betajoin probe, ui:report a bug in the app, ui:report a bug on the site, cli:bugreport browser flow, cli:bugreport probe, cli:console2 browser flow, cli:Resend's webhook set up, lib:your sets and lists, ui:own want and save, ui:your lists page, ui:the sets you own on a profile, cli:lists browser flow -->
 
 ## Sub-features
 
@@ -2069,6 +2069,52 @@ plan with Claude as the client.
   `tests/test_collections_tab.py`.
 - `collections browser flow` (`tools/web/collections_flow.mjs`, preview
   check `[collections]`): below, under "The collections directory".
+- `your sets and lists` (`api/_mylists.js`, `supabase/lists.sql` applied
+  to the live project 2026-11-13, docs/LISTS.md): `model_collections`
+  `kind` (`want`, one an owner), `sort`, `cover`, `taken_down_at`;
+  `collection_sets`; `profile_shows.owned`; `list_items`,
+  `list_model_cards`, `list_place`, `list_directory` (service role only).
+  `GET /api/people?op=keeps&sets=A,B&models=X,Y` (60 each: `{signed_in,
+  lists, want, sets: {set: {own, lists}}, models: {id: {saved, lists}}}`),
+  `?op=lists` (`{lists, owned: {sets, unique, pieces, shown}, saved,
+  profile}`), `?op=list_items&id=owned|want|saved|<id>&page=N` (24 a page,
+  `{..., total, sets, models, more, items: [{key, kind, card}]}`; anybody's
+  public list, a private one 404 but to its owner), `?op=list_csv&id=`
+  (Rebrickable's columns; the built-ins and private lists with the
+  session); `POST ?op=keep {key: "set:6080-1"|"model:X", list:
+  "want"|"saved"|<id>, on}`, `?op=list_order {id, keys, sort}`,
+  `?op=owned_choice {shows}`; `POST /api/collection {op: "own", set, was,
+  qty}` (the hand copies of one set made qty, held to `was`; a 409 says
+  `owned`). `POST /api/admin?op=list_down&id=` (docs/ADMIN.md).
+- `own want and save` (`web/keep.js`, `web/card.js` `keepHtml`,
+  `api/_sets.js` `keepBarHtml`): `.keep` over a card's picture's foot on
+  every set card (`/library`, a profile's Sets tab, a list) and gallery
+  model card (`modelCard(..., {keep: true})`): `[data-keep-main]` Own or
+  Save (`aria-pressed`; the words never change), `[data-keep-more]` the
+  chevron (`data-in` when in a list); a set's page `.keep-bar` Own, Want,
+  Add to a list. What the caller has comes in one `op=keeps` for the page's
+  cards. The chevron opens `dialog.keep-panel` (`.at-foot` under 600 px, never the site's `.sheet`):
+  `.keep-row` boxes I own it (with `.keep-qty` One fewer, How many you
+  own, One more), I want it, or Saved, then each list, `.keep-new-open`
+  New list… with its `form.keep-new`, Manage your lists; each box saves at
+  once and says so in `.said`. Every tap's toast has Undo (`web/kit.js`
+  `toast(words, {undo})`). Signed out, `askToSignIn` and then the press.
+- `your lists page` (`web/lists.html`, `web/lists.js`, the account menu's
+  Your lists): `?list=owned|want|saved|<id>`; `nav.lists-rail` from 900
+  px, `#pick` below; `#view-h`, `#view-meta`, `#share`, `#edit`,
+  `#import` (Add sets), `#download`; `#order` Newest first · Your order
+  (`.moves` arrows, drag); `#select` then `#bulk` Copy to, Move to, Take
+  out; `#shows-owned` (I own: Show on my profile); `dialog.lists-dialog`
+  for New list, Edit (Delete list with a nine-second Undo) and Add sets.
+  `html[data-lists]` `ready`, `signed-out` or `failed`. In
+  `tools/web/site_pages.mjs` (design and a11y, Sam's "Castles to build").
+- `the sets you own on a profile` (`api/people.js` `ownedPanel`,
+  `ownedAsked`): `/u/<handle>?tab=sets` only once its owner shows them;
+  `.owned-stats` (sets, parts, minifigures, themes), the theme owned most,
+  `form.owned-filters` (`q`, `theme`, `decade`, `size`, `sort`) and the
+  cards, 24 a page by `web/pager.js`.
+- `lists browser flow` (`tools/web/lists_flow.mjs`, preview check
+  `[lists]`): below, under "Your sets and lists".
 - `share sheet` (`web/card.js` `shareSheetHtml` and `shareTargets`,
   `web/share-sheet.js`, docs/SOCIAL.md U14 and section 7): Share on a
   model's, a set's, a person's (`/u/`), your own (`/profile` `#share`), a
@@ -6670,6 +6716,37 @@ at 390 px dark presses Follow on the card, Following and "1 follower",
 the API agreeing, one batched request answering for the cards; Most
 followed, pressed in place, lists it; 390 and 1280 px in both themes with nothing
 sideways; made private, gone.
+
+### Your sets and lists (/lists, Own, Want and Save on every card)
+
+The SQL is applied (`supabase/lists.sql`, its tries
+`tools/lists_try.sql`). With no network, from the stand-in: `design_flow`
+and `a11y_flow` page `lists` (Sam's list, its New list dialog and a card's
+panel) and `card_check`. Then live, with throwaway accounts, against a
+preview or a local relay on a port of your own (never 10080, which fetch
+and Chromium refuse as unsafe):
+
+```sh
+node --env-file=.env tools/web/relay_server.mjs 10081 --static=web &
+node --env-file=.env tools/web/lists_flow.mjs --url=http://127.0.0.1:10081 --out=shots/lists
+BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/lists_flow.mjs --url=<preview> --out=shots/lists
+```
+
+It passes when it ends "lists flow: all passed" with no FAIL: a visitor's
+Own opens the sign-in saying why; Ada's Own on King's Castle's card is
+pressed at once, its toast's Undo takes it back, the server agreeing each
+time, and My collection holds it as a hand copy; on its page Own shows
+pressed, Want puts it on her wishlist, the panel's New list… makes a list
+with it in; her tower's gallery card's panel (Saved first) puts it in the
+same list and its chevron shows the dot; on `/lists` both, newest first,
+an arrow moves the set first (the server keeps it) and Undo puts it back;
+made public, Bob and a visitor see `/c/<id>` with its og:title and two
+cards and Share's sheet has its link; made private, both get 404 and it is
+out of the directory; the profile's Sets tab appears only once she shows
+it, with its numbers, a theme filter and a search; a Rebrickable CSV makes
+Galaxy Explorer owned; Download CSV holds both; at 430 px with touch in
+both themes the panel is a sheet at the foot and How many goes to 2 and
+back; nothing sideways and no script errors. 21 pictures, each looked at.
 
 ### The gallery's Builds tab (/builds) and More like on a profile
 

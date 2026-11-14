@@ -44,14 +44,14 @@
         "tests/test_booklet_follow.py",
         "tests/test_cadtask.py",
         "tests/test_collection.py",
+        "tests/test_collections_tab.py",
         "tests/test_designers.py",
         "tests/test_gallery_builds.py",
         "tests/test_gallery_crons.py",
         "tests/test_library.py",
         "tests/test_library_site.py",
         "tests/test_model_page.py",
-        "tests/test_refresh_catalogue.py",
-        "tests/test_release.py"
+        "tests/test_refresh_catalogue.py"
       ]
     },
     {
@@ -1680,6 +1680,14 @@
       "kind": "cli",
       "entry": "tools/web/list_load.mjs",
       "reach": "node tools/web/list_load.mjs --url=<deployment> [--n=200] [--at-once=10]   (BW_BYPASS for a preview)",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:lists browser flow",
+      "kind": "cli",
+      "entry": "tools/web/lists_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/lists_flow.mjs --url=<preview> --out=DIR   (live project, throwaway accounts; preview check [lists]; or a local relay_server.mjs on a port of yours, never 10080, which fetch refuses)",
       "area": "web",
       "tests": []
     },
@@ -4540,6 +4548,14 @@
       "tests": []
     },
     {
+      "id": "lib:your sets and lists",
+      "kind": "lib",
+      "entry": "api/_mylists.js",
+      "reach": "curl -s -H \"authorization: Bearer $TOKEN\" 'https://brickworks.diy/api/people?op=keeps&sets=6080-1&models='   (and ?op=lists, ?op=list_items&id=owned|want|saved|<id>, ?op=list_csv&id=; POST ?op=keep {key, list, on}, ?op=list_order {id, keys, sort}, ?op=owned_choice {shows}; POST /api/collection {op:'own', set, was, qty}; supabase/lists.sql, applied 2026-11-13; docs/LISTS.md)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "scene:main",
       "kind": "scene",
       "entry": "src/main.tscn",
@@ -5636,6 +5652,17 @@
       "tests": []
     },
     {
+      "id": "ui:own want and save",
+      "kind": "ui",
+      "entry": "web/keep.js",
+      "reach": "https://brickworks.diy/library (each set card's Own and its chevron), /library/set/6080-1 (the bar: Own, Want, Add to a list), /gallery (each model card's Save and its chevron): the panel (I own it with How many, I want it, Saved, each list, New list\u2026), a sheet under 600 px; the toast's Undo; signed out it asks to sign in, then carries on (web/card.js keepHtml, api/_sets.js keepBarHtml)",
+      "area": "web",
+      "tests": [
+        "tests/test_alike.py",
+        "tests/test_bench.py"
+      ]
+    },
+    {
       "id": "ui:palette",
       "kind": "ui",
       "entry": "src/ui/parts_bin.gd",
@@ -6475,6 +6502,24 @@
       "tests": []
     },
     {
+      "id": "ui:the sets you own on a profile",
+      "kind": "ui",
+      "entry": "api/people.js",
+      "reach": "https://brickworks.diy/u/<handle>?tab=sets   (only once its owner shows them: Your lists, I own, Show on my profile; the numbers, the theme owned most, the cards, ?q= ?theme= ?decade= ?size= ?sort= ?page=; ownedPanel)",
+      "area": "web",
+      "tests": [
+        "tests/fixtures/console/api_check.mjs",
+        "tests/test_challenge_notices.py",
+        "tests/test_comment_mentions.py",
+        "tests/test_console.py",
+        "tests/test_gallery_builds.py",
+        "tests/test_release_train.py",
+        "tests/test_share_unknowns.py",
+        "tests/test_site_lang.py",
+        "tests/test_together_poll.py"
+      ]
+    },
+    {
       "id": "ui:theme choice",
       "kind": "ui",
       "entry": "web/theme.js",
@@ -6690,6 +6735,14 @@
         "tests/test_billing_pay.py",
         "tests/test_console.py"
       ]
+    },
+    {
+      "id": "ui:your lists page",
+      "kind": "ui",
+      "entry": "web/lists.html",
+      "reach": "https://brickworks.diy/lists   (the account menu's Your lists; ?list=owned|want|saved|<id>: the rail, or a dropdown under 900 px; Share, Edit, Add sets (Rebrickable CSV, BrickLink XML, Brickset CSV, typed numbers), Download CSV; Newest first or Your order (drag, arrows, Undo); Select: Copy to, Move to, Take out; Show on my profile for I own; web/lists.js)",
+      "area": "web",
+      "tests": []
     },
     {
       "id": "ui:your models as a designer",

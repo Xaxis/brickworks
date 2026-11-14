@@ -62,3 +62,42 @@ export async function db(path, { method = "GET", body, prefer } = {}) {
   const text = await answer.text();
   return text ? JSON.parse(text) : null;
 }
+
+/// How many rows [path] (a table and its filter) has, counted by the
+/// database: never the length of a read, which PostgREST stops at its page
+/// of 1,000 rows (review of lists1: a list of 2,000 sets read as 1,000).
+export async function dbCount(path) {
+  const base = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
+  const key = process.env.SUPABASE_SECRET_KEY;
+  const what = `database COUNT ${path.split("?")[0]}`;
+  const answer = await reach(what, 15, `${base}/rest/v1/${path}`, { method: "HEAD",
+    headers: { apikey: key, authorization: `Bearer ${key}`, prefer: "count=exact" } });
+  if (!answer.ok) throw new Error(`${what}: ${answer.status}`);
+  const total = Number(String(answer.headers.get("content-range") || "").split("/")[1]);
+  if (!Number.isInteger(total)) throw new Error(`${what}: no count`);
+  return total;
+}
+
+/// Every row [path] reads, however many: page after page in [order] (a
+/// unique order, so no row is read twice or missed) until the database's
+/// own count of them is read, where one read stops at PostgREST's page
+/// (max-rows, 1,000 here).
+export async function dbAll(path, order) {
+  const base = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
+  const key = process.env.SUPABASE_SECRET_KEY;
+  const what = `database GET ${path.split("?")[0]}`;
+  const joined = `${path}${path.includes("?") ? "&" : "?"}order=${order}`;
+  const rows = [];
+  let total = Infinity;
+  while (rows.length < total) {
+    const answer = await reach(what, 15, `${base}/rest/v1/${joined}&offset=${rows.length}`, {
+      headers: { apikey: key, authorization: `Bearer ${key}`, prefer: "count=exact" } });
+    if (!answer.ok) throw new Error(`${what}: ${answer.status}`);
+    const counted = Number(String(answer.headers.get("content-range") || "").split("/")[1]);
+    const page = JSON.parse((await answer.text()) || "[]");
+    if (Number.isInteger(counted)) total = counted;
+    if (!Array.isArray(page) || page.length === 0) break;
+    rows.push(...page);
+  }
+  return rows;
+}

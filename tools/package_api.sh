@@ -127,11 +127,19 @@ for handler in api/*.js; do
     cp web/sitemap.xml "$fn/_sitemap.xml"
     cp "$facts/_parts_table.json" "$fn/_parts_table.json"
     cp "$facts/_scene_table.json" "$fn/_scene_table.json"
-    # Every set in Rebrickable's catalogue, a page each at /library/set/<n>
-    # (api/_sets.js): written from the vendored CSVs and the set shards,
-    # a few seconds, and only rewritten when it would change.
-    if ! python3 tools/set_catalog.py | sed 's/^/deploy: /' || [ ! -f assets/generated/set_catalog.json ]; then
-      echo "deploy FAILED: no set catalogue for /api/share (tools/set_catalog.py)"; exit 1
+  fi
+  # Every set in Rebrickable's catalogue, a page each at /library/set/<n>
+  # (api/_sets.js): written from the vendored CSVs and the set shards,
+  # a few seconds, and only rewritten when it would change. And for
+  # people's lists (api/_mylists.js, lists1): the sets a person owns and
+  # keeps in lists, on their profile and their lists' pages, are the
+  # catalogue's.
+  if [ "$route" = share ] || [ "$route" = people ]; then
+    if [ -z "${catalogue_made:-}" ]; then
+      if ! python3 tools/set_catalog.py | sed 's/^/deploy: /' || [ ! -f assets/generated/set_catalog.json ]; then
+        echo "deploy FAILED: no set catalogue for /api/$route (tools/set_catalog.py)"; exit 1
+      fi
+      catalogue_made=1
     fi
     cp assets/generated/set_catalog.json "$fn/_set_catalog.json"
   fi
