@@ -2,6 +2,7 @@
 ## phonepanels (docs/app_ux8/phonewalk.md; unit smalls2), on a phone.
 ##
 ##   godot --path . --resolution 390x844 --script src/dev/smalls2_probe.gd [-- --shots=DIR --only=…]
+##   (More on a phone on its side too: PROBE_SIZE=844x390 tools/probe.sh smalls2 --only=more)
 ##
 ## Laid out for a phone at a browser's scale (as phonepanels_probe holds
 ## it), driven by fingers as the window hands them over (InputEventScreen
@@ -189,6 +190,14 @@ func _more() -> void:
 		"under the fold: " + ", ".join(hidden)), missing.is_empty() and hidden.is_empty())
 	_check("each a fingertip each way (%s)" % ("all" if small.is_empty() else ", ".join(small)),
 		missing.is_empty() and small.is_empty())
+	# The menus' names begin in sight under them, File first: on a phone on
+	# its side two to a line filled the sheet, and a tap on File's name, below
+	# the screen's foot, opened nothing (phone_flow at 844 x 390).
+	var file: Control = named.get("phone_section_file") as Control
+	var file_at: Rect2 = file.get_global_rect() if file != null else Rect2()
+	_check("File's name in sight under them (%.0f to %.0f of the list's %.0f to %.0f pt)"
+		% [file_at.position.y / _pt(), file_at.end.y / _pt(), list.position.y / _pt(),
+			list.end.y / _pt()], file != null and list.grow(1.0).encloses(file_at))
 	# Cut away, by its row: More and the row.
 	var see: SeeInside = _shell.see_inside
 	var was: bool = see.cutting

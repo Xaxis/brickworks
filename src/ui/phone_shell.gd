@@ -1378,12 +1378,16 @@ class Sheet extends PanelContainer:
 
 	## [param commands] two to a line, each a row of its own as [method
 	## add_row] makes one, its words wrapped onto a second line where they
-	## are longer than half the sheet (More's QUICK).
+	## are longer than the tile (More's QUICK). Four to a line on a phone on
+	## its side, whose sheet is short and wide: two to a line filled it, and
+	## the menus' names stood below its foot where a tap missed them (File
+	## tapped, 0 rows: phone_flow at 844 x 390, smalls2).
 	func add_tiles(commands: Array) -> void:
 		if commands.is_empty():
 			return
 		var grid := GridContainer.new()
-		grid.columns = 2
+		grid.columns = 2 if _halves() \
+			else clampi(floori(minf(_room().x, phone.p(560)) / phone.p(130)), 2, 4)
 		grid.set_meta("tiles", true)
 		grid.add_theme_constant_override("h_separation", ceili(phone.p(6)))
 		grid.add_theme_constant_override("v_separation", ceili(phone.p(6)))
