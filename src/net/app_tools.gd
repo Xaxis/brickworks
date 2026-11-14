@@ -187,11 +187,35 @@ const WINDOW_ONLY: Dictionary = {
 	"studs": "how the person's own view draws the parts; the pictures a session is shown (view_model) draw every stud, which a session counts and places by",
 }
 
+# -- mcpreach (APP_UX8 #11): what only the person does, named where a session reads --
+
+
+## The window's commands only the person runs (WINDOW_ONLY's together,
+## share, import_* and comments), each named with where it is, in the words a
+## session reads before it answers: read_guide("app")'s first lines and
+## export_model's description, which every session is given. Asked to set up
+## building with a friend, a session said "I can't set up a live session",
+## because no tool's words named Build together (APP_UX8's MCP walk, n7).
+## Nothing here opens one: each is the person's to decide. mcpreach_probe
+## holds each "File › …" to the window's own menus.
+const PERSONS_OWN := ("Only the person does these, from the window's menus, each theirs to decide, "
+	+ "so no tool does them; a session sends the person to them by name and where, and never says "
+	+ "they cannot be done. Build together (File › Build together…): someone else builds this "
+	+ "model with the person at the same time, live, from their own computer or browser, by a "
+	+ "link the person starts there and sends them; each sees the other's changes, pointer and "
+	+ "chat, with an undo of their own. Share (File › Share…): a link anyone can open to see the "
+	+ "model, its steps and its parts list, and in the public gallery if the person ticks it. "
+	+ "Import (File › Import): a model file from their computer, LDraw, a Studio .io or an LDD "
+	+ ".lxf, or a 3D model to brickify. Comments (File › Comments…, or a part's right-click menu, "
+	+ "Comment on it…): a note pinned to a part for the people who build the model with them.")
+
+
 ## What a session reads about these, served by read_guide("app") — every
 ## tool here is named in it, which the sync probe checks.
 const GUIDE := """THE REST OF THE APP
 Besides designing, a session can do what the person does from the menus. \
 Each change is one undo step.
+ - """ + PERSONS_OWN + """
  - clear_model takes everything off for a new model, as New does; \
 save_model writes it with the person's models, and a new design's first \
 save hands back its pictures for a fresh look, answered with fresh_eyes \
@@ -289,7 +313,12 @@ view_model, render_model and render_queue draw from one by its name (view=).
  - export_model: the model as LDraw, a BrickLink Studio .io, a 3D file \
 (GLB, glTF, OBJ, STL, 3MF), a picture, a BrickLink wanted list, a Rebrickable \
 parts list, a LEGO® Pick a Brick list, or the building instructions as a \
-booklet, written where Export writes; all_models is every saved model in one .zip.
+booklet (instructions) or as the PDF the Instructions window prints (pdf), \
+written where Export writes; all_models is every saved model in one .zip. An \
+STL's or a 3MF's answer says whether each object is a closed solid, as a \
+slicer needs it, and names any part that is not. Nothing is written over: a \
+file of the name already there is kept, the new one takes the next free \
+name (pods_render_2.png), and the answer gives it.
  - brickify: a 3D model (OBJ, STL, glTF, PLY, 3MF, VOX, FBX) laid in LEGO® bricks at the size asked, \
 as one sub-assembly: file= its path on this computer, url= a link the app \
 fetches, or pick=true opens the window's file dialog for the person, after \
@@ -978,7 +1007,9 @@ func definitions() -> Array:
 				+ "(the window's three lights, the default), softbox, window or daylight "
 				+ "(photographed places), or dark: the studio put out, the model's own lights "
 				+ "(light_model) and the plastics that glow all that lights it. Saved where "
-				+ "Render saves. It is a job: the answer is a job number at once, and job "
+				+ "Render saves, never over a file: one of the name already there is kept and "
+				+ "the new one takes the next free name (pods_render_2.png), which the answer "
+				+ "gives. It is a job: the answer is a job number at once, and job "
 				+ "gives the result: a picture with it, or a turntable's or a build's six frames "
 				+ "in one picture, the last its end. Needs the app in a window."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
@@ -1105,20 +1136,30 @@ func definitions() -> Array:
 				+ "list .csv), pickabrick (LEGO® Pick a Brick's list: element numbers and "
 				+ "quantities, 400 lines a file; the answer names the parts with no element "
 				+ "number known), or instructions (the building instructions as a booklet to "
-				+ "print); all_models is every model the person saved, as LDraw in one .zip "
-				+ "(File, Export, All my models). studio, picture and instructions are jobs: "
+				+ "print), or pdf (the same booklet as the PDF the Instructions window prints: "
+				+ "its own fonts carried, every letter as typed, and the answer names any its "
+				+ "type cannot print); all_models is every model the person saved, as LDraw in one .zip "
+				+ "(File, Export, All my models). studio, picture, instructions and pdf are jobs: "
 				+ "the answer is a job number at once, and job gives the result. A bricklink "
 				+ "wanted list takes condition, wanted_list and notify, as BrickLink's upload "
 				+ "reads them; what is not given is what the person chose last on the parts "
 				+ "list's BrickLink button. Nothing is uploaded: the person uploads the file."
 				+ " With format ldraw, submodels=true writes each sub-model as an LDraw file of its own, "
 				+ "with its own sub-models and steps, all in one .zip (File, Export, Each sub-model), "
-				+ "and submodel= just the one of that name in the model tree, as its row's menu does."),
+				+ "and submodel= just the one of that name in the model tree, as its row's menu does."
+				# mcpreach (APP_UX8 #11).
+				+ " stl and 3mf answer whether each object is a closed solid, as a slicer "
+				+ "needs it, from the check each object's mesh is given, and name any part that "
+				+ "is not. Nothing is written over: a file of that name already there is kept, "
+				+ "and the new one takes the next free name (pods_2.3mf), which the answer gives. "
+				+ PERSONS_OWN),
 			"input_schema": {"type": "object", "additionalProperties": false,
 				"required": ["format"], "properties": {
 				"format": {"type": "string", "enum": ["ldraw", "studio", "glb", "gltf", "obj",
 					"stl", "3mf", "picture", "bricklink", "rebrickable", "instructions", "all_models",
-					"pickabrick"]},
+					"pickabrick",
+					# mcpreach (APP_UX8 #11): the booklet's PDF.
+					"pdf"]},
 				"condition": {"type": "string", "enum": ["new", "used", "any"],
 					"description": "bricklink: the condition wanted (CONDITION N or U; any leaves it out)"},
 				"wanted_list": {"type": "integer", "description": "bricklink: the ID of one of the person's wanted lists (WANTEDLISTID, the number after wantedMoreID= in its address); 0 for the main wanted list"},
@@ -1546,7 +1587,8 @@ static func _while_looking(tool: String, input: Dictionary) -> bool:
 		"simulate_mechanism":
 			return not bool(input.get("record", false))
 		"export_model":
-			return str(input.get("format", "")) == "instructions"
+			# mcpreach: the booklet's PDF, as its page is.
+			return str(input.get("format", "")) in ["instructions", "pdf"]
 		"suggest_sections", "evaluate_section", "booklet_layout", "list_motions", "weakest_joints":
 			return true
 		"measure", "in_view":
@@ -5074,12 +5116,68 @@ func _export(input: Dictionary, work: Working.Job = null) -> String:
 				return "The booklet is being drawn already."
 			var to: String = exports.folder if not exports.folder.is_empty() \
 				else Download.downloads()
-			said = await app.call("_export_booklet", "" if OS.has_feature("web") else
-				to.path_join(SubmodelFile.titled(bar.model_name(), "_instructions.html")), work)
+			# The next name nothing has there (mcpreach): the last booklet is kept.
+			var page: String = "" if OS.has_feature("web") else Download.unused(
+				to.path_join(SubmodelFile.titled(bar.model_name(), "_instructions.html")))
+			said = _kept_said(await app.call("_export_booklet", page, work), page)
+		# mcpreach (APP_UX8 #11): the booklet as the PDF Instructions prints.
+		"pdf":
+			if OS.has_feature("web"):
+				return ("In a browser there is no file to read the booklet back from here: format "
+					+ "instructions opens the booklet in a tab of its own, and its Save as PDF button "
+					+ "downloads the PDF from the person's click.")
+			if DisplayServer.get_name() == "headless":
+				return "The booklet's pictures need something to draw with, and this app is running without a window."
+			if BookletMaker.busy or bool(app.get("_booklet_writing")):
+				return "The booklet is being drawn already."
+			said = await _booklet_pdf(exports, bar, work)
 		_:
 			return ("format is ldraw, studio, glb, gltf, obj, stl, 3mf, picture, bricklink, rebrickable, "
-				+ "pickabrick, instructions or all_models.")
+				+ "pickabrick, instructions, pdf or all_models.")
 	return said.left(1).to_upper() + said.substr(1) + "." if not said.is_empty() else "Nothing written."
+
+
+# -- mcpreach (APP_UX8 #11): the booklet's PDF -----------------------------------------
+
+
+## export_model's pdf: the booklet drawn as Instructions draws it, into a page
+## of the app's own rather than the person's Downloads, then read a page at
+## a time into a PDF as the booklet's own Save as PDF does (main's _pdf_file,
+## BookletPdf: the type it is set in carried, each letter mapped back to its
+## text), written where Export writes under a name nothing has there. A
+## session asked for the booklet as a PDF could hand over only its HTML page,
+## and sent the person to the window (APP_UX8's MCP walk, x2).
+func _booklet_pdf(exports: Exports, bar: ModelBar, work: Working.Job) -> String:
+	var named: String = SubmodelFile.titled(bar.model_name(), "_instructions")
+	var page: String = OS.get_user_data_dir().path_join("booklet_pdf").path_join(named + ".html")
+	DirAccess.make_dir_recursive_absolute(page.get_base_dir())
+	var drawn: String = str(await app.call("_export_booklet", page, work))
+	if not drawn.begins_with("wrote "):
+		return drawn
+	var to: String = Download.unused((exports.folder if not exports.folder.is_empty()
+		else Download.downloads()).path_join(named + ".pdf"))
+	if work != null:
+		work.say("Writing the PDF…")
+	app.set("_booklet_writing", true)
+	var pages: int = int(await app.call("_pdf_file", page, to))
+	app.set("_booklet_writing", false)
+	DirAccess.remove_absolute(page)
+	if pages <= 0:
+		return "could not write %s" % to
+	SaveTo.wrote(to)
+	var missed: String = str(app.get("_pdf_missed"))
+	return "wrote %s, %d pages, the booklet as Instructions prints it%s%s" % [to, pages,
+		missed if not missed.is_empty() else ", every letter in the type the PDF carries, none missing",
+		Download.kept_note(to)]
+
+
+## [param said] with what Download.kept_note says of [param path] at its end,
+## once it says it wrote it: the booklet's answer is main's, which names the
+## path alone.
+static func _kept_said(said: String, path: String) -> String:
+	if path.is_empty() or not said.begins_with("wrote " + path):
+		return said
+	return said + Download.kept_note(path)
 
 
 # -- subexport (APP_UX7 #19) ----------------------------------------------------------

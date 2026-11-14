@@ -111,7 +111,7 @@ static func keep(image: Image, file_name: String, into: String = "") -> String:
 	file.store_buffer(bytes)
 	file.close()
 	SaveTo.wrote(path)
-	return "wrote %s" % path
+	return "wrote %s%s" % [path, Download.kept_note(path)]
 
 
 ## The ground a link's picture is on (SharePanel), lighter at the top.

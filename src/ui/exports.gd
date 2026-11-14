@@ -116,7 +116,12 @@ func _pick_a_brick(stock: Inventory, asking: bool, named_as: String = "") -> Str
 			+ "so there is nothing for Pick a Brick")
 		say.call(none)
 		return none
-	var to: String = await _where(_file("csv", "_pickabrick", named_as), asking)
+	# Past 400 elements, NAME_1.csv, _2.csv… go beside it, each free too.
+	var beside := PackedStringArray()
+	if files.size() > 1:
+		for n: int in files.size():
+			beside.append("_%d.csv" % (n + 1))
+	var to: String = await _where(_file("csv", "_pickabrick", named_as), asking, beside)
 	if to.is_empty():
 		return ""
 	var line: String
@@ -423,7 +428,8 @@ func model_3d(format: String, asking: bool = false) -> String:
 		say.call(refused)
 		return refused
 	var title: String = str(named.call())
-	var to: String = await _where(MeshExport._file_base(title) + "." + format, asking)
+	var to: String = await _where(MeshExport._file_base(title) + "." + format, asking,
+		PackedStringArray([".mtl"]) if format == "obj" else PackedStringArray())
 	if to.is_empty():
 		return ""
 	_writing = true
@@ -460,6 +466,7 @@ func model_3d(format: String, asking: bool = false) -> String:
 			line += " — one colour, one object"
 		elif made.colours > 1:
 			line += " — %d colours, an object each" % made.colours
+		line += closed_words(made)
 		if not made.left_out.is_empty():
 			var count: int = 0
 			for id: String in made.left_out:
@@ -472,6 +479,32 @@ func model_3d(format: String, asking: bool = false) -> String:
 	return line
 
 
+## What an STL or a 3MF is to a slicer, from the check each object's mesh was
+## given (ClosedMesh.open_edges): whether each object is a closed solid, and
+## any that is not, named with its parts. A session told the person their
+## 3MF, every object of it closed, would need repair, for want of these
+## words (APP_UX8's MCP walk, x5; mcpreach). "" for a format with no check.
+static func closed_words(made: MeshExport.Made) -> String:
+	if not made.checked or made.parts == 0:
+		return ""
+	var open: int = 0
+	for id: String in made.open_parts:
+		open += int(made.open_parts[id])
+	if made.colours > 0:
+		# A 3MF: an object a colour, each of its parts closed.
+		if made.open_objects.is_empty():
+			return " — every object a closed solid, with nothing for a slicer to repair"
+		return (" — %d of %d objects closed solids; not closed: %s, from %s, which a slicer repairs"
+			% [made.objects - made.open_objects.size(), made.objects,
+				", ".join(made.open_objects), ModelStore.named_counts(made.open_parts)])
+	# An STL: one mesh of every part as LDraw draws it.
+	if open == 0:
+		return " — every part a closed solid, with nothing for a slicer to repair"
+	return (" — not a closed solid: %d of %d parts are open as LDraw draws them (%s), which a "
+		% [open, made.parts, ModelStore.named_counts(made.open_parts)]
+		+ "slicer repairs as it loads them; a 3MF closes every part")
+
+
 ## The file named after the model, or [param named_as], by the one rule
 ## for a file's name (SubmodelFile.titled).
 func _file(extension: String, suffix: String = "", named_as: String = "") -> String:
@@ -481,14 +514,18 @@ func _file(extension: String, suffix: String = "", named_as: String = "") -> Str
 
 ## Where [param file_name] goes: on the desktop the path the person chose
 ## when [param asking] ("" when they cancelled), else [member folder] or
-## Downloads; in a browser, its name alone.
-func _where(file_name: String, asking: bool) -> String:
+## Downloads, under the next name nothing has there (Download.unused: a
+## session's export, with nobody to ask, replaced the last of its name);
+## in a browser, its name alone. [param beside]: the endings written beside
+## it under the same name (an OBJ's ".mtl").
+func _where(file_name: String, asking: bool,
+		beside: PackedStringArray = PackedStringArray()) -> String:
 	if OS.has_feature("web"):
 		return file_name
 	if asking:
 		return await SaveTo.ask(file_name, folder)
-	return (folder if not folder.is_empty() else Download.downloads()).path_join(
-		file_name.replace("\\", "/").get_file())
+	return Download.unused((folder if not folder.is_empty() else Download.downloads()).path_join(
+		file_name.replace("\\", "/").get_file()), beside)
 
 
 ## Downloaded in a browser, written into [param into] (or Downloads) on the
@@ -511,4 +548,4 @@ static func _give_bytes(bytes: PackedByteArray, file_name: String, mime: String,
 	file.store_buffer(bytes)
 	file.close()
 	SaveTo.wrote(path)
-	return "wrote %s" % path
+	return "wrote %s%s" % [path, Download.kept_note(path)]

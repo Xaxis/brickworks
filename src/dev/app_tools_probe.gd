@@ -388,9 +388,14 @@ func _jobs(out: String) -> void:
 	var renderer: StudioRender = (_main.get("_render") as RenderDialog).renderer
 	_check("cancelled, it stops: %s" % said.left(80), said.contains("was cancelled")
 		and not renderer.is_busy() and not Working.is_busy())
-	var name: String = (_main.get("_bar") as ModelBar).model_name()
-	_check("...and no turntable was written",
-		not FileAccess.file_exists(out.path_join(RenderOutput.file_name(name, "_turntable", "webp"))))
+	# Any turntable of the model's, numbered or not (mcpreach: a render
+	# takes the next free name).
+	var stem: String = RenderOutput.file_name((_main.get("_bar") as ModelBar).model_name(),
+		"_turntable", "webp").get_basename()
+	var spun: Array = Array(DirAccess.get_files_at(out)).filter(func(file: String) -> bool:
+		return file.begins_with(stem) and file.ends_with(".webp"))
+	_check("...and no turntable was written%s" % ("" if spun.is_empty() else ": " + ", ".join(spun)),
+		spun.is_empty())
 	_check("...and the app is free again: %s" % (await _say("parts_list", {})).get_slice("\n", 0),
 		(await _say("parts_list", {})).contains(" pieces in "))
 

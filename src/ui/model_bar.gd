@@ -1076,15 +1076,17 @@ func export_now(into: String = "", asking: bool = false) -> String:
 			return "downloaded %s" % file_name
 		return ""
 	# Only the name's last part: a model's title is named by whoever
-	# designed it, and "../" in one would put the file somewhere else.
+	# designed it, and "../" in one would put the file somewhere else. With
+	# nobody asked (a session's export_model), the next name nothing has
+	# there (Download.unused, mcpreach).
 	var path: String = await SaveTo.ask(file_name, into) if asking \
-		else (into if not into.is_empty() else Download.downloads()).path_join(
-			file_name.replace("\\", "/").get_file())
+		else Download.unused((into if not into.is_empty() else Download.downloads()).path_join(
+			file_name.replace("\\", "/").get_file()))
 	if path.is_empty():
 		return ""
 	if await store.export_paced(path, model_name()):
 		SaveTo.wrote(path)
-		return "wrote %s" % path
+		return "wrote %s%s" % [path, Download.kept_note(path)]
 	return "could not write %s" % path
 
 
