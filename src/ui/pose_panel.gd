@@ -794,6 +794,10 @@ func _joint_row(motion: Motions.Motion, joint: Motions.Joint) -> void:
 	row.add_child(slider)
 	var strip := KeyStrip.new()
 	strip.custom_minimum_size = Vector2(0, 14)
+	# A fingertip tall for a finger, its keys taken as near.
+	if Phone.on():
+		strip.custom_minimum_size.y = Phone.px(get_viewport(), Phone.TARGET)
+		strip.near = Phone.px(get_viewport(), Phone.TARGET * 0.5)
 	strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	strip.span = _time.max_value
 	strip.now = _at
@@ -1991,7 +1995,7 @@ func _build_editor(into: Control) -> void:
 	_time_words.add_theme_font_size_override("font_size", 12)
 	_time_words.custom_minimum_size = Vector2(44, 0)
 	timing.add_child(_time_words)
-	_heading(_edit_box, "Its joints")
+	var joints_heading: Label = _heading(_edit_box, "Its joints")
 	_joint_rows = VBoxContainer.new()
 	_joint_rows.add_theme_constant_override("separation", 6)
 	_edit_box.add_child(_joint_rows)
@@ -2030,6 +2034,26 @@ func _build_editor(into: Control) -> void:
 	_driver_words.visible = false
 	_edit_box.add_child(_driver_words)
 	_build_path(_edit_box)
+	if Phone.on():
+		_for_a_finger([top, joints_heading, _joint_rows, _more, _key_row, playing, timing, naming],
+			recording)
+
+
+## The editor laid out for a finger (the phone's layout or a tablet's): in a
+## phone's sheet under the model its list shows about 100 points, and a
+## joint's slider sat under the name, Record, Play and the time, four to six
+## swipes down, 5 to 7 taps against the desktop's 1 (phonewalk, APP_UX8
+## phonepanels). So Record goes up beside All motions, where it stays in
+## sight while the parts are dragged and Stop is pressed, and the joints come
+## next; Play, the time and the name follow them. What Record's line says
+## the status line says once it is pressed. The desktop keeps its order.
+func _for_a_finger(order: Array, recording: HBoxContainer) -> void:
+	var top: HBoxContainer = order[0]
+	_record.reparent(top, false)
+	top.move_child(_record, 1)
+	recording.visible = false
+	for n: int in order.size():
+		_edit_box.move_child(order[n] as Control, n)
 
 
 # -- a path: where the whole model drives (unit drive) ---------------------------------------
@@ -2498,6 +2522,8 @@ class KeyStrip extends Control:
 	var chosen: int = -1
 	var _dragging: int = -1
 	var _drag_t: float = 0.0
+	## How near a press takes a key, px: half a fingertip for a finger.
+	var near: float = NEAR
 	const NEAR := 7.0
 	const INSET := 8.0
 
@@ -2514,7 +2540,7 @@ class KeyStrip extends Control:
 		for n: int in times.size():
 			var t: float = _drag_t if n == _dragging else float(times[n])
 			var x: float = _x_of(t)
-			var r: float = 4.5
+			var r: float = maxf(4.5, size.y * 0.18)
 			var colour: Color = Look.ACCENT if n == chosen else Color(1, 1, 1, 0.85)
 			draw_colored_polygon(PackedVector2Array([Vector2(x, mid - r), Vector2(x + r, mid),
 				Vector2(x, mid + r), Vector2(x - r, mid)]), colour)
@@ -2524,7 +2550,7 @@ class KeyStrip extends Control:
 			var press: InputEventMouseButton = event
 			if press.pressed:
 				var nearest: int = -1
-				var best: float = NEAR
+				var best: float = near
 				for n: int in times.size():
 					var off: float = absf(_x_of(float(times[n])) - press.position.x)
 					if off <= best:

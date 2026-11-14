@@ -107,6 +107,16 @@ var _named: Dictionary = {}
 var _sheet: BookletSheet = BookletSheet.new()
 var _behind: Texture2D = null
 var _behind_uri: String = ""
+## Laid out for a finger, in the phone's layout or a tablet's
+## (_lay_for_a_finger): its controls, handles and rulers a fingertip's or
+## more, its words in touch words.
+var _finger: bool = false
+## The rulers' width and the knob's stem, in pixels: RULER and KNOB_STEM, or
+## a finger's.
+var _ruler: float = RULER
+var _stem: float = KNOB_STEM
+## The words were all selected when the finger came down on their field.
+var _words_whole: bool = false
 
 const PAGE_COLOUR := Color8(220, 236, 248)
 const CALLOUT_COLOUR := Color8(255, 243, 200)
@@ -245,8 +255,9 @@ func _ready() -> void:
 	_knob.tooltip_text = "Drag round to turn it"
 	_knob.gui_input.connect(_on_knob_input)
 	_knob.draw.connect(func() -> void:
-		_knob.draw_circle(_knob.size * 0.5, 8.0, PICK)
-		_knob.draw_arc(_knob.size * 0.5, 4.0, -PI * 0.9, PI * 0.4, 12, Color.WHITE, 1.6, true))
+		var dot: float = 1.0 if not _finger else _px(10.0) / 8.0
+		_knob.draw_circle(_knob.size * 0.5, 8.0 * dot, PICK)
+		_knob.draw_arc(_knob.size * 0.5, 4.0 * dot, -PI * 0.9, PI * 0.4, 12, Color.WHITE, 1.6 * dot, true))
 	_knob.visible = false
 	_canvas.add_child(_knob)
 	_picker = PickImage.new()
@@ -282,19 +293,21 @@ func _number_box(prefix: String, suffix: String, least: float, most: float,
 func _point(which: String) -> Control:
 	var point := Control.new()
 	point.mouse_filter = Control.MOUSE_FILTER_STOP
-	point.size = Vector2(14, 14)
+	point.size = Vector2(14, 14) if not _finger else Vector2.ONE * _px(Phone.TARGET)
 	point.mouse_default_cursor_shape = Control.CURSOR_CROSS
 	point.gui_input.connect(func(event: InputEvent) -> void: _on_point_input(which, event))
 	var adds: bool = which.begins_with("add_")
 	point.tooltip_text = "Drag to bend the arrow here" if adds else (
 		"Drag to move this bend; double-click to take it off" if which.begins_with("bend_") else "")
+	# Drawn about as large for a finger as the dot it takes is wide.
+	var dot: float = 1.0 if not _finger else _px(8.0) / 7.0
 	point.draw.connect(func() -> void:
 		if adds:
-			point.draw_circle(point.size * 0.5, 5.0, Color(PICK, 0.55))
-			point.draw_circle(point.size * 0.5, 3.0, Color.WHITE)
+			point.draw_circle(point.size * 0.5, 5.0 * dot, Color(PICK, 0.55))
+			point.draw_circle(point.size * 0.5, 3.0 * dot, Color.WHITE)
 		else:
-			point.draw_circle(point.size * 0.5, 7.0, PICK)
-			point.draw_circle(point.size * 0.5, 4.0, PICK.lightened(0.6) if which.begins_with("bend_")
+			point.draw_circle(point.size * 0.5, 7.0 * dot, PICK)
+			point.draw_circle(point.size * 0.5, 4.0 * dot, PICK.lightened(0.6) if which.begins_with("bend_")
 				else Color.WHITE))
 	_canvas.add_child(point)
 	_ends[which] = point
@@ -312,10 +325,52 @@ func open() -> void:
 	_shots.clear()
 	_part_shots.clear()
 	_callout_shown = -1
+	if Phone.on() and not _finger:
+		_lay_for_a_finger()
 	HudFront.show_panel(self)
 	var steps: StepsBar = app.get("_steps")
 	var at: Instructions.Step = steps.booklet_step() if steps != null else null
 	await _lay_out(at.number if at != null else -1)
+
+
+## The page laid out for a finger, as a phone's or a tablet's layout has
+## the rest of the app (TouchSizing): the page editor was the desktop's,
+## drawn at a phone's size, its Add words 38 x 17 points, Done 21 x 14, the
+## corner that sizes an item 9 x 9 and the rulers 10 across (phonewalk,
+## APP_UX8 phonepanels). Its buttons and fields a fingertip each way, their
+## words at a phone's least or more; the corner, the knob, an arrow's handles
+## and the rulers a fingertip's target, drawn about where they were. And
+## its words field's select-all kept by the tap that brings the keyboard up.
+func _lay_for_a_finger() -> void:
+	_finger = true
+	var touch: Node = app.get("_touch") if app != null else null
+	if touch != null:
+		touch.call("size_panel", self)
+	_words.select_all_on_focus = true
+	_words.gui_input.connect(_keep_words_selected)
+	_fit()
+
+
+## A point in the window's pixels.
+func _px(points: float) -> float:
+	return Phone.px(get_viewport(), points)
+
+
+## A tap on the words while they are all selected keeps them selected, as a
+## phone's field does: Add words selects the new words to type over, and the
+## tap that brings a phone's keyboard up dropped that, so "Hi" went on the
+## end of "Your words": 12 deletes and "Hi" again, 18 taps against the
+## desktop's 3 (phonewalk). Before the field's own press, which drops it.
+func _keep_words_selected(event: InputEvent) -> void:
+	var button := event as InputEventMouseButton
+	if button == null or button.button_index != MOUSE_BUTTON_LEFT:
+		return
+	if button.pressed:
+		_words_whole = _words.has_focus() and not _words.text.is_empty() \
+			and _words.has_selection() and _words.get_selected_text() == _words.text
+	elif _words_whole:
+		_words_whole = false
+		_words.select_all.call_deferred()
 
 
 func close() -> void:
@@ -670,15 +725,24 @@ func _scale() -> float:
 
 func _fit() -> void:
 	var holder: Control = _canvas.get_parent()
+	# A fingertip's targets in the window's units now: Settings, Interface
+	# size and a phone turned change them.
+	if _finger:
+		_ruler = _px(Phone.TARGET)
+		_stem = _px(30.0)
+		_handle.size = Vector2.ONE * _px(Phone.TARGET)
+		_knob.size = Vector2.ONE * _px(Phone.TARGET)
+		for point: Control in _ends.values():
+			point.size = Vector2.ONE * _px(Phone.TARGET)
 	# The rulers along the top and the left, the page in what they leave.
-	var room: Vector2 = holder.size - Vector2(RULER, RULER)
+	var room: Vector2 = holder.size - Vector2(_ruler, _ruler)
 	var k: float = minf(room.x / _sheet.size().x, room.y / _sheet.size().y)
 	_canvas.size = _sheet.size() * k
-	_canvas.position = Vector2(RULER, RULER) + (room - _canvas.size) * 0.5
-	_ruler_top.position = _canvas.position - Vector2(0.0, RULER)
-	_ruler_top.size = Vector2(_canvas.size.x, RULER)
-	_ruler_left.position = _canvas.position - Vector2(RULER, 0.0)
-	_ruler_left.size = Vector2(RULER, _canvas.size.y)
+	_canvas.position = Vector2(_ruler, _ruler) + (room - _canvas.size) * 0.5
+	_ruler_top.position = _canvas.position - Vector2(0.0, _ruler)
+	_ruler_top.size = Vector2(_canvas.size.x, _ruler)
+	_ruler_left.position = _canvas.position - Vector2(_ruler, 0.0)
+	_ruler_left.size = Vector2(_ruler, _canvas.size.y)
 	_ruler_top.queue_redraw()
 	_ruler_left.queue_redraw()
 	_place_controls()
@@ -698,7 +762,7 @@ func _place_controls() -> void:
 	var selected: Dictionary = _items[_selected] if _selected >= 0 and _selected < _items.size() else {}
 	if not selected.is_empty():
 		var rect: Rect2 = selected["rect"]
-		_handle.position = _turned_point(selected, rect.end) * k - _handle.size * 0.5
+		_handle.position = _turned_point(selected, rect.end) * k - _handle_corner()
 		_handle.visible = not selected["kind"] in ["number", "arrow"]
 	else:
 		_handle.visible = false
@@ -754,7 +818,7 @@ static func _turned_point(item: Dictionary, point: Vector2) -> Vector2:
 func _knob_at(item: Dictionary) -> Vector2:
 	var k: float = _scale()
 	var rect: Rect2 = item["rect"]
-	var up: Vector2 = Vector2(0.0, -(rect.size.y * k * 0.5 + KNOB_STEM)).rotated(
+	var up: Vector2 = Vector2(0.0, -(rect.size.y * k * 0.5 + _stem)).rotated(
 		deg_to_rad(float(item.get("turn", 0.0))))
 	return rect.get_center() * k + up
 
@@ -997,8 +1061,22 @@ func _draw_arrow(points: Array, colour: String, width: float, k: float) -> void:
 
 
 func _draw_handle() -> void:
-	_handle.draw_rect(Rect2(Vector2.ZERO, _handle.size), PICK)
-	_handle.draw_rect(Rect2(Vector2(3, 3), _handle.size - Vector2(6, 6)), Color.WHITE)
+	var box := Rect2(Vector2.ZERO, _handle.size)
+	if _finger:
+		# The corner drawn where it is, a little larger than the desktop's;
+		# the fingertip round it, mostly outside the item, takes the press.
+		var across: float = _px(12.0)
+		box = Rect2(_handle_corner() - Vector2.ONE * across * 0.5, Vector2.ONE * across)
+	_handle.draw_rect(box, PICK)
+	_handle.draw_rect(box.grow(-3.0), Color.WHITE)
+
+
+## Where in the corner handle the item's corner is: its middle on the
+## desktop; for a finger 15 points in from its top left, so the most of a
+## fingertip's target is outside the item, which a drag inside it still
+## moves.
+func _handle_corner() -> Vector2:
+	return _handle.size * 0.5 if not _finger else Vector2.ONE * _px(15.0)
 
 
 ## A ruler in millimetres of page: a tick each 5, a longer one each 10, a
@@ -1010,23 +1088,28 @@ func _draw_ruler(ruler: Control, axis: String) -> void:
 	ruler.draw_rect(Rect2(Vector2.ZERO, ruler.size), Color(0.15, 0.17, 0.2))
 	var length: float = _sheet.size().x if along else _sheet.size().y
 	var ink := Color(0.78, 0.82, 0.88)
+	# A finger's ruler is wider, its ticks the desktop's and its numbers at a
+	# phone's least.
+	var across: float = _ruler
+	var tall: float = minf(across, RULER * 1.6)
+	var words: int = 9 if not _finger else ceili(_px(Phone.LEAST_TEXT))
 	for mm: int in range(0, int(length) + 1, 5):
-		var tick: float = RULER * (0.6 if mm % 50 == 0 else (0.4 if mm % 10 == 0 else 0.22))
+		var tick: float = tall * (0.6 if mm % 50 == 0 else (0.4 if mm % 10 == 0 else 0.22))
 		var at: float = mm * k
 		if along:
-			ruler.draw_line(Vector2(at, RULER), Vector2(at, RULER - tick), ink, 1.0)
+			ruler.draw_line(Vector2(at, across), Vector2(at, across - tick), ink, 1.0)
 		else:
-			ruler.draw_line(Vector2(RULER, at), Vector2(RULER - tick, at), ink, 1.0)
+			ruler.draw_line(Vector2(across, at), Vector2(across - tick, at), ink, 1.0)
 		if mm % 50 == 0 and mm > 0:
-			ruler.draw_string(font, Vector2(at + 2.0, 9.0) if along else Vector2(1.0, at - 2.0),
-				str(mm), HORIZONTAL_ALIGNMENT_LEFT, -1, 9, ink)
+			ruler.draw_string(font, Vector2(at + 2.0, float(words)) if along else Vector2(1.0, at - 2.0),
+				str(mm), HORIZONTAL_ALIGNMENT_LEFT, -1, words, ink)
 	# The guides, by the other ruler: a ruler along the top marks the upright
 	# ones, which are measured along it.
 	for mm: Variant in _guide_lines.get("x" if along else "y", []):
 		var at: float = float(mm) * k
-		ruler.draw_colored_polygon(PackedVector2Array([Vector2(at - 4.0, RULER), Vector2(at + 4.0, RULER),
-			Vector2(at, RULER - 6.0)]) if along else PackedVector2Array([Vector2(RULER, at - 4.0),
-			Vector2(RULER, at + 4.0), Vector2(RULER - 6.0, at)]), RULER_GUIDE)
+		ruler.draw_colored_polygon(PackedVector2Array([Vector2(at - 4.0, across), Vector2(at + 4.0, across),
+			Vector2(at, across - 6.0)]) if along else PackedVector2Array([Vector2(across, at - 4.0),
+			Vector2(across, at + 4.0), Vector2(across - 6.0, at)]), RULER_GUIDE)
 
 
 ## A drag from a ruler onto the page: a new guide, across from the top
@@ -1808,13 +1891,13 @@ func _reword() -> void:
 
 
 func _say(words: String) -> void:
-	_said.text = words
+	_said.text = words if not _finger else Phone.touch_words(words)
 	if _shell != null and _shell.bar != null:
 		_shell.bar.say(words)
 
 
 func _say_soft(words: String) -> void:
-	_said.text = words
+	_said.text = words if not _finger else Phone.touch_words(words)
 
 
 # -- for the page and a check ---------------------------------------------------------

@@ -885,6 +885,20 @@ func _build() -> void:
 	_frame.visible = false
 	column.add_child(_frame)
 	_status = _words(column, 11, 0.8)
+	if Phone.on():
+		_for_a_finger(column, playing)
+
+
+## Laid out for a finger (the phone's layout or a tablet's), Play and the
+## cycle's slider come first, under the title, as a phone's player keeps its
+## controls at the top of its sheet: under the driver, the readout and the
+## legend they sat four swipes down a phone's sheet, 9 taps to play against
+## the desktop's 2, 4 to scrub against 1 (phonewalk, APP_UX8 phonepanels).
+## What it reads follows them. The desktop keeps its order to the pixel.
+func _for_a_finger(column: VBoxContainer, playing: Control) -> void:
+	column.move_child(playing, 1)
+	column.move_child(_scrub, 2)
+	column.move_child(_at, 3)
 
 
 func _words(into: Control, size: int, alpha: float) -> Label:
