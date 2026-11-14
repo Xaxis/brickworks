@@ -14220,3 +14220,173 @@ msgstr "chaque pièce un solide fermé, rien à réparer pour un trancheur"
 
 msgid "not a closed solid: %d of %d parts are open as LDraw draws them (%s), which a slicer repairs as it loads them; a 3MF closes every part"
 msgstr "pas un solide fermé : %d pièces sur %d sont ouvertes telles que LDraw les dessine (%s), ce qu'un trancheur répare au chargement ; un 3MF ferme chaque pièce"
+
+# View, Stress's Lift (APP_UX8 #13, loadtest): the model lifted by a part, what
+# each joint between carries, and what lets go, tinted and named; and Stress's legend.
+msgid "Lift"
+msgstr "Soulever"
+
+msgid "Lift the model by a part, off the floor: press, then click the part. What lets go comes away, red"
+msgstr "Soulever le modèle par une pièce, au-dessus du sol : appuyez, puis cliquez sur la pièce. Ce qui lâche se détache, en rouge"
+
+msgid "In the hand: the part it is lifted by"
+msgstr "En main : la pièce par laquelle il est soulevé"
+
+msgid "Comes away: a joint lets go, or nothing holds it"
+msgstr "Se détache : une liaison lâche, ou rien ne la tient"
+
+msgid "Holds past its working load, or swings on a pin"
+msgstr "Tient au-delà de sa charge de travail, ou pivote sur un connecteur"
+
+msgid "Holds: faded"
+msgstr "Tient : estompée"
+
+msgid "Past its working load: the first to give"
+msgstr "Au-delà de sa charge de travail : la première à céder"
+
+msgid "Near it: holds it less than twice over"
+msgstr "Proche : la tient moins de deux fois"
+
+msgid "Holds it twice over, or shares its load: faded"
+msgstr "La tient deux fois, ou partage sa charge : estompée"
+
+msgid "Click the part to lift the model by."
+msgstr "Cliquez sur la pièce par laquelle soulever le modèle."
+
+msgid "Click another part to lift by it"
+msgstr "Cliquez sur une autre pièce pour soulever par elle"
+
+msgid "Lift again sets it down."
+msgstr "Soulever à nouveau le repose."
+
+msgid "Lifting it by %s…"
+msgstr "Soulèvement par %s…"
+
+msgid "lets go"
+msgstr "lâche"
+
+msgid "left behind"
+msgstr "reste en place"
+
+msgid "falls off"
+msgstr "tombe"
+
+msgid "swings"
+msgstr "pivote"
+
+msgid "holds %s"
+msgstr "tient %s"
+
+msgid "%s and %d more"
+msgstr "%s et %d de plus"
+
+msgid "lift: click the part to lift the model by"
+msgstr "soulever : cliquez sur la pièce par laquelle soulever le modèle"
+
+msgid "lift off: the model stands on the floor again"
+msgstr "soulever désactivé : le modèle repose à nouveau sur le sol"
+
+msgid "lift: the part it was lifted by is gone"
+msgstr "soulever : la pièce par laquelle il était soulevé a disparu"
+
+msgid "click another"
+msgstr "cliquez sur une autre"
+
+msgid "Lifted by %s: everything comes with it, %s g"
+msgstr "Soulevé par %s : tout vient avec, %s g"
+
+msgid "Lifted by %s: 1 part comes away, %s g of %s"
+msgstr "Soulevé par %s : 1 pièce se détache, %s g sur %s"
+
+msgid "Lifted by %s: %d parts come away, %s g of %s"
+msgstr "Soulevé par %s : %d pièces se détachent, %s g sur %s"
+
+msgid "%s lets go of all it holds"
+msgstr "%s lâche tout ce qu'elle tient"
+
+msgid "%s lets go of %s"
+msgstr "%s lâche %s"
+
+msgid "%s g hangs from it on 1 stud"
+msgstr "%s g y pendent sur 1 tenon"
+
+msgid "%s g is levered off it on 1 stud"
+msgstr "%s g font levier dessus sur 1 tenon"
+
+msgid "%s g hangs from it on %d studs"
+msgstr "%s g y pendent sur %d tenons"
+
+msgid "%s g is levered off it on %d studs"
+msgstr "%s g font levier dessus sur %d tenons"
+
+msgid "%s times what lets it go (%s of %s N·cm)"
+msgstr "%s fois ce qui la fait lâcher (%s sur %s N·cm)"
+
+msgid "%s falls off %s, which it only stood on, its weight past where they touch"
+msgstr "%s tombe de %s, sur laquelle elle ne faisait que reposer, son poids au-delà de leur contact"
+
+msgid "what was under it"
+msgstr "ce qui était dessous"
+
+msgid "%s stays where it was: nothing joins it to %s"
+msgstr "%s reste où elle était : rien ne la relie à %s"
+
+msgid "%d parts come away with it, %s g"
+msgstr "%d pièces se détachent avec elle, %s g"
+
+msgid "%s holds the rest on %d studs together: %s of what lets it go"
+msgstr "%s tient le reste sur %d tenons ensemble : %s de ce qui la fait lâcher"
+
+msgid "%s g past it"
+msgstr "%s g au-delà"
+
+msgid "past its studs' working load"
+msgstr "au-delà de la charge de travail de ses tenons"
+
+msgid "%s hangs from %s on 1 stud: %s of what lets it go"
+msgstr "%s pend de %s sur 1 tenon : %s de ce qui la fait lâcher"
+
+msgid "%s stands on %s on 1 stud: %s of what lets it go"
+msgstr "%s repose sur %s sur 1 tenon : %s de ce qui la fait lâcher"
+
+msgid "%s hangs from %s on %d studs: %s of what lets it go"
+msgstr "%s pend de %s sur %d tenons : %s de ce qui la fait lâcher"
+
+msgid "%s stands on %s on %d studs: %s of what lets it go"
+msgstr "%s repose sur %s sur %d tenons : %s de ce qui la fait lâcher"
+
+msgid "%s is held square on %s: nothing turns it"
+msgstr "%s est tenue d'équerre sur %s : rien ne la fait tourner"
+
+msgid "%s swings on %s, and stays on"
+msgstr "%s pivote sur %s, et reste en place"
+
+msgid "%s turns on %s: %s of what turns it"
+msgstr "%s tourne sur %s : %s de ce qui la fait tourner"
+
+msgid "%s: lifted by it, it holds the rest"
+msgstr "%s : soulevé par elle, elle tient le reste"
+
+msgid "%s: comes away, as %s lets go of all it holds"
+msgstr "%s : se détache, car %s lâche tout ce qu'elle tient"
+
+msgid "%s: comes away with %s, which lets go"
+msgstr "%s : se détache avec %s, qui lâche"
+
+msgid "%s: falls off what it only stood on"
+msgstr "%s : tombe de ce sur quoi elle ne faisait que reposer"
+
+msgid "%s: stays where it was, joined to nothing lifted"
+msgstr "%s : reste où elle était, reliée à rien de soulevé"
+
+msgid "%s: comes with it, held more than one way"
+msgstr "%s : vient avec, tenue de plus d'une façon"
+
+msgid "The baseplate is the floor: lift the model by one of its own parts."
+msgstr "La plaque de base est le sol : soulevez le modèle par l'une de ses propres pièces."
+
+msgid "Its shape has not come yet: lift it again in a moment."
+msgstr "Sa forme n'est pas encore arrivée : soulevez-le à nouveau dans un instant."
+
+msgid "There is no part #%d in the model to lift it by."
+msgstr "Il n'y a pas de pièce #%d dans le modèle par laquelle le soulever."

@@ -131,6 +131,9 @@ const PATHS: Dictionary[StringName, String] = {
 	# strengthen: View, Stress's fix for a weak joint, made the first time
 	# one is looked for (StressPanel.fixer_now), in the window or over MCP.
 	&"Strengthen": "res://src/assembly/strengthen.gd",
+	# loadtest: View, Stress's Lift, the model lifted by a part, made the
+	# first time it is lifted (StressView.lift_paced), in the window or over MCP.
+	&"LiftTest": "res://src/assembly/lift_test.gd",
 	# donenote: a long job says when it is done, made with the first job
 	# or Render's dialog (Main._done_note).
 	&"DoneNote": "res://src/ui/done_note.gd",

@@ -1363,12 +1363,17 @@ func definitions() -> Array:
 				+ "checked for room and weighed with the model, and the edit_model call that "
 				+ "puts them down as one undo step; make that call as given. part= one part's "
 				+ "number (look_at_model) for what holds it; count= how many joints (8); "
-				+ "mine=true the fixes of the person's own parts (Parts, My bricks). Changes "
-				+ "nothing."),
+				+ "mine=true the fixes of the person's own parts (Parts, My bricks). lift_by= a "
+				+ "part's number: the model lifted by that part off the floor, as Stress's Lift "
+				+ "shows it (a car by its roof, a wall by a top brick): what each joint between "
+				+ "it and the rest carries, which lets go first, and every part that comes away. "
+				+ "Changes nothing."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"part": {"type": "integer"},
 				"count": {"type": "integer"},
 				"mine": {"type": "boolean"},
+				# loadtest (APP_UX8 #13): Stress's Lift.
+				"lift_by": {"type": "integer"},
 			}},
 		},
 		GalleryTool.definition(),
@@ -5804,6 +5809,8 @@ func _weakest_joints(input: Dictionary) -> String:
 	if world.brick_count() <= store.scenery.size():
 		return "There is nothing on the baseplate to weigh."
 	var generation: int = world.generation()
+	if input.has("lift_by"):
+		return await _lift_by(input, generation)
 	var report: Stability.Report = await app.call("weigh_joints")
 	if report == null:
 		return "The parts' shapes were still coming in; ask again in a moment."
@@ -5812,6 +5819,21 @@ func _weakest_joints(input: Dictionary) -> String:
 	var said: String = StressView.said(report, world, app.get("_library"), store.scenery,
 		clampi(int(input.get("count", 8)), 1, 40), int(input.get("part", 0)))
 	return said + await _strengthen_words(report, input)
+
+
+## loadtest (APP_UX8 #13): the model lifted by part lift_by=, as Stress's Lift
+## lifts it (StressView.lift_paced), so the two say the same.
+func _lift_by(input: Dictionary, generation: int) -> String:
+	var shell: Shell = app.get("_shell")
+	var world: BrickWorld = app.get("_world")
+	if shell == null or shell.stress == null:
+		return "This app cannot lift a model."
+	var lifted: RefCounted = await shell.stress.lift_paced(int(input.get("lift_by", 0)), true)
+	if lifted == null:
+		return "The parts' shapes were still coming in; ask again in a moment."
+	if world.generation() != generation:
+		return "Another model was opened while this one was lifted; ask again."
+	return lifted.call("said", clampi(int(input.get("count", 8)), 1, 40))
 
 
 # -- strengthen: each weak joint's fix, as a call -----------------------------------

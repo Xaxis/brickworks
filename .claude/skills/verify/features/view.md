@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:the panel asked for last in front, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, ui:strengthen a weak joint, cli:strengthen probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, cli:heldsteps probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe, ui:a long job says when it is done, cli:donenote probe, lib:line art and comic looks, cli:lineart probe, ui:a step's name, cli:stepnames probe, cli:stepnames2 probe, lib:driving along a path, cli:drive probe, ui:page editor motions and simulate by finger, cli:phonepanels probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:the panel asked for last in front, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, ui:strengthen a weak joint, cli:strengthen probe, ui:lift by a part, cli:loadtest probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, cli:heldsteps probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe, ui:a long job says when it is done, cli:donenote probe, lib:line art and comic looks, cli:lineart probe, ui:a step's name, cli:stepnames probe, cli:stepnames2 probe, lib:driving along a path, cli:drive probe, ui:page editor motions and simulate by finger, cli:phonepanels probe -->
 
 ## Sub-features
 
@@ -755,6 +755,38 @@ picture the assistant is shown.
   the common rectangles, a prop of 1 x 1 to 2 x 4 columns, a pin a friction
   pin; a joint that only a part across several seams would hold is said to
   have no fix.
+- `lift by a part` (`src/assembly/lift_test.gd`, `LiftTest`, Later;
+  `Balance.ring_of`; APP_UX8 #13 loadtest): Stress's panel has **Lift**;
+  pressed, a part clicked (selected: a click, a tap, a tree row) is the one
+  the model hangs from, off the floor (the baseplate stays the floor and is
+  refused). Balance weighs it with that part as the one support
+  (`Balance.support_of`): each joint that alone holds what is past it
+  carries it, levered about the edge it would turn on, pulled where it
+  hangs. The joint furthest past what lets it go (moment / ultimate > 1,
+  1.92 N a stud, 3.07 N into a part a stud wide) lets go first, all past
+  it comes away, and the rest is weighed again, to 12 rounds; a part held by
+  nothing ("left behind") and a piece standing on touches past them
+  ("falls off") come away too; a pin that turns under it swings and stays.
+  The lifted part's own stud joints are weighed together when two or more
+  share the load (`ring_of`). Tinted only: the part lifted blue, what comes
+  away red, a joint past its working load or a swinging one amber; the panel
+  heads "Lifted by Brick 1 x 4: 14 parts come away, 23 g of 27" and lists
+  each thing that comes away first ("lets go · Brick 1 x 4 and 13 more",
+  its why as the tooltip and under the list), then the joints nearest
+  letting go; a row pressed selects and frames its parts and keeps the lift.
+  A change while lifted lifts again by the same part; the part gone, it asks
+  for another; a new model drops it. On a worker on copies for a model past
+  `Stability.ON_A_WORKER_FROM`. `weakest_joints lift_by=N` (the same
+  `StressView.lift_paced`) answers with each part that comes away by number
+  and the joints left; it changes nothing in the window. `tools/probe.sh
+  loadtest` (and `PROBE_SIZE=1280x720`; windowed, through the sign-in
+  screen): an 8-brick wall holds at the hand's 0.35, a 16-brick wall's
+  one-stud joint lets go at the hand's 2.02 with the 14 named, the same over
+  MCP; edit and undo lift again; the car by its roof holds, by a headlight's
+  round plate it comes away whole. Known gaps: drawn in place, not hanging
+  (the tints say what moves); a part held two ways shares its load and is
+  never the one that lets go; a stud's clutch is the same for every part
+  of its width; nothing lets go by tearing a touch.
 - `stud directions` (`src/ui/stud_map.gd`, `StudMap`, `BrickWorld.set_painted`;
   APP_UX5 seeing2): View → Stud directions (under Stress) draws every part in
   the colour of where its studs point, from its male stud connectors turned

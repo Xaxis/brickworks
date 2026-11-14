@@ -1692,6 +1692,14 @@
       "tests": []
     },
     {
+      "id": "cli:loadtest probe",
+      "kind": "cli",
+      "entry": "src/dev/loadtest_probe.gd",
+      "reach": "tools/probe.sh loadtest [-- --shots=DIR]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720, through the sign-in screen with a throwaway account (.env): a wall of eight 1 x 4 bricks lifted by a top brick holds, its one-stud joint at the hand's 0.35; at sixteen that joint lets go at the hand's 2.02 and the 14 past it come away, named, tinted red, the same over MCP; the far half taken off it holds, one undo and it lets go again; the car by its roof holds, by a headlight's round plate it comes away whole, 60 parts, the same over MCP; Lift off restores Stress; pictures in user://loadtest or DIR)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:localbricks probe",
       "kind": "cli",
       "entry": "src/dev/localbricks_probe.gd",
@@ -5375,6 +5383,14 @@
       "entry": "src/ui/library_dialog.gd",
       "reach": "godot --path .  (File, Library\u2026: the search first, edged, with a magnifier; asked as you type; Ctrl+F comes to it, Escape clears it, Enter opens the first found (on a phone Enter only asks); words that find nothing are said where the covers were, with Clear the search, the filters let go and the other shelf)",
       "area": "model-io",
+      "tests": []
+    },
+    {
+      "id": "ui:lift by a part",
+      "kind": "ui",
+      "entry": "src/assembly/lift_test.gd",
+      "reach": "tools/probe.sh loadtest && PROBE_SIZE=1280x720 tools/probe.sh loadtest   (by hand: View, Stress; press Lift, then click a part: the model hangs from it, every joint between carries the weight below it, the one nearest letting go goes first and the rest is weighed again; the part in the hand blue, what comes away red and named in the panel, a row pressed selects it; Lift again sets it down; a session: weakest_joints lift_by=N)",
+      "area": "view",
       "tests": []
     },
     {

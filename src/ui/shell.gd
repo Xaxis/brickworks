@@ -375,6 +375,9 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	stress.panel = StressPanel.new()
 	stress.panel.view = stress
 	add_child(stress)
+	# loadtest: Stress's Lift reads the lattice, and lifts by the part chosen.
+	stress.builder = builder
+	builder.selection_changed.connect(stress.chosen)
 	# A suggestion of sections is of the model it was made for.
 	for replaced: Signal in [bar.started_new, bar.cleared]:
 		replaced.connect(func() -> void:
