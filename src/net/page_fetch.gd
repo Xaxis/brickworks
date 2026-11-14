@@ -167,8 +167,9 @@ func _ask_page(url: String, headers: PackedStringArray, method: int, body: Strin
 			pairs.append([line.substr(0, colon).strip_edges(), line.substr(colon + 1).strip_edges()])
 	var verb: String = _METHODS[method] if method >= 0 and method < _METHODS.size() else "GET"
 	# Handed over as an argument, not written into a script to eval: a 6 MB
-	# body escaped and parsed so held the frame that asked 230-357 ms, where
-	# the engine's took 11-18 (ffreview, 2026-11-14).
+	# body escaped and parsed so held the frame that asked 370 ms, and 198
+	# handed over, on one loaded box (ffreview's rig, 2026-11-14). The rest
+	# is the bridge's own copy of a String and fetch()'s of its bytes.
 	var sent: Variant = null if verb in ["GET", "HEAD"] or body.is_empty() else body
 	_window.call(&"brickworksFetch", id, url, verb, JSON.stringify(pairs), sent, int(timeout * 1000.0), most)
 	while not _answers.has(id):
