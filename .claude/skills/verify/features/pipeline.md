@@ -90,7 +90,7 @@ The Python side: LDraw in, mesh cache and catalogue out.
   hole has it on its axis in its own connectors (`connectivity.py`, read fresh
   from `vendor/ldraw`); a spur gear is 2.5 (N + 2) LDU across; and in real sets
   (needs `vendor/omr`) parallel gears near meshing stand 1.25 LDU a tooth apart.
-  It ends on "gear table: 57 gears, 26 set aside, 0 problems" (the knob wheel the 57th). `tests/test_gears.py`
+  It ends on "gear table: 56 gears, 26 set aside, 0 problems". `tests/test_gears.py`
   runs the same checks, each also against a table broken on purpose, and the
   spacing on 42055, 42082 and 8020 (89 of 92 pairs within 0.3 LDU; at 1.3 LDU a
   tooth none are).
