@@ -534,9 +534,9 @@ func _say(tool: String, arguments: Dictionary) -> String:
 	for block: Dictionary in result.get("content", []):
 		text += str(block.get("text", ""))
 		if str(block.get("type", "")) == "image":
+			# MCP's image block: data and mimeType, as the socket sends it.
 			_seen = Image.new()
-			if _seen.load_png_from_buffer(Marshalls.base64_to_raw(
-					str((block.get("source", {}) as Dictionary).get("data", "")))) != OK:
+			if _seen.load_png_from_buffer(Marshalls.base64_to_raw(str(block.get("data", "")))) != OK:
 				_seen = null
 	return text
 
