@@ -443,6 +443,11 @@ declare -A CMD=(
   # through the relay costs when the tab answers at once, median and p90
   # (relay338). It runs against a preview too; run it after a change to
   # the relay's queue (its header says how).
+  # local only: framefetch_flow.mjs. How long a send waits in the tab before
+  # it leaves, Together's, the relay's and a tool's own, with every frame
+  # 250 ms longer: it reads the server's time of arrival from a local relay
+  # run with --arrivals, which a deployment has not. Run it after a change to
+  # how the app sends (PageFetch) or to the checks' routes (page_routes.mjs).
   [people]="tools/web/people_flow.mjs --url=$P --out=$S/${TAG}_people"
   # A person's page (/u/<handle>, docs/SOCIAL.md U5): a throwaway designer
   # lists two models and chooses links, a banner and pins (op=showcase, its
