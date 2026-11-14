@@ -832,7 +832,14 @@ meshes reached through a joint only a drag reads (`join_floating`) or on a piece
 held by its largest part, doubtful meshes nearest first, universal joints, and a row
 that repeats others but for the file's rounding; sure meshes that ask two turns
 still lock and are named (kinefix; said as "taken as not meshing / not closing, or
-the train would lock"):
+the train would lock"). The tree reaches each body by the parts' own joints before
+a drag's; those less-sure rows never stop a body the sure rows alone turn ("or the
+train would stand"); and a loop's drag (`_hold_train`) places neither the driver
+and what it carries nor a gear the reading turns at a rate it decides. A change to
+any of it is measured by `tools/kinefuncs.py run LABEL --app=SNAPSHOT` on the change
+and on cdc640d3e (before kinefuncs), compared function by function: none that
+turned before may lock or stand more parts after (kinefix: 36 on pre261 905153126,
+2 after, both where cdc640d3e's credit was wrong):
 
 ```sh
 godot --headless --path . --script src/dev/mechanism_probe.gd       # the ratios
