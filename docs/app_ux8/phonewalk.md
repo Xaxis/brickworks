@@ -42,6 +42,34 @@ across. The full table follows.
 - fingertools (Measure and the move handles): Measure was done by finger in
   6 to 7 taps. The walk does not drive the move handles.
 
+## phonepanels, 2026-11-14
+
+`phonepanels_probe` (390 x 844, by finger, through the sign-in screen) on the
+unit's branch, against pre261 at 905153126 in brackets: 0 of 54 targets under
+44 points (24); 0 checks failed (33).
+
+| act | desktop | by finger | before |
+|---|---|---|---|
+| the page editor: an item dragged | 1 | 1 | 1 |
+| the page editor: an item sized by its corner | 1 | 1 | 1 |
+| the page editor: words added | 3 | 4 | 4, but "Your wordsHi" |
+| the page editor: an arrow drawn | 2 | 2 | 2 |
+| the page editor: Done | 1 | 1 | 1 |
+| Motions: a motion recorded by dragging | 4 | 6 | 7, and 152 parts' actions opened |
+| Motions: a joint set by its slider | 1 | 1 | 4 |
+| Simulate: played, from its panel | 1 | 1 | 3 |
+| Simulate: the cycle scrubbed | 1 | 1 | 4 |
+| Simulate: another part made the driver | 1 | 2 | 1 |
+
+These counts start with the panel already open. Opening Simulate or Motions
+is still More, its menu, a swipe and the row, so Simulate played is about 5
+against the desktop's 2. That depth is phone_shell.gd's, and is left for the
+small-faults unit, as is adding to a selection by finger. The timeline's own
+controls are still about 13 points tall (Lay out the page… 51 x 13 on a phone),
+and steps_bar.gd is not one of these panels. Since kinefuncs (922dab426) the
+orrery fixture reads locked, so the probe drives Simulate on simulate_probe's
+gear train instead.
+
 The run's own table follows (`--out`'s phonewalk.md), unedited.
 
 ## The table

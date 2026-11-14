@@ -3343,10 +3343,17 @@ picture the assistant is shown.
   corner (half outside the item, a 12-point mark drawn), the knob, its stem
   30 points, an arrow's handles and the rulers 44 points each; its words in
   taps (`Phone.touch_words`); the words field's select-all kept by the tap
-  that brings a phone's keyboard up (`_keep_words_selected`). Motions
-  (`PosePanel._for_a_finger`): Record beside the name at the editor's top, the
-  joints next, then keys, play, timing and naming; a joint's key strip a
-  fingertip tall, a key taken within half a fingertip; each view (list, edit,
+  that brings a phone's keyboard up (`_keep_words_selected`); its words wrap
+  at the screen's width, and every control and the page stay on the screen.
+  On every screen, words typed are set as the selection leaves them
+  (`PageEditor._select`: a tap on another item or Draw an arrow dropped
+  them), and a change made while the page lays out is laid out again (the
+  history is read before the lay-out, `_seen_history`). Motions
+  (`PosePanel._for_a_finger`): All motions, the name, Record and Remove in one
+  row at the editor's top (New motion does not focus the name there: a
+  phone's keyboard would cover the sheet; a tap selects it to type over), the
+  joints next, then keys, play and timing; a joint's key strip a fingertip
+  tall, a key taken within half a fingertip; each view (list, edit,
   sequence) opened at its top. Simulate (`SimulatePanel._for_a_finger`): Play,
   the cycle's slider and its angle under the title, the driver line after.
   A part dragged by a finger (a Grab on its joint, or a part dragged) stops
