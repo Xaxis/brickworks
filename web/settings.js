@@ -346,10 +346,11 @@ async function load() {
     $("loading").hidden = true;
     $("signed-out").hidden = false;
     $("signed-in").hidden = true;
-    document.documentElement.dataset.settings = "signed-out";
-    // The bar's own row, under the sign-in, while the beta is open.
+    // The bar's own row, under the sign-in, while the beta is open; the
+    // page said drawn only once it is (or is not) there.
     const kit = await barChoice();
     $("beta-bar-out").hidden = !kit || (await kit.betaState()).beta !== "open";
+    document.documentElement.dataset.settings = "signed-out";
     return;
   }
   const ageNow = age().catch(() => null);
@@ -551,7 +552,6 @@ async function deleteAccount(body) {
   }
   signOut();
   showFeedCount().catch(() => null);
-  document.documentElement.dataset.deleted = "yes";
   await load();
   // An orangecheck account Connect made that orangecheck would not delete
   // stays the person's, and they are told where (api/account.js).
@@ -560,6 +560,10 @@ async function deleteAccount(body) {
   const ended = answer.body.plan && answer.body.plan.ended ? say("Your Pro plan has ended, and you will not be charged again.") : "";
   $("signed-out").querySelector(".lede").textContent = [say("Your account is deleted, and everything in it."), ended, kept,
     say("Sign in again with any address to start a new one.")].filter(Boolean).join(" ");
+  // Said done only now, with the page drawn signed out and its words
+  // written: load() waits on the beta's bar (bugbar), and a mark set before
+  // it was read while the lede still asked to sign in (rel-m298).
+  document.documentElement.dataset.deleted = "yes";
 }
 
 // An orangecheck account, whose address is made up, signs in with

@@ -276,27 +276,35 @@ export function sitePages({ remote = "" } = {}) {
       } },
     // The owner's console (web/admin.html, docs/ADMIN.md): each section at
     // its address, the account's panel opened from People, signed in as the
-    // owner; signed out, the gate.
+    // owner; signed out, the gate. Each section is drawn when it shows its
+    // rows or its own words for having none (a table's row of words, or the
+    // section's note); a read that failed is neither, and says so in place.
     { name: "admin", path: "/admin", admin: true,
       ready: (page, { signedIn }) => (signedIn ? until(page, () => !document.getElementById("view")?.hidden
-        && document.querySelectorAll("#needs li").length > 0) : true) },
+        && (document.querySelectorAll("#needs li").length > 0
+          || /Nothing needs you/.test(document.getElementById("needs-said").textContent))) : true) },
     { name: "admin-people", path: "/admin#people", admin: true, signedInOnly: true,
-      ready: (page) => until(page, () => document.querySelectorAll("#people tr[data-account]").length > 0),
+      ready: (page) => until(page, () => document.querySelectorAll("#people tr").length > 0),
       open: async (page) => {
+        if (!(await page.$("#people tr[data-account] th a"))) return [];
         await page.click("#people tr[data-account] th a");
         const opened = await until(page, () => document.querySelector("dialog.sheet[open] .facts"));
         return [[opened ? "account" : "account (missing)", "dialog.sheet"]];
       } },
     { name: "admin-gallery", path: "/admin#gallery/reported", admin: true, signedInOnly: true,
-      ready: (page) => until(page, () => document.querySelectorAll("#reports tr").length > 0) },
+      ready: (page) => until(page, () => document.querySelectorAll("#reports tr").length > 0
+        || /^Nothing is reported/.test(document.getElementById("reports-note").textContent)) },
     { name: "admin-challenges", path: "/admin#gallery/challenges", admin: true, signedInOnly: true,
       ready: (page) => until(page, () => document.querySelectorAll("#challenges tr").length > 0) },
     { name: "admin-beta", path: "/admin#beta", admin: true, signedInOnly: true,
-      ready: (page) => until(page, () => document.querySelectorAll("#apps li.app").length > 0) },
+      ready: (page) => until(page, () => document.querySelectorAll("#apps li.app").length > 0
+        || !document.getElementById("empty").hidden) },
     { name: "admin-testers", path: "/admin#beta/testers", admin: true, signedInOnly: true,
-      ready: (page) => until(page, () => document.querySelectorAll("#testers tr.tester").length > 0) },
+      ready: (page) => until(page, () => document.querySelectorAll("#testers tr.tester").length > 0
+        || !document.getElementById("testers-empty").hidden) },
     { name: "admin-feedback", path: "/admin#feedback", admin: true, signedInOnly: true,
-      ready: (page) => until(page, () => document.querySelectorAll("#fb-list > li").length > 0) },
+      ready: (page) => until(page, () => document.querySelectorAll("#fb-list > li").length > 0
+        || /^0 shown/.test(document.getElementById("fb-note").textContent)) },
     // Part B (console2): each read drawn, its rows or its own words.
     { name: "admin-plans", path: "/admin#plans", admin: true, signedInOnly: true,
       ready: (page) => until(page, () => document.getElementById("plans-setup").children.length > 0) },
@@ -312,11 +320,13 @@ export function sitePages({ remote = "" } = {}) {
         return [[opened ? "connector" : "connector (missing)", "dialog.sheet"]];
       } },
     { name: "admin-site", path: "/admin#site", admin: true, signedInOnly: true,
-      ready: (page) => until(page, () => document.querySelectorAll("#crons tr[data-job]").length > 0
+      ready: (page) => until(page, () => document.querySelectorAll("#crons tr").length > 0
         && document.querySelectorAll("#health tr").length > 0) },
     { name: "admin-audit", path: "/admin#audit", admin: true, signedInOnly: true,
-      ready: (page) => until(page, () => document.querySelectorAll("#audit tr").length > 0),
+      ready: (page) => until(page, () => document.querySelectorAll("#audit tr").length > 0
+        || !document.getElementById("audit-none").hidden),
       open: async (page) => {
+        if (!(await page.$("#audit tr button"))) return [];
         await page.click("#audit tr button");
         const opened = await until(page, () => document.querySelector("dialog.sheet[open] dl"));
         return [[opened ? "act" : "act (missing)", "dialog.sheet"]];
