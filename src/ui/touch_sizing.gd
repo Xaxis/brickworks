@@ -309,6 +309,13 @@ static func _wider_than_laid(dialog: Node) -> bool:
 	return panel.get_combined_minimum_size().x > panel.offset_right - panel.offset_left + 0.5
 
 
+## [param dialog] laid out again for the room it has, once it has been laid
+## out: what it holds wants another height (TogetherDialog's session).
+func place_again(dialog: Node) -> void:
+	if dialog in _open:
+		_place_later(dialog)
+
+
 ## Placed once what was sized has been laid out: a container sorts its
 ## children at the end of the frame.
 func _place_later(dialog: Node) -> void:
@@ -879,6 +886,12 @@ func _lay_window(window: Window) -> void:
 	if not wide:
 		# Its rows inside its own margins.
 		_narrower(window, most.x - k * 24.0)
+	# One that scrolls what it holds (TogetherDialog) told the room there is
+	# for it, which it keeps to: without, Build together in a session ran 44
+	# points past a tablet's screen held sideways (dialogs_1024, rel-m299).
+	if window.has_method(&"fit_to"):
+		window.call(&"fit_to", most.y)
+		least = Vector2(window.get_contents_minimum_size())
 	if not wide:
 		size.x = most.x
 	size = Vector2(clampf(maxf(size.x, least.x), 0.0, most.x), clampf(least.y, 0.0, most.y))

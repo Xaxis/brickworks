@@ -42,11 +42,27 @@ const CHAT_TALL := 4
 var _people_scroll: ScrollContainer
 var _chat_scroll: ScrollContainer
 var _busy: bool = false
+## All it says and holds, above Close, scrolled up and down when the window
+## has less room than it wants (_fit): grown by a session (its link, who is
+## in it, the chat, how to point a part out), it ran 44 points past a
+## tablet's screen held sideways, its title and close button off the top
+## (dialogs_1024 on rel-m299).
+var _body: ScrollContainer
+var _column: VBoxContainer
+## The tallest what it holds may be, in the window's units, as TouchSizing
+## laid it out last on a phone or a tablet ([method fit_to]); below 0 on a
+## desktop, where it is the window's less the title and an edge.
+var _most: float = -1.0
+const EDGE := 8.0
 
 const WIDTH := 440
 ## pointat (APP_UX8 #17): how to point a part out to the others, in a session.
 const POINT_WORDS := ("To show the others a part, put the pointer on it and press "
 	+ "{together_point}, or right-click it: Point it out to the others.")
+## And for a finger, which has no key or right-click: a part held opens its
+## menu, Point it out to the others among it (PhoneShell.open_context). One
+## line, so a tablet held sideways has Close and End the session in sight.
+const POINT_BY_FINGER := "Hold a part to point it out to the others."
 
 
 func _ready() -> void:
@@ -55,7 +71,16 @@ func _ready() -> void:
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 8)
 	column.custom_minimum_size = Vector2(WIDTH, 0)
-	add_child(column)
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_column = column
+	_body = ScrollContainer.new()
+	_body.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	# Dragged by a finger with no bar drawn, as a phone's lists are: shown,
+	# the bar made the sheet its width wider than a phone (together_fit).
+	if Phone.on():
+		_body.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	add_child(_body)
+	_body.add_child(column)
 	_note = Label.new()
 	_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_note.custom_minimum_size = Vector2(WIDTH, 0)
@@ -136,6 +161,11 @@ func _ready() -> void:
 		if visible:
 			fill())
 	size_changed.connect(_keep_inside, CONNECT_DEFERRED)
+	# Kept to the room whenever what it holds wants another height (a
+	# session started or ended, its words grown for a finger) or the window
+	# changes size.
+	_column.minimum_size_changed.connect(_fit, CONNECT_DEFERRED)
+	get_tree().root.size_changed.connect(_fit, CONNECT_DEFERRED)
 
 
 ## A list kept to a height of its own (_hold_heights), scrolled up and down.
@@ -166,9 +196,56 @@ func _keep_inside() -> void:
 		position = Vector2i(at.round())
 
 
+## As tall as what it holds, and no taller than the room it has: past that,
+## what it holds scrolls, and Close stays on the screen. On a phone or a
+## tablet TouchSizing has the room, and says it as it lays the panel out
+## again ([method fit_to]); on a desktop the window's, and the panel is made
+## as small as what it holds (a window never shrinks by itself), then kept
+## inside the window (_keep_inside).
+func _fit() -> void:
+	if not visible or not is_inside_tree():
+		return
+	var touch := get_tree().get_first_node_in_group(TouchSizing.SELF) as TouchSizing
+	if touch != null:
+		touch.place_again(self)
+		return
+	if _keep_to(_desktop_most()):
+		reset_size()
+
+
+## The tallest what it holds may be on a desktop: the window, less the
+## title bar and an edge above and below, as _keep_inside keeps it.
+func _desktop_most() -> float:
+	return get_tree().root.get_visible_rect().size.y - float(get_theme_constant("title_height")) - EDGE * 2.0
+
+
+## TouchSizing's, as it lays the panel out for a finger: [param most] is the
+## tallest what it holds may be there, above the keyboard while one is up.
+func fit_to(most: float) -> void:
+	_most = most
+	_keep_to(most)
+
+
+## The body as tall as the column wants, or as [param most] leaves it
+## beside Close and the panel's margins, never under four lines; whether
+## that changed it.
+func _keep_to(most: float) -> bool:
+	var wants: float = _column.get_combined_minimum_size().y
+	var around: float = get_contents_minimum_size().y - _body.get_combined_minimum_size().y
+	var least: float = minf(wants, 4.0 * float(_note.get_line_height()))
+	var tall: float = roundf(clampf(most - around, least, wants))
+	if absf(_body.custom_minimum_size.y - tall) < 0.5:
+		return false
+	_body.custom_minimum_size.y = tall
+	return true
+
+
 ## Show the session, or how to start or join one.
 func open() -> void:
 	fill()
+	# Its height before it is centred, or it grew down from where a smaller
+	# one was centred: as TouchSizing last had the room, or the window's.
+	_keep_to(_most if _most >= 0.0 else _desktop_most())
 	popup_centered()
 	# Once shown: on a phone or a tablet its words are grown then (TouchSizing).
 	_hold_heights.call_deferred()
@@ -231,8 +308,8 @@ func fill() -> void:
 			% [together.store.title, "the others" if others != 1 else "one other"]
 		_end.text = "Leave"
 	# pointat (APP_UX8 #17): how to show the others a part, its key as the
-	# person's keymap has it.
-	_note.text += "\n\n" + Keymap.filled(POINT_WORDS, true)
+	# person's keymap has it, or by a finger.
+	_note.text += "\n\n" + (POINT_BY_FINGER if Phone.on() else Keymap.filled(POINT_WORDS, true))
 	for item: Variant in together.people:
 		var person: Dictionary = item
 		var row := HBoxContainer.new()
