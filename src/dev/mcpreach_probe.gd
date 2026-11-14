@@ -22,8 +22,10 @@
 ##  x2  The booklet could not be handed over as a PDF. page_setup's cover in
 ##      Russian and Greek, then export_model pdf: a PDF where Export writes,
 ##      the answer saying every letter is in the type it carries, read back
-##      by pdftotext as typed with no "?", in three calls with the job's; no
-##      HTML page left beside it.
+##      by pdftotext as typed with no "?", in three calls with the job's,
+##      its cover pictured in the answer as the PDF prints it (kept as
+##      pdf_cover.png in shots/mcpreach/, or MCPREACH_OUT); no HTML page left
+##      beside it. The walk's session looked at the cover in a fourth call.
 ##  x4  A picture replaced the last of its name. render_model, a spotlight
 ##      hung (light_model), render_model light=dark: the second is
 ##      pods_render_2.png, the answer naming it and that pods_render.png is
@@ -40,8 +42,9 @@
 ##      of its triangles here finds.
 ##
 ## And a person's own File › Export, with its save dialog, unchanged: the
-## dialog offers the model's own name with that file there, and writes over
-## it when the person says so, with no second file.
+## dialog offers the model's own name with that file there, asks whether to
+## replace it, and writes over it when the person says so, with no second
+## file.
 extends SceneTree
 
 const PODS := "res://tests/fixtures/mcpreach/pods.ldr"
@@ -61,6 +64,8 @@ var _socket: CommandSocket
 var _next: int = 0
 var _out: String = ""
 var _email: String = ""
+## The picture the last answer carried; null for none.
+var _seen: Image = null
 
 
 func _initialize() -> void:
@@ -202,6 +207,19 @@ func _pdf() -> void:
 	_check("...saying every letter is in the type it carries, none missing",
 		said.contains("the booklet as Instructions prints it, every letter in the type the PDF carries, none missing"))
 	_check("...in %d calls with page_setup's and the job's (3 or fewer)" % calls, calls <= 3)
+	# The cover pictured in the same answer, so the session needs no fourth
+	# call to see the letters (the walk's x2 looked with booklet_page).
+	var cover: Image = _seen
+	var shots: String = OS.get_environment("MCPREACH_OUT") if not OS.get_environment(
+		"MCPREACH_OUT").is_empty() else ProjectSettings.globalize_path("res://shots/mcpreach")
+	DirAccess.make_dir_recursive_absolute(shots)
+	if cover != null:
+		cover.save_png(shots.path_join("pdf_cover.png"))
+	_check("...and the answer shows its cover as the PDF prints it, %s (%s)"
+		% ["%d x %d" % [cover.get_width(), cover.get_height()] if cover != null else "none",
+		shots.path_join("pdf_cover.png")],
+		cover != null and cover.get_width() > cover.get_height() and cover.get_width() >= 1000
+		and said.contains("Its cover, as the PDF prints it"))
 	if pdf.is_empty():
 		return
 	var read: Array = []
@@ -512,9 +530,16 @@ func _rpc(method: String, params: Dictionary) -> Dictionary:
 func _say(tool: String, arguments: Dictionary) -> String:
 	var result: Dictionary = await _rpc("tools/call", {"name": tool, "arguments": arguments})
 	var text: String = ""
+	_seen = null
 	for block: Dictionary in result.get("content", []):
 		text += str(block.get("text", ""))
+		if str(block.get("type", "")) == "image":
+			_seen = Image.new()
+			if _seen.load_png_from_buffer(Marshalls.base64_to_raw(
+					str((block.get("source", {}) as Dictionary).get("data", "")))) != OK:
+				_seen = null
 	return text
+
 
 
 func _way_in() -> bool:

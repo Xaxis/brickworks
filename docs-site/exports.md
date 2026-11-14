@@ -7,7 +7,7 @@ rules:
   - export_model format=pickabrick names the parts with no LEGO® element number in its answer; tell the person, they buy those elsewhere.
   - A BrickLink wanted list takes condition (new, used, any), wanted_list (an ID) and notify; nothing is uploaded, the person uploads the file.
   - export_model format=ldraw submodels=true writes every sub-model as a file of its own in one .zip; submodel= writes just the one, named as the model tree names it.
-  - export_model format=pdf writes the booklet as the PDF the Instructions window prints, and says whether every letter printed; it is a job, like instructions.
+  - export_model format=pdf writes the booklet as the PDF the Instructions window prints, says whether every letter printed and shows the cover as the PDF prints it; it is a job, like instructions.
   - An STL's or a 3MF's answer says whether each object is a closed solid, as a slicer needs it, and names any part that is not: tell the person what it says, never guess.
   - An export or a render the session makes never writes over a file: one of that name already there is kept, and the new one takes the next free name (pods_2.3mf), which the answer gives.
   - Building together live, sharing a link, importing a file from the person's computer and comments pinned to parts are the person's own (File › Build together…, File › Share…, File › Import, File › Comments…): send them there, never say it cannot be done.

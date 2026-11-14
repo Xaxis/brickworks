@@ -1137,8 +1137,8 @@ func definitions() -> Array:
 				+ "quantities, 400 lines a file; the answer names the parts with no element "
 				+ "number known), or instructions (the building instructions as a booklet to "
 				+ "print), or pdf (the same booklet as the PDF the Instructions window prints: "
-				+ "its own fonts carried, every letter as typed, and the answer names any its "
-				+ "type cannot print); all_models is every model the person saved, as LDraw in one .zip "
+				+ "its own fonts carried, every letter as typed; the answer names any its "
+				+ "type cannot print, and shows its cover as the PDF prints it); all_models is every model the person saved, as LDraw in one .zip "
 				+ "(File, Export, All my models). studio, picture, instructions and pdf are jobs: "
 				+ "the answer is a job number at once, and job gives the result. A bricklink "
 				+ "wanted list takes condition, wanted_list and notify, as BrickLink's upload "
@@ -5073,7 +5073,8 @@ func _save_view(input: Dictionary) -> Variant:
 		% kept}, _picture_block(drawn as Image)]
 
 
-func _export(input: Dictionary, work: Working.Job = null) -> String:
+## A coroutine. Words, or for a PDF the words and its cover pictured.
+func _export(input: Dictionary, work: Working.Job = null) -> Variant:
 	var world: BrickWorld = app.get("_world")
 	var store: ModelStore = app.get("_store")
 	var exports: Exports = app.get("_exports")
@@ -5130,7 +5131,7 @@ func _export(input: Dictionary, work: Working.Job = null) -> String:
 				return "The booklet's pictures need something to draw with, and this app is running without a window."
 			if BookletMaker.busy or bool(app.get("_booklet_writing")):
 				return "The booklet is being drawn already."
-			said = await _booklet_pdf(exports, bar, work)
+			return await _booklet_pdf(exports, bar, work)
 		_:
 			return ("format is ldraw, studio, glb, gltf, obj, stl, 3mf, picture, bricklink, rebrickable, "
 				+ "pickabrick, instructions, pdf or all_models.")
@@ -5147,13 +5148,13 @@ func _export(input: Dictionary, work: Working.Job = null) -> String:
 ## text), written where Export writes under a name nothing has there. A
 ## session asked for the booklet as a PDF could hand over only its HTML page,
 ## and sent the person to the window (APP_UX8's MCP walk, x2).
-func _booklet_pdf(exports: Exports, bar: ModelBar, work: Working.Job) -> String:
+func _booklet_pdf(exports: Exports, bar: ModelBar, work: Working.Job) -> Variant:
 	var named: String = SubmodelFile.titled(bar.model_name(), "_instructions")
 	var page: String = OS.get_user_data_dir().path_join("booklet_pdf").path_join(named + ".html")
 	DirAccess.make_dir_recursive_absolute(page.get_base_dir())
 	var drawn: String = str(await app.call("_export_booklet", page, work))
 	if not drawn.begins_with("wrote "):
-		return drawn
+		return drawn.left(1).to_upper() + drawn.substr(1) + "." if not drawn.is_empty() else "Nothing written."
 	var to: String = Download.unused((exports.folder if not exports.folder.is_empty()
 		else Download.downloads()).path_join(named + ".pdf"))
 	if work != null:
@@ -5161,14 +5162,33 @@ func _booklet_pdf(exports: Exports, bar: ModelBar, work: Working.Job) -> String:
 	app.set("_booklet_writing", true)
 	var pages: int = int(await app.call("_pdf_file", page, to))
 	app.set("_booklet_writing", false)
+	var cover: Image = _cover_of(page) if pages > 0 else null
 	DirAccess.remove_absolute(page)
 	if pages <= 0:
-		return "could not write %s" % to
+		return "Could not write %s." % to
 	SaveTo.wrote(to)
 	var missed: String = str(app.get("_pdf_missed"))
-	return "wrote %s, %d pages, the booklet as Instructions prints it%s%s" % [to, pages,
+	var said: String = "Wrote %s, %d pages, the booklet as Instructions prints it%s%s." % [to, pages,
 		missed if not missed.is_empty() else ", every letter in the type the PDF carries, none missing",
 		Download.kept_note(to)]
+	if cover == null:
+		return said
+	return [{"type": "text", "text": said + " Its cover, as the PDF prints it:"}, _picture_block(cover)]
+
+
+## Page 1 of the booklet at [param page], drawn as the PDF prints it, in the
+## same answer: asked whether a cover's Russian and Greek print as typed, the
+## MCP walk's session wrote the PDF in 3 calls and looked at the cover with
+## booklet_page in a fourth (mcpreach). Null when it cannot be drawn.
+func _cover_of(page: String) -> Image:
+	var html: String = FileAccess.get_file_as_string(page)
+	if html.is_empty():
+		return null
+	var drawer := BookletPng.new()
+	app.add_child(drawer)
+	var image: Image = drawer.page_image(html, 1, SeeTools.PAGE_DENSITY)
+	drawer.queue_free()
+	return image
 
 
 ## [param said] with what Download.kept_note says of [param path] at its end,
