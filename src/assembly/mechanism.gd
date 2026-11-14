@@ -799,26 +799,46 @@ func _grow() -> void:
 
 
 ## Grow the tree breadth first out from [param from], through the joints
-## [param touching] each body, those [param used] taken already.
+## [param touching] each body, those [param used] taken already. A joint
+## only a drag read ([member Joint.guessed]) is taken only when the parts'
+## own joints reach no further, one at a time, so a body those reach is
+## reached as it was before the drag's were read: 42124-1's drive shaft came
+## off the ground's frame through two of a drag's hinges, and its other
+## half-shaft stood (kinefix).
 func _grow_from(from: int, touching: Dictionary, reached: Dictionary, used: Dictionary) -> void:
 	var frontier: Array = [from]
+	var later: Array = []   ## [body, joint]: a drag's joints met, in order
 	while not frontier.is_empty():
-		var body: int = frontier.pop_front()
-		for joint: Joint in touching.get(body, []):
-			if used.has(joint):
-				continue
-			used[joint] = true
-			var other: int = joint.b if joint.a == body else joint.a
-			joint.parent = body
-			joint.child = other
-			if reached.has(other):
-				closing.append(joint)
-				continue
-			reached[other] = true
-			joint.column = tree.size()
-			tree.append(joint)
-			_joint_of[other] = joint
-			frontier.append(other)
+		while not frontier.is_empty():
+			var body: int = frontier.pop_front()
+			for joint: Joint in touching.get(body, []):
+				if used.has(joint):
+					continue
+				if joint.guessed:
+					later.append([body, joint])
+					continue
+				_take(body, joint, reached, used, frontier)
+		while frontier.is_empty() and not later.is_empty():
+			var met: Array = later.pop_front()
+			if not used.has(met[1]):
+				_take(int(met[0]), met[1], reached, used, frontier)
+
+
+## [param joint] taken from [param body]: into the tree to a body not yet
+## [param reached], else closing a loop.
+func _take(body: int, joint: Joint, reached: Dictionary, used: Dictionary, frontier: Array) -> void:
+	used[joint] = true
+	var other: int = joint.b if joint.a == body else joint.a
+	joint.parent = body
+	joint.child = other
+	if reached.has(other):
+		closing.append(joint)
+		return
+	reached[other] = true
+	joint.column = tree.size()
+	tree.append(joint)
+	_joint_of[other] = joint
+	frontier.append(other)
 
 
 ## The bodies [param body]'s joints reach, it among them.
