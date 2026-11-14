@@ -121,6 +121,13 @@ for handler in api/*.js; do
       cp "$copy" "$fn/_challenge_$(basename "$(dirname "$copy")").html"
     done
   fi
+  # What the owner's console says of the data the deploy was made with
+  # (/admin#data, api/_console_data.js): Rebrickable's fetch, the set
+  # catalogue and its pictures. Never fails a deploy.
+  if [ "$route" = admin ]; then
+    node tools/web/data_facts.mjs "$fn/_data_facts.json" | sed 's/^/deploy: /' \
+      || echo "deploy: no data facts for the console (tools/web/data_facts.mjs)"
+  fi
   if [ "$route" = share ]; then
     # /sitemap.xml is made there: the site's own pages, from web/sitemap.xml,
     # and every listed model, profile and public collection.

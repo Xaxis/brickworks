@@ -575,7 +575,7 @@
       "kind": "ui",
       "label": "admin page",
       "entry": "web/admin.html",
-      "reach": "https://brickworks.diy/admin   (signed in to the app as MASTER_EMAIL; ?tests=1 the checks' own): the owner's console, one page of sections by address: #overview (what needs you, how things stand, the switches, the latest acts; GET /api/admin?op=overview), #people (every account, searched, filtered, sorted; #people/<account> its panel with Take out the account and Let back in; ?op=people, ?op=person&account=U), #gallery/<tab> (reported, comments, listed, pick, challenges, tested, barred), #beta/<tab> (applications, testers; the beta's switch, POST ?op=beta_switch {mode}), #feedback, #audit (every act, newest first; ?op=audit&act&q&before)",
+      "reach": "https://brickworks.diy/admin   (signed in to the app as MASTER_EMAIL; ?tests=1 the checks' own): the owner's console, one page of sections by address, Find in its bar (?op=find&q=W): #overview (what needs you, how things stand, the switches, the latest acts; GET /api/admin?op=overview), #people (every account, searched, filtered, sorted; #people/<account> its panel with its lists, comments, photos and entries, Take out the account, Let back in, Export their data, Sign out everywhere and Delete by its address typed again; ?op=people, ?op=person&account=U), #moderation/<tab> (queue, comments, barred), #gallery/<tab> (listed, pick, tested), #challenges (and #challenges/<id>), #beta/<tab> (applications, testers; the beta's switch, POST ?op=beta_switch {mode}), #feedback, #plans, #mail, #connector, #site (Run now), #data, #switches, #audit (every act, newest first; ?op=audit&act&q&before); the old #gallery/reported, comments, barred and challenges replaced by their new addresses",
       "area": "account"
     },
     {
@@ -5400,6 +5400,69 @@
       "entry": "tools/web/resend_webhook.sh",
       "reach": "RESEND_ADMIN_KEY=<the team's full-access key, never a deployment's> tools/web/resend_webhook.sh [--check] [--redeploy]   (after a release with the op is live: the webhook to /api/otp?op=mail_event, its secret in Vercel production env and .env)",
       "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the console's moderation",
+      "entry": "web/admin-moderation.js",
+      "reach": "<deployment>/admin#moderation/queue as MASTER_EMAIL (?tests=1 the checks' own): every open report of every kind in one list, oldest first (the default GET /api/admin, reportKind), sifted by kind (KINDS) and searched, each with its kind's acts and Let it go; #moderation/comments; #moderation/barred, the accounts (Let back in) and the models taken out (Let back, POST ?op=unbar_model&id=X)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the console's challenges",
+      "entry": "web/admin-challenges.js",
+      "reach": "<deployment>/admin#challenges as MASTER_EMAIL: the running one, every challenge by state with End it now, the set form and the year's plan each with a preview as visitors will see it; #challenges/<id> its panel (GET ?op=challenge_view&challenge=N, api/_console_challenges.js: entries by group, rule failures, winners)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the console's data",
+      "entry": "web/admin-data.js",
+      "reach": "<deployment>/admin#data as MASTER_EMAIL: GET /api/admin?op=data (api/_console_data.js): the set catalogue and its pictures and Rebrickable's tables as the deploy found them (tools/web/data_facts.mjs), the parts library's index, what the OMR's look found, the database's size, biggest tables and storage by bucket (admin_usage); egress said to be read at Supabase, and why",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the console's switches section",
+      "entry": "web/admin-switches.js",
+      "reach": "<deployment>/admin#switches as MASTER_EMAIL: GET /api/admin?op=switches (api/_console_switches.js): the notice with its preview and history (POST ?op=notice_set {words, tone}, ?op=notice_clear), every site_settings key by scope, every deployment variable by name (here, Vercel's environments from site_env, what it switches, where it changes; never a value)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the site notice",
+      "entry": "web/notice.js",
+      "reach": "<deployment>/ any page but an embed and the consent page (web/theme.js asks for it): the notice the owner set in /admin#switches (GET /api/plans?op=notice, a minute at the CDN), in the page's language where the owner typed it, else English; floating at the window's foot, info or warn; its x hides it in that browser",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "the console's part C",
+      "entry": "supabase/console3.sql",
+      "reach": "python3 tools/minitest.py tests/test_console3.py   (console3.sql and api/admin.js's data, find, challenge_view, switches, unbar_model, notice_set, notice_clear, run_cron, export, delete_account and sign_out against a real Postgres: the gate, reads unaudited and writes audited, Run now's address, the typed deletion, the export's caps, no value in switches)",
+      "area": "account"
+    },
+    {
+      "kind": "lib",
+      "label": "an account's deletion",
+      "entry": "api/_erase.js",
+      "reach": "POST /api/account?op=delete (its person) and POST /api/admin?op=delete_account&account=U {confirm} (the owner, at their request): Admission first, orangecheck, photos, pictures, feedback's files, then the account; tests/test_account_erase.py, tests/test_console3.py",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "console3 browser flow",
+      "entry": "tools/web/console3_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/console3_flow.mjs --url=<preview> --out=DIR   (MASTER_EMAIL's session minted: the gate on every part C op, Moderation's queue, Challenges' previews and panel, Data, Switches with no value in the page, Find, Run now, the notice set, seen signed out in English and German and cleared (never on brickworks.diy), an export, a sign-out everywhere and a typed delete found in the audit, each at 390/1280 light/dark; preview check [console3], run alone)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "deployment variables written down",
+      "entry": "tools/release/env_names.sh",
+      "reach": "tools/release/env_names.sh   (ship.sh, after release_live.sh: vercel env ls's names and environments, never a value, into site_env for /admin#switches; never fails a ship)",
+      "area": "release"
     }
   ]
 }

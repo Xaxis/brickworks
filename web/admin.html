@@ -181,12 +181,66 @@
   .table td.brought { min-width: 220px; max-width: 420px; }
   .where { margin: var(--s-2) 0 0; }
   .table td.bad { color: var(--bad); font-weight: 600; }
+  /* Part C (console3): the bar's search, a form beside its preview, a
+     challenge as visitors will see it, and the delete's typed check. */
+  .console-bar .find { position: relative; flex: 1 1 280px; max-width: 520px; margin: 0; }
+  .console-bar .find input { width: 100%; }
+  .find-list { position: absolute; z-index: 40; top: calc(100% + 4px); left: 0; right: 0; max-height: min(70vh, 560px);
+    overflow: auto; padding: var(--s-2); border: 1px solid var(--line-strong); border-radius: var(--radius);
+    background: var(--panel); box-shadow: var(--shadow); }
+  .find-list h3 { margin: var(--s-2) var(--s-2) var(--s-1); color: var(--ink-faint); font-size: var(--t-tiny); font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.04em; }
+  .find-list a { display: grid; gap: 2px; padding: var(--s-2); border-radius: var(--r-1); color: var(--ink); text-decoration: none;
+    overflow-wrap: anywhere; }
+  .find-list a:hover, .find-list a:focus-visible, .find-list a[aria-selected="true"] { background: var(--panel-hi); }
+  .find-list small { color: var(--ink-faint); font-size: var(--t-tiny); }
+  .find-list .state { margin: var(--s-2); }
+  .with-preview { display: grid; gap: var(--s-4); align-items: start; margin-top: var(--s-4); }
+  .with-preview > .console-form { margin-top: 0; }
+  @media (width >= 1180px) { .with-preview { grid-template-columns: minmax(0, 640px) minmax(0, 1fr); } }
+  .preview { display: grid; gap: var(--s-3); }
+  .preview > h3 { margin: 0; color: var(--ink-soft); font-size: var(--t-small); font-weight: 600; }
+  .challenge-preview { display: grid; gap: var(--s-2); }
+  .challenge-preview .eyebrow { margin: 0; color: var(--ink-faint); font-size: var(--t-tiny); font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.04em; }
+  .challenge-preview h4 { margin: 0; font-size: var(--t-h3); overflow-wrap: anywhere; }
+  .challenge-preview p { margin: 0; white-space: pre-line; overflow-wrap: anywhere; }
+  .challenge-preview ul { margin: 0; padding-left: 1.2em; }
+  .year-preview { display: grid; gap: var(--s-3); margin: 0; padding: 0; list-style: none; }
+  .year-preview li { display: grid; gap: 2px; overflow-wrap: anywhere; }
+  .year-preview small { color: var(--ink-faint); }
+  .notice-preview .site-notice { position: static; width: auto; opacity: 1; transform: none; }
+  .more-langs { display: grid; gap: var(--s-3); }
+  .more-langs[open] summary { margin-bottom: var(--s-2); }
+  .more-langs summary { cursor: pointer; color: var(--ink-soft); font-size: var(--t-small); }
+  /* What cannot be undone, as Settings' Delete account is: a ghost button
+     that opens it, and its own .cta.ghost.danger (site.css). */
+  .danger-zone summary { list-style: none; width: max-content; }
+  .danger-zone summary::-webkit-details-marker { display: none; }
+  .danger-zone form { display: grid; gap: var(--s-3); margin-top: var(--s-3); padding: var(--s-4); border: 1px solid var(--bad);
+    border-radius: var(--radius); }
+  .danger-zone form p { margin: 0; }
+  .danger-zone label { display: grid; gap: var(--s-1); }
+  .danger-zone .row { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; }
+  .acts-row { display: flex; flex-wrap: wrap; gap: var(--s-2); align-items: center; }
+  .groups { display: grid; gap: var(--s-5); }
+  @media (width >= 900px) { .groups { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .entries { display: grid; gap: var(--s-2); margin: 0; padding: 0; list-style: none; }
+  .entries li { display: grid; gap: 2px; padding: var(--s-2) var(--s-3); border: 1px solid var(--line); border-radius: var(--r-1); }
+  .entries li.fails { border-color: var(--bad); }
+  .entries small { color: var(--ink-faint); overflow-wrap: anywhere; }
+  .entries .failed { color: var(--bad); font-size: var(--t-small); }
 </style>
 <body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="console-bar">
   <div class="wrap wide">
     <a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+    <form class="find" id="find" role="search" hidden>
+      <input type="search" id="find-q" placeholder="Find people, models, lists, reports, acts" aria-label="Find anything"
+        autocomplete="off" aria-controls="find-list" aria-expanded="false">
+      <div class="find-list" id="find-list" hidden></div>
+    </form>
     <div class="who">
       <span id="meta-who">Owner console</span>
       <span id="note" role="status"></span>
@@ -201,13 +255,17 @@
       <ul class="scroller">
         <li><a href="#overview" data-go="overview">Overview</a></li>
         <li><a href="#people" data-go="people">People</a></li>
-        <li><a href="#gallery" data-go="gallery">Gallery <span class="badge accent" id="nav-gallery" hidden></span></a></li>
+        <li><a href="#moderation" data-go="moderation">Moderation <span class="badge accent" id="nav-moderation" hidden></span></a></li>
+        <li><a href="#gallery" data-go="gallery">Gallery</a></li>
+        <li><a href="#challenges" data-go="challenges">Challenges</a></li>
         <li><a href="#beta" data-go="beta">Beta <span class="badge accent" id="nav-beta" hidden></span></a></li>
         <li><a href="#feedback" data-go="feedback">Feedback <span class="badge accent" id="nav-feedback" hidden></span></a></li>
         <li><a href="#plans" data-go="plans">Plans</a></li>
         <li><a href="#mail" data-go="mail">Mail <span class="badge accent" id="nav-mail" hidden></span></a></li>
         <li><a href="#connector" data-go="connector">Connector <span class="badge accent" id="nav-connector" hidden></span></a></li>
         <li><a href="#site" data-go="site">Site <span class="badge accent" id="nav-site" hidden></span></a></li>
+        <li><a href="#data" data-go="data">Data <span class="badge accent" id="nav-data" hidden></span></a></li>
+        <li><a href="#switches" data-go="switches">Switches</a></li>
         <li><a href="#audit" data-go="audit">Audit log</a></li>
       </ul>
       <div class="end">
@@ -250,8 +308,9 @@
             <div class="stat"><b id="n-release">—</b><span><a href="#site">live on brickworks.diy</a></span><small id="n-release-said"></small></div>
           </div>
           <div class="lead"><h2 id="h-switches">Switches</h2>
-            <p class="note">What is on, here. The beta is flipped from <a href="#beta">Beta</a>; billing is changed
-              only outside the console.</p></div>
+            <p class="note">What is on, here. The beta is flipped from <a href="#beta">Beta</a>; every variable,
+              setting and the site's notice are in <a href="#switches">Switches</a>; billing is changed only
+              outside the console.</p></div>
           <div class="card"><dl class="facts" id="switches"></dl></div>
           <div class="part">
             <div class="lead"><h2 id="h-latest">Latest acts</h2><p class="note"><a href="#audit">The whole audit log</a></p></div>
@@ -288,33 +347,32 @@
           <p class="note" id="people-note" role="status"></p>
         </section>
 
-        <!-- Gallery and moderation ---------------------------------------------------->
-        <section data-section="gallery" aria-labelledby="h-gallery" hidden>
-          <div class="lead"><h2 id="h-gallery">Gallery</h2>
-            <p class="note">What visitors reported, what people said, what the gallery shows and features, and who is kept out of it.</p></div>
-          <nav class="tabs" aria-label="Gallery">
-            <a href="#gallery/reported" data-tab-link="reported">Reported <span class="n" id="tab-reported"></span></a>
-            <a href="#gallery/comments" data-tab-link="comments">Comments</a>
-            <a href="#gallery/listed" data-tab-link="listed">In the gallery <span class="n" id="tab-listed"></span></a>
-            <a href="#gallery/pick" data-tab-link="pick">This week’s pick</a>
-            <a href="#gallery/challenges" data-tab-link="challenges">Challenges</a>
-            <a href="#gallery/tested" data-tab-link="tested">Tested</a>
-            <a href="#gallery/barred" data-tab-link="barred">Taken out <span class="n" id="tab-barred"></span></a>
+        <!-- Moderation (console3) ---------------------------------------------------->
+        <section data-section="moderation" aria-labelledby="h-moderation" hidden>
+          <div class="lead"><h2 id="h-moderation">Moderation</h2>
+            <p class="note">Every report in one queue, the comments, and what is taken out.</p></div>
+          <nav class="tabs" aria-label="Moderation">
+            <a href="#moderation/queue" data-tab-link="queue">Queue <span class="n" id="tab-queue"></span></a>
+            <a href="#moderation/comments" data-tab-link="comments">Comments</a>
+            <a href="#moderation/barred" data-tab-link="barred">Taken out <span class="n" id="tab-barred"></span></a>
           </nav>
 
-          <div data-tab="reported" hidden>
-            <p class="note">What visitors said should not be in the gallery, newest first (the Report button on every
-              model's, profile's and collection's page, and <a href="/takedown">/takedown</a>). Take out takes the model out
-              for good, at its link and any other with the same file; Take out the account takes every model of it out and
-              keeps it out; a report about a comment says what it said and Remove the comment takes it off its page; Let it
-              go closes the report.</p>
-            <div class="tools"><input type="search" data-search="reports" placeholder="Search what was reported"
-              aria-label="Search what was reported"></div>
-            <div class="table" tabindex="0" role="region" aria-label="Reported">
+          <div data-tab="queue" hidden>
+            <p class="note">Every report still open, of every kind, the oldest first: models, comments, photos of builds,
+              profiles and their pictures, lists, and the takedown requests and counter-notices from
+              <a href="/takedown">/takedown</a>. Each with the acts its kind has; Let it go closes any. A model taken out
+              is out for good, at its link and any other with the same file, until let back in from Taken out.</p>
+            <div class="tools">
+              <input type="search" id="reports-q" placeholder="Search what was reported" aria-label="Search what was reported">
+              <div class="segmented" role="group" aria-label="Kind" data-filter="report-kind" id="report-kinds">
+                <button type="button" data-value="" aria-pressed="true">All</button>
+              </div>
+            </div>
+            <div class="table" tabindex="0" role="region" aria-label="Reports">
               <table class="queue" data-sortable>
                 <thead><tr>
-                  <th scope="col" data-sort="time" aria-sort="descending">When</th><th scope="col" data-sort="text">About</th>
-                  <th scope="col" data-sort="text">Why</th><th scope="col">Said</th>
+                  <th scope="col" data-sort="time" aria-sort="ascending">When</th><th scope="col" data-sort="text">Kind</th>
+                  <th scope="col" data-sort="text">About</th><th scope="col" data-sort="text">Why</th><th scope="col">Said</th>
                   <th scope="col" data-sort="text">Account</th><th scope="col"><span class="visually-hidden">What to do</span></th>
                 </tr></thead>
                 <tbody id="reports"></tbody>
@@ -341,6 +399,49 @@
             </div>
             <p class="note" id="comments-note" role="status"></p>
           </div>
+
+          <div data-tab="barred" hidden>
+            <div class="part">
+              <h3 id="h-barred-accounts">Accounts</h3>
+              <p class="note">None of their models can be listed, and they have no profile or public collection. Let back in
+                lets them list again; what was taken out stays out until listed again by hand. Take an account out from
+                its report, or from <a href="#people">People</a>.</p>
+              <div class="table" tabindex="0" role="region" aria-labelledby="h-barred-accounts">
+                <table data-sortable>
+                  <thead><tr><th scope="col" data-sort="text">Account</th><th scope="col" data-sort="time" aria-sort="descending">Since</th>
+                    <th scope="col">Why</th><th scope="col"><span class="visually-hidden">What to do</span></th></tr></thead>
+                  <tbody id="barred"></tbody>
+                </table>
+              </div>
+              <p class="note" id="barred-note" role="status"></p>
+            </div>
+            <div class="part">
+              <h3 id="h-barred-models">Models</h3>
+              <p class="note">Each taken out of the gallery for good, its file refused at any other link. Let back in lets its
+                owner list it again; it is not listed by this.</p>
+              <div class="table" tabindex="0" role="region" aria-labelledby="h-barred-models">
+                <table data-sortable>
+                  <thead><tr><th scope="col" data-sort="text">Model</th><th scope="col" data-sort="text">Account</th>
+                    <th scope="col" data-sort="time" aria-sort="descending">Since</th>
+                    <th scope="col"><span class="visually-hidden">What to do</span></th></tr></thead>
+                  <tbody id="barred-models"></tbody>
+                </table>
+              </div>
+              <p class="note" id="barred-models-note" role="status"></p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Gallery ----------------------------------------------------------------->
+        <section data-section="gallery" aria-labelledby="h-gallery" hidden>
+          <div class="lead"><h2 id="h-gallery">Gallery</h2>
+            <p class="note">What the gallery shows, the model it features this week, and the Tested marks. What was
+              reported is in <a href="#moderation">Moderation</a>.</p></div>
+          <nav class="tabs" aria-label="Gallery">
+            <a href="#gallery/listed" data-tab-link="listed">In the gallery <span class="n" id="tab-listed"></span></a>
+            <a href="#gallery/pick" data-tab-link="pick">This week’s pick</a>
+            <a href="#gallery/tested" data-tab-link="tested">Tested</a>
+          </nav>
 
           <div data-tab="listed" hidden>
             <p class="note">What anyone can see at <a href="/gallery">/gallery</a>. Take out takes a model out of it for
@@ -394,12 +495,45 @@
             <p class="note" id="pick-note" role="status"></p>
           </div>
 
-          <div data-tab="challenges" hidden>
-            <p class="note">One at a time, at <a href="/challenge">/challenge</a>, and a line on the gallery's front.
-              Brickworks checks the rules you choose on each model as it is entered. Designers enter from a model's page,
-              built by hand or with the assistant, judged apart; people 13 and over vote once in each group, and when it
-              ends the most voted in each wins. End it now closes it today.</p>
-            <div class="table" tabindex="0" role="region" aria-label="Challenges">
+          <div data-tab="tested" hidden>
+            <p class="note">Models whose newest version the app said passed its four tests as it was published: it stands
+              at every step, every step can be reached, every part is made in its colour, nothing is loose. The app's
+              finding, which the server cannot check. Clear the mark takes it off that version everywhere.</p>
+            <div class="tools"><input type="search" data-search="tested" placeholder="Search marked models"
+              aria-label="Search the Tested marks"></div>
+            <div class="table" tabindex="0" role="region" aria-label="Marked Tested">
+              <table data-sortable>
+                <thead><tr>
+                  <th scope="col" data-sort="text">Model</th><th scope="col" class="n" data-sort="number">Version</th>
+                  <th scope="col" data-sort="text">App</th><th scope="col" class="n" data-sort="number">Parts</th>
+                  <th scope="col" class="n" data-sort="number" title="Every step the step player turns to, the steps of what is built on the side among them">Pages</th>
+                  <th scope="col" data-sort="time" aria-sort="descending">Tested</th>
+                  <th scope="col"><span class="visually-hidden">What to do</span></th>
+                </tr></thead>
+                <tbody id="tested"></tbody>
+              </table>
+            </div>
+            <p class="note" id="tested-note" role="status"></p>
+          </div>
+        </section>
+
+        <!-- Challenges (console3) ---------------------------------------------------->
+        <section data-section="challenges" aria-labelledby="h-challenges" hidden>
+          <div class="lead"><h2 id="h-challenges">Challenges</h2>
+            <p class="note" id="challenges-said">One at a time, at <a href="/challenge">/challenge</a>, and a line on the
+              gallery's front. Brickworks checks the rules you choose on each model as it is entered. Designers enter
+              from a model's page, built by hand or with the assistant, judged apart; people 13 and over vote once in each
+              group, and when it ends the most voted in each wins. Open one for its entries, what breaks its rules and
+              what visitors see of it.</p></div>
+          <div class="card live-line" id="challenge-now"><h3 id="challenge-now-h">—</h3><p class="note" id="challenge-now-said"></p></div>
+          <div class="part">
+            <div class="lead"><h3 id="h-challenge-list">Every challenge</h3>
+              <div class="segmented" role="group" aria-label="Show" data-filter="challenges">
+                <button type="button" data-value="now" aria-pressed="true">Now and to come</button>
+                <button type="button" data-value="ended" aria-pressed="false">Ended</button>
+                <button type="button" data-value="" aria-pressed="false">All</button>
+              </div></div>
+            <div class="table" tabindex="0" role="region" aria-labelledby="h-challenge-list">
               <table class="queue">
                 <thead><tr>
                   <th scope="col">Challenge</th><th scope="col">Days</th><th scope="col">Rules</th><th scope="col">State</th>
@@ -409,6 +543,9 @@
                 <tbody id="challenges"></tbody>
               </table>
             </div>
+            <p class="note" id="challenges-note" role="status"></p>
+          </div>
+          <div class="with-preview">
             <form id="challenge-form" class="card console-form">
               <h3>Set a challenge</h3>
               <label>Title
@@ -433,8 +570,16 @@
                   <input name="set_number" maxlength="30" placeholder="6080-1" aria-label="The set's number"></label>
                 <label class="choice"><input type="checkbox" name="tested"> Marked Tested</label>
               </fieldset>
+              <p class="note">Visitors see it as the preview shows, from its first day, and a line on the gallery's front
+                says it too. Its days may not share one with another not ended: one at a time.</p>
               <div class="row"><button type="submit" class="cta">Set it</button><span class="note" id="challenge-note" role="status"></span></div>
             </form>
+            <aside class="card preview" aria-labelledby="h-challenge-preview">
+              <h3 id="h-challenge-preview">What visitors will see</h3>
+              <div class="challenge-preview" id="challenge-preview"></div>
+            </aside>
+          </div>
+          <div class="with-preview">
             <form id="year-form" class="card console-form">
               <h3>Set a year of themes</h3>
               <p class="note">A theme a month, each running its whole month with no rule but its brief. Visitors are told
@@ -448,41 +593,11 @@
               <div id="year-months"></div>
               <div class="row"><button type="submit" class="cta">Set the year</button><span class="note" id="year-note" role="status"></span></div>
             </form>
-          </div>
-
-          <div data-tab="tested" hidden>
-            <p class="note">Models whose newest version the app said passed its four tests as it was published: it stands
-              at every step, every step can be reached, every part is made in its colour, nothing is loose. The app's
-              finding, which the server cannot check. Clear the mark takes it off that version everywhere.</p>
-            <div class="tools"><input type="search" data-search="tested" placeholder="Search marked models"
-              aria-label="Search the Tested marks"></div>
-            <div class="table" tabindex="0" role="region" aria-label="Marked Tested">
-              <table data-sortable>
-                <thead><tr>
-                  <th scope="col" data-sort="text">Model</th><th scope="col" class="n" data-sort="number">Version</th>
-                  <th scope="col" data-sort="text">App</th><th scope="col" class="n" data-sort="number">Parts</th>
-                  <th scope="col" class="n" data-sort="number" title="Every step the step player turns to, the steps of what is built on the side among them">Pages</th>
-                  <th scope="col" data-sort="time" aria-sort="descending">Tested</th>
-                  <th scope="col"><span class="visually-hidden">What to do</span></th>
-                </tr></thead>
-                <tbody id="tested"></tbody>
-              </table>
-            </div>
-            <p class="note" id="tested-note" role="status"></p>
-          </div>
-
-          <div data-tab="barred" hidden>
-            <p class="note">None of their models can be listed, and they have no profile or public collection. Let back in
-              lets them list again; what was taken out stays out until listed again by hand. Take an account out from
-              its report, or from <a href="#people">People</a>.</p>
-            <div class="table" tabindex="0" role="region" aria-label="Accounts taken out">
-              <table data-sortable>
-                <thead><tr><th scope="col" data-sort="text">Account</th><th scope="col" data-sort="time" aria-sort="descending">Since</th>
-                  <th scope="col">Why</th><th scope="col"><span class="visually-hidden">What to do</span></th></tr></thead>
-                <tbody id="barred"></tbody>
-              </table>
-            </div>
-            <p class="note" id="barred-note" role="status"></p>
+            <aside class="card preview" aria-labelledby="h-year-preview">
+              <h3 id="h-year-preview">What visitors will be told, and when</h3>
+              <ol class="year-preview" id="year-preview"></ol>
+              <p class="note" id="year-preview-none">Give a month a title and a brief to see it here.</p>
+            </aside>
           </div>
         </section>
 
@@ -788,11 +903,13 @@
           </div>
           <div class="part">
             <div class="lead"><h3 id="h-crons">Crons</h3><p class="note">Vercel calls each at its time (UTC); each run is
-              written down however it ends.</p></div>
+              written down however it ends. Run now runs one here and now, as Vercel would, and waits for it: the safe
+              ones only, never the beta's daily round, which mails testers.</p></div>
             <div class="table" tabindex="0" role="region" aria-labelledby="h-crons">
               <table class="queue">
                 <thead><tr><th scope="col">Cron</th><th scope="col">When</th><th scope="col">State</th>
-                  <th scope="col">Last run</th><th scope="col">The runs before</th></tr></thead>
+                  <th scope="col">Last run</th><th scope="col">The runs before</th>
+                  <th scope="col"><span class="visually-hidden">What to do</span></th></tr></thead>
                 <tbody id="crons"></tbody>
               </table>
             </div>
@@ -809,6 +926,137 @@
             </div>
           </div>
           <p class="note" id="site-note" role="status"></p>
+        </section>
+
+        <!-- Data (console3) --------------------------------------------------------->
+        <section data-section="data" aria-labelledby="h-data" hidden>
+          <div class="lead"><h2 id="h-data">Data</h2>
+            <p class="note">What the site is built from and what it uses: the set catalogue and Rebrickable's tables it is
+              made from, the set pictures, the parts library, what the weekly look at LDraw's model repository found,
+              and the database's and storage's size.</p></div>
+          <div class="stats">
+            <div class="stat"><b id="n-sets">—</b><span>sets in the catalogue</span><small id="n-sets-said"></small></div>
+            <div class="stat"><b id="n-pictures">—</b><span>with a picture of their own</span><small id="n-pictures-said"></small></div>
+            <div class="stat"><b id="n-rebrickable">—</b><span>Rebrickable last fetched</span><small id="n-rebrickable-said"></small></div>
+            <div class="stat"><b id="n-omr-found">—</b><span>found at the OMR, to look at</span><small id="n-omr-said"></small></div>
+            <div class="stat"><b id="n-db">—</b><span>the database</span><small id="n-db-said"></small></div>
+            <div class="stat"><b id="n-storage">—</b><span>in storage</span><small id="n-storage-said"></small></div>
+          </div>
+          <div class="part">
+            <div class="lead"><h3 id="h-catalogue">Catalogue and library</h3><p class="note">As this deployment was built with
+              them, and the library's index as the store has it now.</p></div>
+            <div class="card"><dl class="facts" id="data-facts"></dl></div>
+          </div>
+          <div class="part">
+            <div class="lead"><h3 id="h-omr">LDraw's model repository</h3><p class="note" id="omr-said">What the weekly look
+              found: each new model of a set, whether it was brought into the library and why not.</p></div>
+            <div class="tools">
+              <div class="segmented" role="group" aria-label="Show" data-filter="omr" id="omr-states">
+                <button type="button" data-value="" aria-pressed="true">All</button>
+              </div>
+            </div>
+            <div class="table" tabindex="0" role="region" aria-labelledby="h-omr">
+              <table class="queue">
+                <thead><tr><th scope="col">Found</th><th scope="col">Model</th><th scope="col">Set</th><th scope="col">By</th>
+                  <th scope="col">State</th></tr></thead>
+                <tbody id="omr"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="part">
+            <div class="lead"><h3 id="h-usage">Usage</h3><p class="note" id="usage-said"></p></div>
+            <div class="card off" id="egress">
+              <h3>Egress is read at Supabase</h3>
+              <p id="egress-said"></p>
+            </div>
+            <div class="table" tabindex="0" role="region" aria-labelledby="h-buckets">
+              <table>
+                <caption class="visually-hidden" id="h-buckets">Storage by bucket</caption>
+                <thead><tr><th scope="col">Bucket</th><th scope="col" class="n">Files</th><th scope="col" class="n">Size</th></tr></thead>
+                <tbody id="buckets"></tbody>
+              </table>
+            </div>
+            <div class="table" tabindex="0" role="region" aria-labelledby="h-tables">
+              <table>
+                <caption class="visually-hidden" id="h-tables">The biggest tables</caption>
+                <thead><tr><th scope="col">Table</th><th scope="col" class="n">Rows, about</th><th scope="col" class="n">Size</th></tr></thead>
+                <tbody id="db-tables"></tbody>
+              </table>
+            </div>
+          </div>
+          <p class="note" id="data-note" role="status"></p>
+        </section>
+
+        <!-- Switches (console3) ----------------------------------------------------->
+        <section data-section="switches" aria-labelledby="h-switches-all" hidden>
+          <div class="lead"><h2 id="h-switches-all">Switches</h2>
+            <p class="note">The site's notice, the settings the console keeps, and every variable of the deployment by
+              name: where each is, what it switches and where it is changed. Never a value.</p></div>
+          <div class="part">
+            <div class="lead"><h3 id="h-notice">The site's notice</h3><p class="note" id="notice-said"></p></div>
+            <div class="with-preview">
+              <form id="notice-form" class="card console-form">
+                <p class="note">Shown on every page of <span id="notice-scope">this site</span> until you clear it, at the
+                  window's foot, and hidden by anyone's × in their own browser. In German, French and Spanish only where
+                  you type them; those pages show the English otherwise.</p>
+                <label>English <small>needed</small>
+                  <textarea name="en" maxlength="300" rows="2" required></textarea></label>
+                <details class="more-langs">
+                  <summary>German, French, Spanish</summary>
+                  <label>Deutsch <small>optional</small><textarea name="de" maxlength="300" rows="2" lang="de"></textarea></label>
+                  <label>Français <small>optional</small><textarea name="fr" maxlength="300" rows="2" lang="fr"></textarea></label>
+                  <label>Español <small>optional</small><textarea name="es" maxlength="300" rows="2" lang="es"></textarea></label>
+                </details>
+                <div class="row">
+                  <div class="segmented" role="group" aria-label="Tone" id="notice-tone">
+                    <button type="button" data-value="info" aria-pressed="true">News</button>
+                    <button type="button" data-value="warn" aria-pressed="false">Warning</button>
+                  </div>
+                </div>
+                <div class="row"><button type="submit" class="cta">Show it</button>
+                  <button type="button" class="cta ghost" id="notice-clear" hidden>Clear it</button>
+                  <span class="note" id="notice-note" role="status"></span></div>
+              </form>
+              <aside class="card preview" aria-labelledby="h-notice-preview">
+                <h3 id="h-notice-preview">What visitors will see</h3>
+                <div class="notice-preview" id="notice-preview"></div>
+              </aside>
+            </div>
+            <div class="table" tabindex="0" role="region" aria-labelledby="h-notices">
+              <table class="queue">
+                <caption class="visually-hidden" id="h-notices">The notices before</caption>
+                <thead><tr><th scope="col">Set</th><th scope="col">Said</th><th scope="col">Languages</th><th scope="col">By</th>
+                  <th scope="col">Cleared</th></tr></thead>
+                <tbody id="notices"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="part">
+            <div class="lead"><h3 id="h-settings">Settings</h3><p class="note">What the console keeps, each where it holds:
+              brickworks.diy's, and each preview's own.</p></div>
+            <div class="table" tabindex="0" role="region" aria-labelledby="h-settings">
+              <table>
+                <thead><tr><th scope="col">Setting</th><th scope="col">Where</th><th scope="col">Is</th><th scope="col">Set</th>
+                  <th scope="col"><span class="visually-hidden">What to do</span></th></tr></thead>
+                <tbody id="settings"></tbody>
+              </table>
+            </div>
+            <p class="note" id="settings-note" role="status"></p>
+          </div>
+          <div class="part">
+            <div class="lead"><h3 id="h-variables">Deployment variables</h3><p class="note" id="variables-said"></p></div>
+            <div class="tools">
+              <input type="search" id="variables-q" placeholder="Search variables" aria-label="Search variables">
+            </div>
+            <div class="table" tabindex="0" role="region" aria-labelledby="h-variables">
+              <table class="queue" data-sortable>
+                <thead><tr><th scope="col" data-sort="text" aria-sort="ascending">Variable</th><th scope="col">Here</th>
+                  <th scope="col">Production</th><th scope="col">Preview</th><th scope="col">What it switches</th>
+                  <th scope="col">Where it is changed</th></tr></thead>
+                <tbody id="variables"></tbody>
+              </table>
+            </div>
+          </div>
         </section>
 
         <!-- Audit log ------------------------------------------------------------------>

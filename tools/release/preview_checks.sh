@@ -481,6 +481,16 @@ declare -A CMD=(
   # Plans off where billing is; each at 390 and 1280, light and dark.
   # Read only; the throwaways deleted after.
   [console2]="tools/web/console2_flow.mjs --url=$P --out=$S/${TAG}_console2"
+  # The console's part C (console3, docs/ADMIN.md): every op it added
+  # refused signed out (401) and to anybody else (404); a throwaway's
+  # report in Moderation's one queue; Challenges' previews and a panel;
+  # Data's and Switches' rows with no secret's value in them; Find; Run now
+  # on the front's choice and its run written down; the notice set on this
+  # deployment (never brickworks.diy), seen signed out in English and German
+  # and cleared; an export downloaded, a throwaway signed out everywhere and
+  # another deleted by its address typed again, found in the audit; each at
+  # 390 and 1280, light and dark. Throwaways deleted after.
+  [console3]="tools/web/console3_flow.mjs --url=$P --out=$S/${TAG}_console3"
   [reload]="tools/web/reload_flow.mjs --url=$P/app $B --out=$S/${TAG}_reload"
   [keep]="tools/web/keep_flow.mjs --url=$P/app $B --out=$S/${TAG}_keep"
   # A signed-in person's models kept with their account (supabase/account_models.sql):
@@ -763,7 +773,9 @@ run() {
 # a minute, and every page here reads that switch: beside it, betahome took
 # the beta for off and then found the bar on every page (rel-m294,
 # 2026-11-13), so it runs with nothing of this battery beside it.
-SOLO=" idle arrival progress cursor render_open render product_render grab share_steps frames play discovery oc together buildparty load console "
+# console3 sets a notice that floats over every page of the deployment for a
+# few minutes, over the controls a check beside it would press.
+SOLO=" idle arrival progress cursor render_open render product_render grab share_steps frames play discovery oc together buildparty load console console3 "
 PAIRED=""; ALONE=""
 for n in $NAMES; do case "$SOLO" in *" $n "*) ALONE="$ALONE $n";; *) PAIRED="$PAIRED $n";; esac; done
 # PC_AT_ONCE at a time, a slot taking the next check as soon as it is

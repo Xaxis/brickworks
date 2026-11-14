@@ -1241,6 +1241,34 @@ button.pill[aria-pressed="true"], a.pill[aria-current="true"] { border-color: va
 :root[data-betabar] .toast { bottom: calc(var(--s-5) + 60px); }
 :root[data-betabar] .site-foot { padding-bottom: calc(var(--s-6) + 64px); }
 
+/* The site's notice (web/notice.js, console3): what the owner set in the
+   console, on every page until its × hides it. A card floating at the
+   window's foot, at its right, over the page and moving none of it
+   (Steady loads); on a phone the window's width less its gutters, and over
+   the beta's bar when that is shown. Its edge says its tone: the accent
+   for news, --bad for a warning. It rises in as the beta's bar does. */
+.site-notice {
+	position: fixed; z-index: 55; right: var(--s-4); bottom: calc(var(--s-4) + env(safe-area-inset-bottom, 0px));
+	display: flex; align-items: flex-start; gap: var(--s-2); width: min(420px, calc(100vw - 32px));
+	padding: var(--s-3) var(--s-2) var(--s-3) var(--s-4); border: 1px solid var(--line-strong);
+	border-left: 4px solid var(--accent-edge); border-radius: var(--r-3);
+	background: color-mix(in srgb, var(--panel) 92%, transparent);
+	backdrop-filter: saturate(1.6) blur(16px); -webkit-backdrop-filter: saturate(1.6) blur(16px);
+	box-shadow: var(--highlight), var(--shadow); color: var(--ink);
+	opacity: 0; transform: translateY(8px);
+	transition: opacity var(--motion-open) var(--ease), transform var(--motion-open) var(--ease);
+}
+.site-notice.shown { opacity: 1; transform: none; }
+.site-notice.warn { border-left-color: var(--bad); }
+.site-notice .words { flex: 1 1 auto; min-width: 0; margin: 6px 0 0; font-size: var(--t-small); line-height: 1.5;
+	overflow-wrap: anywhere; white-space: pre-line; }
+.site-notice .icon-btn.small { flex: none; border-color: transparent; background: transparent; color: var(--ink-soft); }
+.site-notice .icon-btn.small:hover { background: var(--panel-hi); color: var(--ink); }
+@media (width < 900px) { :root[data-betabar] .site-notice { bottom: calc(var(--s-4) + 64px + env(safe-area-inset-bottom, 0px)); } }
+@media (width < 600px) { .site-notice { right: 0; left: 0; margin-inline: auto; } }
+@media (prefers-reduced-motion: reduce) { .site-notice { transition: none; } }
+:root[data-notice] .site-foot { padding-bottom: calc(var(--s-6) + 96px); }
+
 /* The "more" menu: an icon button that opens a short list of what else
    can be done (Report it, Takedown requests), the header Menu's panel.
    A <details>, so it opens with no script; web/kit.js closes it on a click

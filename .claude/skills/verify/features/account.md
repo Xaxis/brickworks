@@ -4,7 +4,7 @@ Everyone who uses Brickworks signs in, on the web and the desktop, with an
 email address and a code sent to it. Nothing in the builder can be used until
 they have. A Claude connector belongs to the account that switched it on.
 
-<!-- covers: ui:sign-in screen, cli:made with probe, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, lib:the console's reads and audit, lib:the console's switches, lib:the console's part B reads, api:Resend's word on each mail, ui:the console's plans and revenue, ui:the console's mail, ui:the console's connector, ui:the console's site, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:review sign-in page, cli:review sign-in flow, cli:ChatGPT connector flow, cli:every assistant's sign-in, ui:share panel, api:POST /api/account?op=age, api:POST /api/orangecheck, ui:sign in with orangecheck, cli:orangecheck check, cli:orangecheck browser flow, ui:sign in with orangecheck on the desktop, cli:orangecheck desktop flow, cli:orangecheck desktop probe, cli:orangecheck listener probe, cli:orangecheck window answered, cli:signup check, api:GET /api/otp/canary, cli:canary check -->
+<!-- covers: ui:sign-in screen, cli:made with probe, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, lib:the console's reads and audit, lib:the console's switches, lib:the console's part B reads, api:Resend's word on each mail, ui:the console's plans and revenue, ui:the console's mail, ui:the console's connector, ui:the console's site, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:review sign-in page, cli:review sign-in flow, cli:ChatGPT connector flow, cli:every assistant's sign-in, ui:share panel, api:POST /api/account?op=age, api:POST /api/orangecheck, ui:sign in with orangecheck, cli:orangecheck check, cli:orangecheck browser flow, ui:sign in with orangecheck on the desktop, cli:orangecheck desktop flow, cli:orangecheck desktop probe, cli:orangecheck listener probe, cli:orangecheck window answered, cli:signup check, api:GET /api/otp/canary, cli:canary check, ui:the console's moderation, ui:the console's challenges, ui:the console's data, ui:the console's switches section, lib:the console's part C, lib:an account's deletion, cli:deployment variables written down -->
 
 ## Sub-features
 
@@ -177,6 +177,63 @@ they have. A Claude connector belongs to the account that switched it on.
   and revenue, Mail, Connector and Site below, and the Overview's live
   release, a failed or late cron, the week's bounces and Supabase refusing
   the project under Needs you now; proven by the console2 browser flow.
+  Part C (console3, 2026-11-13) moves Reported, Comments and Taken out into
+  Moderation and Challenges into its own section, adds Data and Switches,
+  Run now in Site, an account's export, sign-out and deletion in its panel,
+  and Find in the bar; the old `#gallery/reported`, `comments`, `barred`
+  and `challenges` are replaced by their new addresses as they open. Proven
+  by the console3 browser flow.
+- `the console's moderation` (`web/admin-moderation.js`): `#moderation/queue`,
+  every open report of the default GET in one list, oldest first, each by
+  `reportKind` (model, comment, photo, profile, list, takedown,
+  counter_notice); a kind is one entry of `KINDS` (its name, row and acts
+  beside Let it go); an unknown kind is drawn plainly. Sifted by kind and
+  searched. `#moderation/comments` as before; `#moderation/barred` the
+  accounts and the models taken out (`POST ?op=unbar_model&id=X`).
+- `the console's challenges` (`web/admin-challenges.js`,
+  `api/_console_challenges.js`): `#challenges`: the running one, every
+  challenge by state, End it now, the set form and the year's plan each
+  with a preview as visitors will see it; `#challenges/<id>` its panel
+  (`GET ?op=challenge_view&challenge=N`: entries by group, rule failures,
+  winners, what visitors see; 400 for no number, `ready: false` before
+  console3.sql).
+- `the console's data` (`web/admin-data.js`, `api/_console_data.js`):
+  `GET ?op=data`: `_data_facts.json` written beside the function at deploy
+  (`tools/web/data_facts.mjs`: the catalogue's sets and pictures,
+  Rebrickable's tables' fetch times), the parts store's index,
+  `library_arrivals_in` and the OMR's runs, `admin_usage`; egress
+  `{read: false, why, href}`. Also `POST ?op=run_cron&job=J`: the four in
+  `RUNNABLE` only (409 beta_daily, 400 any other), 503 without
+  CRON_SECRET, at `ownOrigin(request)` alone (brickworks.diy, www, this
+  deployment, this project's previews, loopback; else 400 and the key sent
+  nowhere).
+- `the console's switches section` (`web/admin-switches.js`,
+  `api/_console_switches.js`): `GET ?op=switches` adds `variables` (every
+  name the code reads, `here` a yes or no, `environments` from `site_env`,
+  what and where; never a value or a length; one Vercel has that nothing
+  reads is `unread`), `settings` (`site_settings_list`) and the notice with
+  its history; `POST ?op=notice_set {words: {en, de?, fr?, es?}, tone}`
+  (English needed, 300 characters a language, a language the site lacks
+  dropped) and `?op=notice_clear` (404 when none shows), each audited.
+- `the console's part C` (`supabase/console3.sql`): `site_notices`,
+  `site_env` and thirteen functions only the server may call. Prove:
+  `python3 tools/minitest.py tests/test_console3.py` (a real Postgres:
+  db3_check.mjs and api3_check.mjs).
+- `an account's deletion` (`api/_erase.js`): `erase(account)`, the one
+  deletion: Admission first (a plan not ended holds it all, 503), the
+  orangecheck account Connect made, photos, pictures, feedback's files,
+  then the auth user and everything keyed to it. `POST /api/account?op=delete`
+  for its person; `POST /api/admin?op=delete_account&account=U {confirm,
+  reason}` for the owner at their request: `confirm` must be its address
+  (case and spaces aside, else 422), never the owner's own (403), 404 when
+  it is gone; the audit keeps its address. `POST ?op=export&account=U`
+  (`admin_export`: at most 1000 rows a table and `more` for the rest, values
+  over 8 KB named by size, no secret column) and `?op=sign_out&account=U`
+  (`admin_sign_out`: sessions and Claudes' grants).
+- `deployment variables written down` (`tools/release/env_names.sh`, from
+  ship.sh after release_live.sh): `vercel env ls --format json` (vercel@61)
+  read in-process for each key and target only, posted to `site_env_note`;
+  prints a count, never a value; exits 0 whatever happens.
 - `the console's reads and audit` (`api/_console.js`, `supabase/console.sql`
   admin_audit): `GET /api/admin?op=overview` (counts, what needs the owner,
   the switches, the newest acts), `?op=people` (every account with its
