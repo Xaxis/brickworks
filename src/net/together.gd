@@ -728,6 +728,10 @@ func _stop(words: String, tell_server: bool = false) -> void:
 	_forget_pending()
 	following = ""
 	_show_presence()
+	# The points put away by that; their outlines' targets let go of too,
+	# as _expire_looks runs only in a session.
+	for who: String in _look_outlines.keys():
+		_let_go_of_look_outline(who)
 	_show_banner()
 	ended_words = words
 	_polling += 1
