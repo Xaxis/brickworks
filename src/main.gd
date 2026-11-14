@@ -9798,6 +9798,14 @@ func _unhandled_input(event: InputEvent) -> void:
 			if not _grabbing:
 				_dragging_part = _verbs.drag_start(_press_brick, _press_copies,
 					moved.shift_pressed)
+			# A finger that has taken a part is not held still, however
+			# little it has moved yet: the grab's moves go to it in _input
+			# from here, and none comes back to stop the hold. A door swung
+			# while Motions recorded opened its actions over the panel at
+			# 480 ms, every part of the house selected (phonewalk, 13 taps
+			# against the desktop's 4).
+			if (_grabbing or _dragging_part) and _phone_hold != null:
+				_phone_hold.stop()
 			_press_brick = 0
 		if _grabbing:
 			_grab_drag.motion(moved.position)
@@ -10354,7 +10362,8 @@ func _fit_tool_panel(panel: Control) -> void:
 ## there — what is in hand let go, and on a part its actions (_right_click),
 ## a sheet rather than a menu. The click its lifting raises is not a click.
 func _on_phone_hold() -> void:
-	if _touch_index == -1 or _camera.fingers() > 1 or _store.laying:
+	if _touch_index == -1 or _camera.fingers() > 1 or _store.laying or _grabbing \
+			or _dragging_part:
 		return
 	_press_brick = 0
 	if _builder.is_carrying():

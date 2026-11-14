@@ -357,7 +357,10 @@ func ruler() -> void:
 		return
 	if measure.toggle():
 		builder.hide_preview()
-		say.call(Keymap.filled("measuring — click two points; {measure} or Esc puts the ruler away"))
+		# To a finger, the ruler's own words: no keys, and taps (phonewalk's
+		# tablet heard "click two points; U or Esc puts the ruler away").
+		say.call(str(measure.call("words")) if Phone.on() and measure.has_method("words")
+			else Keymap.filled("measuring — click two points; {measure} or Esc puts the ruler away"))
 	else:
 		aim_again.call()
 		say.call("")

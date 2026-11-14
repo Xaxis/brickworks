@@ -2169,6 +2169,14 @@
       "tests": []
     },
     {
+      "id": "cli:phonepanels probe",
+      "kind": "cli",
+      "entry": "src/dev/phonepanels_probe.gd",
+      "reach": "tools/probe.sh phonepanels_probe   (windowed, 390x844 by its header; through the sign-in screen with a throwaway account (.env); pictures in --shots=DIR, else user://phonepanels)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:photographed light in a browser",
       "kind": "cli",
       "entry": "tools/web/light_render_flow.mjs",
@@ -5669,6 +5677,14 @@
         "tests/test_alike.py",
         "tests/test_bench.py"
       ]
+    },
+    {
+      "id": "ui:page editor motions and simulate by finger",
+      "kind": "ui",
+      "entry": "src/ui/page_editor.gd",
+      "reach": "on a phone or a tablet: the timeline's Lay out the page\u2026 (buttons and fields 44 points or more, the corner, the knob, an arrow's handles and the rulers a fingertip each, the words field's select-all kept by the tap that brings the keyboard up); Motions (Record beside the name at the editor's top, its joint sliders' strips a fingertip tall, each view opened at its top, a part dragged while recording opens no actions sheet); Simulate (Play, the cycle's slider and the angle under its title)  (PageEditor._lay_for_a_finger, PosePanel._for_a_finger, SimulatePanel._for_a_finger, Main._on_phone_hold; tools/probe.sh phonepanels_probe)",
+      "area": "view",
+      "tests": []
     },
     {
       "id": "ui:palette",
