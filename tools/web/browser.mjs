@@ -17,6 +17,7 @@
 // in an hour or a day, such as publishing: its pages are signed in as an
 // account of the run's own, deleted when the run ends (session.mjs).
 import { steadyShots } from "./steady_shots.mjs";
+import { pageRoute } from "./page_routes.mjs";
 // Every browser any script here starts reads the parts bucket from this
 // machine's copy (storage_mirror.mjs), each object from Supabase at most once.
 import "./storage_mirror.mjs";
@@ -63,13 +64,14 @@ const withRatio = (options = {}) =>
 /// 403 that carries no Cross-Origin-Resource-Policy, which the site's
 /// isolation then blocks and the page logs, so site_check failed m35 on
 /// its 21st page (2026-10-16). A check is not a visit; site_check loads the
-/// real one once, on purpose ({ realCounter: true }).
-const COUNTER = "https://overlook.technology/**";
+/// real one once, on purpose ({ realCounter: true }). Only its requests are
+// stopped (page_routes.mjs): a Playwright route held every request of the
+// page to the end of the task that asked for it.
+const COUNTER = "https://overlook.technology/*";
 export async function quietCounter(context) {
-  await context.route(COUNTER, (route) => route.fulfill({ status: 200,
-    contentType: "application/javascript", body: "",
-    headers: { "cross-origin-resource-policy": "cross-origin", "access-control-allow-origin": "*" } }));
-  return context;
+  return pageRoute(context, [COUNTER], () => ({ status: 200, body: "",
+    headers: { "content-type": "application/javascript", "cross-origin-resource-policy": "cross-origin",
+      "access-control-allow-origin": "*" } }));
 }
 
 /// Every picture on the page loaded and decoded, hidden ones too, so a
