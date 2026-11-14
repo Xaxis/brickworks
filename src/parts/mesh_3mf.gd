@@ -89,6 +89,9 @@ class Piece extends RefCounted:
 	var painted := PackedInt32Array()
 	## The colours painted on it, each once.
 	var paints := PackedInt32Array()
+	## Its edges not shared by two triangles once each way round, once
+	## closed (ClosedMesh.open_edges): 0 for a closed solid (mcpreach).
+	var open: int = 0
 
 
 var maker: MeshExport
@@ -162,6 +165,15 @@ func write(list: Array, title: String, made: MeshExport.Made) -> PackedByteArray
 	for n: int in colours.size():
 		var colour: int = colours[n]
 		var placed: Array = by_colour[colour]
+		# An object is a closed solid when each of its pieces is: their
+		# vertices are their own, so no edge is shared between two.
+		for entry: Array in placed:
+			if (entry[1] as Piece).open > 0:
+				var id: String = (entry[0] as BrickWorld.Brick).part_id
+				made.open_parts[id] = int(made.open_parts.get(id, 0)) + 1
+				var named: String = maker.library.color(colour).name
+				if not made.open_objects.has(named):
+					made.open_objects.append(named)
 		lines.append("  <object id=\"%d\" type=\"model\" name=\"%s\" pid=\"%d\" pindex=\"%d\">" % [
 			MATERIALS_ID + 1 + n, _escaped(maker.library.color(colour).name), MATERIALS_ID,
 			material_of[colour]])
@@ -229,6 +241,8 @@ func write(list: Array, title: String, made: MeshExport.Made) -> PackedByteArray
 	var model: PackedByteArray = maker._text
 	maker._text = PackedByteArray()
 	made.colours = colours.size()
+	made.objects = colours.size()
+	made.checked = true
 	return await maker.zip([["[Content_Types].xml", CONTENT_TYPES.to_utf8_buffer()],
 		["_rels/.rels", RELATIONSHIPS.to_utf8_buffer()], [MODEL_PART, model]])
 
@@ -331,6 +345,10 @@ func _piece(shapes: Array, colour: int) -> Piece:
 		piece.positions = closer.positions
 		piece.triangles = closer.triangles
 		piece.painted = closer.painted
+	# What the export says of each object (Exports.model_3d): checked, not
+	# taken on trust, so a part the closing leaves open (a hose past
+	# ClosedMesh.FARTHEST) is named.
+	piece.open = CLOSED_MESH.open_edges(piece.triangles)
 	return piece
 
 

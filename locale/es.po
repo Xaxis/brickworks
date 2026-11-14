@@ -14203,3 +14203,20 @@ msgstr "Restablecer los paneles"
 
 msgid "Every panel open again and as tall as at first: the parts bin, Colour, the model tree and the properties"
 msgstr "Cada panel abierto de nuevo y tan alto como al principio: la caja de piezas, Color, el árbol del modelo y las propiedades"
+
+# A file written where nobody was asked takes the next free name, and an STL's
+# or a 3MF's line says whether each object is a closed solid (APP_UX8 #11, mcpreach).
+msgid "%s was there already, and is kept"
+msgstr "%s ya estaba ahí, y se conserva"
+
+msgid "every object a closed solid, with nothing for a slicer to repair"
+msgstr "cada objeto un sólido cerrado, nada que reparar para un laminador"
+
+msgid "%d of %d objects closed solids; not closed: %s, from %s, which a slicer repairs"
+msgstr "%d de %d objetos sólidos cerrados; sin cerrar: %s, por %s, que un laminador repara"
+
+msgid "every part a closed solid, with nothing for a slicer to repair"
+msgstr "cada pieza un sólido cerrado, nada que reparar para un laminador"
+
+msgid "not a closed solid: %d of %d parts are open as LDraw draws them (%s), which a slicer repairs as it loads them; a 3MF closes every part"
+msgstr "no es un sólido cerrado: %d de %d piezas están abiertas tal como LDraw las dibuja (%s), lo que un laminador repara al cargarlas; un 3MF cierra cada pieza"

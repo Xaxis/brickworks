@@ -361,7 +361,9 @@ func _look_row() -> void:
 	(dialog.get("_height") as SpinBox).value = 360
 	(controls["render_picture"] as Button).pressed.emit()
 	await _until_done(dialog)
-	var picture: String = files.path_join(RenderOutput.file_name(str(dialog.named.call()), "_render", "png"))
+	# The name it took, as the dialog says it: a run before this one left
+	# its picture, and this one is beside it (mcpreach).
+	var picture: String = files.path_join(str((dialog.get("_last") as Dictionary).get("name", "")))
 	var kept := Image.load_from_file(picture) if FileAccess.file_exists(picture) else null
 	_check("Render picture, in Comic, wrote %s at 640x360, in colour with black lines (%.1f%% ink)"
 		% [picture.get_file(), _share_ink(kept) * 100.0 if kept != null else 0.0],

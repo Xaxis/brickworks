@@ -7,6 +7,7 @@ rules:
   - The chat, and comments in a session, are for people 13 and over.
   - Comments pinned to parts are kept in the model's file.
   - Someone in a session can send the others only words and parts.
+  - Starting or joining a session is the person's own: an assistant sends them to File › Build together…, where they start one and send its link; no tool opens one, and it never says one cannot be had.
 title: Build together
 nav: Build together
 description: Design one model with other people, live, each in their own browser; or build a shared model in real bricks together, each on their own phone.

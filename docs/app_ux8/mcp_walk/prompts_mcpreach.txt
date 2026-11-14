@@ -1,0 +1,7 @@
+p0|Open my model Pods. Make a picture of it from the three-quarter view, and export it for my 3D printer as a 3MF.
+x2|Give these instructions a cover titled "Двойные капсулы" with "Δύο κάψουλες" under it, then save the instructions as a PDF. Do those letters print as I typed them?
+x4|Hang a spotlight over the pods, shining down on them, and make me a picture in the dark so I can see what it lights.
+x5|Export this model for my 3D printer as a 3MF. Will my slicer read every part as a closed solid, or will it have to repair some?
+
+new|
+n7|My friend wants to build this model with me at the same time, from their own computer. Set that up for us.

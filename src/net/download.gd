@@ -43,7 +43,77 @@ static func give(text: String, file_name: String, mime: String = "text/plain") -
 	var into: String = downloads()
 	# The name comes from the model's title, which a design names: only
 	# its last part, so no title can put a file outside the folder.
-	return _write(text, into.path_join(file_name.replace("\\", "/").get_file()))
+	return _write(text, unused(into.path_join(file_name.replace("\\", "/").get_file())))
+
+
+## [param path], or on the desktop the next name beside it nothing has when
+## something is there already: pods_render.png, then pods_render_2.png,
+## pods_render_3.png. Every file the app writes where nobody was asked
+## takes one, so nothing of the person's is written over unasked: a
+## session's picture and its 3MF each replaced the last of their name without
+## a word (APP_UX8's MCP walk, x4 and x5; mcpreach). An underscore, as every
+## name the app gives a file joins its words (SubmodelFile.titled), so a
+## script or a slicer's command line takes it whole. [param beside]: what is
+## written under the same name with another ending, each free too (an OBJ's
+## ".mtl"). A browser numbers its own downloads, so there it is [param path].
+static func unused(path: String, beside: PackedStringArray = PackedStringArray()) -> String:
+	if OS.has_feature("web"):
+		return path
+	var dot: String = _dot(path)
+	var endings := PackedStringArray([dot])
+	endings.append_array(beside)
+	return free_stem(path.left(path.length() - dot.length()), endings) + dot
+
+
+## [param stem] (a path without its ending), or the next free one, "_2",
+## "_3", when a file or a folder is there under it with any of
+## [param endings] ("" the stem itself): a turntable's .webp, .gif, .mp4
+## and its frames' folder are one name (RenderOutput).
+static func free_stem(stem: String, endings: PackedStringArray) -> String:
+	if OS.has_feature("web"):
+		return stem
+	var named: String = stem
+	var n: int = 2
+	while not _there(named, endings).is_empty():
+		named = "%s_%d" % [stem, n]
+		n += 1
+	if named != stem:
+		_was[named] = _there(stem, endings)
+	return named
+
+
+## The first file or folder there under [param stem] with one of
+## [param endings], by its name; "" for none.
+static func _there(stem: String, endings: PackedStringArray) -> String:
+	for ending: String in endings:
+		if FileAccess.file_exists(stem + ending) or DirAccess.dir_exists_absolute(stem + ending):
+			return (stem + ending).get_file()
+	return ""
+
+
+## ".png" of a path's file name, "" when it has none.
+static func _dot(path: String) -> String:
+	var file: String = path.get_file()
+	return "." + file.get_extension() if file.contains(".") else ""
+
+
+## What was there under the name each stem [method free_stem] gave in its
+## place was taken from: the chosen stem -> that file's name.
+static var _was: Dictionary = {}
+
+
+## What to say after "wrote [param path]" when [method unused] or
+## [method free_stem] gave it a name of its own: " — pods_render.png was
+## there already, and is kept", so the person and a session hear that the
+## earlier file is still there; "" when it took the name asked. Said once,
+## with the first file written under the name.
+static func kept_note(path: String) -> String:
+	var stem: String = path.left(path.length() - _dot(path).length())
+	if not _was.has(stem):
+		return ""
+	var earlier: String = str(_was[stem])
+	_was.erase(stem)
+	return " — %s was there already, and is kept" % earlier
 
 
 ## [method give] from a person's own press: on the desktop written where
@@ -63,4 +133,4 @@ static func _write(text: String, path: String) -> String:
 	file.store_string(text)
 	file.close()
 	SaveTo.wrote(path)
-	return "wrote %s" % path
+	return "wrote %s%s" % [path, kept_note(path)]

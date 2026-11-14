@@ -173,8 +173,10 @@ static func long_call(tool: String, input: Dictionary, app: Node) -> Dictionary:
 			if not built:
 				return {}
 			match str(input.get("format", "")):
-				"instructions":
-					if DisplayServer.get_name() == "headless" or BookletMaker.busy:
+				# mcpreach: the booklet's PDF is the booklet, drawn, then read.
+				"instructions", "pdf":
+					if DisplayServer.get_name() == "headless" or BookletMaker.busy \
+							or (OS.has_feature("web") and str(input["format"]) == "pdf"):
 						return {}
 					return {"words": "Drawing the booklet of %s…" % model, "cancel": true}
 				"studio":
