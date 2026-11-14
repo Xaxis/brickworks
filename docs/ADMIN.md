@@ -190,6 +190,24 @@ checks' own, on `?tests=1` or a test account's pool) and `scope` (the
 deployment). Nobody but the server reaches it; `admin_audit_list` pages it
 newest first and filters it.
 
+### How the owner gets there
+
+The account menu (the avatar's menu on a laptop, Menu on a phone) has
+Admin at its foot above Sign out, with a gauge icon, for the owner alone
+(bugbar, 2026-11-13: "for me and me only there should be a link to the
+admin page from the top nav dropdown menu"). The menu draws it from
+`GET /api/people?op=feed_count`, the header's "who you are" on every page,
+which adds `admin: true` when `isMaster(claims)` (api/_auth.js: the
+verified address is `MASTER_EMAIL`) and has no `admin` key at all for
+anybody else, never `false`. It is kept with the rest of "who you are" in
+`localStorage["brickworks.me"]`, so the next page draws it at once, and
+forgotten at Sign out. Nothing else tells anyone the console exists:
+`op=me` is unchanged, and api/admin.js still answers anybody else 404 and
+signed out 401. Proven by `tests/test_menu_admin.py` (the real handler:
+the owner told; another account, an unverified claim to the owner's
+address and nobody signed in without the key) and `console_flow.mjs`
+section 11 (both menus, as the owner and as a throwaway, and signed out).
+
 ## Part A: in the console now
 
 Overview, People, Gallery, Beta (with its switch), Feedback, the Audit log;

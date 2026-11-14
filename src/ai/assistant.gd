@@ -3165,6 +3165,7 @@ func _stop(ok: bool, summary: String) -> void:
 func _run_tool(block: Dictionary) -> Variant:
 	follow_renumbering()
 	_done_said = ""
+	_judged_said = {}
 	var before: int = world.brick_count() if world != null else 0
 	var answer: Variant = await _tool_answer(block)
 	if str(block.get("name", "")) == "find_techniques":
@@ -3583,12 +3584,19 @@ func _tool_answer(block: Dictionary) -> Variant:
 			var resting: String = _resting_line(verdict)
 			if not resting.is_empty():
 				said += "\n" + resting
+			# What it says of the model as it stands, to be said again once
+			# the other copies have followed it (followed_answer).
+			_judged_said = {"resting": resting, "weigh": lean}
 			if scoped:
 				var had: int = world.brick_count()
 				var words: String = _gather_focus_step(standing_was)
-				# Counted as the copies that followed it left the model, which
-				# the words after it name.
+				# Counted and judged as the copies that followed it left the
+				# model, which the words after it name.
 				said = str(recounted(said, focus.followed, world.brick_count() - had, false))
+				var judged: Dictionary = _judged_said
+				_judged_said = {}
+				if focus.followed > 0:
+					said = str(await _judged_again(said, judged, false))
 				# What held is known for the edit as it landed; copies that
 				# followed it are new parts, and asked about afresh.
 				_hanging_before = [world.revision] + _hanging_after \
@@ -4342,6 +4350,8 @@ func _lean_edit_answer(args: Dictionary, edited: Model, verdict: Dictionary, sai
 	var broke: String = _what_broke(verdict.get("balance"), edited)
 	if not broke.is_empty():
 		lines.append(broke)
+	if not _judged_said.is_empty():
+		_judged_said["broke"] = broke
 	var wanted: Variant = args.get("picture")
 	if (wanted is bool and not bool(wanted)) or not ModelShot.possible():
 		var sizes: String = _sizes_once(_measured())
@@ -23226,6 +23236,103 @@ func _done_words(count: int) -> String:
 ## of every other call.
 var _done_said: String = ""
 var _done_count: int = 0
+
+
+## What the last edit's reply said of the model as it stood when it was made
+## (its "resting" line, and its "broke" line when it weighed it, "weigh"),
+## for [method followed_answer]; {} from the start of every call.
+var _judged_said: Dictionary = {}
+
+
+## [param answer], the reply to a session's call, as the model stands once
+## [param followed] other copies of a sub-assembly took its edit too, which
+## put down [param more] parts more than it took off (CommandSocket, after
+## the call's step): its count ([method recounted]), and what it said of the
+## model, judged again ([method _judged_again]). cffix2's "Took off 1. / As
+## it stands now: it tips over, 1.8 studs past the front edge" weighed the
+## model before the other copy took its part off too.
+func followed_answer(answer: Variant, followed: int, more: int) -> Variant:
+	answer = recounted(answer, followed, more)
+	var judged: Dictionary = _judged_said
+	_judged_said = {}
+	if followed <= 0 or judged.is_empty() or world == null:
+		return answer
+	return await _judged_again(answer, judged)
+
+
+## [param answer] with what [param judged] says it said of the model
+## (_judged_said's) said again of the model as it stands: checked again as
+## the edit was, whether anything rests joined to nothing, whether it stands
+## and what it loads past its working load, and its sizes where they changed
+## from what the session was last told ([param sizes]).
+func _judged_again(answer: Variant, judged: Dictionary, sizes: bool = true) -> Variant:
+	var model: Model = _model_from_world()
+	var verdict: Dictionary = await _checked(model, true, bool(judged.get("weigh", false)))
+	answer = _said_instead(answer, str(judged.get("resting", "")), _resting_line(verdict))
+	if judged.has("broke"):
+		answer = _said_instead(answer, str(judged["broke"]), _what_broke(verdict.get("balance"), model))
+	if sizes:
+		var now: String = _measured()
+		var told: String = str(_sizes_said.get(chat, ""))
+		if _sizes_key(now) != _sizes_key(told):
+			answer = _said_instead(answer, told, now, true)
+			_sizes_said[chat] = now
+	return answer
+
+
+## [param answer] (a reply's text, or its blocks) saying [param now] where
+## it said [param old]: in the first of its texts that has it, "" for
+## [param now] taking the line out. Where none has it, [param now] goes after
+## its first text: as a line at its end, or ([param own]) as a text of its
+## own after it.
+static func _said_instead(answer: Variant, old: String, now: String, own: bool = false) -> Variant:
+	if old == now:
+		return answer
+	if answer is String:
+		return _line_instead(answer, old, now)
+	if not answer is Array:
+		return answer
+	var blocks: Array = (answer as Array).duplicate()
+	var first: int = -1
+	for at: int in blocks.size():
+		if not blocks[at] is Dictionary or str((blocks[at] as Dictionary).get("type", "")) != "text":
+			continue
+		first = at if first < 0 else first
+		var text: String = str((blocks[at] as Dictionary).get("text", ""))
+		if old.is_empty() or not text.contains(old):
+			continue
+		var changed: Dictionary = (blocks[at] as Dictionary).duplicate()
+		changed["text"] = _line_instead(text, old, now)
+		if str(changed["text"]).is_empty():
+			blocks.remove_at(at)
+		else:
+			blocks[at] = changed
+		return blocks
+	if now.is_empty() or first < 0:
+		return answer
+	if own:
+		blocks.insert(first + 1, {"type": "text", "text": now})
+	else:
+		var changed: Dictionary = (blocks[first] as Dictionary).duplicate()
+		changed["text"] = str(changed["text"]) + "\n" + now
+		blocks[first] = changed
+	return blocks
+
+
+## [param text] with its first [param old] said as [param now]; "" for
+## [param now] takes it out with the line break before it (after it, at the
+## head). Where it has no [param old], [param now] on a line at its end.
+static func _line_instead(text: String, old: String, now: String) -> String:
+	var at: int = text.find(old) if not old.is_empty() else -1
+	if at < 0:
+		return text if now.is_empty() else (now if text.is_empty() else text + "\n" + now)
+	var end: int = at + old.length()
+	if now.is_empty():
+		if at > 0 and text[at - 1] == "\n":
+			at -= 1
+		elif end < text.length() and text[end] == "\n":
+			end += 1
+	return text.substr(0, at) + now + text.substr(end)
 
 
 ## [param answer], the reply to an edit, opening with its count as the model

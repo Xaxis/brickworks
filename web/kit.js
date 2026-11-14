@@ -9,7 +9,10 @@
 // page (web/scroller.js), and the page's words in its language (say).
 export { ICONS, avatarHtml, avatarTone, awardsHtml, iconButtonHtml, iconHtml, number, say } from "./card.js";
 import { say } from "./card.js";
+import { toastRegion } from "./toast.js";
 import "./scroller.js";
+// The toast, and with an action the snackbar (web/toast.js).
+export { toast } from "./toast.js";
 
 // In the page's language (web/theme.js), English as en-GB writes a date.
 const LANG = globalThis.document?.documentElement.lang || "en";
@@ -27,60 +30,6 @@ export function ago(iso) {
   if (minutes > -24 * 60) return AGO.format(Math.round(minutes / 60), "hour");
   if (minutes > -7 * 24 * 60) return AGO.format(Math.round(minutes / 1440), "day");
   return DATE.format(at);
-}
-
-/// Says [words] in the toast at the foot of the screen ("Link copied"),
-/// read out by a screen reader, and takes it away after a moment. A screen
-/// reader reads a live region's change, not a region that arrives already
-/// saying something, so the toast is on the page empty from the first, and
-/// its words are put in a moment later; the same words twice are said twice.
-///
-/// [undo] (lists1): what puts back what was just done. The toast then holds
-/// an Undo button after its words and stays 8 s, held while the pointer or
-/// the keyboard is on it (a person reading it, or reaching for Undo, is
-/// never cut short); Undo runs [undo] once and takes the toast away. A
-/// later toast replaces it, its Undo gone with it: what it would undo was
-/// the last thing but one.
-export function toast(words, { undo = null } = {}) {
-  const said = toastRegion();
-  said.textContent = "";
-  said.classList.remove("acts");
-  clearTimeout(toast.timer);
-  const hide = () => {
-    if (said.matches(":hover, :focus-within")) { toast.timer = setTimeout(hide, 1500); return; }
-    said.classList.remove("shown", "acts");
-  };
-  toast.timer = setTimeout(() => {
-    said.textContent = String(words);
-    if (typeof undo === "function") {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "undo";
-      button.textContent = say("Undo");
-      button.addEventListener("click", () => {
-        clearTimeout(toast.timer);
-        said.classList.remove("shown", "acts");
-        said.textContent = "";
-        undo();
-      }, { once: true });
-      said.append(" ", button);
-      said.classList.add("acts");
-    }
-    said.classList.add("shown");
-    toast.timer = setTimeout(hide, undo ? 8000 : 2400);
-  }, 60);
-}
-
-function toastRegion() {
-  let said = document.querySelector("body > .toast");
-  if (!said) {
-    said = document.createElement("div");
-    said.className = "toast";
-    said.setAttribute("role", "status");
-    said.setAttribute("aria-live", "polite");
-    document.body.append(said);
-  }
-  return said;
 }
 
 // An open "more" menu (details.more-menu) closes on a click outside it and

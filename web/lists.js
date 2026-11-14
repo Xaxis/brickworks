@@ -51,7 +51,7 @@ function tell(words, undo = null) {
   const said = $("said");
   said.textContent = "";
   setTimeout(() => { said.textContent = String(words); }, 40);
-  if (undo) toast(words, { undo });
+  if (undo) toast(words, { action: { label: say("Undo"), run: undo } });
 }
 
 const trouble = (answer, otherwise) => (answer.status === 401 ? say("Sign in again: we email you a code, no password.")

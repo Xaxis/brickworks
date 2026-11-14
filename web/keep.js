@@ -257,8 +257,11 @@ function keepIn(key, list, on) {
 /// toast (a toast is behind a modal panel, docs/DESIGN_SYSTEM.md).
 function tell(words, undo = null) {
   if (open) open.tell(words);
-  else toast(words, { undo });
+  else toast(words, undo ? undoing(undo) : {});
 }
+
+/// A toast's Undo (web/toast.js's action), which runs [run].
+const undoing = (run) => ({ action: { label: say("Undo"), run } });
 
 /// The item's name, as its holder says it, for what is said of it.
 const nameOf = (holder) => String(holder.dataset.name || "").trim();
@@ -312,12 +315,12 @@ async function pressMain(holder) {
     if (!done) return;
     toast(qty ? (name ? say("{name} is in the sets you own.", { name }) : say("It is in the sets you own."))
       : (name ? say("{name} is out of the sets you own.", { name }) : say("It is out of the sets you own.")),
-    { undo: () => own(key, was) });
+    undoing(() => own(key, was)));
   } else {
     const done = await keepIn(key, "saved", on);
     if (!done) return;
     toast(on ? say("Saved: it is on your profile's Saved, for you alone.") : say("No longer saved."),
-      { undo: () => keepIn(key, "saved", !on) });
+      undoing(() => keepIn(key, "saved", !on)));
   }
 }
 
@@ -337,7 +340,7 @@ async function pressWant(holder) {
   }
   const done = await keepIn(key, "want", on);
   if (!done) return;
-  toast(on ? say("On your wishlist.") : say("Off your wishlist."), { undo: () => keepIn(key, "want", !on) });
+  toast(on ? say("On your wishlist.") : say("Off your wishlist."), undoing(() => keepIn(key, "want", !on)));
 }
 
 // ---------------------------------------------------------------------------

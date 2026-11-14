@@ -16,7 +16,12 @@
 //      line of what will be sent; sent, it says its number and offers Your
 //      reports. The picture kept for the owner's inbox has the box, red,
 //      where it was drawn (each edge within 2 pixels), and its details the
-//      box; what was expected kept with the words.
+//      box; what was expected kept with the words. Before that (bugbar,
+//      2026-11-13: it did nothing), two boxes and Clear the marks: none
+//      drawn, the count line and what will be sent say so, the button
+//      gone; Leave the picture out and Put the picture back, marks and all.
+//      At 390 the report then goes with no marks: none in what was sent
+//      (details.marks absent) nor in the picture kept.
 //   3. Your reports (/settings#feedback) lists each, its number and where it
 //      stands (Received).
 //   4. Escape and Cancel put it away with nothing sent.
@@ -178,6 +183,19 @@ const KEEP_RED = async ({ selector, png }) => {
   window.__bwBefore = { w, h, red };
   return { w, h, colours: colours.size };
 };
+// In the page: how many pixels of the open report's picture are mark-red
+// that it had not before its marks (window.__bwBefore): 0 with none drawn.
+const RED_NEW = () => {
+  const canvas = document.querySelector("dialog.feedback.report[open] canvas.marking");
+  const before = window.__bwBefore;
+  if (!canvas || !before || before.w !== canvas.width || before.h !== canvas.height) return -1;
+  const px = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
+  let n = 0;
+  for (let i = 0; i < px.length; i += 4) {
+    if (px[i] >= 230 && px[i + 1] <= 90 && px[i + 2] <= 80 && !before.red[i / 4]) n += 1;
+  }
+  return n;
+};
 const near = (a, b, within) => a && b && Math.abs(a.x - b.x) <= within && Math.abs(a.y - b.y) <= within
   && Math.abs(a.x + a.w - b.x - b.w) <= within && Math.abs(a.y + a.h - b.y - b.h) <= within;
 const boxWords = (box) => `${box.x},${box.y},${box.w},${box.h}`;
@@ -316,16 +334,54 @@ try {
     check(`${width}: it says what will be sent: "${state.sends}"`, /^What you wrote · the picture · this page and your browser$/.test(state.sends));
     await shot(page, `2-${width}-${theme}-report.png`);
 
-    const expect = await drawBox(page, [0.22, 0.30], [0.71, 0.58]);
-    state = await reportSaid(page);
-    check(`${width}: a drag on it draws a box: "${state.marks}" / "${state.sends}"`, state.marks.startsWith("1 mark.")
-      && state.sends.includes("the picture, with 1 mark"));
-    await shot(page, `2-${width}-${theme}-marked.png`);
+    // Two boxes, then Clear the marks: the picture as it was.
+    const report = page.locator("dialog.feedback.report[open]");
+    await drawBox(page, [0.10, 0.12], [0.30, 0.25]);
+    await drawBox(page, [0.55, 0.62], [0.85, 0.80]);
+    const two = await reportSaid(page);
+    const drawnTwo = await page.evaluate(RED_NEW);
+    await shot(page, `2-${width}-${theme}-two-marks.png`);
+    await report.getByRole("button", { name: "Clear the marks" }).click();
+    const cleared = await reportSaid(page);
+    const left = await page.evaluate(RED_NEW);
+    const clearShown = await report.getByRole("button", { name: "Clear the marks" }).isVisible();
+    check(`${width}: two boxes ("${two.marks}", ${drawnTwo} red pixels), then Clear the marks: "${cleared.marks}" / "${cleared.sends}",`
+      + ` ${left} red pixels left, the button ${clearShown ? "still there" : "gone"}`, two.marks.startsWith("2 marks.") && drawnTwo > 200
+      && cleared.marks === "Drag on the picture to mark the spot." && left === 0 && !clearShown
+      && cleared.sends === "What you wrote · the picture · this page and your browser");
+    await shot(page, `2-${width}-${theme}-cleared.png`);
+    // Leave the picture out, and put it back, marks and all.
+    await drawBox(page, [0.40, 0.40], [0.60, 0.55]);
+    await report.getByRole("button", { name: "Leave the picture out" }).click();
+    const out_ = await reportSaid(page);
+    await report.getByRole("button", { name: "Put the picture back" }).click();
+    const backAgain = await reportSaid(page);
+    check(`${width}: Leave the picture out: "${out_.marks}" / "${out_.sends}"; Put the picture back: "${backAgain.marks}" / "${backAgain.sends}"`,
+      !out_.picture && out_.marks === "No picture goes with it." && out_.sends === "What you wrote · this page and your browser"
+      && Boolean(backAgain.picture) && backAgain.marks.startsWith("1 mark.") && backAgain.sends.includes("the picture, with 1 mark"));
+    await report.getByRole("button", { name: "Clear the marks" }).click();
+    // At 390 it goes with no marks; at 1280 with one box, found where drawn.
+    const unmarked = width < 600;
+    let expect = null;
+    if (!unmarked) {
+      expect = await drawBox(page, [0.22, 0.30], [0.71, 0.58]);
+      state = await reportSaid(page);
+      check(`${width}: a drag on it draws a box: "${state.marks}" / "${state.sends}"`, state.marks.startsWith("1 mark.")
+        && state.sends.includes("the picture, with 1 mark"));
+      await shot(page, `2-${width}-${theme}-marked.png`);
+    }
+    const posted = page.waitForRequest((asked) => asked.method() === "POST" && /\/api\/plans\?op=feedback/.test(asked.url()),
+      { timeout: 60000 }).catch(() => null);
     const dialog = page.locator("dialog.feedback.report[open]");
     const words = `The second brick floats after an undo. (bugreport flow ${rand} ${width})`;
     await dialog.locator('textarea[name="words"]').fill(words);
     await dialog.locator('textarea[name="expected"]').fill("It sits back on the first.");
     await dialog.locator("button[type=submit]").click();
+    const body = (await posted)?.postDataJSON() || null;
+    if (unmarked) {
+      check(`${width}: sent with the marks cleared: no marks in its details (${JSON.stringify(body?.details)}), the picture with it`,
+        Boolean(body?.details) && !("marks" in body.details) && body.details.from === "bar" && Boolean(body.picture?.data));
+    }
     await until(page, () => {
       const open = document.querySelector("dialog.feedback.report[open]");
       const status = open?.querySelector('[role="status"]')?.textContent || "";
@@ -345,11 +401,20 @@ try {
       else {
         check(`${width}: kept, the site's: its words and what was expected, from the bar's call`, inbox.row?.source === "site"
           && inbox.row.words === `${words}\n\nExpected: It sits back on the first.` && inbox.row.details?.from === "bar");
-        const found = inbox.picture ? await page.evaluate(RED_BOX, [inbox.picture, expect]) : null;
-        check(`${width}: the picture in the owner's inbox (${found?.size?.join(" x ")}) has the box, red, where it was drawn:`
-          + ` found ${JSON.stringify(found?.box)}, drawn ${JSON.stringify(expect)} (each edge within 2 px; its edge`
-          + ` ${Math.round((found?.edge || 0) * 100)}% red)`, found?.same && near(found.box, expect, 2) && found.edge >= 0.9);
-        check(`${width}: ...and its details say it: ${inbox.row?.details?.marks}`, near(boxOf(inbox.row?.details?.marks), expect, 1));
+        if (unmarked) {
+          const whole = { x: 0, y: 0, w: before.w, h: before.h };
+          const found = inbox.picture ? await page.evaluate(RED_BOX, [inbox.picture, whole]) : null;
+          check(`${width}: the picture in the owner's inbox (${found?.size?.join(" x ")}) has no box drawn in it`
+            + ` (${found?.box ? `red bounds ${JSON.stringify(found.box)}, edge ${Math.round(found.edge * 100)}%` : "no new red"}),`
+            + ` and its details no marks (${JSON.stringify(inbox.row?.details?.marks)})`, Boolean(found?.same)
+            && (!found.box || found.edge < 0.9) && Boolean(inbox.row) && inbox.row.details?.marks === undefined);
+        } else {
+          const found = inbox.picture ? await page.evaluate(RED_BOX, [inbox.picture, expect]) : null;
+          check(`${width}: the picture in the owner's inbox (${found?.size?.join(" x ")}) has the box, red, where it was drawn:`
+            + ` found ${JSON.stringify(found?.box)}, drawn ${JSON.stringify(expect)} (each edge within 2 px; its edge`
+            + ` ${Math.round((found?.edge || 0) * 100)}% red)`, found?.same && near(found.box, expect, 2) && found.edge >= 0.9);
+          check(`${width}: ...and its details say it: ${inbox.row?.details?.marks}`, near(boxOf(inbox.row?.details?.marks), expect, 1));
+        }
       }
     }
     await page.keyboard.press("Escape");

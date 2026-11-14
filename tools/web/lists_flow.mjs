@@ -204,7 +204,7 @@ try {
   const owned1 = await untilApi(async () => ((await ownedOf(ada, SET)) === 1 ? 1 : null), "owned");
   check(`the toast: "${said}", and the server: ${owned1 ?? "not"} owned`, /in the sets you own/i.test(said) && /Undo/.test(said) && owned1 === 1);
   await shot(page, "02_card-own-toast-1280-light.png");
-  await page.click("body > .toast .undo");
+  await page.click("body > .toast .toast-act");
   const undone = await untilApi(async () => ((await ownedOf(ada, SET)) === 0 ? "none" : null), "undone");
   await until(page, (s) => document.querySelector(s)?.getAttribute("aria-pressed") === "false", "unpressed", 10, own).catch(() => null);
   check(`Undo: ${await pressed(page, own)} on the card, the server owns ${undone ?? "still one"}`, undone === "none"
@@ -302,7 +302,7 @@ try {
   }, "placed");
   check(`the server keeps her order (${placed?.join(", ") || "not"}); the toast: "${moved}"`, Boolean(placed) && /moved to 1 of 2/i.test(moved));
   await shot(page, "07_lists-order-1280-light.png");
-  await page.click("body > .toast .undo");
+  await page.click("body > .toast .toast-act");
   const back = await untilApi(async () => {
     const answer = await api(`/api/people?op=list_items&id=${listId}`, { token: ada.access_token });
     return answer.body.items?.[0]?.key === `model:${tower}` ? true : null;

@@ -86,6 +86,8 @@
       "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/admin   (401 signed out, 404 for anyone but MASTER_EMAIL)",
       "area": "account",
       "tests": [
+        "tests/fixtures/menu/admin_check.mjs",
+        "tests/test_menu_admin.py",
         "tests/test_packaged_facts.py"
       ]
     },
@@ -4705,6 +4707,8 @@
       "reach": "https://brickworks.diy/admin   (signed in to the app as MASTER_EMAIL; ?tests=1 the checks' own): the owner's console, one page of sections by address: #overview (what needs you, how things stand, the switches, the latest acts; GET /api/admin?op=overview), #people (every account, searched, filtered, sorted; #people/<account> its panel with Take out the account and Let back in; ?op=people, ?op=person&account=U), #gallery/<tab> (reported, comments, listed, pick, challenges, tested, barred), #beta/<tab> (applications, testers; the beta's switch, POST ?op=beta_switch {mode}), #feedback, #audit (every act, newest first; ?op=audit&act&q&before)",
       "area": "account",
       "tests": [
+        "tests/fixtures/menu/admin_check.mjs",
+        "tests/test_menu_admin.py",
         "tests/test_packaged_facts.py"
       ]
     },
@@ -4893,6 +4897,8 @@
       "reach": "https://brickworks.diy/admin signed in as MASTER_EMAIL: This week's pick (what visitors see, the choices with End, the week worked out) and Make it the pick beside every model in the gallery",
       "area": "web",
       "tests": [
+        "tests/fixtures/menu/admin_check.mjs",
+        "tests/test_menu_admin.py",
         "tests/test_packaged_facts.py"
       ]
     },
@@ -5834,7 +5840,7 @@
       "id": "ui:report a bug on the site",
       "kind": "ui",
       "entry": "web/bugreport.js",
-      "reach": "window.brickworksReportBug({source: \"site\"}) on any page (the beta bar's Report a bug loads it): the page drawn to a picture by the page itself, web/feedback.js's report mode over the page with a box to drag on it; signed out, a sign-in first; sent, Report #N and Your reports (/settings#feedback); tools/web/bugreport_flow.mjs",
+      "reach": "window.brickworksReportBug({source: \"site\"}) on any page (the beta bar's Report a bug loads it): the page drawn to a picture by the page itself, web/feedback.js's report mode over the page with a box to drag on it; signed out, a sign-in first; two boxes and Clear the marks takes them off, sent with none; sent, Report #N and Your reports (/settings#feedback); tools/web/bugreport_flow.mjs",
       "area": "web",
       "tests": []
     },
@@ -5955,6 +5961,8 @@
       "reach": "/admin as MASTER_EMAIL, This month's challenge (?tests=1 sets a test one): POST /api/admin?op=challenge, ?op=end_challenge&challenge=N; Set a year of themes: POST /api/admin?op=plan",
       "area": "web",
       "tests": [
+        "tests/fixtures/menu/admin_check.mjs",
+        "tests/test_menu_admin.py",
         "tests/test_packaged_facts.py"
       ]
     },
@@ -6151,7 +6159,7 @@
       "id": "ui:the account menu",
       "kind": "ui",
       "entry": "web/follow.js",
-      "reach": "https://brickworks.diy/gallery signed in: the avatar in the header opens who you are, Your profile, Notifications and Your feed with their counts, Saved, Settings, Send feedback (and Beta hub for a beta tester, web/early.js), the theme and Sign out (at 390 px, Menu is the avatar and holds the same)",
+      "reach": "https://brickworks.diy/gallery signed in: the avatar in the header opens who you are, Your profile, Notifications and Your feed with their counts, Saved, Settings, Send feedback (and Beta hub for a beta tester, web/early.js; Report a bug for everyone while the beta is open), the theme, Admin to /admin for the site's owner alone (op=feed_count's admin: true), and Sign out (at 390 px, Menu is the avatar and holds the same)",
       "area": "web",
       "tests": []
     },
@@ -6191,7 +6199,7 @@
       "id": "ui:the beta bar",
       "kind": "ui",
       "entry": "web/betabar.js",
-      "reach": "<deployment>/ any page, with the beta open (tools/deploy.sh --unit --beta-open)   (web/theme.js asks for it; Open beta to /beta, Report a bug (window.brickworksReportBug of web/bugreport.js, else Send feedback as a bug), Join or You're a tester; its x hides it for a day; none with the beta off, on an embed or on the consent page; tools/web/betahome_flow.mjs)",
+      "reach": "<deployment>/ any page, with the beta open (tools/deploy.sh --unit --beta-open)   (web/theme.js asks for it; Open beta to /beta, Report a bug (window.brickworksReportBug of web/bugreport.js, else Send feedback as a bug), Join or You're a tester; its x hides it until shown again, said in a toast with Settings and Undo; Settings' Show the beta bar on every page (signed out too) brings it back at once; Report a bug in the account menu and Menu while the beta is open; none with the beta off, on an embed or on the consent page; tools/web/betahome_flow.mjs)",
       "area": "web",
       "tests": []
     },

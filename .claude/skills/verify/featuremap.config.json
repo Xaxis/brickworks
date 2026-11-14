@@ -3088,7 +3088,7 @@
       "kind": "ui",
       "label": "the account menu",
       "entry": "web/follow.js",
-      "reach": "https://brickworks.diy/gallery signed in: the avatar in the header opens who you are, Your profile, Notifications and Your feed with their counts, Saved, Settings, Send feedback (and Beta hub for a beta tester, web/early.js), the theme and Sign out (at 390 px, Menu is the avatar and holds the same)",
+      "reach": "https://brickworks.diy/gallery signed in: the avatar in the header opens who you are, Your profile, Notifications and Your feed with their counts, Saved, Settings, Send feedback (and Beta hub for a beta tester, web/early.js; Report a bug for everyone while the beta is open), the theme, Admin to /admin for the site's owner alone (op=feed_count's admin: true), and Sign out (at 390 px, Menu is the avatar and holds the same)",
       "area": "web"
     },
     {
@@ -5111,7 +5111,7 @@
       "kind": "ui",
       "label": "the beta bar",
       "entry": "web/betabar.js",
-      "reach": "<deployment>/ any page, with the beta open (tools/deploy.sh --unit --beta-open)   (web/theme.js asks for it; Open beta to /beta, Report a bug (window.brickworksReportBug of web/bugreport.js, else Send feedback as a bug), Join or You're a tester; its x hides it for a day; none with the beta off, on an embed or on the consent page; tools/web/betahome_flow.mjs)",
+      "reach": "<deployment>/ any page, with the beta open (tools/deploy.sh --unit --beta-open)   (web/theme.js asks for it; Open beta to /beta, Report a bug (window.brickworksReportBug of web/bugreport.js, else Send feedback as a bug), Join or You're a tester; its x hides it until shown again, said in a toast with Settings and Undo; Settings' Show the beta bar on every page (signed out too) brings it back at once; Report a bug in the account menu and Menu while the beta is open; none with the beta off, on an embed or on the consent page; tools/web/betahome_flow.mjs)",
       "area": "web"
     },
     {
@@ -5174,7 +5174,7 @@
       "kind": "ui",
       "label": "report a bug on the site",
       "entry": "web/bugreport.js",
-      "reach": "window.brickworksReportBug({source: \"site\"}) on any page (the beta bar's Report a bug loads it): the page drawn to a picture by the page itself, web/feedback.js's report mode over the page with a box to drag on it; signed out, a sign-in first; sent, Report #N and Your reports (/settings#feedback); tools/web/bugreport_flow.mjs",
+      "reach": "window.brickworksReportBug({source: \"site\"}) on any page (the beta bar's Report a bug loads it): the page drawn to a picture by the page itself, web/feedback.js's report mode over the page with a box to drag on it; signed out, a sign-in first; two boxes and Clear the marks takes them off, sent with none; sent, Report #N and Your reports (/settings#feedback); tools/web/bugreport_flow.mjs",
       "area": "web"
     },
     {

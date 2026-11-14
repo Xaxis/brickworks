@@ -335,9 +335,12 @@ is on the page, `hidden`, for the script to show.
   `.models` (a grid: two to a row on a phone, three from 600 px and four
   from 900 px up, the owner's four a row on a desktop, 2026-10-29, so a
   page of 24 is whole rows at every width), `.models.compact` (more to a
-  row, beside a rail), `.models.wide` (fewer, one to a row on a phone, for
-  cards that carry a button under them) or `.models.scroller` (one row of
-  them, a Scroller).
+  row, beside a rail) or `.models.scroller` (one row of them, a
+  Scroller). A card that carries an action keeps it inside, at its foot
+  over the card's link as the designer's name is (a collection's Follow, a
+  challenge's Vote), never in a row of its own under the card: so
+  `.models.wide`, one to a row on a phone for a button under each card,
+  went with the challenge's old entries (challengepage, 2026-11-13).
   A set of the LDraw library (`/library`, library333) is the same card:
   its name the link to `/library/<id>`, its cover (the app's own
   renderer's, the model on nothing), "Modelled by" whoever modelled it for
@@ -690,13 +693,17 @@ is on the page, `hidden`, for the script to show.
   200 ms after typing stops, and the cards it will replace step back
   while it is asked (`[data-browse="asking"]`). Its styles are the
   page's own `<style>`, so it waits on no sheet more before it is drawn.
-- **Toast**: `web/kit.js` `toast("Link copied")`: one line at the foot of
-  the screen, in the page's colours the other way round, read out
-  (`role="status"`, on the page empty from its load, since a screen
-  reader reads a region's change and not a region that arrives already
-  speaking), gone in 2.4 s. `toast(words, { undo })` adds an Undo
-  button (`.toast.acts`): eight seconds, held while the pointer or the
-  keyboard is on it; every tap that keeps something has one.
+- **Toast**: `web/kit.js` `toast("Link copied")` (made in `web/toast.js`):
+  one line at the foot of the screen, in the page's colours the other way
+  round, read out (`role="status"`, on the page empty from its load, since
+  a screen reader reads a region's change and not a region that arrives
+  already speaking), gone in 2.4 s. With an action, `toast(words,
+  {action: {label, run}, focus, back})`, it is a snackbar (`.toast.act`):
+  what was just done, a link to where it is changed again, and the action
+  (Undo) as a bordered button in the toast's own colours; it takes the
+  pointer, stays 8 s and while it is pointed at or holds the keyboard (4 s
+  more once left), Escape puts it away, and the keyboard goes back to
+  `back` if it was in the toast. The beta bar's × is the first.
 - **Own, Want and Save** (`web/card.js` `keepHtml`, `web/keep.js`,
   docs/LISTS.md): `.keep`, a split pill over a card's picture's foot,
   right: the main half Own (a set) or Save (a model), its icon a plus
@@ -704,7 +711,7 @@ is on the page, `hidden`, for the script to show.
   pressed (`aria-pressed`; the words never change, so a voice names what
   it sees), ×N when more than one is owned; the chevron opens the lists,
   with a dot when the thing is in one. In a compact grid only the icons.
-  A set's page has the same as `.keep-bar`, three ghost `.cta`s: Own,
+  Every keep is in a toast with Undo. A set's page has the same as `.keep-bar`, three ghost `.cta`s: Own,
   Want, Add to a list.
 - **A thing's lists**: `dialog.keep-panel`, a popover by the button that
   opened it (a sheet at the foot under 600 px): its name, a `label.choice`
@@ -727,7 +734,19 @@ is on the page, `hidden`, for the script to show.
   the page and moving nothing in it: an accent `.badge` to /beta, a
   ghost small `.cta` Report a bug, a small `.cta` Join (or a link that
   says you're a tester, its check in `--green`) and an `.icon-btn` × that
-  hides it for a day. It rises and fades in after the page is drawn
+  hides it in this browser until it is shown again (bugbar, 2026-11-13;
+  before, for a day with nothing said). The × says so in a snackbar (the
+  Toast, with an action): "Beta bar hidden. Show it again in Settings."
+  (signed in, "Report a bug is in your account menu." after it), Settings
+  a link to `/settings#beta-part`, and Undo, which brings it back with
+  the keyboard on its ×. Settings' Beta row has the `.choice` "Show the
+  beta bar on every page" (signed out, a row of its own under the
+  sign-in), as it stands, shown or hidden at once with no reload and the
+  other tabs following; `localStorage` `brickworks.betabar.hidden` is
+  `"off"` while hidden (a number is a day's hiding from before, kept to
+  its end). Report a bug never needs the bar: the account menu and Menu
+  have it for everyone while the beta is open, and the footer has Send
+  feedback. It rises and fades in after the page is drawn
   (none with reduced motion). On a phone its badge says Beta, its parts
   sit closer and a tester's has no third part; still too wide for the
   window (a small phone, a long language), `.tight` drops the badge and
@@ -785,14 +804,36 @@ is on the page, `hidden`, for the script to show.
   number in words, `.to-next` in `--ink` ("13 more to reach Designer · 25
   models.") and `.how`, the way there, a link where a page helps. A track
   not begun is dashed on no panel.
-- **A challenge** (`/challenge`, site357): its name, days and brief in
-  `.challenge-hero.halo`, a panel lit as a landing page's last offer is;
-  then the rules and how to enter, each a panel, side by side from 900 px.
+- **A challenge** (`/challenge`, site357; laid out as the best contest
+  pages are, challengepage 2026-11-13): a `.page-hero` whose
+  `.challenge-top` is two columns from 900 px. On the left a status
+  `.badge` (`.good` Open, `.accent` Opens soon, plain Ended) beside the
+  `.eyebrow`, the name, the brief as the `.lede`, the rules Brickworks
+  checks as `.ticks` in a `.rules-box`, and one primary `.cta.big` (Enter a
+  model) beside Share as `.cta.ghost.big`. On the right `.challenge-clock`,
+  a panel edged in `--accent-edge`: what it counts to, a `.countdown` of
+  four boxes (days, hours, minutes, seconds; the number at `--t-h1`,
+  tabular), the days and how far through them as a `.reach` bar, and
+  `.numbers` (entries, designers, votes once counted; a nought never
+  said). Under the hero, a column at `--s-8`: once ended the winners first
+  (`.winners`, two tiles a row from 600 px, each its `.winner-h` line, the
+  award in a `.glyph`, over the winner's card lit in the accent); the
+  entries, their groups as `.tabs` with counts and the order as a
+  `.segmented`, the line over the cards saying your vote, then the
+  gallery's cards in `.models` with each card's vote line at its foot (a
+  `.badge` Winner, Your vote, Your entry, or `.cta.ghost.small` Vote, asked
+  once in a `dialog.report`); How it works as three `ol.steps` and two
+  `details.qa`; Coming next and Past challenges.
 - **A challenge, between months** (`/challenge`, docs/SOCIAL.md U12):
-  under the one shown, Coming next (`#next`, a `.card` of its theme and
-  days) and Past challenges (`#past`, each an `article.past-one`: its name
-  a link to its own page, its days, its winners as `.models` cards); its own
-  page (`?id=N`) is the same page under the `.crumbs` back to the hub.
+  under the one shown, Coming next (`#next`, a `.next-one` panel: an
+  `.accent` badge of the day it opens, its theme and days) and Past
+  challenges (`#past`, a `.models` grid of `article.model.past-card`: a
+  `.mosaic` of its winners' pictures, its name a link to its own page, its
+  days and entries, each winner named with the award icon). Its own page
+  (`?id=N`) is the same page under the `.crumbs` back to the hub. With no
+  challenge, the hero says so and offers Start building; with none at a
+  number, This month's challenge; when it did not load, Try again: each in
+  the hero's own actions, never a dead end.
 - **Your profile** (`/profile`, `web/profile.html`, docs/SOCIAL.md U6):
   your page as a person's page draws it (the same `.profile-head`,
   `.numbers`, `.pinned` and `.tabs`), with Edit profile, Settings, Share
@@ -807,10 +848,17 @@ is on the page, `hidden`, for the script to show.
   new for you as the header's `.count` over its corner, opening a
   `details.more-menu.end.account-menu` with the header Menu's panel: who
   you are (`.menu-who`), your places (`.account-part nav`: Your profile,
-  Notifications and Your feed each with its `.count`, Saved, Settings),
-  the theme and Sign out (`.menu-list > .sign-out`). At a phone's width
+  Notifications and Your feed each with its `.count`, Saved, Settings,
+  Send feedback, and while the beta is open Report a bug for everyone,
+  `a[data-report-bug]`, its dialog over the page), the theme, for the
+  site's owner alone Admin (`.menu-owner`, the gauge icon before its name,
+  under a line, to /admin; drawn only from op=feed_count's `admin: true`,
+  which nobody else is sent) and Sign out (`.menu-list > .sign-out`). At a phone's width
   Menu's summary is the avatar and its panel holds the site's links, then
-  the same. Open, the avatar is ringed in `--accent-edge`.
+  the same. Open, the avatar is ringed in `--accent-edge`, and the panel
+  is over the beta bar and never taller than the window: past it, it
+  scrolls in itself, so Sign out is always in reach (the header is sticky,
+  and the page's own scroll never brought it up).
 - **Notifications** (`/notifications`, `web/directory.css`): `.notices`,
   a list of `.notice` cards, one a model: its 4:3 `.pic`, its name as an
   `h2` at `--t-body`, and `.lines`, each a link with an avatar (who did

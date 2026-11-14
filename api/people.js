@@ -107,7 +107,9 @@
 //                                 nothing of its own (api/_follows.js)
 //   GET  ?op=feed_count           (session) what is new: notifications and
 //                                 the feed, apart and together, and who the
-//                                 caller is, for the avatar in the header
+//                                 caller is, for the avatar in the header;
+//                                 admin: true for the site's owner alone
+//                                 (the account menu's Admin), no key else
 //   GET  ?op=notifications        (session) what happened to the caller's
 //                                 models, grouped by model; opening it
 //                                 clears its count (api/_notifications.js)
