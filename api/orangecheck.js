@@ -335,7 +335,8 @@ async function tell(email, subject, text) {
   try {
     const reply = await fetch("https://api.resend.com/emails", {
       method: "POST", headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
-      body: JSON.stringify({ from: process.env.EMAIL_FROM || SENDER, to: [email], subject, text }),
+      body: JSON.stringify({ from: process.env.EMAIL_FROM || SENDER, to: [email], subject, text,
+        tags: [{ name: "kind", value: "sign_in_notice" }] }),
       signal: AbortSignal.timeout(10000) });
     if (!reply.ok) console.error(`orangecheck: Resend refused a notice: ${reply.status}`);
     return reply.ok ? "sent" : "failed";

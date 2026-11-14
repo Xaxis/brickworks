@@ -3,7 +3,9 @@
 // drawn when it is opened. This file is the console itself: its gate, its
 // sections and their addresses, the Overview, People with an account's
 // panel, and the Audit log. The Gallery is admin-gallery.js, the Beta
-// admin-beta.js, Feedback admin-feedback.js.
+// admin-beta.js, Feedback admin-feedback.js; part B (console2) Plans
+// admin-plans.js, Mail admin-mail.js, Connector admin-connector.js (and an
+// account's panel at #connector/<account>), Site admin-site.js.
 //
 // Everything is put on the page as text, never as markup: the addresses,
 // names and words are what people typed.
@@ -14,10 +16,14 @@ import { $, TESTS, act, adminJson, ago, cell, count, day, emptyRow, make, post, 
 import { keepInView, loadGallery, whenChanged as galleryChanged } from "/admin-gallery.js";
 import { loadBeta, whenChanged as betaChanged } from "/admin-beta.js";
 import { loadFeedback } from "/admin-feedback.js";
+import { loadPlans } from "/admin-plans.js";
+import { loadMail } from "/admin-mail.js";
+import { connectorOf, loadConnector } from "/admin-connector.js";
+import { loadSite, releaseOf, versionOf } from "/admin-site.js";
 // Its tables scroll as every scroller on the site does; it has no kit.
 import "/scroller.js";
 
-const SECTIONS = ["overview", "people", "gallery", "beta", "feedback", "audit"];
+const SECTIONS = ["overview", "people", "gallery", "beta", "feedback", "plans", "mail", "connector", "site", "audit"];
 const TABS = { gallery: ["reported", "comments", "listed", "pick", "challenges", "tested", "barred"],
   beta: ["applications", "testers"] };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -29,7 +35,7 @@ function route() {
   if (/^comment-\d+$/.test(hash)) return { section: "gallery", tab: "comments", asked: hash };
   if (/^feedback(-\d+)?$/.test(hash)) return { section: "feedback" };
   const [section, rest = ""] = hash.split("/");
-  if (section === "people") return { section, account: UUID.test(rest) ? rest.toLowerCase() : null };
+  if (section === "people" || section === "connector") return { section, account: UUID.test(rest) ? rest.toLowerCase() : null };
   if (TABS[section]) return { section, tab: TABS[section].includes(rest) ? rest : TABS[section][0] };
   return { section: SECTIONS.includes(section) ? section : "overview" };
 }
@@ -41,6 +47,10 @@ const loaders = {
   gallery: () => loadGallery(),
   beta: () => loadBeta(),
   feedback: () => loadFeedback(),
+  plans: () => loadPlans(),
+  mail: () => loadMail(),
+  connector: () => loadConnector(),
+  site: () => loadSite(),
   audit: () => loadAudit(),
 };
 const loaded = new Set();
@@ -76,6 +86,7 @@ async function show() {
     }
   }
   if (at.section === "people") await person(at.account);
+  if (at.section === "connector") await connectorPanel(at.account);
 }
 
 // ---------------------------------------------------------------------------
@@ -107,6 +118,7 @@ $("again").addEventListener("click", async () => {
   try {
     await Promise.all([loadOverview(), at === "overview" ? null : loaders[at]()]);
     if (at === "people" && route().account) await person(route().account, true);
+    if (at === "connector" && route().account) await connectorPanel(route().account, true);
     say("note", `Updated ${new Date().toLocaleTimeString()}`);
   } catch (problem) {
     say("note", problem.message, true);
@@ -148,6 +160,15 @@ async function loadOverview() {
   need(failed, failed === 1 ? "email that did not go this week" : "emails that did not go this week",
     o.mail?.answers?.failed ? "#feedback" : "#beta/applications", true);
   if (o.switches?.mail?.borrowing) needs.push({ n: "!", words: `Sign-in codes go out as ${o.switches.mail.borrowing}, a borrowed sender`, warn: true });
+  // The backend first: when Supabase refuses, nothing else here is right.
+  const health = o.site?.health;
+  if (health && !health.ok) needs.unshift({ n: "!", words: health.fix, href: "#site", warn: true });
+  for (const cron of o.site?.crons || []) {
+    needs.push({ n: "!", words: `${cron.path} ${cron.state === "late" ? "has not run when it should have" : "failed"}`
+      + `${cron.at ? `, last ${ago(cron.at)}` : ""}`, href: "#site", warn: true });
+  }
+  const trouble = (o.delivery?.bounced || 0) + (o.delivery?.complained || 0);
+  need(trouble, trouble === 1 ? "email bounced or marked as spam this week" : "emails bounced or marked as spam this week", "#mail", true);
   $("needs").replaceChildren(...needs.map((one) => {
     const to = make(one.href ? "a" : "div", "", make("b", "", String(one.n)), make("span", "", one.words));
     if (one.href) to.href = one.href;
@@ -157,10 +178,12 @@ async function loadOverview() {
   badge("nav-gallery", o.reports?.open);
   badge("nav-beta", o.beta?.applications?.new);
   badge("nav-feedback", o.feedback?.new);
+  badge("nav-mail", trouble);
+  badge("nav-site", (health && !health.ok ? 1 : 0) + (o.site?.crons?.length || 0));
 
   const a = o.accounts || {};
   $("n-accounts").textContent = count(a.all);
-  say("n-accounts-said", TESTS ? "the checks' own" : "");
+  say("n-accounts-said", o.accounts === null ? "could not be read just now" : TESTS ? "the checks' own" : "");
   $("n-joined-day").textContent = count(a.joined_day);
   say("n-joined-week", `${count(a.joined_week)} in 7 days`);
   $("n-week").textContent = count(a.signed_in_week);
@@ -173,8 +196,11 @@ async function loadOverview() {
   $("n-feedback").textContent = o.feedback ? count(o.feedback.new) : "—";
   const sent = o.mail ? (o.mail.beta?.sent || 0) + (o.mail.answers?.sent || 0) : null;
   $("n-mail").textContent = count(sent);
+  const d = o.delivery;
   say("n-mail-said", o.mail ? `${failed} did not go; ${(o.mail.beta?.dry || 0) + (o.mail.answers?.dry || 0)} kept for a test inbox. `
-    + "Delivered and bounced: Resend's to say." : "Not counted yet: supabase/console.sql is not applied.");
+    + (d?.heard ? `Resend: ${count(d.delivered)} delivered, ${count(d.bounced)} bounced this week.` : "Delivered and bounced: in Mail, once Resend's webhook reaches here.")
+    : "Not counted yet: supabase/console.sql is not applied.");
+  drawRelease(o.site);
   say("stands-said", TESTS ? "The site's checks' own accounts, models and mail (?tests=1)." : "");
 
   drawSwitches(o.switches);
@@ -182,7 +208,17 @@ async function loadOverview() {
   return o;
 }
 
-let version = null;
+/// The live release, in the Overview's numbers: the latest written down,
+/// and whether this deployment is it.
+async function drawRelease(site) {
+  const live = site?.live || null;
+  const v = await versionOf();
+  $("n-release").textContent = live ? live.tag : "—";
+  const mine = live && releaseOf([live], v?.commit);
+  say("n-release-said", live ? `since ${when(live.live_at)}${mine ? "" : v ? `; this is commit ${v.commit}` : ""}`
+    : site?.kept === false ? "not kept yet: supabase/console2.sql" : "none written down yet");
+}
+
 async function drawSwitches(set) {
   const facts = $("switches");
   const fact = (term, ...value) => facts.append(make("dt", "", term), make("dd", "", ...value));
@@ -198,12 +234,12 @@ async function drawSwitches(set) {
     set.mail?.borrowing ? `; borrowing ${set.mail.borrowing}` : "");
   if (set.mail?.reply_to) fact("Answers go to", set.mail.reply_to);
   const services = set.services || {};
-  const NAMES = { database: "the database", mail: "mail (Resend)", admission: "plans (Admission)", orangecheck: "orangecheck",
-    crons: "the crons" };
+  const NAMES = { database: "the database", mail: "mail (Resend)", mail_events: "Resend's webhook", admission: "plans (Admission)",
+    admission_read: "Admission's read token", orangecheck: "orangecheck", crons: "the crons" };
   const have = Object.keys(NAMES).filter((one) => services[one]).map((one) => NAMES[one]);
   const lack = Object.keys(NAMES).filter((one) => !services[one]).map((one) => NAMES[one]);
   fact("Keys here", have.length ? have.join(", ") : "none", lack.length ? `; none for ${lack.join(", ")}` : "");
-  version ||= await fetch("/version.json", { cache: "no-store" }).then((reply) => (reply.ok ? reply.json() : null)).catch(() => null);
+  const version = await versionOf();
   fact("This site", version ? `commit ${version.commit}, deployed ${when(version.deployed)} (${ago(version.deployed)})` : "—");
   say("meta-build", version ? `Commit ${version.commit}, deployed ${ago(version.deployed)}` : "");
 }
@@ -245,16 +281,23 @@ function targetOf(row) {
   }
 }
 
+/// How an act came out, in a pill; a refusal's words go beside it
+/// (refusal), where they wrap: in the pill, which never wraps, a long one
+/// pushed a phone's page sideways (console2, 2026-11-13).
 function outcome(row) {
   const ok = row.status >= 200 && row.status < 300;
-  return make("span", ok ? "pill good" : "pill", ok ? "Done" : `Refused, ${row.status}${row.said ? `: ${row.said}` : ""}`);
+  const pill = make("span", ok ? "pill good" : "pill", ok ? "Done" : `Refused, ${row.status}`);
+  if (!ok && row.said) pill.title = row.said;
+  return pill;
 }
+const refusal = (row) => ((row.status >= 200 && row.status < 300) || !row.said ? "" : make("small", "why faint", row.said));
 
 function drawLatest(rows) {
   const list = $("latest");
   list.replaceChildren(...(rows || []).map((row) => {
     const on = targetOf(row);
-    return make("li", "", make("span", "", `${opSaid(row)}: `, on), make("small", "", `${when(row.at)} · ${row.actor}`), outcome(row));
+    return make("li", "", make("span", "", `${opSaid(row)}: `, on), make("small", "", `${when(row.at)} · ${row.actor}`), outcome(row),
+      refusal(row));
   }));
   $("latest-none").hidden = Boolean(rows?.length);
   if (rows === null) say("latest-none", "Not kept yet: supabase/console.sql is not applied.");
@@ -293,7 +336,8 @@ async function loadAudit(before = null) {
     timeCell(tr, row.at);
     cell(tr, opSaid(row));
     cell(tr, targetOf(row), "about");
-    cell(tr, outcome(row));
+    const why = refusal(row);
+    cell(tr, why ? make("span", "", outcome(row), make("br"), why) : outcome(row));
     cell(tr, row.actor);
     const acts = make("td", "acts");
     acts.append(rowAct("Details", async () => { openAct(row); return false; }));
@@ -315,7 +359,7 @@ function openAct(row) {
   fact("When", when(row.at));
   fact("What", `${opSaid(row)} (${row.op})`);
   fact("On", targetOf(row));
-  fact("Outcome", outcome(row));
+  fact("Outcome", outcome(row), row.said && !(row.status >= 200 && row.status < 300) ? ` ${row.said}` : "");
   fact("By", row.actor);
   fact("Where", row.scope === "live" ? "brickworks.diy" : row.scope || "—");
   if (row.test) fact("A test's", "yes: done on the checks' own");
@@ -396,7 +440,8 @@ async function person(account, again = false, told = "") {
     if ($("sheet").open && $("sheet").dataset.kind === "person") $("sheet").close();
     return;
   }
-  if (!again && $("sheet").open && $("sheet").dataset.account === account) return;
+  // Already open on this account's own panel; its connector's is another.
+  if (!again && $("sheet").open && $("sheet").dataset.kind === "person" && $("sheet").dataset.account === account) return;
   openSheet("Looking…", make("p", "note", "Reading the account…"), { kind: "person", account });
   let one;
   try {
@@ -423,7 +468,11 @@ async function person(account, again = false, told = "") {
   const b = one.beta;
   fact("Beta", b ? `${BETA[b.state] || b.state || "—"}${b.joined_at ? ` since ${day(b.joined_at)}` : ""}${b.application
     ? `; month ${b.application.status}${b.application.spot ? `, spot ${b.application.spot}` : ""}` : ""}` : "—");
-  fact("Connectors", one.connectors.length ? `${one.connectors.length}, last heard ${ago(one.connectors.map((c) => c.seen_at).sort().at(-1))}` : "none");
+  const toConnector = make("a", "", one.connectors.length || one.claudes?.length ? "its sessions" : "none");
+  toConnector.href = `#connector/${account}`;
+  fact("Connector", one.connectors.length ? `${one.connectors.length} ${one.connectors.length === 1 ? "tab" : "tabs"}, last heard `
+    + `${ago(one.connectors.map((c) => c.seen_at).sort().at(-1))}; ` : "", one.claudes?.length ? `${one.claudes.length} `
+    + `${one.claudes.length === 1 ? "Claude" : "Claudes"} let in; ` : "", toConnector);
   if (one.barred) fact("Taken out", `${when(one.barred.at)}${one.barred.reason ? `: ${one.barred.reason}` : ""}`);
   if (one.test) fact("A test's", "an account of the site's checks (resend.dev)");
   parts.push(facts);
@@ -480,12 +529,28 @@ async function person(account, again = false, told = "") {
   const acts = make("div", "part", make("h3", "", "Acts on this account"));
   if (one.audit?.length) {
     acts.append(make("ul", "acts-list", ...one.audit.map((row) => make("li", "", make("span", "", opSaid(row)),
-      make("small", "", `${when(row.at)} · ${row.actor}`), outcome(row)))));
+      make("small", "", `${when(row.at)} · ${row.actor}`), outcome(row), refusal(row)))));
   } else {
     acts.append(make("p", "note", one.audit === null ? "Not kept yet: supabase/console.sql is not applied." : "None yet."));
   }
   parts.push(acts);
   openSheet(one.email || "no address", parts, { kind: "person", account });
+}
+
+/// An account's connector whole, in the panel: when the address names one.
+async function connectorPanel(account, again = false) {
+  if (!account) {
+    if ($("sheet").open && $("sheet").dataset.kind === "connector") $("sheet").close();
+    return;
+  }
+  if (!again && $("sheet").open && $("sheet").dataset.kind === "connector" && $("sheet").dataset.account === account) return;
+  openSheet("Looking…", make("p", "note", "Reading the connector…"), { kind: "connector", account });
+  try {
+    const { title, parts } = await connectorOf(account);
+    openSheet(title, parts, { kind: "connector", account });
+  } catch (problem) {
+    openSheet("Not read", make("p", "note bad", problem.message), { kind: "connector", account });
+  }
 }
 
 /// After an act on an account: the list, the counts and its panel again,
@@ -514,6 +579,9 @@ $("sheet").addEventListener("click", (event) => { if (event.target === $("sheet"
 $("sheet").addEventListener("close", () => {
   // Closed, an account's address goes back to the list's.
   if ($("sheet").dataset.kind === "person" && route().account) history.replaceState(null, "", `${location.pathname}${location.search}#people`);
+  if ($("sheet").dataset.kind === "connector" && route().account) {
+    history.replaceState(null, "", `${location.pathname}${location.search}#connector`);
+  }
   $("sheet").dataset.account = "";
 });
 

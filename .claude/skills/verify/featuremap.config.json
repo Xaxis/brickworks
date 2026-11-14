@@ -5337,6 +5337,69 @@
       "entry": "src/dev/fingertools_probe.gd",
       "reach": "tools/probe.sh fingertools_probe   (windowed, 390x844 by its header; through the sign-in screen with a throwaway account (.env); pictures in --shots=DIR, else user://fingertools)",
       "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "the console's plans and revenue",
+      "entry": "web/admin-plans.js",
+      "reach": "<deployment>/admin#plans as MASTER_EMAIL: GET /api/admin?op=plans (api/_console_plans.js): billing off says so and asks Admission nothing; on, the plans and what each includes, the customers from Admission's snapshots (admission_customers), comps, and with ADMISSION_READ_TOKEN revenue by month and Admission's record; read only, each part linked to where it changes at admission.sh",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the console's mail",
+      "entry": "web/admin-mail.js",
+      "reach": "<deployment>/admin#mail as MASTER_EMAIL (?tests=1 the checks' own): GET /api/admin?op=mail&days=7|30|90 (api/_console_mail.js, supabase/console2.sql admin_mail): every mail by kind and day, sent, delivered, bounced, complained, each with its address, subject and why, beside beta_mail and feedback_replies",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the console's connector",
+      "entry": "web/admin-connector.js",
+      "reach": "<deployment>/admin#connector as MASTER_EMAIL (?tests=1 the checks' own): GET /api/admin?op=connector[&account=U] (api/_console_connector.js): each account's Claudes, tabs, conversations and tool calls (relay_call_days), its state; #connector/<account> its panel, linked from People; read only",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the console's site",
+      "entry": "web/admin-site.js",
+      "reach": "<deployment>/admin#site as MASTER_EMAIL: GET /api/admin?op=site (api/_console_site.js): the live release and since when (site_releases), the releases before with their units, each cron's last runs (cron_runs_of, canary_runs), Supabase's auth/rest/storage answering; the Overview's live release and a 402 under Needs you now",
+      "area": "web"
+    },
+    {
+      "kind": "api",
+      "label": "Resend's word on each mail",
+      "entry": "api/_console_mail.js",
+      "reach": "POST /api/otp?op=mail_event, signed as Svix signs (svix-id, svix-timestamp, svix-signature) with RESEND_WEBHOOK_SECRET: 404 with no secret, 401 unsigned or stale, 200 {kept:false} for another product's mail, kept once in mail_events; tools/web/resend_webhook.sh sets the webhook up",
+      "area": "account"
+    },
+    {
+      "kind": "lib",
+      "label": "the console's part B reads",
+      "entry": "supabase/console2.sql",
+      "reach": "python3 tools/minitest.py tests/test_console2.py   (console2.sql and api/admin.js's plans, mail, connector, site and otp.js's mail_event against a real Postgres: the gate, Resend's signature, each read)",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "console2 browser flow",
+      "entry": "tools/web/console2_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/console2_flow.mjs --url=<preview> --out=DIR   (MASTER_EMAIL's session minted: the gate, Mail playing Resend, a throwaway's tab, Claude and calls in Connector, Site, Plans, each at 390/1280 light/dark; preview check [console2])",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "a release written down live",
+      "entry": "tools/release/release_live.sh",
+      "reach": "tools/release/release_live.sh TAG SHA [SPEC]   (ship.sh, once the domain serves the release: a row of site_releases; --backfill the live trains in bench/results/release-out)",
+      "area": "release"
+    },
+    {
+      "kind": "cli",
+      "label": "Resend's webhook set up",
+      "entry": "tools/web/resend_webhook.sh",
+      "reach": "RESEND_ADMIN_KEY=<the team's full-access key, never a deployment's> tools/web/resend_webhook.sh [--check] [--redeploy]   (after a release with the op is live: the webhook to /api/otp?op=mail_event, its secret in Vercel production env and .env)",
+      "area": "web"
     }
   ]
 }

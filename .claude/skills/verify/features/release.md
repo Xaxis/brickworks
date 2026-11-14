@@ -7,7 +7,7 @@ repository of builds only (Xaxis/brickworks-releases), and the download page
 that offers each system its own build. The cycle and its cadence are
 `docs/RELEASING.md`.
 
-<!-- covers: cli:say which build this is, cli:build the desktop packages, cli:smoke a package, ui:the boot splash, cli:publish a release, cli:check a release on three systems, ui:download page, cli:download page check, cli:coming soon check, cli:move the downloads to the releases repository, cli:check every release link, cli:a model file's picture, cli:check the .deb's thumbnails, cli:release train, ui:about and the licences, cli:about credits probe, cli:outside probe, lib:the desktop app updates itself, lib:the signed update manifest, ui:update notice, ui:check for updates reinstall and restart, cli:update helper, cli:updater probe, cli:update check -->
+<!-- covers: cli:a release written down live, cli:say which build this is, cli:build the desktop packages, cli:smoke a package, ui:the boot splash, cli:publish a release, cli:check a release on three systems, ui:download page, cli:download page check, cli:coming soon check, cli:move the downloads to the releases repository, cli:check every release link, cli:a model file's picture, cli:check the .deb's thumbnails, cli:release train, ui:about and the licences, cli:about credits probe, cli:outside probe, lib:the desktop app updates itself, lib:the signed update manifest, ui:update notice, ui:check for updates reinstall and restart, cli:update helper, cli:updater probe, cli:update check -->
 
 ## Sub-features
 
@@ -293,6 +293,18 @@ that offers each system its own build. The cycle and its cadence are
   asset's bytes, followed to the signed URL, the token never sent past the
   API): the check that still means something once the repo is private (U8).
   Both ways 15 of 15 on 2026-10-29 (a gh token standing in).
+- `a release written down live` (`tools/release/release_live.sh`, console2):
+  once brickworks.diy serves the release, `ship.sh` writes a row of
+  `site_releases` (`supabase/console2.sql`, `site_release_live`): the tag,
+  the commit live, its train's title and units, live from now; never fails
+  a ship, and needs no Vercel token. `--backfill [RELEASE_OUT]` writes every
+  train whose `result` is `live`, each at the time its result was written,
+  with the commit main took for it. The owner's console reads it on
+  `/admin#site` ([account](account.md)). Prove: `tools/release/release_live.sh
+  --backfill`, then `curl -s -X POST "$SUPABASE_URL/rest/v1/rpc/site_releases_list"
+  -H "apikey: $SUPABASE_SECRET_KEY" -H "Authorization: Bearer $SUPABASE_SECRET_KEY"
+  -H 'content-type: application/json' -d '{"p_limit":3}'` lists the latest
+  live first (rel-m295 at 35d44dbd47f2 on 2026-11-13).
 - `download page`: `web/download.html`, served at `/download`
   (tools/site.py copies every file in `web/`; the old `/download.html` 308s
   to `/download`), and its copies at /de/download, /fr/download and

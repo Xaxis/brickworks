@@ -111,6 +111,22 @@
 //                                        on a preview that preview's)
 //   POST /api/admin?op=beta_waitlist&account=U  {note}: a new application
 //                                        on the waitlist, by hand
+//   GET  /api/admin?op=plans             the plans and what each includes,
+//                                        the customers, comps, revenue by
+//                                        month and Admission's events, read
+//                                        from Admission (api/_console_plans.js)
+//   GET  /api/admin?op=mail[&days=N][&tests=1]  every mail sent, by kind and
+//                                        day, with what Resend said of each
+//                                        (api/_console_mail.js)
+//   GET  /api/admin?op=connector[&account=U][&tests=1]  the Claude
+//                                        connector's accounts and
+//                                        conversations (api/_console_connector.js)
+//   GET  /api/admin?op=site              the releases, the crons' last runs
+//                                        and the backend's health
+//                                        (api/_console_site.js)
+//
+// Part B (console2, 2026-11-12): those four read, and are not audited, as
+// no read is; none of them changes anything anywhere.
 //
 // The console (2026-11-12, docs/ADMIN.md): every POST above is kept in the
 // audit (api/_console.js audited), whatever came of it, before it answers.
@@ -140,6 +156,10 @@ import { betaDecide, betaGrant, betaQueue, betaSwitchRoute, betaTesters, betaWai
 import { audited, auditRoute, overview, people, person, switches } from "./_console.js";
 import { feedbackFile, feedbackInbox, feedbackReply, feedbackTriage } from "./_feedback.js";
 import { forgetSettings } from "./_settings.js";
+import { plansRead } from "./_console_plans.js";
+import { mailRead } from "./_console_mail.js";
+import { connectorRead } from "./_console_connector.js";
+import { siteRead, supabaseHealth } from "./_console_site.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -181,6 +201,13 @@ export default async function handler(request, response) {
     claims = await verify(bearer(request), request);
   } catch (error) {
     const status = error instanceof AuthError ? error.status : 401;
+    // The sign-in service out of reach: whose fault, and where it is put
+    // right (Supabase refused every request for its spend cap, 2026-11-12).
+    // Anybody can read the same from Supabase's own address.
+    if (status === 503) {
+      const health = await supabaseHealth().catch(() => null);
+      if (health && !health.ok) return response.status(503).json({ error: health.fix, health: health.restricted ? "restricted" : "down" });
+    }
     return response.status(status).json({ error: error.message });
   }
   if (!isMaster(claims)) {
@@ -213,6 +240,10 @@ export default async function handler(request, response) {
     overview: () => overview(request, tests),
     people: () => people(tests),
     switches: () => switches(request),
+    plans: () => plansRead(),
+    mail: () => mailRead(request, tests),
+    connector: () => connectorRead(tests, request.query?.account ? String(request.query.account).toLowerCase() : null),
+    site: () => siteRead(),
   };
   if (reads[op] || op === "person" || op === "audit") {
     try {
@@ -221,7 +252,8 @@ export default async function handler(request, response) {
         const one = await person(String(request.query?.account || ""), tests);
         return one ? response.status(200).json(one) : response.status(404).json({ error: "no such account" });
       }
-      return response.status(200).json(await reads[op]());
+      const read = await reads[op]();
+      return read === null ? response.status(404).json({ error: "no such account" }) : response.status(200).json(read);
     } catch (error) {
       return response.status(error instanceof AuthError ? error.status : 502).json({ error: error.message });
     }

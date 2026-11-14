@@ -701,7 +701,11 @@ withheld=(OC_SIGNING_SECRET OC_CONNECT_KEY RESEND_API_KEY ANTHROPIC_API_KEY)
 blank=()
 if [ "$unit" = 1 ]; then
   for k in "${withheld[@]}"; do blank+=(--env "$k="); done
-  echo "deploy: a unit's preview, without ${withheld[*]}"
+  # Resend's webhook (api/_console_mail.js): the checks' own signing secret,
+  # nobody's real one, with which a preview keeps only mail to Resend's
+  # test inboxes, so a check can play Resend's part.
+  blank+=(--env "RESEND_WEBHOOK_SECRET=whsec_YnJpY2t3b3JrcyBjaGVja3MgbWFpbCBzdGFuZC1pbiwgbm9ib2R5IHMgcmVhbCBvbmU=")
+  echo "deploy: a unit's preview, without ${withheld[*]}, with the checks' own mail webhook secret"
 fi
 # Plans on for this deployment alone, never on the project (api/_billing.js):
 # test mode, the stand-in's own key and webhook secret (a test's, nobody's
@@ -709,7 +713,8 @@ fi
 # asked for by name, so no request leaves the function for Admission.
 if [ "$stand_in" = 1 ]; then
   blank+=(--env BRICKWORKS_BILLING=test --env ADMISSION_KEY=adm_test_00000000000000000000000000000000
-    --env ADMISSION_URL=stand-in --env ADMISSION_WEBHOOK_SECRET=adm_whsec_standin0000000000000000000000)
+    --env ADMISSION_URL=stand-in --env ADMISSION_WEBHOOK_SECRET=adm_whsec_standin0000000000000000000000
+    --env ADMISSION_READ_TOKEN=adm_owner_00000000000000000000000000000000)
   echo "deploy: plans on in test mode, against the stand-in Admission"
 fi
 # Or against the real Admission in test mode (billtest358, 2026-10-29): its
