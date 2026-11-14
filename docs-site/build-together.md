@@ -1,6 +1,6 @@
 ---
 panels: TogetherDialog
-ai: Build together puts several people on one model live, by a link, each in their own browser: each sees the others' parts, pointers and selections in their colours, can follow another's view, and can pin comments to parts. On a shared model's viewer, Build together deals the model out among up to four phones by a code, to build in real bricks.
+ai: Build together puts several people on one model live, by a link, each in their own browser: each sees the others' parts, pointers and selections in their colours, can point a part out to everyone (Alt+W, for 5 seconds), can follow another's view, and can pin comments to parts. On a shared model's viewer, Build together deals the model out among up to four phones by a code, to build in real bricks.
 rules:
   - Undo takes back only a person's own changes.
   - The chat, and comments in a session, are for people 13 and over.
@@ -41,6 +41,7 @@ Open the link someone sent you and sign in. Or paste it in **File › Build toge
 ### While you build {#while}
 
 - **Undo takes back only your own changes**, never someone else's.
+- **Point a part out**: put the pointer on it and press [[Alt+W]], or right-click it and choose **Point it out to the others**. Everyone in the session sees it outlined in your colour with your name over it for 5 seconds, and their status bar says who points at what. [[Esc]] takes yours back from everyone; on someone else's screen, Esc puts theirs away. Your Claude can point one out too, named as yours ([point_at](/docs/mcp-tools)).
 - **Follow** beside a name puts your view where theirs is and keeps it there as they turn it; a bar over the view says *Following* with **Stop**. Moving the view yourself stops it too.
 - A short chat is there for people 13 and over.
 - Someone you build with can send you only their words and parts, never anything that runs.

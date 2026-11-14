@@ -386,6 +386,11 @@ declare -A CMD=(
   # said so: "the API's database needs supabase/together_big.sql").
   [together_probe]="tools/web/together_probe.mjs --url=$P"
   [together]="tools/web/together_flow.mjs --url=$P --out=$S/${TAG}_together"
+  # pointat (APP_UX8 #17): a part pointed out by Alt+W in a room of two
+  # tabs, drawn in the other within 500 ms (p95 of 20) with the pointer's
+  # name, gone after 5 s or on the pointer's Esc, put away by the other's
+  # Esc there alone; the owner's Claude pointing in one call.
+  [pointat]="tools/web/pointat_flow.mjs --url=$P --out=$S/${TAG}_pointat"
   # A build party (APP_UX5 buildparty): two phones on one shared link and
   # no account, joined by a code in 2 taps each, the car dealt in two (all
   # 61 parts once), a part done on either on the other within 2 s, a phone
@@ -753,7 +758,8 @@ run() {
 # a minute, and every page here reads that switch: beside it, betahome took
 # the beta for off and then found the bar on every page (rel-m294,
 # 2026-11-13), so it runs with nothing of this battery beside it.
-SOLO=" idle arrival progress cursor render_open render product_render grab share_steps frames play discovery oc together buildparty load console "
+# pointat times a part pointed out crossing between two tabs, as together does.
+SOLO=" idle arrival progress cursor render_open render product_render grab share_steps frames play discovery oc together buildparty load console pointat "
 PAIRED=""; ALONE=""
 for n in $NAMES; do case "$SOLO" in *" $n "*) ALONE="$ALONE $n";; *) PAIRED="$PAIRED $n";; esac; done
 # PC_AT_ONCE at a time, a slot taking the next check as soon as it is

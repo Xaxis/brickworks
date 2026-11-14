@@ -95,3 +95,33 @@ def test_somebody_pointing_reads_no_more_than_nobody():
     assert abs(listening["people"] - idle["people"]) <= 1, (listening, idle)
     assert unheard["people"] > listening["people"]
     assert listening["ops"] <= idle["ops"] + 1 and listening["sessions"] <= idle["sessions"] + 1
+
+
+# -- pointat (APP_UX8 #17): a part pointed out, with the pointer ------------------
+
+
+def test_a_part_pointed_out_goes_out_at_once_with_its_age():
+    looked = _run()["looked"]
+    assert looked["sent"] == 200 and looked["ms"] is not None and looked["ms"] < 50, looked
+    first = next(look for look in looked["looks"] if look and look["n"] == 1763000000000)
+    assert first["sel"] == ["ab12.3"] and first["at"] == [1, 2, 3] and first["claude"] is False
+    assert 40 <= first["age"] < 400
+
+
+def test_a_part_pointed_out_ages_out_at_5_s_and_is_taken_back_without_it():
+    looks = [look["n"] if look else None for look in _run()["looked"]["looks"]]
+    old = _run()["looked"]["looks"][looks.index(1763000000001)]
+    # Said with the age it had on its side, and Claude's; then nothing, at
+    # 5 s, before the next was pointed out.
+    assert old["age"] >= 4800 and old["claude"] is True and old["sel"] == ["ab12.3", "ab12.4"]
+    after = looks[looks.index(1763000000001):]
+    assert after.index(None) < after.index(1763000000002)
+    # The third, then a point without it: nothing, to the end.
+    assert looks[-1] is None and 1763000000002 in looks
+
+
+def test_a_look_not_of_its_shape_is_refused_and_none_keeps_the_signature():
+    looked = _run()["looked"]
+    assert looked["refused"] == [400] * 7
+    assert looked["always"] is True
+

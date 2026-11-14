@@ -44,6 +44,9 @@ var _chat_scroll: ScrollContainer
 var _busy: bool = false
 
 const WIDTH := 440
+## pointat (APP_UX8 #17): how to point a part out to the others, in a session.
+const POINT_WORDS := ("To show the others a part, put the pointer on it and press "
+	+ "{together_point}, or right-click it: Point it out to the others.")
 
 
 func _ready() -> void:
@@ -206,6 +209,9 @@ func fill() -> void:
 		_note.text = ("You are building “%s” with %s. Your Undo takes back only your own changes.") \
 			% [together.store.title, "the others" if others != 1 else "one other"]
 		_end.text = "Leave"
+	# pointat (APP_UX8 #17): how to show the others a part, its key as the
+	# person's keymap has it.
+	_note.text += "\n\n" + Keymap.filled(POINT_WORDS, true)
 	for item: Variant in together.people:
 		var person: Dictionary = item
 		var row := HBoxContainer.new()

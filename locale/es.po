@@ -14127,3 +14127,44 @@ msgstr "suelta Shift para llevar también las %s apoyadas encima"
 
 msgid "what rests on it stays, more than a drag can follow"
 msgstr "lo que está encima se queda: más de lo que un arrastre puede llevar"
+
+# A part pointed out to everyone in a Build together session (APP_UX8
+# #17, pointat).
+msgid "Point it out to the others"
+msgstr "Mostrarlo a los demás"
+
+msgid "Everyone in your Build together session sees the part under the pointer, or the parts selected, outlined in your colour with your name for 5 seconds; Esc takes it back"
+msgstr "Todos en tu sesión de Construir juntos ven la pieza bajo el puntero, o las piezas seleccionadas, rodeada de tu color con tu nombre durante 5 segundos; Esc lo retira"
+
+msgid "Start or join a session first: File › Build together…"
+msgstr "Inicia o únete primero a una sesión: Archivo › Construir juntos…"
+
+msgid "Point a part out in a Build together session: start or join one from File, Build together…."
+msgstr "Se muestra una pieza en una sesión de Construir juntos: inicia o únete a una desde Archivo, Construir juntos…."
+
+msgid "Put the pointer on a part, or select it, to point it out."
+msgstr "Pon el puntero sobre una pieza, o selecciónala, para mostrarla."
+
+msgid "Pointed out for 5 seconds, but nobody else is here now."
+msgstr "Mostrado durante 5 segundos, pero ahora no hay nadie más."
+
+msgid "Pointed out to %s for 5 seconds. Esc takes it back."
+msgstr "Mostrado a %s durante 5 segundos. Esc lo retira."
+
+msgid "%s points at %s. Esc puts it away."
+msgstr "%s señala %s. Esc lo oculta."
+
+msgid "Your Claude points out %s to the others. Esc takes it back."
+msgstr "Tu Claude muestra %s a los demás. Esc lo retira."
+
+msgid "%s's Claude"
+msgstr "Claude de %s"
+
+msgid "You"
+msgstr "Tú"
+
+msgid "Your Claude"
+msgstr "Tu Claude"
+
+msgid "To show the others a part, put the pointer on it and press %s, or right-click it: Point it out to the others."
+msgstr "Para mostrar una pieza a los demás, pon el puntero sobre ella y pulsa %s, o haz clic derecho en ella: Mostrarlo a los demás."

@@ -14127,3 +14127,44 @@ msgstr "Shift loslassen, um die %s darauf mitzunehmen"
 
 msgid "what rests on it stays, more than a drag can follow"
 msgstr "was darauf liegt, bleibt: mehr, als ein Ziehen mitnehmen kann"
+
+# A part pointed out to everyone in a Build together session (APP_UX8
+# #17, pointat).
+msgid "Point it out to the others"
+msgstr "Den anderen zeigen"
+
+msgid "Everyone in your Build together session sees the part under the pointer, or the parts selected, outlined in your colour with your name for 5 seconds; Esc takes it back"
+msgstr "Alle in deiner Sitzung von Gemeinsam bauen sehen das Teil unter dem Zeiger oder die ausgewählten Teile 5 Sekunden lang in deiner Farbe umrandet, mit deinem Namen; Esc nimmt es zurück"
+
+msgid "Start or join a session first: File › Build together…"
+msgstr "Starte oder betritt zuerst eine Sitzung: Datei › Gemeinsam bauen…"
+
+msgid "Point a part out in a Build together session: start or join one from File, Build together…."
+msgstr "Ein Teil zeigst du in einer Sitzung von Gemeinsam bauen: starte oder betritt eine unter Datei, Gemeinsam bauen…."
+
+msgid "Put the pointer on a part, or select it, to point it out."
+msgstr "Zeig mit dem Zeiger auf ein Teil oder wähle es aus, um es zu zeigen."
+
+msgid "Pointed out for 5 seconds, but nobody else is here now."
+msgstr "5 Sekunden lang gezeigt, aber gerade ist sonst niemand da."
+
+msgid "Pointed out to %s for 5 seconds. Esc takes it back."
+msgstr "Für %s 5 Sekunden lang gezeigt. Esc nimmt es zurück."
+
+msgid "%s points at %s. Esc puts it away."
+msgstr "%s zeigt auf %s. Esc blendet es aus."
+
+msgid "Your Claude points out %s to the others. Esc takes it back."
+msgstr "Dein Claude zeigt den anderen %s. Esc nimmt es zurück."
+
+msgid "%s's Claude"
+msgstr "Claude von %s"
+
+msgid "You"
+msgstr "Du"
+
+msgid "Your Claude"
+msgstr "Dein Claude"
+
+msgid "To show the others a part, put the pointer on it and press %s, or right-click it: Point it out to the others."
+msgstr "Um den anderen ein Teil zu zeigen, zeig mit dem Zeiger darauf und drück %s, oder klick es rechts an: Den anderen zeigen."
