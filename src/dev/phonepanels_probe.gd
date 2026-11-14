@@ -142,6 +142,7 @@ func _run() -> void:
 
 	print("\n1. the page editor, on the car's page")
 	await _page_editor()
+	await _put_away_page_editor()
 	print("\n2. Motions, on 1484-1's doors")
 	await _motions()
 	print("\n3. Simulate, on the two-planet orrery")
@@ -218,6 +219,15 @@ func _page_editor() -> void:
 	var named: Dictionary = editor.controls_by_name()
 	for name: String in PAGE_CONTROLS:
 		_measure(name, named.get(name))
+	# All of it on the screen: a line of its words once held it wider than a phone.
+	var screen: Rect2 = root.get_visible_rect().grow(1.0)
+	var cut: Array[String] = []
+	for name: String in PAGE_CONTROLS + ["page_canvas"]:
+		var control: Control = named.get(name) as Control
+		if control != null and control.is_visible_in_tree() and not screen.encloses(control.get_global_rect()):
+			cut.append(name)
+	_check("every control and the page on the screen, none cut off at its edge (%s)"
+		% ("all" if cut.is_empty() else "cut: " + ", ".join(cut)), cut.is_empty())
 
 	# An item dragged by a finger.
 	var picture: String = ""
@@ -246,7 +256,8 @@ func _page_editor() -> void:
 	if not _check("the picture selected shows its corner", handle != null):
 		return
 	_measure("page_resize", handle)
-	var corner_rect: Rect2 = item.get_global_rect()
+	# The tap that selected it drew the page's items again.
+	var corner_rect: Rect2 = (editor.controls_by_name()[picture] as Control).get_global_rect()
 	var grab: Vector2 = _middle(handle)
 	was = editor.page_state()["items"][picture]
 	print("    the corner's fingertip runs %.0f points past the item's corner, %.0f into it" % [
@@ -317,8 +328,14 @@ func _page_editor() -> void:
 		if editor._item_name(n) == words_item:
 			kept = str((editor._items[n].get("note", {}) as Dictionary).get("text", ""))
 	_check("opened again, the page's words read \"%s\"" % kept, kept == "Hi")
-	editor.close()
-	await _frames(6)
+
+
+## The page editor and the timeline put away, whatever the section reached.
+func _put_away_page_editor() -> void:
+	var editor: PageEditor = _main.get("_page_editor")
+	if editor != null and editor.is_open():
+		editor.close()
+		await _frames(6)
 	if (_main.get("_steps") as StepsBar).visible:
 		_shell.run("timeline")
 		await _frames(10)

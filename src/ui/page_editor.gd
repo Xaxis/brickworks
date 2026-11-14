@@ -346,6 +346,20 @@ func _lay_for_a_finger() -> void:
 	var touch: Node = app.get("_touch") if app != null else null
 	if touch != null:
 		touch.call("size_panel", self)
+	# What it says wraps at the screen's width: a line of it longer than a
+	# phone held the whole editor wider than the screen, its buttons and the
+	# page cut off at the right.
+	_said.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# The words field across what the row has left; Turn and Opacity as wide
+	# as their words at a finger's size, which ran past the desktop's 124.
+	_words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_words.custom_minimum_size.x = _px(160.0)
+	for box: SpinBox in [_turn_box, _opacity_box]:
+		var edit: LineEdit = box.get_line_edit()
+		var font: Font = edit.get_theme_font("font")
+		var across: float = font.get_string_size("%s -180 %s" % [box.prefix, box.suffix],
+			HORIZONTAL_ALIGNMENT_LEFT, -1, edit.get_theme_font_size("font_size")).x
+		box.custom_minimum_size.x = across + _px(36.0)
 	_words.select_all_on_focus = true
 	_words.gui_input.connect(_keep_words_selected)
 	_fit()
