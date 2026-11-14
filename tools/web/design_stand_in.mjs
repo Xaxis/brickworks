@@ -59,6 +59,9 @@ import { noticeGroups } from "../../api/_notifications.js";
 import { LATEST, designersFrom, feedSaid } from "../../api/_follows.js";
 // More like a designer: the order the API puts them in.
 import { alikeOf, closestDesigners } from "../../api/_alike.js";
+// The console's crons and Admission's pages, as its Site and Plans read them.
+import { CRONS } from "../../api/_console_site.js";
+import { AT_ADMISSION } from "../../api/_console_plans.js";
 // What a handle may not be, as the API says it (a new account's First steps).
 import { handleTrouble } from "../../api/_names.js";
 // What a featured model's card says (gallery362).
@@ -2102,6 +2105,78 @@ function adminPerson(one) {
   feedback: [], billing: "off", audit: AUDIT.filter((row) => row.target === one.id) };
 }
 
+// The console's part B reads (console2): Plans, Mail, Connector and Site,
+// each in its API's shape (api/_console_plans.js, _console_mail.js,
+// _console_connector.js, _console_site.js). Without them each fell through
+// to the old whole-page answer below: Plans and Mail drew its gaps as
+// "undefined", Connector broke on its count of accounts and Site drew no
+// crons (rel-m298's design and a11y).
+const CONSOLE_AT = "2026-10-19T09:00:00Z";
+/// Plans as this site has them: billing off, nothing asked of Admission.
+function adminPlans() {
+  return { billing: "off", key: false, read: false, at: AT_ADMISSION, plans: null, customers: null, metrics: null,
+    months: null, events: null, said: {} };
+}
+/// Mail: Resend's webhook set up, a code delivered, a beta mail bounced, a
+/// digest kept for a test inbox.
+function adminMail(params) {
+  const days = Math.max(1, Math.min(365, Number(params.get("days")) || 30));
+  const mails = [
+    { id: "em_design_code", kind: "sign_in_code", address: "robin@example.com", subject: "Your Brickworks sign-in code",
+      at: "2026-10-19T08:10:00Z", last_at: "2026-10-19T08:10:04Z", states: ["sent", "delivered"], detail: null, kept: "sent", what: null },
+    { id: "em_design_beta", kind: "beta", address: "jo@example.com", subject: "You're in the Brickworks beta",
+      at: "2026-10-18T12:00:00Z", last_at: "2026-10-18T12:00:09Z", states: ["sent", "bounced"],
+      detail: "Permanent: the mailbox does not exist", kept: "sent", what: null },
+    { id: null, kind: "digest", address: "mika@example.com", subject: "New on Brickworks this week", at: "2026-10-17T07:00:00Z",
+      last_at: "2026-10-17T07:00:00Z", states: [], detail: null, kept: "dry", what: null },
+  ];
+  const by_day = [
+    { day: "2026-10-19", kind: "sign_in_code", sent: 1, delivered: 1, delayed: 0, bounced: 0, complained: 0, failed: 0 },
+    { day: "2026-10-18", kind: "beta", sent: 1, delivered: 0, delayed: 0, bounced: 1, complained: 0, failed: 0 },
+  ];
+  return { ready: true, tests: false, days, webhook: true, checks_secret: false, key: true,
+    sender: "Brickworks <noreply@brickworks.diy>", mails, more: false, by_day,
+    totals: { sent: 2, delivered: 1, delayed: 0, bounced: 1, complained: 0, failed: 0, kept_dry: 1, kept_failed: 0 },
+    heard: "2026-10-19T08:10:04Z" };
+}
+/// The connector: Robin with a conversation working in a tab, Sam with a
+/// Claude let in and no tab on.
+const CONNECTED = [
+  { account: ROBIN, email: "robin@example.com", state: "working", live_sessions: 1, live_tabs: 1,
+    claudes: [{ name: "Claude", client: "claude-ai 0.1.0", since: "2026-09-02T10:00:00Z", used_at: CONSOLE_AT }],
+    tabs: [{ tab: "k3m9", model: "Castle gate", open: true, live: true, seen_at: CONSOLE_AT, used_at: CONSOLE_AT, visible: true }],
+    sessions: [{ chat: "3fa9c1d2", way: "connection", tab: "k3m9", model: "Castle gate", since: "2026-10-19T08:20:00Z",
+      last_call: CONSOLE_AT, tool: "look_at_model", calls: 14, moved: false, live: true }],
+    calls: { today: 14, week: 52, month: 130 }, last: { at: CONSOLE_AT, tool: "look_at_model" } },
+  { account: SAM, email: EMAIL, state: "added", live_sessions: 0, live_tabs: 0,
+    claudes: [{ name: "Claude Code", client: "claude-code 2.1.0", since: "2026-10-01T18:00:00Z", used_at: "2026-10-12T19:30:00Z" }],
+    tabs: [], sessions: [], calls: { today: 0, week: 0, month: 21 }, last: { at: "2026-10-12T19:30:00Z", tool: "place_part" } },
+];
+function adminConnector(params) {
+  const account = params.get("account");
+  const accounts = account ? CONNECTED.filter((one) => one.account === account) : CONNECTED;
+  return { tests: false, counted: true, days_kept: true, accounts,
+    sessions: accounts.flatMap((one) => one.sessions.map((s) => ({ ...s, account: one.account, email: one.email }))) };
+}
+/// Site: two releases, every cron run as it should, Supabase answering.
+function adminSite() {
+  const part = (name, ms) => ({ name, ok: true, status: 200, ms, restricted: false, said: null });
+  return {
+    releases: [
+      { tag: "rel-m241", sha: "5a1c0e9d2b7f", live_at: "2026-10-18T22:00:00Z", units: ["console2", "lists1"],
+        title: "The owner's console reads plans, mail, the connector and the site" },
+      { tag: "rel-m240", sha: "9e3b71c04aa1", live_at: "2026-10-16T21:00:00Z", units: ["bugbar"], title: "Report a bug from every page" },
+    ],
+    releases_error: null,
+    crons: CRONS.map((cron, at) => ({ ...cron, state: "ok", runs: [0, 1, 2].map((back) => ({
+      at: new Date(Date.parse(CONSOLE_AT) - (back * cron.every) - at * 36e5).toISOString(),
+      finished_at: new Date(Date.parse(CONSOLE_AT) - (back * cron.every) - at * 36e5 + 4000).toISOString(),
+      outcome: back === 1 && cron.job === "share_sweep" ? "unchanged" : "done", holder: null, said: {} })) })),
+    health: { ok: true, at: CONSOLE_AT, restricted: false, fix: null,
+      parts: { auth: part("Sign-in (Supabase Auth)", 41), rest: part("Database (Supabase REST)", 58), storage: part("Files (Supabase Storage)", 66) } },
+  };
+}
+
 /// /api/admin: the site's owner's page.
 function admin(method, params, who, state) {
   if (!who) return answer(401, { error: SIGN_IN });
@@ -2113,6 +2188,10 @@ function admin(method, params, who, state) {
   if (method === "GET" && op === "audit") return answer(200, { ready: true, rows: AUDIT, more: false });
   if (method === "GET" && op === "feedback") return answer(200, INBOX);
   if (method === "GET" && op === "people") return answer(200, adminPeople());
+  if (method === "GET" && op === "plans") return answer(200, adminPlans());
+  if (method === "GET" && op === "mail") return answer(200, adminMail(params));
+  if (method === "GET" && op === "connector") return answer(200, adminConnector(params));
+  if (method === "GET" && op === "site") return answer(200, adminSite());
   if (method === "GET" && op === "person") {
     const one = adminPeople().people.find((p) => p.id === params.get("account"));
     return one ? answer(200, adminPerson(one)) : answer(404, { error: "no such account" });

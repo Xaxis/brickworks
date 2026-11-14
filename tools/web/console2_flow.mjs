@@ -14,7 +14,9 @@
 //      and delivered to delivered+…@resend.dev and a beta mail bounced at
 //      bounced+…@resend.dev; another product's mail let go. The owner
 //      (MASTER_EMAIL's session minted, never its sign-in) on /admin?tests=1
-//      sees both in Mail, each with what became of it, and the days.
+//      sees both in Mail, each with what became of it, and the days. A
+//      deployment with no secret takes no events: Mail says so, and the
+//      webhook's steps are skipped in a line ("mail events not set up here").
 //   3. Connector: a throwaway C switches a tab on and lets a Claude in by
 //      OAuth, as claude.ai does; its conversation calls twice. Connector
 //      lists C working now with its calls, its conversation, and C's panel
@@ -243,46 +245,65 @@ try {
   console.log("2. Mail, as Resend tells of it");
   const before = (await as("/api/admin?op=mail&tests=1")).json || {};
   const secret = before.checks_secret ? STAND_IN_MAIL_SECRET : String(process.env.RESEND_WEBHOOK_SECRET || "");
-  check(`the webhook here: ${before.webhook ? before.checks_secret ? "the checks' own secret" : "Resend's" : "none"}; Mail ready ${before.ready}`,
-    before.ready === true && before.webhook === true && Boolean(secret));
+  // A deployment with no RESEND_WEBHOOK_SECRET takes no mail events, and
+  // its console says so: a release preview has brickworks.diy's settings,
+  // which have none until mail events are turned on there. That is not a
+  // fault of the release; the webhook's steps are skipped, said in a line,
+  // and what the console says of it checked instead.
+  const events = before.webhook === true;
+  if (!events) {
+    check(`mail events not set up here (no RESEND_WEBHOOK_SECRET): op=mail says webhook ${before.webhook}, Mail ready ${before.ready}`,
+      before.ready === true && before.webhook === false && before.checks_secret === false);
+    console.log("  skip  Resend's events (sent, delivered, bounced, another product's, a forged one): mail events not set up here");
+  }
   const code = `bwc2${rand}code`;
   const bounce = `bwc2${rand}beta`;
-  const toCode = address("mail");
-  const toBounce = `bounced+bw-console2-${rand}@resend.dev`;
-  const told = [
-    await resend(secret, mailEvent("sent", toCode, code)),
-    await resend(secret, mailEvent("delivered", toCode, code)),
-    await resend(secret, mailEvent("sent", toBounce, bounce, { subject: "You're in the Brickworks beta", kind: "beta" })),
-    await resend(secret, mailEvent("bounced", toBounce, bounce, { subject: "You're in the Brickworks beta", kind: "beta",
-      data: { bounce: { type: "Permanent", subType: "General", message: "The console's check: no such mailbox" } } })),
-  ];
-  check(`sent and delivered, sent and bounced: ${told.map((one) => `${one.status} ${one.json?.kept}`).join(", ")}`,
-    told.every((one) => one.status === 200 && one.json?.kept === true));
-  const foreign = await resend(secret, mailEvent("delivered", address("other"), `bwc2${rand}other`, { from: "Other <hi@other.example>" }));
-  check(`another product's mail let go: ${foreign.status} ${foreign.json?.why}`, foreign.status === 200 && foreign.json?.kept === false);
-  const forged = await resend(`whsec_${Buffer.from("not this deployment's secret").toString("base64")}`, mailEvent("complained", toCode, code));
-  check(`signed with another secret: ${forged.status}`, forged.status === 401);
-  const after = (await as("/api/admin?op=mail&tests=1")).json || {};
-  const mine = (id) => (after.mails || []).find((one) => one.id === id);
-  check(`op=mail: the code ${mine(code)?.states?.join("+")}, the beta mail ${mine(bounce)?.states?.join("+")} (${mine(bounce)?.detail})`,
-    mine(code)?.states?.includes("delivered") && mine(bounce)?.states?.includes("bounced") && /no such mailbox/.test(mine(bounce)?.detail || ""));
-  const live = (await as("/api/admin?op=mail")).json || {};
-  check("...and none of it among the owner's real mail", !(live.mails || []).some((one) => [code, bounce].includes(one.id)));
+  if (events) {
+    check(`the webhook here: ${before.checks_secret ? "the checks' own secret" : "Resend's"}; Mail ready ${before.ready}`,
+      before.ready === true && Boolean(secret));
+    const toCode = address("mail");
+    const toBounce = `bounced+bw-console2-${rand}@resend.dev`;
+    const told = [
+      await resend(secret, mailEvent("sent", toCode, code)),
+      await resend(secret, mailEvent("delivered", toCode, code)),
+      await resend(secret, mailEvent("sent", toBounce, bounce, { subject: "You're in the Brickworks beta", kind: "beta" })),
+      await resend(secret, mailEvent("bounced", toBounce, bounce, { subject: "You're in the Brickworks beta", kind: "beta",
+        data: { bounce: { type: "Permanent", subType: "General", message: "The console's check: no such mailbox" } } })),
+    ];
+    check(`sent and delivered, sent and bounced: ${told.map((one) => `${one.status} ${one.json?.kept}`).join(", ")}`,
+      told.every((one) => one.status === 200 && one.json?.kept === true));
+    const foreign = await resend(secret, mailEvent("delivered", address("other"), `bwc2${rand}other`, { from: "Other <hi@other.example>" }));
+    check(`another product's mail let go: ${foreign.status} ${foreign.json?.why}`, foreign.status === 200 && foreign.json?.kept === false);
+    const forged = await resend(`whsec_${Buffer.from("not this deployment's secret").toString("base64")}`, mailEvent("complained", toCode, code));
+    check(`signed with another secret: ${forged.status}`, forged.status === 401);
+    const after = (await as("/api/admin?op=mail&tests=1")).json || {};
+    const mine = (id) => (after.mails || []).find((one) => one.id === id);
+    check(`op=mail: the code ${mine(code)?.states?.join("+")}, the beta mail ${mine(bounce)?.states?.join("+")} (${mine(bounce)?.detail})`,
+      mine(code)?.states?.includes("delivered") && mine(bounce)?.states?.includes("bounced") && /no such mailbox/.test(mine(bounce)?.detail || ""));
+    const live = (await as("/api/admin?op=mail")).json || {};
+    check("...and none of it among the owner's real mail", !(live.mails || []).some((one) => [code, bounce].includes(one.id)));
+  }
 
   const { page, context } = await open("/admin?tests=1#mail", { width: 1280, who: owner, label: "mail" });
   await shown(page);
-  check("Mail: the code delivered, the beta mail bounced with why", await until(page, ([a, b]) => {
-    const row = (id) => document.querySelector(`#mail-list tr[data-mail="${id}"]`);
-    return row(a) && /Delivered/.test(row(a).textContent) && row(b) && /Bounced/.test(row(b).textContent)
-      && /no such mailbox/.test(row(b).textContent);
-  }, [code, bounce]));
-  check("...the days counted", await until(page, () => document.querySelectorAll("#mail-days tr").length > 0
-    && Number(document.getElementById("n-mail-bounced").textContent) >= 1));
-  await page.click('[data-filter="mail-state"] button[data-value="trouble"]').catch(() => {});
-  check("...Trouble alone: the bounce, not the delivered", await until(page, ([a, b]) => {
-    const row = (id) => document.querySelector(`#mail-list tr[data-mail="${id}"]`);
-    return row(b) && !row(b).hidden && row(a) && row(a).hidden;
-  }, [code, bounce], 10000));
+  if (events) {
+    check("Mail: the code delivered, the beta mail bounced with why", await until(page, ([a, b]) => {
+      const row = (id) => document.querySelector(`#mail-list tr[data-mail="${id}"]`);
+      return row(a) && /Delivered/.test(row(a).textContent) && row(b) && /Bounced/.test(row(b).textContent)
+        && /no such mailbox/.test(row(b).textContent);
+    }, [code, bounce]));
+    check("...the days counted", await until(page, () => document.querySelectorAll("#mail-days tr").length > 0
+      && Number(document.getElementById("n-mail-bounced").textContent) >= 1));
+    await page.click('[data-filter="mail-state"] button[data-value="trouble"]').catch(() => {});
+    check("...Trouble alone: the bounce, not the delivered", await until(page, ([a, b]) => {
+      const row = (id) => document.querySelector(`#mail-list tr[data-mail="${id}"]`);
+      return row(b) && !row(b).hidden && row(a) && row(a).hidden;
+    }, [code, bounce], 10000));
+  } else {
+    check("Mail says Resend's webhook is not set up here, in its facts and its days", await until(page, () =>
+      /webhook is not set up here/.test(document.getElementById("mail-setup").textContent)
+      && /webhook is not set up here/.test(document.getElementById("mail-days").textContent)));
+  }
   await shot(page, "2-mail-1280.png", false);
 
   // --- 3. Connector ----------------------------------------------------------------
@@ -375,7 +396,7 @@ try {
   // --- 6. Pictures -----------------------------------------------------------------
   console.log("6. Pictures");
   const SECTIONS = [["plans", () => document.getElementById("plans-setup").children.length > 0],
-    ["mail", () => document.querySelectorAll("#mail-list tr[data-mail]").length > 0],
+    ["mail", () => document.querySelectorAll("#mail-list tr").length > 0],
     ["connector", () => document.querySelectorAll("#cx-accounts tr[data-account]").length > 0],
     ["site", () => document.querySelectorAll("#crons tr[data-job]").length > 0],
     ["overview", () => document.getElementById("n-release").textContent !== "—"]];
