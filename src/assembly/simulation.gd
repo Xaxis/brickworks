@@ -236,27 +236,82 @@ func _find_motors() -> void:
 ## overrule an axle in a round hole. A real set's "Chassis" is a stage of
 ## its build, gears, steering and wheels and all: held body by body, 8448-1's
 ## steering and gearbox stood still with it (APP_UX8 kinefuncs).
+##
+## Whether a body turns on a joint depends on the body its piece is read
+## from, its largest: read so, the orrery's Earth, an axle with six parts on
+## it, outweighed its Frame's beam, the beam turned on Earth's axle and the
+## turntable's base on Mars's arm, nothing was held, and the crank between
+## Earth and Mars locked (kinefix). So a piece whose largest body is not the
+## frame's is read from the frame's largest body in it. Read from there, a
+## body of the frame that hangs by its hole on an axle the frame does not
+## name, which turns in it, is the frame too, joined to the rest by what the
+## file leaves out: the telescope's second Stand tower, with only the axles
+## that turn in it between it and the first.
 static func _frame_held(list: Array, held: Array, framed: Dictionary, from: PartLibrary) -> Array:
 	var loose: Mechanism = Mechanism.build(list, held)
+	var largest: Dictionary = {}   ## the body a piece is read from -> the frame's largest body in it
+	for body: int in loose.bodies:
+		var piece: int = loose.frame_under(body)
+		if piece < 0 or (piece == loose.ground and not held.is_empty()) \
+				or not _frame_holds(loose, body, framed, from) or _frame_holds(loose, piece, framed, from):
+			continue
+		var size: int = (loose.bodies[body] as Array).size()
+		var had: int = int(largest.get(piece, -1))
+		if had < 0 or size > (loose.bodies[had] as Array).size() or (size == (loose.bodies[had] as Array).size() and body < had):
+			largest[piece] = body
+	if not largest.is_empty():
+		var anchors: Array = held.duplicate()
+		var read_again: Dictionary = {}   ## body -> true: in a piece now read from the frame
+		for body: int in loose.bodies:
+			if largest.has(loose.frame_under(body)):
+				read_again[body] = true
+		for piece: int in largest:
+			anchors.append_array(loose.bodies[largest[piece]])
+		loose = Mechanism.build(list, anchors)
+		for _round: int in 8:
+			var more: Array = []
+			for joint: Mechanism.Joint in loose.tree:
+				if read_again.has(joint.child) and joint.a_turns and joint.b == joint.child \
+						and not _framed_body(loose, joint.parent, framed) \
+						and _frame_holds(loose, joint.child, framed, from):
+					more.append_array(loose.bodies[joint.child])
+			if more.is_empty():
+				break
+			anchors.append_array(more)
+			loose = Mechanism.build(list, anchors)
 	var out: Array = held.duplicate()
 	for body: int in loose.bodies:
 		if loose.joint_of(body) != null:
 			continue
-		var keys: Array = loose.bodies[body]
-		var holds: bool = false
 		var all_framed: bool = true
-		for key: int in keys:
-			if not framed.has(key):
-				if not held.has(key):
-					all_framed = false
-				continue
-			var info: PartLibrary.PartInfo = from.parts.get((loose.parts[key] as Mechanism.Piece).part)
-			var name: String = info.name if info != null else ""
-			if not (name.begins_with("Technic Pin") or name.begins_with("Technic Axle")):
-				holds = true
-		if holds or all_framed:
-			out.append_array(keys)
+		for key: int in loose.bodies[body]:
+			if not framed.has(key) and not held.has(key):
+				all_framed = false
+				break
+		if all_framed or _frame_holds(loose, body, framed, from):
+			out.append_array(loose.bodies[body])
 	return out
+
+
+## Whether [param body] has a part the frame names.
+static func _framed_body(loose: Mechanism, body: int, framed: Dictionary) -> bool:
+	for key: int in loose.bodies.get(body, []):
+		if framed.has(key):
+			return true
+	return false
+
+
+## Whether [param body] has a part the frame names that holds, not a pin or
+## an axle that turns in it.
+static func _frame_holds(loose: Mechanism, body: int, framed: Dictionary, from: PartLibrary) -> bool:
+	for key: int in loose.bodies.get(body, []):
+		if not framed.has(key):
+			continue
+		var info: PartLibrary.PartInfo = from.parts.get((loose.parts[key] as Mechanism.Piece).part)
+		var name: String = info.name if info != null else ""
+		if not (name.begins_with("Technic Pin") or name.begins_with("Technic Axle")):
+			return true
+	return false
 
 
 # -- names ----------------------------------------------------------------------
@@ -570,6 +625,24 @@ func _hold_train(driver_body: int) -> void:
 	var began: int = Time.get_ticks_msec()
 	var driver_rates: Array = _tree_rates()
 	var placed_by: Dictionary = {}   ## brick id -> true, held already
+	# The driver turns as it is turned, with what it carries: a drag on a loop
+	# the train turns places them where its loop carries them, without the
+	# driver's own turn. 42113-1's rotor blade, folded on its hinge, stood as
+	# a drag on its engine's loop had it, 0.01 of the 1.5 it was turned (kinefix).
+	var drivers_joint: Mechanism.Joint = model.joint_of(driver_body)
+	for one: int in model.bodies:
+		if one == driver_body or (drivers_joint != null and model.path(one).has(drivers_joint)):
+			for key: int in model.bodies[one]:
+				placed_by[key] = true
+	# Nor what the gear reading turns at a rate it decides: a drag's loop
+	# turns no gear, and a 16 on a shaft the train turned stood where the
+	# loop put it (42049-1's claw, 8275-1's tracks, kinefix).
+	var by_gears: Dictionary = {}   ## brick id -> true
+	var undecided: Array = solved.get("free", [])
+	for one: int in model.bodies:
+		if not undecided.has(one) and not model.is_frame(one) and model.omega(one).length() > STILL:
+			for key: int in model.bodies[one]:
+				by_gears[key] = true
 	for one: int in asked:
 		if holds.size() >= HOLDS_MOST or float(Time.get_ticks_msec() - began) > HOLDS_MS:
 			break
@@ -607,7 +680,7 @@ func _hold_train(driver_body: int) -> void:
 				step.erase(key)
 		var gear_at: Dictionary = model.pose_of(TAU / 72.0, step)
 		for key: Variant in step:
-			if held.coupled.has(key) or placed_by.has(key):
+			if held.coupled.has(key) or placed_by.has(key) or by_gears.has(key):
 				continue
 			var one_at: Transform3D = step[key]
 			var other_at: Transform3D = gear_at[key]
@@ -619,7 +692,7 @@ func _hold_train(driver_body: int) -> void:
 		# The whole of what it moves is its, as one: a rod it swings with the
 		# piston it pushes.
 		for key: Variant in step:
-			if not held.coupled.has(key) and not placed_by.has(key):
+			if not held.coupled.has(key) and not placed_by.has(key) and not by_gears.has(key):
 				(hold["keys"] as Dictionary)[key] = true
 				placed_by[key] = true
 		holds.append(hold)
