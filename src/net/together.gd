@@ -291,6 +291,7 @@ func _process(delta: float) -> void:
 	if not _open_back.is_empty() and Time.get_ticks_msec() - _open_at > STEP_IDLE_MS:
 		_close_step()
 	_flush()
+	_expire_looks()
 	_point()
 	_follow_step()
 	# The others' selections drawn again round parts that moved.
@@ -727,6 +728,10 @@ func _stop(words: String, tell_server: bool = false) -> void:
 	_forget_pending()
 	following = ""
 	_show_presence()
+	# The points put away by that; their outlines' targets let go of too,
+	# as _expire_looks runs only in a session.
+	for who: String in _look_outlines.keys():
+		_let_go_of_look_outline(who)
 	_show_banner()
 	ended_words = words
 	_polling += 1
@@ -773,6 +778,13 @@ func _reset() -> void:
 	chat_words = ""
 	_pointed = null
 	_off_at = -1
+	_look = {}
+	_look_due = false
+	for key: String in _looks.keys():
+		_drop_look(key)
+	for who: String in _look_outlines.keys():
+		_let_go_of_look_outline(who)
+	_looks_heard.clear()
 	following = ""
 	_catch_up_to = 0
 	_offline = false
@@ -2151,19 +2163,21 @@ func _pointer_now() -> Dictionary:
 			"distance": snappedf(float(aim["distance"]), 0.01), "size": snappedf(float(aim["size"]), 0.01),
 			"focus": [snappedf(float(focus[0]), 0.01), snappedf(float(focus[1]), 0.01),
 				snappedf(float(focus[2]), 0.01)]}
-	return {"at": point, "sel": sel, "view": view}
+	return {"at": point, "sel": sel, "view": view, "look": _look_now()}
 
 
-## Sent a few times a second while it moves.
+## Sent a few times a second while it moves; a part pointed out, or taken
+## back, at once (pointat).
 func _point() -> void:
-	if _pointing or _offline or Time.get_ticks_msec() - _point_at < POINT_MS:
+	if _pointing or _offline or (Time.get_ticks_msec() - _point_at < POINT_MS and not _look_due):
 		return
 	var now: Dictionary = _pointer_now()
 	if now == _pointed:
 		_off_at = -1
 		return
 	var was: Dictionary = _pointed if _pointed is Dictionary else {}
-	if now["at"] == null and was.get("at") != null and now["sel"] == was.get("sel") and now["view"] == was.get("view"):
+	if now["at"] == null and was.get("at") != null and now["sel"] == was.get("sel") and now["view"] == was.get("view") \
+			and now["look"] == was.get("look"):
 		if _off_at < 0:
 			_off_at = Time.get_ticks_msec()
 		if Time.get_ticks_msec() - _off_at < OFF_MS:
@@ -2172,9 +2186,20 @@ func _point() -> void:
 	_point_at = Time.get_ticks_msec()
 	_pointing = true
 	_pointed = now
+	_look_due = false
 	timing["pointed"] = _unix_ms()
-	await _ask("point", {"s": _token, "at": now["at"], "sel": now["sel"], "view": now["view"]})
+	var asked: Dictionary = {"s": _token, "at": now["at"], "sel": now["sel"], "view": now["view"]}
+	# pointat: its age on this side's clock, so the server times it from
+	# when it was pointed out however often it is sent again.
+	if now["look"] != null:
+		asked["look"] = (now["look"] as Dictionary).merged({"age": Time.get_ticks_msec() - _look_at})
+		timing["look_sent"] = _unix_ms()
+	await _ask("point", asked)
 	_pointing = false
+	# Pointed out or taken back while this one was on its way: sent now,
+	# not at the next frame's.
+	if _look_due:
+		_point()
 
 
 ## The colour [param who] is shown in, the same on every side: by their place
@@ -2248,6 +2273,7 @@ func _show_presence() -> void:
 			_outlined[who] = selected[who][0]
 			outline.colour = selected[who][1]
 			outline.show_selection(selected[who][0])
+	_show_looks()
 	timing["presence_shown"] = _unix_ms()
 	if not RenderingServer.frame_post_draw.is_connected(_presence_drawn):
 		RenderingServer.frame_post_draw.connect(_presence_drawn, CONNECT_ONE_SHOT)
@@ -2286,6 +2312,10 @@ static func _marker(name: String, colour: Color) -> Node3D:
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	label.offset = Vector2(DOT_PIXELS * 0.6, 0)
 	label.render_priority = 11
+	# Its dark edge just under it, after the scene's own see-through things:
+	# left at -1 it went before them, and a name over a windscreen or the
+	# floor lost its edge there (pointat's pictures, 2026-11-13).
+	label.outline_render_priority = 10
 	marker.add_child(label)
 	return marker
 
@@ -2314,6 +2344,377 @@ func selections_shown() -> Dictionary:
 	for who: String in _outlined:
 		out[who] = (_outlined[who] as Dictionary).size()
 	return out
+
+
+# -- a part pointed out (pointat, APP_UX8 #17) -------------------------------------
+#
+# "Look at this one": a part (or a few) pointed out to everyone in the
+# session, as a player pings a place in a game. Alt-W over a part, or a
+# part's right-click menu, Point it out to the others (Shell), or the
+# person's Claude (point_at, AppTools). Every screen in the session, this
+# one too, outlines it in the pointer's colour, wider than a selection's
+# line, with their name over it, and the status bar says who points at
+# what; for LOOK_MS from when it was pointed out, or until Esc: the
+# pointer's own takes it back from everyone, anyone else's puts it away on
+# their own screen.
+#
+# It goes with the pointer (op=point's look), not in the numbered changes:
+# nothing of it is the model's, nobody joining later is shown an old one,
+# and the server tells it to every poll at once on the session's channel,
+# as a pointer moved. Its n is when it was pointed out (unix ms): a new one
+# is never taken for one already shown or put away.
+
+## How long a part pointed out stays shown, from when it was pointed out.
+const LOOK_MS := 5000
+## The most parts one point names (api/together.js LOOK_MOST).
+const LOOK_PARTS := 50
+## Its line: wider than a selection's (SelectionOutline.SELECTED_WIDTH).
+const LOOK_WIDTH := 4.0
+## Its name's size over the parts, as the others' pointers' names.
+const LOOK_FONT := 30
+
+## This person's own point while it is shown: {n, sel, at, claude}, or {};
+## and when (ticks).
+var _look: Dictionary = {}
+var _look_at: int = 0
+## Sent at once, not at the pointer's pace.
+var _look_due: bool = false
+## Every point shown here now: "who:n" -> {who, name, colour, bricks, ends
+## (ticks), outline, marker}; and every one heard, shown or not, so one put
+## away or gone is never shown again while the server still says it.
+var _looks: Dictionary = {}
+var _looks_heard: Dictionary = {}
+## Each person's outline for their points, kept between them: who ->
+## a SelectionOutline; and since when one has outlined nothing (ticks).
+## A new outline makes three window-sized targets, and a browser waits for
+## the card to finish everything asked of it before it makes one: on a
+## preview under load the frames that first drew a point took 200-600 ms
+## on both pages, every point (pointat_flow, 2026-11-13). Hidden between
+## points and reused, a point is drawn in a frame like any other. Let go of
+## after LOOK_KEPT_MS without one: a point is a few seconds, and points come
+## in runs while people talk a model through; a person's targets are 60 MB
+## of a 2x window's card memory (SelectionOutline._size_targets).
+var _look_outlines: Dictionary = {}
+var _look_idle: Dictionary = {}
+const LOOK_KEPT_MS := 60000
+## Who this side is, in a key of a point of its own.
+const MINE := "me"
+
+
+## Point [param bricks] (brick ids) out to everyone in the session, as the
+## person does, or as their Claude does with [param by_claude]. "" or why
+## not, in words.
+func point_at(bricks: Array, by_claude: bool = false) -> String:
+	if not live:
+		return "Point a part out in a Build together session: start or join one from File, Build together…."
+	var uids: Array = []
+	var box := AABB()
+	for given: Variant in bricks:
+		var brick_id: int = int(given)
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		var uid: String = uid_of(brick_id)
+		if brick == null or uid.is_empty() or uid in uids:
+			continue
+		var info: PartLibrary.PartInfo = builder.library.parts.get(brick.part_id) if builder.library != null else null
+		var part_box: AABB = brick.transform * info.bounds if info != null \
+			else AABB(brick.transform.origin, Vector3.ZERO)
+		box = part_box if uids.is_empty() else box.merge(part_box)
+		uids.append(uid)
+		if uids.size() >= LOOK_PARTS:
+			break
+	if uids.is_empty():
+		return "Put the pointer on a part, or select it, to point it out."
+	var middle: Vector3 = box.get_center()
+	_look = {"n": _unix_ms(), "sel": uids, "claude": by_claude,
+		"at": [snappedf(middle.x, 0.1), snappedf(middle.y, 0.1), snappedf(middle.z, 0.1)]}
+	_look_at = Time.get_ticks_msec()
+	_look_due = true
+	timing["looked"] = _unix_ms()
+	# Sent before it is drawn here. In a browser the page's fetch goes out
+	# only once the frame that asked it is over, and drawn in the same frame
+	# the point waited for that frame: 200-600 ms on a preview under load,
+	# more than half the bar's (pointat_flow, 2026-11-13: its send asked
+	# 13 ms after the frame that drew it here, every round).
+	_point()
+	_show_looks_next_frame()
+	return ""
+
+
+## This person's own point drawn in a frame after this one, which only asks
+## for it to go (point_at). By frames processed, not drawn: an idle window
+## draws none until something changes (IdleDraw), and the status bar saying
+## the same words as at the last point changed nothing, so waiting for a
+## frame drawn waited 0.1-1.9 s for the next thing that did (pointat_flow,
+## 2026-11-14). Twice: asked from a key, the next frame processed is this
+## one's own, before it is drawn.
+func _show_looks_next_frame() -> void:
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_show_looks()
+
+
+## What the status bar says once this person pointed a part out: to whom.
+func pointed_words() -> String:
+	var here: String = others_here()
+	if here.is_empty():
+		return "Pointed out for 5 seconds, but nobody else is here now."
+	return "Pointed out to %s for 5 seconds. Esc takes it back." % here
+
+
+## The others here now, by name: "Ann", "Ann and Bob", "Ann, Bob and Cy";
+## "" for nobody.
+func others_here() -> String:
+	var here := PackedStringArray()
+	for person: Variant in people:
+		if not bool((person as Dictionary).get("me", false)) and bool((person as Dictionary).get("here", false)):
+			here.append(str((person as Dictionary).get("name", "")))
+	if here.size() <= 1:
+		return "".join(here)
+	return "%s and %s" % [", ".join(here.slice(0, here.size() - 1)), here[-1]]
+
+
+## Take this person's point back from everyone (their Esc); true if there
+## was one.
+func take_back_look() -> bool:
+	if _look.is_empty():
+		return false
+	_look = {}
+	_look_due = true
+	timing["look_taken"] = _unix_ms()
+	_show_looks()
+	_point()
+	return true
+
+
+## This person's point as it is sent, while it is shown; null else.
+func _look_now() -> Variant:
+	if _look.is_empty() or Time.get_ticks_msec() - _look_at >= LOOK_MS:
+		return null
+	return _look
+
+
+## Esc: the points on this screen put away, this person's own taken back
+## from everyone; true if there were any.
+func put_away_looks() -> bool:
+	if _looks.is_empty():
+		return false
+	take_back_look()
+	for key: String in _looks.keys():
+		_drop_look(key)
+	return true
+
+
+## The points shown here, as they should be now: this person's own, and
+## each other person's that is new to this side (from now until LOOK_MS
+## after it was pointed out, less how old it was when heard).
+func _show_looks() -> void:
+	var wanted: Dictionary = {}
+	if live:
+		var mine: Variant = _look_now()
+		if mine != null:
+			# On this person's own screen, theirs is "You" (or "Your Claude").
+			wanted["%s:%d" % [MINE, int(mine["n"])]] = [MINE, "You", me().get("colour", MARKER_COLOURS[0]),
+				mine, LOOK_MS - (Time.get_ticks_msec() - _look_at)]
+		for item: Variant in people:
+			var person: Dictionary = item
+			if bool(person.get("me", false)) or not person.get("look") is Dictionary:
+				continue
+			var look: Dictionary = person["look"]
+			var who: String = str(person.get("who", ""))
+			wanted["%s:%d" % [who, int(look["n"])]] = [who, str(person.get("name", "Someone")), colour_of(who),
+				look, LOOK_MS - int(look.get("age", 0))]
+	for key: String in _looks.keys():
+		if not wanted.has(key):
+			_drop_look(key)
+	for key: String in _looks_heard.keys():
+		if not wanted.has(key):
+			_looks_heard.erase(key)
+	for key: String in wanted:
+		if _looks_heard.has(key):
+			continue
+		_looks_heard[key] = true
+		var said_look: Array = wanted[key]
+		if int(said_look[4]) <= 0:
+			continue
+		var bricks: Dictionary = {}
+		for uid: Variant in (said_look[3] as Dictionary).get("sel", []):
+			var brick_id: int = brick_of(str(uid))
+			if brick_id != 0 and world.get_brick(brick_id) != null:
+				bricks[brick_id] = true
+		if bricks.is_empty():
+			continue
+		var name: String = str(said_look[1])
+		var by_claude: bool = bool((said_look[3] as Dictionary).get("claude", false))
+		if by_claude:
+			name = "Your Claude" if key.begins_with(MINE + ":") else "%s's Claude" % name
+		_add_look(key, str(said_look[0]), name, said_look[2], bricks, int(said_look[4]), by_claude)
+	_name_pointers()
+
+
+## A person's pointer without its name while their point is shown: the point
+## names them over the part, and with their pointer on that part, as Alt-W
+## has it, the two names were drawn over each other (pointat_flow's
+## pictures, 2026-11-13). The dot stays, in their colour.
+func _name_pointers() -> void:
+	var pointing: Dictionary = {}
+	for key: String in _looks:
+		pointing[str((_looks[key] as Dictionary).get("who", ""))] = true
+	for who: String in _markers:
+		var marker: Variant = _markers[who]
+		if is_instance_valid(marker):
+			((marker as Node3D).get_child(1) as Label3D).visible = not pointing.has(who)
+
+
+## A point drawn: its parts outlined in [param colour], its name over them,
+## and, someone else's, said on the status bar.
+func _add_look(key: String, who: String, name: String, colour: Color, bricks: Dictionary, left_ms: int,
+		by_claude: bool) -> void:
+	var kept: Variant = _look_outlines.get(who)
+	var outline: SelectionOutline = kept if is_instance_valid(kept) else null
+	if outline == null:
+		outline = SelectionOutline.new()
+		outline.world = world
+		outline.library = builder.library
+		outline.colour = colour
+		outline.width = LOOK_WIDTH
+		add_child(outline)
+		_look_outlines[who] = outline
+	_look_idle.erase(who)
+	outline.show_selection(bricks)
+	var box := AABB()
+	var first: bool = true
+	for brick_id: int in bricks:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		var info: PartLibrary.PartInfo = builder.library.parts.get(brick.part_id) if builder.library != null else null
+		var part_box: AABB = brick.transform * info.bounds if info != null \
+			else AABB(brick.transform.origin, Vector3.ZERO)
+		box = part_box if first else box.merge(part_box)
+		first = false
+	var marker: Node3D = _look_marker(name, colour)
+	world.add_child(marker)
+	# Over the parts: the top of their box (+y is up here).
+	marker.position = Vector3(box.get_center().x, box.end.y, box.get_center().z)
+	_looks[key] = {"who": who, "name": name, "colour": colour, "bricks": bricks,
+		"ends": Time.get_ticks_msec() + left_ms, "outline": outline, "marker": marker}
+	timing["look_shown"] = _unix_ms()
+	if not RenderingServer.frame_post_draw.is_connected(_look_drawn):
+		RenderingServer.frame_post_draw.connect(_look_drawn, CONNECT_ONE_SHOT)
+	# A check reads the page as it comes, not at the next line heard: this
+	# person's own was read a whole trip late (pointat_flow).
+	if OS.has_feature("web"):
+		_tell_page()
+	if who != MINE:
+		said.emit("%s points at %s. Esc puts it away." % [name, _parts_words(bricks)])
+	elif by_claude:
+		said.emit("Your Claude points out %s to the others. Esc takes it back." % _parts_words(bricks))
+
+
+## When the frame a point was last drawn in was drawn: a check's measure of
+## a point seen, as [method _presence_drawn] is of a pointer.
+func _look_drawn() -> void:
+	timing["look_drawn"] = _unix_ms()
+
+
+func _drop_look(key: String) -> void:
+	var shown: Dictionary = _looks.get(key, {})
+	_looks.erase(key)
+	var marker: Variant = shown.get("marker")
+	if marker is Node and is_instance_valid(marker):
+		(marker as Node).queue_free()
+	# Hidden, its targets kept for this person's next point (_look_outlines).
+	var outline: Variant = shown.get("outline")
+	if is_instance_valid(outline) and outline is SelectionOutline:
+		(outline as SelectionOutline).visible = false
+		_look_idle[str(shown.get("who", ""))] = Time.get_ticks_msec()
+	timing["look_gone"] = _unix_ms()
+	_name_pointers()
+	if OS.has_feature("web"):
+		_tell_page()
+
+
+## The points whose time is up taken off; this person's own forgotten then.
+func _expire_looks() -> void:
+	var now: int = Time.get_ticks_msec()
+	if not _look.is_empty() and now - _look_at >= LOOK_MS:
+		_look = {}
+	for key: String in _looks.keys():
+		if now >= int((_looks[key] as Dictionary)["ends"]):
+			_drop_look(key)
+	for who: String in _look_idle.keys():
+		if now - int(_look_idle[who]) >= LOOK_KEPT_MS:
+			_let_go_of_look_outline(who)
+
+
+## [param who]'s point outline freed, and its targets with it.
+func _let_go_of_look_outline(who: String) -> void:
+	var outline: Variant = _look_outlines.get(who)
+	if is_instance_valid(outline):
+		(outline as Node).queue_free()
+	_look_outlines.erase(who)
+	_look_idle.erase(who)
+
+
+## The parts of a point, as the status bar names them: "Red Brick 2 x 4", or
+## "3 parts".
+func _parts_words(bricks: Dictionary) -> String:
+	if bricks.size() != 1:
+		return "%d parts" % bricks.size()
+	var brick: BrickWorld.Brick = world.get_brick(int(bricks.keys()[0]))
+	var library: PartLibrary = builder.library
+	var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if library != null else null
+	var colour: String = library.color(brick.color_code).name if library != null else ""
+	return "%s %s" % [colour, Inventory._tidy(info.name) if info != null else brick.part_id]
+
+
+## A point's name over its parts, in the pointer's colour, at a fixed size
+## on the screen as the pointers' names are, and seen through the model.
+static func _look_marker(name: String, colour: Color) -> Node3D:
+	var marker := Node3D.new()
+	marker.name = "TogetherLook"
+	var label := Label3D.new()
+	label.text = name
+	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	label.no_depth_test = true
+	label.fixed_size = true
+	label.pixel_size = POINTER_PIXEL
+	label.font_size = LOOK_FONT
+	label.outline_size = 10
+	label.modulate = colour
+	label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	label.offset = Vector2(0, DOT_PIXELS * 0.5)
+	label.render_priority = 11
+	label.outline_render_priority = 10
+	marker.add_child(label)
+	return marker
+
+
+## The points shown here now, for checks: [{who, n, name, colour, parts,
+## left (ms)}], this person's own as who "me".
+func looks_shown() -> Array:
+	var out: Array = []
+	var now: int = Time.get_ticks_msec()
+	for key: String in _looks:
+		var shown: Dictionary = _looks[key]
+		out.append({"who": shown["who"], "n": int(key.get_slice(":", 1)), "name": shown["name"],
+			"colour": "#" + (shown["colour"] as Color).to_html(false),
+			"parts": (shown["bricks"] as Dictionary).size(), "left": int(shown["ends"]) - now})
+	return out
+
+
+## Esc, while a point is shown here and no field has the keys: puts them
+## away (the pointer's own taken back from everyone), and nothing else,
+## as Esc closes the nearest thing first; the next Esc does what it did.
+func _input(event: InputEvent) -> void:
+	if _looks.is_empty():
+		return
+	var key: InputEventKey = event as InputEventKey
+	if key == null or key.keycode != KEY_ESCAPE or not key.pressed or key.echo:
+		return
+	var focused: Control = get_viewport().gui_get_focus_owner()
+	if focused is LineEdit or focused is TextEdit:
+		return
+	put_away_looks()
+	get_viewport().set_input_as_handled()
 
 
 # -- following another's view ----------------------------------------------------
@@ -2793,7 +3194,7 @@ func _tell_page() -> void:
 		"chat_words": chat_words, "pointers": pointers_shown(), "timing": timing,
 		"selections": selections_shown(), "following": following, "colours": _colours_words(),
 		"view": camera.aim() if camera != null else null, "pins": _pins_words(),
-		"held": hold_sends}), true)
+		"held": hold_sends, "looks": looks_shown()}), true)
 
 
 func _colours_words() -> Dictionary:

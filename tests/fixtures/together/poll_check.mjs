@@ -17,7 +17,12 @@
 //            not in it or taken out
 //   pointing the database's reads in a second of the other pointing, the
 //            channel listened to and not: no more than with nobody pointing
-import { webcrypto } from "node:crypto";
+//   looked   pointat (APP_UX8 #17): a part the other points out (op=point's
+//            look) goes out at once with its age, ages out of what a poll
+//            says at 5 s, is taken back by a point without it, and a look
+//            not of its shape is refused; with none, the signature is the
+//            one it always was
+import { createHash, webcrypto } from "node:crypto";
 
 process.env.SUPABASE_URL = "http://db.test";
 process.env.SUPABASE_SECRET_KEY = "secret";
@@ -294,7 +299,59 @@ async function pointing(listening) {
     lines: response.writes.length };
 }
 
-const result = { lines: await lines(), whole: await whole(), refused: await refused(),
+// pointat: the other's point with a part pointed out ([look]), as their page
+// sends it.
+async function lookAs(who, look) {
+  const response = responseOf();
+  await handler(ask({ s: SECRET, at: null, sel: [], view: null, ...(look === undefined ? {} : { look }) }, "point", who),
+    response);
+  return response;
+}
+
+async function looked() {
+  reset();
+  const first = responseOf();
+  const once = handler(ask({ s: SECRET, after: 0, seen: "", stream: true }), first);
+  await sleep(100);
+  store.ops.push({ seq: 1, author: OTHER, client: "abcdef", cid: 0, changes: {} });
+  await once;
+  const seen = JSON.parse(first.ended).seen;
+  // With nobody pointing anything out, the signature as it always was.
+  const people = JSON.parse(first.ended).people;
+  const always = createHash("sha256").update(JSON.stringify(people.map((one) => [one.who, one.name, one.here, one.at,
+    one.sel, one.view]))).digest("hex").slice(0, 12);
+  const response = responseOf();
+  const done = handler(ask({ s: SECRET, after: 1, seen, stream: true }), response);
+  await sleep(300);
+  const sentAt = Date.now();
+  const sent = await lookAs(OTHER, { n: 1763000000000, sel: ["ab12.3"], at: [1, 2, 3], age: 40 });
+  let outAt = null;
+  for (const end = Date.now() + 2000; Date.now() < end && outAt === null; await sleep(1)) {
+    if (response.writes.some((one) => one.text.includes("1763000000000"))) outAt = Date.now();
+  }
+  // Pointed out 4.8 s ago on their side: said with that age, then gone.
+  await lookAs(OTHER, { n: 1763000000001, sel: ["ab12.3", "ab12.4"], at: null, age: 4800, claude: true });
+  await sleep(900);
+  // A third, then taken back by a point without it.
+  await lookAs(OTHER, { n: 1763000000002, sel: ["ab12.5"], at: [0, 0, 0], age: 0 });
+  await sleep(300);
+  await lookAs(OTHER);
+  await sleep(400);
+  const refused = [];
+  for (const bad of [{ n: 1, sel: [], age: 0 }, { n: -1, sel: ["ab12.3"], age: 0 },
+    { n: 1, sel: Array.from({ length: 51 }, (_, k) => `ab12.${k}`), age: 0 }, { n: 1, sel: ["no uid"], age: 0 },
+    { n: 1, sel: ["ab12.3"], age: "0" }, { n: 1, sel: ["ab12.3"], at: [1, 2], age: 0 }, [1, 2]]) {
+    refused.push((await lookAs(OTHER, bad)).statusCode);
+  }
+  store.ops.push({ seq: 2, author: OTHER, client: "abcdef", cid: 1, changes: {} });
+  await done;
+  const said = [...response.writes.map((one) => JSON.parse(one.text)), JSON.parse(response.ended)];
+  const looks = said.map((one) => one.people?.find((p) => !p.me)?.look ?? null);
+  return { always: always === seen, sent: sent.statusCode, ms: outAt === null ? null : outAt - sentAt, looks,
+    kept: store.people[0].pointer, refused };
+}
+
+const result = { looked: await looked(), lines: await lines(), whole: await whole(), refused: await refused(),
   reads: { lines: await reads(true), whole: await reads(false) },
   told: { lines: await told(true), whole: await told(false), taken_out: await takenOut() },
   pointing: { listening: await pointing(true), not: await pointing(false) } };
