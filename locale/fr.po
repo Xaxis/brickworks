@@ -13992,6 +13992,15 @@ msgstr "le GIF n’a pas été terminé : %s"
 
 msgid "no GIF: its frames would not read back"
 msgstr "pas de GIF : ses images n’ont pas pu être relues"
+
+# Measure by finger (APP_UX8 #10 fingertools): the ruler's words on a phone, where
+# a tap is what puts a point down and there is no Esc to press.
+msgid "Measuring: tap a point, then another"
+msgstr "Mesure : touchez un point, puis un autre"
+
+msgid "0 mm — tap another point"
+msgstr "0 mm — touchez un autre point"
+
 # A colour's swatch: in how many sets the part comes in it, and rare in it
 # in three or fewer (APP_UX7 #21, rarity).
 

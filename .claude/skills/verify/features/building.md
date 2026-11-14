@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe -->
 
 ## Sub-features
 
@@ -760,7 +760,12 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   before `SaveTo` frees it): every loop over the open dialogs takes each
   untyped until it is checked, as a freed one put in a `Node` raised a script
   error and laid out nothing after it (timelinefit's tablet; `twist_probe`
-  section 6). A menu opened at a point (`TouchSizing.popup_beside`: the
+  section 6). So does every call put off a frame or bound to a signal
+  (`_size_later`, `_window_shown`, `_panel_shown`, `_grew`,
+  `_place_after_layout`): a list filled afresh twice in a frame frees its
+  first rows before their sizing's call, which raised an error for each
+  (fingertools; `fingertools_probe` section 4, 20 dialogs and more, 0 errors
+  naming touch_sizing). A menu opened at a point (`TouchSizing.popup_beside`: the
   model tree's row menu, a part's right-click menu, File, Open's) keeps the
   point (`BESIDE`) and is placed by it again at the size it is given here
   (`TouchSizing.beside`): a pointer's at its corner, turned back where the
@@ -1649,12 +1654,15 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   snap to half a stud across and a cell up. A point within 14 px of a
   connector's middle on the part under it (`JointSnap.ends_for`: a pin, hole,
   axle, bar, clip or hinge) goes on that middle (`Measure._end_near`), its axis
-  drawn through it; with both points on one the label adds the angle between
+  drawn through it; a point within 14 px of a stud's top goes on the top's
+  middle (`Measure._stud_near`, fingertools: the lattice has no studs, so a
+  click on one went through to the part's top and read 2 to 4 LDU low); with both points on one the label adds the angle between
   their axes to 0.1° ("37.9° between the two pin holes", `Measure.angle`: the
   lines' angle, 0 to 90°, unless both are pins or axles), as LDCad's
   (APP_UX2 7). Works in either view through the camera clicked in. While it is
   out a click places nothing; the right and middle buttons still turn the
-  view; `U` or `Esc` puts it away. Probe: `handles2_probe` (`angle`).
+  view; `U` or `Esc` puts it away. Probe: `handles2_probe` (`angle`). By
+  finger see `measure and handles by finger`.
 - `sub-assemblies`: `Ctrl-G` (Edit or Build, Make a sub-assembly) asks for a
   name and makes the selection a sub-assembly inside the one being edited; a
   click with Select then takes all of it, and every move, turn, hinge, copy,
@@ -2888,6 +2896,41 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   each stopped and the one in the way lit. Pictures in `shots/handles/WxH/`.
   `cadtask_frames` times the rings drawn on 100 parts while the view turns
   (`handles`) and one dragged round (`handle_drag`).
+- `measure and handles by finger` (`src/ui/measure.gd`, `src/ui/handles.gd`,
+  APP_UX8 #10 fingertools): on a phone or a tablet (`Phone.on`) a finger is
+  told from the mouse by the click the engine raises from it
+  (`InputEvent.DEVICE_ID_EMULATION`). Measure: a tap puts its point on the stud
+  top or the connector middle nearest it within half a fingertip (22 points,
+  `Measure._finger_point`: the parts under the fingertip, their spots in sight),
+  read as a click there reads; nothing near, as a click; slop 10 points; while
+  the ruler is out a finger held down takes no part off and opens no part's
+  actions (`Measure.takes` takes the touch first); its words say tap, not Esc
+  (new de/fr/es entries). Handles: every target 44 points or more across
+  (arrows and rings 23 points each side, rings 120 to 140 points round fitted to
+  the view, the outer ring 46 points out, panes 0.25 to 0.75 of an arrow's
+  reach, nearest wins and a pane's face counts as on it, a ring's far half
+  only where no near half is within reach, a pane thinner than half a
+  fingertip left out, the tag 48 points each way); the finger that
+  presses a handle is the handles' till it lifts (`Handles._finger_input`: the
+  view does not turn under it, a rest on it before the drag opens nothing);
+  a second finger down puts the drag back and the view takes both; slop 10
+  points. The mouse's sizes and behaviour on the desktop are as before. Probe:
+  `fingertools_probe`.
+- `fingertools probe` (`src/dev/fingertools_probe.gd`): windowed, 390 x 844
+  laid out for a phone at a browser's scale, through the sign-in screen with a
+  throwaway account (.env), about three minutes. `measure`: two top studs of
+  the car, the view framed on them, measured by the mouse at each stud's top,
+  then by two taps on them and 8 points off in 8 ways, each reading within 0.1
+  LDU of the mouse's; two slow taps (0.65 s) keep the ruler out and select and
+  open nothing. `drag`: a 2 x 4's x arrow dragged 3 studs by the mouse, undone,
+  then by a finger rested on it 0.65 s first: the same 60 LDU, the view as it
+  was, the Move tool and the selection kept, no sheet, one undo; a second
+  finger mid-drag puts it back. `targets`: every Move and Rotate handle's
+  widest circle where a press takes it (sampled every point), 44 or more,
+  printed as a table; a tap on the tag cycles the axes. `dialogs`: 17 of the
+  app's opened and closed from their commands (none a platform file dialog)
+  and made ones freed while open, a list filled twice in a frame, one popped
+  and freed at once: 0 errors naming touch_sizing. Pictures in `--shots=DIR`.
 - `connect probe` (`src/dev/connect_probe.gd`): windowed, about five minutes;
   `PROBE_SIZE=1280x720` for the small window. `column`: 8841-1's parts 1 to 20
   from the file, the column taken, aimed at its pin, `N`, its end hole, the pin,
