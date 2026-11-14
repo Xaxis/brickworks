@@ -677,6 +677,7 @@ func _ask(path: String, most: int, token: String = "") -> Dictionary:
 	var headers := PackedStringArray(["Accept: application/json"])
 	if not token.is_empty():
 		headers.append("Authorization: Bearer " + token)
+	PageFetch.asked(Deployment.api_base() + path)
 	if request.request(Deployment.api_base() + path, headers) != OK:
 		request.queue_free()
 		return {"code": 0, "bytes": PackedByteArray()}

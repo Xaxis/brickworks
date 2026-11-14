@@ -3314,6 +3314,7 @@ func _ask_page(op: String, body: Dictionary, session: String, timeout: float) ->
 	var kept_alive: bool = op == "send" and words.to_utf8_buffer().size() < KEPT_ALIVE_SEND
 	# Lines: each but the last ({"more": ...}) handed over as it comes, the
 	# last the answer; a refusal after the first line is said in the last.
+	PageFetch.asked("%s/api/together?op=%s" % [base_url, op])
 	JavaScriptBridge.eval(("(() => { const stop = new AbortController(); setTimeout(() => stop.abort(), %d);"
 		+ " fetch(%s, {method: 'POST', headers: %s, body: %s, signal: stop.signal, keepalive: %s})"
 		+ ".then(async (r) => { if (!r.body || !(r.headers.get('content-type') || '').includes('ndjson'))"
