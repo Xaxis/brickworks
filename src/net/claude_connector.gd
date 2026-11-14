@@ -1349,6 +1349,7 @@ func _ask(http: HTTPRequest, url: String, body: String,
 		more: PackedStringArray = PackedStringArray()) -> Array:
 	var headers := PackedStringArray(["content-type: application/json"])
 	headers.append_array(more)
+	PageFetch.asked(url)
 	if http.request(url, headers, HTTPClient.METHOD_POST, body) != OK:
 		return [HTTPRequest.RESULT_CANT_CONNECT, 0, PackedByteArray()]
 	var done: Array = await http.request_completed

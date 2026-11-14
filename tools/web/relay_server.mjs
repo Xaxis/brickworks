@@ -98,6 +98,11 @@ import { standIn, standInRoute } from "./trust_stand_in.mjs";
 const port = Number(process.argv[2] || 8790);
 const site = (process.argv.find((a) => a.startsWith("--static=")) || "").slice(9);
 const withheld = process.argv.includes("--instructions=none");
+// --arrivals: when each request reached this server (unix ms, this box's
+// clock, the one a page's Date.now() reads), at /__arrived?since=MS, for
+// tools/web/framefetch_flow.mjs: a page says when it asked for a send, and
+// the difference is how long the send waited before it left the page.
+const arrivals = process.argv.includes("--arrivals") ? [] : null;
 // Tables the live project does not have yet, kept in this process
 // (tools/web/held_tables.mjs): --hold=share_versions proves the code that
 // uses supabase/versions.sql before the file is applied. What they hold is
@@ -278,6 +283,15 @@ function page(pathname) {
 
 http.createServer(async (incoming, outgoing) => {
   const url = new URL(incoming.url, "http://127.0.0.1");
+  if (arrivals && url.pathname === "/__arrived") {
+    const since = Number(url.searchParams.get("since") || 0);
+    outgoing.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
+    return outgoing.end(JSON.stringify(arrivals.filter((one) => one.at >= since)));
+  }
+  if (arrivals) {
+    arrivals.push({ at: Date.now(), method: incoming.method, path: url.pathname, search: url.search });
+    if (arrivals.length > 5000) arrivals.splice(0, 1000);
+  }
   const asked = (heldTables || heldComments || heldFollows || heldDiscovery || heldDesigners || heldChallenges
     || heldNotifications || heldReplies || heldFeedback) && /^\/__held\/([a-z_]+)$/.exec(url.pathname);
   if (asked) {
