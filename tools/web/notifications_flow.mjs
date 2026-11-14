@@ -207,9 +207,22 @@ try {
   check(`signed in, her avatar where Sign in was, no count: avatar ${header.avatar}, sign in shown ${header.signIn}, count "${header.count}"`,
     header.avatar && header.avatarShown && !header.signIn && header.count === "");
   await adaPage.click(".site-head .account-menu summary");
+  // The menu as it now is (web/follow.js accountPart): Your lists since
+  // lists1, and Report a bug while the beta is open (bugbar), added once
+  // the bar's script has heard the server, so it was there in one run and
+  // not yet in the next. Asked here as the menu asks it, and waited for.
+  // The owner's Admin is its own part, under these, and Ada is not the owner.
+  const betaOpen = await adaPage.evaluate(() => window.brickworksBeta !== "off"
+    && import("/betabar.js").then(({ betaState }) => betaState()).then((heard) => heard.beta === "open"))
+    .catch(() => false);
+  const menuNow = ["profile", "notifications", "feed", "lists", "saved", "settings", "feedback",
+    ...(betaOpen ? ["report-bug"] : [])].join(",");
+  await until(adaPage, (want) => [...document.querySelectorAll(".site-head .nav .account-menu .account-part nav a")]
+    .map((a) => a.dataset.place).join(",") === want, "the account menu as it now is", 10, menuNow).catch(() => null);
   header = await headerDrawn(adaPage);
-  check(`its menu: "${header.who}", ${header.places.join(", ")}, sign out ${header.signOut}`,
-    header.who === `Ada Notify @${ADA}` && header.places.join(",") === "profile,notifications,feed,saved,settings,feedback" && header.signOut);
+  check(`its menu: "${header.who}", ${header.places.join(", ")}, sign out ${header.signOut}`
+    + ` (the beta ${betaOpen ? "open" : "off"} here)`,
+    header.who === `Ada Notify @${ADA}` && header.places.join(",") === menuNow && header.signOut);
   await shot(adaPage, "1_account_menu-1280-dark.png");
   await adaPage.keyboard.press("Escape");
 
