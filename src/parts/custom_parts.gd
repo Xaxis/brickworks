@@ -909,29 +909,23 @@ static func _fetch_each(tree: SceneTree, root: String, keys: PackedStringArray,
 	while not todo.is_empty() or int(going[0]) > 0:
 		while not todo.is_empty() and int(going[0]) < MOST_FETCHES:
 			var key: String = todo.pop_front()
-			# No time limit, as the geometry's fetches have none. One is polled
-			# once a frame, and a frame drawing a big model in software can take
-			# seconds: 42115-1 opened after 42082-1 had all six of its files
-			# arrive in the browser and given up on by a 30 s limit.
-			var request := HTTPRequest.new()
-			tree.root.add_child(request)
-			request.request_completed.connect(func(result: int, code: int,
-					headers: PackedStringArray, body: PackedByteArray) -> void:
-				request.queue_free()
+			# No time limit, as the geometry's fetches have none: a frame
+			# drawing a big model in software can take seconds, and 42115-1
+			# opened after 42082-1 had all six of its files arrive in the
+			# browser and given up on by a 30 s limit.
+			going[0] = int(going[0]) + 1
+			(func() -> void:
+				var got: Array = await PageFetch.ask(tree.root,
+					root + SOURCES_DIR + key.uri_encode().replace("%2F", "/"))
 				going[0] = int(going[0]) - 1
-				if not _took(key, result, code, headers, body):
+				if not _took(key, int(got[0]), int(got[1]), got[2], got[3]):
 					return
 				arrived[0] = int(arrived[0]) + 1
 				for named: String in Later.script(&"PartForge").unreached(Later.script(&"PartForge").fetched(key)):
 					if not asked.has(named) and not _unfetched.has(named):
 						asked[named] = true
 						todo.append(named)
-						say.call(), CONNECT_ONE_SHOT)
-			if request.request(root + SOURCES_DIR + key.uri_encode().replace("%2F", "/")) != OK:
-				_unfetched[key] = ["the request could not start", true]
-				request.queue_free()
-				continue
-			going[0] = int(going[0]) + 1
+						say.call()).call()
 		await tree.process_frame
 	return int(arrived[0])
 

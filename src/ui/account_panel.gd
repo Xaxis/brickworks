@@ -264,16 +264,9 @@ func ask_feed(now: bool = false) -> void:
 		_feed_asking = false
 		_show_feed(0)
 		return
-	var http := HTTPRequest.new()
-	http.timeout = 20.0
-	add_child(http)
 	var headers := PackedStringArray(["authorization: Bearer " + token])
-	if http.request(Deployment.api_base() + "/api/people?op=feed_count", headers) != OK:
-		http.queue_free()
-		_feed_asking = false
-		return
-	var result: Array = await http.request_completed
-	http.queue_free()
+	var result: Array = await PageFetch.ask(self, Deployment.api_base() + "/api/people?op=feed_count", headers,
+		HTTPClient.METHOD_GET, "", 20.0)
 	_feed_asking = false
 	if int(result[0]) != HTTPRequest.RESULT_SUCCESS or int(result[1]) != 200:
 		return

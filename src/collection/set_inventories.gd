@@ -100,15 +100,8 @@ func _read(file_name: String) -> Variant:
 			return null
 		return JSON.parse_string(text)
 	var base: String = remote if not remote.is_empty() else Deployment.api_base() + "/sets/"
-	var http := HTTPRequest.new()
-	http.timeout = 30.0
-	add_child(http)
-	if http.request(base + file_name) != OK:
-		http.queue_free()
-		trouble = "could not ask for the set inventories"
-		return null
-	var result: Array = await http.request_completed
-	http.queue_free()
+	var result: Array = await PageFetch.ask(self, base + file_name, PackedStringArray(), HTTPClient.METHOD_GET, "",
+		30.0)
 	if int(result[0]) != HTTPRequest.RESULT_SUCCESS or int(result[1]) != 200:
 		trouble = "the set inventories did not arrive (%d)" % int(result[1])
 		return null
