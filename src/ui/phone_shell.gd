@@ -1395,6 +1395,11 @@ class Sheet extends PanelContainer:
 		for item: String in commands:
 			var tile: Button = _row(phone.shell.command(item).words, item)
 			tile.name = "quick_" + item
+			# Its words without the menu's "…", in the window's language: a
+			# tile is a button, and four to a line the "…" wrapped onto a
+			# line of its own ("Instructions" over "…").
+			tile.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+			tile.text = String(TranslationServer.translate(tile.text)).trim_suffix("…").strip_edges()
 			tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			tile.clip_text = false
 			tile.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
