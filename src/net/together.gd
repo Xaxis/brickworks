@@ -2436,10 +2436,15 @@ func point_at(bricks: Array, by_claude: bool = false) -> String:
 	return ""
 
 
-## This person's own point drawn in the frame after this one, which only
-## asks for it to go (point_at).
+## This person's own point drawn in a frame after this one, which only asks
+## for it to go (point_at). By frames processed, not drawn: an idle window
+## draws none until something changes (IdleDraw), and the status bar saying
+## the same words as at the last point changed nothing, so waiting for a
+## frame drawn waited 0.1-1.9 s for the next thing that did (pointat_flow,
+## 2026-11-14). Twice: asked from a key, the next frame processed is this
+## one's own, before it is drawn.
 func _show_looks_next_frame() -> void:
-	await RenderingServer.frame_post_draw
+	await get_tree().process_frame
 	await get_tree().process_frame
 	_show_looks()
 
