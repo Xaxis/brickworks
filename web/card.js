@@ -175,7 +175,7 @@ export function avatarHtml({ handle = "", name = "", picture = "" } = {}, { size
 /// The icons there are (web/icons.svg).
 export const ICONS = ["like", "save", "share", "comment", "more", "build", "search", "filter", "award", "zoom-in", "zoom-out",
   "stand", "gear", "move", "file", "book", "people", "devices", "camera", "spark", "eye", "monitor", "gauge", "globe", "library",
-  "download", "check", "back", "next", "reset", "expand", "shrink", "close"];
+  "download", "check", "back", "next", "reset", "expand", "shrink", "close", "plus", "down"];
 
 /// An icon from the sprite, in the words' colour.
 export function iconHtml(name) {
@@ -430,6 +430,33 @@ const TESTED_SAYS = "Stands at every step · every step reachable · every part 
 // A handle, as api/people.js keeps one: only such a one makes a link.
 const HANDLE = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
 
+/// The one-tap way to keep a set or a model (lists1, docs/LISTS.md,
+/// web/keep.js): over the picture's foot, a split button. Its first half the
+/// state that matters most, pressed while it is so: Own for a set (with how
+/// many once more than one), Save for a model; its second half the lists,
+/// a box to tick for each (I own, I want, Saved, your own) and a new one.
+/// Drawn the same for everybody (the page is kept by the CDN): web/keep.js
+/// asks what the person has and presses what is so. [key] "set:<number>"
+/// or "model:<id>"; [name] its name, in each button's label so a page of
+/// them says which.
+export function keepHtml(key, name) {
+  const set = key.startsWith("set:");
+  const what = String(name || "").trim();
+  const main = set ? (what ? say("Own {name}", { name: what }) : say("Own it")) : (what ? say("Save {name}", { name: what }) : say("Save it"));
+  const more = what ? say("Add {name} to a list", { name: what }) : say("Add it to a list");
+  return `<div class="keep" data-keep="${escapeHtml(key)}" data-name="${escapeHtml(what)}">`
+    + `<button type="button" class="keep-main" data-keep-main aria-pressed="false" aria-label="${escapeHtml(main)}">`
+    + (set ? `<span class="off">${iconHtml("plus")}</span><span class="on">${iconHtml("check")}</span>` : iconHtml("save"))
+    + `<span class="word">${escapeHtml(set ? say("Own") : say("Save"))}</span><span class="n" aria-hidden="true" hidden></span></button>`
+    + `<button type="button" class="keep-more" data-keep-more aria-haspopup="dialog" aria-expanded="false" aria-label="${escapeHtml(more)}" `
+    + `title="${escapeHtml(say("Your lists"))}">${iconHtml("down")}</button></div>`;
+}
+
+/// A set of the library's catalogue (api/_sets.js catalogCard): its number,
+/// lower-cased as a list keeps it; "" for anything else.
+const catalogueSet = (model) => (isSet(model) && typeof model.library.set === "string"
+  && /^\/library\/set\//.test(String(model.library.page || "")) ? model.library.set.toLowerCase() : "");
+
 /// The card for [model] (a card as /api/share and /api/people send one),
 /// as HTML.
 ///
@@ -441,7 +468,9 @@ const HANDLE = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
 /// [eager]: one of the first screen's cards, whose picture is asked for at
 /// once and first (fetchpriority) rather than when the browser finds it in
 /// view: a lazy picture in the first screen came last (site273).
-export function cardHtml(model, { earned = false, like = false, eager = false } = {}) {
+/// [keep]: a model's card carries Save and your lists (keepHtml), the
+/// gallery's; a set of the catalogue always carries Own and your lists.
+export function cardHtml(model, { earned = false, like = false, eager = false, keep = false } = {}) {
   const id = String(model.id);
   const name = escapeHtml(model.name);
   const picture = pictureOf(model);
@@ -531,11 +560,15 @@ export function cardHtml(model, { earned = false, like = false, eager = false } 
   // cards' "Like" in a row say which they like.
   const liked = like && !earned ? iconButtonHtml({ icon: "like", name: likeName(model.name), count: model.likes, one: "like",
     pressed: model.liked === true, small: true, attrs: `data-like="${escapeHtml(id)}"` }) : "";
+  // Own (a set) or Save (a model) and your lists, over the picture's foot.
+  const owned = catalogueSet(model);
+  const kept = owned ? keepHtml(`set:${owned}`, model.name)
+    : keep && !set && /^[A-Za-z0-9]{10}$/.test(id) ? keepHtml(`model:${id}`, model.name) : "";
   return `<article class="model" ${data.join(" ")}>`
     + `<div class="frame${picture ? "" : " none"}">${picture
       ? `<img src="${escapeHtml(picture)}" alt="${name}" width="1200" height="630" ${eager
         ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"'} decoding="async">`
-      : escapeHtml(say("No picture"))}${marks.length ? `<div class="marks">${marks.join("")}</div>` : ""}${liked}</div>`
+      : escapeHtml(say("No picture"))}${marks.length ? `<div class="marks">${marks.join("")}</div>` : ""}${liked}${kept}</div>`
     + `<div class="words"><a class="open" href="${escapeHtml(set ? setPageOf(model, id) : `${langAt()}/m/${id}`)}"><b title="${name}">${name}</b></a>`
     + `<span class="by">${who}<span class="parts">${escapeHtml(counted(model.parts, "part"))}</span>`
     + `${tallies ? `<small class="acts">${tallies}</small>` : ""}</span>`
@@ -714,9 +747,9 @@ export function mosaicHtml(pictures, { eager = false } = {}) {
     : `<span>${escapeHtml(say("No pictures yet"))}</span>`}</div>`;
 }
 
-// A model's picture as a collection's cover has it (api/_lists.js coversOf,
-// pictureOf): only such an address is drawn.
-const COVER = /^\/m\/[A-Za-z0-9]{10}\.(?:webp|png)(?:\?v=[a-z0-9]+)?$/;
+// A model's or a set's picture as a collection's cover has it (api/_lists.js
+// coversOf, pictureOf): only such an address is drawn.
+const COVER = /^\/(?:m\/[A-Za-z0-9]{10}\.(?:webp|png)(?:\?v=[a-z0-9]+)?|library\/set\/[A-Za-z0-9][A-Za-z0-9.-]{0,29}\.(?:webp|jpg)|library\/[a-z]{2,8}-[A-Za-z0-9_-]{1,120}\.webp)$/;
 
 /// A public collection as a card (site.css .collection-card), the gallery's
 /// Collections tab: the model card's shape, so the tab reads as the gallery
@@ -740,10 +773,18 @@ export function collectionCardHtml(list, { eager = false } = {}) {
   return `<article class="model collection-card" data-id="${id}">`
     + `<div class="frame">${mosaicHtml(covers, { eager })}</div>`
     + `<div class="words"><a class="open" href="${at}/c/${id}"><b title="${name}">${name}</b></a>`
-    + `<span class="by">${who}<span class="parts">${escapeHtml(counted(list.count, "model"))}</span>`
+    + `<span class="by">${who}<span class="parts">${escapeHtml(listCount(list))}</span>`
     + `<span class="parts" data-list-followers="${id}"${followers ? "" : " hidden"}>${escapeHtml(counted(followers, "follower"))}</span></span>`
     + `<p class="follow-line"><button type="button" class="cta ghost small follow" data-follow-list="${id}" hidden>${escapeHtml(say("Follow"))}</button>`
     + `<span class="said" role="status"></span></p></div></article>`;
+}
+
+/// How many a list holds as its card says it: "3 sets, 2 models", each once
+/// there is one; "1 model" for a list of models alone, as before.
+export function listCount(list) {
+  const sets = Number(list.sets) || 0;
+  const models = list.models === undefined ? Number(list.count) || 0 : Number(list.models) || 0;
+  return [sets ? counted(sets, "set") : "", models || !sets ? counted(models, "model") : ""].filter(Boolean).join(", ");
 }
 
 /// collectionCardHtml's card as an element, in a browser.
@@ -789,9 +830,16 @@ export function modelCard(model, options) {
         && (node.matches(".model") || node.querySelector(".model"))))) quietPage();
     }).observe(document.body, { childList: true, subtree: true });
   }
+  // Own, Save and your lists on it: their behaviour, asked for once, by
+  // the first card that has them (web/keep.js; a server page names it).
+  if (!keeping && made.content.querySelector("[data-keep]")) {
+    keeping = true;
+    import("/keep.js").catch(() => { keeping = false; });
+  }
   return document.importNode(made.content.firstElementChild, true);
 }
 let watching = false;
+let keeping = false;
 
 // ---------------------------------------------------------------------------
 // What a model is based on (api/_bases.js, docs/SOCIAL.md section 7, item 5).

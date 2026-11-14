@@ -114,6 +114,17 @@ declare -A CMD=(
   # never; Follow from the card at 390 px dark; most followed; 390 and 1280
   # px in both themes; made private, gone. Throwaway accounts, deleted after.
   [collections]="tools/web/collections_flow.mjs --url=$P --out=$S/${TAG}_collections"
+  # Your sets and lists (docs/LISTS.md, supabase/lists.sql): signed out,
+  # Own asks to sign in; Own from a set's card (Undo, the server agreeing,
+  # My collection holding it), Own and Want on its page, a new list from
+  # its panel; a gallery model into the same list; /lists: the order by
+  # arrow and its Undo, public (Bob and a visitor see /c/, Share's sheet,
+  # its social card) then private (404 to both, out of the directory); the
+  # profile's Sets tab once chosen, a theme and a search; a Rebrickable CSV
+  # in, the CSV out; at 430 px with touch the panel as a sheet and How
+  # many; 1280 and 430 in both themes, nothing sideways. Throwaway
+  # accounts, deleted after with everything of theirs.
+  [lists]="tools/web/lists_flow.mjs --url=$P --out=$S/${TAG}_lists"
   # Notifications apart from the feed (docs/SOCIAL.md U7): your avatar in
   # the header with what is new, its menu (Menu at 390 px); a comment, a
   # photo and ten likes on a throwaway designer's model as one group with
@@ -386,6 +397,11 @@ declare -A CMD=(
   # said so: "the API's database needs supabase/together_big.sql").
   [together_probe]="tools/web/together_probe.mjs --url=$P"
   [together]="tools/web/together_flow.mjs --url=$P --out=$S/${TAG}_together"
+  # pointat (APP_UX8 #17): a part pointed out by Alt+W in a room of two
+  # tabs, drawn in the other within 500 ms (p95 of 20) with the pointer's
+  # name, gone after 5 s or on the pointer's Esc, put away by the other's
+  # Esc there alone; the owner's Claude pointing in one call.
+  [pointat]="tools/web/pointat_flow.mjs --url=$P --out=$S/${TAG}_pointat"
   # A build party (APP_UX5 buildparty): two phones on one shared link and
   # no account, joined by a code in 2 taps each, the car dealt in two (all
   # 61 parts once), a part done on either on the other within 2 s, a phone
@@ -762,7 +778,8 @@ run() {
 # a minute, and every page here reads that switch: beside it, betahome took
 # the beta for off and then found the bar on every page (rel-m294,
 # 2026-11-13), so it runs with nothing of this battery beside it.
-SOLO=" idle arrival progress cursor render_open render product_render grab share_steps frames play discovery oc together buildparty load console "
+# pointat times a part pointed out crossing between two tabs, as together does.
+SOLO=" idle arrival progress cursor render_open render product_render grab share_steps frames play discovery oc together buildparty load console pointat "
 PAIRED=""; ALONE=""
 for n in $NAMES; do case "$SOLO" in *" $n "*) ALONE="$ALONE $n";; *) PAIRED="$PAIRED $n";; esac; done
 # PC_AT_ONCE at a time, a slot taking the next check as soon as it is

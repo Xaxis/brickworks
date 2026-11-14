@@ -67,6 +67,15 @@
 //                                  by whoever presses Follow on their name;
 //                                  told at once to every poll waiting in the
 //                                  session (channelOf, below)
+//               {..., look}        and a part pointed out to the others
+//                                  (pointat, APP_UX8 #17): {n, sel, at, age,
+//                                  claude}, its parts by uid, shown to the
+//                                  others with the pointer's name for
+//                                  LOOK_MS from when it was pointed out, its
+//                                  age then; null or left out, none. Each
+//                                  poll gives it as each person's look
+//                                  ({n, sel, at, claude, age}) while it is
+//                                  that young, and leaves the key out after.
 //
 // A model over 4 MB (Vercel takes at most 4.5 MB a request, and as much an
 // answer) starts in parts (supabase/together_big.sql):
@@ -128,6 +137,10 @@ const PIN_MOST = 4_000;
 const CHAT_MOST = 280;
 // A pointer is shown while it was sent within this long.
 const POINTER_MS = 15_000;
+// pointat (APP_UX8 #17): a part pointed out is shown this long from when it
+// was pointed out, on every side; and names at most this many parts.
+const LOOK_MS = 5_000;
+const LOOK_MOST = 50;
 // A model's snapshot, its text and parts, at most this much: under Vercel's
 // 4.5 MB for a request's body.
 const SNAPSHOT_MOST = 4_000_000;
@@ -276,13 +289,46 @@ function peopleOut(id, session, rows, me) {
       // are here, as a selection stays put while its person looks away.
       sel: here && Array.isArray(kept.sel) ? kept.sel : [],
       view: here && kept.view && typeof kept.view === "object" ? kept.view : null,
+      // pointat: the part they pointed out, while it is shown (lookOf).
+      ...lookOut(here ? kept.look : null, now),
     });
   }
   return out;
 }
+// A signature changes with a part pointed out and its going; with none, as
+// it always was (pointat).
 const signatureOf = (people) => createHash("sha256")
-  .update(JSON.stringify(people.map((one) => [one.who, one.name, one.here, one.at, one.sel, one.view])))
+  .update(JSON.stringify(people.map((one) => [one.who, one.name, one.here, one.at, one.sel, one.view,
+    ...(one.look ? [one.look.n] : [])])))
   .digest("hex").slice(0, 12);
+
+// pointat (APP_UX8 #17): a part pointed out, as a person's point sends it
+// ({n, sel, at, age, claude}), kept with their pointer as {n, sel, at,
+// claude, since}: when it was pointed out, by this server's clock less its
+// age on theirs, so a point sent again as the pointer moves keeps its time.
+function lookOf(look) {
+  if (look === null || look === undefined) return null;
+  if (typeof look !== "object" || Array.isArray(look) || !Number.isSafeInteger(look.n) || look.n < 0
+      || !Array.isArray(look.sel) || look.sel.length === 0 || look.sel.length > LOOK_MOST
+      || !look.sel.every((uid) => typeof uid === "string" && UID.test(uid))
+      || !(look.at === null || look.at === undefined || (Array.isArray(look.at) && look.at.length === 3
+        && look.at.every((n) => typeof n === "number" && Number.isFinite(n) && Math.abs(n) < 1e6)))
+      || (look.age !== undefined && !(typeof look.age === "number" && Number.isFinite(look.age)))
+      || (look.claude !== undefined && typeof look.claude !== "boolean")) {
+    throw new Refusal(400, `a part pointed out is {n, sel: 1 to ${LOOK_MOST} parts by uid, at: [x, y, z], age: ms}`);
+  }
+  const age = Math.min(LOOK_MS, Math.max(0, Math.round(look.age || 0)));
+  return { n: look.n, sel: look.sel, at: look.at ?? null, claude: look.claude === true,
+    since: new Date(Date.now() - age).toISOString() };
+}
+// What a poll says of a kept look: {look: {n, sel, at, claude, age}} while it
+// is younger than LOOK_MS, else nothing.
+function lookOut(kept, now) {
+  const since = kept && typeof kept === "object" ? Date.parse(kept.since) : NaN;
+  if (!Number.isFinite(since) || now - since >= LOOK_MS || !Array.isArray(kept.sel)) return {};
+  return { look: { n: kept.n, sel: kept.sel, at: kept.at ?? null, claude: kept.claude === true,
+    age: Math.max(0, now - since) } };
+}
 
 async function shownName(account) {
   if (!(await shownPublicly(account).catch(() => false))) return "";
@@ -798,10 +844,12 @@ async function point(request, me) {
     throw new Refusal(400, `a selection is at most ${SELECTED_MOST} parts, by uid`);
   }
   const view = viewOf(body.view);
+  // pointat: a part pointed out, kept with the pointer while it is sent.
+  const look = lookOf(body.look);
   // One trip a few times a second: the row of someone in it, not taken out;
   // and told to the polls waiting in it at the same time (channelOf).
   const now = new Date().toISOString();
-  const pointer = { at, sel, view };
+  const pointer = { at, sel, view, ...(look ? { look } : {}) };
   const [[mine]] = await Promise.all([
     db(`together_people?session=eq.${id}&account=eq.${me}&removed_at=is.null`, {
       method: "PATCH", body: { pointer, pointer_at: now, seen_at: now }, prefer: "return=representation",

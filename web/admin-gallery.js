@@ -153,8 +153,15 @@ function drawReports(list) {
         about.append(img, make("br"));
       }
     } else {
+      // A list (lists1): its name and words as its owner typed them, shown
+      // as text, and whether it is still shown.
       to.href = `/c/${encodeURIComponent(report.collection)}`;
-      to.textContent = `collection ${report.collection}`;
+      to.textContent = report.list ? `${report.list.wishlist ? "Wishlist" : "List"} “${report.list.name}”` : `list ${report.collection}`;
+      if (report.list) {
+        if (report.list.description) about.append(make("q", "comment-said", report.list.description), make("br"));
+        const state = report.list.down ? "taken down" : report.list.public ? "public" : "private: only its owner sees it";
+        about.append(make("small", "faint", `${state}${report.list.email ? ` · made by ${report.list.email}` : ""}`), make("br"));
+      }
     }
     about.append(to);
     if (report.comment && report.comment.body) about.append(make("br"), make("q", "comment-said", report.comment.body));
@@ -177,6 +184,9 @@ function drawReports(list) {
     } else if (report.handle && report.picture) {
       acts.append(go({ op: "remove_avatar", handle: report.handle }, ["Take the picture out", "The picture is out, and its file deleted."],
         "Take this profile's picture out? Its file is deleted, and its avatar is made from its handle again."));
+    } else if (report.collection && !report.model && !report.handle && !report.list?.down) {
+      acts.append(go({ op: "list_down", id: report.collection }, ["Take the list down", "The list is down: private, and kept so."],
+        "Take this list down? It is made private and kept so: its name and words are shown to nobody but its owner, who keeps it."));
     } else if (report.model) {
       acts.append(go({ op: "unlist", id: report.model }, ["Take out", "Taken out."], "Take this model out of the gallery for good?"));
       acts.append(go({ op: "bar", id: report.model }, ["Take out the account", "The account is out."],

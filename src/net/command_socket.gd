@@ -664,6 +664,9 @@ const HINTS := {
 	"job": ["Follow a long job", "look"],
 	"fresh_eyes": ["Say what it reads as", "look"],
 	"fresh_eyes_final": ["Say what it reads as now", "look"],
+	# pointat (APP_UX8 #17): shows the others in a Build together session a
+	# part for 5 seconds; nothing of the model or a file changes.
+	"point_at": ["Point a part out to the others", "look"],
 }
 const KINDS: Array[String] = ["look", "file", "add", "remove"]
 

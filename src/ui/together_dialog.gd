@@ -44,6 +44,9 @@ var _chat_scroll: ScrollContainer
 var _busy: bool = false
 
 const WIDTH := 440
+## pointat (APP_UX8 #17): how to point a part out to the others, in a session.
+const POINT_WORDS := ("To show the others a part, put the pointer on it and press "
+	+ "{together_point}, or right-click it: Point it out to the others.")
 
 
 func _ready() -> void:
@@ -132,6 +135,7 @@ func _ready() -> void:
 	together.changed.connect(func() -> void:
 		if visible:
 			fill())
+	size_changed.connect(_keep_inside, CONNECT_DEFERRED)
 
 
 ## A list kept to a height of its own (_hold_heights), scrolled up and down.
@@ -140,6 +144,26 @@ func _scroll_for(inside: Control) -> ScrollContainer:
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.add_child(inside)
 	return scroll
+
+
+## Grown once open (a session started: its link, who is in it, how to point
+## a part out), it grew down from where it was centred before, and Close ran
+## off the foot of a 720-pixel window (pointat_flow, 2026-11-13): moved back
+## inside the window whenever its size changes, and left where it is while
+## it fits, so one dragged aside stays aside.
+func _keep_inside() -> void:
+	if not visible or not is_embedded():
+		return
+	var room: Rect2 = get_tree().root.get_visible_rect()
+	var edge: float = 8.0
+	# The title bar is drawn above the window's position.
+	var top: float = room.position.y + edge + float(get_theme_constant("title_height"))
+	var tall := Vector2(size)
+	var at := Vector2(
+		clampf(position.x, room.position.x + edge, maxf(room.position.x + edge, room.end.x - tall.x - edge)),
+		clampf(position.y, top, maxf(top, room.end.y - tall.y - edge)))
+	if Vector2i(at.round()) != position:
+		position = Vector2i(at.round())
 
 
 ## Show the session, or how to start or join one.
@@ -206,6 +230,9 @@ func fill() -> void:
 		_note.text = ("You are building “%s” with %s. Your Undo takes back only your own changes.") \
 			% [together.store.title, "the others" if others != 1 else "one other"]
 		_end.text = "Leave"
+	# pointat (APP_UX8 #17): how to show the others a part, its key as the
+	# person's keymap has it.
+	_note.text += "\n\n" + Keymap.filled(POINT_WORDS, true)
 	for item: Variant in together.people:
 		var person: Dictionary = item
 		var row := HBoxContainer.new()
