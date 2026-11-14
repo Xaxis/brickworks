@@ -117,9 +117,18 @@ If you have a collection, **From my bricks** makes the fix of parts you own, in 
 
 An assistant gets the same fixes from weakest_joints: each red or amber joint comes with its fix and the edit_model call that puts it down, and `"mine": true` makes them of your parts.
 
+### Lift {#lift}
+
+Press **Lift** in Stress's panel, then click a part: the model is lifted off the floor by that part, as you would pick it up by it. Every joint between it and the rest then carries the weight below it, levered about the edge it would turn on. The joint nearest letting go goes first, and the rest is weighed again without it, until what is left holds. The part in your hand is blue, what comes away red, a joint that holds past its working load amber; the panel names each thing that comes away, with the weight it carried and how far past what lets it go: "Lifted by Brick 1 x 4: 14 parts come away, 23 g of 27". Press a row to select and frame those parts. Click another part to lift by it instead; press **Lift** again to set the model down. A wall of eight 1 x 4 bricks lifted by a top brick holds; at sixteen, the brick standing on one stud of the brick under the one in your hand lets go, and the fourteen past it come away.
+
+An assistant reads the same with weakest_joints `"lift_by"`, a part's number: what comes away, every part of it by number, and the joints left nearest letting go.
+
+![The car lifted by a headlight's round plate in Stress: the plate blue, the rest of the car red, and the panel naming the one-stud joint that lets go and the 60 parts that come away.](/docs/img/the-view-lift.webp "Lift: the car hangs from one stud, and comes away whole.")
+
 <!-- covers
 ui:stress view
 ui:strengthen a weak joint
+ui:lift by a part
 -->
 
 ## Stud directions {#studs}

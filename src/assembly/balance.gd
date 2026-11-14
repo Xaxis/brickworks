@@ -1765,3 +1765,144 @@ func past(id: int) -> PackedInt64Array:
 			if v < _ids.size():
 				out.append(_ids[v])
 	return out
+
+
+## The joints at part [param id] weighed together, once [method measure] has
+## read them: as one joint, every stud of each, carrying everything the tree
+## reaches past that part. What the part a model is lifted by holds
+## (LiftTest): each of its joints alone is no bridge when the parts under it
+## are joined beyond it, a deck plate on two towers, and then none of them is
+## weighed, though between them they hold the whole model up. [param boxes]
+## is each part's boxes (Stability.contacts); [param carried], when given,
+## is filled with the ids of what it carries. Null when one joint alone
+## joins it (a bridge, weighed already), when anything but studs joins it (a
+## pin, a clip, a hinge or a seat holds what is not weighed, as it holds in
+## [method _find_bridges]), or when its studs point sideways or both ways.
+func ring_of(id: int, boxes: Dictionary, carried: Array = []) -> JointLoad:
+	var n: int = _index_of.get(id, -1)
+	if n < 0 or _adjacent.size() <= n:
+		return null
+	var count: int = _ids.size()
+	var edges: Array = []
+	for e: Variant in _adjacent[n]:
+		var w: int = _edge_b[int(e)] if _edge_a[int(e)] == n else _edge_a[int(e)]
+		# The ground's edge, and what only stands on it by a touch: carried
+		# pressed down, as a touch carries.
+		if w >= count or _touch_edges.has(int(e)):
+			continue
+		if _edge_stud[int(e)] == 0:
+			return null
+		edges.append(int(e))
+	if edges.size() < 2:
+		return null
+	var on_top: int = -1
+	var studs := PackedVector3Array()
+	var corners := PackedVector3Array()
+	var holds := PackedFloat64Array()
+	var beyond: int = -1
+	var most: int = 0
+	for e: int in edges:
+		var lower: int = _edge_lower[e]
+		var upper: int = _edge_b[e] if _edge_a[e] == lower else _edge_a[e]
+		if on_top == -1:
+			on_top = 1 if upper == n else 0
+		elif (on_top == 1) != (upper == n):
+			return null
+		if _sideways.has(Stability.pair_of(_ids[lower], _ids[upper])) \
+				or not boxes.has(_ids[lower]) or not boxes.has(_ids[upper]):
+			return null
+		var pair := Vector2i(_ids[lower], _ids[upper])
+		var met: Variant = overlaps.get(pair)
+		if met == null:
+			met = _overlap(boxes[_ids[lower]], boxes[_ids[upper]])
+			overlaps[pair] = met
+		var lo: Vector3i = (met as Array)[0]
+		var hi: Vector3i = (met as Array)[1]
+		if lo.x == 0x7FFFFFFF:
+			return null
+		var y: float = lo.y * BrickLattice.CELL
+		var x_from: float = lo.x * BrickLattice.CELL
+		var z_from: float = lo.z * BrickLattice.CELL
+		var wide: float = (hi.x - lo.x) * BrickLattice.CELL
+		var deep: float = (hi.z - lo.z) * BrickLattice.CELL
+		var across: int = maxi(1, roundi(wide / BrickLattice.STUD))
+		var along: int = maxi(1, roundi(deep / BrickLattice.STUD))
+		var hold: float = lets_go(_meshes[upper])
+		for i: int in across:
+			for k: int in along:
+				studs.append(Vector3(x_from + (i + 0.5) * wide / across, y,
+					z_from + (k + 0.5) * deep / along))
+				holds.append(hold)
+		corners.append_array([Vector3(x_from, y, z_from), Vector3(x_from + wide, y, z_from),
+			Vector3(x_from + wide, y, z_from + deep), Vector3(x_from, y, z_from + deep)])
+		var other: int = lower if upper == n else upper
+		if across * along > most:
+			most = across * along
+			beyond = other
+	# Everything the tree reaches through these joints, where it is: not
+	# what only stands on the part by a touch, pressed onto it.
+	var through: Dictionary = {}
+	for e: int in edges:
+		through[_edge_b[e] if _edge_a[e] == n else _edge_a[e]] = true
+	var inside := PackedByteArray()
+	inside.resize(count + 1)
+	var grams: float = 0.0
+	var weighted := Vector3.ZERO
+	for v: int in _reached:
+		var p: int = _parent[v]
+		if v == n or v >= count or p < 0:
+			continue
+		inside[v] = 1 if through.has(v) else (0 if p == n else inside[p])
+		if inside[v] == 1:
+			grams += _mass[v]
+			weighted += (_rest[v] * _middle[v]) * _mass[v]
+			carried.append(_ids[v])
+	if grams <= 0.0:
+		return null
+	var centre: Vector3 = weighted / grams
+	var joint := Vector3.ZERO
+	for stud: Vector3 in studs:
+		joint += stud
+	joint /= studs.size()
+	# The parts past it hang under it when it is on top, and stand on it
+	# when it is under them, as one stud joint's do (_find_bridges).
+	var normal: Vector3 = Vector3.DOWN if on_top == 1 else Vector3.UP
+	var force := Vector3(0.0, -grams / 1000.0 * GRAVITY, 0.0)
+	var turning: Vector3 = (centre - joint).cross(force)
+	var bending: Vector3 = turning - normal * turning.dot(normal)
+	var pressed: float = -force.dot(normal)
+	var way: Vector3
+	if bending.length() > 0.000001:
+		way = bending.cross(normal).normalized()
+	else:
+		var low := Vector2(INF, INF)
+		var high := Vector2(-INF, -INF)
+		for corner: Vector3 in corners:
+			low = low.min(Vector2(corner.x, corner.z))
+			high = high.max(Vector2(corner.x, corner.z))
+		way = Vector3.RIGHT if high.x - low.x < high.y - low.y else Vector3.BACK
+	var reach: float = -INF
+	for corner: Vector3 in corners:
+		reach = maxf(reach, (corner - joint).dot(way))
+	var lever: float = 0.0
+	var ultimate: float = 0.0
+	for k: int in studs.size():
+		var arm: float = reach - (studs[k] - joint).dot(way)
+		lever += arm
+		ultimate += holds[k] * arm
+	var to_cm: float = MM_PER_LDU / 10.0
+	var one := JointLoad.new()
+	one.beyond = _ids[beyond]
+	one.held_by = id
+	one.beyond_part = _parts[beyond]
+	one.held_part = _parts[n]
+	one.studs = studs.size()
+	one.grams = grams
+	one.hangs = pressed < 0.0
+	one.pull = maxf(-pressed, 0.0)
+	one.moment = maxf(bending.length() - pressed * reach, 0.0) * to_cm
+	one.capacity = ALLOWABLE_N * lever * to_cm
+	one.ultimate = ultimate * to_cm
+	one.ratio = one.moment / maxf(one.capacity, 0.000001)
+	one.at = joint
+	return one
