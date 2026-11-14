@@ -449,10 +449,17 @@ func start(world: BrickWorld, library: PartLibrary,
 	# A model with its author's steps opens in them; one without has none
 	# to show.
 	_authored = AuthorSteps.any(world, scenery)
-	if _authored and _mode == 0:
-		_set_mode_quietly(AUTHORS)
-	elif not _authored and _mode == AUTHORS:
-		_set_mode_quietly(0)
+	# Set every time, not only on a change of order: the rows it shows
+	# follow whether the model has steps too, and a fresh model's build
+	# order kept the row of steps and the Booklet row (Lay out the page…)
+	# hidden from the bar's making until another order was chosen
+	# (phonepanels, smalls2).
+	var mode: int = _mode
+	if _authored and mode == 0:
+		mode = AUTHORS
+	elif not _authored and mode == AUTHORS:
+		mode = 0
+	_set_mode_quietly(mode)
 	var job: Working.Job = Working.begin("Laying out %s parts in steps…"
 		% Working.comma(Inventory.pieces_in(world, library, scenery)), 0, true)
 	_job = job

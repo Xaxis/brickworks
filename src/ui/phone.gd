@@ -48,6 +48,13 @@ const TABLET := 1100.0
 static var _on: int = -1
 static var _wide: bool = false
 static var _keys: RegEx
+## A mouse's words, whole, with their endings: made at the class's load,
+## read by the drawn words from any thread (finger_words).
+static var _clicks: RegEx = RegEx.create_from_string(
+	"(?i)\\b(right[- ]click|double[- ]click|shift[- ]click|click)(s|ed|ing)?\\b")
+## The translation that says every English line drawn for a finger, once
+## it is in (speak_to_a_finger).
+static var _finger: TouchWords = null
 
 
 ## Whether the phone layout is wanted: decided once, at start.
@@ -114,10 +121,87 @@ static func touch_words(text: String) -> String:
 	var dash: int = out.find(" — ")
 	if dash != -1 and _keys.search(out.substr(dash + 3)) != null:
 		out = out.substr(0, dash)
-	for pair: Array in [["Right-click", "Hold"], ["right-click", "hold"], ["right click", "hold"],
-			["Double-click", "Double-tap"], ["double-click", "double-tap"],
-			["Shift-click", "Tap"], ["Shift-drag", "Two fingers"], ["Ctrl-drag", "Drag"],
-			["Click", "Tap"], ["click", "tap"], ["the pointer", "your finger"],
-			[" — Esc when done", ""], ["Esc or a hold lets go", "Select lets go"]]:
+	return finger_words(out)
+
+
+## A mouse's words said for a finger, the rest as it is: a click is a tap,
+## clicked tapped (not "taped", as "Driver: Earth, clicked" came out), a
+## right click a hold, a Shift-drag two fingers, the pointer your finger.
+## [method touch_words] for a line said at the moment, which drops its
+## keys too; this for every line drawn (TouchWords).
+static func finger_words(text: String) -> String:
+	if text.is_empty():
+		return text
+	var out: String = ""
+	var at: int = 0
+	for found: RegExMatch in _clicks.search_all(text):
+		# A name, not a word for a mouse: a capital one goes only before a
+		# word in small letters ("Click an axle"), not in a part's or a
+		# set's name ("Hinge Plate with Click Hinge", "Click & Build
+		# Watch", "We Just Click", "THREE CLICKS").
+		var word: String = found.get_string(1)
+		if word.left(1) != word.left(1).to_lower():
+			var next: String = text.substr(found.get_end(), 2)
+			if next.length() < 2 or next[0] != " " or next[1] == next[1].to_upper():
+				continue
+		var mouse: String = word.to_lower()
+		var ending: String = found.get_string(2)
+		var finger: String = "hold" if mouse.begins_with("right") \
+			else "double-tap" if mouse.begins_with("double") else "tap"
+		if finger == "hold":
+			finger = {"s": "holds", "ed": "held", "ing": "holding"}.get(ending, "hold")
+		elif not ending.is_empty():
+			finger += {"s": "s", "ed": "ped", "ing": "ping"}[ending]
+		if word.left(1) != word.left(1).to_lower():
+			finger = finger.left(1).to_upper() + finger.substr(1)
+		out += text.substr(at, found.get_start() - at) + finger
+		at = found.get_end()
+	out += text.substr(at)
+	for pair: Array in [["Shift-drag", "Two fingers"], ["Ctrl-drag", "Drag"],
+			["the pointer", "your finger"], [" — Esc when done", ""],
+			["Esc or a hold lets go", "Select lets go"]]:
 		out = out.replace(str(pair[0]), str(pair[1]))
 	return out
+
+
+## Every English line the window draws said for a finger from now on: a
+## panel's own status and hint lines (Simulate's "Click an axle or a crank
+## to drive that instead"), a dialog's, a tooltip's, as the bar's line over
+## the model already was (PhoneShell.say). Godot draws a control's words
+## through the TranslationServer, as a language's are (Language), so one
+## translation for English says them all, the next line written included.
+## A probe or a browser check reading a control's text still reads its
+## English as it was written. Another language's words are its own.
+static func speak_to_a_finger() -> void:
+	if _finger != null:
+		return
+	_finger = TouchWords.new()
+	_finger.locale = "en"
+	TranslationServer.add_translation(_finger)
+
+
+## What [param text] is drawn as for a finger: for a check of the words.
+static func drawn(text: String) -> String:
+	return String(TranslationServer.translate(text)) if _finger != null else text
+
+
+class TouchWords extends Translation:
+	var _found: Dictionary = {}
+	var _lock := Mutex.new()
+
+	func _get_message(src_message: StringName, context: StringName) -> StringName:
+		if not String(context).is_empty():
+			return &""
+		var text: String = String(src_message)
+		_lock.lock()
+		var known: Variant = _found.get(text)
+		_lock.unlock()
+		if known == null:
+			var said: String = Phone.finger_words(text)
+			known = said if said != text else ""
+			_lock.lock()
+			if _found.size() > 20000:
+				_found.clear()
+			_found[text] = known
+			_lock.unlock()
+		return StringName(known)

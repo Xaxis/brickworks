@@ -10185,6 +10185,9 @@ func _dress_for_phone() -> void:
 	_bar.custom_minimum_size.y = _phone.top_height()
 	_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_bar.said.connect(Callable(_phone, &"say"))
+	# Every line drawn in a mouse's words said for a finger: the panels'
+	# own status lines too, Simulate's "Click an axle or a crank" (smalls2).
+	Phone.speak_to_a_finger()
 	_shell.toolbar.visible = false
 	_shell.status.only_the_work()
 	_hint.visible = false
