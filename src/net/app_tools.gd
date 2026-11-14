@@ -114,6 +114,9 @@ const COMMANDS: Dictionary = {
 	# subexport (APP_UX7 #19): File › Export › Each sub-model is
 	# export_model's submodels=true.
 	"export_submodels": "export_model",
+	# pointat (APP_UX8 #17): a part pointed out to everyone in a Build
+	# together session (Alt-W, or a part's right-click menu).
+	"together_point": "point_at",
 }
 
 ## The window's commands no tool does, each with why. A command that is
@@ -370,7 +373,8 @@ brickify) \
 answers at once with a job number while it works in the app. job {"id": N} \
 waits up to 45 s for it to end, then says how far it has got, or gives its \
 answer the moment it is done; call it again until then. cancel=true stops \
-it. Nothing else can be done in the app while a job runs."""
+it. Nothing else can be done in the app while a job runs.
+ - point_at: in a Build together session (the person and others building one model live, each in their own window), points parts out to everyone in it, as the person's Alt-W does: outlined in the person's colour on every screen for 5 seconds, named as the person's Claude. part= a number from look_at_model, or parts= several. Changes nothing. Out of a session it says so: the person starts or joins one from File › Build together…."""
 
 
 func definitions() -> Array:
@@ -1328,6 +1332,23 @@ func definitions() -> Array:
 		},
 		GalleryTool.definition(),
 		PatternTool.definition(),
+		# pointat (APP_UX8 #17).
+		{
+			"name": "point_at",
+			"description": ("Point parts out to everyone building this model with the person in "
+				+ "a Build together session, as the person's Alt-W over a part does: each other "
+				+ "person, and the person, sees them outlined in the person's colour with "
+				+ "\"<their name>'s Claude\" over them, for 5 seconds, and their status bar says who "
+				+ "points at what. Use it to show the others the part a reply is about. part= its "
+				+ "number (look_at_model), or parts= up to 50. Changes nothing, the model or any "
+				+ "file. Out of a session it says so: starting or joining one is the person's "
+				+ "(File › Build together…), with a link they send."),
+			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
+				"part": {"type": "integer", "description": "the part's number in look_at_model"},
+				"parts": {"type": "array", "items": {"type": "integer"}, "maxItems": 50,
+					"description": "several parts' numbers, pointed out together"},
+			}},
+		},
 	] + HandTools.definitions() + SeeTools.definitions() + PaletteTool.definitions()
 
 
@@ -1437,6 +1458,9 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 			return handled
 		"view_board", "booklet_page":
 			return await _seeing().run(tool, input, work)
+		# pointat (APP_UX8 #17).
+		"point_at":
+			return _point_at(input)
 		# Edit, Pattern…'s grid (PatternTool), answered with the copies
 		# pictured as the hand tools' changes are.
 		"pattern_parts":
@@ -5799,3 +5823,51 @@ func _make_unique(input: Dictionary) -> String:
 		+ "other cop%s of %s stay as %s." % ["y" if copies.size() == 1 else "ies",
 			Assemblies.definition(Assemblies.leaf(path)), "it was" if copies.size() == 1
 				else "they were"])
+
+
+# -- pointat (APP_UX8 #17): parts pointed out in a Build together session -------------
+
+## point_at: [param input]'s part= or parts= pointed out to everyone in the
+## session, as the person's Alt-W does (Together.point_at), named as their
+## Claude.
+func _point_at(input: Dictionary) -> String:
+	var together: Node = app.get("_together_made")
+	if together == null or not bool(together.get("live")):
+		return ("The person is not in a Build together session, so there is nobody to point a "
+			+ "part out to. Building together is the person's to start or join (File › Build "
+			+ "together…), by a link they send to whoever they build with.")
+	var asked: Array = []
+	if input.has("part"):
+		asked.append(input["part"])
+	if input.get("parts") is Array:
+		asked.append_array(input["parts"] as Array)
+	if asked.is_empty():
+		return "Say which part: part= its number from look_at_model, or parts= several."
+	var bricks: Array = []
+	var unknown := PackedStringArray()
+	for given: Variant in asked:
+		var number: int = int(given) if (given is int or given is float) else 0
+		if _brick(number) == null or str(together.call("uid_of", number)).is_empty():
+			unknown.append(str(given))
+		elif not number in bricks:
+			bricks.append(number)
+	if bricks.is_empty():
+		return ("No part %s in the model: the numbers are look_at_model's." % ", ".join(unknown))
+	var trouble: String = together.call("point_at", bricks.slice(0, 50), true)
+	if not trouble.is_empty():
+		return trouble
+	var library: PartLibrary = app.get("_library")
+	var first: BrickWorld.Brick = _brick(int(bricks[0]))
+	var info: PartLibrary.PartInfo = library.parts.get(first.part_id) if library != null else null
+	var named: String = "part %d (%s %s)" % [int(bricks[0]),
+		library.color(first.color_code).name if library != null else "colour %d" % first.color_code,
+		Inventory._tidy(info.name) if info != null else first.part_id] if bricks.size() == 1 \
+		else "%d parts" % mini(bricks.size(), 50)
+	var here: String = str(together.call("others_here"))
+	var said: String = ("Pointed out %s to %s for 5 seconds: outlined in the person's colour on every "
+		+ "screen in the session, named as their Claude.") % [named, here] if not here.is_empty() \
+		else ("Pointed out %s for 5 seconds, but nobody else in the session is here now: it is "
+		+ "outlined on the person's screen alone.") % named
+	if not unknown.is_empty():
+		said += " No part %s in the model, left out." % ", ".join(unknown)
+	return said

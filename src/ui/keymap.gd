@@ -161,6 +161,11 @@ const PRESET_KEYS: Dictionary = {
 		# stepnames (APP_UX6 #9): the step showing named, Shift-F2 beside F2,
 		# which renames a sub-assembly as F2 renames in every program.
 		"step_name": SHIFT | KEY_F2,
+		# pointat (APP_UX8 #17): Point it out to the others, over the part
+		# the pointer is on, as a game's ping is a key over the place. Every
+		# letter of its row has an Alt key already; Alt-W has none here, and
+		# no browser keeps it.
+		"together_point": ALT | KEY_W,
 	},
 	"studio": {
 		"mode_select": KEY_V, "mode_hinge": KEY_H, "mode_clone": KEY_C, "mode_hide": KEY_L,
