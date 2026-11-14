@@ -260,6 +260,9 @@ class Joint extends RefCounted:
 	var way: Vector3
 	## A turntable's, a pin's, an axle's: for reading a model back.
 	var what: String = ""
+	## Whether [member a] is the shaft that turns in [member b]: an axle in
+	## its round hole, a turntable's top on its base. A pin turns in both.
+	var a_turns: bool = false
 	var parent: int = 0
 	var child: int = 0
 	## Its unknown's column, for a joint of the tree; -1 for one closing a
@@ -502,7 +505,7 @@ func _build() -> void:
 				lines.append([holders[0][0], holders[n][0], holders[n][1], holders[n][2], what])
 		else:
 			for holder: Array in holders:
-				lines.append([shaft, holder[0], holder[1], holder[2], what])
+				lines.append([shaft, holder[0], holder[1], holder[2], what, kinds.has("axle")])
 	# A differential's planets turn on the stubs inside its casing.
 	_stubs(lines)
 	# A turntable's top turns on its base.
@@ -524,7 +527,7 @@ func _build() -> void:
 			var there: Transform3D = (parts[other] as Piece).at
 			if there.origin.distance_to(at.origin) < LINE_SLACK \
 					and absf((there.basis * Y).normalized().dot((at.basis * Y).normalized())) > 0.99:
-				lines.append([key, other, at.origin, (at.basis * Y).normalized(), "turntable"])
+				lines.append([key, other, at.origin, (at.basis * Y).normalized(), "turntable", true])
 	for key: int in grounded:
 		_join(grounded[0], key, "held")
 	# Two joints between the same two bodies on different lines hold them
@@ -566,6 +569,7 @@ func _build() -> void:
 		joint.point = line[2]
 		joint.way = line[3]
 		joint.what = line[4]
+		joint.a_turns = line.size() > 5 and bool(line[5])
 		joints.append(joint)
 	bodies.clear()
 	for key: int in parts:
@@ -1712,6 +1716,32 @@ func solve(drivers: Dictionary) -> Dictionary:
 				answer = again
 			else:
 				aside.clear()
+		# Locks no one row frees are read the same way: those doubtful meshes
+		# and universal joints out, then each taken back, the nearest its
+		# ideal first, unless it locks the train. A universal joint is read
+		# surely, but not always what it turns: 42076-1's ramp gears each turn
+		# a linear actuator's screw through one, the screw read as one piece
+		# with its case, and the ramp's two upright shafts, which turned
+		# before universal joints were read, locked (kinefix).
+		if not answer["consistent"]:
+			var surest: Array = []   ## [n, how far off]: the doubtful rows
+			var kept: Array = []
+			for n: int in rows.size():
+				if n >= used.size():
+					surest.append([n, INF])
+				elif used[n].doubtful:
+					surest.append([n, absf(used[n].off())])
+				else:
+					kept.append(rows[n])
+			if not surest.is_empty() and _eliminate(fixed + held + kept, depth)["consistent"]:
+				surest.sort_custom(func(x: Array, y: Array) -> bool:
+					return float(x[1]) < float(y[1]) or (float(x[1]) == float(y[1]) and int(x[0]) < int(y[0])))
+				for one: Array in surest:
+					if _eliminate(fixed + held + kept + [rows[int(one[0])]], depth)["consistent"]:
+						kept.append(rows[int(one[0])])
+					else:
+						aside.append(int(one[0]))
+				answer = _eliminate(fixed + held + kept, depth)
 		if not answer["consistent"]:
 			out["locked"] = true
 			for n: int in culprits:
@@ -1760,11 +1790,25 @@ func solve(drivers: Dictionary) -> Dictionary:
 	out["freedoms"] = freedoms
 	out["said"] = "%d of %d joints turn; %s left, %s undecided, following what carries them" \
 		% [moving, tree.size(), _counted(freedoms, "freedom"), _counted(free.size(), "body")]
+	var meshes_aside := PackedStringArray()
+	var first_mesh: int = -1
+	var universals_aside: int = 0
 	for n: int in aside:
-		(out["set_aside"] as Array).append(used[n].said())
-	if not aside.is_empty():
+		if n < used.size():
+			meshes_aside.append(used[n].said())
+			(out["set_aside"] as Array).append(used[n].said())
+			first_mesh = n if first_mesh < 0 else first_mesh
+		else:
+			universals_aside += 1
+			(out["set_aside"] as Array).append("universal joint #%d" % int(
+				(universals[n - used.size()]["cross"] as Array)[0]))
+	if not meshes_aside.is_empty():
 		out["said"] += "; taken as not meshing, or the train would lock: %s (%s)" \
-			% [", ".join(PackedStringArray(out["set_aside"])), used[aside[0]].off_said()]
+			% [", ".join(meshes_aside), used[first_mesh].off_said()]
+	if universals_aside > 0:
+		out["said"] += "; %s taken as not turning what is past %s, or the train would lock" % [
+			"a universal joint" if universals_aside == 1 else "%d universal joints" % universals_aside,
+			"it" if universals_aside == 1 else "them"]
 	return out
 
 
