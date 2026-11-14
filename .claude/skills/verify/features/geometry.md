@@ -826,7 +826,20 @@ part in a thousand) taken as a repeat. Gears at right angles mesh within
 `BEVEL_SLACK` (3.5 LDU, Kinebrick's); one met only past `LINE_SLACK` is doubtful,
 and gives way where it alone would lock the train (the probe's "cross shaft
 turned by two crowns": 2.5 LDU out it turns, set aside and said; standing true it
-locks):
+locks). A lock no one row frees lets go, in one pass of the elimination, what the
+reading is least sure of, each taken back unless it locks the train: loops and
+meshes reached through a joint only a drag reads (`join_floating`) or on a piece
+held by its largest part, doubtful meshes nearest first, universal joints, and a row
+that repeats others but for the file's rounding; sure meshes that ask two turns
+still lock and are named (kinefix; said as "taken as not meshing / not closing, or
+the train would lock"). The tree reaches each body by the parts' own joints before
+a drag's; those less-sure rows never stop a body the sure rows alone turn ("or the
+train would stand"); and a loop's drag (`_hold_train`) places neither the driver
+and what it carries nor a gear the reading turns at a rate it decides. A change to
+any of it is measured by `tools/kinefuncs.py run LABEL --app=SNAPSHOT` on the change
+and on cdc640d3e (before kinefuncs), compared function by function: none that
+turned before may lock or stand more parts after (kinefix: 36 on pre261 905153126,
+2 after, both where cdc640d3e's credit was wrong):
 
 ```sh
 godot --headless --path . --script src/dev/mechanism_probe.gd       # the ratios
@@ -1019,7 +1032,12 @@ number, the locked pair named and red, Mars's year "1.96 Earth years; real 1.880
 left edge", Worst balance going to Crank at 329°, a recording of one Earth year
 (0.7143 crank turns) with Earth turning 1.4 and Mars 20/28 of every frame's crank
 step, simulate_mechanism through AppTools with a picture, and every part where it
-was built, the history as deep and `world.revision` unmoved throughout. Pictures:
+was built, the history as deep and `world.revision` unmoved throughout. Then it opens
+`orrery_two_planets.ldr` and `telescope.mpd` as File, Open does (`_open`): the orrery
+from its Crank turns "3 of 3 joints", Earth 1.4 and Mars 20/28, and Play plays; the
+telescope's Tilt wheel, clicked, turns (not locked) and Play plays. On pre261
+905153126, where kinefuncs read a named base from the model's largest body, both
+lock and the probe fails 11 (kinefix). Pictures:
 `shots/simulate/1_train.png` … `4_orrery_worst.png`, `5_session_picture.png` (the
 hero view a session gets), the recordings in `shots/simulate/{train,orrery}/`.
 On 2026-10-13 under a load of 50 on this box a 24-frame Quick recording took 79-88

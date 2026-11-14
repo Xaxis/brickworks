@@ -21,6 +21,12 @@
 ##     1.8808, +4.2%, the balance is weighed over the cycle and the arm
 ##     furthest out named, and a recording's frames turn Earth 1.4 and Mars
 ##     20/28 of the crank's step.
+## Then two fixtures as a person has them, File, Open on the file and
+## Simulate from the Tools menu: the orrery (orrery_two_planets.ldr, the one
+## built here, saved) turns 3 of 3 joints from its crank and plays, and the
+## telescope (telescope.mpd) turns from its tilt wheel, clicked, and plays.
+## kinefuncs read each one's named base from the model's largest body, and
+## both locked (kinefix).
 ## Simulating never changes the model: every part stands where it was built,
 ## the undo history is as deep, and the model's revision has not moved.
 ## Pictures and the recordings in shots/simulate/.
@@ -81,11 +87,13 @@ func _run() -> void:
 		return
 	await _gear_train()
 	await _orrery()
+	await _opened()
 	print("")
 	if _failures == 0:
 		print("simulate: a driver clicked, played, scrubbed and recorded, every frame's turn the "
 			+ "tooth counts', a locked train named, Mars's year in Earth years against NASA's, "
-			+ "the balance over the cycle, and the model never moved")
+			+ "the balance over the cycle, and the model never moved; the orrery and the telescope "
+			+ "opened from their files turn and play")
 	else:
 		print("simulate: %d FAILED" % _failures)
 	quit(1 if _failures > 0 else 0)
@@ -439,6 +447,109 @@ func _orrery() -> void:
 	_check("...and leaves the model as it was", _same_as(rest) and _world.revision == revision)
 	_panel.close()
 	await _frames(3)
+
+
+# -- opened from their files ----------------------------------------------------------------
+
+
+## The orrery and the telescope opened as a person opens a file, driven and
+## played as the panel has them. kinefuncs read a sub-model named as a base
+## (Frame, Stand) by the model's largest body, Earth's arm on the orrery: the
+## Frame's beam and turntable went unheld, the crank locked against Mars's
+## arm and Play said "Nothing turns from this driver."; the telescope's tilt
+## wheel locked against its second tower (kinefix).
+func _opened() -> void:
+	print("  the two-planet orrery, opened from its file")
+	if not await _open_fixture("orrery_two_planets.ldr"):
+		return
+	_shell.run("simulate")
+	await _settled()
+	var sim: Simulation = _panel.sim
+	var readout: String = str(_panel.said()["readout"])
+	print("    driver: %s" % _panel.said()["driver"])
+	print("    readout: %s" % readout.replace("\n", " | "))
+	_check("the crank drives it, as its sub-assembly's name marks it, and 3 of 3 joints turn",
+		str(_panel.said()["driver"]).begins_with("Driver: Crank") and readout.begins_with("3 of 3 joints turn"))
+	var earth: int = _named(sim, "Earth")
+	var mars: int = _named(sim, "Mars arm")
+	_check("Earth turns 1.4 times the crank and Mars 20/28, both the other way (%.4f, %.4f)" % [
+		float(sim.rates.get(earth, 0.0)), float(sim.rates.get(mars, 0.0))],
+		absf(float(sim.rates.get(earth, 0.0)) + 1.4) < 1e-5
+		and absf(float(sim.rates.get(mars, 0.0)) + 20.0 / 28.0) < 1e-5)
+	await _plays([earth, mars])
+	_panel.close()
+	await _frames(3)
+
+	print("  the telescope, opened from its file")
+	if not await _open_fixture("telescope.mpd"):
+		return
+	_shell.run("simulate")
+	await _settled()
+	sim = _panel.sim
+	var tilt: int = _named(sim, "Tilt wheel")
+	_check("its tilt wheel is a body Simulate can drive (%s)" % sim.names.get(tilt, "none"),
+		tilt >= 0 and sim.can_drive(tilt))
+	if tilt < 0:
+		return
+	await _click(_clickable_point(sim.model.bodies[tilt]))
+	await _settled()
+	sim = _panel.sim
+	readout = str(_panel.said()["readout"])
+	print("    driver: %s" % _panel.said()["driver"])
+	print("    readout: %s; %d parts move" % [readout.get_slice("\n", 0), sim.moving.size()])
+	_check("clicking the tilt wheel drives it, and it turns: not locked, %d parts move" % sim.moving.size(),
+		sim.driver == tilt and not bool(sim.solved.get("locked", false)) and not readout.begins_with("locked")
+		and sim.moving.size() >= (sim.model.bodies[tilt] as Array).size())
+	await _plays([tilt])
+	_panel.close()
+	await _frames(3)
+
+
+## File, Open on [param file] in the fixtures, as the app opens a file.
+func _open_fixture(file: String) -> bool:
+	if _panel.visible:
+		_panel.close()
+		await _frames(3)
+	_main.call("clear_model")
+	await _frames(3)
+	_main.call("_open", ProjectSettings.globalize_path(FIXTURES.path_join(file)))
+	for _n: int in 1200:
+		await process_frame
+		if _store.awaited.is_empty() and _world.brick_count() > 0 and not _store.laying:
+			break
+	await _frames(10)
+	var playback: BuildPlayback = _main.get("_playback")
+	if playback != null and playback.is_playing():
+		playback.stop()
+	await _frames(20)
+	_check("%s opens: %d parts" % [file, _world.brick_count()], _world.brick_count() > 0)
+	return _world.brick_count() > 0
+
+
+## The body named [param name] by its sub-model, or -1.
+static func _named(sim: Simulation, name: String) -> int:
+	for body: int in sim.names:
+		if str(sim.names[body]) == name:
+			return body
+	return -1
+
+
+## Play pressed: the driver turns and each of [param bodies] turns with it in
+## the picture, and the model stays where it was.
+func _plays(bodies: Array) -> void:
+	var rest: Dictionary = _rest()
+	var play: Button = _panel.controls_by_name()["simulate_play"]
+	await _click(play.get_global_rect().get_center())
+	for _n: int in 40:
+		await process_frame
+	var status: String = str(_panel.said()["status"])
+	var turned: bool = true
+	for body: int in bodies:
+		turned = turned and (_panel.sim.turning.has(body) or body == _panel.sim.driver)
+	_check("Play plays: %.3f turns in, %s" % [_panel.turns, status if not status.is_empty() else "nothing said against it"],
+		_panel.playing and _panel.turns > 0.05 and not status.contains("Nothing turns") and turned)
+	await _click(play.get_global_rect().get_center())
+	_check("...paused again, and the model never moved", not _panel.playing and _same_as(rest))
 
 
 # -- building -----------------------------------------------------------------------------
