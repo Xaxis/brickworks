@@ -7168,6 +7168,11 @@ func save_booklet_as(kind: String, to: String = "") -> String:
 	# web, where the app's tab is out of view (BookletRead.read_all).
 	var pace: int = 0 if web else 8
 	_pdf_missed = ""
+	# The type it is set in, fetched the first time on the web (WebPacks.FONTS).
+	if web and not WebPacks.here(WebPacks.FONTS):
+		job.say("Fetching the booklet's type…")
+		await WebPacks.need(WebPacks.FONTS)
+		job.say("Writing the PDF…" if pdf else "Drawing the pages…")
 	if pdf and not web:
 		pages = await _pdf_file(_booklet_out.source(), written)
 		ok = pages > 0
@@ -7224,6 +7229,8 @@ var _pdf_missed: String = ""
 ## its own in the 0.15.0 download (bookletwarm, 2026-11-04). Its pages; -1
 ## when it could not be written, and then nothing of it is left.
 func _pdf_file(from: String, to: String) -> int:
+	# The type, fetched the first time on the web, before a worker reads it.
+	await WebPacks.need(WebPacks.FONTS)
 	var read: RefCounted = (await Later.script_in_background(&"BookletRead", null)).new()
 	var out: RefCounted = (await Later.script_in_background(&"BookletPdf", null)).new()
 	var part: String = to + ".part"
