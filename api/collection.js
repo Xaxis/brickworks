@@ -77,7 +77,10 @@
 //       how many of a set the person owns, every copy from anywhere, from
 //       the count they saw to qty (0: none): the website's Own (lists1).
 //       More goes onto their own copy (src "hand"); fewer comes off theirs
-//       first, then off the other sources' copies. Answered with no more
+//       first, then off the other sources' copies. Back up to a count an
+//       Own (with an id) took it down from, nothing changed since, puts
+//       back those copies as they were: their source and their marks
+//       (an Undo). Answered with no more
 //       than a card needs: {done: {owned}, rev}, and a 409 {error, owned}
 //       with the count as it is now (a card asks it on every page, and the
 //       whole collection is thousands of lots)
@@ -143,6 +146,7 @@
 // line). The database's own row security is the second lock
 // (supabase/collection.sql).
 
+import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { AuthError, authConfigured, bearer, verify } from "./_auth.js";
 import { COLOUR_NAMES } from "./_colours.js";
@@ -172,6 +176,10 @@ const REQUEST = /^[A-Za-z0-9._:-]{8,64}$/;
 export const MOST_LOT_CHANGES = 2000;
 /// How many request ids a collection remembers.
 export const MOST_REMEMBERED = 100;
+/// How many of the remembered changes keep the copies an Own took down
+/// from, and how large each may be: an Own back up puts those back.
+const MOST_AWAY = 20;
+const MOST_AWAY_BYTES = 32000;
 /// How many times a change is made again on what another write left.
 const TRIES = 12;
 
@@ -185,6 +193,9 @@ export const SOURCE_OF = {
   figs: HAND, brickset_csv: "brickset",
 };
 const SOURCES = new Set(Object.values(SOURCE_OF));
+/// The sources there were before each set and lot said its own: a replace
+/// from one of them took everything, what is kept with no src included.
+const BEFORE_SOURCES = new Set([HAND, REBRICKABLE, "bricklink_xml"]);
 
 export class Refusal extends Error {
   constructor(status, message) {
@@ -614,15 +625,19 @@ function withClamped(done, parts) {
 }
 
 /// [have] with an import added: each lot and set marked with [src]. In a
-/// replace, what [src] brought before (and what was kept before sources
-/// were) goes first: its sets when the import has sets, its lots when it
-/// has parts. Nothing of another source's, the person's own counting or a
-/// session's is touched. [books] is set number -> its inventory record (or
+/// replace, what [src] brought before goes first: its sets when the import
+/// has sets, its lots when it has parts. What was kept before sources were
+/// (no src) goes too in a replace from a source there was then, as such a
+/// replace always took everything (My collection says a fetch replaces
+/// it); never in one from a source that came later (Brickset), which can
+/// never have brought it (review of lists1: a Brickset replace took a set
+/// kept before sources were). Nothing of another source's, the person's
+/// own counting or a session's is touched. [books] is set number -> its inventory record (or
 /// null, none known), for the sets whose marks a replace carries.
 function merged(have, add, mode, src, books = new Map()) {
   const replaceSets = mode === "replace" && add.sets.length > 0;
   const replaceParts = mode === "replace" && add.parts.length > 0;
-  const brought = (one) => !one.by && (one.src === src || !one.src);
+  const brought = (one) => !one.by && (one.src === src || (!one.src && BEFORE_SOURCES.has(src)));
   // A set typed by hand that Rebrickable's list has is that set, kept once.
   const fetched = new Set(replaceSets && src === REBRICKABLE ? add.sets.map((s) => s.set) : []);
   const sets = new Keyed(setKey, have.sets.filter((s) => !(replaceSets && brought(s))
@@ -940,20 +955,35 @@ export function applyOp(have, body) {
     if (now !== was) throw new Conflict(`${set} is ${now} now, not the ${was} shown`, have);
     if (qty === now) return { next: null, done: { owned: now } };
     if (qty > now) {
-      sets.add({ set, qty: qty - now, spares: false, src: HAND }, qty - now);
-    } else {
-      let off = now - qty;
-      // Their own copy first, then the others from the last kept back.
-      const copies = copiesOf();
-      for (const held of [...copies.filter((s) => s.src === HAND), ...copies.filter((s) => s.src !== HAND).reverse()]) {
-        if (off === 0) break;
-        const take = Math.min(off, held.qty);
-        if (take >= held.qty) sets.take(held);
-        else held.qty -= take;
-        off -= take;
+      // Back to a count an Own took it down from, with nothing changed
+      // since: the copies as they were, their source and their marks
+      // (review of lists1: an Undo made a bare copy of the person's own,
+      // and "my bricks" counted the parts marked missing as owned).
+      // Put back once: the record is spent with this change (change()).
+      const away = putAway(have.recent, set, copiesOf(), qty);
+      if (away) {
+        for (const held of copiesOf()) sets.take(held);
+        for (const one of away.before) sets.keep(structuredClone(one));
+      } else {
+        sets.add({ set, qty: qty - now, spares: false, src: HAND }, qty - now);
       }
+      return { next: next(), done: { owned: qty, ...(away ? { spent: away.id } : {}) } };
     }
-    return { next: next(), done: { owned: qty } };
+    const before = structuredClone(copiesOf());
+    let off = now - qty;
+    // Their own copy first, then the others from the last kept back.
+    const copies = copiesOf();
+    for (const held of [...copies.filter((s) => s.src === HAND), ...copies.filter((s) => s.src !== HAND).reverse()]) {
+      if (off === 0) break;
+      const take = Math.min(off, held.qty);
+      if (take >= held.qty) sets.take(held);
+      else held.qty -= take;
+      off -= take;
+    }
+    // What it took down from, remembered with the change (never sent):
+    // an Own back to that count puts these back.
+    const away = { set, before, after: structuredClone(copiesOf()) };
+    return { next: next(), done: { owned: qty, ...(JSON.stringify(away).length <= MOST_AWAY_BYTES ? { away } : {}) } };
   }
 
   if (op === "missing") {
@@ -1003,6 +1033,57 @@ export function applyOp(have, body) {
 
   throw new Refusal(400, "say what this is: op lots, set, keep, take_back, remove_set, own, missing or start_over, "
     + "or from rebrickable_csv, bricklink_xml, brickset_csv, rebrickable_api, sets or figs");
+}
+
+/// A set's copies as text that is the same however a database kept them
+/// (jsonb keeps an object's keys in an order of its own).
+function sameCopies(list) {
+  const plain = (value) => (Array.isArray(value) ? value.map(plain)
+    : value && typeof value === "object" ? Object.fromEntries(Object.keys(value).sort().map((key) => [key, plain(value[key])]))
+      : value);
+  return JSON.stringify(plain(list));
+}
+
+/// The copies of [set] an Own took down from, to put back when an Own goes
+/// back up to that count ([qty]) from the copies it left ([now], exactly):
+/// the latest such change the row remembers, as {before, id} (the id of
+/// the change that remembers it), else null.
+function putAway(recent, set, now, qty) {
+  const left = sameCopies(now);
+  for (const one of [...recent].reverse()) {
+    const away = one?.done?.away;
+    if (!away || away.set !== set || !Array.isArray(away.before) || !Array.isArray(away.after)) continue;
+    const had = away.before.reduce((sum, s) => sum + (Number(s?.qty) || 0), 0);
+    if (had === qty && sameCopies(away.after) === left) return { before: away.before, id: idOf(one) };
+  }
+  return null;
+}
+
+/// [recent] as a change leaves it: [done] remembered under [id], and the
+/// copies an Own put back ([done].spent) forgotten, so they come back once.
+function remembered(recent, id, done) {
+  let list = id ? [...recent.filter((one) => idOf(one) !== id), { id, done }].slice(-MOST_REMEMBERED) : recent;
+  if (done?.spent) {
+    list = list.map((one) => {
+      if (idOf(one) !== done.spent || !one?.done?.away) return one;
+      const { away, ...rest } = one.done;
+      return { ...one, done: rest };
+    });
+  }
+  return keptAway(list);
+}
+
+/// [recent] with what Owns took down from kept on the newest MOST_AWAY of
+/// them only, so the row stays small.
+function keptAway(recent) {
+  let kept = 0;
+  return [...recent].reverse().map((one) => {
+    if (!one?.done?.away) return one;
+    kept += 1;
+    if (kept <= MOST_AWAY) return one;
+    const { away, ...done } = one.done;
+    return { ...one, done };
+  }).reverse();
 }
 
 /// An import, as a change: {next, done}. What it imported and left out is
@@ -1143,11 +1224,13 @@ async function change(owner, make, id = "") {
     if (!made.next && !(id && have.there)) return { row: have, done: made.done };
     const next = made.next || { sets: have.sets, parts: have.parts };
     within(next);
+    // What an Own took down is remembered though its caller gave no id, so
+    // an Own back to that count puts those very copies back.
+    const remember = id || (made.done?.away ? `own-${randomUUID()}` : "");
     const kept = {
       sets: next.sets,
       parts: next.parts,
-      recent: id ? [...have.recent.filter((one) => idOf(one) !== id), { id, done: made.done }].slice(-MOST_REMEMBERED)
-        : have.recent,
+      recent: remember || made.done?.spent ? remembered(have.recent, remember, made.done) : have.recent,
       updated_at: new Date().toISOString(),
     };
     let saved = null;
@@ -1273,7 +1356,10 @@ export default async function handler(request, response) {
       // never made twice, so it says which it is.
       if (body.op === "lots" && !id) throw new Refusal(400, "a change of lots says its id");
       const { row, done } = await change(owner, (have) => applyOp(have, body), id);
-      if (body.op === "own") return response.status(200).json({ done, rev: row.rev ?? null });
+      if (body.op === "own") {
+        const { away, spent, ...said } = done;
+        return response.status(200).json({ done: said, rev: row.rev ?? null });
+      }
       return response.status(200).json({ ...shown(row), done });
     }
     if (!Object.hasOwn(SOURCE_OF, String(body?.from || ""))) {

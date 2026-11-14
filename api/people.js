@@ -194,7 +194,7 @@
 import { randomBytes } from "node:crypto";
 import { AuthError, bearer, verify } from "./_auth.js";
 import { billingMode } from "./_billing.js";
-import { db, dbConfigured, orUnknown } from "./_db.js";
+import { db, dbConfigured, dbCount, orUnknown } from "./_db.js";
 import { originOf } from "./_oauth.js";
 import {
   SITE_LANGS, TESTS_CACHE, Unacceptable, asText, cardOf, escapeHtml, inLanguage, sayHtml, siteChrome, siteWords,
@@ -688,12 +688,15 @@ async function marks(request, response) {
   const account = await signedIn(request);
   const id = String(request.query?.id || "");
   if (!ID.test(id)) throw new Refusal("name a link: ?id=<ten characters>");
-  const [liked, kept, lists, holding] = await Promise.all([
+  const [liked, kept, lists] = await Promise.all([
     db(`model_likes?model=eq.${id}&account=eq.${account}&select=model`),
     db(`model_favourites?model=eq.${id}&account=eq.${account}&select=model`),
     db(`model_collections?owner=eq.${account}&select=id,name,public&order=updated_at.desc`),
-    db(`model_collection_items?model=eq.${id}&select=collection`),
   ]);
+  // Which of the caller's own lists hold it: every list's would stop at
+  // 1,000 rows for a model in more than that many (review of lists1).
+  const ids = lists.map((list) => list.id).filter((one) => ID.test(String(one)));
+  const holding = ids.length ? await db(`model_collection_items?model=eq.${id}&collection=in.(${ids.join(",")})&select=collection`) : [];
   const has = new Set(holding.map((row) => row.collection));
   return response.status(200).json({ liked: liked.length > 0, favourite: kept.length > 0,
     collections: lists.map((list) => ({ ...list, has: has.has(list.id) })) });
@@ -709,8 +712,9 @@ async function toggle(request, response, table) {
   await counted(account, table === "model_likes" ? "like" : "favourite");
   if (on) {
     if (table === "model_favourites") {
-      const kept = await db(`model_favourites?account=eq.${account}&select=model&limit=${MOST_FAVOURITES + 1}`);
-      if (kept.length >= MOST_FAVOURITES) throw new Refusal(`you keep ${MOST_FAVOURITES} already: let one go first`, 409);
+      // Counted by the database: a read stops at 1,000 rows (review of lists1).
+      const kept = await dbCount(`model_favourites?account=eq.${account}`);
+      if (kept >= MOST_FAVOURITES) throw new Refusal(`you keep ${MOST_FAVOURITES} already: let one go first`, 409);
     }
     await db(`${table}?on_conflict=model,account`, { method: "POST", body: { model: id, account },
       prefer: "resolution=ignore-duplicates" });

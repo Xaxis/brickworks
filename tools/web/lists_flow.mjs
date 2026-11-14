@@ -26,6 +26,9 @@
 //      downloaded as a CSV holding them.
 //   8. At 430 px with touch, dark: Own on a card, the panel as a sheet, the
 //      lists page with its dropdown, nothing sideways anywhere.
+//   9. Undo puts back exactly what its step changed: Own off and back gives
+//      the copy with its source and missing parts; a list that already held
+//      an item adds nothing; an item taken out goes back to its place.
 //
 // Pictures of every step in --out, light and dark at both widths.
 import { launch } from "./browser.mjs";
@@ -477,6 +480,31 @@ try {
     check(`${tone}: the Sets tab at 430 is not sideways`, !(await sideways(tap)));
     await phone.close();
   }
+
+  // --- 9. Undo puts back exactly what its step changed (lists1 review) ------------
+  console.log("Undo puts back exactly what its step changed");
+  const rowNow = async () => (await api("/api/collection", { token: ada.access_token })).body;
+  const copiesNow = async (set) => JSON.stringify(((await rowNow()).sets || []).filter((one) => one.set === set));
+  await api("/api/collection", { method: "POST", token: ada.access_token,
+    body: { op: "missing", set: IMPORTED, src: "rebrickable", lots: [{ part: "3001", colour: 4, was: 0, qty: 2 }] } });
+  const markedCopy = await copiesNow(IMPORTED);
+  const ownOff = await api("/api/collection", { method: "POST", token: ada.access_token, body: { op: "own", set: IMPORTED, was: 1, qty: 0 } });
+  const ownBack = await api("/api/collection", { method: "POST", token: ada.access_token, body: { op: "own", set: IMPORTED, was: 0, qty: 1 } });
+  const restoredCopy = await copiesNow(IMPORTED);
+  check(`Own off then Undo (${ownOff.status}/${ownBack.status}) gives back the copy with its source and missing parts: ${restoredCopy}`,
+    /"missing"/.test(markedCopy) && /rebrickable/.test(markedCopy) && restoredCopy === markedCopy);
+  const keepNow = (body) => api("/api/people?op=keep", { method: "POST", token: ada.access_token, body });
+  const listOrder = async () => ((await api(`/api/people?op=list_items&id=${listId}`, { token: ada.access_token })).body.items || [])
+    .map((one) => one.key).join(",");
+  const keptAgain = await keepNow({ list: listId, items: [`set:${SET}`], on: true });
+  check(`putting a set into a list that holds it adds nothing to take away: added ${JSON.stringify(keptAgain.body.added)}`,
+    keptAgain.status === 200 && Array.isArray(keptAgain.body.added) && keptAgain.body.added.length === 0);
+  const orderWas = await listOrder();
+  const takenOut = await keepNow({ list: listId, items: [`set:${SET}`], on: false });
+  const putBack = await keepNow({ list: listId, items: [`set:${SET}`], on: true, back: takenOut.body.taken });
+  const orderNow = await listOrder();
+  check(`taken out then put back (${takenOut.status}/${putBack.status}), it is where it was: ${orderNow} (was ${orderWas})`,
+    Boolean(takenOut.body.taken?.[`set:${SET}`]) && orderNow === orderWas && orderWas.includes(`set:${SET}`));
 
   check(`no script errors${errors.length ? `: ${errors.slice(0, 4).join(" | ")}` : ""}`, errors.length === 0);
 } catch (trouble) {

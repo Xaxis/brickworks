@@ -32,6 +32,14 @@ const known = new Map();
 // Their lists, as the last answer had them, their wishlist's id apart.
 let lists = [];
 let wishlist = null;
+// What a taking out took, "key list" -> {at, position}: put back into that
+// list again, it goes back where it was (op=keep's back), so an Undo or a
+// box ticked again leaves the list as it was (review of lists1).
+const away = new Map();
+// How many of a set the panel's I own it took down from, set -> count: ticked
+// again, it goes back to that count, and the server puts back those very
+// copies, their source and their marks (api/collection.js op own).
+const ownedBefore = new Map();
 // Items seen on the page and not yet asked, and the asks on their way.
 const waiting = new Set();
 const asking = new Map();
@@ -235,9 +243,15 @@ function keepIn(key, list, on) {
   else if (on) one.lists.add(list);
   else one.lists.delete(list);
   paintAll(key);
+  const where = `${key} ${list}`;
   return inTurn(key, async () => {
-    const answer = await call("/api/people?op=keep", { method: "POST", body: { list, items: [key], on } });
+    const back = on ? away.get(where) : null;
+    const answer = await call("/api/people?op=keep", { method: "POST",
+      body: { list, items: [key], on, ...(back ? { back: { [key]: back } } : {}) } });
     if (answer.status === 200) {
+      const took = answer.body?.taken?.[key];
+      if (!on && took) away.set(where, took);
+      if (on) away.delete(where);
       const said = answer.body?.list;
       if (list === "want" && said && typeof said.id === "string") wishlist = said.id;
       if (said && typeof said === "object" && said.kind !== "want") {
@@ -435,7 +449,10 @@ function panel(holder, button) {
     if (set) {
       const owning = row(say("I own it"), "", one.own > 0, (box) => {
         const before = one.own;
-        own(key, box.checked ? Math.max(1, before) : 0).then((done) => {
+        if (!box.checked && before > 0) ownedBefore.set(key, before);
+        const back = box.checked ? Math.max(1, before, ownedBefore.get(key) || 0) : 0;
+        if (box.checked) ownedBefore.delete(key);
+        own(key, back).then((done) => {
           if (done) tell(box.checked ? say("In the sets you own: its parts count as yours.") : say("Out of the sets you own."));
         });
       });

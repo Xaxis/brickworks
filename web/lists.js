@@ -46,12 +46,13 @@ function make(tag, className, text) {
   return made;
 }
 
-/// Said in the page's line, and in the toast where it can be undone.
-function tell(words, undo = null) {
+/// Said in the page's line, and in the toast where it can be undone;
+/// [ended] hears when that toast goes, and whether Undo was pressed.
+function tell(words, undo = null, ended = null) {
   const said = $("said");
   said.textContent = "";
   setTimeout(() => { said.textContent = String(words); }, 40);
-  if (undo) toast(words, { action: { label: say("Undo"), run: undo } });
+  if (undo) toast(words, { action: { label: say("Undo"), run: undo }, ended });
 }
 
 const trouble = (answer, otherwise) => (answer.status === 401 ? say("Sign in again: we email you a code, no password.")
@@ -503,16 +504,27 @@ async function ownSets(keys, counts = null) {
 }
 
 /// [keys] into list [to] ("want", "saved" or an id), or out ([on] false),
-/// 200 at a time.
-async function keepAll(to, keys, on, from = null) {
+/// 200 at a time; put in, each where [back] says it was (key -> {at,
+/// position}, as a taking out answered). What changed, for an Undo that
+/// undoes only that (review of lists1): {trouble, added: [keys put in that
+/// were not there], taken: {key: {at, position}} of what left a list}.
+async function keepAll(to, keys, on, from = null, back = null) {
   const wanted = to === "saved" ? modelsOf(keys) : keys;
+  const done = { trouble: "", added: [], taken: {} };
   for (let at = 0; at < wanted.length; at += 200) {
+    const items = wanted.slice(at, at + 200);
+    const these = back ? Object.fromEntries(items.filter((key) => back[key]).map((key) => [key, back[key]])) : null;
     const answer = await call("/api/people?op=keep", { method: "POST",
-      body: { list: to, items: wanted.slice(at, at + 200), on, ...(from ? { from } : {}) } });
-    if (answer.status !== 200) return trouble(answer);
+      body: { list: to, items, on, ...(from ? { from } : {}), ...(these ? { back: these } : {}) } });
+    if (answer.status !== 200) return { ...done, trouble: trouble(answer) };
+    done.added.push(...(Array.isArray(answer.body?.added) ? answer.body.added : []));
+    Object.assign(done.taken, answer.body?.taken && typeof answer.body.taken === "object" ? answer.body.taken : {});
   }
-  return "";
+  return done;
 }
+
+/// What [taken] took out put back into [list], each where it was.
+const putBack = (list, taken) => keepAll(list, Object.keys(taken), true, null, taken);
 
 async function bulk(how) {
   const keys = [...selected];
@@ -529,21 +541,35 @@ async function bulk(how) {
       const counts = new Map(items.filter((item) => keys.includes(item.key)).map((item) => [item.key, 0]));
       const { changed, trouble: why } = await ownSets(keys, counts);
       said = why || say("{n} taken out of the sets you own.", { n });
-      if (changed.length) undo = async () => { await ownSets(changed.map(([key]) => key), new Map(changed)); await refresh(); tell(say("Put back.")); };
+      if (!why || changed.length) undo = async () => { await ownSets(changed.map(([key]) => key), new Map(changed)); await refresh(); tell(say("Put back.")); };
     } else {
       const from = current;
-      const why = await keepAll(from, keys, false);
+      const { trouble: why, taken } = await keepAll(from, keys, false);
       said = why || say("{n} taken out of {list}.", { n, list: nameOf(from) });
-      if (!why) undo = async () => { await keepAll(from, keys, true); await refresh(); tell(say("Put back.")); };
+      if (!why || Object.keys(taken).length) undo = async () => { await putBack(from, taken); await refresh(); tell(say("Put back.")); };
     }
   } else if (to === "owned") {
     const sets = setsOf(keys);
     const { changed, trouble: why } = await ownSets(sets);
     said = why || (sets.length ? say("{n} in the sets you own.", { n: number(sets.length) }) : say("Only sets are owned: no set was selected."));
-    if (changed.length) undo = async () => { await ownSets(changed.map(([key]) => key), new Map(changed)); await refresh(); tell(say("Put back.")); };
+    // Moved ("I got it"): out of the list it was in too, and an Undo puts
+    // back both, the count and the list, whichever changed. Every toast
+    // that did what was asked carries Undo, though it changed nothing.
+    let taken = {};
+    let failed = why;
     if (!why && how === "move" && sets.length) {
       const out = await keepAll(current, sets, false);
-      if (out) said = out;
+      if (out.trouble) said = failed = out.trouble;
+      taken = out.taken;
+    }
+    const from = current;
+    if ((!failed && sets.length) || changed.length || Object.keys(taken).length) {
+      undo = async () => {
+        if (changed.length) await ownSets(changed.map(([key]) => key), new Map(changed));
+        if (Object.keys(taken).length) await putBack(from, taken);
+        await refresh();
+        tell(say("Put back."));
+      };
     }
   } else {
     const kept = to === "saved" ? modelsOf(keys) : keys;
@@ -554,14 +580,24 @@ async function bulk(how) {
       // both are lists; Saved is taken out of, or put in, apart).
       const from = how === "move" ? current : null;
       const apart = Boolean(from && (from === "saved" || to === "saved"));
-      let why = await keepAll(to, kept, true, from && !apart ? from : null);
-      if (!why && apart) why = await keepAll(from, kept, false);
+      const into = await keepAll(to, kept, true, from && !apart ? from : null);
+      let why = into.trouble;
+      let taken = into.taken;
+      if (!why && apart) {
+        const out = await keepAll(from, kept, false);
+        why = out.trouble;
+        taken = out.taken;
+      }
       said = why || (how === "move" ? say("{n} moved to {list}.", { n: number(kept.length), list: toName })
         : say("{n} copied to {list}.", { n: number(kept.length), list: toName }));
-      if (!why) {
+      // Undone: out of [to] only what was not there before, and back into
+      // the list it was moved from, each where it was; what [to] held
+      // already stays (review of lists1).
+      const added = into.added;
+      if (!why || added.length || (from && Object.keys(taken).length)) {
         undo = async () => {
-          await keepAll(to, kept, false);
-          if (from) await keepAll(from, kept, true);
+          if (added.length) await keepAll(to, added, false);
+          if (from && Object.keys(taken).length) await putBack(from, taken);
           await refresh();
           tell(say("Put back."));
         };
@@ -730,16 +766,19 @@ function editList() {
   name.focus();
 }
 
-/// [list] deleted once its toast is gone: until then Undo keeps it.
+/// [list] deleted once its toast goes without Undo pressed: never while it
+/// is on the screen, held by the pointer or the keyboard as long as the
+/// person likes (review of lists1: a fixed 9 s deleted it under a held
+/// Undo). Leaving the page deletes it too (pagehide).
 function deleteList(list) {
-  const timer = setTimeout(() => dropNow(list.id), 9000);
-  going.set(list.id, timer);
+  going.set(list.id, true);
   tell(say("Deleted {list}.", { list: list.name }), () => {
-    clearTimeout(going.get(list.id));
     going.delete(list.id);
     drawRail();
     go(list.id);
     tell(say("{list} is back.", { list: list.name }));
+  }, (pressed) => {
+    if (!pressed) dropNow(list.id);
   });
   go("owned");
 }
@@ -844,7 +883,7 @@ function importSets() {
       // Brickset marks the sets wanted too: those go on the wishlist.
       const wanted = Array.isArray(answer.body.wanted) ? answer.body.wanted : [];
       if (wanted.length) {
-        const why = await keepAll("want", wanted.map((set) => `set:${set}`), true);
+        const { trouble: why } = await keepAll("want", wanted.map((set) => `set:${set}`), true);
         words += ` ${why || say("And {sets} on your wishlist.", { sets: counted(wanted.length, "set") })}`;
       }
     } else {
@@ -854,7 +893,7 @@ function importSets() {
         said.textContent = say("No set number in that.");
         return;
       }
-      const why = await keepAll(current, sets.map((set) => `set:${set}`), true);
+      const { trouble: why } = await keepAll(current, sets.map((set) => `set:${set}`), true);
       if (why) {
         send.disabled = false;
         said.textContent = why;

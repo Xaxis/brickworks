@@ -703,7 +703,10 @@ is on the page, `hidden`, for the script to show.
   (Undo) as a bordered button in the toast's own colours; it takes the
   pointer, stays 8 s and while it is pointed at or holds the keyboard (4 s
   more once left), Escape puts it away, and the keyboard goes back to
-  `back` if it was in the toast. The beta bar's × is the first.
+  `back` if it was in the toast. `ended(pressed)` is told once when it
+  goes, pressed or not (a newer toast ends it), so an act that waits on
+  its Undo (deleting a list) happens then and not on a timer of its own.
+  The beta bar's × is the first.
 - **Own, Want and Save** (`web/card.js` `keepHtml`, `web/keep.js`,
   docs/LISTS.md): `.keep`, a split pill over a card's picture's foot,
   right: the main half Own (a set) or Save (a model), its icon a plus

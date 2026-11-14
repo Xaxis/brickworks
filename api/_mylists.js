@@ -53,7 +53,7 @@
 
 import { randomBytes } from "node:crypto";
 import { bearer, verify } from "./_auth.js";
-import { db } from "./_db.js";
+import { db, dbAll, dbCount } from "./_db.js";
 import { Unacceptable, cardOf } from "./_directory.js";
 import { catalogCard, catalogSet } from "./_sets.js";
 import { publicTrouble } from "./_trust.js";
@@ -138,17 +138,27 @@ export async function setCounts(ids, { models = true } = {}) {
   const wanted = ids.filter((id) => ID.test(String(id)));
   const counts = new Map(wanted.map((id) => [id, { sets: 0, models: 0 }]));
   if (!wanted.length) return counts;
+  // Every row, past PostgREST's page of 1,000 (review of lists1).
   const [sets, items] = await Promise.all([
-    db(`collection_sets?collection=in.(${wanted.join(",")})&select=collection`),
-    models ? db(`model_collection_items?collection=in.(${wanted.join(",")})&select=collection,model`) : [],
+    dbAll(`collection_sets?collection=in.(${wanted.join(",")})&select=collection`, "collection,set_num"),
+    models ? dbAll(`model_collection_items?collection=in.(${wanted.join(",")})&select=collection,model`, "collection,model") : [],
   ]);
   for (const row of sets) if (counts.has(row.collection)) counts.get(row.collection).sets += 1;
   // A model counts while the gallery has it, as its owner sees their list.
-  const ids2 = [...new Set(items.map((row) => row.model).filter((id) => ID.test(String(id))))];
-  const live = ids2.length ? new Set((await db(`shared_models?id=in.(${ids2.join(",")})&published=is.true&barred=is.false&select=id`))
-    .map((row) => row.id)) : new Set();
+  const live = await shownModels([...new Set(items.map((row) => row.model).filter((id) => ID.test(String(id))))]);
   for (const row of items) if (counts.has(row.collection) && live.has(row.model)) counts.get(row.collection).models += 1;
   return counts;
+}
+
+/// Which of [ids] the gallery shows (published, not barred), asked a
+/// hundred at a time so no address grows too long.
+async function shownModels(ids) {
+  const shown = new Set();
+  for (let at = 0; at < ids.length; at += 100) {
+    const rows = await db(`shared_models?id=in.(${ids.slice(at, at + 100).join(",")})&published=is.true&barred=is.false&select=id`);
+    for (const row of rows) shown.add(row.id);
+  }
+  return shown;
 }
 
 /// A list as the picker and /lists are given it.
@@ -174,8 +184,10 @@ export async function keeps(request, response) {
   ]);
   const ids = lists.map((list) => list.id);
   const [inSets, inModels] = ids.length ? await Promise.all([
-    sets.length ? db(`collection_sets?collection=in.(${ids.join(",")})&set_num=in.(${quoted(sets)})&select=collection,set_num`) : [],
-    models.length ? db(`model_collection_items?collection=in.(${ids.join(",")})&model=in.(${models.join(",")})&select=collection,model`) : [],
+    sets.length ? dbAll(`collection_sets?collection=in.(${ids.join(",")})&set_num=in.(${quoted(sets)})&select=collection,set_num`,
+      "collection,set_num") : [],
+    models.length ? dbAll(`model_collection_items?collection=in.(${ids.join(",")})&model=in.(${models.join(",")})&select=collection,model`,
+      "collection,model") : [],
   ]) : [[], []];
   const kept = new Set(saved.map((row) => row.model));
   const counts = await setCounts(ids, { models: false });
@@ -255,10 +267,11 @@ export async function keep(request, response) {
   const sets = items.filter((key) => key.startsWith("set:")).map((key) => key.slice(4));
   const models = items.filter((key) => key.startsWith("model:")).map((key) => key.slice(6));
   await counted(account);
+  const back = backOf(body.back, items);
   if (body.list === "saved") {
     if (sets.length) throw new Unacceptable("Saved keeps models; a set is owned, wanted or in a list");
-    await keepSaved(account, models, body.on);
-    return response.status(200).json({ list: "saved", items, on: body.on });
+    const { added, taken } = await keepSaved(account, models, body.on, back);
+    return response.status(200).json({ list: "saved", items, on: body.on, added, taken });
   }
   const list = body.list === "want"
     ? await ownList(await wishlistOf(account, body.on, body.name), account)
@@ -266,70 +279,136 @@ export async function keep(request, response) {
   // Nothing wanted yet and nothing to take out: so already.
   if (!list && body.list === "want" && !body.on) return response.status(200).json({ list: null, items, on: false });
   if (!list) throw new Unacceptable("there is no list of yours at that id", 404);
-  if (body.on) await putIn(list, sets, models);
-  else await takeOut(list.id, sets, models);
+  // What changed, so an Undo undoes that and no more: [added] what was not
+  // in the list before; [taken] what left a list (this one, or the one it
+  // was moved from), each with when it was put in and its place, which a
+  // later keep's [back] gives it again.
+  let added = [];
+  let taken = {};
+  if (body.on) added = await putIn(list, sets, models, back);
+  else taken = await takeOut(list.id, sets, models);
   // Moved: out of the list it came from, once it is in this one.
   if (body.on && body.from !== undefined && body.from !== null && body.from !== "") {
     const from = body.from === "want" ? await ownList(await wishlistOf(account), account) : await ownList(body.from, account);
-    if (from && from.id !== list.id) await takeOut(from.id, sets, models);
+    if (from && from.id !== list.id) taken = await takeOut(from.id, sets, models);
   }
   await db(`model_collections?id=eq.${list.id}`, { method: "PATCH", body: { updated_at: new Date().toISOString() } });
   const counts = await setCounts([list.id]);
-  return response.status(200).json({ list: listSaid(list, counts), items, on: body.on });
+  return response.status(200).json({ list: listSaid(list, counts), items, on: body.on, added, taken });
 }
 
-async function keepSaved(account, models, on) {
-  if (!models.length) return;
+const WHEN = /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,6})?(Z|[+-][0-9]{2}:[0-9]{2})$/;
+
+/// A keep's [back] (key -> {at, position}, as a taking out answered it) for
+/// [items]: when each was put in and its place, read as a date no later
+/// than now and a place from 0.
+function backOf(raw, items) {
+  const out = {};
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
+  const latest = Date.now() + 60000;
+  for (const key of items) {
+    const one = raw[key];
+    if (!one || typeof one !== "object") continue;
+    const when = typeof one.at === "string" && WHEN.test(one.at) ? Date.parse(one.at) : NaN;
+    out[key] = {
+      at: Number.isFinite(when) && when > 0 && when <= latest ? one.at : null,
+      position: Number.isInteger(one.position) && one.position >= 0 && one.position <= 1_000_000 ? one.position : null,
+    };
+  }
+  return out;
+}
+
+async function keepSaved(account, models, on, back = {}) {
+  if (!models.length) return { added: [], taken: {} };
   if (!on) {
-    await db(`model_favourites?account=eq.${account}&model=in.(${models.join(",")})`, { method: "DELETE" });
-    return;
+    const gone = await db(`model_favourites?account=eq.${account}&model=in.(${models.join(",")})`,
+      { method: "DELETE", prefer: "return=representation" });
+    return { added: [], taken: Object.fromEntries((gone || []).map((row) => [`model:${row.model}`, { at: row.at, position: null }])) };
   }
   const shown = await db(`shared_models?id=in.(${models.join(",")})&published=is.true&barred=is.false&select=id`);
   if (shown.length !== models.length) throw new Unacceptable("there is no shared model at that link", 404);
-  const kept = await db(`model_favourites?account=eq.${account}&select=model&limit=${MOST_SAVED + 1}`);
-  const have = new Set(kept.map((row) => row.model));
-  if (have.size + models.filter((id) => !have.has(id)).length > MOST_SAVED) {
+  // Counted by the database: a read stops at 1,000 rows (review of lists1).
+  const [total, present] = await Promise.all([
+    dbCount(`model_favourites?account=eq.${account}`),
+    db(`model_favourites?account=eq.${account}&model=in.(${models.join(",")})&select=model`),
+  ]);
+  const have = new Set(present.map((row) => row.model));
+  if (total + models.filter((id) => !have.has(id)).length > MOST_SAVED) {
     throw new Unacceptable(`you keep ${MOST_SAVED} already: let one go first`, 409);
   }
-  await db("model_favourites?on_conflict=model,account", { method: "POST",
-    body: models.map((model) => ({ model, account })), prefer: "resolution=ignore-duplicates" });
+  const now = new Date().toISOString();
+  const made = await db("model_favourites?on_conflict=model,account", { method: "POST",
+    body: models.map((model) => ({ model, account, at: back[`model:${model}`]?.at || now })),
+    prefer: "resolution=ignore-duplicates,return=representation" });
+  return { added: (made || []).map((row) => `model:${row.model}`), taken: {} };
 }
 
 /// [sets] and [models] into [list], each once: at the end of a list in its
-/// owner's order, else as the newest.
-async function putIn(list, sets, models) {
-  const [heldSets, heldModels] = await Promise.all([
-    sets.length ? db(`collection_sets?collection=eq.${list.id}&select=set_num,position`) : [],
-    models.length ? db(`model_collection_items?collection=eq.${list.id}&select=model,position`) : [],
+/// owner's order, else as the newest; or, given [back], when and where
+/// each was before it was taken out. The keys put in that were not there.
+async function putIn(list, sets, models, back = {}) {
+  // What the list holds, counted by the database, and which of these it
+  // holds: a read of the whole list stops at 1,000 rows (review of lists1).
+  const [heldSets, heldModels, setTotal, modelTotal] = await Promise.all([
+    sets.length ? db(`collection_sets?collection=eq.${list.id}&set_num=in.(${quoted(sets)})&select=set_num`) : [],
+    models.length ? db(`model_collection_items?collection=eq.${list.id}&model=in.(${models.join(",")})&select=model`) : [],
+    sets.length ? dbCount(`collection_sets?collection=eq.${list.id}`) : 0,
+    models.length ? dbCount(`model_collection_items?collection=eq.${list.id}`) : 0,
   ]);
   const newSets = sets.filter((set) => !heldSets.some((row) => row.set_num === set));
   const newModels = models.filter((id) => !heldModels.some((row) => row.model === id));
-  if (heldSets.length + newSets.length > MOST_SETS_IN_A_LIST) throw new Unacceptable(`a list holds ${MOST_SETS_IN_A_LIST} sets at most`, 409);
-  if (heldModels.length + newModels.length > MOST_MODELS_IN_A_LIST) {
+  if (setTotal + newSets.length > MOST_SETS_IN_A_LIST) throw new Unacceptable(`a list holds ${MOST_SETS_IN_A_LIST} sets at most`, 409);
+  if (modelTotal + newModels.length > MOST_MODELS_IN_A_LIST) {
     throw new Unacceptable(`a list holds ${MOST_MODELS_IN_A_LIST} models at most`, 409);
   }
   if (newModels.length) {
     const shown = await db(`shared_models?id=in.(${newModels.join(",")})&published=is.true&barred=is.false&select=id`);
     if (shown.length !== newModels.length) throw new Unacceptable("there is no shared model at that link", 404);
   }
-  let next = list.sort === "manual"
-    ? 1 + Math.max(-1, ...[...heldSets, ...heldModels].map((row) => (Number.isInteger(row.position) ? row.position : -1)))
-    : null;
-  const place = () => (next === null ? {} : { position: next++ });
+  let next = list.sort === "manual" && newSets.length + newModels.length ? 1 + await lastPlace(list.id) : null;
+  const now = new Date().toISOString();
+  // Every row with the same fields: a bulk insert takes the first's.
+  const row = (key) => {
+    const was = back[key] || {};
+    const position = next === null ? null : Number.isInteger(was.position) ? was.position : next++;
+    return { at: was.at || now, position };
+  };
+  const added = [];
   if (newSets.length) {
-    await db("collection_sets?on_conflict=collection,set_num", { method: "POST",
-      body: newSets.map((set_num) => ({ collection: list.id, set_num, ...place() })), prefer: "resolution=ignore-duplicates" });
+    const made = await db("collection_sets?on_conflict=collection,set_num", { method: "POST",
+      body: newSets.map((set_num) => ({ collection: list.id, set_num, ...row(`set:${set_num}`) })),
+      prefer: "resolution=ignore-duplicates,return=representation" });
+    added.push(...(made || []).map((one) => `set:${one.set_num}`));
   }
   if (newModels.length) {
-    await db("model_collection_items?on_conflict=collection,model", { method: "POST",
-      body: newModels.map((model) => ({ collection: list.id, model, ...place() })), prefer: "resolution=ignore-duplicates" });
+    const made = await db("model_collection_items?on_conflict=collection,model", { method: "POST",
+      body: newModels.map((model) => ({ collection: list.id, model, ...row(`model:${model}`) })),
+      prefer: "resolution=ignore-duplicates,return=representation" });
+    added.push(...(made || []).map((one) => `model:${one.model}`));
   }
+  return added;
 }
 
+/// The last place in list [id]'s own order, -1 when nothing has one.
+async function lastPlace(id) {
+  const [sets, models] = await Promise.all([
+    db(`collection_sets?collection=eq.${id}&position=not.is.null&select=position&order=position.desc&limit=1`),
+    db(`model_collection_items?collection=eq.${id}&position=not.is.null&select=position&order=position.desc&limit=1`),
+  ]);
+  return Math.max(-1, Number(sets[0]?.position ?? -1), Number(models[0]?.position ?? -1));
+}
+
+/// [sets] and [models] out of list [id]: what was there, key -> {at,
+/// position}, for an Undo to put back where it was.
 async function takeOut(id, sets, models) {
-  await Promise.all([
-    sets.length ? db(`collection_sets?collection=eq.${id}&set_num=in.(${quoted(sets)})`, { method: "DELETE" }) : null,
-    models.length ? db(`model_collection_items?collection=eq.${id}&model=in.(${models.join(",")})`, { method: "DELETE" }) : null,
+  const [goneSets, goneModels] = await Promise.all([
+    sets.length ? db(`collection_sets?collection=eq.${id}&set_num=in.(${quoted(sets)})`, { method: "DELETE", prefer: "return=representation" }) : [],
+    models.length ? db(`model_collection_items?collection=eq.${id}&model=in.(${models.join(",")})`,
+      { method: "DELETE", prefer: "return=representation" }) : [],
+  ]);
+  return Object.fromEntries([
+    ...(goneSets || []).map((row) => [`set:${row.set_num}`, { at: row.at, position: row.position ?? null }]),
+    ...(goneModels || []).map((row) => [`model:${row.model}`, { at: row.at, position: row.position ?? null }]),
   ]);
 }
 
@@ -490,7 +569,7 @@ async function builtIn(origin, account, which, page) {
   const rows = await db("rpc/directory_models", { method: "POST", body: { query: { favourites: account, private: true, sort: "added",
     size: ITEMS_PAGE + 1, skip: (page - 1) * ITEMS_PAGE } } });
   const cards = await withFaces(rows.slice(0, ITEMS_PAGE).map((row) => cardOf(origin, row)));
-  const total = (await db(`model_favourites?account=eq.${account}&select=model`)).length;
+  const total = await dbCount(`model_favourites?account=eq.${account}`);
   return { id: "saved", kind: "saved", mine: true, total, sets: 0, models: total, page, more: rows.length > ITEMS_PAGE,
     items: cards.map((card) => ({ key: `model:${card.id}`, kind: "model", card })) };
 }
@@ -524,7 +603,7 @@ export async function yourLists(request, response) {
   const [lists, owned, saved, person, shows] = await Promise.all([
     listsOf(account),
     ownedCounts(account),
-    db(`model_favourites?account=eq.${account}&select=model`),
+    dbCount(`model_favourites?account=eq.${account}`),
     db(`people?account=eq.${account}&select=handle`),
     ownedShown(account),
   ]);
@@ -538,7 +617,7 @@ export async function yourLists(request, response) {
   return response.status(200).json({
     lists: lists.map((row) => listSaid(row, counts)),
     owned: { sets: copies, unique: owned.size, pieces, shown: shows },
-    saved: { models: saved.length },
+    saved: { models: saved },
     profile: person[0] ? { handle: person[0].handle } : null,
   });
 }

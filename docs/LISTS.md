@@ -97,8 +97,12 @@ on a computer a popover by the button. **New list…** is inline: a name,
 a Public box, **Make it**, and the thing goes straight in.
 
 **Undo everywhere.** Every tap's toast carries Undo for eight seconds and
-stays while the pointer or keyboard is on it. Deleting a list waits nine
-seconds behind its Undo before anything is removed.
+stays while the pointer or keyboard is on it. Undo puts back exactly what
+that step changed and nothing else: a set taken off I own comes back with
+its missing-part marks and the site that brought it, an item taken out of
+a list goes back to its place and date, and a Copy or Move into a list
+that already held an item leaves it there. A deleted list is removed only
+when its toast goes without Undo pressed (or the page is left).
 
 **Privacy one switch at a time.** Owned sets: off the profile until you
 switch on "Show on my profile" on Your lists. Wishlist: private until you
@@ -110,13 +114,17 @@ taken down by Brickworks is private and stays so.
 BrickLink XML (both already read by My collection's import) and Brickset's
 CSV (by header name, `Number` plus `Variant` or a `Number` holding n-v,
 never `SetID`, trailing commas allowed). A file into the sets you own
-replaces what that site's file brought in before, or adds, as you choose;
+replaces what that site's file brought in before (and nothing else: a
+Brickset file never touches sets from before files were marked with
+their site), or adds, as you choose;
 wanted rows go to the wishlist. A list of your own also takes set numbers
 typed or pasted ("10497, 6080, 75192-1"). Export is one CSV, Rebrickable's
 columns, so it goes straight back into Rebrickable or Brickset.
 
 **No caps a person meets.** The limits are abuse limits (thousands of
-items, hundreds of lists), never a free-tier squeeze.
+items, hundreds of lists), never a free-tier squeeze. Every count is the
+database's own (`Prefer: count=exact`), never a read's rows, since a read
+stops at 1,000.
 
 **The profile shows a collection, not a number.** A **Sets** tab with the
 count of sets, parts, minifigures and themes, the theme owned most, every
@@ -164,11 +172,17 @@ Server (Vercel's function cap is full, so new endpoints are ops of
   (service role only, as every function here).
 - `POST /api/collection` op `own` `{set, was, qty}`: the hand-entered copies
   of one set made `qty`, held to `was` like every other op, so two tabs
-  never undo each other; a 409 answers what is owned now.
+  never undo each other; a 409 answers what is owned now. Taking copies
+  off remembers them whole (marks, source) with the op in `recent`, and
+  putting the count back to what it was, while nothing else changed, puts
+  those copies back, once (a caller with no `id` too).
 - `/api/people`: `GET ?op=keeps&sets=&models=` (what you have of each, for
   the controls), `?op=lists` (Your lists' rail), `?op=list_items&id=`
   (a list a page at a time, the built-ins `owned`, `want`, `saved`),
-  `?op=list_csv&id=` (download); `POST ?op=keep` `{key, list, on}`,
+  `?op=list_csv&id=` (download); `POST ?op=keep` `{items, list, on, from,
+  back}` answers `added` (the keys this call put in) and `taken` (each
+  key taken out, with its date and place), and `back` puts a taken key
+  back as it was, so Undo changes only what its step changed;
   `?op=list_order` `{id, keys, sort}`, `?op=owned_choice` `{shows}`;
   `?op=collection` takes `sort` and `cover`.
 - `/u/<handle>?tab=sets` (`ownedPanel`): the sets shown, with `q`, `theme`,
