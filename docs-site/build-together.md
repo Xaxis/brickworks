@@ -1,5 +1,6 @@
 ---
 panels: TogetherDialog
+tools: point_at
 ai: Build together puts several people on one model live, by a link, each in their own browser: each sees the others' parts, pointers and selections in their colours, can point a part out to everyone (Alt+W, for 5 seconds), can follow another's view, and can pin comments to parts. On a shared model's viewer, Build together deals the model out among up to four phones by a code, to build in real bricks.
 rules:
   - Undo takes back only a person's own changes.
