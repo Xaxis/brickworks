@@ -86,6 +86,21 @@ runner() {
   esac
 }
 
+# TAG's train if it runs on, as runner says. One that has written its
+# result is only ending: the result is its last write, and its shell exits
+# once its work has. This waits for that (a minute at most) rather than
+# refuse a restage or a reship: asked the moment the result said stopped,
+# a reship was refused, "t-m6's train runs", in rel-m298's ci_gate at load
+# 50, and in challengepage's (2026-11-13).
+running() {
+  local pid n=0
+  while pid=$(runner "$1"); do
+    [ -e "$RO/$1.train/result" ] && [ "$n" -lt 600 ] || { echo "$pid"; return 0; }
+    n=$((n + 1)); sleep 0.1
+  done
+  return 1
+}
+
 # The build brickworks.diy/app names, /b/SHA/: the page itself says which.
 serving() { curl -s --max-time 20 "$LIVE" 2>/dev/null | grep -o '/b/[^/"]*/' | head -1; }
 
@@ -191,7 +206,7 @@ stage() {
   local -a named=()
   read -r -a named <<< "$checks$added"
   checks="${named[*]}"
-  if pid=$(runner "$tag"); then
+  if pid=$(running "$tag"); then
     echo "train: $tag's train runs (pid $pid): edit $RO/$tag.train/, or stop it (kill -- -$pid) first"; exit 1
   fi
   clear_attempt "$tag" "$branch" || exit 1
@@ -280,7 +295,7 @@ reship() {
     esac
   done
   [ -d "$SPEC" ] || { echo "train: $tag was never staged"; exit 2; }
-  if pid=$(runner "$tag"); then echo "train: $tag's train runs (pid $pid)"; exit 1; fi
+  if pid=$(running "$tag"); then echo "train: $tag's train runs (pid $pid)"; exit 1; fi
   res=$(cat "$SPEC/result" 2>/dev/null)
   [ "$res" = live ] && { echo "train: $tag is live"; exit 1; }
   # Stopped before its ship, it has no build to reuse and maybe no merge.
@@ -446,8 +461,10 @@ finish() {
   if ! [ -e "$SPEC/shipped" ] && [ "$1" != live ]; then
     echo "$1" > "$RO/$TAG.gave_up.$$" && mv "$RO/$TAG.gave_up.$$" "$RO/$TAG.gave_up"
   fi
-  echo "$1" > "$SPEC/result.$$" && mv "$SPEC/result.$$" "$SPEC/result"
+  # The result last: once it is there the train writes nothing more, and
+  # only its shell's exit is to come (running, above).
   step "${1}"
+  echo "$1" > "$SPEC/result.$$" && mv "$SPEC/result.$$" "$SPEC/result"
   [ "$1" = live ] && exit 0
   exit 1
 }

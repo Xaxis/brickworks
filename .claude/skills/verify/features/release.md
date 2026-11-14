@@ -272,7 +272,9 @@ that offers each system its own build. The cycle and its cadence are
   when it should serve, under what brickworks.diy serves and since when; `hold TAG`
   and `release TAG` set and lift a hold. Restaging a stopped TAG clears
   its worktree and branch when they hold its merge alone, and refuses when
-  they hold a fix of their own. `reship TAG [--probes ...] CHECK...` ships
+  they hold a fix of their own; asked while a train that has written its
+  result is still ending, a restage or a reship waits for it (a minute at
+  most) rather than refuse. `reship TAG [--probes ...] CHECK...` ships
   a TAG whose train stopped after its ship began, from the worktree it kept
   (a check's fix committed there), on the same preview when only checks or
   release tools changed (SHIP_REUSE), beside the probes that did not pass,

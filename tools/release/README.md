@@ -371,7 +371,8 @@ What each one guards against, all learned the hard way on 2026-10-13:
   `.git/live-db.slot.N` in the main checkout, under a shared hold of
   `.git/live-db.lock`, for each one's run, whichever battery it is in, and
   `.git/live-db.log` says who took it, after how long, which slot, and
-  when they left. Two runs at once on 2026-10-22 got 429s in profile, and
+  when they left, in the order they took it (written before a run gives up
+  its place in line). Two runs at once on 2026-10-22 got 429s in profile, and
   another run's model took discovery's pick; one at a time, rel-m254's 53
   held the lock for 3.1 hours and four units gave up behind it. Twelve of
   the longest held it 12 minutes three at a time on rel-m254's preview,
