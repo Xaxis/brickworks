@@ -625,6 +625,15 @@ func _hold_train(driver_body: int) -> void:
 	var began: int = Time.get_ticks_msec()
 	var driver_rates: Array = _tree_rates()
 	var placed_by: Dictionary = {}   ## brick id -> true, held already
+	# The driver turns as it is turned, with what it carries: a drag on a loop
+	# the train turns places them where its loop carries them, without the
+	# driver's own turn. 42113-1's rotor blade, folded on its hinge, stood as
+	# a drag on its engine's loop had it, 0.01 of the 1.5 it was turned (kinefix).
+	var drivers_joint: Mechanism.Joint = model.joint_of(driver_body)
+	for one: int in model.bodies:
+		if one == driver_body or (drivers_joint != null and model.path(one).has(drivers_joint)):
+			for key: int in model.bodies[one]:
+				placed_by[key] = true
 	for one: int in asked:
 		if holds.size() >= HOLDS_MOST or float(Time.get_ticks_msec() - began) > HOLDS_MS:
 			break
