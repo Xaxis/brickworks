@@ -114,8 +114,16 @@ func _on_added(node: Node) -> void:
 		_size_later.call_deferred(control)
 
 
-func _size_later(control: Control) -> void:
-	if is_instance_valid(control) and control.is_inside_tree():
+## Untyped until checked, as every argument handed on to a later frame or
+## bound to a signal here: a row freed before its call came (a list filled
+## afresh twice in a frame, its first rows freed at once) was put in a
+## Control, and the engine said so in an error for every row
+## (fingertools, APP_UX8 #10).
+func _size_later(held: Variant) -> void:
+	if not is_instance_valid(held):
+		return
+	var control: Control = held
+	if control.is_inside_tree():
 		size_tree(control)
 		var holder: Node = _dialog_of(control)
 		if holder in _open:
@@ -135,8 +143,11 @@ func _dialog_of(control: Node) -> Node:
 	return null
 
 
-func _window_shown(window: Window) -> void:
-	if not is_instance_valid(window) or Tooltips.is_tooltip(window):
+func _window_shown(held: Variant) -> void:
+	if not is_instance_valid(held):
+		return
+	var window: Window = held
+	if Tooltips.is_tooltip(window):
 		return
 	if not window.visible:
 		_open.erase(window)
@@ -169,7 +180,10 @@ func place_panel(panel: Control, wants: Vector2) -> void:
 	_lay_panel(panel)
 
 
-func _panel_shown(panel: Control) -> void:
+func _panel_shown(held: Variant) -> void:
+	if not is_instance_valid(held):
+		return
+	var panel: Control = held
 	if not panel.visible:
 		_open.erase(panel)
 		panel.remove_meta(&"touch_placed")
@@ -281,9 +295,9 @@ static func _fit_pictures(root: Node, across: float) -> void:
 ## the picture's file once it was downloaded ("downloaded
 ## touch_430x_932_10532_again_render.png — 9 s.", 472 points with nowhere
 ## to break), took its choices and Close off a 430-point phone (fig257).
-func _grew(dialog: Node) -> void:
-	if is_instance_valid(dialog) and dialog in _open and _wider_than_laid(dialog):
-		_place_later(dialog)
+func _grew(held: Variant) -> void:
+	if is_instance_valid(held) and held in _open and _wider_than_laid(held):
+		_place_later(held)
 
 
 ## Whether [param dialog] wants more room across than it was laid out in.
@@ -305,10 +319,13 @@ func _place_later(dialog: Node) -> void:
 		_place_after_layout.call_deferred(dialog)
 
 
-func _place_after_layout(dialog: Node) -> void:
-	await get_tree().process_frame
-	if not is_instance_valid(dialog):
+func _place_after_layout(held: Variant) -> void:
+	if not is_instance_valid(held):
 		return
+	await get_tree().process_frame
+	if not is_instance_valid(held):
+		return
+	var dialog: Node = held
 	dialog.remove_meta(&"touch_placing")
 	_place(dialog)
 

@@ -55,7 +55,7 @@ ui:a dragged part carries what rests on it
 
 ![The red car with one brick selected and the Rotate tool's three rings round it, one for each way it can turn.](/docs/img/building-rotate.webp "The Rotate tool: drag a ring to turn the selection, in the toolbar's turn step.")
 
-The **Move**, **Rotate** and **Hinge** tools on the toolbar work with the mouse alone. With **Rotate**, a click on a part puts three rings on it; with **Move**, three arrows. Drag a ring to turn the selection, or an arrow to slide it. **Hinge** swings a part on its hinge, clip or turntable.
+The **Move**, **Rotate** and **Hinge** tools on the toolbar work with the mouse or a finger. With **Rotate**, a click on a part puts three rings on it; with **Move**, three arrows. Drag a ring to turn the selection, or an arrow to slide it. **Hinge** swings a part on its hinge, clip or turntable.
 
 ![The red car with one brick selected and the Move tool's three arrows on it, red, green and blue.](/docs/img/building-move.webp "The Move tool: drag an arrow to slide the selection along it.")
 
@@ -64,9 +64,11 @@ The **Move**, **Rotate** and **Hinge** tools on the toolbar work with the mouse 
 - A ring snaps to quarter turns near its middle, to the **Turn** step on it, and finer further out. An arrow snaps to the **Snap** step.
 - Type a number as you drag to make it exact: **23.58** degrees, **3** studs, **2p** plates.
 - A drag stops where the room ends. [[Esc]] or a right-click puts it back.
+- On a phone or a tablet they are a fingertip wide: tap a part, then drag a ring, an arrow or a pane with one finger, and tap the tag for the next axes. The view stays still under that finger, even if you rest it on the handle first. A second finger puts the drag back and moves the view instead.
 
 <!-- covers
 ui:handles on the selection
+ui:measure and handles by finger
 ui:tool modes
 -->
 
@@ -130,7 +132,9 @@ ui:undo history
 
 ## Measure {#measure}
 
-Press [[U]] and click two points: the distance in studs, plates and millimetres. A point near a pin, hole, axle, bar or hinge goes on its middle, and with both on one it gives the angle between them too, to a tenth of a degree. A stud is 8 mm across, a plate 3.2 mm tall and a brick 9.6 mm.
+Press [[U]] and click two points: the distance in studs, plates and millimetres. A point near a pin, hole, axle, bar or hinge goes on its middle, and near a stud on the middle of its top; with both on one connector it gives the angle between them too, to a tenth of a degree. A stud is 8 mm across, a plate 3.2 mm tall and a brick 9.6 mm.
+
+On a phone or a tablet, Measure is in **More › Tools**: tap two points. Each tap goes on the stud or connector nearest your fingertip, so it reads what a click right on it would. Holding your finger down doesn't pick up a part while the ruler is out.
 
 <!-- covers
 ui:measure

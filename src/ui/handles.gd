@@ -40,6 +40,19 @@
 ##   drag   --a digit-->  typed: the number sets it, the pointer does not
 ##   idle   --a digit straight after a drag-->  typed, the drag taken back
 ##   typed  --Enter-->  idle, one step;  --Esc-->  the drag as it was
+##
+## By finger (fingertools, APP_UX8 #10), laid out for one (Phone.on): every
+## handle a fingertip's target or more, Apple's 44 points. A finger takes the
+## handle nearest it within half a fingertip, a pane's face counting as on
+## it; a ring's far half only where no near half is within reach. The rings
+## stand at least 120 points round, the outer ring a fingertip outside them,
+## the tag 48 points each way, and a pane that cannot be a fingertip's
+## target is left out (the arrows either side still slide it).
+## The finger that took a handle is the handles' until it lifts: the view
+## did not turn with it (CadCamera's one-finger turn), so a drag moved the
+## part and the view at once, and Main's hold brought up the part's actions
+## under it. A second finger makes the gesture the view's, the drag put back
+## as Main's own second finger puts a carried part back.
 class_name Handles
 extends Node
 
@@ -92,6 +105,21 @@ const FRAME_BUDGET_MS := 3.0
 ## not jump through a thin part: degrees, and LDU.
 const SWEEP_DEGREES := 5.0
 const SWEEP_LDU := 4.0
+## Laid out for a finger, in points: how near a ring or an arrow a finger has
+## to land to take it (a band a fingertip wide and a little over); the
+## rings' radius at least (so that from a three-quarter view each ring's near
+## half has a fingertip's band clear of the others' near halves) and at most; how
+## far outside them the outer ring stands; a pane's span along each of its
+## axes (as [constant PANE]); how far a finger may wander and still be a tap;
+## and the tag's least size each way (Material's 48, its words inside a
+## fingertip with room round them).
+const FINGER_PICK := Phone.TARGET * 0.5 + 1.0
+const FINGER_RADIUS := 120.0
+const FINGER_LARGEST := 140.0
+const FINGER_OUTER_GAP := Phone.TARGET + 2.0
+const FINGER_PANE: Array[float] = [0.25, 0.75]
+const FINGER_SLOP := 10.0
+const FINGER_TAG := 48.0
 
 var builder: Builder
 var world: BrickWorld
@@ -139,6 +167,12 @@ var _drawn: Array = []
 ## Drawn over the main view, and over the second one beside it while View,
 ## Split shows it: taken and dragged in the view the press was in.
 var _overlays: ViewOverlays
+## The finger that took a handle, by the index the system gives it, or -1:
+## its touch and its drags are the handles' until it lifts.
+var _finger_index: int = -1
+## A press the engine raised from a finger was taken here, and the finger's
+## own touch not yet seen.
+var _finger_took: bool = false
 
 
 func _ready() -> void:
@@ -246,6 +280,55 @@ func _scale() -> float:
 		else 1.0
 
 
+## Whether the handles are laid out for a finger: the phone's and the
+## tablet's layout (Phone.on), whose sizes are in points.
+static func _finger() -> bool:
+	return Phone.on()
+
+
+## [param points] in the window's units.
+func _points(points: float) -> float:
+	return Phone.px(get_viewport(), points) if is_inside_tree() else points
+
+
+## How near a ring or an arrow a press has to be to take it, in the window's
+## units: half a fingertip and a little over, laid out for a finger.
+func _pick() -> float:
+	return _points(FINGER_PICK) if _finger() else PICK * _scale()
+
+
+## The outer ring's radius as a share of the three rings' in [param view]:
+## laid out for a finger, a fingertip outside them, so each has a fingertip's
+## band clear of the other.
+func _outer(view: int = CadCamera.MAIN) -> float:
+	if not _finger():
+		return OUTER
+	var radius: float = _radius(view)
+	return (radius + _points(FINGER_OUTER_GAP)) / maxf(radius, 0.001)
+
+
+## A pane's span along each of its two axes, from and to.
+static func _pane_span() -> Array[float]:
+	return FINGER_PANE if _finger() else PANE
+
+
+## How narrow [param points], a convex outline, is at its narrowest: the least,
+## over its sides, of how far the outline reaches from that side's line.
+static func _narrowest(points: PackedVector2Array) -> float:
+	var least: float = INF
+	for k: int in points.size():
+		var a: Vector2 = points[k]
+		var along: Vector2 = points[(k + 1) % points.size()] - a
+		if along.length_squared() < 0.0001:
+			continue
+		var side: Vector2 = along.normalized().orthogonal()
+		var reach: float = 0.0
+		for point: Vector2 in points:
+			reach = maxf(reach, absf((point - a).dot(side)))
+		least = minf(least, reach)
+	return least if least != INF else 0.0
+
+
 ## A ring's radius on the screen now in [param view], px: round the
 ## selection as it is drawn there, between [constant RADIUS] and [constant
 ## LARGEST], and kept while dragged.
@@ -269,7 +352,19 @@ func _radius(view: int = CadCamera.MAIN) -> float:
 			var at: Vector2 = camera.screen_of(corner, view)
 			shown = Rect2(at, Vector2.ZERO) if n == 0 else shown.expand(at)
 		reach = shown.size.length() * 0.3
-	_radius_now[view] = clampf(reach, RADIUS * scale, LARGEST * scale)
+	var least: float = RADIUS * scale
+	var most: float = LARGEST * scale
+	if _finger():
+		least = _points(FINGER_RADIUS)
+		most = _points(FINGER_LARGEST)
+		# Inside its own view, with the outer ring and a fingertip round it:
+		# a phone held sideways has less room down than the rings want.
+		var room: Rect2 = _overlays.rect(view) if _overlays != null else Rect2()
+		if room.has_area():
+			most = clampf(minf(room.size.x, room.size.y) * 0.5
+				- _points(FINGER_OUTER_GAP + FINGER_PICK), RADIUS * scale, most)
+			least = minf(least, most)
+	_radius_now[view] = clampf(reach, least, maxf(least, most))
 	return _radius_now[view]
 
 
@@ -423,13 +518,17 @@ func screen_extras(view: int = CadCamera.MAIN) -> Array:
 	if _turning():
 		# Square to the view it is drawn in; while dragged, the way it was taken.
 		var way: Vector3 = drag["way"] if int(drag.get("axis", -1)) == VIEW_AXIS else toward
-		var drawn: Dictionary = _ring_on_screen(at, way, reach * OUTER, toward, view)
+		var drawn: Dictionary = _ring_on_screen(at, way, reach * _outer(view), toward, view)
 		if not drawn.is_empty():
 			drawn.merge({"kind": "ring", "axis": VIEW_AXIS, "way": way, "middle": middle})
 			out.append(drawn)
 		return out
 	var basis: Basis = axes()
-	var face: float = pow((PANE[1] - PANE[0]) * radius, 2.0)
+	var span: Array[float] = _pane_span()
+	var face: float = pow((span[1] - span[0]) * radius, 2.0)
+	# A finger's: wide enough that with the reach round it (handle_at) it is
+	# a fingertip's target.
+	var thinnest: float = _points(Phone.TARGET * 0.5) if _finger() else 0.0
 	for n: int in 3:
 		# x and y, y and z, x and z: a pane is named by the axis it is square to.
 		var pair: Array = [(n + 1) % 3, (n + 2) % 3]
@@ -437,14 +536,15 @@ func screen_extras(view: int = CadCamera.MAIN) -> Array:
 		var u: Vector3 = basis[pair[0]].normalized()
 		var v: Vector3 = basis[pair[1]].normalized()
 		var corners := PackedVector2Array()
-		for corner: Vector2 in [Vector2(PANE[0], PANE[0]), Vector2(PANE[1], PANE[0]),
-				Vector2(PANE[1], PANE[1]), Vector2(PANE[0], PANE[1])]:
+		for corner: Vector2 in [Vector2(span[0], span[0]), Vector2(span[1], span[0]),
+				Vector2(span[1], span[1]), Vector2(span[0], span[1])]:
 			var p: Vector3 = at + (u * corner.x + v * corner.y) * reach
 			if camera.behind(p, view):
 				corners = PackedVector2Array()
 				break
 			corners.append(camera.screen_of(p, view))
-		if corners.is_empty() or _area(corners) < face * PANE_THINNEST:
+		if corners.is_empty() or _area(corners) < face * PANE_THINNEST \
+				or _narrowest(corners) < thinnest:
 			continue
 		out.append({"kind": "pane", "axis": n, "way": basis[n].normalized(), "u": u, "v": v,
 			"pair": pair, "points": corners, "middle": middle})
@@ -486,6 +586,9 @@ func _tag_box(said: String = "", view: int = CadCamera.MAIN) -> Rect2:
 	var radius: float = _radius(view)
 	var box := Rect2(middle + Vector2(radius * 1.05, -radius * 1.25),
 		words + Vector2(14, 8) * _scale())
+	# A fingertip's target each way, laid out for a finger.
+	if _finger():
+		box.size = box.size.max(Vector2.ONE * _points(FINGER_TAG))
 	# Inside its own view.
 	var room: Rect2 = _overlays.rect(view)
 	box.position.x = clampf(box.position.x, room.position.x + 4.0,
@@ -507,7 +610,12 @@ func handle_at(at: Vector2) -> Dictionary:
 	if _tag_box("", view).has_point(at):
 		return {"kind": "frame"}
 	var best: Dictionary = {}
-	var best_off: float = PICK * _scale()
+	var best_off: float = _pick()
+	# A finger's reach is a fingertip, wider than the way two rings seen from
+	# a three-quarter view run apart, the far half of one beside the near half
+	# of another: the far half takes a finger only where no near half can.
+	var behind: Dictionary = {}
+	var behind_off: float = _pick()
 	var three: Array = screen_handles(view)
 	var extras: Array = screen_extras(view)
 	var lines: Array = three + extras.filter(func(handle: Dictionary) -> bool:
@@ -517,23 +625,58 @@ func handle_at(at: Vector2) -> Dictionary:
 		for k: int in points.size() - 1:
 			var near: Vector2 = Geometry2D.get_closest_point_to_segment(at, points[k], points[k + 1])
 			var off: float = near.distance_to(at)
+			var taken: Dictionary = {"kind": handle["kind"], "axis": handle["axis"],
+				"way": handle["way"], "at": near, "segment": k, "view": view}
 			# The near half of a ring before the far half behind it.
 			if handle["kind"] == "ring" and not bool((handle["front"] as Array)[k]):
+				if _finger():
+					if off < behind_off:
+						behind_off = off
+						behind = taken
+					continue
 				off += 3.0 * _scale()
 			if off < best_off:
 				best_off = off
-				best = {"kind": handle["kind"], "axis": handle["axis"], "way": handle["way"],
-					"at": near, "segment": k, "view": view}
+				best = taken
+	# A finger takes whichever is nearest within its reach, a pane's face
+	# counting as on it: its arrows' bands, kept clear of the panes, and the
+	# panes' faces, grown into the room round them, are each a fingertip.
+	if _finger():
+		for handle: Dictionary in extras:
+			if handle["kind"] != "pane":
+				continue
+			var outline: PackedVector2Array = handle["points"]
+			var off: float = 0.0 if Geometry2D.is_point_in_polygon(at, outline) \
+				else _off_outline(at, outline)
+			if off < best_off:
+				best_off = off
+				best = _pane_taken(handle, at, view)
+	if best.is_empty():
+		best = behind
 	if not best.is_empty():
 		return best
 	for handle: Dictionary in extras:
 		if handle["kind"] == "pane" and Geometry2D.is_point_in_polygon(at, handle["points"]):
-			return {"kind": "pane", "axis": handle["axis"], "way": handle["way"], "u": handle["u"],
-				"v": handle["v"], "pair": handle["pair"], "at": at, "view": view}
+			return _pane_taken(handle, at, view)
 	if _turning() and not three.is_empty():
 		if at.distance_to(three[0]["middle"]) < _radius(view):
 			return {"kind": "ball", "axis": -1, "way": Vector3.ZERO, "at": at, "view": view}
 	return best
+
+
+## A pane taken at [param at] in [param view], as [method handle_at] says it.
+static func _pane_taken(handle: Dictionary, at: Vector2, view: int) -> Dictionary:
+	return {"kind": "pane", "axis": handle["axis"], "way": handle["way"], "u": handle["u"],
+		"v": handle["v"], "pair": handle["pair"], "at": at, "view": view}
+
+
+## How far [param at] is from the nearest side of [param outline].
+static func _off_outline(at: Vector2, outline: PackedVector2Array) -> float:
+	var least: float = INF
+	for k: int in outline.size():
+		least = minf(least, Geometry2D.get_closest_point_to_segment(at, outline[k],
+			outline[(k + 1) % outline.size()]).distance_to(at))
+	return least
 
 
 func _process(_delta: float) -> void:
@@ -631,7 +774,7 @@ func _draw_handles(canvas: Control, view: int) -> void:
 		face.set_border_width_all(1)
 		face.set_corner_radius_all(4)
 		canvas.draw_style_box(face, box)
-		canvas.draw_string(font, box.position + Vector2(7.0 * scale, box.size.y - 6.0 * scale),
+		canvas.draw_string(font, _tag_words_at(box, font, size),
 			FRAME_WORDS[frame], HORIZONTAL_ALIGNMENT_LEFT, -1, size, Look.ROW_WORDS)
 		return
 	# Dragging: where a ring gets finer, and how far it has gone.
@@ -653,14 +796,25 @@ func _draw_handles(canvas: Control, view: int) -> void:
 	face.set_border_width_all(1)
 	face.set_corner_radius_all(4)
 	canvas.draw_style_box(face, box)
-	canvas.draw_string(font, box.position + Vector2(7.0 * scale, box.size.y - 6.0 * scale),
+	canvas.draw_string(font, _tag_words_at(box, font, size),
 		said, HORIZONTAL_ALIGNMENT_LEFT, -1, size, Look.ROW_WORDS)
+
+
+## Where the tag's words start in [param box]: as the desktop has them, and
+## in the middle of a finger's taller box.
+func _tag_words_at(box: Rect2, font: Font, size: int) -> Vector2:
+	var scale: float = _scale()
+	if not _finger():
+		return box.position + Vector2(7.0 * scale, box.size.y - 6.0 * scale)
+	return box.position + Vector2(7.0 * scale,
+		(box.size.y + font.get_ascent(size) - font.get_descent(size)) * 0.5)
 
 
 ## The share of the rings' radius a ring's stops are measured in: the outer
 ## ring's own.
 func _zone_share(of: Dictionary = drag) -> float:
-	return OUTER if int(of.get("axis", -1)) == VIEW_AXIS else 1.0
+	return _outer(int(of.get("view", CadCamera.MAIN))) if int(of.get("axis", -1)) == VIEW_AXIS \
+		else 1.0
 
 
 ## A ring's points cut where it passes from the near half to the far one:
@@ -704,7 +858,7 @@ func on_screen() -> Rect2:
 	var view: int = int(drag.get("view", CadCamera.MAIN))
 	if camera == null or camera.behind(at, view):
 		return Rect2()
-	var reach: float = _radius(view) * (OUTER + 0.05)
+	var reach: float = _radius(view) * (_outer(view) + 0.05)
 	return Rect2(camera.screen_of(at, view) - Vector2(reach, reach), Vector2(reach, reach) * 2.0)
 
 
@@ -741,6 +895,9 @@ func _input(event: InputEvent) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch or event is InputEventScreenDrag:
+		_finger_input(event)
+		return
 	var button: InputEventMouseButton = event as InputEventMouseButton
 	if _eat_release and button != null and button.button_index == MOUSE_BUTTON_LEFT \
 			and not button.pressed:
@@ -766,11 +923,54 @@ func _unhandled_input(event: InputEvent) -> void:
 	if handle.is_empty():
 		return
 	get_viewport().set_input_as_handled()
+	# The press the engine raised from a finger: the finger is the handles'
+	# as its touch comes (_finger_input).
+	var finger: bool = button.device == InputEvent.DEVICE_ID_EMULATION
+	_finger_took = finger
 	if handle["kind"] == "frame":
 		cycle_frame()
 		_eat_release = true
 		return
-	_press = {"handle": handle, "at": button.position, "shift": button.shift_pressed}
+	_press = {"handle": handle, "at": button.position, "shift": button.shift_pressed,
+		"finger": finger}
+
+
+## A finger's touch and drags. The finger that came down on a handle is the
+## handles' until it lifts: its touch and its drags go no further, so the
+## view does not turn with it and Main does not hold it for the part's
+## actions, while the press the engine raised from it drags the handle. A
+## second finger makes the gesture the view's: the drag is put back, and
+## both fingers are left to the camera, which takes up the first at its next
+## move.
+func _finger_input(event: InputEvent) -> void:
+	var touch := event as InputEventScreenTouch
+	if touch != null:
+		var took: bool = _finger_took
+		_finger_took = false
+		if touch.pressed:
+			if _finger_index == -1 and (took or _press_here(touch.position)):
+				_finger_index = touch.index
+				get_viewport().set_input_as_handled()
+			elif _finger_index != -1 and touch.index != _finger_index:
+				_finger_index = -1
+				var dragged: bool = not drag.is_empty()
+				cancel()
+				if dragged:
+					say.call("put back as it was")
+		elif touch.index == _finger_index:
+			_finger_index = -1
+			get_viewport().set_input_as_handled()
+		return
+	var moved := event as InputEventScreenDrag
+	if moved != null and moved.index == _finger_index:
+		get_viewport().set_input_as_handled()
+
+
+## Whether a press at [param at] now would take a handle, as the press the
+## engine raises from a finger's touch will if it comes after it.
+func _press_here(at: Vector2) -> bool:
+	return shown() and drag.is_empty() and _press.is_empty() and not Input.is_key_pressed(KEY_SPACE) \
+		and not handle_at(at).is_empty()
 
 
 func _while_held(event: InputEvent) -> void:
@@ -778,7 +978,10 @@ func _while_held(event: InputEvent) -> void:
 	if moved != null:
 		get_viewport().set_input_as_handled()
 		if drag.is_empty():
-			if moved.position.distance_to(_press["at"]) <= DRAG_SLOP:
+			# A finger is never still: a tap may wander as a phone's does.
+			var slop: float = _points(FINGER_SLOP) if bool(_press.get("finger", false)) \
+				else DRAG_SLOP
+			if moved.position.distance_to(_press["at"]) <= slop:
 				return
 			var press: Dictionary = _press
 			_press = {}

@@ -9,7 +9,10 @@
 // page (web/scroller.js), and the page's words in its language (say).
 export { ICONS, avatarHtml, avatarTone, awardsHtml, iconButtonHtml, iconHtml, number, say } from "./card.js";
 import { say } from "./card.js";
+import { toastRegion } from "./toast.js";
 import "./scroller.js";
+// The toast, and with an action the snackbar (web/toast.js).
+export { toast } from "./toast.js";
 
 // In the page's language (web/theme.js), English as en-GB writes a date.
 const LANG = globalThis.document?.documentElement.lang || "en";
@@ -27,34 +30,6 @@ export function ago(iso) {
   if (minutes > -24 * 60) return AGO.format(Math.round(minutes / 60), "hour");
   if (minutes > -7 * 24 * 60) return AGO.format(Math.round(minutes / 1440), "day");
   return DATE.format(at);
-}
-
-/// Says [words] in the toast at the foot of the screen ("Link copied"),
-/// read out by a screen reader, and takes it away after a moment. A screen
-/// reader reads a live region's change, not a region that arrives already
-/// saying something, so the toast is on the page empty from the first, and
-/// its words are put in a moment later; the same words twice are said twice.
-export function toast(words) {
-  const said = toastRegion();
-  said.textContent = "";
-  clearTimeout(toast.timer);
-  toast.timer = setTimeout(() => {
-    said.textContent = String(words);
-    said.classList.add("shown");
-    toast.timer = setTimeout(() => said.classList.remove("shown"), 2400);
-  }, 60);
-}
-
-function toastRegion() {
-  let said = document.querySelector("body > .toast");
-  if (!said) {
-    said = document.createElement("div");
-    said.className = "toast";
-    said.setAttribute("role", "status");
-    said.setAttribute("aria-live", "polite");
-    document.body.append(said);
-  }
-  return said;
 }
 
 // An open "more" menu (details.more-menu) closes on a click outside it and

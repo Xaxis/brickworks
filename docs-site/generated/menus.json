@@ -954,10 +954,25 @@
 							"tip": "The model's sub-assemblies by name, inside one another"
 						},
 						{
+							"name": "panel_colour",
+							"words": "Colour",
+							"key": "",
+							"tip": "The colour in hand: for the part put down next, or to paint what is selected"
+						},
+						{
 							"name": "panel_keys",
 							"words": "Key strip",
 							"key": "",
 							"tip": ""
+						},
+						{
+							"line": true
+						},
+						{
+							"name": "reset_panels",
+							"words": "Reset panel layout",
+							"key": "",
+							"tip": "Every panel open again and as tall as at first: the parts bin, Colour, the model tree and the properties"
 						}
 					]
 				},
@@ -1958,6 +1973,8 @@
 		"put_back": "",
 		"explode": "shift-Y",
 		"panel_outliner": "",
+		"panel_colour": "",
+		"reset_panels": "",
 		"minifig": "M",
 		"mosaic": "",
 		"brickify": "Ctrl-I",

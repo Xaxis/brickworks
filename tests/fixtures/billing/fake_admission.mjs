@@ -17,6 +17,9 @@
 // may import anything: it is copied beside the function on its own.
 
 export const FAKE_KEY = "adm_test_00000000000000000000000000000000";
+/// The stand-in's owner read token, limited to Brickworks (Admission's
+/// ADR-0014): what the console's Plans reads metrics and events with.
+export const FAKE_READ_TOKEN = "adm_owner_00000000000000000000000000000000";
 export const ADMISSION_URL = "https://admission.test";
 /// The stand-in's webhook signing secret: a test's, nobody's real one.
 export const WEBHOOK_SECRET = "adm_whsec_standin0000000000000000000000";
@@ -89,7 +92,20 @@ export function fakeAdmission() {
     owners: new Set(),
     subscribe(customerId, sub = {}) {
       subs.set(customerId, { plan: "pro", interval: "month", currentPeriodEnd: nextMonth(), endsAt: null, ...sub });
+      const made = subs.get(customerId);
+      const amount = made.interval === "year" ? 8000 : 800;
+      const at = sub.at || new Date().toISOString();
+      event({ at, type: "subscription.started", customerId, plan: made.plan,
+        summary: `${customerId} started Pro at $${(amount / 100).toFixed(2)}/${made.interval}` });
+      event({ at, type: "payment.succeeded", customerId, plan: made.plan, amount, currency: "usd",
+        summary: `${customerId} paid $${(amount / 100).toFixed(2)}` });
     },
+    /// A refund of [amount] to [customerId], as Stripe's would be told.
+    refund(customerId, amount, at = new Date().toISOString()) {
+      event({ at, type: "refund", customerId, amount, currency: "usd", summary: `$${(amount / 100).toFixed(2)} back to ${customerId}` });
+    },
+    /// The business events (Admission's /v1/owner/events), oldest first.
+    events: [],
     /// A plan given by hand, as the admin's comp (grant_override) does.
     comp(customerId, plan, until = null) {
       overrides.set(customerId, { plan, until });
@@ -116,7 +132,9 @@ export function fakeAdmission() {
       self.calls.push(`${method} ${url.pathname}`);
       if (self.down) throw new TypeError("fetch failed");
       const auth = new Headers(init.headers).get("authorization");
-      if (auth !== `Bearer ${FAKE_KEY}`) return reply(401, error("unauthorized", "Bad key."));
+      // The owner's read API takes the owner read token, the product's the key.
+      const owner = url.pathname.startsWith("/v1/owner/");
+      if (auth !== `Bearer ${owner ? FAKE_READ_TOKEN : FAKE_KEY}`) return reply(401, error("unauthorized", "Bad key."));
       const body = init.body ? JSON.parse(String(init.body)) : {};
       return route(method, url.pathname, body, url.searchParams);
     },
@@ -174,7 +192,46 @@ export function fakeAdmission() {
     };
   }
 
+  function event(one) {
+    self.events.push({ id: String(self.events.length + 1), ...one });
+  }
+
+  /// Admission's owner read API, as a token limited to Brickworks reads it.
+  function ownerRoute(path, query) {
+    if (path === "/v1/owner/health") return reply(403, error("product_limited", "Limited to brickworks."));
+    if (path === "/v1/owner/products") {
+      return reply(200, { products: [{ id: "brickworks", name: "Brickworks", url: "https://brickworks.diy",
+        hostnames: ["brickworks.diy"], modes: { test: { connected: true, managedPayments: true, webhook: true },
+          live: { connected: false, managedPayments: false, webhook: false } },
+        plans: Object.entries(PLANS).map(([key, p]) => ({ key, name: p.name, status: "draft", default: key === "free" })) }] });
+    }
+    const product = query?.get("product");
+    if (!product) return reply(400, error("bad_request", "product is required."));
+    if (product !== "brickworks") return reply(403, error("product_limited", `Limited to brickworks, so it can't read ${product}.`));
+    if (path === "/v1/owner/metrics") {
+      const now = Date.now();
+      const live = [...subs.values()].filter((sub) => sub.status !== "canceled");
+      const mrr = live.reduce((n, sub) => n + (sub.interval === "year" ? Math.round(8000 / 12) : 800), 0);
+      const paid = (since) => self.events.filter((e) => e.type === "payment.succeeded" && now - Date.parse(e.at) < since)
+        .reduce((n, e) => n + e.amount, 0);
+      const known = new Set([...subs.keys(), ...overrides.keys(), ...[...apiComps.keys()].map((k) => k.split(":")[0])]);
+      return reply(200, { product, mode: "test", at: new Date(now).toISOString(),
+        revenue: [{ currency: "usd", mrr, paid24h: paid(DAY_MS), paid30d: paid(30 * DAY_MS) }],
+        subscribers: { paying: live.length, trialing: 0, pastDue: 0, graceEnded: 0, ending: live.filter((s) => s.endsAt).length },
+        comps: overrides.size + [...apiComps.values()].filter((c) => !c.revoked && Date.parse(c.until) > now).length,
+        customers: known.size, last24h: { started: 0, ending: 0, ended: 0, paymentsFailed: 0 }, limitsHit: [] });
+    }
+    if (path === "/v1/owner/events") {
+      const limit = Math.max(1, Math.min(500, Number(query.get("limit")) || 100));
+      const after = query.get("after");
+      const list = after === null ? self.events.slice(-limit) : self.events.filter((e) => Number(e.id) > Number(after)).slice(0, limit);
+      return reply(200, { events: list, next: list.at(-1)?.id ?? (after ?? "0") });
+    }
+    return reply(404, error("not_found", "No such endpoint."));
+  }
+
   function route(method, path, body, query) {
+    if (method === "GET" && path.startsWith("/v1/owner/")) return ownerRoute(path, query);
     if (method === "GET" && path === "/v1/plans") {
       return reply(200, {
         mode: "test",

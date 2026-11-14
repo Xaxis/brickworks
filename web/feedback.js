@@ -321,6 +321,13 @@ export function openFeedback({ kind = "", report = false, picture: given = null,
     choose.value = "";
     pick.focus();
   });
+  // A report's marks taken off: the picture as it was, the count line and
+  // what will be sent saying so (markable's clear tells sayMarks), and the
+  // keyboard on the picture's next control, this one hidden with no marks.
+  clearMarks.addEventListener("click", () => {
+    marking?.clear();
+    leave.focus();
+  });
   // A report's picture left out, and put back as it was, marks and all.
   let leftOut = null;
   leave.addEventListener("click", () => {

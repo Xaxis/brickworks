@@ -62,6 +62,7 @@
 	font-size: var(--t-small); color: var(--ink-soft); }
 .connections b { color: var(--ink); }
 .delete-form, .code-form { display: grid; gap: 10px; margin-top: 12px; max-width: 460px; }
+#beta-bar-out { margin-top: var(--s-6); }
 </style>
 <script src="/follow.js" type="module"></script>
 </head>
@@ -138,6 +139,18 @@
 				<p class="lede">Sign in to choose what Brickworks emails you, what your profile shows and which AI
 					apps can work in your tabs. We email you a code: no password.</p>
 				<div class="actions"><button class="cta big" id="sign-in" type="button">Sign in</button></div>
+				<!-- Signed out too, while the beta is open: the bar's × says
+				     it is shown again here (web/betabar.js). -->
+				<div class="settings" id="beta-bar-out" hidden>
+					<div class="setting">
+						<div class="wide">
+							<h2>Beta</h2>
+							<p>Brickworks is in open beta. Its bar at the foot of every page has Report a bug and the way to join. Chosen for this browser.</p>
+							<label class="choice"><input type="checkbox" data-beta-bar-show checked>
+								Show the beta bar on every page</label>
+						</div>
+					</div>
+				</div>
 			</section>
 
 			<div id="signed-in" hidden>
@@ -166,6 +179,13 @@
 							<button class="cta ghost" type="button" id="beta-leave" hidden>Leave the beta</button>
 						</div>
 						<p class="said wide" id="beta-status" role="status"></p>
+						<!-- The beta's bar (web/betabar.js): shown or hidden in this
+						     browser at once; its × turns this off. -->
+						<div class="wide">
+							<p>The bar at the foot of every page, with Report a bug. Chosen for this browser; Report a bug is in your account menu either way.</p>
+							<label class="choice"><input type="checkbox" data-beta-bar-show checked>
+								Show the beta bar on every page</label>
+						</div>
 					</div>
 
 					<div class="setting" id="theme-part">

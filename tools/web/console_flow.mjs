@@ -32,6 +32,12 @@
 //   9. /beta-admin answers 308 to /admin#beta, and /beta-admin?tests=1
 //      lands on the console's Beta with the checks' own pool.
 //  10. Every section at 390 and 1280, light and dark: pictures in --out.
+//  11. The account menu's Admin (bugbar, 2026-11-13), right after the
+//      gate: the owner's laptop menu and phone Menu have it at their foot
+//      above Sign out, and it opens the console; on the next page it is
+//      there before the server has answered (kept with who you are). A
+//      throwaway has none in either menu nor anywhere in the page, and
+//      op=feed_count's body has no admin key; signed out, none either.
 //
 // The throwaways are deleted at the end with everything of theirs, the
 // beta's switch here put back as it was, and the checks' pool of spots
@@ -201,9 +207,71 @@ try {
     await context.close();
   }
 
+  // --- 11. The account menu's Admin ---------------------------------------------------
+  console.log("11. The account menu's Admin: the owner's alone");
+  owner = await mintSession(process.env.MASTER_EMAIL, { age: false, welcome: false });
+  {
+    // The menu as it is drawn once the server has said who you are.
+    const menuOf = async (page, phone) => {
+      await until(page, () => document.querySelector(".site-head .account-btn .avatar img, .site-head .account-btn .avatar")
+        && JSON.parse(localStorage.getItem("brickworks.me") || "null")?.me !== undefined, null, 30000);
+      await page.click(phone ? ".site-head .menu > summary" : ".site-head .account-menu > summary");
+      await page.waitForTimeout(400);
+      return page.evaluate((onPhone) => {
+        const list = document.querySelector(onPhone ? ".site-head .menu .menu-list" : ".site-head .account-menu .menu-list");
+        const link = list?.querySelector('a[href="/admin"]');
+        const items = [...(list?.children || [])];
+        return { link: Boolean(link), words: link?.textContent.trim() || "", icon: Boolean(link?.querySelector("svg.icon use")),
+          aboveSignOut: Boolean(link) && items.indexOf(link.closest(".menu-owner")) === items.length - 2
+            && items[items.length - 1]?.matches(".sign-out"),
+          anywhere: document.querySelectorAll('a[href="/admin"], [data-place="admin"], .menu-owner').length };
+      }, phone);
+    };
+    for (const [width, theme] of [[1280, "light"], [390, "dark"]]) {
+      const phone = width < 600;
+      const { page, context } = await open("/gallery", { width, theme, who: owner, label: `owner menu ${width}` });
+      const menu = await menuOf(page, phone);
+      check(`the owner's ${phone ? "phone Menu" : "account menu"} at ${width}: "${menu.words}", its gauge, at the foot above Sign out`,
+        menu.link && menu.words === "Admin" && menu.icon && menu.aboveSignOut);
+      await shot(page, `11-owner-menu-${width}-${theme}.png`, false);
+      await page.click(phone ? '.site-head .menu a[href="/admin"]' : '.site-head .account-menu a[href="/admin"]');
+      check(`...and it opens the console at ${width}`, await until(page, () => location.pathname === "/admin") && await shown(page));
+      if (!phone) {
+        // The next page draws it from what was kept, the server not yet answered.
+        await page.route(/\/api\/people\?op=feed_count/, () => null);
+        await page.goto(`${site}/faq`, { waitUntil: "domcontentloaded" });
+        const kept = await until(page, () => document.querySelector('.site-head .account-menu a[href="/admin"]'), null, 10000);
+        check("on the next page it is there before the server has answered (kept with who you are)", kept);
+        await page.unroute(/\/api\/people\?op=feed_count/);
+      }
+      await context.close();
+    }
+    const plain = await api("/api/people?op=feed_count", { token: stranger.access_token });
+    check(`a throwaway's op=feed_count has no admin key: ${JSON.stringify(Object.keys(plain.json || {}).sort())}`,
+      plain.status === 200 && plain.json?.signed_in === true && !("admin" in (plain.json || {})));
+    const mine = await api("/api/people?op=feed_count", { token: owner.access_token });
+    check(`the owner's op=feed_count says admin: ${mine.json?.admin}`, mine.status === 200 && mine.json?.admin === true);
+    for (const [width, theme] of [[1280, "dark"], [390, "light"]]) {
+      const phone = width < 600;
+      const { page, context } = await open("/gallery", { width, theme, who: stranger, label: `stranger menu ${width}` });
+      const menu = await menuOf(page, phone);
+      check(`a throwaway's ${phone ? "phone Menu" : "account menu"} at ${width}: no Admin, nothing of it in the page (${menu.anywhere})`,
+        !menu.link && menu.anywhere === 0);
+      await shot(page, `11-throwaway-menu-${width}-${theme}.png`, false);
+      await context.close();
+    }
+    {
+      const { page, context } = await open("/gallery", { width: 390, label: "signed out menu" });
+      await page.click(".site-head .menu > summary");
+      await page.waitForTimeout(400);
+      const anywhere = await page.evaluate(() => document.querySelectorAll('a[href="/admin"], [data-place="admin"], .menu-owner').length);
+      check(`signed out: no Admin in Menu nor the page (${anywhere})`, anywhere === 0);
+      await context.close();
+    }
+  }
+
   // --- 2. Throwaways -------------------------------------------------------------
   console.log("2. Throwaways: a builder with two models, three applicants");
-  owner = await mintSession(process.env.MASTER_EMAIL, { age: false, welcome: false });
   const set = await api("/api/admin?op=switches&tests=1", { token: owner.access_token });
   switchBefore = set.json?.beta || null;
   const billing = set.json?.billing?.mode;

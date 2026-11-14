@@ -13992,6 +13992,15 @@ msgstr "das GIF wurde nicht fertig: %s"
 
 msgid "no GIF: its frames would not read back"
 msgstr "kein GIF: seine Bilder ließen sich nicht zurücklesen"
+
+# Measure by finger (APP_UX8 #10 fingertools): the ruler's words on a phone, where
+# a tap is what puts a point down and there is no Esc to press.
+msgid "Measuring: tap a point, then another"
+msgstr "Messen: tippe auf einen Punkt, dann auf einen weiteren"
+
+msgid "0 mm — tap another point"
+msgstr "0 mm — tippe auf einen weiteren Punkt"
+
 # A colour's swatch: in how many sets the part comes in it, and rare in it
 # in three or fewer (APP_UX7 #21, rarity).
 
@@ -14118,3 +14127,38 @@ msgstr "Shift loslassen, um die %s darauf mitzunehmen"
 
 msgid "what rests on it stays, more than a drag can follow"
 msgstr "was darauf liegt, bleibt: mehr, als ein Ziehen mitnehmen kann"
+
+# panelfold: every section of a column folds and sizes one way (PanelStack).
+
+msgid "Fold %s"
+msgstr "%s einklappen"
+
+msgid "Unfold %s"
+msgstr "%s ausklappen"
+
+msgid "Click to fold it to its header"
+msgstr "Klicken, um es auf seine Kopfzeile einzuklappen"
+
+msgid "Click to open it"
+msgstr "Klicken, um es aufzuklappen"
+
+msgid "Every part there is, by shelf and category, to search, take in hand or drag into the model"
+msgstr "Alle Teile, nach Ablage und Kategorie, zum Suchen, In-die-Hand-Nehmen oder Ins-Modell-Ziehen"
+
+msgid "The colour in hand: for the part put down next, or to paint what is selected"
+msgstr "Die Farbe in der Hand: für das nächste abgelegte Teil oder um die Auswahl zu bemalen"
+
+msgid "Double-click to put it back as it was at first"
+msgstr "Doppelklicken, um sie wie anfangs zurückzusetzen"
+
+msgid "Resize %s"
+msgstr "Größe von %s ändern"
+
+msgid "Resize the panels"
+msgstr "Größe der Bereiche ändern"
+
+msgid "Reset panel layout"
+msgstr "Bereiche zurücksetzen"
+
+msgid "Every panel open again and as tall as at first: the parts bin, Colour, the model tree and the properties"
+msgstr "Jeder Bereich wieder offen und so hoch wie anfangs: der Teilekasten, Farbe, der Modellbaum und die Eigenschaften"

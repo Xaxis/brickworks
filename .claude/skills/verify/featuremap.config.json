@@ -3088,7 +3088,7 @@
       "kind": "ui",
       "label": "the account menu",
       "entry": "web/follow.js",
-      "reach": "https://brickworks.diy/gallery signed in: the avatar in the header opens who you are, Your profile, Notifications and Your feed with their counts, Saved, Settings, Send feedback (and Beta hub for a beta tester, web/early.js), the theme and Sign out (at 390 px, Menu is the avatar and holds the same)",
+      "reach": "https://brickworks.diy/gallery signed in: the avatar in the header opens who you are, Your profile, Notifications and Your feed with their counts, Saved, Settings, Send feedback (and Beta hub for a beta tester, web/early.js; Report a bug for everyone while the beta is open), the theme, Admin to /admin for the site's owner alone (op=feed_count's admin: true), and Sign out (at 390 px, Menu is the avatar and holds the same)",
       "area": "web"
     },
     {
@@ -5076,7 +5076,7 @@
       "kind": "ui",
       "label": "the beta bar",
       "entry": "web/betabar.js",
-      "reach": "<deployment>/ any page, with the beta open (tools/deploy.sh --unit --beta-open)   (web/theme.js asks for it; Open beta to /beta, Report a bug (window.brickworksReportBug of web/bugreport.js, else Send feedback as a bug), Join or You're a tester; its x hides it for a day; none with the beta off, on an embed or on the consent page; tools/web/betahome_flow.mjs)",
+      "reach": "<deployment>/ any page, with the beta open (tools/deploy.sh --unit --beta-open)   (web/theme.js asks for it; Open beta to /beta, Report a bug (window.brickworksReportBug of web/bugreport.js, else Send feedback as a bug), Join or You're a tester; its x hides it until shown again, said in a toast with Settings and Undo; Settings' Show the beta bar on every page (signed out too) brings it back at once; Report a bug in the account menu and Menu while the beta is open; none with the beta off, on an embed or on the consent page; tools/web/betahome_flow.mjs)",
       "area": "web"
     },
     {
@@ -5139,7 +5139,7 @@
       "kind": "ui",
       "label": "report a bug on the site",
       "entry": "web/bugreport.js",
-      "reach": "window.brickworksReportBug({source: \"site\"}) on any page (the beta bar's Report a bug loads it): the page drawn to a picture by the page itself, web/feedback.js's report mode over the page with a box to drag on it; signed out, a sign-in first; sent, Report #N and Your reports (/settings#feedback); tools/web/bugreport_flow.mjs",
+      "reach": "window.brickworksReportBug({source: \"site\"}) on any page (the beta bar's Report a bug loads it): the page drawn to a picture by the page itself, web/feedback.js's report mode over the page with a box to drag on it; signed out, a sign-in first; two boxes and Clear the marks takes them off, sent with none; sent, Report #N and Your reports (/settings#feedback); tools/web/bugreport_flow.mjs",
       "area": "web"
     },
     {
@@ -5323,6 +5323,83 @@
       "entry": "src/dev/im2review_probe.gd",
       "reach": "tools/probe.sh imreview_probe; tools/probe.sh im2review_probe; tools/probe.sh into_kept_probe; tools/probe.sh ic3_probe   (headless: the three reviews of putting one model into another and its kept-parts cases, each saved and reopened: parts the app cannot show kept in their sub-model and step, the host's own lines kept, renamed and moved copies, names, credits, a part landing late, a file with no FILE line given a model of its own name, no part file from another model, the file as it was once the last model put in is taken out, motions and views kept in the sub-model; `-- case,case` runs only those)",
       "area": "model-io"
+    },
+    {
+      "kind": "ui",
+      "label": "measure and handles by finger",
+      "entry": "src/ui/handles.gd",
+      "reach": "on a phone or a tablet: More's Measure, then a tap on a stud and a tap on another, each going on the stud's or the connector's middle nearest it within half a fingertip; the Move or Rotate tool, a tap on a part, then an arrow, pane, ring or the trackball dragged by a finger (every target 44 points or more), the tag tapped for the next axes, a second finger putting a drag back  (Measure._finger_point, Handles._finger_input; tools/probe.sh fingertools_probe)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "fingertools probe",
+      "entry": "src/dev/fingertools_probe.gd",
+      "reach": "tools/probe.sh fingertools_probe   (windowed, 390x844 by its header; through the sign-in screen with a throwaway account (.env); pictures in --shots=DIR, else user://fingertools)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "the console's plans and revenue",
+      "entry": "web/admin-plans.js",
+      "reach": "<deployment>/admin#plans as MASTER_EMAIL: GET /api/admin?op=plans (api/_console_plans.js): billing off says so and asks Admission nothing; on, the plans and what each includes, the customers from Admission's snapshots (admission_customers), comps, and with ADMISSION_READ_TOKEN revenue by month and Admission's record; read only, each part linked to where it changes at admission.sh",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the console's mail",
+      "entry": "web/admin-mail.js",
+      "reach": "<deployment>/admin#mail as MASTER_EMAIL (?tests=1 the checks' own): GET /api/admin?op=mail&days=7|30|90 (api/_console_mail.js, supabase/console2.sql admin_mail): every mail by kind and day, sent, delivered, bounced, complained, each with its address, subject and why, beside beta_mail and feedback_replies",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the console's connector",
+      "entry": "web/admin-connector.js",
+      "reach": "<deployment>/admin#connector as MASTER_EMAIL (?tests=1 the checks' own): GET /api/admin?op=connector[&account=U] (api/_console_connector.js): each account's Claudes, tabs, conversations and tool calls (relay_call_days), its state; #connector/<account> its panel, linked from People; read only",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the console's site",
+      "entry": "web/admin-site.js",
+      "reach": "<deployment>/admin#site as MASTER_EMAIL: GET /api/admin?op=site (api/_console_site.js): the live release and since when (site_releases), the releases before with their units, each cron's last runs (cron_runs_of, canary_runs), Supabase's auth/rest/storage answering; the Overview's live release and a 402 under Needs you now",
+      "area": "web"
+    },
+    {
+      "kind": "api",
+      "label": "Resend's word on each mail",
+      "entry": "api/_console_mail.js",
+      "reach": "POST /api/otp?op=mail_event, signed as Svix signs (svix-id, svix-timestamp, svix-signature) with RESEND_WEBHOOK_SECRET: 404 with no secret, 401 unsigned or stale, 200 {kept:false} for another product's mail, kept once in mail_events; tools/web/resend_webhook.sh sets the webhook up",
+      "area": "account"
+    },
+    {
+      "kind": "lib",
+      "label": "the console's part B reads",
+      "entry": "supabase/console2.sql",
+      "reach": "python3 tools/minitest.py tests/test_console2.py   (console2.sql and api/admin.js's plans, mail, connector, site and otp.js's mail_event against a real Postgres: the gate, Resend's signature, each read)",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "console2 browser flow",
+      "entry": "tools/web/console2_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/console2_flow.mjs --url=<preview> --out=DIR   (MASTER_EMAIL's session minted: the gate, Mail playing Resend, a throwaway's tab, Claude and calls in Connector, Site, Plans, each at 390/1280 light/dark; preview check [console2])",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "a release written down live",
+      "entry": "tools/release/release_live.sh",
+      "reach": "tools/release/release_live.sh TAG SHA [SPEC]   (ship.sh, once the domain serves the release: a row of site_releases; --backfill the live trains in bench/results/release-out)",
+      "area": "release"
+    },
+    {
+      "kind": "cli",
+      "label": "Resend's webhook set up",
+      "entry": "tools/web/resend_webhook.sh",
+      "reach": "RESEND_ADMIN_KEY=<the team's full-access key, never a deployment's> tools/web/resend_webhook.sh [--check] [--redeploy]   (after a release with the op is live: the webhook to /api/otp?op=mail_event, its secret in Vercel production env and .env)",
+      "area": "web"
     }
   ]
 }

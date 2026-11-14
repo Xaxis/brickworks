@@ -73,7 +73,7 @@
 import { AdmissionError, AdmissionUnavailable } from "./_admission.js";
 import { AuthError, bearer, verify } from "./_auth.js";
 import { admission, billingMode } from "./_billing.js";
-import { isCron } from "./_cron.js";
+import { cronNoted, isCron } from "./_cron.js";
 import { db, dbConfigured } from "./_db.js";
 import { EARLY, KNOWN, NEW } from "./_early.js";
 import { setSetting, settingOf } from "./_settings.js";
@@ -372,7 +372,7 @@ export function framedMail(words, origin = siteOrigin(), replyTo = "") {
 /// to a test inbox where this server has no mail key (a unit's preview:
 /// tools/deploy.sh --unit), as it would have gone; "failed" otherwise, and
 /// always for an orangecheck account's made-up address. Never throws.
-export async function resend(email, mail, what = "email") {
+export async function resend(email, mail, what = "email", kind = "beta") {
   const replyTo = String(process.env.BETA_REPLY_TO || "").trim();
   const key = process.env.RESEND_API_KEY;
   if (!email || ORANGECHECK_ADDRESS.test(email)) return { state: "failed", id: null };
@@ -382,7 +382,9 @@ export async function resend(email, mail, what = "email") {
       method: "POST",
       headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
       body: JSON.stringify({ from: process.env.EMAIL_FROM || SENDER, to: [email], subject: mail.subject,
-        text: mail.text, html: mail.html, ...(replyTo ? { reply_to: replyTo } : {}) }),
+        text: mail.text, html: mail.html, ...(replyTo ? { reply_to: replyTo } : {}),
+        // What kind of mail it is, in Resend's word of it (/admin#mail).
+        tags: [{ name: "kind", value: kind }] }),
       signal: AbortSignal.timeout(10000),
     });
     const said = await reply.json().catch(() => ({}));
@@ -749,6 +751,8 @@ export async function betaDaily(request, response) {
   if (!isCron(request)) return say(response, 401, "the daily run is the cron's");
   if (!dbConfigured()) return say(response, 503, "no database here");
   const out = {};
+  // Written down as it ends (/admin#site).
+  const started = new Date().toISOString();
   try {
     out.months = await grantDue();
     out.reminded = await remind();
@@ -756,6 +760,7 @@ export async function betaDaily(request, response) {
   } catch (trouble) {
     console.error(`beta: daily: ${String(trouble?.message || trouble).slice(0, 160)}`);
     if (notYet(trouble)) return response.status(200).json({ ...out, said: "beta.sql is not applied here" });
+    await cronNoted(request, "beta_daily", started, "failed", { error: String(trouble?.message || trouble).slice(0, 200) });
     return response.status(500).json({ ...out, error: "the daily run stopped" });
   }
   // And feedback's reports past their time (api/_feedback.js), on its own:
@@ -766,6 +771,8 @@ export async function betaDaily(request, response) {
     console.error(`beta: daily: feedback: ${String(trouble?.message || trouble).slice(0, 160)}`);
     out.feedback = notYet(trouble) ? "feedback.sql is not applied here" : "the sweep stopped";
   }
+  await cronNoted(request, "beta_daily", started, out.feedback === "the sweep stopped" ? "failed" : "done",
+    { months: out.months ?? null, reminded: out.reminded ?? null, feedback: out.feedback ?? null });
   return response.status(200).json(out);
 }
 

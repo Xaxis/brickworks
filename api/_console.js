@@ -31,6 +31,8 @@ import { betaSwitch } from "./_beta.js";
 import { billingMode, entitlementOf } from "./_billing.js";
 import { db, reach } from "./_db.js";
 import { scopeOf } from "./_settings.js";
+import { siteSummary } from "./_console_site.js";
+import { mailTrouble } from "./_console_mail.js";
 
 const DAY = 864e5;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -54,7 +56,7 @@ const known = (promise) => Promise.resolve(promise).catch((trouble) => {
 });
 
 /// Every account, a thousand a page, at most ten pages.
-async function allUsers() {
+export async function allUsers() {
   const users = [];
   for (let page = 1; page <= 10; page += 1) {
     const reply = await reach("server GET users", 15, `${project()}/auth/v1/admin/users?page=${page}&per_page=1000`,
@@ -120,6 +122,8 @@ export async function switches(request) {
       database: Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SECRET_KEY),
       mail: Boolean(process.env.RESEND_API_KEY),
       admission: Boolean(String(process.env.ADMISSION_KEY || "").trim()),
+      admission_read: Boolean(String(process.env.ADMISSION_READ_TOKEN || "").trim()),
+      mail_events: Boolean(String(process.env.RESEND_WEBHOOK_SECRET || "").trim()),
       orangecheck: Boolean(process.env.OC_PROJECT_KEY),
       crons: Boolean(process.env.CRON_SECRET),
     },
@@ -133,8 +137,11 @@ export async function overview(request, tests = false) {
   const now = Date.now();
   const since = (days) => new Date(now - days * DAY).toISOString();
   const test = tests ? "true" : "false";
-  const [users, published, listed, fresh, reportsOpen, feedback, queue, testers, mail, audit, set] = await Promise.all([
-    allUsers(),
+  const [users, published, listed, fresh, reportsOpen, feedback, queue, testers, mail, audit, set, site, delivery]
+    = await Promise.all([
+    // The accounts may not be read (Supabase's sign-in refusing, 2026-11-12):
+    // the rest is shown, with the backend's health saying why.
+    known(allUsers()),
     known(countOf(`shared_models?select=id&published=is.true&test=is.${test}`)),
     known(countOf(`shared_models?select=id&published=is.true&listed=is.true&test=is.${test}`)),
     known(countOf(`shared_models?select=id&published=is.true&test=is.${test}&created_at=gte.${since(7)}`)),
@@ -145,13 +152,18 @@ export async function overview(request, tests = false) {
     known(db("rpc/beta_testers_list", { method: "POST", body: { p_tests: tests, p_limit: 1 } })),
     known(db("rpc/admin_mail_counts", { method: "POST", body: { p_days: 7, p_tests: tests } })),
     known(auditOf({ tests, limit: 6 })),
-    switches(request),
+    known(switches(request)),
+    // The live release, the crons that failed or are late, and the
+    // backend's health (api/_console_site.js); Resend's word on the week's
+    // mail (api/_console_mail.js).
+    known(siteSummary()),
+    known(mailTrouble(tests)),
   ]);
-  const mine = users.filter((user) => isTestAddress(user.email) === tests);
+  const mine = (users || []).filter((user) => isTestAddress(user.email) === tests);
   const after = (iso, days) => iso && Date.parse(iso) > now - days * DAY;
   return {
     tests,
-    accounts: {
+    accounts: users === null ? null : {
       all: mine.length,
       joined_day: mine.filter((user) => after(user.created_at, 1)).length,
       joined_week: mine.filter((user) => after(user.created_at, 7)).length,
@@ -167,6 +179,8 @@ export async function overview(request, tests = false) {
         pending: queue.counts?.pending ?? 0 } : null,
     },
     mail,
+    delivery,
+    site,
     audit: audit ? audit.rows : null,
     switches: set,
   };
@@ -237,7 +251,7 @@ export async function person(account, tests = false) {
   const user = await reply.json();
   if (!user?.id) return null;
   const mode = billingMode();
-  const [profile, models, tabs, barred, member, status, feedback, plan, audit] = await Promise.all([
+  const [profile, models, tabs, barred, member, status, feedback, plan, audit, claudes] = await Promise.all([
     known(db(`people?account=eq.${account}&select=handle,name,bio,created_at`)),
     known(db(`shared_models?owner=eq.${account}&select=id,name,parts,published,listed,listed_at,barred,test,created_at`
       + "&order=created_at.desc&limit=200")),
@@ -248,6 +262,7 @@ export async function person(account, tests = false) {
     known(db("rpc/feedback_mine", { method: "POST", body: { p_account: account } })),
     mode === "off" ? null : known(entitlementOf(account)),
     known(auditOf({ tests: null, kind: "account", target: account, limit: 50 })),
+    known(db(`oauth_grants?owner=eq.${account}&select=client_name,created_at,used_at&order=created_at.desc&limit=20`)),
   ]);
   return {
     id: user.id,
@@ -261,6 +276,9 @@ export async function person(account, tests = false) {
     profile: profile?.[0] ?? null,
     models: models || [],
     connectors: (tabs || []).map((tab) => ({ seen_at: tab.seen_at, open: tab.open ?? null })),
+    // Each Claude it let in to the connector (oauth_grants): the Connector
+    // section has its conversations.
+    claudes: (claudes || []).map((one) => ({ name: one.client_name || "a Claude", since: one.created_at, used_at: one.used_at })),
     barred: barred?.[0] ?? null,
     beta: member ? { state: member.state ?? null, joined_at: member.joined_at ?? null, via: member.via ?? null,
       application: status?.application ?? null, pool: status?.pool ?? null } : null,

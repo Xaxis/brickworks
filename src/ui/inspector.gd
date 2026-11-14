@@ -38,8 +38,11 @@ var wanted: bool = false:
 var _more: LinkButton
 
 var _open: bool = true
+## Its header, as every section of a column wears (PanelStack.Head): the
+## chevron, "Properties" and how many parts are selected, a click folding
+## it. A compact one's is the selection's name, and folds nothing.
+var section_head: PanelStack.Head
 var _header: Button
-var _arrow: Arrow
 var _count: Label
 var _body: VBoxContainer
 ## The body scrolls when the column gives it less room than it needs.
@@ -119,36 +122,21 @@ func _ready() -> void:
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 6)
 	column.add_child(head)
-	_header = Button.new()
-	_header.flat = true
-	_header.text = "Properties"
-	_header.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_header.focus_mode = Control.FOCUS_NONE
-	_header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_header.add_theme_font_size_override("font_size", 13)
-	_header.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	_header.tooltip_text = "Fold the properties away, or open them"
-	_header.pressed.connect(func() -> void: set_open(not _open))
-	head.add_child(_header)
-	_count = Label.new()
-	_count.add_theme_font_size_override("font_size", 12)
-	_count.modulate = Color(1, 1, 1, 0.6)
-	_count.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	head.add_child(_count)
-	_arrow = Arrow.new()
-	_arrow.custom_minimum_size = Vector2(14, 14)
-	_arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_arrow.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	head.add_child(_arrow)
+	section_head = PanelStack.Head.new("Properties",
+		"What is selected: its part, colour, where it stands and what it is joined to")
+	section_head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	section_head.pressed.connect(func() -> void: set_open(not _open))
+	head.add_child(section_head)
+	_header = section_head.button
+	_count = section_head.count
 	# A compact one's header is the selection's name, and More opens the
 	# full properties: it folds nothing, and shows only while there is
 	# something to show.
 	if compact:
-		_header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		section_head.set_folds(false)
 		_header.clip_text = true
 		_header.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		_count.visible = false
-		_arrow.visible = false
 		_more = Look.link("More", 12)
 		_more.tooltip_text = ("All of its properties, down the right: what it is joined to, its "
 			+ "step in the instructions, Lock and Hide")
@@ -411,8 +399,7 @@ func set_open(open: bool) -> void:
 	if _body != null:
 		_scroll.visible = open and not _idle
 		floor_picker.visible = open and _idle
-		_arrow.down = open
-		_arrow.queue_redraw()
+		section_head.show_open(open)
 	ShellPrefs.put("inspector_open", open)
 	toggled.emit(open)
 	_refresh(true)
@@ -992,18 +979,3 @@ func controls_by_name() -> Dictionary:
 			out["prop_meet"] = _meet
 	return out
 
-
-## A small triangle, drawn rather than typeset: the font has no arrows.
-class Arrow extends Control:
-	var down: bool = true
-
-	func _draw() -> void:
-		var s: Vector2 = size
-		var points: PackedVector2Array
-		if down:
-			points = PackedVector2Array([Vector2(s.x * 0.2, s.y * 0.35),
-				Vector2(s.x * 0.8, s.y * 0.35), Vector2(s.x * 0.5, s.y * 0.72)])
-		else:
-			points = PackedVector2Array([Vector2(s.x * 0.35, s.y * 0.2),
-				Vector2(s.x * 0.72, s.y * 0.5), Vector2(s.x * 0.35, s.y * 0.8)])
-		draw_colored_polygon(points, Color(1, 1, 1, 0.7))

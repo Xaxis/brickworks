@@ -86,6 +86,8 @@
       "reach": "curl -s -o /dev/null -w '%{http_code}' https://brickworks.diy/api/admin   (401 signed out, 404 for anyone but MASTER_EMAIL)",
       "area": "account",
       "tests": [
+        "tests/fixtures/menu/admin_check.mjs",
+        "tests/test_menu_admin.py",
         "tests/test_packaged_facts.py"
       ]
     },
@@ -104,7 +106,9 @@
       "reach": "curl -s <deployment>/api/plans; curl -s '<deployment>/api/plans?op=plan' -H 'authorization: Bearer <session>'   (only with BRICKWORKS_BILLING test or live: the offer, and the account's plan with savedModels {limit, kept} and nothing of AI; off, 405 as before; plans_flow's step 6)",
       "area": "web",
       "tests": [
+        "tests/fixtures/console/api2_check.mjs",
         "tests/test_billing_pay.py",
+        "tests/test_console2.py",
         "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py"
@@ -205,7 +209,9 @@
       "reach": "curl -s -X POST https://brickworks.diy/api/plans -H 'content-type: application/json' -d '{\"email\":\"not-an-email\",\"plan\":\"plus\",\"billing\":\"yearly\"}'   (422 with why; an entry kept or changed by supabase/plan_interest.sql, {email, forget: true} takes it off)",
       "area": "web",
       "tests": [
+        "tests/fixtures/console/api2_check.mjs",
         "tests/test_billing_pay.py",
+        "tests/test_console2.py",
         "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py"
@@ -220,6 +226,20 @@
       "tests": [
         "tests/test_flows_for.py",
         "tests/test_steps_score.py"
+      ]
+    },
+    {
+      "id": "api:Resend's word on each mail",
+      "kind": "api",
+      "entry": "api/_console_mail.js",
+      "reach": "POST /api/otp?op=mail_event, signed as Svix signs (svix-id, svix-timestamp, svix-signature) with RESEND_WEBHOOK_SECRET: 404 with no secret, 401 unsigned or stale, 200 {kept:false} for another product's mail, kept once in mail_events; tools/web/resend_webhook.sh sets the webhook up",
+      "area": "account",
+      "tests": [
+        "tests/fixtures/console/api2_check.mjs",
+        "tests/test_beta.py",
+        "tests/test_console.py",
+        "tests/test_console2.py",
+        "tests/test_feedback.py"
       ]
     },
     {
@@ -264,17 +284,18 @@
       "reach": "curl -s '<deployment>/api/plans?op=beta'; curl -s '<deployment>/api/plans?op=beta_spots' (signed out, cached a minute: {beta, cap, left}); POST it signed in with {build, ai, background, background_line, link, terms, emails}   (off: {beta: off} and POST 403; open: 401 signed out, 422 with why, 409 a second time; python3 tools/minitest.py tests/test_beta.py)",
       "area": "web",
       "tests": [
+        "tests/fixtures/console/api2_check.mjs",
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/console/db_check.mjs",
         "tests/test_beta.py",
         "tests/test_beta_join.py",
         "tests/test_billing_pay.py",
         "tests/test_console.py",
+        "tests/test_console2.py",
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
-        "tests/test_site_lang.py",
-        "tests/test_site_shell.py"
+        "tests/test_site_lang.py"
       ]
     },
     {
@@ -284,8 +305,11 @@
       "reach": "python3 tools/minitest.py tests/test_billing_pay.py   (POST /api/plans?op=checkout {interval, consent: true, amount}, ?op=portal {flow}, ?op=webhook signed by Admission; only with BRICKWORKS_BILLING test or live, off each is the interest form's 422; the agreement kept first in supabase/plan_consents.sql)",
       "area": "web",
       "tests": [
+        "tests/fixtures/console/api2_check.mjs",
+        "tests/fixtures/console/db2_check.mjs",
         "tests/test_billing.py",
         "tests/test_billing_pay.py",
+        "tests/test_console2.py",
         "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py"
@@ -298,9 +322,11 @@
       "reach": "curl -s -X POST '<deployment>/api/plans?op=feedback' -H 'content-type: application/json' -d '{\"kind\":\"idea\",\"words\":\"...\",\"email\":\"delivered@resend.dev\"}'; GET it signed in for your own   (422 with why; 429 past the hour's rate; 503 \"not open here yet\" before supabase/feedback.sql; python3 tools/minitest.py tests/test_feedback.py)",
       "area": "web",
       "tests": [
+        "tests/fixtures/console/api2_check.mjs",
         "tests/fixtures/feedback/api_check.mjs",
         "tests/test_account_erase.py",
         "tests/test_billing_pay.py",
+        "tests/test_console2.py",
         "tests/test_feedback.py",
         "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
@@ -348,6 +374,14 @@
       "tests": []
     },
     {
+      "id": "cli:Resend's webhook set up",
+      "kind": "cli",
+      "entry": "tools/web/resend_webhook.sh",
+      "reach": "RESEND_ADMIN_KEY=<the team's full-access key, never a deployment's> tools/web/resend_webhook.sh [--check] [--redeploy]   (after a release with the op is live: the webhook to /api/otp?op=mail_event, its secret in Vercel production env and .env)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:a file's booklet runs nothing in a browser",
       "kind": "cli",
       "entry": "tools/web/booklet_safe_flow.mjs",
@@ -376,6 +410,14 @@
       "kind": "cli",
       "entry": "src/render/model_thumbnail.gd",
       "reach": "godot --headless --path . --thumbnail MODEL PICTURE [SIZE]   (the .deb's brickworks-thumbnailer MODEL PICTURE SIZE, as a file manager runs it)",
+      "area": "release",
+      "tests": []
+    },
+    {
+      "id": "cli:a release written down live",
+      "kind": "cli",
+      "entry": "tools/release/release_live.sh",
+      "reach": "tools/release/release_live.sh TAG SHA [SPEC]   (ship.sh, once the domain serves the release: a row of site_releases; --backfill the live trains in bench/results/release-out)",
       "area": "release",
       "tests": []
     },
@@ -643,7 +685,9 @@
       "entry": "tools/web/check.mjs",
       "reach": "node tools/web/check.mjs --url=https://brickworks.diy/app",
       "area": "web",
-      "tests": []
+      "tests": [
+        "tests/fixtures/console/api2_check.mjs"
+      ]
     },
     {
       "id": "cli:bugreport browser flow",
@@ -1015,6 +1059,14 @@
       "tests": []
     },
     {
+      "id": "cli:console2 browser flow",
+      "kind": "cli",
+      "entry": "tools/web/console2_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/console2_flow.mjs --url=<preview> --out=DIR   (MASTER_EMAIL's session minted: the gate, Mail playing Resend, a throwaway's tab, Claude and calls in Connector, Site, Plans, each at 390/1280 light/dark; preview check [console2])",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:contrast probe",
       "kind": "cli",
       "entry": "src/dev/contrast_probe.gd",
@@ -1307,6 +1359,14 @@
       "entry": "tools/web/print_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/print_flow.mjs --url=<a preview>/app --out=shots/print_web   (with .env sourced)",
       "area": "minifig",
+      "tests": []
+    },
+    {
+      "id": "cli:fingertools probe",
+      "kind": "cli",
+      "entry": "src/dev/fingertools_probe.gd",
+      "reach": "tools/probe.sh fingertools_probe   (windowed, 390x844 by its header; through the sign-in screen with a throwaway account (.env); pictures in --shots=DIR, else user://fingertools)",
+      "area": "building",
       "tests": []
     },
     {
@@ -2273,10 +2333,12 @@
       "reach": "python3 tools/site.py /tmp/site",
       "area": "web",
       "tests": [
+        "tests/fixtures/console/api2_check.mjs",
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/feedback/api_check.mjs",
         "tests/test_beta_join.py",
         "tests/test_coming_soon.py",
+        "tests/test_console2.py",
         "tests/test_docs_shots.py",
         "tests/test_feedback.py",
         "tests/test_release_train.py"
@@ -4254,6 +4316,14 @@
       "tests": []
     },
     {
+      "id": "lib:the console's part B reads",
+      "kind": "lib",
+      "entry": "supabase/console2.sql",
+      "reach": "python3 tools/minitest.py tests/test_console2.py   (console2.sql and api/admin.js's plans, mail, connector, site and otp.js's mail_event against a real Postgres: the gate, Resend's signature, each read)",
+      "area": "account",
+      "tests": []
+    },
+    {
       "id": "lib:the console's reads and audit",
       "kind": "lib",
       "entry": "api/_console.js",
@@ -4689,6 +4759,8 @@
       "reach": "https://brickworks.diy/admin   (signed in to the app as MASTER_EMAIL; ?tests=1 the checks' own): the owner's console, one page of sections by address: #overview (what needs you, how things stand, the switches, the latest acts; GET /api/admin?op=overview), #people (every account, searched, filtered, sorted; #people/<account> its panel with Take out the account and Let back in; ?op=people, ?op=person&account=U), #gallery/<tab> (reported, comments, listed, pick, challenges, tested, barred), #beta/<tab> (applications, testers; the beta's switch, POST ?op=beta_switch {mode}), #feedback, #audit (every act, newest first; ?op=audit&act&q&before)",
       "area": "account",
       "tests": [
+        "tests/fixtures/menu/admin_check.mjs",
+        "tests/test_menu_admin.py",
         "tests/test_packaged_facts.py"
       ]
     },
@@ -4755,11 +4827,13 @@
       "reach": "<deployment>/beta   (the beta's hub, web/beta.js; BRICKWORKS_BETA off: Coming soon, no way in, no count; open: the months of Pro left, the way in for each visitor (signed out Sign up and join, signed in Join the beta, a tester Report a bug and Your reports), what testers get, how to report, this week's releases from /changelog.json, the questions; a tester: what to try, known issues, early features from GET /api/plans?op=beta_hub, and #about, \"tell us about you\", the month of Pro's form or where it stands (GET/POST ?op=beta); /beta-hub answers 308 here; tools/web/beta_flow.mjs, tools/web/betahome_flow.mjs)",
       "area": "web",
       "tests": [
+        "tests/fixtures/console/api2_check.mjs",
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/console/db_check.mjs",
         "tests/test_beta.py",
         "tests/test_beta_join.py",
         "tests/test_console.py",
+        "tests/test_console2.py",
         "tests/test_feedback.py",
         "tests/test_site_lang.py"
       ]
@@ -4877,6 +4951,8 @@
       "reach": "https://brickworks.diy/admin signed in as MASTER_EMAIL: This week's pick (what visitors see, the choices with End, the week worked out) and Make it the pick beside every model in the gallery",
       "area": "web",
       "tests": [
+        "tests/fixtures/menu/admin_check.mjs",
+        "tests/test_menu_admin.py",
         "tests/test_packaged_facts.py"
       ]
     },
@@ -5041,10 +5117,12 @@
       "reach": "every page of brickworks.diy: its controls (fields, checkboxes, buttons, dialog, card) in one place (docs/DESIGN_SYSTEM.md)",
       "area": "web",
       "tests": [
+        "tests/fixtures/console/api2_check.mjs",
         "tests/fixtures/console/api_check.mjs",
         "tests/fixtures/feedback/api_check.mjs",
         "tests/test_beta_join.py",
         "tests/test_coming_soon.py",
+        "tests/test_console2.py",
         "tests/test_docs_shots.py",
         "tests/test_feedback.py",
         "tests/test_release_train.py"
@@ -5315,6 +5393,14 @@
       "kind": "ui",
       "entry": "src/ui/measure.gd",
       "reach": "godot --path .  (U, then click two points)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "ui:measure and handles by finger",
+      "kind": "ui",
+      "entry": "src/ui/handles.gd",
+      "reach": "on a phone or a tablet: More's Measure, then a tap on a stud and a tap on another, each going on the stud's or the connector's middle nearest it within half a fingertip; the Move or Rotate tool, a tap on a part, then an arrow, pane, ring or the trackball dragged by a finger (every target 44 points or more), the tag tapped for the next axes, a second finger putting a drag back  (Measure._finger_point, Handles._finger_input; tools/probe.sh fingertools_probe)",
       "area": "building",
       "tests": []
     },
@@ -5632,7 +5718,9 @@
       "reach": "https://brickworks.diy/plans   (Free, Plus and Creator, the paid two coming soon, education free; Tell me when it's ready opens the interest form, web/plans.js; linked from every page's footer)",
       "area": "web",
       "tests": [
+        "tests/fixtures/console/api2_check.mjs",
         "tests/test_billing_pay.py",
+        "tests/test_console2.py",
         "tests/test_flows_for.py",
         "tests/test_saved_models_plan.py",
         "tests/test_site_shell.py"
@@ -5807,7 +5895,7 @@
       "id": "ui:report a bug on the site",
       "kind": "ui",
       "entry": "web/bugreport.js",
-      "reach": "window.brickworksReportBug({source: \"site\"}) on any page (the beta bar's Report a bug loads it): the page drawn to a picture by the page itself, web/feedback.js's report mode over the page with a box to drag on it; signed out, a sign-in first; sent, Report #N and Your reports (/settings#feedback); tools/web/bugreport_flow.mjs",
+      "reach": "window.brickworksReportBug({source: \"site\"}) on any page (the beta bar's Report a bug loads it): the page drawn to a picture by the page itself, web/feedback.js's report mode over the page with a box to drag on it; signed out, a sign-in first; two boxes and Clear the marks takes them off, sent with none; sent, Report #N and Your reports (/settings#feedback); tools/web/bugreport_flow.mjs",
       "area": "web",
       "tests": []
     },
@@ -5928,6 +6016,8 @@
       "reach": "/admin as MASTER_EMAIL, This month's challenge (?tests=1 sets a test one): POST /api/admin?op=challenge, ?op=end_challenge&challenge=N; Set a year of themes: POST /api/admin?op=plan",
       "area": "web",
       "tests": [
+        "tests/fixtures/menu/admin_check.mjs",
+        "tests/test_menu_admin.py",
         "tests/test_packaged_facts.py"
       ]
     },
@@ -6124,7 +6214,7 @@
       "id": "ui:the account menu",
       "kind": "ui",
       "entry": "web/follow.js",
-      "reach": "https://brickworks.diy/gallery signed in: the avatar in the header opens who you are, Your profile, Notifications and Your feed with their counts, Saved, Settings, Send feedback (and Beta hub for a beta tester, web/early.js), the theme and Sign out (at 390 px, Menu is the avatar and holds the same)",
+      "reach": "https://brickworks.diy/gallery signed in: the avatar in the header opens who you are, Your profile, Notifications and Your feed with their counts, Saved, Settings, Send feedback (and Beta hub for a beta tester, web/early.js; Report a bug for everyone while the beta is open), the theme, Admin to /admin for the site's owner alone (op=feed_count's admin: true), and Sign out (at 390 px, Menu is the avatar and holds the same)",
       "area": "web",
       "tests": []
     },
@@ -6164,7 +6254,7 @@
       "id": "ui:the beta bar",
       "kind": "ui",
       "entry": "web/betabar.js",
-      "reach": "<deployment>/ any page, with the beta open (tools/deploy.sh --unit --beta-open)   (web/theme.js asks for it; Open beta to /beta, Report a bug (window.brickworksReportBug of web/bugreport.js, else Send feedback as a bug), Join or You're a tester; its x hides it for a day; none with the beta off, on an embed or on the consent page; tools/web/betahome_flow.mjs)",
+      "reach": "<deployment>/ any page, with the beta open (tools/deploy.sh --unit --beta-open)   (web/theme.js asks for it; Open beta to /beta, Report a bug (window.brickworksReportBug of web/bugreport.js, else Send feedback as a bug), Join or You're a tester; its x hides it until shown again, said in a toast with Settings and Undo; Settings' Show the beta bar on every page (signed out too) brings it back at once; Report a bug in the account menu and Menu while the beta is open; none with the beta off, on an embed or on the consent page; tools/web/betahome_flow.mjs)",
       "area": "web",
       "tests": []
     },
@@ -6254,6 +6344,38 @@
       "entry": "assets/splash.png",
       "reach": "godot --path .  (the mark on the app's dark face while the app loads, on the desktop)",
       "area": "release",
+      "tests": []
+    },
+    {
+      "id": "ui:the console's connector",
+      "kind": "ui",
+      "entry": "web/admin-connector.js",
+      "reach": "<deployment>/admin#connector as MASTER_EMAIL (?tests=1 the checks' own): GET /api/admin?op=connector[&account=U] (api/_console_connector.js): each account's Claudes, tabs, conversations and tool calls (relay_call_days), its state; #connector/<account> its panel, linked from People; read only",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:the console's mail",
+      "kind": "ui",
+      "entry": "web/admin-mail.js",
+      "reach": "<deployment>/admin#mail as MASTER_EMAIL (?tests=1 the checks' own): GET /api/admin?op=mail&days=7|30|90 (api/_console_mail.js, supabase/console2.sql admin_mail): every mail by kind and day, sent, delivered, bounced, complained, each with its address, subject and why, beside beta_mail and feedback_replies",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:the console's plans and revenue",
+      "kind": "ui",
+      "entry": "web/admin-plans.js",
+      "reach": "<deployment>/admin#plans as MASTER_EMAIL: GET /api/admin?op=plans (api/_console_plans.js): billing off says so and asks Admission nothing; on, the plans and what each includes, the customers from Admission's snapshots (admission_customers), comps, and with ADMISSION_READ_TOKEN revenue by month and Admission's record; read only, each part linked to where it changes at admission.sh",
+      "area": "web",
+      "tests": []
+    },
+    {
+      "id": "ui:the console's site",
+      "kind": "ui",
+      "entry": "web/admin-site.js",
+      "reach": "<deployment>/admin#site as MASTER_EMAIL: GET /api/admin?op=site (api/_console_site.js): the live release and since when (site_releases), the releases before with their units, each cron's last runs (cron_runs_of, canary_runs), Supabase's auth/rest/storage answering; the Overview's live release and a 402 under Needs you now",
+      "area": "web",
       "tests": []
     },
     {

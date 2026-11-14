@@ -627,6 +627,30 @@ before it opens never ran, and is in no list. Three of challenges.sql's
 functions replaced with the same answers for every challenge there is
 (`tools/challenge_year_try.sql`), guarded by `tools/apply_sql.mjs`.
 
+*The page redone (challengepage, 2026-11-13; the owner: "the /challenge
+page is ugly and just really bad ui/ux"):* laid out as the best contest
+pages are (Printables' and MakerWorld's contests, Rebrickable's
+competitions and Kaggle's), with no change to the API. The head
+says where it stands at a glance: a status (Open, Opens soon, Ended), the
+brief, the rules as checks, one primary Enter a model beside Share, and a
+panel with a live countdown to its end (or start), the day it is of how
+many, and its numbers (entries, designers, and votes once counted). Enter
+a model works on the page: signed out it asks to sign in, then your models
+in the gallery to choose from, by hand or with the assistant, the rules
+checked on the server as before. The entries are the gallery's cards in a
+grid, the two groups as tabs with their counts, ordered newest or oldest
+first (most votes once ended, never while votes are blind), each card's
+vote at its foot: Vote, asked once in a dialog because it cannot be moved;
+then Your vote on the card and named over the cards, Your entry on your
+own. Ended, the two winners come first, celebrated, over the entries. How
+it works is three numbered steps, the rest folded. Past challenges are a
+grid of cards, each a mosaic of its winners. No state is a dead end: no
+challenge offers Start building and the ones that ran, a number with none
+offers this month's, and a failed load Try again. Not built: how many
+people voted (the API counts votes only once it ends, per entry; the
+number of voters would need a new count in `challenge_page`, and the blind
+vote would show it moving).
+
 *U13 built (2026-10-24, no Supabase change):* **achievements** on a
 profile and on your own, a row of pills after the numbers (beside them
 on a laptop, under them on a phone), as GitHub's and Printables' profiles

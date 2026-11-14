@@ -232,7 +232,8 @@ def test_the_reads_say_how_things_stand() -> None:
 
 def test_the_page_puts_what_people_typed_on_it_as_text() -> None:
     # Never markup from data: no innerHTML, insertAdjacentHTML or outerHTML.
-    for script in ("web/admin.js", "web/admin-kit.js", "web/admin-gallery.js", "web/admin-beta.js", "web/admin-feedback.js"):
+    for script in ("web/admin.js", "web/admin-kit.js", "web/admin-gallery.js", "web/admin-beta.js", "web/admin-feedback.js",
+                   "web/admin-plans.js", "web/admin-mail.js", "web/admin-connector.js", "web/admin-site.js"):
         text = (ROOT / script).read_text()
         for word in ("innerHTML", "insertAdjacentHTML", "outerHTML", "document.write"):
             assert word not in text, (script, word)
