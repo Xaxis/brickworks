@@ -975,6 +975,10 @@ func _tell_page() -> void:
 		# slow device, the frames timed and each judgment.
 		"look": _budget.page_state() if _budget != null else {},
 		"busy": _busy_frames,
+		# Whether Render's renderer was made ready while the window sat idle
+		# (RenderDialog._warm_when_idle), for tools/web/render_open_check.mjs,
+		# which presses Render after it, as a person opening it later does.
+		"render_ready": bool(_render_made.call("renderer_ready")) if _render_made != null else false,
 		"told_ms": roundi(_told_page_us / 1000.0),
 		"told_most_ms": roundi(_told_page_most_us / 1000.0),
 		"playing": _playback != null and _playback.is_playing(),

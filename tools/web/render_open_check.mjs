@@ -21,9 +21,10 @@
 // programs it linked are counted and timed apart.
 //
 // Fails when a frame of either open is over --budget ms (250), when the
-// draft never comes, or when a script error reaches the console. With
-// --programs it prints every program linked and the frame it was linked in,
-// and with --before=N the longest frames of the N s before the press.
+// draft never comes, when the app never says its renderer is ready, or
+// when a script error reaches the console. With --programs it prints every
+// program linked and the frame it was linked in, and with --before=N the
+// longest frames of the N s before the press.
 // Leaves open.json and pictures of both opens in --out (shots/render_open).
 // --port=N serves the export on that port rather than any free one.
 //
@@ -33,13 +34,24 @@
 // and a read waited for those frames too, queued after its fence. A read
 // now waits for a fence put after the last frame drawn (GpuFence.finished).
 //
-// The press comes once the page has gone quiet, and by then the panel has
-// made its renderer ready (RenderDialog._warm_when_idle): its viewports, and
-// the sweep's and the contact shadow's shaders built while nobody was using
-// the window. Before that (2026-10-17) the sweep's first draw built six
-// programs in one frame of the open, the slowest, 136-140 ms here at a light
-// load; now each frame of the open builds one at most, and the longest was
-// 88-91 ms.
+// The press comes once the page has gone quiet and the panel has made its
+// renderer ready (RenderDialog._warm_when_idle): its viewports, and the
+// sweep's and the contact shadow's shaders built while nobody was using the
+// window. Before that (2026-10-17) the sweep's first draw built six programs
+// in one frame of the open, the slowest, 136-140 ms here at a light load;
+// now each frame of the open builds one at most, and the longest was 88-91
+// ms. Ready is the app's word (the page's state, render_ready), waited for
+// up to --ready-s (180) and a check of its own: the warm-up begins only
+// after 3 s with nothing drawn and 3 more once the panel is made, and
+// draws a thing a frame, so on a loaded box it was still going 5 s after
+// the page went quiet, when the press used to come, and the open drew the
+// sweep and the contact shadow itself, six programs and five in a frame:
+// 310 and 285 ms at load 42-62 (mcpreach's preview, 20 programs in the
+// open where 6 is the rest), and 314 ms with 18 on a local export at load
+// 23-31, where the build that says ready, run at the same moment, waited
+// to 14 s and opened at 193 ms with 6, one a frame (webfaults, 2026-11-14).
+// A build from before says nothing and is pressed 5 s after quiet, as it
+// was.
 import { launch } from "./browser.mjs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { spawn } from "node:child_process";
@@ -220,6 +232,15 @@ async function quiet(span, longest) {
 const loaded = Date.now();
 const settled = await quiet(4000, 180000);
 console.log(`${settled ? "settled" : "never went quiet"} ${((Date.now() - loaded) / 1000).toFixed(0)} s after the toolbar showed`);
+// Made ready, as the app says (a build from before says nothing).
+const readyBy = Date.now() + Number(args["ready-s"] || 180) * 1000;
+let ready = await page.evaluate(() => (window.brickworksState || {}).render_ready);
+while (ready === false && Date.now() < readyBy) {
+  await page.waitForTimeout(500);
+  ready = await page.evaluate(() => (window.brickworksState || {}).render_ready);
+}
+const readyAfter = ((Date.now() - loaded) / 1000).toFixed(0);
+if (ready !== undefined) console.log(`  the renderer ${ready ? "made ready" : "still not ready"} ${readyAfter} s after the toolbar showed`);
 await page.waitForTimeout(Number(args.after || 5000));
 const before = await programs(0);
 console.log(`  ${before.length} programs linked before the dialog was opened, `
@@ -312,6 +333,9 @@ try {
   await quiet(3000, 60000);
   const again = await open("second_open");
   rows.push(again);
+  if (ready !== undefined) {
+    check(`the renderer made ready while the window sat idle (${readyAfter} s after the toolbar showed)`, ready === true);
+  }
   check(`the first open drew its draft (${firstOpen.status.slice(0, 60)})`, firstOpen.drafted !== null);
   check(`no frame of the first open over ${budget} ms (the longest ${firstOpen.longest} ms; `
     + `${firstOpen.programs} programs linked)`, firstOpen.longest <= budget);

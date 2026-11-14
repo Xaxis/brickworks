@@ -1584,6 +1584,14 @@ func _on_piece(piece: Image, at: Vector2i) -> void:
 
 
 ## Where each control is, for a browser test to press it as a person does.
+## Whether the renderer has been made ready ahead of time
+## (StudioRender.warm_up, see [method _warm_when_idle]), for the page
+## (tools/web/render_open_check.mjs): Render pressed before it, its first
+## open draws the sweep and the contact shadow alone in its own frames.
+func renderer_ready() -> bool:
+	return renderer != null and renderer.warmed_up
+
+
 func controls_by_name() -> Dictionary:
 	var named_controls: Dictionary = {}
 	for n: int in _quality.size():
