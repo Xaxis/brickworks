@@ -244,7 +244,11 @@ func _timeline() -> void:
 	await _frames(10)
 	var row: Control = _phone.call("controls_by_name").get("phone_quick_timeline") as Control
 	if row == null:
-		# The base's: the row in Build.
+		# The base's: the row in Build, More closed as its row closes it.
+		var done: Control = _phone.call("controls_by_name").get("phone_sheet_more_done") as Control
+		if done != null:
+			await _tap(_middle(done))
+			_presses -= 1
 		_shell.run("timeline")
 	else:
 		await _tap(_middle(row))
@@ -275,12 +279,17 @@ func _timeline() -> void:
 		r.size.y / _pt()], minf(r.size.x, r.size.y) / _pt() >= LEAST)
 	var editor: PageEditor = _main.get("_page_editor")
 	_presses = 0
+	var heard: Array = [false]
+	(lay as BaseButton).button_down.connect(func() -> void: heard[0] = true)
 	await _tap(r.get_center())
 	for _n: int in 300:
 		await process_frame
 		if editor.is_open():
 			break
 	_check("a tap on Lay out the page… opens the page editor (%d tap)" % _presses, editor.is_open())
+	if not editor.is_open():
+		print("    the button heard the press: %s; what takes a press there: %s" % [heard[0],
+			_who_at(r.get_center())])
 	await _frames(20)
 	await _shot("2_page_editor")
 	if editor.is_open():
@@ -480,6 +489,31 @@ func _sweep(node: Node, mouse: RegEx, said: Array[String]) -> void:
 
 
 # -- the rest ------------------------------------------------------------------------------
+
+
+## The controls a press at [param at] could reach, the last drawn last:
+## each one's path, its layer and its filter.
+func _who_at(at: Vector2) -> Array:
+	var out: Array = []
+	var walk: Array[Node] = [root]
+	while not walk.is_empty():
+		var node: Node = walk.pop_front()
+		for child: Node in node.get_children():
+			walk.append(child)
+		var control := node as Control
+		if control == null or not control.is_visible_in_tree() \
+				or control.mouse_filter == Control.MOUSE_FILTER_IGNORE \
+				or not control.get_global_rect().has_point(at):
+			continue
+		var layer: CanvasLayer = null
+		var up: Node = control.get_parent()
+		while up != null and layer == null:
+			layer = up as CanvasLayer
+			up = up.get_parent()
+		out.append("%s (layer %d, %s)" % [String(control.get_path()).trim_prefix("/root/").right(60),
+			layer.layer if layer != null else 0,
+			["stop", "pass", "ignore"][control.mouse_filter]])
+	return out
 
 
 func _named(name: String) -> Control:
