@@ -154,6 +154,8 @@ func _run() -> void:
 			["measure", {"from": "0 0 0", "to": "2 3 1"}], ["in_view", {}],
 			# What a session sees as a person does (seeing).
 			["view_board", {}], ["view_board", {"step": 2}], ["booklet_page", {"page": 2}],
+			# pointat: a part pointed out to the others, outside a session too.
+			["point_at", {"part": 1}],
 			# mcppalettes: the person's palettes, read.
 			["palettes", {}]]:
 		_called[str(call[0])] = true
