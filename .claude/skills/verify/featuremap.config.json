@@ -5323,6 +5323,20 @@
       "entry": "src/dev/im2review_probe.gd",
       "reach": "tools/probe.sh imreview_probe; tools/probe.sh im2review_probe; tools/probe.sh into_kept_probe; tools/probe.sh ic3_probe   (headless: the three reviews of putting one model into another and its kept-parts cases, each saved and reopened: parts the app cannot show kept in their sub-model and step, the host's own lines kept, renamed and moved copies, names, credits, a part landing late, a file with no FILE line given a model of its own name, no part file from another model, the file as it was once the last model put in is taken out, motions and views kept in the sub-model; `-- case,case` runs only those)",
       "area": "model-io"
+    },
+    {
+      "kind": "ui",
+      "label": "measure and handles by finger",
+      "entry": "src/ui/handles.gd",
+      "reach": "on a phone or a tablet: More's Measure, then a tap on a stud and a tap on another, each going on the stud's or the connector's middle nearest it within half a fingertip; the Move or Rotate tool, a tap on a part, then an arrow, pane, ring or the trackball dragged by a finger (every target 44 points or more), the tag tapped for the next axes, a second finger putting a drag back  (Measure._finger_point, Handles._finger_input; tools/probe.sh fingertools_probe)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "fingertools probe",
+      "entry": "src/dev/fingertools_probe.gd",
+      "reach": "tools/probe.sh fingertools_probe   (windowed, 390x844 by its header; through the sign-in screen with a throwaway account (.env); pictures in --shots=DIR, else user://fingertools)",
+      "area": "building"
     }
   ]
 }
