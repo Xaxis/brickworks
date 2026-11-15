@@ -58,6 +58,18 @@ If the model on the baseplate has changes you have not saved, Brickworks asks fi
 ui:open over unsaved work
 -->
 
+## Missing and moved parts {#moved}
+
+Over the years LDraw has given some parts new numbers (3023 is now 3023b), kept others only as another part's alias, and some files name parts it has no file for at all. When you open such a file, **Missing and moved parts** lists each of those numbers: what it moved to or is an alias of, or that the library has no file for it, and how many the model places in which sub-model. Moved and alias parts are drawn as the part they point to already.
+
+**Replace checked** writes the new numbers into the file, in the model and in every sub-model at once, as one change: **Edit › Undo** puts the file back just as it was. A part whose new number sits it differently keeps its place, its line's position and turn worked out for it. Uncheck any you want to keep as they are. **Keep as is** leaves the file alone. A part with no file stays in the file and is not shown; **Search** looks for its number among the parts.
+
+The list shows when you open a model yourself. Your Claude hears the same when it opens one with `open_model`, and can replace them with `replace_moved=true`.
+
+<!-- covers
+ui:missing and moved parts on open
+-->
+
 ### Rename or delete a model {#rename}
 
 **Rename or delete saved models…**, at the top of **File › Open…**, lists them all with **Rename…** and **Delete…**. A delete asks first, and the row it leaves has **Undo**.

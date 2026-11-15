@@ -2,7 +2,7 @@
 
 Whether what you built is still there tomorrow, and still means the same thing.
 
-<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, ui:put a model into this one, cli:into model probe, cli:into model review probes, ui:library search, cli:library search probe, cli:library browser flow, lib:model versions, ui:versions of a model, ui:compare with a save, lib:model diff, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, lib:a plan's limit on models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:a line placing a part at no size, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe, cli:picklist probe, cli:direct colour probe, cli:print3mf probe, cli:3mf strict reader, ui:each sub-model as its own file, cli:subexport probe, cli:open faults probe, cli:askfirst probe -->
+<!-- covers: lib:save and reopen, lib:ldr read and write, cli:export a model, ui:seat an old model, ui:picture of the model, ui:parts lists for shops, ui:save dialog on the desktop, cli:save dialog probe, ui:open a studio model, ui:save as a studio model, ui:open an ldd model, ui:3d model export, lib:a session per tab, ui:reload a model saved elsewhere, cli:tabs browser flow, cli:two windows check, ui:new tab or window, cli:new window probe, cli:new tab browser flow, ui:library, cli:library probe, ui:put a model into this one, cli:into model probe, cli:into model review probes, ui:library search, cli:library search probe, cli:library browser flow, lib:model versions, ui:versions of a model, ui:compare with a save, lib:model diff, lib:browser keeps the models, ui:models may be cleared warning, cli:versions probe, cli:empty save probe, cli:autosave paths probe, cli:keep browser flow, lib:models kept with the account, lib:a plan's limit on models kept with the account, api:/api/models, cli:cloud library browser flow, ui:rename or delete saved models, ui:account full offer, cli:desktop cloud probe, ui:name asked at the first save, ui:working model that could not open, cli:unrestored probe, cli:cad task test, cli:round trip probe, cli:fidelity probe, cli:flex skin probe, cli:flexible parts in a browser, cli:carried fetch probe, cli:carried parts at once, cli:worker first run, cli:table race, cli:carried parts in a browser, cli:LDraw files in storage, cli:own copies read as their parts, cli:a line placing a part at no size, cli:empty open probe, ui:open over unsaved work, cli:unsaved open probe, cli:library tab browser flow, cli:open time probe, cli:open list time probe, cli:picklist probe, cli:direct colour probe, cli:print3mf probe, cli:3mf strict reader, ui:each sub-model as its own file, cli:subexport probe, cli:open faults probe, cli:askfirst probe, ui:missing and moved parts on open, cli:movedparts probe, cli:movedparts phone probe -->
 
 ## Sub-features
 
@@ -986,6 +986,27 @@ Whether what you built is still there tomorrow, and still means the same thing.
   (`ModelStore.lost`, `ModelBar.left_out_words`: "— 2 could not be loaded,
   kept in the file (3008 ×2)"); one that fails after the lay is said by
   `not_coming` as before. `askfirst_probe` drives all four.
+- `missing and moved parts on open` (movedparts, 2026-11-15; `MovedParts`,
+  `ModelStore.moved`, `MovedPartsDialog`): `_open_into` lists each number the
+  file says (`MovedParts.said_of`, before `_as_placed` resolves it) that the
+  library has as a `~Moved to` stub (its chain followed to the end, as
+  `PartLibrary.resolve` does), as a `Part Alias` (the part of its shape LDraw
+  counts current, else the one in most sets), or not at all, with its count by
+  sub-model. The app's own files write moved parts by their new numbers, so
+  only aliases and missing ones are listed for them. A person's open
+  (`ModelBar.offer_moved`: File, Open, a file, Recent, the library, a given
+  file) shows the dialog; a session's, Together's and an undo's never do.
+  Replace (`ModelStore.replace_moved`) rewrites `saved_text()` line by line
+  (`MovedParts.rewritten`: the name's field, the folder, extension and case as
+  written, and for a stub that turns or shifts its part the twelve numbers
+  composed in float64; every other byte, tabs and CRLF kept) and opens the
+  result with the old text set aside as the open's undo, so one Undo is the
+  file byte for byte and Redo the replaced one. Over MCP `open_model` appends
+  the list to its answer and `replace_moved=true` replaces in the same call
+  (alone: in the model open now). `movedparts_probe` checks 13 OMR files
+  (6056-1, 8198-1, 6990-1 with missing parts) against the file read apart,
+  places within 0.01 LDU, the attack file, the dialog, MCP and de/fr/es;
+  `movedparts_phone_probe` the phone's sheet at 390x844.
 - `export a model`: `--model=<in> --out=<out>` opens, re-exports and quits, which
   is also the shortest round-trip proof there is. A session's export, the
   booklet and the parts list are written to Downloads under the model's name
