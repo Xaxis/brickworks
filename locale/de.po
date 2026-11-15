@@ -14436,3 +14436,77 @@ msgstr "%d mehr als die %d in %s"
 
 msgid "%d over"
 msgstr "%d zu viel"
+
+# What can I build?'s real sets: every set Rebrickable lists, by how much of it is owned (APP_UX8 #12, setsbuild)
+
+msgid "Real sets"
+msgstr "Echte Sets"
+
+msgid "Every LEGO® set Rebrickable lists, the most of each you own first"
+msgstr "Jedes LEGO® Set, das Rebrickable führt, die mit dem größten Anteil in deinem Besitz zuerst"
+
+msgid "Your saved models, the examples and the official LDraw models of real sets, the most of each you own first"
+msgstr "Deine gespeicherten Modelle, die Beispiele und die offiziellen LDraw-Modelle echter Sets, die mit dem größten Anteil in deinem Besitz zuerst"
+
+msgid "Find a set: its number or name"
+msgstr "Ein Set finden: seine Nummer oder sein Name"
+
+msgid "List only sets of this many pieces or more"
+msgstr "Nur Sets mit mindestens so vielen Teilen auflisten"
+
+msgid "%d pieces or more"
+msgstr "%d Teile oder mehr"
+
+msgid "Add what you own on the first page, and every set Rebrickable lists is ranked here by how much of it you already have."
+msgstr "Füge auf der ersten Seite hinzu, was du besitzt, und jedes Set, das Rebrickable führt, wird hier danach sortiert, wie viel davon du schon hast."
+
+msgid "Every set's parts could not be read: %s."
+msgstr "Die Teile aller Sets konnten nicht gelesen werden: %s."
+
+msgid "%s sets, the most of each you own first."
+msgstr "%s Sets, die mit dem größten Anteil in deinem Besitz zuerst."
+
+msgid "You could build %s of them now, and %s more with 90% of their pieces or more."
+msgstr "Du könntest %s davon jetzt bauen, und von %s weiteren hast du 90% der Teile oder mehr."
+
+msgid "The set you own is not listed."
+msgstr "Das Set, das du besitzt, ist nicht aufgeführt."
+
+msgid "The %d sets you own are not listed."
+msgstr "Die %d Sets, die du besitzt, sind nicht aufgeführt."
+
+msgid "No set here has “%s” in its number or name."
+msgstr "Kein Set hier hat „%s“ in seiner Nummer oder seinem Namen."
+
+msgid "%s sets of %d pieces or more, the most of each you own first."
+msgstr "%s Sets mit %d Teilen oder mehr, die mit dem größten Anteil in deinem Besitz zuerst."
+
+msgid "%s of them are listed."
+msgstr "%s davon sind aufgeführt."
+
+msgid "Show %d more"
+msgstr "%d weitere zeigen"
+
+msgid "%s sets are ranked below these"
+msgstr "%s Sets sind unter diesen eingeordnet"
+
+msgid "you have all %s pieces"
+msgstr "du hast alle %s Teile"
+
+msgid "you have %s of %s pieces; %s short; %d% in any colour"
+msgstr "du hast %s von %s Teilen; %s fehlen; %d% in beliebiger Farbe"
+
+msgid "you have %s of %s pieces"
+msgstr "du hast %s von %s Teilen"
+
+msgid "%s short"
+msgstr "%s fehlen"
+
+msgid "The parts you are short of for this set, to find or to order"
+msgstr "Die Teile, die dir für dieses Set fehlen, zum Suchen oder Bestellen"
+
+msgid "Open its official LDraw model, and see what is missing"
+msgstr "Sein offizielles LDraw-Modell öffnen und sehen, was fehlt"
+
+msgid "%s's parts could not be read: %s"
+msgstr "Die Teile von %s konnten nicht gelesen werden: %s"

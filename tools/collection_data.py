@@ -17,6 +17,8 @@ Written as 256 shards and an index under assets/generated/sets/:
     colours_NN.json  {"parts": {"3001": [colour, sets, colour, sets, ...]}}:
                   in how many sets each part comes in each colour, the
                   parts bin's "rare in this colour" (PartLibrary.sets_in_colour)
+    all_sets.bin  every set's parts at once, as few bytes as What can I
+                  build? can rank every set from (write_index, SetRanking)
 
 Sharded because the whole thing is several megabytes and a person types
 one set number at a time. The desktop reads the shards from its own
@@ -50,6 +52,8 @@ the inventory written here.
                                           colours, from colors.json
     tools/collection_data.py --colours    rewrite only the colours_NN.json, from
                                           the shards written
+    tools/collection_data.py --index      rewrite only all_sets.bin, from the
+                                          shards written
 """
 
 from __future__ import annotations
@@ -57,6 +61,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import struct
 import sys
 import time
 from collections import defaultdict
@@ -404,6 +409,398 @@ def build() -> tuple[dict, dict[int, dict]]:
     return index, shards
 
 
+# --- every set at once: What can I build? (setsbuild, docs/APP_UX8.md #12) ---
+#
+# What can I build? ranks every set Rebrickable lists by how much of it a
+# person owns, where it ranked only the few hundred with a model file. A set
+# is looked up one shard at a time; ranking all 20,000 wants all of them,
+# and the shards are 26 MB. So beside them, one file of only what a ranking
+# reads, which the page fetches as it opens (SetRanking in the app):
+#
+#   - a set's parts as What do I need? and the bin count them (OwnCounts,
+#     Collection.ownable): a part nobody owns on its own (a sticker sheet,
+#     a ~ piece, a number LDraw does not draw) is not counted, and each
+#     part and colour is spelled as Collection.key_of spells it. _Owning
+#     reads the catalogue as the app does; src/dev/setsbuild_probe.gd
+#     checks it against the app's own sums, set by set;
+#   - inverted, part and colour -> the sets it is in, because a ranking
+#     only ever asks for the parts the person owns;
+#   - a set that packs others (a value pack, a co-pack) as its own parts
+#     and the sets in it, which are listed already (an eighth of the lots);
+#   - the sets ordered by theme and era, so a part's sets lie close
+#     together and the gaps between them take few bits.
+#
+# Under 2 MB on the web, where it is fetched from /sets/ beside the shards
+# (deploy.sh copies it, cached as they are), never from Supabase storage.
+
+INDEX = "all_sets.bin"
+INDEX_MAGIC = b"BWAS"
+INDEX_FORMAT = 1
+INDEX_ZSTD = 1
+## The most the file may be: the web fetches it as the page opens.
+INDEX_MOST = 2_000_000
+## A quantity this big or over is written in "over", not its byte.
+INDEX_OVER = 255
+## Another moulding of one part: Collection._MOULD, the same expression.
+MOULD = re.compile(r"^([ux]?\d+)[a-z]$")
+
+
+def family_of(part: str) -> str:
+    """Collection.family_of: 3794a and 3794b are 3794's family."""
+    found = MOULD.search(part)
+    return found.group(1) if found else part
+
+
+class _Owning:
+    """Collection.key_of and Collection.ownable, as the app reads the same
+    catalogue.json and colors.json (PartLibrary.resolve, plain_code)."""
+
+    def __init__(self, parts: list[dict], colours: list[dict]) -> None:
+        self.parts = {entry["id"]: entry for entry in parts}
+        self.plain = {int(entry["code"]): int(entry.get("plain_code", entry["code"]))
+                      for entry in colours}
+
+    def resolve(self, part: str) -> str:
+        at = part
+        for _hop in range(8):
+            info = self.parts.get(at)
+            if info is None or not info.get("moved_to") or info["moved_to"] not in self.parts:
+                return at
+            at = info["moved_to"]
+        return at
+
+    def key(self, part: str, colour: int) -> str | None:
+        """The part and colour as Collection.key_of spells them, or None for a
+        part nobody owns on its own (Collection.ownable)."""
+        part = self.resolve(part.lower())
+        info = self.parts.get(part)
+        if info is None or info.get("category") == "Sticker" or "Flexible_Section" in info.get("kind", ""):
+            return None
+        if info["name"].startswith("~") and not info.get("moved_to") and "(Obsolete)" not in info["name"]:
+            return None
+        return f"{part}/{self.plain.get(colour, colour)}"
+
+
+def index_needs(records: dict[str, dict], owning: _Owning, skip: set[str]) -> dict[str, dict[str, int]]:
+    """Each set's parts as What can I build? counts them: its lots, no
+    spares, every piece anybody owns on its own, by Collection.key_of. A set
+    with none (a book, a sticker sheet, gear) and Rebrickable's database sets
+    ([param skip]) are left out: there is nothing in them to build."""
+    out: dict[str, dict[str, int]] = {}
+    for number, record in records.items():
+        if number in skip:
+            continue
+        needs: dict[str, int] = {}
+        for part, colour, qty in record.get("p", ()):
+            key = owning.key(part, int(colour))
+            if key is not None:
+                needs[key] = needs.get(key, 0) + int(qty)
+        if needs:
+            out[number] = needs
+    return out
+
+
+def _index_packs(needs: dict[str, dict[str, int]], packs: dict[str, list[str]],
+                 times: dict[tuple[str, str], int]) -> dict[str, tuple[dict[str, int], dict[str, int]]]:
+    """Each set that packs others, as {leaf set: how many} and what is its
+    own beyond them, where the two add up to its parts exactly. A leaf is a
+    set packing none, so a pack's parts are only ever its own and its
+    leaves'; one whose own would come out below nothing for any part is
+    left whole."""
+    def leaves(number: str, many: int, into: dict[str, int], depth: int = 0) -> None:
+        for inside in dict.fromkeys(packs.get(number, ())):
+            count = many * times.get((number, inside), 1)
+            if inside in packs and depth < 3:
+                leaves(inside, count, into, depth + 1)
+            elif inside in needs:
+                into[inside] = into.get(inside, 0) + count
+
+    out: dict[str, tuple[dict[str, int], dict[str, int]]] = {}
+    for number in packs:
+        if number not in needs:
+            continue
+        refs: dict[str, int] = {}
+        leaves(number, 1, refs)
+        own = dict(needs[number])
+        for leaf, count in refs.items():
+            for key, qty in needs[leaf].items():
+                own[key] = own.get(key, 0) - qty * count
+        if refs and min(own.values(), default=0) >= 0:
+            out[number] = (refs, {k: v for k, v in own.items() if v > 0})
+    # A leaf is written whole, its parts its own: one that is a pack too
+    # (packed deeper than leaves looks) is left whole.
+    for refs, _own in list(out.values()):
+        for leaf in refs:
+            out.pop(leaf, None)
+    return out
+
+
+def _varints(numbers) -> bytes:
+    out = bytearray()
+    for n in numbers:
+        n = int(n)
+        while n >= 0x80:
+            out.append((n & 0x7F) | 0x80)
+            n >>= 7
+        out.append(n)
+    return bytes(out)
+
+
+def _natural(number: str) -> list:
+    return [int(t) if t.isdigit() else t for t in re.split(r"(\d+)", number)]
+
+
+def encode_index(records: dict[str, dict], needs: dict[str, dict[str, int]],
+                 packs: dict[str, tuple[dict[str, int], dict[str, int]]],
+                 era: Callable[[str], tuple], generated: int, not_sets: list[str] | None = None,
+                 models: dict[str, list[str]] | None = None) -> bytes:
+    """all_sets.bin: "BWAS", format, 1 (zstd), two bytes nought, the
+    payload's size (u32), then the payload, zstd, as sections each its byte
+    length (u32) then its bytes:
+
+        0 meta      JSON: what is in it
+        1 numbers   the sets' numbers, lowercased, a line each
+        2 names     their names, a line each
+        3 years     a byte each, the year less 1940 (0: not known)
+        4 pieces    varint each, its pieces counted (index_needs)
+        5 pairs     every part and colour in a set, "3001/4", a line each,
+                    by family (Collection.family_of) then spelling
+        6 families  varint each family in order: its pairs << 1, | 1 where
+                    its name is its first pair's part less the last letter
+        7 counts    varint each pair: how many sets it is in
+        8 low       a byte each set a pair is in, pair by pair: the gap
+        9 high      from the set before, low | high << 8; sets in order
+       10 qty       a byte each: how many; 255 says see over
+       11 over      varint pairs: postings since the last, how many
+       12 packs     varint: the pack, its leaves, then each leaf and how
+                    many; a pack's own parts are in the postings
+       13 same      varint pairs: a set, the earlier set it is the same as;
+                    it has no postings, and is ranked as that one is
+
+    Sets are numbered in the order of "numbers"."""
+    order = sorted(needs, key=lambda number: (era(number), _natural(number)))
+    # A set whose parts are another's exactly is ranked as that one. Packs
+    # are neither: a book packing one polybag holds just its parts, and
+    # made the polybag's own, its only leaf, read as nothing.
+    first_of: dict[tuple, str] = {}
+    same: dict[str, str] = {}
+    for number in order:
+        if number in packs:
+            continue
+        sign = tuple(sorted(needs[number].items()))
+        if sign in first_of:
+            same[number] = first_of[sign]
+        else:
+            first_of[sign] = number
+    at = {number: i for i, number in enumerate(order)}
+    postings: dict[str, list[tuple[int, int]]] = defaultdict(list)
+    for number in order:
+        if number in same:
+            continue
+        own = packs[number][1] if number in packs else needs[number]
+        for key, qty in own.items():
+            postings[key].append((at[number], qty))
+    pairs = sorted(postings, key=lambda key: (family_of(key.split("/")[0]), key))
+    families: list[int] = []
+    run_family = None
+    for key in pairs:
+        part = key.split("/")[0]
+        family = family_of(part)
+        if family != run_family:
+            families.append(int(family != part))     # its flag; its count is added
+            run_family = family
+        families[-1] += 2
+    counts: list[int] = []
+    low = bytearray()
+    high = bytearray()
+    qty_bytes = bytearray()
+    over: list[int] = []
+    last_over = 0
+    posting = 0
+    for key in pairs:
+        listed = sorted(postings[key])
+        counts.append(len(listed))
+        last = -1
+        for number, qty in listed:
+            gap = number - last - 1
+            last = number
+            low.append(gap & 0xFF)
+            high.append(gap >> 8)
+            if qty >= INDEX_OVER:
+                qty_bytes.append(INDEX_OVER)
+                over += [posting - last_over, qty]
+                last_over = posting
+            else:
+                qty_bytes.append(qty)
+            posting += 1
+    packed: list[int] = []
+    for number in sorted(packs, key=lambda n: at[n]):
+        refs = packs[number][0]
+        # A leaf that is ranked as another set carries that set's parts.
+        leaves: dict[int, int] = {}
+        for leaf, count in refs.items():
+            whole = at[same.get(leaf, leaf)]
+            leaves[whole] = leaves.get(whole, 0) + count
+        packed += [at[number], len(leaves)]
+        for leaf in sorted(leaves):
+            packed += [leaf, leaves[leaf]]
+    same_pairs: list[int] = []
+    for number in order:
+        if number in same:
+            same_pairs += [at[number], at[same[number]]]
+    meta = {"format": INDEX_FORMAT, "generated": generated,
+            "source": "Rebrickable set inventories (rebrickable.com/downloads), as the shards beside it",
+            "sets": len(order), "pairs": len(pairs), "families": len(families), "postings": posting,
+            "packs": len(packs), "same": len(same),
+            # Rebrickable's database sets in the shards, which are no sets.
+            "not_sets": sorted(not_sets or []),
+            # The sets with an official LDraw model (models.json): number ->
+            # [its first model's file under vendor/omr/files, its page at the
+            # OMR], so the page offers Open or See it without that 2 MB file.
+            "models": {n: models[n] for n in order if n in (models or {})}}
+    sections = [
+        json.dumps(meta, separators=(",", ":")).encode(),
+        "\n".join(order).encode(),
+        "\n".join(str(records[n].get("n", "")).replace("\n", " ") for n in order).encode(),
+        bytes(max(0, min(255, int(records[n].get("y", 0)) - 1940)) for n in order),
+        _varints(sum(needs[n].values()) for n in order),
+        "\n".join(pairs).encode(),
+        _varints(families),
+        _varints(counts),
+        bytes(low), bytes(high), bytes(qty_bytes),
+        _varints(over), _varints(packed), _varints(same_pairs),
+    ]
+    payload = b"".join(struct.pack("<I", len(s)) + s for s in sections)
+    import zstandard  # the system's python3-zstandard; the app decompresses it (COMPRESSION_ZSTD)
+    squeezed = zstandard.ZstdCompressor(level=22).compress(payload)
+    return INDEX_MAGIC + bytes([INDEX_FORMAT, INDEX_ZSTD, 0, 0]) + struct.pack("<I", len(payload)) + squeezed
+
+
+def decode_index(blob: bytes) -> dict:
+    """all_sets.bin read back: {"meta", "numbers", "names", "years",
+    "pieces", "needs": {set: {key: qty}}}, every set's parts put together
+    again from the postings, its packs and the sets it is the same as. What
+    tests/test_collection.py checks the file by; the app reads it with
+    SetRanking."""
+    import zstandard
+    if blob[:4] != INDEX_MAGIC or blob[4] != INDEX_FORMAT or blob[5] != INDEX_ZSTD:
+        raise ValueError("not an all_sets.bin of format 1")
+    size = struct.unpack("<I", blob[8:12])[0]
+    payload = zstandard.ZstdDecompressor().decompress(blob[12:], max_output_size=size)
+    sections: list[bytes] = []
+    at = 0
+    while at < len(payload):
+        length = struct.unpack("<I", payload[at:at + 4])[0]
+        sections.append(payload[at + 4:at + 4 + length])
+        at += 4 + length
+
+    def varints(raw: bytes) -> list[int]:
+        out, value, shift = [], 0, 0
+        for byte in raw:
+            value |= (byte & 0x7F) << shift
+            shift += 7
+            if byte < 0x80:
+                out.append(value)
+                value, shift = 0, 0
+        return out
+
+    meta = json.loads(sections[0])
+    numbers = sections[1].decode().split("\n")
+    pairs = sections[5].decode().split("\n")
+    counts = varints(sections[7])
+    low, high, qty = sections[8], sections[9], sections[10]
+    over = varints(sections[11])
+    big: dict[int, int] = {}
+    posting = 0
+    for i in range(0, len(over), 2):
+        posting += over[i]
+        big[posting] = over[i + 1]
+    own: list[dict[str, int]] = [dict() for _ in numbers]
+    posting = 0
+    for key, count in zip(pairs, counts):
+        number = -1
+        for _n in range(count):
+            number += low[posting] + (high[posting] << 8) + 1
+            own[number][key] = big.get(posting, qty[posting])
+            posting += 1
+    packed = varints(sections[12])
+    whole = [dict(o) for o in own]
+    i = 0
+    while i < len(packed):
+        pack, many = packed[i], packed[i + 1]
+        i += 2
+        for _n in range(many):
+            leaf, count = packed[i], packed[i + 1]
+            i += 2
+            for key, q in own[leaf].items():
+                whole[pack][key] = whole[pack].get(key, 0) + q * count
+    same = varints(sections[13])
+    for i in range(0, len(same), 2):
+        whole[same[i]] = dict(whole[same[i + 1]])
+    return {"meta": meta, "numbers": numbers, "names": sections[2].decode().split("\n"),
+            "years": [y + 1940 if y else 0 for y in sections[3]], "pieces": varints(sections[4]),
+            "needs": dict(zip(numbers, whole))}
+
+
+def _official_models() -> dict[str, list[str]]:
+    """The official models src/dev/collection_models.gd wrote beside the
+    shards (models.json), each set's first: number -> [file, OMR page]."""
+    models: dict[str, list[str]] = {}
+    if (OUT / "models.json").exists():
+        for model in json.loads((OUT / "models.json").read_text()).get("models", []):
+            models.setdefault(str(model.get("set", "")).lower(), [str(model.get("file", "")), str(model.get("g", ""))])
+    return models
+
+
+def write_index(records: dict[str, dict], write: bool = True,
+                models: dict[str, list[str]] | None = None) -> int:
+    """Write all_sets.bin from the sets' records, {number: {"n", "y", "p"}}
+    as the shards hold them (only say what it would be, without [param
+    write]), with [param models] (_official_models, read from the folder
+    when not given). 1, writing nothing, when it would be over INDEX_MOST."""
+    catalogue = json.loads((GENERATED / "catalogue.json").read_text())
+    colours = json.loads((GENERATED / "colors.json").read_text())
+    skip, packs = _what_sets_are()
+    needs = index_needs(records, _Owning(catalogue["parts"], colours), skip)
+    # How many of a set another holds, by their first inventories.
+    first: dict[str, tuple[int, str]] = {}
+    for row in rb._rows("inventories"):
+        version = int(row["version"] or 1)
+        if row["set_num"] not in first or version < first[row["set_num"]][0]:
+            first[row["set_num"]] = (version, row["id"])
+    owner = {inventory: number.lower() for number, (_v, inventory) in first.items()}
+    times: dict[tuple[str, str], int] = {}
+    for row in rb._rows("inventory_sets"):
+        pack = owner.get(row["inventory_id"])
+        if pack is not None:
+            key = (pack, row["set_num"].lower())
+            times[key] = times.get(key, 0) + int(row["quantity"])
+    # The theme each set is under, by its top theme, and its era in fives.
+    parent = {row["id"]: row["parent_id"] for row in rb._rows("themes")}
+
+    def top(theme: str) -> int:
+        for _hop in range(8):
+            if not parent.get(theme):
+                break
+            theme = parent[theme]
+        return int(theme or 0)
+
+    theme_of = {row["set_num"].lower(): top(row["theme_id"]) for row in rb._rows("sets")}
+    blob = encode_index(records, needs, _index_packs(needs, packs, times),
+                        lambda n: (theme_of.get(n, 0), int(records[n].get("y", 0)) // 5), int(time.time()),
+                        [n for n in records if n in skip], _official_models() if models is None else models)
+    meta = decode_index(blob)["meta"]
+    print(f"  {INDEX}: {meta['sets']:,} sets ({meta['packs']:,} packs as their sets, {meta['same']:,} the same as "
+          f"another), {meta['pairs']:,} parts in a colour, {meta['postings']:,} postings, {len(blob):,} bytes")
+    if len(blob) > INDEX_MOST:
+        print(f"collection_data: {INDEX} would be {len(blob):,} bytes, over the {INDEX_MOST:,} the web fetches "
+              "as What can I build? opens: not written", file=sys.stderr)
+        return 1
+    if write:
+        (OUT / INDEX).write_bytes(blob)
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true", help="write nothing")
@@ -411,12 +808,19 @@ def main() -> int:
                         help="rewrite only index.json's bricklink_colours, from colors.json")
     parser.add_argument("--colours", action="store_true",
                         help="rewrite only the colours_NN.json, from the shards written")
+    parser.add_argument("--index", action="store_true",
+                        help=f"rewrite only {INDEX}, from the shards written")
     args = parser.parse_args()
     known = {entry["id"] for entry in
              json.loads((GENERATED / "catalogue.json").read_text())["parts"]}
-    if args.colours:
+    if args.colours or args.index:
         shards = {int(path.stem): json.loads(path.read_text())["sets"]
                   for path in sorted(OUT.glob("[0-9][0-9][0-9].json"))}
+        if args.index:
+            records: dict[str, dict] = {}
+            for sets in shards.values():
+                records.update(sets)
+            return write_index(records, write=not args.check)
         write_colour_sets(shards, known)
         return 0
     if args.bricklink:
@@ -435,9 +839,16 @@ def main() -> int:
           f"{index['counts']['renamed parts']:,} parts renamed, "
           f"{index['counts']['colour unknown']:,} rows in a colour with no LDraw code")
     print(f"  {len(shards)} shards, {sum(sizes) / 1e6:.1f} MB, largest {max(sizes) / 1e3:.0f} kB")
+    records = {}
+    for sets in shards.values():
+        records.update(sets)
     if args.check:
-        return 0
+        return write_index(records, write=False)
     OUT.mkdir(parents=True, exist_ok=True)
+    # Which sets have an official model, kept from the models.json about to
+    # go: collection_models.gd matches each model's parts to the new shards
+    # after, but a model's set and file are its own.
+    models = _official_models()
     for old in OUT.glob("*.json"):
         old.unlink()
     for number, sets in shards.items():
@@ -445,8 +856,11 @@ def main() -> int:
             json.dumps({"sets": sets}, separators=(",", ":")))
     (OUT / "index.json").write_text(json.dumps(index, separators=(",", ":")))
     write_colour_sets(shards, known)
+    # The ranking's file is rebuilt with the shards it is made from, so the
+    # daily Rebrickable data reaches What can I build? with them.
+    failed = write_index(records, models=models)
     print(f"  wrote {OUT}")
-    return 0
+    return failed
 
 
 if __name__ == "__main__":
