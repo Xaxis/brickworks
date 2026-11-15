@@ -849,6 +849,7 @@ const TABLES = {
   model_stats: () => Object.entries(STATS).map(([id, [views, likes, builds]]) => ({ model: id, views, likes, builds })),
   model_collections: () => LISTS.map(({ models, ...row }) => row),
   model_collection_items: () => LISTS.flatMap((list) => list.models.map((id) => ({ collection: list.id, model: id }))),
+  collection_sets: () => [],
   model_likes: () => LIKES.map(([account, id]) => ({ account, model: id })),
   model_favourites: () => FAVOURITES.map(([account, id]) => ({ account, model: id })),
   model_comments: () => COMMENTS,
@@ -907,6 +908,18 @@ const RPC = {
   list_follow_state: ({ asker, list }) => listFollowState(asker || null, list),
   // supabase/collection_directory.sql
   collection_directory: (query) => collectionDirectory(query || {}),
+  // supabase/lists.sql (lists1): a list's items in its order (its models as
+  // kept here, no sets), their cards, and the directory counting sets too.
+  list_items: ({ list, private: hidden }) => (listOf(list)?.models || []).map(modelOf)
+    .filter((m) => m && m.published && !m.barred && (m.listed || hidden === true) && !m.test)
+    .map((m) => ({ kind: "model", key: m.id, at: m.updated_at, position: null })),
+  list_model_cards: ({ list, models, private: hidden }) => (models || []).map(modelOf)
+    .filter((m) => m && (listOf(list)?.models || []).includes(m.id) && m.published && !m.barred && (m.listed || hidden === true))
+    .map(card),
+  list_directory: (query) => {
+    const said = collectionDirectory(query || {});
+    return { ...said, rows: said.rows.map((row) => ({ ...row, models: row.count, sets: 0 })) };
+  },
   model_lists: ({ model, most }) => modelLists(model, most || 12),
   follow_choice: ({ account }) => ({ shows_follows: SHOWS_FOLLOWS.has(account) }),
   shown_publicly: ({ account }) => !ADMIN.barred.some((one) => one.account === account),
@@ -1611,6 +1624,34 @@ function people(method, params, body, who, state) {
           .map((list) => ({ id: list.id, name: list.name, public: list.public, has: list.models.includes(id) })) });
     }
     if (op === "favourites") return answer(200, cardPage({ favourites: ME, private: true, sort: "added" }, page));
+    // Your lists (api/_mylists.js, docs/LISTS.md), as yourLists, keeps and
+    // listItems answer: Sam's lists of models, no sets owned or wanted, and
+    // what they saved.
+    if (op === "lists" || op === "keeps") {
+      const mine = LISTS.filter((list) => list.owner === ME).sort(byTime("updated_at")).map(({ models, owner, ...list }) =>
+        ({ ...list, description: list.description || null, kind: null, sort: "added", cover: null, down: false, sets: 0,
+          models: models.length, count: models.length }));
+      if (op === "lists") {
+        return answer(200, { lists: mine, owned: { sets: 0, unique: 0, pieces: 0, shown: false },
+          saved: { models: FAVOURITES.filter(([account]) => account === ME).length }, profile: { handle: personOf(ME).handle } });
+      }
+      const listed = (key, test) => String(params.get(key) || "").split(",").filter(test).slice(0, 60);
+      return answer(200, { signed_in: true, lists: mine, want: null,
+        sets: Object.fromEntries(listed("sets", (one) => /^[a-z0-9-]{1,40}$/.test(one)).map((set) => [set, { own: 0, lists: [] }])),
+        models: Object.fromEntries(listed("models", (one) => ID.test(one)).map((model) => [model, { saved: keptBy(ME, model),
+          lists: LISTS.filter((list) => list.owner === ME && list.models.includes(model)).map((list) => list.id) }])) });
+    }
+    if (op === "list_items") {
+      const list = id === "saved" ? null : LISTS.find((one) => one.id === id && one.owner === ME);
+      if (id !== "saved" && id !== "owned" && id !== "want" && !list) return answer(404, { error: "There is no list of yours at that link." });
+      const cards = id === "owned" || id === "want" ? []
+        : listModels(list ? { collection: list.id, private: true } : { favourites: ME, private: true, sort: "added" }).map(apiCard);
+      const items = cards.map((one) => ({ key: `model:${one.id}`, kind: "model", card: one }));
+      const head = list ? { id: list.id, name: list.name, description: list.description || null, public: list.public, kind: null,
+        sort: "added", cover: null, down: false, mine: true, by: { handle: personOf(ME).handle, name: personOf(ME).name },
+        url: `${ORIGIN}/c/${list.id}` } : { id, kind: id, mine: true };
+      return answer(200, { ...head, total: items.length, sets: 0, models: items.length, page: 1, more: false, items });
+    }
     if (op === "collection") return collection(id, who, page);
     if (op === "comments") return comments(params, who, state);
     if (op === "photos") {

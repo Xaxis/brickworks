@@ -15,6 +15,16 @@ whole cycle.
 
 ### Added
 
+- **Own, Want and your lists, on the website.** Every set in the library,
+  every set's page and every model in the gallery has one control: **Own**
+  (a set) or **Save** (a model) at a tap, with **Undo**, and a chevron for
+  **I want it**, how many you own, and lists of your own that hold sets
+  and models together. **Your lists** in the account menu orders them,
+  moves things between them, makes them public with a page to share, and
+  brings in sets from Rebrickable, BrickLink or Brickset (and downloads
+  them as a CSV). A set you own on the site is in My collection here, its
+  parts yours at once. Your profile can show the sets you own, with
+  their numbers, filters and a search.
 - **Loose parts**, in File › My collection…: a tub of bricks, a lot at a time.
   Type a part's number or a few words (*red 2x4 brick*), find it from a
   photo, or take it in the parts bin. Each change is made on the server one

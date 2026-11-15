@@ -12,7 +12,8 @@
 //      account that is not the owner's, and nothing asked is done: the
 //      throwaway a stranger asked to delete still there, no notice set.
 //   2. Throwaways at resend.dev: D lists a model, makes a public list with
-//      it, comments on it, and a visitor reports the model; S signs in.
+//      it, comments on it, and a visitor reports the model and the list;
+//      S signs in.
 //   3. The owner (MASTER_EMAIL's session minted, never its own sign-in) on
 //      /admin?tests=1: Moderation's one queue with D's report, oldest
 //      first, sifted by kind; Taken out; Challenges with its previews
@@ -21,7 +22,9 @@
 //      buckets, and why egress is not read here; Switches' variables by
 //      name and never a value, and the settings.
 //   4. Find: D's address, model, list and report from the console's bar;
-//      its People link opens D's account.
+//      its People link opens D's account. The list's report (lists1) in
+//      the same queue, kind List, taken down by its own act: private, and
+//      kept so.
 //   5. Run now: the front's choice (gallery_feature, safe to run twice) run
 //      from Site, its run written down by hand, and kept in the audit.
 //   6. The notice (never on brickworks.diy: a check posts nothing there):
@@ -36,7 +39,7 @@
 //      dark, and the notice on a public page: pictures in --out.
 //
 // The throwaways are deleted at the end (D by the console itself), the
-// report let go and the notice cleared. It passes when it ends
+// reports deleted and the notice cleared. It passes when it ends
 // "console3: all ok".
 import { launch } from "./browser.mjs";
 import { deleteAccount, mintSession, STORAGE_KEY } from "./session.mjs";
@@ -156,6 +159,7 @@ async function noticeOn(pathname, words, { seconds = 200, width = 1280, theme = 
 const made = [];
 const ids = [];
 let reportId = null;
+let listMade = null;
 let owner = null;
 let noticeSet = false;
 const secrets = [SECRET, process.env.RESEND_API_KEY, process.env.CRON_SECRET, process.env.OC_SIGNING_SECRET, process.env.OC_CONNECT_KEY,
@@ -197,12 +201,15 @@ try {
   const into = listId ? await api("/api/people?op=collect", { method: "POST", token: d.access_token,
     body: { collection: listId, model: ids[0], on: true } }) : { status: 0 };
   check(`...a public list with it: ${listId || list.status} (${into.status})`, Boolean(listId) && into.status < 300);
+  listMade = listId;
   const comment = await api("/api/people?op=comment", { method: "POST", token: d.access_token,
     body: { model: ids[0], version: 1, body: `A note on the tower ${rand}` } });
   check(`...a comment on it: ${comment.status}`, comment.status === 201);
   const reported = await api("/api/people?op=report", { method: "POST", body: { model: ids[0], reason: "spam", note: `Console3 ${rand}` } });
   reportId = reported.json?.id ?? reported.json?.report ?? null;
   check(`...and a visitor reported the model: ${reported.status}`, reported.status >= 200 && reported.status < 300);
+  const listReported = await api("/api/people?op=report", { method: "POST", body: { collection: listId, reason: "spam", note: `Console3 list ${rand}` } });
+  check(`...and the list: ${listReported.status}`, listReported.status >= 200 && listReported.status < 300);
   const s = await mintSession(address("s"), { welcome: false });
   made.push(address("s"));
 
@@ -317,6 +324,19 @@ try {
       && /Challenge entries \(0\)/.test(t);
   }, `Console3 List ${rand}`));
   await page.keyboard.press("Escape");
+
+  // A list's report (lists1) in the same queue, with its own act.
+  await go(page, "moderation/queue");
+  const listRow = page.locator('#reports tr[data-kind="list"]').filter({ has: page.locator(`a[href="/c/${listMade}"]`) }).first();
+  check("the list's report in the queue: kind List, its name, public, Take the list down", await listRow.waitFor({ timeout: 30000 })
+    .then(() => true, () => false) && await listRow.innerText().then((text) => text.includes(`Console3 List ${rand}`) && /public/.test(text)
+    && /Take the list down/.test(text)));
+  await listRow.locator("button", { hasText: "Take the list down" }).click();
+  check("...taken down: its report settled and out of the queue", await until(page, (id) => !document.querySelector(`#reports a[href="/c/${id}"]`),
+    listMade, 30000));
+  const down = await fetch(`${SUPABASE}/rest/v1/model_collections?id=eq.${listMade}&select=public,taken_down_at`,
+    { headers: { apikey: SECRET, authorization: `Bearer ${SECRET}` } }).then((reply) => reply.json()).catch(() => []);
+  check(`...the list private and kept so: ${JSON.stringify(down[0] || null)}`, down[0]?.public === false && Boolean(down[0]?.taken_down_at));
 
   // --- 5. Run now ------------------------------------------------------------------
   console.log("5. Run now");
@@ -489,6 +509,7 @@ try {
   }
   const secret = { apikey: SECRET, authorization: `Bearer ${SECRET}` };
   if (ids.length) await fetch(`${SUPABASE}/rest/v1/reports?model=in.(${ids.join(",")})`, { method: "DELETE", headers: secret }).catch(() => {});
+  if (listMade) await fetch(`${SUPABASE}/rest/v1/reports?collection=eq.${listMade}`, { method: "DELETE", headers: secret }).catch(() => {});
   let gone = 0;
   for (const email of made) {
     // D was deleted by the console: nothing left of it to find.

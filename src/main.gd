@@ -5954,8 +5954,11 @@ func _build_ui() -> void:
 		_stability_at = 0)
 	# The colours at the foot of the column, under the model tree and the
 	# properties: what those do moves the parts grid's foot, never them.
-	_stack.add_section(_bin.colours)
+	# Folded to their header at the foot, or dragged up over the bin
+	# (PanelStack): their height kept under "colour_height", never the
+	# tree's and the properties' split.
 	_stack.never_fills(_bin.colours)
+	_stack.add_section(_bin.colours, "colour_height")
 	_bin.column = _stack
 	_counts = _shell.status.counts
 
@@ -10199,6 +10202,8 @@ func _dress_for_phone() -> void:
 	# panel's place while it is open (PhoneShell.dock_toggled), and so does
 	# the tools' column.
 	_touch.size_panel(_stack)
+	# Its bars a handle a fingertip tall, in a strip of their own.
+	_stack.bar_room = Phone.px(get_viewport(), Phone.TARGET)
 	# And the assistant in its drawer down the right, once it is made
 	# (_make_chat sizes it then).
 	if _chat_made != null:

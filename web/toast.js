@@ -18,6 +18,8 @@ const AGAIN_MS = 4000;
 let timer = 0;
 // The toast with an action now on the screen: its end, which puts it away.
 let ending = null;
+// One asked for and not on the screen yet: who hears that it went unseen.
+let unshown = null;
 
 /// The toast's region. On the page empty from the first: a screen reader
 /// reads a live region's change, not a region that arrives saying
@@ -39,13 +41,19 @@ export function toastRegion() {
 /// run}), a button beside the words, which runs it and puts the toast away;
 /// [words] may then hold elements (a link) as well as text, [focus] gives
 /// the button the keyboard, and [back] is where the keyboard goes when the
-/// toast goes without it being pressed.
-export function toast(words, { action = null, focus = false, back = null } = {}) {
+/// toast goes without it being pressed. [ended] (pressed) hears once when
+/// it goes, and whether its action was pressed: what waits on an Undo (a
+/// list deleted, lists1) is done then, never while the toast is still held.
+export function toast(words, { action = null, focus = false, back = null, ended = null } = {}) {
   const said = toastRegion();
   ending?.(false);
+  const skipped = unshown;
+  unshown = null;
+  skipped?.(false);
   clearTimeout(timer);
   said.replaceChildren();
   said.classList.remove("act");
+  if (action && ended) unshown = ended;
   timer = setTimeout(() => {
     if (!action) {
       said.textContent = String(words);
@@ -53,6 +61,7 @@ export function toast(words, { action = null, focus = false, back = null } = {})
       timer = setTimeout(() => said.classList.remove("shown"), PLAIN_MS);
       return;
     }
+    unshown = null;
     const text = document.createElement("span");
     text.className = "words";
     text.append(...(Array.isArray(words) ? words : [words]));
@@ -80,6 +89,7 @@ export function toast(words, { action = null, focus = false, back = null } = {})
         }
       }, 250);
       if (!pressed && held && back?.isConnected) back.focus({ preventScroll: true });
+      ended?.(pressed);
     };
     ending = end;
     const later = (ms) => {

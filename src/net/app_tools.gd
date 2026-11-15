@@ -152,6 +152,7 @@ const WINDOW_ONLY: Dictionary = {
 	"cut_*": "the person's view inside; view_model where= looks at one box of the model",
 	"xray": "the person's view inside; view_model where= looks at one box of the model",
 	"panel_*": "the window's panels",
+	"reset_panels": "the window's panels, laid out as the person left them",
 	"show_properties": "the window's panels",
 	"full_screen": "the window's panels",
 	"split_view": "the window's panels: a second view of the person's; view_model from= looks from any side",

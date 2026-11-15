@@ -6,7 +6,7 @@
 //   exportAccount   POST ?op=export&account=U: every row of the account
 //                   (supabase/console3.sql admin_export: each table with a
 //                   foreign key to auth.users, so a table added later is in
-//                   it; the newest 1000 a table, a value over 8 KB named by
+//                   it, and the sets in its lists; at most 1000 a table, a value over 8 KB named by
 //                   its size) and its sign-in's own facts, as JSON for the
 //                   owner to send on at the person's request; kept in the
 //                   audit
@@ -94,6 +94,20 @@ export async function exportAccount(request, response) {
     throw trouble;
   }
   const tables = rows?.tables || {};
+  // The sets in its lists (lists1's collection_sets, its own sets among
+  // them): keyed to a list, not to the account, so admin_export's search by
+  // key to auth.users does not find them.
+  const lists = (tables.model_collections || []).map((one) => String(one.id)).filter((id) => /^[A-Za-z0-9]{10}$/.test(id));
+  const sets = [];
+  for (let at = 0; at < lists.length && sets.length < 1000; at += 100) {
+    try {
+      sets.push(...((await db(`collection_sets?collection=in.(${lists.slice(at, at + 100).join(",")})&select=*&limit=1000`)) || []));
+    } catch (trouble) {
+      if (notYet(trouble)) break;
+      throw trouble;
+    }
+  }
+  if (sets.length) tables.collection_sets = sets.slice(0, 1000);
   return response.status(200).json({
     account,
     email: user.email || null,

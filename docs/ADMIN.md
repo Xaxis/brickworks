@@ -32,7 +32,7 @@ three that stay outside, each with why.
 | What | Before part C | Since part C |
 |---|---|---|
 | Reports of models, comments, photos, profiles; takedown requests and counter-notices | Gallery's Reported tab | Moderation › Queue: one list of every kind, oldest first, one set of acts, sifted by kind and searched |
-| Reports of lists (lists1) | not made yet | Moderation › Queue as the kind List, its acts added when lists1 lands (below) |
+| Reports of lists (lists1) | Gallery › Reported, with Take the list down | Moderation › Queue as the kind List, with Take the list down |
 | Comments, reported or not | Gallery's Comments tab | Moderation › Comments |
 | Accounts taken out | Gallery's Taken out tab | Moderation › Taken out, with Let back in |
 | Models taken out by fingerprint (barred_models) | nowhere but SQL | Moderation › Taken out, with Let back (`unbar_model`) |
@@ -78,6 +78,7 @@ it answers.
 | `bar` | POST `&id=` or `&account=` | An account out whole: every model out, no profile, no public collection | barred_accounts, shared_models, barred_models |
 | `unbar` | POST `&account=` | Let back in: it can list again | barred_accounts |
 | `dismiss` | POST `&report=` | A report let go | reports |
+| `list_down` | POST `&id=` | A reported list taken down: private for good, kept for its owner with its name and words, its reports settled | model_collections, reports |
 | `untest` | POST `&id= &v=` | A version's Tested mark cleared | share_tests |
 | `uncomment` | POST `&comment=` | A comment off every page for good | admin_remove_comment, reports |
 | `remove_photo` | POST `&photo=` | A build's photo out, its files deleted | build_photos, storage |
@@ -219,7 +220,7 @@ px (a row of pills on a phone), and the section beside it.
 |---|---|---|---|
 | Overview | `#overview` | Needs you now (reports open, applications new, feedback unread, the borrowed sender, a failed or late cron, Supabase refusing, the OMR's finds, no challenge ahead, a notice showing); how things stand (accounts, sign-ups today and this week, signed in this week, testers of 100, models published, reports open, feedback unread, mail sent and failed, the live release and since when); the switches; the latest acts | Each card goes where it is done |
 | People | `#people`, `#people/<account>` | Every account: address, handle, joined, last sign-in, plan, beta, models, connectors, taken out. Search; Everyone, Testers, With models, With a connector, Taken out | A row opens the account whole in a panel: Take out the account, Let back in, its models, its acts |
-| Moderation | `#moderation/queue`, `comments`, `barred` | The one queue of every report, oldest first, by kind; Comments; Taken out, accounts and models | Take out, Take out the account, Take it down, Let the model back, Remove the comment, Take the photo or the picture out, Let it go, Let back in |
+| Moderation | `#moderation/queue`, `comments`, `barred` | The one queue of every report, oldest first, by kind; Comments; Taken out, accounts and models | Take out, Take out the account, Take it down, Let the model back, Remove the comment, Take the photo or the picture out, Take the list down, Let it go, Let back in |
 | Gallery | `#gallery/listed`, `pick`, `tested` | In the gallery, This week's pick, Tested | Take out, Make it the pick, End, Clear the mark |
 | Challenges | `#challenges`, `#challenges/<id>` | The running one; every challenge by state; a challenge whole in a panel (entries by group, rule failures, winners); the set form and the year's plan, each with its preview | Set a challenge, Set the year, End it now |
 | Beta | `#beta`, `#beta/applications`, `#beta/testers` | The beta's switch and its places left, billing's mode; the months of Pro (spots given and left, new, waitlist, still to give), the applications by state; the testers | Open or Off; Approve, Waitlist, Decline with a note; Grant pending months |
@@ -234,6 +235,13 @@ px (a row of pills on a phone), and the section beside it.
 
 The bar holds Find: one search over people, models, lists, reports and the
 audit, its results grouped, each going where it is managed.
+
+A reported list (a list of sets and models, or a wishlist) shows in
+Moderation's queue, kind List, with its name and words as the owner typed them, whether it is
+public, and its owner's address. **Take the list down** makes it private
+for good: its page and its place in the directory go at once, its owner
+still sees it on Your lists marked *taken down*, and it cannot be made
+public again (`model_collections.taken_down_at`, docs/LISTS.md).
 
 The old addresses land: `/beta-admin` redirects to `/admin#beta` (and
 `?tests=1` with it), `#report-N` opens Moderation's queue with that report
@@ -391,13 +399,13 @@ through functions the server alone may call.
   (`unlist`, `bar`, `uncomment`, `remove_photo`, `remove_avatar`,
   `dismiss`), now in one place. Taken out lists the accounts and, new, the
   models barred by fingerprint, each let back with `unbar_model`.
-- **Lists' reports** (lists1, not merged at console3): their reports already
-  come as the kind List, with Let it go. When lists1 lands it adds the list
-  to `report()` in api/admin.js (`list: {id, name, owner}` as it does for a
-  model), its takedown op to api/admin.js, and the act to `KINDS.list.acts`
-  in web/admin-moderation.js (`[{op, report: report.id}, [label, said],
-  confirm]`); `report.list?.name` is read already. An account's export finds
-  its tables by their key to auth.users, so it needs nothing.
+- **Lists' reports** (lists1, merged into console3 before it was ready):
+  `report()` in api/admin.js gives a reported list's name, words, state and
+  owner as `report.list`, and `KINDS.list` in web/admin-moderation.js draws
+  them and offers **Take the list down** (`list_down`) while the list is
+  still shown. console3_flow reports a throwaway's list and takes it down.
+  An account's export finds its tables by their key to auth.users, so lists
+  come with it unasked.
 - **Challenges** (web/admin-challenges.js, api/_console_challenges.js): the
   one running and every challenge, from the default report; a challenge's
   panel reads `challenge_admin_entries` (entries with their models' parts,

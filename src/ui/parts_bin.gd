@@ -214,15 +214,35 @@ func _build() -> void:
 
 	var root := VBoxContainer.new()
 	root.add_theme_constant_override("separation", int(_z(4 if by_finger else 8)))
-	add_child(root)
-
 	var head := HBoxContainer.new()
-	root.add_child(head)
-	var title := Label.new()
-	title.text = "Parts"
-	title.add_theme_font_size_override("font_size", ceili(_z(16)))
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	head.add_child(title)
+	# On the desktop a section of its column (PanelStack): its header, the
+	# chevron and "Parts", folds the rest away, the colours under it taking
+	# the column. A phone's parts are a sheet of their own, which folds
+	# nothing.
+	if by_finger:
+		add_child(root)
+		root.add_child(head)
+		var title := Label.new()
+		title.text = "Parts"
+		title.add_theme_font_size_override("font_size", ceili(_z(16)))
+		title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		head.add_child(title)
+	else:
+		var frame := VBoxContainer.new()
+		frame.add_theme_constant_override("separation", int(_z(8)))
+		add_child(frame)
+		frame.add_child(head)
+		root.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		frame.add_child(root)
+		_folded_away = root
+		section_head = PanelStack.Head.new("Parts", "Every part there is, by shelf and "
+			+ "category, to search, take in hand or drag into the model", ceili(_z(16)))
+		section_head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		section_head.pressed.connect(func() -> void: set_open(not is_open()))
+		head.add_child(section_head)
+		_unfolded = bool(ShellPrefs.value("bin_open"))
+		root.visible = _unfolded
+		section_head.show_open(_unfolded)
 	var make := Button.new()
 	_make_button = make
 	make.text = "Make a part…"
@@ -463,7 +483,10 @@ func _build() -> void:
 	# parts: the parts grid above takes whatever room there is, and what
 	# changes height there — the properties opening on a selection, the
 	# model tree — moves the grid's foot and never the palette.
-	colours = PanelContainer.new()
+	colours = PanelStack.Fold.new("Colour", "The colour in hand: for the part put down next, or "
+		+ "to paint what is selected", "colour_open")
+	# Folded, its header says the colour in hand, with a swatch of it.
+	colours.state_when_folded = true
 	colours.name = "Colours"
 	colours.mouse_filter = Control.MOUSE_FILTER_STOP
 	colours.add_theme_stylebox_override("panel", PanelStack.section_style())
@@ -475,10 +498,7 @@ func _build() -> void:
 	var colour_head := HFlowContainer.new()
 	colour_head.add_theme_constant_override("v_separation", 4)
 	colour_box.add_child(colour_head)
-	var colour_title := Label.new()
-	colour_title.text = "Colour"
-	colour_title.add_theme_font_size_override("font_size", 13)
-	colour_head.add_child(colour_title)
+	colour_head.add_child(colours.section_head)
 	# Studio's "Hide Unavailable Parts in the Selected Color": the bin's
 	# parts are those made in the colour in hand, from what the swatches'
 	# dots are read from. Whole: the field and All go under it where the
@@ -523,6 +543,9 @@ func _build() -> void:
 	_palette_scroll = ScrollContainer.new()
 	_palette_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_palette_scroll.custom_minimum_size = Vector2(0, PALETTE_FLOOR)
+	# Its bar dragged up over the bin (PanelStack), the swatches have the
+	# room: more rows of them in sight.
+	_palette_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	colour_box.add_child(_palette_scroll)
 	_palette = VBoxContainer.new()
 	_palette.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -546,6 +569,9 @@ func _build() -> void:
 	var font: Font = _colour_note.get_theme_font("font")
 	_colour_note.custom_minimum_size.y = ceilf(font.get_height(12) * NOTE_LINES
 		+ float(_colour_note.get_theme_constant("line_spacing")) * (NOTE_LINES - 1))
+	# Folded, the header alone: its name and the colour in hand.
+	for folded: Control in [_only_made, _colour_find, _all_colours, _palette_scroll, _colour_note]:
+		colours.folds_away(folded)
 
 
 ## Fill in once the library is available.
@@ -1012,9 +1038,20 @@ func _fit_palette() -> void:
 	# had them. At 14% of a taller column they took two rows of parts, and
 	# 1400 x 900 showed 30 (docs/APP_UX.md A10). A phone's and a tablet's
 	# parts are a sheet of their own, and their colours keep theirs.
-	var share: float = PALETTE_SHARE if by_finger else 0.0
+	# A height dragged for them (PanelStack) is theirs from then on: the
+	# palette at its least, the section as tall as it was dragged.
+	var sized: bool = column != null and column.has_method("is_sized") \
+		and bool(column.call("is_sized", colours))
+	var share: float = PALETTE_SHARE if by_finger and not sized else 0.0
 	var tall: float = clampf(minf(wants, tall_column * share), PALETTE_FLOOR,
 		maxf(wants, PALETTE_FLOOR))
+	# A phone's drawer, its handles a fingertip each, can be too short for
+	# its share as well as the tree and the properties at their least: the
+	# colours are what gives, their foot never past the drawer's.
+	if share > 0.0 and column != null and colours != null and colours.is_open() \
+			and column.has_method("room_for"):
+		var rest: float = colours.get_combined_minimum_size().y - _palette_scroll.custom_minimum_size.y
+		tall = minf(tall, maxf(PALETTE_FLOOR, float(column.call("room_for", colours)) - rest))
 	tall = roundf(tall)
 	if absf(_palette_scroll.custom_minimum_size.y - tall) > 0.5:
 		_palette_scroll.custom_minimum_size.y = tall
@@ -1027,10 +1064,41 @@ var column: Control:
 		column = to
 		if column != null:
 			column.resized.connect(_fit_palette)
+			# The others folding or opening change the colours' room too.
+			(column as Container).pre_sort_children.connect(_fit_palette)
+			if column.has_signal("sized"):
+				column.connect("sized", func(_section: Control) -> void: _fit_palette())
 			_fit_palette.call_deferred()
 ## The colours: a section of the column of their own, under the model tree
-## and the properties (Main).
-var colours: PanelContainer
+## and the properties (Main), folding and sized as every section is
+## (PanelStack.Fold).
+var colours: PanelStack.Fold
+
+## The bin's header on the desktop, as every section of a column wears
+## (PanelStack.Head); null on a phone, whose parts are a sheet.
+var section_head: PanelStack.Head
+## All of the bin under its header's row, folded away with it.
+var _folded_away: Control
+var _unfolded: bool = true
+
+## Folded to its header, or open again (PanelStack).
+signal toggled(open: bool)
+
+
+func is_open() -> bool:
+	return _unfolded
+
+
+## Folded to its header's row, the colours under it taking the column, or
+## open again; kept for next time (ShellPrefs "bin_open").
+func set_open(open: bool) -> void:
+	if _folded_away == null:
+		return
+	_unfolded = open
+	_folded_away.visible = open
+	section_head.show_open(open)
+	ShellPrefs.put("bin_open", open)
+	toggled.emit(open)
 
 ## A phone's and a tablet's palette's share of their drawer's height.
 const PALETTE_SHARE := 0.14
@@ -1289,6 +1357,8 @@ func _say_colour() -> void:
 				text += "; it was made in no other"
 	_colour_note.text = text
 	_colour_note.tooltip_text = text
+	var in_hand: PartLibrary.BrickColor = library.color(_selected_color)
+	colours.say_state(in_hand.name, in_hand.rgb)
 	_only_made.tooltip_text = ("Only parts made in %s, as set inventories have them: the bin "
 		+ "lists no other while this is ticked") % library.color(_selected_color).name
 

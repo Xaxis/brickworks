@@ -35,6 +35,13 @@ const DEFAULTS: Dictionary = {
 	# (PanelStack): down the right, the properties have what is left.
 	"tree_height": 210.0,
 	"properties_height": 230.0,
+	# The colours' height under the parts bin, as their bar was dragged; 0
+	# until it is, and they are as tall as the column says
+	# (PartsBin._fit_palette). Whether they and the bin are open, or folded
+	# to their header (PanelStack).
+	"colour_height": 0.0,
+	"colour_open": true,
+	"bin_open": true,
 	# In a window with room for one column beside the model, the one
 	# showing: "parts" (the bin), "properties" (the model tree and the
 	# properties), "assistant", or "" for none (Main._fit_panels). A first

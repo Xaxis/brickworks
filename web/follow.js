@@ -18,7 +18,7 @@
 // (a[data-account]) until you are, and then your avatar, carrying how many
 // new things there are for you, which opens the account menu: who you
 // are, Your profile, Notifications and Your feed (each with what is new in
-// it), Saved, Settings, Send feedback (and for a beta tester the beta
+// it), Your lists, Saved, Settings, Send feedback (and for a beta tester the beta
 // hub; while the beta is open Report a bug, for everyone, whether its bar
 // is shown or not), the theme, for the site's owner alone Admin (the
 // console, /admin), and Sign out. On a phone the header has
@@ -349,6 +349,7 @@ function accountPart(state) {
   const at = langAt();
   for (const [href, words, data] of [[`${at}/profile`, say("Your profile"), "profile"],
     [`${at}/notifications`, say("Notifications"), "notifications"], [`${at}/feed`, say("Your feed"), "feed"],
+    [`${at}/lists`, say("Your lists"), "lists"],
     [`${at}/profile?tab=saved`, say("Saved"), "saved"], [`${at}/settings`, say("Settings"), "settings"]]) {
     const link = document.createElement("a");
     link.href = href;

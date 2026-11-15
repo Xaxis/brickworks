@@ -448,7 +448,27 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   every field (`keep_whole`) moved a chosen row 128 to 557 px from under the
   pointer and a double click then opened its parent (tdcheck); the
   properties under the bin, where nothing else is, are still kept whole.
-  The bar between two drags the height of the one that does not fill. The tree
+  The bar between two drags the height of the one that does not fill. Every
+  stacked section folds and sizes one way (panelfold, 2026-11-13,
+  `PanelStack.Head`, `PanelStack.Bar`, `PanelStack.Fold`): one header (a
+  chevron, the name, its count or state; a click, Enter or Space folds it to
+  that header, its tooltip and screen-reader name saying Fold or Unfold), and
+  one bar between two open sections (the resize cursor, a grip lit on hover,
+  laid over the line and taking no room on a desktop, a 44-point handle in a
+  strip of its own on a phone; never a section under its header and a row,
+  nor the filler under its header and a row, nor Colour taller than all its
+  swatches; a double click puts the split back; Tab reaches it, the arrows
+  move it). Colour folds to the column's foot naming the colour in hand, the
+  bin taking the room; dragged up it covers most of the bin, its swatches
+  flowing into the room (`colour_height`, the column's own height until
+  dragged; `colour_open`, `bin_open`). With every other section folded the
+  colours have the column (`never_fills` holds while another is open). In a
+  phone's drawer Colour gives what the tree and the properties need at their
+  least, its foot never past the drawer's (`PanelStack.room_for`). View,
+  Panels, Colour folds it; View, Panels, Reset panel layout
+  (`reset_panels`, `PanelStack.reset`) puts every section back. Probes:
+  `panelfold_probe` (1280 x 720; PROBE_SIZE=1920x1080) and
+  `panelfold_phone_probe` (390 x 844). The tree
   comes out of its fold once, the first time a device has the right column
   (`right_column`): folded, the column was an empty Properties. The model's
   part of the window is what is left, with nothing over it but the view cube:

@@ -97,11 +97,24 @@ export const KINDS = {
         "Take this profile's picture out? Its file is deleted, and its avatar is made from its handle again."],
     ] : []),
   },
+  // A list (lists1): its name and words as its owner typed them, shown as
+  // text, and whether it is still shown.
   list: {
     name: "List",
-    about: (report, about) => about.append(to(`/c/${encodeURIComponent(report.collection)}`,
-      report.list?.name ? `The list “${report.list.name}”` : `List ${report.collection}`)),
-    acts: () => [],
+    about: (report, about) => {
+      const one = report.list;
+      if (one) {
+        if (one.description) about.append(make("q", "comment-said", one.description), make("br"));
+        const state = one.down ? "taken down" : one.public ? "public" : "private: only its owner sees it";
+        about.append(make("small", "faint", `${state}${one.email ? ` · made by ${one.email}` : ""}`), make("br"));
+      }
+      about.append(to(`/c/${encodeURIComponent(report.collection)}`,
+        one ? `${one.wishlist ? "Wishlist" : "List"} “${one.name}”` : `List ${report.collection}`));
+    },
+    acts: (report) => (report.list?.down ? [] : [
+      [{ op: "list_down", id: report.collection }, ["Take the list down", "The list is down: private, and kept so."],
+        "Take this list down? It is made private and kept so: its name and words are shown to nobody but its owner, who keeps it."],
+    ]),
   },
 };
 
