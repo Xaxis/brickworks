@@ -1009,6 +1009,15 @@ static func held_words(held: Dictionary) -> String:
 	if motions > 0:
 		said += " — " + ("its motion kept in it, played only where it is the model" if motions == 1
 			else "its %d motions kept in it, played only where it is the model" % motions)
+	var dropped := PackedStringArray()
+	if int(held.get("bfc", 0)) > 0:
+		dropped.append("its BFC line, which says how a file of its own is wound" if int(held["bfc"]) == 1
+			else "its %d BFC lines, which say how a file of its own is wound" % int(held["bfc"]))
+	if int(held.get("rotsteps", 0)) > 0:
+		dropped.append(("its ROTSTEP" if int(held["rotsteps"]) == 1 else "its %d ROTSTEPs" % int(held["rotsteps"]))
+			+ ", as nobody gave it the steps they turn the view after")
+	if not dropped.is_empty():
+		said += " — not kept: " + "; ".join(dropped)
 	var renamed: Dictionary = held.get("renamed", {})
 	if not renamed.is_empty():
 		var pairs := PackedStringArray()
