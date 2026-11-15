@@ -185,11 +185,15 @@ func _case_whole() -> void:
 
 
 ## A step with only a note and the ROTSTEP turning the model over, the
-## section stepped again around it (kt3review #4): every STEP line, the
-## note and the ROTSTEP where they were. A part moved back onto that page
-## goes in it, after the note: seen turned over still, as it was
-## (BookletLooks._turns_follow), so the turn is written before the page
-## and the STEP after it.
+## section stepped again around it (kt3review #4). A step edit numbers the
+## steps again (AuthorSteps._tidy), closing that empty page up: one STEP
+## line taken out, the page's first, so the note says itself at the end of
+## the step before, above the ROTSTEP that turns the next, and nothing else
+## moves (stepops: a step taken out is its STEP line; up to 2026-11-15 the
+## page and every STEP line were to stay, which only every later part moved
+## a step could say). A part moved back onto that page goes in it, seen
+## turned over still, as it was (BookletLooks._turns_follow): the ROTSTEP
+## right above it, a STEP put in after it.
 func _case_emptystep() -> void:
 	var text: String = _fixture("kt3r_emptystep.ldr")
 	for spec: Array in [["next", 2], ["prev", 1], ["next", 14], ["prev", 2]]:
@@ -205,15 +209,20 @@ func _case_emptystep() -> void:
 		print("\n  %s on a part of colour %d: %s" % [spec[0], spec[1], said.get_slice("\n", 0).left(90)])
 		var onto: bool = spec == ["prev", 1]
 		var saved: String = await _saved("%s, colour %d" % spec, text, depth,
-			[moved, "0 STEP", "0 ROTSTEP 180 0 0 ABS"] if onto else [moved],
+			[moved, "0 STEP", "0 ROTSTEP 180 0 0 ABS"] if onto else [moved, "0 STEP"],
 			["0 STEP"] if _empties_step(text, int(spec[1])) else [])
+		var turn: String = "0 // Turn the model over before the next step\n0 ROTSTEP 180 0 0 ABS\n"
 		if onto:
-			_check("...the part moved onto the page after its note, seen turned over as it was",
-				saved.contains("0 ROTSTEP 180 0 0 ABS\n0 // Turn the model over before the next step\n"
-					+ moved + "\n0 STEP\n"))
+			_check("...the part moved onto the page, seen turned over as it was: the note and the "
+				+ "ROTSTEP above it, a STEP after it", saved.contains(turn + moved + "\n0 STEP\n"))
 		else:
-			_check("...the note and the ROTSTEP still after the first STEP line",
-				saved.contains("0 STEP\n0 // Turn the model over before the next step\n0 ROTSTEP 180 0 0 ABS\n"))
+			_check("...the page closed up by its first STEP line: the note and the ROTSTEP after "
+				+ "the step before's parts", saved.contains("3001.dat\n" + turn))
+		# A STEP line a step: the page closed up takes one; the last part
+		# moved on a step of its own, or the page filled, keeps their count.
+		var fewer: int = 0 if spec in [["next", 14], ["prev", 1]] else 1
+		_check("...%d STEP line(s) fewer, as many as the steps gone" % fewer,
+			saved.count("0 STEP\n") == text.count("0 STEP\n") - fewer)
 
 
 ## A section whose last step has no STEP line after it (as LDraw allows),
@@ -244,8 +253,10 @@ func _case_laststep() -> void:
 ## A step with only a note, the page an author left for it (kt3review #4).
 ## A step edit numbers the model's steps again (AuthorSteps.ensure, as
 ## live does), closing the empty page up: every part after it is a step
-## earlier in the model. The patch says that by moving each part's line to
-## the end of its step; the note and every STEP line stay, in their order.
+## earlier in the model. The patch says that by the page's first STEP line
+## taken out, the note at the end of the step before; every other line
+## stays, in its order (stepops: up to 2026-11-15 every later part's line
+## was to move a step instead, a whole model's for a page near its start).
 func _case_emptystep2() -> void:
 	var text: String = _fixture("kt3r_emptystep2.ldr")
 	await _open(text)
@@ -256,10 +267,12 @@ func _case_emptystep2() -> void:
 			part = brick.id
 	_shell.change_steps("next", [part], _step_holding(part))
 	await _frames(4)
-	var saved: String = await _saved("next, colour 2", text, depth, [_line_of(text, part)], [],
-		false, false, true)
-	_check("...the note and the 5 STEP lines in their order: %s" % str(_not_parts(saved)),
-		_not_parts(saved) == _not_parts(text))
+	var saved: String = await _saved("next, colour 2", text, depth, [_line_of(text, part), "0 STEP"],
+		[], false, false, true)
+	var kept: Array = _not_parts(text)
+	kept.remove_at(kept.find("0 STEP"))
+	_check("...the note and the other 4 STEP lines in their order: %s" % str(_not_parts(saved)),
+		_not_parts(saved) == kept)
 
 
 ## The lines of [param text] that place no part, the app's own aside.

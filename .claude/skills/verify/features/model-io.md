@@ -345,8 +345,10 @@ Whether what you built is still there tomorrow, and still means the same thing.
   looks rewrite (a ROTSTEP carried to the step it now starts, a head ROTSTEP
   written back above a section's first part) is matched to the line it was
   (`_as_written`, RESTEP), and LPub's MULTI_STEP groups may take a moved
-  part. Up to stepops a step put in moved every later line, and one taken
-  out was (B). A part the app cannot show, or one on its way, moves
+  part. A page of notes alone that a step edit closes up (`AuthorSteps._tidy`)
+  loses its first STEP line, its note left at the end of the step before
+  (`kt3r` emptystep, emptystep2). Up to stepops a step put in moved every
+  later line, and one taken out was (B). A part the app cannot show, or one on its way, moves
   with its step (`SourceFile.held_steps`). `keep_text`'s stepops pass
   (`KEEP_TEXT_ONLY=stepops`) checks 30 files x insert, remove, split, merge
   and move (diff against the file before, the rest byte for byte, undo and
