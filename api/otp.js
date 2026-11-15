@@ -286,5 +286,8 @@ export default async function handler(request, response) {
       error: "We could not send the email just now. Try again in a minute.",
     });
   }
-  return response.status(200).json({ ok: true, expires_in_minutes: TTL_MINUTES });
+  // How many digits the code has, for the boxes it is typed into
+  // (web/code-boxes.js, the app's CodeBoxes): Supabase's length, the same
+  // for every address, so it says nothing of whose this one is.
+  return response.status(200).json({ ok: true, expires_in_minutes: TTL_MINUTES, digits: code.length });
 }

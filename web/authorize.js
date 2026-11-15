@@ -19,6 +19,7 @@
 // /de/oauth/authorize, tools/site_lang.py), what the server refuses with
 // through told().
 import { say, told } from "/card.js";
+import { CODE_DIGITS, codeBoxes } from "/code-boxes.js";
 
 const $ = (id) => document.getElementById(id);
 // Where the app keeps its session (src/account/account.gd).
@@ -34,11 +35,15 @@ let client = "Claude"; // who is asking, as the server names it
 // speakAs.
 const CLAUDE_TITLE = document.title;
 
+// The code, a box per digit (web/code-boxes.js, signinux 2026-11-13),
+// sent by its last digit.
+const codeRow = codeBoxes({ field: $("code"), say, onFilled: () => $("code-form").requestSubmit() });
+
 function show(step) {
   for (const id of STEPS) $(id).classList.toggle("hide", id !== step);
   status("");
-  const field = { "email-step": "email", "code-step": "code" }[step];
-  if (field) $(field).focus();
+  if (step === "email-step") $("email").focus();
+  if (step === "code-step") codeRow.clear();
 }
 
 function status(text, bad = false) {
@@ -254,7 +259,9 @@ $("email-form").addEventListener("submit", async (event) => {
       return;
     }
     $("sent-to").textContent = email;
-    $("code").value = "";
+    // As long as the code the deployment minted (api/otp.js).
+    const length = Number((await json(reply)).digits);
+    codeRow.size(Number.isInteger(length) ? length : CODE_DIGITS);
     show("code-step");
   } catch {
     status(say("Could not reach Brickworks to send a code. Check your connection."), true);
@@ -268,6 +275,7 @@ $("code-form").addEventListener("submit", async (event) => {
   const token = $("code").value.replace(/[\s-]/g, "");
   if (!token) return status(say("Enter the code from the email."), true);
   busy($("verify"), true, say("Signing in…"));
+  codeRow.busy(true);
   try {
     const reply = await fetch(`${project.url}/auth/v1/verify`, {
       method: "POST",
@@ -276,13 +284,19 @@ $("code-form").addEventListener("submit", async (event) => {
       body: JSON.stringify({ type: "email", email, token }),
     });
     const body = await json(reply);
-    if (!reply.ok || !body.access_token) return status(readable(body), true);
+    if (!reply.ok || !body.access_token) {
+      codeRow.busy(false);
+      // A wrong or spent code: the row shakes empty for the right one.
+      if (["otp_expired", "invalid_credentials"].includes(body.error_code)) codeRow.refuse();
+      return status(readable(body), true);
+    }
     keep(body);
     session = { access: body.access_token, email: body.user?.email || email };
     if (!(await remembered())) toAllow();
   } catch {
     status(say("Could not reach Brickworks to sign in. Check your connection."), true);
   } finally {
+    codeRow.busy(false);
     busy($("verify"), false, say("Sign in"));
   }
 });

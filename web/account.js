@@ -46,6 +46,8 @@
 // before a dialog is drawn (tools/site_lang.py writes both, and refuses a
 // word here said other than through say).
 
+import { CODE_DIGITS, codeBoxes } from "/code-boxes.js";
+
 const KEY = "brickworks.session";
 const ACCESS = "brickworks.access";
 // That this browser was told accounts are for 13 and over: "1", nothing
@@ -193,6 +195,15 @@ async function renew(was) {
   return null;
 }
 
+// How many digits the last code sent has, as the deployment said
+// (api/otp.js `digits`), for the boxes it is typed into.
+let digits = CODE_DIGITS;
+
+/// How many digits the code just sent has.
+export function codeLength() {
+  return digits;
+}
+
 /// Send a code to [address]. Says why not, in words, when it cannot.
 export async function sendCode(address) {
   await learn();
@@ -206,6 +217,8 @@ export async function sendCode(address) {
     const error = (await json(reply)).error;
     throw new Error(error ? say(error) : say("Could not send a code just now ({status}).", { status: reply.status }));
   }
+  const length = Number((await json(reply)).digits);
+  digits = Number.isInteger(length) && length >= 4 && length <= 12 ? length : CODE_DIGITS;
   return wanted;
 }
 
@@ -222,8 +235,9 @@ export async function redeem(address, code) {
   const body = await json(reply);
   if (!reply.ok || !body.access_token) {
     // Supabase's own words are its developers': each said here in ours.
+    // A wrong or spent code says so ([wrong]), for the boxes to empty.
     if (body.error_code === "otp_expired" || body.error_code === "invalid_credentials") {
-      throw new Error(say("That code is wrong or has expired. Check it, or ask for a new one."));
+      throw Object.assign(new Error(say("That code is wrong or has expired. Check it, or ask for a new one.")), { wrong: true });
     }
     if (reply.status === 429) throw new Error(say("Too many tries just now. Wait a few minutes and try again."));
     throw new Error(say("Could not sign in just now ({status}). Try again.", { status: reply.status }));
@@ -301,7 +315,17 @@ export function madeUp(address) {
 /// button is ready to be shown; says why not, in words, when its code
 /// cannot be loaded, and then each click says so too. Its busy state and
 /// orangecheck's words in the visitor's language.
-export async function orangecheckButton(button, { label, before = () => true, onToken, say: tell }) {
+///
+/// The sign-in dialog follows the window too (signinux, 2026-11-13):
+/// [onOpen] once it is open, and [onOutcome] with how it ended ("signed_in",
+/// "closed", "blocked", "failed" or "aborted") before anything is said. It
+/// resolves with {cancel, show}: cancel closes the window, which then ends
+/// "aborted" (orangecheck's own signal option, a new one each click); show
+/// brings it to the front, true while it is open. The window is the one
+/// orangecheck's code opens from the click: window.open is watched for the
+/// length of that one click to keep hold of it.
+export async function orangecheckButton(button, { label, before = () => true, onToken, say: tell, onOpen = null,
+  onOutcome = null }) {
   let code;
   try {
     code = await orangecheckCode();
@@ -310,16 +334,36 @@ export async function orangecheckButton(button, { label, before = () => true, on
     button.addEventListener("click", () => tell(words));
     throw new Error(words);
   }
+  let asked = null;
+  let opened = null;
+  const popup = {};
+  Object.defineProperty(popup, "signal", { enumerable: true, get: () => asked?.signal });
   // Ahead of orangecheck's own click, which opens the window.
   button.addEventListener("click", (event) => {
-    if (button.getAttribute("aria-busy") === "true" || before()) return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
+    if (button.getAttribute("aria-busy") === "true") return;
+    if (!before()) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      return;
+    }
+    asked = new AbortController();
+    opened = null;
+    const open = window.open;
+    window.open = function watched(...how) {
+      opened = open.apply(this, how);
+      return opened;
+    };
+    // orangecheck's click opens the window before it gives the page back.
+    setTimeout(() => {
+      window.open = open;
+      if (opened) onOpen?.();
+    }, 0);
   }, { capture: true });
   code.enhanceSignInButton(button, {
     mark: "mono",
     label,
     busyLabel: say(code.SIGN_IN_BUSY_LABEL),
+    popup,
     onSignedIn: async ({ token }) => {
       try {
         await onToken(token);
@@ -328,10 +372,23 @@ export async function orangecheckButton(button, { label, before = () => true, on
       }
     },
     onOutcome: (outcome) => {
+      onOutcome?.(outcome.status);
       const words = code.OUTCOME_COPY[outcome.status];
       if (outcome.status !== "signed_in" && outcome.status !== "aborted") tell(words ? say(words) : "");
     },
   });
+  return {
+    cancel: () => asked?.abort(),
+    show: () => {
+      try {
+        if (!opened || opened.closed) return false;
+        opened.focus();
+        return true;
+      } catch {
+        return false;
+      }
+    },
+  };
 }
 
 /// The token orangecheck's window handed back, exchanged for a session,
@@ -384,12 +441,36 @@ export async function call(path, { method = "GET", body, keepalive = false } = {
   return { status: reply.status, body: await json(reply) };
 }
 
+/// [dialog] closed and gone, the page left where it was: closed, the
+/// browser gives the focus back to what opened it, and a link in the
+/// sticky header (Sign in) scrolled the page to its top as it did.
+function shut(dialog) {
+  const [x, y] = [scrollX, scrollY];
+  dialog.close();
+  dialog.remove();
+  if (scrollX !== x || scrollY !== y) scrollTo({ left: x, top: y, behavior: "instant" });
+}
+
 /// The two steps of signing in, in a dialog the page opens over itself:
 /// an address, then the code sent to it. Resolves true once signed in,
 /// false when the person closes it. [why]: what signing in is for here (a
 /// like, a comment), which the page does once it resolves; with none, it
 /// is the page's own Sign in, and First steps may end at the feed.
-export async function askToSignIn(why) {
+///
+/// signinux (2026-11-13), as the best sign-ins set out a second way in
+/// (Vercel, Linear, Notion, Figma): the email and orangecheck are two equal
+/// ways in, buttons of one size, one under the other with "or" between;
+/// orangecheck Connect's box sits with the email it belongs to; the code is
+/// typed one digit to a box (web/code-boxes.js) and sent by its last digit,
+/// a wrong one shaking the row empty; and while orangecheck's window is
+/// open the dialog says so, with a way to bring the window back and a way
+/// to cancel, and says how it ended if it ended without signing in.
+/// [prefer] "orangecheck": the person came for it (the app's Sign in with
+/// orangecheck, /profile?with=orangecheck), so its button has the focus.
+/// Signed in, the page is told "brickworks:signed-in-done" once the age
+/// question and First steps are behind, to draw what it shows somebody
+/// signed in where they are (the header's Sign in opens this on any page).
+export async function askToSignIn(why, { prefer = "" } = {}) {
   await learn();
   return new Promise((done) => {
     const dialog = document.createElement("dialog");
@@ -401,12 +482,16 @@ export async function askToSignIn(why) {
     title.id = "sign-in-title";
     dialog.setAttribute("aria-labelledby", title.id);
     const said = document.createElement("p");
+    said.className = "lead";
     // A page's reason, said by it or here: on a page with no copy, its
     // English is the key to the visitor's language.
     said.textContent = why ? say(why) : say("Sign in with your email address: we send you a code, no password.");
     // Told here before: said at once, for whoever signs in next.
     const refused = refusedHere() ? tooYoung() : [];
+
+    // The email way: the address, then in its place the code sent to it.
     const form = document.createElement("form");
+    form.className = "by-email";
     const label = document.createElement("label");
     label.textContent = say("Email");
     const field = document.createElement("input");
@@ -416,40 +501,22 @@ export async function askToSignIn(why) {
     // Never an orangecheck account's made-up address: it takes no code.
     field.value = madeUp(email()) ? "" : email();
     label.append(field);
-    const note = document.createElement("p");
-    note.className = "said";
-    note.setAttribute("role", "status");
-    const go = document.createElement("button");
-    go.className = "cta";
-    go.type = "submit";
-    go.textContent = say("Email me a code");
-    const close = document.createElement("button");
-    close.className = "cta ghost";
-    close.type = "button";
-    close.textContent = say("Not now");
-    const row = document.createElement("div");
-    row.className = "actions";
-    row.append(go, close);
-    form.append(label, row, note);
-    // Or orangecheck, under the email: its own window, so its own button,
-    // ours made orangecheck's (orangecheckButton), its mark's place held.
-    const other = document.createElement("div");
-    other.className = "elsewhere";
-    const oc = document.createElement("button");
-    oc.className = "cta ghost";
-    oc.type = "button";
-    oc.id = "oc-sign-in";
-    oc.setAttribute("data-oc-sign-in", "");
-    const mark = document.createElement("span");
-    mark.setAttribute("data-oc-mark", "");
-    oc.append(mark, say("Sign in with orangecheck"));
-    const ocSaid = document.createElement("p");
-    ocSaid.className = "note";
-    ocSaid.textContent = say("A Bitcoin wallet, email, Google or GitHub. Brickworks gets an id for you, not your address.");
-    other.append(oc, ocSaid);
-    // Under it, orangecheck Connect's box: never ticked but by the person,
-    // in orangecheck's own words. Ticked, a sign-in by emailed code asks for
-    // an orangecheck account too; a sign-in with orangecheck has one.
+    const code = document.createElement("div");
+    code.className = "code-step";
+    const codeSaid = document.createElement("label");
+    codeSaid.id = "sign-in-code-label";
+    code.append(codeSaid);
+    const boxes = codeBoxes({ into: code, id: "sign-in-digit", label: codeSaid, say,
+      onFilled: () => form.requestSubmit() });
+    codeSaid.htmlFor = "sign-in-digit-1";
+    const codeNote = document.createElement("p");
+    codeNote.className = "note";
+    codeNote.textContent = say("It works once and expires in ten minutes. Not there? Look in spam.");
+    code.append(codeNote);
+    // orangecheck Connect's box, with the email it belongs to: never
+    // ticked but by the person, in orangecheck's own words. Ticked, a
+    // sign-in by emailed code asks for an orangecheck account too; a
+    // sign-in with orangecheck has one.
     const consent = document.createElement("div");
     consent.className = "consent";
     const tick = document.createElement("label");
@@ -465,11 +532,136 @@ export async function askToSignIn(why) {
     blurb.id = "oc-connect-blurb";
     box.setAttribute("aria-describedby", blurb.id);
     consent.append(tick, blurb);
+    const go = document.createElement("button");
+    go.className = "cta wide";
+    go.type = "submit";
+    const goWords = document.createElement("span");
+    goWords.textContent = say("Email me a code");
+    go.append(goWords);
+    const note = document.createElement("p");
+    note.className = "said";
+    note.setAttribute("role", "status");
+    // At the code: another code, or another address.
+    const links = document.createElement("p");
+    links.className = "code-links";
+    const resend = document.createElement("button");
+    resend.type = "button";
+    resend.className = "link";
+    resend.textContent = say("Send a new code");
+    const another = document.createElement("button");
+    another.type = "button";
+    another.className = "link";
+    another.textContent = say("Use a different address");
+    links.append(resend, another);
+    links.hidden = true;
+    form.append(label, consent, go, note, links);
+
+    // Or orangecheck: its own window, so its own button, ours made
+    // orangecheck's (orangecheckButton), its mark's place held; as tall
+    // and as wide as Email me a code.
+    const or = document.createElement("p");
+    or.className = "or";
+    const orWords = document.createElement("span");
+    orWords.textContent = say("or");
+    or.append(orWords);
+    const other = document.createElement("div");
+    other.className = "elsewhere";
+    const oc = document.createElement("button");
+    oc.className = "cta ghost wide";
+    oc.type = "button";
+    oc.id = "oc-sign-in";
+    oc.setAttribute("data-oc-sign-in", "");
+    const mark = document.createElement("span");
+    mark.setAttribute("data-oc-mark", "");
+    oc.append(mark, say("Sign in with orangecheck"));
+    // How its window ended, when not signed in: under the button.
+    const ocTold = document.createElement("p");
+    ocTold.className = "said oc-said";
+    ocTold.setAttribute("role", "status");
+    const ocSaid = document.createElement("p");
+    ocSaid.className = "note";
+    ocSaid.textContent = say("A Bitcoin wallet, email, Google or GitHub. Brickworks gets an id for you, not your address.");
+    other.append(oc, ocTold, ocSaid);
+
+    // While orangecheck's window is open: what to do there, the window
+    // brought back, or the whole of it cancelled.
+    const waiting = document.createElement("div");
+    waiting.className = "waiting";
+    waiting.hidden = true;
+    const spinner = document.createElement("span");
+    spinner.className = "spinner";
+    spinner.setAttribute("aria-hidden", "true");
+    const waitSaid = document.createElement("p");
+    waitSaid.className = "waiting-said";
+    waitSaid.setAttribute("role", "status");
+    const waitNote = document.createElement("p");
+    waitNote.className = "note";
+    const show = document.createElement("button");
+    show.type = "button";
+    show.className = "cta ghost wide";
+    show.textContent = say("Show the orangecheck window");
+    const stop = document.createElement("button");
+    stop.type = "button";
+    stop.className = "link";
+    stop.textContent = say("Cancel");
+    const stopRow = document.createElement("p");
+    stopRow.className = "code-links";
+    stopRow.append(stop);
+    waiting.append(spinner, waitSaid, waitNote, show, stopRow);
+
+    // Not now, last: the page as it was.
+    const foot = document.createElement("p");
+    foot.className = "foot";
+    const close = document.createElement("button");
+    close.className = "link";
+    close.type = "button";
+    close.textContent = say("Not now");
+    foot.append(close);
+
     // Each drawn once the deployment has said it is offered here, and its
     // code is in.
+    or.hidden = true;
     other.hidden = true;
     consent.hidden = true;
     let offer = { offered: false, ready: false, connect: false };
+    let windowed = null;
+    // How orangecheck's window last ended, for the line said after it.
+    let ended = "";
+    let address = "";
+    let finished = false;
+    let checking = false;
+
+    // orangecheck's line under its button: calm for a window closed or a
+    // sign-in cancelled, a callout for one the browser blocked, the
+    // trouble's colour for one that failed.
+    const ocTell = (words, tone = "bad") => {
+      ocTold.textContent = words;
+      ocTold.dataset.tone = words ? tone : "";
+      ocTold.setAttribute("role", tone === "bad" || tone === "blocked" ? "alert" : "status");
+    };
+    // The two ways in again, as they were before the window opened.
+    const ways = (focus = true) => {
+      waiting.hidden = true;
+      form.hidden = false;
+      or.hidden = !offer.offered || Boolean(address);
+      other.hidden = !offer.offered || Boolean(address);
+      foot.hidden = false;
+      if (focus && !other.hidden) oc.focus();
+    };
+    const wait = (words, more, choices = true) => {
+      waitSaid.textContent = words;
+      waitNote.textContent = more;
+      show.hidden = !choices;
+      stopRow.hidden = !choices;
+      form.hidden = true;
+      or.hidden = true;
+      other.hidden = true;
+      foot.hidden = true;
+      waiting.hidden = false;
+      ocTell("");
+      note.textContent = "";
+    };
+
     orangecheckOffer().then(async (known) => {
       offer = known;
       const drawn = [];
@@ -477,31 +669,49 @@ export async function askToSignIn(why) {
         drawn.push(orangecheckButton(oc, {
           label: say("Sign in with orangecheck"),
           before: () => {
-            note.textContent = offer.ready ? say("Signing in with orangecheck, in its own window.")
-              : say("Signing in with orangecheck is unavailable here. Sign in with your email instead.");
-            go.disabled = offer.ready;
-            return offer.ready;
+            ocTell("");
+            if (!offer.ready) {
+              ocTell(say("Signing in with orangecheck is unavailable here. Sign in with your email instead."));
+              return false;
+            }
+            return true;
+          },
+          onOpen: () => {
+            if (finished) return;
+            wait(say("Finish signing in in the orangecheck window"), say("It opened in a window of its own."));
+            show.focus();
+          },
+          onOutcome: (how) => {
+            ended = how;
+            if (finished) return;
+            if (how === "signed_in") {
+              wait(say("Signing you in…"), "", false);
+              return;
+            }
+            ways();
           },
           onToken: async (token) => {
-            try {
-              await exchangeOrangecheck(token);
-            } finally {
-              go.disabled = false;
-            }
+            await exchangeOrangecheck(token);
             finished = true;
-            dialog.close();
-            dialog.remove();
+            shut(dialog);
             const asked = await askAgeIfAsked({ pending: Boolean(why) }).catch(() => null);
-            done(!asked?.refused);
+            settled(!asked?.refused);
           },
+          // Said after onOutcome, which names how the window ended.
           say: (words) => {
-            note.textContent = words;
-            go.disabled = false;
+            if (finished) return;
+            ways();
+            ocTell(words, ended === "blocked" ? "blocked" : ended === "closed" ? "calm" : "bad");
+            ended = "";
           },
+        }).then((window_) => {
+          windowed = window_;
         }).catch((trouble) => {
-          note.textContent = trouble.message;
+          ocTell(trouble.message);
         }).then(() => {
+          or.hidden = Boolean(address);
           other.hidden = Boolean(address);
+          if (prefer === "orangecheck" && !address && document.activeElement === field && !other.hidden) oc.focus();
         }));
       }
       if (known.connect) {
@@ -513,52 +723,131 @@ export async function askToSignIn(why) {
       }
       await Promise.all(drawn);
     }).catch(() => null);
-    dialog.append(title, ...refused, said, form, other, consent);
+    dialog.append(title, ...refused, said, form, or, other, waiting, foot);
     document.body.append(dialog);
-    let address = "";
-    let finished = false;
+
+    // Signed in, the page told to draw what somebody signed in sees, once
+    // the age question and First steps are behind.
+    const settled = (signed) => {
+      if (signed) dispatchEvent(new Event("brickworks:signed-in-done"));
+      done(signed);
+    };
     const end = (result) => {
       if (finished) return;
       finished = true;
-      dialog.close();
-      dialog.remove();
+      windowed?.cancel();
+      shut(dialog);
       done(result);
     };
     close.addEventListener("click", () => end(false));
-    dialog.addEventListener("cancel", () => end(false));
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      go.disabled = true;
+    dialog.addEventListener("cancel", (event) => {
+      // Escape while a code is checked waits for the answer.
+      if (checking) {
+        event.preventDefault();
+        return;
+      }
+      end(false);
+    });
+    show.addEventListener("click", () => {
+      if (!windowed?.show()) ways();
+    });
+    stop.addEventListener("click", () => windowed?.cancel());
+
+    // The step: the address, or the code sent to it.
+    const toCode = () => {
+      codeSaid.textContent = say("The code sent to {address}", { address });
+      if (label.isConnected) label.replaceWith(code);
+      goWords.textContent = say("Sign in");
+      links.hidden = false;
+      or.hidden = true;
+      other.hidden = true;
+      boxes.clear();
+    };
+    const toAddress = () => {
+      address = "";
+      if (code.isConnected) code.replaceWith(label);
+      goWords.textContent = say("Email me a code");
+      links.hidden = true;
       note.textContent = "";
+      ways(false);
+      field.focus();
+      field.select();
+    };
+    another.addEventListener("click", toAddress);
+    resend.addEventListener("click", async () => {
+      if (checking) return;
+      resend.disabled = true;
+      note.textContent = say("Sending a new code…");
       try {
-        if (!address) {
-          address = await sendCode(field.value);
-          label.firstChild.textContent = say("The code sent to {address}", { address });
-          field.type = "text";
-          field.inputMode = "numeric";
-          field.autocomplete = "one-time-code";
-          field.value = "";
-          go.textContent = say("Sign in");
-          other.hidden = true;
-          field.focus();
-        } else {
-          const access = await redeem(address, field.value);
-          // Signed in: the age question next, if this account has not
-          // answered it, before the page carries on.
-          finished = true;
-          dialog.close();
-          dialog.remove();
-          const asked = await askAgeIfAsked({ pending: Boolean(why) }).catch(() => null);
-          // Asked at the box's tick, never otherwise, never for an account
-          // under 13, and never waited on.
-          if (!asked?.refused && offer.connect && !consent.hidden && box.checked) connectOrangecheck(access);
-          done(!asked?.refused);
-        }
+        await sendCode(address);
+        boxes.size(codeLength());
+        note.textContent = say("Sent a new code. Use the newest one.");
+        boxes.clear();
       } catch (trouble) {
         note.textContent = trouble.message;
       } finally {
-        go.disabled = false;
+        resend.disabled = false;
       }
+    });
+    // While a code is checked: the boxes read-only, the button turning.
+    // Never disabled, so a press that comes now is let go by, not lost.
+    const busy = (on) => {
+      checking = on;
+      boxes.busy(on);
+      if (on) {
+        go.setAttribute("aria-busy", "true");
+        go.prepend(spinner.cloneNode());
+      } else {
+        go.removeAttribute("aria-busy");
+        go.querySelector(".spinner")?.remove();
+      }
+    };
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (checking) return;
+      note.textContent = "";
+      if (!address) {
+        busy(true);
+        try {
+          address = await sendCode(field.value);
+          boxes.size(codeLength());
+          toCode();
+        } catch (trouble) {
+          note.textContent = trouble.message;
+        } finally {
+          busy(false);
+        }
+        return;
+      }
+      const typed = boxes.value();
+      if (typed.length < boxes.digits()) {
+        note.textContent = say("Enter all {count} digits of the code.", { count: boxes.digits() });
+        boxes.focus(typed.length);
+        return;
+      }
+      busy(true);
+      let access;
+      try {
+        access = await redeem(address, typed);
+      } catch (trouble) {
+        busy(false);
+        note.textContent = trouble.message;
+        // A wrong or spent code: the row shakes empty for the right one. A
+        // limit or a moment's trouble keeps what was typed, to press again.
+        if (trouble.wrong) boxes.refuse();
+        return;
+      }
+      // Signed in: the age question next, if this account has not
+      // answered it, before the page carries on.
+      finished = true;
+      windowed?.cancel();
+      shut(dialog);
+      const asked = await askAgeIfAsked({ pending: Boolean(why) }).catch(() => null);
+      // Asked at the box's tick, never otherwise, never for an account
+      // under 13, and never waited on.
+      if (!asked?.refused && offer.connect && !consent.hidden && box.checked) connectOrangecheck(access);
+      settled(!asked?.refused);
     });
     dialog.showModal();
     field.focus();
@@ -682,8 +971,7 @@ function showRefused(dialog, title, then) {
   const end = () => {
     if (finished) return;
     finished = true;
-    dialog.close();
-    dialog.remove();
+    shut(dialog);
     then();
   };
   close.addEventListener("click", end);
@@ -768,8 +1056,7 @@ async function askAge() {
     const end = (result) => {
       if (finished) return;
       finished = true;
-      dialog.close();
-      dialog.remove();
+      shut(dialog);
       done(result);
     };
     dialog.addEventListener("cancel", () => end(null));
