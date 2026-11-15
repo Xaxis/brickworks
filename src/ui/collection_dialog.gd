@@ -84,6 +84,31 @@ var _need_cover: Dictionary = {}
 var _build_heading: Label
 var _build_rows: VBoxContainer
 var _ranked: Array = []
+## What can I build? lists every real set ("sets", setsbuild) or the models
+## that open here ("models": saved, examples, official LDraw models).
+var _build_view: String = "sets"
+var _build_view_sets: Button
+var _build_view_models: Button
+var _build_find: LineEdit
+var _build_size: OptionButton
+var _find_wait: Timer
+## The real sets ranked against what they own, kept until that changes
+## (its hash), the sets listed in order, and how many have rows.
+var _sets_ranked: SetRanking.Ranked
+var _sets_ranked_for: int = 0
+var _sets_busy: bool = false
+var _sets_listed := PackedInt32Array()
+var _sets_shown: int = 0
+var _sets_more: Button
+## From the page asked for to its first rows, in milliseconds; -1 before.
+var _sets_first_ms: int = -1
+## Rows a press adds, and the smallest sets each size choice lists.
+const SETS_PAGE := 50
+const SET_SIZES: Array = [[0, "Any size"], [50, "50 pieces or more"], [200, "200 pieces or more"],
+	[500, "500 pieces or more"]]
+## The size chosen when the panel is made: SetRanking.FEWEST, 50 pieces or
+## more, as parts_list's block lists them.
+const SETS_FEWEST := 1
 ## path -> {"modified", "needs"}, so a model is read once until it changes.
 var _read: Dictionary = {}
 var _busy: bool = false
@@ -165,6 +190,7 @@ func _ready() -> void:
 func open(page: String = "own") -> void:
 	HudFront.show_panel(self)
 	_need_set = {}
+	_need_real = {}
 	_rb_note.text = _rebrickable_note()
 	_show(page)
 	# What another device or a session changed since is shown, not a copy
@@ -519,6 +545,38 @@ func _need_page() -> Control:
 func _build_page() -> Control:
 	var page := VBoxContainer.new()
 	page.add_theme_constant_override("separation", 8)
+	var views := HBoxContainer.new()
+	views.add_theme_constant_override("separation", 8)
+	page.add_child(views)
+	_build_view_sets = _button(views, "Real sets", _view_build.bind("sets"), "collection_build_sets",
+		"Every LEGO® set Rebrickable lists, the most of each you own first")
+	_build_view_models = _button(views, "Models", _view_build.bind("models"), "collection_build_models",
+		"Your saved models, the examples and the official LDraw models of real sets, the most of each you own first")
+	for toggle: Button in [_build_view_sets, _build_view_models]:
+		toggle.toggle_mode = true
+		toggle.focus_mode = Control.FOCUS_NONE
+	_build_find = LineEdit.new()
+	_build_find.placeholder_text = "Find a set: its number or name"
+	_build_find.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_build_find.add_theme_font_size_override("font_size", 12)
+	_build_find.clear_button_enabled = true
+	views.add_child(_build_find)
+	_controls["collection_build_find"] = _build_find
+	_find_wait = Timer.new()
+	_find_wait.one_shot = true
+	_find_wait.wait_time = 0.3
+	_find_wait.timeout.connect(_list_sets)
+	page.add_child(_find_wait)
+	_build_find.text_changed.connect(func(_t: String) -> void: _find_wait.start())
+	_build_size = OptionButton.new()
+	_build_size.add_theme_font_size_override("font_size", 12)
+	_build_size.tooltip_text = "List only sets of this many pieces or more"
+	for choice: Array in SET_SIZES:
+		_build_size.add_item(str(choice[1]))
+	_build_size.select(SETS_FEWEST)
+	_build_size.item_selected.connect(func(_at: int) -> void: _list_sets())
+	views.add_child(_build_size)
+	_controls["collection_build_size"] = _build_size
 	_build_heading = Label.new()
 	_build_heading.add_theme_font_size_override("font_size", 13)
 	_build_heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -794,7 +852,7 @@ func lot_rows() -> Array[HBoxContainer]:
 
 func _fill_need() -> void:
 	_clear_rows(_need_rows)
-	if _fill_need_for_set():
+	if _fill_need_for_set() or _fill_need_for_real():
 		return
 	_need_stock = Inventory.of(world, library, models.scenery)
 	if _need_stock.pieces == 0:
@@ -898,8 +956,227 @@ func _export(shop: String) -> void:
 
 
 func _fill_build() -> void:
+	_build_view_sets.set_pressed_no_signal(_build_view == "sets")
+	_build_view_models.set_pressed_no_signal(_build_view == "models")
+	_build_find.visible = _build_view == "sets"
+	_build_size.visible = _build_view == "sets"
+	if _build_view == "sets":
+		await _fill_sets()
+	else:
+		await _fill_models()
+
+
+func _view_build(view: String) -> void:
+	_build_view = view
+	await _fill_build()
+	_tell_page()
+
+
+# --- What can I build?'s real sets (setsbuild, docs/APP_UX8.md #12) ----------
+#
+# Every set Rebrickable lists, ranked by how much of it the person owns
+# (SetRanking over all_sets.bin), counted as What do I need? and the bin
+# count it (OwnCounts.set_needs against the pool: every set they own counts,
+# built or not). The sets they own are left out, as they have them. Each row
+# says the share owned in their colours ("92%"), what is short and the share
+# in any colour, with What do I need? for that set, and Open (or See it on
+# the web) for a set with an official LDraw model. parts_list
+# which="buildable" lists the same sets in the same order.
+
+func _fill_sets() -> void:
 	_clear_rows(_build_rows)
 	_controls.erase("collection_open_first")
+	_controls.erase("collection_need_set_first")
+	_sets_more = null
+	if _sets_busy:
+		return
+	var started: int = Time.get_ticks_msec()
+	if store.on_hand.is_empty():
+		_sets_ranked = null
+		_sets_listed = PackedInt32Array()
+		_sets_shown = 0
+		_build_heading.text = ("Add what you own on the first page, and every set Rebrickable lists is "
+			+ "ranked here by how much of it you already have.")
+		return
+	var pool: int = store.on_hand.hash()
+	if _sets_ranked == null or _sets_ranked_for != pool:
+		_sets_busy = true
+		_build_heading.text = "Counting what you could build…"
+		var ranking: SetRanking = await store.inventories.ranking()
+		if ranking == null:
+			_sets_busy = false
+			_build_heading.text = "Every set's parts could not be read: %s." % store.inventories.trouble
+			_tell_page()
+			return
+		# The heading drawn before a count that holds the frame.
+		await get_tree().process_frame
+		_sets_ranked = ranking.rank(OwnCounts.owned(store.on_hand))
+		_sets_ranked_for = pool
+		_sets_busy = false
+	if _build_view != "sets":
+		return
+	_list_sets()
+	_sets_first_ms = Time.get_ticks_msec() - started
+	_tell_page()
+
+
+## The rows again, for the words in Find a set and the size chosen.
+func _list_sets() -> void:
+	_clear_rows(_build_rows)
+	_controls.erase("collection_open_first")
+	_controls.erase("collection_need_set_first")
+	_sets_more = null
+	var ranked: SetRanking.Ranked = _sets_ranked
+	if ranked == null or _build_view != "sets":
+		return
+	var own: Dictionary = SetRanking.owned_sets(store.collection)
+	# The size chosen: 50 pieces or more at first, so a minifigure, a key
+	# chain or a book's two bricks do not fill the top of every list.
+	var fewest: int = int(SET_SIZES[maxi(0, _build_size.selected)][0])
+	var every: PackedInt32Array = ranked.listed(own, fewest)
+	var now: int = ranked.at_least(every, 1.0)
+	var lines := PackedStringArray([
+		"%s sets of %d pieces or more, the most of each you own first." % [_comma(every.size()), fewest]
+			if fewest > 0 else "%s sets, the most of each you own first." % _comma(every.size()),
+		"You could build %s of them now, and %s more with 90%% of their pieces or more." % [_comma(now),
+			_comma(ranked.at_least(every, 0.9) - now)]])
+	var mine: int = 0
+	for number: String in own:
+		if ranked.of.index_of(number) >= 0:
+			mine += 1
+	if mine == 1:
+		lines.append("The set you own is not listed.")
+	elif mine > 1:
+		lines.append("The %d sets you own are not listed." % mine)
+	var find: String = _build_find.text.strip_edges()
+	_sets_listed = every if find.is_empty() else ranked.listed(own, fewest, find)
+	if _sets_listed.is_empty():
+		lines.append("No set here has “%s” in its number or name." % find)
+	elif _sets_listed.size() < every.size():
+		lines.append("%s of them are listed." % _comma(_sets_listed.size()))
+	_build_heading.text = " ".join(lines)
+	_sets_shown = 0
+	_more_sets()
+
+
+## The next rows, and a button for those after them.
+func _more_sets() -> void:
+	if _sets_more != null:
+		# The button's own row goes with it.
+		var holder: Node = _sets_more.get_parent()
+		_build_rows.remove_child(holder)
+		holder.queue_free()
+		_sets_more = null
+	var end: int = mini(_sets_listed.size(), _sets_shown + SETS_PAGE)
+	for at: int in range(_sets_shown, end):
+		_build_rows.add_child(_set_row(_sets_listed[at]))
+	_sets_shown = end
+	if _sets_shown < _sets_listed.size():
+		var row := HBoxContainer.new()
+		_build_rows.add_child(row)
+		_sets_more = _small(_button(row, "Show %d more" % mini(SETS_PAGE, _sets_listed.size() - _sets_shown),
+			_more_sets, "collection_build_more", "%s sets are ranked below these" % _comma(
+				_sets_listed.size() - _sets_shown)))
+	_tell_page()
+
+
+func _set_row(n: int) -> Control:
+	var ranked: SetRanking.Ranked = _sets_ranked
+	var index: SetRanking = ranked.of
+	var number: String = index.numbers[n]
+	var whole: int = index.pieces[n]
+	var short: int = whole - ranked.owned[n]
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	var share: Label = _label("%d%%" % floori(100.0 * ranked.exact(n)), 15, 1.0, 54.0)
+	share.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	row.add_child(share)
+	var words := VBoxContainer.new()
+	words.add_theme_constant_override("separation", 0)
+	words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	words.add_child(_label("%s %s%s" % [number, index.names[n],
+		", %d" % index.years[n] if index.years[n] > 0 else ""], 13))
+	words.add_child(_label("you have all %s pieces" % _comma(whole) if short == 0
+		else "you have %s of %s pieces; %s short; %d%% in any colour" % [_comma(ranked.owned[n]), _comma(whole),
+			_comma(short), floori(100.0 * ranked.any_colour(n))], 11, 0.6))
+	row.add_child(words)
+	if short > 0:
+		var need: Button = _small(_button(row, "What do I need?", need_for_real_set.bind(number), "",
+			"The parts you are short of for this set, to find or to order"))
+		need.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		if not _controls.has("collection_need_set_first"):
+			_controls["collection_need_set_first"] = need
+	var official: Variant = index.models.get(number)
+	if official is Array and (official as Array).size() >= 2:
+		var model: Array = official
+		var go := Button.new()
+		go.add_theme_font_size_override("font_size", 12)
+		go.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		if FileAccess.file_exists("res://vendor/omr/files/" + str(model[0])):
+			go.text = "Open"
+			go.tooltip_text = "Open its official LDraw model, and see what is missing"
+			go.pressed.connect(_open_candidate.bind({"name": index.names[n], "file": str(model[0])}))
+		else:
+			go.text = "See it"
+			go.tooltip_text = "The official LDraw model of this set, at library.ldraw.org"
+			go.disabled = str(model[1]).is_empty()
+			go.pressed.connect(func() -> void: Outside.open_link(OMR_PAGE + str(model[1])))
+		row.add_child(go)
+	return row
+
+
+## What do I need? for a set What can I build? ranked: its inventory against
+## everything they own, as its row counted it.
+func need_for_real_set(number: String) -> void:
+	var found: Dictionary = await store.inventories.lookup(PackedStringArray([number]))
+	var record: Variant = found.get(number)
+	if not record is Dictionary:
+		_say("%s's parts could not be read: %s" % [number, store.inventories.trouble])
+		return
+	_need_set = {}
+	_need_real = {"set": number, "record": record}
+	_show("need")
+
+
+## What do I need? for the set What can I build? asked for, when one is.
+## False when it is for something else.
+func _fill_need_for_real() -> bool:
+	if _need_real.is_empty():
+		return false
+	var record: Dictionary = _need_real["record"]
+	var needs: Dictionary = OwnCounts.set_needs(record, library)
+	_need_stock = Collection.set_stock({}, record, library)
+	_need_cover = Collection.coverage(needs, store.on_hand)
+	_need_plan = Collection.plan(needs, store.on_hand, library)
+	var short: int = 0
+	var left: int = 0
+	for row: Dictionary in _need_plan:
+		short += int(row["short"])
+		left += int(row["left"])
+	var title: String = "%s %s" % [str(_need_real["set"]), str(record.get("n", ""))]
+	if short == 0:
+		_need_heading.text = "%s: you own all %s pieces it needs." % [title, _comma(int(_need_cover["pieces"]))]
+	else:
+		_need_heading.text = ("%s: %s pieces — you own %s (%d%%). Short: %s pieces in %d lots%s.") % [
+			title, _comma(int(_need_cover["pieces"])), _comma(int(_need_cover["owned"])),
+			floori(100.0 * float(_need_cover["exact"])), _comma(short), _need_plan.size(),
+			"" if left == short else ", %s once what could stand in is used" % _comma(left)]
+	var shown: int = 0
+	for row: Dictionary in _need_plan:
+		if shown >= MOST_ROWS:
+			_need_rows.add_child(_label("…and %d more lots" % (_need_plan.size() - shown), 12, 0.5))
+			break
+		shown += 1
+		_need_rows.add_child(_need_row(row))
+	return true
+
+
+# --- What can I build?'s models ------------------------------------------------
+
+func _fill_models() -> void:
+	_clear_rows(_build_rows)
+	_controls.erase("collection_open_first")
+	_controls.erase("collection_need_set_first")
 	if _busy:
 		return
 	_busy = true
@@ -1592,6 +1869,18 @@ func _tell_page() -> void:
 	for candidate: Dictionary in _ranked.slice(0, 5):
 		top.append({"name": candidate["name"], "kind": candidate["kind"],
 			"exact": float((candidate["cover"] as Dictionary)["exact"])})
+	# The real sets (setsbuild): how many ranked and listed, the first rows,
+	# and the time from the page asked for to them.
+	var sets: Dictionary = {"view": _build_view, "listed": _sets_listed.size(), "shown": _sets_shown,
+		"first_ms": _sets_first_ms, "read_ms": store.inventories.ranking_took if store.inventories != null else 0}
+	if _sets_ranked != null:
+		var ranked: SetRanking.Ranked = _sets_ranked
+		var first: Array = []
+		for n: int in _sets_listed.slice(0, 5):
+			first.append({"set": ranked.of.numbers[n], "name": ranked.of.names[n], "exact": ranked.exact(n),
+				"owned": ranked.owned[n], "pieces": ranked.of.pieces[n]})
+		sets.merge({"ranked": ranked.of.sets, "rank_ms": ranked.took / 1000, "bytes": ranked.of.size,
+			"top": first})
 	JavaScriptBridge.eval("window.brickworksCollection = %s" % JSON.stringify({
 		"open": visible, "page": _page, "status": _status.text if _status != null else "",
 		"sets": store.collection.sets.size(), "lots": store.collection.parts.size(),
@@ -1599,7 +1888,8 @@ func _tell_page() -> void:
 		"pieces": store.pieces_on_hand(), "offline": store.offline,
 		"need": {"pieces": int(_need_cover.get("pieces", 0)), "owned": int(_need_cover.get("owned", 0)),
 			"short": short, "lots": _need_plan.size()},
-		"build": {"ranked": _ranked.size(), "top": top}}), true)
+		"need_set": str(_need_real.get("set", _need_set.get("set", ""))),
+		"build": {"ranked": _ranked.size(), "top": top, "sets": sets}}), true)
 
 
 # --- a set as it really is (mysets, APP_UX6 #6, 2026-11-07) ----------------
@@ -1657,6 +1947,10 @@ var _mark_wait: Timer
 ## What do I need? asked for a set with parts missing: its entry; {} for
 ## the open model. The chooser lists the open model, then those sets.
 var _need_set: Dictionary = {}
+## What do I need? asked for a set What can I build? ranked:
+## {"set": its number, "record": its inventory}; {} for none. Listed last
+## in the chooser.
+var _need_real: Dictionary = {}
 var _need_for: OptionButton
 var _need_for_row_box: HBoxContainer
 var _need_for_sets: Array = []
@@ -2217,6 +2511,9 @@ func _need_for_row(page: Container) -> void:
 	_need_for.tooltip_text = "What to check: the open model, or a set you own with parts missing"
 	_need_for.item_selected.connect(func(at: int) -> void:
 		_need_set = {} if at <= 0 or at > _need_for_sets.size() else _need_for_sets[at - 1]
+		# The set What can I build? asked for is the last row.
+		if at <= _need_for_sets.size():
+			_need_real = {}
 		_fill_need()
 		_tell_page())
 	_need_for_row_box.add_child(_need_for)
@@ -2234,7 +2531,7 @@ func need_for_set(entry: Dictionary) -> void:
 func _fill_need_for() -> void:
 	var listed: Array = store.collection.closest_to_whole(store.records, library)
 	_need_for_sets = listed.map(func(whole: Dictionary) -> Dictionary: return whole["entry"])
-	_need_for_row_box.visible = not listed.is_empty()
+	_need_for_row_box.visible = not listed.is_empty() or not _need_real.is_empty()
 	_need_for.clear()
 	var model: String = bar.model_name() if bar != null else ""
 	_need_for.add_item("The open model: %s" % model if not model.is_empty() else "The open model")
@@ -2247,6 +2544,10 @@ func _fill_need_for() -> void:
 		if not _need_set.is_empty() and str(entry["set"]) == str(_need_set["set"]) \
 				and str(entry.get("src", "")) == str(_need_set.get("src", "")):
 			chosen = n + 1
+	if not _need_real.is_empty():
+		_need_for.add_item("%s %s" % [str(_need_real["set"]), str((_need_real["record"] as Dictionary).get("n", ""))])
+		if _need_set.is_empty():
+			chosen = _need_for.item_count - 1
 	_need_for.select(chosen)
 
 
@@ -2295,6 +2596,8 @@ func _fill_need_for_set() -> bool:
 func _need_name() -> String:
 	if not _need_set.is_empty():
 		return str(_need_set["set"])
+	if not _need_real.is_empty():
+		return str(_need_real["set"])
 	var named: String = bar.model_name() if bar != null else "model"
 	return named if not named.is_empty() else "model"
 
@@ -2305,4 +2608,4 @@ func need_listed() -> Dictionary:
 	var rows: Array = []
 	for row: Dictionary in _need_plan:
 		rows.append({"part": str(row["part"]), "colour": int(row["colour"]), "short": int(row["short"])})
-	return {"set": str(_need_set.get("set", "")), "rows": rows}
+	return {"set": str(_need_set.get("set", _need_real.get("set", ""))), "rows": rows}

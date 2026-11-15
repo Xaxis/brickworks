@@ -14436,3 +14436,77 @@ msgstr "%d más que las %d de %s"
 
 msgid "%d over"
 msgstr "%d de más"
+
+# What can I build?'s real sets: every set Rebrickable lists, by how much of it is owned (APP_UX8 #12, setsbuild)
+
+msgid "Real sets"
+msgstr "Sets reales"
+
+msgid "Every LEGO® set Rebrickable lists, the most of each you own first"
+msgstr "Cada set LEGO® que lista Rebrickable, primero los que más tienes de cada uno"
+
+msgid "Your saved models, the examples and the official LDraw models of real sets, the most of each you own first"
+msgstr "Tus modelos guardados, los ejemplos y los modelos LDraw oficiales de sets reales, primero los que más tienes de cada uno"
+
+msgid "Find a set: its number or name"
+msgstr "Buscar un set: su número o su nombre"
+
+msgid "List only sets of this many pieces or more"
+msgstr "Mostrar solo los sets con al menos estas piezas"
+
+msgid "%d pieces or more"
+msgstr "%d piezas o más"
+
+msgid "Add what you own on the first page, and every set Rebrickable lists is ranked here by how much of it you already have."
+msgstr "Añade lo que tienes en la primera página y cada set que lista Rebrickable se ordenará aquí según cuánto de él ya tienes."
+
+msgid "Every set's parts could not be read: %s."
+msgstr "No se pudieron leer las piezas de todos los sets: %s."
+
+msgid "%s sets, the most of each you own first."
+msgstr "%s sets, primero los que más tienes de cada uno."
+
+msgid "You could build %s of them now, and %s more with 90% of their pieces or more."
+msgstr "Podrías construir %s ahora mismo, y %s más con el 90% de sus piezas o más."
+
+msgid "The set you own is not listed."
+msgstr "El set que tienes no aparece."
+
+msgid "The %d sets you own are not listed."
+msgstr "Los %d sets que tienes no aparecen."
+
+msgid "No set here has “%s” in its number or name."
+msgstr "Ningún set de aquí tiene «%s» en su número o nombre."
+
+msgid "%s sets of %d pieces or more, the most of each you own first."
+msgstr "%s sets de %d piezas o más, primero los que más tienes de cada uno."
+
+msgid "%s of them are listed."
+msgstr "Se muestran %s de ellos."
+
+msgid "Show %d more"
+msgstr "Mostrar %d más"
+
+msgid "%s sets are ranked below these"
+msgstr "Hay %s sets clasificados debajo de estos"
+
+msgid "you have all %s pieces"
+msgstr "tienes las %s piezas"
+
+msgid "you have %s of %s pieces; %s short; %d% in any colour"
+msgstr "tienes %s de %s piezas; faltan %s; %d% en cualquier color"
+
+msgid "you have %s of %s pieces"
+msgstr "tienes %s de %s piezas"
+
+msgid "%s short"
+msgstr "faltan %s"
+
+msgid "The parts you are short of for this set, to find or to order"
+msgstr "Las piezas que te faltan para este set, para buscarlas o pedirlas"
+
+msgid "Open its official LDraw model, and see what is missing"
+msgstr "Abrir su modelo LDraw oficial y ver lo que falta"
+
+msgid "%s's parts could not be read: %s"
+msgstr "No se pudieron leer las piezas de %s: %s"

@@ -4,7 +4,7 @@ What a person owns, kept with their account: what the open model needs that
 they do not have, what could stand in, the shortfall as a shopping list, and
 which models they could build from what they have. Added 2026-10-12.
 
-<!-- covers: ui:my collection, lib:collection sums, lib:collection kept with the account, lib:a rebrickable account, cli:set inventories, cli:official models' parts lists, cli:part counts probe, cli:model library, cli:model library in storage, api:/api/collection, cli:collection api probe, cli:collection browser flow, cli:apply sql to the live project, ui:loose parts in my collection, lib:a session's loose parts over mcp, cli:mybricks probe, cli:mybricks api test, ui:compare two sets or models, lib:parts compare, cli:comparesets probe, ui:a set from a photo, ui:a set's missing parts, cli:mysets probe, cli:mysets api test, cli:localbricks probe -->
+<!-- covers: ui:my collection, lib:collection sums, lib:every set ranked, lib:collection kept with the account, lib:a rebrickable account, cli:set inventories, cli:official models' parts lists, cli:part counts probe, cli:model library, cli:model library in storage, api:/api/collection, cli:collection api probe, cli:collection browser flow, cli:apply sql to the live project, ui:loose parts in my collection, lib:a session's loose parts over mcp, cli:mybricks probe, cli:mybricks api test, ui:compare two sets or models, lib:parts compare, cli:comparesets probe, ui:a set from a photo, ui:a set's missing parts, cli:mysets probe, cli:mysets api test, cli:localbricks probe -->
 
 ## Sub-features
 
@@ -24,11 +24,25 @@ which models they could build from what they have. Added 2026-10-12.
     (`ShopLists.bricklink_xml`) or a Rebrickable CSV, at the counts short.
     BrickLink's prices are not free to read (its API wants a seller's keys and
     its terms), so the panel links each part's catalogue page instead.
-  - **What can I build?**: the examples, the person's saved models and the 1,575
-    official LDraw set models (`vendor/omr`), ranked by how much of each is
-    owned in its own colour, then in any colour; Open puts one on the baseplate
-    and shows its shortfall. An official model opens where `vendor/omr` is
-    (a checkout); elsewhere See it links its page at library.ldraw.org.
+  - **What can I build?**, two views. **Real sets** (the default, APP_UX8 #12
+    setsbuild, `SetRanking`): every set Rebrickable lists (20,183), ranked by
+    how much of each is owned in its colours, then in any colour, then the
+    bigger first, counted as What do I need? counts a set
+    (`OwnCounts.set_needs` against the pool, another moulding standing in);
+    the sets the person owns left out and said so. A heading counts those
+    they could build now and those at 90% or more; each row "92%", the set's
+    number, name and year, "you have N of M pieces; K short; P% in any
+    colour", What do I need? (that set's shortfall on the need page, its
+    chooser's last row, with the wanted-list exports) and, for a set with an
+    official model, Open (desktop) or See it (web). Find a set (number or a
+    word of its name), a size choice (any, 50, 200, 500 pieces or more), 50
+    rows then Show 50 more. **Models**: the examples, the person's saved
+    models and the 1,575 official LDraw set models (`vendor/omr`), ranked by
+    how much of each is owned in its own colour, then in any colour; Open puts
+    one on the baseplate and shows its shortfall. An official model opens
+    where `vendor/omr` is (a checkout); elsewhere See it links its page at
+    library.ldraw.org. `parts_list which="buildable"` answers with both, the
+    real sets in a block of their own in the page's order.
 - `loose parts in my collection` (`src/ui/collection_dialog.gd`, APP_UX5 #2
   mybricks, 2026-11-06): What I own's Loose parts row adds one lot at a time:
   a part found by the bin's own search (`PartLibrary.search`, the family's
@@ -269,6 +283,21 @@ which models they could build from what they have. Added 2026-10-12.
   wins: BrickLink 77 reads as 148, not 316). 21,173 sets, 256 shards, 26 MB, under
   `assets/generated/sets/`; the shard rule is the same sum in the Python and in
   `SetInventories.shard_of`.
+- `every set's parts at once` (`tools/collection_data.py` `write_index`,
+  `src/collection/set_ranking.gd`, APP_UX8 #12 setsbuild): `all_sets.bin`
+  beside the shards, written with them by every full run (and alone by
+  `--index`), refused over 2,000,000 bytes (1.93 MB on 2026-11-14). Each part
+  and colour with the sets it is in, a set's parts as `OwnCounts.set_needs`
+  counts them (no stickers, nothing nobody owns on its own), a pack as its
+  own parts and the sets in it, a set whose parts are another's as that one,
+  zstd at level 22; Rebrickable's database sets (theme 746) listed apart and
+  not ranked; the official models' files and OMR pages from `models.json`
+  (kept across a full run, which deletes it). The desktop reads it from its
+  files, the web from `/sets/all_sets.bin` (deploy.sh, cached an hour as the
+  shards are), only when What can I build? or `parts_list` first asks.
+  `SetRanking.rank` counts every set against the pool in one pass over the
+  owned families (a third of a second for a few sets' worth, 0.7 s for 54
+  sets, natively under load).
 - `compare two sets or models` and `parts compare` (APP_UX6 #7, comparesets,
   2026-11-07; `src/ui/compare_view.gd`'s parts sheet, `src/parts/parts_compare.gd`):
   File, Compare, Compare two sets or models… (Shell `compare_sets`) opens Compare as a
@@ -476,8 +505,20 @@ Proves it when:
   pages, a token traded once, a bad key and a wrong password in words; and the
   assistant told what is owned and leading `search_parts` with it.
 - `collection_ui_probe` ends `the shortfall, the ranking and the collection on
-  screen`; look at `shots/collection_need.png`, `collection_build.png`,
-  `collection_own.png`.
+  screen`: What can I build? opens on every real set, 50 rows in order, the
+  set owned left out, the first set short of something's What do I need?
+  short exactly what its row says, Find a set by number and by name, 500
+  pieces or more, Show 50 more; then Models. Look at
+  `shots/collection_need.png`, `collection_build_sets.png`,
+  `collection_need_set.png`, `collection_build.png`, `collection_own.png`.
+- `setsbuild_probe` (headless) ends `every set ranked as Collection counts it`:
+  all_sets.bin under 2 MB; every set put back from it is `OwnCounts.set_needs`
+  of its shard record (all 20,183, packs too); against a pool of three sets and
+  loose parts in other mouldings every set's owned and any-colour pieces are
+  `Collection.coverage`'s, and a sample against 54 sets; ten sets counted by
+  hand lot by lot; 7140-1's What do I need? short as its row. `holdout_probe`
+  holds the ranking to the bench's held-out sets, and `app_tools_probe` holds
+  `parts_list which="buildable"`'s block to the page's first 25.
 - `comparesets_probe` (at 1400x900 and PROBE_SIZE=1280x720) ends `all good`:
   7140-1 (285 pieces, 1 spare not counted) against 9493-1 (571, 17 spares) is
   21 in both, 264 only in 7140-1 and 550 only in 9493-1 (21 + 264 = 285,
@@ -572,7 +613,11 @@ Proves it when:
   three size limits, ten malformed files refused with their line, and both
   accounts and their rows gone at the end.
 - `collection_flow.mjs` ends `imported, short, exported, ranked and opened in a
-  browser`; look at `1_need_empty.png` to `5_opened.png`.
+  browser`: What can I build? opens on every real set, all_sets.bin fetched as it
+  opens (under 2 MB), its first rows in 2 s (6 past the box's cores), the set
+  owned left out, the first set short of something's What do I need? short
+  as its row; then Models. Look at `1_need_empty.png` to `5_opened.png`
+  (`4_build_sets.png`, `4_need_set.png`).
 - `library_build.py check` says `0 problems` and `test_library` passes (the
   checker caught each of eleven ways of breaking a model, and the index built
   from every file holds: an author and a licence for each). Look at
@@ -607,7 +652,12 @@ A deployment carries the numbers once `colors.json` is rebuilt
   them: "Identifier not declared" from a probe means that, not a typo.
 - The web build fetches `/sets/NNN.json` from its own deployment. A local
   export served by `relay_server.mjs --static` has none, and a typed set then
-  adds no parts and says so ("the set inventories did not arrive").
+  adds no parts and says so ("the set inventories did not arrive"); nor
+  `/sets/all_sets.bin`, and What can I build?'s real sets say "every set's
+  parts did not arrive".
+- `assets/generated` is the main checkout's, linked into every worktree:
+  `tools/collection_data.py --index` in a worktree rewrites the one file every
+  tree and the next deploy read.
 - `What can I build?` reads the person's saved models from `user://models/`, so
   a probe on this machine ranks the owner's own saves too ("Yours").
 - Minifigures and sets inside sets are expanded; BrickLink minifigures in an

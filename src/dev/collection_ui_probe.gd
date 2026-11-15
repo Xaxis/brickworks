@@ -8,11 +8,16 @@
 ## brick where a red one is short, four 1 x 2s where a 1 x 4 is, and one
 ## real set. The parts list's "What do I need?" opens the panel on the
 ## shortfall, which must agree with Collection's own sums; "What can I
-## build?" ranks the examples and the official models with the car near the
-## top; "What I own" lists the set by name. Nothing is written to the app's
-## own directory and no account is touched.
+## build?" opens on every real set ranked (setsbuild): the first 50 rows in
+## order, the set owned left out, the first set short of something's What do
+## I need? listing exactly what its row says is short, Find a set by number
+## and by name, 500 pieces or more, Show 50 more; then its Models rank the
+## examples and the official models with the car near the top; "What I own"
+## lists the set by name. Nothing is written to the app's own directory and
+## no account is touched.
 ##
-## Pictures: shots/collection_need.png, shots/collection_build.png and
+## Pictures: shots/collection_need.png, shots/collection_build_sets.png,
+## shots/collection_need_set.png, shots/collection_build.png and
 ## shots/collection_own.png. Look at them.
 extends SceneTree
 
@@ -105,8 +110,109 @@ func _run() -> void:
 		short.pieces == expected_short)
 	await _shot("collection_need")
 
-	print("\n  what can I build")
+	print("\n  what can I build: every real set (setsbuild)")
 	dialog._show("build")
+	for _n: int in 1200:
+		if dialog._sets_shown > 0 and not dialog._sets_busy:
+			break
+		await process_frame
+	await _frames(10)
+	var sets: SetRanking.Ranked = dialog._sets_ranked
+	var listed: PackedInt32Array = dialog._sets_listed
+	_check("it opens on the real sets, every one ranked (%d), its first rows in %d ms"
+		% [sets.of.sets if sets != null else 0, dialog._sets_first_ms],
+		dialog._build_view == "sets" and sets != null and sets.of.sets > 20000)
+	var small: int = 0
+	for n: int in listed:
+		if sets.of.pieces[n] < SetRanking.FEWEST:
+			small += 1
+	_check("the first %d rows are drawn, of %d listed, every one of 50 pieces or more at first (%d not)"
+		% [dialog._sets_shown, listed.size(), small],
+		dialog._sets_shown == mini(CollectionDialog.SETS_PAGE, listed.size()) and listed.size() > 11000
+		and small == 0 and _rows_of(dialog._build_rows) == dialog._sets_shown)
+	_check("the set they own is left out, and the heading says so: “%s”" % dialog._build_heading.text,
+		sets != null and not listed.has(sets.of.index_of("6020-1")) and dialog._build_heading.text.contains(
+			"The set you own is not listed."))
+	var in_order: bool = true
+	for n: int in range(1, listed.size()):
+		if sets.exact(listed[n]) > sets.exact(listed[n - 1]) + 0.00003:
+			in_order = false
+	_check("most of each owned first", in_order)
+	var row_text: String = _text_of(dialog._build_rows.get_child(0)) if dialog._sets_shown > 0 else ""
+	var top: int = listed[0] if not listed.is_empty() else -1
+	_check("the first row says its share and what is short: %s" % row_text.replace("\n", " | ").left(160),
+		top >= 0 and row_text.begins_with("%d%%" % floori(100.0 * sets.exact(top)))
+		and row_text.contains(sets.of.numbers[top]))
+	await _shot("collection_build_sets")
+	var asked: Button = dialog._controls.get("collection_need_set_first")
+	var at: int = -1
+	for n: int in listed.slice(0, dialog._sets_shown):
+		if sets.owned[n] < sets.of.pieces[n]:
+			at = n
+			break
+	_check("the first set short of something has What do I need?", asked != null and at >= 0)
+	if asked != null and at >= 0:
+		asked.pressed.emit()
+		for _n: int in 300:
+			if dialog._page == "need":
+				break
+			await process_frame
+		await _frames(5)
+		var needed: Dictionary = dialog.need_listed()
+		var short_of: int = 0
+		for row: Dictionary in needed["rows"]:
+			short_of += int(row["short"])
+		_check("...and it lists %s's shortfall, as its row counted: %d short, %d of %d owned (%s)" % [
+			sets.of.numbers[at], short_of, sets.owned[at], sets.of.pieces[at], dialog._need_heading.text.left(90)],
+			dialog._page == "need" and str(needed["set"]) == sets.of.numbers[at]
+			and short_of == sets.of.pieces[at] - sets.owned[at])
+		await _shot("collection_need_set")
+		dialog._show("build")
+		await _frames(10)
+	(dialog._controls["collection_build_find"] as LineEdit).text = "7140"
+	(dialog._controls["collection_build_find"] as LineEdit).text_changed.emit("7140")
+	for _n: int in 120:
+		if dialog._sets_listed.size() < listed.size():
+			break
+		await process_frame
+	await _frames(5)
+	var found: PackedInt32Array = dialog._sets_listed
+	_check("Find a set by its number: %s first, of %d" % [sets.of.numbers[found[0]] if not found.is_empty() else "none",
+		found.size()], not found.is_empty() and sets.of.numbers[found[0]] == "7140-1" and found.size() < 40)
+	(dialog._controls["collection_build_find"] as LineEdit).text = "castle"
+	(dialog._controls["collection_build_find"] as LineEdit).text_changed.emit("castle")
+	await _frames(40)
+	for _n: int in 120:
+		if dialog._sets_listed != found:
+			break
+		await process_frame
+	found = dialog._sets_listed
+	var named: int = 0
+	for n: int in found:
+		if sets.of.names[n].to_lower().contains("castle"):
+			named += 1
+	_check("...and by a word of its name (%d with castle)" % found.size(), found.size() > 20
+		and named == found.size())
+	(dialog._controls["collection_build_find"] as LineEdit).text = ""
+	var sizes: OptionButton = dialog._controls["collection_build_size"]
+	sizes.select(3)
+	sizes.item_selected.emit(3)
+	await _frames(5)
+	found = dialog._sets_listed
+	_check("500 pieces or more lists only those (%d sets)" % found.size(), found.size() > 500
+		and Array(found).all(func(n: int) -> bool: return sets.of.pieces[n] >= 500))
+	sizes.select(0)
+	sizes.item_selected.emit(0)
+	await _frames(5)
+	_check("Any size lists every set but the one owned (%d)" % dialog._sets_listed.size(),
+		dialog._sets_listed.size() == sets.of.sets - 1)
+	(dialog._controls["collection_build_more"] as Button).pressed.emit()
+	await _frames(5)
+	_check("Show 50 more adds 50 rows (%d)" % dialog._sets_shown,
+		dialog._sets_shown == 2 * CollectionDialog.SETS_PAGE and _rows_of(dialog._build_rows) == dialog._sets_shown)
+
+	print("\n  what can I build: the models")
+	(dialog._controls["collection_build_models"] as Button).pressed.emit()
 	for _n: int in 600:
 		if not dialog._busy and not dialog._ranked.is_empty():
 			break
@@ -174,6 +280,16 @@ func _text_of(node: Node) -> String:
 func _frames(count: int) -> void:
 	for _n: int in count:
 		await process_frame
+
+
+## The set rows among [param rows]' children: each a row with its share.
+func _rows_of(rows: Node) -> int:
+	var count: int = 0
+	for child: Node in rows.get_children():
+		if child is HBoxContainer and child.get_child_count() > 0 and child.get_child(0) is Label \
+				and (child.get_child(0) as Label).text.ends_with("%") and not child.is_queued_for_deletion():
+			count += 1
+	return count
 
 
 func _shot(name: String) -> void:

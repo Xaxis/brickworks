@@ -277,3 +277,49 @@ def test_the_colours_file_rule_is_the_apps() -> None:
     assert collection_data.colour_shard_of("3001") == 27
     assert collection_data.colour_shard_of("4740") == 60
     assert collection_data.colour_shard_of(" 3023B ") == 52
+
+
+# --- all_sets.bin: every set at once, for What can I build? (setsbuild) -------
+
+INDEX = SETS / collection_data.INDEX
+
+
+@pytest.fixture(scope="module")
+def every_set() -> tuple[dict, dict]:
+    """The index read back, and every set's parts counted again from the shards."""
+    if not INDEX.exists():
+        pytest.skip(f"no {INDEX}; run tools/collection_data.py --index")
+    records: dict[str, dict] = {}
+    for path in sorted(SETS.glob("[0-9][0-9][0-9].json")):
+        records.update(json.loads(path.read_text())["sets"])
+    catalogue = json.loads((GENERATED / "catalogue.json").read_text())
+    owning = collection_data._Owning(catalogue["parts"], json.loads((GENERATED / "colors.json").read_text()))
+    skip, _packs = collection_data._what_sets_are()
+    return collection_data.decode_index(INDEX.read_bytes()), collection_data.index_needs(records, owning, skip)
+
+
+def test_the_index_fits_what_the_web_fetches_as_the_page_opens() -> None:
+    if not INDEX.exists():
+        pytest.skip(f"no {INDEX}")
+    assert INDEX.stat().st_size <= collection_data.INDEX_MOST
+
+
+def test_every_set_reads_back_from_the_index_as_its_shard_counts_it(every_set) -> None:
+    read, needs = every_set
+    # Every set with a piece anybody owns, packs and sets alike in parts
+    # written once, read back to the piece.
+    assert set(read["needs"]) == set(needs)
+    wrong = [n for n in needs if read["needs"][n] != needs[n]]
+    assert not wrong, wrong[:10]
+    for number, pieces in zip(read["numbers"], read["pieces"]):
+        assert pieces == sum(needs[number].values()), number
+    assert read["meta"]["packs"] > 1000 and read["meta"]["same"] > 500
+
+
+def test_a_sticker_sheet_and_a_database_set_are_not_ranked(every_set) -> None:
+    read, needs = every_set
+    # 6020-1 Magic Mountain Castle holds no sticker; a database set
+    # (Rebrickable's theme 746) is no set.
+    assert "6020-1" in needs and "2001-1" not in read["needs"]
+    stickers = [key for n in needs for key in needs[n] if key.split("/")[0].endswith("stk01")]
+    assert not stickers[:5]
