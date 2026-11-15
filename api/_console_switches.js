@@ -61,7 +61,7 @@ export const VARIABLES = [
   { name: "VERCEL_AUTOMATION_BYPASS_SECRET", what: "Vercel's own: past a preview's protection", where: "vercel_own" },
 ];
 
-const WHERE = {
+export const WHERE = {
   vercel: { said: "Vercel: Settings, Environment Variables, then a redeploy", href: VERCEL },
   console: { said: "Here: the beta's switch (Beta), which wins over this", href: "#beta" },
   vercel_own: { said: "Set by Vercel itself", href: null },

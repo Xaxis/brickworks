@@ -764,9 +764,14 @@ async function afterPerson(account, told) {
 let findTimer = 0;
 let findAsked = 0;
 
+/// The results shown or not; shown, the status says how many, read out
+/// by a screen reader (the box's own description), and the down arrow
+/// goes into them.
 function findShown(open) {
   $("find-list").hidden = !open;
-  $("find-q").setAttribute("aria-expanded", String(open));
+  if (!open) return say("find-said", "");
+  const n = $("find-list").querySelectorAll("a").length;
+  say("find-said", n ? `${n} found: the down arrow goes to them.` : $("find-list").textContent);
 }
 
 async function find() {

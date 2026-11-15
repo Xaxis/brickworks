@@ -199,7 +199,8 @@
   .with-preview > .console-form { margin-top: 0; }
   @media (width >= 1180px) { .with-preview { grid-template-columns: minmax(0, 640px) minmax(0, 1fr); } }
   .preview { display: grid; gap: var(--s-3); }
-  .preview > h3 { margin: 0; color: var(--ink-soft); font-size: var(--t-small); font-weight: 600; }
+  /* On the type scale, as the form beside it titles itself (design_flow). */
+  .preview > h3 { margin: 0; }
   .challenge-preview { display: grid; gap: var(--s-2); }
   .challenge-preview .eyebrow { margin: 0; color: var(--ink-faint); font-size: var(--t-tiny); font-weight: 600;
     text-transform: uppercase; letter-spacing: 0.04em; }
@@ -238,8 +239,9 @@
     <a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
     <form class="find" id="find" role="search" hidden>
       <input type="search" id="find-q" placeholder="Find people, models, lists, reports, acts" aria-label="Find anything"
-        autocomplete="off" aria-controls="find-list" aria-expanded="false">
-      <div class="find-list" id="find-list" hidden></div>
+        autocomplete="off" aria-controls="find-list" aria-describedby="find-said">
+      <div class="find-list" id="find-list" role="region" aria-label="What Find found" hidden></div>
+      <span class="visually-hidden" id="find-said" role="status"></span>
     </form>
     <div class="who">
       <span id="meta-who">Owner console</span>

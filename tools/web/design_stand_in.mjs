@@ -62,6 +62,10 @@ import { alikeOf, closestDesigners } from "../../api/_alike.js";
 // The console's crons and Admission's pages, as its Site and Plans read them.
 import { CRONS } from "../../api/_console_site.js";
 import { AT_ADMISSION } from "../../api/_console_plans.js";
+// Part C's: each variable by name, Run now's crons, a report's kind.
+import { VARIABLES, WHERE } from "../../api/_console_switches.js";
+import { withRunNow } from "../../api/_console_data.js";
+import { reportKind } from "../../api/admin.js";
 // What a handle may not be, as the API says it (a new account's First steps).
 import { handleTrouble } from "../../api/_names.js";
 // What a featured model's card says (gallery362).
@@ -2104,6 +2108,68 @@ const SWITCHES = { beta: { mode: "open", source: "console", set_by: "owner@examp
   scope: "live", ready: true }, billing: { mode: "off" },
   mail: { sender: "Brickworks <noreply@brickworks.diy>", borrowing: null, key: true, reply_to: "hello@brickworks.diy" },
   services: { database: true, mail: true, admission: false, orangecheck: true, crons: true } };
+// Part C's switches (api/_console_switches.js switchesRead): never a value.
+const UNSET = new Set(["EMAIL_FROM_FALLBACK", "ADMISSION_READ_TOKEN", "OC_CONNECT_KEY", "VERCEL_AUTOMATION_BYPASS_SECRET"]);
+const SWITCHES_C = {
+  ...SWITCHES,
+  scope: "live",
+  variables: [...VARIABLES.map((one) => ({ name: one.name, what: one.what, here: !UNSET.has(one.name),
+    environments: one.where === "vercel_own" ? [] : UNSET.has(one.name) ? ["preview"] : ["production", "preview"],
+    where: WHERE[one.where].said, href: WHERE[one.where].href })),
+  { name: "OLD_SIGNUP_FLAG", what: "Nothing in the site's code reads it", here: false, environments: ["production"],
+    where: WHERE.vercel.said, href: WHERE.vercel.href, unread: true }],
+  vercel_noted_at: "2026-10-18T22:00:00Z",
+  vercel_ready: true,
+  settings: [
+    { name: "beta", scope: "live", value: "open", set_at: BETA_AT, set_by: "owner@example.com", here: true, switch: "beta_switch" },
+    { name: "beta", scope: "brickworks-k2j4h6g8f-xaxis-projects.vercel.app", value: "off", set_at: "2026-10-12T15:00:00Z",
+      set_by: "owner@example.com", here: false, switch: "beta_switch" },
+  ],
+  notice: { id: 4, words: { en: "Down for upkeep on Sunday at 02:00 UTC: back within ten minutes." }, tone: "warn",
+    set_at: "2026-10-19T08:00:00Z", set_by: "owner@example.com" },
+  notice_ready: true,
+  notices: [
+    { id: 4, words: { en: "Down for upkeep on Sunday at 02:00 UTC: back within ten minutes." }, tone: "warn",
+      set_at: "2026-10-19T08:00:00Z", set_by: "owner@example.com", cleared_at: null, cleared_by: null },
+    { id: 3, words: { en: "The October challenge is open: build a lighthouse.", de: "Die Oktober-Challenge läuft: ein Leuchtturm." },
+      tone: "info", set_at: "2026-10-01T09:00:00Z", set_by: "owner@example.com", cleared_at: "2026-10-08T09:00:00Z",
+      cleared_by: "owner@example.com" },
+  ],
+};
+// Part C's data (api/_console_data.js dataRead): the catalogue as the deploy
+// found it, the OMR's look, the database and its buckets.
+const DATA = {
+  facts: { made: "2026-10-18T22:00:00Z",
+    catalogue: { sets: 24816, with_picture: 22140, without_picture: 2676, made: "2026-10-18T03:10:00Z" },
+    pictures: { sets: 22140, made: "2026-10-18T04:00:00Z" },
+    rebrickable: { oldest: "2026-10-18T03:00:00Z", newest: "2026-10-18T03:04:00Z",
+      tables: { sets: "2026-10-18T03:00:00Z", themes: "2026-10-18T03:01:00Z", inventories: "2026-10-18T03:03:00Z",
+        inventory_parts: "2026-10-18T03:04:00Z" } } },
+  index: { at: "2026-10-17T12:00:00Z", bytes: 2480000 },
+  omr: {
+    arrivals: [
+      { page: "https://library.ldraw.org/omr/sets/2112", set_number: "10305-1", name: "Lion Knights' Castle", author: "Orion Pobursky",
+        state: "found", why: null, found_at: "2026-10-18T05:00:00Z", changed_at: "2026-10-18T05:00:00Z" },
+      { page: "https://library.ldraw.org/omr/sets/2109", set_number: "6020-1", name: "Magic Fire", author: "Philippe Hurbain",
+        state: "live", why: null, found_at: "2026-10-11T05:00:00Z", changed_at: "2026-10-12T09:00:00Z" },
+      { page: "https://library.ldraw.org/omr/sets/2101", set_number: "21318-1", name: "Tree House", author: null,
+        state: "refused", why: "a part it uses is not in the library yet", found_at: "2026-10-04T05:00:00Z",
+        changed_at: "2026-10-04T05:01:00Z" },
+    ],
+    states: { found: 1, live: 1, refused: 1 },
+    runs: [{ at: "2026-10-18T05:00:00Z", finished_at: "2026-10-18T05:01:12Z", outcome: "done", said: null }],
+  },
+  usage: { at: "2026-10-19T09:00:00Z", database: 412000000,
+    tables: [{ name: "shared_models", rows: 1820, bytes: 96000000 }, { name: "relay_tabs", rows: 5120, bytes: 41000000 },
+      { name: "admin_audit", rows: 640, bytes: 1200000 }],
+    buckets: [{ bucket: "models", files: 3640, bytes: 2100000000 }, { bucket: "photos", files: 212, bytes: 96000000 },
+      { bucket: "avatars", files: 41, bytes: 3100000 }] },
+  egress: { read: false,
+    why: "Supabase tells egress only through its Management API, whose access tokens reach every project of the "
+      + "organization with every right: too much to keep in a deployment. Read it in Supabase's dashboard: the "
+      + "organization's Usage.",
+    href: "https://supabase.com/dashboard/org/_/usage" },
+};
 const AUDIT = [
   { id: 3, at: "2026-10-30T09:00:00Z", actor: "owner@example.com", op: "beta_decide", target_kind: "account",
     target: "00000000-0000-4000-8000-0000000000b2", email: "bo@example.com", status: 200, said: null, test: false, scope: "live",
@@ -2225,14 +2291,15 @@ function admin(method, params, who, state) {
   const op = params.get("op") || "";
   if (method === "GET" && op === "beta") return answer(200, betaQueue());
   if (method === "GET" && op === "beta_testers") return answer(200, betaTesters());
-  if (method === "GET" && op === "switches") return answer(200, SWITCHES);
+  if (method === "GET" && op === "switches") return answer(200, SWITCHES_C);
+  if (method === "GET" && op === "data") return answer(200, DATA);
   if (method === "GET" && op === "audit") return answer(200, { ready: true, rows: AUDIT, more: false });
   if (method === "GET" && op === "feedback") return answer(200, INBOX);
   if (method === "GET" && op === "people") return answer(200, adminPeople());
   if (method === "GET" && op === "plans") return answer(200, adminPlans());
   if (method === "GET" && op === "mail") return answer(200, adminMail(params));
   if (method === "GET" && op === "connector") return answer(200, adminConnector(params));
-  if (method === "GET" && op === "site") return answer(200, adminSite());
+  if (method === "GET" && op === "site") return answer(200, withRunNow(adminSite()));
   if (method === "GET" && op === "person") {
     const one = adminPeople().people.find((p) => p.id === params.get("account"));
     return one ? answer(200, adminPerson(one)) : answer(404, { error: "no such account" });
@@ -2265,13 +2332,18 @@ function admin(method, params, who, state) {
     reports: ADMIN.reports.map((one) => {
       const about = modelOf(one.model);
       const photo = PHOTOS.find((p) => p.id === one.photo);
+      const list = one.collection ? LISTS.find((l) => l.id === one.collection) : null;
       return { id: one.id, model: one.model ?? null, handle: one.handle ?? null, collection: one.collection ?? null, reason: one.reason,
         note: one.note, contact: one.contact, at: one.at, name: about?.name ?? null, listed: about?.listed ?? null,
         email: about ? emailOf(about.owner) : null, comment: one.comment ? commentOf(COMMENTS.find((c) => c.id === one.comment)) : null,
-        photo: photo ? { id: photo.id, words: photo.words, at: photo.at, hidden: false, removed: false, email: emailOf(photo.account) } : null };
-    }),
+        photo: photo ? { id: photo.id, words: photo.words, at: photo.at, hidden: false, removed: false, email: emailOf(photo.account) } : null,
+        kind: reportKind(one, Boolean(photo)),
+        list: list ? { name: list.name, description: list.description, wishlist: false, public: list.public, down: false,
+          email: emailOf(list.owner) } : null };
+    }).sort(byTime("at")).reverse(),
     comments: [...COMMENTS].sort(byTime("at")).map(commentOf),
     barred: ADMIN.barred.map((one) => ({ ...one, email: emailOf(one.account) })),
+    barred_models: [{ id: "SpamModel1", name: "Free bricks here", at: "2026-10-02T10:05:00Z", email: emailOf(SPAMMER), account: SPAMMER }],
     tested: testRows().map(({ model: id, n, at, app, parts, steps }) => ({ model: id, n, at, app, parts, steps, name: modelOf(id).name }))
       .sort(byTime("at")),
     picks: { now: { pick: null, chosen: false, until: null, week: PICK.week, model: small(modelOf(PICK.model)) },
