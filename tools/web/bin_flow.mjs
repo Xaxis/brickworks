@@ -140,7 +140,9 @@ for (const phone of [false, true]) {
     const before = (await state()).bricks;
     await press("part search");
     await page.keyboard.type("window in a wall", { delay: 40 });
-    await page.waitForTimeout(2500);
+    // The list narrowed, as a person waits for it: a fixed wait under load
+    // read the list before it answered (placing_flow, rel-m301).
+    await until((now) => (now.tile_names || [])[0] === "Window in a wall", 30);
     const narrowed = await where("technique window in a wall", 30);
     const listed = (await state()).tile_names || [];
     const seen = Boolean(narrowed) && !narrowed.clipped

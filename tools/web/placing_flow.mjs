@@ -92,7 +92,11 @@ async function take(id) {
   await page.mouse.click(box.x, box.y);
   await key("Control+a", 150);
   await page.keyboard.type(id, { delay: 30 });
-  await page.waitForTimeout(1600);
+  // The bin listing the part first, as a person waits for the list to
+  // change before pressing its first tile. A fixed 1.6 s was short under
+  // load: the list still showed 3022's search, and the press took the
+  // plate again (rel-m301 held on "would not put 4081b in hand").
+  await until((now) => (now.found || [])[0] === id, 30);
   const first = await where("first part", 30);
   await page.mouse.click(first.x, first.y);
   const s = await until((now) => now.mode === "place" && String(now.held || "") === id, 15);

@@ -174,7 +174,9 @@ try {
       await page.keyboard.press("Control+a");
       await page.waitForTimeout(150);
       await page.keyboard.type(query, { delay: 40 });
-      await page.waitForTimeout(1800);
+      // The part listed first before its tile is tapped: a fixed wait under
+      // load tapped the last search's (placing_flow, rel-m301).
+      await until((now) => (now.found || [])[0] === query, 30);
       const tile = await where("first part", 20);
       if (!tile) return false;
       const found = (await state()).found || [];
