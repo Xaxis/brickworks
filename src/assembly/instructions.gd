@@ -3803,8 +3803,11 @@ static func _kept_paced(world: BrickWorld, library: PartLibrary, skip: Dictionar
 
 
 ## Whether [param kept] puts no more parts down in the air than the order
-## worked out it was made from, and hides no more behind what is already
-## built, judged by the steps test's rules of the model as [param read],
+## worked out it was made from, hides no more behind what is already built,
+## puts no more in under a part already there (HeldSteps.Under), and no more
+## apart from what a sub-assembly built in the hand began (HeldSteps.Hand),
+## judged
+## by the steps test's rules of the model as [param read],
 ## the mend's, has it ([param held], HeldSteps, faults_of). Unjudged, with
 ## nothing read: the mend was off.
 static func _builds_as_well(kept: Array[Step], read: Dictionary, library: PartLibrary,
@@ -3813,7 +3816,7 @@ static func _builds_as_well(kept: Array[Step], read: Dictionary, library: PartLi
 		return true
 	var was: Array[int] = read["faults"]
 	var now: Array[int] = held.faults_of(kept, read, library, was)
-	return now[0] <= was[0] and now[1] <= was[1]
+	return now[0] <= was[0] and now[1] <= was[1] and now[2] <= was[2] and now[3] <= was[3]
 
 
 ## The model's own steps as the plan shows them once [param worked], its
