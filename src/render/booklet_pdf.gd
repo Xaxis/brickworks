@@ -129,10 +129,10 @@ func begin(path: String, read: BookletRead) -> bool:
 			return false
 	_put(PackedByteArray([37, 80, 68, 70, 45, 49, 46, 52, 10, 37, 226, 227, 207, 211, 10]))
 	for which: int in 2:
-		_faces[which] = load(str(TYPE[which][0])) as FontFile
+		_faces[which] = load(WebPacks.font(str(TYPE[which][0]))) as FontFile
 		_types[which] = _font(_FONT + which, TYPE[which])
 		_shapers[which] = _shaper(_faces[which], true)
-	_shapers[2] = _shaper(load(EMOJI) as FontFile, false)
+	_shapers[2] = _shaper(load(WebPacks.font(EMOJI)) as FontFile, false)
 	for which: int in 3:
 		if _shapers[which] != null:
 			_shaper_rids[which] = (_shapers[which] as FontFile).get_rids()

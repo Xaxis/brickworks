@@ -81,19 +81,22 @@ older_waits() {
   done
   return 1
 }
-# take_live_db [alone]: a slot of the live database, or with "alone" all of
-# it, waiting LIVE_WAIT seconds (an hour) at most, looking again every
+# take_live_db [alone] [WHO]: a slot of the live database, or with "alone"
+# all of it, waiting LIVE_WAIT seconds (an hour) at most, looking again every
 # LIVE_DB_POLL seconds (1). Held by LIVE_DB_HOLD and
 # LIVE_DB_SLOT, open in this shell, until leave_live_db; LIVE_DB_HOW says
-# which, for live-db.log.
+# which. WHO took it goes in live-db.log before its ticket goes, while the
+# next in line still waits for it, so the log's order is the order they took
+# it: written by the caller after, the next could take a free slot and say
+# so first (u1 u3 u2 in askfirst's ci_gate, 2026-11-10).
 # LIVE_GIVE_WAY=SECONDS gives up sooner, once it has waited that long while
 # a release waited: a unit gives way to a train within ten minutes, but
 # behind other units it keeps its place in line. With one ten-minute wait
 # for both, four units' previews at once left 20 of pcredesign's 52 checks
 # never run, and no train was staged (2026-11-12).
 take_live_db() {
-  local alone="${1:-}" until=$(( EPOCHSECONDS + ${LIVE_WAIT:-3600} )) line=queue ticket i fd
-  local give="${LIVE_GIVE_WAY:-}" behind=0 last=$EPOCHSECONDS rel
+  local alone="${1:-}" who="${2:-}" until=$(( EPOCHSECONDS + ${LIVE_WAIT:-3600} )) line=queue ticket i fd
+  local give="${LIVE_GIVE_WAY:-}" behind=0 last=$EPOCHSECONDS t0=$EPOCHSECONDS rel
   [ "${BOX_HEAVY_PRIORITY:-}" = 1 ] && line=release
   mkdir -p "$LIVE_DB.$line"; ticket="$(date +%s%N).$BASHPID"
   started "$BASHPID" > "$LIVE_DB.$line/$ticket"
@@ -119,6 +122,7 @@ take_live_db() {
         [ -n "$LIVE_DB_SLOT" ] || flock -u "$LIVE_DB_HOLD"
       fi
       if [ -n "$LIVE_DB_HOW" ]; then
+        [ -z "$who" ] || echo "$(date '+%F %T') took $who after $(( EPOCHSECONDS - t0 ))s ($LIVE_DB_HOW)" >> "$LIVE_DB.log"
         rm -f "${LIVE_DB:?}.$line/${ticket:?}"
         return 0
       fi

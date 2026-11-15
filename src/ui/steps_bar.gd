@@ -85,16 +85,17 @@ const MODES: Array[String] = ["Build order", "As made", "History", "Author's ste
 const AUTHORS := 3
 ## The model has steps its author gave it, so the fourth order is offered.
 var _authored: bool = false
-## The row of step edits, shown in the author's steps.
-var _edits: HFlowContainer
+## The row of step edits, shown in the author's steps (_line).
+var _edits: Container
 ## The slider's least width, beside the step's words: narrower, the words
 ## go under it rather than the slider to a sliver.
 const SLIDER_LEAST := 120.0
 ## The most of a step's name its words say, on one line beside the slider
 ## (stepnames): a longer one is cut with an ellipsis, and Name… shows it whole.
 const NAME_SHOWN := 40
-## How the booklet prints the step showing (BookletLooks): its own row.
-var _looks: HFlowContainer
+## How the booklet prints the step showing (BookletLooks): its own row
+## (_line).
+var _looks: Container
 var _look_said: Label
 var _look_toggles: Dictionary = {}
 var _per_page: Button
@@ -302,11 +303,8 @@ func _build() -> void:
 
 	# Changing the author's steps, on the step showing: as LeoCAD and Studio
 	# keep theirs beside the step list. Shown in the author's steps only.
-	_edits = HFlowContainer.new()
-	_edits.add_theme_constant_override("h_separation", 6)
-	_edits.add_theme_constant_override("v_separation", 4)
-	_edits.visible = false
-	column.add_child(_edits)
+	_edits = _line(column)
+	_show_row(_edits, false)
 	for edit: Array in [
 			["earlier", "Earlier", "This step before the one ahead of it ({step_earlier})"],
 			["later", "Later", "This step after the one that follows it ({step_later})"],
@@ -334,11 +332,8 @@ func _build() -> void:
 	# Wrapping onto a second line where the window is narrow: in one line it
 	# was wider than the timeline at 1280 x 800, and pushed the bar's own
 	# Instructions and Done off the window.
-	_looks = HFlowContainer.new()
-	_looks.add_theme_constant_override("h_separation", 6)
-	_looks.add_theme_constant_override("v_separation", 4)
-	_looks.visible = false
-	column.add_child(_looks)
+	_looks = _line(column)
+	_show_row(_looks, false)
 	var title := Label.new()
 	title.text = "Booklet:"
 	title.add_theme_font_size_override("font_size", 11)
@@ -388,6 +383,11 @@ func _build() -> void:
 	_looks.add_child(naming)
 	_looks.move_child(naming, 1)
 	_named["steps_name"] = naming
+	# On a phone the row slides, and what is in sight without a slide is
+	# what a finger reaches first: the page laid out by hand, where each of
+	# the rest is done by dragging, after the step's name.
+	if _looks.get_parent() is ScrollContainer:
+		_looks.move_child(_named["booklet_lay_out"], 2)
 	_look_said = Label.new()
 	_look_said.add_theme_font_size_override("font_size", 11)
 	_look_said.modulate = Color(1, 1, 1, 0.72)
@@ -398,6 +398,39 @@ func _build() -> void:
 	_look_said.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_looks.add_child(_look_said)
 	_named["booklet_said"] = _look_said
+
+
+## A row of choices: wrapped onto as many lines as it needs, or, on a
+## phone held upright, one line a finger slides sideways, as a phone's row
+## of chips is (Photos' edits, Maps' places). Its buttons are a fingertip
+## each way there (Main sizes the timeline by TouchSizing), and wrapped, the
+## Booklet row's twenty took five lines of a phone's screen. Shown and
+## hidden with it by _show_row.
+func _line(column: Container) -> Container:
+	if not Phone.on() or Phone.wide():
+		var flow := HFlowContainer.new()
+		flow.add_theme_constant_override("h_separation", 6)
+		flow.add_theme_constant_override("v_separation", 4)
+		column.add_child(flow)
+		return flow
+	var slide := ScrollContainer.new()
+	slide.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	slide.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	slide.mouse_filter = Control.MOUSE_FILTER_PASS
+	column.add_child(slide)
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", 6)
+	slide.add_child(line)
+	return line
+
+
+## [param row] shown or hidden, and on a phone the line it slides along with
+## it (_line).
+static func _show_row(row: Container, shown: bool) -> void:
+	row.visible = shown
+	var slide := row.get_parent() as ScrollContainer
+	if slide != null:
+		slide.visible = shown
 
 
 ## Words, not symbols.
@@ -449,10 +482,17 @@ func start(world: BrickWorld, library: PartLibrary,
 	# A model with its author's steps opens in them; one without has none
 	# to show.
 	_authored = AuthorSteps.any(world, scenery)
-	if _authored and _mode == 0:
-		_set_mode_quietly(AUTHORS)
-	elif not _authored and _mode == AUTHORS:
-		_set_mode_quietly(0)
+	# Set every time, not only on a change of order: the rows it shows
+	# follow whether the model has steps too, and a fresh model's build
+	# order kept the row of steps and the Booklet row (Lay out the page…)
+	# hidden from the bar's making until another order was chosen
+	# (phonepanels, smalls2).
+	var mode: int = _mode
+	if _authored and mode == 0:
+		mode = AUTHORS
+	elif not _authored and mode == AUTHORS:
+		mode = 0
+	_set_mode_quietly(mode)
 	var job: Working.Job = Working.begin("Laying out %s parts in steps…"
 		% Working.comma(Inventory.pieces_in(world, library, scenery)), 0, true)
 	_job = job
@@ -576,14 +616,14 @@ func set_mode(mode: int) -> void:
 func _set_mode_quietly(mode: int) -> void:
 	_mode = mode
 	_order_button.text = MODES[mode]
-	_edits.visible = mode == AUTHORS and editable
+	_show_row(_edits, mode == AUTHORS and editable)
 	# The row of steps for the steps a drop changes: the author's, or the
 	# worked-out ones of a model that has none of its own yet.
 	_row.visible = editable and (mode == AUTHORS or (mode == 0 and not _authored))
 	# The booklet follows the build order or the author's steps, and an
 	# edit of how a step is printed gives a model the worked-out steps
 	# first, as a step edit does.
-	_looks.visible = (mode == AUTHORS or mode == 0) and editable
+	_show_row(_looks, (mode == AUTHORS or mode == 0) and editable)
 
 
 ## The order after this one, the author's steps only for a model that has them.

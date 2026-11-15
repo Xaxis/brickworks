@@ -30,17 +30,23 @@ async function select(table, params) {
   const values = [];
   let order = "";
   let limit = "";
+  let offset = "";
   let columns = "*";
   for (const [key, value] of params) {
     if (key === "select") {
       if (!value.split(",").every((c) => COLUMN.test(c))) throw new Error(`select ${value}`);
       columns = value;
     } else if (key === "order") {
-      const [c, way] = value.split(".");
-      if (!COLUMN.test(c)) throw new Error(`order ${value}`);
-      order = ` order by ${c} ${way === "desc" ? "desc" : "asc"}`;
+      // One column or several ("seen_at.desc,channel"), as dbAll pages in.
+      order = ` order by ${value.split(",").map((part) => {
+        const [c, way] = part.split(".");
+        if (!COLUMN.test(c)) throw new Error(`order ${value}`);
+        return `${c} ${way === "desc" ? "desc" : "asc"}`;
+      }).join(", ")}`;
     } else if (key === "limit") {
       limit = ` limit ${Number(value) || 1}`;
+    } else if (key === "offset") {
+      offset = ` offset ${Number(value) || 0}`;
     } else if (COLUMN.test(key)) {
       const [op, ...rest] = value.split(".");
       const given = rest.join(".");
@@ -51,7 +57,7 @@ async function select(table, params) {
       else throw new Error(`filter ${key}=${value}`);
     }
   }
-  const rows = await db.q(`select ${columns} from public.${table}${where.length ? ` where ${where.join(" and ")}` : ""}${order}${limit}`,
+  const rows = await db.q(`select ${columns} from public.${table}${where.length ? ` where ${where.join(" and ")}` : ""}${order}${limit}${offset}`,
     values);
   // As PostgREST sends them: times as text, as JSON does.
   return JSON.parse(JSON.stringify(rows));

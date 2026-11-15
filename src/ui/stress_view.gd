@@ -27,11 +27,22 @@
 ## change, asked for its margins only while this is on: off, it costs
 ## nothing. The drawing is BrickWorld's (set_stress), the picture only, as
 ## x-ray's ghosts are: the paint, the history and the saves never change.
+##
+## Its Lift (loadtest, APP_UX8 #13): the model lifted by a part, off the
+## floor, as a person picks a car up by its roof. Lift on, the part chosen
+## (clicked, tapped, or already selected) is the one in the hand; every joint
+## between it and the rest carries what hangs past it, and what lets go is
+## red with everything that comes away with it, a joint that holds past its
+## working load amber, the part lifted blue (LiftTest). Choosing another part
+## lifts by that one; a change to the model lifts it again; Lift off, the
+## model stands again.
 class_name StressView
 extends Node
 
 const RED := BalanceMark.TIPS
 const AMBER := BalanceMark.CLOSE
+## The part a lift holds the model by.
+const LIFTED := Color(0.32, 0.58, 1.0)
 ## Under this margin a joint is past its working load; under twice it, close.
 const WEAK := 1.0
 const CLOSE := 2.0
@@ -52,6 +63,20 @@ var report: Stability.Report = null
 ## The legend, the count and the weakest joints, over the model's right
 ## edge (Shell); null for a view with no window, as a probe's.
 var panel: StressPanel = null
+
+## Lift: the builder, whose lattice a lift reads and whose selection says
+## the part chosen (Shell); Lift on; what lifting showed (LiftTest.Result),
+## null while nothing is lifted, and the model's revision it was of.
+var builder: Builder = null
+var lifting: bool = false
+var lift: RefCounted = null
+var _lift_revision: int = -1
+var _lift_generation: int = -1
+## The newest lift asked for: an older one coming in late is dropped.
+var _lift_asked: int = 0
+## Set while the panel selects a row's parts to show them, which is not a
+## part chosen to lift by.
+var framing: bool = false
 
 
 ## One place the view shows weak, as its panel lists it: a stud joint that
@@ -77,6 +102,10 @@ func set_on(value: bool) -> void:
 		return
 	on = value
 	report = null
+	if not on:
+		lifting = false
+		lift = null
+		_lift_asked += 1
 	world.set_stress(on)
 	if panel != null:
 		panel.visible = on
@@ -95,6 +124,16 @@ func show_report(weighed: Stability.Report) -> void:
 	if not on or weighed == null:
 		return
 	report = weighed
+	# Lifted, the lift is what is drawn: the model changed, lifted again;
+	# another opened, its part chosen afresh.
+	if lifting and lift != null and world.generation() != _lift_generation:
+		lift = null
+		_lift_asked += 1
+		say.call("lift: click the part to lift the model by")
+	if lifting and lift != null:
+		if world.revision != _lift_revision:
+			_lift_again()
+		return
 	var tints: Dictionary = {}
 	for id: int in weighed.margins:
 		if scenery.has(id):
@@ -246,7 +285,151 @@ func line() -> String:
 	if not on:
 		return ""
 	var id: int = hovered.call()
+	if id > 0 and lift != null and not scenery.has(id):
+		return lift.call("part_words", id)
 	return words(id) if id > 0 else ""
+
+
+# -- Lift (loadtest) ------------------------------------------------------------
+
+
+## Lift on or off. On, the one part selected, when there is one, is lifted by
+## at once, and otherwise the next one chosen; off, the model stands again.
+func set_lift(value: bool) -> void:
+	if value == lifting:
+		return
+	lifting = value
+	lift = null
+	_lift_asked += 1
+	if not lifting:
+		say.call("lift off: the model stands on the floor again")
+		if report != null:
+			show_report(report)
+		elif panel != null:
+			panel.show_weak([])
+		return
+	if not on:
+		set_on(true)
+		lifting = true
+	var one: int = _one_chosen()
+	if one != 0:
+		lift_by(one)
+		return
+	say.call("lift: click the part to lift the model by")
+	if panel != null:
+		panel.show_lift(null)
+
+
+## Lift the model by part [param id] and draw what gives: on a worker for a
+## big model, as the status bar weighs one.
+func lift_by(id: int) -> void:
+	_lift_asked += 1
+	var asked: int = _lift_asked
+	var revision: int = world.revision
+	var generation: int = world.generation()
+	if panel != null:
+		panel.lifting_now(id)
+	var lifted: RefCounted = await lift_paced(id)
+	if asked != _lift_asked or not lifting or world.generation() != generation:
+		return
+	if lifted == null:
+		# A part the library had to add meanwhile: lifted again at the next
+		# weighing.
+		_lift_revision = -1
+		return
+	if int(lifted.get("by")) == 0:
+		say.call(str(lifted.get("problem")))
+		if panel != null:
+			panel.show_lift(lifted)
+		return
+	lift = lifted
+	_lift_revision = revision
+	_lift_generation = generation
+	_show_lift()
+
+
+## The model changed while lifted: lifted again by the same part, or, when
+## that part is gone, back to choosing one.
+func _lift_again() -> void:
+	var by: int = int(lift.get("by"))
+	if world.get_brick(by) == null:
+		lift = null
+		_lift_asked += 1
+		say.call("lift: the part it was lifted by is gone — click another")
+		if panel != null:
+			panel.show_lift(null)
+		return
+	_lift_revision = world.revision
+	lift_by(by)
+
+
+func _show_lift() -> void:
+	var tints: Dictionary = {}
+	for one: Balance.JointLoad in lift.get("joints"):
+		if one.ratio > 1.0 or (lift.get("swings") as Array).has(one):
+			tints[one.beyond] = AMBER
+	for id: Variant in lift.get("gone"):
+		tints[int(id)] = RED
+	tints[int(lift.get("by"))] = LIFTED
+	world.set_stress(true, tints)
+	say.call(lift.call("headline"))
+	if panel != null:
+		panel.show_lift(lift)
+
+
+## The one part chosen, not the floor's: 0 for none, or for several.
+func _one_chosen() -> int:
+	if builder == null or builder.selection.size() != 1:
+		return 0
+	var id: int = int(builder.selection.keys()[0])
+	return 0 if scenery.has(id) or world.get_brick(id) == null else id
+
+
+## A part chosen while Lift is on is the one lifted by, but not one the
+## panel selected to show a row's parts (Shell connects it).
+func chosen(_count: int) -> void:
+	if not lifting or framing:
+		return
+	var one: int = _one_chosen()
+	if one != 0 and (lift == null or int(lift.get("by")) != one):
+		lift_by(one)
+
+
+## The model lifted by part [param id] (LiftTest.Result), what Lift draws
+## and a session's weakest_joints lift_by= reads, so the two agree: on a
+## worker on copies of the model and the lattice where there are threads and
+## the model is big, the library holding new arrivals aside. Parts named by
+## their names, with their numbers when [param numbered] (a session's).
+## Null when the library had to add a part meanwhile.
+func lift_paced(id: int, numbered: bool = false) -> RefCounted:
+	var lifter: RefCounted = Later.script(&"LiftTest").new()
+	lifter.library = library
+	lifter.floor_ids = scenery.duplicate()
+	var lifted: RefCounted
+	if world.brick_count() < Stability.ON_A_WORKER_FROM or OS.has_feature("nothreads"):
+		lifter.lattice = builder.lattice
+		lifted = lifter.lift(world.bricks(), id)
+	else:
+		lifter.lattice = builder.lattice.copy_for_reading()
+		lifter.stop = WorkerTasks.Stop.new()
+		var still: BrickWorld = world.copy_for_reading()
+		var out: Array = [null]
+		library.begin_reading()
+		var task: int = WorkerTasks.add(func() -> void:
+			out[0] = lifter.lift(still.bricks(), id), false, "lift the model")
+		library.reading_in(task, func() -> void: (lifter.stop as WorkerTasks.Stop).ask())
+		while not WorkerThreadPool.is_task_completed(task):
+			await get_tree().process_frame
+		WorkerTasks.collect(task)
+		library.end_reading(task)
+		still.free()
+		lifted = out[0]
+	if lifted != null:
+		lifted.set("namer", func(part: int) -> String:
+			var brick: BrickWorld.Brick = world.get_brick(part)
+			var name: String = _name(brick.part_id) if brick != null else "?"
+			return "#%d %s" % [part, name] if numbered else name)
+	return lifted
 
 
 ## What [param id] carries and on what, as the person reads it.

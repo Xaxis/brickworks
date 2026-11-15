@@ -535,6 +535,14 @@
       "tests": []
     },
     {
+      "id": "cli:ask to leave timing",
+      "kind": "cli",
+      "entry": "tools/web/framefetch_flow.mjs",
+      "reach": "tools/export.sh web; node tools/web/relay_server.mjs 10102 --static=build/web --arrivals --hold=together_sessions,together_ops,together_people,together_snapshot_parts, then node tools/web/framefetch_flow.mjs --url=http://127.0.0.1:10102 --out=DIR [--busy=250] [--rounds=8]   (with .env sourced)",
+      "area": "web",
+      "tests": []
+    },
+    {
       "id": "cli:askfirst probe",
       "kind": "cli",
       "entry": "src/dev/askfirst_probe.gd",
@@ -1715,6 +1723,14 @@
       "tests": []
     },
     {
+      "id": "cli:loadtest probe",
+      "kind": "cli",
+      "entry": "src/dev/loadtest_probe.gd",
+      "reach": "tools/probe.sh loadtest [-- --shots=DIR]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720, through the sign-in screen with a throwaway account (.env): a wall of eight 1 x 4 bricks lifted by a top brick holds, its one-stud joint at the hand's 0.35; at sixteen that joint lets go at the hand's 2.02 and the 14 past it come away, named, tinted red, the same over MCP; the far half taken off it holds, one undo and it lets go again; the car by its roof holds, by a headlight's round plate it comes away whole, 60 parts, the same over MCP; Lift off restores Stress; pictures in user://loadtest or DIR)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "cli:localbricks probe",
       "kind": "cli",
       "entry": "src/dev/localbricks_probe.gd",
@@ -1775,6 +1791,14 @@
       "kind": "cli",
       "entry": "src/dev/mcp_walk_probe.gd",
       "reach": "godot --headless --path . --script src/dev/mcp_walk_probe.gd   (what the second MCP walk-through's sessions met, replayed: move_part with no part= on the kart, its card saying steering, the joint's angle from where it was built, animate_model by a part on its joint, open_model link=, parts_list buildable as What can I build?)",
+      "area": "mcp",
+      "tests": []
+    },
+    {
+      "id": "cli:mcpreach probe",
+      "kind": "cli",
+      "entry": "src/dev/mcpreach_probe.gd",
+      "reach": "tools/probe.sh mcpreach_probe   (windowed: godot --path . --resolution 1400x900 --script src/dev/mcpreach_probe.gd; PROBE_SIZE=1280x720. APP_UX8 #11: export_model's description and read_guide app's first lines name Build together, Share, Import and Comments with where each is, and no tool opens them; export_model pdf with a Russian and Greek cover in 3 calls, read back as typed by pdftotext, its cover pictured in the answer (shots/mcpreach/pdf_cover.png or MCPREACH_OUT); every unasked write takes the next free name (pods_render_2.png, pods_2.3mf, pods_turntable_4) and keeps the first byte for byte; a 3MF's and an STL's answer say which objects are closed solids, agreeing with lib3mf; File \u203a Export with its save dialog still writes over when the person says so)",
       "area": "mcp",
       "tests": []
     },
@@ -2181,6 +2205,14 @@
       "entry": "tools/web/people_flow.mjs",
       "reach": "BW_BYPASS=$VERCEL_BYPASS node tools/web/people_flow.mjs --url=<deployment> --out=shots/people   (.env sourced)",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:phonepanels probe",
+      "kind": "cli",
+      "entry": "src/dev/phonepanels_probe.gd",
+      "reach": "tools/probe.sh phonepanels_probe   (windowed, 390x844 by its header; through the sign-in screen with a throwaway account (.env); pictures in --shots=DIR, else user://phonepanels)",
+      "area": "view",
       "tests": []
     },
     {
@@ -2701,6 +2733,14 @@
       "entry": "tools/web/site_check.mjs",
       "reach": "VERCEL_BYPASS=\u2026 node tools/web/site_check.mjs --url=<deployment> --out=shots/site",
       "area": "web",
+      "tests": []
+    },
+    {
+      "id": "cli:smalls2 probe",
+      "kind": "cli",
+      "entry": "src/dev/smalls2_probe.gd",
+      "reach": "tools/probe.sh smalls2_probe   (windowed, 390x844 by its header; no sign-in; pictures in --shots=DIR; --only=more,timeline,select,line,words)",
+      "area": "building",
       "tests": []
     },
     {
@@ -3327,6 +3367,14 @@
       "entry": "src/collection/rebrickable_account.gd",
       "reach": "godot --headless --path . --script src/dev/collection_probe.gd   (against tests/fixtures/collection/fake_rebrickable.py)",
       "area": "collection",
+      "tests": []
+    },
+    {
+      "id": "lib:a request asked of the page",
+      "kind": "lib",
+      "entry": "src/net/page_fetch.gd",
+      "reach": "python3 -m pytest tests/test_page_fetch.py  /  the ask to leave timing flow",
+      "area": "web",
       "tests": []
     },
     {
@@ -4700,7 +4748,7 @@
       "id": "ui:a link that opens playing",
       "kind": "ui",
       "entry": "src/main.gd",
-      "reach": "https://brickworks.diy/m/<id>?motion=<name> of a model with motions of its own (Share, Opens: Playing ...): the viewer plays it over and over within 2 s of the model shown; its button stops it; an unknown name opens still and says so  (main._open_playing, Motions.for_link)",
+      "reach": "https://brickworks.diy/m/<id>?motion=<name> of a model with motions of its own (Share, Opens: Playing ...): the viewer plays it over and over after at most 2 s of its own work from the model shown (3 s on a phone; tools/web/play_flow.mjs times the page's frames less WebGL and its workers'); its button stops it; an unknown name opens still and says so  (main._open_playing, Motions.for_link)",
       "area": "web",
       "tests": []
     },
@@ -5408,6 +5456,14 @@
       "tests": []
     },
     {
+      "id": "ui:lift by a part",
+      "kind": "ui",
+      "entry": "src/assembly/lift_test.gd",
+      "reach": "tools/probe.sh loadtest && PROBE_SIZE=1280x720 tools/probe.sh loadtest   (by hand: View, Stress; press Lift, then click a part: the model hangs from it, every joint between carries the weight below it, the one nearest letting go goes first and the rest is weighed again; the part in the hand blue, what comes away red and named in the panel, a row pressed selects it; Lift again sets it down; a session: weakest_joints lift_by=N)",
+      "area": "view",
+      "tests": []
+    },
+    {
       "id": "ui:lights in the model",
       "kind": "ui",
       "entry": "src/assembly/scene_lights.gd",
@@ -5562,6 +5618,14 @@
       "tests": []
     },
     {
+      "id": "ui:more's first rows and adding to a selection by finger",
+      "kind": "ui",
+      "entry": "src/ui/phone_shell.gd",
+      "reach": "on a phone or a tablet: More opens on its first rows two to a line (Save, Instructions, Timeline, Render, Measure, Cut away, Check stability, Simulate, Pose, Select all; PhoneShell.QUICK), each two taps; Select tapped while lit adds a part with each tap and takes one out (EditVerbs.adding, the pointer with a plus), Select or another tool ends it; the timeline's buttons a fingertip, its rows of choices sliding sideways on a phone held upright, Lay out the page\u2026 first; every English line drawn says tap and hold (Phone.speak_to_a_finger)  (tools/probe.sh smalls2_probe)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "ui:mosaic",
       "kind": "ui",
       "entry": "src/ui/mosaic_dialog.gd",
@@ -5707,6 +5771,14 @@
         "tests/test_alike.py",
         "tests/test_bench.py"
       ]
+    },
+    {
+      "id": "ui:page editor motions and simulate by finger",
+      "kind": "ui",
+      "entry": "src/ui/page_editor.gd",
+      "reach": "on a phone or a tablet: the timeline's Lay out the page\u2026 (buttons and fields 44 points or more, the corner, the knob, an arrow's handles and the rulers a fingertip each, the words field's select-all kept by the tap that brings the keyboard up); Motions (Record beside the name at the editor's top, its joint sliders' strips a fingertip tall, each view opened at its top, a part dragged while recording opens no actions sheet); Simulate (Play, the cycle's slider and the angle under its title)  (PageEditor._lay_for_a_finger, PosePanel._for_a_finger, SimulatePanel._for_a_finger, Main._on_phone_hold; tools/probe.sh phonepanels_probe)",
+      "area": "view",
+      "tests": []
     },
     {
       "id": "ui:palette",

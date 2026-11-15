@@ -14,7 +14,8 @@
 //    taken off, and then ?library=omr-106-1 typed into the same tab: its
 //    reload brought the car back, and the set was not opened, said only in
 //    the status bar. Now it asks, as every other open asks (ModelBar
-//    .ask_to_replace): Cancel keeps the car as it was, Don't save opens the
+//    .ask_to_replace): Cancel keeps the car as it was (read once the
+//    question is gone, up to 60 s after the click), Don't save opens the
 //    set, and Undo brings the car back. Pictures asked.png and set.png.
 //
 // 2. A big set in a tab of its own (--no-big skips it; --id, omr-10297-1:
@@ -237,9 +238,22 @@ async function overUnsaved() {
   if (!asked) return;
   let at = back.controls.replace_cancel;
   await page.mouse.click(at.x, at.y);
-  await page.waitForTimeout(3000);
-  const kept = await stateOf(page);
-  check(`Cancel keeps it as it was: "${kept.title}", ${kept.bricks} parts, "${kept.said}"`,
+  // What the app did with it, read once the question is gone: waited for,
+  // not a fixed 3 s, which a browser drawing in software at load 31-77 ran
+  // past with the question still told and nothing said (m296-m299's
+  // previews and brickworks.diy alike). Cancel is taken in the frame after
+  // the click and the page hears at its next telling, but the first of
+  // those frames is drawn in software, 0.2 to 1.5 s of it WebGL at load
+  // 44-55: seen 0.3 to 4.1 s after the click in four flows at once at load
+  // 41-47, two of eight past 3 s, and none lost (webfaults, 2026-11-14).
+  const clicked = Date.now();
+  let kept = await stateOf(page);
+  for (let end = clicked + 60000; kept.controls.replace_cancel && Date.now() < end;) {
+    await new Promise((done) => setTimeout(done, 250));
+    kept = await stateOf(page);
+  }
+  const took = ((Date.now() - clicked) / 1000).toFixed(1);
+  check(`Cancel keeps it as it was: "${kept.title}", ${kept.bricks} parts, "${kept.said}" (seen ${took} s after the click)`,
     kept.bricks === less && kept.title === named && /nothing opened/.test(kept.said || ""));
   check("...asked once, and gone", !kept.controls.replace_cancel);
   check("...typed again, it asks again", await typed());

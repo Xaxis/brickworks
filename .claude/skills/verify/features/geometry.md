@@ -820,13 +820,35 @@ turntable's top on its base, a differential's planet on its casing's stub, a
 driving ring on its ridged joiner and in the clutch gear it is pushed into), the
 gears from `assets/ldraw/gears.json` (see [pipeline](pipeline.md), `check the gear
 table`), and solves one linear equation per coupling (spur, crown, bevel, worm,
-ring, chain) by sparse elimination:
+ring, chain, and a knob wheel with a knob wheel) by sparse elimination, an
+equation that repeats the ones before it to the file's rounding (`RANK_SLACK`, a
+part in a thousand) taken as a repeat. Gears at right angles mesh within
+`BEVEL_SLACK` (3.5 LDU, Kinebrick's); one met only past `LINE_SLACK` is doubtful,
+and gives way where it alone would lock the train (the probe's "cross shaft
+turned by two crowns": 2.5 LDU out it turns, set aside and said; standing true it
+locks). A lock no one row frees lets go, in one pass of the elimination, what the
+reading is least sure of, each taken back unless it locks the train: loops and
+meshes reached through a joint only a drag reads (`join_floating`) or on a piece
+held by its largest part, doubtful meshes nearest first, universal joints, and a row
+that repeats others but for the file's rounding; sure meshes that ask two turns
+still lock and are named (kinefix; said as "taken as not meshing / not closing, or
+the train would lock"). The tree reaches each body by the parts' own joints before
+a drag's; those less-sure rows never stop a body the sure rows alone turn ("or the
+train would stand"); and a loop's drag (`_hold_train`) places neither the driver
+and what it carries nor a gear the reading turns at a rate it decides. A change to
+any of it is measured by `tools/kinefuncs.py run LABEL --app=SNAPSHOT` on the change
+and on cdc640d3e (before kinefuncs), compared function by function: none that
+turned before may lock or stand more parts after (kinefix: 36 on pre261 905153126,
+2 after, both where cdc640d3e's credit was wrong):
 
 ```sh
 godot --headless --path . --script src/dev/mechanism_probe.gd       # the ratios
 MESA_VK_WSI_DEBUG=sw xvfb-run -a godot --path . --resolution 1400x900 \
   --script src/dev/mechanism_probe.gd                                # and drawn, in shots/mechanism/
 godot --headless --path . --script src/dev/mechanism_sets.gd        # 42055 and 42082 read whole
+tools/probe.sh kinefuncs_probe                                      # n4: a train beside a bridge turns
+python3 tools/kinefuncs.py run LABEL --app=SNAPSHOT [--dump] [--drag]  # Kinebrick's 186 sets, ~2 h
+python3 tools/kinefuncs.py table LABEL --write                      # docs/KINEFUNCS.md
 ```
 
 The probe proves it when it ends on "mechanism: gear trains read off the parts …".
@@ -1010,7 +1032,12 @@ number, the locked pair named and red, Mars's year "1.96 Earth years; real 1.880
 left edge", Worst balance going to Crank at 329°, a recording of one Earth year
 (0.7143 crank turns) with Earth turning 1.4 and Mars 20/28 of every frame's crank
 step, simulate_mechanism through AppTools with a picture, and every part where it
-was built, the history as deep and `world.revision` unmoved throughout. Pictures:
+was built, the history as deep and `world.revision` unmoved throughout. Then it opens
+`orrery_two_planets.ldr` and `telescope.mpd` as File, Open does (`_open`): the orrery
+from its Crank turns "3 of 3 joints", Earth 1.4 and Mars 20/28, and Play plays; the
+telescope's Tilt wheel, clicked, turns (not locked) and Play plays. On pre261
+905153126, where kinefuncs read a named base from the model's largest body, both
+lock and the probe fails 11 (kinefix). Pictures:
 `shots/simulate/1_train.png` … `4_orrery_worst.png`, `5_session_picture.png` (the
 hero view a session gets), the recordings in `shots/simulate/{train,orrery}/`.
 On 2026-10-13 under a load of 50 on this box a 24-frame Quick recording took 79-88
@@ -1044,6 +1071,24 @@ arm meets the beam at 140.54° (to 2°) and -148.23° back; the four-bar's crank
 +80.47° / -80.48° against ±80.41° (to 1°); the PF M motor through 9:1 stalls at
 25.400°, worked 25.400°, asked 14.67 N·cm against 11, and unloaded goes round at 397
 rpm. On stage225 before it, 19 checks fail. Pictures: `shots/motion/<W>x<H>_*.png`.
+
+Simulate on real sets' functions (docs/APP_UX8.md #7, kinefuncs): `tools/kinefuncs.py
+fetch` takes Kinebrick (github.com/erik-larsen/kinebrick, MIT, its data CC BY-SA) at
+its pinned commit and each set's OMR file into `bench/data/kinebrick`; `jobs` reads
+every function's parts as Kinebrick names them; `run LABEL --app=SNAPSHOT` opens each
+of its 186 sets headless under heavy, from a locked snapshot, and drives every
+function's controls in Simulate 1.5 radians each way, judged by Kinebrick's own rules
+(works, partly, no); `table LABEL --write` writes docs/KINEFUNCS.md beside Kinebrick's
+results. `--dump` keeps each set's gear reading (each part's body, the joints, gears
+and meshes, the drag's joints, what each drive turned) in
+`kinefuncs_LABEL_dump/SET.json` for reading why one failed; `--drag` drives each
+control by move_part's drag as well (row field `drag`). With nothing given,
+`tools/probe.sh kinefuncs_probe` is the MCP walk's n4 through the gate: a 24 driving
+an 8 in a Technic-brick frame built beside the walk's bridge, which
+`simulate_mechanism driver=` the 24 turns (the 8 three turns to its one, the other
+way, "a piece apart from it, held by its largest part"), move_part turns 30° and 90°
+and one undo puts back, a loose 24 still refused as floating; it ends "PASS: 0
+failed", and on pre261 926a97e3e fails 4 ("it is floating").
 
 Stability measured: `stabletruth_probe` ends on "every check passed". StableLego's
 eight structures (tests/fixtures/stability/stablelego, each on a 48 x 48 baseplate,

@@ -263,8 +263,42 @@ async function section(name, body) {
   }
 }
 
+/// The beta as the deployment has it now, and as its pages will hear it.
+/// beta_spots is kept by the CDN a minute and then answered stale while it
+/// asks again (api/_beta.js betaSpots): run minutes after console's flow
+/// flipped this preview's switch off and on, the one answer read here was
+/// the stale "off" while every page heard "open", and all 38 pages failed
+/// for a bar that was right (rel-m299, 2026-11-14). So the switch is read
+/// past the CDN (fresh=), an answer that is not one is never taken as off,
+/// and the pages' own question (the address as they ask it) is waited for
+/// until it says the same, six minutes at most.
+async function betaThere() {
+  const ask = async (fresh) => {
+    const where = `${remote}/api/plans?op=beta_spots${fresh ? `&fresh=${Date.now()}` : ""}`;
+    const reply = await fetch(where, { headers }).catch(() => null);
+    const body = reply?.ok ? await reply.json().catch(() => null) : null;
+    return ["open", "off"].includes(body?.beta) ? body : null;
+  };
+  let now = null;
+  for (let tries = 0; tries < 6 && !now; tries += 1) {
+    if (tries) await new Promise((done) => setTimeout(done, 5000));
+    now = await ask(true);
+  }
+  if (!check(`the beta's switch read on the deployment: ${now ? now.beta : "no answer in 30 s"}`, Boolean(now))) return null;
+  const began = Date.now();
+  let heard = await ask(false);
+  while (heard?.beta !== now.beta && Date.now() - began < 400000) {
+    await new Promise((done) => setTimeout(done, 5000));
+    heard = await ask(false);
+  }
+  check(`...and its pages hear the same: "${heard?.beta ?? "nothing"}" from beta_spots as they ask it`
+    + ` (${Math.round((Date.now() - began) / 1000)} s)`, heard?.beta === now.beta);
+  return now;
+}
+
 try {
-  const spots = remote ? await (await fetch(`${remote}/api/plans?op=beta_spots`, { headers })).json().catch(() => ({})) : null;
+  const spots = remote ? await betaThere() : null;
+  if (remote && !spots) throw new Error("the beta's switch could not be read on the deployment");
   const open = remote ? spots.beta === "open" : true;
   if (open && remote) SPOTS = { cap: spots.cap, left: spots.left };
   console.log(`betahome flow: ${base}${remote ? ` (the beta ${open ? "open" : "off"} there)` : ` (stand-in, ${root})`}`);

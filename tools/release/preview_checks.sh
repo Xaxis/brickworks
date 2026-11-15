@@ -397,6 +397,11 @@ declare -A CMD=(
   # said so: "the API's database needs supabase/together_big.sql").
   [together_probe]="tools/web/together_probe.mjs --url=$P"
   [together]="tools/web/together_flow.mjs --url=$P --out=$S/${TAG}_together"
+  # pointat (APP_UX8 #17): a part pointed out by Alt+W in a room of two
+  # tabs, drawn in the other within 500 ms (p95 of 20) with the pointer's
+  # name, gone after 5 s or on the pointer's Esc, put away by the other's
+  # Esc there alone; the owner's Claude pointing in one call.
+  [pointat]="tools/web/pointat_flow.mjs --url=$P --out=$S/${TAG}_pointat"
   # A build party (APP_UX5 buildparty): two phones on one shared link and
   # no account, joined by a code in 2 taps each, the car dealt in two (all
   # 61 parts once), a part done on either on the other within 2 s, a phone
@@ -438,6 +443,11 @@ declare -A CMD=(
   # through the relay costs when the tab answers at once, median and p90
   # (relay338). It runs against a preview too; run it after a change to
   # the relay's queue (its header says how).
+  # local only: framefetch_flow.mjs. How long a send waits in the tab before
+  # it leaves, Together's, the relay's and a tool's own, with every frame
+  # 250 ms longer: it reads the server's time of arrival from a local relay
+  # run with --arrivals, which a deployment has not. Run it after a change to
+  # how the app sends (PageFetch) or to the checks' routes (page_routes.mjs).
   [people]="tools/web/people_flow.mjs --url=$P --out=$S/${TAG}_people"
   # A person's page (/u/<handle>, docs/SOCIAL.md U5): a throwaway designer
   # lists two models and chooses links, a banner and pins (op=showcase, its
@@ -733,11 +743,10 @@ run() {
   # left behind would hold the database from every other run.
   if live "$name"; then
     alone "$name" && how=alone
-    if ! take_live_db "$how"; then
+    if ! take_live_db "$how" "$TAG $name"; then
       echo "$name exit=75 fails=1 $(( $(date +%s) - t0 ))s :: FAIL the live database stayed busy (gave way to a release after LIVE_GIVE_WAY, $(( ${LIVE_GIVE_WAY:-0} / 60 )) min, or waited LIVE_WAIT, $(( ${LIVE_WAIT:-3600} / 60 )) min): $(tail -1 "$LIVE_DB.log")" >> "$S/$TAG.out"
       return
     fi
-    echo "$(date '+%F %T') took $TAG $name after $(( $(date +%s) - t0 ))s ($LIVE_DB_HOW)" >> "$LIVE_DB.log"
   fi
   # The limit is on the check, inside heavy: around heavy it counted the wait
   # for a slot, and at load 50 tabs and keep ran out queued, never run.
@@ -785,8 +794,9 @@ run() {
 # the beta for off and then found the bar on every page (rel-m294,
 # 2026-11-13), so it runs with nothing of this battery beside it.
 # console3 sets a notice that floats over every page of the deployment for a
-# few minutes, over the controls a check beside it would press.
-SOLO=" idle arrival progress cursor render_open render product_render grab share_steps frames play discovery oc together buildparty load console console3 "
+# few minutes, over the controls a check beside it would press. pointat times
+# a part pointed out crossing between two tabs, as together does.
+SOLO=" idle arrival progress cursor render_open render product_render grab share_steps frames play discovery oc together buildparty load console console3 pointat "
 PAIRED=""; ALONE=""
 for n in $NAMES; do case "$SOLO" in *" $n "*) ALONE="$ALONE $n";; *) PAIRED="$PAIRED $n";; esac; done
 # PC_AT_ONCE at a time, a slot taking the next check as soon as it is

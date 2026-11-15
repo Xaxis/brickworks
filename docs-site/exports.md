@@ -7,12 +7,16 @@ rules:
   - export_model format=pickabrick names the parts with no LEGO® element number in its answer; tell the person, they buy those elsewhere.
   - A BrickLink wanted list takes condition (new, used, any), wanted_list (an ID) and notify; nothing is uploaded, the person uploads the file.
   - export_model format=ldraw submodels=true writes every sub-model as a file of its own in one .zip; submodel= writes just the one, named as the model tree names it.
+  - export_model format=pdf writes the booklet as the PDF the Instructions window prints, says whether every letter printed and shows the cover as the PDF prints it; it is a job, like instructions.
+  - An STL's or a 3MF's answer says whether each object is a closed solid, as a slicer needs it, and names any part that is not: tell the person what it says, never guess.
+  - An export or a render the session makes never writes over a file: one of that name already there is kept, and the new one takes the next free name (pods_2.3mf), which the answer gives.
+  - Building together live, sharing a link, importing a file from the person's computer and comments pinned to parts are the person's own (File › Build together…, File › Share…, File › Import, File › Comments…): send them there, never say it cannot be done.
 title: Exports
 nav: Exports
 description: Save the model as a file for another program, a 3D printer or a shop: LDraw, Studio, 3D models, a picture and parts lists.
 ---
 
-**File › Export** writes the model, or its parts list, as a file for another program, a 3D printer or a shop. In a browser each downloads; in the desktop app each asks where to save it. For a picture worth keeping, a turntable or a video of the build, see [Render](/docs/render).
+**File › Export** writes the model, or its parts list, as a file for another program, a 3D printer or a shop. In a browser each downloads; in the desktop app each asks where to save it. What your assistant exports goes into your Downloads folder without asking, and never over a file you have: with `pods.3mf` there, the next is `pods_2.3mf`. For a picture worth keeping, a turntable or a video of the build, see [Render](/docs/render).
 
 | Export | What it is for |
 |---|---|
@@ -69,8 +73,8 @@ The arrow beside **BrickLink** on the parts list sets what the wanted list asks 
 
 - **GLB** or **glTF**, in its colours, for Blender, three.js and AR viewers. A part shape is kept once however often it is used, so any model fits.
 - **OBJ**, with an `.mtl` of its colours.
-- **STL**, one mesh in millimetres, for a slicer.
-- **3MF**, to print in colour: an object for each colour, so your slicer gives each its own filament. When it asks, load it as one object of several parts. It is in millimetres, standing on the bed.
+- **STL**, one mesh in millimetres, for a slicer. Its parts are LDraw's surfaces as they are drawn, which meet without sharing edges, so the status bar says how many are not closed solids: your slicer repairs them as it loads them.
+- **3MF**, to print in colour: an object for each colour, so your slicer gives each its own filament. When it asks, load it as one object of several parts. It is in millimetres, standing on the bed. Every part is closed into a solid, and the status bar says each object is one, with nothing for a slicer to repair, or names any part that is not.
 
 A part moulded in two colours goes to both, and a printed pattern is painted on its part for a slicer that reads a triangle's colour. The parts are LDraw's shapes at their exact size, not loosened for a printer, so printed parts may fit real bricks tightly.
 

@@ -506,9 +506,14 @@ try {
       // orangecheck's row is there where the deployment signs in with it
       // (api/orangecheck.js), and nowhere else; the Beta row while the
       // deployment's beta is open (api/plans.js ?op=beta_spots), and never
-      // while it is off.
+      // while it is off. Asked past the CDN (fresh=), which keeps the answer
+      // a minute and then gives it stale once more: signed in, Settings
+      // hears the switch as it is now (op=beta), and a stale "off" read
+      // minutes after console's flow flipped the switch failed the row
+      // betahome did (rel-m299).
       const betaOpen = await page.evaluate(async () => {
-        const heard = await fetch("/api/plans?op=beta_spots", { cache: "no-store" }).then((r) => r.json()).catch(() => ({}));
+        const heard = await fetch(`/api/plans?op=beta_spots&fresh=${Date.now()}`, { cache: "no-store" })
+          .then((r) => r.json()).catch(() => ({}));
         return heard.beta === "open";
       });
       check(`${label}: ${rows.join(" · ")}${betaOpen ? " (the beta open)" : ""}`,

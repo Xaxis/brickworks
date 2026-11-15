@@ -29,7 +29,7 @@
 import { isMaster } from "./_auth.js";
 import { betaSwitch } from "./_beta.js";
 import { billingMode, entitlementOf } from "./_billing.js";
-import { db, reach } from "./_db.js";
+import { db, dbAll, reach } from "./_db.js";
 import { scopeOf } from "./_settings.js";
 import { siteSummary } from "./_console_site.js";
 import { mailTrouble } from "./_console_mail.js";
@@ -208,10 +208,12 @@ export async function overview(request, tests = false) {
 export async function people(tests = false) {
   const [users, tabs, models, profiles, barred, testers] = await Promise.all([
     allUsers(),
-    known(db("relay_tabs?select=owner,seen_at&owner=not.is.null")),
-    known(db("shared_models?select=owner,listed&published=is.true&limit=50000")),
-    known(db("people?select=account,handle,name&limit=50000")),
-    known(db("barred_accounts?select=account,at,reason&limit=5000")),
+    // Every row: a read stops at PostgREST's page of 1,000 whatever its
+    // limit, and each person's counts stopped short past it (lists1's review).
+    known(dbAll("relay_tabs?select=owner,seen_at&owner=not.is.null", "channel")),
+    known(dbAll("shared_models?select=owner,listed&published=is.true", "id")),
+    known(dbAll("people?select=account,handle,name", "account")),
+    known(dbAll("barred_accounts?select=account,at,reason", "account")),
     known(db("rpc/beta_testers_list", { method: "POST", body: { p_tests: tests, p_limit: 1000 } })),
   ]);
   const tally = new Map();

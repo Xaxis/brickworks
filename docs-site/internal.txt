@@ -67,6 +67,7 @@ ui:the owner's feedback inbox  # the owner's own page: reports read, triaged and
 lib:the console's reads and audit  # the owner's console's own reads and its log of the owner's acts
 lib:the console's switches  # the switches the owner flips from the console; what a visitor meets (the beta open or coming soon) is in the docs
 lib:the console's part B reads  # the owner's console's reads of plans, mail, the connector and the site
+lib:a request asked of the page  # how the app's requests leave a browser tab; a person meets only that none waits for a frame
 api:Resend's word on each mail  # Resend's webhook, for the owner's Mail; nobody calls it
 ui:the console's plans and revenue  # the owner's, on the admin page
 ui:the console's mail  # the owner's, on the admin page

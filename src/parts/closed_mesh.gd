@@ -105,6 +105,62 @@ func close(at: PackedVector3Array, corners: PackedInt32Array, colours: PackedInt
 	await _split_fans(partner)
 
 
+# -- the check (mcpreach) -----------------------------------------------------------
+
+
+## How many of [param corners]' edges (three corners a triangle, by vertex)
+## are not shared by exactly two triangles going opposite ways round, each
+## way counted: 0 for a closed solid, the 3MF core's 4.1 and what lib3mf's
+## IsManifoldAndOriented checks (mcpreach_probe holds the two together on the
+## car). What an STL's or a 3MF's answer says of each object (Exports.model_3d):
+## a session told a person their solid 3MF would need repair, for want of it
+## (APP_UX8's MCP walk, x5).
+static func open_edges(corners: PackedInt32Array) -> int:
+	var keys := PackedInt64Array()
+	keys.resize(corners.size())
+	for h: int in corners.size():
+		keys[h] = (corners[h] << 32) | corners[h - h % 3 + (h + 1) % 3]
+	keys.sort()
+	var open: int = 0
+	var i: int = 0
+	while i < keys.size():
+		var j: int = i + 1
+		while j < keys.size() and keys[j] == keys[i]:
+			j += 1
+		var back: int = ((keys[i] & 0xFFFFFFFF) << 32) | (keys[i] >> 32)
+		var k: int = keys.bsearch(back)
+		var backs: int = 0
+		while k + backs < keys.size() and keys[k + backs] == back:
+			backs += 1
+		if j - i != 1 or backs != 1:
+			open += j - i
+		i = j
+	return open
+
+
+## [method open_edges] of surfaces as they are drawn, each corner its own
+## ([param at], three a triangle, as an STL writes them): corners in one
+## place, to 1/64 LDU, are one vertex, as a slicer welds them.
+static func open_edges_at(at: PackedVector3Array) -> int:
+	var weld: Dictionary = {}
+	var corners := PackedInt32Array()
+	corners.resize(at.size() - at.size() % 3)
+	for i: int in corners.size():
+		var key := Vector3i((at[i] * 64.0).round())
+		if not weld.has(key):
+			weld[key] = weld.size()
+		corners[i] = weld[key]
+	var kept := PackedInt32Array()
+	for t: int in corners.size() / 3:
+		var a: int = corners[t * 3]
+		var b: int = corners[t * 3 + 1]
+		var c: int = corners[t * 3 + 2]
+		# A triangle with no area welds to a line: a slicer drops it.
+		if a != b and b != c and a != c:
+			kept.append_array([a, b, c])
+	return open_edges(kept)
+
+
 # -- edges ------------------------------------------------------------------------
 
 

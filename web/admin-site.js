@@ -117,6 +117,7 @@ export async function loadSite() {
     row.append(acts);
     crons.append(row);
   }
+  if (!crons.rows.length) emptyRow(crons, "Not asked.");
 
   // Releases.
   const releases = $("releases");

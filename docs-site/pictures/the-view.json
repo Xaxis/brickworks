@@ -23,6 +23,21 @@
    "alt": "The model area split in two: the red car turned three-quarters on the left, and straight from the front on the right with Front, Top, Side, Back and Fit above it.",
    "caption": "View › Split (F8) shows the model from two sides at once.",
    "features": ["ui:split view"]
+  },
+  {
+   "id": "the-view-lift",
+   "source": "app",
+   "setup": [
+    {"run": "stress", "after": 30},
+    {"click": "_shell.stress.panel._lift"},
+    {"select": {"part": "6141", "nth": 0}},
+    {"frames": 40}
+   ],
+   "crop": ["_over_model", "_shell.stress.panel"],
+   "width": 1000,
+   "alt": "The car lifted by a headlight's round plate in Stress: the plate blue, the rest of the car red, and the panel naming the one-stud joint that lets go and the 60 parts that come away.",
+   "caption": "Lift: the car hangs from one stud, and comes away whole.",
+   "features": ["ui:lift by a part"]
   }
  ]
 }

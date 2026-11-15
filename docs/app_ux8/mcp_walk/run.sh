@@ -96,6 +96,10 @@ for l in open('$OUT/$name.jsonl'):
     try: d = json.loads(l)
     except ValueError: continue
     if d.get('session_id'): print(d['session_id']); break")
+  # What each task left where Export writes, by hash, so a file written over
+  # shows (mcpreach: x4's picture and x5's 3MF each replaced the last).
+  (cd "$KEEP/downloads" 2>/dev/null && find . -maxdepth 1 -type f -exec sha256sum {} + | sort -k2) \
+    > "$OUT/$name.files"
 done < <(cat "${FILES[@]}")
 python3 "$HERE/summarise.py" "$OUT"/*.jsonl > "$OUT/calls.txt"
 kill $app; pkill -P $app; wait $app
