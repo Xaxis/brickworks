@@ -280,7 +280,9 @@ ok((await state()).bricks === 0, "New: an empty baseplate");
 await click("part search");
 await key("Control+a", 200);
 await page.keyboard.type("3001", { delay: 30 });
-await wait(1500);
+// Listed first before its tile is pressed: a fixed wait under load pressed
+// the last search's (placing_flow, rel-m301).
+await until(async () => ((await state()).found || [])[0] === "3001", 30);
 await click("first part");
 ok(await until(async () => (await state()).mode === "place", 30), `a 2 x 4 brick in hand (${(await state()).held})`);
 const view = await where("view");

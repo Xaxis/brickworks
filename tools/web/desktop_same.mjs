@@ -79,6 +79,9 @@ async function shoot(at, label) {
   if (search) {
     await page.mouse.click(search.x, search.y);
     await page.keyboard.type("3001", { delay: 40 });
+    // The list answering the search before its picture: under load it still
+    // showed what it had (placing_flow, rel-m301).
+    for (let n = 0; n < 120 && ((await state()).found || [])[0] !== "3001"; n++) await page.waitForTimeout(250);
     await where("first part", 20);
     await page.mouse.move(width / 2, height / 2);
   }

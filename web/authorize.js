@@ -19,6 +19,7 @@
 // /de/oauth/authorize, tools/site_lang.py), what the server refuses with
 // through told().
 import { say, told } from "/card.js";
+import { CODE_DIGITS, codeBoxes } from "/code-boxes.js";
 
 const $ = (id) => document.getElementById(id);
 // Where the app keeps its session (src/account/account.gd).
@@ -34,11 +35,15 @@ let client = "Claude"; // who is asking, as the server names it
 // speakAs.
 const CLAUDE_TITLE = document.title;
 
+// The code, a box per digit (web/code-boxes.js, signinux 2026-11-13),
+// sent by its last digit.
+const codeRow = codeBoxes({ field: $("code"), say, onFilled: () => $("code-form").requestSubmit() });
+
 function show(step) {
   for (const id of STEPS) $(id).classList.toggle("hide", id !== step);
   status("");
-  const field = { "email-step": "email", "code-step": "code" }[step];
-  if (field) $(field).focus();
+  if (step === "email-step") $("email").focus();
+  if (step === "code-step") codeRow.clear();
 }
 
 function status(text, bad = false) {
@@ -177,11 +182,29 @@ async function remembered() {
   }
 }
 
+/// Whether the request says it is Claude's as the server will name it
+/// (clientLabel, api/_oauth.js): its client document on claude.ai, or its
+/// codes going back to claude.ai or claude.com.
+function claudeAsks() {
+  if (String(request.client_id || "").startsWith("https://claude.ai/")) return true;
+  try {
+    const to = new URL(request.redirect_uri || "");
+    const host = to.hostname.toLowerCase();
+    return to.protocol === "https:" && ["claude.ai", "claude.com"].some((at) => host === at || host.endsWith(`.${at}`));
+  } catch {
+    return false;
+  }
+}
+
 async function start() {
   // Before the server says who is asking: Claude's words for a request from
   // one of Claude's own addresses, as the page always had, and no app's
-  // name for any other, so ChatGPT's person never reads "Claude".
-  if (!String(request.client_id || "").startsWith("https://claude.ai/")) speakAs(say("your app"), false);
+  // name for any other, so ChatGPT's person never reads "Claude". Claude
+  // known by where its codes go too, as the server knows it: a Claude that
+  // registered its own client id read "Connect your app to Brickworks"
+  // until the server answered, and the title changed under the person (the
+  // French consent check read it so in rel-m300's batch).
+  if (!claudeAsks()) speakAs(say("your app"), false);
   // What the request is, before anything is asked of the person.
   let checked;
   try {
@@ -250,11 +273,22 @@ $("email-form").addEventListener("submit", async (event) => {
       body: JSON.stringify({ email }),
     });
     if (!reply.ok) {
-      status(told((await json(reply)).error, say("Could not send a code just now ({status}).", { status: reply.status })), true);
+      const body = await json(reply);
+      // Locked for asking too often: when it may ask again, by the clock.
+      const at = reply.status === 429 ? new Date(String(body.retry_at || "")) : null;
+      if (at && !Number.isNaN(at.getTime())) {
+        const lang = globalThis.brickworksLang?.code;
+        const time = at.toLocaleTimeString(lang && lang !== "en" ? lang : undefined, { hour: "2-digit", minute: "2-digit" });
+        status(say("Too many codes asked for. Try again after {time}.", { time }), true);
+        return;
+      }
+      status(told(body.error, say("Could not send a code just now ({status}).", { status: reply.status })), true);
       return;
     }
     $("sent-to").textContent = email;
-    $("code").value = "";
+    // As long as the code the deployment minted (api/otp.js).
+    const length = Number((await json(reply)).digits);
+    codeRow.size(Number.isInteger(length) ? length : CODE_DIGITS);
     show("code-step");
   } catch {
     status(say("Could not reach Brickworks to send a code. Check your connection."), true);
@@ -265,9 +299,15 @@ $("email-form").addEventListener("submit", async (event) => {
 
 $("code-form").addEventListener("submit", async (event) => {
   event.preventDefault();
+  // Every digit first, as the site's sign-in asks (web/code-boxes.js):
+  // a code short of some is never sent.
+  if (!codeRow.complete((words) => status(words, true))) return;
   const token = $("code").value.replace(/[\s-]/g, "");
-  if (!token) return status(say("Enter the code from the email."), true);
+  // The last refusal's words gone as the next code is checked (sifix: "That
+  // code is wrong" stayed red under Signing in…).
+  status("");
   busy($("verify"), true, say("Signing in…"));
+  codeRow.busy(true);
   try {
     const reply = await fetch(`${project.url}/auth/v1/verify`, {
       method: "POST",
@@ -276,13 +316,19 @@ $("code-form").addEventListener("submit", async (event) => {
       body: JSON.stringify({ type: "email", email, token }),
     });
     const body = await json(reply);
-    if (!reply.ok || !body.access_token) return status(readable(body), true);
+    if (!reply.ok || !body.access_token) {
+      codeRow.busy(false);
+      // A wrong or spent code: the row shakes empty for the right one.
+      if (["otp_expired", "invalid_credentials"].includes(body.error_code)) codeRow.refuse();
+      return status(readable(body), true);
+    }
     keep(body);
     session = { access: body.access_token, email: body.user?.email || email };
     if (!(await remembered())) toAllow();
   } catch {
     status(say("Could not reach Brickworks to sign in. Check your connection."), true);
   } finally {
+    codeRow.busy(false);
     busy($("verify"), false, say("Sign in"));
   }
 });

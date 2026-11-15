@@ -2429,7 +2429,7 @@ function account(method, params, body, who, state) {
 /// The sign-in service (DB/auth/v1/...): a session for EMAIL for any code
 /// or refresh token (the owner's page renews its own on every load), but
 /// the code WRONG_CODE, refused as Supabase refuses a wrong or spent one.
-export const WRONG_CODE = "000000";
+export const WRONG_CODE = "00000000";
 function supabase(url, method, body) {
   if (method === "POST" && url.pathname === "/auth/v1/verify" && String(body?.token) === WRONG_CODE) {
     return answer(403, { code: 403, error_code: "otp_expired", msg: "Token has expired or is invalid" });

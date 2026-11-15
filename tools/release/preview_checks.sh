@@ -41,6 +41,13 @@ declare -A CMD=(
   # and /app still isolated; the server refusing nothing, junk and a GET.
   # A finished sign-in is tools/web/oc_live_flow.mjs, on brickworks.diy.
   [oc]="tools/web/oc_flow.mjs --url=$P --out=$S/${TAG}_oc"
+  # Signing in where the person is (signinux, 2026-11-14): the header's Sign
+  # in opens the dialog in one click at 1280, 430 and 390 (the phone's Menu),
+  # Not now leaves the page as it was; the emailed code a box per digit
+  # (typed, Backspace, arrows, pasted, filled, a wrong one emptied); signed in
+  # on the same page with no reload; a signed-out /profile opens it by
+  # itself. A throwaway at a Resend test address, its code minted.
+  [signin]="tools/web/signin_flow.mjs --url=$P --out=$S/${TAG}_signin"
   # local only: bin_keys_flow.mjs. It times each key's frames in SwiftShader,
   # which on a loaded box times the box, not the app; bin_keys_probe and
   # bin_keys_phone_probe hold the bar in the suite (bintiles, 2026-11-06).

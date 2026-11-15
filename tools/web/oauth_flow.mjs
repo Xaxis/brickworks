@@ -360,13 +360,14 @@ try {
   check(true, "an address, and Email me a code: the deployment sent one");
   // Minted here, which replaces the emailed one (the test has no inbox).
   const code = await mintCode(email);
-  await away.fill("#code", "000000");
-  await away.click("#verify");
+  // One digit a box (web/code-boxes.js, signinux): a whole code put in the
+  // first box fans out and is sent by its last digit, so Sign in is not
+  // pressed after it.
+  await away.fill("#code-1", "00000000");
   await away.waitForFunction(() => document.querySelector("#say")?.classList.contains("bad"), null, { timeout: 30000 });
   check(/wrong or has expired/.test(await away.textContent("#say")), `a wrong code is refused: "${await away.textContent("#say")}"`);
-  await away.fill("#code", code);
   await away.screenshot({ path: `${out}/7_authorize_code.png` });
-  await away.click("#verify");
+  await away.fill("#code-1", code);
   // This account allowed Claude in the first browser, and is connected to
   // it still: signed in here, it is not asked again.
   const awayOutcome = await outcome(away);

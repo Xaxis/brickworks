@@ -1022,9 +1022,10 @@ async function start() {
     $("loading").hidden = true;
     $("signed-out").hidden = false;
     document.documentElement.dataset.lists = "signed-out";
-    $("sign-in").addEventListener("click", async () => {
-      if (await askToSignIn("Sign in to keep your lists: we email you a code, no password.")) location.reload();
-    }, { once: true });
+    // Signed in (here or by the header's Sign in), brickworks:signed-in-done
+    // below draws the lists where the person is. Not now leaves the button
+    // to press again.
+    $("sign-in").onclick = () => askToSignIn("Sign in to keep your lists: we email you a code, no password.");
     return;
   }
   const answer = await loadMine();
@@ -1033,9 +1034,7 @@ async function start() {
     $("signed-out").hidden = answer.status !== 401;
     document.documentElement.dataset.lists = answer.status === 401 ? "signed-out" : "failed";
     if (answer.status === 401) {
-      $("sign-in").addEventListener("click", async () => {
-        if (await askToSignIn("Sign in again to see your lists: we email you a code, no password.")) location.reload();
-      }, { once: true });
+      $("sign-in").onclick = () => askToSignIn("Sign in again to see your lists: we email you a code, no password.");
     } else {
       const said = make("p", "state", trouble(answer));
       $("loading").after(said);
@@ -1049,5 +1048,13 @@ async function start() {
   drawRail();
   await loadList();
 }
+
+// Signed in while the page said to (its own Sign in, the header's; signinux
+// 2026-11-14): the person's lists drawn where they are, with no reload.
+addEventListener("brickworks:signed-in-done", () => {
+  if (document.documentElement.dataset.lists !== "signed-out") return;
+  $("signed-out").hidden = true;
+  start();
+});
 
 start();

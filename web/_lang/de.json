@@ -1299,6 +1299,7 @@
   "Email is not configured here.": "E-Mail ist hier nicht eingerichtet.",
   "We could not start a sign-in just now. Try again in a minute.": "Wir konnten die Anmeldung gerade nicht starten. Versuch es in einer Minute noch einmal.",
   "Too many codes asked for. Wait a few minutes and try again.": "Zu viele Codes angefordert. Warte ein paar Minuten und versuch es noch einmal.",
+  "Too many codes asked for. Try again after {time}.": "Zu viele Codes angefordert. Versuch es nach {time} noch einmal.",
   "We could not send the email just now. Try again in a minute.": "Wir konnten die E-Mail gerade nicht senden. Versuch es in einer Minute noch einmal.",
   "Choose the month you were born in.": "Wähle den Monat, in dem du geboren bist.",
   "Type the year you were born, as four digits.": "Gib dein Geburtsjahr mit vier Ziffern ein.",
@@ -2879,6 +2880,19 @@
   "Beta bar hidden. Show it again in {settings}.": "Beta-Leiste ausgeblendet. In den {settings} kannst du sie wieder zeigen.",
   "Undo": "Rückgängig",
   "Hide the beta bar": "Beta-Leiste ausblenden",
-  "Admin": "Verwaltung"
+  "Admin": "Verwaltung",
+  "It works once and expires in ten minutes. Not there? Look in spam.": "Er gilt einmal und läuft nach zehn Minuten ab. Nicht da? Sieh im Spam nach.",
+  "Send a new code": "Neuen Code senden",
+  "Use a different address": "Andere Adresse verwenden",
+  "or": "oder",
+  "Show the orangecheck window": "orangecheck-Fenster zeigen",
+  "Finish signing in in the orangecheck window": "Schließe die Anmeldung im orangecheck-Fenster ab",
+  "It opened in a window of its own.": "Es hat sich in einem eigenen Fenster geöffnet.",
+  "Signing you in…": "Du wirst angemeldet…",
+  "Sending a new code…": "Neuer Code wird gesendet…",
+  "Sent a new code. Use the newest one.": "Neuer Code gesendet. Verwende den neuesten.",
+  "Enter all {count} digits of the code.": "Gib alle {count} Ziffern des Codes ein.",
+  "Digit {n} of {count}": "Ziffer {n} von {count}",
+  "Sign in with orangecheck: its button opens its window, then you go back to the app, signed in.": "Mit orangecheck anmelden: Sein Knopf öffnet sein Fenster, dann kehrst du angemeldet zur App zurück."
  }
 }

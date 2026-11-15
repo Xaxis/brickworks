@@ -468,6 +468,12 @@
 					"tip": "Swap the selection for the part you hold, each in its own colour"
 				},
 				{
+					"name": "find_replace",
+					"words": "Find and replace…",
+					"key": "Ctrl+Shift+H",
+					"tip": "Find a part or a colour anywhere in the model, inside every sub-model too, and replace it"
+				},
+				{
 					"name": "mirror",
 					"words": "Mirror",
 					"key": "Shift+M",
@@ -1607,6 +1613,12 @@
 			"tip": "Comments pinned to the model's parts, kept with it, and a new one on the part selected"
 		},
 		{
+			"name": "together_point",
+			"words": "Point it out to the others",
+			"key": "Alt+W",
+			"tip": "Everyone in your Build together session sees the part under the pointer, or the parts selected, outlined in your colour with your name for 5 seconds; Esc takes it back"
+		},
+		{
 			"line": true
 		},
 		{
@@ -1817,6 +1829,7 @@
 		"share": "",
 		"together": "",
 		"comments": "",
+		"together_point": "alt-W",
 		"clear": "",
 		"account": "",
 		"quit": "Ctrl-Q",
@@ -1845,6 +1858,7 @@
 		"find_colour": "shift-C",
 		"paint": "C",
 		"replace": "alt-R",
+		"find_replace": "Ctrl-shift-H",
 		"printed_versions": "",
 		"mirror": "shift-M",
 		"split_parts": "alt-S",

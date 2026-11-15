@@ -3262,6 +3262,122 @@ Merged with pre261, it passes 540 of 540, and booklet_probe 49.
 not roll: its camera stays upright, so x 180 is seen from behind there, not
 from nearly above.
 
+## Nothing in under a part already there (2026-11-15, buildorder)
+
+The planner's steps put 4.6% of what they put in under a part already there
+(proof), against the authors' 0.8%. A hand cannot press a part in from
+below. The mend (HeldSteps) waited for what holds a part, by its joints,
+and never for what it rests on. Now it reads that too, by the covers the
+steps score reads (`HeldSteps.Under`, from Stability.contacts' "above",
+less the pairs a pin, axle, clip, ball or glue holds):
+
+- **A part waits for what it rests on**, as it waits for what holds it, for
+  at most `PATIENCE` (32) steps. Round a sub-assembly put on whole, what it
+  waits for may wait for it in turn; with no limit 7347's truck put what
+  waited in at its last step, and its things in under went from 14 to 49.
+- **Two parts whose covers meet both ways round go in together** (a plate's
+  studs in the tubes of a part that also sits on it). Half of what went in
+  under was such pairs: whichever goes second goes in under the first. A
+  later part may be taken in sooner for it, up to `PULL_MOST` (32) a step,
+  never in the model's first step, and only with everything it is pinned
+  to: the kart's gear, taken in before its axle, stood by its teeth alone
+  (instructions_probe).
+- **A hidden part joined only to its own step's parts goes in sooner with
+  them.** corner_shop's figure went in last, inside its walls, its head
+  joined only to its body: the steps test's hidden count is 0 again (2 in
+  pre261, 0 before copyorder).
+- **What a waiting part rests on goes in sooner with it**, within the same
+  `PULL_MOST`, and the parts that waited for it are asked again. 6361's back
+  plate, planned for its last step, held the plates over it and 73 parts on
+  those to that step, where the 2 x 16 under the cab then hung from its
+  wheel plates; now 32 steps, none floating or under. Only what waited is
+  asked again: the whole step asked again took 4002020's parts in under ones
+  already there (23 under to 33, tau 0.61 to 0.28).
+- **A hidden sub-assembly goes on once what holds it is in**
+  (`HeldSteps._put_on_sooner`). 7815's two passengers, each put on whole,
+  went on after the roof slopes over them.
+- **A model of sub-models keeps its whole sub-model steps** only when they
+  put no more in under, and no more apart in the hand (`HeldSteps.Hand`),
+  than the order worked out. Kept, they floated 1.4% of steps in the hand
+  that the steps test lets stand, its rule that an author's sub-model
+  begins on nothing.
+
+**The steps test's seeds** (tested_seeds_probe). copyorder's key, largest
+first within a step (`Instructions._pressed_up`), took seed 23, 7815-1 the
+Passenger Carriage, to [0, 2, 0, 0] where at most [0, 1, 0, 0] was allowed,
+and its known fault, the woman hidden at step 37, was no longer found. It
+read as a test of a person's own steps losing their file order, but 7815-1
+has no steps of its own: what is tested there is the planner's order. File
+order within an author's step was tried, measured nothing and was dropped;
+copyorder's key stays for every plan. The fault was the order's: the
+passengers, each put on whole, went on after the roof over them: before
+copyorder the woman was hidden, and once it asked largest first the man
+too. With the rule
+above, seed 23 is Tested ([0, 0, 0, 0]) and its MOST and FAULT entries say
+so. held_steps_probe's fox, whose test still named one part its body hid
+from every side, now passes the steps test with the mend.
+
+**Tuned on `tune`** (the stage probe, things pooled over 100 files):
+
+| | under | steps floating | steps hiding | tau |
+|---|---:|---:|---:|---:|
+| pre261 | 4.97% | 2.31% | 9.29% | 0.326 |
+| pull 16, patience 8 | 2.10% | 1.11% | 9.11% | 0.302 |
+| pull 16, patience 16 | 1.54% | 1.09% | 9.03% | 0.307 |
+| pull 32, patience 16 | 1.41% | 1.08% | 8.99% | 0.305 |
+| pull 32, patience 32, the figure sooner | 1.25% | 0.95% | 9.01% | 0.313 |
+| ...and pulled parts with what they are pinned to | 1.46% | 0.96% | 9.08% | 0.313 |
+| ...and what a waiting part rests on sooner, the hidden sub-assembly sooner, the whole step asked again | 1.50% | 0.89% | 9.03% | 0.307 |
+| ...only what waited asked again (kept) | 1.47% | 0.89% | 9.00% | 0.312 |
+
+Patience did most: 9391's string of 294 LSynth pieces, each its own thing,
+went from 278 under at patience 8 to 56 at 16 (354 in pre261).
+
+**Judged on `proof`** (100 sets, `--check`; 562d40eb8 against pre261
+067e19d59; the report's means, with the measure's own intervals). It was
+judged on 9682bb89a, before the kart's fix (1.2% under, 10.2% hiding), and
+on 73a18ac4d, before the two rules for 6361 and 7815 (1.37% under, 10.3%
+hiding, 4.9% the build check).
+
+| | pre261 | buildorder | bar | authors |
+|---|---:|---:|---:|---:|
+| steps with a floating thing | 1.3% | 1.1% | 2% | 1.3% |
+| things put in under one already there | 4.6% | 1.49% (1.0-2.3) | 1.5% | 0.8% |
+| steps with a hidden new thing | 10.7% | 10.4% (8.2-12.9) | 8% | 6.7% |
+| tau against the author | 0.35 | 0.34 | 0.29 | 1 |
+| parts the build check calls floating | 12.4% | 5.2% (1.1-10.9) | 4% | 0.9% |
+| steps in all | 12,508 | 11,512 | | 11,930 |
+| planning, the 100 files | 170 s | 204 s (1.20 times) | 1.33 times | |
+
+Under is at its bar. Between 73a18ac4d and 562d40eb8 one set, 8169-1,
+went from 121 under to 213; the other 99 fell by 29 in all. Its cause is
+not traced: the rule was not tuned again on what proof showed.
+
+**NO-GO, hidden steps** (10.4% against 8%). The mend moves sooner only what
+the steps test's own hidden rule finds; the score's front and back pictures
+find more. Two sets hold 172 of the 404 steps over the authors': 10283
+(120 of 386 steps, the authors 28 of 948) and 76161 (102 of 484, the
+authors 22 of 761). On tune, 920-2 and 10129 held 98 of 281.
+
+**NO-GO, the build check** (5.2% against 4%; pre261 12.4%). At 73a18ac4d
+(4.9%) four sets held 81 of the 91 parts, each floating in pre261 too: 4434 (25 of 25 at all five
+sampled steps), 6901, 3183 and 6501. The score's own graph finds no step of
+4434 or 6901 floating: the check's table and the score's disagree there,
+not the order.
+
+**Also measured.**
+- coreview's plan2 set (62 models): none worse by HeldSteps.faults_of, and
+  as many save differently once before they save the same as in pre261 (12
+  of 62). corner_shop's faults are [0, 0], as before copyorder.
+- copyorder, cf3attack's S2_unedited and S2_chain (and S3): every save the
+  same. tested_seeds (all 30 within their MOST, every file's fault found, 3
+  Tested), held_steps, instructions, steps_kept, booklet_edit, unit_steps,
+  copyorder, s2r, ic3, build_steps, step_count and pullkept pass from a
+  locked snapshot.
+- booklettest's follower was not run again. Its three models (the car, the
+  castle and 7140-1) plan to as many steps as in pre261, with no faults by
+  HeldSteps.faults_of.
+
 ## What is left
 
 - **The page by hand.** A box cannot be turned, and there are no rulers of
@@ -3295,10 +3411,10 @@ from nearly above.
   built when the author does not build it is still out of the author's
   order. When each sub-assembly goes on is what is left, and the shape does
   not say it.
-- **Every step buildable.** On the held-out sample one step in thirteen
-  still floats something (7.5%), against one in eighty for authors, and 5.7%
-  of things go in under one already there, against 0.9%; one step in eight
-  hides a new thing (12.1%), against one in fifteen.
+- **Every step buildable.** On the held-out sample 1.2% of steps float
+  something and 1.4% of things go in under one already there (buildorder,
+  above), near the authors' 1.3% and 0.8%; one step in ten still hides a
+  new thing (10.3%), against one in fifteen.
   - **920's base**, most of whose parts stand square in its tilted launch
     pad's frame, is built in the hand now, and puts its hoses in a piece at a
     time: 330 LSynth pieces the file names after the model ("Rocket Launch
@@ -3323,9 +3439,9 @@ from nearly above.
   `COVER_RESTS`): a part no stud seats whose cover rests on something has
   its box's supports cleared, on purpose now. Read as the code meant, both
   ways round, it made a step in ten float something; one way round, fewer
-  hidden steps but the rest a little worse (lostappend, After). Reading it
-  well probably needs the order tuned with it, not added to an order tuned
-  without it.
+  hidden steps but the rest a little worse (lostappend, After). The mend
+  reads it now, after the order (HeldSteps.Under, buildorder above); the
+  order itself still does not.
 - **A long run's plans move a little from run to run** (lostappend,
   After): 7 of 100 proof files planned differently in two runs of the same
   planner, and 8159-1's shuffled plan is 48 or 50 steps by what the process

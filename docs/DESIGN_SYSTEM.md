@@ -112,7 +112,7 @@ the choice kept in the browser before anything is drawn, and the two
 set in `site.css` is written twice, under `:root[data-theme="light"]` and,
 with no choice, `prefers-color-scheme: light`; `tests/test_site_contrast.py`
 fails if they differ, and measures every text token on every surface
-(4.5:1) and the state edges (3:1) in both. Never a colour outside the
+(4.5:1) and the state edges and a field's edge (3:1) in both. Never a colour outside the
 tokens: a page that needs one adds a token.
 
 ## Languages
@@ -176,6 +176,7 @@ site356, 2026-10-29. And:
 | `--glow`, `--studs` | the yellow's light from above; a faint grid of studs | a landing page's opening (`.halo`) and its last offer (`.closing`) |
 | `--brick-red`, `-yellow`, `-blue`, `-green` | the bricks' colours, both themes | the 404's wall |
 | `--field` | `--bg-soft` | the fill of every field |
+| `--field-edge` | `#6b717b`; `#80868f` in light | the edge of every field (and each box of an emailed code): 3:1 or more on every surface a field sits on and on its own fill, as WCAG 1.4.11 asks of what shows a control is there (sifix, 2026-11-15: `--line-strong` was 1.5:1). Under the pointer `--ink-faint`, typed in `--accent-edge` |
 | `--control-h` | 44 px | a field's and a button's height, so side by side they line up |
 | `--r-1`, `--r-2`, `--r-3`, `--r-4`, `--r-pill` | 6, 10, 14, 20, 999 px | corners: small (a chip, a code box), a control's, a card's or panel's, a large surface's (a plan, a dialog, the last offer), a pill's; a circle is 50% |
 | `--control-radius`, `--radius` | `--r-2`, `--r-3` | a control's corners, a card's |
@@ -201,8 +202,8 @@ is on the page, `hidden`, for the script to show.
 - **Field**: every `input` (text, email, search, number, url, file),
   `select` and `textarea`, styled by element at zero specificity
   (`:where`), so none is left to the browser and a page can still size one.
-  16 px type, `--control-h`, `--control-radius`, a 1 px `--line` border,
-  the `--field` fill. A **dropdown** is the same box with its own arrow in
+  16 px type, `--control-h`, `--control-radius`, a 1 px `--field-edge`
+  border (3:1), the `--field` fill. A **dropdown** is the same box with its own arrow in
   the page's ink; a required one's hidden first choice ("Month") shows in
   `--ink-soft` until one is made. A **file picker** is the box, its button
   drawn as a secondary one.
@@ -230,10 +231,45 @@ is on the page, `hidden`, for the script to show.
   its mark in the button's ink before the words, its busy state, its window
   opened from the click. `web/oc-button.css` is orangecheck's too, at zero
   specificity, so every rule here wins; it holds the mark's size and the
-  44 px target `--control-h` gives every button already. Under it in the
-  sign-in dialog, orangecheck Connect's box (`dialog .consent`): a
-  `label.choice`, never ticked but by the person, and orangecheck's own
-  words, label and line, exactly as `web/oc-connect-consent.mjs` gives them.
+  44 px target `--control-h` gives every button already.
+- **The sign-in dialog** (`account.js` `askToSignIn`; signinux, 2026-11-14,
+  laid out as Vercel, Linear and Notion set out a second way in): two equal
+  ways in, one under the other, each a `.cta.wide` the form's width and
+  44 px tall: the address, orangecheck Connect's box (`dialog .consent`: a
+  `label.choice`, never ticked but by the person, in orangecheck's own
+  words exactly as `web/oc-connect-consent.mjs` gives them) and **Email me
+  a code**; then `dialog .or` ("or" between two hairlines); then **Sign in
+  with orangecheck** and its one plain line; **Not now** last, a quiet
+  `button.link`. While orangecheck's window is open the two ways give
+  place to `dialog .waiting`: a ring, "Finish signing in in the orangecheck
+  window", **Show the orangecheck window** (the same window to the front)
+  and **Cancel** (it closes, the dialog as it was). How the window ended,
+  when it did not sign in, is said under its button in orangecheck's words
+  (`.oc-said`): calm ink for a window closed, a callout with the accent
+  edge for one the browser blocked, `--bad` for one that failed, the focus
+  back on the button. One click on the header's **Sign in** (bar or phone
+  Menu) opens this dialog over the page; signed in, the page stays and
+  draws what a signed-in person sees (`brickworks:signed-in-done`).
+- **The code from the email** (`web/code-boxes.js` `codeBoxes`, the app's
+  `CodeBoxes`): one box per digit (the deployment says how many, api/otp.js
+  `digits`), centred in a row the form's width, 56 px tall, an eight-digit
+  code read as two fours; the row a labelled group ("The code sent to …"),
+  each box "Digit 1 of 8", the number pad, the first box
+  `autocomplete="one-time-code"`. Typing moves on, Backspace steps back,
+  the arrows move. A paste or a fill anywhere is read by one rule, the
+  site's and the studio's (`readCode`, `read_code`): a run of exactly as
+  many digits as there are boxes, one space or dash allowed inside
+  ("1234 5678"), the email's words around it or not, is laid from the first
+  box and sent; anything else ("123456789", six digits of eight) is laid
+  and waits. The last digit in sends it: the one that fills the row, or one
+  typed into its last box; a digit changed mid-row waits. A form never
+  sends a code short of digits ("Enter all 8 digits of the code."). A
+  refused request for a code says when to ask again, by the person's clock
+  ("Try again after 14:32", api/otp.js `retry_at`). Read-only while it is checked;
+  refused, the row shakes once (still under reduced motion) and empties
+  with the focus in the first box. Its words under the button, troubles in
+  `--bad`. The same row on the connector's sign-in (`/oauth/authorize`) and
+  Settings' two codes; deleting an account never goes by itself.
 - **Dialog**: the `dialog` element (sign in and the age question in
   `web/account.js`, report it in `web/report.js`): a `--panel` card, its
   title an h2 that names it (`aria-labelledby`), the form, the buttons
