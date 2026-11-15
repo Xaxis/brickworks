@@ -182,11 +182,29 @@ async function remembered() {
   }
 }
 
+/// Whether the request says it is Claude's as the server will name it
+/// (clientLabel, api/_oauth.js): its client document on claude.ai, or its
+/// codes going back to claude.ai or claude.com.
+function claudeAsks() {
+  if (String(request.client_id || "").startsWith("https://claude.ai/")) return true;
+  try {
+    const to = new URL(request.redirect_uri || "");
+    const host = to.hostname.toLowerCase();
+    return to.protocol === "https:" && ["claude.ai", "claude.com"].some((at) => host === at || host.endsWith(`.${at}`));
+  } catch {
+    return false;
+  }
+}
+
 async function start() {
   // Before the server says who is asking: Claude's words for a request from
   // one of Claude's own addresses, as the page always had, and no app's
-  // name for any other, so ChatGPT's person never reads "Claude".
-  if (!String(request.client_id || "").startsWith("https://claude.ai/")) speakAs(say("your app"), false);
+  // name for any other, so ChatGPT's person never reads "Claude". Claude
+  // known by where its codes go too, as the server knows it: a Claude that
+  // registered its own client id read "Connect your app to Brickworks"
+  // until the server answered, and the title changed under the person (the
+  // French consent check read it so in rel-m300's batch).
+  if (!claudeAsks()) speakAs(say("your app"), false);
   // What the request is, before anything is asked of the person.
   let checked;
   try {
