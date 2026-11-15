@@ -1766,8 +1766,10 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   as it was and no history step is left; the bar says why
   (`ModelBar.say_over`, over the verb's own line) and a session reads "Not
   done, and nothing changed: …" (`CommandSocket.refused_answer`). In a
-  Build together room nothing is sent while a deferred edit is still to be
-  followed (`Together.edit_pending`). Find and replace shares the lock rule
+  Build together room an edit still to be followed at the frame's end is
+  followed, or taken back, before the session reads the model
+  (`Together.settle_edit`, `Main._settle_edit`), so nothing refused is sent
+  and nothing waits a frame. Find and replace shares the lock rule
   (`Assemblies.locked_twins`). `followfix_probe` holds it. Make unique cuts a copy loose (a session's `make_unique`,
 by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` renames a definition in
   every copy; `Ctrl-Shift-G` takes one apart a level. The tree is nothing but
