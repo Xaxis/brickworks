@@ -2313,6 +2313,96 @@ func _step_ops() -> void:
 		print("  %-44s %s" % [str(row[0]).left(44), " ".join(row.slice(1).map(
 			func(mark: String) -> String: return mark.rpad(9)))])
 	print("  %d edits written into the file, %d lines changed for %d moved" % _ops_total)
+	await _step_attacks()
+
+
+## Edits the thirty do not make by themselves: [name, path, how it is made,
+## the sub-model's steps edited, heard in a Build together room].
+const STEP_ATTACKS: Array = [
+	["the fin, placed once mirrored", "res://src/dev/fixtures/stepops_wings.mpd", "", "fin.ldr", false],
+	["the wing placed twice, in a room", "res://src/dev/fixtures/stepops_wings.mpd", "", "wing.ldr", true],
+	["the plane's own steps, in a room", "res://src/dev/fixtures/stepops_wings.mpd", "", "-", true],
+	["LPub's lines, in a room", "res://src/dev/fixtures/stepops_lpub.ldr", "", "", true],
+	["8028-1 (placed twice), in a room", "res://vendor/omr/files/8028-1.mpd", "", "", true],
+	["tabs, in a room", "res://src/dev/fixtures/kt_tabs.mpd", "", "-", true],
+]
+## A step emptied by taking off its parts, then a step edit by it.
+const STEP_EMPTIED: Array = [
+	["LPub's lines", "res://src/dev/fixtures/stepops_lpub.ldr"],
+	["CRLF line endings", "res://src/dev/fixtures/kt_crlf.mpd"],
+	["6780-1", "res://vendor/omr/files/6780-1.mpd"],
+]
+
+
+func _step_attacks() -> void:
+	print("\nstep edits the thirty do not make (stepops):")
+	var rows: Array = []
+	for entry: Array in STEP_ATTACKS:
+		var text: String = _made(FileAccess.get_file_as_string(str(entry[1])), str(entry[2]))
+		print("\n%s (%s)" % [entry[0], str(entry[1]).get_file()])
+		var row: Array = [entry[0]]
+		for op: String in STEP_OPS:
+			row.append(await _step_op(str(entry[0]), text, op, str(entry[3]), bool(entry[4])))
+		rows.append(row)
+	for entry: Array in STEP_EMPTIED:
+		var text: String = FileAccess.get_file_as_string(str(entry[1]))
+		print("\n%s, a step emptied (%s)" % [entry[0], str(entry[1]).get_file()])
+		var row: Array = ["%s, a step emptied" % entry[0]]
+		for op: String in ["merge", "remove"]:
+			row.append(await _emptied_op(str(entry[0]), text, op))
+		rows.append(row)
+	print("\nstep edits the thirty do not make: lines changed / lines moved")
+	for row: Array in rows:
+		print("  %-44s %s" % [str(row[0]).left(44), " ".join(row.slice(1).map(
+			func(mark: String) -> String: return mark.rpad(9)))])
+
+
+## A step of the model's own emptied by taking off its parts (its STEP line
+## stays, a step with nothing in it), then [param op] on the step before
+## it: the edit writes its own STEP line and the emptied step's, nothing
+## else. Undone, the file with the parts off; undone again, as opened.
+func _emptied_op(name: String, text: String, op: String) -> String:
+	await _open(text, name)
+	_live_flow = false
+	_own_flow = false
+	var depth: int = _builder.history_depth()
+	var unedited: String = _store.saved_text()
+	var steps: Array = _ops_steps("")
+	var at: int = _ops_pick(steps, "move")
+	if at < 0:
+		print("  --  %d steps, none fit" % steps.size())
+		return "--"
+	var s0: Array = steps[at]
+	_builder.clear_selection()
+	for brick_id: int in steps[at + 1][1]:
+		_builder.select_brick(brick_id, true)
+	var taken: int = _builder.remove_selection()
+	await _frames(4)
+	var emptied: String = _store.saved_text()
+	var deep: int = _builder.history_depth()
+	_check("%d parts of step %d taken off: %d lines changed" % [taken, int(steps[at + 1][0]),
+		_diff_size(unedited.split("\n"), emptied.split("\n"))], taken > 0 and _store.get("last_whole") == "")
+	var said: String = _shell.change_steps("merge" if op == "merge" else "delete", [], _ops_step("", s0))
+	await _frames(4)
+	var edited: String = _store.saved_text()
+	var whole: String = str(_store.get("last_whole"))
+	var changed: int = _diff_size(emptied.split("\n"), edited.split("\n"))
+	var moved: int = 1 + _empty_steps(emptied)
+	var rest: Array = _rest_unlike(emptied, edited, PackedStringArray())
+	var ok: bool = _check("%s step %d (\"%s\"): %s, %d lines changed for %d moved%s" % [op, int(s0[0]),
+		said.get_slice("\n", 0).left(70), "patched" if whole.is_empty() else "as live writes it (%s)" % whole,
+		changed, moved, ("; not byte for byte: " + " | ".join(rest)) if not rest.is_empty() else ""],
+		whole.is_empty() and rest.is_empty() and changed <= moved)
+	await _back_to(deep)
+	ok = _hard("...undone: the parts off, as before the step edit", _store.saved_text() == emptied) and ok
+	await _back_to(depth)
+	ok = _hard("...undone again: the file as it was opened", _store.saved_text() == unedited) and ok
+	_builder.redo()
+	_builder.redo()
+	await _frames(4)
+	ok = _check("...redone twice: the step edit's file again", _store.saved_text() == edited) and ok
+	var mark: String = "%d/%d" % [changed, moved]
+	return mark if ok else "FAIL " + mark
 
 
 ## [param op] on [param text] opened afresh, in the steps of the sub-model
@@ -2320,7 +2410,7 @@ func _step_ops() -> void:
 ## model's; "-" the model's): saved, undone, redone and opened again. Its
 ## mark: "changed/moved", "B ..." where live's write wrote it, FAIL, or
 ## "--" where the file has no steps for it.
-func _step_op(name: String, text: String, op: String, want: String) -> String:
+func _step_op(name: String, text: String, op: String, want: String, room: bool = false) -> String:
 	await _open(text, name)
 	_live_flow = false
 	_own_flow = false
@@ -2409,8 +2499,32 @@ func _step_op(name: String, text: String, op: String, want: String) -> String:
 	var redone: String = _store.saved_text()
 	ok = _check("...redone: the edit's file again (%d lines changed)"
 		% _diff_size(edited.split("\n"), redone.split("\n")), redone == edited) and ok
+	if room:
+		ok = await _heard_in_room(depth, edited) and ok
 	await _reopened("...opened again", edited, name, state)
 	return mark if ok else "FAIL " + mark
+
+
+## The edit undone and heard back as a Build together room hears another
+## side's (Together._put): each part's step set, the copies' steps and the
+## steps' looks given, past the builder's history. The save is the edit's.
+func _heard_in_room(depth: int, edited: String) -> bool:
+	var steps: Dictionary = {}
+	for brick: BrickWorld.Brick in _world.bricks():
+		steps[brick.id] = brick.step
+	var units: Dictionary = _world.unit_steps.duplicate(true)
+	var looks: Dictionary = _world.step_looks.duplicate(true)
+	await _back_to(depth)
+	for brick: BrickWorld.Brick in _world.bricks():
+		if steps.has(brick.id):
+			brick.step = int(steps[brick.id])
+	_world.unit_steps = units
+	_world.step_looks = looks
+	await _frames(2)
+	var heard: String = _store.saved_text()
+	return _check("...heard in a Build together room (each part's step set as Together._put sets "
+		+ "it): the edit's file (%d lines changed)" % _diff_size(edited.split("\n"), heard.split("\n")),
+		heard == edited)
 
 
 ## Saved by another build and back (stepops): each file of [param dir] (as
