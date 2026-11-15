@@ -147,7 +147,7 @@ func replace_now() -> Dictionary:
 	var done: Dictionary = _finder.replace(found, putting)
 	var changed: int = int(done["changed"])
 	if changed > 0:
-		say.call("%s — Ctrl+Z takes it back" % done["words"])
+		say.call(Keymap.filled("%s — {undo|takes it back}") % done["words"])
 	else:
 		say.call("nothing replaced: none had room for it")
 	refresh()
