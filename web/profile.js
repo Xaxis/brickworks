@@ -802,7 +802,7 @@ async function load({ ask = true } = {}) {
     document.documentElement.dataset.profile = "signed-out";
     if (!ask) return;
     const why = !back ? undefined : forOrangecheck
-      ? "Press Sign in with orangecheck to open its window. Then you go back to the app, signed in."
+      ? "Sign in with orangecheck: its button opens its window, then you go back to the app, signed in."
       : "Sign in with your email or with orangecheck, and you go back to the app signed in.";
     // Signed in, brickworks:signed-in-done (below) draws the page, or goes back.
     if (!(await askToSignIn(why, { prefer: forOrangecheck ? "orangecheck" : "" }))) $("sign-in").focus();

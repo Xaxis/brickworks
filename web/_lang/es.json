@@ -2878,6 +2878,19 @@
   "Beta bar hidden. Show it again in {settings}.": "Barra de la beta oculta. Vuelve a mostrarla en {settings}.",
   "Undo": "Deshacer",
   "Hide the beta bar": "Ocultar la barra de la beta",
-  "Admin": "Administración"
+  "Admin": "Administración",
+  "It works once and expires in ten minutes. Not there? Look in spam.": "Sirve una vez y caduca en diez minutos. ¿No está? Mira en spam.",
+  "Send a new code": "Enviar un código nuevo",
+  "Use a different address": "Usar otra dirección",
+  "or": "o",
+  "Show the orangecheck window": "Mostrar la ventana de orangecheck",
+  "Finish signing in in the orangecheck window": "Termina de iniciar sesión en la ventana de orangecheck",
+  "It opened in a window of its own.": "Se abrió en una ventana aparte.",
+  "Signing you in…": "Iniciando tu sesión…",
+  "Sending a new code…": "Enviando un código nuevo…",
+  "Sent a new code. Use the newest one.": "Código nuevo enviado. Usa el más reciente.",
+  "Enter all {count} digits of the code.": "Escribe los {count} dígitos del código.",
+  "Digit {n} of {count}": "Dígito {n} de {count}",
+  "Sign in with orangecheck: its button opens its window, then you go back to the app, signed in.": "Inicia sesión con orangecheck: su botón abre su ventana y luego vuelves a la aplicación con la sesión iniciada."
  }
 }
