@@ -138,6 +138,11 @@ var deployment: Deployment
 ## renewing it replaces it, and two runs renewing the same one at once can
 ## end it. Set before this is added to the tree.
 var keeps: bool = true
+## How many digits the code just emailed has, as the deployment says
+## (api/otp.js `digits`, since signinux 2026-11-13): the sign-in form draws
+## a box for each. Supabase's mailer_otp_length, eight on this project; a
+## deployment from before says nothing, and eight it is.
+var code_digits: int = 8
 
 var _url: String = ""
 var _key: String = ""
@@ -253,6 +258,8 @@ func request_code(with_email: String) -> String:
 	var body: Variant = reply.get("body")
 	var code: int = int(reply.get("code", 0))
 	if code == 200:
+		var digits: int = int((body as Dictionary).get("digits", 8)) if typeof(body) == TYPE_DICTIONARY else 8
+		code_digits = digits if digits >= 4 and digits <= 12 else 8
 		return ""
 	if typeof(body) == TYPE_DICTIONARY and (body as Dictionary).has("error"):
 		return str((body as Dictionary)["error"])
@@ -297,6 +304,11 @@ func verify_code(with_email: String, code: String) -> String:
 ## What a sign-in to wait for in the browser answered when another started,
 ## or one by email finished: nothing to show.
 const SUPERSEDED := "superseded"
+
+## What [method verify_code] says of a code Supabase refused as wrong or
+## expired, as against a limit or no connection: the form clears its boxes
+## for this one alone, and keeps the digits for the others.
+const WRONG_CODE := "That code is wrong or has expired. Check it, or ask for a new one."
 
 
 ## Sign in with orangecheck, on the desktop: orangecheck opens in the
@@ -350,6 +362,13 @@ func sign_in_with_orangecheck() -> String:
 		return "Could not sign in with orangecheck just now (%d). Try again in a minute." % int(reply.get("code", 0))
 	_signed_in_with(body as Dictionary)
 	return ""
+
+
+## The person gave up waiting for orangecheck in their browser (the sign-in
+## screen's Cancel): the wait ends as a newer sign-in would end it, and
+## [method sign_in_with_orangecheck] answers [constant SUPERSEDED].
+func cancel_orangecheck() -> void:
+	_stop_orangecheck()
 
 
 ## The orangecheck sign-in waiting on the browser, given up.
@@ -726,7 +745,7 @@ static func _readable(body: Dictionary) -> String:
 		body.get("error_description", body.get("message", body.get("error", "")))))
 	match str(body.get("error_code", "")):
 		"otp_expired", "invalid_credentials", "otp_disabled":
-			return "That code is wrong or has expired. Check it, or ask for a new one."
+			return WRONG_CODE
 		"over_email_send_rate_limit", "over_request_rate_limit":
 			return "Too many attempts just now. Wait a minute and try again."
 		"validation_failed", "email_address_invalid":

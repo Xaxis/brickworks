@@ -8634,6 +8634,21 @@ msgstr "Gib den Code aus der E-Mail ein."
 msgid "Finish signing in with orangecheck in your browser."
 msgstr "Schließe die Anmeldung mit orangecheck in deinem Browser ab."
 
+msgid "or"
+msgstr "oder"
+
+msgid "Digit %d of %d"
+msgstr "Ziffer %d von %d"
+
+msgid "The code sent to %s"
+msgstr "Der an %s gesendete Code"
+
+msgid "Enter all %d digits of the code."
+msgstr "Gib alle %d Ziffern des Codes ein."
+
+msgid "Taking you to brickworks.diy to sign in with orangecheck…"
+msgstr "Weiter zu brickworks.diy, um dich mit orangecheck anzumelden…"
+
 msgid "Could not reach Brickworks to send a code. Check your connection."
 msgstr "Brickworks war nicht erreichbar, um einen Code zu senden. Prüfe deine Verbindung."
 

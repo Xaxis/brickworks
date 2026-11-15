@@ -232,9 +232,10 @@ func _live_sign_in(account: Account, gate: SignInGate, world: BrickWorld,
 	_ok(code_field.is_visible_in_tree(), "Email me a code moves on to the code")
 	_ok(_text_on(gate).contains("We sent a code to %s" % email), "...saying where it went")
 	_save("2_code.png")
+	# A whole wrong code, one digit a box: the last digit sends it by
+	# itself (signinux), so Sign in is not pressed after it.
 	await _click_control(code_field)
-	await _type("000000")
-	await _click_control(named["signin_go"])
+	await _type("00000000")
 	for _n: int in 600:
 		await process_frame
 		if _text_on(gate).contains("wrong or has expired"):
@@ -243,10 +244,9 @@ func _live_sign_in(account: Account, gate: SignInGate, world: BrickWorld,
 		"a wrong code is refused in words, and nobody is let in")
 	_save("3_wrong.png")
 	var code: String = await SignInHelper.mint(email, root)
-	code_field.text = ""
+	# Refused, the boxes are empty and the keys in the first again.
 	await _click_control(code_field)
 	await _type(code)
-	await _click_control(named["signin_go"])
 	for _n: int in 900:
 		await process_frame
 		if not gate.visible or account.age_ask:
