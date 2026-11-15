@@ -339,9 +339,14 @@ Whether what you built is still there tomorrow, and still means the same thing.
   (`SourceFile._relaid`, stepops 2026-11-15): the most lines kept where they
   are, a step put in or split one "0 STEP" put in, a step taken out or two
   merged one STEP line taken out (the earliest of a gap's, so a ROTSTEP stays
-  beside the step it starts), a part moved its own line, every other line
-  byte for byte. Up to stepops a step put in moved every later line, and one
-  taken out was (B). A part the app cannot show, or one on its way, moves
+  beside the step it starts), a part moved its own line (the one the person
+  moved, not its step-mates: a part left with most of its step costs three
+  times as much to move), every other line byte for byte. A STEP line the
+  looks rewrite (a ROTSTEP carried to the step it now starts, a head ROTSTEP
+  written back above a section's first part) is matched to the line it was
+  (`_as_written`, RESTEP), and LPub's MULTI_STEP groups may take a moved
+  part. Up to stepops a step put in moved every later line, and one taken
+  out was (B). A part the app cannot show, or one on its way, moves
   with its step (`SourceFile.held_steps`). `keep_text`'s stepops pass
   (`KEEP_TEXT_ONLY=stepops`) checks 30 files x insert, remove, split, merge
   and move (diff against the file before, the rest byte for byte, undo and
