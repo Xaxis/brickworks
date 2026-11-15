@@ -76,6 +76,17 @@ const STUD_SLACK := 1.5
 const ROUND_HOLE := 6.0
 ## A chain's links sit on a sprocket's pin circle to within this.
 const CHAIN_SLACK := 1.0
+## A motor's output (its axle bush, or a SPIKE motor's hub with its axle
+## and pin holes) is one part with its case in the file, but turns in it:
+## each is read as a piece of its own, numbered this plus its motor's key,
+## that what is keyed or pinned into it joins, and that turns in the case
+## on its line (a joint called [constant OUTPUT_JOINT]). It is in no body's
+## list of parts: a body is named by its smallest key, which is a part's
+## wherever anything is joined to the output, and an output nothing is
+## joined to is left out. Keys stay under it (a world numbers its bricks
+## from 1), so the two fit the Vector2i a pair of bodies is kept by.
+const OUTPUT := 1 << 30
+const OUTPUT_JOINT := "motor output"
 
 ## The parts a driving ring slides on and is keyed to by their ridges.
 ## Read from the table at first use.
@@ -178,6 +189,13 @@ class Piece extends RefCounted:
 	var at: Transform3D
 	var mesh: Lbm.PartMesh
 	var name: String = ""
+	## A motor's output, which turns in its case: {"mesh": its holes (a
+	## Lbm.PartMesh), "point", "way": the line it turns on}, in the part's
+	## own frame; empty for every other part ([member OUTPUT]).
+	var output: Dictionary = {}
+	## The keys of the parts it is one part with: a motor drawn in its
+	## pieces, its hub's case and the pieces of its case.
+	var joined: Array = []
 
 
 ## A toothed part where it stands.
@@ -326,7 +344,8 @@ var _paths: Dictionary = {}      ## body -> Array[Joint], ground first
 
 ## Read the bodies, the joints and the couplings off [param list]: each a
 ## Dictionary {"key": int, "part": String, "at": Transform3D, "mesh":
-## Lbm.PartMesh, "name": String}. "key" is the caller's own (a brick id)
+## Lbm.PartMesh, "name": String}, and a motor's "output" ([member
+## Piece.output]) and "joined" ([member Piece.joined]). "key" is the caller's own (a brick id)
 ## and defaults to the place in the list from 1; "name" is for reading it
 ## back. [param held] are keys that are the ground; without any, the body
 ## with the most parts is.
@@ -342,6 +361,8 @@ static func build(list: Array, held: Array = []) -> Mechanism:
 		piece.at = entry.get("at", Transform3D.IDENTITY)
 		piece.mesh = entry.get("mesh")
 		piece.name = str(entry.get("name", ""))
+		piece.output = entry.get("output", {})
+		piece.joined = entry.get("joined", [])
 		model.parts[piece.key] = piece
 		model.rest[piece.key] = piece.at
 	model.grounded = held.duplicate()
@@ -397,6 +418,17 @@ func gears_of(part_id: String) -> Array[Gear]:
 	return out
 
 
+## The body motor [param key]'s output turns, joined to it by what is keyed
+## or pinned in it: -1 where nothing is, or where it is held to the case
+## (the motor cannot turn).
+func output_body(key: int) -> int:
+	var piece: Piece = parts.get(key)
+	if piece == null or piece.output.is_empty():
+		return -1
+	var body: int = body_of(OUTPUT + key)
+	return body if body < OUTPUT and body != body_of(key) else -1
+
+
 ## The joint [param body] turns on in the tree, or null.
 func joint_of(body: int) -> Joint:
 	return _joint_of.get(body)
@@ -433,6 +465,10 @@ func _build() -> void:
 		for hole: Array in _holes_of(mesh, shaft):
 			_bucket_in(holes, [key, hole[0], at * (hole[1] as Vector3),
 				(at.basis * (hole[2] as Vector3)).normalized()])
+		if not piece.output.is_empty():
+			for hole: Array in _holes_of(piece.output["mesh"], []):
+				_bucket_in(holes, [OUTPUT + key, hole[0], at * (hole[1] as Vector3),
+					(at.basis * (hole[2] as Vector3)).normalized()])
 		for connector: Lbm.Connector in mesh.connectors:
 			if connector.kind == "stud" and connector.gender == "male":
 				studs.append([key, at * connector.position, (at.basis * connector.axis).normalized()])
@@ -447,7 +483,7 @@ func _build() -> void:
 		var origin: Vector3 = bit[2]
 		var way: Vector3 = bit[3]
 		for hole: Array in _near_line(holes, origin, way, float(bit[4]), float(bit[5])):
-			if hole[0] == bit[0]:
+			if hole[0] == bit[0] or hole[0] == OUTPUT + int(bit[0]):
 				continue
 			if absf((hole[3] as Vector3).dot(way)) < 0.99:
 				continue
@@ -473,6 +509,11 @@ func _build() -> void:
 			if not shafts_turning.has(it[3]):
 				shafts_turning[it[3]] = []
 			(shafts_turning[it[3]] as Array).append([it[4], it[1], it[2]])
+	# A motor drawn in its pieces is one case.
+	for key: int in parts:
+		for other: int in (parts[key] as Piece).joined:
+			if parts.has(other):
+				_join(key, other, "a motor's case, drawn in pieces")
 	# Studs in sockets are one body.
 	for stud: Array in studs:
 		for socket: Array in _around(sockets, stud[1]):
@@ -531,6 +572,12 @@ func _build() -> void:
 			if there.origin.distance_to(at.origin) < LINE_SLACK \
 					and absf((there.basis * Y).normalized().dot((at.basis * Y).normalized())) > 0.99:
 				lines.append([key, other, at.origin, (at.basis * Y).normalized(), "turntable", true])
+	# A motor's output turns in its case.
+	for key: int in parts:
+		var piece: Piece = parts[key]
+		if not piece.output.is_empty():
+			lines.append([OUTPUT + key, key, piece.at * (piece.output["point"] as Vector3),
+				(piece.at.basis * (piece.output["way"] as Vector3)).normalized(), OUTPUT_JOINT, true])
 	for key: int in grounded:
 		_join(grounded[0], key, "held")
 	# Two joints between the same two bodies on different lines hold them
@@ -560,7 +607,8 @@ func _build() -> void:
 	for line: Array in lines:
 		var a: int = body_of(line[0])
 		var b: int = body_of(line[1])
-		if a == b:
+		# An output nothing is joined to has no part to turn.
+		if a == b or a >= OUTPUT or b >= OUTPUT:
 			continue
 		var pair: Vector2i = Vector2i(mini(a, b), maxi(a, b))
 		if seen.has(pair):
@@ -899,11 +947,17 @@ func why_held(key: int) -> String:
 	var at: int = root
 	while came[at] != null:
 		var step: Array = came[at]
-		said.append("#%d %s, %s, #%d %s" % [int(step[0]), (parts[int(step[0])] as Piece).part, step[1], at,
-			(parts[at] as Piece).part])
+		said.append("%s, %s, %s" % [_key_said(int(step[0])), step[1], _key_said(at)])
 		at = int(step[0])
 	said.reverse()
 	return "; ".join(said)
+
+
+## "#12 3004", or "#12 54675's output" for a motor's output ([constant OUTPUT]).
+func _key_said(key: int) -> String:
+	if key >= OUTPUT:
+		return "#%d %s's output" % [key - OUTPUT, (parts[key - OUTPUT] as Piece).part]
+	return "#%d %s" % [key, (parts[key] as Piece).part]
 
 
 ## The frame [param body] turns from: the ground, or another piece's frame

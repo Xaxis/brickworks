@@ -4,9 +4,10 @@
 ##   MESA_VK_WSI_DEBUG=sw xvfb-run -a --server-args="-screen 0 1400x900x24" godot --path . \
 ##     --resolution 1400x900 --script src/dev/motion_probe.gd
 ##   ... and at 1280x720 (PROBE_SIZE=1280x720 bash tools/probe.sh motion_probe)
-##   ... -- only=arm, only=fourbar or only=motor runs that model alone
+##   ... -- only=arm, only=fourbar, only=motor, only=spike, only=pul, only=hub or
+##   only=pieces runs that model alone
 ##
-## Three models, built here part by part on the baseplate:
+## Seven models, built here part by part on the baseplate:
 ##   - an arm on an axle through a Technic brick, turned by its sub-assembly's
 ##     name (Crank): alone it goes round either way and nothing meets; then a
 ##     beam is stood where the arm's face lies at 140° of its turn, and the
@@ -19,7 +20,25 @@
 ##     standing up: the motor turns it (it marks the driver), the arm goes down
 ##     and over, and lifting it the motor stalls where the weight asks more
 ##     than its 11 N·cm, the angle worked from the parts' weight and the teeth;
-##     the bricks taken off, the same motor turns it and says how fast.
+##     the bricks taken off, the same motor turns it and says how fast;
+##   - a SPIKE Prime large angular motor (25 N·cm at 7.2 V, LEGO's sheet),
+##     held by two pins through its underside to a Technic plate on a column,
+##     its hub's axle geared up 9 to an arm of ten 2x8 bricks: its case is the
+##     base, the arm stalls where the virtual work says, to 1°, the working
+##     said (the arm's weight, how far its middle stands from its axle, the
+##     torque), and unloaded the motor turns it at its 175 rpm;
+##   - a Powered Up L motor (26 N·cm at 9 V, Hurbain's), held by two long
+##     pins through it to a Technic plate, on the same train and arm: the
+##     same, to 1°;
+##   - a beam pinned by two pins to a SPIKE Prime medium angular motor's hub
+##     (no axle): the hub turns in the case, so the beam is the driver,
+##     turning on the hub's line, the pins going round through the hub
+##     without meeting it, and the motor said by name at 7.2 V;
+##   - a Technic large angular motor drawn in its pieces, as 42114-1's
+##     steering motor is: a sub-model "69730" of its case's four pieces and
+##     its hub, pinned on the stand, an axle in its hub: the hub turns the
+##     axle in the pieces, held with the base as one case, and the motor is
+##     said by name at 9 V.
 ## Simulating never changes the model: every part stands where it was built,
 ## the undo history is as deep, and the model's revision has not moved.
 ## What the simulation found is read by name, so on a build without it the
@@ -39,6 +58,16 @@ const ROCKER := 40.0
 const GEARED := 9.0
 ## A Power Functions M motor's stall torque at 9 V, N·cm (Philo's table).
 const M_MOTOR_N_CM := 11.0
+## The SPIKE Prime large angular motor's at 7.2 V (LEGO Education's sheet
+## for 45602) and the Powered Up L's at 9 V (Hurbain's, extrapolated).
+const SPIKE_L_N_CM := 25.0
+const PU_L_N_CM := 26.0
+## A SPIKE motor as the rigs stand it: its hub (+y in its own frame) facing
+## +z, its body hanging below the hub's line (its own -z down).
+const SPIKE_STANDS := Basis(Vector3(-1, 0, 0), Vector3(0, 0, 1), Vector3(0, 1, 0))
+## The Powered Up L on its side: its output still along +z, the holes through
+## it (along its own x) upright.
+const PU_STANDS := Basis(Vector3(0, 1, 0), Vector3(-1, 0, 0), Vector3(0, 0, 1))
 ## N·cm for a gram lifted an LDU (0.4 mm) a radian: 9.81 m/s², a kilogram
 ## a thousand grams, a metre a hundred cm.
 const N_CM := 9.81 * 0.001 * 0.4 * 0.001 * 100.0
@@ -102,11 +131,20 @@ func _run() -> void:
 		await _four_bar()
 	if only.is_empty() or only == "motor":
 		await _motor()
+	if only.is_empty() or only == "spike":
+		await _spike_large()
+	if only.is_empty() or only == "pul":
+		await _powered_up_l()
+	if only.is_empty() or only == "hub":
+		await _hub_pins()
+	if only.is_empty() or only == "pieces":
+		await _in_pieces()
 	print("")
 	if _failures == 0:
 		print("motion: an arm meeting a beam at 140° said there, a four-bar's range against its "
-			+ "closed form, a motor that stalls lifting its load said and stopped at, and the "
-			+ "model never moved")
+			+ "closed form, a Power Functions M, a SPIKE Prime large and a Powered Up L motor "
+			+ "that stall lifting their load said and stopped at, a beam pinned to a SPIKE hub "
+			+ "turned by it, a motor drawn in its pieces turning its hub, and the model never moved")
 	else:
 		print("motion: %d FAILED" % _failures)
 	quit(1 if _failures > 0 else 0)
@@ -316,9 +354,185 @@ func _motor() -> void:
 		_flat("3022", Vector3(0, t + 248, z), 71)
 	var h: float = t + 278.0
 	var motor: int = _flat("58120c01", Vector3(0, h, 0), 71)
-	# Three axles in a 1x8 Technic brick on eleven bricks: the motor's,
-	# 24 on 8, 24 on 8, the arm on the last.
-	for n: int in 11:
+	var rig: Dictionary = _geared_arm(t, h, "3008", 8, 70.0)
+	await _frames(5)
+	_camera.frame(AABB(Vector3(-200, t, -140), Vector3(480, 560, 240)), 1.05)
+	await _frames(10)
+	await _stalls("Power Functions M motor", motor, rig, M_MOTOR_N_CM, "9 V", 0.5, "4_motor")
+	await _unloaded("Power Functions M motor", rig, "eight 1x8 bricks", "6_motor_unloaded")
+
+
+# -- a SPIKE Prime large angular motor and its load ---------------------------------------
+
+
+func _spike_large() -> void:
+	print("  a SPIKE Prime large angular motor pinned on a stand, its hub geared up 9 to an arm of "
+		+ "ten 2x8 bricks")
+	_main.call("clear_model")
+	await _frames(10)
+	var t: float = _top_of_floor()
+	var h: float = t + 326.0
+	# Its hub's face at z 0, its underside on a Technic plate 2 x 8 on a
+	# column of seven 2x2 bricks, a pin up through the plate's holes 40 either
+	# side into the two holes in the motor's underside.
+	for n: int in 7:
+		_flat("3003", Vector3(0, t + 24.0 * (n + 1), -50), 71)
+	_flat("3738", Vector3(0, h - 150, -50), 71)
+	for x: float in [-40.0, 40.0]:
+		_upright("2780", Vector3(x, h - 150, -50), 0)
+	var motor: int = _place("54675", Transform3D(SPIKE_STANDS, Vector3(0, h, -50)), 71, "")
+	var rig: Dictionary = _geared_arm(t, h, "3007", 10, 80.0)
+	await _frames(5)
+	_camera.frame(AABB(Vector3(-200, t, -200), Vector3(520, 680, 340)), 1.05)
+	await _frames(10)
+	await _stalls("SPIKE Prime large angular motor", motor, rig, SPIKE_L_N_CM, "7.2 V", 1.0, "7_spike")
+	await _unloaded("SPIKE Prime large angular motor", rig, "ten 2x8 bricks", "9_spike_unloaded")
+
+
+# -- a Powered Up L motor and its load -----------------------------------------------------
+
+
+func _powered_up_l() -> void:
+	print("  a Powered Up L motor pinned on a stand, geared up 9 to an arm of ten 2x8 bricks")
+	_main.call("clear_model")
+	await _frames(10)
+	var t: float = _top_of_floor()
+	var h: float = t + 326.0
+	# On its side, its face at z 0, the holes through its back end upright:
+	# a long pin up through a Technic plate 2 x 6 on a column of twelve 2x2
+	# bricks into each.
+	for n: int in 12:
+		_flat("3003", Vector3(0, t + 24.0 * (n + 1), -150), 71)
+	_flat("32001", Vector3(0, h - 30, -150), 71)
+	for x: float in [-20.0, 20.0]:
+		_upright("6558", Vector3(x, h - 24, -150), 0)
+	var motor: int = _place("22169", Transform3D(PU_STANDS, Vector3(0, h, -10)), 72, "")
+	var rig: Dictionary = _geared_arm(t, h, "3007", 10, 80.0)
+	await _frames(5)
+	_camera.frame(AABB(Vector3(-200, t, -200), Vector3(520, 680, 340)), 1.05)
+	await _frames(10)
+	await _stalls("Powered Up L motor", motor, rig, PU_L_N_CM, "9 V", 1.0, "10_pul")
+	_panel.close()
+	await _frames(3)
+
+
+# -- a beam pinned to a SPIKE hub ------------------------------------------------------------
+
+
+func _hub_pins() -> void:
+	print("  a beam pinned to a SPIKE Prime medium angular motor's hub by two pins, no axle")
+	_main.call("clear_model")
+	await _frames(10)
+	var t: float = _top_of_floor()
+	var h: float = t + 278.0
+	for n: int in 5:
+		_flat("3003", Vector3(0, t + 24.0 * (n + 1), -50), 71)
+	_flat("32001", Vector3(0, h - 150, -50), 71)
+	for x: float in [-20.0, 20.0]:
+		_upright("2780", Vector3(x, h - 150, -50), 0)
+	var motor: int = _place("54696p01", Transform3D(SPIKE_STANDS, Vector3(0, h, -50)), 71, "")
+	# A beam 5 upright across the hub's face, its holes on z, two pins through
+	# its holes 20 above and below its middle into the hub's.
+	var beam: int = _place("32316", Transform3D(Basis(Vector3(1, 0, 0), Vector3(0, 0, 1),
+		Vector3(0, -1, 0)), Vector3(0, h, 10)), 14, "Beam")
+	for y: float in [20.0, -20.0]:
+		_along_z("2780", Vector3(0, h + y, 0), 0, "Beam")
+	await _frames(5)
+	_camera.frame(AABB(Vector3(-160, t, -160), Vector3(320, 480, 260)), 1.05)
+	await _frames(10)
+	var rest: Dictionary = _rest()
+	_shell.run("simulate")
+	await _settled()
+	var sim: Simulation = _panel.sim
+	print("    driver: %s" % _panel.said()["driver"])
+	var driver: int = sim.driver if sim != null else -1
+	var joint: Mechanism.Joint = sim.model.joint_of(driver) if sim != null and driver >= 0 else null
+	_check("the beam pinned to the hub is the driver, its motor's: the hub turns in the case",
+		sim != null and driver == sim.model.body_of(beam) and int(sim.motored.get(driver, 0)) == motor
+		and str(_panel.said()["driver"]).contains("its motor turns it"))
+	_check("...on the hub's line (x 0, y %d, along z), against the case, the base" % int(h - t),
+		joint != null and Mechanism._same_line(joint.point, joint.way.normalized(), Vector3(0, h, 0),
+			Vector3(0, 0, 1)) and sim.model.body_of(motor) == sim.model.ground)
+	var stops: String = _stops_said()
+	print("    stops: %s" % stops.replace("\n", " | "))
+	_check("the pins go round through the hub without meeting it, nor anything else",
+		_found(sim, "meets").is_empty() and _found(sim, "meets_back").is_empty()
+		and stops.contains("all the way round"))
+	_check("...and the motor is said by name, at its 7.2 V", stops.contains("SPIKE Prime medium angular motor")
+		and stops.contains("#%d" % motor) and stops.contains("7.2 V") and stops.contains("rpm"))
+	await _shot("12_hub_pins")
+	_check("the model never moved", _same_as(rest))
+	_panel.close()
+	await _frames(3)
+
+
+# -- a motor drawn in its pieces ----------------------------------------------------------
+
+
+func _in_pieces() -> void:
+	print("  a Technic large angular motor drawn in its pieces, a sub-model 69730, an axle in its hub")
+	_main.call("clear_model")
+	await _frames(10)
+	var t: float = _top_of_floor()
+	var h: float = t + 326.0
+	for n: int in 7:
+		_flat("3003", Vector3(0, t + 24.0 * (n + 1), -50), 71)
+	_flat("3738", Vector3(0, h - 150, -50), 71)
+	for x: float in [-40.0, 40.0]:
+		_upright("2780", Vector3(x, h - 150, -50), 0)
+	# Each piece where 69730 (u9367c01's pieces and the hub) draws it, as the
+	# SPIKE motor stands above, in a sub-model of the motor's number.
+	var at := Transform3D(SPIKE_STANDS, Vector3(0, h, -50))
+	var pieces: Array = []
+	var hub: int = -1
+	for piece: Array in [["u9367", Vector3(0, 20, 0)], ["u9368", Vector3(0, -20, 0)],
+			["u9390", Vector3(0, 0, -140)], ["u9391", Vector3(0, 0, -140)],
+			["u9363p01", Vector3(0, 50, 0)]]:
+		var id: int = _place(str(piece[0]), at * Transform3D(Basis.IDENTITY, piece[1]), 72, "69730")
+		if str(piece[0]) == "u9363p01":
+			hub = id
+		else:
+			pieces.append(id)
+	var axle: int = _along_z("3705", Vector3(0, h, 20), 0)
+	_flat("3648a", Vector3(0, h, 10), 72)
+	await _frames(5)
+	_camera.frame(AABB(Vector3(-160, t, -160), Vector3(320, 480, 260)), 1.05)
+	await _frames(10)
+	var rest: Dictionary = _rest()
+	_shell.run("simulate")
+	await _settled()
+	var sim: Simulation = _panel.sim
+	print("    driver: %s" % _panel.said()["driver"])
+	var driver: int = sim.driver if sim != null else -1
+	_check("the axle in the hub is the driver, the motor's: its hub turns in its pieces",
+		sim != null and driver == sim.model.body_of(axle) and int(sim.motored.get(driver, 0)) == hub
+		and str(_panel.said()["driver"]).contains("its motor turns it"))
+	var held: bool = sim != null and sim.model.body_of(hub) == sim.model.ground
+	for id: int in pieces:
+		held = held and sim.model.body_of(id) == sim.model.ground
+	_check("...its four pieces and the hub's own case one, held with the base by the pins", held)
+	var stops: String = _stops_said()
+	print("    stops: %s" % stops.replace("\n", " | "))
+	_check("nothing meets, and the motor is said by name, at its 9 V",
+		_found(sim, "meets").is_empty() and stops.contains("Technic large angular motor")
+		and stops.contains("#%d" % hub) and stops.contains("9 V") and stops.contains("rpm"))
+	await _shot("13_in_pieces")
+	_check("the model never moved", _same_as(rest))
+	_panel.close()
+	await _frames(3)
+
+
+# -- a motor's train and what it lifts -------------------------------------------------------
+
+
+## The gear train and arm a motor lifts, its output on the line x 0, y [param
+## h], along +z, its face at z 0: a 1x8 Technic brick on a column of 1x8
+## bricks holding three axles, the motor's (a 4L from z -20 to 60), 24 on 8,
+## 24 on 8, and the arm on the last: a 1x2 Technic brick, two 1x2 bricks and
+## [param count] of [param load] on them, their middle at z [param load_z].
+## {output, last (the arm's axle), arm (each of its parts), load}.
+func _geared_arm(t: float, h: float, load: String, count: int, load_z: float) -> Dictionary:
+	for n: int in roundi((h - 14.0 - t) / 24.0):
 		_flat("3008", Vector3(40, t + 24.0 * (n + 1), 50), 71)
 	_flat("3702", Vector3(40, h + 10, 50), 71)
 	var output: int = _along_z("3705", Vector3(0, h, 20), 0)
@@ -331,13 +545,23 @@ func _motor() -> void:
 	var arm: Array = [_flat("32064b", Vector3(80, h + 10, 70), 4, "Arm")]
 	for n: int in 2:
 		arm.append(_flat("3004", Vector3(80, h + 10 + 24.0 * (n + 1), 70), 4, "Arm"))
-	var load: Array = []
-	for n: int in 8:
-		load.append(_flat("3008", Vector3(80, h + 58 + 24.0 * (n + 1), 70), 1, "Arm"))
-	arm.append_array(load)
-	await _frames(5)
-	_camera.frame(AABB(Vector3(-200, t, -140), Vector3(480, 560, 240)), 1.05)
-	await _frames(10)
+	var loads: Array = []
+	for n: int in count:
+		loads.append(_flat(load, Vector3(80, h + 58 + 24.0 * (n + 1), load_z), 1, "Arm"))
+	arm.append_array(loads)
+	return {"output": output, "last": last, "arm": arm, "load": loads, "pivot": Vector3(80, h, 70)}
+
+
+## Simulate on [param rig] driven by [param motor] (brick id), called [param
+## named], giving [param torque] N·cm at [param volts]: the motor marks the
+## driver, nothing meets, the arm turns GEARED times the motor, and lifting
+## it the motor stalls where the arm's weight asks more, worked by virtual
+## work to [param within] degrees with the working said; Play stops there,
+## and the model never moved.
+func _stalls(named: String, motor: int, rig: Dictionary, torque: float, volts: String,
+		within: float, shots: String) -> void:
+	var output: int = rig["output"]
+	var last: int = rig["last"]
 	var rest: Dictionary = _rest()
 	var depth: int = _builder.history_depth()
 	var revision: int = _world.revision
@@ -348,6 +572,8 @@ func _motor() -> void:
 	_check("the motor marks the driver: its output's axle, which it turns", sim != null
 		and sim.driver == sim.model.body_of(output) and _found(sim, "motor", 0) == motor
 		and str(_panel.said()["driver"]).contains("its motor turns it"))
+	_check("...its case held still with the base by what it is pinned or stood on",
+		sim != null and sim.model.body_of(motor) == sim.model.ground)
 	_check("nothing meets over the cycle, the axle turning in the motor's output among it",
 		_found(sim, "meets").is_empty() and _found(sim, "meets_back").is_empty())
 	_check("the arm turns 9 times the motor's turn, two 24s on two 8s (%.4f)"
@@ -358,28 +584,40 @@ func _motor() -> void:
 	# Worked: the weight's moment about the arm's axle, standing up, from
 	# the parts' grams; lifting it past the bottom asks GEARED times its
 	# moment times sin of how far past, of the motor.
-	var pivot := Vector3(80, h, 70)
+	var pivot: Vector3 = rig["pivot"]
 	var moment: float = 0.0
-	for key: int in arm:
+	var grams: float = 0.0
+	for key: int in rig["arm"]:
 		var brick: BrickWorld.Brick = _world.get_brick(key)
 		var mesh: Lbm.PartMesh = _library.mesh_for(brick.part_id)
-		var grams: float = Stability.grams(_library.parts[brick.part_id])
-		moment += grams * ((brick.transform * mesh.bounds.get_center()) - pivot).y
-	var most: float = GEARED * moment * N_CM
-	var share: float = M_MOTOR_N_CM / most
+		var weighs: float = Stability.grams(_library.parts[brick.part_id])
+		grams += weighs
+		moment += weighs * ((brick.transform * mesh.bounds.get_center()) - pivot).y
+	var at_arm: float = moment * N_CM
+	var most: float = GEARED * at_arm
+	var share: float = torque / most
 	var stalls_at: float = (180.0 + rad_to_deg(asin(share))) / GEARED
+	print(("    worked: the arm's %d parts weigh %.2f g, their middle %.1f LDU (%.2f cm) above "
+		+ "its axle: standing up their weight's moment is %.3f N·cm at the arm, %.2f at the motor "
+		+ "through the 9 up. Past the bottom it asks %.2f x sin(how far past); the %s gives "
+		+ "%s N·cm at %s, so it stalls %.2f° past the bottom: the arm %.2f° round, the motor "
+		+ "%.3f°.") % [(rig["arm"] as Array).size(), grams, moment / grams, moment / grams * 0.04,
+			at_arm, most, most, named, Simulation.figure(torque), volts,
+			rad_to_deg(asin(share)), stalls_at * GEARED, stalls_at])
 	var stall: Dictionary = _found(sim, "stall")
 	var said_at: float = float(stall.get("turns", INF)) * 360.0
-	_check("the motor stalls at %.3f° of its turn, worked %.3f° (the arm %.1f° round, its weight "
-		% [said_at, stalls_at, stalls_at * GEARED] + "asking %.2f N·cm at most against 11)" % most,
-		share < 1.0 and absf(said_at - stalls_at) < 0.5)
+	_check("the motor stalls at %.3f° of its turn, worked %.3f°, %.3f° apart (to %s°; the arm %.1f° "
+		% [said_at, stalls_at, absf(said_at - stalls_at), Simulation.figure(within), stalls_at * GEARED]
+		+ "round, its weight asking %.2f N·cm at most against %s)" % [most, Simulation.figure(torque)],
+		share < 1.0 and absf(said_at - stalls_at) < within)
 	_check("...asked %.2f N·cm at its heaviest, worked %.2f (to 2%%)" % [
 		float(_found(sim, "heaviest").get("needs", 0.0)), most],
 		absf(float(_found(sim, "heaviest").get("needs", 0.0)) - most) < most * 0.02)
-	_check("...and says so: the motor named, STALLS, gear it down", stops.contains("STALLS")
-		and stops.contains("Power Functions M motor") and stops.contains("#%d" % motor)
-		and stops.contains("Gear it down") and stops.contains("its motor stalls"))
-	await _shot("4_motor_loaded")
+	_check("...and says so: the motor named, STALLS, at its %s, gear it down" % volts,
+		stops.contains("STALLS") and stops.contains(named) and stops.contains("#%d" % motor)
+		and stops.contains("it gives at %s" % volts) and stops.contains("Gear it down")
+		and stops.contains("its motor stalls"))
+	await _shot(shots + "_loaded")
 	var play: Button = _panel.controls_by_name()["simulate_play"]
 	await _click(play.get_global_rect().get_center())
 	for _n: int in 1200:
@@ -393,24 +631,27 @@ func _motor() -> void:
 		and _drawn_as(sim.placed(_panel.turns)))
 	if _panel.playing:
 		await _click(play.get_global_rect().get_center())
-	await _shot("5_motor_stalled")
+	await _shot(shots + "_stalled")
 	_check("the model never moved", _same_as(rest) and _world.revision == revision
 		and _builder.history_depth() == depth)
 
-	# The load taken off: the same motor turns the arm, and says how fast.
-	print("  the eight 1x8 bricks taken off")
-	for key: int in load:
+
+## The load taken off [param rig]: the same motor turns the arm all the way
+## round, and says how fast.
+func _unloaded(named: String, rig: Dictionary, load_said: String, shot: String) -> void:
+	print("  the %s taken off" % load_said)
+	for key: int in rig["load"]:
 		_builder.remove_brick_id(key)
 	await _frames(3)
 	await _settled()
-	sim = _panel.sim
-	stops = _stops_said()
+	var sim: Simulation = _panel.sim
+	var stops: String = _stops_said()
 	print("    stops: %s" % stops.replace("\n", " | "))
 	_check("unloaded it turns all the way round: no stall, and the motor's speed said",
 		_found(sim, "stall").is_empty() and _found(sim, "meets").is_empty()
 		and not stops.contains("STALLS")
-		and stops.contains("The Power Functions M motor") and stops.contains("rpm"))
-	await _shot("6_motor_unloaded")
+		and stops.contains("The %s" % named) and stops.contains("rpm"))
+	await _shot(shot)
 	_panel.close()
 	await _frames(3)
 
@@ -449,6 +690,12 @@ func _flat(part_id: String, at: Vector3, colour: int, unit: String = "") -> int:
 func _along_z(part_id: String, at: Vector3, colour: int, unit: String = "") -> int:
 	return _place(part_id, Transform3D(Basis(Vector3(0, 0, 1), Vector3(0, 1, 0),
 		Vector3(-1, 0, 0)), at), colour, unit)
+
+
+## A pin standing upright, its middle at [param at].
+func _upright(part_id: String, at: Vector3, colour: int, unit: String = "") -> int:
+	return _place(part_id, Transform3D(Basis(Vector3(0, 1, 0), Vector3(-1, 0, 0),
+		Vector3(0, 0, 1)), at), colour, unit)
 
 
 func _rest() -> Dictionary:
