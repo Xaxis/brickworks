@@ -88,18 +88,30 @@ static func make(numbers: PackedStringArray, records: Dictionary, library: PartL
 		named.append(words if int(copies[number]) == 1 else "%d × %s" % [int(copies[number]), words])
 	bin.title = named[0] if named.size() == 1 else (" and ".join(named) if named.size() == 2
 		else "%d sets" % bin.sets.size())
+	bin.lay_out(library)
+	return bin
+
+
+## [member order] and [member unshown] from [member have]: the parts this
+## build can draw, the most held first, then by part and colour.
+func lay_out(library: PartLibrary) -> void:
+	unshown = 0
 	var shown: Array = []
-	for key: String in bin.have:
+	for key: String in have:
 		var info: PartLibrary.PartInfo = library.parts.get(Collection.part_of(key)) if library != null else null
 		if library != null and (info == null or not info.reachable or info.is_redirect()):
-			bin.unshown += int(bin.have[key])
+			unshown += int(have[key])
 			continue
 		shown.append(key)
-	var held: Dictionary = bin.have
+	var held: Dictionary = have
 	shown.sort_custom(func(a: String, b: String) -> bool:
 		return int(held[a]) > int(held[b]) if int(held[a]) != int(held[b]) else a < b)
-	bin.order = PackedStringArray(shown)
-	return bin
+	order = PackedStringArray(shown)
+
+
+## Whether this is the person's own bricks (OwnCounts.bin), not sets'.
+func is_mine() -> bool:
+	return sets.size() == 1 and sets[0] == OwnCounts.WORD
 
 
 ## The parts [param world] is built of, by part and colour, its baseplate
@@ -167,6 +179,9 @@ static func said_in(said: String) -> Variant:
 	if RegEx.create_from_string("^[0-9A-Za-z. \t-]{1,600}$").search(said) == null:
 		return null
 	var out := PackedStringArray()
+	# The person's own bricks, alone: never added to a set's (OwnCounts.WORD).
+	if said.strip_edges().to_lower() == OwnCounts.WORD:
+		return PackedStringArray([OwnCounts.WORD])
 	for word: String in LdrModel._fields(said):
 		var number: String = SetInventories.normal(word)
 		if RegEx.create_from_string("^[0-9a-z.]+-[0-9]+$").search(number) != null \

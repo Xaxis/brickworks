@@ -4699,6 +4699,18 @@ var _set_bin: SetBin = null
 ## The records [member _set_bin] was made from, to make it again as the
 ## person's marks change ([method follow_marks]).
 var _set_records: Dictionary = {}
+## Main's: what the person owns, "part/colour" -> count
+## (CollectionStore.on_hand), the bin's own when From my bricks is on
+## (OwnCounts); empty with no collection.
+var owned: Callable = func() -> Dictionary: return {}
+## Said for the status bar: building from the person's own bricks, the last
+## of a part put down, or one past what they own (OwnCounts).
+signal said(line: String)
+## What the model used at the last count of the person's own bricks, and in
+## which of the world's generations (a model opened is a new one), to say the
+## last of a part as it goes down, once.
+var _left_said: Dictionary = {}
+var _left_said_in: int = -1
 var _set_line: HBoxContainer
 var _set_words: Label
 var _set_count: Label
@@ -4725,6 +4737,9 @@ var models: ModelLibrary
 ## of the world's revisions: worked out again whenever the model changes
 ## ([method _recount]), never kept apart from it.
 var _used: Dictionary = {}
+## How long the last count took the frame it was made in, in ms, every tile
+## told (brickworksState.bin_recount_ms: the web's cost of a model change).
+var recount_ms: float = 0.0
 var _counted_at: int = -1
 var _counted_msec: int = 0
 ## The grid lists the set's parts, a tile each part and colour, in
@@ -4768,6 +4783,16 @@ const RECOUNT_MSEC := 100
 ## files in LDraw's repository ("8841-1_Balance.mpd"); "" its own model's,
 ## or the one model it has: the bin lists the step's parts first.
 func build_from(numbers: PackedStringArray, booklet: String = "") -> int:
+	# The person's own bricks (From my bricks): what they own, made again as
+	# their collection changes (follow_marks).
+	if numbers.size() == 1 and numbers[0] == OwnCounts.WORD:
+		var mine: SetBin = OwnCounts.bin(OwnCounts.owned(owned.call()), library)
+		if mine.have.is_empty():
+			trouble = "nothing is in your collection yet: add your sets and parts in My collection"
+			return 0
+		trouble = ""
+		print("set bin: %s, %d kinds of part" % [mine.title, mine.order.size()])
+		return await _take_bin(mine, {}, "", "")
 	if _books == null:
 		_books = SetInventories.new()
 		add_child(_books)
@@ -4785,15 +4810,23 @@ func build_from(numbers: PackedStringArray, booklet: String = "") -> int:
 		return 0
 	trouble = ""
 	print("set bin: %s, %d kinds of part, looked up in %d ms" % [bin.title, bin.order.size(), looked_up_ms])
+	return await _take_bin(bin, records, normal[0] if normal.size() == 1 else "", booklet)
+
+
+## [param bin] made the bin's, from [param records]; a single set's
+## ([param one]) following [param booklet] as [method build_from] says.
+func _take_bin(bin: SetBin, records: Dictionary, one: String, booklet: String) -> int:
 	_offer = {}
 	_set_bin = bin
 	_set_records = records
 	_booklet = null
 	_step_keys = PackedStringArray()
+	_left_said = {}
+	_left_said_in = -1
 	if store != null:
 		store.bin_sets = bin.sets
-	if normal.size() == 1:
-		await _follow_booklet(normal[0], booklet)
+	if not one.is_empty():
+		await _follow_booklet(one, booklet)
 	_count_chips()
 	# The whole set in sight: what was typed or chosen is let go.
 	_search.text = ""
@@ -4917,9 +4950,16 @@ func _follow_step(relist: bool) -> void:
 ## marked missing is left out at once, and recounted (lbfix, lbreview F5).
 ## The booklet stays: a step still puts in a part that is missing.
 func follow_marks() -> void:
+	# A model whose bin is the person's own bricks, opened before their
+	# collection came (signed in later, or still on its way): made now.
 	if _set_bin == null:
+		if store != null and store.bin_sets == PackedStringArray([OwnCounts.WORD]) \
+				and not (owned.call() as Dictionary).is_empty():
+			await build_from(store.bin_sets)
 		return
-	var bin: SetBin = SetBin.make(_set_bin.sets, _set_records, library)
+	# Their own bricks: what they own now, whatever changed it.
+	var bin: SetBin = OwnCounts.bin(OwnCounts.owned(owned.call()), library) if _set_bin.is_mine() \
+		else SetBin.make(_set_bin.sets, _set_records, library)
 	if bin == null or (bin.have == _set_bin.have and bin.left_out == _set_bin.left_out):
 		return
 	_set_bin = bin
@@ -4939,6 +4979,8 @@ func leave_set() -> void:
 func _drop_set() -> void:
 	_set_bin = null
 	_set_records = {}
+	_left_said = {}
+	_left_said_in = -1
 	_booklet = null
 	_step_keys = PackedStringArray()
 	_used = {}
@@ -5014,15 +5056,19 @@ func _follow_model() -> void:
 func _recount(relist: bool = true) -> void:
 	if _set_bin == null:
 		return
+	var began: int = Time.get_ticks_usec()
 	var world: BrickWorld = builder.world if builder != null else null
 	_counted_at = world.revision if world != null else -1
 	_counted_msec = Time.get_ticks_msec()
 	_used = SetBin.used_in(world, builder.scenery, library) if world != null else {}
+	if _set_bin.is_mine():
+		_say_last(world)
 	for cell: Node in _grid.get_children():
 		if not str(cell.get_meta("key", "")).is_empty() and _listing_set:
 			_show_count(cell as Button)
 	_say_set()
 	_follow_step(relist)
+	recount_ms = (Time.get_ticks_usec() - began) / 1000.0
 
 
 ## How many of a tile's part and colour are left, after its name: "×12",
@@ -5049,6 +5095,64 @@ func _show_count(button: Button) -> void:
 		str(button.get_meta("plain_tip", ""))]
 
 
+## Building from the person's own bricks: the last of a part they own put
+## down, or one past what they own, said as it happens ([signal said]), once.
+## Only what this count used more of than the last one, in the same model:
+## not a bin just made, nor a model opened (a new generation of the world),
+## whose counts are all new; not an undo, which gives back; and not a change
+## to the collection, which moves what they own, not what is put down.
+func _say_last(world: BrickWorld) -> void:
+	var generation: int = world.generation() if world != null else -1
+	var before: Dictionary = _left_said
+	var counted: bool = _left_said_in == generation and _left_said_in >= 0
+	_left_said = _used
+	_left_said_in = generation
+	if not counted:
+		return
+	var last: Array = []
+	var past: Array = []
+	for key: String in _used:
+		var now: int = int(_used[key])
+		var was: int = int(before.get(key, 0))
+		var held: int = int(_set_bin.have.get(key, 0))
+		if now <= was or held == 0:
+			continue
+		if held - now == 0:
+			last.append(key)
+		elif held - now < 0 and held - was >= 0:
+			past.append(key)
+	var lines := PackedStringArray()
+	if last.size() == 1:
+		lines.append("the last %s in %s you own is down" % _part_and_colour(str(last[0])))
+	elif last.size() > 1:
+		lines.append("the last you own of %d parts is down: %s" % [last.size(), _keys_named(last)])
+	if past.size() == 1:
+		var key: String = past[0]
+		var named: Array = _part_and_colour(key)
+		lines.append("%s in %s: past the %d you own, %d over" % [named[0], named[1],
+			int(_set_bin.have.get(key, 0)), -_set_bin.left(key, _used)])
+	elif past.size() > 1:
+		lines.append("past what you own of %d parts: %s" % [past.size(), _keys_named(past)])
+	if not lines.is_empty():
+		said.emit("; ".join(lines))
+
+
+## A key's part and colour, by name: ["Brick 2 x 4", "Red"].
+func _part_and_colour(key: String) -> Array:
+	var info: PartLibrary.PartInfo = library.parts.get(Collection.part_of(key))
+	var colour: PartLibrary.BrickColor = library.color(Collection.colour_of(key))
+	return [Inventory._tidy(info.name) if info != null else Collection.part_of(key),
+		colour.name.replace("_", " ") if colour != null else "colour %d" % Collection.colour_of(key)]
+
+
+## Keys by number and colour, the first three: "3001 Red, 3004 Blue and 2 more".
+func _keys_named(keys: Array) -> String:
+	var named := PackedStringArray()
+	for key: String in keys.slice(0, 3):
+		named.append("%s %s" % [Collection.part_of(key), _part_and_colour(key)[1]])
+	return ", ".join(named) + (" and %d more" % (keys.size() - 3) if keys.size() > 3 else "")
+
+
 ## A count left as a tile says it.
 static func count_words(left: int) -> String:
 	if left > 0:
@@ -5069,8 +5173,11 @@ func _say_set() -> void:
 	if offered != null:
 		_set_words.text = offered.title
 		_set_count.text = "%s pieces" % _comma(offered.pieces)
-		_set_go.text = "Add its parts" if _set_bin != null else "Build from it"
-		_set_go.tooltip_text = ("Its parts added to the bin's, counted together" if _set_bin != null
+		# The person's own bricks are never added to: a set offered over them
+		# is built from instead.
+		var adding: bool = _set_bin != null and not _set_bin.is_mine()
+		_set_go.text = "Add its parts" if adding else "Build from it"
+		_set_go.tooltip_text = ("Its parts added to the bin's, counted together" if adding
 			else "The bin becomes this set's parts, each counting how many are left as you build")
 		_set_words.tooltip_text = "%s, %s" % [_set_words.text, _set_count.text]
 		_set_count.tooltip_text = _set_words.tooltip_text
@@ -5081,10 +5188,22 @@ func _say_set() -> void:
 	_set_words.text = _set_bin.title
 	_set_count.text = "%s of %s left%s" % [_comma(int(sums["left"])), _comma(_set_bin.pieces),
 		", %s over" % _comma(int(sums["over"])) if int(sums["over"]) > 0 else ""]
-	_set_words.tooltip_text = ("Building from the parts of %s. Each part put down takes one from its "
-		+ "count; undo or a delete gives it back. A part with none left can still be used: the bin "
-		+ "says how many over the set the model is.%s") % [_set_bin.title,
-		"" if _set_bin.unshown == 0 else "\n%s of its pieces are of parts this build cannot show." % _comma(_set_bin.unshown)]
+	if _set_bin.is_mine():
+		# The person's own bricks: what they are, and that a set kept built
+		# is counted with the rest (OwnCounts.BUILT_WORDS).
+		_set_words.tooltip_text = ("Building from the parts you own: your sets' parts, less those "
+			+ "marked missing, and your loose parts. Each part put down takes one from its count; undo "
+			+ "or a delete gives it back. A part with none left can still be used: the bin says how "
+			+ "many over what you own the model is.\n%s%s") % [OwnCounts.BUILT_WORDS,
+			"" if _set_bin.unshown == 0 else "\n%s of your pieces are of parts this build cannot show." % _comma(_set_bin.unshown)]
+		if _set_bin.have.is_empty():
+			_set_count.text = "nothing in your collection"
+			_set_words.tooltip_text = "Nothing is in your collection here: sign in, or add your sets and parts in My collection."
+	else:
+		_set_words.tooltip_text = ("Building from the parts of %s. Each part put down takes one from its "
+			+ "count; undo or a delete gives it back. A part with none left can still be used: the bin "
+			+ "says how many over the set the model is.%s") % [_set_bin.title,
+			"" if _set_bin.unshown == 0 else "\n%s of its pieces are of parts this build cannot show." % _comma(_set_bin.unshown)]
 	_set_count.tooltip_text = _set_words.tooltip_text
 
 
@@ -5123,7 +5242,7 @@ func _take_offer(booklet: String = "") -> void:
 	if _offer.is_empty():
 		return
 	var numbers: PackedStringArray = _offer["numbers"]
-	if _set_bin != null:
+	if _set_bin != null and not _set_bin.is_mine():
 		numbers = _set_bin.sets + numbers
 	await build_from(numbers, booklet)
 

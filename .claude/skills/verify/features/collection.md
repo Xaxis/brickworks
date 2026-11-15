@@ -119,7 +119,7 @@ which models they could build from what they have. Added 2026-10-12.
   count), each with What it needs: What do I need? for that set (its own
   chooser: the open model or a set), its missing lots less loose parts, the
   BrickLink and Rebrickable lists named for it. Older apps read a marked set
-  as a whole one. Build from it, Build from them all and a model's own set
+  as a whole one. Build from it, Build from my bricks and a model's own set
   bin leave out what the person's copies are marked missing
   (`CollectionStore.marks`, kept by the window's store and emptied at a
   sign-out; `SetBin.left_out`), their copies beyond the bin's making up the
@@ -158,7 +158,7 @@ which models they could build from what they have. Added 2026-10-12.
   each counting how many are left (`SetBin`). Chosen by a set's number typed
   into the bin's search ("10497-1", "set 10497": the line at the bin's top
   offers it, Build from it; Add its parts while building from one), by Build
-  from it and Build from them all on My collection's What I own, and by
+  from it on My collection's What I own, and by
   `/app?parts=N` (`Main._maybe_fill_bin`). The counts are never kept: each
   model change (`BrickWorld.revision`, at most every 100 ms while it goes on)
   they are worked out again from the model's bricks (`SetBin.used_in`, its
@@ -191,6 +191,31 @@ which models they could build from what they have. Added 2026-10-12.
   (`ModelLibrary.model_text`), parsed off the frame. Not kept in the model:
   an alternate's booklet is chosen again after the model is opened (its own
   model's is followed again by itself).
+- `build from my bricks` (`src/collection/own_counts.gd`, `src/ui/parts_bin.gd`,
+  docs/APP_UX8.md #4 and unit 5, ownlimit, 2026-11-14): My collection's What
+  I own offers Build from my bricks beside its summary whenever anything is
+  owned (`collection_build_mine`); the bin becomes the person's own pool
+  (`CollectionStore.on_hand`: sets' parts less those marked missing, and the
+  loose lots) as a `SetBin` titled My bricks (`OwnCounts.bin`, `is_mine`), so
+  every set bin rule holds: a tile a part and colour counting the pool less
+  the model, none left greyed, "N over" on the tile and the line. Kept with
+  the model as `0 !BRICKWORKS BIN mine`; made again whenever the window's
+  store changes (`follow_marks`, also when a model asking for it opened
+  before the collection came); signed out it says "nothing in your
+  collection". The last owned of a part put down, or one past what is
+  owned, is said on the status bar once (`PartsBin.said`, `_say_last`:
+  only more used in the same generation of the world, never an undo, an
+  open or a collection change). The parts list marks a row "N over" past
+  what the bin holds, a set's or the person's (`InventoryPanel.held`,
+  `over_of`). A set kept built still counts: nothing marks one built
+  (keptbuilt never landed), and the line's tooltip says so
+  (`OwnCounts.BUILT_WORDS`). Over MCP, `submit_design` takes `mine=true`:
+  after a built design the answer's second paragraph is `OwnCounts.said`,
+  every piece theirs or each part over by how many with what could stand
+  in (`Collection.plan`, the same sums as parts_list need), from
+  `AppTools.held_to_mine` via `CommandSocket._run`; parts_list need and
+  edit_collection's read-back end with `AppTools.MINE_SAID`. Proof:
+  `tools/probe.sh ownlimit_probe` ends `held to the person's own bricks`.
 - `collection sums` (`src/collection/collection.gd`, pure): the pool (sets
   expanded through their inventories, plus loose parts), the shortfall, the
   plan of what could stand in, and coverage. One spelling for both sides: a

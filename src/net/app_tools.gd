@@ -3865,6 +3865,42 @@ func _open_library(id: String, discard: bool) -> String:
 # -- the parts list and the collection ------------------------------------------------
 
 
+## submit_design mine=true (ownlimit, APP_UX8 #5): the model as it now
+## stands against what the person owns (OwnCounts.said: every part theirs, or
+## each one it goes over and by how many), said after the answer's first
+## paragraph, where a session reads it before the passes it is told to go on
+## with. A design that was not built is answered as it was: nothing went
+## down to hold to anything. [param answer] is the call's text, or its blocks
+## (a picture with it), whose first text is told.
+func held_to_mine(answer: Variant) -> Variant:
+	var text: String = answer if answer is String else ""
+	var block: Dictionary = {}
+	if answer is Array:
+		for one: Variant in answer:
+			if one is Dictionary and str((one as Dictionary).get("type", "")) == "text":
+				block = one
+				text = str(block.get("text", ""))
+				break
+	if not text.begins_with("Built"):
+		return answer
+	var shell: Shell = app.get("_shell")
+	var mine: CollectionStore = shell.collection_store if shell != null else null
+	var world: BrickWorld = app.get("_world")
+	if mine == null or world == null:
+		return answer
+	if mine.on_hand.is_empty() and not mine.collection.is_empty():
+		await mine.refresh_pool()
+	var library: PartLibrary = app.get("_library")
+	var store: ModelStore = app.get("_store")
+	var used: Dictionary = SetBin.used_in(world, store.scenery, library)
+	var paragraphs: PackedStringArray = text.split("\n\n")
+	paragraphs.insert(1, OwnCounts.said(OwnCounts.owned(mine.on_hand), used, library))
+	if block.is_empty():
+		return "\n\n".join(paragraphs)
+	block["text"] = "\n\n".join(paragraphs)
+	return answer
+
+
 func _parts_list(input: Dictionary) -> String:
 	var world: BrickWorld = app.get("_world")
 	var library: PartLibrary = app.get("_library")
@@ -3918,6 +3954,7 @@ func _parts_list(input: Dictionary) -> String:
 				said.append("  short %d of %d x %s in colour %d" % [int(row["short"]), int(row["need"]),
 					str(row["part"]), int(row["colour"])])
 		said.append("Short of %s." % Counted.of(short, "lot") if short > 0 else "They own every piece.")
+		said.append(MINE_SAID)
 		return "\n".join(said)
 	# What can I build? as the window ranks it (CollectionDialog._fill_build):
 	# the person's saved models, the examples and the official LDraw models
@@ -4270,7 +4307,16 @@ func _collection_said(mine: CollectionStore, library: PartLibrary, limit: int) -
 				"colour": Collection.colour_of(key)}, library)])
 	if total > listed:
 		said.append("  and %d more lots: limit= for more." % (total - listed))
+	said.append(MINE_SAID)
 	return "\n".join(said)
+
+
+## What a session reading the person's collection is told of designing from
+## it (ownlimit): guidance goes in a tool's result, where a session reads it.
+const MINE_SAID := ("To design from their parts only, give submit_design mine=true: the app holds the "
+	+ "design to what they own (these sets' parts less what is marked missing, and the loose lots), "
+	+ "and its answer names each part it uses more of than they own, by how many, with what of theirs "
+	+ "could stand in.")
 
 
 # -- localbricks: a set's missing parts, for a session (APP_UX6 #8) --------------------

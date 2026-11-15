@@ -2259,6 +2259,10 @@
           "description": "a baseplate's colour, from the colours baseplates come in: Green, Bright Green, Dark Green, Tan, Dark Tan, Light Bluish Grey, Dark Bluish Grey, Sand Green, Blue, White, Black. Grass is green, a road or a yard grey, sand or a desert tan, water blue, snow white.",
           "type": "string"
         },
+        "mine": {
+          "description": "true when the person asked for it from their own parts (\"from my collection\"): the app holds the design to what they own, part and colour (My collection, less what is marked missing), and its answer names each part it uses more of than they own, by how many, with what they have that could stand in",
+          "type": "boolean"
+        },
         "name": {
           "type": "string"
         },

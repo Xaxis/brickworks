@@ -24850,6 +24850,12 @@ func _tools() -> Array:
 						+ "the person asked for, when they named a number (\"about "
 						+ "250 parts\"): the app holds the design to it, says the "
 						+ "count against it, and lays its own detail only inside it")},
+					"mine": {"type": "boolean", "description": ("true when the person "
+						+ "asked for it from their own parts (\"from my collection\"): "
+						+ "the app holds the design to what they own, part and colour "
+						+ "(My collection, less what is marked missing), and its answer "
+						+ "names each part it uses more of than they own, by how many, "
+						+ "with what they have that could stand in")},
 					"brief": {"type": "string", "description": ("the person's request "
 						+ "in their own words, whole and word for word as they gave it: "
 						+ "a fresh pair of eyes judges the model against it")},
