@@ -2003,7 +2003,8 @@ func _relaid(section: String, targets: Dictionary, fixed: Dictionary, gone: Dict
 		if keeping.has(line):
 			continue
 		var end: Array = _laid_end(laid, section, int(targets[line]))
-		if _stack_before(section, int(end[0])) != (_stack_at.get(line, []) as Array):
+		if _round_parts(_stack_before(section, int(end[0]))) \
+				!= _round_parts(_stack_at.get(line, []) as Array):
 			return "a step edit would cross a pair (line %d)" % (line + 1)
 		puts.append([int(end[0]), float(end[1]), line])
 	return laid
@@ -2047,7 +2048,7 @@ func _put_step_at(section: String, low: int, high: int, start: int, first: int) 
 	var order: Array = range(from, latest + 1) + range(from - 1, earliest - 1, -1)
 	for at: int in order:
 		var inside: bool = true
-		for begin: Variant in _stack_before(section, at):
+		for begin: Variant in _round_parts(_stack_before(section, at)):
 			if not both.has(begin):
 				inside = false
 				break
@@ -2822,11 +2823,91 @@ func _as_written(plan: Plan, final: PackedStringArray, map: PackedInt32Array) ->
 					how = RESTEP
 					from = plan.from[at]
 					break
+			if how == FOREIGN:
+				# The file's own line a layout took out ([method _relaid]),
+				# written back by the looks where it was: a ROTSTEP at a
+				# sub-model's head, before its first part, turns its first
+				# step (BookletLooks.written_into), which the edit numbered 0.
+				from = _gone_step_between(plan, final[n], _from_before(plan, wrote_at, gap),
+					_from_after(plan, wrote_at, next_matched[j]))
+				if from >= 0:
+					how = KEEP if original[from] == final[n] else RESTEP
 		seen.out.append(final[n])
 		seen.from.append(from)
 		seen.how.append(how)
 		j += 1
 	return seen
+
+
+## Each section's first step with anything in it, read back ([param
+## placements], [param read_steps]) into [param lead_file] and in the model
+## ([param plan], [param steps_now]) into [param lead_world]
+## ([method _read_back_kept]).
+func _leads(placements: Array, read_steps: Dictionary, plan: Plan, steps_now: Dictionary,
+		lead_file: Dictionary, lead_world: Dictionary) -> void:
+	for item: Variant in placements:
+		var placement: LdrModel.Placement = item
+		_least(lead_file, _section_of(placement.unit), placement.step)
+	for path: String in read_steps:
+		_least(lead_file, _section_of(Assemblies.parent_of(path)), int(read_steps[path]))
+	for origin: String in plan.now:
+		var brick: BrickWorld.Brick = (plan.now[origin] as Array)[0]
+		_least(lead_world, _section_of(brick.unit), brick.step)
+	for entry: Array in plan.fresh:
+		var brick: BrickWorld.Brick = entry[0]
+		_least(lead_world, _section_of(brick.unit), brick.step)
+	for line: int in plan.held_steps:
+		if line < _sec.size():
+			_least(lead_world, _sec[line], int(plan.held_steps[line]))
+	for path: String in steps_now:
+		_least(lead_world, _section_of(Assemblies.parent_of(path)), int(steps_now[path]))
+
+
+static func _least(leads: Dictionary, section: String, step: int) -> void:
+	if step >= 0 and (not leads.has(section) or step < int(leads[section])):
+		leads[section] = step
+
+
+## Whether step [param mine] of the model is [param read], read back, in
+## [param section]: alike from each one's first step with anything in it.
+static func _same_step(mine: int, read: int, section: String, lead_world: Dictionary,
+		lead_file: Dictionary) -> bool:
+	if mine < 0 or read < 0:
+		return mine == read
+	return mine - int(lead_world.get(section, 0)) == read - int(lead_file.get(section, 0))
+
+
+## The file's line of the last line of the patch before its [param before]th
+## line not the app's ([method _as_written]) that is one, or -1.
+static func _from_before(plan: Plan, wrote_at: PackedInt32Array, before: int) -> int:
+	for g: int in range(mini(before, wrote_at.size()) - 1, -1, -1):
+		if plan.from[wrote_at[g]] >= 0:
+			return plan.from[wrote_at[g]]
+	return -1
+
+
+## The file's line of the first line of the patch from its [param from]th
+## line not the app's on that is one, or past the file's last.
+func _from_after(plan: Plan, wrote_at: PackedInt32Array, from: int) -> int:
+	for g: int in range(from, wrote_at.size()):
+		if plan.from[wrote_at[g]] >= 0:
+			return plan.from[wrote_at[g]]
+	return original.size()
+
+
+## A STEP line of the file a layout took out between its lines [param low]
+## and [param high], the first that says [param said] as it was, else the
+## first; -1 for none.
+func _gone_step_between(plan: Plan, said: String, low: int, high: int) -> int:
+	var any: int = -1
+	for line: int in plan.steps_gone:
+		if line <= low or line >= high:
+			continue
+		if original[line] == said:
+			return line
+		if any < 0 or line < any:
+			any = line
+	return any
 
 
 ## How far past a line two texts differ on [method _aligned] looks for them
@@ -2980,6 +3061,11 @@ func _pairs_kept(plan: Plan, final: PackedStringArray, map: PackedInt32Array) ->
 			stack.append_array(open[kind])
 		stack.sort()
 		var wanted: Array = [] if from < 0 else _stack_at.get(from, [])
+		# A part a step edit moved goes into its new step's group of steps
+		# (LPub's MULTI_STEP) as any part of that step is in it.
+		if from >= 0 and plan.shifted.has(from):
+			stack = _round_parts(stack)
+			wanted = _round_parts(wanted)
 		if stack != wanted:
 			return "line %d is no longer in the pairs it was in" % ((from if from >= 0 else n) + 1)
 	return ""
@@ -3004,7 +3090,16 @@ func _read_back_kept(plan: Plan, text: String, final: PackedStringArray,
 	var fresh_at: Dictionary = {}
 	for entry: Array in plan.fresh:
 		fresh_at[(entry[0] as BrickWorld.Brick).id] = entry
-	for item: Variant in model.flatten(library.parts if library != null else {}):
+	var placements: Array = model.flatten(library.parts if library != null else {})
+	# Each section's steps as numbers from its first with anything in it,
+	# read back and in the model: a ROTSTEP at a sub-model's head, before its
+	# first part, turns its first step and is read as a step of its own
+	# (BookletLooks), which a step edit numbers away (AuthorSteps._tidy).
+	var lead_file: Dictionary = {}
+	var lead_world: Dictionary = {}
+	if authored:
+		_leads(placements, model.unit_steps, plan, steps_now, lead_file, lead_world)
+	for item: Variant in placements:
 		var placement: LdrModel.Placement = item
 		var origin := PackedStringArray()
 		var leaf_new: int = -1
@@ -3046,7 +3141,8 @@ func _read_back_kept(plan: Plan, text: String, final: PackedStringArray,
 				var entry: Array = fresh_at[mine.id]
 				if mine.part_id == placement.part_id and mine.color_code == placement.color_code \
 						and _close_to(entry[1] as Transform3D, placement.transform) \
-						and (mine.step < 0 or mine.step == placement.step):
+						and (mine.step < 0 or _same_step(mine.step, placement.step,
+							_section_of(mine.unit), lead_world, lead_file)):
 					fresh_left.erase(mine.id)
 					matched = true
 					break
@@ -3061,7 +3157,8 @@ func _read_back_kept(plan: Plan, text: String, final: PackedStringArray,
 			# In the step the model numbers it in, on its line (stepops).
 			var on: int = int(origin[origin.size() - 1])
 			if authored and plan.held_steps.has(on) and int(plan.held_steps[on]) >= 0 \
-					and placement.step != int(plan.held_steps[on]):
+					and not _same_step(int(plan.held_steps[on]), placement.step,
+					_sec[on] if on < _sec.size() else "\n", lead_world, lead_file):
 				return "read back, line %d is in step %d, not %d" % [on + 1, placement.step,
 					int(plan.held_steps[on])]
 			continue
@@ -3080,7 +3177,8 @@ func _read_back_kept(plan: Plan, text: String, final: PackedStringArray,
 		# numbered again is another copy (kt5review #5, [method _renumbered]).
 		if placement.unit != brick.unit:
 			return "read back, line %d is in another copy" % (int(origin[origin.size() - 1]) + 1)
-		if authored and placement.step != brick.step:
+		if authored and not _same_step(brick.step, placement.step, _section_of(brick.unit),
+				lead_world, lead_file):
 			return "read back, line %d is in step %d, not %d" % [int(origin[origin.size() - 1]) + 1,
 				placement.step, brick.step]
 	for origin: String in plan.now:
@@ -3090,7 +3188,9 @@ func _read_back_kept(plan: Plan, text: String, final: PackedStringArray,
 		return "read back without %d new part%s" % [fresh_left.size(), "" if fresh_left.size() == 1 else "s"]
 	if authored:
 		for path: String in steps_now:
-			if model.unit_steps.has(path) and int(model.unit_steps[path]) != int(steps_now[path]):
+			if model.unit_steps.has(path) and not _same_step(int(steps_now[path]),
+					int(model.unit_steps[path]), _section_of(Assemblies.parent_of(path)),
+					lead_world, lead_file):
 				return "read back, the copy %s is in step %d, not %d" % [path, int(model.unit_steps[path]),
 					int(steps_now[path])]
 	return ""
@@ -3213,6 +3313,23 @@ static func _pair_of(line: String) -> Array:
 			return [" ".join(kind) + (" SKIP" if word.begins_with("SKIP") else ""), 1 if opens else -1]
 		kind.append(word)
 	return []
+
+
+## Of the pairs begun on the file's lines [param begins], those round parts:
+## not LPub's MULTI_STEP, which is round steps, so a part a step edit
+## moves into a step of another goes into that one (stepops: 5540-1).
+func _round_parts(begins: Array) -> Array:
+	var out: Array = []
+	for begin: Variant in begins:
+		var at: int = int(begin)
+		if at < 0 or at >= original.size() or not _round_steps(original[at]):
+			out.append(begin)
+	return out
+
+
+static func _round_steps(line: String) -> bool:
+	var pair: Array = _pair_of(line)
+	return not pair.is_empty() and str(pair[0]) == "LPUB MULTI_STEP"
 
 
 ## The pairs of lines other programs write round parts, by a pair's first

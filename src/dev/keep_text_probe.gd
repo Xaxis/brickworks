@@ -2403,13 +2403,16 @@ func _emptied_op(name: String, text: String, op: String) -> String:
 	await _frames(4)
 	var edited: String = _store.saved_text()
 	var whole: String = str(_store.get("last_whole"))
-	var changed: int = _diff_size(emptied.split("\n"), edited.split("\n"))
-	var moved: int = 1 + _empty_steps(emptied)
+	var changed: int = _diff_size(_own_lines(emptied), _own_lines(edited))
+	var moved: int = 1 + _empty_steps(emptied) + _turn_moves(text.split("\n"),
+		s0[1] if op == "remove" else steps[mini(at + 2, steps.size() - 1)][1])
 	var rest: Array = _rest_unlike(emptied, edited, PackedStringArray())
 	var ok: bool = _check("%s step %d (\"%s\"): %s, %d lines changed for %d moved%s" % [op, int(s0[0]),
 		said.get_slice("\n", 0).left(70), "patched" if whole.is_empty() else "as live writes it (%s)" % whole,
 		changed, moved, ("; not byte for byte: " + " | ".join(rest)) if not rest.is_empty() else ""],
 		whole.is_empty() and rest.is_empty() and changed <= moved)
+	if not ok or OS.get_environment("STEP_OPS_SHOW") == "1":
+		print("        " + "\n        ".join(_lines_unlike(emptied, edited)))
 	await _back_to(deep)
 	ok = _hard("...undone: the parts off, as before the step edit", _store.saved_text() == emptied) and ok
 	await _back_to(depth)
@@ -2472,7 +2475,12 @@ func _step_op(name: String, text: String, op: String, want: String, room: bool =
 	var moved_lines: int = 0
 	var chosen := PackedStringArray()      ## the selection's lines, those bound to them too
 	var file_lines: PackedStringArray = text.split("\n")
-	for brick_id: int in ids:
+	# A step taken out, or merged, past a step of only what the model holds
+	# and does not show: its parts' lines go above that step.
+	var carried: Array = ids
+	if op in ["remove", "merge"] and int(s1[0]) - int(s0[0]) > 1:
+		carried = bricks1
+	for brick_id: int in carried:
 		var origin: String = str(_world.get_brick(brick_id).origin)
 		var line: int = origin.get_slice("/", origin.get_slice_count("/") - 1).to_int()
 		var from: int = source._bound_from[line] if source != null and line < source._bound_from.size() else line
@@ -2498,15 +2506,22 @@ func _step_op(name: String, text: String, op: String, want: String, room: bool =
 			FileAccess.WRITE)
 		file.store_string(edited)
 		file.close()
-	var changed: int = _diff_size(text.split("\n"), edited.split("\n"))
-	var moved: int = 2 * moved_lines + 1 + empty
+	# The file's own lines: the app's (a name a save gives someone else's
+	# file, "0 !BRICKWORKS TITLE") are said apart.
+	var changed: int = _diff_size(_own_lines(text), _own_lines(edited))
+	var app_lines: int = _diff_size(text.split("\n"), edited.split("\n")) - changed
+	# A step taken out, or merged into the one before, that a ROTSTEP turned:
+	# the turn goes up to the STEP line starting the step they are in now.
+	var turned: int = _turn_moves(file_lines, bricks1) if op in ["remove", "merge"] else 0
+	var moved: int = 2 * moved_lines + 1 + empty + turned
 	var rest: Array = _rest_unlike(text, edited, chosen)
 	var where: String = "in %s's steps %d to %d" % ["the model" if section.is_empty() else section,
 		int(s0[0]), int(s2[0])]
 	var mark: String = "%d/%d" % [changed, moved]
-	var ok: bool = _check("%s %s (\"%s\"): %s, %d lines changed for %d moved%s" % [op, where,
-		said.get_slice("\n", 0).left(70), "patched" if whole.is_empty() else "as live writes it (%s)" % whole,
-		changed, moved, ("; not byte for byte: " + " | ".join(rest.slice(0, 3))) if not rest.is_empty() else ""],
+	var ok: bool = _check("%s %s (\"%s\"): %s, %d lines changed for %d moved (and %d of the app's)%s" % [
+		op, where, said.get_slice("\n", 0).left(70),
+		"patched" if whole.is_empty() else "as live writes it (%s)" % whole, changed, moved, app_lines,
+		("; not byte for byte: " + " | ".join(rest.slice(0, 3))) if not rest.is_empty() else ""],
 		whole.is_empty() and rest.is_empty() and changed <= moved)
 	if not ok or OS.get_environment("STEP_OPS_SHOW") == "1":
 		print("        " + "\n        ".join(_lines_unlike(text, edited)))
@@ -2757,6 +2772,31 @@ static func _lines_unlike(was: String, now: String) -> Array:
 			out.append("+ %d: %s" % [n + 1, b[n].c_escape().left(90)])
 	if out.is_empty():
 		out.append("(the same lines, in another order)")
+	return out
+
+
+## 2 where the step of [param bricks] starts with a ROTSTEP that turns
+## (the lines of [param lines]): taken out or merged into the step before,
+## its turn goes up to that step's STEP line, a line out and one changed;
+## else 0.
+func _turn_moves(lines: PackedStringArray, bricks: Array) -> int:
+	var first: int = 1 << 30
+	for brick_id: int in bricks:
+		first = mini(first, _line_of(brick_id))
+	for n: int in range(mini(first, lines.size()) - 1, -1, -1):
+		var words: PackedStringArray = LdrModel._fields(lines[n].strip_edges())
+		if words.size() >= 2 and words[0] == "0" and words[1].to_upper() in ["STEP", "ROTSTEP", "FILE"]:
+			return 2 if words[1].to_upper() == "ROTSTEP" and words.size() > 2 \
+				and words[2].to_upper() != "END" else 0
+	return 0
+
+
+## [param text]'s lines but the app's own ("0 !BRICKWORKS").
+static func _own_lines(text: String) -> PackedStringArray:
+	var out := PackedStringArray()
+	for line: String in text.split("\n"):
+		if not line.begins_with("0 !BRICKWORKS"):
+			out.append(line)
 	return out
 
 
