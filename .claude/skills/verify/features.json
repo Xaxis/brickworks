@@ -4704,7 +4704,7 @@
       "id": "ui:a link that opens playing",
       "kind": "ui",
       "entry": "src/main.gd",
-      "reach": "https://brickworks.diy/m/<id>?motion=<name> of a model with motions of its own (Share, Opens: Playing ...): the viewer plays it over and over within 2 s of the model shown; its button stops it; an unknown name opens still and says so  (main._open_playing, Motions.for_link)",
+      "reach": "https://brickworks.diy/m/<id>?motion=<name> of a model with motions of its own (Share, Opens: Playing ...): the viewer plays it over and over after at most 2 s of its own work from the model shown (3 s on a phone; tools/web/play_flow.mjs times the page's frames less WebGL and its workers'); its button stops it; an unknown name opens still and says so  (main._open_playing, Motions.for_link)",
       "area": "web",
       "tests": []
     },

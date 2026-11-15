@@ -3464,7 +3464,18 @@ picture the assistant is shown.
   a second open, closed and pressed again once the page is quiet. Fails past
   `--budget` ms (250) for a frame of either open, on no draft, or on a
   script error; `--port=N` serves the export there. It presses Render after
-  the page has gone quiet, so the panel has made its renderer ready by then.
+  the page has gone quiet and the app says the panel's renderer is made
+  ready (`brickworksState.render_ready`, `RenderDialog.renderer_ready`,
+  `StudioRender.warmed_up`), waited for up to `--ready-s` (180) and failed
+  without it. The warm-up begins only after 3 s with nothing drawn and 3
+  more once the panel is made, a thing a frame: on a loaded box the press
+  that came 5 s after quiet came before it, and the open drew the sweep and
+  the contact shadow itself, six programs and five in a frame, 285-431 ms
+  (mcpreach and rel-m29x previews; a local export at load 23-31, 314 ms
+  with 18 programs in the open, where at the same moment the build that
+  says ready waited to 14 s and opened at 193 ms with 6, one a frame;
+  webfaults, 2026-11-14). A build that does not say is pressed 5 s after
+  quiet, as before.
   The desktop's half is `render_probe.gd -- --first-open`: the same two
   opens on the sample car, every frame timed, fails past `--budget` ms
   (100); left alone first as a person leaves it, or pressed `--at-once`

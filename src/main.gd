@@ -975,6 +975,10 @@ func _tell_page() -> void:
 		# slow device, the frames timed and each judgment.
 		"look": _budget.page_state() if _budget != null else {},
 		"busy": _busy_frames,
+		# Whether Render's renderer was made ready while the window sat idle
+		# (RenderDialog._warm_when_idle), for tools/web/render_open_check.mjs,
+		# which presses Render after it, as a person opening it later does.
+		"render_ready": bool(_render_made.call("renderer_ready")) if _render_made != null else false,
 		"told_ms": roundi(_told_page_us / 1000.0),
 		"told_most_ms": roundi(_told_page_most_us / 1000.0),
 		"playing": _playback != null and _playback.is_playing(),
@@ -3157,11 +3161,18 @@ func _view_longest() -> void:
 
 
 ## The frame a viewer's phase came in, and the frames drawn by then: its
-## phases' "frames", so a page can tell work paced a frame at a time.
+## phases' "frames", so a page can tell work paced a frame at a time. On the
+## web, and when by the page's own clock (performance.now), its "page": a
+## check times the page's own work between two phases by the frames it ran
+## then (tools/web/play_flow.mjs), not by a clock a loaded box stretches.
 func _view_frame(phase: String) -> void:
 	if not _view_phases.has("frames"):
 		_view_phases["frames"] = {}
 	_view_phases["frames"][phase] = [Engine.get_process_frames(), Engine.get_frames_drawn()]
+	if OS.has_feature("web"):
+		if not _view_phases.has("page"):
+			_view_phases["page"] = {}
+		_view_phases["page"][phase] = snappedf(float(JavaScriptBridge.eval("performance.now()", true)), 0.1)
 
 
 ## Fetch the shared model and open it, read-only.
@@ -7168,6 +7179,11 @@ func save_booklet_as(kind: String, to: String = "") -> String:
 	# web, where the app's tab is out of view (BookletRead.read_all).
 	var pace: int = 0 if web else 8
 	_pdf_missed = ""
+	# The type it is set in, fetched the first time on the web (WebPacks.FONTS).
+	if web and not WebPacks.here(WebPacks.FONTS):
+		job.say("Fetching the booklet's type…")
+		await WebPacks.need(WebPacks.FONTS)
+		job.say("Writing the PDF…" if pdf else "Drawing the pages…")
 	if pdf and not web:
 		pages = await _pdf_file(_booklet_out.source(), written)
 		ok = pages > 0
@@ -7224,6 +7240,8 @@ var _pdf_missed: String = ""
 ## its own in the 0.15.0 download (bookletwarm, 2026-11-04). Its pages; -1
 ## when it could not be written, and then nothing of it is left.
 func _pdf_file(from: String, to: String) -> int:
+	# The type, fetched the first time on the web, before a worker reads it.
+	await WebPacks.need(WebPacks.FONTS)
 	var read: RefCounted = (await Later.script_in_background(&"BookletRead", null)).new()
 	var out: RefCounted = (await Later.script_in_background(&"BookletPdf", null)).new()
 	var part: String = to + ".part"

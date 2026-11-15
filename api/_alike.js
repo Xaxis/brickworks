@@ -111,7 +111,9 @@ export async function designersAlike(person, asker, tests) {
     .filter(Boolean).join(",");
   const [overlap, measured] = await Promise.all([
     any ? db(`shared_models?owner=neq.${person.account}&${listed(tests)}&or=(${encodeURIComponent(any)})`
-      + "&select=owner,kind,tags&limit=2000") : [],
+      // The newest 1,000: PostgREST gives no more in one read, and an
+      // unordered 2,000 asked for was any 1,000 (lists1's review).
+      + "&select=owner,kind,tags&order=updated_at.desc,id&limit=1000") : [],
     partsAndFollowers(person.account, tests),
   ]);
   const closest = closestDesigners({ kinds, tags }, [

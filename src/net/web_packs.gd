@@ -14,6 +14,10 @@
 ##   [constant HDRI]: Studio's photographed light, each panorama's texture
 ##   read where it is written ([method hdri]), fetched the first time Studio
 ##   lights a picture by one (StudioRender).
+##   [constant FONTS]: the booklet's type, each face as imported, read where
+##   it is written ([method font]), fetched the first time a booklet's PDF or
+##   pages are made (BookletPdf, BookletPng). In the data pack it was 1.1 MB
+##   the start waited for, Noto Emoji 0.6 of it (webfaults, 2026-11-14).
 ##
 ## Only [constant DATA] is a pack: it is mounted before any worker opens a
 ## file. A pack mounted while the app runs changes the engine's table of
@@ -27,11 +31,13 @@ const DIR := "/packs/"
 const DATA := "data"
 const PRIMITIVES := "primitives"
 const HDRI := "hdri"
+const FONTS := "fonts"
 ## A file each is whole without: how a build that was not split is told.
 const _IN_THE_PACK: Dictionary = {
 	DATA: "res://assets/web/catalogue.json",
 	PRIMITIVES: "res://assets/ldraw/p/stud.dat",
 	HDRI: "res://assets/hdri/studio_small_09.hdr",
+	FONTS: "res://assets/fonts/LiberationSans-Regular.ttf",
 }
 
 ## Those mounted or found here, by name; those that came and would not
@@ -46,7 +52,8 @@ static func here(name: String) -> bool:
 	if _here.has(name) or not OS.has_feature("web"):
 		return true
 	var whole: String = str(_IN_THE_PACK.get(name, ""))
-	var in_the_pack: bool = ResourceLoader.exists(whole) if name == HDRI else FileAccess.file_exists(whole)
+	var in_the_pack: bool = ResourceLoader.exists(whole) if name in [HDRI, FONTS] \
+		else FileAccess.file_exists(whole)
 	if in_the_pack:
 		_here[name] = true
 		return true
@@ -102,3 +109,12 @@ static func hdri(path: String) -> String:
 	if not OS.has_feature("web") or ResourceLoader.exists(path):
 		return path
 	return DIR + HDRI + "/" + path.get_file() + ".ctex"
+
+
+## The face [param path] (res://assets/fonts/...) as it can be loaded:
+## itself where the build has it, or on the web as imported where
+## [constant FONTS] is written. Safe on any thread: it only names the place.
+static func font(path: String) -> String:
+	if not OS.has_feature("web") or ResourceLoader.exists(path):
+		return path
+	return DIR + FONTS + "/" + path.get_file() + ".fontdata"
