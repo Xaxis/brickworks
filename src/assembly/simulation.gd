@@ -1896,14 +1896,16 @@ func motor_line() -> String:
 			+ "down, or lighten what it lifts.") % [said, Simulation.angle(float(stall["turns"])),
 			Simulation.figure(gives), volts, Simulation.figure(snappedf(float(heaviest.get("needs",
 				stall["needs"])), 0.1))]
-	if heaviest.is_empty() or float(heaviest["needs"]) <= 0.0:
+	# Less than a tenth of a N·cm is said as nothing: a beam on a hub,
+	# balanced on it, was "asked 0 of its 18 N·cm".
+	if heaviest.is_empty() or snappedf(float(heaviest["needs"]), 0.1) <= 0.0:
 		return "The %s turns it with nothing to lift: %s rpm, its speed with no load at %s V." % [said,
 			Simulation.figure(float(it[2])), volts]
 	var needs: float = float(heaviest["needs"])
-	return ("The %s turns it: at its heaviest, at %s, it is asked %s of its %s N·cm and slows "
-		+ "from %s to %s rpm (by the parts' weight, without friction).") % [said,
+	return ("The %s turns it: at its heaviest, at %s, it is asked %s of the %s N·cm it gives at "
+		+ "%s V and slows from %s to %s rpm (by the parts' weight, without friction).") % [said,
 		Simulation.angle(float(heaviest["turns"])), Simulation.figure(snappedf(needs, 0.1)),
-		Simulation.figure(gives), Simulation.figure(float(it[2])),
+		Simulation.figure(gives), volts, Simulation.figure(float(it[2])),
 		Simulation.figure(roundf(float(it[2]) * (1.0 - needs / gives)))]
 
 

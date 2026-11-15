@@ -2835,14 +2835,17 @@ func _list_motions(input: Dictionary) -> String:
 			lines.append("Nothing in it moves as a link's card names things (doors, steering, a boom, "
 				+ "a turntable, gears, a rack): move_part with no part= lists every joint, and "
 				+ "define_motion makes a motion of any of them.")
+	# unit spikemotors
 	var motors: String = _motors_said(world, store)
 	if not motors.is_empty():
 		lines.append(motors)
+	# end unit spikemotors
 	lines.append("play_motion {\"name\": …} plays one (reverse=true backwards); render_motion renders "
 		+ "it. Nothing was changed.")
 	return "\n".join(lines)
 
 
+# unit spikemotors
 ## The motors the model holds, each by name with its stall and speed at its
 ## volts (Simulation.MOTORS), and what Simulate does with one; "" for none.
 static func _motors_said(world: BrickWorld, store: ModelStore) -> String:
@@ -2864,6 +2867,7 @@ static func _motors_said(world: BrickWorld, store: ModelStore) -> String:
 		said.append("and %d more" % (count - said.size()))
 	return ("Motors in it: %s. simulate_mechanism turns the model from one and says where it stalls "
 		+ "under what it lifts.") % "; ".join(said)
+# end unit spikemotors
 
 
 ## A motion in lines: its name and length, each joint's keys and where it

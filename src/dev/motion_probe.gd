@@ -405,6 +405,8 @@ func _powered_up_l() -> void:
 	_camera.frame(AABB(Vector3(-200, t, -200), Vector3(520, 680, 340)), 1.05)
 	await _frames(10)
 	await _stalls("Powered Up L motor", motor, rig, PU_L_N_CM, "9 V", 1.0, "10_pul")
+	_panel.close()
+	await _frames(3)
 
 
 # -- a beam pinned to a SPIKE hub ------------------------------------------------------------

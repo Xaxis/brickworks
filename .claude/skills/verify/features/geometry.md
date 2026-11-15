@@ -1060,17 +1060,31 @@ Where the motion stops (`Simulation.begin_stops`, docs/MECHANISMS.md section 39)
 over the cycle, forward and back, Simulate finds the first turn where two moving parts
 meet by their exact shapes (said "MEETS", the pair tinted red), a loop's ends
 (`Linkage.reach`), and a motor's stall by the weight it lifts (PF M, L, XL, E-motor,
-9 V; "STALLS ... Gear it down", else its speed at the heaviest). The panel's line under
+9 V; SPIKE Prime, Robot Inventor and Technic large and medium angular, SPIKE Essential
+small angular, Powered Up L, XL, simple medium and Boost medium, each at its own volts:
+`Simulation.MOTORS`, sources in its comment; "STALLS ... it gives at 7.2 V ... Gear it
+down", else its speed at the heaviest). A motor's output turns in its case
+(`Simulation.split_output`, `Mechanism.OUTPUT`): its face's axle hole, or a SPIKE hub's
+axle and four pin holes and the cross hole through to its back; the case's other holes
+hold it to what it is pinned to. `list_motions` names each motor with its stall, its
+speed and its volts. The panel's line under
 the readout says it, **Go to the stop** turns the driver there, the slider and Play go
 no further, and `simulate_mechanism` returns the same lines with its picture taken at
 the stop. `tools/probe.sh motion_probe` (`PROBE_SIZE=1280x720` for the small window,
-`-- only=arm|fourbar|motor`) builds three models part by part and ends on "motion: an
-arm meeting a beam at 140° said there, a four-bar's range against its closed form, a
-motor that stalls lifting its load said and stopped at, and the model never moved": the
-arm meets the beam at 140.54° (to 2°) and -148.23° back; the four-bar's crank goes
-+80.47° / -80.48° against ±80.41° (to 1°); the PF M motor through 9:1 stalls at
-25.400°, worked 25.400°, asked 14.67 N·cm against 11, and unloaded goes round at 397
-rpm. On stage225 before it, 19 checks fail. Pictures: `shots/motion/<W>x<H>_*.png`.
+`-- only=arm|fourbar|motor|spike|pul|hub`) builds six models part by part and ends on
+"motion: an arm meeting a beam at 140° said there, a four-bar's range against its closed
+form, a Power Functions M, a SPIKE Prime large and a Powered Up L motor that stall
+lifting their load said and stopped at, a beam pinned to a SPIKE hub turned by it, and
+the model never moved": the arm meets the beam at 140.54° (to 2°) and -148.23° back;
+the four-bar's crank goes +80.47° / -80.48° against ±80.41° (to 1°); the PF M motor
+through 9:1 stalls at 25.400°, worked 25.400°, asked 14.67 N·cm against 11, and
+unloaded goes round at 397 rpm. The SPIKE Prime large angular motor, pinned through its
+underside to a Technic plate, and the Powered Up L, long-pinned through its back end,
+each lift ten 2x8 bricks through the same 9:1 (13 parts, 49.31 g, their middle 171.8
+LDU above the arm's axle: 29.91 N·cm at the motor): the SPIKE stalls at 26.300°, worked
+26.300° (25 N·cm at 7.2 V), the Powered Up L at 26.709°, worked 26.708° (26 N·cm at
+9 V), each to 1°, its case held with the base. On stage225 before it, 19 checks fail.
+Pictures: `shots/motion/<W>x<H>_*.png`.
 
 Simulate on real sets' functions (docs/APP_UX8.md #7, kinefuncs): `tools/kinefuncs.py
 fetch` takes Kinebrick (github.com/erik-larsen/kinebrick, MIT, its data CC BY-SA) at
