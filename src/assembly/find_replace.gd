@@ -6,13 +6,17 @@
 ## #9). StudWorx's, LeoCAD's and Studio's reach the whole model; the hand's
 ## Replace (EditVerbs.replace) reaches only the selection.
 ##
-## A sub-model's copies are one definition, so a replace inside one changes
-## every copy, as an edit by hand does (Assemblies.after_edit): each part
-## found is changed where it stands, but those in a copy a mirror places,
-## which follow their first copy and are given the other hand of the new
-## part where it has one (Assemblies._laid). Any the follow does not reach
-## (a copy placed in another colour, whose part did not answer the find)
-## are then changed where they stand, in the same undo.
+## A part is found as it is seen: a copy placed by a mirror shows the other
+## hand of a handed part (a left door where its first copy has a right
+## one), and that is what it is found as. A sub-model's copies are one
+## definition, so a replace inside one changes every copy, as an edit by
+## hand does (Assemblies.after_edit): each part found is changed where it
+## stands, and the copies follow it, a mirrored one given the other hand of
+## the new part where it has one (Assemblies._laid). A part found in a
+## mirrored copy whose twin in a copy placed as its definition is (no
+## mirror) is found too follows that twin's change rather than taking the
+## new part as it is, so the copies stay mirror images. Any the follow does
+## not reach are then changed where they stand, in the same undo.
 ##
 ## A new part that will not sit as the old one did is said before: another
 ## footprint or other connection points (its studs, holes, pins and what
@@ -52,44 +56,44 @@ func _init(app: Node = null) -> void:
 
 
 ## Every part [param asked] names ({"part": a number, or "" for any;
-## "color": an LDraw code, or -1 for any}) in [param where] (WHERE): {
-## "ids": each found, in the world's order; "mirrored": those in a copy a
-## mirror places, id -> true; "part": the number asked, as the library has
-## it; "parts": each number found -> how many (a part a mirror places counted
-## as its copy's first has it); "colours": each colour found -> how many;
-## "places": [{"name": a sub-model's, or "" for the model's own parts,
-## "count", "copies": how many copies the model has of it}], the model first,
-## then by name; "locked": how many found are locked, and left out; "where",
-## "inside": the sub-model being edited ("" for the model)}.
+## "color": an LDraw code, or -1 for any}) in [param where] (WHERE), as it
+## is seen: {"ids": each found, in the world's order; "mirrored": those in a
+## copy a mirror places, id -> true; "follow": of those, the ones whose twin
+## in a copy placed as its definition is was found too, id -> true; "part":
+## the number asked; "parts": each number found -> how many; "colours": each
+## colour found -> how many; "places": [{"name": a sub-model's, or "" for
+## the model's own parts, "count", "copies": how many copies the model has
+## of it}], the model first, then by name; "locked": how many found are
+## locked, and left out; "where", "inside": the sub-model being edited (""
+## for the model)}.
 func find(asked: Dictionary, where: String) -> Dictionary:
 	var part: String = str(asked.get("part", "")).strip_edges()
 	var colour: int = int(asked.get("color", -1))
 	var inside: String = assemblies.entered if assemblies != null else ""
 	var looked: Array = _looked_in(where, inside)
 	var frames: Dictionary = _frames_for(looked)
-	var out: Dictionary = {"ids": [], "mirrored": {}, "part": part, "parts": {}, "colours": {},
-		"places": [], "locked": 0, "where": where, "inside": inside}
+	var out: Dictionary = {"ids": [], "mirrored": {}, "follow": {}, "part": part, "parts": {},
+		"colours": {}, "places": [], "locked": 0, "where": where, "inside": inside}
 	var by_def: Dictionary = {}
 	for brick: BrickWorld.Brick in looked:
 		var path: String = Assemblies.path_of(brick)
-		var mirrored: bool = _mirrored(path, frames)
-		var as_defined: String = _as_defined(brick.part_id, mirrored)
 		if colour >= 0 and brick.color_code != colour:
 			continue
-		if not part.is_empty() and not same_part(as_defined, part):
+		if not part.is_empty() and not same_part(brick.part_id, part):
 			continue
 		if builder.is_locked(brick.id):
 			out["locked"] = int(out["locked"]) + 1
 			continue
 		(out["ids"] as Array).append(brick.id)
-		if mirrored:
+		if not _mirror_of(path, frames).is_empty():
 			(out["mirrored"] as Dictionary)[brick.id] = true
 		var parts: Dictionary = out["parts"]
-		parts[as_defined] = int(parts.get(as_defined, 0)) + 1
+		parts[brick.part_id] = int(parts.get(brick.part_id, 0)) + 1
 		var colours: Dictionary = out["colours"]
 		colours[brick.color_code] = int(colours.get(brick.color_code, 0)) + 1
 		var def: String = "" if path.is_empty() else Assemblies.definition(Assemblies.leaf(path))
 		by_def[def] = int(by_def.get(def, 0)) + 1
+	out["follow"] = _twins_found(out["mirrored"], out["ids"], frames)
 	var copies: Dictionary = _copies_by_definition()
 	var names: Array = by_def.keys()
 	names.sort_custom(func(a: String, b: String) -> bool:
@@ -168,12 +172,53 @@ func _frames_for(bricks: Array) -> Dictionary:
 	return {}
 
 
-## Whether the copy at [param path] is placed by a mirror of its definition's
-## first, as [param frames] (Assemblies.file_frames) writes it.
-static func _mirrored(path: String, frames: Dictionary) -> bool:
-	var entry: Variant = frames.get(path)
-	return entry is Dictionary and ((entry as Dictionary).get("frame", Transform3D.IDENTITY)
-		as Transform3D).basis.determinant() < 0.0
+## The copy that mirrors a part at [param path]: the innermost of it and the
+## copies round it whose frame, as [param frames] (Assemblies.file_frames)
+## writes it, is a mirror, when an odd number of them are; "" when the part
+## stands as its definition has it (a mirror inside a mirror is none). A
+## Sill inside the Side a mirror places is mirrored by that Side's frame.
+static func _mirror_of(path: String, frames: Dictionary) -> String:
+	if path.is_empty() or frames.is_empty():
+		return ""
+	var at: String = ""
+	var innermost: String = ""
+	var odd: bool = false
+	for segment: String in Assemblies.segments(path):
+		at = Assemblies.join(at, segment)
+		var entry: Variant = frames.get(at)
+		if entry is Dictionary and ((entry as Dictionary).get("frame", Transform3D.IDENTITY)
+				as Transform3D).basis.determinant() < 0.0:
+			odd = not odd
+			innermost = at
+	return innermost if odd else ""
+
+
+## Of the [param mirrored] parts found, those whose twin in a copy placed
+## as its definition is (Assemblies.counterparts) is among [param ids] too:
+## id -> the twin's. Each follows its twin's change. One whose twin was not
+## found is changed itself, and the twin follows it.
+func _twins_found(mirrored: Dictionary, ids: Array, frames: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	if mirrored.is_empty():
+		return out
+	var wanted: Dictionary = {}
+	for brick_id: int in ids:
+		wanted[brick_id] = true
+	var maps: Dictionary = {}
+	for brick_id: int in mirrored:
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		var copy: String = _mirror_of(Assemblies.path_of(brick), frames)
+		if not maps.has(copy):
+			var twins: Array = []
+			for other: String in assemblies.copies_of(copy):
+				if _mirror_of(other, frames).is_empty():
+					twins.append(assemblies.counterparts(copy, other))
+			maps[copy] = twins
+		for twins: Dictionary in maps[copy]:
+			if wanted.has(int(twins.get(brick_id, -1))):
+				out[brick_id] = int(twins[brick_id])
+				break
+	return out
 
 
 ## How many copies the model has of each sub-model, by its name.
@@ -204,22 +249,23 @@ func plan(found: Dictionary, into: Dictionary) -> Dictionary:
 	var colour: int = int(into.get("color", -1))
 	var out: Dictionary = {"changes": [], "follow": [], "same": 0, "room": [], "otherwise": [],
 		"floats": [], "missing": ""}
-	var mirrored: Dictionary = found["mirrored"]
+	var following: Dictionary = found.get("follow", {})
 	var sel: Variant = Later.script(&"SelectBy")
 	for brick_id: int in found["ids"]:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
 		if brick == null:
 			continue
+		# One a mirror places whose twin changes too follows the twin,
+		# wherever that puts it, given the other hand of the new part.
+		var follows: bool = following.has(brick_id)
 		var new_part: String = brick.part_id
 		if not part.is_empty():
-			new_part = _as_defined(part, mirrored.has(brick_id))
+			new_part = _as_defined(part, follows)
 		var new_colour: int = brick.color_code if colour < 0 else colour
 		if new_part == brick.part_id and new_colour == brick.color_code:
 			out["same"] = int(out["same"]) + 1
 			continue
 		var at: Transform3D = brick.transform
-		# One a mirror places follows its first copy, wherever that puts it.
-		var follows: bool = mirrored.has(brick_id)
 		if new_part != brick.part_id:
 			var was: Lbm.PartMesh = library.mesh_for(brick.part_id)
 			var shape: Lbm.PartMesh = library.mesh_for(new_part)
@@ -319,18 +365,26 @@ func replace(found: Dictionary, into: Dictionary) -> Dictionary:
 	var done: Vector2i = builder.replace_bricks(made["changes"], words)
 	if done.x > 0:
 		edited.call()
-	# Those in a copy a mirror places that their copy's follow did not reach,
-	# changed where they stand.
+	# Those in a copy a mirror places that their twin's follow did not reach,
+	# changed where they stand; where the twin itself stayed (no room), so
+	# do they.
 	var left := PackedInt64Array()
+	var twin_of: Dictionary = found.get("follow", {})
 	for brick_id: int in made["follow"]:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
-		if brick != null and was[brick_id] == [brick.part_id, brick.color_code]:
+		var twin: BrickWorld.Brick = world.get_brick(int(twin_of.get(brick_id, -1)))
+		var twin_changed: bool = twin == null or not was.has(twin.id) \
+			or was[twin.id] != [twin.part_id, twin.color_code]
+		if brick != null and twin_changed and was[brick_id] == [brick.part_id, brick.color_code]:
 			left.append(brick_id)
 	if not left.is_empty():
 		var rest: Dictionary = found.duplicate()
 		rest["ids"] = Array(left)
-		rest["mirrored"] = {}
-		var more: Vector2i = builder.replace_bricks(plan(rest, into)["changes"], words)
+		rest["follow"] = {}
+		var mirrored_into: Dictionary = into.duplicate()
+		if not str(into.get("part", "")).is_empty():
+			mirrored_into["part"] = _as_defined(str(into["part"]), true)
+		var more: Vector2i = builder.replace_bricks(plan(rest, mirrored_into)["changes"], words)
 		done.y += more.y
 		if more.x > 0:
 			edited.call()

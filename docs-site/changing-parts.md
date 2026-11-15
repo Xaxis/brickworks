@@ -1,7 +1,7 @@
 ---
 panels: PatternDialog#patterns
-tools: edit_model, pattern_parts, mirror_parts, split_parts, merge_parts, make_unique, clear_model, undo, suggest_sections, make_sections, break_out_section, evaluate_section, measure
-ai: Changing parts once they are down: copy and duplicate, patterns, lifting, nudging and turning a selection, the Move and Rotate tools' rings and arrows, mirror, replace and paint, split and merge, lock and hide, sub-assemblies and sections, undo, and measuring. An assistant does the same with edit_model; pattern_parts lays a row, a grid or levels of copies in one call, a copy with no room named by its column, row and level and the part in its way; mirror_parts (in place, or as a copy across the model's middle), split_parts and merge_parts change parts it names and answer with the change pictured, new parts edged in magenta; measure gives the distance and angle between two connectors it names.
+tools: edit_model, pattern_parts, mirror_parts, replace_parts, split_parts, merge_parts, make_unique, clear_model, undo, suggest_sections, make_sections, break_out_section, evaluate_section, measure
+ai: Changing parts once they are down: copy and duplicate, patterns, lifting, nudging and turning a selection, the Move and Rotate tools' rings and arrows, mirror, replace and paint, split and merge, lock and hide, sub-assemblies and sections, undo, and measuring. An assistant does the same with edit_model; pattern_parts lays a row, a grid or levels of copies in one call, a copy with no room named by its column, row and level and the part in its way; mirror_parts (in place, or as a copy across the model's middle), split_parts and merge_parts change parts it names and answer with the change pictured, new parts edged in magenta; replace_parts finds a part or a colour everywhere, every sub-model too, and replaces it in one undo step; measure gives the distance and angle between two connectors it names.
 rules:
   - Copies of a sub-assembly follow the original until made unique (make_unique).
   - Nothing goes through anything: a copy, move or turn with no room is refused, or stops at the last place with room.
@@ -76,6 +76,7 @@ ui:tool modes
 
 - **Edit › Mirror** ([[Shift+M]]) mirrors the selection, swapping each part for its left- or right-handed twin where there is one.
 - **Edit › Replace with the part in hand** ([[Alt+R]]) swaps every selected part for the one you hold, each where it was.
+- **Edit › Find and replace…** ([[Ctrl+Shift+H]]) finds a part, a colour, or a part in a colour everywhere in the model, inside every sub-model too, in the sub-model you are in and its copies, or in the selection. It lists where they are, with counts and copies (click a row to select them), and every colour the part comes in, flagged when there is more than one. Replace with another part, another colour or both: it says first that every copy of a sub-model changes with it ("Changes all 4 copies of Wing"), and in how many places the new part won't sit the same (another footprint or other connection points), would hold onto nothing, or has no room and stays as it is. The whole replace is one undo step, and a copy placed by a mirror gets the other hand of a handed part. Your Claude does the same with replace_parts, in one call.
 - [[C]] paints the selection in the current colour; the **Paint** tool paints each part you click.
 
 <!-- covers

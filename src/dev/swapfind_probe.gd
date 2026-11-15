@@ -17,14 +17,16 @@
 ## part of another footprint and one of other connection points, said before;
 ## CRLF and tabs; a file as live saves it, replaced and read back as live
 ## reads it (LIVE_SAVED, LIVE_READ: files tools/release/live_ab.sh wrote, or
-## the cases skip saying so); undo then redo; and the words in German, French
-## and Spanish.
+## the cases skip saying so); undo then redo; a replace while a Build together
+## room is open; and the words in German, French and Spanish. The car is the
+## app's own save of it, so it opens and saves to the byte (copyorder's S2),
+## and every undo is held to the save before the replace, to the byte.
 ##
 ##   SWAPFIND_CASES=car,mcp   those cases
 extends "res://src/dev/copyfaults_probe.gd"
 
 const FIND_CASES: Array = ["car", "mcp", "two_colours", "mirror", "three_deep", "printed",
-	"footprint", "crlf", "live", "words"]
+	"footprint", "crlf", "live", "together", "words"]
 const CAR := "swapfind_car.mpd"
 const BLACK := 0
 const DARK_BLUISH_GREY := 72
@@ -66,6 +68,7 @@ func _run() -> void:
 			"footprint": await _case_footprint()
 			"crlf": await _case_crlf()
 			"live": await _case_live()
+			"together": await _case_together()
 			"words": await _case_words()
 			_: _check("no such case %s" % name, false)
 	print("\nswapfind probe: %s" % ("all checks passed" if _failures == 0
@@ -91,24 +94,54 @@ func _bar_on(text: String) -> PanelContainer:
 ## The bar's words as a person reads them: every line of its list and notes.
 func _bar_said() -> String:
 	var said := PackedStringArray()
-	for node: Node in _bar.find_children("*", "", true, false):
-		if node is Label and (node as Label).is_visible_in_tree():
-			said.append((node as Label).text)
-		elif node is Button and not node is OptionButton and (node as Button).is_visible_in_tree():
-			said.append("[%s]" % (node as Button).text)
+	for control: Control in _shown_in_bar():
+		if control is Label:
+			said.append((control as Label).text)
+		elif control is Button and not control is OptionButton:
+			said.append("[%s]" % (control as Button).text)
 	return " | ".join(said)
 
 
+## The bar's controls on screen now: not those a list filled afresh has let
+## go of this frame.
+func _shown_in_bar() -> Array[Control]:
+	var out: Array[Control] = []
+	for node: Node in _bar.find_children("*", "Control", true, false):
+		var control: Control = node as Control
+		if control.is_visible_in_tree() and not _going(control):
+			out.append(control)
+	return out
+
+
+func _going(node: Node) -> bool:
+	while node != null and node != _bar:
+		if node.is_queued_for_deletion():
+			return true
+		node = node.get_parent()
+	return false
+
+
+## Parts of [param part]'s number, any letter of it (3023 is 3023b once
+## the library has read it), in [param colour].
 func _count(part: String, colour: int) -> int:
 	var count: int = 0
 	for brick: BrickWorld.Brick in _world.bricks():
-		if brick.part_id == part and brick.color_code == colour and not _store.scenery.has(brick.id):
+		if (brick.part_id == part or brick.part_id.trim_suffix(brick.part_id.right(1)) == part
+				and not brick.part_id.right(1).is_valid_int()) \
+				and brick.color_code == colour and not _store.scenery.has(brick.id):
 			count += 1
 	return count
 
 
 func _defined(text: String, file: String) -> int:
 	return text.count("0 FILE %s" % file)
+
+
+## The undo, then the save as it stands.
+func _undone() -> String:
+	_shell.run("undo")
+	await _frames(6)
+	return _save()
 
 
 ## The car's every Black 3023, everywhere, made Dark Bluish Grey from the bar
@@ -120,6 +153,8 @@ func _case_car() -> void:
 	if not _check("Edit › Find and replace… opens the bar", _bar != null and _bar.visible):
 		return
 	var before: String = _save()
+	_check("car: the app's own file, opened and saved, to the byte (%s)" % _diff(text, before),
+		before == text)
 	var black: int = _count("3023b", BLACK)
 	_bar.call("set_find", "3023", BLACK)
 	_bar.call("set_into", "", DARK_BLUISH_GREY)
@@ -144,14 +179,14 @@ func _case_car() -> void:
 		and _count("3023b", DARK_BLUISH_GREY) == 4)
 	var after: String = _save()
 	print("  saved: %s" % _diff(before, after))
-	_check("car: each sub-model written once (Side %d, Sill %d, Wheel %d, Axle %d)" % [
-		_defined(after, "side.ldr"), _defined(after, "sill.ldr"), _defined(after, "wheel.ldr"),
-		_defined(after, "axle.ldr")], _defined(after, "side.ldr") == 1
-		and _defined(after, "sill.ldr") == 1 and _defined(after, "wheel.ldr") == 1
-		and _defined(after, "axle.ldr") == 1)
-	_check("car: ...the sill's line Dark Bluish Grey, and only colours changed (%d lines)"
-		% _minus(after, before).size(), after.contains("1 72 0 0 40 0 0 1 0 1 0 -1 0 0 3023b.dat")
-		and _minus(after, before).size() == 3)
+	_check("car: each sub-model written once (Side %d, Wheel %d, Axle %d; Sill's parts in Side %d)"
+		% [_defined(after, "side.ldr"), _defined(after, "wheel.ldr"), _defined(after, "axle.ldr"),
+			after.count("IN Sill#1")], _defined(after, "side.ldr") == 1
+		and _defined(after, "wheel.ldr") == 1 and _defined(after, "axle.ldr") == 1
+		and after.count("IN Sill#1") == before.count("IN Sill#1"))
+	_check("car: ...the sill's line Dark Bluish Grey, and only those 3 lines changed (%d)"
+		% _minus(after, before).size(), after.contains("1 72 30 -64 40 0 0 1 0 1 0 -1 0 0 3023b.dat")
+		and _minus(after, before).size() == 3 and _minus(before, after).size() == 3)
 	var shown: Array = _looks()
 	await _open(after)
 	_check("car: opened again, every part as it was shown%s" % _unlike(shown, _looks()),
@@ -162,12 +197,9 @@ func _case_car() -> void:
 	_bar.call("refresh")
 	await _bar.call("replace_now")
 	await _frames(4)
-	_shell.run("undo")
-	await _frames(4)
-	var undone: String = _save()
+	var undone: String = await _undone()
 	_check("car: one undo, the save before to the byte (%s)" % _diff(before, undone),
 		undone == before)
-	_check("car: ...which is the file opened, to the byte", undone == text)
 	_shell.run("redo")
 	await _frames(4)
 	var redone: String = _save()
@@ -185,6 +217,7 @@ func _case_mcp() -> void:
 	await _frames(4)
 	var by_bar: String = _save()
 	await _open(text)
+	var before: String = _save()
 	var depth: int = _builder.history_depth()
 	var said: String = await _say("replace_parts", {"find": {"part": "3023", "color": BLACK},
 		"replace": {"color": DARK_BLUISH_GREY}, "where": "all"})
@@ -198,12 +231,12 @@ func _case_mcp() -> void:
 		said.contains("2 in the model's own parts") and said.contains("2 in Sill (2 copies, 1 each)")
 		and said.contains("changes all 2 copies of Sill") and said.contains("Replaced 4"))
 	var undone: String = await _say("undo", {})
-	_check("mcp: its undo, the file opened (%s)" % undone.get_slice("\n", 0).left(80),
-		_save() == text)
+	_check("mcp: its undo, the save before to the byte (%s)" % undone.get_slice("\n", 0).left(80),
+		_save() == before)
 	var preview: String = await _say("replace_parts", {"find": {"part": "3023b"},
 		"replace": {"part": "3794b"}, "preview": true})
 	print("  preview: %s" % preview.replace("\n", " / "))
-	_check("mcp: preview changes nothing and says the fit first", _save() == text
+	_check("mcp: preview changes nothing and says the fit first", _save() == before
 		and preview.contains("Nothing changed") and preview.contains("won't sit the same"))
 
 
@@ -219,13 +252,19 @@ func _case_two_colours() -> void:
 	_check("two_colours: 3023 in Black and Red, flagged (%s)" % JSON.stringify(found["colours"]),
 		(found["colours"] as Dictionary).size() == 2 and said.contains("Used in 2 colours: each keeps its own"))
 	_check("two_colours: ...each colour listed with its count", said.contains("Black: 4")
-		and said.contains("Red: 6"))
+		and said.contains("Red: 4"))
 	var answer: String = await _say("replace_parts", {"find": {"part": "3023"}, "preview": true})
 	_check("two_colours: replace_parts says it too", answer.contains("used in 2 colours"))
 
 
-## A replace inside a mirrored copy: the right door made a left one, and the
-## mirrored side, whose door is a left one, given the right.
+## A replace inside a mirrored copy. The car's right side has a right door
+## (3822); its left side is the same Side placed by a mirror, so its door is
+## seen as the left one (3821), and is found as that. The right door made a
+## left one: the right side's 3821 and, the copies following, the mirrored
+## left side's 3822, Side written once with the one line changed. And the
+## same asked from the other side: the left door (3821, in the mirrored
+## copy, its twin not found) made a right one changes it there, the right
+## side following with the other hand: the same file.
 func _case_mirror() -> void:
 	var text: String = _fixture(CAR)
 	await _bar_on(text)
@@ -234,18 +273,21 @@ func _case_mirror() -> void:
 	_bar.call("set_into", "3821", -1)
 	_bar.call("refresh")
 	var found: Dictionary = _bar.get("found")
-	_check("mirror: 3822 found in both Sides, the mirrored one's as its definition has it (%d)"
-		% (found["ids"] as Array).size(), (found["ids"] as Array).size() == 2
-		and (found["mirrored"] as Dictionary).size() == 1)
+	_check("mirror: 3822 found once, the right side's: the mirrored side's door is seen as 3821 (%d, %d mirrored)"
+		% [(found["ids"] as Array).size(), (found["mirrored"] as Dictionary).size()],
+		(found["ids"] as Array).size() == 1 and (found["mirrored"] as Dictionary).is_empty()
+		and not _left_of("3822"))
 	var done: Dictionary = await _bar.call("replace_now")
 	await _frames(4)
-	_check("mirror: both changed (%s), the right side's 3821 and the mirrored left's 3822 (%d, %d)"
-		% [done, _count("3821", 4), _count("3822", 4)], int(done.get("changed", 0)) == 2
-		and _count("3821", 4) == 1 and _count("3822", 4) == 1 and _left_of("3822"))
+	_check("mirror: the right side's 3821, the mirrored left's 3822 (%s; %d, %d)"
+		% [done, _count("3821", 4), _count("3822", 4)], int(done.get("changed", 0)) == 1
+		and _count("3821", 4) == 1 and _count("3822", 4) == 1 and _left_of("3822")
+		and not _left_of("3821"))
 	var after: String = _save()
 	print("  saved: %s" % _diff(before, after))
-	_check("mirror: Side written once, with the 3821", _defined(after, "side.ldr") == 1
-		and after.contains("1 4 30 -32 -30 1 0 0 0 1 0 0 0 1 3821.dat"))
+	_check("mirror: Side written once, its one line the 3821", _defined(after, "side.ldr") == 1
+		and after.contains("1 4 30 -56 -30 1 0 0 0 1 0 0 0 1 3821.dat")
+		and _minus(after, before).size() == 1)
 	var shown: Array = _looks()
 	await _open(after)
 	_check("mirror: opened again as shown%s" % _unlike(shown, _looks()), shown == _looks())
@@ -254,9 +296,29 @@ func _case_mirror() -> void:
 	_bar.call("set_into", "3821", -1)
 	_bar.call("refresh")
 	await _bar.call("replace_now")
-	_shell.run("undo")
+	var undone: String = await _undone()
+	_check("mirror: one undo, the save before to the byte (%s)" % _diff(before, undone),
+		undone == before)
+	_shell.run("redo")
+	await _frames(6)
+	_check("mirror: a redo, the save after to the byte", _save() == after)
+	await _open(text)
+	_bar.call("set_find", "3821", -1)
+	_bar.call("set_into", "3822", -1)
+	_bar.call("refresh")
+	found = _bar.get("found")
+	_check("mirror: 3821 found once, in the mirrored copy (%d, %d mirrored)" % [
+		(found["ids"] as Array).size(), (found["mirrored"] as Dictionary).size()],
+		(found["ids"] as Array).size() == 1 and (found["mirrored"] as Dictionary).size() == 1)
+	_check("mirror: ...and the bar says both copies of Side change", _bar_said().contains(
+		"Changes all 2 copies of Side"))
+	await _bar.call("replace_now")
 	await _frames(4)
-	_check("mirror: one undo, the file to the byte", _save() == text)
+	var other_way: String = _save()
+	_check("mirror: the left door made a right one, the right side following: the same file (%s)"
+		% _diff(after, other_way), other_way == after)
+	undone = await _undone()
+	_check("mirror: its undo, the save before to the byte", undone == before)
 
 
 ## Whether the [param part] is on the car's left (x < 0).
@@ -277,6 +339,7 @@ func _case_three_deep() -> void:
 		+ "0 FILE cap.ldr\n0 Cap\n0 Name: cap.ldr\n0 Author: Brickworks\n"
 		+ "1 0 0 -8 0 1 0 0 0 1 0 0 0 1 3023.dat\n0 NOFILE\n")
 	await _bar_on(text)
+	var before: String = _save()
 	_bar.call("set_find", "3023", BLACK)
 	_bar.call("set_into", "", DARK_BLUISH_GREY)
 	_bar.call("refresh")
@@ -286,22 +349,23 @@ func _case_three_deep() -> void:
 	await _bar.call("replace_now")
 	await _frames(4)
 	var after: String = _save()
-	_check("three_deep: 3 Dark Bluish Grey, Cap written once, in its line (%d)"
-		% _count("3023", DARK_BLUISH_GREY), _count("3023", DARK_BLUISH_GREY) == 3
-		and _defined(after, "cap.ldr") == 1 and after.contains("1 72 0 -8 0 1 0 0 0 1 0 0 0 1 3023.dat"))
+	print("  saved: %s" % _diff(before, after))
+	_check("three_deep: 3 Dark Bluish Grey (%d), Post written once, Cap's one line changed (%d)"
+		% [_count("3023", DARK_BLUISH_GREY), _minus(after, before).size()],
+		_count("3023", DARK_BLUISH_GREY) == 3 and _count("3023", BLACK) == 0
+		and _defined(after, "post.ldr") == 1 and _minus(after, before).size() == 1
+		and str(_minus(after, before)[0]).begins_with("1 72 "))
 	var shown: Array = _looks()
 	await _open(after)
 	_check("three_deep: opened again as shown", shown == _looks())
-	_shell.run("undo")
-	await _frames(4)
 	await _open(text)
 	_bar.call("set_find", "3023", BLACK)
 	_bar.call("set_into", "", DARK_BLUISH_GREY)
 	_bar.call("refresh")
 	await _bar.call("replace_now")
-	_shell.run("undo")
-	await _frames(4)
-	_check("three_deep: one undo, the file to the byte", _save() == text)
+	var undone: String = await _undone()
+	_check("three_deep: one undo, the save before to the byte (%s)" % _diff(before, undone),
+		undone == before)
 
 
 ## A printed part for a plain one: where it stood, and nothing said of a fit.
@@ -312,6 +376,7 @@ func _case_printed() -> void:
 	var printed: String = (prints[0] as PartLibrary.PartInfo).id
 	var text: String = _fixture(CAR)
 	await _bar_on(text)
+	var before: String = _save()
 	var tile: BrickWorld.Brick = null
 	for brick: BrickWorld.Brick in _world.bricks():
 		if brick.part_id == "3068b":
@@ -339,9 +404,9 @@ func _case_printed() -> void:
 	_bar.call("set_into", printed, -1)
 	_bar.call("refresh")
 	await _bar.call("replace_now")
-	_shell.run("undo")
-	await _frames(4)
-	_check("printed: one undo, the file to the byte", _save() == text)
+	var undone: String = await _undone()
+	_check("printed: one undo, the save before to the byte (%s)" % _diff(before, undone),
+		undone == before)
 
 
 ## A part of another footprint (a 1 x 3 for a 1 x 2) and one of other
@@ -350,6 +415,7 @@ func _case_footprint() -> void:
 	var text: String = _fixture(CAR)
 	for into: String in ["3623", "3794b"]:
 		await _bar_on(text)
+		var before: String = _save()
 		_bar.call("set_find", "3023", BLACK)
 		_bar.call("set_into", into, -1)
 		_bar.call("refresh")
@@ -370,9 +436,9 @@ func _case_footprint() -> void:
 		var floats: int = (made.get("floats", []) as Array).size()
 		_check("footprint %s: none put down floating unsaid (%d said)" % [into, floats],
 			floats == 0 or said.contains("hold onto nothing"))
-		_shell.run("undo")
-		await _frames(4)
-		_check("footprint %s: one undo, the file to the byte" % into, _save() == text)
+		var undone: String = await _undone()
+		_check("footprint %s: one undo, the save before to the byte (%s)" % [into,
+			_diff(before, undone)], undone == before)
 
 
 ## CRLF and tabs: the replace's save keeps CRLF on every line, and its undo
@@ -391,9 +457,9 @@ func _case_crlf() -> void:
 	_check("crlf: replaced, every line still CRLF (%d of %d)" % [after.count("\r\n"),
 		after.count("\n")], after.count("\r\n") == after.count("\n") and after != before
 		and _count("3023b", DARK_BLUISH_GREY) == 4)
-	_shell.run("undo")
-	await _frames(4)
-	_check("crlf: one undo, the file to the byte", _save() == text)
+	var undone: String = await _undone()
+	_check("crlf: one undo, the save before to the byte (%s)" % _diff(before, undone),
+		undone == before)
 
 
 ## A file as live saves it (LIVE_SAVED: the car opened and saved by live,
@@ -406,7 +472,9 @@ func _case_live() -> void:
 		return
 	var text: String = FileAccess.get_file_as_string(saved)
 	await _bar_on(text)
-	_check("live: live's save opened and saved, to the byte", _save() == text)
+	var before: String = _save()
+	_check("live: live's save opened and saved, to the byte (%s)" % _diff(text, before),
+		before == text)
 	_bar.call("set_find", "3023", BLACK)
 	_bar.call("set_into", "", DARK_BLUISH_GREY)
 	_bar.call("refresh")
@@ -425,16 +493,69 @@ func _case_live() -> void:
 		await _open(FileAccess.get_file_as_string(read))
 		_check("live: ours as live saves it back, opened here as shown%s" % _unlike(shown,
 			_looks()), shown == _looks())
-	_shell.run("undo")
-	await _frames(4)
 	await _open(text)
 	_bar.call("set_find", "3023", BLACK)
 	_bar.call("set_into", "", DARK_BLUISH_GREY)
 	_bar.call("refresh")
 	await _bar.call("replace_now")
+	var undone: String = await _undone()
+	_check("live: one undo, the save before to the byte (%s)" % _diff(before, undone),
+		undone == before)
+
+
+## A replace while a Build together room is open (Together.check_alone: this
+## window in a session of its own, Ann in it, no server): the 4 parts it
+## changed sent to the room, each the new colour where it was, and nothing
+## else; the session's undo (each person undoes their own) takes the whole
+## replace back in one and sends that, and the save is the one before.
+func _case_together() -> void:
+	var text: String = _fixture(CAR)
+	await _bar_on(text)
+	var before: String = _save()
+	var together: Together = _main.get("_together")
+	together.check_alone([{"who": "a11ce000", "name": "Ann", "here": true, "owner": false,
+		"at": null, "sel": [], "view": null}])
+	await _frames(10)
+	var waiting: int = together.waiting()
+	_bar.call("set_find", "3023", BLACK)
+	_bar.call("set_into", "", DARK_BLUISH_GREY)
+	_bar.call("refresh")
+	await _bar.call("replace_now")
+	await _frames(10)
+	var sent: Dictionary = _sent_since(together, waiting)
+	var greys: int = 0
+	for uid: String in sent:
+		if sent[uid] is Array and int((sent[uid] as Array)[1]) == DARK_BLUISH_GREY:
+			greys += 1
+	_check("together: the replace sent to the room, its 4 parts Dark Bluish Grey and nothing else (%d sent, %d grey)"
+		% [sent.size(), greys], sent.size() == 4 and greys == 4)
+	var after_replace: int = together.waiting()
 	_shell.run("undo")
-	await _frames(4)
-	_check("live: one undo, live's file to the byte", _save() == text)
+	await _frames(10)
+	var undone: String = _save()
+	var back: Dictionary = _sent_since(together, after_replace)
+	var blacks: int = 0
+	for uid: String in back:
+		if back[uid] is Array and int((back[uid] as Array)[1]) == BLACK:
+			blacks += 1
+	_check("together: one undo takes the whole replace back (%s), and sends it (%d sent, %d Black)"
+		% [_diff(before, undone), back.size(), blacks], undone == before and back.size() == 4
+		and blacks == 4)
+	together._stop("")
+	await _frames(6)
+
+
+## Each part's state the session was sent after its first [param from]
+## waiting changes, by uid, the last one for each.
+func _sent_since(together: Together, from: int) -> Dictionary:
+	var out: Dictionary = {}
+	var pending: Array = together.get("_pending")
+	for n: int in range(from, pending.size()):
+		var changes: Dictionary = (pending[n] as Dictionary)["changes"]
+		for uid: String in changes:
+			if not uid.begins_with("~"):
+				out[uid] = changes[uid]
+	return out
 
 
 ## Every word the bar shows, its menu row and its tooltip, in German, French
@@ -452,9 +573,7 @@ func _case_words() -> void:
 	_bar.call("set_find", "3023", -1)
 	_bar.call("set_into", "3623", DARK_BLUISH_GREY)
 	_bar.call("refresh")
-	for node: Node in _bar.find_children("*", "", true, false):
-		if not (node as Control).is_visible_in_tree():
-			continue
+	for node: Control in _shown_in_bar():
 		if node is Label and not (node as Label).text.is_empty():
 			texts.append_array((node as Label).text.split("\n"))
 		elif node is Button and not node is OptionButton and not (node as Button).text.is_empty():
