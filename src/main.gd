@@ -975,6 +975,10 @@ func _tell_page() -> void:
 		# slow device, the frames timed and each judgment.
 		"look": _budget.page_state() if _budget != null else {},
 		"busy": _busy_frames,
+		# Whether Render's renderer was made ready while the window sat idle
+		# (RenderDialog._warm_when_idle), for tools/web/render_open_check.mjs,
+		# which presses Render after it, as a person opening it later does.
+		"render_ready": bool(_render_made.call("renderer_ready")) if _render_made != null else false,
 		"told_ms": roundi(_told_page_us / 1000.0),
 		"told_most_ms": roundi(_told_page_most_us / 1000.0),
 		"playing": _playback != null and _playback.is_playing(),
@@ -3157,11 +3161,18 @@ func _view_longest() -> void:
 
 
 ## The frame a viewer's phase came in, and the frames drawn by then: its
-## phases' "frames", so a page can tell work paced a frame at a time.
+## phases' "frames", so a page can tell work paced a frame at a time. On the
+## web, and when by the page's own clock (performance.now), its "page": a
+## check times the page's own work between two phases by the frames it ran
+## then (tools/web/play_flow.mjs), not by a clock a loaded box stretches.
 func _view_frame(phase: String) -> void:
 	if not _view_phases.has("frames"):
 		_view_phases["frames"] = {}
 	_view_phases["frames"][phase] = [Engine.get_process_frames(), Engine.get_frames_drawn()]
+	if OS.has_feature("web"):
+		if not _view_phases.has("page"):
+			_view_phases["page"] = {}
+		_view_phases["page"][phase] = snappedf(float(JavaScriptBridge.eval("performance.now()", true)), 0.1)
 
 
 ## Fetch the shared model and open it, read-only.
@@ -7168,6 +7179,11 @@ func save_booklet_as(kind: String, to: String = "") -> String:
 	# web, where the app's tab is out of view (BookletRead.read_all).
 	var pace: int = 0 if web else 8
 	_pdf_missed = ""
+	# The type it is set in, fetched the first time on the web (WebPacks.FONTS).
+	if web and not WebPacks.here(WebPacks.FONTS):
+		job.say("Fetching the booklet's type…")
+		await WebPacks.need(WebPacks.FONTS)
+		job.say("Writing the PDF…" if pdf else "Drawing the pages…")
 	if pdf and not web:
 		pages = await _pdf_file(_booklet_out.source(), written)
 		ok = pages > 0
@@ -7224,6 +7240,8 @@ var _pdf_missed: String = ""
 ## its own in the 0.15.0 download (bookletwarm, 2026-11-04). Its pages; -1
 ## when it could not be written, and then nothing of it is left.
 func _pdf_file(from: String, to: String) -> int:
+	# The type, fetched the first time on the web, before a worker reads it.
+	await WebPacks.need(WebPacks.FONTS)
 	var read: RefCounted = (await Later.script_in_background(&"BookletRead", null)).new()
 	var out: RefCounted = (await Later.script_in_background(&"BookletPdf", null)).new()
 	var part: String = to + ".part"
@@ -7805,7 +7823,11 @@ func _model_rect() -> Rect2:
 const SIMULATE_WIDTH := 360.0
 ## On a touch screen held upright, the tools' sheet's share of the height
 ## under the model to the model's 1: the model keeps a little over half.
-const PHONE_SHEET := 0.8
+## 0.9 since the column keeps clear of the phone's bars at a browser's scale
+## (Main._phone_bars_room): at 0.8 Motions' sheet came out 20 points shorter
+## than it was laid out for, when its foot lay under the row of tools, and a
+## suggestion's Keep went under the list's edge as it opened (smalls2).
+const PHONE_SHEET := 0.9
 
 
 ## A panel in the column opened or closed: the column shown while any is.
@@ -10172,6 +10194,21 @@ func _on_touch_tool(what: String) -> void:
 				_bar.say("nothing to redo")
 
 
+## The room the phone's bars take along the top and the foot, kept clear by
+## the model's column and the drawers' rails: set again each time the bars
+## are laid out in other points to the unit (PhoneShell.laid_out). Set once,
+## as it was, a browser's scale set after the layout left the room the
+## desktop's 43 points tall under a foot row of 72: the timeline's Booklet
+## row lay under the row of tools, and a tap on Lay out the page… was the
+## row's (phonepanels, smalls2).
+func _phone_bars_room() -> void:
+	_bar.custom_minimum_size.y = _phone.top_height()
+	_hint_area.custom_minimum_size.y = _phone.foot_height()
+	var rail: float = Phone.px(get_viewport(), Phone.TARGET)
+	_bin_dock.set_phone_rail(rail, float(_phone.foot_height()))
+	_chat_dock.set_phone_rail(rail, float(_phone.foot_height()))
+
+
 ## The desktop's bars put away for the phone's own (PhoneShell): the menus,
 ## the toolbar, the key strip and the status line, whose room the phone's
 ## bars take, and the view cube, whose turns are two fingers there. The
@@ -10182,13 +10219,14 @@ func _dress_for_phone() -> void:
 		if child is Control:
 			(child as Control).visible = false
 	_bar.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
-	_bar.custom_minimum_size.y = _phone.top_height()
 	_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_bar.said.connect(Callable(_phone, &"say"))
+	# Every line drawn in a mouse's words said for a finger: the panels'
+	# own status lines too, Simulate's "Click an axle or a crank" (smalls2).
+	Phone.speak_to_a_finger()
 	_shell.toolbar.visible = false
 	_shell.status.only_the_work()
 	_hint.visible = false
-	_hint_area.custom_minimum_size.y = _phone.foot_height()
 	# The busy line over the room the foot's row of tools keeps, not under
 	# the row: there its Cancel was where the row took the finger
 	# (dialogs_1024, uifix).
@@ -10200,9 +10238,13 @@ func _dress_for_phone() -> void:
 	# And as a drawer, the parts or the column itself comes and goes beside
 	# the model on a tablet: the room the column would leave the model.
 	(_over_model.get_parent() as Control).resized.connect(_place_tool_column, CONNECT_DEFERRED)
-	var rail: float = Phone.px(get_viewport(), Phone.TARGET)
-	_bin_dock.set_phone_rail(rail, float(_phone.foot_height()))
-	_chat_dock.set_phone_rail(rail, float(_phone.foot_height()))
+	_phone_bars_room()
+	_phone.laid_out.connect(_phone_bars_room)
+	# The timeline's buttons a fingertip each way, as a panel over the model
+	# is: they were the desktop's, Lay out the page… 51 x 13 points
+	# (phonewalk). On a phone held upright its rows of choices slide
+	# sideways (StepsBar._line).
+	_touch.size_panel(_steps)
 	_camera.phone = true
 	_camera.touch_over = _over_panel_at
 	# The model tree and the properties, in the drawer down the left, sized

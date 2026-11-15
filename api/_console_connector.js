@@ -19,7 +19,7 @@
 // letters of a hash of its key, never the session's own id.
 
 import { createHash } from "node:crypto";
-import { db } from "./_db.js";
+import { dbAll } from "./_db.js";
 import { allUsers, isTestAddress } from "./_console.js";
 
 const DAY = 864e5;
@@ -33,11 +33,11 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const chatOf = (key) => createHash("sha256").update(String(key)).digest("hex").slice(0, 8);
 const notYet = (trouble) => /: (400|404)$/.test(String(trouble?.message || ""));
 
-/// [path] read, or [fallback] when the table or column is not there yet
+/// Every row [path] has, in [order], or [fallback] when the table or column is not there yet
 /// (console2.sql not applied).
-async function readOr(path, fallback = null) {
+async function readOr(path, order, fallback = null) {
   try {
-    return await db(path);
+    return await dbAll(path, order);
   } catch (trouble) {
     if (notYet(trouble)) return fallback;
     throw trouble;
@@ -51,16 +51,18 @@ export async function connectorRead(tests = false, account = null, now = Date.no
   if (account !== null && !UUID.test(account)) return null;
   const owner = account ? `&owner=eq.${account}` : "&owner=not.is.null";
   const since = new Date(now - 30 * DAY).toISOString().slice(0, 10);
+  // Every row, newest first: a read stops at PostgREST's page of 1,000
+  // whatever its limit (lists1's review), and these asked for 2,000 and 5,000.
   const [users, tabs, counted, grants, days] = await Promise.all([
     allUsers(),
-    db(`relay_tabs?select=channel,owner,tab,model,open,visible,seen_at,used_at${owner}&order=seen_at.desc&limit=2000`),
-    readOr(`relay_picks?select=key,owner,channel,picked_at,called_at,did,moved_at,calls${owner}&order=picked_at.desc&limit=2000`),
-    db(`oauth_grants?select=owner,client_name,client_info,created_at,used_at${owner}&order=created_at.desc&limit=2000`),
-    readOr(`relay_call_days?select=owner,day,calls,last_at,last_tool&day=gte.${since}${owner}&order=day.desc&limit=5000`),
+    dbAll(`relay_tabs?select=channel,owner,tab,model,open,visible,seen_at,used_at${owner}`, "seen_at.desc,channel"),
+    readOr(`relay_picks?select=key,owner,channel,picked_at,called_at,did,moved_at,calls${owner}`, "picked_at.desc,key"),
+    dbAll(`oauth_grants?select=owner,client_name,client_info,created_at,used_at${owner}`, "created_at.desc,id"),
+    readOr(`relay_call_days?select=owner,day,calls,last_at,last_tool&day=gte.${since}${owner}`, "day.desc,owner"),
   ]);
   // Before console2.sql there is no count of calls: the picks without it.
-  const picks = counted ?? await db(`relay_picks?select=key,owner,channel,picked_at,called_at,did,moved_at${owner}`
-    + "&order=picked_at.desc&limit=2000");
+  const picks = counted ?? await dbAll(`relay_picks?select=key,owner,channel,picked_at,called_at,did,moved_at${owner}`,
+    "picked_at.desc,key");
   const emails = new Map(users.map((user) => [user.id, user.email || null]));
   const tabOf = new Map(tabs.map((tab) => [tab.channel, tab]));
   const isLive = (tab) => Boolean(tab?.open) && now - Date.parse(tab.seen_at) < TAB_HEARD_MS;

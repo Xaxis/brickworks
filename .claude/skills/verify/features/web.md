@@ -87,8 +87,8 @@ plan with Claude as the client.
 - `what a first visit waits for` (load250, 2026-10-24): a browser taking
   brotli is sent the build as `tools/export.sh` compressed it, brotli 11
   (`deploy.sh` routes `index.wasm`, `index.pck`, `index.js`,
-  `index.data.pck`, `index.parts.bin`, `index.primitives.bin` and
-  `index.hdri.bin` under `/b/<sha>/` to the `.br` beside each, with
+  `index.data.pck`, `index.parts.bin`, `index.primitives.bin`,
+  `index.hdri.bin` and `index.fonts.bin` under `/b/<sha>/` to the `.br` beside each, with
   `Content-Encoding: br`, `Vary` and the file's own type; any other browser
   gets the file, compressed by Vercel as before, which sent 9.6 MB of wasm
   and 21 MB of pack where 11 makes 6.9 and 7.4). The web presets leave
@@ -158,7 +158,7 @@ plan with Claude as the client.
   read as their classes load, before the data pack is mounted
   (`gears.json`, `known_fits.json`: `AT_CLASS_LOAD`); `index.data.pck`
   (the catalogue and the rest of `assets/web/`, `models/`, LDraw's tables,
-  the booklet PDF's fonts, and the 101 scripts the first screen does not
+  and the 101 scripts the first screen does not
   compile, Later's classes and what only they name, as
   `tools/web/start_closure.py` reads the sources, walked from every entry
   point `project.godot` names, the main loop, each autoload and the main
@@ -184,8 +184,13 @@ plan with Claude as the client.
   (`PartForge`, `CustomParts._primitives_here`, which says "Fetching
   LDraw's primitives…") and `index.hdri.bin` (Studio's six panoramas,
   0.9 MB) the first time Studio lights a picture by one
-  (`StudioRender._prepare`, "fetching the photographed light"). Those two
-  are BWP1 bundles written as files under `/packs/<name>/`, since a pack
+  (`StudioRender._prepare`, "fetching the photographed light"), and
+  `index.fonts.bin` (the booklet's type, LiberationSans and Noto Emoji,
+  1.0 MB, which had grown the data pack from 5.06 to 5.93 MB; webfaults,
+  2026-11-14) the first time a booklet PDF or its pages are made
+  (`Main.save_booklet_as`, "Fetching the booklet's type…", `_pdf_file`,
+  `SeeTools._booklet_page`; `WebPacks.font` names the imported `.fontdata` there).
+  Those three are BWP1 bundles written as files under `/packs/<name>/`, since a pack
   mounted while workers open files is not safe. `window.brickworksPacks`
   says when each was asked, came and was written; the data pack that
   never comes after three tries stops the start with "Brickworks could
@@ -198,7 +203,7 @@ plan with Claude as the client.
   (4.40), the data pack's wait 0.1 s, the bin usable 12.9 s where it was
   14.95; a return visit at `Main._ready` 4.8 s where it was 5.1, fetching
   nothing more. `python3 tools/minitest.py tests/test_pck_split.py`
-  (8 tests) splits a pack made in Godot's format and reads every file
+  (10 tests) splits a pack made in Godot's format and reads every file
   back, byte for byte, from the one place it went, and holds main.gd with
   the engine and the assistant with the data pack.
   The bin's All listing ranks each part once before sorting
@@ -2863,7 +2868,12 @@ plan with Claude as the client.
   `read` with their `reading`, the motion `pressed`, `moving` at the first
   frame drawn off; `asked` [ms, how many] as the model was first shown,
   `shapes_here` [here, of] once every part was, `frames` [frame, drawn] each
-  phase came in, `longest` [ms, phase] the app's longest frame, its drawing
+  phase came in, `page` the page's clock (performance.now) at each, on the
+  web, by which `tools/web/play_flow.mjs` holds the app's own work from
+  `parts` to `moving` (its frames less their WebGL, plus `reading` and the
+  motion's ms when `off_frame`) under APP_UX5's 2 s, 3 s on a phone, the
+  clock said beside it (webfaults, 2026-11-14: brickworks.diy missed 2 s by
+  the clock in 3 rounds of 4 at load 30-62 drawing in software), `longest` [ms, phase] the app's longest frame, its drawing
   too, from the parts to 3 s after it moves, `reread`, `needs`); the motion's own
   `off_frame`; the panel's `link`, `playing`, `opens`.
 - `playlink probe` (`src/dev/playlink_probe.gd`): below.

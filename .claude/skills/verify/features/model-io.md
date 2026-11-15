@@ -716,7 +716,10 @@ Whether what you built is still there tomorrow, and still means the same thing.
   export served with `serve.py --parts-url "$PARTS_URL"`). 1: the car with a
   part taken off, then `?library=omr-106-1` typed into the same tab: it asks
   ("Save changes to “Car”?"), Cancel keeps the car ("kept “Car” — nothing
-  opened"), typed again Don't save opens the set (65 parts), Undo brings the
+  opened", read once the question is gone, up to 60 s: a fixed 3 s failed on
+  previews and live alike at load 31-77, where software drawing put the
+  page's hearing of it 0.3-4.1 s after the click; webfaults, 2026-11-14),
+  typed again Don't save opens the set (65 parts), Undo brings the
   car back; `asked.png`, `set.png`. 2: `?new=1&library=omr-10297-1`, the
   hotel, pictured every second: first picture (90% of the pixels the model
   changes as they end) and fully open (all down, none on its way, the bar

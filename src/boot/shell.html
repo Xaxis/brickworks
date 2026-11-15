@@ -1094,14 +1094,14 @@ const loaderSays = (function () {
 	// catalogue, the models, LDraw's tables) is index.data.pck, asked for
 	// as soon as the engine's own files are here, and index.parts.bin
 	// after it rather than beside it. LDraw's primitives
-	// (index.primitives.bin) and Studio's photographed light
-	// (index.hdri.bin) are asked for by the app the first time it wants
-	// them (window.brickworksPack). Each is written into the engine's files
+	// (index.primitives.bin), Studio's photographed light (index.hdri.bin)
+	// and the booklet's type (index.fonts.bin) are asked for by the app the
+	// first time it wants them (window.brickworksPack). Each is written into the engine's files
 	// under /packs/ once the engine has started (the pack whole, a bundle
 	// as its files), then /packs/<name>.here, which the app looks for
 	// (WebPacks). What came and when is window.brickworksPacks
 	// (tools/web/load_check.mjs).
-	const PACKS = { data: ".data.pck", primitives: ".primitives.bin", hdri: ".hdri.bin" };
+	const PACKS = { data: ".data.pck", primitives: ".primitives.bin", hdri: ".hdri.bin", fonts: ".fonts.bin" };
 	const packs = window.brickworksPacks = {};
 	const packBytes = {};
 	function packState(name) {

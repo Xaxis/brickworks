@@ -54,6 +54,13 @@ const TITLE := 0
 ## ...or at the end of its head, after its name and author lines, before its
 ## first part, step or blank line (where ModelFloor put its line).
 const HEAD := 1
+## The section of a line in the model's own section that is in an IN block
+## (LdrModel.IN_META: "0 !BRICKWORKS IN Model#1", to the next IN line or the
+## step's end): a light, view, motion of a copy built in the model's steps,
+## its definition's own (LdrModel.within_lines), none of the model's. Read as
+## the model's, a model put into one nobody gave steps had its motions played
+## and written as the host's.
+const IN_COPY := -2
 ## The words a reader of the app's reads in a model's file, besides the
 ## booklet's (BookletLooks.WORDS) and the motions' ("MOTION..."): a line of
 ## any other word is a later build's, kept as the file has it
@@ -80,7 +87,8 @@ class Line extends RefCounted:
 	var said: String = ""
 	## The line as the file has it, without its line end.
 	var raw: String = ""
-	## The section it is in: 0 the model's own, -1 none (after a NOFILE).
+	## The section it is in: 0 the model's own, -1 none (after a NOFILE),
+	## [constant IN_COPY] the model's section but a copy's ([method of_text]).
 	var section: int = 0
 	## A reader read it into what its feature holds: a line none took is
 	## kept as the file has it ([method untaken]).
@@ -203,6 +211,7 @@ static func of_text(text: String) -> MetaIndex:
 	model.end = size
 	out.sections.append(model)
 	var within: int = 0
+	var in_copy: bool = false  ## in an IN block naming a copy, in the model's section
 	var files: int = 0
 	var steps: int = 0         ## the model's own STEP and ROTSTEP lines so far
 	var model_end: int = -1    ## where its NOFILE line begins
@@ -225,8 +234,9 @@ static func of_text(text: String) -> MetaIndex:
 				e = raw.length()
 			var word: String = raw.substr(LEAD.length(), e - LEAD.length())
 			if not word.is_empty() and not word.contains("\t"):
-				out._add(at, end, next, within, word.to_upper(), e, raw,
-					steps if within == 0 else -1)
+				in_copy = _in_copy(in_copy, within, word.to_upper(), raw, e)
+				out._add(at, end, next, IN_COPY if in_copy and within == 0 and _copys(word.to_upper())
+					else within, word.to_upper(), e, raw, steps if within == 0 else -1)
 				at = _next_zero(text, stop)
 				continue
 		var k: int = _past_blanks(text, at + 1, end)
@@ -237,9 +247,12 @@ static func of_text(text: String) -> MetaIndex:
 			if keyword == WORD:
 				var m: int = _past_blanks(text, w, end)
 				var e: int = _to_blank(text, m, end)
-				out._add(at, end, next, within, text.substr(m, e - m).to_upper(), e - at, raw,
-					steps if within == 0 else -1)
+				var said_word: String = text.substr(m, e - m).to_upper()
+				in_copy = _in_copy(in_copy, within, said_word, raw, e - at)
+				out._add(at, end, next, IN_COPY if in_copy and within == 0 and _copys(said_word)
+					else within, said_word, e - at, raw, steps if within == 0 else -1)
 			elif keyword == "FILE":
+				in_copy = false
 				files += 1
 				if files == 1:
 					model.name = text.substr(w, end - w).strip_edges()
@@ -257,12 +270,14 @@ static func of_text(text: String) -> MetaIndex:
 					out.sections.append(section)
 					within = out.sections.size() - 1
 			elif keyword == "NOFILE":
+				in_copy = false
 				if within == 0:
 					model_end = at
 				if within >= 0:
 					out.sections[within].end = next
 				within = -1
 			elif keyword == "!DATA":
+				in_copy = false
 				if within >= 0:
 					out.sections[within].end = at
 				within = -1
@@ -270,6 +285,7 @@ static func of_text(text: String) -> MetaIndex:
 				if named.begins_with("brickworks-page-"):
 					out.pictures.append(named)
 			elif keyword == "ROTSTEP" or keyword == "STEP":
+				in_copy = false
 				if keyword == "ROTSTEP":
 					out.rotsteps += 1
 				if within == 0:
@@ -279,6 +295,24 @@ static func of_text(text: String) -> MetaIndex:
 	_head_of(text, model)
 	out.step_ends.append(model_end if model_end >= 0 else model.end)
 	return out
+
+
+## Whether the lines after one of the app's of [param word] are in an IN
+## block of the model's section ([constant IN_COPY]): an IN line naming a copy
+## opens one, the line alone ends it, as LdrModel.parse reads them.
+static func _in_copy(was: bool, section: int, word: String, raw: String, said_at: int) -> bool:
+	if section != 0 or word != "IN":
+		return was
+	return not raw.substr(said_at).strip_edges().is_empty()
+
+
+## Whether a line of the app's of [param word] in an IN block is the copy's
+## ([constant IN_COPY]): a light, a view or a motion, as LdrModel.parse
+## reads them (within_lines). A step's look in the block is the step's:
+## read as the copy's, a group's step lost its ZOOM at the second save
+## (mlattack badlooks).
+static func _copys(word: String) -> bool:
+	return word == "LIGHT" or word == "VIEW" or word.begins_with("MOTION")
 
 
 func _add(start: int, stop: int, next: int, section: int, word: String, said_at: int,

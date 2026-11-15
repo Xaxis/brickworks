@@ -609,6 +609,8 @@ func _booklet_page(input: Dictionary, work: Working.Job) -> Variant:
 			else "past the steps: the finished model or the parts list")
 	if html.is_empty():
 		return "The booklet could not be drawn; ask again."
+	# The type it is drawn in, fetched the first time on the web.
+	await WebPacks.need(WebPacks.FONTS)
 	var drawer := BookletPng.new()
 	app.add_child(drawer)
 	var image: Image = drawer.page_image(html, number, PAGE_DENSITY)

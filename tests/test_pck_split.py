@@ -37,6 +37,9 @@ FILES = {
     "assets/fonts/LiberationSans-Regular.ttf.import":
         b"[remap]\npath=\"res://.godot/imported/LiberationSans-Regular.ttf-abc.fontdata\"\n",
     ".godot/imported/LiberationSans-Regular.ttf-abc.fontdata": b"font" * 100,
+    "assets/fonts/NotoEmoji-Regular.ttf.import":
+        b"[remap]\npath=\"res://.godot/imported/NotoEmoji-Regular.ttf-e4e3.fontdata\"\n",
+    ".godot/imported/NotoEmoji-Regular.ttf-e4e3.fontdata": b"emoji" * 100,
     "assets/ui/tools/accept.svg.import": b"[remap]\npath=\"res://.godot/imported/accept.svg-d7c.ctex\"\n",
     ".godot/imported/accept.svg-d7c.ctex": b"GST2 icon",
     "assets/web/catalogue.json": b'{"parts": {"3001": {}}}' * 50,
@@ -127,15 +130,12 @@ def test_the_engine_waits_for_the_code_alone(split: Path) -> None:
 
 def test_what_the_start_reads_is_a_pack_beside_it(split: Path) -> None:
     data = read_pack(split / "index.data.pck")
-    # And the booklet's type, read when a PDF is made: its .import and the
-    # font it points at, together.
     # And the scripts the first screen does not compile, mounted before any
-    # of them is asked for (tools/web/start_closure.py).
+    # of them is asked for (tools/web/start_closure.py). Not the booklet's
+    # type: 1.1 MB the start waited for, read only when a PDF is made.
     assert sorted(data) == sorted(["assets/web/catalogue.json", "assets/web/parts/eab5.lbm",
                                    "assets/web/all_order.txt", "models/car.ldr",
                                    "assets/ldraw/part_names.json", "assets/ldraw/stud.dat",
-                                   "assets/fonts/LiberationSans-Regular.ttf.import",
-                                   ".godot/imported/LiberationSans-Regular.ttf-abc.fontdata",
                                    "src/ai/assistant.gdc", "src/ai/assistant.gd.remap"])
 
 
@@ -183,6 +183,15 @@ def test_the_primitives_and_the_light_are_files_under_their_own_names(split: Pat
     }
 
 
+def test_the_booklets_type_is_fetched_when_a_pdf_is_made_under_its_own_names(split: Path) -> None:
+    # As BookletPdf and BookletPng ask for it (WebPacks.font): the source's
+    # name, a dash in the name kept.
+    assert read_bundle(split / "index.fonts.bin") == {
+        "LiberationSans-Regular.ttf.fontdata": FILES[".godot/imported/LiberationSans-Regular.ttf-abc.fontdata"],
+        "NotoEmoji-Regular.ttf.fontdata": FILES[".godot/imported/NotoEmoji-Regular.ttf-e4e3.fontdata"],
+    }
+
+
 def test_every_file_is_in_one_place_byte_for_byte(split: Path) -> None:
     found: dict[str, bytes] = {}
     for name in ("index.pck", "index.data.pck"):
@@ -193,9 +202,12 @@ def test_every_file_is_in_one_place_byte_for_byte(split: Path) -> None:
         found["assets/ldraw/p/" + name] = body
     hdri = read_bundle(split / "index.hdri.bin")
     found[".godot/imported/studio_small_09.hdr-a7a3.ctex"] = hdri["studio_small_09.hdr.ctex"]
-    # The .import that pointed res:// at the texture is not needed by one
-    # read from its own path, and is the only file not carried.
-    assert {k: v for k, v in FILES.items() if not k.endswith(".hdr.import")} == found
+    fonts = read_bundle(split / "index.fonts.bin")
+    found[".godot/imported/LiberationSans-Regular.ttf-abc.fontdata"] = fonts["LiberationSans-Regular.ttf.fontdata"]
+    found[".godot/imported/NotoEmoji-Regular.ttf-e4e3.fontdata"] = fonts["NotoEmoji-Regular.ttf.fontdata"]
+    # The .import that pointed res:// at a texture or a face is not needed by
+    # one read from its own path, and is the only file not carried.
+    assert {k: v for k, v in FILES.items() if not k.endswith((".hdr.import", ".ttf.import"))} == found
 
 
 def test_the_page_counts_progress_against_the_code_pack(split: Path) -> None:

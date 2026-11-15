@@ -160,13 +160,15 @@ try {
     const sheet = async () => ((await page.evaluate(() => window.brickworksPhone)) || {}).phone || {};
     const sheetNow = async () => ((await askApp(page, "Phone")) || {}).phone || {};
     // A row of More: the menu it is in opened first, as a finger opens it,
-    // each other folded again.
+    // each other folded again. Each brought into sight first, as a person
+    // scrolls: More's first rows stand over the menus' names, and on a
+    // phone on its side the names go on below the screen's foot.
     const moreRow = async (row) => {
       let at = (await controls())[`phone_row_${row}`];
       for (const menu of ["file", "edit", "view", "build", "tools", "help"]) {
         if (at) break;
         // Told only once it stands still (Main._page_places): waited for.
-        const section = await where(`phone_section_${menu}`, 15);
+        const section = await reach(`phone_section_${menu}`, 15);
         if (!section) continue;
         await tap(section);
         // Told within a second or two: the page hears twice a second; and
@@ -176,14 +178,14 @@ try {
           at = (await controls())[`phone_row_${row}`];
         }
         if (!at) {
-          await tap((await where(`phone_section_${menu}`, 15)) || section);
+          await tap((await reach(`phone_section_${menu}`, 15)) || section);
           for (let n = 0; n < 60; n++) {
             if (!Object.keys(await controls()).some((k) => k.startsWith("phone_row_"))) break;
             await page.waitForTimeout(250);
           }
         }
       }
-      return at || null;
+      return at ? (await reach(`phone_row_${row}`)) || at : null;
     };
     const layout = () => askApp(page, "Layout");
     const take = async (query) => {
@@ -252,7 +254,7 @@ try {
       sections.length === 6 && rowsShown === 0);
     await audit("more");
     if (named.phone_section_file) {
-      await tap(named.phone_section_file);
+      await tap((await reach("phone_section_file")) || named.phone_section_file);
       // Told the rows within a second or two: the page hears twice a second.
       let filed = 0;
       for (let n = 0; n < 20 && filed === 0; n++) {

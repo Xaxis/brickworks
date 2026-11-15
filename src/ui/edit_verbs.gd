@@ -987,6 +987,15 @@ const MODES: Array[String] = ["select", "place", "move", "rotate", "hinge", "con
 var mode: String = "select"
 signal mode_changed(mode: String)
 
+## A finger adding to the selection: in Select, each tap on a part puts it
+## in or takes it out, and a tap on nothing keeps what is there, as a
+## Shift-click does with a mouse. A phone's Select, tapped while it is lit,
+## turns it on and off (PhoneShell), as the Select of a phone's photos and
+## files does: a finger has no Shift, and a hold on a part is its actions
+## (phonewalk: three parts painted one at a time, 9 taps to the desktop's 4).
+## Another tool ends it.
+var adding: bool = false
+
 ## How far R and the Rotate tool turn a selection, in degrees. The part in
 ## hand turns a quarter on the studs; on a round joint (a pin in a hole, a
 ## clip on a bar) it turns by this when it is finer than an eighth, so the
@@ -1036,6 +1045,7 @@ func set_mode(to: String) -> void:
 	if mode == "connect":
 		connect_tool.end()
 	mode = to
+	adding = false
 	if (to == "move" or to == "rotate") and handles == null:
 		_make_handles()
 	if measure != null and measure.active:
@@ -1384,6 +1394,7 @@ func brick_at(at: Vector2) -> int:
 func click(at: Vector2, shift: bool) -> bool:
 	var brick_id: int = brick_at(at)
 	if mode == "select":
+		shift = shift or adding
 		if brick_id == 0:
 			if not shift:
 				builder.clear_selection()

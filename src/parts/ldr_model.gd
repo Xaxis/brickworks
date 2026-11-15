@@ -114,6 +114,10 @@ class SubModel extends RefCounted:
 	## LdrModel.embedded_parts]); this one is read as the library's part of
 	## its number where the library has one ([method LdrModel.sub_model_of]).
 	var library_file: bool = false
+	## The lines of its file it reads as the definition's own of a copy built
+	## in its steps (IN_META): the copy as the IN line names it -> the line
+	## numbers ([member LdrModel.within_lines]).
+	var kept_within: Dictionary = {}
 
 
 var name: String = ""
@@ -291,6 +295,23 @@ var has_file_lines: bool = false
 ## [constant MAIN_KEY] in a file of FILE sections (section_key), else the
 ## name the text was read as.
 var main_key: String = ""
+## The lights, views, motions, credits and comments of a sub-model that has
+## no section of its own, every copy of it built in the steps of the one round
+## it (IN_PARENT): written after the first IN_META line naming one of its
+## copies, in the coordinates of the section that builds it, and read here as
+## that definition's, by its name as the path names it ("Model" for "IN
+## Model#1") -> Array of the lines, without a line's CR. Read as the model's
+## own, a model put into one nobody gave steps lost its 20 motion lines on the
+## first save (intomodel3), or played them as the host's.
+var within_lines: Dictionary = {}
+## And for each copy whose IN block carries them, by its path, as [method
+## flatten] laid it: {"frame": the frame of the section building it, in the
+## file's coordinates (Transform3D), "lines": PackedInt32Array of their
+## lines in the file}. What BrickWorld.section_frames keeps for it, and what
+## a cut keeps of it (SubmodelFile).
+var unit_kept: Dictionary = {}
+## Which copy's IN block gave [member within_lines] each definition's.
+var _within_first: Dictionary = {}
 
 
 ## Whether the steps in the file are an author's, to keep: there are steps,
@@ -453,6 +474,10 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 					and tokens[2] == _COPY_WORD:
 				copy_next = maxi(tokens[3].to_int(), 0)
 				copies_next = copies_said(tokens.slice(4))
+			elif not within.is_empty() and _kept_within(keyword, tokens):
+				# In an IN block: the lines of the copy it names, its
+				# definition's own (within_lines), never this section's.
+				model._within_line(current, current_key, within, raw, index)
 			elif keyword == "!BRICKWORKS" and tokens.size() > 2 \
 					and tokens[2] == _LIGHT_WORD:
 				# The model's own, or the sub-model's being read: a light is
@@ -489,6 +514,12 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 				model._section_line(current_key, raw)
 			elif keyword == "!LICENSE" and current != model.main and step == 0 \
 					and current.placements.is_empty() and model.section_lines.has(current_key):
+				model._section_line(current_key, raw)
+			elif keyword.begins_with("//") and current != model.main and step == 0 \
+					and current.placements.is_empty() and model.author == "Brickworks":
+				# A note in a sub-model's head, in a file of the app's own,
+				# which writes none itself: a model's put into this one
+				# (ModelStore.held_from), kept with it.
 				model._section_line(current_key, raw)
 			elif keyword == "AUTHOR:" and model.author.is_empty():
 				model.author = " ".join(tokens.slice(2))
@@ -736,6 +767,40 @@ func _section_line(key: String, raw: String) -> void:
 	if not section_lines.has(key):
 		section_lines[key] = []
 	(section_lines[key] as Array).append(raw.trim_suffix("\r"))
+
+
+## Whether a line of [param keyword] ([param tokens] its words) is one a
+## definition keeps of its own ([member section_lines]' kinds): a light, a
+## view, a motion, whose it is and on what terms, or a comment ("0 //").
+static func _kept_within(keyword: String, tokens: PackedStringArray) -> bool:
+	if keyword == "!BRICKWORKS":
+		return tokens.size() > 2 and (tokens[2] == _LIGHT_WORD or tokens[2] == _VIEW_WORD
+			or tokens[2].begins_with(_MOTION_WORD))
+	return keyword == "AUTHOR:" or keyword == "!LICENSE" or keyword.begins_with("//")
+
+
+## [param raw], line [param index] of [param sub]'s section (its key
+## [param key]), read in the IN block naming the copy [param within]: its
+## definition's own ([member within_lines]), from the first block that names
+## one of its copies.
+func _within_line(sub: SubModel, key: String, within: String, raw: String, index: int) -> void:
+	var said: String = "/".join(within.split("/", false))
+	var segments: PackedStringArray = said.split("/", false)
+	if segments.is_empty():
+		return
+	var def: String = segments[segments.size() - 1].get_slice("#", 0).strip_edges()
+	var block: String = key + "\n" + said
+	if str(_within_first.get(def, block)) != block:
+		return
+	_within_first[def] = block
+	if not within_lines.has(def):
+		within_lines[def] = []
+	(within_lines[def] as Array).append(raw.trim_suffix("\r"))
+	if not sub.kept_within.has(said):
+		sub.kept_within[said] = PackedInt32Array()
+	var at: PackedInt32Array = sub.kept_within[said]
+	at.append(index)
+	sub.kept_within[said] = at
 
 
 ## Whether a FILE section is a part rather than a sub-model: its header
@@ -1034,6 +1099,7 @@ func flatten(known_parts: Dictionary = {}) -> Array[Placement]:
 	unit_colours.clear()
 	unit_lines.clear()
 	unit_chains.clear()
+	unit_kept.clear()
 	if main != null:
 		_inline(main, Transform3D.IDENTITY, 0, out, {}, 0, "", "", {}, "")
 	return out
@@ -1230,6 +1296,14 @@ func _inline(
 			placed.frame = at * REFLECT_X
 		out.append(placed)
 
+	# The lines its IN blocks carry of a copy built in its steps: that copy's
+	# own, in this section's coordinates, which stand at [param at] here.
+	for kept_as: String in sub.kept_within:
+		if not made.has(kept_as):
+			continue
+		var path: String = (made[kept_as] as Array)[0]
+		if not unit_kept.has(path):
+			unit_kept[path] = {"frame": at, "lines": sub.kept_within[kept_as]}
 	visiting.erase(sub)
 
 
@@ -1410,11 +1484,16 @@ static func write_ldr(
 ## .section_lines, Assemblies.lines_written). [param files]: the name each
 ## definition's section was read with, by its name, "" the model's own
 ## (BrickWorld.section_files): written under it again ([method _file_names]).
+## [param kept_within]: the lines a definition keeps whose every copy is built
+## in its parent's steps, so has no section to write them in, by the copy
+## they are written with (its path) -> the lines, in the coordinates of the
+## section that builds it (Assemblies.lines_written): after the first IN_META
+## line naming that copy, as [method parse] reads them back (within_lines).
 static func write_tree(
 	placements: Array, title: String, author_name: String,
 	instances: Dictionary, embedded: Dictionary = {}, unit_steps: Dictionary = {},
 	parts: Dictionary = {}, steps: Dictionary = {}, kept: Dictionary = {},
-	files: Dictionary = {}
+	files: Dictionary = {}, kept_within: Dictionary = {}
 ) -> String:
 	var tree: Dictionary = _tree_of(instances, unit_steps)
 	var masters: Dictionary = tree["masters"]
@@ -1459,12 +1538,21 @@ static func write_tree(
 	var ref_within := func(parent: String) -> Array:
 		return children.get(parent, []).map(func(child: String) -> String:
 			return str(placed_within[child]))
+	# The lines kept with each copy built in a section's steps, by the copy as
+	# that section's IN lines name it.
+	var kept_in := func(home: String) -> Dictionary:
+		var out: Dictionary = {}
+		for path: String in kept_within:
+			if _home_in(path, unit_steps) == home and path != home:
+				out[_within_of(path, home)] = kept_within[path]
+		return out
 	var loose: Array = placements.filter(func(p: Placement) -> bool:
 		return _home_in(p.unit, unit_steps) == "")
 	var text: String = "0 FILE " + main_file + "\n" \
 		+ _write_one(loose, title, author_name, refs.call("", Transform3D.IDENTITY), main_file,
 			ref_steps.call(""), loose.map(func(p: Placement) -> String:
-				return _within_of(p.unit, "")), ref_within.call(""), steps.get("", [])) \
+				return _within_of(p.unit, "")), ref_within.call(""), steps.get("", []),
+			PackedStringArray(), kept_in.call("")) \
 		+ "0 NOFILE\n"
 	for def: String in defs:
 		var master: String = masters[def]
@@ -1484,7 +1572,8 @@ static func write_tree(
 		text += "0 FILE " + str(file_of[def]) + "\n" \
 			+ _write_one(own, def, author_name, refs.call(master, inverse), str(file_of[def]),
 				ref_steps.call(master), own.map(func(p: Placement) -> String: return p.within),
-				ref_within.call(master), steps.get(def, []), kept.get(def, PackedStringArray())) \
+				ref_within.call(master), steps.get(def, []), kept.get(def, PackedStringArray()),
+				kept_in.call(master)) \
 			+ "0 NOFILE\n"
 	var names: Array = embedded.keys()
 	names.sort()
@@ -1775,11 +1864,14 @@ static func steps_written(placements: Array, instances: Dictionary = {},
 ## written after a line naming it (IN_META). [param steps] are steps to
 ## write, in among the others, that nothing is in (ModelStore: one the
 ## model's file had empty, that a booklet look is set on). [param kept] go
-## after its first line, as they are (write_tree).
+## after its first line, as they are (write_tree). [param kept_in]: the lines
+## kept with a copy built in its steps, by the copy as its IN line names it,
+## each written once, after the first IN line naming it; one with no part of
+## its own goes in before the first line of a copy inside it.
 static func _write_one(placements: Array, title: String, author_name: String,
 		refs: Array[String], file_name: String = "", ref_steps: Array = [],
 		within: Array = [], ref_within: Array = [], steps: Array = [],
-		kept: PackedStringArray = PackedStringArray()) -> String:
+		kept: PackedStringArray = PackedStringArray(), kept_in: Dictionary = {}) -> String:
 	var lines := PackedStringArray()
 	lines.append("0 " + title)
 	# Whose a section is and on what terms, where it is someone else's
@@ -1833,6 +1925,7 @@ static func _write_one(placements: Array, title: String, author_name: String,
 	var started: bool = false
 	var step: int = 0
 	var inside: String = ""
+	var said: Dictionary = {}       ## each of kept_in written
 	for item: Array in items:
 		if started and int(item[0]) != step:
 			lines.append("0 STEP")
@@ -1843,11 +1936,33 @@ static func _write_one(placements: Array, title: String, author_name: String,
 			continue
 		if str(item[4]) != inside:
 			inside = str(item[4])
-			lines.append(IN_META + ("" if inside.is_empty() else " " + inside))
+			var named: bool = false
+			for copy: String in _kept_opened(inside, kept_in, said):
+				lines.append(IN_META + " " + copy)
+				lines.append_array(kept_in[copy])
+				said[copy] = true
+				named = copy == inside
+			if not named:
+				lines.append(IN_META + ("" if inside.is_empty() else " " + inside))
 		lines.append(str(item[3]))
 
 	lines.append("0")
 	return "\n".join(lines) + "\n"
+
+
+## The copies of [param kept_in] not yet [param said] that [param inside]
+## (a copy as an IN line names it) is, or is inside, the outermost first:
+## each one's lines go in before its first part, or the first of a copy inside
+## it, is written.
+static func _kept_opened(inside: String, kept_in: Dictionary, said: Dictionary) -> Array:
+	if inside.is_empty() or kept_in.is_empty():
+		return []
+	var out: Array = []
+	for copy: String in kept_in:
+		if not said.has(copy) and (inside == copy or inside.begins_with(copy + "/")):
+			out.append(copy)
+	out.sort_custom(func(a: String, b: String) -> bool: return a.count("/") < b.count("/"))
+	return out
 
 
 ## The twelve numbers of a type-1 line for a placement.
