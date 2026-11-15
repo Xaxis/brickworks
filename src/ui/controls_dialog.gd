@@ -1221,24 +1221,19 @@ func _read_version() -> void:
 		"new URL('version.json', new URL(GODOT_CONFIG.executable, location.href)).href")
 	if typeof(where) != TYPE_STRING:
 		return
-	var http := HTTPRequest.new()
-	add_child(http)
-	http.request_completed.connect(func(result: int, code: int,
-			_headers: PackedStringArray, body: PackedByteArray) -> void:
-		http.queue_free()
-		if result != HTTPRequest.RESULT_SUCCESS or code != 200:
-			return
-		var parsed: Variant = JSON.parse_string(body.get_string_from_utf8())
-		if typeof(parsed) != TYPE_DICTIONARY:
-			return
-		# In the reader's own time zone, which only the browser knows.
-		var when: Variant = JavaScriptBridge.eval(
-			"new Date(%s).toLocaleString(undefined, {dateStyle: 'medium', timeStyle: 'short'})"
-			% JSON.stringify(str(parsed.get("deployed", ""))))
-		_version.text = "%s. This build: %s, updated %s" % [
-			BuildInfo.describe(), str(parsed.get("commit", "?")),
-			str(when) if typeof(when) == TYPE_STRING else str(parsed.get("deployed", "?"))])
-	http.request(str(where))
+	var got: Array = await PageFetch.ask(self, str(where))
+	if int(got[0]) != HTTPRequest.RESULT_SUCCESS or int(got[1]) != 200:
+		return
+	var parsed: Variant = JSON.parse_string((got[3] as PackedByteArray).get_string_from_utf8())
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return
+	# In the reader's own time zone, which only the browser knows.
+	var when: Variant = JavaScriptBridge.eval(
+		"new Date(%s).toLocaleString(undefined, {dateStyle: 'medium', timeStyle: 'short'})"
+		% JSON.stringify(str(parsed.get("deployed", ""))))
+	_version.text = "%s. This build: %s, updated %s" % [
+		BuildInfo.describe(), str(parsed.get("commit", "?")),
+		str(when) if typeof(when) == TYPE_STRING else str(parsed.get("deployed", "?"))]
 
 
 ## Settings.

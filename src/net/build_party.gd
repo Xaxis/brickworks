@@ -401,17 +401,9 @@ func _keep() -> void:
 
 ## [code, answer]: 0 and {} when nothing came back.
 func _ask(op: String, body: Dictionary, timeout: float = 20.0) -> Array:
-	var http := HTTPRequest.new()
-	http.timeout = timeout
-	add_child(http)
 	var headers := PackedStringArray(["content-type: application/json"])
-	var sent: int = http.request("%s/api/together?op=%s" % [base_url, op], headers,
-		HTTPClient.METHOD_POST, JSON.stringify(body, "", false, true))
-	if sent != OK:
-		http.queue_free()
-		return [0, {}]
-	var done: Array = await http.request_completed
-	http.queue_free()
+	var done: Array = await PageFetch.ask(self, "%s/api/together?op=%s" % [base_url, op], headers,
+		HTTPClient.METHOD_POST, JSON.stringify(body, "", false, true), timeout)
 	var json := JSON.new()
 	var text: String = (done[3] as PackedByteArray).get_string_from_utf8()
 	var parsed: Dictionary = json.data if json.parse(text) == OK and json.data is Dictionary else {}

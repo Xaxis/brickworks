@@ -123,14 +123,7 @@ func _call(path_or_url: String, key: String, method: int, form: String) -> Dicti
 	var headers := PackedStringArray(["Authorization: key " + key, "Accept: application/json"])
 	if method == HTTPClient.METHOD_POST:
 		headers.append("Content-Type: application/x-www-form-urlencoded")
-	var http := HTTPRequest.new()
-	http.timeout = 30.0
-	add_child(http)
-	if http.request(url, headers, method, form) != OK:
-		http.queue_free()
-		return {"code": 0, "body": null}
-	var result: Array = await http.request_completed
-	http.queue_free()
+	var result: Array = await PageFetch.ask(self, url, headers, method, form, 30.0)
 	if int(result[0]) != HTTPRequest.RESULT_SUCCESS:
 		return {"code": 0, "body": null}
 	var json := JSON.new()

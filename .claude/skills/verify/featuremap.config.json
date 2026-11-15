@@ -5470,6 +5470,20 @@
       "entry": "src/dev/mcpreach_probe.gd",
       "reach": "tools/probe.sh mcpreach_probe   (windowed: godot --path . --resolution 1400x900 --script src/dev/mcpreach_probe.gd; PROBE_SIZE=1280x720. APP_UX8 #11: export_model's description and read_guide app's first lines name Build together, Share, Import and Comments with where each is, and no tool opens them; export_model pdf with a Russian and Greek cover in 3 calls, read back as typed by pdftotext, its cover pictured in the answer (shots/mcpreach/pdf_cover.png or MCPREACH_OUT); every unasked write takes the next free name (pods_render_2.png, pods_2.3mf, pods_turntable_4) and keeps the first byte for byte; a 3MF's and an STL's answer say which objects are closed solids, agreeing with lib3mf; File › Export with its save dialog still writes over when the person says so)",
       "area": "mcp"
+    },
+    {
+      "kind": "cli",
+      "label": "ask to leave timing",
+      "entry": "tools/web/framefetch_flow.mjs",
+      "reach": "tools/export.sh web; node tools/web/relay_server.mjs 10102 --static=build/web --arrivals --hold=together_sessions,together_ops,together_people,together_snapshot_parts, then node tools/web/framefetch_flow.mjs --url=http://127.0.0.1:10102 --out=DIR [--busy=250] [--rounds=8]   (with .env sourced)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "a request asked of the page",
+      "entry": "src/net/page_fetch.gd",
+      "reach": "python3 -m pytest tests/test_page_fetch.py  /  the ask to leave timing flow",
+      "area": "web"
     }
   ]
 }

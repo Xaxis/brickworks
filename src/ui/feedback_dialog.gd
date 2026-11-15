@@ -660,18 +660,11 @@ func reports_link() -> String:
 
 ## The deployment's API: the report, as JSON, with the sign-in when there is one.
 func _post(asked: Dictionary, token: String) -> Dictionary:
-	var http := HTTPRequest.new()
-	http.timeout = 60.0
-	add_child(http)
 	var headers := PackedStringArray(["content-type: application/json"])
 	if not token.is_empty():
 		headers.append("authorization: Bearer " + token)
-	if http.request(Deployment.api_base() + "/api/plans?op=feedback", headers, HTTPClient.METHOD_POST,
-			JSON.stringify(asked)) != OK:
-		http.queue_free()
-		return {"code": 0, "body": null}
-	var result: Array = await http.request_completed
-	http.queue_free()
+	var result: Array = await PageFetch.ask(self, Deployment.api_base() + "/api/plans?op=feedback", headers,
+		HTTPClient.METHOD_POST, JSON.stringify(asked), 60.0)
 	if int(result[0]) != HTTPRequest.RESULT_SUCCESS:
 		return {"code": 0, "body": null}
 	var json := JSON.new()

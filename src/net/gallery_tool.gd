@@ -670,18 +670,11 @@ static func _trouble(answer: Dictionary, body: Variant) -> String:
 ## anywhere a session names: {code, bytes}. With [param token], as the
 ## person signed in: their own share of each model's parts (mine=1).
 func _ask(path: String, most: int, token: String = "") -> Dictionary:
-	var request := HTTPRequest.new()
-	request.body_size_limit = most
-	request.timeout = 60.0
-	app.add_child(request)
 	var headers := PackedStringArray(["Accept: application/json"])
 	if not token.is_empty():
 		headers.append("Authorization: Bearer " + token)
-	if request.request(Deployment.api_base() + path, headers) != OK:
-		request.queue_free()
-		return {"code": 0, "bytes": PackedByteArray()}
-	var got: Array = await request.request_completed
-	request.queue_free()
+	var got: Array = await PageFetch.ask(app, Deployment.api_base() + path, headers, HTTPClient.METHOD_GET, "",
+		60.0, most)
 	if int(got[0]) != HTTPRequest.RESULT_SUCCESS:
 		return {"code": 0, "bytes": PackedByteArray()}
 	return {"code": int(got[1]), "bytes": got[3] as PackedByteArray}
