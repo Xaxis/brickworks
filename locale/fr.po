@@ -7605,14 +7605,35 @@ msgstr "un alias de %s, %s"
 msgid "no file: the library has no part of this number"
 msgstr "aucun fichier : la bibliothèque n'a aucune pièce de ce numéro"
 
-msgid "%d used: %s"
-msgstr "%d utilisées : %s"
+msgid "%d used in the model"
+msgstr "%d utilisées dans le modèle"
 
-msgid "%d in the model"
-msgstr "%d dans le modèle"
+msgid "%d used in the model and %s"
+msgstr "%d utilisées dans le modèle et dans %s"
 
-msgid "Replacing moved parts in %s…"
-msgstr "Remplacement des pièces déplacées dans %s…"
+msgid "%d used in %s"
+msgstr "%d utilisées dans %s"
+
+msgid "%d used in the model and %d sub-models"
+msgstr "%d utilisées dans le modèle et dans %d sous-modèles"
+
+msgid "%d used in %d sub-models"
+msgstr "%d utilisées dans %d sous-modèles"
+
+msgid "1 part has a new number in the LDraw library"
+msgstr "1 pièce a un nouveau numéro dans la bibliothèque LDraw"
+
+msgid "%d parts have new numbers in the LDraw library"
+msgstr "%d pièces ont de nouveaux numéros dans la bibliothèque LDraw"
+
+msgid "Update all"
+msgstr "Tout mettre à jour"
+
+msgid "Review…"
+msgstr "Examiner…"
+
+msgid "Leave Build together first to update their numbers"
+msgstr "Quittez d'abord Construire ensemble pour mettre à jour leurs numéros"
 
 msgid "could not replace them: %s"
 msgstr "impossible de les remplacer : %s"
@@ -7634,9 +7655,6 @@ msgstr "1 numéro de pièce déplacée remplacé (%s)"
 
 msgid "replaced %d moved part numbers (%s)"
 msgstr "%d numéros de pièces déplacées remplacés (%s)"
-
-msgid "Leave Build together first: replacing them lays the model again"
-msgstr "Quittez d'abord Construire ensemble : les remplacer repose le modèle"
 
 msgid "Leave it"
 msgstr "Laisser"

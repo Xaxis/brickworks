@@ -115,6 +115,24 @@ class LDrawFile:
         return []
 
     @property
+    def moved_colour(self) -> int | None:
+        """The colour a redirect stub draws the part it forwards to in, where
+        its reference line gives one of its own rather than 16 (the colour
+        it is placed in) or 24 (its edge colour): 15 for 86037a and 86037b,
+        47 for s9 and s10, 0 for 889c01. A file's 86037a placed in red is
+        drawn white, as LDraw draws it; renamed to its part, its line says
+        white too (MovedParts.line_with). None for every other stub."""
+        if not self.moved_to:
+            return None
+        from .parser import SubfileRef
+
+        wanted = self.moved_to if self.moved_to.endswith(".dat") else f"{self.moved_to}.dat"
+        for command in self.commands:
+            if isinstance(command, SubfileRef) and command.filename.rsplit("/", 1)[-1] == wanted:
+                return None if command.color in (16, 24) else int(command.color)
+        return None
+
+    @property
     def is_physical_colour(self) -> bool:
         """A mould that is moulded in fixed colours (printed or multi-shot).
 

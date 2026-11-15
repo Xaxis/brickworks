@@ -7605,14 +7605,35 @@ msgstr "ein Alias von %s, %s"
 msgid "no file: the library has no part of this number"
 msgstr "keine Datei: Die Bibliothek hat kein Teil mit dieser Nummer"
 
-msgid "%d used: %s"
-msgstr "%d verwendet: %s"
+msgid "%d used in the model"
+msgstr "%d im Modell verwendet"
 
-msgid "%d in the model"
-msgstr "%d im Modell"
+msgid "%d used in the model and %s"
+msgstr "%d im Modell und in %s verwendet"
 
-msgid "Replacing moved parts in %s…"
-msgstr "Verschobene Teile in %s werden ersetzt…"
+msgid "%d used in %s"
+msgstr "%d in %s verwendet"
+
+msgid "%d used in the model and %d sub-models"
+msgstr "%d im Modell und in %d Untermodellen verwendet"
+
+msgid "%d used in %d sub-models"
+msgstr "%d in %d Untermodellen verwendet"
+
+msgid "1 part has a new number in the LDraw library"
+msgstr "1 Teil hat eine neue Nummer in der LDraw-Bibliothek"
+
+msgid "%d parts have new numbers in the LDraw library"
+msgstr "%d Teile haben neue Nummern in der LDraw-Bibliothek"
+
+msgid "Update all"
+msgstr "Alle aktualisieren"
+
+msgid "Review…"
+msgstr "Prüfen…"
+
+msgid "Leave Build together first to update their numbers"
+msgstr "Verlasse zuerst Gemeinsam bauen, um ihre Nummern zu aktualisieren"
 
 msgid "could not replace them: %s"
 msgstr "konnte sie nicht ersetzen: %s"
@@ -7634,9 +7655,6 @@ msgstr "1 verschobene Teilenummer ersetzt (%s)"
 
 msgid "replaced %d moved part numbers (%s)"
 msgstr "%d verschobene Teilenummern ersetzt (%s)"
-
-msgid "Leave Build together first: replacing them lays the model again"
-msgstr "Verlasse zuerst Gemeinsam bauen: Beim Ersetzen wird das Modell neu aufgebaut"
 
 msgid "Leave it"
 msgstr "Lassen"

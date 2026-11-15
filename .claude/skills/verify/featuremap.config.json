@@ -5076,14 +5076,14 @@
       "kind": "ui",
       "label": "missing and moved parts on open",
       "entry": "src/ui/moved_parts_dialog.gd",
-      "reach": "godot --path .  (File, Open a file naming parts by numbers LDraw has moved, made aliases or has no file for, e.g. vendor/omr/files/4349-1_Dragon-Fly.mpd or 6056-1.mpd: Missing and moved parts lists each number, why, the part it points to and how many in which sub-model, moved and alias ones checked; Replace checked writes the new numbers in every sub-model in one undo, Edit, Undo puts the file back byte for byte; Keep as is changes nothing; a part with no file offers Search; shown after a person's own open only (File, Open, a file, Recent, the library), never a session's, Together's or an undo's; over MCP open_model names them and replace_moved=true replaces them in 1 call)  (tools/probe.sh movedparts_probe; tools/probe.sh movedparts_phone_probe)",
+      "reach": "godot --path .  (File, Open a file naming parts by numbers LDraw has moved, made aliases or has no file for, e.g. vendor/omr/files/4349-1_Dragon-Fly.mpd or 6056-1.mpd: moved and alias parts open with no list, only the strip over the model saying \"N parts have new numbers in the LDraw library\" with Update all (every sub-model, one undo, Edit, Undo puts the file back byte for byte and keeps earlier edits undoable), Review… (Missing and moved parts: each number, why, the part it points to and how many in which sub-models; Replace checked) and Keep as is; a part with no file opens the list by itself and offers Search; a sub-model or carried part named as a moved number keeps its name; shown after a person's own open only (File, Open, a file, Recent, the library), never a session's, Together's or an undo's; over MCP open_model names them and replace_moved=true replaces them in 1 call)  (tools/probe.sh movedparts_probe; tools/probe.sh movedparts_phone_probe; tools/probe.sh mvreview_probe)",
       "area": "model-io"
     },
     {
       "kind": "cli",
       "label": "movedparts probe",
       "entry": "src/dev/movedparts_probe.gd",
-      "reach": "tools/probe.sh movedparts_probe   (headless: 10 OMR files with moved or alias parts and 3 with parts with no file, each listed against the file read apart, all replaced, Save's file changed only in those names and a turned stub's numbers, every part where it was within 0.01 LDU, undo byte for byte and redo; an attack file of CRLF, tabs, upper case, a mirrored copy, a sub-model 3 times 2 deep, a turned stub, a chain, a print and an alias, saved and opened again the same; the list on a person's open, one unchecked, Keep as is, Search; open_model's answer and replace_moved=true; de, fr and es words; MOVEDPARTS_CASES=omr,attack,dialog,mcp,words for some, MOVEDPARTS_OUT=dir for each file before and after)",
+      "reach": "tools/probe.sh movedparts_probe   (headless: 10 OMR files with moved or alias parts and 3 with parts with no file, each listed against the file read apart, all replaced, Save's file changed only in those names and a turned stub's numbers, every part where it was within 0.01 LDU, undo byte for byte and redo; an attack file of CRLF, tabs, upper case, a mirrored copy, a sub-model 3 times 2 deep, a turned stub, a chain, a print, an alias, a colour stub and a sub-model and carried part named as moved numbers (left as they are), saved and opened again the same; the strip on a person's open, Review…'s list, one unchecked, Keep as is, Search on a missing part's list; a placed part then Update all, two undos and two redos; open_model's answer and replace_moved=true; de, fr and es words; MOVEDPARTS_CASES=omr,attack,dialog,edits,mcp,words for some, MOVEDPARTS_OUT=dir for each file before and after)",
       "area": "model-io"
     },
     {
@@ -5091,6 +5091,13 @@
       "label": "movedparts phone probe",
       "entry": "src/dev/movedparts_phone_probe.gd",
       "reach": "tools/probe.sh movedparts_phone_probe   (windowed, 390x844 by its header: the list laid out for a phone, wholly in the window, every check box and button 44 points or more; MOVEDPARTS_OUT=dir for its picture)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "mvreview probe",
+      "entry": "src/dev/mvreview_probe.gd",
+      "reach": "MVREVIEW_CASES=listing,omr2,editfirst,mcp2,xform tools/probe.sh mvreview_probe   (headless, the movedparts review's own cases: a file's own sub-model, embedded part and shortcut blocks named as moved numbers left alone; 396-1 and 364-1 listed and replaced alike; an edit, then the replace, then two undos; open_model's answer on 40 moved numbers under 4,000 characters; every turned stub placed within 0.00001 LDU)",
       "area": "model-io"
     },
     {

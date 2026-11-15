@@ -2762,16 +2762,14 @@ func _read_back_kept(plan: Plan, text: String, final: PackedStringArray,
 
 ## [param placement] as ModelStore's open makes it the part it puts down: a
 ## Studio number as LDraw's, a retired number the part it became, a part
-## of one colour as it is now. A mirrored copy's part is read as the open
+## of one colour as it is now, a stub's part in the stub's colour. A
+## mirrored copy's part is read as the open
 ## read it ([method _read_back_kept]).
 static func _as_opened(placement: LdrModel.Placement, library: PartLibrary) -> void:
 	if library == null:
 		return
 	placement.part_id = ModelStore.studio_part(placement.part_id, library)
-	var real: String = library.resolve(placement.part_id)
-	if real != placement.part_id:
-		placement.transform = placement.transform * library.moved_by(placement.part_id)
-		placement.part_id = real
+	ModelStore.as_moved(placement, library)
 	var colour: int = library.current_colour(placement.part_id)
 	if colour >= 0:
 		placement.part_id = library.current(placement.part_id)

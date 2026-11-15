@@ -86,8 +86,8 @@ signal library_wanted()
 signal saved_models_wanted()
 signal opened(bricks: int)
 ## A person's own open found parts its file names by a number LDraw has moved
-## or made an alias, or has no file for (ModelStore.moved): Shell lists them
-## (MovedPartsDialog).
+## or made an alias, or has no file for (ModelStore.moved): Shell offers them
+## (MovedOffer) and asks about a part with no file (MovedPartsDialog).
 signal moved_found()
 ## Whatever the bar says (say), for a phone's line over the model.
 signal said(text: String)
@@ -745,33 +745,25 @@ func open_with_progress(path: String) -> int:
 
 ## After a person's own open (File, Open; a file; Recent; the library): the
 ## parts its file names by a moved or alias number, or has no file for,
-## listed for them (moved_found), when it has any. Not a session's open,
+## offered to them (moved_found: Shell's bar over the model, and the list
+## for a part with no file), when it has any. Not a session's open,
 ## Together's or an undo's, which say it their own way or not at all.
 func offer_moved() -> void:
 	if store != null and store.not_opened.is_empty() and not store.moved.is_empty():
 		moved_found.emit()
 
 
-## Missing and moved parts' Replace checked, and open_model replace_moved:
-## [param numbers] written as the parts they point to in every sub-model and
-## the model laid again (ModelStore.replace_moved), the status bar saying so
-## first. The words said, or why not; "" when nothing was done.
+## Missing and moved parts' Update all and Replace checked, and open_model
+## replace_moved: [param numbers] written as the parts they point to in every
+## sub-model (ModelStore.replace_moved), one step to undo, and the status bar
+## saying so. The words said, or why not; "" when there is no model.
 func replace_moved(numbers: Array) -> String:
 	if store == null:
 		return ""
-	var generation: int = store.world.generation()
-	var job: Working.Job = Working.begin("Replacing moved parts in %s…" % model_name())
-	await job.shown()
-	# Another model came in while the bar said so: these numbers were not of it.
-	if store.world.generation() != generation:
-		job.end()
-		return ""
-	var done: Dictionary = await store.replace_moved(numbers, job)
-	job.end()
+	var done: Dictionary = store.replace_moved(numbers)
 	if not str(done["error"]).is_empty():
 		_say("could not replace them: %s" % done["error"])
 		return "Could not replace them: %s." % done["error"]
-	opened.emit(store.world.brick_count())
 	var said: String = Keymap.filled("%s — {undo|puts them back}") % done["words"]
 	_say(said)
 	return said

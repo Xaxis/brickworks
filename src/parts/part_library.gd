@@ -332,6 +332,10 @@ class PartInfo extends RefCounted:
 	## a shift for 68 of them (3139, a tyre, forwards to 3139b a quarter
 	## turn round), the identity for the rest.
 	var moved_by: Transform3D = Transform3D.IDENTITY
+	## And the colour the stub draws that part in, whatever it is placed in:
+	## 15 for 86037a and 86037b, 47 for s9 and s10, 0 for 889c01; -1 for the
+	## rest, which draw it in the colour they are placed in.
+	var moved_colour: int = -1
 
 	## The one colour LDraw draws it in whatever it is placed in, for one of
 	## its "physical colour" parts (303923, a slope brick in blue, kept for
@@ -1056,6 +1060,7 @@ func _read_part(entry: Dictionary) -> PartInfo:
 	var moved_by: Variant = entry.get("moved_by", [])
 	if moved_by is Array and (moved_by as Array).size() == 12:
 		info.moved_by = LdrModel.to_transform(PackedFloat64Array(moved_by))
+	info.moved_colour = int(entry.get("moved_colour", -1))
 	info.unofficial = bool(entry.get("unofficial", false))
 	info.custom = bool(entry.get("custom", false))
 	info.ldraw_category = str(entry.get("ldraw_category", ""))
@@ -2782,6 +2787,23 @@ func moved_by(part_id: String) -> Transform3D:
 		by = by * info.moved_by
 		at = info.moved_to
 	return by
+
+
+## The colour [method resolve]'s part is drawn in for one placed by
+## [param part_id]: the colour a stub on the way draws it in, the last that
+## gives one (86037a draws 4548064a white, 15); -1 where none does and the
+## part is drawn in the colour it is placed in.
+func moved_colour(part_id: String) -> int:
+	var at: String = part_id
+	var colour: int = -1
+	for _hop: int in 8:
+		var info: PartInfo = parts.get(at)
+		if info == null or not info.is_redirect() or not parts.has(info.moved_to):
+			return colour
+		if info.moved_colour >= 0:
+			colour = info.moved_colour
+		at = info.moved_to
+	return colour
 
 
 ## The part a design places for [param part_id]: [method resolve]'s, and for

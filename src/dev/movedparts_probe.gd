@@ -13,20 +13,27 @@
 ##   number's last move, an alias's part of the same geometry) and how many
 ##   it places, as the file read here independently says. Then all of them
 ##   replaced: the file Save writes changes in only those lines, each only
-##   in its name (and a turned stub's numbers), every one of them changed;
-##   each part drawn where it was, within 0.01 LDU; one undo puts back the
-##   file Save wrote before, byte for byte, and redo the replaced one.
+##   in its name (and a turned stub's numbers, a colour stub's colour),
+##   every one of them changed; each part drawn where it was, within 0.01
+##   LDU; one Undo puts back the file Save wrote before, byte for byte, and
+##   Redo the replaced one.
 ## - attack: one file of its own, CRLF and tabs, holding a moved part in a
 ##   mirrored copy, a sub-model placed 3 times 2 deep, a stub that turns and
 ##   shifts its part (30028), a chain of two moves (179, 4073, 6141), a
-##   printed part (11202p01c01), upper and lower case names and an alias
-##   (4723): the same, and the file saved, opened again and saved again the
-##   same (the save a later build reads).
-## - dialog: a person's open shows the list (MovedPartsDialog): moved and
-##   alias rows checked, a missing one with Search; one row unchecked and
-##   Replace checked replaces the others only; Keep as is changes nothing;
-##   Search puts the number in the parts bin's search.
-## - together: in a Build together session, Replace checked and
+##   printed part (11202p01c01), upper and lower case names, an alias
+##   (4723), a stub that draws its part white (86037a, placed red) and a
+##   sub-model and a carried part named as moved numbers (3070.ldr,
+##   3069.dat): the same, those two left as they are, and the file saved,
+##   opened again and saved again the same (the save a later build reads).
+## - dialog: a person's open of only moved parts shows no list, only the bar
+##   over the model (MovedOffer) saying how many; Review… opens the list
+##   (MovedPartsDialog): moved and alias rows checked; one row unchecked and
+##   Replace checked replaces the others only; Keep as is on the bar changes
+##   nothing; an open with a part that has no file asks in the list, its
+##   Search putting the number in the parts bin's search.
+## - edits: a part put down, then Update all, then Undo twice: the replace
+##   taken off, then the part (mvreview F3).
+## - together: in a Build together session, Update all and
 ##   replace_moved=true each refused, saying why, the file as it was.
 ## - mcp: open_model names each with its target and count, and
 ##   replace_moved=true gives the same file as the dialog's in 1 call.
@@ -34,7 +41,7 @@
 ##   German, French and Spanish, nothing left in English but names,
 ##   numbers and keys.
 ## - phone (movedparts_phone_probe): the list wholly in a phone's window,
-##   every check box and button 44 points or more each way.
+##   every check box and button of it and of the bar 44 points or more.
 ##
 ##   MOVEDPARTS_CASES=omr,attack   those cases
 ##   MOVEDPARTS_OUT=/abs/dir       each file before and after kept there
@@ -47,7 +54,7 @@ const OMR := "res://vendor/omr/files/"
 const FILES: Array[String] = ["4096-1_QB-Truck.mpd", "6965-1.mpd", "4096-1_Cement-Mixer.mpd",
 	"4347-1_Robo.mpd", "4349-1_Dragon-Fly.mpd", "30055-1.mpd", "6522-1.mpd", "7210-1.mpd",
 	"30034-1.mpd", "7808-1.mpd", "6056-1.mpd", "8198-1.mpd", "6990-1.mpd"]
-const CASES: Array = ["omr", "attack", "dialog", "together", "mcp", "words"]
+const CASES: Array = ["omr", "attack", "dialog", "edits", "together", "mcp", "words"]
 const WATCHDOG := 1500.0
 const NEAR := 0.01
 
@@ -64,6 +71,9 @@ const ATTACK := """0 FILE attack.ldr
 1 15 100 0 0 1 0 0 0 1 0 0 0 1 4073.dat
 1 4 120 -24 0 1 0 0 0 1 0 0 0 1 11202P01C01.DAT
 1 2 0 0 -100 1 0 0 0 1 0 0 0 1 4723.dat
+1 4 160 -24 0 1 0 0 0 1 0 0 0 1 86037a.dat
+1 16 0 -300 0 1 0 0 0 1 0 0 0 1 3070.ldr
+1 4 40 -300 0 1 0 0 0 1 0 0 0 1 3069.dat
 0 STEP
 1 16 200 0 0 1 0 0 0 1 0 0 0 1 wing.ldr
 1 16 -200 0 0 -1 0 0 0 1 0 0 0 1 wing.ldr
@@ -91,6 +101,21 @@ const ATTACK := """0 FILE attack.ldr
 0 Author: Someone Else
 1 1 0 0 0 1 0 0 0 1 0 0 0 1 3023.dat
 1 1 0 0 20 0 0 1 0 1 0 -1 0 0 3139.dat
+0 NOFILE
+0 FILE 3070.ldr
+0 A sub-model called 3070
+0 Name: 3070.ldr
+0 Author: Someone Else
+1 1 0 0 0 1 0 0 0 1 0 0 0 1 3001.dat
+0 NOFILE
+0 FILE 3069.dat
+0 My own tile
+0 Name: 3069.dat
+0 Author: Someone Else
+0 !LDRAW_ORG Unofficial_Part
+0 BFC CERTIFY CCW
+4 16 -20 0 -10 20 0 -10 20 0 10 -20 0 10
+4 16 -20 -8 10 20 -8 10 20 -8 -10 -20 -8 -10
 0 NOFILE
 """
 
@@ -172,6 +197,7 @@ func _run() -> void:
 			"omr": await _case_omr()
 			"attack": await _case_attack()
 			"dialog": await _case_dialog()
+			"edits": await _case_edits()
 			"together": await _case_together()
 			"mcp": await _case_mcp()
 			"words": await _case_words()
@@ -221,6 +247,18 @@ func _case_attack() -> void:
 		not _line_naming(replaced, "11403P01.DAT").is_empty())
 	_check("...the alias as its part: %s" % _line_naming(replaced, "3046.dat").strip_edges(),
 		not _line_naming(replaced, "3046.dat").is_empty())
+	# The colour is the catalogue's (moved_colour, from the stub's own line):
+	# one made before mvfix has none, and is said so.
+	var stub: int = _store.library.moved_colour("86037a")
+	_check("...the catalogue gives 86037a its stub's colour, 15%s" % ("" if stub == 15
+		else ": it gives %d, a catalogue from before moved_colour (tools/refresh_catalogue.py)" % stub),
+		stub == 15)
+	var white: String = _line_naming(replaced, "4548064a.dat")
+	_check("...the colour stub's part in its colour, white: %s" % white.strip_edges(),
+		white.begins_with("1 15 ") and _line_naming(replaced, "86037a.dat").is_empty())
+	_check("...the sub-model 3070.ldr and the carried 3069.dat named as they were",
+		not _line_naming(replaced, "3070.ldr").is_empty()
+		and not _line_naming(replaced, "3069.dat").is_empty())
 	# Saved, opened again and saved again: the same file, and nothing listed.
 	var round_trip: Dictionary = await _store.open_text_fetched(replaced, "attack_again")
 	await _settled()
@@ -233,25 +271,40 @@ func _case_attack() -> void:
 		_first_unlike(replaced, again), renumbered], again == replaced and renumbered == 0)
 
 
-## The dialog, as a person meets it.
+## The bar and the list, as a person meets them.
 func _case_dialog() -> void:
-	var text: String = _text_kept(OMR + "4349-1_Dragon-Fly.mpd") if true else ""
+	var text: String = _text_kept(OMR + "4349-1_Dragon-Fly.mpd")
 	await _open_as_person("dragonfly", text)
 	var dialog: Window = _shell.get("_moved")
-	if not _check("a person's open shows Missing and moved parts", dialog != null and dialog.visible):
+	var offer: MovedOffer = _shell.get("moved_offer")
+	var listed: Dictionary = _store.moved
+	var missing: int = 0
+	for row: Dictionary in listed.values():
+		missing += 1 if str(row["kind"]) == MovedParts.MISSING else 0
+	var count: int = MovedParts.renumbered_count(listed)
+	print("  bar: %s" % offer.words_now())
+	_check("a person's open of only moved parts (%d, none missing): no list over the model, the bar says %d"
+		% [listed.size(), count], missing == 0 and (dialog == null or not dialog.visible)
+		and offer.visible and offer.words_now() == MovedOffer.words(count) and count > 0)
+	var bar_controls: Dictionary = _shell.controls_by_name()
+	_check("...Update all, Review… and Keep as is named for a browser check",
+		bar_controls.has("moved_update") and bar_controls.has("moved_review")
+		and bar_controls.has("moved_dismiss"))
+	(bar_controls["moved_review"] as Button).pressed.emit()
+	await _frames(4)
+	dialog = _shell.get("_moved")
+	if not _check("...Review… opens the list", dialog != null and dialog.visible and not offer.visible):
 		return
 	var state: Dictionary = dialog.call("page_state")
 	var rows: Dictionary = state["rows"]
 	print("  note: %s" % str(state["note"]).left(160))
-	var listed: Dictionary = _store.moved
 	var all_checked: bool = true
 	for number: String in listed:
 		var row: Dictionary = rows.get(number, {})
-		var missing: bool = str(listed[number]["kind"]) == MovedParts.MISSING
-		all_checked = all_checked and not row.is_empty() and bool(row["checked"]) != missing
+		all_checked = all_checked and not row.is_empty() and bool(row["checked"])
 		print("  row %s: %s%s" % [number, "[x] " if bool(row.get("checked", false)) else "",
 			str(row.get("words", "(none)")).left(110)])
-	_check("...a row for each of the %d numbers listed, moved and alias checked" % listed.size(),
+	_check("...a row for each of the %d numbers listed, each checked" % listed.size(),
 		rows.size() == listed.size() and all_checked)
 	var controls: Dictionary = dialog.call("controls_by_name")
 	_check("...Replace checked and Keep as is named for a browser check",
@@ -260,39 +313,29 @@ func _case_dialog() -> void:
 	var kept: String = "3023"
 	(controls["moved_check_" + kept] as CheckBox).button_pressed = false
 	var was: String = _store.saved_text()
-	# The replace begins once the bar has said so, a few frames on, and
-	# ends with the bar's opened.
-	var ended: Array = [false]
-	var on_opened: Callable = func(_count: int) -> void: ended[0] = true
-	_bar.opened.connect(on_opened)
 	dialog.emit_signal("confirmed")
-	for _n: int in 1800:
-		if ended[0]:
-			break
-		await process_frame
-	_bar.opened.disconnect(on_opened)
 	await _settled()
 	var now: String = _store.saved_text()
 	var left: Dictionary = _store.moved
 	_check("...Replace checked with %s unchecked: it kept, %d others replaced" % [kept,
 		listed.size() - 1], left.has(kept) and left.size() == 1 and now != was
 		and _line_naming(now, "3023.dat") != "")
-	var bar_undo: bool = await _bar.reopen()
-	await _settled()
-	_check("...one undo: the file as it was, byte for byte%s" % _first_unlike(was,
+	var bar_undo: bool = await _undo()
+	_check("...one Undo: the file as it was, byte for byte%s" % _first_unlike(was,
 		_store.saved_text()), bar_undo and _store.saved_text() == was)
-	# Keep as is: nothing changed.
+	# Keep as is, on the bar: nothing changed.
 	await _open_as_person("dragonfly_keep", text)
-	dialog = _shell.get("_moved")
+	offer = _shell.get("moved_offer")
 	var before: String = _store.saved_text()
-	var keep: Button = (dialog.call("controls_by_name") as Dictionary).get("moved_keep")
+	var keep: Button = (_shell.controls_by_name() as Dictionary).get("moved_dismiss")
 	if keep != null:
 		keep.pressed.emit()
 	await _settled()
-	_check("...Keep as is: closed, the file as it opened%s" % _first_unlike(before,
-		_store.saved_text()), not dialog.visible and _store.saved_text() == before
+	_check("...Keep as is on the bar: gone, the file as it opened%s" % _first_unlike(before,
+		_store.saved_text()), keep != null and not offer.visible and _store.saved_text() == before
 		and before == text)
-	# A part with no file: Search looks for it among the parts.
+	# A part with no file: asked about in the list as it opens, as before,
+	# and Search looks for it among the parts.
 	await _open_as_person("lion", _text_kept(OMR + "6056-1.mpd"))
 	dialog = _shell.get("_moved")
 	var search: Button = null
@@ -301,7 +344,9 @@ func _case_dialog() -> void:
 		if name.begins_with("moved_search_"):
 			search = (dialog.call("controls_by_name") as Dictionary)[name]
 			number = name.trim_prefix("moved_search_")
-	if _check("...a part with no file offers Search (%s)" % number, search != null):
+	_check("...an open with a part that has no file asks, in the list (%s)" % number,
+		dialog.visible and search != null)
+	if search != null:
 		search.pressed.emit()
 		await _frames(10)
 		var bin: PartsBin = _main.get("_bin")
@@ -312,7 +357,42 @@ func _case_dialog() -> void:
 	_put("quiet", text)
 	await _say("open_model", {"name": "quiet", "discard_changes": true})
 	await _settled()
-	_check("...a session's open shows no dialog", not (_shell.get("_moved") as Window).visible)
+	_check("...a session's open shows no list and no bar", not (_shell.get("_moved") as Window).visible
+		and not (_shell.get("moved_offer") as MovedOffer).visible)
+
+
+## mvreview F3: a part put down while the bar is up, then Update all, then
+## Undo twice: the replace taken off, then the part, each byte for byte.
+func _case_edits() -> void:
+	await _open_as_person("edits", ATTACK)
+	var opened: String = _store.saved_text()
+	var builder: Builder = _main.get("_builder")
+	builder.held_part = "3001"
+	builder.held_color = 14
+	builder.update_preview(Vector3(40.0, 400.0, 40.0), Vector3.DOWN)
+	var put: int = builder.place()
+	_main.call("_on_model_edited")
+	await _frames(4)
+	var edited: String = _store.saved_text()
+	var update: Button = (_shell.controls_by_name() as Dictionary).get("moved_update")
+	if not _check("a part put down (%d) with the bar up" % put, put != 0 and edited != opened
+			and update != null):
+		return
+	update.pressed.emit()
+	await _settled()
+	var replaced: String = _store.saved_text()
+	_check("...Update all replaced them, the part kept", replaced != edited
+		and _line_naming(replaced, "3023.dat").is_empty() and replaced.contains(" 14 "))
+	var first: bool = await _undo()
+	_check("...Undo 1: the replace taken off, the part still on%s" % _first_unlike(edited,
+		_store.saved_text()), first and _store.saved_text() == edited)
+	var second: bool = await _undo()
+	_check("...Undo 2: the part taken off, the file as opened%s" % _first_unlike(opened,
+		_store.saved_text()), second and _store.saved_text() == opened)
+	var again: bool = await _undo(true)
+	var twice: bool = await _undo(true)
+	_check("...Redo twice: the part, then the replace%s" % _first_unlike(replaced,
+		_store.saved_text()), again and twice and _store.saved_text() == replaced)
 
 
 ## In German, French and Spanish: the list's title, buttons, note and rows,
@@ -324,12 +404,15 @@ func _case_words() -> void:
 		"1 4 0 -200 0 1 0 0 0 1 0 0 0 1 71303p01.dat\n0 STEP\n0 NOFILE\n0 FILE wing.ldr")
 	await _open_as_person("words", text)
 	var dialog: Window = _shell.get("_moved")
-	if not _check("the list shows", dialog != null and dialog.visible):
+	var offer: MovedOffer = _shell.get("moved_offer")
+	if not _check("the list shows, a part having no file, and the bar", dialog != null
+			and dialog.visible and offer.visible):
 		return
 	var state: Dictionary = dialog.call("page_state")
 	var texts := PackedStringArray([dialog.title, (dialog as ConfirmationDialog).ok_button_text,
 		(dialog as ConfirmationDialog).cancel_button_text, "Search",
-		"Look for %s among the parts" % "71303p01"])
+		"Look for %s among the parts" % "71303p01", offer.words_now(), MovedOffer.words(1),
+		"Update all", "Review…", "Keep as is"])
 	texts.append_array(str(state["note"]).split("\n"))
 	for number: String in state["rows"]:
 		texts.append(str(state["rows"][number]["words"]))
@@ -338,14 +421,13 @@ func _case_words() -> void:
 	texts.append_array([Keymap.filled("%s — {undo|puts them back}") % replaced,
 		"undid: %s" % replaced, "redid: %s" % replaced,
 		ModelStore.replaced_words({"3023": 1}, rows),
-		"Replacing moved parts in %s…" % "words",
 		"could not replace them: %s" % "the model is still being laid",
 		"could not replace them: %s" % "this model is only looked at",
 		"could not replace them: %s" % "none of those is a moved or alias part of this model",
 		"could not replace them: %s" % "none of their lines is in the file now",
-		"Leave Build together first: replacing them lays the model again"])
+		"Leave Build together first to update their numbers"])
 	var english: RegEx = RegEx.create_from_string(
-		"(?i)\\b(moved|alias|used|model|file|library|replaced?|numbers?|keep|search|look|together|laid|undid|redid|puts)\\b")
+		"(?i)\\b(moved|alias|used|model|file|library|replaced?|numbers?|keep|search|look|together|laid|undid|redid|puts|update|review)\\b")
 	(dialog.call("controls_by_name")["moved_keep"] as Button).pressed.emit()
 	for code: String in ["de", "fr", "es"]:
 		Language.apply(code)
@@ -372,25 +454,25 @@ class FakeRoom extends Node:
 		return null
 
 
-## In a Build together session a replace, which lays the model again and
-## would end it, is refused by the list and over MCP, the file as it was.
+## In a Build together session a replace, whose others' copies would keep
+## the old numbers, is refused by the bar and over MCP, the file as it was.
 func _case_together() -> void:
 	var text: String = _text_kept(OMR + "4349-1_Dragon-Fly.mpd")
 	await _open_as_person("together", text)
-	var dialog: Window = _shell.get("_moved")
-	if not _check("the list shows", dialog != null and dialog.visible):
+	var update: Button = (_shell.controls_by_name() as Dictionary).get("moved_update")
+	if not _check("the bar shows", update != null):
 		return
 	var room := FakeRoom.new()
 	_main.set("_together_made", room)
 	var was: String = _store.saved_text()
 	var generation: int = _world.generation()
-	dialog.emit_signal("confirmed")
+	var depth: int = (_main.get("_builder") as Builder).history_depth()
+	update.pressed.emit()
 	await _frames(30)
 	await _settled()
-	var said: String = str((_main.get("_status") as Label).text) if _main.get("_status") is Label else ""
-	_check("...Replace checked in a session: nothing replaced, the model not laid again%s" % (
-		"" if said.is_empty() else " (\"%s\")" % said.left(90)),
-		_store.saved_text() == was and _world.generation() == generation)
+	_check("...Update all in a session: nothing replaced, nothing to undo",
+		_store.saved_text() == was and _world.generation() == generation
+		and (_main.get("_builder") as Builder).history_depth() == depth)
 	var answer: String = await _say("open_model", {"replace_moved": true})
 	await _settled()
 	print("  open_model replace_moved=true: %s" % answer.left(200))
@@ -459,6 +541,9 @@ func _case_phone() -> void:
 	var least: float = INF
 	var small := PackedStringArray()
 	var controls: Dictionary = dialog.call("controls_by_name")
+	var offer: MovedOffer = _shell.get("moved_offer")
+	_check("...and the bar over the model", offer.visible)
+	controls.merge(offer.controls_by_name())
 	for name: String in controls:
 		var control: Control = controls[name]
 		var size: Vector2 = control.size / Phone.per_point(root)
@@ -547,15 +632,13 @@ func _round(name: String, text: String, attack: bool) -> String:
 		before.size(), float(placed["worst"]), str(placed["first"])],
 		int(placed["matched"]) == before.size() and float(placed["worst"]) <= NEAR)
 	_replaced[name] = now
-	var undone: bool = await _bar.reopen()
-	await _settled()
+	var undone: bool = await _undo()
 	var back: String = _store.saved_text()
 	_check("...one undo puts back Save's file byte for byte%s" % _first_unlike(was, back),
 		undone and back == was)
 	_check("...and the model as it was: %d parts in their places" % _bricks().size(),
 		int(_same_places(before, _bricks())["matched"]) == before.size())
-	var redone: bool = await _bar.reopen(true)
-	await _settled()
+	var redone: bool = await _undo(true)
 	_check("...redo: the replaced file again, byte for byte%s" % _first_unlike(now,
 		_store.saved_text()), redone and _store.saved_text() == now)
 	if attack:
@@ -568,12 +651,17 @@ func _round(name: String, text: String, attack: bool) -> String:
 
 ## What the file says, read here: each number its models and sub-models
 ## place that the library has as a moved stub, an alias or nothing, with its
-## kind, the part it points to and how many parts it places.
+## kind, the part it points to and how many parts it places. Not a line
+## naming one of the file's own blocks (a sub-model, a part it carries), nor
+## a moved number whose last move is to one the library has not.
 func _expected(text: String) -> Dictionary:
 	var library: PartLibrary = _store.library
 	var model: LdrModel = LdrModel.parse(text.trim_prefix(LdrModel.bom()), "expected")
+	var lines: PackedStringArray = text.trim_prefix(LdrModel.bom()).split("\n")
 	var out: Dictionary = {}
 	for placement: LdrModel.Placement in model.flatten(library.parts):
+		if _own_block(model, lines, placement.line):
+			continue
 		var number: String = placement.part_id
 		var kind: String = ""
 		var to: String = ""
@@ -588,6 +676,8 @@ func _expected(text: String) -> Dictionary:
 				if at == null or not at.is_redirect() or not library.parts.has(at.moved_to):
 					break
 				to = at.moved_to
+			if to == info.id or (library.parts[to] as PartLibrary.PartInfo).is_redirect():
+				continue
 		elif info.kind.contains("Alias"):
 			kind = MovedParts.ALIAS
 		if kind.is_empty():
@@ -601,6 +691,21 @@ func _expected(text: String) -> Dictionary:
 			if str(out[number]["kind"]) == MovedParts.MOVED:
 				out.erase(number)
 	return out
+
+
+## Whether line [param at] of [param lines] names a block of [param model]'s
+## own: a sub-model or a file it carries, by the name it gives or its bare
+## file name.
+static func _own_block(model: LdrModel, lines: PackedStringArray, at: int) -> bool:
+	if at < 0 or at >= lines.size():
+		return false
+	var named: String = LdrModel.reference_of(lines[at]).strip_edges().replace("\\", "/").to_lower()
+	var bare: String = named.get_file()
+	for table: Dictionary in [model.submodels, model.embedded_parts, model.embedded_sources]:
+		for key: String in table:
+			if key == named or key == bare or key == named + ".dat":
+				return true
+	return false
 
 
 func _same_geometry(alias: String, to: String) -> bool:
@@ -624,15 +729,16 @@ func _only_numbers(was: String, now: String, rows: Dictionary) -> Dictionary:
 	var b: PackedStringArray = now.split("\n")
 	var out: Dictionary = {"changed": 0, "placing": 0, "wrong": ""}
 	var model: LdrModel = LdrModel.parse(was.trim_prefix(LdrModel.bom()), "was")
-	for sub: LdrModel.SubModel in model.submodels.values():
-		if sub.library_file:
-			continue
-		var seen: Dictionary = {}
-		for placement: LdrModel.Placement in sub.placements:
-			var row: Dictionary = rows.get(placement.part_id, {})
-			if not row.is_empty() and str(row["kind"]) != MovedParts.MISSING and not seen.has(placement.line):
-				seen[placement.line] = true
-				out["placing"] = int(out["placing"]) + 1
+	var lines: PackedStringArray = was.trim_prefix(LdrModel.bom()).split("\n")
+	# The lines drawn, as an open draws them: a shortcut block the library
+	# has no number of is a sub-model, its lines the model's (mvreview F2).
+	var seen: Dictionary = {}
+	for placement: LdrModel.Placement in model.flatten(_store.library.parts):
+		var row: Dictionary = rows.get(placement.part_id, {})
+		if not row.is_empty() and str(row["kind"]) != MovedParts.MISSING \
+				and not seen.has(placement.line) and not _own_block(model, lines, placement.line):
+			seen[placement.line] = true
+			out["placing"] = int(out["placing"]) + 1
 	if a.size() != b.size():
 		out["wrong"] = "%d lines, then %d" % [a.size(), b.size()]
 		return out
@@ -651,7 +757,7 @@ func _only_numbers(was: String, now: String, rows: Dictionary) -> Dictionary:
 			why = "%s is not listed to replace" % number
 		elif LdrModel.stem(LdrModel.reference_of(b[n])) != str(row["to"]):
 			why = "names %s, not %s" % [LdrModel.reference_of(b[n]), row["to"]]
-		elif wa[1] != wb[1]:
+		elif wa[1] != wb[1] and wb[1] != str(int(row.get("colour", -1))):
 			why = "its colour changed"
 		elif _gaps(a[n]) != _gaps(b[n]):
 			why = "its gaps changed"
@@ -741,6 +847,17 @@ func _open_as_person(name: String, text: String) -> void:
 
 static func _text_kept(path: String) -> String:
 	return LdrModel.text_of(FileAccess.get_file_as_bytes(path))
+
+
+## The app's own Undo, or with [param again] its Redo, as its key presses it
+## (EditVerbs.press): whether it changed anything.
+func _undo(again: bool = false) -> bool:
+	var verbs: EditVerbs = _main.get("_verbs")
+	var builder: Builder = _main.get("_builder")
+	var was: Array = [builder.history_depth(), builder._redo.size(), _world.generation()]
+	await verbs.press("redo" if again else "undo")
+	await _settled()
+	return was != [builder.history_depth(), builder._redo.size(), _world.generation()]
 
 
 func _put(name: String, text: String) -> void:

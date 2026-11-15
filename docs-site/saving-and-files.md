@@ -60,11 +60,13 @@ ui:open over unsaved work
 
 ## Missing and moved parts {#moved}
 
-Over the years LDraw has given some parts new numbers (3023 is now 3023b), kept others only as another part's alias, and some files name parts it has no file for at all. When you open such a file, **Missing and moved parts** lists each of those numbers: what it moved to or is an alias of, or that the library has no file for it, and how many the model places in which sub-model. Moved and alias parts are drawn as the part they point to already.
+Over the years LDraw has given some parts new numbers (3023 is now 3023b), kept others only as another part's alias, and some files name parts it has no file for at all. Moved and alias parts are drawn as the part they point to already, so such a file opens as it always did, and a bar over the model says how many: **12 parts have new numbers in the LDraw library**.
 
-**Replace checked** writes the new numbers into the file, in the model and in every sub-model at once, as one change: **Edit › Undo** puts the file back just as it was. A part whose new number sits it differently keeps its place, its line's position and turn worked out for it. Uncheck any you want to keep as they are. **Keep as is** leaves the file alone. A part with no file stays in the file and is not shown; **Search** looks for its number among the parts.
+**Update all** writes the new numbers into the file, in the model and in every sub-model at once, as one change: **Edit › Undo** puts the file back just as it was, and what you did before it stays undoable below it. A part whose new number sits it differently keeps its place, its line's position and turn worked out for it, and one the library now gives a fixed colour is written in that colour. A sub-model or a part the file carries itself keeps its name, even when it has a moved part's number. **Keep as is** closes the bar and leaves the file alone.
 
-The list shows when you open a model yourself. Your Claude hears the same when it opens one with `open_model`, and can replace them with `replace_moved=true`.
+**Review…** opens **Missing and moved parts**, the list of each number: what it moved to or is an alias of, and how many the model places in which sub-models. Uncheck any you want to keep as they are, then **Replace checked**. When a file names a part the library has no file for, this list opens by itself: such a part stays in the file and is not shown, and **Search** looks for its number among the parts.
+
+Your Claude hears the same when it opens a model with `open_model`, and can replace them with `replace_moved=true`, as **Update all** does.
 
 <!-- covers
 ui:missing and moved parts on open

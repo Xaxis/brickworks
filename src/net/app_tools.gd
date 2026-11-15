@@ -893,11 +893,11 @@ func definitions() -> Array:
 				+ "The answer names each part the file gives by a number LDraw has moved or "
 				+ "keeps as an alias, with the part it points to, and each it has no file for, "
 				+ "with counts; replace_moved=true writes the moved and alias ones as those "
-				+ "parts in every sub-model, in one undo, as the person's Missing and moved parts "
-				+ "list does: with name=, link= or library= as it opens, alone in the model open now."),
+				+ "parts in every sub-model, as one step to undo, as the person's Update all "
+				+ "does: with name=, link= or library= as it opens, alone in the model open now."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"name": {"type": "string", "description": "a model's name from the list"},
-				"replace_moved": {"type": "boolean", "description": "write each part the file names by a moved or alias number as the part it points to, in every sub-model, in one undo; with name=, link= or library= as it opens, alone in the model open now"},
+				"replace_moved": {"type": "boolean", "description": "write each part the file names by a moved or alias number as the part it points to, in every sub-model, as one step to undo; with name=, link= or library= as it opens, alone in the model open now"},
 				"link": {"type": "string", "description": "a gallery model's link id, or its /m/ address"},
 				"library": {"type": "string", "description": "a library id from gallery library=true, like omr-10179-1, or a set's number or name"},
 				"versions": {"type": "boolean", "description": "list name='s saves kept as versions"},
@@ -3460,10 +3460,12 @@ func _open(input: Dictionary) -> String:
 
 ## open_model's word on the parts the model open now names by a number LDraw
 ## has moved or keeps as an alias, or has no file for (ModelStore.moved), as
-## Missing and moved parts lists them as a person's open shows it; with
-## [param replace] (replace_moved=true), the moved and alias ones written as
-## the parts they point to in every sub-model, in one undo, as its Replace
-## checked does (ModelBar.replace_moved).
+## the person's bar over the model and its list offer them; with [param
+## replace] (replace_moved=true), the moved and alias ones written as the
+## parts they point to in every sub-model, one step to undo, as its Update
+## all does (ModelBar.replace_moved). Each number in a few words, at most
+## MovedParts.SAID_ROWS of them and how many more: 10179-1's every sub-model
+## named was 5,000 characters (mvreview F5).
 func _moved_said(store: ModelStore, replace: bool) -> String:
 	var renumbered := PackedStringArray()
 	var absent := PackedStringArray()
@@ -3476,19 +3478,19 @@ func _moved_said(store: ModelStore, replace: bool) -> String:
 		else:
 			renumbered.append("%s %s (%s)" % [number, MovedParts.why_words(row), MovedParts.used_words(row)])
 	var said: String = ""
-	# A replace lays the model again, which would end the person's Build
-	# together session: refused there, as the person's own list refuses it.
+	# Not in a Build together session: the others' copies are not changed
+	# with it, as the person's own bar refuses it there.
 	var together: Node = app.get("_together_made")
 	if replace and not renumbered.is_empty() and together != null and bool(together.get("live")):
-		return (" Not replaced: the person is in a Build together session, and replacing them "
-			+ "lays the model again; they leave it first (File › Build together…). Its moved and "
-			+ "alias parts: %s.") % "; ".join(renumbered)
+		return (" Not replaced: the person is in a Build together session, whose others' copies "
+			+ "would keep the old numbers; replace them once they leave it (File › Build "
+			+ "together…). Its moved and alias parts: %s.") % _some(renumbered)
 	if replace and not renumbered.is_empty():
 		var bar: ModelBar = app.get("_bar")
-		var done: String = await bar.replace_moved(store.moved.keys())
+		var done: String = bar.replace_moved(store.moved.keys())
 		if done.begins_with("Could not"):
 			return " " + done
-		said = (" Replaced, in every sub-model and in one undo (undo puts back the file as it was): "
+		said = (" Replaced, in every sub-model, as one step (undo puts back the file as it was): "
 			+ "%s.") % done.get_slice(" — ", 0)
 		absent.clear()
 		for number: String in store.moved:
@@ -3500,12 +3502,20 @@ func _moved_said(store: ModelStore, replace: bool) -> String:
 	elif not renumbered.is_empty():
 		said = (" Its file names parts by %d numbers LDraw has moved or keeps as aliases; each is "
 			+ "drawn as the part it points to, and the file keeps the old number: %s. "
-			+ "open_model replace_moved=true writes them as those parts in every sub-model, in one "
-			+ "undo, as the person's Replace checked does.") % [renumbered.size(), "; ".join(renumbered)]
+			+ "open_model replace_moved=true writes them as those parts in every sub-model, as one "
+			+ "step, as the person's Update all does.") % [renumbered.size(), _some(renumbered)]
 	if not absent.is_empty():
 		said += (" No file in the library, kept in the file and not shown: %s; search_parts finds "
-			+ "one like it.") % "; ".join(absent)
+			+ "one like it.") % _some(absent)
 	return said
+
+
+## At most MovedParts.SAID_ROWS of [param rows], and how many more.
+static func _some(rows: PackedStringArray) -> String:
+	if rows.size() <= MovedParts.SAID_ROWS:
+		return "; ".join(rows)
+	return "%s; and %d more" % ["; ".join(rows.slice(0, MovedParts.SAID_ROWS)),
+		rows.size() - MovedParts.SAID_ROWS]
 
 
 func _open_now(input: Dictionary) -> String:

@@ -335,10 +335,7 @@ static func parts_of_text(text: String, library: PartLibrary, inside: String = "
 		placement.part_id = ModelStore.studio_part(placement.part_id, library)
 		if placement.mirrored:
 			Assemblies.unmirror(placement, library)
-		var real: String = library.resolve(placement.part_id)
-		if real != placement.part_id:
-			placement.transform = placement.transform * library.moved_by(placement.part_id)
-			placement.part_id = real
+		ModelStore.as_moved(placement, library)
 		var colour: int = library.current_colour(placement.part_id)
 		if colour >= 0:
 			placement.part_id = library.current(placement.part_id)

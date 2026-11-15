@@ -606,6 +606,15 @@ func _apply(step: Dictionary) -> Dictionary:
 			placement.transform = (pair as Array)[1]
 		return {"undo": "heldmoved", "moves": back}
 
+	# What another part of the app keeps of the model beside its parts, put
+	# as the step left it: its "put" given what the step kept, and handing
+	# back how it was, its own reverse (ModelStore.replace_moved: the lines
+	# of the file it was opened from).
+	if step.get("undo", "") == "put":
+		var put: Callable = step["put"]
+		return {"undo": "put", "put": put,
+			"kept": put.call(step["kept"]) if put.is_valid() else step["kept"]}
+
 	# The picture to build over, as it was: its own reverse.
 	if step.get("undo", "") == "reference":
 		return {"undo": "reference", "reference": reference_hook.call(step["reference"])
