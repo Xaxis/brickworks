@@ -1889,7 +1889,20 @@ plan with Claude as the client.
   `button[data-follow]` shown once `?op=follows` answers (Follow, Following,
   hidden on your own; signed out it opens the sign-in dialog; a refusal is
   said beside it), and `a[data-account]` in the header: Sign in until you
-  are, then hidden for your avatar (below), which carries the count.
+  are, then hidden for your avatar (below), which carries the count. One
+  click on it (bar or phone Menu) opens the sign-in dialog over the page
+  where the person is (signinux, 2026-11-14; its `/profile` href is for a
+  new tab or a page whose scripts did not run): Not now leaves the page as
+  it was; signed in, the page stays, the header becomes the avatar with no
+  reload, and `brickworks:signed-in-done` has each page draw what a
+  signed-in person sees there (follow buttons, the model page's comments
+  and photos, Saved and lists buttons (`web/keep.js`), /lists, /challenge,
+  the gallery's Following, /notifications, /settings, /profile). A
+  signed-out `/profile` opens the dialog by itself (`?then=` still goes
+  back to the app). Flow: `tools/web/signin_flow.mjs` (local stand-ins;
+  `--url=` a deployment, `--web=` an older web/ to see it fail): one click
+  at 1280, 430 and 390 (phone Menu), Not now, signed in on the same URL
+  with no reload, the code boxes, and orangecheck's window's states.
 - `the account menu` (`web/follow.js` `showFeedCount`, 2026-10-22,
   docs/SOCIAL.md U7, D10): signed in, `details.more-menu.end.account-menu`
   after the hidden `a[data-account]`, the last thing in `.nav`, after Open
