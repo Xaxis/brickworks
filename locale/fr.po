@@ -14667,3 +14667,14 @@ msgstr "1 verrouillée, laissée de côté : déverrouillez-la pour la modifier"
 
 msgid "%d locked, left out: unlock them to change them"
 msgstr "%d verrouillées, laissées de côté : déverrouillez-les pour les modifier"
+
+# An edit no copy of its sub-model could take, refused in all of them: a part locked in one copy, or no room in one (followfix)
+
+msgid "Locked in one copy of %s: unlock it, or make this copy its own model"
+msgstr "Verrouillée dans une copie de %s : déverrouillez-la, ou rendez cette copie unique"
+
+msgid "No room in %s: %s is in the way there. Move it, or make this copy its own model"
+msgstr "Pas de place dans %s : %s gêne à cet endroit. Déplacez-la, ou rendez cette copie unique"
+
+msgid "No room in %s: move what is in the way there, or make this copy its own model"
+msgstr "Pas de place dans %s : déplacez ce qui gêne à cet endroit, ou rendez cette copie unique"

@@ -14667,3 +14667,14 @@ msgstr "1 bloqueada, apartada: desbloquéala para cambiarla"
 
 msgid "%d locked, left out: unlock them to change them"
 msgstr "%d bloqueadas, apartadas: desbloquéalas para cambiarlas"
+
+# An edit no copy of its sub-model could take, refused in all of them: a part locked in one copy, or no room in one (followfix)
+
+msgid "Locked in one copy of %s: unlock it, or make this copy its own model"
+msgstr "Bloqueada en una copia de %s: desbloquéala, o haz única esta copia"
+
+msgid "No room in %s: %s is in the way there. Move it, or make this copy its own model"
+msgstr "No hay sitio en %s: %s estorba ahí. Muévela, o haz única esta copia"
+
+msgid "No room in %s: move what is in the way there, or make this copy its own model"
+msgstr "No hay sitio en %s: mueve lo que estorba ahí, o haz única esta copia"

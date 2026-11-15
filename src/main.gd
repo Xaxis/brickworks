@@ -8384,6 +8384,10 @@ func _make_together() -> void:
 	made.camera = _camera
 	made.base_url = Deployment.api_base()
 	made.said.connect(func(words: String) -> void: _bar.say(words))
+	# An edit the copies of its sub-model have not yet followed, or refused
+	# (_edited_soon, at the frame's end): not sent until then, so one taken
+	# back is never sent at all.
+	made.edit_pending = func() -> bool: return _edit_coming
 	# Following someone's view: the model's column framed in their colour.
 	made.banner_parent = _over_model
 	# Where this person is working, for the others' view: the part under the

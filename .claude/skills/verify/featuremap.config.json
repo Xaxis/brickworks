@@ -734,6 +734,20 @@
     },
     {
       "kind": "ui",
+      "label": "copies follow only where a person could",
+      "entry": "src/assembly/assemblies.gd",
+      "reach": "godot --path .  (a sub-model placed twice, a part locked in one copy: paint, replace, move, turn, delete or paste into the other copy, by hand or a session's edit_model, is refused with \"Locked in one copy of …: unlock it, or make this copy its own model\"; a part in the way of a twin: \"No room in … (copy 2): … is in the way there\"; nothing changes and no undo step is left; tools/probe.sh followfix_probe)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "followfix probe",
+      "entry": "src/dev/followfix_probe.gd",
+      "reach": "tools/probe.sh followfix_probe   (headless, about 3 minutes; FOLLOWFIX_CASES=paint,mcp_move,mirror for some)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
       "label": "undo history",
       "entry": "src/ui/toolbar.gd",
       "reach": "godot --path .  (History on the toolbar, or Edit, History)",

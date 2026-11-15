@@ -2131,6 +2131,30 @@ func last_step() -> Dictionary:
 	return _history.back() if not _history.is_empty() else {}
 
 
+## The newest step taken back as though it had never been made: an edit
+## that some copy of a sub-model could not take (Assemblies.after_edit). It
+## leaves nothing to redo; [param redo], the redo the edit cleared, is put
+## back. The parts it took off come back, selected when nothing else is: a
+## Delete's, a Replace's old ones.
+func take_back(redo: Array = []) -> void:
+	if _history.is_empty():
+		return
+	var back: Dictionary = _apply(_history.pop_back())
+	if _redo.is_empty():
+		_redo.assign(redo)
+	settled = _history.back() if not _history.is_empty() else {}
+	var put_back: Dictionary = {}
+	_moved_by(back, put_back)
+	_living_selection()
+	if not selection.is_empty():
+		return
+	for brick_id: int in put_back:
+		if world.get_brick(brick_id) != null and not scenery.has(brick_id):
+			selection[brick_id] = true
+	if not selection.is_empty():
+		selection_changed.emit(selection.size())
+
+
 ## Every place in the tree a history step touched: of the bricks it moved,
 ## painted or put down, and of those it took off or regrouped.
 func touched_groups(step: Dictionary) -> Dictionary:
@@ -3606,9 +3630,11 @@ func _joins_made(at: Transform3D) -> int:
 ## [param held]: the part in hand where the model holds it, on a joint,
 ## on what it rests on, under or beside a part of it. Below the ground
 ## there, the floor's baseplate is not in its way: it goes down through it,
-## and nothing else moves ([method place]).
+## and nothing else moves ([method place]). [param ignore]: a brick that
+## is not in its way, the part itself standing there already (a copy's
+## part a follow laid, Assemblies.in_the_way).
 func room_for(part_id: String, at: Transform3D, grounded: bool = false,
-		held: bool = false) -> bool:
+		held: bool = false, ignore: int = 0) -> bool:
 	room_blocker = 0
 	var part: Lbm.PartMesh = library.mesh_for(part_id)
 	if part == null:
@@ -3620,8 +3646,8 @@ func room_for(part_id: String, at: Transform3D, grounded: bool = false,
 			if packed[n] < GROUND_CELL:
 				return false
 			n += 6
-	var blockers: PackedInt64Array = _not_scenery(lattice.blockers_boxes(packed)) if held \
-		else lattice.blockers_boxes(packed)
+	var blockers: PackedInt64Array = _not_scenery(lattice.blockers_boxes(packed, ignore)) if held \
+		else lattice.blockers_boxes(packed, ignore)
 	if blockers.is_empty():
 		return true
 	var entries: Array = [[0, at, part, library.resolve(part_id)]]

@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:swapfind phone probe -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe, ui:find and replace everywhere, cli:swapfind probe, cli:swapfind phone probe, ui:copies follow only where a person could, cli:followfix probe -->
 
 ## Sub-features
 
@@ -1752,7 +1752,23 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   is followed the same way (`CommandSocket._one_step`). An assembly every part of which the edit moved alike (all of
   it nudged or turned) is the shape it was, and its copies are left alone; an
   undo or redo brings its copies' steps with it and builds none again. The
-  pass reads the model once (`Assemblies._begin_pass`), not once an assembly. Make unique cuts a copy loose (a session's `make_unique`,
+  pass reads the model once (`Assemblies._begin_pass`), not once an assembly.
+  A follow is made only where every copy can take it (followfix): the copies'
+  change made, then asked of each (`Assemblies._cannot_take`): a part it
+  would change, take off or swap that is locked in any copy refuses the
+  edit in all ("Locked in one copy of Sill: unlock it, or make this copy its
+  own model"), and a part it moves or lays where a part put there by hand
+  would have no room (`Builder.room_for`, grounded, the part itself left
+  out) refuses it too ("No room in Sill (copy 2): Plate 1 x 1 is in the way
+  there. Move it, or make this copy its own model"). Refused, the follow is
+  taken back and then the edit (`Builder.take_back`, the redo it cleared
+  given back; a lifted selection put back out of the hand), so the file is
+  as it was and no history step is left; the bar says why
+  (`ModelBar.say_over`, over the verb's own line) and a session reads "Not
+  done, and nothing changed: …" (`CommandSocket.refused_answer`). In a
+  Build together room nothing is sent while a deferred edit is still to be
+  followed (`Together.edit_pending`). Find and replace shares the lock rule
+  (`Assemblies.locked_twins`). `followfix_probe` holds it. Make unique cuts a copy loose (a session's `make_unique`,
 by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` renames a definition in
   every copy; `Ctrl-Shift-G` takes one apart a level. The tree is nothing but
   each brick's `unit` path (`"Plane#1/Wing#2"`), the booklet's interface too,
@@ -3050,6 +3066,23 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   at the live sha opens and saves a file with a one-off script
   (`godot --headless --script` that opens through `ModelBar.open_text_with_progress`
   and writes `ModelStore.to_text(title, true)`).
+- `followfix probe` (`src/dev/followfix_probe.gd`): headless, about three
+  minutes; `FOLLOWFIX_CASES=paint,mcp_move,mirror` for some. Sill (a 2 x 4,
+  a black 1 x 2 plate and a yellow 1 x 1 on it) placed twice; each edit made
+  in the first copy as a person makes it (`paint`, `replace` with the part
+  in hand, `drag`, `rotate`, `delete`, `paste` into the copy) and as a
+  session does (`mcp_paint`, `mcp_swap`, `mcp_move`, `mcp_turn`,
+  `mcp_delete`), each with its twin `free` (followed, one step, one undo the
+  file to the byte, the redo as made), `locked` in the second copy (the
+  file to the byte, no history step, the lock kept, "Locked in one copy of
+  Sill" on the bar or in the answer) or with a blue 1 x 1 in its `room`
+  ("No room in Sill (copy 2)"); nothing through a part before or after.
+  Then `mirror`, `nested` (Sill inside Win, placed 3 times), `own_definition`
+  (Sill2, alike but its own: a lock there refuses nothing), `together`
+  (`Together.check_alone`: a refused paint and a refused Delete-mode click
+  send nothing, an allowed paint both copies' parts), `undo_redo` (an undo
+  after a refusal takes back the step before; the redo outlives a refusal),
+  `reopen` (saved, opened, one Sill, nothing through, saved again the same).
 - `swapfind phone probe` (`src/dev/swapfind_phone_probe.gd`): windowed, 390 x
   844 laid out for a phone at a browser's scale, no sign-in, about a
   minute. More, Edit, Find and replace… in 3 taps; the bar inside the

@@ -1527,9 +1527,24 @@ func after_edit() -> int:
 	# sub-model against the others once more, and the step left newest by
 	# an undo had its copies built again into it, long after it was made.
 	if step.is_empty() or is_same(step, _seen) or is_same(step, builder.settled):
+		_keep_redo()
 		return 0
 	_seen = step
 	var followed: Array = copies_follow(step)
+	if not refused.is_empty():
+		# Some copy could not take it: the edit is not made in any, and
+		# leaves no step. The redo it cleared comes back, where it is the
+		# one the history had when the app last looked. A selection picked
+		# up to move (Builder.lift_selection) is put back, out of the hand.
+		if bool(step.get("lift", false)) and builder.is_carrying():
+			builder.cancel_carry()
+		else:
+			builder.take_back(_redo_cleared())
+		_seen = builder.last_step()
+		_keep_redo()
+		changed.emit()
+		edit_refused.emit(refused)
+		return 0
 	var steps: Array = followed[0]
 	if not steps.is_empty():
 		builder.extend_last(steps)
@@ -1539,7 +1554,44 @@ func after_edit() -> int:
 		# two down in the other, copyfaults2).
 		_seen = builder.last_step()
 		changed.emit()
+	_keep_redo()
 	return int(followed[1])
+
+
+## Why the last edit [method after_edit] or [method copies_follow] looked at
+## was not made, in the person's words; "" when it was. A sub-model's copies
+## are one definition, as Studio and LeoCAD hold them: an edit to one is an
+## edit to every one, so it is made in all of them or in none. Not where a
+## copy's part it would change is locked (the person's word that it stays,
+## "Locked in one copy of Sill: unlock it, or make this copy its own model"),
+## nor where a copy has no room for what it would lay there, as a part put
+## down by hand has none ("No room in Sill (copy 2): Plate 1 x 1 is in the
+## way there. Move it, or make this copy its own model"). Up to swreview
+## (2026-11-15) copies followed through a lock, and a follow was laid
+## through whatever stood in the other copy, and saved so.
+var refused: String = ""
+
+## An edit was taken back for [member refused]: the words to say.
+signal edit_refused(words: String)
+
+## The history as after_edit last left it, [its depth, its newest step, the
+## redo then], for an edit taken back to give back the redo it cleared.
+var _redo_kept: Array = []
+
+
+func _keep_redo() -> void:
+	_redo_kept = [builder.history_depth(), builder.last_step(), builder._redo.duplicate()]
+
+
+## The redo the newest step cleared: what [member _redo_kept] kept, where it
+## kept the history one step short of now, under the same step; else none.
+func _redo_cleared() -> Array:
+	var depth: int = builder.history_depth()
+	if _redo_kept.size() != 3 or int(_redo_kept[0]) != depth - 1:
+		return []
+	var under: Dictionary = builder._history[depth - 2] if depth > 1 else {}
+	var was: Dictionary = _redo_kept[1]
+	return _redo_kept[2] if is_same(was, under) or (was.is_empty() and under.is_empty()) else []
 
 
 ## The newest step changed where parts are in the tree and not one part's
@@ -1584,7 +1636,12 @@ func no_copies_follow() -> void:
 ## down (copyfaults). A copy the step took parts off and put parts down in is
 ## not new: a session's edit_model laying Post#1 again where it stood left
 ## Post#2 as it was, and the save wrote two posts (cfcheck).
+##
+## Where some copy cannot take it ([method _cannot_take]: a part of it locked,
+## or no room for what it lays or moves), nothing follows, [[], 0], and
+## [member refused] says why: the caller takes the step back.
 func copies_follow(step: Dictionary) -> Array:
+	refused = ""
 	var paths_touched: Dictionary = {}
 	for group: String in builder.touched_groups(step):
 		var path: String = ""
@@ -1633,15 +1690,120 @@ func copies_follow(step: Dictionary) -> Array:
 	var claimed: Dictionary = {}
 	var followed: Dictionary = {}
 	_fresh_names.clear()
+	# A twin taken off loses its lock (Builder.swap_bricks): asked as they were.
+	var locked: Dictionary = builder.locked.duplicate()
 	for plan: Array in plans:
 		var took: Array = _follow(plan, then, units, claimed)
 		if not took.is_empty():
 			back = took + back
 			followed[plan[1]] = true
+	# Made in every copy, and then asked of each as it stands, every copy's
+	# change among the others: one a copy cannot take is taken back from all
+	# of them, and the caller takes back the edit (after_edit).
+	refused = _cannot_take(back, locked)
+	if not refused.is_empty():
+		for taking: Dictionary in back:
+			builder._apply(taking)
+		builder.locked = locked
+		back = []
+		followed.clear()
 	# The model changed: read again at the next question.
 	_indexed = false
 	_syncing = false
 	return [back, followed.size()]
+
+
+## Why the copies cannot take what their follow did, [param back] the steps
+## that take it back (newest first): the words for [member refused], "" when
+## they can. A part it changed, took off or put another in place of that is
+## locked ([method locked_twins], [param locked] the locks before it); a part
+## it moved or put down with no room where it stands now ([method
+## in_the_way]), every other copy's change made round it.
+func _cannot_take(back: Array, locked: Dictionary) -> String:
+	if back.is_empty():
+		return ""
+	var steps: Array = []
+	_flattened(back, steps)
+	var changed: Array = []
+	for one: Dictionary in steps:
+		match str(one.get("undo", "")):
+			"move", "recolor":
+				changed.append(int(one["brick"]))
+			"add":
+				changed.append(int(one.get("was", 0)))
+	var held: Array = locked_twins(changed, locked)
+	if not held.is_empty():
+		for one: Dictionary in steps:
+			var brick_id: int = int(one.get("was", one.get("brick", 0)))
+			if brick_id != int(held[0]):
+				continue
+			var brick: BrickWorld.Brick = world.get_brick(brick_id)
+			var path: String = path_of(brick) if brick != null \
+				else path_from(str(one.get("group", "")), str(one.get("unit", "")))
+			return lock_words(path)
+	for one: Dictionary in steps:
+		var kind: String = str(one.get("undo", ""))
+		if kind != "move" and kind != "remove":
+			continue
+		var brick: BrickWorld.Brick = world.get_brick(int(one["brick"]))
+		if brick == null:
+			continue
+		var blocker: int = in_the_way(brick.part_id, brick.transform, brick.id)
+		if blocker != 0:
+			return room_words(path_of(brick), blocker)
+	return ""
+
+
+static func _flattened(steps: Array, into: Array) -> void:
+	for one: Variant in steps:
+		if not one is Dictionary:
+			continue
+		if str((one as Dictionary).get("undo", "")) == "group":
+			_flattened((one as Dictionary).get("steps", []), into)
+		else:
+			into.append(one)
+
+
+## Of [param ids] (parts of copies of a sub-model, and their twins in the
+## others), those that are locked, by [param locked] (the builder's locks
+## where it is {}). A sub-model's copies are one definition, so a part
+## locked in one copy holds its twin in every other as it is: an edit that
+## would change it in any copy is made in none (copies_follow), and Find and
+## Replace keeps every copy of it as it is (FindReplace.plan).
+func locked_twins(ids: Array, locked: Dictionary = {}) -> Array:
+	var held: Dictionary = locked if not locked.is_empty() else builder.locked
+	return ids.filter(func(brick_id: int) -> bool: return held.has(brick_id))
+
+
+## What is in the way of the part [param part_id] at [param at], a copy's
+## part as a follow lays it or moves it, as a part put there by hand is
+## asked (Builder.room_for: nothing in its way but what it is joined to as
+## real parts join, nor below the ground), [param ignore] (the part itself,
+## standing there already) left out: the part in the way, -1 for the ground
+## or a part with no shape here, 0 for room.
+func in_the_way(part_id: String, at: Transform3D, ignore: int = 0) -> int:
+	if builder.room_for(part_id, at, true, false, ignore):
+		return 0
+	return builder.room_blocker if builder.room_blocker != 0 else -1
+
+
+## An edit refused for a part locked in a copy of the sub-model at [param
+## path], said.
+static func lock_words(path: String) -> String:
+	return "Locked in one copy of %s: unlock it, or make this copy its own model" \
+		% definition(leaf(path))
+
+
+## An edit refused for the copy at [param path], where [param blocker] (a
+## brick, or -1 for the ground) leaves no room for what it would lay, said.
+func room_words(path: String, blocker: int) -> String:
+	var brick: BrickWorld.Brick = world.get_brick(blocker) if blocker > 0 else null
+	var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if brick != null else null
+	if info == null:
+		return "No room in %s: move what is in the way there, or make this copy its own model" \
+			% label(path)
+	return "No room in %s: %s is in the way there. Move it, or make this copy its own model" \
+		% [label(path), Inventory._tidy(info.name)]
 
 
 ## What [param undo], AuthorSteps.ensure's for a step edit, gave: the steps

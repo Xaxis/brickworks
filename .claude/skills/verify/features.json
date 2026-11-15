@@ -1434,6 +1434,14 @@
       "tests": []
     },
     {
+      "id": "cli:followfix probe",
+      "kind": "cli",
+      "entry": "src/dev/followfix_probe.gd",
+      "reach": "tools/probe.sh followfix_probe   (headless, about 3 minutes; FOLLOWFIX_CASES=paint,mcp_move,mirror for some)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:follows browser flow",
       "kind": "cli",
       "entry": "tools/web/follows_flow.mjs",
@@ -5154,6 +5162,14 @@
       "entry": "src/ui/controls_hint.gd",
       "reach": "godot --path .  (press , or the Help button)",
       "area": "view",
+      "tests": []
+    },
+    {
+      "id": "ui:copies follow only where a person could",
+      "kind": "ui",
+      "entry": "src/assembly/assemblies.gd",
+      "reach": "godot --path .  (a sub-model placed twice, a part locked in one copy: paint, replace, move, turn, delete or paste into the other copy, by hand or a session's edit_model, is refused with \"Locked in one copy of \u2026: unlock it, or make this copy its own model\"; a part in the way of a twin: \"No room in \u2026 (copy 2): \u2026 is in the way there\"; nothing changes and no undo step is left; tools/probe.sh followfix_probe)",
+      "area": "building",
       "tests": []
     },
     {
