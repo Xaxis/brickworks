@@ -173,10 +173,12 @@ async function pressAt(page, target, phone) {
   else await page.mouse.click(x, y);
 }
 
-/// Open the header's Sign in: the bar's link, or on a phone the Menu's.
+/// Open the header's Sign in: the bar's link, or the Menu's where the bar
+/// has no room for its links (under 900 px, so 768 with a mouse too).
+/// [phone]: a finger's tap, not a click.
 async function headerSignIn(page, phone) {
   const press = (selector) => pressAt(page, selector, phone);
-  if (phone) {
+  if (await page.locator(".site-head .menu summary").isVisible()) {
     await press(".site-head .menu summary");
     await page.locator(".site-head .menu a[data-account]").waitFor({ state: "visible", timeout: 5000 });
     await press(".site-head .menu a[data-account]");
