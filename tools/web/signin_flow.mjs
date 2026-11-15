@@ -132,6 +132,14 @@ async function context(width, theme, { touch = false } = {}) {
     colorScheme: theme, ...(touch ? { isMobile: true, hasTouch: true } : {}) });
   if (deployed) {
     await made.route(`${site}/**`, (route) => route.continue({ headers: { ...route.request().headers(), ...headers } }));
+    // Supabase refuses a wrong code in a fraction of a second, before a
+    // look 300 ms after the paste sees the boxes wait on it (6 fails on a
+    // unit's preview, 2026-11-15): held as long as the stand-in holds its
+    // answer, then sent on and answered by Supabase itself.
+    await made.route("**/auth/v1/verify", async (route) => {
+      await new Promise((done) => setTimeout(done, 900));
+      return route.continue();
+    });
   } else {
     await standIn(made);
   }
