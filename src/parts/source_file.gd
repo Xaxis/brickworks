@@ -1876,12 +1876,17 @@ func _relaid(section: String, targets: Dictionary, fixed: Dictionary, gone: Dict
 		var now: int = int(targets[line])
 		(votes[was] as Dictionary)[now] = int((votes[was] as Dictionary).get(now, 0)) + 1
 	var stays: Dictionary = {}
+	var origin_of: Dictionary = {}  ## a step now -> the file's step most of its lines were in
+	var origin_count: Dictionary = {}
 	for was: int in votes:
 		var best: int = -1
 		for now: int in votes[was]:
 			if best < 0 or int(votes[was][now]) > int(votes[was][best]) \
 					or int(votes[was][now]) == int(votes[was][best]) and now < best:
 				best = now
+			if int(votes[was][now]) > int(origin_count.get(now, 0)):
+				origin_count[now] = int(votes[was][now])
+				origin_of[now] = was
 		stays[was] = best
 	# The cheapest run kept, a state for each shift: [cost, the last kept
 	# line's step, its node]; a node is a line kept and the node before it.
@@ -1948,27 +1953,45 @@ func _relaid(section: String, targets: Dictionary, fixed: Dictionary, gone: Dict
 		for n: int in step_lines:
 			if n > low and n < high:
 				have.append(n)
-		var enders: Array = []      ## [line, put in first]
 		# A STEP line says the look of the step after it (BookletLooks: a
-		# ROTSTEP turns the steps it starts): the last of them kept, beside
-		# what comes after, and one put in above the first kept.
+		# ROTSTEP turns the steps it starts, and the looks write a turn only
+		# where it changes): where fewer are needed the earliest go, and the
+		# last stays beside the step it starts; where more, each kept starts
+		# the first step whose lines its step had (a step put in of the next
+		# one's part is started by the ROTSTEP that turned that part, and the
+		# STEP put in after it starts the rest, as it was seen), else the
+		# last it can, and one put in goes right below the kept line before
+		# it, else above the first kept, else below the earlier line.
 		for k: int in maxi(have.size() - need, 0):
 			drop[have[k]] = true
+		var kept_lines: Array = []
 		for n: int in have:
 			if not drop.has(n):
-				enders.append([n, 1])
-		if need > have.size():
-			var at: int = _put_step_at(section, low, high, start, have[0] if not have.is_empty() else -1)
-			if at < 0:
-				return "a step put in would go inside a pair"
-			for k: int in need - have.size():
-				enders.append([at, 0])
-		enders.sort_custom(func(a: Array, c: Array) -> bool:
-			return int(a[0]) < int(c[0]) or int(a[0]) == int(c[0]) and int(a[1]) < int(c[1]))
-		for ender: Array in enders:
-			ends[next_step] = [int(ender[0]), float(next_step)]
-			if int(ender[1]) == 0:
-				puts.append([int(ender[0]), float(next_step) + 0.5, -1])
+				kept_lines.append(n)
+		var first_step: int = int(bounds[b - 1][1])
+		var slot_line: Dictionary = {}  ## a step -> the kept STEP line that ends it
+		var last_slot: int = first_step - 1
+		for i: int in kept_lines.size():
+			var latest_slot: int = first_step + need - 1 - (kept_lines.size() - 1 - i)
+			var pick: int = latest_slot
+			for slot: int in range(last_slot + 1, latest_slot):
+				if int(origin_of.get(slot + 1, -1)) == _step_at[kept_lines[i]] + 1:
+					pick = slot
+					break
+			slot_line[pick] = kept_lines[i]
+			last_slot = pick
+		var before: int = -1            ## the kept STEP line before a step put in
+		for slot: int in range(first_step, first_step + need):
+			if slot_line.has(slot):
+				before = int(slot_line[slot])
+				ends[next_step] = [before, float(next_step)]
+			else:
+				var at: int = _put_step_at(section, low, high, start, before + 1 if before >= 0
+					else kept_lines[0] if not kept_lines.is_empty() else -1)
+				if at < 0:
+					return "a step put in would go inside a pair"
+				ends[next_step] = [at, float(next_step)]
+				puts.append([at, float(next_step) + 0.5, -1])
 			next_step += 1
 	var tail: int = int(_tail.get(section, stop))
 	# Each line not kept, at the end of its step.
@@ -2732,15 +2755,23 @@ static func _app_said(line: String) -> String:
 func _as_written(plan: Plan, final: PackedStringArray, map: PackedInt32Array) -> Plan:
 	var wrote := PackedStringArray()
 	var wrote_at := PackedInt32Array()
+	# Matched with every STEP and ROTSTEP line alike: the booklet's looks
+	# write each step's ending line as its turn says, in its place, and a
+	# ROTSTEP said in many steps matched the first like it, lines on
+	# (stepops: 20019-1's twelve).
+	var wrote_keys := PackedStringArray()
 	for k: int in plan.out.size():
 		if not _is_app_line(plan.out[k]):
 			wrote.append(plan.out[k])
 			wrote_at.append(k)
+			wrote_keys.append(_STEP_KEY if _is_step(plan.out[k]) else plan.out[k])
 	var said := PackedStringArray()
+	var said_keys := PackedStringArray()
 	for line: String in final:
 		if not _is_app_line(line):
 			said.append(line)
-	var matched: PackedInt32Array = _aligned(said, wrote)
+			said_keys.append(_STEP_KEY if _is_step(line) else line)
+	var matched: PackedInt32Array = _aligned(said_keys, wrote_keys)
 	var taken: Dictionary = {}
 	var next_matched := PackedInt32Array()  ## each line of said -> the patch's line the next matched one is
 	next_matched.resize(said.size() + 1)
@@ -2770,7 +2801,7 @@ func _as_written(plan: Plan, final: PackedStringArray, map: PackedInt32Array) ->
 		var how: int = FOREIGN
 		var from: int = -1
 		if k >= 0:
-			how = plan.how[wrote_at[k]]
+			how = plan.how[wrote_at[k]] if said[j] == wrote[k] else RESTEP
 			from = plan.from[wrote_at[k]]
 			if plan.new_bricks.has(wrote_at[k]):
 				seen.new_bricks[seen.out.size()] = plan.new_bricks[wrote_at[k]]
@@ -2801,6 +2832,8 @@ func _as_written(plan: Plan, final: PackedStringArray, map: PackedInt32Array) ->
 ## How far past a line two texts differ on [method _aligned] looks for them
 ## to meet again.
 const LOOK := 400
+## What a STEP or ROTSTEP line is matched as ([method _as_written]).
+const _STEP_KEY := "\u0001STEP"
 
 
 ## Each line of [param a] -> the line of [param b] it is, or -1: the two

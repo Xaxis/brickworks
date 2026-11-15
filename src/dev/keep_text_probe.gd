@@ -2298,6 +2298,8 @@ func _step_ops() -> void:
 	_ops_total = [0, 0, 0]
 	for entry: Array in STEP_OPS_FILES:
 		var name: String = str(entry[0])
+		if not _ops_wanted(name):
+			continue
 		var text: String = _made(FileAccess.get_file_as_string(str(entry[1])), str(entry[2]))
 		print("\n%s (%s)" % [name, str(entry[1]).get_file()])
 		if not _check("read, %d lines" % text.split("\n").size(), not text.is_empty()):
@@ -2338,6 +2340,8 @@ func _step_attacks() -> void:
 	print("\nstep edits the thirty do not make (stepops):")
 	var rows: Array = []
 	for entry: Array in STEP_ATTACKS:
+		if not _ops_wanted(str(entry[0])):
+			continue
 		var text: String = _made(FileAccess.get_file_as_string(str(entry[1])), str(entry[2]))
 		print("\n%s (%s)" % [entry[0], str(entry[1]).get_file()])
 		var row: Array = [entry[0]]
@@ -2345,6 +2349,8 @@ func _step_attacks() -> void:
 			row.append(await _step_op(str(entry[0]), text, op, str(entry[3]), bool(entry[4])))
 		rows.append(row)
 	for entry: Array in STEP_EMPTIED:
+		if not _ops_wanted("%s, a step emptied" % entry[0]):
+			continue
 		var text: String = FileAccess.get_file_as_string(str(entry[1]))
 		print("\n%s, a step emptied (%s)" % [entry[0], str(entry[1]).get_file()])
 		var row: Array = ["%s, a step emptied" % entry[0]]
@@ -2355,6 +2361,17 @@ func _step_attacks() -> void:
 	for row: Array in rows:
 		print("  %-44s %s" % [str(row[0]).left(44), " ".join(row.slice(1).map(
 			func(mark: String) -> String: return mark.rpad(9)))])
+
+
+## STEP_OPS_ONLY=a,b: only the rows whose name has one of them in it.
+static func _ops_wanted(name: String) -> bool:
+	var only: String = OS.get_environment("STEP_OPS_ONLY")
+	if only.is_empty():
+		return true
+	for word: String in only.split(",", false):
+		if name.contains(word):
+			return true
+	return false
 
 
 ## A step of the model's own emptied by taking off its parts (its STEP line
@@ -2416,6 +2433,9 @@ func _step_op(name: String, text: String, op: String, want: String, room: bool =
 	_own_flow = false
 	var depth: int = _builder.history_depth()
 	var unedited: String = _store.saved_text()
+	if unedited != text and op == STEP_OPS[0]:
+		print("  note: saved unedited, %d lines unlike the file: %s" % [_diff_size(text.split("\n"),
+			unedited.split("\n")), " | ".join(_lines_unlike(text, unedited))])
 	var section: String = _ops_section(want, op)
 	var steps: Array = _ops_steps(section)
 	var at: int = _ops_pick(steps, op)
@@ -2488,6 +2508,8 @@ func _step_op(name: String, text: String, op: String, want: String, room: bool =
 		said.get_slice("\n", 0).left(70), "patched" if whole.is_empty() else "as live writes it (%s)" % whole,
 		changed, moved, ("; not byte for byte: " + " | ".join(rest.slice(0, 3))) if not rest.is_empty() else ""],
 		whole.is_empty() and rest.is_empty() and changed <= moved)
+	if not ok or OS.get_environment("STEP_OPS_SHOW") == "1":
+		print("        " + "\n        ".join(_lines_unlike(text, edited)))
 	if whole.is_empty():
 		_ops_total[0] += 1
 		_ops_total[1] += changed
@@ -2710,6 +2732,31 @@ static func _rest_of(text: String, chosen: PackedStringArray) -> Array:
 			continue
 		# A last line with no end: as the line it is, ended or not.
 		out.append(bare if n == lines.size() - 1 or n == lines.size() - 2 else line)
+	return out
+
+
+## What a save changed, to read in the log: each line of [param was] the
+## save has not got ("-", with its number) and each it has that [param was]
+## has not ("+"), as many times as each is short, up to 12.
+static func _lines_unlike(was: String, now: String) -> Array:
+	var a: PackedStringArray = was.split("\n")
+	var b: PackedStringArray = now.split("\n")
+	var count: Dictionary = {}
+	for line: String in a:
+		count[line] = int(count.get(line, 0)) + 1
+	for line: String in b:
+		count[line] = int(count.get(line, 0)) - 1
+	var out: Array = []
+	for n: int in a.size():
+		if int(count.get(a[n], 0)) > 0 and out.size() < 12:
+			count[a[n]] = int(count[a[n]]) - 1
+			out.append("- %d: %s" % [n + 1, a[n].c_escape().left(90)])
+	for n: int in b.size():
+		if int(count.get(b[n], 0)) < 0 and out.size() < 12:
+			count[b[n]] = int(count[b[n]]) + 1
+			out.append("+ %d: %s" % [n + 1, b[n].c_escape().left(90)])
+	if out.is_empty():
+		out.append("(the same lines, in another order)")
 	return out
 
 
