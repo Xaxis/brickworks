@@ -2327,6 +2327,11 @@ const STEP_ATTACKS: Array = [
 	["LPub's lines, in a room", "res://src/dev/fixtures/stepops_lpub.ldr", "", "", true],
 	["8028-1 (placed twice), in a room", "res://vendor/omr/files/8028-1.mpd", "", "", true],
 	["tabs, in a room", "res://src/dev/fixtures/kt_tabs.mpd", "", "-", true],
+	# Live's save of kt3r_emptystep merged: its first step unturned, the
+	# next turned by the ROTSTEP between them, so a merge of the two carries
+	# the turn above the first's parts.
+	["a turned step after an unturned one", "res://src/dev/fixtures/stepops_turned.ldr", "", "-",
+		false],
 ]
 ## A step emptied by taking off its parts, then a step edit by it.
 const STEP_EMPTIED: Array = [

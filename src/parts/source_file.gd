@@ -2849,6 +2849,13 @@ func _as_written(plan: Plan, final: PackedStringArray, map: PackedInt32Array) ->
 					_from_after(plan, wrote_at, next_matched[j]))
 				if from >= 0:
 					how = KEEP if original[from] == final[n] else RESTEP
+				else:
+					# One the looks put where the patch has none: a turn
+					# carried to a step that starts elsewhere now (stepops:
+					# two steps merged whose second turned has its ROTSTEP
+					# above the first's parts). Read back, every part is in
+					# its step.
+					how = RESTEP
 		seen.out.append(final[n])
 		seen.from.append(from)
 		seen.how.append(how)
