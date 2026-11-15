@@ -576,6 +576,12 @@ static func _count(made: Made, whole: Whole, path: String) -> void:
 ## A copy built in its parent's steps: its lines out of the section they are
 ## written in, its own copies' references with them, a step for each step of
 ## that section they are in; its own copies built within it named from it.
+## The lines its definition keeps that its IN block carries (its lights,
+## views, motions, whose it is: LdrModel.unit_kept) are its file's own, in
+## its head; those of a copy built within it stay after that copy's IN line.
+## They are in the coordinates its parts are, so a motion's joints find their
+## parts: cut without them, the small observatory brought into a model nobody
+## gave steps opened with no motion (s2review drive).
 static func _cut_built_within(whole: Whole, path: String) -> Made:
 	var home: String = path
 	while not home.is_empty() and int(whole.model.unit_steps.get(home, 0)) == LdrModel.IN_PARENT:
@@ -596,6 +602,18 @@ static func _cut_built_within(whole: Whole, path: String) -> Made:
 		if unit != path and Assemblies.within(unit, path) and line >= int(span[0]) \
 				and line < int(span[1]) and int(whole.model.unit_steps.get(unit, 0)) != LdrModel.IN_PARENT:
 			taken[line] = Assemblies.parent_of(unit)
+	# Each copy's kept lines its IN block in this section carries, by the copy
+	# as its own file names it ("" for itself).
+	var kept: Dictionary = {}
+	for unit: String in whole.model.unit_kept:
+		var numbers: PackedInt32Array = (whole.model.unit_kept[unit] as Dictionary)["lines"]
+		if not Assemblies.within(unit, path) or numbers.is_empty() or numbers[0] < int(span[0]) \
+				or numbers[0] >= int(span[1]):
+			continue
+		var lines := PackedStringArray()
+		for n: int in numbers:
+			lines.append(whole.lines[n])
+		kept["" if unit == path else unit.substr(path.length() + 1)] = lines
 	var made := Made.new()
 	made.title = Assemblies.definition(Assemblies.leaf(path))
 	var eol: String = "\r" if whole.lines[int(span[0])].ends_with("\r") else ""
@@ -607,6 +625,16 @@ static func _cut_built_within(whole: Whole, path: String) -> Made:
 		if line.begins_with("0 Author:"):
 			author = line
 			break
+	# Its own: whose it is in place of the model's, the rest under its title.
+	var own_lines := PackedStringArray()
+	var credit := PackedStringArray()
+	for line: String in kept.get("", PackedStringArray()):
+		if LdrModel.is_credit_line(line):
+			credit.append(line.trim_suffix("\r") + eol)
+		else:
+			own_lines.append(line.trim_suffix("\r") + eol)
+	kept.erase("")
+	var said: Dictionary = {}
 	var body := PackedStringArray()
 	var references: Array[String] = []
 	var steps: int = 0
@@ -629,8 +657,16 @@ static func _cut_built_within(whole: Whole, path: String) -> Made:
 		var unit: String = str(taken[n])
 		var own: String = "" if unit == path else unit.substr(path.length() + 1)
 		if own != inside:
-			body.append(LdrModel.IN_META + (" " + own if not own.is_empty() else "") + eol)
 			inside = own
+			var named: bool = false
+			for copy: String in LdrModel._kept_opened(own, kept, said):
+				body.append(LdrModel.IN_META + " " + copy + eol)
+				for line: String in kept[copy]:
+					body.append(line.trim_suffix("\r") + eol)
+				said[copy] = true
+				named = copy == own
+			if not named:
+				body.append(LdrModel.IN_META + (" " + own if not own.is_empty() else "") + eol)
 		var before: String = whole.lines[n - 1].strip_edges() if n > 0 else ""
 		if before.begins_with(LdrModel.COPY_META):
 			body.append(whole.lines[n - 1])
@@ -644,8 +680,13 @@ static func _cut_built_within(whole: Whole, path: String) -> Made:
 	# "..\..\evil", it was all three (sereview F1).
 	made.name = file_name(made.title.to_snake_case(), not keys.is_empty())
 	var own_name: String = made.name.get_basename()
-	var head := PackedStringArray(["0 " + made.title + eol,
-		"0 Name: " + own_name + ".ldr" + eol, author + eol])
+	var head := PackedStringArray(["0 " + made.title + eol])
+	head.append_array(own_lines)
+	head.append("0 Name: " + own_name + ".ldr" + eol)
+	if credit.is_empty():
+		head.append(author + eol)
+	else:
+		head.append_array(credit)
 	if not whole.marker.is_empty():
 		head.append(whole.marker + eol)
 	head.append(eol)

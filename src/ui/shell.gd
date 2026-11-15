@@ -348,6 +348,7 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	assemblies.builder = builder
 	assemblies.library = library
 	assemblies.scenery = store.scenery
+	assemblies.lift = store.lift
 	verbs.assemblies = assemblies
 	builder.unit_of = assemblies.unit_of
 	builder.copy_group = assemblies.group_for_copy
