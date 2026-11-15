@@ -19,6 +19,13 @@ const dayOf = (iso) => DAY.format(new Date(`${String(iso).slice(0, 10)}T00:00:00
 const today = () => new Date().toISOString().slice(0, 10);
 const daysBetween = (from, to) => Math.round((Date.parse(`${String(to).slice(0, 10)}T00:00:00Z`)
   - Date.parse(`${String(from).slice(0, 10)}T00:00:00Z`)) / 86400000) + 1;
+/// What is left of a challenge running, today counted: "12 days left", "its
+/// last day" (never "1 days" or "0 days left"); past its end, which only a
+/// row not yet read again can be, said so.
+const leftSaid = (ends) => {
+  const left = daysBetween(today(), ends);
+  return left > 1 ? `${left} days left` : left === 1 ? "its last day" : `past its last day, ${dayOf(ends)}`;
+};
 const toPage = (href, text) => { const a = make("a", "", text); a.href = href; return a; };
 
 /// A challenge's rules in the console's short words.
@@ -57,7 +64,7 @@ function drawNow(list) {
   const entered = (Number(one.entries?.hand) || 0) + (Number(one.entries?.assistant) || 0);
   const voted = (Number(one.votes?.hand) || 0) + (Number(one.votes?.assistant) || 0);
   say("challenge-now-said", open
-    ? `${dayOf(one.starts_on)} to ${dayOf(one.ends_on)}, ${daysBetween(today(), one.ends_on)} days left. ${entered} `
+    ? `${dayOf(one.starts_on)} to ${dayOf(one.ends_on)}, ${leftSaid(one.ends_on)}. ${entered} `
       + `${entered === 1 ? "entry" : "entries"} (${Number(one.entries?.hand) || 0} by hand, ${Number(one.entries?.assistant) || 0} `
       + `with the assistant), ${voted} ${voted === 1 ? "vote" : "votes"}. Open it for each entry and what breaks its rules.`
     : `Opens ${dayOf(one.starts_on)}, runs to ${dayOf(one.ends_on)}${one.announced_at && Date.parse(one.announced_at) > Date.now()
@@ -148,7 +155,7 @@ export async function challengeOf(id) {
   const parts = [];
   const facts = make("dl", "facts");
   const fact = (term, ...value) => facts.append(make("dt", "", term), make("dd", "", ...value));
-  fact("Days", `${dayOf(c.starts_on)} to ${dayOf(c.ends_on)}${c.state === "open" ? `, ${daysBetween(today(), c.ends_on)} left` : ""}`);
+  fact("Days", `${dayOf(c.starts_on)} to ${dayOf(c.ends_on)}${c.state === "open" ? `, ${leftSaid(c.ends_on)}` : ""}`);
   fact("State", c.state === "open" ? "open" : c.state === "upcoming" ? "to come" : `ended${c.ended_at ? ` ${when(c.ended_at)}` : ""}`);
   fact("The brief", c.brief || "—");
   fact("Rules", rulesShort(c.rules).join("; ") || "none but its brief");
