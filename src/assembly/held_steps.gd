@@ -767,6 +767,8 @@ static func _put(test: Tested.Steps, under: Under, step: Instructions.Step, ids:
 		asked[id] = true
 	var sooner: Array[int] = []
 	var pulled: Dictionary = {}
+	## What stood when asked, though it may not go in yet.
+	var stood: Dictionary = {}
 	while true:
 		while not trying.is_empty():
 			var things: Array = copies.duplicate()
@@ -777,6 +779,7 @@ static func _put(test: Tested.Steps, under: Under, step: Instructions.Step, ids:
 			for n: int in trying.size():
 				if stands[copies.size() + n]:
 					standing[trying[n]] = true
+			stood.merge(standing)
 			# What stands, and is not over what is not yet in. One left out may
 			# have held up another, so asked again of those left.
 			var ready: Array[int] = under.ready_of(trying, standing, going, asked)
@@ -795,22 +798,34 @@ static func _put(test: Tested.Steps, under: Under, step: Instructions.Step, ids:
 				break
 			trying = ready
 		# A later part whose cover meets one of these both ways round goes in
-		# with it if it stands: put in after, it would go in under it.
+		# with it if it stands: put in after, it would go in under it. And so
+		# does a later part that one standing here rests on: waited for, all
+		# that rests on it waits. 6361's back plate, planned for its last
+		# step, held the plates over it and 73 parts on those to that step,
+		# where the 2 x 16 under the cab then hung from its wheel plates.
 		var more: Array[int] = []
+		var take_in := func(other: int) -> void:
+			if sooner.size() + more.size() < PULL_MOST and not asked.has(other) \
+					and under.later.has(other) and not under.at.has(other) \
+					and under.pinned_in(other, asked, going):
+				asked[other] = true
+				more.append(other)
 		# Not in the model's first step, where anything stands (Tested.Steps).
-		for id: int in (trying + going.keys()) if test.main.begun else []:
-			for other: int in under.mutual.get(id, PackedInt64Array()):
-				if sooner.size() + more.size() < PULL_MOST and not asked.has(other) \
-						and under.later.has(other) and not under.at.has(other) \
-						and under.pinned_in(other, asked, going):
-					asked[other] = true
-					more.append(other)
+		if test.main.begun:
+			for id: int in trying + going.keys():
+				for other: int in under.mutual.get(id, PackedInt64Array()):
+					take_in.call(other)
+			for id: int in stood:
+				for other: int in under.rests.get(id, PackedInt64Array()):
+					take_in.call(other)
 		if more.is_empty():
 			break
 		sooner.append_array(more)
-		trying.append_array(more)
 		for id: int in more:
 			pulled[id] = true
+		# Each asked again: what waited for one of them goes in with it.
+		trying = ids.duplicate()
+		trying.append_array(sooner)
 	var kept: Dictionary = {}
 	for id: int in trying:
 		kept[id] = true
@@ -858,7 +873,52 @@ static func _sooner(slots: Array, sooner: Dictionary, near: Dictionary) -> Array
 				for id: int in copy:
 					at[id] = n
 	_sooner_within(out, "ids", sooner, near, func(id: int) -> int: return id, at)
+	_put_on_sooner(out, sooner, near)
 	return out
+
+
+## Each sub-assembly put on whole in [param slots] that a part of is in
+## [param sooner] put on in the step after what holds it, as [method _sooner]
+## moves a part: the slot that puts it on, with its steps in the hand, moved
+## to after the latest slot before its own that puts in a part it is joined
+## to, or at its second time asked the first. Where that is too soon, it
+## waits for what it rests on (HeldSteps._carried). 7815's two passengers,
+## each put on whole as the model's last steps, lay under the roof slopes
+## put on before them, both hidden.
+static func _put_on_sooner(slots: Array, sooner: Dictionary, near: Dictionary) -> void:
+	for n: int in slots.size():
+		var step: Instructions.Step = (slots[n] as Dictionary)["step"]
+		if step == null or step.copies.is_empty():
+			continue
+		var own: Dictionary = {}
+		var level: int = 0
+		for copy: PackedInt64Array in step.copies:
+			for id: int in copy:
+				own[id] = true
+				level = maxi(level, int(sooner.get(id, 0)))
+		if level == 0:
+			continue
+		var at: Dictionary = {}
+		for k: int in n:
+			for id: int in (slots[k] as Dictionary)["ids"]:
+				at[id] = k
+			var other_step: Instructions.Step = (slots[k] as Dictionary)["step"]
+			if other_step != null:
+				for copy: PackedInt64Array in other_step.copies:
+					for id: int in copy:
+						at[id] = k
+		var best: int = -1
+		for id: int in own:
+			for other: int in (near.get(id, {}) as Dictionary):
+				if own.has(other) or not at.has(other):
+					continue
+				var there: int = at[other]
+				best = there if best < 0 else (maxi(best, there) if level < 2 else mini(best, there))
+		if best < 0 or best + 1 >= n:
+			continue
+		var slot: Dictionary = slots[n]
+		slots.remove_at(n)
+		slots.insert(best + 1, slot)
 
 
 ## Each of [param sooner] in [param places] (each its [param key] list of
