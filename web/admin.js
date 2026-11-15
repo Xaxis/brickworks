@@ -657,7 +657,9 @@ function dataActs(one, account) {
       setTimeout(() => URL.revokeObjectURL(link.href), 60000);
       const more = Object.entries(data.more || {});
       say(said, `Exported ${data.rows} rows from ${Object.keys(data.tables || {}).length} tables, as ${link.download}.${more.length
-        ? ` Over a thousand in ${more.map(([name, n]) => `${name} (${n})`).join(", ")}: the newest thousand of each.` : ""}`);
+        ? ` Over a thousand in ${more.map(([name, n]) => `${name} (${n})`).join(", ")}: the newest thousand of each.` : ""}`
+        + " It holds your own private notes on them too, where there are any (feedback.note, beta_applications.note and "
+        + "signals, beta_decisions.note): read it before you send it on.");
       loaded.delete("audit");
       return false;
     } catch (problem) {

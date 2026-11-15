@@ -29,6 +29,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SQL = (ROOT / "supabase/console3.sql").read_text()
+# admin_export again after the review (c3fix): what the live database has.
+SQL_B = (ROOT / "supabase/console3b.sql").read_text()
 ADMIN = (ROOT / "api/admin.js").read_text()
 
 FUNCTIONS = {"site_notice", "site_notice_set", "site_notice_clear", "site_notices_list", "site_settings_list", "site_env_note",
@@ -98,12 +100,31 @@ def test_every_function_is_the_servers_alone() -> None:
 
 
 def test_the_export_holds_back_secrets_and_stays_a_download() -> None:
-    body = SQL[SQL.index("create or replace function public.admin_export"):SQL.index("create or replace function public.admin_person_more")]
-    assert "array['hash', 'rh', 'code_challenge', 'channel', 'secret', 'token']" in body
+    body = SQL_B[SQL_B.index("create or replace function public.admin_export"):SQL_B.index("revoke all on function")]
+    # orangecheck's handle beside rh, and the connector tab's tool list (hello, list), never read.
+    assert ("array['hash', 'rh', 'oc_rh', 'code_challenge', 'channel', 'secret', 'token', 'hello', 'list']" in body
+            and "a.attname <> all (hidden)" in body)
     # Sign-in codes, orangecheck's sessions and the audit are not the person's to take.
     assert "not in ('oauth_codes', 'oc_sessions', 'admin_audit')" in body
-    assert body.count("limit 1000") == 2 and "> 8192" in body and "'not_exported'" in body
+    assert body.count("limit 1000") == 2 and body.count("> 8192") == 2 and "'not_exported'" in body
     assert "'more', more" in body
+    # A value is measured, never written out as text to be measured (the busy export's 6 to 10 s).
+    assert "pg_column_size" in body and "octet_length" not in body and "::text)" not in body
+
+
+def test_console3b_only_replaces_the_export_and_keeps_it_the_servers() -> None:
+    assert re.findall(r"create or replace function public\.([a-z_]+)\(", SQL_B) == ["admin_export"]
+    outside = re.sub(r"\$\$.*?\$\$", "", re.sub(r"--[^\n]*", "", SQL_B.lower()), flags=re.S)
+    for word in ("drop ", "truncate", "alter ", "delete ", "update ", "rename", "create table", "insert "):
+        assert word not in outside, word
+    assert "revoke all on function public.admin_export(uuid) from public, anon, authenticated;" in SQL_B
+    assert "grant execute on function public.admin_export(uuid) to service_role;" in SQL_B
+    assert SQL_B.count("\nsecurity definer\n") == 1 and SQL_B.count("\nset search_path = ''\n") == 1
+    # Applying console3.sql again alone would put the slow export back: apply_sql.mjs refuses it.
+    later = [line.split("\t") for line in (ROOT / "supabase/later.tsv").read_text().splitlines()
+             if line.strip() and not line.startswith("#")]
+    row = ["console3.sql", "admin_export", "console3b.sql", "'oc_rh'"]
+    assert row in later and row[3] in SQL_B and row[3] not in SQL
 
 
 def test_the_new_ops_are_ops_of_admin_and_behind_its_owner_check() -> None:
@@ -244,11 +265,19 @@ def test_an_export_is_every_table_of_the_account_with_no_secret() -> None:
     export = got["export"]
     assert sorted(export["tables"]) == ["model_collection_items", "model_collections", "oauth_grants", "people", "relay_tabs",
                                         "reports", "shared_models"]
-    # A thousand rows a table, the rest counted; a working value over 8 KB named by its size.
-    assert len(export["tables"]["relay_tabs"]) == 1000 and export["more"] == {"relay_tabs": 1002}
-    assert all(row["hello"] == {"not_exported": 20013} for row in export["tables"]["relay_tabs"])
+    # A thousand rows a table, the rest counted; the tool lists never read.
+    tabs = export["tables"]["relay_tabs"]
+    assert len(tabs) == 1000 and export["more"] == {"relay_tabs": 1002}
+    assert not any("hello" in row for row in tabs)
+    # A working value over 8 KB is named by its size: as JSON where it stores small (20 KB of one
+    # letter), as stored where it does not (12.8 KB of hex), and never read then.
+    sizes = {json.dumps(row["model"]) for row in tabs}
+    assert len(sizes) == 2, sizes
+    for row in tabs:
+        assert set(row["model"]) == {"not_exported"} and row["model"]["not_exported"] > 8192
     text = json.dumps(export)
     assert "channel" not in text and "c" * 64 not in text and "d" * 64 not in text
+    assert "oc_rh" not in text and "h" * 43 not in text and "x" * 100 not in text and "m" * 100 not in text
     assert export["tables"]["model_collection_items"] == [{"model": "BobModel01", "added_at": export["tables"][
         "model_collection_items"][0]["added_at"], "collection": "AdaList001"}]
 
@@ -300,12 +329,17 @@ def test_reads_are_never_audited_and_every_write_is() -> None:
         "notice_set:setting:notice:400", "notice_set:setting:notice:200", "notice_set:setting:notice:200",
         "notice_set:setting:notice:200",
         "notice_clear:setting:notice:200", "notice_clear:setting:notice:404",
-        "run_cron:cron:beta_daily:409", "run_cron:cron:nope:400", "run_cron:cron:gallery_feature:200",
+        "run_cron:cron:beta_daily:409", "run_cron:cron:nope:400",
+        # A name Object's prototype lends is no cron: refused as one, kept as what was asked.
+        "run_cron:cron:constructor:400", "run_cron:cron:__proto__:400", "run_cron:cron:hasOwnProperty:400",
+        "run_cron:cron:toString:400",
+        "run_cron:cron:gallery_feature:200",
         # Twice at once: the one refused answers first; then one more, once the first has ended.
         "run_cron:cron:share_sweep:409", "run_cron:cron:share_sweep:200", "run_cron:cron:share_sweep:200",
         "run_cron:cron:canary:400", "run_cron:cron:canary:503",
         "sign_out:account:00000000-0000-4000-8000-000000000003:200", "sign_out:account:00000000-0000-4000-8000-00000000abcd:404",
         "export:account:00000000-0000-4000-8000-000000000002:200",
+        "export:account:00000000-0000-4000-8000-000000000003:200",
         "export:account:00000000-0000-4000-8000-000000000004:200",
         "delete_account:account:00000000-0000-4000-8000-000000000001:403",
         "delete_account:account:00000000-0000-4000-8000-000000000002:422",
@@ -317,7 +351,8 @@ def test_reads_are_never_audited_and_every_write_is() -> None:
     # A deleted account kept by its address; an export by its count, never its rows; never a key.
     assert detail["delete_account"]["said"]["email"] == "ada@example.com"
     assert detail["delete_account"]["asked"] == {"reason": "Asked by email"}
-    assert got["audit_exports"] == [{"rows": "4", "email": "ada@example.com"}, {"rows": "0", "email": "cleo@resend.dev"}]
+    assert got["audit_exports"] == [{"rows": "4", "email": "ada@example.com"}, {"rows": "1", "email": "bob@resend.dev"},
+                                    {"rows": "0", "email": "cleo@resend.dev"}]
     assert detail["run_cron"]["said"]["outcome"] == "done" and got["audit_leaks"] is False
 
 
@@ -361,6 +396,10 @@ def test_run_now_runs_only_a_safe_cron_at_the_sites_own_address() -> None:
         return
     assert got["run_beta"]["status"] == 409 and "testers" in got["run_beta"]["json"]["error"]
     assert got["run_unknown"] == 400
+    # constructor, __proto__, hasOwnProperty, toString: no cron (400), no op (404 by GET and POST), nothing audited.
+    assert got["run_proto"] == [400, 400, 400, 400]
+    assert got["op_proto"] == [[404, 404]] * 4 and got["audit_after_proto"] == 0
+    assert got["wrong_method"] == [405, 405]
     assert got["run"]["status"] == 200 and got["run"]["ran"] is True and got["run"]["outcome"] == "done"
     assert got["run"]["calls"] == [{"url": "https://brickworks-abc123-xaxis-projects.vercel.app/api/share/feature",
                                     "key": "Bearer cron-key-for-this-test-only"}]
@@ -385,6 +424,10 @@ def test_an_account_is_exported_signed_out_and_deleted_only_as_typed() -> None:
     assert export["tables"] == ["collection_sets", "model_collections", "people", "relay_tabs"] and export["rows"] == 4
     # The sets in its lists (lists1), keyed to a list and not to the account, come with it.
     assert export["sets"] == ["AdaList001:10305-1"]
+    # Bob follows ada: counted in hers, never named, in no table nor count (c3review X); his own keeps it.
+    assert export["followers"] == 1 and export["follower_named"] is False and export["more"] == {}
+    assert "follows.followed" not in export["tables"] and "follows.followed" not in export["counts"]
+    assert got["export_follower"] == {"status": 200, "follows": [True], "followers": 0}
     # An account with nothing anywhere: an export of nothing, not a failure.
     assert got["export_empty"] == {"status": 200, "email": "cleo@resend.dev", "tables": {}, "rows": 0, "more": {}}
     assert export["channel"] is False

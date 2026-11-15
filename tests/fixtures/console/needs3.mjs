@@ -27,4 +27,7 @@ export const STAND_INS = `
   create table if not exists public.reports (id bigserial primary key, model text, handle text, collection text, comment bigint,
     reason text not null, note text, contact text, reporter uuid references auth.users (id) on delete set null, visitor text,
     at timestamptz not null default now(), resolved_at timestamptz, resolution text);
+  create table if not exists public.follows (follower uuid not null references auth.users (id) on delete cascade,
+    followed uuid not null references auth.users (id) on delete cascade, at timestamptz not null default now(),
+    primary key (follower, followed), check (follower <> followed));
 `;

@@ -27,6 +27,10 @@ try {
   await db.q(sql);
   // Applied again, nothing changes and nothing fails.
   await db.q(sql);
+  // console3b.sql after it, as on the live database (its admin_export), twice too.
+  const after = readFileSync(new URL("../../../supabase/console3b.sql", import.meta.url), "utf8");
+  await db.q(after);
+  await db.q(after);
   out.again = "ok";
 
   // The notice: one showing a scope, set in place of the one before, cleared.
@@ -92,10 +96,17 @@ try {
     values ($1, 'https://claude.ai/oauth/x', 'Claude', 'https://claude.ai/cb', 'https://brickworks.diy/api/mcp', 'mcp', repeat('d', 64))`, [ada]);
   await db.q("insert into public.reports (model, reason, note, contact, reporter) values ('BobModel01', 'spam', 'It is an advert', null, $1)", [ada]);
   // A thousand and two connector tabs, each with its 20 KB tool list: the
-  // first 1000 given, the count said, the lists named by their size only.
-  await db.q(`insert into public.relay_tabs (channel, owner, hello)
-    select encode(sha256(convert_to('tab' || n, 'utf8')), 'hex'), $1, jsonb_build_object('tools', repeat('x', 20000))
+  // first 1000 given, the count said, the lists never read. Each tab's
+  // model name is 20 KB that stores small (one letter again and again) or
+  // 12.8 KB that does not (hex): both named by their size only.
+  await db.q(`insert into public.relay_tabs (channel, owner, hello, model)
+    select encode(sha256(convert_to('tab' || n, 'utf8')), 'hex'), $1, jsonb_build_object('tools', repeat('x', 20000)),
+           case when n % 2 = 0 then repeat('m', 20000)
+                else (select string_agg(md5(n::text || ':' || k), '') from generate_series(1, 400) k) end
       from generate_series(1, 1002) n`, [ada]);
+  // Orangecheck's handle beside the grant's (orangecheck.sql), never given.
+  await db.q("alter table public.oauth_grants add column if not exists oc_rh text");
+  await db.q("update public.oauth_grants set oc_rh = repeat('h', 43) where owner = $1", [ada]);
   out.export = await db.rpc("admin_export", { p_account: ada });
 
   // Find anything.

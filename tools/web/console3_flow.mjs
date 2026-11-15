@@ -391,10 +391,20 @@ try {
     await page.click('#notice-form button[type="submit"]');
     noticeSet = await until(page, () => /Shown on every page/.test(document.getElementById("notice-note").textContent), null, 30000);
     check(`set: "${await page.textContent("#notice-note")}"`, noticeSet);
+    // The notice is not in the studio (/app loads no notice.js): the console says so (c3review).
+    check("...the form and its answer say every page of the site, not the studio", /not the studio/.test(await page.textContent("#notice-note"))
+      && /not the studio/.test(await page.textContent("#notice-form")));
     check("...the history and the Overview say it", await until(page, (words) => [...document.querySelectorAll("#notices tr")]
       .some((tr) => tr.textContent.includes(words) && /showing/.test(tr.textContent)), english));
     const set = await noticeOn("/gallery", english);
     check(`seen on /gallery signed out: "${set.said}"`, set.ok);
+    // Its own direction, and no other language named on an English page.
+    const tongue = (page) => page.evaluate(() => {
+      const words = document.querySelector("aside.site-notice .words");
+      return words ? `dir=${words.getAttribute("dir")} lang=${words.getAttribute("lang")}` : "none";
+    });
+    const enTongue = await tongue(set.page);
+    check(`...its words: ${enTongue}`, enTongue === "dir=auto lang=null");
     check("...its markup shown as words: no element made of it, nothing run", await set.page.evaluate(() =>
       document.querySelector("aside.site-notice .words")?.children.length === 0 && !document.querySelector("aside.site-notice img, aside.site-notice b")
       && window.noticeRan === undefined));
@@ -415,10 +425,14 @@ try {
     await set.context.close();
     const de = await noticeOn("/de/gallery", german, { width: 390, theme: "dark" });
     check(`seen on /de/gallery in German, at 390 dark: "${de.said}"`, de.ok && await risen(de.page) && !await sideways(de.page));
+    const deTongue = await tongue(de.page);
+    check(`...the German its page's own: ${deTongue}`, deTongue === "dir=auto lang=null");
     await shot(de.page, "6-notice-de-gallery-390-dark.png", false);
     await de.context.close();
     const fr = await noticeOn("/fr/gallery", english, { seconds: 60, width: 390, theme: "light" });
     check(`...and in English on /fr/gallery, where no French was typed: "${fr.said}"`, fr.ok && await risen(fr.page));
+    const frTongue = await tongue(fr.page);
+    check(`...named as English there, for a screen reader: ${frTongue}`, frTongue === "dir=auto lang=en");
     await shot(fr.page, "6-notice-fr-gallery-390-light.png", false);
     await fr.context.close();
     await page.click("#notice-clear");
@@ -443,6 +457,8 @@ try {
   check(`Export: ${download.suggestedFilename()}: ${file.rows} rows of ${Object.keys(file.tables || {}).join(", ")}`,
     file.email === d.kept.email && file.tables?.shared_models?.some((one) => one.id === ids[0])
     && file.tables?.model_collections?.length === 1 && !JSON.stringify(file).includes(SECRET));
+  check("...the console says the file holds the owner's own notes", await until(page, () =>
+    /private notes on them too.*feedback\.note, beta_applications\.note and signals/.test(document.getElementById("sheet-body").textContent)));
   await go(page, `people/${s.kept.user_id}`);
   await until(page, (email) => document.getElementById("sheet-title").textContent === email, s.kept.email);
   await page.locator("#sheet-body button", { hasText: "Sign out everywhere" }).click();

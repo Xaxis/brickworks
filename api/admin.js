@@ -270,12 +270,13 @@ export default async function handler(request, response) {
     // Part C (console3).
     unbar_model: unbarModel, notice_set: noticeSet, notice_clear: noticeClear, run_cron: runCron, export: exportAccount,
     delete_account: deleteAccount, sign_out: signOut };
-  if (request.method === "POST" && acts[op]) {
-    return audited(op, acts[op], request, response, claims, (error) => (error instanceof AuthError
+  // An op is one of these tables' own names, never one Object's prototype
+  // lends them: ?op=constructor, __proto__ or hasOwnProperty is an op
+  // nobody made, answered 404 and never audited as an act (c3review).
+  const act = Object.hasOwn(acts, op) ? acts[op] : null;
+  if (request.method === "POST" && act) {
+    return audited(op, act, request, response, claims, (error) => (error instanceof AuthError
       || error instanceof BuildRefusal || error instanceof AvatarRefusal ? error.status : 502));
-  }
-  if (request.method !== "GET") {
-    return response.status(405).json({ error: `GET, or POST ?op=${Object.keys(acts).join(", ")}` });
   }
   const tests = String(request.query?.tests || "") === "1";
   const reads = {
@@ -297,7 +298,17 @@ export default async function handler(request, response) {
       });
     },
   };
-  if (reads[op] || op === "person" || op === "audit") {
+  const readable = Object.hasOwn(reads, op);
+  const routes = ["person", "audit", "beta", "beta_testers", "feedback", "feedback_file", "photo"];
+  if (op && !act && !readable && !routes.includes(op)) {
+    return response.status(404).json({ error: `unknown op ${op.slice(0, 40)}` });
+  }
+  if (request.method !== "GET") {
+    return response.status(405).json({ error: `GET, or POST ?op=${Object.keys(acts).join(", ")}` });
+  }
+  // An act asked by GET is not done, nor answered with the report.
+  if (act && !readable && !routes.includes(op)) return response.status(405).json({ error: `POST ?op=${op}, not GET` });
+  if (readable || op === "person" || op === "audit") {
     try {
       if (op === "audit") return await auditRoute(request, response);
       if (op === "person") {

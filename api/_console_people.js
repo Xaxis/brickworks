@@ -80,7 +80,7 @@ export async function personMore(account) {
 // ---------------------------------------------------------------------------
 // Export, delete, sign out.
 
-/// POST ?op=export&account=U: {account, email, exported_at, sign_in, tables}.
+/// POST ?op=export&account=U: {account, email, exported_at, sign_in, tables, followers, more, counts, rows}.
 export async function exportAccount(request, response) {
   const account = accountOf(request);
   if (!UUID.test(account)) return response.status(400).json({ error: "name an account: ?account=<id>" });
@@ -94,6 +94,12 @@ export async function exportAccount(request, response) {
     throw trouble;
   }
   const tables = rows?.tables || {};
+  const more = rows?.more || {};
+  // Who follows this account is the follower's private act, not this
+  // account's data: the export says how many, never whose account it is.
+  const followers = more["follows.followed"] ?? (tables["follows.followed"] || []).length;
+  delete tables["follows.followed"];
+  delete more["follows.followed"];
   // The sets in its lists (lists1's collection_sets, its own sets among
   // them): keyed to a list, not to the account, so admin_export's search by
   // key to auth.users does not find them.
@@ -116,8 +122,9 @@ export async function exportAccount(request, response) {
     sign_in: { email: user.email || null, created_at: user.created_at || null, last_sign_in_at: user.last_sign_in_at || null,
       confirmed_at: user.email_confirmed_at || user.confirmed_at || null, providers: user.app_metadata?.providers || null },
     tables,
+    followers,
     // Where a table has more than the 1000 rows given, how many it has in all.
-    more: rows?.more || {},
+    more,
     counts: Object.fromEntries(Object.entries(tables).map(([name, list]) => [name, list.length])),
     rows: Object.values(tables).reduce((n, list) => n + list.length, 0),
   });

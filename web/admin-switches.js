@@ -43,7 +43,7 @@ $("notice-form").addEventListener("submit", async (event) => {
   const words = Object.fromEntries(Object.keys(LANGS).map((lang) => [lang, form.elements[lang].value.trim()]).filter(([, w]) => w));
   if (!words.en) return say("notice-note", "Give it its words in English.", true);
   send.disabled = true;
-  await post({ op: "notice_set" }, "notice-note", (said) => `Shown on every page${said.languages?.length > 1 ? `, in ${said.languages
+  await post({ op: "notice_set" }, "notice-note", (said) => `Shown on every page of the site, not the studio${said.languages?.length > 1 ? `, in ${said.languages
     .map((lang) => LANGS[lang]).join(", ")}` : ""}: visitors see it within a minute or two.`, { body: { words, tone },
     after: async () => { await loadSwitches(); after(); } });
   send.disabled = false;

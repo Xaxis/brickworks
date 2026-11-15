@@ -226,7 +226,8 @@ they have. A Claude connector belongs to the account that switched it on.
   Rebrickable's tables' fetch times), the parts store's index,
   `library_arrivals_in` and the OMR's runs, `admin_usage`; egress
   `{read: false, why, href}`. Also `POST ?op=run_cron&job=J`: the four in
-  `RUNNABLE` only (409 beta_daily, 400 any other), 503 without
+  `RUNNABLE` only, by its own names (409 beta_daily, 400 any other,
+  `constructor` and `__proto__` among them), 503 without
   CRON_SECRET, at `ownOrigin(request)` alone (brickworks.diy, www, this
   deployment, this project's previews, loopback; else 400 and the key sent
   nowhere).
@@ -238,10 +239,17 @@ they have. A Claude connector belongs to the account that switched it on.
   its history; `POST ?op=notice_set {words: {en, de?, fr?, es?}, tone}`
   (English needed, 300 characters a language, a language the site lacks
   dropped) and `?op=notice_clear` (404 when none shows), each audited.
-- `the console's part C` (`supabase/console3.sql`): `site_notices`,
-  `site_env` and thirteen functions only the server may call. Prove:
+- `the console's part C` (`supabase/console3.sql`, then
+  `supabase/console3b.sql`'s admin_export): `site_notices`, `site_env` and
+  thirteen functions only the server may call. An op of `/api/admin` is
+  one of its tables' own names: any other (`constructor`, `__proto__`)
+  is 404 and never audited; an act asked by GET is 405. Prove:
   `python3 tools/minitest.py tests/test_console3.py` (a real Postgres:
-  db3_check.mjs and api3_check.mjs).
+  db3_check.mjs and api3_check.mjs), and on a preview
+  `node tools/web/c3attack.mjs <preview>` (the review's attacks: forged
+  tokens, lookalike addresses, a follower's id, the notice, the grants,
+  prototype names) and `node tools/web/c3export_one.mjs <preview> 3d2df783`
+  (the busy test account's export: 200 in under 3 s).
 - `an account's deletion` (`api/_erase.js`): `erase(account)`, the one
   deletion: Admission first (a plan not ended holds it all, 503), the
   orangecheck account Connect made, photos, pictures, feedback's files,
@@ -251,7 +259,9 @@ they have. A Claude connector belongs to the account that switched it on.
   (case and spaces aside, else 422), never the owner's own (403), 404 when
   it is gone; the audit keeps its address. `POST ?op=export&account=U`
   (`admin_export`: at most 1000 rows a table and `more` for the rest, values
-  over 8 KB named by size, no secret column) and `?op=sign_out&account=U`
+  over 8 KB named by size, no secret column nor the connector's tool lists,
+  never read; who follows the account a count, `followers`, never their
+  accounts) and `?op=sign_out&account=U`
   (`admin_sign_out`: sessions and Claudes' grants).
 - `deployment variables written down` (`tools/release/env_names.sh`, from
   ship.sh after release_live.sh): `vercel env ls --format json` (vercel@61)

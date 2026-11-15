@@ -103,7 +103,7 @@ it answers.
 | `find` | GET `&q=` | Accounts, people, models, lists, reports and acts holding the words (part C) | auth users, admin_find, admin_audit_list |
 | `challenge_view` | GET `&challenge=` | One challenge whole: its entries by group, those failing its rules, its winners, what visitors see (part C) | challenge_list, challenge_admin_entries |
 | `unbar_model` | POST `&id=` | A model taken out let back (part C) | barred_models |
-| `notice_set`, `notice_clear` | POST | The notice on every page of this deployment, or cleared (part C) | site_notice_set, site_notice_clear |
+| `notice_set`, `notice_clear` | POST | The notice on every page of this deployment but the studio, or cleared (part C) | site_notice_set, site_notice_clear |
 | `run_cron` | POST `&job=` | A safe cron run now at this deployment's own address with CRON_SECRET, on the server (part C) | the cron's own path |
 | `export` | POST `&account=` | Every row of the account as JSON: at most 1000 a table, the rest counted; no secret column (part C) | auth user, admin_export |
 | `delete_account` | POST `&account=` `{confirm, reason}` | The account deleted at its person's request, its address typed again; never the owner's (part C) | api/_erase.js: Admission, orangecheck, photos, pictures, feedback's files, auth |
@@ -457,7 +457,13 @@ through functions the server alone may call.
   Export downloads every row the account owns (`admin_export`: each table
   with a key to auth.users found in the catalogue, at most 1000 rows a
   table with the rest counted, a value over 8 KB named by its size, never a
-  secret column, nor oauth_codes, oc_sessions or the audit). Sign out
+  secret column, nor oauth_codes, oc_sessions or the audit). Who follows
+  the account is counted (`followers`), never named: a follow is its
+  follower's act. The hidden columns are never read, so a busy connector
+  account exports in a fraction of a second (console3b.sql, after the
+  review, 2026-11-15). The file holds the owner's own notes on the person
+  (feedback, beta application and decision notes, signals), and the
+  console says so. Sign out
   everywhere ends its sessions and its Claudes' grants (`admin_sign_out`);
   a token already given lasts its hour. Delete, at its person's request:
   the dialog says it is irreversible and what goes; the button wakes only

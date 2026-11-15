@@ -190,6 +190,16 @@ try {
   // with the crons' key, and never at another address.
   out.run_beta = await act({ op: "run_cron", job: "beta_daily" });
   out.run_unknown = (await act({ op: "run_cron", job: "nope" })).status;
+  // Names Object's prototype lends: not crons, not ops, and no op audited for them (c3review R).
+  const proto = ["constructor", "__proto__", "hasOwnProperty", "toString"];
+  out.run_proto = [];
+  for (const job of proto) out.run_proto.push((await act({ op: "run_cron", job })).status);
+  const auditBeforeProto = await auditCount();
+  out.op_proto = [];
+  for (const op of proto) out.op_proto.push([(await read({ op })).status, (await act({ op })).status]);
+  out.audit_after_proto = (await auditCount()) - auditBeforeProto;
+  // A real read asked by POST, a real act by GET: the method is wrong, not the op.
+  out.wrong_method = [(await act({ op: "data" })).status, (await read({ op: "export" })).status];
   const ran = await act({ op: "run_cron", job: "gallery_feature" });
   out.run = { status: ran.status, ran: ran.json.ran, outcome: ran.json.outcome, calls: [...cronCalls] };
   const both = await Promise.all([act({ op: "run_cron", job: "share_sweep" }), act({ op: "run_cron", job: "share_sweep" })]);
@@ -216,10 +226,17 @@ try {
   await db.q("insert into public.model_collections (id, owner, name, public) values ('AdaList001', $1, 'Castles', true)", [adaId]);
   await db.q("insert into public.relay_tabs (channel, owner, tab) values ($1, $2, 'k3m9')", ["a".repeat(64), adaId]);
   await db.q("insert into public.collection_sets (collection, set_num) values ('AdaList001', '10305-1')");
+  // Bob follows ada: his act, not hers. Her export counts him, never names his account (c3review X).
+  await db.q("insert into public.follows (follower, followed) values ($1, $2)", [bobId, adaId]);
   const ex = await act({ op: "export", account: adaId });
   out.export = { status: ex.status, email: ex.json.email, tables: Object.keys(ex.json.tables || {}).sort(), counts: ex.json.counts,
     rows: ex.json.rows, channel: JSON.stringify(ex.json).includes("a".repeat(64)), sign_in: Object.keys(ex.json.sign_in || {}).sort(),
-    sets: (ex.json.tables?.collection_sets || []).map((one) => `${one.collection}:${one.set_num}`) };
+    sets: (ex.json.tables?.collection_sets || []).map((one) => `${one.collection}:${one.set_num}`),
+    followers: ex.json.followers, follower_named: JSON.stringify(ex.json).includes(bobId), more: ex.json.more };
+  // Bob's own export keeps whom he follows: his act, his data.
+  const bobs = await act({ op: "export", account: bobId });
+  out.export_follower = { status: bobs.status, follows: (bobs.json.tables?.["follows.follower"] || []).map((one) => one.followed === adaId),
+    followers: bobs.json.followers };
   const cleoId = await db.user("cleo@resend.dev");
   const none = await act({ op: "export", account: cleoId });
   out.export_empty = { status: none.status, email: none.json.email, tables: none.json.tables, rows: none.json.rows, more: none.json.more };

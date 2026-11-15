@@ -58,10 +58,14 @@ export const NOT_RUNNABLE = {
   beta_daily: "The beta's daily round mails testers: it runs only at its time",
 };
 
+/// The table's own entry named [job], never one Object's prototype lends it
+/// (?job=constructor, __proto__, hasOwnProperty): null.
+const entry = (table, job) => (Object.hasOwn(table, job) ? table[job] : null);
+
 /// Site's answer with each cron's Run now: why it is safe, or why it is not.
 export function withRunNow(site) {
   return { ...site, crons: (site?.crons || []).map((cron) => ({ ...cron,
-    run_now: RUNNABLE[cron.job] ? RUNNABLE[cron.job].said : null, run_not: NOT_RUNNABLE[cron.job] || null })) };
+    run_now: entry(RUNNABLE, cron.job)?.said ?? null, run_not: entry(NOT_RUNNABLE, cron.job) })) };
 }
 
 /// The facts written beside this function at deploy, or null.
@@ -117,8 +121,9 @@ export async function dataRead() {
 /// POST /api/admin?op=run_cron&job=J.
 export async function runCron(request, response) {
   const job = String(request.query?.job || "");
-  if (NOT_RUNNABLE[job]) return response.status(409).json({ error: `${NOT_RUNNABLE[job]}.` });
-  const cron = RUNNABLE[job];
+  const not = entry(NOT_RUNNABLE, job);
+  if (not) return response.status(409).json({ error: `${not}.` });
+  const cron = entry(RUNNABLE, job);
   if (!cron) return response.status(400).json({ error: `name a cron: ?job=${Object.keys(RUNNABLE).join(", ")}` });
   const secret = String(process.env.CRON_SECRET || "");
   if (!secret) return response.status(503).json({ error: "No CRON_SECRET here: the crons cannot be run from this deployment." });

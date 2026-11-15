@@ -36,11 +36,14 @@ function write(key, value) {
   }
 }
 
-/// The notice's words in the page's language where the owner typed them.
+const pageLang = () => String(root.lang || "en").slice(0, 2);
+
+/// The notice's words in the page's language where the owner typed them,
+/// else in English: {words, lang}.
 function wordsOf(notice) {
-  const lang = String(root.lang || "en").slice(0, 2);
+  const lang = pageLang();
   const words = notice?.words || {};
-  return typeof words[lang] === "string" && words[lang] ? words[lang] : String(words.en || "");
+  return typeof words[lang] === "string" && words[lang] ? { words: words[lang], lang } : { words: String(words.en || ""), lang: "en" };
 }
 
 let shown = null;
@@ -48,7 +51,7 @@ let shown = null;
 /// [notice] shown, or none when it is null or hidden here.
 function draw(notice) {
   const hidden = read(HIDDEN);
-  const words = notice ? wordsOf(notice) : "";
+  const { words, lang } = notice ? wordsOf(notice) : { words: "", lang: "en" };
   const want = notice && words && Number(hidden) !== Number(notice.id) ? notice : null;
   if (shown && (!want || shown.dataset.id !== String(want.id) || shown.querySelector(".words").textContent !== words)) {
     shown.remove();
@@ -63,6 +66,11 @@ function draw(notice) {
   const text = document.createElement("p");
   text.className = "words";
   text.textContent = words;
+  // Its own direction (an Arabic or Hebrew notice reads right to left), and
+  // English named as English where it stands in on a German, French or
+  // Spanish page, so a screen reader speaks it as English.
+  text.dir = "auto";
+  if (lang !== pageLang()) text.lang = lang;
   const close = document.createElement("button");
   close.type = "button";
   close.className = "icon-btn small";
