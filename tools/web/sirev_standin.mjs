@@ -143,6 +143,9 @@ const pasteText = (page, text) => page.evaluate((words) => {
   data.setData("text/plain", words);
   document.activeElement.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }));
 }, text);
+// Each Tab moved the focus on: no control twice running (a box's select()
+// a frame late took the focus back to it, sifix).
+const movedOn = (seen) => seen.every((one, i) => i === 0 || one.name !== seen[i - 1].name);
 const row = (digits) => Array.from({ length: 8 }, (_, i) => digits[i] || "").join("|");
 // What the page's focus is, and whether it is inside the dialog.
 const where = (page) => page.evaluate(() => {
@@ -326,8 +329,8 @@ try {
       await openDialog(page);
       const address = await page.locator("dialog.sign-in").ariaSnapshot();
       if (theme === "light") {
-        note("address step: a dialog named Sign in, the address a labelled text box",
-          /dialog "Sign in/.test(address) && /textbox "Email address"/.test(address), address.split("\n").slice(0, 8).join(" / "));
+        note("address step: a dialog named Sign in, the address a labelled text box (Email)",
+          /dialog "Sign in/.test(address) && /textbox "Email"/.test(address), address.split("\n").slice(0, 8).join(" / "));
       }
       const order0 = [];
       for (let i = 0; i < 9; i++) {
@@ -347,7 +350,8 @@ try {
         await page.keyboard.press("Tab");
         order.push(await where(page));
       }
-      if (theme === "light") note("Tab, code step: kept in the dialog", order.every((one) => one.inDialog), order.map((one) => one.name).join(" > "));
+      if (theme === "light") note("Tab, code step: kept in the dialog, each press on to the next", order.every((one) => one.inDialog) && movedOn(order),
+        order.map((one) => one.name).join(" > "));
       // Contrast: the words and the boxes' edges against the dialog.
       await page.locator("dialog.sign-in .code-boxes input >> nth=0").focus();
       await page.keyboard.type("1111111");
@@ -526,8 +530,10 @@ try {
     await page.locator("dialog.sign-in .code-boxes input >> nth=0").focus();
     const back = [await where(page)];
     for (let i = 0; i < 3; i++) { await page.keyboard.press("Shift+Tab"); back.push(await where(page)); }
-    note("code step: Tab from the last link stays in the dialog", seq.every((one) => one.inDialog), seq.map((one) => one.name).join(" > "));
-    note("code step: Shift+Tab from the first box stays in the dialog", back.every((one) => one.inDialog), back.map((one) => one.name).join(" < "));
+    note("code step: Tab from the last link stays in the dialog, each press on to the next", seq.every((one) => one.inDialog) && movedOn(seq),
+      seq.map((one) => one.name).join(" > "));
+    note("code step: Shift+Tab from the first box stays in the dialog, each press back to the one before", back.every((one) => one.inDialog)
+      && movedOn(back), back.map((one) => one.name).join(" < "));
     const edges = await page.evaluate(() => {
       const { parse, over, ratio } = window.__contrast;
       const d = document.querySelector("dialog.sign-in");

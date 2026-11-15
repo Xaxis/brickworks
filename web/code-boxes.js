@@ -229,10 +229,16 @@ export function codeBoxes({ field = null, into = null, id = "", digits = CODE_DI
     if (checking) return;
     lay(readCode(text, boxes.length), 0);
   });
-  // Into a box, its digit chosen, so a digit typed replaces it.
+  // Into a box, its digit chosen, so a digit typed replaces it: only while
+  // the box still has the focus, as select() takes it back (sifix: a Tab
+  // pressed within a frame of the last landed back in the box it left).
   row.addEventListener("focusin", (event) => {
     const box = event.target;
-    if (box instanceof HTMLInputElement) requestAnimationFrame(() => box.select());
+    if (box instanceof HTMLInputElement) {
+      requestAnimationFrame(() => {
+        if (document.activeElement === box) box.select();
+      });
+    }
   });
 
   draw(digits);

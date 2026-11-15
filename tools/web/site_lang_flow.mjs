@@ -836,8 +836,8 @@ async function signingIn(browser, code, width, where) {
   });
   try {
     if (where === "profile") {
-      // Signed out, /profile opens the sign-in by itself (signinux).
-      await tab.goto(`${base}/profile`, { waitUntil: "load" });
+      // Signed out, /profile?sign-in opens the sign-in by itself (signinux, sifix).
+      await tab.goto(`${base}/profile?sign-in`, { waitUntil: "load" });
     } else {
       await tab.goto(`${base}${code === "en" ? "" : `/${code}`}/gallery`, { waitUntil: "load" });
       await tab.waitForFunction(() => document.documentElement.dataset.gallery === "ready", null, { timeout: 30000 });

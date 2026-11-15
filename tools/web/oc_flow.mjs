@@ -140,9 +140,10 @@ async function context(width, theme, { blockWindows = false } = {}) {
   return made;
 }
 
-// Signed out, /profile opens the sign-in by itself (signinux, 2026-11-14).
+// Signed out, /profile?sign-in opens the sign-in by itself (signinux,
+// 2026-11-14; a bare /profile only since sifix asks it to be pressed).
 async function openDialog(page) {
-  await page.goto(`${site}/profile`, { waitUntil: "domcontentloaded", timeout: 120000 });
+  await page.goto(`${site}/profile?sign-in`, { waitUntil: "domcontentloaded", timeout: 120000 });
   await page.locator("dialog.sign-in").waitFor({ state: "visible", timeout: 60000 });
 }
 

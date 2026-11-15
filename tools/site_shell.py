@@ -62,7 +62,9 @@ def marked(header: str, page: str) -> str:
         return header
     if own == "/":
         return header.replace('<a class="mark" href="/">', '<a class="mark" href="/" aria-current="page">', 1)
-    return re.sub(rf'(<a href="{re.escape(own)}")', r'\1 aria-current="page"', header)
+    # The account's Sign in asks for the sign-in on its page (/profile?sign-in,
+    # sifix): on /profile it is the page's own link all the same.
+    return re.sub(rf'(<a href="{re.escape(own)}(?:\?sign-in)?")', r'\1 aria-current="page"', header)
 
 
 def pages() -> list[Path]:

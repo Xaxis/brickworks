@@ -130,8 +130,9 @@ const tokenOf = (page) => page.evaluate(async () => (await import("/account.js")
 /// or over when it is asked. Resolves with what came next: "welcome",
 /// "steps" (First steps) or "none".
 async function signInByDialog(base, page, email) {
-  // Signed out, /profile opens the sign-in by itself (signinux).
-  await page.goto(`${base}/profile`, { waitUntil: "load", timeout: 60000 });
+  // Signed out, /profile?sign-in opens the sign-in by itself (signinux;
+  // a bare /profile only since sifix asks it to be pressed).
+  await page.goto(`${base}/profile?sign-in`, { waitUntil: "load", timeout: 60000 });
   await page.locator("dialog.sign-in[open]").waitFor({ state: "visible", timeout: 20000 });
   await page.fill("dialog.sign-in input", email);
   await page.click('dialog.sign-in button[type="submit"]');

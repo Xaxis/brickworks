@@ -151,8 +151,8 @@ async function connectSignIn(name, { tick, cut = false }) {
     return route.fulfill({ response: reply });
   });
   const tab = await made.newPage();
-  // Signed out, /profile opens the sign-in by itself (signinux).
-  await tab.goto(`${site}/profile`, { waitUntil: "domcontentloaded", timeout: 120000 });
+  // Signed out, /profile?sign-in opens the sign-in by itself (signinux, sifix).
+  await tab.goto(`${site}/profile?sign-in`, { waitUntil: "domcontentloaded", timeout: 120000 });
   await tab.locator("dialog.sign-in #oc-connect").waitFor({ state: "visible", timeout: 60000 });
   check(`${name}: the box is there, unticked`, !(await tab.locator("dialog.sign-in #oc-connect").isChecked()));
   if (tick) await tab.locator("dialog.sign-in #oc-connect").check();
@@ -178,8 +178,8 @@ async function connectSignIn(name, { tick, cut = false }) {
 try {
   if (connectOnly) throw Object.assign(new Error("connect only"), { connectOnly: true });
   // 1. Through orangecheck's window, offered to everybody.
-  // Signed out, /profile opens the sign-in by itself (signinux).
-  await page.goto(`${site}/profile`, { waitUntil: "domcontentloaded", timeout: 120000 });
+  // Signed out, /profile?sign-in opens the sign-in by itself (signinux, sifix).
+  await page.goto(`${site}/profile?sign-in`, { waitUntil: "domcontentloaded", timeout: 120000 });
   await page.locator("dialog.sign-in").waitFor({ state: "visible", timeout: 60000 });
   const answered = nextAnswer();
   // orangecheck's button script dresses the button after the dialog opens:
