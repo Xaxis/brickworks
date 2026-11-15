@@ -14621,6 +14621,9 @@ msgstr "%d würden an nichts halten"
 msgid "%d have no room and stay as they are"
 msgstr "%d haben keinen Platz und bleiben, wie sie sind"
 
+msgid "1 has no room and stays as it is"
+msgstr "1 hat keinen Platz und bleibt, wie es ist"
+
 msgid "The part to find"
 msgstr "Das zu suchende Teil"
 

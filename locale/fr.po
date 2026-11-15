@@ -14621,6 +14621,9 @@ msgstr "%d ne tiendraient à rien"
 msgid "%d have no room and stay as they are"
 msgstr "%d n'ont pas la place et restent telles quelles"
 
+msgid "1 has no room and stays as it is"
+msgstr "1 n'a pas la place et reste telle quelle"
+
 msgid "The part to find"
 msgstr "La pièce à trouver"
 

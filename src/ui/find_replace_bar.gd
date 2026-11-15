@@ -202,7 +202,9 @@ func _show() -> void:
 		if floats > 0:
 			lines.append("%d would hold onto nothing" % floats)
 		var room: int = (made["room"] as Array).size()
-		if room > 0:
+		if room == 1:
+			lines.append("1 has no room and stays as it is")
+		elif room > 1:
 			lines.append("%d have no room and stay as they are" % room)
 		if not lines.is_empty():
 			_fit.text = "\n".join(lines)

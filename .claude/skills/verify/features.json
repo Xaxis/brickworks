@@ -2824,6 +2824,22 @@
       "tests": []
     },
     {
+      "id": "cli:swapfind phone probe",
+      "kind": "cli",
+      "entry": "src/dev/swapfind_phone_probe.gd",
+      "reach": "tools/probe.sh swapfind_phone_probe   (windowed, 390x844 by its header; no sign-in)",
+      "area": "building",
+      "tests": []
+    },
+    {
+      "id": "cli:swapfind probe",
+      "kind": "cli",
+      "entry": "src/dev/swapfind_probe.gd",
+      "reach": "tools/probe.sh swapfind_probe   (headless, about 4 minutes; SWAPFIND_CASES=car,mcp,... for some; LIVE_SAVED, LIVE_OURS, LIVE_READ for the round trip with live's build)",
+      "area": "building",
+      "tests": []
+    },
+    {
       "id": "cli:table race",
       "kind": "cli",
       "entry": "src/dev/table_race_probe.gd",
@@ -5288,6 +5304,14 @@
       "entry": "src/net/brickognize.gd",
       "reach": "godot --path .  (the camera in the parts bin's search field; the photo goes to Brickognize, said before the first)",
       "area": "parts",
+      "tests": []
+    },
+    {
+      "id": "ui:find and replace everywhere",
+      "kind": "ui",
+      "entry": "src/ui/find_replace_bar.gd",
+      "reach": "godot --path .  (Edit, Find and replace\u2026 or Ctrl-Shift-H: a part's number or name and/or a colour to find; where it is listed by sub-model with counts and copies, its colours, a part in two colours flagged; replace with a part, a colour or both, everywhere, in the sub-model and its copies, or in the selection, as one undo step; another footprint or other connection points said first; a session's replace_parts does the same; tools/probe.sh swapfind_probe)",
+      "area": "building",
       "tests": []
     },
     {

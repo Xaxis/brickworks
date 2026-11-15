@@ -16,16 +16,21 @@
 ## placed 3 times, nested 2 deep; a printed part for a plain one, in place; a
 ## part of another footprint and one of other connection points, said before;
 ## CRLF and tabs; a file as live saves it, replaced and read back as live
-## reads it (LIVE_SAVED, LIVE_READ: files tools/release/live_ab.sh wrote, or
-## the cases skip saying so); undo then redo; a replace while a Build together
-## room is open; and the words in German, French and Spanish. The car is the
-## app's own save of it, so it opens and saves to the byte (copyorder's S2),
+## reads it; undo then redo; a replace while a Build together room is open;
+## and the words in German, French and Spanish. The car is the app's own
+## settled save of it, so it opens and saves to the byte (copyorder's S2),
 ## and every undo is held to the save before the replace, to the byte.
 ##
 ##   SWAPFIND_CASES=car,mcp   those cases
+##   LIVE_SAVED=F [LIVE_OURS=G] [LIVE_READ=H]   the live round trip: F the car
+##     as live's build saved it, G where ours of it replaced is written, H
+##     live's save of G; without F the case skips, saying so. A worktree at
+##     the live sha writes F and H with a one-off headless script that opens
+##     through ModelBar.open_text_with_progress and saves
+##     ModelStore.to_text(title, true).
 extends "res://src/dev/copyfaults_probe.gd"
 
-const FIND_CASES: Array = ["car", "mcp", "two_colours", "mirror", "three_deep", "printed",
+const FIND_CASES: Array = ["car", "mcp", "two_colours", "mirror", "three_deep", "wheels", "printed",
 	"footprint", "crlf", "live", "together", "words"]
 const CAR := "swapfind_car.mpd"
 const BLACK := 0
@@ -64,6 +69,7 @@ func _run() -> void:
 			"two_colours": await _case_two_colours()
 			"mirror": await _case_mirror()
 			"three_deep": await _case_three_deep()
+			"wheels": await _case_wheels()
 			"printed": await _case_printed()
 			"footprint": await _case_footprint()
 			"crlf": await _case_crlf()
@@ -179,11 +185,11 @@ func _case_car() -> void:
 		and _count("3023b", DARK_BLUISH_GREY) == 4)
 	var after: String = _save()
 	print("  saved: %s" % _diff(before, after))
-	_check("car: each sub-model written once (Side %d, Wheel %d, Axle %d; Sill's parts in Side %d)"
-		% [_defined(after, "side.ldr"), _defined(after, "wheel.ldr"), _defined(after, "axle.ldr"),
-			after.count("IN Sill#1")], _defined(after, "side.ldr") == 1
-		and _defined(after, "wheel.ldr") == 1 and _defined(after, "axle.ldr") == 1
-		and after.count("IN Sill#1") == before.count("IN Sill#1"))
+	_check("car: each sub-model written once (Side %d, Sill %d, Wheel %d, Axle %d)" % [
+		_defined(after, "side.ldr"), _defined(after, "sill.ldr"), _defined(after, "wheel.ldr"),
+		_defined(after, "axle.ldr")], _defined(after, "side.ldr") == 1
+		and _defined(after, "sill.ldr") == 1 and _defined(after, "wheel.ldr") == 1
+		and _defined(after, "axle.ldr") == 1)
 	_check("car: ...the sill's line Dark Bluish Grey, and only those 3 lines changed (%d)"
 		% _minus(after, before).size(), after.contains("1 72 30 -64 40 0 0 1 0 1 0 -1 0 0 3023b.dat")
 		and _minus(after, before).size() == 3 and _minus(before, after).size() == 3)
@@ -257,14 +263,14 @@ func _case_two_colours() -> void:
 	_check("two_colours: replace_parts says it too", answer.contains("used in 2 colours"))
 
 
-## A replace inside a mirrored copy. The car's right side has a right door
-## (3822); its left side is the same Side placed by a mirror, so its door is
-## seen as the left one (3821), and is found as that. The right door made a
-## left one: the right side's 3821 and, the copies following, the mirrored
-## left side's 3822, Side written once with the one line changed. And the
-## same asked from the other side: the left door (3821, in the mirrored
-## copy, its twin not found) made a right one changes it there, the right
-## side following with the other hand: the same file.
+## A replace inside a mirrored copy. The car's right side (x > 0) has a
+## 3822 door, a handed part; its left side is the same Side placed by a
+## mirror, so its door is seen as the other hand, 3821, and is found as
+## that. The 3822 made a 3821: the right side's 3821 and, the copies
+## following, the mirrored left side's 3822, Side written once with the one
+## line changed. And the same asked from the other side: the left side's
+## 3821 (in the mirrored copy, its twin not found) made a 3822 changes it
+## there, the right side following with the other hand: the same file.
 func _case_mirror() -> void:
 	var text: String = _fixture(CAR)
 	await _bar_on(text)
@@ -368,6 +374,30 @@ func _case_three_deep() -> void:
 		undone == before)
 
 
+## The car's wheels: a Wheel placed twice in an Axle placed twice, 4 copies
+## 2 deep, one of each pair turned round. Its rim recoloured: found in each
+## of the 4, all 4 said and changed, wheel.ldr's one line, the undo to the
+## byte.
+func _case_wheels() -> void:
+	await _bar_on(_fixture(CAR))
+	var before: String = _save()
+	_bar.call("set_find", "4624", 7)
+	_bar.call("set_into", "", 71)
+	_bar.call("refresh")
+	var said: String = _bar_said()
+	_check("wheels: the rim in each of 4 copies, all 4 said (%s)" % said,
+		said.contains("Wheel: 1 in each of 4 copies") and said.contains("Changes all 4 copies of Wheel"))
+	await _bar.call("replace_now")
+	await _frames(4)
+	var after: String = _save()
+	print("  saved: %s" % _diff(before, after))
+	_check("wheels: 4 rims Light Bluish Grey (%d), wheel.ldr's one line (%d)" % [_count("4624", 71),
+		_minus(after, before).size()], _count("4624", 71) == 4 and _count("4624", 7) == 0
+		and _minus(after, before).size() == 1 and _defined(after, "wheel.ldr") == 1)
+	var undone: String = await _undone()
+	_check("wheels: one undo, the save before to the byte", undone == before)
+
+
 ## A printed part for a plain one: where it stood, and nothing said of a fit.
 func _case_printed() -> void:
 	var prints: Array = _library.prints_of("3068b")
@@ -432,7 +462,7 @@ func _case_footprint() -> void:
 		var put: int = _count(into, BLACK)
 		_check("footprint %s: those with room put down (%d), those without left (%d), as said"
 			% [into, put, _count("3023b", BLACK)], put == int(done.get("changed", 0))
-			and put + _count("3023b", BLACK) == 4 and _count("3023b", BLACK) >= room)
+			and put + _count("3023b", BLACK) == 4 and _count("3023b", BLACK) == room)
 		var floats: int = (made.get("floats", []) as Array).size()
 		_check("footprint %s: none put down floating unsaid (%d said)" % [into, floats],
 			floats == 0 or said.contains("hold onto nothing"))
@@ -441,13 +471,16 @@ func _case_footprint() -> void:
 			_diff(before, undone)], undone == before)
 
 
-## CRLF and tabs: the replace's save keeps CRLF on every line, and its undo
-## gives the file to the byte.
+## CRLF and tabs: opened and saved as copyorder holds it (the LF file's
+## lines, ended CRLF as it had them); the replace's save keeps CRLF on every
+## line, and its undo gives that save to the byte.
 func _case_crlf() -> void:
 	var text: String = _fixture(CAR).replace("\n", "\r\n").replace("1 0 30 -40 -80", "1\t0\t30 -40 -80")
 	await _bar_on(text)
 	var before: String = _save()
-	_check("crlf: opened and saved, to the byte", before == text)
+	var spaced: String = before.replace("\r\n", "\n").replace("\t", " ")
+	_check("crlf: opened and saved, the LF file's lines ended CRLF (%s)" % _diff(_fixture(CAR), spaced),
+		spaced == _fixture(CAR) and before.count("\r\n") == before.count("\n"))
 	_bar.call("set_find", "3023", BLACK)
 	_bar.call("set_into", "", DARK_BLUISH_GREY)
 	_bar.call("refresh")
@@ -462,45 +495,48 @@ func _case_crlf() -> void:
 		undone == before)
 
 
-## A file as live saves it (LIVE_SAVED: the car opened and saved by live,
-## tools/release/live_ab.sh): replaced here, and our save as live reads it
-## back (LIVE_READ: live's save of ours), every part where it was.
+## A file as live saves it (LIVE_SAVED: the car opened and saved by the
+## build on brickworks.diy) opened here as the car is, every part where it
+## was (steps aside: live numbers some differently); its Black 3023s made
+## Dark Bluish Grey, the save written to LIVE_OURS; that file as live saves
+## it again (LIVE_READ) opened here as ours was shown; and the replace's undo
+## the save before, to the byte. Skipped, saying so, without LIVE_SAVED.
 func _case_live() -> void:
 	var saved: String = OS.get_environment("LIVE_SAVED")
 	if saved.is_empty() or not FileAccess.file_exists(saved):
 		print("  live: LIVE_SAVED not given, skipped")
 		return
 	var text: String = FileAccess.get_file_as_string(saved)
+	await _open(_fixture(CAR))
+	var ours_shown: Array = _looks(false)
 	await _bar_on(text)
+	_check("live: live's save of the car opened as the car is here%s" % _unlike(ours_shown,
+		_looks(false)), _looks(false) == ours_shown)
 	var before: String = _save()
-	_check("live: live's save opened and saved, to the byte (%s)" % _diff(text, before),
-		before == text)
 	_bar.call("set_find", "3023", BLACK)
 	_bar.call("set_into", "", DARK_BLUISH_GREY)
 	_bar.call("refresh")
 	await _bar.call("replace_now")
 	await _frames(4)
-	_check("live: replaced, 4 Dark Bluish Grey", _count("3023b", DARK_BLUISH_GREY) == 4)
+	_check("live: replaced, 4 Dark Bluish Grey", _count("3023b", DARK_BLUISH_GREY) == 4
+		and _count("3023b", BLACK) == 0)
 	var ours: String = _save()
 	var out: String = OS.get_environment("LIVE_OURS")
 	if not out.is_empty():
 		var file: FileAccess = FileAccess.open(out, FileAccess.WRITE)
 		file.store_string(ours)
 		file.close()
-	var shown: Array = _looks()
-	var read: String = OS.get_environment("LIVE_READ")
-	if not read.is_empty() and FileAccess.file_exists(read):
-		await _open(FileAccess.get_file_as_string(read))
-		_check("live: ours as live saves it back, opened here as shown%s" % _unlike(shown,
-			_looks()), shown == _looks())
-	await _open(text)
-	_bar.call("set_find", "3023", BLACK)
-	_bar.call("set_into", "", DARK_BLUISH_GREY)
-	_bar.call("refresh")
-	await _bar.call("replace_now")
+	var shown: Array = _looks(false)
 	var undone: String = await _undone()
 	_check("live: one undo, the save before to the byte (%s)" % _diff(before, undone),
 		undone == before)
+	var read: String = OS.get_environment("LIVE_READ")
+	if read.is_empty() or not FileAccess.file_exists(read):
+		print("  live: LIVE_READ not given, live's read of ours skipped")
+		return
+	await _open(FileAccess.get_file_as_string(read))
+	_check("live: ours as live saves it, opened here as ours was shown%s" % _unlike(shown,
+		_looks(false)), shown == _looks(false))
 
 
 ## A replace while a Build together room is open (Together.check_alone: this
@@ -568,7 +604,7 @@ func _case_words() -> void:
 		"Nothing like that here", "Only locked parts are like that: unlock them to change them",
 		"In the model's own parts", "In Side and its copies", "In the selection",
 		"2 found in the selection", "2 found in the model's own parts", "2 found in Side and its copies",
-		"Sill: 2", "Sill: 3 in 2 copies", "Used in 2 colours: all will be Dark Bluish Grey",
+		"Sill: 3 in 2 copies", "1 has no room and stays as it is", "Used in 2 colours: all will be Dark Bluish Grey",
 		"3 would hold onto nothing", "1 have no room and stay as they are"]
 	_bar.call("set_find", "3023", -1)
 	_bar.call("set_into", "3623", DARK_BLUISH_GREY)

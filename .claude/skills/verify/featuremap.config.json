@@ -713,6 +713,27 @@
     },
     {
       "kind": "ui",
+      "label": "find and replace everywhere",
+      "entry": "src/ui/find_replace_bar.gd",
+      "reach": "godot --path .  (Edit, Find and replace… or Ctrl-Shift-H: a part's number or name and/or a colour to find; where it is listed by sub-model with counts and copies, its colours, a part in two colours flagged; replace with a part, a colour or both, everywhere, in the sub-model and its copies, or in the selection, as one undo step; another footprint or other connection points said first; a session's replace_parts does the same; tools/probe.sh swapfind_probe)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "swapfind probe",
+      "entry": "src/dev/swapfind_probe.gd",
+      "reach": "tools/probe.sh swapfind_probe   (headless, about 4 minutes; SWAPFIND_CASES=car,mcp,... for some; LIVE_SAVED, LIVE_OURS, LIVE_READ for the round trip with live's build)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "swapfind phone probe",
+      "entry": "src/dev/swapfind_phone_probe.gd",
+      "reach": "tools/probe.sh swapfind_phone_probe   (windowed, 390x844 by its header; no sign-in)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
       "label": "undo history",
       "entry": "src/ui/toolbar.gd",
       "reach": "godot --path .  (History on the toolbar, or Edit, History)",

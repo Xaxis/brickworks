@@ -287,6 +287,14 @@ func plan(found: Dictionary, into: Dictionary) -> Dictionary:
 		else:
 			(out["changes"] as Array).append({"brick": brick_id, "part": new_part,
 				"color": new_colour, "at": at})
+	# One that follows a twin with no room stays as the twin does: said with it.
+	var refused: Dictionary = {}
+	for brick_id: int in out["room"]:
+		refused[brick_id] = true
+	for brick_id: int in (out["follow"] as Array).duplicate():
+		if refused.has(int(following.get(brick_id, -1))):
+			(out["follow"] as Array).erase(brick_id)
+			(out["room"] as Array).append(brick_id)
 	return out
 
 
