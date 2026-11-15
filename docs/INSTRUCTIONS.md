@@ -3262,6 +3262,89 @@ Merged with pre261, it passes 540 of 540, and booklet_probe 49.
 not roll: its camera stays upright, so x 180 is seen from behind there, not
 from nearly above.
 
+## Nothing in under a part already there (2026-11-15, buildorder)
+
+The planner's steps put 4.6% of what they put in under a part already there
+(proof), against the authors' 0.8%. A hand cannot press a part in from
+below. The mend (HeldSteps) waited for what holds a part, by its joints,
+and never for what it rests on. Now it reads that too, by the covers the
+steps score reads (`HeldSteps.Under`, from Stability.contacts' "above",
+less the pairs a pin, axle, clip, ball or glue holds):
+
+- **A part waits for what it rests on**, as it waits for what holds it, for
+  at most `PATIENCE` (32) steps. Round a sub-assembly put on whole, what it
+  waits for may wait for it in turn; with no limit 7347's truck put what
+  waited in at its last step, and its things in under went from 14 to 49.
+- **Two parts whose covers meet both ways round go in together** (a plate's
+  studs in the tubes of a part that also sits on it). Half of what went in
+  under was such pairs: whichever goes second goes in under the first. A
+  later part may be taken in sooner for it, up to `PULL_MOST` (32) a step,
+  never in the model's first step, and only with everything it is pinned
+  to: the kart's gear, taken in before its axle, stood by its teeth alone
+  (instructions_probe).
+- **A hidden part joined only to its own step's parts goes in sooner with
+  them.** corner_shop's figure went in last, inside its walls, its head
+  joined only to its body: the steps test's hidden count is 0 again (2 in
+  pre261, 0 before copyorder).
+- **A model of sub-models keeps its whole sub-model steps** only when they
+  put no more in under, and no more apart in the hand (`HeldSteps.Hand`),
+  than the order worked out. Kept, they floated 1.4% of steps in the hand
+  that the steps test lets stand, its rule that an author's sub-model
+  begins on nothing.
+
+**Tuned on `tune`** (the stage probe, things pooled over 100 files):
+
+| | under | steps floating | steps hiding | tau |
+|---|---:|---:|---:|---:|
+| pre261 | 4.97% | 2.31% | 9.29% | 0.326 |
+| pull 16, patience 8 | 2.10% | 1.11% | 9.11% | 0.302 |
+| pull 16, patience 16 | 1.54% | 1.09% | 9.03% | 0.307 |
+| pull 32, patience 16 | 1.41% | 1.08% | 8.99% | 0.305 |
+| pull 32, patience 32, the figure sooner | 1.25% | 0.95% | 9.01% | 0.313 |
+| ...and pulled parts with what they are pinned to (kept) | 1.46% | 0.96% | 9.08% | 0.313 |
+
+Patience did most: 9391's string of 294 LSynth pieces, each its own thing,
+went from 278 under at patience 8 to 56 at 16 (354 in pre261).
+
+**Judged on `proof`** (100 sets, `--check`; 73a18ac4d against pre261
+067e19d59; the report's means, with the measure's own intervals). It was
+judged first on 9682bb89a, before the kart's fix, with 1.2% under and
+10.2% hiding; the fix was for the probe, not the score.
+
+| | pre261 | buildorder | bar | authors |
+|---|---:|---:|---:|---:|
+| steps with a floating thing | 1.3% | 1.2% | 2% | 1.3% |
+| things put in under one already there | 4.6% | 1.4% (1.0-1.9) | 1.5% | 0.8% |
+| steps with a hidden new thing | 10.7% | 10.3% (8.1-12.7) | 8% | 6.7% |
+| tau against the author | 0.35 | 0.34 | 0.29 | 1 |
+| parts the build check calls floating | 12.4% | 4.9% (1.1-10.5) | 4% | 0.9% |
+| steps in all | 12,508 | 11,440 | | 11,930 |
+| planning, the 100 files | 170 s | 196 s (1.15 times) | 1.33 times | |
+
+**NO-GO, hidden steps** (10.3% against 8%). The mend moves sooner only what
+the steps test's own hidden rule finds; the score's front and back pictures
+find more. Two sets hold 172 of the 378 steps over the authors': 10283
+(120 of 386 steps, the authors 28 of 948) and 76161 (102 of 484, the
+authors 22 of 761). On tune, 920-2 and 10129 held 98 of 281.
+
+**NO-GO, the build check** (4.9% against 4%; pre261 12.4%). Four sets hold
+81 of the 91 parts, each floating in pre261 too: 4434 (25 of 25 at all five
+sampled steps), 6901, 3183 and 6501. The score's own graph finds no step of
+4434 or 6901 floating: the check's table and the score's disagree there,
+not the order.
+
+**Also measured.**
+- coreview's plan2 set (62 models): none worse by HeldSteps.faults_of. One
+  more of its 31 own saves (576e2e55) saves differently once before it
+  saves the same, as 10 already did in pre261.
+- copyorder, cf3attack's S2_unedited and S2_chain (and S3): every save the
+  same. instructions, steps_kept, booklet_edit, unit_steps, copyorder, s2r,
+  ic3, build_steps, step_count and pullkept pass from a locked snapshot.
+- booklettest's follower was not run again. Its pages are the same but for
+  the car's page 2, where one 2 x 4 plate is in step 3 instead of step 2;
+  7140-1 plans the same, and the castle's changes (steps 114 to 118) are
+  before the stretch it measured (pages 150-161, steps 165 to 186).
+
 ## What is left
 
 - **The page by hand.** A box cannot be turned, and there are no rulers of
@@ -3295,10 +3378,10 @@ from nearly above.
   built when the author does not build it is still out of the author's
   order. When each sub-assembly goes on is what is left, and the shape does
   not say it.
-- **Every step buildable.** On the held-out sample one step in thirteen
-  still floats something (7.5%), against one in eighty for authors, and 5.7%
-  of things go in under one already there, against 0.9%; one step in eight
-  hides a new thing (12.1%), against one in fifteen.
+- **Every step buildable.** On the held-out sample 1.2% of steps float
+  something and 1.4% of things go in under one already there (buildorder,
+  above), near the authors' 1.3% and 0.8%; one step in ten still hides a
+  new thing (10.3%), against one in fifteen.
   - **920's base**, most of whose parts stand square in its tilted launch
     pad's frame, is built in the hand now, and puts its hoses in a piece at a
     time: 330 LSynth pieces the file names after the model ("Rocket Launch
@@ -3323,9 +3406,9 @@ from nearly above.
   `COVER_RESTS`): a part no stud seats whose cover rests on something has
   its box's supports cleared, on purpose now. Read as the code meant, both
   ways round, it made a step in ten float something; one way round, fewer
-  hidden steps but the rest a little worse (lostappend, After). Reading it
-  well probably needs the order tuned with it, not added to an order tuned
-  without it.
+  hidden steps but the rest a little worse (lostappend, After). The mend
+  reads it now, after the order (HeldSteps.Under, buildorder above); the
+  order itself still does not.
 - **A long run's plans move a little from run to run** (lostappend,
   After): 7 of 100 proof files planned differently in two runs of the same
   planner, and 8159-1's shuffled plan is 48 or 50 steps by what the process

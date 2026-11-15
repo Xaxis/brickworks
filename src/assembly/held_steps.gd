@@ -26,14 +26,16 @@ const ROUNDS := 4
 ## stands with what is in by then.
 const MOST_AFTER := 64
 ## The most later parts one step takes in sooner, each with a part of it whose
-## cover meets its own both ways round ([method _put]). Tuned on the steps
-## score's tune sample (docs/INSTRUCTIONS.md, buildorder): 8 left 2.1% of
-## things in under one already there, 16 1.5%, 32 1.4%.
+## cover meets its own both ways round ([method _put]). Tuned with
+## [constant PATIENCE] on the steps score's tune sample (docs/INSTRUCTIONS.md,
+## buildorder): at patience 16, 16 left 1.54% of things in under one already
+## there and 32 1.41%.
 const PULL_MOST := 32
 ## The most steps a part that would stand waits for what it rests on
 ## ([method Under._waited]). Round a sub-assembly put on whole, what it waits
-## for may wait for it in turn: 4 left 7347's truck dumping its cab at the
-## last step, and 8, 16 and 32 left 2.1%, 1.5% and 1.4% of things in under.
+## for may wait for it in turn: with no limit 7347's truck put what waited in
+## at its last step. At pull 16, 8 left 2.10% of things in under and 16
+## 1.54%; at pull 32, 16 left 1.41% and 32 1.25%.
 const PATIENCE := 32
 
 ## Whether the planner's steps are put right: off only for a probe, to see
