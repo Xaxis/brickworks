@@ -38,6 +38,11 @@ extends Control
 
 var app: Node
 var shell: Shell
+## Laid out again in other points to the unit (a phone turned, a browser's
+## zoom, a check that sets a browser's scale): the bars are another height
+## in units, and Main's column keeps clear of them by this (Main
+## ._phone_bars_room).
+signal laid_out
 var bin: PartsBin
 ## Laid out wide, for a tablet (Phone.wide).
 var wide: bool = false
@@ -86,6 +91,23 @@ const NAME := 120.0
 const NAME_LEAST := 80.0
 const BACK := Color(0.11, 0.12, 0.14, 0.97)
 const LIT := Color(0.36, 0.6, 1.0, 0.38)
+
+## More's first rows, two to a line above the menus' names: the commands
+## the walk by finger reached for, each two taps (More and the row) where in
+## its menu it was More, the menu, a drag or more to bring the row into
+## sight and the row: Render 6 to 7 taps to the desktop's 2, Instructions 4
+## to 1, Check stability 4 to 5 to 1, Cut away 9 to 11 to 2, Simulate 9 to 2
+## (docs/app_ux8/phonewalk.md, smalls2). Each is in its menu too, and one
+## the window does not offer (Shell._shown) is left out here as there.
+const QUICK: Array[String] = ["save", "instructions", "timeline", "render", "measure", "cut",
+	"stability", "simulate", "pose", "select_all"]
+
+## A check that holds a browser's scale in a desktop's window (phonepanels,
+## twist_probe): the scale is left as it set it, and the rest is laid out
+## as ever. One that stopped the whole of [method _process] for it kept
+## the line over the model as it was: "opened Car — 61 bricks" stood over
+## Motions and Simulate for minutes (phonepanels, smalls2).
+var holds_scale: bool = false
 
 ## The row along the foot: [what, word, icon].
 const TOOLS: Array = [
@@ -276,6 +298,7 @@ func _build() -> void:
 	_more = _sheet("More", true)
 	_context = _sheet("This part", true)
 	_lay_pill()
+	laid_out.emit()
 
 
 ## Anchors left, top, right, bottom and the offsets from them, as
@@ -484,8 +507,16 @@ func _chose(what: String) -> void:
 				verbs.press("tip")
 				app.call("_refresh_preview")
 		"select":
-			# What a right click does: lets go of what is in hand.
-			app.call("_right_click")
+			# Lit, with nothing in hand: a finger's way to add to the
+			# selection (EditVerbs.adding), on and off, as a phone's photos
+			# and files have Select. Else what a right click does: lets go
+			# of what is in hand.
+			var holding: bool = verbs.shows_ghost() or builder.is_carrying() \
+				or builder.is_holding_figure()
+			if verbs.mode == "select" and not holding:
+				verbs.adding = not verbs.adding
+			else:
+				app.call("_right_click")
 		"delete":
 			if not builder.selection.is_empty():
 				shell.run("delete")
@@ -578,7 +609,7 @@ func _process(_delta: float) -> void:
 	# after the canvas has its new size, and a layout made between them is
 	# in the wrong points: a tablet's came out three quarters size. Looked
 	# at again twice a second, which does nothing while nothing changed.
-	if Time.get_ticks_msec() >= _look_again_at:
+	if not holds_scale and Time.get_ticks_msec() >= _look_again_at:
 		_look_again_at = Time.get_ticks_msec() + 500
 		app.call("_match_screen_density")
 		_rebuild()
@@ -605,7 +636,11 @@ func _show_tools() -> void:
 		_share_top()
 	var holding: bool = verbs.shows_ghost() or builder.is_carrying()
 	var selected: bool = not builder.selection.is_empty()
+	# Adding ends with Select, and with anything taken in hand.
+	if verbs.adding and holding:
+		verbs.adding = false
 	_lit("select", verbs.mode == "select" and not holding)
+	_show_adding(verbs.adding)
 	var chat: SideDock = app.get("_chat_dock")
 	_lit("assistant", chat != null and chat.is_open())
 	_lit("delete", verbs.mode == "delete")
@@ -616,6 +651,18 @@ func _show_tools() -> void:
 	(_tool_buttons["tip"] as Button).disabled = not (holding or selected)
 	(_tool_buttons["undo"] as Button).disabled = not shell.can("undo")
 	(_tool_buttons["redo"] as Button).disabled = not shell.can("redo")
+
+
+## Select's picture while a tap adds a part to the selection or takes it
+## out: the pointer with a plus. Said by its words too.
+func _show_adding(on: bool) -> void:
+	var button: Button = _tool_buttons.get("select")
+	if button == null or bool(button.get_meta("adding", false)) == on:
+		return
+	button.set_meta("adding", on)
+	button.icon = Icons.icon_for(Toolbar.TOOLS + ("select_more" if on else "pointer") + ".svg",
+		p(24), Icons.density(self))
+	button.accessibility_description = "on: a tap adds a part or takes it out" if on else ""
 
 
 func _lit(what: String, on: bool) -> void:
@@ -664,10 +711,14 @@ func hint() -> String:
 			return "Tap a part to take it off · Select when done"
 		"paint":
 			return "Tap a part to paint it"
+	if verbs.adding and verbs.mode == "select":
+		var many: int = builder.selection.size()
+		return ("%d selected · tap parts to add or take out · Select when done" % many) if many > 0 \
+			else "Tap parts to select them · Select when done"
 	if not builder.selection.is_empty():
 		var count: int = builder.selection.size()
-		return "%d selected · drag it to move · Colour paints it · hold for more" % count \
-			if count > 1 else "Selected · drag it to move · Colour paints it · hold it for more"
+		return "%d selected · drag to move · Select adds more · hold for actions" % count \
+			if count > 1 else "Selected · drag to move · Select adds more · hold for actions"
 	return "Parts to pick one · tap a part to select · drag turns the view · pinch zooms"
 
 
@@ -861,6 +912,11 @@ func _fill_context(words: String) -> void:
 ## hundred rows long to scroll through.
 func _fill_more() -> void:
 	_more.clear()
+	var quick: Array = []
+	for item: String in shell._shown(QUICK):
+		if shell.command(item) != null:
+			quick.append(item)
+	_more.add_tiles(quick)
 	for menu: Array in Shell.touch_menus():
 		var name: String = str(menu[0])
 		var open: bool = _more_open.has(name)
@@ -973,6 +1029,8 @@ func controls_by_name() -> Dictionary:
 			out["phone_row_" + str(row.get_meta("command", row.name))] = row
 		for row: Control in sheet.sections():
 			out["phone_section_" + str(row.get_meta("section")).to_lower()] = row
+		for tile: Control in sheet.tiles():
+			out["phone_quick_" + str(tile.get_meta("command"))] = tile
 		for swatch: Control in sheet.swatches():
 			out["phone_swatch_%d" % int(swatch.get_meta("code"))] = swatch
 	return out
@@ -993,7 +1051,9 @@ func state() -> Dictionary:
 	if _newest != null and _newest.is_open():
 		open = _newest.title
 		how = _newest.state
-	return {"sheet": open, "sheet_state": how, "sheets": titles, "wide": wide, "hint": hint()}
+	var verbs: EditVerbs = app.get("_verbs")
+	return {"sheet": open, "sheet_state": how, "sheets": titles, "wide": wide, "hint": hint(),
+		"adding": verbs != null and verbs.adding}
 
 
 ## A picture drawn over a row button's word, where there is no icon: the
@@ -1314,6 +1374,40 @@ class Sheet extends PanelContainer:
 	## A row that runs one of Shell's commands: greyed where it would do
 	## nothing, lit where it is on.
 	func add_row(words: String, command: String) -> void:
+		_list.add_child(_row(words, command))
+
+	## [param commands] two to a line, each a row of its own as [method
+	## add_row] makes one, its words wrapped onto a second line where they
+	## are longer than the tile (More's QUICK). Four to a line on a phone on
+	## its side, whose sheet is short and wide: two to a line filled it, and
+	## the menus' names stood below its foot where a tap missed them (File
+	## tapped, 0 rows: phone_flow at 844 x 390, smalls2).
+	func add_tiles(commands: Array) -> void:
+		if commands.is_empty():
+			return
+		var grid := GridContainer.new()
+		grid.columns = 2 if _halves() \
+			else clampi(floori(minf(_room().x, phone.p(560)) / phone.p(130)), 2, 4)
+		grid.set_meta("tiles", true)
+		grid.add_theme_constant_override("h_separation", ceili(phone.p(6)))
+		grid.add_theme_constant_override("v_separation", ceili(phone.p(6)))
+		grid.mouse_filter = Control.MOUSE_FILTER_PASS
+		for item: String in commands:
+			var tile: Button = _row(phone.shell.command(item).words, item)
+			tile.name = "quick_" + item
+			# Its words without the menu's "…", in the window's language: a
+			# tile is a button, and four to a line the "…" wrapped onto a
+			# line of its own ("Instructions" over "…").
+			tile.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED
+			tile.text = String(TranslationServer.translate(tile.text)).trim_suffix("…").strip_edges()
+			tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			tile.clip_text = false
+			tile.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			tile.alignment = HORIZONTAL_ALIGNMENT_CENTER
+			grid.add_child(tile)
+		_list.add_child(grid)
+
+	func _row(words: String, command: String) -> Button:
 		var row := Button.new()
 		row.text = words
 		row.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -1341,7 +1435,7 @@ class Sheet extends PanelContainer:
 		row.pressed.connect(func() -> void:
 			close()
 			phone.shell.run(command))
-		_list.add_child(row)
+		return row
 
 	func swatches() -> Array[Control]:
 		var out: Array[Control] = []
@@ -1359,6 +1453,16 @@ class Sheet extends PanelContainer:
 			for child: Node in _list.get_children():
 				if child is Button and child.has_meta("command"):
 					out.append(child)
+		return out
+
+	## More's first rows, two to a line ([method add_tiles]).
+	func tiles() -> Array[Control]:
+		var out: Array[Control] = []
+		if _list != null:
+			for child: Node in _list.get_children():
+				if child is GridContainer and child.has_meta("tiles"):
+					for tile: Node in child.get_children():
+						out.append(tile as Control)
 		return out
 
 	## More's menu names, each a row that opens its commands.

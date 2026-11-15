@@ -120,10 +120,13 @@ func _run() -> void:
 	var playback: Variant = _main.get("_playback")
 	if playback is BuildPlayback:
 		(playback as BuildPlayback).stop()
-	# A phone draws at a browser's scale, as twist_probe holds it.
+	# A phone draws at a browser's scale, as twist_probe holds it: the
+	# scale only, the rest laid out as ever. The whole shell stopped kept
+	# the line over the model as it was, "opened Car" over every drawer in
+	# its pictures (smalls2).
 	_phone = _main.get("_phone")
 	if _phone != null:
-		_phone.set_process(false)
+		_phone.set("holds_scale", true)
 	for link: Dictionary in root.size_changed.get_connections():
 		var call: Callable = link["callable"]
 		if call.get_method() == &"_match_screen_density":

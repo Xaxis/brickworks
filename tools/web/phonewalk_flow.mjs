@@ -123,7 +123,7 @@ const ACTS = [
     file: "src/main.gd (a tap puts the part in hand down)" },
   { id: "paint", model: "wall", needs: "wall", what: "three of them painted", desktop: 4,
     how: "a click, two Shift-clicks, Shift+5 (walk `round2`: 1 key after the clicks)",
-    file: "src/main.gd, src/ui/edit_verbs.gd (a tap in Select replaces the selection: no adding to it by finger)" },
+    file: "src/ui/edit_verbs.gd (EditVerbs.adding), src/ui/phone_shell.gd (Select, tapped while lit, adds)" },
   { id: "motions_play", model: "doors", what: "Motions: the suggested motion kept and played", desktop: 3,
     how: "Alt+O, Keep, Play", file: "src/ui/pose_panel.gd" },
   { id: "motions_record", model: "doors", needs: "motions_play", what: "Motions: a motion recorded by dragging a part", desktop: 4,
@@ -612,6 +612,20 @@ function person(page, cdp, width, height, size, choosers) {
       const head = await where("phone_sheet_more", 5);
       const panel = await where("phone_panel_more", 5);
       if (!head || !panel) return false;
+      // More's first rows, two to a line above the menus (PhoneShell.QUICK):
+      // More and the row.
+      const quick = await where(`phone_quick_${row}`, 5);
+      if (quick && quick.y - quick.h / 2 >= head.y + head.h / 2 && quick.y + quick.h / 2 <= panel.y + panel.h / 2) {
+        tally = counted;
+        count(opened ? 1 : 0);
+        if (tally) {
+          tally.more = true;
+          note(`${row}: ${[opened ? "More" : "", "its first rows: the row"].filter(Boolean).join(", ")}`);
+        }
+        await tap(quick);
+        await page.waitForTimeout(1200);
+        return true;
+      }
       const MENUS = [];
       const sectionsNow = async () => Object.entries(await controls())
         .filter(([k]) => k.startsWith("phone_section_"))
@@ -1239,6 +1253,43 @@ function person(page, cdp, width, height, size, choosers) {
     async paint() {
       const parts = (await partsOnScreen(3)).slice(0, 3);
       if (parts.length < 3) return { why: "fewer than three parts on the screen" };
+      // The three selected together, as a person with a phone's Select does
+      // (EditVerbs.adding): a part tapped, Select tapped while lit, the two
+      // others tapped, Colour, a swatch. A build without it paints them one
+      // at a time below.
+      await tap(parts[0]);
+      let first = await until((now) => now.selected === 1, 6);
+      if (first.selected === 1) {
+        await press("phone_select");
+        if ((await ask())?.phone?.adding) {
+          await tap(parts[1]);
+          await until((now) => now.selected === 2, 6);
+          await tap(parts[2]);
+          first = await until((now) => now.selected === 3, 6);
+          const code = (first.selected_colours || []).includes(4) ? 1 : 4;
+          if (!(await sheets()).includes("Colour")) await press("phone_colour");
+          let swatch = await where(`phone_swatch_${code}`, 8);
+          for (let n = 0; n < 6 && swatch && swatch.y + swatch.h / 2 > height - 2; n++) {
+            await drag({ x: width / 2, y: height * 0.7 }, { x: width / 2, y: height * 0.35 });
+            swatch = await where(`phone_swatch_${code}`, 5);
+          }
+          if (swatch) await tap(swatch);
+          // A colour a part: [1,1,1] is three painted blue.
+          const painted = (now) => now.selected === 3 && (now.selected_colours || []).length > 0
+            && now.selected_colours.every((c) => c === code);
+          const after = await until(painted, 6);
+          const done = painted(after);
+          await untimed(async () => {
+            await press("phone_select");
+            const sheet = await where("phone_sheet_colour_done", 3);
+            if (sheet) await tap(sheet);
+          });
+          note(`${first.selected} selected by Select's adding, painted ${code === 4 ? "red" : "blue"} together: `
+            + `${JSON.stringify(after.selected_colours || [])}`);
+          return { done, why: `${after.selected} selected, colours ${JSON.stringify(after.selected_colours || [])}` };
+        }
+        // No adding here: Select let go of the part, as a right click.
+      }
       let code = 0;
       let painted = 0;
       for (const part of parts) {

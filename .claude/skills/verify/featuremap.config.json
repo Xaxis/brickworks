@@ -5484,6 +5484,20 @@
       "entry": "src/net/page_fetch.gd",
       "reach": "python3 -m pytest tests/test_page_fetch.py  /  the ask to leave timing flow",
       "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "more's first rows and adding to a selection by finger",
+      "entry": "src/ui/phone_shell.gd",
+      "reach": "on a phone or a tablet: More opens on its first rows two to a line (Save, Instructions, Timeline, Render, Measure, Cut away, Check stability, Simulate, Pose, Select all; PhoneShell.QUICK), each two taps; Select tapped while lit adds a part with each tap and takes one out (EditVerbs.adding, the pointer with a plus), Select or another tool ends it; the timeline's buttons a fingertip, its rows of choices sliding sideways on a phone held upright, Lay out the page… first; every English line drawn says tap and hold (Phone.speak_to_a_finger)  (tools/probe.sh smalls2_probe)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "smalls2 probe",
+      "entry": "src/dev/smalls2_probe.gd",
+      "reach": "tools/probe.sh smalls2_probe   (windowed, 390x844 by its header; no sign-in; pictures in --shots=DIR; --only=more,timeline,select,line,words)",
+      "area": "building"
     }
   ]
 }
