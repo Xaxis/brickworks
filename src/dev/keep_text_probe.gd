@@ -2363,6 +2363,15 @@ func _step_attacks() -> void:
 			func(mark: String) -> String: return mark.rpad(9)))])
 
 
+## Whether step [param step] of [param section] has nothing in it but parts
+## of its own: no copy of a sub-model, nothing the model holds unseen.
+func _only_parts(section: String, step: int) -> bool:
+	for item: Dictionary in AuthorSteps.items_of(_world, section, _store.scenery):
+		if int(item["step"]) == step and not item.has("brick"):
+			return false
+	return true
+
+
 ## STEP_OPS_ONLY=a,b: only the rows whose name has one of them in it.
 static func _ops_wanted(name: String) -> bool:
 	var only: String = OS.get_environment("STEP_OPS_ONLY")
@@ -2385,7 +2394,14 @@ func _emptied_op(name: String, text: String, op: String) -> String:
 	var depth: int = _builder.history_depth()
 	var unedited: String = _store.saved_text()
 	var steps: Array = _ops_steps("")
-	var at: int = _ops_pick(steps, "move")
+	# A step of parts alone (no copy of a sub-model in it) with a step on
+	# either side, from the middle out.
+	var at: int = -1
+	for d: int in steps.size():
+		for k: int in [steps.size() / 2 - 1 - d, steps.size() / 2 - 1 + d]:
+			if at < 0 and k >= 0 and k + 2 < steps.size() and not (steps[k + 1][1] as Array).is_empty() \
+					and _only_parts("", int(steps[k + 1][0])):
+				at = k
 	if at < 0:
 		print("  --  %d steps, none fit" % steps.size())
 		return "--"
@@ -2582,9 +2598,13 @@ func _saved_elsewhere(dir: String) -> void:
 		var text: String = FileAccess.get_file_as_string(dir.path_join(file_name))
 		await _open(text, file_name)
 		var unedited: String = _store.saved_text()
-		var kept: bool = _hard("%s (%d lines) saved unedited: byte for byte (%d lines changed)" % [
-			file_name, text.split("\n").size(), _diff_size(text.split("\n"), unedited.split("\n"))],
-			unedited == text)
+		# Its own lines: the app's TITLE line says the name it was opened
+		# under, here the file's, and is the app's (as _step_op counts).
+		var own: int = _diff_size(_own_lines(text), _own_lines(unedited))
+		var all: int = _diff_size(text.split("\n"), unedited.split("\n"))
+		var kept: bool = _hard("%s (%d lines) saved unedited: its own lines byte for byte "
+			% [file_name, text.split("\n").size()] + "(%d lines changed, and %d of the app's)"
+			% [own, maxi(all - own, 0)], _own_lines(unedited) == _own_lines(text))
 		same += 1 if kept else 0
 		if OS.get_environment("KEEP_TEXT_OPEN_ONLY_SAVE") == "1":
 			continue

@@ -1895,6 +1895,21 @@ func _relaid(section: String, targets: Dictionary, fixed: Dictionary, gone: Dict
 	var node_at := PackedInt32Array()
 	var node_before := PackedInt32Array()
 	var states: Dictionary = {0: [0, 0, -1]}
+	# A turning ROTSTEP above the section's first part is its first step's
+	# turn, which the looks write there again (BookletLooks.written_into),
+	# so the run may start with it taken out at no cost: an edit after which
+	# the app let that empty first step go keeps the parts where they are,
+	# not the first moved above it (stepops: 8028-1's m-1a split).
+	for n: int in range(start, stop):
+		if gone.has(n):
+			continue
+		var words: PackedStringArray = LdrModel._fields(original[n].strip_edges())
+		if words.is_empty() or words[0] == "0" and not _is_step(original[n]):
+			continue
+		if words[0] != "0" or words.size() < 3 or words[1].to_upper() != "ROTSTEP" \
+				or words[2].to_upper() == "END":
+			break
+		states[-states.size()] = [0, 0, -1]
 	var old_last: int = 0
 	var new_last: int = 0
 	for i: int in chunks.size():
