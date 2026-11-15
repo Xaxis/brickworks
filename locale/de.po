@@ -14510,3 +14510,160 @@ msgstr "Sein offizielles LDraw-Modell öffnen und sehen, was fehlt"
 
 msgid "%s's parts could not be read: %s"
 msgstr "Die Teile von %s konnten nicht gelesen werden: %s"
+
+# Edit › Find and replace…: a part or a colour found everywhere, inside every sub-model too, and replaced in one undo step (APP_UX8 #9, swapfind)
+
+msgid "Find and replace…"
+msgstr "Suchen und ersetzen…"
+
+msgid "Find a part or a colour anywhere in the model, inside every sub-model too, and replace it"
+msgstr "Ein Teil oder eine Farbe überall im Modell finden, auch in jedem Untermodell, und ersetzen"
+
+msgid "Find and replace"
+msgstr "Suchen und ersetzen"
+
+msgid "Put the bar away"
+msgstr "Die Leiste schließen"
+
+msgid "Find"
+msgstr "Suchen"
+
+msgid "Any part: its number or name"
+msgstr "Jedes Teil: seine Nummer oder sein Name"
+
+msgid "Replace with"
+msgstr "Ersetzen durch"
+
+msgid "The same part"
+msgstr "Dasselbe Teil"
+
+msgid "Where"
+msgstr "Wo"
+
+msgid "Select them"
+msgstr "Sie auswählen"
+
+msgid "Select every part found"
+msgstr "Jedes gefundene Teil auswählen"
+
+msgid "Replace"
+msgstr "Ersetzen"
+
+msgid "Replace every part found, as one undo step"
+msgstr "Jedes gefundene Teil ersetzen, in einem einzigen Rückgängig-Schritt"
+
+msgid "Any colour"
+msgstr "Beliebige Farbe"
+
+msgid "The same colour"
+msgstr "Dieselbe Farbe"
+
+msgid "Everywhere, every sub-model too"
+msgstr "Überall, auch in jedem Untermodell"
+
+msgid "In the model's own parts"
+msgstr "In den eigenen Teilen des Modells"
+
+msgid "In %s and its copies"
+msgstr "In %s und seinen Kopien"
+
+msgid "In the selection"
+msgstr "In der Auswahl"
+
+msgid "Select the parts found here"
+msgstr "Die hier gefundenen Teile auswählen"
+
+msgid "%d found in the selection"
+msgstr "%d in der Auswahl gefunden"
+
+msgid "%d found in the model's own parts"
+msgstr "%d in den eigenen Teilen des Modells gefunden"
+
+msgid "%d found in %s and its copies"
+msgstr "%d in %s und seinen Kopien gefunden"
+
+msgid "%d found everywhere, every sub-model too"
+msgstr "%d überall gefunden, auch in jedem Untermodell"
+
+msgid "Nothing like that here"
+msgstr "Nichts dergleichen hier"
+
+msgid "Only locked parts are like that: unlock them to change them"
+msgstr "Nur gesperrte Teile sind so: entsperre sie, um sie zu ändern"
+
+msgid "Type a part's number or name, or choose a colour, to find it."
+msgstr "Gib die Nummer oder den Namen eines Teils ein, oder wähle eine Farbe, um es zu finden."
+
+msgid "The model's own parts: %d"
+msgstr "Die eigenen Teile des Modells: %d"
+
+msgid "%s: %d in each of %d copies"
+msgstr "%s: %d in jeder der %d Kopien"
+
+msgid "%s: %d in %d copies"
+msgstr "%s: %d in %d Kopien"
+
+msgid "Used in %d colours: each keeps its own"
+msgstr "In %d Farben verwendet: jedes behält seine eigene"
+
+msgid "Used in %d colours: all will be %s"
+msgstr "In %d Farben verwendet: alle werden %s"
+
+msgid "Changes all %d copies of %s"
+msgstr "Ändert alle %d Kopien von %s"
+
+msgid "Won't sit the same in %d of %d places: another footprint or other connection points"
+msgstr "Sitzt an %d von %d Stellen nicht gleich: andere Grundfläche oder andere Verbindungspunkte"
+
+msgid "%d would hold onto nothing"
+msgstr "%d würden an nichts halten"
+
+msgid "%d have no room and stay as they are"
+msgstr "%d haben keinen Platz und bleiben, wie sie sind"
+
+msgid "1 has no room and stays as it is"
+msgstr "1 hat keinen Platz und bleibt, wie es ist"
+
+msgid "The part to find"
+msgstr "Das zu suchende Teil"
+
+msgid "The colour to find"
+msgstr "Die zu suchende Farbe"
+
+msgid "The part to put in its place"
+msgstr "Das Teil, das an seine Stelle kommt"
+
+msgid "The colour to give it"
+msgstr "Die Farbe, die es bekommt"
+
+msgid "Where to look"
+msgstr "Wo gesucht wird"
+
+# Find and replace: the part it puts in, named; a part kept with its twins in every copy when one has no room or is locked; every one that already (swfix)
+
+msgid "Puts in: %s (%s)"
+msgstr "Setzt ein: %s (%s)"
+
+msgid "No part %s"
+msgstr "Kein Teil %s"
+
+msgid "All %d are that already"
+msgstr "Alle %d sind das schon"
+
+msgid "%s has no room in %d of its %d copies, so all %d stay"
+msgstr "%s hat in %d seiner %d Kopien keinen Platz, also bleiben alle %d"
+
+msgid "%s has no room for %d of its parts in some of its %d copies, so all %d stay"
+msgstr "%s hat für %d seiner Teile in einigen seiner %d Kopien keinen Platz, also bleiben alle %d"
+
+msgid "1 left out: locked in one copy of %s, so its %d copies stay"
+msgstr "1 ausgelassen: in einer Kopie von %s gesperrt, also bleiben seine %d Kopien"
+
+msgid "%d left out: locked in copies of %s, so all %d of them stay"
+msgstr "%d ausgelassen: in Kopien von %s gesperrt, also bleiben alle %d"
+
+msgid "1 locked, left out: unlock it to change it"
+msgstr "1 gesperrt, ausgelassen: entsperre es, um es zu ändern"
+
+msgid "%d locked, left out: unlock them to change them"
+msgstr "%d gesperrt, ausgelassen: entsperre sie, um sie zu ändern"

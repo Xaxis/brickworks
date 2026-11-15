@@ -1725,10 +1725,10 @@ func _replace_from(alive: PackedInt64Array, start: int, part_id: String, into: L
 ## [param packed], into [param steps] and [param swapped]. False, and the
 ## brick as it was, when the new part could not be put down.
 func _swap(brick: BrickWorld.Brick, part_id: String, at: Transform3D, packed: PackedInt32Array,
-		steps: Array, swapped: PackedInt64Array) -> bool:
+		steps: Array, swapped: PackedInt64Array, colour: int = -1) -> bool:
 	var brick_id: int = brick.id
 	lattice.release(brick_id)
-	var made: int = world.add_brick(part_id, brick.color_code, at)
+	var made: int = world.add_brick(part_id, brick.color_code if colour < 0 else colour, at)
 	if made == 0:
 		lattice.occupy_boxes(brick_id, boxes_for(library.mesh_for(brick.part_id), brick.transform))
 		return false
@@ -1746,6 +1746,46 @@ func _swap(brick: BrickWorld.Brick, part_id: String, at: Transform3D, packed: Pa
 	removed.emit(brick_id)
 	swapped.append(made)
 	return true
+
+
+## Find and Replace's change (FindReplace), any parts anywhere in the model,
+## in every sub-model: each of [param changes], {"brick", "part", "color",
+## "at"}, swapped for its part in its colour at its place ([method _swap]),
+## or painted where its part is the one it is. One step, called [param words],
+## that after_edit makes every other copy follow as it does a hand's. One
+## with no room for its new part stays as it was. Returns [how many changed,
+## how many had no room], those changed selected.
+func replace_bricks(changes: Array, words: String) -> Vector2i:
+	var steps: Array = []
+	var changed := PackedInt64Array()
+	var refused: int = 0
+	for change: Dictionary in changes:
+		var brick: BrickWorld.Brick = world.get_brick(int(change["brick"]))
+		if brick == null:
+			continue
+		var part: String = change["part"]
+		var colour: int = int(change["color"])
+		if part == brick.part_id:
+			if colour != brick.color_code:
+				steps.append({"undo": "recolor", "brick": brick.id, "color": brick.color_code})
+				world.recolor_brick(brick.id, colour)
+				changed.append(brick.id)
+			continue
+		var into: Lbm.PartMesh = library.mesh_for(part)
+		var at: Transform3D = change["at"]
+		var packed: PackedInt32Array = boxes_for(into, at) if into != null else PackedInt32Array()
+		if into == null or lattice.collides_boxes(packed, brick.id) \
+				or not _swap(brick, part, at, packed, steps, changed, colour):
+			refused += 1
+	if steps.is_empty():
+		return Vector2i(0, refused)
+	_history.append({"undo": "group", "steps": steps, "words": words})
+	_redo.clear()
+	selection.clear()
+	for brick_id: int in changed:
+		selection[brick_id] = true
+	selection_changed.emit(selection.size())
+	return Vector2i(changed.size(), refused)
 
 
 ## A replace's swaps kept as one step, and selected: [how many, how many
@@ -2152,6 +2192,15 @@ func fold_since(depth: int, words: String = "") -> void:
 		steps.append(last)
 	_history.append({"undo": "group", "steps": steps,
 		"words": words if not words.is_empty() else "; ".join(said)})
+
+
+## The newest step said as [param words]: what it did, as only its maker
+## knows once it is done. Find and Replace counts the parts it changed after
+## the copies followed it, and its undo said "replaced 131" where 50 had
+## changed (swreview F2).
+func name_newest(words: String) -> void:
+	if not _history.is_empty() and not words.is_empty():
+		(_history.back() as Dictionary)["words"] = words
 
 
 ## A brick laid again as another number is the same brick to the history:

@@ -146,6 +146,11 @@ const PATHS: Dictionary[StringName, String] = {
 	&"Booklet": "res://src/assembly/booklet.gd",
 	&"Linkage": "res://src/assembly/linkage.gd",
 	&"HingeAlign": "res://src/assembly/hinge_align.gd",
+	# swapfind (APP_UX8 #9): Edit, Find and replace…, its bar and what it
+	# finds and changes, made the first time it opens or a session's
+	# replace_parts asks.
+	&"FindReplace": "res://src/assembly/find_replace.gd",
+	&"FindReplaceBar": "res://src/ui/find_replace_bar.gd",
 }
 
 ## How long each one took to load, in ms, by name, from the first ask:

@@ -117,6 +117,8 @@ const COMMANDS: Dictionary = {
 	# pointat (APP_UX8 #17): a part pointed out to everyone in a Build
 	# together session (Alt-W, or a part's right-click menu).
 	"together_point": "point_at",
+	# swapfind (APP_UX8 #9): Edit › Find and replace…, into every sub-model.
+	"find_replace": "replace_parts",
 }
 
 ## The window's commands no tool does, each with why. A command that is
@@ -403,7 +405,11 @@ answers at once with a job number while it works in the app. job {"id": N} \
 waits up to 45 s for it to end, then says how far it has got, or gives its \
 answer the moment it is done; call it again until then. cancel=true stops \
 it. Nothing else can be done in the app while a job runs.
- - point_at: in a Build together session (the person and others building one model live, each in their own window), points parts out to everyone in it, as the person's Alt-W does: outlined in the person's colour on every screen for 5 seconds, named as the person's Claude. part= a number from look_at_model, or parts= several. Changes nothing. Out of a session it says so: the person starts or joins one from File › Build together…."""
+ - point_at: in a Build together session (the person and others building one model live, each in their own window), points parts out to everyone in it, as the person's Alt-W does: outlined in the person's colour on every screen for 5 seconds, named as the person's Claude. part= a number from look_at_model, or parts= several. Changes nothing. Out of a session it says so: the person starts or joins one from File › Build together….
+ - replace_parts: Find and Replace, as Edit › Find and replace… does, in one call and one \
+undo step: find= a part, a colour or both, replace= another part, colour or both, where= \
+"all" (every sub-model and every copy of one), "submodel" or "selection". It lists where \
+they are and in which colours, and says where a new part will not sit the same."""
 
 
 func definitions() -> Array:
@@ -1396,6 +1402,8 @@ func definitions() -> Array:
 					"description": "several parts' numbers, pointed out together"},
 			}},
 		},
+		# swapfind (APP_UX8 #9).
+		_replace_parts_definition(),
 	] + HandTools.definitions() + SeeTools.definitions() + PaletteTool.definitions()
 
 
@@ -1508,6 +1516,9 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 		# pointat (APP_UX8 #17).
 		"point_at":
 			return _point_at(input)
+		# swapfind (APP_UX8 #9).
+		"replace_parts":
+			return await _replace_parts(input)
 		# Edit, Pattern…'s grid (PatternTool), answered with the copies
 		# pictured as the hand tools' changes are.
 		"pattern_parts":
@@ -6105,3 +6116,114 @@ func _point_at(input: Dictionary) -> String:
 	if not unknown.is_empty():
 		said += " No part %s in the model, left out." % ", ".join(unknown)
 	return said
+
+
+# -- swapfind (APP_UX8 #9): Find and Replace into every sub-model ---------------------
+
+static func _replace_parts_definition() -> Dictionary:
+	var parts: Dictionary = {"type": "object", "additionalProperties": false, "properties": {
+		"part": {"type": "string",
+			"description": "a part's number as look_at_model and parts_list give it (\"3023b\"); a mould's number finds every letter of it (\"3023\" finds 3023a and 3023b)"},
+		"color": {"type": "integer",
+			"description": "an LDraw colour code: 0 Black, 72 Dark Bluish Grey, 71 Light Bluish Grey; or a direct colour as its number (0x2FF0000, 50266112); in replace=, never 16 or 24, which are no part's own colour"},
+	}}
+	return {
+		"name": "replace_parts",
+		"description": ("Find and replace parts across the whole model in one call, as the "
+			+ "person's Edit › Find and replace… does: find= a part, a colour or a part in a "
+			+ "colour; replace= another part, another colour or both, each part keeping what "
+			+ "it is not given. where= \"all\" (the default) is every part of the model, inside "
+			+ "every sub-model and every copy of one; \"submodel\" the sub-model the person is "
+			+ "editing and every copy of it; \"selection\" the parts selected. A sub-model's "
+			+ "copies are one definition, so a part replaced in one is replaced in every copy, "
+			+ "and a copy placed by a mirror is given the new part's other hand. One call is "
+			+ "one undo step, and the model saves as the window's own replace saves it. The "
+			+ "answer lists where the part is (the model and each sub-model, with counts and "
+			+ "copies) and every colour it is used in, flags a part used in more than one "
+			+ "colour, and says where a new part will not sit as the old one did (another "
+			+ "footprint, other connection points) or would hold onto nothing, and where it has "
+			+ "no room and is left. A part in a copy changes with its twin in every other copy "
+			+ "or not at all: where one copy has no room for the new part, or the part is locked "
+			+ "in one, every copy keeps it, and the answer says so. replace= {\"part\"} is a "
+			+ "number the library has (search_parts finds one), and the answer names the part "
+			+ "it puts in. With no replace= or with preview=true it changes nothing and lists "
+			+ "only."),
+		"input_schema": {"type": "object", "additionalProperties": false, "required": ["find"],
+			"properties": {
+				"find": parts,
+				"replace": parts,
+				"where": {"type": "string", "enum": ["all", "submodel", "selection"],
+					"description": "where to look; \"all\" when not given"},
+				"preview": {"type": "boolean",
+					"description": "list what would change, and change nothing"},
+			}},
+	}
+
+
+## replace_parts: Find and Replace (FindReplace), as the window's bar does it.
+## What it is given is held to the shapes its schema shows, and a refusal
+## shows the shape to give (swreview F5, F7, F8): find= and replace=
+## objects; a colour an LDraw code or a direct colour (0x2RRGGBB), and to
+## give a part, none of 16 (a sub-model's placing colour) or 24 (an edge's);
+## a part to put in by its number as the library has it, never a search's
+## guess, and named in the answer (F4).
+func _replace_parts(input: Dictionary) -> String:
+	var finder: RefCounted = Later.script(&"FindReplace").new(app)
+	for side: String in ["find", "replace"]:
+		if input.has(side) and not input.get(side) is Dictionary:
+			return "%s= is an object: %s= {\"part\": \"3023\"}, {\"color\": 72}, or both." % [side, side]
+	var asked: Dictionary = input.get("find", {}) if input.get("find") is Dictionary else {}
+	var into: Dictionary = input.get("replace", {}) if input.get("replace") is Dictionary else {}
+	var where: String = str(input.get("where", "all"))
+	if not where in ["all", "submodel", "selection"]:
+		return "where= is \"all\", \"submodel\" or \"selection\"."
+	var find: Dictionary = {"part": str(asked.get("part", "")).strip_edges(),
+		"color": finder.call("colour_of", asked.get("color"))}
+	var put: Dictionary = {"part": str(into.get("part", "")).strip_edges(),
+		"color": finder.call("colour_of", into.get("color"))}
+	for side: Array in [["find", find, asked], ["replace", put, into]]:
+		if int((side[1] as Dictionary)["color"]) == -2:
+			return ("No colour %s in %s=: give an LDraw colour code (0 Black, 72 Dark Bluish "
+				+ "Grey), or a direct colour as a file writes it (\"0x2FF0000\"), as %s= "
+				+ "{\"color\": 72}.") % [(side[2] as Dictionary).get("color"), side[0], side[0]]
+	if str(find["part"]).is_empty() and int(find["color"]) == -1:
+		return "Say what to find: find= {\"part\": \"3023\"}, {\"color\": 0}, or both."
+	var not_a_colour: String = Later.script(&"FindReplace").not_a_part_colour(int(put["color"]))
+	if not not_a_colour.is_empty():
+		return not_a_colour
+	var puts: String = ""
+	if not str(put["part"]).is_empty():
+		var known: String = finder.call("known_part", put["part"])
+		if known.is_empty():
+			return ("No part %s in the library to replace with: give its number as search_parts "
+				+ "or look_at_model gives it, as replace= {\"part\": \"3023b\"}.") % put["part"]
+		put["part"] = known
+		puts = "\nPuts in %s (%s)." % [finder.call("part_name", known), known]
+	if where == "selection" and (app.get("_builder") as Builder).selection.is_empty():
+		return "Nothing is selected: where=\"all\" looks in the whole model."
+	var found: Dictionary = finder.call("find", find, where)
+	var listed: String = finder.call("listed", found)
+	if (found["ids"] as Array).is_empty():
+		return listed
+	var changes: bool = not str(put["part"]).is_empty() or int(put["color"]) >= 0
+	if not changes or bool(input.get("preview", false)):
+		var ahead: String = ""
+		if changes:
+			ahead = await finder.call("ahead", found, put)
+		return listed + puts + ("\n" + ahead if not ahead.is_empty() else "") \
+			+ ("\nNothing changed (preview)." if changes else "\nGive replace= to change them.")
+	var ahead: String = await finder.call("ahead", found, put)
+	var done: Dictionary = finder.call("replace", found, put)
+	var said: String = listed + puts + ("\n" + ahead if not ahead.is_empty() else "")
+	var stayed: String = str(done.get("stayed", ""))
+	if stayed.begins_with("All "):
+		stayed = "a" + stayed.substr(1)
+	if int(done["changed"]) == 0:
+		return said + "\nNothing changed: %s." % (stayed if not stayed.is_empty()
+			else "none had room for it")
+	var copies: String = finder.call("copies_words", found)
+	return said + "\nReplaced %d with %s %s, as one undo step%s.%s" % [int(done["changed"]),
+		finder.call("into_words", put), finder.call("where_words", found),
+		"" if copies.is_empty() else "; it " + copies + ", as an edit inside a sub-model does",
+		"" if stayed.is_empty() else " %d stayed: %s." % [int(done["room"])
+			+ int(done["locked"]), stayed]]
