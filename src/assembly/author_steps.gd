@@ -569,34 +569,9 @@ static func numbers_of(world: BrickWorld, steps: Array[Instructions.Step],
 					aside[copy] = index
 	if in_place:
 		var units: Dictionary = {}
-		# A copy of a sub-model that keeps lines of its own (its motions,
-		# views and lights, whose it is: BrickWorld.section_lines) is built
-		# where it stands, in its own steps, put on in the step its first
-		# part goes in, as one is without in_place: a copy built in its
-		# parent's steps has no section to write them in, and the small
-		# observatory put into a model of the app's own that nobody gave
-		# steps lost its 20 motion lines on the first save (intomodel3,
-		# smalls2). The copies inside it are built in its steps.
-		var lined: Dictionary = {}       ## such a copy -> its first part's step
 		for path: String in paths_in(world, skip):
-			if path.is_empty():
-				continue
-			if world.section_lines.has(Assemblies.definition(Assemblies.leaf(path))):
-				lined[path] = -1
-			else:
+			if not path.is_empty():
 				units[path] = IN_PARENT
-		if not lined.is_empty():
-			for brick_id: int in bricks:
-				var brick: BrickWorld.Brick = world.get_brick(brick_id)
-				if brick == null or skip.has(brick_id):
-					continue
-				var at: String = Assemblies.path_of(brick)
-				while not at.is_empty():
-					if lined.has(at) and (int(lined[at]) < 0 or int(bricks[brick_id]) < int(lined[at])):
-						lined[at] = int(bricks[brick_id])
-					at = Assemblies.parent_of(at)
-			for path: String in lined:
-				units[path] = maxi(int(lined[path]), 0)
 		units.merge(aside, true)
 		return {"bricks": bricks, "units": units}
 	var first: Dictionary = {}
