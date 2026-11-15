@@ -3537,9 +3537,12 @@ func _text_into(made: Array, title: String, with_steps: bool, worked: Dictionary
 	if authored and BookletLooks.any_step_look(world):
 		steps = BookletLooks.with_kept_steps(world.step_looks,
 			LdrModel.steps_written(placements, instances, unit_steps))
-	# A sub-model's own lights and views in its own section, by its definition.
+	# A sub-model's own lights, views and motions in its own section, by its
+	# definition; one that has none, every copy built in its parent's steps,
+	# after the IN line of one of its copies (Assemblies.lines_within).
 	var text: String = LdrModel.write_tree(placements, title, "Brickworks", instances, embedded,
-		unit_steps, known, steps, tree.lines_written(world, instances, back), world.section_files) \
+		unit_steps, known, steps, tree.lines_written(world, instances, back, unit_steps),
+		world.section_files, tree.lines_within(world, instances, back, unit_steps)) \
 		if not instances.is_empty() \
 		else LdrModel.write_ldr(placements, title, "Brickworks", figures, embedded, known, steps,
 			world.section_files)
@@ -4126,6 +4129,11 @@ func held_from(text: String, file_name: String, job: Working.Job = null,
 	for line: MetaIndex.Line in MetaIndex.of_text(str(named["text"])).own(["VIEW", "MOTION*"]):
 		own.append(line.raw)
 		motions += 1 if line.word == "MOTION" else 0
+	# And the notes in its head ("0 // ..."), its sub-model's here, written
+	# under its name. What it has that nothing here can keep is said
+	# (ModelBar.held_words): up to 2026-11-14 all three went without a word.
+	var head: Dictionary = _own_head(str(named["text"]), model, authored)
+	own.append_array(head["notes"])
 	if not own.is_empty():
 		lines[def] = own
 	# Each of its sub-models whose header names no one is its model's
@@ -4143,6 +4151,10 @@ func held_from(text: String, file_name: String, job: Working.Job = null,
 	var frames: Dictionary = {}
 	for unit: String in model.unit_frames:
 		frames[Assemblies.join(root, unit)] = model.unit_frames[unit]
+	# A copy built in its parent's steps: the section building it's
+	# (LdrModel.unit_kept).
+	for unit: String in model.unit_kept:
+		frames[Assemblies.join(root, unit)] = (model.unit_kept[unit] as Dictionary)["frame"]
 	frames[root] = Transform3D.IDENTITY
 	# The booklet looks of its steps, its own model's as its sub-model's
 	# here; the whole booklet's (its pages, its guides) are this model's.
@@ -4180,7 +4192,7 @@ func held_from(text: String, file_name: String, job: Working.Job = null,
 	out.merge({"items": Carry.framed(placed, library), "name": def, "root": root,
 		"units": units, "held": held, "lines": lines, "frames": frames, "looks": looks,
 		"files": files, "parts": placed.size() + held.size(), "steps": own_steps.size(),
-		"motions": motions,
+		"motions": motions, "bfc": head["bfc"], "rotsteps": head["rotsteps"],
 		"missing": missing, "unshown": unshown, "renamed": renamed,
 		"host_flat": source != null and not source.authored}, true)
 	return out
@@ -4197,6 +4209,41 @@ static func _plain_section(text: String) -> String:
 			continue
 		out.append(line)
 	return "\n".join(out)
+
+
+## What [param text]'s own model (its first section, [param model]'s main)
+## has of its own besides its parts and the app's lines: {"notes": the
+## comments in its head ("0 // ..."), as the file has them, kept as its
+## sub-model's here; "bfc": how many BFC lines it has, which say how the faces
+## of the file they head are wound, and a model's section here heads no file
+## (none the app writes whole has one); "rotsteps": how many ROTSTEP lines
+## turn the view after one of its steps, where [param authored] is not: its
+## steps are worked out here, as they are when it is opened alone, so there
+## is no step of its for them to stay with (an author's go with its steps'
+## looks, BookletLooks)}.
+static func _own_head(text: String, model: LdrModel, authored: bool) -> Dictionary:
+	var out: Dictionary = {"notes": PackedStringArray(), "bfc": 0, "rotsteps": 0}
+	var notes := PackedStringArray()
+	var span: Vector2i = model.main.span if model.main != null else Vector2i(0, 0)
+	var lines: PackedStringArray = text.split("\n")
+	var in_head: bool = true
+	for n: int in range(span.x + 1, mini(span.y, lines.size())):
+		var line: String = lines[n].strip_edges()
+		var words: PackedStringArray = LdrModel._fields(line)
+		if words.size() < 2 or words[0] != "0":
+			in_head = in_head and not LdrModel.is_placing(line)
+			continue
+		var word: String = words[1].to_upper()
+		if word == "STEP" or word == "ROTSTEP":
+			in_head = false
+			if word == "ROTSTEP" and not authored:
+				out["rotsteps"] = int(out["rotsteps"]) + 1
+		elif word == "BFC":
+			out["bfc"] = int(out["bfc"]) + 1
+		elif in_head and words[1].begins_with("//"):
+			notes.append(lines[n].trim_suffix("\r"))
+	out["notes"] = notes
+	return out
 
 
 ## Whose [param model]'s own model is and on what terms, as its header says

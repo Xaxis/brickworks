@@ -33,6 +33,10 @@ var builder: Builder
 var library: PartLibrary
 ## The baseplate: never in an assembly.
 var scenery: Dictionary = {}
+## How far the model stands above its file's coordinates (ModelStore.lift):
+## a copy taken apart gives the model its motions in those ([method
+## _lines_apart]).
+var lift: Callable = func() -> Vector3: return Vector3.ZERO
 
 ## The assembly being edited, by path; "" for the model itself. While one
 ## is entered a click picks out its own parts and the assemblies directly
@@ -576,6 +580,20 @@ func _lines_gone_apart(lit: Dictionary) -> void:
 	if not (lit["lights"] as Array).is_empty():
 		builder.extend_last([{"undo": "scenelights", "take": lit["lights"], "put": []}])
 		world.scene_lights = world.scene_lights + (lit["lights"] as Array)
+	var motions: PackedStringArray = lit.get("motions", PackedStringArray())
+	if not motions.is_empty():
+		var had: Motions = world.motions.copy() if world.motions != null else Motions.new()
+		builder.extend_last([{"undo": "motions", "motions": had}])
+		var now: Motions = world.motions.copy() if world.motions != null else Motions.new()
+		var read: Motions = Motions.read("\n".join(motions))
+		for motion: Motions.Motion in read.list:
+			now.put(motion)
+		now.unread.append_array(read.unread)
+		# Each joint's part found where it stands now, as an open finds them.
+		for joint: Motions.Joint in now.joints:
+			if joint.by == "part" and world.get_brick(joint.lead) == null:
+				joint.lead = Motions.part_at(joint, world, lift.call())
+		world.motions = now
 	apart_said = lit["said"]
 
 
@@ -632,12 +650,24 @@ func _lines_apart(path: String, before: Dictionary = {}, going: Array = []) -> D
 	var lines: Dictionary = had.duplicate()
 	var theirs := PackedStringArray(lines.get(parent_def, PackedStringArray()))
 	var gained: Array = (before.get("lights", []) as Array).duplicate()
+	var motions := PackedStringArray((before.get("motions", PackedStringArray()) as PackedStringArray))
 	var moved: int = 0
 	var lost: int = 0
 	var why: String = ""
 	var views: int = 0
+	# Its motions go with its parts too, each joint where its part now is:
+	# the model's own where it is the model (in its file's coordinates),
+	# else the one round it's, named apart from those it has. Up to
+	# 2026-11-14 they went with its last copy, and the small observatory
+	# taken apart lost all 20 of its lines (s2review e_ungroup).
+	var into_file: Transform3D = flip * Transform3D(Basis.IDENTITY, -(lift.call() as Vector3)) \
+		* through if parent.is_empty() else through
+	var own_motions := PackedStringArray()
 	for line: String in had[def]:
 		var word: String = _meta_word(line)
+		if word.begins_with("MOTION"):
+			own_motions.append(Motions.through_line(line, into_file))
+			continue
 		if word != "LIGHT":
 			views += 1 if word == "VIEW" else 0
 			continue
@@ -656,7 +686,16 @@ func _lines_apart(path: String, before: Dictionary = {}, going: Array = []) -> D
 		else:
 			lost += 1
 			why = reason
-	if not parent.is_empty() and moved > 0:
+	var taken_motions: int = 0
+	if not own_motions.is_empty():
+		var named: PackedStringArray = Motions.apart_from(own_motions,
+			theirs if not parent.is_empty() else _model_motion_lines() + motions)
+		taken_motions = Motions.read("\n".join(named)).list.size()
+		if parent.is_empty():
+			motions.append_array(named)
+		else:
+			theirs.append_array(named)
+	if not parent.is_empty() and (moved > 0 or taken_motions > 0):
 		lines[parent_def] = theirs
 	if last:
 		lines.erase(def)
@@ -667,6 +706,9 @@ func _lines_apart(path: String, before: Dictionary = {}, going: Array = []) -> D
 	if moved > 0:
 		said.append("its light went with its parts" if moved == 1
 			else "its %d lights went with its parts" % moved)
+	if taken_motions > 0:
+		said.append("its motion went with its parts" if taken_motions == 1
+			else "its %d motions went with its parts" % taken_motions)
 	if lost > 0:
 		said.append("one of its lights went with it" if lost == 1
 			else "%d of its lights went with it" % lost)
@@ -676,7 +718,13 @@ func _lines_apart(path: String, before: Dictionary = {}, going: Array = []) -> D
 			else "its %d saved views went with it" % views)
 	var gone: Array = (before.get("gone", []) as Array) + [path]
 	return {"lines": lines, "framed": framed, "gone": gone, "lights": gained,
-		"said": " — ".join(said)}
+		"motions": motions, "said": " — ".join(said)}
+
+
+## The model's own motions as lines, by the names they have: what a copy
+## taken apart's are named apart from.
+func _model_motion_lines() -> PackedStringArray:
+	return world.motions.lines() if world.motions != null else PackedStringArray()
 
 
 ## Where the frame the lines of the sub-model at [param path] are in stands
@@ -1095,14 +1143,21 @@ static func _left_from(step: Dictionary, into: Dictionary) -> void:
 ## [param model]'s sub-models' own lines (LdrModel.section_lines), by the
 ## definition their copies are of once laid (LdrModel._assembly_names), as
 ## BrickWorld.section_lines keeps them.
+## And those of a sub-model every copy of which is built in its parent's
+## steps, read from the IN block of the copy that carries them
+## (LdrModel.within_lines), where no section of its name has its own.
 static func lines_of(model: LdrModel) -> Dictionary:
 	var out: Dictionary = {}
-	if model.section_lines.is_empty():
+	if model.section_lines.is_empty() and model.within_lines.is_empty():
 		return out
 	var names: Dictionary = model._assembly_names()
 	for key: String in model.section_lines:
 		if names.has(key):
 			out[str(names[key])] = PackedStringArray(model.section_lines[key])
+	for path: String in model.unit_kept:
+		var def: String = definition(leaf(path))
+		if not out.has(def) and model.within_lines.has(def):
+			out[def] = PackedStringArray(model.within_lines[def])
 	return out
 
 
@@ -1127,7 +1182,11 @@ static func lines_of(model: LdrModel) -> Dictionary:
 ## without them while a copy in one has them: placed by nothing, they were
 ## written at the other copy's place, a second light on it. Where no copy has
 ## a frame of them, they are written as they are kept.
-func lines_written(lined: BrickWorld, instances: Dictionary, back: Transform3D) -> Dictionary:
+## A copy built in its parent's steps ([param units]: AuthorSteps.IN_PARENT)
+## has no section to write them in, nor a frame of one: its definition's are
+## [method lines_within]'s.
+func lines_written(lined: BrickWorld, instances: Dictionary, back: Transform3D,
+		units: Dictionary = {}) -> Dictionary:
 	var out: Dictionary = {}
 	if lined.section_lines.is_empty():
 		return out
@@ -1135,7 +1194,7 @@ func lines_written(lined: BrickWorld, instances: Dictionary, back: Transform3D) 
 	var chosen: Dictionary = {}      ## written name -> [path, its frame or null]
 	for path: String in instances:
 		var def: String = definition(leaf(path))
-		if not lined.section_lines.has(def):
+		if not lined.section_lines.has(def) or int(units.get(path, 0)) == LdrModel.IN_PARENT:
 			continue
 		var written: String = str((instances[path] as Dictionary)["def"])
 		var frame: Variant = _frame_written(lined, path)
@@ -1160,6 +1219,59 @@ func lines_written(lined: BrickWorld, instances: Dictionary, back: Transform3D) 
 	return out
 
 
+## The lines each definition keeps that has no section to write them in,
+## every copy of it in [param instances] built in its parent's steps ([param
+## units]: AuthorSteps.IN_PARENT): by the copy they are written with -> the
+## lines, for LdrModel.write_tree's kept_within, which writes them after the
+## first IN line naming that copy. The copy is one a section written builds
+## (the model's own, or the copy a definition is written from: a copy in
+## another copy of that one is in no line of the file), the first whose lines
+## stand in a frame (BrickWorld.section_frames), else the first: and the
+## lines are in the coordinates of the section that builds it, as its parts
+## are, carried from where their frame stands ([method rebased]). Read again,
+## that copy's frame is where that section stands (LdrModel.unit_kept), so a
+## second save writes them the same. Up to 2026-11-14 they were written
+## nowhere: the small observatory put into a model nobody gave steps lost its
+## 20 motion lines at the first save (intomodel3), the castle's north-east
+## tower its view (s2review).
+func lines_within(lined: BrickWorld, instances: Dictionary, back: Transform3D,
+		units: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	if lined.section_lines.is_empty():
+		return out
+	var flip := Transform3D(Basis.from_scale(LdrModel.FLIP), Vector3.ZERO)
+	var sectioned: Dictionary = {}   ## a definition one copy of which has a section
+	var chosen: Dictionary = {}      ## definition -> [path, its frame or null, its home]
+	for path: String in instances:
+		var def: String = definition(leaf(path))
+		if not lined.section_lines.has(def):
+			continue
+		if int(units.get(path, 0)) != LdrModel.IN_PARENT:
+			sectioned[def] = true
+			continue
+		var home: String = LdrModel._home_in(path, units)
+		if not home.is_empty() and not bool((instances.get(home, {}) as Dictionary).get("master", false)):
+			continue
+		var frame: Variant = _frame_written(lined, path)
+		if not chosen.has(def) or (chosen[def] as Array)[1] == null and frame != null:
+			chosen[def] = [path, frame, home]
+	for def: String in chosen:
+		if sectioned.has(def):
+			continue
+		var path: String = (chosen[def] as Array)[0]
+		var frame: Variant = (chosen[def] as Array)[1]
+		var home: String = (chosen[def] as Array)[2]
+		if frame == null:
+			out[path] = PackedStringArray(lined.section_lines[def])
+			continue
+		# The section's coordinates: the file's for the model's own, else the
+		# frame its definition is written in (write_tree's inverse).
+		var into: Transform3D = flip * back if home.is_empty() \
+			else flip * ((instances[home] as Dictionary)["frame"] as Transform3D).affine_inverse() * back
+		out[path] = rebased(PackedStringArray(lined.section_lines[def]), into * (frame as Transform3D) * flip)
+	return out
+
+
 ## Where the frame the lines of the copy at [param path] are in stands, as
 ## [param lined] keeps it (BrickWorld.section_frames), brought home with its
 ## parts where a section broken out has it (BrickWorld.home_of); null for a
@@ -1175,18 +1287,23 @@ static func _frame_written(lined: BrickWorld, path: String) -> Variant:
 	return frame
 
 
-## [param lines], a sub-model's own (LIGHT and VIEW: BrickWorld
+## [param lines], a sub-model's own (LIGHT, VIEW and MOTION...: BrickWorld
 ## .section_lines), carried by [param through] from the file's coordinates of
 ## one frame of its definition to another's: each light's place and the way
 ## it shines (SceneLights.through), each view's point and the way it looks
-## (SavedViews.through_line). As they are where it moves nothing, and a line
-## that is not read as one is as it is.
+## (SavedViews.through_line), each motion's joint the place of the part it
+## takes hold of (Motions.through_line). As they are where it moves nothing,
+## and a line that is not read as one is as it is. Up to 2026-11-14 a motion's
+## joint stayed where the file had it: a sub-model brought in and written
+## where it was put down, then cut out as a file of its own, found none of its
+## joints' parts, and Play moved nothing (s2review drive_steps, live too).
 static func rebased(lines: PackedStringArray, through: Transform3D) -> PackedStringArray:
 	if through.is_equal_approx(Transform3D.IDENTITY):
 		return lines
 	var out := PackedStringArray()
 	for line: String in lines:
-		match _meta_word(line):
+		var word: String = _meta_word(line)
+		match word:
 			"LIGHT":
 				var light: Dictionary = SceneLights.of_line(line)
 				out.append(line if light.is_empty()
@@ -1194,7 +1311,7 @@ static func rebased(lines: PackedStringArray, through: Transform3D) -> PackedStr
 			"VIEW":
 				out.append(SavedViews.through_line(line, through))
 			_:
-				out.append(line)
+				out.append(Motions.through_line(line, through) if word.begins_with("MOTION") else line)
 	return out
 
 
@@ -1212,6 +1329,11 @@ func frames_read(model: LdrModel, up: Vector3) -> Dictionary:
 	for path: String in model.unit_frames:
 		if world.section_lines.has(definition(leaf(path))):
 			out[path] = lifted * (model.unit_frames[path] as Transform3D)
+	# A copy built in its parent's steps whose IN block carries them: they are
+	# in the coordinates of the section that builds it (LdrModel.unit_kept).
+	for path: String in model.unit_kept:
+		if world.section_lines.has(definition(leaf(path))) and not out.has(path):
+			out[path] = lifted * ((model.unit_kept[path] as Dictionary)["frame"] as Transform3D)
 	return out
 
 
