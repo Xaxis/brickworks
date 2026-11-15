@@ -56,4 +56,5 @@ def test_each_page_marks_only_itself() -> None:
         header = re.search(r'<header class="site-head">.*?</header>',
                            (ROOT / "web" / name).read_text(encoding="utf-8"), re.S).group(0)
         current = re.findall(r'<a [^>]*href="([^"]+)"[^>]*aria-current="page"', header)
-        assert current and set(current) == {own}, (name, current)
+        # The account's Sign in is /profile?sign-in: the page asked to sign in.
+        assert current and {one.removesuffix("?sign-in") for one in current} == {own}, (name, current)

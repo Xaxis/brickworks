@@ -8721,6 +8721,21 @@ msgstr "Escribe el código del correo."
 msgid "Finish signing in with orangecheck in your browser."
 msgstr "Termina de iniciar sesión con orangecheck en tu navegador."
 
+msgid "or"
+msgstr "o"
+
+msgid "Digit %d of %d"
+msgstr "Dígito %d de %d"
+
+msgid "The code sent to %s"
+msgstr "El código enviado a %s"
+
+msgid "Enter all %d digits of the code."
+msgstr "Escribe los %d dígitos del código."
+
+msgid "Taking you to brickworks.diy to sign in with orangecheck…"
+msgstr "Te llevamos a brickworks.diy para iniciar sesión con orangecheck…"
+
 msgid "Could not reach Brickworks to send a code. Check your connection."
 msgstr "No se pudo contactar con Brickworks para enviar un código. Comprueba tu conexión."
 
@@ -8786,6 +8801,9 @@ msgstr "No hemos podido iniciar la sesión ahora mismo. Vuelve a intentarlo en u
 
 msgid "Too many codes asked for. Wait a few minutes and try again."
 msgstr "Se han pedido demasiados códigos. Espera unos minutos y vuelve a intentarlo."
+
+msgid "Too many codes asked for. Try again after %s."
+msgstr "Se han pedido demasiados códigos. Vuelve a intentarlo después de las %s."
 
 msgid "We could not send the email just now. Try again in a minute."
 msgstr "No hemos podido enviar el correo ahora mismo. Vuelve a intentarlo en un minuto."

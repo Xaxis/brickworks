@@ -24,8 +24,8 @@ CSS = (ROOT / "web/site.css").read_text(encoding="utf-8")
 TEXT = ["--ink", "--ink-soft", "--ink-faint", "--accent-ink", "--bad", "--green"]
 SURFACES = ["--bg", "--bg-soft", "--panel", "--panel-hi", "--field"]
 # What marks a state without words: a pressed toggle's edge, the keyboard's
-# focus ring.
-EDGES = ["--accent-edge", "--focus"]
+# focus ring; and what shows a field is there, its edge (WCAG 1.4.11).
+EDGES = ["--accent-edge", "--focus", "--field-edge"]
 # The kit (site.css "the kit"): an avatar made from a handle, its letter on
 # one of eight tiles; the toast, the page's colours the other way round.
 # A pill, a tab, an icon button and the more menu draw with the tokens

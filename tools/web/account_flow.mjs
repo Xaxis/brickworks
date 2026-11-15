@@ -149,19 +149,20 @@ try {
     "Email me a code: the deployment sends one, and the form asks for it");
   await shot("3_check_your_email");
 
+  // One digit a box (signinux): the eighth sends the code by itself, so
+  // Sign in is not pressed after it.
   await click("signin_code");
-  await page.keyboard.type("000000");
-  await click("signin_go");
+  await page.keyboard.type("00000000");
   await page.waitForTimeout(4000);
   check((await account()).gated, "a wrong code does not let anyone in");
   await shot("4_wrong_code");
 
+  // Refused as wrong, the boxes are emptied and the keys put back in the
+  // first; the last digit typed sends it.
   const code = await mintCode(email);
   await click("signin_code");
-  await page.keyboard.press("Control+A");
   await page.keyboard.type(code);
   await page.waitForTimeout(1500);
-  await click("signin_go");
   // Supabase lets one machine check so many codes in five minutes, and
   // every flow and agent on this box shares that count: m165's preview held
   // twice on "Too many attempts just now" with the right code in the field
