@@ -191,9 +191,10 @@ func _case_whole() -> void:
 ## the step before, above the ROTSTEP that turns the next, and nothing else
 ## moves (stepops: a step taken out is its STEP line; up to 2026-11-15 the
 ## page and every STEP line were to stay, which only every later part moved
-## a step could say). A part moved back onto that page goes in it, seen
-## turned over still, as it was (BookletLooks._turns_follow): the ROTSTEP
-## right above it, a STEP put in after it.
+## a step could say). A part of the turned step moved back passes the empty
+## page (a step back skips a step with no parts) to the step before, at its
+## end, above the ROTSTEP that still turns the step it left, and the page
+## closes up the same way.
 func _case_emptystep() -> void:
 	var text: String = _fixture("kt3r_emptystep.ldr")
 	for spec: Array in [["next", 2], ["prev", 1], ["next", 14], ["prev", 2]]:
@@ -213,14 +214,15 @@ func _case_emptystep() -> void:
 			["0 STEP"] if _empties_step(text, int(spec[1])) else [])
 		var turn: String = "0 // Turn the model over before the next step\n0 ROTSTEP 180 0 0 ABS\n"
 		if onto:
-			_check("...the part moved onto the page, seen turned over as it was: the note and the "
-				+ "ROTSTEP above it, a STEP after it", saved.contains(turn + moved + "\n0 STEP\n"))
+			_check("...the part moved back past the page, at the end of the step before: the note "
+				+ "above it, the ROTSTEP after it", saved.contains("3001.dat\n0 // Turn the model over "
+				+ "before the next step\n" + moved + "\n0 ROTSTEP 180 0 0 ABS\n"))
 		else:
 			_check("...the page closed up by its first STEP line: the note and the ROTSTEP after "
 				+ "the step before's parts", saved.contains("3001.dat\n" + turn))
 		# A STEP line a step: the page closed up takes one; the last part
-		# moved on a step of its own, or the page filled, keeps their count.
-		var fewer: int = 0 if spec in [["next", 14], ["prev", 1]] else 1
+		# moved on a step of its own puts one back.
+		var fewer: int = 0 if spec == ["next", 14] else 1
 		_check("...%d STEP line(s) fewer, as many as the steps gone" % fewer,
 			saved.count("0 STEP\n") == text.count("0 STEP\n") - fewer)
 
