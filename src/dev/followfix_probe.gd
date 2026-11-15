@@ -22,11 +22,18 @@
 ## and redone as made. Nothing is ever through a part. Then the attacks: a
 ## mirrored copy, a sub-model placed three times inside another, a copy
 ## written as a definition of its own, a Build together room (a refusal
-## sends nothing), undo and redo round a refusal, and the save opened again.
+## sends nothing), undo and redo round a refusal, the save opened again, and
+## live's save and back.
 ##
 ##   godot --headless --path . --script src/dev/followfix_probe.gd
 ##
 ##   FOLLOWFIX_CASES=paint,mcp_move,mirror   those cases
+##   LIVE_SAVED=F [LIVE_OURS=G] [LIVE_READ=H]   the live round trip: F Sill
+##     placed twice as live's build saved it, G where ours after a drag is
+##     written, H live's save of G; without F the case skips, saying so. A
+##     worktree at the live sha writes F and H with a one-off headless
+##     script that opens through ModelBar.open_text_with_progress and saves
+##     ModelStore.to_text(title, true).
 extends "res://src/dev/copyfaults_probe.gd"
 
 ## Each edit, by hand and over MCP, with the twins it is tried with.
@@ -37,7 +44,8 @@ const FOLLOW_EDITS: Dictionary = {
 	"mcp_paint": ["free", "locked"], "mcp_swap": ["free", "locked", "room"],
 	"mcp_move": ["free", "locked", "room"], "mcp_turn": ["free", "locked", "room"],
 	"mcp_delete": ["free", "locked"]}
-const ATTACKS: Array = ["mirror", "nested", "own_definition", "together", "undo_redo", "reopen"]
+const ATTACKS: Array = ["mirror", "nested", "own_definition", "together", "undo_redo", "reopen",
+	"live"]
 
 ## Sill: a red 2 x 4 brick, a black 1 x 2 plate and a yellow 1 x 1 plate on
 ## it. Each edit is made in the copy at the origin; its twin is in the copy
@@ -127,6 +135,7 @@ func _run() -> void:
 			"together": await _attack_together()
 			"undo_redo": await _attack_undo_redo()
 			"reopen": await _attack_reopen()
+			"live": await _attack_live()
 	print("\nthe table:")
 	for line: String in _table:
 		print("  " + line)
@@ -642,3 +651,65 @@ func _attack_reopen() -> void:
 		defs == 2 and near != null and far != null and near.transform.origin.x > 40.0
 		and far.transform.origin.x > 40.0 and through.is_empty() and again == saved)
 	_table.append("%-11s %-6s %s" % ["reopen", "", "pass" if ok else "FAIL"])
+
+
+## Sill placed twice as live's build saved it (LIVE_SAVED: the fixture
+## opened and saved by the build on brickworks.diy) opened here as ours is;
+## a drag with its twin locked refused, the file to the byte; unlocked, the
+## drag followed and nothing through, written to LIVE_OURS, one undo the
+## file to the byte; that as live saves it again (LIVE_READ) opened here as
+## ours was shown. Skipped, saying so, without LIVE_SAVED.
+func _attack_live() -> void:
+	var saved: String = OS.get_environment("LIVE_SAVED")
+	if saved.is_empty() or not FileAccess.file_exists(saved):
+		print("  live: LIVE_SAVED not given, skipped")
+		_table.append("%-11s %-6s %s" % ["live", "", "skipped"])
+		return
+	await _open(_file())
+	var ours_shown: Array = _looks(false)
+	await _open(FileAccess.get_file_as_string(saved))
+	var ok: bool = _check("live: live's save opened as ours is (%d parts)" % _looks(false).size(),
+		_looks(false) == ours_shown)
+	var sills: Array = _sills()
+	var mine: BrickWorld.Brick = _in(sills[0], "3024")
+	var theirs: BrickWorld.Brick = _in(sills[1], "3024")
+	if mine == null or theirs == null:
+		_check("live: two copies (%s)" % str(sills), false)
+		_table.append("%-11s %-6s %s" % ["live", "", "FAIL"])
+		return
+	_pick([theirs.id])
+	_builder.lock_selection(true)
+	var before: String = _save()
+	var depth: int = _builder.history_depth()
+	var was: String = _state(theirs.id)
+	await _make("drag", mine, sills[0])
+	await _frames(6)
+	ok = _check("live: its twin locked, the drag refused, the file to the byte (\"%s\")"
+		% _bar_text(), _save() == before and _builder.history_depth() == depth
+		and _bar_text().contains(LOCK_WORDS)) and ok
+	_builder.unlock_all()
+	before = _save()
+	await _make("drag", mine, sills[0])
+	await _frames(6)
+	var ours: String = _save()
+	ok = _check("live: unlocked, the drag followed (%s), nothing through"
+		% _twin_part_now(sills[1], "3024", theirs.id), ours != before
+		and _state(theirs.id) != was and _through().is_empty()) and ok
+	var out: String = OS.get_environment("LIVE_OURS")
+	if not out.is_empty():
+		var file: FileAccess = FileAccess.open(out, FileAccess.WRITE)
+		file.store_string(ours)
+		file.close()
+	var shown: Array = _looks(false)
+	_shell.run("undo")
+	await _frames(6)
+	ok = _check("live: one undo, the file to the byte", _save() == before) and ok
+	var read: String = OS.get_environment("LIVE_READ")
+	if read.is_empty() or not FileAccess.file_exists(read):
+		print("  live: LIVE_READ not given, live's read of ours skipped")
+	else:
+		await _open(FileAccess.get_file_as_string(read))
+		ok = _check("live: ours as live saves it, opened here as ours was shown",
+			_looks(false) == shown) and ok
+	_table.append("%-11s %-6s %s" % ["live", "", "pass" if ok else "FAIL"])
+	_builder.unlock_all()

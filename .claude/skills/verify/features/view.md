@@ -897,7 +897,7 @@ picture the assistant is shown.
   part, both, all joined, then the part it began from (`Shell.cycle_select`).
   The toolbar's Select by button no longer answers its rows' keys itself
   (`set_disable_shortcuts`): its popup ran a greyed command silently. Menus
-  split so each is at most 25 rows and 60% of a 1280 x 720 window: Make (the
+  split so each is at most 25 rows and 63% of a 1280 x 720 window (60% until 25 rows measured 62%, swapfind): Make (the
   minifigure, mosaic, brickify, hoses, the part maker and prints), View ›
   Viewpoint (the views and the model's turns), Comments in File; Build ›
   Booklet page, 27 rows once Page setup… joined it, folds the step's turns,
