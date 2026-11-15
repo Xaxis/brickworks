@@ -266,6 +266,8 @@ func _run() -> void:
 		await _omr_pairs()
 	if only.is_empty() or only.contains("stepops"):
 		await _step_ops()
+	if not OS.get_environment("KEEP_TEXT_OPEN").is_empty():
+		await _saved_elsewhere(OS.get_environment("KEEP_TEXT_OPEN"))
 	print("\nlines lost by one step edit and a save:")
 	for row: Array in _summary:
 		print("  %-48s %4d in its section, %4d from the file, saved %s" % row)
@@ -2373,6 +2375,15 @@ func _step_op(name: String, text: String, op: String, want: String) -> String:
 	var edited: String = _store.saved_text()
 	var whole: String = str(_store.get("last_whole"))
 	var state: Dictionary = _state()
+	# KEEP_TEXT_SAVED=DIR: each file as this build saved it, for another
+	# build to open (_saved_elsewhere).
+	var out_dir: String = OS.get_environment("KEEP_TEXT_SAVED")
+	if not out_dir.is_empty():
+		DirAccess.make_dir_recursive_absolute(out_dir)
+		var file := FileAccess.open(out_dir.path_join("%02d_%s.mpd" % [_ops_rows.size(), op]),
+			FileAccess.WRITE)
+		file.store_string(edited)
+		file.close()
 	var changed: int = _diff_size(text.split("\n"), edited.split("\n"))
 	var moved: int = 2 * moved_lines + 1 + empty
 	var rest: Array = _rest_unlike(text, edited, chosen)
@@ -2400,6 +2411,32 @@ func _step_op(name: String, text: String, op: String, want: String) -> String:
 		% _diff_size(edited.split("\n"), redone.split("\n")), redone == edited) and ok
 	await _reopened("...opened again", edited, name, state)
 	return mark if ok else "FAIL " + mark
+
+
+## Saved by another build and back (stepops): each file of [param dir] (as
+## KEEP_TEXT_SAVED wrote them, an edit's save) opened here and saved
+## unedited, byte for byte, then two of its steps merged and the merge
+## undone: the merge one STEP line, the undo the file again.
+func _saved_elsewhere(dir: String) -> void:
+	print("\nfiles another build saved after a step edit, opened here (stepops):")
+	var names: Array = Array(DirAccess.get_files_at(dir))
+	names.sort()
+	var same: int = 0
+	var merged: int = 0
+	for file_name: String in names:
+		var text: String = FileAccess.get_file_as_string(dir.path_join(file_name))
+		await _open(text, file_name)
+		var unedited: String = _store.saved_text()
+		var kept: bool = _hard("%s (%d lines) saved unedited: byte for byte (%d lines changed)" % [
+			file_name, text.split("\n").size(), _diff_size(text.split("\n"), unedited.split("\n"))],
+			unedited == text)
+		same += 1 if kept else 0
+		if OS.get_environment("KEEP_TEXT_OPEN_ONLY_SAVE") == "1":
+			continue
+		var mark: String = await _step_op(file_name, text, "merge", "")
+		merged += 1 if not mark.begins_with("FAIL") else 0
+	print("  %d of %d saved byte for byte, %d of %d merged as their own change" % [same, names.size(),
+		merged, names.size()])
 
 
 ## The section whose steps [param op] edits: [param want] by name, the
