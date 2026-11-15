@@ -62,8 +62,8 @@ A call answered with a job number is still working in the app: call job about ev
 
 ```said method
 How to work here, said once as this chat begins (read_guide "work" has it whole, and read_guide any section a step names):
- 1. Before building: plan_scale with the real thing's size, find_reference for anything that exists, how_real_sets_build_this with the subject: real sets' parts, and the faults found in our own designs of it, to design out.
- 2. submit_design the silhouette first: the main masses, with its assemblies and its features (what the subject is known by, each with where it goes). A hull, a car body or a building is a shape pattern (read_guide "shapes"); a figure or a creature is shaped parts on joints (read_guide "figures"). Pass the person's request, word for word, as brief, and a part count they named as parts.
+ 1. Before building: find_reference for anything that exists, then plan_scale with the real thing's size and its outline read off a photograph taken square from one side (outline=: heights along a long thing, widths up a tall one, its steps and its plan from above). Its answer is the first mass, already in that outline. how_real_sets_build_this with the subject: real sets' parts, and the faults found in our own designs of it, to design out.
+ 2. submit_design the silhouette first: the mass plan_scale handed, as it is, and the other main masses, with its assemblies and its features (what the subject is known by, each with where it goes). A hull, a car body or a building is a shape pattern (read_guide "shapes"); a figure or a creature is shaped parts on joints (read_guide "figures"). Pass the person's request, word for word, as brief, and a part count they named as parts.
  3. review_model: fix the silhouette and proportions before any detail.
  4. Each feature: the app lays a real set's piece; settle_feature it.
  5. Each assembly: review_model {"assembly": name}, detailed with edit_model.

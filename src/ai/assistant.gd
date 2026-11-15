@@ -3397,9 +3397,10 @@ func _tool_answer(block: Dictionary) -> Variant:
 			# And what our own scored designs of the nearest subject did and
 			# were faulted for: asked once, with the subject, before building.
 			await DesignMemory.ensure(self)
+			# The ask leads: at the foot of the tables it went unread.
 			var asking: String = outline_ask("how_real_sets_build_this")
-			return [{"type": "text", "text": str(_how_real_sets_build_this(subject)["content"])
-				+ ("\n\nBefore the first build: " + asking if not asking.is_empty() else "")}] \
+			return [{"type": "text", "text": ("Before the first build: " + asking + "\n\n"
+				if not asking.is_empty() else "") + str(_how_real_sets_build_this(subject)["content"])}] \
 				+ DesignMemory.recall(subject)
 		"look_at_model":
 			progress.emit("looking at what is already built")
@@ -19506,13 +19507,17 @@ each feature the subject is known by, then the detail. In this order:
      moving the whole model.
   2. find_reference, for anything that exists. A lighthouse you recall \
      is a tapering tower with a light on top, which is every lighthouse \
-     and no lighthouse. A picture gives you this one.
+     and no lighthouse. A picture gives you this one. Read its outline \
+     off a picture taken square from one side and give it to plan_scale \
+     as outline= (heights along a long thing, widths up a tall one, its \
+     steps and its plan from above): the answer is the first mass, \
+     already in that outline.
   3. The silhouette. Decide the main masses and their sizes in studs, \
      off that picture and the brief, and what each is: round in section, \
      tapered, at a slant, smooth, moving, mechanical, organic. Say a \
-     hull, a car body, a fuselage or a building as a shape and submit \
-     that first: its proportions are judged before anything is put on \
-     it. A figure, a creature or a character is not a shape: it is \
+     hull, a car body, a fuselage or a building as a shape (the mass \
+     plan_scale handed, as it is) and submit that first: its \
+     proportions are judged before anything is put on it. A figure, a creature or a character is not a shape: it is \
      sub-assemblies of shaped parts on joints (FIGURES, CREATURES AND \
      SMALL MODELS, above), submitted the same way first. WHAT THE \
      SUBJECT NEEDS, below, says which call builds each; \
@@ -21918,9 +21923,15 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 	var asking: String = outline_ask("submit_design") if bare else ""
 	if asking.is_empty():
 		return built
-	return (built + "\n\nIts mass is its own: no outline of the real thing was read before it. "
+	# Said under its first line, before the check's measures: at the foot of
+	# a long answer it went unread.
+	var said: String = ("Its mass is its own: no outline of the real thing was read before it. "
 		+ asking.replace("The answer is the first mass already in that outline",
 			"The answer is this mass in that outline"))
+	var head: int = built.find("\n")
+	if head < 0:
+		return built + "\n\n" + said
+	return built.substr(0, head) + "\n\n" + said + "\n" + built.substr(head)
 
 
 ## A design built from outside — Claude over the connector, or a session
