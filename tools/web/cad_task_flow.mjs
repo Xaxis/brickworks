@@ -613,7 +613,10 @@ async function take(id) {
   await clickAt(box.x, box.y);
   await key("Control+a", 150);
   await typeText(id);
-  await page.waitForTimeout(1600);
+  // The bin listing the part (or its lettered version) first before its
+  // tile is pressed: a fixed 1.6 s under load pressed the last search's
+  // first tile (placing_flow, rel-m301). One it never lists first is a gap.
+  await until((now) => sameId(id, String((now.found || [])[0] || "")), 30);
   const first = await where("first part", 30);
   await clickAt(first.x, first.y);
   const s = await until((now) => now.mode === "place" && String(now.held || "").length > 0

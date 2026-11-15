@@ -92,7 +92,9 @@ async function take(number) {
   await click(await controlAt("part search"));
   await key("Control+a", 200);
   await type(number);
-  await wait(1500);
+  // Listed first before its tile is pressed: a fixed wait under load
+  // pressed the last search's (placing_flow, rel-m301).
+  await until((s) => (s.found || [])[0] === number, 30);
   await click(await controlAt("first part"));
   const held = await until((s) => s.mode === "place" && String(s.held || "") === number, 30);
   check(`${number} is in hand (${held.held})`, String(held.held || "") === number);
