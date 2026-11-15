@@ -130,15 +130,15 @@ const tokenOf = (page) => page.evaluate(async () => (await import("/account.js")
 /// or over when it is asked. Resolves with what came next: "welcome",
 /// "steps" (First steps) or "none".
 async function signInByDialog(base, page, email) {
+  // Signed out, /profile opens the sign-in by itself (signinux).
   await page.goto(`${base}/profile`, { waitUntil: "load", timeout: 60000 });
-  await page.click("#sign-in");
   await page.locator("dialog.sign-in[open]").waitFor({ state: "visible", timeout: 20000 });
   await page.fill("dialog.sign-in input", email);
   await page.click('dialog.sign-in button[type="submit"]');
-  await until(page, () => document.querySelector("dialog.sign-in input")?.autocomplete === "one-time-code");
+  await until(page, () => document.querySelector("dialog.sign-in .code-boxes input")?.checkVisibility());
   const code = await mintCode(email, { welcome: false });
-  await page.fill("dialog.sign-in input", code);
-  await page.click('dialog.sign-in button[type="submit"]');
+  // One digit a box: the whole code in the first goes by itself.
+  await page.fill("dialog.sign-in .code-boxes input:first-child", code);
   await until(page, () => !document.querySelector("dialog.sign-in"), null, 30000);
   const next = () => page.waitForFunction(() => (document.querySelector("dialog.age[open]") ? "age"
     : document.querySelector("dialog.beta-welcome[open]") ? "welcome"

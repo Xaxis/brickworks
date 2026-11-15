@@ -836,8 +836,8 @@ async function signingIn(browser, code, width, where) {
   });
   try {
     if (where === "profile") {
+      // Signed out, /profile opens the sign-in by itself (signinux).
       await tab.goto(`${base}/profile`, { waitUntil: "load" });
-      await tab.click("#sign-in");
     } else {
       await tab.goto(`${base}${code === "en" ? "" : `/${code}`}/gallery`, { waitUntil: "load" });
       await tab.waitForFunction(() => document.documentElement.dataset.gallery === "ready", null, { timeout: 30000 });
@@ -866,16 +866,15 @@ async function signingIn(browser, code, width, where) {
     check(seen.go === script(code, "Sign in"), `${label}: the code's step, "${seen.label}", "${seen.go}"`);
     if (remote && where !== "profile") return;
     // A wrong code, refused in the language.
-    await tab.fill("dialog.sign-in input", "000000");
-    await tab.click('dialog.sign-in button[type="submit"]');
+    // One digit a box: the whole code in the first goes by its last digit.
+    await tab.fill("dialog.sign-in .code-boxes input:first-child", "00000000");
     await until(() => document.querySelector("dialog.sign-in .said")?.textContent.trim(), "answer to the wrong code");
     seen = await tab.evaluate(dialogSaid);
     check(seen.note === script(code, WRONG), `${label}: a wrong code says "${seen.note}"`);
     if (out) await tab.locator("dialog.sign-in").screenshot({ path: path.join(out, `${code}-signin-${where}-${width}-wrong.png`) });
     if (remote || where !== "profile") return;
     // The right one, and the age question a new account is asked.
-    await tab.fill("dialog.sign-in input", "123456");
-    await tab.click('dialog.sign-in button[type="submit"]');
+    await tab.fill("dialog.sign-in .code-boxes input:first-child", "12345678");
     await until(() => document.querySelector("dialog.age[open]"), "age question");
     const age = await tab.evaluate(() => {
       const dialog = document.querySelector("dialog.age[open]");

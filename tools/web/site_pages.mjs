@@ -191,8 +191,10 @@ export function sitePages({ remote = "" } = {}) {
       } },
     // Your profile (docs/SOCIAL.md U6): your page's head and its first tab;
     // Edit profile's dialog; and the tabs only you see, each its own page.
+    // Signed out, the sign-in opens over it by itself (signinux, 2026-11-14).
     { name: "account", path: "/profile",
-      ready: (page, { signedIn }) => (signedIn ? until(page, () => document.documentElement.dataset.profile === "ready") : true),
+      ready: (page, { signedIn }) => (signedIn ? until(page, () => document.documentElement.dataset.profile === "ready")
+        : until(page, () => document.querySelector("dialog.sign-in[open]"))),
       open: async (page, { signedIn }) => {
         if (signedIn) {
           await page.click("#edit");
@@ -200,7 +202,6 @@ export function sitePages({ remote = "" } = {}) {
             && document.querySelector("#name")?.value);
           return [[opened ? "edit" : "edit (missing)", "dialog#edit-dialog"]];
         }
-        await page.click("#sign-in");
         if (!(await until(page, () => document.querySelector("dialog.sign-in[open]")))) return [["sign-in (missing)", "dialog.sign-in"]];
         const states = [["sign-in", "dialog.sign-in"]];
         await page.fill("dialog.sign-in input", stand.EMAIL);

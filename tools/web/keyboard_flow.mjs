@@ -494,8 +494,15 @@ const JOURNEYS = {
   async signin(browser, theme) {
     const { context, page } = await visit(browser, "/profile", { theme, signedIn: false });
     const label = `sign-in ${theme}`;
-    await until(page, () => document.querySelector("#sign-in:not([hidden])"), null, 15000);
-    if (await tabTo(page, label, "#sign-in")) {
+    // Signed out, /profile opens the sign-in by itself (signinux), the focus
+    // in its address; Escape closes it to the page's own Sign in.
+    const itself = await until(page, () => document.querySelector("dialog.sign-in[open]")
+      && document.activeElement?.matches("dialog.sign-in input[type=email]"), null, 15000);
+    check(itself, `${label}: a signed-out /profile opens the sign-in by itself, the focus in its address`);
+    await page.keyboard.press("Escape");
+    const onIt = await until(page, () => !document.querySelector("dialog.sign-in[open]") && document.activeElement?.matches("#sign-in"), null, 5000);
+    check(onIt, `${label}: Escape closes it, the focus on the page's own Sign in (${(await page.evaluate(focusNow)).said})`);
+    if (onIt || await tabTo(page, label, "#sign-in")) {
       await page.keyboard.press("Enter");
       const opened = await until(page, () => document.querySelector("dialog.sign-in[open]") && document.activeElement?.matches("dialog.sign-in input"), null, 5000);
       const named = await page.evaluate(() => {

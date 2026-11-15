@@ -364,6 +364,26 @@ try {
       }
       await made.close();
     }
+    // A page that draws only for somebody signed in (/lists), signed in
+    // there from the header: drawn for them where they are, no reload.
+    if (!deployed) {
+      const made = await context(1280, "light");
+      const page = await made.newPage();
+      listen(page, "lists");
+      await page.goto(`${site}/lists`, { waitUntil: "load", timeout: 120000 });
+      await until(page, () => document.documentElement.dataset.lists === "signed-out", null, 10000);
+      await page.evaluate(() => { window.__kept = true; });
+      await headerSignIn(page, false);
+      const drawn = await until(page, () => document.querySelector("dialog.sign-in")?.open, null, 6000)
+        && await toCode(page);
+      if (drawn) await page.keyboard.type(RIGHT);
+      const after = drawn && await until(page, () => !document.querySelector("dialog.sign-in")
+        && document.documentElement.dataset.lists !== "signed-out" && document.getElementById("signed-out")?.hidden, null, 30000);
+      check("1280: signed in from the header on /lists, the page draws for them there, no reload",
+        after && page.url() === `${site}/lists` && await page.evaluate(() => window.__kept === true),
+        `${page.url()} ${await page.evaluate(() => document.documentElement.dataset.lists)}`);
+      await made.close();
+    }
   }
 
   // 4. orangecheck's window, stood in.

@@ -299,7 +299,7 @@ func _answer_age(gate: SignInGate, go: bool) -> void:
 
 
 ## Signed in for real, by keys alone: the address, Return, the code minted
-## here typed, Tab to Sign in, Return; the age by keys if asked.
+## here typed into the boxes, whose last digit sends it; the age by keys if asked.
 func _sign_in_live(account: Account, gate: SignInGate) -> void:
 	print("  the way in, against %s" % Deployment.api_base())
 	var named: Dictionary = gate.controls_by_name()
@@ -317,11 +317,9 @@ func _sign_in_live(account: Account, gate: SignInGate) -> void:
 	var code: String = await SignInHelper.mint(email, root)
 	_check("a code minted for it (%s)" % ("yes" if not code.begins_with("!") else code),
 		not code.begins_with("!"))
+	# The last digit sends it by itself (signinux): Tab and Return to Sign in
+	# would race the answer, so the keys stop at the code.
 	await _type(code)
-	var go: Control = await _tab_until(func(c: Control) -> bool:
-		return c == named["signin_go"], 6)
-	_check("Tab reaches Sign in (%s)" % _said(go), go != null)
-	await _key(KEY_ENTER)
 	for _n: int in 900:
 		await process_frame
 		if not gate.visible or account.age_ask:

@@ -98,9 +98,9 @@ func _new_account_joins(account: Account, gate: SignInGate) -> void:
 		print("  (the form said: %s)" % _text_on(gate).replace("\n", " / "))
 	_ok(code_field.is_visible_in_tree(), "Email me a code moves on to the code")
 	var code: String = await SignInHelper.mint(email, root)
+	# One digit a box: the last one sends the code by itself (signinux).
 	await _click_control(code_field)
 	await _type(code)
-	await _click_control(named["signin_go"])
 	await _past_the_code(account, gate)
 	_ok(account.signed_in() and account.email == email, "the code is accepted: %s" % account.email)
 	await _settle()

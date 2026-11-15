@@ -146,8 +146,8 @@ try {
   check(`a code asked for: "${asked.label.slice(0, 60)}" ${asked.said}`, asked.label.includes(visitorEmail));
   // As the tests sign in: the code minted here, replacing the one sent.
   const code = await mintCode(visitorEmail);
-  await page.fill("dialog.sign-in input", code);
-  await page.click('dialog.sign-in button[type="submit"]');
+  // One digit a box (signinux): the whole code in the first goes by itself.
+  await page.fill("dialog.sign-in .code-boxes input:first-child", code);
   // Once supabase/trust.sql is applied, a new account is asked its age once
   // after signing in (web/account.js), before the like goes: 13 or over here
   // (tools/web/age_flow.mjs is about the question itself). Whichever comes
