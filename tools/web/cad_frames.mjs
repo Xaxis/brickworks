@@ -286,7 +286,9 @@ for (const model of models) {
     await page.mouse.click((await where("part search")).x, (await where("part search")).y);
     await page.keyboard.press("Control+a");
     await page.keyboard.type("3001", { delay: 30 });
-    await page.waitForTimeout(2500);
+    // Listed first before its tile is pressed: a fixed wait under load
+    // pressed the last search's (placing_flow, rel-m301).
+    await until((x) => (x.found || [])[0] === "3001", 30);
     const first = await where("first part");
     await page.mouse.click(first.x, first.y);
     await until((x) => String(x.held || "") === "3001", 30);

@@ -398,7 +398,9 @@ async function editorActs(page, size) {
     await page.mouse.click(search.x, search.y);
     await page.keyboard.press("Control+a");
     await page.keyboard.type("3001", { delay: 30 });
-    await page.waitForTimeout(2500);
+    // Listed first before its tile is pressed: a fixed wait under load
+    // pressed the last search's (placing_flow, rel-m301).
+    await until(page, () => ((window.brickworksState || {}).found || [])[0] === "3001", "the bin listing 3001 first", 60);
     const first = await where(page, "first part");
     await page.mouse.click(first.x, first.y);
     await until(page, () => String((window.brickworksState || {}).held || "") === "3001", "a brick in hand", 60);

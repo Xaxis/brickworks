@@ -60,7 +60,9 @@ wider of the two sides' spreads (max - min of their runs) and at least 2% of
 the bar; a FAIL line with no figure, only where the preview failed it in
 more runs than live; a measure live never printed, always; and the whole
 check, when no measure was timed on both sides (runs that could not start
-fail alike, and are no load: a worktree with no `node_modules`). Otherwise the
+fail alike, and are no load: a worktree with no `node_modules`), unless the
+preview passed every run, said "passed N of N by turns" (rel-m301's placing
+held so, all four runs passed). Otherwise the
 release ships past it, failing there as much or not at all, as `--accept`
 does, with no reason needed: `<tag>_accepted`, the train's log and status
 say both sides' numbers, and so does a commit on top of the merge, which

@@ -136,7 +136,9 @@ async function putABrick(page) {
   await page.mouse.click(search.x, search.y);
   await page.keyboard.press("Control+a");
   await page.keyboard.type("3001", { delay: 30 });
-  await page.waitForTimeout(1600);
+  // Listed first before its tile is pressed: a fixed wait under load
+  // pressed the last search's (placing_flow, rel-m301).
+  await until(async () => ((await state(page)).found || [])[0] === "3001", 30);
   const first = await controlAt(page, "first part", 30);
   await page.mouse.click(first.x, first.y);
   if (!(await until(async () => String((await state(page)).held || "") === "3001", 15))) return false;
