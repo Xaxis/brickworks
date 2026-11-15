@@ -83,10 +83,13 @@ export function codeBoxes({ field = null, into = null, id = "", digits = CODE_DI
     full = now;
   };
   // [text]'s digits laid into the boxes from [from], the focus after the
-  // last one laid (the last box when the row is full).
+  // last one laid (the last box when the row is full). A code laid whole is
+  // sent again though the row was full already: a paste or a fill after a
+  // limit kept the digits is somebody sending it.
   const lay = (text, from = 0) => {
     const got = onlyDigits(text);
     if (!got) return;
+    full = false;
     // A whole code, wherever it landed, is the code from the first box.
     const start = got.length >= boxes.length ? 0 : from;
     [...got].slice(0, boxes.length - start).forEach((digit, i) => {

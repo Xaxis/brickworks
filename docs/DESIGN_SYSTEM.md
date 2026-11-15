@@ -230,10 +230,37 @@ is on the page, `hidden`, for the script to show.
   its mark in the button's ink before the words, its busy state, its window
   opened from the click. `web/oc-button.css` is orangecheck's too, at zero
   specificity, so every rule here wins; it holds the mark's size and the
-  44 px target `--control-h` gives every button already. Under it in the
-  sign-in dialog, orangecheck Connect's box (`dialog .consent`): a
-  `label.choice`, never ticked but by the person, and orangecheck's own
-  words, label and line, exactly as `web/oc-connect-consent.mjs` gives them.
+  44 px target `--control-h` gives every button already.
+- **The sign-in dialog** (`account.js` `askToSignIn`; signinux, 2026-11-14,
+  laid out as Vercel, Linear and Notion set out a second way in): two equal
+  ways in, one under the other, each a `.cta.wide` the form's width and
+  44 px tall: the address, orangecheck Connect's box (`dialog .consent`: a
+  `label.choice`, never ticked but by the person, in orangecheck's own
+  words exactly as `web/oc-connect-consent.mjs` gives them) and **Email me
+  a code**; then `dialog .or` ("or" between two hairlines); then **Sign in
+  with orangecheck** and its one plain line; **Not now** last, a quiet
+  `button.link`. While orangecheck's window is open the two ways give
+  place to `dialog .waiting`: a ring, "Finish signing in in the orangecheck
+  window", **Show the orangecheck window** (the same window to the front)
+  and **Cancel** (it closes, the dialog as it was). How the window ended,
+  when it did not sign in, is said under its button in orangecheck's words
+  (`.oc-said`): calm ink for a window closed, a callout with the accent
+  edge for one the browser blocked, `--bad` for one that failed, the focus
+  back on the button. One click on the header's **Sign in** (bar or phone
+  Menu) opens this dialog over the page; signed in, the page stays and
+  draws what a signed-in person sees (`brickworks:signed-in-done`).
+- **The code from the email** (`web/code-boxes.js` `codeBoxes`, the app's
+  `CodeBoxes`): one box per digit (the deployment says how many, api/otp.js
+  `digits`), centred in a row the form's width, 56 px tall, an eight-digit
+  code read as two fours; the row a labelled group ("The code sent to …"),
+  each box "Digit 1 of 8", the number pad, the first box
+  `autocomplete="one-time-code"`. Typing moves on, Backspace steps back,
+  the arrows move, a paste or a fill anywhere lays the whole code from the
+  first box, and the last digit sends it. Read-only while it is checked;
+  refused, the row shakes once (still under reduced motion) and empties
+  with the focus in the first box. Its words under the button, troubles in
+  `--bad`. The same row on the connector's sign-in (`/oauth/authorize`) and
+  Settings' two codes; deleting an account never goes by itself.
 - **Dialog**: the `dialog` element (sign in and the age question in
   `web/account.js`, report it in `web/report.js`): a `--panel` card, its
   title an h2 that names it (`aria-labelledby`), the form, the buttons

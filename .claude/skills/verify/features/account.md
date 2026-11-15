@@ -23,6 +23,18 @@ they have. A Claude connector belongs to the account that switched it on.
   `window.brickworksControls` names only its own controls (`signin_email`,
   `signin_send`, `signin_code`, `signin_go`, `signin_retry`), and
   `window.brickworksAccount` says `{state, email, offline, renewing, gated}`.
+  The code is typed one digit to a box (`src/ui/code_boxes.gd` `CodeBoxes`,
+  signinux 2026-11-14), as many as `/api/otp` answers in `digits`
+  (`Account.code_digits`, eight): `signin_code` is the first box (a flow
+  clicks it and types the whole code), `signin_code_row` the row; the last
+  digit signs in by itself, a wrong code (`Account.WRONG_CODE`) shakes and
+  empties the row, a limit keeps the digits. Email me a code, "or" and Sign
+  in with orangecheck are each 44 px and the form's width; on the desktop
+  the orangecheck wait has Cancel (`Account.cancel_orangecheck`). Probe:
+  `code_boxes_probe` (windowed: type, Backspace, arrows, Ctrl+V paste,
+  a whole code in one box, wrong, limit, the last digit); the site's
+  dialog, the connector's page and Settings take the same row from
+  `web/code-boxes.js` (`signin_flow.mjs`).
   **Not shown** when nobody is in front of the window (`Main._gate_wanted`): a
   probe (`--script`), a headless run, or a command line that renders, exports
   or designs and quits (`--shot --booklet --out --ask --ask-claude-code --bench
@@ -447,7 +459,15 @@ they have. A Claude connector belongs to the account that switched it on.
   `exchangeOrangecheck`, `supabase/orangecheck.sql`): the site's sign-in
   dialog has **Sign in with orangecheck** under the email code ("A Bitcoin
   wallet, email, Google or GitHub. Brickworks gets an id for you, not your
-  address."). Since step 4 (2026-10-24, oc225) every such button (the
+  address."). Since signinux (2026-11-14) the two are equal ways in, each a
+  `.cta.wide` the form's width and 44 px, "or" between (`dialog .or`), and
+  orangecheck's window is followed (`orangecheckButton`'s `onOpen` and
+  `onOutcome`, its `popup.signal` to cancel): while it is open the dialog
+  shows `.waiting` ("Finish signing in in the orangecheck window", Show the
+  orangecheck window, Cancel); closed unfinished, blocked or failed, the two
+  ways come back with `.oc-said` under the button in orangecheck's words
+  (`data-tone` calm, blocked or bad), the focus on the button. Proven by
+  `tools/web/signin_flow.mjs --only=orangecheck` (its window stood in). Since step 4 (2026-10-24, oc225) every such button (the
   dialog's, /settings' Link orangecheck, an orangecheck account's delete) is
   our own `.cta.ghost` with `data-oc-sign-in`, made orangecheck's by its own
   code: its mono mark, its busy state, its window opened from the click, and

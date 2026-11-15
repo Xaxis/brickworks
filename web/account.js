@@ -441,16 +441,6 @@ export async function call(path, { method = "GET", body, keepalive = false } = {
   return { status: reply.status, body: await json(reply) };
 }
 
-/// [dialog] closed and gone, the page left where it was: closed, the
-/// browser gives the focus back to what opened it, and a link in the
-/// sticky header (Sign in) scrolled the page to its top as it did.
-function shut(dialog) {
-  const [x, y] = [scrollX, scrollY];
-  dialog.close();
-  dialog.remove();
-  if (scrollX !== x || scrollY !== y) scrollTo({ left: x, top: y, behavior: "instant" });
-}
-
 /// The two steps of signing in, in a dialog the page opens over itself:
 /// an address, then the code sent to it. Resolves true once signed in,
 /// false when the person closes it. [why]: what signing in is for here (a
@@ -541,6 +531,12 @@ export async function askToSignIn(why, { prefer = "" } = {}) {
     const note = document.createElement("p");
     note.className = "said";
     note.setAttribute("role", "status");
+    // The email way's line: [bad] words (a code refused, a limit, no
+    // connection) in the trouble's colour, as orangecheck's line has them.
+    const tell = (words, bad = false) => {
+      note.textContent = words;
+      note.dataset.tone = bad && words ? "bad" : "";
+    };
     // At the code: another code, or another address.
     const links = document.createElement("p");
     links.className = "code-links";
@@ -659,7 +655,7 @@ export async function askToSignIn(why, { prefer = "" } = {}) {
       foot.hidden = true;
       waiting.hidden = false;
       ocTell("");
-      note.textContent = "";
+      tell("");
     };
 
     orangecheckOffer().then(async (known) => {
@@ -693,7 +689,8 @@ export async function askToSignIn(why, { prefer = "" } = {}) {
           onToken: async (token) => {
             await exchangeOrangecheck(token);
             finished = true;
-            shut(dialog);
+            dialog.close();
+            dialog.remove();
             const asked = await askAgeIfAsked({ pending: Boolean(why) }).catch(() => null);
             settled(!asked?.refused);
           },
@@ -736,7 +733,8 @@ export async function askToSignIn(why, { prefer = "" } = {}) {
       if (finished) return;
       finished = true;
       windowed?.cancel();
-      shut(dialog);
+      dialog.close();
+      dialog.remove();
       done(result);
     };
     close.addEventListener("click", () => end(false));
@@ -768,7 +766,7 @@ export async function askToSignIn(why, { prefer = "" } = {}) {
       if (code.isConnected) code.replaceWith(label);
       goWords.textContent = say("Email me a code");
       links.hidden = true;
-      note.textContent = "";
+      tell("");
       ways(false);
       field.focus();
       field.select();
@@ -777,14 +775,14 @@ export async function askToSignIn(why, { prefer = "" } = {}) {
     resend.addEventListener("click", async () => {
       if (checking) return;
       resend.disabled = true;
-      note.textContent = say("Sending a new code…");
+      tell(say("Sending a new code…"));
       try {
         await sendCode(address);
         boxes.size(codeLength());
-        note.textContent = say("Sent a new code. Use the newest one.");
+        tell(say("Sent a new code. Use the newest one."));
         boxes.clear();
       } catch (trouble) {
-        note.textContent = trouble.message;
+        tell(trouble.message, true);
       } finally {
         resend.disabled = false;
       }
@@ -806,7 +804,7 @@ export async function askToSignIn(why, { prefer = "" } = {}) {
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
       if (checking) return;
-      note.textContent = "";
+      tell("");
       if (!address) {
         busy(true);
         try {
@@ -814,7 +812,7 @@ export async function askToSignIn(why, { prefer = "" } = {}) {
           boxes.size(codeLength());
           toCode();
         } catch (trouble) {
-          note.textContent = trouble.message;
+          tell(trouble.message, true);
         } finally {
           busy(false);
         }
@@ -822,7 +820,7 @@ export async function askToSignIn(why, { prefer = "" } = {}) {
       }
       const typed = boxes.value();
       if (typed.length < boxes.digits()) {
-        note.textContent = say("Enter all {count} digits of the code.", { count: boxes.digits() });
+        tell(say("Enter all {count} digits of the code.", { count: boxes.digits() }), true);
         boxes.focus(typed.length);
         return;
       }
@@ -832,7 +830,7 @@ export async function askToSignIn(why, { prefer = "" } = {}) {
         access = await redeem(address, typed);
       } catch (trouble) {
         busy(false);
-        note.textContent = trouble.message;
+        tell(trouble.message, true);
         // A wrong or spent code: the row shakes empty for the right one. A
         // limit or a moment's trouble keeps what was typed, to press again.
         if (trouble.wrong) boxes.refuse();
@@ -842,7 +840,8 @@ export async function askToSignIn(why, { prefer = "" } = {}) {
       // answered it, before the page carries on.
       finished = true;
       windowed?.cancel();
-      shut(dialog);
+      dialog.close();
+      dialog.remove();
       const asked = await askAgeIfAsked({ pending: Boolean(why) }).catch(() => null);
       // Asked at the box's tick, never otherwise, never for an account
       // under 13, and never waited on.
@@ -971,7 +970,8 @@ function showRefused(dialog, title, then) {
   const end = () => {
     if (finished) return;
     finished = true;
-    shut(dialog);
+    dialog.close();
+    dialog.remove();
     then();
   };
   close.addEventListener("click", end);
@@ -1056,7 +1056,8 @@ async function askAge() {
     const end = (result) => {
       if (finished) return;
       finished = true;
-      shut(dialog);
+      dialog.close();
+      dialog.remove();
       done(result);
     };
     dialog.addEventListener("cancel", () => end(null));

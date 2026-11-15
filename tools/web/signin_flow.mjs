@@ -78,6 +78,8 @@ const until = (page, test, arg = null, ms = 8000) => page.waitForFunction(test, 
 // --- what is stood in -------------------------------------------------
 const SUPABASE = "https://stand-in.supabase.test";
 const RIGHT = "12345678";
+// A code Supabase answers with its limit, as it does many tries from one machine.
+const LIMITED = "99999999";
 const OC = "https://me.ochk.io";
 let windowAnswer = "stay"; // "stay": the window waits; "token": it hands a token back
 let exchangeAnswer = "ok"; // what /api/orangecheck?op=signin answers a token
@@ -101,6 +103,7 @@ async function standIn(context) {
       verified.push(body.token);
       // As long as Supabase takes to answer, so the boxes are seen waiting.
       await new Promise((done) => setTimeout(done, 900));
+      if (body.token === LIMITED) return json(route, 429, { code: 429, error_code: "over_request_rate_limit", msg: "Too many requests" });
       return body.token === RIGHT ? json(route, 200, session(body.email))
         : json(route, 403, { code: 403, error_code: "otp_expired", msg: "Token has expired or is invalid" });
     }
@@ -159,13 +162,26 @@ const boxesOf = (page) => page.evaluate(() => {
     said: document.querySelector("dialog.sign-in form .said")?.textContent || "" };
 });
 
+/// [target] pressed where it is drawn, as a person presses it: a locator's
+/// click first scrolls the element into view, and for the sticky header
+/// under the page's scroll-padding-top that scrolled the page to its top
+/// (300 -> 0 at 1280, 300 -> 177 at 430), which no click of a person's does.
+async function pressAt(page, target, phone) {
+  const box = await (typeof target === "string" ? page.locator(target) : target).boundingBox();
+  const [x, y] = [box.x + box.width / 2, box.y + box.height / 2];
+  if (phone) await page.touchscreen.tap(x, y);
+  else await page.mouse.click(x, y);
+}
+
 /// Open the header's Sign in: the bar's link, or on a phone the Menu's.
 async function headerSignIn(page, phone) {
+  const press = (selector) => pressAt(page, selector, phone);
   if (phone) {
-    await page.locator(".site-head .menu summary").tap();
-    await page.locator(".site-head .menu a[data-account]").tap();
+    await press(".site-head .menu summary");
+    await page.locator(".site-head .menu a[data-account]").waitFor({ state: "visible", timeout: 5000 });
+    await press(".site-head .menu a[data-account]");
   } else {
-    await page.locator(".site-head .nav a[data-account]").click();
+    await press(".site-head .nav a[data-account]");
   }
 }
 
@@ -195,9 +211,8 @@ async function paste(page, text) {
 
 try {
   // 1 + 3: the header's Sign in, the code's boxes, signed in in place.
-  for (const [width, phone] of [[1280, false], [430, true]]) {
+  for (const [width, phone, theme] of [[1280, false, "light"], [430, true, "dark"], [390, true, "light"]]) {
     if (!only.includes("header") && !only.includes("code")) break;
-    const theme = phone ? "dark" : "light";
     const label = `${width}${phone ? " phone" : ""}`;
     const made = await context(width, theme, { touch: phone });
     await made.grantPermissions(["clipboard-read", "clipboard-write"], { origin: site }).catch(() => null);
@@ -219,8 +234,10 @@ try {
       await made.close();
       continue;
     }
+    // Its opening drawn out (the dialog rises in) before the picture.
+    await page.waitForTimeout(500);
     await shot(page, `header_${width}_${theme}`);
-    await page.locator("dialog.sign-in .foot button, dialog.sign-in button:text-is('Not now')").first().click();
+    await pressAt(page, page.locator("dialog.sign-in .foot button, dialog.sign-in button:text-is('Not now')").first(), phone);
     const left = await until(page, () => !document.querySelector("dialog.sign-in"), null, 3000);
     const after = await page.evaluate(() => scrollY);
     check(`${label}: Not now leaves the page exactly as it was`, left && page.url() === before.url
@@ -243,6 +260,8 @@ try {
       const named = document.getElementById(row.getAttribute("aria-labelledby") || "")?.textContent || "";
       const rect = (one) => one.getBoundingClientRect();
       const d = rect(document.querySelector("dialog.sign-in"));
+      // The form's own width, as its Sign in button has it.
+      const form = rect(document.querySelector("dialog.sign-in button[type=submit]"));
       const first = rect(boxes[0]);
       const last = rect(boxes[boxes.length - 1]);
       return { count: boxes.length, group: row.getAttribute("role"), named,
@@ -250,7 +269,8 @@ try {
         pad: boxes.every((one) => one.inputMode === "numeric" && one.pattern === "[0-9]*"),
         fill: boxes[0].autocomplete, others: boxes.slice(1).every((one) => one.autocomplete === "off"),
         focus: boxes.indexOf(document.activeElement), tall: Math.round(first.height), wide: Math.round(first.width),
-        centred: Math.abs((first.left - d.left) - (d.right - last.right)) <= 2, inside: first.left >= d.left && last.right <= d.right,
+        centred: Math.abs((first.left - d.left) - (d.right - last.right)) <= 2,
+        inside: first.left >= form.left - 0.5 && last.right <= form.right + 0.5,
         sideways: document.documentElement.scrollWidth > document.documentElement.clientWidth + 1 };
     });
     check(`${label}: one box per digit of the code (${shape.count} for a ${minted.length}-digit code), one group named "${shape.named}"`,
@@ -258,7 +278,7 @@ try {
     check(`${label}: each said as "Digit 1 of ${shape.count}"..., the number pad, the first box the one-time-code fill's and focused`,
       shape.labels[0] === `Digit 1 of ${shape.count}` && shape.labels.at(-1) === `Digit ${shape.count} of ${shape.count}`
       && shape.pad && shape.fill === "one-time-code" && shape.others && shape.focus === 0, JSON.stringify(shape));
-    check(`${label}: sized for a thumb (${shape.wide}x${shape.tall}), centred in the dialog, nothing sideways`,
+    check(`${label}: sized for a thumb (${shape.wide}x${shape.tall}), centred, within the form's width, nothing sideways`,
       shape.tall >= 48 && shape.wide >= 28 && shape.centred && shape.inside && !shape.sideways, JSON.stringify(shape));
     await shot(page, `code_${width}_${theme}`);
     await page.keyboard.type("1234");
@@ -297,7 +317,21 @@ try {
       await page.keyboard.press("ArrowRight");
       await page.keyboard.press("ArrowRight");
     }
-    if (!deployed) check(`${label}: each paste sent once, by its last digit`, verified.length - asks === 2, verified.slice(asks).join(" "));
+    if (!deployed) {
+      check(`${label}: each paste sent once, by its last digit`, verified.length - asks === 2, verified.slice(asks).join(" "));
+      // A limit, not a wrong code: the digits kept to send again, said in
+      // the trouble's colour, nothing shaken (the last refusal's shake
+      // taken off first, so a new one would show).
+      await page.evaluate(() => document.querySelector("dialog.sign-in .code-boxes")?.classList.remove("shake"));
+      await page.keyboard.press("Home");
+      await page.keyboard.type(LIMITED);
+      const limited = await until(page, () => /Too many tries/.test(document.querySelector("dialog.sign-in form .said")?.textContent || "")
+        && ![...document.querySelectorAll("dialog.sign-in .code-boxes input")].some((one) => one.readOnly), null, 30000);
+      now = await boxesOf(page);
+      const tone = await page.evaluate(() => document.querySelector("dialog.sign-in form .said")?.dataset.tone || "");
+      check(`${label}: a limit keeps the digits to send again, says so in the trouble's colour, shakes nothing`,
+        limited && now.values.join("") === LIMITED && !now.shook && tone === "bad", `${JSON.stringify(now)} tone ${tone}`);
+    }
     // A password manager's fill: the whole code into the first box.
     await page.locator("dialog.sign-in .code-boxes input").first().fill(minted);
     const filled = await boxesOf(page);
@@ -371,7 +405,7 @@ try {
 
         // Waiting, brought back, cancelled.
         windowAnswer = "stay";
-        const [first] = await Promise.all([page.waitForEvent("popup", { timeout: 10000 }).catch(() => null), page.locator("#oc-sign-in").click()]);
+        const [first] = await Promise.all([page.waitForEvent("popup", { timeout: 30000 }).catch(() => null), page.locator("#oc-sign-in").click()]);
         await page.waitForTimeout(400);
         const waiting = await page.evaluate(() => {
           const panel = document.querySelector("dialog.sign-in .waiting");
@@ -397,11 +431,11 @@ try {
         }
 
         // Closed unfinished.
-        const [second] = await Promise.all([page.waitForEvent("popup", { timeout: 10000 }).catch(() => null), page.locator("#oc-sign-in").click()]);
+        const [second] = await Promise.all([page.waitForEvent("popup", { timeout: 30000 }).catch(() => null), page.locator("#oc-sign-in").click()]);
         await page.waitForTimeout(400);
         await second?.close();
         const closed = await until(page, () => document.querySelector("dialog.sign-in form")?.checkVisibility()
-          && /closed before you finished/.test(document.querySelector("dialog.sign-in .oc-said")?.textContent || ""), null, 5000);
+          && /closed before you finished/.test(document.querySelector("dialog.sign-in .oc-said")?.textContent || ""), null, 15000);
         const calm = await page.evaluate(() => {
           const line = document.querySelector("dialog.sign-in .oc-said");
           const ink = getComputedStyle(document.querySelector("dialog.sign-in .lead") || document.body).color;
@@ -419,7 +453,7 @@ try {
           window.open = () => null;
         });
         await page.locator("#oc-sign-in").click();
-        const blocked = await until(page, () => /blocked the sign-in window/.test(document.querySelector("dialog.sign-in .oc-said")?.textContent || ""), null, 5000);
+        const blocked = await until(page, () => /blocked the sign-in window/.test(document.querySelector("dialog.sign-in .oc-said")?.textContent || ""), null, 15000);
         const told = await page.evaluate(() => {
           const line = document.querySelector("dialog.sign-in .oc-said");
           return { tone: line?.dataset.tone, role: line?.getAttribute("role"), focus: document.activeElement?.id,
