@@ -775,12 +775,22 @@ const back = (() => {
   return /^\/app(\?[^#\s]*)?$/.test(then) ? then : "";
 })();
 
+// Come from the app's Sign in with orangecheck (src/ui/sign_in_form.gd):
+// its button first, and words for the one more press its window needs.
+const forOrangecheck = new URLSearchParams(location.search).get("with") === "orangecheck";
+
 // Signed in, the skeleton (profile.html #loading) holds the page's place
 // while your profile, your page as others see it and the first tab are
 // asked, and the page is drawn whole once they have come: each part drawn
 // as it came moved the rest (site273, /profile at 390 px 0.99). Then the
 // age question, if this account is to be asked it, over the page.
-async function load() {
+//
+// Signed out, the sign-in opens at once (signinux, 2026-11-13): a visit
+// here is somebody come to sign in (a bookmark, the header's link where
+// its script did not run, the app), not to press Sign in a second time.
+// Not now leaves the page's own Sign in, with the focus. [ask] false: not
+// opened again (the account just deleted for an answer under 13).
+async function load({ ask = true } = {}) {
   if (back && signedIn()) {
     location.replace(back);
     return;
@@ -790,9 +800,18 @@ async function load() {
     $("signed-out").hidden = false;
     $("signed-in").hidden = true;
     document.documentElement.dataset.profile = "signed-out";
-    if (back && await askToSignIn("Sign in with your email or with orangecheck, and you go back to the app signed in.")) location.replace(back);
+    if (!ask) return;
+    const why = !back ? undefined : forOrangecheck
+      ? "Press Sign in with orangecheck to open its window. Then you go back to the app, signed in."
+      : "Sign in with your email or with orangecheck, and you go back to the app signed in.";
+    // Signed in, brickworks:signed-in-done (below) draws the page, or goes back.
+    if (!(await askToSignIn(why, { prefer: forOrangecheck ? "orangecheck" : "" }))) $("sign-in").focus();
     return;
   }
+  // The skeleton at once, never the signed-out page under a dialog just
+  // closed while the page is asked.
+  $("signed-out").hidden = true;
+  if ($("signed-in").hidden) $("loading").hidden = false;
   const ageNow = age().catch(() => null);
   const [answer] = await Promise.all([call("/api/people?op=me"), drawn()]);
   if (answer.status === 401) {
@@ -819,7 +838,7 @@ async function load() {
     const answered = await askAgeIfAsked().catch(() => null);
     if (answered && answered.refused) {
       showFeedCount().catch(() => null);
-      return load();
+      return load({ ask: false });
     }
   }
   // From Settings' Edit profile.
@@ -841,12 +860,10 @@ for (const button of document.querySelectorAll("[data-share-page]")) button.addE
     about: say("Its link opens your page, as everybody sees it: your models, your builds and your collections."),
     image: banner ? `${location.origin}/m/${banner}.png` : "" }));
 });
-$("sign-in").addEventListener("click", async () => {
-  if (await askToSignIn()) {
-    showFeedCount().catch(() => null);
-    load();
-  }
-});
+$("sign-in").addEventListener("click", () => askToSignIn());
+// Signed in by any dialog on this page (its own Sign in, the header's, the
+// one it opened itself): drawn for them, or back to the app.
+addEventListener("brickworks:signed-in-done", () => load());
 $("new-list").addEventListener("submit", async (event) => {
   event.preventDefault();
   const name = $("new-name").value.trim();

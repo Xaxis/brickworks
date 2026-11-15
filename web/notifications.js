@@ -192,8 +192,11 @@ async function load() {
   document.documentElement.dataset.notifications = "ready";
 }
 
-$("sign-in").addEventListener("click", async () => {
-  if (await askToSignIn()) load();
+$("sign-in").addEventListener("click", () => askToSignIn());
+// Signed in by any dialog on this page (its own Sign in, the header's):
+// drawn for them, where they are (signinux, 2026-11-13).
+addEventListener("brickworks:signed-in-done", () => {
+  if (document.documentElement.dataset.notifications === "signed-out") load();
 });
 $("all-read").addEventListener("click", async () => {
   const focused = document.activeElement === $("all-read");

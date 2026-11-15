@@ -169,6 +169,11 @@ export async function followButton(button, known = null) {
   } else if (!(await ask())) {
     return;
   }
+  // Signed in from the header, or anywhere on the page: drawn again as it
+  // stands for them (yours hidden, Following where you follow).
+  addEventListener("brickworks:signed-in-done", () => {
+    if (!state.signed_in) ask().catch(() => null);
+  });
   button.addEventListener("click", async () => {
     tell("");
     if (!state.signed_in) {
@@ -523,6 +528,26 @@ document.addEventListener("pager:drawn", (event) => {
 // /feed and /notifications ask once they have opened (web/feed.js,
 // web/notifications.js), so their own count is cleared first.
 showFeedCount({ ask: ![`${langAt()}/feed`, `${langAt()}/notifications`].includes(location.pathname) }).catch(() => null);
+
+// Sign in, in the header and the phone's Menu (signinux, 2026-11-13: the
+// owner, "it then takes them to another page where they have to click
+// signin again"): one click opens the sign-in dialog over the page the
+// person is on. Signed in, they stay there, the header turns into their
+// avatar with no reload (showFeedCount, at brickworks:signed-in), and the
+// page draws what it shows somebody signed in (brickworks:signed-in-done);
+// Not now leaves the page as it was. The link's /profile stays for a click
+// meant for a new tab, and for a page whose scripts never ran.
+document.addEventListener("click", (event) => {
+  const link = event.target instanceof Element ? event.target.closest(".site-head a[data-account]") : null;
+  if (!link || signedIn() || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey
+    || event.shiftKey || event.altKey) return;
+  event.preventDefault();
+  link.closest("details")?.removeAttribute("open");
+  askToSignIn().then((signed) => {
+    // The focus on the avatar the link became.
+    if (signed) [...document.querySelectorAll(".site-head .account-btn")].find((one) => one.checkVisibility())?.focus();
+  }).catch(() => { location.href = link.href; });
+});
 
 // Send feedback (web/feedback.js): the footer's link, the account menu's
 // and /feedback's buttons, each a[data-feedback] or button[data-feedback]

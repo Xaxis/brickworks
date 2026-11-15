@@ -894,6 +894,8 @@ function startComments(section) {
   });
 
   load();
+  // Signed in from the header (signinux): drawn for them, where they are.
+  addEventListener("brickworks:signed-in-done", () => load());
 }
 
 // What the app found of this model as it was published, for its owner
@@ -1120,6 +1122,8 @@ function buildPhotos(box) {
   }
 
   load();
+  // Signed in from the header (signinux): drawn for them, where they are.
+  addEventListener("brickworks:signed-in-done", () => load());
 }
 
 async function noteForOwner(note) {
@@ -1529,6 +1533,8 @@ function start() {
   });
 
   load();
+  // Signed in from the header (signinux): drawn for them, where they are.
+  addEventListener("brickworks:signed-in-done", () => load());
 }
 
 /// What the comments, once listed, change in the action bar: Comment's
