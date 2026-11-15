@@ -1295,10 +1295,10 @@ func _set_aside(paced: bool) -> void:
 	var path: String = TabSession.path(SET_ASIDE + "%d-%d.ldr" % [
 		int(Time.get_unix_time_from_system() * 1000.0), _asides])
 	_hear()
-	var kept: bool = _autosave_is_model and not _pending and not _autosaving \
-		and DirAccess.copy_absolute(autosave(), path) == OK
+	var kept: bool = _aside_text.is_empty() and _autosave_is_model and not _pending \
+		and not _autosaving and DirAccess.copy_absolute(autosave(), path) == OK
 	if not kept:
-		var text: String = await _model_text(paced)
+		var text: String = _aside_text if not _aside_text.is_empty() else await _model_text(paced)
 		var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
 		if file == null:
 			push_warning("could not keep the model an open replaced (%d)" % FileAccess.get_open_error())
@@ -1309,8 +1309,16 @@ func _set_aside(paced: bool) -> void:
 	if _reopening.is_empty():
 		_drop(undone_over, 0)
 	# An example stays one: put back as it shipped, it is nobody's work to save.
-	into.append({"path": path, "name": title, "example": example})
+	into.append({"path": path, "name": title, "example": example, "words": _aside_words})
 	_drop(into, OPENS_KEPT)
+
+
+## What the next open keeps of the model it takes off in place of the model
+## as the autosave writes it, and the words Undo says of it: a replace of
+## moved parts keeps the file as Save writes it, byte for byte, so its undo
+## gives back that file ([method replace_moved]). "" for an open's own.
+var _aside_text: String = ""
+var _aside_words: String = ""
 
 
 ## The model on the baseplate as the autosave writes it, a big one over
@@ -1375,7 +1383,11 @@ func can_reopen(again: bool = false) -> bool:
 func reopen_words(again: bool = false) -> String:
 	if not can_reopen(again):
 		return ""
-	var other: String = str((undone_over if again else opened_over).back()["name"])
+	var entry: Dictionary = (undone_over if again else opened_over).back()
+	# A replace of moved parts says itself, either way.
+	if not str(entry.get("words", "")).is_empty():
+		return str(entry["words"])
+	var other: String = str(entry["name"])
 	if other == title:
 		# A save of it, or another tab's: the same model as it was before.
 		return "opened “%s” again" % title
@@ -1397,7 +1409,15 @@ func reopen(again: bool = false, job: Working.Job = null) -> int:
 		not_opened = "its copy could not be read"
 		return -1
 	_reopening = "redo" if again else "undo"
+	# A replace of moved parts, undone or done again: the model it takes off
+	# kept as Save writes it, and said as the replace, for the way back.
+	var words: String = str(entry.get("words", ""))
+	if not words.is_empty():
+		_aside_text = saved_text()
+		_aside_words = words
 	var result: Dictionary = await open_text_fetched(text, str(entry["path"]).get_file(), null, job)
+	_aside_text = ""
+	_aside_words = ""
 	_reopening = ""
 	if not str(result["error"]).is_empty():
 		return -1
@@ -1588,6 +1608,9 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	# The author's steps go on to every part; steps Brickworks worked out
 	# and wrote are no one's, and are worked out again (LdrModel).
 	var authored: bool = model.steps_are_authored()
+	# Each part's number as the file has it, before it is made what is put
+	# down: what the list of moved and missing parts names ([member moved]).
+	var numbers_said: PackedStringArray = MovedParts.said_of(flattened)
 	var mirrored_lines: Dictionary = _as_placed(flattened, library, authored)
 	# A model saved with no parts opens as that: an empty model under its
 	# name. It was refused as "no parts", and the model before it was left
@@ -1635,6 +1658,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	# part's other hand, and an open of text read here. Not one whose fetch
 	# failed since this open asked: it is not coming.
 	library.want(waiting.keys().filter(func(id: String) -> bool: return not _gave_up.has(id)))
+	var listed: Dictionary = MovedParts.listing(flattened, numbers_said, missing, library)
 
 	_phase("known")
 	# Why each part the file carries that is not here could not be drawn.
@@ -1888,6 +1912,13 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	# Said here, with the open: not_coming says it of a part whose fetch
 	# fails from now, once none is on its way.
 	_told_not_coming = not lost.is_empty() and not coming
+	# The app's own file is written whole from what is down, a moved part by
+	# the number it moved to: only someone else's keeps the old one.
+	if source == null:
+		for number: String in listed.keys():
+			if str(listed[number]["kind"]) == MovedParts.MOVED:
+				listed.erase(number)
+	moved = listed
 
 	# A model from a file: nobody emptied the baseplate. Unless the file
 	# itself is empty: then it is kept so, as one begun empty is (begin).
@@ -1970,7 +2001,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	# drawn.
 	out.append({"placed": placed, "missing": missing.size(),
 		"waiting": asked_for.size(), "missing_ids": missing, "error": "", "lost": lost,
-		"unshown": unshown, "kept": source != null or not _absent.is_empty(),
+		"moved": listed, "unshown": unshown, "kept": source != null or not _absent.is_empty(),
 		"unbuilt": unbuilt, "lights_unread": lights_unread_words,
 		"motions_unread": motions_unread_words, "views_unread": views_unread_words})
 
@@ -2232,10 +2263,79 @@ var _gave_up: Dictionary = {}
 ## it opened, id -> how many, held as [member awaited] are: kept in the file
 ## a save writes, and said with the open (ModelBar.left_out_words).
 var lost: Dictionary = {}
+## The model on the baseplate's file's numbers that LDraw has moved or keeps
+## as an alias of another part, and those the library has no file for, as
+## its open found them (MovedParts.listing): number -> {kind, to, name, by,
+## count, in}. Listed for the person as the model opens (MovedPartsDialog)
+## and told to a session (open_model); [method replace_moved] writes the
+## moved and alias ones as the parts they point to.
+var moved: Dictionary = {}
 ## Which open is asking, and whether one is, between its first ask and the
 ## end of its lay ([method _asking], [method _asked]).
 var _asks: int = 0
 var _asking_now: bool = false
+
+
+## Missing and Moved Parts' Replace checked (MovedPartsDialog), and
+## open_model replace_moved=true: each of [param numbers] that [member moved]
+## lists as moved or an alias written in the file as the part it points to,
+## in the model and every sub-model (MovedParts.rewritten), and the model
+## laid again from that text, as an open is, under its name. One undo takes
+## it back as an open's does (reopen): the file put back as Save wrote it,
+## byte for byte. Not while a model is being laid, nor in a model only
+## looked at. {"lines" changed, "parts" (number -> lines), "words" (what
+## Undo says), "error" ("" when it was done)}; nothing changed on an error.
+func replace_moved(numbers: Array, job: Working.Job = null) -> Dictionary:
+	var asked: Dictionary = {}
+	for number: Variant in numbers:
+		var key: String = str(number).strip_edges().to_lower().trim_suffix(".dat")
+		var row: Dictionary = moved.get(key, {})
+		if not row.is_empty() and str(row["kind"]) != MovedParts.MISSING:
+			asked[key] = row
+	if asked.is_empty():
+		return {"lines": 0, "parts": {}, "words": "",
+			"error": "none of those is a moved or alias part of this model"}
+	if laying or read_only or world == null:
+		return {"lines": 0, "parts": {}, "words": "",
+			"error": "the model is still being laid" if laying else "this model is only looked at"}
+	var was: String = saved_text()
+	var made: Dictionary
+	if job != null and was.length() >= READ_OFF_FRAME_FROM:
+		made = await _off_frame(func() -> Dictionary: return MovedParts.rewritten(was, asked))
+	else:
+		made = MovedParts.rewritten(was, asked)
+	if int(made["lines"]) == 0:
+		return {"lines": 0, "parts": {}, "words": "",
+			"error": "none of their lines is in the file now"}
+	var parts: Dictionary = made["parts"]
+	var name: String = title
+	var words: String = replaced_words(parts, asked)
+	_aside_text = was
+	_aside_words = words
+	var result: Dictionary = await open_text_fetched(str(made["text"]), name, null, job)
+	_aside_text = ""
+	_aside_words = ""
+	if not str(result["error"]).is_empty():
+		return {"lines": 0, "parts": {}, "words": "", "error": str(result["error"])}
+	# Not what its name's file holds: changed, to be saved.
+	_opened_whole = -1
+	if title != name:
+		title = name
+		loaded.emit(title, int(result["placed"]))
+	touch()
+	return {"lines": int(made["lines"]), "parts": parts, "words": words, "error": ""}
+
+
+## What a replace of [param parts] (number -> lines), as [param rows] list
+## them, did, as Undo and History say it: "replaced 2 numbers LDraw moved
+## (3023 with 3023b, 3660 with 3660a)".
+static func replaced_words(parts: Dictionary, rows: Dictionary) -> String:
+	var pairs := PackedStringArray()
+	for number: String in parts:
+		pairs.append("%s with %s" % [number, str((rows.get(number, {}) as Dictionary).get("to", "?"))])
+	var shown: String = ", ".join(pairs.slice(0, 3)) + (", …" if pairs.size() > 3 else "")
+	return ("replaced 1 moved part number (%s)" if pairs.size() == 1
+		else "replaced %d moved part numbers (%s)" % [pairs.size(), "%s"]) % shown
 
 
 ## An open begins asking: what the last one heard fail forgotten. Its number.
@@ -4601,15 +4701,7 @@ func _write(path: String, title: String, with_steps: bool = false,
 	if not NewerBuild.may_write(path):
 		refused = NewerBuild.REFUSAL
 		return false
-	var text: String = _with_identity(written if not written.is_empty()
-		else to_text(title, with_steps))
-	# A patch of someone else's file: the lines just put in end as its
-	# lines do, above any line that says what the next part is, as the
-	# patch's own (SourceFile.app_lines_placed); each came with "\n" alone
-	# into a CRLF file (keep_text's metas). Live's write is left as live's.
-	var source: SourceFile = _live_source()
-	if source != null and last_whole.is_empty():
-		text = source.app_lines_placed(text)
+	var text: String = _saving(title, with_steps, written)
 	# Never a model of no parts over a file that has some, unless the person
 	# emptied the baseplate ([member emptied]). The autosave fires on its
 	# own a few seconds after any change, so whatever left the baseplate
@@ -4621,9 +4713,35 @@ func _write(path: String, title: String, with_steps: bool = false,
 			+ "Clear the baseplate first if it is meant to be empty.")
 		push_warning("kept %s: refused to write a model of no parts over it" % path)
 		return false
+	return _store(path, _with_bom(text))
+
+
+## What a save of the model on the baseplate called [param title] writes,
+## but its BOM ([method _with_bom]): [param written], else its text with its
+## steps when [param with_steps], with what it is beyond its parts.
+func _saving(title: String, with_steps: bool = true, written: String = "") -> String:
+	var text: String = _with_identity(written if not written.is_empty()
+		else to_text(title, with_steps))
+	# A patch of someone else's file: the lines just put in end as its
+	# lines do, above any line that says what the next part is, as the
+	# patch's own (SourceFile.app_lines_placed); each came with "\n" alone
+	# into a CRLF file (keep_text's metas). Live's write is left as live's.
+	var source: SourceFile = _live_source()
+	if source != null and last_whole.is_empty():
+		text = source.app_lines_placed(text)
+	return text
+
+
+## [param text] beginning with a BOM where the file opened did.
+func _with_bom(text: String) -> String:
 	if _bom_opened and _metas_now() != null and not text.begins_with(LdrModel.bom()):
-		text = LdrModel.bom() + text
-	return _store(path, text)
+		return LdrModel.bom() + text
+	return text
+
+
+## What Save writes of the model on the baseplate now, byte for byte.
+func saved_text() -> String:
+	return _with_bom(_saving(title))
 
 
 ## [param text] written to [param path] as it is, the page told; in the

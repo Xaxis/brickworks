@@ -512,6 +512,17 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	bar.opened.connect(func(_n: int) -> void:
 		if _compare != null:
 			_compare.close(false))
+	# movedparts (APP_UX8 #15): a person's open lists its moved, alias and
+	# missing parts; the list is of the model it was shown for, and goes
+	# with it.
+	bar.moved_found.connect(_show_moved)
+	for replaced: Signal in [bar.started_new, bar.cleared]:
+		replaced.connect(func() -> void:
+			if _moved != null:
+				_moved.hide())
+	bar.opened.connect(func(_n: int) -> void:
+		if _moved != null:
+			_moved.hide())
 	model_area = over_model
 
 	_about = AcceptDialog.new()
@@ -2067,6 +2078,7 @@ func _open_recent(_menu_of: PopupMenu, id: int) -> void:
 	var placed: int = await bar.open_with_progress(_recent[id].path)
 	if placed >= 0:
 		bar.opened.emit(placed)
+		bar.offer_moved()
 
 
 func _fill_history(menu: PopupMenu) -> void:
@@ -3895,6 +3907,32 @@ func section_target() -> String:
 	return found
 
 
+## Missing and moved parts (src/ui/moved_parts_dialog.gd), made the first
+## time an open has some to list.
+var _moved: Window = null
+
+
+func _show_moved() -> void:
+	if _moved == null:
+		_moved = Later.make(&"MovedPartsDialog")
+		_moved.store = store
+		_moved.replace = func(numbers: Array) -> void:
+			# Laid again, the model would leave the session as an open does.
+			if _in_together():
+				bar.say("Leave Build together first: replacing them lays the model again")
+				return
+			await bar.replace_moved(numbers)
+		_moved.search = func(number: String) -> void:
+			var dock: Node = app.get("_bin_dock") if app != null else null
+			if dock != null:
+				dock.call("set_open", true)
+			var bin: PartsBin = app.get("_bin") if app != null else null
+			if bin != null:
+				bin.search_for(number)
+		add_child(_moved)
+	_moved.call("open")
+
+
 ## File, Versions…, made the first time it is asked for ([member versions]).
 func _make_versions() -> void:
 	_versions = Later.make(&"VersionsDialog")
@@ -3985,6 +4023,8 @@ func controls_by_name() -> Dictionary:
 		out.merge(stress.panel.controls_by_name())
 	if _versions != null:
 		out.merge(_versions.controls_by_name())
+	if _moved != null:
+		out.merge(_moved.controls_by_name())
 	if _compare != null:
 		out.merge(_compare.controls_by_name())
 	if _palette != null:

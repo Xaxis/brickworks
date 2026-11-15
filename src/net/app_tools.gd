@@ -888,9 +888,16 @@ func definitions() -> Array:
 				+ "into=true puts name= (or library=, link=) into the model open now as one "
 				+ "sub-assembly with its author's steps, beside the model or at x= z=, as File, "
 				+ "Import, Into this model… does: nothing is replaced, every part and name of "
-				+ "both kept, and one undo takes it out."),
+				+ "both kept, and one undo takes it out. "
+				# movedparts (APP_UX8 #15).
+				+ "The answer names each part the file gives by a number LDraw has moved or "
+				+ "keeps as an alias, with the part it points to, and each it has no file for, "
+				+ "with counts; replace_moved=true writes the moved and alias ones as those "
+				+ "parts in every sub-model, in one undo, as the person's Missing and moved parts "
+				+ "list does: with name=, link= or library= as it opens, alone in the model open now."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"name": {"type": "string", "description": "a model's name from the list"},
+				"replace_moved": {"type": "boolean", "description": "write each part the file names by a moved or alias number as the part it points to, in every sub-model, in one undo; with name=, link= or library= as it opens, alone in the model open now"},
 				"link": {"type": "string", "description": "a gallery model's link id, or its /m/ address"},
 				"library": {"type": "string", "description": "a library id from gallery library=true, like omr-10179-1, or a set's number or name"},
 				"versions": {"type": "boolean", "description": "list name='s saves kept as versions"},
@@ -3434,6 +3441,67 @@ func _undo(input: Dictionary) -> String:
 func _open(input: Dictionary) -> String:
 	if bool(input.get("into", false)):
 		return await _open_into(input)
+	var store: ModelStore = app.get("_store")
+	var replace: bool = bool(input.get("replace_moved", false))
+	var opening: bool = false
+	for key: String in ["name", "link", "library"]:
+		opening = opening or not str(input.get(key, "")).strip_edges().is_empty()
+	# replace_moved alone: in the model open now.
+	if replace and not opening:
+		return await _moved_said(store, true)
+	var before: int = store.world.generation()
+	var said: String = await _open_now(input)
+	# Opened: what its file names by a moved or alias number, or has no file
+	# for, said; and with replace_moved, the moved and alias ones replaced.
+	if store.world.generation() == before or not store.not_opened.is_empty():
+		return said
+	return said + await _moved_said(store, replace)
+
+
+## open_model's word on the parts the model open now names by a number LDraw
+## has moved or keeps as an alias, or has no file for (ModelStore.moved), as
+## Missing and moved parts lists them as a person's open shows it; with
+## [param replace] (replace_moved=true), the moved and alias ones written as
+## the parts they point to in every sub-model, in one undo, as its Replace
+## checked does (ModelBar.replace_moved).
+func _moved_said(store: ModelStore, replace: bool) -> String:
+	var renumbered := PackedStringArray()
+	var absent := PackedStringArray()
+	var numbers: Array = store.moved.keys()
+	numbers.sort()
+	for number: String in numbers:
+		var row: Dictionary = store.moved[number]
+		if str(row["kind"]) == MovedParts.MISSING:
+			absent.append("%s (%s)" % [number, MovedParts.used_words(row)])
+		else:
+			renumbered.append("%s %s (%s)" % [number, MovedParts.why_words(row), MovedParts.used_words(row)])
+	var said: String = ""
+	if replace and not renumbered.is_empty():
+		var bar: ModelBar = app.get("_bar")
+		var done: String = await bar.replace_moved(store.moved.keys())
+		if done.begins_with("Could not"):
+			return " " + done
+		said = (" Replaced, in every sub-model and in one undo (undo puts back the file as it was): "
+			+ "%s.") % done.get_slice(" — ", 0)
+		absent.clear()
+		for number: String in store.moved:
+			var row: Dictionary = store.moved[number]
+			if str(row["kind"]) == MovedParts.MISSING:
+				absent.append("%s (%s)" % [number, MovedParts.used_words(row)])
+	elif replace:
+		said = " Nothing to replace: no part of it is named by a moved or alias number."
+	elif not renumbered.is_empty():
+		said = (" Its file names %d parts by numbers LDraw has moved or keeps as aliases; each is "
+			+ "drawn as the part it points to, and the file keeps the old number: %s. "
+			+ "open_model replace_moved=true writes them as those parts in every sub-model, in one "
+			+ "undo, as the person's Replace checked does.") % [renumbered.size(), "; ".join(renumbered)]
+	if not absent.is_empty():
+		said += (" No file in the library, kept in the file and not shown: %s; search_parts finds "
+			+ "one like it.") % "; ".join(absent)
+	return said
+
+
+func _open_now(input: Dictionary) -> String:
 	var store: ModelStore = app.get("_store")
 	var bar: ModelBar = app.get("_bar")
 	var saved: Array[ModelStore.Entry] = store.list_saved()

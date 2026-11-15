@@ -108,6 +108,8 @@ const PATHS: Dictionary[StringName, String] = {
 	# ruler, Connect, Select connected or by colour, Mirror, and "5x" after
 	# a copy (leaves2, 2026-11-05).
 	&"VersionsDialog": "res://src/ui/versions_dialog.gd",
+	# Missing and moved parts, after a person's open (movedparts).
+	&"MovedPartsDialog": "res://src/ui/moved_parts_dialog.gd",
 	&"CompareView": "res://src/ui/compare_view.gd",
 	&"PatternDialog": "res://src/ui/pattern_dialog.gd",
 	&"FeedbackDialog": "res://src/ui/feedback_dialog.gd",
