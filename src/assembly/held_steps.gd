@@ -240,6 +240,9 @@ class Under extends RefCounted:
 	## id -> the parts whose covers meet its own both ways round: whichever of
 	## two goes in second goes in under the first, so they go in together.
 	var mutual: Dictionary = {}
+	## id -> {id: true}, what a pin, axle, clip, ball or glue joins it to,
+	## either way round.
+	var pinned: Dictionary = {}
 	## id -> the step of the model it went in at, counted from 1.
 	var at: Dictionary = {}
 	## The parts a later step of the main build puts in, each of which may go
@@ -256,9 +259,10 @@ class Under extends RefCounted:
 		rests = holding.get("rests", {})
 		carries = holding.get("carries", {})
 		mutual = holding.get("mutual", {})
+		pinned = holding.get("pinned", {})
 
-	## Into [param holding] (Tested.holds_into's): "rests", "carries" and
-	## "mutual".
+	## Into [param holding] (Tested.holds_into's): "rests", "carries",
+	## "mutual" and "pinned".
 	static func read_into(holding: Dictionary) -> void:
 		var above: Dictionary = (holding["contacts"] as Dictionary)["above"]
 		var jointed: Dictionary = holding["jointed"]
@@ -266,6 +270,19 @@ class Under extends RefCounted:
 		var rests: Dictionary = {}
 		var carries: Dictionary = {}
 		var mutual: Dictionary = {}
+		var pinned: Dictionary = {}
+		for one: Variant in jointed:
+			for other: Variant in (jointed[one] as Dictionary):
+				var a: int = int(one)
+				var b: int = int(other)
+				if a == b:
+					continue
+				if not pinned.has(a):
+					pinned[a] = {}
+				if not pinned.has(b):
+					pinned[b] = {}
+				(pinned[a] as Dictionary)[b] = true
+				(pinned[b] as Dictionary)[a] = true
 		var held := func(a: int, b: int) -> bool:
 			return (jointed.has(a) and (jointed[a] as Dictionary).has(b)
 				or jointed.has(b) and (jointed[b] as Dictionary).has(a)) \
@@ -302,6 +319,7 @@ class Under extends RefCounted:
 		holding["rests"] = rests
 		holding["carries"] = carries
 		holding["mutual"] = mutual
+		holding["pinned"] = pinned
 
 	## [param things] (each a PackedInt64Array of ids) put on the model as its
 	## next step: a fault for each that goes in under one already there.
@@ -371,6 +389,16 @@ class Under extends RefCounted:
 			if together.has(other) and not left.has(other) and not at.has(other) and not going.has(other):
 				return true
 		return false
+
+	## Whether everything a pin, axle, clip, ball or glue joins [param id] to
+	## is in, or in [param with] or [param going]. A part taken in sooner goes
+	## in after what it is pinned to, as the planner has it: the kart's gear
+	## taken in two steps before its axle stood by its teeth alone.
+	func pinned_in(id: int, with: Dictionary, going: Dictionary) -> bool:
+		for other: int in (pinned.get(id, {}) as Dictionary):
+			if not at.has(other) and not with.has(other) and not going.has(other):
+				return false
+		return true
 
 	## Whether everything [param id] rests on is in, or in [param left] or
 	## [param going].
@@ -736,6 +764,7 @@ static func _put(test: Tested.Steps, under: Under, step: Instructions.Step, ids:
 	for id: int in ids:
 		asked[id] = true
 	var sooner: Array[int] = []
+	var pulled: Dictionary = {}
 	while true:
 		while not trying.is_empty():
 			var things: Array = copies.duplicate()
@@ -749,6 +778,17 @@ static func _put(test: Tested.Steps, under: Under, step: Instructions.Step, ids:
 			# What stands, and is not over what is not yet in. One left out may
 			# have held up another, so asked again of those left.
 			var ready: Array[int] = under.ready_of(trying, standing, going, asked)
+			if not pulled.is_empty():
+				# And a part taken in sooner whose pin's other part is left out
+				# waits with it.
+				var left: Dictionary = {}
+				for id: int in ready:
+					left[id] = true
+				var kept_in: Array[int] = []
+				for id: int in ready:
+					if not pulled.has(id) or under.pinned_in(id, left, going):
+						kept_in.append(id)
+				ready = kept_in
 			if ready.size() == trying.size():
 				break
 			trying = ready
@@ -759,13 +799,16 @@ static func _put(test: Tested.Steps, under: Under, step: Instructions.Step, ids:
 		for id: int in (trying + going.keys()) if test.main.begun else []:
 			for other: int in under.mutual.get(id, PackedInt64Array()):
 				if sooner.size() + more.size() < PULL_MOST and not asked.has(other) \
-						and under.later.has(other) and not under.at.has(other):
+						and under.later.has(other) and not under.at.has(other) \
+						and under.pinned_in(other, asked, going):
 					asked[other] = true
 					more.append(other)
 		if more.is_empty():
 			break
 		sooner.append_array(more)
 		trying.append_array(more)
+		for id: int in more:
+			pulled[id] = true
 	var kept: Dictionary = {}
 	for id: int in trying:
 		kept[id] = true
@@ -859,6 +902,9 @@ static func _sooner_within(places: Array, key: String, sooner: Dictionary, near:
 					break
 			if best < 0:
 				continue
+			# In the order they had: a pin after what it goes into.
+			var was: Array = (places[here] as Dictionary)[key]
+			with.sort_custom(func(a: int, b: int) -> bool: return was.find(thing_of[a]) < was.find(thing_of[b]))
 			for one: int in with:
 				((places[here] as Dictionary)[key] as Array).erase(thing_of[one])
 				((places[best] as Dictionary)[key] as Array).append(thing_of[one])
