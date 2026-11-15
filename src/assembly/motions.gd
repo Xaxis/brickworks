@@ -409,6 +409,57 @@ static func moved_into(text: String, whole: Transform3D) -> String:
 	return "\n".join(lines)
 
 
+## [param line], one of a motion's (MOTION_TRACK, MOTION_DRIVER, MOTION_WHEEL,
+## MOTION_STEER), with the place its joint's part stands at carried by
+## [param through] (LDraw's coordinates to LDraw's): a sub-model's own motions
+## written in another frame of it (Assemblies.rebased), so each joint is where
+## its part is written. Every other word as the line has it; a joint by an
+## assembly's name, and any other line, as it is.
+static func through_line(line: String, through: Transform3D) -> String:
+	var cr: String = "\r" if line.ends_with("\r") else ""
+	var text: String = line.trim_suffix("\r")
+	var at: int = text.rfind(" JOINT PART ")
+	if at < 0:
+		return line
+	var words: PackedStringArray = text.substr(at + 12).strip_edges().split(" ", false)
+	if words.size() != 5 or not words[1].is_valid_int() or not words[2].is_valid_float() \
+			or not words[3].is_valid_float() or not words[4].is_valid_float():
+		return line
+	var place: Vector3 = through * Vector3(words[2].to_float(), words[3].to_float(), words[4].to_float())
+	return "%s JOINT PART %s %s %s %s %s%s" % [text.substr(0, at), words[0], words[1], num(place.x, 2),
+		num(place.y, 2), num(place.z, 2), cr]
+
+
+## [param lines], a sub-model's motions, given to a model whose motion lines
+## are [param have]: as they are where no name of theirs is one [param have]
+## has, else each such motion named apart ("Open the door 2", as [method
+## free_name] names one), every AFTER and SEQUENCE of theirs naming it so, and
+## written as the app writes motions.
+static func apart_from(lines: PackedStringArray, have: PackedStringArray) -> PackedStringArray:
+	var taken: Motions = read("\n".join(have))
+	var given: Motions = read("\n".join(lines))
+	var renamed: Dictionary = {}    ## lower-case name -> its new name
+	for motion: Motion in given.list:
+		if taken.named(motion.name) == null:
+			continue
+		var n: int = 2
+		var name: String = "%s %d" % [motion.name, n]
+		while taken.named(name) != null or given.named(name) != null:
+			n += 1
+			name = "%s %d" % [motion.name, n]
+		renamed[motion.name.to_lower()] = name
+	if renamed.is_empty():
+		return lines
+	for motion: Motion in given.list:
+		motion.name = str(renamed.get(motion.name.to_lower(), motion.name))
+		motion.after = str(renamed.get(motion.after.to_lower(), motion.after))
+		var sequence := PackedStringArray()
+		for one: String in motion.sequence:
+			sequence.append(str(renamed.get(one.to_lower(), one)))
+		motion.sequence = sequence
+	return given.lines()
+
+
 ## A type-1 line's twelve numbers (x y z, then the rotation by rows) moved by
 ## another's: its rotation turned by w's, its place turned and then moved.
 static func _composed(w: PackedFloat64Array, v: PackedFloat64Array) -> PackedFloat64Array:
