@@ -1236,6 +1236,9 @@ const NEW := 3
 const FOREIGN := 4
 ## A "0 STEP" a layout put in ([method _relaid]).
 const STEPS := 5
+## A STEP line of the patch's the booklet's looks wrote again: a step's turn
+## is said on the line ending the step before it (BookletLooks._ending).
+const RESTEP := 6
 ## A section key no section has: the lines before an MPD's first FILE line.
 const NOWHERE := "\n"
 
@@ -1945,20 +1948,17 @@ func _relaid(section: String, targets: Dictionary, fixed: Dictionary, gone: Dict
 		for n: int in step_lines:
 			if n > low and n < high:
 				have.append(n)
-		var enders: Array = []      ## [line, put in first, index]
-		if have.size() > need:
-			var plain: Array = []
-			var turned: Array = []
-			for n: int in have:
-				(plain if _keyword(original[n]) == "STEP" else turned).append(n)
-			var out: Array = plain + turned
-			for k: int in have.size() - need:
-				drop[int(out[k])] = true
+		var enders: Array = []      ## [line, put in first]
+		# A STEP line says the look of the step after it (BookletLooks: a
+		# ROTSTEP turns the steps it starts): the last of them kept, beside
+		# what comes after, and one put in above the first kept.
+		for k: int in maxi(have.size() - need, 0):
+			drop[have[k]] = true
 		for n: int in have:
 			if not drop.has(n):
 				enders.append([n, 1])
 		if need > have.size():
-			var at: int = _put_step_at(section, low, high, start)
+			var at: int = _put_step_at(section, low, high, start, have[0] if not have.is_empty() else -1)
 			if at < 0:
 				return "a step put in would go inside a pair"
 			for k: int in need - have.size():
@@ -2002,19 +2002,27 @@ static func _cheaper(states: Dictionary, shift: int, cost: int, last: int, node:
 
 
 ## Where a STEP line goes between lines [param low] and [param high] of
-## [param section] (whose first line is [param start]): above the later
-## line's own lines (those bound to it), or the latest line before that
-## inside no pair the two are not both in; -1 for none.
-func _put_step_at(section: String, low: int, high: int, start: int) -> int:
-	var latest: int = int(_tail.get(section, high)) if high >= int(sections[section][1]) \
-		else _bound_from[high]
+## [param section] (whose first line is [param start]): above [param first],
+## the first STEP line kept between them, which stays beside the step it
+## starts; else right below the earlier line (a note above a part is said
+## of it, and goes with it into its step), or, at the section's start,
+## above the later line's own lines; the nearest place after that, then
+## before it, inside no pair the two lines are not both in. -1 for none.
+func _put_step_at(section: String, low: int, high: int, start: int, first: int) -> int:
+	var stop: int = int(sections[section][1])
+	var latest: int = int(_tail.get(section, high)) if high >= stop else _bound_from[high]
+	var earliest: int = low + 1 if low >= start else latest
+	var from: int = first if first >= 0 else earliest
+	if low < start:
+		earliest = from
 	var both: Array = []
 	var low_stack: Array = _stack_at.get(low, []) if low >= start else []
-	var high_stack: Array = _stack_at.get(high, []) if high < int(sections[section][1]) else []
+	var high_stack: Array = _stack_at.get(high, []) if high < stop else []
 	for begin: Variant in low_stack:
 		if high_stack.has(begin):
 			both.append(begin)
-	for at: int in range(latest, maxi(low, start), -1):
+	var order: Array = range(from, latest + 1) + range(from - 1, earliest - 1, -1)
+	for at: int in order:
 		var inside: bool = true
 		for begin: Variant in _stack_before(section, at):
 			if not both.has(begin):
@@ -2542,7 +2550,7 @@ func gate(plan: Plan, text: String, library: PartLibrary, waiting: Dictionary,
 		var from: int = plan.from[n]
 		var how: int = plan.how[n]
 		var at_end: bool = ends_bare and n == plan.out.size() - 1 and text.ends_with(said)
-		if how != NEW and how != FOREIGN and how != STEPS \
+		if how != NEW and how != FOREIGN and how != STEPS and not (how == RESTEP and from < 0) \
 				and (from < 0 or from >= original.size() or used.has(from)):
 			return "a line of the file written twice, or one it has not got"
 		match how:
@@ -2571,6 +2579,15 @@ func gate(plan: Plan, text: String, library: PartLibrary, waiting: Dictionary,
 					var why: String = _rewritten_as_written(plan, from, said, may_say, at_end)
 					if not why.is_empty():
 						return why
+			RESTEP:
+				# Read back, every part is in its step; the turns are the
+				# booklet's looks'.
+				if not _is_step(said) or from >= 0 and not _is_step(original[from]):
+					return "a STEP line written as another line (%s)" % said.strip_edges().left(60)
+				if from >= 0:
+					if from <= last_kept:
+						return "line %d of the file out of its order" % (from + 1)
+					last_kept = from
 			STEPS:
 				# A STEP line a layout put in ([method _relaid]): read back,
 				# every part is in its step.
@@ -2764,6 +2781,14 @@ func _as_written(plan: Plan, final: PackedStringArray, map: PackedInt32Array) ->
 				if not taken.has(g) and plan.from[at] >= 0 and _is_placing(wrote[g]):
 					taken[g] = true
 					how = MOVE if plan.how[at] == MOVE else REWRITE
+					from = plan.from[at]
+					break
+		elif _is_step(final[n]):
+			for g: int in range(gap, next_matched[j]):
+				var at: int = wrote_at[g]
+				if not taken.has(g) and _is_step(wrote[g]):
+					taken[g] = true
+					how = RESTEP
 					from = plan.from[at]
 					break
 		seen.out.append(final[n])
