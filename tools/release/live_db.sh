@@ -13,12 +13,10 @@ alone=""
 [ $# -ge 2 ] || { echo "usage: live_db.sh [--alone] WHO CMD..." >&2; exit 2; }
 who=$1; shift
 . "$(cd "$(dirname "$0")" && pwd)/live_db_lib.sh"
-t0=$(date +%s)
-if ! take_live_db $alone; then
+if ! take_live_db "$alone" "$who"; then
   echo "live_db: the live database stayed busy: $(tail -1 "$LIVE_DB.log" 2>/dev/null)" >&2
   exit 75
 fi
-echo "$(date '+%F %T') took $who after $(( $(date +%s) - t0 ))s ($LIVE_DB_HOW)" >> "$LIVE_DB.log"
 without_live_db "$@"
 code=$?
 leave_live_db

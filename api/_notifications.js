@@ -36,8 +36,8 @@
 // ones: opening Notifications opens that feed, and what was seen is read.
 // A challenge's end needs the file.
 
-import { bearer, verify } from "./_auth.js";
-import { db } from "./_db.js";
+import { bearer, isMaster, verify } from "./_auth.js";
+import { db, dbAll } from "./_db.js";
 import { withFaces } from "./_faces.js";
 import { Unacceptable, inLanguage, siteWords } from "./_directory.js";
 import { counted, levelName, pictureOf, say } from "./_card.js";
@@ -227,7 +227,7 @@ export function noticeGroups(page, origin = "", now = Date.now()) {
 
 /// notification_list's answer, made from feed_of's rows of the caller's
 /// own models and model_likes, the feed's seen_at its only mark.
-async function listBefore(viewer, mark) {
+export async function listBefore(viewer, mark) {
   const page = await call("feed_of", { viewer, before: null, size: 50, mark }, () => null);
   if (!page) return null;
   const rows = (page.rows || [])
@@ -236,8 +236,10 @@ async function listBefore(viewer, mark) {
   const mine = await db(`shared_models?owner=eq.${viewer}&published=is.true&barred=is.false`
     + "&select=id,name,has_image,has_thumb,updated_at&order=updated_at.desc&limit=200");
   const since = new Date(Date.now() - 90 * DAY).toISOString();
-  const likes = mine.length ? await db(`model_likes?model=in.(${mine.map((one) => one.id).join(",")})`
-    + `&account=neq.${viewer}&at=gt.${since}&select=model,at&order=at.desc&limit=2000`) : [];
+  // Every like, past PostgREST's page of 1,000: a read asked for 2,000
+  // was given 1,000, and a day's count stopped short (lists1's review).
+  const likes = mine.length ? await dbAll(`model_likes?model=in.(${mine.map((one) => one.id).join(",")})`
+    + `&account=neq.${viewer}&at=gt.${since}&select=model,at`, "model,account") : [];
   const days = new Map();
   for (const like of likes) {
     const key = `${like.model} ${like.at.slice(0, 10)}`;
@@ -321,12 +323,17 @@ export async function newCounts(asker) {
 
 export async function feedCount(request, response) {
   response.setHeader("Cache-Control", "private, no-store");
-  const asker = await who(request);
+  const claims = bearer(request) ? await verify(bearer(request), request) : null;
+  const asker = claims?.sub || null;
   if (!asker) return response.status(200).json({ count: 0, signed_in: false });
   const [counts, people] = await Promise.all([newCounts(asker),
     db(`people?account=eq.${asker}&select=handle,name`).catch(() => [])]);
   const person = people[0] || null;
-  // Their own picture, for the avatar in the header (api/_faces.js).
+  // Their own picture, for the avatar in the header (api/_faces.js). And
+  // for the site's owner alone, admin: the account menu's way to /admin
+  // (docs/ADMIN.md). Everybody else's answer has no such key, not even
+  // false: api/admin.js answers them as if there were no console, and this
+  // says nothing different (bugbar, 2026-11-13).
   return response.status(200).json(await withFaces({ ...counts, signed_in: true,
-    me: person ? { handle: person.handle, name: person.name } : null }));
+    me: person ? { handle: person.handle, name: person.name } : null, ...(isMaster(claims) ? { admin: true } : {}) }));
 }

@@ -407,9 +407,12 @@ func _dialog(method: String) -> void:
 	# A run before this one, and Godot's importer (the folder is inside the
 	# project, so an --import writes a .import beside each frame), leave
 	# files in the turntable's folder as well as beside it.
+	# The folders go too: a turntable's name is free only when its frames'
+	# folder is not there either (Download.free_stem).
 	for folder: String in DirAccess.get_directories_at(files):
 		for name: String in DirAccess.get_files_at(files.path_join(folder)):
 			DirAccess.remove_absolute(files.path_join(folder).path_join(name))
+		DirAccess.remove_absolute(files.path_join(folder))
 	for name: String in DirAccess.get_files_at(files):
 		DirAccess.remove_absolute(files.path_join(name))
 	dialog.folder = files
@@ -430,7 +433,9 @@ func _dialog(method: String) -> void:
 	(dialog.get("_height") as SpinBox).value = 300
 	(controls["render_picture"] as Button).pressed.emit()
 	await _until_done(dialog)
-	var picture: String = files.path_join(RenderOutput.file_name(str(dialog.named.call()), "_render", "png"))
+	# The name it took, as the dialog says it (the next free one when one
+	# was there: mcpreach).
+	var picture: String = files.path_join(str((dialog.get("_last") as Dictionary).get("name", "")))
 	var kept := Image.load_from_file(picture) if FileAccess.file_exists(picture) else null
 	_say("dialog: Render picture wrote %s at 400x300" % picture.get_file(),
 		kept != null and kept.get_width() == 400 and kept.get_height() == 300)
@@ -439,7 +444,7 @@ func _dialog(method: String) -> void:
 	(controls["render_frames_24"] as Button).pressed.emit()
 	(controls["render_turntable"] as Button).pressed.emit()
 	await _until_done(dialog)
-	var base: String = RenderOutput.file_name(str(dialog.named.call()), "_turntable", "x").get_basename()
+	var base: String = str((dialog.get("_last") as Dictionary).get("name", "")).get_basename()
 	var frames: Array = Array(DirAccess.get_files_at(files.path_join(base)) \
 		if DirAccess.dir_exists_absolute(files.path_join(base)) else PackedStringArray()) \
 		.filter(func(name: String) -> bool: return name.begins_with("frame_") and name.ends_with(".png"))

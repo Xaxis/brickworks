@@ -1300,6 +1300,21 @@ static func as_written(world: BrickWorld, steps: Dictionary) -> Dictionary:
 				look["how"] = str(turn.get("how", "REL"))
 			out[key(definition, at)] = look
 			state = turn
+		# A turn past the last step written, which a ROTSTEP ending that
+		# step set (read): on the step after it as written, which ends the
+		# section (_close_section).
+		var past: int = -1
+		for name: String in looks:
+			var tail: String = name.get_slice("|", 1)
+			if name.get_slice("|", 0) == definition and tail.is_valid_int() \
+					and tail.to_int() > int(order[order.size() - 1]) \
+					and (looks[name] as Dictionary).has("turn"):
+				past = maxi(past, tail.to_int())
+		if past >= 0:
+			var turn: Dictionary = turn_at(world, definition, past)
+			if JSON.stringify(turn) != JSON.stringify(state):
+				out[key(definition, order.size())] = {"turn": "end"} if turn.is_empty() \
+					else {"turn": turn["turn"], "how": str(turn.get("how", "REL"))}
 	return out
 
 
@@ -2628,6 +2643,16 @@ static func _close_section(out: PackedStringArray, looks: Dictionary, definition
 		wrote[definition + "|*"] = true
 	_place_lines(out, placed, extra, trailing)
 	placed.clear()
+	# A turn read off a ROTSTEP that ended the last step is the next step's
+	# (read), a step with no line of its own: a file written whole, whose
+	# last step has no ending line, lost it (im3check). Its line ends the
+	# step, after the step's own lines.
+	var next: Dictionary = looks.get(key(definition, step + 1), {})
+	if any_part and next.has("turn"):
+		var end: int = out.size()
+		while end > 0 and (out[end - 1].strip_edges().is_empty() or out[end - 1].strip_edges() == "0"):
+			end -= 1
+		out.insert(end, _ending("0 STEP" + eol, looks, definition, step + 1, eol))
 
 
 ## The app's own lines for one step, before the line that ends it. A

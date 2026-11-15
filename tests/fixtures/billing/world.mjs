@@ -34,6 +34,9 @@ export const askAccount = (asked) => ask("account", asked);
 /// One request through api/admin.js's handler, as askPlans makes one.
 export const askAdmin = (asked) => ask("admin", asked);
 
+/// One request through api/otp.js's handler (its mail_event op), as askPlans makes one.
+export const askOtp = (asked) => ask("otp", asked);
+
 async function ask(route, { method = "GET", query = {}, headers = {}, body, raw } = {}) {
   const { default: handle } = await import(`../../../api/${route}.js`);
   let status = 0;

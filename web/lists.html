@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<!--
+  Your lists, at /lists (lists1, docs/LISTS.md, api/_mylists.js): the sets
+  you own (My collection's, how many of each), the sets you want (your
+  wishlist, private, with a link to give), the models you saved, and lists
+  of your own of sets and models, each named and described, public or only
+  yours, in your order or the newest first. Made, renamed, ordered, made
+  private and deleted (with Undo) here; items moved, copied and taken out
+  a few at once; sets brought in from Rebrickable, BrickLink or Brickset,
+  or typed; each list downloaded as a CSV. From the account menu.
+
+  Signed in with the app's own sign-in in this browser (web/account.js).
+  lists.js puts every word a person typed on the page as text. No inline
+  script: the site's security policy allows none it has not hashed.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<script defer src="/ov/s.js" data-api="https://overlook.technology/e" data-site="ws_3frcuzvdsh" data-exclude="/m/**,/u/**,/c/**,/oauth/**,/admin"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Your lists · Brickworks</title>
+<meta name="description" content="The sets you own and want, the models you saved and lists of your own on Brickworks: kept with one tap, shown off as you choose.">
+<meta name="robots" content="noindex">
+<link rel="canonical" href="https://brickworks.diy/lists">
+<link rel="alternate" hreflang="en" href="https://brickworks.diy/lists">
+<link rel="alternate" hreflang="de" href="https://brickworks.diy/de/lists">
+<link rel="alternate" hreflang="fr" href="https://brickworks.diy/fr/lists">
+<link rel="alternate" hreflang="es" href="https://brickworks.diy/es/lists">
+<link rel="alternate" hreflang="x-default" href="https://brickworks.diy/lists">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="/favicon-180.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Brickworks">
+<meta property="og:title" content="Your lists on Brickworks">
+<meta property="og:description" content="The sets you own and want, and lists of your own.">
+<meta property="og:url" content="https://brickworks.diy/lists">
+<meta property="og:image" content="https://brickworks.diy/share.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Your lists on Brickworks">
+<meta name="twitter:description" content="The sets you own and want, and lists of your own.">
+<meta name="twitter:image" content="https://brickworks.diy/share.png">
+<meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
+<script src="/theme.js"></script>
+<link rel="stylesheet" href="/site.css">
+<link rel="stylesheet" href="/directory.css">
+<script src="/follow.js" type="module"></script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-head">
+	<div class="wrap bar">
+		<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+		<nav class="nav" aria-label="Main">
+			<a href="/gallery">Gallery</a>
+			<a href="/docs">Docs</a>
+			<a href="/plans">Plans</a>
+			<a class="cta" href="/app">Open the app</a>
+			<a class="cta ghost" href="/profile" data-account>Sign in</a>
+		</nav>
+		<details class="menu">
+			<summary>Menu</summary>
+			<div class="menu-list">
+				<nav aria-label="Menu">
+					<a href="/gallery">Gallery</a>
+					<a href="/docs">Docs</a>
+					<a href="/plans">Plans</a>
+					<a href="/download">Desktop app</a>
+					<a href="/profile" data-account>Sign in</a>
+				</nav>
+				<div class="theme-choice"><span aria-hidden="true">Theme</span>
+					<div class="segmented" role="group" aria-label="Theme">
+						<button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+						<button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+						<button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+					</div>
+				</div>
+			</div>
+		</details>
+	</div>
+</header>
+
+<main id="main">
+	<div class="page-hero">
+		<div class="wrap">
+			<p class="eyebrow">Yours</p>
+			<h1>Your lists</h1>
+			<p class="lede">The sets you own and want, the models you saved, and lists of your own. Keep anything with one tap from its card or its page; show off what you choose.</p>
+		</div>
+	</div>
+	<div class="wrap page-body lists-page">
+
+		<section id="signed-out" hidden>
+			<p class="lede">Sign in to keep the sets you own and want, the models you save and lists of your own. We email you a code: no password.</p>
+			<div class="actions"><button class="cta" id="sign-in" type="button">Sign in</button></div>
+		</section>
+		<!-- The lists' place while they are asked (lists.js), as skeletons. -->
+		<div class="skeleton lists-skeleton" id="loading" role="status">
+			<span class="visually-hidden">Looking for your sign-in…</span>
+			<div class="lists-layout" aria-hidden="true">
+				<div class="lists-rail"><span class="bone wide"></span><span class="bone wide"></span><span class="bone wide"></span><span class="bone"></span></div>
+				<div><span class="bone wide"></span><span class="bone short"></span></div>
+			</div>
+		</div>
+
+		<div class="lists-layout" id="signed-in" hidden>
+			<nav class="lists-rail" id="rail" aria-label="Your lists">
+				<ul class="rail-list" id="rail-built"></ul>
+				<p class="rail-h" id="rail-mine-h">Your own lists</p>
+				<ul class="rail-list" id="rail-mine" aria-labelledby="rail-mine-h"></ul>
+				<button class="cta ghost small" id="new-list" type="button">New list</button>
+			</nav>
+			<div class="list-pick">
+				<label>Showing <select id="pick"></select></label>
+				<button class="cta ghost small" id="new-list-pick" type="button">New list</button>
+			</div>
+			<section class="list-view" id="view" aria-labelledby="view-h">
+				<div class="view-head">
+					<div class="view-title">
+						<p class="eyebrow" id="view-kind"></p>
+						<h2 id="view-h"></h2>
+						<p class="list-about" id="view-about"></p>
+						<p class="list-meta" id="view-meta"></p>
+					</div>
+					<div class="actions" id="view-actions">
+						<button class="cta ghost small" type="button" id="share" hidden>Share</button>
+						<button class="cta ghost small" type="button" id="edit" hidden>Edit list</button>
+						<button class="cta ghost small" type="button" id="import" hidden>Add sets</button>
+						<button class="cta ghost small" type="button" id="download">Download CSV</button>
+					</div>
+				</div>
+				<label class="choice shows-owned" id="shows-owned" hidden><input type="checkbox" id="shows-owned-box"><span>Show the sets I own on my profile</span><small id="shows-owned-note"></small></label>
+				<div class="list-tools" id="tools">
+					<div class="segmented" role="group" aria-label="Order" id="order" hidden>
+						<button type="button" data-sort="added" aria-pressed="true">Newest first</button>
+						<button type="button" data-sort="manual" aria-pressed="false">Your order</button>
+					</div>
+					<button class="cta ghost small" type="button" id="select" aria-pressed="false">Select</button>
+				</div>
+				<div class="bulk" id="bulk" role="region" aria-label="What is selected" hidden>
+					<span class="bulk-n" id="bulk-n" aria-live="polite"></span>
+					<label class="bulk-to">To <select id="bulk-to"></select></label>
+					<button class="cta ghost small" type="button" id="bulk-copy">Copy</button>
+					<button class="cta ghost small" type="button" id="bulk-move">Move</button>
+					<button class="cta ghost small" type="button" id="bulk-remove">Take out</button>
+					<button class="link" type="button" id="bulk-all">Select all</button>
+				</div>
+				<div class="models list-items" id="items"></div>
+				<div class="state" id="empty" hidden></div>
+				<div class="actions more-row"><button class="cta ghost" type="button" id="more" hidden>Show more</button></div>
+				<p class="said" id="said" role="status"></p>
+			</section>
+		</div>
+	</div>
+</main>
+
+<footer class="site-foot">
+	<div class="wrap">
+		<div class="foot-top">
+			<div class="foot-brand">
+				<a class="mark" href="/"><span class="chip" aria-hidden="true"></span>Brickworks</a>
+				<p>A CAD for LEGO® models.</p>
+				<div class="theme-choice"><span aria-hidden="true">Theme</span>
+					<div class="segmented" role="group" aria-label="Theme">
+						<button type="button" data-theme-choice="system" aria-pressed="true">System</button>
+						<button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+						<button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+					</div>
+				</div>
+				<label class="theme-choice"><span>Language</span>
+					<select data-lang-choice translate="no">
+						<option value="en" lang="en">English</option>
+						<option value="de" lang="de">Deutsch</option>
+						<option value="fr" lang="fr">Français</option>
+						<option value="es" lang="es">Español</option>
+					</select>
+				</label>
+			</div>
+			<nav class="foot-links" aria-label="More">
+				<div>
+					<p class="foot-h" id="foot-product">Product</p>
+					<ul aria-labelledby="foot-product">
+						<li><a href="/app">Open the app</a></li>
+						<li><a href="/download">Desktop app</a></li>
+						<li><a href="/plans">Plans</a></li>
+						<li><a href="/changelog">Changelog</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-community">Community</p>
+					<ul aria-labelledby="foot-community">
+						<li><a href="/gallery">Gallery</a></li>
+						<li><a href="/library">Sets</a></li>
+						<li><a href="/challenge">Challenge</a></li>
+						<li><a href="/collections">Collections</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-help">Help</p>
+					<ul aria-labelledby="foot-help">
+						<li><a href="/docs">Docs</a></li>
+						<li><a href="/faq">FAQ</a></li>
+						<li><a href="/compare">Compare</a></li>
+						<li><a href="/guidelines">Guidelines</a></li>
+						<li><a href="/feedback" data-feedback>Send feedback</a></li>
+					</ul>
+				</div>
+				<div>
+					<p class="foot-h" id="foot-legal">Legal</p>
+					<ul aria-labelledby="foot-legal">
+						<li><a href="/privacy">Privacy</a></li>
+						<li><a href="/terms">Terms</a></li>
+						<li><a href="/takedown">Takedown</a></li>
+					</ul>
+				</div>
+			</nav>
+		</div>
+		<div class="legal">
+			<p>LEGO® is a trademark of the LEGO Group of companies which does not sponsor, authorize or endorse this site. LEGO® Art, Technic, the Minifigure and the Brick and Knob configurations are also trademarks of the LEGO Group. Parts from the LDraw™ library (CC BY). Claude, ChatGPT, Gemini and the other AI apps named here are trademarks of their owners. <a href="/terms#notices">Notices</a></p>
+		</div>
+	</div>
+</footer>
+
+<script src="/lists.js" type="module"></script>
+</body>
+</html>

@@ -265,13 +265,6 @@
     },
     {
       "kind": "cli",
-      "label": "the parts bucket's copy for checks",
-      "entry": "tools/web/storage_mirror.mjs",
-      "reach": "any flow under tools/web (browser.mjs imports it); node tools/web/storage_mirror.mjs serve [PORT] for a probe",
-      "area": "web"
-    },
-    {
-      "kind": "cli",
       "label": "build the meshes",
       "entry": "tools/build_meshes.py",
       "reach": "tools/build_meshes.py   (~45 min, needs vendor/ldraw)",
@@ -2372,13 +2365,6 @@
     },
     {
       "kind": "cli",
-      "label": "askfirst probe",
-      "entry": "src/dev/askfirst_probe.gd",
-      "reach": "tools/probe.sh askfirst_probe   (headless: geometry served by a local server on 9947 under names the build has not got, the LDraw library withheld and served slowed beside it; an open with no job (the viewer's, start-up's) has every part not to hand on its way while its carried part's file is fetched, the model before still down, then lays it whole, each part asked once; a part that 404s before the lay is asked once, held, named in the open's answer and words and saved, one failing after it said by not_coming; a 212-part model opened with the bar's job has its parts on their way before its first slice, is laid in the file's order, and names the part not there, asked once; a save while parts are on their way writes every part)",
-      "area": "model-io"
-    },
-    {
-      "kind": "cli",
       "label": "carried parts in a browser",
       "entry": "tools/web/carried_flow.mjs",
       "reach": "node tools/web/carried_flow.mjs --url=http://127.0.0.1:8840/ --out=shots/carried MODEL.mpd   (a local export served by tools/web/serve.py DIR 8840 --parts-url \"$PARTS_URL\": each file opened through Open… > From a file, none of the parts it carries said not shown, the LDraw files it fetched and the open time said, a picture each)",
@@ -3102,7 +3088,7 @@
       "kind": "ui",
       "label": "the account menu",
       "entry": "web/follow.js",
-      "reach": "https://brickworks.diy/gallery signed in: the avatar in the header opens who you are, Your profile, Notifications and Your feed with their counts, Saved, Settings, Send feedback (and Beta hub for a beta tester, web/early.js), the theme and Sign out (at 390 px, Menu is the avatar and holds the same)",
+      "reach": "https://brickworks.diy/gallery signed in: the avatar in the header opens who you are, Your profile, Notifications and Your feed with their counts, Saved, Settings, Send feedback (and Beta hub for a beta tester, web/early.js; Report a bug for everyone while the beta is open), the theme, Admin to /admin for the site's owner alone (op=feed_count's admin: true), and Sign out (at 390 px, Menu is the avatar and holds the same)",
       "area": "web"
     },
     {
@@ -4534,13 +4520,6 @@
       "area": "view"
     },
     {
-      "kind": "cli",
-      "label": "heldsteps probe",
-      "entry": "src/dev/heldsteps_probe.gd",
-      "reach": "tools/probe.sh heldsteps_probe   (headless: a five-step model, own and someone else's, its 3062b missing from the library and then on its way from a local server; step merges, moves, deletes and a part taken off, saved and opened again: the held part on its own step with its STEP_NAME and ZOOM byte for byte, every other step as the same edit gives the model without it, and with the part back the model as it was; then a sub-model dragged in the tree into one holding it, a part moved on from the last step it follows, a part moved in the second copy of a sub-model placed twice, and someone else's file written whole, each with the held part alone in its own step and sub-model; HELDSTEPS_OUT=dir for the saves)",
-      "area": "view"
-    },
-    {
       "kind": "lib",
       "label": "a person's own keys kept in the system's keychain",
       "entry": "src/ai/key_store.gd",
@@ -4824,7 +4803,7 @@
       "kind": "ui",
       "label": "a link that opens playing",
       "entry": "src/main.gd",
-      "reach": "https://brickworks.diy/m/<id>?motion=<name> of a model with motions of its own (Share, Opens: Playing ...): the viewer plays it over and over within 2 s of the model shown; its button stops it; an unknown name opens still and says so  (main._open_playing, Motions.for_link)",
+      "reach": "https://brickworks.diy/m/<id>?motion=<name> of a model with motions of its own (Share, Opens: Playing ...): the viewer plays it over and over after at most 2 s of its own work from the model shown (3 s on a phone; tools/web/play_flow.mjs times the page's frames less WebGL and its workers'); its button stops it; an unknown name opens still and says so  (main._open_playing, Motions.for_link)",
       "area": "web"
     },
     {
@@ -4934,13 +4913,6 @@
     },
     {
       "kind": "cli",
-      "label": "localbricks probe",
-      "entry": "src/dev/localbricks_probe.gd",
-      "reach": "tools/relay_probe.sh localbricks   (a window, 1280x720; PROBE_SIZE=1400x900; -- --shots=DIR: through the sign-in screen with a password, 7140-1's lots marked by edit_collection missing= (each said was N, now M; none=true refused while marked) and refused past its inventory, Build from it 282 of 285, a restart and another device, two tabs at once one refused, a tab a newer build followed leaving the copy on this device, two copies 566 of 570 and one of them 284 of 285, signed out nothing held, the words in de/fr/es)",
-      "area": "collection"
-    },
-    {
-      "kind": "cli",
       "label": "print3mf probe",
       "entry": "src/dev/print3mf_probe.gd",
       "reach": "tools/probe.sh print3mf_probe [-- --hashes=FILE | --same-as=FILE]   (headless; the car as a 3MF from File, Export, 3D model… and export_model, read by tools/print3mf/check_3mf.py; every object closed (lib3mf IsManifoldAndOriented, every edge two triangles going opposite ways; as drawn, with Mesh3mf.close_up off, none), its triangles at most twice its parts'; a printed tile, a mirrored brick and a part with no BFC; the reader refusing a turned triangle, a colour that is none and a corner past its vertices; --hashes/--same-as compare the car's GLB and STL with another build's)",
@@ -4997,13 +4969,6 @@
     },
     {
       "kind": "cli",
-      "label": "the docs' pictures",
-      "entry": "tools/docs_shots.py",
-      "reach": "python3 tools/docs_shots.py [--only=ID,ID] [--app | --site] [--affected]   (docs-site/pictures/<page>.json: the app's through tools/probe.sh docs_shots_probe on the GPU from a locked snapshot, the site's by tools/web/docs_shots_flow.mjs; into docs-site/img/, with diff/index.html of what changed; tools/docs_site.py --check fails on one missing or not made by it)",
-      "area": "web"
-    },
-    {
-      "kind": "cli",
       "label": "fetchparts browser flow",
       "entry": "tools/web/fetchparts_flow.mjs",
       "reach": "node tools/web/fetchparts_flow.mjs --url=http://127.0.0.1:9821 [--base=http://127.0.0.1:9822 --rounds=2] [--house=H0useFl0w1] --out=DIR   (after tools/export.sh web and tools/web/serve.py build/web 9821 --parts assets/generated/parts --delay 0 --compressed --share F3tchP4rts=vendor/omr/files/42022-1_Rally-Racer.mpd --share H0useFl0w1=HOUSE (play_flow.mjs --write-house=HOUSE), and the build before likewise on 9822; local only: no part file by the engine's HTTPRequest, both whole, each longest frame no longer than the base's, the car's shapes in half the base's time)",
@@ -5029,6 +4994,34 @@
       "entry": "src/net/palette_tool.gd",
       "reach": "tools/probe.sh mcppalettes && PROBE_SIZE=1400x900 tools/probe.sh mcppalettes   (palettes reads the person's palettes, read-only; edit_palette make keeps twelve parts of the model each in its colour and a gatepost as the sub-assembly Gatepost in 1 call, the bin's Palettes shows it and its file entries are the bin's own Add rows' byte for byte but ids and times; place puts Gatepost down whole in another model in 1 call, each part to 0.01 LDU, low corner where asked, one assembly, one undo; take_out, rename, delete, agreed=true for a sub-assembly out and a delete; pictures in shots/mcppalettes/)",
       "area": "mcp"
+    },
+    {
+      "kind": "ui",
+      "label": "strengthen a weak joint",
+      "entry": "src/assembly/strengthen.gd",
+      "reach": "tools/probe.sh strengthen && PROBE_SIZE=1280x720 tools/probe.sh strengthen   (by hand: View, Stress; press a red or amber row: the fewest parts that make it hold, a plate across the seam, a brick under it or a second pin, drawn as a ghost; Strengthen puts them down, one undo; From my bricks, shown with a collection, makes it of the person's parts; a session: weakest_joints answers each such joint with its fix as an edit_model call, mine=true of their parts)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "strengthen probe",
+      "entry": "src/dev/strengthen_probe.gd",
+      "reach": "tools/probe.sh strengthen [-- --shots=DIR]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720, through the sign-in screen with a throwaway account (.env): ten models with a weak joint each, its row pressed, the fix offered and drawn as a ghost, Strengthen adds 1 to 3 parts with room and Stress weighs the joint above its working load with no new red, one undo back to the byte, weakest_joints' edit_model call made as given gives the same model to the byte; a tie, a prop and a pin among them; From my bricks with a collection; a picture of each ghost in user://strengthen or DIR)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "lift by a part",
+      "entry": "src/assembly/lift_test.gd",
+      "reach": "tools/probe.sh loadtest && PROBE_SIZE=1280x720 tools/probe.sh loadtest   (by hand: View, Stress; press Lift, then click a part: the model hangs from it, every joint between carries the weight below it, the one nearest letting go goes first and the rest is weighed again; the part in the hand blue, what comes away red and named in the panel, a row pressed selects it; Lift again sets it down; a session: weakest_joints lift_by=N)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "loadtest probe",
+      "entry": "src/dev/loadtest_probe.gd",
+      "reach": "tools/probe.sh loadtest [-- --shots=DIR]   (windowed, on the GPU, 1400 x 900 and PROBE_SIZE=1280x720, through the sign-in screen with a throwaway account (.env): a wall of eight 1 x 4 bricks lifted by a top brick holds, its one-stud joint at the hand's 0.35; at sixteen that joint lets go at the hand's 2.02 and the 14 past it come away, named, tinted red, the same over MCP; the far half taken off it holds, one undo and it lets go again; the car by its roof holds, by a headlight's round plate it comes away whole, 60 parts, the same over MCP; Lift off restores Stress; pictures in user://loadtest or DIR)",
+      "area": "view"
     },
     {
       "kind": "ui",
@@ -5059,10 +5052,45 @@
       "area": "parts"
     },
     {
+      "kind": "cli",
+      "label": "the parts bucket's copy for checks",
+      "entry": "tools/web/storage_mirror.mjs",
+      "reach": "any flow under tools/web (browser.mjs imports it); node tools/web/storage_mirror.mjs serve [PORT] for a probe",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "askfirst probe",
+      "entry": "src/dev/askfirst_probe.gd",
+      "reach": "tools/probe.sh askfirst_probe   (headless: geometry served by a local server on 9947 under names the build has not got, the LDraw library withheld and served slowed beside it; an open with no job (the viewer's, start-up's) has every part not to hand on its way while its carried part's file is fetched, the model before still down, then lays it whole, each part asked once; a part that 404s before the lay is asked once, held, named in the open's answer and words and saved, one failing after it said by not_coming; a 212-part model opened with the bar's job has its parts on their way before its first slice, is laid in the file's order, and names the part not there, asked once; a save while parts are on their way writes every part)",
+      "area": "model-io"
+    },
+    {
+      "kind": "cli",
+      "label": "heldsteps probe",
+      "entry": "src/dev/heldsteps_probe.gd",
+      "reach": "tools/probe.sh heldsteps_probe   (headless: a five-step model, own and someone else's, its 3062b missing from the library and then on its way from a local server; step merges, moves, deletes and a part taken off, saved and opened again: the held part on its own step with its STEP_NAME and ZOOM byte for byte, every other step as the same edit gives the model without it, and with the part back the model as it was; then a sub-model dragged in the tree into one holding it, a part moved on from the last step it follows, a part moved in the second copy of a sub-model placed twice, and someone else's file written whole, each with the held part alone in its own step and sub-model; HELDSTEPS_OUT=dir for the saves)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "localbricks probe",
+      "entry": "src/dev/localbricks_probe.gd",
+      "reach": "tools/relay_probe.sh localbricks   (a window, 1280x720; PROBE_SIZE=1400x900; -- --shots=DIR: through the sign-in screen with a password, 7140-1's lots marked by edit_collection missing= (each said was N, now M; none=true refused while marked) and refused past its inventory, Build from it 282 of 285, a restart and another device, two tabs at once one refused, a tab a newer build followed leaving the copy on this device, two copies 566 of 570 and one of them 284 of 285, signed out nothing held, the words in de/fr/es)",
+      "area": "collection"
+    },
+    {
+      "kind": "cli",
+      "label": "the docs' pictures",
+      "entry": "tools/docs_shots.py",
+      "reach": "python3 tools/docs_shots.py [--only=ID,ID] [--app | --site] [--affected]   (docs-site/pictures/<page>.json: the app's through tools/probe.sh docs_shots_probe on the GPU from a locked snapshot, the site's by tools/web/docs_shots_flow.mjs; into docs-site/img/, with diff/index.html of what changed; tools/docs_site.py --check fails on one missing or not made by it)",
+      "area": "web"
+    },
+    {
       "kind": "ui",
       "label": "the beta bar",
       "entry": "web/betabar.js",
-      "reach": "<deployment>/ any page, with the beta open (tools/deploy.sh --unit --beta-open)   (web/theme.js asks for it; Open beta to /beta, Report a bug (window.brickworksReportBug of web/bugreport.js, else Send feedback as a bug), Join or You're a tester; its x hides it for a day; none with the beta off, on an embed or on the consent page; tools/web/betahome_flow.mjs)",
+      "reach": "<deployment>/ any page, with the beta open (tools/deploy.sh --unit --beta-open)   (web/theme.js asks for it; Open beta to /beta, Report a bug (window.brickworksReportBug of web/bugreport.js, else Send feedback as a bug), Join or You're a tester; its x hides it until shown again, said in a toast with Settings and Undo; Settings' Show the beta bar on every page (signed out too) brings it back at once; Report a bug in the account menu and Menu while the beta is open; none with the beta off, on an embed or on the consent page; tools/web/betahome_flow.mjs)",
       "area": "web"
     },
     {
@@ -5125,7 +5153,7 @@
       "kind": "ui",
       "label": "report a bug on the site",
       "entry": "web/bugreport.js",
-      "reach": "window.brickworksReportBug({source: \"site\"}) on any page (the beta bar's Report a bug loads it): the page drawn to a picture by the page itself, web/feedback.js's report mode over the page with a box to drag on it; signed out, a sign-in first; sent, Report #N and Your reports (/settings#feedback); tools/web/bugreport_flow.mjs",
+      "reach": "window.brickworksReportBug({source: \"site\"}) on any page (the beta bar's Report a bug loads it): the page drawn to a picture by the page itself, web/feedback.js's report mode over the page with a box to drag on it; signed out, a sign-in first; two boxes and Clear the marks takes them off, sent with none; sent, Report #N and Your reports (/settings#feedback); tools/web/bugreport_flow.mjs",
       "area": "web"
     },
     {
@@ -5309,6 +5337,167 @@
       "entry": "src/dev/im2review_probe.gd",
       "reach": "tools/probe.sh imreview_probe; tools/probe.sh im2review_probe; tools/probe.sh into_kept_probe; tools/probe.sh ic3_probe   (headless: the three reviews of putting one model into another and its kept-parts cases, each saved and reopened: parts the app cannot show kept in their sub-model and step, the host's own lines kept, renamed and moved copies, names, credits, a part landing late, a file with no FILE line given a model of its own name, no part file from another model, the file as it was once the last model put in is taken out, motions and views kept in the sub-model; `-- case,case` runs only those)",
       "area": "model-io"
+    },
+    {
+      "kind": "ui",
+      "label": "measure and handles by finger",
+      "entry": "src/ui/handles.gd",
+      "reach": "on a phone or a tablet: More's Measure, then a tap on a stud and a tap on another, each going on the stud's or the connector's middle nearest it within half a fingertip; the Move or Rotate tool, a tap on a part, then an arrow, pane, ring or the trackball dragged by a finger (every target 44 points or more), the tag tapped for the next axes, a second finger putting a drag back  (Measure._finger_point, Handles._finger_input; tools/probe.sh fingertools_probe)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "fingertools probe",
+      "entry": "src/dev/fingertools_probe.gd",
+      "reach": "tools/probe.sh fingertools_probe   (windowed, 390x844 by its header; through the sign-in screen with a throwaway account (.env); pictures in --shots=DIR, else user://fingertools)",
+      "area": "building"
+    },
+    {
+      "kind": "ui",
+      "label": "page editor motions and simulate by finger",
+      "entry": "src/ui/page_editor.gd",
+      "reach": "on a phone or a tablet: the timeline's Lay out the page… (buttons and fields 44 points or more, the corner, the knob, an arrow's handles and the rulers a fingertip each, the words field's select-all kept by the tap that brings the keyboard up); Motions (Record beside the name at the editor's top, its joint sliders' strips a fingertip tall, each view opened at its top, a part dragged while recording opens no actions sheet); Simulate (Play, the cycle's slider and the angle under its title)  (PageEditor._lay_for_a_finger, PosePanel._for_a_finger, SimulatePanel._for_a_finger, Main._on_phone_hold; tools/probe.sh phonepanels_probe)",
+      "area": "view"
+    },
+    {
+      "kind": "cli",
+      "label": "phonepanels probe",
+      "entry": "src/dev/phonepanels_probe.gd",
+      "reach": "tools/probe.sh phonepanels_probe   (windowed, 390x844 by its header; through the sign-in screen with a throwaway account (.env); pictures in --shots=DIR, else user://phonepanels)",
+      "area": "view"
+    },
+    {
+      "kind": "ui",
+      "label": "the console's plans and revenue",
+      "entry": "web/admin-plans.js",
+      "reach": "<deployment>/admin#plans as MASTER_EMAIL: GET /api/admin?op=plans (api/_console_plans.js): billing off says so and asks Admission nothing; on, the plans and what each includes, the customers from Admission's snapshots (admission_customers), comps, and with ADMISSION_READ_TOKEN revenue by month and Admission's record; read only, each part linked to where it changes at admission.sh",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the console's mail",
+      "entry": "web/admin-mail.js",
+      "reach": "<deployment>/admin#mail as MASTER_EMAIL (?tests=1 the checks' own): GET /api/admin?op=mail&days=7|30|90 (api/_console_mail.js, supabase/console2.sql admin_mail): every mail by kind and day, sent, delivered, bounced, complained, each with its address, subject and why, beside beta_mail and feedback_replies",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the console's connector",
+      "entry": "web/admin-connector.js",
+      "reach": "<deployment>/admin#connector as MASTER_EMAIL (?tests=1 the checks' own): GET /api/admin?op=connector[&account=U] (api/_console_connector.js): each account's Claudes, tabs, conversations and tool calls (relay_call_days), its state; #connector/<account> its panel, linked from People; read only",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the console's site",
+      "entry": "web/admin-site.js",
+      "reach": "<deployment>/admin#site as MASTER_EMAIL: GET /api/admin?op=site (api/_console_site.js): the live release and since when (site_releases), the releases before with their units, each cron's last runs (cron_runs_of, canary_runs), Supabase's auth/rest/storage answering; the Overview's live release and a 402 under Needs you now",
+      "area": "web"
+    },
+    {
+      "kind": "api",
+      "label": "Resend's word on each mail",
+      "entry": "api/_console_mail.js",
+      "reach": "POST /api/otp?op=mail_event, signed as Svix signs (svix-id, svix-timestamp, svix-signature) with RESEND_WEBHOOK_SECRET: 404 with no secret, 401 unsigned or stale, 200 {kept:false} for another product's mail, kept once in mail_events; tools/web/resend_webhook.sh sets the webhook up",
+      "area": "account"
+    },
+    {
+      "kind": "lib",
+      "label": "the console's part B reads",
+      "entry": "supabase/console2.sql",
+      "reach": "python3 tools/minitest.py tests/test_console2.py   (console2.sql and api/admin.js's plans, mail, connector, site and otp.js's mail_event against a real Postgres: the gate, Resend's signature, each read)",
+      "area": "account"
+    },
+    {
+      "kind": "cli",
+      "label": "console2 browser flow",
+      "entry": "tools/web/console2_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/console2_flow.mjs --url=<preview> --out=DIR   (MASTER_EMAIL's session minted: the gate, Mail playing Resend, a throwaway's tab, Claude and calls in Connector, Site, Plans, each at 390/1280 light/dark; preview check [console2])",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "a release written down live",
+      "entry": "tools/release/release_live.sh",
+      "reach": "tools/release/release_live.sh TAG SHA [SPEC]   (ship.sh, once the domain serves the release: a row of site_releases; --backfill the live trains in bench/results/release-out)",
+      "area": "release"
+    },
+    {
+      "kind": "cli",
+      "label": "Resend's webhook set up",
+      "entry": "tools/web/resend_webhook.sh",
+      "reach": "RESEND_ADMIN_KEY=<the team's full-access key, never a deployment's> tools/web/resend_webhook.sh [--check] [--redeploy]   (after a release with the op is live: the webhook to /api/otp?op=mail_event, its secret in Vercel production env and .env)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "your sets and lists",
+      "entry": "api/_mylists.js",
+      "reach": "curl -s -H \"authorization: Bearer $TOKEN\" 'https://brickworks.diy/api/people?op=keeps&sets=6080-1&models='   (and ?op=lists, ?op=list_items&id=owned|want|saved|<id>, ?op=list_csv&id=; POST ?op=keep {key, list, on}, ?op=list_order {id, keys, sort}, ?op=owned_choice {shows}; POST /api/collection {op:'own', set, was, qty}; supabase/lists.sql, applied 2026-11-13; docs/LISTS.md)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "own want and save",
+      "entry": "web/keep.js",
+      "reach": "https://brickworks.diy/library (each set card's Own and its chevron), /library/set/6080-1 (the bar: Own, Want, Add to a list), /gallery (each model card's Save and its chevron): the panel (I own it with How many, I want it, Saved, each list, New list…), a sheet under 600 px; the toast's Undo; signed out it asks to sign in, then carries on (web/card.js keepHtml, api/_sets.js keepBarHtml)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "your lists page",
+      "entry": "web/lists.html",
+      "reach": "https://brickworks.diy/lists   (the account menu's Your lists; ?list=owned|want|saved|<id>: the rail, or a dropdown under 900 px; Share, Edit, Add sets (Rebrickable CSV, BrickLink XML, Brickset CSV, typed numbers), Download CSV; Newest first or Your order (drag, arrows, Undo); Select: Copy to, Move to, Take out; Show on my profile for I own; web/lists.js)",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "the sets you own on a profile",
+      "entry": "api/people.js",
+      "reach": "https://brickworks.diy/u/<handle>?tab=sets   (only once its owner shows them: Your lists, I own, Show on my profile; the numbers, the theme owned most, the cards, ?q= ?theme= ?decade= ?size= ?sort= ?page=; ownedPanel)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "lists browser flow",
+      "entry": "tools/web/lists_flow.mjs",
+      "reach": "BW_BYPASS=$VERCEL_BYPASS node --env-file=.env tools/web/lists_flow.mjs --url=<preview> --out=DIR   (live project, throwaway accounts; preview check [lists]; or a local relay_server.mjs on a port of yours, never 10080, which fetch refuses)",
+      "area": "web"
+    },
+    {
+      "kind": "cli",
+      "label": "mcpreach probe",
+      "entry": "src/dev/mcpreach_probe.gd",
+      "reach": "tools/probe.sh mcpreach_probe   (windowed: godot --path . --resolution 1400x900 --script src/dev/mcpreach_probe.gd; PROBE_SIZE=1280x720. APP_UX8 #11: export_model's description and read_guide app's first lines name Build together, Share, Import and Comments with where each is, and no tool opens them; export_model pdf with a Russian and Greek cover in 3 calls, read back as typed by pdftotext, its cover pictured in the answer (shots/mcpreach/pdf_cover.png or MCPREACH_OUT); every unasked write takes the next free name (pods_render_2.png, pods_2.3mf, pods_turntable_4) and keeps the first byte for byte; a 3MF's and an STL's answer say which objects are closed solids, agreeing with lib3mf; File › Export with its save dialog still writes over when the person says so)",
+      "area": "mcp"
+    },
+    {
+      "kind": "cli",
+      "label": "ask to leave timing",
+      "entry": "tools/web/framefetch_flow.mjs",
+      "reach": "tools/export.sh web; node tools/web/relay_server.mjs 10102 --static=build/web --arrivals --hold=together_sessions,together_ops,together_people,together_snapshot_parts, then node tools/web/framefetch_flow.mjs --url=http://127.0.0.1:10102 --out=DIR [--busy=250] [--rounds=8]   (with .env sourced)",
+      "area": "web"
+    },
+    {
+      "kind": "lib",
+      "label": "a request asked of the page",
+      "entry": "src/net/page_fetch.gd",
+      "reach": "python3 -m pytest tests/test_page_fetch.py  /  the ask to leave timing flow",
+      "area": "web"
+    },
+    {
+      "kind": "ui",
+      "label": "more's first rows and adding to a selection by finger",
+      "entry": "src/ui/phone_shell.gd",
+      "reach": "on a phone or a tablet: More opens on its first rows two to a line (Save, Instructions, Timeline, Render, Measure, Cut away, Check stability, Simulate, Pose, Select all; PhoneShell.QUICK), each two taps; Select tapped while lit adds a part with each tap and takes one out (EditVerbs.adding, the pointer with a plus), Select or another tool ends it; the timeline's buttons a fingertip, its rows of choices sliding sideways on a phone held upright, Lay out the page… first; every English line drawn says tap and hold (Phone.speak_to_a_finger)  (tools/probe.sh smalls2_probe)",
+      "area": "building"
+    },
+    {
+      "kind": "cli",
+      "label": "smalls2 probe",
+      "entry": "src/dev/smalls2_probe.gd",
+      "reach": "tools/probe.sh smalls2_probe   (windowed, 390x844 by its header; no sign-in; pictures in --shots=DIR; --only=more,timeline,select,line,words)",
+      "area": "building"
     }
   ]
 }

@@ -38,6 +38,7 @@ import { bearer, verify } from "./_auth.js";
 import { db, orUnknown } from "./_db.js";
 import { Unacceptable, escapeHtml } from "./_directory.js";
 import { counted, langAt, mosaicHtml, pictureOf } from "./_card.js";
+import { catalogCard, catalogSet } from "./_sets.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const NOT_THERE = /: 404$/;
@@ -151,15 +152,22 @@ export async function listsOf(id, tests = false) {
 export const DIRECTORY_PAGE = 24;
 
 /// One page of the public collections as the directory lists them:
-/// {ready, searched, total, rows: [{id, name, description, count,
-/// followers, added, by}]}, [sort] "recent" or "followed"; with words [q],
-/// those whose name, words or owner hold every one of them
-/// (collection_search.sql). ready false before collection_directory.sql is
-/// applied; searched false when words were asked before
-/// collection_search.sql is, and every one is listed.
+/// {ready, searched, total, rows: [{id, name, description, count, sets,
+/// models, followers, added, by}]}, [sort] "recent" or "followed"; with
+/// words [q], those whose name, words or owner hold every one of them.
+/// Lists of sets are listed beside lists of models (supabase/lists.sql
+/// list_directory, lists1); before that file, collection_directory_search
+/// and collection_directory as they were: ready false before
+/// collection_directory.sql is applied; searched false when words were
+/// asked before collection_search.sql is, and every one is listed.
 export async function directoryOf({ sort = "recent", page = 1, tests = false, q = "" } = {}) {
   const asked = { sort: sort === "followed" ? "followed" : "recent", page, size: DIRECTORY_PAGE, tests };
   const words = String(q || "").trim().slice(0, 100);
+  const lists = await call("list_directory", { q: words, ...asked }, () => ({ missing: true }));
+  if (lists && !lists.missing) {
+    const rows = (Array.isArray(lists.rows) ? lists.rows : []).filter((row) => ID.test(String(row?.id)));
+    return { ready: true, searched: true, total: Number(lists.total) || 0, rows };
+  }
   let said = words ? await call("collection_directory_search", { q: words, ...asked }, () => ({ missing: true })) : null;
   const searched = Boolean(said && !said.missing);
   if (!searched) said = await call("collection_directory", asked, () => ({ missing: true }));
@@ -171,19 +179,36 @@ export async function directoryOf({ sort = "recent", page = 1, tests = false, q 
 // ---------------------------------------------------------------------------
 // A collection's cover.
 
-/// The pictures on each public collection's cover: up to four of its models
-/// in the gallery, the newest put in first. id -> [picture].
+/// The pictures on each public collection's cover: up to four of what is in
+/// it, models in the gallery and sets of the library alike, the newest put
+/// in first; led by the one its owner chose (supabase/lists.sql cover), and
+/// in its owner's order when it has one (list_items). id -> [picture].
 export async function coversOf(lists, tests) {
   const shown = lists.filter((list) => ID.test(String(list.id))).slice(0, 24);
   const items = await Promise.all(shown.map((list) =>
-    db(`model_collection_items?collection=eq.${list.id}&select=model&order=at.desc&limit=12`).catch(() => [])));
-  const ids = [...new Set(items.flat().map((row) => row.model).filter((id) => ID.test(String(id))))];
+    db("rpc/list_items", { method: "POST", body: { list: list.id, private: false, tests } })
+      .then((all) => (Array.isArray(all) ? all.slice(0, 12) : []))
+      // Before supabase/lists.sql: its models, the newest put in first.
+      .catch(() => db(`model_collection_items?collection=eq.${list.id}&select=model&order=at.desc&limit=12`)
+        .then((rows) => rows.map((row) => ({ kind: "model", key: row.model }))).catch(() => []))));
+  const covers = await Promise.all(shown.map((list) => (list.cover === undefined
+    ? db(`model_collections?id=eq.${list.id}&select=cover`).then((rows) => rows[0]?.cover || null).catch(() => null)
+    : Promise.resolve(list.cover || null))));
+  const ids = [...new Set(items.flat().filter((one) => one.kind === "model").map((one) => one.key).filter((id) => ID.test(String(id))))];
   const rows = ids.length ? await db(`shared_models?id=in.(${ids.join(",")})&published=is.true&listed=is.true`
     + "&barred=is.false&select=id,has_image,has_thumb,updated_at,test") : [];
   const pictures = new Map(rows.filter((row) => tests || !row.test)
-    .map((row) => [row.id, pictureOf({ id: row.id, thumb: row.has_thumb ? `?v=${(Date.parse(row.updated_at || "") || 0).toString(36)}` : null,
+    .map((row) => [`model:${row.id}`, pictureOf({ id: row.id, thumb: row.has_thumb ? `?v=${(Date.parse(row.updated_at || "") || 0).toString(36)}` : null,
       image: row.has_image })]));
-  return new Map(shown.map((list, at) => [list.id, items[at].map((row) => pictures.get(row.model)).filter(Boolean).slice(0, 4)]));
+  for (const one of items.flat()) {
+    const entry = one.kind === "set" ? catalogSet(one.key) : null;
+    if (entry) pictures.set(`set:${one.key}`, pictureOf(catalogCard(entry)));
+  }
+  return new Map(shown.map((list, at) => {
+    const keys = items[at].map((one) => `${one.kind}:${one.key}`);
+    const first = covers[at] && keys.includes(covers[at]) ? [covers[at]] : [];
+    return [list.id, [...first, ...keys.filter((key) => key !== covers[at])].map((key) => pictures.get(key)).filter(Boolean).slice(0, 4)];
+  }));
 }
 
 /// A public collection as a card: its cover, its name, how many; and whose,
@@ -193,5 +218,13 @@ export function listCardHtml(list, covers, { by = false, eager = false } = {}) {
   const whose = by && list.by && list.by.name ? ` · ${escapeHtml(list.by.name)}` : "";
   return `<a class="list-card" href="${langAt()}/c/${escapeHtml(list.id)}" data-id="${escapeHtml(list.id)}">`
     + mosaicHtml(covers.get(list.id) || [], { eager })
-    + `<div class="words"><b>${escapeHtml(list.name)}</b><span>${escapeHtml(counted(list.count, "model"))}${whose}</span></div></a>`;
+    + `<div class="words"><b>${escapeHtml(list.name)}</b><span>${escapeHtml(howMany(list))}${whose}</span></div></a>`;
+}
+
+/// "3 sets, 2 models", each said once there is one; "1 model" for a list
+/// of models alone, as before.
+export function howMany(list) {
+  const sets = Number(list.sets) || 0;
+  const models = list.models === undefined ? Number(list.count) || 0 : Number(list.models) || 0;
+  return [sets ? counted(sets, "set") : "", models || !sets ? counted(models, "model") : ""].filter(Boolean).join(", ");
 }

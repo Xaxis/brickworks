@@ -3,7 +3,7 @@
 Letting a session that is already open build in Brickworks, instead of Brickworks
 asking for an API key.
 
-<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, ui:design on your own Copilot plan, lib:the window's commands over mcp, lib:what a session sees over mcp, lib:a session keeps a view over mcp, lib:a session keeps and uses palettes over mcp, lib:pattern's grid over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe, cli:mcp walk probe, cli:mcp walk 3 probe, cli:mcp lean probe, cli:mcp agree probe, cli:mcp detail probe, cli:replay calls, cli:first design undo probe, cli:undo ids probe, lib:the model in Claude, cli:model view check, ui:the model in Claude in 3D, lib:the viewer's own tools, lib:the model packed for the viewer, cli:viewer tools probe, cli:build the viewer, cli:viewer readers check, cli:viewer first paint, cli:app host check, lib:words for a failed request -->
+<!-- covers: lib:command socket, cli:mcp server, cli:drive the app over mcp, cli:drive the app from a shell, ui:design on your own subscription, ui:design on your own Copilot plan, lib:the window's commands over mcp, lib:what a session sees over mcp, lib:a session keeps a view over mcp, lib:a session keeps and uses palettes over mcp, lib:pattern's grid over mcp, cli:keep the mcp in step, lib:the gallery over mcp, cli:gallery tool probe, cli:mcp walk probe, cli:mcp walk 3 probe, cli:mcp lean probe, cli:mcp agree probe, cli:mcp detail probe, cli:mcpreach probe, cli:replay calls, cli:first design undo probe, cli:undo ids probe, lib:the model in Claude, cli:model view check, ui:the model in Claude in 3D, lib:the viewer's own tools, lib:the model packed for the viewer, cli:viewer tools probe, cli:build the viewer, cli:viewer readers check, cli:viewer first paint, cli:app host check, lib:words for a failed request -->
 
 ## Sub-features
 
@@ -695,6 +695,29 @@ above. 41 in all on 2026-10-13, with `job`, `brickify`, `print_part` and `make_u
   441 s, 11 turns, $2.21). Not yet: weighing a model held by a part
   (lifted by its mast), which the session still estimates.
 
+- `mcpreach probe` (APP_UX8 #11; `src/net/app_tools.gd` `PERSONS_OWN`,
+  `_booklet_pdf`; `src/net/download.gd` `unused`, `free_stem`, `kept_note`;
+  `src/ui/exports.gd` `closed_words`; `ClosedMesh.open_edges`): what the
+  window does that a session does not, told to the session. Build together,
+  Share, Import and Comments are WINDOW_ONLY, each the person's own; their
+  names and menu rows are in export_model's description (every session reads
+  tool descriptions; MCP instructions are cut at ~3,800 characters) and in
+  read_guide("app")'s first lines: n7 of the MCP walk said there was no such
+  feature. `export_model format=pdf` draws the booklet into user data, writes
+  only the PDF where Export writes (booklet_pdf.gd, its fonts carried) and
+  says any letter its type cannot print, with its cover pictured as the PDF
+  prints it (the walk's x2 session looked again in a fourth call without it);
+  on the web it refuses and points to
+  the booklet tab's own Save as PDF. Every write nobody was asked about takes
+  the next free name with "_2" (pods_render_2.png; a turntable's .webp, .gif,
+  .mp4 and frames' folder one stem) and the answer says the first is kept; the
+  person's save dialog is as it was (Godot's own "replace?" first). A 3MF's
+  answer says each object is a closed solid, checked after closing, not
+  assumed; an STL's says it is not, per part (LDraw as drawn), and that a 3MF
+  closes every part. Red on cdc640d3e: 25 checks, before the cover check. Probes that keep their
+  files between runs read the name a write took, never the name asked
+  (render, lineart, animation).
+
 ## How to reach it
 
 ```sh
@@ -742,6 +765,7 @@ PROBE_SIZE=1400x900 tools/probe.sh seeing                           # what a ses
 PROBE_SIZE=1400x900 tools/probe.sh seeing2                          # how parts join and what it made: the stud map read part by part, View, Stud directions, highlight "3024"/"step:3"/"red", check_design's findings pictured, a pull by brick number, six frames of a build and a motion (also PROBE_SIZE=1280x720)
 tools/probe.sh mcpsee3 && PROBE_SIZE=1280x720 tools/probe.sh mcpsee3   # a session picks out 4070 however quoted (#6 and #11 of the walk's Pods), save_view in 1 call back by its key and by render_model view= within 0.1° and 0.1 LDU, in_view lists it; pictures in MCPSEE3_SHOTS or user://mcpsee3_probe
 tools/probe.sh mcppalettes && PROBE_SIZE=1400x900 tools/probe.sh mcppalettes   # palettes read-only; edit_palette makes 12 parts + Gatepost in 1 call, the bin's own byte for byte; Gatepost placed whole in another model in 1 call to 0.01 LDU, one undo; take_out/rename/delete, agreed=true; pictures in shots/mcppalettes/
+tools/probe.sh mcpreach_probe && PROBE_SIZE=1280x720 tools/probe.sh mcpreach_probe   # Together/Share/Import/Comments named with where, export_model pdf read back as typed in 3 calls, free names keep the first file byte for byte, 3MF/STL closed solids as lib3mf reads them
 godot --headless --path . --script src/dev/mcpcad_probe.gd         # CAD answers without the method, designs with it, the refusal's place, attachment_points parts=, in_view at step 4 of 9 with a part in hand
 node tools/web/in_view_flow.mjs --dir=build/web --out=shots/in_view [--size=1400x900]   # in_view in the browser: step 4 of 9, 3004 in hand turned once over the floor, a picture laid by the mouse and keys; nothing changed; step 4's bricks drawn in the picture, and again in --again=4 more openings with Next at once (a local export, .env loaded)
 BRICKWORKS_API=http://127.0.0.1:8790 godot --headless --path . --script src/dev/gallery_tool_probe.gd   # the gallery, with relay_server.mjs 8790 running
@@ -1040,7 +1064,13 @@ All of these are in `tools/check.sh`.
   (`Assistant.recounted`): "Done. 3 bricks now; 1 other copy of its
   sub-assembly followed it." where it said "4 bricks now" of the 3 a removal
   from one of two copies left (cffix2; `copyfaults_probe` twin_every checks
-  every session edit's count). The socket's own tools too:
+  every session edit's count). And judged again: whether it stands, what
+  broke and its sizes are of the model the follow left, not the one copy
+  edited (`Assistant.followed_answer`, `_judged_again`; smalls1), where
+  "it tips over" was said of a model balanced again once the other arm
+  followed: `tools/probe.sh follow_reply_probe` (edit_model on one of two
+  arms; 3 parts, nothing tips, the sizes `_measured` gives, and
+  check_design after it agrees). The socket's own tools too:
   review_model with a feature lays a piece, save_model can hand the next
   feature back laid, and clear_model begins a new model as New does, its one
   step putting the old one back. That step is the clear's own

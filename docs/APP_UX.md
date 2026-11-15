@@ -349,6 +349,45 @@ layouts take none of these paths (`Main._fit_bin` returns for drawers, and
 the bin's changes skip a sheet for a finger). On the desktop,
 `tablet_fit_probe` and `phone_idle_probe` cover them.
 
+**Built (panelfold, 2026-11-13): one way to fold and size every section.**
+The owner asked for the Colour section under the bin to fold to the bottom
+and to drag up over the bin, "a consistent cohesive ui/ux pattern for our
+advanced panels". VS Code's sidebar views, Blender's panels, JetBrains' tool
+windows, Figma's Pages and Unity's inspector agree on one, and every stacked
+section now follows it (`src/ui/panel_stack.gd`): the bin and Colour down the
+left, the model tree and Properties down the right, and the tree, Properties
+and Colour in a phone's drawer.
+
+- **One header** (`PanelStack.Head`): a chevron (down while open, at the name
+  while folded), the name, and its count or state. A click anywhere on it,
+  or Enter or Space with the keys on it, folds the section to it; its tooltip
+  and screen-reader name say Fold or Unfold. Folded, Colour is a bar at the
+  column's foot naming the colour in hand with a swatch, and the bin takes
+  the room; the tree folds to the top of its column.
+- **One bar** between two open sections (`PanelStack.Bar`): the resize
+  cursor, a grip that lights on hover, laid over the line between them so it
+  takes no room (a 44-point handle in a strip of its own on a phone). It never
+  makes a section shorter than its header and a row, nor the one that fills
+  shorter than its header and a row, so Colour covers most of the bin, never
+  all of it; nor Colour taller than all its swatches. A double click puts the
+  split back as a first visit has it; Tab reaches it and the arrows move it.
+- **Kept and reset.** Heights and folds are kept on the device
+  (`colour_height`, `colour_open`, `bin_open` beside the tree's and the
+  properties'). View, Panels, Colour folds it from the menu, and View, Panels,
+  Reset panel layout puts every section back open at its first height.
+- Colour's first height is still the column's to say (`_fit_palette`), so a
+  first visit's bin has the room it had; a dragged height is the person's
+  from then on and is no part of the tree's and the properties' split. A
+  choice still moves nothing.
+- A phone's drawer, a fingertip of handle in it, can be too short for the
+  tree, the properties and Colour's first height together: Colour gives the
+  difference, so its foot is never past the drawer's (it was 7 px past at
+  390 x 844). Dragged taller, it keeps its height against the tree's last
+  rows, which scroll, and gives way only to the drawer.
+
+`panelfold_probe` drives it at 1280 x 720 and 1920 x 1080 and
+`panelfold_phone_probe` at 390 x 844.
+
 ### A11. Keys: every tool has one, and a person can set their own (M)
 
 **Problem.**

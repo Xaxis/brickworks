@@ -13772,6 +13772,119 @@ msgstr "Un trait fin là où chaque pièce rencontre la suivante, pour lire les 
 msgid "Off, the parts are drawn without their studs, each in its place: the shapes alone, and a big model drawn faster"
 msgstr "Désactivé, les pièces sont dessinées sans leurs tenons, chacune à sa place : les formes seules, et un grand modèle dessiné plus vite"
 
+# View, Stress's Strengthen (APP_UX8 #8, strengthen): the fewest parts that make a weak
+# joint hold, offered, drawn as a ghost and put down as one step; From my bricks.
+
+msgid "Strengthen"
+msgstr "Renforcer"
+
+msgid "Put the parts shown down: the joint then holds. One step to undo"
+msgstr "Poser les pièces montrées : la liaison tient alors. Une seule étape à annuler"
+
+msgid "From my bricks"
+msgstr "Avec mes briques"
+
+msgid "Make the fix of parts you own, in colours you have one of left"
+msgstr "Faire le renfort avec des pièces que vous possédez, dans des couleurs dont il vous en reste une"
+
+msgid "Looking for the fewest parts that make it hold…"
+msgstr "Recherche du moins de pièces possible pour qu'elle tienne…"
+
+msgid "No fix of up to three parts has room here: brace it by hand."
+msgstr "Aucun renfort de trois pièces au plus n'a la place ici : renforcez-la à la main."
+
+msgid "No fix of up to three parts has room here: hold it with studs by hand."
+msgstr "Aucun renfort de trois pièces au plus n'a la place ici : tenez-la par des tenons à la main."
+
+msgid "Strengthen adds %s"
+msgstr "Renforcer ajoute %s"
+
+msgid "Then it holds about %s times its working load"
+msgstr "Elle tient alors environ %s fois sa charge de travail"
+
+msgid "Then it holds about %s times its working load."
+msgstr "Elle tient alors environ %s fois sa charge de travail."
+
+msgid "Then nothing levers it"
+msgstr "Plus rien ne fait alors levier dessus"
+
+msgid "Then nothing levers it."
+msgstr "Plus rien ne fait alors levier dessus."
+
+msgid "Then it is held square, on pins on two lines"
+msgstr "Elle est alors tenue d'équerre, sur des connecteurs sur deux lignes"
+
+msgid "Then it is held square, on pins on two lines."
+msgstr "Elle est alors tenue d'équerre, sur des connecteurs sur deux lignes."
+
+msgid "All from your bricks."
+msgstr "Tout avec vos briques."
+
+msgid "Not all from your bricks: you have none of one left."
+msgstr "Pas tout avec vos briques : il ne vous reste aucune pièce de l'une d'elles."
+
+msgid "a %s through the next two holes in line"
+msgstr "%s dans les deux trous suivants alignés"
+
+msgid "a %s under it, down to the ground"
+msgstr "%s dessous, jusqu'au sol"
+
+msgid "a %s and a %s under it, down to the ground"
+msgstr "%s et %s dessous, jusqu'au sol"
+
+msgid "a %s, a %s and a %s under it, down to the ground"
+msgstr "%s, %s et %s dessous, jusqu'au sol"
+
+msgid "a %s under it, down to the baseplate"
+msgstr "%s dessous, jusqu'à la plaque de base"
+
+msgid "a %s and a %s under it, down to the baseplate"
+msgstr "%s et %s dessous, jusqu'à la plaque de base"
+
+msgid "a %s, a %s and a %s under it, down to the baseplate"
+msgstr "%s, %s et %s dessous, jusqu'à la plaque de base"
+
+msgid "a %s under it, down to the %s under it"
+msgstr "%s dessous, jusqu'à %s en dessous"
+
+msgid "a %s and a %s under it, down to the %s under it"
+msgstr "%s et %s dessous, jusqu'à %s en dessous"
+
+msgid "a %s, a %s and a %s under it, down to the %s under it"
+msgstr "%s, %s et %s dessous, jusqu'à %s en dessous"
+
+msgid "a %s across the seam, onto the %s beside it"
+msgstr "%s à cheval sur le joint, sur %s à côté"
+
+msgid "a %s across the seam, onto the %s beside it, on a %s"
+msgstr "%s à cheval sur le joint, sur %s à côté, sur %s"
+
+msgid "a %s across the seam, onto the %s beside it, on a %s and a %s"
+msgstr "%s à cheval sur le joint, sur %s à côté, sur %s et %s"
+
+msgid "a %s over the seam, onto the %s beside it"
+msgstr "%s par-dessus le joint, sur %s à côté"
+
+msgid "a %s over the seam, onto the %s beside it, on a %s"
+msgstr "%s par-dessus le joint, sur %s à côté, sur %s"
+
+msgid "a %s over the seam, onto the %s beside it, on a %s and a %s"
+msgstr "%s par-dessus le joint, sur %s à côté, sur %s et %s"
+
+msgid "a %s under the seam, into the %s beside it"
+msgstr "%s sous le joint, dans %s à côté"
+
+msgid "strengthened: %s"
+msgstr "renforcé : %s"
+
+msgid "%s takes it back"
+msgstr "%s l'annule"
+
+msgid "Strengthen: %s"
+msgstr "Renforcer : %s"
+
+msgid "the model changed: its fix is looked for again"
+msgstr "le modèle a changé : son renfort est recherché à nouveau"
 # The beta's welcome after signing up, and its row in Account (betajoin)
 msgid "Open beta"
 msgstr "Bêta ouverte"
@@ -13894,6 +14007,15 @@ msgstr "le GIF n’a pas été terminé : %s"
 
 msgid "no GIF: its frames would not read back"
 msgstr "pas de GIF : ses images n’ont pas pu être relues"
+
+# Measure by finger (APP_UX8 #10 fingertools): the ruler's words on a phone, where
+# a tap is what puts a point down and there is no Esc to press.
+msgid "Measuring: tap a point, then another"
+msgstr "Mesure : touchez un point, puis un autre"
+
+msgid "0 mm — tap another point"
+msgstr "0 mm — touchez un autre point"
+
 # A colour's swatch: in how many sets the part comes in it, and rare in it
 # in three or fewer (APP_UX7 #21, rarity).
 
@@ -14020,3 +14142,266 @@ msgstr "relâchez Shift pour emporter aussi les %s posées dessus"
 
 msgid "what rests on it stays, more than a drag can follow"
 msgstr "ce qui est posé dessus reste : plus qu'un glisser ne peut emporter"
+
+# A part pointed out to everyone in a Build together session (APP_UX8
+# #17, pointat).
+msgid "Point it out to the others"
+msgstr "Le montrer aux autres"
+
+msgid "Everyone in your Build together session sees the part under the pointer, or the parts selected, outlined in your colour with your name for 5 seconds; Esc takes it back"
+msgstr "Tous ceux de votre session Construire ensemble voient la pièce sous le pointeur, ou les pièces sélectionnées, entourée de votre couleur avec votre nom pendant 5 secondes ; Échap l'annule"
+
+msgid "Start or join a session first: File › Build together…"
+msgstr "Démarrez ou rejoignez d'abord une session : Fichier › Construire ensemble…"
+
+msgid "Point a part out in a Build together session: start or join one from File, Build together…."
+msgstr "On montre une pièce dans une session Construire ensemble : démarrez-en ou rejoignez-en une depuis Fichier, Construire ensemble…."
+
+msgid "Put the pointer on a part, or select it, to point it out."
+msgstr "Placez le pointeur sur une pièce, ou sélectionnez-la, pour la montrer."
+
+msgid "Pointed out for 5 seconds, but nobody else is here now."
+msgstr "Montré pendant 5 secondes, mais personne d'autre n'est là pour l'instant."
+
+msgid "Pointed out to %s for 5 seconds. Esc takes it back."
+msgstr "Montré à %s pendant 5 secondes. Échap l'annule."
+
+msgid "%s points at %s. Esc puts it away."
+msgstr "%s montre %s. Échap le masque."
+
+msgid "Your Claude points out %s to the others. Esc takes it back."
+msgstr "Votre Claude montre %s aux autres. Échap l'annule."
+
+msgid "%s's Claude"
+msgstr "Claude de %s"
+
+msgid "You"
+msgstr "Vous"
+
+msgid "Your Claude"
+msgstr "Votre Claude"
+
+msgid "To show the others a part, put the pointer on it and press %s, or right-click it: Point it out to the others."
+msgstr "Pour montrer une pièce aux autres, placez le pointeur dessus et appuyez sur %s, ou faites un clic droit dessus : Le montrer aux autres."
+
+# panelfold: every section of a column folds and sizes one way (PanelStack).
+
+msgid "Fold %s"
+msgstr "Replier %s"
+
+msgid "Unfold %s"
+msgstr "Déplier %s"
+
+msgid "Click to fold it to its header"
+msgstr "Cliquer pour le replier sur son en-tête"
+
+msgid "Click to open it"
+msgstr "Cliquer pour l'ouvrir"
+
+msgid "Every part there is, by shelf and category, to search, take in hand or drag into the model"
+msgstr "Toutes les pièces, par étagère et par catégorie, à chercher, prendre en main ou glisser dans le modèle"
+
+msgid "The colour in hand: for the part put down next, or to paint what is selected"
+msgstr "La couleur en main : pour la prochaine pièce posée, ou pour peindre la sélection"
+
+msgid "Double-click to put it back as it was at first"
+msgstr "Double-cliquer pour la remettre comme au début"
+
+msgid "Resize %s"
+msgstr "Redimensionner %s"
+
+msgid "Resize the panels"
+msgstr "Redimensionner les panneaux"
+
+msgid "Reset panel layout"
+msgstr "Réinitialiser les panneaux"
+
+msgid "Every panel open again and as tall as at first: the parts bin, Colour, the model tree and the properties"
+msgstr "Chaque panneau rouvert et aussi haut qu'au début : le bac à pièces, Couleur, l'arborescence du modèle et les propriétés"
+
+# A file written where nobody was asked takes the next free name, and an STL's
+# or a 3MF's line says whether each object is a closed solid (APP_UX8 #11, mcpreach).
+msgid "%s was there already, and is kept"
+msgstr "%s était déjà là, et est conservé"
+
+msgid "every object a closed solid, with nothing for a slicer to repair"
+msgstr "chaque objet un solide fermé, rien à réparer pour un trancheur"
+
+msgid "%d of %d objects closed solids; not closed: %s, from %s, which a slicer repairs"
+msgstr "%d objets sur %d solides fermés ; non fermés : %s, à cause de %s, qu'un trancheur répare"
+
+msgid "every part a closed solid, with nothing for a slicer to repair"
+msgstr "chaque pièce un solide fermé, rien à réparer pour un trancheur"
+
+msgid "not a closed solid: %d of %d parts are open as LDraw draws them (%s), which a slicer repairs as it loads them; a 3MF closes every part"
+msgstr "pas un solide fermé : %d pièces sur %d sont ouvertes telles que LDraw les dessine (%s), ce qu'un trancheur répare au chargement ; un 3MF ferme chaque pièce"
+
+# View, Stress's Lift (APP_UX8 #13, loadtest): the model lifted by a part, what
+# each joint between carries, and what lets go, tinted and named; and Stress's legend.
+msgid "Lift"
+msgstr "Soulever"
+
+msgid "Lift the model by a part, off the floor: press, then click the part. What lets go comes away, red"
+msgstr "Soulever le modèle par une pièce, au-dessus du sol : appuyez, puis cliquez sur la pièce. Ce qui lâche se détache, en rouge"
+
+msgid "In the hand: the part it is lifted by"
+msgstr "En main : la pièce par laquelle il est soulevé"
+
+msgid "Comes away: a joint lets go, or nothing holds it"
+msgstr "Se détache : une liaison lâche, ou rien ne la tient"
+
+msgid "Holds past its working load, or swings on a pin"
+msgstr "Tient au-delà de sa charge de travail, ou pivote sur un connecteur"
+
+msgid "Holds: faded"
+msgstr "Tient : estompée"
+
+msgid "Past its working load: the first to give"
+msgstr "Au-delà de sa charge de travail : la première à céder"
+
+msgid "Near it: holds it less than twice over"
+msgstr "Proche : la tient moins de deux fois"
+
+msgid "Holds it twice over, or shares its load: faded"
+msgstr "La tient deux fois, ou partage sa charge : estompée"
+
+msgid "Click the part to lift the model by."
+msgstr "Cliquez sur la pièce par laquelle soulever le modèle."
+
+msgid "Click another part to lift by it"
+msgstr "Cliquez sur une autre pièce pour soulever par elle"
+
+msgid "Lift again sets it down."
+msgstr "Soulever à nouveau le repose."
+
+msgid "Lifting it by %s…"
+msgstr "Soulèvement par %s…"
+
+msgid "lets go"
+msgstr "lâche"
+
+msgid "left behind"
+msgstr "reste en place"
+
+msgid "falls off"
+msgstr "tombe"
+
+msgid "swings"
+msgstr "pivote"
+
+msgid "holds %s"
+msgstr "tient %s"
+
+msgid "%s and %d more"
+msgstr "%s et %d de plus"
+
+msgid "lift: click the part to lift the model by"
+msgstr "soulever : cliquez sur la pièce par laquelle soulever le modèle"
+
+msgid "lift off: the model stands on the floor again"
+msgstr "soulever désactivé : le modèle repose à nouveau sur le sol"
+
+msgid "lift: the part it was lifted by is gone"
+msgstr "soulever : la pièce par laquelle il était soulevé a disparu"
+
+msgid "click another"
+msgstr "cliquez sur une autre"
+
+msgid "Lifted by %s: everything comes with it, %s g"
+msgstr "Soulevé par %s : tout vient avec, %s g"
+
+msgid "Lifted by %s: 1 part comes away, %s g of %s"
+msgstr "Soulevé par %s : 1 pièce se détache, %s g sur %s"
+
+msgid "Lifted by %s: %d parts come away, %s g of %s"
+msgstr "Soulevé par %s : %d pièces se détachent, %s g sur %s"
+
+msgid "%s lets go of all it holds"
+msgstr "%s lâche tout ce qu'elle tient"
+
+msgid "%s lets go of %s"
+msgstr "%s lâche %s"
+
+msgid "%s g hangs from it on 1 stud"
+msgstr "%s g y pendent sur 1 tenon"
+
+msgid "%s g is levered off it on 1 stud"
+msgstr "%s g font levier dessus sur 1 tenon"
+
+msgid "%s g hangs from it on %d studs"
+msgstr "%s g y pendent sur %d tenons"
+
+msgid "%s g is levered off it on %d studs"
+msgstr "%s g font levier dessus sur %d tenons"
+
+msgid "%s times what lets it go (%s of %s N·cm)"
+msgstr "%s fois ce qui la fait lâcher (%s sur %s N·cm)"
+
+msgid "%s falls off %s, which it only stood on, its weight past where they touch"
+msgstr "%s tombe de %s, sur laquelle elle ne faisait que reposer, son poids au-delà de leur contact"
+
+msgid "what was under it"
+msgstr "ce qui était dessous"
+
+msgid "%s stays where it was: nothing joins it to %s"
+msgstr "%s reste où elle était : rien ne la relie à %s"
+
+msgid "%d parts come away with it, %s g"
+msgstr "%d pièces se détachent avec elle, %s g"
+
+msgid "%s holds the rest on %d studs together: %s of what lets it go"
+msgstr "%s tient le reste sur %d tenons ensemble : %s de ce qui la fait lâcher"
+
+msgid "%s g past it"
+msgstr "%s g au-delà"
+
+msgid "past its studs' working load"
+msgstr "au-delà de la charge de travail de ses tenons"
+
+msgid "%s hangs from %s on 1 stud: %s of what lets it go"
+msgstr "%s pend de %s sur 1 tenon : %s de ce qui la fait lâcher"
+
+msgid "%s stands on %s on 1 stud: %s of what lets it go"
+msgstr "%s repose sur %s sur 1 tenon : %s de ce qui la fait lâcher"
+
+msgid "%s hangs from %s on %d studs: %s of what lets it go"
+msgstr "%s pend de %s sur %d tenons : %s de ce qui la fait lâcher"
+
+msgid "%s stands on %s on %d studs: %s of what lets it go"
+msgstr "%s repose sur %s sur %d tenons : %s de ce qui la fait lâcher"
+
+msgid "%s is held square on %s: nothing turns it"
+msgstr "%s est tenue d'équerre sur %s : rien ne la fait tourner"
+
+msgid "%s swings on %s, and stays on"
+msgstr "%s pivote sur %s, et reste en place"
+
+msgid "%s turns on %s: %s of what turns it"
+msgstr "%s tourne sur %s : %s de ce qui la fait tourner"
+
+msgid "%s: lifted by it, it holds the rest"
+msgstr "%s : soulevé par elle, elle tient le reste"
+
+msgid "%s: comes away, as %s lets go of all it holds"
+msgstr "%s : se détache, car %s lâche tout ce qu'elle tient"
+
+msgid "%s: comes away with %s, which lets go"
+msgstr "%s : se détache avec %s, qui lâche"
+
+msgid "%s: falls off what it only stood on"
+msgstr "%s : tombe de ce sur quoi elle ne faisait que reposer"
+
+msgid "%s: stays where it was, joined to nothing lifted"
+msgstr "%s : reste où elle était, reliée à rien de soulevé"
+
+msgid "%s: comes with it, held more than one way"
+msgstr "%s : vient avec, tenue de plus d'une façon"
+
+msgid "The baseplate is the floor: lift the model by one of its own parts."
+msgstr "La plaque de base est le sol : soulevez le modèle par l'une de ses propres pièces."
+
+msgid "Its shape has not come yet: lift it again in a moment."
+msgstr "Sa forme n'est pas encore arrivée : soulevez-le à nouveau dans un instant."
+
+msgid "There is no part #%d in the model to lift it by."
+msgstr "Il n'y a pas de pièce #%d dans le modèle par laquelle le soulever."

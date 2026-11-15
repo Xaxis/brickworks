@@ -107,7 +107,7 @@ compress_web() {
     wait "$p" || { echo "export FAILED: compressing $dir"; return 1; }
   done
   for f in "$dir/index.wasm" "$dir/index.pck" "$dir/index.data.pck" "$dir/index.parts.bin" \
-      "$dir/index.primitives.bin" "$dir/index.hdri.bin" "$dir/index.js"; do
+      "$dir/index.primitives.bin" "$dir/index.hdri.bin" "$dir/index.fonts.bin" "$dir/index.js"; do
     [ -f "$f.br" ] && [ -f "$f.gz" ] || { echo "export FAILED: no .br/.gz beside $f"; return 1; }
   done
 }
@@ -121,7 +121,8 @@ report_web() {
   for f in "data.pck:what the start reads, fetched while the scripts compile" \
       "parts.bin:parts fetched after the start" \
       "primitives.bin:LDraw's primitives, when a part needs them" \
-      "hdri.bin:Studio's photographed light, when a picture is lit by it"; do
+      "hdri.bin:Studio's photographed light, when a picture is lit by it" \
+      "fonts.bin:the booklet's type, when its PDF or pages are made"; do
     printf "  %-15s %-9s br %-9s (%s)\n" "${f%%:*}" "$(human "$(bytes "$dir/index.${f%%:*}")")" \
       "$(human "$(bytes "$dir/index.${f%%:*}.br")")" "${f#*:}"
   done

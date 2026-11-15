@@ -4,25 +4,33 @@
   2026-10-19): one at a time, set by the site's owner on /admin, with rules
   Brickworks checks on each model as it is entered: at most so many parts,
   only the parts of one official set, marked Tested. Designers enter a model
-  of theirs from its page, saying whether they built it by hand or with the
-  assistant, and the two are shown and judged apart. People signed in and 13
-  or over vote, once in each group; when it ends the most voted in each
-  wins, and the winner's card and designer's page say so.
+  of theirs, saying whether they built it by hand or with the assistant, and
+  the two are shown and judged apart. People signed in and 13 or over vote,
+  once in each group, never for their own; the votes stay hidden until it
+  ends, and the most voted in each wins.
 
-  Between months (supabase/challenge_year.sql, 2026-10-24): under the one
-  shown, the next one's theme and days once it is told (the owner sets a
-  year of themes on /admin, each told a month before it opens), and the
-  challenges that ran, each with its winners as the gallery's cards and a
-  link to its own page, /challenge?id=N, which draws it as this one is.
+  Laid out as the best contest pages are (challengepage, 2026-11-13, the
+  owner: "ugly and just really bad ui/ux"; Printables', Devpost's, itch.io's
+  and Kaggle's): a head that sells the theme, its status (Open, Opens soon,
+  Ended) and a live countdown to the end, the numbers that matter and one
+  way in, Enter, beside Share; the rules as the checks a model must pass;
+  the winners first once it ends; the entries as the gallery's cards, the
+  two groups as tabs with their counts, a sort, your own entry and your
+  vote marked on their cards; how it works in three steps, the rest
+  folded; what comes next, and the challenges that ran as a grid of cards.
+
+  Between months (supabase/challenge_year.sql, 2026-10-24): the next one's
+  theme and days once it is told, and the challenges that ran, each a card
+  to its own page, /challenge?id=N, which draws it as this one is.
 
   Share (docs/SOCIAL.md section 7) opens the site's share sheet
   (web/share-sheet.js) with the challenge's own page, /challenge?id=N, so a
   link posted while one runs still opens it once the next has begun.
 
   challenge.js draws it from /api/people?op=challenge, every name as text
-  and never as markup, with the gallery's own cards (directory.css). No
-  inline script: the site's content security policy allows none it has not
-  hashed. No style of its own: the look is /site.css and /directory.css.
+  and never as markup, with the gallery's own cards. No inline script: the
+  site's content security policy allows none it has not hashed. No style of
+  its own: the look is /site.css and /directory.css.
 -->
 <html lang="en">
 <head>
@@ -95,60 +103,104 @@
 	</div>
 </header>
 
-<main id="main">
-	<div class="wrap person challenge" id="challenge">
-		<nav class="crumbs" id="crumbs" aria-label="Where it is" hidden><a href="/challenge">Challenges</a> › <span id="crumb"></span></nav>
-		<!-- The challenge itself, lit as a landing page's last offer is (site.css .halo). -->
-		<div class="challenge-hero halo">
-			<p class="eyebrow" id="eyebrow">Monthly challenge</p>
-			<h1 id="title">This month’s challenge</h1>
-			<p class="handle" id="days"></p>
-			<p class="bio" id="brief"></p>
-			<p class="share-line"><button type="button" class="icon-btn labelled" id="share" data-share aria-label="Share"
-				aria-haspopup="dialog" aria-controls="share-sheet" hidden><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#share"></use></svg><span class="word">Share</span></button></p>
-		</div>
-		<p class="note" id="loading">Fetching the challenge…</p>
-		<p class="note" id="none" hidden>There is no challenge just now. The next one is set here: look again soon.</p>
-		<p class="note" id="broken" hidden>The challenge did not load just now. Try again in a minute.</p>
-		<noscript><p class="note">The challenge is drawn with a little JavaScript, which is off in this browser.</p></noscript>
-
-		<section id="rules-part" aria-labelledby="rules-h" hidden>
-			<h2 id="rules-h">The rules</h2>
-			<ul class="lists" id="rules"></ul>
-			<p class="note" id="no-rules" hidden>No rules but the brief.</p>
-			<p class="note">Brickworks checks every rule on the model as it was shared, when it is entered, and
-				again while the challenge runs: an entry whose newer version breaks one says so, and is not
-				counted.</p>
-		</section>
-
-		<section id="how" aria-labelledby="how-h" hidden>
-			<h2 id="how-h">How to enter</h2>
-			<p class="note">Share a model in the gallery with your name on it, then on its page press
-				<b>Enter this month’s challenge</b> and say whether you built it by hand or with the assistant:
-				the two are judged apart. Up to three of yours. People signed in and 13 or over vote, once in each
-				group; the votes are counted when it ends, and the most voted in each group wins.</p>
-		</section>
-
-		<section id="winners" aria-labelledby="winners-h" hidden>
-			<h2 id="winners-h">The winners</h2>
-			<div class="models wide" id="winner-cards"></div>
-		</section>
-
-		<div id="groups"></div>
-		<p class="said" id="said" role="status"></p>
-
-		<section id="next" aria-labelledby="next-h" hidden>
-			<h2 id="next-h">Coming next</h2>
-			<div class="card next-one">
-				<h3 id="next-title"></h3>
-				<p class="handle" id="next-days"></p>
-				<p id="next-brief"></p>
+<main id="main" class="challenge">
+	<!-- The challenge: what it asks, where it stands and the way in. -->
+	<div class="page-hero challenge-head">
+		<div class="wrap wide">
+			<nav class="crumbs" id="crumbs" aria-label="Where it is" hidden><a href="/challenge">Challenges</a> › <span id="crumb"></span></nav>
+			<div class="challenge-top">
+				<div class="challenge-words">
+					<p class="challenge-status"><span class="badge" id="status" hidden></span><span class="eyebrow" id="eyebrow">Monthly challenge</span></p>
+					<h1 id="title">This month’s challenge</h1>
+					<p class="lede" id="brief"><span class="bone wide"></span><span class="bone"></span></p>
+					<div class="rules-box" id="rules-part" hidden>
+						<p class="rules-h" id="rules-h">The rules Brickworks checks</p>
+						<ul class="ticks" id="rules" aria-labelledby="rules-h"></ul>
+						<p class="note" id="no-rules" hidden>No rules but the brief.</p>
+					</div>
+					<div class="actions" id="acts">
+						<button type="button" class="cta big" id="enter" hidden>Enter a model</button>
+						<a class="cta big" id="start" href="/app" hidden>Start building</a>
+						<button type="button" class="cta ghost big" id="share" data-share aria-haspopup="dialog" aria-controls="share-sheet" hidden><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#share"></use></svg><span>Share</span></button>
+						<a class="cta ghost big" id="to-hub" href="/challenge" hidden>This month’s challenge</a>
+						<button type="button" class="cta big" id="again" hidden>Try again</button>
+					</div>
+					<p class="note" id="enter-note" hidden>Up to three of your models, each built by hand or with the assistant.</p>
+				</div>
+				<aside class="challenge-clock" id="clock" aria-labelledby="clock-h">
+					<p class="clock-h" id="clock-h">Monthly challenge</p>
+					<div class="countdown" id="countdown" role="timer" hidden>
+						<span aria-hidden="true"><b data-unit="days">0</b><small>days</small></span>
+						<span aria-hidden="true"><b data-unit="hours">0</b><small>hours</small></span>
+						<span aria-hidden="true"><b data-unit="minutes">0</b><small>min</small></span>
+						<span aria-hidden="true"><b data-unit="seconds">0</b><small>sec</small></span>
+					</div>
+					<p class="days" id="days"><span class="bone"></span></p>
+					<div class="reach" id="reach" aria-hidden="true" hidden><span></span></div>
+					<ul class="numbers" id="numbers" hidden></ul>
+				</aside>
 			</div>
+		</div>
+	</div>
+
+	<div class="wrap wide page-body">
+		<noscript><p class="state">The challenge is drawn with a little JavaScript, which is off in this browser.</p></noscript>
+
+		<!-- Once it ends: who won, one in each group, before everything else. -->
+		<section id="winners" class="challenge-part" aria-labelledby="winners-h" hidden>
+			<h2 id="winners-h">The winners</h2>
+			<div class="winners" id="winner-cards"></div>
 		</section>
 
-		<section id="past" aria-labelledby="past-h" hidden>
+		<!-- The entries: the two groups as tabs, each with its count, a sort, and the gallery's cards. -->
+		<section id="entries" class="challenge-part" aria-labelledby="entries-h" hidden>
+			<div class="entries-head">
+				<h2 id="entries-h">Entries</h2>
+				<div class="segmented" id="sort" role="group" aria-label="Sort the entries" hidden></div>
+			</div>
+			<div class="tabs" id="group-tabs" role="tablist" aria-label="Groups"></div>
+			<p class="vote-said" id="vote-said" hidden></p>
+			<div id="groups"></div>
+			<p class="said" id="said" role="status"></p>
+		</section>
+
+		<!-- How it works: entering in three steps; voting and the rules folded. -->
+		<section id="how" class="challenge-part" aria-labelledby="how-h" hidden>
+			<h2 id="how-h">How it works</h2>
+			<ol class="steps">
+				<li><h3>Build it</h3><p>Build to the brief in the app, by hand or with the assistant, keeping the rules.</p></li>
+				<li><h3>Share it in the gallery</h3><p>Share it with your name on it and Show it in the gallery ticked.</p></li>
+				<li><h3>Enter it</h3><p>Press Enter a model, choose it and say how you built it. Up to three of yours.</p></li>
+			</ol>
+			<details class="qa">
+				<summary>How voting works</summary>
+				<div>
+					<p>People signed in and 13 or over vote, once in each group, and never for a model of their own. A vote cannot be moved once it is cast.</p>
+					<p>The votes stay hidden until the challenge ends, so nobody follows the crowd. Then they are counted, and the most voted entry in each group wins; a tie goes to the one entered first.</p>
+				</div>
+			</details>
+			<details class="qa">
+				<summary>How the rules are checked</summary>
+				<div>
+					<p>Brickworks checks every rule on the model as it was shared, when it is entered and again while the challenge runs. An entry whose newer version breaks one says so on its card, and is not counted.</p>
+					<p>Built by hand and built with the assistant are judged apart, each with its own winner.</p>
+				</div>
+			</details>
+		</section>
+
+		<section id="next" class="challenge-part" aria-labelledby="next-h" hidden>
+			<h2 id="next-h">Coming next</h2>
+			<article class="next-one">
+				<p class="challenge-status"><span class="badge accent" id="next-when"></span></p>
+				<h3 id="next-title"></h3>
+				<p id="next-brief"></p>
+				<p class="note" id="next-days"></p>
+			</article>
+		</section>
+
+		<section id="past" class="challenge-part" aria-labelledby="past-h" hidden>
 			<h2 id="past-h">Past challenges</h2>
-			<div id="past-list"></div>
+			<div class="models past-grid" id="past-list"></div>
 		</section>
 	</div>
 </main>

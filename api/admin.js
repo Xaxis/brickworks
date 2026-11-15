@@ -38,6 +38,11 @@
 //                                        of model X (the newest without v):
 //                                        the app's finding, which the server
 //                                        cannot check (supabase/tested.sql)
+//   POST /api/admin?op=list_down&id=X    take list X's name and description
+//                                        down (lists1, supabase/lists.sql):
+//                                        private, and never public again; still
+//                                        its owner's, with everything in it;
+//                                        the reports about it settled
 //   POST /api/admin?op=uncomment&comment=N  remove comment N, for good
 //   POST /api/admin?op=remove_photo&photo=P  take photo P of a build out: its
 //                                        file deleted from storage, that one
@@ -111,6 +116,22 @@
 //                                        on a preview that preview's)
 //   POST /api/admin?op=beta_waitlist&account=U  {note}: a new application
 //                                        on the waitlist, by hand
+//   GET  /api/admin?op=plans             the plans and what each includes,
+//                                        the customers, comps, revenue by
+//                                        month and Admission's events, read
+//                                        from Admission (api/_console_plans.js)
+//   GET  /api/admin?op=mail[&days=N][&tests=1]  every mail sent, by kind and
+//                                        day, with what Resend said of each
+//                                        (api/_console_mail.js)
+//   GET  /api/admin?op=connector[&account=U][&tests=1]  the Claude
+//                                        connector's accounts and
+//                                        conversations (api/_console_connector.js)
+//   GET  /api/admin?op=site              the releases, the crons' last runs
+//                                        and the backend's health
+//                                        (api/_console_site.js)
+//
+// Part B (console2, 2026-11-12): those four read, and are not audited, as
+// no read is; none of them changes anything anywhere.
 //
 // The console (2026-11-12, docs/ADMIN.md): every POST above is kept in the
 // audit (api/_console.js audited), whatever came of it, before it answers.
@@ -140,6 +161,10 @@ import { betaDecide, betaGrant, betaQueue, betaSwitchRoute, betaTesters, betaWai
 import { audited, auditRoute, overview, people, person, switches } from "./_console.js";
 import { feedbackFile, feedbackInbox, feedbackReply, feedbackTriage } from "./_feedback.js";
 import { forgetSettings } from "./_settings.js";
+import { plansRead } from "./_console_plans.js";
+import { mailRead } from "./_console_mail.js";
+import { connectorRead } from "./_console_connector.js";
+import { siteRead, supabaseHealth } from "./_console_site.js";
 
 const ID = /^[A-Za-z0-9]{10}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -181,6 +206,13 @@ export default async function handler(request, response) {
     claims = await verify(bearer(request), request);
   } catch (error) {
     const status = error instanceof AuthError ? error.status : 401;
+    // The sign-in service out of reach: whose fault, and where it is put
+    // right (Supabase refused every request for its spend cap, 2026-11-12).
+    // Anybody can read the same from Supabase's own address.
+    if (status === 503) {
+      const health = await supabaseHealth().catch(() => null);
+      if (health && !health.ok) return response.status(503).json({ error: health.fix, health: health.restricted ? "restricted" : "down" });
+    }
     return response.status(status).json({ error: error.message });
   }
   if (!isMaster(claims)) {
@@ -199,6 +231,8 @@ export default async function handler(request, response) {
     remove_avatar: takeAvatarOut, pick, unpick, challenge: setChallenge, end_challenge: endChallenge, plan: planYear,
     beta_decide: betaDecide, beta_grant: betaGrant, beta_waitlist: betaWaitlist, beta_switch: betaSwitchRoute,
     feedback_triage: feedbackTriage, feedback_reply: feedbackReply };
+  // A reported list's name and words taken down (lists1, docs/ADMIN.md).
+  acts.list_down = takeListDown;
   if (request.method === "POST" && acts[op]) {
     return audited(op, acts[op], request, response, claims, (error) => (error instanceof AuthError
       || error instanceof BuildRefusal || error instanceof AvatarRefusal ? error.status : 502));
@@ -213,6 +247,10 @@ export default async function handler(request, response) {
     overview: () => overview(request, tests),
     people: () => people(tests),
     switches: () => switches(request),
+    plans: () => plansRead(),
+    mail: () => mailRead(request, tests),
+    connector: () => connectorRead(tests, request.query?.account ? String(request.query.account).toLowerCase() : null),
+    site: () => siteRead(),
   };
   if (reads[op] || op === "person" || op === "audit") {
     try {
@@ -221,7 +259,8 @@ export default async function handler(request, response) {
         const one = await person(String(request.query?.account || ""), tests);
         return one ? response.status(200).json(one) : response.status(404).json({ error: "no such account" });
       }
-      return response.status(200).json(await reads[op]());
+      const read = await reads[op]();
+      return read === null ? response.status(404).json({ error: "no such account" }) : response.status(200).json(read);
     } catch (error) {
       return response.status(error instanceof AuthError ? error.status : 502).json({ error: error.message });
     }
@@ -305,6 +344,35 @@ async function uncomment(request, response) {
   if (removed !== true) return response.status(404).json({ error: "no such comment" });
   await settle(`comment=eq.${comment}`, "taken_out");
   return response.status(200).json({ comment, removed: true });
+}
+
+/// A list a stranger named or described as nobody should read, taken down
+/// (lists1): made private, and kept so (taken_down_at; the database refuses
+/// it public again, supabase/lists.sql), so its name and words are shown to
+/// nobody but its owner, who keeps it and everything in it. What was
+/// reported about it is settled.
+async function takeListDown(request, response) {
+  const id = String(request.query?.id || "");
+  if (!ID.test(id)) return response.status(400).json({ error: "name a list: ?id=<ten characters>" });
+  const rows = await db(`model_collections?id=eq.${id}`, { method: "PATCH",
+    body: { public: false, taken_down_at: new Date().toISOString() }, prefer: "return=representation" });
+  if (!Array.isArray(rows) || rows.length === 0) return response.status(404).json({ error: "no list at that id" });
+  await settle(`collection=eq.${id}`, "taken_out");
+  return response.status(200).json({ id, public: false, taken_down: true });
+}
+
+/// The lists [ids] reported, as the owner reads a report of one: its name,
+/// its words, whose and whether it is shown; none before lists.sql's
+/// columns, or a list gone.
+async function listsReported(ids) {
+  if (!ids.length) return new Map();
+  try {
+    const rows = await asServer(`/rest/v1/model_collections?id=in.(${ids.filter((id) => ID.test(id)).join(",")})`
+      + "&select=id,name,description,kind,public,owner,taken_down_at");
+    return new Map((rows || []).map((row) => [row.id, row]));
+  } catch {
+    return new Map();
+  }
 }
 
 /// Out of the gallery, and barred from it: listed false, and a republish
@@ -685,6 +753,8 @@ async function report(tests = false) {
   const photos = await photosReported(reports.map((one) => one.id)).catch(() => new Map());
   // The picture each reported profile shows as its avatar, if one of its own.
   const faces = await facesOf(reports.map((one) => one.handle).filter(Boolean));
+  // Each reported list as it is (lists1).
+  const listsAbout = await listsReported([...new Set(reports.map((one) => one.collection).filter(Boolean))]);
 
   // Whose connectors, and when each was last heard from.
   const connectors = new Map();
@@ -736,6 +806,9 @@ async function report(tests = false) {
         id, words, at, hidden: Boolean(hidden), removed: Boolean(removed), email: emails.get(account) || null,
       }))(photos.get(report.id)) : null,
       picture: report.handle && faces.has(report.handle) ? pictureAt(faces.get(report.handle)) : null,
+      list: report.collection && listsAbout.has(report.collection) ? (({ name, description, kind, public: shown, owner, taken_down_at: down }) => ({
+        name, description, wishlist: kind === "want", public: Boolean(shown), down: Boolean(down), email: emails.get(owner) || null,
+      }))(listsAbout.get(report.collection)) : null,
     })),
     // The newest comments and the reported ones, newest first; who wrote
     // each, for the owner of this page alone.

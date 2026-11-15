@@ -326,6 +326,9 @@ sleep "${SHIP_CDN_WAIT:-90}"
 serves() { curl -s --max-time 30 https://brickworks.diy/app | grep -q "/b/$LIVE/"; }
 serves || { sleep 120; serves; } || {
   echo "SHIP: deployed, but https://brickworks.diy/app does not serve /b/$LIVE/"; exit 1; }
+# Written down for the owner's console (/admin#site): which release is live,
+# since now, with its train's title and units. Never fails a ship.
+"$HERE/release_live.sh" "$TAG" "$LIVE" "$S/$TAG.train" 2>&1 | sed 's/^/SHIP: /'
 # canary: sign-up still shut and a new person still signs in by a code, on
 # production's own route and settings (api/_canary.js, 2026-10-24).
 # Cleared first, as run_checks clears: an attempt before may have left its own.

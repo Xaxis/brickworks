@@ -409,15 +409,9 @@ func _ask(method: int, body: Variant) -> Dictionary:
 		return {"code": -1, "body": null}
 	var headers := PackedStringArray(["authorization: Bearer " + token,
 		"content-type: application/json"])
-	var http := HTTPRequest.new()
-	http.timeout = 60.0
-	add_child(http)
 	var sent: String = JSON.stringify(body) if body != null else ""
-	if http.request(Deployment.api_base() + "/api/collection", headers, method, sent) != OK:
-		http.queue_free()
-		return {"code": 0, "body": null}
-	var result: Array = await http.request_completed
-	http.queue_free()
+	var result: Array = await PageFetch.ask(self, Deployment.api_base() + "/api/collection", headers, method, sent,
+		60.0)
 	if _who() != asked_for:
 		return {"code": DROPPED, "body": null}
 	if int(result[0]) != HTTPRequest.RESULT_SUCCESS:

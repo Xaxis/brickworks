@@ -1009,8 +1009,8 @@ function buildPhotos(box) {
     }
     if (on) document.getElementById(`photo-${photo}`)?.remove();
     buildSaid.textContent = on ? say("Hidden: nobody else sees it now.") : say("Shown again: reload to see it in the strip.");
-    document.documentElement.dataset.buildHidden = on ? photo : "";
     await load();
+    document.documentElement.dataset.buildHidden = on ? photo : "";
   }
 
   open.addEventListener("click", async () => {
@@ -1059,8 +1059,8 @@ function buildPhotos(box) {
       open.hidden = false;
       tell("");
       buildSaid.textContent = say("Added. Thank you for building it.");
-      document.documentElement.dataset.buildPhoto = kept.body.id;
       await load();
+      document.documentElement.dataset.buildPhoto = kept.body.id;
     } finally {
       send.disabled = false;
     }

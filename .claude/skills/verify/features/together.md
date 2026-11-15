@@ -115,6 +115,39 @@ app, joined by a link (docs/TOGETHER.md).
   colour over the model's column) or they leave. While neither view moves
   nothing is drawn: `src/dev/idle_probe.gd` ("following another's view,
   standing still") fails past one frame a second.
+- Pointing a part out (pointat, APP_UX8 #17): **Point it out to the
+  others** (`Shell` command `together_point`, Alt-W in
+  `Keymap.PRESET_KEYS`, on a part's right-click menu only in a session,
+  under Comment on it…: `Shell._row_while`, `_shown`) points out the part
+  under the pointer from the key (`Main._pointer`, `EditVerbs.brick_at`),
+  else the selection; `Together.point_at` (up to `LOOK_PARTS` 50) outlines
+  it on every screen in the pointer's colour (a `SelectionOutline` of
+  `LOOK_WIDTH` 4) with their name over it (`_look_marker`: "You" or "Your
+  Claude" on their own), says "<name> points at <part>. Esc puts it away."
+  on the others' bars, for `LOOK_MS` 5 s from when it was pointed out.
+  It goes with the pointer, not the numbered changes: `op=point`'s
+  `look` {n (unix ms), sel by uid, at, age, claude} (`_pointer_now`,
+  sent at once past `POINT_MS` by `_look_due`), kept by the relay with
+  `since` (its clock less the age; `lookOf`), given by a poll as each
+  person's `look` {n, sel, at, claude, age} while under 5 s (`lookOut`;
+  the signature takes its n, and is as it was with none), read at the
+  edge by `TogetherWords.look`. Shown here until 5 s after it was pointed
+  out less its age when heard (`_show_looks`, `_expire_looks`); a key
+  heard is never shown again (`_looks_heard`). Sent before it is drawn
+  here (`point_at` draws it the frame after, `_show_looks_next_frame`: a
+  browser's fetch goes out only once its frame is over), and drawn by one
+  outline per person kept hidden between points (`_look_outlines`, let go
+  of after `LOOK_KEPT_MS` 60 s without one or at the session's end): a new
+  outline's targets held the frame that drew it 200-600 ms on a preview
+  under load. Esc while one is shown
+  (`Together._input`, before Main's) puts them away and nothing else: the
+  pointer's own taken back from everyone (`take_back_look`, a point
+  without it), another's on this screen alone. MCP `point_at` (part= or
+  parts=, a "look" tool) is the same as their Claude's ("Ann's Claude").
+  The panel's note says how (`TogetherDialog.POINT_WORDS`, its key from
+  the keymap). For checks: `looks_shown()` [{who, n, name, colour, parts,
+  left}] (also `window.brickworksTogether.looks`), `timing.looked`,
+  `look_sent`, `look_shown`, `look_drawn`, `look_gone`.
 - Comments pinned to parts (`src/assembly/pinned_comments.gd`
   `PinnedComments`, kept on `ModelStore.pins`; `src/ui/pins_view.gd`
   `PinsView`, the marks over the model's column; `src/ui/pins_dialog.gd`
@@ -227,6 +260,45 @@ signed in as someone else.
   gone when they point nowhere, its size kept with the view 2.5 times
   nearer); Follow clicked in the panel, the frame, following a turn, the wheel stopping it,
   Stop.
+- A part pointed out (pointat), the real app in a window with no server,
+  at both sizes: `tools/probe.sh pointat_probe` and
+  `PROBE_SIZE=1400x900 tools/probe.sh pointat_probe` (add `--shots=DIR`).
+  Expect `pointat probe: all checks passed`: out of a session Alt-W says
+  to start or join one, no right-click row, point_at says so; in one the
+  row under Comment on it…, pressed, the part outlined in this person's
+  colour off the pixels and sent by uid; Alt-W over another part points
+  it instead, by the same outline; Esc takes it back and the selection
+  stays, the outline hidden and kept; Ann's outlined in
+  her colour with her name off the pixels, said on the bar, there at 4 s
+  and gone after 5, 3 s old gone 2 s later, put away by Esc for good, her
+  Claude's named; her pointer on the part keeps its dot with its name put
+  away until the point goes; point_at in one call as "Your Claude"; 999999
+  refused; the session over, the outlines let go of; the panel opened
+  before a session and grown by it stays inside
+  the window (`TogetherDialog._keep_inside`).
+- Two tabs, the bar itself (`tools/web/pointat_flow.mjs`, the preview
+  check `pointat`, about 6 minutes, two SwiftShader browsers): `node
+  tools/web/pointat_flow.mjs --url=http://127.0.0.1:9011 --out=DIR` (the
+  relay serving a web export of this tree; its timed lines fail there, as
+  the relay answers a poll whole, never a line at a time) or
+  `--url=<preview>` with `BW_BYPASS` (the bar's own). Expect
+  `pointat_flow: all ok`: the owner's panel, grown by
+  Start, keeps Close in the window and closes; 20 Alt+W over parts, each
+  shown in the owner's tab at once and drawn in the second within 500 ms
+  at p95 by the owner's name, or (this box drawing in software under load)
+  95 of 100 within it or with their trip, the key handled to the line had,
+  within 500 ms less a frame each side; each round's stages from both
+  pages' `Together.timing` in `DIR/rounds.json`;
+  the owner's colour off the second tab's pixels; still there at 4.5 s,
+  gone by 5.7 s on both; the owner's Esc gone from the second within
+  500 ms; the second's Esc there alone; the owner's Claude's `point_at`
+  in one MCP call shown as "<owner>'s Claude" within 500 ms of its
+  answer. On a build without it, Alt+W shows nothing.
+- The relay's half, seconds: `python3 tools/minitest.py
+  tests/test_together_poll.py` (the `looked` case of
+  `tests/fixtures/together/poll_check.mjs`): a look goes out at once with
+  its age, ages out at 5 s, a point without it takes it back, seven
+  shapes refused 400, and the signature with none as it always was.
 - The desktop pair probe's B8 part (sections 4c to 4e and 6 of
   `together_probe.gd`, run with the relay holding
   `together_snapshot_parts`): selection outlined in e8590c, pointer p95

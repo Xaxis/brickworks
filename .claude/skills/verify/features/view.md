@@ -3,7 +3,7 @@
 Looking at the model: the camera, what the keys do, the booklet, mosaics, and the
 picture the assistant is shown.
 
-<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:the panel asked for last in front, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, cli:heldsteps probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe, ui:a long job says when it is done, cli:donenote probe, lib:line art and comic looks, cli:lineart probe, ui:a step's name, cli:stepnames probe, cli:stepnames2 probe, lib:driving along a path, cli:drive probe -->
+<!-- covers: ui:navigation presets, ui:left-button navigation, ui:view cube, ui:split view, ui:camera controls, ui:controls panel and hint, ui:keys of one's own, ui:colour keys, ui:what's this, ui:the panel asked for last in front, ui:pointer cursors, lib:renders for the critique, lib:studs written on the render, ui:build steps, cli:score the steps against real sets' authors, cli:build a model from its booklet's pages, cli:the same plans from two checkouts, ui:the author's steps, cli:the author's steps in a browser, ui:the booklet, ui:the booklet as a PDF and as PNG pages, ui:the booklet by hand, ui:the booklet page by hand, cli:the booklet by hand in a browser, ui:mosaic, lib:LEGO Art layout, lib:LEGO Art plans, ui:LEGO Art designed by Claude, cli:LEGO Art in a browser, lib:finishes, lib:true colour, ui:build animation, ui:cut-away, ui:x-ray, ui:stress view, cli:technic stress probe, ui:strengthen a weak joint, cli:strengthen probe, ui:lift by a part, cli:loadtest probe, cli:see inside in a browser, cli:drawn in a browser, ui:drawing only what changed, ui:photo-real render, lib:studio renderer, lib:product look, cli:product look in a browser, cli:photographed light in a browser, ui:motions panel, lib:posing joints, lib:keyframed animation, cli:animation probe, cli:animation walk, lib:motions, lib:playing motions, cli:motions probe, cli:motions panel probe, cli:motions render probe, ui:building video, cli:buildvideo probe, cli:render open check, cli:typing probe, cli:cad task frames, cli:cad task frames in a browser, cli:big models stay fast, lib:quitting cleanly, cli:quit probe, ui:a lighter look where frames are slow, ui:reference picture, ui:any step in one go, cli:steps3 probe, cli:steps_to probe, cli:steps_kept probe, cli:heldsteps probe, ui:the booklet's Studio extras, cli:booklet3 probe, cli:booklet safe probe, cli:a file's booklet runs nothing in a browser, ui:the booklet's page setup, cli:pagesetup probe, ui:what is set in the booklet kept over an open, cli:pullkept probe, lib:path tracer, ui:render queue, cli:pathtrace probe, ui:stud directions, ui:saved views, cli:savedviews probe, ui:two fingers' twist, cli:twist probe, ui:the booklet's own cover and colours, cli:booklook probe, ui:lights in the model, cli:lights probe, ui:edges and studs, cli:edges probe, ui:moving renders kept as a GIF, cli:video2 probe, ui:a long job says when it is done, cli:donenote probe, lib:line art and comic looks, cli:lineart probe, ui:a step's name, cli:stepnames probe, cli:stepnames2 probe, lib:driving along a path, cli:drive probe, ui:page editor motions and simulate by finger, cli:phonepanels probe -->
 
 ## Sub-features
 
@@ -721,6 +721,72 @@ picture the assistant is shown.
   in shots/stress_list/; `-- time FILE RUNS` times Stress coming on, for a
   base checkout too); `src/dev/stress_sets.gd -- FILE.mpd ...` counts red and
   amber on any sets.
+- `strengthen a weak joint` (`src/assembly/strengthen.gd`, `Strengthen`;
+  APP_UX8 #8 strengthen): with a red or amber row of Stress's panel chosen,
+  the fewest parts that make the joint hold, offered under the row's words
+  ("Strengthen adds a Plate 1 x 2 across the seam, onto the Brick 1 x 4
+  beside it. Then it holds about 2.6 times its working load.") and drawn as a
+  ghost where they would go (`Pattern.GHOST_SHADER`). Of three kinds, a
+  builder's: a plate (or a brick) across the seam onto a part of the side
+  that holds, on a filler where the tops differ, or under the seam (a tie); up
+  to three bricks and plates under it from the ground, the baseplate or a
+  part below (a prop); a friction pin through the next two holes in line (a
+  pin). Each candidate is checked for room as a part put down by hand
+  (`Builder.room_for`), weighed as one with the joint by Balance's rule, worst
+  of every way it could come off (`Strengthen.held_as_one`), and the best four
+  then weighed with the model as Stress weighs it (`Balance.measure` with the
+  parts in, on a worker for a big model): offered only when the joint is
+  then above its working load and nothing that held before is past its own.
+  Strengthen puts them down as one step to undo ("Strengthen: ..."), in the
+  sub-assembly and step a part put down by hand goes, selected. From my
+  bricks (shown only when the person has a collection, off) makes it of
+  parts they own in colours they have one left of after the model's own
+  (`CollectionStore.on_hand`), and says when one is not theirs.
+  `weakest_joints` answers each red or amber joint it lists with the same fix
+  and the `edit_model` call that puts it down ("Call edit_model
+  {"add":[...],"picture":false}"), `mine=true` of the person's parts; the same
+  fix as an earlier joint's said as such. Read-only: nothing is changed
+  until the call is made. `tools/probe.sh strengthen` (and
+  `PROBE_SIZE=1280x720`; windowed, through the sign-in screen): ten weak
+  models, each's fix offered, put down, weighed, undone to the byte and made
+  over MCP to the same bytes; From my bricks; a picture of each ghost.
+  Known gaps: a fix is looked for within two studs of the parts past the
+  joint and among the 120 parts nearest it; a tie is a plate or a brick of
+  the common rectangles, a prop of 1 x 1 to 2 x 4 columns, a pin a friction
+  pin; a joint that only a part across several seams would hold is said to
+  have no fix.
+- `lift by a part` (`src/assembly/lift_test.gd`, `LiftTest`, Later;
+  `Balance.ring_of`; APP_UX8 #13 loadtest): Stress's panel has **Lift**;
+  pressed, a part clicked (selected: a click, a tap, a tree row) is the one
+  the model hangs from, off the floor (the baseplate stays the floor and is
+  refused). Balance weighs it with that part as the one support
+  (`Balance.support_of`): each joint that alone holds what is past it
+  carries it, levered about the edge it would turn on, pulled where it
+  hangs. The joint furthest past what lets it go (moment / ultimate > 1,
+  1.92 N a stud, 3.07 N into a part a stud wide) lets go first, all past
+  it comes away, and the rest is weighed again, to 12 rounds; a part held by
+  nothing ("left behind") and a piece standing on touches past them
+  ("falls off") come away too; a pin that turns under it swings and stays.
+  The lifted part's own stud joints are weighed together when two or more
+  share the load (`ring_of`). Tinted only: the part lifted blue, what comes
+  away red, a joint past its working load or a swinging one amber; the panel
+  heads "Lifted by Brick 1 x 4: 14 parts come away, 23 g of 27" and lists
+  each thing that comes away first ("lets go · Brick 1 x 4 and 13 more",
+  its why as the tooltip and under the list), then the joints nearest
+  letting go; a row pressed selects and frames its parts and keeps the lift.
+  A change while lifted lifts again by the same part; the part gone, it asks
+  for another; a new model drops it. On a worker on copies for a model past
+  `Stability.ON_A_WORKER_FROM`. `weakest_joints lift_by=N` (the same
+  `StressView.lift_paced`) answers with each part that comes away by number
+  and the joints left; it changes nothing in the window. `tools/probe.sh
+  loadtest` (and `PROBE_SIZE=1280x720`; windowed, through the sign-in
+  screen): an 8-brick wall holds at the hand's 0.35, a 16-brick wall's
+  one-stud joint lets go at the hand's 2.02 with the 14 named, the same over
+  MCP; edit and undo lift again; the car by its roof holds, by a headlight's
+  round plate it comes away whole. Known gaps: drawn in place, not hanging
+  (the tints say what moves); a part held two ways shares its load and is
+  never the one that lets go; a stud's clutch is the same for every part
+  of its width; nothing lets go by tearing a touch.
 - `stud directions` (`src/ui/stud_map.gd`, `StudMap`, `BrickWorld.set_painted`;
   APP_UX5 seeing2): View → Stud directions (under Stress) draws every part in
   the colour of where its studs point, from its male stud connectors turned
@@ -1929,7 +1995,10 @@ picture the assistant is shown.
   turn is LDraw's `0 ROTSTEP x y z REL|ABS|ADD` ending the step before (it
   turns the step after it, as MLCad reads it and LDraw's model repository
   writes it, and holds until another or `0 ROTSTEP END`; a sub-model's
-  first step's goes before its first part); the rest are the app's own
+  first step's goes before its first part; one that ends the last step, a
+  turn of the step after it, is written after the last part, where a whole
+  write dropped it: `BookletLooks._close_section`, and `as_written` keeps
+  it past an emptied step, im3check; `whole_write_probe`); the rest are the app's own
   lines inside the step (`0 !BRICKWORKS PAGE NEW|ALONE`, `ZOOM`, `SIZE`,
   `PARTS OFF`, `CALLOUT OFF` in a sub-model, `PER_PAGE` in the model),
   written by `BookletLooks.written_into` on every save and read on open.
@@ -3296,6 +3365,58 @@ picture the assistant is shown.
   lights are put on too), the card left to finish each (`GpuFence`) before
   the next; and every picture is read back only once the card has finished
   it (`_read`), so a read-back no longer holds the page while it rasterises.
+- `page editor motions and simulate by finger` (`src/ui/page_editor.gd`,
+  `src/ui/pose_panel.gd`, `src/ui/simulate_panel.gd`, `src/main.gd`, APP_UX8
+  #14 phonepanels, against docs/app_ux8/phonewalk.md's counts): on a phone or
+  a tablet (`Phone.on`) only; the desktop's layout and sizes are as before.
+  The page editor (`PageEditor._lay_for_a_finger`, on its first open): its
+  buttons and fields sized by `TouchSizing` (44 points or more, words at a
+  phone's least), the corner that sizes an item a fingertip square on the
+  corner (half outside the item, a 12-point mark drawn), the knob, its stem
+  30 points, an arrow's handles and the rulers 44 points each; its words in
+  taps (`Phone.touch_words`); the words field's select-all kept by the tap
+  that brings a phone's keyboard up (`_keep_words_selected`); its words wrap
+  at the screen's width, and every control and the page stay on the screen.
+  On every screen, words typed are set as the selection leaves them
+  (`PageEditor._select`: a tap on another item or Draw an arrow dropped
+  them), and a change made while the page lays out is laid out again (the
+  history is read before the lay-out, `_seen_history`). Motions: New motion
+  and New sequence stand in the panel's header by finger, in the list view
+  only (`PosePanel._build`: at the list's head they pushed Keep and Play below
+  the fold, at its foot they were swipes down), and in the editor
+  (`PosePanel._for_a_finger`) All motions, the name, Record and Remove are in one
+  row at the editor's top (New motion does not focus the name there: a
+  phone's keyboard would cover the sheet; a tap selects it to type over), the
+  joints next, then keys, play and timing; a joint's key strip a fingertip
+  tall, a key taken within half a fingertip; each view (list, edit,
+  sequence) opened at its top. Simulate (`SimulatePanel._for_a_finger`): Play,
+  the cycle's slider and its angle under the title, the driver line after.
+  A part dragged by a finger (a Grab on its joint, or a part dragged) stops
+  the phone's hold timer (`Main._on_phone_hold`): a door swung while Motions
+  records no longer opens 152 parts' actions over the panel. Measure's words
+  to a finger are its own ("Measuring: tap a point, then another",
+  `EditVerbs.ruler`). Probe: `phonepanels_probe`.
+- `phonepanels probe` (`src/dev/phonepanels_probe.gd`): windowed, 390 x 844
+  laid out for a phone at a browser's scale, through the sign-in screen with
+  a throwaway account (.env), about four minutes; each act's presses counted
+  as phonewalk_flow.mjs counts them and printed against the desktop's.
+  1: the car's page from the timeline's Lay out the page… (tapped where its
+  Booklet row shows, else run as More runs it): every control and the page on
+  the screen; an item dragged, one sized by its corner from outside it, words
+  added and typed over (6 presses at most), an arrow drawn by Draw an arrow
+  and a drag (4 at most), Done, and opened again the words kept; every
+  control, the corner, the knob and an arrow's handles measured. 2: 1484-1's
+  doors: New motion and a suggestion's Keep in sight with no swipe, the
+  suggestion kept and its Play in sight, then New motion (its name and Record in sight, the
+  name not focused), Record, a door swung by a finger, Stop (8 at most): no
+  sheet, the selection as it was, the keys kept; the editor opened again, a
+  joint's slider in sight in a drag at most and dragged. 3: simulate_probe's
+  gear train (an 8 driving a 24, put down by the probe: the orrery fixture
+  reads locked since kinefuncs): Play in sight and tapped, the cycle
+  scrubbed, the other gear made the driver by a tap. 4: Measure's words.
+  Every target in each panel 44 points or more, those under printed.
+  `--only=page,motions,simulate,measure` runs those sections. Pictures in
+  `--shots=DIR`.
 - `motions` and `playing motions` (`src/assembly/motions.gd`,
   `src/assembly/motion_player.gd`; docs/MOTIONS.md): a model's own named
   movements, "Open the doors", kept in its file as `0 !BRICKWORKS MOTION`,
@@ -3343,7 +3464,18 @@ picture the assistant is shown.
   a second open, closed and pressed again once the page is quiet. Fails past
   `--budget` ms (250) for a frame of either open, on no draft, or on a
   script error; `--port=N` serves the export there. It presses Render after
-  the page has gone quiet, so the panel has made its renderer ready by then.
+  the page has gone quiet and the app says the panel's renderer is made
+  ready (`brickworksState.render_ready`, `RenderDialog.renderer_ready`,
+  `StudioRender.warmed_up`), waited for up to `--ready-s` (180) and failed
+  without it. The warm-up begins only after 3 s with nothing drawn and 3
+  more once the panel is made, a thing a frame: on a loaded box the press
+  that came 5 s after quiet came before it, and the open drew the sweep and
+  the contact shadow itself, six programs and five in a frame, 285-431 ms
+  (mcpreach and rel-m29x previews; a local export at load 23-31, 314 ms
+  with 18 programs in the open, where at the same moment the build that
+  says ready waited to 14 s and opened at 193 ms with 6, one a frame;
+  webfaults, 2026-11-14). A build that does not say is pressed 5 s after
+  quiet, as before.
   The desktop's half is `render_probe.gd -- --first-open`: the same two
   opens on the sample car, every frame timed, fails past `--budget` ms
   (100); left alone first as a person leaves it, or pressed `--at-once`

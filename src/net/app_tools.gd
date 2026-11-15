@@ -114,6 +114,9 @@ const COMMANDS: Dictionary = {
 	# subexport (APP_UX7 #19): File › Export › Each sub-model is
 	# export_model's submodels=true.
 	"export_submodels": "export_model",
+	# pointat (APP_UX8 #17): a part pointed out to everyone in a Build
+	# together session (Alt-W, or a part's right-click menu).
+	"together_point": "point_at",
 }
 
 ## The window's commands no tool does, each with why. A command that is
@@ -152,6 +155,7 @@ const WINDOW_ONLY: Dictionary = {
 	"cut_*": "the person's view inside; view_model where= looks at one box of the model",
 	"xray": "the person's view inside; view_model where= looks at one box of the model",
 	"panel_*": "the window's panels",
+	"reset_panels": "the window's panels, laid out as the person left them",
 	"show_properties": "the window's panels",
 	"full_screen": "the window's panels",
 	"split_view": "the window's panels: a second view of the person's; view_model from= looks from any side",
@@ -186,11 +190,35 @@ const WINDOW_ONLY: Dictionary = {
 	"studs": "how the person's own view draws the parts; the pictures a session is shown (view_model) draw every stud, which a session counts and places by",
 }
 
+# -- mcpreach (APP_UX8 #11): what only the person does, named where a session reads --
+
+
+## The window's commands only the person runs (WINDOW_ONLY's together,
+## share, import_* and comments), each named with where it is, in the words a
+## session reads before it answers: read_guide("app")'s first lines and
+## export_model's description, which every session is given. Asked to set up
+## building with a friend, a session said "I can't set up a live session",
+## because no tool's words named Build together (APP_UX8's MCP walk, n7).
+## Nothing here opens one: each is the person's to decide. mcpreach_probe
+## holds each "File › …" to the window's own menus.
+const PERSONS_OWN := ("Only the person does these, from the window's menus, each theirs to decide, "
+	+ "so no tool does them; a session sends the person to them by name and where, and never says "
+	+ "they cannot be done. Build together (File › Build together…): someone else builds this "
+	+ "model with the person at the same time, live, from their own computer or browser, by a "
+	+ "link the person starts there and sends them; each sees the other's changes, pointer and "
+	+ "chat, with an undo of their own. Share (File › Share…): a link anyone can open to see the "
+	+ "model, its steps and its parts list, and in the public gallery if the person ticks it. "
+	+ "Import (File › Import): a model file from their computer, LDraw, a Studio .io or an LDD "
+	+ ".lxf, or a 3D model to brickify. Comments (File › Comments…, or a part's right-click menu, "
+	+ "Comment on it…): a note pinned to a part for the people who build the model with them.")
+
+
 ## What a session reads about these, served by read_guide("app") — every
 ## tool here is named in it, which the sync probe checks.
 const GUIDE := """THE REST OF THE APP
 Besides designing, a session can do what the person does from the menus. \
 Each change is one undo step.
+ - """ + PERSONS_OWN + """
  - clear_model takes everything off for a new model, as New does; \
 save_model writes it with the person's models, and a new design's first \
 save hands back its pictures for a fresh look, answered with fresh_eyes \
@@ -288,7 +316,12 @@ view_model, render_model and render_queue draw from one by its name (view=).
  - export_model: the model as LDraw, a BrickLink Studio .io, a 3D file \
 (GLB, glTF, OBJ, STL, 3MF), a picture, a BrickLink wanted list, a Rebrickable \
 parts list, a LEGO® Pick a Brick list, or the building instructions as a \
-booklet, written where Export writes; all_models is every saved model in one .zip.
+booklet (instructions) or as the PDF the Instructions window prints (pdf), \
+written where Export writes; all_models is every saved model in one .zip. An \
+STL's or a 3MF's answer says whether each object is a closed solid, as a \
+slicer needs it, and names any part that is not. Nothing is written over: a \
+file of the name already there is kept, the new one takes the next free \
+name (pods_render_2.png), and the answer gives it.
  - brickify: a 3D model (OBJ, STL, glTF, PLY, 3MF, VOX, FBX) laid in LEGO® bricks at the size asked, \
 as one sub-assembly: file= its path on this computer, url= a link the app \
 fetches, or pick=true opens the window's file dialog for the person, after \
@@ -342,8 +375,10 @@ all or nothing, one undo step; a copy with no room is said by its column, row \
 and level and the part in its way. Answered with the copies pictured.
  - weakest_joints: what gives first in the whole model as it stands, \
 read-only, as View, Stress weighs it: each joint that alone holds what is \
-past it, weakest first, with its margin against its studs' working load. \
-Ask it what breaks first, rather than rebuilding the model in check_design.
+past it, weakest first, with its margin against its studs' working load, \
+and for each past or near it the fewest parts that fix it as an edit_model \
+call to make as given. Ask it what breaks first, rather than rebuilding the \
+model in check_design.
  - colour_hidden_parts: the parts nobody sees in the finished model, \
 coloured by section, build stage or side as big sets are inside, so a \
 builder finds their place; measured from every side, so nothing seen \
@@ -367,7 +402,8 @@ brickify) \
 answers at once with a job number while it works in the app. job {"id": N} \
 waits up to 45 s for it to end, then says how far it has got, or gives its \
 answer the moment it is done; call it again until then. cancel=true stops \
-it. Nothing else can be done in the app while a job runs."""
+it. Nothing else can be done in the app while a job runs.
+ - point_at: in a Build together session (the person and others building one model live, each in their own window), points parts out to everyone in it, as the person's Alt-W does: outlined in the person's colour on every screen for 5 seconds, named as the person's Claude. part= a number from look_at_model, or parts= several. Changes nothing. Out of a session it says so: the person starts or joins one from File › Build together…."""
 
 
 func definitions() -> Array:
@@ -975,7 +1011,9 @@ func definitions() -> Array:
 				+ "(the window's three lights, the default), softbox, window or daylight "
 				+ "(photographed places), or dark: the studio put out, the model's own lights "
 				+ "(light_model) and the plastics that glow all that lights it. Saved where "
-				+ "Render saves. It is a job: the answer is a job number at once, and job "
+				+ "Render saves, never over a file: one of the name already there is kept and "
+				+ "the new one takes the next free name (pods_render_2.png), which the answer "
+				+ "gives. It is a job: the answer is a job number at once, and job "
 				+ "gives the result: a picture with it, or a turntable's or a build's six frames "
 				+ "in one picture, the last its end. Needs the app in a window."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
@@ -1102,20 +1140,30 @@ func definitions() -> Array:
 				+ "list .csv), pickabrick (LEGO® Pick a Brick's list: element numbers and "
 				+ "quantities, 400 lines a file; the answer names the parts with no element "
 				+ "number known), or instructions (the building instructions as a booklet to "
-				+ "print); all_models is every model the person saved, as LDraw in one .zip "
-				+ "(File, Export, All my models). studio, picture and instructions are jobs: "
+				+ "print), or pdf (the same booklet as the PDF the Instructions window prints: "
+				+ "its own fonts carried, every letter as typed; the answer names any its "
+				+ "type cannot print, and shows its cover as the PDF prints it); all_models is every model the person saved, as LDraw in one .zip "
+				+ "(File, Export, All my models). studio, picture, instructions and pdf are jobs: "
 				+ "the answer is a job number at once, and job gives the result. A bricklink "
 				+ "wanted list takes condition, wanted_list and notify, as BrickLink's upload "
 				+ "reads them; what is not given is what the person chose last on the parts "
 				+ "list's BrickLink button. Nothing is uploaded: the person uploads the file."
 				+ " With format ldraw, submodels=true writes each sub-model as an LDraw file of its own, "
 				+ "with its own sub-models and steps, all in one .zip (File, Export, Each sub-model), "
-				+ "and submodel= just the one of that name in the model tree, as its row's menu does."),
+				+ "and submodel= just the one of that name in the model tree, as its row's menu does."
+				# mcpreach (APP_UX8 #11).
+				+ " stl and 3mf answer whether each object is a closed solid, as a slicer "
+				+ "needs it, from the check each object's mesh is given, and name any part that "
+				+ "is not. Nothing is written over: a file of that name already there is kept, "
+				+ "and the new one takes the next free name (pods_2.3mf), which the answer gives. "
+				+ PERSONS_OWN),
 			"input_schema": {"type": "object", "additionalProperties": false,
 				"required": ["format"], "properties": {
 				"format": {"type": "string", "enum": ["ldraw", "studio", "glb", "gltf", "obj",
 					"stl", "3mf", "picture", "bricklink", "rebrickable", "instructions", "all_models",
-					"pickabrick"]},
+					"pickabrick",
+					# mcpreach (APP_UX8 #11): the booklet's PDF.
+					"pdf"]},
 				"condition": {"type": "string", "enum": ["new", "used", "any"],
 					"description": "bricklink: the condition wanted (CONDITION N or U; any leaves it out)"},
 				"wanted_list": {"type": "integer", "description": "bricklink: the ID of one of the person's wanted lists (WANTEDLISTID, the number after wantedMoreID= in its address); 0 for the main wanted list"},
@@ -1309,16 +1357,44 @@ func definitions() -> Array:
 				+ "with no stud between, carries "
 				+ "only what stands on it, so it never shares a joint's load; a piece standing "
 				+ "on touches alone past where it touches is said too. Read this instead of "
-				+ "rebuilding the model in check_design to weigh it. part= one part's number "
-				+ "(look_at_model) for what holds it; count= how many joints (8). Changes "
-				+ "nothing."),
+				+ "rebuilding the model in check_design to weigh it. Each joint past or near its "
+				+ "working load comes with its fix, as Stress's Strengthen finds it: the fewest "
+				+ "parts (up to three: a plate across the seam, a brick under it, a second pin) "
+				+ "checked for room and weighed with the model, and the edit_model call that "
+				+ "puts them down as one undo step; make that call as given. part= one part's "
+				+ "number (look_at_model) for what holds it; count= how many joints (8); "
+				+ "mine=true the fixes of the person's own parts (Parts, My bricks). lift_by= a "
+				+ "part's number: the model lifted by that part off the floor, as Stress's Lift "
+				+ "shows it (a car by its roof, a wall by a top brick): what each joint between "
+				+ "it and the rest carries, which lets go first, and every part that comes away. "
+				+ "Changes nothing."),
 			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
 				"part": {"type": "integer"},
 				"count": {"type": "integer"},
+				"mine": {"type": "boolean"},
+				# loadtest (APP_UX8 #13): Stress's Lift.
+				"lift_by": {"type": "integer"},
 			}},
 		},
 		GalleryTool.definition(),
 		PatternTool.definition(),
+		# pointat (APP_UX8 #17).
+		{
+			"name": "point_at",
+			"description": ("Point parts out to everyone building this model with the person in "
+				+ "a Build together session, as the person's Alt-W over a part does: each other "
+				+ "person, and the person, sees them outlined in the person's colour with "
+				+ "\"<their name>'s Claude\" over them, for 5 seconds, and their status bar says who "
+				+ "points at what. Use it to show the others the part a reply is about. part= its "
+				+ "number (look_at_model), or parts= up to 50. Changes nothing, the model or any "
+				+ "file. Out of a session it says so: starting or joining one is the person's "
+				+ "(File › Build together…), with a link they send."),
+			"input_schema": {"type": "object", "additionalProperties": false, "properties": {
+				"part": {"type": "integer", "description": "the part's number in look_at_model"},
+				"parts": {"type": "array", "items": {"type": "integer"}, "maxItems": 50,
+					"description": "several parts' numbers, pointed out together"},
+			}},
+		},
 	] + HandTools.definitions() + SeeTools.definitions() + PaletteTool.definitions()
 
 
@@ -1428,6 +1504,9 @@ func run(tool: String, input: Dictionary, work: Working.Job = null) -> Variant:
 			return handled
 		"view_board", "booklet_page":
 			return await _seeing().run(tool, input, work)
+		# pointat (APP_UX8 #17).
+		"point_at":
+			return _point_at(input)
 		# Edit, Pattern…'s grid (PatternTool), answered with the copies
 		# pictured as the hand tools' changes are.
 		"pattern_parts":
@@ -1537,7 +1616,8 @@ static func _while_looking(tool: String, input: Dictionary) -> bool:
 		"simulate_mechanism":
 			return not bool(input.get("record", false))
 		"export_model":
-			return str(input.get("format", "")) == "instructions"
+			# mcpreach: the booklet's PDF, as its page is.
+			return str(input.get("format", "")) in ["instructions", "pdf"]
 		"suggest_sections", "evaluate_section", "booklet_layout", "list_motions", "weakest_joints":
 			return true
 		"measure", "in_view":
@@ -5022,7 +5102,8 @@ func _save_view(input: Dictionary) -> Variant:
 		% kept}, _picture_block(drawn as Image)]
 
 
-func _export(input: Dictionary, work: Working.Job = null) -> String:
+## A coroutine. Words, or for a PDF the words and its cover pictured.
+func _export(input: Dictionary, work: Working.Job = null) -> Variant:
 	var world: BrickWorld = app.get("_world")
 	var store: ModelStore = app.get("_store")
 	var exports: Exports = app.get("_exports")
@@ -5065,12 +5146,87 @@ func _export(input: Dictionary, work: Working.Job = null) -> String:
 				return "The booklet is being drawn already."
 			var to: String = exports.folder if not exports.folder.is_empty() \
 				else Download.downloads()
-			said = await app.call("_export_booklet", "" if OS.has_feature("web") else
-				to.path_join(SubmodelFile.titled(bar.model_name(), "_instructions.html")), work)
+			# The next name nothing has there (mcpreach): the last booklet is kept.
+			var page: String = "" if OS.has_feature("web") else Download.unused(
+				to.path_join(SubmodelFile.titled(bar.model_name(), "_instructions.html")))
+			said = _kept_said(await app.call("_export_booklet", page, work), page)
+		# mcpreach (APP_UX8 #11): the booklet as the PDF Instructions prints.
+		"pdf":
+			if OS.has_feature("web"):
+				return ("In a browser there is no file to read the booklet back from here: format "
+					+ "instructions opens the booklet in a tab of its own, and its Save as PDF button "
+					+ "downloads the PDF from the person's click.")
+			if DisplayServer.get_name() == "headless":
+				return "The booklet's pictures need something to draw with, and this app is running without a window."
+			if BookletMaker.busy or bool(app.get("_booklet_writing")):
+				return "The booklet is being drawn already."
+			return await _booklet_pdf(exports, bar, work)
 		_:
 			return ("format is ldraw, studio, glb, gltf, obj, stl, 3mf, picture, bricklink, rebrickable, "
-				+ "pickabrick, instructions or all_models.")
+				+ "pickabrick, instructions, pdf or all_models.")
 	return said.left(1).to_upper() + said.substr(1) + "." if not said.is_empty() else "Nothing written."
+
+
+# -- mcpreach (APP_UX8 #11): the booklet's PDF -----------------------------------------
+
+
+## export_model's pdf: the booklet drawn as Instructions draws it, into a page
+## of the app's own rather than the person's Downloads, then read a page at
+## a time into a PDF as the booklet's own Save as PDF does (main's _pdf_file,
+## BookletPdf: the type it is set in carried, each letter mapped back to its
+## text), written where Export writes under a name nothing has there. A
+## session asked for the booklet as a PDF could hand over only its HTML page,
+## and sent the person to the window (APP_UX8's MCP walk, x2).
+func _booklet_pdf(exports: Exports, bar: ModelBar, work: Working.Job) -> Variant:
+	var named: String = SubmodelFile.titled(bar.model_name(), "_instructions")
+	var page: String = OS.get_user_data_dir().path_join("booklet_pdf").path_join(named + ".html")
+	DirAccess.make_dir_recursive_absolute(page.get_base_dir())
+	var drawn: String = str(await app.call("_export_booklet", page, work))
+	if not drawn.begins_with("wrote "):
+		return drawn.left(1).to_upper() + drawn.substr(1) + "." if not drawn.is_empty() else "Nothing written."
+	var to: String = Download.unused((exports.folder if not exports.folder.is_empty()
+		else Download.downloads()).path_join(named + ".pdf"))
+	if work != null:
+		work.say("Writing the PDF…")
+	app.set("_booklet_writing", true)
+	var pages: int = int(await app.call("_pdf_file", page, to))
+	app.set("_booklet_writing", false)
+	var cover: Image = _cover_of(page) if pages > 0 else null
+	DirAccess.remove_absolute(page)
+	if pages <= 0:
+		return "Could not write %s." % to
+	SaveTo.wrote(to)
+	var missed: String = str(app.get("_pdf_missed"))
+	var said: String = "Wrote %s, %d pages, the booklet as Instructions prints it%s%s." % [to, pages,
+		missed if not missed.is_empty() else ", every letter in the type the PDF carries, none missing",
+		Download.kept_note(to)]
+	if cover == null:
+		return said
+	return [{"type": "text", "text": said + " Its cover, as the PDF prints it:"}, _picture_block(cover)]
+
+
+## Page 1 of the booklet at [param page], drawn as the PDF prints it, in the
+## same answer: asked whether a cover's Russian and Greek print as typed, the
+## MCP walk's session wrote the PDF in 3 calls and looked at the cover with
+## booklet_page in a fourth (mcpreach). Null when it cannot be drawn.
+func _cover_of(page: String) -> Image:
+	var html: String = FileAccess.get_file_as_string(page)
+	if html.is_empty():
+		return null
+	var drawer := BookletPng.new()
+	app.add_child(drawer)
+	var image: Image = drawer.page_image(html, 1, SeeTools.PAGE_DENSITY)
+	drawer.queue_free()
+	return image
+
+
+## [param said] with what Download.kept_note says of [param path] at its end,
+## once it says it wrote it: the booklet's answer is main's, which names the
+## path alone.
+static func _kept_said(said: String, path: String) -> String:
+	if path.is_empty() or not said.begins_with("wrote " + path):
+		return said
+	return said + Download.kept_note(path)
 
 
 # -- subexport (APP_UX7 #19) ----------------------------------------------------------
@@ -5297,15 +5453,8 @@ func _fetch(url: String, most: int) -> Dictionary:
 			% host}
 	if OS.has_feature("web"):
 		return await _fetch_through_site(url, host, most)
-	var request := HTTPRequest.new()
-	request.body_size_limit = most
-	request.timeout = FETCH_SECONDS
-	app.add_child(request)
-	if request.request(url, ["User-Agent: " + ReferenceFinder.AGENT]) != OK:
-		request.queue_free()
-		return {"error": "Could not ask %s for it." % host}
-	var got: Array = await request.request_completed
-	request.queue_free()
+	var got: Array = await PageFetch.ask(app, url, PackedStringArray(["User-Agent: " + ReferenceFinder.AGENT]),
+		HTTPClient.METHOD_GET, "", FETCH_SECONDS, most)
 	var result: int = int(got[0])
 	var code: int = int(got[1])
 	if result == HTTPRequest.RESULT_BODY_SIZE_LIMIT_EXCEEDED:
@@ -5329,16 +5478,9 @@ func _fetch_through_site(url: String, host: String, most: int) -> Dictionary:
 	var token: String = await account.access_token() if account != null else ""
 	if token.is_empty():
 		return {"error": "Sign in to Brickworks to bring in a picture or a model from a link."}
-	var request := HTTPRequest.new()
-	request.body_size_limit = most
-	request.timeout = SITE_FETCH_SECONDS
-	app.add_child(request)
-	if request.request(Deployment.api_base() + "/api/account?op=fetch", ["authorization: Bearer " + token,
-			"content-type: application/json"], HTTPClient.METHOD_POST, JSON.stringify({"url": url})) != OK:
-		request.queue_free()
-		return {"error": "Could not ask Brickworks's site to fetch %s." % host}
-	var got: Array = await request.request_completed
-	request.queue_free()
+	var got: Array = await PageFetch.ask(app, Deployment.api_base() + "/api/account?op=fetch",
+		PackedStringArray(["authorization: Bearer " + token, "content-type: application/json"]),
+		HTTPClient.METHOD_POST, JSON.stringify({"url": url}), SITE_FETCH_SECONDS, most)
 	var result: int = int(got[0])
 	if result != HTTPRequest.RESULT_SUCCESS:
 		return {"error": "Could not fetch %s: %s." % [url.left(100), FetchWords.of(result,
@@ -5653,13 +5795,120 @@ func _weakest_joints(input: Dictionary) -> String:
 	if world.brick_count() <= store.scenery.size():
 		return "There is nothing on the baseplate to weigh."
 	var generation: int = world.generation()
+	if input.has("lift_by"):
+		return await _lift_by(input, generation)
 	var report: Stability.Report = await app.call("weigh_joints")
 	if report == null:
 		return "The parts' shapes were still coming in; ask again in a moment."
 	if world.generation() != generation:
 		return "Another model was opened while this one was weighed; ask again."
-	return StressView.said(report, world, app.get("_library"), store.scenery,
+	var said: String = StressView.said(report, world, app.get("_library"), store.scenery,
 		clampi(int(input.get("count", 8)), 1, 40), int(input.get("part", 0)))
+	return said + await _strengthen_words(report, input)
+
+
+## loadtest (APP_UX8 #13): the model lifted by part lift_by=, as Stress's Lift
+## lifts it (StressView.lift_paced), so the two say the same.
+func _lift_by(input: Dictionary, generation: int) -> String:
+	var shell: Shell = app.get("_shell")
+	var world: BrickWorld = app.get("_world")
+	if shell == null or shell.stress == null:
+		return "This app cannot lift a model."
+	var lifted: RefCounted = await shell.stress.lift_paced(int(input.get("lift_by", 0)), true)
+	if lifted == null:
+		return "The parts' shapes were still coming in; ask again in a moment."
+	if world.generation() != generation:
+		return "Another model was opened while this one was lifted; ask again."
+	return lifted.call("said", clampi(int(input.get("count", 8)), 1, 40))
+
+
+# -- strengthen: each weak joint's fix, as a call -----------------------------------
+
+
+## Each joint [param report] has past its working load or near it, with the
+## fewest parts that make it hold, as View, Stress's Strengthen finds and
+## puts them down (Strengthen), and the edit_model call that puts down the
+## same parts: a session fixes a joint in one call, as the panel does in one
+## press. mine=true, of the person's own parts (Parts, My bricks).
+func _strengthen_words(report: Stability.Report, input: Dictionary) -> String:
+	var shell: Shell = app.get("_shell")
+	var panel: StressPanel = shell.stress.panel if shell != null and shell.stress != null else null
+	var fixer: RefCounted = panel.fixer_now() if panel != null else null
+	if fixer == null:
+		return ""
+	var store: ModelStore = app.get("_store")
+	var world: BrickWorld = app.get("_world")
+	var count: int = clampi(int(input.get("count", 8)), 1, 40)
+	var part: int = int(input.get("part", 0))
+	var wanted: Array = StressView.ranked(report, world, store.scenery, count).filter(
+		func(one: StressView.Weak) -> bool:
+			return one.margin < StressView.CLOSE and (part == 0 or one.id == part))
+	if wanted.is_empty():
+		return ""
+	var theirs: Dictionary = panel.owned.call() if bool(input.get("mine", false)) else {}
+	var lines := PackedStringArray(["Strengthen, as View, Stress offers it: for each joint past "
+		+ "or near its working load, the fewest parts that make it hold (a plate across the "
+		+ "seam, a brick under it, a second pin), checked for room and weighed with the model, "
+		+ "and the edit_model call that puts them down as one undo step:"])
+	if bool(input.get("mine", false)):
+		lines.append("  From your bricks: %s." % ("each part one you own with one left over the "
+			+ "model's own" if not theirs.is_empty() else "you have no collection yet (Parts, My "
+			+ "bricks), so these are of any parts"))
+	fixer.scenery = store.scenery
+	fixer.owned = theirs
+	var revision: int = world.revision
+	var given: Dictionary = {}
+	for one: StressView.Weak in wanted:
+		var fix: RefCounted = await fixer.find(report, one)
+		if world.revision != revision:
+			lines.append("  The model changed while its fixes were looked for; ask again.")
+			break
+		if fix == null:
+			lines.append("  #%d: no fix of up to three parts has room there: %s." % [one.id,
+				"brace it by hand" if one.joint != null else "hold it with studs by hand"])
+			continue
+		var call: String = _fix_call(fix)
+		if given.has(call):
+			lines.append("  #%d: the same fix as #%d, which holds it too." % [one.id, given[call]])
+			continue
+		given[call] = one.id
+		lines.append("  #%d: %s. %s.%s Call edit_model %s" % [one.id, fix.what,
+			Later.script(&"Strengthen").held_words(fix), "" if theirs.is_empty() else (" All from your bricks."
+				if fix.mine else " Not all from your bricks: you have none of one left."), call])
+	return "\n" + "\n".join(lines)
+
+
+## The edit_model input that puts [param fix]'s parts down where Strengthen
+## would: each by its low corner in studs and plates, its face and its turn,
+## as edit_model reads a part added (Assistant._square_transform).
+func _fix_call(fix: RefCounted) -> String:
+	if assistant == null:
+		return "(no call: this app has no assistant to make it)"
+	var library: PartLibrary = app.get("_library")
+	var adds: Array = []
+	for item: Dictionary in fix.parts:
+		var part_id: String = str(item["part"])
+		var at: Transform3D = item["at"]
+		var basis: Basis = BrickLattice.snap_basis(at.basis)
+		var corner: Vector3 = BrickLattice.to_ldu(BrickLattice.grid_cell(at.origin)
+			+ assistant._corner_cell(library.mesh_for(part_id), part_id, basis))
+		var face: String = BrickLattice.face_of(basis)
+		var spec: Dictionary = {"part": part_id, "color": int(item["color"]),
+			"x": _tidy_number(corner.x / Assistant.STUD), "y": _tidy_number(corner.y / Assistant.PLATE),
+			"z": _tidy_number(corner.z / Assistant.STUD)}
+		if face != "up":
+			spec["face"] = face
+		var rot: int = BrickLattice.turns_about(basis, face)
+		if rot != 0:
+			spec["rot"] = rot
+		adds.append(spec)
+	return JSON.stringify({"add": adds, "picture": false})
+
+
+## A number as a call writes it: 3, not 3.0; 10.75 as it is.
+static func _tidy_number(value: float) -> Variant:
+	var snapped: float = snappedf(value, 0.01)
+	return int(snapped) if is_equal_approx(snapped, roundf(snapped)) else snapped
 
 
 # -- making a copy unique ---------------------------------------------------------------
@@ -5700,3 +5949,51 @@ func _make_unique(input: Dictionary) -> String:
 		+ "other cop%s of %s stay as %s." % ["y" if copies.size() == 1 else "ies",
 			Assemblies.definition(Assemblies.leaf(path)), "it was" if copies.size() == 1
 				else "they were"])
+
+
+# -- pointat (APP_UX8 #17): parts pointed out in a Build together session -------------
+
+## point_at: [param input]'s part= or parts= pointed out to everyone in the
+## session, as the person's Alt-W does (Together.point_at), named as their
+## Claude.
+func _point_at(input: Dictionary) -> String:
+	var together: Node = app.get("_together_made")
+	if together == null or not bool(together.get("live")):
+		return ("The person is not in a Build together session, so there is nobody to point a "
+			+ "part out to. Building together is the person's to start or join (File › Build "
+			+ "together…), by a link they send to whoever they build with.")
+	var asked: Array = []
+	if input.has("part"):
+		asked.append(input["part"])
+	if input.get("parts") is Array:
+		asked.append_array(input["parts"] as Array)
+	if asked.is_empty():
+		return "Say which part: part= its number from look_at_model, or parts= several."
+	var bricks: Array = []
+	var unknown := PackedStringArray()
+	for given: Variant in asked:
+		var number: int = int(given) if (given is int or given is float) else 0
+		if _brick(number) == null or str(together.call("uid_of", number)).is_empty():
+			unknown.append(str(given))
+		elif not number in bricks:
+			bricks.append(number)
+	if bricks.is_empty():
+		return ("No part %s in the model: the numbers are look_at_model's." % ", ".join(unknown))
+	var trouble: String = together.call("point_at", bricks.slice(0, 50), true)
+	if not trouble.is_empty():
+		return trouble
+	var library: PartLibrary = app.get("_library")
+	var first: BrickWorld.Brick = _brick(int(bricks[0]))
+	var info: PartLibrary.PartInfo = library.parts.get(first.part_id) if library != null else null
+	var named: String = "part %d (%s %s)" % [int(bricks[0]),
+		library.color(first.color_code).name if library != null else "colour %d" % first.color_code,
+		Inventory._tidy(info.name) if info != null else first.part_id] if bricks.size() == 1 \
+		else "%d parts" % mini(bricks.size(), 50)
+	var here: String = str(together.call("others_here"))
+	var said: String = ("Pointed out %s to %s for 5 seconds: outlined in the person's colour on every "
+		+ "screen in the session, named as their Claude.") % [named, here] if not here.is_empty() \
+		else ("Pointed out %s for 5 seconds, but nobody else in the session is here now: it is "
+		+ "outlined on the person's screen alone.") % named
+	if not unknown.is_empty():
+		said += " No part %s in the model, left out." % ", ".join(unknown)
+	return said

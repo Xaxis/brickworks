@@ -125,8 +125,8 @@
    ],
    "width": 1200,
    "settle": 40,
-   "alt": "Simulate mechanism on a kart driven from its steering wheel: the panel down the left saying what turns and how fast, where the steering stops and whether the kart stands, and the kart with its footprint drawn on the floor.",
-   "caption": "Simulate mechanism turns the train from the part you choose, and finds where it stops.",
+   "alt": "Simulate mechanism on a kart driven from its steering wheel: the panel down the left saying what turns and how fast, that the steering goes all the way round with nothing meeting, and whether the kart stands, and the kart with its footprint drawn on the floor.",
+   "caption": "Simulate mechanism turns the train from the part you choose, and finds whether anything stops it.",
    "features": [
     "ui:simulate mechanism",
     "lib:mechanisms"

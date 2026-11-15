@@ -114,6 +114,17 @@ declare -A CMD=(
   # never; Follow from the card at 390 px dark; most followed; 390 and 1280
   # px in both themes; made private, gone. Throwaway accounts, deleted after.
   [collections]="tools/web/collections_flow.mjs --url=$P --out=$S/${TAG}_collections"
+  # Your sets and lists (docs/LISTS.md, supabase/lists.sql): signed out,
+  # Own asks to sign in; Own from a set's card (Undo, the server agreeing,
+  # My collection holding it), Own and Want on its page, a new list from
+  # its panel; a gallery model into the same list; /lists: the order by
+  # arrow and its Undo, public (Bob and a visitor see /c/, Share's sheet,
+  # its social card) then private (404 to both, out of the directory); the
+  # profile's Sets tab once chosen, a theme and a search; a Rebrickable CSV
+  # in, the CSV out; at 430 px with touch the panel as a sheet and How
+  # many; 1280 and 430 in both themes, nothing sideways. Throwaway
+  # accounts, deleted after with everything of theirs.
+  [lists]="tools/web/lists_flow.mjs --url=$P --out=$S/${TAG}_lists"
   # Notifications apart from the feed (docs/SOCIAL.md U7): your avatar in
   # the header with what is new, its menu (Menu at 390 px); a comment, a
   # photo and ten likes on a throwaway designer's model as one group with
@@ -386,6 +397,11 @@ declare -A CMD=(
   # said so: "the API's database needs supabase/together_big.sql").
   [together_probe]="tools/web/together_probe.mjs --url=$P"
   [together]="tools/web/together_flow.mjs --url=$P --out=$S/${TAG}_together"
+  # pointat (APP_UX8 #17): a part pointed out by Alt+W in a room of two
+  # tabs, drawn in the other within 500 ms (p95 of 20) with the pointer's
+  # name, gone after 5 s or on the pointer's Esc, put away by the other's
+  # Esc there alone; the owner's Claude pointing in one call.
+  [pointat]="tools/web/pointat_flow.mjs --url=$P --out=$S/${TAG}_pointat"
   # A build party (APP_UX5 buildparty): two phones on one shared link and
   # no account, joined by a code in 2 taps each, the car dealt in two (all
   # 61 parts once), a part done on either on the other within 2 s, a phone
@@ -427,6 +443,11 @@ declare -A CMD=(
   # through the relay costs when the tab answers at once, median and p90
   # (relay338). It runs against a preview too; run it after a change to
   # the relay's queue (its header says how).
+  # local only: framefetch_flow.mjs. How long a send waits in the tab before
+  # it leaves, Together's, the relay's and a tool's own, with every frame
+  # 250 ms longer: it reads the server's time of arrival from a local relay
+  # run with --arrivals, which a deployment has not. Run it after a change to
+  # how the app sends (PageFetch) or to the checks' routes (page_routes.mjs).
   [people]="tools/web/people_flow.mjs --url=$P --out=$S/${TAG}_people"
   # A person's page (/u/<handle>, docs/SOCIAL.md U5): a throwaway designer
   # lists two models and chooses links, a banner and pins (op=showcase, its
@@ -471,6 +492,16 @@ declare -A CMD=(
   # on the Beta; each section at 390 and 1280, light and dark. Throwaway
   # accounts, deleted after; the switch and the checks' pool put back.
   [console]="tools/web/console_flow.mjs --url=$P --out=$S/${TAG}_console"
+  # The console's part B (console2, docs/ADMIN.md): plans, mail, connector
+  # and site refused signed out (401) and to anybody else (404), and
+  # Resend's op an unsigned event; playing Resend with this deployment's
+  # secret, a code delivered and a beta mail bounced at resend.dev shown in
+  # Mail with why, another product's let go; a throwaway's tab and Claude
+  # (OAuth) and a conversation's two calls in Connector and its panel, from
+  # People too; Site's live release, crons, releases and Supabase health;
+  # Plans off where billing is; each at 390 and 1280, light and dark.
+  # Read only; the throwaways deleted after.
+  [console2]="tools/web/console2_flow.mjs --url=$P --out=$S/${TAG}_console2"
   [reload]="tools/web/reload_flow.mjs --url=$P/app $B --out=$S/${TAG}_reload"
   [keep]="tools/web/keep_flow.mjs --url=$P/app $B --out=$S/${TAG}_keep"
   # A signed-in person's models kept with their account (supabase/account_models.sql):
@@ -575,6 +606,12 @@ declare -A CMD=(
   # target 44 points or more and no text under 12, the parts panel kept
   # open beside the model.
   [tablet]="tools/web/tablet_flow.mjs --url=$P/app $B --out=$S/${TAG}_tablet_web"
+  # local only: phonewalk_flow.mjs. The walk by finger (APP_UX8, phonewalk):
+  # every act of the desktop walk at 390 x 844 and 1024 x 768, by touch alone,
+  # counted in taps beside the desktop's presses, and what a finger cannot do
+  # named with its file. A measure with no verdict: what it cannot do is the
+  # finding phonepanels and fingertools work from (--bar is their bar), and
+  # its two sizes run past a check's 45 minutes.
   # A finger's drag begun on a text field scrolls the list round it, as one
   # beside the fields does: the assistant's drawer at 844 x 390 and Settings'
   # AI page at 390 x 844 at 150% (three to the point); a tap types in the
@@ -696,11 +733,10 @@ run() {
   # left behind would hold the database from every other run.
   if live "$name"; then
     alone "$name" && how=alone
-    if ! take_live_db "$how"; then
+    if ! take_live_db "$how" "$TAG $name"; then
       echo "$name exit=75 fails=1 $(( $(date +%s) - t0 ))s :: FAIL the live database stayed busy (gave way to a release after LIVE_GIVE_WAY, $(( ${LIVE_GIVE_WAY:-0} / 60 )) min, or waited LIVE_WAIT, $(( ${LIVE_WAIT:-3600} / 60 )) min): $(tail -1 "$LIVE_DB.log")" >> "$S/$TAG.out"
       return
     fi
-    echo "$(date '+%F %T') took $TAG $name after $(( $(date +%s) - t0 ))s ($LIVE_DB_HOW)" >> "$LIVE_DB.log"
   fi
   # The limit is on the check, inside heavy: around heavy it counted the wait
   # for a slot, and at load 50 tabs and keep ran out queued, never run.
@@ -747,7 +783,8 @@ run() {
 # a minute, and every page here reads that switch: beside it, betahome took
 # the beta for off and then found the bar on every page (rel-m294,
 # 2026-11-13), so it runs with nothing of this battery beside it.
-SOLO=" idle arrival progress cursor render_open render product_render grab share_steps frames play discovery oc together buildparty load console "
+# pointat times a part pointed out crossing between two tabs, as together does.
+SOLO=" idle arrival progress cursor render_open render product_render grab share_steps frames play discovery oc together buildparty load console pointat "
 PAIRED=""; ALONE=""
 for n in $NAMES; do case "$SOLO" in *" $n "*) ALONE="$ALONE $n";; *) PAIRED="$PAIRED $n";; esac; done
 # PC_AT_ONCE at a time, a slot taking the next check as soon as it is

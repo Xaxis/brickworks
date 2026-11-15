@@ -678,8 +678,14 @@ func _lay_grid() -> void:
 	var room: float = _scroll.size.x - 12.0
 	if room <= 0.0:
 		return
-	var columns: int = maxi(1, floori((room + GAP) / (CARD + GAP)))
-	if room >= 2.0 * 136.0 + GAP:
+	# A card is never narrower than what it holds: Open and Put in this
+	# model side by side, at a finger's size, made the two columns a phone
+	# was given wider than its screen (rel-m296's dialogs, 390 x 844).
+	var least: float = CARD
+	for card: Control in _grid.get_children():
+		least = maxf(least, card.get_minimum_size().x)
+	var columns: int = maxi(1, floori((room + GAP) / (least + GAP)))
+	if room >= 2.0 * maxf(136.0, least) + GAP:
 		columns = maxi(columns, 2)
 	_grid.columns = columns
 	var wide: float = floorf((room - GAP * (columns - 1)) / columns)

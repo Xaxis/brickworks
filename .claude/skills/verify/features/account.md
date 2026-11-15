@@ -4,7 +4,7 @@ Everyone who uses Brickworks signs in, on the web and the desktop, with an
 email address and a code sent to it. Nothing in the builder can be used until
 they have. A Claude connector belongs to the account that switched it on.
 
-<!-- covers: ui:sign-in screen, cli:made with probe, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, lib:the console's reads and audit, lib:the console's switches, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:review sign-in page, cli:review sign-in flow, cli:ChatGPT connector flow, cli:every assistant's sign-in, ui:share panel, api:POST /api/account?op=age, api:POST /api/orangecheck, ui:sign in with orangecheck, cli:orangecheck check, cli:orangecheck browser flow, ui:sign in with orangecheck on the desktop, cli:orangecheck desktop flow, cli:orangecheck desktop probe, cli:orangecheck listener probe, cli:orangecheck window answered, cli:signup check, api:GET /api/otp/canary, cli:canary check -->
+<!-- covers: ui:sign-in screen, cli:made with probe, lib:account session, ui:account panel, api:POST /api/otp, api:GET /api/admin, ui:admin page, lib:the console's reads and audit, lib:the console's switches, lib:the console's part B reads, api:Resend's word on each mail, ui:the console's plans and revenue, ui:the console's mail, ui:the console's connector, ui:the console's site, cli:sign a machine in, cli:account browser flow, api:Claude's OAuth sign-in, ui:connect Claude sign-in page, cli:oauth probe, cli:connect Claude browser flow, ui:review sign-in page, cli:review sign-in flow, cli:ChatGPT connector flow, cli:every assistant's sign-in, ui:share panel, api:POST /api/account?op=age, api:POST /api/orangecheck, ui:sign in with orangecheck, cli:orangecheck check, cli:orangecheck browser flow, ui:sign in with orangecheck on the desktop, cli:orangecheck desktop flow, cli:orangecheck desktop probe, cli:orangecheck listener probe, cli:orangecheck window answered, cli:signup check, api:GET /api/otp/canary, cli:canary check -->
 
 ## Sub-features
 
@@ -173,7 +173,10 @@ they have. A Claude connector belongs to the account that switched it on.
   newest first, filtered by act and words, each act's panel). `?tests=1`
   shows and acts on the site's checks' own instead. Proven by the console
   browser flow ([web](web.md)), and moderation's, comments', beta's and
-  feedback's on their sections.
+  feedback's on their sections. Part B (console2, 2026-11-13) adds Plans
+  and revenue, Mail, Connector and Site below, and the Overview's live
+  release, a failed or late cron, the week's bounces and Supabase refusing
+  the project under Needs you now; proven by the console2 browser flow.
 - `the console's reads and audit` (`api/_console.js`, `supabase/console.sql`
   admin_audit): `GET /api/admin?op=overview` (counts, what needs the owner,
   the switches, the newest acts), `?op=people` (every account with its
@@ -192,6 +195,31 @@ they have. A Claude connector belongs to the account that switched it on.
   over BRICKWORKS_BETA there, so a preview's check flips its preview alone.
   `GET ?op=switches` says the beta's (mode, source, by, when, scope, ready)
   and billing's mode.
+- `the console's part B reads` (`supabase/console2.sql`; api/_console_plans.js,
+  _console_mail.js, _console_connector.js, _console_site.js; reads, never
+  audited, behind the same gate): `GET /api/admin?op=plans` (billing off:
+  said, nothing asked; on: Admission's plans with the product key, its
+  customers from `admission_snapshots` by mode, comps, and with
+  `ADMISSION_READ_TOKEN`, a read token limited to Brickworks, its metrics and
+  events by month), `?op=mail&days=N` (`mail_events` with `beta_mail` and
+  `feedback_replies`, each mail once by Resend's id), `?op=connector[&account=U]`
+  (relay_tabs, relay_picks with their `calls`, oauth_grants and
+  `relay_call_days`, which `api/mcp.js` counts by `relay_call_note`; a bad
+  id 404) and `?op=site` (site_releases, `cron_runs_of` for each cron, which
+  share_sweep and beta_daily now note by `cron_noted`, canary_runs, and
+  Supabase's auth, rest and storage asked at most every 15 s). A verify
+  that Supabase refuses answers 503 with where to lift it. Prove: `python3
+  tools/minitest.py tests/test_console2.py` (a real Postgres).
+- `Resend's word on each mail` (`api/_console_mail.js`, an op of
+  `api/otp.js`): production's `RESEND_API_KEY` may only send (GET /emails
+  401 restricted_api_key), so Resend tells instead: `POST
+  /api/otp?op=mail_event`, verified as Svix signs (`svix-id`,
+  `svix-timestamp` within five minutes, `svix-signature` v1 HMAC-SHA256 over
+  `id.timestamp.body` with `RESEND_WEBHOOK_SECRET`): 404 with no secret, 401
+  unsigned, kept once by its event id in `mail_events` only when it is from
+  brickworks.diy (others 200 `kept: false`); each send carries its kind as a
+  Resend tag. A unit's preview has the checks' own public secret
+  (`tools/deploy.sh --unit`), which keeps only mail to resend.dev.
 - The connector's half is in [web](web.md) (`POST /api/mcp`): hello needs the
   session, records `relay_tabs.owner`, refuses another account's address
   (403), and work goes only to a tab with an owner.

@@ -816,12 +816,20 @@ async function unpick(key) {
   if (key) await db(`relay_picks?key=eq.${encodeURIComponent(key)}`, { method: "DELETE" });
 }
 
-// A chat's call, kept with its pick: when, and which tool.
+// A chat's call, kept with its pick: when, which tool, and counted, for the
+// chat and for its account's day (supabase/console2.sql relay_call_note;
+// the owner's console reads them, /admin#connector). Before that file, as
+// it was: when and which tool.
 async function noteCall(key, name) {
   if (!key || !name) return;
-  await db(`relay_picks?key=eq.${encodeURIComponent(key)}`, {
-    method: "PATCH", body: { called_at: new Date().toISOString(), did: String(name).slice(0, 60) },
-  });
+  try {
+    await db("rpc/relay_call_note", { method: "POST", body: { p_key: key, p_did: String(name).slice(0, 60) } });
+  } catch (trouble) {
+    if (!/: 404$/.test(String(trouble?.message || ""))) throw trouble;
+    await db(`relay_picks?key=eq.${encodeURIComponent(key)}`, {
+      method: "PATCH", body: { called_at: new Date().toISOString(), did: String(name).slice(0, 60) },
+    });
+  }
 }
 
 // The chats working in a tab, as the tab is shown them: a short name each,

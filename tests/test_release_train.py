@@ -74,7 +74,7 @@ if [ -n "${STUB_HALF:-}" ]; then git merge -q --no-ff --no-commit "$2"; exit 0; 
 git merge -q --no-ff -m "$3" "$2" || exit 2
 if [ -n "${STUB_MERGE_GATE:-}" ]; then
   : > "$STUB_MERGE_GATE.merged"
-  for _ in $(seq 1 600); do [ -e "$STUB_MERGE_GATE" ] && break; sleep 0.05; done
+  for _ in $(seq 1 6000); do [ -e "$STUB_MERGE_GATE" ] && break; sleep 0.05; done
 fi
 if [ -n "${STUB_DIRTY:-}" ]; then echo dirt >> README; fi
 exit 0
@@ -83,7 +83,7 @@ exit 0
 # stand-in: the version, the suite and the scripts pass; with STUB_CI_FAIL
 # they fail, once a probe has begun beside them.
 [ -z "${STUB_CI_FAIL:-}" ] && exit 0
-for _ in $(seq 1 600); do [ -e "$RELEASE_OUT/probe_times" ] && break; sleep 0.05; done
+for _ in $(seq 1 6000); do [ -e "$RELEASE_OUT/probe_times" ] && break; sleep 0.05; done
 exit 1
 """,
     "tools/release/parse_gate.sh": "#!/bin/bash\n# stand-in: every script parses\nexit 0\n",
@@ -148,7 +148,7 @@ for c in "$@"; do
       [ "${ms%.*}" -gt 100 ] && fail="FAIL by turns" ;;
     *_pv)
       if [ "$n" -eq $# ] && [ -n "${STUB_GATE:-}" ]; then
-        for _ in $(seq 1 600); do [ -e "$STUB_GATE" ] && break; sleep 0.05; done
+        for _ in $(seq 1 6000); do [ -e "$STUB_GATE" ] && break; sleep 0.05; done
       fi
       case " ${STUB_MISSING:-} " in *" $c "*) continue ;; esac
       case " ${STUB_FLAKY:-} ${STUB_FAILS:-} " in *" $c "*) fail="FAIL beside others" ;; esac ;;
@@ -174,15 +174,16 @@ exit 0
 # lead would while a release probes. fails and *_fails say FAIL and exit 0;
 # skips exits 3 and says no FAIL, as probe.sh does for a probe that skipped
 # itself. slow_* runs a second, gated* until RELEASE_OUT/probe_gate is
-# there, each noting when it began and ended; flaky fails the first time it
-# runs and passes after.
+# there and held_* until RELEASE_OUT/held_gate, each noting when it began
+# and ended; flaky fails the first time it runs and passes after.
 echo "$1" >> "$RELEASE_OUT/probes_run"
 echo $$ >> "$RELEASE_OUT/probe_pids"
-case "$1" in slow_*|gated*)
+case "$1" in slow_*|gated*|held_*)
   echo "$1 began $(date +%s.%N)" >> "$RELEASE_OUT/probe_times"
+  gate=$RELEASE_OUT/probe_gate; case "$1" in held_*) gate=$RELEASE_OUT/held_gate ;; esac
   case "$1" in
     slow_*) sleep 1 ;;
-    *) for _ in $(seq 1 600); do [ -e "$RELEASE_OUT/probe_gate" ] && break; sleep 0.05; done ;;
+    *) for _ in $(seq 1 6000); do [ -e "$gate" ] && break; sleep 0.05; done ;;
   esac
   echo "$1 ended $(date +%s.%N)" >> "$RELEASE_OUT/probe_times" ;;
 esac
@@ -274,7 +275,7 @@ class Yard:
 
     def train(self, *args: str, **extra: str) -> subprocess.CompletedProcess:
         return subprocess.run(["bash", str(self.r / "tools/release/train.sh"), *args], cwd=self.r,
-                              env={**self.env, **extra}, capture_output=True, text=True, timeout=60)
+                              env={**self.env, **extra}, capture_output=True, text=True, timeout=120)
 
     def spec(self, tag: str, name: str) -> str:
         try:
@@ -288,7 +289,7 @@ class Yard:
         except FileNotFoundError:
             return ""
 
-    def until(self, what, seconds: float = 30) -> None:
+    def until(self, what, seconds: float = 120) -> None:
         end = time.time() + seconds
         while not what():
             assert time.time() < end, "waited %ss; trains said:\n%s" % (seconds, self.logs())
@@ -627,14 +628,17 @@ def test_a_tree_left_dirty_or_mid_merge_or_a_failed_probe_is_never_shipped(tmp_p
 def test_probes_run_four_at_a_time_and_one_failing_beside_others_runs_again_alone(tmp_path):
     y = Yard(tmp_path)
     try:
-        probes = "slow_a slow_b slow_c slow_d slow_e flaky"
+        # Held until the first four have begun: a second's sleep each took it
+        # that all four began within that second, which a loaded box need not.
+        probes = "held_a held_b held_c held_d held_e flaky"
         assert y.train("stage", "t-m2", "stage2", "--probes", probes).returncode == 0
+        y.until(lambda: len(y.times("probe_times")) == 4)
+        time.sleep(0.5)  # and while they run, no fifth begins
+        assert sorted(y.times("probe_times")) == ["held_a", "held_b", "held_c", "held_d"], y.text("probe_times")
+        (y.ro / "held_gate").write_text("go")
         y.until(lambda: y.spec("t-m2", "result"))
         assert y.spec("t-m2", "result") == "live", y.logs()
-        spans = {}
-        for line in (y.ro / "probe_times").read_text().splitlines():
-            name, what, when = line.split()
-            spans.setdefault(name, {})[what] = float(when)
+        spans = y.times("probe_times")
         def together(at: float) -> int:
             return sum(1 for s in spans.values() if s["began"] <= at < s["ended"])
         most = max(together(s["began"]) for s in spans.values())
@@ -1018,7 +1022,7 @@ def test_a_train_stopped_by_hand_stops_its_work_and_its_probes_and_says_so(tmp_p
             y.until(lambda: "main waits for the probes" in y.text(tag + "_lead.out") and y.probes_running())
             kill(int(y.spec(tag, "pid")), signal.SIGTERM)
             y.until(lambda: y.spec(tag, "result"))
-            y.until(lambda: not y.probes_running(), 10)
+            y.until(lambda: not y.probes_running(), 60)
             y.until(lambda: y.text(tag + ".done"))
             assert y.spec(tag, "result") == "stopped: killed", y.logs()
             assert y.text(tag + ".done").strip() == done, y.logs()
@@ -1035,7 +1039,7 @@ def test_a_train_stopped_by_hand_stops_its_work_and_its_probes_and_says_so(tmp_p
             y.until(lambda: "waits" in y.spec(tag, "step"))
             pid = int(y.spec(tag, "pid"))
             kill(pid)
-            y.until(lambda: not any("train.sh run " in c for c in _group(pid)), 10)
+            y.until(lambda: not any("train.sh run " in c for c in _group(pid)), 60)
             assert y.spec(tag, "result") == said, y.logs()
             assert not (y.wt / tag).exists()
     finally:
@@ -1279,8 +1283,8 @@ def test_a_ship_that_ends_first_stops_the_probes_beside_it(tmp_path):
         assert y.text("t-m2.probes").strip() == "stopped: the ship ended first"
         # Stopped, not left to run on: it never ended, and nothing of it runs.
         assert "gated" in y.times("probe_times") and "ended" not in y.times("probe_times")["gated"]
-        time.sleep(0.5)
-        assert y.text("probe_pids") and not y.probes_running()
+        assert y.text("probe_pids")
+        y.until(lambda: not y.probes_running(), 60)
         y.unmoved()
     finally:
         y.stop()
@@ -1295,10 +1299,13 @@ def test_the_checks_run_at_once_as_asked_and_none_begins_once_the_probes_failed(
     node = tmp_path / "bin" / "node"
     node.write_text("""#!/bin/bash
 # stand-in: a check that takes a moment, noting when; the one named in
-# STUB_FAILS_PROBES says the probes failed as it runs.
+# STUB_FAILS_PROBES says the probes failed as it runs. With STUB_TOGETHER=N
+# it holds until N have begun: half a second each took it that the first N
+# began within that half second, which a loaded box need not.
 name=$(basename "$1" .mjs)
 echo "$name began $(date +%s.%N)" >> "$RELEASE_OUT/check_spans"
 [ "$name" = "${STUB_FAILS_PROBES:-}" ] && echo "failed: fails" > "$SHIP_PROBES"
+for _ in $(seq 1 1200); do [ "$(grep -c ' began ' "$RELEASE_OUT/check_spans")" -ge "${STUB_TOGETHER:-1}" ] && break; sleep 0.05; done
 sleep 0.5
 echo "$name ended $(date +%s.%N)" >> "$RELEASE_OUT/check_spans"
 echo "$name: all passed"
@@ -1318,14 +1325,14 @@ echo "$name: all passed"
         return y.text(tag + ".out").splitlines()
 
     five = ("io", "gallery", "keys", "palette", "docs")
-    out = battery("t-wide", *five)
+    out = battery("t-wide", *five, STUB_TOGETHER="3")
     assert sorted(line.split()[0] for line in out[:-1]) == sorted(five) and out[-1] == "done", out
     assert all(" exit=0 " in line for line in out[:-1]), out
     spans = y.times("check_spans")
     most = max(sum(1 for s in spans.values() if s["began"] <= t["began"] < s["ended"]) for t in spans.values())
     assert most == 3, spans
     (y.ro / "check_spans").unlink()
-    battery("t-two", *five, PC_AT_ONCE="2")
+    battery("t-two", *five, PC_AT_ONCE="2", STUB_TOGETHER="2")
     spans = y.times("check_spans")
     assert max(sum(1 for s in spans.values() if s["began"] <= t["began"] < s["ended"]) for t in spans.values()) == 2
 
@@ -1344,6 +1351,26 @@ echo "$name: all passed"
     assert [line.split()[:2] for line in out[1:-1]] == [["gallery", "exit=125"], ["keys", "exit=125"],
                                                        ["frames", "exit=125"]], out
     assert all("not run: the release's probes failed" in line for line in out[1:-1]) and out[-1] == "done", out
+
+
+def _tickets(y: Yard, line: str = "queue") -> list:
+    """The runs waiting in live-db.LINE (queue, or release): their TIME.PID tickets, a train's
+    mark (PID) not among them. A run has come once its ticket is there."""
+    d = y.r / ".git" / ("live-db." + line)
+    return sorted(f.name for f in d.iterdir() if "." in f.name) if d.exists() else []
+
+
+def _took(y: Yard) -> list:
+    """Who took the live database, as live-db.log says: take_live_db writes it before its
+    ticket goes, so in the order they took it."""
+    log = y.r / ".git" / "live-db.log"
+    return [line.split()[3] for line in log.read_text().splitlines() if " took " in line] if log.exists() else []
+
+
+def _begun(y: Yard) -> list:
+    """The stand-in checks begun so far, from the yard's spans."""
+    f = y.r / "spans"
+    return [line.split()[0] for line in f.read_text().splitlines() if " began " in line] if f.exists() else []
 
 
 def test_a_release_takes_the_live_database_before_a_unit_that_waited_longer(tmp_path):
@@ -1372,38 +1399,48 @@ def test_a_release_takes_the_live_database_before_a_unit_that_waited_longer(tmp_
 
     held = open(y.r / ".git" / "live-db.lock", "a")
     fcntl.flock(held, fcntl.LOCK_EX)
+    # Each comes once its ticket is there, not a second after the one before,
+    # which a start slow at load can outlast.
     unit = battery("t-unit")
-    time.sleep(1)
+    y.until(lambda: len(_tickets(y)) == 1)
     release = battery("t-release", BOX_HEAVY_PRIORITY="1")
-    time.sleep(1)
+    y.until(lambda: len(_tickets(y, "release")) == 1)
+    time.sleep(0.5)  # several polls, and neither begins while the lock is held
     assert not (y.ro / "check_spans").exists()
     fcntl.flock(held, fcntl.LOCK_UN)
     held.close()
-    assert release.wait(timeout=30) == 0 and unit.wait(timeout=30) == 0
-    took = [line.split()[3] for line in (y.r / ".git" / "live-db.log").read_text().splitlines() if " took " in line]
-    assert took == ["t-release", "t-unit"], took
-    assert [line.split()[0] for line in y.text("check_spans").splitlines()] == ["t-release", "t-unit"]
+    assert release.wait(timeout=120) == 0 and unit.wait(timeout=120) == 0
+    # The order taken, from the log: with three slots the unit takes one the
+    # moment the release has, and its check's first line came first (binrow's
+    # and bugbar's ci_gate, 2026-11-08 and 11-13).
+    assert _took(y) == ["t-release", "t-unit"], _took(y)
+    assert sorted(line.split()[0] for line in y.text("check_spans").splitlines()) == ["t-release", "t-unit"]
     assert not any((y.r / ".git" / "live-db.release").iterdir())
 
     # A train's mark (a file named for its pid, as train.sh run leaves until its battery is
     # done): a unit's battery begins nothing on the live database while it is there, and
     # neither do the release's own checks on the live site, which wait their turn as a unit's.
     (y.ro / "check_spans").unlink()
-    train = subprocess.Popen(["sleep", "5"])
-    mark = y.r / ".git" / "live-db.release" / str(train.pid)
-    mark.write_text("")
-    unit = battery("t-unit2")
-    time.sleep(0.5)
-    # LIVE_DB_RELEASE, which put a train's checks there ahead of every unit, counts for nothing:
-    # a train copied before trainlean still sets it.
-    stale = battery("t-stale", LIVE_DB_RELEASE="1")
-    time.sleep(1)
-    assert unit.poll() is None and stale.poll() is None, "a check ran while the train's mark was there"
-    mark.unlink()  # as ship.sh takes it away once the release's battery is done
-    assert unit.wait(timeout=30) == 0 and stale.wait(timeout=30) == 0
-    assert train.poll() is None, "the train ended first"
-    assert [line.split()[0] for line in y.text("check_spans").splitlines()] == ["t-unit2", "t-stale"]
-    train.kill()
+    train = subprocess.Popen(["sleep", "600"])
+    try:
+        mark = y.r / ".git" / "live-db.release" / str(train.pid)
+        mark.write_text("")
+        unit = battery("t-unit2")
+        y.until(lambda: len(_tickets(y)) == 1)
+        # LIVE_DB_RELEASE, which put a train's checks there ahead of every unit, counts for nothing:
+        # a train copied before trainlean still sets it.
+        stale = battery("t-stale", LIVE_DB_RELEASE="1")
+        y.until(lambda: len(_tickets(y)) == 2)
+        time.sleep(0.5)  # several polls
+        assert unit.poll() is None and stale.poll() is None and not (y.ro / "check_spans").exists(), \
+            "a check ran while the train's mark was there"
+        mark.unlink()  # as ship.sh takes it away once the release's battery is done
+        assert unit.wait(timeout=120) == 0 and stale.wait(timeout=120) == 0
+        assert train.poll() is None, "the train ended first"
+        assert _took(y)[2:] == ["t-unit2", "t-stale"], _took(y)
+    finally:
+        train.kill()
+        train.wait()
 
 
 def test_a_units_own_run_on_the_live_site_waits_for_a_release(tmp_path):
@@ -1415,39 +1452,50 @@ def test_a_units_own_run_on_the_live_site_waits_for_a_release(tmp_path):
     began = tmp_path / "began"
     marks = y.r / ".git" / "live-db.release"
     marks.mkdir(parents=True, exist_ok=True)
-    train = subprocess.Popen(["sleep", "3"])
-    (marks / str(train.pid)).write_text("")
-    unit = subprocess.Popen(["bash", str(y.r / "tools/release/live_db.sh"), "ab-hover",
-                             "bash", "-c", f"touch {began}; exit 3"], cwd=y.r, env=y.env)
-    time.sleep(1)
-    assert unit.poll() is None and not began.exists(), "the unit's run began while the train ran"
-    train.wait()
-    assert unit.wait(timeout=30) == 3 and began.exists()
+    train = subprocess.Popen(["sleep", "600"])
+    try:
+        (marks / str(train.pid)).write_text("")
+        unit = subprocess.Popen(["bash", str(y.r / "tools/release/live_db.sh"), "ab-hover",
+                                 "bash", "-c", f"touch {began}; exit 3"], cwd=y.r, env=y.env)
+        y.until(lambda: len(_tickets(y)) == 1)
+        time.sleep(0.5)  # several polls
+        assert unit.poll() is None and not began.exists(), "the unit's run began while the train ran"
+    finally:
+        train.kill()
+        train.wait()
+    assert unit.wait(timeout=120) == 3 and began.exists()
     log = (y.r / ".git" / "live-db.log").read_text().splitlines()
     assert [line.split()[2:4] for line in log] == [["took", "ab-hover"], ["left", "ab-hover"]], log
     assert log[1].endswith("exit=3")
 
 
 def test_units_on_the_live_site_take_it_in_the_order_they_came(tmp_path):
-    """Five units' runs wait behind a train; once it ends they run one by one in the order they
-    came, not as flock happens to wake them (a unit's run after run held connect3's 91 minutes)."""
+    """Five units' runs wait behind a train; once it ends they take it in the order they came, as
+    live-db.log says, not as flock happens to wake them (a unit's run after run held connect3's
+    91 minutes). Each comes once its ticket is there, not 0.4 s after the one before, which a
+    start slow at load can outlast; and the order is the log's, as with three slots the
+    commands' own first lines raced each other (panelfold's, kinefuncs' and bugbar's ci_gate,
+    2026-11-13)."""
     y = Yard(tmp_path)
     for name in ("live_db.sh", "live_db_lib.sh"):
         y.put("tools/release/" + name, (ROOT / "tools/release" / name).read_text())
-    order = tmp_path / "order"
     marks = y.r / ".git" / "live-db.release"
     marks.mkdir(parents=True, exist_ok=True)
-    train = subprocess.Popen(["sleep", "4"])
-    (marks / str(train.pid)).write_text("")
-    names = ["u1", "u2", "u3", "u4", "u5"]
-    units = []
-    for name in names:
-        units.append(subprocess.Popen(["bash", str(y.r / "tools/release/live_db.sh"), name,
-                                       "bash", "-c", f"echo {name} >> {order}; sleep 0.3"], cwd=y.r, env=y.env))
-        time.sleep(0.4)
-    train.wait()
-    assert all(unit.wait(timeout=60) == 0 for unit in units)
-    assert order.read_text().split() == names
+    train = subprocess.Popen(["sleep", "600"])
+    try:
+        (marks / str(train.pid)).write_text("")
+        names = ["u1", "u2", "u3", "u4", "u5"]
+        units = []
+        for k, name in enumerate(names, 1):
+            units.append(subprocess.Popen(["bash", str(y.r / "tools/release/live_db.sh"), name,
+                                           "bash", "-c", "sleep 0.3"], cwd=y.r, env=y.env))
+            y.until(lambda: len(_tickets(y)) == k)
+        assert not _took(y), "a unit took it while the train ran"
+    finally:
+        train.kill()
+        train.wait()
+    assert all(unit.wait(timeout=120) == 0 for unit in units)
+    assert _took(y) == names, _took(y)
     assert not list((y.r / ".git" / "live-db.queue").iterdir()), "a ticket was left behind"
 
 
@@ -1501,11 +1549,14 @@ def most_at_once(span: dict[str, tuple[float, float]]) -> int:
     return most
 
 
-def held(y: Yard, name: str, seconds: float, *before: str) -> list[str]:
-    """live_db.sh's command for a stand-in check NAME that holds the live database SECONDS."""
+def held(y: Yard, name: str, seconds: float, *before: str, gate: Path | None = None) -> list[str]:
+    """live_db.sh's command for a stand-in check NAME that holds the live database SECONDS, or
+    until GATE is there (five minutes at most)."""
     spans = y.r / "spans"
+    hold = f"sleep {seconds}" if gate is None else \
+        f"for _ in $(seq 1 6000); do [ -e {gate} ] && break; sleep 0.05; done"
     return [*before, str(y.r / "tools/release/live_db.sh"), name, "bash", "-c",
-            f"echo {name} began $(date +%s.%N) >> {spans}; sleep {seconds}; echo {name} ended $(date +%s.%N) >> {spans}"]
+            f"echo {name} began $(date +%s.%N) >> {spans}; {hold}; echo {name} ended $(date +%s.%N) >> {spans}"]
 
 
 def test_a_battery_runs_three_live_checks_at_once_and_one_that_reads_every_accounts_alone(tmp_path):
@@ -1522,15 +1573,19 @@ def test_a_battery_runs_three_live_checks_at_once_and_one_that_reads_every_accou
         y.put(f"tools/web/{flow}.mjs", "await deleteAccount(session)\n")
     (y.r / ".env").write_text("VERCEL_BYPASS=bypass\n")
     node = tmp_path / "bin" / "node"
+    # Each holds until three have begun, then a moment more: 1.5 s each took
+    # it that the first three began within that time, which a loaded box need not.
     node.write_text('#!/bin/bash\nname=$(basename "$1" .mjs)\n'
-                    'echo "$name began $(date +%s.%N)" >> "$RELEASE_OUT/spans"\nsleep 1.5\n'
+                    'echo "$name began $(date +%s.%N)" >> "$RELEASE_OUT/spans"\n'
+                    'for _ in $(seq 1 1200); do [ "$(grep -c " began " "$RELEASE_OUT/spans")" -ge 3 ] && break; sleep 0.05; done\n'
+                    'sleep 0.5\n'
                     'echo "$name ended $(date +%s.%N)" >> "$RELEASE_OUT/spans"\necho "$name: all passed"\n')
     node.chmod(0o755)
     y.ro.mkdir(parents=True)
     env = {**y.env, "RELEASE_OUT": str(y.ro), "TMPDIR": str(tmp_path), "PC_AT_ONCE": "3", "LIVE_DB_SLOTS": "3"}
     battery = subprocess.run(["bash", str(y.r / "tools/release/preview_checks.sh"), "https://preview.invalid",
                               str(y.r), "t-slots", "share_flow", "versions", "challenges", "age", "comments", "tested"],
-                             env=env, capture_output=True, text=True, timeout=120)
+                             env=env, capture_output=True, text=True, timeout=300)
     assert battery.returncode == 0, battery.stderr
     out = (y.ro / "t-slots.out").read_text().splitlines()
     assert len([line for line in out if " exit=0 " in line]) == 6 and out[-1] == "done", out
@@ -1554,26 +1609,33 @@ def test_three_hold_the_live_database_at_once_a_release_first_and_units_in_the_o
         y.put("tools/release/" + name, (ROOT / "tools/release" / name).read_text())
     marks = y.r / ".git" / "live-db.release"
     marks.mkdir(parents=True, exist_ok=True)
-    train = subprocess.Popen(["sleep", "2.5"])
-    (marks / str(train.pid)).write_text("")
+    gate = tmp_path / "gate"
     env = {**y.env, "LIVE_DB_SLOTS": "3"}
     units = []
-    for k in range(1, 7):
-        units.append(subprocess.Popen(held(y, f"u{k}", 2.5), cwd=y.r, env=env))
-        time.sleep(0.3)
-    train.wait()
-    for _ in range(100):
-        if (y.r / "spans").exists() and len((y.r / "spans").read_text().split()) >= 9:
-            break
-        time.sleep(0.1)
-    time.sleep(0.5)
-    release = subprocess.Popen(held(y, "rel", 1), cwd=y.r, env={**env, "BOX_HEAVY_PRIORITY": "1"})
-    assert release.wait(timeout=60) == 0 and all(unit.wait(timeout=60) == 0 for unit in units)
+    train = subprocess.Popen(["sleep", "600"])
+    try:
+        (marks / str(train.pid)).write_text("")
+        # Each comes once its ticket is there; the first three hold their
+        # slots until the gate opens. Spaced by sleeps and held 2.5 s, a slow
+        # start came out of turn, and the first three's own first lines came
+        # u1 u3 u2 (askfirst's ci_gate, 2026-11-10).
+        for k in range(1, 7):
+            units.append(subprocess.Popen(held(y, f"u{k}", 0.5, gate=gate if k <= 3 else None), cwd=y.r, env=env))
+            y.until(lambda: len(_tickets(y)) == k)
+    finally:
+        train.kill()
+        train.wait()
+    y.until(lambda: len(_begun(y)) == 3)
+    release = subprocess.Popen(held(y, "rel", 0.5), cwd=y.r, env={**env, "BOX_HEAVY_PRIORITY": "1"})
+    y.until(lambda: len(_tickets(y, "release")) == 1)
+    time.sleep(0.5)  # several polls: the slots are full, and none begins
+    assert sorted(_begun(y)) == ["u1", "u2", "u3"], _begun(y)
+    gate.write_text("go")
+    assert release.wait(timeout=120) == 0 and all(unit.wait(timeout=120) == 0 for unit in units)
+    assert _took(y) == ["u1", "u2", "u3", "rel", "u4", "u5", "u6"], _took(y)
     span = spans(y.r / "spans")
-    order = sorted(span, key=lambda n: span[n][0])
-    assert order == ["u1", "u2", "u3", "rel", "u4", "u5", "u6"], order
     assert most_at_once(span) == 3, span
-    assert min(span[n][0] for n in span) > time.time() - 60
+    assert sorted(span) == ["rel", "u1", "u2", "u3", "u4", "u5", "u6"] and all(b and e for b, e in span.values()), span
     assert not list((y.r / ".git" / "live-db.queue").iterdir()), "a ticket was left behind"
     assert not [f for f in marks.iterdir() if "." in f.name], "a release's ticket was left behind"
 
@@ -1585,17 +1647,24 @@ def test_one_that_holds_the_live_database_alone_runs_with_no_other_and_none_pass
     for name in ("live_db.sh", "live_db_lib.sh"):
         y.put("tools/release/" + name, (ROOT / "tools/release" / name).read_text())
     env = {**y.env, "LIVE_DB_SLOTS": "3"}
-    runs = [subprocess.Popen(held(y, "a", 2), cwd=y.r, env=env)]
-    time.sleep(0.3)
-    runs.append(subprocess.Popen(held(y, "b", 2), cwd=y.r, env=env))
-    time.sleep(0.5)
-    cmd = held(y, "x", 1)
+    gate = tmp_path / "gate"
+    # a and b hold their slots until c and d have come; each comes once it
+    # has begun (a, b) or its ticket is there (x, c, d), not after a sleep.
+    runs = [subprocess.Popen(held(y, "a", 0, gate=gate), cwd=y.r, env=env)]
+    y.until(lambda: _begun(y) == ["a"])
+    runs.append(subprocess.Popen(held(y, "b", 0, gate=gate), cwd=y.r, env=env))
+    y.until(lambda: _begun(y) == ["a", "b"])
+    cmd = held(y, "x", 0.5)
     runs.append(subprocess.Popen([cmd[0], "--alone", *cmd[1:]], cwd=y.r, env=env))
-    time.sleep(0.3)
-    runs.append(subprocess.Popen(held(y, "c", 1), cwd=y.r, env=env))
-    time.sleep(0.3)
-    runs.append(subprocess.Popen(held(y, "d", 1), cwd=y.r, env=env))
-    assert all(run.wait(timeout=60) == 0 for run in runs)
+    y.until(lambda: len(_tickets(y)) == 1)
+    runs.append(subprocess.Popen(held(y, "c", 0.3), cwd=y.r, env=env))
+    y.until(lambda: len(_tickets(y)) == 2)
+    runs.append(subprocess.Popen(held(y, "d", 0.3), cwd=y.r, env=env))
+    y.until(lambda: len(_tickets(y)) == 3)
+    time.sleep(0.5)  # several polls: a slot is free, and neither c nor d passes x
+    assert _begun(y) == ["a", "b"], _begun(y)
+    gate.write_text("go")
+    assert all(run.wait(timeout=120) == 0 for run in runs)
     span = spans(y.r / "spans")
     began, ended = span["x"]
     assert span["a"][1] <= began and span["b"][1] <= began, span
@@ -1620,11 +1689,7 @@ def test_a_run_killed_while_it_waited_holds_no_one(tmp_path):
     whole = open(lock, "a")
     fcntl.flock(whole, fcntl.LOCK_EX)
     waiter = subprocess.Popen(held(y, "killed", 1), cwd=y.r, env=env)
-    for _ in range(50):
-        if queue.exists() and list(queue.iterdir()):
-            break
-        time.sleep(0.1)
-    assert list(queue.iterdir()), "the waiter left no ticket"
+    y.until(lambda: len(_tickets(y)) == 1)  # the waiter's ticket
     waiter.kill()
     waiter.wait()
     assert list(queue.iterdir()), "the killed run's ticket went with it (no trap runs on a kill)"
@@ -1635,10 +1700,13 @@ def test_a_run_killed_while_it_waited_holds_no_one(tmp_path):
     marks.mkdir(exist_ok=True)
     (marks / str(stranger.pid)).write_text("1\n")  # the start time of the train that had its pid
     try:
-        t0 = time.time()
+        # Held by either, it would wait LIVE_WAIT, an hour.
         run = subprocess.Popen(held(y, "next", 0.2), cwd=y.r, env=env)
-        assert run.wait(timeout=30) == 0
-        assert time.time() - t0 < 10, "the next run waited on a dead ticket"
+        try:
+            assert run.wait(timeout=120) == 0
+        except subprocess.TimeoutExpired:
+            run.kill()
+            raise AssertionError("the next run waited on a dead ticket or mark")
         assert "killed" not in spans(y.r / "spans")
         assert not list(queue.iterdir()) and not list(marks.iterdir()), "a dead ticket or mark was kept"
     finally:

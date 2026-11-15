@@ -530,11 +530,10 @@ static func _worn_by_a_figure(info: PartLibrary.PartInfo) -> bool:
 static func flat_of(info: PartLibrary.PartInfo) -> String:
 	if info == null or not info.name.contains("(Formed"):
 		return ""
-	if not _patterns.has("formed"):
-		var expression := RegEx.new()
-		expression.compile("^(.+)c\\d\\d$")
-		_patterns["formed"] = expression
-	var found: RegExMatch = (_patterns["formed"] as RegEx).search(info.id)
+	# Compiled under the lock as every pattern is (_regex): made here
+	# unlocked while a worker made another, the table was freed twice
+	# (s1r_flat_race_probe, smalls1 review).
+	var found: RegExMatch = _regex("^(.+)c\\d\\d$").search(info.id)
 	return found.get_string(1) if found != null else ""
 
 
@@ -711,7 +710,10 @@ static func _has_socket(library: PartLibrary, arm: String, arm_at: Transform3D,
 ## LDraw's name for it, where the library has no assembly to say: "Arm
 ## Long Curved with Hand", "Mechanical Arm Straight with Clips".
 static func _hand_moulded_on(arm: String) -> bool:
-	if not _slot_of.has(arm) or _family(arm) in [ARM_RIGHT, ARM_LEFT, "16000", "16001"]:
+	_lock.lock()
+	var offered: bool = _slot_of.has(arm)
+	_lock.unlock()
+	if not offered or _family(arm) in [ARM_RIGHT, ARM_LEFT, "16000", "16001"]:
 		return false
 	return _matches(_by_id_name(arm), "\\b(with (Integral |Fixed )?Hand|Clips?|Shoulder)\\b")
 
@@ -719,7 +721,10 @@ static func _hand_moulded_on(arm: String) -> bool:
 static var _names: Dictionary = {}
 
 static func _by_id_name(part_id: String) -> String:
-	return str(_names.get(part_id, ""))
+	_lock.lock()
+	var name: String = str(_names.get(part_id, ""))
+	_lock.unlock()
+	return name
 
 
 ## An arm, its hand, and what is in the hand relative to that hand, all
@@ -971,8 +976,12 @@ func left_leg(library: PartLibrary = null) -> String:
 ## off the builder is fetched with the pairs it will really be put
 ## together with (20461bp00's left leg is 20460bp00, not 3817c).
 func part_ids(library: PartLibrary = null) -> PackedStringArray:
-	if library == null and _indexed != null:
-		library = _indexed.get_ref() as PartLibrary
+	if library == null:
+		# Read under the lock: _publish puts a new one in on any thread.
+		_lock.lock()
+		var indexed: WeakRef = _indexed
+		_lock.unlock()
+		library = indexed.get_ref() as PartLibrary if indexed != null else null
 	var out := PackedStringArray()
 	for placed: Dictionary in assemble(library):
 		if not out.has(str(placed["part"])):
@@ -1006,8 +1015,11 @@ static func role_of(part_id: String, info: PartLibrary.PartInfo = null) -> Strin
 		var slot: String = slot_for(info)
 		if not slot.is_empty():
 			return "accessory" if slot == "accessory_left" else slot
-	if _slot_of.has(part_id):
-		return _slot_of[part_id]
+	_lock.lock()
+	var offered: String = str(_slot_of.get(part_id, ""))
+	_lock.unlock()
+	if not offered.is_empty():
+		return offered
 	# And the mouldings real sets' files still use under their old
 	# numbers (3815, 3816, 3817), which are not offered.
 	if _matches(part_id, "^973(p\\w+)?$"):
@@ -1185,11 +1197,7 @@ static func _short_name(text: String) -> String:
 ## A printed part's plain mould: 3816cp0b -> 3816c, 973pbn -> 973. The
 ## same as tools/minifig.py family().
 static func _family(part_id: String) -> String:
-	if not _patterns.has("family"):
-		var expression := RegEx.new()
-		expression.compile("^([a-z]?\\d+[a-z]?(?:-f\\d)?)(p[0-9a-z]+)?$")
-		_patterns["family"] = expression
-	var found: RegExMatch = (_patterns["family"] as RegEx).search(part_id)
+	var found: RegExMatch = _regex("^([a-z]?\\d+[a-z]?(?:-f\\d)?)(p[0-9a-z]+)?$").search(part_id)
 	return found.get_string(1) if found != null else part_id
 
 
@@ -1243,12 +1251,31 @@ static var _index_parts: int = -1          ## and how many parts
 static func _index(library: PartLibrary, sorted: Array = []) -> void:
 	# Again when parts have been made since: a print drawn a moment ago is
 	# offered in its slot.
-	if library == null or _indexed_for(library):
+	if library == null:
+		return
+	_lock.lock()
+	var current: bool = _indexed_for(library)
+	_lock.unlock()
+	if current:
 		return
 	var found: Array = sorted
 	if found.is_empty():
 		found = []
 		_sort_into(found, library, null)
+	# The tables are made under the lock, and read under it: a figure asked
+	# about on a worker (a check_design, a file written) sorted the library
+	# and cleared them while the warm-up's sort, done a slice at a time,
+	# went through them, which then had no '3816cpde' (cffix2's mcp_agree,
+	# 2026-11-12). Sorted outside it: that reads only the library.
+	_lock.lock()
+	if not _indexed_for(library):
+		_publish(library, found)
+	_lock.unlock()
+
+
+## [method _index]'s tables from [param found] ([method _sort_into]'s), under
+## [member _lock].
+static func _publish(library: PartLibrary, found: Array) -> void:
 	_index_made = library.custom.size()
 	_index_parts = library.parts.size()
 	_slot_of.clear()
@@ -1284,6 +1311,7 @@ static func _index(library: PartLibrary, sorted: Array = []) -> void:
 			_paired[other] = true
 
 
+## Under [member _lock].
 static func _indexed_for(library: PartLibrary) -> bool:
 	if _index_of != library.get_instance_id():
 		return false
@@ -1342,14 +1370,14 @@ static func _sort_into(sorted: Array, library: PartLibrary, pace: FramePace) -> 
 ## warms it a moment after it starts (Main._ready), and the Timeline waits on
 ## it before asking which sub-models are figures.
 static func index_paced(library: PartLibrary) -> void:
-	if library == null or _indexed_for(library):
+	if library == null or _current_for(library):
 		return
 	# One sort at a time: a second caller waits for the one under way. The
 	# warm-up and the Timeline both sorted the whole library at once,
 	# slice for slice, each frame doing the work twice.
 	while _sorting_for == library.get_instance_id():
 		await Engine.get_main_loop().process_frame
-	if _indexed_for(library):
+	if _current_for(library):
 		return
 	_sorting_for = library.get_instance_id()
 	var made: int = library.custom.size()
@@ -1366,6 +1394,22 @@ static func index_paced(library: PartLibrary) -> void:
 static var _sorting_for: int = 0
 
 
+## Whether the index is [param library]'s and current, asked on any thread.
+static func _current_for(library: PartLibrary) -> bool:
+	_lock.lock()
+	var current: bool = _indexed_for(library)
+	_lock.unlock()
+	return current
+
+
+## Held while the index's tables, and the compiled patterns, are read or made:
+## each may be asked for on any thread (Assistant._checked's worker, a file's
+## writing), and a Dictionary changed on one thread while another reads it
+## is read wrong or crashes. Made at class load, as every table a worker
+## reaches must be; a Mutex is recursive, so a reader may call another.
+static var _lock: Mutex = Mutex.new()
+
+
 static func _named_pair(library: PartLibrary, id: String) -> String:
 	var info: PartLibrary.PartInfo = library.parts.get(id)
 	var side: String = side_of(info)
@@ -1373,16 +1417,15 @@ static func _named_pair(library: PartLibrary, id: String) -> String:
 		return ""
 	var full: String = _plain(info.name)
 	var wanted: String = "Left" if side == "r" else "Right"
-	if not _patterns.has("side"):
-		var expression := RegEx.new()
-		expression.compile("\\b(Right|Left)\\b")
-		_patterns["side"] = expression
-	var found: RegExMatch = (_patterns["side"] as RegEx).search(full)
+	var found: RegExMatch = _regex("\\b(Right|Left)\\b").search(full)
 	if found == null:
 		return ""
 	var swapped: String = full.substr(0, found.get_start()) + wanted + full.substr(found.get_end())
+	_lock.lock()
 	var other: String = str(_by_name.get(swapped, ""))
-	if other.is_empty() or _slot_of.get(other) != _slot_of.get(id):
+	var alike: bool = _slot_of.get(other) == _slot_of.get(id)
+	_lock.unlock()
+	if other.is_empty() or not alike:
 		return ""
 	var other_side: String = side_of(library.parts[other])
 	return other if other_side != side else ""
@@ -1402,6 +1445,14 @@ static func partner(library: PartLibrary, part_id: String) -> String:
 				return str(pair[0]) + part_id.substr(4)
 		return ""
 	_index(library)
+	_lock.lock()
+	var found: String = _partner_of(library, part_id)
+	_lock.unlock()
+	return found
+
+
+## [method partner] with the index made, under [member _lock].
+static func _partner_of(library: PartLibrary, part_id: String) -> String:
 	if _partners.has(part_id):
 		return _partners[part_id]
 	var found: String = _named_pair(library, part_id)
@@ -1427,6 +1478,14 @@ static func choices(library: PartLibrary, slot: String) -> Array[PartLibrary.Par
 	if library == null:
 		return []
 	_index(library)
+	_lock.lock()
+	var out: Array[PartLibrary.PartInfo] = _choices_of(library, slot)
+	_lock.unlock()
+	return out
+
+
+## [method choices] with the index made, under [member _lock].
+static func _choices_of(library: PartLibrary, slot: String) -> Array[PartLibrary.PartInfo]:
 	if _choices.has(slot):
 		return _choices[slot]
 	var wanted: String = "accessory" if slot == "accessory_left" else slot
@@ -1507,9 +1566,9 @@ static func _group_label(library: PartLibrary, info: PartLibrary.PartInfo, key: 
 ## offered there, or as the pair of a part that is.
 static func offered(library: PartLibrary) -> Dictionary:
 	_index(library)
-	var out: Dictionary = {}
-	for id: String in _slot_of:
-		out[id] = _slot_of[id]
+	_lock.lock()
+	var out: Dictionary = _slot_of.duplicate()
+	_lock.unlock()
 	return out
 
 
@@ -1526,11 +1585,19 @@ static func _real(info: PartLibrary.PartInfo) -> bool:
 static var _patterns: Dictionary = {}
 
 static func _matches(id: String, pattern: String) -> bool:
-	if not _patterns.has(pattern):
-		var expression := RegEx.new()
-		expression.compile(pattern)
+	return _regex(pattern).search(id) != null
+
+
+## [param pattern] compiled, once: under [member _lock], since a part's slot
+## is asked on workers too (slot_for).
+static func _regex(pattern: String) -> RegEx:
+	_lock.lock()
+	var expression: RegEx = _patterns.get(pattern)
+	if expression == null:
+		expression = RegEx.create_from_string(pattern)
 		_patterns[pattern] = expression
-	return (_patterns[pattern] as RegEx).search(id) != null
+	_lock.unlock()
+	return expression
 
 
 ## What is worn as LDraw draws it before cloth drawn flat, as it is

@@ -75,6 +75,14 @@ class Made extends RefCounted:
 	var cancelled: bool = false
 	## Why nothing was written, when nothing was.
 	var refused: String = ""
+	## STL and 3MF, for a slicer: whether each object is a closed solid, by
+	## ClosedMesh.open_edges (mcpreach). Checked; the objects (a 3MF's one a
+	## colour, an STL's one mesh); the names of those not closed; and the
+	## parts that are not, part id -> how many.
+	var checked: bool = false
+	var objects: int = 0
+	var open_objects := PackedStringArray()
+	var open_parts: Dictionary = {}
 
 
 ## One surface of one shape, read off its mesh once.
@@ -710,10 +718,33 @@ func _stl(list: Array, title: String, made: Made) -> PackedByteArray:
 			span += faces.size()
 		made.triangles += span
 		made.parts += 1
+		if _open_as_drawn(brick.part_id, surfaces):
+			made.open_parts[brick.part_id] = int(made.open_parts.get(brick.part_id, 0)) + 1
 		if await _between_parts(done):
 			made.cancelled = true
 			return PackedByteArray()
 	# Parts with no shape here were counted in the total and are not written.
 	out.resize(at)
 	out.encode_u32(80, made.triangles)
+	made.checked = true
+	made.objects = 1
+	if not made.open_parts.is_empty():
+		made.open_objects.append("its mesh")
 	return out
+
+
+## Part id -> whether its surfaces, as the STL writes them, leave edges
+## open (ClosedMesh.open_edges_at): each part's once.
+var _open_drawn: Dictionary = {}
+
+
+## Whether [param id]'s [param surfaces] (unindexed, as _stl has them) are
+## not a closed solid as written: LDraw draws a part as surfaces that meet
+## without sharing edges, which a slicer mends as it loads them.
+func _open_as_drawn(id: String, surfaces: Array) -> bool:
+	if not _open_drawn.has(id):
+		var corners := PackedVector3Array()
+		for shape: Shape in surfaces:
+			corners.append_array(shape.corners)
+		_open_drawn[id] = Mesh3mf.CLOSED_MESH.open_edges_at(corners) > 0
+	return _open_drawn[id]

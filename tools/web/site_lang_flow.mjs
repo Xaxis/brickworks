@@ -1421,8 +1421,11 @@ async function serverSaid(browser, code, width, at) {
 
 // The pages languages6 put in each language. What people wrote on them,
 // and the names they say: as they wrote them. A challenge's title and
-// brief are the owner's, written in English for every visitor.
-const THEIRS_CHALLENGE = "#title, #crumb, #brief, #next-title, #next-brief, .past-one h3, .winner-cards .words";
+// brief are the owner's, written in English for every visitor; an entry's
+// name in the line over the cards (#vote-said b) is its designer's. Cards,
+// the entries', the winners' and the past challenges', are skipped whole
+// (readable's article.model .words).
+const THEIRS_CHALLENGE = "#title, #crumb, #brief, #next-title, #next-brief, #vote-said b";
 const THEIRS_LIST = ".list-head h1, .list-head .handle a, .list-head .bio";
 const THEIRS_COLLECTIONS = ".collection-card a.open b, .collection-card a.who";
 const THEIRS_OWN = "#title, #handle-line, #bio-shown, #links-shown, .list-card .name, .list-card .who, .people-list .name, "

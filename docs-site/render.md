@@ -19,7 +19,7 @@ Render makes a picture of the model worth keeping, a turntable, an animation of 
 
 1. Press [[F9]]. The quick draft on the left is drawn again whenever a choice changes, so what comes out is what you see.
 2. Make your choices on the right (below).
-3. Press **Render picture**, or [[Enter]]. **Cancel** or [[Esc]] stops it; when it is done, it downloads.
+3. Press **Render picture**, or [[Enter]]. **Cancel** or [[Esc]] stops it; when it is done, it downloads. In the desktop app it goes into your Downloads folder, and never over an earlier one: with `pods_render.png` there, the next is `pods_render_2.png`, and the status bar says the first is kept. A turntable, an animation and a building video are kept the same way.
 
 <!-- covers
 ui:photo-real render

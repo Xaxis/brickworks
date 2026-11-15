@@ -87,6 +87,8 @@ const WIDE := 344
 var _title: Label
 var _close: Button
 var _body: ScrollContainer
+## The view the body was last scrolled for: a finger starts each view at its top.
+var _scrolled_for := ""
 var _list_box: VBoxContainer
 var _motion_rows: VBoxContainer
 var _picks := ButtonGroup.new()
@@ -97,6 +99,8 @@ var _suggest_heading: Label
 var _suggest_rows: VBoxContainer
 var _new: Button
 var _new_sequence: Button
+## New motion and New sequence, in the list's foot or, by finger, the header.
+var _making: HBoxContainer
 var _edit_box: VBoxContainer
 var _seq_box: VBoxContainer
 var _seq_back: Button
@@ -301,7 +305,12 @@ func _refresh() -> void:
 	_seen_revision = world.revision
 	if _frame_for != world.generation():
 		_frame.visible = false
+	if Phone.on() and _view != _scrolled_for:
+		# The list's scroll left the editor's Record below the fold (phonewalk: 8 taps to record).
+		_body.scroll_vertical = 0
+	_scrolled_for = _view
 	_list_box.visible = _view == "list"
+	_making.visible = _view == "list"
 	_edit_box.visible = _view == "edit"
 	_seq_box.visible = _view == "sequence"
 	if _view == "list":
@@ -596,8 +605,11 @@ func new_motion() -> void:
 	_key_index = -1
 	_look = null
 	_refresh()
-	_name.grab_focus()
-	_name.select_all()
+	# A phone's keyboard would come up over the sheet and its Record: the
+	# name is typed over by a tap in it there.
+	if not Phone.on():
+		_name.grab_focus()
+		_name.select_all()
 	_say("Name it, then press Record and drag the parts that move in the view. Or set it here: "
 		+ "a joint's slider puts a key at the time above.")
 
@@ -794,6 +806,10 @@ func _joint_row(motion: Motions.Motion, joint: Motions.Joint) -> void:
 	row.add_child(slider)
 	var strip := KeyStrip.new()
 	strip.custom_minimum_size = Vector2(0, 14)
+	# A fingertip tall for a finger, its keys taken as near.
+	if Phone.on():
+		strip.custom_minimum_size.y = Phone.px(get_viewport(), Phone.TARGET)
+		strip.near = Phone.px(get_viewport(), Phone.TARGET * 0.5)
 	strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	strip.span = _time.max_value
 	strip.now = _at
@@ -1819,6 +1835,15 @@ func _build() -> void:
 	inner.add_theme_constant_override("separation", 6)
 	_body.add_child(inner)
 	_build_list(inner)
+	# By finger, New motion and New sequence stand in the header, in sight
+	# however far the list is scrolled and pushing none of it down. At the
+	# list's foot they were five swipes down a phone's sheet (the phone walk:
+	# 10 taps to record against the desktop's 4); at its head they pushed the
+	# suggestions' Keep and a motion's Play below the fold (11 to keep and
+	# play against 3).
+	if Phone.on():
+		_making.reparent(header, false)
+		header.move_child(_making, 1)
 	_build_editor(inner)
 	_build_sequence(inner)
 	column.add_child(HSeparator.new())
@@ -1909,12 +1934,12 @@ func _build_list(into: Control) -> void:
 	_suggest_rows = VBoxContainer.new()
 	_suggest_rows.add_theme_constant_override("separation", 3)
 	_list_box.add_child(_suggest_rows)
-	var making := HBoxContainer.new()
-	making.add_theme_constant_override("separation", 6)
-	_list_box.add_child(making)
-	_new = _button(making, "New motion", new_motion,
+	_making = HBoxContainer.new()
+	_making.add_theme_constant_override("separation", 6)
+	_list_box.add_child(_making)
+	_new = _button(_making, "New motion", new_motion,
 		"Make a motion: name it, then Record and drag the parts, or set its joints one by one")
-	_new_sequence = _button(making, "New sequence", new_sequence,
+	_new_sequence = _button(_making, "New sequence", new_sequence,
 		"A motion made of the model's motions, in an order you choose: Show it all")
 
 
@@ -1991,7 +2016,7 @@ func _build_editor(into: Control) -> void:
 	_time_words.add_theme_font_size_override("font_size", 12)
 	_time_words.custom_minimum_size = Vector2(44, 0)
 	timing.add_child(_time_words)
-	_heading(_edit_box, "Its joints")
+	var joints_heading: Label = _heading(_edit_box, "Its joints")
 	_joint_rows = VBoxContainer.new()
 	_joint_rows.add_theme_constant_override("separation", 6)
 	_edit_box.add_child(_joint_rows)
@@ -2030,6 +2055,33 @@ func _build_editor(into: Control) -> void:
 	_driver_words.visible = false
 	_edit_box.add_child(_driver_words)
 	_build_path(_edit_box)
+	if Phone.on():
+		_for_a_finger([top, joints_heading, _joint_rows, _more, _key_row, playing, timing],
+			recording, naming, gap)
+
+
+## The editor laid out for a finger (the phone's layout or a tablet's): in a
+## phone's sheet under the model its list shows about 100 points, and a
+## joint's slider sat under the name, Record, Play and the time, four to six
+## swipes down, 5 to 7 taps against the desktop's 1 (phonewalk, APP_UX8
+## phonepanels). So Record goes up beside All motions, where it stays in
+## sight while the parts are dragged and Stop is pressed, and the joints come
+## next; Play and the time follow them. The name takes the room between All
+## motions and Record, in sight with them. What Record's line says the status
+## line says once it is pressed. The desktop keeps its order.
+func _for_a_finger(order: Array, recording: HBoxContainer, naming: HBoxContainer,
+		gap: Control) -> void:
+	var top: HBoxContainer = order[0]
+	_name.reparent(top, false)
+	top.move_child(_name, 1)
+	_name.select_all_on_focus = true
+	gap.visible = false
+	naming.visible = false
+	_record.reparent(top, false)
+	top.move_child(_record, 2)
+	recording.visible = false
+	for n: int in order.size():
+		_edit_box.move_child(order[n] as Control, n)
 
 
 # -- a path: where the whole model drives (unit drive) ---------------------------------------
@@ -2498,6 +2550,8 @@ class KeyStrip extends Control:
 	var chosen: int = -1
 	var _dragging: int = -1
 	var _drag_t: float = 0.0
+	## How near a press takes a key, px: half a fingertip for a finger.
+	var near: float = NEAR
 	const NEAR := 7.0
 	const INSET := 8.0
 
@@ -2514,7 +2568,7 @@ class KeyStrip extends Control:
 		for n: int in times.size():
 			var t: float = _drag_t if n == _dragging else float(times[n])
 			var x: float = _x_of(t)
-			var r: float = 4.5
+			var r: float = maxf(4.5, size.y * 0.18)
 			var colour: Color = Look.ACCENT if n == chosen else Color(1, 1, 1, 0.85)
 			draw_colored_polygon(PackedVector2Array([Vector2(x, mid - r), Vector2(x + r, mid),
 				Vector2(x, mid + r), Vector2(x - r, mid)]), colour)
@@ -2524,7 +2578,7 @@ class KeyStrip extends Control:
 			var press: InputEventMouseButton = event
 			if press.pressed:
 				var nearest: int = -1
-				var best: float = NEAR
+				var best: float = near
 				for n: int in times.size():
 					var off: float = absf(_x_of(float(times[n])) - press.position.x)
 					if off <= best:

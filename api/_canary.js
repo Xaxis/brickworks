@@ -251,6 +251,7 @@ async function tellOwner(result, host) {
         from: process.env.EMAIL_FROM || SENDER, to: [to],
         subject: `Brickworks sign-in check failed: ${letters.map((check) => `(${check})`).join(" ")}`,
         text: lines.join("\n"),
+        tags: [{ name: "kind", value: "canary_alarm" }],
       }),
       signal: AbortSignal.timeout(10000),
     });

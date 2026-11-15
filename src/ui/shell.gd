@@ -299,7 +299,7 @@ const SUBMENUS: Dictionary = {
 	# The window's panels, each shown or put away: set once a session, so
 	# folded beside Split view and Full screen (menurows).
 	"panels": ["panel_parts", "panel_assistant", "panel_properties", "panel_outliner",
-		"panel_keys"],
+		"panel_colour", "panel_keys", "-", "reset_panels"],
 	# Where the step's picture is seen from: its turns, its tilts and its zoom.
 	"booklet_view": ["booklet_turn_left", "booklet_turn_right", "booklet_tilt_up",
 		"booklet_tilt_down", "booklet_this_view", "booklet_usual_view", "-", "booklet_zoom_in",
@@ -375,6 +375,9 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	stress.panel = StressPanel.new()
 	stress.panel.view = stress
 	add_child(stress)
+	# loadtest: Stress's Lift reads the lattice, and lifts by the part chosen.
+	stress.builder = builder
+	builder.selection_changed.connect(stress.chosen)
 	# A suggestion of sections is of the model it was made for.
 	for replaced: Signal in [bar.started_new, bar.cleared]:
 		replaced.connect(func() -> void:
@@ -565,6 +568,8 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 ## column folded, the column opens with it open (a narrow window folds the
 ## other side to make room); else it folds or opens.
 func _toggle_section(section: Control) -> void:
+	if section == null:
+		return
 	var dock: SideDock = SideDock.of(section)
 	if not dock.is_open():
 		section.call("set_open", true)
@@ -574,7 +579,23 @@ func _toggle_section(section: Control) -> void:
 
 
 func _section_shown(section: Control) -> bool:
-	return SideDock.of(section).is_open() and bool(section.call("is_open"))
+	return section != null and SideDock.of(section) != null and SideDock.of(section).is_open() \
+		and bool(section.call("is_open"))
+
+
+## The colours under the parts bin, a section of its column (PanelStack).
+func _colours() -> Control:
+	var bin: PartsBin = app.get("_bin")
+	return bin.colours if bin != null else null
+
+
+## Every section of every column open again, at its first height (View,
+## Panels, Reset panel layout).
+func reset_panels() -> void:
+	for column: String in ["_stack", "_side"]:
+		var stack: PanelStack = app.get(column)
+		if stack != null:
+			stack.reset()
 
 
 ## Define one command.
@@ -638,6 +659,8 @@ func _run_now(name: String) -> void:
 func run_key(action: String) -> void:
 	if action == "report_bug":
 		_report_from = "key"
+	if action == "together_point":
+		_point_from_key = true
 	if ColourKeys.owns(action):
 		ColourKeys.press(action, self)
 	elif action == "select_cycle":
@@ -988,6 +1011,8 @@ const NEEDS: Dictionary = {
 	"reinstall": "In the desktop app only", "restart": "Reload the tab instead",
 	# subexport (APP_UX7 #19).
 	"export_submodels": "Make a sub-model first",
+	# pointat (APP_UX8 #17).
+	"together_point": "Start or join a session first: File › Build together…",
 }
 
 
@@ -1172,6 +1197,12 @@ func _define() -> void:
 	# src/assembly/pinned_comments.gd, src/ui/pins_dialog.gd.
 	_add("comments", "Comments…", 0, func() -> void: app.call("open_pins"), Callable(),
 		"Comments pinned to the model's parts, kept with it, and a new one on the part selected")
+	# pointat (APP_UX8 #17): a part pointed out to everyone in a Build
+	# together session (Together.point_at). Its key is the keymap's (Alt-W,
+	# Keymap.PRESET_KEYS); on a part's right-click menu only in a session.
+	_add("together_point", "Point it out to the others", 0, _point_out, _in_together,
+		"Everyone in your Build together session sees the part under the pointer, or the parts "
+		+ "selected, outlined in your colour with your name for 5 seconds; Esc takes it back")
 	_add("clear", "Clear the baseplate…", 0, bar._ask_to_clear, something,
 		"Empty the baseplate. Asks first: it cannot be undone")
 	_add("account", "Account…", 0, func() -> void: bar.account_wanted.emit(),
@@ -1571,6 +1602,13 @@ func _define() -> void:
 	_add("panel_outliner", "Model tree", 0, func() -> void: _toggle_section(outliner),
 		Callable(), "The model's sub-assemblies by name, inside one another")
 	_ticked("panel_outliner", func() -> bool: return _section_shown(outliner))
+	# The colours under the parts bin fold and size as every section does
+	# (PanelStack), and a reset puts every section back.
+	_add("panel_colour", "Colour", 0, func() -> void: _toggle_section(_colours()), Callable(),
+		"The colour in hand: for the part put down next, or to paint what is selected")
+	_ticked("panel_colour", func() -> bool: return _section_shown(_colours()))
+	_add("reset_panels", "Reset panel layout", 0, reset_panels, Callable(),
+		"Every panel open again and as tall as at first: the parts bin, Colour, the model tree and the properties")
 	_add("minifig", "Minifigure builder…", KEY_M, func() -> void: bar.minifig_wanted.emit(),
 		Callable(), "Make a minifigure from real parts and stand it in the model")
 	_add("mosaic", "Mosaic from a picture…", 0,
@@ -1706,7 +1744,7 @@ func _define() -> void:
 ## Duplicate, Replace, the same part or colour, the step moves and the
 ## swing on a hinge each needed a key or a menu (appux371 A8): here, with
 ## their keys, among what selects, hides, copies and changes the part.
-const ON_A_PART: Array = ["ask_claude", "brace", "comments", "-", "select_connected", "select_part",
+const ON_A_PART: Array = ["ask_claude", "brace", "comments", "together_point", "-", "select_connected", "select_part",
 	"select_colour", "-", "hide", "isolate", "-", "copy", "duplicate", "delete", "-", "paint",
 	"split_parts", "merge_parts",
 	"replace", "printed_versions", "swing", "-", "step_prev", "step_next", "step_to", "make_submodel", "-",
@@ -1742,6 +1780,8 @@ func open_context(at: Vector2) -> void:
 		context.set_item_index(context.item_count - 1, item_index(context, "ask_claude") + 1)
 	elif not can("brace") and bracing != -1:
 		context.remove_item(bracing)
+	# pointat: Point it out to the others, only in a session, under Comment on it….
+	_row_while(context, "together_point", "comments", _in_together())
 	_refresh(context)
 	# Painting is with the colour in hand: which one, said.
 	context.set_item_text(item_index(context, "paint"),
@@ -1847,6 +1887,9 @@ func _shown(items: Array) -> Array:
 		if item in DESKTOP_ONLY and OS.has_feature("web"):
 			continue
 		if EARLY_COMMANDS.has(item) and not str(EARLY_COMMANDS[item]) in early:
+			continue
+		# pointat: Point it out to the others, only in a session.
+		if item == "together_point" and not _in_together():
 			continue
 		if item == "-" and (out.is_empty() or out.back() == "-"):
 			continue
@@ -2307,6 +2350,64 @@ var beta_open: bool = false
 ## Where the next Report a bug… was asked from: the key says so, and the
 ## top bar's button; the menus are "menu".
 var _report_from: String = "menu"
+
+
+# -- pointat (APP_UX8 #17): a part pointed out to everyone in a session -----------
+
+## Whether the command came from its key: then the part under the pointer,
+## else (the menus, a part's right-click, Find a command) the selection,
+## which a right-click on a part makes it.
+var _point_from_key: bool = false
+
+
+## Build together's session while the person is in one, else null. Its
+## script (Together) is the app's to load, when first needed (Later).
+func _together_live() -> Node:
+	var made: Node = app.get("_together_made") if app != null else null
+	return made if made != null and bool(made.get("live")) else null
+
+
+func _in_together() -> bool:
+	return _together_live() != null
+
+
+## Point it out to the others: the part under the pointer from the key,
+## or the parts selected, outlined on every screen in the session.
+func _point_out() -> void:
+	var together: Node = _together_live()
+	var from_key: bool = _point_from_key
+	_point_from_key = false
+	if together == null:
+		return
+	var parts: Array = []
+	if from_key and verbs != null:
+		# Where the app last saw the pointer (Main._pointer), as a click's place is.
+		var mouse: Vector2 = app.call("_pointer")
+		var under: int = 0 if bool(app.call("_over_panel_at", mouse)) else verbs.brick_at(mouse)
+		if under != 0:
+			parts = [under]
+	if parts.is_empty():
+		parts = builder.selection.keys()
+	var trouble: String = together.call("point_at", parts)
+	bar.say(trouble if not trouble.is_empty() else str(together.call("pointed_words")))
+
+
+## A command's row in [param popup] only while [param wanted], under
+## [param after]'s: as Ask Claude to brace this is (open_context).
+func _row_while(popup: PopupMenu, name: String, after: String, wanted: bool) -> void:
+	var at: int = item_index(popup, name)
+	if wanted and at == -1:
+		var id: int = _ids.find(name)
+		if id < 0:
+			id = _ids.size()
+			_ids.append(name)
+		var found: Command = _commands[name]
+		popup.add_item(found.words, id)
+		_show_key(popup, popup.get_item_index(id), found)
+		popup.set_item_tooltip(popup.get_item_index(id), found.tip)
+		popup.set_item_index(popup.get_item_index(id), item_index(popup, after) + 1)
+	elif not wanted and at != -1:
+		popup.remove_item(at)
 
 
 ## The top bar's Report a bug, beside Account, hidden until the beta is open.

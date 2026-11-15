@@ -198,7 +198,14 @@ Whether what you built is still there tomorrow, and still means the same thing.
   the model is read through, as the file had it, after its own
   (`SourceFile.unplaced_into`, by the parts' origins: a sub-model the file
   never placed too, and each section a kept block places, the model's own
-  ones too, since the whole write names and frames those anew). It went to
+  ones too, since the whole write names and frames those anew). An
+  LDCad path the model still places counts as read through, by the section
+  each copy was read from (`SourceFile.flexible`, `BrickWorld.section_files`,
+  in `ModelStore`'s whole write): a hose a grab bent has every piece laid
+  anew, none with an origin, and its section was carried again, old path
+  and all, the live one renamed `pneumatic_hose_lq_12.ldr` beside it
+  (grab_probe 42080-1's "4 caps", smalls1). A sub-model emptied by hand and
+  filled again still has its block kept beside it (fidelity_probe). It went to
   live's write, which took the block out, and the last copy taken off lost
   the sub-model (kt5check F5). A block placed by nothing titled as one the
   model places renames none of its copies at the next open: only placed
@@ -687,7 +694,10 @@ Whether what you built is still there tomorrow, and still means the same thing.
   export served with `serve.py --parts-url "$PARTS_URL"`). 1: the car with a
   part taken off, then `?library=omr-106-1` typed into the same tab: it asks
   ("Save changes to “Car”?"), Cancel keeps the car ("kept “Car” — nothing
-  opened"), typed again Don't save opens the set (65 parts), Undo brings the
+  opened", read once the question is gone, up to 60 s: a fixed 3 s failed on
+  previews and live alike at load 31-77, where software drawing put the
+  page's hearing of it 0.3-4.1 s after the click; webfaults, 2026-11-14),
+  typed again Don't save opens the set (65 parts), Undo brings the
   car back; `asked.png`, `set.png`. 2: `?new=1&library=omr-10297-1`, the
   hotel, pictured every second: first picture (90% of the pixels the model
   changes as they end) and fully open (all down, none on its way, the bar

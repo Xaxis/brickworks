@@ -17,6 +17,14 @@
 ## said to a tenth of a degree, each axis drawn through its point. It works
 ## in either view (View, Split), through the camera of the view clicked in.
 ## Esc or U again leaves it.
+##
+## By finger (fingertools, APP_UX8 #10), a tap is a click: a fingertip lands
+## a few points from where it is aimed, so a tap goes on the stud or the
+## connector nearest it within half a fingertip, read as a mouse's click on
+## its middle reads it; the ruler snapped to wherever the finger landed was
+## half a stud off, or on the brick's top beside the stud. A drag still turns
+## the view, and a finger held down neither takes the part off (Main's touch
+## hold) nor brings up its actions.
 class_name Measure
 extends Node3D
 
@@ -24,6 +32,14 @@ const LDU_MM := 0.4
 ## How near a connector's middle the pointer has to be for a point to go on
 ## it, px at the window's own scale.
 const NEAR := 14.0
+## How near a stud's or a connector's middle a fingertip has to land for a
+## tap to go on it, points: half what a finger is given to press.
+const FINGER_REACH := Phone.TARGET * 0.5
+## How far a tap may wander and still be a tap, points (as a phone's own
+## tap lets it).
+const FINGER_SLOP := 10.0
+## A stud stands this far off the part it is on, LDU.
+const STUD_TALL := 4.0
 ## How far each connector's axis is drawn either side of its point, LDU.
 const AXIS_DRAWN := 14.0
 ## A connector in words.
@@ -88,22 +104,36 @@ var _pressed_at: Vector2 = Vector2.INF
 ## Whether a pointer event is the ruler's, handling it if so: moving aims
 ## the line, a left click (not a drag) sets a point. The other buttons are
 ## left to the camera, so the view can still be turned while measuring.
+## A finger's touch is taken too, after the camera has seen it (it is
+## Main's child), so two fingers still turn and zoom the view; its tap is
+## the click the engine raises from it.
 func takes(event: InputEvent) -> bool:
 	if not active:
 		return false
+	if event is InputEventScreenTouch:
+		return true
 	if event is InputEventMouseMotion:
-		aim((event as InputEventMouseMotion).position)
+		# A finger has no pointer between its taps: its drag turns the view,
+		# and the line stays where its last tap put it.
+		if event.device != InputEvent.DEVICE_ID_EMULATION:
+			aim((event as InputEventMouseMotion).position)
 		return true
 	if event is InputEventMouseButton:
 		var button: InputEventMouseButton = event
 		if button.button_index != MOUSE_BUTTON_LEFT:
 			return false
+		var finger: bool = button.device == InputEvent.DEVICE_ID_EMULATION
 		if button.pressed:
 			_pressed_at = button.position
-		elif _pressed_at.distance_to(button.position) < 6.0:
-			click(button.position)
+		elif _pressed_at.distance_to(button.position) < (_points(FINGER_SLOP) if finger else 6.0):
+			click(button.position, finger)
 		return true
 	return false
+
+
+## [param points] in the window's units: a finger's sizes are in points.
+func _points(points: float) -> float:
+	return Phone.px(get_viewport(), points) if is_inside_tree() else points
 
 
 ## The pointer moved: the line follows it from the first point.
@@ -117,11 +147,12 @@ func aim(at: Vector2) -> void:
 		_draw()
 
 
-## A click: the first point, the second, or a fresh start.
-func click(at: Vector2) -> void:
+## A click: the first point, the second, or a fresh start. A finger's
+## [param finger] tap goes on the stud or connector nearest it.
+func click(at: Vector2, finger: bool = false) -> void:
 	if not active:
 		return
-	var point: Dictionary = _point(at)
+	var point: Dictionary = _finger_point(at) if finger else _point(at)
 	if point.is_empty():
 		return
 	if _from == null or _fixed:
@@ -139,11 +170,14 @@ func click(at: Vector2) -> void:
 
 ## The measurement as words, for the label and for anything checking it.
 func words() -> String:
+	# Laid out for a finger, its words: no Esc to press, and taps.
+	var finger: bool = Phone.on()
 	if _from == null or _to == null:
-		return "Measuring: click a point, then another — Esc stops"
+		return "Measuring: tap a point, then another" if finger \
+			else "Measuring: click a point, then another — Esc stops"
 	var said: String = said_between(_from, _to)
 	if said.is_empty():
-		return "0 mm — click another point"
+		return "0 mm — tap another point" if finger else "0 mm — click another point"
 	var between: Variant = angle()
 	if between != null:
 		said += angle_words(between, KINDS.get(_from_end.kind, _from_end.kind),
@@ -214,7 +248,15 @@ func _point(at: Vector2) -> Dictionary:
 	var hit: BrickLattice.Hit = lattice.raycast(origin, direction)
 	var point: Vector3
 	if hit.is_valid():
+		# A connector's middle or a stud's top, whichever is nearer: the
+		# lattice has no studs, so a click on one went through it to the
+		# part's top and read 2 to 4 LDU low (fingertools).
 		var end: JointSnap.End = _end_near(hit.brick_id, at)
+		var stud: Variant = _stud_near(hit.brick_id, at)
+		var view: int = camera.view_at(at)
+		if stud != null and (end == null or camera.screen_of(stud, view).distance_to(at)
+				< camera.screen_of(end.middle(), view).distance_to(at)):
+			return {"at": stud, "end": null}
 		if end != null:
 			return {"at": end.middle(), "end": end}
 		point = origin + direction.normalized() * hit.distance
@@ -227,6 +269,99 @@ func _point(at: Vector2) -> Dictionary:
 	return {"at": Vector3(snappedf(point.x, BrickLattice.STUD * 0.5),
 		snappedf(point.y, BrickLattice.CELL), snappedf(point.z, BrickLattice.STUD * 0.5)),
 		"end": null}
+
+
+## Where a fingertip at [param at] is on the model: the stud or the connector
+## nearest it on the screen within [constant FINGER_REACH], of any part under
+## the fingertip and in sight there, read as a mouse's click on its middle
+## reads it ([method _point]); with none, where the mouse's click at [param
+## at] would be.
+func _finger_point(at: Vector2) -> Dictionary:
+	var reach: float = _points(FINGER_REACH)
+	var view: int = camera.view_at(at)
+	var best: Vector2 = at
+	var best_off: float = reach
+	for brick_id: int in _under_fingertip(at, reach):
+		for spot: Vector2 in _spots_of(brick_id, view):
+			var off: float = spot.distance_to(at)
+			if off < best_off and _in_sight(spot, brick_id):
+				best_off = off
+				best = spot
+	return _point(best)
+
+
+## The parts under a fingertip [param reach] round [param at]: under its
+## middle, and under eight points round each of two rings inside it.
+func _under_fingertip(at: Vector2, reach: float) -> Array[int]:
+	var found: Array[int] = []
+	for ring: float in [0.0, 0.5, 1.0]:
+		for n: int in (1 if ring == 0.0 else 8):
+			var spot: Vector2 = at + Vector2.from_angle(TAU * n / 8.0) * reach * ring
+			var hit: BrickLattice.Hit = lattice.raycast(camera.ray_origin(spot),
+				camera.ray_normal(spot))
+			if hit.is_valid() and not found.has(hit.brick_id):
+				found.append(hit.brick_id)
+	return found
+
+
+## Where [param brick_id]'s studs' tops and its connectors' middles are on
+## the screen in [param view], those in front of the eye.
+func _spots_of(brick_id: int, view: int) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	if world == null or library == null:
+		return out
+	var brick: BrickWorld.Brick = world.get_brick(brick_id)
+	if brick == null:
+		return out
+	var points: PackedVector3Array = _stud_tops(brick_id)
+	for end: JointSnap.End in JointSnap.ends_for(library, brick.part_id):
+		points.append(end.placed(brick.transform, brick_id).middle())
+	for point: Vector3 in points:
+		if not camera.behind(point, view):
+			out.append(camera.screen_of(point, view))
+	return out
+
+
+## Whether [param brick_id] is what a click at [param spot] meets: a stud or
+## a hole round the back of the part, or behind another, is not in sight.
+func _in_sight(spot: Vector2, brick_id: int) -> bool:
+	return lattice.raycast(camera.ray_origin(spot), camera.ray_normal(spot)).brick_id == brick_id
+
+
+## The tops of [param brick_id]'s studs, in the model: each stud's middle,
+## [constant STUD_TALL] out from its foot.
+func _stud_tops(brick_id: int) -> PackedVector3Array:
+	var out := PackedVector3Array()
+	var brick: BrickWorld.Brick = world.get_brick(brick_id) if world != null else null
+	if brick == null or library == null:
+		return out
+	var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
+	if mesh == null:
+		return out
+	for connector: Lbm.Connector in mesh.connectors:
+		if connector.kind == "stud" and connector.gender == "male" \
+				and connector.axis.length_squared() > 0.5:
+			out.append(brick.transform * (connector.position
+				+ connector.axis.normalized() * STUD_TALL))
+	return out
+
+
+## The top of the stud of [param brick_id] nearest [param at] on the screen,
+## within [constant NEAR] as a connector's middle is; null for none.
+func _stud_near(brick_id: int, at: Vector2) -> Variant:
+	var view: int = camera.view_at(at)
+	var window: Window = get_window() if is_inside_tree() else null
+	var best_off: float = NEAR * (window.content_scale_factor if window != null
+		and window.content_scale_factor > 0.0 else 1.0)
+	var best: Variant = null
+	for top: Vector3 in _stud_tops(brick_id):
+		if camera.behind(top, view):
+			continue
+		var off: float = camera.screen_of(top, view).distance_to(at)
+		if off < best_off:
+			best_off = off
+			best = top
+	return best
 
 
 ## The connector of [param brick_id] whose middle is nearest [param at] on
