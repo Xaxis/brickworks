@@ -4223,6 +4223,7 @@ static func _plain_section(text: String) -> String:
 ## looks, BookletLooks)}.
 static func _own_head(text: String, model: LdrModel, authored: bool) -> Dictionary:
 	var out: Dictionary = {"notes": PackedStringArray(), "bfc": 0, "rotsteps": 0}
+	var notes := PackedStringArray()
 	var span: Vector2i = model.main.span if model.main != null else Vector2i(0, 0)
 	var lines: PackedStringArray = text.split("\n")
 	var in_head: bool = true
@@ -4240,7 +4241,8 @@ static func _own_head(text: String, model: LdrModel, authored: bool) -> Dictiona
 		elif word == "BFC":
 			out["bfc"] = int(out["bfc"]) + 1
 		elif in_head and words[1].begins_with("//"):
-			(out["notes"] as PackedStringArray).append(lines[n].trim_suffix("\r"))
+			notes.append(lines[n].trim_suffix("\r"))
+	out["notes"] = notes
 	return out
 
 
