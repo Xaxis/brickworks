@@ -667,6 +667,9 @@ const HINTS := {
 	# pointat (APP_UX8 #17): shows the others in a Build together session a
 	# part for 5 seconds; nothing of the model or a file changes.
 	"point_at": ["Point a part out to the others", "look"],
+	# swapfind (APP_UX8 #9): parts swapped for others or painted, in every
+	# sub-model; a second call alike finds none left to change.
+	"replace_parts": ["Find and replace parts", "remove", "again"],
 }
 const KINDS: Array[String] = ["look", "file", "add", "remove"]
 

@@ -8100,6 +8100,47 @@ func _find_parts() -> void:
 		_bar.say("nothing to find yet")
 
 
+# -- swapfind (APP_UX8 #9): Edit › Find and replace… -----------------------------
+
+## The Find and replace bar (src/ui/find_replace_bar.gd), made the first time
+## it opens.
+var _find_replace_made: PanelContainer = null
+
+
+## Edit › Find and replace…: the bar over the top of the model's room, what to
+## find taken from the selection; in the layout for a finger, placed and
+## sized as its panels are.
+func _find_replace() -> void:
+	if _find_replace_made == null:
+		var bar: PanelContainer = Later.make(&"FindReplaceBar")
+		bar.set("app", self)
+		bar.set("say", func(line: String) -> void: _bar.say(line))
+		_find_replace_made = bar
+		_add_to_hud(bar)
+		bar.add_to_group(FocusGuard.OVER)
+		if _touch != null:
+			_touch.place_panel(bar, Vector2(520.0, 480.0))
+		else:
+			get_viewport().size_changed.connect(_seat_find_replace)
+	if _touch == null:
+		_seat_find_replace()
+	_find_replace_made.call("open")
+
+
+## The bar across the middle of the top of the model's room.
+func _seat_find_replace() -> void:
+	var bar: Control = _find_replace_made
+	if bar == null or _touch != null:
+		return
+	var room: Rect2 = _over_model.get_global_rect()
+	var wide: float = clampf(room.size.x - 24.0, 360.0, 560.0)
+	bar.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	bar.position = Vector2(room.position.x + maxf((room.size.x - wide) * 0.5, 0.0),
+		room.position.y + 12.0)
+	bar.size = Vector2(wide, 0.0)
+# end swapfind
+
+
 ## The parts list told what the bin is built from holds, so a part past it
 ## is marked over there as on the bin's tile: a set's, or the person's own
 ## bricks (From my bricks, OwnCounts); nothing for the whole library.

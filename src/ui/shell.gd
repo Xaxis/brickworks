@@ -208,7 +208,7 @@ const MENUS: Array = [
 		"comments", ">export", "render", "render_queue", "-", "clear", "quit"]],
 	["Edit", ["undo", "redo", ">history", "-", "cut_parts", "copy", "paste", "duplicate",
 		"pattern", "delete", "-", "select_all", "select_none", ">select_by", "-", "hide",
-		"isolate", "show_all", "lock", "unlock", "-", "paint", "replace", "mirror"]],
+		"isolate", "show_all", "lock", "unlock", "-", "paint", "replace", "find_replace", "mirror"]],
 	["View", [">viewpoint", "mode_orbit", "mode_pan", "mode_zoom",
 		"fit", "fit_model", "fit_selection",
 		"ortho", "grid", ">floor",
@@ -1275,6 +1275,12 @@ func _define() -> void:
 		selected, "Paint the selection the colour in hand")
 	_add("replace", "Replace with the part in hand", 0, func() -> void: await verbs.replace(),
 		selected, "Swap the selection for the part you hold, each in its own colour")
+	# swapfind (APP_UX8 #9): a part, a colour or both found anywhere, inside
+	# every sub-model, and replaced in one undo (FindReplaceBar). Ctrl-Shift-H,
+	# beside Hide's Ctrl-H: editors' Replace in files, the whole of a project.
+	_add("find_replace", "Find and replace…", CTRL | SHIFT | KEY_H,
+		func() -> void: app.call("_find_replace"), something,
+		"Find a part or a colour anywhere in the model, inside every sub-model too, and replace it")
 	# src/prints/printed_versions.gd: the prints the LEGO Group made of it.
 	_add("printed_versions", "Printed versions…", 0, func() -> void:
 		var studio: Node = await app.call("_studio_ready")
