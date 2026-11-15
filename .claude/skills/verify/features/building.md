@@ -1726,8 +1726,7 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   definition once, each copy a `1` line, a mirrored copy by a reflecting matrix
   (`LdrModel.write_tree`), each with `0 !BRICKWORKS COPY n` before it, as
   the file is in build order and copies read back by their place in it swapped
-  (`LdrModel.COPY_META`), and after it the numbers of the copies inside a copy
-  its section was not written from (`COPY 2 Wing#2=3`, copyorder); read back, a mirrored reference is put in the other
+  (`LdrModel.COPY_META`); read back, a mirrored reference is put in the other
   hand (`Assemblies.unmirror`). Probe: `assembly_probe` (windowed), which saves
   as Save does (with the steps) and finds each copy the one it was, and also
   opens `vendor/omr`'s 31037 and finds its two propellers as two copies.

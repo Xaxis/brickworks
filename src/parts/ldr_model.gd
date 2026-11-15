@@ -57,10 +57,6 @@ class Placement extends RefCounted:
 	## For a reference to a sub-model, which copy of it this is, as the
 	## file says (COPY_META); 0 where it does not.
 	var copy: int = 0
-	## And the copies inside it, where its line says them: each by its path
-	## within it as the sub-model's own lines number them -> its number in
-	## this copy ([method LdrModel.copies_said]). {} where it says none.
-	var copies_in: Dictionary = {}
 	## The copy built in the steps of the sub-model it was read in that it
 	## is part of, by its path within that sub-model ("tower#1"), as the
 	## file says (IN_META); "" for the sub-model's own.
@@ -188,58 +184,6 @@ var marked_worked: bool = false
 ## wing built first came back as the wing and the original as its copy
 ## (assembly_flow.mjs, 2026-10-16).
 const COPY_META := "0 !BRICKWORKS COPY"
-## And the numbers of the copies inside that copy, after its own, where it is
-## not the copy its sub-model's section is written from: each "Wing#2=3",
-## the copy by its path in the section as the section's own lines number it,
-## "=" and its number in this copy ([method copies_said]). A section is
-## written once, so its COPY lines say the numbers of one copy's; a second
-## car's wing came back numbered as the first's, or as the next after the
-## highest where that was taken: "Car#2/Wing#3" opened as "Car#2/Wing#2", the
-## first car's as "Wing#5", and each save numbered them anew (cf3check O1,
-## copyorder). Other readers skip the line; one of this app's before them
-## reads the copy's own number alone.
-
-
-## The number [param word] says on a COPY_META line, its own or one of
-## [method copies_said]'s: 1 to 9 digits and nothing else, else 0, none. The
-## site reads it by the same rule (api/_parts.js copyNumber): read each its
-## own way, "+3" was 3 here and nothing there, twenty nines were Godot's
-## highest int here and 1e20 there, and "Wing#2=3" in the own number's place
-## was copy 23 here (coreview F2).
-static func copy_number(word: String) -> int:
-	if word.is_empty() or word.length() > 9 or not word.lstrip("0123456789").is_empty():
-		return 0
-	return word.to_int()
-
-
-## The numbers [param words] say, a COPY_META line's after its own number:
-## path -> number. A word that says none is skipped.
-static func copies_said(words: PackedStringArray) -> Dictionary:
-	var out: Dictionary = {}
-	for word: String in words:
-		var at: int = word.rfind("=")
-		if at <= 0:
-			continue
-		var number: int = copy_number(word.substr(at + 1))
-		if number > 0:
-			out[word.left(at).uri_decode()] = number
-	return out
-
-
-## [param numbers] (path -> number) as words of a COPY_META line, in an order
-## of their own, each path's spaces, tabs, "=", "+" and "%" escaped: a
-## sub-model's name may have any of them ("Wing 2+"), and the reader's
-## String.uri_decode reads a "+" as a space.
-static func copies_saying(numbers: Dictionary) -> String:
-	var paths: Array = numbers.keys()
-	paths.sort_custom(func(a: String, b: String) -> bool:
-		var by: int = a.naturalnocasecmp_to(b)
-		return by < 0 if by != 0 else a < b)
-	var words := PackedStringArray()
-	for path: String in paths:
-		words.append("%s=%d" % [path.replace("%", "%25").replace(" ", "%20").replace("\t", "%09")
-			.replace("=", "%3D").replace("+", "%2B"), int(numbers[path])])
-	return " ".join(words)
 ## The line before a run of a step's lines that are of a copy of a
 ## sub-model built in this one's steps (AuthorSteps.IN_PARENT), naming it by
 ## its path within this one: "0 !BRICKWORKS IN north-east tower#1". In
@@ -373,10 +317,8 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 	var current_key: String = _key(source_name)
 
 	var step: int = 0
-	## The copy the next reference is, from a COPY_META line before it, and
-	## the numbers it says of the copies inside it.
+	## The copy the next reference is, from a COPY_META line before it.
 	var copy_next: int = 0
-	var copies_next: Dictionary = {}
 	## The copy built in this one's steps the lines now read are of, from an
 	## IN_META line: to the next, or the end of the step.
 	var within: String = ""
@@ -484,8 +426,7 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 				model.marked_worked = true
 			elif keyword == "!BRICKWORKS" and tokens.size() > 3 \
 					and tokens[2] == _COPY_WORD:
-				copy_next = copy_number(tokens[3])
-				copies_next = copies_said(tokens.slice(4))
+				copy_next = maxi(tokens[3].to_int(), 0)
 			elif not within.is_empty() and _kept_within(keyword, tokens):
 				# In an IN block: the lines of the copy it names, its
 				# definition's own (within_lines), never this section's.
@@ -574,16 +515,13 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 			# file keeps it (SourceFile writes back every line no part is
 			# read from). Its COPY_META was its own.
 			copy_next = 0
-			copies_next = {}
 			continue
 		var read := Placement.new(part_id, color, at, step)
 		read.line = index
 		read.copy = copy_next
-		read.copies_in = copies_next
 		read.within = within
 		read.reference = _key(named)
 		copy_next = 0
-		copies_next = {}
 		current.placements.append(read)
 
 	if not data_name.is_empty():
@@ -1216,8 +1154,7 @@ func _inline(
 	group: String,
 	unit: String,
 	copies: Dictionary,
-	chain: String,
-	said: Array = []
+	chain: String
 ) -> void:
 	# By the sub-model, not its name: a block of the model's own name is
 	# another (MAIN_KEY).
@@ -1225,8 +1162,7 @@ func _inline(
 		push_warning("ldr: %s contains itself; not expanding further" % sub.name)
 		return
 	visiting[sub] = true
-	## Each copy built in this one's steps (Placement.within) -> [its path,
-	## the copies' numbers in force there ([param said])].
+	## Each copy built in this one's steps (Placement.within) -> its path.
 	var made: Dictionary = {}
 
 	for placement: Placement in sub.placements:
@@ -1235,11 +1171,8 @@ func _inline(
 		# makes one, numbered as the file says where that number is free.
 		var own_group: String = group
 		var own_unit: String = unit
-		var own_said: Array = said
 		if not placement.within.is_empty():
-			var built: Array = _built_within(placement.within, unit, copies, made, chain, said)
-			own_unit = built[0]
-			own_said = built[1]
+			own_unit = _built_within(placement.within, unit, copies, made, chain)
 			if depth == 0:
 				own_group = own_unit.get_slice("/", 0).get_slice("#", 0)
 
@@ -1265,18 +1198,13 @@ func _inline(
 			# app numbers a new copy (Assemblies.next_copy). Free matters: a
 			# definition's references are written once, for its first copy,
 			# and a second copy of the house says its windows are 1 and 2
-			# again: each of its others says its own on the line placing it
-			# (Placement.copies_in, [param said]).
-			var asked: Array = _asked(kind, placement.copy, own_said)
+			# again.
 			var number: int = int(copies.get(kind, 0)) + 1
-			if int(asked[0]) > 0 and not copies.has("%s#%d" % [kind, int(asked[0])]):
-				number = int(asked[0])
+			if placement.copy > 0 and not copies.has("%s#%d" % [kind, placement.copy]):
+				number = placement.copy
 			copies[kind] = maxi(int(copies.get(kind, 0)), number)
 			var copy: String = "%s#%d" % [kind, number]
 			copies[copy] = true
-			var below: Array = asked[1]
-			if not placement.copies_in.is_empty():
-				below = below + [[placement.copies_in, ""]]
 			inside = copy if inside.is_empty() else "%s/%s" % [inside, copy]
 			unit_steps[inside] = placement.step
 			unit_frames[inside] = at * placement.transform
@@ -1290,7 +1218,7 @@ func _inline(
 				at * placement.transform,
 				placement.color_code if placement.color_code != 16 else color,
 				out, visiting.duplicate(), depth + 1, named,
-				inside, copies, placed_by, below)
+				inside, copies, placed_by)
 			continue
 
 		var resolved: int = placement.color_code
@@ -1310,12 +1238,9 @@ func _inline(
 
 	# The lines its IN blocks carry of a copy built in its steps: that copy's
 	# own, in this section's coordinates, which stand at [param at] here.
-	for kept_as: String in sub.kept_within:
-		if not made.has(kept_as):
-			continue
-		var path: String = (made[kept_as] as Array)[0]
-		if not unit_kept.has(path):
-			unit_kept[path] = {"frame": at, "lines": sub.kept_within[kept_as]}
+	for said: String in sub.kept_within:
+		if made.has(said) and not unit_kept.has(made[said]):
+			unit_kept[made[said]] = {"frame": at, "lines": sub.kept_within[said]}
 	visiting.erase(sub)
 
 
@@ -1325,62 +1250,28 @@ func _inline(
 ## the highest, as a reference's is ([method _inline]); the same path for
 ## every line of one copy in one reading of [param unit] ([param made]).
 ## Each is a copy built in its parent's steps (AuthorSteps.IN_PARENT).
-## Returns [the path, the copies' numbers in force in it ([method _asked])].
 func _built_within(within: String, unit: String, copies: Dictionary, made: Dictionary,
-		chain: String, numbers: Array = []) -> Array:
+		chain: String) -> String:
 	var path: String = unit
 	var said: String = ""
-	var inner: Array = numbers
 	for segment: String in within.split("/", false):
 		said = segment if said.is_empty() else "%s/%s" % [said, segment]
 		if made.has(said):
-			path = (made[said] as Array)[0]
-			inner = (made[said] as Array)[1]
+			path = made[said]
 			continue
 		var kind: String = segment.get_slice("#", 0).strip_edges()
-		var asked: Array = _asked(kind,
-			segment.get_slice("#", 1).to_int() if segment.contains("#") else 0, inner)
+		var asked: int = segment.get_slice("#", 1).to_int() if segment.contains("#") else 0
 		var number: int = int(copies.get(kind, 0)) + 1
-		if int(asked[0]) > 0 and not copies.has("%s#%d" % [kind, int(asked[0])]):
-			number = int(asked[0])
+		if asked > 0 and not copies.has("%s#%d" % [kind, asked]):
+			number = asked
 		copies[kind] = maxi(int(copies.get(kind, 0)), number)
 		var copy: String = "%s#%d" % [kind, number]
 		copies[copy] = true
 		path = copy if path.is_empty() else "%s/%s" % [path, copy]
-		inner = asked[1]
-		made[said] = [path, inner]
+		made[said] = path
 		unit_steps[path] = IN_PARENT
 		unit_chains[path] = chain + "|" + said
-	return [path, inner]
-
-
-## The number a copy of [param kind] the file numbers [param number] (0:
-## none) is asked to have, by the copies' numbers in force where it is read
-## ([param said]: each copy round it whose line says the numbers of the
-## copies inside it ([member Placement.copies_in]), outermost first, as
-## [that table, the path the copy being read is in within that one, as its
-## own table names it, or null where it cannot be named]). The innermost
-## renumbers first, and the next out reads it by the number it then has,
-## as a copy of that one is numbered by its section's lines and its own;
-## past one it cannot be named in, the number as far as it was read.
-## Returns [the number, [param said] for the copies inside this one].
-static func _asked(kind: String, number: int, said: Array) -> Array:
-	if said.is_empty():
-		return [number, said]
-	var below: Array = []
-	below.resize(said.size())
-	var known: bool = true
-	for k: int in range(said.size() - 1, -1, -1):
-		var frame: Array = said[k]
-		if not known or number <= 0 or frame[1] == null:
-			known = false
-			below[k] = [frame[0], null]
-			continue
-		var key: String = "%s#%d" % [kind, number] if str(frame[1]).is_empty() \
-			else "%s/%s#%d" % [frame[1], kind, number]
-		below[k] = [frame[0], key]
-		number = int((frame[0] as Dictionary).get(key, number))
-	return [number, below]
+	return path
 
 
 ## A line [param line] read within the copy [param chain] places, as
@@ -1530,10 +1421,7 @@ static func write_tree(
 			# the first of a definition of its own.
 			var leaf: String = child.get_slice("/", child.count("/"))
 			if leaf.get_slice("#", 0) == str(entry["def"]) and leaf.contains("#"):
-				# And the copies inside it, where its section is another's.
-				var inside: String = _copies_inside(child, instances, masters)
-				line = "%s %d%s\n%s" % [COPY_META, maxi(leaf.get_slice("#", 1).to_int(), 1),
-					"" if inside.is_empty() else " " + inside, line]
+				line = "%s %d\n%s" % [COPY_META, maxi(leaf.get_slice("#", 1).to_int(), 1), line]
 			elif masters.get(str(entry["def"])) == child:
 				# The one copy of a definition of its own ("wing 2", from
 				# Wing#2): its first, as the file read again numbers it. Said
@@ -1792,39 +1680,6 @@ static func _within_of(path: String, home: String) -> String:
 	if path == home:
 		return ""
 	return path if home.is_empty() else path.substr(home.length() + 1)
-
-
-## The numbers of the copies inside the copy at [param path] as words of
-## its COPY_META line ([method copies_saying]), where its definition's
-## section is written from another copy ([param masters]): each copy inside
-## that one by its path there (Assemblies.file_frames' "copies"), which is
-## how the section's own lines number it, read as each copy of a definition
-## is written, its kind its definition's. "" where there are none to say.
-static func _copies_inside(path: String, instances: Dictionary, masters: Dictionary) -> String:
-	var entry: Dictionary = instances[path]
-	var laid: Dictionary = entry.get("copies", {})
-	var master: String = str(masters.get(str(entry["def"]), path))
-	if laid.is_empty() or master == path:
-		return ""
-	var numbers: Dictionary = {}
-	for inner: String in laid:
-		var mine: String = laid[inner]
-		var theirs: String = inner.get_slice("/", inner.count("/"))
-		var own: String = mine.get_slice("/", mine.count("/"))
-		if theirs.get_slice("#", 0) != own.get_slice("#", 0) or theirs == own:
-			continue
-		# Each copy on the way named as the section's lines name it: of the
-		# kind of the definition it is written as.
-		var said: bool = true
-		var at: String = master
-		for segment: String in inner.split("/"):
-			at += "/" + segment
-			if str((instances.get(at, {}) as Dictionary).get("def", "")) != segment.get_slice("#", 0):
-				said = false
-				break
-		if said:
-			numbers[inner] = own.get_slice("#", 1).to_int()
-	return copies_saying(numbers)
 
 
 ## The steps of each file section [method write_tree] writes, by
