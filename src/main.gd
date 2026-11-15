@@ -8273,8 +8273,19 @@ var _edit_coming: bool = false
 
 
 func _edited_now() -> void:
+	# Done already this frame, asked for before the frame's end (_settle_edit).
+	if not _edit_coming:
+		return
 	_edit_coming = false
 	_on_model_edited()
+
+
+## The edit [method _edited_soon] put off to the frame's end, done now: a
+## Build together session reads the model only as the copies of its
+## sub-models leave it (Together.settle_edit).
+func _settle_edit() -> void:
+	if _edit_coming:
+		_edited_now()
 
 
 ## File, Render….
@@ -8386,9 +8397,9 @@ func _make_together() -> void:
 	made.base_url = Deployment.api_base()
 	made.said.connect(func(words: String) -> void: _bar.say(words))
 	# An edit the copies of its sub-model have not yet followed, or refused
-	# (_edited_soon, at the frame's end): not sent until then, so one taken
-	# back is never sent at all.
-	made.edit_pending = func() -> bool: return _edit_coming
+	# (_edited_soon, at the frame's end), done before the session reads the
+	# model: one taken back is never sent at all.
+	made.settle_edit = _settle_edit
 	# Following someone's view: the model's column framed in their colour.
 	made.banner_parent = _over_model
 	# Where this person is working, for the others' view: the part under the

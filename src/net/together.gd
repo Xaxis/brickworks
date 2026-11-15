@@ -996,19 +996,21 @@ func _model_now() -> Array:
 	return [world.revision, builder.history_depth(), builder.last_step()]
 
 
-## Whether an edit made here waits for its sub-model's other copies to
-## follow it at the frame's end (Main._edited_soon), which may take it back
-## instead (Assemblies.after_edit): () -> bool, Main's. Unset, none waits.
-var edit_pending: Callable = Callable()
+## An edit made here that waits for its sub-model's other copies to follow
+## it at the frame's end (Main._edited_soon), followed now, or taken back
+## where a copy cannot take it (Assemblies.after_edit): () -> void, Main's.
+var settle_edit: Callable = Callable()
 
 
 ## What changed in the model since it was last looked at, told from what the
-## session last had: sent, and kept for this side's undo. Not while an edit
-## waits for its copies to follow it: an edit they refuse is taken back
-## before it is ever sent, and the others never see it (followfix).
+## session last had: sent, and kept for this side's undo. An edit still to be
+## followed by its copies is followed first, so one they refuse is taken back
+## before it is ever sent, and one they take goes with their change
+## (followfix). Waiting for the frame's end instead sent a tool's change a
+## frame after the tool's answer.
 func _capture() -> void:
-	if edit_pending.is_valid() and bool(edit_pending.call()):
-		return
+	if settle_edit.is_valid():
+		settle_edit.call()
 	var now: Array = _model_now()
 	if not _heard.is_empty() and now[0] == _heard[0] and now[1] == _heard[1] \
 			and is_same(now[2], _heard[2]):
