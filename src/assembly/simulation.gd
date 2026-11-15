@@ -42,23 +42,74 @@ const MARKS := ["crank", "driver", "drive", "motor", "handle"]
 ## a part the reader misses), named so by a person or a session.
 const BASES := ["base", "frame", "stand", "chassis"]
 
-## The motors a model is driven from, by part: what it is called, its torque
-## stalled (N·cm) and its speed with no load (rpm), at 9 V, as Philippe
-## Hurbain measured them (philohome.com/motors/motorcomp.htm; stalled torque
-## there is "VERY imprecise", read off the most weight each lifted). A
-## motor's output is the axle hole in its face, which turns in its case:
-## read so here, it turns the axle in it.
+## The motors a model is driven from, by part (every number the catalogue
+## has for one, its case with and without its cable): [what it is called,
+## its torque stalled (N·cm), its speed with no load (rpm), the volts both
+## are at, its hub]. A motor's output turns in its case ([method
+## split_output]): the axle hole in its face, or for a hub the round disc
+## LEGO calls "rotating disc with crosshole and building interface", whose
+## axle hole and four pin holes turn together (and the cross hole through to
+## the back of a SPIKE Prime motor). The hub is [the middle of its face, its
+## radius], LDU in the part's own frame (u9363's and u9534's, the hub LDraw
+## draws at 0 -50 0); [] for an output that is its axle hole alone.
+##
+## Power Functions and 9 V: Philippe Hurbain's measurements at 9 V
+## (philohome.com/motors/motorcomp.htm; stalled torque there is "VERY
+## imprecise", read off the most weight each lifted).
+##
+## The angular motors: LEGO Education's technical specification sheets for
+## the Technic large (45602), medium (45603) and small (45607) angular
+## motors, "all performance data is based on a 7.2V power supply" (5 V for
+## the small, SPIKE Essential's): stalled 25, 18 and 5 N·cm, with no load
+## 175, 185 and 110 rpm. Hurbain measured the large and the medium at 9 V,
+## 33.5 N·cm and 213 rpm, 13.5 N·cm and 228 rpm. The maker's are taken for
+## the SPIKE Prime and Robot Inventor motors, at their hub's own 7.2 V (its
+## battery); Hurbain's 9 V for the dark grey large motor (69730, 88017),
+## which is in Control+ sets, on the Technic hub's six AA cells. The
+## medium's grey one is Robot Inventor's (51515), and is taken at 7.2 V too.
+##
+## Powered Up L (22169, 88013) and XL (22172, 88014), the simple medium
+## linear motor (21980, 45303, WeDo 2.0's) and Boost's medium linear motor
+## (26913, 88008): Hurbain's at 9 V, their hubs' six cells; LEGO publishes
+## none for them. Each one's stall he extrapolated, its thermistor cutting
+## it off first (the simple medium's at about half its stall current).
+##
+## The Powered Up train motor (88011, 28740) has no LDraw part, so no
+## model can hold one.
 const MOTORS := {
-	"58120c01": ["Power Functions M motor", 11.0, 405.0],
-	"58120": ["Power Functions M motor", 11.0, 405.0],
-	"99499c01": ["Power Functions L motor", 18.0, 390.0],
-	"99499": ["Power Functions L motor", 18.0, 390.0],
-	"58121c01": ["Power Functions XL motor", 40.0, 220.0],
-	"58121": ["Power Functions XL motor", 40.0, 220.0],
-	"87577": ["Power Functions E-motor", 3.4, 780.0],
-	"47154c01": ["9 V geared motor", 6.0, 460.0],
-	"71427": ["9 V mini-motor", 6.0, 360.0],
+	"58120c01": ["Power Functions M motor", 11.0, 405.0, 9.0, []],
+	"58120": ["Power Functions M motor", 11.0, 405.0, 9.0, []],
+	"99499c01": ["Power Functions L motor", 18.0, 390.0, 9.0, []],
+	"99499": ["Power Functions L motor", 18.0, 390.0, 9.0, []],
+	"58121c01": ["Power Functions XL motor", 40.0, 220.0, 9.0, []],
+	"58121": ["Power Functions XL motor", 40.0, 220.0, 9.0, []],
+	"87577": ["Power Functions E-motor", 3.4, 780.0, 9.0, []],
+	"47154c01": ["9 V geared motor", 6.0, 460.0, 9.0, []],
+	"71427": ["9 V mini-motor", 6.0, 360.0, 9.0, []],
+	# spike motors
+	"54675c01": ["SPIKE Prime large angular motor", 25.0, 175.0, 7.2, [Vector3(0, 50, 0), 29.0]],
+	"54675": ["SPIKE Prime large angular motor", 25.0, 175.0, 7.2, [Vector3(0, 50, 0), 29.0]],
+	"69730c01": ["Technic large angular motor", 33.5, 213.0, 9.0, [Vector3(0, 50, 0), 29.0]],
+	"69730": ["Technic large angular motor", 33.5, 213.0, 9.0, [Vector3(0, 50, 0), 29.0]],
+	"54696p01c01": ["SPIKE Prime medium angular motor", 18.0, 185.0, 7.2, [Vector3(0, 50, 0), 29.0]],
+	"54696p01": ["SPIKE Prime medium angular motor", 18.0, 185.0, 7.2, [Vector3(0, 50, 0), 29.0]],
+	"54696p02c01": ["Technic medium angular motor", 18.0, 185.0, 7.2, [Vector3(0, 50, 0), 29.0]],
+	"54696p02": ["Technic medium angular motor", 18.0, 185.0, 7.2, [Vector3(0, 50, 0), 29.0]],
+	"68488c01": ["SPIKE Essential small angular motor", 5.0, 110.0, 5.0, [Vector3(0, 50, 0), 29.0]],
+	"68488": ["SPIKE Essential small angular motor", 5.0, 110.0, 5.0, [Vector3(0, 50, 0), 29.0]],
+	"22169c01": ["Powered Up L motor", 26.0, 315.0, 9.0, []],
+	"22169": ["Powered Up L motor", 26.0, 315.0, 9.0, []],
+	"22172c01": ["Powered Up XL motor", 22.0, 330.0, 9.0, []],
+	"22172": ["Powered Up XL motor", 22.0, 330.0, 9.0, []],
+	"21980c01": ["Powered Up simple medium linear motor", 11.0, 380.0, 9.0, []],
+	"21980": ["Powered Up simple medium linear motor", 11.0, 380.0, 9.0, []],
+	"26913c01": ["Powered Up medium linear motor (Boost)", 9.5, 255.0, 9.0, []],
+	"26913": ["Powered Up medium linear motor (Boost)", 9.5, 255.0, 9.0, []],
+	# end spike motors
 }
+## How far behind a hub's face its pin holes reach, LDU: a Technic hole's
+## depth.
+const HUB_DEPTH := 20.0
 
 ## A body turns when its rate is more than this, in turns of the driver's.
 const STILL := 1e-6
@@ -140,10 +191,16 @@ static func read(bricks: Array, from: PartLibrary, scenery: Dictionary = {}) -> 
 		var path: String = Assemblies.path_of(brick)
 		var label: String = Assemblies.label(path) if not path.is_empty() else ""
 		labels[brick.id] = label
-		if MOTORS.has(brick.part_id):
-			out.motors[brick.id] = brick.part_id
-			mesh = Simulation.turning_output(mesh)
-		list.append({"key": brick.id, "part": brick.part_id, "at": brick.transform, "mesh": mesh})
+		var entry: Dictionary = {"key": brick.id, "part": brick.part_id, "at": brick.transform, "mesh": mesh}
+		# A model file's own copy of a motor is that motor (42114's "42114 - 69730").
+		var motor_part: String = Mechanism.reads_as(brick.part_id)
+		if MOTORS.has(motor_part):
+			var split: Array = Simulation.split_output(mesh, (MOTORS[motor_part] as Array)[4])
+			if not (split[1] as Dictionary).is_empty():
+				out.motors[brick.id] = motor_part
+				entry["mesh"] = split[0]
+				entry["output"] = split[1]
+		list.append(entry)
 		if scenery.has(brick.id):
 			held.append(brick.id)
 		elif Simulation.names_a_base(label):
@@ -180,49 +237,59 @@ func _say_roots() -> void:
 var _base_head: String = ""
 
 
-## [param mesh] with a motor's output, the axle hole in its face, read as a
-## round hole: the axle in it turns against the case, as it does in the real
-## motor, where read as it is drawn it is keyed to the case and stands still.
-static func turning_output(mesh: Lbm.PartMesh) -> Lbm.PartMesh:
-	var out := Lbm.PartMesh.new()
-	out.bounds = mesh.bounds
-	out.boxes = mesh.boxes
-	out.sockets = mesh.sockets
-	out.cell_ldu = mesh.cell_ldu
+## A motor's [param mesh] split into its case and its output, which turns in
+## it ([member Mechanism.Piece.output]): [the case's Lbm.PartMesh, {"mesh":
+## the output's holes, "point", "way": its line}], the second empty when no
+## output is found. Read as drawn, the output is keyed to the case and
+## stands still. The output is the axle holes on the line through its face's
+## axle hole, either way along it (a SPIKE Prime motor's cross hole through
+## to its back), and with [param hub] ([constant MOTORS]) every hole in the
+## hub's face: those within its radius of the line, facing out along it, no
+## further behind the face than [constant HUB_DEPTH]. The motor's other
+## holes, all round it, are its case's, by which it is held.
+static func split_output(mesh: Lbm.PartMesh, hub: Array) -> Array:
+	var face_at: Vector3 = hub[0] if not hub.is_empty() else Vector3.INF
+	var face: Lbm.Connector = null
 	for connector: Lbm.Connector in mesh.connectors:
 		if connector.kind != "axle_hole":
-			out.connectors.append(connector)
 			continue
-		var round := Lbm.Connector.new()
-		round.kind = "pin_hole"
-		round.gender = connector.gender
-		round.position = connector.position
-		round.axis = connector.axis
-		round.length = connector.length
-		round.radius = connector.radius
-		out.connectors.append(round)
-	return out
+		if face == null or (not hub.is_empty() and connector.position.distance_to(face_at)
+				< face.position.distance_to(face_at)):
+			face = connector
+	if face == null or (not hub.is_empty() and face.position.distance_to(face_at) > 1.0):
+		return [mesh, {}]
+	var point: Vector3 = face.position
+	var way: Vector3 = face.axis.normalized()
+	var radius: float = float(hub[1]) if not hub.is_empty() else 0.0
+	var case := Lbm.PartMesh.new()
+	case.bounds = mesh.bounds
+	case.boxes = mesh.boxes
+	case.sockets = mesh.sockets
+	case.cell_ldu = mesh.cell_ldu
+	var holes := Lbm.PartMesh.new()
+	holes.bounds = mesh.bounds
+	for connector: Lbm.Connector in mesh.connectors:
+		var middle: Vector3 = connector.position + connector.axis * connector.length * 0.5
+		var along: float = (middle - point).dot(way)
+		var across: float = ((middle - point) - way * along).length()
+		var turns: bool = connector.kind == "axle_hole" \
+			and Mechanism._same_line(point, way, connector.position, connector.axis.normalized())
+		if radius > 0.0 and not Mechanism._hole_kind(connector).is_empty() \
+				and absf(connector.axis.normalized().dot(way)) > 0.99 and across <= radius \
+				and along <= 1.0 and along >= -HUB_DEPTH - 1.0:
+			turns = true
+		(holes if turns else case).connectors.append(connector)
+	return [case, {"mesh": holes, "point": point, "way": way}]
 
 
-## The bodies the motors turn: each whose joint with a motor's case runs
-## through the motor's output.
+## The bodies the motors turn: each one's output's ([method
+## Mechanism.output_body]).
 func _find_motors() -> void:
 	motored.clear()
 	for key: int in motors:
-		var piece: Mechanism.Piece = model.parts.get(key)
-		var drawn: Lbm.PartMesh = library.mesh_for(str(motors[key])) if library != null else null
-		if piece == null or drawn == null:
-			continue
-		var case: int = model.body_of(key)
-		for connector: Lbm.Connector in drawn.connectors:
-			if connector.kind != "axle_hole":
-				continue
-			var point: Vector3 = piece.at * connector.position
-			var way: Vector3 = (piece.at.basis * connector.axis).normalized()
-			for joint: Mechanism.Joint in model.joints:
-				if (joint.a == case or joint.b == case) \
-						and Mechanism._same_line(joint.point, joint.way.normalized(), point, way):
-					motored[joint.b if joint.a == case else joint.a] = key
+		var body: int = model.output_body(key)
+		if body >= 0:
+			motored[body] = key
 
 
 ## What a frame named so holds still, with [param held] (the baseplate's):
@@ -1685,12 +1752,27 @@ func _forgive(a: int, b: int) -> Variant:
 		if not ((joint.a == body_a and joint.b == body_b) or (joint.a == body_b and joint.b == body_a)):
 			continue
 		var on_a: PackedByteArray = Exact.through(shape_a, piece_a.at.affine_inverse() * joint.point,
-			(piece_a.at.basis.inverse() * joint.way).normalized(), ON_THE_LINE)
+			(piece_a.at.basis.inverse() * joint.way).normalized(), _on_the_line(a, joint))
 		var on_b: PackedByteArray = Exact.through(shape_b, piece_b.at.affine_inverse() * joint.point,
-			(piece_b.at.basis.inverse() * joint.way).normalized(), ON_THE_LINE)
+			(piece_b.at.basis.inverse() * joint.way).normalized(), _on_the_line(b, joint))
 		but.a_pieces = Simulation._either(but.a_pieces, on_a)
 		but.b_pieces = Simulation._either(but.b_pieces, on_b)
 	return null if but.is_empty() else but
+
+
+## How near [param joint]'s line part [param key]'s pieces it runs through
+## lie, LDU: [constant ON_THE_LINE], or a motor's hub's radius on the joint
+## its output turns on. The hub is drawn with the case and stands still
+## there, and what is pinned in its face goes round through it.
+func _on_the_line(key: int, joint: Mechanism.Joint) -> float:
+	if joint.what != Mechanism.OUTPUT_JOINT or not motors.has(key):
+		return ON_THE_LINE
+	var piece: Mechanism.Piece = model.parts[key]
+	var hub: Array = (MOTORS[motors[key]] as Array)[4]
+	if hub.is_empty() or piece.output.is_empty() or not Mechanism._same_line(joint.point, joint.way,
+			piece.at * (piece.output["point"] as Vector3), (piece.at.basis * (piece.output["way"] as Vector3)).normalized()):
+		return ON_THE_LINE
+	return float(hub[1])
 
 
 static func _toothed(part: String) -> bool:
@@ -1805,17 +1887,18 @@ func _why_stopped(at: float, met: Dictionary, reach: float, stalled: Dictionary)
 ## it then goes, by the weight of what moves alone (no friction).
 func motor_line() -> String:
 	var it: Array = MOTORS[motors[motor]]
-	var said: String = "%s (#%d %s)" % [it[0], motor, motors[motor]]
+	var said: String = "%s (#%d %s)" % [it[0], motor, _part(motor)]
 	var gives: float = float(it[1])
+	var volts: String = Simulation.figure(float(it[3]))
 	if not stall.is_empty():
 		return ("STALLS: the %s at %s of its turn: the weight it lifts asks more than the %s N·cm "
-			+ "it gives at 9 V, %s at most (by the parts' weight, without friction). Gear it "
+			+ "it gives at %s V, %s at most (by the parts' weight, without friction). Gear it "
 			+ "down, or lighten what it lifts.") % [said, Simulation.angle(float(stall["turns"])),
-			Simulation.figure(gives), Simulation.figure(snappedf(float(heaviest.get("needs",
+			Simulation.figure(gives), volts, Simulation.figure(snappedf(float(heaviest.get("needs",
 				stall["needs"])), 0.1))]
 	if heaviest.is_empty() or float(heaviest["needs"]) <= 0.0:
-		return "The %s turns it with nothing to lift: %s rpm, its speed with no load." % [said,
-			Simulation.figure(float(it[2]))]
+		return "The %s turns it with nothing to lift: %s rpm, its speed with no load at %s V." % [said,
+			Simulation.figure(float(it[2])), volts]
 	var needs: float = float(heaviest["needs"])
 	return ("The %s turns it: at its heaviest, at %s, it is asked %s of its %s N·cm and slows "
 		+ "from %s to %s rpm (by the parts' weight, without friction).") % [said,
