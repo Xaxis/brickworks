@@ -302,13 +302,16 @@ tools/package_api.sh .vercel/output/functions "${pack[@]}" || exit 1
 # What is in every set, and the official models' parts lists, for My
 # collection (tools/collection_data.py, src/dev/collection_models.gd). Not in
 # the pack, which everybody waits for: 26 MB in 258 files, and the app
-# fetches the one shard a typed set is in (SetInventories). Same origin, so
-# the content security policy needs nothing new for it.
-if [ ! -f assets/generated/sets/index.json ] || [ ! -f assets/generated/sets/models.json ]; then
+# fetches the one shard a typed set is in (SetInventories), and every set's
+# parts at once (all_sets.bin, 1.9 MB) only as What can I build? opens
+# (SetRanking). Same origin, so the content security policy needs nothing
+# new for it.
+if [ ! -f assets/generated/sets/index.json ] || [ ! -f assets/generated/sets/models.json ] \
+    || [ ! -f assets/generated/sets/all_sets.bin ]; then
   echo "deploy FAILED: no set inventories in assets/generated/sets (tools/collection_data.py, src/dev/collection_models.gd)"; exit 1
 fi
 mkdir -p .vercel/output/static/sets
-cp assets/generated/sets/*.json .vercel/output/static/sets/
+cp assets/generated/sets/*.json assets/generated/sets/all_sets.bin .vercel/output/static/sets/
 echo "deploy: $(ls -1 .vercel/output/static/sets | wc -l | tr -d ' ') set inventory files at /sets/"
 
 # Geometry the app fetches when someone picks a part the build does not
@@ -552,7 +555,7 @@ $docs_moved
         "X-Content-Type-Options": "nosniff",
         "Referrer-Policy": "no-referrer",
         "Cache-Control": "no-store" } },
-    { "src": "/sets/(.*[.]json)", "headers": {
+    { "src": "/sets/(.*[.](json|bin))", "headers": {
         "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400" } },
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})/?", "dest": "/api/share?op=page&id=\$1&v=\$2" },
     { "src": "/m/([A-Za-z0-9]{10})/v/([1-9][0-9]{0,5})[.]mpd", "dest": "/api/share?op=file&id=\$1&v=\$2" },

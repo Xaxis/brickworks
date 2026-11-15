@@ -10,7 +10,11 @@
 // page's own file chooser, types a set number in and adds it, then looks at
 // what the model on the baseplate needs that is not owned, downloads the
 // shortfall as a BrickLink wanted list and as a Rebrickable CSV and reads
-// both, ranks what could be built and opens the first. It fails if a
+// both, opens What can I build? on every real set (setsbuild: all_sets.bin
+// fetched as it opens, under 2 MB, its first rows in 2 s, 6 past the box's
+// cores; the set owned left out; the first set short of something's What do
+// I need? short exactly what its row says), then its Models, ranked, and
+// opens the first. It fails if a
 // control never shows, the import is not kept with the account, the
 // wanted list does not ask for exactly what is short, the ranking is out of
 // order, or a script error reaches the console. The account is deleted at
@@ -21,7 +25,8 @@
 // frame under 5 ms (brickworksState.bin_recount_ms; 15 past the box's cores).
 //
 // Pictures in --out: 1_need_empty.png, 2_imported.png, 3_need.png,
-// 4_build.png, 5_opened.png, 6_my_bricks.png. Look at them.
+// 4_build_sets.png, 4_need_set.png, 4_build.png, 5_opened.png, 6_my_bricks.png.
+// Look at them.
 import { chromium } from "playwright";
 import { mkdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -175,8 +180,40 @@ try {
   ok(rows[0] === "Part,Color,Quantity" && rows.length > 1,
     `the Rebrickable CSV (${csv.name}) has ${rows.length - 1} rows`);
 
-  // What can I build.
+  // What can I build: every real set first (setsbuild), all_sets.bin fetched
+  // as the page opens, its first rows in 2 s on a laptop.
+  const cores = Math.max(1, Math.round(cpus().length / 2));
+  const opened = Date.now();
   await click("collection_tab_build");
+  ok(await until(async () => ((await mine())?.build.sets?.shown || 0) > 0, 240, "sets"),
+    `What can I build? opens on the real sets: ${(await mine())?.build.sets?.shown} rows drawn`);
+  const sets = (await mine()).build.sets;
+  const waited = Date.now() - opened;
+  const setsBar = loadavg()[0] > cores ? 6000 : 2000;
+  ok(sets.ranked > 20000 && sets.listed > 11000 && sets.bytes > 0 && sets.bytes < 2000000,
+    `every set ranked (${sets.ranked}, ${sets.listed} of 50 pieces or more listed, the one owned left out), from ${sets.bytes} bytes`);
+  ok(sets.first_ms >= 0 && sets.first_ms <= setsBar,
+    `its first rows ${sets.first_ms} ms after it was asked for (fetched and unpacked ${sets.read_ms} ms, ranked ${sets.rank_ms} ms; ${waited} ms by this page's clock), under ${setsBar} (load ${loadavg()[0].toFixed(0)} of ${cores} cores)`);
+  ok(sets.top.length >= 2 && sets.top[0].exact >= sets.top[1].exact && !sets.top.some((t) => t.set === "6020-1"),
+    `most owned first, the Magic Shop left out: ${sets.top.slice(0, 3).map((t) => `${t.set} ${t.name} ${Math.floor(t.exact * 100)}%`).join(", ")}`);
+  await page.waitForTimeout(2000);
+  await shot("4_build_sets.png");
+  const short = sets.top.find((t) => t.owned < t.pieces);
+  await click("collection_need_set_first");
+  ok(await until(async () => (await mine())?.page === "need" && (await mine())?.need_set === short?.set, 60, "need_set"),
+    `the first set short of something opens What do I need? for it: ${(await mine())?.need_set}`);
+  const forSet = (await mine()).need;
+  ok(short && forSet.short === short.pieces - short.owned && forSet.pieces === short.pieces,
+    `...short ${forSet.short} of its ${forSet.pieces} pieces, as its row counted (${short?.pieces - short?.owned})`);
+  await page.waitForTimeout(2000);
+  await shot("4_need_set.png");
+  const again = Date.now();
+  await click("collection_tab_build");
+  ok(await until(async () => ((await mine())?.build.sets?.shown || 0) > 0 && (await mine())?.page === "build", 60, "again"),
+    `opened again, its rows in ${(await mine())?.build.sets?.first_ms} ms (${Date.now() - again} ms by this page's clock)`);
+
+  // Its models: the examples and the official models.
+  await click("collection_build_models");
   ok(await until(async () => ((await mine())?.build.ranked || 0) > 100, 240, "ranked"),
     `examples and official models ranked: ${(await mine())?.build.ranked}`);
   const top = (await mine()).build.top;
@@ -200,7 +237,6 @@ try {
   const counts = (binNow?.bin_left || []).map((pair) => pair[1]);
   ok(counts.length > 0 && counts.every((n) => Number.isInteger(n)) && counts.some((n) => n > 0),
     `its first tiles count with its first draw: ${(binNow?.bin_left || []).slice(0, 4).map((p) => p.join(" ")).join(", ")}`);
-  const cores = Math.max(1, Math.round(cpus().length / 2));
   const busy = loadavg()[0];
   const bar = busy > cores ? 15 : 5;
   ok(Number(binNow?.bin_recount_ms) < bar,

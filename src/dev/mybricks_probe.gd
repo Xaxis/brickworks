@@ -191,6 +191,8 @@ func _steps() -> void:
 	_check("...and its page says so: “%s”" % heading,
 		heading.contains("Short: %s pieces in %d lots" % [CollectionDialog._comma(_pieces(short_hand)), short_hand.size()]))
 	await _shot("mybricks_need")
+	# Its Models, where a saved model is ranked (the page opens on real sets).
+	_dialog.set("_build_view", "models")
 	_dialog.call("_show", "build")
 	var ranked: Array = await _ranked()
 	var at: int = ranked.find_custom(func(one: Dictionary) -> bool: return str(one.get("path", "")) == made)
