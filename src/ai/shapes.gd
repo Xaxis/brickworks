@@ -15,6 +15,9 @@
 ##   extrude   a side profile pulled across a width — a car seen from the
 ##             side, a wing's section
 ##   revolve   a profile turned about an axis
+##   tiers     a plan from above stood up in levels, each its own width and
+##             depth, stepping in where two levels share a height — a
+##             skyscraper's setbacks, a ziggurat, a pagoda, a wedding cake
 ##   box       with its plan corners rounded or cut and its top edges rounded
 ##   ellipsoid and dome
 ##
@@ -54,7 +57,7 @@ class_name Shapes
 extends RefCounted
 
 ## The kinds of solid a shape is made of.
-const KINDS: Array[String] = ["loft", "extrude", "revolve", "box", "ellipsoid", "dome"]
+const KINDS: Array[String] = ["loft", "extrude", "revolve", "box", "ellipsoid", "dome", "tiers"]
 
 ## A solid given as a function instead of in numbers: a sculpt or a scan,
 ## voxelised by Brickify. {"grid": {"from", "size", "colour_at"}}, where
@@ -205,7 +208,7 @@ static func lay(pattern: Dictionary, trouble: Array, library: PartLibrary) -> Ar
 		return []
 	if solids.is_empty():
 		trouble.append("a shape wants a solid: \"loft\", \"extrude\", \"revolve\", "
-			+ "\"box\", \"ellipsoid\" or \"dome\", or several in \"solids\"")
+			+ "\"box\", \"ellipsoid\", \"dome\" or \"tiers\", or several in \"solids\"")
 		return []
 	var wheels: Array = _wheels(pattern, solids, cuts, trouble)
 	if not trouble.is_empty():
@@ -1329,11 +1332,62 @@ static func _solid(kind: String, spec: Dictionary, trouble: Array) -> Dictionary
 				bottom = 0.0
 			spec["_profile"] = profile
 			spec["_under"] = under
+			if spec.has("plan"):
+				var plan: String = OutlinePlan.plan_named(str(spec["plan"]))
+				if plan.is_empty():
+					trouble.append("an extrude's \"plan\" is its shape from above: "
+						+ ", ".join(PackedStringArray(OutlinePlan.PLANS)))
+					return {}
+				spec["_plan"] = plan
 			solid["round"] = float(spec.get("round", 0.0)) > 0.0
 			if along == "x":
 				solid["box"] = AABB(Vector3(lo, bottom, from), Vector3(hi - lo, top - bottom, width))
 			else:
 				solid["box"] = AABB(Vector3(from, bottom, lo), Vector3(width, top - bottom, hi - lo))
+		"tiers":
+			var levels: Array = []
+			for raw: Variant in spec.get("levels", []) if spec.get("levels") is Array else []:
+				if raw is Array and (raw as Array).size() >= 2:
+					var w: float = float(raw[1])
+					var d: float = float(raw[2]) if (raw as Array).size() >= 3 else w
+					levels.append(Vector3(float(raw[0]), w, d))
+			var plan: String = OutlinePlan.plan_named(str(spec.get("plan", "rectangle")))
+			var middle: Variant = spec.get("centre", spec.get("center"))
+			if levels.size() < 2 or plan.is_empty() or not (middle is Array
+					and (middle as Array).size() >= 2):
+				trouble.append("tiers want \"centre\": [x, z] (studs), \"levels\": [[plates "
+					+ "up, studs wide, studs deep], ...] ground first, two at one height where "
+					+ "it steps in, and a \"plan\" from above: "
+					+ ", ".join(PackedStringArray(OutlinePlan.PLANS)))
+				return {}
+			# Ground first, a step's two levels kept in the order given.
+			var order: Array = range(levels.size())
+			order.sort_custom(func(a: int, b: int) -> bool:
+				var ya: float = (levels[a] as Vector3).x
+				var yb: float = (levels[b] as Vector3).x
+				return ya < yb or (is_equal_approx(ya, yb) and a < b))
+			var sorted: Array = []
+			var wide: float = 0.0
+			var deep: float = 0.0
+			for n: int in order:
+				var one: Vector3 = levels[n]
+				sorted.append(one)
+				wide = maxf(wide, one.y)
+				deep = maxf(deep, one.z)
+			var cx: float = float(middle[0])
+			var cz: float = float(middle[1])
+			var low: float = (sorted[0] as Vector3).x
+			var high: float = (sorted[-1] as Vector3).x
+			if high - low <= 0.0 or wide <= 0.0 or deep <= 0.0:
+				trouble.append("tiers want levels rising from the first to the last, each "
+					+ "wider than nought")
+				return {}
+			spec["_levels"] = sorted
+			spec["_plan"] = plan
+			spec["_middle"] = Vector2(cx, cz)
+			solid["round"] = plan == "round"
+			solid["box"] = AABB(Vector3(cx - wide / 2.0, low, cz - deep / 2.0),
+				Vector3(wide, high - low, deep))
 		"revolve":
 			var axis: String = str(spec.get("axis", "y")).to_lower()
 			var centre: Vector3 = _vec(spec.get("centre", spec.get("center", [0, 0, 0])))
@@ -1482,7 +1536,38 @@ static func _inside(solid: Dictionary, p: Vector3) -> bool:
 			var r: float = float(spec.get("round", 0.0))
 			if r > 0.0:
 				top -= _round_off(minf(u - from, from + width - u), r)
+			if spec.has("_plan") and str(spec["_plan"]) != "rectangle":
+				var line: Array = spec["_profile"]
+				var a0: float = (line[0] as Vector2).x
+				var a1: float = (line[-1] as Vector2).x
+				var pa: float = (a - a0) / maxf(0.0001, a1 - a0) - 0.5
+				var pu: float = (u - from) / width - 0.5
+				if not (OutlinePlan.in_plan(str(spec["_plan"]), pa, pu, float(spec.get("arm", 0.0)))
+						if along == "x" else OutlinePlan.in_plan(str(spec["_plan"]), pu, pa,
+						float(spec.get("arm", 0.0)))):
+					return false
 			return p.y >= bottom and p.y <= top
+		"tiers":
+			var levels: Array = spec["_levels"]
+			if p.y < (levels[0] as Vector3).x or p.y > (levels[-1] as Vector3).x:
+				return false
+			# The level below and the one above: at a step, the one above it.
+			var one: Vector3 = levels[0]
+			var two: Vector3 = levels[1]
+			for n: int in range(1, levels.size()):
+				if p.y < (levels[n] as Vector3).x or n == levels.size() - 1:
+					one = levels[n - 1]
+					two = levels[n]
+					break
+			var span: float = two.x - one.x
+			var t: float = 0.0 if span < 0.0001 else clampf((p.y - one.x) / span, 0.0, 1.0)
+			var w: float = lerpf(one.y, two.y, t)
+			var d: float = lerpf(one.z, two.z, t)
+			if w <= 0.0 or d <= 0.0:
+				return false
+			var middle: Vector2 = spec["_middle"]
+			return OutlinePlan.in_plan(str(spec["_plan"]), (p.x - middle.x) / w,
+				(p.z - middle.y) / d, float(spec.get("arm", 0.0)))
 		"revolve":
 			var axis: String = str(spec.get("axis", "y")).to_lower()
 			var centre: Vector3 = _vec(spec.get("centre", spec.get("center", [0, 0, 0])))

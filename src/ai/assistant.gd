@@ -3397,7 +3397,9 @@ func _tool_answer(block: Dictionary) -> Variant:
 			# And what our own scored designs of the nearest subject did and
 			# were faulted for: asked once, with the subject, before building.
 			await DesignMemory.ensure(self)
-			return [{"type": "text", "text": str(_how_real_sets_build_this(subject)["content"])}] \
+			var asking: String = outline_ask("how_real_sets_build_this")
+			return [{"type": "text", "text": str(_how_real_sets_build_this(subject)["content"])
+				+ ("\n\nBefore the first build: " + asking if not asking.is_empty() else "")}] \
 				+ DesignMemory.recall(subject)
 		"look_at_model":
 			progress.emit("looking at what is already built")
@@ -7576,6 +7578,7 @@ func _floor_of(args: Dictionary) -> Dictionary:
 func _read_model(args: Dictionary) -> Model:
 	var shell_trouble: Array = []
 	var shell_said: Array = []
+	args = _with_outline(args, shell_trouble, shell_said)
 	args = _with_shells(args, shell_trouble, shell_said)
 	args = _with_figures(args, shell_trouble, shell_said)
 	args = _with_sculpts(args, shell_trouble, shell_said)
@@ -8689,12 +8692,19 @@ func _storeys(pattern: Dictionary, model: Model, index: int, trouble: Array) -> 
 	var courses: int = int(round(float(pattern.get("courses", 8))))
 	var thick: int = clampi(int(pattern.get("thickness", 2)), 1, 2)
 	var colour: int = int(pattern.get("color", pattern.get("colour", DEFAULT_COLOUR)))
+	# Storeys to an outline read (_storeys_outlined): each its own courses and
+	# radius, as the real thing's setbacks are, not one even step.
+	var heights: Array = asked.get("_courses", []) as Array
+	var radii: Array = asked.get("_radii", []) as Array
+	if heights.size() != count or radii.size() != count:
+		heights = []
+		radii = []
 	if count < 2 or count > 8 or inset < 1.0 or inset != floor(inset) \
 			or courses < 3 * count:
 		trouble.append("storeys wants a count of 2 to 8, set in by a whole number of "
 			+ "studs (\"in\", 1 or more), with at least 3 courses to a storey")
 		return []
-	var top: float = radius - inset * (count - 1)
+	var top: float = radius - inset * (count - 1) if radii.is_empty() else float(radii[-1])
 	if floor(2.0 * (top - thick) * tan(PI / sides) + 0.001) < 2:
 		trouble.append(("%d storeys set in %s each leave the top one radius %s, with "
 			+ "faces narrower than two studs: fewer storeys, a smaller in, or a "
@@ -8734,6 +8744,11 @@ func _storeys(pattern: Dictionary, model: Model, index: int, trouble: Array) -> 
 		storey["band_color"] = -1
 		var high: int = each + (1 if s < courses % count else 0)
 		var r: float = radius - inset * s
+		var next_in: float = inset
+		if not heights.is_empty():
+			high = int(heights[s])
+			r = float(radii[s])
+			next_in = r - float(radii[s + 1]) if s < count - 1 else inset
 		storey["courses"] = high
 		storey["radius"] = r
 		storey["at"] = {"x": float(at.get("x", 0.0)), "y": y, "z": float(at.get("z", 0.0))}
@@ -8743,7 +8758,7 @@ func _storeys(pattern: Dictionary, model: Model, index: int, trouble: Array) -> 
 			# grooves behind its corners, which stand up to a stud and a half
 			# inside it, so they stand on the ledge and not on the air inside
 			# this one.
-			storey["_hole"] = r - inset - thick - 1.5
+			storey["_hole"] = r - maxf(0.0, next_in) - thick - 1.5
 		if not piers.is_empty():
 			var these: Dictionary = piers.duplicate(true)
 			var pr: float = maxf(least, p_radius)
@@ -12530,7 +12545,8 @@ static func _patterns_key(plain: Array, written: Array) -> String:
 func _shapes_ready(args: Dictionary) -> void:
 	if library == null or OS.has_feature("nothreads"):
 		return
-	var read: Dictionary = _with_sculpts(_with_figures(_with_shells(args, [], []), [], []), [], [])
+	var read: Dictionary = _with_sculpts(_with_figures(_with_shells(_with_outline(args, [], []),
+		[], []), [], []), [], [])
 	var patterns: Array = read.get("patterns", []) if read.get("patterns") is Array else []
 	var plain: Array = _plain_patterns(patterns)
 	if not plain.any(func(raw: Variant) -> bool:
@@ -13530,10 +13546,14 @@ func _check(model: Model, alone: bool = false, weigh: bool = false,
 					+ "Submit the structure first and add the rest with "
 					+ "edit_model, a few hundred bricks at a time.",
 			}
+		# A design that was all patterns, each of which came to nothing, is
+		# told why: "no parts" alone sends it looking at numbers that are right.
+		var why: Array = issues.get("pattern", []) + issues.get("repeat", [])
 		return {
 			"ok": false,
 			"summary": "no bricks",
-			"feedback": "That design has no parts in it.",
+			"feedback": "That design has no parts in it." + ("" if why.is_empty()
+				else " Its patterns came to nothing: %s." % "; ".join(why)),
 		}
 
 	## Which placements a pin, axle or ball joins to which. Needed before
@@ -19725,6 +19745,22 @@ bricks you write by hand:
            of tiles on a shell cannot take (across 4, 6 or 8; x, y, z its \
            middle, on the side that curves out; "beak": -1 for none).
 
+           A tall thing that steps in as it rises is "tiers": \
+           {"centre": [6, 6], "plan": "Y", "levels": [[0, 12, 12], [30, \
+           12, 12], [30, 9, 9], [60, 9, 9], [60, 6, 6], [90, 6, 6]]} is a \
+           skyscraper on a Y plan in three tiers, each level plates up, \
+           studs wide and deep, two at one height where it steps in; the \
+           plan from above is any of rectangle, square, round, Y, T, L, \
+           cross, H, U or triangle (an extrude takes "plan" too: a palace \
+           round its courtyard is a U). Build to the real thing's \
+           outline from the first mass: read it off a photograph and give \
+           it to plan_scale outline=, its steps counted and its plan \
+           read, and its answer is the mass already in it at the model's \
+           size. Then "outline" in any shape lays it: an extrude's \
+           "profile" and "under", a loft's "sections", tiers' "levels", a \
+           revolve's "profile" up y, a prism's "storeys": {"outline": \
+           true}.
+
            Anything round in section is one object too, upright or \
            lying down: {"pattern": "round", "at": {"x": 10, "y": 0, \
            "z": 10}, "diameter": 4, "color": 15, "stack": [{"cones": 9, \
@@ -21165,6 +21201,8 @@ func _plan_scale(args: Dictionary) -> String:
 	var metres: float = float(args.get("longest_metres", 0.0))
 	var subject: String = str(args.get("subject", "it"))
 	if metres <= 0.0:
+		if args.get("outline") is Dictionary and _studs_given(args).x > 0.0:
+			return _outline_planned(args, 0.0, subject, "")
 		return ("Say how long the real thing is, in metres, as "
 			+ "longest_metres. A guess within half is enough — this is "
 			+ "about which scale, not about the decimal.")
@@ -21211,8 +21249,10 @@ func _plan_scale(args: Dictionary) -> String:
 			scale["note"], fits])
 
 	var chosen: String = ""
+	var planned: float = minifig
 	if not best.is_empty():
 		var across: float = minifig if best == SCALES[0] else _studs_at(best, metres)
+		planned = across
 		var shortened: bool = across < metres * float(best["studs_per_metre"]) - 0.5
 		# A plate is a third of a brick, so height in plates is what
 		# actually gets placed and is worth saying out loud.
@@ -21279,9 +21319,323 @@ func _plan_scale(args: Dictionary) -> String:
 	# Not capitalize(), which title-cases every word and turns a double
 	# decker bus into A Double Decker Bus.
 	var named: String = subject.substr(0, 1).to_upper() + subject.substr(1)
-	return ("%s is %s metres along its longest side. At each scale "
+	var scaled: String = ("%s is %s metres along its longest side. At each scale "
 		% [named, Placement._num(metres)]
 		+ "builders use, the model would be:\n" + "\n".join(rows) + chosen + measured)
+	return _outline_planned(args, planned, subject, scaled)
+
+
+## The real thing's outline as the session read it off a photograph and gave
+## it to plan_scale (outline=), sized to the model: the app's own shapes take
+## it as their profile ([method _with_outline]). Null until given; plan_scale
+## for another subject without one clears it.
+var _outline_plan: OutlinePlan = null
+## The subject it was read for.
+var _outline_subject: String = ""
+## Which answers have asked for it, so each asks once a subject.
+var _outline_asked: Dictionary = {}
+
+## Asked before the first build, where a session is planning: what to read off
+## the photograph and what it gets for it. design20 asked after the build, in
+## the review, and half the sessions went on without it; those that gave it
+## kept their model.
+const OUTLINE_ASK := ("Build to the real thing's outline from the first mass, not toward "
+	+ "it after: read its outline off a photograph of it (find_reference) taken square from "
+	+ "one side, and give it to plan_scale as outline=, with studs= the size the brief "
+	+ "gives. A long thing (a car, a ship, a train, a long building): {\"from\": \"front\", "
+	+ "\"heights\": [the top at each tenth of its length, as shares of the length: 11 "
+	+ "numbers], \"bottoms\": [its underside at each], \"steps\": [where its roofline steps, "
+	+ "shares along]}. A tall thing (a tower, a lighthouse, a rocket): {\"from\": \"front\", "
+	+ "\"widths\": [its width at each tenth of its height, as shares of the height], "
+	+ "\"steps\": [each setback, as shares up its height], \"plan\": its shape from above, "
+	+ "square, round, Y, T, L, cross, H, U or triangle}. Count the steps and read the plan: "
+	+ "a few big setbacks where the real thing has many reads as stubby. The answer is the "
+	+ "first mass already in that outline, a shape to send as it is and build on. A subject "
+	+ "with no real counterpart has none: go on without it.")
+
+
+## The ask for the outline, from the answer of [param tool], while none is held
+## and that answer has not asked it yet for this subject; "" otherwise.
+func outline_ask(tool: String) -> String:
+	if _outline_plan != null or _outline_asked.has(tool):
+		return ""
+	_outline_asked[tool] = true
+	return OUTLINE_ASK
+
+
+## The size plan_scale's studs= gives: x the longer side, y the other (0 when
+## one number or none was given).
+static func _studs_given(args: Dictionary) -> Vector2:
+	var raw: Variant = args.get("studs")
+	if raw is float or raw is int:
+		return Vector2(maxf(0.0, float(raw)), 0.0)
+	if raw is Array:
+		var sizes: Array[float] = []
+		for one: Variant in raw:
+			if (one is float or one is int) and float(one) > 0.0:
+				sizes.append(float(one))
+		if sizes.size() == 1:
+			return Vector2(sizes[0], 0.0)
+		if sizes.size() >= 2:
+			return Vector2(maxf(sizes[0], sizes[1]), minf(sizes[0], sizes[1]))
+	return Vector2.ZERO
+
+
+## plan_scale's answer [param scaled], then the outline: read and sized to
+## [param planned] studs along its longest side (the scale's) or studs=, held for
+## the shapes, and its first mass handed as a pattern to send. With none given,
+## the ask for it, once a subject.
+func _outline_planned(args: Dictionary, planned: float, subject: String,
+		scaled: String) -> String:
+	var lead: String = scaled + ("\n\n" if not scaled.is_empty() else "")
+	if not args.get("outline") is Dictionary:
+		if _outline_plan != null and subject.strip_edges().to_lower() \
+				!= _outline_subject.strip_edges().to_lower():
+			_outline_plan = null
+			_outline_asked = {}
+		if _outline_plan != null:
+			return scaled + "\n\nThe outline read before stands: %s, %s." % [
+				_outline_plan.said_read(), _outline_plan.said_size()]
+		_outline_asked["plan_scale"] = true
+		return lead + OUTLINE_ASK
+	var plan: OutlinePlan = OutlinePlan.read(args["outline"])
+	if not plan.error.is_empty():
+		return lead + "The outline was not read: %s Give it again; nothing is held." % plan.error
+	var given: Vector2 = _studs_given(args)
+	if given.x > 0.0:
+		plan.sized(given.x, given.y)
+	else:
+		plan.sized_by_longest(maxf(1.0, planned))
+	_outline_plan = plan
+	_outline_subject = subject
+	var mass: Dictionary = plan.mass()
+	var said := PackedStringArray()
+	said.append("The outline read (%s), built at %s%s:" % [plan.said_read(), plan.said_size(),
+		" (studs=)" if given.x > 0.0 else " (the scale above)"])
+	# The size the brief gives wins over the scale table's: one answer, one size.
+	var longest: float = plan.length if plan.mode == "heights" \
+		else maxf(given.x, plan.height / OutlinePlan.PLATES_PER_STUD)
+	if given.x > 0.0 and planned > 0.0 and absf(longest - planned) > 0.1 * longest:
+		said.append("studs= is the size to build, %s studs along its longest side, not the "
+			% Placement._num(snappedf(longest, 0.1)) + "scale's %s above: the outline is laid "
+			% Placement._num(snappedf(planned, 0.1)) + "at it.")
+	said.append(plan.said_samples())
+	var steps: String = ""
+	if plan.mode == "widths" and not plan.steps.is_empty():
+		# Said as laid: the levels the mass stands in, a pair to a tier.
+		var tiers := PackedStringArray()
+		var levels: Array = plan.levels()
+		for n: int in range(0, levels.size() - 1, 2):
+			var low: Array = levels[n]
+			tiers.append("%s plates %s wide" % [Placement._num(float(levels[n + 1][0]) - float(low[0])),
+				Placement._num(float(low[1] if plan.axis() == "x" else low[2]))])
+		steps = ("In %d tiers, ground first, each setback a stud each side so every tier stays "
+			+ "centred on the one under it: %s.") % [tiers.size(), ", ".join(tiers)]
+	elif plan.mode == "heights" and not plan.steps.is_empty():
+		steps = "Its top steps at %s along." % ", ".join(Array(plan.steps).map(
+			func(one: float) -> String: return "%s %s" % [plan.axis(), Placement._num(snappedf(
+				(one if not plan.reversed() else 1.0 - one) * plan.length, 0.5))]))
+	if not steps.is_empty():
+		said.append(steps)
+	if not plan.bottoms.is_empty() and Array(plan.bottoms).min() > 0.0:
+		said.append("Its underside is off the ground everywhere, as read: what holds it up "
+			+ "(its wheels and axles, legs, a stand) goes in the same submit_design, or the "
+			+ "check finds it floating.")
+	said.append(("Build the first mass to it, not toward it after: send this shape in your "
+		+ "first submit_design as it is — its colour and \"at\" yours — and build the rest "
+		+ "on it and round it (%s). It lays the outline at its size, tiled and sloped as a "
+		+ "set's body is:\n%s") % ["wheels, glass, doors, the details; \"wheels\" and cuts "
+			+ "go on this shape" if plan.mode == "heights" else "its faces' windows and "
+			+ "bands, its crown and spire, the base it stands on", JSON.stringify(mass, "", false)])
+	said.append(("Any of the app's shapes takes this outline as its profile: an extrude's "
+		+ "\"profile\": \"outline\" (and \"under\": \"outline\"), a loft's \"sections\": "
+		+ "\"outline\" with its \"width\", tiers' \"levels\": \"outline\", a revolve up y's "
+		+ "\"profile\": \"outline\" and a prism's \"storeys\": {\"outline\": true} — each laid to it "
+		+ "over its own \"length\" (or \"height\") from its \"start\", the outline's own size "
+		+ "unless said. {\"outline\": {}} as a solid is this mass. The outline stands for "
+		+ "this subject until plan_scale reads another."))
+	return lead + "\n\n".join(said)
+
+
+## [param args] with every "outline" a shape or a prism says put in as the
+## numbers of the outline held ([member _outline_plan]): a solid {"outline":
+## {...}} as the first mass, an extrude's profile and underside, a loft's
+## sections, a revolve's or tiers' profile, a prism's storeys. What each came
+## to goes in [param said], why one could not in [param trouble].
+func _with_outline(args: Dictionary, trouble: Array, said: Array) -> Dictionary:
+	var patterns: Array = args.get("patterns", []) if args.get("patterns") is Array else []
+	if not JSON.stringify(patterns).contains("\"outline\""):
+		return args
+	var out: Dictionary = args.duplicate()
+	var laid: Array = []
+	for raw: Variant in patterns:
+		if not raw is Dictionary:
+			laid.append(raw)
+			continue
+		var pattern: Dictionary = (raw as Dictionary).duplicate(true)
+		var kind: String = str(pattern.get("pattern", "")).to_lower()
+		if kind == "shape":
+			for key: String in ["solids", "cuts"]:
+				if pattern.get(key) is Array:
+					var solids: Array = []
+					for one: Variant in pattern[key]:
+						solids.append(_solid_outlined(one, trouble, said))
+					pattern[key] = solids
+			for named: String in Shapes.KINDS:
+				if pattern.get(named) is Dictionary:
+					var one: Dictionary = _solid_outlined({named: pattern[named]}, trouble, said)
+					pattern.erase(named)
+					for key: Variant in one:
+						if key != "color":
+							pattern[key] = one[key]
+		elif kind == "prism" and (str(pattern.get("storeys", "")) == "outline"
+				or (pattern.get("storeys") is Dictionary
+				and bool((pattern["storeys"] as Dictionary).get("outline", false)))):
+			pattern["storeys"] = _storeys_outlined(pattern, trouble, said)
+		laid.append(pattern)
+	out["patterns"] = laid
+	return out
+
+
+## Why "outline" cannot be laid: none read, or the wrong kind of reading.
+func _outline_missing() -> String:
+	return ("\"outline\" is the real thing's outline given to plan_scale outline=, and none "
+		+ "has been read for this design: read it off a photograph (find_reference) and give "
+		+ "it there first, or say the profile in numbers")
+
+
+## One solid of a shape with its "outline" put in as numbers: [param entry]
+## as it was when it says none.
+func _solid_outlined(entry: Variant, trouble: Array, said: Array) -> Variant:
+	if not entry is Dictionary or not JSON.stringify(entry).contains("\"outline\""):
+		return entry
+	var given: Dictionary = entry
+	var plan: OutlinePlan = _outline_plan
+	if plan == null:
+		trouble.append(_outline_missing())
+		return entry
+	var kind: String = ""
+	for one: String in ["outline"] + Shapes.KINDS:
+		if given.get(one) is Dictionary:
+			kind = one
+			break
+	if kind.is_empty():
+		return entry
+	var spec: Dictionary = (given[kind] as Dictionary).duplicate(true)
+	var wanted: String = "heights" if kind in ["extrude", "loft"] else "widths"
+	if kind == "outline":
+		var mass: Dictionary = (plan.mass()["solids"] as Array)[0]
+		kind = str(mass.keys()[0])
+		var base: Dictionary = mass[kind]
+		for key: Variant in spec:
+			base[key] = spec[key]
+		spec = base
+		wanted = plan.mode
+	if plan.mode != wanted:
+		trouble.append(("the outline read is %s, which %s takes: give plan_scale the other "
+			+ "reading, or say the profile in numbers") % ["a long thing's heights along its "
+			+ "length" if plan.mode == "heights" else "a tall thing's widths up its height",
+			"an extrude or a loft" if plan.mode == "heights" else "tiers or a revolve up y"])
+		return entry
+	var start: float = float(spec.get("start", 0.0))
+	var long: float = float(spec.get("length", plan.length))
+	var most: float = Array(plan.values).max()
+	var tall: float = float(spec.get("height", 0.0))
+	match kind:
+		"extrude":
+			var scale: float = tall / most if tall > 0.0 else 0.0
+			if str(spec.get("profile", "")) == "outline":
+				spec["profile"] = plan.top_profile(start, long, scale)
+			if str(spec.get("under", "")) == "outline":
+				spec["under"] = plan.under_profile(start, long, scale)
+			if not spec.has("width"):
+				spec["width"] = plan.across
+			if not spec.has("along"):
+				spec["along"] = plan.axis()
+			if not spec.has("plan") and plan.plan != "rectangle":
+				spec["plan"] = plan.plan
+			said.append("Its extrude's top is the outline read%s: %s studs along %s, its "
+				% [_outline_from(plan), Placement._num(long), str(spec["along"])]
+				+ "highest %s plates." % Placement._num(snappedf(
+					(tall if tall > 0.0 else most * long * OutlinePlan.PLATES_PER_STUD), 0.5)))
+		"loft":
+			if str(spec.get("sections", "")) == "outline":
+				var scale: float = tall / most if tall > 0.0 else 0.0
+				var tops: Array = plan.top_profile(start, long, scale)
+				var lows: Array = plan.under_profile(start, long, scale)
+				var wide: float = float(spec.get("width", plan.across))
+				var sections: Array = []
+				for n: int in tops.size():
+					var low: float = float((lows[n] as Array)[1]) if n < lows.size() else 0.0
+					var top: float = float((tops[n] as Array)[1])
+					sections.append({"at": (tops[n] as Array)[0], "width": wide,
+						"height": maxf(0.0, top - low), "bottom": low,
+						"round": float(spec.get("round", 0.5))})
+				spec["sections"] = sections
+				if not spec.has("along"):
+					spec["along"] = plan.axis()
+				said.append("Its loft's sections are the outline read%s, %s studs along %s."
+					% [_outline_from(plan), Placement._num(long), str(spec["along"])])
+		"tiers":
+			if str(spec.get("levels", "")) == "outline":
+				var wide: float = float(spec.get("width", 0.0))
+				var levels: Array = plan.levels(tall, wide, float(spec.get("deep", 0.0)))
+				spec["levels"] = levels
+				if not spec.has("plan") and plan.plan != "rectangle":
+					spec["plan"] = plan.plan
+				if not spec.has("centre") and not spec.has("center"):
+					var w: float = 0.0
+					var d: float = 0.0
+					for level: Array in levels:
+						w = maxf(w, float(level[1]))
+						d = maxf(d, float(level[2]))
+					spec["centre"] = [w / 2.0, d / 2.0]
+				said.append("Its tiers are the outline read%s: %s plates tall in %d levels."
+					% [_outline_from(plan), Placement._num(snappedf(float((levels[-1] as Array)[0]),
+						0.5)), levels.size()])
+		"revolve":
+			if str(spec.get("profile", "")) == "outline":
+				if str(spec.get("axis", "y")).to_lower() != "y":
+					trouble.append("a revolve takes the outline's widths standing up: \"axis\": \"y\"")
+					return entry
+				var profile: Array = []
+				for level: Array in plan.levels(tall, float(spec.get("width", 0.0))):
+					profile.append([level[0], float(level[1 if plan.axis() == "x" else 2]) / 2.0])
+				spec["profile"] = profile
+				said.append("Its revolve's profile is the outline read%s." % _outline_from(plan))
+	return {kind: spec} if not given.has("color") else {kind: spec, "color": given["color"]}
+
+
+## " off its photograph" for what was read, or "".
+static func _outline_from(plan: OutlinePlan) -> String:
+	return (" off \"%s\"" % plan.picture) if not plan.picture.is_empty() else ""
+
+
+## A prism's storeys to the outline held: one a tier, each its share of the
+## courses and of the radius. A reading with no steps has no storeys.
+func _storeys_outlined(pattern: Dictionary, trouble: Array, said: Array) -> Variant:
+	if _outline_plan == null:
+		trouble.append(_outline_missing())
+		return {"count": 3, "in": 1}
+	var tiers: Array = _outline_plan.storeys()
+	if tiers.size() < 2 or tiers.size() > 8:
+		trouble.append(("a prism's storeys take an outline read with 1 to 7 steps up its "
+			+ "height (2 to 8 tiers); this one has %d tiers: tiers \"levels\": \"outline\" "
+			+ "take any number") % tiers.size())
+		return {"count": 3, "in": 1}
+	var radius: float = float(pattern.get("radius", 6))
+	var courses: int = int(round(float(pattern.get("courses",
+		roundi(_outline_plan.height / 3.0)))))
+	var each: Array = []
+	var radii: Array = []
+	for one: Vector2 in tiers:
+		each.append(maxi(3, roundi(one.x * courses)))
+		radii.append(maxf(2.0, roundf(radius * one.y)))
+	pattern["courses"] = each.reduce(func(a: int, b: int) -> int: return a + b, 0)
+	said.append("Its storeys are the outline read%s: %d, radius %s." % [
+		_outline_from(_outline_plan), tiers.size(), ", ".join(radii.map(
+			func(r: float) -> String: return Placement._num(r)))])
+	return {"count": tiers.size(), "in": 1, "_courses": each, "_radii": radii}
 
 
 ## Pictures of the thing it has been asked to build.
@@ -21369,6 +21723,11 @@ func _find_reference(subject: String) -> Variant:
 				"data": encoded,
 			},
 		})
+	# The photograph is in front of it now: read the outline off it here.
+	var asking: String = outline_ask("find_reference")
+	if not asking.is_empty():
+		blocks.append({"type": "text", "text": "With a picture taken square from one side: "
+			+ asking})
 	return blocks
 
 
@@ -21553,7 +21912,15 @@ func use_tool(name: String, input: Dictionary) -> Variant:
 		_outside_creative = {}
 		surface_pass().reset()
 		fresh_eyes().designed(bare)
-	return _built_from_outside(design, report) if designing else _placed_said(design, report)
+	if not designing:
+		return _placed_said(design, report)
+	var built: String = _built_from_outside(design, report)
+	var asking: String = outline_ask("submit_design") if bare else ""
+	if asking.is_empty():
+		return built
+	return (built + "\n\nIts mass is its own: no outline of the real thing was read before it. "
+		+ asking.replace("The answer is the first mass already in that outline",
+			"The answer is this mass in that outline"))
 
 
 ## A design built from outside — Claude over the connector, or a session
@@ -23707,7 +24074,9 @@ func _tools() -> Array:
 			"solids": {"type": "array", "items": {"type": "object"}, "description":
 				"shape: what it is made of, each an object naming one kind — "
 				+ "{\"loft\": {...}}, {\"extrude\": {...}}, {\"revolve\": {...}}, "
-				+ "{\"box\": {...}}, {\"ellipsoid\": {...}} or {\"dome\": {...}} — "
+				+ "{\"box\": {...}}, {\"ellipsoid\": {...}}, {\"dome\": {...}}, "
+				+ "{\"tiers\": {...}} or {\"outline\": {}}, the first mass to the outline "
+				+ "given to plan_scale — "
 				+ "with its own \"color\" if it wants one (the last that holds a stud "
 				+ "gives it its colour). Studs across and along, plates up, from at. "
 				+ "sculpt: {\"ellipsoid\": {...}}, {\"egg\": {...}}, "
@@ -23738,7 +24107,8 @@ func _tools() -> Array:
 				+ "\"round\": 0 a box to 1 an ellipse, \"keel\": 0 to 1, how far "
 				+ "its lower half narrows to a V, \"offset\": studs across}, ...]} — "
 				+ "the section between each two is in between; width 0 at an end is "
-				+ "a point; \"screen\" as on an extrude."},
+				+ "a point; \"screen\" as on an extrude; \"sections\": \"outline\" with "
+				+ "its \"width\" lays them to the outline given to plan_scale."},
 			"extrude": {"type": "object", "description":
 				"shape: {\"along\": \"x\" or \"z\", \"from\": studs across, "
 				+ "\"width\": studs, \"profile\": [[studs along, plates up], ...] "
@@ -23746,12 +24116,24 @@ func _tools() -> Array:
 				+ "(0 unless said), \"round\": studs its top edges are rounded by, "
 				+ "\"screen\": true where its front climbs to a roof as glass (a cabin, "
 				+ "a cab, a cockpit) — a windscreen laid at that rake, the roof on its "
-				+ "top studs; or {\"from\", \"to\": studs along, \"color\"}}. A cabin is "
-				+ "its own profile on the body, its roof falling to the tail."},
+				+ "top studs; or {\"from\", \"to\": studs along, \"color\"}}, \"plan\": its "
+				+ "shape from above (round, T, U...). A cabin is its own profile on the "
+				+ "body, its roof falling to the tail. \"profile\": \"outline\" (and \"under\": "
+				+ "\"outline\") is the outline given to plan_scale, over its \"length\" in "
+				+ "studs from its \"start\" (the outline's own unless said)."},
+			"tiers": {"type": "object", "description":
+				"shape: {\"centre\": [x, z], \"plan\": its shape from above, rectangle, "
+				+ "square, round, Y, T, L, cross, H, U or triangle, \"levels\": [[plates up, "
+				+ "studs wide, studs deep], ...] ground first} — the plan stood up level by "
+				+ "level, two levels at one height where it steps in: a skyscraper's "
+				+ "setbacks, a ziggurat, a pagoda, a wedding cake. \"levels\": \"outline\" "
+				+ "is the outline given to plan_scale, its steps and plan, to its own "
+				+ "\"height\" in plates unless said."},
 			"revolve": {"type": "object", "description":
 				"shape: {\"axis\": \"y\", \"x\" or \"z\", \"centre\": [x, y, z], "
 				+ "\"profile\": [[along it (plates up y, studs along x or z), radius "
-				+ "in studs], ...]}; along x or z, \"screen\" as on an extrude."},
+				+ "in studs], ...]}; along x or z, \"screen\" as on an extrude. Up y, "
+				+ "\"profile\": \"outline\" is the outline given to plan_scale."},
 			"box": {"type": "object", "description":
 				"shape: {\"from\": [x, y, z], \"size\": [across, plates up, deep], "
 				+ "\"round\": studs its plan corners are rounded by, \"chamfer\": "
@@ -23845,10 +24227,13 @@ func _tools() -> Array:
 				+ "plates thick in the second tone, only the top storey's "
 				+ "piers rising into horns: a tower that steps in as it "
 				+ "rises, not a shaft. The reply says the top's radius "
-				+ "(for add_rooms) and its summit's y.",
+				+ "(for add_rooms) and its summit's y. {\"outline\": true}: a storey "
+				+ "for each tier of the outline given to plan_scale, each its own "
+				+ "height and radius.",
 				"properties": {
 					"count": {"type": "integer"},
-					"in": {"type": "integer"}}},
+					"in": {"type": "integer"},
+					"outline": {"type": "boolean"}}},
 			"door": {"type": "boolean", "description":
 				"prism: an arched door at the foot of the face looking +z, two "
 				+ "studs wide and six courses tall, for a stair to lead up to; "
@@ -24326,7 +24711,11 @@ func _tools() -> Array:
 				+ "use, and which one is worth building at. Settle this "
 				+ "first: everything after it depends on the "
 				+ "proportions, and changing it later means moving the "
-				+ "whole model."),
+				+ "whole model. Give it outline=, the real thing's outline "
+				+ "read off a photograph of it (find_reference), and it answers "
+				+ "with the first mass already in that outline at that size, a "
+				+ "shape to send as it is: the app's shapes take the outline as "
+				+ "their profile."),
 			"input_schema": {
 				"type": "object",
 				"properties": {
@@ -24334,6 +24723,54 @@ func _tools() -> Array:
 					"longest_metres": {"type": "number", "description":
 						"how long the real thing is along its longest "
 						+ "side. A guess within half is enough."},
+					"studs": {"type": "array", "items": {"type": "number"}, "description":
+						"the size to build it at, when the brief gives one: its studs "
+						+ "as said (\"fitting in about 25 x 54 studs\": [25, 54]). The "
+						+ "outline is laid that long, or a tall thing that wide at its "
+						+ "widest"},
+					"outline": {"type": "object", "description": ("the real thing's "
+						+ "outline, read off a photograph of it (find_reference) taken "
+						+ "square from one side, before the first build: the answer is "
+						+ "the first mass in it at the model's size, and \"outline\" in "
+						+ "a shape's profile lays it"),
+						"properties": {
+							"from": {"type": "string", "enum": ["front", "back", "left", "right"],
+								"description": ("the side of your model the photograph shows; "
+									+ "the front is +z, so a car laid along x is seen from the "
+									+ "front or the back")},
+							"heights": {"type": "array", "items": {"type": "number"},
+								"description": ("a long thing: the top's height at each tenth "
+									+ "of its length, left to right as the photograph shows "
+									+ "it, as shares of that length: 11 numbers (a car's roof "
+									+ "about 0.25)")},
+							"bottoms": {"type": "array", "items": {"type": "number"},
+								"description": ("with heights: the underside at the same "
+									+ "places, shares of the length (a car's sills, a plane's "
+									+ "belly; 0 where it meets the ground)")},
+							"widths": {"type": "array", "items": {"type": "number"},
+								"description": ("a tall thing, instead of heights: its width "
+									+ "at each tenth of its height, ground to top, as shares "
+									+ "of that height: 11 numbers")},
+							"steps": {"type": "array", "items": {"type": "number"},
+								"description": ("where the outline steps, each a share of the "
+									+ "way (up a tall thing's height, along a long thing's "
+									+ "length), lowest first: every setback of a tower, every "
+									+ "step of a roofline. Count them off the photograph; "
+									+ "between two the outline is level")},
+							"plan": {"type": "string", "description": ("its shape seen from "
+								+ "above: rectangle (unless said), square, round, Y, T, L, cross, "
+								+ "H, U or triangle")},
+							"arm": {"type": "number", "description": ("a Y, T, L, cross, H or "
+								+ "U's arms' thickness, a share of its width (a third unless "
+								+ "said)")},
+							"deep": {"type": "number", "description": ("a long thing's width "
+								+ "across, a share of its length, when studs= does not say it; "
+								+ "a tall thing's depth, a share of its width")},
+							"picture": {"type": "string", "description":
+								"the photograph's title, as find_reference named it"},
+						},
+						"required": ["from"],
+						"additionalProperties": false},
 				},
 				"required": ["longest_metres"],
 				"additionalProperties": false,

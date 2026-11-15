@@ -377,6 +377,13 @@
     },
     {
       "kind": "lib",
+      "label": "built to the outline",
+      "entry": "src/ai/outline_plan.gd",
+      "reach": "tools/probe.sh outline_build_probe   (plan_scale outline=: asked for before the first build; the heights or widths read off a photograph handed back as the first mass, an extrude to the outline or tiers stood up in it with steps and a plan from above; each shape's \"outline\" keyword; wrong readings refused)",
+      "area": "assistant"
+    },
+    {
+      "kind": "lib",
       "label": "worked constructions",
       "entry": "src/ai/techniques.gd",
       "reach": "godot --headless --path . --script src/dev/techniques_probe.gd",
