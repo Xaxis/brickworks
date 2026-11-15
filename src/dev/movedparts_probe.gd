@@ -26,6 +26,8 @@
 ##   alias rows checked, a missing one with Search; one row unchecked and
 ##   Replace checked replaces the others only; Keep as is changes nothing;
 ##   Search puts the number in the parts bin's search.
+## - together: in a Build together session, Replace checked and
+##   replace_moved=true each refused, saying why, the file as it was.
 ## - mcp: open_model names each with its target and count, and
 ##   replace_moved=true gives the same file as the dialog's in 1 call.
 ## - words: the list, its rows and what the bar says of a replace, in
@@ -45,7 +47,7 @@ const OMR := "res://vendor/omr/files/"
 const FILES: Array[String] = ["4096-1_QB-Truck.mpd", "6965-1.mpd", "4096-1_Cement-Mixer.mpd",
 	"4347-1_Robo.mpd", "4349-1_Dragon-Fly.mpd", "30055-1.mpd", "6522-1.mpd", "7210-1.mpd",
 	"30034-1.mpd", "7808-1.mpd", "6056-1.mpd", "8198-1.mpd", "6990-1.mpd"]
-const CASES: Array = ["omr", "attack", "dialog", "mcp", "words"]
+const CASES: Array = ["omr", "attack", "dialog", "together", "mcp", "words"]
 const WATCHDOG := 1500.0
 const NEAR := 0.01
 
@@ -170,6 +172,7 @@ func _run() -> void:
 			"omr": await _case_omr()
 			"attack": await _case_attack()
 			"dialog": await _case_dialog()
+			"together": await _case_together()
 			"mcp": await _case_mcp()
 			"words": await _case_words()
 			"phone": await _case_phone()
@@ -359,6 +362,43 @@ func _case_words() -> void:
 		_check("...%s: all %d said in it%s" % [code, texts.size(), "" if unsaid.is_empty()
 			else "; not: " + " | ".join(unsaid)], unsaid.is_empty())
 	Language.apply("en")
+
+
+## A Build together session, as the shell and the tools see one: live.
+class FakeRoom extends Node:
+	var live: bool = true
+
+	func stop_button() -> Node:
+		return null
+
+
+## In a Build together session a replace, which lays the model again and
+## would end it, is refused by the list and over MCP, the file as it was.
+func _case_together() -> void:
+	var text: String = _text_kept(OMR + "4349-1_Dragon-Fly.mpd")
+	await _open_as_person("together", text)
+	var dialog: Window = _shell.get("_moved")
+	if not _check("the list shows", dialog != null and dialog.visible):
+		return
+	var room := FakeRoom.new()
+	_main.set("_together_made", room)
+	var was: String = _store.saved_text()
+	var generation: int = _world.generation()
+	dialog.emit_signal("confirmed")
+	await _frames(30)
+	await _settled()
+	var said: String = str((_main.get("_status") as Label).text) if _main.get("_status") is Label else ""
+	_check("...Replace checked in a session: nothing replaced, the model not laid again%s" % (
+		"" if said.is_empty() else " (\"%s\")" % said.left(90)),
+		_store.saved_text() == was and _world.generation() == generation)
+	var answer: String = await _say("open_model", {"replace_moved": true})
+	await _settled()
+	print("  open_model replace_moved=true: %s" % answer.left(200))
+	_check("...open_model replace_moved=true in a session refused, saying why",
+		answer.contains("Not replaced") and answer.contains("Build together")
+		and _store.saved_text() == was and _world.generation() == generation)
+	_main.set("_together_made", null)
+	room.free()
 
 
 ## Over MCP: open_model names each, and replace_moved gives the dialog's file.

@@ -2327,8 +2327,8 @@ func replace_moved(numbers: Array, job: Working.Job = null) -> Dictionary:
 
 
 ## What a replace of [param parts] (number -> lines), as [param rows] list
-## them, did, as Undo and History say it: "replaced 2 numbers LDraw moved
-## (3023 with 3023b, 3660 with 3660a)".
+## them, did, as the bar, Undo and Redo say it: "replaced 2 moved part
+## numbers (3023 → 3023b, 3660 → 3660a)".
 static func replaced_words(parts: Dictionary, rows: Dictionary) -> String:
 	var pairs := PackedStringArray()
 	for number: String in parts:

@@ -3476,6 +3476,13 @@ func _moved_said(store: ModelStore, replace: bool) -> String:
 		else:
 			renumbered.append("%s %s (%s)" % [number, MovedParts.why_words(row), MovedParts.used_words(row)])
 	var said: String = ""
+	# A replace lays the model again, which would end the person's Build
+	# together session: refused there, as the person's own list refuses it.
+	var together: Node = app.get("_together_made")
+	if replace and not renumbered.is_empty() and together != null and bool(together.get("live")):
+		return (" Not replaced: the person is in a Build together session, and replacing them "
+			+ "lays the model again; they leave it first (File › Build together…). Its moved and "
+			+ "alias parts: %s.") % "; ".join(renumbered)
 	if replace and not renumbered.is_empty():
 		var bar: ModelBar = app.get("_bar")
 		var done: String = await bar.replace_moved(store.moved.keys())
@@ -3491,7 +3498,7 @@ func _moved_said(store: ModelStore, replace: bool) -> String:
 	elif replace:
 		said = " Nothing to replace: no part of it is named by a moved or alias number."
 	elif not renumbered.is_empty():
-		said = (" Its file names %d parts by numbers LDraw has moved or keeps as aliases; each is "
+		said = (" Its file names parts by %d numbers LDraw has moved or keeps as aliases; each is "
 			+ "drawn as the part it points to, and the file keeps the old number: %s. "
 			+ "open_model replace_moved=true writes them as those parts in every sub-model, in one "
 			+ "undo, as the person's Replace checked does.") % [renumbered.size(), "; ".join(renumbered)]
