@@ -82,6 +82,7 @@ ui:tool modes
 <!-- covers
 ui:mirror a selection
 ui:replace part
+ui:find and replace everywhere
 -->
 
 ## Split and merge {#split-merge}

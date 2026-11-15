@@ -424,23 +424,30 @@ func _build() -> void:
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
 	_close = _button(header, "Close", close, "Put the bar away")
+	# On a phone held either way, each colour under its part: three across
+	# were 467 points wide, past a phone's 390.
+	var stacked: bool = Phone.on() and not Phone.wide()
 	var grid := GridContainer.new()
-	grid.columns = 3
+	grid.columns = 2 if stacked else 3
 	grid.add_theme_constant_override("h_separation", 8)
 	grid.add_theme_constant_override("v_separation", 6)
 	column.add_child(grid)
 	_label(grid, "Find")
 	_find_part = _field(grid, "Any part: its number or name", "The part to find")
+	if stacked:
+		grid.add_child(Control.new())
 	_find_colour = _options(grid, "The colour to find")
 	_label(grid, "Replace with")
 	_into_part = _field(grid, "The same part", "The part to put in its place")
+	if stacked:
+		grid.add_child(Control.new())
 	_into_colour = _options(grid, "The colour to give it")
 	_fill_into_colours()
 	_label(grid, "Where")
 	_where = _options(grid, "Where to look")
 	_where.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var fill := Control.new()
-	grid.add_child(fill)
+	if not stacked:
+		grid.add_child(Control.new())
 	_find_colour.item_selected.connect(func(_n: int) -> void: refresh())
 	_into_colour.item_selected.connect(func(_n: int) -> void: refresh())
 	_where.item_selected.connect(func(_n: int) -> void: refresh())
