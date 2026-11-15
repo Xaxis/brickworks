@@ -9,10 +9,10 @@
 ## in the hand are each two pieces until they are put on; and the robot,
 ## which put a sub-assembly on before what holds it. Each fails the Tested
 ## mark's steps test with the planner alone (HeldSteps.mends off) and passes
-## it with the mend, but the fox's one part that its body hides from every
-## side even beside what holds it, which the test still names (two, judged
-## by boxes from the front and the back, tested306); and every part is in the
-## steps once, where the share's pages carry it, its file unchanged. A
+## it with the mend: the fox too since buildorder (2026-11-15), before which
+## the test still named one part its body hid from every side; and every
+## part is in the steps once, where the share's pages carry it, its file
+## unchanged. A
 ## bench design whose planned steps already pass (sculpt170's model-043) is
 ## left exactly as planned.
 extends SceneTree
@@ -66,17 +66,8 @@ func _run() -> void:
 		print("  mended: %s; %s" % [_why(mended, "steps"), str(said)])
 		_ok(not _passes(alone, "steps"), "the planner alone puts parts down in the air: %s"
 			% _why(alone, "steps").left(160))
-		if name == "fox":
-			_ok(int(said.get("floating", -1)) == 0 and int(said.get("hidden", -1)) == 1
-					and _why(mended, "steps").count("is hidden behind what is already built") == 1
-					and not _why(mended, "steps").contains("in the air"),
-				"mended, nothing is in the air; the one part its body hides from every side even beside what holds it is named: %s"
-					% _why(mended, "steps"))
-			_ok(int(said.get("waited", 0)) >= 100, "...%d parts waited for the step that holds them"
-				% int(said.get("waited", 0)))
-		else:
-			_ok(_passes(mended, "steps"), "mended, it passes the steps test: %s (%d waited, %d sooner)" % [
-				_why(mended, "steps"), int(said.get("waited", 0)), int(said.get("sooner", 0))])
+		_ok(_passes(mended, "steps"), "mended, it passes the steps test: %s (%d waited, %d sooner)" % [
+			_why(mended, "steps"), int(said.get("waited", 0)), int(said.get("sooner", 0))])
 		_ok(_passes(mended, "stands") == _passes(alone, "stands") and _passes(mended, "whole")
 				and _passes(mended, "parts") == _passes(alone, "parts"),
 			"...and its other tests are as they were: stands %s, parts %s, whole %s" % [

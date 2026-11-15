@@ -799,11 +799,12 @@ static func _put(test: Tested.Steps, under: Under, step: Instructions.Step, ids:
 			trying = ready
 		# A later part whose cover meets one of these both ways round goes in
 		# with it if it stands: put in after, it would go in under it. And so
-		# does a later part that one standing here rests on: waited for, all
+		# does a later part that one waiting here rests on: waited for, all
 		# that rests on it waits. 6361's back plate, planned for its last
 		# step, held the plates over it and 73 parts on those to that step,
 		# where the 2 x 16 under the cab then hung from its wheel plates.
 		var more: Array[int] = []
+		var leaning: Array[int] = []
 		var take_in := func(other: int) -> void:
 			if sooner.size() + more.size() < PULL_MOST and not asked.has(other) \
 					and under.later.has(other) and not under.at.has(other) \
@@ -816,16 +817,22 @@ static func _put(test: Tested.Steps, under: Under, step: Instructions.Step, ids:
 				for other: int in under.mutual.get(id, PackedInt64Array()):
 					take_in.call(other)
 			for id: int in stood:
+				if not under.since.has(id):
+					continue
 				for other: int in under.rests.get(id, PackedInt64Array()):
 					take_in.call(other)
+				if not trying.has(id):
+					leaning.append(id)
 		if more.is_empty():
 			break
 		sooner.append_array(more)
 		for id: int in more:
 			pulled[id] = true
-		# Each asked again: what waited for one of them goes in with it.
-		trying = ids.duplicate()
-		trying.append_array(sooner)
+		trying.append_array(more)
+		# And what waited for them, asked again: it goes in with them. Only
+		# that: the whole step asked again took 4002020's parts in under ones
+		# already there (23 under to 33, tau 0.61 to 0.28).
+		trying.append_array(leaning)
 	var kept: Dictionary = {}
 	for id: int in trying:
 		kept[id] = true
