@@ -14390,3 +14390,49 @@ msgstr "Sa forme n'est pas encore arrivée : soulevez-le à nouveau dans un inst
 
 msgid "There is no part #%d in the model to lift it by."
 msgstr "Il n'y a pas de pièce #%d dans le modèle par laquelle le soulever."
+
+# From my bricks: the bin as what the person owns, counted down (ownlimit)
+msgid "Build from my bricks"
+msgstr "Construire avec mes briques"
+
+msgid "My bricks"
+msgstr "Mes briques"
+
+msgid "The bin becomes every part you own, your sets' and your loose parts, each counting how many are left as you build. Every set you own counts, built or not: My collection cannot mark a set as kept built yet."
+msgstr "Le bac devient toutes les pièces que vous possédez, celles de vos sets et vos pièces en vrac, chacune indiquant combien il en reste pendant la construction. Chaque set que vous possédez compte, monté ou non : Ma collection ne permet pas encore de marquer un set comme gardé monté."
+
+msgid "Every set you own counts, built or not: My collection cannot mark a set as kept built yet."
+msgstr "Chaque set que vous possédez compte, monté ou non : Ma collection ne permet pas encore de marquer un set comme gardé monté."
+
+msgid "Building from the parts you own: your sets' parts, less those marked missing, and your loose parts. Each part put down takes one from its count; undo or a delete gives it back. A part with none left can still be used: the bin says how many over what you own the model is."
+msgstr "Construction avec les pièces que vous possédez : celles de vos sets, moins celles marquées manquantes, et vos pièces en vrac. Chaque pièce posée en retire une de son compte ; annuler ou supprimer la rend. Une pièce épuisée reste utilisable : le bac indique de combien le modèle dépasse ce que vous possédez."
+
+msgid "nothing in your collection"
+msgstr "rien dans votre collection"
+
+msgid "Nothing is in your collection here: sign in, or add your sets and parts in My collection."
+msgstr "Rien dans votre collection ici : connectez-vous, ou ajoutez vos sets et vos pièces dans Ma collection."
+
+msgid "nothing is in your collection yet: add your sets and parts in My collection"
+msgstr "votre collection est encore vide : ajoutez vos sets et vos pièces dans Ma collection"
+
+msgid "the last %s in %s you own is down"
+msgstr "votre dernière pièce %s en %s est posée"
+
+msgid "the last you own of %d parts is down: %s"
+msgstr "la dernière que vous possédez de %d pièces est posée : %s"
+
+msgid "%s in %s: past the %d you own, %d over"
+msgstr "%s en %s : au-delà des %d que vous possédez, %d de trop"
+
+msgid "past what you own of %d parts: %s"
+msgstr "au-delà de ce que vous possédez pour %d pièces : %s"
+
+msgid "building from your own bricks, %s"
+msgstr "construction avec vos propres briques, %s"
+
+msgid "%d over the %d in %s"
+msgstr "%d de plus que les %d de %s"
+
+msgid "%d over"
+msgstr "%d de trop"

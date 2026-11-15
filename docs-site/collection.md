@@ -78,11 +78,21 @@ ui:a set's missing parts
 
 Build something else from a set you own, as an alternate build:
 
-1. Type the set's number into the parts bin's search (*10497-1*, or *set 10497*) and choose **Build from it** at the top of the bin. Or choose **Build from it** beside a set under *What I own*, or **Build from them all**.
+1. Type the set's number into the parts bin's search (*10497-1*, or *set 10497*) and choose **Build from it** at the top of the bin. Or choose **Build from it** beside a set under *What I own*.
 2. The bin becomes that set's parts, a tile for each part in each colour, with how many are left. Each part you put down takes one; undo or a delete gives it back. A part with none left is greyed but still yours to use, and the bin says how far over the set the model is.
 3. **All parts** goes back to the whole catalogue.
 
 Where the LDraw community has a model of the set, the bin follows its booklet: the parts of the step you are on come first, and it turns to the next step as they go in (**‹** and **›** turn it by hand). A set with several models, such as *8841-1*, offers them under *Follow a booklet:*. The choice is saved with the model.
+
+## Build from my bricks {#my-bricks}
+
+Build from everything you own, so a model never needs a part you do not have:
+
+1. Choose **Build from my bricks** at the top of *What I own*.
+2. The bin becomes your own parts: your sets' parts, less any you marked missing, and your loose parts, a tile for each part in each colour with how many you have left. Each part you put down takes one; undo or a delete gives it back. The status bar says when you put down the last one you own.
+3. A part with none left is greyed but still yours to use. One more than you own is marked over on its tile, on the line at the top of the bin and in the parts list ([[P]]).
+
+Every set you own counts, built or not: My collection cannot mark a set as kept built yet. The choice is saved with the model, and follows your collection as it changes. Ask your own Claude for a design "from my collection" and it is held to the same parts: the app tells it each part the design goes over, and by how many.
 
 ## Compare two sets or models {#compare-sets}
 
