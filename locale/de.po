@@ -7569,6 +7569,75 @@ msgstr "Ihnen diese Farben geben, in einem Schritt: %s"
 msgid "%s puts them back"
 msgstr "%s stellt sie wieder her"
 
+msgid "Missing and moved parts"
+msgstr "Fehlende und verschobene Teile"
+
+msgid "Replace checked"
+msgstr "Markierte ersetzen"
+
+msgid "Keep as is"
+msgstr "So lassen"
+
+msgid "Search"
+msgstr "Suchen"
+
+msgid "Look for %s among the parts"
+msgstr "%s unter den Teilen suchen"
+
+msgid "1 number LDraw has moved or made an alias, drawn as the part it points to: Replace checked writes that part's number in every sub-model, in one undo."
+msgstr "1 Nummer, die LDraw verschoben oder zum Alias gemacht hat, gezeichnet als das Teil, auf das sie verweist: Markierte ersetzen schreibt die Nummer dieses Teils in jedes Untermodell, ein Rückgängig."
+
+msgid "%d numbers LDraw has moved or made aliases, drawn as the parts they point to: Replace checked writes those parts' numbers in every sub-model, in one undo."
+msgstr "%d Nummern, die LDraw verschoben oder zu Aliassen gemacht hat, gezeichnet als die Teile, auf die sie verweisen: Markierte ersetzen schreibt die Nummern dieser Teile in jedes Untermodell, ein Rückgängig."
+
+msgid "1 number with no file in the library, kept in the file and not shown."
+msgstr "1 Nummer ohne Datei in der Bibliothek, in der Datei behalten und nicht gezeigt."
+
+msgid "%d numbers with no file in the library, kept in the file and not shown."
+msgstr "%d Nummern ohne Datei in der Bibliothek, in der Datei behalten und nicht gezeigt."
+
+msgid "moved to %s, %s"
+msgstr "verschoben nach %s, %s"
+
+msgid "an alias of %s, %s"
+msgstr "ein Alias von %s, %s"
+
+msgid "no file: the library has no part of this number"
+msgstr "keine Datei: Die Bibliothek hat kein Teil mit dieser Nummer"
+
+msgid "%d used: %s"
+msgstr "%d verwendet: %s"
+
+msgid "%d in the model"
+msgstr "%d im Modell"
+
+msgid "Replacing moved parts in %s…"
+msgstr "Verschobene Teile in %s werden ersetzt…"
+
+msgid "could not replace them: %s"
+msgstr "konnte sie nicht ersetzen: %s"
+
+msgid "none of their lines is in the file now"
+msgstr "keine ihrer Zeilen steht jetzt in der Datei"
+
+msgid "none of those is a moved or alias part of this model"
+msgstr "keines davon ist ein verschobenes oder Alias-Teil dieses Modells"
+
+msgid "the model is still being laid"
+msgstr "das Modell wird noch aufgebaut"
+
+msgid "this model is only looked at"
+msgstr "dieses Modell wird nur angesehen"
+
+msgid "replaced 1 moved part number (%s)"
+msgstr "1 verschobene Teilenummer ersetzt (%s)"
+
+msgid "replaced %d moved part numbers (%s)"
+msgstr "%d verschobene Teilenummern ersetzt (%s)"
+
+msgid "Leave Build together first: replacing them lays the model again"
+msgstr "Verlasse zuerst Gemeinsam bauen: Beim Ersetzen wird das Modell neu aufgebaut"
+
 msgid "Leave it"
 msgstr "Lassen"
 

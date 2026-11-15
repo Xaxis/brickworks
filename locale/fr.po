@@ -7569,6 +7569,75 @@ msgstr "Leur donner ces couleurs, en une étape : %s"
 msgid "%s puts them back"
 msgstr "%s les rétablit"
 
+msgid "Missing and moved parts"
+msgstr "Pièces manquantes et déplacées"
+
+msgid "Replace checked"
+msgstr "Remplacer les cochées"
+
+msgid "Keep as is"
+msgstr "Laisser tel quel"
+
+msgid "Search"
+msgstr "Chercher"
+
+msgid "Look for %s among the parts"
+msgstr "Chercher %s parmi les pièces"
+
+msgid "1 number LDraw has moved or made an alias, drawn as the part it points to: Replace checked writes that part's number in every sub-model, in one undo."
+msgstr "1 numéro que LDraw a déplacé ou fait alias, dessiné comme la pièce vers laquelle il renvoie : Remplacer les cochées écrit le numéro de cette pièce dans chaque sous-modèle, en une seule annulation."
+
+msgid "%d numbers LDraw has moved or made aliases, drawn as the parts they point to: Replace checked writes those parts' numbers in every sub-model, in one undo."
+msgstr "%d numéros que LDraw a déplacés ou faits alias, dessinés comme les pièces vers lesquelles ils renvoient : Remplacer les cochées écrit les numéros de ces pièces dans chaque sous-modèle, en une seule annulation."
+
+msgid "1 number with no file in the library, kept in the file and not shown."
+msgstr "1 numéro sans fichier dans la bibliothèque, conservé dans le fichier et non affiché."
+
+msgid "%d numbers with no file in the library, kept in the file and not shown."
+msgstr "%d numéros sans fichier dans la bibliothèque, conservés dans le fichier et non affichés."
+
+msgid "moved to %s, %s"
+msgstr "déplacé vers %s, %s"
+
+msgid "an alias of %s, %s"
+msgstr "un alias de %s, %s"
+
+msgid "no file: the library has no part of this number"
+msgstr "aucun fichier : la bibliothèque n'a aucune pièce de ce numéro"
+
+msgid "%d used: %s"
+msgstr "%d utilisées : %s"
+
+msgid "%d in the model"
+msgstr "%d dans le modèle"
+
+msgid "Replacing moved parts in %s…"
+msgstr "Remplacement des pièces déplacées dans %s…"
+
+msgid "could not replace them: %s"
+msgstr "impossible de les remplacer : %s"
+
+msgid "none of their lines is in the file now"
+msgstr "aucune de leurs lignes n'est plus dans le fichier"
+
+msgid "none of those is a moved or alias part of this model"
+msgstr "aucune n'est une pièce déplacée ou un alias de ce modèle"
+
+msgid "the model is still being laid"
+msgstr "le modèle est encore en cours de pose"
+
+msgid "this model is only looked at"
+msgstr "ce modèle est seulement consulté"
+
+msgid "replaced 1 moved part number (%s)"
+msgstr "1 numéro de pièce déplacée remplacé (%s)"
+
+msgid "replaced %d moved part numbers (%s)"
+msgstr "%d numéros de pièces déplacées remplacés (%s)"
+
+msgid "Leave Build together first: replacing them lays the model again"
+msgstr "Quittez d'abord Construire ensemble : les remplacer repose le modèle"
+
 msgid "Leave it"
 msgstr "Laisser"
 

@@ -132,7 +132,8 @@ static func listing(flattened: Array, said: PackedStringArray, missing: Dictiona
 					target = {}
 			if not target.is_empty():
 				var to: PartLibrary.PartInfo = library.parts.get(str(target["to"]))
-				target["name"] = to.name if to != null else ""
+				# Its name without the padding LDraw aligns its names by ("Plate  1 x  2").
+				target["name"] = Inventory._tidy(to.name) if to != null else ""
 				target["count"] = 0
 				target["in"] = {}
 			seen[number] = target
@@ -159,7 +160,7 @@ static func why_words(row: Dictionary) -> String:
 	return "no file: the library has no part of this number"
 
 
-## How many a row's number places, and where: "46 used: 12 in the model, 34
+## How many a row's number places, and where: "46 used: 12 in the model; 34
 ## in wing".
 static func used_words(row: Dictionary) -> String:
 	var places: Dictionary = row["in"]
@@ -169,7 +170,7 @@ static func used_words(row: Dictionary) -> String:
 	for section: String in sections:
 		where.append(("%d in the model" % int(places[section])) if section.is_empty()
 			else ("%d in %s" % [int(places[section]), section]))
-	return "%d used: %s" % [int(row["count"]), ", ".join(where)]
+	return "%d used: %s" % [int(row["count"]), "; ".join(where)]
 
 
 ## The sub-model a part placed in copy [param unit] ("House#1/Window#3") is

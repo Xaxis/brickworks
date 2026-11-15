@@ -2332,7 +2332,7 @@ func replace_moved(numbers: Array, job: Working.Job = null) -> Dictionary:
 static func replaced_words(parts: Dictionary, rows: Dictionary) -> String:
 	var pairs := PackedStringArray()
 	for number: String in parts:
-		pairs.append("%s with %s" % [number, str((rows.get(number, {}) as Dictionary).get("to", "?"))])
+		pairs.append("%s → %s" % [number, str((rows.get(number, {}) as Dictionary).get("to", "?"))])
 	var shown: String = ", ".join(pairs.slice(0, 3)) + (", …" if pairs.size() > 3 else "")
 	return ("replaced 1 moved part number (%s)" if pairs.size() == 1
 		else "replaced %d moved part numbers (%s)" % [pairs.size(), "%s"]) % shown

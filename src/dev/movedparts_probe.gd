@@ -4,7 +4,8 @@
 ## every sub-model in one undo.
 ##
 ##   godot --headless --path . --script src/dev/movedparts_probe.gd
-##   tools/probe.sh movedparts_probe [--phone]
+##   tools/probe.sh movedparts_probe
+##   tools/probe.sh movedparts_phone_probe     the list in a phone's window
 ##
 ## - omr: 10 files of the LDraw model repository with moved or alias parts
 ##   and 3 with parts the library has no file for (FILES), each opened as
@@ -27,8 +28,11 @@
 ##   Search puts the number in the parts bin's search.
 ## - mcp: open_model names each with its target and count, and
 ##   replace_moved=true gives the same file as the dialog's in 1 call.
-## - phone (--phone): the dialog in a phone's layout, every check box and
-##   button 44 points or more each way.
+## - words: the list, its rows and what the bar says of a replace, in
+##   German, French and Spanish, nothing left in English but names,
+##   numbers and keys.
+## - phone (movedparts_phone_probe): the list wholly in a phone's window,
+##   every check box and button 44 points or more each way.
 ##
 ##   MOVEDPARTS_CASES=omr,attack   those cases
 ##   MOVEDPARTS_OUT=/abs/dir       each file before and after kept there
@@ -41,7 +45,7 @@ const OMR := "res://vendor/omr/files/"
 const FILES: Array[String] = ["4096-1_QB-Truck.mpd", "6965-1.mpd", "4096-1_Cement-Mixer.mpd",
 	"4347-1_Robo.mpd", "4349-1_Dragon-Fly.mpd", "30055-1.mpd", "6522-1.mpd", "7210-1.mpd",
 	"30034-1.mpd", "7808-1.mpd", "6056-1.mpd", "8198-1.mpd", "6990-1.mpd"]
-const CASES: Array = ["omr", "attack", "dialog", "mcp"]
+const CASES: Array = ["omr", "attack", "dialog", "mcp", "words"]
 const WATCHDOG := 1500.0
 const NEAR := 0.01
 
@@ -122,7 +126,7 @@ func _run() -> void:
 	create_timer(WATCHDOG).timeout.connect(func() -> void:
 		print("movedparts probe: FAILED, not finished in %d s" % int(WATCHDOG))
 		quit(1))
-	var phone: bool = "--phone" in OS.get_cmdline_user_args()
+	var phone: bool = _phone()
 	if phone:
 		Phone._on = 1
 		Phone._wide = false
@@ -133,6 +137,17 @@ func _run() -> void:
 	var playback: Variant = _main.get("_playback")
 	if playback is BuildPlayback:
 		(playback as BuildPlayback).stop()
+	# A phone draws at a browser's scale, as carryrest_probe holds it.
+	if phone and DisplayServer.get_name() != "headless":
+		(_main.get("_phone") as Node).set_process(false)
+		for link: Dictionary in root.size_changed.get_connections():
+			var call: Callable = link["callable"]
+			if call.get_method() == &"_match_screen_density":
+				root.size_changed.disconnect(call)
+		var main_script: GDScript = _main.get_script()
+		root.content_scale_factor = main_script.sized_factor(Room.across(), Room.down(), true,
+			ShellPrefs.interface_size(), true)
+		await _frames(20)
 	_world = _main.get("_world")
 	_store = _main.get("_store")
 	_shell = _main.get("_shell")
@@ -156,6 +171,7 @@ func _run() -> void:
 			"attack": await _case_attack()
 			"dialog": await _case_dialog()
 			"mcp": await _case_mcp()
+			"words": await _case_words()
 			"phone": await _case_phone()
 			_: _check("no such case %s" % name, false)
 		print("CASE %s: %s" % [name, "green" if _failures == before
@@ -241,7 +257,17 @@ func _case_dialog() -> void:
 	var kept: String = "3023"
 	(controls["moved_check_" + kept] as CheckBox).button_pressed = false
 	var was: String = _store.saved_text()
+	# The replace begins once the bar has said so, a few frames on, and
+	# ends with the bar's opened.
+	var ended: Array = [false]
+	var on_opened: Callable = func(_count: int) -> void: ended[0] = true
+	_bar.opened.connect(on_opened)
 	dialog.emit_signal("confirmed")
+	for _n: int in 1800:
+		if ended[0]:
+			break
+		await process_frame
+	_bar.opened.disconnect(on_opened)
 	await _settled()
 	var now: String = _store.saved_text()
 	var left: Dictionary = _store.moved
@@ -286,6 +312,55 @@ func _case_dialog() -> void:
 	_check("...a session's open shows no dialog", not (_shell.get("_moved") as Window).visible)
 
 
+## In German, French and Spanish: the list's title, buttons, note and rows,
+## and what the bar says replacing, replaced, undone and refused, each found
+## in the language with only names, numbers and keys left as they are.
+func _case_words() -> void:
+	# Sub-models, a moved part in three of them, and a part with no file.
+	var text: String = ATTACK.replace("0 STEP\n0 NOFILE\n0 FILE wing.ldr",
+		"1 4 0 -200 0 1 0 0 0 1 0 0 0 1 71303p01.dat\n0 STEP\n0 NOFILE\n0 FILE wing.ldr")
+	await _open_as_person("words", text)
+	var dialog: Window = _shell.get("_moved")
+	if not _check("the list shows", dialog != null and dialog.visible):
+		return
+	var state: Dictionary = dialog.call("page_state")
+	var texts := PackedStringArray([dialog.title, (dialog as ConfirmationDialog).ok_button_text,
+		(dialog as ConfirmationDialog).cancel_button_text, "Search",
+		"Look for %s among the parts" % "71303p01"])
+	texts.append_array(str(state["note"]).split("\n"))
+	for number: String in state["rows"]:
+		texts.append(str(state["rows"][number]["words"]))
+	var rows: Dictionary = _store.moved
+	var replaced: String = ModelStore.replaced_words(rows.duplicate(), rows)
+	texts.append_array([Keymap.filled("%s — {undo|puts them back}") % replaced,
+		"undid: %s" % replaced, "redid: %s" % replaced,
+		ModelStore.replaced_words({"3023": 1}, rows),
+		"Replacing moved parts in %s…" % "words",
+		"could not replace them: %s" % "the model is still being laid",
+		"could not replace them: %s" % "this model is only looked at",
+		"could not replace them: %s" % "none of those is a moved or alias part of this model",
+		"could not replace them: %s" % "none of their lines is in the file now",
+		"Leave Build together first: replacing them lays the model again"])
+	var english: RegEx = RegEx.create_from_string(
+		"(?i)\\b(moved|alias|used|model|file|library|replaced?|numbers?|keep|search|look|together|laid|undid|redid|puts)\\b")
+	(dialog.call("controls_by_name")["moved_keep"] as Button).pressed.emit()
+	for code: String in ["de", "fr", "es"]:
+		Language.apply(code)
+		var unsaid := PackedStringArray()
+		for words: String in texts:
+			var said: String = Language.says(words)
+			var left: Array = Language.left_in_english(words)
+			var english_left: Array = left.filter(func(part: String) -> bool:
+				return english.search(part) != null and not part in ["wing", "tower", "floor"])
+			if said.is_empty() or not english_left.is_empty():
+				unsaid.append("%s%s" % [words.left(60), "" if said.is_empty() else " (left: %s)"
+					% ", ".join(english_left)])
+		print("  %s: %s" % [code, Language.says(str(state["rows"].values()[0]["words"]))])
+		_check("...%s: all %d said in it%s" % [code, texts.size(), "" if unsaid.is_empty()
+			else "; not: " + " | ".join(unsaid)], unsaid.is_empty())
+	Language.apply("en")
+
+
 ## Over MCP: open_model names each, and replace_moved gives the dialog's file.
 func _case_mcp() -> void:
 	var stem: String = "4096-1_Cement-Mixer"
@@ -323,13 +398,24 @@ func _case_mcp() -> void:
 		_store.saved_text() == expected)
 
 
-## In a phone's layout: every target 44 points or more.
+## Laid out for a phone: movedparts_phone_probe, in a phone's window, or
+## --phone here.
+func _phone() -> bool:
+	return "--phone" in OS.get_cmdline_user_args()
+
+
+## In a phone's layout: wholly in the window, every target 44 points or more.
 func _case_phone() -> void:
+	# A moved part, to check, and one with no file, to search for.
 	await _open_as_person("phone", _text_kept(OMR + "6056-1.mpd"))
 	var dialog: Window = _shell.get("_moved")
 	if not _check("the list shows in a phone's layout", dialog != null and dialog.visible):
 		return
 	await _frames(20)
+	var title: int = dialog.get_theme_constant("title_height")
+	var whole := Rect2(dialog.position - Vector2i(0, title), dialog.size + Vector2i(0, title))
+	_check("...wholly in the window: %s in %s" % [whole, root.get_visible_rect()],
+		root.get_visible_rect().grow(0.5).encloses(whole))
 	var least: float = INF
 	var small := PackedStringArray()
 	var controls: Dictionary = dialog.call("controls_by_name")
@@ -341,6 +427,9 @@ func _case_phone() -> void:
 			small.append("%s %.0fx%.0f" % [name, size.x, size.y])
 	_check("...its %d targets each 44 points or more (least %.1f)%s" % [controls.size(), least,
 		"" if small.is_empty() else ": " + ", ".join(small)], small.is_empty() and controls.size() >= 3)
+	if not _out.is_empty() and DisplayServer.get_name() != "headless":
+		await RenderingServer.frame_post_draw
+		root.get_texture().get_image().save_png(_out.path_join("phone.png"))
 	var keep: Button = controls.get("moved_keep")
 	if keep != null:
 		keep.pressed.emit()
@@ -407,7 +496,12 @@ func _round(name: String, text: String, attack: bool) -> String:
 	for row: Dictionary in _store.moved.values():
 		moved_left += 0 if str(row["kind"]) == MovedParts.MISSING else 1
 	_check("...none left to replace (%d)" % moved_left, moved_left == 0)
-	var placed: Dictionary = _same_places(before, _bricks())
+	# An alias was drawn as itself, and is now its part of the same shape.
+	var as_now: Dictionary = {}
+	for number: String in rows:
+		if str(rows[number]["kind"]) == MovedParts.ALIAS:
+			as_now[number] = str(rows[number]["to"])
+	var placed: Dictionary = _same_places(before, _bricks(), as_now)
 	_worst = maxf(_worst, float(placed["worst"]))
 	_check("...each part drawn where it was: %d of %d, worst %.5f LDU%s" % [int(placed["matched"]),
 		before.size(), float(placed["worst"]), str(placed["first"])],
@@ -472,8 +566,12 @@ func _expected(text: String) -> Dictionary:
 func _same_geometry(alias: String, to: String) -> bool:
 	var a: PartLibrary.PartInfo = _store.library.parts.get(alias)
 	var b: PartLibrary.PartInfo = _store.library.parts.get(to)
+	# An alias is named "=" and the part it stands for ("=Slope Brick 31 …"),
+	# read here apart from any shape.
+	var said: String = " ".join(a.name.trim_prefix("=").split(" ", false)) if a != null else "?"
 	return a != null and b != null and a.mesh_hash == b.mesh_hash and not b.is_redirect() \
-		and not b.kind.contains("Alias")
+		and not b.kind.contains("Alias") and a.name.begins_with("=") \
+		and " ".join(b.name.split(" ", false)).begins_with(said)
 
 
 ## Line by line, [param was] against [param now]: each line that changed is
@@ -540,10 +638,11 @@ func _bricks() -> Array:
 	return out
 
 
-## Each of [param before] matched to one of [param after] of its part and
-## colour, its place within NEAR and its turn the same: {"matched", "worst"
-## (the farthest a matched part moved), "first" (the first not matched)}.
-static func _same_places(before: Array, after: Array) -> Dictionary:
+## Each of [param before] matched to one of [param after] of its part (or
+## the part [param as_now] names for it) and colour, its place within NEAR
+## and its turn the same: {"matched", "worst" (the farthest a matched part
+## moved), "first" (the first not matched)}.
+static func _same_places(before: Array, after: Array, as_now: Dictionary = {}) -> Dictionary:
 	var by: Dictionary = {}
 	for item: Array in after:
 		var key: String = "%s|%d" % [item[0], item[1]]
@@ -554,7 +653,7 @@ static func _same_places(before: Array, after: Array) -> Dictionary:
 	var worst: float = 0.0
 	var first: String = ""
 	for item: Array in before:
-		var key: String = "%s|%d" % [item[0], item[1]]
+		var key: String = "%s|%d" % [as_now.get(item[0], item[0]), item[1]]
 		var at: Transform3D = item[2]
 		var pool: Array = by.get(key, [])
 		var best: int = -1

@@ -759,8 +759,13 @@ func offer_moved() -> void:
 func replace_moved(numbers: Array) -> String:
 	if store == null:
 		return ""
+	var generation: int = store.world.generation()
 	var job: Working.Job = Working.begin("Replacing moved parts in %s…" % model_name())
 	await job.shown()
+	# Another model came in while the bar said so: these numbers were not of it.
+	if store.world.generation() != generation:
+		job.end()
+		return ""
 	var done: Dictionary = await store.replace_moved(numbers, job)
 	job.end()
 	if not str(done["error"]).is_empty():

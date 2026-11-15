@@ -26,10 +26,13 @@ var search: Callable = func(_number: String) -> void: pass
 
 var _note: Label
 var _rows: VBoxContainer
+var _scroll: ScrollContainer
 ## number -> its CheckBox, for a moved or alias part.
 var _checks: Dictionary = {}
 ## number -> its Search, for a part with no file.
 var _searches: Dictionary = {}
+## number -> what its row says under it.
+var _words: Dictionary = {}
 ## The world's generation the list is of: a list shown for one model is
 ## never applied to the next.
 var _of_generation: int = -1
@@ -49,15 +52,25 @@ func _ready() -> void:
 	_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_note.custom_minimum_size = Vector2(460, 0)
 	column.add_child(_note)
-	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(460, 260)
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	column.add_child(scroll)
+	_scroll = ScrollContainer.new()
+	_scroll.custom_minimum_size = Vector2(460, 0)
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	column.add_child(_scroll)
 	_rows = VBoxContainer.new()
 	_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_rows.add_theme_constant_override("separation", 6)
-	scroll.add_child(_rows)
+	_scroll.add_child(_rows)
+	_rows.minimum_size_changed.connect(_fit_rows, CONNECT_DEFERRED)
 	confirmed.connect(_replace_checked)
+
+
+## The rows' room as tall as they are, to under half the window: a finger's
+## larger words would leave a few rows in a slot sized for the desktop's.
+func _fit_rows() -> void:
+	var window: float = get_tree().root.get_visible_rect().size.y if is_inside_tree() else 900.0
+	var tall: float = clampf(_rows.get_combined_minimum_size().y, 60.0, window * 0.45)
+	if not is_equal_approx(_scroll.custom_minimum_size.y, tall):
+		_scroll.custom_minimum_size.y = tall
 
 
 ## Show the list of the model on the baseplate, as its open found it.
@@ -74,6 +87,7 @@ func fill() -> void:
 		child.queue_free()
 	_checks.clear()
 	_searches.clear()
+	_words.clear()
 	_of_generation = store.world.generation() if store != null and store.world != null else -1
 	var listed: Dictionary = store.moved if store != null else {}
 	var renumbered: int = 0
@@ -84,21 +98,21 @@ func fill() -> void:
 		var a_missing: bool = str(listed[a]["kind"]) == MovedParts.MISSING
 		var b_missing: bool = str(listed[b]["kind"]) == MovedParts.MISSING
 		return a < b if a_missing == b_missing else b_missing)
+	# Each row its number (checked, or with Search) on a line, and what it is
+	# under it across the whole width: a phone's sheet has no room beside.
 	for number: String in numbers:
 		var row: Dictionary = listed[number]
+		var item := VBoxContainer.new()
+		item.add_theme_constant_override("separation", 0)
 		var line := HBoxContainer.new()
 		line.add_theme_constant_override("separation", 10)
-		var words := Label.new()
-		words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		words.text = row_words(row)
+		item.add_child(line)
 		if str(row["kind"]) == MovedParts.MISSING:
 			absent += 1
 			var named := Label.new()
 			named.text = number
-			named.custom_minimum_size = Vector2(110, 0)
+			named.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			line.add_child(named)
-			line.add_child(words)
 			var look := Button.new()
 			look.text = "Search"
 			look.focus_mode = Control.FOCUS_NONE
@@ -111,12 +125,18 @@ func fill() -> void:
 			var check := CheckBox.new()
 			check.text = number
 			check.button_pressed = true
-			check.custom_minimum_size = Vector2(110, 0)
+			check.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			check.toggled.connect(func(_on: bool) -> void: _fit_buttons())
 			line.add_child(check)
-			line.add_child(words)
 			_checks[number] = check
-		_rows.add_child(line)
+		var words := Label.new()
+		words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		words.text = row_words(row)
+		words.modulate.a = 0.8
+		item.add_child(words)
+		_words[number] = words
+		_rows.add_child(item)
 	_note.text = note_words(renumbered, absent)
 	_fit_buttons()
 
@@ -130,17 +150,17 @@ static func row_words(row: Dictionary) -> String:
 static func note_words(renumbered: int, absent: int) -> String:
 	var said := PackedStringArray()
 	if renumbered > 0:
-		said.append(("This file names 1 part by a number LDraw has moved or made an alias. "
-			if renumbered == 1 else "This file names %d parts by numbers LDraw has moved or made aliases. "
-			% renumbered)
-			+ "Each is drawn as the part it points to. Replace checked writes that part's number "
-			+ "in the file, in every sub-model, in one undo.")
+		said.append("1 number LDraw has moved or made an alias, drawn as the part it points to: "
+			+ "Replace checked writes that part's number in every sub-model, in one undo."
+			if renumbered == 1 else ("%d numbers LDraw has moved or made aliases, drawn as the parts "
+			+ "they point to: Replace checked writes those parts' numbers in every sub-model, in "
+			+ "one undo.") % renumbered)
 	if absent > 0:
-		said.append("1 part has no file in the library: it is kept in the file, not shown."
-			if absent == 1 else "%d parts have no file in the library: they are kept in the file, not shown."
+		said.append("1 number with no file in the library, kept in the file and not shown."
+			if absent == 1 else "%d numbers with no file in the library, kept in the file and not shown."
 			% absent)
-	said.append("Keep as is leaves the file as it is.")
-	return " ".join(said)
+	# A line each: each found whole in a language's words (Language).
+	return "\n".join(said)
 
 
 ## The numbers checked.
@@ -189,11 +209,7 @@ func controls_by_name() -> Dictionary:
 ## What it says and lists, for a probe.
 func page_state() -> Dictionary:
 	var rows: Dictionary = {}
-	for line: Node in _rows.get_children():
-		if line.is_queued_for_deletion():
-			continue
-		var first: Control = line.get_child(0)
-		var number: String = (first as CheckBox).text if first is CheckBox else (first as Label).text
-		rows[number] = {"checked": (first as CheckBox).button_pressed if first is CheckBox else false,
-			"words": (line.get_child(1) as Label).text}
+	for number: String in _words:
+		rows[number] = {"checked": (_checks[number] as CheckBox).button_pressed if _checks.has(number)
+			else false, "words": (_words[number] as Label).text}
 	return {"open": visible, "note": _note.text if _note != null else "", "rows": rows}
