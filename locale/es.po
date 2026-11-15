@@ -7569,6 +7569,93 @@ msgstr "Darles estos colores, en un solo paso: %s"
 msgid "%s puts them back"
 msgstr "%s los devuelve"
 
+msgid "Missing and moved parts"
+msgstr "Piezas que faltan y movidas"
+
+msgid "Replace checked"
+msgstr "Reemplazar las marcadas"
+
+msgid "Keep as is"
+msgstr "Dejar como está"
+
+msgid "Search"
+msgstr "Buscar"
+
+msgid "Look for %s among the parts"
+msgstr "Buscar %s entre las piezas"
+
+msgid "1 number LDraw has moved or made an alias, drawn as the part it points to: Replace checked writes that part's number in every sub-model, in one undo."
+msgstr "1 número que LDraw ha movido o convertido en alias, dibujado como la pieza a la que apunta: Reemplazar las marcadas escribe el número de esa pieza en cada submodelo, en un solo deshacer."
+
+msgid "%d numbers LDraw has moved or made aliases, drawn as the parts they point to: Replace checked writes those parts' numbers in every sub-model, in one undo."
+msgstr "%d números que LDraw ha movido o convertido en alias, dibujados como las piezas a las que apuntan: Reemplazar las marcadas escribe los números de esas piezas en cada submodelo, en un solo deshacer."
+
+msgid "1 number with no file in the library, kept in the file and not shown."
+msgstr "1 número sin archivo en la biblioteca, conservado en el archivo y sin mostrar."
+
+msgid "%d numbers with no file in the library, kept in the file and not shown."
+msgstr "%d números sin archivo en la biblioteca, conservados en el archivo y sin mostrar."
+
+msgid "moved to %s, %s"
+msgstr "movido a %s, %s"
+
+msgid "an alias of %s, %s"
+msgstr "un alias de %s, %s"
+
+msgid "no file: the library has no part of this number"
+msgstr "sin archivo: la biblioteca no tiene ninguna pieza con este número"
+
+msgid "%d used in the model"
+msgstr "%d usadas en el modelo"
+
+msgid "%d used in the model and %s"
+msgstr "%d usadas en el modelo y en %s"
+
+msgid "%d used in %s"
+msgstr "%d usadas en %s"
+
+msgid "%d used in the model and %d sub-models"
+msgstr "%d usadas en el modelo y en %d submodelos"
+
+msgid "%d used in %d sub-models"
+msgstr "%d usadas en %d submodelos"
+
+msgid "1 part has a new number in the LDraw library"
+msgstr "1 pieza tiene un número nuevo en la biblioteca LDraw"
+
+msgid "%d parts have new numbers in the LDraw library"
+msgstr "%d piezas tienen números nuevos en la biblioteca LDraw"
+
+msgid "Update all"
+msgstr "Actualizar todo"
+
+msgid "Review…"
+msgstr "Revisar…"
+
+msgid "Leave Build together first to update their numbers"
+msgstr "Sal primero de Construir juntos para actualizar sus números"
+
+msgid "could not replace them: %s"
+msgstr "no se pudieron reemplazar: %s"
+
+msgid "none of their lines is in the file now"
+msgstr "ninguna de sus líneas está ya en el archivo"
+
+msgid "none of those is a moved or alias part of this model"
+msgstr "ninguna es una pieza movida o un alias de este modelo"
+
+msgid "the model is still being laid"
+msgstr "el modelo aún se está colocando"
+
+msgid "this model is only looked at"
+msgstr "este modelo solo se está mirando"
+
+msgid "replaced 1 moved part number (%s)"
+msgstr "1 número de pieza movida reemplazado (%s)"
+
+msgid "replaced %d moved part numbers (%s)"
+msgstr "%d números de piezas movidas reemplazados (%s)"
+
 msgid "Leave it"
 msgstr "Dejarlo"
 

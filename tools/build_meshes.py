@@ -93,6 +93,10 @@ class PartRecord:
     # one placed there (BrickWorld.add_brick); placed where the stub was, a
     # file's 3139 tyres stood turned across their own axles.
     moved_by: list[float] = field(default_factory=list)
+    # And the colour it draws that part in, where it gives one of its own:
+    # 5 stubs (86037a white). None for the rest, which draw it in the colour
+    # they are placed in.
+    moved_colour: int | None = None
 
 
 _LIBRARY: Library | None = None
@@ -187,11 +191,15 @@ def _convert(name: str) -> tuple[str, bytes, dict] | tuple[str, None, dict]:
             unofficial="unofficial" in str(ldfile.path),
             moved_to=ldfile.moved_to,
             moved_by=ldfile.moved_by,
+            moved_colour=ldfile.moved_colour,
         )
         entry = asdict(record)
-        # Only the 68 stubs that move what they forward to carry it.
+        # Only the 68 stubs that move what they forward to carry it, and
+        # the 5 that colour it theirs.
         if not entry["moved_by"]:
             del entry["moved_by"]
+        if entry["moved_colour"] is None:
+            del entry["moved_colour"]
         return (part_id, blob, entry)
 
     except Exception as exc:  # noqa: BLE001 — a worker must not take the build down

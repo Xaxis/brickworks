@@ -3223,12 +3223,17 @@ static func _figure_frame(figures: Dictionary, path: String) -> Transform3D:
 ## library moved (41770 to 41770a) as the part it moved to, where its stub
 ## puts it (PartLibrary.moved_by): named "Moved to 41770a", it had no other
 ## hand, and a mirrored copy's left wedge plate came back a left one turned,
-## not the right one (copyfaults3).
+## not the right one (copyfaults3). And in the colour its stub draws it in,
+## where it gives one (ModelStore.as_moved): 86037a's 4548064b white in a
+## mirrored copy as its 4548064a is in a plain one (mvfix).
 static func unmirror(placement: LdrModel.Placement, library: PartLibrary) -> void:
 	var real: String = library.resolve(placement.part_id)
 	var local: Transform3D = placement.local
 	if real != placement.part_id:
 		local = local * library.moved_by(placement.part_id)
+		var stub_colour: int = library.moved_colour(placement.part_id)
+		if stub_colour >= 0:
+			placement.color_code = stub_colour
 	var image: Dictionary = Later.script(&"Mirror").image(library, real, local, 0, 0.0)
 	placement.part_id = image["part"]
 	var at: Transform3D = placement.frame * (image["at"] as Transform3D)

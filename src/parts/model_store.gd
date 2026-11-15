@@ -1588,6 +1588,9 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	# The author's steps go on to every part; steps Brickworks worked out
 	# and wrote are no one's, and are worked out again (LdrModel).
 	var authored: bool = model.steps_are_authored()
+	# Each part's number as the file has it, before it is made what is put
+	# down: what the list of moved and missing parts names ([member moved]).
+	var numbers_said: PackedStringArray = MovedParts.said_of(flattened)
 	var mirrored_lines: Dictionary = _as_placed(flattened, library, authored)
 	# A model saved with no parts opens as that: an empty model under its
 	# name. It was refused as "no parts", and the model before it was left
@@ -1635,6 +1638,8 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	# part's other hand, and an open of text read here. Not one whose fetch
 	# failed since this open asked: it is not coming.
 	library.want(waiting.keys().filter(func(id: String) -> bool: return not _gave_up.has(id)))
+	var listed: Dictionary = MovedParts.listing(flattened, numbers_said, missing, library,
+		MovedParts.own_lines(model))
 
 	_phase("known")
 	# Why each part the file carries that is not here could not be drawn.
@@ -1888,6 +1893,13 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	# Said here, with the open: not_coming says it of a part whose fetch
 	# fails from now, once none is on its way.
 	_told_not_coming = not lost.is_empty() and not coming
+	# The app's own file is written whole from what is down, a moved part by
+	# the number it moved to: only someone else's keeps the old one.
+	if source == null:
+		for number: String in listed.keys():
+			if str(listed[number]["kind"]) == MovedParts.MOVED:
+				listed.erase(number)
+	moved = listed
 
 	# A model from a file: nobody emptied the baseplate. Unless the file
 	# itself is empty: then it is kept so, as one begun empty is (begin).
@@ -1970,7 +1982,7 @@ func _open_into(out: Array, text: String, name: String, parsed: LdrModel,
 	# drawn.
 	out.append({"placed": placed, "missing": missing.size(),
 		"waiting": asked_for.size(), "missing_ids": missing, "error": "", "lost": lost,
-		"unshown": unshown, "kept": source != null or not _absent.is_empty(),
+		"moved": listed, "unshown": unshown, "kept": source != null or not _absent.is_empty(),
 		"unbuilt": unbuilt, "lights_unread": lights_unread_words,
 		"motions_unread": motions_unread_words, "views_unread": views_unread_words})
 
@@ -1992,13 +2004,9 @@ static func _as_placed(flattened: Array, library: PartLibrary, authored: bool) -
 		if placement.mirrored:
 			mirrored_lines["%d|%s" % [placement.line, placement.unit]] = true
 			Assemblies.unmirror(placement, library)
-		# A retired number as the part it became, where its stub puts it
-		# (PartLibrary.moved_by), before the lift is worked out from it and
-		# before it waits for geometry by the right name.
-		var real: String = library.resolve(placement.part_id)
-		if real != placement.part_id:
-			placement.transform = placement.transform * library.moved_by(placement.part_id)
-			placement.part_id = real
+		# Before the lift is worked out from it and before it waits for
+		# geometry by the right name.
+		as_moved(placement, library)
 		# A part LDraw draws in one colour only, kept for old files, as the
 		# part it draws in that colour (303923, 3039 in blue): drawn the same,
 		# and the parts list and a BrickLink order name a part made now.
@@ -2232,10 +2240,161 @@ var _gave_up: Dictionary = {}
 ## it opened, id -> how many, held as [member awaited] are: kept in the file
 ## a save writes, and said with the open (ModelBar.left_out_words).
 var lost: Dictionary = {}
+## The model on the baseplate's file's numbers that LDraw has moved or keeps
+## as an alias of another part, and those the library has no file for, as
+## its open found them (MovedParts.listing): number -> {kind, to, name, by,
+## colour, count, in, lines}. Offered to the person as the model opens, in
+## the bar over it (MovedOffer), a part with no file asked about in the list
+## (MovedPartsDialog), and told to a session (open_model); [method
+## replace_moved] writes the moved and alias ones as the parts they point to.
+var moved: Dictionary = {}
+## [member moved] changed by a replace, its undo or its redo, not by an open.
+signal moved_changed()
 ## Which open is asking, and whether one is, between its first ask and the
 ## end of its lay ([method _asking], [method _asked]).
 var _asks: int = 0
 var _asking_now: bool = false
+
+
+## Missing and moved parts' Update all and Replace checked (MovedOffer,
+## MovedPartsDialog), and open_model replace_moved=true: each of [param
+## numbers] that [member moved] lists as moved or an alias written in the
+## file as the part it points to, in every line its listing counted, in the
+## model and every sub-model (MovedParts.line_with), and each part on the
+## baseplate an alias placed made the part it is of. Nothing is laid again: a
+## moved part is drawn as its part already, where its stub put it, and an
+## alias is the same shape as its part. So it is one step of the history,
+## with every edit before it still under it to undo, and one undo puts back
+## the file as Save wrote it, byte for byte (mvreview F3: laid again from the
+## text, an edit made before it lost its undo). Not while a model is being
+## laid, nor in a model only looked at. {"lines" changed, "parts" (number ->
+## lines or parts), "words" (what Undo says), "error" ("" when it was done)};
+## nothing changed on an error.
+func replace_moved(numbers: Array) -> Dictionary:
+	var asked: Dictionary = {}
+	for number: Variant in numbers:
+		var key: String = str(number).strip_edges().to_lower().trim_suffix(".dat")
+		var row: Dictionary = moved.get(key, {})
+		if not row.is_empty() and str(row["kind"]) != MovedParts.MISSING:
+			asked[key] = row
+	if asked.is_empty():
+		return {"lines": 0, "parts": {}, "words": "",
+			"error": "none of those is a moved or alias part of this model"}
+	if laying or read_only or world == null or builder == null:
+		return {"lines": 0, "parts": {}, "words": "",
+			"error": "the model is still being laid" if laying else "this model is only looked at"}
+	# The file's lines as the listing counted them: Save writes them, a whole
+	# write (the app's own file) writes the parts.
+	var source: SourceFile = _live_source()
+	var now: Dictionary = {"source": source, "lines": {}, "reads": [], "awaited": [],
+		"moved": moved.duplicate()}
+	var parts: Dictionary = {}
+	var swaps: Dictionary = {}      ## an alias as it is laid -> the part it is of
+	for key: String in asked:
+		var row: Dictionary = asked[key]
+		(now["moved"] as Dictionary).erase(key)
+		var alias: String = studio_part(key, library) if str(row["kind"]) == MovedParts.ALIAS else ""
+		if not alias.is_empty():
+			swaps[alias] = str(row["to"])
+		if source == null:
+			continue
+		for line: int in (row.get("lines", {}) as Dictionary):
+			if line < 0 or line >= source.lines.size():
+				continue
+			var was: String = str((now["lines"] as Dictionary).get(line, source.lines[line]))
+			var made: String = MovedParts.line_with(was, str(row["to"]),
+				row.get("by", Transform3D.IDENTITY), int(row.get("colour", -1)))
+			if made == was:
+				continue
+			now["lines"][line] = made
+			parts[key] = int(parts.get(key, 0)) + 1
+			# The parts the file read from it, the alias's now its part's: a
+			# save pairs each with its line as it was.
+			for read: SourceFile.Read in source.by_line.get(line, []):
+				if read.part_id == alias:
+					(now["reads"] as Array).append([read, str(row["to"])])
+	# On their way still: each put down as its part when it lands.
+	if not swaps.is_empty() and world.generation() == _awaited_in:
+		for placement: LdrModel.Placement in awaited:
+			if swaps.has(placement.part_id):
+				(now["awaited"] as Array).append([placement, swaps[placement.part_id]])
+	var renamed: Array = []
+	for brick: BrickWorld.Brick in world.bricks():
+		if swaps.has(brick.part_id) and not scenery.has(brick.id):
+			renamed.append(brick.id)
+	if source == null:
+		for key: String in asked:
+			var alias: String = studio_part(key, library)
+			for brick_id: int in renamed:
+				if world.get_brick(brick_id).part_id == alias:
+					parts[key] = int(parts.get(key, 0)) + 1
+	if (now["lines"] as Dictionary).is_empty() and renamed.is_empty() \
+			and (now["awaited"] as Array).is_empty():
+		return {"lines": 0, "parts": {}, "words": "",
+			"error": "none of their lines is in the file now"}
+	var steps: Array = [{"undo": "put", "put": _put_moved, "kept": _put_moved(now)}]
+	# Each alias's part made its part: the same shape where it stands, under
+	# the same number, so a step before it that names it still finds it.
+	for brick_id: int in renamed:
+		var to: String = swaps[world.get_brick(brick_id).part_id]
+		var off: Dictionary = builder._apply({"undo": "remove", "brick": brick_id})
+		var on: Dictionary = builder._apply({"undo": "add", "part": to, "color": off["color"],
+			"transform": off["transform"], "group": off["group"], "unit": off["unit"],
+			"step": off["step"], "was": brick_id, "cover": off.get("cover")})
+		steps.append(on)
+		steps.append(off)
+	var words: String = replaced_words(parts, asked)
+	builder.record(steps, words)
+	# Every copy changed alike already: no copy follows it (Assemblies.after_edit).
+	builder.settled = builder.last_step()
+	touch()
+	var lines: int = (now["lines"] as Dictionary).size()
+	return {"lines": lines, "parts": parts, "words": words, "error": ""}
+
+
+## A replace of moved parts' step, put ([param kept], what [method
+## replace_moved] or this gave): the file's lines it names put in the file
+## the model was opened from, the parts the file read and those on their
+## way named as it says, and the list of moved parts as it was. How each was,
+## for the way back. A file opened since is not the one it names: left.
+func _put_moved(kept: Dictionary) -> Dictionary:
+	var source: SourceFile = kept["source"]
+	var was: Dictionary = {"source": source, "lines": {}, "reads": [], "awaited": [],
+		"moved": moved}
+	if source != null and source == _source:
+		# New arrays put in whole: a save being written on a worker reads
+		# the ones it began with.
+		var lines: PackedStringArray = source.lines.duplicate()
+		var original: PackedStringArray = source.original.duplicate()
+		for line: int in (kept["lines"] as Dictionary):
+			(was["lines"] as Dictionary)[line] = source.lines[line]
+			lines[line] = str(kept["lines"][line])
+			original[line] = str(kept["lines"][line])
+		source.lines = lines
+		source.original = original
+	for pair: Array in kept["reads"]:
+		var read: SourceFile.Read = pair[0]
+		(was["reads"] as Array).append([read, read.part_id])
+		read.part_id = str(pair[1])
+	for pair: Array in kept["awaited"]:
+		var placement: LdrModel.Placement = pair[0]
+		(was["awaited"] as Array).append([placement, placement.part_id])
+		placement.part_id = str(pair[1])
+	moved = kept["moved"]
+	moved_changed.emit()
+	return was
+
+
+## What a replace of [param parts] (number -> lines), as [param rows] list
+## them, did, as the bar, Undo and Redo say it: "replaced 2 moved part
+## numbers (3023 → 3023b, 3660 → 3660a)".
+static func replaced_words(parts: Dictionary, rows: Dictionary) -> String:
+	var pairs := PackedStringArray()
+	for number: String in parts:
+		pairs.append("%s → %s" % [number, str((rows.get(number, {}) as Dictionary).get("to", "?"))])
+	var shown: String = ", ".join(pairs.slice(0, 3)) + (", …" if pairs.size() > 3 else "")
+	return ("replaced 1 moved part number (%s)" if pairs.size() == 1
+		else "replaced %d moved part numbers (%s)" % [pairs.size(), "%s"]) % shown
 
 
 ## An open begins asking: what the last one heard fail forgotten. Its number.
@@ -2386,6 +2545,23 @@ static func _hold_unit(instances: Dictionary, unit: String, frame: Transform3D) 
 
 ## The LDraw part a Studio model means by [param part_id].
 ##
+## A retired number as the part it became, where its stub puts it
+## (PartLibrary.moved_by), and in the colour its stub draws it in where it
+## gives one, as LDraw draws it: 86037a's 4548064a white whatever the line
+## says (PartLibrary.moved_colour). Every reader that puts a file's parts
+## down as the open does calls it, so a compare or a shared page sees the
+## part the open drew.
+static func as_moved(placement: LdrModel.Placement, library: PartLibrary) -> void:
+	var real: String = library.resolve(placement.part_id)
+	if real == placement.part_id:
+		return
+	placement.transform = placement.transform * library.moved_by(placement.part_id)
+	var stub_colour: int = library.moved_colour(placement.part_id)
+	if stub_colour >= 0:
+		placement.color_code = stub_colour
+	placement.part_id = real
+
+
 ## Studio draws parts its copy of LDraw had not got yet itself, and names
 ## them by BrickLink's number with "bl_" before it: a Studio set from 2025
 ## used bl_5095, a curved slope LDraw has since drawn as 5095. Where the
@@ -4601,15 +4777,7 @@ func _write(path: String, title: String, with_steps: bool = false,
 	if not NewerBuild.may_write(path):
 		refused = NewerBuild.REFUSAL
 		return false
-	var text: String = _with_identity(written if not written.is_empty()
-		else to_text(title, with_steps))
-	# A patch of someone else's file: the lines just put in end as its
-	# lines do, above any line that says what the next part is, as the
-	# patch's own (SourceFile.app_lines_placed); each came with "\n" alone
-	# into a CRLF file (keep_text's metas). Live's write is left as live's.
-	var source: SourceFile = _live_source()
-	if source != null and last_whole.is_empty():
-		text = source.app_lines_placed(text)
+	var text: String = _saving(title, with_steps, written)
 	# Never a model of no parts over a file that has some, unless the person
 	# emptied the baseplate ([member emptied]). The autosave fires on its
 	# own a few seconds after any change, so whatever left the baseplate
@@ -4621,9 +4789,35 @@ func _write(path: String, title: String, with_steps: bool = false,
 			+ "Clear the baseplate first if it is meant to be empty.")
 		push_warning("kept %s: refused to write a model of no parts over it" % path)
 		return false
+	return _store(path, _with_bom(text))
+
+
+## What a save of the model on the baseplate called [param title] writes,
+## but its BOM ([method _with_bom]): [param written], else its text with its
+## steps when [param with_steps], with what it is beyond its parts.
+func _saving(title: String, with_steps: bool = true, written: String = "") -> String:
+	var text: String = _with_identity(written if not written.is_empty()
+		else to_text(title, with_steps))
+	# A patch of someone else's file: the lines just put in end as its
+	# lines do, above any line that says what the next part is, as the
+	# patch's own (SourceFile.app_lines_placed); each came with "\n" alone
+	# into a CRLF file (keep_text's metas). Live's write is left as live's.
+	var source: SourceFile = _live_source()
+	if source != null and last_whole.is_empty():
+		text = source.app_lines_placed(text)
+	return text
+
+
+## [param text] beginning with a BOM where the file opened did.
+func _with_bom(text: String) -> String:
 	if _bom_opened and _metas_now() != null and not text.begins_with(LdrModel.bom()):
-		text = LdrModel.bom() + text
-	return _store(path, text)
+		return LdrModel.bom() + text
+	return text
+
+
+## What Save writes of the model on the baseplate now, byte for byte.
+func saved_text() -> String:
+	return _with_bom(_saving(title))
 
 
 ## [param text] written to [param path] as it is, the page told; in the
