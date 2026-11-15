@@ -2463,6 +2463,10 @@ func _step_op(name: String, text: String, op: String, want: String, room: bool =
 	var said: String = _shell.change_steps(verb, ids, on)
 	await _frames(4)
 	var edited: String = _store.saved_text()
+	if edited == unedited:
+		_check("%s: the app made no edit (\"%s\")" % [op, said.get_slice("\n", 0).left(90)], false)
+		await _back_to(depth)
+		return "FAIL none"
 	var whole: String = str(_store.get("last_whole"))
 	var state: Dictionary = _state()
 	# KEEP_TEXT_SAVED=DIR: each file as this build saved it, for another

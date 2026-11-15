@@ -335,12 +335,20 @@ Whether what you built is still there tomorrow, and still means the same thing.
   programs and by hand, each saved unedited byte for byte) are mlcheck's
   attack kept.
   A part of a mirrored copy agrees with its line only as it was opened (an
-  edit to one is (B)); a step edit moves the lines of the parts it moved to
-  the end of their new steps, and one that leaves a step of the file with
-  no part (a merge, a step emptied: the steps numbered again) is (B), which
-  takes that step's line out, where a patch moved every later line up a
-  step and left a STEP after the last (booklet_edit); a part the app cannot show
-  that would be left behind its step-mates makes the save (B).
+  edit to one is (B)); a step edit lays its section out again
+  (`SourceFile._relaid`, stepops 2026-11-15): the most lines kept where they
+  are, a step put in or split one "0 STEP" put in, a step taken out or two
+  merged one STEP line taken out (the earliest of a gap's, so a ROTSTEP stays
+  beside the step it starts), a part moved its own line, every other line
+  byte for byte. Up to stepops a step put in moved every later line, and one
+  taken out was (B). A part the app cannot show, or one on its way, moves
+  with its step (`SourceFile.held_steps`). `keep_text`'s stepops pass
+  (`KEEP_TEXT_ONLY=stepops`) checks 30 files x insert, remove, split, merge
+  and move (diff against the file before, the rest byte for byte, undo and
+  redo exact, reopened alike) and the attacks: a sub-model placed mirrored,
+  a step edit heard in a Build together room, a step emptied first;
+  `KEEP_TEXT_SAVED=DIR` keeps each save, `KEEP_TEXT_OPEN=DIR` opens another
+  build's back.
   Written whole, a copy is placed on its definition's first copy by the fit
   that lays each part turned as it is (`Assemblies.exact_match`, its
   "bases"), mirrored where only a mirror does: a mirrored copy of parts that
