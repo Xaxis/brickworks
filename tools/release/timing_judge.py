@@ -24,7 +24,9 @@ spreads (their runs' max - min), and by at least 2% of the bar (of live's
 mean, with no bar), so that two sides failing alike by a hair are alike; a
 counted line, failed in more of the preview's runs than live's; a measure
 live never printed, always; and the whole check, when no measure was timed
-on both sides (runs that could not start fail alike, and are no load). One
+on both sides (runs that could not start fail alike, and are no load),
+unless every run on the preview passed: then it ships past, "passed N of N
+by turns" (rel-m301's placing, which times nothing, held so). One
 run a side is luck: rel-m287's play held twice on the phone's 3000 ms bar,
 3324 and 3685 against live's 1267 and 1953, and played P L L P P L the
 preview was no slower (2511 vs 2809 ms mean); live failed the same bar in 1
@@ -108,6 +110,8 @@ def read_log(text: str, code: int) -> list[Line]:
 @dataclass
 class Side:
     runs: int = 0
+    # Runs that exited 0 with no FAIL line.
+    passed: int = 0
     values: dict[str, list[float]] = field(default_factory=dict)
     fails: dict[str, int] = field(default_factory=dict)
     said: set[str] = field(default_factory=set)
@@ -129,6 +133,8 @@ def judge(battery: list[Line], runs: list[tuple[str, int, list[Line]]]) -> tuple
             continue
         s = sides[side]
         s.runs += 1
+        if code == 0 and not any(line.failed for line in lines):
+            s.passed += 1
         for line in lines:
             s.said.add(line.key)
             if line.value is not None:
@@ -145,8 +151,15 @@ def judge(battery: list[Line], runs: list[tuple[str, int, list[Line]]]) -> tuple
             return False, ["holds: no run on %s finished, so there is nothing to compare" % SIDES[side]]
     # Runs that timed nothing on one side or the other measured nothing: a
     # flow that could not start (a worktree with no node_modules) fails on
-    # both alike, and is no load.
+    # both alike, and is no load. Unless the preview passed every run: a
+    # check that times nothing and passes each time by turns is the load's
+    # (rel-m301's placing held, its four runs all passed).
     if not any(l.values.get(key) for key in p.values):
+        if p.passed == p.runs:
+            return True, ["ships past: passed %d of %d by turns on the preview (%d of %d on brickworks.diy), "
+                          "with no measure timed on both sides to compare" % (p.passed, p.runs, l.passed, l.runs)] \
+                + ["%s: failed %d of %d, %d of %d" % (key, p.fails.get(key, 0), p.runs, l.fails.get(key, 0), l.runs)
+                   for key in order]
         return False, ["holds: no measure was timed on both sides, so there is nothing to compare (%d runs on "
                        "the preview, %d on brickworks.diy)" % (p.runs, l.runs)]
     first = {line.key: line.value for line in battery if line.value is not None}

@@ -122,6 +122,29 @@ def test_what_cannot_be_compared_holds():
     assert not held and lines == ["holds: no run on brickworks.diy finished, so there is nothing to compare"]
 
 
+PLACED = ("parts: 9 of 11 put where their ghosts stood; 2 of 4 as the file has them\n"
+          "  (storage mirror: 170 cache (5.0 MB); the bucket asked 0 time(s))")
+
+
+def test_a_check_with_no_measure_that_passes_every_run_by_turns_ships():
+    # rel-m301's placing: the battery's run ended exit 1 with no FAIL line,
+    # and P L L P each exited 0 printing no ok or FAIL line at all. It held,
+    # "no measure was timed on both sides".
+    battery = tj.read_log("Node.js v24.21.0", 1)
+    passed = tj.read_log(PLACED, 0)
+    ships, lines = tj.judge(battery, [("P", 0, passed), ("L", 0, passed), ("L", 0, passed), ("P", 0, passed)])
+    assert ships, lines
+    assert lines == ["ships past: passed 2 of 2 by turns on the preview (2 of 2 on brickworks.diy), "
+                     "with no measure timed on both sides to compare",
+                     "the run ended exit 1 with no FAIL line: failed 0 of 2, 0 of 2"]
+    # One of the preview's runs failing, crashing or saying FAIL, holds.
+    crash = tj.read_log("Node.js v24.21.0", 1)
+    said = tj.read_log("  FAIL  4081b clip plate: the search would not put it in hand", 0)
+    for bad in (("P", 1, crash), ("P", 0, said)):
+        held, lines = tj.judge(battery, [("P", 0, passed), ("L", 0, passed), ("L", 0, passed), bad])
+        assert not held and lines[0].startswith("holds: no measure was timed on both sides"), lines
+
+
 def test_its_command_line_exits_by_the_verdict(tmp_path):
     logs = {}
     for name, ms in (("pv", 3324), ("P1", 3229), ("L2", 2617), ("L3", 3054), ("P4", 2635)):

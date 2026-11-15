@@ -99,7 +99,9 @@ async function take(number) {
   await click(await controlAt("part search"));
   await key("Control+a", 200);
   await type(number);
-  await wait(1500);
+  // Listed first before its tile is pressed (3023 lists 3023b): a fixed
+  // wait under load pressed the last search's (placing_flow, rel-m301).
+  await until((s) => String((s.found || [])[0] || "").startsWith(number), 30);
   await click(await controlAt("first part"));
   // That part, not merely a part: one fetched on demand takes a moment.
   const held = await until((s) => s.mode === "place" && String(s.held || "").startsWith(number), 30);

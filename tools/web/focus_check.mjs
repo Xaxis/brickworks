@@ -164,7 +164,10 @@ for (const [how, end] of endings) {
   await page.mouse.click(search.x, search.y);
   await page.keyboard.press("Control+A");
   await page.keyboard.type("3001", { delay: 30 });
-  await page.waitForTimeout(2500);
+  // Listed first before its tile is pressed: a fixed wait under load
+  // pressed the last search's (placing_flow, rel-m301).
+  await page.waitForFunction(() => ((window.brickworksState || {}).found || [])[0] === "3001", null,
+    { timeout: 30000, polling: 250 }).catch(() => {});
   const tile = await controlAt("first part");
   await page.mouse.click(tile.x, tile.y);
   await page.waitForTimeout(1500);

@@ -16,9 +16,10 @@
 //      directly, the old page's source).
 //   2. Back and Forward: Sets scrolled down, then Top; Back is Sets again
 //      at its scroll, Forward Top again.
-//   3. One search box: "castle" typed on Top asks the models; Sets then
-//      keeps the words and asks the sets (/library?q=castle), its first
-//      cards the library's for "castle".
+//   3. One search box: "castle" typed on Top asks the models, and its
+//      cards are the answer the page was given; Sets then keeps the words
+//      and asks the sets (/library?q=castle), its first cards the
+//      library's for "castle".
 //   4. A reload of each tab's address shows that tab.
 //   5. The old addresses: /library, /library?theme=Town, /builds,
 //      /collections and /de/library answer 200 with their own canonical
@@ -203,16 +204,32 @@ try {
       check("Back and Forward: Sets opened", false);
     }
 
-    // 3. One search box, searching the tab it is on.
+    // 3. One search box, searching the tab it is on. Judged by what the
+    // person sees: the cards drawn are the answer the page was given for
+    // "castle", in its order, once it is drawn. The address said q=castle
+    // before the search was asked (it is kept from the box as typed, as the
+    // page stops scrolling), over Top's cards, and the list asked again
+    // here could differ from the page's while other checks publish: in the
+    // batch the check read Top's cards (rel-m300, rel-m301).
     await page.evaluate(() => scrollTo({ top: 0, behavior: "instant" }));
+    const answer = page.waitForResponse((reply) => {
+      const at = new URL(reply.url());
+      return at.pathname === "/api/share" && at.searchParams.get("op") === "list" && at.searchParams.get("sort") === "top"
+        && at.searchParams.get("q") === "castle";
+    }, { timeout: 60000 }).then((reply) => (reply.status() === 200 ? reply.json() : null)).catch(() => null);
     await page.fill("#q", "castle").catch(() => {});
-    const searched = await until(page, () => new URL(location.href).searchParams.get("q") === "castle"
-      && document.documentElement.dataset.browse === "ready", null, 30);
-    check("castle on Top: the address asks it", searched && addressed("top", page.url()));
-    const models = await listed("top", "castle");
+    const models = TABS.top.ids((await answer) || {});
+    const drawnAs = await until(page, (want) => {
+      const root = document.documentElement.dataset;
+      const cards = [...document.querySelectorAll("#models > .model, #pick-card .model")].map((one) => one.dataset.id)
+        .filter(Boolean).slice(0, 8);
+      return root.browse === "ready" && cards.length > 0 && cards.join() === want.slice(0, cards.length).join();
+    }, models, 30);
+    check("castle on Top: the address asks it", new URL(page.url()).searchParams.get("q") === "castle"
+      && addressed("top", page.url()));
     const modelCards = await firstCards(page);
-    check(`castle on Top: the models' list (${modelCards.slice(0, 3).join(", ")})`, Boolean(models)
-      && modelCards.join() === models.ids.slice(0, modelCards.length).join());
+    check(`castle on Top: the page's answer drawn (${modelCards.slice(0, 3).join(", ")} of ${models.slice(0, 3).join(", ")})`,
+      drawnAs && models.length > 0);
     await press(page, "sets");
     const setsSearched = await shown(page, "sets");
     const url = new URL(page.url());
