@@ -309,16 +309,41 @@ const declaresLibraryFile = (lines) => {
   return org !== undefined && !org.toLowerCase().includes("model");
 };
 
+/// The number [word] says on a `0 !BRICKWORKS COPY n` line, its own or one of
+/// copiesSaid's: 1 to 9 digits and nothing else, else 0, none. The app reads
+/// it by the same rule (LdrModel.copy_number).
+const copyNumber = (word) => (/^[0-9]{1,9}$/.test(word) ? Number(word) : 0);
+
+/// The numbers a `0 !BRICKWORKS COPY n` line's [words] after its own number
+/// say of the copies inside that copy, "Wing#2=3" each (LdrModel.copies_said):
+/// path -> number.
+function copiesSaid(words) {
+  const out = new Map();
+  for (const word of words) {
+    const at = word.lastIndexOf("=");
+    const number = at > 0 ? copyNumber(word.slice(at + 1)) : 0;
+    if (number <= 0) continue;
+    try {
+      out.set(decodeURIComponent(word.slice(0, at)), number);
+    } catch {
+      // A word no writer of this app made: it says nothing.
+    }
+  }
+  return out;
+}
+
 /// [text] as its sub-models, the parts it carries and its LDCad-generated
 /// sections: {main, submodels: key -> {name, title, placements}, carried:
 /// file name -> text, sections: name -> text, generated: Set of keys}, each
 /// sub-model by its name as LDraw compares it (keyOf), the first block of a
 /// name the one a reference means, as LDView reads it, and a later one read
 /// as nothing (LdrModel.parse). Each placement {part, ref, colour, m, copy,
-/// within}: [ref] what it names (keyOf), [copy] the copy of a sub-model
-/// a reference is (`0 !BRICKWORKS COPY n` before it, 0 where none says),
-/// [within] the copy built in its sub-model's steps it is in (`0 !BRICKWORKS
-/// IN path`, to the next or the step's end), as LdrModel.parse reads them.
+/// copiesIn, within}: [ref] what it names (keyOf), [copy] the copy of a
+/// sub-model a reference is (`0 !BRICKWORKS COPY n` before it, 0 where none
+/// says), [copiesIn] the numbers that line says of the copies inside it
+/// (copiesSaid), [within] the copy built in its sub-model's steps it is in
+/// (`0 !BRICKWORKS IN path`, to the next or the step's end), as
+/// LdrModel.parse reads them.
 function parse(text) {
   const submodels = new Map();
   const implicit = { name: "model", title: "", placements: [] };
@@ -335,6 +360,7 @@ function parse(text) {
   const generated = new Set();
   let author = "";
   let copyNext = 0;
+  let copiesNext = new Map();
   let within = "";
   for (const raw of text.split("\n")) {
     const line = raw.trim();
@@ -374,7 +400,8 @@ function parse(text) {
         // Steps say nothing of what is in it, but end a copy built in them.
         within = "";
       } else if (keyword === "!BRICKWORKS" && tokens[2] === "COPY" && tokens.length > 3) {
-        copyNext = Math.max(Number.parseInt(tokens[3], 10) || 0, 0);
+        copyNext = copyNumber(tokens[3]);
+        copiesNext = copiesSaid(tokens.slice(4));
       } else if (keyword === "!BRICKWORKS" && tokens[2] === "IN") {
         within = line.slice(line.toUpperCase().indexOf(keyword) + keyword.length).trim().slice(2).trim();
       } else if (keyword === "!LDCAD" && tokens[2] === "GENERATED" && !generated.has(currentKey)) {
@@ -395,8 +422,10 @@ function parse(text) {
     const named = afterFields(raw, 14);
     let part = fileOf(named.replace(/\\/g, "/").toLowerCase());
     if (part.endsWith(".dat") || part.endsWith(".ldr")) part = part.slice(0, -4);
-    current.placements.push({ part, ref: keyOf(named), colour, m: numbers, copy: copyNext, within });
+    current.placements.push({ part, ref: keyOf(named), colour, m: numbers, copy: copyNext, copiesIn: copiesNext,
+      within });
     copyNext = 0;
+    copiesNext = new Map();
   }
   const carried = new Map();
   const texts = new Map();
@@ -1133,6 +1162,26 @@ function flattenUnits(model, library) {
   const out = [];
   const names = assemblyNames(model);
   const copies = new Map();
+  // The number a copy the file numbers [number] is asked to have by the
+  // copies' numbers in force round it (LdrModel._asked): [number, those for
+  // the copies inside it]. [said]: [table, path in it or null], outermost first.
+  const asked = (kind, number, said) => {
+    if (said.length === 0) return [number, said];
+    const below = new Array(said.length);
+    let known = true;
+    for (let k = said.length - 1; k >= 0; k--) {
+      const [table, at] = said[k];
+      if (!known || number <= 0 || at === null) {
+        known = false;
+        below[k] = [table, null];
+        continue;
+      }
+      const key = at ? `${at}/${kind}#${number}` : `${kind}#${number}`;
+      below[k] = [table, key];
+      if (table.has(key)) number = table.get(key);
+    }
+    return [number, below];
+  };
   const numbered = (kind, asked) => {
     let number = (copies.get(kind) || 0) + 1;
     if (asked > 0 && !copies.has(`${kind}#${asked}`)) number = asked;
@@ -1142,41 +1191,46 @@ function flattenUnits(model, library) {
   };
   // The path of the copy [within] names, in the steps of the copy at [unit]
   // (LdrModel._built_within): the same for every line of one copy ([made]).
-  const builtWithin = (within, unit, made) => {
+  const builtWithin = (within, unit, made, numbers) => {
     let path = unit;
     let said = "";
+    let inner = numbers;
     for (const segment of within.split("/").filter(Boolean)) {
       said = said ? `${said}/${segment}` : segment;
       if (made.has(said)) {
-        path = made.get(said);
+        [path, inner] = made.get(said);
         continue;
       }
       const kind = segment.split("#")[0].trim();
-      const asked = segment.includes("#") ? Number.parseInt(segment.split("#")[1], 10) || 0 : 0;
-      const copy = numbered(kind, asked);
+      const [number, below] = asked(kind,
+        segment.includes("#") ? Number.parseInt(segment.split("#")[1], 10) || 0 : 0, inner);
+      const copy = numbered(kind, number);
       path = path ? `${path}/${copy}` : copy;
-      made.set(said, path);
+      inner = below;
+      made.set(said, [path, inner]);
     }
-    return path;
+    return [path, inner];
   };
-  const inline = (sub, at, colour, visiting, depth, unit) => {
+  const inline = (sub, at, colour, visiting, depth, unit, said) => {
     if (depth > 32 || visiting.has(sub)) return;
     const inside = new Set(visiting).add(sub);
     const made = new Map();
     for (const one of sub.placements) {
       const nested = subModelOf(model, one, library);
-      const ownUnit = one.within ? builtWithin(one.within, unit, made) : unit;
+      const [ownUnit, ownSaid] = one.within ? builtWithin(one.within, unit, made, said) : [unit, said];
       const placedIn = one.colour === 16 ? colour : one.colour;
       if (nested) {
         const kind = names.get(keyOf(nested.name)) || keyOf(nested.name);
-        const copy = numbered(kind, one.copy || 0);
-        inline(nested, compose(at, one.m), placedIn, inside, depth + 1, ownUnit ? `${ownUnit}/${copy}` : copy);
+        const [number, below] = asked(kind, one.copy || 0, ownSaid);
+        const copy = numbered(kind, number);
+        inline(nested, compose(at, one.m), placedIn, inside, depth + 1, ownUnit ? `${ownUnit}/${copy}` : copy,
+          one.copiesIn?.size ? [...below, [one.copiesIn, ""]] : below);
         continue;
       }
       out.push({ part: one.part, colour: placedIn, m: compose(at, one.m), unit: ownUnit });
     }
   };
-  if (model.main) inline(model.main, IDENTITY, 0, new Set(), 0, "");
+  if (model.main) inline(model.main, IDENTITY, 0, new Set(), 0, "", []);
   return out;
 }
 
