@@ -235,7 +235,7 @@ static func of_text(text: String) -> MetaIndex:
 			var word: String = raw.substr(LEAD.length(), e - LEAD.length())
 			if not word.is_empty() and not word.contains("\t"):
 				in_copy = _in_copy(in_copy, within, word.to_upper(), raw, e)
-				out._add(at, end, next, IN_COPY if in_copy and within == 0 and word.to_upper() != "IN"
+				out._add(at, end, next, IN_COPY if in_copy and within == 0 and _copys(word.to_upper())
 					else within, word.to_upper(), e, raw, steps if within == 0 else -1)
 				at = _next_zero(text, stop)
 				continue
@@ -249,7 +249,7 @@ static func of_text(text: String) -> MetaIndex:
 				var e: int = _to_blank(text, m, end)
 				var said_word: String = text.substr(m, e - m).to_upper()
 				in_copy = _in_copy(in_copy, within, said_word, raw, e - at)
-				out._add(at, end, next, IN_COPY if in_copy and within == 0 and said_word != "IN"
+				out._add(at, end, next, IN_COPY if in_copy and within == 0 and _copys(said_word)
 					else within, said_word, e - at, raw, steps if within == 0 else -1)
 			elif keyword == "FILE":
 				in_copy = false
@@ -304,6 +304,15 @@ static func _in_copy(was: bool, section: int, word: String, raw: String, said_at
 	if section != 0 or word != "IN":
 		return was
 	return not raw.substr(said_at).strip_edges().is_empty()
+
+
+## Whether a line of the app's of [param word] in an IN block is the copy's
+## ([constant IN_COPY]): a light, a view or a motion, as LdrModel.parse
+## reads them (within_lines). A step's look in the block is the step's:
+## read as the copy's, a group's step lost its ZOOM at the second save
+## (mlattack badlooks).
+static func _copys(word: String) -> bool:
+	return word == "LIGHT" or word == "VIEW" or word.begins_with("MOTION")
 
 
 func _add(start: int, stop: int, next: int, section: int, word: String, said_at: int,
