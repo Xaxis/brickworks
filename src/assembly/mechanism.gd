@@ -193,6 +193,9 @@ class Piece extends RefCounted:
 	## Lbm.PartMesh), "point", "way": the line it turns on}, in the part's
 	## own frame; empty for every other part ([member OUTPUT]).
 	var output: Dictionary = {}
+	## The keys of the parts it is one part with: a motor drawn in its
+	## pieces, its hub's case and the pieces of its case.
+	var joined: Array = []
 
 
 ## A toothed part where it stands.
@@ -342,7 +345,7 @@ var _paths: Dictionary = {}      ## body -> Array[Joint], ground first
 ## Read the bodies, the joints and the couplings off [param list]: each a
 ## Dictionary {"key": int, "part": String, "at": Transform3D, "mesh":
 ## Lbm.PartMesh, "name": String}, and a motor's "output" ([member
-## Piece.output]). "key" is the caller's own (a brick id)
+## Piece.output]) and "joined" ([member Piece.joined]). "key" is the caller's own (a brick id)
 ## and defaults to the place in the list from 1; "name" is for reading it
 ## back. [param held] are keys that are the ground; without any, the body
 ## with the most parts is.
@@ -359,6 +362,7 @@ static func build(list: Array, held: Array = []) -> Mechanism:
 		piece.mesh = entry.get("mesh")
 		piece.name = str(entry.get("name", ""))
 		piece.output = entry.get("output", {})
+		piece.joined = entry.get("joined", [])
 		model.parts[piece.key] = piece
 		model.rest[piece.key] = piece.at
 	model.grounded = held.duplicate()
@@ -505,6 +509,11 @@ func _build() -> void:
 			if not shafts_turning.has(it[3]):
 				shafts_turning[it[3]] = []
 			(shafts_turning[it[3]] as Array).append([it[4], it[1], it[2]])
+	# A motor drawn in its pieces is one case.
+	for key: int in parts:
+		for other: int in (parts[key] as Piece).joined:
+			if parts.has(other):
+				_join(key, other, "a motor's case, drawn in pieces")
 	# Studs in sockets are one body.
 	for stud: Array in studs:
 		for socket: Array in _around(sockets, stud[1]):

@@ -110,6 +110,11 @@ const MOTORS := {
 ## How far behind a hub's face its pin holes reach, LDU: a Technic hole's
 ## depth.
 const HUB_DEPTH := 20.0
+## The angular motors' hub as a part of its own (u9363, moved to u9363p01,
+## and u9363p02), and where its face is in its own frame: a motor drawn in
+## its pieces ([method motors_in]).
+const HUBS := ["u9363", "u9363p01", "u9363p02"]
+const HUB_ALONE := [Vector3.ZERO, 29.0]
 
 ## A body turns when its rate is more than this, in turns of the driver's.
 const STILL := 1e-6
@@ -183,6 +188,8 @@ static func read(bricks: Array, from: PartLibrary, scenery: Dictionary = {}) -> 
 	var named_base: bool = false
 	var labels: Dictionary = {}   ## brick id -> its sub-assembly's name
 	var framed: Dictionary = {}   ## brick id -> true: in a sub-assembly named as the frame
+	var pieces: Dictionary = {}   ## a motor drawn in its pieces: its hub's id -> the others'
+	var motor_parts: Dictionary = Simulation.motors_in(bricks, from, pieces)
 	for item: Variant in bricks:
 		var brick: BrickWorld.Brick = item
 		var mesh: Lbm.PartMesh = from.mesh_for(brick.part_id)
@@ -192,13 +199,15 @@ static func read(bricks: Array, from: PartLibrary, scenery: Dictionary = {}) -> 
 		var label: String = Assemblies.label(path) if not path.is_empty() else ""
 		labels[brick.id] = label
 		var entry: Dictionary = {"key": brick.id, "part": brick.part_id, "at": brick.transform, "mesh": mesh}
-		var motor_part: String = Simulation.motor_of(from, brick.part_id)
+		var motor_part: String = str(motor_parts.get(brick.id, ""))
 		if not motor_part.is_empty():
-			var split: Array = Simulation.split_output(mesh, (MOTORS[motor_part] as Array)[4])
+			var split: Array = Simulation.split_output(mesh, HUB_ALONE if pieces.has(brick.id)
+				else (MOTORS[motor_part] as Array)[4])
 			if not (split[1] as Dictionary).is_empty():
 				out.motors[brick.id] = motor_part
 				entry["mesh"] = split[0]
 				entry["output"] = split[1]
+				entry["joined"] = pieces.get(brick.id, [])
 		list.append(entry)
 		if scenery.has(brick.id):
 			held.append(brick.id)
@@ -249,6 +258,44 @@ static func motor_of(from: PartLibrary, part_id: String) -> String:
 		return made
 	var named: String = CustomParts.named_for(from, part_id) if from != null else ""
 	return named if MOTORS.has(named) else ""
+
+
+## The motors among [param bricks] (BrickWorld.Brick): brick id -> its key
+## in [constant MOTORS]. A motor's own part ([method motor_of]), or one drawn
+## in its pieces: a sub-model named for a motor with a hub, holding its
+## case's pieces and its hub (42114's steering motor, "69730": u9367, u9368,
+## u9390 and u9391, and the hub u9363p01), keyed by its hub, which turns in
+## the pieces as one case. Into [param pieces], each such hub's id -> its
+## case's pieces' ids.
+static func motors_in(bricks: Array, from: PartLibrary, pieces: Dictionary = {}) -> Dictionary:
+	var out: Dictionary = {}
+	var drawn: Dictionary = {}   ## the sub-model's path -> [motor, its hub's id, its pieces' ids]
+	for item: Variant in bricks:
+		var brick: BrickWorld.Brick = item
+		var made: String = Simulation.motor_of(from, brick.part_id)
+		if not made.is_empty():
+			out[brick.id] = made
+			continue
+		var steps: PackedStringArray = Assemblies.path_of(brick).split("/", false)
+		for n: int in steps.size():
+			var named: String = steps[n].get_slice("#", 0).trim_suffix(".dat")
+			named = named.substr(named.rfind(" - ") + 3) if named.contains(" - ") else named
+			if not MOTORS.has(named) or ((MOTORS[named] as Array)[4] as Array).is_empty():
+				continue
+			var at: String = "/".join(steps.slice(0, n + 1))
+			if not drawn.has(at):
+				drawn[at] = [named, -1, []]
+			if brick.part_id in HUBS and int(drawn[at][1]) < 0:
+				drawn[at][1] = brick.id
+			else:
+				(drawn[at][2] as Array).append(brick.id)
+			break
+	for at: String in drawn:
+		var it: Array = drawn[at]
+		if int(it[1]) >= 0:
+			out[int(it[1])] = it[0]
+			pieces[int(it[1])] = it[2]
+	return out
 
 
 ## A motor's [param mesh] split into its case and its output, which turns in

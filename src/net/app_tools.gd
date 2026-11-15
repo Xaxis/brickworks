@@ -2851,15 +2851,16 @@ func _list_motions(input: Dictionary) -> String:
 static func _motors_said(world: BrickWorld, store: ModelStore, library: PartLibrary) -> String:
 	var said := PackedStringArray()
 	var count: int = 0
-	for brick: BrickWorld.Brick in world.bricks():
-		var made: String = Simulation.motor_of(library, brick.part_id)
-		if store.scenery.has(brick.id) or made.is_empty():
+	var motors: Dictionary = Simulation.motors_in(world.bricks(), library)
+	for id: int in motors:
+		if store.scenery.has(id):
 			continue
+		var made: String = motors[id]
 		count += 1
 		if said.size() < 6:
 			var it: Array = Simulation.MOTORS[made]
 			said.append("#%d the %s (%s): it stalls at %s N·cm and turns %s rpm with no load, at %s V" % [
-				brick.id, it[0], brick.part_id, Simulation.figure(float(it[1])),
+				id, it[0], made, Simulation.figure(float(it[1])),
 				Simulation.figure(float(it[2])), Simulation.figure(float(it[3]))])
 	if count == 0:
 		return ""
