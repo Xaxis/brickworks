@@ -2757,6 +2757,11 @@ func _written_as(path: String, ctx: Dictionary) -> void:
 			var written: String = (out[master] as Dictionary)["def"]
 			out[path] = {"frame": (fit["at"] as Transform3D) * reflect
 				* ((out[master] as Dictionary)["frame"] as Transform3D), "def": written}
+			# And which copy inside it is which inside the first: its line
+			# says their numbers (LdrModel.COPY_META), the section's being the
+			# first's (cf3check O1).
+			if not (fit.get("copies", {}) as Dictionary).is_empty():
+				(out[path] as Dictionary)["copies"] = fit["copies"]
 			var swap: Vector2i = fit["swap"]
 			if swap.x >= 0:
 				(ctx["hands"] as Dictionary)[written] = swap.x
@@ -2775,9 +2780,10 @@ func _written_as(path: String, ctx: Dictionary) -> void:
 ## Whether the copy at [param path] lies on [param master], a copy written
 ## as a definition, as [method file_frames] counts a copy: {"exact", "at",
 ## "mirrored", "swap": Vector2i(the colour [param master] hands its parts of
-## 16, the one this copy hands them) where they differ, else (-1, -1), and
+## 16, the one this copy hands them) where they differ, else (-1, -1),
 ## "inner": each copy inside [param master] its own section places -> the
-## one inside this copy it lies on}.
+## one inside this copy it lies on, and "copies": the same of every copy
+## inside it, at any depth, by its path within each}.
 func _copy_fit(master: String, path: String, ctx: Dictionary) -> Dictionary:
 	var none: Dictionary = {"exact": false}
 	var contents: Dictionary = ctx["contents"]
@@ -2868,6 +2874,7 @@ func _copy_fit(master: String, path: String, ctx: Dictionary) -> Dictionary:
 		if _hands_of(whole_b, ctx) != _handed(_hands_of(whole_a, ctx), swap):
 			return none
 	fit["inner"] = placed
+	fit["copies"] = inner
 	return fit
 
 

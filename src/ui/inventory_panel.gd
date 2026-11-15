@@ -25,6 +25,14 @@ const ROW := 30
 var library: PartLibrary
 ## Draws the rows' pictures, those in sight (main's, the parts bin's own).
 var thumbnails: PartThumbnails
+## What the parts bin is built from holds, by part and colour
+## (Collection.key_of: SetBin.have), and its name; {} for the whole library.
+## Set before the list is shown: a part the model has more of than it holds
+## is marked over, as the bin's tile says it (From my bricks, ownlimit).
+var held: Dictionary = {}
+var held_title: String = ""
+## What the model uses by the same key, worked out as the list is shown.
+var _used: Dictionary = {}
 
 var _rows: GridContainer
 var _scroll: ScrollContainer
@@ -231,6 +239,11 @@ func show_for(world: BrickWorld, from_library: PartLibrary,
 		_rows.remove_child(child)
 		child.queue_free()
 	_made.clear()
+	_used = {}
+	if not held.is_empty():
+		for lot: Inventory.Lot in _stock.lots:
+			var key: String = Collection.key_of(lot.part_id, lot.color_code, library)
+			_used[key] = int(_used.get(key, 0)) + lot.count
 	for lot: Inventory.Lot in _stock.lots:
 		var row: Button = _row(lot)
 		_made.append([lot, row])
@@ -416,7 +429,29 @@ func _row(lot: Inventory.Lot) -> Button:
 	shade.modulate = Color(1, 1, 1, 0.6)
 	shade.clip_text = true
 	row.add_child(shade)
+
+	# More of it than the bin's sets or the person's own bricks hold.
+	var past: int = over_of(lot)
+	if past > 0:
+		var over := Label.new()
+		over.text = "%d over" % past
+		over.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		over.add_theme_font_size_override("font_size", 12)
+		over.add_theme_color_override("font_color", Color(1.0, 0.62, 0.3))
+		row.add_child(over)
+		button.tooltip_text += "\n%d over the %d in %s" % [past,
+			int(held.get(Collection.key_of(lot.part_id, lot.color_code, library), 0)), held_title]
 	return button
+
+
+## How many of [param lot]'s part and colour the model has past what the bin
+## holds ([member held]), all its lots of that key together; 0 when within it,
+## with no bin, or for a part nobody owns on its own (Collection.ownable).
+func over_of(lot: Inventory.Lot) -> int:
+	if held.is_empty() or lot.custom or not Collection.ownable(lot.part_id, library):
+		return 0
+	var key: String = Collection.key_of(lot.part_id, lot.color_code, library)
+	return maxi(0, int(_used.get(key, 0)) - int(held.get(key, 0)))
 
 
 ## The BrickLink wanted list's choices, as its upload help names them: the

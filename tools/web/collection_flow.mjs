@@ -16,11 +16,16 @@
 // order, or a script error reaches the console. The account is deleted at
 // the end, and its collection with it (the probe checks the row is gone).
 //
+// Then What I own's Build from my bricks makes the bin what the account owns
+// (ownlimit): its first tiles count from its first draw, and a count costs the
+// frame under 5 ms (brickworksState.bin_recount_ms; 15 past the box's cores).
+//
 // Pictures in --out: 1_need_empty.png, 2_imported.png, 3_need.png,
-// 4_build.png, 5_opened.png. Look at them.
+// 4_build.png, 5_opened.png, 6_my_bricks.png. Look at them.
 import { chromium } from "playwright";
 import { mkdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { cpus, loadavg } from "node:os";
 import { clickStill, SOFTWARE } from "./browser.mjs";
 import { deleteAccount, signInContext } from "./session.mjs";
 
@@ -184,6 +189,24 @@ try {
     "Open on the first model that opens puts it on the baseplate and shows what it needs");
   await page.waitForTimeout(8000);
   await shot("5_opened.png");
+
+  // Build from my bricks (ownlimit): the bin becomes what is owned, its
+  // tiles counting from the bin's first frame, at a few ms a count.
+  await click("collection_tab_own");
+  await click("collection_build_mine");
+  ok(await until(async () => (await state())?.bin_set === "My bricks", 60, "my_bricks"),
+    `Build from my bricks makes the bin My bricks: "${(await state())?.bin_set}"`);
+  const binNow = await state();
+  const counts = (binNow?.bin_left || []).map((pair) => pair[1]);
+  ok(counts.length > 0 && counts.every((n) => Number.isInteger(n)) && counts.some((n) => n > 0),
+    `its first tiles count with its first draw: ${(binNow?.bin_left || []).slice(0, 4).map((p) => p.join(" ")).join(", ")}`);
+  const cores = Math.max(1, Math.round(cpus().length / 2));
+  const busy = loadavg()[0];
+  const bar = busy > cores ? 15 : 5;
+  ok(Number(binNow?.bin_recount_ms) < bar,
+    `a count of the bin against the model costs ${Number(binNow?.bin_recount_ms).toFixed(2)} ms of a frame, under ${bar} (load ${busy.toFixed(0)} of ${cores} cores)`);
+  await page.waitForTimeout(3000);
+  await shot("6_my_bricks.png");
   await page.close();
 } catch (error) {
   ok(false, String(error.stack || error).split("\n").slice(0, 3).join(" "));

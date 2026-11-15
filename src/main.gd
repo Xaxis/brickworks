@@ -932,6 +932,8 @@ func _tell_page() -> void:
 		"bin_set": _bin.set_showing() if _bin != null else "",
 		# ...and what its first tiles count, [[part/colour, left], ...] (SetBin).
 		"bin_left": _bin.counts_shown() if _bin != null else [],
+		# ...and what its last count cost the frame, in ms (From my bricks).
+		"bin_recount_ms": _bin.recount_ms if _bin != null else 0.0,
 		# ...and the colour Enter in the colour's name would take.
 		"colour_first": _bin.colour_first() if _bin != null else -1,
 		"custom": _library.custom.keys(),
@@ -5915,6 +5917,10 @@ func _build_ui() -> void:
 	# (lbfix): what is marked missing is out of it at once.
 	if _shell.collection_store != null:
 		_shell.collection_store.changed.connect(_bin.follow_marks)
+		# And From my bricks is what they own (OwnCounts), saying the last of
+		# a part as it goes down.
+		_bin.owned = func() -> Dictionary: return _shell.collection_store.on_hand
+	_bin.said.connect(func(line: String) -> void: _bar.say(line))
 	# Who designs, named in the commands that ask it (Settings, AI).
 	_shell.name_designer(ProviderSettings.designer_name())
 	if _side != null:
@@ -8081,6 +8087,7 @@ func _toggle_parts() -> void:
 	if _inventory_made != null and _inventory_made.is_showing():
 		_inventory_made.hide_list()
 		return
+	_inventory_held()
 	if not _inventory.show_for(_world, _library, _store.scenery, _bar.model_name()):
 		_bar.say("nothing to list yet")
 
@@ -8088,8 +8095,19 @@ func _toggle_parts() -> void:
 ## The parts list with its find to type into: Edit, Select by, Part number
 ## or name.
 func _find_parts() -> void:
+	_inventory_held()
 	if not _inventory.show_finding(_world, _library, _store.scenery, _bar.model_name()):
 		_bar.say("nothing to find yet")
+
+
+## The parts list told what the bin is built from holds, so a part past it
+## is marked over there as on the bin's tile: a set's, or the person's own
+## bricks (From my bricks, OwnCounts); nothing for the whole library.
+func _inventory_held() -> void:
+	var from: SetBin = _bin.set_bin() if _bin != null else null
+	# By name: the panel is made only when first shown (_make_inventory).
+	_inventory.set("held", from.have if from != null else {})
+	_inventory.set("held_title", from.title if from != null else "")
 
 
 ## A weak joint View, Stress's panel steps to (StressPanel): the part past

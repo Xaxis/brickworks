@@ -65,6 +65,8 @@ var _status: Label
 var _controls: Dictionary = {}
 
 var _summary: Label
+## Build from my bricks: the bin becomes everything they own (OwnCounts).
+var _build_mine: Button
 var _typed: LineEdit
 var _own_rows: VBoxContainer
 var _rb_key: LineEdit
@@ -317,10 +319,21 @@ func _own_page() -> Control:
 	var page := VBoxContainer.new()
 	page.add_theme_constant_override("separation", 8)
 
+	# What they own, and the bin made of it all (From my bricks, OwnCounts).
+	var summary := HBoxContainer.new()
+	summary.add_theme_constant_override("separation", 8)
+	page.add_child(summary)
 	_summary = Label.new()
 	_summary.add_theme_font_size_override("font_size", 13)
 	_summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	page.add_child(_summary)
+	_summary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	summary.add_child(_summary)
+	_build_mine = _small(_button(summary, "Build from my bricks",
+		_build_from.bind(PackedStringArray([OwnCounts.WORD])), "collection_build_mine",
+		"The bin becomes every part you own, your sets' and your loose parts, each counting how "
+		+ "many are left as you build. " + OwnCounts.BUILT_WORDS))
+	_build_mine.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_build_mine.visible = false
 
 	var typed := HBoxContainer.new()
 	typed.add_theme_constant_override("separation", 8)
@@ -631,8 +644,8 @@ func _fill_own() -> void:
 			sets, "" if sets == 1 else "s", _comma(mine.loose_pieces()),
 			"" if mine.loose_pieces() == 1 else "s", _comma(store.pieces_on_hand()),
 			" (the copy on this device)" if store.offline else ", kept with your account"]
+	_build_mine.visible = store.pieces_on_hand() > 0
 	_clear_rows(_own_rows)
-	_controls.erase("collection_build_all")
 	_controls.erase("collection_build_first")
 	_controls.erase("collection_mark_first")
 	_closest_rows()
@@ -641,15 +654,6 @@ func _fill_own() -> void:
 		var named: Label = _label("Sets", 12, 0.6)
 		named.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		heading.add_child(named)
-		# Every set owned, counted together, as one bin to build from.
-		var every := PackedStringArray()
-		for entry: Dictionary in mine.sets:
-			for _copy: int in (int(entry["qty"]) if not Collection.is_fig(entry) else 0):
-				every.append(str(entry["set"]))
-		if every.size() > 1:
-			_small(_button(heading, "Build from them all", _build_from.bind(every),
-				"collection_build_all", "The bin becomes the parts of every set here, counted "
-				+ "together, each counting how many are left as you build"))
 		_own_rows.add_child(heading)
 	for entry: Dictionary in mine.sets:
 		if Collection.is_fig(entry):
@@ -1099,7 +1103,9 @@ func _build_from(numbers: PackedStringArray) -> void:
 	# (SetBin.make, CollectionStore.marks): said, so the counts read right.
 	var made: Variant = bin.get("_set_bin")
 	var gone: int = int(made.get("left_out")) if made is Object and made.get("left_out") != null else 0
-	if bar != null:
+	if bar != null and made is SetBin and (made as SetBin).is_mine():
+		bar.say("building from your own bricks, %s" % Counted.grouped((made as SetBin).pieces, "piece"))
+	elif bar != null:
 		bar.say("building from the parts of %s%s" % [bin.set_showing(),
 			"" if gone == 0 else ", less the %s marked missing" % Counted.of(gone, "piece")])
 
