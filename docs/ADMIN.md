@@ -447,7 +447,11 @@ through functions the server alone may call.
   preview is live's) with CRON_SECRET on the server, waits up to four
   minutes, and the run is written down as by-hand. Only the front's choice,
   the OMR's look, the sweep and the canary, each safe to run twice; never
-  the beta's daily round, which mails testers.
+  the beta's daily round, which mails testers. One Run now of a cron at a
+  time: a second asked while it runs (two tabs) is refused with 409 and
+  never reaches the cron, held by the crons' own lock (`cron_begin`) under
+  `run_now_<job>`, which lapses after five minutes if the function is cut
+  off.
 - **People, finished** (api/_console_people.js): an account's panel lists its
   lists, comments, photos and challenge entries (`admin_person_more`).
   Export downloads every row the account owns (`admin_export`: each table
@@ -471,13 +475,17 @@ through functions the server alone may call.
 Proven by `tests/test_console3.py` (console3.sql against a real Postgres:
 the notice, the variables, usage, sign-out, the export's caps and secrets,
 Find, nothing reachable but by the server; and api/admin.js's new ops: the
-gate, reads unaudited and writes audited, Run now's address, the typed
-deletion, the switches holding no value) and, on a deployment,
-`tools/web/console3_flow.mjs` (preview check `console3`, run alone): the
-gate on every new op; a throwaway's report in the one queue; Challenges'
-previews and panel; Data's and Switches' real rows with no value in the
-page; Find; the front's choice run now and its run written down; the
-notice set, seen signed out in English and German and dismissed, then
-cleared (never on brickworks.diy); an export downloaded, a throwaway signed
-out everywhere and another deleted by its typed address and found in the
+gate, reads unaudited and writes audited, Run now's address and one at a
+time, the typed deletion (untyped, mistyped, the owner's own, twice), an
+export of an account with nothing and of the sets in its lists, a notice
+of markup kept as typed, the switches holding no value) and, on a
+deployment, `tools/web/console3_flow.mjs` (preview check `console3`, run
+alone): the gate on every new op; a throwaway's report and its list's in
+the one queue, the list taken down; Challenges' previews and panel; Data's
+and Switches' real rows with no value in the page; Find; the front's
+choice run now and its run written down, and refused when asked twice at
+once; the notice (its words written as markup) set, seen signed out in
+English and German as words, nothing run, and dismissed, then cleared
+(never on brickworks.diy); an export downloaded, a throwaway signed out
+everywhere and another deleted by its typed address and found in the
 audit; each section at 390 and 1280, light and dark.

@@ -3040,10 +3040,13 @@ plan with Claude as the client.
   Moderation's queue with the report (oldest first, sifted by kind), Taken
   out; Challenges' set and year previews and a challenge's panel; Data's
   real rows and egress's why; Switches' variables with no value of the
-  secrets in .env anywhere in the op or the page; Find from the bar; Run now
-  on gallery_feature in Site and its run written down by-hand and audited;
-  the notice set (never on brickworks.diy), seen signed out on /gallery in
-  English and /de/gallery in German, its x hiding it, cleared and gone;
+  secrets in .env anywhere in the op or the page; Find from the bar; the
+  list's report (lists1) in the queue and taken down; Run now on
+  gallery_feature in Site and its run written down by-hand and audited,
+  and asked twice at once one 200 and one 409; the notice set (never on
+  brickworks.diy) with words written as markup, seen signed out on
+  /gallery in English and /de/gallery in German as words (no element made,
+  nothing run), its x hiding it, cleared and gone;
   D's export downloaded, a throwaway S signed out everywhere (its refresh
   token refused), D deleted by its address typed again (a wrong one keeps
   the button asleep) and found in the audit by its address; each section,

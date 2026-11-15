@@ -23,7 +23,8 @@
 //              under its own lock, a second run the same day changes
 //              nothing), the sweep (held at a quarter, as daily) and the
 //              canary (a code to Resend's test inbox). Never the beta's
-//              daily round, which mails testers.
+//              daily round, which mails testers. One at a time a cron: a
+//              second asked while it runs is refused (409).
 
 import { existsSync, readFileSync } from "node:fs";
 import { db } from "./_db.js";
@@ -123,22 +124,51 @@ export async function runCron(request, response) {
   if (!secret) return response.status(503).json({ error: "No CRON_SECRET here: the crons cannot be run from this deployment." });
   const origin = ownOrigin(request);
   if (!origin) return response.status(400).json({ error: "Run now runs only on the site's own address." });
+  // One Run now of a cron at a time: a second asked while the first runs
+  // (two tabs, two presses) is refused, never run beside it. The sweep and
+  // the canary keep no lock of their own. The hold is the crons' own
+  // (gallery_crons.sql cron_begin) under the console's name for the job, so
+  // the cron's own lock is left to the cron; it lapses after five minutes,
+  // longer than the wait below, if this function is cut off.
+  let hold = null;
+  try {
+    hold = await db("rpc/cron_begin", { method: "POST", body: { job: `run_now_${job}`, holder: "console", seconds: 300 } });
+  } catch (trouble) {
+    if (!notYet(trouble)) throw trouble;
+  }
+  if (hold?.locked) {
+    return response.status(409).json({ error: `${cron.path} is running already, from Run now: one at a time. Its run shows here when it ends.`,
+      job, ran: false });
+  }
   const bypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
   const started = Date.now();
-  let answer;
+  let outcome = "failed";
+  let note = {};
   try {
-    answer = await fetch(`${origin}${cron.path}`, { headers: { authorization: `Bearer ${secret}`, "user-agent": "brickworks-console",
-      ...(bypass ? { "x-vercel-protection-bypass": bypass } : {}) }, signal: AbortSignal.timeout(240000) });
-  } catch (trouble) {
-    return response.status(502).json({ error: `It did not answer: ${String(trouble?.message || trouble).slice(0, 160)}` });
+    let answer;
+    try {
+      answer = await fetch(`${origin}${cron.path}`, { headers: { authorization: `Bearer ${secret}`, "user-agent": "brickworks-console",
+        ...(bypass ? { "x-vercel-protection-bypass": bypass } : {}) }, signal: AbortSignal.timeout(240000) });
+    } catch (trouble) {
+      note = { error: String(trouble?.message || trouble).slice(0, 160) };
+      return response.status(502).json({ error: `It did not answer: ${note.error}` });
+    }
+    const said = await answer.json().catch(() => null);
+    const seconds = Math.round((Date.now() - started) / 100) / 10;
+    if (!answer.ok) {
+      note = { status: answer.status };
+      return response.status(502).json({ error: `It answered ${answer.status}${said?.error ? `: ${String(said.error).slice(0, 200)}` : ""}.`,
+        job, ran: false, seconds });
+    }
+    // What it said, short: the run's own record is in cron_runs (Site).
+    const brief = said && typeof said === "object" ? JSON.stringify(said).slice(0, 600) : null;
+    const ended = said?.outcome ?? said?.state ?? (said?.ok === false ? "failed" : "done");
+    outcome = ended === "failed" ? "failed" : "done";
+    note = { seconds, outcome: String(ended).slice(0, 40) };
+    return response.status(200).json({ job, ran: true, seconds, said: brief, outcome: ended });
+  } finally {
+    if (hold?.run) {
+      await db("rpc/cron_end", { method: "POST", body: { run: hold.run, holder: "console", outcome, said: note } }).catch(() => null);
+    }
   }
-  const said = await answer.json().catch(() => null);
-  const seconds = Math.round((Date.now() - started) / 100) / 10;
-  if (!answer.ok) {
-    return response.status(502).json({ error: `It answered ${answer.status}${said?.error ? `: ${String(said.error).slice(0, 200)}` : ""}.`,
-      job, ran: false, seconds });
-  }
-  // What it said, short: the run's own record is in cron_runs (Site).
-  const brief = said && typeof said === "object" ? JSON.stringify(said).slice(0, 600) : null;
-  return response.status(200).json({ job, ran: true, seconds, said: brief, outcome: said?.outcome ?? said?.state ?? (said?.ok === false ? "failed" : "done") });
 }

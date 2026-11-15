@@ -17,7 +17,7 @@ import { NEEDS3, STAND_INS } from "./needs3.mjs";
 
 const db = await startPostgres({ also: NEEDS3 });
 const out = {};
-const TABLES = new Set(["people", "model_collections", "oauth_grants", "relay_tabs"]);
+const TABLES = new Set(["people", "model_collections", "oauth_grants", "relay_tabs", "collection_sets"]);
 const COLUMN = /^[a-z_]+$/;
 
 /// A PostgREST select of one of TABLES, read from the Postgres: its rows.
@@ -29,7 +29,7 @@ async function select(table, params) {
   let columns = "*";
   for (const [key, value] of params) {
     if (key === "select") {
-      if (!value.split(",").every((c) => COLUMN.test(c))) throw new Error(`select ${value}`);
+      if (value !== "*" && !value.split(",").every((c) => COLUMN.test(c))) throw new Error(`select ${value}`);
       columns = value;
     } else if (key === "order") {
       const [c, way] = value.split(".");
@@ -39,8 +39,14 @@ async function select(table, params) {
       limit = ` limit ${Number(value) || 1}`;
     } else if (COLUMN.test(key)) {
       const [op, ...rest] = value.split(".");
+      const given = rest.join(".");
+      if (op === "in" && /^\(.*\)$/.test(given)) {
+        values.push(given.slice(1, -1).split(","));
+        where.push(`${key}::text = any($${values.length})`);
+        continue;
+      }
       if (op !== "eq") throw new Error(`filter ${key}=${value}`);
-      values.push(rest.join("."));
+      values.push(given);
       where.push(`${key}::text = $${values.length}`);
     }
   }
@@ -74,6 +80,7 @@ try {
     const url = new URL(String(input));
     if (url.pathname.startsWith("/api/share/") || url.pathname.startsWith("/api/otp/")) {
       cronCalls.push({ url: `${url.origin}${url.pathname}`, key: init.headers?.authorization || null });
+      if (url.pathname === "/api/share/sweep") await new Promise((done) => setTimeout(done, 400));
       return new Response(JSON.stringify({ outcome: "done", job: url.pathname }), { status: 200 });
     }
     const call = /^\/rest\/v1\/rpc\/([a-z_]+)$/.exec(url.pathname);
@@ -171,6 +178,10 @@ try {
   out.notice_live = (await askPlans({ query: { op: "notice" }, headers: { host: "brickworks.diy" } })).json;
   out.notice_again = (await act({ op: "notice_set" }, { words: { en: "Back up." }, tone: "info" })).json;
   out.notice_overview = (await read({ op: "overview" })).json.notice;
+  const markup = '<img src=x onerror="alert(1)"><b>Bold</b> &amp; <script>alert(2)</script>';
+  out.notice_markup_set = (await act({ op: "notice_set" }, { words: { en: markup, fr: `<i>${markup}</i>` } })).status;
+  const told = (await askPlans({ query: { op: "notice" }, headers: { host: preview } })).json;
+  out.notice_markup = { en: told.notice?.words?.en === markup, fr: told.notice?.words?.fr === `<i>${markup}</i>` };
   out.notice_cleared = (await act({ op: "notice_clear" })).status;
   out.notice_cleared_again = (await act({ op: "notice_clear" })).status;
   out.notice_after = (await askPlans({ query: { op: "notice" }, headers: { host: preview } })).json;
@@ -181,6 +192,12 @@ try {
   out.run_unknown = (await act({ op: "run_cron", job: "nope" })).status;
   const ran = await act({ op: "run_cron", job: "gallery_feature" });
   out.run = { status: ran.status, ran: ran.json.ran, outcome: ran.json.outcome, calls: [...cronCalls] };
+  const both = await Promise.all([act({ op: "run_cron", job: "share_sweep" }), act({ op: "run_cron", job: "share_sweep" })]);
+  out.run_twice = both.map((one) => [one.status, one.json.ran ?? null, one.status === 409 ? one.json.error : null]).sort();
+  out.run_twice_calls = cronCalls.filter((one) => one.url.endsWith("/api/share/sweep")).length;
+  out.run_after_twice = (await act({ op: "run_cron", job: "share_sweep" })).status;
+  out.run_holds = (await db.q("select job, holder, outcome from public.cron_runs where job like 'run_now_%' order by id"))
+    .map((row) => `${row.job}:${row.holder}:${row.outcome}`);
   out.run_elsewhere = (await askAdmin({ method: "POST", query: { op: "run_cron", job: "canary" },
     headers: { ...as(owner), host: "evil.example.com" } })).status;
   out.calls_after_elsewhere = cronCalls.length;
@@ -198,9 +215,14 @@ try {
   // Export: every row of ada's, no secret column.
   await db.q("insert into public.model_collections (id, owner, name, public) values ('AdaList001', $1, 'Castles', true)", [adaId]);
   await db.q("insert into public.relay_tabs (channel, owner, tab) values ($1, $2, 'k3m9')", ["a".repeat(64), adaId]);
+  await db.q("insert into public.collection_sets (collection, set_num) values ('AdaList001', '10305-1')");
   const ex = await act({ op: "export", account: adaId });
   out.export = { status: ex.status, email: ex.json.email, tables: Object.keys(ex.json.tables || {}).sort(), counts: ex.json.counts,
-    rows: ex.json.rows, channel: JSON.stringify(ex.json).includes("a".repeat(64)), sign_in: Object.keys(ex.json.sign_in || {}).sort() };
+    rows: ex.json.rows, channel: JSON.stringify(ex.json).includes("a".repeat(64)), sign_in: Object.keys(ex.json.sign_in || {}).sort(),
+    sets: (ex.json.tables?.collection_sets || []).map((one) => `${one.collection}:${one.set_num}`) };
+  const cleoId = await db.user("cleo@resend.dev");
+  const none = await act({ op: "export", account: cleoId });
+  out.export_empty = { status: none.status, email: none.json.email, tables: none.json.tables, rows: none.json.rows, more: none.json.more };
 
   // Delete: never the owner's; the address typed again, exactly; then gone,
   // as its person would delete it, and kept in the audit by its address.
@@ -222,6 +244,7 @@ try {
   const kept = await db.q("select op, target_kind, target, status, detail from public.admin_audit order by id");
   out.audit = kept.map((row) => `${row.op}:${row.target_kind}:${row.target}:${row.status}`);
   out.audit_detail = Object.fromEntries(kept.filter((row) => row.status === 200).map((row) => [row.op, row.detail]));
+  out.audit_exports = kept.filter((row) => row.op === "export").map((row) => row.detail?.said ?? null);
   out.audit_leaks = kept.some((row) => JSON.stringify(row.detail).includes("cron-key-for-this-test-only")
     || JSON.stringify(row.detail).includes("AdaList001"));
 

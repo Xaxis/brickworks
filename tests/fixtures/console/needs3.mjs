@@ -20,6 +20,10 @@ export const STAND_INS = `
     created_at timestamptz not null default now(), updated_at timestamptz not null default now());
   create table if not exists public.model_collection_items (collection text not null references public.model_collections (id)
     on delete cascade, model text not null, added_at timestamptz not null default now(), primary key (collection, model));
+  -- lists1's sets in a list (supabase/lists.sql), keyed to the list alone.
+  create table if not exists public.collection_sets (collection text not null references public.model_collections (id)
+    on delete cascade, set_num text not null, at timestamptz not null default now(), position integer,
+    primary key (collection, set_num));
   create table if not exists public.reports (id bigserial primary key, model text, handle text, collection text, comment bigint,
     reason text not null, note text, contact text, reporter uuid references auth.users (id) on delete set null, visitor text,
     at timestamptz not null default now(), resolved_at timestamptz, resolution text);

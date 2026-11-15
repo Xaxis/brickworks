@@ -26,10 +26,13 @@
 //      the same queue, kind List, taken down by its own act: private, and
 //      kept so.
 //   5. Run now: the front's choice (gallery_feature, safe to run twice) run
-//      from Site, its run written down by hand, and kept in the audit.
+//      from Site, its run written down by hand, and kept in the audit;
+//      asked twice at once, one runs and the other is refused (409).
 //   6. The notice (never on brickworks.diy: a check posts nothing there):
-//      set in English and German, warn, with its preview; seen on a public
-//      page signed out in each language and dismissed; cleared, and gone.
+//      set in English and German, warn, with its preview, its words
+//      written as markup; seen on a public page signed out in each
+//      language, as words (no element made, nothing run), and dismissed;
+//      cleared, and gone.
 //   7. People: D's panel with its lists, comments, photos and entries;
 //      Export downloads its rows as JSON; S signed out everywhere (its
 //      refresh token refused after); D deleted by its address typed again
@@ -357,6 +360,11 @@ try {
     ?.textContent || "")));
   const ranKept = (await as("/api/admin?op=audit&tests=1&act=run_cron")).json?.rows?.[0];
   check(`...kept in the audit: ${ranKept?.op} ${ranKept?.target} ${ranKept?.status}`, ranKept?.target === "gallery_feature" && ranKept?.status === 200);
+  // Twice at once (two tabs): one runs, the other is refused, never run beside it.
+  const twice = await Promise.all([1, 2].map(() => as("/api/admin?op=run_cron&tests=1&job=gallery_feature", { method: "POST" })));
+  const statuses = twice.map((one) => one.status).sort();
+  check(`...twice at once: ${statuses.join(" and ")} (${twice.find((one) => one.status === 409)?.json?.error || "none refused"})`,
+    statuses[0] === 200 && statuses[1] === 409);
 
   // --- 6. The notice ------------------------------------------------------------------
   console.log("6. The notice");
@@ -366,7 +374,8 @@ try {
     check(`/api/plans?op=notice answers: ${asked.status}`, asked.status === 200 && "notice" in (asked.json || {}));
   } else {
     await go(page, "switches");
-    const english = `Down for upkeep at 02:00 UTC, check ${rand}.`;
+    // Its words look like markup on purpose: every page shows them as words and runs nothing.
+    const english = `Down for upkeep at 02:00 UTC, check ${rand} <b>bold</b> & <img src=x onerror="window.noticeRan=1">.`;
     const german = `Wartung um 02:00 UTC, Prüfung ${rand}.`;
     await page.fill('#notice-form [name="en"]', english);
     await page.click("#notice-form details.more-langs summary");
@@ -375,6 +384,7 @@ try {
     check("the notice's preview: its words, warn, as visitors will see it", await until(page, (words) => {
       const card = document.querySelector("#notice-preview .site-notice");
       return card?.classList.contains("warn") && card.querySelector(".words").textContent === words
+        && card.querySelector(".words").children.length === 0 && window.noticeRan === undefined
         && /Deutsch/.test(document.getElementById("notice-preview").textContent);
     }, english));
     await shot(page, "6-notice-form-1280.png", false);
@@ -385,6 +395,9 @@ try {
       .some((tr) => tr.textContent.includes(words) && /showing/.test(tr.textContent)), english));
     const set = await noticeOn("/gallery", english);
     check(`seen on /gallery signed out: "${set.said}"`, set.ok);
+    check("...its markup shown as words: no element made of it, nothing run", await set.page.evaluate(() =>
+      document.querySelector("aside.site-notice .words")?.children.length === 0 && !document.querySelector("aside.site-notice img, aside.site-notice b")
+      && window.noticeRan === undefined));
     // The card rises into place: judge and draw it once it has.
     const risen = (page) => until(page, () => document.querySelector("aside.site-notice.shown")).then(async (ok) => (await wait(400), ok));
     check("...warn, at the window's foot, nothing in the page moved", await risen(set.page) && await set.page.evaluate(() => {

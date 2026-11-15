@@ -298,11 +298,15 @@ def test_reads_are_never_audited_and_every_write_is() -> None:
     assert got["audit_after_reads"] == 0
     assert got["audit"] == [
         "notice_set:setting:notice:400", "notice_set:setting:notice:200", "notice_set:setting:notice:200",
+        "notice_set:setting:notice:200",
         "notice_clear:setting:notice:200", "notice_clear:setting:notice:404",
         "run_cron:cron:beta_daily:409", "run_cron:cron:nope:400", "run_cron:cron:gallery_feature:200",
+        # Twice at once: the one refused answers first; then one more, once the first has ended.
+        "run_cron:cron:share_sweep:409", "run_cron:cron:share_sweep:200", "run_cron:cron:share_sweep:200",
         "run_cron:cron:canary:400", "run_cron:cron:canary:503",
         "sign_out:account:00000000-0000-4000-8000-000000000003:200", "sign_out:account:00000000-0000-4000-8000-00000000abcd:404",
         "export:account:00000000-0000-4000-8000-000000000002:200",
+        "export:account:00000000-0000-4000-8000-000000000004:200",
         "delete_account:account:00000000-0000-4000-8000-000000000001:403",
         "delete_account:account:00000000-0000-4000-8000-000000000002:422",
         "delete_account:account:00000000-0000-4000-8000-000000000002:422",
@@ -313,7 +317,7 @@ def test_reads_are_never_audited_and_every_write_is() -> None:
     # A deleted account kept by its address; an export by its count, never its rows; never a key.
     assert detail["delete_account"]["said"]["email"] == "ada@example.com"
     assert detail["delete_account"]["asked"] == {"reason": "Asked by email"}
-    assert detail["export"]["said"] == {"rows": "3", "email": "ada@example.com"}
+    assert got["audit_exports"] == [{"rows": "4", "email": "ada@example.com"}, {"rows": "0", "email": "cleo@resend.dev"}]
     assert detail["run_cron"]["said"]["outcome"] == "done" and got["audit_leaks"] is False
 
 
@@ -345,6 +349,9 @@ def test_the_notice_is_set_shown_on_its_own_site_and_cleared() -> None:
     # A preview's notice is the preview's alone.
     assert got["notice_live"] == {"notice": None}
     assert got["notice_again"]["was"] == 1 and got["notice_overview"]["words"] == {"en": "Back up."}
+    # Words that are markup are words: kept and given back exactly as typed, and every page puts
+    # them on itself as text (test_every_page_asks_for_the_notice_and_shows_it_as_text).
+    assert got["notice_markup_set"] == 200 and got["notice_markup"] == {"en": True, "fr": True}
     assert got["notice_cleared"] == 200 and got["notice_cleared_again"] == 404 and got["notice_after"] == {"notice": None}
 
 
@@ -358,7 +365,14 @@ def test_run_now_runs_only_a_safe_cron_at_the_sites_own_address() -> None:
     assert got["run"]["calls"] == [{"url": "https://brickworks-abc123-xaxis-projects.vercel.app/api/share/feature",
                                     "key": "Bearer cron-key-for-this-test-only"}]
     # Asked under another address: refused, and the key sent nowhere.
-    assert got["run_elsewhere"] == 400 and got["calls_after_elsewhere"] == 1
+    # Twice at once (two tabs, two presses): one runs, the other is refused and never reaches the
+    # cron; the hold goes when the first ends, so the next is run.
+    assert [one[:2] for one in got["run_twice"]] == [[200, True], [409, False]]
+    assert "running already" in got["run_twice"][1][2] and got["run_twice_calls"] == 1
+    assert got["run_after_twice"] == 200
+    assert got["run_holds"] == ["run_now_gallery_feature:console:done", "run_now_share_sweep:console:done",
+                                "run_now_share_sweep:console:locked", "run_now_share_sweep:console:done"]
+    assert got["run_elsewhere"] == 400 and got["calls_after_elsewhere"] == 3
     assert got["run_no_secret"] == 503
 
 
@@ -368,7 +382,11 @@ def test_an_account_is_exported_signed_out_and_deleted_only_as_typed() -> None:
         return
     export = got["export"]
     assert export["status"] == 200 and export["email"] == "ada@example.com"
-    assert export["tables"] == ["model_collections", "people", "relay_tabs"] and export["rows"] == 3
+    assert export["tables"] == ["collection_sets", "model_collections", "people", "relay_tabs"] and export["rows"] == 4
+    # The sets in its lists (lists1), keyed to a list and not to the account, come with it.
+    assert export["sets"] == ["AdaList001:10305-1"]
+    # An account with nothing anywhere: an export of nothing, not a failure.
+    assert got["export_empty"] == {"status": 200, "email": "cleo@resend.dev", "tables": {}, "rows": 0, "more": {}}
     assert export["channel"] is False
     assert export["sign_in"] == ["confirmed_at", "created_at", "email", "last_sign_in_at", "providers"]
     assert got["sign_out"]["sessions"] == 2 and got["sessions_left"] == {"bob": 0, "ada": 1}
