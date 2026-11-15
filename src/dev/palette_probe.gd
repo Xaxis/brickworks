@@ -20,7 +20,7 @@
 ## - Ctrl+Shift+P opens it too; the app's menu has Find a command… with its
 ##   key; Escape puts it away and the keys go back to the model.
 ## - No command is in two of the menus; Edit is at most 25 rows and fits in
-##   60% of the window; Help is Keys, What's This? and the tour, Report a
+##   63% of the window; Help is Keys, What's This? and the tour, Report a
 ##   bug… (bugreport, e2cc9e032: one press from anywhere while the beta is
 ##   open), and on the desktop the updater's Check for updates…, Reinstall
 ##   and Restart.
@@ -125,9 +125,12 @@ func _menus() -> void:
 	await _frames(10)
 	var popup: PopupMenu = edit.get_popup()
 	var tall: float = root.get_visible_rect().size.y
-	_check("Edit has %d rows (at most 25), %d units tall in a window of %d (at most 60%%)" % [
+	# 25 rows were allowed when Edit was 23 at 60%; the 25th (Find and
+	# replace…, swapfind) measured 62% at 1280 x 720, so the height holds the
+	# rows the count allows and the count is what stops another.
+	_check("Edit has %d rows (at most 25), %d units tall in a window of %d (at most 63%%)" % [
 		popup.item_count, popup.size.y, roundi(tall)],
-		popup.item_count <= 25 and popup.size.y <= tall * 0.6)
+		popup.item_count <= 25 and popup.size.y <= tall * 0.63)
 	await _shot("edit_menu")
 	popup.hide()
 	await _frames(4)

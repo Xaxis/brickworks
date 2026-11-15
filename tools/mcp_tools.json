@@ -5175,7 +5175,7 @@
       "readOnlyHint": false,
       "title": "Open a model"
     },
-    "description": "The person's saved models and the examples that come with the app, with their part counts; name= opens one in place of what is on the baseplate, as File, Open does. Each save is kept as a version, the last 20, as File, Versions… shows: versions=true lists name='s, newest first, and version=N opens the Nth; versions=true with version=N opens nothing and says what changed in the model open now since that save, as Compare draws it: each part added, removed, moved or turned, and recoloured, by number. link= a gallery model's link id (gallery) opens a copy of it saved in the person's models, as Open in Brickworks on its page does. library= an id from gallery library=true (\"omr-10179-1\") opens LDraw's model of that real set, credited to whoever made it, as File, Library… does. The person's work is never lost: while the model on the baseplate has changes not saved, opening is refused unless discard_changes=true, and an open is undone like any change (undo brings back the model it replaced). into=true puts name= (or library=, link=) into the model open now as one sub-assembly with its author's steps, beside the model or at x= z=, as File, Import, Into this model… does: nothing is replaced, every part and name of both kept, and one undo takes it out.",
+    "description": "The person's saved models and the examples that come with the app, with their part counts; name= opens one in place of what is on the baseplate, as File, Open does. Each save is kept as a version, the last 20, as File, Versions… shows: versions=true lists name='s, newest first, and version=N opens the Nth; versions=true with version=N opens nothing and says what changed in the model open now since that save, as Compare draws it: each part added, removed, moved or turned, and recoloured, by number. link= a gallery model's link id (gallery) opens a copy of it saved in the person's models, as Open in Brickworks on its page does. library= an id from gallery library=true (\"omr-10179-1\") opens LDraw's model of that real set, credited to whoever made it, as File, Library… does. The person's work is never lost: while the model on the baseplate has changes not saved, opening is refused unless discard_changes=true, and an open is undone like any change (undo brings back the model it replaced). into=true puts name= (or library=, link=) into the model open now as one sub-assembly with its author's steps, beside the model or at x= z=, as File, Import, Into this model… does: nothing is replaced, every part and name of both kept, and one undo takes it out. The answer names each part the file gives by a number LDraw has moved or keeps as an alias, with the part it points to, and each it has no file for, with counts; replace_moved=true writes the moved and alias ones as those parts in every sub-model, as one step to undo, as the person's Update all does: with name=, link= or library= as it opens, alone in the model open now.",
     "input_schema": {
       "additionalProperties": false,
       "properties": {
@@ -5197,6 +5197,10 @@
         "name": {
           "description": "a model's name from the list",
           "type": "string"
+        },
+        "replace_moved": {
+          "description": "write each part the file names by a moved or alias number as the part it points to, in every sub-model, as one step to undo; with name=, link= or library= as it opens, alone in the model open now",
+          "type": "boolean"
         },
         "turn": {
           "description": "with into: quarter turns about the vertical, 0 to 3",
@@ -6280,6 +6284,67 @@
       "type": "object"
     },
     "name": "point_at"
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": false,
+      "title": "Find and replace parts"
+    },
+    "description": "Find and replace parts across the whole model in one call, as the person's Edit › Find and replace… does: find= a part, a colour or a part in a colour; replace= another part, another colour or both, each part keeping what it is not given. where= \"all\" (the default) is every part of the model, inside every sub-model and every copy of one; \"submodel\" the sub-model the person is editing and every copy of it; \"selection\" the parts selected. A sub-model's copies are one definition, so a part replaced in one is replaced in every copy, and a copy placed by a mirror is given the new part's other hand. One call is one undo step, and the model saves as the window's own replace saves it. The answer lists where the part is (the model and each sub-model, with counts and copies) and every colour it is used in, flags a part used in more than one colour, and says where a new part will not sit as the old one did (another footprint, other connection points) or would hold onto nothing, and where it has no room and is left. A part in a copy changes with its twin in every other copy or not at all: where one copy has no room for the new part, or the part is locked in one, every copy keeps it, and the answer says so. replace= {\"part\"} is a number the library has (search_parts finds one), and the answer names the part it puts in. With no replace= or with preview=true it changes nothing and lists only.",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "find": {
+          "additionalProperties": false,
+          "properties": {
+            "color": {
+              "description": "an LDraw colour code: 0 Black, 72 Dark Bluish Grey, 71 Light Bluish Grey; or a direct colour as its number (0x2FF0000, 50266112); in replace=, never 16 or 24, which are no part's own colour",
+              "type": "integer"
+            },
+            "part": {
+              "description": "a part's number as look_at_model and parts_list give it (\"3023b\"); a mould's number finds every letter of it (\"3023\" finds 3023a and 3023b)",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "preview": {
+          "description": "list what would change, and change nothing",
+          "type": "boolean"
+        },
+        "replace": {
+          "additionalProperties": false,
+          "properties": {
+            "color": {
+              "description": "an LDraw colour code: 0 Black, 72 Dark Bluish Grey, 71 Light Bluish Grey; or a direct colour as its number (0x2FF0000, 50266112); in replace=, never 16 or 24, which are no part's own colour",
+              "type": "integer"
+            },
+            "part": {
+              "description": "a part's number as look_at_model and parts_list give it (\"3023b\"); a mould's number finds every letter of it (\"3023\" finds 3023a and 3023b)",
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "where": {
+          "description": "where to look; \"all\" when not given",
+          "enum": [
+            "all",
+            "submodel",
+            "selection"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "find"
+      ],
+      "type": "object"
+    },
+    "name": "replace_parts"
   },
   {
     "annotations": {

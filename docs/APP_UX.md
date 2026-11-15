@@ -218,7 +218,7 @@ hand until Esc or a right-click, as a part from the bin already does.
 
 **Bar.**
 - No command is in two menus.
-- Edit is at most 25 rows, and fits in 60% of a 720 px window.
+- Edit is at most 25 rows, and fits in 63% of a 720 px window (60% until 25 rows were measured at 62%, swapfind 2026-11-15).
 
 ### A8. The part menu holds what is done to a part (S)
 

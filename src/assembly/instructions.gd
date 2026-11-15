@@ -2155,14 +2155,39 @@ static func _seat(top: Node2, bottom: Node2) -> void:
 ##
 ## Only under a part that rests on something else as well; a part that
 ## rests on nothing but the plate is held up by it.
+##
+## Of two such under one part, the first asked is pressed up and the other
+## holds it: asked largest first, then by place and part, never in the
+## order the file has them. In the file's order, a 1 x 1 brick in a 2 x 4's
+## room under one 2 x 2 swapped steps with it at every save, since the one
+## built first is written first and was asked first at the next open
+## (cf3check S2, copyorder). Largest first, the 2 x 4 goes in with the 2 x 2
+## and the 1 x 1 holds it. Which is asked first moves the whole plan, and of
+## nine orders tried on 147 models none hid no more parts behind what was
+## built than the file's order in every one (copyfix). Smallest first hid
+## more in stabletext2brick 1d9ed59d and 70cdecfd (coreview F1), place first
+## in 70cdecfd; largest first in none of the 60 stabletext2brick models,
+## their saves or the car, and of 54 others only the corner shop (2 of its
+## minifigure's, far from the plates), with 3 fewer in Orthanc.
 static func _pressed_up(nodes: Array[Node2], by_id: Dictionary) -> void:
 	var floor_y: float = INF
 	for node: Node2 in nodes:
 		floor_y = minf(floor_y, node.box.position.y)
+	var keys: Array = []
 	for node: Node2 in nodes:
 		if node.seated or not node.needs.is_empty() or node.carries.is_empty() \
 				or node.wheel > 0 or node.box.position.y <= floor_y + 2.0:
 			continue
+		var at: Vector3 = node.box.position
+		keys.append([-roundi(node.box.get_volume()), roundi(at.y * 100.0), roundi(at.x * 100.0),
+			roundi(at.z * 100.0), node.part_id, node.unit, node])
+	keys.sort_custom(func(a: Array, b: Array) -> bool:
+		for n: int in 6:
+			if a[n] != b[n]:
+				return a[n] < b[n]
+		return false)
+	for key: Array in keys:
+		var node: Node2 = key[6]
 		for over_id: int in node.carries:
 			var over: Node2 = by_id[over_id]
 			if over.needs.size() < 2 or not over.needs.has(node.id):
@@ -3778,8 +3803,11 @@ static func _kept_paced(world: BrickWorld, library: PartLibrary, skip: Dictionar
 
 
 ## Whether [param kept] puts no more parts down in the air than the order
-## worked out it was made from, and hides no more behind what is already
-## built, judged by the steps test's rules of the model as [param read],
+## worked out it was made from, hides no more behind what is already built,
+## puts no more in under a part already there (HeldSteps.Under), and no more
+## apart from what a sub-assembly built in the hand began (HeldSteps.Hand),
+## judged
+## by the steps test's rules of the model as [param read],
 ## the mend's, has it ([param held], HeldSteps, faults_of). Unjudged, with
 ## nothing read: the mend was off.
 static func _builds_as_well(kept: Array[Step], read: Dictionary, library: PartLibrary,
@@ -3788,7 +3816,7 @@ static func _builds_as_well(kept: Array[Step], read: Dictionary, library: PartLi
 		return true
 	var was: Array[int] = read["faults"]
 	var now: Array[int] = held.faults_of(kept, read, library, was)
-	return now[0] <= was[0] and now[1] <= was[1]
+	return now[0] <= was[0] and now[1] <= was[1] and now[2] <= was[2] and now[3] <= was[3]
 
 
 ## The model's own steps as the plan shows them once [param worked], its

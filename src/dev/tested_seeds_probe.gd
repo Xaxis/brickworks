@@ -61,13 +61,18 @@ const LIST := "res://tools/web/gallery_seeds/ldraw_library.json"
 ## loose: 7641-1's lid on its bin, 6416-1's frypan on a cupboard, 6365-1's
 ## dish on its antenna. Panes and glass in their frames and hair on its
 ## head, each touching what holds it higher than its foot, still rest where
-## they are and come away.
+## they are and come away. 7815-1 has no steps of its own, and the planner
+## put its two passengers, each a sub-model put on whole, on after the roof
+## slopes over them: the woman hidden at step 37, and the man too once
+## copyorder asked parts pressed up largest first. The planner's mend puts a
+## sub-assembly the steps hide on once what holds it is in (buildorder,
+## HeldSteps._put_on_sooner), and 7815-1 is Tested.
 const MOST: Dictionary = {
 	1: [0, 0, 0, 4], 2: [0, 0, 0, 6], 3: [0, 1, 0, 7], 4: [0, 0, 0, 7], 5: [0, 5, 0, 3],
 	6: [0, 0, 0, 8], 7: [0, 0, 0, 2], 8: [0, 0, 0, 7], 9: [0, 4, 1, 6], 10: [0, 1, 1, 9],
 	11: [0, 0, 1, 7], 12: [0, 0, 1, 29], 13: [0, 0, 0, 2], 14: [0, 2, 0, 16], 15: [0, 4, 0, 11],
 	16: [0, 0, 0, 7], 17: [0, 2, 0, 8], 18: [0, 0, 0, 2], 19: [0, 4, 0, 7], 20: [0, 0, 0, 18],
-	21: [0, 0, 0, 0], 22: [0, 0, 0, 5], 23: [0, 1, 0, 0], 24: [0, 0, 1, 2], 25: [0, 0, 0, 0],
+	21: [0, 0, 0, 0], 22: [0, 0, 0, 5], 23: [0, 0, 0, 0], 24: [0, 0, 1, 2], 25: [0, 0, 0, 0],
 	26: [0, 0, 0, 4], 27: [0, 2, 16, 16], 28: [0, 0, 1, 8], 29: [0, 0, 0, 11], 30: [0, 0, 0, 3],
 }
 ## Faults the files really have, each still to be found: [seed, test, what
@@ -107,16 +112,6 @@ const FAULTS: Array = [
 	# 6066-1 opens its chest's lid about a line 8.5 LDU off the lid's hinge
 	# pins, which are in the chest's hinge holes only when it is closed.
 	[8, "whole", "Container Treasure Chest without Slots into Container Treasure Chest with Slots Lid by 2.1 LDU"],
-	# 7815-1 seats its two passengers after the carriage's roof is on. Each
-	# is a sub-model, built in the hand in the steps the model can keep and
-	# put on whole (stepsnum), named by its first part. Its four 3794a
-	# jumpers stand their studs in 4070 headlight bricks, in the hole BrickNet
-	# frames on the face opposite the lamp, which the cover leaves open. Read
-	# as joints since realjoints2 (Joints._hollow_round), the planner puts
-	# each jumper on with its brick, no longer one hidden at step 35, and the
-	# roof slope over the man (4509 at z 180) on after him, at step 38. The
-	# woman's slope (z -180) is on at step 34, before her.
-	[23, "steps", "Step 37: Minifig Hair Female with Pigtails is hidden behind what is already built"],
 ]
 
 var _failures: int = 0
