@@ -1818,13 +1818,15 @@ func patch(bricks: Array, lift: Vector3, waiting: Dictionary, library: PartLibra
 
 ## What a line moved costs a layout ([method _relaid]): a line taken out and
 ## put in, two lines of a diff; a STEP line put in or taken out, one. A part
-## the edit left in its step costs a little more to move than one it moved,
-## and a STEP line a little more than half a part's line, so of two layouts
-## that change as many lines, the one the person made is written: the part
-## they moved, not the STEP line past it, which keeps a step's notes and
-## LPub's lines in their step.
+## the edit left with most of its step costs three times as much to move as
+## one it moved, and a STEP line a little more than half a part's line, so
+## the layout written is the one the person made: the part they moved, with
+## its notes, not the two step-mates past it (stepops: a part of the next
+## step made a step of its own moved the note and brick before it), nor the
+## STEP line past it, which keeps a step's notes and LPub's lines in their
+## step.
 const _MOVE_LINE := 2000
-const _MOVE_KEPT := 2002
+const _MOVE_KEPT := 6000
 const _STEP_LINE := 1001
 const _NEVER := 1 << 40
 
@@ -2944,7 +2946,9 @@ static func _aligned(a: PackedStringArray, b: PackedStringArray) -> PackedInt32A
 			if a[j + d] == b[i]:
 				dj = d
 				break
-		if di > 0 and (dj < 0 or di <= dj):
+		# As far either way: the line of [param a] is the one put in (the
+		# looks write a ROTSTEP at a sub-model's head, before its first part).
+		if di > 0 and (dj < 0 or di < dj):
 			i += di
 		elif dj > 0:
 			j += dj

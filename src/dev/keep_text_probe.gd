@@ -2716,9 +2716,14 @@ static func _empty_steps(text: String) -> int:
 
 
 ## The lines of [param was] that [param now] has not in their order, each
-## section's alike: every line but the STEP lines, the app's own and
-## [param chosen] (the parts the edit moved, and the lines bound to them).
+## section's alike: every line but the STEP lines and the app's own, as
+## many out of place as [param chosen] has (the parts the edit moved, and
+## the lines bound to them: where a step's two parts went two ways, either
+## is the one moved); [] when no more.
 static func _rest_unlike(was: String, now: String, chosen: PackedStringArray) -> Array:
+	if _diff_size(PackedStringArray(_rest_of(was, PackedStringArray())),
+			PackedStringArray(_rest_of(now, PackedStringArray()))) <= 2 * chosen.size():
+		return []
 	var a: Array = _rest_of(was, chosen)
 	var b: Array = _rest_of(now, chosen)
 	var out: Array = []
