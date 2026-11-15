@@ -11,7 +11,7 @@
 ## BRICKWORKS_API, which the suite does not give.
 ##
 ## Open: a new account signs in by the real form (its address typed, Email
-## me a code, the code typed, Sign in), answers the age question, and the
+## me a code, the code typed, a box a digit, sent by its last), answers the age question, and the
 ## screen welcomes it to the beta with Join the beta testers and Not now,
 ## nothing chosen, the builder still behind it. Join, one press: the
 ## deployment says it is a tester (GET /api/plans?op=beta), the screen says

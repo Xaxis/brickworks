@@ -11,12 +11,12 @@
 ## Offline (in the suite: the deployment at a port nobody answers): Try
 ## again reached and pressed; then the form, the keys in its email field,
 ## Tab on to Email me a code and Sign in with orangecheck (the browser's
-## form, drawn here too); the code's step, its field, Sign in, Send a new
+## form, drawn here too); the code's step, its first box, Sign in, Send a new
 ## code and Use a different address; the age question, the keys on its first month,
 ## a month chosen with Return, the year typed, Carry on. Live (with
 ## tools/web/relay_server.mjs on 9091 and .env): signed in by keys alone, a
 ## throwaway address typed, Return, the code minted on this side (a probe
-## has no inbox) typed, Tab to Sign in and Return, the age answered by keys
+## has no inbox) typed, its last digit sending it, the age answered by keys
 ## if asked; the account deleted at the end.
 ##
 ## Every press is a key event sent to the real scene, as a keyboard sends

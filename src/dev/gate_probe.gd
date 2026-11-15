@@ -15,7 +15,7 @@
 ## Live (by hand, with tools/web/relay_server.mjs running and .env): the
 ## real form against the real functions — an address typed, Email me a
 ## code pressed, the code (minted on this side, as a probe has no inbox)
-## typed, Sign in pressed — then Account on the bar and Sign out, and the
+## typed a box a digit, sent by its last — then Account on the bar and Sign out, and the
 ## screen is back. A throwaway account at a Resend test address, deleted
 ## at the end.
 ##
