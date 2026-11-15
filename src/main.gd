@@ -4068,6 +4068,7 @@ func _maybe_open_library() -> void:
 	_bar.opened.emit(placed)
 	_bar.say("opened %s — %s%s%s" % [title, ModelBar.credit_words(_store.credit),
 		ModelBar.left_out_words(result, false), ModelBar.looks_words(_store)])
+	_bar.offer_moved()
 
 
 ## The mouse in the viewer: a left drag on a part that moves moves it on its
@@ -8619,6 +8620,7 @@ func _open_given(path: String) -> int:
 		said += " — " + str(made["note"])
 	_bar.say(said)
 	printerr("opened %s: %s" % [path, said.trim_prefix("opened ")])
+	_bar.offer_moved()
 	return int(result["placed"])
 
 

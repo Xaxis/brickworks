@@ -512,6 +512,26 @@ func build(column: Control, stack: PanelStack, notices: Control, over_model: Con
 	bar.opened.connect(func(_n: int) -> void:
 		if _compare != null:
 			_compare.close(false))
+	# movedparts (APP_UX8 #15): a person's open offers its moved and alias
+	# parts in the strip over the model, and asks about a part with no file
+	# in the list; both are of the model they were shown for, and go with it.
+	moved_offer = MovedOffer.new()
+	moved_offer.store = store
+	moved_offer.update = _replace_moved
+	moved_offer.review = _review_moved
+	moved_offer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	notices.add_child(moved_offer)
+	store.moved_changed.connect(moved_offer.follow)
+	bar.moved_found.connect(_show_moved)
+	for replaced: Signal in [bar.started_new, bar.cleared]:
+		replaced.connect(func() -> void:
+			moved_offer.dismiss()
+			if _moved != null:
+				_moved.hide())
+	bar.opened.connect(func(_n: int) -> void:
+		moved_offer.dismiss()
+		if _moved != null:
+			_moved.hide())
 	model_area = over_model
 
 	_about = AcceptDialog.new()
@@ -2073,6 +2093,7 @@ func _open_recent(_menu_of: PopupMenu, id: int) -> void:
 	var placed: int = await bar.open_with_progress(_recent[id].path)
 	if placed >= 0:
 		bar.opened.emit(placed)
+		bar.offer_moved()
 
 
 func _fill_history(menu: PopupMenu) -> void:
@@ -3901,6 +3922,53 @@ func section_target() -> String:
 	return found
 
 
+## Missing and moved parts (src/ui/moved_parts_dialog.gd), made the first
+## time it is asked for; and the strip over the model that offers the moved
+## and alias ones (src/ui/moved_offer.gd).
+var _moved: Window = null
+var moved_offer: MovedOffer
+
+
+## A person's open found parts its file names by a moved or alias number, or
+## has no file for (ModelBar.moved_found): the moved and alias ones offered
+## in the strip over the model, in nobody's way; a part with no file at all
+## asked about in the list, as an open always asked.
+func _show_moved() -> void:
+	moved_offer.offer()
+	for row: Dictionary in store.moved.values():
+		if str(row["kind"]) == MovedParts.MISSING:
+			_review_moved()
+			return
+
+
+## The list of them all: Review… in the strip, and an open with a part
+## that has no file.
+func _review_moved() -> void:
+	if _moved == null:
+		_moved = Later.make(&"MovedPartsDialog")
+		_moved.store = store
+		_moved.replace = _replace_moved
+		_moved.search = func(number: String) -> void:
+			var dock: Node = app.get("_bin_dock") if app != null else null
+			if dock != null:
+				dock.call("set_open", true)
+			var bin: PartsBin = app.get("_bin") if app != null else null
+			if bin != null:
+				bin.search_for(number)
+		add_child(_moved)
+	_moved.call("open")
+
+
+## Update all and Replace checked: [param numbers] written as the parts they
+## point to (ModelBar.replace_moved). Not in a Build together session, whose
+## others' copies are not changed with it.
+func _replace_moved(numbers: Array) -> void:
+	if _in_together():
+		bar.say("Leave Build together first to update their numbers")
+		return
+	bar.replace_moved(numbers)
+
+
 ## File, Versions…, made the first time it is asked for ([member versions]).
 func _make_versions() -> void:
 	_versions = Later.make(&"VersionsDialog")
@@ -3991,6 +4059,10 @@ func controls_by_name() -> Dictionary:
 		out.merge(stress.panel.controls_by_name())
 	if _versions != null:
 		out.merge(_versions.controls_by_name())
+	if _moved != null:
+		out.merge(_moved.controls_by_name())
+	if moved_offer != null:
+		out.merge(moved_offer.controls_by_name())
 	if _compare != null:
 		out.merge(_compare.controls_by_name())
 	if _palette != null:

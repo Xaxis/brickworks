@@ -189,7 +189,7 @@ def refresh(document: dict, out: Path, ldraw: Path) -> list[str]:
 
 def refresh_headers(document: dict, library: Library) -> tuple[int, int]:
     """Re-read what each part's header says: its name, keywords,
-    category, kind and redirect.
+    category, kind and redirect, and the colour a redirect gives its part.
 
     Keywords too, which build_meshes.py alone used to write: a fix to
     how headers are read reached the names and left "ThÃ©oden" in the
@@ -209,6 +209,11 @@ def refresh_headers(document: dict, library: Library) -> tuple[int, int]:
         entry["kind"] = ldfile.part_type or "Part"
         entry["keywords"] = ldfile.keywords[:12]   # as build_meshes.py keeps them
         entry["moved_to"] = ldfile.moved_to
+        # The colour a stub draws its part in, where it gives one.
+        if ldfile.moved_colour is None:
+            entry.pop("moved_colour", None)
+        else:
+            entry["moved_colour"] = ldfile.moved_colour
         if ldfile.moved_to:
             redirects += 1
         if entry != before:

@@ -4482,6 +4482,15 @@ func focus_search() -> void:
 	_search.select_all()
 
 
+## [param text] searched for as if typed in the search box, the box showing
+## it: Missing and moved parts' Search, for a number the library has no
+## file for (MovedPartsDialog).
+func search_for(text: String) -> void:
+	_search.text = text
+	_search_soon(text)
+	focus_search()
+
+
 # -- worked constructions -----------------------------------------------------
 
 
