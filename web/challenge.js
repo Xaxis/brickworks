@@ -384,8 +384,14 @@ function confirmVote(entry) {
 }
 
 async function signInToVote() {
-  if (await askToSignIn(say("Sign in to vote: we email you a code, no password."))) await load();
+  // Signed in, brickworks:signed-in-done (below) draws the votes for them.
+  await askToSignIn(say("Sign in to vote: we email you a code, no password."));
 }
+
+// Signed in here by any way (the header's Sign in too; signinux,
+// 2026-11-14): the challenge drawn as it stands for them, their entries
+// and votes, where they are.
+addEventListener("brickworks:signed-in-done", () => load());
 
 /// The vote, drawn at once and then as the server says: refused, it is
 /// drawn back as it was and says why.

@@ -285,4 +285,9 @@ import { collectionsList } from "/collections.js";
     }
     go(new URL(location.href), { restore: true });
   })();
+  // Signed in on this page (the header's Sign in; signinux, 2026-11-14):
+  // Following among the tabs, and every question from now asked as them.
+  addEventListener("brickworks:signed-in-done", () => {
+    import("/account.js").then((account) => models.signIn(account.signedIn() ? account : null)).catch(() => null);
+  });
 })();
