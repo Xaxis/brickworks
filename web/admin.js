@@ -704,7 +704,7 @@ function dataActs(one, account) {
       const gone = await adminJson({ op: "delete_account", account }, { method: "POST",
         body: { confirm: typed.value.trim(), reason: why.value.trim() } });
       for (const one of ["people", "audit", ...REPORTED]) loaded.delete(one);
-      $("sheet").close();
+      closeSheet();
       await Promise.all([loadPeople(), loadOverview()]).catch(() => null);
       say("people-note", `Deleted ${gone.email}: ${gone.photos ?? 0} photos and ${gone.avatars ?? 0} pictures with it. Kept in the audit.`);
     } catch (problem) {
@@ -866,19 +866,27 @@ function openSheet(title, body, { kind = "act", account = "" } = {}) {
   if (!sheet.open) sheet.showModal();
 }
 
-$("sheet-close").addEventListener("click", () => $("sheet").close());
-$("sheet").addEventListener("click", (event) => { if (event.target === $("sheet")) $("sheet").close(); });
-$("sheet").addEventListener("close", () => {
-  // Closed, an account's address goes back to the list's.
-  if ($("sheet").dataset.kind === "person" && route().account) history.replaceState(null, "", `${location.pathname}${location.search}#people`);
-  if ($("sheet").dataset.kind === "connector" && route().account) {
-    history.replaceState(null, "", `${location.pathname}${location.search}#connector`);
-  }
-  if ($("sheet").dataset.kind === "challenge" && route().challenge) {
-    history.replaceState(null, "", `${location.pathname}${location.search}#challenges`);
-  }
-  $("sheet").dataset.account = "";
-});
+/// Closed, an account's or a challenge's address goes back to the list's, at
+/// once as it closes. Not on its close event: that comes a task later, and an
+/// address set in between (a link, a script) was put back to the list's then,
+/// so the panel it asked for never opened (console2_flow's Escape then
+/// #people/C, 15 times in 20 in a page of its own; console3, 2026-11-14).
+function listAddress() {
+  const kind = $("sheet").dataset.kind;
+  const at = route();
+  const list = (kind === "person" && at.account) ? "people" : (kind === "connector" && at.account) ? "connector"
+    : (kind === "challenge" && at.challenge) ? "challenges" : "";
+  if (list) history.replaceState(null, "", `${location.pathname}${location.search}#${list}`);
+}
+function closeSheet() {
+  listAddress();
+  $("sheet").close();
+}
+$("sheet-close").addEventListener("click", closeSheet);
+$("sheet").addEventListener("click", (event) => { if (event.target === $("sheet")) closeSheet(); });
+// Escape (and a phone's back): its cancel comes at once, before the close.
+$("sheet").addEventListener("cancel", listAddress);
+$("sheet").addEventListener("close", () => { $("sheet").dataset.account = ""; });
 
 for (const table of document.querySelectorAll("table[data-sortable]")) sortable(table);
 start();
