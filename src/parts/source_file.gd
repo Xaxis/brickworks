@@ -1844,7 +1844,7 @@ const _NEVER := 1 << 40
 ##
 ## The lines kept are those of the cheapest run in the file's order whose
 ## steps never go down: a dynamic program over the lines by each one's step
-## less its step in the file (its shift), one state a shift, so a section of
+## less its step in the file (its shift), a few runs a shift, so a section of
 ## thousands of parts is read once. Between two lines kept, the STEP lines
 ## the file has are kept as far as the steps now between them need, the
 ## plain ones taken out first and the earliest first (a step ended by the
@@ -1890,11 +1890,15 @@ func _relaid(section: String, targets: Dictionary, fixed: Dictionary, gone: Dict
 				origin_count[now] = int(votes[was][now])
 				origin_of[now] = was
 		stays[was] = best
-	# The cheapest run kept, a state for each shift: [cost, the last kept
-	# line's step, its node]; a node is a line kept and the node before it.
+	# The cheapest runs kept, for each shift those no other is both cheaper
+	# and lower in step than: [cost, the last kept line's step, its node]; a
+	# node is a line kept and the node before it. One run a shift lost the
+	# dearer one ending lower, which a later line kept may need (stepops:
+	# kt3r_emptystep, a part moved on past a page closed up moved its
+	# step-mate instead, and the looks rewrote both STEP lines round it).
 	var node_at := PackedInt32Array()
 	var node_before := PackedInt32Array()
-	var states: Dictionary = {0: [0, 0, -1]}
+	var states: Dictionary = {0: [[0, 0, -1]]}
 	# A turning ROTSTEP above the section's first part is its first step's
 	# turn, which the looks write there again (BookletLooks.written_into),
 	# so the run may start with it taken out at no cost: an edit after which
@@ -1909,7 +1913,7 @@ func _relaid(section: String, targets: Dictionary, fixed: Dictionary, gone: Dict
 		if words[0] != "0" or words.size() < 3 or words[1].to_upper() != "ROTSTEP" \
 				or words[2].to_upper() == "END":
 			break
-		states[-states.size()] = [0, 0, -1]
+		states[-states.size()] = [[0, 0, -1]]
 	var old_last: int = 0
 	var new_last: int = 0
 	for i: int in chunks.size():
@@ -1923,13 +1927,13 @@ func _relaid(section: String, targets: Dictionary, fixed: Dictionary, gone: Dict
 			* (_MOVE_KEPT if now == int(stays[was]) else _MOVE_LINE)
 		var next: Dictionary = {}
 		for from_shift: int in states:
-			var state: Array = states[from_shift]
-			_cheaper(next, from_shift, int(state[0]) + move, int(state[1]), int(state[2]))
-			if int(state[1]) <= now:
-				node_at.append(i)
-				node_before.append(int(state[2]))
-				_cheaper(next, shift, int(state[0]) + absi(shift - from_shift) * _STEP_LINE, now,
-					node_at.size() - 1)
+			for state: Array in states[from_shift]:
+				_cheaper(next, from_shift, int(state[0]) + move, int(state[1]), int(state[2]))
+				if int(state[1]) <= now:
+					node_at.append(i)
+					node_before.append(int(state[2]))
+					_cheaper(next, shift, int(state[0]) + absi(shift - from_shift) * _STEP_LINE,
+						now, node_at.size() - 1)
 		states = next
 	for step: Variant in fresh:
 		new_last = maxi(new_last, int(step))
@@ -1938,13 +1942,13 @@ func _relaid(section: String, targets: Dictionary, fixed: Dictionary, gone: Dict
 	var best_cost: int = -1
 	var best_node: int = -1
 	for from_shift: int in states:
-		var state: Array = states[from_shift]
-		if int(state[1]) > end_step:
-			continue
-		var cost: int = int(state[0]) + absi(end_shift - from_shift) * _STEP_LINE
-		if best_cost < 0 or cost < best_cost:
-			best_cost = cost
-			best_node = int(state[2])
+		for state: Array in states[from_shift]:
+			if int(state[1]) > end_step:
+				continue
+			var cost: int = int(state[0]) + absi(end_shift - from_shift) * _STEP_LINE
+			if best_cost < 0 or cost < best_cost:
+				best_cost = cost
+				best_node = int(state[2])
 	if best_cost < 0 or best_cost >= _NEVER:
 		return "a flexible part's step changed"
 	var kept: Array = []
@@ -2036,10 +2040,27 @@ static func _laid_end(laid: Dictionary, _section: String, step: int) -> Array:
 	return [int(laid["tail"]), float(step)]
 
 
+## The runs a shift keeps at most ([method _relaid]): the cheapest of them.
+const _RUNS := 6
+
+
+## [param states]' runs for [param shift] with one costing [param cost] and
+## ending at step [param last] put in, unless one there is as cheap and as
+## low; those it is cheaper and lower than go.
 static func _cheaper(states: Dictionary, shift: int, cost: int, last: int, node: int) -> void:
-	var had: Variant = states.get(shift)
-	if had == null or cost < int(had[0]) or cost == int(had[0]) and last < int(had[1]):
-		states[shift] = [cost, last, node]
+	var runs: Array = states.get(shift, [])
+	for run: Array in runs:
+		if int(run[0]) <= cost and int(run[1]) <= last:
+			return
+	var kept: Array = []
+	for run: Array in runs:
+		if cost > int(run[0]) or last > int(run[1]):
+			kept.append(run)
+	kept.append([cost, last, node])
+	if kept.size() > _RUNS:
+		kept.sort_custom(func(a: Array, b: Array) -> bool: return int(a[0]) < int(b[0]))
+		kept.resize(_RUNS)
+	states[shift] = kept
 
 
 ## Where a STEP line goes between lines [param low] and [param high] of
