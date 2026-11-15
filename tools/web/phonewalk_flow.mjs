@@ -123,7 +123,7 @@ const ACTS = [
     file: "src/main.gd (a tap puts the part in hand down)" },
   { id: "paint", model: "wall", needs: "wall", what: "three of them painted", desktop: 4,
     how: "a click, two Shift-clicks, Shift+5 (walk `round2`: 1 key after the clicks)",
-    file: "src/main.gd, src/ui/edit_verbs.gd (a tap in Select replaces the selection: no adding to it by finger)" },
+    file: "src/ui/edit_verbs.gd (EditVerbs.adding), src/ui/phone_shell.gd (Select, tapped while lit, adds)" },
   { id: "motions_play", model: "doors", what: "Motions: the suggested motion kept and played", desktop: 3,
     how: "Alt+O, Keep, Play", file: "src/ui/pose_panel.gd" },
   { id: "motions_record", model: "doors", needs: "motions_play", what: "Motions: a motion recorded by dragging a part", desktop: 4,
@@ -1274,10 +1274,11 @@ function person(page, cdp, width, height, size, choosers) {
             swatch = await where(`phone_swatch_${code}`, 5);
           }
           if (swatch) await tap(swatch);
-          const after = await until((now) => now.selected === 3
-            && (now.selected_colours || []).length === 1 && now.selected_colours[0] === code, 6);
-          const done = after.selected === 3 && (after.selected_colours || []).length === 1
-            && after.selected_colours[0] === code;
+          // A colour a part: [1,1,1] is three painted blue.
+          const painted = (now) => now.selected === 3 && (now.selected_colours || []).length > 0
+            && now.selected_colours.every((c) => c === code);
+          const after = await until(painted, 6);
+          const done = painted(after);
           await untimed(async () => {
             await press("phone_select");
             const sheet = await where("phone_sheet_colour_done", 3);
