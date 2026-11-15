@@ -48,6 +48,23 @@ static func left(have: Dictionary, used: Dictionary) -> Dictionary:
 	return out
 
 
+## A real set's parts as What can I build? ranks it and What do I need? lists
+## it for that set (setsbuild): its inventory's lots ([param record], as
+## SetInventories looks it up), no spares, by key, without what nobody owns on
+## its own (a sticker sheet, a ~ piece, a number LDraw does not draw), as
+## [method over] leaves them out. tools/collection_data.py index_needs counts
+## every set so for all_sets.bin; src/dev/setsbuild_probe.gd holds the two to
+## each other.
+static func set_needs(record: Dictionary, library: PartLibrary) -> Dictionary:
+	var needs: Dictionary = {}
+	for row: Variant in record.get("p", []):
+		var lot: Array = row
+		var key: String = Collection.key_of(str(lot[0]), int(lot[1]), library)
+		if library == null or Collection.ownable(Collection.part_of(key), library):
+			needs[key] = int(needs.get(key, 0)) + int(lot[2])
+	return needs
+
+
 ## The parts [param used] has more of than [param have] holds, as What do I
 ## need? counts them (Collection.plan: another moulding of a part counts as
 ## it): each row's "short" is how many over, with what could stand in, the

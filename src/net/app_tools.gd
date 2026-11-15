@@ -286,7 +286,7 @@ link= opens a copy of a gallery model, as Open in Brickworks does; \
 library= opens LDraw's model of a real set (gallery library=true finds them).
  - parts_list: the model's parts by part and colour with element ids; \
 which="need" what the person's collection is short of; "buildable" What \
-can I build?: saved models, examples and real sets' models by how much is owned.
+can I build?: saved models, examples and every real set, by how much is owned.
 which="compare" a= b=: any two of a set, a saved model or the open model, \
 the parts in both and in one only, and what to buy to build b from a.
  - edit_collection: the person's own loose bricks, as My collection's What \
@@ -908,8 +908,9 @@ func definitions() -> Array:
 				+ "colour, with counts and LEGO® element ids. which=\"need\" measures it "
 				+ "against the person's collection (My collection): how much they own and "
 				+ "what they are short of; which=\"buildable\" is What can I build?: their "
-				+ "saved models, the examples and the official models of real sets, ranked by "
-				+ "how much of each they own. "
+				+ "saved models, the examples and the official models of real sets, and in a "
+				+ "block of its own every real set Rebrickable lists, each ranked by how much of "
+				+ "it they own. "
 				# comparesets (APP_UX6 #7): Rebrickable's set compare.
 				+ "which=\"compare\" is File, Compare, Compare two sets or models…: a= and b= each a "
 				+ "set number (\"7140\"), a saved model's or an example's name, or \"open\" for "
@@ -3981,17 +3982,47 @@ func _parts_list(input: Dictionary) -> String:
 		if not is_equal_approx(float(x["any_colour"]), float(y["any_colour"])):
 			return float(x["any_colour"]) > float(y["any_colour"])
 		return int(x["pieces"]) < int(y["pieces"]))
+	var most: int = mini(limit, 25) if not input.has("limit") else limit
+	var said := PackedStringArray()
 	if ranked.is_empty():
-		return "No models to measure."
-	var said := PackedStringArray(["%d models against the collection, as My collection's What can I "
-		% ranked.size() + "build? ranks them, most of it owned first:"])
-	for one: Array in ranked.slice(0, mini(limit, 25) if not input.has("limit") else limit):
-		var cover: Dictionary = one[2]
-		said.append("  %d%% %s (%s): owns %d of its %d pieces in their colours, %d missing; %d%% in any colour"
-			% [roundi(100.0 * float(cover["exact"])), one[0], one[1], int(cover["owned"]), int(cover["pieces"]),
-			int(cover["missing"]), roundi(100.0 * float(cover["any_colour"]))])
-	said.append("open_model name= opens a saved model or an example; an official model opens from My "
-		+ "collection, What can I build? in the window. limit= lists more.")
+		said.append("No models to measure.")
+	else:
+		said.append("%d models against the collection, as My collection's What can I " % ranked.size()
+			+ "build?'s Models ranks them, most of it owned first:")
+		for one: Array in ranked.slice(0, most):
+			var cover: Dictionary = one[2]
+			said.append("  %d%% %s (%s): owns %d of its %d pieces in their colours, %d missing; %d%% in any colour"
+				% [roundi(100.0 * float(cover["exact"])), one[0], one[1], int(cover["owned"]), int(cover["pieces"]),
+				int(cover["missing"]), roundi(100.0 * float(cover["any_colour"]))])
+		said.append("open_model name= opens a saved model or an example; an official model opens from My "
+			+ "collection, What can I build? in the window. limit= lists more.")
+	said.append("")
+	said.append(await _buildable_sets(mine, most))
+	return "\n".join(said)
+
+
+## parts_list which="buildable"'s block of real sets (setsbuild): every set
+## Rebrickable lists, ranked against the person's parts as What can I
+## build?'s Real sets ranks them (SetRanking), in the same order, the sets
+## they own left out; the first [param most].
+func _buildable_sets(mine: CollectionStore, most: int) -> String:
+	var ranking: SetRanking = await mine.inventories.ranking()
+	if ranking == null:
+		return "Real sets: every set's parts could not be read (%s)." % mine.inventories.trouble
+	var ranked: SetRanking.Ranked = ranking.rank(OwnCounts.owned(mine.on_hand))
+	var own: Dictionary = SetRanking.owned_sets(mine.collection)
+	var listed: PackedInt32Array = ranked.listed(own, SetRanking.FEWEST)
+	var now: int = ranked.at_least(listed, 1.0)
+	var said := PackedStringArray([("Real sets: every one Rebrickable lists of %d pieces or more (%s), against "
+		+ "the same parts, as What can I build?'s Real sets ranks them, the sets they own left out (the "
+		+ "window's size choice lists smaller ones too). They could build %s now, and %s more have 90%% of "
+		+ "their pieces or more:") % [SetRanking.FEWEST, Working.comma(listed.size()), Counted.of(now, "set"),
+		Working.comma(ranked.at_least(listed, 0.9) - now)]])
+	for n: int in listed.slice(0, most):
+		said.append("  " + ranked.said(n))
+	said.append("Each set's pieces count as What do I need? counts them: their sets' parts and loose parts, "
+		+ "another moulding of a part standing in, no stickers. In the window, My collection, What can I "
+		+ "build?, Real sets, a set's What do I need? lists what is short, to order; limit= lists more.")
 	return "\n".join(said)
 
 

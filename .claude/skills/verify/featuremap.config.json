@@ -1098,6 +1098,13 @@
     },
     {
       "kind": "lib",
+      "label": "every set ranked",
+      "entry": "src/collection/set_ranking.gd",
+      "reach": "tools/probe.sh setsbuild_probe   (What can I build?'s Real sets: every set Rebrickable lists ranked from all_sets.bin by how much is owned, held to Collection.coverage set by set; parts_list which=\"buildable\"'s block of them)",
+      "area": "collection"
+    },
+    {
+      "kind": "lib",
       "label": "collection kept with the account",
       "entry": "src/collection/collection_store.gd",
       "reach": "godot --headless --path . --script src/dev/collection_probe.gd   (the copy on this device; the account's through collection_probe.mjs)",

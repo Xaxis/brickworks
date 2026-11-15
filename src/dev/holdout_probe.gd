@@ -22,6 +22,8 @@
 ##   the library shelf (ModelLibrary: gallery library=, open_model library=)
 ##   the catalogue's sets with no model (gallery library=, its parts lists)
 ##   the official models a collection is measured against (SetInventories)
+##   every real set ranked against a collection (SetRanking: What can I
+##     build?'s real sets, parts_list which="buildable"'s block)
 ##   the gallery's shared copies of LDraw's models (gallery search and open),
 ##     and every builder's own model, which can be the set under any name
 ##   the pictures of the real thing (find_reference: no picture of anything
@@ -167,6 +169,32 @@ func _run() -> void:
 		official.append(str(model["set"]))
 	_ok(official == PackedStringArray(["7992-1"]), "only the set not held: %s" % ", ".join(official))
 	inventories.free()
+
+	print("── every real set, ranked against a collection (What can I build?, parts_list buildable) ──")
+	var every_set := SetInventories.new()
+	var ranking: SetRanking = await every_set.ranking()
+	_ok(ranking != null, "every set's parts read (all_sets.bin)%s" % ("" if ranking != null
+		else ": " + every_set.trouble))
+	if ranking != null:
+		# A collection of the held sets' own parts and one set's not held: each
+		# would rank first, were it listed.
+		var pool: Dictionary = {}
+		var records: Dictionary = await every_set.lookup(PackedStringArray(["7242-1", "21004-1", "3189-1",
+			"7992-1"]))
+		for number: String in records:
+			var needs: Dictionary = OwnCounts.set_needs(records[number], library)
+			for key: String in needs:
+				pool[key] = int(pool.get(key, 0)) + int(needs[key])
+		var ranked: SetRanking.Ranked = ranking.rank(pool)
+		var ranked_sets: PackedInt32Array = ranked.listed()
+		var lines := PackedStringArray()
+		for n: int in ranked_sets.slice(0, 40):
+			lines.append(ranked.said(n))
+		_never("\n".join(lines), "What can I build?'s real sets, as the page and a session list them")
+		var stacker_at: int = ranking.index_of("7992-1")
+		_ok(records.size() == 4 and ranked_sets.has(stacker_at) and ranked.exact(stacker_at) == 1.0,
+			"...and a set not held is still ranked, at 100%%: %s" % _around("\n".join(lines), "7992"))
+	every_set.free()
 
 	print("── the gallery's shared copies of LDraw's models, and builders' own ──")
 	var copy := {"name": "Street Sweeper", "parts": 112, "modelled_by": {"name": "Someone"},
