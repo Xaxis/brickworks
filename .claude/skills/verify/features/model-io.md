@@ -125,18 +125,26 @@ Whether what you built is still there tomorrow, and still means the same thing.
   them the same way (`api/_parts.js` flattenUnits). Before, the second car's
   `Car#2/Wing#3` opened as `Wing#2` and the first car's as `Wing#5`, and
   every save numbered them anew (cf3check O1). Live and older builds read the
-  copy's own number alone. A model of the app's own nobody gave steps saves
-  the same file every time: a part pressed up under another with a second
-  under it is chosen by size and place, not file order
+  copy's own number alone. Each number on a COPY line, its own and those it
+  says, is read by one rule in the app and on the site: 1 to 9 digits and
+  nothing else, else none (`LdrModel.copy_number`, `api/_parts.js`
+  copyNumber; "+3", twenty nines and "Wing#2=3" in the own number's place
+  were read apart, coreview F2). A model of the app's own nobody gave steps
+  saves the same file every time: a part pressed up under another with a
+  second under it is asked largest first, then by place, not in file order
   (`Instructions._pressed_up`): a 1 x 1 in a 2 x 4's room under one 2 x 2
-  swapped steps with it at every save (cf3check S2). Saved first from a file
-  this build did not write, a model is worked out again once from the order
-  the save wrote (house, castle; pre261's too), and the same from then on.
+  swapped steps with it at every save (cf3check S2). Smallest first hid parts
+  in 2 stabletext2brick models (coreview F1); largest first hides no more than
+  the file's order in any of the 60, and of 54 other models 2 more in the
+  corner shop and 3 fewer in Orthanc (copyfix). Saved first from a file this
+  build did not write, a model is worked out again once from the order the
+  save wrote (house, castle; pre261's too), and the same from then on.
   **Check:** `tools/probe.sh copyorder_probe` (headless, ~6 min): s2, its
   lines flipped, both red and one tower; o1; three deep and a truck the app
-  duplicated; mirrored; CRLF and tabs; a file of an older build; undo and
-  redo; the house, the castle, 7128-1 and 21008-1, each saved three times in
-  a row to the byte, every copy by its name in the app and on the site
+  duplicated; mirrored; CRLF and tabs; a file of an older build; the COPY
+  line's numbers said every way (numbers); undo and redo; the house, the
+  castle, 7128-1 and 21008-1, each saved three times in a row to the byte,
+  every copy by its name in the app and on the site
   (`tools/web/copy_names_check.mjs`).
   **Check:** `tools/probe.sh openfaults_probe` (headless, ~4 min): 24 cases,
   each as someone else's file and as the app's own: LDView's rule, read in the

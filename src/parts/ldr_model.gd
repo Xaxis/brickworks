@@ -200,6 +200,18 @@ const COPY_META := "0 !BRICKWORKS COPY"
 ## reads the copy's own number alone.
 
 
+## The number [param word] says on a COPY_META line, its own or one of
+## [method copies_said]'s: 1 to 9 digits and nothing else, else 0, none. The
+## site reads it by the same rule (api/_parts.js copyNumber): read each its
+## own way, "+3" was 3 here and nothing there, twenty nines were Godot's
+## highest int here and 1e20 there, and "Wing#2=3" in the own number's place
+## was copy 23 here (coreview F2).
+static func copy_number(word: String) -> int:
+	if word.is_empty() or word.length() > 9 or not word.lstrip("0123456789").is_empty():
+		return 0
+	return word.to_int()
+
+
 ## The numbers [param words] say, a COPY_META line's after its own number:
 ## path -> number. A word that says none is skipped.
 static func copies_said(words: PackedStringArray) -> Dictionary:
@@ -208,8 +220,8 @@ static func copies_said(words: PackedStringArray) -> Dictionary:
 		var at: int = word.rfind("=")
 		if at <= 0:
 			continue
-		var number: int = word.substr(at + 1).to_int()
-		if number > 0 and word.substr(at + 1).is_valid_int():
+		var number: int = copy_number(word.substr(at + 1))
+		if number > 0:
 			out[word.left(at).uri_decode()] = number
 	return out
 
@@ -472,7 +484,7 @@ static func parse(text: String, source_name: String = "model") -> LdrModel:
 				model.marked_worked = true
 			elif keyword == "!BRICKWORKS" and tokens.size() > 3 \
 					and tokens[2] == _COPY_WORD:
-				copy_next = maxi(tokens[3].to_int(), 0)
+				copy_next = copy_number(tokens[3])
 				copies_next = copies_said(tokens.slice(4))
 			elif not within.is_empty() and _kept_within(keyword, tokens):
 				# In an IN block: the lines of the copy it names, its

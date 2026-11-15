@@ -11,7 +11,9 @@
 ##   opened again: the 2 x 4 and the 1 x 1 swapped steps at every save. The
 ##   planner pressed up the first of the two it asked (Instructions
 ##   ._pressed_up), in the order the file had them, and the one built first
-##   is written first. Asked smallest first now, by place and part.
+##   is written first. Asked largest first now, by place and part: the 2 x 4
+##   goes in with the 2 x 2 and the 1 x 1 holds it. Smallest first hid parts
+##   in 2 stabletext2brick models the file's order did not (coreview F1).
 ## - o1: a wing placed green, in two red cars and blue, the green one made
 ##   unlike the others: "Car#2/Wing#3" opened as "Car#2/Wing#2", the first
 ##   car's wing as "Wing#5", and every save numbered them anew. A section is
@@ -22,17 +24,19 @@
 ## towers red and one tower (s4s5); three deep, a truck duplicated by the app
 ## (nested); a sub-model placed twice and once mirrored (mirror); CRLF and
 ## tabs (crlf); a file written before COPY lines said the copies inside
-## (older), as live writes it and as live reads ours; an edit undone and
-## redone (undo); and the house, the castle (copies built in its steps) and
-## 7128-1 and 8845-1 of the LDraw model repository as the app's own and as
-## someone else's (models). Each saved three times in a row; the site reads
-## each copy by the name the app does (tools/web/copy_names_check.mjs).
+## (older), as live writes it and as live reads ours; the COPY line's numbers
+## said every way, read by one rule here and on the site (numbers); an edit
+## undone and redone (undo); and the house, the castle (copies built in its
+## steps) and 7128-1 and 8845-1 of the LDraw model repository as the app's
+## own and as someone else's (models). Each saved three times in a row; the
+## site reads each copy by the name the app does
+## (tools/web/copy_names_check.mjs).
 ##
 ## COPYORDER_CASES=s2,o1 runs those alone.
 extends "res://src/dev/copyfaults_probe.gd"
 
 const ORDER_CASES: Array = ["s2", "s2_flipped", "s4s5", "o1", "nested", "mirror", "crlf", "older",
-	"undo", "models"]
+	"numbers", "undo", "models"]
 const HEAD := "0 Name: %s\n0 Author: %s\n"
 const OMR := "res://vendor/omr/files/"
 var _scratch: String = ""
@@ -72,6 +76,7 @@ func _run() -> void:
 			"mirror": await _case_mirror()
 			"crlf": await _case_crlf()
 			"older": await _case_older()
+			"numbers": await _case_numbers()
 			"undo": await _case_undo()
 			"models": await _case_models()
 			_: _check("no such case %s" % name, false)
@@ -206,7 +211,7 @@ func _site_names(label: String, text: String) -> void:
 
 
 ## S2 (cf3check S2_unedited): saved, opened and saved again with no edit, the
-## same file; the tower's 2 x 4 in its first step and the 1 x 1 pressed up
+## same file; the tower's 1 x 1 in its first step and the 2 x 4 pressed up
 ## under the 2 x 2 with it, whichever the file has first.
 func _case_s2() -> void:
 	await _open(_s2_text())
@@ -217,8 +222,8 @@ func _case_s2() -> void:
 	for line: String in body:
 		if line.begins_with("1 ") or line == "0 STEP":
 			lines.append(line.get_slice(" ", line.get_slice_count(" ") - 1) if line.begins_with("1 ") else "STEP")
-	_check("s2: the tower's 3001 alone in its first step, the 3005 with the 3003 (%s)" % " ".join(lines),
-		" ".join(lines) == "3001.dat STEP 3005.dat 3003.dat 3062b.dat")
+	_check("s2: the tower's 3005 alone in its first step, the 3001 with the 3003 (%s)" % " ".join(lines),
+		" ".join(lines) == "3005.dat STEP 3001.dat 3003.dat 3062b.dat")
 
 
 ## The tower's lines the other way round: the same file saved.
@@ -338,6 +343,32 @@ func _case_older() -> void:
 	_check("older: opened, every part where it was, its copies as the file numbers them (%s)"
 		% ", ".join(names), _looks(false) == parts and names.has("Car#1/Wing#5") and names.has("Car#2/Wing#2"))
 	await _rounds("older")
+
+
+## The COPY line's numbers, its own and those it says of the copies inside,
+## read by one rule in the app and on the site: 1 to 9 digits, else none
+## (LdrModel.copy_number, api/_parts.js copyNumber; coreview F2). O1's save
+## with the second car's line said each way: every part where it was, and the
+## site reads each copy by the app's name.
+func _case_numbers() -> void:
+	var said: Array = []
+	for word: Array in [["3", 3], ["03", 3], ["999999999", 999999999], ["1000000000", 0], ["+3", 0],
+			["-3", 0], ["3.5", 0], ["0x3", 0], ["", 0], ["Wing#2=3", 0], [String.chr(0x663), 0]]:
+		if LdrModel.copy_number(str(word[0])) != int(word[1]):
+			said.append("%s read as %d" % [word[0], LdrModel.copy_number(str(word[0]))])
+	_check("numbers: 1 to 9 digits read, every other word none (%s)" % ", ".join(said), said.is_empty())
+	await _o1_opened()
+	var ours: String = await _saved()
+	var parts: Array = _looks(false)
+	var line: String = LdrModel.COPY_META + " 2 Wing#2=3\n"
+	_check("numbers: O1's save says the second car's wing on its line", ours.contains(line))
+	for form: Array in [["plus", "2 Wing#2=+3"], ["overflow", "2 Wing#2=99999999999999999999"],
+			["ten_digits", "2 Wing#2=1000000003"], ["own_plus", "+2 Wing#2=3"],
+			["no_own_number", "Wing#2=3"], ["lead0", "02 Wing#2=03"]]:
+		var text: String = ours.replace(line, "%s %s\n" % [LdrModel.COPY_META, form[1]])
+		await _open(text)
+		_check("numbers %s: every part where it was" % form[0], _looks(false) == parts)
+		_site_names("numbers %s" % form[0], text)
 
 
 ## An edit undone and redone: the save before it, and after the redo the save

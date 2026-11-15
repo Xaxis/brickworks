@@ -309,6 +309,11 @@ const declaresLibraryFile = (lines) => {
   return org !== undefined && !org.toLowerCase().includes("model");
 };
 
+/// The number [word] says on a `0 !BRICKWORKS COPY n` line, its own or one of
+/// copiesSaid's: 1 to 9 digits and nothing else, else 0, none. The app reads
+/// it by the same rule (LdrModel.copy_number).
+const copyNumber = (word) => (/^[0-9]{1,9}$/.test(word) ? Number(word) : 0);
+
 /// The numbers a `0 !BRICKWORKS COPY n` line's [words] after its own number
 /// say of the copies inside that copy, "Wing#2=3" each (LdrModel.copies_said):
 /// path -> number.
@@ -316,8 +321,7 @@ function copiesSaid(words) {
   const out = new Map();
   for (const word of words) {
     const at = word.lastIndexOf("=");
-    if (at <= 0 || !/^[0-9]+$/.test(word.slice(at + 1))) continue;
-    const number = Number.parseInt(word.slice(at + 1), 10);
+    const number = at > 0 ? copyNumber(word.slice(at + 1)) : 0;
     if (number <= 0) continue;
     try {
       out.set(decodeURIComponent(word.slice(0, at)), number);
@@ -396,7 +400,7 @@ function parse(text) {
         // Steps say nothing of what is in it, but end a copy built in them.
         within = "";
       } else if (keyword === "!BRICKWORKS" && tokens[2] === "COPY" && tokens.length > 3) {
-        copyNext = Math.max(Number.parseInt(tokens[3], 10) || 0, 0);
+        copyNext = copyNumber(tokens[3]);
         copiesNext = copiesSaid(tokens.slice(4));
       } else if (keyword === "!BRICKWORKS" && tokens[2] === "IN") {
         within = line.slice(line.toUpperCase().indexOf(keyword) + keyword.length).trim().slice(2).trim();
