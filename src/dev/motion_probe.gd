@@ -4,10 +4,10 @@
 ##   MESA_VK_WSI_DEBUG=sw xvfb-run -a --server-args="-screen 0 1400x900x24" godot --path . \
 ##     --resolution 1400x900 --script src/dev/motion_probe.gd
 ##   ... and at 1280x720 (PROBE_SIZE=1280x720 bash tools/probe.sh motion_probe)
-##   ... -- only=arm, only=fourbar, only=motor, only=spike, only=pul or only=hub
-##   runs that model alone
+##   ... -- only=arm, only=fourbar, only=motor, only=spike, only=pul, only=hub or
+##   only=pieces runs that model alone
 ##
-## Six models, built here part by part on the baseplate:
+## Seven models, built here part by part on the baseplate:
 ##   - an arm on an axle through a Technic brick, turned by its sub-assembly's
 ##     name (Crank): alone it goes round either way and nothing meets; then a
 ##     beam is stood where the arm's face lies at 140° of its turn, and the
@@ -33,7 +33,12 @@
 ##   - a beam pinned by two pins to a SPIKE Prime medium angular motor's hub
 ##     (no axle): the hub turns in the case, so the beam is the driver,
 ##     turning on the hub's line, the pins going round through the hub
-##     without meeting it, and the motor said by name at 7.2 V.
+##     without meeting it, and the motor said by name at 7.2 V;
+##   - a Technic large angular motor drawn in its pieces, as 42114-1's
+##     steering motor is: a sub-model "69730" of its case's four pieces and
+##     its hub, pinned on the stand, an axle in its hub: the hub turns the
+##     axle in the pieces, held with the base as one case, and the motor is
+##     said by name at 9 V.
 ## Simulating never changes the model: every part stands where it was built,
 ## the undo history is as deep, and the model's revision has not moved.
 ## What the simulation found is read by name, so on a build without it the
@@ -132,12 +137,14 @@ func _run() -> void:
 		await _powered_up_l()
 	if only.is_empty() or only == "hub":
 		await _hub_pins()
+	if only.is_empty() or only == "pieces":
+		await _in_pieces()
 	print("")
 	if _failures == 0:
 		print("motion: an arm meeting a beam at 140° said there, a four-bar's range against its "
 			+ "closed form, a Power Functions M, a SPIKE Prime large and a Powered Up L motor "
 			+ "that stall lifting their load said and stopped at, a beam pinned to a SPIKE hub "
-			+ "turned by it, and the model never moved")
+			+ "turned by it, a motor drawn in its pieces turning its hub, and the model never moved")
 	else:
 		print("motion: %d FAILED" % _failures)
 	quit(1 if _failures > 0 else 0)
@@ -454,6 +461,62 @@ func _hub_pins() -> void:
 	_check("...and the motor is said by name, at its 7.2 V", stops.contains("SPIKE Prime medium angular motor")
 		and stops.contains("#%d" % motor) and stops.contains("7.2 V") and stops.contains("rpm"))
 	await _shot("12_hub_pins")
+	_check("the model never moved", _same_as(rest))
+	_panel.close()
+	await _frames(3)
+
+
+# -- a motor drawn in its pieces ----------------------------------------------------------
+
+
+func _in_pieces() -> void:
+	print("  a Technic large angular motor drawn in its pieces, a sub-model 69730, an axle in its hub")
+	_main.call("clear_model")
+	await _frames(10)
+	var t: float = _top_of_floor()
+	var h: float = t + 326.0
+	for n: int in 7:
+		_flat("3003", Vector3(0, t + 24.0 * (n + 1), -50), 71)
+	_flat("3738", Vector3(0, h - 150, -50), 71)
+	for x: float in [-40.0, 40.0]:
+		_upright("2780", Vector3(x, h - 150, -50), 0)
+	# Each piece where 69730 (u9367c01's pieces and the hub) draws it, as the
+	# SPIKE motor stands above, in a sub-model of the motor's number.
+	var at := Transform3D(SPIKE_STANDS, Vector3(0, h, -50))
+	var pieces: Array = []
+	var hub: int = -1
+	for piece: Array in [["u9367", Vector3(0, 20, 0)], ["u9368", Vector3(0, -20, 0)],
+			["u9390", Vector3(0, 0, -140)], ["u9391", Vector3(0, 0, -140)],
+			["u9363p01", Vector3(0, 50, 0)]]:
+		var id: int = _place(str(piece[0]), at * Transform3D(Basis.IDENTITY, piece[1]), 72, "69730")
+		if str(piece[0]) == "u9363p01":
+			hub = id
+		else:
+			pieces.append(id)
+	var axle: int = _along_z("3705", Vector3(0, h, 20), 0)
+	_flat("3648a", Vector3(0, h, 10), 72)
+	await _frames(5)
+	_camera.frame(AABB(Vector3(-160, t, -160), Vector3(320, 480, 260)), 1.05)
+	await _frames(10)
+	var rest: Dictionary = _rest()
+	_shell.run("simulate")
+	await _settled()
+	var sim: Simulation = _panel.sim
+	print("    driver: %s" % _panel.said()["driver"])
+	var driver: int = sim.driver if sim != null else -1
+	_check("the axle in the hub is the driver, the motor's: its hub turns in its pieces",
+		sim != null and driver == sim.model.body_of(axle) and int(sim.motored.get(driver, 0)) == hub
+		and str(_panel.said()["driver"]).contains("its motor turns it"))
+	var held: bool = sim != null and sim.model.body_of(hub) == sim.model.ground
+	for id: int in pieces:
+		held = held and sim.model.body_of(id) == sim.model.ground
+	_check("...its four pieces and the hub's own case one, held with the base by the pins", held)
+	var stops: String = _stops_said()
+	print("    stops: %s" % stops.replace("\n", " | "))
+	_check("nothing meets, and the motor is said by name, at its 9 V",
+		_found(sim, "meets").is_empty() and stops.contains("Technic large angular motor")
+		and stops.contains("#%d" % hub) and stops.contains("9 V") and stops.contains("rpm"))
+	await _shot("13_in_pieces")
 	_check("the model never moved", _same_as(rest))
 	_panel.close()
 	await _frames(3)

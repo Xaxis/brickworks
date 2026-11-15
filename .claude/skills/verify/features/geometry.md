@@ -1066,16 +1066,18 @@ small angular, Powered Up L, XL, simple medium and Boost medium, each at its own
 down", else its speed at the heaviest). A motor's output turns in its case
 (`Simulation.split_output`, `Mechanism.OUTPUT`): its face's axle hole, or a SPIKE hub's
 axle and four pin holes and the cross hole through to its back; the case's other holes
-hold it to what it is pinned to. `list_motions` names each motor with its stall, its
+hold it to what it is pinned to. A file's own copy named for a motor ("42114 - 69730") is
+that motor, and so is a sub-model of the motor's number holding its pieces and its hub.
+`list_motions` names each motor with its stall, its
 speed and its volts. The panel's line under
 the readout says it, **Go to the stop** turns the driver there, the slider and Play go
 no further, and `simulate_mechanism` returns the same lines with its picture taken at
 the stop. `tools/probe.sh motion_probe` (`PROBE_SIZE=1280x720` for the small window,
-`-- only=arm|fourbar|motor|spike|pul|hub`) builds six models part by part and ends on
+`-- only=arm|fourbar|motor|spike|pul|hub|pieces`) builds seven models part by part and ends on
 "motion: an arm meeting a beam at 140° said there, a four-bar's range against its closed
 form, a Power Functions M, a SPIKE Prime large and a Powered Up L motor that stall
-lifting their load said and stopped at, a beam pinned to a SPIKE hub turned by it, and
-the model never moved": the arm meets the beam at 140.54° (to 2°) and -148.23° back;
+lifting their load said and stopped at, a beam pinned to a SPIKE hub turned by it, a
+motor drawn in its pieces turning its hub, and the model never moved": the arm meets the beam at 140.54° (to 2°) and -148.23° back;
 the four-bar's crank goes +80.47° / -80.48° against ±80.41° (to 1°); the PF M motor
 through 9:1 stalls at 25.400°, worked 25.400°, asked 14.67 N·cm against 11, and
 unloaded goes round at 397 rpm. The SPIKE Prime large angular motor, pinned through its
@@ -1086,7 +1088,10 @@ LDU above the arm's axle: 29.91 N·cm at the motor): the SPIKE stalls at 26.300�
 9 V), each to 1°, its case held with the base. A beam pinned by two pins to a SPIKE
 Prime medium angular motor's hub, no axle, is the driver its motor turns, on the hub's
 line, the pins going round through the hub without meeting it ("turns it with nothing to
-lift: 185 rpm, its speed with no load at 7.2 V"). On stage225 before it, 19 checks fail;
+lift: 185 rpm, its speed with no load at 7.2 V"). A Technic large angular motor drawn in
+its pieces, as 42114-1's steering motor is (a sub-model "69730" of u9367, u9368, u9390,
+u9391 and the hub u9363p01; `Simulation.motors_in`), turns an axle in its hub, the pieces
+one case held with the base. On stage225 before it, 19 checks fail;
 on pre261 (e1c9a8831) the SPIKE, Powered Up L and hub models fail 17: nothing is driven.
 Pictures: `shots/motion/<W>x<H>_*.png`.
 
