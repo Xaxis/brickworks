@@ -264,6 +264,11 @@ export const challengeAhead = (list) => (list || []).some((one) => Boolean(one.t
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
   "November", "December"];
+/// A month in a date's dropdown, short as the console writes its dates
+/// ("15 Nov 2026"): a long name ("September", 133 px) was cut short in a
+/// day's month dropdown, at 1280 beside its preview and at 390 ("Novemt").
+const MONTH_SHORT = Array.from({ length: 12 }, (_, at) => new Intl.DateTimeFormat("en-GB", { month: "short", timeZone: "UTC" })
+  .format(Date.UTC(2000, at, 1)));
 
 /// Each of the form's days as three dropdowns, day, month and year (this
 /// one and the next), the way the site asks every date (site.css
@@ -288,7 +293,7 @@ function dateDropdowns() {
     };
     set.querySelector(".dropdowns").replaceChildren(
       choose("day", "Day", Array.from({ length: 31 }, (_, at) => [at + 1, String(at + 1)])),
-      choose("month", "Month", MONTHS.map((name, at) => [at + 1, name])),
+      choose("month", "Month", MONTH_SHORT.map((name, at) => [at + 1, name])),
       choose("year", "Year", [[year, String(year)], [year + 1, String(year + 1)]]));
   }
 }
