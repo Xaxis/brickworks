@@ -945,6 +945,10 @@ func _run(name: String, input: Dictionary, work: Working.Job, chat: String = "",
 	assistant.chat = chat
 	answer = await assistant.followed_answer(answer, int(followed[0]), int(followed[1]))
 	assistant.chat = ""
+	# A design held to the person's own parts: what it uses against what
+	# they own, said with it (AppTools.held_to_mine, ownlimit).
+	if name == "submit_design" and bool(input.get("mine", false)):
+		answer = await _the_app_tools().held_to_mine(answer)
 	_hand_and_view_back(held)
 	return answer
 

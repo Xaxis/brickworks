@@ -16,8 +16,9 @@
 ##   - saved, the model keeps the choice; the bin put back to every part, the
 ##     saved model opened makes it the set's again, with what it uses counted;
 ##   - a collection of two 10497-1s and a 31120-1 Medieval Castle, Build from
-##     them all in its panel makes one bin of the three, a part both sets have
-##     counting the copies added up.
+##     my bricks in its panel makes one bin of the three (OwnCounts: what the
+##     person owns, sets and loose parts), a part both sets have counting the
+##     copies added up.
 ## Each count is read from what the tile says, so a bin whose counts never
 ## changed fails at the first part put down.
 extends SceneTree
@@ -299,8 +300,8 @@ func _run() -> void:
 	dialog.store.changed.emit()
 	dialog.open("own")
 	await _frames(5)
-	var every: Button = dialog.controls_by_name().get("collection_build_all")
-	_check("its Sets have Build from them all", every != null and every.is_visible_in_tree())
+	var every: Button = dialog.controls_by_name().get("collection_build_mine")
+	_check("What I own has Build from my bricks", every != null and every.is_visible_in_tree())
 	await _shot("collection")
 	# A part both sets have that the model doesn't use, and how many the
 	# three copies hold of it.
@@ -314,7 +315,7 @@ func _run() -> void:
 			both = key
 			held += int(row[2])
 	held += 2 * int(want.get(both, 0))
-	var together: String = "2 × %s and %s Medieval Castle" % [TITLE, OTHER]
+	var together: String = OwnCounts.TITLE
 	if every != null:
 		every.pressed.emit()
 	await _until(func() -> bool: return _bin.set_showing() == together, 600)
