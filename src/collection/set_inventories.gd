@@ -6,7 +6,9 @@
 ## The desktop reads them from its own files. The web build does not carry
 ## them — together they are 26 MB and a person types one set at a time — so
 ## it fetches the one shard a set is in from the deployment's /sets/, which
-## deploy.sh fills, and keeps what it fetched for the visit.
+## deploy.sh fills, and keeps what it fetched for the visit. Every set's
+## parts at once, all_sets.bin (SetRanking), come the same way, only as
+## What can I build? or parts_list which="buildable" first asks for them.
 class_name SetInventories
 extends Node
 
@@ -90,6 +92,56 @@ func official_models() -> Array:
 				"file": str(model.get("file", "")), "year": int(model.get("y", 0)),
 				"theme": str(model.get("t", "")), "page": str(model.get("g", "")), "needs": needs})
 	return _models
+
+
+## Every set at once, for What can I build? to rank (SetRanking): read the
+## first time it is asked for and kept, never at start-up. The web fetches
+## it from /sets/ beside the shards (deploy.sh puts it there, cached as they
+## are): 1.9 MB, under the 2 MB the page may cost as it opens. Null, with
+## [member trouble] saying why, when it cannot be had; asked again after.
+## Two asking at once (the page and a session's parts_list) share the one
+## reading.
+func ranking() -> SetRanking:
+	if _ranking != null:
+		return _ranking
+	if _ranking_reading:
+		await ranking_read
+		return _ranking
+	_ranking_reading = true
+	var started: int = Time.get_ticks_msec()
+	var bytes: PackedByteArray = await _read_bytes(SetRanking.FILE)
+	var why: Array = []
+	if not bytes.is_empty():
+		_ranking = SetRanking.read(bytes, why)
+		if _ranking == null:
+			trouble = str(why[0])
+	ranking_took = Time.get_ticks_msec() - started
+	_ranking_reading = false
+	ranking_read.emit()
+	return _ranking
+
+
+## Every set's parts, once read ([method ranking]).
+var _ranking: SetRanking
+var _ranking_reading: bool = false
+## How long the last reading took, fetched and unpacked, in milliseconds.
+var ranking_took: int = 0
+signal ranking_read
+
+
+func _read_bytes(file_name: String) -> PackedByteArray:
+	if not OS.has_feature("web") or FileAccess.file_exists(ROOT + file_name):
+		var bytes: PackedByteArray = FileAccess.get_file_as_bytes(ROOT + file_name)
+		if bytes.is_empty():
+			trouble = "every set's parts are not in this build (tools/collection_data.py --index)"
+		return bytes
+	var base: String = remote if not remote.is_empty() else Deployment.api_base() + "/sets/"
+	var result: Array = await PageFetch.ask(self, base + file_name, PackedStringArray(), HTTPClient.METHOD_GET, "",
+		60.0)
+	if int(result[0]) != HTTPRequest.RESULT_SUCCESS or int(result[1]) != 200:
+		trouble = "every set's parts did not arrive (%d)" % int(result[1])
+		return PackedByteArray()
+	return result[3]
 
 
 func _read(file_name: String) -> Variant:

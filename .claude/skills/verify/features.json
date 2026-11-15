@@ -3758,6 +3758,14 @@
       "tests": []
     },
     {
+      "id": "lib:every set ranked",
+      "kind": "lib",
+      "entry": "src/collection/set_ranking.gd",
+      "reach": "tools/probe.sh setsbuild_probe   (What can I build?'s Real sets: every set Rebrickable lists ranked from all_sets.bin by how much is owned, held to Collection.coverage set by set; parts_list which=\"buildable\"'s block of them)",
+      "area": "collection",
+      "tests": []
+    },
+    {
       "id": "lib:feedback kept and answered",
       "kind": "lib",
       "entry": "api/_feedback.js",

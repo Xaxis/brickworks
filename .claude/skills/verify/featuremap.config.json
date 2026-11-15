@@ -5561,6 +5561,13 @@
       "entry": "src/dev/smalls2_probe.gd",
       "reach": "tools/probe.sh smalls2_probe   (windowed, 390x844 by its header; no sign-in; pictures in --shots=DIR; --only=more,timeline,select,line,words)",
       "area": "building"
+    },
+    {
+      "kind": "lib",
+      "label": "every set ranked",
+      "entry": "src/collection/set_ranking.gd",
+      "reach": "tools/probe.sh setsbuild_probe   (What can I build?'s Real sets: every set Rebrickable lists ranked from all_sets.bin by how much is owned, held to Collection.coverage set by set; parts_list which=\"buildable\"'s block of them)",
+      "area": "collection"
     }
   ]
 }

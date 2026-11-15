@@ -72,7 +72,17 @@ ui:a set's missing parts
 
 ## What can I build? {#build}
 
-**File › What can I build?…** ranks the examples, your saved models and LDraw's models of real sets by how much of each you own. On the website, [the gallery](/docs/gallery) sorts by **Parts I own**, and its *You can build now* shelf has the models you have every part for.
+**File › What can I build?…** opens on **Real sets**: every LEGO® set Rebrickable lists, the one you could build most of first. Each says how much of it you have in its colours (*92%*), how many pieces are short, and how much you have in any colour; the sets you own are left out. Your sets' parts and your loose parts all count, and another moulding of a part stands in, as What do I need? counts them.
+
+- **What do I need?** beside a set lists the parts you are short of for it, to find or to [buy](/docs/exports#shop-lists).
+- **Open** puts a set's official LDraw model on the baseplate, where one exists (**See it** on the website).
+- **Find a set** finds one by its number or a word of its name. The size choice starts at *50 pieces or more*, so minifigures and key chains do not fill the top; **Any size** lists them all.
+
+**Models** ranks the examples, your saved models and LDraw's models of real sets the same way. On the website, [the gallery](/docs/gallery) sorts by **Parts I own**, and its *You can build now* shelf has the models you have every part for. Your AI hears both lists when it asks what you can build.
+
+<!-- covers
+lib:every set ranked
+-->
 
 ## Build from a set's parts {#set-bin}
 

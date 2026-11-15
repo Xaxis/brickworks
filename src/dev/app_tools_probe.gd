@@ -251,6 +251,18 @@ func _parts() -> void:
 	_check("what it builds, as What can I build? ranks it, the crane saved among them: %s"
 		% crane_line, saved.begins_with("Written")
 		and crane_line.contains("app-tools-probe-crane (saved): owns 1 of its 5 pieces"))
+	# setsbuild: every real set in a block of its own, the page's order.
+	var block: PackedStringArray = said.substr(maxi(0, said.find("Real sets:"))).split("\n")
+	var ranking: SetRanking = await mine.inventories.ranking()
+	var sets_ranked: SetRanking.Ranked = ranking.rank(mine.on_hand) if ranking != null else null
+	var listed: PackedInt32Array = sets_ranked.listed(SetRanking.owned_sets(mine.collection), SetRanking.FEWEST) \
+		if sets_ranked != null else PackedInt32Array()
+	var as_page: bool = said.contains("Real sets:") and listed.size() > 8000 and block.size() > 26
+	for k: int in mini(25, listed.size()):
+		if as_page and block[k + 1].strip_edges() != sets_ranked.said(listed[k]):
+			as_page = false
+	_check("...and every real set in a block of its own, the page's first 25 in its order: %s"
+		% (block[1].strip_edges() if block.size() > 1 else said.right(80)), as_page)
 	DirAccess.remove_absolute(ModelStore.SAVE_DIR + "app-tools-probe-crane.ldr")
 	mine.on_hand = {}
 
