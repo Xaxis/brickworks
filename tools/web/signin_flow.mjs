@@ -407,12 +407,16 @@ try {
         }
         await page.locator("#oc-sign-in svg[data-oc-mark]").waitFor({ timeout: 15000 }).catch(() => null);
         const ways = await page.evaluate(() => {
-          const r = (one) => one?.getBoundingClientRect();
-          const go = r(document.querySelector("dialog.sign-in button[type=submit]"));
-          const oc = r(document.querySelector("#oc-sign-in"));
+          // Layout sizes, not the box on screen: the dialog rises in at 0.98
+          // of its size (site.css), and a loaded box measured it mid-rise,
+          // 363x43 for 368x44 (2026-11-14).
+          const size = (one) => [one.offsetWidth, one.offsetHeight];
+          const goes = document.querySelector("dialog.sign-in button[type=submit]");
+          const ocs = document.querySelector("#oc-sign-in");
           const or = document.querySelector("dialog.sign-in .or");
-          return { go: [Math.round(go.width), Math.round(go.height)], oc: [Math.round(oc.width), Math.round(oc.height)],
-            or: Boolean(or?.checkVisibility()) && /\bor\b/.test(or.textContent), below: oc.top > go.bottom,
+          return { go: size(goes), oc: size(ocs),
+            or: Boolean(or?.checkVisibility()) && /\bor\b/.test(or.textContent),
+            below: ocs.getBoundingClientRect().top > goes.getBoundingClientRect().bottom,
             mark: Math.round(document.querySelector("#oc-sign-in svg")?.getBoundingClientRect().width || 0) };
         });
         if (theme === "light") {
