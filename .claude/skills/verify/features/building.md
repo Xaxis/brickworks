@@ -365,7 +365,7 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   Return hands exactly it to the run (a stand-in, so no file dialog,
   browser or network) or, greyed, nothing; Render opens for real in five
   presses (Ctrl+/, R, E, N, Return). It also checks no command in two menus,
-  Edit at most 25 rows and 60% of the window, and the menu on a part's
+  Edit at most 25 rows and 63% of the window, and the menu on a part's
   Duplicate, Replace, Select the same part and colour, the step moves and
   Swing on its hinge (`swing`, J), each run from the menu. `palette in a
   browser` (preview check `palette`) drives it by keys in a browser
