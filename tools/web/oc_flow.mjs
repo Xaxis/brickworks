@@ -522,6 +522,12 @@ try {
     await made.close();
     return { signedIn, ticked, shown };
   };
+  // Its age answered first, as 6 does where orangecheck takes a token. On a
+  // deployment without the signing secret (a unit's preview) the first
+  // sign-in here made the account, the age question came up after the
+  // code, and the ask, which waits for the answer (account.js), was never
+  // sent in the three seconds given it (signinux2, 2026-11-14).
+  if (!session) await mintSession(person, { age: true });
   connectAsks.length = 0;
   const unticked = await signInByCode({ tick: false });
   check("Connect: unticked, a sign-in by code asks for no orangecheck account", unticked.signedIn && connectAsks.length === 0,
