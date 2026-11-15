@@ -1622,12 +1622,26 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   before: "Changes all 2 copies of Sill", and where the new part won't sit
   the same (another box or other connection points, `FindReplace._points`),
   would hold onto nothing (`SelectBy._joined_to`), or has no room (left as
-  it is, with any mirrored copy following it). A printed version of the
+  it is). A part in a copy goes with its twin in every other copy
+  (`FindReplace._twins`, laid as `Assemblies.copies_follow` lays them): one
+  twin with no room, or locked, keeps them all ("Pl has no room in 1 of its
+  2 copies, so all 2 stay", "1 left out: locked in one copy of Sill, so its
+  2 copies stay"), so no follow lays a part through another; two new parts
+  that would meet each other are refused too. Each found part counted once
+  (changed, no room, locked or "All 4 are that already", Replace then off);
+  the undo step says what changed after the copies followed
+  (`Builder.name_newest`), the status what stayed. Under Replace with, the
+  part it puts in is named ("Puts in: Brick 1 x 2 (3004)", or "No part
+  3023x" and Replace off). A printed version of the
   same mould goes exactly where the plain one stood. A session's
   `replace_parts` (`AppTools._replace_parts`) gives the same file in one
-  call, `preview: true` lists and says the fit and changes nothing. Locked
-  parts are left and said. On a phone More, Edit lists it and the bar is
-  laid out for a finger (`TouchSizing.place_panel`).
+  call, `preview: true` lists and says the fit and changes nothing; it takes
+  a part only by a number the library has (`FindReplace.known_part`, named in
+  the answer), a direct colour (0x2RRGGBB), and refuses 16, 24, colours
+  below -1 and a find= or replace= that is no object, showing the shape to
+  give. Locked parts are left and said. On a phone More, Edit lists it and
+  the bar is laid out for a finger (`TouchSizing.place_panel`), its list
+  scrolled by a finger's drag.
 - `undo history`: History (on the toolbar, and Edit, History) lists the steps in words, newest first ("swapped 2
   parts for Brick 2 x 3", "painted 2 parts"); choosing one goes back to before
   it (`Builder.undo_steps`).
@@ -3024,7 +3038,15 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   (LIVE_SAVED: the car as live's build saved it, replaced here; LIVE_OURS
   writes ours; LIVE_READ: live's save of ours, opened here as shown; it
   skips without them), `together` (a Build together room's sent parts and
-  its own undo), `words` (de, fr, es). For the live round trip, a worktree
+  its own undo), `words` (de, fr, es), `room_selection` (one copy selected,
+  its twin crowded, then locked: nothing changes, said), `big_room` (10179's
+  every 3023 a 3069b: each counted once, nothing laid through another part,
+  the step said by what changed, the undo to the byte). `swreview_probe`
+  (`SWREVIEW_CASES=room_copies,big`) holds the review's attacks: a copy with
+  no room, a sub-model in two parents, colour 16 and 24, direct colours, a
+  locked twin, what a typed part resolves to, a session's wrong shapes.
+  `swapfind_phone_probe` also scrolls a 37-row list by finger at 390 x 844
+  and taps its last row. For the live round trip, a worktree
   at the live sha opens and saves a file with a one-off script
   (`godot --headless --script` that opens through `ModelBar.open_text_with_progress`
   and writes `ModelStore.to_text(title, true)`).

@@ -2194,6 +2194,15 @@ func fold_since(depth: int, words: String = "") -> void:
 		"words": words if not words.is_empty() else "; ".join(said)})
 
 
+## The newest step said as [param words]: what it did, as only its maker
+## knows once it is done. Find and Replace counts the parts it changed after
+## the copies followed it, and its undo said "replaced 131" where 50 had
+## changed (swreview F2).
+func name_newest(words: String) -> void:
+	if not _history.is_empty() and not words.is_empty():
+		(_history.back() as Dictionary)["words"] = words
+
+
 ## A brick laid again as another number is the same brick to the history:
 ## a baseplate taken up and put back by a change of floor (FloorLayer).
 func renumber(old_id: int, new_id: int) -> void:

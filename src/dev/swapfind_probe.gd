@@ -31,7 +31,7 @@
 extends "res://src/dev/copyfaults_probe.gd"
 
 const FIND_CASES: Array = ["car", "mcp", "two_colours", "mirror", "three_deep", "wheels", "printed",
-	"footprint", "crlf", "live", "together", "words"]
+	"footprint", "crlf", "live", "together", "words", "room_selection", "big_room", "puts"]
 const CAR := "swapfind_car.mpd"
 const BLACK := 0
 const DARK_BLUISH_GREY := 72
@@ -76,6 +76,9 @@ func _run() -> void:
 			"live": await _case_live()
 			"together": await _case_together()
 			"words": await _case_words()
+			"room_selection": await _case_room_selection()
+			"big_room": await _case_big_room()
+			"puts": await _case_puts()
 			_: _check("no such case %s" % name, false)
 	print("\nswapfind probe: %s" % ("all checks passed" if _failures == 0
 		else "%d checks failed" % _failures))
@@ -285,8 +288,10 @@ func _case_mirror() -> void:
 		and not _left_of("3822"))
 	var done: Dictionary = await _bar.call("replace_now")
 	await _frames(4)
+	# Counted as changed, the mirrored side's door that followed too (swreview F2).
 	_check("mirror: the right side's 3821, the mirrored left's 3822 (%s; %d, %d)"
-		% [done, _count("3821", 4), _count("3822", 4)], int(done.get("changed", 0)) == 1
+		% [done, _count("3821", 4), _count("3822", 4)], int(done.get("changed", 0)) == 2
+		and int(done.get("followed", 0)) == 1
 		and _count("3821", 4) == 1 and _count("3822", 4) == 1 and _left_of("3822")
 		and not _left_of("3821"))
 	var after: String = _save()
@@ -453,7 +458,10 @@ func _case_footprint() -> void:
 		print("  %s: %s" % [into, said])
 		var made: Dictionary = _bar.get("made")
 		var otherwise: int = (made.get("otherwise", []) as Array).size()
-		var room: int = (made.get("room", []) as Array).size()
+		# Those with no room, and those with room kept with a twin in another
+		# copy that has none (swreview F1): every one left, as said.
+		var room: int = (made.get("room", []) as Array).size() \
+			+ (made.get("held", []) as Array).size()
 		_check("footprint %s: said before, %d places won't sit the same, %d have no room"
 			% [into, otherwise, room], otherwise + room > 0 and (said.contains("sit the same")
 				or said.contains("no room")))
@@ -605,7 +613,13 @@ func _case_words() -> void:
 		"In the model's own parts", "In Side and its copies", "In the selection",
 		"2 found in the selection", "2 found in the model's own parts", "2 found in Side and its copies",
 		"Sill: 3 in 2 copies", "1 has no room and stays as it is", "Used in 2 colours: all will be Dark Bluish Grey",
-		"3 would hold onto nothing", "1 have no room and stay as they are"]
+		"3 would hold onto nothing", "1 have no room and stay as they are",
+		"Puts in: Brick 1 x 2 (3004)", "No part 3023x", "All 4 are that already",
+		"Sill has no room in 1 of its 2 copies, so all 2 stay",
+		"Sill has no room for 2 of its parts in some of its 2 copies, so all 4 stay",
+		"1 left out: locked in one copy of Sill, so its 2 copies stay",
+		"2 left out: locked in copies of Sill, so all 4 of them stay",
+		"1 locked, left out: unlock it to change it", "3 locked, left out: unlock them to change them"]
 	_bar.call("set_find", "3023", -1)
 	_bar.call("set_into", "3623", DARK_BLUISH_GREY)
 	_bar.call("refresh")
@@ -641,3 +655,152 @@ func _case_words() -> void:
 		_check("words %s: each of the %d reads in the language%s" % [code, texts.size(),
 			"" if missing.is_empty() else ", but not " + "; ".join(missing)], missing.is_empty())
 	Language.apply("en")
+
+
+## A sub-model placed twice: the 3023 in the first copy has room for a 1 x 3,
+## the one in the second has the model's own plates beside it.
+const PLATES := """0 FILE pl.mpd
+0 Pl
+0 Name: pl.mpd
+0 Author: Brickworks
+
+1 16 0 0 0 1 0 0 0 1 0 0 0 1 pl.ldr
+1 16 0 0 100 1 0 0 0 1 0 0 0 1 pl.ldr
+1 4 -40 -8 100 1 0 0 0 1 0 0 0 1 3024.dat
+1 4 40 -8 100 1 0 0 0 1 0 0 0 1 3024.dat
+0
+0 NOFILE
+0 FILE pl.ldr
+0 Pl
+0 Name: pl.ldr
+0 Author: Brickworks
+
+1 0 0 -8 0 1 0 0 0 1 0 0 0 1 3023.dat
+0
+0 NOFILE
+"""
+
+
+## The copy with room selected alone, its twin in the copy without room not
+## found (swreview F1): the replace would have the twin follow through the
+## plates beside it, so neither changes, and the bar says why before; then
+## the twin locked instead of crowded, and neither changes again.
+func _case_room_selection() -> void:
+	await _open(PLATES)
+	var free: BrickWorld.Brick = null
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == "3023b" and brick.transform.origin.z > -50.0:
+			free = brick
+	_builder.clear_selection()
+	_builder.selection[free.id] = true
+	_builder.selection_changed.emit(1)
+	_shell.run("find_replace")
+	await _frames(4)
+	_bar = _main.get("_find_replace_made")
+	var before: String = _save()
+	_bar.call("set_find", "3023", BLACK)
+	_bar.call("set_into", "3623", -1)
+	_bar.call("set_where", "selection")
+	_bar.call("refresh")
+	var said: String = _bar_said()
+	print("  selection: %s" % said)
+	var made: Dictionary = _bar.get("made")
+	_check("room_selection: 1 found, held with its crowded twin, said (%s)" % said,
+		(_bar.get("found")["ids"] as Array).size() == 1 and (made["held"] as Array).size() == 1
+		and said.contains("Pl has no room in 1 of its 2 copies, so all 2 stay"))
+	var done: Dictionary = await _bar.call("replace_now")
+	await _frames(6)
+	print("  done %s" % done)
+	_check("room_selection: nothing changed, nothing laid through the plates (%s)" % _diff(before,
+		_save()), _save() == before and int(done.get("changed", -1)) == 0 and _count("3623", BLACK) == 0)
+	# The crowded twin locked, the plates gone: the lock holds both.
+	var crowded: BrickWorld.Brick = null
+	for brick: BrickWorld.Brick in _world.bricks():
+		if brick.part_id == "3023b" and brick.id != free.id:
+			crowded = brick
+	_builder.clear_selection()
+	_builder.selection[crowded.id] = true
+	_builder.lock_selection(true)
+	_builder.selection[free.id] = true
+	_builder.selection_changed.emit(1)
+	_bar.call("set_where", "selection")
+	_bar.call("set_into", "", DARK_BLUISH_GREY)
+	_bar.call("refresh")
+	said = _bar_said()
+	print("  locked twin: %s" % said)
+	await _bar.call("replace_now")
+	await _frames(6)
+	_check("room_selection: its twin locked, the paint held for both, said (%d grey)"
+		% _count("3023", DARK_BLUISH_GREY), _count("3023", DARK_BLUISH_GREY) == 0
+		and said.contains("1 left out: locked in one copy of Pl, so its 2 copies stay"))
+	_builder.unlock_all()
+
+
+## 10179's every 3023 made a 3069b (swreview F1, F2): each counted once,
+## changed or kept for want of room; no part put down through another; the
+## undo step says what changed; one undo the file before, to the byte.
+func _case_big_room() -> void:
+	var text: String = FileAccess.get_file_as_string("res://vendor/omr/files/10179-1.mpd")
+	await _bar_on(text)
+	var before: String = _save()
+	var had: Dictionary = {}
+	for brick: BrickWorld.Brick in _world.bricks():
+		had[brick.id] = true
+	_bar.call("set_find", "3023", -1)
+	_bar.call("set_into", "3069b", -1)
+	var began: int = Time.get_ticks_msec()
+	_bar.call("refresh")
+	var plan_ms: int = Time.get_ticks_msec() - began
+	var found: int = (_bar.get("found")["ids"] as Array).size()
+	var made: Dictionary = _bar.get("made")
+	print("  plan %d ms: %d found; %d change, %d follow, %d room, %d held, %d same" % [plan_ms, found,
+		(made["changes"] as Array).size(), (made["follow"] as Array).size(),
+		(made["room"] as Array).size(), (made["held"] as Array).size(), int(made["same"])])
+	began = Time.get_ticks_msec()
+	var depth: int = _builder.history_depth()
+	var done: Dictionary = await _bar.call("replace_now")
+	await _frames(6)
+	print("  replace %d ms: %s" % [Time.get_ticks_msec() - began, done])
+	var through := PackedStringArray()
+	var laid: int = 0
+	for brick: BrickWorld.Brick in _world.bricks():
+		if had.has(brick.id) or _store.scenery.has(brick.id):
+			continue
+		laid += 1
+		var packed: PackedInt32Array = _builder.boxes_for(_library.mesh_for(brick.part_id),
+			brick.transform)
+		for other: int in _builder.lattice.blockers_boxes(packed, brick.id):
+			through.append("%s at %s through %s" % [brick.part_id, brick.transform.origin,
+				_world.get_brick(other).part_id])
+	_check("big_room: %d laid, none through another part (%s)" % [laid, ", ".join(through.slice(0, 4))],
+		laid > 0 and through.is_empty())
+	_check("big_room: each found counted once, changed or kept for want of room (%d + %d of %d)" % [
+		int(done["changed"]) - int(done["followed"]), int(done["room"]), found],
+		int(done["changed"]) - int(done["followed"]) + int(done["room"]) == found
+		and laid == int(done["changed"]))
+	var words: String = _builder.history_words(1)[0]
+	_check("big_room: one step, said by what changed (%s)" % words, _builder.history_depth() == depth + 1
+		and words.begins_with("replaced %d " % int(done["changed"])))
+	var undone: String = await _undone()
+	_check("big_room: one undo, the file before to the byte (%s)" % _diff(before, undone), undone == before)
+
+
+## What the bar will put in, named before Replace (swreview F4, F6): a
+## number, a name the library's search reads, one it has not got, and the
+## part each one found is already.
+func _case_puts() -> void:
+	await _bar_on(_fixture(CAR))
+	var before: String = _save()
+	var replace: Button = _bar.get("_replace")
+	for typed: Array in [["3004", "Puts in: Brick 1 x 2 (3004)", false],
+			["brick 1 x 2", "Puts in: Brick 1 x 2 (3004)", false],
+			["qqzzxx", "No part qqzzxx", true], ["3023b", "All 4 are that already", true]]:
+		_bar.call("set_find", "3023", BLACK)
+		_bar.call("set_into", typed[0], -1)
+		_bar.call("refresh")
+		var said: String = _bar_said()
+		print("  %s: %s" % [typed[0], said])
+		_check("puts %s: the bar says '%s', Replace %s" % [typed[0], typed[1], "off" if typed[2] else "on"],
+			said.contains(typed[1]) and replace.disabled == typed[2])
+	var done: Dictionary = await _bar.call("replace_now")
+	_check("puts: Replace off does nothing (%s)" % _diff(before, _save()), done.is_empty() and _save() == before)

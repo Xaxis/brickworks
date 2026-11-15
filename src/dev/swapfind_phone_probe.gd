@@ -11,7 +11,9 @@
 ## colours and Dark Bluish Grey from the replace's, each list opened by a
 ## tap; Replace tapped, and the car's every Black 3023, its sub-models' too,
 ## Dark Bluish Grey in one undo step; Close tapped, the bar gone; the undo
-## gives the file opened to the byte.
+## gives the file opened to the byte. Then a find of 37 rows (32 sub-models
+## with a 3023 each): the bar inside the screen, a finger's drags up its
+## list bring the last row into sight, and a tap on it selects its part.
 extends SceneTree
 
 const CAR := "res://src/dev/fixtures/swapfind_car.mpd"
@@ -159,6 +161,97 @@ func _by_finger(text: String) -> void:
 	await _frames(20)
 	_check("its undo: the file opened, to the byte", _store.to_text(_store.title, true) == text)
 	print("  presses in all: %d" % _presses)
+	await _many_rows(bar)
+
+
+## A find with more rows than the bar shows (swreview: never proved): 32
+## sub-models each with a 3023, 33 rows in its list. The bar stays inside
+## the screen, each row a fingertip each way; a finger's drags up the list,
+## not a probe's call, bring the last row into sight; a tap on it selects
+## the part found there.
+func _many_rows(bar: PanelContainer) -> void:
+	var lines := PackedStringArray(["0 FILE many.mpd", "0 Many", "0 Name: many.mpd",
+		"0 Author: Brickworks", ""])
+	for n: int in 32:
+		lines.append("1 16 %d 0 %d 1 0 0 0 1 0 0 0 1 part%02d.ldr" % [(n % 8) * 60, (n / 8) * 60, n])
+	lines.append_array(["0", "0 NOFILE"])
+	for n: int in 32:
+		lines.append_array(["0 FILE part%02d.ldr" % n, "0 Part %02d" % n,
+			"0 Name: part%02d.ldr" % n, "0 Author: Brickworks", "",
+			"1 %d 0 -8 0 1 0 0 0 1 0 0 0 1 3023.dat" % [0, 4, 72, 14][n % 4], "0", "0 NOFILE"])
+	_main.call("clear_model")
+	await _frames(4)
+	var model_bar: ModelBar = _main.get("_bar")
+	var opened: Dictionary = await model_bar.open_text_with_progress("\n".join(lines) + "\n", "many")
+	model_bar.opened.emit(int(opened.get("placed", 0)))
+	await _frames(20)
+	_shell.run("find_replace")
+	await _frames(10)
+	bar.call("set_find", "3023", -1)
+	bar.call("set_where", "all")
+	bar.call("refresh")
+	await _frames(10)
+	var list: VBoxContainer = bar.get("_list")
+	var scroll: ScrollContainer = _scroll_of(list)
+	var rows: Array = list.get_children().filter(func(row: Node) -> bool:
+		return row is Button and not row.is_queued_for_deletion())
+	var listed: int = list.get_children().filter(func(row: Node) -> bool:
+		return not row.is_queued_for_deletion()).size()
+	var screen: Rect2 = root.get_visible_rect()
+	print("  many: %d parts, %d rows in the list (%d buttons); the list %s, its rows %s"
+		% [_world.brick_count(), listed, rows.size(), scroll.get_global_rect().size,
+			list.size])
+	if not _check("many: 32 places found, 30 rows and more in the list (%d)" % listed,
+			rows.size() == 32 and listed >= 30):
+		return
+	_check("many: the bar inside the screen (%s in %s)" % [bar.get_global_rect(), screen],
+		screen.grow(1.0).encloses(bar.get_global_rect()))
+	_check("many: every row a fingertip each way (%s)" % _small_in(bar), _small_in(bar).is_empty())
+	var last: Button = rows.back()
+	var window: Rect2 = scroll.get_global_rect()
+	_check("many: the list is shorter than its rows, the last row out of sight (%.0f of %.0f pt)"
+		% [window.size.y / _pt(), list.size.y / _pt()], not window.grow(1.0).encloses(last.get_global_rect()))
+	var drags: int = 0
+	var began: int = scroll.scroll_vertical
+	while drags < 40 and not scroll.get_global_rect().grow(1.0).encloses(last.get_global_rect()):
+		var middle: Vector2 = window.get_center()
+		var reach: float = window.size.y * 0.35
+		await _finger_drag(middle + Vector2(0, reach), middle - Vector2(0, reach))
+		drags += 1
+	print("  many: %d drags took the list from %d to %d of %d" % [drags, began, scroll.scroll_vertical,
+		scroll.get_v_scroll_bar().max_value])
+	_check("many: a finger's drags up the list bring the last row into sight (%d drags, %d -> %d)"
+		% [drags, began, scroll.scroll_vertical], scroll.scroll_vertical > began
+		and scroll.get_global_rect().grow(1.0).encloses(last.get_global_rect()))
+	var wanted: String = last.text.get_slice(":", 0)
+	await _tap(_middle(last))
+	await _frames(10)
+	var picked: Array = _builder.selection.keys()
+	var path: String = Assemblies.path_of(_world.get_brick(int(picked[0]))) if picked.size() == 1 else ""
+	_check("many: a tap on the last row (%s) selects its part (%d selected, in %s)" % [last.text,
+		picked.size(), path], picked.size() == 1
+		and Assemblies.definition(Assemblies.leaf(path)) == wanted)
+
+
+## A finger dragged from [param from] to [param to] in 12 moves, still a
+## moment before it lifts, as phonepanels_probe drags one.
+func _finger_drag(from: Vector2, to: Vector2) -> void:
+	_presses += 1
+	_touch(from, true)
+	await _frames(2)
+	var at: Vector2 = from
+	for k: int in range(1, 13):
+		var next: Vector2 = from.lerp(to, k / 12.0)
+		var drag := InputEventScreenDrag.new()
+		drag.index = 0
+		drag.position = _as_event(next)
+		drag.relative = _as_event(next) - _as_event(at)
+		Input.parse_input_event(drag)
+		at = next
+		await _frames(2)
+	await create_timer(0.3).timeout
+	_touch(to, false)
+	await _frames(8)
 
 
 ## An OptionButton's list opened by a tap, and [param code]'s row chosen in

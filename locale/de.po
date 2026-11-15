@@ -14638,3 +14638,32 @@ msgstr "Die Farbe, die es bekommt"
 
 msgid "Where to look"
 msgstr "Wo gesucht wird"
+
+# Find and replace: the part it puts in, named; a part kept with its twins in every copy when one has no room or is locked; every one that already (swfix)
+
+msgid "Puts in: %s (%s)"
+msgstr "Setzt ein: %s (%s)"
+
+msgid "No part %s"
+msgstr "Kein Teil %s"
+
+msgid "All %d are that already"
+msgstr "Alle %d sind das schon"
+
+msgid "%s has no room in %d of its %d copies, so all %d stay"
+msgstr "%s hat in %d seiner %d Kopien keinen Platz, also bleiben alle %d"
+
+msgid "%s has no room for %d of its parts in some of its %d copies, so all %d stay"
+msgstr "%s hat für %d seiner Teile in einigen seiner %d Kopien keinen Platz, also bleiben alle %d"
+
+msgid "1 left out: locked in one copy of %s, so its %d copies stay"
+msgstr "1 ausgelassen: in einer Kopie von %s gesperrt, also bleiben seine %d Kopien"
+
+msgid "%d left out: locked in copies of %s, so all %d of them stay"
+msgstr "%d ausgelassen: in Kopien von %s gesperrt, also bleiben alle %d"
+
+msgid "1 locked, left out: unlock it to change it"
+msgstr "1 gesperrt, ausgelassen: entsperre es, um es zu ändern"
+
+msgid "%d locked, left out: unlock them to change them"
+msgstr "%d gesperrt, ausgelassen: entsperre sie, um sie zu ändern"

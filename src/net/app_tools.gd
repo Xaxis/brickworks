@@ -6125,7 +6125,7 @@ static func _replace_parts_definition() -> Dictionary:
 		"part": {"type": "string",
 			"description": "a part's number as look_at_model and parts_list give it (\"3023b\"); a mould's number finds every letter of it (\"3023\" finds 3023a and 3023b)"},
 		"color": {"type": "integer",
-			"description": "an LDraw colour code: 0 Black, 72 Dark Bluish Grey, 71 Light Bluish Grey"},
+			"description": "an LDraw colour code: 0 Black, 72 Dark Bluish Grey, 71 Light Bluish Grey; or a direct colour as its number (0x2FF0000, 50266112); in replace=, never 16 or 24, which are no part's own colour"},
 	}}
 	return {
 		"name": "replace_parts",
@@ -6142,8 +6142,12 @@ static func _replace_parts_definition() -> Dictionary:
 			+ "copies) and every colour it is used in, flags a part used in more than one "
 			+ "colour, and says where a new part will not sit as the old one did (another "
 			+ "footprint, other connection points) or would hold onto nothing, and where it has "
-			+ "no room and is left. With no replace= or with preview=true it changes nothing "
-			+ "and lists only."),
+			+ "no room and is left. A part in a copy changes with its twin in every other copy "
+			+ "or not at all: where one copy has no room for the new part, or the part is locked "
+			+ "in one, every copy keeps it, and the answer says so. replace= {\"part\"} is a "
+			+ "number the library has (search_parts finds one), and the answer names the part "
+			+ "it puts in. With no replace= or with preview=true it changes nothing and lists "
+			+ "only."),
 		"input_schema": {"type": "object", "additionalProperties": false, "required": ["find"],
 			"properties": {
 				"find": parts,
@@ -6157,29 +6161,44 @@ static func _replace_parts_definition() -> Dictionary:
 
 
 ## replace_parts: Find and Replace (FindReplace), as the window's bar does it.
+## What it is given is held to the shapes its schema shows, and a refusal
+## shows the shape to give (swreview F5, F7, F8): find= and replace=
+## objects; a colour an LDraw code or a direct colour (0x2RRGGBB), and to
+## give a part, none of 16 (a sub-model's placing colour) or 24 (an edge's);
+## a part to put in by its number as the library has it, never a search's
+## guess, and named in the answer (F4).
 func _replace_parts(input: Dictionary) -> String:
 	var finder: RefCounted = Later.script(&"FindReplace").new(app)
+	for side: String in ["find", "replace"]:
+		if input.has(side) and not input.get(side) is Dictionary:
+			return "%s= is an object: %s= {\"part\": \"3023\"}, {\"color\": 72}, or both." % [side, side]
 	var asked: Dictionary = input.get("find", {}) if input.get("find") is Dictionary else {}
 	var into: Dictionary = input.get("replace", {}) if input.get("replace") is Dictionary else {}
 	var where: String = str(input.get("where", "all"))
 	if not where in ["all", "submodel", "selection"]:
 		return "where= is \"all\", \"submodel\" or \"selection\"."
 	var find: Dictionary = {"part": str(asked.get("part", "")).strip_edges(),
-		"color": finder.call("colour_of", asked.get("color", -1))}
+		"color": finder.call("colour_of", asked.get("color"))}
 	var put: Dictionary = {"part": str(into.get("part", "")).strip_edges(),
-		"color": finder.call("colour_of", into.get("color", -1))}
-	if str(find["part"]).is_empty() and int(find["color"]) < 0:
-		return "Say what to find: find= {\"part\": \"3023\"}, {\"color\": 0}, or both."
-	for side: Array in [["find", find], ["replace", put]]:
+		"color": finder.call("colour_of", into.get("color"))}
+	for side: Array in [["find", find, asked], ["replace", put, into]]:
 		if int((side[1] as Dictionary)["color"]) == -2:
-			return "No colour %s: give an LDraw colour code (0 Black, 72 Dark Bluish Grey)." % (
-				input.get(side[0], {}) as Dictionary).get("color")
+			return ("No colour %s in %s=: give an LDraw colour code (0 Black, 72 Dark Bluish "
+				+ "Grey), or a direct colour as a file writes it (\"0x2FF0000\"), as %s= "
+				+ "{\"color\": 72}.") % [(side[2] as Dictionary).get("color"), side[0], side[0]]
+	if str(find["part"]).is_empty() and int(find["color"]) == -1:
+		return "Say what to find: find= {\"part\": \"3023\"}, {\"color\": 0}, or both."
+	var not_a_colour: String = Later.script(&"FindReplace").not_a_part_colour(int(put["color"]))
+	if not not_a_colour.is_empty():
+		return not_a_colour
+	var puts: String = ""
 	if not str(put["part"]).is_empty():
-		var known: String = finder.call("part_of", put["part"])
+		var known: String = finder.call("known_part", put["part"])
 		if known.is_empty():
-			return "No part %s in the library to replace with: search_parts finds its number." \
-				% put["part"]
+			return ("No part %s in the library to replace with: give its number as search_parts "
+				+ "or look_at_model gives it, as replace= {\"part\": \"3023b\"}.") % put["part"]
 		put["part"] = known
+		puts = "\nPuts in %s (%s)." % [finder.call("part_name", known), known]
 	if where == "selection" and (app.get("_builder") as Builder).selection.is_empty():
 		return "Nothing is selected: where=\"all\" looks in the whole model."
 	var found: Dictionary = finder.call("find", find, where)
@@ -6191,14 +6210,20 @@ func _replace_parts(input: Dictionary) -> String:
 		var ahead: String = ""
 		if changes:
 			ahead = await finder.call("ahead", found, put)
-		return listed + ("\n" + ahead if not ahead.is_empty() else "") \
+		return listed + puts + ("\n" + ahead if not ahead.is_empty() else "") \
 			+ ("\nNothing changed (preview)." if changes else "\nGive replace= to change them.")
 	var ahead: String = await finder.call("ahead", found, put)
 	var done: Dictionary = finder.call("replace", found, put)
-	var said: String = listed + ("\n" + ahead if not ahead.is_empty() else "")
+	var said: String = listed + puts + ("\n" + ahead if not ahead.is_empty() else "")
+	var stayed: String = str(done.get("stayed", ""))
+	if stayed.begins_with("All "):
+		stayed = "a" + stayed.substr(1)
 	if int(done["changed"]) == 0:
-		return said + "\nNothing changed: none had room for it."
+		return said + "\nNothing changed: %s." % (stayed if not stayed.is_empty()
+			else "none had room for it")
 	var copies: String = finder.call("copies_words", found)
-	return said + "\nReplaced %d with %s %s, as one undo step%s." % [int(done["changed"]),
+	return said + "\nReplaced %d with %s %s, as one undo step%s.%s" % [int(done["changed"]),
 		finder.call("into_words", put), finder.call("where_words", found),
-		"" if copies.is_empty() else "; it " + copies + ", as an edit inside a sub-model does"]
+		"" if copies.is_empty() else "; it " + copies + ", as an edit inside a sub-model does",
+		"" if stayed.is_empty() else " %d stayed: %s." % [int(done["room"])
+			+ int(done["locked"]), stayed]]

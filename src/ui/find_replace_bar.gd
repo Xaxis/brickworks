@@ -31,6 +31,9 @@ var _find_part: LineEdit
 var _find_colour: OptionButton
 var _into_part: LineEdit
 var _into_colour: OptionButton
+## The row under Replace with that names the part it puts in, its cells.
+var _puts: Label
+var _puts_row: Array[Control] = []
 var _where: OptionButton
 var _list: VBoxContainer
 var _flag: Label
@@ -123,12 +126,16 @@ func refresh() -> void:
 	found = _finder.find(finding, where())
 	var putting: Dictionary = into()
 	made = {}
-	if not (found["ids"] as Array).is_empty() and _changes(putting):
+	if not (found["ids"] as Array).is_empty() and _changes(putting) and not _unknown():
 		var part: String = putting["part"]
-		if not part.is_empty() and _finder.library.mesh_for(part) == null:
-			# Its shape is on its way (the web fetches what it has not got):
-			# said again once it is here.
-			_fetch(part)
+		var other: String = "" if part.is_empty() \
+			else Later.script(&"Mirror").counterpart(_finder.library, part)
+		if not part.is_empty() and (_finder.library.mesh_for(part) == null
+				or not other.is_empty() and _finder.library.mesh_for(other) == null):
+			# Its shape is on its way (the web fetches what it has not got),
+			# and its other hand's, which a copy a mirror places is given:
+			# said again once they are here.
+			_fetch(part, other)
 		else:
 			made = _finder.plan(found, putting)
 	_show()
@@ -139,17 +146,23 @@ func refresh() -> void:
 func replace_now() -> Dictionary:
 	refresh()
 	var putting: Dictionary = into()
-	if found.is_empty() or (found["ids"] as Array).is_empty() or not _changes(putting):
+	if found.is_empty() or (found["ids"] as Array).is_empty() or not _changes(putting) \
+			or _unknown() or _replace.disabled:
 		return {}
 	if not str(putting["part"]).is_empty() and await _finder.shape(str(putting["part"])) == null:
 		say.call("the part's shape could not be had")
 		return {}
-	var done: Dictionary = _finder.replace(found, putting)
+	# The plan refresh made a moment ago, as the bar shows it.
+	var done: Dictionary = _finder.replace(found, putting, made)
 	var changed: int = int(done["changed"])
+	var stayed: String = str(done.get("stayed", ""))
 	if changed > 0:
-		say.call(Keymap.filled("%s — {undo|takes it back}") % done["words"])
+		# What changed, and what stayed and why, each part said once.
+		say.call(Keymap.filled("%s — {undo|takes it back}") % (str(done["words"])
+			+ ("" if stayed.is_empty() else "; %d stayed: %s" % [int(done["room"])
+				+ int(done["locked"]), stayed])))
 	else:
-		say.call("nothing replaced: none had room for it")
+		say.call("nothing replaced: " + (stayed if not stayed.is_empty() else "none had room for it"))
 	refresh()
 	return done
 
@@ -163,9 +176,13 @@ func _show() -> void:
 	_flag.visible = false
 	_copies.visible = false
 	_fit.visible = false
+	_say_puts()
 	var count: int = 0 if found.is_empty() else (found["ids"] as Array).size()
 	_select.disabled = count == 0
-	_replace.disabled = count == 0 or not _changes(into())
+	# Nothing to change: none found, nothing given, a part the library has
+	# not got, or every one that already (swreview F6).
+	_replace.disabled = count == 0 or not _changes(into()) or _unknown() \
+		or (not made.is_empty() and int(made["same"]) == count)
 	if found.is_empty():
 		_line("Type a part's number or name, or choose a colour, to find it.", 0.7)
 		return
@@ -192,8 +209,8 @@ func _show() -> void:
 	if not copied.is_empty() and _changes(into()):
 		_copies.text = "\n".join(copied)
 		_copies.visible = true
+	var lines := PackedStringArray()
 	if not made.is_empty():
-		var lines := PackedStringArray()
 		var otherwise: int = (made["otherwise"] as Array).size()
 		if otherwise > 0:
 			lines.append("Won't sit the same in %d of %d places: another footprint or other connection points"
@@ -201,14 +218,13 @@ func _show() -> void:
 		var floats: int = (made["floats"] as Array).size()
 		if floats > 0:
 			lines.append("%d would hold onto nothing" % floats)
-		var room: int = (made["room"] as Array).size()
-		if room == 1:
-			lines.append("1 has no room and stays as it is")
-		elif room > 1:
-			lines.append("%d have no room and stay as they are" % room)
-		if not lines.is_empty():
-			_fit.text = "\n".join(lines)
-			_fit.visible = true
+	# What stays, and why: no room, a twin in another copy with none, a
+	# lock, or each one that already; and those locked, before a replace
+	# is chosen too.
+	lines.append_array(FindReplace.stay_words(found, made))
+	if not lines.is_empty():
+		_fit.text = "\n".join(lines)
+		_fit.visible = true
 
 
 func _count_words(count: int) -> String:
@@ -296,6 +312,28 @@ func _select_ids(ids: Array) -> void:
 
 func _changes(putting: Dictionary) -> bool:
 	return not str(putting["part"]).is_empty() or int(putting["color"]) >= 0
+
+
+## Whether the part typed to replace with names none the library has.
+func _unknown() -> bool:
+	return not _into_part.text.strip_edges().is_empty() and str(into()["part"]).is_empty()
+
+
+## The part Replace puts in, named under Replace with as the library has it:
+## a number typed, a moved number's new one, or the part a name typed finds
+## first ("brick" puts in a 3004): "Puts in: Brick 1 x 2 (3004)", or "No
+## part 3023x", Replace then off (swreview F4).
+func _say_puts() -> void:
+	var typed: String = _into_part.text.strip_edges()
+	var part: String = str(into()["part"])
+	for cell: Control in _puts_row:
+		cell.visible = not typed.is_empty()
+	if typed.is_empty():
+		_puts.text = ""
+	elif part.is_empty():
+		_puts.text = "No part %s" % typed
+	else:
+		_puts.text = "Puts in: %s (%s)" % [_finder.part_name(part), part]
 
 
 ## A part typed: its number as typed for a find (3023 finds every letter of
@@ -391,9 +429,12 @@ func set_where_quietly(keep: String) -> void:
 			_where.select(n)
 
 
-## Said again once [param part]'s shape is here.
-func _fetch(part: String) -> void:
+## Said again once [param part]'s shape is here, and its other hand's
+## ([param other], "" for none).
+func _fetch(part: String, other: String) -> void:
 	var shape: Lbm.PartMesh = await _finder.shape(part)
+	if not other.is_empty():
+		await _finder.shape(other)
 	if shape != null and visible:
 		refresh()
 
@@ -443,6 +484,23 @@ func _build() -> void:
 		grid.add_child(Control.new())
 	_into_colour = _options(grid, "The colour to give it")
 	_fill_into_colours()
+	# Under it, the part Replace puts in, named: a row of its own, shown
+	# while a part is typed (a grid's hidden cell would move the others).
+	_puts_row.append(Control.new())
+	grid.add_child(_puts_row[0])
+	_puts = Label.new()
+	_puts.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_puts.add_theme_font_size_override("font_size", 12)
+	_puts.add_theme_color_override("font_color", Color(0.62, 0.8, 1.0))
+	_puts.custom_minimum_size = Vector2(150, 0)
+	_puts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_child(_puts)
+	_puts_row.append(_puts)
+	if not stacked:
+		_puts_row.append(Control.new())
+		grid.add_child(_puts_row[2])
+	for cell: Control in _puts_row:
+		cell.visible = false
 	_label(grid, "Where")
 	_where = _options(grid, "Where to look")
 	_where.size_flags_horizontal = Control.SIZE_EXPAND_FILL

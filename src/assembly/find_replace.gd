@@ -22,6 +22,13 @@
 ## footprint or other connection points (its studs, holes, pins and what
 ## takes a stud), at how many places, and where it would hold onto nothing.
 ## One with no room is left as it was, and said; a locked part is left too.
+## A part in a copy of a sub-model goes with its twin in every other copy,
+## each laid where the copies' follow lays it: where one of them has no room
+## for the new part, or is locked, all of them stay, and that is said ("Pl
+## has no room in 1 of its 2 copies, so all 2 stay"). A follow lays a twin
+## without asking whether it fits, and copies follow whatever is locked, so
+## a replace changes no copy it cannot change in all of them (swreview F1,
+## F3).
 class_name FindReplace
 extends RefCounted
 
@@ -64,8 +71,8 @@ func _init(app: Node = null) -> void:
 ## colour found -> how many; "places": [{"name": a sub-model's, or "" for
 ## the model's own parts, "count", "copies": how many copies the model has
 ## of it}], the model first, then by name; "locked": how many found are
-## locked, and left out; "where", "inside": the sub-model being edited (""
-## for the model)}.
+## locked, and left out, "locked_ids" which; "where", "inside": the
+## sub-model being edited ("" for the model)}.
 func find(asked: Dictionary, where: String) -> Dictionary:
 	var part: String = str(asked.get("part", "")).strip_edges()
 	var colour: int = int(asked.get("color", -1))
@@ -73,7 +80,8 @@ func find(asked: Dictionary, where: String) -> Dictionary:
 	var looked: Array = _looked_in(where, inside)
 	var frames: Dictionary = _frames_for(looked)
 	var out: Dictionary = {"ids": [], "mirrored": {}, "follow": {}, "part": part, "parts": {},
-		"colours": {}, "places": [], "locked": 0, "where": where, "inside": inside}
+		"colours": {}, "places": [], "locked": 0, "locked_ids": [], "where": where,
+		"inside": inside}
 	var by_def: Dictionary = {}
 	for brick: BrickWorld.Brick in looked:
 		var path: String = Assemblies.path_of(brick)
@@ -83,6 +91,7 @@ func find(asked: Dictionary, where: String) -> Dictionary:
 			continue
 		if builder.is_locked(brick.id):
 			out["locked"] = int(out["locked"]) + 1
+			(out["locked_ids"] as Array).append(brick.id)
 			continue
 		(out["ids"] as Array).append(brick.id)
 		if not _mirror_of(path, frames).is_empty():
@@ -236,21 +245,32 @@ func _copies_by_definition() -> Dictionary:
 
 
 ## What each part of [param found] would be given [param into] ({"part": a
-## number or "" for its own, "color": a code or -1 for its own}): {
+## number or "" for its own, "color": a code or -1 for its own}), each with
+## its twins in every other copy of its sub-model, laid where the copies'
+## follow lays them ([method _twins]): all of them change, or all stay. {
 ## "changes": [{"brick", "part", "color", "at"}] for those changed where they
-## stand; "follow": the ids left to follow their copy; "same": how many are
-## that already; "room": the ids with no room for it; "otherwise": the ids
-## where it will not sit as the old one did (another footprint, other
+## stand; "follow": the ids found left to follow their copy; "followers":
+## the ids not found that change as their copy follows; "same": how many
+## found are that already; "room": the ids found with no room for it;
+## "held": the ids found with room that stay with a twin that has none;
+## "locked": the ids found that stay with a twin that is locked; "stays":
+## each part with copies that stays, {"name": its sub-model's, "copies": how
+## many parts it and its twins are, "room": how many of them have no room,
+## "locked": how many are locked, "ids": them all}; "otherwise": the ids
+## found where it will not sit as the old one did (another footprint, other
 ## connection points); "floats": of those, the ids where it would hold onto
 ## nothing that held the old one; "missing": the part's number when its
-## shape is not here}.
+## shape is not here}. Each found part is counted once: changed (with
+## "follow"), "same", "room", "held" or "locked".
 func plan(found: Dictionary, into: Dictionary) -> Dictionary:
 	var part: String = str(into.get("part", "")).strip_edges()
 	var colour: int = int(into.get("color", -1))
-	var out: Dictionary = {"changes": [], "follow": [], "same": 0, "room": [], "otherwise": [],
-		"floats": [], "missing": ""}
+	var out: Dictionary = {"changes": [], "follow": [], "followers": [], "same": 0, "room": [],
+		"held": [], "locked": [], "stays": [], "otherwise": [], "floats": [], "missing": ""}
 	var following: Dictionary = found.get("follow", {})
-	var sel: Variant = Later.script(&"SelectBy")
+	# Each found part that changes, as it would be where it stands.
+	var moving: Dictionary = {}      ## id -> {"part", "color", "at", "follows"}
+	var order: Array = []
 	for brick_id: int in found["ids"]:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
 		if brick == null:
@@ -267,34 +287,241 @@ func plan(found: Dictionary, into: Dictionary) -> Dictionary:
 			continue
 		var at: Transform3D = brick.transform
 		if new_part != brick.part_id:
-			var was: Lbm.PartMesh = library.mesh_for(brick.part_id)
 			var shape: Lbm.PartMesh = library.mesh_for(new_part)
 			if shape == null:
 				out["missing"] = new_part
 				continue
-			at = _placed(brick.transform, was, shape)
-			var packed: PackedInt32Array = builder.boxes_for(shape, at)
-			if not follows and builder.lattice.collides_boxes(packed, brick_id):
-				(out["room"] as Array).append(brick_id)
+			at = _placed(brick.transform, library.mesh_for(brick.part_id), shape)
+		moving[brick_id] = {"part": new_part, "color": new_colour, "at": at, "follows": follows}
+		order.append(brick_id)
+	# Each with its twins: those found, and those its copies' follow reaches.
+	var joined: Dictionary = {}      ## id -> the id it is grouped under
+	var reached: Dictionary = {}     ## a twin -> [the found part it follows, the copies' fit]
+	if assemblies != null and not order.is_empty():
+		var copies: Dictionary = _copies_by_definition()
+		var matches: Dictionary = {}
+		var copied: Dictionary = {}
+		assemblies._begin_pass()
+		for brick_id: int in order:
+			if bool(moving[brick_id]["follows"]):
+				_join(joined, brick_id, int(following[brick_id]))
 				continue
-			if not _sits_alike(was, brick.transform, shape, at):
-				(out["otherwise"] as Array).append(brick_id)
-				var held: Array = sel._joined_to(world, builder.lattice, brick_id)
-				if not held.is_empty() and _held_by(packed, brick_id, at, sel).is_empty():
-					(out["floats"] as Array).append(brick_id)
-		if follows:
-			(out["follow"] as Array).append(brick_id)
-		else:
-			(out["changes"] as Array).append({"brick": brick_id, "part": new_part,
-				"color": new_colour, "at": at})
-	# One that follows a twin with no room stays as the twin does: said with it.
-	var refused: Dictionary = {}
-	for brick_id: int in out["room"]:
-		refused[brick_id] = true
-	for brick_id: int in (out["follow"] as Array).duplicate():
-		if refused.has(int(following.get(brick_id, -1))):
-			(out["follow"] as Array).erase(brick_id)
-			(out["room"] as Array).append(brick_id)
+			var brick: BrickWorld.Brick = world.get_brick(brick_id)
+			var swaps: bool = str(moving[brick_id]["part"]) != brick.part_id
+			for twin: Array in _twins(brick, copies, copied, matches):
+				var other: BrickWorld.Brick = world.get_brick(int(twin[0]))
+				if other == null:
+					continue
+				var direct: bool = moving.has(other.id) and not bool(moving[other.id]["follows"])
+				# A paint follows only into a part the colour it was (a copy
+				# placed in another colour keeps its own); a swap, into each.
+				if not direct and not swaps and other.color_code != brick.color_code:
+					continue
+				_join(joined, brick_id, other.id)
+				if not direct and not reached.has(other.id):
+					reached[other.id] = [brick_id, twin[1]]
+		assemblies._end_pass()
+	var members: Dictionary = {}     ## the id grouped under -> every id in the group
+	var groups: Array = []
+	for brick_id: int in order + reached.keys():
+		var root: int = _root(joined, brick_id)
+		if not members.has(root):
+			members[root] = []
+			groups.append(root)
+		if not (members[root] as Array).has(brick_id):
+			(members[root] as Array).append(brick_id)
+	# Each group as a whole: locked, without room, or changed.
+	var sel: Variant = Later.script(&"SelectBy")
+	var taken: Dictionary = {}       ## the new parts' places so far, by bucket
+	for root: int in groups:
+		var group: Array = members[root]
+		var locked: int = 0
+		for brick_id: int in group:
+			if builder.is_locked(brick_id):
+				locked += 1
+		var laid: Dictionary = {}    ## id -> [its new part, where]
+		for brick_id: int in group:
+			laid[brick_id] = _laid_as(brick_id, moving, reached)
+		var no_room: Array = []
+		var boxes: Dictionary = {}
+		if locked == 0:
+			for brick_id: int in group:
+				var brick: BrickWorld.Brick = world.get_brick(brick_id)
+				var new: Array = laid[brick_id]
+				if brick == null or str(new[0]) == brick.part_id:
+					continue
+				var shape: Lbm.PartMesh = library.mesh_for(str(new[0]))
+				if shape == null:
+					out["missing"] = str(new[0])
+					no_room.append(brick_id)
+					continue
+				var packed: PackedInt32Array = builder.boxes_for(shape, new[1])
+				boxes[brick_id] = packed
+				if builder.lattice.collides_boxes(packed, brick_id) or _meets_taken(packed, taken):
+					no_room.append(brick_id)
+		if locked > 0 or not no_room.is_empty():
+			for brick_id: int in group:
+				if not moving.has(brick_id):
+					continue
+				var why: String = "locked" if locked > 0 else ("room" if no_room.has(brick_id)
+					else "held")
+				(out[why] as Array).append(brick_id)
+			if group.size() > 1:
+				(out["stays"] as Array).append({"name": _sub_model_of(group[0]),
+					"copies": group.size(), "room": no_room.size(), "locked": locked,
+					"ids": group})
+			continue
+		for brick_id: int in boxes:
+			_take(boxes[brick_id], taken)
+		for brick_id: int in group:
+			if not moving.has(brick_id):
+				(out["followers"] as Array).append(brick_id)
+				continue
+			var brick: BrickWorld.Brick = world.get_brick(brick_id)
+			var new: Array = laid[brick_id]
+			if str(new[0]) != brick.part_id:
+				var was: Lbm.PartMesh = library.mesh_for(brick.part_id)
+				var shape: Lbm.PartMesh = library.mesh_for(str(new[0]))
+				if not _sits_alike(was, brick.transform, shape, new[1]):
+					(out["otherwise"] as Array).append(brick_id)
+					var held: Array = sel._joined_to(world, builder.lattice, brick_id)
+					if not held.is_empty() \
+							and _held_by(boxes[brick_id], brick_id, new[1], sel).is_empty():
+						(out["floats"] as Array).append(brick_id)
+			if bool(moving[brick_id]["follows"]):
+				(out["follow"] as Array).append(brick_id)
+			else:
+				(out["changes"] as Array).append({"brick": brick_id,
+					"part": moving[brick_id]["part"], "color": moving[brick_id]["color"],
+					"at": moving[brick_id]["at"]})
+	# In the order found, as the hand's Replace lays them.
+	var at_found: Dictionary = {}
+	for n: int in order.size():
+		at_found[order[n]] = n
+	(out["changes"] as Array).sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		return int(at_found[int(a["brick"])]) < int(at_found[int(b["brick"])]))
+	return out
+
+
+## [param brick_id]'s new part and place: where it stands for a part found
+## and changed there, else where the copies' follow lays it from the twin it
+## follows ([param reached]), as Assemblies._laid lays it.
+func _laid_as(brick_id: int, moving: Dictionary, reached: Dictionary) -> Array:
+	var source: Array = reached.get(brick_id, [])
+	if source.is_empty() or not moving.has(int(source[0])):
+		if moving.has(brick_id):
+			return [str(moving[brick_id]["part"]), moving[brick_id]["at"]]
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		return [brick.part_id, brick.transform] if brick != null else ["", Transform3D.IDENTITY]
+	var from: Dictionary = moving[int(source[0])]
+	var brick: BrickWorld.Brick = world.get_brick(brick_id)
+	var from_brick: BrickWorld.Brick = world.get_brick(int(source[0]))
+	if brick != null and from_brick != null and str(from["part"]) == from_brick.part_id:
+		return [brick.part_id, brick.transform]
+	return assemblies._laid(source[1], str(from["part"]), from["at"])
+
+
+## The parts every other copy holds of [param brick], each of which the
+## copies' follow changes as it is changed (Assemblies.copies_follow): for
+## each copy round it, innermost first, every other copy of that sub-model
+## that lies on it part for part, and the part there that lies on this one,
+## [[its id, how the copy lies on the other (Assemblies.best_match)]].
+## [param copied] keeps each copy's others, [param matches] each pair of
+## copies laid on each other once ({} where they do not lie part for part).
+func _twins(brick: BrickWorld.Brick, copies: Dictionary, copied: Dictionary,
+		matches: Dictionary) -> Array:
+	var out: Array = []
+	var path: String = Assemblies.path_of(brick)
+	if path.is_empty():
+		return out
+	var rounds: Array = []
+	var at: String = ""
+	for segment: String in Assemblies.segments(path):
+		at = Assemblies.join(at, segment)
+		rounds.push_front(at)
+	for copy: String in rounds:
+		if int(copies.get(Assemblies.definition(Assemblies.leaf(copy)), 1)) < 2:
+			continue
+		if not copied.has(copy):
+			copied[copy] = assemblies.copies_of(copy)
+		for other: String in copied[copy]:
+			var key: String = copy + "|" + other
+			if not matches.has(key):
+				matches[key] = _copy_on(copy, other)
+			var lain: Dictionary = matches[key]
+			if not lain.is_empty() and (lain["pairs"] as Dictionary).has(brick.id):
+				out.append([int((lain["pairs"] as Dictionary)[brick.id]), lain["fit"]])
+	return out
+
+
+## How the copy at [param copy] lies on the one at [param other], part for
+## part, as the copies' follow lays one on the other: {"fit", "pairs": each
+## part of the one -> the part of the other it lies on}, {} where they do
+## not lie on each other part for part (the follow passes them by).
+func _copy_on(copy: String, other: String) -> Dictionary:
+	var was: Array = assemblies.content(copy)
+	var twin: Array = assemblies.content(other)
+	if was.is_empty() or twin.size() != was.size():
+		return {}
+	var fit: Dictionary = assemblies.best_match(was, twin)
+	if int(fit["score"]) != was.size():
+		return {}
+	var pairs: Dictionary = assemblies._laid_on(was, twin, fit)
+	return {"fit": fit, "pairs": pairs} if pairs.size() == was.size() else {}
+
+
+## [param a] and [param b] put in one group of [param joined].
+static func _join(joined: Dictionary, a: int, b: int) -> void:
+	var one: int = _root(joined, a)
+	var two: int = _root(joined, b)
+	if one != two:
+		joined[two] = one
+
+
+static func _root(joined: Dictionary, brick_id: int) -> int:
+	var at: int = brick_id
+	while joined.has(at) and int(joined[at]) != at:
+		at = int(joined[at])
+	if at != brick_id:
+		joined[brick_id] = at
+	return at
+
+
+## The sub-model [param brick_id] is in, by its name.
+func _sub_model_of(brick_id: int) -> String:
+	var brick: BrickWorld.Brick = world.get_brick(brick_id)
+	var path: String = Assemblies.path_of(brick) if brick != null else ""
+	return "" if path.is_empty() else Assemblies.definition(Assemblies.leaf(path))
+
+
+## Whether [param packed] meets a new part's place kept in [param taken]: two
+## parts a replace puts down that would run into each other, though each has
+## room as the model stands.
+static func _meets_taken(packed: PackedInt32Array, taken: Dictionary) -> bool:
+	for key: Vector3i in _buckets(packed):
+		for other: PackedInt32Array in taken.get(key, []):
+			if BrickLattice.shared_cells(packed, other) > 0:
+				return true
+	return false
+
+
+static func _take(packed: PackedInt32Array, taken: Dictionary) -> void:
+	for key: Vector3i in _buckets(packed):
+		if not taken.has(key):
+			taken[key] = []
+		(taken[key] as Array).append(packed)
+
+
+## The buckets of 20 cells each way [param packed]'s bound reaches.
+static func _buckets(packed: PackedInt32Array) -> Array:
+	var out: Array = []
+	if packed.is_empty():
+		return out
+	var bound: PackedInt32Array = BrickLattice._bound_of(packed)
+	for x: int in range(floori(bound[0] / 20.0), floori((bound[3] - 1) / 20.0) + 1):
+		for y: int in range(floori(bound[1] / 20.0), floori((bound[4] - 1) / 20.0) + 1):
+			for z: int in range(floori(bound[2] / 20.0), floori((bound[5] - 1) / 20.0) + 1):
+				out.append(Vector3i(x, y, z))
 	return out
 
 
@@ -358,24 +585,33 @@ func _held_by(packed: PackedInt32Array, self_id: int, at: Transform3D, sel: Vari
 
 
 ## [param found] made [param into] as one undo step, each copy of a sub-model
-## following as an edit by hand makes it (see the class's words): {"changed":
-## how many parts, "room": how many had no room and stand as they were,
-## "words": the step's own}.
-func replace(found: Dictionary, into: Dictionary) -> Dictionary:
-	var made: Dictionary = plan(found, into)
-	var words: String = step_words(found, into)
+## following as an edit by hand makes it (see the class's words), the step
+## said by what changed once the copies have followed: {"changed": how many
+## parts changed, those the copies' follow changed too; "followed": how many
+## of them were not found, changed as their copy followed; "room": how many
+## found stay for want of room, in their own copy or a twin's; "locked": how
+## many found stay with a locked twin; "same": how many found were that
+## already; "words": the step's own; "stayed": what stayed, said
+## ([method stay_words])}. Each found part is counted once. [param made]: its
+## [method plan] made as the model stands now (the bar's, made as it showed
+## it), else made here; on 10179 a plan is 0.4 s.
+func replace(found: Dictionary, into: Dictionary, made: Dictionary = {}) -> Dictionary:
+	if made.is_empty():
+		made = plan(found, into)
 	var depth: int = builder.history_depth()
-	var was: Dictionary = {}
-	for brick_id: int in found["ids"]:
+	var was: Dictionary = {}         ## id -> [its part, its colour] before
+	var paths: Dictionary = {}       ## a follower -> its copy's path
+	for brick_id: int in found["ids"] + made["followers"]:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
 		if brick != null:
 			was[brick_id] = [brick.part_id, brick.color_code]
+			paths[brick_id] = Assemblies.path_of(brick)
+	var words: String = step_words(found, into)
 	var done: Vector2i = builder.replace_bricks(made["changes"], words)
 	if done.x > 0:
 		edited.call()
 	# Those in a copy a mirror places that their twin's follow did not reach,
-	# changed where they stand; where the twin itself stayed (no room), so
-	# do they.
+	# changed where they stand.
 	var left := PackedInt64Array()
 	var twin_of: Dictionary = found.get("follow", {})
 	for brick_id: int in made["follow"]:
@@ -396,39 +632,90 @@ func replace(found: Dictionary, into: Dictionary) -> Dictionary:
 		done.y += more.y
 		if more.x > 0:
 			edited.call()
-	builder.fold_since(depth, words)
+	builder.fold_since(depth)
 	if assemblies != null:
 		assemblies.no_copies_follow()
-	var changed: int = 0
+	# What changed, each part once, the copies' follow included.
+	var found_ids: Dictionary = {}
+	for brick_id: int in found["ids"]:
+		found_ids[brick_id] = true
+	var gone: Array = []             ## [its part, its colour, found] of each changed
+	var followed: Dictionary = {}    ## a sub-model -> how many changed in its copies, not found
 	for brick_id: int in was:
 		var brick: BrickWorld.Brick = world.get_brick(brick_id)
-		if brick == null or was[brick_id] != [brick.part_id, brick.color_code]:
-			changed += 1
-	return {"changed": changed, "room": (made["room"] as Array).size() + done.y,
-		"words": words}
+		if brick != null and was[brick_id] == [brick.part_id, brick.color_code]:
+			continue
+		gone.append(was[brick_id])
+		if not found_ids.has(brick_id):
+			var name: String = Assemblies.definition(Assemblies.leaf(str(paths[brick_id])))
+			followed[name] = int(followed.get(name, 0)) + 1
+	words = changed_words(found, into, gone, followed)
+	if builder.history_depth() > depth:
+		builder.name_newest(words)
+	var stayed: int = (found["ids"] as Array).size() - int(made["same"]) \
+		- (made["locked"] as Array).size() - gone.size() + _sum(followed)
+	return {"changed": gone.size(), "followed": _sum(followed),
+		"room": maxi(stayed, 0), "locked": (made["locked"] as Array).size(),
+		"same": int(made["same"]), "words": words,
+		"stayed": "; ".join(stay_words(found, made))}
+
+
+static func _sum(counts: Dictionary) -> int:
+	var total: int = 0
+	for key: Variant in counts:
+		total += int(counts[key])
+	return total
 
 
 # -- what is asked ------------------------------------------------------------------
 
 
-## The colour [param asked] names: an LDraw code, or a name as the bin's
-## colour find reads one ("Dark Bluish Grey", "dark bluish gray"); -1 for
-## none asked, -2 for one there is no such colour.
+## The colour [param asked] names: an LDraw code, a direct colour as a file
+## writes one (0x2RRGGBB, LdrModel.is_direct_colour), as a number or in
+## those words, or a name as the bin's colour find reads one ("Dark Bluish
+## Grey", "dark bluish gray"); -1 for none asked, -2 for one there is no
+## such colour (-5 among them).
 func colour_of(asked: Variant) -> int:
 	if asked == null:
 		return -1
+	var code: int = -2
 	if asked is int or asked is float:
-		var code: int = int(asked)
-		return code if code < 0 or library.colors.has(code) else -2
-	var said: String = str(asked).strip_edges()
-	if said.is_empty():
+		code = int(asked)
+	else:
+		var said: String = str(asked).strip_edges()
+		if said.is_empty():
+			return -1
+		if said.to_lower().begins_with("0x") and said.substr(2).is_valid_hex_number():
+			code = said.substr(2).hex_to_int()
+		elif said.is_valid_int():
+			code = said.to_int()
+		else:
+			var named: Array = PartsBin.colours_named(library, said)
+			return (named[0] as PartLibrary.BrickColor).code if not named.is_empty() else -2
+	if code == -1:
 		return -1
-	var named: Array = PartsBin.colours_named(library, said)
-	return (named[0] as PartLibrary.BrickColor).code if not named.is_empty() else -2
+	return code if library.colors.has(code) or LdrModel.is_direct_colour(code) else -2
+
+
+## Why [param code] cannot be given to a part, in words a session acts on;
+## "" when it can. 16 and 24 are no colour of a part's own: 16 is the colour
+## a sub-model is placed in, which its parts of 16 take, and 24 the colour
+## of a part's edges (swreview F5).
+static func not_a_part_colour(code: int) -> String:
+	var instead: String = "give a part's own colour code (0 Black, 72 Dark Bluish Grey), " \
+		+ "or leave color out to keep each part's own."
+	match code:
+		16:
+			return "Colour 16 is no colour of a part's own: it is the colour a sub-model is " \
+				+ "placed in. Instead, " + instead
+		24:
+			return "Colour 24 is the colour of a part's edges, not of a part. Instead, " + instead
+	return ""
 
 
 ## The part [param asked] names, as the library has it: its number, or the
-## part a search of its words finds first; "" for none.
+## part a search of its words finds first; "" for none. The bar says which
+## before it puts one in ("Puts in: Brick 1 x 2 (3004)").
 func part_of(asked: String) -> String:
 	var said: String = asked.strip_edges().to_lower().trim_suffix(".dat")
 	if said.is_empty():
@@ -437,6 +724,15 @@ func part_of(asked: String) -> String:
 		return library.resolve(said)
 	var found: Array = library.search(said, 1)
 	return (found[0] as PartLibrary.PartInfo).id if not found.is_empty() else ""
+
+
+## The part [param asked] is by its number alone, as the library has it
+## (3069 is 3069b, where the library moved it); "" where it has no part of
+## that number. A session's replace_parts takes only this: a search's
+## guess put a part in it never asked for ("3023x" made 3023b, swreview F4).
+func known_part(asked: String) -> String:
+	var said: String = asked.strip_edges().to_lower().trim_suffix(".dat")
+	return library.resolve(said) if not said.is_empty() and library.parts.has(said) else ""
 
 
 ## The shape of [param part_id], fetched first where it is not here (the
@@ -458,19 +754,26 @@ func shape(part_id: String) -> Lbm.PartMesh:
 
 ## What a replace of [param found] with [param into] will do that the
 ## person should hear first, once the new part's shape is here: where it
-## will not sit as the old one did, would hold onto nothing, or has no room
-## ([method fit_words]); "" when it sits as the old one everywhere.
+## will not sit as the old one did, would hold onto nothing, has no room, or
+## stays with a twin in another copy ([method fit_words]); "" when every one
+## changes and sits as the old one did.
 func ahead(found: Dictionary, into: Dictionary) -> String:
 	var part: String = str(into.get("part", ""))
-	if part.is_empty():
-		return ""
-	if await shape(part) == null:
-		return "%s's shape could not be had, so nothing of it can be put down." % part
-	var other: String = Later.script(&"Mirror").counterpart(library, part)
-	if not (found["mirrored"] as Dictionary).is_empty() and not other.is_empty():
-		await shape(other)
-	var said: String = fit_words(found, plan(found, into))
-	return "" if said.is_empty() else "It " + said + "."
+	if not part.is_empty():
+		if await shape(part) == null:
+			return "%s's shape could not be had, so nothing of it can be put down." % part
+		# Its other hand too, which a copy a mirror places is given.
+		var other: String = Later.script(&"Mirror").counterpart(library, part)
+		if not other.is_empty():
+			await shape(other)
+	var made: Dictionary = plan(found, into)
+	var fit: String = fit_words(found, made)
+	var said := PackedStringArray()
+	if not fit.is_empty():
+		said.append("It " + fit + ".")
+	for line: String in stay_words(found, made, false):
+		said.append(line + ".")
+	return " ".join(said)
 
 
 # -- words ------------------------------------------------------------------------
@@ -598,10 +901,10 @@ func colours_flag(found: Dictionary) -> String:
 	return "used in %d colours: %s" % [codes.size(), ", ".join(said)]
 
 
-## What [param made] (a [method plan]) says before a replace of a new part:
-## "won't sit the same in 4 of 12 places (another footprint or other
-## connection points); 1 would hold onto nothing; 2 have no room and stay
-## as they are"; "" when every one sits as the old one did.
+## What [param made] (a [method plan]) says before a replace of where the
+## new part goes: "won't sit the same in 4 of 12 places (another footprint
+## or other connection points); 1 would hold onto nothing"; "" when every
+## one sits as the old one did. What stays is [method stay_words].
 static func fit_words(found: Dictionary, made: Dictionary) -> String:
 	var said := PackedStringArray()
 	var count: int = (found["ids"] as Array).size()
@@ -612,8 +915,93 @@ static func fit_words(found: Dictionary, made: Dictionary) -> String:
 	var floats: int = (made["floats"] as Array).size()
 	if floats > 0:
 		said.append("%d would hold onto nothing" % floats)
-	var room: int = (made["room"] as Array).size()
-	if room > 0:
-		said.append("%d %s no room and stay as %s" % [room, "has" if room == 1 else "have",
-			"it is" if room == 1 else "they are"])
 	return "; ".join(said)
+
+
+## What [param made] leaves as it is, each part said once, as the bar shows
+## it a line each and a session reads it: "1 has no room and stays as it
+## is"; "Pl has no room in 1 of its 2 copies, so all 2 stay"; "1 left out:
+## locked in one copy of Sill, so its 2 copies stay"; with [param singles]
+## those locked with no copy, "1 locked, left out: unlock it to change it";
+## and "All 4 are that already" where every one found is. [param made] {}
+## says only those locked.
+static func stay_words(found: Dictionary, made: Dictionary, singles: bool = true) -> PackedStringArray:
+	var said := PackedStringArray()
+	var count: int = (found.get("ids", []) as Array).size()
+	if count > 0 and int(made.get("same", 0)) == count:
+		said.append("All %d are that already" % count)
+		return said
+	var in_copies: Dictionary = {}
+	var by_name: Dictionary = {}     ## "room" or "locked" + name -> {"name", "parts", "copies", "stay", "locked"}
+	for stay: Dictionary in made.get("stays", []):
+		for brick_id: int in stay["ids"]:
+			in_copies[brick_id] = true
+		var key: String = ("locked|" if int(stay["locked"]) > 0 else "room|") + str(stay["name"])
+		if not by_name.has(key):
+			by_name[key] = {"name": stay["name"], "parts": 0, "copies": 0, "stay": 0, "room": 0,
+				"locked": 0}
+		var each: Dictionary = by_name[key]
+		each["parts"] = int(each["parts"]) + 1
+		each["copies"] = maxi(int(each["copies"]), int(stay["copies"]))
+		each["stay"] = int(each["stay"]) + int(stay["copies"])
+		each["room"] = int(each["room"]) + int(stay["room"])
+		each["locked"] = int(each["locked"]) + int(stay["locked"])
+	var room: int = 0
+	for brick_id: int in made.get("room", []):
+		if not in_copies.has(brick_id):
+			room += 1
+	if room == 1:
+		said.append("1 has no room and stays as it is")
+	elif room > 1:
+		said.append("%d have no room and stay as they are" % room)
+	var keys: Array = by_name.keys()
+	keys.sort()
+	for key: String in keys:
+		var each: Dictionary = by_name[key]
+		if key.begins_with("room|"):
+			if int(each["parts"]) == 1:
+				said.append("%s has no room in %d of its %d copies, so all %d stay" % [each["name"],
+					int(each["room"]), int(each["copies"]), int(each["stay"])])
+			else:
+				said.append("%s has no room for %d of its parts in some of its %d copies, so all %d stay"
+					% [each["name"], int(each["parts"]), int(each["copies"]), int(each["stay"])])
+		elif int(each["locked"]) == 1:
+			said.append("1 left out: locked in one copy of %s, so its %d copies stay"
+				% [each["name"], int(each["copies"])])
+		else:
+			said.append("%d left out: locked in copies of %s, so all %d of them stay"
+				% [int(each["locked"]), each["name"], int(each["stay"])])
+	if singles:
+		var locked: int = 0
+		for brick_id: int in found.get("locked_ids", []):
+			if not in_copies.has(brick_id):
+				locked += 1
+		if locked == 1:
+			said.append("1 locked, left out: unlock it to change it")
+		elif locked > 1:
+			said.append("%d locked, left out: unlock them to change them" % locked)
+	return said
+
+
+## What the undo step says once the copies have followed, from what changed
+## ([param gone], [its part, its colour] before, of each): "replaced 12 Black
+## Plate 1 x 2 with Dark Bluish Grey everywhere", and ", 2 of them in other
+## copies of Sill" for those changed as their copy followed, not found
+## ([param followed], a sub-model's name -> how many).
+func changed_words(found: Dictionary, into: Dictionary, gone: Array,
+		followed: Dictionary) -> String:
+	var count: int = gone.size()
+	if count == 0:
+		return step_words(found, into)
+	var colours: Dictionary = {}
+	for one: Array in gone:
+		colours[int(one[1])] = true
+	var colour: String = colour_name(int(colours.keys()[0])) + " " if colours.size() == 1 else ""
+	var what: String = "%d %s%s" % [count, colour, "part" if count == 1 else "parts"] \
+		if str(found["part"]).is_empty() else "%d %s%s" % [count, colour, part_name(_first_found(found))]
+	var said: String = "replaced %s with %s %s" % [what, into_words(into), where_words(found)]
+	if not followed.is_empty():
+		var names: Array = followed.keys()
+		names.sort()
+		said += ", %d of them in other copies of %s" % [_sum(followed), " and ".join(names)]
+	return said
