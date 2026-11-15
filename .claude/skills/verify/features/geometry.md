@@ -1083,7 +1083,11 @@ underside to a Technic plate, and the Powered Up L, long-pinned through its back
 each lift ten 2x8 bricks through the same 9:1 (13 parts, 49.31 g, their middle 171.8
 LDU above the arm's axle: 29.91 N·cm at the motor): the SPIKE stalls at 26.300°, worked
 26.300° (25 N·cm at 7.2 V), the Powered Up L at 26.709°, worked 26.708° (26 N·cm at
-9 V), each to 1°, its case held with the base. On stage225 before it, 19 checks fail.
+9 V), each to 1°, its case held with the base. A beam pinned by two pins to a SPIKE
+Prime medium angular motor's hub, no axle, is the driver its motor turns, on the hub's
+line, the pins going round through the hub without meeting it ("turns it with nothing to
+lift: 185 rpm, its speed with no load at 7.2 V"). On stage225 before it, 19 checks fail;
+on pre261 (e1c9a8831) the SPIKE, Powered Up L and hub models fail 17: nothing is driven.
 Pictures: `shots/motion/<W>x<H>_*.png`.
 
 Simulate on real sets' functions (docs/APP_UX8.md #7, kinefuncs): `tools/kinefuncs.py

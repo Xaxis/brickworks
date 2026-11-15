@@ -2836,7 +2836,7 @@ func _list_motions(input: Dictionary) -> String:
 				+ "a turntable, gears, a rack): move_part with no part= lists every joint, and "
 				+ "define_motion makes a motion of any of them.")
 	# unit spikemotors
-	var motors: String = _motors_said(world, store)
+	var motors: String = _motors_said(world, store, app.get("_library"))
 	if not motors.is_empty():
 		lines.append(motors)
 	# end unit spikemotors
@@ -2848,12 +2848,12 @@ func _list_motions(input: Dictionary) -> String:
 # unit spikemotors
 ## The motors the model holds, each by name with its stall and speed at its
 ## volts (Simulation.MOTORS), and what Simulate does with one; "" for none.
-static func _motors_said(world: BrickWorld, store: ModelStore) -> String:
+static func _motors_said(world: BrickWorld, store: ModelStore, library: PartLibrary) -> String:
 	var said := PackedStringArray()
 	var count: int = 0
 	for brick: BrickWorld.Brick in world.bricks():
-		var made: String = Mechanism.reads_as(brick.part_id)
-		if store.scenery.has(brick.id) or not Simulation.MOTORS.has(made):
+		var made: String = Simulation.motor_of(library, brick.part_id)
+		if store.scenery.has(brick.id) or made.is_empty():
 			continue
 		count += 1
 		if said.size() < 6:

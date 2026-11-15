@@ -192,9 +192,8 @@ static func read(bricks: Array, from: PartLibrary, scenery: Dictionary = {}) -> 
 		var label: String = Assemblies.label(path) if not path.is_empty() else ""
 		labels[brick.id] = label
 		var entry: Dictionary = {"key": brick.id, "part": brick.part_id, "at": brick.transform, "mesh": mesh}
-		# A model file's own copy of a motor is that motor (42114's "42114 - 69730").
-		var motor_part: String = Mechanism.reads_as(brick.part_id)
-		if MOTORS.has(motor_part):
+		var motor_part: String = Simulation.motor_of(from, brick.part_id)
+		if not motor_part.is_empty():
 			var split: Array = Simulation.split_output(mesh, (MOTORS[motor_part] as Array)[4])
 			if not (split[1] as Dictionary).is_empty():
 				out.motors[brick.id] = motor_part
@@ -235,6 +234,21 @@ func _say_roots() -> void:
 
 
 var _base_head: String = ""
+
+
+## The motor [param part_id] is, its key in [constant MOTORS], or "". A
+## model file's own copy of a motor is that motor: read as the part
+## (Mechanism.reads_as), or named for it where its drawing differs. 42114's
+## and 42131's large angular motors are each a cable's end, "42114 - 69730",
+## LDCad's, its case drawn without the stub the cable's path draws on: not
+## alike enough to be read as the part (CustomParts.copy_of), and its output
+## where the motor's is ([method split_output] finds it there, or none).
+static func motor_of(from: PartLibrary, part_id: String) -> String:
+	var made: String = Mechanism.reads_as(part_id)
+	if MOTORS.has(made):
+		return made
+	var named: String = CustomParts.named_for(from, part_id) if from != null else ""
+	return named if MOTORS.has(named) else ""
 
 
 ## A motor's [param mesh] split into its case and its output, which turns in
