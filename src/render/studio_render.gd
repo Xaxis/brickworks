@@ -786,6 +786,12 @@ func warm_up(idle: Callable) -> void:
 	_step = ""
 	_warming = false
 	_wanted = false
+	warmed_up = true
+
+
+## Whether [method warm_up] has run to its end: the set's viewports made and
+## each thing in it drawn once the way the window's light draws it.
+var warmed_up: bool = false
 
 
 func _view(transparent: bool, floats: bool) -> SubViewport:

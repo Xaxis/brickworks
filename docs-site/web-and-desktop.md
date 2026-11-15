@@ -43,9 +43,16 @@ On a touch screen the app is laid out for a finger: one row of tools, and the pa
 - **Drag** turns the view, and so do two fingers; **pinch** zooms. Two fingers turned about each other turn the model round as far as they turn, as a map does.
 - The Brickworks mark along the top opens the same menu as on a computer. With the assistant on, its button sits beside the model's name.
 - In the parts sheet the search and the chips scroll with the parts, and the count, **Prints** and **List** stay at its foot, whichever way the phone is held.
+- **Motions** keeps **New motion** in its header, in sight however far its list is scrolled, and puts **Record** beside the motion's name, and each joint's keys are a fingertip tall. **Simulate** puts **Play** and the cycle's slider under its title. A part swung on its joint while recording opens nothing over the panel.
+- The booklet's **Lay out the page…** gives its buttons, an item's corner, the knob and an arrow's ends a fingertip each. A tap in the words field keeps its words selected to type over.
+- **More** opens on the commands used most, two to a line: Save, Instructions, Timeline, Render, Measure, Cut away, Check stability, Simulate, Pose and Select all. Each is in its menu too.
+- To select several parts, tap one, then tap **Select** again: each tap now adds a part or takes it out, and a tap beside the model keeps them. Tap **Select** once more when you are done.
+- The timeline's buttons are a fingertip each. On a phone held upright its rows of choices slide sideways, with **Lay out the page…** first.
 
 <!-- covers
 ui:two fingers' twist
+ui:page editor motions and simulate by finger
+ui:more's first rows and adding to a selection by finger
 -->
 
 ## Work on several models at once {#tabs}

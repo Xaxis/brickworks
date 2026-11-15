@@ -74,14 +74,23 @@ func write(from: Variant, to: String, name: String, pace: int = 0) -> int:
 		for index: int in int(styles.length):
 			sizing.feed("<style>%s</style>" % str((styles.item(index) as JavaScriptObject).textContent))
 		px_per_mm = web_density(int(sections.length), sizing.size)
-	_fonts = []
-	for type: Array in BookletPdf.TYPE:
-		_fonts.append(load(str(type[0])) as Font)
+	_fonts = _type()
 	_dpi_chunk = dpi_chunk(px_per_mm)
 	var count: int = await _read.read_all(from, _page, pace)
 	_zip.close()
 	_free()
 	return count
+
+
+## The booklet's type, regular and bold, as BookletPdf prints it (on the
+## web fetched first, WebPacks.FONTS); the engine's own face for one that
+## could not be read, so a page is drawn rather than stopped.
+static func _type() -> Array[Font]:
+	var out: Array[Font] = []
+	for type: Array in BookletPdf.TYPE:
+		var face: Font = load(WebPacks.font(str(type[0]))) as Font
+		out.append(face if face != null else ThemeDB.fallback_font)
+	return out
 
 
 func _free() -> void:
@@ -149,9 +158,7 @@ func _page(page: BookletRead.Page) -> void:
 func page_image(html: String, number: int, density: float) -> Image:
 	at_density(density)
 	_read = BookletRead.new()
-	_fonts = []
-	for type: Array in BookletPdf.TYPE:
-		_fonts.append(load(str(type[0])) as Font)
+	_fonts = _type()
 	# Its title and the parts' pictures are outside the pages: read those,
 	# then the one page.
 	var wanted: String = "id=\"page-%d\"" % number

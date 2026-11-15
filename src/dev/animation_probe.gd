@@ -260,6 +260,17 @@ func _mp4() -> void:
 		return
 	var folder: String = _out.path_join("mp4")
 	DirAccess.make_dir_recursive_absolute(folder)
+	# A run before this one left its files: emptied, so the first takes the
+	# name asked and the second the next.
+	for frames: String in DirAccess.get_directories_at(folder):
+		for name: String in DirAccess.get_files_at(folder.path_join(frames)):
+			DirAccess.remove_absolute(folder.path_join(frames).path_join(name))
+		DirAccess.remove_absolute(folder.path_join(frames))
+	for name: String in DirAccess.get_files_at(folder):
+		DirAccess.remove_absolute(folder.path_join(name))
+	# The second takes the next free name (mcpreach: nothing written over
+	# unasked), so each is read by the name it took.
+	var bases := PackedStringArray()
 	for count: int in [12, 6]:
 		var settings := RenderSettings.new()
 		settings.fps = 12
@@ -267,22 +278,28 @@ func _mp4() -> void:
 		var output := RenderOutput.new()
 		output.folder = folder
 		output.begin_turntable("Runs", settings, "_animation")
+		bases.append(output.base_name())
 		for n: int in count:
 			var image := Image.create(64, 48, false, Image.FORMAT_RGB8)
 			image.fill(Color.from_hsv(float(n) / 12.0, 0.8, 0.9))
 			await output.add_frame(n, image)
 		await output.finish_turntable()
-	var mp4: String = folder.path_join("runs_animation.mp4")
-	var said: Array = []
-	OS.execute("ffprobe", ["-v", "error", "-count_frames", "-select_streams", "v:0", "-show_entries",
-		"stream=nb_read_frames,r_frame_rate", "-of", "csv=p=0", mp4], said)
-	var probed: String = str(said[0]).strip_edges() if not said.is_empty() else ""
-	_check("the six-frame MP4 is 6 frames at 12 a second (%s)" % probed, probed == "12/1,6")
-	var pngs: int = 0
-	for file: String in DirAccess.get_files_at(folder.path_join("runs_animation")):
-		if file.ends_with(".png"):
-			pngs += 1
-	_check("...and its folder holds its 6 frames (%d)" % pngs, pngs == 6)
+	_check("the second takes a name of its own beside the first: %s" % ", ".join(bases),
+		bases.size() == 2 and bases[0] == "runs_animation" and bases[1] == "runs_animation_2")
+	for at: int in bases.size():
+		var mp4: String = folder.path_join(bases[at] + ".mp4")
+		var said: Array = []
+		OS.execute("ffprobe", ["-v", "error", "-count_frames", "-select_streams", "v:0", "-show_entries",
+			"stream=nb_read_frames,r_frame_rate", "-of", "csv=p=0", mp4], said)
+		var probed: String = str(said[0]).strip_edges() if not said.is_empty() else ""
+		var wanted: int = [12, 6][at]
+		_check("the %d-frame MP4 is %d frames at 12 a second (%s)" % [wanted, wanted, probed],
+			probed == "12/1,%d" % wanted)
+		var pngs: int = 0
+		for file: String in DirAccess.get_files_at(folder.path_join(bases[at])):
+			if file.ends_with(".png"):
+				pngs += 1
+		_check("...and its folder holds its %d frames (%d)" % [wanted, pngs], pngs == wanted)
 
 
 # -- helpers ---------------------------------------------------------------------

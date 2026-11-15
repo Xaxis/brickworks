@@ -29,8 +29,11 @@ exports is cut in four, by path:
   index.hdri.bin        Studio's photographed light, each panorama's imported
                         texture as a bundle of files: fetched the first time
                         Studio lights a picture by one (StudioRender).
+  index.fonts.bin       the booklet's type (assets/fonts/), each face as
+                        Godot imported it: fetched the first time a booklet's
+                        PDF or pages are made (BookletPdf, BookletPng).
 
-The two bundles are files, not packs, so nothing is mounted while the app
+The three bundles are files, not packs, so nothing is mounted while the app
 runs: a pack mounted then changes the engine's table of files while a
 worker may be opening one. Their format is index.parts.bin's (web_pack.py):
 "BWP1", the count, each file's name and size, then the files.
@@ -48,7 +51,7 @@ before them on the box (webstart2, 2026-11-05).
 The packs keep Godot's own format (version 4): its header, each file at a
 16-byte boundary after it, offsets from the first file, and the directory
 of paths, offsets, sizes, MD5s and flags at the end. Every file the export
-put in the pack is in exactly one of the four, byte for byte; the split
+put in the pack is in exactly one of the five, byte for byte; the split
 fails rather than drop or double one. index.html's size for index.pck,
 which the engine's progress counts against, is made the code pack's.
 """
@@ -68,6 +71,7 @@ BUNDLE_MAGIC = b"BWP1"
 DATA = "index.data.pck"
 PRIMITIVES = "index.primitives.bin"
 HDRI = "index.hdri.bin"
+FONTS = "index.fonts.bin"
 
 
 class Entry:
@@ -159,7 +163,7 @@ AT_CLASS_LOAD = {"assets/ldraw/gears.json", "assets/ldraw/known_fits.json",
 
 
 def where(path: str, later: frozenset[str] = frozenset()) -> str:
-    """Which of the four a file of the pack goes in, by its own path or, for
+    """Which of the five a file of the pack goes in, by its own path or, for
     what Godot imported, its source's (imported_from). [later]: the scripts
     the first screen does not compile, as src/....gd."""
     if path in AT_CLASS_LOAD:
@@ -170,10 +174,13 @@ def where(path: str, later: frozenset[str] = frozenset()) -> str:
         return PRIMITIVES
     if path.startswith("assets/hdri/"):
         return HDRI
-    # The booklet's type is read when a PDF is made, long after the start
-    # (BookletPdf): 0.5 MB of fonts that do not compress, which the start
-    # waited for.
-    if path.startswith(("assets/web/", "assets/ldraw/", "models/", "assets/fonts/")):
+    # The booklet's type is read when a PDF or its pages are made, long
+    # after the start, if ever (BookletPdf, BookletPng): 1.1 MB of faces
+    # that do not compress, Noto Emoji 0.6 of it, which the start waited for
+    # in the data pack (5.06 MB sent grew to 5.93 with the emoji, webstart9).
+    if path.startswith("assets/fonts/"):
+        return FONTS
+    if path.startswith(("assets/web/", "assets/ldraw/", "models/")):
         return DATA
     return "index.pck"
 
@@ -220,12 +227,12 @@ def main() -> None:
     pack = os.path.join(build, "index.pck")
     header, data, entries = read_pack(pack)
     base = len(header)
-    groups: dict[str, list[Entry]] = {"index.pck": [], DATA: [], PRIMITIVES: [], HDRI: []}
+    groups: dict[str, list[Entry]] = {"index.pck": [], DATA: [], PRIMITIVES: [], HDRI: [], FONTS: []}
     sources = imported_from(data, base, entries)
     later = later_scripts()
     for entry in entries:
         groups[where(sources.get(entry.path, entry.path), later)].append(entry)
-    for name in (DATA, PRIMITIVES, HDRI):
+    for name in (DATA, PRIMITIVES, HDRI, FONTS):
         if not groups[name]:
             sys.exit(f"pck_split: nothing in the export for {name}")
     for kept in ["project.binary"] + sorted(AT_CLASS_LOAD):
@@ -248,10 +255,22 @@ def main() -> None:
             hdri.append((source + ".hdr" + os.path.splitext(rest)[1], body(data, base, e)))
     if len(hdri) != sum(1 for e in groups[HDRI] if e.path.endswith(".hdr.import")):
         sys.exit("pck_split: a panorama without its imported texture, or one twice")
+    # Each face as Godot imported it, under its source's name
+    # (NotoEmoji-Regular.ttf.fontdata): what WebPacks.font asks for.
+    fonts = []
+    for e in sorted(groups[FONTS], key=lambda e: e.path):
+        if e.path.startswith(".godot/imported/"):
+            name = os.path.basename(e.path)
+            source, _, rest = name.rpartition("-")
+            fonts.append((source + os.path.splitext(rest)[1], body(data, base, e)))
+    if len(fonts) != sum(1 for e in groups[FONTS] if e.path.endswith(".import")) \
+            or len({name for name, _ in fonts}) != len(fonts):
+        sys.exit("pck_split: a face without its imported font, or one twice")
 
     write_pack(os.path.join(build, DATA), header, data, groups[DATA])
     write_bundle(os.path.join(build, PRIMITIVES), primitives)
     write_bundle(os.path.join(build, HDRI), hdri)
+    write_bundle(os.path.join(build, FONTS), fonts)
     write_pack(pack, header, data, groups["index.pck"])
 
     # Read back: every file once, byte for byte.
@@ -262,7 +281,7 @@ def main() -> None:
             if e.path in seen:
                 sys.exit(f"pck_split: {e.path} is in two packs")
             seen[e.path] = body(d, len(h), e)
-    for e in groups[PRIMITIVES] + groups[HDRI]:
+    for e in groups[PRIMITIVES] + groups[HDRI] + groups[FONTS]:
         seen[e.path] = body(data, base, e)
     for e in entries:
         if seen.get(e.path) != body(data, base, e):
@@ -284,7 +303,7 @@ def main() -> None:
     text = text[:found.end()] + json.dumps(config, separators=(",", ":")) + text[end:]
     open(page, "w", encoding="utf-8").write(text)
 
-    for name in ("index.pck", DATA, PRIMITIVES, HDRI):
+    for name in ("index.pck", DATA, PRIMITIVES, HDRI, FONTS):
         count = len(groups[name])
         print(f"pck_split: {name:<21} {os.path.getsize(os.path.join(build, name)) / 1e6:6.1f} MB, {count} files")
 

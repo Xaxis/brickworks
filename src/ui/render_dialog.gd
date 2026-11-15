@@ -1351,10 +1351,13 @@ func _start(kind: String, given: RenderSettings = null) -> PackedStringArray:
 			_show_scaled(image)
 			_status.text = "Saving…"
 			lines.append(await output.keep_picture(image, model))
+			# The name it took: the next free one when one was there (mcpreach).
+			var took: String = RenderOutput.file_name(model, "_render", "png")
+			if not output.paths.is_empty():
+				took = output.paths[-1].get_file()
 			_last = {"kind": "picture", "width": image.get_width(),
 				"height": image.get_height(), "bytes": output.last_bytes,
-				"name": RenderOutput.file_name(model, "_render", "png"), "output": output,
-				"image": image}
+				"name": took, "output": output, "image": image}
 	else:
 		output.begin_turntable(model, chosen)
 		var looped: Array[ImageTexture] = []
@@ -1375,7 +1378,7 @@ func _start(kind: String, given: RenderSettings = null) -> PackedStringArray:
 			_loop_at = 0.0
 			_last = {"kind": "turntable", "frames": done, "bytes": output.last_bytes,
 				"width": chosen.size.x, "height": chosen.size.y,
-				"name": RenderOutput.file_name(model, "_turntable", "gif" if output.gif else "webp"),
+				"name": output.base_name() + (".gif" if output.gif else ".webp"),
 				"output": output}
 	var seconds: float = float(Time.get_ticks_msec() - started) / 1000.0
 	_working = ""
@@ -1581,6 +1584,14 @@ func _on_piece(piece: Image, at: Vector2i) -> void:
 
 
 ## Where each control is, for a browser test to press it as a person does.
+## Whether the renderer has been made ready ahead of time
+## (StudioRender.warm_up, see [method _warm_when_idle]), for the page
+## (tools/web/render_open_check.mjs): Render pressed before it, its first
+## open draws the sweep and the contact shadow alone in its own frames.
+func renderer_ready() -> bool:
+	return renderer != null and renderer.warmed_up
+
+
 func controls_by_name() -> Dictionary:
 	var named_controls: Dictionary = {}
 	for n: int in _quality.size():

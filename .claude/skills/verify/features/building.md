@@ -2,7 +2,7 @@
 
 Pointing at a stud and getting a brick there, selecting several, taking it back.
 
-<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe -->
+<!-- covers: scene:main, ui:place and remove, ui:box select, ui:selection outline, cli:selection outline in a browser, ui:the hover drawn at the device's pace, ui:selection edits, ui:undo and redo, ui:copy paste and duplicate, ui:patterns, ui:move and turn a selection, ui:select by colour part or connection, ui:hide and show only, ui:menus and toolbar, ui:the app menu, cli:app menu probe, cli:app menu in a browser, ui:tooltips let clicks through, ui:tool modes, ui:properties panel, ui:properties under the bin, ui:status bar, ui:model size and weight, ui:accessibility, ui:snap and turn step, ui:lock parts, ui:stud grid, ui:tour, ui:remembered layout, ui:assistant on or off, cli:no AI in a browser, ui:interface languages, cli:languages probe, ui:replace part, ui:undo history, ui:mirror a selection, ui:place under a part and on side studs, ui:snap onto a joint, ui:swing on a hinge, ui:typed place and hinge, cli:off-grid probe, cli:placing probe, cli:placing in a browser, ui:hoses and chains by hand, cli:hoses and chains by hand in a browser, ui:bands and springs by hand, cli:springs probe, ui:sub-assemblies, ui:model tree, ui:sections, lib:sections suggested, cli:sections in a browser, ui:measure, ui:docked panels, ui:what the app is busy with, ui:floor, cli:floor in a browser, cli:build a real set by hand in a browser, ui:grab and move on a joint, lib:rigid bodies and joints, lib:moving a body on its joint, cli:grab in a browser, lib:moving a chain of joints, lib:closed loops of joints, lib:racks and their pinions, lib:worms hold their gears, lib:linear actuators, lib:a model that tips falls, lib:swinging on a free joint, lib:coasting when flung, lib:hoses follow a grab, cli:the builder's frames after a change, ui:gears put in mesh by hand, ui:train tracks end to end, ui:meet on hinges, ui:type a number while moving, cli:typed moves probe, ui:find a command, cli:palette probe, cli:first build probe, cli:palette in a browser, ui:connect by a point, cli:connect probe, ui:handles on the selection, cli:handles probe, cli:set walk probe, ui:split and merge parts, cli:splitmerge probe, ui:a dragged part carries what rests on it, cli:carryrest probe, ui:measure and handles by finger, cli:fingertools probe, ui:more's first rows and adding to a selection by finger, cli:smalls2 probe -->
 
 ## Sub-features
 
@@ -2951,6 +2951,40 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   app's opened and closed from their commands (none a platform file dialog)
   and made ones freed while open, a list filled twice in a frame, one popped
   and freed at once: 0 errors naming touch_sizing. Pictures in `--shots=DIR`.
+- `more's first rows and adding to a selection by finger` (`src/ui/phone_shell.gd`,
+  `src/ui/edit_verbs.gd`, `src/ui/steps_bar.gd`, `src/ui/phone.gd`, `src/main.gd`,
+  smalls2, against docs/app_ux8/phonewalk.md's counts): on a phone or a tablet
+  (`Phone.on`) only. More opens on its first rows, two to a line
+  (`PhoneShell.QUICK`, `phone_quick_<command>` in `controls_by_name`), each
+  in its menu too: two taps where the walk counted 4 to 11. Select tapped
+  while lit with nothing in hand turns `EditVerbs.adding` on (the pointer
+  with a plus; the hint says "tap parts to add or take out · Select when
+  done"): each tap adds a part or takes it out, a tap on nothing keeps them,
+  Select or another tool ends it; a hold is still the part's actions. The
+  timeline: its Booklet row shown on a model as it first opens
+  (`StepsBar.start` sets the order's rows every time); its buttons a
+  fingertip (`TouchSizing.size_panel`), on a phone held upright its rows of
+  choices one line sliding sideways (`StepsBar._line`) with Lay out the
+  page… first; the room the phone's bars take set again each time they are
+  laid out at another scale (`Main._phone_bars_room`, `PhoneShell.laid_out`),
+  so the timeline ends above the row of tools. Every English line drawn says
+  tap, hold and double-tap for click, right-click and double-click, with
+  their endings (`Phone.finger_words`, a translation, `speak_to_a_finger`);
+  a name with Click in it is kept. A check that holds a browser's scale sets
+  `PhoneShell.holds_scale`, never stops the shell. Probe: `smalls2_probe`;
+  the walk: `tools/web/phonewalk_flow.mjs --only=render,cut,stability,simulate_play,page_open,paint`.
+- `smalls2 probe` (`src/dev/smalls2_probe.gd`): windowed, 390 x 844 laid out
+  for a phone at a browser's scale, no sign-in, about two minutes; each act's
+  taps counted as phonewalk_flow.mjs counts them. `more`: the quick rows
+  shown, each 44 points or more, Cut away and Check stability each in two
+  taps. `timeline`: from its row in two taps, the Booklet row shown at once,
+  the timeline above the row of tools, Lay out the page… on the screen, 44
+  points each way, a tap opening the page editor (else what took the press
+  printed). `select`: three of the car's parts selected by a tap, Select and
+  two taps, painted in at most 8, one taken out, a tap on nothing keeping
+  them, Select ending it. `line`: "opened Car" not left over Motions.
+  `words`: Simulate's and Measure's lines drawn without click, names kept, no
+  visible label saying click with Simulate open. `--only=` any of those.
 - `connect probe` (`src/dev/connect_probe.gd`): windowed, about five minutes;
   `PROBE_SIZE=1280x720` for the small window. `column`: 8841-1's parts 1 to 20
   from the file, the column taken, aimed at its pin, `N`, its end hole, the pin,

@@ -40,10 +40,14 @@ static func file_name(model: String, suffix: String, extension: String) -> Strin
 	return SubmodelFile.titled(model, "%s.%s" % [suffix, extension])
 
 
-## Keep a picture as a PNG, encoded on a worker. Returns the line to show.
+## Keep a picture as a PNG, encoded on a worker, under the next name
+## nothing has where it goes (Download.unused): a session's picture in the
+## dark replaced the one before it of the same name without a word
+## (APP_UX8's MCP walk, x4; mcpreach). Returns the line to show.
 func keep_picture(image: Image, model: String) -> String:
 	var bytes: Array = [PackedByteArray()]
-	var name: String = file_name(model, "_render", "png")
+	var name: String = Download.unused(where().path_join(file_name(model, "_render", "png"))).get_file() \
+		if not OS.has_feature("web") else file_name(model, "_render", "png")
 	var work := func() -> void: bytes[0] = image.save_png_to_buffer()
 	if OS.has_feature("nothreads"):
 		work.call()
@@ -119,17 +123,23 @@ func give(bytes: PackedByteArray, name: String, mime: String) -> String:
 		else:
 			file.store_buffer(bytes)
 			file.close()
-			line = "wrote %s" % path
+			line = "wrote %s%s" % [path, Download.kept_note(path)]
 			paths.append(path)
 	said.append(line)
 	return line
 
 
 ## Begin a turntable for [param model] — or, with another suffix, any run
-## of frames kept the same way (Simulate's "_mechanism").
+## of frames kept the same way (Simulate's "_mechanism") — under the next
+## name whose WebP, GIF, MP4 and frames' folder are all free there
+## (Download.free_stem): the last one of its name is kept (mcpreach).
 func begin_turntable(model: String, settings: RenderSettings,
 		suffix: String = "_turntable") -> void:
-	_begin(file_name(model, suffix, "x").get_basename(), settings)
+	var base: String = file_name(model, suffix, "x").get_basename()
+	if not OS.has_feature("web"):
+		base = Download.free_stem(where().path_join(base),
+			PackedStringArray(["", ".webp", ".gif", ".mp4"])).get_file()
+	_begin(base, settings)
 
 
 ## Begin an animation of [param model]'s motion [param motion], kept the

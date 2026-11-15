@@ -37,7 +37,7 @@
 // A challenge's end needs the file.
 
 import { bearer, isMaster, verify } from "./_auth.js";
-import { db } from "./_db.js";
+import { db, dbAll } from "./_db.js";
 import { withFaces } from "./_faces.js";
 import { Unacceptable, inLanguage, siteWords } from "./_directory.js";
 import { counted, levelName, pictureOf, say } from "./_card.js";
@@ -227,7 +227,7 @@ export function noticeGroups(page, origin = "", now = Date.now()) {
 
 /// notification_list's answer, made from feed_of's rows of the caller's
 /// own models and model_likes, the feed's seen_at its only mark.
-async function listBefore(viewer, mark) {
+export async function listBefore(viewer, mark) {
   const page = await call("feed_of", { viewer, before: null, size: 50, mark }, () => null);
   if (!page) return null;
   const rows = (page.rows || [])
@@ -236,8 +236,10 @@ async function listBefore(viewer, mark) {
   const mine = await db(`shared_models?owner=eq.${viewer}&published=is.true&barred=is.false`
     + "&select=id,name,has_image,has_thumb,updated_at&order=updated_at.desc&limit=200");
   const since = new Date(Date.now() - 90 * DAY).toISOString();
-  const likes = mine.length ? await db(`model_likes?model=in.(${mine.map((one) => one.id).join(",")})`
-    + `&account=neq.${viewer}&at=gt.${since}&select=model,at&order=at.desc&limit=2000`) : [];
+  // Every like, past PostgREST's page of 1,000: a read asked for 2,000
+  // was given 1,000, and a day's count stopped short (lists1's review).
+  const likes = mine.length ? await dbAll(`model_likes?model=in.(${mine.map((one) => one.id).join(",")})`
+    + `&account=neq.${viewer}&at=gt.${since}&select=model,at`, "model,account") : [];
   const days = new Map();
   for (const like of likes) {
     const key = `${like.model} ${like.at.slice(0, 10)}`;

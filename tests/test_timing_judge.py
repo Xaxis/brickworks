@@ -32,6 +32,11 @@ def test_each_timing_checks_measure_is_read_with_its_bar():
     cases = [
         (PLAY_DRAG.format(27.8), 27.8, 36),
         (_opens(3229), 3229, 3000),
+        # Judged by the app's own work since webfaults, the clock said beside it.
+        ('  ok    it opens playing "Open the gates", the app\'s own work 1404 ms after the model is shown, under 2000 '
+         '(page 710 ms in 7 frames, the joints read 414 ms, the gates worked out 280.9 ms; by the clock 3956 ms: '
+         'parts 6669, registered 8858, read 10098, pressed 10272, moving 10625; shapes here [27,27]; '
+         'frames {"moving":[41,13]})  [64s]', 1404, 2000),
         ("  FAIL  75969-1.mpd: Next #1, its worst frame's own work 216.1 ms of 200 (the page's wait 286.8 ms)", 216.1, 200),
         ("  ok    75969-1.mpd: an orbit's drawn frames, the app's own work at the 95th percentile 38.8 ms of 200 "
          "(median 27.5, worst 42.9; 41 drawn)", 38.8, 200),

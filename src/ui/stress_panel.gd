@@ -17,6 +17,13 @@
 ## under it or a second pin, shown as a ghost where it would go, and put
 ## down by Strengthen as one step to undo. With From my bricks, from the
 ## parts the person owns, as the parts bin counts them.
+##
+## Its Lift (loadtest): pressed, the part chosen next (or the one selected)
+## is the one the model is lifted by, off the floor (StressView.set_lift).
+## The panel then heads with what comes away, lists each thing that lets go
+## with all it takes, then the joints that hold past their working load and
+## the nearest letting go, and says the one stepped to in words; its own
+## legend says the colours. Pressed again, the model stands again.
 class_name StressPanel
 extends PanelContainer
 
@@ -79,6 +86,15 @@ var _ghost: MeshInstance3D = null
 var _looking: int = 0
 ## Whether a look for a fix is under way.
 var _finding: bool = false
+## Lift: its button, the two legends, and each lifted row's kind and words
+## (LiftTest.Result.rows), by row.
+var _lift: Button
+var _legend: VBoxContainer
+var _lift_legend: VBoxContainer
+var _lift_rows: Array = []
+## The part the lift shown is by: 0 while none is (a car lifted by its roof
+## may list no row at all).
+var _lifted_by: int = 0
 
 
 func _ready() -> void:
@@ -96,6 +112,7 @@ func _ready() -> void:
 ## while the weighing is still to come in. The one stepped to stays chosen
 ## when it is still listed.
 func show_weak(weak: Array) -> void:
+	_lifted_look(false)
 	var was: int = (entries[chosen] as StressView.Weak).id if chosen >= 0 else 0
 	var listed: Array = []
 	for one: StressView.Weak in weak:
@@ -107,6 +124,8 @@ func show_weak(weak: Array) -> void:
 	var weighed: bool = view != null and view.report != null
 	var counted: Array = StressView.tally(weak)
 	_count.text = StressView.count_words(weak) if weighed else "Weighing every joint…"
+	if view != null and view.lifting:
+		_count.text = "Click the part to lift the model by."
 	_tips.visible = false
 	if weighed:
 		for risk: Stability.Risk in view.report.risks:
@@ -157,7 +176,12 @@ func _choose(n: int, framed: bool = true) -> void:
 	_scroll.ensure_control_visible.call_deferred(_row_buttons[n])
 	if framed:
 		var one: StressView.Weak = entries[n]
+		# Shown, not chosen to lift by.
+		if view != null:
+			view.framing = true
 		show_part.call(one.ids, [one.around] if one.around > 0 else [])
+		if view != null:
+			view.framing = false
 
 
 func _say_chosen() -> void:
@@ -167,11 +191,14 @@ func _say_chosen() -> void:
 	_previous.disabled = entries.size() < 2
 	_next.disabled = entries.is_empty()
 	_at.text = "%d of %d" % [chosen + 1, entries.size()] if one != null else ""
-	if one == null:
+	if one == null or not _lift_rows.is_empty():
 		_forget_fix()
 		_offer.visible = false
 		_strengthen.visible = false
 		_mine.visible = false
+		if one != null:
+			_why.text = str((_lift_rows[chosen] as Dictionary)["why"])
+			_fit_later()
 		return
 	_why.text = view.words(one.id) if view != null else ""
 	_fix.text = StressView.fix_words(one, view.library if view != null else null)
@@ -179,6 +206,113 @@ func _say_chosen() -> void:
 	_look_for_fix(one)
 	# Its words take room from the list, not from under the key strip.
 	_fit_later()
+
+
+# -- Lift (loadtest) ---------------------------------------------------------------
+
+
+## What lifting showed (LiftTest.Result), listed: each thing that comes away,
+## then the joints that hold past their working load, and the nearest
+## letting go. Null while the part to lift by is still to be chosen; a result
+## that lifted nothing says why.
+func show_lift(result: RefCounted) -> void:
+	_lifted_look(true)
+	_tips.visible = false
+	_more.visible = false
+	chosen = -1
+	entries = []
+	_lift_rows = []
+	_lifted_by = int(result.get("by")) if result != null else 0
+	if result == null or int(result.get("by")) == 0:
+		_count.text = str(result.get("problem")) if result != null else "Click the part to lift the model by."
+		_of.text = "Lift again sets it down."
+	else:
+		_count.text = result.call("headline")
+		_of.text = "Click another part to lift by it; Lift again sets it down."
+		_lift_rows = (result.call("rows", AT_LEAST) as Array).slice(0, MOST)
+		for row: Dictionary in _lift_rows:
+			var one := StressView.Weak.new()
+			one.id = int(row["id"])
+			one.ids = row["ids"]
+			one.around = int(row["around"])
+			one.margin = 0.0 if str(row["kind"]) in ["lets go", "loose", "falls"] else INF
+			entries.append(one)
+	_of.visible = true
+	while _row_buttons.size() < entries.size():
+		_row_buttons.append(_row(_row_buttons.size()))
+	for n: int in _row_buttons.size():
+		_row_buttons[n].visible = n < entries.size()
+		_row_buttons[n].set_pressed_no_signal(false)
+		if n < entries.size():
+			_say_lift_row(_row_buttons[n], _lift_rows[n])
+	_scroll.visible = not entries.is_empty()
+	_say_chosen()
+	_fit_later()
+
+
+## While part [param id] is being lifted by: said in the heading.
+func lifting_now(id: int) -> void:
+	_lifted_look(true)
+	var brick: BrickWorld.Brick = view.world.get_brick(id) if view != null else null
+	_count.text = "Lifting it by %s…" % (StressView._named(view.library, brick.part_id)
+		if brick != null else "#%d" % id)
+
+
+## The panel as lifting draws it ([param on]) or as standing does: its
+## legend, and Lift pressed while the view lifts.
+func _lifted_look(on: bool) -> void:
+	if _lift == null:
+		return
+	_lift.set_pressed_no_signal(view != null and view.lifting)
+	_legend.visible = not on
+	_lift_legend.visible = on
+	if not on:
+		_lift_rows = []
+		_lifted_by = 0
+
+
+## A lifted row: what it is, then the part's name, as the standing rows put
+## the margin first.
+func _say_lift_row(button: Button, row: Dictionary) -> void:
+	var kind: String = str(row["kind"])
+	var brick: BrickWorld.Brick = view.world.get_brick(int(row["id"])) if view != null else null
+	var name: String = StressView._named(view.library, brick.part_id) if brick != null \
+		else "#%d" % int(row["id"])
+	var more: int = (row["ids"] as Array).size() - 1
+	if more > 0:
+		name = "%s and %d more" % [name, more]
+	var said: String = {"lets go": "lets go", "loose": "left behind", "falls": "falls off",
+		"swings": "swings"}.get(kind, "holds %s" % _times(float(row["give"])))
+	button.text = "%s · %s" % [said, name]
+	button.icon = _chip(StressView.RED if kind in ["lets go", "loose", "falls"]
+		else (StressView.AMBER if kind in ["strained", "swings"] else SAFE))
+	button.tooltip_text = str(row["why"])
+
+
+## How near letting go, as LiftTest.times says it: the panel names no Later class.
+static func _times(give: float) -> String:
+	return "%.2f" % give if give < 10.0 else Balance.tidy(give)
+
+
+## A legend of [param rows] ([colour, words] each) under [param into].
+func _key(into: Control, rows: Array) -> VBoxContainer:
+	var legend := VBoxContainer.new()
+	legend.add_theme_constant_override("separation", 2)
+	into.add_child(legend)
+	for each: Array in rows:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		legend.add_child(row)
+		var chip := TextureRect.new()
+		chip.texture = _chip(each[0])
+		chip.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+		row.add_child(chip)
+		var words := Label.new()
+		words.text = each[1]
+		words.add_theme_font_size_override("font_size", 11)
+		words.modulate = Color(1, 1, 1, 0.75)
+		row.add_child(words)
+	return legend
 
 
 # -- Strengthen ------------------------------------------------------------------
@@ -370,6 +504,12 @@ func _build() -> void:
 	title.add_theme_font_size_override("font_size", 14)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
+	# loadtest: Lift, the model lifted by a part.
+	_lift = _button(header, "Lift", func() -> void:
+		if view != null:
+			view.set_lift(_lift.button_pressed),
+		"Lift the model by a part, off the floor: press, then click the part. What lets go comes away, red")
+	_lift.toggle_mode = true
 	_close = _button(header, "Close", func() -> void:
 		if view != null:
 			view.set_on(false), "Stress off: every part in its own colour again (View, Stress)")
@@ -377,24 +517,14 @@ func _build() -> void:
 	_tips = _words(column, 12, 1.0)
 	_tips.add_theme_color_override("font_color", StressView.RED.lightened(0.25))
 	_tips.visible = false
-	var legend := VBoxContainer.new()
-	legend.add_theme_constant_override("separation", 2)
-	column.add_child(legend)
-	for each: Array in [[StressView.RED, "Past its working load: the first to give"],
+	_legend = _key(column, [[StressView.RED, "Past its working load: the first to give"],
 			[StressView.AMBER, "Near it: holds it less than twice over"],
-			[SAFE, "Holds it twice over, or shares its load: faded"]]:
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 6)
-		legend.add_child(row)
-		var chip := TextureRect.new()
-		chip.texture = _chip(each[0])
-		chip.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
-		row.add_child(chip)
-		var words := Label.new()
-		words.text = each[1]
-		words.add_theme_font_size_override("font_size", 11)
-		words.modulate = Color(1, 1, 1, 0.75)
-		row.add_child(words)
+			[SAFE, "Holds it twice over, or shares its load: faded"]])
+	_lift_legend = _key(column, [[StressView.LIFTED, "In the hand: the part it is lifted by"],
+			[StressView.RED, "Comes away: a joint lets go, or nothing holds it"],
+			[StressView.AMBER, "Holds past its working load, or swings on a pin"],
+			[SAFE, "Holds: faded"]])
+	_lift_legend.visible = false
 	column.add_child(HSeparator.new())
 	_of = _words(column, 11, 0.65)
 	_scroll = ScrollContainer.new()
@@ -476,14 +606,16 @@ func fields() -> Dictionary:
 		"why": _why.text if _why.visible else "", "fix": _fix.text if _fix.visible else "",
 		"at": _at.text, "offer": _offer.text if _offer.visible else "",
 		"strengthen": _strengthen.visible and not _strengthen.disabled,
-		"finding": _finding, "mine": _mine.visible and _mine.button_pressed}
+		"finding": _finding, "mine": _mine.visible and _mine.button_pressed,
+		"lift": _lift.button_pressed, "lifted": _lifted_by != 0,
+		"kinds": _lift_rows.map(func(row: Dictionary) -> String: return str(row["kind"]))}
 
 
 ## Where each control is, for a probe or a browser test to press.
 func controls_by_name() -> Dictionary:
 	if not visible:
 		return {}
-	var out: Dictionary = {"stress_close": _close, "stress_previous": _previous,
+	var out: Dictionary = {"stress_close": _close, "stress_lift": _lift, "stress_previous": _previous,
 		"stress_next": _next, "stress_strengthen": _strengthen, "stress_mine": _mine}
 	for n: int in mini(entries.size(), 12):
 		out["stress_row_%d" % n] = _row_buttons[n]
