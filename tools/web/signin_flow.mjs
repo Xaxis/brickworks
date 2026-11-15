@@ -9,9 +9,24 @@
 //   1. The header's Sign in opens the sign-in dialog over the page, in one
 //      click, at 1280 (its link in the bar) and 430 (in the phone's Menu,
 //      a touch context), the address unchanged; Not now leaves the page as
-//      it was. Signed in there, the page is the same page and the header
-//      shows the avatar, with no reload.
-//   2. A signed-out visit to /profile opens the dialog by itself.
+//      it was. Signed in there, the page is the same page, where it was
+//      scrolled, the header shows the avatar with no reload and the focus
+//      stays on it, a late answer to the header's count too.
+//   2. /profile?sign-in, the header's link without scripts, opens the
+//      dialog by itself, the ?sign-in gone from the address.
+//   5. Signing out on /profile shows its Sign in and opens no dialog.
+//   6. Two tabs: a sign-in in one is the avatar in the other, no reload; a
+//      sign-out in one reloads the other signed out, but for a tab with
+//      words typed and not sent, which keeps them, Sign in in its header.
+//   7. /admin: Sign in at the right of its bar and in its gate, signed in
+//      in place, the console asked again, still on /admin.
+//   8. (Stood in) a locked address is told "Try again after HH:MM".
+//   9. (Stood in) a field's edge is 3:1 on the dialog and its fill, both themes.
+//   10. (design_stand_in.mjs) the connector's sign-in page sends no code
+//      short of digits, and drops the last refusal's red line as the next
+//      code is checked.
+//   11. (design_stand_in.mjs, its own model) a read of how a model stands,
+//      answered after Like and Follow went through, is dropped.
 //   3. The code is a box per digit (as many as the deployment says): one
 //      labelled group, "Digit 1 of 8", the number pad, the first box focused
 //      and the one-time-code fill's target. Typed digits move on, a letter
@@ -58,7 +73,7 @@ const site = deployed ? String(args.url).replace(/\/+$/, "").replace(/\/app$/, "
 const bypass = process.env.BW_BYPASS || "";
 const headers = bypass ? { "x-vercel-protection-bypass": bypass, "x-vercel-skip-toolbar": "1" } : {};
 const allSizes = args.shots === "all";
-const only = String(args.only || "header,profile,code,orangecheck").split(",");
+const only = String(args.only || "header,profile,code,orangecheck,signout,tabs,admin,limit,edge,consent,stale").split(",");
 
 let failed = 0;
 const check = (what, ok, said = "") => {
@@ -112,7 +127,12 @@ async function standIn(context) {
   });
   await context.route(`${site}/api/people*`, (route) => {
     const op = new URL(route.request().url()).searchParams.get("op");
-    if (op === "feed_count") return json(route, 200, { signed_in: true, me: { handle: "builder", name: "A Builder" }, count: 0 });
+    // Answered late, as a busy server does: the header drawn again after
+    // the dialog has closed (sifix: that put the focus on the page).
+    if (op === "feed_count") {
+      return new Promise((done) => setTimeout(done, 800))
+        .then(() => json(route, 200, { signed_in: true, me: { handle: "builder", name: "A Builder" }, count: 0 }));
+    }
     return json(route, 503, { error: "stood in" });
   });
   await context.route(`${site}/api/orangecheck*`, (route) => {
@@ -156,6 +176,31 @@ const person = deployed ? `delivered+bw-signin-${randomBytes(4).toString("hex")}
 const session_ = deployed ? await import("./session.mjs") : null;
 if (deployed) await session_.mintSession(person, { age: true, welcome: true });
 const codeFor = async () => (deployed ? session_.mintCode(person) : RIGHT);
+/// A sign-in as this browser keeps it (localStorage brickworks.session):
+/// on a deployment a new one each time, by the password grant (a refresh
+/// token used twice ends the whole session).
+const keptSession = async () => (deployed ? (await session_.mintSession(person, { age: true, welcome: true })).kept
+  : { refresh_token: "rt-stand-in", email: person, user_id: "00000000-0000-4000-8000-000000000001", url: SUPABASE, key: "stand-in-key" });
+/// [made]'s pages signed in from their first load, once a tab: a reload
+/// after signing out stays signed out.
+async function signedInFrom(made) {
+  await made.addInitScript((kept) => {
+    try {
+      if (!sessionStorage.getItem("flow.seeded")) {
+        localStorage.setItem("brickworks.session", kept);
+        sessionStorage.setItem("flow.seeded", "1");
+      }
+    } catch { /* none */ }
+  }, JSON.stringify(await keptSession()));
+}
+/// The sign-in's line, and whether it is said as trouble.
+const saidIn = (page) => page.evaluate(() => ({ said: document.querySelector("dialog.sign-in form .said")?.textContent || "",
+  tone: document.querySelector("dialog.sign-in form .said")?.dataset.tone || "" }));
+/// Sign out from the header's account menu (the page loads again).
+async function signOutHere(page) {
+  await page.locator(".site-head .account-menu summary").click();
+  await Promise.all([page.waitForEvent("load", { timeout: 30000 }), page.locator(".site-head .account-menu button.sign-out").click()]);
+}
 
 const dialogOpen = (page) => page.evaluate(() => Boolean(document.querySelector("dialog.sign-in")?.open));
 const avatar = (page) => page.evaluate(() => ({
@@ -348,7 +393,18 @@ try {
     const gone = await until(page, () => !document.querySelector("dialog.sign-in"), null, 45000);
     check(`${label}: the code filled into the first box (a password manager's fill) fans out and goes by itself`,
       filled.values.join("") === minted && gone, JSON.stringify(filled));
-    await page.waitForTimeout(500);
+    // The page where it was, and the focus on the avatar the whole time
+    // the header's count is still coming (sifix: 1829 px down became 1411
+    // at 1280, a plain focus() scrolling the sticky header into view; and
+    // the count, redrawing the avatar, dropped the focus to the page).
+    const stayed = [];
+    for (const ms of [0, 300, 1500]) {
+      await page.waitForTimeout(ms);
+      stayed.push(await page.evaluate(() => ({ y: Math.round(scrollY),
+        on: document.activeElement?.classList.contains("account-btn") ? "avatar" : document.activeElement?.tagName || "" })));
+    }
+    check(`${label}: signed in, the page stays where it was (${before.y} px) and the focus stays on the avatar`,
+      stayed.every((one) => Math.abs(one.y - before.y) < 3 && one.on === "avatar"), JSON.stringify(stayed));
     const header = await avatar(page);
     check(`${label}: signed in, the same page, the header the avatar, no reload`,
       page.url() === before.url && header.avatar && !header.signIn && await page.evaluate(() => window.__kept === true),
@@ -357,15 +413,17 @@ try {
     await made.close();
   }
 
-  // 2. A signed-out /profile.
+  // 2. A signed-out /profile come to sign in (the header's link, opened
+  // in a new tab or where its script did not run: /profile?sign-in).
   if (only.includes("profile")) {
     for (const width of [1280, 430]) {
       const made = await context(width, "light", { touch: width < 600 });
       const page = await made.newPage();
       listen(page, `profile ${width}`);
-      await page.goto(`${site}/profile`, { waitUntil: "load", timeout: 120000 });
+      await page.goto(`${site}/profile?sign-in`, { waitUntil: "load", timeout: 120000 });
       const opened = await until(page, () => document.querySelector("dialog.sign-in")?.open, null, 10000);
-      check(`${width}: a signed-out /profile opens the sign-in by itself`, opened);
+      check(`${width}: /profile?sign-in, signed out, opens the sign-in by itself, and its address loses ?sign-in`,
+        opened && !new URL(page.url()).searchParams.has("sign-in"), page.url());
       await shot(page, `profile_${width}_light`);
       if (opened) {
         await page.keyboard.press("Escape");
@@ -394,6 +452,308 @@ try {
         `${page.url()} ${await page.evaluate(() => document.documentElement.dataset.lists)}`);
       await made.close();
     }
+  }
+
+  // 5. Signing out on /profile (sifix, 2026-11-15: the sign-in opened at
+  // once after it, as it did for a sign-in that ran out): the page with its
+  // own Sign in, no dialog nobody asked for.
+  if (only.includes("signout")) {
+    const made = await context(1280, "light");
+    await signedInFrom(made);
+    const page = await made.newPage();
+    listen(page, "signout");
+    await page.goto(`${site}/profile`, { waitUntil: "load", timeout: 120000 });
+    const shown = await until(page, () => [...document.querySelectorAll(".site-head .account-btn")].some((one) => one.checkVisibility()), null, 20000);
+    if (shown) await signOutHere(page);
+    await page.waitForTimeout(2500);
+    const after = await page.evaluate(() => ({ dialog: Boolean(document.querySelector("dialog.sign-in")?.open),
+      signedOut: !document.getElementById("signed-out")?.hidden, button: Boolean(document.getElementById("sign-in")?.checkVisibility()),
+      kept: Boolean(localStorage.getItem("brickworks.session")) }));
+    check("1280: signed out from the account menu on /profile, the page shows its own Sign in and opens no dialog",
+      shown && !after.dialog && after.signedOut && after.button && !after.kept, JSON.stringify({ shown, ...after }));
+    await shot(page, "profile_signed_out_1280_light");
+    await made.close();
+  }
+
+  // 6. Two tabs (sifix: tab B kept its avatar after tab A signed out). A
+  // sign-in in one reaches the other at once, drawn there with no reload;
+  // a sign-out reaches it too: a tab with nothing typed is loaded again,
+  // signed out; one holding words typed and not sent keeps them, its
+  // header back to Sign in.
+  if (only.includes("tabs")) {
+    const made = await context(1280, "light");
+    const [a, b, c] = [await made.newPage(), await made.newPage(), await made.newPage()];
+    listen(a, "tab A");
+    listen(b, "tab B");
+    listen(c, "tab C");
+    for (const [page, at] of [[a, "/faq"], [b, "/download"], [c, "/takedown"]]) {
+      await page.goto(`${site}${at}`, { waitUntil: "load", timeout: 120000 });
+      await page.evaluate(() => { window.__kept = true; });
+    }
+    // A takedown notice half written, not sent.
+    const words = c.locator("#what");
+    const typed = await words.isVisible().catch(() => false);
+    if (typed) await words.fill("Half a note, not sent yet.");
+    check("tab C: words typed into a field of its page", typed);
+    await headerSignIn(a, false);
+    const signed = await until(a, () => document.querySelector("dialog.sign-in")?.open, null, 6000) && await toCode(a);
+    if (signed) {
+      await a.locator("dialog.sign-in .code-boxes input").first().focus();
+      await a.keyboard.type(await codeFor());
+    }
+    const inA = signed && await until(a, () => !document.querySelector("dialog.sign-in"), null, 45000);
+    const inB = await until(b, () => [...document.querySelectorAll(".site-head .account-btn")].some((one) => one.checkVisibility())
+      && window.__kept === true, null, 15000);
+    check("tab A signed in: tab B's header is the avatar at once, no reload", inA && inB,
+      JSON.stringify({ inA, b: await avatar(b) }));
+    if (inA) await signOutHere(a);
+    const outB = await until(b, () => [...document.querySelectorAll(".site-head a[data-account]")].some((one) => one.checkVisibility())
+      && ![...document.querySelectorAll(".site-head .account-btn")].some((one) => one.checkVisibility()), null, 15000);
+    const reloadedB = await b.evaluate(() => window.__kept !== true);
+    check("tab A signed out: tab B, nothing typed in it, is loaded again, signed out", outB && reloadedB,
+      JSON.stringify({ header: await avatar(b), reloaded: reloadedB }));
+    if (typed) {
+      const outC = await until(c, () => [...document.querySelectorAll(".site-head a[data-account]")].some((one) => one.checkVisibility()), null, 15000);
+      const keptC = await c.evaluate(() => ({ kept: window.__kept === true, words: document.getElementById("what")?.value || "" }));
+      check("tab A signed out: tab C keeps the words typed in it, no reload, its header back to Sign in",
+        outC && keptC.kept && keptC.words === "Half a note, not sent yet.", JSON.stringify({ header: await avatar(c), ...keptC }));
+    }
+    await made.close();
+  }
+
+  // 7. /admin (sifix: no Sign in in its bar, and its gate's link went to
+  // /profile and never came back): signed in there, in place, the console
+  // asked again with the sign-in, still on /admin. The test account is not
+  // the owner, so the gate then says it cannot see the page.
+  if (only.includes("admin")) {
+    const made = await context(1280, "light");
+    if (!deployed) {
+      await made.route(`${site}/api/admin*`, (route) => route.fulfill({ status: 404, contentType: "application/json",
+        body: JSON.stringify({ error: "not found" }) }));
+    }
+    const page = await made.newPage();
+    listen(page, "admin");
+    await page.goto(`${site}/admin#people`, { waitUntil: "load", timeout: 120000 });
+    await until(page, () => !/Checking/.test(document.getElementById("gate-note")?.textContent || ""), null, 20000);
+    await page.evaluate(() => { window.__kept = true; });
+    const bar = await page.evaluate(() => {
+      const button = document.getElementById("sign-in");
+      const bar = document.querySelector(".console-bar .wrap")?.getBoundingClientRect();
+      const at = button?.getBoundingClientRect();
+      return { shown: Boolean(button?.checkVisibility()), right: bar && at ? Math.round(bar.right - at.right) : null,
+        note: document.getElementById("gate-note")?.textContent || "" };
+    });
+    check("/admin signed out: Sign in in its bar, at the far right", bar.shown && bar.right !== null && bar.right < 40, JSON.stringify(bar));
+    await shot(page, "admin_signed_out_1280_light");
+    let opened = false;
+    if (bar.shown) {
+      await page.locator("#gate-sign-in").click();
+      const gateOpens = await until(page, () => document.querySelector("dialog.sign-in")?.open, null, 6000);
+      check("/admin: the gate's Sign in opens the sign-in over the console, on /admin", gateOpens && /\/admin/.test(page.url()), page.url());
+      if (gateOpens) {
+        await page.locator("dialog.sign-in .foot button").click();
+        await until(page, () => !document.querySelector("dialog.sign-in"), null, 3000);
+      }
+      await pressAt(page, "#sign-in", false);
+      opened = await until(page, () => document.querySelector("dialog.sign-in")?.open, null, 6000);
+    }
+    const coded = opened && await toCode(page);
+    if (coded) {
+      await page.locator("dialog.sign-in .code-boxes input").first().focus();
+      await page.keyboard.type(await codeFor());
+    }
+    const asked = coded && await until(page, () => !document.querySelector("dialog.sign-in")
+      && /cannot see this page/.test(document.getElementById("gate-note")?.textContent || ""), null, 45000);
+    const after = await page.evaluate(() => ({ url: location.pathname + location.hash, kept: window.__kept === true,
+      bar: Boolean(document.getElementById("sign-in")?.checkVisibility()), note: document.getElementById("gate-note")?.textContent || "" }));
+    check("/admin: signed in from its bar in place, the console asked again with the sign-in, still on /admin#people, no reload",
+      asked && after.url === "/admin#people" && after.kept && !after.bar, JSON.stringify(after));
+    await made.close();
+  }
+
+  // 8. Four codes asked for an address in fifteen minutes lock it (the
+  // limit stays: it protects people). Said when to try again, by the
+  // person's clock, not "a few minutes" (sifix).
+  if (only.includes("limit") && !deployed) {
+    const made = await context(1280, "light");
+    const free = new Date(Date.now() + 14 * 60000).toISOString();
+    await made.route(`${site}/api/otp`, (route) => route.fulfill({ status: 429, contentType: "application/json",
+      body: JSON.stringify({ error: "Too many codes asked for. Wait a few minutes and try again.", retry_at: free }) }));
+    const page = await made.newPage();
+    listen(page, "limit");
+    await page.goto(`${site}/faq`, { waitUntil: "load", timeout: 120000 });
+    await headerSignIn(page, false);
+    await until(page, () => document.querySelector("dialog.sign-in")?.open, null, 6000);
+    await page.locator("dialog.sign-in input[type=email]").fill(person);
+    await page.locator("dialog.sign-in button[type=submit]").click();
+    await until(page, () => document.querySelector("dialog.sign-in form .said")?.textContent, null, 10000);
+    const time = await page.evaluate((iso) => new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }), free);
+    const said = await saidIn(page);
+    check(`a locked address is told when to try again: "Try again after ${time}"`,
+      said.said.includes(`Try again after ${time}`) && said.tone === "bad" && !/few minutes/.test(said.said), JSON.stringify(said));
+    await shot(page, "limit_1280_light");
+    await made.close();
+  }
+
+  // 9. A field's edge (WCAG 1.4.11, 3:1; sifix: 1.7:1 in light and 1.5:1 in
+  // dark), the email's and a code box's, on the dialog and on its own fill.
+  if (only.includes("edge") && !deployed) {
+    for (const theme of ["light", "dark"]) {
+      const made = await context(1280, theme);
+      const page = await made.newPage();
+      listen(page, `edge ${theme}`);
+      await page.goto(`${site}/faq`, { waitUntil: "load", timeout: 120000 });
+      await headerSignIn(page, false);
+      await until(page, () => document.querySelector("dialog.sign-in")?.open, null, 6000);
+      const edgeOf = (selector) => page.evaluate((chosen) => {
+        const parse = (c) => (c.match(/[\d.]+/g) || []).map(Number);
+        const over = ([r, g, b, a = 1], [R, G, B]) => [r * a + R * (1 - a), g * a + G * (1 - a), b * a + B * (1 - a)];
+        const lum = (rgb) => rgb.map((v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; })
+          .reduce((s, v, i) => s + v * [0.2126, 0.7152, 0.0722][i], 0);
+        const ratio = (x, y) => { const [p, q] = [lum(x), lum(y)].sort((m, n) => n - m); return +((p + 0.05) / (q + 0.05)).toFixed(2); };
+        const field = document.querySelector(chosen);
+        const ground = parse(getComputedStyle(document.querySelector("dialog.sign-in")).backgroundColor);
+        const fill = over(parse(getComputedStyle(field).backgroundColor), ground);
+        const edge = over(parse(getComputedStyle(field).borderTopColor), fill);
+        return { onDialog: ratio(edge, ground), onFill: ratio(edge, fill), edge: getComputedStyle(field).borderTopColor };
+      }, selector);
+      await page.mouse.move(1, 1);
+      // Not the one being typed in: its edge is the accent's.
+      await page.locator("dialog.sign-in .foot button").focus();
+      // Its edge's change of colour run to its end.
+      await page.waitForTimeout(500);
+      const email = await edgeOf("dialog.sign-in input[type=email]");
+      await toCode(page);
+      const box = await edgeOf("dialog.sign-in .code-boxes input:nth-child(4)");
+      check(`${theme}: a field's edge is 3:1 or more on the dialog and on its fill: the email ${email.onDialog}/${email.onFill}, a code box ${box.onDialog}/${box.onFill}`,
+        Math.min(email.onDialog, email.onFill, box.onDialog, box.onFill) >= 3, JSON.stringify({ email, box }));
+      await shot(page, `edge_code_1280_${theme}`);
+      await made.close();
+    }
+  }
+
+  // 10. The connector's sign-in page (/oauth/authorize, web/authorize.js),
+  // the site as design_stand_in.mjs stands it in: a code short of digits is
+  // never sent, said as the dialog says it (sifix: the page sent it); and
+  // the last refusal's red line goes as the next code is checked (sifix: it
+  // stayed under "Signing in…").
+  const stand = !deployed && (only.includes("consent") || only.includes("stale")) ? await import("./design_stand_in.mjs") : null;
+  const checkout = path.join(path.dirname(new URL(import.meta.url).pathname), "../..");
+  if (only.includes("consent") && !deployed) {
+    // The page in a browser of its own, at its code step: the codes it
+    // sent to the verify, and [hold] how long their answers are held.
+    const atCode = async () => {
+      const made = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+      await stand.serveSite(made, { web: args.web || path.join(checkout, "web"), api: path.join(checkout, "api") });
+      const sent = { tokens: [], hold: 0 };
+      await made.route(`${stand.DB}/auth/v1/verify`, async (route) => {
+        sent.tokens.push(route.request().postDataJSON()?.token);
+        if (sent.hold) await new Promise((done) => setTimeout(done, sent.hold));
+        return route.fallback();
+      });
+      const page = await made.newPage();
+      listen(page, "consent");
+      const asked = new URL(`${stand.ORIGIN}/oauth/authorize`);
+      for (const [k, v] of Object.entries({ response_type: "code", client_id: "https://claude.ai/oauth/mcp-oauth-client-metadata",
+        redirect_uri: "https://claude.ai/api/mcp/auth_callback", code_challenge: "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
+        code_challenge_method: "S256", state: "signin-flow", scope: "build" })) asked.searchParams.set(k, v);
+      await page.goto(asked.href, { waitUntil: "load", timeout: 120000 });
+      await page.waitForSelector("#email-step:not(.hide)", { timeout: 30000 });
+      await page.fill("#email", person);
+      await page.click("#send");
+      await page.waitForSelector("#code-step:not(.hide)", { timeout: 30000 });
+      await page.locator("#code-1").focus();
+      return { made, page, sent };
+    };
+    const sayOf = (page) => page.evaluate(() => ({ say: document.getElementById("say")?.textContent || "",
+      bad: Boolean(document.getElementById("say")?.classList.contains("bad")),
+      step: ["email-step", "code-step", "allow-step"].find((id) => !document.getElementById(id)?.classList.contains("hide")) || "",
+      focus: [...document.querySelectorAll("#code-step .code-box")].indexOf(document.activeElement) }));
+
+    // A refused code, then the next one: its red line gone while it is checked.
+    {
+      const { made, page, sent } = await atCode();
+      await page.keyboard.type(stand.WRONG_CODE);
+      const refused = await until(page, () => document.getElementById("say")?.classList.contains("bad")
+        && document.querySelector("#code-step .code-boxes")?.getAttribute("aria-busy") !== "true", null, 15000);
+      sent.hold = 1200;
+      await page.keyboard.type("1234567");
+      await page.keyboard.press("8");
+      for (let n = 0; n < 30 && sent.tokens.length < 2; n++) await page.waitForTimeout(100);
+      await page.waitForTimeout(300);
+      const during = await sayOf(page);
+      check("consent page: a code refused, the next one checked: the refusal's red line gone while it is",
+        refused && sent.tokens.length === 2 && during.step === "code-step" && !during.bad && !/wrong/.test(during.say),
+        JSON.stringify({ tokens: sent.tokens, ...during }));
+      const allowed = await until(page, () => !document.getElementById("allow-step")?.classList.contains("hide"), null, 30000);
+      check("consent page: the right code signs in, Allow asked", allowed);
+      await made.close();
+    }
+    // Three digits of eight and Sign in: nothing sent, all eight asked for.
+    {
+      const { made, page, sent } = await atCode();
+      await page.keyboard.type("123");
+      await page.click("#verify");
+      await page.waitForTimeout(600);
+      const short = await sayOf(page);
+      check("consent page: Sign in with three digits of eight sends nothing and asks for all eight",
+        sent.tokens.length === 0 && short.step === "code-step" && /Enter all 8 digits/.test(short.say) && short.focus === 3,
+        JSON.stringify({ tokens: sent.tokens, ...short }));
+      await made.close();
+    }
+  }
+
+  // 11. A stale answer (sifix: a read still out when Like was pressed drew
+  // it unpressed after it went through; follow.js the same). Stood in only,
+  // on the stand-in's model, never a real person's: signed in from the
+  // header, the page's reads of how it stands are held; Like and Follow are
+  // pressed and answered; then the held reads answer what was. The page
+  // keeps what the presses made.
+  if (only.includes("stale") && !deployed) {
+    const made = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    await stand.serveSite(made, { web: args.web || path.join(checkout, "web"), api: path.join(checkout, "api") });
+    const held = [];
+    let holding = true;
+    await made.route(`${stand.ORIGIN}/api/people*`, async (route) => {
+      const op = new URL(route.request().url()).searchParams.get("op");
+      const mine = route.request().headers().authorization;
+      if (holding && mine && ["marks", "follows"].includes(op) && !held.some((one) => one.op === op)) {
+        await new Promise((release) => held.push({ op, release }));
+      }
+      return route.fallback();
+    });
+    const page = await made.newPage();
+    listen(page, "stale");
+    await page.goto(`${stand.ORIGIN}/m/${stand.MODEL_ID}`, { waitUntil: "load", timeout: 120000 });
+    await page.locator('[data-mark="like"]').waitFor({ timeout: 30000 });
+    await headerSignIn(page, false);
+    await until(page, () => document.querySelector("dialog.sign-in")?.open, null, 6000);
+    await page.locator("dialog.sign-in input[type=email]").fill(stand.EMAIL);
+    await page.locator("dialog.sign-in button[type=submit]").click();
+    await until(page, () => document.querySelector("dialog.sign-in .code-boxes input")?.checkVisibility(), null, 15000);
+    await page.locator("dialog.sign-in .code-boxes input").first().focus();
+    await page.keyboard.type("12345678");
+    await until(page, () => !document.querySelector("dialog.sign-in"), null, 15000);
+    for (let n = 0; n < 50 && held.length < 2; n++) await page.waitForTimeout(100);
+    const both = held.length;
+    holding = false;
+    const follow = page.locator("button[data-follow]:visible").first();
+    const hasFollow = await follow.count().then((n) => n > 0);
+    await page.locator('[data-mark="like"]').click();
+    await until(page, () => !document.querySelector('[data-mark="like"]')?.disabled, null, 10000);
+    if (hasFollow) {
+      await follow.click();
+      await until(page, () => ![...document.querySelectorAll("button[data-follow]")].find((one) => one.checkVisibility())?.disabled, null, 10000);
+    }
+    const pressed = await page.evaluate(() => ({ like: document.querySelector('[data-mark="like"]')?.getAttribute("aria-pressed"),
+      follow: [...document.querySelectorAll("button[data-follow]")].find((one) => one.checkVisibility())?.getAttribute("aria-pressed") || null }));
+    for (const one of held) one.release();
+    await page.waitForTimeout(1500);
+    const after = await page.evaluate(() => ({ like: document.querySelector('[data-mark="like"]')?.getAttribute("aria-pressed"),
+      follow: [...document.querySelectorAll("button[data-follow]")].find((one) => one.checkVisibility())?.getAttribute("aria-pressed") || null }));
+    check(`a read answered after Like (and Follow) went through is dropped: pressed ${JSON.stringify(pressed)}, after ${JSON.stringify(after)} (${both} reads held)`,
+      both >= 1 && pressed.like === "true" && after.like === pressed.like && after.follow === pressed.follow, JSON.stringify({ held: held.map((one) => one.op) }));
+    await made.close();
   }
 
   // 4. orangecheck's window, stood in.

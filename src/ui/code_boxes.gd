@@ -7,12 +7,15 @@
 ## A digit typed fills its box and moves on, the next box's digit selected
 ## so a digit typed replaces it; Backspace empties a box, or on an empty one
 ## steps back and empties that; Left and Right move; anything but a digit is
-## refused. A paste anywhere in the row (Ctrl or Cmd+V) fills every box from
-## the first with the clipboard's digits, spaces and dashes dropped; so does
-## a whole code arriving in one box at once (a password manager's fill, the
-## browser's or the phone's paste). The number keys on a phone's keyboard.
-## [signal filled] once the last box has its digit: the form signs in then,
-## with nobody having to look for the button.
+## refused. A paste anywhere in the row (Ctrl or Cmd+V), and anything that
+## arrives in one box at once (a password manager's fill, the browser's or
+## the phone's paste), are read by the site's rule ([method read_code]): a
+## whole code is laid from the first box and sent; anything else is laid
+## and waits. The number keys on a phone's keyboard. [signal filled] for the
+## last digit in, the one that fills the row or one typed into its last box
+## (sent again after a limit kept the digits): the form signs in then, with
+## nobody having to look for the button. A digit changed in the middle of a
+## full row waits for the rest of the change.
 ##
 ## Its own layout rather than an HBoxContainer: the boxes narrow to fit a
 ## phone's card (down to [constant NARROW]) instead of pushing it wider, and
@@ -34,6 +37,8 @@ const GAP := 6.0
 const MIDDLE := 16.0
 
 var _boxes: Array[LineEdit] = []
+## Each box's digit as this last left it, for a fill to be told from it.
+var _held: PackedStringArray = []
 var _editable: bool = true
 ## Set while this sets a box's text, so its text_changed is not taken for
 ## somebody's typing.
@@ -82,6 +87,7 @@ func setup(count: int) -> void:
 		box.text_submitted.connect(func(_t: String) -> void: submitted.emit())
 		add_child(box)
 		_boxes.append(box)
+	_keep_held()
 	update_minimum_size()
 	queue_sort()
 
@@ -123,6 +129,7 @@ func clear() -> void:
 	for one: LineEdit in _boxes:
 		one.text = ""
 	_setting = false
+	_keep_held()
 
 
 ## The keys in the first box, or with [param empty] the first empty one.
@@ -148,14 +155,29 @@ func set_label(words: String) -> void:
 		one.accessibility_description = words
 
 
-## [param text]'s digits put in the boxes from the first, as a paste or a
-## password manager's fill does; the keys in the box after the last digit,
-## and [signal filled] when every box has one.
+## [param text] pasted, read by [method read_code]: a whole code laid from
+## the first box and sent ([signal filled]); anything else laid from the
+## first box and not sent. The keys in the box after the last digit.
 func paste(text: String) -> void:
-	var digits: String = _digits(text)
-	if digits.is_empty():
-		return
-	_fill_from(0, digits.left(_boxes.size()))
+	_lay(read_code(text, _boxes.size()), 0)
+
+
+## The code in [param text] for a row of [param count] boxes, read as the
+## site reads it (web/code-boxes.js readCode): {"code", "whole"}. A run of
+## exactly [param count] digits, one space or dash allowed inside ("1234
+## 5678", "1234-5678") and no other digit joined to it, is the code, whole:
+## sent at once, the email's own words around it or not. Anything else (too
+## few digits, too many, "123456789") is its first [param count] digits,
+## laid for the person to look at, never sent by itself (sifix, 2026-11-15:
+## a box's own paste sent the last eight of nine, Ctrl+V the first eight).
+static func read_code(text: String, count: int) -> Dictionary:
+	var runs := RegEx.create_from_string("[0-9]+(?:[ -][0-9]+)*")
+	for found: RegExMatch in runs.search_all(text):
+		var parts: PackedStringArray = found.get_string().replace("-", " ").split(" ")
+		var joined: String = "".join(parts)
+		if parts.size() <= 2 and joined.length() == count:
+			return {"code": joined, "whole": true}
+	return {"code": _digits(text).left(count), "whole": false}
 
 
 ## The gentle shake that says a code was refused: about a third of a
@@ -225,14 +247,16 @@ static func _digits(text: String) -> String:
 
 func _focus(at: int) -> void:
 	var one: LineEdit = _boxes[clampi(at, 0, _boxes.size() - 1)]
-	one.grab_focus()
+	if one.is_inside_tree():
+		one.grab_focus()
 	# Selected, so a digit typed replaces the one there.
 	one.select_all()
 	one.caret_column = one.text.length()
 
 
-## [param digits] put one to a box from [param at] on.
-func _fill_from(at: int, digits: String) -> void:
+## [param digits] put one to a box from [param at] on, the keys after the
+## last; with [param send], [signal filled] if every box has its digit.
+func _fill_from(at: int, digits: String, send: bool) -> void:
 	_setting = true
 	var put: int = at
 	for c: String in digits:
@@ -241,9 +265,36 @@ func _fill_from(at: int, digits: String) -> void:
 		_boxes[put].text = c
 		put += 1
 	_setting = false
+	_keep_held()
 	_focus(mini(put, _boxes.size() - 1))
-	if is_full():
+	if send and _editable and is_full():
 		filled.emit(code())
+
+
+## A digit typed into box [param at]: the last digit in sends the code, the
+## one that fills the row or one typed into its last box.
+func _type_digit(at: int, digit: String) -> void:
+	var was_full: bool = is_full()
+	_fill_from(at, digit, not was_full or at == _boxes.size() - 1)
+
+
+## A code read by [method read_code] laid in the boxes: a whole one from the
+## first box and sent, even into a full row (a paste after a limit kept the
+## digits is somebody sending it); anything else from [param at] (the first
+## box when it is a row's worth), not sent.
+func _lay(read: Dictionary, at: int) -> bool:
+	var digits: String = read["code"]
+	if digits.is_empty():
+		return false
+	var whole: bool = read["whole"]
+	_fill_from(0 if whole or digits.length() >= _boxes.size() else at, digits, whole)
+	return true
+
+
+func _keep_held() -> void:
+	_held.resize(_boxes.size())
+	for at: int in _boxes.size():
+		_held[at] = _boxes[at].text
 
 
 ## The keys, before the box's own handling of them (a Control's gui_input
@@ -313,28 +364,38 @@ func _key(event: InputEvent, at: int) -> void:
 	var c: String = char(key.unicode)
 	if not (c >= "0" and c <= "9"):
 		return
-	_fill_from(at, c)
+	_type_digit(at, c)
 
 
 func _set_box(at: int, text: String) -> void:
 	_setting = true
 	_boxes[at].text = text
 	_setting = false
+	_keep_held()
 
 
 ## Whatever reached a box without passing _key (a paste, a fill, a phone's
-## keyboard): its digits, one to a box from here on, or a whole code from
-## the first box.
+## keyboard), read by the paste's rule: a whole code from the first box,
+## sent; a few digits from here on; one digit as if typed. A fill put after
+## the box's own digit ("5" then "12345678") is what came, not the nine.
 func _typed(text: String, at: int) -> void:
 	if _setting:
 		return
-	var digits: String = _digits(text)
-	if digits.length() > _boxes.size():
-		digits = digits.right(_boxes.size())
-	if digits.is_empty():
-		_set_box(at, "")
-		return
-	if digits.length() == _boxes.size():
-		_fill_from(0, digits)
+	var was: String = _held[at] if at < _held.size() else ""
+	var came: String = text
+	if not was.is_empty() and text.length() > was.length():
+		if text.begins_with(was):
+			came = text.substr(was.length())
+		elif text.ends_with(was):
+			came = text.left(text.length() - was.length())
+	var read: Dictionary = read_code(text, _boxes.size())
+	if not read["whole"]:
+		read = read_code(came, _boxes.size())
+	var digits: String = read["code"]
+	if read["whole"] or digits.length() > 1:
+		_lay(read, at)
+	elif not digits.is_empty():
+		_type_digit(at, digits)
 	else:
-		_fill_from(at, digits)
+		# Emptied, or nothing but letters: the box as it was, or empty.
+		_set_box(at, "" if text.is_empty() else was)

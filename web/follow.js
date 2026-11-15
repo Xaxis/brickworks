@@ -134,6 +134,10 @@ export async function followButton(button, known = null) {
     if (said) said.textContent = words ? ` ${words}` : "";
   };
   let state = null;
+  // Each ask and each press counted: an answer to an ask made before the
+  // latest of them is stale, and dropped (sifix, 2026-11-15: an ask still
+  // out when Follow was pressed drew it unpressed after it went through).
+  let asks = 0;
   const draw = () => {
     button.textContent = state.you_follow ? say("Following") : say("Follow");
     button.setAttribute("aria-pressed", state.you_follow ? "true" : "false");
@@ -158,8 +162,10 @@ export async function followButton(button, known = null) {
     }
   };
   const ask = async () => {
+    const mine = ++asks;
     await followsSent();
     const answer = await call(kind.asked(handle));
+    if (mine !== asks) return Boolean(state);
     if (answer.status !== 200 || !answer.body.ready) return false;
     state = answer.body;
     draw();
@@ -179,10 +185,13 @@ export async function followButton(button, known = null) {
   button.addEventListener("click", async () => {
     tell("");
     if (!state.signed_in) {
-      if (!(await askToSignIn(kind.signIn))) return;
+      // Signed in since it was drawn (the header, another tab): asked
+      // again, not asked to sign in.
+      if (!signedIn() && !(await askToSignIn(kind.signIn))) return;
       if (!(await ask())) return;
       if (state.mine || state.you_follow) return;
     }
+    asks += 1;
     if (!state.you_follow && !state.may) {
       tell(say(state.why_not));
       return;
@@ -447,7 +456,8 @@ function drawSignedOut() {
   for (const link of document.querySelectorAll(".site-head a[data-account]")) {
     link.hidden = false;
     link.textContent = say("Sign in");
-    link.href = `${langAt()}/profile`;
+    // Where a click meant for a new tab goes: /profile, its sign-in open.
+    link.href = `${langAt()}/profile?sign-in`;
   }
   for (const made of document.querySelectorAll(".site-head .account-menu, .site-head .account-part, .site-head .menu .menu-owner, .site-head .menu .sign-out")) made.remove();
   for (const menu of document.querySelectorAll(".site-head .menu summary")) {
@@ -475,17 +485,21 @@ function drawSignedIn(state) {
       menu.className = "more-menu end account-menu";
       where.after(menu);
     }
-    const open = menu.open;
-    const summary = document.createElement("summary");
+    // The avatar and its list kept, their insides drawn again: drawn anew,
+    // the avatar the focus was on went with it, and the focus fell to the
+    // page (sifix, 2026-11-15: the count answering after the sign-in did).
+    const summary = menu.querySelector(":scope > summary") || menu.appendChild(document.createElement("summary"));
     summary.className = "account-btn";
     summary.setAttribute("aria-label", label);
-    summary.append(avatarOf(state, ""));
+    summary.replaceChildren(avatarOf(state, ""));
     if (n) summary.append(badge(n));
-    const list = document.createElement("div");
+    const list = menu.querySelector(":scope > .menu-list") || menu.appendChild(document.createElement("div"));
     list.className = "menu-list";
-    list.append(accountPart(state), ...[themeChoice()].filter(Boolean), ...adminPart(state), signOutButton());
-    menu.replaceChildren(summary, list);
-    menu.open = open;
+    const place = list.contains(document.activeElement) ? document.activeElement : null;
+    const again = place && (place.dataset.place || (place.classList.contains("sign-out") ? "sign-out" : ""));
+    list.replaceChildren(accountPart(state), ...[themeChoice()].filter(Boolean), ...adminPart(state), signOutButton());
+    if (again) (list.querySelector(`[data-place="${again}"]`) || (again === "sign-out" ? list.querySelector(".sign-out") : null))
+      ?.focus({ preventScroll: true });
   }
   // On a phone: Menu is the avatar, and holds the same.
   for (const menu of document.querySelectorAll(".site-head .menu")) {
@@ -581,8 +595,11 @@ document.addEventListener("click", (event) => {
   event.preventDefault();
   link.closest("details")?.removeAttribute("open");
   askToSignIn().then((signed) => {
-    // The focus on the avatar the link became.
-    if (signed) [...document.querySelectorAll(".site-head .account-btn")].find((one) => one.checkVisibility())?.focus();
+    // The focus on the avatar the link became, the page where it was: the
+    // header is sticky, and a plain focus() scrolled the page to its top
+    // to show it (sifix, 2026-11-15: 1829 px down at 1280 became 1411).
+    if (signed) [...document.querySelectorAll(".site-head .account-btn")].find((one) => one.checkVisibility())
+      ?.focus({ preventScroll: true });
   }).catch(() => { location.href = link.href; });
 });
 
@@ -604,3 +621,6 @@ document.addEventListener("click", (event) => {
   opened.catch(() => { location.href = `${langAt()}/feedback`; });
 });
 addEventListener("brickworks:signed-in", () => showFeedCount().catch(() => null));
+// Signed out in another tab (web/account.js): the header back to Sign in at
+// once, whether or not the page is loaded again.
+addEventListener("brickworks:signed-out", () => showFeedCount().catch(() => null));

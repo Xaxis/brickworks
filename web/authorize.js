@@ -273,7 +273,16 @@ $("email-form").addEventListener("submit", async (event) => {
       body: JSON.stringify({ email }),
     });
     if (!reply.ok) {
-      status(told((await json(reply)).error, say("Could not send a code just now ({status}).", { status: reply.status })), true);
+      const body = await json(reply);
+      // Locked for asking too often: when it may ask again, by the clock.
+      const at = reply.status === 429 ? new Date(String(body.retry_at || "")) : null;
+      if (at && !Number.isNaN(at.getTime())) {
+        const lang = globalThis.brickworksLang?.code;
+        const time = at.toLocaleTimeString(lang && lang !== "en" ? lang : undefined, { hour: "2-digit", minute: "2-digit" });
+        status(say("Too many codes asked for. Try again after {time}.", { time }), true);
+        return;
+      }
+      status(told(body.error, say("Could not send a code just now ({status}).", { status: reply.status })), true);
       return;
     }
     $("sent-to").textContent = email;
@@ -290,8 +299,13 @@ $("email-form").addEventListener("submit", async (event) => {
 
 $("code-form").addEventListener("submit", async (event) => {
   event.preventDefault();
+  // Every digit first, as the site's sign-in asks (web/code-boxes.js):
+  // a code short of some is never sent.
+  if (!codeRow.complete((words) => status(words, true))) return;
   const token = $("code").value.replace(/[\s-]/g, "");
-  if (!token) return status(say("Enter the code from the email."), true);
+  // The last refusal's words gone as the next code is checked (sifix: "That
+  // code is wrong" stayed red under Signing in…).
+  status("");
   busy($("verify"), true, say("Signing in…"));
   codeRow.busy(true);
   try {

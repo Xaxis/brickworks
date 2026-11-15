@@ -88,8 +88,12 @@
 	   photographed on, in both themes (web/directory.css .set-page). */
 	--photo-ground: #ffffff;
 	/* Controls: a field and a button side by side are the same height,
-	   with the same corners; every field has the same fill. */
+	   with the same corners; every field has the same fill, and the same
+	   edge: 3:1 or more on every surface a field sits on, its own fill
+	   too, as WCAG 1.4.11 asks of what shows a control is there (the
+	   firmer line it had was 1.5:1, sifix 2026-11-15). */
 	--field: var(--bg-soft);
+	--field-edge: #6b717b;
 	--control-h: 44px;
 	/* Five corners: small (a chip, a code box), a control's, a card's or a
 	   panel's, a large surface's (a plan, the app's picture, a band), and a
@@ -165,6 +169,7 @@
 	--panel-hi: #f7f7f5;
 	--line: rgba(17, 19, 23, 0.1);
 	--line-strong: rgba(17, 19, 23, 0.2);
+	--field-edge: #80868f;
 	--ink: #111317;
 	--ink-soft: #454a54;
 	--ink-faint: #5b616b;
@@ -192,6 +197,7 @@
 		--panel-hi: #f7f7f5;
 		--line: rgba(17, 19, 23, 0.1);
 		--line-strong: rgba(17, 19, 23, 0.2);
+		--field-edge: #80868f;
 		--ink: #111317;
 		--ink-soft: #454a54;
 		--ink-faint: #5b616b;
@@ -484,7 +490,7 @@ button.link:hover, a.link:hover { color: var(--ink); background: none; }
 :where(input:not([type="checkbox"], [type="radio"], [type="hidden"]), select, textarea) {
 	min-width: 0; max-width: 100%; min-height: var(--control-h); margin: 0; padding: 9px 12px;
 	font: inherit; font-size: var(--t-body); line-height: 24px; color: var(--ink);
-	background-color: var(--field); border: 1px solid var(--line-strong); border-radius: var(--control-radius);
+	background-color: var(--field); border: 1px solid var(--field-edge); border-radius: var(--control-radius);
 }
 :where(input:not([type="checkbox"], [type="radio"], [type="hidden"]), select, textarea):hover { border-color: var(--ink-faint); }
 /* A field being typed in is ringed in the accent's edge as well as the

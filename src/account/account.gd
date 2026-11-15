@@ -261,11 +261,29 @@ func request_code(with_email: String) -> String:
 		var digits: int = int((body as Dictionary).get("digits", 8)) if typeof(body) == TYPE_DICTIONARY else 8
 		code_digits = digits if digits >= 4 and digits <= 12 else 8
 		return ""
+	# Locked for asking too often (four codes an address in fifteen
+	# minutes): when it may ask again, by this computer's clock.
+	var until: String = local_clock(str((body as Dictionary).get("retry_at", ""))) \
+		if code == 429 and typeof(body) == TYPE_DICTIONARY else ""
+	if not until.is_empty():
+		return "Too many codes asked for. Try again after %s." % until
 	if typeof(body) == TYPE_DICTIONARY and (body as Dictionary).has("error"):
 		return str((body as Dictionary)["error"])
 	if code == 0:
 		return "Could not reach Brickworks to send a code. Check your connection."
 	return "Could not send a code just now (%d). Try again in a minute." % code
+
+
+## [param iso] (a UTC time, api/otp.js retry_at) as this computer's clock
+## says it, "14:32"; empty when it is not a time.
+static func local_clock(iso: String) -> String:
+	if not iso.begins_with("20") or iso.length() < 19:
+		return ""
+	var utc: int = Time.get_unix_time_from_datetime_string(iso.left(19))
+	if utc <= 0:
+		return ""
+	var bias: int = int(Time.get_time_zone_from_system().get("bias", 0))
+	return Time.get_time_string_from_unix_time(utc + bias * 60).left(5)
 
 
 ## Redeem a code. Empty on success.

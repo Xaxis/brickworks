@@ -220,6 +220,8 @@ $("oc-unlink").addEventListener("click", async () => {
 
 $("oc-code").addEventListener("submit", async (event) => {
   event.preventDefault();
+  // Every digit first, as the sign-in asks: a code short of some is never sent.
+  if (!ocCode.complete((words) => { $("oc-status").textContent = words; })) return;
   $("oc-code-go").disabled = true;
   ocCode.busy(true);
   try {
@@ -604,6 +606,7 @@ $("delete-form").addEventListener("submit", async (event) => {
   // Asked for below, when this browser signed in with orangecheck: the
   // code redeemed is a sign-in of its own, by email, just now.
   if (!$("delete-code-part").hidden) {
+    if (!deleteCode.complete((words) => { $("delete-said").textContent = words; })) return;
     $("delete-go").disabled = true;
     try {
       await redeem(email(), $("delete-code").value);

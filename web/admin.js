@@ -9,7 +9,7 @@
 //
 // Everything is put on the page as text, never as markup: the addresses,
 // names and words are what people typed.
-import { email as signedInAs } from "/account.js";
+import { askToSignIn, email as signedInAs, signedIn } from "/account.js";
 import { $, TESTS, act, adminJson, ago, cell, count, day, emptyRow, make, post, resort, rowAct, say, segmented, sift, sortable, timeCell,
   when }
   from "/admin-kit.js";
@@ -111,18 +111,28 @@ function failedIn(part, words) {
 // ---------------------------------------------------------------------------
 // The gate: the overview answers only the owner.
 
+// Shut: the gate shown, with Sign in in the bar while nobody is.
+function gate(words) {
+  $("view").classList.add("hide");
+  $("view").hidden = true;
+  $("gate").hidden = false;
+  say("gate-note", words, true);
+  $("sign-in").hidden = signedIn();
+  $("again").hidden = !signedIn();
+  $("meta-who").textContent = "Owner console";
+}
+
 async function start() {
   try {
     await loadOverview();
     loaded.add("overview");
   } catch (problem) {
-    $("view").classList.add("hide");
-    $("view").hidden = true;
-    $("gate").hidden = false;
-    say("gate-note", problem.message, true);
+    gate(problem.message);
     return;
   }
   $("gate").hidden = true;
+  $("sign-in").hidden = true;
+  $("again").hidden = false;
   $("view").classList.remove("hide");
   $("view").hidden = false;
   $("meta-who").textContent = `Signed in as ${signedInAs() || "the owner"}${TESTS ? " · the checks' own (?tests=1)" : ""}`;
@@ -608,4 +618,24 @@ $("sheet").addEventListener("close", () => {
 });
 
 for (const table of document.querySelectorAll("table[data-sortable]")) sortable(table);
+
+// Signing in here, in place (sifix, 2026-11-15, the owner: sign-in must just
+// work where you are): the bar's Sign in and the gate's open the site's
+// sign-in dialog over the console, and signed in it opens, still on /admin
+// and the section asked for. Their /profile?sign-in is for a click meant
+// for a new tab. Signed in or out in another tab (web/account.js), the
+// console follows: opened, or shut behind its gate.
+for (const link of [$("sign-in"), $("gate-sign-in")]) {
+  link.addEventListener("click", (event) => {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    askToSignIn().catch(() => { location.href = link.href; });
+  });
+}
+addEventListener("brickworks:signed-in-done", () => start());
+addEventListener("brickworks:signed-out", (event) => {
+  event.preventDefault();
+  loaded.clear();
+  gate("You are not signed in to Brickworks in this browser.");
+});
 start();

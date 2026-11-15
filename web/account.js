@@ -149,6 +149,62 @@ export function email() {
   return (kept() || {}).email || "";
 }
 
+// The sign-in dialog open in this tab, if one is: ended as signed in when
+// another tab signs in (below). False when it has ended already.
+let signedInElsewhere = () => false;
+// Fields somebody typed in on this page (not in a dialog): a sign-out in
+// another tab does not load the page again over their words.
+const typedIn = new WeakSet();
+addEventListener("input", (event) => {
+  if (event.isTrusted && event.target instanceof Element && !event.target.closest("dialog")) typedIn.add(event.target);
+}, true);
+const typedHere = () => [...document.querySelectorAll("input, textarea")]
+  .some((one) => typedIn.has(one) && one.value.trim() && one.value !== one.defaultValue);
+// Who a kept sign-in is (its account), or "" for none.
+const whoIn = (text) => {
+  try {
+    const was = JSON.parse(text || "null");
+    return was && was.refresh_token ? String(was.user_id || was.email || "someone") : "";
+  } catch {
+    return "";
+  }
+};
+
+// Signed in or out in another tab of this browser (sifix, 2026-11-15: a tab
+// kept its avatar after another signed out). The sign-in is kept in
+// localStorage, so every other tab hears it change and follows at once.
+// Signed in there: this tab is told as if it signed in here (the header's
+// avatar, brickworks:signed-in; the page drawn for them,
+// brickworks:signed-in-done), and a sign-in dialog open here closes,
+// signed in. Signed out there, or in as somebody else: this tab's own
+// access forgotten, brickworks:signed-out (the header back to Sign in,
+// web/follow.js), and the page, drawn for whoever was signed in, loaded
+// again, unless it holds words typed and not sent, or a page took the
+// event (preventDefault) to draw itself again. A renewal (the same person, a
+// new token) changes nothing.
+addEventListener("storage", (event) => {
+  if (event.key !== KEY || event.storageArea !== localStorage) return;
+  const [was, now] = [whoIn(event.oldValue), whoIn(event.newValue)];
+  if (was === now) return;
+  if (was) {
+    try {
+      sessionStorage.removeItem(ACCESS);
+    } catch {
+      // Nothing kept here.
+    }
+    const out = new Event("brickworks:signed-out", { cancelable: true });
+    dispatchEvent(out);
+    if (!out.defaultPrevented && !typedHere()) {
+      location.reload();
+      return;
+    }
+  }
+  if (now) {
+    dispatchEvent(new Event("brickworks:signed-in"));
+    if (!signedInElsewhere()) dispatchEvent(new Event("brickworks:signed-in-done"));
+  }
+});
+
 // The renewal under way, which every script on the page that asks shares.
 let renewing = null;
 
@@ -214,12 +270,22 @@ export async function sendCode(address) {
     method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: wanted }),
   });
   if (!reply.ok) {
-    const error = (await json(reply)).error;
-    throw new Error(error ? say(error) : say("Could not send a code just now ({status}).", { status: reply.status }));
+    const body = await json(reply);
+    const until = reply.status === 429 ? clock(body.retry_at) : "";
+    if (until) throw new Error(say("Too many codes asked for. Try again after {time}.", { time: until }));
+    throw new Error(body.error ? say(body.error) : say("Could not send a code just now ({status}).", { status: reply.status }));
   }
   const length = Number((await json(reply)).digits);
   digits = Number.isInteger(length) && length >= 4 && length <= 12 ? length : CODE_DIGITS;
   return wanted;
+}
+
+/// [iso] as the visitor's clock says it ("14:32"), or "" when it is not a
+/// time: when an address may be sent a code again (api/otp.js retry_at).
+export function clock(iso) {
+  const at = new Date(String(iso || ""));
+  if (!iso || Number.isNaN(at.getTime())) return "";
+  return at.toLocaleTimeString(language() === "en" ? undefined : language(), { hour: "2-digit", minute: "2-digit" });
 }
 
 /// Sign in with the code sent to [address]; the session kept for the app too.
@@ -737,6 +803,17 @@ export async function askToSignIn(why, { prefer = "" } = {}) {
       dialog.remove();
       done(result);
     };
+    // Signed in in another tab while this is open: closed, signed in, the
+    // page carrying on with what it asked for (a like, a comment).
+    signedInElsewhere = () => {
+      if (finished || checking || !signedIn()) return false;
+      finished = true;
+      windowed?.cancel();
+      dialog.close();
+      dialog.remove();
+      settled(true);
+      return true;
+    };
     close.addEventListener("click", () => end(false));
     dialog.addEventListener("cancel", (event) => {
       // Escape while a code is checked waits for the answer.
@@ -818,12 +895,8 @@ export async function askToSignIn(why, { prefer = "" } = {}) {
         }
         return;
       }
+      if (!boxes.complete((words) => tell(words, true))) return;
       const typed = boxes.value();
-      if (typed.length < boxes.digits()) {
-        tell(say("Enter all {count} digits of the code.", { count: boxes.digits() }), true);
-        boxes.focus(typed.length);
-        return;
-      }
       busy(true);
       let access;
       try {

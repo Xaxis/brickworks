@@ -15,9 +15,12 @@
 // Typing a digit fills its box and moves on; Backspace empties a box, or
 // on an empty one steps back and empties that; the arrows, Home and End
 // move; anything that is not a digit is refused. A paste anywhere in the
-// row fills it from the first box with the clipboard's digits, spaces and
-// dashes dropped. The last digit in calls [onFilled] once, which signs in
-// where that is safe (never deleting an account).
+// row, and a fill, are read by one rule, the studio's too (readCode): a
+// whole code in it is laid from the first box and sent; anything else is
+// laid and waits. The last digit in calls [onFilled], which signs in where
+// that is safe (never deleting an account): the digit that fills the row,
+// or one typed into its last box (sent again after a limit kept the
+// digits); a digit changed in the middle of a full row waits.
 //
 // How long a code is the deployment's to say (api/otp.js answers the
 // minted code's length as `digits`); a Supabase code was 8 digits when this
@@ -25,7 +28,26 @@
 // drawn when nothing says otherwise.
 export const CODE_DIGITS = 8;
 
-const onlyDigits = (text) => String(text || "").replace(/\D/g, "");
+const onlyDigits = (text) => String(text || "").replace(/[^0-9]/g, "");
+
+/// The code in [text] for a row of [count] boxes, read as the studio reads
+/// it (src/ui/code_boxes.gd read_code): {code, whole}. A run of exactly
+/// [count] digits, one space or dash allowed inside ("1234 5678",
+/// "1234-5678") and no other digit joined to it, is the code, [whole]: sent
+/// at once, the email's own words around it or not ("Your Brickworks
+/// sign-in code is 12345678. It works once and expires in 10 minutes.").
+/// Anything else (too few digits, too many, "123456789") is its first
+/// [count] digits, laid in the boxes for the person to look at, never sent
+/// by itself (sifix, 2026-11-15: the site sent the first eight of nine and
+/// the studio the last eight).
+export function readCode(text, count) {
+  const said = String(text || "");
+  for (const run of said.match(/[0-9]+(?:[ -][0-9]+)*/g) || []) {
+    const parts = run.split(/[ -]/);
+    if (parts.length <= 2 && parts.join("").length === count) return { code: parts.join(""), whole: true };
+  }
+  return { code: onlyDigits(said).slice(0, count), whole: false };
+}
 
 /// A row of [digits] boxes, its value mirrored into [field] when given (a
 /// page's own box, kept as a hidden input so what reads it reads the code)
@@ -33,8 +55,8 @@ const onlyDigits = (text) => String(text || "").replace(/\D/g, "");
 /// names the row (the field's label when not given). [id]: the first box's
 /// id, "-1" after it (the field's id when not given). [say]: the page's
 /// words, for "Digit {n} of {count}". [onFilled]: called with the code when
-/// the last box is filled. Returns {row, value, digits, focus, clear, busy,
-/// refuse, size}.
+/// the last digit is in. Returns {row, value, digits, focus, complete, clear,
+/// busy, refuse, size}.
 export function codeBoxes({ field = null, into = null, id = "", digits = CODE_DIGITS, label = null, say, onFilled = null }) {
   const row = document.createElement("div");
   row.className = "code-boxes";
@@ -47,8 +69,9 @@ export function codeBoxes({ field = null, into = null, id = "", digits = CODE_DI
     if (field && named.htmlFor === field.id) named.htmlFor = `${field.id}-1`;
   }
   if (field) {
+    // Its required kept: a hidden box is not one a browser checks, so
+    // complete() below is what refuses a code short of digits.
     field.type = "hidden";
-    field.required = false;
     field.removeAttribute("maxlength");
     field.removeAttribute("placeholder");
     field.after(row);
@@ -56,7 +79,6 @@ export function codeBoxes({ field = null, into = null, id = "", digits = CODE_DI
     into.append(row);
   }
   let boxes = [];
-  let full = false;
   let checking = false;
 
   const value = () => boxes.map((box) => box.value).join("");
@@ -66,37 +88,43 @@ export function codeBoxes({ field = null, into = null, id = "", digits = CODE_DI
     box?.focus();
     box?.select();
   };
-  // The row's value told to the page's own box, and the last digit in
-  // answered once: a code filled, refused and filled again is answered again.
-  const settle = () => {
+  const full = () => boxes.every((box) => box.value);
+  // The row's value told to the page's own box, and each box's digit kept
+  // as it was (data-held) for a fill to be told from it; [send]: the code
+  // answered (onFilled) if every box has its digit and none is checked.
+  const settle = (send = false) => {
     const code = value();
     if (field && field.value !== code) {
       field.value = code;
       field.dispatchEvent(new Event("input", { bubbles: true }));
     }
+    for (const box of boxes) box.dataset.held = box.value;
     row.dataset.filled = String(code.length);
-    const now = code.length === boxes.length && boxes.every((box) => box.value);
-    if (now && !full && !checking) {
-      full = true;
-      onFilled?.(code);
-    }
-    full = now;
+    if (send && !checking && full()) onFilled?.(code);
   };
-  // [text]'s digits laid into the boxes from [from], the focus after the
-  // last one laid (the last box when the row is full). A code laid whole is
-  // sent again though the row was full already: a paste or a fill after a
-  // limit kept the digits is somebody sending it.
-  const lay = (text, from = 0) => {
-    const got = onlyDigits(text);
-    if (!got) return;
-    full = false;
-    // A whole code, wherever it landed, is the code from the first box.
-    const start = got.length >= boxes.length ? 0 : from;
-    [...got].slice(0, boxes.length - start).forEach((digit, i) => {
+  // A digit typed into box [i], and on to the next: the last digit in
+  // sends the code, the one that fills the row or one typed into its last
+  // box; a digit changed in the middle of a full row waits for the rest.
+  const typed = (i, digit) => {
+    const was = full();
+    boxes[i].value = digit;
+    settle(!was || i === boxes.length - 1);
+    if (i < boxes.length - 1) focus(i + 1);
+  };
+  // A code read (readCode) laid in the boxes, the focus after its last
+  // digit: a whole one from the first box and sent, even into a row full
+  // already (a paste or a fill after a limit kept the digits is somebody
+  // sending it); anything else from [from] (the first box when it is a
+  // row's worth), laid and not sent.
+  const lay = (read, from = 0) => {
+    if (!read.code) return false;
+    const start = read.whole || read.code.length >= boxes.length ? 0 : from;
+    [...read.code].slice(0, boxes.length - start).forEach((digit, i) => {
       boxes[start + i].value = digit;
     });
-    focus(Math.min(boxes.length - 1, start + got.length));
-    settle();
+    focus(Math.min(boxes.length - 1, start + read.code.length));
+    settle(read.whole);
+    return true;
   };
 
   const draw = (count) => {
@@ -118,8 +146,11 @@ export function codeBoxes({ field = null, into = null, id = "", digits = CODE_DI
     });
     row.dataset.digits = String(count);
     row.replaceChildren(...boxes);
-    full = false;
-    if (was) lay(was);
+    // What was typed kept, never sent for being redrawn.
+    [...was].slice(0, count).forEach((digit, i) => {
+      boxes[i].value = digit;
+    });
+    settle();
   };
 
   // A digit typed: into its box, and on to the next. On a phone's keyboard,
@@ -131,9 +162,7 @@ export function codeBoxes({ field = null, into = null, id = "", digits = CODE_DI
     const held = event.ctrlKey || event.metaKey || event.altKey;
     if (/^\d$/.test(event.key) && !held) {
       event.preventDefault();
-      box.value = event.key;
-      settle();
-      if (i < boxes.length - 1) focus(i + 1);
+      typed(i, event.key);
     } else if (event.key === "Backspace" && !held) {
       event.preventDefault();
       if (box.value) {
@@ -164,19 +193,33 @@ export function codeBoxes({ field = null, into = null, id = "", digits = CODE_DI
     const box = event.target;
     if (!(box instanceof HTMLInputElement) || at(box) < 0) return;
     const i = at(box);
-    const got = onlyDigits(box.value);
-    const typed = /^insert(Text|CompositionText)$/.test(event.inputType || "") && String(event.data || "").length === 1;
-    if (typed) {
+    const was = box.dataset.held || "";
+    const now = box.value;
+    const key = /^insert(Text|CompositionText)$/.test(event.inputType || "") && String(event.data || "").length === 1;
+    if (key) {
       // One key: a digit is the box's, where it held one already; anything
       // else is taken back out.
-      box.value = /\d/.test(event.data) ? event.data : got.slice(0, 1);
-      settle();
-      if (/\d/.test(event.data) && i < boxes.length - 1) focus(i + 1);
-    } else if (got.length > 1) {
+      if (/\d/.test(event.data)) typed(i, event.data);
+      else {
+        box.value = was;
+        settle();
+      }
+      return;
+    }
+    // A fill or a phone's paste: what came, read by the paste's rule. A
+    // fill put after the box's own digit ("5" then "12345678") is what
+    // came, not the nine together.
+    const came = was && now.length > was.length && now.startsWith(was) ? now.slice(was.length)
+      : was && now.length > was.length && now.endsWith(was) ? now.slice(0, -was.length) : now;
+    const read = [readCode(now, boxes.length), readCode(came, boxes.length)].find((one) => one.whole)
+      || readCode(came, boxes.length);
+    if (read.whole || read.code.length > 1) {
       box.value = "";
-      lay(got, i);
+      lay(read, i);
+    } else if (read.code) {
+      typed(i, read.code);
     } else {
-      box.value = got;
+      box.value = was;
       settle();
     }
   });
@@ -184,7 +227,7 @@ export function codeBoxes({ field = null, into = null, id = "", digits = CODE_DI
     const text = event.clipboardData?.getData("text") || "";
     event.preventDefault();
     if (checking) return;
-    lay(text, 0);
+    lay(readCode(text, boxes.length), 0);
   });
   // Into a box, its digit chosen, so a digit typed replaces it.
   row.addEventListener("focusin", (event) => {
@@ -199,6 +242,16 @@ export function codeBoxes({ field = null, into = null, id = "", digits = CODE_DI
     /// How many digits the code has.
     digits: () => boxes.length,
     focus,
+    /// Whether every box has its digit. When not, [tell] is given "Enter
+    /// all {count} digits of the code." and the focus goes to the first
+    /// empty box: every form a code is sent from asks this first, as the
+    /// sign-in's dialog does, so a code short of digits is never sent.
+    complete(tell) {
+      if (full()) return true;
+      tell(say("Enter all {count} digits of the code.", { count: boxes.length }));
+      focus(Math.max(0, boxes.findIndex((box) => !box.value)));
+      return false;
+    },
     /// Every box emptied, the focus to the first.
     clear() {
       for (const box of boxes) box.value = "";

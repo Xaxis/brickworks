@@ -1299,6 +1299,7 @@
   "Email is not configured here.": "E-Mail ist hier nicht eingerichtet.",
   "We could not start a sign-in just now. Try again in a minute.": "Wir konnten die Anmeldung gerade nicht starten. Versuch es in einer Minute noch einmal.",
   "Too many codes asked for. Wait a few minutes and try again.": "Zu viele Codes angefordert. Warte ein paar Minuten und versuch es noch einmal.",
+  "Too many codes asked for. Try again after {time}.": "Zu viele Codes angefordert. Versuch es nach {time} noch einmal.",
   "We could not send the email just now. Try again in a minute.": "Wir konnten die E-Mail gerade nicht senden. Versuch es in einer Minute noch einmal.",
   "Choose the month you were born in.": "Wähle den Monat, in dem du geboren bist.",
   "Type the year you were born, as four digits.": "Gib dein Geburtsjahr mit vier Ziffern ein.",

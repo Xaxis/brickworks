@@ -1897,12 +1897,28 @@ plan with Claude as the client.
   reload, and `brickworks:signed-in-done` has each page draw what a
   signed-in person sees there (follow buttons, the model page's comments
   and photos, Saved and lists buttons (`web/keep.js`), /lists, /challenge,
-  the gallery's Following, /notifications, /settings, /profile). A
-  signed-out `/profile` opens the dialog by itself (`?then=` still goes
-  back to the app). Flow: `tools/web/signin_flow.mjs` (local stand-ins;
+  the gallery's Following, /notifications, /settings, /profile). The page
+  stays where it was scrolled and the focus on the avatar, a late answer to
+  the header's count too. `/profile` opens the dialog by itself only when
+  asked (`/profile?sign-in`, the header's link without scripts, or `?then=`
+  / `?with=`, which still go back to the app); a sign-out there shows its
+  own Sign in. A sign-in or sign-out in one tab reaches every tab
+  (`web/account.js`, the `storage` event on `brickworks.session`): the
+  avatar drawn with no reload, or the tab loaded again signed out, but for
+  one holding words typed and not sent, which keeps them (a page may
+  cancel `brickworks:signed-out`, as /admin does to shut behind its gate).
+  `/admin` has Sign in at the right of its bar and in its gate, signed in
+  in place, still on /admin (sifix 2026-11-15). A read of how a model or
+  person stands that answers after Like or Follow went through is dropped
+  (`model-page.js`, `follow.js`, counted). Flow: `tools/web/signin_flow.mjs` (local stand-ins;
   `--url=` a deployment, `--web=` an older web/ to see it fail): one click
   at 1280, 430 and 390 (phone Menu), Not now, signed in on the same URL
-  with no reload, the code boxes, and orangecheck's window's states.
+  with no reload, the scroll and focus kept, the code boxes, orangecheck's
+  window's states, /profile signed out, two tabs, /admin, the lockout's
+  time, a field's edge 3:1, the connector's page's partial and refused
+  codes and stale reads (the last two on `design_stand_in.mjs`).
+  `tools/web/sirev_standin.mjs` (the sign-in review's attacks, stood in)
+  and `sirev_deployed.mjs --url=` (the same on a deployment) too.
 - `the account menu` (`web/follow.js` `showFeedCount`, 2026-10-22,
   docs/SOCIAL.md U7, D10): signed in, `details.more-menu.end.account-menu`
   after the hidden `a[data-account]`, the last thing in `.nav`, after Open

@@ -8715,6 +8715,9 @@ msgstr "No hemos podido iniciar la sesión ahora mismo. Vuelve a intentarlo en u
 msgid "Too many codes asked for. Wait a few minutes and try again."
 msgstr "Se han pedido demasiados códigos. Espera unos minutos y vuelve a intentarlo."
 
+msgid "Too many codes asked for. Try again after %s."
+msgstr "Se han pedido demasiados códigos. Vuelve a intentarlo después de las %s."
+
 msgid "We could not send the email just now. Try again in a minute."
 msgstr "No hemos podido enviar el correo ahora mismo. Vuelve a intentarlo en un minuto."
 
