@@ -1611,6 +1611,22 @@
       "tests": []
     },
     {
+      "id": "cli:keptbuilt api test",
+      "kind": "cli",
+      "entry": "tools/web/keptbuilt_api.mjs",
+      "reach": "node tools/web/keptbuilt_api.mjs --url=http://127.0.0.1:8790   (relay_server running, .env sourced: op built idempotent and refused with words, the mark kept through every other change, a replace import and an older app's PUT, fewer copies unmark and say so, the CSV's Built column and the XML's Built remarks read back, the older collection lot for lot)",
+      "area": "collection",
+      "tests": []
+    },
+    {
+      "id": "cli:keptbuilt probe",
+      "kind": "cli",
+      "entry": "src/dev/keptbuilt_probe.gd",
+      "reach": "tools/relay_probe.sh keptbuilt   (a window, 1280x720; -- --shots=DIR: 7140-1 and 12 loose lots, the counts by hand (341 pieces); its Built mark pressed once: the pool, the bin's My bricks, What can I build? and submit_design mine=true all the 12 lots alone (56), pressed again all back; edit_collection {\"built\": [\"7140-1\"]} in 1 call and {set, copies: 0}, refusals changing nothing; kept through a restart and another device; Save sets as CSV and XML read back built; rel-m304's Collection keeps the set and drops only the mark; two copies Built 1 of 2, 2 of 2, none; the words in de/fr/es)",
+      "area": "collection",
+      "tests": []
+    },
+    {
       "id": "cli:key leak browser flow",
       "kind": "cli",
       "entry": "tools/web/key_leak_flow.mjs",

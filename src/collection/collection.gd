@@ -196,12 +196,17 @@ static func colour_of(key: String) -> int:
 	return int(key.get_slice("/", 1))
 
 
-## Everything on hand: part and colour -> how many.
+## Everything free to build with: part and colour -> how many.
 ##
 ## [param inventories] is set number -> its record from
 ## tools/collection_data.py ({"n", "y", "p": [[part, colour, qty]], "s"}).
 ## A set with no record is counted in [member unknown_sets] and adds
 ## nothing, rather than being guessed at.
+##
+## A copy kept built ([method built_of]) stands on a shelf, so its parts are
+## not here (keptbuilt). Its spares are: they are what was left over when it
+## was built. The parts marked missing come off the copies still apart, as
+## far as those hold them, so nothing is counted that may not be there.
 func pool(inventories: Dictionary, library: PartLibrary = null) -> Dictionary:
 	var on_hand: Dictionary = {}
 	unknown_sets = PackedStringArray()
@@ -215,16 +220,20 @@ func pool(inventories: Dictionary, library: PartLibrary = null) -> Dictionary:
 		if typeof(record) != TYPE_DICTIONARY:
 			unknown_sets.append(str(entry["set"]))
 			continue
-		var times: int = int(entry["qty"])
-		var rows: Array = (record as Dictionary).get("p", [])
+		var copies: int = int(entry["qty"])
+		var apart: int = copies - built_of(entry)
+		var rows: Array = []
+		for row: Variant in (record as Dictionary).get("p", []):
+			rows.append([row, apart])
 		if bool(entry.get("spares", false)):
-			rows = rows + (record as Dictionary).get("s", [])
+			for row: Variant in (record as Dictionary).get("s", []):
+				rows.append([row, copies])
 		# Only what is really there: the parts marked missing are not (mysets).
 		var gone: Dictionary = missing_keys(entry, library)
-		for row: Variant in rows:
-			var lot: Array = row
+		for one: Array in rows:
+			var lot: Array = one[0]
 			var key: String = key_of(str(lot[0]), int(lot[1]), library)
-			var count: int = int(lot[2]) * times
+			var count: int = int(lot[2]) * int(one[1])
 			var taken: int = mini(count, int(gone.get(key, 0)))
 			if taken > 0:
 				gone[key] = int(gone[key]) - taken
@@ -898,6 +907,94 @@ func marks(library: PartLibrary = null) -> Dictionary:
 	return out
 
 
+## How many of a set entry's copies stand built on a shelf (keptbuilt):
+## none to all of them. Their parts are not free to build with ([method
+## pool]); the mark is kept with the account as the entry's "built"
+## (api/collection.js op "built"), and an older build reads the set without
+## it.
+static func built_of(entry: Dictionary) -> int:
+	return clampi(int(entry.get("built", 0)), 0, maxi(1, int(entry.get("qty", 1)))) if not is_fig(entry) else 0
+
+
+## Each set kept built, all its copies together as the op "built" counts
+## them: set number -> {"copies": how many they own, "built": how many of
+## those are kept built, "pieces": the pieces of its inventory those built
+## copies hold (0 when no inventory is in [param records])}. A set with none
+## built is left out.
+func kept_built(records: Dictionary = {}) -> Dictionary:
+	var out: Dictionary = {}
+	for entry: Dictionary in sets:
+		if is_fig(entry):
+			continue
+		var number: String = str(entry["set"])
+		if not out.has(number):
+			out[number] = {"copies": 0, "built": 0, "pieces": 0}
+		out[number]["copies"] = int(out[number]["copies"]) + maxi(1, int(entry.get("qty", 1)))
+		out[number]["built"] = int(out[number]["built"]) + built_of(entry)
+	for number: String in out.keys():
+		if int(out[number]["built"]) == 0:
+			out.erase(number)
+			continue
+		var pieces: int = 0
+		for row: Variant in (records.get(number, {}) as Dictionary).get("p", []):
+			pieces += int((row as Array)[2])
+		out[number]["pieces"] = pieces * int(out[number]["built"])
+	return out
+
+
+## How many copies of set [param number] the person owns, every entry of it.
+func copies_of(number: String) -> int:
+	var total: int = 0
+	for entry: Dictionary in entries_of(number):
+		total += maxi(1, int(entry.get("qty", 1)))
+	return total
+
+
+## How many copies of every set the person owns, minifigures apart.
+func copies_of_all() -> int:
+	var total: int = 0
+	for entry: Dictionary in sets:
+		if not is_fig(entry):
+			total += maxi(1, int(entry.get("qty", 1)))
+	return total
+
+
+## The sets as a Rebrickable sets list (Set Number, Quantity, Includes
+## Spares, the columns Rebrickable's own export has), with a Built column of
+## how many of each row's copies are kept built (keptbuilt), which
+## api/collection.js reads back. Minifigures are left out: their numbers are
+## BrickLink's, no set's.
+func sets_csv() -> String:
+	var lines := PackedStringArray(["Set Number,Quantity,Includes Spares,Built"])
+	for entry: Dictionary in sets:
+		if is_fig(entry):
+			continue
+		lines.append("%s,%d,%s,%d" % [str(entry["set"]), maxi(1, int(entry.get("qty", 1))),
+			"True" if bool(entry.get("spares", false)) else "False", built_of(entry)])
+	return "\r\n".join(lines) + "\r\n"
+
+
+## The sets as a BrickLink XML (an INVENTORY of ITEMTYPE S, BrickLink's set
+## numbers being Rebrickable's), the copies kept built an item of their own
+## whose REMARKS say Built, which BrickLink keeps beside it and
+## api/collection.js reads back (keptbuilt). Minifigures are left out.
+func sets_xml() -> String:
+	var lines := PackedStringArray(["<INVENTORY>"])
+	for entry: Dictionary in sets:
+		if is_fig(entry):
+			continue
+		var number: String = str(entry["set"]).xml_escape()
+		var copies: int = maxi(1, int(entry.get("qty", 1)))
+		var built: int = built_of(entry)
+		if built > 0:
+			lines.append("<ITEM><ITEMTYPE>S</ITEMTYPE><ITEMID>%s</ITEMID><QTY>%d</QTY><REMARKS>Built</REMARKS></ITEM>"
+				% [number, built])
+		if copies > built:
+			lines.append("<ITEM><ITEMTYPE>S</ITEMTYPE><ITEMID>%s</ITEMID><QTY>%d</QTY></ITEM>" % [number, copies - built])
+	lines.append("</INVENTORY>")
+	return "\n".join(lines) + "\n"
+
+
 ## How many of [param part] in [param colour] a set entry is marked as missing.
 static func missing_count(entry: Dictionary, part: String, colour: int) -> int:
 	for lot: Dictionary in missing_lots(entry):
@@ -907,8 +1004,9 @@ static func missing_count(entry: Dictionary, part: String, colour: int) -> int:
 
 
 ## The marks of a set entry as read ([method from_json]): its missing lots,
-## each a part, an LDraw colour and a count of one or more, and a
-## minifigure's mark and name. Anything else is left out.
+## each a part, an LDraw colour and a count of one or more; how many of its
+## copies are kept built, one up to its count; and a minifigure's mark and
+## name. Anything else is left out.
 static func _read_set_marks(entry: Dictionary, kept: Dictionary) -> void:
 	if entry.get("fig") == true:
 		kept["fig"] = true
@@ -916,6 +1014,10 @@ static func _read_set_marks(entry: Dictionary, kept: Dictionary) -> void:
 		if not name.is_empty():
 			kept["name"] = name
 		return
+	var built: int = clampi(int(entry.get("built", 0)) if entry.get("built") is float or entry.get("built") is int
+		else 0, 0, int(kept["qty"]))
+	if built > 0:
+		kept["built"] = built
 	var missing: Array = []
 	var listed: Array = entry.get("missing") if entry.get("missing") is Array else []
 	for lot: Variant in listed:

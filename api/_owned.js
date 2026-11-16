@@ -180,8 +180,9 @@ export async function readShard(n, origin) {
 
 /// Everything on hand, as Collection.pool counts it: the loose parts, and
 /// each set's parts (its spares too when the person said they kept them)
-/// times how many of it. {lots: [{part, colour, qty}], unknown: [set
-/// numbers no inventory has]}. [read] is readShard, or a probe's own.
+/// times how many of it, less the copies kept built on a shelf, whose spares
+/// stay (keptbuilt). {lots: [{part, colour, qty}], unknown: [set numbers no
+/// inventory has]}. [read] is readShard, or a probe's own.
 export async function poolOf(collection, read) {
   const sets = Array.isArray(collection?.sets) ? collection.sets : [];
   const wanted = [...new Set(sets.map((one) => shardOf(one.set)))];
@@ -200,9 +201,9 @@ export async function poolOf(collection, read) {
       continue;
     }
     const times = Math.max(1, Number(one.qty) || 1);
-    for (const [part, colour, qty] of [...(record.p || []), ...(one.spares ? record.s || [] : [])]) {
-      lots.push([part, colour, Number(qty) * times]);
-    }
+    const apart = times - Math.min(times, Math.max(0, Number(one.built) || 0));
+    for (const [part, colour, qty] of record.p || []) lots.push([part, colour, Number(qty) * apart]);
+    for (const [part, colour, qty] of one.spares ? record.s || [] : []) lots.push([part, colour, Number(qty) * times]);
   }
   return { lots: keyed(lots), unknown };
 }
