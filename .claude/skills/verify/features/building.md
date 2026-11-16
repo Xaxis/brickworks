@@ -2682,7 +2682,8 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   line. Of a ball and a hole on one line as near, the hand takes the ball
   (`JointSnap.aimed_at`: 32005's socket is on its axle hole's line). A socket meets its ball's part only
   inside the joint, by check_design's rule (`ExactCheck.at_joint`, 9.5 LDU of
-  the centre), or by the covers where one has no exact shape: 3730 tilts 40°
+  the centre), or by the covers where one has no exact shape
+  (`Builder._balled_clear`, in `room_for` after the hinge's): 3730 tilts 40°
   on a towball and swings 60° across. The rotate handle stands on the ball's
   centre for a part on one (`Handles.pivot_is() == "ball"`); Pose lists a
   sub-assembly on a ball as three joints, its turns about x, y and z;
