@@ -2494,10 +2494,12 @@ func _insert_then_delete(name: String, text: String) -> String:
 		var lines: PackedStringArray = _own_lines(saved)
 		var n: int = lines.find(first)
 		return lines[n - 1] if n > 0 else "(none)"
-	var ok: bool = _check("a step put in after step %d (\"%s\"), then %d part of the next taken off: %s, "
-		% [int(steps[at][0]), said.get_slice("\n", 0).left(60), taken]
-		+ "%d lines changed for 1; above its first part (%s) \"%s\", was \"%s\"" % [changed,
-		first.left(30), str(above.call(edited)).left(40), str(above.call(unedited)).left(40)],
+	var done: String = "a step put in after step %d (\"%s\"), then %d part of the next taken off" % [
+		int(steps[at][0]), said.get_slice("\n", 0).left(60), taken]
+	var seen: String = "%s, %d lines changed for 1; above its first part (%s) \"%s\", was \"%s\"" % [
+		"patched" if whole.is_empty() else "as live writes it (%s)" % whole, changed, first.left(30),
+		str(above.call(edited)).left(40), str(above.call(unedited)).left(40)]
+	var ok: bool = _check(done + ": " + seen,
 		taken == 1 and whole.is_empty() and changed <= 1 and not first.is_empty()
 		and above.call(edited) == above.call(unedited))
 	if not ok or OS.get_environment("STEP_OPS_SHOW") == "1":

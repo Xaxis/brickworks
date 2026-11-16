@@ -1165,9 +1165,12 @@ func _step_lines(section: String, step: int) -> Array:
 
 
 static func _is_step(line: String) -> bool:
-	# A save keys every line of two texts by this, so a line with no STEP
-	# in it goes before it is split (stfix: 8466-1's 311k lines, +1.9 s).
-	if line.findn("STEP") < 0:
+	# A save keys every line of two texts by this, so a line whose first
+	# character is neither a space nor "0", another first word, goes before it
+	# is split (stfix: 8466-1's 311k lines took 1.9 s a save; findn is dearer
+	# than the split).
+	var first: int = line.unicode_at(0) if not line.is_empty() else 0
+	if first > 32 and first != 48:
 		return false
 	# Any run of spaces and tabs between the words, as LDraw reads them.
 	var words: PackedStringArray = LdrModel._fields(line.strip_edges())
@@ -1884,17 +1887,36 @@ func _relaid(section: String, targets: Dictionary, fixed: Dictionary, gone: Dict
 	var stays: Dictionary = {}
 	var origin_of: Dictionary = {}  ## a step now -> the file's step most of its lines were in
 	var origin_count: Dictionary = {}
+	var even: Dictionary = {}       ## the file's steps whose lines went most to two steps alike
 	for was: int in votes:
 		var best: int = -1
-		# votes[was] holds its steps in the order of their first lines, so on
-		# a tie the step that holds the file step's earliest line stays: the
-		# lines above it, an LPub INSERT PAGE say, stay with it (stfix).
 		for now: int in votes[was]:
 			if best < 0 or int(votes[was][now]) > int(votes[was][best]):
 				best = now
 			if int(votes[was][now]) > int(origin_count.get(now, 0)):
 				origin_count[now] = int(votes[was][now])
 				origin_of[now] = was
+		stays[was] = best
+		for now: int in votes[was]:
+			if now != best and int(votes[was][now]) == int(votes[was][best]):
+				even[was] = true
+				break
+	# A step whose lines went two ways alike stays the step no other of the
+	# file's steps stays, else the one holding its earliest line (votes[was]
+	# holds its steps in the order of their first lines): the part moved on
+	# into the next step is the one moved (kt3r_emptystep), and a step put in
+	# of the middle part of the next, whose last part then went, leaves its
+	# LPub INSERT PAGE above the first, as with the last there (stfix).
+	var stayed: Dictionary = {}
+	for was: int in votes:
+		if not even.has(was):
+			stayed[int(stays[was])] = true
+	for was: int in even:
+		var most: int = int(votes[was][stays[was]])
+		var best: int = -1
+		for now: int in votes[was]:
+			if int(votes[was][now]) == most and (best < 0 or stayed.has(best) and not stayed.has(now)):
+				best = now
 		stays[was] = best
 	# The cheapest runs kept, for each shift those no other is both cheaper
 	# and lower in step than: [cost, the last kept line's step, its node]; a
