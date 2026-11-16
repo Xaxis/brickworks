@@ -109,7 +109,7 @@ ui:hide and show only
 
 Select some parts and press [[Ctrl+G]] (**Build › Make a sub-assembly…**) to group and name them. A click then takes it whole; [[Enter]] or a double-click edits inside it and [[Esc]] leaves. [[F2]] renames it and **Ungroup** ([[Ctrl+Shift+G]]) takes it apart. Its [[Ctrl+D]] copies follow it, change one and they all change, until **Build › Make this copy unique**.
 
-A change is made in every copy or in none. If a part it would change is locked in one copy, or another copy has no room for it (a part put there by hand would have none), nothing changes and the bar says why: "Locked in one copy of Sill: unlock it, or make this copy its own model", or "No room in Sill (copy 2): Plate 1 x 1 is in the way there". Unlock the part, move what is in the way, or make that copy unique to change it alone.
+A change is made in every copy or in none. If a part it would change is locked in one copy, or another copy has no room for it (a part put there by hand would have none), nothing changes and the bar says why: "Locked in one copy of Sill: Plate 1 x 2. Unlock it, or use Build › Make this copy unique", or "No room in Sill (copy 2): Plate 1 x 1 is in the way there". Unlock the part, move what is in the way, or use **Build › Make this copy unique** to change that copy alone. A copy's own parts are never in its way, and nor is a part of the model it already stood in (sets put parts through each other), unless the change would push it in deeper.
 
 <!-- covers
 ui:sub-assemblies

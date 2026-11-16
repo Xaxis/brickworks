@@ -1056,18 +1056,25 @@ func _copies_follow() -> Array:
 	var had: int = assistant.world.brick_count()
 	var followed: int = assistant.assemblies.after_edit()
 	if not assistant.assemblies.refused.is_empty():
-		# Nothing the call's edit said of the model stands.
+		# Nothing the call's edit said of the model stands, and nothing of it
+		# is written (ModelStore.unchanged), as by hand.
 		assistant._judged_said = {}
+		var store: ModelStore = app.get("_store") if app != null else null
+		if store != null:
+			store.unchanged()
 		return [0, 0, refused_answer(assistant.assemblies.refused)]
 	return [followed, assistant.world.brick_count() - had]
 
 
 ## A session's change no copy of its sub-model could take, answered: nothing
-## of it was made, why, and what the session can do.
+## of it was made, why in the words the person's window says it
+## (Assemblies.refused), and what the session can do: the make_unique tool
+## is the window's Build › Make this copy unique.
 static func refused_answer(why: String) -> String:
 	return ("Not done, and nothing changed: %s. A sub-model's copies are one definition, "
-		+ "so a change to one is made in every copy or in none. make_unique makes one copy "
-		+ "its own sub-model, to change it alone; a part the person locked is theirs to unlock.") % why
+		+ "so a change to one is made in every copy or in none. The make_unique tool makes one "
+		+ "copy its own sub-model (the window's Build › Make this copy unique), to change it "
+		+ "alone; a part the person locked is theirs to unlock.") % why
 
 
 ## A step the call took the last part off goes with its booklet look, in the

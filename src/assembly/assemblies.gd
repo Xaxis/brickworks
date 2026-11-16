@@ -1520,6 +1520,8 @@ func _is_figure(path: String) -> bool:
 func after_edit() -> int:
 	if _syncing:
 		return 0
+	# Said of this edit alone: the one before's words stand for none after it.
+	refused = ""
 	var step: Dictionary = builder.last_step()
 	# An undo or a redo changed the model by a step whose copies already
 	# followed it, inside it (Builder.settled): nothing to follow. Asked
@@ -1536,14 +1538,17 @@ func after_edit() -> int:
 		# leaves no step. The redo it cleared comes back, where it is the
 		# one the history had when the app last looked. A selection picked
 		# up to move (Builder.lift_selection) is put back, out of the hand.
+		var why: String = refused
 		if bool(step.get("lift", false)) and builder.is_carrying():
 			builder.cancel_carry()
 		else:
 			builder.take_back(_redo_cleared())
 		_seen = builder.last_step()
 		_keep_redo()
+		# Kept through whatever the taking back set off.
+		refused = why
 		changed.emit()
-		edit_refused.emit(refused)
+		edit_refused.emit(why)
 		return 0
 	var steps: Array = followed[0]
 	if not steps.is_empty():
@@ -1563,12 +1568,14 @@ func after_edit() -> int:
 ## are one definition, as Studio and LeoCAD hold them: an edit to one is an
 ## edit to every one, so it is made in all of them or in none. Not where a
 ## copy's part it would change is locked (the person's word that it stays,
-## "Locked in one copy of Sill: unlock it, or make this copy its own model"),
-## nor where a copy has no room for what it would lay there, as a part put
-## down by hand has none ("No room in Sill (copy 2): Plate 1 x 1 is in the
-## way there. Move it, or make this copy its own model"). Up to swreview
-## (2026-11-15) copies followed through a lock, and a follow was laid
-## through whatever stood in the other copy, and saved so.
+## "Locked in one copy of Sill: Plate 1 x 2. Unlock it, or use Build › Make
+## this copy unique"), nor where a copy has no room for what it would lay
+## there, as a part put down by hand has none ("No room in Sill (copy 2):
+## Plate 1 x 1 is in the way there. Move it, or use Build › Make this copy
+## unique"). Up to swreview (2026-11-15) copies followed through a lock, and
+## a follow was laid through whatever stood in the other copy, and saved so.
+## A copy's own parts, and what it met where it stood, are not in its way
+## ([method _new_blocker]).
 var refused: String = ""
 
 ## An edit was taken back for [member refused]: the words to say.
@@ -1700,7 +1707,7 @@ func copies_follow(step: Dictionary) -> Array:
 	# Made in every copy, and then asked of each as it stands, every copy's
 	# change among the others: one a copy cannot take is taken back from all
 	# of them, and the caller takes back the edit (after_edit).
-	refused = _cannot_take(back, locked)
+	refused = _cannot_take(back, locked, plans, then)
 	if not refused.is_empty():
 		for taking: Dictionary in back:
 			builder._apply(taking)
@@ -1717,9 +1724,12 @@ func copies_follow(step: Dictionary) -> Array:
 ## that take it back (newest first): the words for [member refused], "" when
 ## they can. A part it changed, took off or put another in place of that is
 ## locked ([method locked_twins], [param locked] the locks before it); a part
-## it moved or put down with no room where it stands now ([method
-## in_the_way]), every other copy's change made round it.
-func _cannot_take(back: Array, locked: Dictionary) -> String:
+## it moved or put down has no room where it stands now ([method
+## _new_blocker]), every other copy's change made round it. [param plans]:
+## the copies laid on the edited ones ([method copies_follow]); [param then]:
+## the parts the edit changed, as they stood before it ([method _before]).
+func _cannot_take(back: Array, locked: Dictionary, plans: Array = [],
+		then: Dictionary = {}) -> String:
 	if back.is_empty():
 		return ""
 	var steps: Array = []
@@ -1740,18 +1750,129 @@ func _cannot_take(back: Array, locked: Dictionary) -> String:
 			var brick: BrickWorld.Brick = world.get_brick(brick_id)
 			var path: String = path_of(brick) if brick != null \
 				else path_from(str(one.get("group", "")), str(one.get("unit", "")))
-			return lock_words(path)
+			return lock_words(path, brick.part_id if brick != null else str(one.get("part", "")))
+	# Where what the follow changed stood before it: a twin it moved, by the
+	# step that moves it back; what it took off, each [its part, where].
+	var stood: Dictionary = {}
+	var laid: Dictionary = {}
+	var gone: Array = []
+	for one: Dictionary in steps:
+		match str(one.get("undo", "")):
+			"move":
+				stood[int(one["brick"])] = one["transform"]
+			"remove":
+				laid[int(one["brick"])] = true
+			"add":
+				gone.append([str(one.get("part", "")), one.get("transform", Transform3D.IDENTITY)])
+	var seen: Dictionary = {}
 	for one: Dictionary in steps:
 		var kind: String = str(one.get("undo", ""))
 		if kind != "move" and kind != "remove":
 			continue
 		var brick: BrickWorld.Brick = world.get_brick(int(one["brick"]))
-		if brick == null:
+		if brick == null or seen.has(brick.id):
 			continue
-		var blocker: int = in_the_way(brick.part_id, brick.transform, brick.id)
+		seen[brick.id] = true
+		var blocker: int = _new_blocker(brick, plans, then, stood, laid, gone)
 		if blocker != 0:
 			return room_words(path_of(brick), blocker)
 	return ""
+
+
+## What is in the way of [param brick], a part of a copy the follow moved or
+## put down, where it stands now: 0 for nothing, else as [method in_the_way]
+## says it. Asked as a part put there by hand is, but for two things a
+## builder never meant to change (flfix):
+## - its own copy, the copy of the edited sub-model it is in: that copy is laid
+##   on the edited one whole, so what its parts do to each other the edited
+##   part's own check judged already. Asked again, a tilted copy's parts, its
+##   cover drawn a cell off the edited one's, met each other where the edited
+##   copy's did not: a tap lifted a plate in 10030 was refused by the grille
+##   beside its twin;
+## - a part outside it that it met already where it stood, where it now shares
+##   no more cells with it than it did. Sets put parts into each other: an
+##   axle of 10179 stands through a 2 x 12 plate of another sub-model in each
+##   of its seven copies, and a lift of one plate was refused in all of them.
+## A part it meets anew, or meets deeper, is in its way, as by hand.
+func _new_blocker(brick: BrickWorld.Brick, plans: Array, then: Dictionary, stood: Dictionary,
+		laid: Dictionary, gone: Array) -> int:
+	var skip: Dictionary = _own_copy(path_of(brick), plans, laid)
+	var mesh: Lbm.PartMesh = library.mesh_for(brick.part_id)
+	var mine := PackedInt32Array()
+	var grown: bool = false
+	var blocker: int = in_the_way(brick.part_id, brick.transform, brick.id, skip)
+	while blocker > 0 and mesh != null:
+		var theirs_then: PackedInt32Array = _boxes_then(blocker, then, stood, laid)
+		if theirs_then.is_empty():
+			return blocker
+		if mine.is_empty():
+			mine = builder.boxes_for(mesh, brick.transform)
+		var before: int = 0
+		if stood.has(brick.id):
+			before = BrickLattice.shared_cells(builder.boxes_for(mesh, stood[brick.id]), theirs_then)
+		else:
+			# Put down in place of a part the follow took off: what that met.
+			for one: Array in gone:
+				var was: PackedInt32Array = builder.boxes_for(library.mesh_for(str(one[0])), one[1])
+				if BrickLattice.shared_cells(was, mine) > 0:
+					before += BrickLattice.shared_cells(was, theirs_then)
+		if before == 0 \
+				or BrickLattice.shared_cells(mine, builder.lattice.boxes_of(blocker)) > before:
+			return blocker
+		if not grown:
+			skip = skip.duplicate()
+			grown = true
+		skip[blocker] = true
+		blocker = in_the_way(brick.part_id, brick.transform, brick.id, skip)
+	return blocker
+
+
+## The parts of every copy round [param path] that the follow laid on an
+## edited copy ([param plans], as [method copies_follow] makes them: each
+## other copy's parts as they stood), with what the follow put down in them
+## ([param laid]): brick -> true. The outermost such copy is a copy of the
+## edited one whole.
+func _own_copy(path: String, plans: Array, laid: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	var copies: Array = []
+	for plan: Array in plans:
+		var other: String = plan[1]
+		if not within(path, other):
+			continue
+		copies.append(other)
+		for item: Dictionary in plan[5]:
+			out[int(item["id"])] = true
+	if copies.is_empty():
+		return out
+	for brick_id: int in laid:
+		var put: BrickWorld.Brick = world.get_brick(brick_id)
+		if put == null:
+			continue
+		var at: String = path_of(put)
+		for other: String in copies:
+			if within(at, other):
+				out[brick_id] = true
+				break
+	return out
+
+
+## Where [param brick_id] stood before the edit and its follow, as cells:
+## where the edit ([param then]) or the follow ([param stood]) moved it from,
+## else where it stands. Empty for one either put down.
+func _boxes_then(brick_id: int, then: Dictionary, stood: Dictionary,
+		laid: Dictionary) -> PackedInt32Array:
+	if laid.has(brick_id):
+		return PackedInt32Array()
+	if then.has(brick_id):
+		var was: Variant = then[brick_id]
+		if was == null:
+			return PackedInt32Array()
+		return builder.boxes_for(library.mesh_for(str(was["part"])), was["at"])
+	if stood.has(brick_id):
+		var brick: BrickWorld.Brick = world.get_brick(brick_id)
+		return builder.boxes_for(library.mesh_for(brick.part_id), stood[brick_id]) \
+			if brick != null else PackedInt32Array()
+	return builder.lattice.boxes_of(brick_id)
 
 
 static func _flattened(steps: Array, into: Array) -> void:
@@ -1779,30 +1900,43 @@ func locked_twins(ids: Array, locked: Dictionary = {}) -> Array:
 ## part as a follow lays it or moves it, as a part put there by hand is
 ## asked (Builder.room_for: nothing in its way but what it is joined to as
 ## real parts join, nor below the ground), [param ignore] (the part itself,
-## standing there already) left out: the part in the way, -1 for the ground
-## or a part with no shape here, 0 for room.
-func in_the_way(part_id: String, at: Transform3D, ignore: int = 0) -> int:
-	if builder.room_for(part_id, at, true, false, ignore):
+## standing there already) and [param skip] (brick -> true) left out: the
+## part in the way, -1 for the ground or a part with no shape here, 0 for
+## room.
+func in_the_way(part_id: String, at: Transform3D, ignore: int = 0,
+		skip: Dictionary = {}) -> int:
+	if builder.room_for(part_id, at, true, false, ignore, skip):
 		return 0
 	return builder.room_blocker if builder.room_blocker != 0 else -1
 
 
-## An edit refused for a part locked in a copy of the sub-model at [param
-## path], said.
-static func lock_words(path: String) -> String:
-	return "Locked in one copy of %s: unlock it, or make this copy its own model" \
-		% definition(leaf(path))
+## An edit refused for [param part_id], a part locked in a copy of the
+## sub-model at [param path], said, with the two ways round it: the part
+## unlocked, or the copy cut loose by the menu's own command (Build › Make
+## this copy unique, Shell's make_unique).
+func lock_words(path: String, part_id: String = "") -> String:
+	var info: PartLibrary.PartInfo = library.parts.get(part_id) \
+		if library != null and not part_id.is_empty() else null
+	if info == null:
+		return "Locked in one copy of %s: unlock it, or use Build › Make this copy unique" \
+			% definition(leaf(path))
+	return "Locked in one copy of %s: %s. Unlock it, or use Build › Make this copy unique" \
+		% [definition(leaf(path)), Inventory._tidy(info.name)]
 
 
 ## An edit refused for the copy at [param path], where [param blocker] (a
-## brick, or -1 for the ground) leaves no room for what it would lay, said.
+## brick, or -1 for the ground or a part with no shape) leaves no room for
+## what it would lay, said.
 func room_words(path: String, blocker: int) -> String:
-	var brick: BrickWorld.Brick = world.get_brick(blocker) if blocker > 0 else null
+	if blocker < 0:
+		return "No room in %s: it would go below the ground. Move that copy up, or use Build › Make this copy unique" \
+			% label(path)
+	var brick: BrickWorld.Brick = world.get_brick(blocker)
 	var info: PartLibrary.PartInfo = library.parts.get(brick.part_id) if brick != null else null
 	if info == null:
-		return "No room in %s: move what is in the way there, or make this copy its own model" \
+		return "No room in %s: move what is in the way there, or use Build › Make this copy unique" \
 			% label(path)
-	return "No room in %s: %s is in the way there. Move it, or make this copy its own model" \
+	return "No room in %s: %s is in the way there. Move it, or use Build › Make this copy unique" \
 		% [label(path), Inventory._tidy(info.name)]
 
 

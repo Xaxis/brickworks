@@ -8228,6 +8228,20 @@ func _on_model_changed() -> void:
 ## a deliberate change taking the last part off lets an empty model be
 ## written over a file with parts in it (ModelStore.emptied).
 func _on_model_edited() -> void:
+	# A band or a spring on a part just moved follows it, in the same step.
+	if _flex != null:
+		_flex.follow_moved()
+	# Every other copy of a sub-assembly just edited follows it. Where one
+	# cannot, the edit is taken back whole (Assemblies.after_edit): nothing
+	# changed, so the model is not marked to be written, nor the floor moved
+	# under it. A refused paint had the autosave write the model again
+	# (flreview F2).
+	if _verbs != null and _verbs.assemblies != null:
+		_verbs.assemblies.after_edit()
+		if not _verbs.assemblies.refused.is_empty():
+			if _store != null:
+				_store.unchanged()
+			return
 	if _store != null:
 		_store.adopt()
 		_store.touch()
@@ -8239,12 +8253,6 @@ func _on_model_edited() -> void:
 		# Every part's box, read only for a model on no floor: on Orthanc,
 		# on its plates, it was 25 to 60 ms of every edit, twice for most.
 		_floor.follow(_model_bounds())
-	# A band or a spring on a part just moved follows it, in the same step.
-	if _flex != null:
-		_flex.follow_moved()
-	# Every other copy of a sub-assembly just edited follows it.
-	if _verbs != null and _verbs.assemblies != null:
-		_verbs.assemblies.after_edit()
 	# A step it took the last part off goes with its booklet look, in the
 	# same undo (pullkept).
 	if _store != null:

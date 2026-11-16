@@ -1756,16 +1756,25 @@ Pointing at a stud and getting a brick there, selecting several, taking it back.
   A follow is made only where every copy can take it (followfix): the copies'
   change made, then asked of each (`Assemblies._cannot_take`): a part it
   would change, take off or swap that is locked in any copy refuses the
-  edit in all ("Locked in one copy of Sill: unlock it, or make this copy its
-  own model"), and a part it moves or lays where a part put there by hand
-  would have no room (`Builder.room_for`, grounded, the part itself left
-  out) refuses it too ("No room in Sill (copy 2): Plate 1 x 1 is in the way
-  there. Move it, or make this copy its own model"). Refused, the follow is
+  edit in all ("Locked in one copy of Sill: Plate 1 x 2. Unlock it, or use
+  Build › Make this copy unique"), and a part it moves or lays where a part
+  put there by hand would have no room (`Builder.room_for`, grounded, the
+  part itself left out) refuses it too ("No room in Sill (copy 2): Plate 1 x
+  1 is in the way there. Move it, or use Build › Make this copy unique"; "it
+  would go below the ground" for the ground). Not in a twin's way
+  (`Assemblies._new_blocker`, flfix): its own copy (laid on the edited one
+  whole, so the edited part's own check judged it: a tilted copy's cover is
+  drawn a cell off), nor a part outside it that it met where it stood, unless
+  they now share more cells; real sets stand parts in each other (10179's
+  axles through a plate of another sub-model). Refused, the follow is
   taken back and then the edit (`Builder.take_back`, the redo it cleared
   given back; a lifted selection put back out of the hand), so the file is
-  as it was and no history step is left; the bar says why
-  (`ModelBar.say_over`, over the verb's own line) and a session reads "Not
-  done, and nothing changed: …" (`CommandSocket.refused_answer`). In a
+  as it was and no history step is left, nor the model marked changed
+  (`ModelStore.unchanged`: no autosave, the floor left as it was); a lift
+  refused puts nothing in hand (`EditVerbs.lift` is 0, so a drag does not
+  begin); the bar says why (`ModelBar.say_over`, over the verb's own line)
+  and a session reads "Not done, and nothing changed: …"
+  (`CommandSocket.refused_answer`, naming `make_unique`). In a
   Build together room an edit still to be followed at the frame's end is
   followed, or taken back, before the session reads the model
   (`Together.settle_edit`, `Main._settle_edit`), so nothing refused is sent
@@ -3084,7 +3093,12 @@ by the copy's path, name or a part in it: `EditVerbs.make_unique(path)`); `F2` r
   (`Together.check_alone`: a refused paint and a refused Delete-mode click
   send nothing, an allowed paint both copies' parts), `undo_redo` (an undo
   after a refusal takes back the step before; the redo outlives a refusal),
-  `reopen` (saved, opened, one Sill, nothing through, saved again the same).
+  `reopen` (saved, opened, one Sill, nothing through, saved again the same),
+  `met` (a 1 x 2 brick outside the far copy through its yellow: dragged so
+  the twin shares no more cells with it, made in both; deeper, refused),
+  `real` (10179's #1028, #1030, #1076 and 10030's #446 nudged a plate by the
+  handles, each made with its twin in every copy, one undo the file back;
+  opens both sets, so about eight minutes in all).
 - `swapfind phone probe` (`src/dev/swapfind_phone_probe.gd`): windowed, 390 x
   844 laid out for a phone at a browser's scale, no sign-in, about a
   minute. More, Edit, Find and replace… in 3 taps; the bar inside the

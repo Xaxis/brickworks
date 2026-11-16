@@ -3641,9 +3641,10 @@ func _joins_made(at: Transform3D) -> int:
 ## there, the floor's baseplate is not in its way: it goes down through it,
 ## and nothing else moves ([method place]). [param ignore]: a brick that
 ## is not in its way, the part itself standing there already (a copy's
-## part a follow laid, Assemblies.in_the_way).
+## part a follow laid, Assemblies.in_the_way); [param skip], more such,
+## brick -> true (the rest of that copy, and what it met where it stood).
 func room_for(part_id: String, at: Transform3D, grounded: bool = false,
-		held: bool = false, ignore: int = 0) -> bool:
+		held: bool = false, ignore: int = 0, skip: Dictionary = {}) -> bool:
 	room_blocker = 0
 	var part: Lbm.PartMesh = library.mesh_for(part_id)
 	if part == null:
@@ -3655,8 +3656,8 @@ func room_for(part_id: String, at: Transform3D, grounded: bool = false,
 			if packed[n] < GROUND_CELL:
 				return false
 			n += 6
-	var blockers: PackedInt64Array = _not_scenery(lattice.blockers_boxes(packed, ignore)) if held \
-		else lattice.blockers_boxes(packed, ignore)
+	var blockers: PackedInt64Array = _not_scenery(lattice.blockers_boxes(packed, ignore, skip)) \
+		if held else lattice.blockers_boxes(packed, ignore, skip)
 	if blockers.is_empty():
 		return true
 	var entries: Array = [[0, at, part, library.resolve(part_id)]]

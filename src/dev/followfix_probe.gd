@@ -3,11 +3,11 @@
 ## LeoCAD hold them, so an edit to one copy is made in all of them or in
 ## none:
 ## - a part locked in any copy refuses the edit in all ("Locked in one copy
-##   of Sill: unlock it, or make this copy its own model");
+##   of Sill: Plate 1 x 2. Unlock it, or use Build › Make this copy unique");
 ## - a copy with no room for what the edit would lay or move there, as a
 ##   part put there by hand would have none, refuses it in all ("No room in
-##   Sill (copy 2): Plate 1 x 1 is in the way there. Move it, or make this
-##   copy its own model");
+##   Sill (copy 2): Plate 1 x 1 is in the way there. Move it, or use Build ›
+##   Make this copy unique");
 ## - a copy that can take it follows as before.
 ## Up to swreview (2026-11-15) a twin followed through its lock, and a
 ## follow was laid through the other copy's neighbours and saved so.
@@ -23,7 +23,13 @@
 ## mirrored copy, a sub-model placed three times inside another, a copy
 ## written as a definition of its own, a Build together room (a refusal
 ## sends nothing), undo and redo round a refusal, the save opened again, and
-## live's save and back.
+## live's save and back. And what is not in a twin's way (flfix): a part
+## outside its copy it met already where it stood, where they share no more
+## cells after ("met": the same refused where they share more), and real
+## sets' parts that stand in others, nudged a plate as the review found them
+## refused ("real": 10179's axle #1028 through a 2 x 12 plate of another
+## sub-model, its bush #1030 and axle #1076; 10030's tap #446, whose tilted
+## twin's cover met its own copy's grille): each made, every copy with it.
 ##
 ##   godot --headless --path . --script src/dev/followfix_probe.gd
 ##
@@ -45,7 +51,13 @@ const FOLLOW_EDITS: Dictionary = {
 	"mcp_move": ["free", "locked", "room"], "mcp_turn": ["free", "locked", "room"],
 	"mcp_delete": ["free", "locked"]}
 const ATTACKS: Array = ["mirror", "nested", "own_definition", "together", "undo_redo", "reopen",
-	"live"]
+	"live", "met", "real"]
+
+## Real sets' edits no copy may refuse (flfix): [the file in vendor/omr/files,
+## the part nudged, its part]. Each a plate up by the move handles, as the
+## review's sweep made it.
+const REAL_ALLOWED: Array = [["10179-1.mpd", 1028, "44294"], ["10179-1.mpd", 1030, "32123a"],
+	["10179-1.mpd", 1076, "44294"], ["10030-1.mpd", 446, "4599a"]]
 
 ## Sill: a red 2 x 4 brick, a black 1 x 2 plate and a yellow 1 x 1 plate on
 ## it. Each edit is made in the copy at the origin; its twin is in the copy
@@ -96,7 +108,7 @@ var _table := PackedStringArray()
 
 func _run() -> void:
 	OS.set_environment("BRICKWORKS_API", "http://127.0.0.1:9")
-	create_timer(1500.0).timeout.connect(func() -> void:
+	create_timer(2400.0).timeout.connect(func() -> void:
 		print("followfix probe: not finished in time")
 		quit(1))
 	await process_frame
@@ -136,6 +148,8 @@ func _run() -> void:
 			"undo_redo": await _attack_undo_redo()
 			"reopen": await _attack_reopen()
 			"live": await _attack_live()
+			"met": await _attack_met()
+			"real": await _attack_real()
 	print("\nthe table:")
 	for line: String in _table:
 		print("  " + line)
@@ -713,3 +727,98 @@ func _attack_live() -> void:
 			_looks(false) == shown) and ok
 	_table.append("%-11s %-6s %s" % ["live", "", "pass" if ok else "FAIL"])
 	_builder.unlock_all()
+
+
+## A part outside the far copy where its yellow 1 x 1 stands, a 1 x 2 brick
+## through it (a set's parts stand in each other so: 10179's axles through a
+## plate of another sub-model). The near yellow dragged a stud along -x by
+## the handles: where the brick covers both places ("same") the twin shares
+## no more cells with it after, and the edit is made in both copies; where
+## it covers half the first and all the second ("deeper"), refused in both,
+## as a part outside the copy met anew is.
+func _attack_met() -> void:
+	var ok: bool = true
+	for how: String in ["same", "deeper"]:
+		# The 1 x 2 brick along x in the far copy's frame, its middle at x 20
+		# (over x 0 to 40: both places) or x 10 (-10 to 30: half, then all).
+		var x: int = 20 if how == "same" else 10
+		var text: String = _file().replace(SECOND + "\n",
+			SECOND + "\n1 1 %d -24 210 1 0 0 0 1 0 0 0 1 3004.dat\n" % x)
+		await _open(text)
+		var sills: Array = _sills()
+		var mine: BrickWorld.Brick = _in(sills[0], "3024")
+		var theirs: BrickWorld.Brick = _in(sills[1], "3024")
+		var before: String = _save()
+		var depth: int = _builder.history_depth()
+		_bar_main.say("")
+		_pick([mine.id])
+		_builder.drag_begin()
+		var moved: int = _builder.drag_end(Transform3D(Basis.IDENTITY, Vector3(-20, 0, 0)))
+		if moved > 0:
+			_verbs.edited.call()
+		await _frames(6)
+		var twin_x: float = _world.get_brick(theirs.id).transform.origin.x \
+			if _world.get_brick(theirs.id) != null else INF
+		print("  %s: moved %d; twin at x %s; history %d -> %d; refused \"%s\"; bar \"%s\"" % [how,
+			moved, twin_x, depth, _builder.history_depth(), _assemblies.refused, _bar_text()])
+		if how == "same":
+			ok = _check("met same: the twin shares no more with the brick it stood in, so both moved, one step",
+				moved == 1 and is_equal_approx(twin_x, 10.0) and _builder.history_depth() == depth + 1
+				and _assemblies.refused.is_empty() and not _bar_text().contains("No room")) and ok
+			_shell.run("undo")
+			await _frames(6)
+			ok = _check("met same: one undo, byte for byte", _save() == before) and ok
+		else:
+			ok = _check("met deeper: refused in both copies, the file byte for byte, said",
+				_save() == before and _builder.history_depth() == depth
+				and is_equal_approx(twin_x, 30.0) and _bar_text().contains(ROOM_WORDS)
+				and _bar_text().contains("Brick 1 x 2")) and ok
+	_table.append("%-11s %-6s %s" % ["met", "", "pass" if ok else "FAIL"])
+
+
+## Real sets' nudges the review found refused for nothing (REAL_ALLOWED):
+## each made, and every copy's twin moved with it, one undo step; one undo
+## gives the file back.
+func _attack_real() -> void:
+	var ok: bool = true
+	var opened: String = ""
+	for item: Array in REAL_ALLOWED:
+		if str(item[0]) != opened:
+			await _open(FileAccess.get_file_as_string("res://vendor/omr/files/" + str(item[0])))
+			opened = str(item[0])
+		var brick: BrickWorld.Brick = _world.get_brick(int(item[1]))
+		if brick == null or not brick.part_id.begins_with(str(item[2])):
+			ok = _check("real %s #%d: the %s the review nudged" % [item[0], item[1], item[2]],
+				false) and ok
+			continue
+		var path: String = Assemblies.path_of(brick)
+		var copies: int = _assemblies.copies_of(path).size()
+		var was: Dictionary = {}
+		for one: BrickWorld.Brick in _world.bricks():
+			was[one.id] = one.transform
+		var before: String = _save()
+		var depth: int = _builder.history_depth()
+		_bar_main.say("")
+		_pick([brick.id])
+		_builder.drag_begin()
+		var moved: int = _builder.drag_end(Transform3D(Basis.IDENTITY, Vector3(0, 8, 0)))
+		if moved > 0:
+			_verbs.edited.call()
+		await _frames(2)
+		var changed: int = 0
+		for one: BrickWorld.Brick in _world.bricks():
+			if was.has(one.id) and not (was[one.id] as Transform3D).is_equal_approx(one.transform):
+				changed += 1
+		var made: bool = _builder.history_depth() == depth + 1
+		print("  %s #%d %s in %s (%d other copies): moved %d, %d parts moved in all; history %d -> %d; refused \"%s\"; bar \"%s\""
+			% [item[0], item[1], brick.part_id, path, copies, moved, changed, depth,
+			_builder.history_depth(), _assemblies.refused, _bar_text().left(160)])
+		ok = _check("real %s #%d: made, and its twin in each of the %d other copies with it"
+			% [item[0], item[1], copies], made and moved == 1 and changed == copies + 1
+			and _assemblies.refused.is_empty() and not _bar_text().contains("No room")) and ok
+		if made:
+			_shell.run("undo")
+			await _frames(2)
+			ok = _check("real %s #%d: one undo gives the file back" % [item[0], item[1]],
+				_save() == before) and ok
+	_table.append("%-11s %-6s %s" % ["real", "", "pass" if ok else "FAIL"])

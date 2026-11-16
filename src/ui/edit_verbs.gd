@@ -810,6 +810,11 @@ func lift() -> int:
 	if count == 0:
 		return 0
 	edited.call()
+	# A copy of its sub-model could not take the lift (a twin locked): it was
+	# put back, and nothing is in hand (Assemblies.after_edit). A drag said it
+	# began, with nothing to carry (flreview F3).
+	if not builder.is_carrying():
+		return 0
 	aim_again.call()
 	say.call(Keymap.filled("moving %s — click to put down, {rotate_held|turns}, Esc puts back")
 		% _parts(count))
