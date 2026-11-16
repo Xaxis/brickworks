@@ -1103,9 +1103,13 @@ picture the assistant is shown.
   waited 16 to 33 s on the page's thread; now 8 to 25 ms, the longest task
   went from 17-33 s to 2-3.6 s and the slowest input from 17-33 s to 3.6 s,
   with the page running at 60 frames a second while the card drew it.
-  Held for anything but the person: a key, a click or the pointer moving is
-  drawn while it waits (`GpuFence._asked`, the root window's `window_input`),
-  the frame it changed and whatever else changes in the 500 ms after it. The
+  Held for anything but a person: a key, a click or the pointer moving is
+  drawn while it waits (`GpuFence.answer`, the root window's `window_input`),
+  the frame it changed and whatever else changes in the 500 ms after it; so
+  is what another person in a Build together room does, heard over the
+  network (`Together._heard_people`, `_add_look`: their pointer, selection,
+  a part they point out, or Claude's point), which waited behind the bin's
+  pictures 817 ms to 2.8 s (pointat_flow's first round, pointfix 2026-11-15). The
   parts bin reads its pictures back the same way, eight at a time, and over
   Orthanc in software its first eight held the drawing 30 s and more after
   the model opened: a click on the white wizard selected him at once and the

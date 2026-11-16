@@ -5066,7 +5066,9 @@
       "entry": "src/ui/look.gd",
       "reach": "godot --path .  (every button edged 3:1 on its face; a question's default in the strong blue)",
       "area": "parts",
-      "tests": []
+      "tests": [
+        "tests/test_together_poll.py"
+      ]
     },
     {
       "id": "ui:camera controls",
@@ -6453,7 +6455,9 @@
       "entry": "src/ui/look.gd",
       "reach": "godot --path .  (any dialog, chooser or menu: the panels' dark face, on the desktop and, for dialogs, the web)",
       "area": "parts",
-      "tests": []
+      "tests": [
+        "tests/test_together_poll.py"
+      ]
     },
     {
       "id": "ui:the author's steps",

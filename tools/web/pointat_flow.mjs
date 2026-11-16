@@ -17,20 +17,24 @@
 //      names as clickable, each other than the last) and presses Alt+W, as
 //      a person does: the timer starts at the key. The owner's own tab
 //      shows it at once; the second tab has it outlined in the owner's
-//      colour, by the owner's name, and the time to the frame it was drawn
-//      in is kept, with where it went (each page's Together.timing: the
-//      owner's page handling the key, the server saying it, the second page
-//      having it and drawing it). Bar: every one seen, p95 within 500 ms;
-//      or, as together_flow holds the pointer under load, 95 of 100 within
-//      500 ms or with their trip (the key handled to the line had: the send,
-//      the server, the network both ways) within 500 ms less a frame each
-//      side. This box draws in software at a load of 30-60, and a page
-//      held by its own frame is the box's, not the trip's. On the local
-//      relay the bar is not met and not meant to be: it answers a poll
-//      whole, never a line at a time (api/together.js, streams), so each
-//      point waits for the second page to ask again, and the trip to the
-//      server saying it was 500-600 ms at p50 there where the send itself
-//      was answered in 160 (2026-11-13). The bar is a deployment's.
+//      colour, by the owner's name. Timed to what a person sees: the frame
+//      that drew it, drawn, which is when a WebGL fence put in after that
+//      frame passed (frameFences): this box draws in software, behind the
+//      page, and a page's own time of a frame is when it was handed over.
+//      Each leg is said: the key to the owner's page handling it, the send
+//      asked, the server having it, the second page's poll having it (the
+//      server says both), the line said, the page having it, the frame,
+//      its drawing. Bar: every one seen, p95 within 500 ms; or, under load,
+//      95 of 100 with all but a frame each side within 500 ms less a frame
+//      each side, a frame each side being what the box took: the owner's
+//      page finishing the frame the key came in, the second page finishing
+//      the frame it was in when the line came, and the next frame drawn.
+//      A frame that ran without drawing it, the send and the relay all
+//      count. --slow-send=600 holds each send 600 ms and must fail it
+//      (pointfix, 2026-11-15). On the local relay the bar is not met and
+//      not meant to be: it answers a poll whole, never a line at a time
+//      (api/together.js, streams), so each point waits for the second page
+//      to ask again (2026-11-13). The bar is a deployment's.
 //   2. The outline read off the second tab's pixels: the owner's colour
 //      more than before by an outline's worth.
 //   3. One alone: it stays 4.5 s and is gone 5 s after (by 5.7 s) on both
@@ -218,9 +222,118 @@ async function mcp(token, session, method, params) {
   return [answer.status, body, answer.headers.get("mcp-session-id") || ""];
 }
 
+// Each of the app's frames, as the page runs them (the engine's loop is a
+// requestAnimationFrame callback): when it began and ended on the page, and
+// when a WebGL fence put in after it passed, which is when SwiftShader had
+// drawn it. A page drawing in software hands a frame over in its 17 ms and
+// draws it behind the page, 0.3-2 s later at this box's load
+// (brickworks-swiftshader-timing), so the frame a point was drawn in is
+// seen when its fence passes, not when the page's frame ended. Kept while
+// window.__fences is on, the last 600.
+function frameFences() {
+  const real = window.requestAnimationFrame.bind(window);
+  const frames = window.__frames = [];
+  const waiting = [];
+  let gl = null;
+  const look = () => {
+    for (let i = waiting.length - 1; i >= 0; i -= 1) {
+      const frame = waiting[i];
+      if (gl.getSyncParameter(frame.sync, gl.SYNC_STATUS) !== gl.SIGNALED) continue;
+      frame.passed = Date.now();
+      gl.deleteSync(frame.sync);
+      frame.sync = null;
+      waiting.splice(i, 1);
+    }
+    if (waiting.length) setTimeout(look, 2);
+  };
+  window.requestAnimationFrame = (callback) => real((stamp) => {
+    const start = Date.now();
+    try {
+      callback(stamp);
+    } finally {
+      if (window.__fences) {
+        if (!gl) {
+          const canvas = document.getElementById("canvas") || document.querySelector("canvas");
+          gl = canvas?.getContext("webgl2") || null;
+        }
+        const frame = { start, end: Date.now(), passed: null, sync: gl ? gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0) : null };
+        if (frame.sync) {
+          gl.flush();
+          if (!waiting.length) setTimeout(look, 0);
+          waiting.push(frame);
+        }
+        frames.push(frame);
+        if (frames.length > 600) frames.shift();
+      }
+    }
+  });
+}
+// The lines of the page's polls that name a part pointed out, as the page
+// reads them: [{got (unix ms), at (the server's), pointed: {who: [the
+// server had it, the poll had it, how]}, looks: {who: n}}], the last 200.
+function pollLines() {
+  const real = window.fetch;
+  const lines = window.__pollLines = [];
+  window.fetch = function (input, init) {
+    const asked = real.apply(this, arguments);
+    if (!String(input?.url || input).includes("op=poll")) return asked;
+    return asked.then((answer) => {
+      const reader = answer.clone().body?.getReader();
+      const text = new TextDecoder();
+      let kept = "";
+      const take = (line) => {
+        if (!line.includes("\"look\"")) return;
+        try {
+          const said = JSON.parse(line);
+          const looks = {};
+          for (const one of said.people || []) if (one.look) looks[one.who] = one.look.n;
+          lines.push({ got: Date.now(), at: said.at, pointed: said.pointed || null, looks });
+          if (lines.length > 200) lines.shift();
+        } catch {}
+      };
+      (async () => {
+        for (;;) {
+          const { done, value } = await reader.read();
+          const now = done ? text.decode() : text.decode(value, { stream: true });
+          const cut = now.lastIndexOf("\n");
+          if (cut < 0) kept += now;
+          else {
+            (kept + now.slice(0, cut)).split("\n").forEach(take);
+            kept = now.slice(cut + 1);
+          }
+          if (done) { take(kept); break; }
+        }
+      })().catch(() => {});
+      return answer;
+    });
+  };
+}
+// The frame of [page] that ran at unix ms [at] (a page's own time of a
+// frame drawn, Together.timing), once its fence has passed: {start, end,
+// passed}; null if none ran then, or its fence has not passed in [ms].
+async function frameAt(page, at, ms = 15000) {
+  if (!Number.isFinite(at)) return null;
+  const end = Date.now() + ms;
+  for (;;) {
+    const frame = await page.evaluate((when) => {
+      const one = (window.__frames || []).find((f) => f.start <= when && when <= f.end + 1);
+      return one ? { start: one.start, end: one.end, passed: one.passed } : null;
+    }, at).catch(() => null);
+    if (frame?.passed || Date.now() > end) return frame?.passed ? frame : null;
+    await wait(20);
+  }
+}
+// [page]'s frames that ran between unix ms [from] and [to]: the longest's
+// page time, and when the last of them that began before [to] was drawn.
+const framesBetween = (page, from, to) => page.evaluate(([a, b]) => (window.__frames || [])
+  .filter((f) => f.end >= a && f.start <= b)
+  .map((f) => ({ start: f.start, end: f.end, passed: f.passed })), [from, to]).catch(() => []);
+
 const browser = await launch({ signedOut: true });
 async function person(email) {
   const context = await browser.newContext({ viewport: { width, height }, extraHTTPHeaders: headers });
+  await context.addInitScript(frameFences);
+  await context.addInitScript(pollLines);
   const session = await mintSession(email, { age: true });
   await context.addInitScript(([name, value]) => {
     try { if (!localStorage.getItem(name)) localStorage.setItem(name, value); } catch {}
@@ -237,6 +350,15 @@ const theirs = (list, who) => list.find((one) => one.who === who);
 try {
   const owner = await person(emails.owner);
   const guest = await person(emails.guest);
+  // --slow-send=MS: each of the owner's points held that long on its way to
+  // the server, as a slow app or relay would hold it: the check must fail.
+  if (Number(args["slow-send"]) > 0) {
+    console.log(`  --    each of the owner's point sends held ${Number(args["slow-send"])} ms on its way (--slow-send)`);
+    await owner.page.route(/\/api\/together\?op=point/, async (route) => {
+      await wait(Number(args["slow-send"]));
+      await route.continue().catch(() => {});
+    });
+  }
   if (bypass) {
     await owner.page.goto(`${site}/app?x-vercel-protection-bypass=${bypass}&x-vercel-set-bypass-cookie=true`,
       { waitUntil: "domcontentloaded", timeout: 180000 }).catch(() => {});
@@ -331,6 +453,19 @@ try {
     pointSends.push({ asked: Math.round(timing.startTime), waited: Math.round(timing.requestStart),
       answered: Math.round(timing.responseStart) });
   });
+  // The second page's polls, each [asked, ended] (unix ms): a point said
+  // while none was waiting waits for the next to be asked.
+  const guestPolls = [];
+  guest.page.on("request", (request) => {
+    if (request.url().includes("op=poll")) guestPolls.push({ request, asked: Date.now(), ended: null });
+  });
+  const pollEnded = (request) => {
+    const one = guestPolls.find((p) => p.request === request);
+    if (one) one.ended = Date.now();
+  };
+  guest.page.on("requestfinished", pollEnded);
+  guest.page.on("requestfailed", pollEnded);
+  for (const page of [owner.page, guest.page]) await page.evaluate(() => { window.__fences = true; });
   for (let n = 0; n < ROUNDS; n++) {
     const spots = laid.filter((one) => one.brick !== last);
     const aim = spots[n % spots.length];
@@ -353,11 +488,48 @@ try {
     const seen = theirs(await looks(guest.page), ownerWho);
     const sender = await timesOf(owner.page, (now) => now.looked >= t0 && now.look_drawn >= now.looked);
     const timing = got ? await timesOf(guest.page, (now) => now.look_shown >= t0 && now.look_drawn >= now.look_shown) : {};
-    rows.push({ n, t0, part: aim.part,
+    // The frames each was drawn in, once drawn (their fences).
+    const ownFrame = await frameAt(owner.page, sender.look_drawn);
+    const guestFrame = await frameAt(guest.page, timing.look_drawn);
+    // The second page's frames from the line had to the frame that drew it:
+    // more than one, and the drawing was held (or nothing asked for it).
+    const between = Number.isFinite(timing.look_shown) && guestFrame
+      ? (await framesBetween(guest.page, timing.look_shown, guestFrame.start)).length : null;
+    // The line that brought it: heard with it, not a later one.
+    const sameLine = Number.isFinite(timing.people_heard) && timing.people_heard <= timing.look_shown;
+    const polling = guestPolls.filter((p) => p.asked <= (timing.look_shown ?? t0) && (p.ended ?? Infinity) >= t0);
+    // The first of the second page's lines that had this point: when the
+    // server said it, and when it had it and its poll did (its clock).
+    const line = seen ? await guest.page.evaluate(([who, n]) => (window.__pollLines || [])
+      .find((one) => one.looks[who] === n) || null, [ownerWho, seen.n]).catch(() => null) : null;
+    const relay = line?.pointed?.[ownerWho] || [];
+    const saidAt = line?.at ?? (sameLine && Number.isFinite(timing.people_said) ? timing.people_said : null);
+    // The second page busy with a frame when the line came: had the moment
+    // that frame ended, it waited for it, from the server saying it at most.
+    let busy = 0;
+    if (Number.isFinite(saidAt) && Number.isFinite(timing.look_shown)) {
+      const running = (await framesBetween(guest.page, saidAt, timing.look_shown))
+        .filter((f) => f.end <= timing.look_shown && timing.look_shown - f.end <= 3).pop();
+      if (running) busy = Math.max(0, timing.look_shown - Math.max(running.start, saidAt));
+    }
+    // The owner's frames from its page handling the key to the one that drew
+    // it there: two by design, the key's (the send leaves at its end) and
+    // the next (Together._show_looks_next_frame).
+    const ownBetween = ownFrame && Number.isFinite(sender.looked)
+      ? (await framesBetween(owner.page, sender.looked, ownFrame.start)).length : null;
+    rows.push({ n, t0, part: aim.part, busy, ownBetween,
+      ownStart: ownFrame ? ownFrame.start - t0 : null,
       looked: after0(sender.looked, t0), sent: after0(sender.look_sent, t0),
       own: after0(sender.look_drawn, t0) ?? (own ? own - t0 : null),
-      said: Number.isFinite(timing.people_said) ? timing.people_said - t0 : null,
-      heard: after0(timing.people_heard, t0), drawn: after0(timing.look_drawn, t0),
+      ownFenced: ownFrame ? ownFrame.passed - t0 : null,
+      said: sameLine && Number.isFinite(timing.people_said) ? timing.people_said - t0 : null,
+      heard: sameLine ? after0(timing.people_heard, t0) : null,
+      shown: after0(timing.look_shown, t0), drawn: after0(timing.look_drawn, t0),
+      frame: guestFrame ? { start: guestFrame.start - t0, end: guestFrame.end - t0 } : null,
+      fenced: guestFrame ? guestFrame.passed - t0 : null, between,
+      polls: polling.map((p) => [p.asked - t0, p.ended === null ? null : p.ended - t0]),
+      line: line ? { said: line.at - t0, got: line.got - t0, server: Number.isFinite(relay[0]) ? relay[0] - t0 : null,
+        poll: Number.isFinite(relay[1]) ? relay[1] - t0 : null, via: relay[2] || null } : null,
       seen: got ? got - t0 : null, name: seen?.name, parts: seen?.parts });
     if (n === 0) {
       const during = await colourCount(guest.page, ownerColour, "1_pointed_guest.png");
@@ -371,36 +543,86 @@ try {
       .sort((a, b) => a.asked - b.asked)[0];
     if (send) Object.assign(row, { asked: send.asked - row.t0, waited: send.waited, answered: send.answered });
   }
-  writeFileSync(path.join(out, "rounds.json"), JSON.stringify({ rows, pointSends }, null, 1));
+  // Each point's way, a leg at a time (ms): the key to the owner's page
+  // handling it; to its send asked of the browser; to the server saying it
+  // on the second page's poll (the server's clock); to the second page
+  // having it; to the frame that drew it run on the page; to that frame
+  // drawn (its fence).
+  const less = (a, b) => (Number.isFinite(a) && Number.isFinite(b) ? a - b : null);
+  const legsOf = (row) => {
+    const said = row.line?.said ?? row.said;
+    return {
+      key: row.looked,
+      send: less(row.asked, row.looked),
+      // The relay in three where the server says its own: the send to the
+      // server having it (two clocks), on to the second page's poll having
+      // it, on to the line said.
+      up: less(row.line?.server, row.asked),
+      fan: less(row.line?.poll, row.line?.server),
+      say: less(said, row.line?.poll),
+      relay: less(said, row.asked),
+      down: less(row.shown, said),
+      frame: less(row.drawn, row.shown),
+      raster: less(row.fenced, row.drawn),
+    };
+  };
+  // What a person sees: the key to the frame that drew the point, drawn
+  // (its fence, frameFences). Under load, less what this box's software
+  // drawing took, a frame each side, as each page ran its frames: the
+  // owner's page finishing the frame the key came in; the second page
+  // finishing the frame it was in when the line came, then the next frame
+  // and its drawing. A frame that ran without drawing the point is the
+  // app's, as the send and the relay are: what is left is held to 500 ms
+  // less a frame each side. A point with no fence is not within.
+  const guestBox = (row) => {
+    if (!Number.isFinite(row.fenced) || !Number.isFinite(row.shown) || !row.frame) return null;
+    const drawing = row.between === 1 ? row.fenced - row.shown : row.fenced - row.frame.start;
+    return (row.looked ?? 0) + row.busy + drawing;
+  };
+  const ownBox = (row) => {
+    if (!Number.isFinite(row.ownFenced) || !Number.isFinite(row.looked) || !Number.isFinite(row.ownStart)) return null;
+    return row.looked + (row.ownBetween <= 2 ? row.ownFenced - row.looked : row.ownFenced - row.ownStart);
+  };
+  const within = (seen, left) => Number.isFinite(seen) && (seen <= BAR_MS
+    || (Number.isFinite(left) && left <= BAR_MS - 2 * FRAME_MS));
   for (const row of rows) {
-    console.log(`        ${String(row.n).padStart(2)} ${row.part}: key handled ${row.looked}, sent ${row.sent},`
-      + ` own drawn ${row.own}; its send asked ${row.asked}, waited ${row.waited} for a connection, answered`
-      + ` ${row.answered} after; server said ${row.said}, heard ${row.heard}, drawn ${row.drawn},`
+    row.legs = legsOf(row);
+    row.left = less(row.fenced, guestBox(row));
+    row.ownLeft = less(row.ownFenced, ownBox(row));
+  }
+  writeFileSync(path.join(out, "rounds.json"), JSON.stringify({ rows, pointSends,
+    polls: guestPolls.map((p) => [p.asked, p.ended]) }, null, 1));
+  for (const row of rows) {
+    const legs = Object.entries(row.legs).map(([k, v]) => `${k} ${v ?? "-"}`).join(", ");
+    console.log(`        ${String(row.n).padStart(2)} ${row.part}: drawn there ${row.fenced ?? "-"} ms after the key,`
+      + ` the frames each side ${less(row.fenced, row.left) ?? "-"} of it (busy ${row.busy}), the rest ${row.left ?? "-"}`
+      + ` (${legs}; ${row.between ?? "-"} frames from the line had to the one that drew it, which ran`
+      + ` ${row.frame ? `${row.frame.start}-${row.frame.end}` : "-"}); own drawn ${row.ownFenced ?? "-"}`
+      + ` (page ${row.own}); its send answered ${row.answered} after; the poll had it ${row.line?.via ?? "-"};`
+      + ` polls ${JSON.stringify(row.polls)};`
       + ` read ${row.seen} ms; "${row.name}"`);
   }
+  const legSpread = (key) => percentile(rows.map((row) => row.legs[key]), 0.5) + "/"
+    + percentile(rows.map((row) => row.legs[key]), 0.95);
+  console.log(`        legs, p50/p95 ms: ${["key", "send", "up", "fan", "say", "relay", "down", "frame", "raster"]
+    .map((key) => `${key} ${legSpread(key)}`).join(", ")}; drawn there ${percentile(rows.map((row) => row.fenced), 0.5)}/`
+    + `${percentile(rows.map((row) => row.fenced), 0.95)} (load ${loadavg()[0].toFixed(0)})`);
   const p = percentile;
   const of = (key) => rows.map((row) => row[key]).filter((x) => Number.isFinite(x));
   const spread = (list) => `p50 ${p(list, 0.5)}, p95 ${p(list, 0.95)}`;
-  const total = (row) => row.drawn ?? row.seen;
-  const trip = (row) => row.heard - row.looked;
-  const owns = of("own");
-  const ownWithin = rows.filter((row) => tripWithin(row.own, row.own - row.looked)).length;
-  check(`the owner's own tab draws each at once: ${owns.length} of ${ROUNDS}, ${spread(owns)} ms;`
-    + ` ${ownWithin} within ${BAR_MS} ms, or a frame after its page handled the key`
-    + ` (key handled ${spread(of("looked"))} ms)`,
+  const owns = of("ownFenced");
+  const ownWithin = rows.filter((row) => within(row.ownFenced, row.ownLeft)).length;
+  check(`the owner's own tab draws each at once: ${owns.length} of ${ROUNDS}, ${spread(owns)} ms to drawn;`
+    + ` ${ownWithin} within ${BAR_MS} ms, or drawn in the frame after the key's`
+    + ` (its page handling the key ${spread(of("looked"))} ms, the rest ${spread(of("ownLeft"))})`,
     owns.length === ROUNDS && (p(owns, 0.95) <= BAR_MS || ownWithin >= Math.ceil(0.95 * ROUNDS)));
-  const drawn = rows.map(total).filter((x) => Number.isFinite(x));
-  const trips = rows.map(trip).filter((x) => Number.isFinite(x));
-  const within = rows.filter((row) => tripWithin(total(row), trip(row))).length;
-  console.log(`        where the time went (p50, p95 ms): the owner's page handling the key ${spread(of("looked"))};`
-    + ` the trip ${spread(trips)} (to the server saying it ${spread(rows.map((row) => row.said - row.looked)
-      .filter((x) => Number.isFinite(x)))}, from there to the page having it ${spread(rows.map((row) => row.heard - row.said)
-      .filter((x) => Number.isFinite(x)))}); the second page drawing it ${spread(rows.map((row) => row.drawn - row.heard)
-      .filter((x) => Number.isFinite(x)))}`);
-  check(`the second tab draws each: ${drawn.length} of ${ROUNDS}, ${spread(drawn)} ms, most ${Math.max(...drawn)} ms;`
-    + ` ${within} of ${ROUNDS} within ${BAR_MS} ms, or their trip within it less a frame each side`
-    + ` (trip ${spread(trips)} ms, load ${loadavg()[0].toFixed(0)})`,
-    drawn.length === ROUNDS && (p(drawn, 0.95) <= BAR_MS || within >= Math.ceil(0.95 * ROUNDS)));
+  const drawn = of("fenced");
+  const inTime = rows.filter((row) => within(row.fenced, row.left)).length;
+  check(`the second tab draws each: ${drawn.length} of ${ROUNDS}, ${spread(drawn)} ms to drawn, most`
+    + ` ${Math.max(...drawn)} ms; ${inTime} of ${ROUNDS} within ${BAR_MS} ms, or with the send and the relay`
+    + ` within it less a frame each side (they ${spread(of("left"))} ms; the frames each side`
+    + ` ${spread(rows.map((row) => less(row.fenced, row.left)).filter(Number.isFinite))} ms, load ${loadavg()[0].toFixed(0)})`,
+    drawn.length === ROUNDS && (p(drawn, 0.95) <= BAR_MS || inTime >= Math.ceil(0.95 * ROUNDS)));
   check(`...each by the owner's name ("${ownerName}")`, rows.every((row) => row.name === ownerName));
 
   console.log("\n2. read off the second tab's pixels");
