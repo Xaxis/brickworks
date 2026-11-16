@@ -84,6 +84,8 @@ const reset = () => {
     // joined; each read held readMs, a channel's join joinMs (pollreads).
     log: [],
     joinedAt: null,
+    joins: 0,
+    toldAt: null,
     readMs: 0,
     joinMs: 5,
     broadcasts: 0,
@@ -117,6 +119,7 @@ class StandInSocket extends EventTarget {
       if (!sockets.has(this)) return;
       this.topics.add(said.topic);
       store.joinedAt = Date.now();
+      store.joins += 1;
       this.said({ topic: said.topic, event: "phx_reply", ref: said.ref,
         payload: { status: "ok", response: { postgres_changes: [] } } });
     };
@@ -163,9 +166,9 @@ globalThis.fetch = async (url, options = {}) => {
     const account = (q.get("account") || "").replace("eq.", "");
     if (method === "PATCH") {
       const body = JSON.parse(options.body);
-      // A pointer at x = -1 is held this long first, as a database that
-      // takes two sends in the other order (ordered, below).
-      if (store.holdOlder && body.pointer?.at?.[0] === -1) await sleep(store.holdOlder);
+      // A pointer at x = -1 is held until a part pointed out has landed, as a
+      // database that takes two sends in the other order (ordered, below).
+      if (store.holdOlder && body.pointer?.at?.[0] === -1) await until(() => store.people[0].pointer?.look, 2000);
       const row = store.people.find((one) => one.account === account && !(q.get("removed_at") && one.removed_at));
       // The point's guard (api/together.js point): kept only over an older one.
       const older = /^\(pointer_at\.is\.null,pointer_at\.lt\."(.+)"\)$/.exec(q.get("or") || "");
@@ -205,14 +208,30 @@ const ask = (body, op = "poll", who = ME) => ({ method: "POST", query: { op },
   headers: { authorization: `Bearer ${tokens[who]}` }, body });
 const point = (at) => Object.assign(store.people[0], { pointer: { at, sel: [], view: null }, pointer_at: new Date().toISOString() });
 
+// Until [test] holds, looked at each millisecond, [ms] at most: the fixture
+// acts on a poll's state, not on how long it has had. A busy box's sign-in
+// check waits on the thread pool, which stalls nothing the ticker sees, and
+// ran past the sleeps that stood for it: a poll not yet begun when a pointer
+// moved, or not yet listening when one was told (pollreads, 2026-11-16).
+async function until(test, ms = 5000) {
+  for (const end = Date.now() + ms; !test() && Date.now() < end;) await sleep(1);
+}
+// Begun: a poll's first request, its person's row, logged since [mark].
+const begun = (mark) => () => store.log.slice(mark).some(([what]) => what === "PATCH together_people");
+// Listening: a channel joined since [joins] had.
+const joinedSince = (joins) => () => store.joins > joins;
+const writ = (response, text) => () => response.writes.some((one) => one.text.includes(text));
+
 async function lines() {
   reset();
   const response = responseOf();
   const done = handler(ask({ s: SECRET, after: 0, seen: "", stream: true }), response);
-  await sleep(400);
+  // Moved while it waits: once who is in it has gone out.
+  await until(() => response.writes.length >= 1);
+  await sleep(100);
   point([1, 2, 3]);
   const movedAt = Date.now();
-  await sleep(600);
+  await until(writ(response, "[1,2,3]"), 2000);
   store.ops.push({ seq: 1, author: OTHER, client: "abcdef", cid: 0, changes: { "a.1": null } });
   await done;
   const said = response.writes.map((one) => JSON.parse(one.text));
@@ -240,7 +259,7 @@ async function refused() {
   reset();
   const response = responseOf();
   const done = handler(ask({ s: SECRET, after: 0, seen: "", stream: true }), response);
-  await sleep(300);
+  await until(() => response.writes.length >= 1);
   store.people[1].removed_at = new Date().toISOString();
   await done;
   return { writes: response.writes.length, status: response.statusCode, last: JSON.parse(response.ended) };
@@ -260,8 +279,10 @@ async function reads(stream, slow = false) {
   const seen = JSON.parse(first.ended).seen;
   // pollreads: its channel joins slower than a read, on purpose.
   if (slow) Object.assign(store, { joinMs: 120, readMs: 20 });
+  const joins = store.joins;
   const response = responseOf();
   const done = handler(ask({ s: SECRET, after: 1, seen, stream }), response);
+  await until(joinedSince(joins));
   await sleep(300);
   store.reads = [];
   const from = Date.now();
@@ -292,6 +313,7 @@ async function begins(joinMs, readMs) {
   const from = Date.now();
   const response = responseOf();
   const done = handler(ask({ s: SECRET, after: 1, seen, stream: true }), response);
+  await until(begun(0));
   await sleep(1500);
   const log = loggedSince(from);
   const ms = Date.now() - from;
@@ -317,11 +339,13 @@ async function told(stream) {
   store.ops.push({ seq: 1, author: OTHER, client: "abcdef", cid: 0, changes: {} });
   await once;
   const seen = JSON.parse(first.ended).seen;
+  const joins = store.joins;
   const response = responseOf();
   const done = handler(ask({ s: SECRET, after: 1, seen, stream }), response);
-  // Listening by now; then a stranger's pointer, and one of somebody taken
-  // out, neither in it.
-  await sleep(300);
+  // Listening; then a stranger's pointer, and one of somebody taken out,
+  // neither in it.
+  await until(joinedSince(joins));
+  await sleep(100);
   const stranger = await pointAs(STRANGER, [9, 9, 9]);
   await sleep(150);
   const quiet = response.writes.length + (response.ended ? 1 : 0);
@@ -387,8 +411,10 @@ async function pointing(listening) {
   // the last, so a poll not listening reads who is in it at each, not at
   // those its timer's rounding lets it.
   store.readMs = 20;
+  const [mark, joins] = [store.log.length, store.joins];
   const response = responseOf();
   const done = handler(ask({ s: SECRET, after: 1, seen, stream: true }), response);
+  await until(listening ? joinedSince(joins) : begun(mark));
   await sleep(300);
   await pointAs(OTHER, [0, 0, 0]);
   await sleep(300);
@@ -430,9 +456,11 @@ async function looked() {
   const people = JSON.parse(first.ended).people;
   const always = createHash("sha256").update(JSON.stringify(people.map((one) => [one.who, one.name, one.here, one.at,
     one.sel, one.view]))).digest("hex").slice(0, 12);
+  const joins = store.joins;
   const response = responseOf();
   const done = handler(ask({ s: SECRET, after: 1, seen, stream: true }), response);
-  await sleep(300);
+  await until(joinedSince(joins));
+  await sleep(100);
   store.toldAt = null;
   store.unseen = true;
   const sentAt = Date.now();
@@ -477,17 +505,21 @@ async function looked() {
 // part pointed out is what is kept, and what a poll reading it later is told.
 async function ordered() {
   reset();
-  store.holdOlder = 150;
+  store.holdOlder = true;
   const send = async (at, look) => {
     const response = responseOf();
     await handler(ask({ s: SECRET, at, sel: [], view: null, ...(look ? { look } : {}) }, "point", OTHER), response);
     return response;
   };
   const pointer = send([-1, 0, 0]);
-  await sleep(30);
+  // The pointer had by the server first: the point sent once its write has
+  // reached the database, which holds it until the point's has landed. Sent
+  // 30 ms after it by the clock, a busy box's sign-in check could have the
+  // pointer second (pollreads).
+  await until(() => store.log.some(([what]) => what === "PATCH together_people"));
   const looked = send([1, 2, 3], { n: 1763000000009, sel: ["ab12.3"], at: [1, 2, 3], age: 0 });
   const answers = await Promise.all([pointer, looked]);
-  store.holdOlder = 0;
+  store.holdOlder = false;
   const response = responseOf();
   const done = handler(ask({ s: SECRET, after: 0, seen: "", stream: false }), response);
   store.ops.push({ seq: 1, author: OTHER, client: "abcdef", cid: 0, changes: {} });
@@ -499,12 +531,13 @@ async function ordered() {
 // pointfix: a part pointed out while a poll begun a moment before is still
 // joining its channel: told before it could hear, it is read the moment the
 // channel has joined, not at the next read of who is in it (PEOPLE_MS).
-async function joining() {
+async function joining(tries = 1) {
   reset();
   store.joinAfterTold = 70;
   const began = Date.now();
   const response = responseOf();
   const done = handler(ask({ s: SECRET, after: 0, seen: "", stream: true }), response);
+  await until(begun(0));
   await sleep(30);
   const sentAt = Date.now();
   await lookAs(OTHER, { n: 1763000000010, sel: ["ab12.3"], at: [1, 2, 3], age: 0 });
@@ -513,14 +546,20 @@ async function joining() {
     if (response.writes.some((one) => one.text.includes("1763000000010"))) outAt = Date.now();
   }
   const toldAt = store.toldAt ?? outAt;
-  const joinedAt = store.joinedAt;
   store.ops.push({ seq: 1, author: OTHER, client: "abcdef", cid: 0, changes: {} });
   await done;
+  // When it joined, if it read the point at its last moment to wait first.
+  const joinedAt = store.joinedAt;
   store.joinAfterTold = 0;
+  // Told while it joins is the case: a point whose own sign-in the box held
+  // past the poll's wait for its channel (PEOPLE_MS), so told after its read
+  // of who is in it, is not; tried again (said in tries).
+  const read = store.log.find(([what]) => what === "GET together_people")?.[1] ?? Infinity;
+  if (store.toldAt !== null && store.toldAt > read && tries < 3) return joining(tries + 1);
   const line = response.writes.map((one) => JSON.parse(one.text))
     .find((one) => one.people?.find((p) => !p.me)?.look?.n === 1763000000010);
   const who = line?.people?.find((p) => !p.me)?.who;
-  return { sentMs: sentAt - began, toldMs: toldAt - began, joinedMs: joinedAt === null ? null : joinedAt - began,
+  return { tries, sentMs: sentAt - began, toldMs: toldAt - began, joinedMs: joinedAt === null ? null : joinedAt - began,
     ms: outAt === null ? null : outAt - toldAt, stalled: outAt === null ? null : stalledIn(toldAt, outAt),
     via: line?.pointed?.[who]?.[2] ?? null };
 }
@@ -534,6 +573,7 @@ async function changeWhileJoining() {
   const from = Date.now();
   const response = responseOf();
   const done = handler(ask({ s: SECRET, after: 0, seen: "", stream: true }), response);
+  await until(begun(0));
   await sleep(30);
   const madeAt = Date.now();
   store.ops.push({ seq: 1, author: OTHER, client: "abcdef", cid: 0, changes: {} });

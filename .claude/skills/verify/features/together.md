@@ -328,7 +328,11 @@ signed in as someone else.
   the busy box held the fixture for, `stalled`; a point's timed from the
   server telling the channel, `relay_ms`, since a send's own sign-in
   check waits on the thread pool a busy box keeps, and `joining`'s
-  channel joins 70 ms after that telling, not by the clock).
+  channel joins 70 ms after that telling, not by the clock). The fixture
+  acts on a poll's state (begun, listening, its first line out), never a
+  sleep standing for it; it must pass with every sign-in held 0-300 ms:
+  `NODE_OPTIONS="--import ./tests/fixtures/together/slow_sign_in.mjs"
+  python3 tools/minitest.py tests/test_together_poll.py`.
 - The desktop pair probe's B8 part (sections 4c to 4e and 6 of
   `together_probe.gd`, run with the relay holding
   `together_snapshot_parts`): selection outlined in e8590c, pointer p95
